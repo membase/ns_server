@@ -1119,8 +1119,9 @@ var ServerStateMock = {
       "ejectNode": {
         "uri": "/controller/ejectNode"
       },
-      "testWorkload": {
-        "uri": "/pools/default/controller/testWorkload"
+      "setAutoCompaction": {
+        "uri": "/controller/setAutoCompaction",
+        "validateURI": "/controller/setAutoCompaction?just_validate=1"
       }
     },
     "balanced": true,
@@ -1133,6 +1134,18 @@ var ServerStateMock = {
     "nodeStatusesUri": "/nodeStatuses",
     "stats": {
       "uri": "/pools/default/stats"
+    },
+    "autoCompactionSettings": {
+      "databaseFragmentationThreshold": 99,
+      "viewFragmentationThreshold": 98,
+      "parallelDBAndViewCompaction": false //,
+      // "allowedTimePeriod": {
+      //   "fromHour": 11,
+      //   "fromMinute": 0,
+      //   "toHour": 13,
+      //   "toMinute": 0,
+      //   "abortOutside": true
+      // }
     }
   },
   baseBuckets: [
@@ -1170,6 +1183,18 @@ var ServerStateMock = {
         "itemCount": 0,
         "diskUsed": 0,
         "memUsed": 3402136
+      },
+      "autoCompactionSettings": {
+        "databaseFragmentationThreshold": 96,
+        "viewFragmentationThreshold": 70,
+        "parallelDBAndViewCompaction": true,
+        "allowedTimePeriod": {
+          "fromHour": 11,
+          "fromMinute": 0,
+          "toHour": 13,
+          "toMinute": 0,
+          "abortOutside": true
+        }
       },
       "bucketCapabilitiesVer": "sync-1.0",
       "bucketCapabilities": ["touch","sync","couchapi"]

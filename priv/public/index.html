@@ -551,18 +551,88 @@
         <div id="settings" style="display:none">
           <h1>Settings</h1>
           <div class="shadow_box">
-            <div class="section notifications-updates auto_failover email_alerts">
+            <div class="section">
               <div class="header_2">
                 <ul class="tabs">
                   <li class="tab_left"><a id="settings_update_notifications">Update Notifications</a></li>
                   <li><a id="settings_auto_failover">Auto-Failover</a></li>
-                  <li class="tab_right"><a id="settings_alerts">Alerts</a></li>
+                  <li><a id="settings_alerts">Alerts</a></li>
+                  <li class="tab_right"><a id="settings_compaction">Auto-Compaction</a></li>
                 </ul>
               </div>
               <div class="panes clearfix">
-                <div id="notifications_container">Please wait...</div>
-                <div id="auto_failover_container">Please wait...</div>
-                <div id="email_alerts_container">Please wait...</div>
+                <div id="notifications_container" class="notifications-updates"><div class='spinner' style="height:350px;line-height:350px;width:100%"><span>Loading...</span></div></div>
+                <div id="auto_failover_container" class="auto_failover"><div class='spinner' style="height:350px;line-height:350px;width:100%"><span>Loading...</span></div></div>
+                <div id="email_alerts_container" class="email_alerts"><div class='spinner' style="height:350px;line-height:350px;width:100%"><span>Loading...</span></div></div>
+                <div id="compaction_container"><form>
+                  <fieldset class="auto_compaction persistent-only">
+                    <legend>Auto-Compaction</legend>
+                    <p>The Auto-Compaction daemon compacts databases and their respective
+                    view indexes when all the condition parameters are satisfied.</p>
+                    <ul>
+                      <li class="database">
+                        <span class="toggle">
+                          <input type="checkbox" id="48099acb-df16-4e1e-9949-2aaccfeb9e41" class="check-for-databaseFragmentationThreshold" /> <label for="48099acb-df16-4e1e-9949-2aaccfeb9e41">Database Fragmentation</label>
+                        </span>
+                        <span class="input_wrapper">
+                          <input id="decaebe7-bb14-4c1f-9bb1-70ceb7fb2e43" name="databaseFragmentationThreshold" type="number" />%
+                        </span>
+                        <label for="decaebe7-bb14-4c1f-9bb1-70ceb7fb2e43">
+                          <span>at which point compaction is triggered</span>
+                        </label>
+                        <div class="error-container err-databaseFragmentationThreshold"></div>
+                      </li>
+                      <li class="view">
+                        <span class="toggle">
+                          <input type="checkbox" id="0a2cb7a3-84b7-4822-bf32-87d3e192926a" class="check-for-viewFragmentationThreshold" /> <label for="0a2cb7a3-84b7-4822-bf32-87d3e192926a">View Fragmentation</label>
+                        </span>
+                        <span class="input_wrapper">
+                          <input id="8e49a092-3108-46ed-b5c3-9b95c4ceda6f" name="viewFragmentationThreshold" type="number" />%
+                        </span>
+                        <label for="8e49a092-3108-46ed-b5c3-9b95c4ceda6f">
+                          <span>at which point compaction is triggered</span>
+                        </label>
+                        <div class="error-container err-viewFragmentationThreshold"></div>
+                      </li>
+                      <li class="period">
+                        <span class="toggle">
+                          <input type="checkbox" id="f5962927-16af-4eb6-802c-86fe6c3a238d" class="check-for-allowedTimePeriod"/> <label for="f5962927-16af-4eb6-802c-86fe6c3a238d">Time Period</label>
+                        </span>
+                        <span class="input_wrapper">
+                          <input id="8a786bbb-e9df-46d4-8733-2993ae0c2b95" name="allowedTimePeriod[fromHour]" type="number" min="0" max="23" placeholder="HH" />:<input name="allowedTimePeriod[fromMinute]" type="number" min="0" max="59" placeholder="MM" />
+                          - <input name="allowedTimePeriod[toHour]" type="number" min="0" max="23" placeholder="HH" />:<input name="allowedTimePeriod[toMinute]" type="number" min="0" max="59" placeholder="MM" />
+                        </span>
+                        <label for="8a786bbb-e9df-46d4-8733-2993ae0c2b95">
+                          <span>during which compaction is allowed</span>
+                        </label>
+                        <div class="error-container err-allowedTimePeriod"></div>
+                        <div class="error-container err-allowedTimePeriod-fromHour-"></div>
+                        <div class="error-container err-allowedTimePeriod-fromMinute-"></div>
+                        <div class="error-container err-allowedTimePeriod-toHour-"></div>
+                        <div class="error-container err-allowedTimePeriod-toMinute-"></div>
+                        <ul>
+                          <li>
+                            <input type="hidden" name="allowedTimePeriod[abortOutside]" value="false" />
+                            <input id="302bc9f8-0a98-4963-85a4-5670ab8f1c25" type="checkbox" name="allowedTimePeriod[abortOutside]" value="true" />
+                            <label for="302bc9f8-0a98-4963-85a4-5670ab8f1c25">Abort compaction if run time exceeds the above period</label>
+                            <div class="error-container err-allowedTimePeriod-abortOutside-"></div>
+                          </li>
+                        </ul>
+                      </li>
+                      <li>
+                        <input type="hidden" name="parallelDBAndViewCompaction" value="false" />
+                        <input id="f6fb6488-c05a-4baa-88f7-27032da6600b" type="checkbox" name="parallelDBAndViewCompaction" value="true" />
+                        <label for="f6fb6488-c05a-4baa-88f7-27032da6600b">Process Database and View compaction in parallel</label>
+                        <div class="error-container err-parallelDBAndViewCompaction"></div>
+                      </li>
+                    </ul>
+                  </fieldset> <!-- .auto_compaction -->
+                  <div class="save_cancel">
+                    <button class="save_button float_right" type="submit">
+                      Save
+                    </button>
+                  </div>
+                </form></div>
               </div>
             </div>
           </div>
@@ -1100,6 +1170,72 @@
       </label>
       </div>
     </fieldset> <!-- .persistent-only -->
+
+    <fieldset class="auto_compaction persistent-only">
+      <legend>Auto-Compaction</legend>
+      <p>The Auto-Compaction daemon compacts databases and their respective
+      view indexes when all the condition parameters are satisfied.</p>
+      <ul>
+        <li><input type="hidden" name="autoCompactionDefined" value="false" />
+          <label><input type="checkbox" name="autoCompactionDefined" value="true" /> Define own autocompaction settings</label>
+        </li>
+        <li class="database">
+          <span class="toggle">
+            <input type="checkbox" id="db_frag_check" class="check-for-databaseFragmentationThreshold" /> <label for="db_frag_check">Database Fragmentation</label>
+          </span>
+          <span class="input_wrapper">
+            <input id="32cc3a81-c0e9-495a-836e-3fdeb1384110" name="databaseFragmentationThreshold" type="number" />%
+          </span>
+          <label for="32cc3a81-c0e9-495a-836e-3fdeb1384110">
+            <span>at which point compaction is triggered</span>
+          </label>
+          <div class="error-container err-databaseFragmentationThreshold"></div>
+        </li>
+        <li class="view">
+          <span class="toggle">
+            <input type="checkbox" id="view_frag_check" class="check-for-viewFragmentationThreshold" /> <label for="view_frag_check">View Fragmentation</label>
+          </span>
+          <span class="input_wrapper">
+            <input id="f9a08cc9-e572-4b6e-b4d2-1fe2b0b11852" name="viewFragmentationThreshold" type="number" />%
+          </span>
+          <label for="f9a08cc9-e572-4b6e-b4d2-1fe2b0b11852">
+            <span>at which point compaction is triggered</span>
+          </label>
+          <div class="error-container err-viewFragmentationThreshold"></div>
+        </li>
+        <li class="period">
+          <span class="toggle">
+            <input type="checkbox" id="period_check" class="check-for-allowedTimePeriod"/> <label for="period_check">Time Period</label>
+          </span>
+          <span class="input_wrapper">
+            <input id="2cbc1fe9-d580-4126-9c7e-777fe7adf233" name="allowedTimePeriod[fromHour]" type="number" min="0" max="23" placeholder="HH" />:<input name="allowedTimePeriod[fromMinute]" type="number" min="0" max="59" placeholder="MM" />
+            - <input name="allowedTimePeriod[toHour]" type="number" min="0" max="23" placeholder="HH" />:<input name="allowedTimePeriod[toMinute]" type="number" min="0" max="59" placeholder="MM" />
+          </span>
+          <label for="2cbc1fe9-d580-4126-9c7e-777fe7adf233">
+            <span>during which compaction is allowed</span>
+          </label>
+          <div class="error-container err-allowedTimePeriod"></div>
+          <div class="error-container err-allowedTimePeriod-fromHour-"></div>
+          <div class="error-container err-allowedTimePeriod-fromMinute-"></div>
+          <div class="error-container err-allowedTimePeriod-toHour-"></div>
+          <div class="error-container err-allowedTimePeriod-toMinute-"></div>
+          <ul>
+            <li>
+              <input type="hidden" name="allowedTimePeriod[abortOutside]" value="false" />
+              <input id="66fdfb02-6c6f-453e-9ae3-fa011ecd42c0" type="checkbox" name="allowedTimePeriod[abortOutside]" value="true" />
+              <label for="66fdfb02-6c6f-453e-9ae3-fa011ecd42c0">Abort compaction if run time exceeds the above period</label>
+              <div class="error-container err-allowedTimePeriod-abortOutside-"></div>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <input type="hidden" name="parallelDBAndViewCompaction" value="false" />
+          <input id="089ccca1-8688-41f9-a126-71a871b2ecf6" type="checkbox" name="parallelDBAndViewCompaction" value="true" />
+          <label for="089ccca1-8688-41f9-a126-71a871b2ecf6">Process Database and View compaction in parallel</label>
+          <div class="error-container err-parallelDBAndViewCompaction"></div>
+        </li>
+      </ul>
+    </fieldset> <!-- .auto_compaction -->
 
     <div class="save_cancel">
       <span class="when-editing">

@@ -58,11 +58,12 @@ var SettingsSection = {
                              '#settings .tabs',
                              '#settings .panes > div',
                              ['update_notifications', 'auto_failover',
-                              'email_alerts']);
-    
+                              'email_alerts', 'settings_compaction']);
+
     UpdatesNotificationsSection.init();
     AutoFailoverSection.init();
     EmailAlertsSection.init();
+    AutoCompactionSection.init();
   },
   onEnter: function () {
     UpdatesNotificationsSection.refresh();
@@ -604,4 +605,154 @@ var EmailAlertsSection = {
   },
   onLeave: function () {
   }
+};
+
+var AutoCompactionSection = {
+  init: function () {
+    var self = this;
+
+    var settingsCell = Cell.needing(DAL.cells.currentPoolDetailsCell).computeEager(function (v, poolDetails) {
+      return poolDetails.autoCompactionSettings;
+    });
+    settingsCell.equality = _.isEqual;
+    self.settingsCell = settingsCell;
+    var errorsCell = self.errorsCell = new Cell();
+    self.errorsCell.subscribeValue($m(self, 'onValidationResult'));
+    self.urisCell = new Cell();
+    self.formValidationEnabled = new Cell();
+    self.formValidationEnabled.setValue(false);
+
+    var container = self.container = $('#compaction_container');
+
+    self.formValidation = undefined;
+
+    DAL.cells.currentPoolDetailsCell.getValue(function (poolDetails) {
+      var value = poolDetails.controllers.setAutoCompaction;
+      if (!value) {
+        BUG();
+      }
+      AutoCompactionSection.urisCell.setValue(value)
+    });
+
+    var formValidation;
+
+    self.urisCell.getValue(function (uris) {
+      var validateURI = uris.validateURI;
+      formValidation = setupFormValidation(container.find("form"), validateURI,
+                                           function (status, errors) {
+                                             errorsCell.setValue(errors);
+                                           });
+      self.formValidationEnabled.subscribeValue(function (enabled) {
+        formValidation[enabled ? 'unpause' : 'pause']();
+      });
+    });
+
+    (function () {
+      var spinner;
+      settingsCell.subscribeValue(function (val) {
+        if (spinner) {
+          spinner.remove();
+          spinner = null;
+        }
+        if (val === undefined) {
+          spinner = overlayWithSpinner(container);
+        }
+      });
+
+      container.find('form').bind('submit', function (e) {
+        e.preventDefault();
+        if (spinner) {
+          return;
+        }
+
+        self.submit();
+      });
+    })();
+
+    SettingsSection.tabs.subscribeValue(function (val) {
+      if (val !== 'settings_compaction') {
+        self.formValidationEnabled.setValue(false);
+        return;
+      }
+      self.errorsCell.setValue({});
+      self.fillSettingsForm();
+      self.formValidationEnabled.setValue(true);
+    });
+  },
+  fillSettingsForm: function () {
+    var self = this;
+    var myGeneration = self.fillSettingsGeneration = new Object();
+    self.settingsCell.getValue(function (settings) {
+      if (myGeneration !== self.fillSettingsGeneration) {
+        return;
+      }
+
+      settings = _.clone(settings);
+      _.each(settings, function (value, k) {
+        if (value instanceof Object) {
+          _.each(value, function (subVal, subK) {
+            settings[k+'['+subK+']'] = subVal;
+          });
+        }
+      });
+
+      if (self.formDestructor) {
+        self.formDestructor();
+      }
+
+      var form = self.container.find("form");
+      setFormValues(form, settings);
+      self.formDestructor = setAutoCompactionSettingsFields(form, settings);
+    });
+  },
+  submit: function () {
+    var self = this;
+    var dialog = genericDialog({buttons: {},
+                                header: "Saving...",
+                                text: "Saving autocompaction settings. Please, wait..."});
+
+    self.urisCell.getValue(function (uris) {
+      postWithValidationErrors(uris.uri, self.container.find("form"), onSubmitResult);
+      DAL.cells.currentPoolDetailsCell.setValue(undefined);
+      self.formValidationEnabled.setValue(false);
+    });
+    return;
+
+    function onSubmitResult(data, status) {
+      DAL.cells.currentPoolDetailsCell.invalidate();
+      dialog.close();
+
+      if (status == "success") {
+        self.errorsCell.setValue({});
+        self.fillSettingsForm();
+      } else {
+        self.errorsCell.setValue(data[0]);
+      }
+      self.formValidationEnabled.setValue(true);
+    }
+  },
+  renderError: function (field, error) {
+    var fieldClass = field.replace(/\[|\]/g, '-');
+    this.container.find('.error-container.err-' + fieldClass).text(error || '')[error ? 'addClass' : 'removeClass']('active');
+    this.container.find('[name="' + field + '"]')[error ? 'addClass' : 'removeClass']('invalid');
+  },
+  onValidationResult: (function () {
+    var knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold viewFragmentationThreshold allowedTimePeriod').split(' ');
+    _.each(('to from').split(' '), function (p1) {
+      _.each(('Hour Minute').split(' '), function (p2) {
+        knownFields.push('allowedTimePeriod[' + p1 + p2 + ']');
+      });
+    });
+
+    return function (result) {
+      if (!result) {
+        return;
+      }
+      var self = this;
+      var errors = result.errors || {};
+      _.each(knownFields, function (name) {
+        self.renderError(name, errors[name]);
+      });
+    };
+  })()
 };

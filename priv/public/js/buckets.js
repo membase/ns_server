@@ -128,6 +128,33 @@ function setupFormValidation(form, url, callback) {
   };
 }
 
+function setAutoCompactionSettingsFields(form, initValues) {
+  var dbFragmentationCheck = form.find('.check-for-databaseFragmentationThreshold');
+  dbFragmentationCheck.prop('checked', 'databaseFragmentationThreshold' in initValues);
+  var viewFragmentationCheck = form.find('.check-for-viewFragmentationThreshold');
+  viewFragmentationCheck.prop('checked', 'viewFragmentationThreshold' in initValues);
+
+  var periodCheck = form.find('.check-for-allowedTimePeriod');
+  periodCheck.prop('checked', 'allowedTimePeriod[fromHour]' in initValues);
+
+  var dbInput = form.find('[name=databaseFragmentationThreshold]');
+  var viewInput = form.find('[name=viewFragmentationThreshold]');
+  var allowedTimeInputs = form.find('[name^=allowedTimePeriod]');
+
+  var observer = form.observePotentialChanges(function () {
+    if (periodCheck.prop('disabled')) {
+      return;
+    }
+    dbInput.prop('disabled', !dbFragmentationCheck.prop('checked'));
+    viewInput.prop('disabled', !viewFragmentationCheck.prop('checked'));
+    allowedTimeInputs.prop('disabled', !periodCheck.prop('checked'));
+  });
+
+  return function () {
+    observer.stopObserving();
+  }
+}
+
 var BucketDetailsDialog = mkClass({
   initialize: function (initValues, isNew, options) {
     this.isNew = isNew;
@@ -196,6 +223,46 @@ var BucketDetailsDialog = mkClass({
         dialog.find('.hidden-replica-number').need(1).boolAttr('disabled', replicationEnabled);
         if (isNew) {
           dialog.find('.for-replica-number select').need(1).boolAttr('disabled', !replicationEnabled);
+        }
+      });
+    }).call(this);
+
+    (function () {
+      var oldAutoCompactionDefined;
+      var checkbox = dialog.find('input[type=checkbox][name=autoCompactionDefined]');
+      if (!checkbox.length) {
+        return;
+      }
+      var oldDisabledness = {};
+      var affectedInputs = checkbox.closest('ul').find('input[type=checkbox], input[type=number], input[type=text], input:not([type])');
+      affectedInputs = affectedInputs.not('[name=autoCompactionDefined]');
+      window.affectedInputs = affectedInputs;
+      console.log(affectedInputs);
+      ensureElementId(affectedInputs);
+
+      function restoreDisabledness() {
+        _.each(oldDisabledness, function (val, id) {
+          $($i(id)).prop('disabled', !!val);
+        });
+        oldDisabledness = {};
+      }
+
+      this.cleanups.push(restoreDisabledness);
+      return this.observePotentialChangesWithCleanup(function () {
+        var autoCompactionDefined = !!(checkbox.attr('checked'));
+        if (autoCompactionDefined === oldAutoCompactionDefined) {
+          return;
+        }
+        oldAutoCompactionDefined = autoCompactionDefined;
+        if (autoCompactionDefined) {
+          restoreDisabledness();
+        } else {
+          oldDisabledness = {};
+          _.each(affectedInputs, function (input) {
+            input = $(input);
+            oldDisabledness[input.attr('id')] = input.prop('disabled');
+            input.prop('disabled', true);
+          });
         }
       });
     }).call(this);
@@ -326,7 +393,10 @@ var BucketDetailsDialog = mkClass({
     setFormValues(form, self.initValues);
 
     form.find('[name=bucketType]').boolAttr('disabled', !self.isNew);
-    form.find('.for-enable-replication input').boolAttr('checked', self.initValues.replicaNumber !== 0);
+    form.find('.for-enable-replication input').prop('checked', self.initValues.replicaNumber !== 0);
+
+    var compactionCleanup = setAutoCompactionSettingsFields(form, self.initValues);
+    self.cleanups.push(compactionCleanup);
 
     self.cleanups.push(self.bindWithCleanup(form, 'submit', function (e) {
       e.preventDefault();
@@ -408,8 +478,9 @@ var BucketDetailsDialog = mkClass({
   },
 
   renderError: function (field, error) {
-    this.dialog.find('.error-container.err-' + field).text(error || '')[error ? 'addClass' : 'removeClass']('active');
-    this.dialog.find('[name=' + field + ']')[error ? 'addClass' : 'removeClass']('invalid');
+    var fieldClass = field.replace(/\[|\]/g, '-');
+    this.dialog.find('.error-container.err-' + fieldClass).text(error || '')[error ? 'addClass' : 'removeClass']('active');
+    this.dialog.find('[name="' + field + '"]')[error ? 'addClass' : 'removeClass']('invalid');
   },
 
   // this updates our gauges and errors
@@ -424,8 +495,14 @@ var BucketDetailsDialog = mkClass({
         ramGauge = self.dialog.find(".size-gauge.for-ram"),
         memcachedSummaryJQ = self.dialog.find('.memcached-summary'),
         memcachedSummaryVisible = ramSummary && ramSummary.perNodeMegs,
-        knownFields = ('name ramQuotaMB replicaNumber proxyPort').split(' '),
+        knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold viewFragmentationThreshold allowedTimePeriod').split(' '),
         errors = result.errors || {};
+
+    _.each(('to from').split(' '), function (p1) {
+      _.each(('Hour Minute').split(' '), function (p2) {
+        knownFields.push('allowedTimePeriod[' + p1 + p2 + ']');
+      });
+    });
 
     if (ramSummary) {
       self.renderGauge(ramGauge,
@@ -653,6 +730,16 @@ var BucketsSection = {
         fullDetails.invalidate(function () {
           var fullDetailsValue = fullDetails.value;
           var initValues = _.extend({}, bucketDetails, fullDetailsValue);
+          initValues.autoCompactionDefined = ((fullDetailsValue.autoCompactionSettings || false) !== false);
+          _.each(fullDetailsValue.autoCompactionSettings || {}, function (value, k) {
+            if (value instanceof Object) {
+              _.each(value, function (subVal, subK) {
+                initValues[k+'['+subK+']'] = subVal;
+              });
+            } else {
+              initValues[k] = value;
+            }
+          });
           var dialog = new BucketDetailsDialog(initValues, false);
 
           BucketsSection.currentlyShownBucket = bucketDetails;

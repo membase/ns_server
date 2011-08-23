@@ -7,6 +7,7 @@ dl, dt, dd, ol, ul, li, fieldset, form, label, legend,
 table, caption, tbody, tfoot, thead, tr, th, td {margin:0;padding:0;border:0;outline:0;vertical-align:baseline;background:transparent;}
 b {font-weight:normal;}
 ol, ul {list-style:none;}
+ul ul {margin-left:2em}
 :focus {outline:0;}
 ::-moz-focus-inner {border:0;}
 ins {text-decoration:none;}
@@ -374,19 +375,19 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 #bucket_list_container .memcached .btn_documents, #bucket_list_container .memcached .btn_views {display:none}
 #get_started {display:none;}
 
+#settings legend {font-size:14px;font-weight:bold;margin-left:16px}
+
 /* update notification styles */
-#notifications h2 {margin-bottom:12px}
-#notifications .section, #notifications_enabled .section {border:2px solid #d4d4d5;border-width:0 2px;border-bottom:1px solid #CED5D9;}
-.notifications-updates .item {padding:13px;}
-.notifications-updates .save_button {float:right;}
-.notifications-updates p, .notifications-updates ul {line-height:1.4;margin:1em 0;padding:0 10px}
-.notifications-updates ul {list-style-type:disc; margin:5px 0 0 15px;padding:0 20px}
-.notifications-updates li {}
-.notifications-updates label {display:block;line-height:24px;margin-left:16px;margin-top:16px;}
-.notifications-updates label input {padding:3px 3px;font-size:13px;border:1px solid #ccd3d7}
-.notifications-updates label input[type="checkbox"] {position:relative;top:2px}
-.notifications-updates label span {margin:0 5px}
-.notifications-updates p.more_info {display:none}
+#notifications_container .item {padding:13px;}
+#notifications_container .save_button {float:right;}
+#notifications_container p, #notifications_container ul {line-height:1.4;margin:1em 0;padding:0 10px}
+#notifications_container ul {list-style-type:disc; margin:5px 0 0 15px;padding:0 20px}
+#notifications_container li {}
+#notifications_container label {display:block;line-height:24px;margin-left:16px;margin-top:16px;}
+#notifications_container label input {padding:3px 3px;font-size:13px;border:1px solid #ccd3d7}
+#notifications_container label input[type="checkbox"] {position:relative;top:2px}
+#notifications_container label span {margin:0 5px}
+#notifications_container p.more_info {display:none}
 
 /* Should be detected automatically in the future */
 #updates_notifications_confirmation_dialog {width:700px !important;}
@@ -423,6 +424,10 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 #test_email {float: left; border:none; font-size: 0.85em; margin: 3px 0pt 3px 150px;}
 /* button prefix is due to an IE 7 bug that causes the span.failed_over_message to display...all the time... */
 button#test_email + span {line-height:2.25em;margin-left:0.5em}
+
+#compaction_container{margin-top:24px}
+#compaction_container fieldset{padding:0;margin:0 20px}
+#compaction_container legend{padding-bottom:1em}
 
 /* lightbox styles */
 .lbox {width:711px; position:relative;}
@@ -969,18 +974,30 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details .error-container.err-name, .bucket_details .error-container.err-proxyPort {display:inline;float:none;padding-left:6px;}
 .bucket_details .for-replica-number .error-container {float:none;padding-left:0;margin-left:0;text-align:left;display:block;width:auto !important;}
 .bucket_details .error-container.active {visibility:visible;}
+.bucket_details .repli {overflow:hidden}
 .bucket_details .repli span {color:#222}
 .bucket_details label.for-enable-replication {padding-left:20px;width:150px;float:left;}
 .bucket_details label.for-enable-replication span {display:inline;float:none;margin-left:5px;}
 .bucket_details label.for-replica-number {display:block;float:left;}
 .bucket_details label.for-replica-number span {display:inline;float:none;margin-left:6px;}
 .bucket_details label.for-replica-number input {width:29px;}
+.bucket_details input[type=number] {width:2em;}
 .bucket_details .save_cancel .flush_button {float:left;margin-right:16px;}
 .bucket_details .save_cancel .delete_button {float:left;margin-right:16px;}
 
 .bucket_details.creating .when-editing,
 .bucket_details.editing .when-creating,
 .bucket_details.cannot-delete .when-editing .delete_button {display:none;}
+
+.input_wrapper {color:#999}
+.auto_compaction ul {margin-left:20px}
+.auto_compaction ul li {line-height:3em}
+.auto_compaction ul ul li {line-height:1.5em}
+.auto_compaction label {display:inline;}
+.auto_compaction label span {display:inline;float:none;margin:0}
+.auto_compaction .toggle {display:block;float:left;width:15em}
+.auto_compaction input[type="checkbox"], .auto_compaction input[type="radio"] {position:static}
+.auto_compaction .error-container {line-height: 1.5em;padding-left:2.2em;width: 100%;}
 
 .io-error-notice-wrapper {position: fixed; top: 0px; width: 100%; text-align: center; z-index: 9999; padding: 3px 0;}
 .io-error-notice { background-color: #FFF1A8; font-size: 14px; padding: 3px 10px;}
