@@ -25,7 +25,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 %% API
--export([get_nodes/0]).
+-export([get_nodes/0, get_node/1]).
 
 -record(state, {nodes}).
 
@@ -43,23 +43,17 @@ init([]) ->
     end,
     {ok, #state{nodes=dict:new()}}.
 
+handle_call({get_node, Node}, _From, #state{nodes=Nodes} = State) ->
+    Status = dict:fetch(Node, Nodes),
+    LiveNodes = [node() | nodes()],
+    {reply, annotate_status(Node, Status, now(), LiveNodes), State};
+
 handle_call(get_nodes, _From, #state{nodes=Nodes} = State) ->
     Now = erlang:now(),
     LiveNodes = [node()|nodes()],
     Nodes1 = dict:map(
                fun (Node, Status) ->
-                       LastHeard = proplists:get_value(last_heard, Status),
-                       Stale = case timer:now_diff(Now, LastHeard) of
-                                   T when T > ?STALE_TIME ->
-                                       [ stale | Status];
-                                   _ -> Status
-                               end,
-                       case lists:member(Node, LiveNodes) of
-                           true ->
-                               Stale;
-                           false ->
-                               [ down | Stale ]
-                       end
+                       annotate_status(Node, Status, Now, LiveNodes)
                end, Nodes),
     {reply, Nodes1, State}.
 
@@ -107,6 +101,15 @@ get_nodes() ->
             dict:new()
     end.
 
+get_node(Node) ->
+    try gen_server:call(?MODULE, {get_node, Node}) of
+        Status -> Status
+    catch
+        E:R ->
+            ?log_error("Error attempting to get node ~p: ~p", [Node, {E, R}]),
+            []
+    end.
+
 
 %% Internal functions
 
@@ -149,3 +152,17 @@ update_status(Name, Status0, Dict) ->
             ok
     end,
     dict:store(Name, Status, Dict).
+
+annotate_status(Node, Status, Now, LiveNodes) ->
+    LastHeard = proplists:get_value(last_heard, Status),
+    Stale = case timer:now_diff(Now, LastHeard) of
+                T when T > ?STALE_TIME ->
+                    [ stale | Status];
+                _ -> Status
+            end,
+    case lists:member(Node, LiveNodes) of
+        true ->
+            Stale;
+        false ->
+            [ down | Stale ]
+    end.

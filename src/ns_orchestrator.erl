@@ -52,6 +52,8 @@
 -define(REBALANCE_PROGRESS, 5).
 -define(FAILOVER_NODE, 6).
 
+-define(DELETE_BUCKET_TIMEOUT, 5000).
+
 %% gen_fsm callbacks
 -export([code_change/4,
          init/1,
@@ -279,9 +281,29 @@ idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
     end,
     {reply, Reply, idle, State};
 idle({delete_bucket, BucketName}, _From, State) ->
-    RV = ns_bucket:delete_bucket(BucketName),
+    Reply = ns_bucket:delete_bucket(BucketName),
     ns_config:sync_announcements(),
-    {reply, RV, idle, State};
+
+    case Reply of
+        ok ->
+            Pred = fun (Active, _Connected) ->
+                           not lists:member(BucketName, Active)
+                   end,
+
+            Nodes = ns_cluster_membership:active_nodes(),
+            case wait_for_nodes(Nodes, Pred, ?DELETE_BUCKET_TIMEOUT) of
+                ok ->
+                    ok;
+                {timeout, LeftoverNodes} ->
+                    ?log_warning("Nodes ~p failed to delete bucket ~p "
+                                 "within expected time.",
+                                 [LeftoverNodes, BucketName])
+            end;
+        _Other ->
+            ok
+    end,
+
+    {reply, Reply, idle, State};
 idle({failover, Node}, _From, State) ->
     ?log_info("Failing over ~p", [Node]),
     Result = ns_rebalancer:failover(Node),
@@ -382,3 +404,70 @@ needs_rebalance(Nodes, BucketConfig) ->
 -spec update_progress(dict()) -> ok.
 update_progress(Progress) ->
     gen_fsm:send_event(?SERVER, {update_progress, Progress}).
+
+
+wait_for_nodes_loop(Timeout, Nodes) ->
+    receive
+        {updated, NewNodes} ->
+            wait_for_nodes_loop(Timeout, NewNodes);
+        done ->
+            ok
+    after Timeout ->
+            {timeout, Nodes}
+    end.
+
+%% Wait till active and connected buckets satisfy certain predicate on all
+%% nodes. After `Timeout' milliseconds of idleness (i.e. when bucket lists has
+%% not been updated on any of the nodes for more than `Timeout' milliseconds)
+%% we give up and return the list of leftover nodes.
+-spec wait_for_nodes([node()],
+                     fun(([string()], [string()]) -> boolean()),
+                     timeout()) -> ok | {timeout, [node()]}.
+wait_for_nodes(Nodes, Pred, Timeout) ->
+    Parent = self(),
+    Ref = make_ref(),
+    Fn =
+        fun () ->
+                Self = self(),
+                ns_pubsub:subscribe(
+                  buckets_events,
+                  fun ({significant_buckets_change, Node}, PendingNodes) ->
+                          Status = ns_doctor:get_node(Node),
+                          Active = proplists:get_value(active_buckets,
+                                                       Status, []),
+                          Connected = proplists:get_value(connected_buckets,
+                                                          Status, []),
+
+                          case Pred(Active, Connected) of
+                              false ->
+                                  PendingNodes;
+                              true ->
+                                  NewPendingNodes = PendingNodes -- [Node],
+                                  Msg = case NewPendingNodes of
+                                            [] -> done;
+                                            _Other -> {updated, NewPendingNodes}
+                                        end,
+                                  Self ! Msg,
+                                  NewPendingNodes
+                          end;
+                      (_, PendingNodes) ->
+                          PendingNodes
+                  end,
+                  Nodes
+                 ),
+
+                Result = wait_for_nodes_loop(Timeout, Nodes),
+                Parent ! {Ref, Result}
+        end,
+
+    Pid = spawn_link(Fn),
+
+    Result1 =
+        receive
+            {Ref, Result0} -> Result0
+        end,
+
+    receive
+        {'EXIT', Pid, normal} ->
+            Result1
+    end.
