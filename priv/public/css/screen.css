@@ -51,6 +51,8 @@ fieldset legend{width:100%}
 fieldset.radiogroup legend{float:left;height:5em;width:100px;}
 fieldset.radiogroup ul{float:left;margin:0;}
 
+input.invalid, textarea.invalid{border-color:red}
+
 #edit_preview_doc, #save_preview_doc { position:absolute; top:50px; right: 10px; z-index:999; }
 .closed #edit_preview_doc {display:none}
 #lookup_doc_by_id { width:20em; border:1px solid #AAA; padding:3px;}
@@ -391,6 +393,9 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 /* Should be detected automatically in the future */
 #updates_notifications_confirmation_dialog {width:700px !important;}
 
+.error-container{color:red;visibility:hidden}
+.error-container.active{visibility:visible}
+
 /* auto-failover styles */
 .auto_failover label {display:block;line-height:24px;margin-left:16px;margin-top:16px;}
 .auto_failover input {border:1px solid #ccd3d7;padding:3px;font-size:13px;}
@@ -399,9 +404,7 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .auto_failover input[type="checkbox"] + span {display:inline;float:none}
 
 .auto_failover #auto_failover_timeout, .auto_failover #auto_failover_max_nodes {width:3em}
-.auto_failover .error-container {color:red;margin-left:145px;margin-top:5px;visibility:hidden;}
-.auto_failover .error-container.active {visibility:visible;}
-.auto_failover input.invalid, .auto_failover textarea.invalid {border-color:red;}
+.auto_failover .error-container {margin-left:145px;margin-top:5px;}
 
 /* email alerts styles */
 .email_alerts label {display:block;line-height:24px;margin-left:16px;margin-top:16px;}
@@ -966,11 +969,9 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details label.for-enable-persistence span {float:none;display:inline;margin-left:6px;}
 .bucket_details label.for-ram-quota, .bucket_details label.for-hdd-quota {width:275px;padding-top:14px;}
 .bucket_details label.for-ram-quota input, .bucket_details label.for-hdd-quota input {width:58px;text-align:right}
-.bucket_details input.invalid {border-color:red;}
-.bucket_details .error-container {color:red;float:left;font-size:66%;padding-left:170px;visibility:hidden;}
+.bucket_details .error-container {float:left;font-size:66%;padding-left:170px;}
 .bucket_details .error-container.err-name, .bucket_details .error-container.err-proxyPort {display:inline;float:none;padding-left:6px;}
 .bucket_details .for-replica-number .error-container {float:none;padding-left:0;margin-left:0;text-align:left;display:block;width:auto !important;}
-.bucket_details .error-container.active {visibility:visible;}
 .bucket_details .repli {overflow:hidden}
 .bucket_details .repli span {color:#222}
 .bucket_details label.for-enable-replication {padding-left:20px;width:150px;float:left;}
