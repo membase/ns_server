@@ -1132,3 +1132,8 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 .f_wrap .selectBox-dropdown .selectBox-arrow{font-size: 1.54em !important;}
 
 ul.tabs.dev-subset-switcher { padding-top: 3px; padding-bottom: 3px; padding-left: 12px; }
+
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+    /* Safari/Chrome CSS here*/
+    input[type=number] {width:4em;}
+}
