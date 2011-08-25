@@ -477,7 +477,7 @@ body.auth #container { display: none; }
 
 .auth_block {min-height:737px; height:100%; position:relative;background:#F0EEE7}
 .auth_block .pad {position:relative; width:580px; margin:auto;top:0px; height:537px;}
-.auth_block form {display:block; width:580px; background:url(../images/auth_form_bg.png) 0 0 no-repeat;position:relative;-moz-box-shadow:1px 1px 10px #999;-webkit-box-shadow:1px 1px 10px #999;box-shadow:1px 1px 10px #999}
+.auth_block form {display:block; width:580px; background:url(../images/auth_form_bg.png) 0 0 no-repeat;position:relative;-moz-box-shadow:1px 1px 10px #999;-webkit-box-shadow:1px 1px 10px #999;box-shadow:1px 1px 10px #999;padding:10px 0}
 .auth_block form ul {padding:25px 0 0 25px;}
 .auth_block form ul li{margin:1em 0}
 .auth_block .form table td {vertical-align:middle; padding:10px 0;}
