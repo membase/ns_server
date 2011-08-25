@@ -1543,20 +1543,14 @@
 
   <div class="pad" id="init_welcome_dialog">
     <div class="pad-header">
-      <div class="version" style="display:none;">Couchbase Server <span class="couchbase-version"></span></div>
+      <img class="logo" src="images/logo.png" alt="Couchbase logo" />
       <div class="tagline">
         Simple. Fast. Elastic.
       </div>
     </div>
-    <!-- screen S.1 -->
-    <h1>Congratulations</h1>
-    <form id="init_welcome_form">
-      <p>
-        You have successfully installed the Couchbase Server.<br>This wizard will help you configure your cluster.
-      </p>
-      <div class="pat_10">
-        <input type="image" name="setup" alt="Setup" class="submit next focusme" src="images/welcome-setup-button.png" />
-      </div>
+    <form id="init_welcome_form" class="clearfix">
+      <div class="version" style="display:none;"><span class="couchbase-version"></span></div>
+      <input type="image" name="setup" alt="Setup" class="submit next focusme" src="images/welcome-setup-button.png" />
     </form>
     <div class="welcome-footer">
       Copyright &copy; 2011 Couchbase, Inc. All Rights Reserved
