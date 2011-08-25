@@ -424,7 +424,9 @@ var ViewsSection = {
       editor.setOption('readOnly', 'nocursor');
       editor.setOption('lineNumbers', false);
       editor.setOption('matchBrackets', false);
-      $(editor.getWrapperElement()).addClass('read_only');
+      $(editor.getWrapperElement())
+        .addClass('read_only')
+        .closest('.shadow_box').removeClass('editing');
     }
 
     var editingDevView = Cell.compute(function (v) {
@@ -832,6 +834,10 @@ var ViewsSection = {
       }
     });
 
+    $('#cancel_preview_doc').click(function(ev) {
+      showDoc($.cookie('randomKey'));
+      disableEditor(jsonCodeEditor);
+    });
     $('#save_preview_doc').click(function(ev) {
 
       ev.stopPropagation();
@@ -853,7 +859,6 @@ var ViewsSection = {
 
       self.dbURLCell.getValue(function (dbURL) {
         couchReq('PUT', buildDocURL(dbURL, json._id), json, function () {
-          $('#sample_docs').removeClass('editing');
           disableEditor(jsonCodeEditor);
           showDoc(json._id);
         }, function() {

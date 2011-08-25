@@ -54,7 +54,8 @@ fieldset.radiogroup ul{float:left;margin:0;}
 
 input.invalid, textarea.invalid{border-color:red}
 
-#edit_preview_doc, #save_preview_doc { position:absolute; top:50px; right: 10px; z-index:999; }
+#edit_preview_doc, #save_preview_doc, #cancel_preview_doc { position:absolute; top:50px; right: 10px; z-index:999; }
+#cancel_preview_doc{right:65px}
 .closed #edit_preview_doc {display:none}
 #lookup_doc_by_id { width:20em; border:1px solid #AAA; padding:3px;}
 
