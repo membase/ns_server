@@ -84,7 +84,7 @@ a.disabled{text-decoration:none;cursor:default;}
 .cnt_holder {width:960px; position:relative; left:12%;}
 
 .page-header {background:url('../images/header_bg.png') 0 bottom repeat-x;height:80px;}
-.page-header span {position:absolute;background:url('../images/logo.png') no-repeat;width:361px;height:49px;top:15px;left:0;}
+.page-header .logo {position:absolute;background:url('../images/logo.png') no-repeat;width:361px;height:49px;top:15px;left:0;}
 
 #headerNav {clear:both;height:50px;background:url('../images/navigation_bg.png') repeat-x;}
 #headerNav .contents{width:46em;margin:auto;}
