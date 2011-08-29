@@ -21,13 +21,15 @@
 
 -export([init/1]).
 
+-include("ns_common.hrl").
+
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
     CfgPath = path_config:component_path(etc, "config"),
     % TODO: we'll likely kill that later, because static config is usually empty
-    error_logger:info_msg("loading static ns_config from ~p~n", [CfgPath]),
+    ?log_info("loading static ns_config from ~p", [CfgPath]),
     {ok, {{rest_for_one, 3, 10},
           [
            %% gen_event for the config events.

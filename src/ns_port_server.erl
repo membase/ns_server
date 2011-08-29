@@ -158,8 +158,7 @@ log(State) ->
         [] ->
             ok;
         Buf ->
-            error_logger:info_msg(format_lines(State#state.name,
-                                               lists:reverse(Buf))),
+            ?log_info(format_lines(State#state.name, lists:reverse(Buf))),
             case State#state.dropped of
                 0 ->
                     ok;

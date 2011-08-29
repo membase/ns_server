@@ -24,6 +24,8 @@
 -export([init/1, handle_event/2, handle_call/2,
          handle_info/2, terminate/2, code_change/3]).
 
+-include("ns_common.hrl").
+
 -record(state, {}).
 
 add_sup_handler() ->
@@ -37,7 +39,8 @@ handle_event({ns_node_disco_events, Old, New}, State) ->
         [] ->
             ok;
         NewNodes ->
-            error_logger:info_msg("Detected a new nodes (~p).  Moving config around.~n", [NewNodes]),
+            ?log_info("Detected a new nodes (~p).  Moving config around.",
+                      [NewNodes]),
             %% we know that new node will also try to replicate config
             %% to/from us. So we half our traffic by enforcing
             %% 'initiative' from higher node to lower node

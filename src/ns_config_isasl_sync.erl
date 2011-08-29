@@ -26,6 +26,8 @@
 % Useful for testing.
 -export([extract_creds/1]).
 
+-include("ns_common.hrl").
+
 -record(state, {buckets,
                 path,
                 updates,
@@ -44,7 +46,7 @@ start_link(Path, AU, AP) when is_list(Path); is_list(AU); is_list(AP) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [Path, AU, AP], []).
 
 init([Path, AU, AP] = Args) ->
-    error_logger:info_msg("isasl_sync init: ~p~n", [Args]),
+    ?log_info("isasl_sync init: ~p", [Args]),
     Buckets =
         case ns_config:search(buckets) of
             {value, RawBuckets} ->
@@ -52,7 +54,7 @@ init([Path, AU, AP] = Args) ->
             _ -> []
         end,
     %% don't log passwords here
-    error_logger:info_msg("isasl_sync init buckets: ~p~n", [proplists:get_keys(Buckets)]),
+    ?log_info("isasl_sync init buckets: ~p", [proplists:get_keys(Buckets)]),
     Pid = self(),
     ns_pubsub:subscribe(ns_config_events,
                         fun ({buckets, _V}=Evt, _) ->
@@ -80,7 +82,7 @@ handle_cast(write_sasl_conf, State) ->
     {noreply, State#state{updates = State#state.updates + 1,
                           write_pending = false}};
 handle_cast(Msg, State) ->
-    error_logger:error_msg("Unkown cast: ~p~n", [Msg]),
+    ?log_error("Unkown cast: ~p", [Msg]),
     {noreply, State}.
 
 handle_call(_Request, _From, State) ->
@@ -124,8 +126,7 @@ writeSASLConf(Path, Buckets, AU, AP, Tries, SleepTime) ->
     {ok, Pwd} = file:get_cwd(),
     TmpPath = filename:join(filename:dirname(Path), "isasl.tmp"),
     ok = filelib:ensure_dir(TmpPath),
-    error_logger:info_msg("Writing isasl passwd file: ~p~n",
-                          [filename:join(Pwd, Path)]),
+    ?log_info("Writing isasl passwd file: ~p", [filename:join(Pwd, Path)]),
     {ok, F} = file:open(TmpPath, [write]),
     io:format(F, "~s ~s~n", [AU, AP]),
     lists:foreach(
@@ -137,12 +138,12 @@ writeSASLConf(Path, Buckets, AU, AP, Tries, SleepTime) ->
     case file:rename(TmpPath, Path) of
         ok -> ok;
         {error, Reason} ->
-            error_logger:info_msg("Error renaming ~p to ~p: ~p~n",
-                                  [TmpPath, Path, Reason]),
+            ?log_info("Error renaming ~p to ~p: ~p", [TmpPath, Path, Reason]),
             case Tries of
                 0 -> {error, Reason};
                 _ ->
-                    error_logger:info_msg("Trying again after ~p ms (~p tries remaining)~n", [SleepTime, Tries]),
+                    ?log_info("Trying again after ~p ms (~p tries remaining)",
+                              [SleepTime, Tries]),
                     {ok, _TRef} = timer:apply_after(SleepTime, ?MODULE, writeSASLConf, [Path, Buckets, AU, AP, Tries - 1, SleepTime * 2.0])
             end
     end.

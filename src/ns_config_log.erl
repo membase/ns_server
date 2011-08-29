@@ -23,6 +23,8 @@
 -export([init/1, handle_event/2, handle_call/2,
          handle_info/2, terminate/2, code_change/3]).
 
+-include("ns_common.hrl").
+
 -record(state, {last}).
 
 start_link() ->
@@ -39,7 +41,7 @@ code_change(_OldVsn, State, _) -> {ok, State}.
 % Don't log values for some password/auth-related config values.
 
 handle_event({rest_creds = K, _V}, State) ->
-    error_logger:info_msg("config change: ~p -> ********", [K]),
+    ?log_info("config change: ~p -> ********", [K]),
     {ok, State, hibernate};
 handle_event({alerts = K, V}, State) ->
     V2 = lists:map(fun({email_server, ES}) ->
@@ -50,12 +52,12 @@ handle_event({alerts = K, V}, State) ->
                       (V2KeyVal) -> V2KeyVal
                    end,
                    V),
-    error_logger:info_msg("config change:~n~p ->~n~p~n", [K, V2]),
+    ?log_info("config change:~n~p ->~n~p", [K, V2]),
     {ok, State, hibernate};
 handle_event({K, V}, State) ->
     %% These can get pretty big, so pre-format them for the logger.
     VB = list_to_binary(io_lib:print(V, 0, 80, 100)),
-    error_logger:info_msg("config change:~n~p ->~n~s~n", [K, VB]),
+    ?log_info("config change:~n~p ->~n~s", [K, VB]),
     {ok, State, hibernate};
 
 handle_event(KVList, State) when is_list(KVList) ->
@@ -65,7 +67,7 @@ handle_event(_, State) ->
     {ok, State, hibernate}.
 
 handle_call(Request, State) ->
-    error_logger:info_msg("handle_call(~p, ~p)~n", [Request, State]),
+    ?log_info("handle_call(~p, ~p)", [Request, State]),
     {ok, ok, State, hibernate}.
 
 handle_info(_Info, State) ->

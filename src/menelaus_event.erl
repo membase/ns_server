@@ -35,6 +35,7 @@
 -record(state, {webconfig, watchers = []}).
 
 -include_lib("eunit/include/eunit.hrl").
+-include("ns_common.hrl").
 
 % Noop process to get initialized in the supervision tree.
 
@@ -153,8 +154,7 @@ handle_call({unregister_watcher, Pid},
     {ok, ok, State#state{watchers = Watchers2}};
 
 handle_call(Request, State) ->
-    error_logger:info_msg("menelaus_event handle_call(~p, ~p)~n",
-                          [Request, State]),
+    ?log_info("menelaus_event handle_call(~p, ~p)", [Request, State]),
     {ok, ok, State}.
 
 handle_info({'DOWN', MonitorRef, _, _, _},

@@ -159,8 +159,7 @@ rm_rf(Name) when is_list(Name) ->
                 [filename:join(Name, F) || F <- Filenames]),
               file:del_dir(Name);
           {error, Reason} ->
-              error_logger:info_msg("rm_rf failed because ~p~n",
-                                    [Reason])
+              ?log_info("rm_rf failed because ~p", [Reason])
       end
   end.
 
@@ -393,9 +392,9 @@ ping_jointo() ->
     end.
 
 ping_jointo(NodeName) ->
-    error_logger:info_msg("jointo: attempting to contact ~p~n", [NodeName]),
+    ?log_info("jointo: attempting to contact ~p", [NodeName]),
     case net_adm:ping(NodeName) of
-        pong -> error_logger:info_msg("jointo: connected to ~p~n", [NodeName]);
+        pong -> ?log_info("jointo: connected to ~p", [NodeName]);
         pang -> {error, io_lib:format("jointo: could not ping ~p~n", [NodeName])}
     end.
 

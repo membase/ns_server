@@ -177,8 +177,8 @@ rename_node(Old, New) ->
                              NewV = misc:rewrite_value(Old, New, V),
                              if
                                  NewK =/= K orelse NewV =/= V ->
-                                     error_logger:info_msg(
-                                       "renaming node conf ~p -> ~p:~n  ~p ->~n  ~p~n",
+                                     ?log_info(
+                                       "renaming node conf ~p -> ~p:~n  ~p ->~n  ~p",
                                        [K, NewK, V, NewV]),
                                      {NewK, NewV};
                                  true ->
@@ -197,8 +197,8 @@ leave() ->
     %% say, deactivation of membership isn't lost
     ns_config_rep:push(),
     ns_config_rep:synchronize(),
-    error_logger:info_msg("ns_cluster: leaving the cluster from ~p.~n",
-                         [RemoteNode]),
+    ?log_info("ns_cluster: leaving the cluster from ~p.",
+              [RemoteNode]),
     %% Tell the remote server to tell everyone to shun me.
     rpc:cast(RemoteNode, ?MODULE, shun, [node()]),
     %% Then drop ourselves into a leaving state.
@@ -596,7 +596,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
     ok = ns_server_cluster_sup:stop_cluster(),
     ns_log:delete_log(),
     Status = try
-        error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
+        ?log_info("ns_cluster: joining cluster. Child has exited."),
 
         BlackSpot = make_ref(),
         MyNode = node(),
@@ -608,8 +608,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
                              (_) -> BlackSpot
                          end, BlackSpot),
         ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
-        error_logger:info_msg("pre-join cleaned config is:~n~p~n",
-                              [ns_config:get()]),
+        ?log_info("pre-join cleaned config is:~n~p", [ns_config:get()]),
         {ok, _Cookie} = ns_cookie_manager:cookie_sync(),
         %% Let's verify connectivity.
         Connected = net_kernel:connect_node(RemoteNode),

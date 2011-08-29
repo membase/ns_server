@@ -87,7 +87,7 @@ merger_loop() ->
 handle_call(synchronize, _From, State) ->
     {reply, ok, State};
 handle_call(Msg, _From, State) ->
-    error_logger:info_msg("Unhandled ~p call: ~p~n", [?MODULE, Msg]),
+    ?log_info("Unhandled call: ~p", [Msg]),
     {reply, error, State}.
 
 handle_cast({merge_compressed, _Blob} = Msg, State) ->
@@ -178,9 +178,9 @@ accumulate_pull_and_push_test() ->
     end.
 
 handle_info({push, List}, State) ->
-    error_logger:info_msg("Pushing config~n"),
+    ?log_info("Pushing config"),
     do_push(accumulate_kv_pushes(List)),
-    error_logger:info_msg("Pushing config done~n"),
+    ?log_info("Pushing config done"),
     {noreply, State};
 handle_info({pull_and_push, Nodes}, State) ->
     ?log_info("Replicating config to/from:~n~p", [Nodes]),
@@ -199,7 +199,7 @@ handle_info(sync_random, State) ->
     do_pull(1),
     {noreply, State};
 handle_info(Msg, State) ->
-    error_logger:info_msg("Unhandled ~p msg: ~p~n", [?MODULE, Msg]),
+    ?log_info("Unhandled msg: ~p", [Msg]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->

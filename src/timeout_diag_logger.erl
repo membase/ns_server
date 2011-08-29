@@ -99,11 +99,10 @@ handle_call({diag, Err}, _From, #state{last_tstamp = TStamp} = State) ->
                 Processes = lists:foldl(fun (Pid, Acc) ->
                                                 [{Pid, (catch diag_handler:grab_process_info(Pid))} | Acc]
                                         end, [], erlang:processes()),
-                ?log_error("Got timeout ~p~nProcesses snapshot is: [~n", [Err]),
+                ?log_error("Got timeout ~p~nProcesses snapshot is: ~n", [Err]),
                 lists:foreach(fun (Item) ->
-                                      error_logger:error_msg("~p,~n", [Item])
+                                      ?log_error("~n~p", [Item])
                               end, Processes),
-                ?log_error("]~n~n", []),
                 State#state{last_tstamp = misc:time_to_epoch_ms_int(now())};
             _ -> State
         end,

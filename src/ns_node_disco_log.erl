@@ -23,6 +23,8 @@
 -export([init/1, handle_event/2, handle_call/2,
          handle_info/2, terminate/2, code_change/3]).
 
+-include("ns_common.hrl").
+
 -record(state, {}).
 
 start_link() ->
@@ -41,15 +43,14 @@ terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
 handle_event({ns_node_disco_events, _NodesBefore, NodesAfter}, State) ->
-    error_logger:info_msg("ns_node_disco_log: nodes changed: ~p~n",
-                          [NodesAfter]),
+    ?log_info("ns_node_disco_log: nodes changed: ~p", [NodesAfter]),
     {ok, State, hibernate};
 
 handle_event(_, State) ->
     {ok, State, hibernate}.
 
 handle_call(Request, State) ->
-    error_logger:info_msg("handle_call(~p, ~p, ~p)~n", [?MODULE, Request, State]),
+    ?log_info("handle_call(~p, ~p)", [Request, State]),
     {ok, ok, State, hibernate}.
 
 handle_info(_Info, State) ->
