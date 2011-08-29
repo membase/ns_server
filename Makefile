@@ -51,12 +51,15 @@ deps_smtp:
 deps_erlwsh:
 	(cd deps/erlwsh; $(MAKE))
 
-deps_all: deps_smtp deps_erlwsh
+deps_ale:
+	(cd deps/ale; $(MAKE))
+
+deps_all: deps_smtp deps_erlwsh deps_ale
 
 docs:
 	priv/erldocs $(DOC_DIR)
 
-ebins: src/ns_server.app.src
+ebins: src/ns_server.app.src deps_all
 	$(REBAR) compile
 
 src/ns_server.app.src: src/ns_server.app.src.in $(TMP_VER)
@@ -94,6 +97,7 @@ PREFIX_FOR_CONFIG ?= $(DESTDIR)$(PREFIX)
 
 ERLWSH_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/erlwsh
 GEN_SMTP_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/gen_smtp
+ALE_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ale
 
 do-install:
 	echo $(DESTDIR)$(PREFIX)
@@ -107,6 +111,8 @@ do-install:
 	cp -r deps/erlwsh/priv $(ERLWSH_LIBDIR)/
 	mkdir -p $(GEN_SMTP_LIBDIR)
 	cp -r deps/gen_smtp/ebin $(GEN_SMTP_LIBDIR)/
+	mkdir -p $(ALE_LIBDIR)
+	cp -r deps/ale/ebin $(ALE_LIBDIR)/
 	mkdir -p $(DESTDIR)$(PREFIX)/etc/membase
 	sed -e 's|@DATA_PREFIX@|$(PREFIX_FOR_CONFIG)|g' -e 's|@BIN_PREFIX@|$(PREFIX_FOR_CONFIG)|g' \
 		 <etc/static_config.in >$(DESTDIR)$(PREFIX)/etc/membase/static_config
@@ -128,6 +134,7 @@ do-install:
 clean clean_all:
 	@(cd deps/gen_smtp && $(MAKE) clean)
 	@(cd deps/erlwsh && $(MAKE) clean)
+	@(cd deps/ale && $(MAKE) clean)
 	rm -f $(TMP_VER)
 	rm -f $(TMP_DIR)/*.cov.html
 	rm -f cov.html
