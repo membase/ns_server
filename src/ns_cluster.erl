@@ -509,7 +509,7 @@ do_engage_cluster(NodeKVList) ->
         end
     catch
         exit:{unexpected_json, _, _} = Exc ->
-            {error_logger, unexpected_json,
+            {error, unexpected_json,
              ns_error_messages:engage_cluster_json_error(Exc),
              Exc}
     end.
