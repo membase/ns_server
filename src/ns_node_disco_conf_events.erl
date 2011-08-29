@@ -21,6 +21,8 @@
 -export([start_link/0, init/1, handle_event/2, handle_call/2,
          handle_info/2, terminate/2, code_change/3]).
 
+-include("ns_common.hrl").
+
 -record(state, {}).
 
 start_link() ->
@@ -39,19 +41,19 @@ handle_info(_Info, State)      -> {ok, State, hibernate}.
 handle_call(_Request, State)   -> {ok, ok, State, hibernate}.
 
 handle_event({nodes_wanted, _V}, State) ->
-    error_logger:info_msg("ns_node_disco_conf_events config on nodes_wanted~n"),
+    ?log_info("ns_node_disco_conf_events config on nodes_wanted"),
     % The event may get to us really late, so don't pass along the param.
     ns_node_disco:nodes_wanted_updated(),
     {ok, State, hibernate};
 
 handle_event({otp, _V}, State) ->
-    error_logger:info_msg("ns_node_disco_conf_events config on otp~n"),
+    ?log_info("ns_node_disco_conf_events config on otp"),
     % The event may get to us really late, so don't pass along the param.
     ns_node_disco:nodes_wanted_updated(),
     {ok, State, hibernate};
 
 handle_event(Changed, State) when is_list(Changed) ->
-    error_logger:info_msg("ns_node_disco_conf_events config all~n"),
+    ?log_info("ns_node_disco_conf_events config all"),
     Config = ns_config:get(),
     ChangedRaw =
         lists:foldl(fun({Key, _}, Acc) ->

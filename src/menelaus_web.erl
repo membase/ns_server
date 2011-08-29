@@ -757,7 +757,7 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
     receive
         {notify_watcher, _} -> ok;
         _ ->
-            error_logger:info_msg("menelaus_web streaming socket closed by client~n"),
+            ?log_info("menelaus_web streaming socket closed by client"),
             exit(normal)
     after 25000 ->
         ok
@@ -1715,7 +1715,7 @@ handle_abortable_get_request(Req, Body) ->
                                        end,
                                        Parent ! {Ref, done};
                                    {tcp_closed, Socket} ->
-                                       error_logger:info_msg("I have nobody to live for. Killing myself...~n"),
+                                       ?log_info("I have nobody to live for. Killing myself..."),
                                        exit(Parent, kill)
                                end
                        end),

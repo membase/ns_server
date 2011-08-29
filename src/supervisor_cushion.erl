@@ -21,6 +21,8 @@
 -behaviour(gen_server).
 -behavior(ns_log_categorizing).
 
+-include("ns_common.hrl").
+
 -define(FAST_CRASH, 1).
 
 %% API
@@ -38,7 +40,7 @@ start_link(Name, Delay, M, F, A) ->
 
 init([Name, Delay, M, F, A]) ->
     process_flag(trap_exit, true),
-    error_logger:info_msg("starting ~p with delay of ~p~n", [M, Delay]),
+    ?log_info("starting ~p with delay of ~p", [M, Delay]),
     case apply(M, F, A) of
         {ok, Pid} ->
             {ok, #state{name=Name, delay=Delay, started=now(), child_pid=Pid}};
@@ -56,15 +58,15 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 handle_info({'EXIT', _Pid, Reason}, State) ->
-    error_logger:info_msg("Cushion managed supervisor for ~p failed:  ~p~n",
-                          [State#state.name, Reason]),
+    ?log_info("Cushion managed supervisor for ~p failed:  ~p",
+              [State#state.name, Reason]),
     State1 = die_slowly({error, cushioned_supervisor, Reason}, State),
     {noreply, State1};
 handle_info({die, Reason}, State) ->
     {stop, Reason, State};
 handle_info(Info, State) ->
-    error_logger:info_msg("Cushion got unexpected info supervising ~p: ~p~n",
-                          [State#state.name, Info]),
+    ?log_info("Cushion got unexpected info supervising ~p: ~p",
+              [State#state.name, Info]),
     State1 = die_slowly({error, cushioned_supervisor, Info}, State),
     {noreply, State1}.
 

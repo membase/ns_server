@@ -39,6 +39,7 @@
 -export([ns_log_cat/1, ns_log_code_string/1]).
 
 -include_lib("eunit/include/eunit.hrl").
+-include("ns_common.hrl").
 
 -record(state, {unique_recent,
                 dedup,
@@ -60,9 +61,7 @@ init([]) ->
                  {ok, <<>>} -> [];
                  {ok, B} -> binary_to_term(zlib:uncompress(B));
                  E ->
-                     error_logger:info_msg(
-                       "~p:init(): Couldn't load logs from ~p: ~p~n",
-                       [?MODULE, Filename, E]),
+                     ?log_info("Couldn't load logs from ~p: ~p", [Filename, E]),
                      []
              end,
     %% initiate log syncing
@@ -113,11 +112,11 @@ handle_cast({log, Module, Code, Fmt, Args}, State = #state{dedup=Dedup}) ->
     Key = {Module, Code, Fmt, Args},
     case dict:find(Key, Dedup) of
         {ok, {Count, FirstSeen, LastSeen}} ->
-            error_logger:info_msg("ns_log: suppressing duplicate log ~p:~p(~p) because it's been "
-                                  "seen ~p times in the past ~p secs (last seen ~p secs ago~n",
-                                  [Module, Code, lists:flatten(io_lib:format(Fmt, Args)),
-                                   Count+1, timer:now_diff(Now, FirstSeen) / 1000000,
-                                   timer:now_diff(Now, LastSeen) / 1000000]),
+            ?log_info("suppressing duplicate log ~p:~p(~p) because it's been "
+                      "seen ~p times in the past ~p secs (last seen ~p secs ago",
+                      [Module, Code, lists:flatten(io_lib:format(Fmt, Args)),
+                       Count+1, timer:now_diff(Now, FirstSeen) / 1000000,
+                       timer:now_diff(Now, LastSeen) / 1000000]),
             Dedup2 = dict:store(Key, {Count+1, FirstSeen, Now}, Dedup),
             {noreply, State#state{dedup=Dedup2}};
         error ->
@@ -128,8 +127,8 @@ handle_cast({log, Module, Code, Fmt, Args}, State = #state{dedup=Dedup}) ->
             try gen_event:notify(ns_log_events, {ns_log, Category, Module, Code,
                                                  Fmt, Args})
             catch _:Reason ->
-                    error_logger:error_msg("ns_log: unable to notify listeners "
-                                           "because of ~p~n", [Reason])
+                    ?log_error("unable to notify listeners because of ~p",
+                               [Reason])
             end,
             Dedup2 = dict:store(Key, {0, Now, Now}, Dedup),
             {noreply, State#state{dedup=Dedup2}}
@@ -187,8 +186,7 @@ handle_info(save, StateBefore = #state{filename=Filename}) ->
     case file:write_file(Filename, Compressed) of
         ok -> ok;
         E ->
-            error_logger:error_msg("~p: unable to write log to ~p: ~p~n",
-                                   [?MODULE, Filename, E])
+            ?log_error("unable to write log to ~p: ~p", [Filename, E])
     end,
     {noreply, State#state{save_tref=undefined}};
 handle_info(_Info, State) ->
@@ -266,8 +264,8 @@ log(Module, Code, Msg) ->
 
 -spec log(atom(), integer(), string(), list()) -> ok.
 log(Module, Code, Fmt, Args) ->
-    error_logger:info_msg("ns_log: logging ~p:~p:~s~n",
-                          [Module, Code, lists:flatten(io_lib:format(Fmt, Args))]),
+    ?log_info("logging ~p:~p:~s",
+              [Module, Code, lists:flatten(io_lib:format(Fmt, Args))]),
     gen_server:cast(?MODULE, {log, Module, Code, Fmt, Args}).
 
 -spec recent() -> list(#log_entry{}).

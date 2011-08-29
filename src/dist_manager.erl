@@ -49,18 +49,20 @@ strip_full(String) ->
 
 read_address_config() ->
     Path = ip_config_path(),
-    error_logger:info_msg("reading ip config from ~p~n", [Path]),
+    ?log_info("reading ip config from ~p", [Path]),
     case file:read_file(Path) of
         {ok, BinaryContents} ->
             AddrString = strip_full(binary_to_list(BinaryContents)),
             case inet:getaddr(AddrString, inet) of
                 {error, Errno1} ->
-                    error_logger:error_msg("Got error:~p. Ignoring bad address:~p~n", [Errno1, AddrString]),
+                    ?log_error("Got error:~p. Ignoring bad address:~p",
+                               [Errno1, AddrString]),
                     undefined;
                 {ok, IpAddr} ->
                     case gen_tcp:listen(0, [inet, {ip, IpAddr}]) of
                         {error, Errno2} ->
-                            error_logger:error_msg("Got error:~p. Cannot listen on configured address:~s~n", [Errno2, AddrString]),
+                            ?log_error("Got error:~p. Cannot listen on configured address:~s",
+                                       [Errno2, AddrString]),
                             undefined;
                         {ok, Socket} ->
                             gen_tcp:close(Socket),
@@ -72,11 +74,11 @@ read_address_config() ->
 
 save_address_config(State) ->
     Path = ip_config_path(),
-    error_logger:info_msg("saving ip config to ~p~n", [Path]),
+    ?log_info("saving ip config to ~p", [Path]),
     misc:atomic_write_file(Path, State#state.my_ip).
 
 save_node(NodeName, Path) ->
-    error_logger:info_msg("saving node to ~p~n", [Path]),
+    ?log_info("saving node to ~p", [Path]),
     misc:atomic_write_file(Path, NodeName ++ "\n").
 
 save_node(NodeName) ->
@@ -117,7 +119,7 @@ bringup(MyIP) ->
     %% to save the node name to be able to shutdown the server gracefully.
     ActualNodeName = erlang:atom_to_list(node()),
     RN = save_node(ActualNodeName),
-    error_logger:info_msg("Attempted to save node name to disk: ~p~n", [RN]),
+    ?log_info("Attempted to save node name to disk: ~p", [RN]),
 
     #state{self_started = Rv, my_ip = MyIP}.
 
@@ -131,17 +133,17 @@ handle_call({adjust_my_address, MyIP}, _From,
         true -> {reply, nothing, State};
         false -> Cookie = erlang:get_cookie(),
                  teardown(),
-                 error_logger:info_msg("Adjusted IP to ~p~n", [MyIP]),
+                 ?log_info("Adjusted IP to ~p", [MyIP]),
                  NewState = bringup(MyIP),
                  if
                      NewState#state.self_started ->
-                         error_logger:info_msg("Re-setting cookie ~p~n", [{Cookie, node()}]),
+                         ?log_info("Re-setting cookie ~p", [{Cookie, node()}]),
                          erlang:set_cookie(node(), Cookie);
                      true -> ok
                  end,
 
                  RV = save_address_config(NewState),
-                 error_logger:info_msg("save_address_config: ~p~n", [RV]),
+                 ?log_info("save_address_config: ~p", [RV]),
                  {reply, net_restarted, NewState}
     end;
 handle_call({adjust_my_address, _}, _From,

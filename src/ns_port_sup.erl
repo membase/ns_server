@@ -25,6 +25,8 @@
          current_ports/0,
          port_servers_config/0]).
 
+-include("ns_common.hrl").
+
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
@@ -49,7 +51,7 @@ dynamic_children() ->
     [create_child_spec(expand_args(NCAO)) || NCAO <- PortServers].
 
 launch_port(NCAO) ->
-    error_logger:info_msg("supervising port: ~p~n", [NCAO]),
+    ?log_info("supervising port: ~p", [NCAO]),
     {ok, C} = supervisor:start_child(?MODULE,
                                      create_child_spec(NCAO)),
     {ok, C}.
@@ -82,12 +84,12 @@ create_child_spec({Name, Cmd, Args, Opts}) ->
      [ns_port_server]}.
 
 terminate_port(Id) ->
-    error_logger:info_msg("unsupervising port: ~p~n", [Id]),
+    ?log_info("unsupervising port: ~p", [Id]),
     ok = supervisor:terminate_child(?MODULE, Id),
     ok = supervisor:delete_child(?MODULE, Id).
 
 restart_port(Id) ->
-    error_logger:info_msg("restarting port: ~p~n", [Id]),
+    ?log_info("restarting port: ~p", [Id]),
     ok = supervisor:terminate_child(?MODULE, Id),
     {ok, _} = supervisor:restart_child(?MODULE, Id).
 
