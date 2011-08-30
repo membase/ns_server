@@ -76,16 +76,19 @@ init_logging() ->
     Path = filename:join(Dir, "log"),
 
     ok = ale:start_logger(?NS_SERVER_LOGGER, info),
+    ok = ale:start_logger(?COUCHDB_LOGGER, info),
 
     ok = ale:start_sink(disk, ale_disk_sink, [Path, [{size, {MaxB, MaxF}}]]),
 
     ok = ale:add_sink(?ERROR_LOGGER_LOGGER, disk),
     ok = ale:add_sink(?NS_SERVER_LOGGER, disk),
+    ok = ale:add_sink(?COUCHDB_LOGGER, disk),
 
     case misc:get_env_default(dont_suppress_stderr_logger, false) of
         true ->
             ok = ale:start_sink(stderr, ale_stderr_sink, []),
             ok = ale:add_sink(?NS_SERVER_LOGGER, stderr),
+            ok = ale:add_sink(?COUCHDB_LOGGER, stderr),
             ok = ale:add_sink(?ERROR_LOGGER_LOGGER, stderr);
         false ->
             ok

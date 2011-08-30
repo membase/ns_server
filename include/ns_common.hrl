@@ -34,6 +34,7 @@
 -define(MULTICALL_DEFAULT_TIMEOUT, 30000).
 
 -define(NS_SERVER_LOGGER, ns_server).
+-define(COUCHDB_LOGGER, couchdb).
 
 -define(LOG(Level, Format, Args),
         ale:log(?NS_SERVER_LOGGER, Level, Format, Args)).

@@ -46,8 +46,12 @@ start() ->
 fake_loggers() ->
     ok = application:start(ale),
     ok = ale:start_logger(?NS_SERVER_LOGGER, debug),
+    ok = ale:start_logger(?COUCHDB_LOGGER, debug),
+
     ok = ale:start_sink(stderr, ale_stderr_sink, []),
-    ok = ale:add_sink(?NS_SERVER_LOGGER, stderr).
+
+    ok = ale:add_sink(?NS_SERVER_LOGGER, stderr),
+    ok = ale:add_sink(?COUCHDB_LOGGER, stderr).
 
 start_with_coverage() ->
     fake_loggers(),
