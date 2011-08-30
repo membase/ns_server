@@ -50,8 +50,6 @@ init([]) ->
     {ok, {{one_for_one, 10, 1},
           [{cb_couch_sup, {cb_couch_sup, start_link, []},
             permanent, 5000, supervisor, [cb_couch_sup]},
-           {ns_log_mf_h, {ns_log_mf_h, start_link, []},
-            permanent, 1000, worker, [ns_log_mf_h]},
            {log_os_info, {log_os_info, start_link, []},
             transient, 1000, worker, [log_os_info]},
            {timeout_diag_logger, {timeout_diag_logger, start_link, []},
