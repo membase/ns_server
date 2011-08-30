@@ -21,7 +21,7 @@ start() ->
     try
         %% Check disk space every minute instead of every 30
         application:set_env(os_mon, disk_space_check_interval, 1),
-        ok = application:start(sasl),
+        ok = application:start(ale),
         application:start(os_mon),
         case erlang:system_info(system_architecture) of
             "win32" -> inet_db:set_lookup([native, file]);
@@ -37,7 +37,9 @@ stop() ->
     RV = try
              ok = application:stop(ns_server),
              application:stop(os_mon),
-             ok = application:stop(sasl)
+             application:stop(ale),
+
+             ok
          catch T:E ->
                  {T, E}
          end,
