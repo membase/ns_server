@@ -19,8 +19,8 @@
 
 -export([start/2, stop/1]).
 
--include_lib("ale/include/ale.hrl").
 -include("ns_common.hrl").
+-include_lib("ale/include/ale.hrl").
 
 log_pending() ->
     receive
@@ -68,25 +68,49 @@ setup_static_config() ->
                           end
                   end, Terms).
 
+get_loglevel(LoggerName) ->
+    {ok, DefaultLogLevel} = application:get_env(loglevel_default),
+    LoggerNameStr = atom_to_list(LoggerName),
+    Key = list_to_atom("loglevel_" ++ LoggerNameStr),
+    misc:get_env_default(Key, DefaultLogLevel).
+
 init_logging() ->
+    StdLoggers = [?ERROR_LOGGER_LOGGER],
+    AllLoggers = StdLoggers ++ ?LOGGERS,
+
     {ok, Dir} = application:get_env(error_logger_mf_dir),
     {ok, MaxB} = application:get_env(error_logger_mf_maxbytes),
     {ok, MaxF} = application:get_env(error_logger_mf_maxfiles),
 
     Path = filename:join(Dir, "log"),
-
-    ok = ale:start_logger(?NS_SERVER_LOGGER, info),
-
     ok = ale:start_sink(disk, ale_disk_sink, [Path, [{size, {MaxB, MaxF}}]]),
 
-    ok = ale:add_sink(?ERROR_LOGGER_LOGGER, disk),
-    ok = ale:add_sink(?NS_SERVER_LOGGER, disk),
+    lists:foreach(
+      fun (Logger) ->
+              LogLevel = get_loglevel(Logger),
+              ok = ale:start_logger(Logger, LogLevel)
+      end, ?LOGGERS),
+
+    lists:foreach(
+      fun (Logger) ->
+              LogLevel = get_loglevel(Logger),
+              ok = ale:set_loglevel(Logger, LogLevel)
+      end,
+      StdLoggers),
+
+    lists:foreach(
+      fun (Logger) ->
+              ok = ale:add_sink(Logger, disk)
+      end, AllLoggers),
 
     case misc:get_env_default(dont_suppress_stderr_logger, false) of
         true ->
             ok = ale:start_sink(stderr, ale_stderr_sink, []),
-            ok = ale:add_sink(?NS_SERVER_LOGGER, stderr),
-            ok = ale:add_sink(?ERROR_LOGGER_LOGGER, stderr);
+
+            lists:foreach(
+              fun (Logger) ->
+                      ok = ale:add_sink(Logger, stderr)
+              end, AllLoggers);
         false ->
             ok
     end.

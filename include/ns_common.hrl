@@ -35,6 +35,8 @@
 
 -define(NS_SERVER_LOGGER, ns_server).
 
+-define(LOGGERS, [?NS_SERVER_LOGGER]).
+
 -define(LOG(Level, Format, Args),
         ale:log(?NS_SERVER_LOGGER, Level, Format, Args)).
 

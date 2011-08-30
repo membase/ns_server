@@ -45,9 +45,15 @@ start() ->
 %% cases log something;
 fake_loggers() ->
     ok = application:start(ale),
-    ok = ale:start_logger(?NS_SERVER_LOGGER, debug),
+
     ok = ale:start_sink(stderr, ale_stderr_sink, []),
-    ok = ale:add_sink(?NS_SERVER_LOGGER, stderr).
+
+    lists:foreach(
+      fun (Logger) ->
+              ok = ale:start_logger(Logger, debug),
+              ok = ale:add_sink(Logger, stderr)
+      end,
+      ?LOGGERS).
 
 start_with_coverage() ->
     fake_loggers(),
