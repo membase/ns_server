@@ -110,7 +110,7 @@ a.disabled{text-decoration:none;cursor:default;}
 .form label .check {float:left; margin:0 5px 0 0;}
 
 .topper_nav {float:right; font-size:11px; padding:15px 0 0 0;}
-.topper_nav a {color:#a6a9ae !important; text-decoration:none;}
+.topper_nav a {color:#a6a9ae; text-decoration:none;}
 .topper_nav b {margin:0 2px; color:#848f96; font-weight:bolder;}
 .topper_nav i {font-style:normal;}
 .sign-out-link a{color:#2ea6DB !important;}
