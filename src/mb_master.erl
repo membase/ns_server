@@ -217,16 +217,16 @@ candidate({heartbeat, NodeInfo, master, _H}, #state{peers=Peers} = State) ->
                          "which is not in peers ~p", [Node, Peers]),
             {next_state, candidate, State};
         true ->
-            %% If master is of lower priority than we are, then we send fake
+            %% If master is of strongly lower priority than we are, then we send fake
             %% mastership hertbeat to force previous master to surrender. Thus
             %% there will be some time when cluster won't have any master
             %% node. But after timeout mastership will be taken over by the
             %% node with highest priority.
             NewState =
-                case higher_priority_node(NodeInfo) of
-                    true ->
-                        State#state{last_heard=now(), master=Node};
+                case strongly_lower_priority_node(NodeInfo) of
                     false ->
+                        State#state{last_heard=now(), master=Node};
+                    true ->
                         ?log_info("Candidate got master heartbeat from node ~p "
                                   "which has lower priority. "
                                   "Will try to take over.", [Node]),
@@ -426,6 +426,16 @@ higher_priority_node(NodeInfo) ->
 higher_priority_node({SelfVersion, SelfNode},
                      {Version, Node}) ->
     (Version > SelfVersion) orelse (Node < SelfNode).
+
+%% true iff we need to take over mastership of given node
+-spec strongly_lower_priority_node(node_info()) -> boolean().
+strongly_lower_priority_node(NodeInfo) ->
+    Self = node_info(),
+    strongly_lower_priority_node(Self, NodeInfo).
+
+strongly_lower_priority_node({SelfVersion, _SelfNode},
+                              {Version, _Node}) ->
+    (Version < SelfVersion).
 
 -ifdef(EUNIT).
 
