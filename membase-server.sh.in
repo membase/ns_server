@@ -18,7 +18,7 @@
 PATH="@PREFIX@/bin":$PATH
 export PATH
 
-ERL_LIBS="@PREFIX@/lib/couchdb/erlang/lib:@PREFIX@/lib/ns_server/erlang/lib:@PREFIX@/lib/couchdb/plugins"
+ERL_LIBS="@PREFIX@/lib/ns_server/erlang/lib:@PREFIX@/lib/couchdb/erlang/lib:@PREFIX@/lib/couchdb/plugins"
 export ERL_LIBS
 
 ERL_MAX_PORTS=8192
