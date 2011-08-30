@@ -50,6 +50,10 @@ init([]) ->
     {ok, {{one_for_one, 10, 1},
           [{cb_couch_sup, {cb_couch_sup, start_link, []},
             permanent, 5000, supervisor, [cb_couch_sup]},
+           %% this must be placed after cb_couch_sup since couchdb starts
+           %% sasl application
+           {cb_suppress_loggers, {cb_suppress_loggers, start_link, []},
+            transient, 1000, worker, [cb_supress_loggers]},
            {log_os_info, {log_os_info, start_link, []},
             transient, 1000, worker, [log_os_info]},
            {timeout_diag_logger, {timeout_diag_logger, start_link, []},
