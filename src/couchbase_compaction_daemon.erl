@@ -425,7 +425,7 @@ check_period(#config{period = #period{from = From, to = To}}) ->
 
 
 check_frag(nil, _) ->
-    true;
+    false;
 check_frag(Threshold, Frag) ->
     Frag >= Threshold.
 
