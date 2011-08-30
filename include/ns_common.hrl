@@ -33,15 +33,16 @@
 
 -define(MULTICALL_DEFAULT_TIMEOUT, 30000).
 
--define(LOG(Fun, Format, Args),
-        error_logger:Fun("~s:~p:~s:~B: " ++ Format ++ "~n",
-                         [node(), self(), ?MODULE, ?LINE] ++ Args)).
+-define(NS_SERVER_LOGGER, ns_server).
 
--define(log_info(Format, Args), ?LOG(info_msg, Format, Args)).
--define(log_info(Msg), ?log_info(Msg, [])).
+-define(LOG(Level, Format, Args),
+        ale:log(?NS_SERVER_LOGGER, Level, Format, Args)).
 
--define(log_warning(Format, Args), ?LOG(warning_msg, Format, Args)).
--define(log_warning(Msg), ?log_warning(Msg, [])).
+-define(log_info(Format, Args), ale:info(?NS_SERVER_LOGGER, Format, Args)).
+-define(log_info(Msg), ale:info(?NS_SERVER_LOGGER, Msg)).
 
--define(log_error(Format, Args), ?LOG(error_msg, Format, Args)).
--define(log_error(Msg), ?log_error(Msg, [])).
+-define(log_warning(Format, Args), ale:warn(?NS_SERVER_LOGGER, Format, Args)).
+-define(log_warning(Msg), ale:warn(?NS_SERVER_LOGGER, Msg)).
+
+-define(log_error(Format, Args), ale:error(?NS_SERVER_LOGGER, Format, Args)).
+-define(log_error(Msg), ale:error(?NS_SERVER_LOGGER, Msg)).

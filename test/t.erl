@@ -34,12 +34,24 @@
 
 -module(t).
 
+-include("ns_common.hrl").
+
 -export([start/0, start_with_coverage/0, config/1]).
 
 start() ->
     start_without_coverage().
 
+%% create all the logger real ns_server has; this prevents failures if test
+%% cases log something;
+fake_loggers() ->
+    ok = application:start(ale),
+    ok = ale:start_logger(?NS_SERVER_LOGGER, debug),
+    ok = ale:start_sink(stderr, ale_stderr_sink, []),
+    ok = ale:add_sink(?NS_SERVER_LOGGER, stderr).
+
 start_with_coverage() ->
+    fake_loggers(),
+
     cover:compile_beam_directory(config(ebin_dir)),
     Modules = cover:modules(),
     Result = eunit:test(Modules, [verbose]),
@@ -55,6 +67,8 @@ start_with_coverage() ->
     Result.
 
 start_without_coverage() ->
+    fake_loggers(),
+
     io:format("Running tests without coverage~n", []),
     Ext = code:objfile_extension(),
     Dir = config(ebin_dir),
