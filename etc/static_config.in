@@ -6,3 +6,7 @@
 {path_config_libdir, "@BIN_PREFIX@/lib"}.
 {path_config_datadir, "@DATA_PREFIX@/var/lib/membase"}.
 {path_config_tmpdir, "@DATA_PREFIX@/var/lib/membase/tmp"}.
+{loglevel_default, info}.
+{loglevel_couchdb, info}.
+{loglevel_ns_server, info}.
+{loglevel_error_logger, info}.
