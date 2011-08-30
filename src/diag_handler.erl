@@ -134,15 +134,6 @@ diag_format_log_entry(Type, Code, Module, Node, TStamp, ShortText, Text) ->
     io_lib:format("~s ~s:~B:~s:~s(~s) - ~s~n",
                   [FormattedTStamp, Module, Code, Type, ShortText, Node, Text]).
 
-get_logs() ->
-    try ns_log_browser:get_logs_as_file(all, all, []) of
-        X -> X
-    catch
-        error:try_again ->
-            timer:sleep(250),
-            get_logs()
-    end.
-
 handle_diag(Req) ->
     Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
                          ns_bucket:get_buckets()),
@@ -184,21 +175,7 @@ handle_diag(Req) ->
     handle_logs(Resp).
 
 handle_logs(Resp) ->
-    TempFile = get_logs(),
-    {ok, IO} = file:open(TempFile, [raw, binary]),
-    stream_logs(Resp, IO),
-    ok = file:close(IO),
-    file:delete(TempFile).
-
-stream_logs(Resp, IO) ->
-    case file:read(IO, 65536) of
-        eof ->
-            Resp:write_chunk(<<"">>),
-            ok;
-        {ok, Data} ->
-            Resp:write_chunk(Data),
-            stream_logs(Resp, IO)
-    end.
+    ns_log_browser:stream_logs(fun (Data) -> Resp:write_chunk(Data) end).
 
 handle_sasl_logs(Req) ->
     Resp = Req:ok({"text/plain; charset=utf-8",

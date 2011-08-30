@@ -8,4 +8,4 @@ export PATH
 ERL_LIBS="@PREFIX@/lib/couchdb/erlang/lib:@PREFIX@/lib/ns_server/erlang/lib"
 export ERL_LIBS
 
-exec erl -pa ebin -boot start_sasl -sasl errlog_type error -noshell -run ns_log_browser -report_dir "@PREFIX@/var/lib/couchbase/logs" -run init stop -- "$@"
+exec erl -pa ebin -noshell -run ns_log_browser -report_dir "@PREFIX@/var/lib/couchbase/logs" -run init stop -- "$@"

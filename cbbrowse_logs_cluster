@@ -28,5 +28,5 @@ then
   exit 1
 fi
 
-exec erl -pa ebin -boot start_sasl -sasl errlog_type error -noshell \
+exec erl -pa ebin -noshell \
          -run ns_log_browser -report_dir logs/"$1" -run init stop -- "$@"

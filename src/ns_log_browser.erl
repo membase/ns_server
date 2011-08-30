@@ -1,9 +1,7 @@
 -module(ns_log_browser).
 
--define(report_types, [crash_report, supervisor_report, error, progress]).
-
 -export([start/0]).
--export([get_logs/3, get_logs_as_file/3]).
+-export([stream_logs/1, stream_logs/2, stream_logs/3]).
 
 -spec usage([1..255, ...], list()) -> no_return().
 usage(Fmt, Args) ->
@@ -12,32 +10,15 @@ usage(Fmt, Args) ->
 
 -spec usage() -> no_return().
 usage() ->
-    io:format("Usage: <progname> [-n <max_reports>] [-e <regexp>] [-t <type>...]~n"
-              "  where <type> is one of: ~w~n"
-              "  You may specify more than one type; default is everything.~n",
-              [?report_types]),
+    io:format("Usage: <progname> -report_dir <dir>~n"),
     halt(1).
-
-
-map_types(TypeStrings) ->
-    Types = lists:map(fun list_to_atom/1, TypeStrings),
-    case lists:all(fun (T) -> lists:member(T, ?report_types) end, Types) of
-        true -> Types;
-        false -> usage("argument to -t must be one or more of ~w~n",
-                       [?report_types])
-    end.
 
 start() ->
     Options = case parse_arguments([{h, 0, undefined, false},
-                                    {n, 1, fun list_to_integer/1, all},
-                                    {e, 1, undefined, undefined},
-                                    {t, one_or_more, fun map_types/1, all},
                                     {report_dir, 1, undefined}],
                                    init:get_arguments()) of
                   {ok, O} ->
                       O;
-                  {parse_error, badarg, n, _} ->
-                      usage("-n requires a single integer argument~n", []);
                   {missing_option, K} ->
                       usage("option ~p is required~n", [K]);
                   {parse_error, {wrong_number_of_args, _, N}, K, _} ->
@@ -49,47 +30,17 @@ start() ->
         false -> ok
     end,
     Dir = proplists:get_value(report_dir, Options),
-    Types = proplists:get_value(t, Options),
-    RegExp = proplists:get_value(e, Options),
-    NumReports = proplists:get_value(n, Options),
-    rb:start([{report_dir, Dir}, {type, Types}, {max, NumReports}]),
-    case RegExp of
-        undefined -> rb:show();
-        E -> io:format("grepping for ~p~n", [E]), rb:grep(E)
-    end.
 
-get_logs_as_file(Types, NumReports, RegExp) ->
-    catch rb:stop(),
-    TempFile = path_config:tempfile("nslogs", ".log"),
-    filelib:ensure_dir(TempFile),
-    Options = [{start_log, TempFile}, {type, Types}, {max, NumReports}, {report_dir}],
-    Options1 = case application:get_env(error_logger_mf_dir) of
-                   undefined ->
-                       Options;
-                   {ok, LogDir} ->
-                       [{report_dir, LogDir}|Options]
-               end,
-    case rb:start(Options1) of
-        {ok, _Pid} -> ok;
-        {error, already_present} ->
-                                                % Can sometimes get wedged
-            supervisor:delete_child(sasl_sup, rb_server),
-            erlang:error(try_again);
-        {error, Reason} ->
-            erlang:error(Reason)
-    end,
-    case RegExp of
-        [] -> rb:show();
-        _ -> rb:grep(RegExp)
-    end,
-    catch rb:stop(),
-    TempFile.
+    stream_logs(Dir,
+                fun (Data) ->
+                        %% originally standard_io was used here
+                        %% instead of group_leader(); though this is
+                        %% perfectly valid (e.g. this tested in
+                        %% otp/lib/kernel/tests/file_SUITE.erl) it makes
+                        %% dialyzer unhappy
+                        file:write(group_leader(), Data)
+                end).
 
-get_logs(Types, NumReports, RegExp) ->
-    Filename = get_logs_as_file(Types, NumReports, RegExp),
-    {ok, Data} = file:read_file(Filename),
-    file:delete(Filename),
-    Data.
 
 %% Option parser
 map_args(K, N, undefined, D, A) ->
@@ -134,4 +85,41 @@ parse_arguments(Opts, Args) ->
     catch
         error:{missing_option, K} -> {missing_option, K};
         error:{parse_error, Reason, K, A} -> {parse_error, Reason, K, A}
+    end.
+
+stream_logs(Fn) ->
+    {ok, Dir} = application:get_env(error_logger_mf_dir),
+    stream_logs(Dir, Fn).
+
+stream_logs(Dir, Fn) ->
+    stream_logs(Dir, Fn, 65536).
+
+stream_logs(Dir, Fn, ChunkSz) ->
+    Path = filename:join(Dir, "log"),
+
+    {Ix, _, _, NFiles} = disk_log_1:read_index_file(Path),
+    Ixs = lists:seq(Ix + 1, NFiles) ++ lists:seq(1, Ix),
+
+    lists:foreach(
+      fun (LogIx) ->
+              File = lists:append([Path, ".", integer_to_list(LogIx)]),
+              case file:open(File, [raw, binary]) of
+                  {ok, IO} ->
+                      stream_logs_loop(IO, ChunkSz, Fn),
+                      ok = file:close(IO);
+                  _Other ->
+                      ok
+              end
+      end,
+      Ixs),
+
+    Fn(<<"">>).
+
+stream_logs_loop(IO, ChunkSz, Fn) ->
+    case file:read(IO, ChunkSz) of
+        eof ->
+            ok;
+        {ok, Data} ->
+            Fn(Data),
+            stream_logs_loop(IO, ChunkSz, Fn)
     end.
