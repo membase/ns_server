@@ -48,6 +48,8 @@ stop_cluster() ->
 
 init([]) ->
     {ok, {{one_for_one, 10, 1},
+          [{cb_init_loggers, {cb_init_loggers, start_link, []},
+            transient, 1000, worker, [cb_init_loggers]},
            {log_os_info, {log_os_info, start_link, []},
             transient, 1000, worker, [log_os_info]},
            {timeout_diag_logger, {timeout_diag_logger, start_link, []},
