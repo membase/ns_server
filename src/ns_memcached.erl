@@ -234,8 +234,8 @@ handle_info(check_started, #state{timer=Timer, start_time=Start,
     case has_started(Sock) of
         true ->
             {ok, cancel} = timer:cancel(Timer),
-            ns_log:log(?MODULE, 1, "Bucket ~p loaded on node ~p in ~p seconds.",
-                       [Bucket, node(), timer:now_diff(now(), Start) div 1000000]),
+            ?user_log(1, "Bucket ~p loaded on node ~p in ~p seconds.",
+                      [Bucket, node(), timer:now_diff(now(), Start) div 1000000]),
             gen_event:notify(buckets_events, {loaded, Bucket}),
             timer:send_interval(?CHECK_INTERVAL, check_config),
             {noreply, State#state{status=connected}};
@@ -274,11 +274,11 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                           end,
     if
         Reason == normal; Reason == shutdown ->
-            ns_log:log(?MODULE, 2, "Shutting down bucket ~p on ~p for ~s",
-                       [Bucket, node(), case Deleting of
-                                            true -> "deletion";
-                                            false -> "server shutdown"
-                                        end]),
+            ?user_log(2, "Shutting down bucket ~p on ~p for ~s",
+                      [Bucket, node(), case Deleting of
+                                           true -> "deletion";
+                                           false -> "server shutdown"
+                                       end]),
             try
                 ok = mc_client_binary:delete_bucket(Sock, Bucket, [{force, Deleting}]),
                 case Deleting of
@@ -291,9 +291,9 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                                [Bucket, {E2, R2}])
             end;
         true ->
-            ns_log:log(?MODULE, 4,
-                       "Control connection to memcached on ~p disconnected: ~p",
-                       [node(), Reason])
+            ?user_log(4,
+                      "Control connection to memcached on ~p disconnected: ~p",
+                      [node(), Reason])
     end,
     gen_event:notify(buckets_events, {stopped, Bucket, Deleting, Reason}),
     ok = gen_tcp:close(Sock),

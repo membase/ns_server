@@ -141,14 +141,14 @@ handle_call(Msg, _From, State) ->
     {reply, error, State}.
 
 handle_info({nodeup, Node}, State) ->
-    ns_log:log(?MODULE, ?NODE_UP, "Node ~p saw that node ~p came up.",
-               [node(), Node]),
+    ?user_log(?NODE_UP, "Node ~p saw that node ~p came up.",
+              [node(), Node]),
     self() ! notify_clients,
     {noreply, State};
 
 handle_info({nodedown, Node}, State) ->
-    ns_log:log(?MODULE, ?NODE_DOWN, "Node ~p saw that node ~p went down.",
-               [node(), Node]),
+    ?user_log(?NODE_DOWN, "Node ~p saw that node ~p went down.",
+              [node(), Node]),
     self() ! notify_clients,
     {noreply, State};
 

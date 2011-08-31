@@ -74,8 +74,8 @@ start_link(Options) ->
     case mochiweb_http:start([{name, ?MODULE}, {loop, Loop} | Options2]) of
         {ok, Pid} -> {ok, Pid};
         Other ->
-            ns_log:log(?MODULE, ?START_FAIL,
-                       "Failed to start web service:  ~p~n", [Other]),
+            ?user_log(?START_FAIL,
+                      "Failed to start web service:  ~p~n", [Other]),
             Other
     end.
 
@@ -264,17 +264,17 @@ loop(Req, AppRoot, DocRoot) ->
                              ["logClientError"] -> {auth_any_bucket,
                                                     fun (R) ->
                                                             User = menelaus_auth:extract_auth(username, R),
-                                                            ns_log:log(?MODULE, ?UI_SIDE_ERROR_REPORT,
-                                                                       "Client-side error-report for user ~p on node ~p:~nUser-Agent:~s~n~s~n",
-                                                                       [User, node(),
-                                                                        Req:get_header_value("user-agent"), binary_to_list(R:recv_body())]),
+                                                            ?user_log(?UI_SIDE_ERROR_REPORT,
+                                                                      "Client-side error-report for user ~p on node ~p:~nUser-Agent:~s~n~s~n",
+                                                                      [User, node(),
+                                                                       Req:get_header_value("user-agent"), binary_to_list(R:recv_body())]),
                                                             R:ok({"text/plain", add_header(), <<"">>})
                                                     end};
                              ["diag", "eval"] -> {auth, fun handle_diag_eval/1};
                              ["erlwsh" | _] ->
                                  {done, erlwsh_web:loop(Req, erlwsh_deps:local_path(["priv", "www"]))};
                              _ ->
-                                 ns_log:log(?MODULE, 0001, "Invalid post received: ~p", [Req]),
+                                 ?user_log(0001, "Invalid post received: ~p", [Req]),
                                  {done, Req:not_found()}
                       end;
                      'DELETE' ->
@@ -284,17 +284,17 @@ loop(Req, AppRoot, DocRoot) ->
                              ["nodes", Node, "resources", LocationPath] ->
                                  {auth, fun handle_resource_delete/3, [Node, LocationPath]};
                              _ ->
-                                 ns_log:log(?MODULE, 0002, "Invalid delete received: ~p as ~p", [Req, PathTokens]),
+                                 ?user_log(0002, "Invalid delete received: ~p as ~p", [Req, PathTokens]),
                                   {done, Req:respond({405, add_header(), "Method Not Allowed"})}
                          end;
                      'PUT' ->
                          case PathTokens of
                              _ ->
-                                 ns_log:log(?MODULE, 0003, "Invalid put received: ~p", [Req]),
+                                 ?user_log(0003, "Invalid put received: ~p", [Req]),
                                  {done, Req:respond({405, add_header(), "Method Not Allowed"})}
                          end;
                      _ ->
-                         ns_log:log(?MODULE, 0004, "Invalid request received: ~p", [Req]),
+                         ?user_log(0004, "Invalid request received: ~p", [Req]),
                          {done, Req:respond({405, add_header(), "Method Not Allowed"})}
                  end,
         case Action of
@@ -325,7 +325,7 @@ loop(Req, AppRoot, DocRoot) ->
                       {path, Req:get(path)},
                       {type, Type}, {what, What},
                       {trace, erlang:get_stacktrace()}], % todo: find a way to enable this for field info gathering
-            ns_log:log(?MODULE, 0019, "Server error during processing: ~p", [Report]),
+            ?user_log(0019, "Server error during processing: ~p", [Report]),
             reply_json(Req, [list_to_binary("Unexpected server error, request logged.")], 500)
     end.
 
@@ -736,7 +736,7 @@ handle_join(Req) ->
     OtherPswd = proplists:get_value("password", Params),
     case lists:member(undefined,
                       [OtherHost, OtherPort, OtherUser, OtherPswd]) of
-        true  -> ns_log:log(?MODULE, 0013, "Received request to join cluster missing a parameter.", []),
+        true  -> ?user_log(0013, "Received request to join cluster missing a parameter.", []),
                  Req:respond({400, add_header(), "Attempt to join node to cluster received with missing parameters.\n"});
         false ->
             PossMsg = [NzV],
@@ -833,13 +833,13 @@ do_handle_eject_post(Req, OtpNode) ->
             case lists:member(OtpNode, ns_node_disco:nodes_wanted()) of
                 true ->
                     ns_cluster:leave(OtpNode),
-                    ns_log:log(?MODULE, ?NODE_EJECTED, "Node ejected: ~p from node: ~p",
-                               [OtpNode, erlang:node()]),
+                    ?user_log(?NODE_EJECTED, "Node ejected: ~p from node: ~p",
+                              [OtpNode, erlang:node()]),
                     Req:respond({200, add_header(), []});
                 false ->
                                                 % Node doesn't exist.
-                    ns_log:log(?MODULE, 0018, "Request to eject nonexistant server failed.  Requested node: ~p",
-                               [OtpNode]),
+                    ?user_log(0018, "Request to eject nonexistant server failed.  Requested node: ~p",
+                              [OtpNode]),
                     Req:respond({400, add_header(), "Server does not exist.\n"})
             end
     end.

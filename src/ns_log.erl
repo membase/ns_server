@@ -32,9 +32,9 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--export([log/3, log/4, recent/0, recent/1, delete_log/0]).
+-export([log/7, recent/0, recent/1, delete_log/0]).
 
--export([categorize/2, code_string/2]).
+-export([code_string/2]).
 
 -export([ns_log_cat/1, ns_log_code_string/1]).
 
@@ -107,22 +107,21 @@ handle_call(recent, _From, StateBefore) ->
     {reply, State#state.unique_recent, State}.
 
 %% Inbound logging request.
-handle_cast({log, Module, Code, Fmt, Args}, State = #state{dedup=Dedup}) ->
-    Now = erlang:now(),
-    Key = {Module, Code, Fmt, Args},
+handle_cast({log, Module, Node, Time, Code, Category, Fmt, Args},
+            State = #state{dedup=Dedup}) ->
+    Key = {Module, Code, Category, Fmt, Args},
     case dict:find(Key, Dedup) of
         {ok, {Count, FirstSeen, LastSeen}} ->
             ?log_info("suppressing duplicate log ~p:~p(~p) because it's been "
                       "seen ~p times in the past ~p secs (last seen ~p secs ago",
                       [Module, Code, lists:flatten(io_lib:format(Fmt, Args)),
-                       Count+1, timer:now_diff(Now, FirstSeen) / 1000000,
-                       timer:now_diff(Now, LastSeen) / 1000000]),
-            Dedup2 = dict:store(Key, {Count+1, FirstSeen, Now}, Dedup),
+                       Count+1, timer:now_diff(Time, FirstSeen) / 1000000,
+                       timer:now_diff(Time, LastSeen) / 1000000]),
+            Dedup2 = dict:store(Key, {Count+1, FirstSeen, Time}, Dedup),
             {noreply, State#state{dedup=Dedup2}};
         error ->
-            Category = categorize(Module, Code),
-            Entry = #log_entry{node=node(), module=Module, code=Code, msg=Fmt,
-                               args=Args, cat=Category, tstamp=Now},
+            Entry = #log_entry{node=Node, module=Module, code=Code, msg=Fmt,
+                               args=Args, cat=Category, tstamp=Time},
             gen_server:abcast(?MODULE, {do_log, Entry}),
             try gen_event:notify(ns_log_events, {ns_log, Category, Module, Code,
                                                  Fmt, Args})
@@ -130,7 +129,7 @@ handle_cast({log, Module, Code, Fmt, Args}, State = #state{dedup=Dedup}) ->
                     ?log_error("unable to notify listeners because of ~p",
                                [Reason])
             end,
-            Dedup2 = dict:store(Key, {0, Now, Now}, Dedup),
+            Dedup2 = dict:store(Key, {0, Time, Time}, Dedup),
             {noreply, State#state{dedup=Dedup2}}
     end;
 handle_cast({do_log, Entry}, State) ->
@@ -214,7 +213,7 @@ gc(Now, [{Key, Value} | Rest], DupesList) ->
     {Count, FirstSeen, _LastSeen} = Value,
     case timer:now_diff(Now, FirstSeen) >= ?DUP_TIME of
         true ->
-            {Module, Code, Fmt, Args} = Key,
+            {Module, Code, Category, Fmt, Args} = Key,
             case Count of
                 0 -> ok;
                 _ ->
@@ -222,7 +221,8 @@ gc(Now, [{Key, Value} | Rest], DupesList) ->
                                        code=Code,
                                        msg=Fmt ++ " (repeated ~p times)",
                                        args=Args ++ [Count],
-                                       cat=categorize(Module, Code),
+                                       cat=Category,
+
                                        tstamp=Now},
                     gen_server:abcast(?MODULE, {do_log, Entry})
             end,
@@ -240,15 +240,6 @@ schedule_save(State) ->
 
 %% API
 
--spec categorize(atom(), integer()) -> log_classification().
-categorize(Module, Code) ->
-    case catch(Module:ns_log_cat(Code)) of
-        info -> info;
-        warn -> warn;
-        crit -> crit;
-        _ -> info % Anything unknown is info (this includes {'EXIT', Reason})
-    end.
-
 -spec code_string(atom(), integer()) -> string().
 code_string(Module, Code) ->
     case catch(Module:ns_log_code_string(Code)) of
@@ -257,16 +248,12 @@ code_string(Module, Code) ->
     end.
 
 %% A Code is an number which is module-specific.
-%%
--spec log(atom(), integer(), string()) -> ok.
-log(Module, Code, Msg) ->
-    log(Module, Code, Msg, []).
-
--spec log(atom(), integer(), string(), list()) -> ok.
-log(Module, Code, Fmt, Args) ->
-    ?log_info("logging ~p:~p:~s",
-              [Module, Code, lists:flatten(io_lib:format(Fmt, Args))]),
-    gen_server:cast(?MODULE, {log, Module, Code, Fmt, Args}).
+-spec log(atom(), node(), Time,
+          integer(), log_classification(), string(), list()) -> ok
+      when Time :: {integer(), integer(), integer()}.
+log(Module, Node, Time, Code, Category, Fmt, Args) ->
+    gen_server:cast(?MODULE,
+                    {log, Module, Node, Time, Code, Category, Fmt, Args}).
 
 -spec recent() -> list(#log_entry{}).
 recent() ->

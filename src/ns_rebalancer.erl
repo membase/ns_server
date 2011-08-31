@@ -63,9 +63,10 @@ failover(Bucket, Node) ->
                         [] -> ok; % Phew!
                         MissingVBuckets ->
                             ?log_error("Lost data in ~p for ~w", [Bucket, MissingVBuckets]),
-                            ns_log:log(?MODULE, ?DATA_LOST,
-                                       "Data has been lost for ~B% of vbuckets in bucket ~p.",
-                                       [length(MissingVBuckets) * 100 div length(Map), Bucket])
+                            ?user_log(
+                               ?DATA_LOST,
+                               "Data has been lost for ~B% of vbuckets in bucket ~p.",
+                               [length(MissingVBuckets) * 100 div length(Map), Bucket])
                     end
             end,
             ns_bucket:set_fast_forward_map(Bucket, undefined),
@@ -275,10 +276,9 @@ verify_replication(Bucket, Nodes, Map) ->
         {[], [], _} ->
             ok;
         {Missing, Extra, _} ->
-            ns_log:log(
-              ?MODULE, ?BAD_REPLICATORS,
-              "Bad replicators after rebalance:~nMissing = ~p~nExtras = ~p",
-              [Missing, Extra]),
+            ?user_log(?BAD_REPLICATORS,
+                      "Bad replicators after rebalance:~nMissing = ~p~nExtras = ~p",
+                      [Missing, Extra]),
             exit(bad_replicas)
     end.
 

@@ -99,11 +99,11 @@ handle_info(log, State) ->
 handle_info({_Port, {exit_status, 0}}, State) ->
     {stop, normal, State};
 handle_info({_Port, {exit_status, Status}}, State) ->
-    ns_log:log(?MODULE, ?ABNORMAL,
-               "Port server ~p on node ~p exited with status ~p. Restarting. "
-               "Messages: ~s",
-               [State#state.name, node(), Status,
-                string:join(ringbuffer:to_list(State#state.messages), "\n")]),
+    ?user_log(?ABNORMAL,
+              "Port server ~p on node ~p exited with status ~p. Restarting. "
+              "Messages: ~s",
+              [State#state.name, node(), Status,
+               string:join(ringbuffer:to_list(State#state.messages), "\n")]),
     {stop, {abnormal, Status}, State}.
 
 handle_call(unhandled, unhandled, unhandled) ->

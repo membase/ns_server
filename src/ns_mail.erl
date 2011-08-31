@@ -36,7 +36,7 @@ handle_call({send, Sender, Rcpts, Body, Options}, _From, State) ->
     Reply = gen_smtp_client:send_blocking({Sender, Rcpts, Body}, Options),
     case Reply of
         {error, _, Reason} ->
-            ns_log:log(?MODULE, 0001, "error sending mail: ~p", [Reason]);
+            ?user_log(0001, "error sending mail: ~p", [Reason]);
         _ -> ok
     end,
     {reply, Reply, State};

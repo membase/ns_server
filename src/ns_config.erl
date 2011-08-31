@@ -501,8 +501,8 @@ wait_saver(State, Timeout) ->
 terminate(_Reason, State) ->
     case wait_saver(State, ?TERMINATE_SAVE_TIMEOUT) of
         timeout ->
-            ns_log:log(?MODULE, ?GOT_TERMINATE_SAVE_TIMEOUT,
-                       "Termination wait for ns_config saver process timed out.~n");
+            ?user_log(?GOT_TERMINATE_SAVE_TIMEOUT,
+                      "Termination wait for ns_config saver process timed out.~n");
         _ -> ok
     end.
 
@@ -530,8 +530,8 @@ handle_call({eval, Fun}, _From, State) ->
 handle_call(reload, _From, State) ->
     case init(State#config.init) of
         {ok, State2}  -> {reply, ok, State2};
-        {stop, Error} -> ns_log:log(?MODULE, ?RELOAD_FAILED, "reload failed: ~p",
-                                    [Error]),
+        {stop, Error} -> ?user_log(?RELOAD_FAILED, "reload failed: ~p",
+                                   [Error]),
                          {reply, {error, Error}, State}
     end;
 
@@ -718,16 +718,16 @@ merge_list_values({K, RV} = RP, {_, LV} = LP) ->
                 false ->
                     V = case vclock:likely_newer(LClock, RClock) of
                             true ->
-                                ns_log:log(?MODULE, ?CONFIG_CONFLICT,
-                                           "Conflicting configuration changes to field "
-                                           "~p:~n~p and~n~p, choosing the former, which looks newer.~n",
-                                           [K, LV, RV]),
+                                ?user_log(?CONFIG_CONFLICT,
+                                          "Conflicting configuration changes to field "
+                                          "~p:~n~p and~n~p, choosing the former, which looks newer.~n",
+                                          [K, LV, RV]),
                                 LV;
                             false ->
-                                ns_log:log(?MODULE, ?CONFIG_CONFLICT,
-                                           "Conflicting configuration changes to field "
-                                           "~p:~n~p and~n~p, choosing the former.~n",
-                                           [K, RV, LV]),
+                                ?user_log(?CONFIG_CONFLICT,
+                                          "Conflicting configuration changes to field "
+                                          "~p:~n~p and~n~p, choosing the former.~n",
+                                          [K, RV, LV]),
                                 RV
                         end,
                     %% Increment the merged vclock so we don't pingpong

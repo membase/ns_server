@@ -84,6 +84,7 @@ init_logging() ->
 
     Path = filename:join(Dir, "log"),
     ok = ale:start_sink(disk, ale_disk_sink, [Path, [{size, {MaxB, MaxF}}]]),
+    ok = ale:start_sink(ns_log, ns_log_sink, []),
 
     lists:foreach(
       fun (Logger) ->
@@ -102,6 +103,8 @@ init_logging() ->
       fun (Logger) ->
               ok = ale:add_sink(Logger, disk)
       end, AllLoggers),
+
+    ok = ale:add_sink(?USER_LOGGER, ns_log),
 
     case misc:get_env_default(dont_suppress_stderr_logger, false) of
         true ->

@@ -353,14 +353,14 @@ read_existing_map(Bucket, S, VBucketsCount, NumReplicas) ->
                 andalso not HasDuplicates,
             case CleanRecover of
                 true ->
-                    ns_log:log(?MODULE, ?CLEAN_VBUCKET_MAP_RECOVER,
-                               "Cleanly recovered vbucket map from data files for bucket: ~p~n",
-                               [Bucket]);
+                    ?user_log(?CLEAN_VBUCKET_MAP_RECOVER,
+                              "Cleanly recovered vbucket map from data files for bucket: ~p~n",
+                              [Bucket]);
                 _ ->
-                    ns_log:log(?MODULE, ?UNCLEAN_VBUCKET_MAP_RECOVER,
-                               "Partially recovered vbucket map from data files for bucket: ~p."
-                               ++ " Missing vbuckets count: ~p and HasDuplicates is: ~p~n",
-                               [Bucket, MissingVBucketsCount, HasDuplicates])
+                    ?user_log(?UNCLEAN_VBUCKET_MAP_RECOVER,
+                              "Partially recovered vbucket map from data files for bucket: ~p."
+                              ++ " Missing vbuckets count: ~p and HasDuplicates is: ~p~n",
+                              [Bucket, MissingVBucketsCount, HasDuplicates])
             end,
             {ok, align_replicas(Map, NumReplicas)}
     end.

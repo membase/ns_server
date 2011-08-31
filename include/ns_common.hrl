@@ -16,6 +16,9 @@
 %% @doc Macros used all over the place.
 %%
 
+-ifndef(_NS_COMMON__HRL_).
+-define(_NS_COMMON__HRL_,).
+
 -type bucket_name() :: nonempty_string().
 -type bucket_type() :: memcached | membase.
 -type histogram() :: [{atom(), non_neg_integer()}].
@@ -34,8 +37,9 @@
 -define(MULTICALL_DEFAULT_TIMEOUT, 30000).
 
 -define(NS_SERVER_LOGGER, ns_server).
+-define(USER_LOGGER, user).
 
--define(LOGGERS, [?NS_SERVER_LOGGER]).
+-define(LOGGERS, [?NS_SERVER_LOGGER, ?USER_LOGGER]).
 
 -define(LOG(Level, Format, Args),
         ale:log(?NS_SERVER_LOGGER, Level, Format, Args)).
@@ -48,3 +52,16 @@
 
 -define(log_error(Format, Args), ale:error(?NS_SERVER_LOGGER, Format, Args)).
 -define(log_error(Msg), ale:error(?NS_SERVER_LOGGER, Msg)).
+
+%% Log to user visible logs using combination of ns_log and ale routines.
+-define(user_log(Code, Msg), ?user_log_mod(?MODULE, Code, Msg)).
+-define(user_log_mod(Module, Code, Msg),
+        ale:xlog(?USER_LOGGER, ns_log_sink:get_loglevel(Module, Code),
+                 {Module, Code}, Msg)).
+
+-define(user_log(Code, Fmt, Args), ?user_log_mod(?MODULE, Code, Fmt, Args)).
+-define(user_log_mod(Module, Code, Fmt, Args),
+        ale:xlog(?USER_LOGGER, ns_log_sink:get_loglevel(Module, Code),
+                 {Module, Code}, Fmt, Args)).
+
+-endif.

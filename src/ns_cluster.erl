@@ -61,8 +61,8 @@ add_node(RemoteAddr, RestPort, Auth) ->
     RV = gen_server:call(?MODULE, {add_node, RemoteAddr, RestPort, Auth}, ?ADD_NODE_TIMEOUT),
     case RV of
         {error, _What, Message, _Nested} ->
-            ns_log:log(?MODULE, ?NODE_JOIN_FAILED, "Failed to add node ~s:~w to cluster. ~s",
-                       [RemoteAddr, RestPort, Message]);
+            ?user_log(?NODE_JOIN_FAILED, "Failed to add node ~s:~w to cluster. ~s",
+                      [RemoteAddr, RestPort, Message]);
         _ -> ok
     end,
     RV.
@@ -124,7 +124,7 @@ handle_call({complete_join, NodeKVList}, _From, State) ->
     {reply, RV, State}.
 
 handle_cast(leave, State) ->
-    ns_log:log(?MODULE, 0001, "Node ~p is leaving cluster.", [node()]),
+    ?user_log(0001, "Node ~p is leaving cluster.", [node()]),
     ok = ns_server_cluster_sup:stop_cluster(),
     mb_mnesia:wipe(),
     NewCookie = ns_cookie_manager:cookie_gen(),
@@ -192,7 +192,7 @@ rename_node(Old, New) ->
 
 leave() ->
     RemoteNode = ns_node_disco:random_node(),
-    ns_log:log(?MODULE, ?NODE_EJECTED, "Node ~s left cluster", [node()]),
+    ?user_log(?NODE_EJECTED, "Node ~s left cluster", [node()]),
     %% MB-3160: sync any pending config before we leave, to make sure,
     %% say, deactivation of membership isn't lost
     ns_config_rep:push(),
@@ -588,8 +588,8 @@ do_complete_join(NodeKVList) ->
 
 
 perform_actual_join(RemoteNode, NewCookie) ->
-    ns_log:log(?MODULE, 0002, "Node ~p is joining cluster via node ~p.",
-               [node(), RemoteNode]),
+    ?user_log(0002, "Node ~p is joining cluster via node ~p.",
+              [node(), RemoteNode]),
     %% let ns_memcached know that we don't need to preserve data at all
     ns_config:set(i_am_a_dead_man, true),
     %% Pull the rug out from under the app
@@ -631,8 +631,8 @@ perform_actual_join(RemoteNode, NewCookie) ->
               end,
     case Status2 of
         {ok, _} ->
-            ns_log:log(?MODULE, ?NODE_JOINED, "Node ~s joined cluster",
-                       [node()]),
+            ?user_log(?NODE_JOINED, "Node ~s joined cluster",
+                      [node()]),
             Status2;
         _ ->
             ?log_error("Failed to join cluster because of: ~p~n", [Status2]),

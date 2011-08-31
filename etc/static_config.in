@@ -9,3 +9,4 @@
 {loglevel_default, info}.
 {loglevel_ns_server, info}.
 {loglevel_error_logger, info}.
+{loglevel_user, info}.
