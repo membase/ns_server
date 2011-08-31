@@ -88,8 +88,8 @@ handle_call(cookie_sync, _From, State) ->
 
 do_cookie_init() ->
     NewCookie = do_cookie_gen(),
-    ns_log:log(?MODULE, ?COOKIE_GEN, "Initial otp cookie generated: ~p",
-               [NewCookie]),
+    ?user_log(?COOKIE_GEN, "Initial otp cookie generated: ~p",
+              [NewCookie]),
     ok = do_cookie_set(NewCookie),
     {ok, NewCookie}.
 
@@ -122,9 +122,9 @@ do_cookie_sync() ->
                         %       so, we should check that assumption.
                         do_cookie_init();
                     CurrCookie ->
-                        ns_log:log(?MODULE, ?COOKIE_INHERITED,
-                                   "Node ~p inherited otp cookie ~p from cluster",
-                                   [node(), CurrCookie]),
+                        ?user_log(?COOKIE_INHERITED,
+                                  "Node ~p inherited otp cookie ~p from cluster",
+                                  [node(), CurrCookie]),
                         do_cookie_set(CurrCookie),
                         {ok, CurrCookie}
                 end;
@@ -132,9 +132,9 @@ do_cookie_sync() ->
                 case erlang:get_cookie() of
                     WantedCookie -> {ok, WantedCookie};
                     _ ->
-                        ns_log:log(?MODULE, ?COOKIE_SYNCHRONIZED,
-                                   "Node ~p synchronized otp cookie ~p from cluster",
-                                   [node(), WantedCookie]),
+                        ?user_log(?COOKIE_SYNCHRONIZED,
+                                  "Node ~p synchronized otp cookie ~p from cluster",
+                                  [node(), WantedCookie]),
                         erlang:set_cookie(node(), WantedCookie),
                         {ok, WantedCookie}
                 end

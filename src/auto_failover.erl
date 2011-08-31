@@ -192,29 +192,29 @@ handle_info(tick, State) ->
     NewState =
         lists:foldl(
           fun ({mail_too_small, Node}, S) ->
-                  ns_log:log(?MODULE, ?EVENT_CLUSTER_TOO_SMALL,
-                             "Could not auto-failover node (~p). "
-                             "Cluster was too small, you need at least 2 other nodes.~n",
-                             [Node]),
+                  ?user_log(?EVENT_CLUSTER_TOO_SMALL,
+                            "Could not auto-failover node (~p). "
+                            "Cluster was too small, you need at least 2 other nodes.~n",
+                            [Node]),
                   S;
               ({_, Node}, #state{count=1} = S) ->
-                  ns_log:log(?MODULE, ?EVENT_MAX_REACHED,
-                             "Could not auto-failover more nodes (~p). "
-                             "Maximum number of nodes that will be "
-                             "automatically failovered (1) is reached.~n",
-                             [Node]),
+                  ?user_log(?EVENT_MAX_REACHED,
+                            "Could not auto-failover more nodes (~p). "
+                            "Maximum number of nodes that will be "
+                            "automatically failovered (1) is reached.~n",
+                            [Node]),
                   S;
               ({mail_down_warning, Node}, S) ->
-                  ns_log:log(?MODULE, ?EVENT_OTHER_NODES_DOWN,
-                             "Could not auto-failover node (~p). "
-                             "There was at least another node down.~n",
-                             [Node]),
+                  ?user_log(?EVENT_OTHER_NODES_DOWN,
+                            "Could not auto-failover node (~p). "
+                            "There was at least another node down.~n",
+                            [Node]),
                   S;
               ({failover, Node}, S) ->
                   ns_cluster_membership:failover(Node),
-                  ns_log:log(?MODULE, ?EVENT_NODE_AUTO_FAILOVERED,
-                             "Node (~p) was automatically failovered.~n",
-                             [Node]),
+                  ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
+                            "Node (~p) was automatically failovered.~n",
+                            [Node]),
                   S#state{count = S#state.count+1}
           end, State#state{auto_failover_logic_state = LogicState}, Actions),
     if

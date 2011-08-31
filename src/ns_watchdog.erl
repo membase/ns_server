@@ -18,6 +18,8 @@
 -export([bark/1, bark/2, eat/3]).
 -define(DEFAULT_TIMEOUT, 5000). % five seconds
 
+-include("ns_common.hrl").
+
 %% API
 bark(Info) ->
     bark(?DEFAULT_TIMEOUT, Info).
@@ -32,11 +34,11 @@ bark(Timeout, Info) ->
 
 eat(Pid, Info, Timeout) ->
     case misc:running(Pid) of
-    true ->
-        ns_log:log(?MODULE, 1, "killing ~p (~p) after it failed to respond for ~pms.",
-                   [Pid, Info, Timeout]),
-        exit(Pid, kill);
-    false -> ok
+        true ->
+            ?user_log(1, "killing ~p (~p) after it failed to respond for ~pms.",
+                      [Pid, Info, Timeout]),
+            exit(Pid, kill);
+        false -> ok
     end.
 
 

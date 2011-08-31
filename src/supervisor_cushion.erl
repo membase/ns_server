@@ -78,9 +78,9 @@ die_slowly(Reason, State) ->
     %% If the restart was too soon, slow down a bit.
     case Lifetime < MinDelay of
         true ->
-            ns_log:log(?MODULE, ?FAST_CRASH,
-                       "Service ~p exited on node ~p in ~.2fs~n",
-                       [State#state.name, node(), Lifetime / 1000000]),
+            ?user_log(?FAST_CRASH,
+                      "Service ~p exited on node ~p in ~.2fs~n",
+                      [State#state.name, node(), Lifetime / 1000000]),
             timer:send_after(State#state.delay, {die, Reason});
         _ -> self() ! {die, Reason}
     end,
