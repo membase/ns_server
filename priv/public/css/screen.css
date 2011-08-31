@@ -906,8 +906,9 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details .clearfix .des_lab {float:left;padding:0;margin:0}
  .init_block .bucket_details form > div {border-bottom:none;}
  .init_block .bucket_details .config-bottom {padding:18px 18px 17px;border:none;}
-.bucket_details form > fieldset{padding:0 56px}
-.bucket_details h2, .bucket_details fieldset legend {clear:both;font-size:20px;font-weight:normal;padding-bottom:6px;margin-top:18px;margin-bottom:15px;border-bottom:1px solid #d4d9dc;}
+.bucket_details form > fieldset{padding:0 56px;margin-top:15px}
+.bucket_details h2, .bucket_details fieldset legend {clear:both;font-size:20px;font-weight:normal;padding-bottom:6px;margin-bottom:10px;border-bottom:1px solid #d4d9dc;}
+.bucket_details h2{margin-top:18px;margin-bottom:15px}
 .bucket_details fieldset.radiogroup legend{font-size: 12px;text-align:right;border:none;margin:1.1em 10px 0 -10px;}
  .additional_server_info.bucket_details h2 {margin:0 0 10px;padding:5px 0 7px;color:#5391BA;font-size:15px;font-weight:bold;border-bottom:1px solid #bbbdbf;}
 .bucket_settings > ul{background:url("../images/icons.png") no-repeat scroll 0 -85px transparent;padding-left:60px}
@@ -1137,4 +1138,5 @@ ul.tabs.dev-subset-switcher { padding-top: 3px; padding-bottom: 3px; padding-lef
 @media screen and (-webkit-min-device-pixel-ratio:0) {
     /* Safari/Chrome CSS here*/
     input[type=number] {width:4em;}
+    .bucket_details form > fieldset{padding-top:10px}
 }
