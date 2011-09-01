@@ -105,6 +105,7 @@ init_logging() ->
       end, AllLoggers),
 
     ok = ale:add_sink(?USER_LOGGER, ns_log),
+    ok = ale:add_sink(?MENELAUS_LOGGER, ns_log),
 
     case misc:get_env_default(dont_suppress_stderr_logger, false) of
         true ->

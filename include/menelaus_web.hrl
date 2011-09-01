@@ -9,4 +9,8 @@
 -define(UI_SIDE_ERROR_REPORT, 102).
 
 -define(MENELAUS_WEB_LOG(Code, Msg, Args),
-        ?user_log_mod(menelaus_web, Code, Msg, Args)).
+        ale:xlog(?MENELAUS_LOGGER,
+                 ns_log_sink:get_loglevel(menelaus_web, Code),
+                 {menelaus_web, Code}, Msg, Args)).
+
+-define(MENELAUS_WEB_LOG(Code, Msg), ?MENELAUS_WEB_LOG(Code, Msg, [])).

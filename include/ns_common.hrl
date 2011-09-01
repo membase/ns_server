@@ -39,8 +39,10 @@
 -define(NS_SERVER_LOGGER, ns_server).
 -define(COUCHDB_LOGGER, couchdb).
 -define(USER_LOGGER, user).
+-define(MENELAUS_LOGGER, menelaus).
 
--define(LOGGERS, [?COUCHDB_LOGGER, ?NS_SERVER_LOGGER, ?USER_LOGGER]).
+-define(LOGGERS, [?COUCHDB_LOGGER, ?NS_SERVER_LOGGER,
+                  ?USER_LOGGER, ?MENELAUS_LOGGER]).
 
 -define(LOG(Level, Format, Args),
         ale:log(?NS_SERVER_LOGGER, Level, Format, Args)).
