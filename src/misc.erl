@@ -1033,7 +1033,15 @@ build_ebucketmigrator() ->
     Modules = [ebucketmigrator, ebucketmigrator_srv, mc_client_binary, mc_binary],
     Files = [read_beam(Mod, "ebin") || Mod <- Modules],
 
-    case zip:create("mem", Files, [memory]) of
+    AleDir = filename:join(["deps", "ale", "ebin"]),
+    AleModules = [ale, ale_sup, ale_dynamic_sup, ale_stderr_sink,
+                  ale_server, ale_default_formatter, ale_utils, ale_codegen,
+                  ale_error_logger_handler, dynamic_compile],
+    AleFiles = [read_beam(Mod, AleDir) || Mod <- AleModules],
+
+    Files1 = Files ++ AleFiles,
+
+    case zip:create("mem", Files1, [memory]) of
         {ok, {"mem", ZipBin}} ->
             Script = <<"#!/usr/bin/env escript\n", ZipBin/binary>>,
             case file:write_file(Filename, Script) of
