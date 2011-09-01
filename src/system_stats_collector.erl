@@ -48,7 +48,7 @@ init([]) ->
                 ns_pubsub:subscribe(ns_tick_event),
                 X
         catch error:enoent ->
-                ?log_warning("~s is missing. Will not collect system-level stats", [Path]),
+                ?stats_warning("~s is missing. Will not collect system-level stats", [Path]),
                 undefined
         end,
     {ok, #state{port = Port}}.
@@ -127,7 +127,7 @@ unpack_data(Bin, PrevSample) ->
 handle_info({tick, TS}, #state{port = Port, prev_sample = PrevSample}) ->
     case flush_ticks(0) of
         0 -> ok;
-        N -> ?log_warning("lost ~p ticks", [N])
+        N -> ?stats_warning("lost ~p ticks", [N])
     end,
     port_command(Port, <<0:32/native>>),
     Binary = recv_data(Port, [], ?STATS_BLOCK_SIZE),

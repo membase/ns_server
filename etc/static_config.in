@@ -12,3 +12,4 @@
 {loglevel_user, info}.
 {loglevel_menelaus, info}.
 {loglevel_ns_doctor, info}.
+{loglevel_stats, info}.
