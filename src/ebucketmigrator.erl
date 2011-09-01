@@ -1,6 +1,8 @@
 -module(ebucketmigrator).
 -export([main/1]).
 
+-include("ns_common.hrl").
+
 %% @doc Called automatically by escript
 -spec main(list()) -> ok.
 
@@ -60,11 +62,24 @@ parse_host(Server) ->
     [Host, Port] = string:tokens(Server, ":"),
     {Host, list_to_integer(Port)}.
 
+setup_logging() ->
+    {ok, _Pid} = ale_sup:start_link(),
+
+    ok = ale:start_sink(stderr, ale_stderr_sink, []),
+
+    lists:foreach(
+      fun (Logger) ->
+              ok = ale:start_logger(Logger),
+              ok = ale:add_sink(Logger, stderr)
+      end,
+      ?LOGGERS).
 
 %% @doc
 run(Conf) ->
 
     process_flag(trap_exit, true),
+
+    setup_logging(),
 
     Host = proplists:get_value(host, Conf),
     Dest = proplists:get_value(destination, Conf),
