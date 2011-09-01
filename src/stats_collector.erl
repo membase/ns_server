@@ -80,8 +80,8 @@ handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters, last_ts=LastTS}
                                 true ->
                                     case misc:get_env_default(dont_log_stats, false) of
                                         false ->
-                                            ?log_info("Stats for bucket ~p:~n~s",
-                                                      [Bucket, format_stats(Stats)]);
+                                            ?stats_info("Stats for bucket ~p:~n~s",
+                                                        [Bucket, format_stats(Stats)]);
                                         _ -> ok
                                     end,
                                     1;
@@ -91,8 +91,8 @@ handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters, last_ts=LastTS}
                     {noreply, State#state{counters=NewCounters, count=Count,
                                           last_ts=TS1}}
             catch T:E ->
-                    ?log_error("Exception in stats collector: ~p~n",
-                               [{T,E, erlang:get_stacktrace()}]),
+                    ?stats_error("Exception in stats collector: ~p~n",
+                                 [{T,E, erlang:get_stacktrace()}]),
                     {noreply, State#state{count = State#state.count + 1}}
             end;
         false ->
@@ -123,7 +123,7 @@ latest_tick(TS, NumDropped) ->
             latest_tick(TS1, NumDropped + 1)
     after 0 ->
             if NumDropped > 0 ->
-                    ?log_warning("Dropped ~b ticks", [NumDropped]);
+                    ?stats_warning("Dropped ~b ticks", [NumDropped]);
                true ->
                     ok
             end,

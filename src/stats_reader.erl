@@ -182,13 +182,13 @@ log_bad_responses({Replies, Zombies}) ->
         [] ->
             ok;
         BadReplies ->
-            ?log_error("Bad replies: ~p", [BadReplies])
+            ?stats_error("Bad replies: ~p", [BadReplies])
     end,
     case Zombies of
         [] ->
             ok;
         _ ->
-            ?log_error("Some nodes didn't respond: ~p", [Zombies])
+            ?stats_error("Some nodes didn't respond: ~p", [Zombies])
     end.
 
 
