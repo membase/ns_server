@@ -62,7 +62,8 @@ failover(Bucket, Node) ->
                     case [I || {I, [undefined|_]} <- misc:enumerate(Map1, 0)] of
                         [] -> ok; % Phew!
                         MissingVBuckets ->
-                            ?log_error("Lost data in ~p for ~w", [Bucket, MissingVBuckets]),
+                            ?rebalance_error("Lost data in ~p for ~w",
+                                             [Bucket, MissingVBuckets]),
                             ?user_log(
                                ?DATA_LOST,
                                "Data has been lost for ~B% of vbuckets in bucket ~p.",
@@ -81,8 +82,8 @@ failover(Bucket, Node) ->
                 ns_janitor:cleanup(Bucket, [])
             catch
                 E:R ->
-                    ?log_error("Janitor cleanup of ~p failed after failover of ~p: ~p",
-                               [Bucket, Node, {E, R}])
+                    ?rebalance_error("Janitor cleanup of ~p failed after failover of ~p: ~p",
+                                     [Bucket, Node, {E, R}])
             end;
         memcached ->
             ns_bucket:set_servers(Bucket, lists:delete(Node, Servers))
@@ -104,14 +105,14 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
     DeactivateNodes = EjectNodes ++ FailedNodes,
     BucketConfigs = ns_bucket:get_buckets(),
     NumBuckets = length(BucketConfigs),
-    ?log_info("BucketConfigs = ~p", [BucketConfigs]),
+    ?rebalance_info("BucketConfigs = ~p", [BucketConfigs]),
     EarlyEject = FailedNodes -- [node()],
     try
         %% Eject failed nodes first so they don't cause trouble
         eject_nodes(EarlyEject),
         lists:foreach(fun ({I, {BucketName, BucketConfig}}) ->
-                              ?log_info("Rebalancing bucket ~p with config ~p",
-                                        [BucketName, BucketConfig]),
+                              ?rebalance_info("Rebalancing bucket ~p with config ~p",
+                                              [BucketName, BucketConfig]),
                               BucketCompletion = I / NumBuckets,
                               ns_orchestrator:update_progress(
                                 dict:from_list([{N, BucketCompletion}
@@ -162,7 +163,7 @@ rebalance(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets) ->
     Map = proplists:get_value(map, Config),
     Opts = config_to_opts(Config),
     FastForwardMap = mb_map:balance(Map, KeepNodes, Opts),
-    ?log_info("Target map: ~p", [FastForwardMap]),
+    ?rebalance_info("Target map: ~p", [FastForwardMap]),
     ns_bucket:set_fast_forward_map(Bucket, FastForwardMap),
     ProgressFun =
         fun (P) ->
@@ -295,7 +296,7 @@ wait_for_memcached(Nodes, Bucket, Tries) ->
                 stop ->
                     exit(stopped)
             after 1000 ->
-                    ?log_info("Waiting for ~p", [Down]),
+                    ?rebalance_info("Waiting for ~p", [Down]),
                     wait_for_memcached(Down, Bucket, Tries-1)
             end
     end.

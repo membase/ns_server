@@ -41,10 +41,11 @@
 -define(MENELAUS_LOGGER, menelaus).
 -define(NS_DOCTOR_LOGGER, ns_doctor).
 -define(STATS_LOGGER, stats).
+-define(REBALANCE_LOGGER, rebalance).
 
 -define(LOGGERS, [?NS_SERVER_LOGGER,
                   ?USER_LOGGER, ?MENELAUS_LOGGER,
-                  ?NS_DOCTOR_LOGGER, ?STATS_LOGGER]).
+                  ?NS_DOCTOR_LOGGER, ?STATS_LOGGER, ?REBALANCE_LOGGER]).
 
 -define(LOG(Level, Format, Args),
         ale:log(?NS_SERVER_LOGGER, Level, Format, Args)).
@@ -68,5 +69,18 @@
 -define(user_log_mod(Module, Code, Fmt, Args),
         ale:xlog(?USER_LOGGER, ns_log_sink:get_loglevel(Module, Code),
                  {Module, Code}, Fmt, Args)).
+
+-define(rebalance_info(Format, Args),
+        ale:info(?REBALANCE_LOGGER, Format, Args)).
+-define(rebalance_info(Msg), ale:info(?REBALANCE_LOGGER, Msg)).
+
+-define(rebalance_warning(Format, Args),
+        ale:warn(?REBALANCE_LOGGER, Format, Args)).
+-define(rebalance_warning(Msg), ale:warn(?REBALANCE_LOGGER, Msg)).
+
+-define(rebalance_error(Format, Args),
+        ale:error(?REBALANCE_LOGGER, Format, Args)).
+-define(rebalance_error(Msg), ale:error(?REBALANCE_LOGGER, Msg)).
+
 
 -endif.

@@ -76,7 +76,7 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
     erlang:put(total_changes, 0),
     erlang:put(actual_changes, 0),
 
-    ?log_info("Starting movers with new map =~n~p", [NewMap]),
+    ?rebalance_info("Starting movers with new map =~n~p", [NewMap]),
     %% Dictionary mapping old node to vbucket and new node
     MoveDict = lists:foldl(fun ({V, [M1|_] = C1, C2}, D) ->
                                    dict:append(M1, {V, C1, C2}, D)
@@ -131,10 +131,10 @@ handle_info({move_done, {Node, VBucket, OldChain, NewChain}},
 handle_info({'EXIT', _, normal}, State) ->
     {noreply, State};
 handle_info({'EXIT', Pid, Reason}, State) ->
-    ?log_error("~p exited with ~p", [Pid, Reason]),
+    ?rebalance_error("~p exited with ~p", [Pid, Reason]),
     {stop, Reason, State};
 handle_info(Info, State) ->
-    ?log_info("Unhandled message ~p", [Info]),
+    ?rebalance_info("Unhandled message ~p", [Info]),
     {noreply, State}.
 
 
@@ -142,10 +142,11 @@ terminate(_Reason, #state{map=MapArray}) ->
     sync_replicas(),
     TotalChanges = erlang:get(total_changes),
     ActualChanges = erlang:get(actual_changes),
-    ?log_info("Savings: ~p (from ~p)~n", [TotalChanges - ActualChanges, TotalChanges]),
+    ?rebalance_info("Savings: ~p (from ~p)~n",
+                    [TotalChanges - ActualChanges, TotalChanges]),
 
     %% By this time map is already updated (see move_done handler)
-    ?log_info("Final map is ~p", [array_to_map(MapArray)]),
+    ?rebalance_info("Final map is ~p", [array_to_map(MapArray)]),
     ok.
 
 

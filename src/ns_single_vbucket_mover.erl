@@ -65,8 +65,8 @@ run_mover(Bucket, V, N1, N2, Tries) ->
             ok;
         {{memcached_error, not_my_vbucket, _}, {ok, active}} ->
             %% This generally shouldn't happen, but it's an OK final state.
-            ?log_warning("Weird: vbucket ~p missing from source node ~p but "
-                         "active on destination node ~p.", [V, N1, N2]),
+            ?rebalance_warning("Weird: vbucket ~p missing from source node ~p but "
+                               "active on destination node ~p.", [V, N1, N2]),
             ok;
         {{ok, active}, {ok, S}} when S /= active ->
             %% This better have been a replica, a failed previous
@@ -84,8 +84,8 @@ run_mover(Bucket, V, N1, N2, Tries) ->
             %% shouldn't close until the destination has acknowledged
             %% the last message, at which point the state should be
             %% active.
-            ?log_warning("Weird: vbucket ~p in pending state on node ~p.",
-                         [V, N2]),
+            ?rebalance_warning("Weird: vbucket ~p in pending state on node ~p.",
+                               [V, N2]),
             ok = ns_memcached:set_vbucket(N1, Bucket, V, active),
             ok = ns_memcached:set_vbucket(N2, Bucket, V, replica),
             {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
@@ -109,12 +109,12 @@ wait_for_mover(Bucket, V, N1, N2, Tries) ->
                 0 ->
                     exit({mover_failed, Reason});
                 _ ->
-                    ?log_warning("Got unexpected exit reason from mover:~n~p",
-                                 [Reason]),
+                    ?rebalance_warning("Got unexpected exit reason from mover:~n~p",
+                                       [Reason]),
                     run_mover(Bucket, V, N1, N2, Tries-1)
             end;
         Msg ->
-            ?log_warning("Mover parent got unexpected message:~n"
-                         "~p", [Msg]),
+            ?rebalance_warning("Mover parent got unexpected message:~n"
+                               "~p", [Msg]),
             wait_for_mover(Bucket, V, N1, N2, Tries)
     end.
