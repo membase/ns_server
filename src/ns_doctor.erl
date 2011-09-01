@@ -29,6 +29,16 @@
 
 -record(state, {nodes}).
 
+-define(doctor_info(Msg), ale:info(?NS_DOCTOR_LOGGER, Msg)).
+-define(doctor_info(Fmt, Args), ale:info(?NS_DOCTOR_LOGGER, Fmt, Args)).
+
+-define(doctor_warning(Msg), ale:warn(?NS_DOCTOR_LOGGER, Msg)).
+-define(doctor_warning(Fmt, Args), ale:warn(?NS_DOCTOR_LOGGER, Fmt, Args)).
+
+-define(doctor_error(Msg), ale:error(?NS_DOCTOR_LOGGER, Msg)).
+-define(doctor_error(Fmt, Args), ale:error(?NS_DOCTOR_LOGGER, Fmt, Args)).
+
+
 %% gen_server handlers
 
 start_link() ->
@@ -63,7 +73,7 @@ handle_cast({heartbeat, Name, Status}, State) ->
     {noreply, State#state{nodes=Nodes}};
 
 handle_cast(Msg, State) ->
-    ?log_warning("Unexpected cast: ~p", [Msg]),
+    ?doctor_warning("Unexpected cast: ~p", [Msg]),
     {noreply, State}.
 
 
@@ -73,17 +83,17 @@ handle_info(acquire_initial_status, #state{nodes=NodeDict} = State) ->
     Nodes = lists:foldl(fun ({Node, Status}, Dict) ->
                                 update_status(Node, Status, Dict)
                         end, NodeDict, Replies),
-    ?log_info("Got initial status ~p~n", [lists:sort(dict:to_list(Nodes))]),
+    ?doctor_info("Got initial status ~p~n", [lists:sort(dict:to_list(Nodes))]),
     {noreply, State#state{nodes=Nodes}};
 
 handle_info(log, #state{nodes=NodeDict} = State) ->
-    ?log_info("Current node statuses:~n~p",
-              [lists:sort(dict:to_list(NodeDict))]),
+    ?doctor_info("Current node statuses:~n~p",
+                 [lists:sort(dict:to_list(NodeDict))]),
     {noreply, State};
 
 handle_info(Info, State) ->
-    ?log_warning("Unexpected message ~p in state",
-                 [Info]),
+    ?doctor_warning("Unexpected message ~p in state",
+                    [Info]),
     {noreply, State}.
 
 terminate(_Reason, _State) -> ok.
@@ -97,7 +107,7 @@ get_nodes() ->
         Nodes -> Nodes
     catch
         E:R ->
-            ?log_error("Error attempting to get nodes: ~p", [{E, R}]),
+            ?doctor_error("Error attempting to get nodes: ~p", [{E, R}]),
             dict:new()
     end.
 
@@ -106,7 +116,7 @@ get_node(Node) ->
         Status -> Status
     catch
         E:R ->
-            ?log_error("Error attempting to get node ~p: ~p", [Node, {E, R}]),
+            ?doctor_error("Error attempting to get node ~p: ~p", [Node, {E, R}]),
             []
     end.
 

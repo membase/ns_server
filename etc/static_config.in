@@ -11,3 +11,4 @@
 {loglevel_error_logger, info}.
 {loglevel_user, info}.
 {loglevel_menelaus, info}.
+{loglevel_ns_doctor, info}.

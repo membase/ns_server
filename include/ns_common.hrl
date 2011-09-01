@@ -39,8 +39,10 @@
 -define(NS_SERVER_LOGGER, ns_server).
 -define(USER_LOGGER, user).
 -define(MENELAUS_LOGGER, menelaus).
+-define(NS_DOCTOR_LOGGER, ns_doctor).
 
--define(LOGGERS, [?NS_SERVER_LOGGER, ?USER_LOGGER, ?MENELAUS_LOGGER]).
+-define(LOGGERS, [?NS_SERVER_LOGGER,
+                  ?USER_LOGGER, ?MENELAUS_LOGGER, ?NS_DOCTOR_LOGGER]).
 
 -define(LOG(Level, Format, Args),
         ale:log(?NS_SERVER_LOGGER, Level, Format, Args)).
