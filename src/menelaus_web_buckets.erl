@@ -316,8 +316,8 @@ perform_warnings_validation(ParsedProps, Errors) ->
     end.
 
 handle_bucket_flush(PoolId, Id, Req) ->
-    ?user_log(0005, "Flushing pool ~p bucket ~p from node ~p",
-              [PoolId, Id, erlang:node()]),
+    ?MENELAUS_WEB_LOG(0005, "Flushing pool ~p bucket ~p from node ~p",
+                      [PoolId, Id, erlang:node()]),
     Nodes = ns_node_disco:nodes_wanted(),
     {Results, []} = rpc:multicall(Nodes, ns_memcached, flush, [Id],
                                   ?MULTICALL_DEFAULT_TIMEOUT),
