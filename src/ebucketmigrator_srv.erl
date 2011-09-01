@@ -62,7 +62,7 @@ handle_call(_Req, _From, State) ->
 
 
 handle_cast(Msg, State) ->
-    ?log_error("Unhandled cast: ~p", [Msg]),
+    ?rebalance_error("Unhandled cast: ~p", [Msg]),
     {noreply, State}.
 
 
@@ -105,7 +105,7 @@ handle_info(check_for_timeout, State) ->
             {noreply, State}
     end;
 handle_info(Msg, State) ->
-    ?log_info("handle_info(~p, ~p)", [Msg, State]),
+    ?rebalance_info("handle_info(~p, ~p)", [Msg, State]),
     {noreply, State}.
 
 
@@ -129,7 +129,7 @@ init({Src, Dst, Opts}) ->
       end, VBuckets),
     Upstream = connect(Src, Username, Password, Bucket),
     {ok, CheckpointIdsDict} = mc_client_binary:get_open_checkpoint_ids(Upstream),
-    ?log_info("CheckpointIdsDict:~n~p~n", [CheckpointIdsDict]),
+    ?rebalance_info("CheckpointIdsDict:~n~p~n", [CheckpointIdsDict]),
     ReadyVBuckets = lists:filter(
                       fun (Vb) ->
                               case dict:find(Vb, CheckpointIdsDict) of
@@ -140,7 +140,8 @@ init({Src, Dst, Opts}) ->
     if
         ReadyVBuckets =/= VBuckets ->
             false = TakeOver,
-            ?log_info("Some vbuckets were not yet ready to replicate from:~n~p~n", [VBuckets -- ReadyVBuckets]),
+            ?rebalance_info("Some vbuckets were not yet ready to replicate from:~n~p~n",
+                            [VBuckets -- ReadyVBuckets]),
             erlang:send_after(30000, self(), retry_not_ready_vbuckets),
             if ReadyVBuckets =:= [] ->
                     gen_tcp:close(Upstream),
@@ -159,7 +160,7 @@ init({Src, Dst, Opts}) ->
             {checkpoints, Checkpoints},
             {name, Name},
             {takeover, TakeOver}],
-    ?log_info("Starting tap stream:~n~p~n", [Args]),
+    ?rebalance_info("Starting tap stream:~n~p~n", [Args]),
     {ok, quiet} = mc_client_binary:tap_connect(Upstream, Args),
     ok = inet:setopts(Upstream, [{active, once}]),
     ok = inet:setopts(Downstream, [{active, once}]),
@@ -187,7 +188,8 @@ maybe_setup_dumping(State, Args) ->
             try
                 do_setup_dumping(State, Args)
             catch E:T ->
-                    ?log_error("Tried to setup tap stream dumping and failed.~n~p~n", [{E,T,erlang:get_stacktrace()}]),
+                    ?rebalance_error("Tried to setup tap stream dumping and failed.~n~p~n",
+                                     [{E,T,erlang:get_stacktrace()}]),
                     State
             end
     end.
@@ -205,7 +207,7 @@ terminate(_Reason, State) ->
     gen_tcp:close(State#state.upstream),
     case State#state.takeover_done of
         true ->
-            ?log_info("Skipping close ack for successfull takover~n", []),
+            ?rebalance_info("Skipping close ack for successfull takover~n", []),
             ok;
         _ ->
             confirm_sent_messages(State)
@@ -237,13 +239,14 @@ do_config_sent_messages(Sock, Seqno) ->
               _VBucket:16, _BodyLen:32, Opaque:32, _CAS:64, _Rest/binary>> = Packet,
             case Opaque of
                 Seqno ->
-                    ?log_info("Got close ack!~n", []),
+                    ?rebalance_info("Got close ack!~n", []),
                     ok;
                 _ ->
                     do_config_sent_messages(Sock, Seqno)
             end;
         {error, _} = Crap ->
-            ?log_info("Got error while trying to read close ack:~p~n",[Crap])
+            ?rebalance_info("Got error while trying to read close ack:~p~n",
+                            [Crap])
     end.
 
 confirm_sent_messages(State) ->
@@ -258,7 +261,7 @@ confirm_sent_messages(State) ->
         {error, closed} ->
             ok;
         X ->
-            ?log_error("Got error while trying to send close confirmation: ~p~n", [X])
+            ?rebalance_error("Got error while trying to send close confirmation: ~p~n", [X])
     end.
 
 %%
@@ -356,8 +359,8 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
             ok = gen_tcp:send(Downstream, Packet),
             case Rest of
                 <<?TAP_OPAQUE_INITIAL_VBUCKET_STREAM:32>> ->
-                    ?log_info("Initial stream for vbucket ~p",
-                              [VBucket]);
+                    ?rebalance_info("Initial stream for vbucket ~p",
+                                    [VBucket]);
                 _ ->
                     ok
             end,
