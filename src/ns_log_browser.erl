@@ -3,6 +3,8 @@
 -export([start/0]).
 -export([stream_logs/1, stream_logs/2, stream_logs/3]).
 
+-include("ns_common.hrl").
+
 -spec usage([1..255, ...], list()) -> no_return().
 usage(Fmt, Args) ->
     io:format(Fmt, Args),
@@ -95,7 +97,7 @@ stream_logs(Dir, Fn) ->
     stream_logs(Dir, Fn, 65536).
 
 stream_logs(Dir, Fn, ChunkSz) ->
-    Path = filename:join(Dir, "log"),
+    Path = filename:join(Dir, ?DEFAULT_LOG_FILENAME),
 
     {Ix, _, _, NFiles} = disk_log_1:read_index_file(Path),
     Ixs = lists:seq(Ix + 1, NFiles) ++ lists:seq(1, Ix),
