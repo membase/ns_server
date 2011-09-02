@@ -36,6 +36,9 @@
 
 -define(MULTICALL_DEFAULT_TIMEOUT, 30000).
 
+-define(DEFAULT_LOG_FILENAME, "log").
+-define(ERRORS_LOG_FILENAME, "errors").
+
 -define(NS_SERVER_LOGGER, ns_server).
 -define(USER_LOGGER, user).
 -define(MENELAUS_LOGGER, menelaus).

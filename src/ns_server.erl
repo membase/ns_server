@@ -82,8 +82,15 @@ init_logging() ->
     {ok, MaxB} = application:get_env(error_logger_mf_maxbytes),
     {ok, MaxF} = application:get_env(error_logger_mf_maxfiles),
 
-    Path = filename:join(Dir, "log"),
-    ok = ale:start_sink(disk, ale_disk_sink, [Path, [{size, {MaxB, MaxF}}]]),
+    DefaultLogPath = filename:join(Dir, ?DEFAULT_LOG_FILENAME),
+    ErrorLogPath = filename:join(Dir, ?ERRORS_LOG_FILENAME),
+
+    DiskSinkParams = [{size, {MaxB, MaxF}}],
+
+    ok = ale:start_sink(disk_default,
+                        ale_disk_sink, [DefaultLogPath, DiskSinkParams]),
+    ok = ale:start_sink(disk_error,
+                        ale_disk_sink, [ErrorLogPath, DiskSinkParams]),
     ok = ale:start_sink(ns_log, ns_log_sink, []),
 
     lists:foreach(
@@ -101,7 +108,8 @@ init_logging() ->
 
     lists:foreach(
       fun (Logger) ->
-              ok = ale:add_sink(Logger, disk)
+              ok = ale:add_sink(Logger, disk_default),
+              ok = ale:add_sink(Logger, disk_error, error)
       end, AllLoggers),
 
     ok = ale:add_sink(?USER_LOGGER, ns_log),
