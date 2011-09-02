@@ -20,7 +20,8 @@
 -include("ns_common.hrl").
 -include("ns_log.hrl").
 
--export([do_diag_per_node/0, handle_diag/1, handle_sasl_logs/1,
+-export([do_diag_per_node/0, handle_diag/1,
+         handle_sasl_logs/1, handle_sasl_logs/2,
          arm_timeout/2, arm_timeout/1, disarm_timeout/1,
          grab_process_info/1, manifest/0,
          diagnosing_timeouts/1]).
@@ -135,47 +136,78 @@ diag_format_log_entry(Type, Code, Module, Node, TStamp, ShortText, Text) ->
                   [FormattedTStamp, Module, Code, Type, ShortText, Node, Text]).
 
 handle_diag(Req) ->
-    Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
-                         ns_bucket:get_buckets()),
-    Infos = [["per_node_diag = ~p", diag_multicall(?MODULE, do_diag_per_node, [])],
-             ["nodes_info = ~p", menelaus_web:build_nodes_info()],
-             ["buckets = ~p", Buckets],
-             ["logs:~n-------------------------------~n"]],
-    Text = lists:flatmap(fun ([Fmt | Args]) ->
-                                 io_lib:format(Fmt ++ "~n~n", Args)
-                         end, Infos),
     Params = Req:parse_qs(),
     MaybeContDisp = case proplists:get_value("mode", Params) of
                         "view" -> [];
                         _ -> [{"Content-Disposition", "attachment; filename=" ++ generate_diag_filename()}]
                     end,
-    Resp = Req:ok({"text/plain; charset=utf-8",
-                   MaybeContDisp ++
-                       [{"Content-Type", "text/plain"}
-                        | menelaus_util:server_header()],
-                   chunked}),
-    Resp:write_chunk(list_to_binary(Text)),
-    lists:foreach(fun (#log_entry{node = Node,
-                                  module = Module,
-                                  code = Code,
-                                  msg = Msg,
-                                  args = Args,
-                                  cat = Cat,
-                                  tstamp = TStamp}) ->
-                          try io_lib:format(Msg, Args) of
-                              S ->
-                                  CodeString = ns_log:code_string(Module, Code),
-                                  Type = menelaus_alert:category_bin(Cat),
-                                  TStampEpoch = misc:time_to_epoch_ms_int(TStamp),
-                                  Resp:write_chunk(iolist_to_binary(diag_format_log_entry(Type, Code, Module, Node, TStampEpoch, CodeString, S)))
-                          catch _:_ -> ok
-                          end
-                  end, lists:keysort(#log_entry.tstamp, ns_log:recent())),
-    Resp:write_chunk(<<"logs_node:\n-------------------------------\n">>),
-    handle_logs(Resp).
+    Log = proplists:get_value("log", Params, ?DEFAULT_LOG_FILENAME),
+    do_handle_diag(Req, MaybeContDisp, Log).
+
+
+do_handle_diag(Req, Extra, Log) ->
+    case ns_log_browser:log_exists(Log) of
+        true ->
+            Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
+                                 ns_bucket:get_buckets()),
+            Infos = [["per_node_diag = ~p", diag_multicall(?MODULE, do_diag_per_node, [])],
+                     ["nodes_info = ~p", menelaus_web:build_nodes_info()],
+                     ["buckets = ~p", Buckets],
+                     ["logs:~n-------------------------------~n"]],
+            Text = lists:flatmap(fun ([Fmt | Args]) ->
+                                         io_lib:format(Fmt ++ "~n~n", Args)
+                                 end, Infos),
+
+            Resp = Req:ok({"text/plain; charset=utf-8",
+                           Extra ++
+                               [{"Content-Type", "text/plain"}
+                                | menelaus_util:server_header()],
+                           chunked}),
+            Resp:write_chunk(list_to_binary(Text)),
+            lists:foreach(fun (#log_entry{node = Node,
+                                          module = Module,
+                                          code = Code,
+                                          msg = Msg,
+                                          args = Args,
+                                          cat = Cat,
+                                          tstamp = TStamp}) ->
+                                  try io_lib:format(Msg, Args) of
+                                      S ->
+                                          CodeString = ns_log:code_string(Module, Code),
+                                          Type = menelaus_alert:category_bin(Cat),
+                                          TStampEpoch = misc:time_to_epoch_ms_int(TStamp),
+                                          Resp:write_chunk(iolist_to_binary(diag_format_log_entry(Type, Code, Module, Node, TStampEpoch, CodeString, S)))
+                                  catch _:_ -> ok
+                                  end
+                          end, lists:keysort(#log_entry.tstamp, ns_log:recent())),
+            LogsHeader = io_lib:format("logs_node (~s):~n"
+                                       "-------------------------------~n", [Log]),
+            Resp:write_chunk(list_to_binary(LogsHeader)),
+
+            handle_logs(Resp, Log);
+        false ->
+            Req:respond({404, menelaus_util:server_header(),
+                         "Requested log file not found.\r\n"})
+    end.
 
 handle_logs(Resp) ->
     ns_log_browser:stream_logs(fun (Data) -> Resp:write_chunk(Data) end).
+
+handle_logs(Resp, LogName) ->
+    ns_log_browser:stream_logs(LogName,
+                               fun (Data) -> Resp:write_chunk(Data) end).
+
+handle_sasl_logs(LogName, Req) ->
+    case ns_log_browser:log_exists(LogName) of
+        true ->
+            Resp = Req:ok({"text/plain; charset=utf-8",
+                           menelaus_util:server_header(),
+                           chunked}),
+            handle_logs(Resp, LogName);
+        false ->
+            Req:respond({404, menelaus_util:server_header(),
+                         "Requested log file not found.\r\n"})
+    end.
 
 handle_sasl_logs(Req) ->
     Resp = Req:ok({"text/plain; charset=utf-8",

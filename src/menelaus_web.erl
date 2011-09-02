@@ -198,6 +198,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth_cookie, fun handle_dotsvg/2, [Bucket]};
                              ["sasl_logs"] ->
                                  {auth_cookie, fun diag_handler:handle_sasl_logs/1};
+                             ["sasl_logs", LogName] ->
+                                 {auth_cookie, fun diag_handler:handle_sasl_logs/2, [LogName]};
                              ["erlwsh" | _] ->
                                  {auth_cookie, fun (R) -> erlwsh_web:loop(R, erlwsh_deps:local_path(["priv", "www"])) end};
                              ["images" | _] ->
