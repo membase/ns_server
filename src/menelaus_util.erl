@@ -52,7 +52,7 @@
 server_header() ->
     Versions = ns_info:version(),
     ServerHeader = lists:concat([
-                       "Membase Server ", proplists:get_value(ns_server, Versions)]),
+                       "Couchbase Server ", proplists:get_value(ns_server, Versions)]),
     [{"Pragma", "no-cache"},
      {"Cache-Control", "no-cache"},
      {"Server", ServerHeader}].
