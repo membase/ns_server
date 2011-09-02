@@ -59,6 +59,11 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
+do_log(#log_info{loglevel=LogLevel, time=Time, module=Module,
+                 node=Node, user_data=undefined} = _Info,
+       Format, Args) ->
+    Category = loglevel_to_category(LogLevel),
+    ns_log:log(Module, Node, Time, Category, Format, Args);
 do_log(#log_info{loglevel=LogLevel, time=Time,
                  node=Node, user_data={Module, Code}} = _Info,
        Format, Args) ->
