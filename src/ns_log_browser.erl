@@ -1,7 +1,8 @@
 -module(ns_log_browser).
 
 -export([start/0]).
--export([stream_logs/1, stream_logs/2, stream_logs/3]).
+-export([log_exists/1, log_exists/2]).
+-export([stream_logs/1, stream_logs/2, stream_logs/3, stream_logs/4]).
 
 -include("ns_common.hrl").
 
@@ -12,12 +13,13 @@ usage(Fmt, Args) ->
 
 -spec usage() -> no_return().
 usage() ->
-    io:format("Usage: <progname> -report_dir <dir>~n"),
+    io:format("Usage: <progname> -report_dir <dir> [-log <name>]~n"),
     halt(1).
 
 start() ->
     Options = case parse_arguments([{h, 0, undefined, false},
-                                    {report_dir, 1, undefined}],
+                                    {report_dir, 1, undefined},
+                                    {log, 1, undefined, ?DEFAULT_LOG_FILENAME}],
                                    init:get_arguments()) of
                   {ok, O} ->
                       O;
@@ -27,22 +29,28 @@ start() ->
                       usage("option ~p requires ~p arguments~n", [K, N]);
                   Error -> usage("parse error: ~p~n", [Error])
               end,
+
     case proplists:get_value(h, Options) of
         true -> usage();
         false -> ok
     end,
     Dir = proplists:get_value(report_dir, Options),
+    Log = proplists:get_value(log, Options),
 
-    stream_logs(Dir,
-                fun (Data) ->
-                        %% originally standard_io was used here
-                        %% instead of group_leader(); though this is
-                        %% perfectly valid (e.g. this tested in
-                        %% otp/lib/kernel/tests/file_SUITE.erl) it makes
-                        %% dialyzer unhappy
-                        file:write(group_leader(), Data)
-                end).
-
+    case log_exists(Dir, Log) of
+        true ->
+            stream_logs(Dir, Log,
+                        fun (Data) ->
+                                %% originally standard_io was used here
+                                %% instead of group_leader(); though this is
+                                %% perfectly valid (e.g. this tested in
+                                %% otp/lib/kernel/tests/file_SUITE.erl) it makes
+                                %% dialyzer unhappy
+                                file:write(group_leader(), Data)
+                        end);
+        false ->
+            usage("Requested log file ~p does not exist.~n", [Log])
+    end.
 
 %% Option parser
 map_args(K, N, undefined, D, A) ->
@@ -89,15 +97,28 @@ parse_arguments(Opts, Args) ->
         error:{parse_error, Reason, K, A} -> {parse_error, Reason, K, A}
     end.
 
-stream_logs(Fn) ->
+log_exists(Log) ->
     {ok, Dir} = application:get_env(error_logger_mf_dir),
-    stream_logs(Dir, Fn).
+    log_exists(Dir, Log).
 
-stream_logs(Dir, Fn) ->
-    stream_logs(Dir, Fn, 65536).
+log_exists(Dir, Log) ->
+    Path = filename:join(Dir, Log),
+    IdxPath = lists:append(Path, ".idx"),
 
-stream_logs(Dir, Fn, ChunkSz) ->
-    Path = filename:join(Dir, ?DEFAULT_LOG_FILENAME),
+    filelib:is_regular(IdxPath).
+
+stream_logs(Fn) ->
+    stream_logs(?DEFAULT_LOG_FILENAME, Fn).
+
+stream_logs(Log, Fn) ->
+    {ok, Dir} = application:get_env(error_logger_mf_dir),
+    stream_logs(Dir, Log, Fn).
+
+stream_logs(Dir, Log, Fn) ->
+    stream_logs(Dir, Log, Fn, 65536).
+
+stream_logs(Dir, Log, Fn, ChunkSz) ->
+    Path = filename:join(Dir, Log),
 
     {Ix, _, _, NFiles} = disk_log_1:read_index_file(Path),
     Ixs = lists:seq(Ix + 1, NFiles) ++ lists:seq(1, Ix),
