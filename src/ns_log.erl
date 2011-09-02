@@ -32,7 +32,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--export([log/7, recent/0, recent/1, delete_log/0]).
+-export([log/6, log/7, recent/0, recent/1, delete_log/0]).
 
 -export([code_string/2]).
 
@@ -123,6 +123,13 @@ handle_cast({log, Module, Node, Time, Code, Category, Fmt, Args},
             Entry = #log_entry{node=Node, module=Module, code=Code, msg=Fmt,
                                args=Args, cat=Category, tstamp=Time},
             gen_server:abcast(?MODULE, {do_log, Entry}),
+
+            %% note that if message has undefined code it will be logged with
+            %% 0 code (see do_log handler) but we still announce it here with
+            %% actual undefined code for subscribers to know that the original
+            %% message does not have a code attached to it; this will allow
+            %% subscribers, for example, just ignore such messages if it's
+            %% required by their context
             try gen_event:notify(ns_log_events, {ns_log, Category, Module, Code,
                                                  Fmt, Args})
             catch _:Reason ->
@@ -133,7 +140,15 @@ handle_cast({log, Module, Node, Time, Code, Category, Fmt, Args},
             {noreply, State#state{dedup=Dedup2}}
     end;
 handle_cast({do_log, Entry}, State) ->
-    {noreply, schedule_save(add_pending(State, Entry))};
+    Entry1 =
+        case Entry#log_entry.code of
+            undefined ->
+                Entry#log_entry{code=0};
+            _Other ->
+                Entry
+        end,
+
+    {noreply, schedule_save(add_pending(State, Entry1))};
 handle_cast({sync, SrcNode, Compressed}, StateBefore) ->
     State = flush_pending(StateBefore),
     Recent = State#state.unique_recent,
@@ -247,10 +262,16 @@ code_string(Module, Code) ->
         _                 -> "message"
     end.
 
+-spec log(atom(), node(), Time, log_classification(), string(), list()) -> ok
+       when Time :: {integer(), integer(), integer()}.
+log(Module, Node, Time, Category, Fmt, Args) ->
+    log(Module, Node, Time, undefined, Category, Fmt, Args).
+
 %% A Code is an number which is module-specific.
 -spec log(atom(), node(), Time,
-          integer(), log_classification(), string(), list()) -> ok
-      when Time :: {integer(), integer(), integer()}.
+          Code, log_classification(), string(), list()) -> ok
+      when Time :: {integer(), integer(), integer()},
+           Code :: integer() | undefined.
 log(Module, Node, Time, Code, Category, Fmt, Args) ->
     gen_server:cast(?MODULE,
                     {log, Module, Node, Time, Code, Category, Fmt, Args}).
