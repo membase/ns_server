@@ -42,10 +42,12 @@
 -define(NS_DOCTOR_LOGGER, ns_doctor).
 -define(STATS_LOGGER, stats).
 -define(REBALANCE_LOGGER, rebalance).
+-define(CLUSTER_LOGGER, cluster).
 
 -define(LOGGERS, [?NS_SERVER_LOGGER,
                   ?USER_LOGGER, ?MENELAUS_LOGGER,
-                  ?NS_DOCTOR_LOGGER, ?STATS_LOGGER, ?REBALANCE_LOGGER]).
+                  ?NS_DOCTOR_LOGGER, ?STATS_LOGGER,
+                  ?REBALANCE_LOGGER, ?CLUSTER_LOGGER]).
 
 -define(LOG(Level, Format, Args),
         ale:log(?NS_SERVER_LOGGER, Level, Format, Args)).

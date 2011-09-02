@@ -14,3 +14,4 @@
 {loglevel_ns_doctor, info}.
 {loglevel_stats, info}.
 {loglevel_rebalance, info}.
+{loglevel_cluster, debug}.

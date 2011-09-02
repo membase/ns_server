@@ -28,6 +28,15 @@
 -define(ENGAGE_TIMEOUT, 30000).
 -define(COMPLETE_TIMEOUT, 30000).
 
+-define(cluster_log(Code, Fmt, Args),
+        ale:xlog(?USER_LOGGER, ns_log_sink:get_loglevel(?MODULE, Code),
+                 {?MODULE, Code}, Fmt, Args)).
+
+-define(cluster_debug(Fmt, Args), ale:debug(?CLUSTER_LOGGER, Fmt, Args)).
+-define(cluster_info(Fmt, Args), ale:info(?CLUSTER_LOGGER, Fmt, Args)).
+-define(cluster_warning(Fmt, Args), ale:warn(?CLUSTER_LOGGER, Fmt, Args)).
+-define(cluster_error(Fmt, Args), ale:error(?CLUSTER_LOGGER, Fmt, Args)).
+
 %% gen_server callbacks
 -export([code_change/3, handle_call/3, handle_cast/2, handle_info/2, init/1,
          terminate/2]).
@@ -61,8 +70,8 @@ add_node(RemoteAddr, RestPort, Auth) ->
     RV = gen_server:call(?MODULE, {add_node, RemoteAddr, RestPort, Auth}, ?ADD_NODE_TIMEOUT),
     case RV of
         {error, _What, Message, _Nested} ->
-            ?user_log(?NODE_JOIN_FAILED, "Failed to add node ~s:~w to cluster. ~s",
-                      [RemoteAddr, RestPort, Message]);
+            ?cluster_log(?NODE_JOIN_FAILED, "Failed to add node ~s:~w to cluster. ~s",
+                         [RemoteAddr, RestPort, Message]);
         _ -> ok
     end,
     RV.
@@ -106,25 +115,25 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 handle_call({add_node, RemoteAddr, RestPort, Auth}, _From, State) ->
-    ?log_info("handling add_node(~p, ~p, ..)~n", [RemoteAddr, RestPort]),
+    ?cluster_debug("handling add_node(~p, ~p, ..)~n", [RemoteAddr, RestPort]),
     RV = do_add_node(RemoteAddr, RestPort, Auth),
-    ?log_info("add_node(~p, ~p, ..) -> ~p~n", [RemoteAddr, RestPort, RV]),
+    ?cluster_debug("add_node(~p, ~p, ..) -> ~p~n", [RemoteAddr, RestPort, RV]),
     {reply, RV, State};
 
 handle_call({engage_cluster, NodeKVList}, _From, State) ->
-    ?log_info("handling engage_cluster(..)~n", [NodeKVList]),
+    ?cluster_debug("handling engage_cluster(..)~n", [NodeKVList]),
     RV = do_engage_cluster(NodeKVList),
-    ?log_info("engage_cluster(..) -> ~p~n", [RV]),
+    ?cluster_debug("engage_cluster(..) -> ~p~n", [RV]),
     {reply, RV, State};
 
 handle_call({complete_join, NodeKVList}, _From, State) ->
-    ?log_info("handling complete_join(~p)~n", [NodeKVList]),
+    ?cluster_debug("handling complete_join(~p)~n", [NodeKVList]),
     RV = do_complete_join(NodeKVList),
-    ?log_info("complete_join(~p) -> ~p~n", [NodeKVList, RV]),
+    ?cluster_debug("complete_join(~p) -> ~p~n", [NodeKVList, RV]),
     {reply, RV, State}.
 
 handle_cast(leave, State) ->
-    ?user_log(0001, "Node ~p is leaving cluster.", [node()]),
+    ?cluster_log(0001, "Node ~p is leaving cluster.", [node()]),
     ok = ns_server_cluster_sup:stop_cluster(),
     mb_mnesia:wipe(),
     NewCookie = ns_cookie_manager:cookie_gen(),
@@ -147,7 +156,7 @@ handle_cast(leave, State) ->
     ns_config:set_initial(nodes_wanted, [node()]),
     ns_cookie_manager:cookie_sync(),
     ns_storage_conf:delete_all_db_files(DBDir),
-    ?log_info("Leaving cluster", []),
+    ?cluster_debug("Leaving cluster", []),
     timer:sleep(1000),
     {ok, _} = ns_server_cluster_sup:start_cluster(),
     {noreply, State}.
@@ -155,7 +164,7 @@ handle_cast(leave, State) ->
 
 
 handle_info(Msg, State) ->
-    ?log_info("Unexpected message ~p", [Msg]),
+    ?cluster_debug("Unexpected message ~p", [Msg]),
     {noreply, State}.
 
 
@@ -177,7 +186,7 @@ rename_node(Old, New) ->
                              NewV = misc:rewrite_value(Old, New, V),
                              if
                                  NewK =/= K orelse NewV =/= V ->
-                                     ?log_info(
+                                     ?cluster_debug(
                                        "renaming node conf ~p -> ~p:~n  ~p ->~n  ~p",
                                        [K, NewK, V, NewV]),
                                      {NewK, NewV};
@@ -192,13 +201,13 @@ rename_node(Old, New) ->
 
 leave() ->
     RemoteNode = ns_node_disco:random_node(),
-    ?user_log(?NODE_EJECTED, "Node ~s left cluster", [node()]),
+    ?cluster_log(?NODE_EJECTED, "Node ~s left cluster", [node()]),
     %% MB-3160: sync any pending config before we leave, to make sure,
     %% say, deactivation of membership isn't lost
     ns_config_rep:push(),
     ns_config_rep:synchronize(),
-    ?log_info("ns_cluster: leaving the cluster from ~p.",
-              [RemoteNode]),
+    ?cluster_debug("ns_cluster: leaving the cluster from ~p.",
+                   [RemoteNode]),
     %% Tell the remote server to tell everyone to shun me.
     rpc:cast(RemoteNode, ?MODULE, shun, [node()]),
     %% Then drop ourselves into a leaving state.
@@ -223,14 +232,14 @@ leave_async() ->
 shun(RemoteNode) ->
     case RemoteNode == node() of
         false ->
-            ?log_info("Shunning ~p", [RemoteNode]),
+            ?cluster_debug("Shunning ~p", [RemoteNode]),
             ns_config:update_key(nodes_wanted,
                                  fun (X) ->
                                          X -- [RemoteNode]
                                  end),
             ns_config_rep:push();
         true ->
-            ?log_info("Asked to shun myself. Leaving cluster.", []),
+            ?cluster_debug("Asked to shun myself. Leaving cluster.", []),
             leave()
     end.
 
@@ -269,14 +278,14 @@ do_change_address(NewAddr) ->
             %% Don't do anything if we already have the right address.
             ok;
         {_, _} ->
-            ?log_info("Decided to change address to ~p~n", [NewAddr1]),
+            ?cluster_info("Decided to change address to ~p~n", [NewAddr1]),
             case mb_mnesia:maybe_rename(NewAddr1) of
                 false ->
                     ok;
                 true ->
                     rename_node(MyNode, node()),
                     ns_server_sup:node_name_changed(),
-                    ?log_info("Renamed node. New name is ~p.~n", [node()]),
+                    ?cluster_info("Renamed node. New name is ~p.~n", [node()]),
                     ok
             end,
             ok
@@ -314,13 +323,15 @@ do_add_node_allowed(RemoteAddr, RestPort, Auth) ->
 do_add_node_with_connectivity(RemoteAddr, RestPort, Auth) ->
     Struct = menelaus_web:build_full_node_info(node(), "127.0.0.1"),
 
-    ?log_info("Posting node info to engage_cluster on ~p:~n~p~n", [{RemoteAddr, RestPort}, Struct]),
+    ?cluster_debug("Posting node info to engage_cluster on ~p:~n~p~n",
+                   [{RemoteAddr, RestPort}, Struct]),
     RV = menelaus_rest:json_request_hilevel(post,
                                             {RemoteAddr, RestPort, "/engageCluster2",
                                              "application/json",
                                              mochijson2:encode(Struct)},
                                             Auth),
-    ?log_info("Reply from engage_cluster on ~p:~n~p~n", [{RemoteAddr, RestPort}, RV]),
+    ?cluster_debug("Reply from engage_cluster on ~p:~n~p~n",
+                   [{RemoteAddr, RestPort}, RV]),
 
     ExtendedRV = case RV of
                      {client_error, [Message]} = JSONErr when is_binary(Message) ->
@@ -385,7 +396,7 @@ call_port_please(Name, Host) ->
 verify_otp_connectivity(OtpNode) ->
     {Name, Host} = misc:node_name_host(OtpNode),
     Port = call_port_please(Name, Host),
-    ?log_info("port_please(~p, ~p) = ~p~n", [Name, Host, Port]),
+    ?cluster_debug("port_please(~p, ~p) = ~p~n", [Name, Host, Port]),
     case is_integer(Port) of
         false ->
             {error, connect_node,
@@ -452,13 +463,15 @@ do_add_node_engaged_inner(NodeKVList, OtpNode, Auth) ->
     Struct = {struct, [{<<"targetNode">>, OtpNode}
                        | MyNodeKVList]},
 
-    ?log_info("Posting the following to complete_join on ~p:~n~p~n", [HostnameRaw, Struct]),
+    ?cluster_debug("Posting the following to complete_join on ~p:~n~p~n",
+                   [HostnameRaw, Struct]),
     RV = menelaus_rest:json_request_hilevel(post,
                                             {Hostname, Port, "/completeJoin",
                                              "application/json",
                                              mochijson2:encode(Struct)},
                                             Auth),
-    ?log_info("Reply from complete_join on ~p:~n~p~n", [HostnameRaw, RV]),
+    ?cluster_debug("Reply from complete_join on ~p:~n~p~n",
+                   [HostnameRaw, RV]),
 
     ExtendedRV = case RV of
                      {client_error, [Message]} = JSONErr when is_binary(Message) ->
@@ -482,17 +495,19 @@ node_add_transaction(Node, Body) ->
           end,
     ns_config:update_key(nodes_wanted, Fun),
     ns_config:set({node, Node, membership}, inactiveAdded),
-    ?log_info("Started node add transaction by adding node ~p to nodes_wanted~n", [Node]),
+    ?cluster_info("Started node add transaction by adding node ~p to nodes_wanted~n",
+                  [Node]),
     try Body() of
         {ok, _} = X -> X;
         Crap ->
-            ?log_info("Add transaction of ~p failed because of ~p~n", [Node, Crap]),
+            ?cluster_error("Add transaction of ~p failed because of ~p~n",
+                           [Node, Crap]),
             shun(Node),
             Crap
     catch
         Type:What ->
-            ?log_info("Add transaction of ~p failed because of exception ~p~n",
-                      [Node, {Type, What, erlang:get_stacktrace()}]),
+            ?cluster_error("Add transaction of ~p failed because of exception ~p~n",
+                           [Node, {Type, What, erlang:get_stacktrace()}]),
             shun(Node),
             erlang:Type(What),
             erlang:error(cannot_happen)
@@ -588,15 +603,15 @@ do_complete_join(NodeKVList) ->
 
 
 perform_actual_join(RemoteNode, NewCookie) ->
-    ?user_log(0002, "Node ~p is joining cluster via node ~p.",
-              [node(), RemoteNode]),
+    ?cluster_log(0002, "Node ~p is joining cluster via node ~p.",
+                 [node(), RemoteNode]),
     %% let ns_memcached know that we don't need to preserve data at all
     ns_config:set(i_am_a_dead_man, true),
     %% Pull the rug out from under the app
     ok = ns_server_cluster_sup:stop_cluster(),
     ns_log:delete_log(),
     Status = try
-        ?log_info("ns_cluster: joining cluster. Child has exited."),
+        ?cluster_debug("ns_cluster: joining cluster. Child has exited.", []),
 
         BlackSpot = make_ref(),
         MyNode = node(),
@@ -608,20 +623,22 @@ perform_actual_join(RemoteNode, NewCookie) ->
                              (_) -> BlackSpot
                          end, BlackSpot),
         ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
-        ?log_info("pre-join cleaned config is:~n~p", [ns_config:get()]),
+        ?cluster_debug("pre-join cleaned config is:~n~p", [ns_config:get()]),
         {ok, _Cookie} = ns_cookie_manager:cookie_sync(),
         %% Let's verify connectivity.
         Connected = net_kernel:connect_node(RemoteNode),
-        ?log_info("Connection from ~p to ~p:  ~p",
-                  [node(), RemoteNode, Connected]),
+        ?cluster_debug("Connection from ~p to ~p:  ~p",
+                       [node(), RemoteNode, Connected]),
         {ok, ok}
     catch
         Type:Error ->
-            ?log_error("Error during join: ~p", [{Type, Error, erlang:get_stacktrace()}]),
+            ?cluster_error("Error during join: ~p",
+                           [{Type, Error, erlang:get_stacktrace()}]),
             {ok, _} = ns_server_cluster_sup:start_cluster(),
             erlang:Type(Error)
     end,
-    ?log_info("Join status: ~p, starting ns_server_cluster back~n", [Status]),
+    ?cluster_debug("Join status: ~p, starting ns_server_cluster back~n",
+                   [Status]),
     Status2 = case ns_server_cluster_sup:start_cluster() of
                   {error, _} = E ->
                       {error, start_cluster_failed,
@@ -631,10 +648,11 @@ perform_actual_join(RemoteNode, NewCookie) ->
               end,
     case Status2 of
         {ok, _} ->
-            ?user_log(?NODE_JOINED, "Node ~s joined cluster",
-                      [node()]),
+            ?cluster_log(?NODE_JOINED, "Node ~s joined cluster",
+                         [node()]),
             Status2;
         _ ->
-            ?log_error("Failed to join cluster because of: ~p~n", [Status2]),
+            ?cluster_error("Failed to join cluster because of: ~p~n",
+                           [Status2]),
             Status2
     end.
