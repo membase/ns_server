@@ -93,7 +93,7 @@ handle_info({'DOWN', _Ref, process, _Pid, Reason}, State)
   when Reason =:= normal orelse Reason =:= shutdown ->
     {noreply, State};
 handle_info({'DOWN', _Ref, process, _Pid, Reason}, State) ->
-    ?LOG_INFO("Replication slave crashed with reason: ~p", [Reason]),
+    ?log_info("Replication slave crashed with reason: ~p", [Reason]),
     {noreply, start_replication(State)}.
 
 terminate(Reason, State) when Reason =:= normal orelse Reason =:= shutdown ->
