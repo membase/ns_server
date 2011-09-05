@@ -13,7 +13,7 @@ all: $(APP_SRC)
 $(APP_SRC): $(APP_SRC_IN)
 	@TMPFILE=$(APP_SRC).$$$$ && \
          VERSION=$(call get_version) && \
-           sed -s "s/__VERSION__/$${VERSION}/g" $< > "$${TMPFILE}" && \
+           sed "s/__VERSION__/$${VERSION}/g" $< > "$${TMPFILE}" && \
            mv "$${TMPFILE}" "$@"
 
 clean:
