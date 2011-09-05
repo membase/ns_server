@@ -21,6 +21,8 @@
 -export([code_change/3, terminate/2]).
 
 -include("couch_db.hrl").
+%% overriding couch logging macros
+-include("couch_log.hrl").
 
 % If N vbucket databases of a bucket need to be compacted, we trigger compaction
 % for all the vbucket databases of that bucket.
