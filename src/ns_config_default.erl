@@ -51,6 +51,8 @@ default() ->
                end,
 
     [{directory, path_config:component_path(data, "config")},
+     {autocompaction, [{database_fragmentation_threshold, 95},
+                       {view_fragmentation_threshold, 95}]},
      {nodes_wanted, [node()]},
      {{node, node(), membership}, active},
                                                 % In general, the value in these key-value pairs are property lists,
@@ -262,7 +264,9 @@ upgrade_config_from_1_7_1_to_2_0() ->
     ?log_info("Upgrading config from 1.7.1 to 2.0", []),
     DefaultConfig = default(),
     {_, RestConfig} = lists:keyfind({node, node(), rest}, 1, DefaultConfig),
-    [{set, {node, node(), rest}, RestConfig}].
+    {_, AutoCompactionV} = lists:keyfind(autocompaction, 1, DefaultConfig),
+    [{set, {node, node(), rest}, RestConfig},
+     {set, autocompaction, AutoCompactionV}].
 
 upgrade_1_6_to_1_7_test() ->
     DefaultCfg = [{directory, default_directory},
