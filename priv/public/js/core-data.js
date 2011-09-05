@@ -536,6 +536,10 @@ var DAL = {
     var details = v.need(DAL.cells.currentPoolDetailsCell);
     var nodes = details.nodes;
     var thisNode = _.detect(nodes, function (n) {return n.thisNode;});
+    if (!thisNode) {
+      // if for some reason thisNode is missing, return undefined waiting better pool details
+      return;
+    }
     return thisNode.couchApiBase;
   }).name("capiBaseCell");
 
