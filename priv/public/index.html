@@ -445,8 +445,8 @@
                 <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
                 <td>{% if (this.basicStats.diskFetches !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}{% } else { %}N/A{% } %}</td>
                 <td>
-                  <a class="list_button marg" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>
-                  <a class="list_button btn_info disable-if-stale" href="#visitBucket={%=h(this.name)%}">Info</a>
+                  {% if (this.bucketType == 'membase') { %}<a class="list_button marg disable-if-stale" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>{% } %}
+                  <a class="list_button btn_info {%= (this.bucketType != 'membase') ? 'marg' : '' %} disable-if-stale" href="#visitBucket={%=h(this.name)%}">Info</a>
                 </td>
               </tr>
               <tr>
