@@ -882,7 +882,7 @@ var MockedRequest = mkClass({
         if ($data.memoryQuota && $data.memoryQuota != 'unlimited' && !(/^[0-9]+$/.exec($data.memoryQuota))) {
           this.errorResponse(["invalid memory quota", "second message"]);
         }
-      }, opt("memoryQuota"), opt('path'))], //missing
+      }, opt("memoryQuota"), opt('db_path'), opt('index_path'))], //missing
 
       [post("node", "controller", "doJoinCluster"), expectParams(method('handleJoinCluster'),
                                                                  "clusterMemberHostIp", "clusterMemberPort",
