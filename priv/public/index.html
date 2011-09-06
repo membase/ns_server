@@ -1660,7 +1660,7 @@
     </div>
     </div>
   <!-- END init_cluster_block -->
-  <div class="pad" id="init_update_notifications_dialog">
+  <div class="pad" id="init_update_notifications_dialog"><form>
     <div class="config-top">
       <h1>Notifications</h1>
       <h2>Step <span class="current-step">3</span> of 4</h2>
@@ -1671,7 +1671,7 @@
         <input type="checkbox" id="init-notifications-updates-enabled" checked="checked">
         <span>Enable software update notifications</span>
       </label>
-      <a href="#" class="more_info">What's this?</a>
+      <a href="#" class="more_info" tabindex="-1">What's this?</a>
     </p>
     <p class="more_info pad_10">
       Enabling software update notifications allows notification in the Couchbase web console when a new version of Couchbase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.
@@ -1689,7 +1689,7 @@
       <button name="next" value="Next" class="submit next direction-button" id="step-3-next" type="submit">Next</button>
       <button name="back" value="Back" class="submit back direction-button" id="step-3-back" type="button">Back</button>
     </div>
-  </div>
+  </form></div>
   <!-- END init_update_notifications-->
   <div class="pad" id="init_secure_dialog">
    <div class="config-top">

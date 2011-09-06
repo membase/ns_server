@@ -643,6 +643,7 @@ var NodeDialog = {
   },
   startPage_update_notifications: function(node, pagePrefix, opt) {
     var dialog = $('#init_update_notifications_dialog');
+    var form = dialog.find('form');
     dialog.find('a.more_info').click(function(e) {
       e.preventDefault();
       dialog.find('p.more_info').slideToggle();
@@ -655,14 +656,26 @@ var NodeDialog = {
     // Go to next page. Send off email address if given and apply settings
     dialog.find('button.next').click(function (e) {
       e.preventDefault();
+      form.submit();
+    });
+    _.defer(function () {
+      try {
+        $('#init-join-community-email').need(1)[0].focus();
+      } catch (e) {
+      };
+    });
+    form.bind('submit', function (e) {
+      e.preventDefault();
       var email = $.trim($('#init-join-community-email').val());
-      if (email!=='') {
+      if (email !== '') {
         // Send email address. We don't care if notifications were enabled
         // or not.
         $.ajax({
           url: UpdatesNotificationsSection.remote.email,
           dataType: 'jsonp',
-          data: {email: email}
+          data: {email: email},
+          success: function () {},
+          error: function () {}
         });
       }
 
@@ -670,7 +683,13 @@ var NodeDialog = {
       postWithValidationErrors(
         '/settings/stats',
         $.param({sendStats: sendStatus}),
-        function() {
+        function (errors, status) {
+          if (status != 'success') {
+            return reloadApp(function (reloader) {
+              alert('Failed to set update notifications settings. Check your network connection');
+              reloader();
+            });
+          }
           onLeave();
           showInitDialog("secure");
         }
@@ -682,6 +701,7 @@ var NodeDialog = {
       dialog.find('a.more_info').unbind();
       dialog.find('button.back').unbind();
       dialog.find('button.next').unbind();
+      form.unbind();
     }
   }
 };
