@@ -999,6 +999,8 @@ var AnalyticsSection = {
           var name = ViewHelpers.maybeStripPort(srv.hostname, allNodes.servers);
           return [srv.hostname, name];
         });
+        // natural sort by full hostname (which includes port number)
+        list.sort(mkComparatorByProp(0, naturalSort));
         list.unshift(['', 'All Server Nodes']);
 
         return {list: list,
