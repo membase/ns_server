@@ -415,34 +415,10 @@ var StatsModel = {};
     return createSamplesFuture(url, data, bufferDepth, specificStatsRealTimeRestorer);
   }).name("specificStatsCell");
 
-  // containts list of hostnames for specific stats ordered in
-  // descending order of average stat values
-  //
-  // NOTE: we have requirement to do sorting only once. So that it's
-  // stable.  We're explicitly depending on specificStatsURLCell
-  // because we want this to be recomputed when stat name is changed
-  // and we're using getValue inside future to get only first value of
-  // specificStatsCell
+  // containts list of hostnames for specific stats ordered by natural
+  // sort order of hostname or ip
   var specificStatsNodesCell = Cell.compute(function (v) {
-    v.need(specificStatsURLCell);
-    return future(function (returnValue) {
-      specificStatsCell.getValue(function (specificStats) {
-        var nodes = specificStats.nodeStats;
-        var rv = _.sortBy(_.keys(nodes), function (hostname) {
-          var values = nodes[hostname];
-          var sum = 0;
-          var i = values.length;
-          while (i--) {
-            sum += values[i];
-          }
-          if (values.length) {
-            sum /= values.length;
-          }
-          return -sum;
-        });
-        returnValue(rv);
-      });
-    });
+    return _.keys(v.need(specificStatsCell).nodeStats).sort(naturalSort);
   }).name("specificStatsNodesCell");
 
   var visibleStatsDescCell = self.visibleStatsDescCell = Cell.compute(function (v) {
