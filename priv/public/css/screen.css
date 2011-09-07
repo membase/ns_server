@@ -88,7 +88,7 @@ a.disabled{text-decoration:none;cursor:default;}
 .page-header .logo {position:absolute;background:url('../images/logo.png') no-repeat;width:361px;height:49px;top:15px;left:0;}
 
 #headerNav {clear:both;height:50px;background:url('../images/navigation_bg.png') repeat-x;}
-#headerNav .contents{width:46em;margin:auto;}
+#headerNav .contents{width:54em;margin:auto;}
 #headerNav ul li {float:left;position:relative}
 #headerNav li a {display:block;text-decoration:none;padding:13px 23px 7px;line-height:27px}
 #headerNav li:hover {background:url('../images/active_hover_bg.png') repeat-x;}
@@ -213,7 +213,7 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .graph_info_label {padding:3px; font-size:11px;position:absolute;top:-6px;left:30px;}
 .darker_block {position:relative;*zoom:1;}
 .darker_block.withtotal {background:url(../images/bg_total.gif) 100% 0 repeat-y;}
-.darker_block h3 {overflow:hidden;cursor:pointer;background:#EEEEEF;padding:5px 10px;font-size:14px;text-transform:uppercase;*zoom:1;}
+.darker_block h3 {overflow:hidden;cursor:pointer;background:#EEEEEF;padding:5px 10px;font-size:14px;text-transform:uppercase;*zoom:1;min-height: 31px;}
 .darker_block h3 ins, .expander {float:left;width:0;height:0;margin:2px 0.75em 0 0;border-style:solid;border-width:10px 10px 0 10px;border-color:#01b0ff transparent transparent transparent;cursor:pointer;}
 .darker_block h3:hover ins, .expander:hover {border-top-color:#339ACA;}
 
@@ -221,6 +221,8 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 #buckets .expander.closed{margin-top:0.3em}
 
 .darker_block .stats{padding:6px 0 6px 5px;border-bottom:5px solid #EEEEEF}
+#cluster_reference_list_container, #ongoing_replications_list_container, #past_replications_list_container{padding:0;border:none}
+#cluster_reference_list_container .list td, #ongoing_replications_list_container .list td, #past_replications_list_container .list td{text-align:left}
 
 .darker_block ul.col_headers {overflow:hidden;margin-right:5px;color:#999;font-weight:bold;padding-top:3px}
 .darker_block ul.col_headers li{width:25%;display:block;float:left;text-align:center;text-transform:uppercase}
@@ -296,11 +298,11 @@ div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph 
 .shadow_box {position:relative;background:none #eeeeef;-moz-box-shadow:0 0 5px #ccc;-webkit-box-shadow:0 0 5px #ccc;box-shadow:0 0 5px #ccc;margin:0 9px 20px;}
 #view_results_container {margin:0;border:1px solid #ccc;box-shadow:none;}
 .langv {text-align:left}
-#views .buttons {float:right;margin:2px 0px 0 0}
-#views .darker_block.closed h3 ins {top:17px}
-#views .darker_block h3 ins {position:absolute;top:16px;left:10px}
-#views .darker_block h3 {position:relative;min-height:2.5em}
-#views .view_head {float:left;padding:12px 0 0 31px}
+#views .buttons, #replications .buttons {float:right;margin:2px 0px 0 0;text-transform:none;font-weight:normal}
+#views .darker_block.closed h3 ins, #replications .darker_block.closed h3 ins {top:17px}
+#views .darker_block h3 ins, #replications .darker_block h3 ins {position:absolute;top:16px;left:10px}
+#views .darker_block h3, #replications #views .darker_block h3 {position:relative;min-height:2.5em}
+.view_head {float:left;padding:12px 0 0 31px}
 #views .results_header { line-height: 31px; padding-left: 12px; }
 .bucket_details .create_dev {padding:0 0 0 4px;color:#bbb;background:#fff;border:1px solid #CCD3D7}
 .bucket_details .create_dev input[disabled=""] {color:#BBBBBB;background:#fff}
@@ -469,7 +471,9 @@ button#test_email + span {line-height:2.25em;margin-left:0.5em}
 
 .join_cluster fieldset legend {text-align:left; font-size:14px; font-weight:normal; padding:10px 0 7px; border-bottom:1px solid #dbe3e8;width:100%}
 .join_cluster label {display:inline-block;width:5em;font-size:12px;text-align:right;}
+#create_cluster_reference_dialog label{width:15em}
 .join_cluster ul li {margin:0.6em 0}
+.join_cluster ul ul label {display:inline;width:auto;text-align:left}
 .join_cluster input {margin:0 4px 0 1px;padding:4px 3px;border:1px solid #ccd2d6;}
 /* auth */
 body.nojs #mainContainer { display: none; }

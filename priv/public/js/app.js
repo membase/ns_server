@@ -182,6 +182,7 @@ var ThePage = {
              analytics: AnalyticsSection,
              buckets: BucketsSection,
              views: ViewsSection,
+             replications: ReplicationsSection,
              log: LogsSection,
              settings: SettingsSection},
 
