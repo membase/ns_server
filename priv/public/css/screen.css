@@ -503,7 +503,7 @@ body.auth #container { display: none; }
 
 #analytics > h1 { text-transform: none !important; }
 
-#join_cluster_dialog{width:450px !important;}
+#join_cluster_dialog{width:500px !important;}
 #join_cluster_dialog label {width:150px !important;}
 #join_cluster_dialog_errors_container {padding-left: 40px;}
 
