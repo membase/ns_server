@@ -972,8 +972,8 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details .for-replica-number .error-container {float:none;padding-left:0;margin-left:0;text-align:left;display:block;width:auto !important;}
 .bucket_details .repli {overflow:hidden}
 .bucket_details .repli span {color:#222}
-.bucket_details label.for-enable-replication {padding-left:20px;width:150px;float:left;}
-.bucket_details label.for-enable-replication span {display:inline;float:none;margin-left:5px;}
+.bucket_details label.for-enable-replicas {padding-left:20px;width:150px;float:left;}
+.bucket_details label.for-enable-replicas span {display:inline;float:none;margin-left:5px;}
 .bucket_details label.for-replica-number {display:block;float:left;}
 .bucket_details label.for-replica-number span {display:inline;float:none;margin-left:6px;}
 .bucket_details label.for-replica-number input {width:29px;}

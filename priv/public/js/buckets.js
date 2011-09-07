@@ -183,7 +183,7 @@ var BucketDetailsDialog = mkClass({
     dialog.find('[name=name]').boolAttr('disabled', !isNew);
 
     dialog.find('[name=replicaNumber]').boolAttr('disabled', !isNew);
-    dialog.find('.for-enable-replication input').boolAttr('disabled', !isNew);
+    dialog.find('.for-enable-replicas input').boolAttr('disabled', !isNew);
 
     dialog.find('[name=ramQuotaMB][type=text]')
       .boolAttr('disabled', !isNew && (initValues.bucketType == 'memcached'));
@@ -214,7 +214,7 @@ var BucketDetailsDialog = mkClass({
     (function () {
       var oldReplicationEnabled;
       return this.observePotentialChangesWithCleanup(function () {
-        var replicationEnabled = !!(dialog.find('.for-enable-replication input').attr('checked'));
+        var replicationEnabled = !!(dialog.find('.for-enable-replicas input').attr('checked'));
         if (replicationEnabled === oldReplicationEnabled) {
           return;
         }
@@ -393,7 +393,7 @@ var BucketDetailsDialog = mkClass({
     setFormValues(form, self.initValues);
 
     form.find('[name=bucketType]').boolAttr('disabled', !self.isNew);
-    form.find('.for-enable-replication input').prop('checked', self.initValues.replicaNumber !== 0);
+    form.find('.for-enable-replicas input').prop('checked', self.initValues.replicaNumber !== 0);
 
     var compactionCleanup = setAutoCompactionSettingsFields(form, self.initValues);
     self.cleanups.push(compactionCleanup);

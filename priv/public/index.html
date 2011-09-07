@@ -483,9 +483,9 @@
                     <td>
                   {% if (bucketType == 'membase') { %}
                     {% if (replicaNumber != 0) { %}
-                      Replication: <span>{%= V.count(replicaNumber, 'replica copy') %}</span>
+                      Replicas: <span>{%= V.count(replicaNumber, 'replica copy') %}</span>
                     {% } else { %}
-                      Replication: <span>disabled</span>
+                      Replicas: <span>disabled</span>
                     {% } %}
                   {% } %}
                     </td>
@@ -674,7 +674,7 @@
                 {% } %}
               {% } %}
             {% } %}
-            <label class="for-enable-replication" for="notifications-updates">
+            <label class="for-enable-replicas" for="notifications-updates">
               {% if (enabled===true) { %}
               <input type="checkbox" id="notification-updates" checked="checked">
               {% } else { %}
@@ -698,7 +698,7 @@
             </div>
           </script>
           <script id="auto_failover_template" type="text/html">
-            <label class="for-enable-replication"
+            <label class="for-enable-replicas"
                    for="auto_failover_enabled">
               <input type="checkbox" id="auto_failover_enabled">
               <span>Enable auto-failover</span>
@@ -730,7 +730,7 @@
             </div>
           </script>
           <script id="email_alerts_template" type="text/html">
-            <label class="for-enable-replication"
+            <label class="for-enable-replicas"
                    for="email_alerts_enabled">
               <input type="checkbox" id="email_alerts_enabled" />
               <span>Enable email alerts</span>
@@ -1181,9 +1181,9 @@
     </fieldset>
 
     <fieldset class="persistent-only">
-      <legend>Replication</legend>
+      <legend>Replicas</legend>
       <div class="repli">
-      <label class="for-enable-replication"><input type="checkbox" checked><span>Enable Replication</span></label>
+      <label class="for-enable-replicas"><input type="checkbox" checked><span>Enable </span></label>
       <input class="hidden-replica-number" type="hidden" name="replicaNumber" value="0" disabled>
       <label class="for-replica-number">
         <select name="replicaNumber"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
@@ -1384,7 +1384,7 @@
       <div class="pas_20">
         <div class="warning pat_20 warning_up_backfill">
           <strong>Attention</strong> – A significant amount of data stored on this node
-          has not yet been replicated! Failing over the node now will
+          does not yet have replica (backup) copies! Failing over the node now will
           irrecoverably lose that data when the incomplete replica is
           activated and this node is removed from the cluster. It is
           recommended to select "Remove Server" and rebalance to
@@ -1398,8 +1398,8 @@
           to avoid any loss of data. Please confirm Failover.
         </div>
         <div class="warning pat_20 warning_down_backfill">
-          <strong>Attention</strong> – Not all data stored on this node has been
-          replicated! Failing over the node now will irrecoverably
+          <strong>Attention</strong> – There are not replica (backup) copies of all data
+          on this node! Failing over the node now will irrecoverably
           lose that data when the incomplete replica is activated and
           this node is removed from the cluster. If the node might
           come back online, it is recommended to wait.
@@ -1794,8 +1794,8 @@
       <div class="error-container err-ramQuotaMB"></div>
             <em class="memcached-summary when-non-persistent"></em>
       <div class="persistent-only">
-        <h2>Replication</h2>
-        <label class="for-enable-replication"><input type="checkbox" checked disabled><span>Enable Replication</span></label>
+        <h2>Replicas</h2>
+        <label class="for-enable-replicas"><input type="checkbox" checked disabled><span>Enable </span></label>
         <input class="hidden-replica-number" type="hidden" name="replicaNumber" value="0" disabled>
         <label class="for-replica-number">
           <select name="replicaNumber"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
