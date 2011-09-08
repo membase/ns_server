@@ -245,17 +245,20 @@ function getRealBackgroundColor(jq) {
   }
 }
 
-function overlayWithSpinner(jq, backgroundColor) {
+function overlayWithSpinner(jq, backgroundColor, text) {
   if (_.isString(jq))
     jq = $(jq);
   var height = jq.height();
   var width = jq.width();
   var html = $(SpinnerHTML, document);
+  if (text !== undefined) {
+    html.find('span').text(text);
+  }
   var pos = jq.position();
   var newStyle = {
     width: width+'px',
     height: height+'px',
-    lineHeight: height+'px',
+    lineHeight: (height+20)+'px',
     'margin-top': jq.css('margin-top'),
     'margin-bottom': jq.css('margin-bottom'),
     'margin-left': jq.css('margin-left'),
