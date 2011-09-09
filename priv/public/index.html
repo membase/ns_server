@@ -404,10 +404,7 @@
         </div>
 
         <div id="buckets" style="display:none">
-          <h1>Data Buckets across
-            <span id="node_health_statuses"></span>
-            <span id="node_health_graph" style="display:inline-block;vertical-align:text-top;font-size:0.85em"></span>
-          </h1>
+          <h1>Data Buckets</h1>
           <div class="shadow_box">
             <div class="darker_block" id="manage_buckets_top_bar">
               <div class="pad_10 right buckets_action_bar clearfix">
@@ -423,6 +420,7 @@
               <tr>
                 <th></th>
                 <th class="bucket_name">Bucket Name</th>
+                <th>Bucket Resides On</th>
                 <th>RAM Usage/Quota</th>
                 <th>Disk Usage</th>
                 <th>Item Count</th>
@@ -438,6 +436,10 @@
                 <td class="type_icon">&nbsp;</td>
                 <td class="bucket_name">
                   <a class="disable-if-stale" title="Visit Analytics section for {%= h(this.name) %}" href="#sec=analytics&statsBucket={%= h(this.uri) %}">{%= h(this.name) %}</a>
+                </td>
+                <td>
+                  <span id="{%= h(this.name) %}_health" class="health_graph"></span>
+                  {%= V.count(this.serversCount, 'server') %}
                 </td>
                 <td>{%= V.formatQuantity(this.basicStats.memUsed) %} / {%= V.formatQuantity(this.quota.ram) %}</td>
                 <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}</td>

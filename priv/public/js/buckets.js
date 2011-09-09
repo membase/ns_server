@@ -601,23 +601,11 @@ var BucketsSection = {
       beforeRendering: function () {
         self.settingsWidget.prepareDrawing();
       },
-      extraCells: [IOCenter.staleness]
-    });
+      afterRendering: function () {
+        _.each(bucketsListCell.value, function(bucketInfo) {
+          var name = bucketInfo.name;
 
-    IOCenter.staleness.subscribeValue(function (staleness) {
-      if (staleness === undefined) {
-        return;
-      }
-      var notice = $('#buckets .staleness-notice');
-      notice[staleness ? 'show' : 'hide']();
-      $('#manage_buckets_top_bar .create-bucket-button')[staleness ? 'hide' : 'show']();
-    });
-
-    DAL.cells.serversCell.subscribeValue(function (nodes) {
-      if (nodes === undefined) {
-        return;
-      } else {
-        var healthStats = _.clone(nodes.healthStats);
+        var healthStats = bucketInfo.healthStats;
 
         var total = _.inject(healthStats, function (a,b) {return a+b}, 0);
 
@@ -647,27 +635,28 @@ var BucketsSection = {
 
         healthStats[maxIndex] -= stolenSize;
 
-        $('#node_health_graph')
-        .sparkline(healthStats, {
+        $($i(name+'_health')).sparkline(healthStats, {
           type: 'pie',
-          sliceColors: ['#4A0', '#fac344', '#f00']
+          sliceColors: ['#4A0', '#fac344', '#f00'],
+          height: (isCanvasSupported ? '1.5em' : 'auto')
+        }).mouseover(function(ev) {
+          $(ev.target).attr('title',
+              bucketInfo.healthStats[0] + ' healthy, ' +
+              bucketInfo.healthStats[1] + ' unhealthy, ' +
+              bucketInfo.healthStats[2] + ' down');
         });
+      });
+    },
+    extraCells: [IOCenter.staleness]
+  });
 
-        var healthStatuses = [];
-        var statusNames = ['healthy', 'pending', 'unhealthy'];
-        var count = 0;
-        var multipleTypes = 0;
-        _.each(nodes.healthStats, function (stat, i) {
-          if (stat > 0) {
-            healthStatuses.push(stat + ' ' + statusNames[i]);
-            multipleTypes++;
-          }
-          count += stat;
-        });
-        $('#node_health_statuses')
-          .html(' ' + healthStatuses.join((multipleTypes > 2 ? ', ' : ' and '))
-              + ' node' + (count > 1 ? 's' : ''));
+    IOCenter.staleness.subscribeValue(function (staleness) {
+      if (staleness === undefined) {
+        return;
       }
+      var notice = $('#buckets .staleness-notice');
+      notice[staleness ? 'show' : 'hide']();
+      $('#manage_buckets_top_bar .create-bucket-button')[staleness ? 'hide' : 'show']();
     });
 
     $('.create-bucket-button').live('click', function (e) {
