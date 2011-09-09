@@ -146,7 +146,7 @@ var ViewsSection = {
     self.modeTabs = new TabsCell("vtab",
                                  "#views .tabs.switcher",
                                  "#views .panes > div",
-                                 ["production", "development"]);
+                                 ["development", "production"]);
     self.modeTabs.subscribeValue(function (tab) {
       views[tab == 'development' ? 'addClass' : 'removeClass']('in-development');
       views[tab == 'development' ? 'removeClass' : 'addClass']('in-production');
