@@ -807,7 +807,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list table.label {float:left;margin:2px 0 0;}
 .list table.label td:first-child {width:175px;color:#444245; text-align:right;}
 
-.list .health_graph {margin-right: 0.75em;position:relative;top:0.5em}
+.list .health_graph {position:relative;top:0.5em}
 
 .switcher {float:left}
 .switcher li {padding:0px !important; background:none !important;}

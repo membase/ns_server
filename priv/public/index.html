@@ -420,7 +420,7 @@
               <tr>
                 <th></th>
                 <th class="bucket_name">Bucket Name</th>
-                <th>Bucket Resides On</th>
+                <th>Nodes</th>
                 <th>RAM Usage/Quota</th>
                 <th>Disk Usage</th>
                 <th>Item Count</th>
@@ -439,7 +439,7 @@
                 </td>
                 <td>
                   <span id="{%= h(this.name) %}_health" class="health_graph"></span>
-                  {%= V.count(this.serversCount, 'server') %}
+                  {%= this.serversCount %}
                 </td>
                 <td>{%= V.formatQuantity(this.basicStats.memUsed) %} / {%= V.formatQuantity(this.quota.ram) %}</td>
                 <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}</td>
