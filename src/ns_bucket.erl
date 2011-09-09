@@ -453,7 +453,7 @@ getenv_int(VariableName, DefaultValue) ->
 
 new_bucket_default_params(membase) ->
     [{type, membase},
-     {num_vbuckets, getenv_int("MEMBASE_NUM_VBUCKETS", 16)},
+     {num_vbuckets, getenv_int("MEMBASE_NUM_VBUCKETS", 32)},
      {num_replicas, 1},
      {ram_quota, 0},
      {servers, []}];
