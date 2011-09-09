@@ -120,7 +120,7 @@ stream_logs(Dir, Log, Fn) ->
 stream_logs(Dir, Log, Fn, ChunkSz) ->
     Path = filename:join(Dir, Log),
 
-    {Ix, _, _, NFiles} = disk_log_1:read_index_file(Path),
+    {Ix, NFiles} = read_index_file(Path),
     Ixs = lists:seq(Ix + 1, NFiles) ++ lists:seq(1, Ix),
 
     lists:foreach(
@@ -145,4 +145,20 @@ stream_logs_loop(IO, ChunkSz, Fn) ->
         {ok, Data} ->
             Fn(Data),
             stream_logs_loop(IO, ChunkSz, Fn)
+    end.
+
+read_index_file(Path) ->
+    {Ix, _, _, NFiles} = disk_log_1:read_index_file(Path),
+
+    %% Index can be one greater than number of files. This means that maximum
+    %% number of files is not yet reached.
+    %%
+    %% Pretty weird behavior: if we're writing to the first file out of 20
+    %% read_index_file returns {1, _, _, 1}. But as we move to the second file
+    %% the result becomes be {2, _, _, 1}.
+    case Ix =:= NFiles + 1 of
+        true ->
+            {Ix, Ix};
+        false ->
+            {Ix, NFiles}
     end.
