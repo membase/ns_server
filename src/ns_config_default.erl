@@ -65,8 +65,11 @@ default() ->
                                                 %
                                                 % Modifiers: menelaus REST API
                                                 % Listeners: some menelaus module that configures/reconfigures mochiweb
+     {rest,
+      [{port, 8091}]},
+
      {{node, node(), rest},
-      [{port, misc:get_env_default(rest_port, 8091)}, % Port number of the REST admin API and UI.
+      [{port, misc:get_env_default(rest_port, '_use_global_value')}, % Port number of the REST admin API and UI.
        {capi_port, CAPIPort}
       ]},
 
@@ -219,8 +222,11 @@ upgrade_config(Config) ->
             [{set, {node, node(), config_version}, {1,7,1}} |
              upgrade_config_from_1_7_to_1_7_1()];
         {value, {1,7,1}} ->
+            [{set, {node, node(), config_version}, {1,7,2}} |
+             upgrade_config_from_1_7_1_to_1_7_2(Config)];
+        {value, {1,7,2}} ->
             [{set, {node, node(), config_version}, {2,0}} |
-             upgrade_config_from_1_7_1_to_2_0()];
+             upgrade_config_from_1_7_2_to_2_0()];
         {value, {2,0}} ->
             []
     end.
@@ -260,8 +266,57 @@ do_upgrade_config_from_1_7_to_1_7_1(DefaultConfig) ->
     [{set, email_alerts, Alerts},
      {set, auto_failover_cfg, AutoFailover}].
 
-upgrade_config_from_1_7_1_to_2_0() ->
-    ?log_info("Upgrading config from 1.7.1 to 2.0", []),
+upgrade_config_from_1_7_1_to_1_7_2(Config) ->
+    ?log_info("Upgrading config from 1.7.1 to 1.7.2", []),
+    DefaultConfig = default(),
+    do_upgrade_config_from_1_7_1_to_1_7_2(Config, DefaultConfig).
+
+do_upgrade_config_from_1_7_1_to_1_7_2(Config, DefaultConfig) ->
+    Node = node(),
+    NodesWanted = case ns_config:search(Config, nodes_wanted) of
+                      {value, Nodes} -> lists:usort(Nodes);
+                      false -> []
+                  end,
+
+    RestPorts = lists:map(
+                  fun (N) ->
+                          ns_config:search_node_prop(N, Config, rest, port)
+                  end,
+                  NodesWanted),
+
+    {rest, DefaultRest} = lists:keyfind(rest, 1, DefaultConfig),
+    {{node, Node, rest}, DefaultNodeRest} =
+        lists:keyfind({node, node(), rest}, 1, DefaultConfig),
+
+    {RestChangeValue, NodeRestChangeValue} =
+        case lists:usort(RestPorts) of
+            [] ->
+                ?log_info("Setting global and node rest port to default", []),
+                {DefaultRest, DefaultNodeRest};
+            [Port] ->
+                ?log_info("Setting global rest port to ~p and resetting "
+                          "per node value", [Port]),
+                {[{port, Port}], DefaultNodeRest};
+            _ ->
+                ?log_info("Setting global rest port to default "
+                          "but keeping per node value ", []),
+                {DefaultRest, undefined}
+        end,
+
+
+    RestChange = [{set, rest, RestChangeValue}],
+    NodeRestChange =
+        case NodeRestChangeValue of
+            undefined ->
+                [];
+            _ ->
+                [{set, {node, Node, rest}, NodeRestChangeValue}]
+        end,
+
+    RestChange ++ NodeRestChange.
+
+upgrade_config_from_1_7_2_to_2_0() ->
+    ?log_info("Upgrading config from 1.7.2 to 2.0", []),
     DefaultConfig = default(),
     {_, RestConfig} = lists:keyfind({node, node(), rest}, 1, DefaultConfig),
     {_, AutoCompactionV} = lists:keyfind(autocompaction, 1, DefaultConfig),
@@ -298,6 +353,53 @@ upgrade_1_6_to_1_7_test() ->
 
 no_upgrade_on_2_0_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, {2, 0}}]])).
+
+upgrace_1_7_1_to_1_7_1_1_test() ->
+    DefaultCfg = [{rest, [{port, 8091}]},
+                  {{node, node(), rest}, [{port, '_use_global_value'}]}],
+
+    OldCfg0 = [{nodes_wanted, [node()]},
+               {{node, node(), rest}, [{port, 9000}]}],
+    Ref0 = [{set, rest, [{port, 9000}]},
+            {set, {node, node(), rest}, [{port, '_use_global_value'}]}],
+
+    Res0 = do_upgrade_config_from_1_7_1_to_1_7_2([OldCfg0], DefaultCfg),
+    ?assertEqual(lists:sort(Ref0), lists:sort(Res0)),
+
+
+    OldCfg1 = [],
+    Ref1 = [{set, rest, [{port, 8091}]},
+            {set, {node, node(), rest}, [{port, '_use_global_value'}]}],
+
+    Res1 = do_upgrade_config_from_1_7_1_to_1_7_2([OldCfg1], DefaultCfg),
+    ?assertEqual(lists:sort(Ref1), lists:sort(Res1)),
+
+    OldCfg2 = [{nodes_wanted, [node(), other_node]},
+               {{node, node(), rest}, [{port, 9000}]},
+               {{node, other_node, rest}, [{port, 9001}]}],
+    Ref2 = [{set, rest, [{port, 8091}]}],
+
+    Res2 = do_upgrade_config_from_1_7_1_to_1_7_2([OldCfg2], DefaultCfg),
+    ?assertEqual(lists:sort(Ref2), lists:sort(Res2)),
+
+    OldCfg3 = [{nodes_wanted, [node(), other_node]},
+               {{node, node(), rest}, [{port, 9000}]},
+               {{node, other_node, rest}, [{port, 9000}]}],
+    Ref3 = [{set, rest, [{port, 9000}]},
+            {set, {node, node(), rest}, [{port, '_use_global_value'}]}],
+
+    Res3 = do_upgrade_config_from_1_7_1_to_1_7_2([OldCfg3], DefaultCfg),
+    ?assertEqual(lists:sort(Ref3), lists:sort(Res3)),
+
+    OldCfg4 = [{nodes_wanted, [node(), other_node]},
+               {rest, [{port, 9000}]},
+               {{node, node(), rest}, [{port, 9000}]},
+               {{node, other_node, rest}, [{port, '_use_global_value'}]}],
+    Ref4 = [{set, rest, [{port, 9000}]},
+            {set, {node, node(), rest}, [{port, '_use_global_value'}]}],
+
+    Res4 = do_upgrade_config_from_1_7_1_to_1_7_2([OldCfg4], DefaultCfg),
+    ?assertEqual(lists:sort(Ref4), lists:sort(Res4)).
 
 fuller_1_6_test_() ->
     {spawn,

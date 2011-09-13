@@ -221,8 +221,7 @@ extract_bucket_props(BucketId, Props) ->
                            X =/= false],
     case BucketId of
         "default" -> lists:keyreplace(auth_type, 1,
-                                      lists:keyreplace(sasl_password, 1,
-                                                       ImportantProps, {sasl_password, ""}),
+                                      [{sasl_password, ""} | lists:keydelete(sasl_password, 1, ImportantProps)],
                                       {auth_type, sasl});
         _ -> ImportantProps
     end.

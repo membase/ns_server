@@ -102,6 +102,15 @@ _start() {
     _maybe_start_epmd
     _load_config
 
+    # Set an ENV variable to force C++ STL and string classes to not use its
+    # default memory pooling allocator.
+    # For GCC 3.2.2 and later
+    GLIBCPP_FORCE_NEW=1
+    export GLIBCPP_FORCE_NEW
+    # For GCC 3.4 and later
+    GLIBCXX_FORCE_NEW=1
+    export GLIBCXX_FORCE_NEW
+
     exec erl \
         +A 16 \
         +P 327680 \

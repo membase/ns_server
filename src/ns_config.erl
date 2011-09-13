@@ -312,8 +312,12 @@ search_node(Config, Key) ->
 
 search_node(Node, Config, Key) ->
     case search(Config, {node, Node, Key}) of
-        {value, _} = V -> V;
-        false          -> search(Config, Key)
+        {value, '_use_global_value'} ->
+            search(Config, Key);
+        {value, _} = V ->
+            V;
+        false ->
+            search(Config, Key)
     end.
 
 % Returns the Value or undefined.
@@ -342,7 +346,12 @@ search_node_prop(Config, Key, SubKey, DefaultSubVal) ->
 search_node_prop(Node, Config, Key, SubKey, DefaultSubVal) ->
     case search_node(Node, Config, Key) of
         {value, PropList} ->
-            proplists:get_value(SubKey, PropList, DefaultSubVal);
+            case proplists:get_value(SubKey, PropList, DefaultSubVal) of
+                '_use_global_value' ->
+                    search_prop(Config, Key, SubKey, DefaultSubVal);
+                V ->
+                    V
+            end;
         false ->
             DefaultSubVal
     end.
