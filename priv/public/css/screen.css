@@ -371,11 +371,9 @@ h3.block-expander a { font-weight:normal; text-transform:none; }
 
 p.info {padding:5px 24px 15px;font-weight:bold;}
 
-#bucket_list_container {border-left:1px solid #c8ccce; border-bottom:1px solid #c8ccce;}
+#bucket_list_container, #memcached_bucket_list_container {border-left:1px solid #c8ccce; border-bottom:1px solid #c8ccce;}
+#memcached_bucket_list_container .disk_fetch {display:none}
 
-#bucket_list_container .type_icon {background:url('../images/bucket_types.png') no-repeat 0 center;width:10px}
-#bucket_list_container .memcached .type_icon {background-position:-32px center}
-#bucket_list_container .memcached .btn_documents, #bucket_list_container .memcached .btn_views {display:none}
 #get_started {display:none;}
 
 #settings legend {font-size:14px;font-weight:bold;margin-left:16px}
@@ -741,10 +739,10 @@ ul.tabs .badge_display .badge {display:block;}
 .list {border-right:1px solid #d9dce0;}
 .list td {background:none #eee;border-bottom:1px solid #ced5d9; padding:10px;border-right:0px; text-align:center;vertical-align:middle;}
 .list.align_text td {text-align:left}
-#bucket_list_container .list td {line-height:30px}
-#bucket_list_container .list .marg {margin-right:13px}
-#bucket_list_container .properties_table td {color:#404042}
-#bucket_list_container .properties_table td span {color:#7c7d7f}
+#buckets .list td {line-height:30px}
+#buckets .list .marg {margin-right:13px}
+#buckets .properties_table td {color:#404042}
+#buckets .properties_table td span {color:#7c7d7f}
 .list td table td {background:none;border:none}
 .list td > table td {padding:0 5px;width:110px;border:none;vertical-align:middle;}
 .list td > table td:first-child {width:155px;padding:0 5px 0 61px;background:url(../images/icons.png) -7px -93px no-repeat #eee;}
@@ -752,7 +750,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list td > table td:first-child+td+td+td {width:125px;}
 
 .list tr:first-child th, .list tr:first-child td label {padding:10px 5px;color:#4d4d4d;font-weight:bold;font-size:11px;text-align:center;background:none #f6f6f7; border-right:0px; border-bottom:1px solid #fff;}
-.list tr:first-child th {padding: 10px 5px 10px 8px;text-align:left}
+.list tr:first-child th {padding: 10px 5px 10px 8px}
 .list tr:first-child th:first-child {/*padding:0 0 0 56px;*padding-right:25px;display:block;*/text-align:left;white-space:nowrap;}
 .list tr:first-child th i {font-style:normal;position:relative;}
 .list tr:first-child th.bucket_name, .list tr:first-child th.bucket_name {padding:10px;text-align:left}

@@ -405,27 +405,37 @@
 
         <div id="buckets" style="display:none">
           <h1>Data Buckets</h1>
-          <div class="shadow_box">
+          <div class="shadow_box" id="couchbase_buckets">
             <div class="darker_block" id="manage_buckets_top_bar">
+              <h2 style="float:left;padding:0.9em">Couchbase Buckets</h2>
               <div class="pad_10 right buckets_action_bar clearfix">
                 <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
                 <button class="button_200 create-bucket-button">Create New Data Bucket</button>
               </div>
             </div>
             <div id="bucket_list_container"></div>
-          </div><!-- END shadow box -->
+          </div>
+
+          <div class="shadow_box" id="memcached_buckets">
+            <div class="darker_block">
+              <h2 style="float:left;padding:0.9em">Memcached Buckets</h2>
+              <div class="pad_10 right buckets_action_bar clearfix">
+                <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+              </div>
+            </div>
+            <div id="memcached_bucket_list_container"></div>
+          </div>
 
           <script id="bucket_list_template" type="text/html">
             <table class="list" width="100%">
               <tr>
-                <th></th>
                 <th class="bucket_name">Bucket Name</th>
                 <th>Nodes</th>
                 <th>RAM Usage/Quota</th>
                 <th>Disk Usage</th>
                 <th>Item Count</th>
                 <th>Ops/sec</th>
-                <th>Disk Fetches/sec</th>
+                <th class="disk_fetch">Disk Fetches/sec</th>
                 <th class="last"></th>
               </tr>
               <!-- {% if (!rows.length) { %} -->
@@ -433,7 +443,6 @@
               <!-- {% } %} -->
               <!-- {% $.each(rows, function () { %} -->
               <tr class="{%= this.bucketTypeName.toLowerCase() %}">
-                <td class="type_icon">&nbsp;</td>
                 <td class="bucket_name">
                   <a class="disable-if-stale" title="Visit Analytics section for {%= h(this.name) %}" href="#sec=analytics&statsBucket={%= h(this.uri) %}">{%= h(this.name) %}</a>
                 </td>
@@ -445,10 +454,10 @@
                 <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}</td>
                 <td>{%= h(this.basicStats.itemCount) %}</td>
                 <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
-                <td>{% if (this.basicStats.diskFetches !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}{% } else { %}N/A{% } %}</td>
+                {% if (this.bucketType == 'membase') { %}<td>{% if (this.basicStats.diskFetches !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}{% } else { %}N/A{% } %}</td>{% } %}
                 <td>
-                  {% if (this.bucketType == 'membase') { %}<a class="list_button marg disable-if-stale" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>{% } %}
-                  <a class="list_button btn_info {%= (this.bucketType != 'membase') ? 'marg' : '' %} disable-if-stale" href="#visitBucket={%=h(this.name)%}">Info</a>
+                  <a class="list_button btn_info disable-if-stale" href="#visitBucket={%=h(this.name)%}">Info</a>
+                  {% if (this.bucketType == 'membase') { %}<a class="list_button disable-if-stale" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>{% } %}
                 </td>
               </tr>
               <tr>

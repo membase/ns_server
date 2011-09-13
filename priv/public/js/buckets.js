@@ -597,13 +597,9 @@ var BucketsSection = {
       listCell: bucketsListCell
     });
 
-    renderCellTemplate(bucketsListCell, 'bucket_list', {
-      beforeRendering: function () {
-        self.settingsWidget.prepareDrawing();
-      },
-      afterRendering: function () {
-        _.each(bucketsListCell.value, function(bucketInfo) {
-          var name = bucketInfo.name;
+    function renderHealthStats() {
+      _.each(bucketsListCell.value, function(bucketInfo) {
+        var name = bucketInfo.name;
 
         var healthStats = bucketInfo.healthStats;
 
@@ -646,9 +642,31 @@ var BucketsSection = {
               bucketInfo.healthStats[2] + ' down');
         });
       });
-    },
-    extraCells: [IOCenter.staleness]
-  });
+    }
+
+    (function (cb) {
+      var slave = bucketsListCell.subscribeAny(function () {
+        return cb(bucketsListCell.value);
+      });
+      IOCenter.staleness.changedSlot.subscribeWithSlave(slave);
+      IOCenter.staleness.undefinedSlot.subscribeWithSlave(slave);
+    })(function (buckets) {
+      if (!buckets) {
+        prepareAreaUpdate('#bucket_list_container');
+        prepareAreaUpdate('#memcached_bucket_list_container');
+        return;
+      }
+
+      self.settingsWidget.prepareDrawing();
+
+      var membaseBuckets = _.select(buckets, function (rv) {return rv.bucketType === 'membase'});
+      var memcachedBuckets = _.reject(buckets, function (rv) {return rv.bucketType === 'membase'});
+
+      renderTemplate('bucket_list', membaseBuckets, $i('bucket_list_container'));
+      renderTemplate('bucket_list', memcachedBuckets, $i('memcached_bucket_list_container'));
+
+      renderHealthStats();
+    });
 
     IOCenter.staleness.subscribeValue(function (staleness) {
       if (staleness === undefined) {
