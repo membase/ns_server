@@ -129,7 +129,8 @@ view_merge_params(Req, #db{name = BucketName}, DDocId, ViewName, ViewSpecs) ->
     end,
     MergeParams0 = #view_merge{
         views = ViewSpecs,
-        keys = Keys
+        keys = Keys,
+        ddoc_revision = auto
     },
     couch_httpd_view_merger:apply_http_config(Req, Body, MergeParams0).
 
