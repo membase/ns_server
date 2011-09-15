@@ -145,7 +145,7 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth_bucket, fun menelaus_web_buckets:handle_bucket_info_streaming/3,
                                   [PoolId, Id]};
                              ["pools", PoolId, "buckets", Id, "stats"] ->
-                                 {auth_bucket, fun handle_abortable_bucket_stats/3,
+                                 {auth_bucket, fun menelaus_stats:handle_bucket_stats/3,
                                   [PoolId, Id]};
                              ["pools", PoolId, "buckets", Id, "statsDirectory"] ->
                                  {auth_bucket, fun menelaus_stats:serve_stats_directory/3,
@@ -160,11 +160,11 @@ loop(Req, AppRoot, DocRoot) ->
                                   [PoolId, Id, NodeId]};
                              %% GET /pools/{PoolId}/buckets/{Id}/nodes/{NodeId}/stats
                              ["pools", PoolId, "buckets", Id, "nodes", NodeId, "stats"] ->
-                                  {auth_bucket, fun handle_abortable_bucket_node_stats/4,
+                                  {auth_bucket, fun menelaus_stats:handle_bucket_node_stats/4,
                                    [PoolId, Id, NodeId]};
                              %% GET /pools/{PoolId}/buckets/{Id}/stats/{StatName}
                              ["pools", PoolId, "buckets", Id, "stats", StatName] ->
-                                  {auth_bucket, fun handle_abortable_specific_stat_for_bucket/4,
+                                  {auth_bucket, fun menelaus_stats:handle_specific_stat_for_buckets/4,
                                    [PoolId, Id, StatName]};
                              ["nodeStatuses"] ->
                                  {auth, fun handle_node_statuses/1};
@@ -1693,75 +1693,6 @@ handle_diag_vbuckets(Req) ->
                           | ExtraHeaders],
                          mochijson2:encode(JSON)})
     end.
-
-handle_abortable_get_request(Req, Body) ->
-    Socket = Req:get(socket),
-    Parent = self(),
-    {ok, [{active, PrevActive}]} = inet:getopts(Socket, [active]),
-    Ref = erlang:make_ref(),
-    Child = spawn_link(fun () ->
-                               receive
-                                   {Ref, armed} ->
-                                       ok
-                               end,
-                               inet:setopts(Socket, [{active, once}]),
-                               receive
-                                   {Ref, done} ->
-                                       gen_tcp:controlling_process(Socket, Parent),
-                                       receive
-                                           {tcp_closed, _} = M ->
-                                               Parent ! M;
-                                           {tcp, _, _} = M ->
-                                               Parent ! M
-                                       after 0 -> ok
-                                       end,
-                                       Parent ! {Ref, done};
-                                   {tcp_closed, Socket} ->
-                                       ?log_info("I have nobody to live for. Killing myself..."),
-                                       exit(Parent, kill)
-                               end
-                       end),
-    gen_tcp:controlling_process(Socket, Child),
-    Child ! {Ref, armed},
-    try
-        Body(Req)
-    after
-        Child ! {Ref, done},
-        receive
-            {Ref, done} -> ok
-        end
-    end,
-    inet:setopts(Socket, [{active, PrevActive}]),
-    receive
-        {tcp, Socket, _} ->
-            %% we got some new (possibly pipelined) request, but we
-            %% eat some data, so we cannot handle it. But it's ok as
-            %% spec allows us to close socket in keepalive state at
-            %% any time
-            exit(normal);
-        {tcp_closed, Socket} ->
-            exit(normal)
-    after 0 ->
-            ok
-    end.
-
-handle_abortable_bucket_stats(PoolId, BucketId, Req) ->
-    Fun = fun(_) ->
-                  menelaus_stats:handle_bucket_stats(PoolId, BucketId, Req)
-          end,
-    handle_abortable_get_request(Req, Fun).
-
-handle_abortable_bucket_node_stats(PoolId, BucketId, NodeId, Req) ->
-    Fun = fun(_) ->
-                  menelaus_stats:handle_bucket_node_stats(PoolId, BucketId, NodeId, Req)
-          end,
-    handle_abortable_get_request(Req, Fun).
-
-handle_abortable_specific_stat_for_bucket(PoolId, BucketId, StatName, Req) ->
-    Fun = fun(_) ->
-                  menelaus_stats:handle_specific_stat_for_buckets(PoolId, BucketId, StatName, Req)
-          end,
-    handle_abortable_get_request(Req, Fun).
 
 handle_set_autocompaction(Req) ->
     Params = Req:parse_post(),
