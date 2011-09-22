@@ -1068,11 +1068,6 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 
 #view_code .list td {padding:0}
 /* View function editing */
-#viewcode { background: #fff;margin: 0 0 1em;}
-#viewcode .top, #viewcode .bottom { background-color: #e9e9e9;
-  border: 1px solid; border-color: #ddd #ddd #e9e9e9 #ddd; color: #333;
-  padding: 0 .5em 2px;
-}
 #viewcode table { border: none; border-collapse: separate; border-spacing: 0;margin: 0; table-layout: fixed; width: 100%;}
 #viewcode table td { border: none; padding: 0; }
 #viewcode table td.splitter { background: #e9e9e9; width: 4px; }
