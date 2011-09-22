@@ -739,12 +739,14 @@ var ViewsSection = {
     function fetchRandomId(fun) {
       self.dbURLCell.getValue(function (dbURL) {
         couchReq('GET', buildURL(dbURL, '_random'), null, function (data) {
+          // TODO: handle failed lookup of cookie in a more friendly way (especially on empty buckets)
           $.cookie("randomKey", data.id);
           fun(data.id);
+          $('#sample_docs').show();
+          $('#no_sample_docs').hide();
         }, function() {
-          $("#edit_preview_doc").addClass("disabled");
-          jsonCodeEditor.setValue("Bucket is currently empty");
-          $("#lookup_doc_by_id").val("");
+          $('#sample_docs').hide();
+          $('#no_sample_docs').show();
         });
       });
     }
