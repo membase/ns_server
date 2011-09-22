@@ -491,7 +491,7 @@ var ServersSection = {
     });
   },
   reAddNode: function (hostname) {
-    if (!self.poolDetails.value) {
+    if (!this.poolDetails.value) {
       return;
     }
 
