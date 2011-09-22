@@ -681,7 +681,6 @@ body.init_bucket_dialog #container { display: none; }
 .servers_list li.th div {float:left;width:320px;}
 .servers_list li.th div+div {width:320px;padding:0 0 0 10px;width:200px;border-left:1px solid #d2d3d5;}
 .servers_list li.th p {float:left;width:208px;padding:0 0 0 10px;background:url(../images/bg_li_th.gif) 0 -31px repeat-x;border-left:1px solid #d2d3d5;}
-.servers_list table .marg {margin-right:13px}
 .servers_list .spinner span {position:relative;top:15px;}
 .warning_message {min-height:20px;margin: -10px 0 10px;padding:5px 0 0 25px;color:#dd3b2c;font-size:12px;line-height:1.3;background:url(../images/warning_bg_2.png) 0 0 no-repeat;}
 .failover_warning {display: none;}
@@ -693,7 +692,7 @@ ul.tabs .tab_right .badge {display:none;}
 ul.tabs .badge_display .badge {display:block;}
 
 .servers_header {padding:11px 10px 5px 11px;}
-.create_view {float:right;margin:0 10px 0 0}
+.create_view {float:right;}
 
 .server_usage {display:block; width:183px; height:16px; float:right; background:url(../images/usage_small_2.gif) 0 -16px no-repeat; position:relative; top:-8px;}
 .server_usage span {display:block; width:183px; height:16px; overflow:hidden; position:absolute; left:0px; top:0px; background:url(../images/usage_small_2.gif) 0 0 no-repeat; width:30%;}
@@ -740,7 +739,6 @@ ul.tabs .badge_display .badge {display:block;}
 .list td {background:none #eee;border-bottom:1px solid #ced5d9; padding:10px;border-right:0px; text-align:center;vertical-align:middle;}
 .list.align_text td {text-align:left}
 #buckets .list td {line-height:30px}
-#buckets .list .marg {margin-right:13px}
 #buckets .properties_table td {color:#404042}
 #buckets .properties_table td span {color:#7c7d7f}
 .list td table td {background:none;border:none}
@@ -820,7 +818,6 @@ ul.tabs.switcher {height:32px; overflow:visible;}
 .btn_1 {display:inline-block; height:31px; font-size:14px !important; background:url(../images/btn_1_bg.png) 100% -31px no-repeat; padding:0 4px 0 0 !important; color:#000;cursor:pointer}
 .btn_1 span {/*display:inline-block;*/ display:block; text-align:center; height:31px; padding:0 6px 0 10px; line-height:31px; background:url(../images/btn_1_bg.png) 0 0 no-repeat;color:#000; text-shadow:#bbbfc2 1px 1px;}
 .btn_1:hover {text-decoration:none}
-#view_run_button.bt_marg {margin:0 28px 0 0}
 
 /* root element for tabs */
 ul.tabs { list-style:none; margin:0 !important; padding:0; height:32px;overflow:visible;display:block;}
@@ -870,7 +867,6 @@ div.panes div.pane {display:none;}
 
 html>/**/body #servers .list_button, x:-moz-any-link, x:default {position:relative;} /* Only FireFox 3 */
 html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none !important;}
-.actions .marg {margin-right:13px}
 
 .clearfix:after {clear:both;content:' ';display:block;font-size:0;height:0;line-height:0;visibility:hidden;width:0;}
 * html .clearfix, *+html .clearfix {zoom: 1;}
@@ -1003,9 +999,8 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 
 /* extra element is needed to increase 'specifity' of this selector */
 span.staleness-notice, .staleness-notice { display: none; color: red; }
-span.staleness-notice + a {margin:0 13px 0}
 #buckets .staleness-notice { font-size: 12px; float: right; line-height: 32px;}
-#buckets .buckets_action_bar { height: 32px; }
+#buckets .buckets_action_bar { height: 32px; padding:10px }
 #overview .staleness-notice { font-size: 12px; float: right; }
 #servers .staleness-notice { font-size: 12px; float: right; }
 #logs .staleness-notice { font-size: 12px; float: right; padding-top: 5px; padding-right: 10px;}
