@@ -175,8 +175,8 @@
           <script id="manage_server_list_template" type="text/html">
           <table class="list" style="width:100%">
             <tr>
-              <th></th>
               <th class="node_name">Server Node Name</th>
+              <th></th>
               <th>RAM Usage</th>
               <th>Swap Usage</th>
               <th>CPU Usage</th>
@@ -190,31 +190,28 @@
           <!-- {% _.each(rows, function (s) { %} -->
             <!-- {% if (s.clusterMembership == 'inactiveAdded') { %}-->
             <tr class="server_row pending_add {%= s.nodeClass %}">
-              <td>{%= V.setData('server', s) %}</td>
-              <td class="node_name">
+              <td class="node_name">{%= V.setData('server', s) %}
               {%= V.stripPortHTML(s.hostname, rows) %}
               </td>
-              <td colspan="4">
+              <td colspan="5">
 
               </td>
               <td>
               <a href="#" class="list_button btn_cancel eject_server"><span>Cancel</span></a>
-              <a class="list_button btn_info{% if (!expandingAllowed) { %} disabled"{% } else { %}" href="#openServer={%= h(s.otpNode) %}"{% } %}>Info</a>
               <span class="pending_add_message">Pending Add</span>
               </td>
             </tr>
             <!-- {% } else if (s.pendingEject) { %} -->
             <tr class="server_row pending_removal {%= s.nodeClass %}">
-              <td>{%= V.setData('server', s) %}</td>
-              <td class="node_name">
+              <td class="node_name">{%= V.setData('server', s) %}
+              <a class="{% if (!expandingAllowed) { %} disabled"{% } else { %}" href="#openServer={%= h(s.otpNode) %}"{% } %}><span class="expander closed"></span></a>
               {%= V.stripPortHTML(s.hostname, rows) %}
               </td>
-              <td colspan="4">
+              <td colspan="5">
               <span class="pending_removal_message">Pending Removal</span>
               </td>
               <td>
               <a href="#" class="list_button btn_cancel remove_from_list"><span>Cancel</span></a>
-              <a class="list_button btn_info{% if (!expandingAllowed) { %} disabled"{% } else { %}" href="#openServer={%= h(s.otpNode) %}"{% } %}>Info</a>
               </td>
             </tr>
             <!-- {% } else { %} -->
@@ -229,10 +226,16 @@
               <!-- {% } %} -->
 
               <tr class="server_row {%= s.nodeClass %}" id="{%= h(s.otpNode.replace('@', '-')) %}">
-                <td class="{%= s.nodeClass %}">{%= V.setData('server', s) %}</td>
-                <td class="node_name">
+                <td class="node_name">{%= V.setData('server', s) %}
+              <!-- {% if (s.reAddPossible) { %} -->
+                  <a href="#openServer={%= h(s.otpNode) %}"><ins class="expander closed"></ins></a>
+                  {%= V.stripPortHTML(s.hostname, rows) %}
+              <!-- {% } else { %} -->
+                  <a class="{% if (!expandingAllowed) { %} disabled"{% } else { %}" href="#openServer={%= h(s.otpNode) %}"{% } %}><ins class="expander closed"></ins></a>
                   <a href="#sec=analytics&statsHostname={%= h(s.hostname) %}">{%= V.stripPortHTML(s.hostname, rows) %}</a>
+              <!-- {% } %} -->
                 </td>
+                <td class="{%= s.nodeClass %}"></td>
                 <td class="ram">
                   <div class="vertical_bar">
                     <div class="used" style="height:{%= (s.memoryTotal - s.memoryFree) / s.memoryTotal * 100 %}%;top:{%= 105 - ((s.memoryTotal - s.memoryFree) / s.memoryTotal * 100) %}%"></div>
@@ -265,7 +268,6 @@
                   <a class="list_button eject_server"><span>Remove</span></a>
                   <a class="list_button failover_server"><span>Fail Over</span></a>
                   <span class="failed_over_message">Failed Over: Pending Removal</span>
-                  <a class="list_button btn_info{% if (!expandingAllowed) { %} disabled"{% } else { %}" href="#openServer={%= h(s.otpNode) %}"{% } %}>Info</a> <!--"-->
                 </td>
               </tr>
             <!-- {% } %} -->

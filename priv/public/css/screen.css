@@ -658,10 +658,10 @@ body.init_bucket_dialog #container { display: none; }
 .btn_x {margin: 4px 0 0;width:25px;height:24px;background:url(../images/btn_x.png) no-repeat}
 
 .server_up, .server_down, .failed_over, .server_warmup, .pending_add {width:61px;padding: 0 !important;}
-.server_up {background:transparent url(../images/server_status_icons_solid_bg.png) 0 17px no-repeat !important;}
-.server_down {background:transparent url(../images/server_status_icons_solid_bg.png) 0 -163px no-repeat !important;}
-.failed_over, .server_warmup, .pending_add {background:transparent url(../images/server_status_icons_solid_bg.png) 0 -313px no-repeat !important;}
-.failed_over .node_name {color:#333; opacity:0.3;}
+.server_up {background:transparent url(../images/server_status_icons_solid_bg.png) right 17px no-repeat !important;}
+.server_down {background:transparent url(../images/server_status_icons_solid_bg.png) right -163px no-repeat !important;}
+.failed_over, .server_warmup, .pending_add {background:transparent url(../images/server_status_icons_solid_bg.png) right -313px no-repeat !important;}
+#pending_server_list_container .node_name a{display:none}
 
 #servers h2 { height: 25px;}
 .servers_list ul {*margin:-1px 0 0;*position:relative;*top:1px;}
@@ -758,8 +758,8 @@ ul.tabs .badge_display .badge {display:block;}
 .list tr:first-child th.bucket_name, .list tr:first-child th.bucket_name {padding:10px;text-align:left}
 .list tr:first-child th.last {border-right:1px solid #d9dce0;}
 .list td.design_doc_name {font-weight:bolder; color: #808080; text-align:left;font-size:100%;}
-.list td.bucket_name, .list td.view_name, .list td.node_name {font-weight:bolder;color:#0095D6;text-align:left;font-size:130%}
-.list td.node_name {font-size:120%;}
+.list td.bucket_name, .list td.view_name, .list td.node_name {font-weight:bolder;text-align:left;font-size:130%}
+.list td.node_name {font-size:120%;white-space:nowrap}
 .list td.ram {width:77px}
 .list td.rep {width:38px}
 .list td.view_name{padding-left:3em;color:#616062}

@@ -175,7 +175,11 @@ var ServersSection = {
       valueTransformer: function (nodeInfo, nodeSettings) {
         return _.extend({}, nodeInfo, nodeSettings);
       },
-      listCell: Cell.compute(function (v) {return v.need(DAL.cells.serversCell).active})
+      listCell: Cell.compute(function (v) {return v.need(DAL.cells.serversCell).active}),
+      aroundRendering: function (originalRender, cell, container) {
+        originalRender();
+        $(container).closest('tr').prev().find('.node_name .expander').toggleClass('closed', !cell.interested.value);
+      }
     });
 
     self.serversCell = DAL.cells.serversCell;
