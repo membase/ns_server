@@ -594,7 +594,11 @@ var BucketsSection = {
         rv.storageInfoRelevant = (rv.bucketType == 'membase');
         return rv;
       },
-      listCell: bucketsListCell
+      listCell: bucketsListCell,
+      aroundRendering: function (originalRender, cell, container) {
+        originalRender();
+        $(container).closest('tr').prev().find('.bucket_name .expander').toggleClass('closed', !cell.interested.value);
+      }
     });
 
     function renderHealthStats() {

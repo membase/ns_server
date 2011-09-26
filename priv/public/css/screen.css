@@ -213,8 +213,11 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .darker_block {position:relative;*zoom:1;}
 .darker_block.withtotal {background:url(../images/bg_total.gif) 100% 0 repeat-y;}
 .darker_block h3 {overflow:hidden;cursor:pointer;background:#EEEEEF;padding:5px 10px;font-size:14px;text-transform:uppercase;*zoom:1;}
-.darker_block h3 ins {float:left;width:0;height:0;margin:2px 0.75em 0 0;border-style:solid;border-width:10px 10px 0 10px;border-color:#01b0ff transparent transparent transparent;cursor:pointer;}
-.darker_block h3:hover ins{border-top-color:#339ACA;}
+.darker_block h3 ins, ins.expander {float:left;width:0;height:0;margin:2px 0.75em 0 0;border-style:solid;border-width:10px 10px 0 10px;border-color:#01b0ff transparent transparent transparent;cursor:pointer;}
+.darker_block h3:hover ins, ins.expander:hover {border-top-color:#339ACA;}
+
+#buckets ins.expander{margin-top:0.6em}
+#buckets ins.expander.closed{margin-top:0.3em}
 
 .darker_block .stats{padding:6px 0 6px 5px;border-bottom:5px solid #EEEEEF}
 
@@ -224,8 +227,8 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 
 .darker_block.closed {padding:0;border-bottom:5px solid #eeeeef;*border:none;}
 .darker_block.closed > div, .darker_block.closed ul.col_headers {display:none !important;}
-.darker_block.closed h3 ins {margin:-3px 1.2em 0 4px;border-width:10px 0 10px 10px;border-color:transparent transparent transparent #01b0ff;}
-.darker_block.closed h3:hover ins{border-left-color:#339ACA;}
+.darker_block.closed h3 ins, ins.expander.closed {margin:-3px 1.2em 0 4px;border-width:10px 0 10px 10px;border-color:transparent transparent transparent #01b0ff;}
+.darker_block.closed h3:hover ins, ins.expander.closed:hover {border-left-color:#339ACA;}
 .darker_block .analytics-small-graph {overflow:visible;width:174px !important;height:60px !important; margin:4px 7px 5px;}
 .darker_block .analytics-small-graph:hover {background-position:0 -122px;z-index:90;}
 .darker_block .analytics-small-graph.selected {background-position:0 -61px;}

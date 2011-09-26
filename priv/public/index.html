@@ -445,6 +445,7 @@
               <!-- {% $.each(rows, function () { %} -->
               <tr class="{%= this.bucketTypeName.toLowerCase() %}">
                 <td class="bucket_name">
+                  <a class="disable-if-stale" href="#visitBucket={%=h(this.name)%}"><ins class="expander closed"></ins></a>
                   <a class="disable-if-stale" title="Visit Analytics section for {%= h(this.name) %}" href="#sec=analytics&statsBucket={%= h(this.uri) %}">{%= h(this.name) %}</a>
                 </td>
                 <td>
@@ -458,7 +459,6 @@
                 <td>{%= V.formatQuantity(this.basicStats.memUsed) %} / {%= V.formatQuantity(this.quota.ram) %}</td>
                 <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}</td>
                 <td>
-                  <a class="list_button btn_info disable-if-stale" href="#visitBucket={%=h(this.name)%}">Info</a>
                   {% if (this.bucketType == 'membase') { %}<a class="list_button disable-if-stale" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>{% } %}
                 </td>
               </tr>
