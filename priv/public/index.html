@@ -431,11 +431,12 @@
               <tr>
                 <th class="bucket_name">Bucket Name</th>
                 <th>Nodes</th>
-                <th>RAM Usage/Quota</th>
-                <th>Disk Usage</th>
                 <th>Item Count</th>
                 <th>Ops/sec</th>
                 <th class="disk_fetch">Disk Fetches/sec</th>
+                <th class="hit_ratio">Hit Ratio</th>
+                <th>RAM Usage/Quota</th>
+                <th>Disk Usage</th>
                 <th class="last"></th>
               </tr>
               <!-- {% if (!rows.length) { %} -->
@@ -450,11 +451,12 @@
                   <span id="{%= h(this.name) %}_health" class="health_graph"></span>
                   {%= this.serversCount %}
                 </td>
-                <td>{%= V.formatQuantity(this.basicStats.memUsed) %} / {%= V.formatQuantity(this.quota.ram) %}</td>
-                <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}</td>
                 <td>{%= h(this.basicStats.itemCount) %}</td>
                 <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
                 {% if (this.bucketType == 'membase') { %}<td>{% if (this.basicStats.diskFetches !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}{% } else { %}N/A{% } %}</td>{% } %}
+                {% if (this.bucketType == 'memcached') { %}<td>{%= h(truncateTo3Digits(this.basicStats.hitRatio * 100)) %}%</td>{% } %}
+                <td>{%= V.formatQuantity(this.basicStats.memUsed) %} / {%= V.formatQuantity(this.quota.ram) %}</td>
+                <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}</td>
                 <td>
                   <a class="list_button btn_info disable-if-stale" href="#visitBucket={%=h(this.name)%}">Info</a>
                   {% if (this.bucketType == 'membase') { %}<a class="list_button disable-if-stale" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>{% } %}

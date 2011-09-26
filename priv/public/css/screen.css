@@ -372,6 +372,7 @@ h3.block-expander a { font-weight:normal; text-transform:none; }
 p.info {padding:5px 24px 15px;font-weight:bold;}
 
 #bucket_list_container, #memcached_bucket_list_container {border-left:1px solid #c8ccce; border-bottom:1px solid #c8ccce;}
+#bucket_list_container .hit_ratio {display:none}
 #memcached_bucket_list_container .disk_fetch {display:none}
 
 #get_started {display:none;}
