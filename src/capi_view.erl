@@ -27,17 +27,31 @@
     get_value/3
 ]).
 
+-define(RETRY_INTERVAL, 5 * 1000).
+-define(RETRY_ATTEMPTS, 20).
+
 design_doc_view(Req, #db{name=BucketName} = Db, DesignName, ViewName, VBuckets) ->
     DDocId = <<"_design/", DesignName/binary>>,
-    Specs = build_local_specs(BucketName, DDocId, ViewName, VBuckets),
+    Specs = build_local_simple_specs(BucketName, DDocId, ViewName, VBuckets),
     MergeParams = view_merge_params(Req, Db, DDocId, ViewName, Specs),
     couch_view_merger:query_view(Req, MergeParams).
 
 design_doc_view(Req, Db, DesignName, ViewName) ->
     DDocId = <<"_design/", DesignName/binary>>,
-    MergeParams = view_merge_params(Req, Db, DDocId, ViewName),
-    couch_view_merger:query_view(Req, MergeParams).
+    design_doc_view_loop(Req, Db, DDocId, ViewName, ?RETRY_ATTEMPTS).
 
+design_doc_view_loop(_Req, _Db, _DDocId, _ViewName, 0) ->
+    throw({error, inconsistent_state});
+design_doc_view_loop(Req, Db, DDocId, ViewName, Attempt) ->
+    MergeParams = view_merge_params(Req, Db, DDocId, ViewName),
+    try
+        couch_view_merger:query_view(Req, MergeParams)
+    catch
+        throw:{error, set_view_outdated} ->
+            ?log_debug("Got `set_view_outdated` error. Retrying."),
+            timer:sleep(?RETRY_INTERVAL),
+            design_doc_view_loop(Req, Db, DDocId, ViewName, Attempt - 1)
+    end.
 
 handle_view_req(Req, Db, DDoc) when Db#db.filepath =/= undefined ->
     couch_httpd_view:handle_view_req(Req, Db, DDoc);
@@ -100,21 +114,31 @@ node_vbuckets_dict(BucketName) ->
     NodeToVBuckets.
 
 
+%% we're handling only the special views in the old way
+view_merge_params(Req, #db{name = BucketName} = Db,
+                  DDocId, ViewName) when DDocId =:= nil ->
+    NodeToVBuckets = node_vbuckets_dict(?b2l(BucketName)),
+    Config = ns_config:get(),
+    ViewSpecs = dict:fold(
+        fun(Node, VBuckets, Acc) when Node =:= node() ->
+            build_local_simple_specs(BucketName, DDocId,
+                                     ViewName, VBuckets) ++ Acc;
+        (Node, VBuckets, Acc) ->
+           [build_remote_simple_specs(Node, BucketName,
+                                      ViewName, VBuckets, Config) | Acc]
+        end, [], NodeToVBuckets),
+    view_merge_params(Req, Db, DDocId, ViewName, ViewSpecs);
+
 view_merge_params(Req, #db{name = BucketName} = Db, DDocId, ViewName) ->
     NodeToVBuckets = node_vbuckets_dict(?b2l(BucketName)),
     Config = ns_config:get(),
-    FullViewName = case DDocId of
-    nil ->
-        % _all_docs and other special builtin views
-        ViewName;
-    _ ->
-        iolist_to_binary([BucketName, "%2F", "master", $/, DDocId, $/, ViewName])
-    end,
     ViewSpecs = dict:fold(
         fun(Node, VBuckets, Acc) when Node =:= node() ->
-            build_local_specs(BucketName, DDocId, ViewName, VBuckets) ++ Acc;
+            build_local_specs(Req, BucketName,
+                              DDocId, ViewName, VBuckets) ++ Acc;
         (Node, VBuckets, Acc) ->
-           [build_remote_specs(Node, BucketName, FullViewName, VBuckets, Config) | Acc]
+           [build_remote_specs(Req, Node, BucketName,
+                               DDocId, ViewName, VBuckets, Config) | Acc]
         end, [], NodeToVBuckets),
     view_merge_params(Req, Db, DDocId, ViewName, ViewSpecs).
 
@@ -148,8 +172,54 @@ vbucket_db_name(BucketName, VBucket) when is_binary(VBucket) ->
 vbucket_db_name(BucketName, VBucket) ->
     iolist_to_binary([BucketName, $/, integer_to_list(VBucket)]).
 
+use_set_views(Req) ->
+    get_value("superstar", (Req#httpd.mochi_req):parse_qs(), "true") =:= "true".
 
-build_local_specs(BucketName, DDocId, ViewName, VBuckets) ->
+build_local_specs(Req, BucketName, DDocId, ViewName, VBuckets) ->
+    case use_set_views(Req) of
+        true ->
+            build_local_set_specs(BucketName, DDocId, ViewName, VBuckets);
+        false ->
+            build_local_simple_specs(BucketName, DDocId, ViewName, VBuckets)
+    end.
+
+build_remote_specs(Req, Node, BucketName, DDocId, ViewName, VBuckets, Config) ->
+    case use_set_views(Req) of
+        true ->
+            FullViewName = iolist_to_binary([DDocId, $/, ViewName]),
+            build_remote_set_specs(Node, BucketName,
+                                   FullViewName, VBuckets, Config);
+        false ->
+            FullViewName = iolist_to_binary([BucketName, "%2F", "master", $/,
+                                             DDocId, $/, ViewName]),
+            build_remote_simple_specs(Node, BucketName,
+                                      FullViewName, VBuckets, Config)
+    end.
+
+build_local_set_specs(BucketName, DDocId, ViewName, VBuckets) ->
+    [#set_view_spec{
+         name = BucketName,
+         ddoc_id = DDocId,
+         view_name = ViewName,
+         partitions = VBuckets
+     }].
+
+build_remote_set_specs(Node, BucketName, FullViewName, VBuckets, Config) ->
+    MergeURL = iolist_to_binary(capi_utils:capi_url(Node, "/_view_merge",
+                                                    "127.0.0.1", Config)),
+
+    Sets = {[
+        {BucketName, {[{<<"view">>, FullViewName},
+                       {<<"partitions">>, VBuckets}]}}
+    ]},
+
+    Props = {[
+        {<<"views">>,
+            {[{<<"sets">>, Sets}]}}
+    ]},
+    #merged_view_spec{url = MergeURL, ejson_spec = Props}.
+
+build_local_simple_specs(BucketName, DDocId, ViewName, VBuckets) ->
     DDocDbName = iolist_to_binary([BucketName, $/, "master"]),
     lists:map(fun(VBucket) ->
             #simple_view_spec{
@@ -160,8 +230,7 @@ build_local_specs(BucketName, DDocId, ViewName, VBuckets) ->
             }
         end, [<<"master">> | VBuckets]).
 
-
-build_remote_specs(Node, BucketName, FullViewName, VBuckets, Config) ->
+build_remote_simple_specs(Node, BucketName, FullViewName, VBuckets, Config) ->
     MergeURL = iolist_to_binary(capi_utils:capi_url(Node, "/_view_merge", "127.0.0.1", Config)),
     Props = {[
         {<<"views">>,
