@@ -46,6 +46,10 @@ default() ->
                         element(2, ns_storage_conf:allowed_node_quota_range(MemData));
                     _ -> undefined
                 end,
+    PortMeta = case application:get_env(rest_port) of
+                   {ok, _Port} -> local;
+                   undefined -> global
+               end,
     [{directory, path_config:component_path(data, "config")},
      {nodes_wanted, [node()]},
      {{node, node(), membership}, active},
@@ -63,7 +67,8 @@ default() ->
       [{port, 8091}]},
 
      {{node, node(), rest},
-      [{port, misc:get_env_default(rest_port, '_use_global_value')}]},
+      [{port, misc:get_env_default(rest_port, 8091)},
+       {port_meta, PortMeta}]},
 
                                                 % In 1.0, only the first entry in the creds list is displayed in the UI
                                                 % and accessible through the UI.
@@ -278,7 +283,7 @@ do_upgrade_config_from_1_7_1_to_1_7_2(Config, DefaultConfig) ->
 
     RestPorts = lists:map(
                   fun (N) ->
-                          ns_config:search_node_prop(N, Config, rest, port)
+                          misc:node_rest_port(Config, N)
                   end,
                   NodesWanted),
 
@@ -292,24 +297,17 @@ do_upgrade_config_from_1_7_1_to_1_7_2(Config, DefaultConfig) ->
                 ?log_info("Setting global and node rest port to default", []),
                 {DefaultRest, DefaultNodeRest};
             [Port] ->
-                ?log_info("Setting global rest port to ~p and resetting "
-                          "per node value", [Port]),
-                {[{port, Port}], DefaultNodeRest};
+                ?log_info("Setting global and per-node rest port to ~p", [Port]),
+                {[{port, Port}], [{port, Port}, {port_meta, global}]};
             _ ->
                 ?log_info("Setting global rest port to default "
                           "but keeping per node value ", []),
-                {DefaultRest, undefined}
+                OurPort = ns_config:search_node_prop(Node, Config, rest, port),
+                {DefaultRest, [{port, OurPort}, {port_meta, local}]}
         end,
-
 
     RestChange = [{set, rest, RestChangeValue}],
-    NodeRestChange =
-        case NodeRestChangeValue of
-            undefined ->
-                [];
-            _ ->
-                [{set, {node, Node, rest}, NodeRestChangeValue}]
-        end,
+    NodeRestChange = [{set, {node, Node, rest}, NodeRestChangeValue}],
 
     RestChange ++ NodeRestChange.
 
@@ -359,14 +357,18 @@ upgrade_1_6_to_1_7_test() ->
                              {set, {node, node(), ns_log}, default_log}]),
                  lists:sort(Strip(Res))).
 
-upgrace_1_7_1_to_1_7_1_1_test() ->
+upgrade_1_7_1_to_1_7_2_test() ->
     DefaultCfg = [{rest, [{port, 8091}]},
-                  {{node, node(), rest}, [{port, '_use_global_value'}]}],
+                  {{node, node(), rest},
+                   [{port, 8091},
+                    {port_meta, global}]}],
 
     OldCfg0 = [{nodes_wanted, [node()]},
                {{node, node(), rest}, [{port, 9000}]}],
     Ref0 = [{set, rest, [{port, 9000}]},
-            {set, {node, node(), rest}, [{port, '_use_global_value'}]}],
+            {set, {node, node(), rest},
+             [{port, 9000},
+              {port_meta, global}]}],
 
     Res0 = do_upgrade_config_from_1_7_1_to_1_7_2([OldCfg0], DefaultCfg),
     ?assertEqual(lists:sort(Ref0), lists:sort(Res0)),
@@ -374,7 +376,9 @@ upgrace_1_7_1_to_1_7_1_1_test() ->
 
     OldCfg1 = [],
     Ref1 = [{set, rest, [{port, 8091}]},
-            {set, {node, node(), rest}, [{port, '_use_global_value'}]}],
+            {set, {node, node(), rest},
+             [{port, 8091},
+              {port_meta, global}]}],
 
     Res1 = do_upgrade_config_from_1_7_1_to_1_7_2([OldCfg1], DefaultCfg),
     ?assertEqual(lists:sort(Ref1), lists:sort(Res1)),
@@ -382,7 +386,9 @@ upgrace_1_7_1_to_1_7_1_1_test() ->
     OldCfg2 = [{nodes_wanted, [node(), other_node]},
                {{node, node(), rest}, [{port, 9000}]},
                {{node, other_node, rest}, [{port, 9001}]}],
-    Ref2 = [{set, rest, [{port, 8091}]}],
+    Ref2 = [{set, rest, [{port, 8091}]},
+            {set, {node, node(), rest},
+             [{port, 9000}, {port_meta, local}]}],
 
     Res2 = do_upgrade_config_from_1_7_1_to_1_7_2([OldCfg2], DefaultCfg),
     ?assertEqual(lists:sort(Ref2), lists:sort(Res2)),
@@ -391,7 +397,9 @@ upgrace_1_7_1_to_1_7_1_1_test() ->
                {{node, node(), rest}, [{port, 9000}]},
                {{node, other_node, rest}, [{port, 9000}]}],
     Ref3 = [{set, rest, [{port, 9000}]},
-            {set, {node, node(), rest}, [{port, '_use_global_value'}]}],
+            {set, {node, node(), rest},
+             [{port, 9000},
+              {port_meta, global}]}],
 
     Res3 = do_upgrade_config_from_1_7_1_to_1_7_2([OldCfg3], DefaultCfg),
     ?assertEqual(lists:sort(Ref3), lists:sort(Res3)),
@@ -399,9 +407,12 @@ upgrace_1_7_1_to_1_7_1_1_test() ->
     OldCfg4 = [{nodes_wanted, [node(), other_node]},
                {rest, [{port, 9000}]},
                {{node, node(), rest}, [{port, 9000}]},
-               {{node, other_node, rest}, [{port, '_use_global_value'}]}],
+               {{node, other_node, rest},
+                [{port, 9000}, {port_meta, global}]}],
     Ref4 = [{set, rest, [{port, 9000}]},
-            {set, {node, node(), rest}, [{port, '_use_global_value'}]}],
+            {set, {node, node(), rest},
+             [{port, 9000},
+              {port_meta, global}]}],
 
     Res4 = do_upgrade_config_from_1_7_1_to_1_7_2([OldCfg4], DefaultCfg),
     ?assertEqual(lists:sort(Ref4), lists:sort(Res4)).

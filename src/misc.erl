@@ -1101,6 +1101,14 @@ parse_base_version(BaseVersionStr) ->
     {lists:map(fun list_to_integer/1,
                string:tokens(BaseVersionStr1, ".")), Type}.
 
+node_rest_port(Config, Node) ->
+    case ns_config:search_node_prop(Node, Config, rest, port_meta, local) of
+        local ->
+            ns_config:search_node_prop(Node, Config, rest, port, 8091);
+        global ->
+            ns_config:search_prop(Config, rest, port, 8091)
+    end.
+
 -ifdef(EUNIT).
 parse_version_test() ->
     ?assertEqual({[1,7,0],release,252},
