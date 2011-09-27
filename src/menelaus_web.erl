@@ -166,6 +166,8 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools", PoolId, "buckets", Id, "stats", StatName] ->
                                   {auth_bucket, fun menelaus_stats:handle_specific_stat_for_buckets/4,
                                    [PoolId, Id, StatName]};
+                             ["pools", "default", "remoteClusters"] ->
+                                 {auth, fun menelaus_web_remote_clusters:handle_remote_clusters/1};
                              ["nodeStatuses"] ->
                                  {auth, fun handle_node_statuses/1};
                              ["logs"] ->
@@ -267,6 +269,10 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
                                  {auth_bucket, fun menelaus_web_buckets:handle_bucket_flush/3,
                                 [PoolId, Id]};
+                             ["pools", "default", "remoteClusters"] ->
+                                 {auth, fun menelaus_web_remote_clusters:handle_remote_clusters_post/1};
+                             ["pools", "default", "remoteClusters", Id] ->
+                                 {auth, fun menelaus_web_remote_clusters:handle_remote_cluster_update/2, [Id]};
                              ["logClientError"] -> {auth_any_bucket,
                                                     fun (R) ->
                                                             User = menelaus_auth:extract_auth(username, R),
@@ -288,6 +294,8 @@ loop(Req, AppRoot, DocRoot) ->
                          case PathTokens of
                              ["pools", PoolId, "buckets", Id] ->
                                  {auth, fun menelaus_web_buckets:handle_bucket_delete/3, [PoolId, Id]};
+                             ["pools", "default", "remoteClusters", Id] ->
+                                 {auth, fun menelaus_web_remote_clusters:handle_remote_cluster_delete/2, [Id]};
                              ["nodes", Node, "resources", LocationPath] ->
                                  {auth, fun handle_resource_delete/3, [Node, LocationPath]};
                              ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
@@ -515,6 +523,8 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                                  misc:shuffle(Nodes)
                          end},
                  {buckets, BucketsInfo},
+                 {remoteClusters, {struct, [{uri, <<"/pools/default/remoteClusters">>},
+                                            {validateURI, <<"/pools/default/remoteClusters?just_validate=1">>}]}},
                  {controllers, Controllers},
                  {balanced, ns_cluster_membership:is_balanced()},
                  {failoverWarnings, ns_bucket:failover_warnings()},

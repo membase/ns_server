@@ -88,6 +88,7 @@ default() ->
                                                 %              ]}, % An empty list means no login/password auth check.
 
                                                 % This is also a parameter to memcached ports below.
+     {remote_clusters, []},
      {{node, node(), isasl}, [{path, filename:join(DbDir, "isasl.pw")}]},
 
                                                 % Memcached config
@@ -226,7 +227,7 @@ upgrade_config(Config) ->
              upgrade_config_from_1_7_1_to_1_7_2(Config)];
         {value, {1,7,2}} ->
             [{set, {node, node(), config_version}, {2,0}} |
-             upgrade_config_from_1_7_2_to_2_0()];
+             upgrade_config_from_1_7_2_to_2_0(Config)];
         {value, {2,0}} ->
             []
     end.
@@ -315,13 +316,26 @@ do_upgrade_config_from_1_7_1_to_1_7_2(Config, DefaultConfig) ->
 
     RestChange ++ NodeRestChange.
 
-upgrade_config_from_1_7_2_to_2_0() ->
+upgrade_config_from_1_7_2_to_2_0(Config) ->
     ?log_info("Upgrading config from 1.7.2 to 2.0", []),
     DefaultConfig = default(),
+    do_upgrade_config_from_1_7_2_to_2_0(Config, DefaultConfig).
+
+do_upgrade_config_from_1_7_2_to_2_0(Config, DefaultConfig) ->
     {_, RestConfig} = lists:keyfind({node, node(), rest}, 1, DefaultConfig),
-    {_, AutoCompactionV} = lists:keyfind(autocompaction, 1, DefaultConfig),
-    [{set, {node, node(), rest}, RestConfig},
-     {set, autocompaction, AutoCompactionV}].
+    MaybeAutoCompaction = case ns_config:search(Config, autocompaction) of
+                              {value, _} -> [];
+                              false ->
+                                  {_, AutoCompactionV} = lists:keyfind(autocompaction, 1, DefaultConfig),
+                                  [{set, autocompaction, AutoCompactionV}]
+                          end,
+    MaybeRemoteClusters = case ns_config:search(Config, remote_clusters) of
+                              {value, _} -> [];
+                              false ->
+                                  {_, RemoteClustersV} = lists:keyfind(remote_clusters, 1, DefaultConfig),
+                                  [{set, remote_clusters, RemoteClustersV}]
+                          end,
+    [{set, {node, node(), rest}, RestConfig}] ++ MaybeAutoCompaction ++ MaybeRemoteClusters.
 
 upgrade_1_6_to_1_7_test() ->
     DefaultCfg = [{directory, default_directory},
@@ -350,6 +364,17 @@ upgrade_1_6_to_1_7_test() ->
                                {memcached, "memcached something"}]},
                              {set, {node, node(), ns_log}, default_log}]),
                  lists:sort(Res)).
+
+upgrade_1_7_2_to_2_0_test() ->
+    Cfg = [[{{node, node(), rest}, something},
+            {remote_clusters, foobar}]],
+    DefaultCfg = [{{node, node(), rest}, somethingelse},
+                  {remote_clusters, foobar_2},
+                  {autocompaction, compaction_something}],
+    Result = do_upgrade_config_from_1_7_2_to_2_0(Cfg, DefaultCfg),
+    ?assertEqual([{set, {node, node(), rest}, somethingelse},
+                  {set, autocompaction, compaction_something}],
+                 Result).
 
 no_upgrade_on_2_0_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, {2, 0}}]])).

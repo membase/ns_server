@@ -715,6 +715,21 @@ var MockedRequest = mkClass({
           }
         }
       ],
+      [get("pools", "default", "remoteClusters"), [
+        {name: "kyiv",
+         uri: "/pools/default/remoteClusters/kyiv",
+         validateURI: "/pools/default/remoteClusters/kyiv?just_validate=1",
+         hostname: "kyiv-mb01.yyy.com",
+         username: "yaraslau-the-wise"},
+        {name: "london",
+         uri: "/pools/default/remoteClusters/london",
+         validateURI: "/pools/default/remoteClusters/london?just_validate=1",
+         hostname: "london-mb04.yyy.com",
+         username: "victoria"}
+      ]],
+      [del("pools", "default", "remoteClusters", x), method('doNothingPOST')],
+      [post("pools", "default", "remoteClusters", x), method('doNothingPOST')],
+      [post("pools", "default", "remoteClusters"), method('doNothingPOST')],
       [get("pools", "default", "overviewStats"), {
         "timestamp":[1281667776000.0,1281667780000.0,1281667784000.0,1281667788000.0,1281667792000.0,
                      1281667796000.0,1281667800000.0,1281667804000.0,1281667809100.0,1281667812000.0,
@@ -1102,6 +1117,10 @@ var ServerStateMock = {
     "nodes": [],
     "buckets": {
       "uri": "/pools/default/buckets?v=86081550"
+    },
+    "remoteClusters": {
+      "uri": "/pools/default/remoteClusters",
+      "validateURI": "/pools/default/remoteClusters?just_validate=1"
     },
     "controllers": {
       "addNode": {
