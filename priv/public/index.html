@@ -408,9 +408,9 @@
         <div id="buckets" style="display:none">
           <h1>Data Buckets</h1>
           <div class="shadow_box" id="couchbase_buckets">
-            <div class="darker_block" id="manage_buckets_top_bar">
-              <h2 style="float:left;padding:0.9em">Couchbase Buckets</h2>
-              <div class="pad_10 right buckets_action_bar clearfix">
+            <div id="manage_buckets_top_bar" class="header_2">
+              <h4 style="float:left">Couchbase Buckets</h4>
+              <div class="right">
                 <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
                 <button class="button_200 create-bucket-button">Create New Data Bucket</button>
               </div>
@@ -419,9 +419,9 @@
           </div>
 
           <div class="shadow_box" id="memcached_buckets">
-            <div class="darker_block">
-              <h2 style="float:left;padding:0.9em">Memcached Buckets</h2>
-              <div class="pad_10 right buckets_action_bar clearfix">
+            <div id="manage_buckets_top_bar" class="header_2">
+              <h4 style="float:left">Memcached Buckets</h4>
+              <div class="right">
                 <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
               </div>
             </div>
@@ -817,7 +817,7 @@
           </h1>
           <div id="views_spinner" class="spinner" style="height:100px;line-height:100px;display:none;"><span>Loading...</span></div>
           <div class="shadow_box" id="views_list">
-            <div class="header_2 servers_header">
+            <div class="header_2">
               <ul class="tabs switcher">
                 <li class="tab_left">
                   <a>Development Views</a>
