@@ -1129,11 +1129,12 @@
                 </tr>
                 <!-- {% if (rows.length > 0) { %} -->
                 <!-- {% _.each(rows, function (r) { %} -->
-                <tr>
-                  <td>{%= r.name %}</td>
-                  <td>{%= r.ip %}</td>
+                <tr data-name="{%= h(r.name) %}">
+                  <td>{%= h(r.name) %}</td>
+                  <td>{%= h(r.hostname) %}</td>
                   <td>
-                    <a class="list_button"><span>Edit</span></a>
+                    <a class="list_button edit-button"><span>Edit</span></a>
+                    <a class="list_button delete-button"><span>Delete</span></a>
                   </td>
                 </tr>
                 <!-- {% }); %} -->
@@ -1640,14 +1641,19 @@
 
 <!-- Create Cluster Reference -->
 <div class="dialog join_cluster" id="create_cluster_reference_dialog" title="Create Cluster Reference" style="width:500px">
-  <span class="warning pat_10"></span>
+  <div class="warning pat_10" id="create_cluster_reference_dialog_errors_container"></div>
+  <script id="create_cluster_reference_dialog_errors_template" type="text/html">
+    <!-- {% _.each(rows, function (e) { %} -->
+    <strong>Attention</strong> - {%= h(e) %}<br>
+    <!-- {% }); %} -->
+  </script>
   <form>
     <fieldset>
       <ul>
        <li><label for="cluster_reference_name">Cluster Name:</label>
          <input name="name" id="cluster_reference_name" /></li>
-       <li><label for="cluster_reference_ip">Node IP Address Name:</label>
-         <input name="ip" id="cluster_reference_ip" />
+       <li><label for="cluster_reference_hostname">Node IP Address Name:</label>
+         <input name="hostname" id="cluster_reference_hostname" />
          <a class="text_11 tooltip"><span>What's this?</span>
            <span class="tooltip_msg"><span>
              This is the hostname or IP address of a node in the cluster you want
