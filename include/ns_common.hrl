@@ -55,6 +55,9 @@
 -define(LOG(Level, Format, Args),
         ale:log(?NS_SERVER_LOGGER, Level, Format, Args)).
 
+-define(log_debug(Format, Args), ale:debug(?NS_SERVER_LOGGER, Format, Args)).
+-define(log_debug(Msg), ale:debug(?NS_SERVER_LOGGER, Msg)).
+
 -define(log_info(Format, Args), ale:info(?NS_SERVER_LOGGER, Format, Args)).
 -define(log_info(Msg), ale:info(?NS_SERVER_LOGGER, Msg)).
 
