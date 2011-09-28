@@ -1022,7 +1022,7 @@ var ViewsSection = {
             ViewsSection.doSaveAs(dbURL, ddoc, toId, overwriteConfirmed, function (arg) {
               modal.finish();
               if (arg == "conflict") {
-                genericDialog({text: "Please, confirm overwriting target design document.",
+                genericDialog({text: "Please, confirm overwriting target Design Document.",
                                callback: function (e, name, instance) {
                                  instance.close();
                                  if (name != 'ok') {
@@ -1097,7 +1097,7 @@ var ViewsSection = {
 
     function startSaving(ddocName, viewName) {
       if (!ddocName || !viewName) {
-        warning.text("Design document and view names cannot be empty").show();
+        warning.text("Design Document and View names cannot be empty").show();
         return;
       }
       // TODO: maybe other validation
@@ -1214,7 +1214,7 @@ var ViewsSection = {
 
     function startSaving(dbURL, ddoc, viewName, newDDocName, newViewName) {
       if (!newDDocName || !newViewName) {
-        warning.text('Both design document name and view name need to be specified').show();
+        warning.text('Both Design Document name and view name need to be specified').show();
         return;
       }
 
@@ -1336,7 +1336,7 @@ var ViewsSection = {
         return;
       }
       genericDialog({header: 'Confirm Publishing',
-                     text: 'If there is an existing design document ' +
+                     text: 'If there is an existing Design Document ' +
                        'in production with this name, it will be overwritten. Please confirm.',
                      buttons: {ok: "Confirm", cancel: true},
                      callback: function (e, name, instance) {
