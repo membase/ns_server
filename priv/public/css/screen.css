@@ -142,7 +142,8 @@ a.button_200 {display:block; color:#444245 !important; text-decoration:none !imp
 /* disabled for beta1 .button_200:hover {background-position:0 -32px; color:#f8eeed !important;}
 .button_200:active {background-position:0 -64px; color:#e0eff7 !important;} */
 
-.header_2, #servers .header_2 {height:40px; line-height:40px; padding:5px 10px 0 11px; font-size:18px; font-family:Helvetica, Verdana; background:url(../images/devider_line_1.gif) 0 100% repeat-x #dfe0e0; font-weight:normal;}
+.header_2 {height:40px; line-height:40px; padding:5px 10px 0 11px; font-size:18px; font-family:Helvetica, Verdana; background:url(../images/bg_h2.gif) 0 100% repeat-x #e3e3e4; font-weight:normal;}
+.header_2 h4{font-weight:normal}
 .header_2 .nav {color:#b6b6ba; font-size:11px; padding:0 11px 0 0;}
 .header_2 .nav a {font-weight:bolder; color:#0095d6; margin:0 3px; cursor:pointer;}
 .header_2 .nav .current {color:#444245; cursor:default;}
