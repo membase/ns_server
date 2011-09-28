@@ -1087,7 +1087,7 @@ var ViewsSection = {
       ddocNameInput.val(this.cutOffDesignPrefix(ddocId));
     }
     showDialog(dialog, {
-      title: 'Create View',
+      title: 'Create Development View',
       closeOnEscape: false,
       eventBindings: [['.save_button', 'click', function (e) {
         e.preventDefault();

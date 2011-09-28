@@ -868,7 +868,7 @@
             <!-- {% } else if (!rows.length) { %} -->
             <tbody>
               <tr><td colspan="10" class="empty">
-                <span class="when-in-dev">No Design Documents currently defined. Click "Create View..." above to create one.</span>
+                <span class="when-in-dev">No Design Documents currently defined. Click "Create Development View" above to create one.</span>
                 <span class="when-in-prod">There are not Design Documents currently published. Please visit "Development Views" to create one.</span>
               </td></tr>
             </tbody>
@@ -883,14 +883,14 @@
                 <td>
                 </td>
                 <td>
-                  <a class="list_button when-in-prod" href="#copyDDoc={%=h(ddoc._id)%}"><span>Copy to dev...</span></a>
+                  <a class="list_button when-in-prod" href="#copyDDoc={%=h(ddoc._id)%}"><span>Copy to Dev</span></a>
                   <a class="list_button when-in-dev" href="#publishDDoc={%=h(ddoc._id)%}"><span>Publish</span></a>
-                  <a class="list_button when-in-dev" href="#addView={%=h(ddoc._id)%}"><span>Add View...</span></a>
+                  <a class="list_button when-in-dev" href="#addView={%=h(ddoc._id)%}"><span>Add View</span></a>
                   <a class="list_button" href="#deleteDDoc={%=h(ddoc._id)%}"><span>Delete</span></a>
                 </td>
               </tr>
               <!-- {% if (_.size(ddoc.viewInfos) < 1) { %} -->
-              <tr><td colspan="10" style="padding:15px">No views defined!<span class="when-in-dev"> Click "Create View..." above to create one.</span></td></tr>
+              <tr><td colspan="10" style="padding:15px">No views defined!<span class="when-in-dev"> Click "Create Development View" above to create one.</span></td></tr>
               <!-- {% } else { %} -->
               <!-- {% _.each(ddoc.viewInfos, function (viewInfo) { %} -->
               <tr>
