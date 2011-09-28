@@ -660,9 +660,9 @@ body.init_bucket_dialog #container { display: none; }
 .btn_x {margin: 4px 0 0;width:25px;height:24px;background:url(../images/btn_x.png) no-repeat}
 
 .server_up, .server_down, .failed_over, .server_warmup, .pending_add {width:65px;padding: 0 !important;}
-.server_up {background:transparent url(../images/server_status_icons_solid_bg.png) right 17px no-repeat !important;}
-.server_down {background:transparent url(../images/server_status_icons_solid_bg.png) right -163px no-repeat !important;}
-.failed_over, .server_warmup, .pending_add {background:transparent url(../images/server_status_icons_solid_bg.png) right -313px no-repeat !important;}
+.server_up {background:transparent url(../images/server_status_icons_solid_bg.png) right 19px no-repeat !important;}
+.server_down {background:transparent url(../images/server_status_icons_solid_bg.png) right -160px no-repeat !important;}
+.failed_over, .server_warmup, .pending_add {background:transparent url(../images/server_status_icons_solid_bg.png) right -310px no-repeat !important;}
 #pending_server_list_container .node_name a{display:none}
 
 #servers h2 { height: 25px;}
