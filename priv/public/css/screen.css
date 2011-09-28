@@ -1042,8 +1042,7 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 #views .list .empty {padding:15px}
 #views.in-production .when-in-dev, #views.in-development .when-in-prod {display:none}
 #views .stats {padding:0;border:none}
-#production_views_list_container .btn_edit, #production_views_list_container .btn_remove, #production_views_list_container .btn_publish, #production_views_list_container .create_view_button{display:none}
-#development_views_list_container .btn_views {display:none}
+#production_views_list_container .btn_remove, #production_views_list_container .btn_publish, #production_views_list_container .create_view_button{display:none}
 
 #view_development .darker_block h3 {padding:15px}
 #view_development .darker_block .buttons {float:right;margin:-8px -10px 0 0;text-transform:none}
