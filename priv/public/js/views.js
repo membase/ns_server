@@ -1155,7 +1155,9 @@ var ViewsSection = {
   doStartRemoveView: function (bucketName, ddocId, viewName) {
     var self = this;
     self.withBucketAndDDoc(bucketName, ddocId, function (ddocURL, ddoc) {
-      genericDialog({text: "Are you sure?",
+      genericDialog({text: "Deleting this view will result in the index" +
+        "for this Design Document to be regenerated when next requested. " +
+        "Are you sure you want to delete this view from this Design Document?",
                      callback: function (e, name, instance) {
                        instance.close();
                        if (name === 'ok') {
