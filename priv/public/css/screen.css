@@ -645,6 +645,7 @@ body.init_bucket_dialog #container { display: none; }
 #servers .add_button {width:124px;}
 #servers .rebalance_button {width:115px;}
 
+/* currently unused but keeping for later use
 .btn_edit {background: url(../images/buttons.png) no-repeat -39px top;text-indent:-9000px;width:32px;height:31px;}
 .btn_edit.disabled {opacity:0.75;background-position:-39px -31px}
 .btn_views {background: url(../images/buttons.png) no-repeat left top;text-indent:-9000px;width:32px;height:31px;}
@@ -655,6 +656,7 @@ body.init_bucket_dialog #container { display: none; }
 .btn_analytics.disabled {opacity:0.75;background-position:right -31px}
 .btn_info {background: url(../images/buttons.png) no-repeat -117px top;text-indent:-9000px;width:32px;height:31px;}
 .btn_info.disabled {opacity:0.75;background-position:-117px -31px}
+*/
 .btn_x {margin: 4px 0 0;width:25px;height:24px;background:url(../images/btn_x.png) no-repeat}
 
 .server_up, .server_down, .failed_over, .server_warmup, .pending_add {width:65px;padding: 0 !important;}
