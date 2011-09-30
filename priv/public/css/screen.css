@@ -525,7 +525,7 @@ body.auth #container { display: none; }
 
 .active_tooltip {z-index: 2;}
 .active_tooltip span.tooltip_msg {display:block;}
-.tooltip {position:relative; display:inline-block; text-decoration:none !important;}
+.tooltip {position:relative; display:inline-block; text-decoration:none !important; padding-bottom:4px}
 .tooltip:hover span:first-child {text-decoration:underline;}
 .tooltip .tooltip_msg {display:none; position:absolute; width:150px; padding:6px 0 0 0; right:0px; top:14px; background:url(../images/tooltip_bg.gif) 100% 0 no-repeat; z-index:10;}
 .tooltip .tooltip_msg span {display:block; padding:5px; background:none #555557; font-size:11px; text-decoration:none !important; color:#fff !important;white-space:normal}

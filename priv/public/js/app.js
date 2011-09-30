@@ -907,48 +907,12 @@ $('.notice').live('click', function () {
 
 $('.tooltip').live('click', function (e) {
   e.preventDefault();
-
-  var jq = $(this);
-  if (jq.hasClass('active_tooltip')) {
-    return;
-  }
-
-  jq.addClass('active_tooltip');
-  var msg = jq.find('.tooltip_msg')
-  msg.hide().fadeIn('slow', function () {this.removeAttribute('style')});
-
-  function resetEffects() {
-    msg.stop();
-    msg.removeAttr('style');
-    if (timeout) {
-      clearTimeout(timeout);
-      timeout = undefined;
-    }
-  }
-
-  function hide() {
-    resetEffects();
-
-    jq.removeClass('active_tooltip');
-    jq.unbind();
-  }
-
-  var timeout;
-
-  jq.bind('click', function (e) {
-    e.stopPropagation();
-    hide();
-  })
-  jq.bind('mouseout', function (e) {
-    timeout = setTimeout(function () {
-      msg.fadeOut('slow', function () {
-        hide();
-      });
-    }, 250);
-  })
-  jq.bind('mouseover', function (e) {
-    resetEffects();
-  })
+  $('.tooltip_msg', this).stop(true, true).fadeIn();
+}).live('mouseleave', function (e) {
+  $('.tooltip_msg', this).stop(true, true).fadeOut();
+})
+.delegate('.tooltip_msg', 'mouseenter', function (e) {
+  $(this).stop(true, true).fadeIn(0);
 });
 
 configureActionHashParam('visitSec', function (sec) {
