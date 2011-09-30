@@ -445,7 +445,7 @@
               <!-- {% $.each(rows, function () { %} -->
               <tr class="{%= this.bucketTypeName.toLowerCase() %}">
                 <td class="bucket_name">
-                  <a class="disable-if-stale" href="#visitBucket={%=h(this.name)%}"><ins class="expander closed"></ins></a>
+                  <a class="disable-if-stale" href="#visitBucket={%=h(this.name)%}"><span class="expander closed"></span></a>
                   <a class="disable-if-stale" title="Visit Analytics section for {%= h(this.name) %}" href="#sec=analytics&statsBucket={%= h(this.uri) %}">{%= h(this.name) %}</a>
                 </td>
                 <td>
