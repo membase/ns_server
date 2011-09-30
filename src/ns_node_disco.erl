@@ -47,7 +47,10 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {nodes}).
+-record(state, {
+          nodes :: [node()],
+          we_were_shunned = false :: boolean()
+         }).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -117,6 +120,16 @@ handle_cast(nodes_wanted_updated, State) ->
     do_nodes_wanted_updated(do_nodes_wanted()),
     {noreply, State};
 
+handle_cast(we_were_shunned, #state{we_were_shunned = true} = State) ->
+    {noreply, State};
+
+handle_cast({we_were_shunned, NodeList}, State) ->
+    %% Must have been shunned while we were down. Leave the cluster.
+    ?log_info("We've been shunned (nodes_wanted = ~p). "
+              "Leaving cluster.", [NodeList]),
+    ns_cluster:leave_async(),
+    {noreply, State#state{we_were_shunned = true}};
+
 handle_cast(_Msg, State)       -> {noreply, State}.
 
 % Read from ns_config nodes_wanted, and add ourselves to the
@@ -184,10 +197,7 @@ do_nodes_wanted_updated_fun(NodeListIn) ->
         true ->
             ok;
         false ->
-            %% Must have been shunned while we were down. Leave the cluster.
-            ?log_info("We've been shunned (nodes_wanted = ~p). "
-                      "Leaving cluster.", [NodeList]),
-            ns_cluster:leave_async()
+            gen_server:cast(ns_node_disco, {we_were_shunned, NodeList})
     end,
     ok.
 
