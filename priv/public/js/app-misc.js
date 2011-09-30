@@ -469,6 +469,12 @@ _.extend(ViewHelpers, {
   }
 });
 
+/* Converts text to html (with proper escaping naturally) with \n (new
+ * line character) replaced with <br> */
+function BRifyText(text) {
+  return _.map(text.split("\n"), escapeHTML).join("<br>");
+}
+
 function genericDialog(options) {
   options = _.extend({buttons: {ok: true,
                                 cancel: true},
@@ -487,10 +493,6 @@ function genericDialog(options) {
   dialog.attr('id', _.uniqueId('generic_dialog_'));
   dialog.html(dialogTemplate.html());
 
-  function brIfy(text) {
-    return _.map(text.split("\n"), escapeHTML).join("<br>");
-  }
-
   function mkButtonCallback(name) {
     return function (e) {
       e.preventDefault();
@@ -498,7 +500,7 @@ function genericDialog(options) {
     }
   }
 
-  dialog.find('.dialog-text').html(options.textHTML || brIfy(text));
+  dialog.find('.dialog-text').html(options.textHTML || BRifyText(text));
 
   var b = [];
   if (options.buttons.ok) {
