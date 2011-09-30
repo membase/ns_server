@@ -128,6 +128,11 @@ code_change(_OldVsn, State, _Extra) ->
 
 compact_loop(Parent) ->
     Me = node(),
+    CouchbaseBuckets = lists:filter(
+        fun ({_Name, Config}) ->
+                ns_bucket:bucket_type(Config) =:= membase
+        end,
+        ns_bucket:get_buckets()),
     Buckets = lists:map(
         fun({Name, Config}) ->
             {_, VbNames} = lists:foldl(
@@ -145,7 +150,7 @@ compact_loop(Parent) ->
             NameBin = ?l2b(Name),
             {NameBin, VbNames, bucket_compact_config(NameBin)}
         end,
-        ns_bucket:get_buckets()),
+        CouchbaseBuckets),
     lists:foreach(
         fun({_BucketName, _VbNames, nil}) ->
             ok;
