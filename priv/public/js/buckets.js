@@ -141,14 +141,17 @@ function setAutoCompactionSettingsFields(form, initValues) {
   var viewInput = form.find('[name=viewFragmentationThreshold]');
   var allowedTimeInputs = form.find('[name^=allowedTimePeriod]');
 
-  var observer = form.observePotentialChanges(function () {
+  function observeFunction() {
     if (periodCheck.prop('disabled')) {
       return;
     }
     dbInput.prop('disabled', !dbFragmentationCheck.prop('checked'));
     viewInput.prop('disabled', !viewFragmentationCheck.prop('checked'));
     allowedTimeInputs.prop('disabled', !periodCheck.prop('checked'));
-  });
+  }
+
+  var observer = form.observePotentialChanges(observeFunction);
+  observeFunction();
 
   return function () {
     observer.stopObserving();
