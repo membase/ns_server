@@ -286,6 +286,9 @@ var StatsModel = {};
   });
 
   var statsDirectoryURLCell = self.statsDirectoryURLCell = Cell.compute(function (v) {
+    if (v.need(DAL.cells.mode) !== 'analytics') {
+      return;
+    }
     return v.need(statsBucketDetails).stats.directoryURI;
   }).name("statsDirectoryURLCell");
 
