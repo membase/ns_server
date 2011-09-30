@@ -675,11 +675,12 @@ var AutoCompactionSection = {
         return;
       }
       self.errorsCell.setValue({});
-      self.fillSettingsForm();
-      self.formValidationEnabled.setValue(true);
+      self.fillSettingsForm(function () {
+        self.formValidationEnabled.setValue(true);
+      });
     });
   },
-  fillSettingsForm: function () {
+  fillSettingsForm: function (whenDone) {
     var self = this;
     var myGeneration = self.fillSettingsGeneration = new Object();
     self.settingsCell.getValue(function (settings) {
@@ -703,6 +704,9 @@ var AutoCompactionSection = {
       var form = self.container.find("form");
       setFormValues(form, settings);
       self.formDestructor = setAutoCompactionSettingsFields(form, settings);
+      if (whenDone) {
+        whenDone();
+      }
     });
   },
   submit: function () {
