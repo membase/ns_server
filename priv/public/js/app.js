@@ -591,6 +591,11 @@ var NodeDialog = {
         m = "none";
       }
 
+      var pathErrorsContainer = dialog.find('.init_cluster_dialog_errors_container');
+      var memoryErrorsContainer = $('#init_cluster_dialog_memory_errors_container');
+      pathErrorsContainer.hide();
+      memoryErrorsContainer.hide();
+
       postWithValidationErrors('/nodes/' + node + '/controller/settings',
                                $.param({db_path: dbPath,
                                         index_path: ixPath}),
@@ -617,9 +622,8 @@ var NodeDialog = {
       function handleDiskStatus(data, status) {
         var ok = (status == 'success')
         if (!ok) {
-          var errorContainer = dialog.find('.init_cluster_dialog_errors_container');
-          errorContainer.text(data.join(' and '));
-          errorContainer.css('display', 'block');
+          renderTemplate('join_cluster_dialog_errors', data, pathErrorsContainer[0]);
+          pathErrorsContainer.show();
         }
         return ok;
       }
@@ -634,9 +638,8 @@ var NodeDialog = {
             onLeave();
           }
         } else {
-          var errorContainer = $('#init_cluster_dialog_memory_errors_container');
-          errorContainer.text(data.join(' and '));
-          errorContainer.css('display', 'block');
+          memoryErrorsContainer.text(data.join(' and '));
+          memoryErrorsContainer.show();
         }
       }
     }
