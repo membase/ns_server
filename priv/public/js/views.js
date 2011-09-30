@@ -1438,6 +1438,8 @@ var ViewsFilter = {
       var input = self.filter.find('[name=' + value + ']');
       if (input.attr('type') === 'checkbox') {
         input.prop('checked', false);
+      } else if (value === 'keys') {
+        input.val('[""]');
       } else {
         input.val("");
       }
