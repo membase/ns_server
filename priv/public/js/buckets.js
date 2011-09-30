@@ -744,11 +744,21 @@ var BucketsSection = {
         }
         fullDetails.setValue(undefined);
         BucketsSection.settingsWidget.openElement(bucketDetails.name);
-        fullDetails.invalidate(function () {
+        fullDetails.invalidate(withFullDetails);
+        return;
+
+        function withFullDetails () {
           var fullDetailsValue = fullDetails.value;
           var initValues = _.extend({}, bucketDetails, fullDetailsValue);
           initValues.autoCompactionDefined = ((fullDetailsValue.autoCompactionSettings || false) !== false);
-          _.each(fullDetailsValue.autoCompactionSettings || {}, function (value, k) {
+          var autoCompactionSettings = fullDetailsValue.autoCompactionSettings;
+          if (!autoCompactionSettings) {
+            if (!DAL.cells.currentPoolDetailsCell.value) {
+              DAL.cells.currentPoolDetailsCell.getValue(withFullDetails);
+            }
+            autoCompactionSettings = DAL.cells.currentPoolDetailsCell.value.autoCompactionSettings || {};
+          }
+          _.each(autoCompactionSettings, function (value, k) {
             if (value instanceof Object) {
               _.each(value, function (subVal, subK) {
                 initValues[k+'['+subK+']'] = subVal;
@@ -761,7 +771,7 @@ var BucketsSection = {
 
           BucketsSection.currentlyShownBucket = bucketDetails;
           dialog.startDialog();
-        });
+        };
       });
     });
   },
