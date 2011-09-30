@@ -668,6 +668,7 @@ var BucketsSection = {
 
       renderTemplate('bucket_list', membaseBuckets, $i('bucket_list_container'));
       renderTemplate('bucket_list', memcachedBuckets, $i('memcached_bucket_list_container'));
+      $('#memcached_buckets')[memcachedBuckets.length > 0 ? 'show' : 'hide']();
 
       renderHealthStats();
     });
