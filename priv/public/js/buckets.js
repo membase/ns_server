@@ -237,10 +237,8 @@ var BucketDetailsDialog = mkClass({
         return;
       }
       var oldDisabledness = {};
-      var affectedInputs = checkbox.closest('ul').find('input[type=checkbox], input[type=number], input[type=text], input:not([type])');
-      affectedInputs = affectedInputs.not('[name=autoCompactionDefined]');
-      window.affectedInputs = affectedInputs;
-      console.log(affectedInputs);
+      var autoCompactionSettingsBlock = checkbox.closest('fieldset.auto_compaction').find('.autocompaction-settings');
+      var affectedInputs = autoCompactionSettingsBlock.find('input[type=checkbox], input[type=number], input[type=text], input:not([type])');
       ensureElementId(affectedInputs);
 
       function restoreDisabledness() {
@@ -251,12 +249,16 @@ var BucketDetailsDialog = mkClass({
       }
 
       this.cleanups.push(restoreDisabledness);
-      return this.observePotentialChangesWithCleanup(function () {
+      this.observePotentialChangesWithCleanup(function () {
         var autoCompactionDefined = !!(checkbox.attr('checked'));
         if (autoCompactionDefined === oldAutoCompactionDefined) {
           return;
         }
         oldAutoCompactionDefined = autoCompactionDefined;
+
+        autoCompactionSettingsBlock.stop(true, true);
+        autoCompactionSettingsBlock[autoCompactionDefined? 'slideDown' : 'slideUp']();
+
         if (autoCompactionDefined) {
           restoreDisabledness();
         } else {
