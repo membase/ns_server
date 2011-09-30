@@ -1271,6 +1271,14 @@ var MultiDrawersWidget = mkClass({
         valueTransformer: valueTransformer
       }, detailsCell);
 
+      if (self.options.aroundRendering) {
+        renderer = (function (renderer) {
+          return function () {
+            self.options.aroundRendering(renderer, detailsCell, container);
+          }
+        })(renderer);
+      }
+
       // this makes sure we render when any of interesting cells change
       var s = Cell.compute(function (v) {
         return [v(detailsCell), v(detailsCell.interested)];
