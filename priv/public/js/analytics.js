@@ -361,6 +361,19 @@ var StatsModel = {};
 
   var zoomLevel;
   (function () {
+    var slider = $("#date_slider").slider({
+      orientation: "vertical",
+      range: "min",
+      min: 1,
+      max: 6,
+      value: 6,
+      step: 1,
+      slide: function(event, ui) {
+        $("#date_slider_container ul li:nth-child(" + (7 - ui.value) + ") a")
+          .trigger('click');
+      }
+    });
+
     zoomLevel = (new LinkSwitchCell('zoom', {
       firstItemIsDefault: true
     })).name("zoomLevel");
@@ -372,6 +385,10 @@ var StatsModel = {};
     zoomLevel.finalizeBuilding();
 
     zoomLevel.subscribeValue(function (zoomLevel) {
+      var z = $('#zoom_' + zoomLevel);
+      z.css('font-weight', 'bold');
+      z.parent().siblings().find('a').css('font-weight', 'normal');
+      slider.slider('value', 6 - z.parent().index());
       self.statsOptionsCell.update({
         zoom: zoomLevel
       });

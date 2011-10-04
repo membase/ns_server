@@ -323,7 +323,18 @@
             <select id="analytics_buckets_select"></select>
             <span class="when-normal-stats"> on <select id="analytics_servers_select"></select></span>
           </h1>
-          <div class="shadow_box">
+          <div id="date_slider_container">
+            <div id="date_slider"></div>
+            <ul>
+              <li><a id="zoom_minute">Minute</a></li>
+              <li><a id="zoom_hour">Hour</a></li>
+              <li><a id="zoom_day">Day</a></li>
+              <li><a id="zoom_week">Week</a></li>
+              <li><a id="zoom_month">Month</a></li>
+              <li><a id="zoom_year">Year</a></li>
+            </ul>
+          </div>
+          <div class="shadow_box" style="width:780px;">
             <div class="section">
               <div class="header_2">
                 <span class="block nav float_right">
@@ -332,14 +343,12 @@
                   </span>
                   <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
                 </span>
-                <ul class="tabs">
-                  <li class="tab_left"><a id="zoom_minute">Minute</a></li>
-                  <li><a id="zoom_hour">Hour</a></li>
-                  <li><a id="zoom_day">Day</a></li>
-                  <li><a id="zoom_week">Week</a></li>
-                  <li><a id="zoom_month">Month</a></li>
-                  <li class="tab_right"><a id="zoom_year">Year</a></li>
-                </ul>
+                General Bucket Analytics
+                <!--<ul class="tabs">
+                  <li class="tab_left"><a id="general_analytics">General</a></li>
+                  <li><a id="view_index_analytics">View &amp; Index</a></li>
+                  <li class="tab_right"><a id="replication_analytics">Replication</a></li>
+                </ul>-->
               </div>
               <div class="analytics_graph_main">
                 <h2 class="current-graph-name"></h2>
@@ -382,7 +391,7 @@
               <div id="stats_container"></div>
             </div>
           </div><!-- shadow_box -->
-          <div class="shadow_box">
+          <div class="shadow_box" style="width:780px;">
             <div class="section" id="top_keys_block">
               <h2 class="header_2">
                 TOP KEYS
@@ -2090,7 +2099,7 @@ $(function() {
   }
 });
 </script>
-<script src="js/jquery-ui-1.8.10.custom.js"></script>
+<script src="js/jquery-ui.custom.js"></script>
 <script src="js/jquery.flot.js"></script>
 <script src="js/jquery.sparkline.js"></script>
 <script type="text/javascript" src="js/jquery.selectBox.js"></script>

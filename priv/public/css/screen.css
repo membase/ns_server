@@ -202,9 +202,14 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .wrap {float:left;margin: 13px 0 0;}
 
 /* analytics graph */
-#analytics{width:780px;margin:auto}
+#analytics{margin:auto}
 #analytics_main_graph { position: relative; width:742px; height:269px;}
 #analytics_main_graph_grid {position:relative; width:742px; height:269px;margin:0 auto 10px; }
+
+#date_slider_container{background: #EEE;border-bottom-right-radius: 8px;border-top-right-radius: 8px;box-shadow: 2px 0 5px #CCC inset;left: 789px;overflow: hidden;padding: 20px;position: absolute;}
+#date_slider{float:left;margin-right:15px;margin-top:6px;background:#fafafa}
+#date_slider_container ul{float:left}
+#date_slider_container ul li{display: block;height: 15px;padding-bottom:0.43em}
 
 .analytics-small-graph {position:relative;overflow:hidden;float:left; width:166px !important; height:61px !important;margin:0 12px 7px 12px;background:url(../images/mini_graph_bg.gif) no-repeat; cursor:pointer;text-decoration:none;}
 
@@ -213,7 +218,8 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .graph_info_label {padding:3px; font-size:11px;position:absolute;top:-6px;left:30px;}
 .darker_block {position:relative;*zoom:1;}
 .darker_block.withtotal {background:url(../images/bg_total.gif) 100% 0 repeat-y;}
-.darker_block h3 {overflow:hidden;cursor:pointer;background:#EEEEEF;padding:5px 10px;font-size:14px;text-transform:uppercase;*zoom:1;min-height: 31px;}
+.darker_block h3 {overflow:hidden;cursor:pointer;background:#EEEEEF;padding:5px 10px;font-size:14px;text-transform:uppercase;*zoom:1;}
+#analytics .darker_block h3{min-height:auto}
 .darker_block h3 ins, .expander {float:left;width:0;height:0;margin:2px 0.75em 0 0;border-style:solid;border-width:10px 10px 0 10px;border-color:#01b0ff transparent transparent transparent;cursor:pointer;}
 .darker_block h3:hover ins, .expander:hover {border-top-color:#339ACA;}
 
@@ -232,7 +238,7 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .darker_block.closed > div, .darker_block.closed ul.col_headers {display:none !important;}
 .darker_block.closed h3 ins, .expander.closed {margin:-3px 1.2em 0 4px;border-width:10px 0 10px 10px;border-color:transparent transparent transparent #01b0ff;}
 .darker_block.closed h3:hover ins, .expander.closed:hover {border-left-color:#339ACA;}
-.darker_block .analytics-small-graph {overflow:visible;width:174px !important;height:60px !important; margin:4px 7px 5px;}
+.darker_block .analytics-small-graph {overflow:visible;width:174px !important;height:60px !important; margin:4px 7px 5px 12px}
 .darker_block .analytics-small-graph:hover {background-position:0 -122px;z-index:90;}
 .darker_block .analytics-small-graph.selected {background-position:0 -61px;}
 
