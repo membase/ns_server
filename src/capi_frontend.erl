@@ -233,8 +233,33 @@ purge_docs(Db, IdsRevs) ->
     %% couch_db:purge_docs(Db, IdsRevs).
     exit(not_implemented(purge_docs, [Db, IdsRevs])).
 
+get_missing_revs(#db{filepath = undefined, name = BucketBin} = Db,
+                 JsonDocIdRevs) ->
+    Bucket = binary_to_list(BucketBin),
+
+    Results =
+        lists:foldr(
+          fun ({Id, [Rev]}, Acc) ->
+                  {VBucket, _Node} = cb_util:vbucket_from_id(Bucket, Id),
+
+                  case ns_memcached:get_meta(Bucket, Id, VBucket) of
+                      {memcached_error, key_enoent, _} ->
+                          [{Id, [Rev], []} | Acc];
+                      {memcached_error, not_my_vbucket, _} ->
+                          throw({bad_request, not_my_vbucket});
+                      {ok, _, _, {revid, OurRev}} ->
+                          case winning_revision(Rev, OurRev) of
+                              Rev ->
+                                  [{Id, [Rev], []} | Acc];
+                              OurRev ->
+                                  Acc
+                          end
+                  end;
+              (_, _) ->
+                  exit(not_implemented(get_missing_revs, [Db, JsonDocIdRevs]))
+          end, [], JsonDocIdRevs),
+    {ok, Results};
 get_missing_revs(Db, JsonDocIdRevs) ->
-    %% couch_db:get_missing_revs(Db, JsonDocIdRevs).
     exit(not_implemented(get_missing_revs, [Db, JsonDocIdRevs])).
 
 set_security(Db, SecurityObj) ->
@@ -447,3 +472,20 @@ welcome_message(WelcomeMessage) ->
      {version, list_to_binary(couch_server:get_version())},
      {couchbase, list_to_binary(get_version())}
     ].
+
+-spec winning_revision(Revision, Revision) -> Revision
+  when Revision :: {integer(), binary()}.
+winning_revision({SeqNo, RevId1} = Rev1, {SeqNo, RevId2} = Rev2) ->
+    case RevId1 > RevId2 of
+        true ->
+            Rev1;
+        false ->
+            Rev2
+    end;
+winning_revision({SeqNo1, _} = Rev1, {SeqNo2, _} = Rev2) ->
+    case SeqNo1 > SeqNo2 of
+        true ->
+            Rev1;
+        false ->
+            Rev2
+    end.
