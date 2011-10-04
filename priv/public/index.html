@@ -233,7 +233,7 @@
                   {%= V.stripPortHTML(s.hostname, rows) %}
               <!-- {% } else { %} -->
                   <a class="{% if (!expandingAllowed) { %} disabled"{% } else { %}" href="#openServer={%= h(s.otpNode) %}"{% } %}><ins class="expander closed"></ins></a>
-                  <a href="#sec=analytics&statsHostname={%= h(s.hostname) %}">{%= V.stripPortHTML(s.hostname, rows) %}</a>
+                  <a href="#sec=analytics&statsHostname={%= h(s.hostname) %}" title="View Analytics for {%= h(s.hostname) %}">{%= V.stripPortHTML(s.hostname, rows) %}</a>
               <!-- {% } %} -->
                 </td>
                 <td class="{%= s.nodeClass %}"></td>
@@ -449,7 +449,7 @@
               <tr class="{%= this.bucketTypeName.toLowerCase() %}">
                 <td class="bucket_name">
                   <a class="disable-if-stale" href="#visitBucket={%=h(this.name)%}"><span class="expander closed"></span></a>
-                  <a class="disable-if-stale" title="Visit Analytics section for {%= h(this.name) %}" href="#sec=analytics&statsBucket={%= h(this.uri) %}">{%= h(this.name) %}</a>
+                  <a class="disable-if-stale" title="View Analytics for {%= h(this.name) %}" href="#sec=analytics&statsBucket={%= h(this.uri) %}">{%= h(this.name) %}</a>
                 </td>
                 <td>
                   <span id="{%= h(this.name) %}_health" class="health_graph"></span>
