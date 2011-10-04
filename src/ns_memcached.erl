@@ -70,7 +70,7 @@
          flush/1,
          set/4,
          ready_nodes/4,
-         sync/4, add/4, get/3, delete/3,
+         sync/4, add/4, get/3, delete/3, delete/4,
          get_meta/3,
          set_with_meta/5, set_with_meta/6, set_with_meta/8,
          add_with_meta/5, add_with_meta/7]).
@@ -186,10 +186,10 @@ handle_call(flush, _From, State) ->
     Reply = mc_client_binary:flush(State#state.sock),
     {reply, Reply, State};
 
-handle_call({delete, Key, VBucket}, _From, State) ->
+handle_call({delete, Key, VBucket, CAS}, _From, State) ->
     Reply = mc_client_binary:cmd(?DELETE, State#state.sock, undefined, undefined,
                                  {#mc_header{vbucket = VBucket},
-                                  #mc_entry{key = Key}}),
+                                  #mc_entry{key = Key, cas = CAS}}),
     {reply, Reply, State};
 
 handle_call({set, Key, VBucket, Val}, _From, State) ->
@@ -446,10 +446,15 @@ get_meta(Bucket, Key, VBucket) ->
 
 
 %% @doc send a set command to memcached instance
--spec delete(bucket_name(), binary(), integer()) ->
+-spec delete(bucket_name(), binary(), integer(), integer()) ->
     {ok, #mc_header{}, #mc_entry{}, any()}.
+delete(Bucket, Key, VBucket, CAS) ->
+    gen_server:call({server(Bucket, data), node()},
+                    {delete, Key, VBucket, CAS}, ?TIMEOUT).
+
+
 delete(Bucket, Key, VBucket) ->
-    gen_server:call({server(Bucket, data), node()}, {delete, Key, VBucket}, ?TIMEOUT).
+    delete(Bucket, Key, VBucket, 0).
 
 
 %% @doc send a set command to memcached instance
