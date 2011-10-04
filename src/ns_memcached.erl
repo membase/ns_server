@@ -70,7 +70,10 @@
          flush/1,
          set/4,
          ready_nodes/4,
-         sync/4, add/4, get/3, delete/3]).
+         sync/4, add/4, get/3, delete/3,
+         get_meta/3,
+         set_with_meta/5, set_with_meta/6, set_with_meta/8,
+         add_with_meta/5, add_with_meta/7]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -195,16 +198,32 @@ handle_call({set, Key, VBucket, Val}, _From, State) ->
                                   #mc_entry{key = Key, data = Val}}),
     {reply, Reply, State};
 
+handle_call({set_with_meta, Key, VBucket, Value, Meta, CAS, Flags, Expiration},
+            _From, State) ->
+    Reply = mc_client_binary:set_with_meta(State#state.sock, Key, VBucket,
+                                           Value, Meta, CAS, Flags, Expiration),
+    {reply, Reply, State};
+
 handle_call({add, Key, VBucket, Val}, _From, State) ->
     Reply = mc_client_binary:cmd(?ADD, State#state.sock, undefined, undefined,
                                  {#mc_header{vbucket = VBucket},
                                   #mc_entry{key = Key, data = Val}}),
     {reply, Reply, State};
 
+handle_call({add_with_meta, Key, VBucket, Value, Meta, Flags, Expiration},
+            _From, State) ->
+    Reply = mc_client_binary:add_with_meta(State#state.sock, Key, VBucket,
+                                           Value, Meta, Flags, Expiration),
+    {reply, Reply, State};
+
 handle_call({get, Key, VBucket}, _From, State) ->
     Reply = mc_client_binary:cmd(?GET, State#state.sock, undefined, undefined,
                                  {#mc_header{vbucket = VBucket},
                                   #mc_entry{key = Key}}),
+    {reply, Reply, State};
+
+handle_call({get_meta, Key, VBucket}, _From, State) ->
+    Reply = mc_client_binary:get_meta(State#state.sock, Key, VBucket),
     {reply, Reply, State};
 
 handle_call({sync, Key, VBucket, CAS}, _From, State) ->
@@ -399,11 +418,31 @@ add(Bucket, Key, VBucket, Value) ->
                     {add, Key, VBucket, Value}, ?TIMEOUT).
 
 
+-spec add_with_meta(bucket_name(), binary(),
+                    integer(), binary(), any(), integer(), integer()) ->
+    {ok, #mc_header{}, #mc_entry{}, any()} | mc_error() | {error, invalid_meta}.
+add_with_meta(Bucket, Key, VBucket, Value, Meta, Flags, Expiration) ->
+    gen_server:call({server(Bucket, data), node()},
+                    {add_with_meta,
+                     Key, VBucket, Value, Meta, Flags, Expiration}, ?TIMEOUT).
+
+add_with_meta(Bucket, Key, VBucket, Value, Meta) ->
+    add_with_meta(Bucket, Key, VBucket, Value, Meta, 0, 0).
+
+
 %% @doc send an add command to memcached instance
 -spec get(bucket_name(), binary(), integer()) ->
     {ok, #mc_header{}, #mc_entry{}, any()}.
 get(Bucket, Key, VBucket) ->
     gen_server:call({server(Bucket, data), node()}, {get, Key, VBucket}, ?TIMEOUT).
+
+
+%% @doc send an get metadata command to memcached
+-spec get_meta(bucket_name(), binary(), integer()) ->
+    {ok, #mc_header{}, #mc_entry{}, any()} | mc_error().
+get_meta(Bucket, Key, VBucket) ->
+    gen_server:call({server(Bucket, data), node()},
+                    {get_meta, Key, VBucket}, ?TIMEOUT).
 
 
 %% @doc send a set command to memcached instance
@@ -419,6 +458,21 @@ delete(Bucket, Key, VBucket) ->
 set(Bucket, Key, VBucket, Value) ->
     gen_server:call({server(Bucket, data), node()},
                     {set, Key, VBucket, Value}, ?TIMEOUT).
+
+
+-spec set_with_meta(bucket_name(), binary(), integer(), binary(), term(),
+                    integer(), integer(), integer()) ->
+    {ok, #mc_header{}, #mc_entry{}} | mc_error() | {error, invalid_meta}.
+set_with_meta(Bucket, Key, VBucket, Value, Meta, CAS, Flags, Expiration) ->
+    gen_server:call({server(Bucket, data), node()},
+                    {set_with_meta,
+                     Key, VBucket, Value, Meta, CAS, Flags, Expiration}).
+
+set_with_meta(Bucket, Key, VBucket, Value, Meta) ->
+    set_with_meta(Bucket, Key, VBucket, Value, Meta, 0, 0, 0).
+
+set_with_meta(Bucket, Key, VBucket, Value, Meta, CAS) ->
+    set_with_meta(Bucket, Key, VBucket, Value, Meta, CAS, 0, 0).
 
 
 %% @doc send a sync command to memcached instance

@@ -40,7 +40,10 @@
          stats/4,
          get_open_checkpoint_ids/1,
          tap_connect/2,
-         sync/4]).
+         sync/4,
+         get_meta/3,
+         set_with_meta/8,
+         add_with_meta/7]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
 -type mc_timeout() :: undefined | infinity | non_neg_integer().
@@ -55,6 +58,9 @@
                      ?CMD_SELECT_BUCKET | ?CMD_SET_FLUSH_PARAM |
                      ?CMD_SET_VBUCKET | ?CMD_GET_VBUCKET | ?CMD_DELETE_VBUCKET |
                      ?CMD_LAST_CLOSED_CHECKPOINT |
+                     ?CMD_GET_META | ?CMD_GETQ_META |
+                     ?CMD_SET_WITH_META | ?CMD_SETQ_WITH_META |
+                     ?CMD_ADD_WITH_META | ?CMD_SETQ_WITH_META |
                      ?RGET | ?RSET | ?RSETQ | ?RAPPEND | ?RAPPENDQ | ?RPREPEND |
                      ?RPREPENDQ | ?RDELETE | ?RDELETEQ | ?RINCR | ?RINCRQ |
                      ?RDECR | ?RDECRQ | ?SYNC.
@@ -331,6 +337,60 @@ tap_connect(Sock, Opts) ->
                                  ext = <<Flags:32>>,
                                  data = Data}}).
 
+get_meta(Sock, Key, VBucket) ->
+    case cmd(?CMD_GET_META, Sock, undefined, undefined,
+             {#mc_header{vbucket = VBucket},
+              #mc_entry{key = Key}}) of
+        {ok, #mc_header{status=?SUCCESS} = Header,
+             #mc_entry{data=MetaBin} = Entry, _NCB} ->
+            {ok, Header, Entry, decode_meta(MetaBin)};
+        Response ->
+            process_error_response(Response)
+    end.
+
+decode_meta(<<?META_REVID:8/big, Length:8/big, SeqNo:32/big, RevId/binary>>)
+  when size(RevId) =:= (Length - 4) ->
+    {revid, {SeqNo, RevId}};
+decode_meta(Data) ->
+    {unknown, Data}.
+
+set_with_meta(Sock, Key, VBucket, Value, Meta, CAS, Flags, Expiration) ->
+    meta_cmd(Sock, ?CMD_SET_WITH_META,
+             Key, VBucket, Value, Meta, CAS, Flags, Expiration).
+
+add_with_meta(Sock, Key, VBucket, Value, Meta, Flags, Expiration) ->
+    meta_cmd(Sock, ?CMD_ADD_WITH_META,
+             Key, VBucket, Value, Meta, 0, Flags, Expiration).
+
+encode_meta({revid, {SeqNo, RevId}})
+  when is_integer(SeqNo), is_binary(RevId) ->
+    Length = size(RevId) + 4,
+    {ok, <<?META_REVID:8/big, Length:8/big, SeqNo:32/big, RevId/binary>>};
+encode_meta(_Other) ->
+    {error, invalid_meta}.
+
+meta_cmd(Sock, Cmd, Key, VBucket, Value, Meta, CAS, Flags, Expiration) ->
+    case encode_meta(Meta) of
+        {ok, MetaBin} ->
+            MetaLen = size(MetaBin),
+            Ext = <<MetaLen:32/big, Flags:32/big, Expiration:32/big>>,
+            Data = <<Value/binary, MetaBin/binary>>,
+
+            Header = #mc_header{vbucket = VBucket},
+            Entry = #mc_entry{key = Key, data = Data, ext = Ext,
+                              flag = Flags, expire = Expiration, cas = CAS},
+
+            Response = cmd(Cmd, Sock, undefined, undefined, {Header, Entry}),
+            case Response of
+                {ok, #mc_header{status=?SUCCESS} = RespHeader, RespEntry, _} ->
+                    {ok, RespHeader, RespEntry};
+                _ ->
+                    process_error_response(Response)
+            end;
+        Error ->
+            Error
+    end.
+
 %% -------------------------------------------------
 
 is_quiet(?GETQ)       -> true;
@@ -352,6 +412,9 @@ is_quiet(?RDELETEQ)   -> true;
 is_quiet(?RINCRQ)     -> true;
 is_quiet(?RDECRQ)     -> true;
 is_quiet(?TAP_CONNECT) -> true;
+is_quiet(?CMD_GETQ_META) -> true;
+is_quiet(?CMD_SETQ_WITH_META) -> true;
+is_quiet(?CMD_ADDQ_WITH_META) -> true;
 is_quiet(_)           -> false.
 
 ext(?SET,        Entry) -> ext_flag_expire(Entry);

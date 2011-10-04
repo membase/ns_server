@@ -50,6 +50,13 @@
 
 -define(CMD_LAST_CLOSED_CHECKPOINT,  16#97).
 
+-define(CMD_GET_META, 16#a0).
+-define(CMD_GETQ_META, 16#a1).
+-define(CMD_SET_WITH_META, 16#a2).
+-define(CMD_SETQ_WITH_META, 16#a3).
+-define(CMD_ADD_WITH_META, 16#a4).
+-define(CMD_ADDQ_WITH_META, 16#a5).
+
 -define(RGET,        16#30).
 -define(RSET,        16#31).
 -define(RSETQ,       16#32).
@@ -109,3 +116,6 @@
 -define(TAP_OPAQUE_INITIAL_VBUCKET_STREAM, 16#01).
 -define(TAP_OPAQUE_ENABLE_CHECKPOINT_SYNC, 16#02).
 -define(TAP_OPAQUE_CLOSE_TAP_STREAM, 16#07).
+
+%% Metadata types
+-define(META_REVID, 16#01).
