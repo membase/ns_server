@@ -20,6 +20,8 @@
 -include("couch_db.hrl").
 -include("ns_stats.hrl").
 -include("couch_view_merger.hrl").
+-include("mc_entry.hrl").
+-include("mc_constants.hrl").
 
 -define(DEV_MULTIPLE, 20).
 
@@ -82,6 +84,31 @@ update_doc(Db, Doc, Options, UpdateType) ->
 update_docs(Db, Docs, Options) ->
     update_docs(Db, Docs, Options, interactive_edit).
 
+update_docs(#db{filepath = undefined, name = BucketBin} = Db,
+            Docs, Options, replicated_changes) ->
+    Bucket = binary_to_list(BucketBin),
+
+    case proplists:get_value(all_or_nothing, Options, false) of
+        true ->
+            exit(not_implemented(update_docs,
+                                 [Db, Docs, Options, replicated_changes]));
+        false ->
+            ok
+    end,
+
+    Errors =
+        lists:foldr(
+          fun (#doc{id = Id, revs = {Pos, [RevId | _]}} = Doc, ErrorsAcc) ->
+                  case update_replicated_doc(Bucket, Doc) of
+                      ok ->
+                          ErrorsAcc;
+                      {error, Error} ->
+                          Rev = {Pos, RevId},
+                          [{{Id, Rev}, Error} | ErrorsAcc]
+                  end
+          end,
+          [], Docs),
+    {ok, Errors};
 update_docs(#db{filepath = undefined} = Db, Docs, Options, Type) ->
     {DesignDocs, [] = NormalDocs} =
         lists:partition(fun (#doc{id = <<"_design/", _/binary>>}) -> true;
@@ -488,4 +515,91 @@ winning_revision({SeqNo1, _} = Rev1, {SeqNo2, _} = Rev2) ->
             Rev1;
         false ->
             Rev2
+    end.
+
+update_replicated_doc(Bucket,
+                      #doc{id = Id, revs = {Pos, [RevId | _]},
+                           body = Body, deleted = Deleted} = _Doc) ->
+    {VBucket, _Node} = cb_util:vbucket_from_id(Bucket, Id),
+    Json = ?JSON_ENCODE(Body),
+    Rev = {Pos, RevId},
+    update_replicated_doc_loop(Bucket, VBucket, Id, Rev, Json, Deleted).
+
+update_replicated_doc_loop(Bucket, VBucket,
+                           DocId, DocRev, DocJson, DocDeleted) ->
+    RV =
+        case ns_memcached:get_meta(Bucket, DocId, VBucket) of
+            {memcached_error, key_enoent, _} ->
+                case DocDeleted of
+                    true ->
+                        ok;
+                    false ->
+                        do_add_with_meta(Bucket, DocId, VBucket, DocJson, DocRev)
+                end;
+            {memcached_error, not_my_vbucket, _} ->
+                {error, {bad_request, not_my_vbucket}};
+            {ok, _, #mc_entry{cas = CAS}, {revid, OurRev}} ->
+                case winning_revision(DocRev, OurRev) of
+                    DocRev ->
+                        case DocDeleted of
+                            true ->
+                                do_delete(Bucket, DocId, VBucket, CAS);
+                            false ->
+                                do_set_with_meta(Bucket, DocId, VBucket,
+                                                 DocJson, DocRev, CAS)
+                        end;
+                    OurRev ->
+                        ok
+                end
+        end,
+
+    case RV of
+        retry ->
+            update_replicated_doc_loop(Bucket, VBucket, DocId,
+                                       DocRev, DocJson, DocDeleted);
+        _Other ->
+            RV
+    end.
+
+do_add_with_meta(Bucket, DocId, VBucket, DocJson, DocRev) ->
+    case ns_memcached:add_with_meta(Bucket, DocId, VBucket,
+                                    DocJson, {revid, DocRev}) of
+        {ok, _, _} ->
+            ok;
+        {memcached_error, key_eexists, _} ->
+            retry;
+        {memcached_error, not_my_vbucket, _} ->
+            {error, {bad_request, not_my_vbucket}};
+        {memcached_error, einval, _} ->
+            %% this is most likely an invalid revision
+            {error, {bad_request, einval}}
+    end.
+
+do_set_with_meta(Bucket, DocId, VBucket, DocJson, DocRev, CAS) ->
+    case ns_memcached:set_with_meta(Bucket, DocId,
+                                    VBucket, DocJson,
+                                    {revid, DocRev}, CAS) of
+        {ok, _, _} ->
+            ok;
+        {memcached_error, key_eexists, _} ->
+            retry;
+        {memcached_error, not_my_vbucket, _} ->
+            {error, {bad_request, not_my_vbucket}};
+        {memcached_error, einval, _} ->
+            {error, {bad_request, einval}}
+    end.
+
+do_delete(Bucket, DocId, VBucket, CAS) ->
+    {ok, Header, _Entry, _NCB} =
+        ns_memcached:delete(Bucket, DocId, VBucket, CAS),
+    Status = Header#mc_header.status,
+    case Status of
+        ?SUCCESS ->
+            ok;
+        ?KEY_ENOENT ->
+            retry;
+        ?NOT_MY_VBUCKET ->
+            {error, {bad_request, not_my_vbucket}};
+        ?EINVAL ->
+            {error, {bad_request, einval}}
     end.
