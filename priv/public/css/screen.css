@@ -88,7 +88,7 @@ a.disabled{text-decoration:none;cursor:default;}
 .page-header .logo {position:absolute;background:url('../images/logo.png') no-repeat;width:361px;height:49px;top:15px;left:0;}
 
 #headerNav {clear:both;height:50px;background:url('../images/navigation_bg.png') repeat-x;}
-#headerNav .contents{width:54em;margin:auto;}
+#headerNav .contents{width:55em;margin:auto;}
 #headerNav ul li {float:left;position:relative}
 #headerNav li a {display:block;text-decoration:none;padding:13px 23px 7px;line-height:27px}
 #headerNav li:hover {background:url('../images/active_hover_bg.png') repeat-x;}
