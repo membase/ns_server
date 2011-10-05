@@ -275,11 +275,11 @@ get_missing_revs(#db{filepath = undefined, name = BucketBin} = Db,
                       {memcached_error, not_my_vbucket, _} ->
                           throw({bad_request, not_my_vbucket});
                       {ok, _, _, {revid, OurRev}} ->
-                          case winning_revision(Rev, OurRev) of
-                              Rev ->
-                                  [{Id, [Rev], []} | Acc];
-                              OurRev ->
-                                  Acc
+                          case winner(Rev, OurRev) of
+                              ours ->
+                                  Acc;
+                              theirs ->
+                                  [{Id, [Rev], []} | Acc]
                           end
                   end;
               (_, _) ->
@@ -500,21 +500,21 @@ welcome_message(WelcomeMessage) ->
      {couchbase, list_to_binary(get_version())}
     ].
 
--spec winning_revision(Revision, Revision) -> Revision
-  when Revision :: {integer(), binary()}.
-winning_revision({SeqNo, RevId1} = Rev1, {SeqNo, RevId2} = Rev2) ->
-    case RevId1 > RevId2 of
-        true ->
-            Rev1;
-        false ->
-            Rev2
-    end;
-winning_revision({SeqNo1, _} = Rev1, {SeqNo2, _} = Rev2) ->
-    case SeqNo1 > SeqNo2 of
-        true ->
-            Rev1;
-        false ->
-            Rev2
+winner({_SeqNo1, _RevId1} = Theirs,
+       {_SeqNo2, _RevId2} = Ours) ->
+    winner_helper(Theirs, Ours);
+winner({_SeqNo1, _NotDeleted1, _RevId1} = Theirs,
+       {_SeqNo2, _NotDeleted2, _RevId3} = Ours) ->
+    winner_helper(Theirs, Ours).
+
+winner_helper(Theirs, Ours) ->
+    %% Ours can be equal to Theirs; in this case we prefer our revision to
+    %% avoid excessive work
+    case max(Theirs, Ours) of
+        Ours ->
+            ours;
+        Theirs ->
+            theirs
     end.
 
 update_replicated_doc(Bucket,
@@ -525,8 +525,8 @@ update_replicated_doc(Bucket,
     Rev = {Pos, RevId},
     update_replicated_doc_loop(Bucket, VBucket, Id, Rev, Json, Deleted).
 
-update_replicated_doc_loop(Bucket, VBucket,
-                           DocId, DocRev, DocJson, DocDeleted) ->
+update_replicated_doc_loop(Bucket, VBucket, DocId,
+                           {DocSeqNo, DocRevId} = DocRev, DocJson, DocDeleted) ->
     RV =
         case ns_memcached:get_meta(Bucket, DocId, VBucket) of
             {memcached_error, key_enoent, _} ->
@@ -538,18 +538,20 @@ update_replicated_doc_loop(Bucket, VBucket,
                 end;
             {memcached_error, not_my_vbucket, _} ->
                 {error, {bad_request, not_my_vbucket}};
-            {ok, _, #mc_entry{cas = CAS}, {revid, OurRev}} ->
-                case winning_revision(DocRev, OurRev) of
-                    DocRev ->
+            {ok, _, #mc_entry{cas = CAS}, {revid, {OurSeqNo, OurRevId}}} ->
+                DocRevExt = {DocSeqNo, not(DocDeleted), DocRevId},
+                OurRevExt = {OurSeqNo, true, OurRevId},
+                case winner(DocRevExt, OurRevExt) of
+                    ours ->
+                        ok;
+                    theirs ->
                         case DocDeleted of
                             true ->
                                 do_delete(Bucket, DocId, VBucket, CAS);
                             false ->
                                 do_set_with_meta(Bucket, DocId, VBucket,
                                                  DocJson, DocRev, CAS)
-                        end;
-                    OurRev ->
-                        ok
+                        end
                 end
         end,
 
