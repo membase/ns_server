@@ -88,7 +88,7 @@ do_handle_remote_clusters_post(Req, Params, JustValidate, TriesLeft) ->
 -spec check_nonempty(string(), binary(), binary()) -> undefined | {binary(), binary()}.
 check_nonempty(String, Name, HumanName) ->
     case String of
-        undefined -> {Name, iolist_to_binary([HumanName, <<" cannot is missing">>])};
+        undefined -> {Name, iolist_to_binary([HumanName, <<" is missing">>])};
         "" -> {Name, iolist_to_binary([HumanName, <<" cannot be empty">>])};
         _ -> undefined
     end.
