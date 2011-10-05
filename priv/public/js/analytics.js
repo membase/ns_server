@@ -1070,10 +1070,9 @@ var AnalyticsSection = {
     })();
 
     $(self.widget).bind('menelaus.graphs-widget.rendered-graphs', function () {
-      var title = StatsModel.graphsConfigurationCell.value.selected.title;
-      $('#analytics .current-graph-name').text(title);
-
-
+      var graph = StatsModel.graphsConfigurationCell.value.selected;
+      $('#analytics .current-graph-name').text(graph.title);
+      $('#analytics .current-graph-desc').text(graph.desc);
     });
 
     $(self.widget).bind('menelaus.graphs-widget.rendered-stats-block', function () {

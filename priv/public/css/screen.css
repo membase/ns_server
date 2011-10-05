@@ -211,6 +211,12 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 #date_slider_container ul{float:left}
 #date_slider_container ul li{display: block;height: 15px;padding-bottom:0.43em}
 
+#current_stat_info{background: none repeat scroll 0 0 #F6F4F0;border: 1px solid #D0CDCD;left: 810px;padding: 10px;position: absolute;top: 230px;width: 150px;border-radius: 8px;}
+#current_stat_info h3{margin-bottom:10px;padding-left:1.5em}
+#current_stat_info p{word-wrap:break-word}
+.i{color:#808080;font-family:Georgia, Times, serif;font-style:italic;font-weight:bold;border-radius:100%;border:1px solid #7b7a78;background:#dddddc;height:1.3em;width:1.3em;line-height:1.3em;display:inline-block;text-align:center;}
+#current_stat_info h3 .i{margin-left:-1.5em}
+
 .analytics-small-graph {position:relative;overflow:hidden;float:left; width:166px !important; height:61px !important;margin:0 12px 7px 12px;background:url(../images/mini_graph_bg.gif) no-repeat; cursor:pointer;text-decoration:none;}
 
 .analytics_graph_main {/*height:300px; background:url(../images/devider_line_2.gif) 0 100% repeat-x #eeeeef;border-left:1px solid #dbdbdb; border-right:1px solid #dbdbdb;*/ padding:0 10px;}
