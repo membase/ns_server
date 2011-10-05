@@ -102,7 +102,7 @@ validate_remote_cluster_params(Params, ExistingClusters) ->
                     X when is_tuple(X) -> X;
                     _ ->
                         if
-                            length(Name) > 256 ->
+                            length(Name) > 255 ->
                                 {<<"name">>, <<"cluster name cannot be longer than 255 bytes">>};
                             true ->
                                 undefined
