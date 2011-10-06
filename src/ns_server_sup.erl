@@ -117,5 +117,8 @@ child_specs() ->
      {couchbase_compaction_daemon,
       {supervisor_cushion, start_link,
        [couchbase_compaction_daemon, 3000, couchbase_compaction_daemon, start_link, []]},
-      permanent, 1000, worker, [couchbase_compaction_daemon]}
+      permanent, 1000, worker, [couchbase_compaction_daemon]},
+
+     {xdc_rdoc_replication_srv, {xdc_rdoc_replication_srv, start_link, []},
+      permanent, 1000, worker, [xdc_rdoc_replication_srv]}
 ].
