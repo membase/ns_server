@@ -660,13 +660,13 @@ var BucketsSection = {
       IOCenter.staleness.changedSlot.subscribeWithSlave(slave);
       IOCenter.staleness.undefinedSlot.subscribeWithSlave(slave);
     })(function (buckets) {
+      self.settingsWidget.prepareDrawing();
+
       if (!buckets) {
         prepareAreaUpdate('#bucket_list_container');
         prepareAreaUpdate('#memcached_bucket_list_container');
         return;
       }
-
-      self.settingsWidget.prepareDrawing();
 
       var membaseBuckets = _.select(buckets, function (rv) {return rv.bucketType === 'membase'});
       var memcachedBuckets = _.reject(buckets, function (rv) {return rv.bucketType === 'membase'});
