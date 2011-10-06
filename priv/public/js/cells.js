@@ -190,6 +190,13 @@ var Cell = mkClass({
       this.setSources(sources);
     else if (this.formula)
       this.recalculate();
+    this.createdAt = (function () {
+      try {
+        throw new Error();
+      } catch (e) {
+        return e;
+      }
+    })();
   },
   equality: function (a, b) {
     return a == b;
@@ -531,15 +538,23 @@ var Cell = mkClass({
     var tryUpdatingValue = self.tryUpdatingValue;
     var setValue = self.setValue;
     this.tryUpdatingValue = function () {
-      console.log(self.effectiveName() + ": going to recompute");
-      return tryUpdatingValue.apply(this, arguments);
+      console.log(this.effectiveName() + ": going to recompute", this.createdAt.stack);
+      try {
+        return tryUpdatingValue.apply(this, arguments);
+      } finally {
+        Cell.recordHistory(this);
+      }
     }
     this.setValue = function (v) {
-      var rv = setValue.apply(this, arguments);
-      if (rv) {
-        console.log(self.effectiveName() + ": new value: ", self.value, self.pendingFuture)
+      try {
+        var rv = setValue.apply(this, arguments);
+        if (rv) {
+          console.log(this.effectiveName() + ": new value: ", this.value, this.pendingFuture)
+        }
+        return rv;
+      } finally {
+        Cell.recordHistory(this);
       }
-      return rv;
     }
   },
   doTraceOff: function () {
@@ -547,6 +562,38 @@ var Cell = mkClass({
     delete this.setValue;
   }
 });
+
+Cell.cellComputationsHistory = [];
+Cell.historyCounter = 0;
+Cell.recordHistory = function (cell) {
+  var history = Cell.cellComputationsHistory;
+  while (history.length > 100) {
+    history.shift();
+  }
+  history.push(cell);
+  if (++Cell.historyCounter % 1000 == 0) {
+    debugger
+  }
+}
+// This is purely for debugging. Uses non-standard settable __proto__. Works
+// under WebKit and Mozilla
+Cell.traceEverything = function () {
+  var f = function () {}
+  f.prototype = Cell.prototype.__proto__;
+  var superProto = new f;
+  Cell.prototype.__proto__ == superProto;
+  superProto.tryUpdatingValue = Cell.prototype.tryUpdatingValue;
+  superProto.setValue = Cell.prototype.setValue;
+
+  Cell.prototype.doTraceOn();
+
+  return untraceEverything;
+  function untraceEverything() {
+    Cell.prototype.tryUpdatingValue = superProto.tryUpdatingValue;
+    Cell.prototype.setValue = superProto.setValue;
+    Cell.prototype.__proto__ = superProto.__proto__;
+  }
+}
 
 _.extend(Cell, {
   EMPTY_OBJECT: {},
