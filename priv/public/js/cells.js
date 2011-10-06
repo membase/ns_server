@@ -935,19 +935,28 @@ var ErrorQueue = mkClass({
 // all cells reads (there are no cells writes by definition) are
 // tracked and controlled by this guy
 var IOCenter = (function () {
-  var status = new Cell();
-  status.setValue({
+  var ioCenterStatus = new Cell();
+  ioCenterStatus.name("ioCenterStatus");
+  ioCenterStatus.setValue({
     inFlightCount: 0
   });
 
   var errorQueue = new ErrorQueue();
-  errorQueue.status.subscribeValue(function (v) {
-    status.setValue(_.extend({}, status.value, v));
+
+  var statusCell = new Cell(function () {
+    return _.extend({}, this.ioCenterStatus, this.errorQueueStatus);
+  }, {
+    ioCenterStatus: ioCenterStatus,
+    errorQueueStatus: errorQueue.status
   });
+  statusCell.name("IOCenter.status");
+  statusCell.setValue(_.extend({}, ioCenterStatus.value, errorQueue.status.value));
+  statusCell.invalidate();
 
   // S is short for self
   var S = {
-    status: status,
+    status: statusCell,
+    errorQueue: errorQueue,
     forceRepeat: function () {
       errorQueue.forceAction();
     },
@@ -983,7 +992,7 @@ var IOCenter = (function () {
       function sendXHR(_extraCallback) {
         extraCallback = _extraCallback;
 
-        status.setValueAttr(status.value.inFlightCount + 1, 'inFlightCount');
+        ioCenterStatus.setValueAttr(ioCenterStatus.value.inFlightCount + 1, 'inFlightCount');
 
         if (S.simulateDisconnect) {
           setTimeout(function () {
@@ -1014,7 +1023,7 @@ var IOCenter = (function () {
 
       function gotResponse(data, xhrStatus) {
         op.xhr = null;
-        status.setValueAttr(status.value.inFlightCount - 1, 'inFlightCount');
+        ioCenterStatus.setValueAttr(ioCenterStatus.value.inFlightCount - 1, 'inFlightCount');
         var args = arguments;
         var context = this;
 
@@ -1086,6 +1095,7 @@ IOCenter.staleness = new Cell(function (status) {
 }, {
   status: IOCenter.status
 });
+IOCenter.staleness.name("IOCenter.staleness");
 
 (function () {
   new Cell(function (status) {
