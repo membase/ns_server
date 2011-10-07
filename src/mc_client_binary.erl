@@ -354,10 +354,25 @@ decode_meta(<<?META_REVID:8/big, Length:8/big, SeqNo:32/big, RevId/binary>>)
 decode_meta(Data) ->
     {unknown, Data}.
 
+-spec set_with_meta(Sock :: port(), Key :: binary(),
+                    VBucket :: integer(), Value :: binary(),
+                    Meta :: any(),
+                    Cas :: integer(),
+                    Flags :: integer(),
+                    Expiration :: integer()) -> {ok, #mc_header{}, #mc_entry{}} |
+                                                {error, invalid_meta} |
+                                                {memcached_error, atom(), binary()}.
 set_with_meta(Sock, Key, VBucket, Value, Meta, CAS, Flags, Expiration) ->
     meta_cmd(Sock, ?CMD_SET_WITH_META,
              Key, VBucket, Value, Meta, CAS, Flags, Expiration).
 
+-spec add_with_meta(Sock :: port(), Key :: binary(),
+                    VBucket :: integer(), Value :: binary(),
+                    Meta :: any(),
+                    Flags :: integer(),
+                    Expiration :: integer()) -> {ok, #mc_header{}, #mc_entry{}} |
+                                                {error, invalid_meta} |
+                                                mc_error().
 add_with_meta(Sock, Key, VBucket, Value, Meta, Flags, Expiration) ->
     meta_cmd(Sock, ?CMD_ADD_WITH_META,
              Key, VBucket, Value, Meta, 0, Flags, Expiration).

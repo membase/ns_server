@@ -420,7 +420,7 @@ add(Bucket, Key, VBucket, Value) ->
 
 -spec add_with_meta(bucket_name(), binary(),
                     integer(), binary(), any(), integer(), integer()) ->
-    {ok, #mc_header{}, #mc_entry{}, any()} | mc_error() | {error, invalid_meta}.
+    {ok, #mc_header{}, #mc_entry{}} | mc_error() | {error, invalid_meta}.
 add_with_meta(Bucket, Key, VBucket, Value, Meta, Flags, Expiration) ->
     gen_server:call({server(Bucket, data), node()},
                     {add_with_meta,
