@@ -923,8 +923,10 @@ $(function () {
   var container = $('.io-error-notice');
   var timeoutId;
   function renderStatus() {
-    if (timeoutId != null)
+    if (timeoutId != null) {
       clearTimeout(timeoutId);
+      timeoutId = null;
+    }
 
     var status = IOCenter.status.value;
 
