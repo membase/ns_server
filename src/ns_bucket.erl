@@ -104,7 +104,7 @@ config_string(BucketName) ->
                          getenv_int("MEMBASE_TAP_NOOP_INTERVAL", 20)),
                        proplists:get_value(
                          max_txn_size, BucketConfig,
-                         getenv_int("MEMBASE_MAX_TXN_SIZE", 1000)),
+                         getenv_int("MEMBASE_MAX_TXN_SIZE", 10000)),
                        MemQuota,
                        proplists:get_value(
                          initfile, BucketConfig,
