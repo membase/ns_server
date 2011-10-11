@@ -425,7 +425,14 @@ higher_priority_node(NodeInfo) ->
 
 higher_priority_node({SelfVersion, SelfNode},
                      {Version, Node}) ->
-    (Version > SelfVersion) orelse (Node < SelfNode).
+    if
+        Version > SelfVersion ->
+            true;
+        Version =:= SelfVersion ->
+            Node < SelfNode;
+        true ->
+            false
+    end.
 
 %% true iff we need to take over mastership of given node
 -spec strongly_lower_priority_node(node_info()) -> boolean().
@@ -450,6 +457,11 @@ priority_test() ->
                                        'ns_2@192.168.1.1'},
                                       {misc:parse_version("2.0"),
                                        'ns_1@192.168.1.1'})),
+    ?assertEqual(false,
+                 higher_priority_node({misc:parse_version("2.0"),
+                                       'ns_1@192.168.1.1'},
+                                      {misc:parse_version("1.7.2"),
+                                       'ns_0@192.168.1.1'})),
     ?assertEqual(true, higher_priority_node({misc:parse_version("2.0"),
                                              'ns_2@192.168.1.1'},
                                             {misc:parse_version("2.0"),
