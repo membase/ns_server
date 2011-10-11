@@ -491,7 +491,14 @@ higher_priority_node(Self, NodeInfo, Mode) ->
                     {SelfVersion, SelfNode} = Self,
                     {Version, _} = NodeInfo,
 
-                    (Version > SelfVersion) orelse (Node < SelfNode)
+                    if
+                        Version > SelfVersion ->
+                            true;
+                        Version =:= SelfVersion ->
+                            Node < SelfNode;
+                        true ->
+                            false
+                    end
             end;
         compatible ->
             case is_atom(NodeInfo) of
@@ -522,6 +529,12 @@ priority_test() ->
                                        'ns_2@192.168.1.1'},
                                       {misc:parse_version("2.0"),
                                        'ns_1@192.168.1.1'},
+                                      normal)),
+    ?assertEqual(false,
+                 higher_priority_node({misc:parse_version("2.0"),
+                                       'ns_1@192.168.1.1'},
+                                      {misc:parse_version("1.7.2"),
+                                       'ns_0@192.168.1.1'},
                                       normal)),
     ?assertEqual(true,
                  higher_priority_node({misc:parse_version("2.0"),
