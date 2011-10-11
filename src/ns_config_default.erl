@@ -51,7 +51,7 @@ default() ->
                end,
 
     NodeUUID = case erlang:get(node_uuid_override) of
-                   undefined -> couch_uuids:new();
+                   undefined -> couch_uuids:random();
                    UUIDVal -> UUIDVal
                end,
 

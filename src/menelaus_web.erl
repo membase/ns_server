@@ -397,7 +397,7 @@ handle_complete_join(Req) ->
 get_uuid() ->
     case ns_config:search(uuid) of
         false ->
-            Uuid = couch_uuids:new(),
+            Uuid = couch_uuids:random(),
             ns_config:set(uuid, Uuid),
             Uuid;
         {value, Uuid2} ->
