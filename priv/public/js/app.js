@@ -210,6 +210,8 @@ var ThePage = {
       setHashFragmentParam('sec', section);
   },
   initialize: function () {
+    var self = this;
+
     _.each(_.uniq(_.values(this.sections)), function (sec) {
       if (sec.init)
         sec.init();
@@ -220,26 +222,14 @@ var ThePage = {
     DAL.cells.mode.subscribeValue(function (sec) {
       $('.currentNav').removeClass('currentNav');
       $('#switch_' + sec).parent('li').addClass('currentNav');
-    });
 
-    DAL.onReady(function () {
-      if (DAL.login) {
-        $('.sign-out-link').show();
-      }
-    });
-
-    var self = this;
-    watchHashParamChange('sec', 'overview', function (sec) {
       var oldSection = self.currentSection;
       var currentSection = self.sections[sec];
       if (!currentSection) {
-        self.gotoSection('overview');
         return;
       }
       self.currentSectionName = sec;
       self.currentSection = currentSection;
-
-      DAL.switchSection(sec);
 
       var secId = sec;
       if (currentSection.domId != null) {
@@ -259,6 +249,16 @@ var ThePage = {
         self.currentSection.onEnter();
         $(window).trigger('sec:' + sec);
       });
+    });
+
+    DAL.onReady(function () {
+      if (DAL.login) {
+        $('.sign-out-link').show();
+      }
+    });
+
+    watchHashParamChange('sec', 'overview', function (sec) {
+      DAL.switchSection(sec);
     });
     _.defer(function() {
       $(window).trigger('hashchange');
