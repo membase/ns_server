@@ -20,7 +20,10 @@
 
 %% returns capi port for given node or undefined if node doesn't have CAPI
 capi_port(Node, Config) ->
-    ns_config:search_prop(Config, {node, Node, rest}, capi_port).
+    case ns_config:search(Config, {node, Node, capi_port}) of
+        false -> undefined;
+        {value, X} -> X
+    end.
 
 %% returns capi port for given node or undefined if node doesn't have CAPI
 capi_port(Node) ->

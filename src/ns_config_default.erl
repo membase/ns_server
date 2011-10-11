@@ -74,9 +74,10 @@ default() ->
       [{port, 8091}]},
 
      {{node, node(), rest},
-      [{port, misc:get_env_default(rest_port, '_use_global_value')}, % Port number of the REST admin API and UI.
-       {capi_port, CAPIPort}
-      ]},
+      [{port, misc:get_env_default(rest_port, '_use_global_value')}]}, % Port number of the REST admin API and UI.
+
+     {{node, node(), capi_port},
+      CAPIPort},
 
                                                 % In 1.0, only the first entry in the creds list is displayed in the UI
                                                 % and accessible through the UI.
@@ -329,7 +330,13 @@ upgrade_config_from_1_7_2_to_2_0(Config) ->
     do_upgrade_config_from_1_7_2_to_2_0(Config, DefaultConfig).
 
 do_upgrade_config_from_1_7_2_to_2_0(Config, DefaultConfig) ->
-    {_, RestConfig} = lists:keyfind({node, node(), rest}, 1, DefaultConfig),
+    MaybeCapiPort = case ns_config:search(Config, {node, node(), capi_port}) of
+                        false ->
+                            {_, DefaultCapiPort} = lists:keyfind({node, node(), capi_port}, 1, DefaultConfig),
+                            [{set, {node, node(), capi_port}, DefaultCapiPort}];
+                        _ ->
+                            []
+                    end,
     MaybeNodeUUID = case ns_config:search(Config, {node, node(), uuid}) of
                         {value, _} -> [];
                         false ->
@@ -348,8 +355,10 @@ do_upgrade_config_from_1_7_2_to_2_0(Config, DefaultConfig) ->
                                   {_, RemoteClustersV} = lists:keyfind(remote_clusters, 1, DefaultConfig),
                                   [{set, remote_clusters, RemoteClustersV}]
                           end,
-    [{set, {node, node(), rest}, RestConfig}
-     | MaybeNodeUUID ++ MaybeAutoCompaction ++ MaybeRemoteClusters].
+    MaybeCapiPort ++
+        MaybeNodeUUID ++
+        MaybeAutoCompaction ++
+        MaybeRemoteClusters.
 
 upgrade_1_6_to_1_7_test() ->
     DefaultCfg = [{directory, default_directory},
@@ -380,17 +389,22 @@ upgrade_1_6_to_1_7_test() ->
                  lists:sort(Res)).
 
 upgrade_1_7_2_to_2_0_test() ->
-    Cfg = [[{{node, node(), rest}, something},
+    Cfg = [[{{node, node(), capi_port}, something},
             {remote_clusters, foobar}]],
-    DefaultCfg = [{{node, node(), rest}, somethingelse},
+    DefaultCfg = [{{node, node(), capi_port}, somethingelse},
                   {{node, node(), uuid}, <<"--uuid--">>},
                   {remote_clusters, foobar_2},
                   {autocompaction, compaction_something}],
     Result = do_upgrade_config_from_1_7_2_to_2_0(Cfg, DefaultCfg),
-    ?assertEqual([{set, {node, node(), rest}, somethingelse},
+    ?assertEqual([{set, {node, node(), uuid}, <<"--uuid--">>},
+                  {set, autocompaction, compaction_something}],
+                 Result),
+    Cfg2 = [[{remote_clusters, foobar}]],
+    Result2 = do_upgrade_config_from_1_7_2_to_2_0(Cfg2, DefaultCfg),
+    ?assertEqual([{set, {node, node(), capi_port}, somethingelse},
                   {set, {node, node(), uuid}, <<"--uuid--">>},
                   {set, autocompaction, compaction_something}],
-                 Result).
+                 Result2).
 
 no_upgrade_on_2_0_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, {2, 0}}]])).
