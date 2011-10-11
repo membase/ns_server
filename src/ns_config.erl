@@ -806,16 +806,16 @@ do_teardown(_V) ->
 all_test_() ->
     [{spawn, {foreach, fun do_setup/0, fun do_teardown/1,
               [fun test_setup/0,
-               fun test_set/0,
+               {"test_set", fun test_set/0},
                {"test_cas_config", fun test_cas_config/0},
-               fun test_update_config/0,
-               fun test_set_kvlist/0,
-               fun test_update/0]}},
+               {"test_update_config", fun test_update_config/0},
+               {"test_set_kvlist", fun test_set_kvlist/0},
+               {"test_update", fun test_update/0}]}},
      {spawn, {foreach, fun setup_with_saver/0, fun teardown_with_saver/1,
-              [fun test_with_saver_stop/0,
-               fun test_clear/0,
-               fun test_with_saver_set_and_stop/0,
-               fun test_clear_with_concurrent_save/0]}}].
+              [{"test_with_saver_stop", fun test_with_saver_stop/0},
+               {"test_clear", fun test_clear/0},
+               {"test_with_saver_set_and_stop", fun test_with_saver_set_and_stop/0},
+               {"test_clear_with_concurrent_save", fun test_clear_with_concurrent_save/0}]}}].
 
 test_setup() ->
     F = fun () -> ok end,
