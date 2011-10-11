@@ -50,6 +50,11 @@ default() ->
                    CAPIVal -> CAPIVal
                end,
 
+    NodeUUID = case erlang:get(node_uuid_override) of
+                   undefined -> couch_uuids:new();
+                   UUIDVal -> UUIDVal
+               end,
+
     [{directory, path_config:component_path(data, "config")},
      {autocompaction, [{database_fragmentation_threshold, 80},
                        {view_fragmentation_threshold, 80}]},
@@ -205,7 +210,9 @@ default() ->
                           {count, 0}]},
      {{node, node(), couchdb},
       [{database_dir, DbDir},
-       {view_index_dir, DbDir}]}
+       {view_index_dir, DbDir}]},
+     {{node, node(), uuid},
+      NodeUUID}
     ].
 
 %% returns list of changes to config to upgrade it to current version.
@@ -323,6 +330,12 @@ upgrade_config_from_1_7_2_to_2_0(Config) ->
 
 do_upgrade_config_from_1_7_2_to_2_0(Config, DefaultConfig) ->
     {_, RestConfig} = lists:keyfind({node, node(), rest}, 1, DefaultConfig),
+    MaybeNodeUUID = case ns_config:search(Config, {node, node(), uuid}) of
+                        {value, _} -> [];
+                        false ->
+                            {_, NodeUUID} = lists:keyfind({node, node(), uuid}, 1, DefaultConfig),
+                            [{set, {node, node(), uuid}, NodeUUID}]
+                    end,
     MaybeAutoCompaction = case ns_config:search(Config, autocompaction) of
                               {value, _} -> [];
                               false ->
@@ -335,7 +348,8 @@ do_upgrade_config_from_1_7_2_to_2_0(Config, DefaultConfig) ->
                                   {_, RemoteClustersV} = lists:keyfind(remote_clusters, 1, DefaultConfig),
                                   [{set, remote_clusters, RemoteClustersV}]
                           end,
-    [{set, {node, node(), rest}, RestConfig}] ++ MaybeAutoCompaction ++ MaybeRemoteClusters.
+    [{set, {node, node(), rest}, RestConfig}
+     | MaybeNodeUUID ++ MaybeAutoCompaction ++ MaybeRemoteClusters].
 
 upgrade_1_6_to_1_7_test() ->
     DefaultCfg = [{directory, default_directory},
@@ -369,10 +383,12 @@ upgrade_1_7_2_to_2_0_test() ->
     Cfg = [[{{node, node(), rest}, something},
             {remote_clusters, foobar}]],
     DefaultCfg = [{{node, node(), rest}, somethingelse},
+                  {{node, node(), uuid}, <<"--uuid--">>},
                   {remote_clusters, foobar_2},
                   {autocompaction, compaction_something}],
     Result = do_upgrade_config_from_1_7_2_to_2_0(Cfg, DefaultCfg),
     ?assertEqual([{set, {node, node(), rest}, somethingelse},
+                  {set, {node, node(), uuid}, <<"--uuid--">>},
                   {set, autocompaction, compaction_something}],
                  Result).
 
@@ -441,6 +457,7 @@ fuller_1_6_test_() ->
                        {memcached, "memcached old something"}]},
                      {{node, node(), ns_log}, default_log}]],
              erlang:put(capi_port_override, 5984),
+             erlang:put(node_uuid_override, <<"--uuid--">>),
              ets:new(path_config_override, [public, named_table, {read_concurrency, true}]),
              [ets:insert(path_config_override, {K, "."}) || K <- [path_config_tmpdir, path_config_datadir,
                                                                   path_config_bindir, path_config_libdir,
