@@ -157,13 +157,8 @@ h1 .nav {display:block; padding:8px 10px 0 0; text-transform:none;}
 h1 .nav a {font-size:11px; font-weight:bolder;}
 #mainPanel h1 {padding:0 0 15px 9px;}
 
-.gong_rb {background:none #d8dbdc; position:relative;margin:5px 0 10px;}
+.gong_rb {background:none #d8dbdc; position:relative;margin:5px 0 10px;-moz-border-radius:10px;-webkit-border-radius:10px;border-radius:10px}
 .gong_rb .pad { background:none !important;overflow:hidden;}
-.gong_rb .side {display:block;width:9px; height:9px; position:absolute;font-size:0;line-height:0;background:url(../images/gong_rb.gif) 0 0 no-repeat; overflow:hidden;}
-.gong_rb .side_1 {background-position:0 0px; left:0px; top:0px;}
-.gong_rb .side_2 {background-position:0 -9px; right:0px; top:0px;}
-.gong_rb .side_3 {background-position:0 -18px; right:0px; bottom:0px;}
-.gong_rb .side_4 {background-position:0 -27px; left:0px; bottom:0px;}
 
 .err {width:100%;margin:0 0 15px;padding:7px 0 0;overflow:hidden;position:relative;background:#eee;}
 .err > i {display:block;width:3px; height:3px; position:absolute;left:0px; top:0px; font-size:0;background:url(../images/crn_hdr_err.gif) 0 0 no-repeat;}
@@ -816,7 +811,6 @@ ul.tabs .badge_display .badge {display:block;}
 .edit_btn {display:block; width:65px; height:21px; background:url(../images/edit-button.png) 0 0 no-repeat; float:right; text-align:center; font-size:13px; color:#000; line-height:20px; text-decoration:none !important; cursor:pointer;}
 .edit_btn.disabled {opacity:1 !important; background-position:0 -21px !important; color:#9E9FA3 !important; cursor:default;}
 .list .ovf {padding:10px 0;}
-.list .gong_rb .side {background-image:url(../images/gong_rb_2.gif);}
 
 .list .highlight td {background-color:#eee !important;}
 .properties_table {width:462px;}
@@ -879,7 +873,6 @@ div.panes div.pane {display:none;}
 .servers_list .settings-placeholder {background-color:#e7e7e9; padding-top:5px !important;padding-bottom:15px !important;}
  .servers_list li.settings-placeholder, .servers_list .settings-placeholder > td {padding-left:76px !important;}
 .servers_list .settings-placeholder .gong_rb {background-color:#d9dadc !important;}
-.servers_list .settings-placeholder .gong_rb .side {background-image:url(../images/gong_rb_2.gif) !important;}
 
 .footer_bg {background-color:#cbcfd2; padding-top:10px; padding-bottom:10px;}
 
