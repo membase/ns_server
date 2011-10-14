@@ -73,7 +73,8 @@
          sync/4, add/4, get/3, delete/3, delete/4,
          get_meta/3,
          set_with_meta/5, set_with_meta/6, set_with_meta/8,
-         add_with_meta/5, add_with_meta/7]).
+         add_with_meta/5, add_with_meta/7,
+         delete_with_meta/5, delete_with_meta/4]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -190,6 +191,11 @@ handle_call({delete, Key, VBucket, CAS}, _From, State) ->
     Reply = mc_client_binary:cmd(?DELETE, State#state.sock, undefined, undefined,
                                  {#mc_header{vbucket = VBucket},
                                   #mc_entry{key = Key, cas = CAS}}),
+    {reply, Reply, State};
+
+handle_call({delete_with_meta, Key, VBucket, Meta, CAS}, _From, State) ->
+    Reply = mc_client_binary:delete_with_meta(State#state.sock,
+                                              Key, VBucket, Meta, CAS),
     {reply, Reply, State};
 
 handle_call({set, Key, VBucket, Val}, _From, State) ->
@@ -455,6 +461,17 @@ delete(Bucket, Key, VBucket, CAS) ->
 
 delete(Bucket, Key, VBucket) ->
     delete(Bucket, Key, VBucket, 0).
+
+
+-spec delete_with_meta(bucket_name(), binary(), integer(), any(), integer()) ->
+    {ok, #mc_header{}, #mc_entry{}} | mc_error() | {error, invalid_meta}.
+delete_with_meta(Bucket, Key, VBucket, Meta, CAS) ->
+    gen_server:call({server(Bucket, data), node()},
+                    {delete_with_meta, Key, VBucket, Meta, CAS}, ?TIMEOUT).
+
+
+delete_with_meta(Bucket, Key, VBucket, Meta) ->
+    delete_with_meta(Bucket, Key, VBucket, Meta, 0).
 
 
 %% @doc send a set command to memcached instance

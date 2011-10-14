@@ -43,7 +43,8 @@
          sync/4,
          get_meta/3,
          set_with_meta/8,
-         add_with_meta/7]).
+         add_with_meta/7,
+         delete_with_meta/5]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
 -type mc_timeout() :: undefined | infinity | non_neg_integer().
@@ -376,6 +377,14 @@ set_with_meta(Sock, Key, VBucket, Value, Meta, CAS, Flags, Expiration) ->
 add_with_meta(Sock, Key, VBucket, Value, Meta, Flags, Expiration) ->
     meta_cmd(Sock, ?CMD_ADD_WITH_META,
              Key, VBucket, Value, Meta, 0, Flags, Expiration).
+
+delete_with_meta(Sock, Key, VBucket, _Meta, CAS) ->
+    %% TODO: this is only a stub
+    {ok, Header, Entry, _} =
+        mc_client_binary:cmd(?DELETE, Sock, undefined, undefined,
+                             {#mc_header{vbucket = VBucket},
+                              #mc_entry{key = Key, cas = CAS}}),
+    {ok, Header, Entry}.
 
 encode_meta({revid, {SeqNo, RevId}})
   when is_integer(SeqNo), is_binary(RevId) ->
