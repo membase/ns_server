@@ -308,11 +308,36 @@ var ServersSection = {
     var self = this;
     self.postAndReload(self.poolDetails.value.controllers.rebalance.uri,
                        {knownNodes: _.pluck(self.allNodes, 'otpNode').join(','),
-                        ejectedNodes: _.pluck(self.pendingEject, 'otpNode').join(',')});
+                        ejectedNodes: _.pluck(self.pendingEject, 'otpNode').join(',')},
+                      onError);
     self.poolDetails.getValue(function () {
       // switch to active server tab when poolDetails reload is complete
       self.tabs.setValue("active");
     });
+
+    function onError(data, status, xhr) {
+      var statusCode = 0;
+      var message = "Request failed. Check logs."
+      try {
+        statusCode = xhr.status;
+      } catch (e) {}
+      if (statusCode === 503) {
+        var retryAfterString = xhr.getResponseHeader("Retry-After");
+        var retryAfter = parseHTTPDate(String(retryAfterString));
+        if (retryAfter != null) {
+          message = "System needs to cool down from the last rebalance attempt. Please try again at ";
+          message += retryAfter.toString();
+          message += " (" + retryAfterString + ").";
+
+          var now = (new Date()).valueOf();
+          var diff = ((retryAfter.valueOf() - now + 999) / 1000) >> 0;
+          if (diff > 0) {
+            message += " According to your browser's clock it is " + diff + " seconds from now."
+          }
+        }
+      }
+      displayNotice(message, true);
+    }
   },
   onStopRebalance: function () {
     this.postAndReload(this.poolDetails.value.stopRebalanceUri, "");
