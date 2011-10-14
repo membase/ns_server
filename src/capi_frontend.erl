@@ -84,7 +84,14 @@ update_doc(#db{filepath = undefined} = Db, #doc{id = <<"_design/",_/binary>>} = 
 update_doc(#db{filepath = undefined, name = Name} = Db,
            #doc{id = DocId} = Doc, Options, UpdateType) ->
     {_, Node} = cb_util:vbucket_from_id(?b2l(Name), DocId),
-    rpc:call(Node, capi_crud, update_doc, [Db, Doc, Options, UpdateType]);
+    R = rpc:call(Node, capi_crud, update_doc, [Db, Doc, Options, UpdateType]),
+    case R of
+        {ok, _Doc} ->
+            R;
+        Error ->
+            %% rpc transforms exceptions into values; need to rethrow them
+            throw(Error)
+    end;
 
 update_doc(Db, Doc, Options, UpdateType) ->
     couch_db:update_doc(Db, Doc, Options, UpdateType).

@@ -20,150 +20,247 @@
 -include("mc_entry.hrl").
 -include("mc_constants.hrl").
 
--define(i2l(X), integer_to_list(X)).
-
 -export([open_doc/3,
          update_doc/4]).
 
-%% Open a database and run a function using its handler
--spec open_db(function(), binary(), #user_ctx{}) -> any().
-open_db(Fun, DbName, UserCtx) ->
-    case couch_db:open(DbName, [{user_ctx, UserCtx}]) of
-        {ok, Db} ->
-            try
-                Fun(Db)
-            after
-                couch_db:close(Db)
-            end;
-        Error ->
-            throw(Error)
-    end.
-
-
-%% Ensure item is synced to CouchDB then read value directly
-%% from CouchDB
 -spec open_doc(#db{}, binary(), list()) -> any().
 open_doc(#db{name = Name, user_ctx = UserCtx}, DocId, Options) ->
+    get(Name, DocId, UserCtx, Options).
 
-    {VBucket, _} = cb_util:vbucket_from_id(Name, DocId),
-
-    {ok, _, Entry, _} = ns_memcached:get(?b2l(Name), DocId, VBucket),
-    #mc_entry{cas = CAS} = Entry,
-    _ = ns_memcached:sync(?b2l(Name), DocId, VBucket, CAS),
-
-    open_db(fun(Db) ->
-        couch_db:open_doc(Db, DocId, Options)
-    end, db_from_vbucket(Name, VBucket), UserCtx).
-
-
-%% Delete a document, differ from couch api as deleted documents in memcached
-%% do not exist, in couch they are simply new documents
 update_doc(#db{name = Name, user_ctx = UserCtx},
-           #doc{id = DocId, revs = {NRevNo, [Rev|_]}, deleted = true},
-           Options, _Type) ->
+           #doc{id = DocId, revs = {SeqNo, [RevId|_]}, deleted = true},
+           _Options, _Type) ->
+    delete(Name, DocId, {SeqNo, RevId}, UserCtx);
 
-    {VBucket, _} = cb_util:vbucket_from_id(Name, DocId),
-
-    {ok, Header, Entry, _} = ns_memcached:get(?b2l(Name), DocId, VBucket),
-
-    case Header#mc_header.status of
-
-        ?KEY_ENOENT ->
-            throw(missing);
-        _ ->
-            #mc_entry{cas = CAS} = Entry,
-            _ = ns_memcached:sync(?b2l(Name), DocId, VBucket, CAS),
-
-            open_db( fun(Db) ->
-                {ok, NewDoc} = couch_db:open_doc(Db, DocId, Options),
-                {RevNo, [Latest|_]} = NewDoc#doc.revs,
-                case {RevNo, Latest} of
-                    {NRevNo, Rev} ->
-                        ok = delete_doc(?b2l(Name), DocId, VBucket),
-                        {ok, {0, "deleted"}};
-                    _ ->
-                        throw(conflict)
-                end
-            end, db_from_vbucket(Name, VBucket), UserCtx)
+update_doc(#db{name = Name, user_ctx = UserCtx} = Db,
+           #doc{id = DocId, body = Body, atts = Atts, revs = {0, []}} = Doc,
+           Options, Type) ->
+    try
+        add(Name, DocId, Body, Atts, UserCtx)
+    catch
+        unsupported ->
+            capi_frontend:not_implemented(update_doc, [Db, Doc, Options, Type])
     end;
 
-%% No revision specified, create a new document, ADD via memcached
-%% sync and fetch revision from couch
-update_doc(#db{name = Name, user_ctx = UserCtx},
-           #doc{id = DocId, body = Body, revs = {0, []}}, Options, _Type) ->
+update_doc(#db{name = Name, user_ctx = UserCtx} = Db,
+           #doc{id = DocId, revs = {SeqNo, [RevId | _]},
+                body = Body, atts = Atts} = Doc,
+           Options, Type) ->
+    try
+        set(Name, DocId, {SeqNo, RevId}, Body, Atts, UserCtx)
+    catch
+        unsupported ->
+            capi_frontend:not_implemented(update_doc, [Db, Doc, Options, Type])
+    end.
 
-    {VBucket, _} = cb_util:vbucket_from_id(Name, DocId),
+-spec cas() -> <<_:64>>.
+cas() ->
+    crypto:rand_bytes(8).
 
-    {ok, Header, Entry, _}
-        = ns_memcached:add(?b2l(Name), DocId, VBucket, ?JSON_ENCODE(Body)),
+-spec encode_revid(<<_:64>>, binary(), integer()) -> <<_:128>>.
+encode_revid(CAS, Value, Flags) ->
+    <<CAS:8/binary, (size(Value)):32/big, Flags:32/big>>.
 
-    case Header#mc_header.status of
-        % CouchDB strips invalid rev data from request
-        ?KEY_EEXISTS ->
-            throw(conflict);
-        _ ->
-            #mc_entry{cas = CAS} = Entry,
-            _ = ns_memcached:sync(?b2l(Name), DocId, VBucket, CAS),
-            NDb = db_from_vbucket(Name, VBucket),
-            {ok, get_doc_rev(NDb, UserCtx, DocId, Options)}
-    end;
+-spec decode_revid(<<_:128>>) -> {<<_:64>>, integer(), integer()}.
+decode_revid(<<CAS:8/binary, Length:32/big, Flags:32/big>>) ->
+    {CAS, Length, Flags}.
 
-%% Sync document then check couch version, if it matches update the
-%% document and resync
-update_doc(#db{name = Name, user_ctx = UserCtx},
-           #doc{id = DocId, revs = {NRevNo, [Rev|_]}, body = Body},
-           Options, _Type) ->
+-spec next_rev(Revision, binary()) -> {Revision, Flags}
+  when Revision :: {integer(), <<_:128>>},
+       Flags :: integer().
+next_rev({SeqNo, RevId} = _Rev, Value) ->
+    {_CAS, _Length, Flags} = decode_revid(RevId),
+    NewRevId = encode_revid(cas(), Value, Flags),
+    {{SeqNo + 1, NewRevId}, Flags}.
 
-    {VBucket, _} = cb_util:vbucket_from_id(Name, DocId),
+next_rev(Rev) ->
+    next_rev(Rev, <<>>).
 
-    {ok, _Header, Entry, _} = ns_memcached:get(?b2l(Name), DocId, VBucket),
-    _ = ns_memcached:sync(?b2l(Name), DocId, VBucket, Entry#mc_entry.cas),
+add(BucketBin, DocId, Body, Atts, UserCtx) ->
+    Bucket = binary_to_list(BucketBin),
+    Value = doc_value(Body, Atts),
+    {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
 
-    open_db( fun(Db) ->
-        {ok, NewDoc} = couch_db:open_doc(Db, DocId, Options),
-        case get_latest_rev(NewDoc) of
-            {NRevNo, Rev} ->
-                Json = ?JSON_ENCODE(Body),
-                {ok, CAS} = set_doc(?b2l(Name), DocId, VBucket, Json),
-                _ = ns_memcached:sync(?b2l(Name), DocId, VBucket, CAS);
-            _ ->
-                throw(conflict)
-        end
-    end, db_from_vbucket(Name, VBucket), UserCtx),
+    {Rev, Flags} =
+        case get_meta(Bucket, VBucket, DocId, UserCtx) of
+            {error, enoent} ->
+                RevId = encode_revid(cas(), Value, 0),
+                {{1, RevId}, 0};
+            {ok, _Rev, false, _Props} ->
+                throw(conflict);
+            {ok, OldRev, true, _Props} ->
+                next_rev(OldRev, Value)
+        end,
 
-    {ok, get_doc_rev(db_from_vbucket(Name, VBucket), UserCtx, DocId, Options)}.
+    Meta = {revid, Rev},
 
+    case ns_memcached:add_with_meta(Bucket, DocId,
+                                    VBucket, Value, Meta, Flags, 0) of
+        {ok, _, _} ->
+            {ok, Rev};
+        {memcached_error, not_my_vbucket, _} ->
+            throw(not_my_vbucket);
+        {memcached_error, key_eexists, _} ->
+            throw(conflict)
+    end.
 
-%% TODO: Check CAS value and retry if failed
-delete_doc(Name, DocId, VBucket) ->
-    {ok, _Entry, _Header, _} = ns_memcached:delete(Name, DocId, VBucket),
-    ok.
+set(BucketBin, DocId, PrevRev, Body, Atts, UserCtx) ->
+    Bucket = binary_to_list(BucketBin),
+    Value = doc_value(Body, Atts),
+    {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
 
+    {Deleted, CAS}
+        = case get_meta(Bucket, VBucket, DocId, UserCtx) of
+              {error, enoent} ->
+                  {true, undefined};
+              {ok, PrevRev, Deleted1, Props} ->
+                  CAS1 = proplists:get_value(cas, Props),
+                  {Deleted1, CAS1};
+              {ok, _Rev, _Deleted, _Props} ->
+                  throw(conflict)
+          end,
 
-%% TODO: Check CAS value and retry if failed
-set_doc(Name, DocId, VBucket, Json) ->
-    {ok, _, #mc_entry{cas = CAS}, _}
-        = ns_memcached:set(Name, DocId, VBucket, Json),
-    {ok, CAS}.
+    {Rev, Flags} = next_rev(PrevRev, Value),
+    Meta = {revid, Rev},
 
+    R =
+        case CAS =/= undefined andalso not(Deleted) of
+            true ->
+                ns_memcached:set_with_meta(Bucket, DocId,
+                                           VBucket, Value, Meta, CAS, Flags, 0);
+            false ->
+                ns_memcached:add_with_meta(Bucket, DocId,
+                                           VBucket, Value, Meta, Flags, 0)
+        end,
+    case R of
+        {ok, _, _} ->
+            {ok, Rev};
+        {memcached_error, not_my_vbucket, _} ->
+            throw(not_my_vbucket);
+        {memcached_error, key_eexists, _} ->
+            throw(conflict)
+    end.
 
-%% read the current revision of a document
--spec get_doc_rev(binary(), #user_ctx{}, binary(), list()) ->
-    {integer(), binary()}.
-get_doc_rev(DbName, UserCtx, DocId, Options) ->
-    open_db( fun(VDb) ->
-        {ok, Doc} = couch_db:open_doc(VDb, DocId, Options),
-        get_latest_rev(Doc)
-    end, DbName, UserCtx).
+delete(BucketBin, DocId, PrevRev, UserCtx) ->
+    Bucket = binary_to_list(BucketBin),
+    {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
 
+    case get_meta(Bucket, VBucket, DocId, UserCtx) of
+        {error, enoent} ->
+            throw({not_found, missing});
+        {ok, _Rev, true, _Props} ->
+            throw({not_found, deleted});
+        {ok, PrevRev, false, Props} ->
+            %% this should not fail because we cannot have non-deleted key
+            %% only in couchdb
+            {cas, CAS} = lists:keyfind(cas, 1, Props),
+            {Rev, _Flags} = next_rev(PrevRev),
+            Meta = {revid, Rev},
+            case ns_memcached:delete_with_meta(Bucket, DocId,
+                                               VBucket, Meta, CAS) of
+                {ok, _, _} ->
+                    {ok, Rev};
+                {memcached_error, not_my_vbucket, _} ->
+                    throw(not_my_vbucket);
+                {memcached_error, key_enoent, _} ->
+                    throw(conflict)
+            end;
+        {ok, _Rev, false, _Props} ->
+            throw(conflict)
+    end.
 
--spec get_latest_rev(#doc{}) -> {integer(), binary()}.
-get_latest_rev(#doc{revs = {RevNo, [Rev|_]}}) ->
-    {RevNo, Rev}.
+get(BucketBin, DocId, UserCtx, Options) ->
+    Bucket = binary_to_list(BucketBin),
+    ReturnDeleted = proplists:get_value(deleted, Options, false),
+    {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
+    get_loop(Bucket, DocId, UserCtx, ReturnDeleted, VBucket).
 
+get_loop(Bucket, DocId, UserCtx, ReturnDeleted, VBucket) ->
+    case get_meta(Bucket, VBucket, DocId, UserCtx) of
+        {error, enoent} ->
+            {not_found, missing};
+        {ok, Rev, true, _Props} ->
+            case ReturnDeleted of
+                true ->
+                    {ok, mk_deleted_doc(DocId, Rev)};
+                false ->
+                    {not_found, deleted}
+            end;
+        {ok, Rev, false, Props} ->
+            {cas, CAS} = lists:keyfind(cas, 1, Props),
+            {ok, Header, Entry, _} = ns_memcached:get(Bucket, DocId, VBucket),
 
-%% Generate the name of the vbucket database
--spec db_from_vbucket(binary(), integer()) -> binary().
-db_from_vbucket(Name, VBucket) ->
-    VBucketStr = ?l2b(?i2l(VBucket)),
-    <<Name/binary, "/", VBucketStr/binary>>.
+            case {Header#mc_header.status, Entry#mc_entry.cas} of
+                {?SUCCESS, CAS} ->
+                    Value = Entry#mc_entry.data,
+                    {ok, mk_doc(DocId, Rev, Value)};
+                {?SUCCESS, _CAS} ->
+                    get_loop(Bucket, DocId, UserCtx, ReturnDeleted, VBucket);
+                {?KEY_ENOENT, _} ->
+                    get_loop(Bucket, DocId, UserCtx, ReturnDeleted, VBucket);
+                {?NOT_MY_VBUCKET, _} ->
+                    throw(not_my_vbucket)
+            end
+    end.
+
+get_meta(Bucket, VBucket, DocId, UserCtx) ->
+    case capi_utils:get_meta(Bucket, VBucket, DocId, UserCtx) of
+        {error, not_my_vbucket} ->
+            throw(not_my_vbucket);
+        Other ->
+            Other
+    end.
+
+mk_deleted_doc(DocId, Rev) ->
+    #doc{id = DocId, revs = mk_revs(Rev), deleted = true}.
+
+mk_doc(DocId, {SeqNo, _} = Rev, RawValue) ->
+    DocTemplate = #doc{id = DocId, revs = mk_revs(Rev)},
+
+    try
+        Json = json_decode(RawValue),
+        DocTemplate#doc{body=Json}
+    catch
+        {invalid_json, _} ->
+            Atts = [#att{name = <<"value">>,
+                         type = <<"application/content-stream">>,
+                         data = RawValue,
+                         disk_len = size(RawValue),
+                         revpos = SeqNo}],
+            DocTemplate#doc{atts=Atts}
+    end.
+
+mk_revs({SeqNo, RevId}) ->
+    {SeqNo, [RevId]}.
+
+doc_value(Body, []) ->
+    ?JSON_ENCODE(Body);
+doc_value({[]}, [#att{name = <<"value">>, data = Data}]) ->
+    Data;
+doc_value(_, _) ->
+    throw(unsupported).
+
+%% decode a json and ensure that the result is an object; otherwise throw
+%% invalid_json exception
+json_decode(RawValue) ->
+    case jsonish(RawValue) of
+        true ->
+            case ?JSON_DECODE(RawValue) of
+                {_} = Json ->
+                    Json;
+                _ ->
+                    throw({invalid_json, not_an_object})
+            end;
+        false ->
+            throw({invalid_json, not_jsonish})
+    end.
+
+jsonish(<<"{", _/binary>>) ->
+    true;
+jsonish(<<" ", _/binary>>) ->
+    true;
+jsonish(<<"\r", _/binary>>) ->
+    true;
+jsonish(<<"\n", _/binary>>) ->
+    true;
+jsonish(_) -> false.

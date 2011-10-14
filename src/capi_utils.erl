@@ -18,6 +18,9 @@
 
 -compile(export_all).
 
+-include("couch_db.hrl").
+-include("mc_entry.hrl").
+
 %% returns capi port for given node or undefined if node doesn't have CAPI
 capi_port(Node, Config) ->
     case ns_config:search(Config, {node, Node, capi_port}) of
@@ -54,3 +57,26 @@ capi_bucket_url(Node, BucketName, LocalAddr, Config) ->
 
 capi_bucket_url(Node, BucketName, LocalAddr) ->
     capi_bucket_url(Node, BucketName, LocalAddr, ns_config:get()).
+
+get_meta(Bucket, VBucket, DocId, UserCtx) ->
+    case ns_memcached:get_meta(Bucket, DocId, VBucket) of
+        {ok, _Header, #mc_entry{cas=CAS} = _Entry, {revid, Rev}} ->
+            %% TODO: deleted flag
+            {ok, Rev, false, [{cas, CAS}, ep_engine]};
+        {memcached_error, not_my_vbucket, _} ->
+            {error, not_my_vbucket};
+        {memcached_error, key_enoent, _} ->
+            capi_frontend:with_subdb(
+              Bucket, VBucket, UserCtx,
+              fun (Db) ->
+                      case couch_db:open_doc(Db, DocId, [deleted]) of
+                          {ok, Doc} ->
+                              {SeqNo, [RevId|_]} = Doc#doc.revs,
+                              {ok, {SeqNo, RevId}, Doc#doc.deleted, [couchdb]};
+                          {not_found, missing} ->
+                              {error, enoent};
+                          Error ->
+                              throw(Error)
+                      end
+              end)
+    end.
