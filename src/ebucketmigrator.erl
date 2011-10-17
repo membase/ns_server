@@ -67,9 +67,19 @@ run(Conf) ->
     process_flag(trap_exit, true),
 
     Host = proplists:get_value(host, Conf),
-    Dest = proplists:get_value(destination, Conf),
+    {DstNode, _} = Dest = proplists:get_value(destination, Conf),
     VBuckets = proplists:get_value(vbuckets, Conf),
     ProfileFile = proplists:get_value(profile_file, Conf),
+
+    TapSuffix = case proplists:get_value(takeover, Conf, false) of
+                    true ->
+                        [VBucket] = VBuckets,
+                        integer_to_list(VBucket);
+                    false ->
+                        DstNode
+                end,
+
+    Conf1 = [{suffix, TapSuffix} | Conf],
 
     case {Host, Dest, VBuckets} of
         {undefined, _, _} ->
@@ -85,7 +95,7 @@ run(Conf) ->
                 _ ->
                     ok = fprof:trace([start, {file, ProfileFile}])
             end,
-            {ok, Pid} = ebucketmigrator_srv:start_link(Host, Dest, Conf),
+            {ok, Pid} = ebucketmigrator_srv:start_link(Host, Dest, Conf1),
             receive
                 {'EXIT', Pid, normal} ->
                     ok;
