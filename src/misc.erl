@@ -1023,7 +1023,8 @@ split_binary_at_char(Binary, Chr) ->
 build_ebucketmigrator() ->
 
     Filename = "ebucketmigrator",
-    Modules = [ebucketmigrator, ebucketmigrator_srv, mc_client_binary, mc_binary],
+    Modules = [ebucketmigrator, ebucketmigrator_srv,
+               mc_client_binary, mc_binary, misc],
     Files = [read_beam(Mod, "ebin") || Mod <- Modules],
 
     case zip:create("mem", Files, [memory]) of
