@@ -43,7 +43,7 @@ handle_view_req(Req, Db, DDoc) when Db#db.filepath =/= undefined ->
     couch_httpd_view:handle_view_req(Req, Db, DDoc);
 
 handle_view_req(#httpd{method='GET',
-        path_parts=[_, _, DName, _, ViewName]}=Req, #db{name=Name} = Db, DDoc) ->
+        path_parts=[_, _, DName, _, ViewName]}=Req, #db{name=Name} = Db, _DDoc) ->
     case DName of
         <<"dev_", _/binary>> ->
             case get_value("full_set", (Req#httpd.mochi_req):parse_qs()) =/= "true"
@@ -118,7 +118,7 @@ view_merge_params(Req, #db{name = BucketName} = Db, DDocId, ViewName) ->
         end, [], NodeToVBuckets),
     view_merge_params(Req, Db, DDocId, ViewName, ViewSpecs).
 
-view_merge_params(Req, #db{name = BucketName}, DDocId, ViewName, ViewSpecs) ->
+view_merge_params(Req, _Db, _DDocId, _ViewName, ViewSpecs) ->
     case Req#httpd.method of
     'GET' ->
         Body = [],
