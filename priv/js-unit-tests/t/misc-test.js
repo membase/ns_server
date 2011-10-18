@@ -42,6 +42,62 @@ ParseHTTPDateTest.prototype.testBasic = function () {
                parseHTTPDate("Asdasdsd asd asd asd", "badvalue").valueOf())
 }
 
+var ParseRFC3339DateTest = TestCase("ParseRFC3339DateTest");
+ParseRFC3339DateTest.prototype.testBasic = function () {
+/*
+root@pi:~# TZ='America/Los_Angeles' date --rfc-3339=ns -u
+2011-10-18 15:52:44.934297829+00:00
+root@pi:~# TZ='America/Los_Angeles' date --rfc-3339=ns
+2011-10-18 08:52:47.326164498-07:00
+root@pi:~# date --rfc-3339=ns
+2011-10-18 18:55:13.142337777+03:00
+ */
+
+  var d1 = parseRFC3339Date("2011-10-18 15:52:35.928687640+00:00");
+  assertTrue(d1 instanceof Date);
+  assertEquals(Date.UTC(2011, 9, 18, 15, 52, 35, 929),
+               parseRFC3339Date("2011-10-18 15:52:35.928687640+00:00").valueOf());
+
+  assertEquals(Date.UTC(2011, 9, 18, 15, 52, 35, 929),
+               parseRFC3339Date("2011-10-18T15:52:35.928687640Z").valueOf());
+
+  assertEquals(Date.UTC(2011, 9, 18, 15, 52, 35, 929),
+               parseRFC3339Date("2011-10-18T15:52:35.928687640z").valueOf());
+
+  assertEquals(Date.UTC(2011, 9, 18, 15, 52, 35, 929),
+               parseRFC3339Date("2011-10-18T15:52:35.928687640").valueOf());
+
+  assertEquals(Date.UTC(2011, 9, 18, 15, 52, 35, 0),
+               parseRFC3339Date("2011-10-18T15:52:35").valueOf());
+
+  assertEquals(Date.UTC(2011, 9, 18, 15, 52, 35, 0),
+               parseRFC3339Date("2011-10-18T15:52:35Z").valueOf());
+
+  assertEquals(Date.UTC(2011, 9, 18, 15, 55, 13, 143),
+               parseRFC3339Date("2011-10-18 18:55:13.142337777+03:00").valueOf());
+
+  // root@pi:~# date -u -d '2011-10-18 18:55:13.142337777+01:30'
+  // Tue Oct 18 17:25:13 UTC 2011
+  assertEquals(Date.UTC(2011, 9, 18, 17, 25, 13, 143),
+               parseRFC3339Date("2011-10-18 18:55:13.142337777+01:30").valueOf());
+
+  // root@pi:~# date -u -d '2011-10-18 18:55:13.142337777-01:30'
+  // Tue Oct 18 20:25:13 UTC 2011
+  assertEquals(Date.UTC(2011, 9, 18, 20, 25, 13, 143),
+               parseRFC3339Date("2011-10-18 18:55:13.142337777-01:30").valueOf());
+
+  // root@pi:~# date -u -d '2011-10-18 18:55:13.142337777-00:30'
+  // Tue Oct 18 19:25:13 UTC 2011
+  assertEquals(Date.UTC(2011, 9, 18, 19, 25, 13, 143),
+               parseRFC3339Date("2011-10-18 18:55:13.142337777-00:30").valueOf());
+
+  assertEquals(Date.UTC(2011, 9, 18, 15, 55, 13, 142),
+               parseRFC3339Date("2011-10-18 18:55:13.142+03:00").valueOf());
+
+  assertEquals(Date.UTC(2011, 9, 18, 15, 52, 47, 327),
+               parseRFC3339Date("2011-10-18 08:52:47.326164498-07:00").valueOf());
+};
+
 var NaturalSortTest = TestCase("NaturalSortTest");
 NaturalSortTest.prototype.testHostnameSorting = function() {
   var ips = [{'hostname':'10.2.34.5'},

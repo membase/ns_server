@@ -915,6 +915,38 @@ Math.Gi = 1073741824;
   this.parseHTTPDate = parseHTTPDate;
 })();
 
+function parseRFC3339Date(string) {
+  var re = /^([0-9]+)-([0-9]+)-([0-9]+)[tT ]([0-9]+):([0-9.]+):([0-9]+)(\.[0-9]+)?(Z|z|(\-|\+)?[0-9]+:[0-9]+)?$/;
+  var match = re.exec(string);
+  if (!match) {
+    return;
+  }
+  var d = new Date(0);
+  d.setUTCFullYear(parseInt(match[1], 10));
+  d.setUTCMonth(parseInt(match[2], 10) - 1);
+  d.setUTCDate(parseInt(match[3], 10));
+  d.setUTCHours(parseInt(match[4], 10));
+  d.setUTCMinutes(parseInt(match[5], 10));
+  d.setUTCSeconds(parseInt(match[6], 10));
+  var millisTxt = match[7];
+  if (millisTxt) {
+    var millis = parseFloat("0" + millisTxt);
+    if (!isFinite(millis)) {
+      return;
+    }
+    d.setUTCMilliseconds(Math.ceil(millis * 1000));
+  }
+  if (!match[8] || match[8] === 'Z' || match[8] === 'z') {
+    return d;
+  }
+  var match8 = match[8];
+  match8 = match8.split(':');
+  var offsetMinutes = parseInt(match8[0], 10) * 60;
+  var rawOffsetMinutes = parseInt(match8[1], 10);
+  offsetMinutes += (match8[0].charAt(0) === '-') ? -rawOffsetMinutes : rawOffsetMinutes;
+  return new Date(d.valueOf() - offsetMinutes * 60000);
+}
+
 (function($){
   $.fn.need = function (howmany) {
     var $this = $(this);
