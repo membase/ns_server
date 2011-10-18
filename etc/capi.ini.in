@@ -22,6 +22,7 @@ checkpoint_after = 20971520
 [daemons]
 ; Started by ns_server's supervision trees.
 compaction_daemon =
+replication_manager =
 
 [compaction_daemon]
 check_interval = 60
