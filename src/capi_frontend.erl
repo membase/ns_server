@@ -146,7 +146,7 @@ update_normal_docs(Db, Docs, Options, Type) ->
 
 -spec ensure_full_commit(any(), integer()) -> {ok, binary()}.
 ensure_full_commit(#db{filepath = undefined} = _Db, _RequiredSeq) ->
-    {ok, <<"0">>};
+    {ok, 0};
 ensure_full_commit(Db, RequiredSeq) ->
     UpdateSeq = couch_db:get_update_seq(Db),
     CommittedSeq = couch_db:get_committed_update_seq(Db),
