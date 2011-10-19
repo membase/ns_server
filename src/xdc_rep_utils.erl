@@ -37,8 +37,8 @@ remote_vbucketmap_nodelist(BucketURI) ->
 
 % Given a Bucket name and a vbucket id, this function computes the Couch URI to
 % locally access it.
-local_couch_uri_for_vbucket(Bucket, Vbucket) ->
-        mochiweb_util:quote_plus(Bucket) ++ ?VbToStr(Vbucket).
+local_couch_uri_for_vbucket(BucketName, VbucketId) ->
+    iolist_to_binary([BucketName, $/, integer_to_list(VbucketId)]).
 
 
 % Given the vbucket map and node list of a remote bucket and a vbucket id, this
