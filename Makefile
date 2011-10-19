@@ -23,7 +23,7 @@ REBAR=./rebar
 .PHONY: $(TMP_VER)
 
 ifneq (,$(wildcard .configuration))
-all: ebins deps_all priv/public/js/all-images.js ebucketmigrator
+all: ebins deps_all priv/public/js/all-images.js
 
 fail-unless-configured:
 	@true
@@ -79,7 +79,7 @@ $(TMP_VER):
 REST_PREFIX := $(DESTDIR)$(PREFIX)
 NS_SERVER := $(DESTDIR)$(PREFIX)/ns_server
 
-install: all $(TMP_VER) fail-unless-configured
+install: all ebucketmigrator $(TMP_VER) fail-unless-configured
 	$(MAKE) do-install "NS_SERVER_VER=$(strip $(shell cat $(TMP_VER)))" "PREFIX=$(strip $(shell . `pwd`/.configuration && echo $$prefix))"
 
 NS_SERVER_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ns_server
