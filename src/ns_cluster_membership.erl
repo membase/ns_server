@@ -87,9 +87,6 @@ system_joinable() ->
 get_rebalance_status() ->
     ns_orchestrator:rebalance_progress().
 
--spec start_rebalance([node()], [node()]) ->
-                             no_active_nodes_left | nodes_mismatch |
-                             ok | in_progress | already_balanced | {rebalance_needs_cool_down, tuple()}.
 start_rebalance(KnownNodes, KnownNodes) ->
     no_active_nodes_left;
 start_rebalance(KnownNodes, EjectedNodes) ->

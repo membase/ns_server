@@ -137,7 +137,7 @@ function postWithValidationErrors(url, data, callback, ajaxOptions) {
       }
       errorsData = [errorsData];
     }
-    callback.call(this, errorsData, 'error', data);
+    callback.call(this, errorsData, 'error');
   }
 
   if (!_.isString(data)) {

@@ -117,32 +117,11 @@ rebalance_progress() ->
 request_janitor_run(BucketName) ->
     gen_fsm:send_event(?SERVER, {request_janitor_run, BucketName}).
 
--define(REBALANCE_COOL_DOWN_MICROS, (1000000 * 60 * 5)).
-
 -spec start_rebalance([node()], [node()], [node()]) ->
-                             ok | in_progress | already_balanced | {rebalance_needs_cool_down, tuple()}.
+                             ok | in_progress | already_balanced.
 start_rebalance(KeepNodes, EjectNodes, FailedNodes) ->
-    CoolDownMessage = case ns_config:search(rebalance_failure_ts) of
-                          false -> undefined;
-                          {value, undefined} -> undefined;
-                          {value, FailTS} ->
-                              Diff = timer:now_diff(os:timestamp(), FailTS),
-                              if
-                                  0 =< Diff andalso Diff =< ?REBALANCE_COOL_DOWN_MICROS ->
-                                      Secs = element(1, FailTS) * 1000000 +
-                                          element(2, FailTS) +
-                                          (element(3, FailTS) + 999999 + ?REBALANCE_COOL_DOWN_MICROS) div 1000000,
-                                      {rebalance_needs_cool_down, {Secs div 1000000, Secs rem 1000000, 0}};
-                                  true -> undefined
-                              end
-                      end,
-    case CoolDownMessage of
-        undefined ->
-            gen_fsm:sync_send_event(?SERVER, {start_rebalance, KeepNodes,
-                                              EjectNodes, FailedNodes});
-        _ ->
-            CoolDownMessage
-    end.
+    gen_fsm:sync_send_event(?SERVER, {start_rebalance, KeepNodes,
+                                      EjectNodes, FailedNodes}).
 
 
 -spec stop_rebalance() -> ok | not_rebalancing.
@@ -208,21 +187,18 @@ handle_info({'EXIT', Pid, Reason}, janitor_running,
     {next_state, idle, #idle_state{remaining_buckets = Buckets}};
 handle_info({'EXIT', Pid, Reason}, rebalancing,
             #rebalancing_state{rebalancer=Pid}) ->
-    {Status, FailTS} =
-        case Reason of
-            normal ->
-                ns_log:log(?MODULE, ?REBALANCE_SUCCESSFUL,
-                           "Rebalance completed successfully.~n"),
-                {none, undefined};
-            _ ->
-                ns_log:log(?MODULE, ?REBALANCE_FAILED,
-                           "Rebalance exited with reason ~p~n", [Reason]),
-                {{none, <<"Rebalance failed. See logs for detailed reason. "
-                          "You can try rebalance again.">>},
-                 os:timestamp()}
-        end,
+    Status = case Reason of
+                 normal ->
+                     ns_log:log(?MODULE, ?REBALANCE_SUCCESSFUL,
+                                "Rebalance completed successfully.~n"),
+                     none;
+                 _ ->
+                     ns_log:log(?MODULE, ?REBALANCE_FAILED,
+                                "Rebalance exited with reason ~p~n", [Reason]),
+                     {none, <<"Rebalance failed. See logs for detailed reason. "
+                              "You can try rebalance again.">>}
+             end,
     ns_config:set(rebalance_status, Status),
-    ns_config:set(rebalance_failure_ts, FailTS),
     {next_state, idle, #idle_state{}};
 handle_info(Msg, StateName, StateData) ->
     ?log_warning("Got unexpected message ~p in state ~p with data ~p",

@@ -308,36 +308,11 @@ var ServersSection = {
     var self = this;
     self.postAndReload(self.poolDetails.value.controllers.rebalance.uri,
                        {knownNodes: _.pluck(self.allNodes, 'otpNode').join(','),
-                        ejectedNodes: _.pluck(self.pendingEject, 'otpNode').join(',')},
-                      onError);
+                        ejectedNodes: _.pluck(self.pendingEject, 'otpNode').join(',')});
     self.poolDetails.getValue(function () {
       // switch to active server tab when poolDetails reload is complete
       self.tabs.setValue("active");
     });
-
-    function onError(data, status, xhr) {
-      var statusCode = 0;
-      var message = "Request failed. Check logs."
-      try {
-        statusCode = xhr.status;
-      } catch (e) {}
-      if (statusCode === 503) {
-        var retryAfterString = xhr.getResponseHeader("Retry-After");
-        var retryAfter = parseHTTPDate(String(retryAfterString));
-        if (retryAfter != null) {
-          message = "System needs to cool down from the last rebalance attempt. Please try again at ";
-          message += retryAfter.toString();
-          message += " (" + retryAfterString + ").";
-
-          var now = (new Date()).valueOf();
-          var diff = ((retryAfter.valueOf() - now + 999) / 1000) >> 0;
-          if (diff > 0) {
-            message += " According to your browser's clock it is " + diff + " seconds from now."
-          }
-        }
-      }
-      displayNotice(message, true);
-    }
   },
   onStopRebalance: function () {
     this.postAndReload(this.poolDetails.value.stopRebalanceUri, "");
@@ -520,9 +495,7 @@ var ServersSection = {
       // re-calc poolDetails according to it's formula
       self.poolDetails.invalidate();
       if (status == 'error') {
-        if (typeof(errorMessage) === "function") {
-          errorMessage.apply(null, arguments);
-        } else if (data[0].mismatch) {
+        if (data[0].mismatch) {
           self.poolDetails.changedSlot.subscribeOnce(function () {
             var msg = "Could not Rebalance because the cluster configuration was modified by someone else.\nYou may want to verify the latest cluster configuration and, if necessary, please retry a Rebalance."
             alert(msg);

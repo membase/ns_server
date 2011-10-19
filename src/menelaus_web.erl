@@ -1414,11 +1414,7 @@ do_handle_rebalance(Req, KnownNodesS, EjectedNodesS) ->
         no_active_nodes_left ->
             Req:respond({400, [], []});
         ok ->
-            Req:respond({200, [], []});
-        {rebalance_needs_cool_down, TS} ->
-            TimeString = httpd_util:rfc1123_date(calendar:now_to_local_time(TS)),
-            Req:respond({503, [{"Retry-After", TimeString}],
-                         "Rebalance retry needs some time to cool down. Retry at: " ++ TimeString})
+            Req:respond({200, [], []})
     end.
 
 handle_rebalance_progress(_PoolId, Req) ->
