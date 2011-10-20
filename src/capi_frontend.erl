@@ -19,7 +19,9 @@
 
 -include("couch_db.hrl").
 -include("ns_stats.hrl").
--include("couch_view_merger.hrl").
+-include("couch_index_merger.hrl").
+-include("mc_entry.hrl").
+-include("mc_constants.hrl").
 
 -define(DEV_MULTIPLE, 20).
 
@@ -220,8 +222,8 @@ handle_random_req(Req, #db{filepath = undefined, name = Bucket} = Db) ->
             Params1 = capi_view:view_merge_params(Req, Db, nil, <<"_all_docs">>),
             Params2 = setup_sender(Params1),
 
-            #collect_acc{rows=Rows}
-                = couch_view_merger:query_view(Req,Params2),
+            #collect_acc{rows=Rows} = couch_index_merger:query_index(
+                couch_view_merger, Req, Params2),
 
             case length(Rows) of
                 0 ->
@@ -460,9 +462,9 @@ no_random_docs(Req) ->
     couch_httpd:send_error(Req, 404, <<"no_docs">>, <<"No documents in database">>).
 
 
--spec setup_sender(#view_merge{}) -> #view_merge{}.
+-spec setup_sender(#index_merge{}) -> #index_merge{}.
 setup_sender(MergeParams) ->
-    MergeParams#view_merge{
+    MergeParams#index_merge{
       user_acc = #collect_acc{},
       callback = fun collect_ids/2
     }.

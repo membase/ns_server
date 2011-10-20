@@ -16,6 +16,7 @@
 -module(capi_view).
 
 -include("couch_db.hrl").
+-include("couch_index_merger.hrl").
 -include("couch_view_merger.hrl").
 -include("ns_common.hrl").
 
@@ -34,7 +35,7 @@ design_doc_view(Req, #db{name=BucketName} = Db, DesignName, ViewName, VBuckets) 
     DDocId = <<"_design/", DesignName/binary>>,
     Specs = build_local_simple_specs(BucketName, DDocId, ViewName, VBuckets),
     MergeParams = view_merge_params(Req, Db, DDocId, ViewName, Specs),
-    couch_view_merger:query_view(Req, MergeParams).
+    couch_index_merger:query_index(couch_view_merger, Req, MergeParams).
 
 design_doc_view(Req, Db, DesignName, ViewName) ->
     DDocId = <<"_design/", DesignName/binary>>,
@@ -45,7 +46,7 @@ design_doc_view_loop(_Req, _Db, _DDocId, _ViewName, 0) ->
 design_doc_view_loop(Req, Db, DDocId, ViewName, Attempt) ->
     MergeParams = view_merge_params(Req, Db, DDocId, ViewName),
     try
-        couch_view_merger:query_view(Req, MergeParams)
+        couch_index_merger:query_index(couch_view_merger, Req, MergeParams)
     catch
         throw:{error, set_view_outdated} ->
             ?log_debug("Got `set_view_outdated` error. Retrying."),
@@ -102,7 +103,7 @@ all_docs_db_req(Req, Db) ->
 
 do_capi_all_docs_db_req(Req, #db{filepath = undefined} = Db) ->
     MergeParams = view_merge_params(Req, Db, nil, <<"_all_docs">>),
-    couch_view_merger:query_view(Req, MergeParams).
+    couch_index_merger:query_index(couch_view_merger, Req, MergeParams).
 
 node_vbuckets_dict(BucketName) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketName),
@@ -151,9 +152,11 @@ view_merge_params(Req, _Db, _DDocId, _ViewName, ViewSpecs) ->
         {Body} = couch_httpd:json_body_obj(Req),
         Keys = validate_keys_param(get_value(<<"keys">>, Body, nil))
     end,
-    MergeParams0 = #view_merge{
-        views = ViewSpecs,
-        keys = Keys,
+    MergeParams0 = #index_merge{
+        indexes = ViewSpecs,
+        extra = #view_merge{
+            keys = Keys
+        },
         ddoc_revision = auto
     },
     couch_httpd_view_merger:apply_http_config(Req, Body, MergeParams0).
@@ -217,16 +220,16 @@ build_remote_set_specs(Node, BucketName, FullViewName, VBuckets, Config) ->
         {<<"views">>,
             {[{<<"sets">>, Sets}]}}
     ]},
-    #merged_view_spec{url = MergeURL, ejson_spec = Props}.
+    #merged_index_spec{url = MergeURL, ejson_spec = Props}.
 
 build_local_simple_specs(BucketName, DDocId, ViewName, VBuckets) ->
     DDocDbName = iolist_to_binary([BucketName, $/, "master"]),
     lists:map(fun(VBucket) ->
-            #simple_view_spec{
+            #simple_index_spec{
                 database = vbucket_db_name(BucketName, VBucket),
                 ddoc_database = DDocDbName,
                 ddoc_id = DDocId,
-                view_name = ViewName
+                index_name = ViewName
             }
         end, [<<"master">> | VBuckets]).
 
@@ -236,4 +239,4 @@ build_remote_simple_specs(Node, BucketName, FullViewName, VBuckets, Config) ->
         {<<"views">>,
             {[{vbucket_db_name(BucketName, VBId), FullViewName} || VBId <- VBuckets]}}
     ]},
-    #merged_view_spec{url = MergeURL, ejson_spec = Props}.
+    #merged_index_spec{url = MergeURL, ejson_spec = Props}.
