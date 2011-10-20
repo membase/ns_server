@@ -22,6 +22,9 @@
 
 -export([handle_view_req/3]).
 -export([all_docs_db_req/2, view_merge_params/4]).
+% For capi_spatial
+-export([build_local_simple_specs/4, run_on_subset/2,
+    node_vbuckets_dict/1, vbucket_db_name/2]).
 
 -import(couch_util, [
     get_value/2,
@@ -54,23 +57,31 @@ design_doc_view_loop(Req, Db, DDocId, ViewName, Attempt) ->
             design_doc_view_loop(Req, Db, DDocId, ViewName, Attempt - 1)
     end.
 
+%% @doc Returns a vBucket if it is run on a subset (single vBucket) only, else
+%% it returns an atom called "full_set"
+-spec run_on_subset(#httpd{}, binary()) ->  non_neg_integer()|full_set.
+run_on_subset(#httpd{path_parts=[_, _, DName, _, _]}=Req, Name) ->
+    case DName of
+    <<"dev_", _/binary>> ->
+        case get_value("full_set", (Req#httpd.mochi_req):parse_qs()) =/= "true"
+                andalso capi_frontend:run_on_subset(Name) of
+            true -> capi_frontend:first_vbucket(Name);
+            false -> full_set
+        end;
+    _ ->
+        full_set
+    end.
+
 handle_view_req(Req, Db, DDoc) when Db#db.filepath =/= undefined ->
     couch_httpd_view:handle_view_req(Req, Db, DDoc);
 
 handle_view_req(#httpd{method='GET',
         path_parts=[_, _, DName, _, ViewName]}=Req, #db{name=Name} = Db, _DDoc) ->
-    case DName of
-        <<"dev_", _/binary>> ->
-            case get_value("full_set", (Req#httpd.mochi_req):parse_qs()) =/= "true"
-                andalso capi_frontend:run_on_subset(Name) of
-                true ->
-                    VBucket = capi_frontend:first_vbucket(Name),
-                    design_doc_view(Req, Db, DName, ViewName, [VBucket]);
-                false ->
-                    design_doc_view(Req, Db, DName, ViewName)
-            end;
-        _ ->
-            design_doc_view(Req, Db, DName, ViewName)
+    case run_on_subset(Req, Name) of
+    full_set ->
+        design_doc_view(Req, Db, DName, ViewName);
+    VBucket ->
+        design_doc_view(Req, Db, DName, ViewName, [VBucket])
     end;
 
 handle_view_req(#httpd{method='POST',

@@ -141,6 +141,7 @@ do-install:
 	cp scripts/cbdumpconfig.escript $(DESTDIR)$(PREFIX)/bin/
 	mkdir -p $(DESTDIR)$(PREFIX)/etc/couchdb/default.d
 	cp etc/capi.ini.in $(DESTDIR)$(PREFIX)/etc/couchdb/default.d/capi.ini
+	cp etc/geocouch.ini.in $(DESTDIR)$(PREFIX)/etc/couchdb/default.d/geocouch.ini
 
 clean clean_all:
 	@(cd deps/gen_smtp && $(MAKE) clean)
