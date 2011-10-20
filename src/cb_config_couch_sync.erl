@@ -47,11 +47,13 @@
         }).
 
 start_link() ->
-    {ok, proc_lib:spawn_link(fun start_worker_loop/0)}.
+    proc_lib:start_link(erlang, apply, [fun start_worker_loop/0, []]).
 
 start_worker_loop() ->
     erlang:process_flag(trap_exit, true),
     {ok, _} = gen_server:start_link({local, ?MODULE}, ?MODULE, [self()], []),
+    do_config_sync(),
+    proc_lib:init_ack({ok, self()}),
     worker_loop().
 
 worker_loop() ->
