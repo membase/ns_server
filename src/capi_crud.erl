@@ -20,8 +20,7 @@
 -include("mc_entry.hrl").
 -include("mc_constants.hrl").
 
--export([open_doc/3,
-         update_doc/4]).
+-export([open_doc/3, update_doc/3]).
 
 -spec open_doc(#db{}, binary(), list()) -> any().
 open_doc(#db{name = Name, user_ctx = UserCtx}, DocId, Options) ->
@@ -29,29 +28,18 @@ open_doc(#db{name = Name, user_ctx = UserCtx}, DocId, Options) ->
 
 update_doc(#db{name = Name, user_ctx = UserCtx},
            #doc{id = DocId, revs = {SeqNo, [RevId|_]}, deleted = true},
-           _Options, _Type) ->
+           _Options) ->
     delete(Name, DocId, {SeqNo, RevId}, UserCtx);
 
-update_doc(#db{name = Name, user_ctx = UserCtx} = Db,
-           #doc{id = DocId, body = Body, atts = Atts, revs = {0, []}} = Doc,
-           Options, Type) ->
-    try
-        add(Name, DocId, Body, Atts, UserCtx)
-    catch
-        unsupported ->
-            capi_frontend:not_implemented(update_doc, [Db, Doc, Options, Type])
-    end;
+update_doc(#db{name = Name, user_ctx = UserCtx},
+           #doc{id = DocId, body = Body, atts = Atts, revs = {0, []}},
+           _Options) ->
+    add(Name, DocId, Body, Atts, UserCtx);
 
-update_doc(#db{name = Name, user_ctx = UserCtx} = Db,
+update_doc(#db{name = Name, user_ctx = UserCtx},
            #doc{id = DocId, revs = {SeqNo, [RevId | _]},
-                body = Body, atts = Atts} = Doc,
-           Options, Type) ->
-    try
-        set(Name, DocId, {SeqNo, RevId}, Body, Atts, UserCtx)
-    catch
-        unsupported ->
-            capi_frontend:not_implemented(update_doc, [Db, Doc, Options, Type])
-    end.
+                body = Body, atts = Atts}, _Options) ->
+    set(Name, DocId, {SeqNo, RevId}, Body, Atts, UserCtx).
 
 -spec cas() -> <<_:64>>.
 cas() ->

@@ -16,7 +16,7 @@
 
 -module(capi_replication).
 
--export([get_missing_revs/2, update_replicated_docs/3]).
+-export([get_missing_revs/2, update_replicated_docs/3, update_replicated_doc/3]).
 
 -include("couch_db.hrl").
 -include("mc_entry.hrl").
@@ -61,7 +61,7 @@ update_replicated_docs(#db{name = BucketBin}, Docs, Options) ->
     Errors =
         lists:foldr(
           fun (#doc{id = Id, revs = {Pos, [RevId | _]}} = Doc, ErrorsAcc) ->
-                  case update_replicated_doc(Bucket, Doc) of
+                  case do_update_replicated_doc(Bucket, Doc) of
                       ok ->
                           ErrorsAcc;
                       {error, Error} ->
@@ -73,6 +73,16 @@ update_replicated_docs(#db{name = BucketBin}, Docs, Options) ->
 
     {ok, Errors}.
 
+update_replicated_doc(#db{name = BucketBin},
+                      #doc{revs = {Pos, [RevId | _]}} = Doc, _Options) ->
+    Bucket = binary_to_list(BucketBin),
+
+    case do_update_replicated_doc(Bucket, Doc) of
+        ok ->
+            {ok, {Pos, RevId}};
+        {error, Error} ->
+            throw(Error)
+    end.
 
 winner({_SeqNo1, _RevId1} = Theirs,
        {_SeqNo2, _RevId2} = Ours) ->
@@ -91,16 +101,17 @@ winner_helper(Theirs, Ours) ->
             theirs
     end.
 
-update_replicated_doc(Bucket,
-                      #doc{id = Id, revs = {Pos, [RevId | _]},
-                           body = Body, deleted = Deleted} = _Doc) ->
+do_update_replicated_doc(Bucket,
+                         #doc{id = Id, revs = {Pos, [RevId | _]},
+                              body = Body, deleted = Deleted} = _Doc) ->
     {VBucket, _Node} = cb_util:vbucket_from_id(Bucket, Id),
     Json = ?JSON_ENCODE(Body),
     Rev = {Pos, RevId},
-    update_replicated_doc_loop(Bucket, VBucket, Id, Rev, Json, Deleted).
+    do_update_replicated_doc_loop(Bucket, VBucket, Id, Rev, Json, Deleted).
 
-update_replicated_doc_loop(Bucket, VBucket, DocId,
-                           {DocSeqNo, DocRevId} = DocRev, DocJson, DocDeleted) ->
+do_update_replicated_doc_loop(Bucket, VBucket, DocId,
+                              {DocSeqNo, DocRevId} = DocRev,
+                              DocJson, DocDeleted) ->
     RV =
         case ns_memcached:get_meta(Bucket, DocId, VBucket) of
             {memcached_error, key_enoent, _} ->
@@ -131,8 +142,8 @@ update_replicated_doc_loop(Bucket, VBucket, DocId,
 
     case RV of
         retry ->
-            update_replicated_doc_loop(Bucket, VBucket, DocId,
-                                       DocRev, DocJson, DocDeleted);
+            do_update_replicated_doc_loop(Bucket, VBucket, DocId,
+                                          DocRev, DocJson, DocDeleted);
         _Other ->
             RV
     end.

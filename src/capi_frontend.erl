@@ -80,16 +80,22 @@ update_doc(#db{filepath = undefined} = Db, #doc{id = <<"_design/",_/binary>>} = 
                end);
 
 update_doc(#db{filepath = undefined, name = Name} = Db,
-           #doc{id = DocId} = Doc, Options, UpdateType) ->
+           #doc{id = DocId} = Doc, Options, interactive_edit = Type) ->
     R = attempt(Name, DocId,
-                capi_crud, update_doc, [Db, Doc, Options, UpdateType]),
+                capi_crud, update_doc, [Db, Doc, Options]),
     case R of
         {ok, _Doc} ->
             R;
+        unsupported ->
+            not_implemented(update_doc, [Db, Doc, Options, Type]);
         Error ->
             %% rpc transforms exceptions into values; need to rethrow them
             throw(Error)
     end;
+
+update_doc(#db{filepath = undefined} = Db,
+           Doc, Options, replicated_changes) ->
+    capi_replication:update_replicated_doc(Db, Doc, Options);
 
 update_doc(Db, Doc, Options, UpdateType) ->
     couch_db:update_doc(Db, Doc, Options, UpdateType).
