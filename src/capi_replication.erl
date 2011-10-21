@@ -22,7 +22,7 @@
 -include("mc_entry.hrl").
 -include("mc_constants.hrl").
 
-get_missing_revs(#db{name = BucketBin}, JsonDocIdRevs) ->
+get_missing_revs(#db{name = BucketBin, user_ctx = UserCtx}, JsonDocIdRevs) ->
     Bucket = binary_to_list(BucketBin),
 
     Results =
@@ -30,12 +30,15 @@ get_missing_revs(#db{name = BucketBin}, JsonDocIdRevs) ->
           fun ({Id, [Rev]}, Acc) ->
                   {VBucket, _Node} = cb_util:vbucket_from_id(Bucket, Id),
 
-                  case ns_memcached:get_meta(Bucket, Id, VBucket) of
-                      {memcached_error, key_enoent, _} ->
+                  case capi_utils:get_meta(Bucket, VBucket, Id, UserCtx) of
+                      {error, enoent} ->
                           [{Id, [Rev], []} | Acc];
-                      {memcached_error, not_my_vbucket, _} ->
+                      {error, not_my_vbucket} ->
                           throw({bad_request, not_my_vbucket});
-                      {ok, _, _, {revid, OurRev}} ->
+                      {ok, OurRev, _Deleted, _Props} ->
+                          %% we do not have any information about deletedness of
+                          %% the remote side thus we use only revisions to
+                          %% determine a winner
                           case winner(Rev, OurRev) of
                               ours ->
                                   Acc;
@@ -48,7 +51,8 @@ get_missing_revs(#db{name = BucketBin}, JsonDocIdRevs) ->
           end, [], JsonDocIdRevs),
     {ok, Results}.
 
-update_replicated_docs(#db{name = BucketBin}, Docs, Options) ->
+update_replicated_docs(#db{name = BucketBin, user_ctx = UserCtx},
+                       Docs, Options) ->
     Bucket = binary_to_list(BucketBin),
 
     case proplists:get_value(all_or_nothing, Options, false) of
@@ -61,7 +65,7 @@ update_replicated_docs(#db{name = BucketBin}, Docs, Options) ->
     Errors =
         lists:foldr(
           fun (#doc{id = Id, revs = {Pos, [RevId | _]}} = Doc, ErrorsAcc) ->
-                  case do_update_replicated_doc(Bucket, Doc) of
+                  case do_update_replicated_doc(Bucket, UserCtx, Doc) of
                       ok ->
                           ErrorsAcc;
                       {error, Error} ->
@@ -73,11 +77,11 @@ update_replicated_docs(#db{name = BucketBin}, Docs, Options) ->
 
     {ok, Errors}.
 
-update_replicated_doc(#db{name = BucketBin},
+update_replicated_doc(#db{name = BucketBin, user_ctx = UserCtx},
                       #doc{revs = {Pos, [RevId | _]}} = Doc, _Options) ->
     Bucket = binary_to_list(BucketBin),
 
-    case do_update_replicated_doc(Bucket, Doc) of
+    case do_update_replicated_doc(Bucket, UserCtx, Doc) of
         ok ->
             {ok, {Pos, RevId}};
         {error, Error} ->
@@ -101,39 +105,51 @@ winner_helper(Theirs, Ours) ->
             theirs
     end.
 
-do_update_replicated_doc(Bucket,
+do_update_replicated_doc(Bucket, UserCtx,
                          #doc{id = Id, revs = {Pos, [RevId | _]},
                               body = Body, deleted = Deleted} = _Doc) ->
     {VBucket, _Node} = cb_util:vbucket_from_id(Bucket, Id),
     Json = ?JSON_ENCODE(Body),
     Rev = {Pos, RevId},
-    do_update_replicated_doc_loop(Bucket, VBucket, Id, Rev, Json, Deleted).
+    do_update_replicated_doc_loop(Bucket, UserCtx, VBucket,
+                                  Id, Rev, Json, Deleted).
 
-do_update_replicated_doc_loop(Bucket, VBucket, DocId,
+do_update_replicated_doc_loop(Bucket, UserCtx, VBucket, DocId,
                               {DocSeqNo, DocRevId} = DocRev,
                               DocJson, DocDeleted) ->
     RV =
-        case ns_memcached:get_meta(Bucket, DocId, VBucket) of
-            {memcached_error, key_enoent, _} ->
+        case capi_utils:get_meta(Bucket, VBucket, DocId, UserCtx) of
+            {error, enoent} ->
                 case DocDeleted of
                     true ->
+                        %% TODO: we must preserve source revision here
                         ok;
                     false ->
                         do_add_with_meta(Bucket, DocId, VBucket, DocJson, DocRev)
                 end;
-            {memcached_error, not_my_vbucket, _} ->
+            {error, not_my_vbucket} ->
                 {error, {bad_request, not_my_vbucket}};
-            {ok, _, #mc_entry{cas = CAS}, {revid, {OurSeqNo, OurRevId}}} ->
+            {ok, {OurSeqNo, OurRevId}, Deleted, Props} ->
                 DocRevExt = {DocSeqNo, not(DocDeleted), DocRevId},
-                OurRevExt = {OurSeqNo, true, OurRevId},
+                OurRevExt = {OurSeqNo, not(Deleted), OurRevId},
+
                 case winner(DocRevExt, OurRevExt) of
                     ours ->
                         ok;
                     theirs ->
                         case DocDeleted of
                             true ->
-                                do_delete(Bucket, DocId, VBucket, CAS);
+                                case Deleted of
+                                    true ->
+                                        %% TODO: we must preserve winning
+                                        %% revision here
+                                        ok;
+                                    false ->
+                                        {cas, CAS} = lists:keyfind(cas, 1, Props),
+                                        do_delete(Bucket, DocId, VBucket, CAS)
+                                end;
                             false ->
+                                {cas, CAS} = lists:keyfind(cas, 1, Props),
                                 do_set_with_meta(Bucket, DocId, VBucket,
                                                  DocJson, DocRev, CAS)
                         end
@@ -142,7 +158,7 @@ do_update_replicated_doc_loop(Bucket, VBucket, DocId,
 
     case RV of
         retry ->
-            do_update_replicated_doc_loop(Bucket, VBucket, DocId,
+            do_update_replicated_doc_loop(Bucket, UserCtx, VBucket, DocId,
                                           DocRev, DocJson, DocDeleted);
         _Other ->
             RV
