@@ -44,7 +44,7 @@ do_db_req(#httpd{user_ctx=UserCtx,path_parts=[DbName|_]}=Req, Fun) ->
             couch_db_frontend:do_db_req(Req, Fun)
     end.
 
-get_db_info(#db{filepath = undefined, name = Name} = Db) ->
+get_db_info(#db{filepath = undefined, name = Name}) ->
     Info = [{db_name, Name},
             {instance_start_time, 0}],
     {ok, Info};
