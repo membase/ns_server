@@ -107,16 +107,17 @@ winner_helper(Theirs, Ours) ->
 
 do_update_replicated_doc(Bucket, UserCtx,
                          #doc{id = Id, revs = {Pos, [RevId | _]},
-                              body = Body, deleted = Deleted} = _Doc) ->
+                              body = Body, atts = Atts,
+                              deleted = Deleted} = _Doc) ->
     {VBucket, _Node} = cb_util:vbucket_from_id(Bucket, Id),
-    Json = ?JSON_ENCODE(Body),
+    Value = capi_utils:doc_to_mc_value(Body, Atts),
     Rev = {Pos, RevId},
     do_update_replicated_doc_loop(Bucket, UserCtx, VBucket,
-                                  Id, Rev, Json, Deleted).
+                                  Id, Rev, Value, Deleted).
 
 do_update_replicated_doc_loop(Bucket, UserCtx, VBucket, DocId,
                               {DocSeqNo, DocRevId} = DocRev,
-                              DocJson, DocDeleted) ->
+                              DocValue, DocDeleted) ->
     RV =
         case capi_utils:get_meta(Bucket, VBucket, DocId, UserCtx) of
             {error, enoent} ->
@@ -125,7 +126,8 @@ do_update_replicated_doc_loop(Bucket, UserCtx, VBucket, DocId,
                         %% TODO: we must preserve source revision here
                         ok;
                     false ->
-                        do_add_with_meta(Bucket, DocId, VBucket, DocJson, DocRev)
+                        do_add_with_meta(Bucket, DocId,
+                                         VBucket, DocValue, DocRev)
                 end;
             {error, not_my_vbucket} ->
                 {error, {bad_request, not_my_vbucket}};
@@ -151,7 +153,7 @@ do_update_replicated_doc_loop(Bucket, UserCtx, VBucket, DocId,
                             false ->
                                 {cas, CAS} = lists:keyfind(cas, 1, Props),
                                 do_set_with_meta(Bucket, DocId, VBucket,
-                                                 DocJson, DocRev, CAS)
+                                                 DocValue, DocRev, CAS)
                         end
                 end
         end,
@@ -159,14 +161,14 @@ do_update_replicated_doc_loop(Bucket, UserCtx, VBucket, DocId,
     case RV of
         retry ->
             do_update_replicated_doc_loop(Bucket, UserCtx, VBucket, DocId,
-                                          DocRev, DocJson, DocDeleted);
+                                          DocRev, DocValue, DocDeleted);
         _Other ->
             RV
     end.
 
-do_add_with_meta(Bucket, DocId, VBucket, DocJson, DocRev) ->
+do_add_with_meta(Bucket, DocId, VBucket, DocValue, DocRev) ->
     case ns_memcached:add_with_meta(Bucket, DocId, VBucket,
-                                    DocJson, {revid, DocRev}) of
+                                    DocValue, {revid, DocRev}) of
         {ok, _, _} ->
             ok;
         {memcached_error, key_eexists, _} ->
@@ -178,9 +180,9 @@ do_add_with_meta(Bucket, DocId, VBucket, DocJson, DocRev) ->
             {error, {bad_request, einval}}
     end.
 
-do_set_with_meta(Bucket, DocId, VBucket, DocJson, DocRev, CAS) ->
+do_set_with_meta(Bucket, DocId, VBucket, DocValue, DocRev, CAS) ->
     case ns_memcached:set_with_meta(Bucket, DocId,
-                                    VBucket, DocJson,
+                                    VBucket, DocValue,
                                     {revid, DocRev}, CAS) of
         {ok, _, _} ->
             ok;

@@ -80,3 +80,12 @@ get_meta(Bucket, VBucket, DocId, UserCtx) ->
                       end
               end)
     end.
+
+%% Based on document body and attachments decide what to store via memcached
+%% API. Throws `unsupported` exception in case it's not possible to do.
+doc_to_mc_value(Body, []) ->
+    ?JSON_ENCODE(Body);
+doc_to_mc_value({[]}, [#att{name = <<"value">>, data = Data}]) ->
+    Data;
+doc_to_mc_value(_, _) ->
+    throw(unsupported).

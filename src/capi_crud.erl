@@ -66,7 +66,7 @@ next_rev(Rev) ->
 
 add(BucketBin, DocId, Body, Atts, UserCtx) ->
     Bucket = binary_to_list(BucketBin),
-    Value = doc_value(Body, Atts),
+    Value = capi_utils:doc_to_mc_value(Body, Atts),
     {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
 
     {Rev, Flags} =
@@ -94,7 +94,7 @@ add(BucketBin, DocId, Body, Atts, UserCtx) ->
 
 set(BucketBin, DocId, PrevRev, Body, Atts, UserCtx) ->
     Bucket = binary_to_list(BucketBin),
-    Value = doc_value(Body, Atts),
+    Value = capi_utils:doc_to_mc_value(Body, Atts),
     {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
 
     {Deleted, CAS}
@@ -220,13 +220,6 @@ mk_doc(DocId, {SeqNo, _} = Rev, RawValue) ->
 
 mk_revs({SeqNo, RevId}) ->
     {SeqNo, [RevId]}.
-
-doc_value(Body, []) ->
-    ?JSON_ENCODE(Body);
-doc_value({[]}, [#att{name = <<"value">>, data = Data}]) ->
-    Data;
-doc_value(_, _) ->
-    throw(unsupported).
 
 %% decode a json and ensure that the result is an object; otherwise throw
 %% invalid_json exception

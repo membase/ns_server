@@ -95,7 +95,15 @@ update_doc(#db{filepath = undefined, name = Name} = Db,
 
 update_doc(#db{filepath = undefined} = Db,
            Doc, Options, replicated_changes) ->
-    capi_replication:update_replicated_doc(Db, Doc, Options);
+    Result =
+        try
+            capi_replication:update_replicated_doc(Db, Doc, Options)
+        catch
+            throw:unsupported ->
+                exit(not_implemented(update_doc,
+                                     [Db, Doc, Options, replicated_changes]))
+        end,
+    Result;
 
 update_doc(Db, Doc, Options, UpdateType) ->
     couch_db:update_doc(Db, Doc, Options, UpdateType).
