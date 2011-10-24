@@ -107,8 +107,9 @@ winner_helper(Theirs, Ours) ->
 
 do_update_replicated_doc(Bucket, UserCtx,
                          #doc{id = Id, revs = {Pos, [RevId | _]},
-                              body = Body, atts = Atts,
+                              body = Body0, atts = Atts,
                               deleted = Deleted} = _Doc) ->
+    Body = filter_out_mccouch_fields(Body0),
     {VBucket, _Node} = cb_util:vbucket_from_id(Bucket, Id),
     Value = capi_utils:doc_to_mc_value(Body, Atts),
     Rev = {Pos, RevId},
@@ -208,3 +209,12 @@ do_delete(Bucket, DocId, VBucket, CAS) ->
         ?EINVAL ->
             {error, {bad_request, einval}}
     end.
+
+filter_out_mccouch_fields({Props}) ->
+    FilteredProps = lists:filter(
+                      fun ({<<$$, _/binary>>, _Value}) ->
+                              false;
+                          ({_, _}) ->
+                              true
+                      end, Props),
+    {FilteredProps}.
