@@ -105,6 +105,9 @@ winner_helper(Theirs, Ours) ->
             theirs
     end.
 
+do_update_replicated_doc(_Bucket, _UserCtx,
+                         #doc{id = <<?LOCAL_DOC_PREFIX, _/binary>>}) ->
+    ok;
 do_update_replicated_doc(Bucket, UserCtx,
                          #doc{id = Id, revs = {Pos, [RevId | _]},
                               body = Body0, atts = Atts,
