@@ -46,8 +46,10 @@ get_state(Bucket) ->
 init(Bucket) ->
     process_flag(trap_exit, true),
 
-    ns_pubsub:subscribe(ns_config_events),
-    ns_pubsub:subscribe(mc_couch_events),
+    ns_pubsub:subscribe(ns_config_events,
+                        mk_filter(fun interesting_ns_config_event/1), ignored),
+    ns_pubsub:subscribe(mc_couch_events,
+                        mk_filter(fun interesting_mc_couch_event/1), ignored),
 
     Self = self(),
     Watcher =
@@ -329,3 +331,27 @@ apply_current_map(#state{bucket=Bucket} = State) ->
     State#state{bucket_config=BucketConfig,
                 vbucket_states=VBucketStates,
                 map=Map}.
+
+interesting_ns_config_event({buckets, _}) ->
+    true;
+interesting_ns_config_event(_) ->
+    false.
+
+interesting_mc_couch_event({set_vbucket, _, _, _}) ->
+    true;
+interesting_mc_couch_event({flush_all, _}) ->
+    true;
+interesting_mc_couch_event(_) ->
+    false.
+
+mk_filter(Pred) ->
+    Self = self(),
+
+    fun (Event, _) ->
+            case Pred(Event) of
+                true ->
+                    Self ! Event;
+                false ->
+                    ok
+            end
+    end.
