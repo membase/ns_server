@@ -61,6 +61,10 @@ function couchReq(method, url, data, success, error) {
               return handleUnexpected();
             }
 
+            if (!error) {
+              return handleUnexpected();
+            }
+
             return error(JSON.parse(xhr.responseText), status,
                          handleUnexpected);
           }
