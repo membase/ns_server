@@ -1057,6 +1057,34 @@ function mkClass(methods) {
   return constructor;
 }
 
+// replaces class constructor with another code that makes sure
+// there's only one instance of class (if allowNew is true). Iff
+// allowNew is falsey calling new fill fail.
+//
+// Creates #instance method on class. That returns that single
+// instance.
+//
+// Instance is created and initialized (via it's usual constructor
+// without args) lazily when first requesting it.
+mkClass.turnIntoLazySingleton = function (a_constructor, allowNew) {
+  var initialize = a_constructor.prototype.initialize;
+  a_constructor.prototype.initialize = allowNew ? instance : BUG;
+  a_constructor.instance = instance;
+  function instance () {
+    if (!a_constructor._instance) {
+      var f = function () {};
+      f.prototype = a_constructor.prototype;
+      var instance = new f();
+      if (initialize) {
+        initialize.call(instance);
+      }
+      a_constructor._instance = instance;
+    }
+    return a_constructor._instance;
+  };
+  return a_constructor;
+}
+
 function buildURL(base /*, ...args */) {
   if (!base) {
     BUG();
