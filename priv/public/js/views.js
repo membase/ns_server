@@ -46,6 +46,7 @@ function couchReq(method, url, data, success, error) {
           url: url,
           data: JSON.stringify(data),
           dataType: 'json',
+          contentType: 'application/json',
           success: success,
           error: function (xhr) {
             var self = this;
