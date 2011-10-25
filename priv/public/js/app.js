@@ -881,7 +881,7 @@ function showInitDialog(page, opt, isContinuation) {
     notices.push(text);
   });
   if (notices.length) {
-    $('#notice_container').html('');
+    $('#notice_container').empty();
     alert(notices.join("\n\n"));
   }
 }
