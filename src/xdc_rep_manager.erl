@@ -309,7 +309,7 @@ maybe_start_xdc_replication(XDocId, XDocBody, RepDbName) ->
     [] ->
         % A new XDC replication document.
         ?log_info("~s: triggering xdc replication~n", [XDocId]),
-        start_xdc_replication(XRep, RepDbName);
+        start_xdc_replication(XRep, RepDbName, XDocBody);
     [XDocId] ->
         % An XDC replication document previously seen. Ignore.
         ?log_info("~s: ignoring doc previously seen.~n", [XDocId]),
@@ -328,7 +328,8 @@ start_xdc_replication(#rep{id = XRepId,
                            source = SrcBucketBinary,
                            target = {_, TgtBucket, _, _, _, _, _, _, _, _},
                            doc_id = XDocId} = XRep,
-                      RepDbName) ->
+                      RepDbName,
+                      XDocBody) ->
     SrcBucket = ?b2l(SrcBucketBinary),
     SrcBucketLookup = ns_bucket:get_bucket(SrcBucket),
     TgtBucketLookup = xdc_rep_utils:remote_vbucketmap_nodelist(TgtBucket),
@@ -355,7 +356,7 @@ start_xdc_replication(#rep{id = XRepId,
             end,
             MyVbuckets),
         true = ets:insert(?XSTORE, {XDocId, XRep, MyVbuckets}),
-        create_xdc_rep_info_doc(XDocId, XRepId, MyVbuckets, RepDbName),
+        create_xdc_rep_info_doc(XDocId, XRepId, MyVbuckets, RepDbName, XDocBody),
         ok
     end.
 
@@ -567,7 +568,7 @@ failed_couch_replications(XDocId) ->
 % XDC replication and replication info document related functions
 %
 
-create_xdc_rep_info_doc(XDocId, {Base, Ext}, Vbuckets, RepDbName) ->
+create_xdc_rep_info_doc(XDocId, {Base, Ext}, Vbuckets, RepDbName, XDocBody) ->
     IDocId = xdc_rep_utils:info_doc_id(XDocId),
     UserCtx = #user_ctx{roles = [<<"_admin">>, <<"_replicator">>]},
     {ok, RepDb} = couch_db:open(RepDbName, [sys_db, {user_ctx, UserCtx}]),
@@ -582,12 +583,13 @@ create_xdc_rep_info_doc(XDocId, {Base, Ext}, Vbuckets, RepDbName) ->
     IDoc = #doc{id = IDocId,
                 body = {[
                     {<<"_id">>, IDocId},
-                    {<<"_node">>, xdc_rep_utils:node_uuid()},
+                    {<<"type">>, <<"info-document">>},
+                    {<<"_node_uuid">>, xdc_rep_utils:node_uuid()},
                     {<<"_replication_doc_id">>, XDocId},
                     {<<"_replication_id">>, ?l2b(Base ++ Ext)},
+                    {<<"_replication_fields">>, XDocBody},
                     {<<"source">>, <<"">>},
-                    {<<"target">>, <<"">>},
-                    {<<"_replication_state">>, <<"triggered">>} |
+                    {<<"target">>, <<"">>} |
                     lists:map(
                         fun(Vb) ->
                             {?l2b("_replication_state_vb_" ++ ?i2l(Vb)),
@@ -596,6 +598,7 @@ create_xdc_rep_info_doc(XDocId, {Base, Ext}, Vbuckets, RepDbName) ->
                         Vbuckets)
                 ]}},
     couch_db:update_doc(RepDb, IDoc, [clobber]),
+    couch_replication_manager:update_rep_doc(IDocId, [{<<"_replication_state">>, <<"triggered">>}]),
     couch_db:close(RepDb),
     ?log_info("~s: created replication info doc ~s~n", [XDocId, IDocId]),
     ok.
