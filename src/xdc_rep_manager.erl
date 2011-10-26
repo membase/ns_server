@@ -155,7 +155,7 @@ handle_call({rep_db_update, {ChangeProps} = Change}, _From, State) ->
         couch_replication_manager:update_rep_doc(
             xdc_rep_utils:info_doc_id(DocId),
             [{<<"_replication_state">>, <<"error">>}]),
-        ?log_error("~s: xdc replication error: ~p~n", [DocId, Error]),
+        ?log_error("~s: xdc replication error: ~p~n~p", [DocId, Error, erlang:get_stacktrace()]),
         State
     end,
     {reply, ok, State};
