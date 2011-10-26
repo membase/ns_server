@@ -14,9 +14,16 @@
    limitations under the License.
  **/
 
-// couch does redirect when doing _design%2FXX access, so we need special method
+// Builds URL for getting/updating given document via CouchDB API
+// NOTE: couch does redirect when doing _design%2FXX access, so we
+// need special method, instead of using generic buildURL
 function buildDocURL(base, docId/*, ..args */) {
+  // return Cell with to-be-built URL when any of arguments is a cell
   var args = _.toArray(arguments);
+  if ((base instanceof Cell) || (docId instanceof Cell)) {
+    return Cell.applyFunctionWithResolvedValues(buildDocURL, this, args);
+  }
+
   if (docId.slice(0, "_design/".length) === "_design/") {
     args.splice(1, 1, "_design", docId.slice("_design/".length));
   } else if (docId.slice(0, "_local/".length) === "_local/") {
@@ -40,6 +47,13 @@ function unbuildViewPseudoLink(link, body, context) {
 function couchGet(url, callback) {
   IOCenter.performGet({url: url, dataType: "json", success: callback});
 }
+
+// now we can pass Cell instead of url and get callback called when
+// url cell has value and that url is fetched. Note that passing cells
+// that may not ever get defined value is _dangerous_ and will leak.
+couchGet = Cell.wrapWithArgsResolving(couchGet);
+// same for couchReq, below
+couchReq = Cell.wrapWithArgsResolving(couchReq);
 
 function couchReq(method, url, data, success, error) {
   $.ajax({type: method,
