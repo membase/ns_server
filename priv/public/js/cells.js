@@ -655,6 +655,68 @@ _.extend(Cell, {
   }
 });
 
+// Calls body with value (if not cell) or cell's value (via #getValue).
+// body may be called now (if valueOrCell is not cell) or later when
+// Cell's value is known (if it's not known yet)
+//
+// NOTE: that passing cells that may not ever obtain defined value is
+// _dangerous_ and will leak.
+Cell.resolveToValue = function (/*valueOrCell, otherValues... , body*/) {
+  var args = _.toArray(arguments);
+  var body = args[args.length-1];
+  if (args.length < 2) {
+    BUG();
+  }
+  // NOTE: we keep one count more in order to avoid unresolvedLeft
+  // becoming 0 before final check is done.
+  var unresolvedLeft = args.length;
+  for (var i = args.length-2; i >= 0; i--) {
+    if (args[i] instanceof Cell) {
+      (function (i) {
+        this.getValue(function (aValue) {
+          args[i] = aValue;
+          unresolvedLeft--;
+          if (unresolvedLeft === 0) {
+            Cell.resolveToValue.apply(Cell, args);
+          }
+        });
+      }).call(args[i], i);
+    } else {
+      unresolvedLeft--;
+    }
+  }
+  if (--unresolvedLeft === 0) {
+    body.apply(null, args);
+  }
+}
+
+// returns function that resolves its arguments and then calls
+// original function with same arguments. NOTE: see dangerous note
+// about resolveToValue. NOTE: because waiting cells values involves
+// waiting originalFunction may be called later and thus it's return
+// value is ignored. Produced function always returns undefined
+Cell.wrapWithArgsResolving = function (originalFunction) {
+  return function () {
+    var args = _.toArray(arguments);
+    args.push(originalFunction);
+    Cell.resolveToValue.apply(Cell, args);
+  }
+}
+
+// returns new Cell that is result of applying function to given
+// arguments, where Cells in arguments are resolved to their primitive
+// values.
+Cell.applyFunctionWithResolvedValues = function (originalFunction, self, args) {
+  var resolvedArgsCell = Cell.compute(function (v) {
+    return _.map(args, function (a) {
+      return (a instanceof Cell) ? v.need(a) : a;
+    });
+  });
+  return Cell.compute(function (v) {
+    return originalFunction.apply(self, v.need(resolvedArgsCell));
+  });
+}
+
 Cell.prototype.delegateInvalidationMethods = function (target) {
   var self = this;
   _.each(("recalculate recalculateAt recalculateAfterDelay invalidate").split(' '), function (methodName) {
