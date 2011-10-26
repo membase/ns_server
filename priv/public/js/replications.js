@@ -118,6 +118,28 @@ var ReplicationsModel = {};
   var replicatorDBURIBaseCell = model.replicatorDBURIBaseCell = Cell.computeEager(function (v) {
     return v.need(DAL.cells.currentPoolDetailsCell).controllers.replication.replicatorDBURI + "/";
   });
+
+  // right after creating replication there are no info docs yet so
+  // state is undefined, we want to keep refreshing this list in order to get to right state
+  model.initiateRefreshingReplicationsList = function () {
+    Cell.subscribeMultipleValues(function (currentReplications, pastReplications) {
+      console.log("currentReplications: ", currentReplications);
+      console.log("pastReplications: ", pastReplications);
+      if (!currentReplications || !pastReplications) {
+        return;
+      }
+      var needReload = _.detect(currentReplications, function (info) {
+        return (info._replication_state === undefined)
+      });
+      needReload = needReload || _.detect(pastReplications, function (info) {
+        return (info._replication_state !== 'cancelled') && (info._replication_state !== 'error');
+      });
+      console.log("needReload: ", needReload);
+      if (needReload) {
+        rawReplicationInfos.recalculateAfterDelay(3000);
+      }
+    }, currentReplicationInfos, pastReplicationInfos);
+  }
 })();
 
 var ReplicationForm = mkClass({
@@ -258,6 +280,8 @@ mkClass.turnIntoLazySingleton(ReplicationForm);
 
 var ReplicationsSection = {
   init: function () {
+    ReplicationsModel.initiateRefreshingReplicationsList();
+
     renderCellTemplate(ReplicationsModel.remoteClustersListCell, 'cluster_reference_list');
 
     function replicationInfoValueTransformer(manyInfos) {
