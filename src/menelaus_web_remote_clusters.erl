@@ -21,16 +21,21 @@
 -include("menelaus_web.hrl").
 -include("ns_common.hrl").
 
--export([handle_remote_clusters/1,
+-export([get_remote_clusters/0,
+         get_remote_clusters/1,
+         handle_remote_clusters/1,
          handle_remote_clusters_post/1,
          handle_remote_cluster_update/2,
          handle_remote_cluster_delete/2]).
 
-get_remote_clusters() ->
-    case ns_config:search(remote_clusters) of
+get_remote_clusters(Config) ->
+    case ns_config:search(Config, remote_clusters) of
         {value, X} -> X;
         false -> []
     end.
+
+get_remote_clusters() ->
+    get_remote_clusters(ns_config:get()).
 
 cas_remote_clusters(Old, NewUnsorted) ->
     New = lists:sort(NewUnsorted),
