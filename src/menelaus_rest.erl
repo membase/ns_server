@@ -68,7 +68,8 @@ decode_json_response_ext(Response, Method, Request) ->
     ns_error_messages:decode_json_response_error(Response, Method, Request).
 
 -spec json_request_hilevel(atom(),
-                           {string(), string() | integer(), string(), string(), iolist()},
+                           {string(), string() | integer(), string(), string(), iolist()}
+                           | {string(), string() | integer(), string()},
                            undefined | {string(), string()}) ->
                                   %% json response payload
                                   {ok, any()} |
@@ -80,4 +81,8 @@ json_request_hilevel(Method, {Host, Port, Path, MimeType, Payload} = R, Auth) ->
     RealPayload = binary_to_list(iolist_to_binary(Payload)),
     URL = rest_url(Host, Port, Path),
     RV = rest_request(Method, {URL, [], MimeType, RealPayload}, Auth),
-    decode_json_response_ext(RV, Method, setelement(5, R, RealPayload)).
+    decode_json_response_ext(RV, Method, setelement(5, R, RealPayload));
+json_request_hilevel(Method, {Host, Port, Path}, Auth) ->
+    URL = rest_url(Host, Port, Path),
+    RV = rest_request(Method, {URL, []}, Auth),
+    decode_json_response_ext(RV, Method, {Host, Port, Path, [], []}).
