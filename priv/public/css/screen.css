@@ -991,7 +991,6 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details label.for-replica-number {display:block;float:left;}
 .bucket_details label.for-replica-number span {display:inline;float:none;margin-left:6px;}
 .bucket_details label.for-replica-number input {width:29px;}
-.bucket_details input[type=number] {width:2em;}
 .bucket_details .save_cancel .flush_button {float:left;margin-right:16px;}
 .bucket_details .save_cancel .delete_button {float:left;margin-right:16px;}
 
@@ -1139,6 +1138,6 @@ ul.tabs.dev-subset-switcher { padding-top: 3px; padding-bottom: 3px; padding-lef
 
 @media screen and (-webkit-min-device-pixel-ratio:0) {
     /* Safari/Chrome CSS here*/
-    input[type=number] {width:4em;}
+    input[type=number] {width:3em;}
     .bucket_details form > fieldset{padding-top:10px}
 }
