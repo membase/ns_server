@@ -211,7 +211,7 @@ do_handle_remote_cluster_delete(Id, Req, TriesLeft) ->
                                                         end, ExistingClusters),
     case MaybeThisCluster of
         [] ->
-            menelaus_util:reply_json(Req, <<"unkown remote cluster">>, 404);
+            menelaus_util:reply_json(Req, <<"unknown remote cluster">>, 404);
         _ ->
             case cas_remote_clusters(ExistingClusters, OtherClusters) of
                 ok -> menelaus_util:reply_json(Req, ok);
