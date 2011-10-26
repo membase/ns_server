@@ -260,6 +260,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_stop_rebalance/1};
                              ["controller", "setAutoCompaction"] ->
                                  {auth, fun handle_set_autocompaction/1};
+                             ["controller", "createReplication"] ->
+                                 {auth, fun menelaus_web_create_replication:handle_create_replication/1};
                              ["pools", PoolId, "buckets", Id] ->
                                  {auth_bucket, fun menelaus_web_buckets:handle_bucket_update/3,
                                   [PoolId, Id]};
@@ -511,7 +513,9 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                             {reAddNode, {struct, [{uri, <<"/controller/reAddNode">>}]}},
                             {ejectNode, {struct, [{uri, <<"/controller/ejectNode">>}]}},
                             {setAutoCompaction, {struct, [{uri, <<"/controller/setAutoCompaction">>},
-                                                          {validateURI, <<"/controller/setAutoCompaction?just_validate=1">>}]}}
+                                                          {validateURI, <<"/controller/setAutoCompaction?just_validate=1">>}]}},
+                            {replication, {struct, [{createURI, <<"/controller/createReplication">>},
+                                                    {infosURI, <<"/couchBase/_replicator/_design/_replicator_info/_view/infos?group_level=1">>}]}}
                            ]},
 
     PropList0 = [{name, list_to_binary(Id)},
