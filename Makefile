@@ -59,11 +59,22 @@ deps_all: deps_smtp deps_erlwsh deps_ale
 docs:
 	priv/erldocs $(DOC_DIR)
 
-ebins: src/ns_server.app.src deps_all
+ebins: src/ns_server.app.src include/replication_infos_ddoc.hrl deps_all
 	$(REBAR) compile
 
 src/ns_server.app.src: src/ns_server.app.src.in $(TMP_VER)
 	(sed s/0.0.0/'$(if $(PRODUCT_VERSION),$(PRODUCT_VERSION),$(shell cat $(TMP_VER)))'/g $< > $@) || (rm $@ && false)
+
+# NOTE: not depending on scripts/build_replication_infos_ddoc.rb because we're uploading both files to git.
+# If you need to rebuild this file, remove it first.
+include/replication_infos_ddoc.hrl:
+	scripts/build_replication_infos_ddoc.rb >$@ || (rm $@ && false)
+
+rebuild_replication_infos_ddoc:
+	rm include/replication_infos_ddoc.hrl
+	$(MAKE) include/replication_infos_ddoc.hrl
+
+.PHONY: rebuild_replication_infos_ddoc
 
 ifdef PRODUCT_VERSION
 .PHONY: src/ns_server.app.src
