@@ -515,6 +515,7 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                             {setAutoCompaction, {struct, [{uri, <<"/controller/setAutoCompaction">>},
                                                           {validateURI, <<"/controller/setAutoCompaction?just_validate=1">>}]}},
                             {replication, {struct, [{createURI, <<"/controller/createReplication">>},
+                                                    {replicatorDBURI, <<"/couchBase/_replicator">>},
                                                     {infosURI, <<"/couchBase/_replicator/_design/_replicator_info/_view/infos?group_level=1">>}]}}
                            ]},
 

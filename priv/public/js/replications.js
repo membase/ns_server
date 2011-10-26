@@ -78,6 +78,7 @@ var ReplicationsModel = {};
         targetURI = triple[0];
       }
       info = _.clone(info);
+      info._id = fields._id;
       info.source = fields.source;
       info.target = targetURI;
       info.continuous = fields.continuous;
@@ -108,6 +109,10 @@ var ReplicationsModel = {};
     remoteClustersListCell.invalidate();
     rawReplicationInfos.invalidate();
   }
+
+  var replicatorDBURIBaseCell = model.replicatorDBURIBaseCell = Cell.computeEager(function (v) {
+    return v.need(DAL.cells.currentPoolDetailsCell).controllers.replication.replicatorDBURI + "/";
+  });
 })();
 
 var ReplicationForm = mkClass({
@@ -431,6 +436,67 @@ var ReplicationsSection = {
       ReplicationsModel.refreshReplications();
     });
   },
+  startDeleteReplication: function (id) {
+    ThePage.ensureSection("replications");
+    var startedDeleteReplication = ReplicationsSection.startedDeleteReplication = {};
+    var docURLCell = buildDocURL(ReplicationsModel.replicatorDBURIBaseCell, id);
+    var confirmed;
+
+    fetchDocument();
+    return;
+
+    function fetchDocument() {
+      couchGet(docURLCell, function (doc) {
+        if (!doc || startedDeleteReplication !== ReplicationsSection.startedDeleteReplication) {
+          // this guards us against a bunch of rapid delete button
+          // presses. Only latest delete operation should pass through this gates
+          return;
+        }
+
+        if (!confirmed) {
+          askDeleteConfirmation(doc);
+        } else {
+          doDelete(doc);
+        }
+      });
+    }
+
+    function askDeleteConfirmation(doc) {
+      genericDialog({
+        header: "Confirm delete",
+        text: "Please, confirm deleting this replication",
+        callback: function (e, name, instance) {
+          instance.close();
+          if (name !== 'ok') {
+            return;
+          }
+          confirmed = true;
+          doDelete(doc);
+        }
+      });
+    }
+
+    function doDelete(doc) {
+      var url = Cell.needing(docURLCell).compute(function (v, docURL) {
+        return docURL + '?' + $.param({rev: doc._rev});
+      });
+      couchReq('DELETE', url, {}, function () {
+        // this is success callback
+        ReplicationsModel.refreshReplications();
+      }, function (error, status, handleUnexpected) {
+        if (status === 404) {
+          ReplicationsModel.refreshReplications();
+          return;
+        }
+        if (status === 409) {
+          return fetchDocument();
+        }
+        return handleUnexpected();
+      });
+    }
+  },
   onEnter: function() {
   }
 };
+
+configureActionHashParam("deleteReplication", $m(ReplicationsSection, "startDeleteReplication"));

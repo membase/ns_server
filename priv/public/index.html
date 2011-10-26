@@ -1197,7 +1197,7 @@
                   <td>{%= h(r.when) %}</td>
                   <td>{%= r.lastRun && V.formatLogTStamp(r.lastRun) %}</td>
                   <td>
-                    <a class="list_button"><span>Edit</span></a>
+                    <a class="list_button" href="#deleteReplication={%=h(r._id)%}"><span>Delete</span></a>
                   </td>
                 </tr>
                 <!-- {% }); %} -->
