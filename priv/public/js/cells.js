@@ -741,6 +741,7 @@ future.get = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
 
   function initiateXHR(dataCallback) {
     var opts = {dataType: 'json',
+                headers: {'Accept': 'application/json'},
                 prepareReGet: function (opts) {
                   if (opts.errorMarker) {
                     // if we have error marker pass it to data

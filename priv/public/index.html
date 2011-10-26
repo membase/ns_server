@@ -478,7 +478,9 @@
                 <td>{%= V.formatQuantity(this.basicStats.memUsed) %} / {%= V.formatQuantity(this.quota.ram) %}</td>
                 <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}</td>
                 <td>
-                  {% if (this.bucketType == 'membase') { %}<a class="list_button disable-if-stale" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>{% } %}
+                  {% if (this.bucketType == 'membase') { %}
+                    <a class="list_button disable-if-stale" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>
+                   <a class="list_button" href="#sec=documents&documentsBucket={%= this.name %}"><span>Documents</span></a>{% } %}
                 </td>
               </tr>
               <tr>
@@ -1252,6 +1254,91 @@
           </div>
         </div>
 
+          <div id="documents" style="display:none">
+            <h1 style="clear:both;overflow:hidden">
+              <span style="float:left">
+                <select id="docs_buckets_select"></select> &gt; Documents
+              </span>
+            <span class="ic_prev_next">
+              <a class="arr_prev"></a>
+              <a class="arr_next"></a>
+            </span> <!--/ic_prev_next-->
+
+            </h1>
+
+            <div class="shadow_box">
+              <div class="header_2 servers_header">
+                All Documents
+                <div class="editing_ctrls">
+
+                  <input type="text" id="docs_lookup_doc_by_id"
+                         placeholder="Document ID"/>
+                  <a class="btn_1" id="docs_lookup_doc_by_id_btn">
+                    <span>Lookup Id</span>
+                  </a>
+                  &nbsp;&nbsp;
+                  <a class="btn_1 btn_create"><span>Create Document</span></a>
+                  <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+                </div>
+              </div>
+              <!-- TODO: should we use panes here and pre-populate both all docs & design docs?
+                         or just use a single container and change it's context requesting new data on click? -->
+              <div id="documents_list_container">Documents</div>
+              <script id="documents_list_template" type="text/html">
+              <table class="list align_text" style="width:100%">
+                <tr>
+                    <th class="keycol">ID</th>
+                    <th>Revision</th>
+                    <th></th>
+                </tr>
+              <!-- {% if (loading) { %} -->
+                 <div class='spinner' style="height:350px;line-height:350px;width:100%"><span>Loading...</span></div>
+              <!-- {% } else if (rows.length > 0) { %} -->
+                <!-- {% _.each(rows, function (r) { %} -->
+                <tbody>
+                <tr>
+                    <td class="keycol">
+                        <div class="key">
+                          <a href="#sec=edit_doc&bucketName={%= bucketName %}&docId={%= encodeURIComponent(r.id) %}">{%= h(JSON.stringify(r.key)).replace(/"/g, '') %}</a>
+                        </div>
+                    </td>
+                    <td>{%= $.futon.formatJSON(r.value, {html:true}) %}</td>
+                    <td><a href="#sec=edit_doc&bucketName={%= bucketName %}&docId={%= r.id %}" class="list_button btn_edit"><span>Edit Document</span></a></td>
+                </tr>
+                </tbody>
+                <!-- {% }); %} -->
+              <!-- {% } else { %} -->
+                <tbody>
+                <tr><td colspan="2" style="text-align:center">There are currently no documents in this bucket.</td></tr>
+                </tbody>
+              <!-- {% } %} -->
+              </table>
+              </script>
+            </div>
+          </div>
+
+          <div id="edit_doc" style="display:none">
+            <h1 style="clear:both;overflow:hidden">
+              <span style="float:left">
+                <select id="doc_buckets_select"></select> &gt; <a href="#sec=documents">Documents</a>
+              </span>
+            </h1>
+            <div class="shadow_box">
+              <div class="header_2 servers_header">
+
+                <div style="float:left" id="json_doc_id"></div>
+                <span id="editing-notice"></span>
+                <div class="editing_ctrls">
+                  <a class="btn_1" id="doc_delete"><span>Delete</span></a>
+                  <a class="btn_1" id="doc_saveas"><span>Save As...</span></a>
+                  <a class="btn_1 btn_save" id="doc_save"><span>Save</span></a>
+                  <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+                </div>
+              </div>
+              <textarea id="json_doc" spellcheck="false" cols="20" rows="11"></textarea>
+            </div>
+          </div>
+
         <div id="coming" style="display:none">
           <h1>UI error encountered. This content does not exist yet.</h1>
         </div>
@@ -1448,6 +1535,43 @@
     </div>
   </form>
 </div>
+
+<!-- Create Document -->
+<div class="dialog join_cluster" id="create_document_dialog" title="Create Document" style="width:400px">
+  <form>
+    <fieldset style="padding-top:10px">
+      <ul>
+        <li>
+          <label for="new_doc_id" style="width:auto">Document ID:</label>
+          <input type="text" name="id" id="new_doc_id" />
+        </li>
+      </ul>
+    </fieldset>
+    <div class="save_cancel clearfix">
+      <button type="submit" class="save_button float_right">Create</button>
+      <a class="close">Cancel</a>
+    </div>
+  </form>
+</div>
+<!-- END Create Document -->
+<!-- END Save Document as -->
+<div class="dialog join_cluster" id="save_documentas_dialog" title="Save Document As" style="width:400px">
+  <form>
+    <fieldset style="padding-top:10px">
+      <ul>
+        <li>
+          <label for="new_doc_id" style="width:auto">Document ID:</label>
+          <input type="text" name="id" id="saveas_id" />
+        </li>
+      </ul>
+    </fieldset>
+    <div class="save_cancel clearfix">
+      <button type="submit" class="save_button float_right">Save As</button>
+      <a class="close">Cancel</a>
+    </div>
+  </form>
+</div>
+<!-- END Save Document as -->
 
 <div class="dialog join_cluster" id="join_cluster_dialog" title="Add Server">
   <!-- Join cluster -->
@@ -2145,6 +2269,7 @@ $(window).bind('template:rendered', function () {
 <script src="js/buckets.js"></script>
 <script src="js/views.js"></script>
 <script src="js/replications.js"></script>
+<script src="js/documents.js"></script>
 <script src="js/overview.js"></script>
 <script src="js/all-images.js"></script>
 <script src="js/app.js"></script>

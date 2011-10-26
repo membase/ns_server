@@ -56,33 +56,39 @@ couchGet = Cell.wrapWithArgsResolving(couchGet);
 couchReq = Cell.wrapWithArgsResolving(couchReq);
 
 function couchReq(method, url, data, success, error) {
-  $.ajax({type: method,
-          url: url,
-          data: JSON.stringify(data),
-          dataType: 'json',
-          contentType: 'application/json',
-          success: success,
-          error: function (xhr) {
-            var self = this;
-            var args = arguments;
-            var status = xhr.status;
+  var postData = {
+    type: method,
+    url: url,
+    dataType: 'json',
+    contentType: 'application/json',
+    success: success,
+    error: function (xhr) {
+      var self = this;
+      var args = arguments;
+      var status = xhr.status;
 
-            function handleUnexpected() {
-              return onUnexpectedXHRError.apply(self, args);
-            }
+      function handleUnexpected() {
+        return onUnexpectedXHRError.apply(self, args);
+      }
 
-            if (status >= 500 || status < 400) {
-              return handleUnexpected();
-            }
+      if (status >= 500 || status < 400) {
+        return handleUnexpected();
+      }
 
-            if (!error) {
-              return handleUnexpected();
-            }
+      if (!error) {
+        return handleUnexpected();
+      }
 
-            return error(JSON.parse(xhr.responseText), status,
-                         handleUnexpected);
-          }
-         });
+      return error(JSON.parse(xhr.responseText), status,
+                   handleUnexpected);
+    }
+  };
+
+  if (data) {
+    postData.data = JSON.stringify(data);
+  }
+
+  $.ajax(postData);
 }
 
 future.capiViewGet = function (ajaxOptions, valueTransformer, newValue, futureWrapper) {

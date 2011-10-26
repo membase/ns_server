@@ -1048,6 +1048,9 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 #sample_docs.editing .when-editing, #sample_docs .when-not-editing{display:block}
 #sample_docs .when-editing, #sample_docs.editing .when-not-editing{display:none}
 
+.editing_ctrls { float:right;position:relative;top:-3px; }
+#doc_save { width: 70px; }
+
 #views .list .empty {padding:15px}
 #views.in-production .when-in-dev, #views.in-development .when-in-prod {display:none}
 #views .stats {padding:0;border:none}
@@ -1068,14 +1071,14 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 #view_results_block{position:relative;margin-top:5px}
 #view_results_block h1{margin-bottom:5px;padding-top:10px;}
 /*prev next arr*/
-#view_results_block .ic_prev_next {float:right;width:61px;height:25px;margin:5px 0 0}
-#view_results_block .ic_prev_next a {float:left;width:24px;height:21px;background:url(../images/ic_prev_next_arr.png) no-repeat}
-#view_results_block .ic_prev_next .arr_next {background-position:-4px -1px}
-#view_results_block .ic_prev_next .arr_next:hover {background-position:-4px -27px}
-#view_results_block .ic_prev_next .arr_next.disabl {cursor:default;background-position:-4px -52px}
-#view_results_block .ic_prev_next .arr_prev {margin:0 5px 0 0;background-position:-33px -1px}
-#view_results_block .ic_prev_next .arr_prev:hover {background-position:-33px -27px}
-#view_results_block .ic_prev_next .arr_prev.disabl {cursor:default;background-position:-33px -52px}
+.ic_prev_next {float:right;width:61px;height:25px;margin:5px 0 0}
+.ic_prev_next a {float:left;width:24px;height:21px;background:url(../images/ic_prev_next_arr.png) no-repeat}
+.ic_prev_next .arr_next {background-position:-4px -1px}
+.ic_prev_next .arr_next:hover {background-position:-4px -27px}
+.ic_prev_next .arr_next.disabled {cursor:default;background-position:-4px -52px !important}
+.ic_prev_next .arr_prev {margin:0 5px 0 0;background-position:-33px -1px}
+.ic_prev_next .arr_prev:hover {background-position:-33px -27px}
+.ic_prev_next .arr_prev.disabled {cursor:default;background-position:-33px -52px !important}
 /*prev next arr*/
 #view_query_string{color: #BBBBBB;padding-left: 3em;vertical-align: middle;font-size:70%}
 #view_query_string em{font-style:normal;font-weight:bold}
@@ -1136,6 +1139,12 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 .f_wrap .selectBox-dropdown .selectBox-arrow{font-size: 1.54em !important;}
 
 ul.tabs.dev-subset-switcher { padding-top: 3px; padding-bottom: 3px; padding-left: 12px; }
+
+#editing-notice {
+    color: #999;
+    font-size: 12px;
+    margin: -12px 0px 0px 10px;
+}
 
 @media screen and (-webkit-min-device-pixel-ratio:0) {
     /* Safari/Chrome CSS here*/
