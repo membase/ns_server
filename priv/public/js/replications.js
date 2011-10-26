@@ -27,6 +27,7 @@ var ReplicationsModel = {};
       return _.sortBy(list, function (info) {return info.name});
     });
   });
+  remoteClustersListCell.keepValueDuringAsync = true;
   var remoteClustersListHostPort = model.remoteClustersListHostPort = Cell.compute(function (v) {
     var list = v.need(remoteClustersListCell);
     return _.map(list, function (remoteClusterInfo) {
@@ -49,6 +50,7 @@ var ReplicationsModel = {};
     }
     return future.get({url: v.need(replicationInfosURICell)});
   });
+  rawReplicationInfos.keepValueDuringAsync = true;
 
   var allReplicationInfos = model.allReplicationInfos = Cell.compute(function (v) {
     var name2hostport = v.need(remoteClustersListHostPort);
@@ -105,7 +107,10 @@ var ReplicationsModel = {};
     return _.reject(v.need(allReplicationInfos), currentReplicationInfoP);
   });
 
-  model.refreshReplications = function () {
+  model.refreshReplications = function (softly) {
+    if (!softly) {
+      remoteClustersListCell.setValue(undefined);
+    }
     remoteClustersListCell.invalidate();
     rawReplicationInfos.invalidate();
   }
@@ -496,6 +501,7 @@ var ReplicationsSection = {
     }
   },
   onEnter: function() {
+    ReplicationsModel.refreshReplications(true);
   }
 };
 
