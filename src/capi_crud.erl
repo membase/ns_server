@@ -210,10 +210,13 @@ mk_doc(DocId, {SeqNo, _} = Rev, RawValue) ->
         DocTemplate#doc{body=Json}
     catch
         {invalid_json, _} ->
+            Size = size(RawValue),
             Atts = [#att{name = <<"value">>,
                          type = <<"application/content-stream">>,
                          data = RawValue,
-                         disk_len = size(RawValue),
+                         disk_len = Size,
+                         encoding = identity,
+                         att_len = Size,
                          revpos = SeqNo}],
             DocTemplate#doc{atts=Atts}
     end.
