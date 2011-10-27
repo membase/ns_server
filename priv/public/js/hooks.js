@@ -727,7 +727,7 @@ var MockedRequest = mkClass({
         {name: "london",
          uri: "/pools/default/remoteClusters/london",
          validateURI: "/pools/default/remoteClusters/london?just_validate=1",
-         hostname: "london-mb04.yyy.com",
+         hostname: "london-mb04.yyy.com:80",
          username: "victoria"}
       ]],
       [del("pools", "default", "remoteClusters", x), method('doNothingPOST')],
@@ -908,6 +908,7 @@ var MockedRequest = mkClass({
       [post("controller", "setupDefaultBucket"),  expectParams(method('handleBucketsPost'),
                                                                "ramQuotaMB", "replicaNumber", "bucketType",
                                                                opt("saslPassword"), opt("authType"))],
+      [post("controller", "createReplication"), function () {return ServerStateMock.handleCreateReplication(this)}],
       [post("controller", "ejectNode"), expectParams(method('doNothingPOST'),
                                                      "otpNode")],
 
@@ -968,10 +969,12 @@ var MockedRequest = mkClass({
       [post("settings", "web"), expectParams(method("doNothingPOST"),
                                              "port", "username", "password")],
       [post("settings", "stats"), method("doNothingPOST")],
+      [get("couchBase", "my_replicator", "_design", "_replicator_info", "_view", x),
+       function () {return ServerStateMock.handleReplicatorInfos(this);}],
       [get("couchBase", x, "_all_docs"), function () {return ServerStateMock.handleAllDocs(this);}],
-      [get("couchBase", x, "_design", x, "_view", x), function () {return ServerStateMock.handleAllDocs(this);}],
+      // [get("couchBase", x, "_design", x, "_view", x), function () {return ServerStateMock.handleAllDocs(this);}],
       [get("couchBase", x, "_random"), {ok: true, id: "asd"}],
-      [get("couchBase", x, "asd"), function () {return ServerStateMock.handleAnyDoc(this);}]
+      [get("couchBase", x, "asd"), function () {return ServerStateMock.handleAnyDoc(this);}],
     ];
 
     rv.x = x;
@@ -1144,6 +1147,10 @@ var ServerStateMock = {
       "setAutoCompaction": {
         "uri": "/controller/setAutoCompaction",
         "validateURI": "/controller/setAutoCompaction?just_validate=1"
+      },
+      "replication": {
+        "createURI": "/controller/createReplication",
+        "infosURI": "/couchBase/my_replicator/_design/_replicator_info/_view/infos?group_level=1"
       }
     },
     "balanced": true,
@@ -1355,6 +1362,30 @@ var ServerStateMock = {
 
     return rv;
   },
+  handleCreateReplication: function (req) {
+    var args = req.deserialize();
+
+    return function () {
+      if (__hookParams['validateReplicationWorks'] == 'false') {
+        req.errorResponse({bucketFrom: "source bucket is invalid"});
+        return;
+      }
+
+      var errors = {};
+      var hadError = false;
+      _.each(("fromBucket toBucket replicationType toCluster").split(" "), function (field) {
+        if (args[field] == null || args[field] === '') {
+          hadError = true;
+          errors[field] = field + ' cannot be empty';
+        }
+      });
+      if (hadError) {
+        req.errorResponse(errors);
+      } else {
+        req.fakeResponse("");
+      }
+    }
+  },
   handleAllDocs: function () {
     var rv = {"total_rows":20,"offset":12,"rows":[
       { "id":"_design/adhoc",
@@ -1459,6 +1490,67 @@ var ServerStateMock = {
       }
     }];
     return all[(Math.random() * all.length) >> 0];
+  },
+  handleReplicatorInfos: function (req) {
+    return {
+      "rows": [
+        {
+          "key": [
+            "missing-rep_2"
+          ],
+          "value": {
+            "_replication_state": "completed",
+            "_replication_state_time": "2011-10-18T15:49:45Z",
+            "_replication_fields": {
+              "_id": "missing-rep_2",
+              "source": "default",
+              "target": "http://admin:asdasd@other.local/other-bucket",
+              "targetBucket": "other-bucket",
+              "continuous": false
+            },
+            "have_replicator_doc": false,
+            "count": 2
+          }
+        },
+        {
+          "key": [
+            "rep_1"
+          ],
+          "value": {
+            "_replication_state": "triggered",
+            "_replication_state_time": "2011-10-18T15:52:44Z",
+            "_replication_fields": {
+              "_id": "rep_1",
+              "source": "default",
+              "target": "http://admin:asdasd@kyiv-mb01.yyy.com:8091/default",
+              "targetBucket": "default",
+              "continuous": false
+            },
+            "have_replicator_doc": true,
+            "count": 2
+          }
+        },
+        {
+          "key": [
+            "rep_2"
+          ],
+          "value": {
+            "_replication_state": "completed",
+            "_replication_state_time": "2011-10-18T15:51:44Z",
+            "_replication_fields": {
+              "_id": "rep_2",
+              "source": "other-bucket",
+              "target": "http://admin:asdasd@london-mb04.yyy.com/very-other-bucket",
+              "targetBucket": "very-other-bucket",
+              "continuous": true
+            },
+            "have_replicator_doc": true,
+            "count": 2
+          }
+        }
+      ]
+    }
+
   }
 };
 

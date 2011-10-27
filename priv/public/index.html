@@ -1190,12 +1190,12 @@
                 <!-- {% if (rows.length > 0) { %} -->
                 <!-- {% _.each(rows, function (r) { %} -->
                 <tr>
-                  <td>{%= r.bucket %}</td>
+                  <td>{%= h(r.bucket) %}</td>
                   <td style="color:#777">this cluster</td>
-                  <td>{%= r.to %}</td>
-                  <td>{%= r.status %}</td>
-                  <td>{%= r.when %}</td>
-                  <td>{%=V.formatLogTStamp(r.lastRun)%}</td>
+                  <td>{%= h(r.to) %}</td>
+                  <td>{%= h(r.status) %}</td>
+                  <td>{%= h(r.when) %}</td>
+                  <td>{%= r.lastRun && V.formatLogTStamp(r.lastRun) %}</td>
                   <td>
                     <a class="list_button"><span>Edit</span></a>
                   </td>
@@ -1233,12 +1233,12 @@
                 <!-- {% if (rows.length > 0) { %} -->
                 <!-- {% _.each(rows, function (r) { %} -->
                 <tr>
-                  <td>{%= r.bucket %}</td>
+                  <td>{%= h(r.bucket) %}</td>
                   <td style="color:#777">this cluster</td>
-                  <td>{%= r.to %}</td>
-                  <td>{%= r.status %}</td>
-                  <td>{%= r.when %}</td>
-                  <td>{%=V.formatLogTStamp(r.lastRun)%}</td>
+                  <td>{%= h(r.to) %}</td>
+                  <td>{%= h(r.status) %}</td>
+                  <td>{%= h(r.when) %}</td>
+                  <td>{%= r.lastRun && V.formatLogTStamp(r.lastRun) %}</td>
                 </tr>
                 <!-- {% }); %} -->
                 <!-- {% } else { %} -->
@@ -1703,19 +1703,24 @@
 
 <!-- Create Replication -->
 <div class="dialog join_cluster" id="create_replication_dialog" title="Create Replication" style="width:600px">
-  <span class="warning pat_10"></span>
+  <div class="warning pat_10" id="create_replication_dialog_errors_container" style="line-height: 18px;"></div>
+  <script id="create_replication_dialog_errors_template" type="text/html">
+    <!-- {% _.each(rows, function (e) { %} -->
+    <strong>Attention</strong> - {%= h(e) %}<br>
+    <!-- {% }); %} -->
+  </script>
   <form>
     <fieldset></fieldset>
       <fieldset style="float:left;">
         <legend>Replicate changes from:</legend>
         <ul>
           <li><label for="replication_from_cluster">Cluster:</label>
-            <select name="cluster" disabled="disabled" id="replication_from_cluster">
+            <select disabled="disabled" id="replication_from_cluster">
               <option>this cluster</option>
             </select>
           </li>
           <li><label for="replication_from_bucket">Bucket:</label>
-            <input name="bucket" id="replication_from_bucket" />
+            <input name="fromBucket" id="replication_from_bucket" />
             <!-- TODO: ideally make the above input field an autocomplete field from
             the bucket names -->
           </li>
@@ -1725,12 +1730,12 @@
          <legend>To:</legend>
          <ul>
            <li><label for="replication_to_cluster">Cluster:</label>
-             <select name="cluster" id="replication_to_cluster">
+             <select name="toCluster" id="replication_to_cluster">
                <option>remote cluster list</option>
              </select>
            </li>
            <li><label for="replication_to_bucket">Bucket:</label>
-             <input name="bucket" id="replication_to_bucket" />
+             <input name="toBucket" id="replication_to_bucket" />
              <!-- TODO: ideally make the above input field an autocomplete field from
              the bucket names -->
            </li>
@@ -1739,8 +1744,9 @@
      </fieldset>
      <fieldset style="margin-left:4em">
      <ul>
-       <li><input name="rate" type="radio" id="replication_rate_scheduled" />
-         <label for="replication_rate_scheduled">Scheduled</label>
+       <li><input name="replicationType" type="radio" value="one-time" id="replication_rate_one_time" /><label for="replication_rate_one_time">One-time</label></li>
+       <!-- <li><input name="replicationType" type="radio" id="replication_type_scheduled" />
+         <label for="replication_type_scheduled">Scheduled</label>
          <ul>
            <li style="font-size:12px">
              <label>Begin <input type="radio" name="when" /> now</label> <span style="color:#777">OR</span>
@@ -1760,13 +1766,13 @@
              </select></label>
            </li>
          </ul>
-       </li>
-       <li><input name="rate" type="radio" id="replication_rate_continous" />
-         <label for="replication_rate_continous">Continous</label></li>
+       </li> -->
+       <li><input name="replicationType" value="continuous" type="radio" id="replication_rate_continous" /><label for="replication_rate_continous">Continous</label></li>
      </ul>
     </fieldset>
     <div class="save_cancel">
-      <button class="save_button float_right" type="submit">Replicate</button>
+      <button class="save_button float_right replicate-button" type="submit" style="margin-left:12px;">Replicate</button>
+      <button class="save_button float_right verify-button" type="submit">Verify</button>
       <a class="close">Cancel</a>
     </div>
   </form>
