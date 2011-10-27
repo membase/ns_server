@@ -169,7 +169,7 @@ var MockedRequest = mkClass({
   },
   fakeResponse: function (data) {
     if (data instanceof Function) {
-      data.call(null, fakeResponse);
+      data.call(null, _.bind(this.fakeResponse, this));
       return;
     }
     console.log("responded with: ", data);
@@ -230,7 +230,10 @@ var MockedRequest = mkClass({
       if (foundResp == null)
         foundResp = "";
     }
-    return _.clone(foundResp);
+    if (!_.isFunction(foundResp)) {
+      foundResp = _.clone(foundResp);
+    }
+    return foundResp;
   },
   respondForReal: function () {
     if ($.ajaxSettings.beforeSend)
