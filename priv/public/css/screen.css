@@ -304,7 +304,7 @@ div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph 
 /* shadow block */
 .shadow_box {position:relative;background:none #eeeeef;-moz-box-shadow:0 0 5px #ccc;-webkit-box-shadow:0 0 5px #ccc;box-shadow:0 0 5px #ccc;margin:0 9px 20px;}
 #view_results_container {margin:0;border:1px solid #ccc;box-shadow:none;}
-.langv {text-align:left}
+.list td.langv {text-align:left}
 #views .buttons, #replications .buttons {float:right;margin:2px 0px 0 0;text-transform:none;font-weight:normal}
 #views .darker_block.closed h3 ins, #replications .darker_block.closed h3 ins {top:17px}
 #views .darker_block h3 ins, #replications .darker_block h3 ins {position:absolute;top:16px;left:10px}
@@ -764,7 +764,8 @@ ul.tabs .badge_display .badge {display:block;}
 .list td > table td:first-child+td+td {width:155px;}
 .list td > table td:first-child+td+td+td {width:125px;}
 
-.list tr:first-child th, .list tr:first-child td label {padding:10px 5px;color:#4d4d4d;font-weight:bold;font-size:11px;text-align:center;background:none #f6f6f7; border-right:0px; border-bottom:1px solid #fff;}
+.list tr:first-child th, .list tr:first-child td label {padding:10px 5px;color:#4d4d4d;font-weight:bold;font-size:11px;text-align:left;background:none #f6f6f7; border-right:0px; border-bottom:1px solid #fff;}
+#buckets .list tr:first-child th, #buckets .list tr:first-child td label{text-align:center}
 .list tr:first-child th {padding: 10px 5px 10px 8px}
 .list tr:first-child th:first-child {/*padding:0 0 0 56px;*padding-right:25px;display:block;*/text-align:left;white-space:nowrap;}
 .list tr:first-child th i {font-style:normal;position:relative;}
