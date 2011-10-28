@@ -1120,7 +1120,7 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 .selectBox-options LI.selectBox-selected A {background-color: none;}
 .selectBox-options .selectBox-optgroup {padding: 0 0.3em;color: #666666;white-space: nowrap;line-height: 1.5;font-weight: bold;}
 .selectBox-options .selectBox-optgroup.topgroup { background:#dfdfdf}
-.selectBox-options .selectBox-optgroup.childgroup { padding-left: 1em }
+.selectBox-options .selectBox-optgroup.childgroup { padding-left: 1em;margin-right: 1em }
 .selectBox.selectBox-disabled {color: #888888 !important;}
 .selectBox-dropdown.selectBox-disabled .selectBox-arrow {border-color: #666666;opacity: 0.5;}
 .selectBox-inline.selectBox-disabled {color: #cfcdcd !important;}
