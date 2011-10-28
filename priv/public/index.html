@@ -920,12 +920,13 @@
                   <a class="list_button when-in-prod" href="#copyDDoc={%=h(ddoc._id)%}"><span>Copy to Dev</span></a>
                   <a class="list_button when-in-dev" href="#publishDDoc={%=h(ddoc._id)%}"><span>Publish</span></a>
                   <a class="list_button when-in-dev" href="#addView={%=h(ddoc._id)%}"><span>Add View</span></a>
+                  <a class="list_button when-in-dev" href="#addSpatial={%=h(ddoc._id)%}"><span>Add Spatial View</span></a>
                   <a class="list_button" href="#deleteDDoc={%=h(ddoc._id)%}"><span>Delete</span></a>
                 </td>
               </tr>
-              <!-- {% if (_.size(ddoc.viewInfos) < 1) { %} -->
+              <!-- {% if (_.size(ddoc.viewInfos) < 1 && _.size(ddoc.spatialInfos) < 1) { %} -->
               <tr><td colspan="10" style="padding:15px">No views defined!<span class="when-in-dev"> Click "Create Development View" above to create one.</span></td></tr>
-              <!-- {% } else { %} -->
+              <!-- {% } else { if (_.size(ddoc.viewInfos) > 0) { %} -->
               <!-- {% _.each(ddoc.viewInfos, function (viewInfo) { %} -->
               <tr>
                 <td class="view_name" colspan="4">
@@ -936,7 +937,18 @@
                 </td>
               </tr>
               <!-- {% }); %} -->
-              <!-- {% } %} -->
+              <!-- {% } if (_.size(ddoc.spatialInfos) > 0) { %} -->
+              <!-- {% _.each(ddoc.spatialInfos, function (spatialInfo) { %} -->
+              <tr>
+                <td class="view_name" colspan="3">
+                  <a href="{%=h(spatialInfo.viewLink)%}">[Spatial] {%= h(spatialInfo.name) %}</a>
+                </td>
+                <td>
+                  <a class="list_button btn_remove" href="{%=h(spatialInfo.removeLink)%}"><span>Delete</span></a>
+                </td>
+              </tr>
+              <!-- {% }); %} -->
+              <!-- {% } } %} -->
             </tbody>
             <!-- {% }); %} -->
             <!-- {% } %} -->
@@ -975,7 +987,7 @@
               </div>
             </div>
 
-            <div class="shadow_box" id="viewcode">
+            <div class="shadow_box viewcode" id="viewcode" style="display:none;">
               <div class="darker_block">
                 <h3 class="block-expander"><ins></ins><span class="view_head">View Code</span>
                   <span class="buttons">
@@ -999,9 +1011,28 @@
               </div>
             </div>
 
-            <div id="view_results_block">
-              <h1>Filter Results <a id="view_run_button" class="btn_1 bt_marg"><span>Show Results</span></a>
-                <span id="view_query_string"></span>
+            <div class="shadow_box viewcode" id="spatialcode" style="display:none;">
+              <div class="darker_block">
+                <h3 class="block-expander"><ins></ins><span class="view_head">Spatial Code</span>
+                  <span class="buttons">
+                    <a id="save_spatial_as" class="btn_1"><span>Save As...</span></a>
+                    <a id="just_save_spatial" class="btn_1"><span>Save</span></a>
+                  </span>
+                </h3>
+                <div class="stats">
+                  <table class="list"><tbody><tr>
+                    <td class="code map" style="width: 654px;">
+                      <label for="spatialcode_fun">Spatial</label>
+                      <textarea spellcheck="false" cols="20" rows="11" class="map" id="spatialcode_fun"></textarea>
+                    </td>
+                  </tr></tbody></table>
+                </div>
+              </div>
+            </div>
+
+            <div id="view_results_block" class="results_block" style="display:none;">
+              <h1>Filter Results <a id="view_run_button" class="run_button btn_1 bt_marg"><span>Show Results</span></a>
+                <span class="view_query_string"></span>
                 <span class="ic_prev_next">
                     <a class="arr_prev"></a>
                     <a class="arr_next"></a>
@@ -1098,8 +1129,8 @@
               <!--/filter result-->
               <div class="shadow_box">
                 <ul class="tabs dev-subset-switcher when-in-dev">
-                  <li class="tab_left"><a id="subset_dev">Development Time Subset</a></li>
-                  <li class="tab_right"><a id="subset_prod">Full Cluster Data Set</a></li>
+                  <li class="tab_left"><a class="subset_dev">Development Time Subset</a></li>
+                  <li class="tab_right"><a class="subset_prod">Full Cluster Data Set</a></li>
                 </ul>
                 <div id="view_results_spinner" class="spinner" style="height:100px;line-height:100px;display:none;"><span>Loading...</span></div>
                 <div id="view_results_container" class="content c_result"></div>
@@ -1134,6 +1165,134 @@
               </table>
                 </script>
             </div>
+
+            <div id="spatial_results_block" class="results_block" style="display:none;">
+              <h1>Filter Results <a id="spatial_run_button" class="run_button btn_1 bt_marg"><span>Show Results</span></a>
+                <span class="view_query_string"></span>
+                <span class="ic_prev_next">
+                    <a class="arr_prev"></a>
+                    <a class="arr_next"></a>
+                </span> <!--/ic_prev_next-->
+              </h1>
+              <!--filter result-->
+              <div class="f_wrap">
+                <div class="filter_cont">
+                    <a href="#" class="exp_filter"></a>
+                </div><!--/filter_cont-->
+                <div class="f_popup" >
+                  <div class="f_cont">
+                    <div class="br_right"></div>
+                    <div class="wrap">
+                      <select id="spatial_filters" name="standard-dropdown">
+                          <option value=""></option>
+                          <!-- <option value="conflicts">conflicts</option> -->
+                          <option value="stale">stale</option>
+                          <option value="bbox">bbox</option>
+                          <option value="connection_timeout">connection_timeout</option>
+                      </select>
+                    </div><!--/wrap-->
+                    <a id="spatial_filter_add" class="ic_plus"></a>
+
+                    <table class="key">
+                      <!-- <tr><td><div class="btn_x"></div></td> -->
+                        <!-- <td><label for="view_filter_conflicts">conflicts</label></td> -->
+                        <!-- <td><input id="view_filter_conflicts" name="conflicts" type="checkbox" /></td></tr> -->
+                      <tr><td><div class="btn_x"></div></td>
+                        <td><label for="spatial_filter_bbox">bbox</label></td>
+                        <td><input id="spatial_filter_bbox" name="bbox" type="text" /></td></tr>
+<!--
+                      <tr><td><div class="btn_x"></div></td>
+                        <td><label for="view_filter_end_key_docid">end_key_docid</label></td>
+                        <td><input id="view_filter_end_key_docid" name="end_key_docid" type="text" /></td></tr>
+                      <tr><td><div class="btn_x"></div></td>
+                        <td><label for="view_filter_group">group</label></td>
+                        <td><input id="view_filter_group" name="group" type="checkbox" /></td></tr>
+                      <tr><td><div class="btn_x"></div></td>
+                        <td><label for="view_filter_group_level">group_level</label></td>
+                        <td><input id="view_filter_group_level" name="group_level" type="text" /></td></tr>
+                      <tr><td><div class="btn_x"></div></td>
+                        <td><label for="view_filter_include_docs">include_docs</label></td>
+                        <td><input id="view_filter_include_docs" name="include_docs" type="checkbox" /></td></tr>
+                      <tr><td><div class="btn_x"></div></td>
+                        <td><label for="view_filter_inclusive_end">inclusive_end</label></td>
+                        <td><input id="view_filter_inclusive_end" name="inclusive_end" type="checkbox" /></td></tr>
+                      <tr><td><div class="btn_x"></div></td>
+                        <td><label for="view_filter_key">key</label></td>
+                        <td><input id="view_filter_key" name="key" type="text" /></td></tr>
+                      <tr><td><div class="btn_x"></div></td>
+                        <td><label for="view_filter_keys">keys</label></td>
+                        <td><input id="view_filter_keys" name="keys" type="text" /></td></tr>
+                      <tr><td><div class="btn_x"></div></td>
+                        <td><label for="view_filter_reduce">reduce</label></td>
+                        <td><input id="view_filter_reduce" name="reduce" type="checkbox" /></td></tr>
+                      <tr><td><div class="btn_x"></div></td>
+                        <td><label for="view_filter_start_key">start_key</label></td>
+                        <td><input id="view_filter_start_key" name="start_key" type="text" /></td></tr>
+                      <tr><td><div class="btn_x"></div></td>
+                        <td><label for="view_filter_start_key_docid">start_key_docid</label></td>
+                        <td><input id="view_filter_start_key_docid" name="start_key_docid" type="text" /></td></tr>
+                      <tr><td><div class="btn_x"></div></td>
+                        <td><label for="view_filter_update_seq">update_seq</label></td>
+                        <td><input id="view_filter_update_seq" name="update_seq" type="checkbox" /></td></tr>
+-->
+                      <tr><td><div class="btn_x"></div></td>
+                        <td><label for="spatial_filter_stale">stale</label></td>
+                        <td>
+                          <select id="spatial_filter_stale" name="stale" class="selectBox">
+                            <option value="update_after">update_after</option>
+                            <option value="ok">ok</option>
+                          </select>
+                        </td></tr>
+                      <tr><td><div class="btn_x"></div></td>
+                        <td><label for="view_filter_connection_timeout">connection_timeout</label></td>
+                        <td><input id="view_filter_connection_timeout" name="connection_timeout" type="text" placeholder="milliseconds" /></td></tr>
+                    </table><!--/key-->
+
+                  </div><!--f_cont-->
+                </div><!--f_popup-->
+              </div>
+              <!--/filter result-->
+              <div class="shadow_box">
+                <ul class="tabs dev-subset-switcher when-in-dev">
+                  <li class="tab_left"><a class="subset_dev">Development Time Subset</a></li>
+                  <li class="tab_right"><a class="subset_prod">Full Cluster Data Set</a></li>
+                </ul>
+                <div id="spatial_results_spinner" class="spinner" style="height:100px;line-height:100px;display:none;"><span>Loading...</span></div>
+                <div id="spatial_results_container" class="content c_result"></div>
+              </div>
+              <script id="spatial_results_template" type="text/html">
+              <table class="list align_text" style="width:100%">
+                <tr>
+                    <th class="keycol">Bbox</th>
+                    <th class="keycol">Geometry</th>
+                    <th>Value</th>
+                </tr>
+              <!-- {% if (!rows.lackOfValue) { %} -->
+                <!-- {% _.each(rows, function (r) { %} -->
+                <tbody>
+                <tr>
+                    <td class="keycol">
+                        <div class="key">{%= h(JSON.stringify(r.bbox)) %}</div>
+                        {% if (h(r.id) !== "undefined") { %}
+                          <a class="id">{%= h(r.id) %}</a>
+                        {% } else { %}
+                          <div class="id">{%= h(r.id) %}</div>
+                        {% } %}
+                    </td>
+                    <td>{%= h(JSON.stringify(r.geometry)) %}</td>
+                    <td>{%= $.futon.formatJSON(r.value, {html:true}) %}</td>
+                </tr>
+                </tbody>
+                <!-- {% }); %} -->
+              <!-- {% } else { %} -->
+                <tbody>
+                <tr><td colspan="3" style="text-align:center">To see the results of this view, click "Show Results" above.</td></tr>
+                </tbody>
+              <!-- {% } %} -->
+              </table>
+                </script>
+            </div>
+
           </div>
         </div>
 

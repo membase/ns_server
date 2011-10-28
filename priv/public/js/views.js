@@ -189,7 +189,7 @@ var ViewsSection = {
       views[tab == 'development' ? 'removeClass' : 'addClass']('in-production');
     });
 
-    self.subsetTabCell = new LinkSwitchCell('dev_subset', {
+    self.subsetTabCell = new LinkClassSwitchCell('dev_subset', {
       firstItemIsDefault: true
     });
     self.subsetTabCell.addItem("subset_dev", "dev");
@@ -384,7 +384,7 @@ var ViewsSection = {
             var option = $(group);
             q.append(option);
           });
-          $('#views_view_select').selectBox({autoWidth:true})
+          $('#views_view_select').selectBox({autoWidth:false})
             .selectBox('options', list.join(''));
           if (selected.length > 0) {
             $('#views_view_select').parent().find('.selectBox-label')
@@ -397,7 +397,9 @@ var ViewsSection = {
     DAL.subscribeWhenSection(currentDDocAndView, "views", function (value) {
       $('#views_spinner')[value ? 'hide' : 'show']();
       $('#views_list')[(value && !value.length) ? 'show' : 'hide']();
+      $('#viewcode')[(value && value.length) ? 'show' : 'hide']();
       $('#view_details')[(value && value.length) ? 'show' : 'hide']();
+      $('#view_results_block')[(value && value.length) ? 'show' : 'hide']();
       if (value && value.length) {
         $('#preview_random_doc').trigger('click', true);
         self.mapEditor.refresh();
@@ -445,7 +447,7 @@ var ViewsSection = {
       self.mapEditor.setOption('onChange', onMapReduceChange);
       self.reduceEditor.setOption('onChange', onMapReduceChange);
       unchangedCell.subscribeValue(function (unchanged) {
-        $('#view_run_button').toggleClass('disabled', !unchanged);
+        $('.run_button').toggleClass('disabled', !unchanged);
       });
 
     })();
@@ -544,9 +546,9 @@ var ViewsSection = {
           if (builder) {
             var url = builder(intPage, subset);
             var text = url.substring(url.indexOf('?'));
-            html = "<a href='" + escapeHTML(url) + "'>" + escapeHTML(text) + '</a>';
+            html = "<a href='" + escapeHTML(url) + "'>" + escapeHTML(decodeURIComponent(text)) + '</a>';
           }
-          $('#view_query_string').html(html);
+          $('.view_query_string').html(html);
         }).apply(this, args);
       });
 
@@ -637,8 +639,8 @@ var ViewsSection = {
     });
 
     (function () {
-      var prevBtn = $('#view_results_block .arr_prev');
-      var nextBtn = $('#view_results_block .arr_next');
+      var prevBtn = $('#views .results_block .arr_prev');
+      var nextBtn = $('#views .results_block .arr_next');
 
       DAL.subscribeWhenSection(Cell.compute(function (v) {
         var intCell = v.need(self.subsetTabCell) === 'prod' ? intFullSubsetPageCell : intPageCell;
@@ -649,10 +651,10 @@ var ViewsSection = {
         }
         (function (viewResults, intPage) {
           if (!viewResults) {
-            $('#view_results_block .ic_prev_next').hide();
+            $('#views .results_block .ic_prev_next').hide();
             return;
           }
-          $('#view_results_block .ic_prev_next').show();
+          $('#views .results_block .ic_prev_next').show();
           prevBtn.toggleClass('disabled', intPage == 1);
           nextBtn.toggleClass('disabled', (viewResults.rows.length < ViewsSection.PAGE_LIMIT) || intPage == 10);
         }).apply(this, args);
