@@ -90,7 +90,7 @@ config_string(BucketName) ->
                     io_lib:format(
                       "ht_size=~B;ht_locks=~B;"
                       "tap_noop_interval=~B;max_txn_size=~B;"
-                      "max_size=~B;initfile=~s;"
+                      "max_size=~B;"
                       "tap_keepalive=~B;"
                       "allow_data_loss_during_shutdown=true;"
                       "backend=couchdb;couch_bucket=~s;couch_port=~B",
@@ -107,9 +107,6 @@ config_string(BucketName) ->
                          max_txn_size, BucketConfig,
                          getenv_int("MEMBASE_MAX_TXN_SIZE", 10000)),
                        MemQuota,
-                       proplists:get_value(
-                         initfile, BucketConfig,
-                         proplists:get_value(initfile, EngineConfig)),
                        %% Five minutes, should be enough time for
                        %% ebucketmigrator to restart.
                        proplists:get_value(
