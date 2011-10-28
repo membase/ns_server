@@ -32,12 +32,22 @@
 not_implemented(Arg, Rest) ->
     {not_implemented, Arg, Rest}.
 
+is_couchbase_db(<<"_replicator">>) ->
+    false;
+is_couchbase_db(Name) ->
+    nomatch =:= binary:match(Name, <<"/">>).
+
 do_db_req(#httpd{user_ctx=UserCtx,path_parts=[DbName|_]}=Req, Fun) ->
     case is_couchbase_db(DbName) of
         true ->
-            %% undefined #db fields indicate bucket database
-            Db = #db{user_ctx = UserCtx, name = DbName},
-            Fun(Req, Db);
+            case ns_bucket:couchbase_bucket_exists(DbName) of
+                true ->
+                    %% undefined #db fields indicate bucket database
+                    Db = #db{user_ctx = UserCtx, name = DbName},
+                    Fun(Req, Db);
+                _ ->
+                    erlang:throw({not_found, no_couchbase_bucket_exists})
+            end;
         false ->
             couch_db_frontend:do_db_req(Req, Fun)
     end.
@@ -392,12 +402,6 @@ couch_doc_open(Db, DocId, Rev, Options) ->
               throw(Else)
       end
   end.
-
-
-is_couchbase_db(<<"_replicator">>) ->
-    false;
-is_couchbase_db(Name) ->
-    nomatch =:= re:run(Name, <<"/">>).
 
 %% Grab the first vbucket we can find on this server
 -spec first_vbucket(binary()) -> non_neg_integer().

@@ -30,6 +30,7 @@
          get_bucket/1,
          get_bucket_names/0,
          get_bucket_names/1,
+         couchbase_bucket_exists/1,
          get_buckets/0,
          get_buckets/1,
          is_open_proxy_port/2,
@@ -132,6 +133,17 @@ credentials(Bucket) ->
     {ok, BucketConfig} = get_bucket(Bucket),
     {Bucket, proplists:get_value(sasl_password, BucketConfig, "")}.
 
+-spec couchbase_bucket_exists(binary()) -> boolean().
+couchbase_bucket_exists(Bucket) ->
+    case get_bucket(binary_to_list(Bucket)) of
+        {ok, Config} ->
+            case proplists:get_value(type, Config) of
+                membase -> true;
+                _ -> false
+            end;
+        not_present ->
+            false
+    end.
 
 get_bucket(Bucket) ->
     BucketConfigs = get_buckets(),
