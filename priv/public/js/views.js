@@ -158,6 +158,7 @@ var ViewsSection = {
   PAGE_LIMIT: 10,
   mapEditor: CodeMirror.fromTextArea($("#viewcode_map")[0], codeMirrorOpts),
   reduceEditor: CodeMirror.fromTextArea($("#viewcode_reduce")[0], codeMirrorOpts),
+  spatialEditor: CodeMirror.fromTextArea($("#spatialcode_fun")[0], codeMirrorOpts),
   ensureBucketSelected: function (bucketName, body) {
     var self = this;
     ThePage.ensureSection("views");
@@ -199,6 +200,7 @@ var ViewsSection = {
     self.rawViewsBucketCell = new StringHashFragmentCell("viewsBucket");
     self.rawDDocIdCell = new StringHashFragmentCell("viewsDDocId");
     self.rawViewNameCell = new StringHashFragmentCell("viewsViewName");
+    self.rawSpatialNameCell = new StringHashFragmentCell("viewsSpatialName");
     self.pageNumberCell = new StringHashFragmentCell("viewPage");
     self.fullSubsetPageNumberCell = new StringHashFragmentCell("fullSubsetViewPage");
 
@@ -314,6 +316,24 @@ var ViewsSection = {
       return [ddoc, viewName];
     }).name("currentDDocAndView");
 
+    var currentDDocAndSpatial = self.currentDDocAndSpatial = Cell.computeEager(function (v) {
+      var allDDocs = v.need(allDDocsCell);
+      var ddocId = v(self.rawDDocIdCell);
+      var spatialName = v(self.rawSpatialNameCell);
+      if (!ddocId || !spatialName) {
+        return [];
+      }
+      var ddoc = _.detect(allDDocs, function (d) {return d._id === ddocId});
+      if (!ddoc) {
+        return [];
+      }
+      var spatial = (ddoc.spatial || {})[spatialName];
+      if (!spatial) {
+        return [];
+      }
+      return [ddoc, spatialName];
+    }).name("currentDDocAndSpatial");
+
     (function () {
       var cell = Cell.compute(function (v) {
         var mode = v.need(DAL.cells.mode);
@@ -327,15 +347,20 @@ var ViewsSection = {
           return !isDevModeDoc(ddoc);
         });
         var ddocAndView = v.need(currentDDocAndView);
+        var ddocAndSpatial = v.need(currentDDocAndSpatial);
 
-        var selectedDDocId = ddocAndView.length && ddocAndView[0]._id;
-        var selectedViewName = ddocAndView.length && ddocAndView[1];
+        var selectedDDocId = ddocAndView.length && ddocAndView[0]._id ||
+          ddocAndSpatial.length && ddocAndSpatial[0]._id;
+        var selectedViewName = ddocAndView.length && ddocAndView[1] ||
+          ddocAndSpatial.length && ddocAndSpatial[1];
+        //var selectedType = ddocAndView.length > 0 ? '_view' : '_spatial';
 
         var devOptgroupOutput = false;
         var productionOptgroupOutput = false;
         var groups = _.map(ddocs, function (doc) {
           var rv = "";
           var viewNames = _.keys(doc.views || {}).sort();
+          var spatialNames = _.keys(doc.spatial || {}).sort();
 
           if (isDevModeDoc(doc) && !devOptgroupOutput) {
             rv += '<optgroup label="Development Views" class="topgroup">';
@@ -353,6 +378,15 @@ var ViewsSection = {
               '"' + maybeSelected + ">" +
               escapeHTML(name) + "</option>";
           });
+          _.each(spatialNames, function (name) {
+            var maybeSelected = (selectedDDocId === doc._id &&
+              selectedViewName === name) ? ' selected' : '';
+            rv += '<option value="' +
+              escapeHTML(
+                buildViewPseudoLink(bucketName, doc, '_spatial', name)) +
+              '"' + maybeSelected + '>' +
+              '[Spatial] ' + escapeHTML(name) + "</option>";
+          });
           rv += "</optgroup>";
           return rv;
         });
@@ -367,15 +401,22 @@ var ViewsSection = {
           if (!newValue) {
             self.rawDDocIdCell.setValue(undefined);
             self.rawViewNameCell.setValue(undefined);
+            self.rawSpatialNameCell.setValue(undefined);
             return;
           }
           unbuildViewPseudoLink(newValue, function (_ignored, ddocId, type, viewName) {
             var devMode = isDevModeDoc({_id: ddocId});
             _.defer(function () {
               $('#views_view_select').parent().find('.selectBox-label')
-                .html(escapeHTML(ddocId).split('/').join('/<strong>') + '</strong>/_view/<strong>' + escapeHTML(viewName) + '</strong>');
+                .html(escapeHTML(ddocId).split('/').join('/<strong>') +
+                  '</strong>/' + type +
+                  '/<strong>' + escapeHTML(viewName) + '</strong>');
               self.modeTabs.setValue(devMode ? 'development' : 'production');
-              self.setCurrentView(ddocId, viewName);
+              if (type === '_view') {
+                self.setCurrentView(ddocId, viewName);
+              } else {
+                self.setCurrentSpatial(ddocId, viewName);
+              }
             });
           });
         },
@@ -397,15 +438,34 @@ var ViewsSection = {
     })();
 
     DAL.subscribeWhenSection(currentDDocAndView, "views", function (value) {
-      $('#views_spinner')[value ? 'hide' : 'show']();
-      $('#views_list')[(value && !value.length) ? 'show' : 'hide']();
+      // only run it if the current clicked view isn't a spatial one
+      if (currentDDocAndSpatial.value &&
+          currentDDocAndSpatial.value.length == 0) {
+        $('#views_spinner')[value ? 'hide' : 'show']();
+        $('#views_list')[(value && !value.length) ? 'show' : 'hide']();
+        $('#view_details')[(value && value.length) ? 'show' : 'hide']();
+      }
       $('#viewcode')[(value && value.length) ? 'show' : 'hide']();
-      $('#view_details')[(value && value.length) ? 'show' : 'hide']();
       $('#view_results_block')[(value && value.length) ? 'show' : 'hide']();
       if (value && value.length) {
         $('#preview_random_doc').trigger('click', true);
         self.mapEditor.refresh();
         self.reduceEditor.refresh();
+      }
+    });
+
+    DAL.subscribeWhenSection(currentDDocAndSpatial, "views", function (value) {
+      // only run it if the current clicked view isn't a non-spatial one
+      if (currentDDocAndView.value && currentDDocAndView.value.length == 0) {
+        $('#views_spinner')[value ? 'hide' : 'show']();
+        $('#views_list')[(value && !value.length) ? 'show' : 'hide']();
+        $('#view_details')[(value && value.length) ? 'show' : 'hide']();
+      }
+      $('#spatialcode')[(value && value.length) ? 'show' : 'hide']();
+      $('#spatial_results_block')[(value && value.length) ? 'show' : 'hide']();
+      if (value && value.length) {
+        $('#preview_random_doc').trigger('click', true);
+        self.spatialEditor.refresh();
       }
     });
 
@@ -418,36 +478,53 @@ var ViewsSection = {
       }).apply(this, v.need(currentDDocAndView));
     }).name("currentView");
 
-    (function () {
-
-      var originalMap, originalReduce;
-
-      currentView.subscribeValue(function (view) {
-
-        $('#views .when-inside-view')[view ? 'show' : 'hide']();
-        if (view === undefined) {
+    var currentSpatial = self.currentSpatial = Cell.compute(function (v) {
+      return (function (ddoc, spatialName) {
+        if (spatialName === undefined) {
           return;
         }
+        return (ddoc.spatial || {})[spatialName];
+      }).apply(this, v.need(currentDDocAndSpatial));
+    }).name("currentSpatial");
 
-        originalMap = view.map;
-        originalReduce = view.reduce || "";
+    (function () {
 
-        // NOTE: this triggers onChange right now so it needs to be last
-        self.mapEditor.setValue(view.map);
-        self.reduceEditor.setValue(view.reduce || "");
-      });
+      var originalMap, originalReduce, originalSpatial;
+
+      Cell.subscribeMultipleValues(function (view, spatial) {
+        $('#views .when-inside-view')[view || spatial ? 'show' : 'hide']();
+        if (view !== undefined) {
+          originalMap = view.map;
+          originalReduce = view.reduce || "";
+
+          // NOTE: this triggers onChange right now so it needs to be last
+          self.mapEditor.setValue(view.map);
+          self.reduceEditor.setValue(view.reduce || "");
+        } else if (spatial !== undefined) {
+          originalSpatial = spatial;
+
+          // NOTE: this triggers onChange right now so it needs to be last
+          self.spatialEditor.setValue(spatial);
+        }
+
+      }, currentView, currentSpatial);
 
       var unchangedCell = new Cell();
 
       var onMapReduceChange = function () {
         var nowMap = self.mapEditor.getValue();
         var nowReduce = self.reduceEditor.getValue();
-        var unchanged = (originalMap === nowMap && originalReduce === nowReduce);
+        var nowSpatial = self.spatialEditor.getValue();
+        var unchanged = (
+          (originalMap === undefined || originalMap === nowMap) &&
+          (originalReduce === undefined || originalReduce === nowReduce) &&
+          (originalSpatial === undefined || originalSpatial === nowSpatial));
         unchangedCell.setValue(unchanged);
-      }
+      };
 
       self.mapEditor.setOption('onChange', onMapReduceChange);
       self.reduceEditor.setOption('onChange', onMapReduceChange);
+      self.spatialEditor.setOption('onChange', onMapReduceChange);
       unchangedCell.subscribeValue(function (unchanged) {
         $('.run_button').toggleClass('disabled', !unchanged);
       });
@@ -491,6 +568,25 @@ var ViewsSection = {
       }
     });
 
+    var editingDevViewSpatial = Cell.compute(function (v) {
+      var ddoc = v.need(currentDDocAndSpatial)[0];
+      if (!ddoc) {
+        return false;
+      }
+      return !!ddoc._id.match(/^_design\/dev_/);
+    }).name("editingDevViewSpatial");
+
+    editingDevViewSpatial.subscribeValue(function (devView) {
+
+      $('#save_spatial_as, #just_save_spatial')[devView ? "show" : "hide"]();
+
+      if (!devView) {
+        disableEditor(self.spatialEditor);
+      } else {
+        enableEditor(self.spatialEditor);
+      }
+    });
+
     function mkIntPageCell(pageNumberCell) {
       return Cell.compute(function (v) {
         var pageVal = v(pageNumberCell);
@@ -514,24 +610,41 @@ var ViewsSection = {
 
     (function () {
       var proposedURLBuilderCell = Cell.compute(function (v) {
-        if (!v(self.currentView)) {
-          return;
-        }
-        var dbURL = v.need(self.dbURLCell);
-        var ddocAndView = v.need(self.currentDDocAndView);
-        if (!ddocAndView[1]) {
-          return;
-        }
-        var filterParams = v.need(ViewsFilter.filterParamsCell);
-        return function (pageNo, subset) {
-          var initial = {};
-          if (subset === "prod") {
-            initial.full_set = 'true'
+        if (v(self.currentView)) {
+          var dbURL = v.need(self.dbURLCell);
+          var ddocAndView = v.need(self.currentDDocAndView);
+          if (!ddocAndView[1]) {
+            return;
           }
-          return buildDocURL(dbURL, ddocAndView[0]._id, "_view", ddocAndView[1], _.extend(initial, filterParams, {
-            limit: ViewsSection.PAGE_LIMIT.toString(),
-            skip: String((pageNo - 1) * 10)
-          }));
+          var filterParams = v.need(ViewsFilter.filterParamsCell);
+          return function (pageNo, subset) {
+            var initial = {};
+            if (subset === "prod") {
+              initial.full_set = 'true';
+            }
+            return buildDocURL(dbURL, ddocAndView[0]._id, "_view", ddocAndView[1], _.extend(initial, filterParams, {
+              limit: ViewsSection.PAGE_LIMIT.toString(),
+              skip: String((pageNo - 1) * 10)
+            }));
+          };
+        } else if (v(self.currentSpatial)) {
+          var dbURL = v.need(self.dbURLCell);
+          var ddocAndSpatial = v.need(self.currentDDocAndSpatial);
+          if (!ddocAndSpatial[1]) {
+            return;
+          }
+          var filterParams = v.need(SpatialFilter.filterParamsCell);
+          return function (pageNo, subset) {
+            var initial = {};
+            if (subset === "prod") {
+              initial.full_set = 'true';
+            }
+            return buildDocURL(dbURL, ddocAndSpatial[0]._id, "_spatial", ddocAndSpatial[1], _.extend(initial, filterParams, {
+              //limit: ViewsSection.PAGE_LIMIT.toString(),
+              //skip: String((pageNo - 1) * 10)
+              //bbox: "-180,-90,180,90"
+            }));
+          };
         }
       }).name("proposedURLBuilderCell");
 
@@ -630,7 +743,17 @@ var ViewsSection = {
       return v.need(self.subsetTabCell) === 'prod' ? fullResults : defaultResults;
     }).name("viewResultsCell");
 
-    viewResultsCell.subscribeValue(function (value) {
+    var viewResultsCellViews = Cell.compute(function(v) {
+      v.need(self.currentView);
+      return v(viewResultsCell);
+    });
+
+    var viewResultsCellSpatial = Cell.compute(function(v) {
+      v.need(self.currentSpatial);
+      return v(viewResultsCell);
+    });
+
+    viewResultsCellViews.subscribeValue(function (value) {
       if (value) {
         var rows = _.filter(value.rows, function (r) {return ('key' in r)});
         var targ = {rows: rows};
@@ -639,6 +762,17 @@ var ViewsSection = {
       }
       renderTemplate('view_results', targ);
     });
+
+    viewResultsCellSpatial.subscribeValue(function (value) {
+      if (value) {
+        var rows = _.filter(value.rows, function (r) {return ('bbox' in r)});
+        var targ = {rows: rows};
+      } else {
+        var targ = {rows: {lackOfValue: true}};
+      }
+      renderTemplate('spatial_results', targ);
+    });
+
 
     (function () {
       var prevBtn = $('#views .results_block .arr_prev');
@@ -698,6 +832,8 @@ var ViewsSection = {
 
     $('#save_view_as').bind('click', $m(self, 'startViewSaveAs'));
     $('#just_save_view').bind('click', $m(self, 'saveView'));
+    $('#save_spatial_as').bind('click', $m(self, 'startSpatialSaveAs'));
+    $('#just_save_spatial').bind('click', $m(self, 'saveSpatial'));
 
     var productionDDocsCell = Cell.compute(function (v) {
       var allDDocs = v.need(allDDocsCell);
@@ -747,8 +883,17 @@ var ViewsSection = {
                              removeLink: '#removeView=' + plink
                             }, value);
           });
-          viewInfos = _.sortBy(viewInfos, function (info) { return info.name; });
+          viewInfos = _.sortBy(viewInfos, function (info) {return info.name;});
           rv.viewInfos = viewInfos;
+          var spatialInfos = _.map(rv.spatial || {}, function (value, key) {
+            var plink = buildViewPseudoLink(bucketName, doc, '_spatial', key);
+            return _.extend({name: key,
+                             viewLink: '#showSpatial=' + plink,
+                             removeLink: '#removeSpatial=' + plink
+                            }, value);
+          });
+          spatialInfos = _.sortBy(spatialInfos, function (info) {return info.name;});
+          rv.spatialInfos = spatialInfos;
           return rv;
         });
         rv.tasks = tasks;
@@ -801,6 +946,13 @@ var ViewsSection = {
       }
       e.preventDefault();
       self.runCurrentView();
+    });
+    $('#spatial_run_button').bind('click', function (e) {
+      if ($(this).hasClass('disabled')) {
+        return;
+      }
+      e.preventDefault();
+      self.runCurrentSpatial();
     });
 
     var currentDocument = null;
@@ -1151,6 +1303,37 @@ var ViewsSection = {
                });
     }
   },
+  doSaveSpatial: function (dbURL, ddocId, spatialName, overwriteConfirmed,
+      callback, spatialDef) {
+    var ddocURL = buildDocURL(dbURL, ddocId);
+    return begin();
+    function begin() {
+      couchGet(ddocURL, withDoc);
+    }
+    function withDoc(ddoc) {
+      if (!ddoc) {
+        ddoc = {_id: ddocId, spatial: {}};
+      }
+      var spatial = ddoc.spatial || (ddoc.spatial = {});
+      if (spatial[spatialName] && !overwriteConfirmed) {
+        return callback("conflict");
+      }
+      spatial[spatialName] = spatialDef ||
+          "function (doc) {\n  if (doc.geometry) {\n    emit(doc.geometry, null);\n}\n}";
+      couchReq('PUT',
+               ddocURL,
+               ddoc,
+               function () {
+                 callback("ok");
+               },
+               function (error, status, unexpected) {
+                 if (status == 409) {
+                   return begin();
+                 }
+                 return unexpected();
+               });
+    }
+  },
   startCreateView: function (ddocId) {
     var dbURL = ViewsSection.dbURLCell.value;
     if (!dbURL) {
@@ -1383,6 +1566,225 @@ var ViewsSection = {
       }
     }
   },
+  startCreateSpatial: function (ddocId) {
+    var dbURL = ViewsSection.dbURLCell.value;
+    if (!dbURL) {
+      return;
+    }
+    var dialog = $('#copy_view_dialog');
+    var warning = dialog.find('.warning').hide();
+    dialog.find('[name=designdoc_name], [name=view_name]').val('');
+    var ddocNameInput = dialog.find('[name=designdoc_name]').need(1);
+    ddocNameInput.prop('disabled', !!ddocId);
+    if (ddocId) {
+      ddocNameInput.val(this.cutOffDesignPrefix(ddocId));
+    }
+    showDialog(dialog, {
+      title: 'Create Development Spatial Function',
+      closeOnEscape: false,
+      eventBindings: [['.save_button', 'click', function (e) {
+        e.preventDefault();
+        startSaving(ddocNameInput.val(), dialog.find('[name=view_name]').val());
+      }]]
+    });
+
+    function startSaving(ddocName, spatialName) {
+      if (!ddocName || !spatialName) {
+        warning.text("Design Document and Spatial Function names cannot be empty").show();
+        return;
+      }
+      // TODO: maybe other validation
+      var modal = new ModalAction();
+      var spinner = overlayWithSpinner(dialog);
+      ViewsSection.doSaveSpatial(dbURL, "_design/dev_" + ddocName, spatialName, false, function (status) {
+        var closeDialog = false;
+        if (status == "conflict") {
+          warning.text("Spatial Function with given name already exists").show();
+        } else {
+          closeDialog = true;
+        }
+        modal.finish();
+        spinner.remove();
+        if (closeDialog) {
+          ddocNameInput.prop('disabled', false);
+          hideDialog(dialog);
+          ViewsSection.allDDocsCell.recalculate();
+          ViewsSection.modeTabs.setValue("development");
+        }
+      });
+    }
+  },
+  doRemoveSpatial: function (ddocURL, spatialName, callback) {
+    return begin();
+    function begin() {
+      couchGet(ddocURL, withDoc);
+    }
+    function withDoc(ddoc) {
+      if (!ddoc) {
+        return;
+      }
+      var spatial = ddoc.spatial || (ddoc.spatial = {});
+      if (!spatial[spatialName]) {
+        return;
+      }
+      delete spatial[spatialName];
+      couchReq('PUT',
+               ddocURL,
+               ddoc,
+               function () {
+                 callback();
+               },
+               function (error, status, unexpected) {
+                 if (status == 409) {
+                   return begin();
+                 }
+                 return unexpected();
+               });
+    }
+  },
+  startRemoveSpatial: function (pseudoLink) {
+    return unbuildViewPseudoLink(pseudoLink, this.doStartRemoveSpatial, this);
+  },
+  doStartRemoveSpatial: function (bucketName, ddocId, type, spatialName) {
+    var self = this;
+    self.withBucketAndDDoc(bucketName, ddocId, function (ddocURL, ddoc) {
+      genericDialog({text: "Deleting this Spatial Function will result in the index" +
+        "for this Design Document to be regenerated when next requested. " +
+        "Are you sure you want to delete this Spatial Function from this Design Document?",
+                     callback: function (e, name, instance) {
+                       instance.close();
+                       if (name === 'ok') {
+                         performRemove();
+                       }
+                     }});
+
+      function performRemove() {
+        self.allDDocsCell.setValue(undefined);
+        self.doRemoveSpatial(ddocURL, spatialName, function () {
+          self.allDDocsCell.recalculate();
+        });
+      }
+    });
+  },
+  startSpatialSaveAs: function () {
+    var self = this;
+    var dialog = $('#copy_view_dialog');
+    var warning = dialog.find('.warning').hide();
+
+    Cell.compute(function (v) {
+      var dbURL = v.need(self.dbURLCell);
+      var pair = v.need(self.currentDDocAndSpatial);
+      return [dbURL].concat(pair);
+    }).getValue(function (args) {
+      begin.apply(self, args);
+    });
+
+    return;
+
+    function begin(dbURL, ddoc, spatialName) {
+      if (spatialName == null) {
+        return;
+      }
+
+      var form = dialog.find('form');
+
+      setFormValues(form, {
+        'designdoc_name': self.cutOffDesignPrefix(ddoc._id),
+        'view_name': spatialName
+      });
+
+      showDialog(dialog, {
+        eventBindings: [['.save_button', 'click', function (e) {
+          e.preventDefault();
+          var params = $.deparam(serializeForm(form));
+          startSaving(dbURL, ddoc, spatialName, params['designdoc_name'], params['view_name']);
+        }]]
+      });
+    }
+
+    var spinner;
+    var modal;
+
+    function startSaving(dbURL, ddoc, spatialName, newDDocName, newSpatialName) {
+      if (!newDDocName || !newSpatialName) {
+        warning.text('Both Design Document name and Spatial Function name need to be specified').show();
+        return;
+      }
+
+      spinner = overlayWithSpinner(dialog);
+      modal = new ModalAction();
+
+      var newId = "_design/dev_" + newDDocName;
+      var spatialCode = self.spatialEditor.getValue();
+
+      doSaveSpatial(dbURL, newId, newSpatialName, spatialCode, ddoc._id === newId && newSpatialName === spatialName);
+    }
+
+    function doSaveSpatial(dbURL, ddocId, spatialName, spatial, overwriteConfirmed) {
+      return ViewsSection.doSaveSpatial(dbURL, ddocId, spatialName, overwriteConfirmed, callback, spatial);
+
+      function callback(arg) {
+        if (arg === "conflict") {
+          return confirmOverwrite(dbURL, ddocId, spatialName, spatial);
+        }
+        saveSucceeded(ddocId, spatialName);
+      }
+    }
+
+    function confirmOverwrite(dbURL, ddocId, spatialName, spatial) {
+      genericDialog({text: "Please, confirm overwriting exiting Spatial Function.",
+                     callback: function (e, name, instance) {
+                       if (name == 'ok') {
+                         return doSaveSpatial(dbURL, ddocId, spatialName, spatial, true);
+                       }
+                       modal.finish();
+                       spinner.remove();
+                     }});
+    }
+
+    function saveSucceeded(ddocId, spatialName) {
+      modal.finish();
+      spinner.remove();
+      hideDialog(dialog);
+      self.rawDDocIdCell.setValue(ddocId);
+      self.rawSpatialNameCell.setValue(spatialName);
+      self.allDDocsCell.recalculate();
+    }
+  },
+  saveSpatial: function () {
+    var self = this;
+    var dialog = $('#copy_view_dialog');
+    var warning = dialog.find('.warning').hide();
+
+    Cell.compute(function (v) {
+      var dbURL = v.need(self.dbURLCell);
+      var currentSpatial = v.need(self.currentSpatial);
+      var pair = v.need(self.currentDDocAndSpatial);
+      return [dbURL, currentSpatial].concat(pair);
+    }).getValue(function (args) {
+      begin.apply(self, args);
+    });
+
+    return;
+
+    function begin(dbURL, currentSpatial, ddoc, spatialName) {
+      var spatialCode = self.spatialEditor.getValue();
+      var changed = (currentSpatial !== spatialCode);
+
+      currentSpatial = _.clone(currentSpatial);
+      currentSpatial = spatialCode;
+      return ViewsSection.doSaveSpatial(dbURL, ddoc._id, spatialName, true,
+        saveCallback, currentSpatial);
+
+      function saveCallback() {
+        self.allDDocsCell.recalculate();
+      }
+    }
+  },
+  runCurrentSpatial: function () {
+    SpatialFilter.closeFilter();
+    this.viewResultsURLCell.runView();
+  },
   runCurrentView: function () {
     ViewsFilter.closeFilter();
     this.viewResultsURLCell.runView();
@@ -1395,6 +1797,7 @@ var ViewsSection = {
     self.dbURLCell.getValue(function (dbURL) {
       self.rawDDocIdCell.setValue(ddocId);
       self.rawViewNameCell.setValue(viewName);
+      self.rawSpatialNameCell.setValue(undefined);
       ViewsFilter.initFilterFor(buildDocURL(dbURL, ddocId, "_view", viewName));
     });
   },
@@ -1442,13 +1845,36 @@ var ViewsSection = {
       }
     });
   },
+  showSpatial: function (plink) {
+    return unbuildViewPseudoLink(plink, this.doShowSpatial, this);
+  },
+  setCurrentSpatial: function (ddocId, spatialName) {
+    var self = this;
+    self.dbURLCell.getValue(function (dbURL) {
+      self.rawDDocIdCell.setValue(ddocId);
+      self.rawViewNameCell.setValue(undefined);
+      self.rawSpatialNameCell.setValue(spatialName);
+      SpatialFilter.initFilterFor(buildDocURL(dbURL, ddocId, "_spatial", spatialName));
+    });
+  },
+  doShowSpatial: function (bucketName, ddocId, type, spatialName) {
+    var self = this;
+    self.withBucketAndDDoc(bucketName, ddocId, function (ddocURL, ddoc) {
+      if (!ddoc) {
+        return;
+      }
+      self.setCurrentSpatial(ddoc._id, spatialName);
+    });
+  },
   onEnter: function () {
   },
   onLeave: function () {
     this.rawDDocIdCell.setValue(undefined);
     this.pageNumberCell.setValue(undefined);
     this.rawViewNameCell.setValue(undefined);
+    this.rawSpatialNameCell.setValue(undefined);
     ViewsFilter.reset();
+    SpatialFilter.reset();
   },
   navClick: function () {
     this.onLeave();
@@ -1462,6 +1888,9 @@ configureActionHashParam("showView", $m(ViewsSection, "showView"));
 configureActionHashParam("removeView", $m(ViewsSection, "startRemoveView"));
 configureActionHashParam("publishDDoc", $m(ViewsSection, "startPublish"));
 configureActionHashParam("addView", $m(ViewsSection, "startCreateView"));
+configureActionHashParam("showSpatial", $m(ViewsSection, "showSpatial"));
+configureActionHashParam("removeSpatial", $m(ViewsSection, "startRemoveSpatial"));
+configureActionHashParam("addSpatial", $m(ViewsSection, "startCreateSpatial"));
 
 var ViewsFilter = {
   rawFilterParamsCell: (function () {
@@ -1656,6 +2085,201 @@ var ViewsFilter = {
   }
 };
 
+var SpatialFilter = {
+  rawFilterParamsCell: (function () {
+    var klass = mkClass(StringHashFragmentCell, {
+      // NOTE: watchHashParamChange is silently converting empty
+      // string to undefined we cannot easily fix this as some code
+      // might rely on that. Thus we have to request hash parameter
+      // and set 'pure' value
+      interpretHashFragment: function () {
+        this.setValue(getHashFragmentParam(this.paramName));
+      }
+    });
+    return new klass("spatialFilter");
+  })(),
+  reset: function () {
+    if (this.currentViewURL) {
+      this.saveFilterIntoHistory();
+      this.currentViewURL = null;
+    }
+    this.rawFilterParamsCell.setValue(undefined);
+  },
+  init: function () {
+    var self = this;
+
+    self.filterParamsCell = Cell.computeEager(function (v) {
+      var filterParams = v(self.rawFilterParamsCell);
+      if (filterParams == null) {
+          filterParams = "bbox=-180,-90,180,90";
+        if (v.need(ViewsSection.modeTabs) === 'production') {
+          filterParams += "&stale=update_after&connection_timeout=60000";
+        } else {
+          filterParams += "&connection_timeout=60000";
+        }
+      }
+      filterParams = decodeURIComponent(filterParams);
+      return $.deparam(filterParams);
+    });
+
+    self.filter = $('#spatial_results_block .f_popup');
+
+    var selectInstance = self.selectInstance = $('#spatial_filters');
+    selectInstance.selectBox();
+    $('#spatial_filter_stale').selectBox();
+
+    $("#spatial_results_block .exp_filter").toggle(_.bind(self.openFilter, self),
+                                                _.bind(self.closeFilter, self));
+
+    $("#spatial_filter_add").bind('click', function (e) {
+      var value = selectInstance.selectBox("value");
+      if (!value) {
+        return;
+      }
+      var input = self.filter.find('[name=' + value + ']');
+      if (input.attr('type') === 'checkbox') {
+        input.prop('checked', false);
+      } else if (value === 'keys') {
+        input.val('[""]');
+      } else {
+        input.val("");
+      }
+      input.closest('tr').show();
+      selectInstance.selectBox("destroy");
+      // jquery is broken. this is workaround, because $%#$%
+      selectInstance.removeData('selectBoxControl').removeData('selectBoxSettings');
+      selectInstance.find("option[value="+value+"]").prop("disabled", true);
+      selectInstance.selectBox();
+    });
+
+    self.filter.delegate('.btn_x', 'click', function () {
+      var row = $(this).closest('tr');
+      var name = row.find('[name]').attr('name');
+      row.hide();
+      selectInstance.selectBox("destroy");
+      // jquery is broken. this is workaround, because $%#$%
+      selectInstance.removeData('selectBoxControl').removeData('selectBoxSettings');
+      selectInstance.find("option[value="+name+"]").prop("disabled", false);
+      selectInstance.selectBox();
+    });
+  },
+  openFilter: function () {
+    var self = this;
+    self.filterParamsCell.getValue(function (params) {
+      self.filter.closest('.f_wrap').find('.exp_filter').addClass("selected");
+      self.filter.addClass("visib");
+      self.fillInputs(params);
+    });
+  },
+  closeFilter: function () {
+    if (!this.filter.hasClass('visib')) {
+      return;
+    }
+    this.inputs2filterParams();
+    this.filter.closest('.f_wrap').find('.exp_filter').removeClass("selected");
+    this.filter.removeClass("visib");
+  },
+  inputs2filterParams: function () {
+    var params = this.parseInputs();
+    var packedParams = encodeURIComponent($.param(params));
+    var oldFilterParams = this.rawFilterParamsCell.value;
+    if (oldFilterParams !== packedParams) {
+      this.rawFilterParamsCell.setValue(packedParams);
+      ViewsSection.pageNumberCell.setValue(undefined);
+      ViewsSection.fullSubsetPageNumberCell.setValue(undefined);
+      this.saveFilterIntoHistory();
+    }
+  },
+  iterateInputs: function (body) {
+    this.filter.find('.key input, .key select').each(function () {
+      var el = $(this);
+      var name = el.attr('name');
+      var type = (el.attr('type') === 'checkbox') ? 'bool' : 'json';
+      var val = (type === 'bool') ? !!el.prop('checked') : el.val();
+      body(name, type, val, el);
+    });
+  },
+  fillInputs: function (params) {
+    this.iterateInputs(function (name, type, val, el) {
+      var row = el.closest('tr');
+      if (params[name] === undefined) {
+        row.hide();
+        return;
+      }
+      row.show();
+      if (type == 'bool') {
+        el.prop('checked', !(params[name] === 'false' || params[name] === false));
+      } else {
+        el.val(params[name]);
+      }
+    });
+    this.selectInstance.selectBox("destroy");
+      // jquery is broken. this is workaround, because $%#$%
+    this.selectInstance.removeData('selectBoxControl').removeData('selectBoxSettings');
+    this.selectInstance.find("option").each(function () {
+      var option = $(this);
+      var value = option.attr('value');
+      option.prop('disabled', value in params);
+    });
+    this.selectInstance.selectBox();
+  },
+  parseInputs: function() {
+    var rv = {};
+    this.iterateInputs(function (name, type, val, el) {
+      var row = el.closest('tr');
+      if (row.get(0).style.display === 'none') {
+        return;
+      }
+      rv[name] = val;
+    });
+    return rv;
+  },
+  loadHistory: function () {
+    try {
+      return JSON.parse(window.localStorage.filterHistory);
+    } catch (e) {
+      return [];
+    }
+  },
+  saveHistory: function (history) {
+    if (!window.localStorage) {
+      return;
+    }
+    window.localStorage.filterHistory = JSON.stringify(history);
+  },
+  initFilterFor: function (url) {
+    var history = this.loadHistory();
+    var entry = _.detect(history, function (entry) {
+      return (entry[0] === url);
+    });
+    this.currentViewURL = url;
+    if (!entry) {
+      this.rawFilterParamsCell.setValue(undefined);
+      return;
+    }
+    this.rawFilterParamsCell.setValue(entry[1]);
+    history = [entry].concat(_.without(history, entry));
+    this.saveHistory(history);
+  },
+  MAX_HISTORY_LENGTH: 256,
+  saveFilterIntoHistory: function () {
+    var history = this.loadHistory();
+    var url = this.currentViewURL;
+    if (!url) {
+      return;
+    }
+    var history = _.select(history, function (entry) {
+      return entry[0] !== url;
+    });
+    if (history >= this.MAX_HISTORY_LENGTH) {
+      history.pop();
+    }
+    history.unshift([url, this.rawFilterParamsCell.value]);
+    this.saveHistory(history);
+  }
+};
+
 $(function () {
   ViewsFilter.init();
+  SpatialFilter.init();
 });
