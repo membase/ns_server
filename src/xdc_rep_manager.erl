@@ -82,7 +82,7 @@
     to_binary/1
 ]).
 
--define(INITIAL_WAIT, 2.5). % seconds
+-define(INITIAL_WAIT, 2). % seconds
 -define(RETRY_INTERVAL, 60). % seconds
 
 -define(XSTORE, xdc_rep_info_store).
@@ -113,9 +113,9 @@ start_link() ->
 init(_) ->
     process_flag(trap_exit, true),
     Server = self(),
-    ?XSTORE = ets:new(?XSTORE, [named_table, set, protected]),
-    ?X2CSTORE = ets:new(?X2CSTORE, [named_table, bag, protected]),
-    ?CSTORE = ets:new(?CSTORE, [named_table, set, protected]),
+    ?XSTORE = ets:new(?XSTORE, [named_table, set, public]),
+    ?X2CSTORE = ets:new(?X2CSTORE, [named_table, bag, public]),
+    ?CSTORE = ets:new(?CSTORE, [named_table, set, public]),
 
     ?REP_TO_STATE = ets:new(?REP_TO_STATE, [named_table, set, protected]),
 
