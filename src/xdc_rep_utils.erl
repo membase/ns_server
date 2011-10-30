@@ -21,6 +21,7 @@
 -export([remote_couch_uri_for_vbucket/3, my_active_vbuckets/1]).
 -export([lists_difference/2, node_uuid/0, info_doc_id/1]).
 
+-include("couch_db.hrl").
 
 % Given a remote bucket URI, this function fetches the node list and the vbucket
 % map.
@@ -33,8 +34,37 @@ remote_vbucketmap_nodelist(BucketURI) ->
         {VbucketServerMap} = couch_util:get_value(<<"vBucketServerMap">>,
                                                   KVList),
         VbucketMap = couch_util:get_value(<<"vBucketMap">>, VbucketServerMap),
+        ServerList = couch_util:get_value(<<"serverList">>, VbucketServerMap),
         NodeList = couch_util:get_value(<<"nodes">>, KVList),
-        {ok, {VbucketMap, NodeList}}
+
+        % We purposefully mangle the order of the elements of the <<"nodes">>
+        % list -- presumably to achieve better load balancing by not letting
+        % unmindful clients always target nodes at the same ordinal position in
+        % the list.
+        %
+        % The code below imposes a consistent ordering of the nodes w.r.t. the
+        % vbucket map. In order to be efficient, we first build a dictionary
+        % out of the node list elements so that lookups are cheaper later while
+        % reordering them.
+        NodeDict = dict:from_list(
+            lists:map(
+                fun({Props} = Node) ->
+                    [Hostname, _] =
+                        string:tokens(?b2l(
+                            couch_util:get_value(<<"hostname">>, Props)), ":"),
+                        {Ports} = couch_util:get_value(<<"ports">>, Props),
+                        DirectPort = couch_util:get_value(<<"direct">>, Ports),
+                    {?l2b(Hostname ++ ":" ++ integer_to_list(DirectPort)), Node}
+                end,
+                NodeList)),
+        OrderedNodeList =
+            lists:map(
+                fun(Server) ->
+                    dict:fetch(Server, NodeDict)
+                end,
+                ServerList),
+
+        {ok, {VbucketMap, OrderedNodeList}}
     end.
 
 
