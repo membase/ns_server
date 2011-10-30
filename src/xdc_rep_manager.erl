@@ -403,9 +403,12 @@ maybe_cancel_xdc_replication(XDocId) ->
 
 maybe_adjust_all_replications(BucketConfigs) ->
     lists:map(
-        fun([XDocId, #rep{source = SrcBucket, target = TgtBucket},
+        fun([XDocId,
+             #rep{source = SrcBucket,
+                  target = {_, TgtBucket, _, _, _, _, _, _, _, _}},
              MyPrevVbuckets]) ->
-            SrcBucketConfig = proplists:get_value(SrcBucket, BucketConfigs),
+            SrcBucketConfig =
+                proplists:get_value(?b2l(SrcBucket), BucketConfigs),
             MyCurrVbuckets = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
             maybe_adjust_xdc_replication(XDocId, SrcBucket, TgtBucket,
                                          MyPrevVbuckets, MyCurrVbuckets)
@@ -520,7 +523,9 @@ cancel_couch_replication(XDocId, CRepPid) ->
 
 maybe_retry_all_couch_replications() ->
     lists:map(
-        fun([XDocId, #rep{source = SrcBucket, target = TgtBucket}]) ->
+        fun([XDocId,
+             #rep{source = SrcBucket,
+                  target = {_, TgtBucket, _, _, _, _, _, _, _, _}}]) ->
             case failed_couch_replications(XDocId) of
             [] ->
                 ?log_info("~s: no failed vbucket replications found",
