@@ -480,29 +480,42 @@ start_couch_replication(SrcCouchURI, TgtCouchURI, Vb, XDocId, Wait) ->
             {[{<<"source">>, SrcCouchURI},
               {<<"target">>, TgtCouchURI},
               {<<"worker_processes">>, 1},
-              {<<"http_connections">>, 10}
-              %{<<"continuous">>, true}]},
-              ]},
+              {<<"http_connections">>, 10},
+              {<<"continuous">>, true}
+             ]},
             #user_ctx{roles = [<<"_admin">>]}),
 
     ok = timer:sleep(Wait * 1000),
-    {ok, CRepPid} = couch_replicator:async_replicate(CRep),
-    erlang:monitor(process, CRepPid),
-
-    CRepState = triggered,
-    true = ets:insert(?CSTORE, {CRepPid, CRep, Vb, CRepState, Wait}),
-    true = ets:insert(?X2CSTORE, {XDocId, CRepPid}),
-    ?log_info("~s: triggered replication for vbucket ~p", [XDocId, Vb]).
+    case couch_replicator:async_replicate(CRep) of
+    {ok, CRepPid} = Result ->
+        erlang:monitor(process, CRepPid),
+        CRepState = triggered,
+        true = ets:insert(?CSTORE, {CRepPid, CRep, Vb, CRepState, Wait}),
+        true = ets:insert(?X2CSTORE, {XDocId, CRepPid}),
+        ?log_info("~s: triggered replication for vbucket ~p", [XDocId, Vb]),
+        Result;
+    Error ->
+        ?log_info("~s: triggering of replication for vbucket ~p failed due to: "
+                  "~p", [XDocId, Vb, Error]),
+        Error
+    end.
 
 
 cancel_couch_replication(XDocId, CRepPid) ->
-    CRep = ets:lookup_element(?CSTORE, CRepPid, 2),
     [CRep, Vb] =
         lists:flatten(ets:match(?CSTORE, {CRepPid, '$1', '$2', '_', '_'})),
-    {ok, _Res} = couch_replicator:cancel_replication(CRep#rep.id),
+
+    case couch_replicator:cancel_replication(CRep#rep.id) of
+    {ok, _Res} ->
+        ?log_info("~s: cancelled replication for vbucket ~p", [XDocId, Vb]);
+    Error ->
+        ?log_info("~s: cancellation of replication for vbucket ~p failed due "
+                  "to: ~p", [XDocId, Vb, Error])
+    end,
+
     true = ets:delete(?CSTORE, CRepPid),
     true = ets:delete_object(?X2CSTORE, {XDocId, CRepPid}),
-    ?log_info("~s: cancelled replication for vbucket ~p", [XDocId, Vb]).
+    ok.
 
 
 maybe_retry_all_couch_replications() ->
@@ -544,7 +557,8 @@ retry_couch_replication(XDocId,
     TgtURI = xdc_rep_utils:remote_couch_uri_for_vbucket(TgtVbMap, TgtNodes, Vb),
     ?log_info("~s: will retry replication for vbucket ~p after ~p seconds",
               [XDocId, Vb, NewWait]),
-    start_couch_replication(SrcURI, TgtURI, Vb, XDocId, NewWait).
+    start_couch_replication(SrcURI, TgtURI, Vb, XDocId, NewWait),
+    ok.
 
 
 couch_replication_completed(XDocId, CRepPid, Vb) ->
