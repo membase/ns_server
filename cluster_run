@@ -61,6 +61,20 @@ def couch_configs(i):
             "{0}/etc/couchdb/local.d/geocouch.ini".format(PREFIX),
             "couch/n_{0}_conf.ini".format(i)]
 
+def os_specific(args, params):
+    """Add os-specific junk to the cluster startup."""
+    import platform
+
+    if platform.system() == 'Darwin':
+        import resource
+        ## OS X has a pretty tiny default fd limit.  Let's increase it
+        resource.setrlimit(resource.RLIMIT_NOFILE, (2048, 2048))
+        ## Also, we build stuff in kind of dumb ways, so fix the path.
+        dypath = ("%(pwd)s/../install/lib/memcached:"
+                  "%(pwd)s/../install/lib:/usr/local/lib") % {'pwd': os.getcwd()}
+        params['env'] = {"DYLD_LIBRARY_PATH": dypath}
+        params['env'].update(os.environ)
+
 def start_cluster(num_nodes, start_index, host, extra_args):
     ebin_path = setup_path()
 
@@ -95,10 +109,16 @@ def start_cluster(num_nodes, start_index, host, extra_args):
             "moxi_port", str(base_direct_port + i * 2 + 1),
             "short_name", '"n_{0}"'.format(i)
             ] + extra_args
-        if i == 0:
-            return subprocess.Popen(args)
-        else:
-            return subprocess.Popen(args + ["-noshell"], stdin=subprocess.PIPE)
+
+        params = {}
+
+        if i > 0:
+            args += ['-noshell']
+            params['stdin'] = subprocess.PIPE
+
+        os_specific(args, params)
+
+        return subprocess.Popen(args, **params)
 
     return [start_node(i + start_index) for i in xrange(num_nodes)]
 
