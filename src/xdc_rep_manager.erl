@@ -157,7 +157,8 @@ handle_call({rep_db_update, {ChangeProps} = Change}, _From, State) ->
         couch_replication_manager:update_rep_doc(
             xdc_rep_utils:info_doc_id(DocId),
             [{<<"replication_state">>, <<"error">>}]),
-        ?log_error("~s: xdc replication error: ~p~n~p", [DocId, Error, erlang:get_stacktrace()]),
+        ?log_error("~s: xdc replication error: ~p~n~p",
+                   [DocId, Error, erlang:get_stacktrace()]),
         State
     end,
     {reply, ok, State};
@@ -227,7 +228,7 @@ handle_info({'DOWN', _Ref, process, Pid, Reason}, State) ->
                 % module.
                 true = ets:update_element(?CSTORE, Pid, {4, error}),
                 ?log_info("~s: replication of vbucket ~p failed due to reason: "
-                          "~p~n", [XDocId, Vb, Reason])
+                          "~p", [XDocId, Vb, Reason])
         end;
     false ->
         % Ignore messages regarding Pids not found in the CSTORE. These messages
@@ -241,7 +242,7 @@ handle_info({'DOWN', _Ref, process, Pid, Reason}, State) ->
 
 handle_info(Msg, State) ->
     % Ignore any other messages but log them
-    ?log_info("ignoring unexpected message: ~p~n", [Msg]),
+    ?log_info("ignoring unexpected message: ~p", [Msg]),
     {noreply, State}.
 
 
@@ -310,11 +311,11 @@ maybe_start_xdc_replication(XDocId, XDocBody, RepDbName) ->
     case lists:flatten(ets:match(?XSTORE, {'$1', #rep{id = XRepId}})) of
     [] ->
         % A new XDC replication document.
-        ?log_info("~s: triggering xdc replication~n", [XDocId]),
+        ?log_info("~s: triggering xdc replication", [XDocId]),
         start_xdc_replication(XRep, RepDbName, XDocBody);
     [XDocId] ->
         % An XDC replication document previously seen. Ignore.
-        ?log_info("~s: ignoring doc previously seen.~n", [XDocId]),
+        ?log_info("~s: ignoring doc previously seen", [XDocId]),
         ok;
     [OtherDocId] ->
         % A new XDC replication document specifying a previous replication.
@@ -338,13 +339,13 @@ start_xdc_replication(#rep{id = XRepId,
 
     case {SrcBucketLookup, TgtBucketLookup} of
     {not_present, not_present} ->
-        ?log_error("~s: source and target buckets not found~n", [XDocId]),
+        ?log_error("~s: source and target buckets not found", [XDocId]),
         {error, not_present};
     {not_present, _} ->
-        ?log_error("~s: source bucket not found~n", [XDocId]),
+        ?log_error("~s: source bucket not found", [XDocId]),
         {error, not_present};
     {_, not_present} ->
-        ?log_error("~s: target bucket not found~n", [XDocId]),
+        ?log_error("~s: target bucket not found", [XDocId]),
         {error, not_present};
     {{ok, SrcBucketConfig}, {ok, {TgtVbMap, TgtNodes}}} ->
         MyVbuckets = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
@@ -364,7 +365,7 @@ start_xdc_replication(#rep{id = XRepId,
 
 
 cancel_all_xdc_replications() ->
-    ?log_info("cancelling all xdc replications~n"),
+    ?log_info("cancelling all xdc replications"),
     ets:foldl(
         fun(XDocId, _Ok) ->
             maybe_cancel_xdc_replication(XDocId)
@@ -381,7 +382,7 @@ maybe_cancel_xdc_replication(XDocId) ->
             []
         end,
 
-    ?log_info("~s: cancelling xdc replication~n", [XDocId]),
+    ?log_info("~s: cancelling xdc replication", [XDocId]),
     lists:map(
         fun(CRepPid) ->
             cancel_couch_replication(XDocId, CRepPid)
@@ -476,7 +477,7 @@ start_couch_replication(SrcCouchURI, TgtCouchURI, Vb, XDocId, Wait) ->
     CRepState = triggered,
     true = ets:insert(?CSTORE, {CRepPid, CRep, Vb, CRepState, Wait}),
     true = ets:insert(?X2CSTORE, {XDocId, CRepPid}),
-    ?log_info("~s: triggered replication for vbucket ~p~n", [XDocId, Vb]).
+    ?log_info("~s: triggered replication for vbucket ~p", [XDocId, Vb]).
 
 
 cancel_couch_replication(XDocId, CRepPid) ->
@@ -486,7 +487,7 @@ cancel_couch_replication(XDocId, CRepPid) ->
     {ok, _Res} = couch_replicator:cancel_replication(CRep#rep.id),
     true = ets:delete(?CSTORE, CRepPid),
     true = ets:delete_object(?X2CSTORE, {XDocId, CRepPid}),
-    ?log_info("~s: cancelled replication for vbucket ~p~n", [XDocId, Vb]).
+    ?log_info("~s: cancelled replication for vbucket ~p", [XDocId, Vb]).
 
 
 maybe_retry_all_couch_replications() ->
@@ -494,7 +495,7 @@ maybe_retry_all_couch_replications() ->
         fun([XDocId, #rep{source = SrcBucket, target = TgtBucket}]) ->
             case failed_couch_replications(XDocId) of
             [] ->
-                ?log_info("~s: no failed vbucket replications found~n",
+                ?log_info("~s: no failed vbucket replications found",
                           [XDocId]),
                 ok;
             FailedReps ->
@@ -526,7 +527,7 @@ retry_couch_replication(XDocId,
     NewWait = erlang:max(?INITIAL_WAIT, trunc(Wait * 2)),
     SrcURI = xdc_rep_utils:local_couch_uri_for_vbucket(SrcBucket, Vb),
     TgtURI = xdc_rep_utils:remote_couch_uri_for_vbucket(TgtVbMap, TgtNodes, Vb),
-    ?log_info("~s: will retry replication for vbucket ~p after ~p seconds~n",
+    ?log_info("~s: will retry replication for vbucket ~p after ~p seconds",
               [XDocId, Vb, NewWait]),
     start_couch_replication(SrcURI, TgtURI, Vb, XDocId, NewWait).
 
@@ -534,7 +535,7 @@ retry_couch_replication(XDocId,
 couch_replication_completed(XDocId, CRepPid, Vb) ->
     true = ets:delete(?CSTORE, CRepPid),
     true = ets:delete_object(?X2CSTORE, {XDocId, CRepPid}),
-    ?log_info("~s: replication of vbucket ~p completed~n", [XDocId, Vb]),
+    ?log_info("~s: replication of vbucket ~p completed", [XDocId, Vb]),
 
     case ets:lookup(?X2CSTORE, XDocId) of
     [] ->
@@ -544,7 +545,7 @@ couch_replication_completed(XDocId, CRepPid, Vb) ->
             xdc_rep_utils:info_doc_id(XDocId),
             [{?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"completed">>},
              {<<"replication_state">>, <<"completed">>}]),
-        ?log_info("~s: replication of all vbuckets completed~n", [XDocId]);
+        ?log_info("~s: replication of all vbuckets completed", [XDocId]);
     _ ->
         couch_replication_manager:update_rep_doc(
             xdc_rep_utils:info_doc_id(XDocId),
@@ -596,7 +597,7 @@ create_xdc_rep_info_doc(XDocId, {Base, Ext}, Vbuckets, RepDbName, XDocBody) ->
         couch_db:update_doc(RepDb, #doc{id = IDocId, body = Body}, [])
     end,
     couch_db:close(RepDb),
-    ?log_info("~s: created replication info doc ~s~n", [XDocId, IDocId]),
+    ?log_info("~s: created replication info doc ~s", [XDocId, IDocId]),
     ok.
 
 
