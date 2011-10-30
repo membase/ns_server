@@ -437,13 +437,19 @@ maybe_adjust_xdc_replication(XDocId, SrcBucket, TgtBucket, PrevVbuckets,
             VbucketsAcquired)),
 
     % Cancel Couch replications for the lost vbuckets
+    CRepPidsToCancel =
+        try
+            [CRepPid || CRepPid <- ets:lookup_element(?X2CSTORE, XDocId, 2),
+                        lists:member(ets:lookup_element(?CSTORE, CRepPid, 3),
+                                     VbucketsLost)]
+        catch error:badarg ->
+            []
+        end,
     lists:map(
         fun(CRepPid) ->
             cancel_couch_replication(XDocId, CRepPid)
         end,
-        [CRepPid || CRepPid <- ets:lookup_element(?X2CSTORE, XDocId, 2),
-                    lists:member(ets:lookup_element(?CSTORE, CRepPid, 3),
-                                 VbucketsLost)]),
+        CRepPidsToCancel),
 
     % Mark entries for the cancelled Couch replications in the replication
     % info doc as "cancelled"
@@ -566,10 +572,16 @@ failed_couch_replications(XDocId) ->
     % 3. Only select records whose State attribute equals 'error'.
     % 4. Filter out CRep and State in the final output and just return the
     %    CRepPid, Vb and Wait attributes.
+    Pids =
+        try
+            ets:lookup_element(?X2CSTORE, XDocId, 2)
+        catch
+        error:badarg ->
+            []
+        end,
     [{CRepPid, Vb, Wait} ||
         {CRepPid, _CRep, Vb, State, Wait} <-
-            lists:flatten([(ets:lookup(?CSTORE, Pid)) ||
-                Pid <- ets:lookup_element(?X2CSTORE, XDocId, 2)]),
+            lists:flatten([(ets:lookup(?CSTORE, Pid)) || Pid <- Pids]),
         State == error].
 
 
