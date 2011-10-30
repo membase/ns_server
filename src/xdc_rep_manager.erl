@@ -374,22 +374,28 @@ cancel_all_xdc_replications() ->
 
 
 maybe_cancel_xdc_replication(XDocId) ->
-    CRepPids =
-        try
-            ets:lookup_element(?X2CSTORE, XDocId, 2)
-        catch
-        error:badarg ->
-            []
-        end,
+    case ets:lookup(?XSTORE, XDocId) of
+    [] ->
+        % Ignore non xdc type docs such as info docs, etc.
+        ok;
+    _ ->
+        CRepPids =
+            try
+                ets:lookup_element(?X2CSTORE, XDocId, 2)
+            catch
+            error:badarg ->
+                []
+            end,
 
-    ?log_info("~s: cancelling xdc replication", [XDocId]),
-    lists:map(
-        fun(CRepPid) ->
-            cancel_couch_replication(XDocId, CRepPid)
-        end,
-        CRepPids),
-    true = ets:delete(?XSTORE, XDocId),
-    ok.
+        ?log_info("~s: cancelling xdc replication", [XDocId]),
+        lists:map(
+            fun(CRepPid) ->
+                cancel_couch_replication(XDocId, CRepPid)
+            end,
+            CRepPids),
+        true = ets:delete(?XSTORE, XDocId),
+        ok
+    end.
 
 
 maybe_adjust_all_replications(BucketConfigs) ->
