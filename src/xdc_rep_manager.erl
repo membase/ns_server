@@ -35,13 +35,15 @@
 % "_info" to it:
 % {
 %   "_id" : "my_xdc_rep_info_6d6b46f7065e8600955f479376000b3a",
-%   "_node_uuid" : "6d6b46f7065e8600955f479376000b3a",
-%   "_replication_doc_id" : "my_xdc_rep",
-%   "_replication_id" : "c0ebe9256695ff083347cbf95f93e280",
-%   "_replication_state" : "triggered",
-%   "_replication_state_vb_1" : "triggered",
-%   "_replication_state_vb_3" : "completed",
-%   "_replication_state_vb_5" : "triggered"
+%   "node" : "6d6b46f7065e8600955f479376000b3a",
+%   "replication_doc_id" : "my_xdc_rep",
+%   "replication_id" : "c0ebe9256695ff083347cbf95f93e280",
+%   "source" : "",
+%   "target" : "",
+%   "replication_state" : "triggered",
+%   "replication_state_vb_1" : "triggered",
+%   "replication_state_vb_3" : "completed",
+%   "replication_state_vb_5" : "triggered"
 % }
 %
 % The XRM maintains local state about all in-progress replications and
@@ -154,7 +156,7 @@ handle_call({rep_db_update, {ChangeProps} = Change}, _From, State) ->
         DocId = get_value(<<"_id">>, RepProps),
         couch_replication_manager:update_rep_doc(
             xdc_rep_utils:info_doc_id(DocId),
-            [{<<"_replication_state">>, <<"error">>}]),
+            [{<<"replication_state">>, <<"error">>}]),
         ?log_error("~s: xdc replication error: ~p~n~p", [DocId, Error, erlang:get_stacktrace()]),
         State
     end,
@@ -423,7 +425,7 @@ maybe_adjust_xdc_replication(XDocId, SrcBucket, TgtBucket, PrevVbuckets,
         xdc_rep_utils:info_doc_id(XDocId),
         lists:map(
             fun(Vb) ->
-                {?l2b("_replication_state_vb_" ++ ?i2l(Vb)), <<"triggered">>}
+                {?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"triggered">>}
             end,
             VbucketsAcquired)),
 
@@ -442,7 +444,7 @@ maybe_adjust_xdc_replication(XDocId, SrcBucket, TgtBucket, PrevVbuckets,
         xdc_rep_utils:info_doc_id(XDocId),
         lists:map(
             fun(Vb) ->
-                {?l2b("_replication_state_vb_" ++ ?i2l(Vb)), <<"cancelled">>}
+                {?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"cancelled">>}
             end,
             VbucketsLost)),
 
@@ -518,8 +520,8 @@ retry_couch_replication(XDocId,
     cancel_couch_replication(XDocId, CRepPid),
     couch_replication_manager:update_rep_doc(
         xdc_rep_utils:info_doc_id(XDocId),
-        [{?l2b("_replication_state_vb_" ++ ?i2l(Vb)), <<"error">>},
-         {<<"_replication_state">>, <<"error">>}]),
+        [{?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"error">>},
+         {<<"replication_state">>, <<"error">>}]),
 
     NewWait = erlang:max(?INITIAL_WAIT, trunc(Wait * 2)),
     SrcURI = xdc_rep_utils:local_couch_uri_for_vbucket(SrcBucket, Vb),
@@ -540,13 +542,13 @@ couch_replication_completed(XDocId, CRepPid, Vb) ->
         true = ets:delete(?XSTORE, XDocId),
         couch_replication_manager:update_rep_doc(
             xdc_rep_utils:info_doc_id(XDocId),
-            [{?l2b("_replication_state_vb_" ++ ?i2l(Vb)), <<"completed">>},
-             {<<"_replication_state">>, <<"completed">>}]),
+            [{?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"completed">>},
+             {<<"replication_state">>, <<"completed">>}]),
         ?log_info("~s: replication of all vbuckets completed~n", [XDocId]);
     _ ->
         couch_replication_manager:update_rep_doc(
             xdc_rep_utils:info_doc_id(XDocId),
-            [{?l2b("_replication_state_vb_" ++ ?i2l(Vb)), <<"completed">>}])
+            [{?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"completed">>}])
     end.
 
 
@@ -572,33 +574,27 @@ create_xdc_rep_info_doc(XDocId, {Base, Ext}, Vbuckets, RepDbName, XDocBody) ->
     IDocId = xdc_rep_utils:info_doc_id(XDocId),
     UserCtx = #user_ctx{roles = [<<"_admin">>, <<"_replicator">>]},
     {ok, RepDb} = couch_db:open(RepDbName, [sys_db, {user_ctx, UserCtx}]),
-    case couch_db:open_doc(RepDb, IDocId, []) of
-    {ok, _} ->
-        % If a doc by this id already exists, delete it
-        Doc = #doc{id = IDocId, deleted = true, body = {[]}},
-        {ok, _NewRev} = couch_db:update_doc(RepDb, Doc, [clobber]);
+    Body = {[
+             %{<<"_id">>, IDocId},
+             {<<"node">>, xdc_rep_utils:node_uuid()},
+             {<<"replication_doc_id">>, XDocId},
+             {<<"replication_id">>, ?l2b(Base ++ Ext)},
+             {<<"replication_fields">>, XDocBody},
+             {<<"source">>, <<"">>},
+             {<<"target">>, <<"">>},
+             {<<"replication_state">>, <<"triggered">>} |
+             lists:map(
+                fun(Vb) ->
+                    {?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"triggered">>}
+                end,
+                Vbuckets)
+            ]},
+    case couch_db:open_doc(RepDb, IDocId, [ejson_body]) of
+    {ok, LatestIDoc} ->
+        couch_db:update_doc(RepDb, LatestIDoc#doc{body = Body}, []);
     _ ->
-        ok
+        couch_db:update_doc(RepDb, #doc{id = IDocId, body = Body}, [])
     end,
-    IDoc = #doc{id = IDocId,
-                body = {[
-                    {<<"_id">>, IDocId},
-                    {<<"type">>, <<"info-document">>},
-                    {<<"_node_uuid">>, xdc_rep_utils:node_uuid()},
-                    {<<"_replication_doc_id">>, XDocId},
-                    {<<"_replication_id">>, ?l2b(Base ++ Ext)},
-                    {<<"_replication_fields">>, XDocBody},
-                    {<<"source">>, <<"">>},
-                    {<<"target">>, <<"">>} |
-                    lists:map(
-                        fun(Vb) ->
-                            {?l2b("_replication_state_vb_" ++ ?i2l(Vb)),
-                             <<"triggered">>}
-                        end,
-                        Vbuckets)
-                ]}},
-    couch_db:update_doc(RepDb, IDoc, [clobber]),
-    couch_replication_manager:update_rep_doc(IDocId, [{<<"_replication_state">>, <<"triggered">>}]),
     couch_db:close(RepDb),
     ?log_info("~s: created replication info doc ~s~n", [XDocId, IDocId]),
     ok.
@@ -610,7 +606,7 @@ get_xdc_replication_state(XDocId, RepDbName) ->
         case couch_db:open_doc(RepDb, xdc_rep_utils:info_doc_id(XDocId),
                                [ejson_body]) of
         {ok, #doc{body = {IDocBody}}} ->
-            get_value(<<"_replication_state">>, IDocBody);
+            get_value(<<"replication_state">>, IDocBody);
         _ ->
             undefined
         end,
