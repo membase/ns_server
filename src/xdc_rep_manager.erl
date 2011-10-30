@@ -340,12 +340,15 @@ start_xdc_replication(#rep{id = XRepId,
     case {SrcBucketLookup, TgtBucketLookup} of
     {not_present, not_present} ->
         ?log_error("~s: source and target buckets not found", [XDocId]),
+        true = ets:insert(?XSTORE, {XDocId, XRep, []}),
         {error, not_present};
     {not_present, _} ->
         ?log_error("~s: source bucket not found", [XDocId]),
+        true = ets:insert(?XSTORE, {XDocId, XRep, []}),
         {error, not_present};
     {_, not_present} ->
         ?log_error("~s: target bucket not found", [XDocId]),
+        true = ets:insert(?XSTORE, {XDocId, XRep, []}),
         {error, not_present};
     {{ok, SrcBucketConfig}, {ok, {TgtVbMap, TgtNodes}}} ->
         MyVbuckets = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
