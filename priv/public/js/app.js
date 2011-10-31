@@ -297,11 +297,9 @@ function loginFormSubmit() {
 var SetupWizard = {
   show: function(page, opt, isContinuation) {
     opt = opt || {};
+    page = page || "welcome";
 
     var pageNames = _.keys(SetupWizard.pages);
-
-    if (page == "")
-      page = "welcome";
 
     for (var i = 0; i < pageNames.length; i++) {
       if (page == pageNames[i]) {
