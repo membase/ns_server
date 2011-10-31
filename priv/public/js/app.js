@@ -324,6 +324,7 @@ var SetupWizard = {
           });
         }
         $(document.body).addClass('init_' + page);
+        $('html, body').animate({scrollTop:0},250);
         _.defer(function () {
           var element = $('.focusme:visible').get(0)
           if (!element) {
