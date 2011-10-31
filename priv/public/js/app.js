@@ -376,14 +376,9 @@ var SetupWizard = {
       return;
     }
 
-    var hostname = data.hostname;
-    data.clusterMemberHostIp = hostname;
-    data.clusterMemberPort = '8091';
-    if (hostname.indexOf(':') >= 0) {
-      var arr = hostname.split(':');
-      data.clusterMemberHostIp = arr[0];
-      data.clusterMemberPort = arr[1];
-    }
+    var arr = data.hostname.split(':');
+    data.clusterMemberHostIp = arr[0];
+    data.clusterMemberPort = arr[1] ? arr[1] : '8091';
     delete data.hostname;
 
     var overlay = overlayWithSpinner($('#init_cluster_dialog'), '#EEE');
