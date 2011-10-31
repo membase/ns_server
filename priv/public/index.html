@@ -2070,6 +2070,62 @@
     </div>
     </div>
   <!-- END init_cluster_block -->
+
+  <div class="pad bucket_details really" id="init_bucket_dialog">
+    <div class="config-top">
+      <h1>Create Default Bucket</h1>
+      <h2>Step <span class="current-step">2</span> of 4</h2>
+    </div>
+    <form><div class="clearfix">
+      <h2>Bucket Settings</h2>
+      <div class="bucket-icon"></div>
+      <label class="for-name"><span>Bucket Name:</span> default</label>
+      <div class="for-bucket-type"><span>Bucket Type:</span>
+       <label><input type="radio" name="bucketType" value="memcached"> Memcached</label>
+       <label><input type="radio" name="bucketType" value="membase"> Couchbase</label>
+      </div>
+      <h2>Memory Size</h2>
+      <div class="size-gauge for-ram">
+        <div class="t">Cluster quota (<span class="total">192 Gb</span>)</div>
+        <div class="gauge">
+          <div>
+            <div style="width: 68%;" class="green"></div>
+            <div style="width: 33%;" class="blue"></div>
+          </div>
+        </div>
+        <table class="b"><tr>
+          <!-- <td class="blue" style="display:none;">Other Buckets (<span class="other">15 Gb</span>)</td> -->
+          <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
+          <td>Free (<span class="free">12 Gb</span>)</td>
+        </tr></table>
+      </div>
+      <label class="for-ram-quota">
+        <span>
+          <em class="when-non-persistent">Per Node RAM Quota:</em>
+          <em class="when-persistent">Per Node RAM Quota:</em>
+        </span>
+        <input name="ramQuotaMB" class="focusme" value="30" />
+        <abbr>MB</abbr>
+      </label>
+      <div class="error-container err-ramQuotaMB"></div>
+            <em class="memcached-summary when-non-persistent"></em>
+      <div class="persistent-only">
+        <h2>Replicas</h2>
+        <label class="for-enable-replicas"><input type="checkbox" checked disabled><span>Enable </span></label>
+        <input class="hidden-replica-number" type="hidden" name="replicaNumber" value="0" disabled>
+        <label class="for-replica-number">
+          <select name="replicaNumber"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
+          <span>Number of replica (backup) copies</span>
+          <span class="error-container err-replicaNumber"></span>
+        </label>
+      </div><!-- .persistent-only -->
+    </div><div class="config-bottom clearfix">
+    <button name="finish" class="submit finish direction-button" type="submit">Next</button>
+    <button name="back" class="submit back direction-button" id="step-init-bucket-back" type="button">Back</button>
+    </div></form>
+  </div>
+  <!-- END init_bucket_block -->
+
   <div class="pad" id="init_update_notifications_dialog"><form>
     <div class="config-top">
       <h1>Notifications</h1>
@@ -2143,61 +2199,6 @@
     </form>
   </div>
   <!-- END init_secure_block -->
-
-  <div class="pad bucket_details really" id="init_bucket_dialog">
-    <div class="config-top">
-      <h1>Create Default Bucket</h1>
-      <h2>Step <span class="current-step">2</span> of 4</h2>
-    </div>
-    <form><div class="clearfix">
-      <h2>Bucket Settings</h2>
-      <div class="bucket-icon"></div>
-      <label class="for-name"><span>Bucket Name:</span> default</label>
-      <div class="for-bucket-type"><span>Bucket Type:</span>
-       <label><input type="radio" name="bucketType" value="memcached"> Memcached</label>
-       <label><input type="radio" name="bucketType" value="membase"> Couchbase</label>
-      </div>
-      <h2>Memory Size</h2>
-      <div class="size-gauge for-ram">
-        <div class="t">Cluster quota (<span class="total">192 Gb</span>)</div>
-        <div class="gauge">
-          <div>
-            <div style="width: 68%;" class="green"></div>
-            <div style="width: 33%;" class="blue"></div>
-          </div>
-        </div>
-        <table class="b"><tr>
-          <!-- <td class="blue" style="display:none;">Other Buckets (<span class="other">15 Gb</span>)</td> -->
-          <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
-          <td>Free (<span class="free">12 Gb</span>)</td>
-        </tr></table>
-      </div>
-      <label class="for-ram-quota">
-        <span>
-          <em class="when-non-persistent">Per Node RAM Quota:</em>
-          <em class="when-persistent">Per Node RAM Quota:</em>
-        </span>
-        <input name="ramQuotaMB" class="focusme" value="30" />
-        <abbr>MB</abbr>
-      </label>
-      <div class="error-container err-ramQuotaMB"></div>
-            <em class="memcached-summary when-non-persistent"></em>
-      <div class="persistent-only">
-        <h2>Replicas</h2>
-        <label class="for-enable-replicas"><input type="checkbox" checked disabled><span>Enable </span></label>
-        <input class="hidden-replica-number" type="hidden" name="replicaNumber" value="0" disabled>
-        <label class="for-replica-number">
-          <select name="replicaNumber"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
-          <span>Number of replica (backup) copies</span>
-          <span class="error-container err-replicaNumber"></span>
-        </label>
-      </div><!-- .persistent-only -->
-    </div><div class="config-bottom clearfix">
-    <button name="finish" class="submit finish direction-button" type="submit">Next</button>
-    <button name="back" class="submit back direction-button" id="step-init-bucket-back" type="button">Back</button>
-    </div></form>
-  </div>
-  <!-- END init_bucket_block -->
 </div>
 <!-- END init_block -->
 <script id="notice_template" type="text/html">
