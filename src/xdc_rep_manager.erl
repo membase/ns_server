@@ -40,7 +40,8 @@
 %   "replication_id" : "c0ebe9256695ff083347cbf95f93e280",
 %   "source" : "",
 %   "target" : "",
-%   "replication_state" : "triggered",
+%   "_replication_state" : "triggered",
+%   "_replication_state_time" : "2011-10-31T17:33:04-07:00",
 %   "replication_state_vb_1" : "triggered",
 %   "replication_state_vb_3" : "completed",
 %   "replication_state_vb_5" : "triggered"
@@ -156,7 +157,7 @@ handle_call({rep_db_update, {ChangeProps} = Change}, _From, State) ->
         DocId = get_value(<<"_id">>, RepProps),
         couch_replication_manager:update_rep_doc(
             xdc_rep_utils:info_doc_id(DocId),
-            [{<<"replication_state">>, <<"error">>}]),
+            [{<<"_replication_state">>, <<"error">>}]),
         ?log_error("~s: xdc replication error: ~p~n~p",
                    [DocId, Error, erlang:get_stacktrace()]),
         State
@@ -567,7 +568,7 @@ retry_couch_replication(XDocId,
     couch_replication_manager:update_rep_doc(
         xdc_rep_utils:info_doc_id(XDocId),
         [{?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"error">>},
-         {<<"replication_state">>, <<"error">>}]),
+         {<<"_replication_state">>, <<"error">>}]),
 
     NewWait = erlang:max(?INITIAL_WAIT, trunc(Wait * 2)),
     SrcURI = xdc_rep_utils:local_couch_uri_for_vbucket(SrcBucket, Vb),
@@ -590,7 +591,7 @@ couch_replication_completed(XDocId, CRepPid, Vb) ->
         couch_replication_manager:update_rep_doc(
             xdc_rep_utils:info_doc_id(XDocId),
             [{?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"completed">>},
-             {<<"replication_state">>, <<"completed">>}]),
+             {<<"_replication_state">>, <<"completed">>}]),
         ?log_info("~s: replication of all vbuckets completed", [XDocId]);
     _ ->
         couch_replication_manager:update_rep_doc(
@@ -628,17 +629,16 @@ create_xdc_rep_info_doc(XDocId, {Base, Ext}, Vbuckets, RepDbName, XDocBody) ->
     UserCtx = #user_ctx{roles = [<<"_admin">>, <<"_replicator">>]},
     {ok, RepDb} = couch_db:open(RepDbName, [sys_db, {user_ctx, UserCtx}]),
     Body = {[
-             %{<<"_id">>, IDocId},
              {<<"node">>, xdc_rep_utils:node_uuid()},
              {<<"replication_doc_id">>, XDocId},
              {<<"replication_id">>, ?l2b(Base ++ Ext)},
              {<<"replication_fields">>, XDocBody},
              {<<"source">>, <<"">>},
-             {<<"target">>, <<"">>},
-             {<<"replication_state">>, <<"triggered">>} |
+             {<<"target">>, <<"">>} |
              lists:map(
                 fun(Vb) ->
-                    {?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"triggered">>}
+                    {?l2b("replication_state_vb_" ++ ?i2l(Vb)),
+                     <<"triggered">>}
                 end,
                 Vbuckets)
             ]},
@@ -648,7 +648,11 @@ create_xdc_rep_info_doc(XDocId, {Base, Ext}, Vbuckets, RepDbName, XDocBody) ->
     _ ->
         couch_db:update_doc(RepDb, #doc{id = IDocId, body = Body}, [])
     end,
+
+    couch_replication_manager:update_rep_doc(
+        IDocId, [{<<"_replication_state">>, <<"triggered">>}]),
     couch_db:close(RepDb),
+
     ?log_info("~s: created replication info doc ~s", [XDocId, IDocId]),
     ok.
 
@@ -659,7 +663,7 @@ get_xdc_replication_state(XDocId, RepDbName) ->
         case couch_db:open_doc(RepDb, xdc_rep_utils:info_doc_id(XDocId),
                                [ejson_body]) of
         {ok, #doc{body = {IDocBody}}} ->
-            get_value(<<"replication_state">>, IDocBody);
+            get_value(<<"_replication_state">>, IDocBody);
         _ ->
             undefined
         end,
