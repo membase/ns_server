@@ -569,10 +569,12 @@ body.auth #container { display: none; }
 #init_block .pad { display: none; }
 .ie8 #init_block .pad {border:1px solid #837C7B}
 
+/* wizard page show/hide init_block and cluster */
 body.init_welcome, body.init_cluster, body.init_resources, body.init_secure, body.init_bucket_dialog, body.init_update_notifications {background:#F0EEE7}
-body.init_welcome #init_block { display: block; }
+body.init_welcome #init_block, body.init_cluster #init_block, body.init_resources #init_block, body.init_secure #init_block, body.init_bucket_dialog #init_block, body.init_update_notifications #init_block { display: block; }
+body.init_welcome #container, body.init_cluster #container, body.init_resources #container, body.init_secure #container, body.init_bucket_dialog #container, body.init_update_notifications #container { display: none; }
+
 body.init_welcome #init_welcome_dialog { display: block;-moz-box-shadow:0 0 10px #999;-webkit-box-shadow:0 0 10px #999;box-shadow:0 0 10px #999;background:url('../images/intro_logo.png') no-repeat white;height: 470px;position:relative}
-body.init_welcome #container { display: none; }
 body.init_welcome #init_welcome_dialog .pad-header {float:left;margin:130px 0 0 250px}
 body.init_welcome #init_welcome_dialog .pad-header .tagline {color: #0A72A3;font-size: 1.5em;margin: 0.5em;text-align: center}
 body.init_welcome #init_welcome_dialog .version {color: #837c7b;display: inline-block;padding-top: 1em;vertical-align: top}
@@ -594,11 +596,8 @@ div.config-top h2 {color:#8b8b8e; float:right; font-size:10pt; margin:0 20px 0 0
 .config-bottom {background:url(../images/config-bottom.png) repeat-x; height:74px; line-height:84px; margin:0 0 0 -9px;  height:31px;padding:0.9em;}
 .config-bottom a.cancel {color:#8b8b8e; float:right; font-family:Arial, Helvetica, Sans-Serif; font-size:12pt; margin-right:25px; margin-top:-5px; text-decoration:none;}
 
-body.init_resources #init_block { display: block; }
 body.init_resources #init_resources_dialog {background:none; background-color:#eee; display: block; padding-bottom:-50px;}
-body.init_resources #container { display: none; }
 
-body.init_cluster #init_block { display:block;}
 body.init_cluster #init_cluster_dialog {background:none; background-color:#eee; display: block; padding-bottom:-50px;-moz-box-shadow:0 0 10px #999;-webkit-box-shadow:0 0 10px #999;box-shadow:0 0 10px #999}
 body.init_cluster #init_cluster_dialog h2.question {border-bottom:1px solid #d5dadd; color:#444245; font-size:14pt; font-family:Verdana, Helvetica, Sans-Serif; font-weight:lighter; margin:25px 0px 0px 50px; padding-bottom:5px; width:85%;}
 body.init_cluster #init_cluster_dialog p.pad_10 {color:#444245; font-family:Verdana, Helvetica, Sans-Serif; font-size:10pt; font-weight:lighter; line-height:20px; margin-left:75px; width:500px;}
@@ -611,11 +610,9 @@ body.init_cluster #init_cluster_dialog div.join_cluster_dialog_errors_container 
 #init_cluster_form .memory-quota {height:62px;margin:10px 0 0 25px;overflow:hidden;}
 #init_cluster_form .memory-quota input {width:60px;*vertical-align:middle;}
 #init_cluster_form .login-credentials {display:none;margin:10px 0 0 25px;}
-body.init_cluster #container {display:none;}
 
 #init_cluster_dialog .warning {clear:both;display:block;}
 
-body.init_secure #init_block {display:block;}
 body.init_secure #init_secure_dialog {background:none #eee;display:block; padding-bottom:-50px;-moz-box-shadow:0 0 10px #999;-webkit-box-shadow:0 0 10px #999;box-shadow:0 0 10px #999}
 body.init_secure #init_secure_dialog h2.title {border-bottom:1px solid #d5dadd; color:#444245; font-size:14pt; font-family:Verdana, Helvetica, Sans-Serif; font-weight:lighter; margin:25px 0px 0px 50px; padding-bottom:5px; width:85%;}
 body.init_secure #init_secure_dialog p.pad_10 {width:500px;margin-left:65px;font:lighter 10pt/20px Verdana, Helvetica, Sans-Serif;}
@@ -624,16 +621,13 @@ body.init_secure #init_secure_dialog form > div {overflow:hidden;width:500px;mar
 body.init_secure #init_secure_dialog form > div label {display:inline-block;width:138px;font:12pt Verdana, Helvetica, sans-serif;*zoom:1;*padding:0 0 3px;}
 body.init_secure #init_secure_dialog form > div input {width:183px; padding:3px 3px 4px 5px;font-size:12pt; border:1px solid #ccd3d7;}
 body.init_secure #init_secure_dialog form > .config-bottom {overflow:hidden;width:682px;margin:25px auto 0 -8px;}
-body.init_secure #container {display:none;}
 
 .init_block #init_bucket_dialog {width:748px;padding-bottom:-50px;background:none #eee;-moz-box-shadow:0 0 10px #999;-webkit-box-shadow:0 0 10px #999;box-shadow:0 0 10px #999}
 .init_block #init_bucket_dialog form {border:none;font-family:Verdana,Helvetica,sans-serif;}
 .init_block #init_bucket_dialog form > .clearfix:first-child {padding:0 50px 20px;}
 .init_block #init_bucket_dialog .save_cancel button {margin:2px 0 0 20px;}
 
-body.init_bucket_dialog #init_block { display: block; }
 body.init_bucket_dialog #init_bucket_dialog { display: block; }
-body.init_bucket_dialog #container { display: none; }
 
 /* init_block */
 .init_block {min-height:700px; padding:55px 0 0; position:relative;}
@@ -1028,9 +1022,7 @@ span.staleness-notice, .staleness-notice { display: none; color: red; }
 .with_server_resources .darker_block.server_resources { display: block; }
 
 /* update notifications page in the startup wizard */
-body.init_update_notifications #init_block { display: block; }
 body.init_update_notifications #init_update_notifications_dialog {display:block}
-body.init_update_notifications #container {display:none;}
 .init_block #init_update_notifications_dialog {width:748px;padding-bottom:-50px;background:none #eee;-moz-box-shadow:0 0 10px #999;-webkit-box-shadow:0 0 10px #999;box-shadow:0 0 10px #999}
 .init_block #init_update_notifications_dialog form {border:none;font-family:Verdana,Helvetica,sans-serif;}
 .init_block #init_update_notifications_dialog form > .clearfix:first-child {padding:0 50px 20px;}
