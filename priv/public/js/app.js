@@ -298,20 +298,19 @@ var SetupWizard = {
   show: function(page, opt, isContinuation) {
     opt = opt || {};
 
-    var pages = [ "welcome", "update_notifications", "cluster", "secure",
-      "bucket_dialog" ];
+    var pageNames = _.keys(SetupWizard.pages);
 
     if (page == "")
       page = "welcome";
 
-    for (var i = 0; i < pages.length; i++) {
-      if (page == pages[i]) {
+    for (var i = 0; i < pageNames.length; i++) {
+      if (page == pageNames[i]) {
         var rv;
-        if (!isContinuation && SetupWizard["startPage_" + page]) {
-          rv = SetupWizard["startPage_" + page]('self', 'init_' + page, opt);
+        if (!isContinuation && SetupWizard.pages[page]) {
+          rv = SetupWizard.pages[page]('self', 'init_' + page, opt);
         }
-        // if startPage is in continuation passing style, call it
-        // passing continuation and return.  This allows startPage to do
+        // if page is in continuation passing style, call it
+        // passing continuation and return.  This allows page to do
         // async computation and then resume dialog page switching
         if (rv instanceof Function) {
           $('body, html').css('cursor', 'wait');
@@ -338,9 +337,9 @@ var SetupWizard = {
     if (page == 'done')
       DAL.enableSections();
 
-    for (var i = 0; i < pages.length; i++) { // Hide in a 2nd loop for more UI stability.
-      if (page != pages[i]) {
-        $(document.body).removeClass('init_' + pages[i]);
+    for (var i = 0; i < pageNames.length; i++) { // Hide in a 2nd loop for more UI stability.
+      if (page != pageNames[i]) {
+        $(document.body).removeClass('init_' + pageNames[i]);
       }
     }
 
@@ -402,376 +401,378 @@ var SetupWizard = {
       displayNotice('This server has been associated with the cluster and will join on the next rebalance operation.');
     });
   },
-  startPage_bucket_dialog: function () {
-    var spinner;
-    var timeout = setTimeout(function () {
-      spinner = overlayWithSpinner('#init_bucket_dialog');
-    }, 50);
-    $.ajax({url: '/pools/default/buckets/default',
-            success: continuation,
-            error: continuation,
-            dataType: 'json'});
-    function continuation(data, status) {
-      if (status != 'success') {
-        $.ajax({type:'GET', url:'/nodes/self', dataType: 'json',
-                error: function () {
-                  SetupWizard.panicAndReload();
-                },
-                success: function (nodeData) {
-                  data = {uri: '/pools/default/buckets',
-                          bucketType: 'membase',
-                          authType: 'sasl',
-                          quota: { rawRAM: nodeData.storageTotals.ram.quotaTotal },
-                          replicaNumber: 1};
-                  continuation(data, 'success');
-                }});
-        return;
-      }
-      if (spinner)
-        spinner.remove();
-      clearTimeout(timeout);
-      var initValue = _.extend(data, {
-        uri: '/controller/setupDefaultBucket'
-      });
-      var dialog = new BucketDetailsDialog(initValue, true,
-                                           {id: 'init_bucket_dialog',
-                                            refreshBuckets: function (b) {b()},
-                                            onSuccess: function () {
-                                              dialog.cleanup();
-                                              SetupWizard.show('update_notifications');
-                                            }});
-      var cleanupBack = dialog.bindWithCleanup($('#step-init-bucket-back'),
-                                               'click',
-                                               function () {
-                                                 dialog.cleanup();
-                                                 SetupWizard.show('cluster');
-                                               });
-      dialog.cleanups.push(cleanupBack);
-      dialog.startForm();
-    }
-  },
-  startPage_secure: function(node, pagePrefix, opt) {
-    var parentName = '#' + pagePrefix + '_dialog';
-
-    $(parentName + ' div.config-bottom button#step-4-finish').click(function (e) {
-      e.preventDefault();
-      $('#init_secure_form').submit();
-    });
-    $(parentName + ' div.config-bottom button#step-4-back').click(function (e) {
-      e.preventDefault();
-      SetupWizard.show("update_notifications");
-    });
-
-    var form = $(parentName + ' form').unbind('submit');
-    _.defer(function () {
-      $(parentName).find('[name=password]')[0].focus();
-    });
-    form.submit(function (e) {
-      e.preventDefault();
-
-      var parent = $(parentName)
-
-      var user = parent.find('[name=username]').val();
-      var pw = parent.find('[name=password]').val();
-      var vpw = parent.find('[id=secure-password-verify]').val();
-      if (pw == null || pw == "") {
-        genericDialog({
-          header: 'Please try again',
-          text: 'A password of at least six characters is required.',
-          buttons: {cancel: false, ok: true}
-        });
-        return;
-      }
-      if (pw !== vpw) {
-        genericDialog({
-          header: 'Please try again',
-          text: '\'Password\' and \'Verify Password\' do not match',
-          buttons: {cancel: false, ok: true}
-        });
-        return;
-      }
-
-      SettingsSection.processSave(this, function (dialog) {
-        DAL.performLogin(user, pw, function () {
-          SetupWizard.show('done');
-
-          if (user != null && user != "") {
-            $('.sign-out-link').show();
-          }
-
-          dialog.close();
-        });
-      });
-    });
-  },
-  startPage_welcome: function(node, pagePrefix, opt) {
-    $('#init_welcome_dialog input.next').click(function (e) {
-      e.preventDefault();
-
-      SetupWizard.show("cluster");
-    });
-  },
-
-  startPage_cluster: function (node, pagePrefix, opt) {
-    var dialog = $('#init_cluster_dialog');
-    var resourcesObserver;
-
-    $('#join-cluster').click(function (e) {
-      $('.login-credentials').slideDown();
-      $('.memory-quota').slideUp();
-      $('#init_cluster_dialog_memory_errors_container').slideUp();
-    });
-    $('#no-join-cluster').click(function (e) {
-      $('.memory-quota').slideDown();
-      $('.login-credentials').slideUp();
-    });
-
-    // we return function signaling that we're not yet ready to show
-    // our page of wizard (no data to display in the form), but will
-    // be at one point. SetupWizard.show() will call us immediately
-    // passing us it's continuation. This is partial continuation to
-    // be more precise
-    return function (continueShowDialog) {
-      dialog.find('.quota_error_message').hide();
-
-      $.ajax({type:'GET', url:'/nodes/self', dataType: 'json',
-              success: dataCallback, error: dataCallback});
-
-      function dataCallback(data, status) {
+  pages: {
+    bucket_dialog: function () {
+      var spinner;
+      var timeout = setTimeout(function () {
+        spinner = overlayWithSpinner('#init_bucket_dialog');
+      }, 50);
+      $.ajax({url: '/pools/default/buckets/default',
+              success: continuation,
+              error: continuation,
+              dataType: 'json'});
+      function continuation(data, status) {
         if (status != 'success') {
-          return SetupWizard.panicAndReload();
+          $.ajax({type:'GET', url:'/nodes/self', dataType: 'json',
+                  error: function () {
+                    SetupWizard.panicAndReload();
+                  },
+                  success: function (nodeData) {
+                    data = {uri: '/pools/default/buckets',
+                            bucketType: 'membase',
+                            authType: 'sasl',
+                            quota: { rawRAM: nodeData.storageTotals.ram.quotaTotal },
+                            replicaNumber: 1};
+                    continuation(data, 'success');
+                  }});
+          return;
         }
-
-        // we have node data and can finally display our wizard page
-        // and pre-fill the form
-        continueShowDialog();
-
-        $('#step-2-next').click(onSubmit);
-        dialog.find('form').submit(onSubmit);
-
-        _.defer(function () {
-          if ($('#join-cluster')[0].checked)
-            $('.login-credentials').show();
+        if (spinner)
+          spinner.remove();
+        clearTimeout(timeout);
+        var initValue = _.extend(data, {
+          uri: '/controller/setupDefaultBucket'
         });
+        var dialog = new BucketDetailsDialog(initValue, true,
+                                             {id: 'init_bucket_dialog',
+                                              refreshBuckets: function (b) {b()},
+                                              onSuccess: function () {
+                                                dialog.cleanup();
+                                                SetupWizard.show('update_notifications');
+                                              }});
+        var cleanupBack = dialog.bindWithCleanup($('#step-init-bucket-back'),
+                                                 'click',
+                                                 function () {
+                                                   dialog.cleanup();
+                                                   SetupWizard.show('cluster');
+                                                 });
+        dialog.cleanups.push(cleanupBack);
+        dialog.startForm();
+      }
+    },
+    secure: function(node, pagePrefix, opt) {
+      var parentName = '#' + pagePrefix + '_dialog';
 
-        var m = data['memoryQuota'];
-        if (m == null || m == "none") {
-          m = "";
-        }
+      $(parentName + ' div.config-bottom button#step-4-finish').click(function (e) {
+        e.preventDefault();
+        $('#init_secure_form').submit();
+      });
+      $(parentName + ' div.config-bottom button#step-4-back').click(function (e) {
+        e.preventDefault();
+        SetupWizard.show("update_notifications");
+      });
 
-        dialog.find('[name=quota]').val(m);
+      var form = $(parentName + ' form').unbind('submit');
+      _.defer(function () {
+        $(parentName).find('[name=password]')[0].focus();
+      });
+      form.submit(function (e) {
+        e.preventDefault();
 
-        data['node'] = data['node'] || node;
+        var parent = $(parentName)
 
-        var storageTotals = data.storageTotals;
-
-        var totalRAMMegs = Math.floor(storageTotals.ram.total/Math.Mi);
-
-        dialog.find('[name=dynamic-ram-quota]').val(Math.floor(storageTotals.ram.quotaTotal / Math.Mi));
-        dialog.find('.ram-total-size').text(totalRAMMegs + ' MB');
-        var ramMaxMegs = Math.max(totalRAMMegs - 1024,
-                                  Math.floor(storageTotals.ram.total * 4 / (5 * Math.Mi)));
-        dialog.find('.ram-max-size').text(ramMaxMegs);
-
-        var firstResource = data.storage.hdd[0];
-        var diskTotalGigs = Math.floor((storageTotals.hdd.total - storageTotals.hdd.used) / Math.Gi);
-
-        var dbPath;
-        var dbTotal;
-
-        var ixPath;
-        var ixTotal;
-
-        dbPath = dialog.find('[name=db_path]');
-        ixPath = dialog.find('[name=index_path]');
-
-        dbTotal = dialog.find('.total-db-size');
-        ixTotal = dialog.find('.total-index-size');
-
-        function updateTotal(node, total) {
-          node.text(escapeHTML(total) + ' GB');
-        }
-
-        dbPath.val(escapeHTML(firstResource.path));
-        ixPath.val(escapeHTML(firstResource.path));
-
-        updateTotal(dbTotal, diskTotalGigs);
-        updateTotal(ixTotal, diskTotalGigs);
-
-        var hddResources = data.availableStorage.hdd;
-        var mountPoints = new MountPoints(data, _.pluck(hddResources, 'path'));
-
-        var prevPathValues = [];
-
-        function maybeUpdateTotal(pathNode, totalNode) {
-          var pathValue = pathNode.val();
-
-          if (pathValue == prevPathValues[pathNode]) {
-            return;
-          }
-
-          prevPathValues[pathNode] = pathValue;
-          if (pathValue == "") {
-            updateTotal(totalNode, 0);
-            return;
-          }
-
-          var rv = mountPoints.lookup(pathValue);
-          var pathResource = ((rv != null) && hddResources[rv]);
-
-          if (!pathResource) {
-            pathResource = {path:"/", sizeKBytes: 0, usagePercent: 0};
-          }
-
-          var totalGigs =
-            Math.floor(pathResource.sizeKBytes *
-                       (100 - pathResource.usagePercent) / 100 / Math.Mi);
-          updateTotal(totalNode, totalGigs);
-        }
-
-        resourcesObserver = dialog.observePotentialChanges(
-          function () {
-            maybeUpdateTotal(dbPath, dbTotal);
-            maybeUpdateTotal(ixPath, ixTotal);
+        var user = parent.find('[name=username]').val();
+        var pw = parent.find('[name=password]').val();
+        var vpw = parent.find('[id=secure-password-verify]').val();
+        if (pw == null || pw == "") {
+          genericDialog({
+            header: 'Please try again',
+            text: 'A password of at least six characters is required.',
+            buttons: {cancel: false, ok: true}
           });
-      }
-    }
-
-    // cleans up all event handles
-    function onLeave() {
-      $('#step-2-next').unbind();
-      dialog.find('form').unbind();
-      if (resourcesObserver)
-        resourcesObserver.stopObserving();
-    }
-
-    function onSubmit(e) {
-      e.preventDefault();
-
-      dialog.find('.warning').hide();
-
-      var dbPath = dialog.find('[name=db_path]').val() || "";
-      var ixPath = dialog.find('[name=index_path]').val() || "";
-
-      var m = dialog.find('[name=dynamic-ram-quota]').val() || "";
-      if (m == "") {
-        m = "none";
-      }
-
-      var pathErrorsContainer = dialog.find('.init_cluster_dialog_errors_container');
-      var memoryErrorsContainer = $('#init_cluster_dialog_memory_errors_container');
-      pathErrorsContainer.hide();
-      memoryErrorsContainer.hide();
-
-      postWithValidationErrors('/nodes/' + node + '/controller/settings',
-                               $.param({db_path: dbPath,
-                                        index_path: ixPath}),
-                               afterDisk);
-
-      var diskArguments;
-
-      function afterDisk() {
-        // remember our arguments so that we can display validation
-        // errors later. We're doing that to display validation errors
-        // from memory quota and disk path posts simultaneously
-        diskArguments = arguments;
-        if ($('#no-join-cluster')[0].checked) {
-          postWithValidationErrors('/pools/default',
-                                   $.param({memoryQuota: m}),
-                                   memPost);
+          return;
+        }
+        if (pw !== vpw) {
+          genericDialog({
+            header: 'Please try again',
+            text: '\'Password\' and \'Verify Password\' do not match',
+            buttons: {cancel: false, ok: true}
+          });
           return;
         }
 
-        if (handleDiskStatus.apply(null, diskArguments))
-          SetupWizard.doClusterJoin();
-      }
+        SettingsSection.processSave(this, function (dialog) {
+          DAL.performLogin(user, pw, function () {
+            SetupWizard.show('done');
 
-      function handleDiskStatus(data, status) {
-        var ok = (status == 'success')
-        if (!ok) {
-          renderTemplate('join_cluster_dialog_errors', data, pathErrorsContainer[0]);
-          pathErrorsContainer.show();
-        }
-        return ok;
-      }
+            if (user != null && user != "") {
+              $('.sign-out-link').show();
+            }
 
-      function memPost(data, status) {
-        var ok = handleDiskStatus.apply(null, diskArguments);
-
-        if (status == 'success') {
-          if (ok) {
-            BucketsSection.refreshBuckets();
-            SetupWizard.show("bucket_dialog");
-            onLeave();
-          }
-        } else {
-          memoryErrorsContainer.text(data.join(' and '));
-          memoryErrorsContainer.show();
-        }
-      }
-    }
-  },
-  startPage_update_notifications: function(node, pagePrefix, opt) {
-    var dialog = $('#init_update_notifications_dialog');
-    var form = dialog.find('form');
-    dialog.find('a.more_info').click(function(e) {
-      e.preventDefault();
-      dialog.find('p.more_info').slideToggle();
-    });
-    dialog.find('button.back').click(function (e) {
-      e.preventDefault();
-      onLeave();
-      SetupWizard.show("bucket_dialog");
-    });
-    // Go to next page. Send off email address if given and apply settings
-    dialog.find('button.next').click(function (e) {
-      e.preventDefault();
-      form.submit();
-    });
-    _.defer(function () {
-      try {
-        $('#init-join-community-email').need(1)[0].focus();
-      } catch (e) {
-      };
-    });
-    form.bind('submit', function (e) {
-      e.preventDefault();
-      var email = $.trim($('#init-join-community-email').val());
-      if (email !== '') {
-        // Send email address. We don't care if notifications were enabled
-        // or not.
-        $.ajax({
-          url: UpdatesNotificationsSection.remote.email,
-          dataType: 'jsonp',
-          data: {email: email},
-          success: function () {},
-          error: function () {}
+            dialog.close();
+          });
         });
+      });
+    },
+    welcome: function(node, pagePrefix, opt) {
+      $('#init_welcome_dialog input.next').click(function (e) {
+        e.preventDefault();
+
+        SetupWizard.show("cluster");
+      });
+    },
+
+    cluster: function (node, pagePrefix, opt) {
+      var dialog = $('#init_cluster_dialog');
+      var resourcesObserver;
+
+      $('#join-cluster').click(function (e) {
+        $('.login-credentials').slideDown();
+        $('.memory-quota').slideUp();
+        $('#init_cluster_dialog_memory_errors_container').slideUp();
+      });
+      $('#no-join-cluster').click(function (e) {
+        $('.memory-quota').slideDown();
+        $('.login-credentials').slideUp();
+      });
+
+      // we return function signaling that we're not yet ready to show
+      // our page of wizard (no data to display in the form), but will
+      // be at one point. SetupWizard.show() will call us immediately
+      // passing us it's continuation. This is partial continuation to
+      // be more precise
+      return function (continueShowDialog) {
+        dialog.find('.quota_error_message').hide();
+
+        $.ajax({type:'GET', url:'/nodes/self', dataType: 'json',
+                success: dataCallback, error: dataCallback});
+
+        function dataCallback(data, status) {
+          if (status != 'success') {
+            return SetupWizard.panicAndReload();
+          }
+
+          // we have node data and can finally display our wizard page
+          // and pre-fill the form
+          continueShowDialog();
+
+          $('#step-2-next').click(onSubmit);
+          dialog.find('form').submit(onSubmit);
+
+          _.defer(function () {
+            if ($('#join-cluster')[0].checked)
+              $('.login-credentials').show();
+          });
+
+          var m = data['memoryQuota'];
+          if (m == null || m == "none") {
+            m = "";
+          }
+
+          dialog.find('[name=quota]').val(m);
+
+          data['node'] = data['node'] || node;
+
+          var storageTotals = data.storageTotals;
+
+          var totalRAMMegs = Math.floor(storageTotals.ram.total/Math.Mi);
+
+          dialog.find('[name=dynamic-ram-quota]').val(Math.floor(storageTotals.ram.quotaTotal / Math.Mi));
+          dialog.find('.ram-total-size').text(totalRAMMegs + ' MB');
+          var ramMaxMegs = Math.max(totalRAMMegs - 1024,
+                                    Math.floor(storageTotals.ram.total * 4 / (5 * Math.Mi)));
+          dialog.find('.ram-max-size').text(ramMaxMegs);
+
+          var firstResource = data.storage.hdd[0];
+          var diskTotalGigs = Math.floor((storageTotals.hdd.total - storageTotals.hdd.used) / Math.Gi);
+
+          var dbPath;
+          var dbTotal;
+
+          var ixPath;
+          var ixTotal;
+
+          dbPath = dialog.find('[name=db_path]');
+          ixPath = dialog.find('[name=index_path]');
+
+          dbTotal = dialog.find('.total-db-size');
+          ixTotal = dialog.find('.total-index-size');
+
+          function updateTotal(node, total) {
+            node.text(escapeHTML(total) + ' GB');
+          }
+
+          dbPath.val(escapeHTML(firstResource.path));
+          ixPath.val(escapeHTML(firstResource.path));
+
+          updateTotal(dbTotal, diskTotalGigs);
+          updateTotal(ixTotal, diskTotalGigs);
+
+          var hddResources = data.availableStorage.hdd;
+          var mountPoints = new MountPoints(data, _.pluck(hddResources, 'path'));
+
+          var prevPathValues = [];
+
+          function maybeUpdateTotal(pathNode, totalNode) {
+            var pathValue = pathNode.val();
+
+            if (pathValue == prevPathValues[pathNode]) {
+              return;
+            }
+
+            prevPathValues[pathNode] = pathValue;
+            if (pathValue == "") {
+              updateTotal(totalNode, 0);
+              return;
+            }
+
+            var rv = mountPoints.lookup(pathValue);
+            var pathResource = ((rv != null) && hddResources[rv]);
+
+            if (!pathResource) {
+              pathResource = {path:"/", sizeKBytes: 0, usagePercent: 0};
+            }
+
+            var totalGigs =
+              Math.floor(pathResource.sizeKBytes *
+                         (100 - pathResource.usagePercent) / 100 / Math.Mi);
+            updateTotal(totalNode, totalGigs);
+          }
+
+          resourcesObserver = dialog.observePotentialChanges(
+            function () {
+              maybeUpdateTotal(dbPath, dbTotal);
+              maybeUpdateTotal(ixPath, ixTotal);
+            });
+        }
       }
 
-      var sendStatus = $('#init-notifications-updates-enabled').is(':checked');
-      postWithValidationErrors(
-        '/settings/stats',
-        $.param({sendStats: sendStatus}),
-        function (errors, status) {
-          if (status != 'success') {
-            return reloadApp(function (reloader) {
-              alert('Failed to set update notifications settings. Check your network connection');
-              reloader();
-            });
-          }
-          onLeave();
-          SetupWizard.show("secure");
-        }
-      );
-    });
+      // cleans up all event handles
+      function onLeave() {
+        $('#step-2-next').unbind();
+        dialog.find('form').unbind();
+        if (resourcesObserver)
+          resourcesObserver.stopObserving();
+      }
 
-    // cleans up all event handles
-    function onLeave() {
-      dialog.find('a.more_info').unbind();
-      dialog.find('button.back').unbind();
-      dialog.find('button.next').unbind();
-      form.unbind();
+      function onSubmit(e) {
+        e.preventDefault();
+
+        dialog.find('.warning').hide();
+
+        var dbPath = dialog.find('[name=db_path]').val() || "";
+        var ixPath = dialog.find('[name=index_path]').val() || "";
+
+        var m = dialog.find('[name=dynamic-ram-quota]').val() || "";
+        if (m == "") {
+          m = "none";
+        }
+
+        var pathErrorsContainer = dialog.find('.init_cluster_dialog_errors_container');
+        var memoryErrorsContainer = $('#init_cluster_dialog_memory_errors_container');
+        pathErrorsContainer.hide();
+        memoryErrorsContainer.hide();
+
+        postWithValidationErrors('/nodes/' + node + '/controller/settings',
+                                 $.param({db_path: dbPath,
+                                          index_path: ixPath}),
+                                 afterDisk);
+
+        var diskArguments;
+
+        function afterDisk() {
+          // remember our arguments so that we can display validation
+          // errors later. We're doing that to display validation errors
+          // from memory quota and disk path posts simultaneously
+          diskArguments = arguments;
+          if ($('#no-join-cluster')[0].checked) {
+            postWithValidationErrors('/pools/default',
+                                     $.param({memoryQuota: m}),
+                                     memPost);
+            return;
+          }
+
+          if (handleDiskStatus.apply(null, diskArguments))
+            SetupWizard.doClusterJoin();
+        }
+
+        function handleDiskStatus(data, status) {
+          var ok = (status == 'success')
+          if (!ok) {
+            renderTemplate('join_cluster_dialog_errors', data, pathErrorsContainer[0]);
+            pathErrorsContainer.show();
+          }
+          return ok;
+        }
+
+        function memPost(data, status) {
+          var ok = handleDiskStatus.apply(null, diskArguments);
+
+          if (status == 'success') {
+            if (ok) {
+              BucketsSection.refreshBuckets();
+              SetupWizard.show("bucket_dialog");
+              onLeave();
+            }
+          } else {
+            memoryErrorsContainer.text(data.join(' and '));
+            memoryErrorsContainer.show();
+          }
+        }
+      }
+    },
+    update_notifications: function(node, pagePrefix, opt) {
+      var dialog = $('#init_update_notifications_dialog');
+      var form = dialog.find('form');
+      dialog.find('a.more_info').click(function(e) {
+        e.preventDefault();
+        dialog.find('p.more_info').slideToggle();
+      });
+      dialog.find('button.back').click(function (e) {
+        e.preventDefault();
+        onLeave();
+        SetupWizard.show("bucket_dialog");
+      });
+      // Go to next page. Send off email address if given and apply settings
+      dialog.find('button.next').click(function (e) {
+        e.preventDefault();
+        form.submit();
+      });
+      _.defer(function () {
+        try {
+          $('#init-join-community-email').need(1)[0].focus();
+        } catch (e) {
+        };
+      });
+      form.bind('submit', function (e) {
+        e.preventDefault();
+        var email = $.trim($('#init-join-community-email').val());
+        if (email !== '') {
+          // Send email address. We don't care if notifications were enabled
+          // or not.
+          $.ajax({
+            url: UpdatesNotificationsSection.remote.email,
+            dataType: 'jsonp',
+            data: {email: email},
+            success: function () {},
+            error: function () {}
+          });
+        }
+
+        var sendStatus = $('#init-notifications-updates-enabled').is(':checked');
+        postWithValidationErrors(
+          '/settings/stats',
+          $.param({sendStats: sendStatus}),
+          function (errors, status) {
+            if (status != 'success') {
+              return reloadApp(function (reloader) {
+                alert('Failed to set update notifications settings. Check your network connection');
+                reloader();
+              });
+            }
+            onLeave();
+            SetupWizard.show("secure");
+          }
+        );
+      });
+
+      // cleans up all event handles
+      function onLeave() {
+        dialog.find('a.more_info').unbind();
+        dialog.find('button.back').unbind();
+        dialog.find('button.next').unbind();
+        form.unbind();
+      }
     }
   }
 };
