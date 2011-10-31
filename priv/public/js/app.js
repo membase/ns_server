@@ -294,7 +294,72 @@ function loginFormSubmit() {
   return false;
 }
 
-var NodeDialog = {
+var SetupWizard = {
+  show: function(page, opt, isContinuation) {
+    opt = opt || {};
+
+    var pages = [ "welcome", "update_notifications", "cluster", "secure",
+      "bucket_dialog" ];
+
+    if (page == "")
+      page = "welcome";
+
+    for (var i = 0; i < pages.length; i++) {
+      if (page == pages[i]) {
+        var rv;
+        if (!isContinuation && SetupWizard["startPage_" + page]) {
+          rv = SetupWizard["startPage_" + page]('self', 'init_' + page, opt);
+        }
+        // if startPage is in continuation passing style, call it
+        // passing continuation and return.  This allows startPage to do
+        // async computation and then resume dialog page switching
+        if (rv instanceof Function) {
+          $('body, html').css('cursor', 'wait');
+
+          return rv(function () {
+
+            $('body, html').css('cursor', '');
+            // we don't pass real contination, we just call ourselves again
+            SetupWizard.show(page, opt, true);
+          });
+        }
+        $(document.body).addClass('init_' + page);
+        _.defer(function () {
+          var element = $('.focusme:visible').get(0)
+          if (!element) {
+            return;
+          }
+          try {element.focus();} catch (e) {}
+        });
+      }
+    }
+
+    $('.page-header')[page == 'done' ? 'show' : 'hide']();
+
+    if (page == 'done')
+      DAL.enableSections();
+
+    for (var i = 0; i < pages.length; i++) { // Hide in a 2nd loop for more UI stability.
+      if (page != pages[i]) {
+        $(document.body).removeClass('init_' + pages[i]);
+      }
+    }
+
+    if (page == 'done')
+      return;
+
+    var notices = [];
+    $('#notice_container > *').each(function () {
+      var text = $.data(this, 'notice-text');
+      if (!text)
+        return;
+      notices.push(text);
+    });
+    if (notices.length) {
+      $('#notice_container').empty();
+      alert(notices.join("\n\n"));
+    }
+  },
   panicAndReload: function() {
     alert('Failed to get initial setup data from server. Cannot continue.' +
           ' Would you like to attempt to reload the web console?  This may fail if the server is not running.');
@@ -351,7 +416,7 @@ var NodeDialog = {
       if (status != 'success') {
         $.ajax({type:'GET', url:'/nodes/self', dataType: 'json',
                 error: function () {
-                  NodeDialog.panicAndReload();
+                  SetupWizard.panicAndReload();
                 },
                 success: function (nodeData) {
                   data = {uri: '/pools/default/buckets',
@@ -374,13 +439,13 @@ var NodeDialog = {
                                             refreshBuckets: function (b) {b()},
                                             onSuccess: function () {
                                               dialog.cleanup();
-                                              showInitDialog('update_notifications');
+                                              SetupWizard.show('update_notifications');
                                             }});
       var cleanupBack = dialog.bindWithCleanup($('#step-init-bucket-back'),
                                                'click',
                                                function () {
                                                  dialog.cleanup();
-                                                 showInitDialog('cluster');
+                                                 SetupWizard.show('cluster');
                                                });
       dialog.cleanups.push(cleanupBack);
       dialog.startForm();
@@ -395,7 +460,7 @@ var NodeDialog = {
     });
     $(parentName + ' div.config-bottom button#step-4-back').click(function (e) {
       e.preventDefault();
-      showInitDialog("update_notifications");
+      SetupWizard.show("update_notifications");
     });
 
     var form = $(parentName + ' form').unbind('submit');
@@ -429,7 +494,7 @@ var NodeDialog = {
 
       SettingsSection.processSave(this, function (dialog) {
         DAL.performLogin(user, pw, function () {
-          showInitDialog('done');
+          SetupWizard.show('done');
 
           if (user != null && user != "") {
             $('.sign-out-link').show();
@@ -444,7 +509,7 @@ var NodeDialog = {
     $('#init_welcome_dialog input.next').click(function (e) {
       e.preventDefault();
 
-      showInitDialog("cluster");
+      SetupWizard.show("cluster");
     });
   },
 
@@ -464,7 +529,7 @@ var NodeDialog = {
 
     // we return function signaling that we're not yet ready to show
     // our page of wizard (no data to display in the form), but will
-    // be at one point. showInitDialog will call us immediately
+    // be at one point. SetupWizard.show() will call us immediately
     // passing us it's continuation. This is partial continuation to
     // be more precise
     return function (continueShowDialog) {
@@ -475,7 +540,7 @@ var NodeDialog = {
 
       function dataCallback(data, status) {
         if (status != 'success') {
-          return NodeDialog.panicAndReload();
+          return SetupWizard.panicAndReload();
         }
 
         // we have node data and can finally display our wizard page
@@ -619,7 +684,7 @@ var NodeDialog = {
         }
 
         if (handleDiskStatus.apply(null, diskArguments))
-          NodeDialog.doClusterJoin();
+          SetupWizard.doClusterJoin();
       }
 
       function handleDiskStatus(data, status) {
@@ -637,7 +702,7 @@ var NodeDialog = {
         if (status == 'success') {
           if (ok) {
             BucketsSection.refreshBuckets();
-            showInitDialog("bucket_dialog");
+            SetupWizard.show("bucket_dialog");
             onLeave();
           }
         } else {
@@ -657,7 +722,7 @@ var NodeDialog = {
     dialog.find('button.back').click(function (e) {
       e.preventDefault();
       onLeave();
-      showInitDialog("bucket_dialog");
+      SetupWizard.show("bucket_dialog");
     });
     // Go to next page. Send off email address if given and apply settings
     dialog.find('button.next').click(function (e) {
@@ -697,7 +762,7 @@ var NodeDialog = {
             });
           }
           onLeave();
-          showInitDialog("secure");
+          SetupWizard.show("secure");
         }
       );
     });
@@ -820,72 +885,6 @@ function showAbout() {
   updateVersion();
   showDialog('about_server_dialog',
       {title: $('#about_server_dialog .config-top').hide().html()});
-}
-
-function showInitDialog(page, opt, isContinuation) {
-  opt = opt || {};
-
-  var pages = [ "welcome", "update_notifications", "cluster", "secure",
-    "bucket_dialog" ];
-
-  if (page == "")
-    page = "welcome";
-
-  for (var i = 0; i < pages.length; i++) {
-    if (page == pages[i]) {
-      var rv;
-      if (!isContinuation && NodeDialog["startPage_" + page]) {
-        rv = NodeDialog["startPage_" + page]('self', 'init_' + page, opt);
-      }
-      // if startPage is in continuation passing style, call it
-      // passing continuation and return.  This allows startPage to do
-      // async computation and then resume dialog page switching
-      if (rv instanceof Function) {
-        $('body, html').css('cursor', 'wait');
-
-        return rv(function () {
-
-          $('body, html').css('cursor', '');
-          // we don't pass real contination, we just call ourselves again
-          showInitDialog(page, opt, true);
-        });
-      }
-      $(document.body).addClass('init_' + page);
-      _.defer(function () {
-        var element = $('.focusme:visible').get(0)
-        if (!element) {
-          return;
-        }
-        try {element.focus();} catch (e) {}
-      });
-    }
-  }
-
-  $('.page-header')[page == 'done' ? 'show' : 'hide']();
-
-  if (page == 'done')
-    DAL.enableSections();
-
-  for (var i = 0; i < pages.length; i++) { // Hide in a 2nd loop for more UI stability.
-    if (page != pages[i]) {
-      $(document.body).removeClass('init_' + pages[i]);
-    }
-  }
-
-  if (page == 'done')
-    return;
-
-  var notices = [];
-  $('#notice_container > *').each(function () {
-    var text = $.data(this, 'notice-text');
-    if (!text)
-      return;
-    notices.push(text);
-  });
-  if (notices.length) {
-    $('#notice_container').empty();
-    alert(notices.join("\n\n"));
-  }
 }
 
 function displayNotice(text, isError) {

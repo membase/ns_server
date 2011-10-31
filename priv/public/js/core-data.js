@@ -180,7 +180,7 @@ var DAL = {
 
     // If the cluster appears to be configured, then don't let user go
     // back through init dialog.
-    showInitDialog(provisioned ? 'done' : '');
+    SetupWizard.show(provisioned ? 'done' : '');
 
     return true;
   },
