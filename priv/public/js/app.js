@@ -334,8 +334,6 @@ var SetupWizard = {
       }
     }
 
-    $('.page-header')[page == 'done' ? 'show' : 'hide']();
-
     if (page == 'done')
       DAL.enableSections();
 
