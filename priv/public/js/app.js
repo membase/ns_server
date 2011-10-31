@@ -316,7 +316,7 @@ var SetupWizard = {
           return rv(function () {
 
             $('body, html').css('cursor', '');
-            // we don't pass real contination, we just call ourselves again
+            // we don't pass real continuation, we just call ourselves again
             SetupWizard.show(page, opt, true);
           });
         }
@@ -335,7 +335,8 @@ var SetupWizard = {
     if (page == 'done')
       DAL.enableSections();
 
-    for (var i = 0; i < pageNames.length; i++) { // Hide in a 2nd loop for more UI stability.
+    // Hiding other pages in a 2nd loop to prevent "flashing" between pages
+    for (var i = 0; i < pageNames.length; i++) {
       if (page != pageNames[i]) {
         $(document.body).removeClass('init_' + pageNames[i]);
       }
