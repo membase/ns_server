@@ -384,16 +384,32 @@ parse_bucket_params_for_setup_default_bucket(Params, ClusterStorageTotals) ->
     UsageGetter = fun (_, _) ->
                           0
                   end,
+    NodeCount = proplists:get_value(nodesCount, ClusterStorageTotals),
     RamTotals = proplists:get_value(ram, ClusterStorageTotals),
-    RV = parse_bucket_params_without_warnings(true,
-                                              "default",
+    OldQuotaUsed = proplists:get_value(quotaUsed, RamTotals),
+    NewQuotaUsed = OldQuotaUsed - (default_node_ram_quota() * NodeCount),
+    NewRamTotals = lists:keyreplace(quotaUsed, 1, RamTotals,
+                                    {quotaUsed, NewQuotaUsed}),
+    NewClusterTotals = lists:keyreplace(ram, 1, ClusterStorageTotals,
+                                        {ram, NewRamTotals}),
+
+    RV = parse_bucket_params_without_warnings(true, "default",
                                               [{"authType", "sasl"}, {"saslPassword", ""} | Params],
                                               [],
-                                              [{ram, [{quotaUsed, 0} | RamTotals]} | ClusterStorageTotals],
+                                              NewClusterTotals,
                                               UsageGetter),
     case RV of
         {ok, _, _} = X -> X;
         {errors, Errors, Summaries, _} -> {errors, Errors, Summaries}
+    end.
+
+default_node_ram_quota() ->
+    Buckets = ns_bucket:get_buckets(ns_config:get()),
+    case lists:keyfind("default", 1, Buckets) of
+        {"default", Props} ->
+            proplists:get_value(ram_quota, Props);
+        _ ->
+            0
     end.
 
 parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals) ->

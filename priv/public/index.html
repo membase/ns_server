@@ -595,7 +595,8 @@
                   <li class="tab_left"><a id="settings_update_notifications">Update Notifications</a></li>
                   <li><a id="settings_auto_failover">Auto-Failover</a></li>
                   <li><a id="settings_alerts">Alerts</a></li>
-                  <li class="tab_right"><a id="settings_compaction">Auto-Compaction</a></li>
+                  <li><a id="settings_compaction">Auto-Compaction</a></li>
+                  <li class="tab_right"><a id="settings_sample_buckets">Sample Buckets</a></li>
                 </ul>
               </div>
               <div class="panes clearfix">
@@ -670,6 +671,25 @@
                       Save
                     </button>
                   </div>
+                </form></div>
+                <div id="sample_buckets_container"><form id="sample_buckets_form">
+                  <p id="sample_buckets_warning" class="warning_message">
+                    Your cluster does not have enough RAM quota available to install
+                    these samples, please free at least
+                    <span id="sampleQuotaRequired"></span>MB of RAM.</p>
+                  <p>Sample buckets are available to demonstrate the power of
+                    Couchbase Server. These samples contain data and sample MapReduce
+                    queries.</p>
+                  <h3>Installed Samples</h3>
+                  <ul id="installed_samples"></ul>
+                  <h3>Available Samples</h3>
+                  <ul id="available_samples"></ul>
+                    <div class="save_cancel">
+                    <button class="save_button float_right" type="submit"
+                            id="sample_buckets_settings_btn">
+                      Create
+                    </button>
+                   </div>
                 </form></div>
               </div>
             </div>
@@ -2139,7 +2159,7 @@
   <div class="pad" id="init_cluster_dialog">
     <div class="config-top">
       <h1>Configure Server</h1>
-      <h2>Step <span class="current-step">1</span> of 4</h2>
+      <h2>Step <span class="current-step">1</span> of 5</h2>
     </div>
     <h2 class="question">Configure Disk Storage</h2>
     <div class="disk_setup_block">
@@ -2242,7 +2262,7 @@
   <div class="pad bucket_details really" id="init_bucket_dialog">
     <div class="config-top">
       <h1>Create Default Bucket</h1>
-      <h2>Step <span class="current-step">2</span> of 4</h2>
+      <h2>Step <span class="current-step">3</span> of 5</h2>
     </div>
     <form><div class="clearfix">
       <h2>Bucket Settings</h2>
@@ -2297,7 +2317,7 @@
   <div class="pad" id="init_update_notifications_dialog"><form>
     <div class="config-top">
       <h1>Notifications</h1>
-      <h2>Step <span class="current-step">3</span> of 4</h2>
+      <h2>Step <span class="current-step">4</span> of 5</h2>
     </div>
     <h2 class="question">Update Notifications</h2>
     <p class="pad_10">
@@ -2373,10 +2393,30 @@
     </div>
   </form></div>
   <!-- END init_update_notifications-->
+  <div class="pad" id="init_sample_buckets_dialog"><form>
+    <div class="config-top">
+      <h1>Sample Buckets</h1>
+      <h2>Step <span class="current-step">2</span> of 5</h2>
+    </div>
+    <h2 class="question">Sample Data and MapReduce</h2>
+    <p class="pad_10">
+      Sample buckets are available to demonstrate the power of Couchbase Server.
+      These samples contain data and sample MapReduce queries.
+    </p>
+    <h3>Installed Samples</h3>
+    <ul id="setup_installed_samples"></ul>
+    <h3>Available Samples</h3>
+    <ul id="setup_available_samples"></ul>
+    <div class="config-bottom">
+      <button name="next" value="Next" class="submit next direction-button" id="step-4-next" type="submit">Next</button>
+      <button name="back" value="Back" class="submit back direction-button" id="step-4-back" type="button">Back</button>
+    </div>
+  </form></div>
+  <!-- END init_sample_buckets_dialog -->
   <div class="pad" id="init_secure_dialog">
    <div class="config-top">
       <h1>Configure Server</h1>
-      <h2>Step <span class="current-step">4</span> of 4</h2>
+      <h2>Step <span class="current-step">5</span> of 5</h2>
     </div>
     <div class="alert_red" id="init_secure_failed_message" style="display:none;">
       <div class="al_text">
@@ -2409,8 +2449,8 @@
       </div>
       <!--button type="submit" style="display:none;"></button-->
     <div class="config-bottom">
-      <button name="finish" value="Finish" class="submit finish direction-button" id="step-4-finish" type="submit">Next</button>
-      <button name="back" value="Back" class="submit back direction-button" id="step-4-back" type="button">Back</button>
+      <button name="finish" value="Finish" class="submit finish direction-button" id="step-5-finish" type="submit">Next</button>
+      <button name="back" value="Back" class="submit back direction-button" id="step-5-back" type="button">Back</button>
     </div>
     </form>
   </div>

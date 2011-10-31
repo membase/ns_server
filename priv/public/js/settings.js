@@ -64,8 +64,10 @@ var SettingsSection = {
     AutoFailoverSection.init();
     EmailAlertsSection.init();
     AutoCompactionSection.init();
+    SampleBucketSection.init();
   },
   onEnter: function () {
+    SampleBucketSection.refresh();
     UpdatesNotificationsSection.refresh();
     AutoFailoverSection.refresh();
     EmailAlertsSection.refresh();
@@ -279,6 +281,132 @@ var UpdatesNotificationsSection = {
     this.onEnter();
   },
   onLeave: function () {
+  }
+};
+
+var SampleBucketSection = {
+
+  refresh: function() {
+
+    $.get('/sampleBuckets', function(buckets) {
+      var htmlName, tmp, installed = [], available = [];
+      _.each(buckets, function(bucket) {
+        htmlName = escapeHTML(bucket.name);
+        if (bucket.installed) {
+          installed.push('<li>' + htmlName + '</li>');
+        } else {
+          tmp = '<li><input type="checkbox" value="' + htmlName + '" id="sample-' +
+            htmlName + '" data-quotaNeeded="'+ bucket.quotaNeeded +
+            '" />&nbsp; <label for="sample-' + htmlName + '">' + htmlName +
+            '</label></li>';
+          available.push(tmp);
+        }
+      });
+
+      available = (available.length === 0) ?
+        '<li>There are no samples available to install.</li>' :
+        available.join('');
+
+      installed = (installed.length === 0) ?
+        '<li>There are no installed samples.</li>' :
+        installed.join('');
+
+      $('#installed_samples').html(installed);
+      $('#available_samples').html(available);
+    });
+
+  },
+  init: function() {
+
+    var self = this;
+    var processing = false;
+    var form = $("#sample_buckets_form");
+    var button = $("#sample_buckets_settings_btn");
+    var warning = $("#sample_buckets_warning");
+
+    var hasBuckets = false;
+    var quotaAvailable = false;
+    var numServers = false;
+
+    var checkedBuckets = function() {
+      return _.map($("#sample_buckets_form").find(':checked'), function(obj) {
+        return obj;
+      });
+    };
+
+    var maybeEnableCreateButton = function() {
+
+      if (processing || numServers === false || quotaAvailable === false) {
+        return;
+      }
+
+      var storageNeeded = _.reduce(checkedBuckets(), function(acc, obj) {
+        return acc + parseInt($(obj).data('quotaneeded'), 10);
+      }, 0) * numServers;
+      var isStorageAvailable = storageNeeded <= quotaAvailable;
+
+      if (!isStorageAvailable) {
+        $('#sampleQuotaRequired')
+          .text(Math.ceil((storageNeeded - quotaAvailable) / 1024 / 1024));
+        warning.show();
+      } else {
+        warning.hide();
+      }
+
+      if (hasBuckets && isStorageAvailable) {
+        button.removeAttr('disabled');
+      } else {
+        button.attr('disabled', true);
+      }
+    };
+
+    $('#sample_buckets_form').bind('change', function() {
+      hasBuckets = (checkedBuckets().length > 0);
+      maybeEnableCreateButton();
+    });
+
+    DAL.cells.serversCell.subscribeValue(function (servers) {
+      if (servers) {
+        numServers = servers.active.length;
+        maybeEnableCreateButton();
+      }
+    });
+
+    DAL.cells.currentPoolDetailsCell.subscribe(function(pool) {
+      var storage = pool.value.storageTotals;
+      quotaAvailable = storage.ram.quotaTotal - storage.ram.quotaUsed;
+      maybeEnableCreateButton();
+    });
+
+    form.bind('submit', function(e) {
+
+      processing = true;
+      button.attr('disabled', true).text('Loading');
+      e.preventDefault();
+
+      var buckets = JSON.stringify(_.map(checkedBuckets(), function(obj) {
+        return obj.value;
+      }));
+
+      postWithValidationErrors('/sampleBuckets/install', buckets, function(error, status) {
+        if (status === 'success') {
+          button.text('Create');
+          hasBuckets = processing = false;
+          SampleBucketSection.refresh();
+        } else {
+          var errReason = typeof error[0] === 'object' ? error[0].reason : 'Unknown Error';
+          button.text('Create');
+          hasBuckets = processing = false;
+          maybeEnableCreateButton();
+          genericDialog({
+            buttons: {ok: true},
+            header: 'Error',
+            textHTML: errReason
+          });
+        }
+      });
+
+    });
   }
 };
 

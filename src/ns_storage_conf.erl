@@ -295,6 +295,10 @@ extract_subprop(NodeInfos, Key, SubKey) ->
 do_cluster_storage_info([]) -> [];
 do_cluster_storage_info(NodeInfos) ->
     Config = ns_config:get(),
+    AllBuckets = ns_bucket:get_buckets(Config),
+    RAMQuotaUsed = lists:foldl(fun ({_, BucketConfig}, RAMQuota) ->
+                                       ns_bucket:ram_quota(BucketConfig) + RAMQuota
+                               end, 0, AllBuckets),
     StorageInfos = [extract_node_storage_info(NodeInfo, Node, Config)
                     || {Node, NodeInfo} <- NodeInfos],
     HddTotals = extract_subprop(StorageInfos, hdd, total),
@@ -302,6 +306,7 @@ do_cluster_storage_info(NodeInfos) ->
     PList1 = [{ram, [{total, lists:sum(extract_subprop(StorageInfos, ram, total))},
                      {quotaTotal, lists:sum(extract_subprop(StorageInfos, ram,
                                                             quotaTotal))},
+                     {quotaUsed, RAMQuotaUsed},
                      {used, lists:sum(extract_subprop(StorageInfos, ram, used))}
                     ]},
               {hdd, [{total, lists:sum(HddTotals)},
@@ -313,7 +318,7 @@ do_cluster_storage_info(NodeInfos) ->
                     ]}],
     AllNodes = ordsets:intersection(lists:sort(ns_node_disco:nodes_actual_proper()),
                                     lists:sort(proplists:get_keys(NodeInfos))),
-    AllBuckets = ns_bucket:get_buckets(Config),
+
     {BucketsRAMUsage, BucketsHDDUsage}
         = lists:foldl(fun ({Name, _}, {RAM, HDD}) ->
                               BasicStats = menelaus_stats:basic_stats(Name, AllNodes),

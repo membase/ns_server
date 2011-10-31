@@ -1185,4 +1185,16 @@ parse_version_test() ->
     ?assertEqual({[1,8,0],release,25},
                  parse_version("1.8.0-25-g1e1c2c0-enterprise")),
     ok.
+
+ceiling_test() ->
+    ?assertEqual(4, ceiling(4)),
+    ?assertEqual(4, ceiling(4.0)),
+    ?assertEqual(4, ceiling(3.99)),
+    ?assertEqual(4, ceiling(3.01)),
+    ?assertEqual(-4, ceiling(-4)),
+    ?assertEqual(-4, ceiling(-4.0)),
+    ?assertEqual(-4, ceiling(-4.99)),
+    ?assertEqual(-4, ceiling(-4.01)),
+    ok.
+
 -endif.

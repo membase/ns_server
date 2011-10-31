@@ -415,7 +415,9 @@ var SetupWizard = {
                     data = {uri: '/pools/default/buckets',
                             bucketType: 'membase',
                             authType: 'sasl',
-                            quota: { rawRAM: nodeData.storageTotals.ram.quotaTotal },
+                            quota: {
+                              rawRAM: nodeData.storageTotals.ram.quotaTotal -
+                                nodeData.storageTotals.ram.quotaUsed},
                             replicaNumber: 1};
                     continuation(data, 'success');
                   }});
@@ -438,7 +440,7 @@ var SetupWizard = {
                                                  'click',
                                                  function () {
                                                    dialog.cleanup();
-                                                   SetupWizard.show('cluster');
+                                                   SetupWizard.show('sample_buckets');
                                                  });
         dialog.cleanups.push(cleanupBack);
         dialog.startForm();
@@ -447,11 +449,11 @@ var SetupWizard = {
     secure: function(node, pagePrefix, opt) {
       var parentName = '#' + pagePrefix + '_dialog';
 
-      $(parentName + ' div.config-bottom button#step-4-finish').unbind('click').click(function (e) {
+      $(parentName + ' div.config-bottom button#step-5-finish').unbind('click').click(function (e) {
         e.preventDefault();
         $('#init_secure_form').submit();
       });
-      $(parentName + ' div.config-bottom button#step-4-back').unbind('click').click(function (e) {
+      $(parentName + ' div.config-bottom button#step-5-back').unbind('click').click(function (e) {
         e.preventDefault();
         SetupWizard.show("update_notifications");
       });
@@ -501,7 +503,6 @@ var SetupWizard = {
     welcome: function(node, pagePrefix, opt) {
       $('#init_welcome_dialog input.next').click(function (e) {
         e.preventDefault();
-
         SetupWizard.show("cluster");
       });
     },
@@ -705,7 +706,7 @@ var SetupWizard = {
           if (status == 'success') {
             if (ok) {
               BucketsSection.refreshBuckets();
-              SetupWizard.show("bucket_dialog");
+              SetupWizard.show("sample_buckets");
               onLeave();
             }
           } else {
@@ -897,6 +898,101 @@ var SetupWizard = {
           formObserver.stopObserving();
         }
       }
+    },
+
+    sample_buckets: function(node, pagePrefix, opt) {
+
+      var spinner;
+      var timeout = setTimeout(function() {
+        spinner = overlayWithSpinner($('#init_sample_buckets_dialog'), '#EEE');
+      }, 20);
+
+      var dialog = $('#init_sample_buckets_dialog');
+      var back = dialog.find('button.back');
+      var next = dialog.find('button.next');
+
+      function checkedBuckets() {
+        return _.map(dialog.find(':checked'), function(obj) {
+          return $(obj).val();
+        });
+      }
+
+      function enableForm() {
+        dialog.add(next).add(back).css('cursor', 'auto').attr('disabled', false);
+      }
+
+      back.unbind('click').click(function (e) {
+        e.preventDefault();
+        SetupWizard.show('cluster');
+      });
+
+      next.unbind('click').click(function (e) {
+
+        e.preventDefault();
+        dialog.add(next).add(back).css('cursor', 'wait').attr('disabled', true);
+
+        var complete = function() {
+          enableForm();
+          SetupWizard.show("bucket_dialog");
+        };
+
+        var buckets = checkedBuckets();
+        var json = JSON.stringify(buckets);
+
+        if (buckets.length === 0) {
+          complete();
+          return;
+        }
+
+        postWithValidationErrors('/sampleBuckets/install', json, function(error, status) {
+          if (status === 'success') {
+            complete();
+          } else {
+            var errReason = typeof error[0] === 'object' ? error[0].reason : 'Unknown Error';
+            enableForm();
+            genericDialog({
+              buttons: {ok: true},
+              header: 'Error',
+              textHTML: errReason
+            });
+          }
+        });
+      });
+
+      $.get('/sampleBuckets', function(buckets) {
+        var tmp, htmlName, installed = [], available = [];
+        _.each(buckets, function(bucket) {
+          htmlName = escapeHTML(bucket.name);
+          if (bucket.installed) {
+            installed.push('<li>' + htmlName + '</li>');
+          } else {
+            tmp = '<li><input type="checkbox" value="' + htmlName +
+              '" id="setup-sample-' + htmlName + '" />&nbsp; ' +
+              '<label for="setup-sample-' + htmlName + '">' +
+              htmlName + '</label></li>';
+            available.push(tmp);
+          }
+        });
+
+        available = (available.length === 0) ?
+          '<li>There are no samples available to install.</li>' :
+          available.join('');
+
+        installed = (installed.length === 0) ?
+          '<li>There are no installed samples.</li>' :
+          installed.join('');
+
+        $('#setup_installed_samples').html(installed);
+        $('#setup_available_samples').html(available);
+
+        enableForm();
+
+        clearTimeout(timeout);
+        if (spinner) {
+          spinner.remove();
+        }
+      });
+
     }
   }
 };

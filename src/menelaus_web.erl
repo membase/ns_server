@@ -213,12 +213,15 @@ loop(Req, AppRoot, DocRoot) ->
                                  {done, Req:serve_file(Path, AppRoot,
                                                        [{"Cache-Control", "max-age=30000000"}])};
                              ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
+                             ["sampleBuckets"] -> {auth, fun handle_sample_buckets/1};
                              _ ->
                                  {done, Req:serve_file(Path, AppRoot,
                                   [{"Cache-Control", "max-age=10"}])}
                         end;
                      'POST' ->
                          case PathTokens of
+                             ["sampleBuckets", "install"] ->
+                                 {auth, fun handle_post_sample_buckets/1};
                              ["engageCluster2"] ->
                                  {auth, fun handle_engage_cluster2/1};
                              ["completeJoin"] ->
@@ -353,6 +356,151 @@ loop(Req, AppRoot, DocRoot) ->
 
 
 %% Internal API
+-define(SAMPLE_TIMEOUT, 30000).
+-define(SAMPLE_BUCKET_QUOTA, 1024 * 1024 * 100).
+
+handle_sample_buckets(Req) ->
+
+    Buckets = [Bucket || {Bucket, _} <- ns_bucket:get_buckets(ns_config:get())],
+
+    Map = [ begin
+                Name = filename:basename(Path, ".zip"),
+                Installed = lists:member(Name, Buckets),
+                {struct, [{name, list_to_binary(Name)},
+                          {installed, Installed},
+                          {quotaNeeded, ?SAMPLE_BUCKET_QUOTA}]}
+            end || Path <- list_sample_files() ],
+
+    reply_json(Req, Map).
+
+
+handle_post_sample_buckets(Req) ->
+
+    Samples = mochijson2:decode(Req:recv_body()),
+    Pid = spawn(fun() -> install_samples(Samples) end),
+    Ref = erlang:monitor(process, Pid),
+
+    Error = fun(Type, Reason) ->
+                    {struct, [{error, true}, {type, Type}, {reason, Reason}]}
+            end,
+
+    receive
+        {'DOWN', Ref, process, Pid, normal} ->
+            reply_json(Req, {struct, [{ok, true}]}, 200);
+        {'DOWN', Ref, process, Pid, {error, Type, Reason}} ->
+            reply_json(Req, Error(Type, Reason), 400);
+        {'DOWN', Ref, process, Pid, Reason} ->
+            ?log_error("Sample bucket failed unexpectedly with reason: ~p", [Reason]),
+            reply_json(Req, Error(unknown_error, <<"There was an unexpected error.">>), 500)
+    after
+        ?SAMPLE_TIMEOUT ->
+            ?log_error("Loading sample buckets timed out", []),
+            erlang:exit(Pid, timeout),
+            reply_json(Req, Error(timeout, <<"Timeout installing sample buckets">>), 500)
+    end.
+
+
+install_samples(Samples) ->
+
+    {_Name, Host} = misc:node_name_host(node()),
+    Port = misc:node_rest_port(ns_config:get(), node()),
+    BinDir = path_config:component_path(bin),
+
+    ok = check_valid_samples(Samples),
+    ok = check_quota(Samples),
+
+    case ns_config:search_prop(ns_config:get(), rest_creds, creds, []) of
+        [] ->
+            ok;
+        [{UserName, Attrs}] ->
+            {password, Password} = lists:keyfind(password, 1, Attrs),
+            os:putenv("REST_USERNAME", UserName),
+            os:putenv("REST_PASSWORD", Password)
+    end,
+
+    [begin
+         Ram = misc:ceiling(?SAMPLE_BUCKET_QUOTA / 1024 / 1024),
+         Cmd = BinDir ++ "/docloader",
+         Args = ["-n", Host ++ ":" ++ integer_to_list(Port),
+                 "-b", File,
+                 "-s", integer_to_list(Ram),
+                 filename:join([BinDir, "..", "samples", binary_to_list(File) ++ ".zip"])],
+
+         Pid = open_port({spawn_executable, Cmd}, [exit_status,
+                                                   {args, Args},
+                                                   stderr_to_stdout]),
+         case wait_for_exit(Pid, []) of
+             {0, _Data} ->
+                 ok;
+             {Status, Data} ->
+                 ?log_error("docloader failed unexpectedly: status: ~p, msgs: ~p",
+                            [Status, Data]),
+                 exit({error, docloader_failed, <<"There was an unexpected error.">>})
+         end
+
+     end || File <- Samples],
+
+    ok.
+
+
+list_sample_files() ->
+    BinDir = path_config:component_path(bin),
+    filelib:wildcard(filename:join([BinDir, "..", "samples", "*.zip"])).
+
+
+sample_exists(Name) ->
+    BinDir = path_config:component_path(bin),
+    filelib:is_file(filename:join([BinDir, "..", "samples", binary_to_list(Name) ++ ".zip"])).
+
+
+check_quota(Samples) ->
+
+    NodesCount = length(ns_cluster_membership:active_nodes()),
+    StorageInfo = ns_storage_conf:cluster_storage_info(),
+    RamQuotas = proplists:get_value(ram, StorageInfo),
+    QuotaUsed = proplists:get_value(quotaUsed, RamQuotas),
+    QuotaTotal = proplists:get_value(quotaTotal, RamQuotas),
+    Required = ?SAMPLE_BUCKET_QUOTA * erlang:length(Samples),
+
+    case (QuotaTotal - QuotaUsed) <  (Required * NodesCount) of
+        true ->
+            Err = ["Not enough Quota, you need to allocate ", format_MB(Required),
+                   " to install sample buckets"],
+            exit({error, not_enough_quota, list_to_binary(Err)});
+        false -> ok
+    end.
+
+
+check_valid_samples(Samples) ->
+    [begin
+         case ns_bucket:name_conflict(binary_to_list(Name)) of
+             true ->
+                 Err1 = ["Sample bucket ", Name, " is already loaded"],
+                 exit({error, bucket_exists, list_to_binary(Err1)});
+             _ -> ok
+         end,
+         case sample_exists(Name) of
+             false ->
+                 Err2 = ["Sample ", Name, " is not a valid sample"],
+                 exit({error, invalid_sample, list_to_binary(Err2)});
+             _ -> ok
+         end
+     end || Name <- Samples],
+    ok.
+
+
+wait_for_exit(Pid, Acc) ->
+    receive
+        {_Port, {exit_status, Status}} ->
+            {Status, Acc};
+        Msg ->
+            wait_for_exit(Pid, [Msg | Acc])
+    end.
+
+
+format_MB(X) ->
+    integer_to_list(misc:ceiling(X / 1024 / 1024)) ++ "MB".
+
 
 implementation_version() ->
     list_to_binary(proplists:get_value(ns_server, ns_info:version(), "unknown")).
