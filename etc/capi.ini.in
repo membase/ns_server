@@ -24,6 +24,10 @@ checkpoint_after = 20971520
 compaction_daemon =
 replication_manager =
 
+; Not using these in couchbase
+stats_aggregator =
+stats_collector =
+
 [compaction_daemon]
 check_interval = 60
 min_file_size = 131072
