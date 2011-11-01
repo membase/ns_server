@@ -54,7 +54,7 @@ var ReplicationsModel = {};
     var name2hostport = v.need(remoteClustersListHostPort);
     return _.map(v.need(rawReplicationInfos).rows, function (r) {
       var info = r.value;
-      var fields = info._replication_fields;
+      var fields = info.replication_fields;
       if (!fields) {
         return info;
       }
