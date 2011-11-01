@@ -129,7 +129,12 @@ init(_) ->
 
     % Subscribe to bucket map changes due to rebalance and failover operations
     % at the source
-    ns_pubsub:subscribe(ns_config_events),
+    NsConfigEventsHandler = fun ({buckets, _} = Evt, _Acc) ->
+                                    Server ! Evt;
+                                (_, Acc) ->
+                                    Acc
+                            end,
+    ns_pubsub:subscribe(ns_config_events, NsConfigEventsHandler, []),
 
     % Periodically check whether any Couch replications have failed due to
     % errors and, if so, restart them. Among other reasons, Couch replications
@@ -222,9 +227,17 @@ handle_cast(Msg, State) ->
     ?log_error("replication manager received unexpected cast ~p", [Msg]),
     {stop, {error, {unexpected_cast, Msg}}, State}.
 
+consume_all_buckets_changes(Buckets) ->
+    receive
+        {buckets, NewerBuckets} ->
+            consume_all_buckets_changes(NewerBuckets)
+    after 0 ->
+            Buckets
+    end.
 
-handle_info({buckets, Buckets}, State) ->
+handle_info({buckets, Buckets0}, State) ->
     % The source vbucket map changed
+    Buckets = consume_all_buckets_changes(Buckets0),
     maybe_adjust_all_replications(proplists:get_value(configs, Buckets)),
     {noreply, State};
 
