@@ -63,7 +63,7 @@ var DocumentsSection = {
         return;
       }
 
-      couchReq('GET', buildURL('/couchBase/', self.bucketName, id), null, function() {
+      couchReq('GET', buildDocURL(buildURL('/couchBase/', self.bucketName), id), null, function() {
         lookupInp.val('');
         document.location.href = '#sec=edit_doc&bucketName=' +
           encodeURIComponent(self.bucketName) + '&docId=' + encodeURIComponent(id);
@@ -298,7 +298,7 @@ var EditDocumentSection = {
       .needing(dbUrl, docId)
       .compute(function (v, dbUrl, docId) {
         self.docIdVal = docId;
-        return future.get({url: dbUrl + '/' + encodeURIComponent(docId)});
+        return future.get({url: buildDocURL(dbUrl, docId)});
       });
 
     self.jsonCodeEditor = CodeMirror.fromTextArea($("#json_doc")[0], {
