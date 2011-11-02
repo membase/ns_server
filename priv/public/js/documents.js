@@ -298,8 +298,7 @@ var EditDocumentSection = {
       .needing(dbUrl, docId)
       .compute(function (v, dbUrl, docId) {
         self.docIdVal = docId;
-        return future.get({url: dbUrl + '/' + encodeURIComponent(docId) +
-                           '?attachments=true'});
+        return future.get({url: dbUrl + '/' + encodeURIComponent(docId)});
       });
 
     self.jsonCodeEditor = CodeMirror.fromTextArea($("#json_doc")[0], {
