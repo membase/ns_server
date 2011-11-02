@@ -24,6 +24,11 @@ function buildDocURL(base, docId/*, ..args */) {
     return Cell.applyFunctionWithResolvedValues(buildDocURL, this, args);
   }
 
+  if (base.charAt(base.length-1) !== '/') {
+    args[0] += '/'; // NOTE: this is base but it's used as part of
+                    // args
+  }
+
   if (docId.slice(0, "_design/".length) === "_design/") {
     args.splice(1, 1, "_design", docId.slice("_design/".length));
   } else if (docId.slice(0, "_local/".length) === "_local/") {
