@@ -15,6 +15,11 @@ base_api_port = 9000
 base_couch_port = 9500
 base_mccouch_port = 13000
 
+LOGGERS = ["default", "couchdb", "ns_server",
+           "error_logger", "user", "menelaus",
+           "ns_doctor", "stats", "rebalance", "cluster"]
+
+LOGLEVELS = ["debug", "info", "warn", "error", "critical"]
 
 def setup_path():
     def ebin_search(path):
@@ -100,7 +105,7 @@ def start_cluster(num_nodes, start_index, host, extra_args):
 def usage():
     sys.exit("Usage: {0} [--nodes=N] [--dont-rename] [--dont-start] "
              "[--interactive] [--static-cookie] [--start-index=N] "
-             "[--static-cookie] [--host=H] "
+             "[--static-cookie] [--host=H] [--loglevel=L] "
              "[ns_server args]".format(sys.argv[0]))
 
 def maybe_spawn_epmd():
@@ -124,7 +129,11 @@ def find_primary_addr():
 
 def main():
     try:
-        optlist, args = getopt.gnu_getopt(sys.argv[1:], "hn:i", ["help", "start-index=", "nodes=", "dont-rename", "interactive", "static-cookie", "dont-start", "host="])
+        optlist, args = getopt.gnu_getopt(sys.argv[1:], "hn:i",
+                                          ["help", "start-index=", "nodes=",
+                                           "dont-rename", "interactive",
+                                           "static-cookie", "dont-start",
+                                           "host=", "loglevel="])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -138,6 +147,7 @@ def main():
     start_index = 0
     num_nodes = 1
     host = "127.0.0.1"
+    loglevel = None
 
     for o, a in optlist:
         if o in ("--nodes", "-n"):
@@ -157,6 +167,8 @@ def main():
             exit(0)
         elif o in("--static-cookie"):
             static_cookie = True
+        elif o == '--loglevel':
+            loglevel = a
         else:
             assert False, "unhandled options"
 
@@ -202,6 +214,14 @@ def main():
 
     if not interactive_shell:
         extra_args += ["-noinput"]
+
+    if loglevel is not None:
+        if loglevel not in LOGLEVELS:
+            print "Valid log levels are the following: %s" % ', '.join(LOGLEVELS)
+            sys.exit(1)
+
+        for logger in LOGGERS:
+            extra_args += ["-ns_server", "loglevel_%s" % logger, loglevel]
 
     nodes = start_cluster(num_nodes, start_index, host, extra_args)
 
