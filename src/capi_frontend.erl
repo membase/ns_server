@@ -103,8 +103,10 @@ update_doc(#db{filepath = undefined, name = Name} = Db,
             throw(Error)
     end;
 
-update_doc(#db{filepath = undefined} = Db,
-           Doc, Options, replicated_changes) ->
+update_doc(Db, Doc, Options, interactive_edit) ->
+    couch_db:update_doc(Db, Doc, Options, interactive_edit);
+
+update_doc(Db, Doc, Options, replicated_changes) ->
     Result =
         try
             capi_replication:update_replicated_doc(Db, Doc, Options)
@@ -113,16 +115,12 @@ update_doc(#db{filepath = undefined} = Db,
                 exit(not_implemented(update_doc,
                                      [Db, Doc, Options, replicated_changes]))
         end,
-    Result;
-
-update_doc(Db, Doc, Options, UpdateType) ->
-    couch_db:update_doc(Db, Doc, Options, UpdateType).
+    Result.
 
 update_docs(Db, Docs, Options) ->
     update_docs(Db, Docs, Options, interactive_edit).
 
-update_docs(#db{filepath = undefined} = Db,
-            Docs, Options, replicated_changes) ->
+update_docs(Db, Docs, Options, replicated_changes) ->
     Result =
         try
             capi_replication:update_replicated_docs(Db, Docs, Options)
@@ -132,7 +130,8 @@ update_docs(#db{filepath = undefined} = Db,
                                      [Db, Docs, Options, replicated_changes]))
         end,
     Result;
-update_docs(#db{filepath = undefined} = Db, Docs, Options, Type) ->
+update_docs(#db{filepath = undefined} = Db,
+            Docs, Options, interactive_edit = Type) ->
     {DesignDocs, [] = NormalDocs} =
         lists:partition(fun (#doc{id = <<"_design/", _/binary>>}) -> true;
                             (_) -> false
@@ -148,7 +147,7 @@ update_docs(#db{filepath = undefined} = Db, Docs, Options, Type) ->
             %% TODO: work out error handling here
             Error
     end;
-update_docs(Db, Docs, Options, Type) ->
+update_docs(Db, Docs, Options, interactive_edit = Type) ->
     couch_db:update_docs(Db, Docs, Options, Type).
 
 
@@ -283,8 +282,7 @@ purge_docs(Db, IdsRevs) ->
     %% couch_db:purge_docs(Db, IdsRevs).
     exit(not_implemented(purge_docs, [Db, IdsRevs])).
 
-get_missing_revs(#db{filepath = undefined} = Db,
-                 JsonDocIdRevs) ->
+get_missing_revs(Db, JsonDocIdRevs) ->
     Result =
         try
             capi_replication:get_missing_revs(Db, JsonDocIdRevs)
@@ -293,9 +291,7 @@ get_missing_revs(#db{filepath = undefined} = Db,
                 exit(not_implemented(get_missing_revs, [Db, JsonDocIdRevs]))
         end,
 
-    Result;
-get_missing_revs(Db, JsonDocIdRevs) ->
-    exit(not_implemented(get_missing_revs, [Db, JsonDocIdRevs])).
+    Result.
 
 set_security(Db, SecurityObj) ->
     exit(not_implemented(set_security, [Db, SecurityObj])).

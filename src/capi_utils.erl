@@ -58,7 +58,21 @@ capi_bucket_url(Node, BucketName, LocalAddr, Config) ->
 capi_bucket_url(Node, BucketName, LocalAddr) ->
     capi_bucket_url(Node, BucketName, LocalAddr, ns_config:get()).
 
-get_meta(Bucket, VBucket, DocId, UserCtx) ->
+get_meta(Bucket, VBucket, DocId, #db{} = Db) ->
+    WithDb =
+        fun (Fn) ->
+                Fn(Db)
+        end,
+    do_get_meta(Bucket, VBucket, DocId, WithDb);
+
+get_meta(Bucket, VBucket, DocId, #user_ctx{} = UserCtx) ->
+    WithDb =
+        fun (Fn) ->
+                capi_frontend:with_subdb(Bucket, VBucket, UserCtx, Fn)
+        end,
+    do_get_meta(Bucket, VBucket, DocId, WithDb).
+
+do_get_meta(Bucket, VBucket, DocId, WithDb) ->
     case ns_memcached:get_meta(Bucket, DocId, VBucket) of
         {ok, _Header, #mc_entry{cas=CAS} = _Entry, {revid, Rev}} ->
             %% TODO: deleted flag
@@ -66,8 +80,7 @@ get_meta(Bucket, VBucket, DocId, UserCtx) ->
         {memcached_error, not_my_vbucket, _} ->
             {error, not_my_vbucket};
         {memcached_error, key_enoent, _} ->
-            capi_frontend:with_subdb(
-              Bucket, VBucket, UserCtx,
+            WithDb(
               fun (Db) ->
                       case couch_db:open_doc(Db, DocId, [deleted]) of
                           {ok, Doc} ->
@@ -89,3 +102,13 @@ doc_to_mc_value({[]}, [#att{name = <<"value">>, data = Data}]) ->
     Data;
 doc_to_mc_value(_, _) ->
     throw(unsupported).
+
+split_dbname(DbName) ->
+    DbNameStr = binary_to_list(DbName),
+    Tokens = string:tokens(DbNameStr, [$/]),
+    build_info(Tokens, []).
+
+build_info([VBucketStr], R) ->
+    {lists:append(lists:reverse(R)), list_to_integer(VBucketStr)};
+build_info([H|T], R)->
+    build_info(T, [H|R]).
