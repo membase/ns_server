@@ -23,6 +23,8 @@
 
 -define(MAX_MOVES_PER_NODE, 1).
 
+-define(REQUIRED_MODULES, [ns_single_vbucket_mover]).
+
 %% API
 -export([start_link/4, stop/1]).
 
@@ -75,6 +77,8 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
     erlang:put(bucket_name, Bucket),
     erlang:put(total_changes, 0),
     erlang:put(actual_changes, 0),
+
+    load_modules(NewMap),
 
     ?rebalance_info("Starting movers with new map =~n~p", [NewMap]),
     %% Dictionary mapping old node to vbucket and new node
@@ -341,3 +345,25 @@ sync_replicas() ->
             inc_counter(total_changes, length(Changes)),
             inc_counter(actual_changes, ActualCount)
     end.
+
+%% Load module on all the nodes.
+do_load_module(Module, Nodes) ->
+    {Module, Binary, Filename} = code:get_object_code(Module),
+
+    lists:foreach(
+      fun (Node) ->
+              %% Filename is used only for informational purposes so it does not
+              %% matter whether the path exists on the remote node at all.
+              {module, Module} = rpc:call(Node, code, load_binary,
+                                          [Module, Filename, Binary])
+      end, Nodes).
+
+load_modules(Map, Modules) ->
+    Nodes = lists:usort(lists:map(fun hd/1, Map)),
+    lists:foreach(
+      fun (Module) ->
+              do_load_module(Module, Nodes)
+      end, Modules).
+
+load_modules(Map) ->
+    load_modules(Map, ?REQUIRED_MODULES).
