@@ -30,8 +30,7 @@ open_doc(#db{name = Name, user_ctx = UserCtx}, DocId, Options) ->
     get(Name, DocId, UserCtx, Options).
 
 update_doc(_Db, #doc{id = <<?LOCAL_DOC_PREFIX, _/binary>>}, _Options) ->
-    Rev = {1, encode_revid(cas(), <<>>, 0)},
-    {ok, Rev};
+    {ok, {0, <<"1">>}};
 
 update_doc(#db{name = Name, user_ctx = UserCtx},
            #doc{id = DocId, revs = {SeqNo, [RevId|_]}, deleted = true},
