@@ -762,9 +762,7 @@ var SetupWizard = {
 
       // cleans up all event handles
       function onLeave() {
-        dialog.find('a.more_info').unbind();
-        dialog.find('button.back').unbind();
-        dialog.find('button.next').unbind();
+        dialog.find('a.more_info, button.back, button.next').unbind();
         form.unbind();
       }
     }
