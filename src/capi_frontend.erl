@@ -83,6 +83,10 @@ with_subdb(Db, VBucket, Fun) ->
 update_doc(Db, Doc, Options) ->
     update_doc(Db, Doc, Options, interactive_edit).
 
+update_doc(_Db, #doc{id = <<?LOCAL_DOC_PREFIX, _/binary>>},
+           _Options, interactive_edit) ->
+    {ok, {0, <<"1">>}};
+
 update_doc(#db{filepath = undefined} = Db, #doc{id = <<"_design/",_/binary>>} = Doc, Options, UpdateType) ->
     with_subdb(Db, <<"master">>,
                fun (RealDb) ->
@@ -319,6 +323,9 @@ open_doc_revs(#db{filepath = undefined} = Db, DocId, Revs, Options) ->
 open_doc_revs(Db, DocId, Revs, Options) ->
     couch_db:open_doc_revs(Db, DocId, Revs, Options).
 
+
+open_doc(_Db, <<?LOCAL_DOC_PREFIX, _/binary>>, _Options) ->
+    {not_found, missing};
 
 open_doc(#db{filepath = undefined} = Db, <<"_design/",_/binary>> = DocId, Options) ->
     with_subdb(Db, <<"master">>, fun (RealDb) ->

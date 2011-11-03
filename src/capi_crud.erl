@@ -23,14 +23,8 @@
 -export([open_doc/3, update_doc/3]).
 
 -spec open_doc(#db{}, binary(), list()) -> any().
-open_doc(_Db, <<?LOCAL_DOC_PREFIX, _/binary>>, _Options) ->
-    {not_found, missing};
-
 open_doc(#db{name = Name, user_ctx = UserCtx}, DocId, Options) ->
     get(Name, DocId, UserCtx, Options).
-
-update_doc(_Db, #doc{id = <<?LOCAL_DOC_PREFIX, _/binary>>}, _Options) ->
-    {ok, {0, <<"1">>}};
 
 update_doc(#db{name = Name, user_ctx = UserCtx},
            #doc{id = DocId, revs = {SeqNo, [RevId|_]}, deleted = true},
