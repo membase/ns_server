@@ -98,7 +98,10 @@ def start_cluster(num_nodes, start_index, host, extra_args):
     return [start_node(i + start_index) for i in xrange(num_nodes)]
 
 def usage():
-    sys.exit("Usage: {0} [--nodes=N] [--dont-rename] [--dont-start] [--interactive] [--static-cookie] [ns_server args]".format(sys.argv[0]))
+    sys.exit("Usage: {0} [--nodes=N] [--dont-rename] [--dont-start] "
+             "[--interactive] [--static-cookie] [--start-index=N] "
+             "[--static-cookie] [--host=H] "
+             "[ns_server args]".format(sys.argv[0]))
 
 def maybe_spawn_epmd():
     try:
