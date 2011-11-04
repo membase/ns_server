@@ -146,13 +146,15 @@ compact_loop(Parent) ->
                         {Index + 1, Acc}
                     end
                 end,
-                {0, []}, couch_util:get_value(map, Config)),
+                {0, []}, couch_util:get_value(map, Config, [])),
             NameBin = ?l2b(Name),
             {NameBin, VbNames, bucket_compact_config(NameBin)}
         end,
         CouchbaseBuckets),
     lists:foreach(
-        fun({_BucketName, _VbNames, nil}) ->
+        fun({_BucketName, _VbNames = [], _}) ->
+            ok;
+        ({_BucketName, _VbNames, nil}) ->
             ok;
         ({BucketName, VbNames, {ok, Config}}) ->
             MasterDbName = <<BucketName/binary, "/master">>,
