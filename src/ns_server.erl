@@ -17,7 +17,7 @@
 
 -behavior(application).
 
--export([start/2, stop/1]).
+-export([start/2, stop/1, get_loglevel/1]).
 
 -include("ns_common.hrl").
 -include_lib("ale/include/ale.hrl").

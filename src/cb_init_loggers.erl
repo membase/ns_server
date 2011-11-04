@@ -13,14 +13,31 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
--module(cb_suppress_loggers).
+-module(cb_init_loggers).
 
 -export([start_link/0]).
 
 start_link() ->
     supress_loggers(),
+    set_couchdb_loglevel(),
     ignore.
 
 supress_loggers() ->
     error_logger:delete_report_handler(error_logger_tty_h),
     error_logger:delete_report_handler(sasl_report_tty_h).
+
+set_couchdb_loglevel() ->
+    LogLevel = ns_server:get_loglevel(couchdb),
+    CouchLogLevel = ns_server_to_couchdb_loglevel(LogLevel),
+    couch_config:set("log", "level", CouchLogLevel).
+
+ns_server_to_couchdb_loglevel(debug) ->
+    "debug";
+ns_server_to_couchdb_loglevel(info) ->
+    "info";
+ns_server_to_couchdb_loglevel(warn) ->
+    "error";
+ns_server_to_couchdb_loglevel(error) ->
+    "error";
+ns_server_to_couchdb_loglevel(critical) ->
+    "error".
