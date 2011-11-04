@@ -33,27 +33,37 @@ start_link() ->
 
 %% supervisor callbacks
 
+-define(SUBSCRIPTION_SPEC_NAME, buckets_observing_subscription).
+
 init([]) ->
-    ns_pubsub:subscribe(
-      ns_config_events,
-      fun (Event, State) ->
-              case Event of
-                  {buckets, L} ->
-                      Buckets = ns_bucket:node_bucket_names(node(),
-                                                            proplists:get_value(configs, L, [])),
-                      work_queue:submit_work(ns_bucket_worker,
-                                             fun () ->
-                                                     update_childs(Buckets)
-                                             end);
-                  _ -> ok
-              end,
-              State
-      end, undefined),
+    SubscriptionChild = {?SUBSCRIPTION_SPEC_NAME,
+                         {misc, start_event_link, [fun subscribe_on_config_events/0]},
+                         permanent, 1000, worker, []},
     {ok, {{one_for_one, 3, 10},
-          lists:flatmap(fun child_specs/1,
-                        ns_bucket:node_bucket_names(node()))}}.
+          [SubscriptionChild]}}.
 
 %% Internal functions
+
+ns_config_event_handler_body({buckets, RawBuckets}, State) ->
+    Buckets = ns_bucket:node_bucket_names(node(),
+                                          proplists:get_value(configs, RawBuckets, [])),
+    ?log_debug("~nRawBuckets: ~p", [RawBuckets]),
+    ?log_debug("~nBuckets: ~p", [Buckets]),
+    work_queue:submit_work(ns_bucket_worker,
+                           fun () ->
+                                   update_childs(Buckets)
+                           end),
+    State;
+ns_config_event_handler_body(_, _State) ->
+    ignored.
+
+
+subscribe_on_config_events() ->
+    ns_pubsub:subscribe(
+      ns_config_events,
+      fun ns_config_event_handler_body/2, undefined),
+    undefined = ns_config_event_handler_body({buckets, [{configs, ns_bucket:get_buckets()}]}, undefined).
+
 
 %% @private
 %% @doc The child specs for each bucket.
@@ -68,7 +78,7 @@ update_childs(Buckets) ->
     OldSpecs = supervisor:which_children(?MODULE),
     RunningIds = [element(1, X) || X <- OldSpecs],
     ToStart = NewIds -- RunningIds,
-    ToStop = RunningIds -- NewIds,
+    ToStop = (RunningIds -- NewIds) -- [?SUBSCRIPTION_SPEC_NAME],
     lists:foreach(fun (StartId) ->
                           Tuple = lists:keyfind(StartId, 1, NewSpecs),
                           true = is_tuple(Tuple),
