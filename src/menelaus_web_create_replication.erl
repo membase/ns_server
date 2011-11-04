@@ -36,7 +36,8 @@ handle_create_replication(Req) ->
         {error, Errors} ->
             menelaus_util:reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400);
         {ok, ReplicationFields} ->
-            menelaus_util:reply_json(Req, {struct, [{database, list_to_binary(capi_utils:capi_url(node(), "/_replicator", "127.0.0.1"))},
+            CapiURL = capi_utils:capi_url(node(), "/_replicator", menelaus_util:local_addr(Req)),
+            menelaus_util:reply_json(Req, {struct, [{database, list_to_binary(CapiURL)},
                                                     {document, {struct, ReplicationFields}}]},
                                      200)
     end.
