@@ -243,8 +243,6 @@ var EditDocumentSection = {
 
     function saveDoc(id, rev, callback) {
 
-      $('#doc_save').addClass('disabled').find('span').text("Saving");
-
       try {
         var json = JSON.parse(self.jsonCodeEditor.getValue());
       } catch(err) {
@@ -263,6 +261,8 @@ var EditDocumentSection = {
         json._rev = rev;
       }
 
+      $('#doc_save').addClass('disabled').find('span').text("Saving");
+
       couchReq('PUT', buildURL('/', 'couchBase', self.bucketNameVal, id), json,
                function(data) {
         $('#doc_save').removeClass('disabled').find('span').text("Save");
@@ -270,6 +270,7 @@ var EditDocumentSection = {
         self.docRevVal = data.rev;
         callback();
       }, function() {
+        $('#doc_save').removeClass('disabled').find('span').text("Save");
         alertDialog('Unknown error saving document');
       });
     }
