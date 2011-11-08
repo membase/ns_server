@@ -851,7 +851,7 @@ future.getPush = function (ajaxOptions, valueTransformer, nowValue, waitChange) 
     function gotData(data) {
       dataCallback.async.weak = false;
 
-      etag = data.etag;
+      etag = data && data.etag;
       // pass our data to cell
       if (dataCallback.continuing(data)) {
         // and submit new request if we are not cancelled

@@ -287,16 +287,17 @@ var DAL = {
         data.name = '';
         return data;
       }
-      return future.getPush({url: url, missingValue: {nodes: [], thisIs404: true, buckets: []}},
-                            poolDetailsValueTransformer, this.self.value, pushTimeout);
+
+      return future.getPush({url: url,
+                             // NOTE: when this request gets 404 it
+                             // means cluster was re-initialized, so
+                             // we should reload app into setup wizard
+                             missingValueProducer: _.bind(reloadApp, window, undefined)},
+                            poolDetailsValueTransformer,
+                            this.self.value, pushTimeout);
     });
   this.currentPoolDetailsCell.equality = _.isEqual;
-
-  this.currentPoolDetailsCell.subscribeValue(function (value) {
-    if (value && value.thisIs404) {
-      reloadApp();
-    }
-  });
+  this.currentPoolDetailsCell.name("currentPoolDetailsCell");
 
   this.nodeStatusesURICell = Cell.computeEager(function (v) {
     return v.need(DAL.cells.currentPoolDetailsCell).nodeStatusesUri;
