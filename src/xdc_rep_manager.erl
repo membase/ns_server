@@ -146,11 +146,13 @@ init(_) ->
                                        maybe_retry_all_couch_replications,
                                        []),
 
-    <<"_replicator">> = ?l2b(couch_config:get("replicator", "db", "_replicator")),
+    <<"_replicator">> = ?l2b(couch_config:get("replicator", "db",
+                                              "_replicator")),
 
     maybe_create_replication_info_ddoc(),
 
-    {Loop, <<"_replicator">> = RepDbName} = couch_replication_manager:changes_feed_loop(),
+    {Loop, <<"_replicator">> = RepDbName} =
+        couch_replication_manager:changes_feed_loop(),
     {ok, #rep_db_state{
         changes_feed_loop = Loop,
         rep_db_name = RepDbName,
@@ -159,11 +161,13 @@ init(_) ->
 
 maybe_create_replication_info_ddoc() ->
     UserCtx = #user_ctx{roles = [<<"_admin">>, <<"_replicator">>]},
-    DB = case couch_db:open_int(<<"_replicator">>, [sys_db, {user_ctx, UserCtx}]) of
+    DB = case couch_db:open_int(<<"_replicator">>,
+                                [sys_db, {user_ctx, UserCtx}]) of
              {ok, XDb} ->
                  XDb;
              _Error ->
-                 {ok, XDb} = couch_db:create(<<"_replicator">>, [sys_db, {user_ctx, UserCtx}]),
+                 {ok, XDb} = couch_db:create(<<"_replicator">>,
+                                             [sys_db, {user_ctx, UserCtx}]),
                  XDb
          end,
     try couch_db:open_doc(DB, <<"_design/_replicator_info">>, []) of
@@ -173,8 +177,10 @@ maybe_create_replication_info_ddoc() ->
             DDoc = couch_doc:from_json_obj(
                      {[{<<"_id">>, <<"_design/_replicator_info">>},
                        {<<"language">>, <<"javascript">>},
-                       {<<"views">>, {[{<<"infos">>, {[{<<"map">>, ?REPLICATION_INFOS_MAP},
-                                                       {<<"reduce">>, ?REPLICATION_INFOS_REDUCE}]}}]}}]}),
+                       {<<"views">>,
+                        {[{<<"infos">>,
+                           {[{<<"map">>, ?REPLICATION_INFOS_MAP},
+                             {<<"reduce">>, ?REPLICATION_INFOS_REDUCE}]}}]}}]}),
             {ok, _Rev} = couch_db:update_doc(DB, DDoc, [])
     after
         couch_db:close(DB)
