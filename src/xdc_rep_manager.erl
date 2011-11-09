@@ -49,11 +49,12 @@
 %
 % The XRM maintains local state about all in-progress replications and
 % comprises of the following data structures:
-% XSTORE: An ETS set of {XDocId, XRep, Vbuckets} tuples
+% XSTORE: An ETS set of {XDocId, XRep, TriggeredVbs, UntriggeredVbs} tuples
 %         XDocId: Id of a user created XDC replication document
 %         XRep: The parsed #rep record for the document
-%         Vbuckets: The list of managed active vbuckets
-%                   (useful for responding to vbucket map changes)
+%         TriggeredVbs: Vbuckets whose replication was successfully triggered
+%         UntriggeredVbs: Vbuckets whose replication could not be triggered.
+%                         These are periodically retried.
 %
 % X2CSTORE: An ETS bag of {XDocId, CRepPid} tuples
 %           CRepPid: Pid of the Couch process responsible for an individual
@@ -391,22 +392,23 @@ start_xdc_replication(#rep{id = XRepId,
     case {SrcBucketLookup, TgtBucketLookup} of
     {not_present, not_present} ->
         ?log_error("~s: source and target buckets not found", [XDocId]),
-        true = ets:insert(?XSTORE, {XDocId, XRep, []}),
+        true = ets:insert(?XSTORE, {XDocId, XRep, [], []}),
         {error, not_present};
     {not_present, _} ->
         ?log_error("~s: source bucket not found", [XDocId]),
-        true = ets:insert(?XSTORE, {XDocId, XRep, []}),
+        true = ets:insert(?XSTORE, {XDocId, XRep, [], []}),
         {error, not_present};
     {_, not_present} ->
         ?log_error("~s: target bucket not found", [XDocId]),
-        true = ets:insert(?XSTORE, {XDocId, XRep, []}),
+        true = ets:insert(?XSTORE, {XDocId, XRep, [], []}),
         {error, not_present};
     {{ok, SrcBucketConfig}, {ok, {TgtVbMap, TgtNodes}}} ->
-        MyVbuckets = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
-        {TriggeredVbuckets, _} = start_vbucket_replications(
-            XDocId, SrcBucket, TgtVbMap, TgtNodes, MyVbuckets, 0),
-        true = ets:insert(?XSTORE, {XDocId, XRep, TriggeredVbuckets}),
-        create_xdc_rep_info_doc(XDocId, XRepId, TriggeredVbuckets, RepDbName,
+        MyVbs = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
+        {TriggeredVbs, UntriggeredVbs} = start_vbucket_replications(
+            XDocId, SrcBucket, TgtVbMap, TgtNodes, MyVbs, 0),
+        true = ets:insert(?XSTORE, {XDocId, XRep, TriggeredVbs,
+                                    UntriggeredVbs}),
+        create_xdc_rep_info_doc(XDocId, XRepId, TriggeredVbs, RepDbName,
                                 XDocBody),
         ok
     end.
@@ -451,38 +453,40 @@ maybe_adjust_all_replications(BucketConfigs) ->
         fun([XDocId,
              #rep{source = SrcBucket,
                   target = {_, TgtBucket, _, _, _, _, _, _, _, _}},
-             MyPrevVbuckets]) ->
+             PrevTriggeredVbs,
+             PrevUntriggeredVbs]) ->
             SrcBucketConfig =
                 proplists:get_value(?b2l(SrcBucket), BucketConfigs),
-            MyCurrVbuckets = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
-            maybe_adjust_xdc_replication(XDocId, SrcBucket, TgtBucket,
-                                         MyPrevVbuckets, MyCurrVbuckets)
+            CurrVbs = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
+            maybe_adjust_xdc_replication(
+                XDocId, SrcBucket, TgtBucket, PrevTriggeredVbs,
+                PrevUntriggeredVbs, CurrVbs)
         end,
-        ets:match(?XSTORE, {'$1', '$2', '$3'})).
+        ets:match(?XSTORE, {'$1', '$2', '$3', '$4'})).
 
 
-maybe_adjust_xdc_replication(XDocId, SrcBucket, TgtBucket, PrevVbuckets,
-                             CurrVbuckets) ->
-    {AcquiredVbuckets, LostVbuckets} =
-        xdc_rep_utils:lists_difference(CurrVbuckets, PrevVbuckets),
+maybe_adjust_xdc_replication(XDocId, SrcBucket, TgtBucket, PrevTriggeredVbs,
+                             PrevUntriggeredVbs, CurrVbs) ->
+    PrevVbs = PrevTriggeredVbs ++ PrevUntriggeredVbs,
+    {AcquiredVbs, LostVbs} = xdc_rep_utils:lists_difference(CurrVbs, PrevVbs),
 
     % Start Couch replications for the newly acquired vbuckets
     {ok, {TgtVbMap, TgtNodes}} =
         xdc_rep_utils:remote_vbucketmap_nodelist(TgtBucket),
-    {TriggeredVbuckets, FailedVbuckets} = start_vbucket_replications(
-        XDocId, SrcBucket, TgtVbMap, TgtNodes, AcquiredVbuckets, 0),
+    {TriggeredVbs1, UntriggeredVbs1} = start_vbucket_replications(
+        XDocId, SrcBucket, TgtVbMap, TgtNodes, AcquiredVbs, 0),
 
     % Add entries for the new Couch replications to the replication info doc
     couch_replication_manager:update_rep_doc(
         xdc_rep_utils:info_doc_id(XDocId),
-        xdc_rep_utils:vb_rep_state_list(TriggeredVbuckets, <<"triggered">>)),
+        xdc_rep_utils:vb_rep_state_list(TriggeredVbs1, <<"triggered">>)),
 
     % Cancel Couch replications for the lost vbuckets
     CRepPidsToCancel =
         try
             [CRepPid || CRepPid <- ets:lookup_element(?X2CSTORE, XDocId, 2),
                         lists:member(ets:lookup_element(?CSTORE, CRepPid, 3),
-                                     LostVbuckets)]
+                                     LostVbs)]
         catch error:badarg ->
             []
         end,
@@ -496,11 +500,13 @@ maybe_adjust_xdc_replication(XDocId, SrcBucket, TgtBucket, PrevVbuckets,
     % info doc as "cancelled"
     couch_replication_manager:update_rep_doc(
         xdc_rep_utils:info_doc_id(XDocId),
-        xdc_rep_utils:vb_rep_state_list(LostVbuckets, <<"cancelled">>)),
+        xdc_rep_utils:vb_rep_state_list(LostVbs, <<"cancelled">>)),
 
     % Update XSTORE with the current active vbuckets list
+    CurrTriggeredVbs = CurrVbs -- (PrevUntriggeredVbs ++ UntriggeredVbs1),
+    CurrUntriggeredVbs = CurrVbs -- CurrTriggeredVbs,
     true = ets:update_element(?XSTORE, XDocId,
-                              {3, (CurrVbuckets -- FailedVbuckets)}).
+                              [{3, CurrTriggeredVbs}, {4, CurrUntriggeredVbs}]).
 
 
 % Given a list of vbuckets, this function attempts to trigger Couch replication
@@ -579,26 +585,35 @@ maybe_retry_all_couch_replications() ->
     lists:map(
         fun([XDocId,
              #rep{source = SrcBucket,
-                  target = {_, TgtBucket, _, _, _, _, _, _, _, _}}]) ->
-            case failed_couch_replications(XDocId) of
-            [] ->
-                ?log_info("~s: no failed vbucket replications found",
-                          [XDocId]),
-                ok;
-            FailedReps ->
-                % Reread the target vbucket map once before retrying all failed
-                % replications
-                {ok, TgtVbInfo} =
+                  target = {_, TgtBucket, _, _, _, _, _, _, _, _}},
+             TriggeredVbs, UntriggeredVbs]) ->
+
+            FailedCouchReps = failed_couch_replications(XDocId),
+            case {FailedCouchReps, UntriggeredVbs} of
+            {[], []} ->
+                ?log_info("~s: no failed vbucket replications found", [XDocId]);
+            {_, _} ->
+                % Reread the target vbucket map once before retrying all reps
+                {ok, {TgtVbMap, TgtNodes} = TgtVbInfo} =
                     xdc_rep_utils:remote_vbucketmap_nodelist(TgtBucket),
+
+                % Retry couch replications that failed after they were triggered
                 lists:map(
-                    fun(FailedRep) ->
+                    fun(FailedCouchRep) ->
                         retry_couch_replication(XDocId, SrcBucket, TgtVbInfo,
-                                                FailedRep)
+                                                FailedCouchRep)
                     end,
-                    FailedReps)
+                    FailedCouchReps),
+
+                % Retry couch replications that did not trigger at all
+                {TriggeredVbs1, UntriggeredVbs1} = start_vbucket_replications(
+                    XDocId, SrcBucket, TgtVbMap, TgtNodes, UntriggeredVbs, 0),
+                true = ets:update_element(
+                    ?XSTORE, XDocId, [{3, (TriggeredVbs ++ TriggeredVbs1)},
+                                      {4, UntriggeredVbs1}])
             end
         end,
-        ets:match(?XSTORE, {'$1', '$2', '_'})).
+        ets:match(?XSTORE, {'$1', '$2', '$3', '$4'})).
 
 
 retry_couch_replication(XDocId,
