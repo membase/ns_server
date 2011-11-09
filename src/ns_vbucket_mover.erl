@@ -138,7 +138,7 @@ handle_info(Info, State) ->
     {noreply, State}.
 
 
-terminate(_Reason, #state{bucket=Bucket, map=MapArray}) ->
+terminate(_Reason, #state{map=MapArray}) ->
     sync_replicas(),
     TotalChanges = erlang:get(total_changes),
     ActualChanges = erlang:get(actual_changes),
