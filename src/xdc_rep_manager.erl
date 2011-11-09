@@ -498,11 +498,8 @@ maybe_adjust_xdc_replication(XDocId, SrcBucket, TgtBucket, PrevVbuckets,
     % Add entries for the new Couch replications to the replication info doc
     couch_replication_manager:update_rep_doc(
         xdc_rep_utils:info_doc_id(XDocId),
-        lists:map(
-            fun(Vb) ->
-                {?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"triggered">>}
-            end,
-            (AcquiredVbuckets -- FailedVbuckets))),
+        xdc_rep_utils:vb_rep_state_list((AcquiredVbuckets -- FailedVbuckets),
+                                        <<"triggered">>)),
 
     % Cancel Couch replications for the lost vbuckets
     CRepPidsToCancel =
@@ -523,11 +520,7 @@ maybe_adjust_xdc_replication(XDocId, SrcBucket, TgtBucket, PrevVbuckets,
     % info doc as "cancelled"
     couch_replication_manager:update_rep_doc(
         xdc_rep_utils:info_doc_id(XDocId),
-        lists:map(
-            fun(Vb) ->
-                {?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"cancelled">>}
-            end,
-            LostVbuckets)),
+        xdc_rep_utils:vb_rep_state_list(LostVbuckets, <<"cancelled">>)),
 
     % Update XSTORE with the current active vbuckets list
     true = ets:update_element(?XSTORE, XDocId,

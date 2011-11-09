@@ -19,9 +19,10 @@
 
 -export([remote_vbucketmap_nodelist/1, local_couch_uri_for_vbucket/2]).
 -export([remote_couch_uri_for_vbucket/3, my_active_vbuckets/1]).
--export([lists_difference/2, node_uuid/0, info_doc_id/1]).
+-export([lists_difference/2, node_uuid/0, info_doc_id/1, vb_rep_state_list/2]).
 
 -include("couch_db.hrl").
+-include("ns_common.hrl").
 
 % Given a remote bucket URI, this function fetches the node list and the vbucket
 % map.
@@ -108,3 +109,14 @@ node_uuid() ->
 info_doc_id(XDocId) ->
     UUID = node_uuid(),
     <<XDocId/binary, "_info_", UUID/binary>>.
+
+
+% Generate a list of tuples corresponding to the given list of vbucket ids. Each
+% tuple consists of the "replication_state_vb_" tag for a vbucket id in the list
+% and the given replication state value.
+vb_rep_state_list(VbList, RepState) ->
+    lists:map(
+        fun(Vb) ->
+            {?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<RepState/binary>>}
+        end,
+        VbList).
