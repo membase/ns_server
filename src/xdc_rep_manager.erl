@@ -98,8 +98,6 @@
 % abstraction of the couch replicator interface will solve this problem.
 -define(REP_TO_STATE, couch_rep_id_to_rep_state).
 
--define(i2l(Int), integer_to_list(Int)).
-
 % Record to store and track changes to the _replicator db
 -record(rep_db_state, {
     changes_feed_loop = nil,

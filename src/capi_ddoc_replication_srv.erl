@@ -25,8 +25,6 @@
 -include("couch_db.hrl").
 -include("ns_common.hrl").
 
--define(i2l(V), integer_to_list(V)).
-
 
 -export([start_link/1, force_update/1]).
 -export([init/1, handle_call/3, handle_cast/2,

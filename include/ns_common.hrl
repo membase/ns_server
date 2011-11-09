@@ -91,5 +91,6 @@
         ale:error(?REBALANCE_LOGGER, Format, Args)).
 -define(rebalance_error(Msg), ale:error(?REBALANCE_LOGGER, Msg)).
 
+-define(i2l(V), integer_to_list(V)).
 
 -endif.
