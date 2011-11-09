@@ -276,6 +276,10 @@ handle_info({'DOWN', _Ref, process, Pid, Reason}, State) ->
                 % maybe_retry_all_couch_replications() is run by the timer
                 % module.
                 true = ets:update_element(?CSTORE, Pid, {4, error}),
+                couch_replication_manager:update_rep_doc(
+                    xdc_rep_utils:info_doc_id(XDocId),
+                    [{?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"error">>},
+                     {<<"_replication_state">>, <<"error">>}]),
                 ?log_info("~s: replication of vbucket ~p failed due to reason: "
                           "~p", [XDocId, Vb, Reason])
         end;
@@ -613,10 +617,6 @@ retry_couch_replication(XDocId,
                         {TgtVbMap, TgtNodes},
                         {CRepPid, Vb, Wait}) ->
     cancel_couch_replication(XDocId, CRepPid),
-    couch_replication_manager:update_rep_doc(
-        xdc_rep_utils:info_doc_id(XDocId),
-        [{?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"error">>},
-         {<<"_replication_state">>, <<"error">>}]),
 
     NewWait = erlang:max(?INITIAL_WAIT, trunc(Wait * 2)),
     SrcURI = xdc_rep_utils:local_couch_uri_for_vbucket(SrcBucket, Vb),
