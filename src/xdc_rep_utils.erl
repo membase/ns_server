@@ -80,7 +80,7 @@ remote_couch_uri_for_vbucket(VbucketMap, NodeList, VbucketId) ->
     [Owner | _ ] = lists:nth(VbucketId+1, VbucketMap),
     {OwnerNodeProps} = lists:nth(Owner+1, NodeList),
     CapiBase = couch_util:get_value(<<"couchApiBase">>, OwnerNodeProps),
-    CapiBase.
+    iolist_to_binary([CapiBase, "%2F", integer_to_list(VbucketId)]).
 
 
 % Given a bucket config, this function computes a list of active vbuckets
