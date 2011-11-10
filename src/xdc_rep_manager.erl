@@ -408,8 +408,8 @@ start_xdc_replication(#rep{id = XRepId,
             XDocId, SrcBucket, TgtVbMap, TgtNodes, MyVbs, 0),
         true = ets:insert(?XSTORE, {XDocId, XRep, TriggeredVbs,
                                     UntriggeredVbs}),
-        create_xdc_rep_info_doc(XDocId, XRepId, TriggeredVbs, RepDbName,
-                                XDocBody),
+        create_xdc_rep_info_doc(XDocId, XRepId, TriggeredVbs, UntriggeredVbs,
+                                RepDbName, XDocBody),
         ok
     end.
 
@@ -676,10 +676,18 @@ failed_couch_replications(XDocId) ->
 % XDC replication and replication info document related functions
 %
 
-create_xdc_rep_info_doc(XDocId, {Base, Ext}, Vbuckets, RepDbName, XDocBody) ->
+create_xdc_rep_info_doc(XDocId, {Base, Ext}, TriggeredVbs, UntriggeredVbs,
+                        RepDbName, XDocBody) ->
     IDocId = xdc_rep_utils:info_doc_id(XDocId),
     UserCtx = #user_ctx{roles = [<<"_admin">>, <<"_replicator">>]},
     {ok, RepDb} = couch_db:open(RepDbName, [sys_db, {user_ctx, UserCtx}]),
+
+    TriggeredVbStates = xdc_rep_utils:vb_rep_state_list(
+        TriggeredVbs, <<"triggered">>),
+    UntriggeredVbStates =  xdc_rep_utils:vb_rep_state_list(
+        UntriggeredVbs, <<"undefined">>),
+    AllVbStates = TriggeredVbStates ++ UntriggeredVbStates,
+
     Body = {[
              {<<"node">>, xdc_rep_utils:node_uuid()},
              {<<"replication_doc_id">>, XDocId},
@@ -687,13 +695,9 @@ create_xdc_rep_info_doc(XDocId, {Base, Ext}, Vbuckets, RepDbName, XDocBody) ->
              {<<"replication_fields">>, XDocBody},
              {<<"source">>, <<"">>},
              {<<"target">>, <<"">>} |
-             lists:map(
-                fun(Vb) ->
-                    {?l2b("replication_state_vb_" ++ ?i2l(Vb)),
-                     <<"triggered">>}
-                end,
-                Vbuckets)
+             AllVbStates
             ]},
+
     case couch_db:open_doc(RepDb, IDocId, [ejson_body]) of
     {ok, LatestIDoc} ->
         couch_db:update_doc(RepDb, LatestIDoc#doc{body = Body}, []);
@@ -701,8 +705,14 @@ create_xdc_rep_info_doc(XDocId, {Base, Ext}, Vbuckets, RepDbName, XDocBody) ->
         couch_db:update_doc(RepDb, #doc{id = IDocId, body = Body}, [])
     end,
 
-    couch_replication_manager:update_rep_doc(
-        IDocId, [{<<"_replication_state">>, <<"triggered">>}]),
+    case UntriggeredVbs of
+    [] ->
+        couch_replication_manager:update_rep_doc(
+            IDocId, [{<<"_replication_state">>, <<"triggered">>}]);
+    _ ->
+        couch_replication_manager:update_rep_doc(
+            IDocId, [{<<"_replication_state">>, <<"error">>}])
+    end,
     couch_db:close(RepDb),
 
     ?log_info("~s: created replication info doc ~s", [XDocId, IDocId]),
