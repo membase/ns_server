@@ -99,7 +99,7 @@ handle_info({buckets, Buckets},
 
     {noreply, NewState};
 
-handle_info({set_vbucket, Bucket, VBucket, _VBucketState},
+handle_info({set_vbucket, Bucket, VBucket, _VBucketState, _CheckpointId},
             #state{bucket=Bucket, bucket_config=BucketConfig, map=Map,
                    vbucket_states=OldStates} = State) ->
     VBucketState = get_vbucket_state(Bucket, VBucket),
@@ -270,7 +270,8 @@ get_vbucket_state(Bucket, VBucket) ->
 
 do_get_vbucket_state(Bucket, VBucket) ->
     try
-        State = mc_couch_vbucket:get_state(VBucket, Bucket),
+        {JsonState} = ?JSON_DECODE(mc_couch_vbucket:get_state(VBucket, Bucket)),
+        State = proplists:get_value(<<"state">>, JsonState),
         erlang:binary_to_atom(State, latin1)
     catch
         throw:{open_db_error, _, _, {not_found, no_db_file}} ->
@@ -337,7 +338,7 @@ interesting_ns_config_event({buckets, _}) ->
 interesting_ns_config_event(_) ->
     false.
 
-interesting_mc_couch_event({set_vbucket, _, _, _}) ->
+interesting_mc_couch_event({set_vbucket, _, _, _, _}) ->
     true;
 interesting_mc_couch_event({flush_all, _}) ->
     true;
