@@ -438,7 +438,7 @@ maybe_cancel_xdc_replication(XDocId) ->
             end,
 
         ?log_info("~s: cancelling xdc replication", [XDocId]),
-        lists:map(
+        lists:foreach(
             fun(CRepPid) ->
                 cancel_couch_replication(XDocId, CRepPid)
             end,
@@ -449,7 +449,7 @@ maybe_cancel_xdc_replication(XDocId) ->
 
 
 maybe_adjust_all_replications(BucketConfigs) ->
-    lists:map(
+    lists:foreach(
         fun([XDocId,
              #rep{source = SrcBucket,
                   target = {_, TgtBucket, _, _, _, _, _, _, _, _}},
@@ -490,7 +490,7 @@ maybe_adjust_xdc_replication(XDocId, SrcBucket, TgtBucket, PrevTriggeredVbs,
         catch error:badarg ->
             []
         end,
-    lists:map(
+    lists:foreach(
         fun(CRepPid) ->
             cancel_couch_replication(XDocId, CRepPid)
         end,
@@ -582,7 +582,7 @@ cancel_couch_replication(XDocId, CRepPid) ->
 
 
 maybe_retry_all_couch_replications() ->
-    lists:map(
+    lists:foreach(
         fun([XDocId,
              #rep{source = SrcBucket,
                   target = {_, TgtBucket, _, _, _, _, _, _, _, _}},
@@ -598,7 +598,7 @@ maybe_retry_all_couch_replications() ->
                     xdc_rep_utils:remote_vbucketmap_nodelist(TgtBucket),
 
                 % Retry couch replications that failed after they were triggered
-                lists:map(
+                lists:foreach(
                     fun(FailedCouchRep) ->
                         retry_couch_replication(XDocId, SrcBucket, TgtVbInfo,
                                                 FailedCouchRep)
