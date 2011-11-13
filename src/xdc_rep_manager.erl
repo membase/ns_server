@@ -609,19 +609,32 @@ maybe_retry_all_couch_replications() ->
                     xdc_rep_utils:remote_vbucketmap_nodelist(TgtBucket),
 
                 % Retry couch replications that failed after they were triggered
-                lists:foreach(
-                    fun(FailedCouchRep) ->
+                Success = lists:foldl(
+                    fun(FailedCouchRep, Success0) ->
                         retry_couch_replication(XDocId, SrcBucket, TgtVbInfo,
-                                                FailedCouchRep)
+                                                FailedCouchRep) and Success0
                     end,
-                    FailedCouchReps),
+                    true, FailedCouchReps),
 
                 % Retry couch replications that did not trigger at all
                 {TriggeredVbs1, UntriggeredVbs1} = start_vbucket_replications(
                     XDocId, SrcBucket, TgtVbMap, TgtNodes, UntriggeredVbs, 0),
                 true = ets:update_element(
                     ?XSTORE, XDocId, [{3, (TriggeredVbs ++ TriggeredVbs1)},
-                                      {4, UntriggeredVbs1}])
+                                      {4, UntriggeredVbs1}]),
+                couch_replication_manager:update_rep_doc(
+                    xdc_rep_utils:info_doc_id(XDocId),
+                    xdc_rep_utils:vb_rep_state_list(
+                        TriggeredVbs1, <<"triggered">>)),
+
+                case {Success, UntriggeredVbs1} of
+                {true, []} ->
+                    couch_replication_manager:update_rep_doc(
+                        xdc_rep_utils:info_doc_id(XDocId),
+                        [{<<"_replication_state">>, <<"triggered">>}]);
+                _ ->
+                    ok
+                end
             end
         end,
         ets:match(?XSTORE, {'$1', '$2', '$3', '$4'})).
@@ -638,8 +651,15 @@ retry_couch_replication(XDocId,
     TgtURI = xdc_rep_utils:remote_couch_uri_for_vbucket(TgtVbMap, TgtNodes, Vb),
     ?log_info("~s: will retry replication for vbucket ~p after ~p seconds",
               [XDocId, Vb, NewWait]),
-    start_couch_replication(SrcURI, TgtURI, Vb, XDocId, NewWait),
-    ok.
+    case start_couch_replication(SrcURI, TgtURI, Vb, XDocId, NewWait) of
+    {ok, _Res} ->
+        couch_replication_manager:update_rep_doc(
+            xdc_rep_utils:info_doc_id(XDocId),
+            [{?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"triggered">>}]),
+        true;
+    _Error ->
+        false
+    end.
 
 
 couch_replication_completed(XDocId, CRepPid, Vb) ->
