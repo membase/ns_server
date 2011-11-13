@@ -71,7 +71,7 @@
 -behaviour(gen_server).
 
 -export([start_link/0, init/1, handle_call/3, handle_info/2, handle_cast/2]).
--export([code_change/3, terminate/2, maybe_retry_all_couch_replications/0]).
+-export([code_change/3, terminate/2]).
 
 -include("couch_db.hrl").
 -include("couch_replicator.hrl").
@@ -141,9 +141,8 @@ init(_) ->
     % Checking periodically in this manner allows us to batch several failed
     % replications together and only read the destination vbucket map once
     % before retrying all of them.
-    {ok, _Tref} = timer:apply_interval(?RETRY_INTERVAL*1000, ?MODULE,
-                                       maybe_retry_all_couch_replications,
-                                       []),
+    {ok, _Tref} = timer:send_interval(?RETRY_INTERVAL * 1000,
+                                      retry_failed_couch_replications),
 
     <<"_replicator">> = ?l2b(couch_config:get("replicator", "db",
                                               "_replicator")),
@@ -244,6 +243,12 @@ handle_info({buckets, Buckets0}, State) ->
     % The source vbucket map changed
     Buckets = consume_all_buckets_changes(Buckets0),
     maybe_adjust_all_replications(proplists:get_value(configs, Buckets)),
+    {noreply, State};
+
+
+handle_info(retry_failed_couch_replications, State) ->
+    _NumMsgs = misc:flush(retry_failed_couch_replications),
+    maybe_retry_all_couch_replications(),
     {noreply, State};
 
 
