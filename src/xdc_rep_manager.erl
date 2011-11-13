@@ -443,12 +443,18 @@ maybe_cancel_xdc_replication(XDocId) ->
             end,
 
         ?log_info("~s: cancelling xdc replication", [XDocId]),
-        lists:foreach(
+        CancelledVbs = lists:map(
             fun(CRepPid) ->
-                cancel_couch_replication(XDocId, CRepPid)
+                Vb = ets:lookup_element(?CSTORE, CRepPid, 3),
+                cancel_couch_replication(XDocId, CRepPid),
+                Vb
             end,
             CRepPids),
         true = ets:delete(?XSTORE, XDocId),
+        couch_replication_manager:update_rep_doc(
+            xdc_rep_utils:info_doc_id(XDocId),
+            [{<<"_replication_state">>, <<"cancelled">>} |
+             xdc_rep_utils:vb_rep_state_list(CancelledVbs, <<"cancelled">>)]),
         ok
     end.
 
