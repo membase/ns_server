@@ -38,7 +38,13 @@
                 map}).
 
 start_link(Bucket) ->
-    gen_server:start_link({local, server(Bucket)}, ?MODULE, Bucket, []).
+    {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
+    case ns_bucket:bucket_type(BucketConfig) of
+        memcached ->
+            ignore;
+        _ ->
+            gen_server:start_link({local, server(Bucket)}, ?MODULE, Bucket, [])
+    end.
 
 get_state(Bucket) ->
     gen_server:call(server(Bucket), get_state).
