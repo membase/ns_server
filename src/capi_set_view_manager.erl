@@ -28,7 +28,7 @@
 -export([get_state/1]).
 
 -include("couch_db.hrl").
--include("couch_set_view.hrl").
+-include_lib("couch_set_view/include/couch_set_view.hrl").
 -include("ns_common.hrl").
 
 -record(state, {bucket,
