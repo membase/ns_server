@@ -147,17 +147,11 @@ var ReplicationForm = mkClass({
     this.dialog = $('#create_replication_dialog');
     this.form = this.dialog.find('form');
     this.onSubmit = $m(this, 'onSubmit');
-    this.formObserver = $m(this, 'formObserver');
-    this.onHide = $m(this, 'onHide');
     this.form.bind('submit', this.onSubmit);
   },
   startCreate: function (callback) {
     var self = this;
-    if (self.shown) {
-      BUG();
-    }
     self.closeCallback = callback;
-    self.shown = true;
     ReplicationsModel.remoteClustersListCell.getValue(function (remoteClusters) {
       self.fillClustersSelect(remoteClusters);
       self.showErrors(false);
@@ -167,21 +161,10 @@ var ReplicationForm = mkClass({
         toCluster: '',
         replicationType: 'continuous'
       });
-      self.verifyPassed = null;
-      self.startFormObserver();
-      showDialog('create_replication_dialog', {
-        onHide: self.onHide
-      });
+      showDialog('create_replication_dialog');
     });
   },
-  startFormObserver: function () {
-    this._formObserver = this.form.observePotentialChanges(this.formObserver);
-    this.formObserver(true);
-  },
   close: function () {
-    if (!this.shown) {
-      BUG();
-    }
     hideDialog('create_replication_dialog');
     var callback = this.closeCallback;
     this.closeCallback = null;
@@ -189,67 +172,28 @@ var ReplicationForm = mkClass({
       callback.apply(this, arguments);
     }
   },
-  onHide: function () {
-    if (this._formObserver) {
-      this._formObserver.stopObserving();
-      this._formObserver = null;
-    }
-    this.shown = false;
-  },
-  formObserver: function (forceRun) {
-    forceRun = (forceRun === true);
-    var formValues = serializeForm(this.form);
-    if (!forceRun && this.previousFormValues === formValues) {
-      return;
-    }
-    this.previousFormValues = formValues;
-    var showVerify = (formValues !== this.verifyPassed);
-    this.form.find('.replicate-button').need(1).attr('disabled', !!showVerify);
-    this.form.find('.verify-button').need(1).attr('disabled', !showVerify);
-    if (forceRun) {
-      return showVerify;
-    }
-  },
   onSubmit: function (e) {
     e.preventDefault();
-    if (!this.shown) {
-      return;
-    }
-    var showVerify = this.formObserver(true);
-    if (showVerify) {
-      return this.onVerify();
-    }
-    return this.onReplicate();
-  },
-  onVerify: function () {
+
     var self = this;
     var validateURI = ReplicationsModel.createReplicationURICell.value;
     if (!validateURI) {
       return;
     }
-    self.verifyPassed = null;
     var spinner = overlayWithSpinner(self.dialog, null, "Verifying...");
     var formValues = serializeForm(self.form);
     self.showErrors(false);
     postWithValidationErrors(validateURI, formValues, function (data, status) {
       spinner.remove();
       if (status == 'success') {
-        self.verifyPassed = formValues;
-        self.verifyPassedResult = data;
+        var createSpinner = overlayWithSpinner(self.dialog, null, "Creating replication...");
+        couchReq('POST', data.database, data.document, function () {
+          createSpinner.remove();
+          self.close();
+        });
       } else {
         self.showErrors(data);
       }
-      self.formObserver(true);
-    });
-  },
-  onReplicate: function () {
-    var self = this;
-    var url = self.verifyPassedResult.database;
-    var doc = self.verifyPassedResult.document;
-    var spinner = overlayWithSpinner(self.dialog, null, "Creating replication...");
-    couchReq('POST', url, doc, function () {
-      spinner.remove();
-      self.close();
     });
   },
   fillClustersSelect: function (remoteClusters) {
