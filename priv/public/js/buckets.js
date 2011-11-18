@@ -668,12 +668,9 @@ var BucketsSection = {
         return;
       }
 
-      var membaseBuckets = _.select(buckets, function (rv) {return rv.bucketType === 'membase'});
-      var memcachedBuckets = _.reject(buckets, function (rv) {return rv.bucketType === 'membase'});
-
-      renderTemplate('bucket_list', membaseBuckets, $i('bucket_list_container'));
-      renderTemplate('bucket_list', memcachedBuckets, $i('memcached_bucket_list_container'));
-      $('#memcached_buckets')[memcachedBuckets.length > 0 ? 'show' : 'hide']();
+      renderTemplate('bucket_list', buckets.byType.membase, $i('bucket_list_container'));
+      renderTemplate('bucket_list', buckets.byType.memcached, $i('memcached_bucket_list_container'));
+      $('#memcached_buckets')[buckets.byType.memcached.length > 0 ? 'show' : 'hide']();
 
       renderHealthStats();
     });

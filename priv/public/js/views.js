@@ -204,18 +204,12 @@ var ViewsSection = {
     self.pageNumberCell = new StringHashFragmentCell("viewPage");
     self.fullSubsetPageNumberCell = new StringHashFragmentCell("fullSubsetViewPage");
 
-    self.couchbaseBucketsListCell = Cell.compute(function (v) {
-      return _.select(v.need(DAL.cells.bucketsListCell), function (info) {
-        return info.bucketType == 'membase';
-      });
-    });
-
     self.viewsBucketCell = Cell.compute(function (v) {
       var selected = v(self.rawViewsBucketCell);
       if (selected) {
         return selected;
       }
-      var buckets = v.need(self.couchbaseBucketsListCell);
+      var buckets = v.need(DAL.cells.bucketsListCell).byType.membase;
       var bucketInfo = _.detect(buckets, function (info) {return info.name === "default"}) || buckets[0];
       if (!bucketInfo) {
         return null;
@@ -231,9 +225,9 @@ var ViewsSection = {
           return;
         }
 
-        var allBuckets = v.need(self.couchbaseBucketsListCell);
+        var buckets = v.need(DAL.cells.bucketsListCell).byType.membase;
         var selectedBucketName = v.need(self.viewsBucketCell);
-        return {list: _.map(allBuckets, function (info) {return [info.name, info.name]}),
+        return {list: _.map(buckets, function (info) {return [info.name, info.name]}),
                 selected: selectedBucketName};
       });
       $('#views_bucket_select').bindListCell(cell, {

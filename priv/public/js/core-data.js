@@ -468,6 +468,8 @@ var DAL = {
     var massagedDetails = v.need(nonNullMassagedDetails);
 
     values = _.clone(values);
+    // adding a child object for storing bucket by their type
+    values.byType = {"membase":[], "memcached":[]};
 
     var storageTotals = massagedDetails.storageTotals;
 
@@ -479,6 +481,10 @@ var DAL = {
       } else {
         bucket.bucketTypeName = bucket.bucketType;
       }
+      if (values.byType[bucket.bucketType] === undefined) {
+        values.byType[bucket.bucketType] = [];
+      }
+      values.byType[bucket.bucketType].push(bucket);
 
       bucket.serversCount = massagedDetails.serversCount;
       bucket.ramQuota = bucket.quota.ram;

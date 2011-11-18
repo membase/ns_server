@@ -172,18 +172,12 @@ var DocumentsSection = {
 
     })();
 
-    self.couchbaseBucketsListCell = Cell.compute(function (v) {
-      return _.select(v.need(DAL.cells.bucketsListCell), function (info) {
-        return info.bucketType == 'membase';
-      });
-    });
-
     self.documentsBucketCell = Cell.compute(function (v) {
       var selected = v(self.rawDocumentsBucketCell);
       if (selected) {
         return selected;
       }
-      var buckets = v.need(self.couchbaseBucketsListCell);
+      var buckets = v.need(DAL.cells.bucketsListCell).byType.membase;
       var bucketInfo = _.detect(buckets, function (info) {
         return info.name === "default"
       }) || buckets[0];
@@ -203,10 +197,10 @@ var DocumentsSection = {
           return;
         }
 
-        var allBuckets = v.need(self.couchbaseBucketsListCell);
+        var buckets = v.need(DAL.cells.bucketsListCell).byType.membase;
         var selectedBucketName = v.need(self.documentsBucketCell);
         return {
-          list: _.map(allBuckets, function (info) { return [info.name, info.name] }),
+          list: _.map(buckets, function (info) { return [info.name, info.name] }),
           selected: selectedBucketName
         };
       });
@@ -353,18 +347,12 @@ var EditDocumentSection = {
       });
     });
 
-    self.couchbaseBucketsListCell = Cell.compute(function (v) {
-      return _.select(v.need(DAL.cells.bucketsListCell), function (info) {
-        return info.bucketType == 'membase';
-      });
-    });
-
     self.documentsBucketCell = Cell.compute(function (v) {
       var selected = v(self.bucketName);
       if (selected) {
         return selected;
       }
-      var buckets = v.need(self.couchbaseBucketsListCell);
+      var buckets = v.need(DAL.cells.bucketsListCell).byType.membase;
       var bucketInfo = _.detect(buckets, function (info) {
         return info.name === "default"
       }) || buckets[0];
@@ -384,10 +372,10 @@ var EditDocumentSection = {
           return;
         }
 
-        var allBuckets = v.need(self.couchbaseBucketsListCell);
+        var buckets = v.need(DAL.cells.bucketsListCell).byType.membase;
         var selectedBucketName = v.need(self.documentsBucketCell);
         return {
-          list: _.map(allBuckets, function (info) { return [info.name, info.name] }),
+          list: _.map(buckets, function (info) { return [info.name, info.name] }),
           selected: selectedBucketName
         };
       });
