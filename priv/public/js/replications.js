@@ -148,6 +148,14 @@ var ReplicationForm = mkClass({
     this.form = this.dialog.find('form');
     this.onSubmit = $m(this, 'onSubmit');
     this.form.bind('submit', this.onSubmit);
+
+    DAL.cells.bucketsListCell.subscribeValue(function(buckets) {
+      var rb = $('#replication_from_bucket');
+      rb.html('<option value="">select a bucket</option>');
+      _.each(buckets.byType.membase, function (bucket) {
+        rb.append('<option>' + escapeHTML(bucket.name) + '</option>');
+      });
+    });
   },
   startCreate: function (callback) {
     var self = this;

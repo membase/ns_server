@@ -2016,9 +2016,7 @@
             <span style="font-size: 0.7em;font-weight: bold;margin-left: 0.2em;">this cluster</span>
           </li>
           <li><label for="replication_from_bucket">Bucket:</label>
-            <input name="fromBucket" id="replication_from_bucket" />
-            <!-- TODO: ideally make the above input field an autocomplete field from
-            the bucket names -->
+            <select name="fromBucket" id="replication_from_bucket"></select>
           </li>
          </ul>
        </fieldset>
@@ -2032,13 +2030,12 @@
            </li>
            <li><label for="replication_to_bucket">Bucket:</label>
              <input name="toBucket" id="replication_to_bucket" />
-             <!-- TODO: ideally make the above input field an autocomplete field from
-             the bucket names -->
+             <!-- TODO: this needs to become a select box like the one above -->
            </li>
          </ul>
        </fieldset>
      </fieldset>
-     <fieldset style="margin-left:4em">
+     <fieldset style="margin-left:4em;clear:both">
      <ul>
        <li><input name="replicationType" type="radio" value="one-time" id="replication_rate_one_time" /><label for="replication_rate_one_time">One-time</label></li>
        <!-- <li><input name="replicationType" type="radio" id="replication_type_scheduled" />
