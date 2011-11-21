@@ -291,6 +291,8 @@ var ReplicationsSection = {
           to: info.target,
           status: (function (status) {
             switch (status) {
+            case undefined:
+              return 'Starting Up';
             case 'error':
               return 'Failed';
             case 'triggered':
