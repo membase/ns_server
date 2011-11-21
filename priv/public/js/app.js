@@ -392,11 +392,11 @@ var NodeDialog = {
   startPage_secure: function(node, pagePrefix, opt) {
     var parentName = '#' + pagePrefix + '_dialog';
 
-    $(parentName + ' div.config-bottom button#step-4-finish').click(function (e) {
+    $(parentName + ' div.config-bottom button#step-4-finish').unbind('click').click(function (e) {
       e.preventDefault();
       $('#init_secure_form').submit();
     });
-    $(parentName + ' div.config-bottom button#step-4-back').click(function (e) {
+    $(parentName + ' div.config-bottom button#step-4-back').unbind('click').click(function (e) {
       e.preventDefault();
       showInitDialog("update_notifications");
     });
