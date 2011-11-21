@@ -467,7 +467,7 @@ var SetupWizard = {
 
         var user = parent.find('[name=username]').val();
         var pw = parent.find('[name=password]').val();
-        var vpw = parent.find('[id=secure-password-verify]').val();
+        var vpw = $($i('secure-password-verify')).val();
         if (pw == null || pw == "") {
           genericDialog({
             header: 'Please try again',
