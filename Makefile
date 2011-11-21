@@ -1,4 +1,4 @@
-# Copyright (c) 2011, Membase, Inc.
+# Copyright (c) 2011, Couchbase, Inc.
 # All rights reserved.
 SHELL=/bin/sh
 
@@ -40,7 +40,7 @@ dist:
 	mkdir -p tmp/ns_server-`git describe`
 	rm -rf tmp/ns_server-`git describe`/*
 	cp configure tmp/ns_server-`git describe`/
-	cp -R LICENSE Makefile README* cluster* common* mb* membase* rebar* tmp/ns_server-`git describe`/
+	cp -R LICENSE Makefile README* cluster* common* cb* couchbase* rebar* tmp/ns_server-`git describe`/
 	cp -R deps doc etc include priv scripts src test tmp/ns_server-`git describe`/
 	find tmp/ns_server-`git describe` -name '*.beam' | xargs rm -f
 	tar -C tmp -czf ns_server-`git describe`.tar.gz ns_server-`git describe`
@@ -114,21 +114,21 @@ do-install:
 	cp -r deps/gen_smtp/ebin $(GEN_SMTP_LIBDIR)/
 	mkdir -p $(MOCHIWEB_LIBDIR)
 	cp -r deps/mochiweb/ebin $(MOCHIWEB_LIBDIR)/
-	mkdir -p $(DESTDIR)$(PREFIX)/etc/membase
+	mkdir -p $(DESTDIR)$(PREFIX)/etc/couchbase
 	sed -e 's|@DATA_PREFIX@|$(PREFIX_FOR_CONFIG)|g' -e 's|@BIN_PREFIX@|$(PREFIX_FOR_CONFIG)|g' \
-		 <etc/static_config.in >$(DESTDIR)$(PREFIX)/etc/membase/static_config
-	touch $(DESTDIR)$(PREFIX)/etc/membase/config
+		 <etc/static_config.in >$(DESTDIR)$(PREFIX)/etc/couchbase/static_config
+	touch $(DESTDIR)$(PREFIX)/etc/couchbase/config
 	mkdir -p $(DESTDIR)$(PREFIX)/bin/
-	sed -e 's|@PREFIX@|$(DESTDIR)$(PREFIX)|g' <membase-server.sh.in >$(DESTDIR)$(PREFIX)/bin/membase-server
-	sed -e 's|@PREFIX@|$(DESTDIR)$(PREFIX)|g' <mbbrowse_logs.in >$(DESTDIR)$(PREFIX)/bin/mbbrowse_logs
-	cp mbcollect_info $(DESTDIR)$(PREFIX)/bin/mbcollect_info
-	chmod +x $(DESTDIR)$(PREFIX)/bin/membase-server $(DESTDIR)$(PREFIX)/bin/mbbrowse_logs $(DESTDIR)$(PREFIX)/bin/mbcollect_info
-	mkdir -p $(DESTDIR)$(PREFIX)/var/lib/membase/mnesia
-	mkdir -p $(DESTDIR)$(PREFIX)/var/lib/membase/logs
-	cp priv/init.sql $(DESTDIR)$(PREFIX)/etc/membase/
+	sed -e 's|@PREFIX@|$(DESTDIR)$(PREFIX)|g' <couchbase-server.sh.in >$(DESTDIR)$(PREFIX)/bin/couchbase-server
+	sed -e 's|@PREFIX@|$(DESTDIR)$(PREFIX)|g' <cbbrowse_logs.in >$(DESTDIR)$(PREFIX)/bin/cbbrowse_logs
+	cp cbcollect_info $(DESTDIR)$(PREFIX)/bin/cbcollect_info
+	chmod +x $(DESTDIR)$(PREFIX)/bin/couchbase-server $(DESTDIR)$(PREFIX)/bin/cbbrowse_logs $(DESTDIR)$(PREFIX)/bin/cbcollect_info
+	mkdir -p $(DESTDIR)$(PREFIX)/var/lib/couchbase/mnesia
+	mkdir -p $(DESTDIR)$(PREFIX)/var/lib/couchbase/logs
+	cp priv/init.sql $(DESTDIR)$(PREFIX)/etc/couchbase/
 	cp ebucketmigrator $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
 	chmod +x $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
-	cp scripts/mbdumpconfig.escript $(DESTDIR)$(PREFIX)/bin/
+	cp scripts/cbdumpconfig.escript $(DESTDIR)$(PREFIX)/bin/
 
 clean clean_all:
 	@(cd deps/gen_smtp && $(MAKE) clean)

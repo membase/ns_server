@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Copyright (c) 2010, Membase, Inc.
+# Copyright (c) 2010-2011, Couchbase, Inc.
 # All rights reserved
 #
 PATH="@PREFIX@/bin":$PATH
@@ -9,18 +9,18 @@ export PATH
 if [ `ulimit -n` -lt 10240 ]
 then
     cat <<EOF
-The maximum number of open files for the membase user is set too low.
+The maximum number of open files for the couchbase user is set too low.
 It must be at least 10240. Normally this can be increased by adding
 the following lines to /etc/security/limits.conf:
 
-membase              soft    nofile                  <value>
-membase              hard    nofile                  <value>
+couchbase              soft    nofile                  <value>
+couchbase              hard    nofile                  <value>
 
 Where <value> is greater than 10240.
 EOF
 fi
 
-datadir="@PREFIX@/var/lib/membase"
+datadir="@PREFIX@/var/lib/couchbase"
 
 test -d "$datadir" || mkdir -p "$datadir"
 cd "$datadir"
@@ -53,5 +53,5 @@ exec erl \
     -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21299 \
     $* \
     -run ns_bootstrap -- \
-    -ns_server config_path "\"@PREFIX@/etc/membase/static_config\"" \
-    -ns_server pidfile "\"@PREFIX@/var/lib/membase/membase-server.pid\""
+    -ns_server config_path "\"@PREFIX@/etc/couchbase/static_config\"" \
+    -ns_server pidfile "\"@PREFIX@/var/lib/couchbase/couchbase-server.pid\""

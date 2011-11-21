@@ -47,6 +47,6 @@ prefix=$prefix
 EOF
 
 echo
-echo "Membase management server is configured and is ready to be built!"
+echo "ns_server is configured and is ready to be built!"
 echo "PREFIX: ${prefix}"
 echo

@@ -1,4 +1,4 @@
-# The Membase Server
+# The Couchbase Server
 
 This application represents the top of the hierarchy of all memcached
 smart services.  It is an application in the Erlang OTP sense.
@@ -31,7 +31,7 @@ Before you start the server, you may need to do the following
 ## Running
 
 After building everything via top level makefile you'll have
-membase-server script in your $REPO/install/bin (or other prefix if
+couchbase-server script in your $REPO/install/bin (or other prefix if
 you specified so). You can run this script for normal single node
 startup.
 
@@ -50,7 +50,7 @@ mode clusters it's port 9000 and higher. For production mode it's port
 8091.
 
 Other alternative is setting up and clustering nodes via REST
-API. membase-cli allows that. And you can easily write your own
+API. couchbase-cli allows that. And you can easily write your own
 script(s).
 
 There's ./cluster_connect script that eases cluster configuration for
@@ -58,17 +58,17 @@ development clusters. Ask --help.
 
 Sometimes during debugging/development you want smaller number of
 vbuckets. You can change vbuckets number by setting
-MEMBASE_NUM_VBUCKET environment variable to desired number of vbuckets
-before creating new membase bucket.
+COUCHBASE_NUM_VBUCKET environment variable to desired number of vbuckets
+before creating new couchbase bucket.
 
 ### Other tools
 
-Membase ships with a bunch of nice tools. Feel free to check
+Couchbase ships with a bunch of nice tools. Feel free to check
 $REPO/install/bin (or $PREFIX/bin). One of notable tools is
 mbstats. It allows you to query buckets for all kinds of internal
 stats.
 
-Another notable tool is membase-cli. Script is called just membase.
+Another notable tool is couchbase-cli. Script is called just couchbase.
 
 * * * * *
 Copyright (c) 2011, Couchbase, Inc.

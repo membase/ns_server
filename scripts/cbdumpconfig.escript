@@ -20,7 +20,7 @@
 %%
 %% @doc Dump a config.dat file to stdout.
 %%
-%%   mbdumpconfig.escript [options]
+%%   cbdumpconfig.escript [options]
 %%
 %% The options can be used to filter the output.  These include:
 %%
@@ -29,15 +29,15 @@
 %%
 %% Examples:
 %%   linux:
-%%     ./bin/mbdumpconfig.escript var/lib/membase/config/config.dat
+%%     ./bin/cbdumpconfig.escript var/lib/couchbase/config/config.dat
 %%   windows:
-%%     bin\erlang\escript bin\mbdumpconfig.escript var\lib\membase\config\config.dat
+%%     bin\erlang\escript bin\cbdumpconfig.escript var\lib\couchbase\config\config.dat
 %%
 %% Example of dumping info for a particular node...
-%%   mbdumpconfig.escript config.dat node ns_1@127.0.0.1
+%%   cbdumpconfig.escript config.dat node ns_1@127.0.0.1
 %%
 %% Example of dumping buckets names of type membase...
-%%   mbdumpconfig.escript config.dat buckets membase
+%%   cbdumpconfig.escript config.dat buckets membase
 
 main([Path]) ->
     Config = read(Path),
