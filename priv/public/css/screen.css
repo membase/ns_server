@@ -1142,3 +1142,20 @@ ul.tabs.dev-subset-switcher { padding-top: 3px; padding-bottom: 3px; padding-lef
     input[type=number] {width:3em;}
     .bucket_details form > fieldset{padding-top:10px}
 }
+
+.ddoc_message {
+    display: block;
+    width: 88px;
+}
+
+#global_progress{position:absolute;right:0;z-index:1;margin:0.5em 0;min-height:27px;font-size:1em;background:#e6ebd4;border:2px solid #008000;color: #008000;-moz-border-radius:8px;-webkit-border-radius:8px;border-radius:8px;-moz-box-shadow:0 0 5px #ccc;-webkit-box-shadow:0 0 5px #ccc;box-shadow:0 0 5px #ccc; top:30px;padding-left: 25px; display:none; }
+#global_progress ul { margin-top: 5px; }
+#global_progress .toggle{position:absolute;left:5px;top:7px}
+#global_progress li{margin-bottom:5px}
+#global_progress .toggle {text-indent:-9000px;float:left;width:0;height:0;margin:2px 0.75em 0 0;border-style:solid;border-width:8px;border-color:#01b0ff transparent transparent transparent;cursor:pointer;}
+#global_progress .toggle:hover{border-top-color:#339ACA;}
+#global_progress .message{float:right;color: #008000; font-size: 0.8em; line-height: 1.5em; }
+#global_progress .usage_smallest{float:right;margin:0.2em 0.2em 0.2em 0.5em}
+#global_progress.closed{height:1em;overflow:hidden}
+#global_progress.closed .toggle{margin:-1px 1.2em 0 4px;border-width:8px;border-color:transparent transparent transparent #01b0ff;}
+#global_progress.disable_toggle .toggle { opacity: 0.2; cursor: auto; }

@@ -709,8 +709,30 @@ var ViewsSection = {
       });
     });
 
-    function mkViewsListCell(ddocsCell, containerId) {
-      var cell = Cell.needing(ddocsCell).compute(function (v, ddocs) {
+    var tasksProgressIsInteresting = new Cell();
+    tasksProgressIsInteresting.setValue(false);
+
+    DAL.cells.currentPoolDetailsCell.subscribeValue(function (poolDetails) {
+      if (poolDetails && poolDetails.tasksStatus !== 'none') {
+        tasksProgressIsInteresting.setValue(true);
+      } else {
+        tasksProgressIsInteresting.setValue(false);
+      }
+    });
+
+    this.tasksProgressCell = new Cell(function (interesting, poolDetails) {
+      if (!interesting)
+        return false;
+      return future.get({url: poolDetails.tasksProgressUri});
+    }, {
+      interesting: tasksProgressIsInteresting,
+      poolDetails: DAL.cells.currentPoolDetailsCell
+    });
+
+
+    function mkViewsListCell(tasksCell, ddocsCell, containerId) {
+      var cell = Cell.needing(tasksCell, ddocsCell, DAL.cells.currentPoolDetailsCell)
+        .compute(function (v, tasks, ddocs, poolDetails) {
         var bucketName = v.need(selectedBucketCell);
         var rv = _.map(ddocs, function (doc) {
           var rv = _.clone(doc);
@@ -721,28 +743,43 @@ var ViewsSection = {
                              removeLink: '#removeView=' + plink
                             }, value);
           });
-          viewInfos = _.sortBy(viewInfos, function (info) {return info.name});
+          viewInfos = _.sortBy(viewInfos, function (info) { return info.name; });
           rv.viewInfos = viewInfos;
           return rv;
         });
+        rv.tasks = tasks;
+        rv.poolDetails = poolDetails;
         rv.bucketName = bucketName;
         return rv;
       });
 
       DAL.subscribeWhenSection(cell, "views", function (ddocs) {
+
         if (!ddocs)
           return;
+
+        var poolDetails = ddocs.poolDetails;
+        var bucketName = ddocs.bucketName;
+        var progress = sumIndexProgress(ddocs.tasks);
+
+        ddocs = $.map(ddocs, function(x) {
+          if (progress[x._id]) {
+            x.progress = progress[x._id];
+          }
+          return x;
+        });
+
         renderTemplate('views_list', {
           rows: ddocs,
-          bucketName: ddocs.bucketName
+          bucketName: bucketName
         }, $i(containerId));
       });
 
       return cell;
     }
 
-    var devDDocsViewCell = mkViewsListCell(devDDocsCell, 'development_views_list_container');
-    var productionDDocsViewCell = mkViewsListCell(productionDDocsCell, 'production_views_list_container');
+    var devDDocsViewCell = mkViewsListCell(this.tasksProgressCell, devDDocsCell, 'development_views_list_container');
+    var productionDDocsViewCell = mkViewsListCell(this.tasksProgressCell, productionDDocsCell, 'production_views_list_container');
 
     $('#built_in_reducers a').bind('click', function (e) {
       var text = $(this).text();

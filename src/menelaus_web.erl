@@ -189,6 +189,8 @@ loop(Req, AppRoot, DocRoot) ->
                              ["diag", "vbuckets"] -> {auth, fun handle_diag_vbuckets/1};
                              ["pools", PoolId, "rebalanceProgress"] ->
                                  {auth, fun handle_rebalance_progress/2, [PoolId]};
+                             ["pools", PoolId, "tasksProgress"] ->
+                                 {auth, fun handle_tasks_progress/2, [PoolId]};
                              ["index.html"] ->
                                  {done, serve_static_file(Req, {AppRoot, Path},
                                                          "text/html; charset=utf8",
@@ -490,6 +492,7 @@ handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag) ->
     Info = {struct, [{etag, list_to_binary(ETag)} | PList]},
     reply_json(Req, Info).
 
+
 build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
     F = build_nodes_info_fun(menelaus_auth:check_auth(UserPassword), InfoLevel, LocalAddr),
     Nodes = [F(N, undefined) || N <- ns_node_disco:nodes_wanted()],
@@ -501,23 +504,33 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                              list_to_binary(concat_url_path(["pools", Id, "buckets"])
                                             ++ "?v=" ++ integer_to_list(BucketsVer))}]},
     RebalanceStatus = case ns_cluster_membership:get_rebalance_status() of
-                          {running, _ProgressList} -> <<"running">>;
-                          _ -> <<"none">>
-                      end,
+      {running, _ProgressList} -> <<"running">>;
+      _ -> <<"none">>
+    end,
+
+    TasksStatus = case build_indexing_tasks(Id) of
+      [] -> <<"none">>;
+      _ -> <<"active">>
+    end,
+
     Alerts = menelaus_web_alerts_srv:fetch_alerts(),
 
     Controllers = {struct, [
-                            {addNode, {struct, [{uri, <<"/controller/addNode">>}]}},
-                            {rebalance, {struct, [{uri, <<"/controller/rebalance">>}]}},
-                            {failOver, {struct, [{uri, <<"/controller/failOver">>}]}},
-                            {reAddNode, {struct, [{uri, <<"/controller/reAddNode">>}]}},
-                            {ejectNode, {struct, [{uri, <<"/controller/ejectNode">>}]}},
-                            {setAutoCompaction, {struct, [{uri, <<"/controller/setAutoCompaction">>},
-                                                          {validateURI, <<"/controller/setAutoCompaction?just_validate=1">>}]}},
-                            {replication, {struct, [{createURI, <<"/controller/createReplication">>},
-                                                    {replicatorDBURI, <<"/couchBase/_replicator">>},
-                                                    {infosURI, <<"/couchBase/_replicator/_design/_replicator_info/_view/infos?group_level=1">>}]}}
-                           ]},
+      {addNode, {struct, [{uri, <<"/controller/addNode">>}]}},
+      {rebalance, {struct, [{uri, <<"/controller/rebalance">>}]}},
+      {failOver, {struct, [{uri, <<"/controller/failOver">>}]}},
+      {reAddNode, {struct, [{uri, <<"/controller/reAddNode">>}]}},
+      {ejectNode, {struct, [{uri, <<"/controller/ejectNode">>}]}},
+      {setAutoCompaction, {struct, [
+        {uri, <<"/controller/setAutoCompaction">>},
+        {validateURI, <<"/controller/setAutoCompaction?just_validate=1">>}
+      ]}},
+      {replication, {struct, [
+        {createURI, <<"/controller/createReplication">>},
+        {replicatorDBURI, <<"/couchBase/_replicator">>},
+        {infosURI, <<"/couchBase/_replicator/_design/_replicator_info/_view/infos?group_level=1">>}
+      ]}}
+    ]},
 
     PropList0 = [{name, list_to_binary(Id)},
                  {alerts, Alerts},
@@ -533,6 +546,8 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                  {controllers, Controllers},
                  {balanced, ns_cluster_membership:is_balanced()},
                  {failoverWarnings, ns_bucket:failover_warnings()},
+                 {tasksStatus, TasksStatus},
+                 {tasksProgressUri, bin_concat_path(["pools", Id, "tasksProgress"])},
                  {rebalanceStatus, RebalanceStatus},
                  {rebalanceProgressUri, bin_concat_path(["pools", Id, "rebalanceProgress"])},
                  {stopRebalanceUri, <<"/controller/stopRebalance">>},
@@ -579,6 +594,57 @@ build_auto_compaction_allowed_time_period(AllowedTimePeriod) ->
                                 {fromMinute, from_minute},
                                 {toMinute, to_minute},
                                 {abortOutside, abort_outside}]].
+
+
+build_indexing_tasks(Pool) ->
+
+    TaskFun = fun(Task, {Node, Dict}) ->
+
+        DDoc = proplists:get_value(design_document, Task),
+        Set = proplists:get_value(set, Task),
+
+        case list_to_binary(Pool) =:= Set of
+            true ->
+                case dict:is_key(DDoc, Dict) of
+                    true ->
+                        OldTask = dict:fetch(DDoc, Dict),
+                        {struct, Nodes} = proplists:get_value(nodes, OldTask),
+                        NewNodes = {nodes, {struct, [{Node, {struct, Task}} | Nodes]}},
+                        NTask = lists:keyreplace(nodes, 1, OldTask, NewNodes),
+                        {Node, dict:store(DDoc, NTask, Dict)};
+                    false ->
+                        NTask = [{type, indexer}, {design_document, DDoc},
+                                 {nodes, {struct, [{Node, {struct, Task}}]}}],
+                        {Node, dict:store(DDoc, NTask, Dict)}
+                end;
+            false ->
+                {Node, Dict}
+        end
+    end,
+
+    NodeFun = fun(Node, {Doctor, Dict}) ->
+        case dict:is_key(Node, Doctor) of
+            true ->
+                NodeDetails = dict:fetch(Node, Doctor),
+                case proplists:get_value(indexer_tasks, NodeDetails) of
+                    undefined ->
+                        {Doctor, Dict};
+                    Tasks ->
+                        {_, ResultDict} = lists:foldl(TaskFun, {Node, Dict}, Tasks),
+                        {Doctor, ResultDict}
+                end;
+            %% Task may not be reported as started yet
+            false ->
+                {Doctor, Dict}
+        end
+    end,
+
+    Nodes = ns_cluster_membership:active_nodes(),
+    Doctor = ns_doctor:get_nodes(),
+    {_, Results} = lists:foldl(NodeFun, {Doctor, dict:new()}, Nodes),
+    [Val || {_, Val} <- dict:to_list(Results)].
+
+
 
 build_nodes_info() ->
     F = build_nodes_info_fun(true, normal, "127.0.0.1"),
@@ -1554,6 +1620,10 @@ calculate_replication(Node, BucketsAll, BucketsReplications) ->
         [] -> 1.0;
         _ -> lists:sum(ReplicationList) / length(ReplicationList)
     end.
+
+
+handle_tasks_progress(PoolId, Req) ->
+    reply_json(Req, build_indexing_tasks(PoolId), 200).
 
 %% Node list
 %% GET /pools/{PoolID}/buckets/{Id}/nodes

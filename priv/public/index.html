@@ -24,6 +24,10 @@
           <i class="sign-out-link"><b>&bull;</b> <a href="javascript:ThePage.signOut();">Sign Out</a></i>
         </div>
         <a href="index.html"><span class="logo">&nbsp;</span></a>
+        <div id="global_progress" class="closed disable_toggle">
+          <i class="toggle">i</i>
+          <ul id="global_progress_container"></ul>
+        </div>
       </div>
     </div><!-- .page-header -->
 
@@ -866,6 +870,7 @@
               <tr>
                 <th>Name</th>
                 <th>Language</th>
+                <th>Status</th>
                 <th><div style="display:none">Disk Size</div></th>
                 <th class="last"></th>
               </tr>
@@ -900,6 +905,16 @@
                 </td>
                 <td class="langv">{%= h(ddoc.language || "javascript") %}</td>
                 <td>
+                  <!-- {% if (ddoc.progress) {  %} -->
+                  <div class="indexer_progress">
+                    <div class="usage_smallest">
+                      <div class="used" style="width: {%= h(ddoc.progress) %}%"></div>
+                    </div>
+                    <span class="ddoc_message">Indexing {%= h(ddoc.progress) %}%</span>
+                  </div>
+                  <!-- {% } %} -->
+                </td>
+                <td>
                 </td>
                 <td>
                   <a class="list_button when-in-prod" href="#copyDDoc={%=h(ddoc._id)%}"><span>Copy to Dev</span></a>
@@ -913,7 +928,7 @@
               <!-- {% } else { %} -->
               <!-- {% _.each(ddoc.viewInfos, function (viewInfo) { %} -->
               <tr>
-                <td class="view_name" colspan="3">
+                <td class="view_name" colspan="4">
                   <a href="{%=h(viewInfo.viewLink)%}">{%= h(viewInfo.name) %}</a>
                 </td>
                 <td>
@@ -2261,6 +2276,7 @@ $(window).bind('template:rendered', function () {
 <script src="js/documents.js"></script>
 <script src="js/overview.js"></script>
 <script src="js/all-images.js"></script>
+<script src="js/global_progress.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
