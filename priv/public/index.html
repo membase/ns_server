@@ -3,7 +3,7 @@
 <!--[if IE 8 ]>    <html class="ie8" lang="en"> <![endif]-->
 <!--[if (gte IE 9)|!(IE)]><!--><html lang="en"><!--<![endif]-->
 <head>
-<title>Membase Console</title>
+<title>Couchbase Console</title>
 <link rel="stylesheet" type="text/css" href="/css/screen.css">
 <link rel="stylesheet" type="text/css" href="/css/print.css">
 <link rel="stylesheet" type="text/css" href="/css/jquery-ui.membase.css">
@@ -57,7 +57,7 @@
             <h1>SUPPORT</h1>
             <ul>
               <li class="line"><a id="switch_support_docs" href="http://techzone.couchbase.com/wiki/display/membase/Getting+Started" target="MCWebHelp">Documentation</a></li>
-              <li class="line"><a id="switch_support_forums" href="http://www.couchbase.org/forums/membase/membase-server-17x" target="nsforums">Support Forums</a></li>
+              <li class="line"><a id="switch_support_forums" href="http://www.couchbase.org/forums/couchbase/couchbase-server-18x" target="nsforums">Support Forums</a></li>
             </ul>
           </td>
           <td id="mainPanel">
@@ -473,7 +473,7 @@
               <div class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</div>
               No buckets currently defined! Go to <a href="#sec=buckets">Manage Buckets</a> to create some.
             </div>
-            <div class="membase-buckets-subsection"><h1>Membase Buckets<span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span></h1>
+            <div class="membase-buckets-subsection"><h1>Couchbase Buckets<span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span></h1>
               <div class="shadow_box">
                     <div class="content">
                       <div id="monitor_persistent_buckets_list_container"></div>
@@ -774,7 +774,7 @@
             </label>
             <p class="more_info">
               Enabling software update notifications allows notification in
-              the Membase web console when a new version of Membase Server
+              the Couchbase web console when a new version of Couchbase Server
               is available. Configuration information transferred in the
               update check is anonymous and does not include any stored
               key-value data.
@@ -918,7 +918,7 @@
     <label class="for-name"><span>Bucket Name:</span><input disabled name="name" value="Bucket Name"><span class="error-container err-name"></span></label>
     <div class="for-bucket-type"><span>Bucket Type:</span>
      <label><input type="radio" name="bucketType" value="memcached"> Memcached</label>
-     <label><input type="radio" name="bucketType" value="membase"> Membase</label>
+     <label><input type="radio" name="bucketType" value="membase"> Couchbase</label>
     </div>
     <h2>Access Control</h2>
     <label class="for-sasl-password"><input id="bucket_details_sasl_selected" type="radio" name="authType" value="sasl" checked>
@@ -1149,8 +1149,8 @@
 <div class="dialog" id="about_server_dialog">
   <div class="lbox">
     <div class="config-top">
-      <img src="images/membase-logo.png" alt="Membase Logo" />
-      <h1>About Membase Server</h1>
+      <img src="images/membase-logo.png" alt="Couchbase Logo" />
+      <h1>About Couchbase Server</h1>
     </div>
     <div class="center">
       <p class="dialog-text" id="about_versions"></p>
@@ -1244,7 +1244,7 @@
 
   <div class="pad" id="init_welcome_dialog">
     <div class="pad-header">
-      <div class="version" style="display:none;">Membase Server <span class="membase-version"></span></div>
+      <div class="version" style="display:none;">Couchbase Server <span class="membase-version"></span></div>
       <div class="tagline">
         ELASTIC DATA MANAGEMENT
       </div>
@@ -1254,7 +1254,7 @@
     <h1>Congratulations</h1>
     <form id="init_welcome_form">
       <p>
-        You have successfully installed the Membase Server.<br>This wizard will help you configure your cluster.
+        You have successfully installed the Couchbase Server.<br>This wizard will help you configure your cluster.
       </p>
       <div class="pat_10">
         <input type="image" name="setup" value="Setup" class="submit next focusme" src="../images/welcome-setup-button.png" />
@@ -1285,13 +1285,13 @@
     </div>
     <h2 class="question">Join Cluster / Start new Cluster</h2>
     <p class="pad_10">
-    If you want to add this server to an existing Membase Cluster, select "Join a
+    If you want to add this server to an existing Couchbase Cluster, select "Join a
     cluster now".
-    Alternatively, you may create a new Membase Cluster by selecting "Start a new
+    Alternatively, you may create a new Couchbase Cluster by selecting "Start a new
     cluster".
     </p><p class="pad_10" style="padding-top: 5px;">
     If you start a new cluster the "Per Server RAM Quota" you set below will define
-    the amount of RAM each server provides to the Membase Cluster. This value will
+    the amount of RAM each server provides to the Couchbase Cluster. This value will
     be inherited by all servers subsequently joining the cluster and it cannot be
     modified in an existing cluster, so please set appropriately.
     </p>
@@ -1359,7 +1359,7 @@
       <a href="#" class="more_info">What's this?</a>
     </p>
     <p class="more_info pad_10">
-      Enabling software update notifications allows notification in the Membase web console when a new version of Membase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.
+      Enabling software update notifications allows notification in the Couchbase web console when a new version of Couchbase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.
     </p>
     <h2 class="question">Community Updates</h2>
     <p class="pad_10">Please provide your email address to join the community and receive news on coming events.</p>
@@ -1430,7 +1430,7 @@
       <label class="for-name"><span>Bucket Name:</span> default</label>
       <div class="for-bucket-type"><span>Bucket Type:</span>
        <label><input type="radio" name="bucketType" value="memcached"> Memcached</label>
-       <label><input type="radio" name="bucketType" value="membase"> Membase</label>
+       <label><input type="radio" name="bucketType" value="membase"> Couchbase</label>
       </div>
       <h2>Memory Size</h2>
       <div class="size-gauge for-ram">
@@ -1477,7 +1477,7 @@
 <script id="notice_template" type="text/html">
 <div class="shadow_box notice">
   <div class="content">
-    <h2 class="header_2">Membase Server Message<span style="float: right; color: black; font-size: 13px;">click to dismiss</span></h2>
+    <h2 class="header_2">Couchbase Server Message<span style="float: right; color: black; font-size: 13px;">click to dismiss</span></h2>
     <div class="pad_10 success_msg">
       <p class="info_text">{%= h(text) %}</p>
     </div>
@@ -1487,7 +1487,7 @@
 <script id="noticeErr_template" type="text/html">
 <div class="shadow_box notice">
   <div class="content">
-    <h2 class="header_2">Membase Server Alert<span style="float: right; color: black; font-size: 13px;">click to dismiss</span></h2>
+    <h2 class="header_2">Couchbase Server Alert<span style="float: right; color: black; font-size: 13px;">click to dismiss</span></h2>
     <div class="pad_10 error_msg">
       <p class="info_text">{%= h(text) %}</p>
     </div>
