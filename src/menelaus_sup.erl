@@ -40,14 +40,14 @@ start_link() ->
     case Result of
         {ok, _Pid} ->
             ns_log:log(?MODULE, ?START_OK,
-                       "Membase Server has started on web port ~p on node ~p.",
+                       "Couchbase Server has started on web port ~p on node ~p.",
                        [Port, node()]);
         _Err ->
             %% The exact error message is not logged here since this
             %% is a supervisor start, but a more helpful message
             %% should've been logged before.
             ns_log:log(?MODULE, ?START_FAIL,
-                       "Membase Server has failed to start on web port ~p on node ~p. " ++
+                       "Couchbase Server has failed to start on web port ~p on node ~p. " ++
                        "Perhaps another process has taken port ~p already? " ++
                        "If so, please stop that process first before trying again.",
                        [Port, node(), Port])

@@ -44,7 +44,7 @@ require_auth(Req) ->
             Req:respond({401, add_header(), []});
         _ ->
             Req:respond({401, [{"WWW-Authenticate",
-                                "Basic realm=\"Membase Server Admin / REST\""} | add_header()],
+                                "Basic realm=\"Couchbase Server Admin / REST\""} | add_header()],
                          []})
     end.
 

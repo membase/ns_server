@@ -49,7 +49,7 @@
           %% Whether to enable or disable email notifications
           enabled=false :: true|false,
           %% The sender address of the email
-          sender="membase@localhost" :: string(),
+          sender="couchbase@localhost" :: string(),
           %% A comma separated list of recipients of the of the alert emails.
           recipients=[] :: [string()],
           %% Host address of the SMTP server

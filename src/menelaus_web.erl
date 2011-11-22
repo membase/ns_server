@@ -1306,7 +1306,7 @@ handle_node_settings_post(Node, Req) ->
                                end,
                                case ns_storage_conf:prepare_setup_disk_storage_conf(node(), Path) of
                                    {ok, _} = R -> R;
-                                   error -> <<"Could not set the storage path. It must be a directory writable by 'membase' user.">>
+                                   error -> <<"Could not set the storage path. It must be a directory writable by 'couchbase' user.">>
                                end
                        end
                end
