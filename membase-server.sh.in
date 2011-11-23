@@ -24,6 +24,9 @@ export ERL_LIBS
 ERL_MAX_PORTS=8192
 export ERL_MAX_PORTS
 
+ERL_FULLSWEEP_AFTER=0
+export ERL_FULLSWEEP_AFTER
+
 DEFAULT_CONFIG_DIR="@PREFIX@/etc/couchdb/default.d"
 DEFAULT_CONFIG_FILE="@PREFIX@/etc/couchdb/default.ini"
 LOCAL_CONFIG_DIR="@PREFIX@/etc/couchdb/local.d"

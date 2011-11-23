@@ -118,6 +118,10 @@ def start_cluster(num_nodes, start_index, host, extra_args):
 
         os_specific(args, params)
 
+        if not params.has_key('env'):
+            params['env'] = {}
+            params['env'].update(os.environ)
+        params['env'].update({'ERL_FULLSWEEP_AFTER':'0'})
         return subprocess.Popen(args, **params)
 
     return [start_node(i + start_index) for i in xrange(num_nodes)]
