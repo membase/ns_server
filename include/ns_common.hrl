@@ -79,6 +79,10 @@
         ale:xlog(?USER_LOGGER, ns_log_sink:get_loglevel(Module, Code),
                  {Module, Code}, Fmt, Args)).
 
+-define(rebalance_debug(Format, Args),
+        ale:debug(?REBALANCE_LOGGER, Format, Args)).
+-define(rebalance_debug(Msg), ale:debug(?REBALANCE_LOGGER, Msg)).
+
 -define(rebalance_info(Format, Args),
         ale:info(?REBALANCE_LOGGER, Format, Args)).
 -define(rebalance_info(Msg), ale:info(?REBALANCE_LOGGER, Msg)).
