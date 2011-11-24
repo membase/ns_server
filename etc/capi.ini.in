@@ -4,7 +4,7 @@ max_dbs_open = 10000
 [httpd]
 db_frontend = capi_frontend
 bind_address = 0.0.0.0
-port = 6984
+port = 8092
 
 [httpd_global_handlers]
 _cluster_tasks = {capi_tasks, cluster_tasks_req}
