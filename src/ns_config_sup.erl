@@ -58,9 +58,5 @@ init([]) ->
 
            {cb_config_couch_sync,
             {cb_config_couch_sync, start_link, []},
-            permanent, 1000, worker, []},
-
-           {xdc_rep_manager,
-            {xdc_rep_manager, start_link, []},
-            permanent, 30000, worker, []}
+            permanent, 1000, worker, []}
           ]}}.
