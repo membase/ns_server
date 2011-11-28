@@ -121,7 +121,7 @@ handle_call({add_node, RemoteAddr, RestPort, Auth}, _From, State) ->
     {reply, RV, State};
 
 handle_call({engage_cluster, NodeKVList}, _From, State) ->
-    ?cluster_debug("handling engage_cluster(..)~n", [NodeKVList]),
+    ?cluster_debug("handling engage_cluster(~p)~n", [NodeKVList]),
     RV = do_engage_cluster(NodeKVList),
     ?cluster_debug("engage_cluster(..) -> ~p~n", [RV]),
     {reply, RV, State};
