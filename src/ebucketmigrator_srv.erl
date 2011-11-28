@@ -177,30 +177,7 @@ init({Src, Dst, Opts}) ->
       takeover_done=false
      },
     erlang:process_flag(trap_exit, true),
-    gen_server:enter_loop(?MODULE, [], maybe_setup_dumping(State, Args)).
-
--spec maybe_setup_dumping(#state{}, term()) -> #state{}.
-maybe_setup_dumping(State, Args) ->
-    case os:getenv("MEMBASE_DUMP_TAP_STREAMS") of
-        false ->
-            State;
-        _ ->
-            try
-                do_setup_dumping(State, Args)
-            catch E:T ->
-                    ?rebalance_error("Tried to setup tap stream dumping and failed.~n~p~n",
-                                     [{E,T,erlang:get_stacktrace()}]),
-                    State
-            end
-    end.
-
-do_setup_dumping(State, Args) ->
-    FileNamePrefix = lists:flatten(io_lib:format("tap_dump_~w_~w", [misc:time_to_epoch_ms_int(now()), erlang:phash2(self())])),
-    {ok, InfoIO} = file:open(path_config:component_path(data, FileNamePrefix ++ ".info"), [binary, write, delayed_write]),
-    io:format(InfoIO, "InitialState:~n~p~n~nTap Args:~n~p~n", [State, Args]),
-    ok = file:close(InfoIO),
-    {ok, DumpIO} = file:open(path_config:component_path(data, FileNamePrefix ++ ".data"), [binary, write, delayed_write]),
-    State#state{dump_file = DumpIO}.
+    gen_server:enter_loop(?MODULE, [], State).
 
 terminate(_Reason, State) ->
     timer:kill_after(?TERMINATE_TIMEOUT),
