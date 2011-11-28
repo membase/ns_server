@@ -293,7 +293,7 @@ do_stop_logger(Name, #state{loggers=Loggers} = State) ->
     ensure_logger(
       Name, State,
       fun () ->
-            LoggerId = ale_utils:logger_id(),
+            LoggerId = ale_utils:logger_id(Name),
             ok = ale_dynamic_sup:stop_child(LoggerId),
             NewState = State#state{loggers=ordsets:del_element(Name, Loggers)},
             {ok, NewState}
