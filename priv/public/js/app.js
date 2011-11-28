@@ -658,7 +658,7 @@ var SetupWizard = {
         memoryErrorsContainer.hide();
 
         postWithValidationErrors('/nodes/' + node + '/controller/settings',
-                                 $.param({db_path: dbPath,
+                                 $.param({path: dbPath,
                                           index_path: ixPath}),
                                  afterDisk);
 

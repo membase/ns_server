@@ -1369,12 +1369,10 @@ handle_node_settings_post("self", Req)            -> handle_node_settings_post(n
 handle_node_settings_post(S, Req) when is_list(S) -> handle_node_settings_post(list_to_atom(S), Req);
 
 handle_node_settings_post(Node, Req) ->
-    %% parameter example: license=some_license_string, memoryQuota=NumInMb
-    %%
     Params = Req:parse_post(),
 
-    DbPath = proplists:get_value("db_path", Params),
-    IxPath = proplists:get_value("index_path", Params),
+    DbPath = proplists:get_value("path", Params, []),
+    IxPath = proplists:get_value("index_path", Params, DbPath),
 
     case Node =/= node() of
         true -> exit('Setting the disk storage path for other servers is not yet supported.');
@@ -1384,7 +1382,6 @@ handle_node_settings_post(Node, Req) ->
     ValidatePath =
         fun (Path) ->
                 case Path of
-                    undefined -> ok;
                     [] -> <<"The database or index path cannot be empty.">>;
                     Path ->
                         case misc:is_absolute_path(Path) of
@@ -1395,14 +1392,18 @@ handle_node_settings_post(Node, Req) ->
         end,
 
     Results0 = lists:usort(lists:map(ValidatePath, [DbPath, IxPath])),
-    Results1 = Results0 ++
+    Results1 =
+        case Results0 of
+            [ok] ->
                 [case ns_storage_conf:prepare_setup_disk_storage_conf(node(),
                                                                       DbPath,
                                                                       IxPath) of
                      {ok, _} = R -> R;
                      error -> <<"Could not set the storage path. "
                                 "It must be a directory writable by 'couchbase' user.">>
-                 end],
+                 end];
+            _ -> Results0
+        end,
 
 
     case lists:filter(fun(ok) -> false;
