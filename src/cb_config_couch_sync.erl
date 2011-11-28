@@ -31,7 +31,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([start_link/0]).
+-export([start_link/0, set_db_and_ix_paths/2, get_db_and_ix_paths/0]).
 
 %% gen_event callbacks
 -export([init/1, handle_call/3, handle_cast/2,
@@ -75,6 +75,19 @@ init([WorkerPid]) ->
                                  sync_started = false,
                                  worker_pid = WorkerPid})}.
 
+
+-spec get_db_and_ix_paths() -> [{db_path | index_path, string()}].
+get_db_and_ix_paths() ->
+    DbPath = couch_config:get("couchdb", "database_dir"),
+    IxPath = couch_config:get("couchdb", "view_index_dir", DbPath),
+    [{db_path, DbPath},
+     {index_path, IxPath}].
+
+-spec set_db_and_ix_paths(DbPath :: string(), IxPath :: string()) -> ok.
+set_db_and_ix_paths(DbPath, IxPath) ->
+    couch_config:set("couchdb", "database_dir", DbPath),
+    couch_config:set("couchdb", "view_index_dir", IxPath).
+
 terminate(_Reason, _State) ->
     ok.
 code_change(_OldVsn, State, _) ->
@@ -95,7 +108,6 @@ handle_info(_Event, State) ->
 
 %% Auxiliary functions.
 
-is_notable_event({{node, Node, couchdb}, _}) when Node =:= node() -> true;
 is_notable_event({buckets, _}) -> true;
 is_notable_event({autocompaction, _}) -> true;
 is_notable_event(_) -> false.
@@ -144,13 +156,6 @@ build_compaction_config_string(ACSettings) ->
 
 do_config_sync() ->
     Config = ns_config:get(),
-    case ns_config:search(Config, {node, node(), couchdb}) of
-        {value, CouchDBCfg} ->
-            sync_couchdb_config(CouchDBCfg);
-        _ ->
-            ?log_error("Weird. Got empty couchdb config"),
-            ok
-    end,
     sync_autocompaction(Config).
 
 decide_autocompaction_config_changes(Config, CouchCompactionsList) ->
@@ -196,40 +201,6 @@ sync_autocompaction(Config) ->
                           couch_config:delete("compactions", Name)
                   end, ExtraCompactions).
 
-sync_couchdb_config(Config) ->
-    %% Updates couch config. Returns true if couchdb needs to be restarted.
-    MaybeUpdate =
-        fun ({Key, Value}) ->
-                KeyStr = atom_to_list(Key),
-                Current = couch_config:get("couchdb", KeyStr),
-
-                case Value of
-                    Current ->
-                        false;
-                    _ ->
-                        ?log_info("Updating couchdb config: ~p (~p -> ~p)",
-                                  [Key, Current, Value]),
-                        ok = couch_config:set("couchdb", KeyStr, Value),
-                        requires_couch_restart(Key)
-                end
-        end,
-
-    Results = lists:map(MaybeUpdate, Config),
-    Id = fun (X) -> X end,
-    case lists:any(Id, Results) of
-        true ->
-            ?log_info("Restarting couchdb."),
-            cb_couch_sup:restart_couch();
-        false ->
-            ok
-    end.
-
-requires_couch_restart(database_dir) ->
-    true;
-requires_couch_restart(view_index_dir) ->
-    true;
-requires_couch_restart(_Other) ->
-    false.
 
 -ifdef(EUNIT).
 decide_autocompaction_config_changes_test() ->

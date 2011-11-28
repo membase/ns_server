@@ -1327,6 +1327,7 @@ storage_conf_to_json(S) ->
               S).
 
 location_prop_to_json({path, L}) -> {path, list_to_binary(L)};
+location_prop_to_json({index_path, L}) -> {index_path, list_to_binary(L)};
 location_prop_to_json({quotaMb, none}) -> {quotaMb, none};
 location_prop_to_json({state, ok}) -> {state, ok};
 location_prop_to_json(KV) -> KV.
@@ -1365,6 +1366,7 @@ handle_resource_delete(Node, Path, Req) ->
         {error, _} -> Req:respond({404, add_header(), "The storage location could not be removed.\r\n"})
     end.
 
+-spec handle_node_settings_post(string() | atom(), any()) -> no_return().
 handle_node_settings_post("self", Req)            -> handle_node_settings_post(node(), Req);
 handle_node_settings_post(S, Req) when is_list(S) -> handle_node_settings_post(list_to_atom(S), Req);
 
@@ -1395,27 +1397,26 @@ handle_node_settings_post(Node, Req) ->
     Results1 =
         case Results0 of
             [ok] ->
-                [case ns_storage_conf:prepare_setup_disk_storage_conf(node(),
-                                                                      DbPath,
-                                                                      IxPath) of
-                     {ok, _} = R -> R;
-                     error -> <<"Could not set the storage path. "
-                                "It must be a directory writable by 'couchbase' user.">>
-                 end];
+                %% NOTE: due to required restart we need to protect
+                %% ourselves from 'death signal' of parent
+                erlang:process_flag(trap_exit, true),
+                case ns_storage_conf:setup_disk_storage_conf(DbPath, IxPath) of
+                    ok ->
+                        %% performing required restart from
+                        %% successfull path change
+                        ns_server:restart(),
+                        Req:respond({200, add_header(), []}),
+                        erlang:exit(normal);
+                    {errors, Msgs} -> Msgs
+                end;
             _ -> Results0
         end,
 
 
     case lists:filter(fun(ok) -> false;
-                         ({ok, _}) -> false;
                          (_) -> true
                       end, Results1) of
-        [] ->
-            lists:foreach(fun ({ok, CommitF}) ->
-                                  CommitF();
-                              (_) -> ok
-                          end, Results1),
-            Req:respond({200, add_header(), []});
+        [] -> exit(cannot_happen);
         Errs -> reply_json(Req, Errs, 400)
     end.
 

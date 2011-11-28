@@ -18,19 +18,13 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, restart_couch/0]).
+-export([start_link/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
-%% Restart couch_app.
-restart_couch() ->
-    ok = supervisor:terminate_child(?MODULE, couch_app),
-    {ok, _} = supervisor:restart_child(?MODULE, couch_app),
-    ok.
 
 %% Get arguments to pass to couch_app:start. Tries to get those from resource
 %% file. In case of error used empty list.

@@ -171,6 +171,7 @@ current_status(Expensive) ->
 
 expensive_checks() ->
     BasicData = [{system_memory_data, memsup:get_system_memory_data()},
+                 {node_storage_conf, cb_config_couch_sync:get_db_and_ix_paths()},
                  {statistics, stats()}],
     case misc:raw_read_file("/proc/meminfo") of
         {ok, Contents} ->

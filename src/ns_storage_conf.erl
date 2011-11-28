@@ -23,14 +23,12 @@
 -include("ns_common.hrl").
 
 -export([memory_quota/1, change_memory_quota/2,
-         prepare_setup_disk_storage_conf/3,
+         setup_disk_storage_conf/2,
          storage_conf/1, add_storage/4, remove_storage/2,
          local_bucket_disk_usage/1,
-         dbdir/1, dbdir/2, ixdir/1, ixdir/2,
+         this_node_dbdir/0, this_node_ixdir/0, this_node_logdir/0,
          delete_databases/1,
-         delete_all_databases/0, delete_all_databases/1,
-         logdir/1, logdir/2,
-         bucket_dirs/3]).
+         delete_all_databases/0, delete_all_databases/1]).
 
 -export([node_storage_info/1, cluster_storage_info/0, nodes_storage_info/1]).
 
@@ -49,38 +47,39 @@ memory_quota(_Node, Config) ->
     RV.
 
 
--spec bucket_dirs(any(), atom(), string()) -> [string()].
-bucket_dirs(Config, Node, BucketName) ->
-    {ok, DBDir} = dbdir(Config, Node),
-    {ok, IxDir} = ixdir(Config, Node),
+-spec this_node_bucket_dirs(BucketName :: string()) -> [string()].
+this_node_bucket_dirs(BucketName) ->
+    {ok, DBDir} = this_node_dbdir(),
+    {ok, IxDir} = this_node_ixdir(),
 
     [filename:join(DBDir, BucketName),
      filename:join(IxDir, "." ++ BucketName)].
 
--spec dbdir(any()) -> {ok, string()} | {error, any()}.
-dbdir(Config) ->
-    dbdir(Config, node()).
+couch_storage_path(Field) ->
+    try cb_config_couch_sync:get_db_and_ix_paths() of
+        PList ->
+            {Field, RV} = lists:keyfind(Field, 1, PList),
+            {ok, RV}
+    catch T:E ->
+            ?log_debug("Failed to get couch storage config field: ~p due to ~p:~p", [Field, T, E]),
+            {error, iolist_to_binary(io_lib:format("couch config access failed: ~p:~p", [T, E]))}
+    end.
 
--spec dbdir(any(), atom()) -> {ok, string()} | {error, any()}.
-dbdir(Config, Node) ->
-    read_path_from_conf(Config, Node, couchdb, database_dir).
+-spec this_node_dbdir() -> {ok, string()} | {error, binary()}.
+this_node_dbdir() ->
+    couch_storage_path(db_path).
 
--spec ixdir(any()) -> {ok, string()} | {error, any()}.
-ixdir(Config) ->
-    ixdir(Config, node()).
+-spec this_node_ixdir() -> {ok, string()} | {error, binary()}.
+this_node_ixdir() ->
+    couch_storage_path(index_path).
 
--spec ixdir(any(), atom()) -> {ok, string()} | {error, any()}.
-ixdir(Config, Node) ->
-    read_path_from_conf(Config, Node, couchdb, view_index_dir).
-
--spec logdir(any()) -> {ok, string()} | {error, any()}.
-logdir(Config) ->
-    logdir(Config, node()).
+-spec this_node_logdir() -> {ok, string()} | {error, any()}.
+this_node_logdir() ->
+    logdir(ns_config:get(), node()).
 
 -spec logdir(any(), atom()) -> {ok, string()} | {error, any()}.
 logdir(Config, Node) ->
     read_path_from_conf(Config, Node, ns_log, filename).
-
 
 %% @doc read a path from the configuration, following symlinks
 -spec read_path_from_conf(any(), atom(), atom(), atom()) ->
@@ -126,58 +125,72 @@ ensure_dirs([Path | Rest]) ->
         X -> X
     end.
 
-prepare_setup_disk_storage_conf(Node, DbPath, IxPath) when Node =:= node() ->
+%% @doc sets db and index path of this node.
+%%
+%% NOTE: ns_server restart is required to make this fully effective.
+-spec setup_disk_storage_conf(DbPath::string(), IxDir::string()) -> ok | {errors, [Msg :: binary()]}.
+setup_disk_storage_conf(DbPath, IxPath) ->
     Config = ns_config:get(),
-    {ok, DbDir} = dbdir(Config, Node),
-    {ok, IxDir} = ixdir(Config, Node),
+    NoBucketsDefined = ns_bucket:get_buckets(Config) =:= [],
+    case NoBucketsDefined of
+        true ->
+            do_setup_disk_storage_conf(DbPath, IxPath);
+        _ ->
+            {errors, [<<"Changing storage path of a node that has buckets is not allowed.">>]}
+    end.
+
+do_setup_disk_storage_conf(DbPath, IxPath) ->
+    [{db_path, CurrentDbDir},
+     {index_path, CurrentIxDir}] = lists:sort(cb_config_couch_sync:get_db_and_ix_paths()),
 
     NewDbDir = misc:absname(DbPath),
     NewIxDir = misc:absname(IxPath),
 
-    PathChanged =
-        fun ({New, Old}) ->
-                New =/= Old
-        end,
-
-    Paths =
-        [ New || {New, _Old} = Pair <- lists:zip([NewDbDir, NewIxDir],
-                                                 [DbDir, IxDir]),
-                 PathChanged(Pair) ],
-
-    RV = ensure_dirs(Paths),
-
-    case RV of
-        ok ->
-            {ok, fun () ->
-                         ns_config:set({node, Node, couchdb},
-                                       [{database_dir, NewDbDir},
-                                        {view_index_dir, NewIxDir}])
-                 end};
-        _ -> RV
+    case NewDbDir =/= CurrentDbDir orelse NewIxDir =/= CurrentIxDir of
+        true ->
+            case ensure_dirs([NewDbDir, NewIxDir]) of
+                ok ->
+                    cb_config_couch_sync:set_db_and_ix_paths(NewDbDir, NewIxDir),
+                    ok;
+                error ->
+                    {errors, [<<"Could not set the storage path. It must be a directory writable by 'couchbase' user.">>]}
+            end;
+        _ ->
+            ok
     end.
 
 local_bucket_disk_usage(BucketName) ->
-    BucketDirs = bucket_dirs(ns_config:get(), node(), BucketName),
+    BucketDirs = this_node_bucket_dirs(BucketName),
     lists:sum([misc:dir_size(Dir) || Dir <- BucketDirs]).
-
-storage_conf(Node) ->
-    storage_conf(Node, ns_config:get()).
 
 % Returns a proplist of lists of proplists.
 %
-% A quotaMb of -1 means no quota.
-% Disks can get full, disappear, etc, so non-ok state is used to signal issues.
+% A quotaMb of none means no quota. Disks can get full, disappear,
+% etc, so non-ok state is used to signal issues.
+%
+% NOTE: in current implementation node disk quota is supported and
+% state is always ok
+%
+% NOTE: current node supports only single storage path and does not
+% support dedicated ssd (versus hdd) path
+%
+% NOTE: 1.7/1.8 nodes will not have storage conf returned in current
+% implementation.
 %
 % [{ssd, []},
 %  {hdd, [[{path, /some/nice/disk/path}, {quotaMb, 1234}, {state, ok}],
 %         [{path", /another/good/disk/path}, {quotaMb, 5678}, {state, ok}]]}]
 %
-storage_conf(Node, Config) ->
-    HDDInfo = case dbdir(Config, Node) of
-                  {ok, DBDir} -> [{path, misc:absname(DBDir)},
-                                  {quotaMb, none},
-                                  {state, ok}];
-                  _ -> []
+storage_conf(Node) ->
+    NodeStatus = ns_doctor:get_node(Node),
+    StorageConf = proplists:get_value(node_storage_conf, NodeStatus, []),
+    HDDInfo = case proplists:get_value(db_path, StorageConf) of
+                  undefined -> [];
+                  DBDir ->
+                      [{path, DBDir},
+                       {index_path, proplists:get_value(index_path, StorageConf, DBDir)},
+                       {quotaMb, none},
+                       {state, ok}]
               end,
     [{ssd, []},
      {hdd, [HDDInfo]}].
@@ -209,7 +222,9 @@ extract_node_storage_info(NodeInfo, Node) ->
 extract_node_storage_info(NodeInfo, Node, Config) ->
     {RAMTotal, RAMUsed, _} = proplists:get_value(memory_data, NodeInfo),
     DiskStats = proplists:get_value(disk_data, NodeInfo),
-    DiskPaths = [proplists:get_value(path, X) || X <- proplists:get_value(hdd, storage_conf(Node, Config))],
+    StorageConf = proplists:get_value(node_storage_conf, NodeInfo, []),
+    DiskPaths = [X || {PropName, X} <- StorageConf,
+                      PropName =:= db_path orelse PropName =:= index_path],
     case memory_quota(Node, Config) of
         MemQuotaMB when is_integer(MemQuotaMB) ->
             {DiskTotal, DiskUsed} =

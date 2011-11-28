@@ -17,7 +17,7 @@
 
 -behavior(application).
 
--export([start/2, stop/1, get_loglevel/1]).
+-export([start/2, stop/1, get_loglevel/1, restart/0]).
 
 -include("ns_common.hrl").
 -include_lib("ale/include/ale.hrl").
@@ -41,6 +41,16 @@ start(_Type, _Args) ->
     log_pending(),
 
     ns_server_cluster_sup:start_link().
+
+restart() ->
+    %% NOTE: starting and stopping in usual way is surprisingly
+    %% hard. Because we normally do that from process which
+    %% group_leader is application_master of ns_server application. So
+    %% we just terminate and restart all childs instead.
+    {ok, {_, ChildSpecs}} = ns_server_cluster_sup:init([]),
+    ChildIds = [element(1, Spec) || Spec <- ChildSpecs],
+    [supervisor:terminate_child(ns_server_cluster_sup, Id) || Id <- lists:reverse(ChildIds)],
+    [supervisor:restart_child(ns_server_cluster_sup, Id) || Id <- ChildIds].
 
 get_config_path() ->
     case application:get_env(ns_server, config_path) of
@@ -87,6 +97,15 @@ init_logging() ->
 
     DiskSinkParams = [{size, {MaxB, MaxF}}],
 
+    ale:stop_sink(disk_default),
+    ale:stop_sink(disk_error),
+    ale:stop_sink(ns_log),
+
+    lists:foreach(
+      fun (Logger) ->
+              ale:stop_logger(Logger)
+      end, ?LOGGERS),
+
     ok = ale:start_sink(disk_default,
                         ale_disk_sink, [DefaultLogPath, DiskSinkParams]),
     ok = ale:start_sink(disk_error,
@@ -118,6 +137,7 @@ init_logging() ->
 
     case misc:get_env_default(dont_suppress_stderr_logger, false) of
         true ->
+            ale:stop_sink(stderr),
             ok = ale:start_sink(stderr, ale_stderr_sink, []),
 
             lists:foreach(

@@ -208,12 +208,11 @@ check(ip, Opaque, _History, _Stats) ->
 %% @doc check the capacity of the drives used for db and log files
 check(disk, Opaque, _History, _Stats) ->
 
-    Config = ns_config:get(),
     Mounts = disksup:get_disk_data(),
 
-    UsedPre = [ns_storage_conf:dbdir(Config),
-               ns_storage_conf:ixdir(Config),
-               ns_storage_conf:logdir(Config)],
+    UsedPre = [ns_storage_conf:this_node_dbdir(),
+               ns_storage_conf:this_node_ixdir(),
+               ns_storage_conf:this_node_logdir()],
     UsedFiles = [X || {ok, X} <- UsedPre],
 
     UsedMountsTmp =
