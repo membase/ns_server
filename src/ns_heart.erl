@@ -135,7 +135,7 @@ current_status(Expensive) ->
         case catch stats_reader:latest("minute", node(), "@system") of
             {ok, StatsRec} -> StatsRec#stat_entry.values;
             CrapSys ->
-                ?log_error("Failed to grab system stats:~n~p~n", [CrapSys]),
+                ?log_debug("Ignoring failure to grab system stats:~n~p~n", [CrapSys]),
                 []
         end,
 
@@ -148,13 +148,13 @@ current_status(Expensive) ->
                                                           try
                                                               V1 + V2
                                                           catch error:badarith ->
-                                                                  ?log_error("Ignoring badarith when agregating interesting stats:~n~p~n",
+                                                                  ?log_debug("Ignoring badarith when agregating interesting stats:~n~p~n",
                                                                              [{BucketName, K, V1, V2}]),
                                                                   V1
                                                           end
                                                   end, Acc, InterestingValues);
                                 Crap ->
-                                    ?log_error("Failed to get stats for bucket: ~p:~n~p~n", [BucketName, Crap]),
+                                    ?log_debug("Ignoring failure to get stats for bucket: ~p:~n~p~n", [BucketName, Crap]),
                                     Acc
                             end
                     end, [], ns_bucket:node_bucket_names(node())),
