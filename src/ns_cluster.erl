@@ -156,20 +156,6 @@ terminate(_Reason, _State) ->
 %% Internal functions
 %%
 
-rename_node(Old, New) ->
-    ns_config:update(fun ({K, V} = Pair) ->
-                             NewK = misc:rewrite_value(Old, New, K),
-                             NewV = misc:rewrite_value(Old, New, V),
-                             if
-                                 NewK =/= K orelse NewV =/= V ->
-                                     ?cluster_debug(
-                                       "renaming node conf ~p -> ~p:~n  ~p ->~n  ~p",
-                                       [K, NewK, V, NewV]),
-                                     {NewK, NewV};
-                                 true ->
-                                     Pair
-                             end
-                     end, erlang:make_ref()).
 
 %%
 %% API
@@ -259,7 +245,6 @@ do_change_address(NewAddr) ->
                 false ->
                     ok;
                 true ->
-                    rename_node(MyNode, node()),
                     ns_server_sup:node_name_changed(),
                     ?cluster_info("Renamed node. New name is ~p.~n", [node()]),
                     ok

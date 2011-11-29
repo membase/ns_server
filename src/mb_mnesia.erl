@@ -130,6 +130,7 @@ handle_call({maybe_rename, NewAddr}, _From, State) ->
             %% Make sure the cookie's still the same
             NewName = node(),
             ?log_info("Renaming node from ~p to ~p.", [OldName, NewName]),
+            rename_node_in_config(OldName, NewName),
             stopped = mnesia:stop(),
             change_node_name(OldName, NewName),
             ok = mnesia:delete_schema([NewName]),
@@ -146,6 +147,21 @@ handle_call(wipe, _From, State) ->
 handle_call(Request, From, State) ->
     ?log_warning("Unexpected call from ~p: ~p", [From, Request]),
     {reply, unhandled, State}.
+
+rename_node_in_config(Old, New) ->
+    ns_config:update(fun ({K, V} = Pair) ->
+                             NewK = misc:rewrite_value(Old, New, K),
+                             NewV = misc:rewrite_value(Old, New, V),
+                             if
+                                 NewK =/= K orelse NewV =/= V ->
+                                     ale:debug(?CLUSTER_LOGGER,
+                                               "renaming node conf ~p -> ~p:~n  ~p ->~n  ~p",
+                                               [K, NewK, V, NewV]),
+                                     {NewK, NewV};
+                                 true ->
+                                     Pair
+                             end
+                     end, erlang:make_ref()).
 
 
 handle_cast(Msg, State) ->
