@@ -47,6 +47,7 @@ init([]) ->
     timer:send_interval(?HEART_BEAT_PERIOD, beat),
     timer:send_interval(?EXPENSIVE_CHECK_INTERVAL, do_expensive_checks),
     self() ! do_expensive_checks,
+    self() ! beat,
     Self = self(),
     ns_pubsub:subscribe(buckets_events,
                         fun (Event, _) ->
