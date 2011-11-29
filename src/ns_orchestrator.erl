@@ -74,6 +74,22 @@
 start_link() ->
     misc:start_singleton(gen_fsm, ?MODULE, [], []).
 
+wait_for_orchestrator() ->
+    SecondsToWait = 20,
+    SleepTime = 0.2,
+    wait_for_orchestrator_loop(erlang:round(SecondsToWait/SleepTime), erlang:round(SleepTime * 1000)).
+
+wait_for_orchestrator_loop(0, _SleepTime) ->
+    failed;
+wait_for_orchestrator_loop(TriesLeft, SleepTime) ->
+    case is_pid(global:whereis_name(?MODULE)) of
+        true ->
+            ok;
+        false ->
+            timer:sleep(SleepTime),
+            wait_for_orchestrator_loop(TriesLeft-1, SleepTime)
+    end.
+
 
 -spec create_bucket(memcached|membase, nonempty_string(), list()) ->
                            ok | {error, {already_exists, nonempty_string()}} |
@@ -81,16 +97,19 @@ start_link() ->
                            {error, {invalid_name, nonempty_string()}} |
                            rebalance_running.
 create_bucket(BucketType, BucketName, NewConfig) ->
+    wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {create_bucket, BucketType, BucketName,
                                       NewConfig}, infinity).
 
 %% deletes bucket. Makes sure that once it returns it's already dead.
 delete_bucket(BucketName) ->
+    wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {delete_bucket, BucketName}, infinity).
 
 
 -spec failover(atom()) -> ok.
 failover(Node) ->
+    wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {failover, Node}, infinity).
 
 
@@ -122,12 +141,14 @@ request_janitor_run(BucketName) ->
 -spec start_rebalance([node()], [node()], [node()]) ->
                              ok | in_progress | already_balanced.
 start_rebalance(KeepNodes, EjectNodes, FailedNodes) ->
+    wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {start_rebalance, KeepNodes,
                                       EjectNodes, FailedNodes}).
 
 
 -spec stop_rebalance() -> ok | not_rebalancing.
 stop_rebalance() ->
+    wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, stop_rebalance).
 
 
