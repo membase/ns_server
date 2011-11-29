@@ -24,7 +24,7 @@
 
 -export([memory_quota/1, change_memory_quota/2,
          setup_disk_storage_conf/2,
-         storage_conf/1, add_storage/4, remove_storage/2,
+         storage_conf/1, storage_conf_from_node_status/1, add_storage/4, remove_storage/2,
          local_bucket_disk_usage/1,
          this_node_dbdir/0, this_node_ixdir/0, this_node_logdir/0,
          delete_databases/1,
@@ -183,6 +183,9 @@ local_bucket_disk_usage(BucketName) ->
 %
 storage_conf(Node) ->
     NodeStatus = ns_doctor:get_node(Node),
+    storage_conf_from_node_status(NodeStatus).
+
+storage_conf_from_node_status(NodeStatus) ->
     StorageConf = proplists:get_value(node_storage_conf, NodeStatus, []),
     HDDInfo = case proplists:get_value(db_path, StorageConf) of
                   undefined -> [];

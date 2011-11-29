@@ -1300,12 +1300,14 @@ build_full_node_info(Node, LocalAddr) ->
                    undefined -> <<"">>;
                    Y    -> Y
                end,
-    StorageConf = ns_storage_conf:storage_conf(Node),
+    NodeStatus = ns_doctor:get_node(Node),
+    StorageConf = ns_storage_conf:storage_conf_from_node_status(NodeStatus),
     R = {struct, storage_conf_to_json(StorageConf)},
+    DiskData = proplists:get_value(disk_data, NodeStatus, []),
     Fields = [{availableStorage, {struct, [{hdd, [{struct, [{path, list_to_binary(Path)},
                                                             {sizeKBytes, SizeKBytes},
                                                             {usagePercent, UsagePercent}]}
-                                                  || {Path, SizeKBytes, UsagePercent} <- disksup:get_disk_data()]}]}},
+                                                  || {Path, SizeKBytes, UsagePercent} <- DiskData]}]}},
               {memoryQuota, MemQuota},
               {storageTotals, {struct, [{Type, {struct, PropList}}
                                         || {Type, PropList} <- ns_storage_conf:nodes_storage_info([Node])]}},
