@@ -976,7 +976,7 @@ setup_with_saver() ->
     %% we don't want to kill this process when ns_config server dies,
     %% but we wan't to kill ns_config process when this process dies
     spawn(fun () ->
-                  Cfg = #config{dynamic = [[{config_version, {1,7,2}},
+                  Cfg = #config{dynamic = [[{config_version, {1,8,0}},
                                             {a, [{b, 1}, {c, 2}]},
                                             {d, 3}]],
                                 policy_mod = ns_config_default,

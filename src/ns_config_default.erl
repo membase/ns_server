@@ -234,6 +234,9 @@ upgrade_config(Config) ->
             [{set, {node, node(), config_version}, {1,7,2}} |
              upgrade_config_from_1_7_1_to_1_7_2(Config)];
         {value, {1,7,2}} ->
+            [{set, {node, node(), config_version}, {1,8,0}} |
+             upgrade_config_from_1_7_2_to_1_8_0(Config)];
+        {value, {1,8,0}} ->
             []
     end.
 
@@ -337,6 +340,27 @@ do_upgrade_rest_port_config_from_1_7_1_to_1_7_2(Config, DefaultConfig) ->
     NodeRestChange = [{set, {node, Node, rest}, NodeRestChangeValue}],
 
     RestChange ++ NodeRestChange.
+
+upgrade_config_from_1_7_2_to_1_8_0(Config) ->
+    ?log_info("Upgrading config from 1.7.2 to 1.8.0", []),
+    DefaultConfig = default(),
+    do_upgrade_config_from_1_7_2_to_1_8_0(Config, DefaultConfig).
+
+do_upgrade_config_from_1_7_2_to_1_8_0(Config, _DefaultConfig) ->
+    lists:foldl(
+      fun ({_K, false}, Acc) -> Acc;
+          ({K, {value, V}}, Acc) ->
+              V2 = prefix_replace("/opt/membase/bin/", "/opt/couchbase/bin/", V),
+              V3 = prefix_replace("/opt/membase/lib/", "/opt/couchbase/lib/", V2),
+              V4 = prefix_replace("/opt/membase/etc/", "/opt/couchbase/etc/", V3),
+              case V =:= V4 of
+                  true -> Acc;
+                  false -> [{set, K, V4} | Acc]
+              end
+      end,
+      [],
+      [{port_servers,              ns_config:search(Config, port_servers)},
+       {{node, node(), memcached}, ns_config:search_node(Config, memcached)}]).
 
 upgrade_1_6_to_1_7_test() ->
     DefaultCfg = [{directory, default_directory},
@@ -444,9 +468,47 @@ upgrade_1_7_1_to_1_7_2_test() ->
     Res4 = do_upgrade_config_from_1_7_1_to_1_7_2([OldCfg4], DefaultCfg),
     ?assertEqual(lists:sort(Ref4), lists:sort(Res4)).
 
-no_upgrade_on_1_7_2_test() ->
+upgrade_1_7_2_to_1_8_0_test() ->
+    OldCfg0 = [{nodes_wanted, [node()]},
+               {{node, node(), rest}, [{port, 9000}]}],
+    Res0 = do_upgrade_config_from_1_7_2_to_1_8_0([OldCfg0], []),
+    ?assertEqual([], lists:sort(Res0)),
+
+    OldCfg1 = [{{node,node(),memcached},
+                [{dbdir,"/opt/membase/var/lib/membase/data"},
+                 {port,11210},
+                 {bucket_engine,"/opt/membase/lib/memcached/bucket_engine.so"},
+                 {engines,
+                  [{membase,
+                    [{engine,"/opt/membase/lib/memcached/ep.so"},
+                     {initfile,"/opt/membase/etc/membase/init.sql"},
+                     {static_config_string,"foo"}]},
+                   {memcached,
+                    [{engine,"/opt/membase/lib/memcached/default_engine.so"},
+                     {static_config_string,"bar"}]}]},
+                 {verbosity,[]}]},
+               {otp,[{cookie,shouldnotbechanged}]},
+               {directory,"/opt/membase/var/lib/membase/config"}],
+    RefCfg1 = [{set, {node,node(),memcached},
+                [{dbdir,"/opt/membase/var/lib/membase/data"},
+                 {port,11210},
+                 {bucket_engine,"/opt/couchbase/lib/memcached/bucket_engine.so"},
+                 {engines,
+                  [{membase,
+                    [{engine,"/opt/couchbase/lib/memcached/ep.so"},
+                     {initfile,"/opt/couchbase/etc/membase/init.sql"},
+                     {static_config_string,"foo"}]},
+                   {memcached,
+                    [{engine,"/opt/couchbase/lib/memcached/default_engine.so"},
+                     {static_config_string,"bar"}]}]},
+                 {verbosity,[]}]}],
+    Res1 = do_upgrade_config_from_1_7_2_to_1_8_0([OldCfg1], []),
+    ?assertEqual(lists:sort(RefCfg1), lists:sort(Res1)),
+    ok.
+
+no_upgrade_on_1_8_0_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version},
-                                       {1,7,2}}]])).
+                                       {1,8,0}}]])).
 
 fuller_1_6_test_() ->
     {spawn,
