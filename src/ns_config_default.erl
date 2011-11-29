@@ -201,6 +201,21 @@ default() ->
                           {count, 0}]}
     ].
 
+%% Recursively replace all strings in a hierarchy that start
+%% with a given Prefix with a ReplacementPrefix.  For example,
+%% use it like: prefix_replace("/opt/membase/bin", "/opt/couchbase/bin", ConfigKVItem).
+prefix_replace(Prefix, ReplacementPrefix, L) when is_list(L) ->
+    case lists:prefix(Prefix, L) of
+         true  -> ReplacementPrefix ++ lists:nthtail(length(Prefix), L);
+         false -> lists:map(fun (X) ->
+                                prefix_replace(Prefix, ReplacementPrefix, X)
+                            end,
+                            L)
+    end;
+prefix_replace(Prefix, ReplacementPrefix, T) when is_tuple(T) ->
+    list_to_tuple(prefix_replace(Prefix, ReplacementPrefix, tuple_to_list(T)));
+prefix_replace(_Prefix, _ReplacementPrefix, X) -> X.
+
 %% returns list of changes to config to upgrade it to current version.
 %% This will be invoked repeatedly by ns_config until list is empty.
 %%
@@ -477,3 +492,14 @@ fuller_1_6_test_() ->
                            [{?METADATA_VCLOCK, _VClock} | _]} when Node =:= node(),
                           lists:keyfind({node, node(), ns_log}, 2, Changes))
      end}.
+
+prefix_replace_test() ->
+    ?assertEqual("", prefix_replace("/foo", "/bar", "")),
+    ?assertEqual(foo, prefix_replace("/foo", "/bar", foo)),
+    ?assertEqual([], prefix_replace("/foo", "/bar", [])),
+    ?assertEqual([foo], prefix_replace("/foo", "/bar", [foo])),
+    ?assertEqual("/bar/x", prefix_replace("/foo", "/bar", "/foo/x")),
+    ?assertEqual([1, "/bar/x", 2], prefix_replace("/foo", "/bar", [1, "/foo/x", 2])),
+    ?assertEqual({1, "/bar/x", 2}, prefix_replace("/foo", "/bar", {1, "/foo/x", 2})),
+    ?assertEqual([1, "/bar/x", {"/bar/x"}],
+                 prefix_replace("/foo", "/bar", [1, "/foo/x", {"/foo/x"}])).
