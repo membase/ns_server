@@ -17,65 +17,69 @@
 %% vbuckets (CouchDB databases) of all cluster nodes.
 
 -module(capi_ddoc_replication_srv).
-
--behaviour(cb_generic_replication_srv).
-
 -include("couch_db.hrl").
 
--export([start_link/1, force_update/1]).
--export([server_name/1, init/1, local_url/1, remote_url/2, get_servers/1]).
+-export([start_link/1, update_doc/2, force_update/1]).
+
+-behaviour(cb_generic_replication_srv).
+-export([server_name/1, init/1, get_remote_nodes/1,
+         load_local_docs/2, open_local_db/1]).
 
 -record(state, {bucket, master}).
 
-start_link(Bucket) ->
-    {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
-    case ns_bucket:bucket_type(BucketConfig) of
-        memcached ->
-            ignore;
-        _ ->
-            cb_generic_replication_srv:start_link(?MODULE, Bucket)
-    end.
+
+update_doc(Bucket, Doc) ->
+    gen_server:call(server_name(Bucket),
+                    {interactive_update, Doc}, infinity).
+
 
 force_update(Bucket) ->
-    cb_generic_replication_srv:force_update(?MODULE, Bucket).
+    cb_generic_replication_srv:force_update(server_name(Bucket)).
+
+
+start_link(Bucket) ->
+    cb_generic_replication_srv:start_link(?MODULE, Bucket).
 
 
 %% Callbacks
+server_name(Bucket) when is_binary(Bucket) ->
+    server_name(?b2l(Bucket));
 server_name(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
+
 
 init(Bucket) ->
     Self = self(),
     MasterVBucket = ?l2b(Bucket ++ "/" ++ "master"),
-
-    case couch_db:open(MasterVBucket, []) of
-        {ok, Db} ->
-            couch_db:close(Db);
-        {not_found, _} ->
-            {ok, Db} = couch_db:create(MasterVBucket, []),
-            couch_db:close(Db)
-    end,
-
-    % Update myself whenever the config changes (rebalance)
+    %% Update myself whenever the config changes (rebalance)
     ns_pubsub:subscribe(
       ns_config_events,
-      fun (_, _) ->
-              cb_generic_replication_srv:force_update(Self)
-      end,
+      fun (_, _) -> cb_generic_replication_srv:force_update(Self) end,
       empty),
 
     {ok, #state{bucket=Bucket, master=MasterVBucket}}.
 
-local_url(#state{master=Master} = _State) ->
-    Master.
 
-remote_url(Node, #state{bucket=Bucket} = _State) ->
-    Url = capi_utils:capi_url(Node, "/" ++ mochiweb_util:quote_plus(Bucket)
-                              ++ "%2Fmaster", "127.0.0.1"),
-    ?l2b(Url).
+get_remote_nodes(#state{bucket=Bucket}) ->
+    case ns_bucket:get_bucket(Bucket) of
+        {ok, Conf} ->
+            Self = node(),
+            proplists:get_value(servers, Conf) -- [Self];
+        not_present ->
+            []
+    end.
 
-get_servers(#state{bucket=Bucket} = _State) ->
-    {ok, Conf} = ns_bucket:get_bucket(Bucket),
-    Self = node(),
 
-    proplists:get_value(servers, Conf) -- [Self].
+load_local_docs(Db, _State) ->
+    couch_db:get_design_docs(Db, deleted_also).
+
+
+open_local_db(#state{master=MasterVBucket}) ->
+    case couch_db:open(MasterVBucket, []) of
+        {ok, Db} ->
+            {ok, Db};
+        {not_found, _} ->
+            couch_db:create(MasterVBucket, [])
+    end.
+
+

@@ -90,14 +90,13 @@ update_replicated_docs(#db{name = BucketBin,
 
     Errors =
         lists:foldr(
-          fun (#doc{id = Id, revs = {Pos, [RevId | _]}} = Doc, ErrorsAcc) ->
+          fun (#doc{id = Id, rev = Rev} = Doc, ErrorsAcc) ->
                   {VBucket, _Node} = cb_util:vbucket_from_id(Bucket, Id),
 
                   case do_update_replicated_doc(Bucket, VBucket, UserCtx, Doc) of
                       ok ->
                           ErrorsAcc;
                       {error, Error} ->
-                          Rev = {Pos, RevId},
                           [{{Id, Rev}, Error} | ErrorsAcc]
                   end
           end,
@@ -116,12 +115,11 @@ update_replicated_docs(#db{name = DbName} = Db, Docs, Options) ->
 
     Errors =
         lists:foldr(
-          fun (#doc{id = Id, revs = {Pos, [RevId | _]}} = Doc, ErrorsAcc) ->
+          fun (#doc{id = Id, rev = Rev} = Doc, ErrorsAcc) ->
                   case do_update_replicated_doc(Bucket, VBucket, Db, Doc) of
                       ok ->
                           ErrorsAcc;
                       {error, Error} ->
-                          Rev = {Pos, RevId},
                           [{{Id, Rev}, Error} | ErrorsAcc]
                   end
           end,
@@ -131,25 +129,25 @@ update_replicated_docs(#db{name = DbName} = Db, Docs, Options) ->
 
 update_replicated_doc(#db{name = BucketBin,
                           filepath = undefined, user_ctx = UserCtx},
-                      #doc{id = Id, revs = {Pos, [RevId | _]}} = Doc,
+                      #doc{id = Id} = Doc,
                       _Options) ->
     Bucket = binary_to_list(BucketBin),
     {VBucket, _Node} = cb_util:vbucket_from_id(Bucket, Id),
 
     case do_update_replicated_doc(Bucket, VBucket, UserCtx, Doc) of
         ok ->
-            {ok, {Pos, RevId}};
+            ok;
         {error, Error} ->
             throw(Error)
     end;
 update_replicated_doc(#db{name = DbName} = Db,
-                      #doc{revs = {Pos, [RevId | _]}} = Doc,
+                      #doc{} = Doc,
                       _Options)->
     {Bucket, VBucket} = capi_utils:split_dbname(DbName),
 
     case do_update_replicated_doc(Bucket, VBucket, Db, Doc) of
         ok ->
-            {ok, {Pos, RevId}};
+            ok;
         {error, Error} ->
             throw(Error)
     end.
@@ -175,12 +173,11 @@ do_update_replicated_doc(_Bucket, _VBucket, _DbOrCtx,
                          #doc{id = <<?LOCAL_DOC_PREFIX, _/binary>>}) ->
     ok;
 do_update_replicated_doc(Bucket, VBucket, DbOrCtx,
-                         #doc{id = Id, revs = {Pos, [RevId | _]},
-                              body = Body0, atts = Atts,
+                         #doc{id = Id, rev = Rev,
+                              json = Body0, binary = Binary,
                               deleted = Deleted} = _Doc) ->
     Body = filter_out_mccouch_fields(Body0),
-    Value = capi_utils:doc_to_mc_value(Body, Atts),
-    Rev = {Pos, RevId},
+    Value = capi_utils:doc_to_mc_value(Body, Binary),
     do_update_replicated_doc_loop(Bucket, DbOrCtx, VBucket,
                                   Id, Rev, Value, Deleted).
 

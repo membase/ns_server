@@ -27,19 +27,19 @@ open_doc(#db{name = Name, user_ctx = UserCtx}, DocId, Options) ->
     get(Name, DocId, UserCtx, Options).
 
 update_doc(#db{name = Name, user_ctx = UserCtx},
-           #doc{id = DocId, revs = {SeqNo, [RevId|_]}, deleted = true},
+           #doc{id = DocId, rev = Rev, deleted = true},
            _Options) ->
-    delete(Name, DocId, {SeqNo, RevId}, UserCtx);
+    delete(Name, DocId, Rev, UserCtx);
 
 update_doc(#db{name = Name, user_ctx = UserCtx},
-           #doc{id = DocId, body = Body, atts = Atts, revs = {0, []}},
+           #doc{id = DocId, rev = {0, _}, json = Body, binary = Binary},
            _Options) ->
-    add(Name, DocId, Body, Atts, UserCtx);
+    add(Name, DocId, Body, Binary, UserCtx);
 
 update_doc(#db{name = Name, user_ctx = UserCtx},
-           #doc{id = DocId, revs = {SeqNo, [RevId | _]},
-                body = Body, atts = Atts}, _Options) ->
-    set(Name, DocId, {SeqNo, RevId}, Body, Atts, UserCtx).
+           #doc{id = DocId, rev = Rev,
+                json = Body, binary = Binary}, _Options) ->
+    set(Name, DocId, Rev, Body, Binary, UserCtx).
 
 -spec cas() -> <<_:64>>.
 cas() ->
@@ -64,9 +64,9 @@ next_rev({SeqNo, RevId} = _Rev, Value) ->
 next_rev(Rev) ->
     next_rev(Rev, <<>>).
 
-add(BucketBin, DocId, Body, Atts, UserCtx) ->
+add(BucketBin, DocId, Body, Binary, UserCtx) ->
     Bucket = binary_to_list(BucketBin),
-    Value = capi_utils:doc_to_mc_value(Body, Atts),
+    Value = capi_utils:doc_to_mc_value(Body, Binary),
     {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
 
     {Rev, Flags} =
@@ -85,16 +85,16 @@ add(BucketBin, DocId, Body, Atts, UserCtx) ->
     case ns_memcached:add_with_meta(Bucket, DocId,
                                     VBucket, Value, Meta, Flags, 0) of
         {ok, _, _} ->
-            {ok, Rev};
+            ok;
         {memcached_error, not_my_vbucket, _} ->
             throw(not_my_vbucket);
         {memcached_error, key_eexists, _} ->
             throw(conflict)
     end.
 
-set(BucketBin, DocId, PrevRev, Body, Atts, UserCtx) ->
+set(BucketBin, DocId, PrevRev, Body, Binary, UserCtx) ->
     Bucket = binary_to_list(BucketBin),
-    Value = capi_utils:doc_to_mc_value(Body, Atts),
+    Value = capi_utils:doc_to_mc_value(Body, Binary),
     {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
 
     {Deleted, CAS}
@@ -122,7 +122,7 @@ set(BucketBin, DocId, PrevRev, Body, Atts, UserCtx) ->
         end,
     case R of
         {ok, _, _} ->
-            {ok, Rev};
+            ok;
         {memcached_error, not_my_vbucket, _} ->
             throw(not_my_vbucket);
         {memcached_error, key_eexists, _} ->
@@ -147,7 +147,7 @@ delete(BucketBin, DocId, PrevRev, UserCtx) ->
             case ns_memcached:delete_with_meta(Bucket, DocId,
                                                VBucket, Meta, CAS) of
                 {ok, _, _} ->
-                    {ok, Rev};
+                    ok;
                 {memcached_error, not_my_vbucket, _} ->
                     throw(not_my_vbucket);
                 {memcached_error, key_enoent, _} ->
@@ -200,29 +200,18 @@ get_meta(Bucket, VBucket, DocId, UserCtx) ->
     end.
 
 mk_deleted_doc(DocId, Rev) ->
-    #doc{id = DocId, revs = mk_revs(Rev), deleted = true}.
+    #doc{id = DocId, rev = Rev, deleted = true}.
 
-mk_doc(DocId, {SeqNo, _} = Rev, RawValue) ->
-    DocTemplate = #doc{id = DocId, revs = mk_revs(Rev)},
+mk_doc(DocId, Rev, RawValue) ->
+    DocTemplate = #doc{id = DocId, rev = Rev},
 
     try
         Json = json_decode(RawValue),
-        DocTemplate#doc{body=Json}
+        DocTemplate#doc{json=Json}
     catch
         {invalid_json, _} ->
-            Size = size(RawValue),
-            Atts = [#att{name = <<"value">>,
-                         type = <<"application/content-stream">>,
-                         data = RawValue,
-                         disk_len = Size,
-                         encoding = identity,
-                         att_len = Size,
-                         revpos = SeqNo}],
-            DocTemplate#doc{atts=Atts}
+            DocTemplate#doc{binary=RawValue}
     end.
-
-mk_revs({SeqNo, RevId}) ->
-    {SeqNo, [RevId]}.
 
 %% decode a json and ensure that the result is an object; otherwise throw
 %% invalid_json exception

@@ -179,7 +179,7 @@ maybe_create_replication_info_ddoc() ->
                         {[{<<"infos">>,
                            {[{<<"map">>, ?REPLICATION_INFOS_MAP},
                              {<<"reduce">>, ?REPLICATION_INFOS_REDUCE}]}}]}}]}),
-            {ok, _Rev} = couch_db:update_doc(DB, DDoc, [])
+            ok = couch_db:update_doc(DB, DDoc, [])
     after
         couch_db:close(DB)
     end.
@@ -731,9 +731,9 @@ create_xdc_rep_info_doc(XDocId, {Base, Ext}, TriggeredVbs, UntriggeredVbs,
 
     case couch_db:open_doc(RepDb, IDocId, [ejson_body]) of
     {ok, LatestIDoc} ->
-        couch_db:update_doc(RepDb, LatestIDoc#doc{body = Body}, []);
+        couch_db:update_doc(RepDb, LatestIDoc#doc{json = Body}, []);
     _ ->
-        couch_db:update_doc(RepDb, #doc{id = IDocId, body = Body}, [])
+        couch_db:update_doc(RepDb, #doc{id = IDocId, json = Body}, [])
     end,
 
     case UntriggeredVbs of
@@ -755,7 +755,7 @@ get_xdc_replication_state(XDocId, RepDbName) ->
     RepState =
         case couch_db:open_doc(RepDb, xdc_rep_utils:info_doc_id(XDocId),
                                [ejson_body]) of
-        {ok, #doc{body = {IDocBody}}} ->
+        {ok, #doc{json = {IDocBody}}} ->
             get_value(<<"_replication_state">>, IDocBody);
         _ ->
             undefined

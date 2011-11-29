@@ -82,49 +82,32 @@ with_subdb(Db, VBucket, Fun) ->
     UserCtx = #user_ctx{roles=[<<"_admin">>]},
     with_subdb(Db, VBucket, UserCtx, Fun).
 
-update_doc(Db, Doc, Options) ->
-    update_doc(Db, Doc, Options, interactive_edit).
-
 update_doc(_Db, #doc{id = <<?LOCAL_DOC_PREFIX, _/binary>>},
-           _Options, interactive_edit) ->
-    {ok, {0, <<"1">>}};
+           _Options) ->
+    ok;
 
-update_doc(#db{filepath = undefined} = Db, #doc{id = <<"_design/",_/binary>>} = Doc, Options, UpdateType) ->
-    with_subdb(Db, <<"master">>,
-               fun (RealDb) ->
-                       couch_db:update_doc(RealDb, Doc, Options, UpdateType)
-               end);
+update_doc(#db{filepath = undefined, name=Name},
+           #doc{id = <<"_design/",_/binary>>} = Doc, _Options) ->
+    capi_ddoc_replication_srv:update_doc(Name, Doc);
 
-update_doc(#db{filepath = undefined, name = Name} = Db,
-           #doc{id = DocId} = Doc, Options, interactive_edit = Type) ->
+update_doc(#db{filepath = undefined, name=Name} = Db,
+           #doc{id=DocId} = Doc, Options) ->
     R = attempt(Name, DocId,
                 capi_crud, update_doc, [Db, Doc, Options]),
     case R of
-        {ok, _Doc} ->
-            R;
+        ok ->
+            ok;
         unsupported ->
-            not_implemented(update_doc, [Db, Doc, Options, Type]);
+            not_implemented(update_doc, [Db, Doc, Options]);
         Error ->
             %% rpc transforms exceptions into values; need to rethrow them
             throw(Error)
-    end;
+    end.
 
-update_doc(Db, Doc, Options, interactive_edit) ->
-    couch_db:update_doc(Db, Doc, Options, interactive_edit);
-
-update_doc(Db, Doc, Options, replicated_changes) ->
-    Result =
-        try
-            capi_replication:update_replicated_doc(Db, Doc, Options)
-        catch
-            throw:unsupported ->
-                exit(not_implemented(update_doc,
-                                     [Db, Doc, Options, replicated_changes]))
-        end,
-    Result.
-
-update_docs(Db, Docs, Options) ->
-    update_docs(Db, Docs, Options, interactive_edit).
+update_docs(#db{filepath = undefined, name = Name}, Docs, _Options) ->
+    lists:foreach(fun(#doc{id = <<"_design/",_/binary>>} = Doc) ->
+                          ok = capi_ddoc_replication_srv:update_doc(Name, Doc)
+                  end, Docs).
 
 update_docs(Db, Docs, Options, replicated_changes) ->
     Result =
@@ -135,40 +118,7 @@ update_docs(Db, Docs, Options, replicated_changes) ->
                 exit(not_implemented(update_docs,
                                      [Db, Docs, Options, replicated_changes]))
         end,
-    Result;
-update_docs(#db{filepath = undefined} = Db,
-            Docs, Options, interactive_edit = Type) ->
-    {DesignDocs, [] = NormalDocs} =
-        lists:partition(fun (#doc{id = <<"_design/", _/binary>>}) -> true;
-                            (_) -> false
-                        end, Docs),
-    case update_design_docs(Db, DesignDocs, Options, Type) of
-        {ok, DDocResults} ->
-            %% TODO: work out error handling here
-            {ok, NormalResults} = update_normal_docs(Db, NormalDocs,
-                                                     Options, Type),
-            %% TODO: Looks like we need to reorder results here
-            {ok, NormalResults ++ DDocResults};
-        Error ->
-            %% TODO: work out error handling here
-            Error
-    end;
-update_docs(Db, Docs, Options, interactive_edit = Type) ->
-    couch_db:update_docs(Db, Docs, Options, Type).
-
-
-update_design_docs(#db{filepath = undefined} = Db, Docs, Options, Type) ->
-    with_subdb(Db, <<"master">>,
-               fun (RealDb) ->
-                       couch_db:update_docs(RealDb, Docs, Options, Type)
-               end).
-
-update_normal_docs(_Db, [], _Options, _Type) ->
-    {ok, []};
-update_normal_docs(#db{filepath = undefined} = Db, Docs, Options, Type) ->
-    exit(not_implemented(update_normal_docs, [Db, Docs, Options, Type]));
-update_normal_docs(Db, Docs, Options, Type) ->
-    exit(not_implemented(update_normal_docs, [Db, Docs, Options, Type])).
+    Result.
 
 -spec ensure_full_commit(any(), integer()) -> {ok, binary()}.
 ensure_full_commit(#db{filepath = undefined} = _Db, _RequiredSeq) ->
@@ -315,17 +265,6 @@ get_revs_limit(Db) ->
     exit(not_implemented(get_revs_limit, [Db])).
     %% couch_db:get_revs_limit(Db).
 
-open_doc_revs(#db{filepath = undefined} = Db, <<"_design/",_/binary>> = DocId, Revs, Options) ->
-    with_subdb(Db, <<"master">>,
-               fun (RealDb) ->
-                       couch_db:open_doc_revs(RealDb, DocId, Revs, Options)
-               end);
-open_doc_revs(#db{filepath = undefined} = Db, DocId, Revs, Options) ->
-    exit(not_implemented(open_doc_revs, [Db, DocId, Revs, Options]));
-open_doc_revs(Db, DocId, Revs, Options) ->
-    couch_db:open_doc_revs(Db, DocId, Revs, Options).
-
-
 open_doc(_Db, <<?LOCAL_DOC_PREFIX, _/binary>>, _Options) ->
     {not_found, missing};
 
@@ -346,9 +285,6 @@ make_attachment_fold(_Att, ReqAcceptsAttEnc) ->
         false -> fun couch_doc:att_foldl_decode/3;
         _ -> fun couch_doc:att_foldl/3
     end.
-
-range_att_foldl(Att, From, To, Fun, Acc) ->
-    couch_doc:range_att_foldl(Att, From, To, Fun, Acc).
 
 -spec all_databases() -> {ok, [binary()]}.
 all_databases() ->
@@ -388,25 +324,13 @@ stats_aggregator_get_json(Key, Range) ->
 stats_aggregator_collect_sample() ->
     exit(not_implemented(stats_aggregator_collect_sample, [])).
 
-couch_doc_open(Db, DocId, Rev, Options) ->
-    case Rev of
-    nil -> % open most recent rev
-        case open_doc(Db, DocId, Options) of
-        {ok, Doc} ->
-            Doc;
-         Error ->
-             throw(Error)
-         end;
-  _ -> % open a specific rev (deletions come back as stubs)
-      case open_doc_revs(Db, DocId, [Rev], Options) of
-          {ok, [{ok, Doc}]} ->
-              Doc;
-          {ok, [{{not_found, missing}, Rev}]} ->
-              throw(not_found);
-          {ok, [Else]} ->
-              throw(Else)
-      end
-  end.
+couch_doc_open(Db, DocId, Options) ->
+    case open_doc(Db, DocId, Options) of
+    {ok, Doc} ->
+        Doc;
+     Error ->
+        throw(Error)
+    end.
 
 %% Grab the first vbucket we can find on this server
 -spec first_vbucket(binary()) -> non_neg_integer().
@@ -443,14 +367,14 @@ run_on_subset(Bucket) ->
 
 %% Keep the last previous non design doc id found so if the random item
 %% picked was a design doc, return last document, or not_found
--spec fold_docs(#full_doc_info{}, any(), tuple()) -> {ok, any()} | {stop, any()}.
-fold_docs(#full_doc_info{id = <<"_design", _/binary>>}, _, {0, undefined}) ->
+-spec fold_docs(#doc_info{}, any(), tuple()) -> {ok, any()} | {stop, any()}.
+fold_docs(#doc_info{id = <<"_design", _/binary>>}, _, {0, undefined}) ->
     {stop, {error, not_found}};
-fold_docs(#full_doc_info{id = <<"_design", _/binary>>}, _, {0, Id}) ->
+fold_docs(#doc_info{id = <<"_design", _/binary>>}, _, {0, Id}) ->
     {stop, Id};
-fold_docs(#full_doc_info{id = Id}, _, {0, _Id}) ->
+fold_docs(#doc_info{id = Id}, _, {0, _Id}) ->
     {stop, Id};
-fold_docs(#full_doc_info{deleted=true}, _, Acc) ->
+fold_docs(#doc_info{deleted=true}, _, Acc) ->
     {ok, Acc};
 fold_docs(_, _, {N, Id}) ->
     {ok, {N - 1, Id}}.
