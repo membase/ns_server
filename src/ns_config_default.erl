@@ -275,6 +275,18 @@ upgrade_config_from_1_7_1_to_1_7_2(Config) ->
     do_upgrade_config_from_1_7_1_to_1_7_2(Config, DefaultConfig).
 
 do_upgrade_config_from_1_7_1_to_1_7_2(Config, DefaultConfig) ->
+    RestConfig = case ns_config:search_node(Config, rest) of
+                     false -> [];
+                     {value, RestConfigX} -> RestConfigX
+                 end,
+
+    NeedRestUpgrade = lists:keysearch(port_meta, 1, RestConfig) =:= false,
+    case NeedRestUpgrade of
+        true -> do_upgrade_rest_port_config_from_1_7_1_to_1_7_2(Config, DefaultConfig);
+        _ -> []
+    end.
+
+do_upgrade_rest_port_config_from_1_7_1_to_1_7_2(Config, DefaultConfig) ->
     Node = node(),
     NodesWanted = case ns_config:search(Config, nodes_wanted) of
                       {value, Nodes} -> lists:usort(Nodes);
