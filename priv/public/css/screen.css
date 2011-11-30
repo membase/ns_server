@@ -96,14 +96,14 @@ a.disabled{text-decoration:none;cursor:default;}
 td.leftNav {width:180px;vertical-align:top;}
 td.leftNav ul {display:block;width:160px;margin:0 0 20px;border-top:1px solid #e4e9eb;}
 td.leftNav ul ul {margin:0 0 -1px;}
-td.leftNav h1 {padding:0 0 15px 5px;color:#444245;text-transform:uppercase;}
+td.leftNav h1 {padding:0 0 15px 5px;color:#D4D4C8;text-transform:uppercase;}
 td.leftNav li {display:block;min-height:29px;width:160px;vertical-align:middle;text-align:left;line-height:29px;font-size:12px;border-bottom:1px solid #e4e9eb;}
 td.leftNav li a {display:block; height:29px; text-decoration:none;padding:0 0 0 12px}
 td.leftNav li a:hover {background:none #eaf4f9;}
 td.leftNav li.line {background-position: bottom left;}
 td.leftNav li.disabled {padding:0 0 0 12px;}
 td.leftNav li.indent {margin-left: 20px;}
-td.leftNav li a.currentNav {background:none #dae4e9;}
+td.leftNav li a.currentNav {background:none #F4F3F1;color:#5B5352;font-weight:bold}
 td.leftNavDisabled {color:#f00;}
 
 /* to position the badges in the navigation correctly */
