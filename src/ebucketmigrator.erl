@@ -67,7 +67,7 @@ run(Conf) ->
     process_flag(trap_exit, true),
 
     Host = proplists:get_value(host, Conf),
-    {DstNode, _} = Dest = proplists:get_value(destination, Conf),
+    Dest = proplists:get_value(destination, Conf),
     VBuckets = proplists:get_value(vbuckets, Conf),
     ProfileFile = proplists:get_value(profile_file, Conf),
 
@@ -76,7 +76,14 @@ run(Conf) ->
                         [VBucket] = VBuckets,
                         integer_to_list(VBucket);
                     false ->
-                        DstNode
+                        case Dest of
+                            %% NOTE: undefined suffix wont work, but
+                            %% undefined Dest will cause us to fail
+                            %% before trying that
+                            undefined -> undefined;
+                            _ when is_tuple(Dest) ->
+                                element(1, Dest)
+                        end
                 end,
 
     Conf1 = [{suffix, TapSuffix} | Conf],
