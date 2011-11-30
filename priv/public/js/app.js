@@ -734,7 +734,7 @@ function showAbout() {
   function updateVersion() {
     var components = DAL.componentsVersion;
     if (components)
-      $('#about_versions').text("Version: " + components['ns_server']);
+      $('#about_versions').text("Version: " + DAL.prettyVersion(components['ns_server']));
     else {
       $.get('/versions', function (data) {
         DAL.componentsVersion = data.componentsVersion;
