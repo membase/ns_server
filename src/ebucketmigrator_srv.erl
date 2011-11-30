@@ -39,8 +39,7 @@
                 takeover :: boolean(),
                 takeover_done :: boolean(),
                 takeover_msgs_seen = 0 :: non_neg_integer(),
-                last_seen,
-                dump_file :: file:io_device() | undefined
+                last_seen
                }).
 
 %% external API
@@ -315,10 +314,6 @@ process_data(Data, Elem, CB, State) ->
                                 #state{}.
 process_downstream(<<?RES_MAGIC:8, _/binary>> = Packet,
                    State) ->
-    case State#state.dump_file of
-        undefined -> ok;
-        File -> file:write(File, Packet)
-    end,
     ok = gen_tcp:send(State#state.upstream, Packet),
     State.
 
