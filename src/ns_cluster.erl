@@ -121,13 +121,19 @@ handle_cast(leave, State) ->
     erlang:set_cookie(node(), NewCookie),
     lists:foreach(fun erlang:disconnect_node/1, nodes()),
     Config = ns_config:get(),
-    WebPort = ns_config:search_node_prop(Config, rest, port, false),
     Buckets = ns_bucket:get_bucket_names(),
+
+    RestConf = ns_config:search(Config, {node, node(), rest}),
+    GlobalRestConf = ns_config:search(Config, rest),
+
     ns_config:clear([directory]),
-    case WebPort of
+    case GlobalRestConf of
         false -> false;
-        _ -> ns_config:set_sub({node, node(), rest},
-                               port, WebPort)
+        {value, GlobalRestConf1} -> ns_config:set(rest, GlobalRestConf1)
+    end,
+    case RestConf of
+        false -> false;
+        {value, RestConf1} -> ns_config:set({node, node(), rest}, RestConf1)
     end,
     ns_config:set_initial(nodes_wanted, [node()]),
     ns_cookie_manager:cookie_sync(),

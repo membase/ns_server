@@ -16,6 +16,7 @@
 -module(ns_config_default).
 
 -include("ns_common.hrl").
+-include("ns_config.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -55,6 +56,11 @@ default() ->
                    UUIDVal -> UUIDVal
                end,
 
+    PortMeta = case application:get_env(rest_port) of
+                   {ok, _Port} -> local;
+                   undefined -> global
+               end,
+
     [{directory, path_config:component_path(data, "config")},
      {autocompaction, [{database_fragmentation_threshold, 80},
                        {view_fragmentation_threshold, 80}]},
@@ -74,7 +80,8 @@ default() ->
       [{port, 8091}]},
 
      {{node, node(), rest},
-      [{port, misc:get_env_default(rest_port, '_use_global_value')}]}, % Port number of the REST admin API and UI.
+      [{port, misc:get_env_default(rest_port, 8091)}, % Port number of the REST admin API and UI.
+       {port_meta, PortMeta}]},
 
      {{node, node(), capi_port},
       CAPIPort},
@@ -250,10 +257,22 @@ do_upgrade_config_from_1_6_to_1_7(Config, DefaultConfig) ->
                                           lists:keyreplace(element(1, T), 1, Acc, T)
                                   end, MemcachedCfg, [BucketEnCfg,
                                                       EnginesCfg]),
-    [{set, {node, node(), memcached}, NewMemcachedCfg}] ++
+
+    VClock = vclock:increment(node(), vclock:fresh()),
+    AddVClock = fun (Value) ->
+                        [{?METADATA_VCLOCK, VClock} | Value]
+                end,
+
+    [{set, {node, node(), memcached}, AddVClock(NewMemcachedCfg)}] ++
         lists:foldl(fun (K, Acc) ->
                             {K,V} = lists:keyfind(K, 1, DefaultConfig),
-                            [{set, K, V} | Acc]
+                            V1 = case K of
+                                     {node, Node, _K} when node() =:= Node ->
+                                         AddVClock(V);
+                                     _Otherwise ->
+                                         V
+                                 end,
+                            [{set, K, V1} | Acc]
                     end, [],
                     [directory,
                      {node, node(), isasl},
@@ -277,6 +296,18 @@ upgrade_config_from_1_7_1_to_1_7_2(Config) ->
     do_upgrade_config_from_1_7_1_to_1_7_2(Config, DefaultConfig).
 
 do_upgrade_config_from_1_7_1_to_1_7_2(Config, DefaultConfig) ->
+    RestConfig = case ns_config:search_node(Config, rest) of
+                     false -> [];
+                     {value, RestConfigX} -> RestConfigX
+                 end,
+
+    NeedRestUpgrade = lists:keysearch(port_meta, 1, RestConfig) =:= false,
+    case NeedRestUpgrade of
+        true -> do_upgrade_rest_port_config_from_1_7_1_to_1_7_2(Config, DefaultConfig);
+        _ -> []
+    end.
+
+do_upgrade_rest_port_config_from_1_7_1_to_1_7_2(Config, DefaultConfig) ->
     Node = node(),
     NodesWanted = case ns_config:search(Config, nodes_wanted) of
                       {value, Nodes} -> lists:usort(Nodes);
@@ -285,7 +316,7 @@ do_upgrade_config_from_1_7_1_to_1_7_2(Config, DefaultConfig) ->
 
     RestPorts = lists:map(
                   fun (N) ->
-                          ns_config:search_node_prop(N, Config, rest, port)
+                          misc:node_rest_port(Config, N)
                   end,
                   NodesWanted),
 
@@ -299,24 +330,17 @@ do_upgrade_config_from_1_7_1_to_1_7_2(Config, DefaultConfig) ->
                 ?log_info("Setting global and node rest port to default", []),
                 {DefaultRest, DefaultNodeRest};
             [Port] ->
-                ?log_info("Setting global rest port to ~p and resetting "
-                          "per node value", [Port]),
-                {[{port, Port}], DefaultNodeRest};
+                ?log_info("Setting global and per-node rest port to ~p", [Port]),
+                {[{port, Port}], [{port, Port}, {port_meta, global}]};
             _ ->
                 ?log_info("Setting global rest port to default "
                           "but keeping per node value ", []),
-                {DefaultRest, undefined}
+                OurPort = ns_config:search_node_prop(Node, Config, rest, port),
+                {DefaultRest, [{port, OurPort}, {port_meta, local}]}
         end,
-
 
     RestChange = [{set, rest, RestChangeValue}],
-    NodeRestChange =
-        case NodeRestChangeValue of
-            undefined ->
-                [];
-            _ ->
-                [{set, {node, Node, rest}, NodeRestChangeValue}]
-        end,
+    NodeRestChange = [{set, {node, Node, rest}, NodeRestChangeValue}],
 
     RestChange ++ NodeRestChange.
 
@@ -371,9 +395,27 @@ upgrade_1_6_to_1_7_test() ->
                [{dbdir, "dbdir"},
                 {bucket_engine, "old-be"},
                 {engines, "old-engines"}]}],
+
+    StripValue = fun ([{?METADATA_VCLOCK, _V} | Rest]) ->
+                         Rest;
+                     (Other) ->
+                         Other
+                 end,
+    Strip = fun (Config) ->
+                    lists:map(
+                      fun ({set, K, V}) ->
+                              {set, K, StripValue(V)};
+                          (Other) ->
+                              Other
+                      end,
+                      Config)
+            end,
+
     Res = do_upgrade_config_from_1_6_to_1_7([OldCfg], DefaultCfg),
+
     ?assertEqual(lists:sort([{set, directory, default_directory},
-                             {set, {node, node(), isasl}, [{path, default_isasl}]},
+                             {set, {node, node(), isasl},
+                              [{path, default_isasl}]},
                              {set, {node, node(), memcached},
                               [{dbdir, "dbdir"},
                                {bucket_engine, "new-be"},
@@ -382,7 +424,7 @@ upgrade_1_6_to_1_7_test() ->
                               [{moxi, "moxi something"},
                                {memcached, "memcached something"}]},
                              {set, {node, node(), ns_log}, default_log}]),
-                 lists:sort(Res)).
+                 lists:sort(Strip(Res))).
 
 upgrade_1_7_2_to_2_0_test() ->
     Cfg = [[{{node, node(), capi_port}, something},
@@ -405,14 +447,18 @@ upgrade_1_7_2_to_2_0_test() ->
 no_upgrade_on_2_0_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, {2, 0}}]])).
 
-upgrace_1_7_1_to_1_7_1_1_test() ->
+upgrade_1_7_1_to_1_7_2_test() ->
     DefaultCfg = [{rest, [{port, 8091}]},
-                  {{node, node(), rest}, [{port, '_use_global_value'}]}],
+                  {{node, node(), rest},
+                   [{port, 8091},
+                    {port_meta, global}]}],
 
     OldCfg0 = [{nodes_wanted, [node()]},
                {{node, node(), rest}, [{port, 9000}]}],
     Ref0 = [{set, rest, [{port, 9000}]},
-            {set, {node, node(), rest}, [{port, '_use_global_value'}]}],
+            {set, {node, node(), rest},
+             [{port, 9000},
+              {port_meta, global}]}],
 
     Res0 = do_upgrade_config_from_1_7_1_to_1_7_2([OldCfg0], DefaultCfg),
     ?assertEqual(lists:sort(Ref0), lists:sort(Res0)),
@@ -420,7 +466,9 @@ upgrace_1_7_1_to_1_7_1_1_test() ->
 
     OldCfg1 = [],
     Ref1 = [{set, rest, [{port, 8091}]},
-            {set, {node, node(), rest}, [{port, '_use_global_value'}]}],
+            {set, {node, node(), rest},
+             [{port, 8091},
+              {port_meta, global}]}],
 
     Res1 = do_upgrade_config_from_1_7_1_to_1_7_2([OldCfg1], DefaultCfg),
     ?assertEqual(lists:sort(Ref1), lists:sort(Res1)),
@@ -428,7 +476,9 @@ upgrace_1_7_1_to_1_7_1_1_test() ->
     OldCfg2 = [{nodes_wanted, [node(), other_node]},
                {{node, node(), rest}, [{port, 9000}]},
                {{node, other_node, rest}, [{port, 9001}]}],
-    Ref2 = [{set, rest, [{port, 8091}]}],
+    Ref2 = [{set, rest, [{port, 8091}]},
+            {set, {node, node(), rest},
+             [{port, 9000}, {port_meta, local}]}],
 
     Res2 = do_upgrade_config_from_1_7_1_to_1_7_2([OldCfg2], DefaultCfg),
     ?assertEqual(lists:sort(Ref2), lists:sort(Res2)),
@@ -437,7 +487,9 @@ upgrace_1_7_1_to_1_7_1_1_test() ->
                {{node, node(), rest}, [{port, 9000}]},
                {{node, other_node, rest}, [{port, 9000}]}],
     Ref3 = [{set, rest, [{port, 9000}]},
-            {set, {node, node(), rest}, [{port, '_use_global_value'}]}],
+            {set, {node, node(), rest},
+             [{port, 9000},
+              {port_meta, global}]}],
 
     Res3 = do_upgrade_config_from_1_7_1_to_1_7_2([OldCfg3], DefaultCfg),
     ?assertEqual(lists:sort(Ref3), lists:sort(Res3)),
@@ -445,9 +497,12 @@ upgrace_1_7_1_to_1_7_1_1_test() ->
     OldCfg4 = [{nodes_wanted, [node(), other_node]},
                {rest, [{port, 9000}]},
                {{node, node(), rest}, [{port, 9000}]},
-               {{node, other_node, rest}, [{port, '_use_global_value'}]}],
+               {{node, other_node, rest},
+                [{port, 9000}, {port_meta, global}]}],
     Ref4 = [{set, rest, [{port, 9000}]},
-            {set, {node, node(), rest}, [{port, '_use_global_value'}]}],
+            {set, {node, node(), rest},
+             [{port, 9000},
+              {port_meta, global}]}],
 
     Res4 = do_upgrade_config_from_1_7_1_to_1_7_2([OldCfg4], DefaultCfg),
     ?assertEqual(lists:sort(Ref4), lists:sort(Res4)).
@@ -486,5 +541,15 @@ fuller_1_6_test_() ->
                           [X || {set, directory, _} = X <- Changes]),
 
              {set, _, NewMemcached} = lists:keyfind({node, node(), memcached}, 2, Changes),
-             ?assertEqual({dbdir, "dbdir"}, lists:keyfind(dbdir, 1, NewMemcached))
+             ?assertEqual({dbdir, "dbdir"}, lists:keyfind(dbdir, 1, NewMemcached)),
+
+             ?assertMatch({set, {node, Node, memcached},
+                           [{?METADATA_VCLOCK, _VClock} | _]} when Node =:= node(),
+                          lists:keyfind({node, node(), memcached}, 2, Changes)),
+             ?assertMatch({set, {node, Node, isasl},
+                           [{?METADATA_VCLOCK, _VClock} | _]} when Node =:= node(),
+                          lists:keyfind({node, node(), isasl}, 2, Changes)),
+             ?assertMatch({set, {node, Node, ns_log},
+                           [{?METADATA_VCLOCK, _VClock} | _]} when Node =:= node(),
+                          lists:keyfind({node, node(), ns_log}, 2, Changes))
      end}.

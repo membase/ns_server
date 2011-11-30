@@ -97,7 +97,7 @@ webconfig(Config) ->
          end,
     Port = case os:getenv("MOCHIWEB_PORT") of
                false ->
-                   ns_config:search_node_prop(Config, rest, port, 8091);
+                   misc:node_rest_port(Config, node());
                P -> list_to_integer(P)
            end,
     WebConfig = [{ip, Ip},
@@ -709,9 +709,7 @@ build_node_hostname(Config, Node, LocalAddr) ->
                {_, "127.0.0.1"} -> LocalAddr;
                {_Name, H} -> H
            end,
-    Host ++ ":"
-        ++ integer_to_list(ns_config:search_node_prop(Node, Config,
-                                                      rest, port, 8091)).
+    Host ++ ":" ++ integer_to_list(misc:node_rest_port(Config, Node)).
 
 build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
 
@@ -1141,8 +1139,8 @@ handle_settings_web_post(Req) ->
             case build_settings_web() =:= build_settings_web(PortInt, U, P) of
                 true -> ok; % No change.
                 false ->
-                    ns_config:set_sub({node, node(), rest},
-                                      port, PortInt),
+                    ns_config:set(rest, [{port, PortInt}]),
+
                     if
                         {[], []} == {U, P} ->
                             ns_config:set(rest_creds, [{creds, []}]);
