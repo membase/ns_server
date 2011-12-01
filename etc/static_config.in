@@ -1,11 +1,11 @@
-{error_logger_mf_dir, "@DATA_PREFIX@/var/lib/membase/logs"}.
+{error_logger_mf_dir, "@DATA_PREFIX@/var/lib/couchbase/logs"}.
 {error_logger_mf_maxbytes, 10485760}.
 {error_logger_mf_maxfiles, 20}.
 {path_config_bindir, "@BIN_PREFIX@/bin"}.
-{path_config_etcdir, "@BIN_PREFIX@/etc/membase"}.
+{path_config_etcdir, "@BIN_PREFIX@/etc/couchbase"}.
 {path_config_libdir, "@BIN_PREFIX@/lib"}.
-{path_config_datadir, "@DATA_PREFIX@/var/lib/membase"}.
-{path_config_tmpdir, "@DATA_PREFIX@/var/lib/membase/tmp"}.
+{path_config_datadir, "@DATA_PREFIX@/var/lib/couchbase"}.
+{path_config_tmpdir, "@DATA_PREFIX@/var/lib/couchbase/tmp"}.
 {loglevel_default, info}.
 {loglevel_couchdb, info}.
 {loglevel_ns_server, info}.

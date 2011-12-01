@@ -557,6 +557,7 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                          case proplists:get_value("bucketType", Params) of
                              "memcached" -> memcached;
                              "membase" -> membase;
+                             "couchbase" -> membase;
                              undefined -> membase;
                              _ -> invalid
                          end

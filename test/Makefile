@@ -88,7 +88,7 @@ joiners-remove:
 
 # Helper targets for common membase-cli commands.
 #
-MEMBASE_CLI=../../membase-cli/membase
+MEMBASE_CLI=../../membase-cli/couchbase
 MANAGEMENT=../../ep-engine/management
 
 REST_USER=Administrator

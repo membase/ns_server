@@ -14,5 +14,5 @@ then
 fi
 
 exec erl -pa ebin -noshell -run ns_log_browser \
-         -report_dir "@PREFIX@/var/lib/membase/logs" ${extra_args} \
+         -report_dir "@PREFIX@/var/lib/couchbase/logs" ${extra_args} \
          -run init stop -- "$@"

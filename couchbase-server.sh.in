@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Copyright (c) 2011, Couchbase, Inc.
+# Copyright (c) 2010-2011, Couchbase, Inc.
 # All rights reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,9 +32,9 @@ DEFAULT_CONFIG_FILE="@PREFIX@/etc/couchdb/default.ini"
 LOCAL_CONFIG_DIR="@PREFIX@/etc/couchdb/local.d"
 LOCAL_CONFIG_FILE="@PREFIX@/etc/couchdb/local.ini"
 
-PIDFILE="@PREFIX@/var/lib/membase/membase-server.pid"
-NODEFILE="@PREFIX@/var/lib/membase/membase-server.node"
-COOKIEFILE="@PREFIX@/var/lib/membase/membase-server.cookie"
+PIDFILE="@PREFIX@/var/lib/couchbase/couchbase-server.pid"
+NODEFILE="@PREFIX@/var/lib/couchbase/couchbase-server.node"
+COOKIEFILE="@PREFIX@/var/lib/couchbase/couchbase-server.cookie"
 
 couch_start_arguments=""
 
@@ -48,7 +48,7 @@ _check_nofile () {
     if [ `ulimit -n` -lt 10240 ]
     then
         cat <<EOF
-The maximum number of open files for the membase user is set too low.
+The maximum number of open files for the couchbase user is set too low.
 It must be at least 10240. Normally this can be increased by adding
 the following lines to /etc/security/limits.conf:
 
@@ -61,7 +61,7 @@ EOF
 }
 
 _prepare_datadir () {
-    datadir="@PREFIX@/var/lib/membase"
+    datadir="@PREFIX@/var/lib/couchbase"
 
     test -d "$datadir" || mkdir -p "$datadir"
     cd "$datadir"
@@ -124,7 +124,7 @@ _start() {
         $* \
         -run ns_bootstrap -- \
         -couch_ini $couch_start_arguments \
-        -ns_server config_path "\"@PREFIX@/etc/membase/static_config\"" \
+        -ns_server config_path "\"@PREFIX@/etc/couchbase/static_config\"" \
         -ns_server pidfile "\"$PIDFILE\"" \
         -ns_server nodefile "\"$NODEFILE\"" \
         -ns_server cookiefile "\"$COOKIEFILE\""

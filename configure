@@ -61,7 +61,7 @@ EOF
 sed -e "s|@couchdb_src_path@|${couchdb_src}/src/couchdb|g" <${0%"${0##*/}"}/rebar.config.in >${0%"${0##*/}"}/rebar.config
 
 echo
-echo "Membase management server is configured and is ready to be built!"
+echo "ns_server is configured and is ready to be built!"
 echo "PREFIX: ${prefix}"
 echo "couchdb-src: ${couchdb_src}"
 echo

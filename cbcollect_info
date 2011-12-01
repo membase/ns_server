@@ -51,7 +51,7 @@ class Task(object):
 
 
 class TaskRunner(object):
-    default_name = "membase.log"
+    default_name = "couchbase.log"
 
     def __init__(self, verbosity=0):
         self.files = {}
@@ -200,14 +200,16 @@ _tasks = [
     WindowsTask("Physical memory", "wmic memphysical", reformat=True),
     WindowsTask("Physical memory chip info", "wmic memorychip", reformat=True),
     WindowsTask("Local storage devices", "wmic logicaldisk", reformat=True),
-    WindowsTask("membase config",
-         "escript.exe " + os.path.dirname(sys.argv[0]) + "/mbdumpconfig.escript " +
-         os.path.dirname(sys.argv[0]) + "/../var/lib/membase/config/config.dat"),
+    WindowsTask("Couchbase config",
+         "escript.exe " + os.path.dirname(sys.argv[0]) + "/cbdumpconfig.escript " +
+         os.path.dirname(sys.argv[0]) + "/../var/lib/couchbase/config/config.dat"),
     UnixTask("Filesystem", "df -ha"),
     UnixTask("System activity reporter", "sar 1 10"),
     UnixTask("System paging activity", "vmstat 1 10"),
     UnixTask("System uptime", "uptime"),
     UnixTask("couchbase user definition", "getent passwd couchbase"),
+    UnixTask("couchbase user limits", "su couchbase -c \"ulimit -a\"",
+         privileged=True),
     UnixTask("membase user definition", "getent passwd membase"),
     UnixTask("couchbase user limits", "su couchbase -c \"ulimit -a\"",
          privileged=True),
@@ -220,7 +222,7 @@ _tasks = [
     LinuxTask("System log", "cat /var/log/messages"),
     UnixTask("Kernel log buffer", "dmesg"),
     LinuxTask("couchbase config",
-        os.path.dirname(sys.argv[0]) + "/mbdumpconfig.escript /opt/couchbase/var/lib/membase/config/config.dat"),
+        os.path.dirname(sys.argv[0]) + "/cbdumpconfig.escript /opt/couchbase/var/lib/couchbase/config/config.dat"),
     AllOsTask("memcached stats all",
               "mbstats -a 127.0.0.1:11210 all _admin _admin",
               log_file="stats.log"),
@@ -242,7 +244,7 @@ _tasks = [
     AllOsTask("memcached stats timings",
               "mbstats -a 127.0.0.1:11210 timings _admin _admin",
               log_file="stats.log"),
-    AllOsTask("membase logs", "mbbrowse_logs", log_file="ns_server.log"),
+    AllOsTask("couchbase logs", "cbbrowse_logs", log_file="ns_server.log"),
     LinuxTask("Couchdb log", "cat /var/log/couchdb/couch.log", log_file="couch.log"),
     WindowsTask("Couchdb log",
          "type " + os.path.dirname(sys.argv[0]) + "/../var/log/couchdb/couch.log",
