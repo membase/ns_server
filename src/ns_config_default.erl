@@ -177,7 +177,7 @@ default() ->
                                                 % Listeners: ? possibly ns_log
      {email_alerts,
       [{recipients, ["root@localhost"]},
-       {sender, "membase@localhost"},
+       {sender, "couchbase@localhost"},
        {enabled, true},
        {email_server, [{user, ""},
                        {pass, ""},
