@@ -16,7 +16,6 @@
 -module(ns_config_default).
 
 -include("ns_common.hrl").
--include("ns_config.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -254,22 +253,10 @@ do_upgrade_config_from_1_6_to_1_7(Config, DefaultConfig) ->
                                           lists:keyreplace(element(1, T), 1, Acc, T)
                                   end, MemcachedCfg, [BucketEnCfg,
                                                       EnginesCfg]),
-
-    VClock = vclock:increment(node(), vclock:fresh()),
-    AddVClock = fun (Value) ->
-                        [{?METADATA_VCLOCK, VClock} | Value]
-                end,
-
-    [{set, {node, node(), memcached}, AddVClock(NewMemcachedCfg)}] ++
+    [{set, {node, node(), memcached}, NewMemcachedCfg}] ++
         lists:foldl(fun (K, Acc) ->
                             {K,V} = lists:keyfind(K, 1, DefaultConfig),
-                            V1 = case K of
-                                     {node, Node, _K} when node() =:= Node ->
-                                         AddVClock(V);
-                                     _Otherwise ->
-                                         V
-                                 end,
-                            [{set, K, V1} | Acc]
+                            [{set, K, V} | Acc]
                     end, [],
                     [directory,
                      {node, node(), isasl},
@@ -377,27 +364,9 @@ upgrade_1_6_to_1_7_test() ->
                [{dbdir, "dbdir"},
                 {bucket_engine, "old-be"},
                 {engines, "old-engines"}]}],
-
-    StripValue = fun ([{?METADATA_VCLOCK, _V} | Rest]) ->
-                         Rest;
-                     (Other) ->
-                         Other
-                 end,
-    Strip = fun (Config) ->
-                    lists:map(
-                      fun ({set, K, V}) ->
-                              {set, K, StripValue(V)};
-                          (Other) ->
-                              Other
-                      end,
-                      Config)
-            end,
-
     Res = do_upgrade_config_from_1_6_to_1_7([OldCfg], DefaultCfg),
-
     ?assertEqual(lists:sort([{set, directory, default_directory},
-                             {set, {node, node(), isasl},
-                              [{path, default_isasl}]},
+                             {set, {node, node(), isasl}, [{path, default_isasl}]},
                              {set, {node, node(), memcached},
                               [{dbdir, "dbdir"},
                                {bucket_engine, "new-be"},
@@ -406,7 +375,7 @@ upgrade_1_6_to_1_7_test() ->
                               [{moxi, "moxi something"},
                                {memcached, "memcached something"}]},
                              {set, {node, node(), ns_log}, default_log}]),
-                 lists:sort(Strip(Res))).
+                 lists:sort(Res)).
 
 upgrade_1_7_1_to_1_7_2_test() ->
     DefaultCfg = [{rest, [{port, 8091}]},
@@ -542,17 +511,7 @@ fuller_1_6_test_() ->
                           [X || {set, directory, _} = X <- Changes]),
 
              {set, _, NewMemcached} = lists:keyfind({node, node(), memcached}, 2, Changes),
-             ?assertEqual({dbdir, "dbdir"}, lists:keyfind(dbdir, 1, NewMemcached)),
-
-             ?assertMatch({set, {node, Node, memcached},
-                           [{?METADATA_VCLOCK, _VClock} | _]} when Node =:= node(),
-                          lists:keyfind({node, node(), memcached}, 2, Changes)),
-             ?assertMatch({set, {node, Node, isasl},
-                           [{?METADATA_VCLOCK, _VClock} | _]} when Node =:= node(),
-                          lists:keyfind({node, node(), isasl}, 2, Changes)),
-             ?assertMatch({set, {node, Node, ns_log},
-                           [{?METADATA_VCLOCK, _VClock} | _]} when Node =:= node(),
-                          lists:keyfind({node, node(), ns_log}, 2, Changes))
+             ?assertEqual({dbdir, "dbdir"}, lists:keyfind(dbdir, 1, NewMemcached))
      end}.
 
 prefix_replace_test() ->
