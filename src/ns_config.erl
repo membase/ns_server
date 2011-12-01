@@ -434,6 +434,10 @@ merge_vclocks(NewValue, OldValue) ->
             [{?METADATA_VCLOCK, NewVClock} | strip_metadata(NewValue)]
     end.
 
+attach_vclock(Value) ->
+    VClock = lists:sort(vclock:increment(node(), vclock:fresh())),
+    [{?METADATA_VCLOCK, VClock} | strip_metadata(Value)].
+
 %% gen_server callbacks
 
 upgrade_config(Config) ->
@@ -450,19 +454,30 @@ do_upgrade_config(Config, Changes, Upgrader) ->
         lists:foldl(fun ({set, K,V}, Acc) ->
                             case lists:keyfind(K, 1, Acc) of
                                 false ->
-                                    [{K,V} | Acc];
+                                    [{K, attach_vclock(V)} | Acc];
                                 {K, OldV} ->
                                     NewV =
                                         case is_list(OldV) of
                                             true ->
                                                 case proplists:get_value(?METADATA_VCLOCK, OldV) of
                                                     undefined ->
-                                                        %% no vclock on old value, don't set it
-                                                        V;
+                                                        %% we encountered plenty of upgrade
+                                                        %% problems coming from the fact that
+                                                        %% both old and new values miss vclock;
+                                                        %% in this case the new value can be
+                                                        %% reverted by the old value replicated
+                                                        %% from not yet updated node;
+                                                        %% we solve this by attaching vclock to
+                                                        %% new value;
+                                                        %% actually we're not supposed to update
+                                                        %% not per-node values; but we still attach
+                                                        %% vclock to them mostly for uniformity;
+                                                        attach_vclock(V);
                                                     _ ->
                                                         increment_vclock(V, OldV)
                                                 end;
-                                            _ -> V
+                                            _ ->
+                                                attach_vclock(V)
                                         end,
                                     lists:keyreplace(K, 1, Acc, {K, NewV})
                             end
@@ -1233,8 +1248,11 @@ upgrade_config_case(InitialList, Changes, ExpectedList, Upgrader) ->
     UpgradedConfig = do_upgrade_config(Config,
                                        Changes,
                                        Upgrader),
+    StrippedUpgradedConfig = lists:map(fun ({K, V}) ->
+                                               {K, strip_metadata(V)}
+                                       end, config_dynamic(UpgradedConfig)),
     ?assertEqual(lists:sort(ExpectedList),
-                 lists:sort(config_dynamic(UpgradedConfig))).
+                 lists:sort(StrippedUpgradedConfig)).
 
 upgrade_config_testgen(InitialList, Changes, ExpectedList) ->
     Title = iolist_to_binary(io_lib:format("~p + ~p = ~p~n", [InitialList, Changes, ExpectedList])),
@@ -1250,6 +1268,33 @@ upgrade_config_test_() ->
         ],
     [upgrade_config_testgen(I, C, E) || {I,C,E} <- T].
 
+upgrade_config_vclocks_test() ->
+    Config = #config{dynamic=[[{{node, node(), a}, 1},
+                               {unchanged, 2},
+                               {b, 2},
+                               {{node, node(), c}, attach_vclock(1)}]]},
+    Changes = [{set, {node, node(), a}, 2},
+               {set, b, 4},
+               {set, {node, node(), c}, [3]},
+               {set, d, [4]}],
+    Upgrader = fun (_) -> [] end,
+    UpgradedConfig = do_upgrade_config(Config, Changes, Upgrader),
+
+    Get = fun (Config1, K) ->
+                  {value, Value} = search_raw(Config1, K),
+                  Value
+          end,
+
+    ?assertMatch([{Node, {_, _}}] when Node =:= node(),
+                 extract_vclock(Get(UpgradedConfig, {node, node(), a}))),
+    ?assertMatch([],
+                 extract_vclock(Get(UpgradedConfig, unchanged))),
+    ?assertMatch([{Node, {_, _}}] when Node =:= node(),
+                 extract_vclock(Get(UpgradedConfig, b))),
+    ?assertMatch([{Node, {_, _}}] when Node =:= node(),
+                 extract_vclock(Get(UpgradedConfig, {node, node(), c}))),
+    ?assertMatch([{Node, {_, _}}] when Node =:= node(),
+                 extract_vclock(Get(UpgradedConfig, d))).
 
 upgrade_config_with_many_upgrades_test_() ->
     {spawn, ?_test(test_upgrade_config_with_many_upgrades())}.

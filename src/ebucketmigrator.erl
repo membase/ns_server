@@ -18,7 +18,7 @@ usage() ->
         "\t-h host:port Connect to host:port~n"
         "\t-A           Use TAP acks~n"
         "\t-t           Move buckets from a server to another server~n"
-        "\t-b #         Operate on bucket number #~n"
+        "\t-b #         Operate on vbucket number #~n"
         "\t-a auth      Try to authenticate <auth>~n"
         "\t-d host:port Send all vbuckets to this server~n"
         "\t-v           Increase verbosity~n"
@@ -47,9 +47,9 @@ parse(["-h", Host | Rest], Acc) ->
     parse(Rest, [{host, parse_host(Host)} | Acc]);
 parse(["-d", Host | Rest], Acc) ->
     parse(Rest, [{destination, parse_host(Host)} | Acc]);
-parse(["-b", BucketsStr | Rest], Acc) ->
-    Buckets = [list_to_integer(X) || X <- string:tokens(BucketsStr, ",")],
-    parse(Rest, [{buckets, Buckets} | Acc]);
+parse(["-b", VBucketsStr | Rest], Acc) ->
+    VBuckets = [list_to_integer(X) || X <- string:tokens(VBucketsStr, ",")],
+    parse(Rest, [{vbuckets, VBuckets} | Acc]);
 parse(["-p", ProfileFile | Rest], Acc) ->
     parse(Rest, [{profile_file, ProfileFile} | Acc]);
 parse([Else | Rest], Acc) ->
@@ -82,17 +82,27 @@ run(Conf) ->
     setup_logging(),
 
     Host = proplists:get_value(host, Conf),
-    Dest = proplists:get_value(destination, Conf),
-    Buckets = proplists:get_value(buckets, Conf),
+    {DstNode, _} = Dest = proplists:get_value(destination, Conf),
+    VBuckets = proplists:get_value(vbuckets, Conf),
     ProfileFile = proplists:get_value(profile_file, Conf),
 
-    case {Host, Dest, Buckets} of
+    TapSuffix = case proplists:get_value(takeover, Conf, false) of
+                    true ->
+                        [VBucket] = VBuckets,
+                        integer_to_list(VBucket);
+                    false ->
+                        DstNode
+                end,
+
+    Conf1 = [{suffix, TapSuffix} | Conf],
+
+    case {Host, Dest, VBuckets} of
         {undefined, _, _} ->
             io:format("You need to specify the host to migrate data from~n");
         {_, undefined, _} ->
             io:format("Can't perform bucket migration without a destination host~n");
         {_, _, undefined} ->
-            io:format("Please specify the buckets to migrate by using -b~n");
+            io:format("Please specify the vbuckets to migrate by using -b~n");
         _Else ->
             case ProfileFile of
                 undefined ->
@@ -100,7 +110,7 @@ run(Conf) ->
                 _ ->
                     ok = fprof:trace([start, {file, ProfileFile}])
             end,
-            {ok, Pid} = ebucketmigrator_srv:start_link(Host, Dest, Conf),
+            {ok, Pid} = ebucketmigrator_srv:start_link(Host, Dest, Conf1),
             receive
                 {'EXIT', Pid, normal} ->
                     ok;
