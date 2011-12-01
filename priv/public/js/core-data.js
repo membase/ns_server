@@ -486,7 +486,7 @@ var DAL = {
       if (bucket.bucketType == 'memcached') {
         bucket.bucketTypeName = 'Memcached';
       } else if (bucket.bucketType == 'membase') {
-        bucket.bucketTypeName = 'Membase';
+        bucket.bucketTypeName = 'Couchbase';
       } else {
         bucket.bucketTypeName = bucket.bucketType;
       }
