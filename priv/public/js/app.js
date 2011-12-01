@@ -643,7 +643,9 @@ var NodeDialog = {
         $.ajax({
           url: UpdatesNotificationsSection.remote.email,
           dataType: 'jsonp',
-          data: {email: email}
+          data: {email: email,
+                 firstname: $.trim($('#init-join-community-firstname').val()),
+                 lastname: $.trim($('#init-join-community-lastname').val())}
         });
       }
 
