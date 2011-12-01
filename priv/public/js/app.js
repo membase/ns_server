@@ -645,7 +645,8 @@ var NodeDialog = {
           dataType: 'jsonp',
           data: {email: email,
                  firstname: $.trim($('#init-join-community-firstname').val()),
-                 lastname: $.trim($('#init-join-community-lastname').val())}
+                 lastname: $.trim($('#init-join-community-lastname').val()),
+                 version: DAL.version || "unknown"}
         });
       }
 
