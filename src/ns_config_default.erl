@@ -123,7 +123,7 @@ default() ->
                                                 %
                                                 % This is a classic "should" key, where ns_port_sup needs
                                                 % to try to start child processes.  If it fails, it should ns_log errors.
-     {port_servers,
+     {{node, node(), port_servers},
       [{moxi, path_config:component_path(bin, "moxi"),
         ["-Z", {"port_listen=~B,default_bucket_name=default,downstream_max=1024,downstream_conn_max=4,"
                 "connect_max_errors=5,connect_retry_interval=30000,"
@@ -260,7 +260,6 @@ do_upgrade_config_from_1_6_to_1_7(Config, DefaultConfig) ->
                     end, [],
                     [directory,
                      {node, node(), isasl},
-                     port_servers,
                      {node, node(), ns_log}]).
 
 upgrade_config_from_1_7_to_1_7_1() ->
@@ -333,21 +332,37 @@ upgrade_config_from_1_7_2_to_1_8_0(Config) ->
     DefaultConfig = default(),
     do_upgrade_config_from_1_7_2_to_1_8_0(Config, DefaultConfig).
 
-do_upgrade_config_from_1_7_2_to_1_8_0(Config, _DefaultConfig) ->
+do_upgrade_config_from_1_7_2_to_1_8_0(Config, DefaultConfig) ->
+    ReplaceAllPrefixes =
+        fun (V) ->
+                V2 = prefix_replace("/opt/membase/bin/",
+                                    "/opt/couchbase/bin/", V),
+                V3 = prefix_replace("/opt/membase/lib/",
+                                    "/opt/couchbase/lib/", V2),
+                prefix_replace("/opt/membase/etc/", "/opt/couchbase/etc/", V3)
+        end,
+
+    %% Note that port_servers value does not contain prefixes that we *don't*
+    %% want to replace. This means that we can just take the value from
+    %% default config.
+    %%
+    %% Additionally this enables moxi rest_port fix for the nodes being
+    %% updated from previous versions.
+    Key = {node, node(), port_servers},
+    {Key, DefaultPortServers} = lists:keyfind(Key, 1, DefaultConfig),
+    Results = [{set, Key, DefaultPortServers}],
+
     lists:foldl(
       fun ({_K, false}, Acc) -> Acc;
           ({K, {value, V}}, Acc) ->
-              V2 = prefix_replace("/opt/membase/bin/", "/opt/couchbase/bin/", V),
-              V3 = prefix_replace("/opt/membase/lib/", "/opt/couchbase/lib/", V2),
-              V4 = prefix_replace("/opt/membase/etc/", "/opt/couchbase/etc/", V3),
-              case V =:= V4 of
+              V1 = ReplaceAllPrefixes(V),
+              case V =:= V1 of
                   true -> Acc;
-                  false -> [{set, K, V4} | Acc]
+                  false -> [{set, K, V1} | Acc]
               end
       end,
-      [],
-      [{port_servers,              ns_config:search(Config, port_servers)},
-       {{node, node(), memcached}, ns_config:search_node(Config, memcached)}]).
+      Results,
+      [{{node, node(), memcached}, ns_config:search_node(Config, memcached)}]).
 
 upgrade_1_6_to_1_7_test() ->
     DefaultCfg = [{directory, default_directory},
@@ -356,7 +371,7 @@ upgrade_1_6_to_1_7_test() ->
                   {{node, node(), memcached},
                    [{bucket_engine, "new-be"},
                     {engines, "new-engines"}]},
-                  {port_servers,
+                  {{node, node(), port_servers},
                    [{moxi, "moxi something"},
                     {memcached, "memcached something"}]},
                   {{node, node(), ns_log}, default_log}],
@@ -371,9 +386,8 @@ upgrade_1_6_to_1_7_test() ->
                               [{dbdir, "dbdir"},
                                {bucket_engine, "new-be"},
                                {engines, "new-engines"}]},
-                             {set, port_servers,
-                              [{moxi, "moxi something"},
-                               {memcached, "memcached something"}]},
+                             %% we don't expect to find port_servers here;
+                             %% 1.6->1.7 procedure has changed in 1.8
                              {set, {node, node(), ns_log}, default_log}]),
                  lists:sort(Res)).
 
@@ -438,10 +452,19 @@ upgrade_1_7_1_to_1_7_2_test() ->
     ?assertEqual(lists:sort(Ref4), lists:sort(Res4)).
 
 upgrade_1_7_2_to_1_8_0_test() ->
+    DefaultCfg = [{{node, node(), port_servers},
+                   [{moxi, "/opt/couchbase/bin/moxi something"},
+                    {memcached, "/opt/couchbase/bin/memcached something"}]}],
+
     OldCfg0 = [{nodes_wanted, [node()]},
-               {{node, node(), rest}, [{port, 9000}]}],
-    Res0 = do_upgrade_config_from_1_7_2_to_1_8_0([OldCfg0], []),
-    ?assertEqual([], lists:sort(Res0)),
+               {{node, node(), rest}, [{port, 9000}]},
+               {port_servers, [{moxi, "moxi something"},
+                               {memcached, "memcached something"}]}],
+    Res0 = do_upgrade_config_from_1_7_2_to_1_8_0([OldCfg0], DefaultCfg),
+    ?assertEqual([{set, {node, node(), port_servers},
+                   [{moxi, "/opt/couchbase/bin/moxi something"},
+                    {memcached, "/opt/couchbase/bin/memcached something"}]}],
+                   lists:sort(Res0)),
 
     OldCfg1 = [{{node,node(),memcached},
                 [{dbdir,"/opt/membase/var/lib/membase/data"},
@@ -457,7 +480,10 @@ upgrade_1_7_2_to_1_8_0_test() ->
                      {static_config_string,"bar"}]}]},
                  {verbosity,[]}]},
                {otp,[{cookie,shouldnotbechanged}]},
-               {directory,"/opt/membase/var/lib/membase/config"}],
+               {directory,"/opt/membase/var/lib/membase/config"},
+               {port_servers, [{moxi, "/opt/membase/bin/moxi something"},
+                               {memcached,
+                                "/opt/membase/bin/memcached something"}]}],
     RefCfg1 = [{set, {node,node(),memcached},
                 [{dbdir,"/opt/membase/var/lib/membase/data"},
                  {port,11210},
@@ -470,9 +496,20 @@ upgrade_1_7_2_to_1_8_0_test() ->
                    {memcached,
                     [{engine,"/opt/couchbase/lib/memcached/default_engine.so"},
                      {static_config_string,"bar"}]}]},
-                 {verbosity,[]}]}],
-    Res1 = do_upgrade_config_from_1_7_2_to_1_8_0([OldCfg1], []),
+                 {verbosity,[]}]},
+               {set, {node, node(), port_servers},
+                [{moxi, "/opt/couchbase/bin/moxi something"},
+                 {memcached, "/opt/couchbase/bin/memcached something"}]}],
+    Res1 = do_upgrade_config_from_1_7_2_to_1_8_0([OldCfg1], DefaultCfg),
     ?assertEqual(lists:sort(RefCfg1), lists:sort(Res1)),
+
+    OldCfg2 = [{nodes_wanted, [node()]},
+               {{node, node(), rest}, [{port, 9000}]}],
+    Res2 = do_upgrade_config_from_1_7_2_to_1_8_0([OldCfg2], DefaultCfg),
+    ?assertEqual([{set, {node, node(), port_servers},
+                   [{moxi, "/opt/couchbase/bin/moxi something"},
+                    {memcached, "/opt/couchbase/bin/memcached something"}]}],
+                 lists:sort(Res2)),
     ok.
 
 no_upgrade_on_1_8_0_test() ->
