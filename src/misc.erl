@@ -1105,6 +1105,12 @@ parse_base_version(BaseVersionStr) ->
     {lists:map(fun list_to_integer/1,
                string:tokens(BaseVersionStr1, ".")), Type}.
 
+this_node_rest_port() ->
+    node_rest_port(node()).
+
+node_rest_port(Node) ->
+    node_rest_port(ns_config:get(), Node).
+
 node_rest_port(Config, Node) ->
     case ns_config:search_node_prop(Node, Config, rest, port_meta, local) of
         local ->
