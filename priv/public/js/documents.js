@@ -45,6 +45,34 @@ var DocumentsModel = {};
     }
     return bucketInfo.name;
   });
+
+  // bucket drop-down population and onChange events
+  (function () {
+
+    var cell = Cell.compute(function (v) {
+
+      var mode = v.need(DAL.cells.mode);
+      if (mode != 'edit_doc' && mode != 'documents') {
+        return;
+      }
+
+      var buckets = v.need(DAL.cells.bucketsListCell).byType.membase;
+      var selectedBucketName = v.need(DocumentsModel.documentsBucketCell);
+      return {
+        list: _.map(buckets, function (info) { return [info.name, info.name] }),
+        selected: selectedBucketName
+      };
+    });
+
+    $('#docs_buckets_select, #doc_buckets_select').each(function() {
+      $(this).bindListCell(cell, {
+        onChange: function (e, newValue) {
+          DocumentsModel.bucketName.setValue(newValue);
+        }
+      });
+    });
+
+  })();
 })(DocumentsModel);
 
 var DocumentsSection = {
@@ -191,31 +219,6 @@ var DocumentsSection = {
 
     })();
 
-    (function () {
-
-      var cell = Cell.compute(function (v) {
-
-        var mode = v.need(DAL.cells.mode);
-        if (mode != 'documents') {
-          return;
-        }
-
-        var buckets = v.need(DAL.cells.bucketsListCell).byType.membase;
-        var selectedBucketName = v.need(DocumentsModel.documentsBucketCell);
-        return {
-          list: _.map(buckets, function (info) { return [info.name, info.name] }),
-          selected: selectedBucketName
-        };
-      });
-
-      $('#docs_buckets_select').bindListCell(cell, {
-        onChange: function (e, newValue) {
-          DocumentsModel.bucketName.setValue(newValue);
-        }
-      });
-
-    })();
-
   },
   onEnter: function () {
     this.allDocs.invalidate();
@@ -335,6 +338,10 @@ var EditDocumentSection = {
       }
     });
 
+    $('#doc_buckets_select').live('change', function() {
+      docId.setValue("");
+      ThePage.gotoSection('documents');
+    });
     $('#doc_delete:not(.disabled)').live('click', deleteDoc);
     $('#doc_save:not(.disabled)').live('click', function() {
       saveDoc(self.docIdVal, self.docRevVal, function() {});
@@ -354,33 +361,6 @@ var EditDocumentSection = {
         }]]
       });
     });
-
-    (function () {
-
-      var cell = Cell.compute(function (v) {
-
-        var mode = v.need(DAL.cells.mode);
-        if (mode != 'edit_doc') {
-          return;
-        }
-
-        var buckets = v.need(DAL.cells.bucketsListCell).byType.membase;
-        var selectedBucketName = v.need(DocumentsModel.documentsBucketCell);
-        return {
-          list: _.map(buckets, function (info) { return [info.name, info.name] }),
-          selected: selectedBucketName
-        };
-      });
-
-      $('#doc_buckets_select').bindListCell(cell, {
-        onChange: function (e, newValue) {
-          DocumentsModel.bucketName.setValue(newValue);
-          docId.setValue("");
-          ThePage.gotoSection('documents');
-        }
-      });
-
-    })();
 
   },
   onEnter: function () {
