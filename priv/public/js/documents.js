@@ -304,6 +304,11 @@ var EditDocumentSection = {
     });
 
     // subscriptions
+    bucketName.subscribeValue(function (bucket) {
+      $('#doc_buckets_select + a').attr('href', '#sec=documents&bucketName='
+        + encodeURIComponent(bucket));
+    });
+
     currentDoc.subscribeValue(function (doc) {
       if (doc === undefined) {
         return;
