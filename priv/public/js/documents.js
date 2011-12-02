@@ -29,6 +29,22 @@ var DocumentsModel = {};
 
 (function (self) {
   self.bucketName = new StringHashFragmentCell("bucketName");
+
+  self.documentsBucketCell = Cell.compute(function (v) {
+    var selected = v(DocumentsModel.bucketName);
+    if (selected) {
+      return selected;
+    }
+    var buckets = v.need(DAL.cells.bucketsListCell).byType.membase;
+    var bucketInfo = _.detect(buckets, function (info) {
+      return info.name === "default"
+    }) || buckets[0];
+
+    if (!bucketInfo) {
+      return null;
+    }
+    return bucketInfo.name;
+  });
 })(DocumentsModel);
 
 var DocumentsSection = {
@@ -93,7 +109,7 @@ var DocumentsSection = {
     self.selectedBucketCell = Cell.compute(function (v) {
       if (v.need(DAL.cells.mode) != 'documents')
         return;
-      return v.need(self.documentsBucketCell);
+      return v.need(DocumentsModel.documentsBucketCell);
     }).name("selectedBucket");
 
     // This shouldnt exist, just passing from allDocs cell into subscribe
@@ -175,22 +191,6 @@ var DocumentsSection = {
 
     })();
 
-    self.documentsBucketCell = Cell.compute(function (v) {
-      var selected = v(DocumentsModel.bucketName);
-      if (selected) {
-        return selected;
-      }
-      var buckets = v.need(DAL.cells.bucketsListCell).byType.membase;
-      var bucketInfo = _.detect(buckets, function (info) {
-        return info.name === "default"
-      }) || buckets[0];
-
-      if (!bucketInfo) {
-        return null;
-      }
-      return bucketInfo.name;
-    });
-
     (function () {
 
       var cell = Cell.compute(function (v) {
@@ -201,7 +201,7 @@ var DocumentsSection = {
         }
 
         var buckets = v.need(DAL.cells.bucketsListCell).byType.membase;
-        var selectedBucketName = v.need(self.documentsBucketCell);
+        var selectedBucketName = v.need(DocumentsModel.documentsBucketCell);
         return {
           list: _.map(buckets, function (info) { return [info.name, info.name] }),
           selected: selectedBucketName
@@ -355,22 +355,6 @@ var EditDocumentSection = {
       });
     });
 
-    self.documentsBucketCell = Cell.compute(function (v) {
-      var selected = v(DocumentsModel.bucketName);
-      if (selected) {
-        return selected;
-      }
-      var buckets = v.need(DAL.cells.bucketsListCell).byType.membase;
-      var bucketInfo = _.detect(buckets, function (info) {
-        return info.name === "default"
-      }) || buckets[0];
-
-      if (!bucketInfo) {
-        return null;
-      }
-      return bucketInfo.name;
-    });
-
     (function () {
 
       var cell = Cell.compute(function (v) {
@@ -381,7 +365,7 @@ var EditDocumentSection = {
         }
 
         var buckets = v.need(DAL.cells.bucketsListCell).byType.membase;
-        var selectedBucketName = v.need(self.documentsBucketCell);
+        var selectedBucketName = v.need(DocumentsModel.documentsBucketCell);
         return {
           list: _.map(buckets, function (info) { return [info.name, info.name] }),
           selected: selectedBucketName
