@@ -134,17 +134,11 @@ var DocumentsSection = {
       });
     });
 
-    self.selectedBucketCell = Cell.compute(function (v) {
-      if (v.need(DAL.cells.mode) != 'documents')
-        return;
-      return v.need(DocumentsModel.documentsBucketCell);
-    }).name("selectedBucket");
-
     // This shouldnt exist, just passing from allDocs cell into subscribe
     self.bucketName;
 
     self.dbUrlCell = Cell
-      .needing(DAL.cells.capiBase, self.selectedBucketCell)
+      .needing(DAL.cells.capiBase, DocumentsModel.documentsBucketCell)
       .compute(function (v, baseUri, bucketName) {
         self.bucketName = bucketName;
         return buildURL(baseUri, bucketName) + "/";
