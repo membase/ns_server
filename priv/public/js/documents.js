@@ -388,6 +388,8 @@ var EditDocumentSection = {
       $('#doc_buckets_select').bindListCell(cell, {
         onChange: function (e, newValue) {
           self.rawDocumentsBucketCell.setValue(newValue);
+          docId.setValue("");
+          ThePage.gotoSection('documents');
         }
       });
 
