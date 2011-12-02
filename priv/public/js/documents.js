@@ -25,6 +25,11 @@ function alertDialog(alertMsg) {
   });
 }
 
+var DocumentsModel = {};
+
+(function (self) {
+  self.bucketName = new StringHashFragmentCell("bucketName");
+})(DocumentsModel);
 
 var DocumentsSection = {
 
@@ -84,8 +89,6 @@ var DocumentsSection = {
         }]]
       });
     });
-
-    self.rawDocumentsBucketCell = new StringHashFragmentCell("documentsBucket");
 
     self.selectedBucketCell = Cell.compute(function (v) {
       if (v.need(DAL.cells.mode) != 'documents')
@@ -173,7 +176,7 @@ var DocumentsSection = {
     })();
 
     self.documentsBucketCell = Cell.compute(function (v) {
-      var selected = v(self.rawDocumentsBucketCell);
+      var selected = v(DocumentsModel.bucketName);
       if (selected) {
         return selected;
       }
@@ -207,7 +210,7 @@ var DocumentsSection = {
 
       $('#docs_buckets_select').bindListCell(cell, {
         onChange: function (e, newValue) {
-          self.rawDocumentsBucketCell.setValue(newValue);
+          DocumentsModel.bucketName.setValue(newValue);
         }
       });
 
@@ -232,7 +235,7 @@ var EditDocumentSection = {
     self.docIdVal;
     self.docRevVal;
 
-    var bucketName = self.bucketName = new StringHashFragmentCell("bucketName");
+    var bucketName = self.bucketName = DocumentsModel.bucketName;
     var docId = self.docId = new StringHashFragmentCell("docId");
 
     function saveDoc(id, rev, callback) {
@@ -275,7 +278,7 @@ var EditDocumentSection = {
       var url = buildURL('/', 'couchBase', self.bucketNameVal, self.docIdVal,
                          {rev: self.docRevVal});
       couchReq('DELETE', url, null, function(data) {
-        document.location.hash = 'sec=documents&documentsBucket='
+        document.location.hash = 'sec=documents&bucketName='
           + encodeURIComponent(self.bucketNameVal);
       }, function() {
         alertDialog('Unknown error saving document');
@@ -353,7 +356,7 @@ var EditDocumentSection = {
     });
 
     self.documentsBucketCell = Cell.compute(function (v) {
-      var selected = v(self.bucketName);
+      var selected = v(DocumentsModel.bucketName);
       if (selected) {
         return selected;
       }
@@ -387,7 +390,7 @@ var EditDocumentSection = {
 
       $('#doc_buckets_select').bindListCell(cell, {
         onChange: function (e, newValue) {
-          self.rawDocumentsBucketCell.setValue(newValue);
+          DocumentsModel.bucketName.setValue(newValue);
           docId.setValue("");
           ThePage.gotoSection('documents');
         }

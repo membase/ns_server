@@ -484,7 +484,7 @@
                 <td>
                   {% if (this.bucketType == 'membase') { %}
                     <a class="list_button disable-if-stale" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>
-                   <a class="list_button" href="#sec=documents&documentsBucket={%= this.name %}"><span>Documents</span></a>{% } %}
+                   <a class="list_button" href="#sec=documents&bucketName={%= this.name %}"><span>Documents</span></a>{% } %}
                 </td>
               </tr>
               <tr>
