@@ -172,9 +172,6 @@ var LogsSection = {
     return 'logs';
   }
 }
-var DummySection = {
-  onEnter: function () {}
-};
 
 var ThePage = {
   sections: {overview: OverviewSection,
