@@ -234,7 +234,6 @@ var EditDocumentSection = {
 
     var self = this;
 
-    self.bucketNameVal;
     self.docIdVal;
     self.docRevVal;
 
@@ -263,7 +262,7 @@ var EditDocumentSection = {
 
       $('#doc_save').addClass('disabled').find('span').text("Saving");
 
-      couchReq('PUT', buildURL('/', 'couchBase', self.bucketNameVal, id), json,
+      couchReq('PUT', buildURL('/', 'couchBase', self.bucketName.value, id), json,
                function(data) {
         $('#doc_save').removeClass('disabled').find('span').text("Save");
         self.docIdVal = data.id;
@@ -278,11 +277,11 @@ var EditDocumentSection = {
 
     function deleteDoc() {
       var obj = {_id: self.docIdVal, _rev: self.docRevVal};
-      var url = buildURL('/', 'couchBase', self.bucketNameVal, self.docIdVal,
+      var url = buildURL('/', 'couchBase', self.bucketName.value, self.docIdVal,
                          {rev: self.docRevVal});
       couchReq('DELETE', url, null, function(data) {
         document.location.hash = 'sec=documents&bucketName='
-          + encodeURIComponent(self.bucketNameVal);
+          + encodeURIComponent(self.bucketName.value);
       }, function() {
         alertDialog('Unknown error saving document');
       });
@@ -291,7 +290,6 @@ var EditDocumentSection = {
     var dbUrl = self.dbUrl = Cell
     .needing(DAL.cells.capiBase, bucketName)
     .compute(function (v, baseUri, bucketName) {
-      self.bucketNameVal = bucketName;
       return baseUri + bucketName;
     });
 
@@ -355,7 +353,7 @@ var EditDocumentSection = {
           saveDoc(id, null, function() {
             $('#saveas_id').val('');
             document.location.hash = 'sec=edit_doc&bucketName=' +
-              encodeURIComponent(self.bucketNameVal) +
+              encodeURIComponent(self.bucketName.value) +
               '&docId=' + encodeURIComponent(id);
           });
         }]]
