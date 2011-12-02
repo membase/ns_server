@@ -90,7 +90,7 @@ var DocumentsSection = {
         return;
       }
 
-      couchReq('PUT', buildURL('/couchBase/', bucket, id), {_id: id}, function() {
+      couchReq('PUT', buildDocURL(self.dbUrlCell.value, id), {_id: id}, function() {
         document.location.href = '#sec=edit_doc&bucketName=' +
           encodeURIComponent(bucket) + '&docId=' + encodeURIComponent(id);
         callback();
@@ -112,7 +112,7 @@ var DocumentsSection = {
         return;
       }
 
-      couchReq('GET', buildDocURL(buildURL('/couchBase/', self.bucketName), id), null, function() {
+      couchReq('GET', buildDocURL(self.dbUrlCell.value, id), null, function() {
         lookupInp.val('');
         document.location.href = '#sec=edit_doc&bucketName=' +
           encodeURIComponent(self.bucketName) + '&docId=' + encodeURIComponent(id);
@@ -256,7 +256,7 @@ var EditDocumentSection = {
 
       $('#doc_save').addClass('disabled').find('span').text("Saving");
 
-      couchReq('PUT', buildURL('/', 'couchBase', self.bucketName.value, id), json,
+      couchReq('PUT', buildDocURL(self.dbUrl.value, id), json,
                function(data) {
         $('#doc_save').removeClass('disabled').find('span').text("Save");
         self.docIdVal = data.id;
@@ -271,7 +271,7 @@ var EditDocumentSection = {
 
     function deleteDoc() {
       var obj = {_id: self.docIdVal, _rev: self.docRevVal};
-      var url = buildURL('/', 'couchBase', self.bucketName.value, self.docIdVal,
+      var url = buildDocURL(self.dbUrl.value, self.docIdVal,
                          {rev: self.docRevVal});
       couchReq('DELETE', url, null, function(data) {
         document.location.hash = 'sec=documents&bucketName='
