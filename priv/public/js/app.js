@@ -755,7 +755,7 @@ function showAbout() {
     if (bucketsCount >= 100)
       bucketsCount = 99;
 
-    var memcachedBucketsCount = _.filter(buckets, function (b) {return b.bucketType == 'memcache'}).length;
+    var memcachedBucketsCount = _.filter(buckets, function (b) {return b.bucketType == 'memcached'}).length;
     var membaseBucketsCount = _.filter(buckets, function (b) {return b.bucketType == 'membase'}).length;
 
     if (memcachedBucketsCount >= 0x10)
