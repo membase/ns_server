@@ -125,7 +125,7 @@ async_2(LoggerName, ServerName, Async) ->
         fun (LogLevel) ->
                 io_lib:format(
                   "~p(M, F, L, Fmt, Args) -> "
-                  "ForcedArgs = ale_utils:force(Args),"
+                  "ForcedArgs = ale_utils:force_args(Args),"
                   "Info = ale_utils:assemble_info(~s, ~p, M, F, L),"
                   "gen_server:cast('~s', {log, Info, Fmt, ForcedArgs}).~n",
                   [LogLevel, LoggerName, LogLevel, ServerName])
@@ -137,7 +137,7 @@ xasync_2(LoggerName, ServerName, Async) ->
         fun (LogLevel) ->
                 io_lib:format(
                   "x~p(M, F, L, Data, Fmt, Args) -> "
-                  "ForcedArgs = ale_utils:force(Args),"
+                  "ForcedArgs = ale_utils:force_args(Args),"
                   "Info = ale_utils:assemble_info(~s, ~p, M, F, L, Data),"
                   "gen_server:cast('~s', {log, Info, Fmt, ForcedArgs}).~n",
                   [LogLevel, LoggerName, LogLevel, ServerName])
@@ -178,7 +178,7 @@ sync_2(LoggerName, ServerName, Sync) ->
         fun (LogLevel) ->
                 io_lib:format(
                   "~p(M, F, L, Fmt, Args) -> "
-                  "ForcedArgs = ale_utils:force(Args),"
+                  "ForcedArgs = ale_utils:force_args(Args),"
                   "Info = ale_utils:assemble_info(~s, ~p, M, F, L),"
                   "gen_server:call('~s', {log, Info, Fmt, ForcedArgs}).~n",
                   [LogLevel, LoggerName, LogLevel, ServerName])
@@ -190,7 +190,7 @@ xsync_2(LoggerName, ServerName, Sync) ->
         fun (LogLevel) ->
                 io_lib:format(
                   "x~p(M, F, L, Data, Fmt, Args) -> "
-                  "ForcedArgs = ale_utils:force(Args),"
+                  "ForcedArgs = ale_utils:force_args(Args),"
                   "Info = ale_utils:assemble_info(~s, ~p, M, F, L, Data),"
                   "gen_server:call('~s', {log, Info, Fmt, ForcedArgs}).~n",
                   [LogLevel, LoggerName, LogLevel, ServerName])
