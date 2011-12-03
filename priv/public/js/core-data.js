@@ -145,6 +145,19 @@ var DAL = {
     }
   },
   appendedVersion: false,
+  parseVersion: function (str) { // Example: "1.8.0r-9-ga083a1e-enterprise"
+    var a = str.split(/[-_]/);
+    a[0] = (a[0].match(/[0-9]+\.[0-9]+\.[0-9]+/) || ["0.0.0"])[0]
+    a[1] = a[1] || "0"
+    a[2] = a[2] || "unknown"
+    a[3] = a[3] || "DEV"
+    return a; // Example result: ["1.8.0", "9", "ga083a1e", "enterprise"]
+  },
+  prettyVersion: function(str) {
+    var a = DAL.parseVersion(str);
+    // Example result: "1.8.0 enterprise edition (build-7-g35c9cdd)"
+    return [a[0], a[3], "edition", "(build-" + a[1] + '-' + a[2] + ")"].join(' ');
+  },
   loginSuccess: function (data) {
     var rows = data.pools;
 
@@ -153,8 +166,10 @@ var DAL = {
       DAL.componentsVersion = data.componentsVersion;
       DAL.uuid = data.uuid;
       if (!DAL.appendedVersion) {
-        document.title = document.title + " (" + data.implementationVersion + ")";
-        $('.version > .couchbase-version').text(String(data.implementationVersion)).parent().show();
+        document.title = document.title +
+          " (" + DAL.parseVersion(data.implementationVersion)[0] + ")";
+        var v = DAL.prettyVersion(data.implementationVersion);
+        $('.version > .couchbase-version').text(v).parent().show();
         DAL.appendedVersion = true;
       }
     }
@@ -475,7 +490,7 @@ var DAL = {
       if (bucket.bucketType == 'memcached') {
         bucket.bucketTypeName = 'Memcached';
       } else if (bucket.bucketType == 'membase') {
-        bucket.bucketTypeName = 'Membase';
+        bucket.bucketTypeName = 'Couchbase';
       } else {
         bucket.bucketTypeName = bucket.bucketType;
       }

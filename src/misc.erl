@@ -1104,7 +1104,10 @@ init([X | Rest]) ->
     [X | init(Rest)].
 
 %% Parse version of the form 1.7.0r_252_g1e1c2c0 or 1.7.0r-252-g1e1c2c0 into a
-%% list {[1,7,0],candidate,252}.
+%% list {[1,7,0],candidate,252}.  1.8.0 introduces a license type suffix,
+%% like: 1.8.0r-25-g1e1c2c0-enterprise.  Note that we should never
+%% see something like 1.7.0-enterprise, as older nodes won't carry
+%% the license type information.
 -spec parse_version(string()) -> version().
 parse_version(VersionStr) ->
     Parts = string:tokens(VersionStr, "_-"),
@@ -1112,7 +1115,7 @@ parse_version(VersionStr) ->
         [BaseVersionStr] ->
             {BaseVersion, Type} = parse_base_version(BaseVersionStr),
             {BaseVersion, Type, 0};
-        [BaseVersionStr, OffsetStr, _Hash] ->
+        [BaseVersionStr, OffsetStr | _Rest] ->
             {BaseVersion, Type} = parse_base_version(BaseVersionStr),
             {BaseVersion, Type, list_to_integer(OffsetStr)}
     end.
@@ -1136,6 +1139,12 @@ dir_size(Dir) ->
                 Acc + Size
         end,
     filelib:fold_files(Dir, ".*", true, Fn, 0).
+
+this_node_rest_port() ->
+    node_rest_port(node()).
+
+node_rest_port(Node) ->
+    node_rest_port(ns_config:get(), Node).
 
 node_rest_port(Config, Node) ->
     case ns_config:search_node_prop(Node, Config, rest, port_meta, local) of
@@ -1170,6 +1179,10 @@ parse_version_test() ->
                      parse_version("1.7.0")),
     ?assertEqual(true,
                  parse_version("1.7.1_252_g1e1c2c0") >
-                     parse_version("1.7.1_251_g1e1c2c1")).
-
+                     parse_version("1.7.1_251_g1e1c2c1")),
+    ?assertEqual({[1,8,0],release,25},
+                 parse_version("1.8.0_25_g1e1c2c0-enterprise")),
+    ?assertEqual({[1,8,0],release,25},
+                 parse_version("1.8.0-25-g1e1c2c0-enterprise")),
+    ok.
 -endif.

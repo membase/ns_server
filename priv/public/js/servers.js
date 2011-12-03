@@ -294,7 +294,7 @@ var ServersSection = {
       markers: []
     };
     if (withQuotaTotal) {
-      options.topLeft = ['Membase Quota', ViewHelpers.formatMemSize(totals.quotaTotal)];
+      options.topLeft = ['Couchbase Quota', ViewHelpers.formatMemSize(totals.quotaTotal)];
       options.markers.push({value: totals.quotaTotal,
                             attrs: {style: "background-color:#E43A1B;"}});
     }

@@ -737,7 +737,10 @@ var SetupWizard = {
           $.ajax({
             url: UpdatesNotificationsSection.remote.email,
             dataType: 'jsonp',
-            data: {email: email},
+            data: {email: email,
+                   firstname: $.trim($('#init-join-community-firstname').val()),
+                   lastname: $.trim($('#init-join-community-lastname').val()),
+                   version: DAL.version || "unknown"},
             success: function () {},
             error: function () {}
           });
@@ -836,7 +839,7 @@ function showAbout() {
   function updateVersion() {
     var components = DAL.componentsVersion;
     if (components)
-      $('#about_versions').text("Version: " + components['ns_server']);
+      $('#about_versions').text("Version: " + DAL.prettyVersion(components['ns_server']));
     else {
       $.get('/versions', function (data) {
         DAL.componentsVersion = data.componentsVersion;
@@ -854,7 +857,7 @@ function showAbout() {
     if (bucketsCount >= 100)
       bucketsCount = 99;
 
-    var memcachedBucketsCount = _.filter(buckets, function (b) {return b.bucketType == 'memcache'}).length;
+    var memcachedBucketsCount = _.filter(buckets, function (b) {return b.bucketType == 'memcached'}).length;
     var membaseBucketsCount = _.filter(buckets, function (b) {return b.bucketType == 'membase'}).length;
 
     if (memcachedBucketsCount >= 0x10)

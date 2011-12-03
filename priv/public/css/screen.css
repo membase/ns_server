@@ -1030,6 +1030,7 @@ body.init_update_notifications #init_update_notifications_dialog {display:block}
 body.init_update_notifications #init_update_notifications_dialog {background:none; background-color:#eee; display: block; padding-bottom:-50px;}
 body.init_update_notifications #init_update_notifications_dialog h2.question {border-bottom:1px solid #d5dadd; color:#444245; font-size:14pt; font-family:Verdana, Helvetica, Sans-Serif; font-weight:lighter; margin:25px 0px 0px 50px; padding-bottom:5px; width:85%;}
 body.init_update_notifications #init_update_notifications_dialog p.pad_10 {color:#444245; font-family:Verdana, Helvetica, Sans-Serif; font-size:10pt; font-weight:lighter; line-height:20px; margin-left:75px; width:500px;}
+#init_update_notifications_dialog span.field-label {display:inline-block; width:8em;}
 #init_update_notifications_dialog a.more_info {float:right}
 #init_update_notifications_dialog p.more_info {display:none}
 

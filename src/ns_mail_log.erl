@@ -110,5 +110,5 @@ config_to_options(ServerConfig) ->
 
 send_email(Sender, Rcpts, AlertKey, Message, ServerConfig) ->
     Options = config_to_options(ServerConfig),
-    Subject = "Membase alert: " ++ atom_to_list(AlertKey),
+    Subject = "Couchbase Server alert: " ++ atom_to_list(AlertKey),
     ns_mail:send(Sender, Rcpts, Subject, Message, Options).
