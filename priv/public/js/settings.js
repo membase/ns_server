@@ -172,6 +172,7 @@ var UpdatesNotificationsSection = {
                 membase: numMembase,
                 memcached: s.buckets.length - numMembase
               },
+              counters: s.pool.counters,
               nodes: nodeStats,
               browser: navigator.userAgent
             };
