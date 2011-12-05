@@ -44,6 +44,9 @@
 %% debugging & diagnostic export
 -export([do_change_address/1]).
 
+-export([counters/0,
+         counter_inc/1]).
+
 -export([alert_key/1]).
 -record(state, {}).
 
@@ -77,6 +80,22 @@ engage_cluster(NodeKVList) ->
 
 complete_join(NodeKVList) ->
     gen_server:call(?MODULE, {complete_join, NodeKVList}, ?COMPLETE_TIMEOUT).
+
+%% @doc Returns proplist of cluster-wide counters.
+counters() ->
+    case ns_config:search(counters) of
+        {value, PList} -> PList;
+        false -> []
+    end.
+
+%% @doc Increment a cluster-wide counter.
+counter_inc(CounterName) ->
+    % We expect counters to be slow moving (num rebalances, num failovers,
+    % etc), and favor efficient reads over efficient writes.
+    PList = counters(),
+    ok = ns_config:set(counters,
+                       [{CounterName, proplists:get_value(CounterName, PList, 0) + 1} |
+                        proplists:delete(CounterName, PList)]).
 
 %%
 %% gen_server handlers
