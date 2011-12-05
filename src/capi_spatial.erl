@@ -76,14 +76,16 @@ handle_spatial_req(Req, _Db, _DDoc) ->
 spatial_merge_params(Req, #db{name = BucketName} = Db, DDocId, SpatialName) ->
     NodeToVBuckets = capi_view:node_vbuckets_dict(?b2l(BucketName)),
     Config = ns_config:get(),
-    FullSpatialName = case DDocId of
-    nil ->
-        % _all_docs and other special builtin views
-        SpatialName;
-    _ ->
-        iolist_to_binary([BucketName, "%2F", "master", $/, DDocId, $/,
-            SpatialName])
-    end,
+    %% FullSpatialName = case DDocId of
+    %% nil ->
+    %%     % _all_docs and other special builtin views
+    %%     SpatialName;
+    %% _ ->
+    %%     iolist_to_binary([BucketName, "%2F", "master", $/, DDocId, $/,
+    %%         SpatialName])
+    %% end,
+    FullSpatialName = iolist_to_binary([BucketName, "%2F", "master", $/, DDocId, $/,
+        SpatialName]),
     SpatialSpecs = dict:fold(
         fun(Node, VBuckets, Acc) when Node =:= node() ->
             capi_view:build_local_simple_specs(BucketName, DDocId, SpatialName,
