@@ -518,7 +518,7 @@ var MockedRequest = mkClass({
                                type: "info",
                                tstamp: 1259836260000,
                                shortText: "Above Average Operations per Second",
-                               text: "Licensing, capacity, Couchbase issues, etc."},
+                               text: "Licensing, capacity, Membase issues, etc."},
                               {number: 2,
                                type: "attention",
                                tstamp: 1259836260000,

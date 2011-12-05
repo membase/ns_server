@@ -16,6 +16,7 @@
 -module(ns_config_default).
 
 -include("ns_common.hrl").
+-include("ns_config.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -149,7 +150,7 @@ default() ->
                 "downstream_timeout=5000,wait_queue_timeout=200",
                 [port]},
          "-z", {"url=http://127.0.0.1:~B/pools/default/saslBucketsStreaming",
-                [{misc, this_node_rest_port, []}]},
+                [{rest, port}]},
          "-p", "0",
          "-Y", "y",
          "-O", "stderr",
@@ -192,7 +193,7 @@ default() ->
                                                 % Listeners: ? possibly ns_log
      {email_alerts,
       [{recipients, ["root@localhost"]},
-       {sender, "couchbase@localhost"},
+       {sender, "membase@localhost"},
        {enabled, true},
        {email_server, [{user, ""},
                        {pass, ""},
@@ -218,21 +219,6 @@ default() ->
       NodeUUID}
     ].
 
-%% Recursively replace all strings in a hierarchy that start
-%% with a given Prefix with a ReplacementPrefix.  For example,
-%% use it like: prefix_replace("/opt/membase/bin", "/opt/couchbase/bin", ConfigKVItem).
-prefix_replace(Prefix, ReplacementPrefix, L) when is_list(L) ->
-    case lists:prefix(Prefix, L) of
-         true  -> ReplacementPrefix ++ lists:nthtail(length(Prefix), L);
-         false -> lists:map(fun (X) ->
-                                prefix_replace(Prefix, ReplacementPrefix, X)
-                            end,
-                            L)
-    end;
-prefix_replace(Prefix, ReplacementPrefix, T) when is_tuple(T) ->
-    list_to_tuple(prefix_replace(Prefix, ReplacementPrefix, tuple_to_list(T)));
-prefix_replace(_Prefix, _ReplacementPrefix, X) -> X.
-
 %% returns list of changes to config to upgrade it to current version.
 %% This will be invoked repeatedly by ns_config until list is empty.
 %%
@@ -251,11 +237,8 @@ upgrade_config(Config) ->
             [{set, {node, node(), config_version}, {1,7,2}} |
              upgrade_config_from_1_7_1_to_1_7_2(Config)];
         {value, {1,7,2}} ->
-            [{set, {node, node(), config_version}, {1,8,0}} |
-             upgrade_config_from_1_7_2_to_1_8_0(Config)];
-        {value, {1,8,0}} ->
             [{set, {node, node(), config_version}, {2,0}} |
-             upgrade_config_from_1_8_0_to_2_0(Config)];
+             upgrade_config_from_1_7_2_to_2_0(Config)];
         {value, {2,0}} ->
             []
     end.
@@ -274,13 +257,26 @@ do_upgrade_config_from_1_6_to_1_7(Config, DefaultConfig) ->
                                           lists:keyreplace(element(1, T), 1, Acc, T)
                                   end, MemcachedCfg, [BucketEnCfg,
                                                       EnginesCfg]),
-    [{set, {node, node(), memcached}, NewMemcachedCfg}] ++
+
+    VClock = vclock:increment(node(), vclock:fresh()),
+    AddVClock = fun (Value) ->
+                        [{?METADATA_VCLOCK, VClock} | Value]
+                end,
+
+    [{set, {node, node(), memcached}, AddVClock(NewMemcachedCfg)}] ++
         lists:foldl(fun (K, Acc) ->
                             {K,V} = lists:keyfind(K, 1, DefaultConfig),
-                            [{set, K, V} | Acc]
+                            V1 = case K of
+                                     {node, Node, _K} when node() =:= Node ->
+                                         AddVClock(V);
+                                     _Otherwise ->
+                                         V
+                                 end,
+                            [{set, K, V1} | Acc]
                     end, [],
                     [directory,
                      {node, node(), isasl},
+                     {node, node(), port_servers},
                      {node, node(), ns_log}]).
 
 upgrade_config_from_1_7_to_1_7_1() ->
@@ -348,49 +344,12 @@ do_upgrade_rest_port_config_from_1_7_1_to_1_7_2(Config, DefaultConfig) ->
 
     RestChange ++ NodeRestChange.
 
-upgrade_config_from_1_7_2_to_1_8_0(Config) ->
-    ?log_info("Upgrading config from 1.7.2 to 1.8.0", []),
-    DefaultConfig = default(),
-    do_upgrade_config_from_1_7_2_to_1_8_0(Config, DefaultConfig).
-
-do_upgrade_config_from_1_7_2_to_1_8_0(Config, DefaultConfig) ->
-    ReplaceAllPrefixes =
-        fun (V) ->
-                V2 = prefix_replace("/opt/membase/bin/",
-                                    "/opt/couchbase/bin/", V),
-                V3 = prefix_replace("/opt/membase/lib/",
-                                    "/opt/couchbase/lib/", V2),
-                prefix_replace("/opt/membase/etc/", "/opt/couchbase/etc/", V3)
-        end,
-
-    %% Note that port_servers value does not contain prefixes that we *don't*
-    %% want to replace. This means that we can just take the value from
-    %% default config.
-    %%
-    %% Additionally this enables moxi rest_port fix for the nodes being
-    %% updated from previous versions.
-    Key = {node, node(), port_servers},
-    {Key, DefaultPortServers} = lists:keyfind(Key, 1, DefaultConfig),
-    Results = [{set, Key, DefaultPortServers}],
-
-    lists:foldl(
-      fun ({_K, false}, Acc) -> Acc;
-          ({K, {value, V}}, Acc) ->
-              V1 = ReplaceAllPrefixes(V),
-              case V =:= V1 of
-                  true -> Acc;
-                  false -> [{set, K, V1} | Acc]
-              end
-      end,
-      Results,
-      [{{node, node(), memcached}, ns_config:search_node(Config, memcached)}]).
-
-upgrade_config_from_1_8_0_to_2_0(Config) ->
+upgrade_config_from_1_7_2_to_2_0(Config) ->
     ?log_info("Upgrading config from 1.7.2 to 2.0", []),
     DefaultConfig = default(),
-    do_upgrade_config_from_1_8_0_to_2_0(Config, DefaultConfig).
+    do_upgrade_config_from_1_7_2_to_2_0(Config, DefaultConfig).
 
-do_upgrade_config_from_1_8_0_to_2_0(Config, DefaultConfig) ->
+do_upgrade_config_from_1_7_2_to_2_0(Config, DefaultConfig) ->
     MaybeCapiPort = case ns_config:search(Config, {node, node(), capi_port}) of
                         false ->
                             {_, DefaultCapiPort} = lists:keyfind({node, node(), capi_port}, 1, DefaultConfig),
@@ -436,17 +395,57 @@ upgrade_1_6_to_1_7_test() ->
                [{dbdir, "dbdir"},
                 {bucket_engine, "old-be"},
                 {engines, "old-engines"}]}],
+
+    StripValue = fun ([{?METADATA_VCLOCK, _V} | Rest]) ->
+                         Rest;
+                     (Other) ->
+                         Other
+                 end,
+    Strip = fun (Config) ->
+                    lists:map(
+                      fun ({set, K, V}) ->
+                              {set, K, StripValue(V)};
+                          (Other) ->
+                              Other
+                      end,
+                      Config)
+            end,
+
     Res = do_upgrade_config_from_1_6_to_1_7([OldCfg], DefaultCfg),
+
     ?assertEqual(lists:sort([{set, directory, default_directory},
-                             {set, {node, node(), isasl}, [{path, default_isasl}]},
+                             {set, {node, node(), isasl},
+                              [{path, default_isasl}]},
                              {set, {node, node(), memcached},
                               [{dbdir, "dbdir"},
                                {bucket_engine, "new-be"},
                                {engines, "new-engines"}]},
-                             %% we don't expect to find port_servers here;
-                             %% 1.6->1.7 procedure has changed in 1.8
+                             {set, {node, node(), port_servers},
+                              [{moxi, "moxi something"},
+                               {memcached, "memcached something"}]},
                              {set, {node, node(), ns_log}, default_log}]),
-                 lists:sort(Res)).
+                 lists:sort(Strip(Res))).
+
+upgrade_1_7_2_to_2_0_test() ->
+    Cfg = [[{{node, node(), capi_port}, something},
+            {remote_clusters, foobar}]],
+    DefaultCfg = [{{node, node(), capi_port}, somethingelse},
+                  {{node, node(), uuid}, <<"--uuid--">>},
+                  {remote_clusters, foobar_2},
+                  {autocompaction, compaction_something}],
+    Result = do_upgrade_config_from_1_7_2_to_2_0(Cfg, DefaultCfg),
+    ?assertEqual([{set, {node, node(), uuid}, <<"--uuid--">>},
+                  {set, autocompaction, compaction_something}],
+                 Result),
+    Cfg2 = [[{remote_clusters, foobar}]],
+    Result2 = do_upgrade_config_from_1_7_2_to_2_0(Cfg2, DefaultCfg),
+    ?assertEqual([{set, {node, node(), capi_port}, somethingelse},
+                  {set, {node, node(), uuid}, <<"--uuid--">>},
+                  {set, autocompaction, compaction_something}],
+                 Result2).
+
+no_upgrade_on_2_0_test() ->
+    ?assertEqual([], upgrade_config([[{{node, node(), config_version}, {2, 0}}]])).
 
 upgrade_1_7_1_to_1_7_2_test() ->
     DefaultCfg = [{rest, [{port, 8091}]},
@@ -508,88 +507,6 @@ upgrade_1_7_1_to_1_7_2_test() ->
     Res4 = do_upgrade_config_from_1_7_1_to_1_7_2([OldCfg4], DefaultCfg),
     ?assertEqual(lists:sort(Ref4), lists:sort(Res4)).
 
-upgrade_1_7_2_to_1_8_0_test() ->
-    DefaultCfg = [{{node, node(), port_servers},
-                   [{moxi, "/opt/couchbase/bin/moxi something"},
-                    {memcached, "/opt/couchbase/bin/memcached something"}]}],
-
-    OldCfg0 = [{nodes_wanted, [node()]},
-               {{node, node(), rest}, [{port, 9000}]},
-               {port_servers, [{moxi, "moxi something"},
-                               {memcached, "memcached something"}]}],
-    Res0 = do_upgrade_config_from_1_7_2_to_1_8_0([OldCfg0], DefaultCfg),
-    ?assertEqual([{set, {node, node(), port_servers},
-                   [{moxi, "/opt/couchbase/bin/moxi something"},
-                    {memcached, "/opt/couchbase/bin/memcached something"}]}],
-                   lists:sort(Res0)),
-
-    OldCfg1 = [{{node,node(),memcached},
-                [{dbdir,"/opt/membase/var/lib/membase/data"},
-                 {port,11210},
-                 {bucket_engine,"/opt/membase/lib/memcached/bucket_engine.so"},
-                 {engines,
-                  [{membase,
-                    [{engine,"/opt/membase/lib/memcached/ep.so"},
-                     {initfile,"/opt/membase/etc/membase/init.sql"},
-                     {static_config_string,"foo"}]},
-                   {memcached,
-                    [{engine,"/opt/membase/lib/memcached/default_engine.so"},
-                     {static_config_string,"bar"}]}]},
-                 {verbosity,[]}]},
-               {otp,[{cookie,shouldnotbechanged}]},
-               {directory,"/opt/membase/var/lib/membase/config"},
-               {port_servers, [{moxi, "/opt/membase/bin/moxi something"},
-                               {memcached,
-                                "/opt/membase/bin/memcached something"}]}],
-    RefCfg1 = [{set, {node,node(),memcached},
-                [{dbdir,"/opt/membase/var/lib/membase/data"},
-                 {port,11210},
-                 {bucket_engine,"/opt/couchbase/lib/memcached/bucket_engine.so"},
-                 {engines,
-                  [{membase,
-                    [{engine,"/opt/couchbase/lib/memcached/ep.so"},
-                     {initfile,"/opt/couchbase/etc/membase/init.sql"},
-                     {static_config_string,"foo"}]},
-                   {memcached,
-                    [{engine,"/opt/couchbase/lib/memcached/default_engine.so"},
-                     {static_config_string,"bar"}]}]},
-                 {verbosity,[]}]},
-               {set, {node, node(), port_servers},
-                [{moxi, "/opt/couchbase/bin/moxi something"},
-                 {memcached, "/opt/couchbase/bin/memcached something"}]}],
-    Res1 = do_upgrade_config_from_1_7_2_to_1_8_0([OldCfg1], DefaultCfg),
-    ?assertEqual(lists:sort(RefCfg1), lists:sort(Res1)),
-
-    OldCfg2 = [{nodes_wanted, [node()]},
-               {{node, node(), rest}, [{port, 9000}]}],
-    Res2 = do_upgrade_config_from_1_7_2_to_1_8_0([OldCfg2], DefaultCfg),
-    ?assertEqual([{set, {node, node(), port_servers},
-                   [{moxi, "/opt/couchbase/bin/moxi something"},
-                    {memcached, "/opt/couchbase/bin/memcached something"}]}],
-                 lists:sort(Res2)),
-    ok.
-
-upgrade_1_8_0_to_2_0_test() ->
-    Cfg = [[{{node, node(), capi_port}, something},
-            {remote_clusters, foobar}]],
-    DefaultCfg = [{{node, node(), capi_port}, somethingelse},
-                  {{node, node(), uuid}, <<"--uuid--">>},
-                  {remote_clusters, foobar_2},
-                  {autocompaction, compaction_something}],
-    Result = do_upgrade_config_from_1_8_0_to_2_0(Cfg, DefaultCfg),
-    ?assertEqual([{set, {node, node(), uuid}, <<"--uuid--">>},
-                  {set, autocompaction, compaction_something}],
-                 Result),
-    Cfg2 = [[{remote_clusters, foobar}]],
-    Result2 = do_upgrade_config_from_1_8_0_to_2_0(Cfg2, DefaultCfg),
-    ?assertEqual([{set, {node, node(), capi_port}, somethingelse},
-                  {set, {node, node(), uuid}, <<"--uuid--">>},
-                  {set, autocompaction, compaction_something}],
-                 Result2).
-
-no_upgrade_on_2_0_test() ->
-    ?assertEqual([], upgrade_config([[{{node, node(), config_version}, {2, 0}}]])).
-
 fuller_1_6_test_() ->
     {spawn,
      fun () ->
@@ -624,16 +541,15 @@ fuller_1_6_test_() ->
                           [X || {set, directory, _} = X <- Changes]),
 
              {set, _, NewMemcached} = lists:keyfind({node, node(), memcached}, 2, Changes),
-             ?assertEqual({dbdir, "dbdir"}, lists:keyfind(dbdir, 1, NewMemcached))
-     end}.
+             ?assertEqual({dbdir, "dbdir"}, lists:keyfind(dbdir, 1, NewMemcached)),
 
-prefix_replace_test() ->
-    ?assertEqual("", prefix_replace("/foo", "/bar", "")),
-    ?assertEqual(foo, prefix_replace("/foo", "/bar", foo)),
-    ?assertEqual([], prefix_replace("/foo", "/bar", [])),
-    ?assertEqual([foo], prefix_replace("/foo", "/bar", [foo])),
-    ?assertEqual("/bar/x", prefix_replace("/foo", "/bar", "/foo/x")),
-    ?assertEqual([1, "/bar/x", 2], prefix_replace("/foo", "/bar", [1, "/foo/x", 2])),
-    ?assertEqual({1, "/bar/x", 2}, prefix_replace("/foo", "/bar", {1, "/foo/x", 2})),
-    ?assertEqual([1, "/bar/x", {"/bar/x"}],
-                 prefix_replace("/foo", "/bar", [1, "/foo/x", {"/foo/x"}])).
+             ?assertMatch({set, {node, Node, memcached},
+                           [{?METADATA_VCLOCK, _VClock} | _]} when Node =:= node(),
+                          lists:keyfind({node, node(), memcached}, 2, Changes)),
+             ?assertMatch({set, {node, Node, isasl},
+                           [{?METADATA_VCLOCK, _VClock} | _]} when Node =:= node(),
+                          lists:keyfind({node, node(), isasl}, 2, Changes)),
+             ?assertMatch({set, {node, Node, ns_log},
+                           [{?METADATA_VCLOCK, _VClock} | _]} when Node =:= node(),
+                          lists:keyfind({node, node(), ns_log}, 2, Changes))
+     end}.
