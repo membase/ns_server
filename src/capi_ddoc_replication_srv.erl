@@ -30,8 +30,12 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {bucket, master, servers = []}).
+-record(state, {bucket,
+                master,
+                servers = [],
+                retry_timer}).
 
+-define(RETRY_AFTER, 5000).
 
 start_link(Bucket) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
@@ -120,23 +124,55 @@ get_all_servers(Bucket) ->
 
     proplists:get_value(servers, Conf) -- [Self].
 
-start_replication(#state{bucket=Bucket, master=Master} = State) ->
-    Servers  = get_all_servers(Bucket),
-    [start_server_replication(Master, Bucket, Srv) || Srv <- Servers],
-    State#state{servers=Servers}.
+stop_retry_timer(#state{retry_timer=undefined} = State) ->
+    State;
+stop_retry_timer(#state{retry_timer=Timer} = State) ->
+    {ok, cancel} = timer:cancel(Timer),
+    State#state{retry_timer=undefined}.
+
+retry(#state{retry_timer=undefined} = State) ->
+    {ok, Timer} = timer:send_after(?RETRY_AFTER, update),
+    State#state{retry_timer=Timer};
+retry(State) ->
+    retry(stop_retry_timer(State)).
+
+start_replication(State) ->
+    update(State#state{servers=[]}).
 
 stop_replication(#state{bucket=Bucket, master=Master, servers=Servers} = State) ->
     [stop_server_replication(Master, Bucket, Srv) || Srv <- Servers],
-    State#state{servers=[]}.
+    stop_retry_timer(State#state{servers=[]}).
 
-update(#state{servers=Servers, bucket=Bucket, master=Master} = State) ->
-    NServers = get_all_servers(Bucket),
+update(#state{servers=Servers,
+              bucket=Bucket, master=Master} = State, NewServers) ->
+    {ToStartServers, ToStopServers} = difference(Servers, NewServers),
+    ToKeep = Servers -- (ToStartServers ++ ToStopServers),
 
-    {ToStartServers, ToStopServers} = difference(Servers, NServers),
+    {Started, Failed} =
+        lists:foldl(
+          fun (Srv, {AccStarted, AccFailed}) ->
+                  case start_server_replication(Master, Bucket, Srv) of
+                      ok ->
+                          {[Srv | AccStarted], AccFailed};
+                      Error ->
+                          ?log_error("Failed to start ddoc replication to ~p: ~p",
+                                     [Srv, Error]),
+                          {AccStarted, [Srv | AccFailed]}
+                  end
+          end, {[], []}, ToStartServers),
 
     [stop_server_replication(Master, Bucket, Srv) || Srv <- ToStopServers],
-    [start_server_replication(Master, Bucket, Srv) || Srv <- ToStartServers],
-    State#state{servers=NServers}.
+
+    State1 = State#state{servers=ToKeep ++ Started},
+    case Failed of
+        [] ->
+            State1;
+        _Other ->
+            retry(State1)
+    end.
+
+update(#state{bucket=Bucket} = State) ->
+    update(State, get_all_servers(Bucket)).
 
 build_replication_struct(Source, Target) ->
     {ok, Replication} =
@@ -147,13 +183,15 @@ build_replication_struct(Source, Target) ->
           #user_ctx{roles = [<<"_admin">>]}),
     Replication.
 
-
 start_server_replication(Master, Bucket, Node) ->
     Opts = build_replication_struct(remote_master_url(Bucket, Node), Master),
-    {ok, Pid} = couch_replicator:async_replicate(Opts),
-    erlang:monitor(process, Pid),
-    ok.
-
+    case couch_replicator:async_replicate(Opts) of
+        {ok, Pid} ->
+            erlang:monitor(process, Pid),
+            ok;
+        Error ->
+            Error
+    end.
 
 stop_server_replication(Master, Bucket, Node) ->
     Opts = build_replication_struct(remote_master_url(Bucket, Node), Master),
