@@ -323,7 +323,7 @@ var ServersSection = {
     });
   },
   onStopRebalance: function () {
-    if (!self.poolDetails.value) {
+    if (!this.poolDetails.value) {
       return;
     }
 
