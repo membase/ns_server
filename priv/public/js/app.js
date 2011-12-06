@@ -734,7 +734,10 @@ var SetupWizard = {
           $.ajax({
             url: UpdatesNotificationsSection.remote.email,
             dataType: 'jsonp',
-            data: {email: email},
+            data: {email: email,
+                   firstname: $.trim($('#init-join-community-firstname').val()),
+                   lastname: $.trim($('#init-join-community-lastname').val()),
+                   version: DAL.version || "unknown"},
             success: function () {},
             error: function () {}
           });
@@ -833,7 +836,7 @@ function showAbout() {
   function updateVersion() {
     var components = DAL.componentsVersion;
     if (components)
-      $('#about_versions').text("Version: " + components['ns_server']);
+      $('#about_versions').text("Version: " + DAL.prettyVersion(components['ns_server']));
     else {
       $.get('/versions', function (data) {
         DAL.componentsVersion = data.componentsVersion;

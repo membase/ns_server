@@ -250,7 +250,8 @@ var UpdatesNotificationsSection = {
                    {enabled: sendStats, newVersion: newVersion},
                    $i('nav_settings_container'));
     renderTemplate('notifications',
-                   $.extend(data, {enabled: sendStats, version: DAL.version}),
+                   $.extend(data, {enabled: sendStats,
+                                   version: DAL.prettyVersion(DAL.version)}),
                    $i('notifications_container'));
   },
   remote: {
@@ -479,7 +480,7 @@ var EmailAlertsSection = {
     $('#test_email').live('click', function() {
       var testButton = $(this).text('Sending...').attr('disabled', 'disabled');
       var params = $.extend({
-        subject: 'Test email from Membase',
+        subject: 'Test email from Couchbase Server',
         body: 'This email was sent to you to test the email alert email ' +
           'server settings.'
       }, self.getParams());
