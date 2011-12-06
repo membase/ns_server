@@ -18,24 +18,14 @@
 
 -module(capi_ddoc_replication_srv).
 
--behaviour(gen_server).
+-behaviour(cb_generic_replication_srv).
 
--include("couch_replicator.hrl").
--include("couch_api_wrap.hrl").
 -include("couch_db.hrl").
--include("ns_common.hrl").
-
 
 -export([start_link/1, force_update/1]).
--export([init/1, handle_call/3, handle_cast/2,
-         handle_info/2, terminate/2, code_change/3]).
+-export([server_name/1, init/1, local_url/1, remote_url/2, get_servers/1]).
 
--record(state, {bucket,
-                master,
-                servers = [],
-                retry_timer}).
-
--define(RETRY_AFTER, 5000).
+-record(state, {bucket, master}).
 
 start_link(Bucket) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
@@ -43,14 +33,18 @@ start_link(Bucket) ->
         memcached ->
             ignore;
         _ ->
-            gen_server:start_link({local, server(Bucket)}, ?MODULE, Bucket, [])
+            cb_generic_replication_srv:start_link(?MODULE, Bucket)
     end.
 
 force_update(Bucket) ->
-    server(Bucket) ! update.
+    cb_generic_replication_srv:force_update(?MODULE, Bucket).
+
+
+%% Callbacks
+server_name(Bucket) ->
+    list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
 
 init(Bucket) ->
-
     Self = self(),
     MasterVBucket = ?l2b(Bucket ++ "/" ++ "master"),
 
@@ -65,156 +59,23 @@ init(Bucket) ->
     % Update myself whenever the config changes (rebalance)
     ns_pubsub:subscribe(
       ns_config_events,
-      fun (_, _) -> Self ! update end,
+      fun (_, _) ->
+              cb_generic_replication_srv:force_update(Self)
+      end,
       empty),
 
-    Self ! start_replication,
-
-    erlang:process_flag(trap_exit, true),
     {ok, #state{bucket=Bucket, master=MasterVBucket}}.
 
+local_url(#state{master=Master} = _State) ->
+    Master.
 
-handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
-
-
-handle_cast(stop, State) ->
-    {stop, normal, State};
-
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-
-handle_info(update, State) ->
-    {noreply, update(State)};
-
-handle_info(start_replication, State) ->
-    {noreply, start_replication(State)};
-
-handle_info({'DOWN', _Ref, process, _Pid, Reason}, State)
-  when Reason =:= normal orelse Reason =:= shutdown ->
-    {noreply, State};
-handle_info({'DOWN', _Ref, process, _Pid, Reason}, State) ->
-    ?log_info("Replication slave crashed with reason: ~p", [Reason]),
-    {noreply, start_replication(State)}.
-
-terminate(Reason, State) when Reason =:= normal orelse Reason =:= shutdown ->
-    stop_replication(State),
-    ok;
-terminate(Reason, State) ->
-    stop_replication(State),
-    %% Sometimes starting replication fails because of vbucket
-    %% databases creation race or (potentially) because of remote node
-    %% unavailability. When this process repeatedly fails our
-    %% supervisor ends up dying due to
-    %% max_restart_intensity_reached. Because we'll change our local
-    %% ddocs replication mechanism lets simply delay death a-la
-    %% supervisor_cushion to prevent that.
-    ?log_info("Delaying death during unexpected termination: ~p~n", [Reason]),
-    timer:sleep(3000),
-    ok.
-
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
-
-
-get_all_servers(Bucket) ->
-    {ok, Conf} = ns_bucket:get_bucket(Bucket),
-    Self = node(),
-
-    proplists:get_value(servers, Conf) -- [Self].
-
-stop_retry_timer(#state{retry_timer=undefined} = State) ->
-    State;
-stop_retry_timer(#state{retry_timer=Timer} = State) ->
-    {ok, cancel} = timer:cancel(Timer),
-    State#state{retry_timer=undefined}.
-
-retry(#state{retry_timer=undefined} = State) ->
-    {ok, Timer} = timer:send_after(?RETRY_AFTER, update),
-    State#state{retry_timer=Timer};
-retry(State) ->
-    retry(stop_retry_timer(State)).
-
-start_replication(State) ->
-    update(State#state{servers=[]}).
-
-stop_replication(#state{bucket=Bucket, master=Master, servers=Servers} = State) ->
-    [stop_server_replication(Master, Bucket, Srv) || Srv <- Servers],
-    stop_retry_timer(State#state{servers=[]}).
-
-update(#state{servers=Servers,
-              bucket=Bucket, master=Master} = State, NewServers) ->
-    {ToStartServers, ToStopServers} = difference(Servers, NewServers),
-    ToKeep = Servers -- (ToStartServers ++ ToStopServers),
-
-    {Started, Failed} =
-        lists:foldl(
-          fun (Srv, {AccStarted, AccFailed}) ->
-                  case start_server_replication(Master, Bucket, Srv) of
-                      ok ->
-                          {[Srv | AccStarted], AccFailed};
-                      Error ->
-                          ?log_error("Failed to start ddoc replication to ~p: ~p",
-                                     [Srv, Error]),
-                          {AccStarted, [Srv | AccFailed]}
-                  end
-          end, {[], []}, ToStartServers),
-
-    [stop_server_replication(Master, Bucket, Srv) || Srv <- ToStopServers],
-
-    State1 = State#state{servers=ToKeep ++ Started},
-    case Failed of
-        [] ->
-            State1;
-        _Other ->
-            retry(State1)
-    end.
-
-update(#state{bucket=Bucket} = State) ->
-    update(State, get_all_servers(Bucket)).
-
-build_replication_struct(Source, Target) ->
-    {ok, Replication} =
-        couch_replicator_utils:parse_rep_doc(
-          {[{<<"source">>, Source},
-            {<<"target">>, Target}
-            | default_opts()]},
-          #user_ctx{roles = [<<"_admin">>]}),
-    Replication.
-
-start_server_replication(Master, Bucket, Node) ->
-    Opts = build_replication_struct(remote_master_url(Bucket, Node), Master),
-    case couch_replicator:async_replicate(Opts) of
-        {ok, Pid} ->
-            erlang:monitor(process, Pid),
-            ok;
-        Error ->
-            Error
-    end.
-
-stop_server_replication(Master, Bucket, Node) ->
-    Opts = build_replication_struct(remote_master_url(Bucket, Node), Master),
-    {ok, _Res} = couch_replicator:cancel_replication(Opts#rep.id).
-
-
-remote_master_url(Bucket, Node) ->
+remote_url(Node, #state{bucket=Bucket} = _State) ->
     Url = capi_utils:capi_url(Node, "/" ++ mochiweb_util:quote_plus(Bucket)
                               ++ "%2Fmaster", "127.0.0.1"),
     ?l2b(Url).
 
+get_servers(#state{bucket=Bucket} = _State) ->
+    {ok, Conf} = ns_bucket:get_bucket(Bucket),
+    Self = node(),
 
-difference(List1, List2) ->
-    {List2 -- List1, List1 -- List2}.
-
-
-%% @doc Generate a suitable name for the per-bucket gen_server.
-server(Bucket) ->
-    list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
-
-
-default_opts() ->
-    [{<<"continuous">>, true},
-     {<<"worker_processes">>, 1},
-     {<<"http_connections">>, 10}
-    ].
+    proplists:get_value(servers, Conf) -- [Self].
