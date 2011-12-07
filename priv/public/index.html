@@ -336,7 +336,7 @@
                 </tr>
                 <tr>
                     <td>OS: <span>{%= h(os) %}</span></td>
-                    <td>Version: <span>{%= h(version) %}</span></td>
+                    <td>Version: <span>{%= h(DAL.prettyVersion(version, true)) %}</span></td>
                 </tr>
               </table>
             </div>
