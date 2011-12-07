@@ -142,27 +142,6 @@ do-install:
 	mkdir -p $(DESTDIR)$(PREFIX)/etc/couchdb/default.d
 	cp etc/capi.ini.in $(DESTDIR)$(PREFIX)/etc/couchdb/default.d/capi.ini
 	cp etc/geocouch.ini.in $(DESTDIR)$(PREFIX)/etc/couchdb/default.d/geocouch.ini
-	$(MAKE) do-postinstall NEED_POSTINSTALL=1
-
-ifdef NEED_POSTINSTALL
-
-do-postinstall: maybe-symlink-scripts
-
-UNAME_SM := $(shell uname -sm)
-ifneq "$(findstring CYGWIN, $(UNAME_SM))" ""
-maybe-symlink-scripts:
-
-else
-# not windows
-maybe-symlink-scripts:
-	ln -sf couchbase-server $(DESTDIR)$(PREFIX)/bin/membase-server
-	ln -sf cbbrowse_logs $(DESTDIR)$(PREFIX)/bin/mbbrowse_logs
-	ln -sf cbcollect_info $(DESTDIR)$(PREFIX)/bin/mbcollect_info
-
-endif
-
-endif
-
 
 clean clean_all:
 	@(cd deps/gen_smtp && $(MAKE) clean)
