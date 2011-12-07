@@ -646,6 +646,7 @@ var NodeDialog = {
           data: {email: email,
                  firstname: $.trim($('#init-join-community-firstname').val()),
                  lastname: $.trim($('#init-join-community-lastname').val()),
+                 company: $.trim($('#init-join-community-company').val()),
                  version: DAL.version || "unknown"}
         });
       }
