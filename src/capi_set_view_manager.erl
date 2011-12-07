@@ -192,7 +192,8 @@ build_map(BucketConfig, VBucketStates) ->
                                               VBucketState =
                                                   dict:fetch(Ix, VBucketStates),
                                               VBucketState =:= active orelse
-                                                  VBucketState =:= replica;
+                                                  VBucketState =:= replica orelse
+                                                  VBucketState =:= pending;
                                           false ->
                                               false
                                       end
