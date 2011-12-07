@@ -830,7 +830,7 @@ ul.tabs .badge_display .badge {display:block;}
 .additional_server_info {display:block;overflow:hidden;}
 .additional_server_info h3 {font-size:14px; color:#444245; padding:5px 0 10px 0; border-bottom:1px solid #bbbdbf; font-weight:normal; margin:0 0 10px 0;}
 .additional_server_info .info_block {display:block; overflow:hidden;}
-.additional_server_info .info_block .path {display:block;width:185px;padding:2px 0 0 0; font-size:11px;word-wrap:break-word;}
+.additional_server_info .info_block .path {display:block;padding:2px 0 0 0; font-size:11px;word-wrap:break-word;}
 .additional_server_info .info_block.last {padding:10px 0 10px 0;}
 .additional_server_info .dynamic_ram {display:block; height:40px; padding:0 0 0 77px; background:url(../images/icons.png) -6px -190px no-repeat; float:left;}
 .total_ram {display:block; height:14px; text-align:right;}
@@ -843,7 +843,7 @@ ul.tabs .badge_display .badge {display:block;}
 .additional_server_info .usage-block td {padding:3px 0 0 !important;float:none;}
 .additional_server_info .usage-block i {position:absolute;top:-4px;right:0;display:block;width:1px;height:24px;font-size:0;line-height:0;}
 
-.solid_state, .disk_storage {float:left;width:190px;height:40px;padding:0 0 0 77px;background:url(../images/icons.png) -6px -289px no-repeat;}
+.solid_state, .disk_storage {float:left;width:170px;height:40px;padding:0 0 0 77px;background:url(../images/icons.png) -6px -289px no-repeat;}
  .disk_storage {background-position:-6px -390px;}
 .additional_server_info .add_btn {display:block; width:61px; height:21px; background:url(../images/add_btn.png) 0 0 no-repeat; float:right;}
 .additional_server_info .info_message {font-size:16px;}
