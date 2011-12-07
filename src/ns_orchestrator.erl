@@ -214,10 +214,12 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
                  normal ->
                      ?user_log(?REBALANCE_SUCCESSFUL,
                                "Rebalance completed successfully.~n"),
+                     ns_cluster:counter_inc(rebalance_success),
                      none;
                  _ ->
                      ?user_log(?REBALANCE_FAILED,
                                "Rebalance exited with reason ~p~n", [Reason]),
+                     ns_cluster:counter_inc(rebalance_fail),
                      {none, <<"Rebalance failed. See logs for detailed reason. "
                               "You can try rebalance again.">>}
              end,
@@ -315,6 +317,7 @@ idle({failover, Node}, _From, State) ->
     ?log_info("Failing over ~p", [Node]),
     Result = ns_rebalancer:failover(Node),
     ?user_log(?FAILOVER_NODE, "Failed over ~p: ~p", [Node, Result]),
+    ns_cluster:counter_inc(failover_node),
     ns_config:set({node, Node, membership}, inactiveFailed),
     {reply, Result, idle, State};
 idle(rebalance_progress, _From, State) ->
@@ -324,6 +327,7 @@ idle({start_rebalance, KeepNodes, EjectNodes, FailedNodes}, _From,
     ?user_log(?REBALANCE_STARTED,
               "Starting rebalance, KeepNodes = ~p, EjectNodes = ~p~n",
               [KeepNodes, EjectNodes]),
+    ns_cluster:counter_inc(rebalance_start),
     ns_config:set(rebalance_status, running),
     Pid = spawn_link(
             fun () ->

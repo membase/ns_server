@@ -144,11 +144,13 @@ var UpdatesNotificationsSection = {
             }
             var nodeStats = {
               os: [],
-              uptime: []
+              uptime: [],
+              istats: []
             };
             for(i in s.pool.nodes) {
               nodeStats.os.push(s.pool.nodes[i].os);
               nodeStats.uptime.push(s.pool.nodes[i].uptime);
+              nodeStats.istats.push(s.pool.nodes[i].interestingStats);
             }
             var stats = {
               version: DAL.version,
@@ -160,11 +162,18 @@ var UpdatesNotificationsSection = {
                 quotaTotal: s.pool.storageTotals.ram.quotaTotal,
                 quotaUsed: s.pool.storageTotals.ram.quotaUsed
               },
+              hdd: {
+                total: s.pool.storageTotals.hdd.total,
+                quotaTotal: s.pool.storageTotals.hdd.quotaTotal,
+                used: s.pool.storageTotals.hdd.used,
+                usedByData: s.pool.storageTotals.hdd.usedByData
+              },
               buckets: {
                 total: s.buckets.length,
                 membase: numMembase,
                 memcached: s.buckets.length - numMembase
               },
+              counters: s.pool.counters,
               nodes: nodeStats,
               browser: navigator.userAgent
             };

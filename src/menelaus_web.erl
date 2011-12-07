@@ -559,7 +559,8 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                                                   build_auto_compaction_settings(ACSettings)
                                           end},
                  {stats, {struct,
-                          [{uri, bin_concat_path(["pools", Id, "stats"])}]}}],
+                          [{uri, bin_concat_path(["pools", Id, "stats"])}]}},
+                 {counters, {struct, ns_cluster:counters()}}],
     PropList =
         case InfoLevel of
             normal ->
