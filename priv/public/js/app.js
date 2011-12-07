@@ -257,6 +257,9 @@ var ThePage = {
     });
 
     watchHashParamChange('sec', 'overview', function (sec) {
+      if (sec === 'replications') {
+        $($i('switch_replications')).parent().show();
+      }
       DAL.switchSection(sec);
     });
     _.defer(function() {
