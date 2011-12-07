@@ -48,7 +48,10 @@ restart() ->
     %% group_leader is application_master of ns_server application. So
     %% we just terminate and restart all childs instead.
     {ok, {_, ChildSpecs}} = ns_server_cluster_sup:init([]),
-    ChildIds = [element(1, Spec) || Spec <- ChildSpecs],
+    %% we don't restart dist manager in order to avoid shutting
+    %% down/restarting net_kernel
+    DontRestart = [dist_manager],
+    ChildIds = [element(1, Spec) || Spec <- ChildSpecs] -- DontRestart,
     [supervisor:terminate_child(ns_server_cluster_sup, Id) || Id <- lists:reverse(ChildIds)],
     [supervisor:restart_child(ns_server_cluster_sup, Id) || Id <- ChildIds].
 

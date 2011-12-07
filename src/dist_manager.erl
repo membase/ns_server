@@ -88,7 +88,6 @@ save_node(NodeName) ->
     end.
 
 init([]) ->
-    erlang:process_flag(trap_exit, true),       % ensure that terminate is run
     InitialAddr = case read_address_config() of
                       undefined -> "127.0.0.1";
                       X -> X
@@ -160,7 +159,6 @@ handle_info(_Info, State) ->
     {noreply, State}.
 
 terminate(_Reason, _State) ->
-    teardown(),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
