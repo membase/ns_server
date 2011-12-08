@@ -52,8 +52,13 @@ get_state(Bucket) ->
 init(Bucket) ->
     process_flag(trap_exit, true),
 
+    InterestingNsConfigEvent =
+        fun (Event) ->
+                interesting_ns_config_event(Bucket, Event)
+        end,
+
     ns_pubsub:subscribe(ns_config_events,
-                        mk_filter(fun interesting_ns_config_event/1), ignored),
+                        mk_filter(InterestingNsConfigEvent), ignored),
     ns_pubsub:subscribe(mc_couch_events,
                         mk_filter(fun interesting_mc_couch_event/1), ignored),
 
@@ -321,7 +326,7 @@ master_db_watcher(Bucket, Parent) ->
               case proplists:get_value(<<"id">>, Change) of
                   <<"_design/", _/binary>> = DDocId ->
                       ?log_debug("Got change in `~s` design document. "
-                                 "Initiating an set view update", [DDocId]),
+                                 "Initiating set view update", [DDocId]),
                       gen_server:cast(Parent, {update_ddoc, DDocId});
                   _ ->
                       ok
@@ -339,9 +344,10 @@ apply_current_map(#state{bucket=Bucket} = State) ->
                 vbucket_states=VBucketStates,
                 map=Map}.
 
-interesting_ns_config_event({buckets, _}) ->
-    true;
-interesting_ns_config_event(_) ->
+interesting_ns_config_event(Bucket, {buckets, Buckets}) ->
+    BucketConfigs = proplists:get_value(configs, Buckets, []),
+    proplists:is_defined(Bucket, BucketConfigs);
+interesting_ns_config_event(_Bucket, _) ->
     false.
 
 interesting_mc_couch_event({set_vbucket, _, _, _, _}) ->
