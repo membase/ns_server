@@ -129,6 +129,89 @@
     return $this;
   };
 
+  $.fn.bindListCell = function (cell, options) {
+    var q = this;
+    q.need(1);
+    if (!q.is('select')) {
+      throw new Error('only select is supported');
+    }
+    if (q.data('listCellBinding')) {
+      throw new Error('already bound');
+    }
+    var onChange = options.onChange;
+    if (!onChange) {
+      throw new Error('I need onchange');
+    }
+
+    var latestOnChangeVal;
+    var latestOptionsList;
+
+    var applyWidget = options.applyWidget || function (q) {
+      q.combobox();
+    };
+
+    var unapplyWidget = options.unapplyWidget || function (q) {
+      q.combobox('destroy');
+    };
+
+    var buildOptions = options.buildOptions || function (q, selected, list) {
+      _.each(list, function (pair) {
+        var option = $("<option value='" + escapeHTML(pair[0]) + "'>" + escapeHTML(pair[1]) + "</option>");
+        option.boolAttr('selected', selected === pair[0]);
+        q.append(option);
+      });
+    };
+
+    onChange = (function (onChange) {
+      return function (e) {
+        return onChange.call(this, e, (latestOnChangeVal = $(this).val()));
+      }
+    })(onChange);
+
+    var subscription = cell.subscribeValue(function (args) {
+      if (args && _.isEqual(latestOnChangeVal, args.list) && (args.selected || '') === latestOnChangeVal) {
+        // don't do anything if list of options and selected option is same
+        return;
+      }
+      q.unbind('change', onChange);
+      unapplyWidget(q);
+      q.empty();
+      if (!args) {
+        return;
+      }
+      var selected = args.selected || '';
+      latestOnChangeVal = undefined;
+      buildOptions(q, selected, args.list);
+      applyWidget(q.bind('change', onChange));
+      q.next('input').val(q.children(':selected').text());
+    });
+
+    q.data('listCellBinding', {
+      destroy: function () {
+        subscription.cancel();
+        unapplyWidget(q);
+        q.unbind('change', onChange);
+      }
+    });
+  };
+
+  $.fn.unbindListCell = function () {
+    var binding = this.data('listCellBinding');
+    if (binding) {
+      binding.destroy();
+    }
+    this.removeData('listCellBinding');
+  };
+
+  $.fn.need = function (howmany) {
+    var $this = $(this);
+    if ($this.length != howmany) {
+      console.log("Expected jquery of length ", howmany, ", got: ", $this);
+      throw new Error("Expected jquery of length " + howmany + ", got " + $this.length);
+    }
+    return $this;
+  };
+
   /**
    * Combobox widget
    * @link http://jqueryui.com/demos/autocomplete/#combobox

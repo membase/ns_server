@@ -947,17 +947,6 @@ function parseRFC3339Date(string) {
   return new Date(d.valueOf() - offsetMinutes * 60000);
 }
 
-(function($){
-  $.fn.need = function (howmany) {
-    var $this = $(this);
-    if ($this.length != howmany) {
-      console.log("Expected jquery of length ", howmany, ", got: ", $this);
-      throw new Error("Expected jquery of length " + howmany + ", got " + $this.length);
-    }
-    return $this;
-  };
-})(jQuery);
-
 function mkTokenBucket(rate, burst, initial) {
   var available = (initial !== undefined) ? initial : burst;
   var whenAvailable = (new Date()).valueOf();
