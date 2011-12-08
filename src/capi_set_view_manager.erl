@@ -316,7 +316,6 @@ master_db_watcher(Bucket, Parent) ->
                        {json_req, null},
                        MasterDb
                       ),
-    couch_db:close(MasterDb),
     ChangesFeedFun(
       fun({change, {Change}, _}, _) ->
               case proplists:get_value(<<"id">>, Change) of
