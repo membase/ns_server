@@ -21,6 +21,8 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
+-define(SYNC_INTERVAL, 5000).
+
 %% API
 -export([start_link/1]).
 
@@ -35,7 +37,8 @@
                 bucket_config,
                 vbucket_states,
                 master_db_watcher,
-                map}).
+                map,
+                pending_vbucket_states}).
 
 start_link(Bucket) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
@@ -69,6 +72,8 @@ init(Bucket) ->
                   master_db_watcher(Bucket, Self)
           end),
 
+    {ok, _Timer} = timer:send_interval(?SYNC_INTERVAL, sync),
+
     State = #state{bucket=Bucket,
                    master_db_watcher=Watcher},
 
@@ -90,49 +95,33 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 handle_info({buckets, Buckets},
-            #state{bucket=Bucket, map=Map,
-                   vbucket_states=VBucketStates} = State) ->
+            #state{bucket=Bucket} = State) ->
     ?log_debug("Got `buckets` event"),
 
     BucketConfigs = proplists:get_value(configs, Buckets),
     BucketConfig = proplists:get_value(Bucket, BucketConfigs),
 
-    NewMap = build_map(BucketConfig, VBucketStates),
-
-    NewState =
-        case NewMap =/= Map of
-            true ->
-                apply_map(Bucket, BucketConfig, Map, NewMap),
-                State#state{bucket_config=BucketConfig, map=NewMap};
-            false ->
-                State#state{bucket_config=BucketConfig}
-        end,
-
-    {noreply, NewState};
+    NewState = State#state{bucket_config=BucketConfig},
+    {noreply, sync(NewState)};
 
 handle_info({set_vbucket, Bucket, VBucket, _VBucketState, _CheckpointId},
-            #state{bucket=Bucket, bucket_config=BucketConfig, map=Map,
-                   vbucket_states=OldStates} = State) ->
+            #state{bucket=Bucket,
+                   pending_vbucket_states=PendingStates} = State) ->
     VBucketState = get_vbucket_state(Bucket, VBucket),
 
     ?log_debug("Got set_vbucket event for ~s/~b. Updated state: ~p",
                [Bucket, VBucket, VBucketState]),
 
-    NewStates = dict:store(VBucket, VBucketState, OldStates),
-    NewMap = build_map(BucketConfig, NewStates),
-    NewState =
-        case NewMap =/= Map of
-            true ->
-                apply_map(Bucket, BucketConfig, Map, NewMap),
-                State#state{vbucket_states=NewStates, map=NewMap};
-            false ->
-                State#state{vbucket_states=NewStates}
-        end,
+    NewPendingStates = dict:store(VBucket, VBucketState, PendingStates),
+    NewState = State#state{pending_vbucket_states=NewPendingStates},
 
     {noreply, NewState};
 
 handle_info({flush_all, Bucket}, #state{bucket=Bucket} = State) ->
     {noreply, apply_current_map(State)};
+
+handle_info(sync, State) ->
+    {noreply, sync(State)};
 
 handle_info({'EXIT', Pid, Reason}, #state{master_db_watcher=Pid} = State) ->
     {stop, Reason, State};
@@ -342,6 +331,7 @@ apply_current_map(#state{bucket=Bucket} = State) ->
     apply_map(Bucket, BucketConfig, undefined, Map),
     State#state{bucket_config=BucketConfig,
                 vbucket_states=VBucketStates,
+                pending_vbucket_states=VBucketStates,
                 map=Map}.
 
 interesting_ns_config_event(Bucket, {buckets, Buckets}) ->
@@ -367,4 +357,17 @@ mk_filter(Pred) ->
                 false ->
                     ok
             end
+    end.
+
+sync(#state{bucket=Bucket,
+            bucket_config=BucketConfig,
+            pending_vbucket_states=PendingStates,
+            map=Map} = State) ->
+    NewMap = build_map(BucketConfig, PendingStates),
+    case NewMap =/= Map of
+        true ->
+            apply_map(Bucket, BucketConfig, Map, NewMap),
+            State#state{vbucket_states=PendingStates, map=NewMap};
+        false ->
+            State#state{vbucket_states=PendingStates}
     end.
