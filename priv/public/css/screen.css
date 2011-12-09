@@ -83,8 +83,8 @@ a.disabled{text-decoration:none;cursor:default;}
 .main_holder {position:relative; margin:auto; left:0px !important;}
 .cnt_holder {width:960px; position:relative; left:12%;}
 
-.page-header {background:url('../images/header_bg.png') 0 bottom repeat-x;height:80px;}
-.page-header .logo {position:absolute;background:url('../images/logo.png') no-repeat;width:361px;height:49px;top:15px;left:0;}
+.page-header {background:url('../images/header_bg.png') 0 bottom repeat-x;height:60px;}
+.page-header .logo {position:absolute;background:url('../images/logo.png') no-repeat;width:200px;height:40px;top:15px;left:9px;}
 
 #headerNav {clear:both;height:50px;background:url('../images/navigation_bg.png') repeat-x;}
 #headerNav .contents{width:55em;margin:auto;}
