@@ -490,6 +490,7 @@ body.nojs .auth_block .pad .spinner span {display:none}
 body.auth #auth_dialog { display: block; }
 #auth_dialog .page-header{-moz-box-shadow:0 0 5px #333;-webkit-box-shadow:0 0 5px #333;box-shadow:0 0 5px #333}
 body.auth #container { display: none; }
+body.auth #cluster_state_id, body.init_welcome #cluster_state_id {font-style:italic;color:#555}
 
 .auth_block {min-height:737px; height:100%; position:relative;background:#F0EEE7}
 .auth_block .pad {position:relative; width:580px; margin:auto;top:0px; height:537px;}

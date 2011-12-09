@@ -852,30 +852,35 @@ function showAbout() {
     if (nodesCount >= 0x100)
       nodesCount = 0xff;
 
-    var buckets = DAL.cells.bucketsListCell.value || [];
-    var bucketsCount = buckets.length;
-    if (bucketsCount >= 100)
-      bucketsCount = 99;
+    var buckets = DAL.cells.bucketsListCell.value;
+    if (buckets !== undefined) {
+      var bucketsCount = buckets.length;
+      if (bucketsCount >= 100)
+        bucketsCount = 99;
 
-    var memcachedBucketsCount = buckets.byType.memcached.length;
-    var membaseBucketsCount = buckets.byType.membase.length;
+      var memcachedBucketsCount = buckets.byType.memcached.length;
+      var membaseBucketsCount = buckets.byType.membase.length;
 
-    if (memcachedBucketsCount >= 0x10)
-      memcachedBucketsCount = 0xf;
-    if (membaseBucketsCount >= 0x10)
-      membaseBucketsCount = 0x0f;
+      if (memcachedBucketsCount >= 0x10)
+        memcachedBucketsCount = 0xf;
+      if (membaseBucketsCount >= 0x10)
+        membaseBucketsCount = 0x0f;
 
-    var date = (new Date());
+      var date = (new Date());
 
-    var magicString = [
-      integerToString(0x100 + poolDetails.nodes.length, 16).slice(1)
-        + integerToString(date.getMonth()+1, 16),
-      integerToString(100 + bucketsCount, 10).slice(1)
-        + integerToString(memcachedBucketsCount, 16),
-      integerToString(membaseBucketsCount, 16)
-        + date.getDate()
-    ];
-    $('#cluster_state_id').text('Cluster State ID: ' + magicString.join('-'));
+      var magicString = [
+        integerToString(0x100 + poolDetails.nodes.length, 16).slice(1)
+          + integerToString(date.getMonth()+1, 16),
+        integerToString(100 + bucketsCount, 10).slice(1)
+          + integerToString(memcachedBucketsCount, 16),
+        integerToString(membaseBucketsCount, 16)
+          + date.getDate()
+      ];
+      $($i('cluster_state_id')).text(magicString.join('-'));
+    } else {
+      $($i('cluster_state_id')).html('Please login to view your ' +
+          'Cluster State ID.');
+    }
   }
   updateVersion();
   showDialog('about_server_dialog',
