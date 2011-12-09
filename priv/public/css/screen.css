@@ -90,8 +90,8 @@ a.disabled{text-decoration:none;cursor:default;}
 .main_holder {width:960px; position:relative; margin:auto; left:0px !important;}
 .cnt_holder {width:960px; position:relative; left:12%;}
 
-.page-header {background:url('../images/header_bg.png') 0 bottom repeat-x;height:80px;}
-.page-header span {position:absolute;background:url('../images/logo.png') no-repeat;width:361px;height:49px;top:15px;left:0;}
+.page-header {background:url('../images/header_bg.png') 0 bottom repeat-x;height:60px;}
+.page-header span {position:absolute;background:url('../images/logo.png') no-repeat;width:200px;height:40px;top:15px;left:0;}
 
 td.leftNav {width:180px;vertical-align:top;}
 td.leftNav ul {display:block;width:160px;margin:0 0 20px;border-top:1px solid #e4e9eb;}
@@ -639,7 +639,7 @@ body.auth #cluster_state_id, body.init_welcome #cluster_state_id {font-style:ita
 #about_server_dialog .lbox .config-top {height:50px;margin:0;padding:11px 11px 10px;background-position:-8px 100%;background-color:#e7e7e8;}
 #ui-dialog-title-about_server_dialog {width:90%}
 #ui-dialog-title-about_server_dialog img {float:left;}
-#ui-dialog-title-about_server_dialog h1 {float:right;margin:16px 2px 0 0;font:normal 11pt Verdana,Helvetica,Sans-Serif;}
+#ui-dialog-title-about_server_dialog h1 {float:right;margin:5px 2px 0 0;font:normal 11pt Verdana,Helvetica,Sans-Serif;}
 #about_server_dialog .lbox .center {background:none; padding:16px 17px 14px;}
 #about_server_dialog .lbox .center p#about_versions {margin-bottom: 25px; white-space:nowrap;}
 #about_server_dialog .lbox .center ul li {margin:5px;}
