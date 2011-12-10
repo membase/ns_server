@@ -38,6 +38,7 @@
                 vbucket_states,
                 master_db_watcher,
                 map,
+                ddocs,
                 pending_vbucket_states}).
 
 start_link(Bucket) ->
@@ -74,8 +75,11 @@ init(Bucket) ->
 
     {ok, _Timer} = timer:send_interval(?SYNC_INTERVAL, sync),
 
+    InitialDDocs = get_design_docs(Bucket),
+
     State = #state{bucket=Bucket,
-                   master_db_watcher=Watcher},
+                   master_db_watcher=Watcher,
+                   ddocs=InitialDDocs},
 
     {ok, apply_current_map(State)}.
 
@@ -85,11 +89,23 @@ handle_call(get_state, _From, State) ->
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast({update_ddoc, DDocId},
+handle_cast({update_ddoc, DDocId, Deleted},
             #state{bucket=Bucket,
-                   bucket_config=BucketConfig, map=Map} = State) ->
-    maybe_define_group(Bucket, BucketConfig, DDocId, Map),
-    {noreply, State};
+                   bucket_config=BucketConfig,
+                   ddocs=DDocs, map=Map} = State) ->
+    State1 =
+        case Deleted of
+            false ->
+                %% we need to redefine set view whenever document changes
+                define_group(Bucket, BucketConfig, DDocId, Map),
+                DDocs1 = sets:add_element(DDocId, DDocs),
+                State#state{ddocs=DDocs1};
+            true ->
+                DDocs1 = sets:del_element(DDocId, DDocs),
+                State#state{ddocs=DDocs1}
+        end,
+
+    {noreply, State1};
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -199,50 +215,47 @@ build_map(BucketConfig, VBucketStates) ->
              {passive, Passive}]
     end.
 
-maybe_define_group(Bucket, BucketConfig, DDocId, Map) ->
+define_group(Bucket, BucketConfig, DDocId, Map) ->
     SetName = list_to_binary(Bucket),
     NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
 
     Active = proplists:get_value(active, Map),
     Passive = proplists:get_value(passive, Map),
 
-    case couch_set_view:is_view_defined(SetName, DDocId) of
-        true ->
-            ok;
-        false ->
-            Params = #set_view_params{max_partitions=NumVBuckets,
-                                      active_partitions=Active,
-                                      passive_partitions=Passive},
-            ok = couch_set_view:define_group(SetName, DDocId, Params)
+    Params = #set_view_params{max_partitions=NumVBuckets,
+                              active_partitions=Active,
+                              passive_partitions=Passive},
+
+    try
+        ok = couch_set_view:define_group(SetName, DDocId, Params)
+    catch
+        throw:{not_found, deleted} ->
+            %% The document has been deleted but we still think it's
+            %% alive. Eventually we will get a notification from master db
+            %% watcher and delete it from a list of design documents.
+            ok
     end.
 
-apply_ddoc_map(Bucket, DDocId, NumVBuckets, Active, Passive, ToRemove) ->
+apply_ddoc_map(Bucket, DDocId, Active, Passive, ToRemove) ->
     SetName = list_to_binary(Bucket),
 
-    case couch_set_view:is_view_defined(SetName, DDocId) of
-        true ->
-            ok = couch_set_view:set_partition_states(SetName, DDocId,
-                                                     Active, Passive, ToRemove);
-        false ->
-            Params = #set_view_params{max_partitions=NumVBuckets,
-                                      active_partitions=Active,
-                                      passive_partitions=Passive},
-            ok = couch_set_view:define_group(SetName, DDocId, Params)
+    try
+        ok = couch_set_view:set_partition_states(SetName, DDocId,
+                                                 Active, Passive, ToRemove)
+    catch
+        throw:{not_found, deleted} ->
+            %% The document has been deleted but we still think it's
+            %% alive. Eventually we will get a notification from master db
+            %% watcher and delete it from a list of design documents.
+            ok;
+        throw:view_undefined ->
+            %% Design document has been updated but we have not reacted on it
+            %% yet. As previously eventually we will get a notification about
+            %% this change and define a group again.
+            ok
     end.
 
-apply_map(Bucket, BucketConfig, OldMap, NewMap) ->
-    DDocDbName = master_db(Bucket),
-    NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
-
-    {ok, DDocDb} = couch_db:open_int(DDocDbName, []),
-
-    {ok, DDocs} =
-        try
-            couch_db:get_design_docs(DDocDb)
-        after
-            couch_db:close(DDocDb)
-        end,
-
+apply_map(Bucket, DDocs, OldMap, NewMap) ->
     ?log_debug("Applying map ~p to bucket ~s", [NewMap, Bucket]),
 
     Active = proplists:get_value(active, NewMap),
@@ -260,11 +273,10 @@ apply_map(Bucket, BucketConfig, OldMap, NewMap) ->
 
     ?log_debug("Partitions to remove: ~p", [ToRemove]),
 
-    lists:foreach(
-      fun (#doc{id = DDocId} = _DDoc) ->
-              apply_ddoc_map(Bucket, DDocId, NumVBuckets,
-                             Active, Passive, ToRemove)
-      end, DDocs).
+    sets:fold(
+      fun (DDocId, _) ->
+              apply_ddoc_map(Bucket, DDocId, Active, Passive, ToRemove)
+      end, undefined, DDocs).
 
 get_vbucket_state(Bucket, VBucket) ->
     do_get_vbucket_state(list_to_binary(Bucket), VBucket).
@@ -312,11 +324,13 @@ master_db_watcher(Bucket, Parent) ->
                       ),
     ChangesFeedFun(
       fun({change, {Change}, _}, _) ->
+              Deleted = proplists:get_value(<<"deleted">>, Change, false),
+
               case proplists:get_value(<<"id">>, Change) of
                   <<"_design/", _/binary>> = DDocId ->
                       ?log_debug("Got change in `~s` design document. "
                                  "Initiating set view update", [DDocId]),
-                      gen_server:cast(Parent, {update_ddoc, DDocId});
+                      gen_server:cast(Parent, {update_ddoc, DDocId, Deleted});
                   _ ->
                       ok
               end;
@@ -324,11 +338,11 @@ master_db_watcher(Bucket, Parent) ->
               ok
       end).
 
-apply_current_map(#state{bucket=Bucket} = State) ->
+apply_current_map(#state{bucket=Bucket, ddocs=DDocs} = State) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
     VBucketStates = get_vbucket_states(Bucket, BucketConfig),
     Map = build_map(BucketConfig, VBucketStates),
-    apply_map(Bucket, BucketConfig, undefined, Map),
+    apply_map(Bucket, DDocs, undefined, Map),
     State#state{bucket_config=BucketConfig,
                 vbucket_states=VBucketStates,
                 pending_vbucket_states=VBucketStates,
@@ -362,12 +376,30 @@ mk_filter(Pred) ->
 sync(#state{bucket=Bucket,
             bucket_config=BucketConfig,
             pending_vbucket_states=PendingStates,
+            ddocs=DDocs,
             map=Map} = State) ->
     NewMap = build_map(BucketConfig, PendingStates),
     case NewMap =/= Map of
         true ->
-            apply_map(Bucket, BucketConfig, Map, NewMap),
+            apply_map(Bucket, DDocs, Map, NewMap),
             State#state{vbucket_states=PendingStates, map=NewMap};
         false ->
             State#state{vbucket_states=PendingStates}
     end.
+
+get_design_docs(Bucket) ->
+    DDocDbName = master_db(Bucket),
+
+    {ok, DDocDb} = couch_db:open(DDocDbName,
+                                 [{user_ctx, #user_ctx{roles=[<<"_admin">>]}}]),
+    {ok, DDocs} =
+        try
+            couch_db:get_design_docs(DDocDb)
+        after
+            couch_db:close(DDocDb)
+        end,
+
+    DDocIds = lists:map(fun (#doc{id=DDocId}) ->
+                                DDocId
+                        end, DDocs),
+    sets:from_list(DDocIds).
