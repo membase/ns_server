@@ -484,23 +484,20 @@ higher_priority_node(NodeInfo, #state{mode=Mode} = StateData) ->
 higher_priority_node(Self, NodeInfo, Mode) ->
     Node = node_info_to_node(NodeInfo),
 
-    case Mode of
-        normal ->
-            case is_atom(NodeInfo) of
-                false ->
-                    {SelfVersion, SelfNode} = Self,
-                    {Version, _} = NodeInfo,
+    case Mode =:= normal andalso not is_atom(NodeInfo) of
+        true ->
+            {SelfVersion, SelfNode} = Self,
+            {Version, _} = NodeInfo,
 
-                    if
-                        Version > SelfVersion ->
-                            true;
-                        Version =:= SelfVersion ->
-                            Node < SelfNode;
-                        true ->
-                            false
-                    end
+            if
+                Version > SelfVersion ->
+                    true;
+                Version =:= SelfVersion ->
+                    Node < SelfNode;
+                true ->
+                    false
             end;
-        compatible ->
+        false ->
             case is_atom(NodeInfo) of
                 false ->
                     ?log_warning("Got new-style heartbeat from ~p "
@@ -508,7 +505,7 @@ higher_priority_node(Self, NodeInfo, Mode) ->
                 true ->
                     ok
             end,
-            Node < Self
+            Node < node_info_to_node(Self)
     end.
 
 -ifdef(EUNIT).
@@ -518,6 +515,18 @@ priority_test() ->
                  higher_priority_node('ns_2@192.168.1.1',
                                       'ns_1@192.168.1.1',
                                       compatible)),
+
+    ?assertEqual(false,
+                 higher_priority_node({misc:parse_version("1.7.1"),
+                                       'ns_1@192.168.1.1'},
+                                      'ns_2@192.168.1.1',
+                                      normal)),
+    ?assertEqual(true,
+                 higher_priority_node({misc:parse_version("1.7.1"),
+                                       'ns_2@192.168.1.1'},
+                                      'ns_1@192.168.1.1',
+                                      normal)),
+
     ?assertEqual(true,
                  higher_priority_node({misc:parse_version("1.7.1"),
                                        'ns_1@192.168.1.1'},
