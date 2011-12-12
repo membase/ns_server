@@ -31,6 +31,13 @@ var DocumentsModel = {};
   self.bucketName = new StringHashFragmentCell("bucketName");
 
   self.documentsBucketCell = Cell.compute(function (v) {
+    var section = v.need(DAL.cells.mode);
+    if (section !== 'edit_doc' && section !== 'documents') {
+      // force to undefined when in non-interesting section to prevent
+      // dependant cells from being computed
+      return;
+    }
+
     var selected = v(DocumentsModel.bucketName);
     if (selected) {
       return selected;
