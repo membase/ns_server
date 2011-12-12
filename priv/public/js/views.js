@@ -751,6 +751,12 @@ var ViewsSection = {
       if (value) {
         var rows = _.filter(value.rows, function (r) {return ('key' in r)});
         var targ = {rows: rows};
+        if (value.errors) {
+          var errorsMsg = "Subset of nodes failed with the following error:\n" + JSON.stringify(value.errors, null, "  ");
+          postClientErrorReport(errorsMsg);
+          genericDialog({text: errorsMsg,
+                         buttons: {ok: true, cancel: false}});
+        }
       } else {
         var targ = {rows: {lackOfValue: true}};
       }
