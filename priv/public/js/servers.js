@@ -113,6 +113,9 @@ var ServersSection = {
   },
   renderRebalance: function (details) {
     var progress = this.rebalanceProgress.value;
+    if (progress) {
+      progress = progress.perNode;
+    }
     if (!progress) {
       progress = {};
     }
@@ -124,7 +127,7 @@ var ServersSection = {
       if (!p)
         p = emptyProgress;
       n.progress = p.progress;
-      n.percent = truncateTo3Digits(n.progress * 100);
+      n.percent = truncateTo3Digits(n.progress);
       $($i(n.otpNode.replace('@', '-'))).find('.actions').html('<span class="usage_info">' + escapeHTML(n.percent) + '% Complete</span><span class="server_usage"><span style="width: ' + escapeHTML(n.percent) + '%;"></span></span>');
     });
   },
@@ -137,18 +140,16 @@ var ServersSection = {
   },
   onRebalanceProgress: function () {
     var value = this.rebalanceProgress.value;
-    console.log("got progress: ", value);
-    if (value.status == 'none') {
-      this.poolDetails.invalidate();
-      this.rebalanceProgressIsInteresting.setValue(false);
+    if (this.sawRebalanceRunning && value.status !== 'running') {
       if (value.errorMessage) {
+        this.sawRebalanceRunning = false;
         displayNotice(value.errorMessage, true);
       }
       return
     }
+    this.sawRebalanceRunning = true;
 
     this.renderRebalance(this.poolDetails.value);
-    this.rebalanceProgress.recalculateAfterDelay(250);
   },
   init: function () {
     var self = this;
@@ -248,21 +249,17 @@ var ServersSection = {
     serversQ.find('.failover_server').live('click', mkServerAction($m(self, 'failoverNode')));
     serversQ.find('.remove_from_list').live('click', mkServerAction($m(self, 'removeFromList')));
 
-    self.rebalanceProgressIsInteresting = new Cell();
-    self.rebalanceProgressIsInteresting.setValue(false);
-    self.poolDetails.subscribeValue(function (poolDetails) {
-      if (poolDetails && poolDetails.rebalanceStatus != 'none')
-        self.rebalanceProgressIsInteresting.setValue(true);
-    });
-
-    // TODO: should we ignore errors here ?
-    this.rebalanceProgress = new Cell(function (interesting, poolDetails) {
-      if (!interesting)
-        return;
-      return future.get({url: poolDetails.rebalanceProgressUri});
-    }, {interesting: self.rebalanceProgressIsInteresting,
-        poolDetails: self.poolDetails});
-    self.rebalanceProgress.keepValueDuringAsync = true;
+    this.rebalanceProgress = Cell.needing(DAL.cells.tasksProgressCell).computeEager(function (v, tasks) {
+      for (var i = tasks.length; --i >= 0;) {
+        var taskInfo = tasks[i];
+        if (taskInfo.type !== 'rebalance') {
+          continue;
+        }
+        if (taskInfo.status === 'running') {
+          return taskInfo;
+        }
+      }
+    }).name("rebalanceProgress");
     self.rebalanceProgress.subscribe($m(self, 'onRebalanceProgress'));
   },
   accountForDisabled: function (handler) {

@@ -1316,16 +1316,3 @@ var MultiDrawersWidget = mkClass({
     this.openedNames.reset();
   }
 });
-
-function sumIndexProgress(tasks) {
-
-  var progress = {};
-
-  _.each(tasks, function(task) {
-    var nds = _.map(task.nodes, function(node) { return node.progress; });
-    var total = _.reduce(nds, function(x, y){ return x + y; }, 0) / nds.length;
-    progress[task.design_document] = Math.round(total);
-  });
-
-  return progress;
-}

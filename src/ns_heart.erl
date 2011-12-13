@@ -159,24 +159,14 @@ current_status(Expensive) ->
                             end
                     end, [], ns_bucket:node_bucket_names(node())),
 
-    FindIndex = fun(Task, Acc) ->
-        case lists:keyfind(type, 1, Task) of
-            {type, indexer} ->
-                Progress = lists:keyfind(progress, 1, Task),
-                DDoc = lists:keyfind(design_document, 1, Task),
-                Set = lists:keyfind(set, 1, Task),
-
-                [[{type, indexer}, Progress, DDoc, Set] | Acc];
-            _ ->
-                Acc
-        end
-    end,
-
-    Tasks = lists:foldl(FindIndex, [], couch_task_status:all()),
+    Tasks = lists:filter(
+        fun (Task) ->
+                {type, indexer} =:= lists:keyfind(type, 1, Task)
+        end , couch_task_status:all()),
 
     [{active_buckets, ns_memcached:active_buckets()},
      {ready_buckets, ns_memcached:connected_buckets()},
-     {indexer_tasks, Tasks},
+     {local_tasks, Tasks},
      {replication, ns_rebalancer:buckets_replication_statuses()},
      {memory, erlang:memory()},
      {system_stats, [{N, proplists:get_value(N, SystemStats, 0)} || N <- [cpu_utilization_rate, swap_total, swap_used]]},

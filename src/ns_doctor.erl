@@ -25,9 +25,15 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 %% API
--export([get_nodes/0, get_node/1]).
+-export([get_nodes/0, get_node/1,
+         get_tasks_version/0, build_tasks_list/1]).
 
--record(state, {nodes}).
+-record(state, {
+          nodes :: dict(),
+          tasks_hash_nodes :: undefined | dict(),
+          tasks_hash :: undefined | integer(),
+          tasks_version :: undefined | string()
+         }).
 
 -define(doctor_info(Msg), ale:info(?NS_DOCTOR_LOGGER, Msg)).
 -define(doctor_info(Fmt, Args), ale:info(?NS_DOCTOR_LOGGER, Fmt, Args)).
@@ -46,12 +52,40 @@ start_link() ->
 
 init([]) ->
     self() ! acquire_initial_status,
+    ns_pubsub:subscribe(ns_config_events, fun handle_config_event/2, undefined),
     case misc:get_env_default(dont_log_stats, false) of
         false ->
             timer:send_interval(?LOG_INTERVAL, log);
         _ -> ok
     end,
     {ok, #state{nodes=dict:new()}}.
+
+-spec handle_rebalance_status_change(NewValue :: term(), State :: term()) -> {term(), boolean()}.
+handle_rebalance_status_change(running, _) ->
+    {running, true};
+handle_rebalance_status_change(_, running) ->
+    {not_running, true};
+handle_rebalance_status_change(_, State) ->
+    {State, false}.
+
+handle_config_event({rebalance_status, NewValue}, State) ->
+    {NewState, Changed} = handle_rebalance_status_change(NewValue, State),
+    case Changed of
+        true ->
+            ns_doctor ! rebalance_status_changed;
+        _ -> ok
+    end,
+    NewState;
+handle_config_event(_, State) ->
+    State.
+
+
+handle_call(get_tasks_version, _From, State) ->
+    NewState = maybe_refresh_tasks_version(State),
+    {reply, NewState#state.tasks_version, NewState};
+
+handle_call({build_tasks_list, NeedNodeP}, _From, State) ->
+    {reply, do_build_tasks_list(State, NeedNodeP), State};
 
 handle_call({get_node, Node}, _From, #state{nodes=Nodes} = State) ->
     Status = dict:fetch(Node, Nodes),
@@ -70,13 +104,24 @@ handle_call(get_nodes, _From, #state{nodes=Nodes} = State) ->
 
 handle_cast({heartbeat, Name, Status}, State) ->
     Nodes = update_status(Name, Status, State#state.nodes),
-    {noreply, State#state{nodes=Nodes}};
+    NewState0 = State#state{nodes=Nodes},
+    NewState = maybe_refresh_tasks_version(NewState0),
+    case NewState0#state.tasks_hash =/= NewState#state.tasks_hash of
+        true ->
+            gen_event:notify(buckets_events, {significant_buckets_change, Name});
+        _ ->
+            ok
+    end,
+    {noreply, NewState};
 
 handle_cast(Msg, State) ->
     ?doctor_warning("Unexpected cast: ~p", [Msg]),
     {noreply, State}.
 
 
+handle_info(rebalance_status_changed, State) ->
+    %% force hash recomputation next time maybe_refresh_tasks_version is called
+    {noreply, State#state{tasks_hash_nodes = undefined}};
 handle_info(acquire_initial_status, #state{nodes=NodeDict} = State) ->
     Replies = ns_heart:status_all(),
     %% Get an initial status so we don't start up thinking everything's down
@@ -120,6 +165,11 @@ get_node(Node) ->
             []
     end.
 
+get_tasks_version() ->
+    gen_server:call(?MODULE, get_tasks_version).
+
+build_tasks_list(NodeNeededP) ->
+    gen_server:call(?MODULE, {build_tasks_list, NodeNeededP}).
 
 %% Internal functions
 
@@ -159,3 +209,125 @@ annotate_status(Node, Status, Now, LiveNodes) ->
         false ->
             [ down | Stale ]
     end.
+
+maybe_refresh_tasks_version(#state{nodes = Nodes,
+                                   tasks_hash_nodes = VersionNodes} = State)
+  when Nodes =:= VersionNodes ->
+    State;
+maybe_refresh_tasks_version(State) ->
+    Nodes = State#state.nodes,
+    TasksHashesSet =
+        dict:fold(
+          fun (_Node, NodeInfo, Set) ->
+                  lists:foldl(
+                    fun (Task, Set0) ->
+                            case proplists:get_value(type, Task) of
+                                indexer ->
+                                    sets:add_element(erlang:phash2(
+                                                       {lists:keyfind(design_document, 1, Task),
+                                                        lists:keyfind(set, 1, Task)}),
+                                                     Set0);
+                                _ ->
+                                    Set0
+                            end
+                    end, Set, proplists:get_value(local_tasks, NodeInfo, []))
+          end, sets:new(), Nodes),
+    TasksAndRebalanceHash = erlang:phash2({erlang:phash2(TasksHashesSet),
+                                           case ns_cluster_membership:get_rebalance_status() of
+                                               {running, _} -> running;
+                                               _ -> not_running
+                                           end}),
+    case TasksAndRebalanceHash =:= State#state.tasks_hash of
+        true ->
+            %% hash did not change, only nodes. Cool
+            State#state{tasks_hash_nodes = Nodes};
+        _ ->
+            %% hash changed. Generate new version
+            State#state{tasks_hash_nodes = Nodes,
+                        tasks_hash = TasksAndRebalanceHash,
+                        tasks_version = integer_to_list(TasksAndRebalanceHash)}
+    end.
+
+task_operation(extract, indexer, RawTask) ->
+    {_, ChangesDone} = lists:keyfind(changes_done, 1, RawTask),
+    {_, TotalChanges} = lists:keyfind(total_changes, 1, RawTask),
+    {_, BucketName} = lists:keyfind(set, 1, RawTask),
+    {_, DDocId} = lists:keyfind(design_document, 1, RawTask),
+    {{indexer, BucketName, DDocId}, {ChangesDone, TotalChanges}};
+task_operation(extract, _, _) ->
+    ignore;
+
+task_operation(finalize, {indexer, BucketName, DDocId}, {ChangesDone, TotalChanges}) ->
+    Progress = erlang:min((ChangesDone * 100) div TotalChanges, 100),
+    [{type, indexer},
+     {recommendedRefreshPeriod, 2.0},
+     {status, running},
+     {bucket, BucketName},
+     {designDocument, DDocId},
+     {changesDone, ChangesDone},
+     {totalChanges, TotalChanges},
+     {progress, Progress}].
+
+task_operation(fold, {indexer, _, _},
+               {ChangesDone1, TotalChanges1},
+               {ChangesDone2, TotalChanges2}) ->
+    {ChangesDone1 + ChangesDone2, TotalChanges1 + TotalChanges2}.
+
+
+do_build_tasks_list(#state{nodes = NodesDict}, NeedNodeP) ->
+    TasksDict =
+        dict:fold(
+          fun (Node, NodeInfo, TasksDict) ->
+                  case NeedNodeP(Node) of
+                      true ->
+                          NodeTasks = proplists:get_value(local_tasks, NodeInfo, []),
+                          lists:foldl(
+                            fun (RawTask, TasksDict0) ->
+                                    case task_operation(extract, proplists:get_value(type, RawTask), RawTask) of
+                                        ignore -> TasksDict0;
+                                        {Signature, Value} ->
+                                            NewValue =
+                                                case dict:find(Signature, TasksDict0) of
+                                                    {ok, ValueOld} ->
+                                                        task_operation(fold, Signature, ValueOld, Value);
+                                                    error ->
+                                                        Value
+                                                end,
+                                            dict:store(Signature, NewValue, TasksDict0)
+                                    end
+                            end, TasksDict, NodeTasks);
+                      false ->
+                          TasksDict
+                  end
+          end,
+          dict:new(),
+          NodesDict),
+    PreRebalanceTasks = dict:fold(fun (Signature, Value, Acc) ->
+                                          [{struct, task_operation(finalize, Signature, Value)} | Acc]
+                                  end, [], TasksDict),
+    RebalanceTask =
+        case ns_cluster_membership:get_rebalance_status() of
+            {running, PerNode} ->
+                [{type, rebalance},
+                 {recommendedRefreshPeriod, 0.25},
+                 {status, running},
+                 {progress, case lists:foldl(fun ({_, Progress}, {Total, Count}) ->
+                                                     {Total + Progress, Count + 1}
+                                             end, {0, 0}, PerNode) of
+                                {_, 0} -> 0;
+                                {TotalRebalanceProgress, RebalanceNodesCount} ->
+                                    TotalRebalanceProgress * 100.0 / RebalanceNodesCount
+                            end},
+                 {perNode,
+                  {struct, [{Node, {struct, [{progress, Progress * 100}]}}
+                            || {Node, Progress} <- PerNode]}}];
+            _ ->
+                [{type, rebalance},
+                 {status, notRunning}
+                 | case ns_config:search(rebalance_status) of
+                       {value, {none, ErrorMessage}} ->
+                           [{errorMessage, iolist_to_binary(ErrorMessage)}];
+                       _ -> []
+                   end]
+        end,
+    [RebalanceTask | PreRebalanceTasks].

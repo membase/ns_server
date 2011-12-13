@@ -849,29 +849,8 @@ var ViewsSection = {
       });
     });
 
-    var tasksProgressIsInteresting = new Cell();
-    tasksProgressIsInteresting.setValue(false);
-
-    DAL.cells.currentPoolDetailsCell.subscribeValue(function (poolDetails) {
-      if (poolDetails && poolDetails.tasksStatus !== 'none') {
-        tasksProgressIsInteresting.setValue(true);
-      } else {
-        tasksProgressIsInteresting.setValue(false);
-      }
-    });
-
-    this.tasksProgressCell = new Cell(function (interesting, poolDetails) {
-      if (!interesting)
-        return false;
-      return future.get({url: poolDetails.tasksProgressUri});
-    }, {
-      interesting: tasksProgressIsInteresting,
-      poolDetails: DAL.cells.currentPoolDetailsCell
-    });
-
-
-    function mkViewsListCell(tasksCell, ddocsCell, containerId) {
-      var cell = Cell.needing(tasksCell, ddocsCell, DAL.cells.currentPoolDetailsCell)
+    function mkViewsListCell(ddocsCell, containerId) {
+      var cell = Cell.needing(DAL.cells.tasksProgressCell, ddocsCell, DAL.cells.currentPoolDetailsCell)
         .compute(function (v, tasks, ddocs, poolDetails) {
         var bucketName = v.need(selectedBucketCell);
         var rv = _.map(ddocs, function (doc) {
@@ -909,11 +888,15 @@ var ViewsSection = {
 
         var poolDetails = ddocs.poolDetails;
         var bucketName = ddocs.bucketName;
-        var progress = sumIndexProgress(ddocs.tasks);
 
-        ddocs = $.map(ddocs, function(x) {
-          if (progress[x._id]) {
-            x.progress = progress[x._id];
+        ddocs = _.map(ddocs, function (x) {
+          var task = _.detect(ddocs.tasks, function (taskInfo) {
+            return taskInfo.type === "indexer" &&
+              taskInfo.bucket === bucketName &&
+              taskInfo.designDocument === x._id;
+          });
+          if (task) {
+            x.progress = task.progress;
           }
           return x;
         });
@@ -927,8 +910,8 @@ var ViewsSection = {
       return cell;
     }
 
-    var devDDocsViewCell = mkViewsListCell(this.tasksProgressCell, devDDocsCell, 'development_views_list_container');
-    var productionDDocsViewCell = mkViewsListCell(this.tasksProgressCell, productionDDocsCell, 'production_views_list_container');
+    var devDDocsViewCell = mkViewsListCell(devDDocsCell, 'development_views_list_container');
+    var productionDDocsViewCell = mkViewsListCell(productionDDocsCell, 'production_views_list_container');
 
     $('#built_in_reducers a').bind('click', function (e) {
       var text = $(this).text();

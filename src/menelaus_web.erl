@@ -189,8 +189,8 @@ loop(Req, AppRoot, DocRoot) ->
                              ["diag", "vbuckets"] -> {auth, fun handle_diag_vbuckets/1};
                              ["pools", PoolId, "rebalanceProgress"] ->
                                  {auth, fun handle_rebalance_progress/2, [PoolId]};
-                             ["pools", PoolId, "tasksProgress"] ->
-                                 {auth, fun handle_tasks_progress/2, [PoolId]};
+                             ["pools", _PoolId, "tasks"] ->
+                                 {auth, fun handle_tasks/1, []};
                              ["index.html"] ->
                                  {done, serve_static_file(Req, {AppRoot, Path},
                                                          "text/html; charset=utf8",
@@ -508,11 +508,6 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
       _ -> <<"none">>
     end,
 
-    TasksStatus = case build_indexing_tasks(Id) of
-      [] -> <<"none">>;
-      _ -> <<"active">>
-    end,
-
     Alerts = menelaus_web_alerts_srv:fetch_alerts(),
 
     Controllers = {struct, [
@@ -532,6 +527,8 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
       ]}}
     ]},
 
+    BaseTasksURI = concat_url_path(["pools", Id, "tasks"]),
+
     PropList0 = [{name, list_to_binary(Id)},
                  {alerts, Alerts},
                  {nodes, case InfoLevel of
@@ -546,8 +543,6 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                  {controllers, Controllers},
                  {balanced, ns_cluster_membership:is_balanced()},
                  {failoverWarnings, ns_bucket:failover_warnings()},
-                 {tasksStatus, TasksStatus},
-                 {tasksProgressUri, bin_concat_path(["pools", Id, "tasksProgress"])},
                  {rebalanceStatus, RebalanceStatus},
                  {rebalanceProgressUri, bin_concat_path(["pools", Id, "rebalanceProgress"])},
                  {stopRebalanceUri, <<"/controller/stopRebalance">>},
@@ -558,6 +553,8 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                                               {value, ACSettings} ->
                                                   build_auto_compaction_settings(ACSettings)
                                           end},
+                 {tasks, {struct,
+                          [{uri, iolist_to_binary([BaseTasksURI, <<"?v=">>, ns_doctor:get_tasks_version()])}]}},
                  {stats, {struct,
                           [{uri, bin_concat_path(["pools", Id, "stats"])}]}},
                  {counters, {struct, ns_cluster:counters()}}],
@@ -596,54 +593,6 @@ build_auto_compaction_allowed_time_period(AllowedTimePeriod) ->
                                 {toMinute, to_minute},
                                 {abortOutside, abort_outside}]].
 
-
-build_indexing_tasks(Pool) ->
-
-    TaskFun = fun(Task, {Node, Dict}) ->
-
-        DDoc = proplists:get_value(design_document, Task),
-        Set = proplists:get_value(set, Task),
-
-        case list_to_binary(Pool) =:= Set of
-            true ->
-                case dict:is_key(DDoc, Dict) of
-                    true ->
-                        OldTask = dict:fetch(DDoc, Dict),
-                        {struct, Nodes} = proplists:get_value(nodes, OldTask),
-                        NewNodes = {nodes, {struct, [{Node, {struct, Task}} | Nodes]}},
-                        NTask = lists:keyreplace(nodes, 1, OldTask, NewNodes),
-                        {Node, dict:store(DDoc, NTask, Dict)};
-                    false ->
-                        NTask = [{type, indexer}, {design_document, DDoc},
-                                 {nodes, {struct, [{Node, {struct, Task}}]}}],
-                        {Node, dict:store(DDoc, NTask, Dict)}
-                end;
-            false ->
-                {Node, Dict}
-        end
-    end,
-
-    NodeFun = fun(Node, {Doctor, Dict}) ->
-        case dict:is_key(Node, Doctor) of
-            true ->
-                NodeDetails = dict:fetch(Node, Doctor),
-                case proplists:get_value(indexer_tasks, NodeDetails) of
-                    undefined ->
-                        {Doctor, Dict};
-                    Tasks ->
-                        {_, ResultDict} = lists:foldl(TaskFun, {Node, Dict}, Tasks),
-                        {Doctor, ResultDict}
-                end;
-            %% Task may not be reported as started yet
-            false ->
-                {Doctor, Dict}
-        end
-    end,
-
-    Nodes = ns_cluster_membership:active_nodes(),
-    Doctor = ns_doctor:get_nodes(),
-    {_, Results} = lists:foldl(NodeFun, {Doctor, dict:new()}, Nodes),
-    [Val || {_, Val} <- dict:to_list(Results)].
 
 
 
@@ -1623,8 +1572,13 @@ calculate_replication(Node, BucketsAll, BucketsReplications) ->
     end.
 
 
-handle_tasks_progress(PoolId, Req) ->
-    reply_json(Req, build_indexing_tasks(PoolId), 200).
+handle_tasks(Req) ->
+    NodesSet = sets:from_list(ns_node_disco:nodes_wanted()),
+    JSON = ns_doctor:build_tasks_list(
+             fun (Node) ->
+                     sets:is_element(Node, NodesSet)
+             end),
+    reply_json(Req, JSON, 200).
 
 %% Node list
 %% GET /pools/{PoolID}/buckets/{Id}/nodes

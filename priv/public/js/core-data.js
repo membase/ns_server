@@ -582,3 +582,35 @@ var DAL = {
     return intermediary.subscribeValue(body);
   };
 })();
+
+(function () {
+  var tasksProgressURI = DAL.cells.tasksProgressURI = Cell.compute(function (v) {
+    return v.need(DAL.cells.currentPoolDetailsCell).tasks.uri;
+  }).name("tasksProgressURI");
+  var tasksProgressCell = DAL.cells.tasksProgressCell = Cell.computeEager(function (v) {
+    var uri = v.need(tasksProgressURI);
+    return future.get({url: uri});
+  }).name("tasksProgressCell");
+  tasksProgressCell.keepValueDuringAsync = true;
+  var tasksRefreshPeriod = DAL.cells.tasksRefreshPeriod = Cell.compute(function (v) {
+    var tasks = v.need(tasksProgressCell);
+    var minPeriod = 1 << 28;
+    _.each(tasks, function (taskInfo) {
+      var period = taskInfo.recommendedRefreshPeriod;
+      if (!period) {
+        return;
+      }
+      period = (period * 1000) >> 0;
+      if (period < minPeriod) {
+        minPeriod = period;
+      }
+    });
+    return minPeriod;
+  }).name("tasksRefreshPeriod");
+  Cell.subscribeMultipleValues(function (period) {
+    if (!period) {
+      return;
+    }
+    tasksProgressCell.recalculateAfterDelay(period);
+  }, tasksRefreshPeriod, tasksProgressCell);
+})();

@@ -3,17 +3,19 @@
   var progressWrapper = $('#global_progress');
   var progressContainer = $('#global_progress_container');
 
-  var tasks = [];
   var render = {};
 
+  function renderNothing() {
+    return "";
+  }
 
-  function refreshProgress() {
+  function refreshProgress(tasks) {
     if ($.isEmptyObject(tasks)) {
       progressWrapper.hide();
     } else {
-      var html = "", keys = 0;
-      _.each(tasks, function(obj) {
-        html += render[obj.type](obj);
+      var html = "";
+      _.each(tasks, function (obj) {
+        html += (render[obj.type] || renderNothing)(obj);
       });
 
       progressWrapper.toggleClass('disable_toggle', tasks.length < 2);
@@ -22,27 +24,23 @@
     }
   }
 
-  render.index = function(obj) {
+  render.indexer = function(obj) {
     return '<li class="clearfix"><div class="usage_smallest">' +
-      '<div class="used" style="width:' + obj.progress +
-      '%"></div></div><span class="message">Indexing ' + obj.ddoc + '</span></li>';
+      '<div class="used" style="width:' + (obj.progress >> 0) +
+      '%"></div></div><span class="message">Indexing ' + escapeHTML(obj.bucket + "/" + obj.designDocument) + '</span></li>';
   };
 
 
-  render.rebalance = function(obj) {
+  render.rebalance = function (obj) {
+    if (obj.status !== "running") {
+      return "";
+    }
 
-    var servers = 0, progress = 0;
-
-    _.each(obj.value, function(tmp, key) {
-      if (typeof tmp.progress !== 'undefined') {
-        servers++;
-        progress += tmp.progress;
-      }
-    });
+    var serversCount = _.keys((obj.perNode || {})).length;
 
     return '<li class="clearfix"><div class="usage_smallest">' +
-      '<div class="used" style="width:' + Math.round((progress / servers) * 100) +
-      '%"></div></div><span class="message">Rebalancing ' + servers +
+      '<div class="used" style="width:' + (obj.progress >> 0) +
+      '%"></div></div><span class="message">Rebalancing ' + serversCount +
       ' nodes</span></li>';
   };
 
@@ -53,25 +51,14 @@
     }
   });
 
-  DAL.onReady(function() {
+  var runningTasks = Cell.compute(function (v) {
+    return _.filter(v.need(DAL.cells.tasksProgressCell), function (taskInfo) {
+      return taskInfo.status === "running";
+    })
+  });
 
-    ViewsSection.tasksProgressCell.subscribe(function(active_tasks) {
-      tasks = _.filter(tasks, function(val) { return val.type !== 'index'; });
-      if (active_tasks.value.length > 0) {
-        _.each(sumIndexProgress(active_tasks.value), function(val, key) {
-          tasks.push({type: 'index', ddoc: key, progress: val});
-        });
-      }
-      refreshProgress();
-    });
-
-    ServersSection.rebalanceProgress.subscribe(function() {
-      tasks = _.filter(tasks, function(val) { return val.type !== 'rebalance'; });
-      if (ServersSection.rebalanceProgress.value.status !== 'none') {
-        tasks.push({type: 'rebalance', value: ServersSection.rebalanceProgress.value});
-      }
-      refreshProgress();
-    });
+  runningTasks.subscribeValue(function (tasks) {
+    refreshProgress(tasks);
   });
 
 })();
