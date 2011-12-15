@@ -26,9 +26,6 @@
 %% API
 -export([start_link/1]).
 
-%% debug
--export([get_state/1]).
-
 -include("couch_db.hrl").
 -include_lib("couch_set_view/include/couch_set_view.hrl").
 -include("ns_common.hrl").
@@ -50,8 +47,6 @@ start_link(Bucket) ->
             gen_server:start_link({local, server(Bucket)}, ?MODULE, Bucket, [])
     end.
 
-get_state(Bucket) ->
-    gen_server:call(server(Bucket), get_state).
 
 init(Bucket) ->
     process_flag(trap_exit, true),
@@ -82,9 +77,6 @@ init(Bucket) ->
                    ddocs=InitialDDocs},
 
     {ok, apply_current_map(State)}.
-
-handle_call(get_state, _From, State) ->
-    {reply, State, State};
 
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
