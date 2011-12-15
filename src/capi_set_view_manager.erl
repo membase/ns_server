@@ -199,7 +199,7 @@ build_map(BucketConfig, VBucketStates) ->
                                           false ->
                                               false
                                       end
-                              end, Map),
+                              end, FFMap),
                         Passive1 -- Active
                 end,
 
