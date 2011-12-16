@@ -230,6 +230,11 @@ var ThePage = {
       if (DAL.login) {
         $('.sign-out-link').show();
       }
+
+      $('body').addClass(
+          DAL.parseVersion(DAL.componentsVersion['ns_server'])[3] === 'enterprise'
+          ? 'enterprise'
+          : 'community');
     });
 
     var self = this;
