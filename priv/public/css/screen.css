@@ -23,6 +23,8 @@ blockquote:before, blockquote:after, q:before, q:after {
 }
 textarea {overflow:auto;}
 input {border:0px solid white;margin:0;padding:0;}
+input.invalid, textarea.invalid{border-color:red !important}
+label.invalid{color:red !important}
 
 a {color:#0095d6; cursor:pointer; text-decoration:none; outline:none;}
 a:link {color:#2ea6db}
@@ -483,7 +485,6 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .auto_failover #auto_failover_timeout, .auto_failover #auto_failover_max_nodes {width:3em}
 .auto_failover .error-container {color:red;margin-left:145px;margin-top:5px;visibility:hidden;}
 .auto_failover .error-container.active {visibility:visible;}
-.auto_failover input.invalid, .auto_failover textarea.invalid {border-color:red;}
 
 /* email alerts styles */
 .email_alerts label {display:block;line-height:24px;margin-left:16px;margin-top:16px;}
@@ -1025,7 +1026,6 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details label.for-ram-quota, .bucket_details label.for-hdd-quota {width:275px;padding-top:13px;}
 .bucket_details label.for-ram-quota span, .bucket_details label.for-hdd-quota span {width:164px;}
 .bucket_details label.for-ram-quota input, .bucket_details label.for-hdd-quota input {width:58px;}
-.bucket_details input.invalid {border-color:red;}
 .bucket_details .error-container {color:red;float:left;font-size:66%;padding-left:170px;visibility:hidden;}
 .bucket_details .error-container.err-name, .bucket_details .error-container.err-proxyPort {display:inline;float:none;padding-left:6px;}
 .bucket_details .for-replica-number .error-container {float:none;padding-left:0;margin-left:0;text-align:left;display:block;width:auto !important;}
