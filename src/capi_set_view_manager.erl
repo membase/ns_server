@@ -70,11 +70,11 @@ init(Bucket) ->
 
     {ok, _Timer} = timer:send_interval(?SYNC_INTERVAL, sync),
 
-    InitialDDocs = get_design_docs(Bucket),
+    {ok, _Timer} = timer:send_interval(?SYNC_INTERVAL, sync),
 
     State = #state{bucket=Bucket,
                    master_db_watcher=Watcher,
-                   ddocs=InitialDDocs},
+                   ddocs=undefined},
 
     {ok, apply_current_map(State)}.
 
@@ -228,6 +228,14 @@ define_group(Bucket, BucketConfig, DDocId, Map) ->
             ok
     end.
 
+maybe_define_group(Bucket, BucketConfig, DDocId, Map) ->
+    try
+        define_group(Bucket, BucketConfig, DDocId, Map)
+    catch
+        throw:view_already_defined ->
+            ok
+    end.
+
 apply_ddoc_map(Bucket, DDocId, Active, Passive, ToRemove) ->
     SetName = list_to_binary(Bucket),
 
@@ -330,15 +338,24 @@ master_db_watcher(Bucket, Parent) ->
               ok
       end).
 
-apply_current_map(#state{bucket=Bucket, ddocs=DDocs} = State) ->
+apply_current_map(#state{bucket=Bucket} = State) ->
+    DDocs = get_design_docs(Bucket),
+
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
     VBucketStates = get_vbucket_states(Bucket, BucketConfig),
     Map = build_map(BucketConfig, VBucketStates),
+
+    sets:fold(
+      fun (DDocId, _) ->
+              maybe_define_group(Bucket, BucketConfig, DDocId, Map)
+      end, undefined, DDocs),
+
     apply_map(Bucket, DDocs, undefined, Map),
     State#state{bucket_config=BucketConfig,
                 vbucket_states=VBucketStates,
                 pending_vbucket_states=VBucketStates,
-                map=Map}.
+                map=Map,
+                ddocs=DDocs}.
 
 interesting_ns_config_event(Bucket, {buckets, Buckets}) ->
     BucketConfigs = proplists:get_value(configs, Buckets, []),
