@@ -35,12 +35,15 @@
 -type progress_callback() :: fun((dict()) -> any()).
 
 -record(state, {bucket::nonempty_string(),
+                bucket_type::memcached | membase,
                 previous_changes,
                 initial_counts::dict(),
                 max_per_node::pos_integer(),
                 map::array(),
                 moves::dict(), movers::dict(),
-                progress_callback::progress_callback()}).
+                progress_callback::progress_callback(),
+                done::boolean(),
+                pending_vbucket_updates::non_neg_integer()}).
 
 %%
 %% API
@@ -91,13 +94,20 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
     self() ! spawn_initial,
     process_flag(trap_exit, true),
     erlang:start_timer(3000, self(), maybe_sync_changes),
+
+    {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
+    BucketType = ns_bucket:bucket_type(BucketConfig),
+
     {ok, #state{bucket=Bucket,
+                bucket_type=BucketType,
                 previous_changes = [],
                 initial_counts=count_moves(MoveDict),
                 max_per_node=?MAX_MOVES_PER_NODE,
                 map = map_to_array(OldMap),
                 moves=MoveDict, movers=Movers,
-                progress_callback=ProgressCallback}}.
+                progress_callback=ProgressCallback,
+                done=false,
+                pending_vbucket_updates=0}}.
 
 
 handle_call(stop, _From, State) ->
@@ -120,18 +130,37 @@ handle_info({_, _, maybe_sync_changes}, #state{previous_changes = PrevChanges} =
             {noreply, State#state{previous_changes = []}}
     end;
 handle_info(spawn_initial, State) ->
-    spawn_workers(State);
-handle_info({move_done, {Node, VBucket, OldChain, NewChain}},
-            #state{movers=Movers, map=Map, bucket=Bucket} = State) ->
+    maybe_terminate(spawn_workers(State));
+handle_info({move_done, {Node, VBucket, OldChain, [NewNode|_] = NewChain}},
+            #state{movers=Movers,
+                   bucket=Bucket, bucket_type=BucketType} = State) ->
     %% Update replication
     update_replication_post_move(VBucket, OldChain, NewChain),
     %% Free up a mover for this node
     Movers1 = dict:update(Node, fun (N) -> N - 1 end, Movers),
+
+    Self = self(),
+    spawn_link(
+      fun () ->
+              case BucketType of
+                  memcached ->
+                      ok;
+                  membase ->
+                      ok = capi_set_view_manager:wait_until_added(NewNode, Bucket, VBucket)
+              end,
+              Self ! {update_vbucket_map, Node, VBucket, OldChain, NewChain}
+      end),
+
+    State1 = spawn_workers(State#state{movers=Movers1}),
+    {noreply, inc_vb_updates(State1)};
+handle_info({update_vbucket_map, _Node, VBucket, _OldChain, NewChain},
+            #state{map=Map, bucket=Bucket} = State) ->
     %% Pull the new chain from the target map
     %% Update the current map
     Map1 = array:set(VBucket, NewChain, Map),
     ns_bucket:set_map(Bucket, array_to_map(Map1)),
-    spawn_workers(State#state{movers=Movers1, map=Map1});
+    State1 = dec_vb_updates(State#state{map=Map1}),
+    maybe_terminate(State1);
 handle_info({'EXIT', _, normal}, State) ->
     {noreply, State};
 handle_info({'EXIT', Pid, Reason}, State) ->
@@ -212,7 +241,7 @@ report_progress(#state{initial_counts=Counts, moves=Moves,
 
 %% @private
 %% @doc Spawn workers up to the per-node maximum.
--spec spawn_workers(#state{}) -> {noreply, #state{}} | {stop, normal, #state{}}.
+-spec spawn_workers(#state{}) -> #state{}.
 spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
                      max_per_node=MaxPerNode} = State) ->
     report_progress(State),
@@ -246,11 +275,21 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
     Values = dict:fold(fun (_, V, L) -> [V|L] end, [], Movers1),
     case Values /= [] andalso lists:any(fun (V) -> V /= 0 end, Values) of
         true ->
-            {noreply, State1};
+            State1;
         false ->
-            {stop, normal, State1}
+            State1#state{done=true}
     end.
 
+maybe_terminate(#state{done=false} = State) ->
+    {noreply, State};
+maybe_terminate(#state{done=true,
+                       pending_vbucket_updates=P} = State) ->
+    case P =:= 0 of
+        true ->
+            {stop, normal, State};
+        false ->
+            {noreply, State}
+    end.
 
 %% @private
 %% @doc Perform pre-move replication fixup.
@@ -367,3 +406,11 @@ load_modules(Map, Modules) ->
 
 load_modules(Map) ->
     load_modules(Map, ?REQUIRED_MODULES).
+
+
+inc_vb_updates(#state{pending_vbucket_updates=P} = State) ->
+    State#state{pending_vbucket_updates=(P + 1)}.
+
+dec_vb_updates(#state{pending_vbucket_updates=P} = State) ->
+    true = P > 0,
+    State#state{pending_vbucket_updates=(P - 1)}.

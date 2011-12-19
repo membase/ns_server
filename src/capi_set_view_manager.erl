@@ -24,7 +24,7 @@
 -define(SYNC_INTERVAL, 5000).
 
 %% API
--export([start_link/1]).
+-export([start_link/1, wait_until_added/3]).
 
 -include("couch_db.hrl").
 -include_lib("couch_set_view/include/couch_set_view.hrl").
@@ -36,7 +36,8 @@
                 master_db_watcher,
                 map,
                 ddocs,
-                pending_vbucket_states}).
+                pending_vbucket_states,
+                waiters}).
 
 start_link(Bucket) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
@@ -47,6 +48,9 @@ start_link(Bucket) ->
             gen_server:start_link({local, server(Bucket)}, ?MODULE, Bucket, [])
     end.
 
+wait_until_added(Node, Bucket, VBucket) ->
+    Address = {server(Bucket), Node},
+    gen_server:call(Address, {wait_until_added, VBucket}, infinity).
 
 init(Bucket) ->
     process_flag(trap_exit, true),
@@ -81,9 +85,21 @@ init(Bucket) ->
 
     State = #state{bucket=Bucket,
                    master_db_watcher=Watcher,
-                   ddocs=undefined},
+                   ddocs=undefined,
+                   waiters=dict:new()},
 
     {ok, apply_current_map(State)}.
+
+handle_call({wait_until_added, VBucket}, From,
+            #state{waiters=Waiters} = State) ->
+    case added(VBucket, State) of
+        true ->
+            {reply, ok, State};
+        false ->
+            Waiters1 = dict:append(VBucket, From, Waiters),
+            State1 = State#state{waiters=Waiters1},
+            {noreply, State1}
+    end;
 
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
@@ -400,12 +416,15 @@ sync(#state{bucket=Bucket,
             bucket_config=BucketConfig,
             pending_vbucket_states=PendingStates,
             ddocs=DDocs,
-            map=Map} = State) ->
+            map=Map,
+            waiters=Waiters} = State) ->
     NewMap = build_map(BucketConfig, PendingStates),
     case NewMap =/= Map of
         true ->
             apply_map(Bucket, DDocs, Map, NewMap),
-            State#state{vbucket_states=PendingStates, map=NewMap};
+            Waiters1 = notify_waiters(Waiters, NewMap),
+            State#state{vbucket_states=PendingStates,
+                        map=NewMap, waiters=Waiters1};
         false ->
             State#state{vbucket_states=PendingStates}
     end.
@@ -426,3 +445,29 @@ get_design_docs(Bucket) ->
                                 DDocId
                         end, DDocs),
     sets:from_list(DDocIds).
+
+added(VBucket, #state{map=Map}) ->
+    Active = proplists:get_value(active, Map),
+    Passive = proplists:get_value(passive, Map),
+
+    lists:member(VBucket, Active)
+        orelse lists:member(VBucket, Passive).
+
+notify_waiters(Waiters, Map) ->
+    Active = proplists:get_value(active, Map),
+    Passive = proplists:get_value(passive, Map),
+
+    Waiters1 = do_notify_waiters(Waiters, Active),
+    do_notify_waiters(Waiters1, Passive).
+
+do_notify_waiters(Waiters, Partitions) ->
+    lists:foldl(
+      fun (P, AccWaiters) ->
+              case dict:find(P, AccWaiters) of
+                  {ok, Froms} ->
+                      [gen_server:reply(From, ok) || From <- Froms],
+                      dict:erase(P, AccWaiters);
+                  error ->
+                      AccWaiters
+              end
+      end, Waiters, Partitions).
