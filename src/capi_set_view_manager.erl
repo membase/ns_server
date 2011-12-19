@@ -184,24 +184,34 @@ matching_indexes(Pred, List) ->
               end
       end, [], IndexedList).
 
+matching_vbuckets(Pred, Map, States) ->
+    matching_indexes(
+      fun (Ix, [MasterNode | _]) ->
+              case MasterNode =:= node() of
+                  true ->
+                      VBucketState = dict:fetch(Ix, States),
+                      Pred(Ix, VBucketState);
+                  false ->
+                      false
+              end
+      end, Map).
+
 build_map(BucketConfig, VBucketStates) ->
     Map = proplists:get_value(map, BucketConfig),
 
     case Map of
         undefined ->
-            [{active, []}, {passive, []}];
+            [{active, []}, {passive, []}, {ignore, []}];
         _ ->
-            Active = matching_indexes(
-                       fun (Ix, [MasterNode | _]) ->
-                               case MasterNode =:= node() of
-                                   true ->
-                                       VBucketState =
-                                           dict:fetch(Ix, VBucketStates),
-                                       VBucketState =:= active;
-                                   false ->
-                                       false
-                               end
-                       end, Map),
+            Active = matching_vbuckets(
+                       fun (_Vb, State) ->
+                               State =:= active
+                       end, Map, VBucketStates),
+
+            Ignore = matching_vbuckets(
+                       fun (_Vb, State) ->
+                               State =:= dead
+                       end, Map, VBucketStates),
 
             FFMap = proplists:get_value(fastForwardMap, BucketConfig),
             Passive =
@@ -210,24 +220,18 @@ build_map(BucketConfig, VBucketStates) ->
                         [];
                     _ ->
                         Passive1 =
-                            matching_indexes(
-                              fun (Ix, [MasterNode | _]) ->
-                                      case MasterNode =:= node() of
-                                          true ->
-                                              VBucketState =
-                                                  dict:fetch(Ix, VBucketStates),
-                                              VBucketState =:= active orelse
-                                                  VBucketState =:= replica orelse
-                                                  VBucketState =:= pending;
-                                          false ->
-                                              false
-                                      end
-                              end, FFMap),
+                            matching_vbuckets(
+                              fun (_Vb, State) ->
+                                      State =:= active orelse
+                                          State =:= replica orelse
+                                          State =:= pending
+                              end, FFMap, VBucketStates),
                         Passive1 -- Active
                 end,
 
             [{active, Active},
-             {passive, Passive}]
+             {passive, Passive},
+             {ignore, Ignore}]
     end.
 
 define_group(Bucket, BucketConfig, DDocId, Map) ->
@@ -283,6 +287,7 @@ apply_map(Bucket, DDocs, OldMap, NewMap) ->
 
     Active = proplists:get_value(active, NewMap),
     Passive = proplists:get_value(passive, NewMap),
+    Ignore = proplists:get_value(ignore, NewMap),
 
     ToRemove =
         case OldMap of
@@ -291,7 +296,10 @@ apply_map(Bucket, DDocs, OldMap, NewMap) ->
             _ ->
                 OldActive = proplists:get_value(active, OldMap),
                 OldPassive = proplists:get_value(passive, OldMap),
-                (OldActive ++ OldPassive) -- (Active ++ Passive)
+                OldIgnore = proplists:get_value(ignore, OldMap),
+
+                (OldActive ++ OldPassive ++ OldIgnore) --
+                    (Active ++ Passive ++ Ignore)
         end,
 
     ?log_debug("Partitions to remove: ~p", [ToRemove]),
