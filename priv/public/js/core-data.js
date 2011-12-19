@@ -163,14 +163,25 @@ var DAL = {
   loginSuccess: function (data) {
     var rows = data.pools;
 
-    if (data.implementationVersion) {
-      DAL.version = data.implementationVersion;
+    var implementationVersion = data.implementationVersion;
+
+    (function () {
+      var match = /(\?|&)forceVersion=([^&]+)/.exec(document.location.href);
+      if (!match) {
+        return;
+      }
+      implementationVersion = decodeURIComponent(match[2]);
+      console.log("forced version: ", implementationVersion);
+    })();
+
+    if (implementationVersion) {
+      DAL.version = implementationVersion;
       DAL.componentsVersion = data.componentsVersion;
       DAL.uuid = data.uuid;
       if (!DAL.appendedVersion) {
         document.title = document.title +
-          " (" + DAL.parseVersion(data.implementationVersion)[0] + ")";
-        var v = DAL.prettyVersion(data.implementationVersion);
+          " (" + DAL.parseVersion(implementationVersion)[0] + ")";
+        var v = DAL.prettyVersion(implementationVersion);
         $('.version > .couchbase-version').text(v).parent().show();
         DAL.appendedVersion = true;
       }
