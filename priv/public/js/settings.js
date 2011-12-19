@@ -257,7 +257,7 @@ var UpdatesNotificationsSection = {
     }
     renderTemplate('leftNav_settings',
                    {enabled: sendStats, newVersion: newVersion},
-                   $i('leftNav_settings_container'));
+                   $i('switch_settings'));
     renderTemplate('notifications',
                    $.extend(data, {enabled: sendStats,
                                    version: DAL.prettyVersion(DAL.version)}),
