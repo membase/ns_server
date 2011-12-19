@@ -178,9 +178,11 @@ var DAL = {
       DAL.version = implementationVersion;
       DAL.componentsVersion = data.componentsVersion;
       DAL.uuid = data.uuid;
+      var parsedVersion = DAL.parseVersion(implementationVersion);
+      DAL.isEnterprise = (parsedVersion[3] === 'enterprise');
       if (!DAL.appendedVersion) {
         document.title = document.title +
-          " (" + DAL.parseVersion(implementationVersion)[0] + ")";
+          " (" + parsedVersion[0] + ")";
         var v = DAL.prettyVersion(implementationVersion);
         $('.version > .couchbase-version').text(v).parent().show();
         DAL.appendedVersion = true;
