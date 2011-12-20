@@ -1081,3 +1081,5 @@ body.init_update_notifications #init_update_notifications_dialog p.pad_10 {color
 
 body.staleness-active a.disable-if-stale { text-decoration: none; }
 body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: default; }
+
+#init_update_notifications_dialog .when-required { display: none; }
