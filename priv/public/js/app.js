@@ -624,6 +624,8 @@ var NodeDialog = {
   },
   startPage_update_notifications: function(node, pagePrefix, opt) {
     var dialog = $('#init_update_notifications_dialog');
+    var emailField = $('#init-join-community-email').need(1);
+    var formObserver;
 
     $('#update_notifications_errors_container').hide();
 
@@ -646,39 +648,77 @@ var NodeDialog = {
     dialog.find('.when-enterprise').toggle(!!DAL.isEnterprise);
     dialog.find('.when-community').toggle(!DAL.isEnterprise);
 
-    (function (emailField) {
-      setTimeout(function () {
-        try {
-          emailField.focus();
-        } catch (e) {
-          //ignore
-        }
-      }, 10);
-    })(dialog.find('#init-join-community-email').need(1)[0]);
+    setTimeout(function () {
+      try {
+        emailField[0].focus();
+      } catch (e) {
+        //ignore
+      }
+    }, 10);
 
     if (!DAL.isEnterprise) {
       dialog.find('.when-required').hide();
+      formObserver = dialog.observePotentialChanges(communityFormValidator);
     } else {
-      var enterpriseFormObserver = dialog.observePotentialChanges(enterpriseFormValidator);
+      formObserver = dialog.observePotentialChanges(enterpriseFormValidator);
     }
 
-    var plantTree = $('#init-join-tree')
+    var plantTree = $('#init-join-tree');
 
-    var needFields;
+    var appliedValidness = {};
+    function applyValidness(validness) {
+      _.each(validness, function (v, k) {
+        if (appliedValidness[k] === v) {
+          return;
+        }
+        $($i(k))[v ? 'addClass' : 'removeClass']('invalid');
+        appliedValidness[k] = v;
+      });
+    }
+
+    var emailValue;
+    var emailInvalidness;
+
+    function validateEmailField() {
+      var newEmailValue = $.trim(emailField.val());
+      if (emailValue !== newEmailValue) {
+        emailValue = newEmailValue;
+        emailInvalidness = (newEmailValue !== '' && !HTML5_EMAIL_RE.exec(newEmailValue));
+      }
+      return emailInvalidness;
+    }
+
+    var invalidness = {};
+    var invalidDueToEmptiness;
+
+    var oldNeedFields;
     function enterpriseFormValidator() {
-      var newNeedFields = plantTree.is(':checked');
-      if (needFields !== newNeedFields) {
-        needFields = newNeedFields;
-        dialog.find('.when-required').toggle(needFields).parent().find('.invalid').removeClass('invalid');
+      var needFields = plantTree.is(':checked');
+      if (oldNeedFields !== needFields) {
+        oldNeedFields = needFields;
+        dialog.find('.when-required').toggle(needFields);
       }
 
-      if (needFields) {
-        _.each(dialog.find(":text"), function (element) {
-          element = $(element);
-          var isEmpty = ($.trim(element.val()) === "");
-          element.toggleClass('invalid', isEmpty);
-        });
-      }
+      invalidDueToEmptiness = false;
+      _.each(dialog.find(":text"), function (element) {
+        var id = element.id;
+        element = $(element);
+        var isEmpty = needFields && ($.trim(element.val()) === "");
+        invalidDueToEmptiness = invalidDueToEmptiness || isEmpty;
+        invalidness[id] = isEmpty;
+      });
+
+      var emailId = emailField.attr('id');
+      var validateEmailResult = validateEmailField();
+      invalidness[emailId] = invalidness[emailId] || validateEmailResult;
+
+      applyValidness(invalidness);
+    }
+
+    function communityFormValidator() {
+      var emailId = emailField.attr('id');
+      invalidness[emailId] = validateEmailField();
+      applyValidness(invalidness);
     }
 
     var sending;
@@ -693,29 +733,36 @@ var NodeDialog = {
       }
       $('#update_notifications_errors_container').hide();
 
-      if (DAL.isEnterprise) {
-        enterpriseFormValidator();
+      var errors = [];
+      var formObserverResult;
 
+      if (formObserver) {
+        formObserver.callback() || {};
+      }
+
+      if (emailInvalidness) {
+        errors.push("Email appears to be invalid");
+      }
+
+      if (DAL.isEnterprise) {
         var termsChecked = !!$('#init-join-terms').attr('checked');
-        var errors = [];
         if (!termsChecked) {
           errors.push("Terms and conditions need to be accepted in order to continue");
         }
 
-        var invalidFields = dialog.find('.invalid');
-        if (invalidFields.length) {
+        if (invalidDueToEmptiness) {
           errors.push("All fields marked as mandatory (*) need to be filled in");
-        }
-
-        if (errors.length) {
-          renderTemplate('update_notifications_errors', errors);
-          $('#update_notifications_errors_container').show();
-          try {invalidFields[0].focus();} catch (e) {}
-          return;
         }
       }
 
-      var email = $.trim($('#init-join-community-email').val());
+      if (errors.length) {
+        renderTemplate('update_notifications_errors', errors);
+        $('#update_notifications_errors_container').show();
+        try {invalidFields[0].focus();} catch (e) {}
+        return;
+      }
+
+      var email = $.trim(emailField.val());
       if (email!=='') {
         // Send email address. We don't care if notifications were enabled
         // or not.
@@ -748,8 +795,8 @@ var NodeDialog = {
 
     // cleans up all event handles
     function onLeave() {
-      if (enterpriseFormObserver) {
-        enterpriseFormObserver.stopObserving();
+      if (formObserver) {
+        formObserver.stopObserving();
       }
     }
   }
