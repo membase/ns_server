@@ -906,9 +906,12 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details form {border-top:1px solid #dfdfe0;}
 .bucket_details .clearfix {padding:0 56px 29px;border-top:1px solid #f8f8f8;}
 .bucket_details .clearfix .designdoc_name,
-.bucket_details .clearfix .des_name {float:left;border:1px solid #fff;text-align:left; width: 12em;}
+.bucket_details .clearfix .des_name {float:none;border:1px solid #fff;border-left-width:0;text-align:left; padding-left:0px;font-family: Verdana,Arial,sans-serif;}
 
-.bucket_details .clearfix .des_lab {float:left;padding:0;margin:0}
+.bucket_details .clearfix .des_name {width:180px;}
+.bucket_details .clearfix .designdoc_name {width:270px;}
+
+.bucket_details .clearfix .des_lab {display:inline;float:none;padding:0;margin:0}
  .init_block .bucket_details form > div {border-bottom:none;}
  .init_block .bucket_details .config-bottom {padding:18px 18px 17px;border:none;}
 .bucket_details form > fieldset{padding:0 56px;margin-top:15px}
