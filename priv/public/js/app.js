@@ -230,11 +230,6 @@ var ThePage = {
       if (DAL.login) {
         $('.sign-out-link').show();
       }
-
-      $('body').addClass(
-          DAL.parseVersion(DAL.componentsVersion['ns_server'])[3] === 'enterprise'
-          ? 'enterprise'
-          : 'community');
     });
 
     var self = this;
@@ -629,18 +624,97 @@ var NodeDialog = {
   },
   startPage_update_notifications: function(node, pagePrefix, opt) {
     var dialog = $('#init_update_notifications_dialog');
-    dialog.find('a.more_info').click(function(e) {
+
+    $('#update_notifications_errors_container').hide();
+
+    dialog.find('a.more_info').unbind('click').click(function(e) {
       e.preventDefault();
       dialog.find('p.more_info').slideToggle();
     });
-    dialog.find('button.back').click(function (e) {
+    dialog.find('button.back').unbind('click').click(function (e) {
       e.preventDefault();
       onLeave();
       showInitDialog("bucket_dialog");
     });
-    // Go to next page. Send off email address if given and apply settings
-    dialog.find('button.next').click(function (e) {
+
+    dialog.find('button.next').unbind('click').click(onNext);
+    dialog.find('form').unbind('submit').bind('submit', function (e) {
       e.preventDefault();
+      dialog.find('button.next').trigger('click');
+    });
+
+    dialog.find('.when-enterprise').toggle(!!DAL.isEnterprise);
+    dialog.find('.when-community').toggle(!DAL.isEnterprise);
+
+    (function (emailField) {
+      setTimeout(function () {
+        try {
+          emailField.focus();
+        } catch (e) {
+          //ignore
+        }
+      }, 10);
+    })(dialog.find('#init-join-community-email').need(1)[0]);
+
+    if (!DAL.isEnterprise) {
+      dialog.find('.when-required').hide();
+    } else {
+      var enterpriseFormObserver = dialog.observePotentialChanges(enterpriseFormValidator);
+    }
+
+    var plantTree = $('#init-join-tree')
+
+    var needFields;
+    function enterpriseFormValidator() {
+      var newNeedFields = plantTree.is(':checked');
+      if (needFields !== newNeedFields) {
+        needFields = newNeedFields;
+        dialog.find('.when-required').toggle(needFields).parent().find('.invalid').removeClass('invalid');
+      }
+
+      if (needFields) {
+        _.each(dialog.find(":text"), function (element) {
+          element = $(element);
+          var isEmpty = ($.trim(element.val()) === "");
+          element.toggleClass('invalid', isEmpty);
+        });
+      }
+    }
+
+    var sending;
+
+    // Go to next page. Send off email address if given and apply settings
+    function onNext(e) {
+      e.preventDefault();
+      if (sending) {
+        // this prevents double send caused by submitting form via
+        // hitting Enter
+        return;
+      }
+      $('#update_notifications_errors_container').hide();
+
+      if (DAL.isEnterprise) {
+        enterpriseFormValidator();
+
+        var termsChecked = !!$('#init-join-terms').attr('checked');
+        var errors = [];
+        if (!termsChecked) {
+          errors.push("Terms and conditions need to be accepted in order to continue");
+        }
+
+        var invalidFields = dialog.find('.invalid');
+        if (invalidFields.length) {
+          errors.push("All fields marked as mandatory (*) need to be filled in");
+        }
+
+        if (errors.length) {
+          renderTemplate('update_notifications_errors', errors);
+          $('#update_notifications_errors_container').show();
+          try {invalidFields[0].focus();} catch (e) {}
+          return;
+        }
+      }
+
       var email = $.trim($('#init-join-community-email').val());
       if (email!=='') {
         // Send email address. We don't care if notifications were enabled
@@ -652,26 +726,31 @@ var NodeDialog = {
                  firstname: $.trim($('#init-join-community-firstname').val()),
                  lastname: $.trim($('#init-join-community-lastname').val()),
                  company: $.trim($('#init-join-community-company').val()),
+                 incentive: plantTree.is(':checked') ? 'tree' : 'none',
                  version: DAL.version || "unknown"}
         });
       }
 
       var sendStatus = $('#init-notifications-updates-enabled').is(':checked');
+      sending = true;
+      var spinner = overlayWithSpinner(dialog);
       postWithValidationErrors(
         '/settings/stats',
         $.param({sendStats: sendStatus}),
-        function() {
+        function () {
+          spinner.remove();
+          sending = false;
           onLeave();
           showInitDialog("secure");
         }
       );
-    });
+    }
 
     // cleans up all event handles
     function onLeave() {
-      dialog.find('a.more_info').unbind();
-      dialog.find('button.back').unbind();
-      dialog.find('button.next').unbind();
+      if (enterpriseFormObserver) {
+        enterpriseFormObserver.stopObserving();
+      }
     }
   }
 };

@@ -1346,7 +1346,7 @@
     </div>
     </div>
   <!-- END init_cluster_block -->
-  <div class="pad" id="init_update_notifications_dialog">
+  <div class="pad" id="init_update_notifications_dialog"><form>
     <div class="config-top">
       <h1>Notifications</h1>
       <h2>Step <span class="current-step">3</span> of 4</h2>
@@ -1362,12 +1362,27 @@
     <p class="more_info pad_10">
       Enabling software update notifications allows notification in the Couchbase web console when a new version of Couchbase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.
     </p>
-    <h2 class="question">Community Updates</h2>
-    <p class="pad_10">Please provide your email address to join the community and receive news on coming events.</p>
+    <div class="when-community">
+      <h2 class="question">Community Updates</h2>
+      <p class="pad_10">Please provide your email address to join the community and receive news on coming events.</p>
+    </div>
+    <div class="when-enterprise">
+      <h2 class="question">Register and <span style="color: #83B817;">plant a tree</span></h2>
+      <p class="pad_10 clearfix"><img style="float: left; width:48px; height:53px; margin-right:6px;" src="images/no-preload/mokugift-tree.gif" />Register your Enterprise Edition of Couchbase Server with your full contact details and we’ll plant a tree. It’s as simple as that.</p>
+      <p class="pad_10 warn" style="color:#EC5223;" id="update_notifications_errors_container"></p>
+      <div class="template" id="update_notifications_errors_template">
+        <ul>
+        <!-- {% _.each(rows, function (errorMsg) { %} -->
+          <li>{%= h(errorMsg) %}</li>
+        <!-- {% }); %} -->
+        </ul>
+      </div>
+    </div>
     <p class="pad_10">
       <label for="init-join-community-email">
         <span class="field-label">Email:</span>
         <input id="init-join-community-email">
+        <span class="when-required" style="color:red;">*</span>
         <span class="error-container err-name"></span>
       </label>
     </p>
@@ -1375,6 +1390,7 @@
       <label for="init-join-community-firstname">
         <span class="field-label">First name:</span>
         <input id="init-join-community-firstname">
+        <span class="when-required" style="color:red;">*</span>
         <span class="error-container err-firstname"></span>
       </label>
     </p>
@@ -1382,6 +1398,7 @@
       <label for="init-join-community-lastname">
         <span class="field-label">Last name:</span>
         <input id="init-join-community-lastname">
+        <span class="when-required" style="color:red;">*</span>
         <span class="error-container err-lastname"></span>
       </label>
     </p>
@@ -1389,14 +1406,21 @@
       <label for="init-join-community-company">
         <span class="field-label">Company:</span>
         <input id="init-join-community-company">
+        <span class="when-required" style="color:red;">*</span>
         <span class="error-container err-company"></span>
+      </label>
+    </p>
+    <p class="when-enterprise pad_10">
+      <label for="init-join-tree"><input type="checkbox" id="init-join-tree"> <span>Yes, please plant my tree!</span></label><br />
+      <label for="init-join-terms"><input type="checkbox" id="init-join-terms">
+        <span>I agree to the <a href="http://www.couchbase.com/agreement/free-license" target="_blank">terms and conditions</a> associated with this product. <span style="color:red">*</span></span>
       </label>
     </p>
     <div class="config-bottom">
       <button name="next" value="Next" class="submit next direction-button" id="step-3-next" type="submit">Next</button>
       <button name="back" value="Back" class="submit back direction-button" id="step-3-back" type="button">Back</button>
     </div>
-  </div>
+  </form></div>
   <!-- END init_update_notifications-->
   <div class="pad" id="init_secure_dialog">
    <div class="config-top">
