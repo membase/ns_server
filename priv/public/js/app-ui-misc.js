@@ -76,7 +76,8 @@
         stopObserving: function () {
           releaseTimer(id);
           unbindEvents();
-        }
+        },
+        callback: callback
       }
 
       function cb() {
