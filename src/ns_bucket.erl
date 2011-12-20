@@ -85,6 +85,7 @@ config_string(BucketName) ->
         case BucketType of
             membase ->
                 CouchPort = ns_config:search_node_prop(Config, memcached, mccouch_port, 11213),
+                NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
                 %% MemQuota is our per-node bucket memory limit
                 CFG =
                     io_lib:format(
@@ -93,7 +94,7 @@ config_string(BucketName) ->
                       "max_size=~B;"
                       "tap_keepalive=~B;"
                       "allow_data_loss_during_shutdown=true;"
-                      "backend=couchdb;couch_bucket=~s;couch_port=~B",
+                      "backend=couchdb;couch_bucket=~s;couch_port=~B;max_vbuckets=~B",
                       [proplists:get_value(
                          ht_size, BucketConfig,
                          getenv_int("MEMBASE_HT_SIZE", 3079)),
@@ -113,7 +114,8 @@ config_string(BucketName) ->
                          tap_keepalive, BucketConfig,
                          getenv_int("MEMBASE_TAP_KEEPALIVE", 300)),
                        BucketName,
-                       CouchPort]),
+                       CouchPort,
+                       NumVBuckets]),
                 {CFG, {MemQuota}};
             memcached ->
                 {io_lib:format("cache_size=~B", [MemQuota]),
