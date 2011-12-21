@@ -63,7 +63,7 @@ init(Bucket) ->
     ns_pubsub:subscribe(ns_config_events,
                         mk_filter(InterestingNsConfigEvent), ignored),
     ns_pubsub:subscribe(mc_couch_events,
-                        mk_filter(fun interesting_mc_couch_event/1), ignored),
+                        mk_mc_couch_event_hander(), ignored),
 
     Self = self(),
     Watcher =
@@ -100,6 +100,9 @@ handle_call({wait_until_added, VBucket}, From,
             State1 = State#state{waiters=Waiters1},
             {noreply, State1}
     end;
+
+handle_call(sync, _From, State) ->
+    {reply, ok, sync(State)};
 
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
@@ -401,12 +404,34 @@ interesting_ns_config_event(Bucket, {buckets, Buckets}) ->
 interesting_ns_config_event(_Bucket, _) ->
     false.
 
-interesting_mc_couch_event({set_vbucket, _, _, _, _}) ->
-    true;
-interesting_mc_couch_event({flush_all, _}) ->
-    true;
-interesting_mc_couch_event(_) ->
-    false.
+mk_mc_couch_event_hander() ->
+    Self = self(),
+
+    fun (Event, _) ->
+            handle_mc_couch_event(Self, Event)
+    end.
+
+handle_mc_couch_event(Self,
+                      {pre_set_vbucket, Bucket, VBucket, State, Checkpoint}) ->
+    case State of
+        dead ->
+            Self ! {set_vbucket, Bucket, VBucket, State, Checkpoint},
+            ok = gen_server:call(Self, sync);
+        _ ->
+            ok
+    end;
+handle_mc_couch_event(Self,
+                      {post_set_vbucket, Bucket, VBucket, State, Checkpoint}) ->
+    case State of
+        dead ->
+            ok;
+        _ ->
+            Self ! {set_vbucket, Bucket, VBucket, State, Checkpoint}
+    end;
+handle_mc_couch_event(Self, {flush_all, _} = Event) ->
+    Self ! Event;
+handle_mc_couch_event(_, _) ->
+    ok.
 
 mk_filter(Pred) ->
     Self = self(),
