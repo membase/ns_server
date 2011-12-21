@@ -756,9 +756,12 @@ var NodeDialog = {
       }
 
       if (errors.length) {
+        var invalidFields = dialog.find('.invalid');
         renderTemplate('update_notifications_errors', errors);
         $('#update_notifications_errors_container').show();
-        try {invalidFields[0].focus();} catch (e) {}
+        if (invalidFields.length && !_.include(invalidFields, document.activeElement)) {
+          setTimeout(function () {try {invalidFields[0].focus();} catch (e) {}}, 10);
+        }
         return;
       }
 
