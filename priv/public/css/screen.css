@@ -629,6 +629,9 @@ body.auth #cluster_state_id, body.init_welcome #cluster_state_id {font-style:ita
 .tooltip {position:relative; display:inline-block; text-decoration:none !important;}
 .tooltip:hover span:first-child {text-decoration:underline;}
 .tooltip .tooltip_msg {display:none; position:absolute; width:150px; padding:6px 0 0 0; right:0px; top:14px; background:url(../images/tooltip_bg.gif) 100% 0 no-repeat; z-index:10;}
+.wider_tooltip.tooltip .tooltip_msg {width:200px; background-image:url(../images/tooltip_bg_777777.png);}
+.wider_tooltip.tooltip .tooltip_msg span { background:none #777777; font-size:10pt;}
+span.tooltip {color:#0095D6;cursor:pointer;}
 .tooltip .tooltip_msg span {display:block; padding:5px; background:none #555557; font-size:11px; text-decoration:none !important; color:#fff !important;}
 
 .graph_tooltip {display: none;background:rgb(50, 50, 50);background:rgba(50, 50, 50, 0.9);line-height:1.25em;color: white;margin:10px -15%;padding: 6px 8px;position: relative;z-index:100;-moz-box-shadow: 0 1px 7px #333;-webkit-box-shadow: 0 1px 7px #333;box-shadow: 0 1px 7px #333;}
