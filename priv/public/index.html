@@ -767,26 +767,26 @@
                   <span>Host:</span>
                 </label>
                 <input type="text" id="email_alerts_host"
-                       value="{%= emailServer.host %}" disabled="disabled" />
+                       value="{%= h(emailServer.host) %}" disabled="disabled" />
               </div>
               <div>
                 <label for="email_alerts_port">
                   <span>Port:</span>
                 </label>
                 <input type="text" id="email_alerts_port"
-                       value="{%= emailServer.port %}" disabled="disabled" />
+                       value="{%= h(emailServer.port) %}" disabled="disabled" />
                 <div class="error-container err-email_port"></div>
               </div>
               <label for="email_alerts_user">
                 <span>Username:</span>
               </label>
               <input type="text" id="email_alerts_user"
-                     value="{%= emailServer.user %}" disabled="disabled" />
+                     value="{%= h(emailServer.user) %}" disabled="disabled" />
               <label for="email_alerts_pass">
                 <span>Password:</span>
               </label>
               <input type="password" id="email_alerts_pass"
-                     value="{%= emailServer.pass %}" disabled="disabled" />
+                     value="{%= h(emailServer.pass) %}" disabled="disabled" />
             </fieldset>
             <fieldset>
               <legend>Email Settings</legend>
@@ -794,12 +794,12 @@
                 <span>Sender email:</span>
               </label>
               <input type="text" id="email_alerts_sender"
-                     value="{%= sender %}" disabled="disabled" />
+                     value="{%= h(sender) %}" disabled="disabled" />
               <div class="error-container err-sender"></div>
               <label for="email_alerts_sender">
                 <span>Recipients:</span>
               </label>
-              <textarea id="email_alerts_recipients" disabled="disabled">{%= recipients %}</textarea>
+              <textarea id="email_alerts_recipients" disabled="disabled">{%= h(recipients) %}</textarea>
               <span style="vertical-align:top;margin:0 5px;line-height:24px">separate addresses with comma "," or semicolon ";" or spaces " "</span></div>
               <div class="error-container err-recipients"></div>
               <div><button class="edit_btn" id="test_email">Test Mail</button> <span>using the settings above</span></div>
@@ -808,15 +808,15 @@
               <legend>Available Alerts</legend>
               <div class="checkboxes">
                 {% for (var i=0; i<alerts.length; i++) { %}
-                <label for="email_alerts_alerts_{%= alerts[i].label %}">
+                <label for="email_alerts_alerts_{%= h(alerts[i].label) %}">
                   <input type="checkbox"
-                         id="email_alerts_alerts_{%= alerts[i].value %}"
-                         value="{%= alerts[i].value %}"
+                         id="email_alerts_alerts_{%= h(alerts[i].value) %}"
+                         value="{%= h(alerts[i].value) %}"
                          {% if (alerts[i].enabled) { %}
                          checked="checked"
                          {% } %}
                          />
-                  <span>{%= alerts[i].label %}</span>
+                  <span>{%= h(alerts[i].label) %}</span>
                 </label>
                 {% } %}
               </div>
