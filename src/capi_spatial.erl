@@ -24,6 +24,31 @@
 -define(RETRY_INTERVAL, 5 * 1000).
 -define(RETRY_ATTEMPTS, 20).
 
+% The _spatial endpoint is different from others. It has sub-endpoints
+% like _spatial/_compact.
+% This function splits between a reply to a normal spatial query and
+% dispatching of sub-endpoints if the path part after _spatial starts
+% with an underscore.
+handle_spatial_req(#httpd{
+        path_parts=[_, _, _Dname, _, SpatialName|_]}=Req, Db, DDoc) ->
+    case SpatialName of
+    % the path after _spatial starts with an underscore => dispatch
+    <<$_,_/binary>> ->
+        dispatch_sub_spatial_req(Req, Db, DDoc);
+    _ ->
+        handle_spatial(Req, Db, DDoc)
+    end.
+
+% the dispatching of endpoints below _spatial needs to be done manually
+dispatch_sub_spatial_req(#httpd{
+        path_parts=[_, _, _DName, Spatial, SpatialDisp|_]}=Req,
+        Db, DDoc) ->
+    Conf = couch_config:get("httpd_design_handlers",
+        ?b2l(<<Spatial/binary, "/", SpatialDisp/binary>>)),
+    Fun = couch_httpd:make_arity_3_fun(Conf),
+    Fun(Req, Db, DDoc).
+
+
 design_doc_spatial(Req, #db{name=BucketName} = Db, DesignName, SpatialName,
                    VBuckets) ->
     DDocId = <<"_design/", DesignName/binary>>,
@@ -51,12 +76,12 @@ design_doc_spatial_loop(Req, Db, DDocId, SpatialName, Attempt) ->
             design_doc_spatial_loop(Req, Db, DDocId, SpatialName, Attempt - 1)
     end.
 
-handle_spatial_req(Req, Db, DDoc) when Db#db.filepath =/= undefined ->
+handle_spatial(Req, Db, DDoc) when Db#db.filepath =/= undefined ->
     couch_httpd_spatial:handle_spatial_req(Req, Db, DDoc);
 
-handle_spatial_req(#httpd{method='GET',
-                          path_parts=[_, _, DName, _, SpatialName]}=Req, #db{name=Name} = Db,
-                   _DDoc) ->
+handle_spatial(#httpd{method='GET',
+                      path_parts=[_, _, DName, _, SpatialName]}=Req, #db{name=Name} = Db,
+               _DDoc) ->
     case capi_view:run_on_subset(Req, Name) of
         full_set ->
             design_doc_spatial(Req, Db, DName, SpatialName);
@@ -64,12 +89,12 @@ handle_spatial_req(#httpd{method='GET',
             design_doc_spatial(Req, Db, DName, SpatialName, [VBucket])
     end;
 
-handle_spatial_req(#httpd{method='POST',
-                          path_parts=[_, _, DName, _, SpatialName]}=Req, Db, _DDoc) ->
+handle_spatial(#httpd{method='POST',
+                      path_parts=[_, _, DName, _, SpatialName]}=Req, Db, _DDoc) ->
     couch_httpd:validate_ctype(Req, "application/json"),
     design_doc_spatial(Req, Db, DName, SpatialName);
 
-handle_spatial_req(Req, _Db, _DDoc) ->
+handle_spatial(Req, _Db, _DDoc) ->
     couch_httpd:send_method_not_allowed(Req, "GET,POST,HEAD").
 
 
