@@ -32,6 +32,7 @@
 -record(state, {bad_vbucket_count = 0 :: non_neg_integer(),
                 upstream :: port(),
                 downstream :: port(),
+                upstream_sender :: pid(),
                 upbuf = <<>> :: binary(),
                 downbuf = <<>> :: binary(),
                 vbuckets,
@@ -104,6 +105,9 @@ handle_info(check_for_timeout, State) ->
         false ->
             {noreply, State}
     end;
+handle_info({'EXIT', Pid, Reason}, #state{upstream_sender = SenderPid} = State) when Pid =:= SenderPid ->
+    ?log_error("killing myself due to unexpected upstream sender exit with reason: ~p", [Reason]),
+    {stop, {unexpected_upstream_sender_exit, Reason}, State};
 handle_info(Msg, State) ->
     ?log_info("handle_info(~p, ~p)", [Msg, State]),
     {noreply, State}.
@@ -167,9 +171,13 @@ init({Src, Dst, Opts}) ->
     Timeout = proplists:get_value(timeout, Opts, ?TIMEOUT_CHECK_INTERVAL),
     {ok, _TRef} = timer:send_interval(Timeout, check_for_timeout),
 
+    UpstreamSender = spawn_link(erlang, apply, [fun upstream_sender_loop/1, [Upstream]]),
+    ?log_info("upstream_sender pid: ~p", [UpstreamSender]),
+
     State = #state{
       upstream=Upstream,
       downstream=Downstream,
+      upstream_sender = UpstreamSender,
       vbuckets=sets:from_list(ReadyVBuckets),
       last_seen=now(),
       takeover=TakeOver,
@@ -177,6 +185,13 @@ init({Src, Dst, Opts}) ->
      },
     erlang:process_flag(trap_exit, true),
     gen_server:enter_loop(?MODULE, [], maybe_setup_dumping(State, Args)).
+
+upstream_sender_loop(Upstream) ->
+    receive
+        Data ->
+            gen_tcp:send(Upstream, Data)
+    end,
+    upstream_sender_loop(Upstream).
 
 -spec maybe_setup_dumping(#state{}, term()) -> #state{}.
 maybe_setup_dumping(State, Args) ->
@@ -339,7 +354,7 @@ process_downstream(<<?RES_MAGIC:8, _/binary>> = Packet,
         undefined -> ok;
         File -> file:write(File, Packet)
     end,
-    ok = gen_tcp:send(State#state.upstream, Packet),
+    State#state.upstream_sender ! Packet,
     State.
 
 
