@@ -187,7 +187,8 @@ maybe_compact_bucket(BucketName, VbNames, Config) ->
          []
     end,
     try
-        couch_set_view:cleanup_index_files(BucketName)
+        couch_set_view:cleanup_index_files(BucketName),
+        capi_spatial:cleanup_spatial_index_files(BucketName)
     catch Tag:CleanupError ->
         ?log_error("Error while doing cleanup of old index files for bucket `~s`: ~p",
                    [BucketName, {Tag, CleanupError}])
