@@ -31,6 +31,8 @@
 -define(VBUCKET_POLL_INTERVAL, 100).
 -define(TIMEOUT, 30000).
 -define(CONNECTED_TIMEOUT, 5000).
+%% half-second is definitely 'slow' for any definition of slow
+-define(SLOW_CALL_THRESHOLD_MICROS, 500000).
 
 %% gen_server API
 -export([start_link/1]).
@@ -106,14 +108,29 @@ init(Bucket) ->
        bucket=Bucket}
     }.
 
-handle_call({raw_stats, SubStat, StatsFun, StatsFunState}, _From, State) ->
+handle_call(Msg, From, State) ->
+    StartTS = os:timestamp(),
+    try
+        do_handle_call(Msg, From, State)
+    after
+        EndTS = os:timestamp(),
+        Diff = timer:now_diff(EndTS, StartTS),
+        if
+            Diff > ?SLOW_CALL_THRESHOLD_MICROS ->
+                ?log_error("call ~p took too long: ~p us", [Msg, Diff]);
+            true ->
+                ok
+        end
+    end.
+
+do_handle_call({raw_stats, SubStat, StatsFun, StatsFunState}, _From, State) ->
     try mc_client_binary:stats(State#state.sock, SubStat, StatsFun, StatsFunState) of
         Reply ->
             {reply, Reply, State}
     catch T:E ->
             {reply, {exception, {T, E}}, State}
     end;
-handle_call(backfilling, _From, State) ->
+do_handle_call(backfilling, _From, State) ->
     End = <<":pending_backfill">>,
     ES = byte_size(End),
     {ok, Reply} = mc_client_binary:stats(
@@ -130,7 +147,7 @@ handle_call(backfilling, _From, State) ->
                             Acc
                     end, false),
     {reply, Reply, State};
-handle_call({delete_vbucket, VBucket}, _From, #state{sock=Sock} = State) ->
+do_handle_call({delete_vbucket, VBucket}, _From, #state{sock=Sock} = State) ->
     case mc_client_binary:delete_vbucket(Sock, VBucket) of
         ok ->
             {reply, ok, State};
@@ -140,13 +157,13 @@ handle_call({delete_vbucket, VBucket}, _From, #state{sock=Sock} = State) ->
             Reply = mc_client_binary:delete_vbucket(Sock, VBucket),
             {reply, Reply, State}
     end;
-handle_call({get_vbucket, VBucket}, _From, State) ->
+do_handle_call({get_vbucket, VBucket}, _From, State) ->
     Reply = mc_client_binary:get_vbucket(State#state.sock, VBucket),
     {reply, Reply, State};
-handle_call(list_buckets, _From, State) ->
+do_handle_call(list_buckets, _From, State) ->
     Reply = mc_client_binary:list_buckets(State#state.sock),
     {reply, Reply, State};
-handle_call(list_vbuckets_prevstate, _From, State) ->
+do_handle_call(list_vbuckets_prevstate, _From, State) ->
     Reply = mc_client_binary:stats(
               State#state.sock, <<"prev-vbucket">>,
               fun (<<"vb_", K/binary>>, V, Acc) ->
@@ -154,7 +171,7 @@ handle_call(list_vbuckets_prevstate, _From, State) ->
                         binary_to_existing_atom(V, latin1)} | Acc]
               end, []),
     {reply, Reply, State};
-handle_call(list_vbuckets, _From, State) ->
+do_handle_call(list_vbuckets, _From, State) ->
     Reply = mc_client_binary:stats(
               State#state.sock, <<"vbucket">>,
               fun (<<"vb_", K/binary>>, V, Acc) ->
@@ -162,28 +179,28 @@ handle_call(list_vbuckets, _From, State) ->
                         binary_to_existing_atom(V, latin1)} | Acc]
               end, []),
     {reply, Reply, State};
-handle_call(connected, _From, #state{status=Status} = State) ->
+do_handle_call(connected, _From, #state{status=Status} = State) ->
     {reply, Status =:= connected, State};
-handle_call(flush, _From, State) ->
+do_handle_call(flush, _From, State) ->
     Reply = mc_client_binary:flush(State#state.sock),
     {reply, Reply, State};
-handle_call({set_flush_param, Key, Value}, _From, State) ->
+do_handle_call({set_flush_param, Key, Value}, _From, State) ->
     Reply = mc_client_binary:set_flush_param(State#state.sock, Key, Value),
     {reply, Reply, State};
-handle_call({set_vbucket, VBucket, VBState}, _From,
+do_handle_call({set_vbucket, VBucket, VBState}, _From,
             #state{sock=Sock} = State) ->
     %% This happens asynchronously, so there's no guarantee the
     %% vbucket will be in the requested state when it returns.
     Reply = mc_client_binary:set_vbucket(Sock, VBucket, VBState),
     {reply, Reply, State};
-handle_call({stats, Key}, _From, State) ->
+do_handle_call({stats, Key}, _From, State) ->
     Reply = mc_client_binary:stats(
               State#state.sock, Key,
               fun (K, V, Acc) ->
                       [{K, V} | Acc]
               end, []),
     {reply, Reply, State};
-handle_call(topkeys, _From, State) ->
+do_handle_call(topkeys, _From, State) ->
     Reply = mc_client_binary:stats(
               State#state.sock, <<"topkeys">>,
               fun (K, V, Acc) ->
@@ -199,10 +216,10 @@ handle_call(topkeys, _From, State) ->
               end,
               []),
     {reply, Reply, State};
-handle_call(sync_bucket_config, _From, State) ->
+do_handle_call(sync_bucket_config, _From, State) ->
     handle_info(check_config, State),
     {reply, ok, State};
-handle_call(_, _From, State) ->
+do_handle_call(_, _From, State) ->
     {reply, unhandled, State}.
 
 
