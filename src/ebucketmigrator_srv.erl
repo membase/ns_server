@@ -40,8 +40,7 @@
                 takeover :: boolean(),
                 takeover_done :: boolean(),
                 takeover_msgs_seen = 0 :: non_neg_integer(),
-                last_seen,
-                dump_file :: file:io_device() | undefined
+                last_seen
                }).
 
 %% external API
@@ -184,7 +183,7 @@ init({Src, Dst, Opts}) ->
       takeover_done=false
      },
     erlang:process_flag(trap_exit, true),
-    gen_server:enter_loop(?MODULE, [], maybe_setup_dumping(State, Args)).
+    gen_server:enter_loop(?MODULE, [], State).
 
 upstream_sender_loop(Upstream) ->
     receive
@@ -192,28 +191,6 @@ upstream_sender_loop(Upstream) ->
             ok = gen_tcp:send(Upstream, Data)
     end,
     upstream_sender_loop(Upstream).
-
--spec maybe_setup_dumping(#state{}, term()) -> #state{}.
-maybe_setup_dumping(State, Args) ->
-    case os:getenv("MEMBASE_DUMP_TAP_STREAMS") of
-        false ->
-            State;
-        _ ->
-            try
-                do_setup_dumping(State, Args)
-            catch E:T ->
-                    ?log_error("Tried to setup tap stream dumping and failed.~n~p~n", [{E,T,erlang:get_stacktrace()}]),
-                    State
-            end
-    end.
-
-do_setup_dumping(State, Args) ->
-    FileNamePrefix = lists:flatten(io_lib:format("tap_dump_~w_~w", [misc:time_to_epoch_ms_int(now()), erlang:phash2(self())])),
-    {ok, InfoIO} = file:open(path_config:component_path(data, FileNamePrefix ++ ".info"), [binary, write, delayed_write]),
-    io:format(InfoIO, "InitialState:~n~p~n~nTap Args:~n~p~n", [State, Args]),
-    ok = file:close(InfoIO),
-    {ok, DumpIO} = file:open(path_config:component_path(data, FileNamePrefix ++ ".data"), [binary, write, delayed_write]),
-    State#state{dump_file = DumpIO}.
 
 terminate(_Reason, #state{upstream_sender=UpstreamSender} = State) ->
     timer:kill_after(?TERMINATE_TIMEOUT),
@@ -351,10 +328,6 @@ process_data(Data, Elem, CB, State) ->
                                 #state{}.
 process_downstream(<<?RES_MAGIC:8, _/binary>> = Packet,
                    State) ->
-    case State#state.dump_file of
-        undefined -> ok;
-        File -> file:write(File, Packet)
-    end,
     State#state.upstream_sender ! Packet,
     State.
 
