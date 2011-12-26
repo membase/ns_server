@@ -153,22 +153,40 @@ var DAL = {
     a[3] = a[3] || "DEV"
     return a; // Example result: ["1.8.0", "9", "ga083a1e", "enterprise"]
   },
-  prettyVersion: function(str) {
+  prettyVersion: function(str, full) {
     var a = DAL.parseVersion(str);
-    // Example result: "1.8.0 enterprise edition (build-7-g35c9cdd)"
-    return [a[0], a[3], "edition", "(build-" + a[1] + '-' + a[2] + ")"].join(' ');
+    // Example default result: "1.8.0 enterprise edition (build-7)"
+    // Example full result: "1.8.0 enterprise edition (build-7-g35c9cdd)"
+    var suffix = "";
+    if (full) {
+      suffix = '-' + a[2];
+    }
+    return [a[0], a[3], "edition", "(build-" + a[1] + suffix + ")"].join(' ');
   },
   loginSuccess: function (data) {
     var rows = data.pools;
 
-    if (data.implementationVersion) {
-      DAL.version = data.implementationVersion;
+    var implementationVersion = data.implementationVersion;
+
+    (function () {
+      var match = /(\?|&)forceVersion=([^&]+)/.exec(document.location.href);
+      if (!match) {
+        return;
+      }
+      implementationVersion = decodeURIComponent(match[2]);
+      console.log("forced version: ", implementationVersion);
+    })();
+
+    if (implementationVersion) {
+      DAL.version = implementationVersion;
       DAL.componentsVersion = data.componentsVersion;
       DAL.uuid = data.uuid;
+      var parsedVersion = DAL.parseVersion(implementationVersion);
+      DAL.isEnterprise = (parsedVersion[3] === 'enterprise');
       if (!DAL.appendedVersion) {
         document.title = document.title +
-          " (" + DAL.parseVersion(data.implementationVersion)[0] + ")";
-        var v = DAL.prettyVersion(data.implementationVersion);
+          " (" + parsedVersion[0] + ")";
+        var v = DAL.prettyVersion(implementationVersion);
         $('.version > .couchbase-version').text(v).parent().show();
         DAL.appendedVersion = true;
       }

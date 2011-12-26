@@ -707,31 +707,149 @@ var SetupWizard = {
     },
     update_notifications: function(node, pagePrefix, opt) {
       var dialog = $('#init_update_notifications_dialog');
-      var form = dialog.find('form');
-      dialog.find('a.more_info').click(function(e) {
+      var emailField = $('#init-join-community-email').need(1);
+      var formObserver;
+
+      $('#update_notifications_errors_container').hide();
+
+      dialog.find('a.more_info').unbind('click').click(function(e) {
         e.preventDefault();
         dialog.find('p.more_info').slideToggle();
       });
-      dialog.find('button.back').click(function (e) {
+      dialog.find('button.back').unbind('click').click(function (e) {
         e.preventDefault();
         onLeave();
         SetupWizard.show("bucket_dialog");
       });
-      // Go to next page. Send off email address if given and apply settings
-      dialog.find('button.next').click(function (e) {
+
+      dialog.find('button.next').unbind('click').click(onNext);
+      dialog.find('form').unbind('submit').bind('submit', function (e) {
         e.preventDefault();
-        form.submit();
+        dialog.find('button.next').trigger('click');
       });
-      _.defer(function () {
+
+      dialog.find('.when-enterprise').toggle(!!DAL.isEnterprise);
+      dialog.find('.when-community').toggle(!DAL.isEnterprise);
+
+      setTimeout(function () {
         try {
-          $('#init-join-community-email').need(1)[0].focus();
+          emailField[0].focus();
         } catch (e) {
-        };
-      });
-      form.bind('submit', function (e) {
+          //ignore
+        }
+      }, 10);
+
+      if (!DAL.isEnterprise) {
+        dialog.find('.when-required').hide();
+        formObserver = dialog.observePotentialChanges(communityFormValidator);
+      } else {
+        formObserver = dialog.observePotentialChanges(enterpriseFormValidator);
+      }
+
+      var plantTree = $('#init-join-tree');
+
+      var appliedValidness = {};
+      function applyValidness(validness) {
+        _.each(validness, function (v, k) {
+          if (appliedValidness[k] === v) {
+            return;
+          }
+          $($i(k))[v ? 'addClass' : 'removeClass']('invalid');
+          appliedValidness[k] = v;
+        });
+      }
+
+      var emailValue;
+      var emailInvalidness;
+
+      function validateEmailField() {
+        var newEmailValue = $.trim(emailField.val());
+        if (emailValue !== newEmailValue) {
+          emailValue = newEmailValue;
+          emailInvalidness = (newEmailValue !== '' && !HTML5_EMAIL_RE.exec(newEmailValue));
+        }
+        return emailInvalidness;
+      }
+
+      var invalidness = {};
+      var invalidDueToEmptiness;
+
+      var oldNeedFields;
+      function enterpriseFormValidator() {
+        var needFields = plantTree.is(':checked');
+        if (oldNeedFields !== needFields) {
+          oldNeedFields = needFields;
+          dialog.find('.when-required').toggle(needFields);
+        }
+
+        invalidDueToEmptiness = false;
+        _.each(dialog.find(":text"), function (element) {
+          var id = element.id;
+          element = $(element);
+          var isEmpty = needFields && ($.trim(element.val()) === "");
+          invalidDueToEmptiness = invalidDueToEmptiness || isEmpty;
+          invalidness[id] = isEmpty;
+        });
+
+        var emailId = emailField.attr('id');
+        var validateEmailResult = validateEmailField();
+        invalidness[emailId] = invalidness[emailId] || validateEmailResult;
+
+        applyValidness(invalidness);
+      }
+
+      function communityFormValidator() {
+        var emailId = emailField.attr('id');
+        invalidness[emailId] = validateEmailField();
+        applyValidness(invalidness);
+      }
+
+      var sending;
+
+      // Go to next page. Send off email address if given and apply settings
+      function onNext(e) {
         e.preventDefault();
-        var email = $.trim($('#init-join-community-email').val());
-        if (email !== '') {
+        if (sending) {
+          // this prevents double send caused by submitting form via
+          // hitting Enter
+          return;
+        }
+        $('#update_notifications_errors_container').hide();
+
+        var errors = [];
+        var formObserverResult;
+
+        if (formObserver) {
+          formObserver.callback() || {};
+        }
+
+        if (emailInvalidness) {
+          errors.push("Email appears to be invalid");
+        }
+
+        if (DAL.isEnterprise) {
+          var termsChecked = !!$('#init-join-terms').attr('checked');
+          if (!termsChecked) {
+            errors.push("Terms and conditions need to be accepted in order to continue");
+          }
+
+          if (invalidDueToEmptiness) {
+            errors.push("All fields marked as mandatory (*) need to be filled in");
+          }
+        }
+
+        if (errors.length) {
+          var invalidFields = dialog.find('.invalid');
+          renderTemplate('update_notifications_errors', errors);
+          $('#update_notifications_errors_container').show();
+          if (invalidFields.length && !_.include(invalidFields, document.activeElement)) {
+            setTimeout(function () {try {invalidFields[0].focus();} catch (e) {}}, 10);
+          }
+          return;
+        }
+
+        var email = $.trim(emailField.val());
+        if (email!=='') {
           // Send email address. We don't care if notifications were enabled
           // or not.
           $.ajax({
@@ -740,6 +858,8 @@ var SetupWizard = {
             data: {email: email,
                    firstname: $.trim($('#init-join-community-firstname').val()),
                    lastname: $.trim($('#init-join-community-lastname').val()),
+                   company: $.trim($('#init-join-community-company').val()),
+                   incentive: plantTree.is(':checked') ? 'tree' : 'none',
                    version: DAL.version || "unknown"},
             success: function () {},
             error: function () {}
@@ -747,26 +867,25 @@ var SetupWizard = {
         }
 
         var sendStatus = $('#init-notifications-updates-enabled').is(':checked');
+        sending = true;
+        var spinner = overlayWithSpinner(dialog);
         postWithValidationErrors(
           '/settings/stats',
           $.param({sendStats: sendStatus}),
-          function (errors, status) {
-            if (status != 'success') {
-              return reloadApp(function (reloader) {
-                alert('Failed to set update notifications settings. Check your network connection');
-                reloader();
-              });
-            }
+          function () {
+            spinner.remove();
+            sending = false;
             onLeave();
             SetupWizard.show("secure");
           }
         );
-      });
+      }
 
       // cleans up all event handles
       function onLeave() {
-        dialog.find('a.more_info, button.back, button.next').unbind();
-        form.unbind();
+        if (formObserver) {
+          formObserver.stopObserving();
+        }
       }
     }
   }

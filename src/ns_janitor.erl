@@ -85,6 +85,11 @@ do_cleanup(Bucket, Options, Config) ->
                                               end, ReplicaGroups),
                     ns_vbm_sup:set_replicas(Bucket, NodesReplicas),
                     capi_ddoc_replication_srv:force_update(Bucket),
+                    case Down of
+                        [] ->
+                            maybe_stop_replication_status();
+                        _ -> ok
+                    end,
                     ok
             end
     end.
@@ -401,6 +406,16 @@ align_chain_replicas([H|T] = _Chain, ReplicasLeft) ->
     [H | align_chain_replicas(T, ReplicasLeft-1)];
 align_chain_replicas([] = _Chain, ReplicasLeft) ->
     lists:duplicate(ReplicasLeft, undefined).
+
+maybe_stop_replication_status() ->
+    Fun = fun (Value) ->
+                  case Value of
+                      running ->
+                          {none, <<"status stopped by janitor">>};
+                      _ -> Value
+                  end
+          end,
+    ns_config:update_key(rebalance_status, Fun).
 
 -ifdef(EUNIT).
 

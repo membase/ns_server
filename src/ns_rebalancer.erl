@@ -55,17 +55,26 @@ failover(Bucket, Node) ->
             %% Promote replicas of vbuckets on this node
             Map = proplists:get_value(map, BucketConfig),
             Map1 = promote_replicas(Map, [Node]),
-            case [I || {I, [undefined|_]} <- misc:enumerate(Map1, 0)] of
-                [] -> ok; % Phew!
-                MissingVBuckets ->
-                    ?rebalance_error("Lost data in ~p for ~w",
-                                     [Bucket, MissingVBuckets]),
-                    ?user_log(?DATA_LOST,
-                              "Data has been lost for ~B% of vbuckets in bucket ~p.",
-                              [length(MissingVBuckets) * 100 div length(Map), Bucket])
+            case Map1 of
+                undefined ->
+                    ok;
+                _ ->
+                    case [I || {I, [undefined|_]} <- misc:enumerate(Map1, 0)] of
+                        [] -> ok; % Phew!
+                        MissingVBuckets ->
+                            ?rebalance_error("Lost data in ~p for ~w", [Bucket, MissingVBuckets]),
+                            ?user_log(?DATA_LOST,
+                                      "Data has been lost for ~B% of vbuckets in bucket ~p.",
+                                      [length(MissingVBuckets) * 100 div length(Map), Bucket])
+                    end
             end,
             ns_bucket:set_fast_forward_map(Bucket, undefined),
-            ns_bucket:set_map(Bucket, Map1),
+            case Map1 of
+                undefined ->
+                    undefined = Map;            % Do nothing. Map didn't change
+                _ ->
+                    ns_bucket:set_map(Bucket, Map1)
+            end,
             ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)),
             try
                 ns_janitor:cleanup(Bucket, [])
@@ -231,6 +240,8 @@ histograms(Map, Servers) ->
 
 
 %% removes RemapNodes from head of vbucket map Map. Returns new map
+promote_replicas(undefined, _RemapNode) ->
+    undefined;
 promote_replicas(Map, RemapNodes) ->
     [promote_replica(Chain, RemapNodes) || Chain <- Map].
 

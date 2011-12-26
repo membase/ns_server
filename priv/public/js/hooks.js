@@ -848,7 +848,7 @@ var MockedRequest = mkClass({
       [get("nodes", "self"), {
         "memoryQuota":"",
         "storage":{"ssd":[],
-                   "hdd":[{"path":"/srv/test",
+                   "hdd":[{"path":"/opt/couchbase/var/lib/couchbase/data",
                            "quotaMb":"none",
                            "state":"ok"}]},
         "storageTotals": {

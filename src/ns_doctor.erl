@@ -190,6 +190,23 @@ update_status(Name, Status0, Dict) ->
                  end,
     case is_significant_buckets_change(PrevStatus, Status) of
         true ->
+            NeedBuckets = lists:sort(ns_bucket:node_bucket_names(Name)),
+            OldReady = lists:sort(proplists:get_value(ready_buckets, PrevStatus, [])),
+            NewReady = lists:sort(proplists:get_value(ready_buckets, Status, [])),
+            case ordsets:intersection(ordsets:subtract(OldReady, NewReady), NeedBuckets) of
+                [] ->
+                    ok;
+                MissingBuckets ->
+                    MissingButActive = ordsets:intersection(lists:sort(proplists:get_value(active_buckets, Status, [])),
+                                                            MissingBuckets),
+                    ?log_error("The following buckets became not ready on node ~p: ~p, those of them are active ~p",
+                               [Name, MissingBuckets, MissingButActive])
+            end,
+            case ordsets:subtract(NewReady, OldReady) of
+                [] -> ok;
+                NewlyReady ->
+                    ?log_info("The following buckets became ready on node ~p: ~p", [Name, NewlyReady])
+            end,
             gen_event:notify(buckets_events, {significant_buckets_change, Name});
         _ ->
             ok

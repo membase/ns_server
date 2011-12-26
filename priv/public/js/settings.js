@@ -118,6 +118,8 @@ var UpdatesNotificationsSection = {
       return future.get({url: "/settings/stats"});
     });
     this.phEnabled = phEnabled;
+    phEnabled.equality = _.isEqual;
+    phEnabled.keepValueDuringAsync = true;
 
     phEnabled.subscribeValue(function(val) {
       if (val!==undefined) {

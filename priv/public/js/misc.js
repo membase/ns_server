@@ -1093,3 +1093,6 @@ function buildURL(base /*, ...args */) {
   }
   return rv;
 }
+
+// http://www.w3.org/TR/html5/states-of-the-type-attribute.html#e-mail-state
+var HTML5_EMAIL_RE = /^[a-zA-Z0-9~#$%&'*+\-\/\=\?\^_`\{\|\}\~\.]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*$/;

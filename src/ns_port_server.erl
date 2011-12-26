@@ -33,9 +33,15 @@
          code_change/3,
          terminate/2]).
 
--define(NUM_MESSAGES, 3). % Number of the most recent messages to log on crash
--define(MAX_MESSAGES, 10). % Max messages per interval
--define(INTERVAL, 1000). % Interval over which to throttle
+-define(NUM_MESSAGES, 100). % Number of the most recent messages to log on crash
+%% we're passing port stdout/stderr messages to log after delay of
+%% INTERVAL milliseconds. Dropping messages once MAX_MESSAGES is
+%% reached. Thus we're limiting rate of messages to
+%% MAX_MESSAGES/INTERVAL msg/millisecond
+%%
+%% The following gives us 300 lines/second in bursts up to 60 lines
+-define(MAX_MESSAGES, 60). % Max messages per interval
+-define(INTERVAL, 200). % Interval over which to throttle
 
 -define(UNEXPECTED, 1).
 
