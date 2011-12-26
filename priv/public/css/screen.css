@@ -408,7 +408,7 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 /* Should be detected automatically in the future */
 #updates_notifications_confirmation_dialog {width:700px !important;}
 
-.error-container{color:red;visibility:hidden}
+.error-container{color:red !important;visibility:hidden}
 .error-container.active{visibility:visible}
 
 /* auto-failover styles */
