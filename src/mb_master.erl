@@ -371,18 +371,21 @@ update_peers(#state{new_peers=NPeers0} = StateData, Peers) ->
             StateData;
         false ->
             NPeers1 = ordsets:intersection(P, NPeers0),
+            %% no matter what happens but keep ourselves in the list of new
+            %% peers
+            NPeers2 = ordsets:add_element(node(), NPeers1),
             ?log_info("List of peers has changed from ~p to ~p", [O, P]),
 
-            case NPeers0 == NPeers1 of
+            case NPeers0 =:= NPeers2 of
                 false ->
                     ?log_info("List of new peers has changed from ~p to ~p",
-                              [NPeers0, NPeers1]);
+                              [NPeers0, NPeers2]);
                 true ->
                     ok
             end,
 
             choose_mode(StateData#state{peers=P,
-                                        new_peers=NPeers1})
+                                        new_peers=NPeers2})
     end.
 
 shutdown_master_sup(State) ->
