@@ -104,9 +104,10 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
     BucketConfigs = ns_bucket:get_buckets(),
     NumBuckets = length(BucketConfigs),
     ?log_info("BucketConfigs = ~p", [BucketConfigs]),
+    EarlyEject = FailedNodes -- [node()],
     try
         %% Eject failed nodes first so they don't cause trouble
-        eject_nodes(FailedNodes -- [node()]),
+        eject_nodes(EarlyEject),
         lists:foreach(fun ({I, {BucketName, BucketConfig}}) ->
                               ?log_info("Rebalancing bucket ~p with config ~p",
                                         [BucketName, BucketConfig]),
@@ -149,7 +150,7 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
             erlang:E(R)
     end,
     ns_config_rep:synchronize(),
-    eject_nodes(DeactivateNodes).
+    eject_nodes(DeactivateNodes -- EarlyEject).
 
 
 
