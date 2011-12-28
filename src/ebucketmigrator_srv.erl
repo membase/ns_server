@@ -189,7 +189,7 @@ init({Src, Dst, Opts}) ->
 upstream_sender_loop(Upstream) ->
     receive
         Data ->
-            gen_tcp:send(Upstream, Data)
+            ok = gen_tcp:send(Upstream, Data)
     end,
     upstream_sender_loop(Upstream).
 
