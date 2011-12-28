@@ -219,8 +219,8 @@ handle_sasl_logs(Req) ->
 arm_timeout(Millis) ->
     arm_timeout(Millis,
                 fun (Pid) ->
-                        Info = grab_process_info(Pid),
-                        io:format("slow process info:~n~p~n", [Info])
+                        Info = (catch grab_process_info(Pid)),
+                        ?log_error("slow process info:~n~p~n", [Info])
                 end).
 
 arm_timeout(Millis, Callback) ->
