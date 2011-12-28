@@ -562,19 +562,20 @@ var DAL = {
 
 (function () {
   var capiBaseCell = DAL.cells.capiBase = Cell.computeEager(function (v) {
-    // if we already have value, keep if forever, so that pool details
-    // reload won't interfere with CAPI requests
-    if (this.self.value) {
+    var details = v(DAL.cells.currentPoolDetailsCell);
+    if (!details) {
+      // if we already have value, but pool details are undefined
+      // (likely reloading), keep old value to avoid interfering with
+      // in-flight CAPI requests
       return this.self.value;
     }
 
-    var details = v.need(DAL.cells.currentPoolDetailsCell);
     var nodes = details.nodes;
     var thisNode = _.detect(nodes, function (n) {return n.thisNode;});
     if (!thisNode) {
-      // if for some reason thisNode is missing, return undefined waiting better pool details
-      return;
+      return this.self.value;
     }
+
     return thisNode.couchApiBase;
   }).name("capiBaseCell");
 
