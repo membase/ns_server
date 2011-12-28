@@ -36,6 +36,7 @@
          needs_rebalance/0,
          request_janitor_run/1,
          rebalance_progress/0,
+         rebalance_progress_full/0,
          start_link/0,
          start_rebalance/3,
          stop_rebalance/0,
@@ -123,11 +124,13 @@ needs_rebalance(Nodes) ->
     lists:any(fun ({_, BucketConfig}) -> needs_rebalance(Nodes, BucketConfig) end,
               ns_bucket:get_buckets()).
 
+-spec rebalance_progress_full() -> {running, [{atom(), float()}]} | not_running.
+rebalance_progress_full() ->
+    gen_fsm:sync_send_event(?SERVER, rebalance_progress, 2000).
 
 -spec rebalance_progress() -> {running, [{atom(), float()}]} | not_running.
 rebalance_progress() ->
-    try gen_fsm:sync_send_event(?SERVER, rebalance_progress, 2000) of
-        Result -> Result
+    try rebalance_progress_full()
     catch
         Type:Err ->
             ?log_error("Couldn't talk to orchestrator: ~p", [{Type, Err}]),

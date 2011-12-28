@@ -408,14 +408,24 @@ align_chain_replicas([] = _Chain, ReplicasLeft) ->
     lists:duplicate(ReplicasLeft, undefined).
 
 maybe_stop_replication_status() ->
-    Fun = fun (Value) ->
-                  case Value of
-                      running ->
-                          {none, <<"status stopped by janitor">>};
-                      _ -> Value
-                  end
-          end,
-    ns_config:update_key(rebalance_status, Fun).
+    Status = try ns_orchestrator:rebalance_progress_full()
+             catch E:T ->
+                     ?log_error("janitor maybe_stop_replication_status cannot reach orchestrator: ~p:~p", [E,T]),
+                     error
+             end,
+    case Status of
+        not_running ->
+            Fun = fun (Value) ->
+                          case Value of
+                              running ->
+                                  {none, <<"status stopped by janitor">>};
+                              _ -> Value
+                          end
+                  end,
+            ns_config:update_key(rebalance_status, Fun);
+        _ ->
+            ok
+    end.
 
 -ifdef(EUNIT).
 
