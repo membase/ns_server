@@ -130,16 +130,6 @@ ensure_dirs([Path | Rest]) ->
 %% NOTE: ns_server restart is required to make this fully effective.
 -spec setup_disk_storage_conf(DbPath::string(), IxDir::string()) -> ok | {errors, [Msg :: binary()]}.
 setup_disk_storage_conf(DbPath, IxPath) ->
-    Config = ns_config:get(),
-    NoBucketsDefined = ns_bucket:get_buckets(Config) =:= [],
-    case NoBucketsDefined of
-        true ->
-            do_setup_disk_storage_conf(DbPath, IxPath);
-        _ ->
-            {errors, [<<"Changing storage path of a node that has buckets is not allowed.">>]}
-    end.
-
-do_setup_disk_storage_conf(DbPath, IxPath) ->
     [{db_path, CurrentDbDir},
      {index_path, CurrentIxDir}] = lists:sort(cb_config_couch_sync:get_db_and_ix_paths()),
 
