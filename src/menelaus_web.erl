@@ -431,19 +431,23 @@ handle_pool_info(Id, Req) ->
         _ ->
             WaitChange = list_to_integer(WaitChangeS),
             menelaus_event:register_watcher(self()),
-            handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, WaitChange, PassedETag)
+            TargetTS = misc:time_to_epoch_ms_int(os:timestamp()) + WaitChange,
+            handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, TargetTS, PassedETag)
     end.
 
-handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, WaitChange, PassedETag) ->
+handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, TargetTS, PassedETag) ->
     Info = mochijson2:encode(build_pool_info(Id, UserPassword, stable, LocalAddr)),
     %% ETag = base64:encode_to_string(crypto:sha(Info)),
     ETag = integer_to_list(erlang:phash2(Info)),
+    Now = misc:time_to_epoch_ms_int(os:timestamp()),
+    WaitChange = TargetTS - Now,
     if
-        ETag =:= PassedETag ->
+        WaitChange > 0 andalso ETag =:= PassedETag ->
             receive
                 {notify_watcher, _} ->
                     timer:sleep(200), %% delay a bit to catch more notifications
-                    handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, 0, PassedETag);
+                    consume_notifications(),
+                    handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, TargetTS, PassedETag);
                 _ ->
                     exit(normal)
             after WaitChange ->
