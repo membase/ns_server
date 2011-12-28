@@ -639,8 +639,13 @@ var SetupWizard = {
           resourcesObserver.stopObserving();
       }
 
+      var saving = false;
+
       function onSubmit(e) {
         e.preventDefault();
+        if (saving) {
+          return;
+        }
 
         dialog.find('.warning').hide();
 
@@ -656,6 +661,9 @@ var SetupWizard = {
         var memoryErrorsContainer = $('#init_cluster_dialog_memory_errors_container');
         pathErrorsContainer.hide();
         memoryErrorsContainer.hide();
+
+        var spinner = overlayWithSpinner(dialog);
+        saving = true;
 
         postWithValidationErrors('/nodes/' + node + '/controller/settings',
                                  $.param({path: dbPath,
@@ -681,6 +689,8 @@ var SetupWizard = {
         }
 
         function handleDiskStatus(data, status) {
+          saving = false;
+          spinner.remove();
           var ok = (status == 'success')
           if (!ok) {
             renderTemplate('join_cluster_dialog_errors', data, pathErrorsContainer[0]);
