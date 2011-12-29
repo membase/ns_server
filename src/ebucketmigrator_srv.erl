@@ -189,13 +189,14 @@ init({Src, Dst, Opts}) ->
 upstream_sender_loop(Upstream) ->
     receive
         Data ->
-            gen_tcp:send(Upstream, Data)
+            ok = gen_tcp:send(Upstream, Data)
     end,
     upstream_sender_loop(Upstream).
 
-terminate(_Reason, State) ->
+terminate(_Reason, #state{upstream_sender=UpstreamSender} = State) ->
     timer:kill_after(?TERMINATE_TIMEOUT),
     gen_tcp:close(State#state.upstream),
+    exit(UpstreamSender, kill),
     case State#state.takeover_done of
         true ->
             ?rebalance_info("Skipping close ack for successfull takover~n", []),
