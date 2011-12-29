@@ -215,9 +215,10 @@ do_setup_dumping(State, Args) ->
     {ok, DumpIO} = file:open(path_config:component_path(data, FileNamePrefix ++ ".data"), [binary, write, delayed_write]),
     State#state{dump_file = DumpIO}.
 
-terminate(_Reason, State) ->
+terminate(_Reason, #state{upstream_sender=UpstreamSender} = State) ->
     timer:kill_after(?TERMINATE_TIMEOUT),
     gen_tcp:close(State#state.upstream),
+    exit(UpstreamSender, kill),
     case State#state.takeover_done of
         true ->
             ?log_info("Skipping close ack for successfull takover~n", []),
