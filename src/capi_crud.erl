@@ -180,8 +180,13 @@ get_loop(Bucket, DocId, UserCtx, ReturnDeleted, VBucket) ->
 
             case {Header#mc_header.status, Entry#mc_entry.cas} of
                 {?SUCCESS, CAS} ->
-                    Value = Entry#mc_entry.data,
-                    {ok, mk_doc(DocId, Rev, Value)};
+                    Doc = mc_couch_kv:mk_doc(DocId,
+                                             Entry#mc_entry.flag,
+                                             Entry#mc_entry.expire,
+                                             Entry#mc_entry.data,
+                                             <<>>,
+                                             true),
+                    {ok, Doc#doc{rev = Rev, binary = nil}};
                 {?SUCCESS, _CAS} ->
                     get_loop(Bucket, DocId, UserCtx, ReturnDeleted, VBucket);
                 {?KEY_ENOENT, _} ->
@@ -201,39 +206,3 @@ get_meta(Bucket, VBucket, DocId, UserCtx) ->
 
 mk_deleted_doc(DocId, Rev) ->
     #doc{id = DocId, rev = Rev, deleted = true}.
-
-mk_doc(DocId, Rev, RawValue) ->
-    DocTemplate = #doc{id = DocId, rev = Rev},
-
-    try
-        Json = json_decode(RawValue),
-        DocTemplate#doc{json=Json}
-    catch
-        {invalid_json, _} ->
-            DocTemplate#doc{binary=RawValue}
-    end.
-
-%% decode a json and ensure that the result is an object; otherwise throw
-%% invalid_json exception
-json_decode(RawValue) ->
-    case jsonish(RawValue) of
-        true ->
-            case ?JSON_DECODE(RawValue) of
-                {_} = Json ->
-                    Json;
-                _ ->
-                    throw({invalid_json, not_an_object})
-            end;
-        false ->
-            throw({invalid_json, not_jsonish})
-    end.
-
-jsonish(<<"{", _/binary>>) ->
-    true;
-jsonish(<<" ", _/binary>>) ->
-    true;
-jsonish(<<"\r", _/binary>>) ->
-    true;
-jsonish(<<"\n", _/binary>>) ->
-    true;
-jsonish(_) -> false.
