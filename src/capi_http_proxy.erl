@@ -22,23 +22,23 @@
 handle_proxy_req(MochiReq) ->
     DefaultSpec = "{couch_httpd_db, handle_request}",
     DefaultFun = couch_httpd:make_arity_1_fun(
-        couch_config:get("httpd", "default_handler", DefaultSpec)
-    ),
+                   couch_config:get("httpd", "default_handler", DefaultSpec)
+                  ),
 
     UrlHandlersList = lists:map(
-        fun({UrlKey, SpecStr}) ->
-            {?l2b(UrlKey), couch_httpd:make_arity_1_fun(SpecStr)}
-        end, couch_config:get("httpd_global_handlers")),
+                        fun({UrlKey, SpecStr}) ->
+                                {?l2b(UrlKey), couch_httpd:make_arity_1_fun(SpecStr)}
+                        end, couch_config:get("httpd_global_handlers")),
 
     DbUrlHandlersList = lists:map(
-        fun({UrlKey, SpecStr}) ->
-            {?l2b(UrlKey), couch_httpd:make_arity_2_fun(SpecStr)}
-        end, couch_config:get("httpd_db_handlers")),
+                          fun({UrlKey, SpecStr}) ->
+                                  {?l2b(UrlKey), couch_httpd:make_arity_2_fun(SpecStr)}
+                          end, couch_config:get("httpd_db_handlers")),
 
     DesignUrlHandlersList = lists:map(
-        fun({UrlKey, SpecStr}) ->
-            {?l2b(UrlKey), couch_httpd:make_arity_3_fun(SpecStr)}
-        end, couch_config:get("httpd_design_handlers")),
+                              fun({UrlKey, SpecStr}) ->
+                                      {?l2b(UrlKey), couch_httpd:make_arity_3_fun(SpecStr)}
+                              end, couch_config:get("httpd_design_handlers")),
 
     UrlHandlers = dict:from_list(UrlHandlersList),
     DbUrlHandlers = dict:from_list(DbUrlHandlersList),

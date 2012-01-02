@@ -26,9 +26,9 @@
 -define(DEV_MULTIPLE, 20).
 
 -record(collect_acc, {
-    row_count = undefined,
-    rows = []
-}).
+          row_count = undefined,
+          rows = []
+         }).
 
 
 not_implemented(Arg, Rest) ->
@@ -164,25 +164,26 @@ handle_random_req(Req, #db{filepath = undefined, name = Bucket} = Db) ->
             no_random_docs(Req);
         true ->
             VBucket = capi_frontend:first_vbucket(Bucket),
-            capi_frontend:with_subdb(Db, VBucket, fun(RealDb) ->
-                handle_random_req(Req, RealDb)
-            end);
+            capi_frontend:with_subdb(Db, VBucket,
+                                     fun(RealDb) ->
+                                             handle_random_req(Req, RealDb)
+                                     end);
 
         false ->
             Params1 = capi_view:view_merge_params(Req, Db, nil, <<"_all_docs">>),
             Params2 = setup_sender(Params1),
 
             #collect_acc{rows=Rows} = couch_index_merger:query_index(
-                couch_view_merger, Req, Params2),
+                                        couch_view_merger, Req, Params2),
 
             case length(Rows) of
                 0 ->
                     no_random_docs(Req);
                 N ->
                     couch_httpd:send_json(Req, 200, {[
-                        {ok, true},
-                        {<<"id">>, lists:nth(random:uniform(N), Rows)}
-                    ]})
+                                                      {ok, true},
+                                                      {<<"id">>, lists:nth(random:uniform(N), Rows)}
+                                                     ]})
             end
     end;
 
@@ -198,9 +199,9 @@ handle_random_req(#httpd{method='GET'}=Req, Db) ->
                     no_random_docs(Req);
                 {ok, _, Id} ->
                     couch_httpd:send_json(Req, 200, {[
-                        {ok, true},
-                        {<<"id">>, Id}
-                    ]})
+                                                      {ok, true},
+                                                      {<<"id">>, Id}
+                                                     ]})
             end
     end;
 
@@ -269,9 +270,10 @@ open_doc(_Db, <<?LOCAL_DOC_PREFIX, _/binary>>, _Options) ->
     {not_found, missing};
 
 open_doc(#db{filepath = undefined} = Db, <<"_design/",_/binary>> = DocId, Options) ->
-    with_subdb(Db, <<"master">>, fun (RealDb) ->
-        couch_db:open_doc(RealDb, DocId, Options)
-    end);
+    with_subdb(Db, <<"master">>,
+               fun (RealDb) ->
+                       couch_db:open_doc(RealDb, DocId, Options)
+               end);
 
 open_doc(#db{filepath = undefined, name = Name} = Db, DocId, Options) ->
     attempt(Name, DocId, capi_crud, open_doc, [Db, DocId, Options]);
@@ -326,10 +328,10 @@ stats_aggregator_collect_sample() ->
 
 couch_doc_open(Db, DocId, Options) ->
     case open_doc(Db, DocId, Options) of
-    {ok, Doc} ->
-        Doc;
-     Error ->
-        throw(Error)
+        {ok, Doc} ->
+            Doc;
+        Error ->
+            throw(Error)
     end.
 
 %% Grab the first vbucket we can find on this server
@@ -342,7 +344,7 @@ first_vbucket(Bucket) ->
 
 
 -spec first_vbucket(atom(), list(), integer()) ->
-    {ok, integer()} | {error, no_vbucket_found}.
+                           {ok, integer()} | {error, no_vbucket_found}.
 first_vbucket(_Node, [], _Acc) ->
     {error, no_vbucket_found};
 first_vbucket(Node, [[Node|_] | _Rest], I) ->
@@ -391,7 +393,7 @@ setup_sender(MergeParams) ->
     MergeParams#index_merge{
       user_acc = #collect_acc{},
       callback = fun collect_ids/2
-    }.
+     }.
 
 
 %% Colled Id's in the callback of the view merge, ignore design documents
@@ -417,9 +419,9 @@ is_design_doc(_) ->
 -spec get_version() -> string().
 get_version() ->
     Apps = application:loaded_applications(),
-        case lists:keysearch(ns_server, 1, Apps) of
-    {value, {_, _, Vsn}} -> Vsn;
-    false -> "0.0.0"
+    case lists:keysearch(ns_server, 1, Apps) of
+        {value, {_, _, Vsn}} -> Vsn;
+        false -> "0.0.0"
     end.
 
 -spec welcome_message(binary()) -> [{atom(), binary()}].

@@ -22,14 +22,14 @@
 
 -export([handle_view_req/3]).
 -export([all_docs_db_req/2, view_merge_params/4]).
-% For capi_spatial
+                                                % For capi_spatial
 -export([build_local_simple_specs/4, run_on_subset/2,
-    node_vbuckets_dict/1, vbucket_db_name/2]).
+         node_vbuckets_dict/1, vbucket_db_name/2]).
 
 -import(couch_util, [
-    get_value/2,
-    get_value/3
-]).
+                     get_value/2,
+                     get_value/3
+                    ]).
 
 -define(RETRY_INTERVAL, 5 * 1000).
 -define(RETRY_ATTEMPTS, 20).
@@ -62,30 +62,30 @@ design_doc_view_loop(Req, Db, DDocId, ViewName, Attempt) ->
 -spec run_on_subset(#httpd{}, binary()) ->  non_neg_integer()|full_set.
 run_on_subset(#httpd{path_parts=[_, _, DName, _, _]}=Req, Name) ->
     case DName of
-    <<"dev_", _/binary>> ->
-        case get_value("full_set", (Req#httpd.mochi_req):parse_qs()) =/= "true"
+        <<"dev_", _/binary>> ->
+            case get_value("full_set", (Req#httpd.mochi_req):parse_qs()) =/= "true"
                 andalso capi_frontend:run_on_subset(Name) of
-            true -> capi_frontend:first_vbucket(Name);
-            false -> full_set
-        end;
-    _ ->
-        full_set
+                true -> capi_frontend:first_vbucket(Name);
+                false -> full_set
+            end;
+        _ ->
+            full_set
     end.
 
 handle_view_req(Req, Db, DDoc) when Db#db.filepath =/= undefined ->
     couch_httpd_view:handle_view_req(Req, Db, DDoc);
 
 handle_view_req(#httpd{method='GET',
-        path_parts=[_, _, DName, _, ViewName]}=Req, #db{name=Name} = Db, _DDoc) ->
+                       path_parts=[_, _, DName, _, ViewName]}=Req, #db{name=Name} = Db, _DDoc) ->
     case run_on_subset(Req, Name) of
-    full_set ->
-        design_doc_view(Req, Db, DName, ViewName);
-    VBucket ->
-        design_doc_view(Req, Db, DName, ViewName, [VBucket])
+        full_set ->
+            design_doc_view(Req, Db, DName, ViewName);
+        VBucket ->
+            design_doc_view(Req, Db, DName, ViewName, [VBucket])
     end;
 
 handle_view_req(#httpd{method='POST',
-        path_parts=[_, _, DName, _, ViewName]}=Req, Db, _DDoc) ->
+                       path_parts=[_, _, DName, _, ViewName]}=Req, Db, _DDoc) ->
     couch_httpd:validate_ctype(Req, "application/json"),
     design_doc_view(Req, Db, DName, ViewName);
 
@@ -121,8 +121,8 @@ node_vbuckets_dict(BucketName) ->
     Map = get_value(map, BucketConfig, []),
     {_, NodeToVBuckets} =
         lists:foldl(fun([Master | _], {Idx, Dict}) ->
-            {Idx + 1, dict:append(Master, Idx, Dict)}
-        end, {0, dict:new()}, Map),
+                            {Idx + 1, dict:append(Master, Idx, Dict)}
+                    end, {0, dict:new()}, Map),
     NodeToVBuckets.
 
 
@@ -132,44 +132,44 @@ view_merge_params(Req, #db{name = BucketName} = Db,
     NodeToVBuckets = node_vbuckets_dict(?b2l(BucketName)),
     Config = ns_config:get(),
     ViewSpecs = dict:fold(
-        fun(Node, VBuckets, Acc) when Node =:= node() ->
-            build_local_simple_specs(BucketName, DDocId,
-                                     ViewName, VBuckets) ++ Acc;
-        (Node, VBuckets, Acc) ->
-           [build_remote_simple_specs(Node, BucketName,
-                                      ViewName, VBuckets, Config) | Acc]
-        end, [], NodeToVBuckets),
+                  fun(Node, VBuckets, Acc) when Node =:= node() ->
+                          build_local_simple_specs(BucketName, DDocId,
+                                                   ViewName, VBuckets) ++ Acc;
+                     (Node, VBuckets, Acc) ->
+                          [build_remote_simple_specs(Node, BucketName,
+                                                     ViewName, VBuckets, Config) | Acc]
+                  end, [], NodeToVBuckets),
     view_merge_params(Req, Db, DDocId, ViewName, ViewSpecs);
 
 view_merge_params(Req, #db{name = BucketName} = Db, DDocId, ViewName) ->
     NodeToVBuckets = node_vbuckets_dict(?b2l(BucketName)),
     Config = ns_config:get(),
     ViewSpecs = dict:fold(
-        fun(Node, VBuckets, Acc) when Node =:= node() ->
-            build_local_specs(Req, BucketName,
-                              DDocId, ViewName, VBuckets) ++ Acc;
-        (Node, VBuckets, Acc) ->
-           [build_remote_specs(Req, Node, BucketName,
-                               DDocId, ViewName, VBuckets, Config) | Acc]
-        end, [], NodeToVBuckets),
+                  fun(Node, VBuckets, Acc) when Node =:= node() ->
+                          build_local_specs(Req, BucketName,
+                                            DDocId, ViewName, VBuckets) ++ Acc;
+                     (Node, VBuckets, Acc) ->
+                          [build_remote_specs(Req, Node, BucketName,
+                                              DDocId, ViewName, VBuckets, Config) | Acc]
+                  end, [], NodeToVBuckets),
     view_merge_params(Req, Db, DDocId, ViewName, ViewSpecs).
 
 view_merge_params(Req, _Db, _DDocId, _ViewName, ViewSpecs) ->
     case Req#httpd.method of
-    'GET' ->
-        Body = [],
-        Keys = validate_keys_param(couch_httpd:qs_json_value(Req, "keys", nil));
-    'POST' ->
-        {Body} = couch_httpd:json_body_obj(Req),
-        Keys = validate_keys_param(get_value(<<"keys">>, Body, nil))
+        'GET' ->
+            Body = [],
+            Keys = validate_keys_param(couch_httpd:qs_json_value(Req, "keys", nil));
+        'POST' ->
+            {Body} = couch_httpd:json_body_obj(Req),
+            Keys = validate_keys_param(get_value(<<"keys">>, Body, nil))
     end,
     MergeParams0 = #index_merge{
-        indexes = ViewSpecs,
-        extra = #view_merge{
-            keys = Keys
-        },
-        ddoc_revision = auto
-    },
+      indexes = ViewSpecs,
+      extra = #view_merge{
+        keys = Keys
+       },
+      ddoc_revision = auto
+     },
     couch_httpd_view_merger:apply_http_config(Req, Body, MergeParams0).
 
 
@@ -212,42 +212,42 @@ build_remote_specs(Req, Node, BucketName, DDocId, ViewName, VBuckets, Config) ->
 
 build_local_set_specs(BucketName, DDocId, ViewName, VBuckets) ->
     [#set_view_spec{
-         name = BucketName,
-         ddoc_id = DDocId,
-         view_name = ViewName,
-         partitions = VBuckets
-     }].
+        name = BucketName,
+        ddoc_id = DDocId,
+        view_name = ViewName,
+        partitions = VBuckets
+       }].
 
 build_remote_set_specs(Node, BucketName, FullViewName, VBuckets, Config) ->
     MergeURL = iolist_to_binary(capi_utils:capi_url(Node, "/_view_merge",
                                                     "127.0.0.1", Config)),
 
     Sets = {[
-        {BucketName, {[{<<"view">>, FullViewName},
-                       {<<"partitions">>, VBuckets}]}}
-    ]},
+             {BucketName, {[{<<"view">>, FullViewName},
+                            {<<"partitions">>, VBuckets}]}}
+            ]},
 
     Props = {[
-        {<<"views">>,
-            {[{<<"sets">>, Sets}]}}
-    ]},
+              {<<"views">>,
+               {[{<<"sets">>, Sets}]}}
+             ]},
     #merged_index_spec{url = MergeURL, ejson_spec = Props}.
 
 build_local_simple_specs(BucketName, DDocId, ViewName, VBuckets) ->
     DDocDbName = iolist_to_binary([BucketName, $/, "master"]),
     lists:map(fun(VBucket) ->
-            #simple_index_spec{
-                database = vbucket_db_name(BucketName, VBucket),
-                ddoc_database = DDocDbName,
-                ddoc_id = DDocId,
-                index_name = ViewName
-            }
-        end, [<<"master">> | VBuckets]).
+                      #simple_index_spec{
+                   database = vbucket_db_name(BucketName, VBucket),
+                   ddoc_database = DDocDbName,
+                   ddoc_id = DDocId,
+                   index_name = ViewName
+                  }
+              end, [<<"master">> | VBuckets]).
 
 build_remote_simple_specs(Node, BucketName, FullViewName, VBuckets, Config) ->
     MergeURL = iolist_to_binary(capi_utils:capi_url(Node, "/_view_merge", "127.0.0.1", Config)),
     Props = {[
-        {<<"views">>,
-            {[{vbucket_db_name(BucketName, VBId), FullViewName} || VBId <- VBuckets]}}
-    ]},
+              {<<"views">>,
+               {[{vbucket_db_name(BucketName, VBId), FullViewName} || VBId <- VBuckets]}}
+             ]},
     #merged_index_spec{url = MergeURL, ejson_spec = Props}.
