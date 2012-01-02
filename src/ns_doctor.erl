@@ -84,9 +84,6 @@ handle_call(get_tasks_version, _From, State) ->
     NewState = maybe_refresh_tasks_version(State),
     {reply, NewState#state.tasks_version, NewState};
 
-handle_call({build_tasks_list, NeedNodeP}, _From, State) ->
-    {reply, do_build_tasks_list(State, NeedNodeP), State};
-
 handle_call({get_node, Node}, _From, #state{nodes=Nodes} = State) ->
     Status = dict:fetch(Node, Nodes),
     LiveNodes = [node() | nodes()],
@@ -169,7 +166,8 @@ get_tasks_version() ->
     gen_server:call(?MODULE, get_tasks_version).
 
 build_tasks_list(NodeNeededP) ->
-    gen_server:call(?MODULE, {build_tasks_list, NodeNeededP}).
+    NodesDict = gen_server:call(?MODULE, get_nodes),
+    do_build_tasks_list(NodesDict, NodeNeededP).
 
 %% Internal functions
 
@@ -291,7 +289,7 @@ task_operation(fold, {indexer, _, _},
     {ChangesDone1 + ChangesDone2, TotalChanges1 + TotalChanges2}.
 
 
-do_build_tasks_list(#state{nodes = NodesDict}, NeedNodeP) ->
+do_build_tasks_list(NodesDict, NeedNodeP) ->
     TasksDict =
         dict:fold(
           fun (Node, NodeInfo, TasksDict) ->
@@ -322,7 +320,7 @@ do_build_tasks_list(#state{nodes = NodesDict}, NeedNodeP) ->
     PreRebalanceTasks = dict:fold(fun (Signature, Value, Acc) ->
                                           [{struct, task_operation(finalize, Signature, Value)} | Acc]
                                   end, [], TasksDict),
-    RebalanceTask =
+    RebalanceTask0 =
         case ns_cluster_membership:get_rebalance_status() of
             {running, PerNode} ->
                 [{type, rebalance},
@@ -347,4 +345,5 @@ do_build_tasks_list(#state{nodes = NodesDict}, NeedNodeP) ->
                        _ -> []
                    end]
         end,
+    RebalanceTask = {struct, RebalanceTask0},
     [RebalanceTask | PreRebalanceTasks].
