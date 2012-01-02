@@ -213,9 +213,9 @@ start_view_compact(DbName, GroupId) ->
     exit(not_implemented(start_view_compact, [DbName, GroupId])).
 
 start_db_compact(#db{filepath = undefined} = Db) ->
-    couch_db:start_compact(Db);
+    exit(not_implemented(start_db_compact, [Db]));
 start_db_compact(Db) ->
-    exit(not_implemented(start_db_compact, [Db])).
+    couch_db:start_compact(Db).
 
 cleanup_view_index_files(Db) ->
     couch_view:cleanup_index_files(Db).
