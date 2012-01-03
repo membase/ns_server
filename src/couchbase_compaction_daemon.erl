@@ -183,9 +183,7 @@ maybe_compact_bucket(BucketName, VbNames, Config) ->
     end,
     case bucket_needs_compaction(VbNames, Config) of
     false ->
-        lists:foreach(fun(N) ->
-            maybe_compact_views(N, BucketName, DDocNames, Config) end,
-            VbNames);
+        maybe_compact_views(BucketName, DDocNames, Config);
     true ->
         lists:foreach(fun(N) ->
             compact_vbucket(N, Config) end,
@@ -246,12 +244,12 @@ compact_vbucket(DbName, Config) ->
     end.
 
 
-maybe_compact_views(_DbName, _BucketName, [], _Config) ->
+maybe_compact_views(_BucketName, [], _Config) ->
     ok;
-maybe_compact_views(DbName, BucketName, [DDocName | Rest], Config) ->
-    case maybe_compact_view(DbName, BucketName, DDocName, Config) of
+maybe_compact_views(BucketName, [DDocName | Rest], Config) ->
+    case maybe_compact_view(BucketName, DDocName, Config) of
     ok ->
-        maybe_compact_views(DbName, BucketName, Rest, Config);
+        maybe_compact_views(BucketName, Rest, Config);
     timeout ->
         ok
     end.
@@ -262,7 +260,7 @@ db_ddoc_names(Db) ->
         Db,
         fun(#doc_info{id = <<"_design/", _/binary>>, deleted = true}, _, Acc) ->
             {ok, Acc};
-        (#doc_info{id = <<"_design/", Id/binary>>}, _, Acc) ->
+        (#doc_info{id = <<"_design/", _/binary>> = Id}, _, Acc) ->
             {ok, [Id | Acc]};
         (_, _, Acc) ->
             {stop, Acc}
@@ -270,8 +268,8 @@ db_ddoc_names(Db) ->
     DDocNames.
 
 
-maybe_compact_view(DbName, BucketName, DDocId, Config) ->
-    case (catch couch_set_view:get_group_info(BucketName, DDocId)) of
+maybe_compact_view(BucketName, DDocId, Config) ->
+    try couch_set_view:get_group_info(BucketName, DDocId) of
     {ok, GroupInfo} ->
         case can_view_compact(Config, BucketName, DDocId, GroupInfo) of
         true ->
@@ -296,10 +294,10 @@ maybe_compact_view(DbName, BucketName, DDocId, Config) ->
             end;
         false ->
             ok
-        end;
-    Error ->
-        ?log_error("Error opening view group `~s` from database `~s`: ~p",
-            [DDocId, DbName, Error]),
+        end
+    catch T:E ->
+        ?log_error("Error opening view group `~s` from bucket `~s`: ~p~n~p",
+            [DDocId, BucketName, {T,E}, erlang:get_stacktrace()]),
         ok
     end.
 
