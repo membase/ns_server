@@ -30,7 +30,7 @@ stats_aggregator =
 stats_collector =
 
 [compaction_daemon]
-check_interval = 60
+check_interval = 30
 min_file_size = 131072
 
 [compactions]
