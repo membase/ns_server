@@ -188,7 +188,7 @@ maybe_compact_bucket(BucketName, VbNames, Config) ->
             VbNames);
     true ->
         lists:foreach(fun(N) ->
-            compact_vbucket(N, BucketName, DDocNames, Config) end,
+            compact_vbucket(N, Config) end,
             VbNames)
     end.
 
@@ -221,30 +221,15 @@ vbuckets_need_compaction([DbName | Rest], Config, Acc) ->
     end.
 
 
-compact_vbucket(DbName, BucketName, DDocNames, Config) ->
+compact_vbucket(DbName, Config) ->
     case (catch couch_db:open_int(DbName, [])) of
     {ok, Db} ->
         {ok, DbCompactPid} = couch_db:start_compact(Db),
         TimeLeft = compact_time_left(Config),
-        case Config#config.parallel_view_compact of
-        true ->
-            ViewsCompactPid = spawn(fun() ->
-                maybe_compact_views(DbName, BucketName, DDocNames, Config)
-            end),
-            ViewsMonRef = erlang:monitor(process, ViewsCompactPid);
-        false ->
-            ViewsMonRef = nil
-        end,
         DbMonRef = erlang:monitor(process, DbCompactPid),
         receive
         {'DOWN', DbMonRef, process, _, normal} ->
-            couch_db:close(Db),
-            case Config#config.parallel_view_compact of
-            true ->
-                ok;
-            false ->
-                maybe_compact_views(DbName, BucketName, DDocNames, Config)
-            end;
+            couch_db:close(Db);
         {'DOWN', DbMonRef, process, _, Reason} ->
             couch_db:close(Db),
             ?log_error("Compaction daemon - an error occurred while"
@@ -255,15 +240,6 @@ compact_vbucket(DbName, BucketName, DDocNames, Config) ->
             erlang:demonitor(DbMonRef, [flush]),
             ok = couch_db:cancel_compact(Db),
             couch_db:close(Db)
-        end,
-        case ViewsMonRef of
-        nil ->
-            ok;
-        _ ->
-            receive
-            {'DOWN', ViewsMonRef, process, _, _Reason} ->
-                ok
-            end
         end;
     Error ->
         ?log_error("Couldn't open vbucket database `~s`: ~p", [DbName, Error])
