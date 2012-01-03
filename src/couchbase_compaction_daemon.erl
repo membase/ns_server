@@ -21,8 +21,7 @@
 -export([code_change/3, terminate/2]).
 
 -include("couch_db.hrl").
-%% overriding couch logging macros
--include("couch_log.hrl").
+-include("ns_common.hrl").
 
 % If N vbucket databases of a bucket need to be compacted, we trigger compaction
 % for all the vbucket databases of that bucket.
@@ -179,7 +178,7 @@ maybe_compact_bucket(BucketName, VbNames, Config) ->
          couch_db:close(MasterDb),
          Names;
     Error ->
-         ?LOG_ERROR("Error opening database `~s`: ~p", [MasterDbName, Error]),
+         ?log_error("Error opening database `~s`: ~p", [MasterDbName, Error]),
          []
     end,
     case bucket_needs_compaction(VbNames, Config) of
@@ -217,7 +216,7 @@ vbuckets_need_compaction([DbName | Rest], Config, Acc) ->
         couch_db:close(Db),
         vbuckets_need_compaction(Rest, Config, Acc2);
     Error ->
-        ?LOG_ERROR("Couldn't open vbucket database `~s`: ~p", [DbName, Error]),
+        ?log_error("Couldn't open vbucket database `~s`: ~p", [DbName, Error]),
         false
     end.
 
@@ -248,10 +247,10 @@ compact_vbucket(DbName, BucketName, DDocNames, Config) ->
             end;
         {'DOWN', DbMonRef, process, _, Reason} ->
             couch_db:close(Db),
-            ?LOG_ERROR("Compaction daemon - an error ocurred while"
+            ?log_error("Compaction daemon - an error occurred while"
                 " compacting the database `~s`: ~p", [DbName, Reason])
         after TimeLeft ->
-            ?LOG_INFO("Compaction daemon - canceling compaction for database"
+            ?log_info("Compaction daemon - canceling compaction for database"
                 " `~s` because it's exceeding the allowed period.", [DbName]),
             erlang:demonitor(DbMonRef, [flush]),
             ok = couch_db:cancel_compact(Db),
@@ -267,7 +266,7 @@ compact_vbucket(DbName, BucketName, DDocNames, Config) ->
             end
         end;
     Error ->
-        ?LOG_ERROR("Couldn't open vbucket database `~s`: ~p", [DbName, Error])
+        ?log_error("Couldn't open vbucket database `~s`: ~p", [DbName, Error])
     end.
 
 
@@ -307,12 +306,12 @@ maybe_compact_view(DbName, BucketName, DDocId, Config) ->
             {'DOWN', MonRef, process, CompactPid, normal} ->
                 ok;
             {'DOWN', MonRef, process, CompactPid, Reason} ->
-                ?LOG_ERROR("Compaction daemon - an error ocurred while compacting"
+                ?log_error("Compaction daemon - an error ocurred while compacting"
                     " the view group `~s` from bucket `~s`: ~p",
                     [DDocId, BucketName, Reason]),
                 ok
             after TimeLeft ->
-                ?LOG_INFO("Compaction daemon - canceling the compaction for the "
+                ?log_info("Compaction daemon - canceling the compaction for the "
                     "view group `~s` of the bucket `~s` because it's exceeding"
                     " the allowed period.", [DDocId, BucketName]),
                 erlang:demonitor(MonRef, [flush]),
@@ -323,7 +322,7 @@ maybe_compact_view(DbName, BucketName, DDocId, Config) ->
             ok
         end;
     Error ->
-        ?LOG_ERROR("Error opening view group `~s` from database `~s`: ~p",
+        ?log_error("Error opening view group `~s` from database `~s`: ~p",
             [DDocId, DbName, Error]),
         ok
     end.
@@ -364,7 +363,7 @@ can_db_compact(#config{db_frag = Threshold} = Config, Db) ->
     true ->
         {ok, DbInfo} = couch_db:get_db_info(Db),
         {Frag, SpaceRequired} = frag(DbInfo),
-        ?LOG_DEBUG("Fragmentation for database `~s` is ~p%, estimated space for"
+        ?log_debug("Fragmentation for database `~s` is ~p%, estimated space for"
            " compaction is ~p bytes.", [Db#db.name, Frag, SpaceRequired]),
         case check_frag(Threshold, Frag) of
         false ->
@@ -375,7 +374,7 @@ can_db_compact(#config{db_frag = Threshold} = Config, Db) ->
             true ->
                 true;
             false ->
-                ?LOG_INFO("Compaction daemon - skipping database `~s` "
+                ?log_info("Compaction daemon - skipping database `~s` "
                     "compaction: the estimated necessary disk space is about ~p"
                     " bytes but the currently available disk space is ~p bytes.",
                    [Db#db.name, SpaceRequired, Free]),
@@ -394,7 +393,7 @@ can_view_compact(Config, BucketName, DDocId, GroupInfo) ->
             false;
         false ->
             {Frag, SpaceRequired} = frag(GroupInfo),
-            ?LOG_DEBUG("Fragmentation for view group `~s` (bucket `~s`) is "
+            ?log_debug("Fragmentation for view group `~s` (bucket `~s`) is "
                 "~p%, estimated space for compaction is ~p bytes.",
                 [DDocId, BucketName, Frag, SpaceRequired]),
             case check_frag(Config#config.view_frag, Frag) of
@@ -406,7 +405,7 @@ can_view_compact(Config, BucketName, DDocId, GroupInfo) ->
                 true ->
                     true;
                 false ->
-                    ?LOG_INFO("Compaction daemon - skipping view group `~s` "
+                    ?log_info("Compaction daemon - skipping view group `~s` "
                         "compaction (bucket `~s`): the estimated necessary "
                         "disk space is about ~p bytes but the currently available"
                         " disk space is ~p bytes.",
@@ -478,11 +477,11 @@ parse_config(DbName, ConfigString) ->
     {ok, Conf} ->
         {ok, Conf};
     incomplete_period ->
-        ?LOG_ERROR("Incomplete period ('to' or 'from' missing) in the compaction"
+        ?log_error("Incomplete period ('to' or 'from' missing) in the compaction"
             " configuration for database `~s`", [DbName]),
         error;
     _ ->
-        ?LOG_ERROR("Invalid compaction configuration for database "
+        ?log_error("Invalid compaction configuration for database "
             "`~s`: `~s`", [DbName, ConfigString]),
         error
     end.
