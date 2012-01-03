@@ -161,7 +161,8 @@ current_status(Expensive) ->
 
     Tasks = lists:filter(
         fun (Task) ->
-                {type, indexer} =:= lists:keyfind(type, 1, Task)
+                {type, Type} = lists:keyfind(type, 1, Task),
+                Type =:= indexer orelse Type =:= view_compaction
         end , couch_task_status:all()),
 
     [{active_buckets, ns_memcached:active_buckets()},

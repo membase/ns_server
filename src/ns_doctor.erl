@@ -242,6 +242,11 @@ maybe_refresh_tasks_version(State) ->
                                                        {lists:keyfind(design_document, 1, Task),
                                                         lists:keyfind(set, 1, Task)}),
                                                      Set0);
+                                view_compaction ->
+                                    sets:add_element(erlang:phash2(
+                                                       {lists:keyfind(design_document, 1, Task),
+                                                        lists:keyfind(set, 1, Task)}),
+                                                     Set0);
                                 _ ->
                                     Set0
                             end
@@ -260,18 +265,20 @@ maybe_refresh_tasks_version(State) ->
                         tasks_version = integer_to_list(TasksAndRebalanceHash)}
     end.
 
-task_operation(extract, indexer, RawTask) ->
+task_operation(extract, IndexerOrCompaction, RawTask)
+  when IndexerOrCompaction =:= indexer orelse IndexerOrCompaction =:= view_compaction ->
     {_, ChangesDone} = lists:keyfind(changes_done, 1, RawTask),
     {_, TotalChanges} = lists:keyfind(total_changes, 1, RawTask),
     {_, BucketName} = lists:keyfind(set, 1, RawTask),
     {_, DDocId} = lists:keyfind(design_document, 1, RawTask),
-    {{indexer, BucketName, DDocId}, {ChangesDone, TotalChanges}};
+    {{IndexerOrCompaction, BucketName, DDocId}, {ChangesDone, TotalChanges}};
 task_operation(extract, _, _) ->
     ignore;
 
-task_operation(finalize, {indexer, BucketName, DDocId}, {ChangesDone, TotalChanges}) ->
+task_operation(finalize, {IndexerOrCompaction, BucketName, DDocId}, {ChangesDone, TotalChanges})
+  when IndexerOrCompaction =:= indexer orelse IndexerOrCompaction =:= view_compaction ->
     Progress = erlang:min((ChangesDone * 100) div TotalChanges, 100),
-    [{type, indexer},
+    [{type, IndexerOrCompaction},
      {recommendedRefreshPeriod, 2.0},
      {status, running},
      {bucket, BucketName},
@@ -283,7 +290,12 @@ task_operation(finalize, {indexer, BucketName, DDocId}, {ChangesDone, TotalChang
 task_operation(fold, {indexer, _, _},
                {ChangesDone1, TotalChanges1},
                {ChangesDone2, TotalChanges2}) ->
+    {ChangesDone1 + ChangesDone2, TotalChanges1 + TotalChanges2};
+task_operation(fold, {view_compaction, _, _},
+               {ChangesDone1, TotalChanges1},
+               {ChangesDone2, TotalChanges2}) ->
     {ChangesDone1 + ChangesDone2, TotalChanges1 + TotalChanges2}.
+
 
 
 do_build_tasks_list(NodesDict, NeedNodeP) ->
