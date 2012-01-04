@@ -114,8 +114,10 @@ handle_cast({update_ddoc, DDocId, Deleted},
     State1 =
         case Deleted of
             false ->
-                %% we need to redefine set view whenever document changes
-                define_group(Bucket, BucketConfig, DDocId, Map),
+                %% we need to redefine set view whenever document changes; but
+                %% previous group for current value of design document can
+                %% still be alive; thus using maybe_define_group
+                maybe_define_group(Bucket, BucketConfig, DDocId, Map),
                 DDocs1 = sets:add_element(DDocId, DDocs),
                 State#state{ddocs=DDocs1};
             true ->
