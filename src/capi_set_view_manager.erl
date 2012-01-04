@@ -63,7 +63,7 @@ init(Bucket) ->
     ns_pubsub:subscribe(ns_config_events,
                         mk_filter(InterestingNsConfigEvent), ignored),
     ns_pubsub:subscribe(mc_couch_events,
-                        mk_mc_couch_event_hander(), ignored),
+                        mk_mc_couch_event_handler(), ignored),
 
     Self = self(),
     Watcher =
@@ -404,7 +404,7 @@ interesting_ns_config_event(Bucket, {buckets, Buckets}) ->
 interesting_ns_config_event(_Bucket, _) ->
     false.
 
-mk_mc_couch_event_hander() ->
+mk_mc_couch_event_handler() ->
     Self = self(),
 
     fun (Event, _) ->
