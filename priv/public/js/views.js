@@ -849,8 +849,48 @@ var ViewsSection = {
       });
     });
 
+    // filters tasks of this bucket and converts them from array of
+    // tasks to hash from ddoc id to array of tasks of on this ddoc
+    // id.
+    //
+    // This also filters out non-view related tasks
+    var tasksOfCurrentBucket = Cell.compute(function (v) {
+      var tasks = v.need(DAL.cells.tasksProgressCell);
+      var bucketName = v.need(selectedBucketCell);
+      var rv = {};
+      _.each(tasks, function (taskInfo) {
+        if (taskInfo.type !== 'indexer' && taskInfo.type !== 'view_compaction') {
+          return;
+        }
+        if (taskInfo.bucket !== bucketName) {
+          return;
+        }
+        var ddoc = taskInfo.designDocument;
+        var tasks = rv[ddoc] || (rv[ddoc] = []);
+        tasks.push(taskInfo);
+      });
+
+      var importance = {
+        view_compaction: 0,
+        indexer: 1
+      };
+
+      _.each(rv, function (tasks, key) {
+        // lets also sort tasks in descending importance.
+        // NOTE: js's sort is in-place
+        tasks.sort(function (taskA, taskB) {
+          var importanceA = importance[taskA.type] || BUG("bad type");
+          var importanceB = importance[taskB.type] || BUG("bad type");
+          return importanceA - importanceB;
+        });
+      });
+
+      return rv;
+    }).name("tasksOfCurrentBucket");
+    tasksOfCurrentBucket.equality = _.isEqual;
+
     function mkViewsListCell(ddocsCell, containerId) {
-      var cell = Cell.needing(DAL.cells.tasksProgressCell, ddocsCell, DAL.cells.currentPoolDetailsCell)
+      var cell = Cell.needing(tasksOfCurrentBucket, ddocsCell, DAL.cells.currentPoolDetailsCell)
         .compute(function (v, tasks, ddocs, poolDetails) {
         var bucketName = v.need(selectedBucketCell);
         var rv = _.map(ddocs, function (doc) {
@@ -889,16 +929,12 @@ var ViewsSection = {
         var poolDetails = ddocs.poolDetails;
         var bucketName = ddocs.bucketName;
 
-        ddocs = _.map(ddocs, function (x) {
-          var task = _.detect(ddocs.tasks, function (taskInfo) {
-            return taskInfo.type === "indexer" &&
-              taskInfo.bucket === bucketName &&
-              taskInfo.designDocument === x._id;
-          });
+        _.each(ddocs, function (x) {
+          var task = (ddocs.tasks[x._id] || [])[0];
           if (task) {
             x.progress = task.progress;
+            x.taskType = task.type;
           }
-          return x;
         });
 
         renderTemplate('views_list', {

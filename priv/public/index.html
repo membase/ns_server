@@ -930,7 +930,7 @@
                     <div class="usage_smallest">
                       <div class="used" style="width: {%= h(ddoc.progress) %}%"></div>
                     </div>
-                    <span class="ddoc_message">Indexing {%= h(ddoc.progress) %}%</span>
+                    <span class="ddoc_message">{%= (ddoc.taskType == 'indexer') ? "Indexing" : "Compacting" %} {%= h(ddoc.progress) %}%</span>
                   </div>
                   <!-- {% } %} -->
                 </td>
