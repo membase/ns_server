@@ -130,6 +130,10 @@ ensure_dirs([Path | Rest]) ->
 %% NOTE: ns_server restart is required to make this fully effective.
 -spec setup_disk_storage_conf(DbPath::string(), IxDir::string()) -> ok | {errors, [Msg :: binary()]}.
 setup_disk_storage_conf(DbPath, IxPath) ->
+
+    [ns_orchestrator:delete_bucket(Bucket)
+     || {Bucket, _} <- ns_bucket:get_buckets()],
+
     [{db_path, CurrentDbDir},
      {index_path, CurrentIxDir}] = lists:sort(cb_config_couch_sync:get_db_and_ix_paths()),
 
