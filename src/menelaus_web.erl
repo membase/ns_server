@@ -655,7 +655,7 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
     BucketsInfo = {struct, [{uri,
                              list_to_binary(concat_url_path(["pools", Id, "buckets"])
                                             ++ "?v=" ++ integer_to_list(BucketsVer))}]},
-    RebalanceStatus = case ns_config:search(rebalance_status) =:= {value, running} of
+    RebalanceStatus = case ns_orchestrator:is_rebalance_running() of
                           true -> <<"running">>;
                           _ -> <<"none">>
                       end,

@@ -40,7 +40,8 @@
          start_link/0,
          start_rebalance/3,
          stop_rebalance/0,
-         update_progress/1
+         update_progress/1,
+         is_rebalance_running/0
         ]).
 
 -define(SERVER, {global, ?MODULE}).
@@ -483,3 +484,8 @@ wait_for_nodes(Nodes, Pred, Timeout) ->
         {'EXIT', Pid, normal} ->
             Result1
     end.
+
+%% quickly and _without_ communication to potentially remote
+%% ns_orchestrator find out if rebalance is running.
+is_rebalance_running() ->
+    ns_config:search(rebalance_status) =:= {value, running}.
