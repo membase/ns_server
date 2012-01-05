@@ -24,10 +24,16 @@
     }
   }
 
-  render.indexer = function(obj) {
+  render.indexer = function (obj) {
     return '<li class="clearfix"><div class="usage_smallest">' +
       '<div class="used" style="width:' + (obj.progress >> 0) +
       '%"></div></div><span class="message">Indexing ' + escapeHTML(obj.bucket + "/" + obj.designDocument) + '</span></li>';
+  };
+
+  render.view_compaction = function (obj) {
+    return '<li class="clearfix"><div class="usage_smallest">' +
+      '<div class="used" style="width:' + (obj.progress >> 0) +
+      '%"></div></div><span class="message">Compacting index ' + escapeHTML(obj.bucket + "/" + obj.designDocument) + '</span></li>';
   };
 
 
