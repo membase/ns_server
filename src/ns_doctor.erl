@@ -248,10 +248,7 @@ maybe_refresh_tasks_version(State) ->
                     end, Set, proplists:get_value(local_tasks, NodeInfo, []))
           end, sets:new(), Nodes),
     TasksAndRebalanceHash = erlang:phash2({erlang:phash2(TasksHashesSet),
-                                           case ns_cluster_membership:get_rebalance_status() of
-                                               {running, _} -> running;
-                                               _ -> not_running
-                                           end}),
+                                           ns_orchestrator:is_rebalance_running()}),
     case TasksAndRebalanceHash =:= State#state.tasks_hash of
         true ->
             %% hash did not change, only nodes. Cool
