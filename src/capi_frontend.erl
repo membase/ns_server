@@ -88,7 +88,12 @@ update_doc(_Db, #doc{id = <<?LOCAL_DOC_PREFIX, _/binary>>},
 
 update_doc(#db{filepath = undefined, name=Name},
            #doc{id = <<"_design/",_/binary>>} = Doc, _Options) ->
-    capi_ddoc_replication_srv:update_doc(Name, Doc);
+    case valid_ddoc(Doc) of
+        ok ->
+            capi_ddoc_replication_srv:update_doc(Name, Doc);
+        {error, Reason} ->
+            throw({invalid_design_doc, Reason})
+    end;
 
 update_doc(#db{filepath = undefined, name=Name} = Db,
            #doc{id=DocId} = Doc, Options) ->
@@ -105,6 +110,15 @@ update_doc(#db{filepath = undefined, name=Name} = Db,
     end.
 
 update_docs(#db{filepath = undefined, name = Name}, Docs, _Options) ->
+
+    lists:foreach(fun(#doc{id = <<"_design/",_/binary>>} = Doc) ->
+                          case valid_ddoc(Doc) of
+                              ok -> ok;
+                              {error, Reason} ->
+                                  throw({invalid_design_doc, Reason})
+                          end
+                  end, Docs),
+
     lists:foreach(fun(#doc{id = <<"_design/",_/binary>>} = Doc) ->
                           ok = capi_ddoc_replication_srv:update_doc(Name, Doc)
                   end, Docs).
@@ -481,3 +495,34 @@ attempt(DbName, DocId, Mod, Fun, Args, fast_forward) ->
         {ok, R1} ->
             R1
     end.
+
+%% Do basic checking on design documents content to ensure it is a valid
+%% design document
+-spec valid_ddoc(#doc{}) -> ok | {error, term()}.
+valid_ddoc(Doc) ->
+    case catch validate_ddoc(Doc) of
+        ok ->
+            ok;
+        Error ->
+            {error, Error}
+    end.
+
+validate_ddoc(Doc) ->
+
+    #doc{json={Fields}, meta=Meta} = couch_doc:with_ejson_body(Doc),
+
+    Meta =/= [att_reason,<<"invalid_json">>]
+        orelse throw(invalid_json),
+
+    is_json_object(couch_util:get_value(<<"options">>, Fields, {[]}))
+        orelse throw(invalid_options),
+
+    is_json_object(couch_util:get_value(<<"views">>, Fields, {[]}))
+        orelse throw(invalid_view),
+
+    ok.
+
+is_json_object({Obj}) when is_list(Obj) ->
+    true;
+is_json_object(_) ->
+    false.
