@@ -174,7 +174,7 @@ handle_random_req(Req, #db{filepath = undefined, name = Bucket} = Db) ->
             Params2 = setup_sender(Params1),
 
             #collect_acc{rows=Rows} = couch_index_merger:query_index(
-                                        couch_view_merger, Req, Params2),
+                                        couch_view_merger, Params2, Req),
 
             case length(Rows) of
                 0 ->

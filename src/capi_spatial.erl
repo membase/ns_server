@@ -30,7 +30,7 @@ design_doc_spatial(Req, #db{name=BucketName} = Db, DesignName, SpatialName,
     Specs = capi_view:build_local_simple_specs(BucketName, DDocId, SpatialName,
                                                VBuckets),
     MergeParams = spatial_merge_params(Req, Db, DDocId, SpatialName, Specs),
-    couch_index_merger:query_index(couch_spatial_merger, Req, MergeParams).
+    couch_index_merger:query_index(couch_spatial_merger, MergeParams, Req).
 
 design_doc_spatial(Req, Db, DesignName, SpatialName) ->
     DDocId = <<"_design/", DesignName/binary>>,
@@ -41,7 +41,7 @@ design_doc_spatial_loop(_Req, _Db, _DDocId, _SpatialName, 0) ->
 design_doc_spatial_loop(Req, Db, DDocId, SpatialName, Attempt) ->
     MergeParams = spatial_merge_params(Req, Db, DDocId, SpatialName),
     try
-        couch_index_merger:query_index(couch_spatial_merger, Req, MergeParams)
+        couch_index_merger:query_index(couch_spatial_merger, MergeParams, Req)
     catch
         % Spatial indexes don't supprt set views at the moment, though keeping
         % the code here for future reference doesn't do any harm.

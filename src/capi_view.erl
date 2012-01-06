@@ -38,7 +38,7 @@ design_doc_view(Req, #db{name=BucketName} = Db, DesignName, ViewName, VBuckets) 
     DDocId = <<"_design/", DesignName/binary>>,
     Specs = build_local_simple_specs(BucketName, DDocId, ViewName, VBuckets),
     MergeParams = view_merge_params(Req, Db, DDocId, ViewName, Specs),
-    couch_index_merger:query_index(couch_view_merger, Req, MergeParams).
+    couch_index_merger:query_index(couch_view_merger, MergeParams, Req).
 
 design_doc_view(Req, Db, DesignName, ViewName) ->
     DDocId = <<"_design/", DesignName/binary>>,
@@ -49,7 +49,7 @@ design_doc_view_loop(_Req, _Db, _DDocId, _ViewName, 0) ->
 design_doc_view_loop(Req, Db, DDocId, ViewName, Attempt) ->
     MergeParams = view_merge_params(Req, Db, DDocId, ViewName),
     try
-        couch_index_merger:query_index(couch_view_merger, Req, MergeParams)
+        couch_index_merger:query_index(couch_view_merger, MergeParams, Req)
     catch
         throw:{error, set_view_outdated} ->
             ?log_debug("Got `set_view_outdated` error. Retrying."),
@@ -114,7 +114,7 @@ all_docs_db_req(Req, Db) ->
 
 do_capi_all_docs_db_req(Req, #db{filepath = undefined} = Db) ->
     MergeParams = view_merge_params(Req, Db, nil, <<"_all_docs">>),
-    couch_index_merger:query_index(couch_view_merger, Req, MergeParams).
+    couch_index_merger:query_index(couch_view_merger, MergeParams, Req).
 
 node_vbuckets_dict(BucketName) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketName),
