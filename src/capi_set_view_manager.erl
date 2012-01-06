@@ -22,6 +22,7 @@
          handle_info/2, terminate/2, code_change/3]).
 
 -define(SYNC_INTERVAL, 5000).
+-define(EMPTY_MAP, [{active, []}, {passive, []}, {replica, []}, {ignore, []}]).
 
 %% API
 -export([start_link/1, wait_until_added/3]).
@@ -189,66 +190,141 @@ matching_indexes(Pred, List) ->
               end
       end, [], IndexedList).
 
-matching_vbuckets(Pred, Map, States) ->
+generic_matching_vbuckets(VBucketPred, Pred, Map, States) ->
     matching_indexes(
-      fun (Ix, [MasterNode | _]) ->
-              case MasterNode =:= node() of
+      fun (Ix, Chain) ->
+              case VBucketPred(Chain) of
                   true ->
                       VBucketState = dict:fetch(Ix, States),
-                      Pred(Ix, VBucketState);
+                      Pred(VBucketState);
                   false ->
                       false
               end
       end, Map).
 
+is_master(Chain) ->
+    is_master(node(), Chain).
+
+is_master(Node, [Master | _]) ->
+    Node =:= Master.
+
+is_replica(Chain) ->
+    is_replica(node(), Chain).
+
+is_replica(Node, [_Master | Replicas]) ->
+    lists:member(Node, Replicas).
+
+matching_master_vbuckets(Pred, Map, States) ->
+    generic_matching_vbuckets(fun is_master/1, Pred, Map, States).
+
+matching_replica_vbuckets(Pred, Map, States) ->
+    generic_matching_vbuckets(fun is_replica/1, Pred, Map, States).
+
+matching_vbuckets(Pred, Map, States) ->
+    generic_matching_vbuckets(
+      fun (Chain) ->
+              is_master(Chain) orelse is_replica(Chain)
+      end, Pred, Map, States).
+
 build_map(BucketConfig, VBucketStates) ->
     Map = proplists:get_value(map, BucketConfig),
+    FFMap = case proplists:get_value(fastForwardMap, BucketConfig) of
+                undefined ->
+                    [];
+                FFMap1 ->
+                    FFMap1
+            end,
 
     case Map of
         undefined ->
-            [{active, []}, {passive, []}, {ignore, []}];
+            ?EMPTY_MAP;
         _ ->
-            Active = matching_vbuckets(
-                       fun (_Vb, State) ->
+            Active = matching_master_vbuckets(
+                       fun (State) ->
                                State =:= active
                        end, Map, VBucketStates),
 
+            Replica1 = matching_replica_vbuckets(
+                         fun (State) ->
+                                 State =:= replica
+                         end, Map, VBucketStates),
+
+            %% vbucket is replica according to fastforward map but vbucket map
+            %% has not yet changed for some reason
+            Replica2 = matching_replica_vbuckets(
+                         fun (State) ->
+                                 State =:= replica
+                         end, FFMap, VBucketStates),
+
+            Replica = ordsets:union([Replica1, Replica2]),
+
             Ignore = matching_vbuckets(
-                       fun (_Vb, State) ->
+                       fun (State) ->
                                State =:= dead
                        end, Map, VBucketStates),
 
-            FFMap = proplists:get_value(fastForwardMap, BucketConfig),
+            %% vbuckets that are going to be masters after rebalance
+            Passive1 = matching_master_vbuckets(
+                         fun (State) ->
+                                 State =:= active orelse
+                                     State =:= replica orelse
+                                     State =:= pending
+                         end, FFMap, VBucketStates),
+
+            %% during failover there is a time lapse when some replica
+            %% vbuckets has already been promoted to masters but they are
+            %% still in state 'replica'; so we should add these vbuckets to a
+            %% passive set to not lose their indexes
+            Passive2 = matching_master_vbuckets(
+                         fun (State) ->
+                                 State =:= replica
+                         end, Map, VBucketStates),
+
             Passive =
-                case FFMap of
-                    undefined ->
-                        [];
-                    _ ->
-                        Passive1 =
-                            matching_vbuckets(
-                              fun (_Vb, State) ->
-                                      State =:= active orelse
-                                          State =:= replica orelse
-                                          State =:= pending
-                              end, FFMap, VBucketStates),
-                        Passive1 -- Active
-                end,
+                ordsets:subtract(ordsets:union(Passive1, Passive2),
+                                 ordsets:union(Active, Replica)),
 
             [{active, Active},
              {passive, Passive},
-             {ignore, Ignore}]
+             {ignore, Ignore},
+             {replica, Replica}]
     end.
+
+classify_vbuckets(undefined, NewMap) ->
+    classify_vbuckets(?EMPTY_MAP, NewMap);
+classify_vbuckets(OldMap, NewMap) ->
+    Active = proplists:get_value(active, NewMap),
+    Passive = proplists:get_value(passive, NewMap),
+    Ignore = proplists:get_value(ignore, NewMap),
+    Replica = proplists:get_value(replica, NewMap),
+
+    OldActive = proplists:get_value(active, OldMap),
+    OldPassive = proplists:get_value(passive, OldMap),
+    OldIgnore = proplists:get_value(ignore, OldMap),
+    OldReplica = proplists:get_value(replica, OldMap),
+
+    OldNonReplica = ordsets:union([OldActive, OldPassive, OldIgnore]),
+    NonReplica = ordsets:union([Active, Passive, Ignore]),
+
+    Cleanup1 = ordsets:subtract(OldNonReplica, NonReplica),
+
+    %% also cleanup replica vbuckets that were (potentially) active or passive
+    Cleanup = ordsets:union(Cleanup1,
+                            ordsets:intersection(OldNonReplica, Replica)),
+
+    All = ordsets:union(NonReplica, Replica),
+    ReplicaCleanup = ordsets:subtract(OldReplica, All),
+
+    {Active, Passive, Cleanup, Replica, ReplicaCleanup}.
 
 define_group(Bucket, BucketConfig, DDocId, Map) ->
     SetName = list_to_binary(Bucket),
     NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
 
-    Active = proplists:get_value(active, Map),
-    Passive = proplists:get_value(passive, Map),
-
     Params = #set_view_params{max_partitions=NumVBuckets,
-                              active_partitions=Active,
-                              passive_partitions=Passive},
+                              active_partitions=[],
+                              passive_partitions=[],
+                              use_replica_index=true},
 
     try
         ok = couch_set_view:define_group(SetName, DDocId, Params)
@@ -258,7 +334,9 @@ define_group(Bucket, BucketConfig, DDocId, Map) ->
             %% alive. Eventually we will get a notification from master db
             %% watcher and delete it from a list of design documents.
             ok
-    end.
+    end,
+
+    apply_ddoc_map(Bucket, DDocId, undefined, Map).
 
 maybe_define_group(Bucket, BucketConfig, DDocId, Map) ->
     try
@@ -268,12 +346,38 @@ maybe_define_group(Bucket, BucketConfig, DDocId, Map) ->
             ok
     end.
 
-apply_ddoc_map(Bucket, DDocId, Active, Passive, ToRemove) ->
+apply_ddoc_map(Bucket, DDocId, OldMap, NewMap) ->
+    ?log_info("Applying map to bucket ~s (ddoc ~s):~n~p",
+              [Bucket, DDocId, NewMap]),
+
+    {Active, Passive, Cleanup, Replica, ReplicaCleanup} =
+        classify_vbuckets(OldMap, NewMap),
+
+    ?log_info("Classified vbuckets for ~p (ddoc ~s):~n"
+              "Active: ~p~n"
+              "Passive: ~p~n"
+              "Cleanup: ~p~n"
+              "Replica: ~p~n"
+              "ReplicaCleanup: ~p",
+              [Bucket, DDocId,
+               Active, Passive, Cleanup, Replica, ReplicaCleanup]),
+
+    apply_ddoc_map(Bucket, DDocId,
+                   Active, Passive, Cleanup, Replica, ReplicaCleanup).
+
+apply_ddoc_map(Bucket, DDocId,
+               Active, Passive, Cleanup, Replica, ReplicaCleanup) ->
     SetName = list_to_binary(Bucket),
 
     try
+        %% this should go first because some of the replica vbuckets might
+        %% need to be cleaned up from main index
         ok = couch_set_view:set_partition_states(SetName, DDocId,
-                                                 Active, Passive, ToRemove)
+                                                 Active, Passive, Cleanup),
+
+        ok = couch_set_view:add_replica_partitions(SetName, DDocId, Replica),
+        ok = couch_set_view:remove_replica_partitions(SetName, DDocId,
+                                                      ReplicaCleanup)
     catch
         throw:{not_found, deleted} ->
             %% The document has been deleted but we still think it's
@@ -288,30 +392,23 @@ apply_ddoc_map(Bucket, DDocId, Active, Passive, ToRemove) ->
     end.
 
 apply_map(Bucket, DDocs, OldMap, NewMap) ->
-    ?log_debug("Applying map ~p to bucket ~s", [NewMap, Bucket]),
+    ?log_info("Applying map to bucket ~s:~n~p", [Bucket, NewMap]),
 
-    Active = proplists:get_value(active, NewMap),
-    Passive = proplists:get_value(passive, NewMap),
-    Ignore = proplists:get_value(ignore, NewMap),
+    {Active, Passive, Cleanup, Replica, ReplicaCleanup} =
+        classify_vbuckets(OldMap, NewMap),
 
-    ToRemove =
-        case OldMap of
-            undefined ->
-                [];
-            _ ->
-                OldActive = proplists:get_value(active, OldMap),
-                OldPassive = proplists:get_value(passive, OldMap),
-                OldIgnore = proplists:get_value(ignore, OldMap),
-
-                (OldActive ++ OldPassive ++ OldIgnore) --
-                    (Active ++ Passive ++ Ignore)
-        end,
-
-    ?log_debug("Partitions to remove: ~p", [ToRemove]),
+    ?log_info("Classified vbuckets for ~s:~n"
+              "Active: ~p~n"
+              "Passive: ~p~n"
+              "Cleanup: ~p~n"
+              "Replica: ~p~n"
+              "ReplicaCleanup: ~p",
+              [Bucket, Active, Passive, Cleanup, Replica, ReplicaCleanup]),
 
     sets:fold(
       fun (DDocId, _) ->
-              apply_ddoc_map(Bucket, DDocId, Active, Passive, ToRemove)
+              apply_ddoc_map(Bucket, DDocId,
+                             Active, Passive, Cleanup, Replica, ReplicaCleanup)
       end, undefined, DDocs).
 
 get_vbucket_state(Bucket, VBucket) ->
