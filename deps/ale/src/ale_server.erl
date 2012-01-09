@@ -31,7 +31,7 @@
                  loglevel             :: loglevel(),
                  sync_loglevel        :: loglevel(),
                  sinks = dict:new()   :: dict(),
-                 compiler = undefined :: pid() }).
+                 compiler = undefined :: pid() | undefined}).
 
 start_link(ServerName, LoggerName, LogLevel, SyncLogLevel) ->
     gen_server:start_link({local, ServerName},
