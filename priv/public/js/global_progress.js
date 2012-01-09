@@ -11,7 +11,7 @@
 
   function refreshProgress(tasks) {
     if ($.isEmptyObject(tasks)) {
-      progressWrapper.hide();
+      progressWrapper.hide('fade');
     } else {
       var html = "";
       _.each(tasks, function (obj) {
@@ -20,7 +20,7 @@
 
       progressWrapper.toggleClass('disable_toggle', tasks.length < 2);
       progressContainer.html(html);
-      progressWrapper.show();
+      progressWrapper.show('fade');
     }
   }
 
