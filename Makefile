@@ -178,16 +178,23 @@ $(NS_SERVER_PLT): | all
 	$(MAKE) do_build_plt COUCH_PATH="$(shell . `pwd`/.configuration && echo $$couchdb_src)"
 
 do_build_plt:
-	dialyzer --output_plt $(NS_SERVER_PLT) --build_plt -pa ebin --apps compiler crypto erts inets kernel mnesia os_mon sasl ssl stdlib xmerl -c deps/erlwsh/ebin $(COUCH_PATH)/src/couchdb $(COUCH_PATH)/src/mochiweb $(COUCH_PATH)/src/snappy $(COUCH_PATH)/src/etap $(COUCH_PATH)/src/ibrowse $(COUCH_PATH)/src/erlang-oauth
+	dialyzer --output_plt $(NS_SERVER_PLT) --build_plt \
+          --apps compiler crypto erts inets kernel mnesia os_mon sasl ssl stdlib xmerl \
+            $(COUCH_PATH)/src/mochiweb \
+            $(COUCH_PATH)/src/snappy $(COUCH_PATH)/src/etap $(COUCH_PATH)/src/ibrowse \
+            $(COUCH_PATH)/src/erlang-oauth deps/erlwsh/ebin deps/gen_smtp/ebin
 
 dialyzer: all $(NS_SERVER_PLT)
-	dialyzer --plt $(NS_SERVER_PLT) -pa ebin -c ebin
+	$(MAKE) do-dialyzer DIALYZER_FLAGS="-Wno_return $(DIALYZER_FLAGS)" COUCH_PATH="$(shell . `pwd`/.configuration && echo $$couchdb_src)"
+
+do-dialyzer:
+	dialyzer --plt $(NS_SERVER_PLT) $(DIALYZER_FLAGS) \
+            --apps `ls -1 ebin/*.beam | grep -v couch_log` deps/ale/ebin \
+            $(COUCH_PATH)/src/couchdb $(COUCH_PATH)/src/couch_set_view $(COUCH_PATH)/../mccouch/ebin \
+            $(COUCH_PATH)/../geocouch/build
 
 dialyzer_obsessive: all $(NS_SERVER_PLT)
-	dialyzer --plt $(NS_SERVER_PLT) -Wunmatched_returns -Werror_handling -Wrace_conditions -Wbehaviours -Wunderspecs -pa ebin -c ebin
-
-dialyzer_rebar: all
-	$(REBAR) analyze
+	$(MAKE) do-dialyzer DIALYZER_FLAGS="-Wunmatched_returns -Werror_handling -Wrace_conditions -Wbehaviours -Wunderspecs " COUCH_PATH="$(shell . `pwd`/.configuration && echo $$couchdb_src)"
 
 Features/Makefile:
 	(cd features && ../test/parallellize_features.rb) >features/Makefile
