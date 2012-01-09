@@ -944,8 +944,16 @@ var SetupWizard = {
           return;
         }
 
+        var loading = genericDialog({
+          buttons: {ok: false, cancel: false},
+          header: 'Please wait while the sample buckets are loaded.',
+          textHTML: ''
+        });
+        overlayWithSpinner(loading.dialog);
+
         postWithValidationErrors('/sampleBuckets/install', json, function(error, status) {
           if (status === 'success') {
+            loading.close();
             complete();
           } else {
             var errReason = typeof error[0] === 'object' ? error[0].reason : 'Unknown Error';
