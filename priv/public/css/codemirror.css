@@ -26,7 +26,7 @@
 .CodeMirror-lines {
   padding: .4em;
 }
-.CodeMirror.read_only .CodeMirror-lines {
+.CodeMirror.read_only .CodeMirror-scroll {
   background: #f7f7f7;
 }
 
