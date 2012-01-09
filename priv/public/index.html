@@ -1562,8 +1562,8 @@
           <fieldset class="radiogroup for-bucket-type">
             <legend>Bucket Type:</legend>
             <ul>
-              <li><label><input type="radio" name="bucketType" value="memcached"> Memcached</label></li>
               <li><label><input type="radio" name="bucketType" value="membase"> Couchbase</label></li>
+              <li><label><input type="radio" name="bucketType" value="memcached"> Memcached</label></li>
             </ul>
           </fieldset>
         </li>
@@ -2267,10 +2267,10 @@
     <form><div class="clearfix">
       <h2>Bucket Settings</h2>
       <div class="bucket-icon"></div>
-      <label class="for-name"><span>Bucket Name:</span> default</label>
+      <label class="for-name"><span>Bucket Name:</span> <strong>default</strong></label>
       <div class="for-bucket-type"><span>Bucket Type:</span>
-       <label><input type="radio" name="bucketType" value="memcached"> Memcached</label>
        <label><input type="radio" name="bucketType" value="membase"> Couchbase</label>
+       <label><input type="radio" name="bucketType" value="memcached"> Memcached</label>
       </div>
       <h2>Memory Size</h2>
       <div class="size-gauge for-ram">
