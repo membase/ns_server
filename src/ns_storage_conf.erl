@@ -249,6 +249,7 @@ extract_node_storage_info(NodeInfo, Node, Config) ->
         _ -> []
     end.
 
+%% returns cluster_storage_info for subset of nodes
 nodes_storage_info(NodeNames) ->
     NodesDict = ns_doctor:get_nodes(),
     NodesInfos = lists:foldl(fun (N, A) ->
@@ -259,25 +260,24 @@ nodes_storage_info(NodeNames) ->
                              end, [], NodeNames),
     do_cluster_storage_info(NodesInfos).
 
+%% returns cluster storage info. This is aggregation of various
+%% storage related metrics across active nodes of cluster.
+%%
+%% total - total amount of this resource (ram or hdd) in bytes
+%%
+%% free - amount of this resource free (ram or hdd) in bytes
+%%
+%% used - amount of this resource used (for any purpose (us, OS, other
+%% processes)) in bytes
+%%
+%% quotaTotal - amount of quota for this resource across cluster
+%% nodes. Note hdd quota is not really supported.
+%%
+%% quotaUsed - amount of quota already allocated
+%%
+%% usedByData - amount of this resource used by our data
 cluster_storage_info() ->
-    Config = ns_config:get(),
-    DoctorNodes = ns_doctor:get_nodes(),
-    Nodes = lists:foldl(fun (Node, Acc) ->
-                              case dict:find(Node, DoctorNodes) of
-                                  {ok, Info} -> [{Node, Info} | Acc];
-                                  _ -> Acc
-                              end
-                      end, [], ns_cluster_membership:active_nodes()),
-    PList1 = do_cluster_storage_info(Nodes),
-    AllBuckets = ns_bucket:get_buckets(Config),
-    RAMQuotaUsed = lists:foldl(fun ({_, BucketConfig}, RAMQuota) ->
-                                       ns_bucket:ram_quota(BucketConfig) + RAMQuota
-                               end, 0, AllBuckets),
-    lists:map(fun ({ram, RAMList}) ->
-                      {ram, [{quotaUsed, RAMQuotaUsed}
-                             | RAMList]};
-                  (X) -> X
-              end, PList1).
+    nodes_storage_info(ns_cluster_membership:active_nodes()).
 
 add_used_by_data_prop(UsedByData, Props) ->
     %% because of disk usage update lags and because disksup provides
@@ -300,8 +300,11 @@ do_cluster_storage_info([]) -> [];
 do_cluster_storage_info(NodeInfos) ->
     Config = ns_config:get(),
     AllBuckets = ns_bucket:get_buckets(Config),
+    AllNodes = ordsets:intersection(lists:sort(ns_node_disco:nodes_actual_proper()),
+                                    lists:sort(proplists:get_keys(NodeInfos))),
+    AllNodesSize = length(AllNodes),
     RAMQuotaUsed = lists:foldl(fun ({_, BucketConfig}, RAMQuota) ->
-                                       ns_bucket:ram_quota(BucketConfig) + RAMQuota
+                                       ns_bucket:raw_ram_quota(BucketConfig) * AllNodesSize + RAMQuota
                                end, 0, AllBuckets),
     StorageInfos = [extract_node_storage_info(NodeInfo, Node, Config)
                     || {Node, NodeInfo} <- NodeInfos],
@@ -320,8 +323,6 @@ do_cluster_storage_info(NodeInfos) ->
                                                     HddTotals, HddUsed))
                       * length(HddUsed)} % Minimum amount free on any node * number of nodes
                     ]}],
-    AllNodes = ordsets:intersection(lists:sort(ns_node_disco:nodes_actual_proper()),
-                                    lists:sort(proplists:get_keys(NodeInfos))),
 
     {BucketsRAMUsage, BucketsHDDUsage}
         = lists:foldl(fun ({Name, _}, {RAM, HDD}) ->

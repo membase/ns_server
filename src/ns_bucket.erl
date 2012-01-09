@@ -177,8 +177,9 @@ live_bucket_nodes(Bucket) ->
     LiveNodes = [node()|nodes()],
     [Node || Node <- Servers, lists:member(Node, LiveNodes) ].
 
-%% returns cluster-wide ram_quota. For memcached buckets it's
-%% ram_quota field times number of servers
+%% returns bucket ram quota multiplied by number of nodes this bucket
+%% resides on. I.e. gives amount of ram quota that will be used by
+%% across the cluster for this bucket.
 -spec ram_quota([{_,_}]) -> integer().
 ram_quota(Bucket) ->
     case proplists:get_value(ram_quota, Bucket) of
@@ -186,8 +187,8 @@ ram_quota(Bucket) ->
             X * length(proplists:get_value(servers, Bucket, []))
     end.
 
-%% returns cluster-wide ram_quota. For memcached buckets it's
-%% ram_quota field times number of servers
+%% returns bucket ram quota for _single_ node. Each node will subtract
+%% this much from it's node quota.
 -spec raw_ram_quota([{_,_}]) -> integer().
 raw_ram_quota(Bucket) ->
     case proplists:get_value(ram_quota, Bucket) of
