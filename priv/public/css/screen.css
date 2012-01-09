@@ -783,7 +783,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list td.bucket_name, .list td.view_name, .list td.node_name {font-weight:bolder;text-align:left;font-size:130%}
 .list td.node_name {font-size:120%;white-space:nowrap}
 .list td.ram {width:77px}
-.list td.rep {width:38px}
+.list td.rep {width:38px;white-space:nowrap}
 .list td.view_name{padding-left:3em;color:#616062}
 .list .settings-placeholder {display:none; padding:9px 12px 8px 13px;border-top:2px solid #ced5d9;background:#e6e7e8;text-align:left}
 .list .settings-placeholder td .pad {padding:10px 0 10px 56px; background:none;}
