@@ -1926,8 +1926,12 @@
   <form>
     <div class="clearfix">
       <label for="copy_ddoc_ddoc_name" class="bolder">Document Name:</label>
-      <label for="copy_ddoc_ddoc_name" class="create_dev">
-        <span class="des_lab">_design/dev_</span><input id="copy_ddoc_ddoc_name" name="ddoc_name" value="??" class="des_name"  /></label>
+      <table class="designdoc_name">
+      <tr>
+        <th><label for="copy_ddoc_ddoc_name">_design/dev_</label></th>
+        <td><input id="copy_ddoc_ddoc_name" name="ddoc_name" value="??" /></td>
+      </tr>
+      </table>
        <p><strong>NOTE:</strong> Development Mode (_design/dev_) provides the opportunity to edit and test
        your map/reduce views against a subset of data&mdash;without overloading the cluster.</p>
     </div>
@@ -1944,9 +1948,14 @@
   <form>
     <div class="clearfix" style="padding-top:15px">
        <label class="bolder">Design Document Name:</label>
-       <label  class="create_dev"><span class="des_lab">_design/dev_</span><input name="designdoc_name" value="??" class="des_name" /></label>
+      <table class="designdoc_name">
+      <tr>
+        <th><label for="copy_view_ddoc_name">_design/dev_</label></th>
+        <td><input id="copy_view_ddoc_name" name="designdoc_name" value="??" /></td>
+      </tr>
+      </table>
        <label class="bolder">View Name:</label>
-       <label class="create_dev"><span class="des_lab"></span><input name="view_name" value="??" class="designdoc_name" /></label>
+       <input name="view_name" class="view_name" value="??" />
     </div>
     <div class="save_cancel">
       <button class="save_button float_right" type="submit">Save</button>

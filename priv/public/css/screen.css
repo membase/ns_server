@@ -312,7 +312,7 @@ div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph 
 .view_head {float:left;padding:12px 0 0 31px}
 #views .results_header { line-height: 31px; padding-left: 12px; }
 .bucket_details .create_dev {padding:0 0 0 4px;color:#bbb;background:#fff;border:1px solid #CCD3D7}
-.bucket_details .create_dev input[disabled=""] {color:#BBBBBB;background:#fff}
+.bucket_details .create_dev input[disabled] {color:#bbb;background:#fff}
 .bucket_details .bolder {font-weight:bold}
 .shadow_box .section {border:0px;}
 
@@ -918,14 +918,15 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
  .init_block .bucket_details h1 {background:none;border:none;}
 .bucket_details form {border-top:1px solid #dfdfe0;}
 .bucket_details .clearfix {padding:0 56px 29px;border-top:1px solid #f8f8f8;}
-.bucket_details .clearfix .designdoc_name,
-.bucket_details .clearfix .des_name {float:none;border:1px solid #fff;border-left-width:0;text-align:left; padding-left:0px;font-family: Verdana,Arial,sans-serif;}
 
-.bucket_details .clearfix .des_name {width:180px;}
-.bucket_details .clearfix .designdoc_name {width:270px;}
+.designdoc_name{margin:8px 0}
+.designdoc_name tr{border:1px solid #CCD3D7;}
+.designdoc_name th{cursor:default;background:white;width:7em;padding: 6px 0 6px 4px; font-weight: normal; color: #777}
+.designdoc_name th label{display:inline;line-height:0;margin:auto;overflow:auto}
+.designdoc_name input{background:white;border:none;padding:5px 5px 5px 0;width:13em}
+input.view_name{width:20em;padding:5px}
 
-.bucket_details .clearfix .des_lab {display:inline;float:none;padding:0;margin:0}
- .init_block .bucket_details form > div {border-bottom:none;}
+.init_block .bucket_details form > div {border-bottom:none;}
  .init_block .bucket_details .config-bottom {padding:18px 18px 17px;border:none;}
 .bucket_details form > fieldset{padding:0 56px;margin-top:15px}
 .bucket_details h2, .bucket_details fieldset legend {clear:both;font-size:20px;font-weight:normal;padding-bottom:6px;margin-bottom:10px;border-bottom:1px solid #d4d9dc;}
