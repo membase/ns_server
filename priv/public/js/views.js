@@ -842,6 +842,16 @@ var ViewsSection = {
       });
     });
 
+    productionDDocsCell.subscribeValue(function(v) {
+      if (v !== undefined) {
+        if (v.length > 0) {
+          $($i('prod_view_count')).html(v.length).parent().fadeIn('fast');
+        } else {
+          $($i('prod_view_count')).parent().fadeOut('fast');
+        }
+      }
+    });
+
     var devDDocsCell = Cell.compute(function (v) {
       var allDDocs = v.need(allDDocsCell);
       return _.select(allDDocs, function (ddoc) {
