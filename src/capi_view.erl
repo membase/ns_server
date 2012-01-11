@@ -120,7 +120,9 @@ node_vbuckets_dict(BucketName) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketName),
     Map = get_value(map, BucketConfig, []),
     {_, NodeToVBuckets} =
-        lists:foldl(fun([Master | _], {Idx, Dict}) ->
+        lists:foldl(fun ([undefined | _], {Idx, Dict}) ->
+                            {Idx + 1, Dict};
+                        ([Master | _], {Idx, Dict}) ->
                             {Idx + 1, dict:append(Master, Idx, Dict)}
                     end, {0, dict:new()}, Map),
     NodeToVBuckets.
