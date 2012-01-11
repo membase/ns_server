@@ -28,14 +28,14 @@ get_missing_revs(#db{name = BucketBin,
 
     Results =
         lists:foldr(
-          fun ({Id, [Rev]}, Acc) ->
+          fun ({Id, Rev}, Acc) ->
                   {VBucket, _Node} = cb_util:vbucket_from_id(Bucket, Id),
 
                   case is_missing_rev(Bucket, VBucket, Id, Rev, UserCtx) of
                       false ->
                           Acc;
                       true ->
-                          [{Id, [Rev], []} | Acc]
+                          [{Id, Rev} | Acc]
                   end;
               (_, _) ->
                   throw(unsupported)
@@ -46,12 +46,12 @@ get_missing_revs(#db{name = DbName} = Db, JsonDocIdRevs) ->
 
     Results =
         lists:foldr(
-          fun ({Id, [Rev]}, Acc) ->
+          fun ({Id, Rev}, Acc) ->
                   case is_missing_rev(Bucket, VBucket, Id, Rev, Db) of
                       false ->
                           Acc;
                       true ->
-                          [{Id, [Rev], []} | Acc]
+                          [{Id, Rev} | Acc]
                   end;
               (_, _) ->
                   throw(unsupported)
@@ -74,6 +74,17 @@ is_missing_rev(Bucket, VBucket, Id, Rev, DbOrCtx) ->
                 theirs ->
                     true
             end
+    end.
+
+%% In case of one or more errors, just return the first one. Otherwise,
+%% return ok. Also notice that in case of error, we return {ok, Error}. This is
+%% per the Couch's update_docs() semantics.
+make_return_tuple({ok, Errors}) ->
+    case Errors of
+        [] ->
+            ok;
+        [Error | _] ->
+            {ok, Error}
     end.
 
 update_replicated_docs(#db{name = BucketBin,
@@ -102,7 +113,7 @@ update_replicated_docs(#db{name = BucketBin,
           end,
           [], Docs),
 
-    {ok, Errors};
+    make_return_tuple({ok, Errors});
 update_replicated_docs(#db{name = DbName} = Db, Docs, Options) ->
     {Bucket, VBucket} = capi_utils:split_dbname(DbName),
 
@@ -125,7 +136,7 @@ update_replicated_docs(#db{name = DbName} = Db, Docs, Options) ->
           end,
           [], Docs),
 
-    {ok, Errors}.
+    make_return_tuple({ok, Errors}).
 
 update_replicated_doc(#db{name = BucketBin,
                           filepath = undefined, user_ctx = UserCtx},

@@ -24,7 +24,7 @@
 
 
 update_doc(Doc) ->
-    gen_server:call({local, server_name(ok)},
+    gen_server:call(server_name(ok),
                     {interactive_update, Doc}, infinity).
 
 

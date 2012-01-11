@@ -95,6 +95,9 @@ update_doc(#db{filepath = undefined, name=Name},
             throw({invalid_design_doc, Reason})
     end;
 
+update_doc(#db{name = <<"_replicator">>}, Doc, _Options) ->
+    xdc_rdoc_replication_srv:update_doc(Doc);
+
 update_doc(#db{filepath = undefined, name=Name} = Db,
            #doc{id=DocId} = Doc, Options) ->
     R = attempt(Name, DocId,
