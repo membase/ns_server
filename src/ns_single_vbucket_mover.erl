@@ -44,6 +44,7 @@ mover(Parent, Node, Bucket, VBucket,
         Node =:= undefined ->
             %% this handles case of missing vbucket (like after failing over
             %% more nodes then replica count)
+            ok = ns_memcached:set_vbucket(NewNode, Bucket, VBucket, active),
             ok;
         Node /= NewNode ->
             run_mover(Bucket, VBucket, Node, NewNode, 2);
