@@ -919,11 +919,6 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details form {border-top:1px solid #dfdfe0;}
 .bucket_details .clearfix {padding:0 56px 29px;border-top:1px solid #f8f8f8;}
 
-.designdoc_name{margin:8px 0}
-.designdoc_name tr{border:1px solid #CCD3D7;}
-.designdoc_name th{cursor:default;background:white;width:7em;padding: 6px 0 6px 4px; font-weight: normal; color: #777}
-.designdoc_name th label{display:inline;line-height:0;margin:auto;overflow:auto}
-.designdoc_name input{background:white;border:none;padding:5px 5px 5px 0;width:13em}
 input.view_name{width:20em;padding:5px}
 
 .init_block .bucket_details form > div {border-bottom:none;}
