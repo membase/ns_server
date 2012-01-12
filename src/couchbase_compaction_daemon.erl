@@ -273,32 +273,55 @@ maybe_compact_view(BucketName, DDocId, Config) ->
     {ok, GroupInfo} ->
         case can_view_compact(Config, BucketName, DDocId, GroupInfo) of
         true ->
-            {ok, CompactPid} = couch_set_view_compactor:start_compact(BucketName, DDocId),
-            TimeLeft = compact_time_left(Config),
-            MonRef = erlang:monitor(process, CompactPid),
-            receive
-            {'DOWN', MonRef, process, CompactPid, normal} ->
-                ok;
-            {'DOWN', MonRef, process, CompactPid, Reason} ->
-                ?log_error("Compaction daemon - an error ocurred while compacting"
-                    " the view group `~s` from bucket `~s`: ~p",
-                    [DDocId, BucketName, Reason]),
-                ok
-            after TimeLeft ->
-                ?log_info("Compaction daemon - canceling the compaction for the "
-                    "view group `~s` of the bucket `~s` because it's exceeding"
-                    " the allowed period.", [DDocId, BucketName]),
-                erlang:demonitor(MonRef, [flush]),
-                ok = couch_set_view_compactor:cancel_compact(BucketName, DDocId),
-                timeout
+            case compact_view_group(BucketName, DDocId, main, Config) of
+            timeout ->
+                timeout;
+            ok ->
+                maybe_compact_replica_group(Config, BucketName, DDocId, GroupInfo)
             end;
         false ->
-            ok
+            maybe_compact_replica_group(Config, BucketName, DDocId, GroupInfo)
         end
     catch T:E ->
         ?log_error("Error opening view group `~s` from bucket `~s`: ~p~n~p",
             [DDocId, BucketName, {T,E}, erlang:get_stacktrace()]),
         ok
+    end.
+
+
+maybe_compact_replica_group(Config, BucketName, DDocId, GroupInfo) ->
+    case couch_util:get_value(replica_group_info, GroupInfo) of
+    {RepGroupInfo} ->
+        case can_view_compact(Config, BucketName, DDocId, RepGroupInfo) of
+        true ->
+            compact_view_group(BucketName, DDocId, replica, Config);
+        false ->
+            ok
+        end;
+    undefined ->
+        ok
+    end.
+
+
+compact_view_group(BucketName, DDocId, Type, Config) ->
+    {ok, CompactPid} = couch_set_view_compactor:start_compact(BucketName, DDocId, Type),
+    TimeLeft = compact_time_left(Config),
+    MonRef = erlang:monitor(process, CompactPid),
+    receive
+    {'DOWN', MonRef, process, CompactPid, normal} ->
+        ok;
+    {'DOWN', MonRef, process, CompactPid, Reason} ->
+        ?log_error("Compaction daemon - an error ocurred while compacting"
+            " the ~s view group `~s` from bucket `~s`: ~p",
+             [Type, DDocId, BucketName, Reason]),
+        ok
+    after TimeLeft ->
+        ?log_info("Compaction daemon - canceling the compaction for the "
+            "~s view group `~s` of the bucket `~s` because it's exceeding"
+            " the allowed period.", [Type, DDocId, BucketName]),
+        erlang:demonitor(MonRef, [flush]),
+        ok = couch_set_view_compactor:cancel_compact(BucketName, DDocId, Type),
+        timeout
     end.
 
 
