@@ -26,7 +26,6 @@
          add_replica/4,
          kill_replica/4,
          kill_children/3,
-         kill_dst_children/3,
          replicators/2,
          set_replicas/2,
          apply_changes/2,
@@ -224,15 +223,6 @@ kill_children(Node, Bucket, VBuckets) ->
                           kill_child(Node, Bucket, Child)
                   end, Children),
     Children.
-
--spec kill_dst_children(node(), nonempty_string(), node()) ->
-                               ok.
-kill_dst_children(Node, Bucket, Dst) ->
-    Children = [Id || Id = #child_id{dest_node=D} <- children(Node, Bucket),
-                      D == Dst],
-    lists:foreach(fun (Child) ->
-                          kill_child(Node, Bucket, Child)
-                  end, Children).
 
 %% supervisor callbacks
 init([]) ->
