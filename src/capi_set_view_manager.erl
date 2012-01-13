@@ -141,11 +141,9 @@ handle_info({buckets, Buckets},
     NewState = State#state{bucket_config=BucketConfig},
     {noreply, sync(NewState)};
 
-handle_info({set_vbucket, Bucket, VBucket, _VBucketState, _CheckpointId},
+handle_info({set_vbucket, Bucket, VBucket, VBucketState, _CheckpointId},
             #state{bucket=Bucket,
                    pending_vbucket_states=PendingStates} = State) ->
-    VBucketState = get_vbucket_state(Bucket, VBucket),
-
     ?log_debug("Got set_vbucket event for ~s/~b. Updated state: ~p",
                [Bucket, VBucket, VBucketState]),
 
@@ -410,9 +408,6 @@ apply_map(Bucket, DDocs, OldMap, NewMap) ->
               apply_ddoc_map(Bucket, DDocId,
                              Active, Passive, Cleanup, Replica, ReplicaCleanup)
       end, undefined, DDocs).
-
-get_vbucket_state(Bucket, VBucket) ->
-    do_get_vbucket_state(list_to_binary(Bucket), VBucket).
 
 do_get_vbucket_state(Bucket, VBucket) ->
     try
