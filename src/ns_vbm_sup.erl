@@ -28,6 +28,7 @@
          stop_incoming_replications/3,
          replicators/2,
          set_replicas_dst/2,
+         set_replicas_dst/3,
          apply_changes/2,
          spawn_mover/4]).
 
@@ -151,6 +152,13 @@ replicators(Nodes, Bucket) ->
 -spec set_replicas_dst(Bucket::bucket_name(),
                        [{Dst::node(), [{VBucketID::vbucket_id(), Src::node()}]}]) -> ok.
 set_replicas_dst(Bucket, NodesReplicas) ->
+    LiveNodes = ns_node_disco:nodes_actual_proper(),
+    set_replicas_dst(Bucket, NodesReplicas, LiveNodes).
+
+-spec set_replicas_dst(Bucket::bucket_name(),
+                       [{Dst::node(), [{VBucketID::vbucket_id(), Src::node()}]}],
+                       AllNodes::[node()]) -> ok.
+set_replicas_dst(Bucket, NodesReplicas, AllNodes) ->
     %% Replace with the empty list if replication is disabled
     NR = case ns_config:search_node_prop(node(), ns_config:get(), replication,
                                     enabled, true) of
@@ -158,14 +166,13 @@ set_replicas_dst(Bucket, NodesReplicas) ->
                  NodesReplicas;
              false -> []
          end,
-    LiveNodes = ns_node_disco:nodes_actual_proper(),
     %% Kill all replicators on nodes not in NR
-    NodesWithoutReplicas = LiveNodes -- [N || {N, _} <- NR],
+    NodesWithoutReplicas = AllNodes -- [N || {N, _} <- NR],
     lists:foreach(fun (Node) -> kill_all_children(Node, Bucket) end,
                   NodesWithoutReplicas),
     lists:foreach(
       fun ({Dst, R}) ->
-              case lists:member(Dst, LiveNodes) of
+              case lists:member(Dst, AllNodes) of
                   true ->
                       try set_nodes_replicas(Dst, Bucket, R)
                       catch

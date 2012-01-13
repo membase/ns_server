@@ -86,7 +86,15 @@ do_cleanup(Bucket, Options, Config) ->
                     NodesReplicas = lists:map(fun ({Dst, R}) -> % R is the replicas for this node
                                                       {Dst, [{V, Src} || {Src, _, V} <- R]}
                                               end, ReplicaGroups),
-                    ns_vbm_sup:set_replicas_dst(Bucket, NodesReplicas),
+                    %% change replication on nodes that are bucket
+                    %% members
+                    %%
+                    %% NOTE: other nodes that are part of cluster will
+                    %% shutdown bucket supervisors themselfes. We
+                    %% don't need to touch them here because replication is
+                    %% pull. And we don't care if some of them are
+                    %% replicating from bucket members.
+                    ns_vbm_sup:set_replicas_dst(Bucket, NodesReplicas, Servers),
                     case Down of
                         [] ->
                             maybe_stop_replication_status();
