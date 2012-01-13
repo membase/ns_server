@@ -1437,13 +1437,13 @@ alert_key(?BUCKET_DELETED)  -> bucket_deleted;
 alert_key(_) -> all.
 
 handle_dot(Bucket, Req) ->
-    Dot = ns_janitor:graphviz(Bucket),
+    Dot = ns_janitor_vis:graphviz(Bucket),
     Req:ok({"text/plain; charset=utf-8",
             server_header(),
             iolist_to_binary(Dot)}).
 
 handle_dotsvg(Bucket, Req) ->
-    Dot = ns_janitor:graphviz(Bucket),
+    Dot = ns_janitor_vis:graphviz(Bucket),
     DoRefresh = case proplists:get_value("refresh", Req:parse_qs(), "") of
                     "ok" -> true;
                     "yes" -> true;
