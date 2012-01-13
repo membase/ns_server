@@ -1202,7 +1202,17 @@ handle_dot(Bucket, Req) ->
 
 handle_dotsvg(Bucket, Req) ->
     Dot = ns_janitor:graphviz(Bucket),
-    Req:ok({"image/svg+xml", server_header(),
+    DoRefresh = case proplists:get_value("refresh", Req:parse_qs(), "") of
+                    "ok" -> true;
+                    "yes" -> true;
+                    "1" -> true;
+                    _ -> false
+                end,
+    MaybeRefresh = if DoRefresh ->
+                           [{"refresh", 1}];
+                      true -> []
+                   end,
+    Req:ok({"image/svg+xml", MaybeRefresh ++ server_header(),
            iolist_to_binary(menelaus_util:insecure_pipe_through_command("dot -Tsvg", Dot))}).
 
 handle_node("self", Req)            -> handle_node("default", node(), Req);
