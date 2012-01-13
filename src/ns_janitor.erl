@@ -74,13 +74,15 @@ do_cleanup(Bucket, Options, Config) ->
                                 ns_bucket:set_map(Bucket, MapNew),
                                 MapNew
                         end,
-                    Replicas = lists:keysort(1, ns_bucket:map_to_replicas(Map1)),
-                    ReplicaGroups = lists:ukeymerge(1, misc:keygroup(1, Replicas),
+                    %% ReplicasTriples are [{Src::node(), Dst::node(), VBucketId::non_neg_integer()}]
+                    ReplicasTriples = ns_bucket:map_to_replicas(Map1),
+                    Replicas = lists:keysort(2, ReplicasTriples),
+                    ReplicaGroups = lists:ukeymerge(1, misc:keygroup(2, Replicas),
                                                     [{N, []} || N <- lists:sort(Servers)]),
-                    NodesReplicas = lists:map(fun ({Src, R}) -> % R is the replicas for this node
-                                                      {Src, [{V, Dst} || {_, Dst, V} <- R]}
+                    NodesReplicas = lists:map(fun ({Dst, R}) -> % R is the replicas for this node
+                                                      {Dst, [{V, Src} || {Src, _, V} <- R]}
                                               end, ReplicaGroups),
-                    ns_vbm_sup:set_replicas(Bucket, NodesReplicas),
+                    ns_vbm_sup:set_replicas_dst(Bucket, NodesReplicas),
                     capi_ddoc_replication_srv:force_update(Bucket),
                     case Down of
                         [] ->
@@ -158,8 +160,12 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                                  "This should never happen, but we have an "
                                  "active master, so I'm deleting it.",
                                  [N, Bucket]),
-                      ns_memcached:set_vbucket(N, Bucket, VBucket, dead),
-                      ns_vbm_sup:kill_children(N, Bucket, [VBucket]);
+                      %% %% ns_vbm_sup:stop_outgoing_replications(N, Bucket, [VBucket]),
+                      %%
+                      %% was here, but because we're going to call
+                      %% set_replicas_dst at the end of janitor pass
+                      %% this is not required.
+                      ns_memcached:set_vbucket(N, Bucket, VBucket, dead);
                   ({_, {_, replica}})-> % This is what we expect
                       ok;
                   ({_, {_, missing}}) ->
@@ -169,10 +175,10 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                   ({{_, zombie}, _}) -> ok;
                   ({_, {_, zombie}}) -> ok;
                   ({{undefined, _}, _}) -> ok;
-                  ({{M, _}, _} = Pair) ->
-                      ?log_info("Killing replicators for vbucket ~p on"
-                                " master ~p because of ~p", [VBucket, M, Pair]),
-                      ns_vbm_sup:kill_children(M, Bucket, [VBucket])
+                  ({_, {DstNode, _}} = Pair) ->
+                      ?log_info("Killing incoming replicators for vbucket ~p on"
+                                " replica ~p because of ~p", [VBucket, DstNode, Pair]),
+                      ns_vbm_sup:stop_incoming_replications(DstNode, Bucket, [VBucket])
               end, misc:pairs(C)),
             HaveAllCopies = lists:all(
                               fun ({undefined, _}) -> false;

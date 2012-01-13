@@ -19,15 +19,15 @@
 
 -include("ns_common.hrl").
 
--record(child_id, {vbuckets::[non_neg_integer(), ...],
-                   dest_node::atom()}).
+-record(new_child_id, {vbuckets::[vbucket_id(), ...],
+                       src_node::node()}).
 
 -export([start_link/1,
          add_replica/4,
          kill_replica/4,
-         kill_children/3,
+         stop_incoming_replications/3,
          replicators/2,
-         set_replicas/2,
+         set_replicas_dst/2,
          apply_changes/2,
          spawn_mover/4]).
 
@@ -47,8 +47,8 @@ add_replica(Bucket, SrcNode, DstNode, VBucket) ->
         case get_replicator(Bucket, SrcNode, DstNode) of
             undefined ->
                 [VBucket];
-            #child_id{vbuckets=Vs} = Child ->
-                kill_child(SrcNode, Bucket, Child),
+            #new_child_id{vbuckets=Vs} = Child ->
+                kill_child(DstNode, Bucket, Child),
                 [VBucket|Vs]
         end,
     {ok, _} = start_child(SrcNode, Bucket, VBuckets, DstNode).
@@ -59,9 +59,9 @@ kill_replica(Bucket, SrcNode, DstNode, VBucket) ->
     case get_replicator(Bucket, SrcNode, DstNode) of
         undefined ->
             ok;
-        #child_id{vbuckets=VBuckets} = Child ->
+        #new_child_id{vbuckets=VBuckets} = Child ->
             %% Kill the child and start it again without this vbucket.
-            kill_child(SrcNode, Bucket, Child),
+            kill_child(DstNode, Bucket, Child),
             case VBuckets of
                 [VBucket] ->
                     %% just kill when it was last vbucket
@@ -76,15 +76,15 @@ kill_replica(Bucket, SrcNode, DstNode, VBucket) ->
 apply_changes(Bucket, ChangeTuples) ->
     ?log_info("Applying changes:~n~p~n", [ChangeTuples]),
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
-    RelevantSrcNodes = proplists:get_value(servers, BucketConfig),
-    true = (undefined =/= RelevantSrcNodes),
+    RelevantNodes = proplists:get_value(servers, BucketConfig),
+    true = is_list(RelevantNodes),
     ReplicatorsList =
         lists:flatmap(
-          fun (Node) ->
-                  Children = try children(Node, Bucket) catch _:_ -> [] end,
-                  [{{Node, Dst}, lists:sort(VBuckets)}
-                   || #child_id{vbuckets=VBuckets, dest_node=Dst} <- Children]
-          end, RelevantSrcNodes),
+          fun (Dst) ->
+                  Children = try children(Dst, Bucket) catch _:_ -> [] end,
+                  [{{Src, Dst}, lists:sort(VBuckets)}
+                   || #new_child_id{vbuckets=VBuckets, src_node=Src} <- Children]
+          end, RelevantNodes),
     Replicators = dict:from_list(ReplicatorsList),
     NewReplicators =
         lists:foldl(fun ({Type, SrcNode, DstNode, VBucket}, CurrentReplicators) ->
@@ -104,12 +104,12 @@ apply_changes(Bucket, ChangeTuples) ->
                     end, Replicators, ChangeTuples),
     NewReplicasPre =
         dict:fold(fun ({SrcNode, DstNode}, VBuckets, Dict) ->
-                          PrevValue = case dict:find(SrcNode, Dict) of
+                          PrevValue = case dict:find(DstNode, Dict) of
                                           error -> [];
                                           {ok, X} -> X
                                       end,
-                          NewValue = [[{V, DstNode} || V <- VBuckets] | PrevValue],
-                          dict:store(SrcNode, NewValue, Dict)
+                          NewValue = [[{V, SrcNode} || V <- VBuckets] | PrevValue],
+                          dict:store(DstNode, NewValue, Dict)
                   end, dict:new(), NewReplicators),
     NewReplicas = dict:map(fun (_K, V) -> lists:append(V) end, NewReplicasPre),
     ActualChangesCount =
@@ -128,20 +128,19 @@ apply_changes(Bucket, ChangeTuples) ->
                             end
                     end, 0, Replicators),
     NewReplicasList = dict:to_list(NewReplicas),
-    %% ?log_info("NewReplicasList:~n~p~n", [NewReplicasList]),
-    %% ?log_info("Replicators before:~n~p~n", [replicators([node() | nodes()], Bucket)]),
-    set_replicas(Bucket, NewReplicasList),
-    %% ?log_info("Replicators after:~n~p~n", [replicators([node() | nodes()], Bucket)]),
+    set_replicas_dst(Bucket, NewReplicasList),
     ActualChangesCount.
 
 
+-spec replicators([Node::node()], Bucket::bucket_name()) ->
+                         [{Src::node(), Dst::node(), VBucket::vbucket_id()}].
 replicators(Nodes, Bucket) ->
     lists:flatmap(
-      fun (Node) ->
-              try children(Node, Bucket) of
+      fun (Dst) ->
+              try children(Dst, Bucket) of
                   Children ->
-                      [{Node, Dst, VBucket} ||
-                          #child_id{vbuckets=VBuckets, dest_node=Dst}
+                      [{Src, Dst, VBucket} ||
+                          #new_child_id{vbuckets=VBuckets, src_node=Src}
                               <- Children,
                           VBucket <- VBuckets]
               catch
@@ -149,7 +148,9 @@ replicators(Nodes, Bucket) ->
               end
       end, Nodes).
 
-set_replicas(Bucket, NodesReplicas) ->
+-spec set_replicas_dst(Bucket::bucket_name(),
+                       [{Dst::node(), [{VBucketID::vbucket_id(), Src::node()}]}]) -> ok.
+set_replicas_dst(Bucket, NodesReplicas) ->
     %% Replace with the empty list if replication is disabled
     NR = case ns_config:search_node_prop(node(), ns_config:get(), replication,
                                     enabled, true) of
@@ -163,14 +164,14 @@ set_replicas(Bucket, NodesReplicas) ->
     lists:foreach(fun (Node) -> kill_all_children(Node, Bucket) end,
                   NodesWithoutReplicas),
     lists:foreach(
-      fun ({Src, R}) ->
-              case lists:member(Src, LiveNodes) of
+      fun ({Dst, R}) ->
+              case lists:member(Dst, LiveNodes) of
                   true ->
-                      try set_replicas(Src, Bucket, R)
+                      try set_nodes_replicas(Dst, Bucket, R)
                       catch
                           E:R ->
                               ?log_error("Unable to start replicators on ~p for bucket ~p: ~p",
-                                         [Src, Bucket, {E, R}])
+                                         [Dst, Bucket, {E, R}])
                       end;
                   false ->
                       ok
@@ -187,8 +188,7 @@ spawn_mover(Bucket, VBucket, SrcNode, DstNode) ->
         X -> X
     end.
 
--spec kill_all_children(node(), bucket_name()) ->
-                               ok.
+-spec kill_all_children(node(), bucket_name()) -> ok.
 kill_all_children(Node, Bucket) ->
     try children(Node, Bucket) of
         Children ->
@@ -202,18 +202,20 @@ kill_all_children(Node, Bucket) ->
 
 
 
--spec kill_child(node(), nonempty_string(), #child_id{}) ->
+-spec kill_child(node(), bucket_name(), #new_child_id{}) ->
                         ok.
 kill_child(Node, Bucket, Child) ->
     ok = supervisor:terminate_child({server(Bucket), Node}, Child),
     ok = supervisor:delete_child({server(Bucket), Node}, Child).
 
 
--spec kill_children(node(), nonempty_string(), [non_neg_integer()]) ->
-                           [#child_id{}].
-kill_children(Node, Bucket, VBuckets) ->
+-spec stop_incoming_replications(Node::node(),
+                                 Bucket::bucket_name(),
+                                 VBuckets::[vbucket_id()]) ->
+                               [#new_child_id{}].
+stop_incoming_replications(Node, Bucket, VBuckets) ->
     %% Kill any existing children for these VBuckets
-    Children = [Id || Id = #child_id{vbuckets=Vs} <-
+    Children = [Id || Id = #new_child_id{vbuckets=Vs} <-
                           children(Node, Bucket),
                       Vs -- VBuckets /= Vs],
     lists:foreach(fun (Child) ->
@@ -232,9 +234,13 @@ init([]) ->
 %% Internal functions
 %%
 
--spec args(atom(), nonempty_string(), [non_neg_integer(),...], atom(), boolean()) ->
+-spec args(SrcNode::node(),
+           Bucket::bucket_name(),
+           VBuckets::[vbucket_id(),...],
+           DstNode::node(),
+           TakeOver::boolean()) ->
                   [any(), ...].
-args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
+args(SrcNode, Bucket, VBuckets, DstNode, TakeOver) ->
     {User, Pass} = ns_bucket:credentials(Bucket),
     Suffix = case TakeOver of
                  true ->
@@ -244,26 +250,26 @@ args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
                      %% We want to reuse names for replication.
                      atom_to_list(DstNode)
              end,
-    [ns_memcached:host_port(Node), ns_memcached:host_port(DstNode),
+    [ns_memcached:host_port(SrcNode), ns_memcached:host_port(DstNode),
      [{username, User},
       {password, Pass},
       {vbuckets, VBuckets},
       {takeover, TakeOver},
       {suffix, Suffix}]].
 
--spec children(node(), nonempty_string()) -> [#child_id{}].
+-spec children(node(), bucket_name()) -> [#new_child_id{}].
 children(Node, Bucket) ->
     [Id || {Id, _, _, _} <- supervisor:which_children({server(Bucket), Node})].
 
 
 %% @private
 %% @doc Get the replicator for a given source and destination node.
--spec get_replicator(nonempty_string(), node(), node()) ->
-                            #child_id{} | undefined.
+-spec get_replicator(bucket_name(), node(), node()) ->
+                            #new_child_id{} | undefined.
 get_replicator(Bucket, SrcNode, DstNode) ->
-    case [Id || {#child_id{dest_node=N} = Id, _, _, _}
-                    <- supervisor:which_children({server(Bucket), SrcNode}),
-                N == DstNode] of
+    case [Id || {#new_child_id{src_node=N} = Id, _, _, _}
+                    <- supervisor:which_children({server(Bucket), DstNode}),
+                N == SrcNode] of
         [Child] ->
             Child;
         [] ->
@@ -272,53 +278,60 @@ get_replicator(Bucket, SrcNode, DstNode) ->
 
 
 
--spec server(nonempty_string()) ->
+-spec server(bucket_name()) ->
                     atom().
 server(Bucket) ->
     list_to_atom(?MODULE_STRING "-" ++ Bucket).
 
 
-%% @doc Set up replication from the given source node to a list of
-%% {VBucket, DstNode} pairs.
-set_replicas(SrcNode, Bucket, Replicas) ->
-    %% A dictionary mapping destination node to a sorted list of
-    %% vbuckets to replicate there from SrcNode.
+%% @doc Set up replication to the given dst node from a list of
+%% {VBucket, SrcNode} pairs. NOTE: it kills any replications on that
+%% dst node that are not in given list. So it makes replicators on
+%% that node be equal to given list.
+-spec set_nodes_replicas(DstNode::node(),
+                         Bucket::bucket_name(),
+                         [{VBucketID::vbucket_id(), SrcNode::node()}]) -> ok.
+set_nodes_replicas(DstNode, Bucket, Replicas) ->
+    %% A dictionary mapping source node to a sorted list of
+    %% vbuckets to replicate from there to DstNode.
     DesiredReplicaDict =
         dict:map(
           fun (_, V) -> lists:usort(V) end,
           lists:foldl(
-            fun ({VBucket, DstNode}, D) ->
-                    dict:append(DstNode, VBucket, D)
+            fun ({VBucket, SrcNode}, D) ->
+                    dict:append(SrcNode, VBucket, D)
             end, dict:new(), Replicas)),
-    %% Remove any destination nodes from the dictionary that the
+    %% Remove any source nodes from the dictionary that the
     %% replication is already correct for.
     NeededReplicas =
         dict:to_list(
           lists:foldl(
-            fun (#child_id{dest_node=DstNode, vbuckets=VBuckets} = Id, D) ->
-                    case dict:find(DstNode, DesiredReplicaDict) of
+            fun (#new_child_id{src_node=SrcNode, vbuckets=VBuckets} = Id, D) ->
+                    case dict:find(SrcNode, DesiredReplicaDict) of
                         {ok, VBuckets} ->
                             %% Already running
-                            dict:erase(DstNode, D);
+                            dict:erase(SrcNode, D);
                         _ ->
                             %% Either wrong vbuckets or not wanted at all
-                            kill_child(SrcNode, Bucket, Id),
+                            ?log_info("kill_child(~p,~p,~p)", [DstNode, Bucket, Id]),
+                            kill_child(DstNode, Bucket, Id),
                             D
                     end
-            end, DesiredReplicaDict, children(SrcNode, Bucket))),
+            end, DesiredReplicaDict, children(DstNode, Bucket))),
     lists:foreach(
-      fun ({DstNode, VBuckets}) ->
+      fun ({SrcNode, VBuckets}) ->
+              ?log_info("start_child(~p,~p,~p,~p)", [SrcNode, Bucket, VBuckets, DstNode]),
               start_child(SrcNode, Bucket, VBuckets, DstNode)
       end, NeededReplicas).
 
 
--spec start_child(atom(), nonempty_string(), [non_neg_integer(),...], atom()) ->
+-spec start_child(node(), bucket_name(), [vbucket_id(),...], node()) ->
                          {ok, pid()}.
-start_child(Node, Bucket, VBuckets, DstNode) ->
-    Args = args(Node, Bucket, VBuckets, DstNode, false),
+start_child(SrcNode, Bucket, VBuckets, DstNode) ->
+    Args = args(SrcNode, Bucket, VBuckets, DstNode, false),
     ?log_info("Starting replicator with args =~n~p",
               [Args]),
-    ChildSpec = {#child_id{vbuckets=VBuckets, dest_node=DstNode},
+    ChildSpec = {#new_child_id{vbuckets=VBuckets, src_node=SrcNode},
                  {ebucketmigrator_srv, start_link, Args},
                  permanent, 60000, worker, [ebucketmigrator_srv]},
-    supervisor:start_child({server(Bucket), Node}, ChildSpec).
+    supervisor:start_child({server(Bucket), DstNode}, ChildSpec).
