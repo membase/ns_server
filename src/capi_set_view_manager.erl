@@ -472,7 +472,8 @@ master_db_watcher(Bucket, Parent) ->
               ok
       end).
 
-apply_current_map(#state{bucket=Bucket} = State) ->
+apply_current_map(#state{bucket=Bucket,
+                         waiters=Waiters} = State) ->
     DDocs = get_design_docs(Bucket),
 
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
@@ -485,11 +486,14 @@ apply_current_map(#state{bucket=Bucket} = State) ->
       end, undefined, DDocs),
 
     apply_map(Bucket, DDocs, undefined, Map),
+    Waiters1 = notify_waiters(Waiters, Map),
+
     State#state{bucket_config=BucketConfig,
                 vbucket_states=VBucketStates,
                 pending_vbucket_states=VBucketStates,
                 map=Map,
-                ddocs=DDocs}.
+                ddocs=DDocs,
+                waiters=Waiters1}.
 
 interesting_ns_config_event(Bucket, {buckets, Buckets}) ->
     BucketConfigs = proplists:get_value(configs, Buckets, []),
