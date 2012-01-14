@@ -161,6 +161,9 @@ handle_info(sync, State) ->
 handle_info({'EXIT', Pid, Reason}, #state{master_db_watcher=Pid} = State) ->
     {stop, Reason, State};
 
+handle_info({'gen_event_EXIT', _Handler, Reason}, State) ->
+    {stop, {event_handler_died, Reason}, State};
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
