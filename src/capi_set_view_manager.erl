@@ -254,8 +254,6 @@ build_map(BucketConfig, VBucketStates) ->
                                  State =:= replica
                          end, FFMap, VBucketStates),
 
-            Replica = ordsets:union([Replica1, Replica2]),
-
             Ignore = matching_vbuckets(
                        fun (State) ->
                                State =:= dead
@@ -278,9 +276,10 @@ build_map(BucketConfig, VBucketStates) ->
                                  State =:= replica
                          end, Map, VBucketStates),
 
-            Passive =
-                ordsets:subtract(ordsets:union(Passive1, Passive2),
-                                 ordsets:union(Active, Replica)),
+            Passive = ordsets:subtract(ordsets:union(Passive1, Passive2),
+                                       Active),
+            Replica = ordsets:subtract(ordsets:union([Replica1, Replica2]),
+                                       Passive),
 
             [{active, Active},
              {passive, Passive},
