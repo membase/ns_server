@@ -516,7 +516,7 @@ handle_mc_couch_event(Self,
     case State of
         dead ->
             Self ! {set_vbucket, Bucket, VBucket, State, Checkpoint},
-            ok = gen_server:call(Self, sync);
+            ok = gen_server:call(Self, sync, infinity);
         _ ->
             ok
     end;
