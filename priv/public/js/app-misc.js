@@ -481,6 +481,7 @@ function genericDialog(options) {
                       modal: true,
                       closeOnEscape: false,
                       width: 711,
+                      showCloseButton: true,
                       callback: function () {
                         instance.close();
                       }},

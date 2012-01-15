@@ -563,6 +563,10 @@ function showDialog(idOrJQ, options) {
 
   jq.dialog(options);
 
+  if (options.showCloseButton === false) {
+    jq.dialog('widget').find('.ui-dialog-titlebar-close').hide();
+  }
+
   $(window).resize(function() {
     if ((jq.dialog('widget').height() + 50) > $(window).height()) {
       jq.dialog('widget').css({'position': 'absolute', 'top':'15px'});

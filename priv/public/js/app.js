@@ -947,7 +947,8 @@ var SetupWizard = {
         var loading = genericDialog({
           buttons: {ok: false, cancel: false},
           header: 'Please wait while the sample buckets are loaded.',
-          textHTML: ''
+          textHTML: '',
+          showCloseButton: false
         });
         overlayWithSpinner(loading.dialog);
 
