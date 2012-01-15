@@ -957,6 +957,7 @@ var SetupWizard = {
             complete();
           } else {
             var errReason = typeof error[0] === 'object' ? error[0].reason : 'Unknown Error';
+            loading.close();
             enableForm();
             genericDialog({
               buttons: {ok: true},
