@@ -881,8 +881,8 @@ var ViewsSection = {
       });
 
       var importance = {
-        view_compaction: 0,
-        indexer: 1
+        view_compaction: 1,
+        indexer: 2
       };
 
       _.each(rv, function (tasks, key) {
