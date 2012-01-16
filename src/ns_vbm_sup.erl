@@ -19,6 +19,9 @@
 
 -include("ns_common.hrl").
 
+%% identifier of ns_vbm_sup childs in supervisors. NOTE: vbuckets
+%% field is sorted. We could use ordsets::ordset() type, but we also
+%% want to underline that vbuckets field is never empty.
 -record(new_child_id, {vbuckets::[vbucket_id(), ...],
                        src_node::node()}).
 
@@ -50,7 +53,7 @@ add_replica(Bucket, SrcNode, DstNode, VBucket) ->
                 [VBucket];
             #new_child_id{vbuckets=Vs} = Child ->
                 kill_child(DstNode, Bucket, Child),
-                [VBucket|Vs]
+                ordsets:add_element(VBucket, Vs)
         end,
     {ok, _} = start_child(SrcNode, Bucket, VBuckets, DstNode).
 
@@ -69,7 +72,8 @@ kill_replica(Bucket, SrcNode, DstNode, VBucket) ->
                     ?log_info("~p: killed last vbucket (~p) for destination ~p", [SrcNode, VBucket, DstNode]),
                     ok;
                 _ ->
-                    {ok, _} = start_child(SrcNode, Bucket, VBuckets -- [VBucket],
+                    {ok, _} = start_child(SrcNode, Bucket,
+                                          ordsets:del_element(VBucket, VBuckets),
                                           DstNode)
             end
     end.
@@ -83,7 +87,7 @@ apply_changes(Bucket, ChangeTuples) ->
         lists:flatmap(
           fun (Dst) ->
                   Children = try children(Dst, Bucket) catch _:_ -> [] end,
-                  [{{Src, Dst}, lists:sort(VBuckets)}
+                  [{{Src, Dst}, VBuckets}
                    || #new_child_id{vbuckets=VBuckets, src_node=Src} <- Children]
           end, RelevantNodes),
     Replicators = dict:from_list(ReplicatorsList),
@@ -216,15 +220,19 @@ kill_child(Node, Bucket, Child) ->
     ok = supervisor:delete_child({server(Bucket), Node}, Child).
 
 
+%% Kills replicators affecting given vbuckets. NOTE: it actually kills
+%% replicators instead of removing requested vbuckets from vbucket
+%% filter.
 -spec stop_incoming_replications(Node::node(),
                                  Bucket::bucket_name(),
                                  VBuckets::[vbucket_id()]) ->
                                [#new_child_id{}].
-stop_incoming_replications(Node, Bucket, VBuckets) ->
+stop_incoming_replications(Node, Bucket, VBuckets0) ->
+    VBuckets = ordsets:from_list(VBuckets0),
     %% Kill any existing children for these VBuckets
     Children = [Id || Id = #new_child_id{vbuckets=Vs} <-
                           children(Node, Bucket),
-                      Vs -- VBuckets /= Vs],
+                      not ordsets:is_disjoint(VBuckets, Vs)],
     lists:foreach(fun (Child) ->
                           kill_child(Node, Bucket, Child)
                   end, Children),
