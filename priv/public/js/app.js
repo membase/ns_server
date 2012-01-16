@@ -911,6 +911,10 @@ var SetupWizard = {
       var back = dialog.find('button.back');
       var next = dialog.find('button.next');
 
+      _.defer(function () {
+        try {next[0].focus();} catch (e) {}
+      });
+
       function checkedBuckets() {
         return _.map(dialog.find(':checked'), function(obj) {
           return $(obj).val();
