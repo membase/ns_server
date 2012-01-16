@@ -290,8 +290,12 @@ open_doc(#db{filepath = undefined} = Db, <<"_design/",_/binary>> = DocId, Option
                end);
 
 open_doc(#db{filepath = undefined, name = Name} = Db, DocId, Options) ->
-    attempt(Name, DocId, capi_crud, open_doc, [Db, DocId, Options]);
-
+    case attempt(Name, DocId, capi_crud, open_doc, [Db, DocId, Options]) of
+        {badrpc, nodedown} ->
+            throw({502, <<"nodedown">>, <<"The node is currently down.">>});
+        Response ->
+            Response
+    end;
 open_doc(Db, DocId, Options) ->
     couch_db:open_doc(Db, DocId, Options).
 

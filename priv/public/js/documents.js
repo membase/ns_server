@@ -25,6 +25,12 @@ function alertDialog(alertMsg) {
   });
 }
 
+var documentErrorDef = {
+  '502': 'The node containing that document is currently down',
+  '404': 'A document with that ID does not exist',
+  'unknown': 'There was an unexpected error'
+};
+
 var DocumentsModel = {};
 
 (function (self) {
@@ -298,7 +304,15 @@ var EditDocumentSection = {
       .needing(dbUrl, docId)
       .compute(function (v, dbUrl, docId) {
         self.docIdVal = docId;
-        return future.get({url: buildDocURL(dbUrl, docId)});
+        return future.get({
+          url: buildDocURL(dbUrl, docId),
+          error: function(xhr) {
+            currentDoc.setValue({error: true, status: xhr.status});
+          },
+          success: function(doc) {
+            currentDoc.setValue({ok: true, doc: doc});
+          }
+        });
       });
 
     self.jsonCodeEditor = CodeMirror.fromTextArea($("#json_doc")[0], {
@@ -314,26 +328,37 @@ var EditDocumentSection = {
         + encodeURIComponent(bucket));
     });
 
-    currentDoc.subscribeValue(function (doc) {
-      if (doc === undefined) {
+    currentDoc.subscribeValue(function (result) {
+
+      if (result === undefined) {
         return;
+      }
+
+      var value = '';
+      var writeable = result.ok && result.doc._attachments !== 'undefined';
+
+      if (result.error) {
+        $('#json_doc_id').text('Error');
+        writeable = false;
+        value = documentErrorDef[result.status] || documentErrorDef.unknown;
       } else {
-        self.docRevVal = doc._rev;
-        self.jsonCodeEditor.setValue(JSON.stringify(doc, null, "  "));
-        $('#json_doc_id').text(doc._id);
-        // We no longer have metadata to test for non json documents, for
-        // now just test attachments
-        if(typeof doc._attachments === 'undefined') {
-          self.jsonCodeEditor.setOption('readOnly', false);
-          $('#doc_saveas').removeClass('disabled');
-          $('#doc_save').removeClass('disabled');
-          $('#editing-notice').text('');
-        } else {
-          $('#editing-notice').text('(Editing disabled for non JSON documents)');
-          self.jsonCodeEditor.setOption('readOnly', 'nocursor');
-          $('#doc_saveas').addClass('disabled');
-          $('#doc_save').addClass('disabled');
-        }
+        $('#json_doc_id').text(result.doc._id);
+        self.docRevVal = result.doc._rev;
+        value = JSON.stringify(result.doc, null, "  ");
+      }
+      self.jsonCodeEditor.setValue(value);
+      // We no longer have metadata to test for non json documents, for
+      // now just test attachments
+      if(writeable) {
+        self.jsonCodeEditor.setOption('readOnly', false);
+        $('#doc_saveas').removeClass('disabled');
+        $('#doc_save').removeClass('disabled');
+        $('#editing-notice').text('');
+      } else {
+        $('#editing-notice').text('(Editing disabled for non JSON documents)');
+        self.jsonCodeEditor.setOption('readOnly', 'nocursor');
+        $('#doc_saveas').addClass('disabled');
+        $('#doc_save').addClass('disabled');
       }
     });
 

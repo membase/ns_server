@@ -76,10 +76,6 @@ function couchReq(method, url, data, success, error) {
         return onUnexpectedXHRError.apply(self, args);
       }
 
-      if (status >= 500 || status < 400) {
-        return handleUnexpected();
-      }
-
       if (!error) {
         return handleUnexpected();
       }
@@ -985,7 +981,6 @@ var ViewsSection = {
     });
 
     var currentDocument = null;
-
     var jsonCodeEditor = CodeMirror.fromTextArea($("#sample_doc_editor")[0], {
       lineNumbers: false,
       matchBrackets: false,
@@ -1023,7 +1018,7 @@ var ViewsSection = {
       self.dbURLCell.getValue(function (dbURL) {
         couchReq('GET', buildDocURL(dbURL, id), null, function (data) {
           currentDocument = $.extend({}, data);
-          var tmp = JSON.stringify(data, null, "\t")
+          var tmp = JSON.stringify(data, null, "\t");
           $("#edit_preview_doc").removeClass("disabled");
           $("#lookup_doc_by_id").val(data._id);
           jsonCodeEditor.setValue(tmp);
@@ -1048,10 +1043,11 @@ var ViewsSection = {
         $.cookie("randomKey", "");
       }
       randomId(function(id) {
-        showDoc(id, function() {
+        showDoc(id, function(err, status, handleUnexpected) {
+          var reason = documentErrorDef[status] || documentErrorDef.unknown;
           $("#edit_preview_doc").addClass("disabled");
           $("#lookup_doc_by_id").val(id);
-          jsonCodeEditor.setValue("Invalid key");
+          jsonCodeEditor.setValue(reason);
         });
       });
     });
@@ -1071,11 +1067,10 @@ var ViewsSection = {
     $("#lookup_doc_by_id_btn").bind('click', function(e) {
       e.stopPropagation();
       var id = $("#lookup_doc_by_id").val();
-      console.log(id);
       if (id !== "") {
         $.cookie("randomKey", id);
-        showDoc(id, function() {
-          docError("You specified an invalid id");
+        showDoc(id, function(data, status, handleUnexpected) {
+          docError(documentErrorDef[status] || documentErrorDef.unknown);
         });
       } else {
         docError("Id cannot be empty");
