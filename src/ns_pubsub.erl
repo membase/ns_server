@@ -15,6 +15,8 @@
 
 -module(ns_pubsub).
 
+-include("ns_common.hrl").
+
 -behaviour(gen_event).
 
 -record(state, {func, func_state}).
@@ -33,8 +35,10 @@ subscribe_link(Name) ->
 
 
 subscribe_link(Name, Fun, State) ->
-    proc_lib:spawn_link(
+    Parent = self(),
+    proc_lib:spawn(
       fun () ->
+              erlang:monitor(process, Parent),
               Ref = make_ref(),
               ok = gen_event:add_sup_handler(Name, {?MODULE, Ref},
                                              #state{func=Fun, func_state=State}),
@@ -48,7 +52,13 @@ subscribe_link(Name, Fun, State) ->
                               exit(normal);
                           false ->
                               exit({handler_crashed, Name, Reason})
-                      end
+                      end;
+                  {'DOWN', _MRef, process, Parent, Reason} ->
+                      ?log_debug("Parent process exited with reason ~p", [Reason]),
+                      exit(normal);
+                  X ->
+                      ?log_error("Got unexpected message: ~p", [X]),
+                      exit(unexpected_message)
               end
       end).
 
