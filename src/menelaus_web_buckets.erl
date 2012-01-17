@@ -100,9 +100,9 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
     StatsUri = list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "stats"])),
     StatsDirectoryUri = iolist_to_binary([StatsUri, <<"Directory">>]),
     NodeStatsListURI = iolist_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "nodes"])),
-    BucketCaps = [{bucketCapabilitiesVer, 'sync-1.0'}
+    BucketCaps = [{bucketCapabilitiesVer, ''}
                   | case ns_bucket:bucket_type(BucketConfig) of
-                        membase -> [{bucketCapabilities, [touch, sync, couchapi]}];
+                        membase -> [{bucketCapabilities, [touch, couchapi]}];
                         memcached -> [{bucketCapabilities, []}]
                     end],
 
