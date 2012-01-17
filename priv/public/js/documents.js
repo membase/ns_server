@@ -27,6 +27,7 @@ function alertDialog(alertMsg) {
 
 var documentErrorDef = {
   '502': 'The node containing that document is currently down',
+  '503': 'The data has not yet loaded, please wait...',
   '404': 'A document with that ID does not exist',
   'unknown': 'There was an unexpected error'
 };
@@ -303,7 +304,14 @@ var EditDocumentSection = {
     var currentDoc = self.currentDoc = Cell
       .needing(dbUrl, docId)
       .compute(function (v, dbUrl, docId) {
+
         self.docIdVal = docId;
+
+        var section = v.need(DAL.cells.mode);
+        if (section !== 'edit_doc') {
+          return;
+        }
+
         return future.get({
           url: buildDocURL(dbUrl, docId),
           error: function(xhr) {
@@ -328,10 +336,17 @@ var EditDocumentSection = {
         + encodeURIComponent(bucket));
     });
 
+    var timer = null;
+
     currentDoc.subscribeValue(function (result) {
 
       if (result === undefined) {
         return;
+      }
+
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
       }
 
       var value = '';
@@ -341,12 +356,20 @@ var EditDocumentSection = {
         $('#json_doc_id').text('Error');
         writeable = false;
         value = documentErrorDef[result.status] || documentErrorDef.unknown;
+
+        if (result.status === 503 && timer === null) {
+          timer = setTimeout(function() {
+            currentDoc.invalidate();
+          }, 2500);
+        }
+
       } else {
         $('#json_doc_id').text(result.doc._id);
         self.docRevVal = result.doc._rev;
         value = JSON.stringify(result.doc, null, "  ");
       }
       self.jsonCodeEditor.setValue(value);
+
       // We no longer have metadata to test for non json documents, for
       // now just test attachments
       if(writeable) {

@@ -151,6 +151,7 @@ var codeMirrorOpts = {
 };
 
 var ViewsSection = {
+  timer: null,
   PAGE_LIMIT: 10,
   mapEditor: CodeMirror.fromTextArea($("#viewcode_map")[0], codeMirrorOpts),
   reduceEditor: CodeMirror.fromTextArea($("#viewcode_reduce")[0], codeMirrorOpts),
@@ -1039,6 +1040,12 @@ var ViewsSection = {
     }
 
     $('#preview_random_doc').bind('click', function(ev, dontReset) {
+
+      if (ViewsSection.timer !== null) {
+        clearTimeout(ViewsSection.timer);
+        ViewsSection.timer = null;
+      }
+
       if (typeof dontReset == "undefined") {
         $.cookie("randomKey", "");
       }
@@ -1048,6 +1055,11 @@ var ViewsSection = {
           $("#edit_preview_doc").addClass("disabled");
           $("#lookup_doc_by_id").val(id);
           jsonCodeEditor.setValue(reason);
+          if (status === 503 && ViewsSection.timer === null) {
+            ViewsSection.timer = setTimeout(function() {
+              $('#preview_random_doc').trigger('click', true);
+            }, 2500);
+          }
         });
       });
     });

@@ -290,9 +290,13 @@ open_doc(#db{filepath = undefined} = Db, <<"_design/",_/binary>> = DocId, Option
                end);
 
 open_doc(#db{filepath = undefined, name = Name} = Db, DocId, Options) ->
-    case attempt(Name, DocId, capi_crud, open_doc, [Db, DocId, Options]) of
+    case catch attempt(Name, DocId, capi_crud, open_doc, [Db, DocId, Options]) of
         {badrpc, nodedown} ->
-            throw({502, <<"nodedown">>, <<"The node is currently down.">>});
+            throw({502, <<"node_down">>, <<"The node is currently down.">>});
+        {badrpc, {'EXIT',{noproc, _}}} ->
+            throw({503, <<"node_warmup">>, <<"Data is not yet loaded.">>});
+        max_vbucket_retry ->
+            throw({503, <<"node_warmup">>, <<"Data is not yet loaded.">>});
         Response ->
             Response
     end;
