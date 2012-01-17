@@ -56,11 +56,11 @@ init([Path, AU, AP] = Args) ->
     %% don't log passwords here
     ?log_info("isasl_sync init buckets: ~p", [proplists:get_keys(Buckets)]),
     Pid = self(),
-    ns_pubsub:subscribe(ns_config_events,
-                        fun ({buckets, _V}=Evt, _) ->
-                                gen_server:cast(Pid, Evt);
-                            (_, _) -> ok
-                        end, ignored),
+    ns_pubsub:subscribe_link(ns_config_events,
+                             fun ({buckets, _V}=Evt, _) ->
+                                     gen_server:cast(Pid, Evt);
+                                 (_, _) -> ok
+                             end, ignored),
     writeSASLConf(Path, Buckets, AU, AP),
     {ok, #state{buckets=Buckets, path=Path, updates=0,
                 admin_user=AU, admin_pass=AP}}.

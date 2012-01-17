@@ -79,7 +79,7 @@ master_node() ->
 
 init([]) ->
     Self = self(),
-    ns_pubsub:subscribe(
+    ns_pubsub:subscribe_link(
       ns_config_events,
       fun ({nodes_wanted, Nodes}, State) ->
               Self ! {peers, Nodes},

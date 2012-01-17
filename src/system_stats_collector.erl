@@ -45,7 +45,7 @@ init([]) ->
                       [stream, use_stdio, exit_status,
                        binary, eof, {arg0, lists:flatten(io_lib:format("portsigar for ~s", [node()]))}]) of
             X ->
-                ns_pubsub:subscribe(ns_tick_event),
+                ns_pubsub:subscribe_link(ns_tick_event),
                 X
         catch error:enoent ->
                 ?stats_warning("~s is missing. Will not collect system-level stats", [Path]),

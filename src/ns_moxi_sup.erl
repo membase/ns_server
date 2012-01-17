@@ -56,7 +56,7 @@ start_link() ->
 %%
 
 init([]) ->
-    ns_pubsub:subscribe(ns_config_events, fun notify/2, undefined),
+    ns_pubsub:subscribe_link(ns_config_events, fun notify/2, undefined),
     {ok, {{one_for_one,
            misc:get_env_default(max_r, 3),
            misc:get_env_default(max_t, 10)},

@@ -386,12 +386,15 @@ gather_op_stats(Bucket, Nodes, Params) ->
                      end,
     Self = self(),
     Ref = make_ref(),
-    Subscription = ns_pubsub:subscribe(ns_stats_event, fun (_, done) -> done;
-                                                           ({sample_archived, Name, _}, _) when Name =:= Bucket ->
-                                                               Self ! Ref,
-                                                               done;
-                                                           (_, X) -> X
-                                                       end, []),
+    Subscription = ns_pubsub:subscribe_link(
+                     ns_stats_event,
+                     fun (_, done) -> done;
+                         ({sample_archived, Name, _}, _)
+                           when Name =:= Bucket ->
+                             Self ! Ref,
+                             done;
+                         (_, X) -> X
+                     end, []),
     %% don't wait next sample for anything other than real-time stats
     RefToPass = case Period of
                     minute -> Ref;
@@ -401,7 +404,8 @@ gather_op_stats(Bucket, Nodes, Params) ->
                              {Step, Period, Window}) of
         Something -> Something
     after
-        ns_pubsub:unsubscribe(ns_stats_event, Subscription),
+        ns_pubsub:unsubscribe(Subscription),
+
         misc:flush(Ref)
     end.
 
