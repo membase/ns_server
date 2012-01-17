@@ -54,7 +54,7 @@ init([ServerName, Mod, Args]) ->
             couch_db:close(Db)
     end,
     %% anytime we disconnect or reconnect, force a replicate event.
-    ns_pubsub:subscribe(
+    ns_pubsub:subscribe_link(
       ns_node_disco_events,
       fun ({ns_node_disco_events, _Old, _New}, _) ->
               cb_generic_replication_srv:force_update(Self)

@@ -29,7 +29,8 @@
 
 -record(state, {
           forced_beat_timer :: reference() | undefined,
-          expensive_checks_result
+          expensive_checks_result,
+          event_handler :: pid()
          }).
 
 
@@ -44,20 +45,24 @@ is_interesting_buckets_event({stopped, _, _, _}) -> true;
 is_interesting_buckets_event(_Event) -> false.
 
 init([]) ->
+    process_flag(trap_exit, true),
+
     timer:send_interval(?HEART_BEAT_PERIOD, beat),
     timer:send_interval(?EXPENSIVE_CHECK_INTERVAL, do_expensive_checks),
     self() ! do_expensive_checks,
     self() ! beat,
     Self = self(),
-    ns_pubsub:subscribe(buckets_events,
-                        fun (Event, _) ->
-                                case is_interesting_buckets_event(Event) of
-                                    true ->
-                                        Self ! force_beat;
-                                    _ -> ok
-                                end
-                        end, []),
-    {ok, #state{}}.
+    EventHandler =
+        ns_pubsub:subscribe_link(
+          buckets_events,
+          fun (Event, _) ->
+                  case is_interesting_buckets_event(Event) of
+                      true ->
+                          Self ! force_beat;
+                      _ -> ok
+                  end
+          end, []),
+    {ok, #state{event_handler=EventHandler}}.
 
 force_beat() ->
     ?MODULE ! force_beat.
@@ -82,7 +87,8 @@ handle_call(Request, _From, State) ->
 
 handle_cast(_Msg, State) -> {noreply, State}.
 
-handle_info({gen_event_EXIT, _, _} = ExitMsg, State) ->
+handle_info({'EXIT', EventHandler, _} = ExitMsg,
+            #state{event_handler=EventHandler} = State) ->
     ?log_info("Dying because our event subscription was cancelled~n~p~n", [ExitMsg]),
     {stop, normal, State};
 handle_info(beat, State) ->

@@ -70,7 +70,7 @@ worker_loop() ->
     worker_loop().
 
 init([WorkerPid]) ->
-    ns_pubsub:subscribe(ns_config_events, fun handle_config_event/2, []),
+    ns_pubsub:subscribe_link(ns_config_events, fun handle_config_event/2, []),
     {ok, maybe_start_sync(#state{have_notable_change = true,
                                  sync_started = false,
                                  worker_pid = WorkerPid})}.

@@ -61,10 +61,10 @@ init(Bucket) ->
                 interesting_ns_config_event(Bucket, Event)
         end,
 
-    ns_pubsub:subscribe(ns_config_events,
-                        mk_filter(InterestingNsConfigEvent), ignored),
-    ns_pubsub:subscribe(mc_couch_events,
-                        mk_mc_couch_event_handler(), ignored),
+    ns_pubsub:subscribe_link(ns_config_events,
+                             mk_filter(InterestingNsConfigEvent), ignored),
+    ns_pubsub:subscribe_link(mc_couch_events,
+                             mk_mc_couch_event_handler(), ignored),
 
     Self = self(),
     Watcher =
@@ -159,10 +159,12 @@ handle_info(sync, State) ->
     {noreply, sync(State)};
 
 handle_info({'EXIT', Pid, Reason}, #state{master_db_watcher=Pid} = State) ->
-    {stop, Reason, State};
+    ?log_error("Master db watcher died unexpectedly: ~p", [Reason]),
+    {stop, {master_db_watcher_died, Reason}, State};
 
-handle_info({'gen_event_EXIT', _Handler, Reason}, State) ->
-    {stop, {event_handler_died, Reason}, State};
+handle_info({'EXIT', Pid, Reason}, State) ->
+    ?log_error("Linked process ~p died unexpectedly: ~p", [Pid, Reason]),
+    {stop, {linked_process_died, Pid, Reason}, State};
 
 handle_info(_Info, State) ->
     {noreply, State}.

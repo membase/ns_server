@@ -21,7 +21,7 @@
 
 -include("ns_common.hrl").
 
--export([start_link/0]).
+-export([start_link/0, subscribe_on_config_events/0]).
 
 -export([init/1]).
 
@@ -37,7 +37,7 @@ start_link() ->
 
 init([]) ->
     SubscriptionChild = {?SUBSCRIPTION_SPEC_NAME,
-                         {misc, start_event_link, [fun subscribe_on_config_events/0]},
+                         {?MODULE, subscribe_on_config_events, []},
                          permanent, 1000, worker, []},
     {ok, {{one_for_one, 3, 10},
           [SubscriptionChild]}}.
@@ -59,10 +59,11 @@ ns_config_event_handler_body(_, _State) ->
 
 
 subscribe_on_config_events() ->
-    ns_pubsub:subscribe(
-      ns_config_events,
-      fun ns_config_event_handler_body/2, undefined),
-    undefined = ns_config_event_handler_body({buckets, [{configs, ns_bucket:get_buckets()}]}, undefined).
+    Pid = ns_pubsub:subscribe_link(
+            ns_config_events,
+            fun ns_config_event_handler_body/2, undefined),
+    undefined = ns_config_event_handler_body({buckets, [{configs, ns_bucket:get_buckets()}]}, undefined),
+    {ok, Pid}.
 
 
 %% @private

@@ -442,7 +442,7 @@ wait_for_nodes(Nodes, Pred, Timeout) ->
     Fn =
         fun () ->
                 Self = self(),
-                ns_pubsub:subscribe(
+                ns_pubsub:subscribe_link(
                   buckets_events,
                   fun ({significant_buckets_change, Node}, PendingNodes) ->
                           Status = ns_doctor:get_node(Node),

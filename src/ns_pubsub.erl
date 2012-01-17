@@ -22,24 +22,38 @@
 -export([code_change/3, init/1, handle_call/2, handle_event/2, handle_info/2,
          terminate/2]).
 
--export([subscribe/1, subscribe/3, unsubscribe/2]).
+-export([subscribe_link/1, subscribe_link/3, unsubscribe/1]).
 
 
 %%
 %% API
 %%
-subscribe(Name) ->
-    subscribe(Name, msg_fun(self()), ignored).
+subscribe_link(Name) ->
+    subscribe_link(Name, msg_fun(self()), ignored).
 
 
-subscribe(Name, Fun, State) ->
-    Ref = make_ref(),
-    ok = gen_event:add_sup_handler(Name, {?MODULE, Ref},
-                                   #state{func=Fun, func_state=State}),
-    Ref.
+subscribe_link(Name, Fun, State) ->
+    proc_lib:spawn_link(
+      fun () ->
+              Ref = make_ref(),
+              ok = gen_event:add_sup_handler(Name, {?MODULE, Ref},
+                                             #state{func=Fun, func_state=State}),
 
-unsubscribe(Name, Ref) ->
-    gen_event:delete_handler(Name, {?MODULE, Ref}, unsubscribed).
+              receive
+                  unsubscribe ->
+                      exit(normal);
+                  {'gen_event_EXIT', {?MODULE, Ref}, Reason} ->
+                      case Reason =:= normal orelse Reason =:= shutdown of
+                          true ->
+                              exit(normal);
+                          false ->
+                              exit({handler_crashed, Name, Reason})
+                      end
+              end
+      end).
+
+unsubscribe(Pid) ->
+    Pid ! unsubscribe.
 
 %%
 %% gen_event callbacks

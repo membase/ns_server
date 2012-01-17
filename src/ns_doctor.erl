@@ -52,7 +52,8 @@ start_link() ->
 
 init([]) ->
     self() ! acquire_initial_status,
-    ns_pubsub:subscribe(ns_config_events, fun handle_config_event/2, undefined),
+    ns_pubsub:subscribe_link(ns_config_events,
+                             fun handle_config_event/2, undefined),
     case misc:get_env_default(dont_log_stats, false) of
         false ->
             timer:send_interval(?LOG_INTERVAL, log);

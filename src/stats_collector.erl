@@ -42,7 +42,7 @@ start_link(Bucket) ->
     gen_server:start_link(?MODULE, Bucket, []).
 
 init(Bucket) ->
-    ns_pubsub:subscribe(ns_tick_event),
+    ns_pubsub:subscribe_link(ns_tick_event),
     {ok, #state{bucket=Bucket}}.
 
 handle_call(unhandled, unhandled, unhandled) ->

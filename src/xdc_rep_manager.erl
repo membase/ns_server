@@ -133,7 +133,7 @@ init(_) ->
                                 (_, Acc) ->
                                     Acc
                             end,
-    ns_pubsub:subscribe(ns_config_events, NsConfigEventsHandler, []),
+    ns_pubsub:subscribe_link(ns_config_events, NsConfigEventsHandler, []),
 
     % Periodically check whether any Couch replications have failed due to
     % errors and, if so, restart them. Among other reasons, Couch replications
@@ -263,6 +263,9 @@ handle_info({'EXIT', From, Reason},
     ?log_error("database update notifier died. Reason: ~p", [Reason]),
     {stop, {db_update_notifier_died, Reason}, State};
 
+handle_info({'EXIT', From, Reason} = Msg, State) ->
+    ?log_error("Dying since linked process died: ~p", [Msg]),
+    {stop, {linked_process_died, From, Reason}, State};
 
 handle_info({'DOWN', _Ref, process, Pid, Reason}, State) ->
     case ets:member(?CSTORE, Pid) of

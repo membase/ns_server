@@ -90,7 +90,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 init(Bucket) ->
     start_timers(),
-    ns_pubsub:subscribe(ns_stats_event),
+    ns_pubsub:subscribe_link(ns_stats_event),
     self() ! init,
     {ok, #state{bucket=Bucket}}.
 

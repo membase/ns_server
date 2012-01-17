@@ -386,12 +386,15 @@ gather_op_stats(Bucket, Nodes, Params) ->
                      end,
     Self = self(),
     Ref = make_ref(),
-    Subscription = ns_pubsub:subscribe(ns_stats_event, fun (_, done) -> done;
-                                                           ({sample_archived, Name, _}, _) when Name =:= Bucket ->
-                                                               Self ! Ref,
-                                                               done;
-                                                           (_, X) -> X
-                                                       end, []),
+    Subscription = ns_pubsub:subscribe_link(
+                     ns_stats_event,
+                     fun (_, done) -> done;
+                         ({sample_archived, Name, _}, _)
+                           when Name =:= Bucket ->
+                             Self ! Ref,
+                             done;
+                         (_, X) -> X
+                     end, []),
     %% don't wait next sample for anything other than real-time stats
     RefToPass = case Period of
                     minute -> Ref;
@@ -401,19 +404,9 @@ gather_op_stats(Bucket, Nodes, Params) ->
                              {Step, Period, Window}) of
         Something -> Something
     after
-        ns_pubsub:unsubscribe(ns_stats_event, Subscription),
+        ns_pubsub:unsubscribe(Subscription),
 
-        misc:flush(Ref),
-
-        %% ns_pubsub:subscribe uses gen_event:add_sup_handler which sends
-        %% gen_event_EXIT message whenever handler is deleted; by this time
-        %% message already must be in the mailbox thus timeout is 0
-        receive
-            {gen_event_EXIT, _, _} ->
-                ok
-        after 0 ->
-                ok
-        end
+        misc:flush(Ref)
     end.
 
 invoke_archiver(Bucket, NodeS, {Step, Period, Window}) ->

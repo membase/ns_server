@@ -52,7 +52,7 @@ init(Bucket) ->
     Self = self(),
     MasterVBucket = ?l2b(Bucket ++ "/" ++ "master"),
     %% Update myself whenever the config changes (rebalance)
-    ns_pubsub:subscribe(
+    ns_pubsub:subscribe_link(
       ns_config_events,
       fun (_, _) -> cb_generic_replication_srv:force_update(Self) end,
       empty),
