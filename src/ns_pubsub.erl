@@ -63,7 +63,8 @@ subscribe_link(Name, Fun, State) ->
       end).
 
 unsubscribe(Pid) ->
-    Pid ! unsubscribe.
+    Pid ! unsubscribe,
+    misc:wait_for_process(Pid, infinity).
 
 %%
 %% gen_event callbacks
