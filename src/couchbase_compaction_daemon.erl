@@ -181,6 +181,12 @@ maybe_compact_bucket(BucketName, VbNames, Config) ->
          ?log_error("Error opening database `~s`: ~p", [MasterDbName, Error]),
          []
     end,
+    try
+        couch_set_view:cleanup_index_files(BucketName)
+    catch Tag:CleanupError ->
+        ?log_error("Error while doing cleanup of old index files for bucket `~s`: ~p",
+                   [BucketName, {Tag, CleanupError}])
+    end,
     case bucket_needs_compaction(VbNames, Config) of
     false ->
         maybe_compact_views(BucketName, DDocNames, Config);
