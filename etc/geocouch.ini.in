@@ -8,6 +8,6 @@ _spatial_merge = {couch_httpd_spatial_merger, handle_req}
 _spatial = {capi_spatial, handle_spatial_req}
 _spatial/_list = {couch_httpd_spatial_list, handle_spatial_list_req}
 _spatial/_info = {capi_spatial, handle_design_info_req}
-_spatial/_compact = {couch_httpd_spatial, handle_compact_req}
+_spatial/_compact = {capi_spatial, handle_compact_req}
 ;deprecated API
 _spatiallist = {couch_httpd_spatial_list, handle_spatial_list_req_deprecated}

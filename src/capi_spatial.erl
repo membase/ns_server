@@ -20,7 +20,8 @@
 -include("ns_common.hrl").
 
 -export([handle_spatial_req/3, cleanup_spatial_index_files/1,
-         handle_design_info_req/3, spatial_local_info/2]).
+         handle_design_info_req/3, spatial_local_info/2,
+         handle_compact_req/3, spatial_local_compact/2]).
 
 -define(RETRY_INTERVAL, 5 * 1000).
 -define(RETRY_ATTEMPTS, 20).
@@ -193,6 +194,43 @@ delete_unused_files(FileList, Sigs) ->
 
     RootDir = couch_config:get("couchdb", "view_index_dir"),
     [couch_file:delete(RootDir,File,false)||File <- DeleteFiles],
+    ok.
+
+
+handle_compact_req(#httpd{method='POST',
+        path_parts=[DbName, _ , DName|_]}=Req, Db, _DDoc) ->
+    ok = couch_db:check_is_admin(Db),
+    couch_httpd:validate_ctype(Req, "application/json"),
+    ok = spatial_compact(DbName, DName),
+    couch_httpd:send_json(Req, 202, {[{ok, true}]});
+handle_compact_req(Req, _Db, _DDoc) ->
+    couch_httpd:send_method_not_allowed(Req, "POST").
+
+-spec spatial_compact(BucketName::binary(), DesignId::binary()) ->
+                         ok|no_return().
+spatial_compact(BucketName, DesignId) ->
+    Nodes = bucket_nodes(BucketName),
+    case rpc:multicall(Nodes, capi_spatial, spatial_local_compact,
+                       [BucketName, DesignId], ?INFO_TIMEOUT) of
+        {_, []} ->
+            ok;
+        {_, BadNodes} ->
+            ?log_error(
+               "Failed to get start spatial compaction on some nodes (~p)",
+               [BadNodes]),
+            throw({502, "no_compaction",
+                   "Cannot start compaction on all nodes."})
+    end.
+
+% Compact a local spatial index (all vbuckets)
+-spec spatial_local_compact(BucketName::binary(), DesignId::binary()) -> ok.
+spatial_local_compact(BucketName, DesignId) ->
+    VBuckets = get_local_vbuckets(BucketName),
+    MasterDbName = <<BucketName/binary, "/master">>,
+    lists:foreach(fun(VBucket) ->
+        DbName = capi_view:vbucket_db_name(BucketName, VBucket),
+        couch_spatial_compactor:start_compact({DbName, MasterDbName}, DesignId)
+    end, VBuckets),
     ok.
 
 
