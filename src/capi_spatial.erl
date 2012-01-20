@@ -19,10 +19,12 @@
 -include("couch_index_merger.hrl").
 -include("ns_common.hrl").
 
--export([handle_spatial_req/3, cleanup_spatial_index_files/1]).
+-export([handle_spatial_req/3, cleanup_spatial_index_files/1,
+         handle_design_info_req/3, spatial_local_info/2]).
 
 -define(RETRY_INTERVAL, 5 * 1000).
 -define(RETRY_ATTEMPTS, 20).
+-define(INFO_TIMEOUT, 60 * 1000).
 
 % The _spatial endpoint is different from others. It has sub-endpoints
 % like _spatial/_compact.
@@ -192,3 +194,110 @@ delete_unused_files(FileList, Sigs) ->
     RootDir = couch_config:get("couchdb", "view_index_dir"),
     [couch_file:delete(RootDir,File,false)||File <- DeleteFiles],
     ok.
+
+
+handle_design_info_req(#httpd{method='GET', path_parts=
+                                  [_, _, DesignName, _, _]}=Req,
+                       #db{name=BucketName}, _DDoc) ->
+    DesignId = <<"_design/", DesignName/binary>>,
+    Infos = spatial_info(BucketName, DesignId),
+    couch_httpd:send_json(Req, 200, {[{name, DesignName},
+                                      {spatial_index, {Infos}}
+                                     ]});
+
+handle_design_info_req(Req, _Db, _DDoc) ->
+    couch_httpd:send_method_not_allowed(Req, "GET").
+
+% Get the spatial info from all nodes and merge it
+-spec spatial_info(BucketName::binary(), DesignId::binary()) ->
+                      [{atom(), any()}]|no_return().
+spatial_info(BucketName, DesignId) ->
+    Nodes = bucket_nodes(BucketName),
+    case rpc:multicall(Nodes, capi_spatial, spatial_local_info,
+                       [BucketName, DesignId], ?INFO_TIMEOUT) of
+        {Infos, []} ->
+            merge_infos(Infos);
+        {_, BadNodes} ->
+            ?log_error("Failed to get spatial _info from some nodes (~p)",
+                       [BadNodes]),
+            throw({502, "no_info", "Cannot get spatial _info from all nodes."})
+    end.
+
+% Get the info of a local spatial index (all vbuckets)
+-spec spatial_local_info(BucketName::binary(), DesignId::binary()) ->
+                            [{atom(), any()}].
+spatial_local_info(BucketName, DesignId) ->
+    MasterDbName = <<BucketName/binary, "/master">>,
+    VBuckets = get_local_vbuckets(BucketName),
+    Infos = lists:map(
+              fun(VBucket) ->
+                  DbName = capi_view:vbucket_db_name(BucketName, VBucket),
+                  {ok, GroupInfoList} = couch_spatial:get_group_info(
+                                          {DbName, MasterDbName},
+                                          DesignId),
+                  GroupInfoList
+              end, VBuckets),
+    merge_infos(Infos).
+
+% Returns the *active* vBuckets of the current node, not the replicas
+-spec get_local_vbuckets(BucketName::binary()) -> [integer()].
+get_local_vbuckets(BucketName) ->
+    Me = node(),
+    {ok, BucketConfig} = ns_bucket:get_bucket(?b2l(BucketName)),
+    VBucketMap = couch_util:get_value(map, BucketConfig, []),
+    {_, VBuckets} = lists:foldl(
+                      fun(Nodes, {Index, LocalVBuckets}) ->
+                          % Only return active vBuckets
+                          case hd(Nodes) =:= Me of
+                              true ->
+                                  {Index + 1, [Index|LocalVBuckets]};
+                              false ->
+                                  {Index + 1, LocalVBuckets}
+                          end
+                      end,
+                      {0, []}, VBucketMap),
+    VBuckets.
+
+% Merge the information from all vBuckets
+-spec merge_infos(Infos::[[{atom(), any()}]]) -> [{atom(), any()}].
+merge_infos([I|Infos]) ->
+    lists:foldl(
+      fun(Info, Acc) ->
+          [{signature, proplists:get_value(signature, Info)},
+           {language, proplists:get_value(language, Info)},
+           {disk_size, proplists:get_value(disk_size, Acc) +
+                proplists:get_value(disk_size, Info)},
+           {updater_running, property_true(updater_running, Acc, Info)},
+           {compact_running, property_true(compact_running, Acc, Info)},
+           {waiting_commit, property_true(waiting_commit, Acc, Info)},
+           {waiting_clients, proplists:get_value(waiting_clients, Acc) +
+                proplists:get_value(waiting_clients, Info)},
+           {update_seq, merge_number_list(
+                          proplists:get_value(update_seq, Acc),
+                          proplists:get_value(update_seq, Info))},
+           {purge_seq, merge_number_list(
+                         proplists:get_value(purge_seq, Acc),
+                         proplists:get_value(purge_seq, Info))}]
+      end, I, Infos).
+
+% Returns true if one of the given property of the proplists is true
+-spec property_true(Prop::atom(), A::[{atom(), boolean()}],
+                    B::[{atom(), boolean()}]) ->
+                       boolean().
+property_true(Prop, A, B) ->
+    proplists:get_value(Prop, A) or proplists:get_value(Prop, B).
+
+% Merges a number/list of numbers with a number/list of numbers into a new list
+-spec merge_number_list(A::number()|list(), B::number()|list()) -> [number()].
+merge_number_list(A, B) when is_number(A) and is_number(B) ->
+    [A, B];
+merge_number_list(A, B) when is_number(A) and is_list(B) ->
+    [A|B];
+merge_number_list(A, B) when is_list(A) and is_number(B) ->
+    A ++ [B];
+merge_number_list(A, B) when is_list(A) and is_list(B) ->
+    A ++ B.
+
+bucket_nodes(BucketName) ->
+    {ok, BucketConfig} = ns_bucket:get_bucket(?b2l(BucketName)),
+    ns_bucket:bucket_nodes(BucketConfig).
