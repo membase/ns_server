@@ -105,6 +105,21 @@ handle_call({wait_until_added, VBucket}, From,
 handle_call(sync, _From, State) ->
     {reply, ok, sync(State)};
 
+handle_call({pre_flush_all, Bucket}, _From,
+            #state{bucket=Bucket,
+                   ddocs=DDocs,
+                   map=Map,
+                   pending_vbucket_states=States} = State) ->
+    NewStates = dict:map(
+                  fun (_, _) ->
+                          dead
+                  end, States),
+    NewMap = ?EMPTY_MAP,
+    apply_map(Bucket, DDocs, Map, NewMap),
+    {reply, ok, State#state{vbucket_states=NewStates,
+                            pending_vbucket_states=NewStates,
+                            map=NewMap}};
+
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
@@ -152,7 +167,7 @@ handle_info({set_vbucket, Bucket, VBucket, VBucketState, _CheckpointId},
 
     {noreply, NewState};
 
-handle_info({flush_all, Bucket}, #state{bucket=Bucket} = State) ->
+handle_info({post_flush_all, Bucket}, #state{bucket=Bucket} = State) ->
     {noreply, apply_current_map(State)};
 
 handle_info(sync, State) ->
@@ -520,7 +535,9 @@ handle_mc_couch_event(Self,
                       {delete_vbucket, Bucket, VBucket}) ->
     Self ! {set_vbucket, Bucket, VBucket, "dead", 0},
     ok = gen_server:call(Self, sync, infinity);
-handle_mc_couch_event(Self, {flush_all, _} = Event) ->
+handle_mc_couch_event(Self, {pre_flush_all, _} = Event) ->
+    ok = gen_server:call(Self, Event, infinity);
+handle_mc_couch_event(Self, {post_flush_all, _} = Event) ->
     Self ! Event;
 handle_mc_couch_event(_, _) ->
     ok.
