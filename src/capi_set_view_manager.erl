@@ -514,22 +514,12 @@ mk_mc_couch_event_handler() ->
     end.
 
 handle_mc_couch_event(Self,
-                      {pre_set_vbucket, Bucket, VBucket, State, Checkpoint}) ->
-    case State of
-        dead ->
-            Self ! {set_vbucket, Bucket, VBucket, State, Checkpoint},
-            ok = gen_server:call(Self, sync, infinity);
-        _ ->
-            ok
-    end;
+                      {set_vbucket, Bucket, VBucket, State, Checkpoint}) ->
+    Self ! {set_vbucket, Bucket, VBucket, State, Checkpoint};
 handle_mc_couch_event(Self,
-                      {post_set_vbucket, Bucket, VBucket, State, Checkpoint}) ->
-    case State of
-        dead ->
-            ok;
-        _ ->
-            Self ! {set_vbucket, Bucket, VBucket, State, Checkpoint}
-    end;
+                      {delete_vbucket, Bucket, VBucket}) ->
+    Self ! {set_vbucket, Bucket, VBucket, "dead", 0},
+    ok = gen_server:call(Self, sync, infinity);
 handle_mc_couch_event(Self, {flush_all, _} = Event) ->
     Self ! Event;
 handle_mc_couch_event(_, _) ->
