@@ -347,7 +347,7 @@ var SampleBucketSection = {
 
       if (!isStorageAvailable) {
         $('#sampleQuotaRequired')
-          .text(Math.ceil((storageNeeded - quotaAvailable) / 1024 / 1024));
+          .text(Math.ceil(storageNeeded - quotaAvailable) / 1024 / 1024 / numServers);
         warning.show();
       } else {
         warning.hide();
