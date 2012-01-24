@@ -148,7 +148,7 @@ handle_cast(_Msg, State) ->
 
 handle_info({buckets, Buckets},
             #state{bucket=Bucket} = State) ->
-    ?log_debug("Got `buckets` event"),
+    ?views_debug("Got `buckets` event"),
 
     BucketConfigs = proplists:get_value(configs, Buckets),
     BucketConfig = proplists:get_value(Bucket, BucketConfigs),
@@ -159,8 +159,8 @@ handle_info({buckets, Buckets},
 handle_info({set_vbucket, Bucket, VBucket, VBucketState, _CheckpointId},
             #state{bucket=Bucket,
                    pending_vbucket_states=PendingStates} = State) ->
-    ?log_debug("Got set_vbucket event for ~s/~b. Updated state: ~p",
-               [Bucket, VBucket, VBucketState]),
+    ?views_debug("Got set_vbucket event for ~s/~b. Updated state: ~p",
+                 [Bucket, VBucket, VBucketState]),
 
     NewPendingStates = dict:store(VBucket, VBucketState, PendingStates),
     NewState = State#state{pending_vbucket_states=NewPendingStates},
@@ -174,11 +174,11 @@ handle_info(sync, State) ->
     {noreply, sync(State)};
 
 handle_info({'EXIT', Pid, Reason}, #state{master_db_watcher=Pid} = State) ->
-    ?log_error("Master db watcher died unexpectedly: ~p", [Reason]),
+    ?views_error("Master db watcher died unexpectedly: ~p", [Reason]),
     {stop, {master_db_watcher_died, Reason}, State};
 
 handle_info({'EXIT', Pid, Reason}, State) ->
-    ?log_error("Linked process ~p died unexpectedly: ~p", [Pid, Reason]),
+    ?views_error("Linked process ~p died unexpectedly: ~p", [Pid, Reason]),
     {stop, {linked_process_died, Pid, Reason}, State};
 
 handle_info(_Info, State) ->
@@ -364,20 +364,20 @@ maybe_define_group(Bucket, BucketConfig, DDocId, Map) ->
     end.
 
 apply_ddoc_map(Bucket, DDocId, OldMap, NewMap) ->
-    ?log_info("Applying map to bucket ~s (ddoc ~s):~n~p",
-              [Bucket, DDocId, NewMap]),
+    ?views_info("Applying map to bucket ~s (ddoc ~s):~n~p",
+                [Bucket, DDocId, NewMap]),
 
     {Active, Passive, Cleanup, Replica, ReplicaCleanup} =
         classify_vbuckets(OldMap, NewMap),
 
-    ?log_info("Classified vbuckets for ~p (ddoc ~s):~n"
-              "Active: ~p~n"
-              "Passive: ~p~n"
-              "Cleanup: ~p~n"
-              "Replica: ~p~n"
-              "ReplicaCleanup: ~p",
-              [Bucket, DDocId,
-               Active, Passive, Cleanup, Replica, ReplicaCleanup]),
+    ?views_info("Classified vbuckets for ~p (ddoc ~s):~n"
+                "Active: ~p~n"
+                "Passive: ~p~n"
+                "Cleanup: ~p~n"
+                "Replica: ~p~n"
+                "ReplicaCleanup: ~p",
+                [Bucket, DDocId,
+                 Active, Passive, Cleanup, Replica, ReplicaCleanup]),
 
     apply_ddoc_map(Bucket, DDocId,
                    Active, Passive, Cleanup, Replica, ReplicaCleanup).
@@ -409,18 +409,18 @@ apply_ddoc_map(Bucket, DDocId,
     end.
 
 apply_map(Bucket, DDocs, OldMap, NewMap) ->
-    ?log_info("Applying map to bucket ~s:~n~p", [Bucket, NewMap]),
+    ?views_info("Applying map to bucket ~s:~n~p", [Bucket, NewMap]),
 
     {Active, Passive, Cleanup, Replica, ReplicaCleanup} =
         classify_vbuckets(OldMap, NewMap),
 
-    ?log_info("Classified vbuckets for ~s:~n"
-              "Active: ~p~n"
-              "Passive: ~p~n"
-              "Cleanup: ~p~n"
-              "Replica: ~p~n"
-              "ReplicaCleanup: ~p",
-              [Bucket, Active, Passive, Cleanup, Replica, ReplicaCleanup]),
+    ?views_info("Classified vbuckets for ~s:~n"
+                "Active: ~p~n"
+                "Passive: ~p~n"
+                "Cleanup: ~p~n"
+                "Replica: ~p~n"
+                "ReplicaCleanup: ~p",
+                [Bucket, Active, Passive, Cleanup, Replica, ReplicaCleanup]),
 
     sets:fold(
       fun (DDocId, _) ->
@@ -482,8 +482,8 @@ master_db_watcher(Bucket, Parent) ->
 
               case proplists:get_value(<<"id">>, Change) of
                   <<"_design/", _/binary>> = DDocId ->
-                      ?log_debug("Got change in `~s` design document. "
-                                 "Initiating set view update", [DDocId]),
+                      ?views_debug("Got change in `~s` design document. "
+                                   "Initiating set view update", [DDocId]),
                       gen_server:cast(Parent, {update_ddoc, DDocId, Deleted});
                   _ ->
                       ok

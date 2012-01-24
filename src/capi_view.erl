@@ -52,7 +52,7 @@ design_doc_view_loop(Req, Db, DDocId, ViewName, Attempt) ->
         couch_index_merger:query_index(couch_view_merger, MergeParams, Req)
     catch
         throw:{error, set_view_outdated} ->
-            ?log_debug("Got `set_view_outdated` error. Retrying."),
+            ?views_debug("Got `set_view_outdated` error. Retrying."),
             timer:sleep(?RETRY_INTERVAL),
             design_doc_view_loop(Req, Db, DDocId, ViewName, Attempt - 1)
     end.

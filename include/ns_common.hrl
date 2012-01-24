@@ -38,6 +38,7 @@
 
 -define(DEFAULT_LOG_FILENAME, "log").
 -define(ERRORS_LOG_FILENAME, "errors").
+-define(VIEWS_LOG_FILENAME, "views").
 
 -define(NS_SERVER_LOGGER, ns_server).
 -define(COUCHDB_LOGGER, couchdb).
@@ -47,11 +48,12 @@
 -define(STATS_LOGGER, stats).
 -define(REBALANCE_LOGGER, rebalance).
 -define(CLUSTER_LOGGER, cluster).
+-define(VIEWS_LOGGER, views).
 
 -define(LOGGERS, [?COUCHDB_LOGGER, ?NS_SERVER_LOGGER,
                   ?USER_LOGGER, ?MENELAUS_LOGGER,
                   ?NS_DOCTOR_LOGGER, ?STATS_LOGGER,
-                  ?REBALANCE_LOGGER, ?CLUSTER_LOGGER]).
+                  ?REBALANCE_LOGGER, ?CLUSTER_LOGGER, ?VIEWS_LOGGER]).
 
 -define(LOG(Level, Format, Args),
         ale:log(?NS_SERVER_LOGGER, Level, Format, Args)).
@@ -94,6 +96,18 @@
 -define(rebalance_error(Format, Args),
         ale:error(?REBALANCE_LOGGER, Format, Args)).
 -define(rebalance_error(Msg), ale:error(?REBALANCE_LOGGER, Msg)).
+
+-define(views_debug(Format, Args), ale:debug(?VIEWS_LOGGER, Format, Args)).
+-define(views_debug(Msg), ale:debug(?VIEWS_LOGGER, Msg)).
+
+-define(views_info(Format, Args), ale:info(?VIEWS_LOGGER, Format, Args)).
+-define(views_info(Msg), ale:info(?VIEWS_LOGGER, Msg)).
+
+-define(views_warning(Format, Args), ale:warn(?VIEWS_LOGGER, Format, Args)).
+-define(views_warning(Msg), ale:warn(?VIEWS_LOGGER, Msg)).
+
+-define(views_error(Format, Args), ale:error(?VIEWS_LOGGER, Format, Args)).
+-define(views_error(Msg), ale:error(?VIEWS_LOGGER, Msg)).
 
 -define(i2l(V), integer_to_list(V)).
 

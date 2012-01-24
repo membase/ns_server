@@ -16,3 +16,4 @@
 {loglevel_stats, info}.
 {loglevel_rebalance, info}.
 {loglevel_cluster, debug}.
+{loglevel_views, info}.
