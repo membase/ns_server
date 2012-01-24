@@ -40,6 +40,28 @@
                 pending_vbucket_states,
                 waiters}).
 
+-define(csv_call(Call, Args),
+        %% hack to not introduce any variables in the caller environment
+        ((fun () ->
+                  %% we may want to downgrade it to ?views_debug at some point
+                  ?views_info("~nCalling couch_set_view:~p(~p)", [Call, Args]),
+                  try
+                      {__Time, __Result} = timer:tc(couch_set_view, Call, Args),
+
+                      ?views_info("~ncouch_set_view:~p(~p) returned ~p in ~bms",
+                                  [Call, Args, __Result, __Time div 1000]),
+                      __Result
+                  catch
+                      __T:__E ->
+                          ?views_info("~ncouch_set_view:~p(~p) raised ~p:~p",
+                                      [Call, Args, __T, __E]),
+
+                          %% rethrowing the exception
+                          __Stack = erlang:get_stacktrace(),
+                          erlang:raise(__T, __E, __Stack)
+                  end
+          end)())).
+
 start_link(Bucket) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
     case ns_bucket:bucket_type(BucketConfig) of
@@ -344,7 +366,7 @@ define_group(Bucket, BucketConfig, DDocId, Map) ->
                               use_replica_index=true},
 
     try
-        ok = couch_set_view:define_group(SetName, DDocId, Params)
+        ok = ?csv_call(define_group, [SetName, DDocId, Params])
     catch
         throw:{not_found, deleted} ->
             %% The document has been deleted but we still think it's
@@ -389,12 +411,12 @@ apply_ddoc_map(Bucket, DDocId,
     try
         %% this should go first because some of the replica vbuckets might
         %% need to be cleaned up from main index
-        ok = couch_set_view:set_partition_states(SetName, DDocId,
-                                                 Active, Passive, Cleanup),
+        ok = ?csv_call(set_partition_states,
+                       [SetName, DDocId, Active, Passive, Cleanup]),
 
-        ok = couch_set_view:add_replica_partitions(SetName, DDocId, Replica),
-        ok = couch_set_view:remove_replica_partitions(SetName, DDocId,
-                                                      ReplicaCleanup)
+        ok = ?csv_call(add_replica_partitions, [SetName, DDocId, Replica]),
+        ok = ?csv_call(remove_replica_partitions,
+                       [SetName, DDocId, ReplicaCleanup])
     catch
         throw:{not_found, deleted} ->
             %% The document has been deleted but we still think it's
