@@ -98,12 +98,14 @@ init_logging() ->
     DefaultLogPath = filename:join(Dir, ?DEFAULT_LOG_FILENAME),
     ErrorLogPath = filename:join(Dir, ?ERRORS_LOG_FILENAME),
     ViewsLogPath = filename:join(Dir, ?VIEWS_LOG_FILENAME),
+    CouchLogPath = filename:join(Dir, ?COUCHDB_LOG_FILENAME),
 
     DiskSinkParams = [{size, {MaxB, MaxF}}],
 
     ale:stop_sink(disk_default),
     ale:stop_sink(disk_error),
     ale:stop_sink(disk_views),
+    ale:stop_sink(disk_couchdb),
     ale:stop_sink(ns_log),
 
     lists:foreach(
@@ -117,6 +119,8 @@ init_logging() ->
                         ale_disk_sink, [ErrorLogPath, DiskSinkParams]),
     ok = ale:start_sink(disk_views,
                         ale_disk_sink, [ViewsLogPath, DiskSinkParams]),
+    ok = ale:start_sink(disk_couchdb,
+                        ale_disk_sink, [CouchLogPath, DiskSinkParams]),
     ok = ale:start_sink(ns_log, ns_log_sink, []),
 
     lists:foreach(
@@ -143,6 +147,8 @@ init_logging() ->
     ok = ale:add_sink(?CLUSTER_LOGGER, ns_log, info),
 
     ok = ale:add_sink(?VIEWS_LOGGER, disk_views),
+
+    ok = ale:add_sink(?COUCHDB_LOGGER, disk_couchdb),
 
     case misc:get_env_default(dont_suppress_stderr_logger, false) of
         true ->
