@@ -25,6 +25,12 @@
 -define(stats_error(Fmt, Args), ale:error(?STATS_LOGGER, Fmt, Args)).
 
 -define(STAT_GAUGES,
+
+        %% Total size of couch database on disk
+        couch_disk_size,
+        %% Sum of current items stored in couch
+        couch_data_size,
+
         %% Num items in active vbuckets.
         curr_items,
 

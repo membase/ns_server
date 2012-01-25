@@ -1105,6 +1105,15 @@ init([_X]) ->
 init([X | Rest]) ->
     [X | init(Rest)].
 
+
+%% Get an item from from a dict, if it doesnt exist return default
+-spec dict_get(term(), dict(), term()) -> term().
+dict_get(Key, Dict, Default) ->
+    case dict:is_key(Key, Dict) of
+        true -> dict:fetch(Key, Dict);
+        false -> Default
+    end.
+
 %% Parse version of the form 1.7.0r_252_g1e1c2c0 or 1.7.0r-252-g1e1c2c0 into a
 %% list {[1,7,0],candidate,252}.  1.8.0 introduces a license type suffix,
 %% like: 1.8.0r-25-g1e1c2c0-enterprise.  Note that we should never

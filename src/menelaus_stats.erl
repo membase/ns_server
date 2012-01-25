@@ -709,7 +709,13 @@ membase_stats_description() ->
                          {desc,<<"Number of unique items in this bucket - only active items, not replica (measured from curr_items)">>}]},
                 {struct,[{title,<<"disk write queue">>},
                          {name,<<"disk_write_queue">>},
-                         {desc,<<"Number of items waiting to be written to disk in this bucket (measured from ep_queue_size+ep_flusher_todo)">>}]}
+                         {desc,<<"Number of items waiting to be written to disk in this bucket (measured from ep_queue_size+ep_flusher_todo)">>}]},
+                {struct,[{name,<<"couch_data_size">>},
+                         {title,<<"couch data size">>},
+                         {desc,<<"The total size of the current items including replicas and meta data in this bucket on disk">>}]},
+                {struct,[{name,<<"couch_disk_size">>},
+                         {title,<<"couch disk size">>},
+                         {desc,<<"The total size of all items in this bucket on disk (including old revisions to be compacted)">>}]}
                ]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"withtotal closed">>},

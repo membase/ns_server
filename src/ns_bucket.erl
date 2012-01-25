@@ -58,7 +58,8 @@
          update_bucket_props/2,
          update_bucket_props/3,
          node_bucket_names/2,
-         node_bucket_names/1]).
+         node_bucket_names/1,
+         all_node_vbuckets/1]).
 
 
 %%%===================================================================
@@ -638,6 +639,16 @@ node_bucket_names(Node, BucketsConfigs) ->
 
 node_bucket_names(Node) ->
     node_bucket_names(Node, get_buckets()).
+
+
+%% All the vbuckets (active or replica) on a node
+-spec all_node_vbuckets(term()) -> list(integer()).
+all_node_vbuckets(BucketConfig) ->
+    VBucketMap = couch_util:get_value(map, BucketConfig, []),
+    Node = node(),
+    [Ordinal-1 ||
+        {Ordinal, VBuckets} <- misc:enumerate(VBucketMap),
+        lists:member(Node, VBuckets)].
 
 %%
 %% Internal functions

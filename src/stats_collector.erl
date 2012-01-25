@@ -52,7 +52,8 @@ handle_cast(unhandled, unhandled) ->
     unhandled.
 
 grab_all_stats(Bucket) ->
-    {ok, Stats} = ns_memcached:stats(Bucket),
+    {ok, MemStats} = ns_memcached:stats(Bucket),
+    Stats = MemStats ++ couch_stats_reader:fetch_stats(Bucket),
     case ns_memcached:stats(Bucket, <<"tapagg _">>) of
         {ok, TapStats} ->
             {Stats, TapStats};
@@ -231,6 +232,7 @@ parse_stats(TS, Stats, TapStats, {LastCounters, LastTapCounters}, LastTS) ->
     {#stat_entry{timestamp = TS,
                  values = Values},
      {Counters, TapCounters}}.
+
 
 
 %% Tests
