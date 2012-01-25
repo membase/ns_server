@@ -20,6 +20,7 @@ function addBasicAuth(xhr, login, password) {
 
 function onUnexpectedXHRError(xhr, xhrStatus, errMsg) {
   var status;
+  var readyState;
   var self = this;
 
   window.onUnexpectedXHRError = function () {};
@@ -35,6 +36,10 @@ function onUnexpectedXHRError(xhr, xhrStatus, errMsg) {
 
   try {
     status = xhr.status;
+  } catch (e) {}
+
+  try {
+    readyState = xhr.readyState;
   } catch (e) {}
 
   if (status === 401) {
@@ -65,8 +70,9 @@ function onUnexpectedXHRError(xhr, xhrStatus, errMsg) {
         json = "";
       }
       sessionStorage.reloadCause = "s: " + json +
-        "\nxhrStatus: " + xhrStatus + ",\nerrMsg: " + errMsg +
-        ",\nstatusCode: " + status + ",\nresponseText:\n" + responseText;
+        "\nxhrStatus: " + xhrStatus + ",\nxhrReadyState: " + readyState +
+        ",\nerrMsg: " + errMsg + ",\nstatusCode: " + status +
+        ",\nresponseText:\n" + responseText;
       sessionStorage.reloadTStamp = (new Date()).valueOf();
     }());
   }
