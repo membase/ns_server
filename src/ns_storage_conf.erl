@@ -224,18 +224,7 @@ extract_node_storage_info(NodeInfo, Node, Config) ->
                       PropName =:= db_path orelse PropName =:= index_path],
     case memory_quota(Node, Config) of
         MemQuotaMB when is_integer(MemQuotaMB) ->
-            {DiskTotal, DiskUsed} =
-                lists:foldl(fun (Path, {ATotal, AUsed} = Tuple) ->
-                                    %% move it over here
-                                    case extract_disk_stats_for_path(DiskStats, Path) of
-                                        none -> Tuple;
-                                        {ok, {_MPoint, KBytesTotal, Cap}} ->
-                                            Total = KBytesTotal * 1024,
-                                            Used = (Total * Cap) div 100,
-                                            {ATotal + Total,
-                                             AUsed + Used}
-                                    end
-                            end, {0, 0}, DiskPaths),
+            {DiskTotal, DiskUsed} = extract_disk_totals(DiskPaths, DiskStats),
             [{ram, [{total, RAMTotal},
                     {quotaTotal, MemQuotaMB * 1048576},
                     {used, RAMUsed},
@@ -248,6 +237,26 @@ extract_node_storage_info(NodeInfo, Node, Config) ->
                    ]}];
         _ -> []
     end.
+
+-spec extract_disk_totals(list(), list()) -> {integer(), integer()}.
+extract_disk_totals(DiskPaths, DiskStats) ->
+
+    F = fun (Path, {UsedMounts, ATotal, AUsed} = Tuple) ->
+                case extract_disk_stats_for_path(DiskStats, Path) of
+                    none -> Tuple;
+                    {ok, {MPoint, KBytesTotal, Cap}} ->
+                        case lists:member(MPoint, UsedMounts) of
+                            true -> Tuple;
+                            false ->
+                                Total = KBytesTotal * 1024,
+                                Used = (Total * Cap) div 100,
+                                {[MPoint | UsedMounts], ATotal + Total,
+                                 AUsed + Used}
+                        end
+                end
+        end,
+    {_UsedMounts, DiskTotal, DiskUsed} = lists:foldl(F, {[], 0, 0}, DiskPaths),
+    {DiskTotal, DiskUsed}.
 
 %% returns cluster_storage_info for subset of nodes
 nodes_storage_info(NodeNames) ->
