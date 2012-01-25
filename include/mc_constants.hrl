@@ -120,3 +120,6 @@
 
 %% Metadata types
 -define(META_REVID, 16#01).
+
+%% Flags passed back in get_meta call
+-define(GET_META_ITEM_DELETED_FLAG, 16#01).

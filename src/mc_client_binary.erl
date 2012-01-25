@@ -346,6 +346,9 @@ get_meta(Sock, Key, VBucket) ->
         {ok, #mc_header{status=?SUCCESS} = Header,
              #mc_entry{data=MetaBin} = Entry, _NCB} ->
             {ok, Header, Entry, decode_meta(MetaBin)};
+        {ok, #mc_header{status=?KEY_ENOENT},
+             #mc_entry{cas=CAS}, _NCB} ->
+            {memcached_error, key_enoent, CAS};
         Response ->
             process_error_response(Response)
     end.

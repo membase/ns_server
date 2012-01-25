@@ -468,7 +468,9 @@ get(Bucket, Key, VBucket) ->
 
 %% @doc send an get metadata command to memcached
 -spec get_meta(bucket_name(), binary(), integer()) ->
-    {ok, #mc_header{}, #mc_entry{}, any()} | mc_error().
+    {ok, #mc_header{}, #mc_entry{}, any()}
+    | {memcached_error, key_enoent, integer()}
+    | mc_error().
 get_meta(Bucket, Key, VBucket) ->
     gen_server:call({server(Bucket, data), node()},
                     {get_meta, Key, VBucket}, ?TIMEOUT).

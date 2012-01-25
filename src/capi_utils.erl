@@ -20,6 +20,7 @@
 
 -include("couch_db.hrl").
 -include("mc_entry.hrl").
+-include("mc_constants.hrl").
 
 %% returns capi port for given node or undefined if node doesn't have CAPI
 capi_port(Node, Config) ->
@@ -58,39 +59,19 @@ capi_bucket_url(Node, BucketName, LocalAddr, Config) ->
 capi_bucket_url(Node, BucketName, LocalAddr) ->
     capi_bucket_url(Node, BucketName, LocalAddr, ns_config:get()).
 
-get_meta(Bucket, VBucket, DocId, #db{} = Db) ->
-    WithDb =
-        fun (Fn) ->
-                Fn(Db)
-        end,
-    do_get_meta(Bucket, VBucket, DocId, WithDb);
-
-get_meta(Bucket, VBucket, DocId, #user_ctx{} = UserCtx) ->
-    WithDb =
-        fun (Fn) ->
-                capi_frontend:with_subdb(Bucket, VBucket, UserCtx, Fn)
-        end,
-    do_get_meta(Bucket, VBucket, DocId, WithDb).
-
-do_get_meta(Bucket, VBucket, DocId, WithDb) ->
+get_meta(Bucket, VBucket, DocId) ->
     case ns_memcached:get_meta(Bucket, DocId, VBucket) of
-        {ok, _Header, #mc_entry{cas=CAS} = _Entry, {revid, Rev}} ->
-            %% TODO: deleted flag
-            {ok, Rev, false, [{cas, CAS}, ep_engine]};
+        {ok, _Header, #mc_entry{cas=CAS, flag=Flag} = _Entry, {revid, Rev}} ->
+            case (Flag band ?GET_META_ITEM_DELETED_FLAG) of
+                ?GET_META_ITEM_DELETED_FLAG ->
+                    {ok, Rev, true, [{cas, CAS}, ep_engine]};
+                _ ->
+                    {ok, Rev, false, [{cas, CAS}, ep_engine]}
+            end;
         {memcached_error, not_my_vbucket, _} ->
             {error, not_my_vbucket};
-        {memcached_error, key_enoent, _} ->
-            WithDb(
-              fun (Db) ->
-                      case couch_db:open_doc(Db, DocId, [deleted]) of
-                          {ok, Doc} ->
-                              {ok, Doc#doc.rev, Doc#doc.deleted, [couchdb]};
-                          {not_found, missing} ->
-                              {error, enoent};
-                          Error ->
-                              throw(Error)
-                      end
-              end)
+        {memcached_error, key_enoent, CAS} ->
+            {error, enoent, CAS}
     end.
 
 split_dbname(DbName) ->

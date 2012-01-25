@@ -23,23 +23,23 @@
 -export([open_doc/3, update_doc/3]).
 
 -spec open_doc(#db{}, binary(), list()) -> any().
-open_doc(#db{name = Name, user_ctx = UserCtx}, DocId, Options) ->
-    get(Name, DocId, UserCtx, Options).
+open_doc(#db{name = Name}, DocId, Options) ->
+    get(Name, DocId, Options).
 
-update_doc(#db{name = Name, user_ctx = UserCtx},
+update_doc(#db{name = Name},
            #doc{id = DocId, rev = Rev, deleted = true},
            _Options) ->
-    delete(Name, DocId, Rev, UserCtx);
+    delete(Name, DocId, Rev);
 
-update_doc(#db{name = Name, user_ctx = UserCtx},
+update_doc(#db{name = Name},
            #doc{id = DocId, rev = {0, _}, body = Body},
            _Options) ->
-    add(Name, DocId, Body, UserCtx);
+    add(Name, DocId, Body);
 
-update_doc(#db{name = Name, user_ctx = UserCtx},
+update_doc(#db{name = Name},
            #doc{id = DocId, rev = Rev,
                 body = Body}, _Options) ->
-    set(Name, DocId, Rev, Body, UserCtx).
+    set(Name, DocId, Rev, Body).
 
 -spec cas() -> <<_:64>>.
 cas() ->
@@ -64,14 +64,14 @@ next_rev({SeqNo, RevId} = _Rev, Value) ->
 next_rev(Rev) ->
     next_rev(Rev, <<>>).
 
-add(BucketBin, DocId, Value, UserCtx) ->
+add(BucketBin, DocId, Value) ->
     Bucket = binary_to_list(BucketBin),
     {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
 
     {Rev, Flags} =
-        case get_meta(Bucket, VBucket, DocId, UserCtx) of
-            {error, enoent} ->
-                RevId = encode_revid(cas(), Value, 0),
+        case get_meta(Bucket, VBucket, DocId) of
+            {error, enoent, CAS} ->
+                RevId = encode_revid(CAS, Value, 0),
                 {{1, RevId}, 0};
             {ok, _Rev, false, _Props} ->
                 throw(conflict);
@@ -91,13 +91,13 @@ add(BucketBin, DocId, Value, UserCtx) ->
             throw(conflict)
     end.
 
-set(BucketBin, DocId, PrevRev, Value, UserCtx) ->
+set(BucketBin, DocId, PrevRev, Value) ->
     Bucket = binary_to_list(BucketBin),
     {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
 
     {Deleted, CAS}
-        = case get_meta(Bucket, VBucket, DocId, UserCtx) of
-              {error, enoent} ->
+        = case get_meta(Bucket, VBucket, DocId) of
+              {error, enoent, _CAS} ->
                   {true, undefined};
               {ok, PrevRev, Deleted1, Props} ->
                   CAS1 = proplists:get_value(cas, Props),
@@ -127,12 +127,12 @@ set(BucketBin, DocId, PrevRev, Value, UserCtx) ->
             throw(conflict)
     end.
 
-delete(BucketBin, DocId, PrevRev, UserCtx) ->
+delete(BucketBin, DocId, PrevRev) ->
     Bucket = binary_to_list(BucketBin),
     {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
 
-    case get_meta(Bucket, VBucket, DocId, UserCtx) of
-        {error, enoent} ->
+    case get_meta(Bucket, VBucket, DocId) of
+        {error, enoent, _CAS} ->
             throw({not_found, missing});
         {ok, _Rev, true, _Props} ->
             throw({not_found, deleted});
@@ -155,15 +155,15 @@ delete(BucketBin, DocId, PrevRev, UserCtx) ->
             throw(conflict)
     end.
 
-get(BucketBin, DocId, UserCtx, Options) ->
+get(BucketBin, DocId, Options) ->
     Bucket = binary_to_list(BucketBin),
     ReturnDeleted = proplists:get_value(deleted, Options, false),
     {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
-    get_loop(Bucket, DocId, UserCtx, ReturnDeleted, VBucket).
+    get_loop(Bucket, DocId, ReturnDeleted, VBucket).
 
-get_loop(Bucket, DocId, UserCtx, ReturnDeleted, VBucket) ->
-    case get_meta(Bucket, VBucket, DocId, UserCtx) of
-        {error, enoent} ->
+get_loop(Bucket, DocId, ReturnDeleted, VBucket) ->
+    case get_meta(Bucket, VBucket, DocId) of
+        {error, enoent, _CAS} ->
             {not_found, missing};
         {ok, Rev, true, _Props} ->
             case ReturnDeleted of
@@ -185,16 +185,16 @@ get_loop(Bucket, DocId, UserCtx, ReturnDeleted, VBucket) ->
                                              true),
                     {ok, Doc#doc{rev = Rev}};
                 {?SUCCESS, _CAS} ->
-                    get_loop(Bucket, DocId, UserCtx, ReturnDeleted, VBucket);
+                    get_loop(Bucket, DocId, ReturnDeleted, VBucket);
                 {?KEY_ENOENT, _} ->
-                    get_loop(Bucket, DocId, UserCtx, ReturnDeleted, VBucket);
+                    get_loop(Bucket, DocId, ReturnDeleted, VBucket);
                 {?NOT_MY_VBUCKET, _} ->
                     throw(not_my_vbucket)
             end
     end.
 
-get_meta(Bucket, VBucket, DocId, UserCtx) ->
-    case capi_utils:get_meta(Bucket, VBucket, DocId, UserCtx) of
+get_meta(Bucket, VBucket, DocId) ->
+    case capi_utils:get_meta(Bucket, VBucket, DocId) of
         {error, not_my_vbucket} ->
             throw(not_my_vbucket);
         Other ->
