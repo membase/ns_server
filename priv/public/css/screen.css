@@ -824,7 +824,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list .ovf {padding:10px 0;}
 
 .list .highlight td {background-color:#eee !important;}
-.properties_table {width:462px;}
+.properties_table {width:80%}
 .properties_table tr td {text-align:left !important; vertical-align:top !important; color:#444245;background:none !important; border:0px !important;height:auto;line-height:1em}
 .gong_rb .pad .properties_table td span {color: #7C7D7F;}
 .list table.label {float:left;margin:2px 0 0;}
