@@ -249,17 +249,15 @@ var ServersSection = {
     serversQ.find('.failover_server').live('click', mkServerAction($m(self, 'failoverNode')));
     serversQ.find('.remove_from_list').live('click', mkServerAction($m(self, 'removeFromList')));
 
-    this.rebalanceProgress = Cell.needing(DAL.cells.tasksProgressCell).computeEager(function (v, tasks) {
+    self.rebalanceProgress = Cell.needing(DAL.cells.tasksProgressCell).computeEager(function (v, tasks) {
       for (var i = tasks.length; --i >= 0;) {
         var taskInfo = tasks[i];
-        if (taskInfo.type !== 'rebalance') {
-          continue;
-        }
-        if (taskInfo.status === 'running') {
+        if (taskInfo.type === 'rebalance') {
           return taskInfo;
         }
       }
     }).name("rebalanceProgress");
+    self.rebalanceProgress.equality = _.isEqual;
     self.rebalanceProgress.subscribe($m(self, 'onRebalanceProgress'));
   },
   accountForDisabled: function (handler) {
