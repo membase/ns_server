@@ -240,12 +240,12 @@ maybe_refresh_tasks_version(State) ->
                             case proplists:get_value(type, Task) of
                                 indexer ->
                                     sets:add_element(erlang:phash2(
-                                                       {lists:keyfind(design_document, 1, Task),
+                                                       {lists:keyfind(design_documents, 1, Task),
                                                         lists:keyfind(set, 1, Task)}),
                                                      Set0);
                                 view_compaction ->
                                     sets:add_element(erlang:phash2(
-                                                       {lists:keyfind(design_document, 1, Task),
+                                                       {lists:keyfind(design_documents, 1, Task),
                                                         lists:keyfind(set, 1, Task)}),
                                                      Set0);
                                 _ ->
@@ -271,8 +271,10 @@ task_operation(extract, IndexerOrCompaction, RawTask)
     {_, ChangesDone} = lists:keyfind(changes_done, 1, RawTask),
     {_, TotalChanges} = lists:keyfind(total_changes, 1, RawTask),
     {_, BucketName} = lists:keyfind(set, 1, RawTask),
-    {_, DDocId} = lists:keyfind(design_document, 1, RawTask),
-    {{IndexerOrCompaction, BucketName, DDocId}, {ChangesDone, TotalChanges}};
+    {_, DDocIds} = lists:keyfind(design_documents, 1, RawTask),
+
+    [{{IndexerOrCompaction, BucketName, DDocId}, {ChangesDone, TotalChanges}}
+       || DDocId <- DDocIds];
 task_operation(extract, _, _) ->
     ignore;
 
@@ -310,15 +312,17 @@ do_build_tasks_list(NodesDict, NeedNodeP) ->
                             fun (RawTask, TasksDict0) ->
                                     case task_operation(extract, proplists:get_value(type, RawTask), RawTask) of
                                         ignore -> TasksDict0;
-                                        {Signature, Value} ->
-                                            NewValue =
-                                                case dict:find(Signature, TasksDict0) of
-                                                    {ok, ValueOld} ->
-                                                        task_operation(fold, Signature, ValueOld, Value);
-                                                    error ->
-                                                        Value
-                                                end,
-                                            dict:store(Signature, NewValue, TasksDict0)
+                                        Signatures ->
+                                            lists:foldl(
+                                              fun ({Signature, Value}, AccDict) ->
+                                                      dict:update(
+                                                        Signature,
+                                                        fun (ValueOld) ->
+                                                                task_operation(fold, Signature, ValueOld, Value)
+                                                        end,
+                                                        Value,
+                                                        AccDict)
+                                              end, TasksDict0, Signatures)
                                     end
                             end, TasksDict, NodeTasks);
                       false ->
