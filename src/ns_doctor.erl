@@ -25,7 +25,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 %% API
--export([get_nodes/0, get_node/1,
+-export([get_nodes/0, get_node/1, get_node/2,
          get_tasks_version/0, build_tasks_list/1]).
 
 -record(state, {
@@ -361,3 +361,9 @@ do_build_tasks_list(NodesDict, NeedNodeP) ->
         end,
     RebalanceTask = {struct, RebalanceTask0},
     [RebalanceTask | PreRebalanceTasks].
+
+get_node(Node, NodeStatuses) ->
+    case dict:find(Node, NodeStatuses) of
+        {ok, Info} -> Info;
+        error -> [down]
+    end.
