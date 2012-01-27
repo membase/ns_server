@@ -38,7 +38,8 @@
                 map,
                 ddocs,
                 pending_vbucket_states,
-                waiters}).
+                waiters,
+                use_replica_index}).
 
 -define(csv_call(Call, Args),
         %% hack to not introduce any variables in the caller environment
@@ -63,19 +64,22 @@
           end)())).
 
 start_link(Bucket) ->
+    UseReplicaIndex = misc:get_env_default(use_replica_index, false),
+
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
     case ns_bucket:bucket_type(BucketConfig) of
         memcached ->
             ignore;
         _ ->
-            gen_server:start_link({local, server(Bucket)}, ?MODULE, Bucket, [])
+            gen_server:start_link({local, server(Bucket)}, ?MODULE,
+                                  {Bucket, UseReplicaIndex}, [])
     end.
 
 wait_until_added(Node, Bucket, VBucket) ->
     Address = {server(Bucket), Node},
     gen_server:call(Address, {wait_until_added, VBucket}, infinity).
 
-init(Bucket) ->
+init({Bucket, UseReplicaIndex}) ->
     process_flag(trap_exit, true),
 
     InterestingNsConfigEvent =
@@ -109,7 +113,8 @@ init(Bucket) ->
     State = #state{bucket=Bucket,
                    master_db_watcher=Watcher,
                    ddocs=undefined,
-                   waiters=dict:new()},
+                   waiters=dict:new(),
+                   use_replica_index=UseReplicaIndex},
 
     {ok, apply_current_map(State)}.
 
@@ -131,13 +136,14 @@ handle_call({pre_flush_all, Bucket}, _From,
             #state{bucket=Bucket,
                    ddocs=DDocs,
                    map=Map,
+                   use_replica_index=UseReplicaIndex,
                    pending_vbucket_states=States} = State) ->
     NewStates = dict:map(
                   fun (_, _) ->
                           dead
                   end, States),
     NewMap = ?EMPTY_MAP,
-    apply_map(Bucket, DDocs, Map, NewMap),
+    apply_map(Bucket, DDocs, Map, NewMap, UseReplicaIndex),
     {reply, ok, State#state{vbucket_states=NewStates,
                             pending_vbucket_states=NewStates,
                             map=NewMap}};
@@ -148,6 +154,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({update_ddoc, DDocId, Deleted},
             #state{bucket=Bucket,
                    bucket_config=BucketConfig,
+                   use_replica_index=UseReplicaIndex,
                    ddocs=DDocs, map=Map} = State) ->
     State1 =
         case Deleted of
@@ -155,7 +162,8 @@ handle_cast({update_ddoc, DDocId, Deleted},
                 %% we need to redefine set view whenever document changes; but
                 %% previous group for current value of design document can
                 %% still be alive; thus using maybe_define_group
-                maybe_define_group(Bucket, BucketConfig, DDocId, Map),
+                maybe_define_group(Bucket, BucketConfig,
+                                   DDocId, Map, UseReplicaIndex),
                 DDocs1 = sets:add_element(DDocId, DDocs),
                 State#state{ddocs=DDocs1};
             true ->
@@ -266,7 +274,7 @@ matching_vbuckets(Pred, Map, States) ->
               is_master(Chain) orelse is_replica(Chain)
       end, Pred, Map, States).
 
-build_map(BucketConfig, VBucketStates) ->
+build_map(BucketConfig, VBucketStates, UseReplicaIndex) ->
     Map = proplists:get_value(map, BucketConfig),
     FFMap = case proplists:get_value(fastForwardMap, BucketConfig) of
                 undefined ->
@@ -283,18 +291,6 @@ build_map(BucketConfig, VBucketStates) ->
                        fun (State) ->
                                State =:= active
                        end, Map, VBucketStates),
-
-            Replica1 = matching_replica_vbuckets(
-                         fun (State) ->
-                                 State =:= replica
-                         end, Map, VBucketStates),
-
-            %% vbucket is replica according to fastforward map but vbucket map
-            %% has not yet changed for some reason
-            Replica2 = matching_replica_vbuckets(
-                         fun (State) ->
-                                 State =:= replica
-                         end, FFMap, VBucketStates),
 
             Ignore = matching_vbuckets(
                        fun (State) ->
@@ -320,8 +316,27 @@ build_map(BucketConfig, VBucketStates) ->
 
             Passive = ordsets:subtract(ordsets:union(Passive1, Passive2),
                                        Active),
-            Replica = ordsets:subtract(ordsets:union([Replica1, Replica2]),
-                                       Passive),
+
+            case UseReplicaIndex of
+                true ->
+                    Replica1 = matching_replica_vbuckets(
+                                 fun (State) ->
+                                         State =:= replica
+                                 end, Map, VBucketStates),
+
+                    %% vbucket is replica according to fastforward map but
+                    %% vbucket map has not yet changed for some reason
+                    Replica2 = matching_replica_vbuckets(
+                                 fun (State) ->
+                                         State =:= replica
+                                 end, FFMap, VBucketStates),
+
+                    Replica =
+                        ordsets:subtract(ordsets:union([Replica1, Replica2]),
+                                         Passive);
+                false ->
+                    Replica = []
+            end,
 
             [{active, Active},
              {passive, Passive},
@@ -356,14 +371,14 @@ classify_vbuckets(OldMap, NewMap) ->
 
     {Active, Passive, Cleanup, Replica, ReplicaCleanup}.
 
-define_group(Bucket, BucketConfig, DDocId, Map) ->
+define_group(Bucket, BucketConfig, DDocId, Map, UseReplicaIndex) ->
     SetName = list_to_binary(Bucket),
     NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
 
     Params = #set_view_params{max_partitions=NumVBuckets,
                               active_partitions=[],
                               passive_partitions=[],
-                              use_replica_index=true},
+                              use_replica_index=UseReplicaIndex},
 
     try
         ok = ?csv_call(define_group, [SetName, DDocId, Params])
@@ -375,17 +390,17 @@ define_group(Bucket, BucketConfig, DDocId, Map) ->
             ok
     end,
 
-    apply_ddoc_map(Bucket, DDocId, undefined, Map).
+    apply_ddoc_map(Bucket, DDocId, undefined, Map, UseReplicaIndex).
 
-maybe_define_group(Bucket, BucketConfig, DDocId, Map) ->
+maybe_define_group(Bucket, BucketConfig, DDocId, Map, UseReplicaIndex) ->
     try
-        define_group(Bucket, BucketConfig, DDocId, Map)
+        define_group(Bucket, BucketConfig, DDocId, Map, UseReplicaIndex)
     catch
         throw:view_already_defined ->
             ok
     end.
 
-apply_ddoc_map(Bucket, DDocId, OldMap, NewMap) ->
+apply_ddoc_map(Bucket, DDocId, OldMap, NewMap, UseReplicaIndex) ->
     ?views_info("Applying map to bucket ~s (ddoc ~s):~n~p",
                 [Bucket, DDocId, NewMap]),
 
@@ -401,11 +416,11 @@ apply_ddoc_map(Bucket, DDocId, OldMap, NewMap) ->
                 [Bucket, DDocId,
                  Active, Passive, Cleanup, Replica, ReplicaCleanup]),
 
-    apply_ddoc_map(Bucket, DDocId,
-                   Active, Passive, Cleanup, Replica, ReplicaCleanup).
+    apply_ddoc_map(Bucket, DDocId, Active, Passive,
+                   Cleanup, Replica, ReplicaCleanup, UseReplicaIndex).
 
-apply_ddoc_map(Bucket, DDocId,
-               Active, Passive, Cleanup, Replica, ReplicaCleanup) ->
+apply_ddoc_map(Bucket, DDocId, Active, Passive, Cleanup,
+               Replica, ReplicaCleanup, UseReplicaIndex) ->
     SetName = list_to_binary(Bucket),
 
     try
@@ -414,9 +429,16 @@ apply_ddoc_map(Bucket, DDocId,
         ok = ?csv_call(set_partition_states,
                        [SetName, DDocId, Active, Passive, Cleanup]),
 
-        ok = ?csv_call(add_replica_partitions, [SetName, DDocId, Replica]),
-        ok = ?csv_call(remove_replica_partitions,
-                       [SetName, DDocId, ReplicaCleanup])
+        case UseReplicaIndex of
+            true ->
+                ok = ?csv_call(add_replica_partitions,
+                               [SetName, DDocId, Replica]),
+                ok = ?csv_call(remove_replica_partitions,
+                               [SetName, DDocId, ReplicaCleanup]);
+            false ->
+                ok
+        end
+
     catch
         throw:{not_found, deleted} ->
             %% The document has been deleted but we still think it's
@@ -430,7 +452,7 @@ apply_ddoc_map(Bucket, DDocId,
             ok
     end.
 
-apply_map(Bucket, DDocs, OldMap, NewMap) ->
+apply_map(Bucket, DDocs, OldMap, NewMap, UseReplicaIndex) ->
     ?views_info("Applying map to bucket ~s:~n~p", [Bucket, NewMap]),
 
     {Active, Passive, Cleanup, Replica, ReplicaCleanup} =
@@ -446,8 +468,8 @@ apply_map(Bucket, DDocs, OldMap, NewMap) ->
 
     sets:fold(
       fun (DDocId, _) ->
-              apply_ddoc_map(Bucket, DDocId,
-                             Active, Passive, Cleanup, Replica, ReplicaCleanup)
+              apply_ddoc_map(Bucket, DDocId, Active, Passive,
+                             Cleanup, Replica, ReplicaCleanup, UseReplicaIndex)
       end, undefined, DDocs).
 
 do_get_vbucket_state(Bucket, VBucket) ->
@@ -515,19 +537,21 @@ master_db_watcher(Bucket, Parent) ->
       end).
 
 apply_current_map(#state{bucket=Bucket,
+                         use_replica_index=UseReplicaIndex,
                          waiters=Waiters} = State) ->
     DDocs = get_design_docs(Bucket),
 
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
     VBucketStates = get_vbucket_states(Bucket, BucketConfig),
-    Map = build_map(BucketConfig, VBucketStates),
+    Map = build_map(BucketConfig, VBucketStates, UseReplicaIndex),
 
     sets:fold(
       fun (DDocId, _) ->
-              maybe_define_group(Bucket, BucketConfig, DDocId, Map)
+              maybe_define_group(Bucket, BucketConfig,
+                                 DDocId, Map, UseReplicaIndex)
       end, undefined, DDocs),
 
-    apply_map(Bucket, DDocs, undefined, Map),
+    apply_map(Bucket, DDocs, undefined, Map, UseReplicaIndex),
     Waiters1 = notify_waiters(Waiters, Map),
 
     State#state{bucket_config=BucketConfig,
@@ -581,11 +605,12 @@ sync(#state{bucket=Bucket,
             pending_vbucket_states=PendingStates,
             ddocs=DDocs,
             map=Map,
+            use_replica_index=UseReplicaIndex,
             waiters=Waiters} = State) ->
-    NewMap = build_map(BucketConfig, PendingStates),
+    NewMap = build_map(BucketConfig, PendingStates, UseReplicaIndex),
     case NewMap =/= Map of
         true ->
-            apply_map(Bucket, DDocs, Map, NewMap),
+            apply_map(Bucket, DDocs, Map, NewMap, UseReplicaIndex),
             Waiters1 = notify_waiters(Waiters, NewMap),
             State#state{vbucket_states=PendingStates,
                         map=NewMap, waiters=Waiters1};
