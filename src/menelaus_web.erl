@@ -562,10 +562,7 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
     Config = ns_config:get(),
     BucketsAll = ns_bucket:get_buckets(Config),
     fun(WantENode, Bucket) ->
-            InfoNode = case dict:find(WantENode, NodeStatuses) of
-                           {ok, Info} -> Info;
-                           error -> [down]
-                       end,
+            InfoNode = ns_doctor:get_node(WantENode, NodeStatuses),
             KV = build_node_info(Config, WantENode, InfoNode, LocalAddr),
 
             Status = build_node_status(WantENode, Bucket, InfoNode, BucketsAll),

@@ -25,7 +25,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 %% API
--export([get_nodes/0, get_node/1]).
+-export([get_nodes/0, get_node/1, get_node/2]).
 
 -record(state, {nodes}).
 
@@ -175,4 +175,10 @@ annotate_status(Node, Status, Now, LiveNodes) ->
             Stale;
         false ->
             [ down | Stale ]
+    end.
+
+get_node(Node, NodeStatuses) ->
+    case dict:find(Node, NodeStatuses) of
+        {ok, Info} -> Info;
+        error -> [down]
     end.
