@@ -593,7 +593,7 @@ body.init_welcome #init_welcome_dialog .pad-header {float:left;margin:130px 0 0 
 body.init_welcome #init_welcome_dialog .pad-header .tagline {color: #0A72A3;font-size: 1.5em;margin: 0.5em;text-align: center}
 body.init_welcome #init_welcome_dialog .version {color: #837c7b;display: inline-block;padding-top: 1em;vertical-align: top}
 
-body.init_welcome form#init_welcome_form {position:absolute;right:15px;bottom:15px}
+body.init_welcome form#init_welcome_form {position:absolute;right:15px;bottom:15px;text-align:right}
 body.init_welcome form#init_welcome_form p {color:#bdccd4; font-family:Verdana,Helvetica,sans-serif; font-size:12pt; line-height:20px; margin-bottom:20px;}
 body.init_welcome form#init_welcome_form input.license-input {border:1px solid #b6bdc1; color:#7e7e80; font:14px Verdana, Helvetica, sans-serif; margin:0px; padding:5px 6px;width:190px;}
 body.init_welcome form#init_welcome_form input[disabled="disabled"].license-input {background:#ddd;}
