@@ -930,6 +930,8 @@ multicall_result_to_plist_rec([N | Nodes], ResL, BadNodes, Acc) ->
             multicall_result_to_plist_rec(Nodes, tl(ResL), BadNodes, NewAcc)
     end.
 
+%% returns proplist from Nodes to their return values. BadNodes are
+%% omitted.
 multicall_result_to_plist(Nodes, {ResL, BadNodes}) ->
     multicall_result_to_plist_rec(Nodes, ResL, BadNodes, []).
 
