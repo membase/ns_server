@@ -28,7 +28,6 @@
          generate_initial_map/1,
          rebalance/3,
          unbalanced/2,
-         replication_status/2,
          buckets_replication_statuses/0]).
 
 
@@ -270,7 +269,7 @@ verify_replication(Bucket, Nodes, Map) ->
                     [{Src, Dst, V} || {Src, Dst} <- misc:pairs(Chain), Src =/= undefined, Dst =/= undefined]
             end, misc:enumerate(Map, 0))),
     ActualReplicators =
-        lists:sort(ns_vbm_sup:replicators(Nodes, Bucket)),
+        lists:sort(ns_vbm_sup:incoming_replicator_triples(Nodes, Bucket)),
     case misc:comm(ExpectedReplicators, ActualReplicators) of
         {[], [], _} ->
             ok;
@@ -313,48 +312,6 @@ wait_for_mover(Pid) ->
             exit({mover_crashed, Reason})
     end.
 
-replication_status(Bucket, BucketConfig) ->
-    %% First, check that replication is running
-    case proplists:get_value(map, BucketConfig) of
-        undefined ->
-            1.0;
-        Map ->
-            case [{N, FirstReplica, VBucket}
-                  || {VBucket, [N, FirstReplica | _]} <- lists:zip(lists:seq(0, length(Map)-1),  Map),
-                     N == node()] of
-                [] ->
-                    %% No replicas for this node
-                    1.0;
-                Replicas ->
-                    try ns_vbm_sup:replicators([node()],
-                                               Bucket) of
-                        Replicators ->
-                            case Replicas -- Replicators of
-                                [] ->
-                                    %% Ok, running
-                                    case catch failover_safeness_level:safeness_level(Bucket) of
-                                        {ok, X} ->
-                                            case X of
-                                                unknown -> 0.0;
-                                                stale -> 0.0;
-                                                green -> 1.0;
-                                                yellow -> 0.5
-                                            end;
-                                        _ ->
-                                            0.0
-                                    end;
-                                _ ->
-                                    %% Replication isn't even running
-                                    0.0
-                            end
-                    catch
-                        _:_ ->
-                            0.0
-                    end
-            end
-    end.
-
+%% NOTE: this is rpc:multicall-ed by 1.8 nodes.
 buckets_replication_statuses() ->
-    BucketConfigs = ns_bucket:get_buckets(),
-    [{Bucket, replication_status(Bucket, BucketConfig)} ||
-        {Bucket, BucketConfig} <- BucketConfigs].
+    exit(fixme_wrt_backwards_compat).

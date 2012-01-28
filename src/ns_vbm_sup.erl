@@ -29,11 +29,12 @@
          add_replica/4,
          kill_replica/4,
          stop_incoming_replications/3,
-         replicators/2,
+         incoming_replicator_triples/2,
          set_replicas_dst/2,
          set_replicas_dst/3,
          apply_changes/2,
-         spawn_mover/4]).
+         spawn_mover/4,
+         node_incoming_replicator_pairs/2]).
 
 -export([init/1]).
 
@@ -137,9 +138,9 @@ apply_changes(Bucket, ChangeTuples) ->
     ActualChangesCount.
 
 
--spec replicators([Node::node()], Bucket::bucket_name()) ->
+-spec incoming_replicator_triples([Node::node()], Bucket::bucket_name()) ->
                          [{Src::node(), Dst::node(), VBucket::vbucket_id()}].
-replicators(Nodes, Bucket) ->
+incoming_replicator_triples(Nodes, Bucket) ->
     lists:flatmap(
       fun (Dst) ->
               try children(Dst, Bucket) of
@@ -276,6 +277,14 @@ args(SrcNode, Bucket, VBuckets, DstNode, TakeOver) ->
 children(Node, Bucket) ->
     [Id || {Id, _, _, _} <- supervisor:which_children({server(Bucket), Node})].
 
+-spec node_incoming_replicator_pairs(DstNode::node(),
+                                     Bucket::bucket_name()) ->
+                                      [{SrcNode::node(), [VBucketId::vbucket_id()]}].
+node_incoming_replicator_pairs(DstNode, Bucket) ->
+    Children = try children(DstNode, Bucket)
+               catch exit:{noproc, _} -> []
+               end,
+    [{ChildId#new_child_id.src_node, ChildId#new_child_id.vbuckets} || ChildId <- Children].
 
 %% @private
 %% @doc Get the replicator for a given source and destination node.
