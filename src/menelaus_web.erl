@@ -588,10 +588,13 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
                       undefined ->
                           KV2;
                       _ ->
-                          Replication = proplists:get_value(replication,
-                                                            InfoNode, []),
-                          [{replication, proplists:get_value(Bucket,
-                                                             Replication)}|KV2]
+                          Replication = case ns_bucket:get_bucket(Bucket, Config) of
+                                            not_present -> 0.0;
+                                            {ok, BucketConfig} ->
+                                                failover_safeness_level:extract_replication_uptodateness(Bucket, BucketConfig,
+                                                                                                         WantENode, NodeStatuses)
+                                        end,
+                          [{replication, Replication} | KV2]
                   end,
             KV4 = case InfoLevel of
                       stable -> KV3;
@@ -1457,22 +1460,6 @@ handle_re_add_node(Req) ->
     ok = ns_cluster_membership:re_add_node(Node),
     Req:respond({200, [], []}).
 
-calculate_replication(Node, BucketsAll, BucketsReplications) ->
-    ReplicationList = lists:foldl(fun ({BucketName, BucketConfig}, A) ->
-                                      case lists:member(Node, ns_bucket:bucket_nodes(BucketConfig)) of
-                                          true ->
-                                              case proplists:get_value(BucketName, BucketsReplications) of
-                                                  undefined -> A;
-                                                  Value -> [Value | A]
-                                              end;
-                                          _ -> A
-                                      end
-                              end, [], BucketsAll),
-    case ReplicationList of
-        [] -> 1.0;
-        _ -> lists:sum(ReplicationList) / length(ReplicationList)
-    end.
-
 %% Node list
 %% GET /pools/{PoolID}/buckets/{Id}/nodes
 %%
@@ -1535,42 +1522,41 @@ handle_bucket_node_info(PoolId, BucketName, Hostname, Req) ->
 %% this serves fresh nodes replication and health status
 handle_node_statuses(Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
-    OldNodeStatuses = ns_doctor:get_nodes(),
-    Nodes = ns_node_disco:nodes_actual_proper(),
+    OldStatuses = ns_doctor:get_nodes(),
     Config = ns_config:get(),
     BucketsAll = ns_bucket:get_buckets(Config),
-    NodeResp = misc:multicall_result_to_plist(Nodes,
-                                              rpc:multicall(Nodes, ns_rebalancer, buckets_replication_statuses, [], 2000)),
-    NodeStatuses = lists:map(
-                     fun (N) ->
-                             InfoNode = case dict:find(N, OldNodeStatuses) of
-                                            {ok, Info} -> Info;
-                                            _ -> []
-                                        end,
-                             Hostname = proplists:get_value(hostname,
-                                                            build_node_info(Config, N, InfoNode, LocalAddr)),
-                             KF = case lists:keyfind(N, 1, NodeResp) of
-                                      %% if reply is not list it is error report
-                                      {_, Reply} when not is_list(Reply) ->
-                                          ?log_info("Got error reply from ~p:~n~p", [N, Reply]),
-                                          false;
-                                      X -> X
-                                  end,
-                             V = case KF of
-                                     false ->
-                                         {struct, [{status, unhealthy},
-                                                   {otpNode, N},
-                                                   {replication, calculate_replication(N, BucketsAll,
-                                                                                       proplists:get_value(replication,
-                                                                                                           InfoNode, []))}]};
-                                     {_, BucketReplications} ->
-                                         {struct, [{status, healthy},
-                                                   {otpNode, N},
-                                                   {replication, calculate_replication(N, BucketsAll, BucketReplications)}]}
-                                 end,
-                             {Hostname, V}
-                     end, ns_node_disco:nodes_wanted()),
+    FreshStatuses = ns_heart:grab_fresh_failover_safeness_infos(BucketsAll),
+    NodeStatuses =
+        lists:map(
+          fun (N) ->
+                  InfoNode = ns_doctor:get_node(N, OldStatuses),
+                  Hostname = proplists:get_value(hostname,
+                                                 build_node_info(Config, N, InfoNode, LocalAddr)),
+                  NewInfoNode = ns_doctor:get_node(N, FreshStatuses),
+                  V = case proplists:get_bool(down, NewInfoNode) of
+                          true ->
+                              {struct, [{status, unhealthy},
+                                        {otpNode, N},
+                                        {replication, average_failover_safenesses(N, OldStatuses, BucketsAll)}]};
+                          false ->
+                              {struct, [{status, healthy},
+                                        {otpNode, N},
+                                        {replication, average_failover_safenesses(N, FreshStatuses, BucketsAll)}]}
+                      end,
+                  {Hostname, V}
+          end, ns_node_disco:nodes_wanted()),
     reply_json(Req, {struct, NodeStatuses}, 200).
+
+average_failover_safenesses(Node, NodeInfos, BucketsAll) ->
+    average_failover_safenesses_rec(Node, NodeInfos, BucketsAll, 0, 0).
+
+average_failover_safenesses_rec(_Node, _NodeInfos, [], Sum, Count) ->
+    try Sum / Count
+    catch error:badarith -> 1.0
+    end;
+average_failover_safenesses_rec(Node, NodeInfos, [{BucketName, BucketConfig} | RestBuckets], Sum, Count) ->
+    Level = failover_safeness_level:extract_replication_uptodateness(BucketName, BucketConfig, Node, NodeInfos),
+    average_failover_safenesses_rec(Node, NodeInfos, RestBuckets, Sum + Level, Count + 1).
 
 bin_concat_path(Path) ->
     list_to_binary(concat_url_path(Path)).

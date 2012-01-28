@@ -60,7 +60,7 @@ graphviz(Bucket) ->
                               [I, Color, Node, node_vbuckets(I, Node, States, Map)]) ||
                     {I, {Node, Color}} <- misc:enumerate(NodeColors)],
     Replicants = lists:sort(ns_bucket:map_to_replicas(Map)),
-    Replicators = lists:sort(ns_vbm_sup:replicators(Nodes, Bucket)),
+    Replicators = lists:sort(ns_vbm_sup:incoming_replicator_triples(Nodes, Bucket)),
     AllRep = lists:umerge(Replicants, Replicators),
     Edges = [io_lib:format("n~pv~B -> n~pv~B [color=~s];~n",
                             [misc:position(Src, Nodes), V,

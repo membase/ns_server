@@ -23,7 +23,8 @@
 
 -define(EXPENSIVE_CHECK_INTERVAL, 15000). % In ms
 
--export([start_link/0, status_all/0, expensive_checks/0, force_beat/0]).
+-export([start_link/0, status_all/0, expensive_checks/0,
+         force_beat/0, grab_fresh_failover_safeness_infos/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 
@@ -144,6 +145,8 @@ current_status(Expensive) ->
                 []
         end,
 
+    BucketNames = ns_bucket:node_bucket_names(node()),
+
     InterestingStats =
         lists:foldl(fun (BucketName, Acc) ->
                             case catch stats_reader:latest(minute, node(), BucketName) of
@@ -162,11 +165,11 @@ current_status(Expensive) ->
                                     ?log_error("Failed to get stats for bucket: ~p:~n~p~n", [BucketName, Crap]),
                                     Acc
                             end
-                    end, [], ns_bucket:node_bucket_names(node())),
+                    end, [], BucketNames),
 
+    failover_safeness_level:build_local_safeness_info(BucketNames) ++
     [{active_buckets, ns_memcached:active_buckets()},
      {ready_buckets, ns_memcached:connected_buckets()},
-     {replication, ns_rebalancer:buckets_replication_statuses()},
      {memory, erlang:memory()},
      {system_stats, [{N, proplists:get_value(N, SystemStats, 0)} || N <- [cpu_utilization_rate, swap_total, swap_used]]},
      {interesting_stats, InterestingStats},
@@ -182,3 +185,18 @@ expensive_checks() ->
             [{meminfo, Contents} | BasicData];
         _ -> BasicData
     end.
+
+%% returns dict as if returned by ns_doctor:get_nodes/0 but containing only
+%% failover safeness fields (or down bool property). Instead of going
+%% to doctor it actually contacts all nodes and tries to grab fresh
+%% information. See failover_safeness_level:build_local_safeness_info
+grab_fresh_failover_safeness_infos(BucketsAll) ->
+    grab_fresh_failover_safeness_infos(BucketsAll, 2000).
+
+grab_fresh_failover_safeness_infos(BucketsAll, Timeout) ->
+    Nodes = ns_node_disco:nodes_actual_proper(),
+    BucketNames = proplists:get_keys(BucketsAll),
+    NodeResp = misc:multicall_result_to_plist(
+                 Nodes,
+                 rpc:multicall(Nodes, failover_safeness_level, build_local_safeness_info, [BucketNames], Timeout)),
+    dict:from_list(NodeResp).

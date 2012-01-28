@@ -40,6 +40,7 @@
          json_map_from_config/2,
          live_bucket_nodes/1,
          map_to_replicas/1,
+         replicated_vbuckets/3,
          maybe_get_bucket/2,
          moxi_port/1,
          name_conflict/1,
@@ -300,6 +301,25 @@ map_to_replicas([Chain|Rest], V, Replicas) ->
                             Src /= undefined andalso Dst /= undefined],
     map_to_replicas(Rest, V+1, [Pairs|Replicas]).
 
+%% returns _sorted_ list of vbuckets that are replicated from SrcNode
+%% to DstNode according to given Map.
+replicated_vbuckets(Map, SrcNode, DstNode) ->
+    replicated_vbuckets_rec(Map, SrcNode, DstNode, 0).
+
+replicated_vbuckets_rec([], _SrcNode, _DstNode, _Idx) -> [];
+replicated_vbuckets_rec([Chain | RestChains], SrcNode, DstNode, Idx) ->
+    RestResult = replicated_vbuckets_rec(RestChains, SrcNode, DstNode, Idx+1),
+    case replicated_in_chain(Chain, SrcNode, DstNode) of
+        true -> [Idx | RestResult];
+        false -> RestResult
+    end.
+
+replicated_in_chain([SrcNode, DstNode | _], SrcNode, DstNode) ->
+    true;
+replicated_in_chain([_ | Rest], SrcNode, DstNode) ->
+    replicated_in_chain(Rest, SrcNode, DstNode);
+replicated_in_chain([], _SrcNode, _DstNode) ->
+    false.
 
 %% @doc Return the minimum number of live copies for all vbuckets.
 -spec min_live_copies([node()], list()) -> non_neg_integer() | undefined.
