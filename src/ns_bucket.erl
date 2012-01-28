@@ -28,6 +28,7 @@
          delete_bucket/1,
          failover_warnings/0,
          get_bucket/1,
+         get_bucket/2,
          get_bucket_names/0,
          get_bucket_names/1,
          couchbase_bucket_exists/1,
@@ -145,10 +146,13 @@ couchbase_bucket_exists(Bucket) ->
     end.
 
 get_bucket(Bucket) ->
-    BucketConfigs = get_buckets(),
+    get_bucket(Bucket, ns_config:get()).
+
+get_bucket(Bucket, Config) ->
+    BucketConfigs = get_buckets(Config),
     case lists:keysearch(Bucket, 1, BucketConfigs) of
-        {value, {_, Config}} ->
-            {ok, Config};
+        {value, {_, BucketConfig}} ->
+            {ok, BucketConfig};
         false -> not_present
     end.
 
