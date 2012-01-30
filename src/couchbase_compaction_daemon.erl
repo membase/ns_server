@@ -214,19 +214,19 @@ bucket_needs_compaction(VbNames, Config) ->
         end,
         lists:seq(1, erlang:min(?NUM_SAMPLE_VBUCKETS, NumVbs))),
     % Don't care about duplicates.
-    vbuckets_need_compaction(lists:usort(SampleVbs), Config, true).
+    vbuckets_need_compaction(lists:usort(SampleVbs), Config, true, NumVbs).
 
 
-vbuckets_need_compaction([], _Config, Acc) ->
+vbuckets_need_compaction([], _Config, Acc, _NumVbs) ->
     Acc;
-vbuckets_need_compaction(_DbNames, _Config, false) ->
+vbuckets_need_compaction(_DbNames, _Config, false, _NumVbs) ->
     false;
-vbuckets_need_compaction([DbName | Rest], Config, Acc) ->
+vbuckets_need_compaction([DbName | Rest], Config, Acc, NumVbs) ->
     case (catch couch_db:open_int(DbName, [])) of
     {ok, Db} ->
-        Acc2 = Acc andalso can_db_compact(Config, Db),
+        Acc2 = Acc andalso can_db_compact(Config, Db, NumVbs),
         couch_db:close(Db),
-        vbuckets_need_compaction(Rest, Config, Acc2);
+        vbuckets_need_compaction(Rest, Config, Acc2, NumVbs);
     Error ->
         ?log_error("Couldn't open vbucket database `~s`: ~p", [DbName, Error]),
         false
@@ -367,16 +367,18 @@ bucket_compact_config(BucketName) ->
     end.
 
 
-can_db_compact(#config{db_frag = Threshold} = Config, Db) ->
+can_db_compact(#config{db_frag = Threshold} = Config, Db, NumVbs) ->
     case check_period(Config) of
     false ->
         false;
     true ->
         {ok, DbInfo} = couch_db:get_db_info(Db),
-        {Frag, SpaceRequired} = frag(DbInfo),
+        {FragSize, FragPerc, SpaceRequired} = frag(DbInfo),
         ?log_debug("Fragmentation for database `~s` is ~p%, estimated space for"
-           " compaction is ~p bytes.", [Db#db.name, Frag, SpaceRequired]),
-        case check_frag(Threshold, Frag) of
+           " compaction is ~p bytes.", [Db#db.name, FragPerc, SpaceRequired]),
+        % We only check a random sample of the vbuckets, mutiply the
+        % fragmentation size to approximate a disk size limit per node
+        case check_frag(Threshold, FragPerc, FragSize * NumVbs) of
         false ->
             false;
         true ->
@@ -403,11 +405,11 @@ can_view_compact(Config, BucketName, DDocId, GroupInfo) ->
         true ->
             false;
         false ->
-            {Frag, SpaceRequired} = frag(GroupInfo),
+            {FragSize, FragPerc, SpaceRequired} = frag(GroupInfo),
             ?log_debug("Fragmentation for view group `~s` (bucket `~s`) is "
                 "~p%, estimated space for compaction is ~p bytes.",
-                [DDocId, BucketName, Frag, SpaceRequired]),
-            case check_frag(Config#config.view_frag, Frag) of
+                [DDocId, BucketName, FragPerc, SpaceRequired]),
+            case check_frag(Config#config.view_frag, FragPerc, FragSize) of
             false ->
                 false;
             true ->
@@ -440,10 +442,11 @@ check_period(#config{period = #period{from = From, to = To}}) ->
     end.
 
 
-check_frag(nil, _) ->
+check_frag(nil, _, _) ->
     false;
-check_frag(Threshold, Frag) ->
-    Frag >= Threshold.
+check_frag({PercLimit, SizeLimit}, FragPerc, FragSize) ->
+    (FragPerc =/= nil andalso FragPerc >= PercLimit)
+        orelse (FragSize =/= nil andalso FragSize >= SizeLimit).
 
 
 frag(Props) ->
@@ -452,16 +455,17 @@ frag(Props) ->
         couch_config:get("compaction_daemon", "min_file_size", "131072")),
     case FileSize < MinFileSize of
     true ->
-        {0, FileSize};
+        {0, 0, FileSize};
     false ->
         case couch_util:get_value(data_size, Props) of
         null ->
-            {100, FileSize};
+            {100, FileSize, FileSize};
         0 ->
-            {0, FileSize};
+            {0, 0, FileSize};
         DataSize ->
-            Frag = round(((FileSize - DataSize) / FileSize * 100)),
-            {Frag, space_required(DataSize)}
+            FragSize = FileSize - DataSize,
+            Frag = round((FragSize / FileSize * 100)),
+            {FragSize, Frag, space_required(DataSize)}
         end
     end.
 
@@ -512,13 +516,11 @@ do_parse_config(ConfigString) ->
 config_record([], Config) ->
     {ok, Config};
 
-config_record([{db_fragmentation, V} | Rest], Config) ->
-    [Frag] = string:tokens(V, "%"),
-    config_record(Rest, Config#config{db_frag = list_to_integer(Frag)});
+config_record([{db_fragmentation, {Frag, Disk}} | Rest], Config) ->
+    config_record(Rest, Config#config{db_frag = {percentage_value(Frag), Disk}});
 
-config_record([{view_fragmentation, V} | Rest], Config) ->
-    [Frag] = string:tokens(V, "%"),
-    config_record(Rest, Config#config{view_frag = list_to_integer(Frag)});
+config_record([{view_fragmentation, {Frag, Disk}} | Rest], Config) ->
+    config_record(Rest, Config#config{view_frag = {percentage_value(Frag), Disk}});
 
 config_record([{from, V} | Rest], #config{period = Period0} = Config) ->
     Time = parse_time(V),
@@ -551,6 +553,13 @@ config_record([{parallel_view_compaction, true} | Rest], Config) ->
 
 config_record([{parallel_view_compaction, false} | Rest], Config) ->
     config_record(Rest, Config#config{parallel_view_compact = false}).
+
+
+percentage_value(Frag) when is_list(Frag) ->
+    [TmpFrag] = string:tokens(Frag, "%"),
+    list_to_integer(TmpFrag);
+percentage_value(Frag) ->
+    Frag.
 
 
 parse_time(String) ->

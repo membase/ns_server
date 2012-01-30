@@ -609,29 +609,61 @@
                     <p>The Auto-Compaction daemon compacts databases and their respective
                     view indexes when all the condition parameters are satisfied.</p>
                     <ul>
+                      <li><h4>Database Fragmentation</h4></li>
                       <li class="database">
-                        <span class="toggle">
-                          <input type="checkbox" id="48099acb-df16-4e1e-9949-2aaccfeb9e41" class="check-for-databaseFragmentationThreshold" /> <label for="48099acb-df16-4e1e-9949-2aaccfeb9e41">Database Fragmentation</label>
+                        <span>
+                          <input type="checkbox"
+                                 id="48099acb-df16-4e1e-9949-2aaccfeb9e41"
+                                 class="check-for-databaseFragmentationThresholdPercentage" />
                         </span>
                         <span class="input_wrapper">
-                          <input id="decaebe7-bb14-4c1f-9bb1-70ceb7fb2e43" name="databaseFragmentationThreshold" type="number" />%
+                          <input type="number"
+                                 id="decaebe7-bb14-4c1f-9bb1-70ceb7fb2e43"
+                                 name="databaseFragmentationThreshold[percentage]" />%
                         </span>
                         <label for="decaebe7-bb14-4c1f-9bb1-70ceb7fb2e43">
                           <span>at which point compaction is triggered</span>
                         </label>
-                        <div class="error-container err-databaseFragmentationThreshold"></div>
-                      </li>
-                      <li class="view">
-                        <span class="toggle">
-                          <input type="checkbox" id="0a2cb7a3-84b7-4822-bf32-87d3e192926a" class="check-for-viewFragmentationThreshold" /> <label for="0a2cb7a3-84b7-4822-bf32-87d3e192926a">View Fragmentation</label>
-                        </span>
+                        <div class="error-container err-databaseFragmentationThreshold-percentage-"></div>
+                     </li>
+                      <li class="database">
+                        <input type="checkbox"
+                               class="check-for-databaseFragmentationThresholdSize" />
                         <span class="input_wrapper">
-                          <input id="8e49a092-3108-46ed-b5c3-9b95c4ceda6f" name="viewFragmentationThreshold" type="number" />%
+                          <input type="number" id="settings-db-compaction-size"
+                                 name="databaseFragmentationThreshold[size]"
+                                 class="size" />MB
+                        </span>
+                        <label for="settings-db-compaction-size">
+                          <span>at which point compaction is triggered</span>
+                        </label>
+                        <div class="error-container err-databaseFragmentationThreshold-size-"></div>
+                      </li>
+
+                      <li><h4>View Fragmentation</h4></li>
+                      <li class="view">
+
+                        <input type="checkbox" id="0a2cb7a3-84b7-4822-bf32-87d3e192926a" class="check-for-viewFragmentationThresholdPercentage" />
+                        <span class="input_wrapper">
+                          <input id="8e49a092-3108-46ed-b5c3-9b95c4ceda6f" name="viewFragmentationThreshold[percentage]" type="number" />%
                         </span>
                         <label for="8e49a092-3108-46ed-b5c3-9b95c4ceda6f">
                           <span>at which point compaction is triggered</span>
                         </label>
-                        <div class="error-container err-viewFragmentationThreshold"></div>
+                        <div class="error-container err-viewFragmentationThreshold-percentage-"></div>
+                      </li>
+                      <li class="view">
+                        <input type="checkbox" class="check-for-viewFragmentationThresholdSize" />
+                        <span class="input_wrapper">
+                          <input type="number" id="settings-view-compaction-size"
+                                 name="viewFragmentationThreshold[size]"
+                                 class="size" />MB
+                        </span>
+                        <label for="settings-view-compaction-size">
+                          <span>at which point compaction is triggered</span>
+                        </label>
+                        <div class="error-container err-viewFragmentationThreshold-size-"></div>
+
                       </li>
                       <li class="period">
                         <span class="toggle">
@@ -1635,30 +1667,62 @@
           <label><input type="checkbox" name="autoCompactionDefined" value="true" /> Override the default autocompaction settings?</label>
         </li>
       </ul><ul class="autocompaction-settings">
+        <li><h4>Database Fragmentation</h4></li>
         <li class="database">
-          <span class="toggle">
-            <input type="checkbox" id="db_frag_check" class="check-for-databaseFragmentationThreshold" /> <label for="db_frag_check">Database Fragmentation</label>
+          <span>
+            <input type="checkbox"
+                   id="db_frag_check"
+                   class="check-for-databaseFragmentationThresholdPercentage" />
           </span>
           <span class="input_wrapper">
-            <input id="32cc3a81-c0e9-495a-836e-3fdeb1384110" name="databaseFragmentationThreshold" type="number" />%
+            <input type="number"
+                   id="32cc3a81-c0e9-495a-836e-3fdeb1384110"
+                   name="databaseFragmentationThreshold[percentage]" />%
           </span>
           <label for="32cc3a81-c0e9-495a-836e-3fdeb1384110">
             <span>at which point compaction is triggered</span>
           </label>
-          <div class="error-container err-databaseFragmentationThreshold"></div>
+          <div class="error-container err-databaseFragmentationThreshold-percentage-"></div>
         </li>
-        <li class="view">
-          <span class="toggle">
-            <input type="checkbox" id="view_frag_check" class="check-for-viewFragmentationThreshold" /> <label for="view_frag_check">View Fragmentation</label>
-          </span>
+        <li class="database">
+          <input type="checkbox"
+                 class="check-for-databaseFragmentationThresholdSize" />
           <span class="input_wrapper">
-            <input id="f9a08cc9-e572-4b6e-b4d2-1fe2b0b11852" name="viewFragmentationThreshold" type="number" />%
+            <input type="number" id="dialog-db-compaction-size"
+                   name="databaseFragmentationThreshold[size]"
+                   class="size" />MB
+          </span>
+          <label for="dialog-db-compaction-size">
+            <span>at which point compaction is triggered</span>
+          </label>
+          <div class="error-container err-databaseFragmentationThreshold-size-"></div>
+        </li>
+
+        <li><h4>View Fragmentation</h4></li>
+        <li class="view">
+
+          <input type="checkbox" id="view_frag_check" class="check-for-viewFragmentationThresholdPercentage" />
+          <span class="input_wrapper">
+            <input id="f9a08cc9-e572-4b6e-b4d2-1fe2b0b11852"
+                   name="viewFragmentationThreshold[percentage]" type="number" />%
           </span>
           <label for="f9a08cc9-e572-4b6e-b4d2-1fe2b0b11852">
             <span>at which point compaction is triggered</span>
           </label>
-          <div class="error-container err-viewFragmentationThreshold"></div>
+          <div class="error-container err-viewFragmentationThreshold-percentage-"></div>
         </li>
+        <li class="view">
+          <input type="checkbox" class="check-for-viewFragmentationThresholdSize" />
+          <span class="input_wrapper">
+            <input type="number" id="dialog-view-compaction-size"
+                   name="viewFragmentationThreshold[size]"
+                   class="size" />MB
+          </span>
+          <label for="dialog-view-compaction-size">
+            <span>at which point compaction is triggered</span>
+          </label>
+          <div class="error-container err-viewFragmentationThreshold-size-"></div>
+                      </li>
         <li class="period">
           <span class="toggle">
             <input type="checkbox" id="period_check" class="check-for-allowedTimePeriod"/> <label for="period_check">Time Period</label>

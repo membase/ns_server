@@ -725,12 +725,15 @@ build_auto_compaction_settings(Settings) ->
     PropFun = fun ({JSONName, CfgName}) ->
                       case proplists:get_value(CfgName, Settings) of
                           undefined -> [];
-                          V -> [{JSONName, V}]
+                          {Percentage, Size} ->
+                              [{JSONName, {struct, [{percentage, Percentage},
+                                                    {size,  Size}]}}]
                       end
               end,
     DBAndView = lists:flatmap(PropFun,
                               [{databaseFragmentationThreshold, database_fragmentation_threshold},
                                {viewFragmentationThreshold, view_fragmentation_threshold}]),
+
     {struct, [{parallelDBAndViewCompaction, proplists:get_bool(parallel_db_and_view_compaction, Settings)}
               | case proplists:get_value(allowed_time_period, Settings) of
                     undefined -> [];
@@ -1886,7 +1889,7 @@ handle_set_autocompaction(Req) ->
     case {ValidateOnly, SettingsRV} of
         {_, {errors, Errors}} ->
             reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400);
-        {true, {ok, _}} ->
+        {true, {ok, _ACSettings}} ->
             reply_json(Req, {struct, [{errors, {struct, []}}]}, 200);
         {false, {ok, ACSettings}} ->
             ns_config:set(autocompaction, ACSettings),
@@ -1922,9 +1925,21 @@ parse_validate_boolean_field(JSONName, CfgName, Params) ->
     end.
 
 parse_validate_auto_compaction_settings(Params) ->
-    DBAndViewResults = lists:flatmap(mk_integer_field_validator(2, 100, Params),
-                                     [{"databaseFragmentationThreshold", database_fragmentation_threshold, "database fragmentation"},
-                                      {"viewFragmentationThreshold", view_fragmentation_threshold, "view fragmentation"}]),
+    PercResults = lists:flatmap(mk_integer_field_validator(2, 100, Params),
+                                [{"databaseFragmentationThreshold[percentage]",
+                                  db_fragmentation_percentage,
+                                  "database fragmentation"},
+                                 {"viewFragmentationThreshold[percentage]",
+                                  view_fragmentation_percentage,
+                                  "view fragmentation"}]),
+    SizeResults = lists:flatmap(mk_integer_field_validator(1, infinity, Params),
+                                [{"databaseFragmentationThreshold[size]",
+                                  db_fragmentation_size,
+                                  "database fragmentation size"},
+                                 {"viewFragmentationThreshold[size]",
+                                  view_fragmentation_size,
+                                  "view fragmentation size"}]),
+
     ParallelResult = case parse_validate_boolean_field("parallelDBAndViewCompaction", parallel_db_and_view_compaction, Params) of
                          [] -> [{error, "parallelDBAndViewCompaction", <<"parallelDBAndViewCompaction is missing">>}];
                          X -> X
@@ -1942,10 +1957,21 @@ parse_validate_auto_compaction_settings(Params) ->
                             PeriodTimeFieldsCount -> PeriodTimeResults0;
                             _ -> [{error, <<"allowedTimePeriod">>, <<"allowedTimePeriod is invalid">>}]
                         end,
-    Errors = [{iolist_to_binary(Field), Msg} || {error, Field, Msg} <- DBAndViewResults ++ ParallelResult ++ PeriodTimeResults],
+    Errors = [{iolist_to_binary(Field), Msg} || {error, Field, Msg} <- PercResults ++ ParallelResult ++ PeriodTimeResults ++ SizeResults],
     case Errors of
         [] ->
-            MainFields = [{F, V} || {ok, F, V} <- ParallelResult ++ DBAndViewResults],
+            SizePList = [{F, V} || {ok, F, V} <- SizeResults],
+            PercPList = [{F, V} || {ok, F, V} <- PercResults],
+            MainFields =
+                [{F, V} || {ok, F, V} <- ParallelResult]
+                ++
+                [{database_fragmentation_threshold, {
+                    couch_util:get_value(db_fragmentation_percentage, PercPList, nil),
+                    couch_util:get_value(db_fragmentation_size, SizePList, nil)}},
+                 {view_fragmentation_threshold, {
+                    couch_util:get_value(view_fragmentation_percentage, PercPList, nil),
+                    couch_util:get_value(view_fragmentation_size, SizePList, nil)}}],
+
             AllFields =
                 case PeriodTimeResults of
                     [] ->

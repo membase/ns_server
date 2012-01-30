@@ -199,7 +199,8 @@ parse_validate_number(String, Min, Max) ->
         is_integer(Parsed) ->
             if
                 Min =/= undefined andalso Parsed < Min -> too_small;
-                Max =/= undefined andalso Parsed > Max -> too_large;
+                Max =/= undefined andalso Max =/= infinity andalso
+                  Parsed > Max -> too_large;
                 true -> {ok, Parsed}
             end;
        true -> invalid

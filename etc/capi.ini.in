@@ -34,4 +34,15 @@ check_interval = 30
 min_file_size = 131072
 
 ;[compactions]
-;_default = [{db_fragmentation, "30%"}, {view_fragmentation, "30%"}]
+;_default = [{db_fragmentation, {"30%", nil}},
+;            {view_fragmentation, {"30%", nil}}]
+;
+
+; * db_fragmentation / view_fragmentation
+;
+; Both expect a tuple of {Ratio, ByteLimit} where Ratio is an integer
+; percentange of old data vs all data, and the ByteLimit is the total size
+; of all data - new data.
+; When fragemnted data is greater than or equal to either of these values,
+; auto compaction is triggered.
+; both values can be nil to ignore the conditions

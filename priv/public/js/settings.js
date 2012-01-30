@@ -778,10 +778,12 @@ var AutoCompactionSection = {
 
     self.urisCell.getValue(function (uris) {
       var validateURI = uris.validateURI;
-      formValidation = setupFormValidation(container.find("form"), validateURI,
-                                           function (status, errors) {
-                                             errorsCell.setValue(errors);
-                                           });
+      var form = container.find("form");
+      formValidation = setupFormValidation(form, validateURI, function (status, errors) {
+        errorsCell.setValue(errors);
+      }, function() {
+        return AutoCompactionSection.serializeCompactionForm(form);
+      });
       self.formValidationEnabled.subscribeValue(function (enabled) {
         formValidation[enabled ? 'unpause' : 'pause']();
       });
@@ -820,6 +822,31 @@ var AutoCompactionSection = {
       });
     });
   },
+  serializeCompactionForm: function(form) {
+    return serializeForm(form, {
+      'databaseFragmentationThreshold[size]': MBtoBytes,
+      'viewFragmentationThreshold[size]': MBtoBytes
+    });
+  },
+  preProcessCompactionValues: function(values) {
+    var fields = [
+      "databaseFragmentationThreshold[size]",
+      "databaseFragmentationThreshold[percentage]",
+      "viewFragmentationThreshold[size]",
+      "viewFragmentationThreshold[percentage]"
+    ];
+    _.each(fields, function(key) {
+      if (values[key] === 'nil') {
+        delete values[key];
+      }
+      if (values[key] &&
+          (key === 'databaseFragmentationThreshold[size]' ||
+           key === 'viewFragmentationThreshold[size]')) {
+        values[key] = Math.round(values[key] / 1024 / 1024);
+      }
+    });
+    return values;
+  },
   fillSettingsForm: function (whenDone) {
     var self = this;
     var myGeneration = self.fillSettingsGeneration = new Object();
@@ -840,10 +867,11 @@ var AutoCompactionSection = {
       if (self.formDestructor) {
         self.formDestructor();
       }
-
+      settings = AutoCompactionSection.preProcessCompactionValues(settings);
       var form = self.container.find("form");
       setFormValues(form, settings);
       self.formDestructor = setAutoCompactionSettingsFields(form, settings);
+
       if (whenDone) {
         whenDone();
       }
@@ -856,7 +884,8 @@ var AutoCompactionSection = {
                                 text: "Saving autocompaction settings. Please, wait..."});
 
     self.urisCell.getValue(function (uris) {
-      postWithValidationErrors(uris.uri, self.container.find("form"), onSubmitResult);
+      var data = AutoCompactionSection.serializeCompactionForm(self.container.find("form"));
+      postWithValidationErrors(uris.uri, data, onSubmitResult);
       DAL.cells.currentPoolDetailsCell.setValue(undefined);
       self.formValidationEnabled.setValue(false);
     });
@@ -881,7 +910,7 @@ var AutoCompactionSection = {
     this.container.find('[name="' + field + '"]')[error ? 'addClass' : 'removeClass']('invalid');
   },
   onValidationResult: (function () {
-    var knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold viewFragmentationThreshold allowedTimePeriod').split(' ');
+    var knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold[percentage] viewFragmentationThreshold[percentage] viewFragmentationThreshold[size] databaseFragmentationThreshold[size] allowedTimePeriod').split(' ');
     _.each(('to from').split(' '), function (p1) {
       _.each(('Hour Minute').split(' '), function (p2) {
         knownFields.push('allowedTimePeriod[' + p1 + p2 + ']');

@@ -13,7 +13,8 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  **/
-function setupFormValidation(form, url, callback) {
+function setupFormValidation(form, url, callback, getFormValues) {
+
   var idleTime = 250,
       oldValue,
       inFlightXHR,
@@ -75,7 +76,7 @@ function setupFormValidation(form, url, callback) {
       return;
     }
 
-    var newValue = serializeForm(form);
+    var newValue = getFormValues();
     if (newValue == oldValue) {
       return;
     }
@@ -129,16 +130,28 @@ function setupFormValidation(form, url, callback) {
 }
 
 function setAutoCompactionSettingsFields(form, initValues) {
-  var dbFragmentationCheck = form.find('.check-for-databaseFragmentationThreshold');
-  dbFragmentationCheck.prop('checked', 'databaseFragmentationThreshold' in initValues);
-  var viewFragmentationCheck = form.find('.check-for-viewFragmentationThreshold');
-  viewFragmentationCheck.prop('checked', 'viewFragmentationThreshold' in initValues);
+  var dbFragmentationCheck = form.find('.check-for-databaseFragmentationThresholdSize');
+  dbFragmentationCheck.prop('checked', 'databaseFragmentationThreshold[size]' in initValues);
+
+  var viewFragmentationCheck = form.find('.check-for-viewFragmentationThresholdSize');
+  viewFragmentationCheck.prop('checked', 'viewFragmentationThreshold[size]' in initValues);
+
+  var dbFragmentationPercCheck =
+    form.find('.check-for-databaseFragmentationThresholdPercentage');
+  dbFragmentationPercCheck.prop('checked',
+                            'databaseFragmentationThreshold[percentage]' in initValues);
+  var viewFragmentationPercCheck =
+    form.find('.check-for-viewFragmentationThresholdPercentage');
+  viewFragmentationPercCheck.prop('checked',
+                              'viewFragmentationThreshold[percentage]' in initValues);
 
   var periodCheck = form.find('.check-for-allowedTimePeriod');
   periodCheck.prop('checked', 'allowedTimePeriod[fromHour]' in initValues);
 
-  var dbInput = form.find('[name=databaseFragmentationThreshold]');
-  var viewInput = form.find('[name=viewFragmentationThreshold]');
+  var dbInput = form.find('[name="databaseFragmentationThreshold[size]"]');
+  var viewInput = form.find('[name="viewFragmentationThreshold[size]"]');
+  var dbPercInput = form.find('[name="databaseFragmentationThreshold[percentage]"]');
+  var viewPercInput = form.find('[name="viewFragmentationThreshold[percentage]"]');
   var allowedTimeInputs = form.find('[name^=allowedTimePeriod]');
 
   function observeFunction() {
@@ -147,6 +160,8 @@ function setAutoCompactionSettingsFields(form, initValues) {
     }
     dbInput.prop('disabled', !dbFragmentationCheck.prop('checked'));
     viewInput.prop('disabled', !viewFragmentationCheck.prop('checked'));
+    dbPercInput.prop('disabled', !dbFragmentationPercCheck.prop('checked'));
+    viewPercInput.prop('disabled', !viewFragmentationPercCheck.prop('checked'));
     allowedTimeInputs.prop('disabled', !periodCheck.prop('checked'));
   }
 
@@ -276,12 +291,13 @@ var BucketDetailsDialog = mkClass({
     var errorsCellSubscription = errorsCell.subscribeValue($m(this, 'onValidationResult'));
     this.cleanups.push($m(errorsCellSubscription, 'cancel'));
 
-    this.formValidator = setupFormValidation(dialog.find('form'),
-                                             this.initValues.uri + '?just_validate=1',
-                                             function (status, errors) {
-                                               console.log("setting errors: ", errors);
-                                               errorsCell.setValue(errors);
-                                             });
+    var form = dialog.find('form');
+    this.formValidator = setupFormValidation(form, this.initValues.uri + '?just_validate=1', function (status, errors) {
+      console.log("setting errors: ", errors);
+      errorsCell.setValue(errors);
+    }, function() {
+      return AutoCompactionSection.serializeCompactionForm(form);
+    });
 
     this.cleanups.push($m(this.formValidator, 'abort'));
   },
@@ -349,7 +365,8 @@ var BucketDetailsDialog = mkClass({
 
     self.formValidator.pause();
 
-    postWithValidationErrors(self.initValues.uri, self.dialog.find('form'), function (data, status) {
+    var data = AutoCompactionSection.serializeCompactionForm(self.dialog.find("form"));
+    postWithValidationErrors(self.initValues.uri, data, function (data, status) {
       if (status == 'success') {
         self.refreshBuckets(function () {
           self.needBucketsRefresh = false;
@@ -393,6 +410,7 @@ var BucketDetailsDialog = mkClass({
     var self = this,
         form = this.dialog.find('form');
 
+    self.initValues = AutoCompactionSection.preProcessCompactionValues(self.initValues);
     setFormValues(form, self.initValues);
 
     form.find('[name=bucketType]').boolAttr('disabled', !self.isNew);
@@ -498,7 +516,7 @@ var BucketDetailsDialog = mkClass({
         ramGauge = self.dialog.find(".size-gauge.for-ram"),
         memcachedSummaryJQ = self.dialog.find('.memcached-summary'),
         memcachedSummaryVisible = ramSummary && ramSummary.perNodeMegs,
-        knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold viewFragmentationThreshold allowedTimePeriod').split(' '),
+        knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold[percentage] viewFragmentationThreshold[percentage] databaseFragmentationThreshold[size] viewFragmentationThreshold[size] allowedTimePeriod').split(' '),
         errors = result.errors || {};
 
     _.each(('to from').split(' '), function (p1) {

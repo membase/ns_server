@@ -721,13 +721,16 @@ var Abortarium = {
   }
 };
 
-function serializeForm(f) {
+function serializeForm(f, modifiers) {
   f = $(f);
   var array = f.serializeArray();
   var seenKeys = {};
   array = _.filter(array.reverse(), function (pair) {
     if (seenKeys[pair.name]) {
       return false;
+    }
+    if (modifiers && modifiers[pair.name]) {
+      pair.value = modifiers[pair.name](pair.value);
     }
     seenKeys[pair.name] = true;
     return true;
@@ -1100,3 +1103,7 @@ function buildURL(base /*, ...args */) {
 
 // http://www.w3.org/TR/html5/states-of-the-type-attribute.html#e-mail-state
 var HTML5_EMAIL_RE = /^[a-zA-Z0-9~#$%&'*+\-\/\=\?\^_`\{\|\}\~\.]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*$/;
+
+function MBtoBytes(MB) {
+  return MB * 1024 * 1024;
+}

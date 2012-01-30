@@ -446,6 +446,8 @@ button#test_email + span {line-height:2.25em;margin-left:0.5em}
 #compaction_container fieldset, #sample_buckets_container fieldset{padding:0;margin:0 20px}
 #compaction_container legend, #sample_buckets_container legend{padding-bottom:1em}
 
+#compaction_container .database, #compaction_container .view { margin-left: 20px; }
+
 #sample_buckets_form p { margin: 10px 0 10px 10px; }
 #sample_buckets_form h3 { margin: 20px 10px; }
 #sample_buckets_form ul { margin: 10px 0px 20px 30px; }
@@ -1014,7 +1016,7 @@ input.view_name{width:20em;padding:5px}
 .auto_compaction ul ul li {line-height:1.5em}
 .auto_compaction label {display:inline;}
 .auto_compaction label span {display:inline;float:none;margin:0}
-.auto_compaction .toggle {display:block;float:left;width:15em}
+.auto_compaction .toggle {display:block;float:left;width:17em}
 .auto_compaction input[type="checkbox"], .auto_compaction input[type="radio"] {position:static}
 .auto_compaction .error-container {line-height: 1.5em;padding-left:2.2em;width: 100%;}
 
@@ -1168,9 +1170,12 @@ ul.tabs.dev-subset-switcher { padding-top: 3px; padding-bottom: 3px; padding-lef
     margin: -12px 0px 0px 10px;
 }
 
+input[type=number].size {width:4em;}
+
 @media screen and (-webkit-min-device-pixel-ratio:0) {
     /* Safari/Chrome CSS here*/
     input[type=number] {width:3em;}
+    input[type=number].size {width:5em;}
     .bucket_details form > fieldset{padding-top:10px}
 }
 

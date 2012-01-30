@@ -130,10 +130,10 @@ maybe_start_sync(#state{worker_pid = Pid} = State) ->
 
 build_compaction_config([]) ->
     [];
-build_compaction_config([{database_fragmentation_threshold, V} | ACRest]) ->
-    [{db_fragmentation, integer_to_list(V)} | build_compaction_config(ACRest)];
-build_compaction_config([{view_fragmentation_threshold, V} | ACRest]) ->
-    [{view_fragmentation, integer_to_list(V)} | build_compaction_config(ACRest)];
+build_compaction_config([{database_fragmentation_threshold, {Perc, Size}} | ACRest]) ->
+    [{db_fragmentation, {Perc, Size}} | build_compaction_config(ACRest)];
+build_compaction_config([{view_fragmentation_threshold, {Perc, Size}} | ACRest]) ->
+    [{view_fragmentation, {Perc, Size}} | build_compaction_config(ACRest)];
 build_compaction_config([{parallel_db_and_view_compaction, V} | ACRest]) ->
     [{parallel_view_compaction, V} | build_compaction_config(ACRest)];
 build_compaction_config([{allowed_time_period, KV} | ACRest]) ->
@@ -149,10 +149,7 @@ build_compaction_config([{allowed_time_period, KV} | ACRest]) ->
 
 build_compaction_config_string(ACSettings) ->
     CouchSettings = lists:sort(build_compaction_config(ACSettings)),
-    %% io_lib:write prints "70" as array. So using pretty printer,
-    %% which, interestingly, works better, but giving it huge line
-    %% length.
-    lists:flatten(io_lib:print(CouchSettings, 0, 1048576, -1)).
+    lists:flatten(io_lib:write(CouchSettings)).
 
 do_config_sync() ->
     Config = ns_config:get(),
@@ -207,8 +204,8 @@ decide_autocompaction_config_changes_test() ->
     Cfg1 = [[{autocompaction,
               [{'_vclock',[{'n_0@192.168.2.168',{1,63481318861}}]},
                {parallel_db_and_view_compaction,true},
-               {database_fragmentation_threshold,66},
-               {view_fragmentation_threshold,80}]},
+               {database_fragmentation_threshold,{66, 1024}},
+               {view_fragmentation_threshold,{80, 1024}}]},
              {buckets,
               [{'_vclock',
                 [{'n_0@127.0.0.1',{3,63481314227}},
@@ -234,15 +231,15 @@ decide_autocompaction_config_changes_test() ->
                    {servers,['n_0@192.168.2.168']},
                    {map, some_crap_here}]}]}]}]],
     CouchCompactions1 = [{"_default",
-                          "[{db_fragmentation,\"66\"},{parallel_view_compaction,true},{view_fragmentation,\"80\"}]"},
+                          "[{db_fragmentation,{66,1024}},{parallel_view_compaction,true},{view_fragmentation,{80,1024}}]"},
                          {"default","[{parallel_view_compaction,false}]"}],
     ?assertEqual({[], []}, decide_autocompaction_config_changes(Cfg1, CouchCompactions1)),
 
     Cfg2 = [[{autocompaction,
               [{'_vclock',[{'n_0@192.168.2.168',{1,63481318861}}]},
                {parallel_db_and_view_compaction,true},
-               {database_fragmentation_threshold,66},
-               {view_fragmentation_threshold,80}]},
+               {database_fragmentation_threshold,{66,1024}},
+               {view_fragmentation_threshold,{80,1024}}]},
              {buckets,
               [{'_vclock',
                 [{'n_0@127.0.0.1',{3,63481314227}},
@@ -268,15 +265,15 @@ decide_autocompaction_config_changes_test() ->
                    {servers,['n_0@192.168.2.168']},
                    {map, some_crap_here}]}]}]}]],
     CouchCompactions2 = [{"_default",
-                          "[{db_fragmentation,\"66\"},{parallel_view_compaction,true},{view_fragmentation,\"80\"}]"},
+                          "[{db_fragmentation,{66,1024}},{parallel_view_compaction,true},{view_fragmentation,{80,1024}}]"},
                          {"default","[{parallel_view_compaction,false}]"}],
     ?assertEqual({[], ["default"]}, decide_autocompaction_config_changes(Cfg2, CouchCompactions2)),
 
     Cfg3 = [[{autocompaction,
               [{'_vclock',[{'n_0@192.168.2.168',{1,63481318861}}]},
                {parallel_db_and_view_compaction,true},
-               {database_fragmentation_threshold,66},
-               {view_fragmentation_threshold,80}]},
+               {database_fragmentation_threshold,{66,1024}},
+               {view_fragmentation_threshold,{80,1024}}]},
              {buckets,
               [{'_vclock',
                 [{'n_0@127.0.0.1',{3,63481314227}},
@@ -293,7 +290,7 @@ decide_autocompaction_config_changes_test() ->
                    {map,[]}]},
                  {"default",
                   [{autocompaction,[{parallel_db_and_view_compaction,false},
-                                    {database_fragmentation_threshold, 55}]},
+                                    {database_fragmentation_threshold, {55, 1024}}]},
                    {sasl_password,[]},
                    {auth_type,sasl},
                    {ram_quota,314572800},
@@ -303,9 +300,9 @@ decide_autocompaction_config_changes_test() ->
                    {servers,['n_0@192.168.2.168']},
                    {map, some_crap_here}]}]}]}]],
     CouchCompactions3 = [{"_default",
-                          "[{db_fragmentation,\"66\"},{parallel_view_compaction,true},{view_fragmentation,\"80\"}]"},
+                          "[{db_fragmentation,{66,1024}},{parallel_view_compaction,true},{view_fragmentation,{80,1024}}]"},
                          {"default","[{parallel_view_compaction,false}]"}],
-    ?assertEqual({[{"default","[{db_fragmentation,\"55\"},{parallel_view_compaction,false}]"}], []},
+    ?assertEqual({[{"default","[{db_fragmentation,{55,1024}},{parallel_view_compaction,false}]"}], []},
                  decide_autocompaction_config_changes(Cfg3, CouchCompactions3)).
 
 -endif.
