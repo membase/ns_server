@@ -179,9 +179,7 @@ var BucketDetailsDialog = mkClass({
     dialog.removeClass('editing').removeClass('creating');
     dialog.addClass(isNew ? 'creating' : 'editing');
 
-    if (!isNew) {
-      dialog.find('.flush_button')[initValues.bucketType == 'memcached' ? 'show' : 'hide']();
-    }
+    dialog.find('.flush_button')[!isNew ? 'show' : 'hide']();
 
     dialog.find('[name=name]').boolAttr('disabled', !isNew);
 
