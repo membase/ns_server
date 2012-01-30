@@ -61,8 +61,8 @@ default() ->
                end,
 
     [{directory, path_config:component_path(data, "config")},
-     {autocompaction, [{database_fragmentation_threshold, 80},
-                       {view_fragmentation_threshold, 80}]},
+     {autocompaction, [{database_fragmentation_threshold, 30},
+                       {view_fragmentation_threshold, 30}]},
      {nodes_wanted, [node()]},
      {{node, node(), membership}, active},
                                                 % In general, the value in these key-value pairs are property lists,

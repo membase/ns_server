@@ -1922,7 +1922,7 @@ parse_validate_boolean_field(JSONName, CfgName, Params) ->
     end.
 
 parse_validate_auto_compaction_settings(Params) ->
-    DBAndViewResults = lists:flatmap(mk_integer_field_validator(30, 100, Params),
+    DBAndViewResults = lists:flatmap(mk_integer_field_validator(2, 100, Params),
                                      [{"databaseFragmentationThreshold", database_fragmentation_threshold, "database fragmentation"},
                                       {"viewFragmentationThreshold", view_fragmentation_threshold, "view fragmentation"}]),
     ParallelResult = case parse_validate_boolean_field("parallelDBAndViewCompaction", parallel_db_and_view_compaction, Params) of

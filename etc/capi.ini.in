@@ -33,5 +33,5 @@ stats_collector =
 check_interval = 30
 min_file_size = 131072
 
-[compactions]
-_default = [{db_fragmentation, "80%"}, {view_fragmentation, "80%"}]
+;[compactions]
+;_default = [{db_fragmentation, "30%"}, {view_fragmentation, "30%"}]

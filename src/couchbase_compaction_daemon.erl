@@ -150,11 +150,11 @@ compact_loop(Parent) ->
             {NameBin, VbNames, bucket_compact_config(NameBin)}
         end,
         CouchbaseBuckets),
-    lists:foreach(
+    DidCompact = lists:map(
         fun({_BucketName, _VbNames = [], _}) ->
-            ok;
+            false;
         ({_BucketName, _VbNames, nil}) ->
-            ok;
+            false;
         ({BucketName, VbNames, {ok, Config}}) ->
             maybe_compact_bucket(BucketName, VbNames, Config)
         end,
@@ -163,9 +163,14 @@ compact_loop(Parent) ->
     true ->
         receive {Parent, have_config} -> ok end;
     false ->
-        PausePeriod = list_to_integer(
-            couch_config:get("compaction_daemon", "check_interval", "1")),
-        ok = timer:sleep(PausePeriod * 1000)
+        case lists:any(fun(X) -> X end, DidCompact) of
+        true ->
+            ok;
+        false ->
+            PausePeriod = list_to_integer(
+                couch_config:get("compaction_daemon", "check_interval", "1")),
+            ok = timer:sleep(PausePeriod * 1000)
+        end
     end,
     compact_loop(Parent).
 
@@ -187,14 +192,17 @@ maybe_compact_bucket(BucketName, VbNames, Config) ->
         ?log_error("Error while doing cleanup of old index files for bucket `~s`: ~p",
                    [BucketName, {Tag, CleanupError}])
     end,
-    case bucket_needs_compaction(VbNames, Config) of
+    NeedsCompaction = bucket_needs_compaction(VbNames, Config),
+    case NeedsCompaction of
     false ->
         maybe_compact_views(BucketName, DDocNames, Config);
     true ->
         lists:foreach(fun(N) ->
             compact_vbucket(N, Config) end,
             VbNames)
-    end.
+    end,
+    NeedsCompaction.
+
 
 
 bucket_needs_compaction(VbNames, Config) ->
