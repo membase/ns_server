@@ -199,14 +199,14 @@ do_update_replicated_doc_loop(Bucket, VBucket, DocId,
                               DocValue, DocDeleted) ->
     RV =
         case capi_utils:get_meta(Bucket, VBucket, DocId) of
-            {error, enoent, _CAS} ->
+            {error, enoent, CAS} ->
                 case DocDeleted of
                     true ->
                         %% TODO: we must preserve source revision here
                         ok;
                     false ->
-                        do_add_with_meta(Bucket, DocId,
-                                         VBucket, DocValue, DocRev)
+                        do_set_with_meta(Bucket, DocId, VBucket, DocValue,
+                                         DocRev, CAS)
                 end;
             {error, not_my_vbucket} ->
                 {error, {bad_request, not_my_vbucket}};
@@ -245,26 +245,14 @@ do_update_replicated_doc_loop(Bucket, VBucket, DocId,
             RV
     end.
 
-do_add_with_meta(Bucket, DocId, VBucket, DocValue, DocRev) ->
-    case ns_memcached:add_with_meta(Bucket, DocId, VBucket,
-                                    DocValue, {revid, DocRev}) of
-        {ok, _, _} ->
-            ok;
-        {memcached_error, key_eexists, _} ->
-            retry;
-        {memcached_error, not_my_vbucket, _} ->
-            {error, {bad_request, not_my_vbucket}};
-        {memcached_error, einval, _} ->
-            %% this is most likely an invalid revision
-            {error, {bad_request, einval}}
-    end.
-
 do_set_with_meta(Bucket, DocId, VBucket, DocValue, DocRev, CAS) ->
     case ns_memcached:set_with_meta(Bucket, DocId,
                                     VBucket, DocValue,
                                     {revid, DocRev}, CAS) of
         {ok, _, _} ->
             ok;
+        {memcached_error, key_enoent, _} ->
+            retry;
         {memcached_error, key_eexists, _} ->
             retry;
         {memcached_error, not_my_vbucket, _} ->
