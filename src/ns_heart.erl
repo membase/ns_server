@@ -170,8 +170,11 @@ current_status(Expensive) ->
 
     Tasks = lists:filter(
         fun (Task) ->
-                {type, Type} = lists:keyfind(type, 1, Task),
-                Type =:= indexer orelse Type =:= view_compaction
+                lists:keyfind(set, 1, Task) =/= false andalso
+                    begin
+                        {type, Type} = lists:keyfind(type, 1, Task),
+                        Type =:= indexer orelse Type =:= view_compaction
+                    end
         end , couch_task_status:all()),
 
     failover_safeness_level:build_local_safeness_info(BucketNames) ++
