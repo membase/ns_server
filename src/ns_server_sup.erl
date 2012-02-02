@@ -75,6 +75,9 @@ child_specs() ->
      {ns_mail_sup, {ns_mail_sup, start_link, []},
       permanent, infinity, supervisor, [ns_mail_sup]},
 
+     {ns_stats_event, {gen_event, start_link, [{local, ns_stats_event}]},
+      permanent, 1000, worker, dynamic},
+
      {ns_heart, {ns_heart, start_link, []},
       permanent, 1000, worker, [ns_heart]},
 
@@ -88,9 +91,6 @@ child_specs() ->
      {ns_port_sup, {ns_port_sup, start_link, []},
       permanent, 60000, worker,
       [ns_port_sup]},
-
-     {ns_stats_event, {gen_event, start_link, [{local, ns_stats_event}]},
-      permanent, 1000, worker, dynamic},
 
      {ns_bucket_worker, {work_queue, start_link, [ns_bucket_worker]},
       permanent, 1000, worker, [work_queue]},
