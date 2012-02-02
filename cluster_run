@@ -72,7 +72,8 @@ def os_specific(args, params):
         ## Also, we build stuff in kind of dumb ways, so fix the path.
         dypath = ("%(pwd)s/../install/lib/memcached:"
                   "%(pwd)s/../install/lib:/usr/local/lib") % {'pwd': os.getcwd()}
-        params['env'] = {"DYLD_LIBRARY_PATH": dypath}
+        params['env'] = {"DYLD_LIBRARY_PATH": dypath,
+                         "ERL_MAX_PORTS": "2048"}
         params['env'].update(os.environ)
 
 def start_cluster(num_nodes, start_index, host, extra_args):
