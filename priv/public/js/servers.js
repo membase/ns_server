@@ -140,12 +140,17 @@ var ServersSection = {
   },
   onRebalanceProgress: function () {
     var value = this.rebalanceProgress.value;
-    if (this.sawRebalanceRunning && value.status !== 'running') {
-      if (value.errorMessage) {
+    if (value.status !== 'running') {
+      // if state is not running due to error message and we started
+      // that past rebalance
+      if (this.sawRebalanceRunning && value.errorMessage) {
+        // display message
         this.sawRebalanceRunning = false;
         displayNotice(value.errorMessage, true);
       }
-      return
+      // and regardless of displaying that error message, exit if not
+      // rebalancing
+      return;
     }
     this.sawRebalanceRunning = true;
 
