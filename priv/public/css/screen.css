@@ -781,7 +781,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list tr:first-child th.last {border-right:1px solid #d9dce0;}
 .list td.design_doc_name {font-weight:bolder; color: #808080; text-align:left;font-size:100%;}
 .list td.bucket_name, .list td.view_name, .list td.node_name {font-weight:bolder;text-align:left;font-size:130%}
-.list td.bucket_name, .list td.node_name{position:relative;padding-left:35px}
+.list td.bucket_name, .list td.node_name{padding-left:35px}
 .list td.bucket_name a:first-child, .list td.node_name a:first-child {position:absolute;left:10px}
 .list td.node_name {font-size:120%;white-space:nowrap;}
 .list td.ram {width:77px}
