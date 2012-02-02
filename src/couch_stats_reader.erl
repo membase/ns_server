@@ -84,11 +84,15 @@ grab_couch_stats(Bucket) ->
                     VBucket = lists:flatten(io_lib:format("~s/~p", [Bucket, Id])),
                     case couch_db:open(list_to_binary(VBucket), []) of
                         {ok, Db} ->
-                            {ok, Info} = couch_db:get_db_info(Db),
-                            DiskSize = proplists:get_value(disk_size, Info),
-                            DataSize = proplists:get_value(data_size, Info),
-                            Tmp = dict:update_counter(data_size, DataSize, Dict),
-                            dict:update_counter(disk_size, DiskSize, Tmp);
+                            try
+                                {ok, Info} = couch_db:get_db_info(Db),
+                                DiskSize = proplists:get_value(disk_size, Info),
+                                DataSize = proplists:get_value(data_size, Info),
+                                Tmp = dict:update_counter(data_size, DataSize, Dict),
+                                dict:update_counter(disk_size, DiskSize, Tmp)
+                            after
+                                ok = couch_db:close(Db)
+                            end;
                         _ ->
                             Dict
                     end
@@ -99,5 +103,3 @@ grab_couch_stats(Bucket) ->
 -spec i2b(integer()) -> binary().
 i2b(I) ->
     list_to_binary(integer_to_list(I)).
-
-
