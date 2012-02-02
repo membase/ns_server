@@ -63,6 +63,7 @@
                      ?CMD_GET_META | ?CMD_GETQ_META |
                      ?CMD_SET_WITH_META | ?CMD_SETQ_WITH_META |
                      ?CMD_ADD_WITH_META | ?CMD_SETQ_WITH_META |
+                     ?CMD_DEL_WITH_META | ?CMD_DELQ_WITH_META |
                      ?RGET | ?RSET | ?RSETQ | ?RAPPEND | ?RAPPENDQ | ?RPREPEND |
                      ?RPREPENDQ | ?RDELETE | ?RDELETEQ | ?RINCR | ?RINCRQ |
                      ?RDECR | ?RDECRQ | ?SYNC.
@@ -382,13 +383,23 @@ add_with_meta(Sock, Key, VBucket, Value, Meta, Flags, Expiration) ->
     meta_cmd(Sock, ?CMD_ADD_WITH_META,
              Key, VBucket, Value, Meta, 0, Flags, Expiration).
 
-delete_with_meta(Sock, Key, VBucket, _Meta, CAS) ->
-    %% TODO: this is only a stub
-    {ok, Header, Entry, _} =
-        mc_client_binary:cmd(?DELETE, Sock, undefined, undefined,
-                             {#mc_header{vbucket = VBucket},
-                              #mc_entry{key = Key, cas = CAS}}),
-    {ok, Header, Entry}.
+delete_with_meta(Sock, Key, VBucket, Meta, CAS) ->
+    case encode_meta(Meta) of
+        {ok, MetaBin} ->
+            MetaLen = size(MetaBin),
+            Response = cmd(?CMD_DEL_WITH_META, Sock, undefined, undefined,
+                           {#mc_header{vbucket = VBucket},
+                            #mc_entry{key = Key, data = MetaBin,
+                                      ext = <<MetaLen:32/big>>, cas = CAS}}),
+            case Response of
+                {ok, #mc_header{status=?SUCCESS} = RespHeader, RespEntry, _} ->
+                    {ok, RespHeader, RespEntry};
+                _ ->
+                    process_error_response(Response)
+            end;
+        Error ->
+            Error
+    end.
 
 encode_meta({revid, {SeqNo, RevId}})
   when is_integer(SeqNo), is_binary(RevId) ->
@@ -450,6 +461,7 @@ is_quiet(?TAP_CONNECT) -> true;
 is_quiet(?CMD_GETQ_META) -> true;
 is_quiet(?CMD_SETQ_WITH_META) -> true;
 is_quiet(?CMD_ADDQ_WITH_META) -> true;
+is_quiet(?CMD_DELQ_WITH_META) -> true;
 is_quiet(_)           -> false.
 
 ext(?SET,        Entry) -> ext_flag_expire(Entry);

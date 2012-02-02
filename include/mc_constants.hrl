@@ -57,6 +57,8 @@
 -define(CMD_SETQ_WITH_META, 16#a3).
 -define(CMD_ADD_WITH_META, 16#a4).
 -define(CMD_ADDQ_WITH_META, 16#a5).
+-define(CMD_DEL_WITH_META, 16#a8).
+-define(CMD_DELQ_WITH_META, 16#a9).
 
 -define(RGET,        16#30).
 -define(RSET,        16#31).
