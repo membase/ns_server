@@ -70,8 +70,8 @@ ifdef PRODUCT_VERSION
 .PHONY: src/ns_server.app.src
 endif
 
-priv/public/js/all-images.js: priv/public/images priv/public/images/spinner scripts/build-all-images.rb
-	ruby scripts/build-all-images.rb >$@ || (rm $@ && false)
+priv/public/js/all-images.js: priv/public/images priv/public/images/spinner scripts/build-all-images.sh
+	scripts/build-all-images.sh >$@ || (rm $@ && false)
 
 $(TMP_VER):
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
