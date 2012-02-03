@@ -690,16 +690,14 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 .servers_list li {height-min:25px;display:block;padding:0 10px; *zoom:1;*margin:-2px 0 0;}
 .servers_list .server_row.server_down {background:url(../images/server_status_icons.png) 10px -157px no-repeat; background-color:#61696c;border-color:#61696c;}
 
-.servers_list .server_row.server_warmup {background:url(../images/server_status_icons.png) 10px -308px no-repeat;}
-.servers_list .server_row.failed_over .list_button {display:none;}
-.servers_list .server_row.failed_over .serverName {color:#333; opacity:0.3;}
-.servers_list .server_row.rebalance_empty {padding:0 15px; background:none; color:#656565;}
-.servers_list .server_row.rebalance_empty * {display:none;}
-.servers_list .server_row.rebalance_empty .rebalance_empty_message {display:block;}
-.servers_list .server_row.pending_add {background:url(../images/server_status_icons.png) 10px -309px no-repeat;}
+.servers_list .server_warmup {background:url(../images/server_status_icons.png) 10px -308px no-repeat;}
+.servers_list .failed_over .list_button {display:none;}
+.servers_list .failed_over .serverName {color:#333; opacity:0.3;}
+.servers_list .rebalance_empty {padding:0 15px; background:none; color:#656565;}
+.servers_list .pending_add {background:url(../images/server_status_icons.png) 10px -309px no-repeat;}
 
-.server_row.pending_removal .pending_removal_message, .server_row.pending_add .pending_add_message {float:right; margin:0 10px 0 0; color:#e54c2a;padding:1em}
-.server_row.pending_add .pending_add_message {margin:0}
+.pending_removal_message, .pending_add_message {float:right; margin:0 10px 0 0; color:#e54c2a;padding:1em}
+.pending_add_message {margin:0}
 .server_row.status_up {background-position:10px 20px !important;}
 .server_row.status_down {background-position:10px -157px !important; background-color:#61696c;}
 
