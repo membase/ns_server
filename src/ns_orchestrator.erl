@@ -304,7 +304,7 @@ idle({delete_bucket, BucketName}, _From, State) ->
             end,
 
             ?log_info("Restarting moxi on nodes ~p", [LiveNodes]),
-            case rpc:multicall(ns_port_sup, restart_port_by_name, [moxi],
+            case rpc:multicall(LiveNodes, ns_port_sup, restart_port_by_name, [moxi],
                                ?DELETE_BUCKET_TIMEOUT) of
                 {_Results, []} ->
                     ok;
