@@ -215,6 +215,8 @@ update(Fun, Sentinel) ->
                         end).
 
 %% Applies given Fun to value of given Key. The Key must exist.
+-spec update_key(term(), fun((term()) -> term())) ->
+                        ok | {error | exit | throw, any(), any()}.
 update_key(Key, Fun) ->
     update_with_changes(fun (Config) ->
                                 case lists:keyfind(Key, 1, Config) of
@@ -230,6 +232,8 @@ update_key(Key, Fun) ->
                                 end
                         end).
 
+-spec update_sub_key(term(), term(), fun((term()) -> term())) ->
+                            ok | {error | exit | throw, any(), any()}.
 update_sub_key(Key, SubKey, Fun) ->
     update_key(Key, fun (PList) ->
                             RV = misc:key_update(SubKey, PList, Fun),
