@@ -102,7 +102,17 @@ create_bucket(BucketType, BucketName, NewConfig) ->
     gen_fsm:sync_send_event(?SERVER, {create_bucket, BucketType, BucketName,
                                       NewConfig}, infinity).
 
-%% deletes bucket. Makes sure that once it returns it's already dead.
+%% Deletes bucket. Makes sure that once it returns it's already dead.
+%% In implementation we make sure config deletion is propagated to
+%% child nodes. And that ns_memcached for bucket being deleted
+%% dies. But we don't wait more than ?DELETE_BUCKET_TIMEOUT.
+%%
+%% Return values are ok if it went fine at least on local node
+%% (failure to stop ns_memcached on any nodes is merely logged);
+%% rebalance_running if delete bucket request came while rebalancing;
+%% and {exit, ...} if bucket does not really exists
+-spec delete_bucket(bucket_name()) ->
+                           ok | rebalance_running | {exit, {not_found, bucket_name()}, _}.
 delete_bucket(BucketName) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {delete_bucket, BucketName}, infinity).
