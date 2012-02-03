@@ -534,15 +534,21 @@ create_bucket(BucketType, BucketName, NewConfig) ->
         E -> E
     end.
 
+-spec delete_bucket(bucket_name()) -> ok | {exit, {not_found, bucket_name()}, any()}.
 delete_bucket(BucketName) ->
-    ns_config:update_sub_key(buckets, configs,
-                             fun (List) ->
-                                     case lists:keyfind(BucketName, 1, List) of
-                                         false -> exit({not_found, BucketName});
-                                         Tuple ->
-                                             lists:delete(Tuple, List)
-                                     end
-                             end).
+    RV = ns_config:update_sub_key(buckets, configs,
+                                  fun (List) ->
+                                          case lists:keyfind(BucketName, 1, List) of
+                                              false -> exit({not_found, BucketName});
+                                              Tuple ->
+                                                  lists:delete(Tuple, List)
+                                          end
+                                  end),
+    case RV of
+        ok -> ok;
+        {exit, {not_found, _}, _} -> ok
+    end,
+    RV.
 
 filter_ready_buckets(BucketInfos) ->
     lists:filter(fun ({_Name, PList}) ->
