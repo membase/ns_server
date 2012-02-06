@@ -280,7 +280,7 @@ do_bucket_create(Name, ParsedProps) ->
         {error, {invalid_name, _}} ->
             {errors, [{name, <<"Name is invalid.">>}]};
         rebalance_running ->
-            {errors, [{'_', <<"Cannot create buckets during rebalance">>}]}
+            {errors_500, [{'_', <<"Cannot create buckets during rebalance">>}]}
     end.
 
 handle_bucket_create(PoolId, Req) ->
@@ -301,7 +301,9 @@ handle_bucket_create(PoolId, Req) ->
                 ok ->
                     respond_bucket_created(Req, PoolId, Name);
                 {errors, Errors} ->
-                    reply_json(Req, {struct, Errors}, 400)
+                    reply_json(Req, {struct, Errors}, 400);
+                {errors_500, Errors} ->
+                    reply_json(Req, {struct, Errors}, 503)
             end;
         {true, {ok, ParsedProps, JSONSummaries}} ->
             FinalErrors = perform_warnings_validation(ParsedProps, []),
