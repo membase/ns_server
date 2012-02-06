@@ -381,7 +381,7 @@ bucket_databases(Bucket, AllDBs) ->
     N = byte_size(BinBucket),
     Pred = fun (Db) ->
                    try
-                       Prefix = binary:part(Db, {0, N}),
+                       Prefix = binary:part(Db, 0, N),
                        Prefix =:= BinBucket
                    catch
                        _E:_R ->
@@ -396,7 +396,15 @@ delete_database(DB) ->
     ok.
 
 delete_databases(Bucket) ->
-    lists:foreach(fun delete_database/1, bucket_databases(Bucket)).
+    AllDBs = bucket_databases(Bucket),
+    Suffix = <<"/master">>,
+    NegSuffixLen = -erlang:size(Suffix),
+    {MaybeMasterDb, RestDBs} = lists:partition(
+                            fun (Name) ->
+                                    SuffixC = binary:part(Name, erlang:size(Name), NegSuffixLen),
+                                    SuffixC =:= Suffix
+                            end, AllDBs),
+    lists:foreach(fun delete_database/1, MaybeMasterDb ++ RestDBs).
 
 delete_all_databases() ->
     Buckets = ns_bucket:get_bucket_names(),
