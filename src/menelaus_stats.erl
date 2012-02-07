@@ -841,7 +841,7 @@ membase_stats_description() ->
                          {desc,<<"Total number of items per second being put on the disk queue in this bucket (measured from ep_diskqueue_fill)">>}]},
                 {struct,[{title,<<"drain rate">>},
                          {name,<<"vb_active_queue_drain">>},
-                         {desc,<<"Number of active items per second being written to disk in this bucket (measured from vb_pending_queue_drain)">>}]},
+                         {desc,<<"Number of active items per second being written to disk in this bucket (measured from vb_active_queue_drain)">>}]},
                 {struct,[{title,<<"drain rate">>},
                          {name,<<"vb_replica_queue_drain">>},
                          {desc,<<"Number of replica items per second being written to disk in this bucket (measured from vb_replica_queue_drain)">>}]},
