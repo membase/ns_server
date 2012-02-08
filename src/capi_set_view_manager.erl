@@ -93,20 +93,9 @@ init({Bucket, UseReplicaIndex}) ->
                              mk_mc_couch_event_handler(), ignored),
 
     Self = self(),
-    Watcher =
-        spawn_link(
-          fun () ->
-                  master_db_watcher(Bucket, Self)
-          end),
-
-    %% synchronize with watcher to avoid a race; potentially we could ignore
-    %% some design documents (if they are created after the initial list is
-    %% read in apply_current_map but before master db watcher is able to
-    %% monitor changes)
-    receive
-        {watcher_started, Watcher} ->
-            ok
-    end,
+    {ok, Watcher} =
+        proc_lib:start_link(erlang, apply,
+                             [fun master_db_watcher/2, [Bucket, Self]]),
 
     {ok, _Timer} = timer:send_interval(?SYNC_INTERVAL, sync),
 
@@ -518,7 +507,7 @@ master_db_watcher(Bucket, Parent) ->
     %% started we can safely pretend that it really is; even if any design doc
     %% is created in between it will be included in a changes that are
     %% reported to the main process.
-    Parent ! {watcher_started, self()},
+    proc_lib:init_ack({ok, self()}),
 
     ChangesFeedFun(
       fun({change, {Change}, _}, _) ->
