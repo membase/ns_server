@@ -32,14 +32,14 @@ update_doc(#db{name = Name, user_ctx = UserCtx},
     delete(Name, DocId, Rev, UserCtx);
 
 update_doc(#db{name = Name, user_ctx = UserCtx},
-           #doc{id = DocId, rev = {0, _}, json = Body, binary = Binary},
+           #doc{id = DocId, rev = {0, _}, body = Body},
            _Options) ->
-    add(Name, DocId, Body, Binary, UserCtx);
+    add(Name, DocId, Body, UserCtx);
 
 update_doc(#db{name = Name, user_ctx = UserCtx},
            #doc{id = DocId, rev = Rev,
-                json = Body, binary = Binary}, _Options) ->
-    set(Name, DocId, Rev, Body, Binary, UserCtx).
+                body = Body}, _Options) ->
+    set(Name, DocId, Rev, Body, UserCtx).
 
 -spec cas() -> <<_:64>>.
 cas() ->
@@ -64,9 +64,8 @@ next_rev({SeqNo, RevId} = _Rev, Value) ->
 next_rev(Rev) ->
     next_rev(Rev, <<>>).
 
-add(BucketBin, DocId, Body, Binary, UserCtx) ->
+add(BucketBin, DocId, Value, UserCtx) ->
     Bucket = binary_to_list(BucketBin),
-    Value = capi_utils:doc_to_mc_value(Body, Binary),
     {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
 
     {Rev, Flags} =
@@ -92,9 +91,8 @@ add(BucketBin, DocId, Body, Binary, UserCtx) ->
             throw(conflict)
     end.
 
-set(BucketBin, DocId, PrevRev, Body, Binary, UserCtx) ->
+set(BucketBin, DocId, PrevRev, Value, UserCtx) ->
     Bucket = binary_to_list(BucketBin),
-    Value = capi_utils:doc_to_mc_value(Body, Binary),
     {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
 
     {Deleted, CAS}
@@ -184,9 +182,8 @@ get_loop(Bucket, DocId, UserCtx, ReturnDeleted, VBucket) ->
                                              Entry#mc_entry.flag,
                                              Entry#mc_entry.expire,
                                              Entry#mc_entry.data,
-                                             <<>>,
                                              true),
-                    {ok, Doc#doc{rev = Rev, binary = nil}};
+                    {ok, Doc#doc{rev = Rev}};
                 {?SUCCESS, _CAS} ->
                     get_loop(Bucket, DocId, UserCtx, ReturnDeleted, VBucket);
                 {?KEY_ENOENT, _} ->

@@ -734,9 +734,9 @@ create_xdc_rep_info_doc(XDocId, {Base, Ext}, TriggeredVbs, UntriggeredVbs,
 
     case couch_db:open_doc(RepDb, IDocId, [ejson_body]) of
     {ok, LatestIDoc} ->
-        couch_db:update_doc(RepDb, LatestIDoc#doc{json = Body}, []);
+        couch_db:update_doc(RepDb, LatestIDoc#doc{body = Body}, []);
     _ ->
-        couch_db:update_doc(RepDb, #doc{id = IDocId, json = Body}, [])
+        couch_db:update_doc(RepDb, #doc{id = IDocId, body = Body}, [])
     end,
 
     case UntriggeredVbs of
@@ -758,7 +758,7 @@ get_xdc_replication_state(XDocId, RepDbName) ->
     RepState =
         case couch_db:open_doc(RepDb, xdc_rep_utils:info_doc_id(XDocId),
                                [ejson_body]) of
-        {ok, #doc{json = {IDocBody}}} ->
+        {ok, #doc{body = {IDocBody}}} ->
             get_value(<<"_replication_state">>, IDocBody);
         _ ->
             undefined

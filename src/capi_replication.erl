@@ -174,10 +174,13 @@ do_update_replicated_doc(_Bucket, _VBucket, _DbOrCtx,
     ok;
 do_update_replicated_doc(Bucket, VBucket, DbOrCtx,
                          #doc{id = Id, rev = Rev,
-                              json = Body0, binary = Binary,
-                              deleted = Deleted} = _Doc) ->
-    Body = filter_out_mccouch_fields(Body0),
-    Value = capi_utils:doc_to_mc_value(Body, Binary),
+                              body = Value0, deleted = Deleted} = _Doc) ->
+    case Value0 of
+    {_} ->
+        Value = ?JSON_ENCODE(filter_out_mccouch_fields(Value0));
+    _ ->
+        Value = Value0
+    end,
     do_update_replicated_doc_loop(Bucket, DbOrCtx, VBucket,
                                   Id, Rev, Value, Deleted).
 

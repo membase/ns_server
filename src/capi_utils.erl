@@ -93,15 +93,6 @@ do_get_meta(Bucket, VBucket, DocId, WithDb) ->
               end)
     end.
 
-%% Based on document body and attachments decide what to store via memcached
-%% API. Throws `unsupported` exception in case it's not possible to do.
-doc_to_mc_value(Body, nil) ->
-    ?JSON_ENCODE(Body);
-doc_to_mc_value(_, Binary) when is_binary(Binary) ->
-    Binary;
-doc_to_mc_value(_, _) ->
-    throw(unsupported).
-
 split_dbname(DbName) ->
     DbNameStr = binary_to_list(DbName),
     Tokens = string:tokens(DbNameStr, [$/]),
