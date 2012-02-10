@@ -6,6 +6,9 @@
 PATH="@PREFIX@/bin":$PATH
 export PATH
 
+LD_LIBRARY_PATH="@PREFIX@/lib":"@PREFIX@/lib/memcached":$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH
+
 if [ `ulimit -n` -lt 10240 ]
 then
     cat <<EOF
