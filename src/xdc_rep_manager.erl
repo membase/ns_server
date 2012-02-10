@@ -558,6 +558,7 @@ start_couch_replication(SrcCouchURI, TgtCouchURI, Vb, XDocId, Wait) ->
               {<<"target">>, TgtCouchURI},
               {<<"worker_processes">>, 1},
               {<<"http_connections">>, 10},
+              {<<"connection_timeout">>, 300000},
               {<<"continuous">>, true}
              ]},
             #user_ctx{roles = [<<"_admin">>]}),
