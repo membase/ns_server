@@ -66,7 +66,7 @@ init(_) ->
     case start_os_mon() of
     ok ->
         Server = self(),
-        Loop = spawn_link(fun() -> compact_loop(Server) end),
+        Loop = proc_lib:spawn_link(fun() -> compact_loop(Server) end),
         {ok, #state{loop_pid = Loop}};
     {error, Error} ->
         {stop, Error}
