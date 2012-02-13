@@ -35,6 +35,9 @@ COOKIEFILE="@PREFIX@/var/lib/couchbase/couchbase-server.cookie"
 
 couch_start_arguments=""
 
+LD_LIBRARY_PATH="@PREFIX@/lib":"@PREFIX@/lib/memcached":$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH
+
 # For some obscure reason erl requires HOME environment variable to be set.
 if [ -z "$HOME" ]
 then
