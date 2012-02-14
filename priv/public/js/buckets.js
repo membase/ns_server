@@ -270,7 +270,7 @@ var BucketDetailsDialog = mkClass({
 
     self.formValidator.pause();
 
-    postWithValidationErrors(self.initValues.uri, self.dialog.find('form'), function (data, status) {
+    postWithValidationErrors(self.initValues.uri, self.dialog.find('form'), function (data, status, errorObject) {
       if (status == 'success') {
         self.refreshBuckets(function () {
           self.needBucketsRefresh = false;
@@ -282,12 +282,12 @@ var BucketDetailsDialog = mkClass({
 
       enableForm();
 
-      var errors = data[0]; // we expect errors as a hash in this case
-      self.errorsCell.setValue(errors);
-      if (errors._) {
+      var simpleErrors = data;
+      self.errorsCell.setValue(errorObject);
+      if (simpleErrors && simpleErrors.length) {
         genericDialog({buttons: {ok: true, cancel: false},
-                       header: "Failed To Create Bucket",
-                       text: errors._
+                       header: self.isNew ? "Failed To Create Bucket" : "Failed to Update Bucket",
+                       text: simpleErrors.join(' and ')
                       });
       }
     });
