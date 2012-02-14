@@ -64,13 +64,13 @@
           end)())).
 
 start_link(Bucket) ->
-    UseReplicaIndex = misc:get_env_default(use_replica_index, false),
-
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
     case ns_bucket:bucket_type(BucketConfig) of
         memcached ->
             ignore;
         _ ->
+            UseReplicaIndex = (proplists:get_value(replica_index, BucketConfig) =/= false),
+
             gen_server:start_link({local, server(Bucket)}, ?MODULE,
                                   {Bucket, UseReplicaIndex}, [])
     end.
