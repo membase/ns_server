@@ -223,8 +223,6 @@ Most important members are:
   validation errors from that and signaling ModalAction while this
   happens.
 
-* runFormDialog -- combines setFormValues & postWithValidationErrors
-
 * renderCellTemplate -- mentioned above
 
 * future.getPush -- handles our Comet-style streaming
