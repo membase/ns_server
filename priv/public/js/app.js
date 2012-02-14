@@ -418,7 +418,8 @@ var SetupWizard = {
                             quota: {
                               rawRAM: nodeData.storageTotals.ram.quotaTotal -
                                 nodeData.storageTotals.ram.quotaUsed},
-                            replicaNumber: 1};
+                            replicaNumber: 1,
+                            replicaIndex: true};
                     continuation(data, 'success');
                   }});
           return;

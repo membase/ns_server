@@ -184,6 +184,7 @@ var BucketDetailsDialog = mkClass({
     dialog.find('[name=name]').boolAttr('disabled', !isNew);
 
     dialog.find('[name=replicaNumber]').boolAttr('disabled', !isNew);
+    dialog.find('[name=replicaIndex]').boolAttr('disabled', !isNew);
     dialog.find('.for-enable-replicas input').boolAttr('disabled', !isNew);
 
     dialog.find('[name=ramQuotaMB][type=text]')
@@ -802,6 +803,7 @@ var BucketsSection = {
                       bucketType: 'membase',
                       authType: 'sasl',
                       quota: {rawRAM: Math.floor((totals.ram.quotaTotal - totals.ram.quotaUsed) / poolDetails.nodes.length)},
+                      replicaIndex: true,
                       replicaNumber: 1},
       dialog = new BucketDetailsDialog(initValues, true);
 

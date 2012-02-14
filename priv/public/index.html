@@ -1623,6 +1623,8 @@
         <span class="error-container err-replicaNumber"></span>
       </label>
       </div>
+      <input type="hidden" name="replicaIndex" value="0"/>
+      <label style="padding-left: 20px;"><input type="checkbox" name="replicaIndex" value="1" style="margin-right:5px;"/>Index replicas</label>
     </fieldset> <!-- .persistent-only -->
 
     <fieldset class="auto_compaction persistent-only">
@@ -2315,6 +2317,8 @@
           <span>Number of replica (backup) copies</span>
           <span class="error-container err-replicaNumber"></span>
         </label>
+        <input type="hidden" name="replicaIndex" value="0"/>
+        <label style="padding-left: 20px; clear:both;"><input type="checkbox" name="replicaIndex" value="1" style="margin-right:5px;"/>Index replicas</label>
       </div><!-- .persistent-only -->
     </div><div class="config-bottom clearfix">
     <button name="finish" class="submit finish direction-button" type="submit">Next</button>
