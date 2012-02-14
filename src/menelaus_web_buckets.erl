@@ -133,6 +133,7 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
               {authType, misc:expect_prop_value(auth_type, BucketConfig)},
               {saslPassword, list_to_binary(proplists:get_value(sasl_password, BucketConfig, ""))},
               {proxyPort, proplists:get_value(moxi_port, BucketConfig, 0)},
+              {replicaIndex, proplists:get_value(replica_index, BucketConfig, true)},
               {uri, list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id]))},
               {streamingUri, list_to_binary(concat_url_path(["pools", PoolId, "bucketsStreaming", Id]))},
               %% TODO: this should be under a controllers/ kind of namespacing
@@ -218,7 +219,7 @@ respond_bucket_created(Req, PoolId, BucketId) ->
 
 %% returns pprop list with only props useful for ns_bucket
 extract_bucket_props(BucketId, Props) ->
-    ImportantProps = [X || X <- [lists:keyfind(Y, 1, Props) || Y <- [num_replicas, ram_quota, auth_type,
+    ImportantProps = [X || X <- [lists:keyfind(Y, 1, Props) || Y <- [num_replicas, replica_index, ram_quota, auth_type,
                                                                      sasl_password, moxi_port, autocompaction]],
                            X =/= false],
     case BucketId of
@@ -628,6 +629,12 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                           case IsNew of
                               true -> parse_validate_replicas_number(proplists:get_value("replicaNumber", Params));
                               _ -> undefined
+                          end,
+                          case IsNew of
+                              true ->
+                                  parse_validate_replica_index(proplists:get_value("replicaIndex", Params, "1"));
+                              false ->
+                                  undefined
                           end
                           | Candidates2];
                      _ ->
@@ -709,6 +716,10 @@ parse_validate_replicas_number(NumReplicas) ->
             {error, replicaNumber, <<"Replica number larger than 3 is not supported.">>};
         {ok, X} -> {ok, num_replicas, X}
     end.
+
+parse_validate_replica_index("0") -> {ok, replica_index, false};
+parse_validate_replica_index("1") -> {ok, replica_index, true};
+parse_validate_replica_index(_ReplicaValue) -> {error, replicaIndex, <<"replicaIndex can only be 1 or 0">>}.
 
 parse_validate_ram_quota(undefined, BucketConfig) when BucketConfig =/= false ->
     ns_bucket:raw_ram_quota(BucketConfig);

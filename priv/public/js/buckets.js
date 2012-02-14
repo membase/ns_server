@@ -199,6 +199,7 @@ var BucketDetailsDialog = mkClass({
     dialog.find('[name=name]').boolAttr('disabled', !isNew);
 
     dialog.find('[name=replicaNumber]').boolAttr('disabled', !isNew);
+    dialog.find('[name=replicaIndex]').boolAttr('disabled', !isNew);
     dialog.find('.for-enable-replicas input').boolAttr('disabled', !isNew);
 
     dialog.find('[name=ramQuotaMB][type=text]')
@@ -356,11 +357,12 @@ var BucketDetailsDialog = mkClass({
                                             });
     self.needBucketsRefresh = true;
 
-    var nonPersistent = null;
+    // we're going to disable hidden peristent-only inputs while
+    // serializing form fields to be sent
+    var disabledPersistendOnlyInputs = null;
     if (self.dialog.find('[name=bucketType]:checked').val() != 'membase') {
-      self.dialog.find('.persistent-only input')
-        .filter(':not([disabled])')
-        .boolAttr('disabled', true);
+      disabledPersistendOnlyInputs = self.dialog.find('.persistent-only input').filter(':not([disabled])');
+      disabledPersistendOnlyInputs.boolAttr('disabled', true);
     }
 
     self.formValidator.pause();
@@ -388,10 +390,13 @@ var BucketDetailsDialog = mkClass({
       }
     });
 
-    if (nonPersistent) {
-      nonPersistent.boolAttr('disabled', false);
+    // and after form is sent we un-disable temporarily disabled
+    // fields
+    if (disabledPersistendOnlyInputs) {
+      disabledPersistendOnlyInputs.boolAttr('disabled', false);
     }
 
+    // while POST is in-flight we're disabling all not naturally disabled inputs
     var toDisable = self.dialog.find('input[type=text], input[type=radio], input:not([type]), input[type=checkbox]')
       .filter(':not([disabled])')
       .add(self.dialog.find('button'));
@@ -399,6 +404,8 @@ var BucketDetailsDialog = mkClass({
     // we need to disable after post is sent, 'cause disabled inputs are not sent
     toDisable.add(self.dialog).css('cursor', 'wait').boolAttr('disabled', true);
 
+    // when POST reply is received enableForm will be called and it
+    // will undo temporary disabling and other temporary things
     function enableForm() {
       self.formValidator.unpause();
       closeCleanup();
@@ -814,6 +821,7 @@ var BucketsSection = {
                       bucketType: 'membase',
                       authType: 'sasl',
                       quota: {rawRAM: Math.floor((totals.ram.quotaTotal - totals.ram.quotaUsed) / poolDetails.nodes.length)},
+                      replicaIndex: true,
                       replicaNumber: 1},
       dialog = new BucketDetailsDialog(initValues, true);
 
