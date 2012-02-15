@@ -1131,16 +1131,20 @@ parse_version(VersionStr) ->
             {BaseVersion, Type, list_to_integer(OffsetStr)}
     end.
 
+-define(VERSION_REGEXP,
+        "^((?:[0-9]+\.)*[0-9]+).*?(r)?$"). % unbreak font-lock "
+
 parse_base_version(BaseVersionStr) ->
-    {Type, BaseVersionStr1} =
-        case lists:last(BaseVersionStr) of
-            $r ->
-                {candidate, init(BaseVersionStr)};
-            _ ->
-                {release, BaseVersionStr}
-        end,
+    case re:run(BaseVersionStr, ?VERSION_REGEXP,
+                [{capture, all_but_first, list}]) of
+        {match, [NumericVersion, "r"]} ->
+            Type = candidate;
+        {match, [NumericVersion]} ->
+            Type = release
+    end,
+
     {lists:map(fun list_to_integer/1,
-               string:tokens(BaseVersionStr1, ".")), Type}.
+               string:tokens(NumericVersion, ".")), Type}.
 
 %% Returns the size of directory's content (du -s).
 dir_size(Dir) ->
@@ -1195,6 +1199,18 @@ parse_version_test() ->
                  parse_version("1.8.0_25_g1e1c2c0-enterprise")),
     ?assertEqual({[1,8,0],release,25},
                  parse_version("1.8.0-25-g1e1c2c0-enterprise")),
+    ?assertEqual({[2,0,0],candidate,702},
+                 parse_version("2.0.0dp4r-702")),
+    ?assertEqual({[2,0,0],candidate,702},
+                 parse_version("2.0.0dp4r-702-g1e1c2c0")),
+    ?assertEqual({[2,0,0],candidate,702},
+                 parse_version("2.0.0dp4r-702-g1e1c2c0-enterprise")),
+    ?assertEqual({[2,0,0],release,702},
+                 parse_version("2.0.0dp4-702")),
+    ?assertEqual({[2,0,0],release,702},
+                 parse_version("2.0.0dp4-702-g1e1c2c0")),
+    ?assertEqual({[2,0,0],release,702},
+                 parse_version("2.0.0dp4-702-g1e1c2c0-enterprise")),
     ok.
 
 ceiling_test() ->
