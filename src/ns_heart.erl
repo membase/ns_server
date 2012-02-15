@@ -174,7 +174,8 @@ current_status(Expensive) ->
                     begin
                         {type, Type} = lists:keyfind(type, 1, Task),
                         Type =:= indexer orelse Type =:= view_compaction
-                    end
+                    end andalso
+                    lists:keyfind(indexer_type, 1, Task) =:= {indexer_type, main}
         end , couch_task_status:all()),
 
     failover_safeness_level:build_local_safeness_info(BucketNames) ++
