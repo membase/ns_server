@@ -405,7 +405,7 @@ shutdown_master_sup(State) ->
 
 %% Auxiliary functions
 
-%% Determine whether first node has higher priority than second.
+%% Return node information for ourselves.
 -spec node_info() -> node_info().
 node_info() ->
     RawVersion = ns_info:version(ns_server),
