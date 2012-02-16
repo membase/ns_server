@@ -725,33 +725,39 @@ var BucketsSection = {
     return;
   },
   removeCurrentBucket: function () {
-    // inner functions
-    function ajaxCallback() {
-      self.refreshBuckets(function() {
-        spinner.remove();
-        modal.finish();
-        hideDialog('bucket_details_dialog');
-        hideDialog('bucket_remove_dialog');
-      });
-    }
-
-    var self = this,
-        bucket = self.currentlyShownBucket;
+    var self = this;
+    var bucket = self.currentlyShownBucket;
 
     if (!bucket) {
       return;
     }
 
-    var spinner = overlayWithSpinner('#bucket_remove_dialog'),
-        modal = new ModalAction();
+    var spinner = overlayWithSpinner('#bucket_remove_dialog');
 
-    $.ajax({
-      type: 'DELETE',
-      url: self.currentlyShownBucket.uri,
-      success: ajaxCallback,
-      errors: ajaxCallback
+    postWithValidationErrors(self.currentlyShownBucket.uri, undefined, ajaxCallback, {
+      type: 'DELETE'
     });
     return;
+
+    function ajaxCallback(data, status) {
+      // NOTE: this setValue to undefined is needed because if buckets
+      // list cell is too fast to see bucket deletion then the
+      // following callback may 'never' be called. That's shortcoming
+      // of refreshBuckets and bucketsListCell equality function set
+      // to _.isEqual
+      DAL.cells.bucketsListCell.setValue(undefined);
+      self.refreshBuckets(function () {
+        spinner.remove();
+        hideDialog('bucket_details_dialog');
+        hideDialog('bucket_remove_dialog');
+        if (status !== 'success') {
+          var errorMessage = (data && data.length) ? data.join(' and ') : "Unknown error happened";
+          genericDialog({buttons: {ok: true, cancel: false},
+                         header: "Failed To Delete Bucket",
+                         text: errorMessage});
+        }
+      });
+    }
   }
 };
 
