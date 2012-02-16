@@ -164,7 +164,9 @@ cleanup_spatial_index_files(BucketName) ->
 -spec list_index_files(BucketName::binary()) -> [file:filename()].
 list_index_files(BucketName) ->
     RootDir = couch_config:get("couchdb", "view_index_dir"),
-    Wildcard = filename:join([RootDir, "." ++ ?b2l(BucketName), "*_design",
+    Wildcard = filename:join([RootDir,
+                              "." ++ ?b2l(BucketName),
+                              "*_design",
                               "*.spatial"]),
     filelib:wildcard(Wildcard).
 
@@ -174,7 +176,6 @@ get_signatures(Db) ->
     {ok, DesignDocs} = couch_db:get_design_docs(Db),
     GroupIds = [DD#doc.id || DD <- DesignDocs, DD#doc.deleted == false],
 
-    % make unique list of group sigs
     lists:map(fun(GroupId) ->
                   {ok, Info} = couch_spatial:get_group_info(Db, GroupId),
                   ?b2l(couch_util:get_value(signature, Info))
@@ -185,15 +186,15 @@ get_signatures(Db) ->
 -spec delete_unused_files(FileList::[string()], Sigs::[string()]) -> ok.
 delete_unused_files(FileList, Sigs) ->
     % regex that matches all ddocs
-    RegExp = "("++ string:join(Sigs, "|") ++")",
+    {ok, Mp} = re:compile("(" ++ string:join(Sigs, "|") ++ ")"),
 
     % filter out the ones in use
     DeleteFiles = [FilePath
            || FilePath <- FileList,
-              re:run(FilePath, RegExp, [{capture, none}]) =:= nomatch],
+              re:run(FilePath, Mp, [{capture, none}]) =:= nomatch],
 
     RootDir = couch_config:get("couchdb", "view_index_dir"),
-    [couch_file:delete(RootDir,File,false)||File <- DeleteFiles],
+    [couch_file:delete(RootDir, File, false) || File <- DeleteFiles],
     ok.
 
 
