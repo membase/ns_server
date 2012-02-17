@@ -270,7 +270,7 @@ var BucketDetailsDialog = mkClass({
 
     self.formValidator.pause();
 
-    postWithValidationErrors(self.initValues.uri, self.dialog.find('form'), function (data, status, errorObject) {
+    jsonPostWithErrors(self.initValues.uri, self.dialog.find('form'), function (data, status, errorObject) {
       if (status == 'success') {
         self.refreshBuckets(function () {
           self.needBucketsRefresh = false;
@@ -734,7 +734,7 @@ var BucketsSection = {
 
     var spinner = overlayWithSpinner('#bucket_remove_dialog');
 
-    postWithValidationErrors(self.currentlyShownBucket.uri, undefined, ajaxCallback, {
+    jsonPostWithErrors(self.currentlyShownBucket.uri, undefined, ajaxCallback, {
       type: 'DELETE'
     });
     return;

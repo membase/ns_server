@@ -109,7 +109,7 @@ function formatUptime(seconds, precision) {
 //
 // If error response returned json object it will be parsed and
 // passed as third argument of callback.
-function postWithValidationErrors(url, data, callback, ajaxOptions) {
+function jsonPostWithErrors(url, data, callback, ajaxOptions) {
   if (!(callback instanceof Function)) {
     BUG();
   }

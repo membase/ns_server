@@ -26,7 +26,7 @@ var SettingsSection = {
 
     form.find('.warn li').remove();
 
-    postWithValidationErrors($(self).attr('action'), postData, function (data, status) {
+    jsonPostWithErrors($(self).attr('action'), postData, function (data, status) {
       if (status != 'success') {
         var ul = form.find('.warn ul');
         _.each(data, function (error) {
@@ -496,8 +496,7 @@ var EmailAlertsSection = {
           'server settings.'
       }, self.getParams());
 
-      postWithValidationErrors('/settings/alerts/testEmail', $.param(params),
-                                function (data, status) {
+      jsonPostWithErrors('/settings/alerts/testEmail', $.param(params), function (data, status) {
         if (status === 'success') {
           testButton.text('Sent!').css('font-weight', 'bold');
           // Increase compatibility with unnamed functions

@@ -327,7 +327,7 @@ var NodeDialog = {
     delete data.hostname;
 
     var overlay = overlayWithSpinner($('#init_cluster_dialog'), '#EEE');
-    postWithValidationErrors('/node/controller/doJoinCluster', $.param(data), function (errors, status) {
+    jsonPostWithErrors('/node/controller/doJoinCluster', $.param(data), function (errors, status) {
       if (status != 'success') {
         overlay.remove();
         renderTemplate('join_cluster_dialog_errors', errors, errorsContainer[0]);
@@ -573,9 +573,9 @@ var NodeDialog = {
         m = "none";
       }
 
-      postWithValidationErrors('/nodes/' + node + '/controller/settings',
-                               $.param({path: p}),
-                               afterDisk);
+      jsonPostWithErrors('/nodes/' + node + '/controller/settings',
+                         $.param({path: p}),
+                         afterDisk);
 
       var diskArguments;
 
@@ -585,9 +585,9 @@ var NodeDialog = {
         // from memory quota and disk path posts simultaneously
         diskArguments = arguments;
         if ($('#no-join-cluster')[0].checked) {
-          postWithValidationErrors('/pools/default',
-                                   $.param({memoryQuota: m}),
-                                   memPost);
+          jsonPostWithErrors('/pools/default',
+                             $.param({memoryQuota: m}),
+                             memPost);
           return;
         }
 
@@ -784,7 +784,7 @@ var NodeDialog = {
       var sendStatus = $('#init-notifications-updates-enabled').is(':checked');
       sending = true;
       var spinner = overlayWithSpinner(dialog);
-      postWithValidationErrors(
+      jsonPostWithErrors(
         '/settings/stats',
         $.param({sendStats: sendStatus}),
         function () {
