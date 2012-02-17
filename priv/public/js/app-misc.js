@@ -160,66 +160,6 @@ function postWithValidationErrors(url, data, callback, ajaxOptions) {
   return;
 }
 
-function runFormDialog(uriOrPoster, dialogID, options) {
-  options = options || {};
-  var dialogQ = $('#' + dialogID);
-  var form = dialogQ.find('form');
-  var response = false;
-  var errors = dialogQ.find('.errors');
-  var poster;
-
-  errors.hide();
-
-  if (_.isString(uriOrPoster)) {
-    poster = _.bind(postWithValidationErrors, null, uriOrPoster);
-  } else {
-    poster = uriOrPoster;
-  }
-
-  function callback(data, status) {
-    if (status == 'success') {
-      response = data;
-      hideDialog(dialogID);
-      return;
-    }
-
-    if (!errors.length) {
-      alert('submit failed: ' + data.join(' and '));
-      return;
-    }
-    errors.empty();
-    _.each(data, function (message) {
-      var li = $('<li></li>');
-      li.text(message);
-      errors.append(li);
-    });
-    errors.show();
-  }
-
-  function onSubmit(e) {
-    e.preventDefault();
-    if (options.validate) {
-      var errors = options.validate();
-      if (errors && errors.length) {
-        callback(errors, 'error');
-        return;
-      }
-    }
-    poster(form, callback);
-  }
-
-  form.bind('submit', onSubmit);
-  setFormValues(form, options.initialValues || {});
-  showDialog(dialogID, {
-    onHide: function () {
-      form.unbind('submit', onSubmit);
-      if (options.closeCallback) {
-        options.closeCallback(response);
-      }
-    }
-  });
-}
-
 // make sure around 3 digits of value is visible. Less for for too
 // small numbers
 function truncateTo3Digits(value, leastScale) {

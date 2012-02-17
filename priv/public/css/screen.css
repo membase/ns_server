@@ -1020,7 +1020,7 @@ input.view_name{width:20em;padding:5px}
 .auto_compaction input[type="checkbox"], .auto_compaction input[type="radio"] {position:static}
 .auto_compaction .error-container {line-height: 1.5em;padding-left:2.2em;width: 100%;}
 
-.io-error-notice-wrapper {position: fixed; top: 0px; width: 100%; text-align: center; z-index: 9999; padding: 3px 0;}
+.io-error-notice-wrapper {position: fixed; top: 0px; width: 100%; height: 0px; overflow: visible; text-align: center; z-index: 9999; padding: 3px 0;}
 .io-error-notice { background-color: #FFF1A8; font-size: 14px; padding: 3px 10px;}
 
 /* extra element is needed to increase 'specifity' of this selector */
