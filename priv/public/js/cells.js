@@ -668,7 +668,10 @@ Cell.resolveToValue = function (/*valueOrCell, otherValues... , body*/) {
     BUG();
   }
   // NOTE: we keep one count more in order to avoid unresolvedLeft
-  // becoming 0 before final check is done.
+  // becoming 0 before final check is done. I.e. getValue calls body
+  // right now if value is already defined. So we don't want body be
+  // called two times. First from inside final getValue and second
+  // time from final check
   var unresolvedLeft = args.length;
   for (var i = args.length-2; i >= 0; i--) {
     if (args[i] instanceof Cell) {
@@ -686,6 +689,9 @@ Cell.resolveToValue = function (/*valueOrCell, otherValues... , body*/) {
     }
   }
   if (--unresolvedLeft === 0) {
+    // NOTE: body is still last arg. So to avoid issue with functions
+    // that have optional last arg we need to pop body
+    args.length--;
     body.apply(null, args);
   }
 }

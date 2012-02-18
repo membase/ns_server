@@ -703,3 +703,121 @@ CellsTest.prototype.testCellSubscribeMV = function () {
   Clock.tickFarAway();
   assertEquals(4, bodyRunCounter);
 }
+
+CellsTest.prototype.testApplyWithResolvedValues = function () {
+  var timesCalled = 0;
+  var cellA = new Cell();
+  var cellB = new Cell();
+  var cellC = new Cell();
+
+  function theFunction (a, b, c) {
+    assertEquals(exemplarThis, this);
+    timesCalled++;
+    return a + b + c;
+  }
+
+  var exemplarThis = {};
+
+  var resultCell = Cell.applyFunctionWithResolvedValues(theFunction, exemplarThis, ["1", "2", "4"]);
+  resultCell.subscribeValue(new Function()); // returned cell is lazy so force it do computation
+
+  Clock.tickFarAway();
+
+  // in basic case with all args being just values we call soon and once
+  assertEquals("124", resultCell.value);
+  assertEquals(1, timesCalled);
+
+  // when args are cells
+  resultCell = Cell.applyFunctionWithResolvedValues(theFunction, exemplarThis, [cellA, cellB, cellC]);
+  assert(resultCell instanceof Cell);
+  resultCell.subscribeValue(new Function()); // returned cell is lazy so force it do computation
+  Clock.tickFarAway();
+  // we don't invoke when cells are not defined yet
+  assertEquals(1, timesCalled);
+  assertEquals(undefined, resultCell.value);
+
+  // even if some but not all cells are defined we don't call yet
+  cellA.setValue("1");
+  Clock.tickFarAway();
+  assertEquals(undefined, resultCell.value);
+  assertEquals(1, timesCalled);
+
+  // but when all cells become defined we call.
+  cellB.setValue("4");
+  cellC.setValue("2");
+  Clock.tickFarAway();
+  assertEquals("142", resultCell.value);
+  assertEquals(2, timesCalled);
+
+  // And further 'source' arg changes are not ignored. So
+  // applyFunctionWithResolvedValues is just fancy way to create cell.
+  cellB.setValue("6");
+  Clock.tickFarAway();
+  assertEquals("162", resultCell.value);
+  assertEquals(3, timesCalled);
+}
+
+CellsTest.prototype.testWrapWithArgsResolving = function () {
+  var timesCalled = 0;
+  var result;
+
+  function theFunction(a, b, c) {
+    assertEquals(3, arguments.length);
+    result = a + b + c;
+    timesCalled++;
+  }
+
+  var wrappedFunction = Cell.wrapWithArgsResolving(theFunction);
+  assert(wrappedFunction instanceof Function);
+
+  // calling wrappedFunction is same effect (and not even delayed)
+  // when all args are not cells
+  wrappedFunction("1", "2", "4");
+  assertEquals(1, timesCalled);
+  assertEquals("124", result);
+  result = undefined;
+
+  // but if some argument(s) is undefined cell
+  var cellA = new Cell();
+  wrappedFunction("1", cellA, "4");
+  Clock.tickFarAway();
+
+  // body is not called. Not even after awhile
+  assertEquals(1, timesCalled);
+  assertEquals(undefined, result);
+
+  // but when cell finally becomes defined body is called with it's
+  // value
+  cellA.setValue(2);
+  Clock.tickFarAway();
+  assertEquals(2, timesCalled);
+  assertEquals("124", result);
+
+  // and further cell value changes are ignored. I.e. apply only works
+  // once as expected.
+  cellA.setValue(3);
+  Clock.tickFarAway();
+  assertEquals(2, timesCalled);
+  assertEquals("124", result);
+
+  // we also get immediate effect if some all cell args are defined
+  var cellB = new Cell();
+  cellA.setValue("1");
+  cellB.setValue("2");
+  result = undefined;
+  wrappedFunction(cellA, cellB, "3");
+  assertEquals(3, timesCalled);
+  assertEquals("123", result);
+
+  // and we are not called again in future
+  Clock.tickFarAway();
+  assertEquals(3, timesCalled);
+  assertEquals("123", result);
+
+  // even if source cells are changed
+  cellA.setValue(2);
+  cellB.setValue(3);
+  Clock.tickFarAway();
+  assertEquals(3, timesCalled);
+  assertEquals("123", result);
+}
