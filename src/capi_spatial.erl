@@ -55,23 +55,25 @@ handle_spatial_req(Req, Db, DDoc) when Db#db.filepath =/= undefined ->
     couch_httpd_spatial:handle_spatial_req(Req, Db, DDoc);
 
 handle_spatial_req(#httpd{method='GET',
-                          path_parts=[_, _, DName, _, SpatialName]}=Req, #db{name=Name} = Db,
-                   _DDoc) ->
-    case capi_view:run_on_subset(Req, Name) of
-        full_set ->
-            design_doc_spatial(Req, Db, DName, SpatialName);
-        VBucket ->
-            design_doc_spatial(Req, Db, DName, SpatialName, [VBucket])
-    end;
+                          path_parts=[_, _, DName, _, SpatialName]}=Req,
+                   Db, _DDoc) ->
+    do_handle_spatial_req(Req, Db, DName, SpatialName);
 
 handle_spatial_req(#httpd{method='POST',
                           path_parts=[_, _, DName, _, SpatialName]}=Req, Db, _DDoc) ->
     couch_httpd:validate_ctype(Req, "application/json"),
-    design_doc_spatial(Req, Db, DName, SpatialName);
+    do_handle_spatial_req(Req, Db, DName, SpatialName);
 
 handle_spatial_req(Req, _Db, _DDoc) ->
     couch_httpd:send_method_not_allowed(Req, "GET,POST,HEAD").
 
+do_handle_spatial_req(Req, #db{name=DbName} = Db, DDocName, SpatialName) ->
+    case capi_view:run_on_subset(Req, DbName) of
+        full_set ->
+            design_doc_spatial(Req, Db, DDocName, SpatialName);
+        VBucket ->
+            design_doc_spatial(Req, Db, DDocName, SpatialName, [VBucket])
+    end.
 
 spatial_merge_params(Req, #db{name = BucketName} = Db, DDocId, SpatialName) ->
     NodeToVBuckets = capi_view:node_vbuckets_dict(?b2l(BucketName)),

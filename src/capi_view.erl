@@ -76,21 +76,26 @@ handle_view_req(Req, Db, DDoc) when Db#db.filepath =/= undefined ->
     couch_httpd_view:handle_view_req(Req, Db, DDoc);
 
 handle_view_req(#httpd{method='GET',
-                       path_parts=[_, _, DName, _, ViewName]}=Req, #db{name=Name} = Db, _DDoc) ->
-    case run_on_subset(Req, Name) of
-        full_set ->
-            design_doc_view(Req, Db, DName, ViewName);
-        VBucket ->
-            design_doc_view(Req, Db, DName, ViewName, [VBucket])
-    end;
+                       path_parts=[_, _, DName, _, ViewName]}=Req,
+                Db, _DDoc) ->
+    do_handle_view_req(Req, Db, DName, ViewName);
 
 handle_view_req(#httpd{method='POST',
-                       path_parts=[_, _, DName, _, ViewName]}=Req, Db, _DDoc) ->
+                       path_parts=[_, _, DName, _, ViewName]}=Req,
+                Db, _DDoc) ->
     couch_httpd:validate_ctype(Req, "application/json"),
-    design_doc_view(Req, Db, DName, ViewName);
+    do_handle_view_req(Req, Db, DName, ViewName);
 
 handle_view_req(Req, _Db, _DDoc) ->
     couch_httpd:send_method_not_allowed(Req, "GET,POST,HEAD").
+
+do_handle_view_req(Req, #db{name=DbName} = Db, DDocName, ViewName) ->
+    case run_on_subset(Req, DbName) of
+        full_set ->
+            design_doc_view(Req, Db, DDocName, ViewName);
+        VBucket ->
+            design_doc_view(Req, Db, DDocName, ViewName, [VBucket])
+    end.
 
 all_docs_db_req(#httpd{method='GET'} = Req,
                 #db{filepath = undefined} = Db) ->
