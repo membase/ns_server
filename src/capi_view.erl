@@ -124,14 +124,19 @@ do_capi_all_docs_db_req(Req, #db{filepath = undefined} = Db) ->
 node_vbuckets_dict(BucketName) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketName),
     Map = get_value(map, BucketConfig, []),
-    {_, NodeToVBuckets} =
+    {_, NodeToVBuckets0} =
         lists:foldl(fun ([undefined | _], {Idx, Dict}) ->
                             {Idx + 1, Dict};
                         ([Master | _], {Idx, Dict}) ->
-                            {Idx + 1, dict:append(Master, Idx, Dict)}
+                            {Idx + 1,
+                             dict:update(Master,
+                                         fun (Vbs) ->
+                                                 [Idx | Vbs]
+                                         end, [Idx], Dict)}
                     end, {0, dict:new()}, Map),
-    NodeToVBuckets.
-
+    dict:map(fun (_Key, Vbs) ->
+                     lists:reverse(Vbs)
+             end, NodeToVBuckets0).
 
 %% we're handling only the special views in the old way
 view_merge_params(Req, #db{name = BucketName} = Db,
