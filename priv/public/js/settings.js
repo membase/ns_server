@@ -26,7 +26,7 @@ var SettingsSection = {
 
     form.find('.warn li').remove();
 
-    postWithValidationErrors($(self).attr('action'), postData, function (data, status) {
+    jsonPostWithErrors($(self).attr('action'), postData, function (data, status) {
       if (status != 'success') {
         var ul = form.find('.warn ul');
         _.each(data, function (error) {
@@ -388,13 +388,13 @@ var SampleBucketSection = {
         return obj.value;
       }));
 
-      postWithValidationErrors('/sampleBuckets/install', buckets, function(error, status) {
+      jsonPostWithErrors('/sampleBuckets/install', buckets, function (simpleErrors, status, errorObject) {
         if (status === 'success') {
           button.text('Create');
           hasBuckets = processing = false;
           SampleBucketSection.refresh();
         } else {
-          var errReason = typeof error[0] === 'object' ? error[0].reason : 'Unknown Error';
+          var errReason = errorObject && errorObject.reason || simpleErrors.join(' and ');
           button.text('Create');
           hasBuckets = processing = false;
           maybeEnableCreateButton();
@@ -624,8 +624,7 @@ var EmailAlertsSection = {
           'server settings.'
       }, self.getParams());
 
-      postWithValidationErrors('/settings/alerts/testEmail', $.param(params),
-                                function (data, status) {
+      jsonPostWithErrors('/settings/alerts/testEmail', $.param(params), function (data, status) {
         if (status === 'success') {
           testButton.text('Sent!').css('font-weight', 'bold');
           // Increase compatibility with unnamed functions
@@ -885,13 +884,13 @@ var AutoCompactionSection = {
 
     self.urisCell.getValue(function (uris) {
       var data = AutoCompactionSection.serializeCompactionForm(self.container.find("form"));
-      postWithValidationErrors(uris.uri, data, onSubmitResult);
+      jsonPostWithErrors(uris.uri, data, onSubmitResult);
       DAL.cells.currentPoolDetailsCell.setValue(undefined);
       self.formValidationEnabled.setValue(false);
     });
     return;
 
-    function onSubmitResult(data, status) {
+    function onSubmitResult(simpleErrors, status, errorObject) {
       DAL.cells.currentPoolDetailsCell.invalidate();
       dialog.close();
 
@@ -899,7 +898,12 @@ var AutoCompactionSection = {
         self.errorsCell.setValue({});
         self.fillSettingsForm();
       } else {
-        self.errorsCell.setValue(data[0]);
+        self.errorsCell.setValue(errorObject);
+        if (simpleErrors && simpleErrors.length) {
+          genericDialog({buttons: {ok: true, cancel: false},
+                         header: "Failed To Save Auto-Compaction Settings",
+                         text: simpleErrors.join(' and ')});
+        }
       }
       self.formValidationEnabled.setValue(true);
     }

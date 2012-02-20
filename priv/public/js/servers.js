@@ -391,7 +391,7 @@ var ServersSection = {
 
           self.poolDetails.setValue(undefined);
 
-          postWithValidationErrors(uri, form, function (data, status) {
+          jsonPostWithErrors(uri, form, function (data, status) {
             self.poolDetails.invalidate();
             overlay.remove();
             if (status != 'success') {
@@ -519,11 +519,11 @@ var ServersSection = {
     // keep poolDetails undefined for now
     self.poolDetails.setValue(undefined);
     errorMessage = errorMessage || "Request failed. Check logs."
-    postWithValidationErrors(uri, $.param(data), function (data, status) {
+    jsonPostWithErrors(uri, $.param(data), function (data, status, errorObject) {
       // re-calc poolDetails according to it's formula
       self.poolDetails.invalidate();
       if (status == 'error') {
-        if (data[0].mismatch) {
+        if (errorObject && errorObject.mismatch) {
           self.poolDetails.changedSlot.subscribeOnce(function () {
             var msg = "Could not Rebalance because the cluster configuration was modified by someone else.\nYou may want to verify the latest cluster configuration and, if necessary, please retry a Rebalance."
             alert(msg);

@@ -103,13 +103,56 @@ function formatUptime(seconds, precision) {
   return rv.join(', ');
 }
 
-function postWithValidationErrors(url, data, callback, ajaxOptions) {
+// Does XHR (POST by default but overridable through ajaxOptions) with
+// given data and invokes callback with result.
+//
+// If error happens second argument of callback will be not equal to
+// 'success' and first argument will be array of strings that
+// validation returned or some synthetic error message(s).
+//
+// If error response returned json object it will be parsed and
+// passed as third argument of callback.
+function jsonPostWithErrors(url, data, callback, ajaxOptions) {
+  if (!(callback instanceof Function)) {
+    BUG();
+  }
+
+  if (data !== undefined && !_.isString(data)) {
+    data = serializeForm(data);
+  }
+
+  var options = {
+    url: url,
+    type: 'POST',
+    dataType: 'json',
+    data: data,
+    success: ajaxCallback,
+    error: ajaxCallback
+  };
+
+  ajaxOptions = ajaxOptions || {};
+  if (ajaxOptions.url) {
+    BUG();
+  }
+  _.extend(options, ajaxOptions);
+
+  var withModal = (ajaxOptions.isModal == undefined) ? (options.type != 'GET') : ajaxOptions.isModal;
+
+  if (withModal) {
+    var modalAction = new ModalAction();
+  }
+
+  $.ajax(options);
+  return;
 
   function ajaxCallback(data, textStatus) {
     var errorsData;
     var status = 0;
 
-    action.finish();
+    if (modalAction) {
+      modalAction.finish();
+    }
+
     if (textStatus == 'success') {
       return callback.call(this, data, textStatus);
     }
@@ -120,6 +163,8 @@ function postWithValidationErrors(url, data, callback, ajaxOptions) {
       // ignore
     }
 
+    // empty reply is ok even if we expect json because we often reply
+    // with empty body when sending 200
     if (status >= 200 && status < 300 && data.responseText == '') {
       return callback.call(this, '', 'success');
     }
@@ -128,36 +173,33 @@ function postWithValidationErrors(url, data, callback, ajaxOptions) {
       errorsData = "Save request failed because of timeout.";
     } else if (status == 0) {
       errorsData = "Got no response from save request.";
-    } else if (status != 400 || textStatus != 'error') {
-      errorsData = "Save request returned error.";
     } else {
-      errorsData = $.parseJSON(data.responseText);
+      errorsData = "Request returned error.";
+      if (textStatus == 'error' && (status == 400 || status == 503)) {
+        try {
+          errorsData = $.parseJSON(data.responseText);
+        } catch (e) {
+          // ignore
+        }
+      }
     }
+
+    if (errorsData == null) {
+      errorsData = "Unknown reason";
+    }
+
+    var simpleErrors = errorsData;
 
     if (!_.isArray(errorsData)) {
-      if (errorsData == null) {
-        errorsData = "unknown reason";
+      if (errorsData instanceof Object) {
+        simpleErrors = errorsData._ ? [errorsData._] : [];
+      } else {
+        simpleErrors = [errorsData];
       }
-      errorsData = [errorsData];
     }
-    callback.call(this, errorsData, 'error');
-  }
 
-  if (!_.isString(data)) {
-    data = serializeForm(data);
+    callback.call(this, simpleErrors, 'error', (errorsData instanceof Object) ? errorsData : undefined);
   }
-  var finalAjaxOptions = {
-    type:'POST',
-    url: url,
-    data: data,
-    success: ajaxCallback,
-    error: ajaxCallback,
-    dataType: 'json'
-  };
-  _.extend(finalAjaxOptions, ajaxOptions || {});
-  var action = new ModalAction();
-  $.ajax(finalAjaxOptions);
-  return;
 }
 
 // make sure around 3 digits of value is visible. Less for for too

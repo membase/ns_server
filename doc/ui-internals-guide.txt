@@ -219,7 +219,7 @@ Most important members are:
 
 * setFormValues -- fills form inputs from given values
 
-* postWithValidationErrors -- handles POST-ing data, parsing
+* jsonPostWithErrors -- handles POST-ing data, parsing
   validation errors from that and signaling ModalAction while this
   happens.
 

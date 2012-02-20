@@ -191,7 +191,7 @@ var ReplicationForm = mkClass({
     var spinner = overlayWithSpinner(self.dialog, null, "Verifying...");
     var formValues = serializeForm(self.form);
     self.showErrors(false);
-    postWithValidationErrors(validateURI, formValues, function (data, status) {
+    jsonPostWithErrors(validateURI, formValues, function (data, status, errorObject) {
       spinner.remove();
       if (status == 'success') {
         var createSpinner = overlayWithSpinner(self.dialog, null, "Creating replication...");
@@ -200,7 +200,7 @@ var ReplicationForm = mkClass({
           self.close();
         });
       } else {
-        self.showErrors(data);
+        self.showErrors(errorObject || data);
       }
     });
   },
@@ -220,8 +220,8 @@ var ReplicationForm = mkClass({
       container.html('');
       return;
     }
-    if (errors.length === 1 && errors[0].errors) {
-      errors = _.values(errors[0].errors).sort();
+    if ((errors instanceof Object) && errors.errors) {
+      errors = _.values(errors.errors).sort();
     }
     renderTemplate('create_replication_dialog_errors', errors);
   }
@@ -346,14 +346,14 @@ var ReplicationsSection = {
   },
   submitRemoteCluster: function (uri, form) {
     var spinner = overlayWithSpinner(form);
-    postWithValidationErrors(uri, form, function (data, status) {
+    jsonPostWithErrors(uri, form, function (data, status, errorObject) {
       spinner.remove();
       if (status == 'success') {
         hideDialog('create_cluster_reference_dialog');
         ReplicationsModel.refreshReplications();
         return;
       }
-      renderTemplate('create_cluster_reference_dialog_errors', _.values(data[0]).sort());
+      renderTemplate('create_cluster_reference_dialog_errors', errorObject ? _.values(errorObject).sort() : data);
     })
   },
   startAddRemoteCluster: function () {
