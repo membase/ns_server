@@ -24,7 +24,7 @@
 -export([all_docs_db_req/2, view_merge_params/4]).
                                                 % For capi_spatial
 -export([build_local_simple_specs/4, run_on_subset/2,
-         node_vbuckets_dict/1, vbucket_db_name/2]).
+         node_vbuckets_dict/1, vbucket_db_name/2, when_has_active_vbuckets/3]).
 
 -import(couch_util, [
                      get_value/2,
@@ -90,12 +90,29 @@ handle_view_req(Req, _Db, _DDoc) ->
     couch_httpd:send_method_not_allowed(Req, "GET,POST,HEAD").
 
 do_handle_view_req(Req, #db{name=DbName} = Db, DDocName, ViewName) ->
-    case run_on_subset(Req, DbName) of
-        full_set ->
-            design_doc_view(Req, Db, DDocName, ViewName);
-        VBucket ->
-            design_doc_view(Req, Db, DDocName, ViewName, [VBucket])
+    when_has_active_vbuckets(
+      Req, DbName,
+      fun () ->
+            case run_on_subset(Req, DbName) of
+                full_set ->
+                    design_doc_view(Req, Db, DDocName, ViewName);
+                VBucket ->
+                    design_doc_view(Req, Db, DDocName, ViewName, [VBucket])
+            end
+      end).
+
+when_has_active_vbuckets(Req, Bucket, Fn) ->
+    case capi_frontend:has_active_vbuckets(Bucket) of
+        true ->
+            Fn();
+        false ->
+            send_no_active_vbuckets(Req)
     end.
+
+send_no_active_vbuckets(Req) ->
+    couch_httpd:send_error(
+      Req, 404, <<"no_active_vbuckets">>,
+      <<"Cannot execute view query since the node has no active vbuckets">>).
 
 all_docs_db_req(#httpd{method='GET'} = Req,
                 #db{filepath = undefined} = Db) ->
@@ -117,9 +134,14 @@ all_docs_db_req(#httpd{method='POST'} = Req,
 all_docs_db_req(Req, Db) ->
     couch_httpd_db:db_req(Req, Db).
 
-do_capi_all_docs_db_req(Req, #db{filepath = undefined} = Db) ->
-    MergeParams = view_merge_params(Req, Db, nil, <<"_all_docs">>),
-    couch_index_merger:query_index(couch_view_merger, MergeParams, Req).
+do_capi_all_docs_db_req(Req, #db{filepath = undefined,
+                                 name = DbName} = Db) ->
+    when_has_active_vbuckets(
+      Req, DbName,
+      fun () ->
+            MergeParams = view_merge_params(Req, Db, nil, <<"_all_docs">>),
+            couch_index_merger:query_index(couch_view_merger, MergeParams, Req)
+      end).
 
 node_vbuckets_dict(BucketName) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketName),

@@ -68,12 +68,16 @@ handle_spatial_req(Req, _Db, _DDoc) ->
     couch_httpd:send_method_not_allowed(Req, "GET,POST,HEAD").
 
 do_handle_spatial_req(Req, #db{name=DbName} = Db, DDocName, SpatialName) ->
-    case capi_view:run_on_subset(Req, DbName) of
-        full_set ->
-            design_doc_spatial(Req, Db, DDocName, SpatialName);
-        VBucket ->
-            design_doc_spatial(Req, Db, DDocName, SpatialName, [VBucket])
-    end.
+    capi_view:when_has_active_vbuckets(
+      Req, DbName,
+      fun () ->
+            case capi_view:run_on_subset(Req, DbName) of
+                full_set ->
+                    design_doc_spatial(Req, Db, DDocName, SpatialName);
+                VBucket ->
+                    design_doc_spatial(Req, Db, DDocName, SpatialName, [VBucket])
+            end
+      end).
 
 spatial_merge_params(Req, #db{name = BucketName} = Db, DDocId, SpatialName) ->
     NodeToVBuckets = capi_view:node_vbuckets_dict(?b2l(BucketName)),
