@@ -2,9 +2,6 @@
 # All rights reserved.
 SHELL=/bin/sh
 
-EBIN_PATHS=`find -L "$(PWD)" -name ebin -type d`
-EFLAGS=-pa ./ebin ./deps/*/ebin ./deps/*/deps/*/ebin
-
 COUCHBASE_PLT ?= couchbase.plt
 
 TMP_DIR=./tmp
@@ -163,12 +160,10 @@ dataclean:
 
 distclean: clean dataclean
 
-common_tests: dataclean all
-	mkdir -p logs
-	erl -noshell -name ctrl@127.0.0.1 -hidden -setcookie nocookie -pa $(EBIN_PATHS) -eval "ct:run_test([{spec, \"./common_tests/common_tests.spec\"}]), init:stop()"
+TEST_EFLAGS=-pa ./ebin ./deps/*/ebin ./deps/*/deps/*/ebin $(shell . `pwd`/.configuration && echo $$couchdb_src)/src/couchdb
 
 test: ebins
-	erl $(EFLAGS) -noshell -kernel error_logger silent -shutdown_time 10000 -eval 'application:start(sasl).' -eval "case t:$(TEST_TARGET)() of ok -> init:stop(); _ -> init:stop(1) end."
+	erl $(TEST_EFLAGS) -noshell -kernel error_logger silent -shutdown_time 10000 -eval 'application:start(sasl).' -eval "case t:$(TEST_TARGET)() of ok -> init:stop(); _ -> init:stop(1) end."
 
 # assuming exuberant-ctags
 TAGS:
