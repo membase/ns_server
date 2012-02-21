@@ -1957,7 +1957,16 @@ parse_validate_auto_compaction_settings(Params) ->
                             PeriodTimeFieldsCount -> PeriodTimeResults0;
                             _ -> [{error, <<"allowedTimePeriod">>, <<"allowedTimePeriod is invalid">>}]
                         end,
-    Errors = [{iolist_to_binary(Field), Msg} || {error, Field, Msg} <- PercResults ++ ParallelResult ++ PeriodTimeResults ++ SizeResults],
+    Errors0 = [{iolist_to_binary(Field), Msg} || {error, Field, Msg} <- PercResults ++ ParallelResult ++ PeriodTimeResults ++ SizeResults],
+    BadFields = lists:sort(["databaseFragmentationThreshold",
+                            "viewFragmentationThreshold"]),
+    Errors = case ordsets:intersection(lists:sort(proplists:get_keys(Params)),
+                                       BadFields) of
+                 [] ->
+                     Errors0;
+                 ActualBadFields ->
+                     Errors0 ++ [{<<"_">>, iolist_to_binary([<<"Got unsupported fields: ">>, string:join(ActualBadFields, " and ")])}]
+             end,
     case Errors of
         [] ->
             SizePList = [{F, V} || {ok, F, V} <- SizeResults],
@@ -1991,3 +2000,94 @@ parse_validate_bucket_auto_compaction_settings(Params) ->
         [{ok, _, true}] ->
             parse_validate_auto_compaction_settings(Params)
     end.
+
+-ifdef(EUNIT).
+
+basic_parse_validate_auto_compaction_settings_test() ->
+    {ok, Stuff0} = parse_validate_auto_compaction_settings([{"databaseFragmentationThreshold[percentage]", "10"},
+                                                            {"viewFragmentationThreshold[percentage]", "20"},
+                                                            {"parallelDBAndViewCompaction", "false"},
+                                                            {"allowedTimePeriod[fromHour]", "0"},
+                                                            {"allowedTimePeriod[fromMinute]", "1"},
+                                                            {"allowedTimePeriod[toHour]", "2"},
+                                                            {"allowedTimePeriod[toMinute]", "3"},
+                                                            {"allowedTimePeriod[abortOutside]", "false"}]),
+    Stuff1 = lists:sort(Stuff0),
+    ?assertEqual([{allowed_time_period, [{from_hour, 0},
+                                         {to_hour, 2},
+                                         {from_minute, 1},
+                                         {to_minute, 3},
+                                         {abort_outside, false}]},
+                  {database_fragmentation_threshold, {10, nil}},
+                  {parallel_db_and_view_compaction, false},
+                  {view_fragmentation_threshold, {20, nil}}],
+                 Stuff1),
+    ok.
+
+basic_parse_validate_bucket_auto_compaction_settings_test() ->
+    Value0 = parse_validate_bucket_auto_compaction_settings([{"not_autoCompactionDefined", "false"},
+                                                             {"databaseFragmentationThreshold[percentage]", "10"},
+                                                             {"viewFragmentationThreshold[percentage]", "20"},
+                                                             {"parallelDBAndViewCompaction", "false"},
+                                                             {"allowedTimePeriod[fromHour]", "0"},
+                                                             {"allowedTimePeriod[fromMinute]", "1"},
+                                                             {"allowedTimePeriod[toHour]", "2"},
+                                                             {"allowedTimePeriod[toMinute]", "3"},
+                                                             {"allowedTimePeriod[abortOutside]", "false"}]),
+    ?assertMatch(nothing, Value0),
+    Value1 = parse_validate_bucket_auto_compaction_settings([{"autoCompactionDefined", "false"},
+                                                             {"databaseFragmentationThreshold[percentage]", "10"},
+                                                             {"viewFragmentationThreshold[percentage]", "20"},
+                                                             {"parallelDBAndViewCompaction", "false"},
+                                                             {"allowedTimePeriod[fromHour]", "0"},
+                                                             {"allowedTimePeriod[fromMinute]", "1"},
+                                                             {"allowedTimePeriod[toHour]", "2"},
+                                                             {"allowedTimePeriod[toMinute]", "3"},
+                                                             {"allowedTimePeriod[abortOutside]", "false"}]),
+    ?assertMatch(false, Value1),
+    {ok, Stuff0} = parse_validate_bucket_auto_compaction_settings([{"autoCompactionDefined", "true"},
+                                                                   {"databaseFragmentationThreshold[percentage]", "10"},
+                                                                   {"viewFragmentationThreshold[percentage]", "20"},
+                                                                   {"parallelDBAndViewCompaction", "false"},
+                                                                   {"allowedTimePeriod[fromHour]", "0"},
+                                                                   {"allowedTimePeriod[fromMinute]", "1"},
+                                                                   {"allowedTimePeriod[toHour]", "2"},
+                                                                   {"allowedTimePeriod[toMinute]", "3"},
+                                                                   {"allowedTimePeriod[abortOutside]", "false"}]),
+    Stuff1 = lists:sort(Stuff0),
+    ?assertEqual([{allowed_time_period, [{from_hour, 0},
+                                         {to_hour, 2},
+                                         {from_minute, 1},
+                                         {to_minute, 3},
+                                         {abort_outside, false}]},
+                  {database_fragmentation_threshold, {10, nil}},
+                  {parallel_db_and_view_compaction, false},
+                  {view_fragmentation_threshold, {20, nil}}],
+                 Stuff1),
+    ok.
+
+
+extra_field_parse_validate_auto_compaction_settings_test() ->
+    {errors, Stuff0} = parse_validate_auto_compaction_settings([{"databaseFragmentationThreshold", "10"},
+                                                                {"viewFragmentationThreshold", "20"},
+                                                                {"parallelDBAndViewCompaction", "false"},
+                                                                {"allowedTimePeriod[fromHour]", "0"},
+                                                                {"allowedTimePeriod[fromMinute]", "1"},
+                                                                {"allowedTimePeriod[toHour]", "2"},
+                                                                {"allowedTimePeriod[toMinute]", "3"},
+                                                                {"allowedTimePeriod[abortOutside]", "false"}]),
+    ?assertEqual([{<<"_">>, <<"Got unsupported fields: databaseFragmentationThreshold and viewFragmentationThreshold">>}],
+                 Stuff0),
+
+    {errors, Stuff1} = parse_validate_auto_compaction_settings([{"databaseFragmentationThreshold", "10"},
+                                                                {"parallelDBAndViewCompaction", "false"},
+                                                                {"allowedTimePeriod[fromHour]", "0"},
+                                                                {"allowedTimePeriod[fromMinute]", "1"},
+                                                                {"allowedTimePeriod[toHour]", "2"},
+                                                                {"allowedTimePeriod[toMinute]", "3"},
+                                                                {"allowedTimePeriod[abortOutside]", "false"}]),
+    ?assertEqual([{<<"_">>, <<"Got unsupported fields: databaseFragmentationThreshold">>}],
+                 Stuff1),
+    ok.
+
+-endif.
