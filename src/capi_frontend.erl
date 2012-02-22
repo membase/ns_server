@@ -374,6 +374,10 @@ first_vbucket(Node, [[Node|_] | _Rest], I) ->
 first_vbucket(Node, [_First|Rest], I) ->
     first_vbucket(Node, Rest, I + 1).
 
+has_active_vbuckets(Bucket) ->
+    {ok, Config} = ns_bucket:get_bucket(?b2l(Bucket)),
+    Map = proplists:get_value(map, Config, []),
+    first_vbucket(node(), Map, 0) =/= {error, no_vbucket_found}.
 
 %% Decide whether to run a query on a subset of documents or a full cluster
 %% depending on the number of items in the cluster

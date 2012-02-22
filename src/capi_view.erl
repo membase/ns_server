@@ -24,7 +24,7 @@
 -export([all_docs_db_req/2, view_merge_params/4]).
                                                 % For capi_spatial
 -export([build_local_simple_specs/4, run_on_subset/2,
-         node_vbuckets_dict/1, vbucket_db_name/2]).
+         node_vbuckets_dict/1, vbucket_db_name/2, when_has_active_vbuckets/3]).
 
 -import(couch_util, [
                      get_value/2,
@@ -76,21 +76,43 @@ handle_view_req(Req, Db, DDoc) when Db#db.filepath =/= undefined ->
     couch_httpd_view:handle_view_req(Req, Db, DDoc);
 
 handle_view_req(#httpd{method='GET',
-                       path_parts=[_, _, DName, _, ViewName]}=Req, #db{name=Name} = Db, _DDoc) ->
-    case run_on_subset(Req, Name) of
-        full_set ->
-            design_doc_view(Req, Db, DName, ViewName);
-        VBucket ->
-            design_doc_view(Req, Db, DName, ViewName, [VBucket])
-    end;
+                       path_parts=[_, _, DName, _, ViewName]}=Req,
+                Db, _DDoc) ->
+    do_handle_view_req(Req, Db, DName, ViewName);
 
 handle_view_req(#httpd{method='POST',
-                       path_parts=[_, _, DName, _, ViewName]}=Req, Db, _DDoc) ->
+                       path_parts=[_, _, DName, _, ViewName]}=Req,
+                Db, _DDoc) ->
     couch_httpd:validate_ctype(Req, "application/json"),
-    design_doc_view(Req, Db, DName, ViewName);
+    do_handle_view_req(Req, Db, DName, ViewName);
 
 handle_view_req(Req, _Db, _DDoc) ->
     couch_httpd:send_method_not_allowed(Req, "GET,POST,HEAD").
+
+do_handle_view_req(Req, #db{name=DbName} = Db, DDocName, ViewName) ->
+    when_has_active_vbuckets(
+      Req, DbName,
+      fun () ->
+            case run_on_subset(Req, DbName) of
+                full_set ->
+                    design_doc_view(Req, Db, DDocName, ViewName);
+                VBucket ->
+                    design_doc_view(Req, Db, DDocName, ViewName, [VBucket])
+            end
+      end).
+
+when_has_active_vbuckets(Req, Bucket, Fn) ->
+    case capi_frontend:has_active_vbuckets(Bucket) of
+        true ->
+            Fn();
+        false ->
+            send_no_active_vbuckets(Req)
+    end.
+
+send_no_active_vbuckets(Req) ->
+    couch_httpd:send_error(
+      Req, 404, <<"no_active_vbuckets">>,
+      <<"Cannot execute view query since the node has no active vbuckets">>).
 
 all_docs_db_req(#httpd{method='GET'} = Req,
                 #db{filepath = undefined} = Db) ->
@@ -112,21 +134,31 @@ all_docs_db_req(#httpd{method='POST'} = Req,
 all_docs_db_req(Req, Db) ->
     couch_httpd_db:db_req(Req, Db).
 
-do_capi_all_docs_db_req(Req, #db{filepath = undefined} = Db) ->
-    MergeParams = view_merge_params(Req, Db, nil, <<"_all_docs">>),
-    couch_index_merger:query_index(couch_view_merger, MergeParams, Req).
+do_capi_all_docs_db_req(Req, #db{filepath = undefined,
+                                 name = DbName} = Db) ->
+    when_has_active_vbuckets(
+      Req, DbName,
+      fun () ->
+            MergeParams = view_merge_params(Req, Db, nil, <<"_all_docs">>),
+            couch_index_merger:query_index(couch_view_merger, MergeParams, Req)
+      end).
 
 node_vbuckets_dict(BucketName) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketName),
     Map = get_value(map, BucketConfig, []),
-    {_, NodeToVBuckets} =
+    {_, NodeToVBuckets0} =
         lists:foldl(fun ([undefined | _], {Idx, Dict}) ->
                             {Idx + 1, Dict};
                         ([Master | _], {Idx, Dict}) ->
-                            {Idx + 1, dict:append(Master, Idx, Dict)}
+                            {Idx + 1,
+                             dict:update(Master,
+                                         fun (Vbs) ->
+                                                 [Idx | Vbs]
+                                         end, [Idx], Dict)}
                     end, {0, dict:new()}, Map),
-    NodeToVBuckets.
-
+    dict:map(fun (_Key, Vbs) ->
+                     lists:reverse(Vbs)
+             end, NodeToVBuckets0).
 
 %% we're handling only the special views in the old way
 view_merge_params(Req, #db{name = BucketName} = Db,
