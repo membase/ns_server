@@ -28,7 +28,6 @@ spawn_mover(Node, Bucket, VBucket,
             undefined ->
                 node();
             _ ->
-                ensure_module_loaded(Node),
                 Node
         end,
 
@@ -119,43 +118,4 @@ wait_for_mover(Bucket, V, N1, N2, Tries) ->
             ?rebalance_warning("Mover parent got unexpected message:~n"
                                "~p", [Msg]),
             wait_for_mover(Bucket, V, N1, N2, Tries)
-    end.
-
-%% Auxiliary functions
-
-%% Check whether ?MODULE module exists on remote node.
-check_module(Node) ->
-    Loaded = rpc:call(Node, erlang, module_loaded, [?MODULE]),
-    TryLoad =
-        fun () ->
-                case rpc:call(Node, code, load_file, [?MODULE]) of
-                    {module, ?MODULE} ->
-                        true;
-                    {error, _What} ->
-                        false
-                end
-        end,
-    Loaded orelse TryLoad().
-
-%% Loads ?MODULE on a remote node.
-upload_module(Node) ->
-    {?MODULE, Binary, Filename} = code:get_object_code(?MODULE),
-    %% Filename is used only for informational purposes so it does not
-    %% matter whether the path exists on the remote node at all.
-    {module, ?MODULE} = rpc:call(Node, code, load_binary,
-                                 [?MODULE, Filename, Binary]).
-
-%% Ensure that ?MODULE is loaded on remote node.
-ensure_module_loaded(Node) ->
-    case check_module(Node) of
-        true ->
-            ?rebalance_info("Remote node ~p already has a copy of ~p module.",
-                            [Node, ?MODULE]),
-            ok;
-        false ->
-            ?rebalance_info("Remote node ~p does not have a copy of ~p module. "
-                            "Uploading it.",
-                            [Node, ?MODULE]),
-            upload_module(Node),
-            ok
     end.
