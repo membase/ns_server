@@ -38,7 +38,9 @@ subscribe_link(Name, Fun, State) ->
     Parent = self(),
     proc_lib:spawn(
       fun () ->
-              erlang:monitor(process, Parent),
+              process_flag(trap_exit, true),
+              erlang:link(Parent),
+
               Ref = make_ref(),
               ok = gen_event:add_sup_handler(Name, {?MODULE, Ref},
                                              #state{func=Fun, func_state=State}),
@@ -53,9 +55,14 @@ subscribe_link(Name, Fun, State) ->
                           false ->
                               exit({handler_crashed, Name, Reason})
                       end;
-                  {'DOWN', _MRef, process, Parent, Reason} ->
-                      ?log_debug("Parent process exited with reason ~p", [Reason]),
+                  {'EXIT', Parent, Reason} ->
+                      ?log_debug("Parent process exited with reason ~p",
+                                 [Reason]),
                       exit(normal);
+                  {'EXIT', Pid, Reason} ->
+                      ?log_error("Dying because linked process ~p died: ~p",
+                                 [Pid, Reason]),
+                      exit({linked_process_died, Pid, Reason});
                   X ->
                       ?log_error("Got unexpected message: ~p", [X]),
                       exit(unexpected_message)
