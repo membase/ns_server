@@ -71,7 +71,17 @@ subscribe_link(Name, Fun, State) ->
 
 unsubscribe(Pid) ->
     Pid ! unsubscribe,
-    misc:wait_for_process(Pid, infinity).
+    misc:wait_for_process(Pid, infinity),
+
+    %% consume exit message in case trap_exit is true
+    receive
+        %% we expect the process to die normally; if it's not the case then
+        %% this should be handled explicitly by parent process;
+        {'EXIT', Pid, normal} ->
+            ok
+    after 0 ->
+            ok
+    end.
 
 %%
 %% gen_event callbacks
