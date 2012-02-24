@@ -192,10 +192,13 @@ set_replicas_dst(Bucket, NodesReplicas, AllNodes) ->
 
 
 spawn_mover(Bucket, VBucket, SrcNode, DstNode) ->
-    Args = args(SrcNode, Bucket, [VBucket], DstNode, true),
+    Args0 = args(SrcNode, Bucket, [VBucket], DstNode, true),
+    %% start ebucketmigrator on source node
+    Args = [SrcNode | Args0],
     case apply(ebucketmigrator_srv, start_link, Args) of
         {ok, Pid} = RV ->
-            ?log_info("Spawned mover ~p ~p ~p -> ~p: ~p", [Bucket, VBucket, SrcNode, DstNode, Pid]),
+            ?log_info("Spawned mover ~p ~p ~p -> ~p: ~p",
+                      [Bucket, VBucket, SrcNode, DstNode, Pid]),
             RV;
         X -> X
     end.

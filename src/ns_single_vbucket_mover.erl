@@ -23,16 +23,7 @@
 spawn_mover(Node, Bucket, VBucket,
             OldChain, NewChain) ->
     Parent = self(),
-    Node1 =
-        case Node of
-            undefined ->
-                node();
-            _ ->
-                Node
-        end,
-
-    spawn_link(Node1,
-               ns_single_vbucket_mover, mover,
+    spawn_link(ns_single_vbucket_mover, mover,
                [Parent, Node, Bucket, VBucket, OldChain, NewChain]).
 
 mover(Parent, Node, Bucket, VBucket,

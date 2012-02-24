@@ -516,6 +516,20 @@ spawn_and_wait(Node, Fun) ->
             Reason
     end.
 
+%% Like proc_lib:start_link but allows to specify a node to spawn a process on.
+-spec start_link(node(), module(), atom(), [any()]) -> any() | {error, term()}.
+start_link(Node, M, F, A)
+  when is_atom(Node), is_atom(M), is_atom(F), is_list(A) ->
+    Pid = proc_lib:spawn_link(Node, M, F, A),
+    sync_wait(Pid).
+
+sync_wait(Pid) ->
+    receive
+        {ack, Pid, Return} ->
+            Return;
+        {'EXIT', Pid, Reason} ->
+            {error, Reason}
+    end.
 
 poll_for_condition_rec(Condition, _Sleep, 0) ->
     case Condition() of

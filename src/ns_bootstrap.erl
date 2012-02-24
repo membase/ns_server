@@ -22,7 +22,10 @@ start() ->
         %% Check disk space every minute instead of every 30
         application:set_env(os_mon, disk_space_check_interval, 1),
         ok = application:start(ale),
-        application:start(os_mon),
+        %% sasl is required to start os_mon; later we just disable default
+        %% sasl report handler in cb_init_loggers
+        ok = application:start(sasl),
+        ok = application:start(os_mon),
         case erlang:system_info(system_architecture) of
             "win32" -> inet_db:set_lookup([native, file]);
             _ -> ok
@@ -37,6 +40,7 @@ stop() ->
     RV = try
              ok = application:stop(ns_server),
              application:stop(os_mon),
+             application:stop(sasl),
              application:stop(ale),
 
              ok
