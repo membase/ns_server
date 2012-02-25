@@ -39,7 +39,8 @@
          stats/1,
          stats/4,
          get_open_checkpoint_ids/1,
-         tap_connect/2]).
+         tap_connect/2,
+         deregister_tap_client/2]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
 -type mc_timeout() :: undefined | infinity | non_neg_integer().
@@ -324,6 +325,13 @@ tap_connect(Sock, Opts) ->
         {#mc_header{}, #mc_entry{key = proplists:get_value(name, Opts),
                                  ext = <<Flags:32>>,
                                  data = Data}}).
+
+-spec deregister_tap_client(Sock::port(), TapName::binary()) -> ok.
+deregister_tap_client(Sock, TapName) ->
+    HeaderEntry = {#mc_header{}, #mc_entry{key = TapName}},
+    {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} =
+        cmd(?CMD_DEREGISTER_TAP_CLIENT, Sock, undefined, undefined, HeaderEntry),
+    ok.
 
 %% -------------------------------------------------
 

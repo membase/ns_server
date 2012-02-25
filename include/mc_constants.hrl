@@ -46,6 +46,8 @@
 -define(CMD_GET_VBUCKET,     16#3e).
 -define(CMD_DELETE_VBUCKET,  16#3f).
 
+-define(CMD_DEREGISTER_TAP_CLIENT, 16#9e).
+
 -define(CMD_LAST_CLOSED_CHECKPOINT,  16#97).
 
 -define(RGET,        16#30).
