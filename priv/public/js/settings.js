@@ -287,34 +287,37 @@ var UpdatesNotificationsSection = {
 var SampleBucketSection = {
 
   refresh: function() {
+    IOCenter.performGet({
+      type: 'GET',
+      url: '/sampleBuckets',
+      dataType: 'json',
+      success: function (buckets) {
+        var htmlName, tmp, installed = [], available = [];
+        _.each(buckets, function(bucket) {
+          htmlName = escapeHTML(bucket.name);
+          if (bucket.installed) {
+            installed.push('<li>' + htmlName + '</li>');
+          } else {
+            tmp = '<li><input type="checkbox" value="' + htmlName + '" id="sample-' +
+              htmlName + '" data-quotaNeeded="'+ bucket.quotaNeeded +
+              '" />&nbsp; <label for="sample-' + htmlName + '">' + htmlName +
+              '</label></li>';
+            available.push(tmp);
+          }
+        });
 
-    $.get('/sampleBuckets', function(buckets) {
-      var htmlName, tmp, installed = [], available = [];
-      _.each(buckets, function(bucket) {
-        htmlName = escapeHTML(bucket.name);
-        if (bucket.installed) {
-          installed.push('<li>' + htmlName + '</li>');
-        } else {
-          tmp = '<li><input type="checkbox" value="' + htmlName + '" id="sample-' +
-            htmlName + '" data-quotaNeeded="'+ bucket.quotaNeeded +
-            '" />&nbsp; <label for="sample-' + htmlName + '">' + htmlName +
-            '</label></li>';
-          available.push(tmp);
-        }
-      });
+        available = (available.length === 0) ?
+          '<li>There are no samples available to install.</li>' :
+          available.join('');
 
-      available = (available.length === 0) ?
-        '<li>There are no samples available to install.</li>' :
-        available.join('');
+        installed = (installed.length === 0) ?
+          '<li>There are no installed samples.</li>' :
+          installed.join('');
 
-      installed = (installed.length === 0) ?
-        '<li>There are no installed samples.</li>' :
-        installed.join('');
-
-      $('#installed_samples').html(installed);
-      $('#available_samples').html(available);
+        $('#installed_samples').html(installed);
+        $('#available_samples').html(available);
+      }
     });
-
   },
   init: function() {
 

@@ -20,6 +20,10 @@
 -export([process_frame/3,
          init_state/1]).
 
+%% number of frames where node that we think is down needs to be down
+%% _alone_ in order to trigger autofailover
+-define(DOWN_GRACE_PERIOD, 2).
+
 -record(node_state, {
           name :: atom(),
           down_counter = 0 :: non_neg_integer(),
@@ -38,7 +42,7 @@
 init_state(DownThreshold) ->
     #state{nodes_states = [],
            mailed_too_small_cluster = 0,
-           down_threshold = DownThreshold - 1}.
+           down_threshold = DownThreshold - 1 - ?DOWN_GRACE_PERIOD}.
 
 fold_matching_nodes([], NodeStates, Fun, Acc) ->
     lists:foldl(fun (S, A) ->
@@ -91,7 +95,7 @@ increment_down_state(NodeState, DownNodes, BigState, SizeChanged) ->
                     NodeState#node_state{down_counter = 0};
                 [_] ->
                     NewCounter = NodeState#node_state.down_counter + 1,
-                    case NewCounter >= 2 of
+                    case NewCounter >= ?DOWN_GRACE_PERIOD of
                         true -> NodeState#node_state{state = failover};
                         _ -> NodeState#node_state{down_counter = NewCounter}
                     end
@@ -183,19 +187,19 @@ process_frame_no_action(Times, Nodes, DownNodes, State) ->
     process_frame_no_action(Times-1, Nodes, DownNodes, NewState).
 
 basic_1_test() ->
-    State0 = init_state(3),
+    State0 = init_state(3+?DOWN_GRACE_PERIOD),
     {[], State1} = process_frame([a,b,c], [], State0),
     State2 = process_frame_no_action(4, [a,b,c], [b], State1),
     {[{failover, b}], _} = process_frame([a,b,c], [b], State2).
 
 basic_2_test() ->
-    State0 = init_state(4),
+    State0 = init_state(4+?DOWN_GRACE_PERIOD),
     {[], State1} = process_frame([a,b,c], [b], State0),
     State2 = process_frame_no_action(4, [a,b,c], [b], State1),
     {[{failover, b}], _} = process_frame([a,b,c], [b], State2).
 
 min_size_test_body(Threshold) ->
-    State0 = init_state(Threshold),
+    State0 = init_state(Threshold+?DOWN_GRACE_PERIOD),
     {[], State1} = process_frame([a,b], [b], State0),
     State2 = process_frame_no_action(Threshold, [a,b], [b], State1),
     {[{mail_too_small, _}], State3} = process_frame([a,b], [b], State2),
@@ -212,7 +216,7 @@ min_size_and_increasing_test() ->
     {[{failover, b}], _} = process_frame([a,b,c], [b], State2).
 
 other_down_test() ->
-    State0 = init_state(3),
+    State0 = init_state(3+?DOWN_GRACE_PERIOD),
     {[], State1} = process_frame([a,b,c], [b], State0),
     State2 = process_frame_no_action(3, [a,b,c], [b], State1),
     {[{mail_down_warning, _}], State3} = process_frame([a,b,c], [b,c], State2),
@@ -223,13 +227,13 @@ other_down_test() ->
     {[{failover, b}], _} = process_frame([a,b,c],[b], State6).
 
 two_down_at_same_time_test() ->
-    State0 = init_state(3),
+    State0 = init_state(3+?DOWN_GRACE_PERIOD),
     State1 = process_frame_no_action(2, [a,b,c,d], [b,c], State0),
     {[{mail_down_warning, b}, {mail_down_warning, c}], _} =
         process_frame([a,b,c,d], [b,c], State1).
 
 multiple_mail_down_warning_test() ->
-    State0 = init_state(3),
+    State0 = init_state(3+?DOWN_GRACE_PERIOD),
     {[], State1} = process_frame([a,b,c], [b], State0),
     State2 = process_frame_no_action(2, [a,b,c], [b], State1),
     {[{mail_down_warning, b}], State3} = process_frame([a,b,c], [b,c], State2),
@@ -239,7 +243,7 @@ multiple_mail_down_warning_test() ->
 
 % Test if mail_down_warning is sent again if node was up in between
 mail_down_warning_down_up_down_test() ->
-    State0 = init_state(3),
+    State0 = init_state(3+?DOWN_GRACE_PERIOD),
     {[], State1} = process_frame([a,b,c], [b], State0),
     State2 = process_frame_no_action(2, [a,b,c], [b], State1),
     {[{mail_down_warning, b}], State3} = process_frame([a,b,c], [b,c], State2),
