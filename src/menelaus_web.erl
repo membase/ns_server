@@ -182,6 +182,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_settings_stats/1};
                              ["settings", "autoFailover"] ->
                                  {auth, fun handle_settings_auto_failover/1};
+                             ["settings", "maxParallelIndexers"] ->
+                                 {auth, fun handle_settings_max_parallel_indexers/1};
                              ["nodes", NodeId] ->
                                  {auth, fun handle_node/2, [NodeId]};
                              ["diag"] ->
@@ -246,6 +248,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_settings_auto_failover_post/1};
                              ["settings", "autoFailover", "resetCount"] ->
                                  {auth, fun handle_settings_auto_failover_reset_count/1};
+                             ["settings", "maxParallelIndexers"] ->
+                                 {auth, fun handle_settings_max_parallel_indexers_post/1};
                              ["pools", PoolId] ->
                                  {auth, fun handle_pool_settings/2,
                                   [PoolId]};
@@ -517,6 +521,7 @@ handle_pools(Req) ->
         end,
     reply_json(Req,{struct, [{pools, EffectivePools},
                              {isAdminCreds, menelaus_auth:is_under_admin(Req)},
+                             {settings, {struct, [{<<"maxParallelIndexers">>, <<"/settings/maxParallelIndexers">>}]}},
                              {uuid, get_uuid()}
                              | build_versions()]}).
 handle_engage_cluster2(Req) ->
@@ -1090,6 +1095,34 @@ do_handle_eject_post(Req, OtpNode) ->
                                       [OtpNode]),
                     Req:respond({400, add_header(), "Server does not exist.\n"})
             end
+    end.
+
+handle_settings_max_parallel_indexers(Req) ->
+    Config = ns_config:get(),
+    GlobalValue = case ns_config:search(Config, max_parallel_indexers) of
+                      false ->
+                          null;
+                      {value, V} ->
+                          V
+                  end,
+    ThisNodeValue = case ns_config:search_node(node(), Config, max_parallel_indexers) of
+                        false ->
+                            null;
+                        {value, V2} ->
+                            V2
+                    end,
+    reply_json(Req, {struct, [{globalValue, GlobalValue},
+                              {nodes, [{node(), ThisNodeValue}]}]}).
+
+handle_settings_max_parallel_indexers_post(Req) ->
+    Params = Req:parse_post(),
+    V = proplists:get_value("globalValue", Params, ""),
+    case parse_validate_number(V, 1, 1024) of
+        {ok, Parsed} ->
+            ns_config:set(max_parallel_indexers, Parsed),
+            handle_settings_max_parallel_indexers(Req);
+        Error ->
+            reply_json(Req, {struct, [{'_', iolist_to_binary(io_lib:format("Invalid globalValue: ~p", [Error]))}]}, 400)
     end.
 
 handle_pool_settings(_PoolId, Req) ->
