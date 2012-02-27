@@ -195,7 +195,7 @@ default() ->
      {email_alerts,
       [{recipients, ["root@localhost"]},
        {sender, "couchbase@localhost"},
-       {enabled, true},
+       {enabled, false},
        {email_server, [{user, ""},
                        {pass, ""},
                        {host, "localhost"},

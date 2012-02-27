@@ -48,6 +48,7 @@
 
 -define(SYNC, 16#96).
 
+-define(CMD_DEREGISTER_TAP_CLIENT, 16#9e).
 -define(CMD_LAST_CLOSED_CHECKPOINT,  16#97).
 
 -define(CMD_GET_META, 16#a0).

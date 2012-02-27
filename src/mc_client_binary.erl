@@ -40,6 +40,7 @@
          stats/4,
          get_open_checkpoint_ids/1,
          tap_connect/2,
+         deregister_tap_client/2,
          sync/4,
          get_meta/3,
          set_with_meta/8,
@@ -414,6 +415,13 @@ meta_cmd(Sock, Cmd, Key, VBucket, Value, Meta, CAS, Flags, Expiration) ->
         Error ->
             Error
     end.
+
+-spec deregister_tap_client(Sock::port(), TapName::binary()) -> ok.
+deregister_tap_client(Sock, TapName) ->
+    HeaderEntry = {#mc_header{}, #mc_entry{key = TapName}},
+    {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} =
+        cmd(?CMD_DEREGISTER_TAP_CLIENT, Sock, undefined, undefined, HeaderEntry),
+    ok.
 
 %% -------------------------------------------------
 

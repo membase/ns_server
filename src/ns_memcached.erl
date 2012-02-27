@@ -69,6 +69,7 @@
          topkeys/1,
          raw_stats/5,
          sync_bucket_config/1,
+         deregister_tap_client/2,
          flush/1,
          set/4,
          ready_nodes/4,
@@ -288,6 +289,9 @@ do_handle_call(topkeys, _From, State) ->
     {reply, Reply, State};
 do_handle_call(sync_bucket_config, _From, State) ->
     handle_info(check_config, State),
+    {reply, ok, State};
+do_handle_call({deregister_tap_client, TapName}, _From, State) ->
+    mc_client_binary:deregister_tap_client(State#state.sock, TapName),
     {reply, ok, State};
 do_handle_call(_, _From, State) ->
     {reply, unhandled, State}.
@@ -638,6 +642,11 @@ stats(Node, Bucket, Key) ->
 
 sync_bucket_config(Bucket) ->
     gen_server:call(server(Bucket, stats), sync_bucket_config, ?TIMEOUT).
+
+-spec deregister_tap_client(Bucket::bucket_name(),
+                            TapName::binary()) -> ok.
+deregister_tap_client(Bucket, TapName) ->
+    gen_server:call(server(Bucket, stats), {deregister_tap_client, TapName}).
 
 
 -spec topkeys(bucket_name()) ->
