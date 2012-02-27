@@ -110,6 +110,7 @@ handle_info(_Event, State) ->
 
 is_notable_event({buckets, _}) -> true;
 is_notable_event({autocompaction, _}) -> true;
+is_notable_event({max_parallel_indexers, _}) -> true;
 is_notable_event(_) -> false.
 
 handle_config_event(KVPair, State) ->
@@ -153,7 +154,12 @@ build_compaction_config_string(ACSettings) ->
 
 do_config_sync() ->
     Config = ns_config:get(),
-    sync_autocompaction(Config).
+    sync_autocompaction(Config),
+    case ns_config:search_node(node(), Config, max_parallel_indexers) of
+        false -> ok;
+        {value, MaxParallelIndexers} ->
+            couch_config:set("couchdb", "max_parallel_indexers", integer_to_list(MaxParallelIndexers))
+    end.
 
 decide_autocompaction_config_changes(Config, CouchCompactionsList) ->
     CouchCompactions = dict:from_list(CouchCompactionsList),

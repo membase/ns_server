@@ -1,6 +1,5 @@
 [couchdb]
 max_dbs_open = 10000
-max_parallel_indexers = 4
 
 [httpd]
 db_frontend = capi_frontend
