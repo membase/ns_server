@@ -373,6 +373,13 @@ node_name_host(Node) ->
     [Name, Host | _] = string:tokens(atom_to_list(Node), "@"),
     {Name, Host}.
 
+% Get an environment variable value or return a default value
+getenv_int(VariableName, DefaultValue) ->
+    case (catch list_to_integer(os:getenv(VariableName))) of
+        EnvBuckets when is_integer(EnvBuckets) -> EnvBuckets;
+        _ -> DefaultValue
+    end.
+
 % Get an application environment variable, or a defualt value.
 get_env_default(Var, Def) ->
     case application:get_env(Var) of

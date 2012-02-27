@@ -103,22 +103,22 @@ config_string(BucketName) ->
                       "backend=couchdb;couch_bucket=~s;couch_port=~B;max_vbuckets=~B",
                       [proplists:get_value(
                          ht_size, BucketConfig,
-                         getenv_int("MEMBASE_HT_SIZE", 3079)),
+                         misc:getenv_int("MEMBASE_HT_SIZE", 3079)),
                        proplists:get_value(
                          ht_locks, BucketConfig,
-                         getenv_int("MEMBASE_HT_LOCKS", 5)),
+                         misc:getenv_int("MEMBASE_HT_LOCKS", 5)),
                        proplists:get_value(
                          tap_noop_interval, BucketConfig,
-                         getenv_int("MEMBASE_TAP_NOOP_INTERVAL", 20)),
+                         misc:getenv_int("MEMBASE_TAP_NOOP_INTERVAL", 20)),
                        proplists:get_value(
                          max_txn_size, BucketConfig,
-                         getenv_int("MEMBASE_MAX_TXN_SIZE", 10000)),
+                         misc:getenv_int("MEMBASE_MAX_TXN_SIZE", 10000)),
                        MemQuota,
                        %% Five minutes, should be enough time for
                        %% ebucketmigrator to restart.
                        proplists:get_value(
                          tap_keepalive, BucketConfig,
-                         getenv_int("MEMBASE_TAP_KEEPALIVE", 300)),
+                         misc:getenv_int("MEMBASE_TAP_KEEPALIVE", 300)),
                        DBName,
                        BucketName,
                        CouchPort,
@@ -486,15 +486,9 @@ validate_bucket_config(BucketName, NewConfig) ->
             {error, {invalid_bucket_name, BucketName}}
     end.
 
-getenv_int(VariableName, DefaultValue) ->
-    case (catch list_to_integer(os:getenv(VariableName))) of
-        EnvBuckets when is_integer(EnvBuckets) -> EnvBuckets;
-        _ -> DefaultValue
-    end.
-
 new_bucket_default_params(membase) ->
     [{type, membase},
-     {num_vbuckets, getenv_int("COUCHBASE_NUM_VBUCKETS", 256)},
+     {num_vbuckets, misc:getenv_int("COUCHBASE_NUM_VBUCKETS", 256)},
      {num_replicas, 1},
      {ram_quota, 0},
      {servers, []}];
