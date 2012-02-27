@@ -1543,8 +1543,9 @@ handle_node_statuses(Req) ->
     Nodes = ns_node_disco:nodes_actual_proper(),
     Config = ns_config:get(),
     BucketsAll = ns_bucket:get_buckets(Config),
-    NodeResp = misc:multicall_result_to_plist(Nodes,
-                                              rpc:multicall(Nodes, ns_rebalancer, buckets_replication_statuses, [], 2000)),
+    {NodeResp, _ErrorResp} =
+        misc:multicall_result_to_plist(Nodes,
+                                       rpc:multicall(Nodes, ns_rebalancer, buckets_replication_statuses, [], 2000)),
     NodeStatuses = lists:map(
                      fun (N) ->
                              InfoNode = case dict:find(N, OldNodeStatuses) of

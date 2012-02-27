@@ -928,18 +928,30 @@ raw_read_loop(File, Acc) ->
 
 multicall_result_to_plist_rec([], _ResL, _BadNodes, Acc) ->
     Acc;
-multicall_result_to_plist_rec([N | Nodes], ResL, BadNodes, Acc) ->
+multicall_result_to_plist_rec([N | Nodes], Results, BadNodes,
+                              {SuccessAcc, ErrorAcc} = Acc) ->
     case lists:member(N, BadNodes) of
-        true -> multicall_result_to_plist_rec(Nodes, ResL, BadNodes, Acc);
+        true ->
+            multicall_result_to_plist_rec(Nodes, Results, BadNodes, Acc);
         _ ->
-            NewAcc = [{N, hd(ResL)} | Acc],
-            multicall_result_to_plist_rec(Nodes, tl(ResL), BadNodes, NewAcc)
+            [Res | ResRest] = Results,
+
+            case Res of
+                {badrpc, Reason} ->
+                    NewAcc = {SuccessAcc, [{N, Reason} | ErrorAcc]},
+                    multicall_result_to_plist_rec(Nodes, ResRest, BadNodes,
+                                                  NewAcc);
+                _ ->
+                    NewAcc = {[{N, Res} | SuccessAcc], ErrorAcc},
+                    multicall_result_to_plist_rec(Nodes, ResRest, BadNodes, NewAcc)
+            end
     end.
 
-%% returns proplist from Nodes to their return values. BadNodes are
-%% omitted.
+%% Returns a pair of proplists. First one is a mapping from Nodes to return
+%% values for nodes that succeeded. Second one is a mapping from Nodes to
+%% error reason for failed nodes.
 multicall_result_to_plist(Nodes, {ResL, BadNodes}) ->
-    multicall_result_to_plist_rec(Nodes, ResL, BadNodes, []).
+    multicall_result_to_plist_rec(Nodes, ResL, BadNodes, {[], []}).
 
 -spec realpath(string(), string()) -> {ok, string()} | {error, atom(), string(), any()}.
 realpath(Path, BaseDir) ->
