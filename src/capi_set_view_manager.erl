@@ -25,7 +25,7 @@
 -define(EMPTY_MAP, [{active, []}, {passive, []}, {replica, []}, {ignore, []}]).
 
 %% API
--export([start_link/1, wait_until_added/3]).
+-export([start_link/1, wait_until_added/3, fetch_ddocs/1]).
 
 -include("couch_db.hrl").
 -include_lib("couch_set_view/include/couch_set_view.hrl").
@@ -137,8 +137,8 @@ handle_call({pre_flush_all, Bucket}, _From,
                             pending_vbucket_states=NewStates,
                             map=NewMap}};
 
-handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+handle_call(fetch_ddocs, _From, #state{ddocs=DDocs} = State) ->
+    {reply, {ok, DDocs}, State}.
 
 handle_cast({update_ddoc, DDocId, Deleted},
             #state{bucket=Bucket,
@@ -623,6 +623,9 @@ get_design_docs(Bucket) ->
                                 DDocId
                         end, DDocs),
     sets:from_list(DDocIds).
+
+fetch_ddocs(Bucket) ->
+    gen_server:call(server(Bucket), fetch_ddocs).
 
 added(VBucket, #state{map=Map}) ->
     Active = proplists:get_value(active, Map),

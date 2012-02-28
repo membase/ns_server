@@ -511,18 +511,40 @@ computed_stats_lazy_proplist() ->
                                   catch error:badarith -> 0
                                   end
                           end),
+    TotalDisk = Z2(couch_docs_actual_disk_size, couch_views_actual_disk_size,
+                          fun (Views, Docs) ->
+                                  Views + Docs
+                          end),
+
     ResidenceCalculator = fun (NonResident, Total) ->
                                   try (Total - NonResident) * 100 / Total
                                   catch error:badarith -> 0
                                   end
                           end,
+
+    MinFileSize = list_to_integer(
+                    couch_config:get("compaction_daemon", "min_file_size", "131072")),
+
+    Fragmentation = fun(_Data, Disk) when Disk < MinFileSize -> 0;
+                       (0, _) -> 100;
+                       (Data, Disk) -> round((Disk - Data) / Disk * 100)
+                    end,
+
+    DocsFragmentation = Z2(couch_docs_data_size, couch_docs_disk_size,
+                           Fragmentation),
+    ViewsFragmentation = Z2(couch_views_data_size, couch_views_disk_size,
+                           Fragmentation),
+
     ActiveResRate = Z2(vb_active_num_non_resident, curr_items,
                        ResidenceCalculator),
     ReplicaResRate = Z2(vb_replica_num_non_resident, vb_replica_curr_items,
                         ResidenceCalculator),
     PendingResRate = Z2(vb_pending_num_non_resident, vb_pending_curr_items,
                         ResidenceCalculator),
-    [{hit_ratio, HitRatio},
+    [{couch_total_disk_size, TotalDisk},
+     {couch_docs_fragmentation, DocsFragmentation},
+     {couch_views_fragmentation, ViewsFragmentation},
+     {hit_ratio, HitRatio},
      {ep_cache_miss_rate, EPCacheMissRatio},
      {ep_resident_items_rate, ResidentItemsRatio},
      {vb_avg_active_queue_age, AvgActiveQueueAge},
@@ -578,6 +600,8 @@ samples_to_proplists(Samples) ->
 
 build_buckets_stats_ops_response(_PoolId, Nodes, [BucketName], Params) ->
     {Samples, ClientTStamp, Step, TotalNumber} = grab_aggregate_op_stats(BucketName, Nodes, Params),
+
+
     PropList2 = samples_to_proplists(Samples),
     OpPropList0 = [{samples, {struct, PropList2}},
                    {samplesCount, TotalNumber},
@@ -710,12 +734,27 @@ membase_stats_description() ->
                 {struct,[{title,<<"disk write queue">>},
                          {name,<<"disk_write_queue">>},
                          {desc,<<"Number of items waiting to be written to disk in this bucket (measured from ep_queue_size+ep_flusher_todo)">>}]},
-                {struct,[{name,<<"couch_data_size">>},
-                         {title,<<"couch data size">>},
-                         {desc,<<"The total size of the current items including replicas and meta data in this bucket on disk">>}]},
-                {struct,[{name,<<"couch_disk_size">>},
-                         {title,<<"couch disk size">>},
-                         {desc,<<"The total size of all items in this bucket on disk (including old revisions to be compacted)">>}]}
+                {struct,[{name,<<"couch_docs_data_size">>},
+                         {title,<<"docs data size">>},
+                         {desc,<<"The size of active data in this bucket">>}]},
+                {struct,[{name,<<"couch_docs_actual_disk_size">>},
+                         {title,<<"docs total disk size">>},
+                         {desc,<<"The size of all data files for this bucket, including the data itself, meta data and temporary files.">>}]},
+                {struct,[{name,<<"couch_docs_fragmentation">>},
+                         {title,<<"docs fragmentation %">>},
+                         {desc,<<"How much fragmented data there is to be compacted compared to real data for the data files in this bucket">>}]},
+                {struct,[{name,<<"couch_total_disk_size">>},
+                         {title,<<"total disk size">>},
+                         {desc,<<"The total size on disk of all data and view files for this bucket.)">>}]},
+               {struct,[{name,<<"couch_views_data_size">>},
+                         {title,<<"views data size">>},
+                         {desc,<<"The size of active data on for all the indexes in this bucket">>}]},
+                {struct,[{name,<<"couch_views_actual_disk_size">>},
+                         {title,<<"views total disk size">>},
+                         {desc,<<"The size of all active items in all the indexes for this bucket on disk">>}]},
+                {struct,[{name,<<"couch_views_fragmentation">>},
+                         {title,<<"views fragmentation %">>},
+                         {desc,<<"How much fragmented data there is to be compacted compared to real data for the view index files in this bucket">>}]}
                ]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"withtotal closed">>},

@@ -26,10 +26,18 @@
 
 -define(STAT_GAUGES,
 
-        %% Total size of couch database on disk
-        couch_disk_size,
-        %% Sum of current items stored in couch
-        couch_data_size,
+        %% Size of active couch data on disk
+        couch_docs_data_size,
+        %% Size of active couch view data on disk
+        couch_views_data_size,
+        %% Size of active and inactive couch data on disk (as reported by couch)
+        couch_docs_disk_size,
+        %% Size of active and inactive couch view data on disk (as reported by couch)
+        couch_views_disk_size,
+        %% Total size of couch data on disk
+        couch_docs_actual_disk_size,
+        %% Total size of couch view data on disk
+        couch_views_actual_disk_size,
 
         %% Num items in active vbuckets.
         curr_items,
