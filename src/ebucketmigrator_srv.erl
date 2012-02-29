@@ -66,8 +66,8 @@ handle_cast(Msg, State) ->
     {noreply, State}.
 
 
-handle_info(retry_not_ready_vbuckets, State) ->
-    {stop, retry_not_ready_vbuckets, State};
+handle_info(retry_not_ready_vbuckets, _State) ->
+    exit_retry_not_ready_vbuckets();
 handle_info({tcp, Socket, Data}, #state{downstream=Downstream,
                                         upstream=Upstream} = State) ->
     %% Set up the socket to receive another message
@@ -150,7 +150,7 @@ init({Src, Dst, Opts}) ->
                     gen_tcp:close(Upstream),
                     gen_tcp:close(Downstream),
                     receive retry_not_ready_vbuckets -> ok end,
-                    exit(retry_not_ready_vbuckets);
+                    exit_retry_not_ready_vbuckets();
                true -> ok
             end;
         true -> ok
@@ -192,6 +192,10 @@ upstream_sender_loop(Upstream) ->
             ok = gen_tcp:send(Upstream, Data)
     end,
     upstream_sender_loop(Upstream).
+
+exit_retry_not_ready_vbuckets() ->
+    ?log_info("dying to check if some previously not yet ready vbuckets are ready to replicate from"),
+    exit(normal).
 
 terminate(_Reason, #state{upstream_sender=UpstreamSender} = State) ->
     timer:kill_after(?TERMINATE_TIMEOUT),
