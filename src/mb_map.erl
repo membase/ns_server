@@ -13,7 +13,8 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc Functions for manipulating vbucket maps.
+%% @doc Functions for manipulating vbucket maps. All code here is
+%% supposed to be purely functional. At least on outside.
 
 -module(mb_map).
 
@@ -152,8 +153,6 @@ is_valid(Map) ->
     case length(Map) of
         0 ->
             empty;
-        NumVBuckets when NumVBuckets band (NumVBuckets - 1) /= 0 ->
-            not_power_of_two;
         _ ->
             case length(hd(Map)) of
                 0 ->
