@@ -82,10 +82,6 @@ with_subdb(Db, VBucket, Fun) ->
     UserCtx = #user_ctx{roles=[<<"_admin">>]},
     with_subdb(Db, VBucket, UserCtx, Fun).
 
-update_doc(_Db, #doc{id = <<?LOCAL_DOC_PREFIX, _/binary>>},
-           _Options) ->
-    ok;
-
 update_doc(#db{filepath = undefined, name=Name},
            #doc{id = <<"_design/",_/binary>>} = Doc, _Options) ->
     case valid_ddoc(Doc) of
@@ -111,6 +107,37 @@ update_doc(#db{filepath = undefined, name=Name} = Db,
             %% rpc transforms exceptions into values; need to rethrow them
             throw(Error)
     end.
+
+update_docs(#db{name = DbName} = Db,
+            [#doc{id = <<?LOCAL_DOC_PREFIX, Rest/binary>>} = Doc],
+            Options) ->
+    [VBucketStr | _] = string:tokens(?b2l(Rest), "-"),
+    VBucket = list_to_integer(VBucketStr),
+    [Bucket, _Master] = string:tokens(binary_to_list(DbName), [$/]),
+    {ok, Stats0} = ns_memcached:stats(Bucket, <<"checkpoint">>),
+    OpenCheckpointId = proplists:get_value(
+        ?l2b(["vb_", VBucket, ":open_checkpoint_id"]), Stats0),
+
+    PollResult = misc:poll_for_condition(
+        fun() ->
+            {ok, Stats1} = ns_memcached:stats(Bucket, <<"checkpoint">>),
+            PersistedCheckpointId = proplists:get_value(
+                ?l2b(["vb_", VBucket, ":persisted_checkpoint_id"]), Stats1),
+            NumItemsForPersistence = proplists:get_value(
+                ?l2b(["vb_", VBucket, ":num_items_for_persistence"]), Stats1),
+            NumItemsForPersistence == <<"0">> orelse
+            PersistedCheckpointId == OpenCheckpointId
+        end,
+        10000,
+        100),
+
+    case PollResult of
+    ok ->
+        ok = couch_db:update_doc(Db, Doc, Options);
+    timeout ->
+        ?log_warning("Failed to record replication checkpoint ~p. Timed out "
+                     "waiting for items to be persisted.", [Doc#doc.id])
+    end;
 
 update_docs(#db{filepath = undefined, name = Name}, Docs, _Options) ->
 
@@ -282,9 +309,6 @@ set_revs_limit(Db, Limit) ->
 get_revs_limit(Db) ->
     exit(not_implemented(get_revs_limit, [Db])).
     %% couch_db:get_revs_limit(Db).
-
-open_doc(_Db, <<?LOCAL_DOC_PREFIX, _/binary>>, _Options) ->
-    {not_found, missing};
 
 open_doc(#db{filepath = undefined} = Db, <<"_design/",_/binary>> = DocId, Options) ->
     with_subdb(Db, <<"master">>,
