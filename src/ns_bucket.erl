@@ -57,7 +57,10 @@
          update_bucket_props/2,
          update_bucket_props/3,
          node_bucket_names/2,
-         node_bucket_names/1]).
+         node_bucket_names/1,
+         update_vbucket_map_history/2,
+         past_vbucket_maps/0,
+         config_to_map_options/1]).
 
 
 %%%===================================================================
@@ -615,6 +618,30 @@ node_bucket_names(Node, BucketsConfigs) ->
 node_bucket_names(Node) ->
     node_bucket_names(Node, get_buckets()).
 
+config_to_map_options(Config) ->
+    [{max_slaves, proplists:get_value(max_slaves, Config, 10)}].
+
+update_vbucket_map_history(Map, Options) ->
+    History = past_vbucket_maps(),
+    SanifiedOptions = lists:ukeysort(1, lists:keydelete(maps_history, 1, Options)),
+    NewEntry = {Map, SanifiedOptions},
+    History2 = case lists:member(NewEntry, History) of
+                   true ->
+                       History;
+                   false ->
+                       History1 = [NewEntry | History],
+                       case length(History1) > 10 of
+                           true -> lists:sublist(History1, 10);
+                           false -> History1
+                       end
+               end,
+    ns_config:set(vbucket_map_history, History2).
+
+past_vbucket_maps() ->
+    case ns_config:search(vbucket_map_history) of
+        {value, V} -> V;
+        false -> []
+    end.
 %%
 %% Internal functions
 %%

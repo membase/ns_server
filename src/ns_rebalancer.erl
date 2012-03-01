@@ -54,7 +54,7 @@ failover(Bucket, Node) ->
         membase ->
             %% Promote replicas of vbuckets on this node
             Map = proplists:get_value(map, BucketConfig),
-            Map1 = promote_replicas(Map, [Node]),
+            Map1 = mb_map:promote_replicas(Map, [Node]),
             case Map1 of
                 undefined ->
                     ok;
@@ -89,6 +89,9 @@ failover(Bucket, Node) ->
             ns_bucket:set_servers(Bucket, lists:delete(Node, Servers))
     end.
 
+generate_vbucket_map(CurrentMap, KeepNodes, BucketConfig) ->
+    Opts = [{maps_history, ns_bucket:past_vbucket_maps()} | ns_bucket:config_to_map_options(BucketConfig)],
+    {mb_map:generate_map(CurrentMap, KeepNodes, Opts), Opts}.
 
 generate_initial_map(BucketConfig) ->
     Chain = lists:duplicate(proplists:get_value(num_replicas, BucketConfig) + 1,
@@ -96,7 +99,8 @@ generate_initial_map(BucketConfig) ->
     Map1 = lists:duplicate(proplists:get_value(num_vbuckets, BucketConfig),
                           Chain),
     Servers = proplists:get_value(servers, BucketConfig),
-    mb_map:balance(Map1, Servers, config_to_opts(BucketConfig)).
+    {MapRV, _} = generate_vbucket_map(Map1, Servers, BucketConfig),
+    MapRV.
 
 
 rebalance(KeepNodes, EjectNodes, FailedNodes) ->
@@ -161,9 +165,9 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
 %% was given by whatever failed.
 rebalance(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets) ->
     Map = proplists:get_value(map, Config),
-    Opts = config_to_opts(Config),
-    FastForwardMap = mb_map:balance(Map, KeepNodes, Opts),
+    {FastForwardMap, MapOptions} = generate_vbucket_map(Map, KeepNodes, Config),
     ?rebalance_info("Target map: ~p", [FastForwardMap]),
+    ns_bucket:update_vbucket_map_history(FastForwardMap, MapOptions),
     ns_bucket:set_fast_forward_map(Bucket, FastForwardMap),
     ProgressFun =
         fun (P) ->
@@ -202,10 +206,6 @@ unbalanced(Map, Servers) ->
 %%
 
 %% @private
-%% @doc Generate rebalance options from a bucket config. This allows
-%% us to manage defaults and add options in one place.
-config_to_opts(Config) ->
-    [{max_slaves, proplists:get_value(max_slaves, Config, 10)}].
 
 
 %% @doc Eject a list of nodes from the cluster, making sure this node is last.
@@ -241,27 +241,6 @@ histograms(Map, Servers) ->
                       Missing ++ H
               end, Histograms).
 
-
-%% removes RemapNodes from head of vbucket map Map. Returns new map
-promote_replicas(undefined, _RemapNode) ->
-    undefined;
-promote_replicas(Map, RemapNodes) ->
-    [promote_replica(Chain, RemapNodes) || Chain <- Map].
-
-%% removes RemapNodes from head of vbucket map Chain for vbucket
-%% V. Actually switches master if head of Chain is in
-%% RemapNodes. Returns new chain.
-promote_replica(Chain, RemapNodes) ->
-    Chain1 = [case lists:member(Node, RemapNodes) of
-                  true -> undefined;
-                  false -> Node
-              end || Node <- Chain],
-    %% Chain now might begin with undefined - put all the undefineds
-    %% at the end
-    {Undefineds, Rest} = lists:partition(fun (undefined) -> true;
-                                             (_) -> false
-                                         end, Chain1),
-    Rest ++ Undefineds.
 
 
 verify_replication(Bucket, Nodes, Map) ->
