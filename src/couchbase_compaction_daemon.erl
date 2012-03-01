@@ -147,7 +147,7 @@ compact_loop(Parent) ->
                 end,
                 {0, []}, couch_util:get_value(map, Config, [])),
             NameBin = ?l2b(Name),
-            {NameBin, VbNames, bucket_compact_config(NameBin)}
+            {NameBin, lists:reverse(VbNames), bucket_compact_config(NameBin)}
         end,
         CouchbaseBuckets),
     DidCompact = lists:map(
