@@ -91,7 +91,6 @@ do_cleanup(Bucket, Options, Config) ->
                     %% pull. And we don't care if some of them are
                     %% replicating from bucket members.
                     ns_vbm_sup:set_replicas_dst(Bucket, NodesReplicas, Servers),
-                    capi_ddoc_replication_srv:force_update(Bucket),
                     case Down of
                         [] ->
                             maybe_stop_replication_status();
