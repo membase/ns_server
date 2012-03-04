@@ -47,7 +47,8 @@
           start_time::tuple(),
           bucket::nonempty_string(),
           sock::port(),
-          type::atom()
+          type::atom(),
+          id::integer()
          }).
 
 %% external API
@@ -89,17 +90,17 @@
 %% gen_server API implementation
 %%
 
-start_link({Bucket, Type} = Tuple) ->
+start_link({Bucket, Type, Id} = Tuple) ->
     %% Use proc_lib so that start_link doesn't fail if we can't
     %% connect.
-    gen_server:start_link({local, server(Bucket, Type)}, ?MODULE, Tuple, []).
+    gen_server:start_link({local, server(Bucket, Type, Id)}, ?MODULE, Tuple, []).
 
 
 %%
 %% gen_server callback implementation
 %%
 
-init({Bucket, Type}) ->
+init({Bucket, Type, Id}) ->
     %% this trap_exit is necessary for terminate callback to work
     process_flag(trap_exit, true),
 
@@ -122,7 +123,8 @@ init({Bucket, Type}) ->
                start_time=now(),
                sock=Sock,
                bucket=Bucket,
-               type=Type}
+               type=Type,
+               id=Id}
             };
         {error, Error} ->
             {stop, Error}
@@ -783,9 +785,17 @@ ensure_bucket_config(Sock, _Bucket, memcached, _MaxSize) ->
 
 
 server(Bucket, data) ->
-    list_to_atom(?MODULE_STRING ++ "-$data-" ++ Bucket);
+    NumInstances = misc:getenv_int("NUM_NS_MEMCACHED_DATA_INSTANCES",
+                                   ?NUM_NS_MEMCACHED_DATA_INSTANCES),
+    Id = erlang:phash2(now(), NumInstances) + 1,
+    server(Bucket, data, Id);
 server(Bucket, stats) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
+
+server(Bucket, data, Id) ->
+    list_to_atom(?MODULE_STRING ++ "-$data-" ++ integer_to_list(Id) ++ "-" ++ Bucket);
+server(Bucket, stats, 0) ->
+    server(Bucket, stats).
 
 has_started(Sock) ->
     Fun = fun (<<"ep_warmup_thread">>, V, _) -> V;
