@@ -37,8 +37,8 @@ child_specs(BucketName) ->
     [{{ns_memcached, BucketName}, {ns_memcached, start_link, [BucketName]},
       %% ns_memcached waits for the bucket to sync to disk before exiting
       permanent, 86400000, worker, [ns_memcached]},
-     {{ns_vbm_sup, BucketName}, {ns_vbm_sup, start_link, [BucketName]},
-      permanent, 1000, worker, [ns_vbm_sup]},
+     {{ns_vbm_new_sup, BucketName}, {ns_vbm_new_sup, start_link, [BucketName]},
+      permanent, 1000, worker, [ns_vbm_new_sup]},
      {{stats_collector, BucketName}, {stats_collector, start_link, [BucketName]},
       permanent, 1000, worker, [stats_collector]},
      {{stats_archiver, BucketName}, {stats_archiver, start_link, [BucketName]},

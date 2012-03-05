@@ -194,7 +194,7 @@ build_local_safeness_info(BucketNames) ->
         [{BucketName,
           [{SrcNode, erlang:phash2(VBuckets)} ||
               {SrcNode, _DstNode, VBuckets} <-
-                  ns_vbm_sup:node_replicator_triples(BucketName, node())]
+                  ns_vbm_new_sup:node_replicator_triples(BucketName, node())]
          }
          || BucketName <- BucketNames],
     [{outgoing_replications_safeness_level, ReplicationsSafeness},

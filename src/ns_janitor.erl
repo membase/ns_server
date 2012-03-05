@@ -88,7 +88,7 @@ do_cleanup(Bucket, Options, Config) ->
                     %% don't need to touch them here because replication is
                     %% pull. And we don't care if some of them are
                     %% replicating from bucket members.
-                    ns_vbm_sup:set_replicas(Bucket, Replicas, Servers),
+                    ns_vbm_new_sup:set_replicas(Bucket, Replicas, Servers),
                     case Down of
                         [] ->
                             maybe_stop_replication_status();
@@ -165,7 +165,7 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                                  "This should never happen, but we have an "
                                  "active master, so I'm deleting it.",
                                  [N, Bucket]),
-                      %% %% ns_vbm_sup:stop_replications(N, Bucket, [VBucket]),
+                      %% %% ns_vbm_new_sup:stop_replications(N, Bucket, [VBucket]),
                       %%
                       %% was here, but because we're going to call
                       %% set_replicas at the end of janitor pass this is not
@@ -183,7 +183,7 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                   ({_, {DstNode, _}} = Pair) ->
                       ?log_info("Killing incoming replicators for vbucket ~p on"
                                 " replica ~p because of ~p", [VBucket, DstNode, Pair]),
-                      ns_vbm_sup:stop_replications(Bucket, DstNode, [VBucket])
+                      ns_vbm_new_sup:stop_replications(Bucket, DstNode, [VBucket])
               end, misc:pairs(C)),
             HaveAllCopies = lists:all(
                               fun ({undefined, _}) -> false;

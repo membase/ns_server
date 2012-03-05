@@ -13,11 +13,11 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
--module(ns_vbm_sup).
+-module(ns_vbm_new_sup).
 
 -include("ns_common.hrl").
 
-%% identifier of ns_vbm_sup childs in supervisors. NOTE: vbuckets
+%% identifier of ns_vbm_new_sup childs in supervisors. NOTE: vbuckets
 %% field is sorted. We could use ordsets::ordset() type, but we also
 %% want to underline that vbuckets field is never empty.
 -record(new_child_id, {vbuckets::[vbucket_id(), ...],
