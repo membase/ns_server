@@ -112,6 +112,7 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _) -> {ok, State}.
 
 handle_cast(nodes_wanted_updated, State) ->
+    self() ! notify_clients,
     do_nodes_wanted_updated(do_nodes_wanted()),
     {noreply, State};
 
