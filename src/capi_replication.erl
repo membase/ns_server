@@ -16,7 +16,7 @@
 
 -module(capi_replication).
 
--export([get_missing_revs/2, update_replicated_docs/3, update_replicated_doc/3]).
+-export([get_missing_revs/2, update_replicated_docs/3]).
 
 -include("couch_db.hrl").
 -include("mc_entry.hrl").
