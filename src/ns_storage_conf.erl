@@ -337,7 +337,7 @@ do_cluster_storage_info(NodeInfos) ->
         = lists:foldl(fun ({Name, _}, {RAM, HDD}) ->
                               BasicStats = menelaus_stats:basic_stats(Name, AllNodes),
                               {RAM + proplists:get_value(memUsed, BasicStats),
-                               HDD + proplists:get_value(diskUsed, BasicStats)}
+                               HDD + proplists:get_value(diskUsed, BasicStats, 0)}
                       end, {0, 0}, AllBuckets),
     lists:map(fun ({ram, Props}) ->
                       {ram, add_used_by_data_prop(BucketsRAMUsage, Props)};
