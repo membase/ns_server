@@ -37,7 +37,11 @@ start_link(Bucket) ->
     gen_server:start_link({local, server(Bucket)}, ?MODULE, Bucket, []).
 
 init(Bucket) ->
-    start_timer(),
+    {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
+    case ns_bucket:bucket_type(BucketConfig) of
+        membase -> start_timer();
+        memcached -> ok
+    end,
     {ok, #state{bucket=Bucket}}.
 
 handle_call(fetch_stats, _From, State) ->
