@@ -572,7 +572,7 @@ ensure_bucket_config(Sock, Bucket, membase, {MaxSize, DBDir}) ->
         X1 when is_binary(X1) ->
             ?log_info("Changing max_size of ~p from ~s to ~s", [Bucket, X1,
                                                                 MaxSizeBin]),
-            mc_client_binary:set_flush_param(Sock, <<"max_size">>, MaxSizeBin)
+            ok = mc_client_binary:set_flush_param(Sock, <<"max_size">>, MaxSizeBin)
     end,
     case ActualDBDirBin of
         DBDirBin ->
