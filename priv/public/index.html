@@ -459,7 +459,7 @@
                 <th class="disk_fetch">Disk Fetches/sec</th>
                 <th class="hit_ratio">Hit Ratio</th>
                 <th>RAM Usage/Quota</th>
-                <th>Disk Usage</th>
+                <th>Disk / Data Usage</th>
                 <th class="last"></th>
               </tr>
               <!-- {% if (!rows.length) { %} -->
@@ -480,7 +480,9 @@
                 {% if (this.bucketType == 'membase') { %}<td>{% if (this.basicStats.diskFetches !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}{% } else { %}N/A{% } %}</td>{% } %}
                 {% if (this.bucketType == 'memcached') { %}<td>{%= h(truncateTo3Digits(this.basicStats.hitRatio * 100)) %}%</td>{% } %}
                 <td>{%= V.formatQuantity(this.basicStats.memUsed) %} / {%= V.formatQuantity(this.quota.ram) %}</td>
-                <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}</td>
+                <td>{% if (this.bucketType == 'membase') { %}
+                {%= V.formatQuantity(this.basicStats.diskUsed) %} / {%= V.formatQuantity(this.basicStats.dataUsed) %}
+                {% } else { %}N/A{% } %}</td>
                 <td>
                   {% if (this.bucketType == 'membase') { %}
                     <a class="list_button disable-if-stale" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>

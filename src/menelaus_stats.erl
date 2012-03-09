@@ -35,16 +35,10 @@
          serve_stats_directory/3]).
 
 %% External API
-
 bucket_disk_usage(BucketName) ->
-    bucket_disk_usage(BucketName, ns_bucket:live_bucket_nodes(BucketName)).
-
-bucket_disk_usage(BucketName, Nodes) ->
-    {Res, _} = rpc:multicall(Nodes, ns_storage_conf, local_bucket_disk_usage, [BucketName], 1000),
-    lists:sum([case is_number(X) of
-                   true -> X;
-                   _ -> 0
-               end || X <- Res]).
+    {_, _, _, _, DiskUsed, _}
+        = last_membase_sample(BucketName, ns_bucket:live_bucket_nodes(BucketName)),
+    DiskUsed.
 
 bucket_ram_usage(BucketName) ->
     %% NOTE: we're getting last membase sample, but first stat name is
@@ -59,12 +53,15 @@ extract_stat(StatName, Sample) ->
 
 last_membase_sample(BucketName, Nodes) ->
     lists:foldl(fun ({_Node, []}, Acc) -> Acc;
-                    ({_Node, [Sample|_]}, {AccMem, AccItems, AccOps, AccFetches}) ->
+                    ({_Node, [Sample|_]}, {AccMem, AccItems, AccOps, AccFetches, AccDisk, AccData}) ->
                         {extract_stat(mem_used, Sample) + AccMem,
                          extract_stat(curr_items, Sample) + AccItems,
                          extract_stat(ops, Sample) + AccOps,
-                         extract_stat(ep_bg_fetched, Sample) + AccFetches}
-                end, {0, 0, 0, 0}, invoke_archiver(BucketName, Nodes, {1, minute, 1})).
+                         extract_stat(ep_bg_fetched, Sample) + AccFetches,
+                         extract_stat(couch_docs_actual_disk_size, Sample) +
+                           extract_stat(couch_view_actual_disk_size, Sample) + AccDisk,
+                         extract_stat(couch_docs_data_size, Sample) + AccData}
+                end, {0, 0, 0, 0, 0, 0}, invoke_archiver(BucketName, Nodes, {1, minute, 1})).
 
 last_memcached_sample(BucketName, Nodes) ->
     {MemUsed,
@@ -88,18 +85,19 @@ last_memcached_sample(BucketName, Nodes) ->
      end}.
 
 last_bucket_stats(membase, BucketName, Nodes) ->
-    {MemUsed, ItemsCount, Ops, Fetches} = last_membase_sample(BucketName, Nodes),
+    {MemUsed, ItemsCount, Ops, Fetches, Disk, Data}
+        = last_membase_sample(BucketName, Nodes),
     [{opsPerSec, Ops},
      {diskFetches, Fetches},
      {itemCount, ItemsCount},
-     {diskUsed, bucket_disk_usage(BucketName, Nodes)},
+     {diskUsed, Disk},
+     {dataUsed, Data},
      {memUsed, MemUsed}];
 last_bucket_stats(memcached, BucketName, Nodes) ->
     {MemUsed, ItemsCount, Ops, HitRatio} = last_memcached_sample(BucketName, Nodes),
     [{opsPerSec, Ops},
      {hitRatio, HitRatio},
      {itemCount, ItemsCount},
-     {diskUsed, bucket_disk_usage(BucketName, Nodes)},
      {memUsed, MemUsed}].
 
 basic_stats(BucketName, Nodes) ->
