@@ -485,7 +485,8 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                        true ->
                            case BucketConfig of
                                false ->
-                                   case ns_bucket:is_valid_bucket_name(BucketName) of
+                                   %% we'll give error on missing bucket name later
+                                   case BucketName =:= undefined orelse ns_bucket:is_valid_bucket_name(BucketName) of
                                        false ->
                                            {error, name, <<"Bucket name can only contain characters in range A-Z, a-z, 0-9 as well as underscore, period, dash & percent. Consult the documentation.">>};
                                        _ ->
@@ -501,6 +502,8 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                    case BucketName of
                        [] ->
                            {error, name, <<"Bucket name cannot be empty">>};
+                       undefined ->
+                           {error, name, <<"Bucket name needs to be specified">>};
                        _ -> undefined
                    end,
                    case AuthType of
@@ -767,6 +770,22 @@ basic_bucket_params_screening_test() ->
                                                 {"authType", "sasl"}, {"saslPassword", ""},
                                                 {"ramQuotaMB", "1024"}, {"replicaNumber", "2"}],
                                                AllBuckets),
-    ?assertEqual(true, lists:member(ramQuotaMB, proplists:get_keys(E7))).
+    ?assertEqual(true, lists:member(ramQuotaMB, proplists:get_keys(E7))),
+
+    {_OK8, E8} = basic_bucket_params_screening(true, undefined,
+                                               [{"bucketType", "membase"},
+                                                {"authType", "sasl"}, {"saslPassword", ""},
+                                                {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
+                                               AllBuckets),
+    ?assertEqual([{name, <<"Bucket name needs to be specified">>}], E8),
+
+    {_OK9, E9} = basic_bucket_params_screening(false, undefined,
+                                               [{"bucketType", "membase"},
+                                                {"authType", "sasl"}, {"saslPassword", ""},
+                                                {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
+                                               AllBuckets),
+    ?assertEqual([{name, <<"Bucket with given name doesn't exist">>}], E9),
+
+    ok.
 
 -endif.
