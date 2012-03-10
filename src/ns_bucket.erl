@@ -519,14 +519,10 @@ delete_bucket(BucketName) ->
 
 filter_ready_buckets(BucketInfos) ->
     lists:filter(fun ({_Name, PList}) ->
-                         case bucket_type(PList) of
-                             memcached -> true;
-                             membase ->
-                                 case proplists:get_value(servers, PList, []) of
-                                     [_|_] = List ->
-                                         lists:member(node(), List);
-                                     _ -> false
-                                 end
+                         case proplists:get_value(servers, PList, []) of
+                             [_|_] = List ->
+                                 lists:member(node(), List);
+                             _ -> false
                          end
                  end, BucketInfos).
 
