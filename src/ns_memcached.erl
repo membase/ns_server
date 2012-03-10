@@ -258,21 +258,17 @@ handle_info(Msg, State) ->
 
 
 terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
-    Deleting = try ns_bucket:get_bucket(Bucket) of
-                   not_present -> true;
-                   {ok, _} -> false
+    NsConfig = try ns_config:get()
                catch T:E ->
-                       ?log_error("Failed to reach ns_bucket:get_bucket(~p). ~p:~p~n~p~n",
-                                  [Bucket,T,E,erlang:get_stacktrace()]),
-                       false
-               end orelse try ns_config:search(i_am_a_dead_man) of
-                              {value, true} -> true;
-                              _ -> false
-                          catch T1:E1 ->
-                                  ?log_error("Failed to reach ns_config. ~p:~p~n~p~n",
-                                             [T1,E1,erlang:get_stacktrace()]),
-                                  false
-                          end,
+                       ?log_error("Failed to reach ns_config:get() ~p:~p~n~p~n",
+                                  [T,E,erlang:get_stacktrace()]),
+                       undefined
+               end,
+    BucketConfigs = ns_bucket:get_buckets(NsConfig),
+    NoBucket = NsConfig =/= undefined andalso not lists:member(Bucket, ns_bucket:node_bucket_names(node(), BucketConfigs)),
+    NodeDying = NsConfig =/= undefined andalso ns_config:search(NsConfig, i_am_a_dead_man),
+    Deleting = NoBucket orelse NodeDying,
+
     if
         Reason == normal; Reason == shutdown ->
             ?user_log(2, "Shutting down bucket ~p on ~p for ~s",
@@ -282,7 +278,10 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                                        end]),
             try
                 ok = mc_client_binary:delete_bucket(Sock, Bucket, [{force, Deleting}]),
-                case Deleting of
+                case NoBucket of
+                    %% if node is being ejected db files will be mass
+                    %% deleted (and possibly backed up) by ns_cluster.
+                    %% So we delete db files only when bucket was regularly deleted
                     true -> ns_storage_conf:delete_db_files(Bucket);
                     _ -> ok
                 end
