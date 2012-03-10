@@ -82,7 +82,7 @@
 start_link(Bucket) ->
     %% Use proc_lib so that start_link doesn't fail if we can't
     %% connect.
-    gen_server:start_link(?MODULE, Bucket, []).
+    gen_server:start_link({local, server(Bucket)}, ?MODULE, Bucket, []).
 
 
 %%
@@ -94,7 +94,6 @@ init(Bucket) ->
     {ok, Timer} = timer:send_interval(?CHECK_WARMUP_INTERVAL, check_started),
     Sock = connect(),
     ensure_bucket(Sock, Bucket),
-    register(server(Bucket), self()),
 
     % this trap_exit is necessary for terminate callback to work
     process_flag(trap_exit, true),
@@ -259,8 +258,6 @@ handle_info(Msg, State) ->
 
 
 terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
-    %% Unregister so nothing else tries to talk to us
-    unregister(server(Bucket)),
     Deleting = try ns_bucket:get_bucket(Bucket) of
                    not_present -> true;
                    {ok, _} -> false
