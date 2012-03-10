@@ -345,7 +345,9 @@ handle_setup_default_bucket_post(Req) ->
                 ok ->
                     respond_bucket_created(Req, "default", "default");
                 {errors, Errors} ->
-                    reply_json(Req, {struct, Errors}, 400)
+                    reply_json(Req, {struct, Errors}, 400);
+                {errors_500, Errors} ->
+                    reply_json(Req, {struct, Errors}, 503)
             end;
         {true, {ok, _, JSONSummaries}} ->
             reply_json(Req, {struct, [{errors, {struct, []}},
