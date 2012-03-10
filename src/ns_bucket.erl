@@ -43,6 +43,7 @@
          maybe_get_bucket/2,
          moxi_port/1,
          name_conflict/1,
+         names_conflict/2,
          node_locator/1,
          num_replicas/1,
          ram_quota/1,
@@ -602,6 +603,8 @@ is_persistent(BucketName) ->
     {ok, BucketConfig} = get_bucket(BucketName),
     bucket_type(BucketConfig) =:= membase.
 
+names_conflict(BucketNameA, BucketNameB) ->
+    string:to_lower(BucketNameA) =:= string:to_lower(BucketNameB).
 
 %% @doc Check if a bucket exists. Case insensitive.
 name_conflict(BucketName) ->
