@@ -62,6 +62,10 @@ init([ServerName, Mod, Args]) ->
       empty),
     Self ! replicate_newnodes_docs,
 
+    %% Explicitly ask all available nodes to send their documents to us
+    [{ServerName, N} ! replicate_newnodes_docs ||
+        N <- Mod:get_remote_nodes(ModState)],
+
     {ok, #state{module=Mod, module_state=ModState, local_doc_infos=DocInfos,
                 server_name=ServerName}}.
 
