@@ -88,7 +88,18 @@ do_cleanup(Bucket, Options, Config) ->
                     %% don't need to touch them here because replication is
                     %% pull. And we don't care if some of them are
                     %% replicating from bucket members.
-                    ns_vbm_new_sup:set_replicas(Bucket, Replicas, Servers),
+                    cb_replication:maybe_switch_replication_mode(Bucket),
+
+                    Nodes =
+                        case cb_replication:get_mode(Bucket) of
+                            new ->
+                                Servers;
+                            compat ->
+                                ns_node_disco:nodes_actual_proper()
+                        end,
+
+                    cb_replication:set_replicas(Bucket, Replicas, Nodes),
+
                     case Down of
                         [] ->
                             maybe_stop_replication_status();
@@ -165,7 +176,7 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                                  "This should never happen, but we have an "
                                  "active master, so I'm deleting it.",
                                  [N, Bucket]),
-                      %% %% ns_vbm_new_sup:stop_replications(N, Bucket, [VBucket]),
+                      %% %% cb_replication:stop_replications(N, Bucket, [VBucket]),
                       %%
                       %% was here, but because we're going to call
                       %% set_replicas at the end of janitor pass this is not
@@ -180,10 +191,12 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                   ({{_, zombie}, _}) -> ok;
                   ({_, {_, zombie}}) -> ok;
                   ({{undefined, _}, _}) -> ok;
-                  ({_, {DstNode, _}} = Pair) ->
-                      ?log_info("Killing incoming replicators for vbucket ~p on"
-                                " replica ~p because of ~p", [VBucket, DstNode, Pair]),
-                      ns_vbm_new_sup:stop_replications(Bucket, DstNode, [VBucket])
+                  ({{SrcNode, _}, {DstNode, _}} = Pair) ->
+                      ?log_info("Killing replicator from ~p to ~p "
+                                "for vbucket ~p because of ~p",
+                                [SrcNode, DstNode, VBucket, Pair]),
+                      cb_replication:stop_replications(Bucket, SrcNode, DstNode,
+                                                       [VBucket])
               end, misc:pairs(C)),
             HaveAllCopies = lists:all(
                               fun ({undefined, _}) -> false;

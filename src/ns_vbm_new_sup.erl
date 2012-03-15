@@ -24,15 +24,7 @@
                        src_node::node()}).
 
 %% API
--export([start_link/1,
-         add_replica/4,
-         kill_replica/4,
-         set_replicas/2,
-         set_replicas/3,
-         apply_changes/2,
-         stop_replications/3,
-         replicas/2,
-         node_replicator_triples/2]).
+-export([start_link/1]).
 
 %% Callbacks
 -export([server_name/1, supervisor_node/2,
@@ -44,30 +36,6 @@
 %%
 start_link(Bucket) ->
     cb_gen_vbm_sup:start_link(?MODULE, Bucket).
-
-add_replica(Bucket, SrcNode, DstNode, VBucket) ->
-    cb_gen_vbm_sup:add_replica(?MODULE, Bucket, SrcNode, DstNode, VBucket).
-
-kill_replica(Bucket, SrcNode, DstNode, VBucket) ->
-    cb_gen_vbm_sup:kill_replica(?MODULE, Bucket, SrcNode, DstNode, VBucket).
-
-set_replicas(Bucket, Replicas) ->
-    cb_gen_vbm_sup:set_replicas(?MODULE, Bucket, Replicas).
-
-set_replicas(Bucket, Replicas, AllNodes) ->
-    cb_gen_vbm_sup:set_replicas(?MODULE, Bucket, Replicas, AllNodes).
-
-apply_changes(Bucket, ChangeTuples) ->
-    cb_gen_vbm_sup:apply_changes(?MODULE, Bucket, ChangeTuples).
-
-stop_replications(Bucket, Node, VBuckets) ->
-    cb_gen_vbm_sup:stop_replications(?MODULE, Bucket, Node, VBuckets).
-
-replicas(Bucket, Nodes) ->
-    cb_gen_vbm_sup:replicas(?MODULE, Bucket, Nodes).
-
-node_replicator_triples(Bucket, Node) ->
-    cb_gen_vbm_sup:node_replicator_triples(?MODULE, Bucket, Node).
 
 %%
 %% Callbacks

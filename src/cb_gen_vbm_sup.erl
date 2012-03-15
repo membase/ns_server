@@ -34,6 +34,8 @@
 
 -type replicator() :: any().
 
+-define(RPC_TIMEOUT, 20000).
+
 %%
 %% API
 %%
@@ -132,25 +134,32 @@ do_set_replicas(Policy, Bucket, Replicators, AllNodes) ->
         true ->
             GrouppedReplicators = group_by_node(Policy, AllNodes, Replicators),
 
-            lists:foreach(
-              fun (Node) ->
-                      NodeReplicators = dict:fetch(Node, GrouppedReplicators),
+            try
+                misc:parallel_map(
+                  fun (Node) ->
+                          NodeReplicators = dict:fetch(Node, GrouppedReplicators),
 
-                      case dict:size(NodeReplicators) of
-                          0 ->
-                              kill_all_children(Policy, Bucket, Node);
-                          _ ->
-                              try
-                                  set_node_replicas(Policy, Bucket,
-                                                    Node, NodeReplicators)
-                              catch
-                                  E:R ->
-                                      ?log_error("Unable to start replicators "
-                                                 "on ~p for bucket ~p: ~p",
-                                                 [Node, Bucket, {E, R}])
-                              end
-                      end
-              end, AllNodes),
+                          case dict:size(NodeReplicators) of
+                              0 ->
+                                  kill_all_children(Policy, Bucket, Node);
+                              _ ->
+                                  try
+                                      set_node_replicas(Policy, Bucket,
+                                                        Node, NodeReplicators)
+                                  catch
+                                      E:R ->
+                                          ?log_error("Unable to start replicators "
+                                                     "on ~p for bucket ~p: ~p",
+                                                     [Node, Bucket, {E, R}])
+                                  end
+                          end
+                  end, AllNodes, ?RPC_TIMEOUT)
+            catch
+                exit:timeout ->
+                    ?log_error("Timeouted while trying to "
+                               "start replications for bucket ~p. Ignoring.",
+                               [Bucket])
+            end,
 
             ok;
         false ->
@@ -259,8 +268,8 @@ kill_child(Policy, Bucket, SrcNode, DstNode, Replicator) ->
     SupNode = Policy:supervisor_node(SrcNode, DstNode),
     kill_child(Policy, Bucket, SupNode, Replicator).
 
--spec kill_all_children(module(), bucket_name(), node()) -> ok.
-kill_all_children(Policy, Bucket, Node) ->
+-spec kill_all_children(module(), bucket_name(), node() | [node()]) -> ok.
+kill_all_children(Policy, Bucket, Node) when is_atom(Node) ->
     try children(Policy, Bucket, Node) of
         Children ->
             lists:foreach(
@@ -271,8 +280,25 @@ kill_all_children(Policy, Bucket, Node) ->
             %% If the supervisor isn't running, obviously there's no
             %% replication.
             ok
-    end.
+    end;
+kill_all_children(Policy, Bucket, Nodes) ->
+    try
+        misc:parallel_map(
+          fun (Node) ->
+                  kill_all_children(Policy, Bucket, Node)
+          end, Nodes, ?RPC_TIMEOUT)
+    catch
+        exit:timeout ->
+            ?log_error("Failed to kill some of the replications for bucket ~p",
+                       [Bucket]),
+            throw({kill_all_children_failed, Bucket});
+        exit:{child_died, Reason} ->
+            ?log_error("Failed to kill some of the replications for bucket ~p: ~p",
+                       [Bucket, Reason]),
+            throw({kill_all_children_failed, Bucket, Reason})
+    end,
 
+    ok.
 
 -spec start_child(module(), bucket_name(),
                   node(), node(), [vbucket_id(),...]) -> Ret
