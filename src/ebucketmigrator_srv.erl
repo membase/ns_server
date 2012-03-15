@@ -44,7 +44,7 @@
                }).
 
 %% external API
--export([start_link/3, start_link/4]).
+-export([start_link/3, start_link/4, build_args/5]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -271,6 +271,28 @@ start_link(Src, Dst, Opts) ->
 start_link(Node, Src, Dst, Opts) ->
     misc:start_link(Node, ?MODULE, init, [{Src, Dst, Opts}]).
 
+-spec build_args(Bucket::bucket_name(),
+                 SrcNode::node(),
+                 DstNode::node(),
+                 VBuckets::[vbucket_id(),...],
+                 TakeOver::boolean()) ->
+                        [any(), ...].
+build_args(Bucket, SrcNode, DstNode, VBuckets, TakeOver) ->
+    {User, Pass} = ns_bucket:credentials(Bucket),
+    Suffix = case TakeOver of
+                 true ->
+                     [VBucket] = VBuckets,
+                     integer_to_list(VBucket);
+                 false ->
+                     %% We want to reuse names for replication.
+                     atom_to_list(DstNode)
+             end,
+    [ns_memcached:host_port(SrcNode), ns_memcached:host_port(DstNode),
+     [{username, User},
+      {password, Pass},
+      {vbuckets, VBuckets},
+      {takeover, TakeOver},
+      {suffix, Suffix}]].
 
 %%
 %% Internal functions

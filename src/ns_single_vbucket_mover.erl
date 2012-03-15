@@ -107,7 +107,7 @@ run_mover(Bucket, V, N1, N2, Tries) ->
         {{ok, active}, {memcached_error, not_my_vbucket, _}} ->
             %% Standard starting state
             ok = ns_memcached:set_vbucket(N2, Bucket, V, replica),
-            {ok, Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
+            {ok, Pid} = spawn_ebucketmigrator_mover(Bucket, V, N1, N2),
             wait_for_mover(Bucket, V, N1, N2, Tries, Pid);
         {{ok, dead}, {ok, active}} ->
             %% Standard ending state
@@ -126,7 +126,7 @@ run_mover(Bucket, V, N1, N2, Tries) ->
                true ->
                     ok
             end,
-            {ok, Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
+            {ok, Pid} = spawn_ebucketmigrator_mover(Bucket, V, N1, N2),
             wait_for_mover(Bucket, V, N1, N2, Tries, Pid);
         {{ok, dead}, {ok, pending}} ->
             %% This is a strange state to end up in - the source
@@ -137,7 +137,7 @@ run_mover(Bucket, V, N1, N2, Tries) ->
                                [V, N2]),
             ok = ns_memcached:set_vbucket(N1, Bucket, V, active),
             ok = ns_memcached:set_vbucket(N2, Bucket, V, replica),
-            {ok, Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
+            {ok, Pid} = spawn_ebucketmigrator_mover(Bucket, V, N1, N2),
             wait_for_mover(Bucket, V, N1, N2, Tries, Pid)
     end.
 
@@ -173,4 +173,17 @@ wait_for_mover(Bucket, V, N1, N2, Tries, Pid) ->
             ?rebalance_warning("Mover parent got unexpected message:~n"
                                "~p", [Msg]),
             wait_for_mover(Bucket, V, N1, N2, Tries, Pid)
+    end.
+
+spawn_ebucketmigrator_mover(Bucket, VBucket, SrcNode, DstNode) ->
+    Args0 = ebucketmigrator_srv:build_args(Bucket,
+                                           SrcNode, DstNode, [VBucket], true),
+    %% start ebucketmigrator on source node
+    Args = [SrcNode | Args0],
+    case apply(ebucketmigrator_srv, start_link, Args) of
+        {ok, Pid} = RV ->
+            ?log_info("Spawned mover ~p ~p ~p -> ~p: ~p",
+                      [Bucket, VBucket, SrcNode, DstNode, Pid]),
+            RV;
+        X -> X
     end.

@@ -193,7 +193,9 @@ build_local_safeness_info(BucketNames) ->
     IncomingReplicationConfs =
         [{BucketName,
           [{SrcNode, erlang:phash2(VBuckets)} ||
-              {SrcNode, VBuckets} <- ns_vbm_sup:node_incoming_replicator_pairs(node(), BucketName)]}
+              {SrcNode, _DstNode, VBuckets} <-
+                  ns_vbm_sup:node_replicator_triples(BucketName, node())]
+         }
          || BucketName <- BucketNames],
     [{outgoing_replications_safeness_level, ReplicationsSafeness},
      {incoming_replications_conf_hashes, IncomingReplicationConfs}].

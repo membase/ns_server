@@ -250,8 +250,8 @@ verify_replication(Bucket, Nodes, Map) ->
             fun ({V, Chain}) ->
                     [{Src, Dst, V} || {Src, Dst} <- misc:pairs(Chain), Src =/= undefined, Dst =/= undefined]
             end, misc:enumerate(Map, 0))),
-    ActualReplicators =
-        lists:sort(ns_vbm_sup:incoming_replicator_triples(Nodes, Bucket)),
+    ActualReplicators = ns_vbm_sup:replicas(Bucket, Nodes),
+
     case misc:comm(ExpectedReplicators, ActualReplicators) of
         {[], [], _} ->
             ok;
