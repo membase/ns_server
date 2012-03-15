@@ -168,13 +168,14 @@ current_status(Expensive) ->
                     end, [], BucketNames),
 
     failover_safeness_level:build_local_safeness_info(BucketNames) ++
-    [{active_buckets, ns_memcached:active_buckets()},
-     {ready_buckets, ns_memcached:connected_buckets()},
-     {memory, erlang:memory()},
-     {system_stats, [{N, proplists:get_value(N, SystemStats, 0)} || N <- [cpu_utilization_rate, swap_total, swap_used]]},
-     {interesting_stats, InterestingStats},
-     {cluster_compatibility_version, ClusterCompatVersion}
-     | element(2, ns_info:basic_info())] ++ Expensive.
+        [{active_buckets, ns_memcached:active_buckets()},
+         {ready_buckets, ns_memcached:connected_buckets()},
+         {memory, erlang:memory()},
+         {system_stats, [{N, proplists:get_value(N, SystemStats, 0)}
+                         || N <- [cpu_utilization_rate, swap_total, swap_used]]},
+         {interesting_stats, InterestingStats},
+         {cluster_compatibility_version, ClusterCompatVersion}
+         | element(2, ns_info:basic_info())] ++ Expensive.
 
 
 expensive_checks() ->

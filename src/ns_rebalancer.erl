@@ -305,4 +305,5 @@ wait_for_mover_tail(Pid, Ref) ->
 
 %% NOTE: this is rpc:multicall-ed by 1.8 nodes.
 buckets_replication_statuses() ->
-    exit(fixme_wrt_backwards_compat).
+    Buckets = ns_bucket:get_bucket_names(),
+    failover_safeness_level:buckets_replication_statuses_compat(Buckets).
