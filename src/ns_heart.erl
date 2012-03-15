@@ -192,24 +192,47 @@ expensive_checks() ->
 %% to doctor it actually contacts all nodes and tries to grab fresh
 %% information. See failover_safeness_level:build_local_safeness_info
 grab_fresh_failover_safeness_infos(BucketsAll) ->
-    grab_fresh_failover_safeness_infos(BucketsAll, 2000).
+    do_grab_fresh_failover_safeness_infos(BucketsAll, 2000).
 
-grab_fresh_failover_safeness_infos(BucketsAll, Timeout) ->
+do_grab_fresh_failover_safeness_infos(BucketsAll, Timeout) ->
     Nodes = ns_node_disco:nodes_actual_proper(),
     BucketNames = proplists:get_keys(BucketsAll),
-    {NodeResp, Errors} =
+    {NewNodeResp, NewErrors} =
         misc:multicall_result_to_plist(
           Nodes,
           rpc:multicall(Nodes,
                         failover_safeness_level, build_local_safeness_info,
                         [BucketNames], Timeout)),
 
-    case Errors of
-        [] ->
-            ok;
-        _ ->
-            ?log_warning("Some nodes didn't return their "
-                         "failover safeness infos: ~n~p", [Errors])
-    end,
+    NodeResp =
+        case NewErrors of
+            [] ->
+                NewNodeResp;
+            _ ->
+                FailedNodes = proplists:get_keys(NewErrors),
+
+                {RawCompatNodeResp, CompatErrors} =
+                    misc:multicall_result_to_plist(
+                      FailedNodes,
+                      rpc:multicall(FailedNodes,
+                                    ns_rebalancer, buckets_replication_statuses,
+                                    [], Timeout)),
+
+                case CompatErrors of
+                    [] ->
+                        ok;
+                    _ ->
+                        ?log_warning("Some nodes didn't return their failover "
+                                     "safeness infos: ~n~p", [CompatErrors])
+                end,
+
+                CompatNodeResp =
+                    lists:keymap(
+                      fun (Status) ->
+                              [{replication, Status}]
+                      end, 2, RawCompatNodeResp),
+
+                NewNodeResp ++ CompatNodeResp
+        end,
 
     dict:from_list(NodeResp).
