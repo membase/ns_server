@@ -928,12 +928,14 @@ raw_read_loop(File, Acc) ->
 
 multicall_result_to_plist_rec([], _ResL, _BadNodes, Acc) ->
     Acc;
-multicall_result_to_plist_rec([N | Nodes], [Res | ResRest], BadNodes,
+multicall_result_to_plist_rec([N | Nodes], Results, BadNodes,
                               {SuccessAcc, ErrorAcc} = Acc) ->
     case lists:member(N, BadNodes) of
         true ->
-            multicall_result_to_plist_rec(Nodes, ResRest, BadNodes, Acc);
+            multicall_result_to_plist_rec(Nodes, Results, BadNodes, Acc);
         _ ->
+            [Res | ResRest] = Results,
+
             case Res of
                 {badrpc, Reason} ->
                     NewAcc = {SuccessAcc, [{N, Reason} | ErrorAcc]},
