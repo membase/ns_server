@@ -41,12 +41,12 @@
 -define(CMD_EXPAND_BUCKET, 16#88).
 -define(CMD_SELECT_BUCKET, 16#89).
 
--define(CMD_SET_FLUSH_PARAM, 16#82).
 -define(CMD_SET_VBUCKET,     16#3d).
 -define(CMD_GET_VBUCKET,     16#3e).
 -define(CMD_DELETE_VBUCKET,  16#3f).
 
 -define(SYNC, 16#96).
+-define(CMD_SET_PARAM,       16#82).            % NOTE: Id is same as old CMD_SET_FLUSH_PARAM
 
 -define(CMD_DEREGISTER_TAP_CLIENT, 16#9e).
 -define(CMD_LAST_CLOSED_CHECKPOINT,  16#97).
