@@ -17,7 +17,7 @@
 
 -behavior(supervisor).
 
--export([start_link/0]).
+-export([start_link/0, start_memcached_force_killer/0]).
 
 -export([init/1, launch_port/1, terminate_port/1,
          restart_port/1, restart_port_by_name/1,
@@ -29,6 +29,26 @@
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+start_memcached_force_killer() ->
+    misc:start_event_link(
+      fun () ->
+              CurrentMembership = ns_cluster_membership:get_cluster_membership(node()),
+              ns_pubsub:subscribe_link(ns_config_events, fun memcached_force_killer_fn/2, CurrentMembership)
+      end).
+
+memcached_force_killer_fn({{node, Node, membership}, NewMembership}, PrevMembership) when Node =:= node() ->
+    case NewMembership =:= inactiveFailed andalso PrevMembership =/= inactiveFailed of
+        false ->
+            ok;
+        _ ->
+            RV = (catch ns_port_memcached ! {send_to_port, <<"die!\n">>}),
+            ?log_info("Sent force death command to own memcached: ~p", [RV])
+    end,
+    NewMembership;
+
+memcached_force_killer_fn(_, State) ->
+    State.
 
 init([]) ->
     {ok, {{one_for_one,
@@ -76,6 +96,28 @@ expand_args({Name, Cmd, ArgsIn, OptsIn}) ->
              end, OptsIn),
     {Name, Cmd, Args, Opts}.
 
+start_link_memcached_port(Name, Cmd, Args, Opts) ->
+    case supervisor_cushion:start_link(Name, 5000, ns_port_server, start_link, [Name, Cmd, Args, Opts]) of
+        {ok, Pid} = RV->
+            try
+                ChildPid = supervisor_cushion:child_pid(Pid),
+                erlang:register(ns_port_memcached, ChildPid)
+            catch T:E ->
+                    ?log_error("failed to register ns_port_memcached. Eating exception and killing it: ~p", [{T, E}]),
+                    exit(Pid, shutdown)
+            end,
+            RV;
+        RV ->
+            RV
+    end.
+
+%% memcached is sufficiently special so we register it, so that we can
+%% kill it in start_memcached_force_killer
+create_child_spec({memcached = Name, Cmd, Args, Opts}) ->
+    {{Name, Cmd, Args, Opts},
+     {erlang, apply, [fun start_link_memcached_port/4, [Name, Cmd, Args, Opts]]},
+     permanent, 86400000, worker,
+     [ns_port_server]};
 create_child_spec({Name, Cmd, Args, Opts}) ->
     {{Name, Cmd, Args, Opts},
      {supervisor_cushion, start_link,
