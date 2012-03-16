@@ -277,7 +277,12 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                                            false -> "server shutdown"
                                        end]),
             try
-                ok = mc_client_binary:delete_bucket(Sock, Bucket, [{force, Deleting}]),
+                ok = mc_client_binary:delete_bucket(Sock, Bucket, [{force, Deleting}])
+            catch
+                E2:R2 ->
+                    ?log_error("Failed to delete bucket ~p: ~p",
+                               [Bucket, {E2, R2}])
+            after
                 case NoBucket of
                     %% if node is being ejected db files will be mass
                     %% deleted (and possibly backed up) by ns_cluster.
@@ -285,10 +290,6 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                     true -> ns_storage_conf:delete_db_files(Bucket);
                     _ -> ok
                 end
-            catch
-                E2:R2 ->
-                    ?log_error("Failed to delete bucket ~p: ~p",
-                               [Bucket, {E2, R2}])
             end;
         true ->
             ?user_log(4,
