@@ -89,6 +89,9 @@ child_specs() ->
       permanent, 60000, worker,
       [ns_port_sup]},
 
+     {ns_port_memcached_killer, {ns_port_sup, start_memcached_force_killer, []},
+      permanent, brutal_kill, worker, [ns_port_sup]},
+
      {ns_stats_event, {gen_event, start_link, [{local, ns_stats_event}]},
       permanent, 1000, worker, dynamic},
 
