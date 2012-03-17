@@ -110,8 +110,7 @@ activate(Nodes) ->
                       Node <- Nodes]).
 
 deactivate(Nodes) ->
-    %% TODO: we should have a way to delete keys
-    ns_config:set([{{node, Node, membership}, inactiveAdded}
+    ns_config:set([{{node, Node, membership}, inactiveFailed}
                    || Node <- Nodes]).
 
 
