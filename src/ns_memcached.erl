@@ -600,11 +600,13 @@ has_started(Sock) ->
     Fun = fun (<<"ep_warmup_thread">>, V, _) -> V;
               (_, _, CD) -> CD
           end,
-    case mc_client_binary:stats(Sock, <<>>, Fun, missing_stat) of
+    case mc_client_binary:stats(Sock, <<"warmup">>, Fun, missing_stat) of
         {ok, <<"complete">>} ->
             true;
-        {ok, missing_stat} ->
+        %% this is memcached bucket, warmup is done :)
+        {memcached_error, key_enoent, _} ->
             true;
-        {ok, _} ->
+        {ok, V} ->
+            true = is_binary(V),
             false
     end.
