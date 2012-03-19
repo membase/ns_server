@@ -86,7 +86,7 @@
 ]).
 
 % Maximum number of concurrent vbucket replications allowed per doc
--define(MAX_CONCURRENT_REPS_PER_DOC, 32).
+-define(MAX_CONCURRENT_REPS_PER_DOC, 8).
 
 % Number of seconds after which the scheduler will periodically wakeup
 -define(XDCR_SCHEDULING_INTERVAL, 5).
