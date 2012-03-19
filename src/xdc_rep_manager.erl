@@ -276,6 +276,11 @@ handle_info({'DOWN', _Ref, process, Pid, Reason}, State) ->
             normal ->
                 % Couch replication completed normally
                 true = ets:update_element(?CSTORE, Pid, {4, completed});
+            noproc ->
+                % Couch replication may have finished before we could start
+                % monitoring it. This could happen, for example, if there was no
+                % data to be replicated to begin with.
+                true = ets:update_element(?CSTORE, Pid, {4, completed});
             _ ->
                 % Couch replication failed due to an error. Update the state
                 % in CSTORE so that it may be picked up the next time
