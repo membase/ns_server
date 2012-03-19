@@ -21,10 +21,15 @@
 
 -record(state, {func, func_state}).
 
+%% API
+-export([subscribe_link/1, subscribe_link/3, unsubscribe/1]).
+
+%% gen_event callbacks
 -export([code_change/3, init/1, handle_call/2, handle_event/2, handle_info/2,
          terminate/2]).
 
--export([subscribe_link/1, subscribe_link/3, unsubscribe/1]).
+%% called by proc_lib:start from subscribe_link/3
+-export([do_subscribe_link/4]).
 
 
 %%
@@ -35,39 +40,8 @@ subscribe_link(Name) ->
 
 
 subscribe_link(Name, Fun, State) ->
-    Parent = self(),
-    proc_lib:spawn(
-      fun () ->
-              process_flag(trap_exit, true),
-              erlang:link(Parent),
+    proc_lib:start(?MODULE, do_subscribe_link, [Name, Fun, State, self()]).
 
-              Ref = make_ref(),
-              ok = gen_event:add_sup_handler(Name, {?MODULE, Ref},
-                                             #state{func=Fun, func_state=State}),
-
-              receive
-                  unsubscribe ->
-                      exit(normal);
-                  {'gen_event_EXIT', {?MODULE, Ref}, Reason} ->
-                      case Reason =:= normal orelse Reason =:= shutdown of
-                          true ->
-                              exit(normal);
-                          false ->
-                              exit({handler_crashed, Name, Reason})
-                      end;
-                  {'EXIT', Parent, Reason} ->
-                      ?log_debug("Parent process exited with reason ~p",
-                                 [Reason]),
-                      exit(normal);
-                  {'EXIT', Pid, Reason} ->
-                      ?log_error("Dying because linked process ~p died: ~p",
-                                 [Pid, Reason]),
-                      exit({linked_process_died, Pid, Reason});
-                  X ->
-                      ?log_error("Got unexpected message: ~p", [X]),
-                      exit(unexpected_message)
-              end
-      end).
 
 unsubscribe(Pid) ->
     Pid ! unsubscribe,
@@ -120,4 +94,38 @@ msg_fun(Pid) ->
     fun (Event, ignored) ->
             Pid ! Event,
             ignored
+    end.
+
+
+do_subscribe_link(Name, Fun, State, Parent) ->
+    process_flag(trap_exit, true),
+    erlang:link(Parent),
+
+    Ref = make_ref(),
+    ok = gen_event:add_sup_handler(Name, {?MODULE, Ref},
+                                   #state{func=Fun, func_state=State}),
+
+    proc_lib:init_ack(Parent, self()),
+
+    receive
+        unsubscribe ->
+            exit(normal);
+        {'gen_event_EXIT', {?MODULE, Ref}, Reason} ->
+            case Reason =:= normal orelse Reason =:= shutdown of
+                true ->
+                    exit(normal);
+                false ->
+                    exit({handler_crashed, Name, Reason})
+            end;
+        {'EXIT', Parent, Reason} ->
+            ?log_debug("Parent process exited with reason ~p",
+                       [Reason]),
+            exit(normal);
+        {'EXIT', Pid, Reason} ->
+            ?log_error("Dying because linked process ~p died: ~p",
+                       [Pid, Reason]),
+            exit({linked_process_died, Pid, Reason});
+        X ->
+            ?log_error("Got unexpected message: ~p", [X]),
+            exit(unexpected_message)
     end.
