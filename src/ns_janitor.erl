@@ -200,7 +200,7 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                           {false, _} ->
                               ?log_info("Setting vbucket ~p in ~p on ~p from ~p"
                                         " to dead because we don't have all "
-                                        "copies", [N, Bucket, VBucket, State]),
+                                        "copies~n~p", [N, Bucket, VBucket, State, {ChainStates, ExtraStates}]),
                               ns_memcached:set_vbucket(N, Bucket, VBucket, dead)
                       end
               end, ExtraStates),
