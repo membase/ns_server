@@ -133,6 +133,27 @@ handle_info({move_done, {Node, VBucket, OldChain, NewChain}},
     %% Update the current map
     Map1 = array:set(VBucket, NewChain, Map),
     ns_bucket:set_map(Bucket, array_to_map(Map1)),
+    RepSyncRV = (catch begin
+                           ns_config:sync_announcements(),
+                           ns_config_rep:synchronize()
+                       end),
+    case RepSyncRV of
+        ok -> ok;
+        _ ->
+            ?log_error("Config replication sync failed: ~p", [RepSyncRV])
+    end,
+    sync_replicas(),
+    OldCopies = OldChain -- NewChain,
+    DeleteRVs = misc:parallel_map(
+                  fun (CopyNode) ->
+                          {CopyNode, (catch ns_memcached:delete_vbucket(CopyNode, Bucket, VBucket))}
+                  end, OldCopies, infinity),
+    BadDeletes = [P || {_, RV} = P <- DeleteRVs, RV =/= ok],
+    case BadDeletes of
+        [] -> ok;
+        _ ->
+            ?log_error("Deleting some old copies of vbucket failed: ~p", [BadDeletes])
+    end,
     spawn_workers(State#state{movers=Movers1, map=Map1});
 handle_info({'EXIT', _, normal}, State) ->
     {noreply, State};
