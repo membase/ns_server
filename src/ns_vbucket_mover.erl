@@ -78,11 +78,17 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
 
     ?rebalance_info("Starting movers with new map =~n~p", [NewMap]),
     %% Dictionary mapping old node to vbucket and new node
-    MoveDict = lists:foldl(fun ({V, [M1|_] = C1, C2}, D) ->
-                                   dict:append(M1, {V, C1, C2}, D)
-                           end, dict:new(),
-                           lists:zip3(lists:seq(0, length(OldMap) - 1), OldMap,
-                                      NewMap)),
+    {MoveDict, TrivialMoves} =
+        lists:foldl(fun ({V, [M1|_] = C1, C2}, {D, TrivialMoves}) ->
+                            if C1 =:= C2 ->
+                                    {D, TrivialMoves + 1};
+                               true ->
+                                    {dict:append(M1, {V, C1, C2}, D), TrivialMoves}
+                            end
+                    end, {dict:new(), 0},
+                    lists:zip3(lists:seq(0, length(OldMap) - 1), OldMap,
+                               NewMap)),
+    ?rebalance_info("The following count of vbuckets do not need to be moved at all: ~p", [TrivialMoves]),
     Movers = dict:map(fun (_, _) -> 0 end, MoveDict),
     self() ! spawn_initial,
     process_flag(trap_exit, true),
