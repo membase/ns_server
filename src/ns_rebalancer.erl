@@ -155,6 +155,7 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
             end,
             erlang:E(R)
     end,
+    ns_config:sync_announcements(),
     ns_config_rep:synchronize(),
     eject_nodes(DeactivateNodes -- EarlyEject).
 
