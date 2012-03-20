@@ -23,8 +23,8 @@
 spawn_mover(Node, Bucket, VBucket,
             OldChain, NewChain) ->
     Parent = self(),
-    spawn_link(ns_single_vbucket_mover, mover,
-               [Parent, Node, Bucket, VBucket, OldChain, NewChain]).
+    proc_lib:spawn_link(ns_single_vbucket_mover, mover,
+                        [Parent, Node, Bucket, VBucket, OldChain, NewChain]).
 
 mover(Parent, Node, Bucket, VBucket,
       OldChain, [NewNode|_] = NewChain) ->
