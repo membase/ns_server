@@ -40,8 +40,7 @@
          stats/4,
          get_open_checkpoint_ids/1,
          tap_connect/2,
-         deregister_tap_client/2,
-         set_engine_param/4]).
+         deregister_tap_client/2]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
 -type mc_timeout() :: undefined | infinity | non_neg_integer().
@@ -53,7 +52,7 @@
                      ?CMD_SASL_LIST_MECHS | ?CMD_SASL_AUTH | ?CMD_SASL_STEP |
                      ?CMD_CREATE_BUCKET | ?CMD_DELETE_BUCKET |
                      ?CMD_LIST_BUCKETS | ?CMD_EXPAND_BUCKET |
-                     ?CMD_SELECT_BUCKET | ?CMD_SET_PARAM |
+                     ?CMD_SELECT_BUCKET | ?CMD_SET_FLUSH_PARAM |
                      ?CMD_SET_VBUCKET | ?CMD_GET_VBUCKET | ?CMD_DELETE_VBUCKET |
                      ?CMD_LAST_CLOSED_CHECKPOINT |
                      ?RGET | ?RSET | ?RSETQ | ?RAPPEND | ?RAPPENDQ | ?RPREPEND |
@@ -246,24 +245,11 @@ select_bucket(Sock, BucketName) ->
     end.
 
 set_flush_param(Sock, Key, Value) ->
-    set_engine_param(Sock, Key, Value, flush).
-
-engine_param_type_to_int(flush) ->
-    1;
-engine_param_type_to_int(tap) ->
-    2;
-engine_param_type_to_int(checkpoint) ->
-    3.
-
--spec set_engine_param(port(), binary(), binary(), flush | tap | checkpoint) -> ok | mc_error().
-set_engine_param(Sock, Key, Value, Type) ->
-    ParamType = engine_param_type_to_int(Type),
-    Entry = #mc_entry{key = Key,
-                      data = Value,
-                      ext = <<ParamType:32/big>>},
-    case cmd(?CMD_SET_PARAM, Sock, undefined, undefined,
-             {#mc_header{}, Entry}) of
-        {ok, #mc_header{status=?SUCCESS}, _, _} ->
+    case cmd(?CMD_SET_FLUSH_PARAM, Sock, undefined, undefined,
+             {#mc_header{},
+              #mc_entry{key  = Key,
+                        data = Value}}) of
+        {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
             ok;
         Response ->
             process_error_response(Response)
