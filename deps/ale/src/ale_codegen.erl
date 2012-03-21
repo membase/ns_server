@@ -44,10 +44,9 @@ header(LoggerName) ->
     io_lib:format("-module('~s').~n", [atom_to_list(logger_impl(LoggerName))]).
 
 exports() ->
-    lists:flatten(
-      [io_lib:format("-export([~p/4, ~p/5, x~p/5, x~p/6]).~n",
-                     [LogLevel, LogLevel, LogLevel, LogLevel]) ||
-          LogLevel <- ?LOGLEVELS]).
+    [io_lib:format("-export([~p/4, ~p/5, x~p/5, x~p/6]).~n",
+                   [LogLevel, LogLevel, LogLevel, LogLevel]) ||
+        LogLevel <- ?LOGLEVELS].
 
 definitions(LoggerName, ServerName, LogLevel) ->
     {Stubs, Enabled} =
@@ -55,43 +54,39 @@ definitions(LoggerName, ServerName, LogLevel) ->
                                 X =/= LogLevel
                         end, ?LOGLEVELS),
 
-    lists:flatten([stubs(Stubs),
-                   "\n",
-                   enabled(LoggerName, ServerName, Enabled)]).
+    [stubs(Stubs),
+     "\n",
+     enabled(LoggerName, ServerName, Enabled)].
 
 stubs(Stubs) ->
-    lists:flatten([stubs_1(Stubs),
-                   xstubs_1(Stubs),
-                   "\n",
-                   stubs_2(Stubs),
-                   xstubs_2(Stubs)]).
+    [stubs_1(Stubs),
+     xstubs_1(Stubs),
+     "\n",
+     stubs_2(Stubs),
+     xstubs_2(Stubs)].
 
 stubs_1(Stubs) ->
-    lists:flatten(
-      [io_lib:format("~p(_, _, _, _) -> ok.~n", [LogLevel]) ||
-          LogLevel <- Stubs]).
+    [io_lib:format("~p(_, _, _, _) -> ok.~n", [LogLevel]) ||
+        LogLevel <- Stubs].
 
 xstubs_1(Stubs) ->
-    lists:flatten(
-      [io_lib:format("x~p(_, _, _, _, _) -> ok.~n", [LogLevel]) ||
-          LogLevel <- Stubs]).
+    [io_lib:format("x~p(_, _, _, _, _) -> ok.~n", [LogLevel]) ||
+        LogLevel <- Stubs].
 
 stubs_2(Stubs) ->
-    lists:flatten(
-      [io_lib:format("~p(_, _, _, _, _) -> ok.~n", [LogLevel]) ||
-          LogLevel <- Stubs]).
+    [io_lib:format("~p(_, _, _, _, _) -> ok.~n", [LogLevel]) ||
+        LogLevel <- Stubs].
 
 xstubs_2(Stubs) ->
-    lists:flatten(
-      [io_lib:format("x~p(_, _, _, _, _, _) -> ok.~n", [LogLevel]) ||
-          LogLevel <- Stubs]).
+    [io_lib:format("x~p(_, _, _, _, _, _) -> ok.~n", [LogLevel]) ||
+        LogLevel <- Stubs].
 
 enabled(LoggerName, ServerName, Enabled) ->
-    lists:flatten([enabled_1(LoggerName, ServerName, Enabled),
-                   xenabled_1(LoggerName, ServerName, Enabled),
-                   "\n",
-                   enabled_2(LoggerName, ServerName, Enabled),
-                   xenabled_2(LoggerName, ServerName, Enabled)]).
+    [enabled_1(LoggerName, ServerName, Enabled),
+     xenabled_1(LoggerName, ServerName, Enabled),
+     "\n",
+     enabled_2(LoggerName, ServerName, Enabled),
+     xenabled_2(LoggerName, ServerName, Enabled)].
 
 enabled_1(LoggerName, ServerName, Enabled) ->
     MkEnabled1 =
@@ -102,7 +97,7 @@ enabled_1(LoggerName, ServerName, Enabled) ->
                   "gen_server:call('~s', {log, Info, Msg, []}, infinity).~n",
                   [LogLevel, LoggerName, LogLevel, ServerName])
         end,
-    lists:flatten(lists:map(MkEnabled1, Enabled)).
+    lists:map(MkEnabled1, Enabled).
 
 xenabled_1(LoggerName, ServerName, Enabled) ->
     MkXEnabled1 =
@@ -113,7 +108,7 @@ xenabled_1(LoggerName, ServerName, Enabled) ->
                   "gen_server:call('~s', {log, Info, Msg, []}, infinity).~n",
                   [LogLevel, LoggerName, LogLevel, ServerName])
         end,
-    lists:flatten(lists:map(MkXEnabled1, Enabled)).
+    lists:map(MkXEnabled1, Enabled).
 
 enabled_2(LoggerName, ServerName, Enabled) ->
     MkEnabled2 =
@@ -125,7 +120,7 @@ enabled_2(LoggerName, ServerName, Enabled) ->
                   "gen_server:call('~s', {log, Info, Fmt, ForcedArgs}, infinity).~n",
                   [LogLevel, LoggerName, LogLevel, ServerName])
         end,
-    lists:flatten(lists:map(MkEnabled2, Enabled)).
+    lists:map(MkEnabled2, Enabled).
 
 xenabled_2(LoggerName, ServerName, Enabled) ->
     MkXEnabled2 =
@@ -137,4 +132,4 @@ xenabled_2(LoggerName, ServerName, Enabled) ->
                   "gen_server:call('~s', {log, Info, Fmt, ForcedArgs}, infinity).~n",
                   [LogLevel, LoggerName, LogLevel, ServerName])
         end,
-    lists:flatten(lists:map(MkXEnabled2, Enabled)).
+    lists:map(MkXEnabled2, Enabled).
