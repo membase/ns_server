@@ -18,7 +18,6 @@
 -define(LOGLEVELS, [debug, info, warn, error, critical]).
 
 -define(DEFAULT_LOGLEVEL, warn).
--define(DEFAULT_SYNC_LOGLEVEL, error).
 -define(DEFAULT_FORMATTER, ale_default_formatter).
 
 -define(ALE_LOGGER, ale_logger).

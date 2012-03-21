@@ -19,11 +19,10 @@
 
 -export([start_link/0, start_link/1,
          start_sink/3, stop_sink/1,
-         start_logger/1, start_logger/2, start_logger/3,
+         start_logger/1, start_logger/2,
          stop_logger/1,
          add_sink/2, add_sink/3,
          set_loglevel/2, get_loglevel/1,
-         set_sync_loglevel/2, get_sync_loglevel/1,
          set_sink_loglevel/3, get_sink_loglevel/2]).
 
 
@@ -58,13 +57,10 @@ stop_sink(Name) ->
     gen_server:call(?MODULE, {stop_sink, Name}).
 
 start_logger(Name) ->
-    start_logger(Name, ?DEFAULT_LOGLEVEL, ?DEFAULT_SYNC_LOGLEVEL).
+    start_logger(Name, ?DEFAULT_LOGLEVEL).
 
 start_logger(Name, LogLevel) ->
-    start_logger(Name, LogLevel, ?DEFAULT_SYNC_LOGLEVEL).
-
-start_logger(Name, LogLevel, SyncLogLevel) ->
-    gen_server:call(?MODULE, {start_logger, Name, LogLevel, SyncLogLevel}).
+    gen_server:call(?MODULE, {start_logger, Name, LogLevel}).
 
 stop_logger(Name) ->
     gen_server:call(?MODULE, {stop_logger, Name}).
@@ -82,12 +78,6 @@ set_loglevel(LoggerName, LogLevel) ->
 get_loglevel(LoggerName) ->
     gen_server:call(?MODULE, {get_loglevel, LoggerName}).
 
-set_sync_loglevel(LoggerName, LogLevel) ->
-    gen_server:call(?MODULE, {set_sync_loglevel, LoggerName, LogLevel}).
-
-get_sync_loglevel(LoggerName) ->
-    gen_server:call(?MODULE, {get_sync_loglevel, LoggerName}).
-
 set_sink_loglevel(LoggerName, SinkName, LogLevel) ->
     gen_server:call(?MODULE,
                     {set_sink_loglevel, LoggerName, SinkName, LogLevel}).
@@ -99,12 +89,9 @@ get_sink_loglevel(LoggerName, SinkName) ->
 init([MailboxLenLimit]) ->
     State = #state{mailbox_len_limit=MailboxLenLimit},
 
-    {ok, State1} = do_start_logger(?ERROR_LOGGER,
-                                   ?DEFAULT_LOGLEVEL, ?DEFAULT_SYNC_LOGLEVEL,
-                                   State),
-    {ok, State2} = do_start_logger(?ALE_LOGGER,
-                                   ?DEFAULT_LOGLEVEL, ?DEFAULT_SYNC_LOGLEVEL,
-                                   State1),
+    {ok, State1} = do_start_logger(?ERROR_LOGGER, ?DEFAULT_LOGLEVEL, State),
+    {ok, State2} = do_start_logger(?ALE_LOGGER, ?DEFAULT_LOGLEVEL, State1),
+
     set_error_logger_handler(),
     rearm_timer(),
 
@@ -118,8 +105,8 @@ handle_call({stop_sink, Name}, _From, State) ->
     RV = do_stop_sink(Name, State),
     handle_result(RV, State);
 
-handle_call({start_logger, Name, LogLevel, SyncLogLevel}, _From, State) ->
-    RV = do_start_logger(Name, LogLevel, SyncLogLevel, State),
+handle_call({start_logger, Name, LogLevel}, _From, State) ->
+    RV = do_start_logger(Name, LogLevel, State),
     handle_result(RV, State);
 
 handle_call({stop_logger, Name}, _From, State) ->
@@ -136,14 +123,6 @@ handle_call({set_loglevel, LoggerName, LogLevel}, _From, State) ->
 
 handle_call({get_loglevel, LoggerName}, _From, State) ->
     RV = do_get_loglevel(LoggerName, State),
-    handle_result(RV, State);
-
-handle_call({set_sync_loglevel, LoggerName, LogLevel}, _From, State) ->
-    RV = do_set_sync_loglevel(LoggerName, LogLevel, State),
-    handle_result(RV, State);
-
-handle_call({get_sync_loglevel, LoggerName}, _From, State) ->
-    RV = do_get_sync_loglevel(LoggerName, State),
     handle_result(RV, State);
 
 handle_call({set_sink_loglevel, LoggerName, SinkName, LogLevel},
@@ -268,8 +247,7 @@ do_stop_sink(Name, #state{sinks=Sinks} = State) ->
               {ok, NewState}
       end).
 
-do_start_logger(Name, LogLevel, SyncLogLevel,
-                #state{loggers=Loggers} = State) ->
+do_start_logger(Name, LogLevel, #state{loggers=Loggers} = State) ->
     case ordsets:is_element(Name, Loggers) of
         true ->
             {error, duplicate_logger};
@@ -277,8 +255,7 @@ do_start_logger(Name, LogLevel, SyncLogLevel,
             LoggerId = ale_utils:logger_id(Name),
 
             RV = ale_dynamic_sup:start_child(LoggerId, ale_server,
-                                             [LoggerId, Name,
-                                              LogLevel, SyncLogLevel]),
+                                             [LoggerId, Name, LogLevel]),
             case RV of
                 {ok, _} ->
                     NewState =
@@ -326,22 +303,6 @@ do_get_loglevel(LoggerName, State) ->
       fun () ->
               LoggerId = ale_utils:logger_id(LoggerName),
               gen_server:call(LoggerId, get_loglevel)
-      end).
-
-do_set_sync_loglevel(LoggerName, LogLevel, State) ->
-    ensure_logger(
-      LoggerName, State,
-      fun () ->
-              LoggerId = ale_utils:logger_id(LoggerName),
-              gen_server:call(LoggerId, {set_sync_loglevel, LogLevel})
-      end).
-
-do_get_sync_loglevel(LoggerName, State) ->
-    ensure_logger(
-      LoggerName, State,
-      fun () ->
-              LoggerId = ale_utils:logger_id(LoggerName),
-              gen_server:call(LoggerId, get_sync_loglevel)
       end).
 
 do_set_sink_loglevel(LoggerName, SinkName, LogLevel, State) ->

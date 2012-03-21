@@ -20,7 +20,7 @@
 -include("ale.hrl").
 
 %% API
--export([start_link/4]).
+-export([start_link/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -29,24 +29,22 @@
 -record(state, { logger_name          :: atom(),
                  server_name          :: atom(),
                  loglevel             :: loglevel(),
-                 sync_loglevel        :: loglevel(),
                  sinks = dict:new()   :: dict(),
                  compiler = undefined :: pid() | undefined}).
 
-start_link(ServerName, LoggerName, LogLevel, SyncLogLevel) ->
+start_link(ServerName, LoggerName, LogLevel) ->
     gen_server:start_link({local, ServerName},
                           ?MODULE,
-                          [ServerName, LoggerName, LogLevel, SyncLogLevel], []).
+                          [ServerName, LoggerName, LogLevel], []).
 
-init([ServerName, LoggerName, LogLevel, SyncLogLevel]) ->
+init([ServerName, LoggerName, LogLevel]) ->
     process_flag(trap_exit, true),
 
-    case valid_loglevel(LogLevel) andalso valid_loglevel(SyncLogLevel) of
+    case valid_loglevel(LogLevel) of
         true ->
             State = #state{logger_name=LoggerName,
                            server_name=ServerName,
-                           loglevel=LogLevel,
-                           sync_loglevel=SyncLogLevel},
+                           loglevel=LogLevel},
             compile(State),
             {ok, State};
         false ->
@@ -54,7 +52,7 @@ init([ServerName, LoggerName, LogLevel, SyncLogLevel]) ->
     end.
 
 handle_call({log, Info, Format, Args}, _From, State) ->
-    {reply, do_log_sync(State, Info, Format, Args), State};
+    {reply, do_log(State, Info, Format, Args), State};
 
 handle_call({set_loglevel, Level}, _From, State) ->
     case valid_loglevel(Level) of
@@ -67,19 +65,6 @@ handle_call({set_loglevel, Level}, _From, State) ->
 
 handle_call(get_loglevel, _From, #state{loglevel=Level} = State) ->
     {reply, Level, State};
-
-handle_call({set_sync_loglevel, SyncLevel}, _From, State) ->
-    case valid_loglevel(SyncLevel) of
-        true ->
-            NewState = State#state{sync_loglevel=SyncLevel},
-            {reply, ok, maybe_recompile(State, NewState)};
-        false ->
-            {reply, {error, badarg}, State}
-    end;
-
-handle_call(get_sync_loglevel, _From,
-            #state{sync_loglevel=SyncLevel} = State) ->
-    {reply, SyncLevel, State};
 
 handle_call({add_sink, Name, undefined}, From, State) ->
     handle_call({add_sink, Name, debug}, From, State);
@@ -130,10 +115,6 @@ handle_call({get_sink_loglevel, Name}, _From,
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast({log, Info, Format, Args}, State) ->
-    do_log_async(State, Info, Format, Args),
-    {noreply, State};
-
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -164,10 +145,8 @@ effective_loglevel(#state{loglevel=LogLevel, sinks=Sinks} = _State) ->
             ale_utils:loglevel_min(LogLevel, MaxSinkLevel)
     end.
 
-needs_recompilation(#state{sync_loglevel=OldSyncLevel} = OldState,
-                    #state{sync_loglevel=NewSyncLevel} = NewState) ->
-    OldSyncLevel =/= NewSyncLevel orelse
-        effective_loglevel(OldState) =/= effective_loglevel(NewState).
+needs_recompilation(OldState, NewState) ->
+    effective_loglevel(OldState) =/= effective_loglevel(NewState).
 
 maybe_recompile(OldState, NewState) ->
     case needs_recompilation(OldState, NewState) of
@@ -181,9 +160,8 @@ compile(State) ->
     LoggerName = State#state.logger_name,
     ServerName = State#state.server_name,
     LogLevel   = effective_loglevel(State),
-    SyncLevel  = State#state.sync_loglevel,
 
-    ale_codegen:load_logger(LoggerName, ServerName, LogLevel, SyncLevel).
+    ale_codegen:load_logger(LoggerName, ServerName, LogLevel).
 
 spawn_compiler(#state{compiler=Compiler} = State) ->
     case Compiler of
@@ -206,27 +184,14 @@ spawn_compiler(#state{compiler=Compiler} = State) ->
 must_be_logged(LogLevel, ThresholdLogLevel) ->
     ale_utils:loglevel_min(LogLevel, ThresholdLogLevel) =:= LogLevel.
 
-do_log_sync(#state{sinks=Sinks} = _State,
-            #log_info{loglevel=LogLevel} = Info, Format, Args) ->
+do_log(#state{sinks=Sinks} = _State,
+       #log_info{loglevel=LogLevel} = Info, Format, Args) ->
     MaybeLog = fun (Sink, SinkLogLevel) ->
                        case must_be_logged(LogLevel, SinkLogLevel) of
                            true ->
                                catch gen_server:call(Sink,
                                                      {log, Info, Format, Args}),
                                ok;
-                           false ->
-                               ok
-                       end
-               end,
-    dict:map(MaybeLog, Sinks),
-    ok.
-
-do_log_async(#state{sinks=Sinks} = _State,
-             #log_info{loglevel=LogLevel} = Info, Format, Args) ->
-    MaybeLog = fun (Sink, SinkLogLevel) ->
-                       case must_be_logged(LogLevel, SinkLogLevel) of
-                           true ->
-                               gen_server:cast(Sink, {log, Info, Format, Args});
                            false ->
                                ok
                        end

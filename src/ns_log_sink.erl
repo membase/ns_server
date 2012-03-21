@@ -43,10 +43,6 @@ handle_call({log, Info, Format, Args}, _From, State) ->
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast({log, Info, Format, Args}, State) ->
-    do_log(Info, Format, Args),
-    {noreply, State};
-
 handle_cast(_Msg, State) ->
     {noreply, State}.
 

@@ -15,13 +15,9 @@
 
 -module(ale_codegen).
 
--export([load_logger/4, logger_impl/1, extended_impl/1, logger/4]).
+-export([load_logger/3, logger_impl/1, extended_impl/1, logger/3]).
 
 -include("ale.hrl").
-
-%% force synchronous call even for asynchronous loglevels after so many
-%% asynchronous calls
--define(FORCE_SYNC_INTERVAL, 1000).
 
 logger_impl(Logger) when is_atom(Logger) ->
     logger_impl(atom_to_list(Logger));
@@ -31,21 +27,18 @@ logger_impl(Logger) ->
 extended_impl(LogLevel) ->
     list_to_atom([$x | atom_to_list(LogLevel)]).
 
-load_logger(LoggerName, ServerName, LogLevel, SyncLevel) ->
-    SourceCode = logger(LoggerName, ServerName, LogLevel, SyncLevel),
+load_logger(LoggerName, ServerName, LogLevel) ->
+    SourceCode = logger(LoggerName, ServerName, LogLevel),
     dynamic_compile:load_from_string(SourceCode).
 
-logger(LoggerName, ServerName, LogLevel, SyncLevel) ->
+logger(LoggerName, ServerName, LogLevel) ->
     LoggerNameStr = atom_to_list(LoggerName),
     ServerNameStr = atom_to_list(ServerName),
     lists:flatten([header(LoggerNameStr),
                    "\n",
                    exports(),
                    "\n",
-                   compile(),
-                   "\n",
-                   definitions(LoggerNameStr, ServerNameStr,
-                               LogLevel, SyncLevel)]).
+                   definitions(LoggerNameStr, ServerNameStr, LogLevel)]).
 
 header(LoggerName) ->
     io_lib:format("-module('~s').~n", [atom_to_list(logger_impl(LoggerName))]).
@@ -56,34 +49,15 @@ exports() ->
                      [LogLevel, LogLevel, LogLevel, LogLevel]) ||
           LogLevel <- ?LOGLEVELS]).
 
-compile() ->
-    "-compile({inline, [do_async_log/2]}).\n".
+definitions(LoggerName, ServerName, LogLevel) ->
+    {Stubs, Enabled} =
+        lists:splitwith(fun (X) ->
+                                X =/= LogLevel
+                        end, ?LOGLEVELS),
 
-definitions(LoggerName, ServerName, LogLevel, SyncLogLevel) ->
-    {Stubs, Enabled} = lists:splitwith(fun (X) -> X =/= LogLevel end,
-                                       ?LOGLEVELS),
-
-    SyncLogLevel1 = ale_utils:loglevel_min(LogLevel, SyncLogLevel),
-    {Async, Sync} = lists:splitwith(fun (X) -> X =/= SyncLogLevel1 end,
-                                    Enabled),
-
-    lists:flatten([do_async_log(),
+    lists:flatten([stubs(Stubs),
                    "\n",
-                   stubs(Stubs),
-                   "\n",
-                   async(LoggerName, ServerName, Async),
-                   "\n",
-                   sync(LoggerName, ServerName, Sync)]).
-
-do_async_log() ->
-    io_lib:format(
-      "do_async_log(ServerName, Msg) -> "
-      "Sync = random:uniform(~b) =:= 1,"
-      "case Sync of "
-      "true -> gen_server:call(ServerName, Msg, infinity);"
-      "false -> gen_server:cast(ServerName, Msg) "
-      "end.~n",
-      [?FORCE_SYNC_INTERVAL]).
+                   enabled(LoggerName, ServerName, Enabled)]).
 
 stubs(Stubs) ->
     lists:flatten([stubs_1(Stubs),
@@ -112,68 +86,15 @@ xstubs_2(Stubs) ->
       [io_lib:format("x~p(_, _, _, _, _, _) -> ok.~n", [LogLevel]) ||
           LogLevel <- Stubs]).
 
-async(LoggerName, ServerName, Async) ->
-    lists:flatten([async_1(LoggerName, ServerName, Async),
-                   xasync_1(LoggerName, ServerName, Async),
+enabled(LoggerName, ServerName, Enabled) ->
+    lists:flatten([enabled_1(LoggerName, ServerName, Enabled),
+                   xenabled_1(LoggerName, ServerName, Enabled),
                    "\n",
-                   async_2(LoggerName, ServerName, Async),
-                   xasync_2(LoggerName, ServerName, Async)]).
+                   enabled_2(LoggerName, ServerName, Enabled),
+                   xenabled_2(LoggerName, ServerName, Enabled)]).
 
-async_1(LoggerName, ServerName, Async) ->
-    MkAsync1 =
-        fun (LogLevel) ->
-                io_lib:format(
-                  "~p(M, F, L, Msg) -> "
-                  "Info = ale_utils:assemble_info(~s, ~p, M, F, L),"
-                  "do_async_log('~s', {log, Info, Msg, []}).~n",
-                  [LogLevel, LoggerName, LogLevel, ServerName])
-        end,
-    lists:flatten(lists:map(MkAsync1, Async)).
-
-xasync_1(LoggerName, ServerName, Async) ->
-    MkXAsync1 =
-        fun (LogLevel) ->
-                io_lib:format(
-                  "x~p(M, F, L, Data, Msg) -> "
-                  "Info = ale_utils:assemble_info(~s, ~p, M, F, L, Data),"
-                  "do_async_log('~s', {log, Info, Msg, []}).~n",
-                  [LogLevel, LoggerName, LogLevel, ServerName])
-        end,
-    lists:flatten(lists:map(MkXAsync1, Async)).
-
-async_2(LoggerName, ServerName, Async) ->
-    MkAsync2 =
-        fun (LogLevel) ->
-                io_lib:format(
-                  "~p(M, F, L, Fmt, Args) -> "
-                  "ForcedArgs = ale_utils:force_args(Args),"
-                  "Info = ale_utils:assemble_info(~s, ~p, M, F, L),"
-                  "do_async_log('~s', {log, Info, Fmt, ForcedArgs}).~n",
-                  [LogLevel, LoggerName, LogLevel, ServerName])
-        end,
-    lists:flatten(lists:map(MkAsync2, Async)).
-
-xasync_2(LoggerName, ServerName, Async) ->
-    MkXAsync2 =
-        fun (LogLevel) ->
-                io_lib:format(
-                  "x~p(M, F, L, Data, Fmt, Args) -> "
-                  "ForcedArgs = ale_utils:force_args(Args),"
-                  "Info = ale_utils:assemble_info(~s, ~p, M, F, L, Data),"
-                  "do_async_log('~s', {log, Info, Fmt, ForcedArgs}).~n",
-                  [LogLevel, LoggerName, LogLevel, ServerName])
-        end,
-    lists:flatten(lists:map(MkXAsync2, Async)).
-
-sync(LoggerName, ServerName, Sync) ->
-    lists:flatten([sync_1(LoggerName, ServerName, Sync),
-                   xsync_1(LoggerName, ServerName, Sync),
-                   "\n",
-                   sync_2(LoggerName, ServerName, Sync),
-                   xsync_2(LoggerName, ServerName, Sync)]).
-
-sync_1(LoggerName, ServerName, Sync) ->
-    MkSync1 =
+enabled_1(LoggerName, ServerName, Enabled) ->
+    MkEnabled1 =
         fun (LogLevel) ->
                 io_lib:format(
                   "~p(M, F, L, Msg) -> "
@@ -181,10 +102,10 @@ sync_1(LoggerName, ServerName, Sync) ->
                   "gen_server:call('~s', {log, Info, Msg, []}, infinity).~n",
                   [LogLevel, LoggerName, LogLevel, ServerName])
         end,
-    lists:flatten(lists:map(MkSync1, Sync)).
+    lists:flatten(lists:map(MkEnabled1, Enabled)).
 
-xsync_1(LoggerName, ServerName, Sync) ->
-    MkXSync1 =
+xenabled_1(LoggerName, ServerName, Enabled) ->
+    MkXEnabled1 =
         fun (LogLevel) ->
                 io_lib:format(
                   "x~p(M, F, L, Data, Msg) -> "
@@ -192,10 +113,10 @@ xsync_1(LoggerName, ServerName, Sync) ->
                   "gen_server:call('~s', {log, Info, Msg, []}, infinity).~n",
                   [LogLevel, LoggerName, LogLevel, ServerName])
         end,
-    lists:flatten(lists:map(MkXSync1, Sync)).
+    lists:flatten(lists:map(MkXEnabled1, Enabled)).
 
-sync_2(LoggerName, ServerName, Sync) ->
-    MkSync2 =
+enabled_2(LoggerName, ServerName, Enabled) ->
+    MkEnabled2 =
         fun (LogLevel) ->
                 io_lib:format(
                   "~p(M, F, L, Fmt, Args) -> "
@@ -204,10 +125,10 @@ sync_2(LoggerName, ServerName, Sync) ->
                   "gen_server:call('~s', {log, Info, Fmt, ForcedArgs}, infinity).~n",
                   [LogLevel, LoggerName, LogLevel, ServerName])
         end,
-    lists:flatten(lists:map(MkSync2, Sync)).
+    lists:flatten(lists:map(MkEnabled2, Enabled)).
 
-xsync_2(LoggerName, ServerName, Sync) ->
-    MkXSync2 =
+xenabled_2(LoggerName, ServerName, Enabled) ->
+    MkXEnabled2 =
         fun (LogLevel) ->
                 io_lib:format(
                   "x~p(M, F, L, Data, Fmt, Args) -> "
@@ -216,4 +137,4 @@ xsync_2(LoggerName, ServerName, Sync) ->
                   "gen_server:call('~s', {log, Info, Fmt, ForcedArgs}, infinity).~n",
                   [LogLevel, LoggerName, LogLevel, ServerName])
         end,
-    lists:flatten(lists:map(MkXSync2, Sync)).
+    lists:flatten(lists:map(MkXEnabled2, Enabled)).
