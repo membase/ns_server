@@ -76,7 +76,6 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
     erlang:put(total_changes, 0),
     erlang:put(actual_changes, 0),
 
-    ?rebalance_info("Starting movers with new map =~n~p", [NewMap]),
     %% Dictionary mapping old node to vbucket and new node
     {MoveDict, TrivialMoves} =
         lists:foldl(fun ({V, [M1|_] = C1, C2}, {D, TrivialMoves}) ->
@@ -89,6 +88,7 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
                     lists:zip3(lists:seq(0, length(OldMap) - 1), OldMap,
                                NewMap)),
     ?rebalance_info("The following count of vbuckets do not need to be moved at all: ~p", [TrivialMoves]),
+    ?rebalance_info("The following moves are planned:~n~p", [dict:to_list(MoveDict)]),
     Movers = dict:map(fun (_, _) -> 0 end, MoveDict),
     self() ! spawn_initial,
     process_flag(trap_exit, true),
