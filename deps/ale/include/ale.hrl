@@ -22,7 +22,7 @@
 -define(DEFAULT_FORMATTER, ale_default_formatter).
 
 -define(ALE_LOGGER, ale_logger).
--define(ERROR_LOGGER_LOGGER, error_logger).
+-define(ERROR_LOGGER, error_logger).
 
 -type time() :: {integer(), integer(), integer()}.
 

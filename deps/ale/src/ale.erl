@@ -99,7 +99,7 @@ get_sink_loglevel(LoggerName, SinkName) ->
 init([MailboxLenLimit]) ->
     State = #state{mailbox_len_limit=MailboxLenLimit},
 
-    {ok, State1} = do_start_logger(?ERROR_LOGGER_LOGGER,
+    {ok, State1} = do_start_logger(?ERROR_LOGGER,
                                    ?DEFAULT_LOGLEVEL, ?DEFAULT_SYNC_LOGLEVEL,
                                    State),
     {ok, State2} = do_start_logger(?ALE_LOGGER,
@@ -374,7 +374,7 @@ do_get_sink_loglevel(LoggerName, SinkName, State) ->
 
 set_error_logger_handler() ->
     ok = gen_event:add_sup_handler(error_logger, ale_error_logger_handler,
-                                   [?ERROR_LOGGER_LOGGER]).
+                                   [?ERROR_LOGGER]).
 
 rearm_timer() ->
     erlang:start_timer(?CHECK_MAILBOXES_INTERVAL, self(), check_mailboxes).

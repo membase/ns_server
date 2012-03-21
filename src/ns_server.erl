@@ -75,7 +75,7 @@ get_loglevel(LoggerName) ->
     misc:get_env_default(Key, DefaultLogLevel).
 
 init_logging() ->
-    StdLoggers = [?ERROR_LOGGER_LOGGER],
+    StdLoggers = [?ERROR_LOGGER],
     AllLoggers = StdLoggers ++ ?LOGGERS,
 
     {ok, Dir} = application:get_env(error_logger_mf_dir),
