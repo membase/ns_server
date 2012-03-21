@@ -257,58 +257,38 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
 %% @private
 %% @doc Perform pre-move replication fixup.
 update_replication_pre_move(VBucket, OldChain, NewChain) ->
-    [NewMaster|_] = NewChain,
-    OldPairs = pairs(OldChain),
-    NewPairs = pairs(NewChain),
-    %% Stop replication to the new master
-    case lists:keyfind(NewMaster, 2, OldPairs) of
-        {SrcNode, _} ->
-            kill_replica(SrcNode, NewMaster, VBucket),
-            sync_replicas();
-        false ->
-            ok
-    end,
-    %% Start replication to any new replicas that aren't already being
-    %% replicated to
-    lists:foreach(
-      fun ({SrcNode, DstNode}) ->
-              case lists:member(DstNode, OldChain) of
-                  false ->
-                      %% Not the old master or already being replicated to
-                      add_replica(SrcNode, DstNode, VBucket);
-                  true ->
-                      %% Already being replicated to; swing it over after
-                      ok
-              end
-      end, NewPairs -- OldPairs).
+    %% vbucket mover will take care of new replicas, so just stop
+    %% replication for them
+    PairsToStop = [T || {S, D} = T <- pairs(OldChain),
+                        true = if S =:= undefined -> D =:= undefined;
+                                  true -> true
+                               end,
+                        S =/= undefined,
+                        D =/= undefined,
+                        lists:member(D, NewChain)],
+    %% we kind of create holes in old replication chain, but note that
+    %% if some destination replication is stopped, it means we'll soon
+    %% replicate to it in single vbucket mover, so chain is not really
+    %% broken.
+    [kill_replica(S, D, VBucket) || {S, D} <- PairsToStop],
+    sync_replicas().
 
 
 %% @private
 %% @doc Perform post-move replication fixup.
 update_replication_post_move(VBucket, OldChain, NewChain) ->
-    OldPairs = pairs(OldChain),
-    NewPairs = pairs(NewChain),
-    %% Stop replication for any old pair that isn't needed any more.
-    lists:foreach(
-      fun ({SrcNode, DstNode}) when SrcNode =/= undefined ->
-              kill_replica(SrcNode, DstNode, VBucket)
-      end, OldPairs -- NewPairs),
-    %% Start replication for any new pair that wouldn't have already
-    %% been started.
-    lists:foreach(
-      fun ({SrcNode, DstNode}) ->
-              case lists:member(DstNode, OldChain) of
-                  false ->
-                      %% Would have already been started
-                      ok;
-                  true ->
-                      %% Old one was stopped by the previous loop
-                      add_replica(SrcNode, DstNode, VBucket)
-              end
-      end, NewPairs -- OldPairs),
-    %% TODO: wait for backfill to complete and remove obsolete
-    %% copies before continuing. Otherwise rebalance could use a lot
-    %% of space.
+    %% destroy remainings of old replication chain
+    [kill_replica(S, D, VBucket) || {S, D} <- pairs(OldChain),
+                                    S =/= undefined,
+                                    D =/= undefined,
+                                    not lists:member(D, NewChain)],
+    %% just start new chain of replications. Old chain is dead now
+    [add_replica(S, D, VBucket) || {S, D} <- pairs(NewChain),
+                                   true = if S =:= undefined -> D =:= undefined;
+                                             true -> true
+                                          end,
+                                   S =/= undefined,
+                                   D =/= undefined],
     ok.
 
 assert_master_mover() ->
