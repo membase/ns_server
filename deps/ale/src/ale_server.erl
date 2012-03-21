@@ -27,7 +27,6 @@
          terminate/2, code_change/3]).
 
 -record(state, { logger_name          :: atom(),
-                 server_name          :: atom(),
                  loglevel             :: loglevel(),
                  sinks = dict:new()   :: dict(),
                  compiler = undefined :: pid() | undefined}).
@@ -35,15 +34,14 @@
 start_link(ServerName, LoggerName, LogLevel) ->
     gen_server:start_link({local, ServerName},
                           ?MODULE,
-                          [ServerName, LoggerName, LogLevel], []).
+                          [LoggerName, LogLevel], []).
 
-init([ServerName, LoggerName, LogLevel]) ->
+init([LoggerName, LogLevel]) ->
     process_flag(trap_exit, true),
 
     case valid_loglevel(LogLevel) of
         true ->
             State = #state{logger_name=LoggerName,
-                           server_name=ServerName,
                            loglevel=LogLevel},
             compile(State),
             {ok, State};
@@ -51,14 +49,16 @@ init([ServerName, LoggerName, LogLevel]) ->
             {stop, badarg}
     end.
 
-handle_call({log, Info, Format, Args}, _From, State) ->
-    {reply, do_log(State, Info, Format, Args), State};
-
 handle_call({set_loglevel, Level}, _From, State) ->
     case valid_loglevel(Level) of
         true ->
-            NewState = State#state{loglevel=Level},
-            {reply, ok, maybe_recompile(State, NewState)};
+            case State#state.loglevel of
+                Level ->
+                    {reply, ok, State};
+                _ ->
+                    NewState = State#state{loglevel=Level},
+                    {reply, ok, spawn_compiler(NewState)}
+            end;
         false ->
             {reply, {error, badarg}, State}
     end;
@@ -79,7 +79,7 @@ handle_call({add_sink, Name, LogLevel}, _From,
                 error ->
                     NewSinks = dict:store(Name, LogLevel, Sinks),
                     NewState = State#state{sinks=NewSinks},
-                    {reply, ok, maybe_recompile(State, NewState)}
+                    {reply, ok, spawn_compiler(NewState)}
             end;
         false ->
             {reply, {error, badarg}, State}
@@ -97,7 +97,7 @@ handle_call({set_sink_loglevel, Name, NewLevel}, _From,
                 {ok, _OldLevel} ->
                     NewSinks = dict:store(Name, NewLevel, Sinks),
                     NewState = State#state{sinks=NewSinks},
-                    {reply, ok, maybe_recompile(State, NewState)}
+                    {reply, ok, spawn_compiler(NewState)}
             end;
         false ->
             {reply, {error, badarg}, State}
@@ -133,37 +133,14 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% Auxiliary functions.
 
-effective_loglevel(#state{loglevel=LogLevel, sinks=Sinks} = _State) ->
-    Snd = fun ({_, X}) -> X end,
+do_compile(#state{logger_name=LoggerName,
+                  loglevel=LogLevel,
+                  sinks=Sinks}) ->
+    SinksList = dict:to_list(Sinks),
 
-    case dict:size(Sinks) of
-        0 ->
-            undefined;
-        _Other ->
-            SinkLevels = lists:map(Snd, dict:to_list(Sinks)),
-            MaxSinkLevel = ale_utils:loglevel_max(SinkLevels),
-            ale_utils:loglevel_min(LogLevel, MaxSinkLevel)
-    end.
+    ale_codegen:load_logger(LoggerName, LogLevel, SinksList).
 
-needs_recompilation(OldState, NewState) ->
-    effective_loglevel(OldState) =/= effective_loglevel(NewState).
-
-maybe_recompile(OldState, NewState) ->
-    case needs_recompilation(OldState, NewState) of
-        false ->
-            NewState;
-        true ->
-            spawn_compiler(NewState)
-    end.
-
-compile(State) ->
-    LoggerName = State#state.logger_name,
-    ServerName = State#state.server_name,
-    LogLevel   = effective_loglevel(State),
-
-    ale_codegen:load_logger(LoggerName, ServerName, LogLevel).
-
-spawn_compiler(#state{compiler=Compiler} = State) ->
+kill_compiler(#state{compiler=Compiler}) ->
     case Compiler of
         undefined ->
             ok;
@@ -173,31 +150,22 @@ spawn_compiler(#state{compiler=Compiler} = State) ->
                 {'EXIT', Compiler, _Reason} ->
                     ok
             end
-    end,
+    end.
 
-    DoCompile   = fun () -> compile(State) end,
-    NewCompiler = spawn_link(DoCompile),
+compile(State) ->
+    kill_compiler(State),
+    do_compile(State),
+    State.
+
+spawn_compiler(State) ->
+    kill_compiler(State),
+
+    NewCompiler = spawn_link(
+                   fun () ->
+                           do_compile(State)
+                   end),
 
     State#state{compiler=NewCompiler}.
-
--spec must_be_logged(loglevel(), loglevel()) -> boolean().
-must_be_logged(LogLevel, ThresholdLogLevel) ->
-    ale_utils:loglevel_min(LogLevel, ThresholdLogLevel) =:= LogLevel.
-
-do_log(#state{sinks=Sinks} = _State,
-       #log_info{loglevel=LogLevel} = Info, Format, Args) ->
-    MaybeLog = fun (Sink, SinkLogLevel) ->
-                       case must_be_logged(LogLevel, SinkLogLevel) of
-                           true ->
-                               catch gen_server:call(Sink,
-                                                     {log, Info, Format, Args}),
-                               ok;
-                           false ->
-                               ok
-                       end
-               end,
-    dict:map(MaybeLog, Sinks),
-    ok.
 
 valid_loglevel(LogLevel) ->
     lists:member(LogLevel, ?LOGLEVELS).

@@ -27,18 +27,17 @@ logger_impl(Logger) ->
 extended_impl(LogLevel) ->
     list_to_atom([$x | atom_to_list(LogLevel)]).
 
-load_logger(LoggerName, ServerName, LogLevel) ->
-    SourceCode = logger(LoggerName, ServerName, LogLevel),
+load_logger(LoggerName, LogLevel, Sinks) ->
+    SourceCode = logger(LoggerName, LogLevel, Sinks),
     dynamic_compile:load_from_string(SourceCode).
 
-logger(LoggerName, ServerName, LogLevel) ->
+logger(LoggerName, LogLevel, Sinks) ->
     LoggerNameStr = atom_to_list(LoggerName),
-    ServerNameStr = atom_to_list(ServerName),
     lists:flatten([header(LoggerNameStr),
                    "\n",
                    exports(),
                    "\n",
-                   definitions(LoggerNameStr, ServerNameStr, LogLevel)]).
+                   definitions(LoggerNameStr, LogLevel, Sinks)]).
 
 header(LoggerName) ->
     io_lib:format("-module('~s').~n", [atom_to_list(logger_impl(LoggerName))]).
@@ -48,88 +47,83 @@ exports() ->
                    [LogLevel, LogLevel, LogLevel, LogLevel]) ||
         LogLevel <- ?LOGLEVELS].
 
-definitions(LoggerName, ServerName, LogLevel) ->
-    {Stubs, Enabled} =
-        lists:splitwith(fun (X) ->
-                                X =/= LogLevel
-                        end, ?LOGLEVELS),
+definitions(LoggerName, LoggerLogLevel, Sinks) ->
+    lists:map(
+      fun (LogLevel) ->
+              loglevel_definitions(LoggerName, LoggerLogLevel, LogLevel, Sinks)
+      end, ?LOGLEVELS).
 
-    [stubs(Stubs),
+loglevel_definitions(LoggerName, LoggerLogLevel, LogLevel, Sinks) ->
+    EnabledSinks =
+        case ale_utils:loglevel_enabled(LogLevel, LoggerLogLevel) of
+            false ->
+                [];
+            true ->
+                lists:foldl(
+                  fun ({Sink, SinkLogLevel}, Acc) ->
+                          case ale_utils:loglevel_enabled(LogLevel, SinkLogLevel) of
+                              true ->
+                                  [Sink | Acc];
+                              false ->
+                                  Acc
+                          end
+                  end, [], Sinks)
+        end,
+
+    [generic_loglevel(LoggerName, LogLevel, EnabledSinks),
      "\n",
-     enabled(LoggerName, ServerName, Enabled)].
-
-stubs(Stubs) ->
-    [stubs_1(Stubs),
-     xstubs_1(Stubs),
+     loglevel_1(LogLevel),
+     loglevel_2(LogLevel),
      "\n",
-     stubs_2(Stubs),
-     xstubs_2(Stubs)].
+     xloglevel_1(LogLevel),
+     xloglevel_2(LogLevel),
+     "\n"].
 
-stubs_1(Stubs) ->
-    [io_lib:format("~p(_, _, _, _) -> ok.~n", [LogLevel]) ||
-        LogLevel <- Stubs].
+generic_loglevel(LoggerName, LogLevel, EnabledSinks) ->
+    %% inline generated function
+    [io_lib:format("-compile({inline, [generic_~p/6]}).~n", [LogLevel]),
 
-xstubs_1(Stubs) ->
-    [io_lib:format("x~p(_, _, _, _, _) -> ok.~n", [LogLevel]) ||
-        LogLevel <- Stubs].
+     io_lib:format("generic_~p(M, F, L, Data, Fmt, Args) -> ", [LogLevel]),
 
-stubs_2(Stubs) ->
-    [io_lib:format("~p(_, _, _, _, _) -> ok.~n", [LogLevel]) ||
-        LogLevel <- Stubs].
+     case EnabledSinks of
+         [] ->
+             "";
+         _ ->
+             io_lib:format(
+               "ForcedArgs = ale_utils:force_args(Args),"
+               "Info = ale_utils:assemble_info(~s, ~p, M, F, L, Data),",
+               [LoggerName, LogLevel])
+     end,
 
-xstubs_2(Stubs) ->
-    [io_lib:format("x~p(_, _, _, _, _, _) -> ok.~n", [LogLevel]) ||
-        LogLevel <- Stubs].
+     lists:map(
+       fun (Sink) ->
+               io_lib:format(
+                 "ok = gen_server:call('~s', {log, Info, Fmt, ForcedArgs}, infinity),",
+                 [Sink])
+       end, EnabledSinks),
 
-enabled(LoggerName, ServerName, Enabled) ->
-    [enabled_1(LoggerName, ServerName, Enabled),
-     xenabled_1(LoggerName, ServerName, Enabled),
-     "\n",
-     enabled_2(LoggerName, ServerName, Enabled),
-     xenabled_2(LoggerName, ServerName, Enabled)].
+     "ok.\n"].
 
-enabled_1(LoggerName, ServerName, Enabled) ->
-    MkEnabled1 =
-        fun (LogLevel) ->
-                io_lib:format(
-                  "~p(M, F, L, Msg) -> "
-                  "Info = ale_utils:assemble_info(~s, ~p, M, F, L),"
-                  "gen_server:call('~s', {log, Info, Msg, []}, infinity).~n",
-                  [LogLevel, LoggerName, LogLevel, ServerName])
-        end,
-    lists:map(MkEnabled1, Enabled).
+loglevel_1(LogLevel) ->
+    io_lib:format(
+      "~p(M, F, L, Msg) -> "
+      "generic_~p(M, F, L, undefined, Msg, []).~n",
+      [LogLevel, LogLevel]).
 
-xenabled_1(LoggerName, ServerName, Enabled) ->
-    MkXEnabled1 =
-        fun (LogLevel) ->
-                io_lib:format(
-                  "x~p(M, F, L, Data, Msg) -> "
-                  "Info = ale_utils:assemble_info(~s, ~p, M, F, L, Data),"
-                  "gen_server:call('~s', {log, Info, Msg, []}, infinity).~n",
-                  [LogLevel, LoggerName, LogLevel, ServerName])
-        end,
-    lists:map(MkXEnabled1, Enabled).
+xloglevel_1(LogLevel) ->
+    io_lib:format(
+      "x~p(M, F, L, Data, Msg) -> "
+      "generic_~p(M, F, L, Data, Msg, []).~n",
+      [LogLevel, LogLevel]).
 
-enabled_2(LoggerName, ServerName, Enabled) ->
-    MkEnabled2 =
-        fun (LogLevel) ->
-                io_lib:format(
-                  "~p(M, F, L, Fmt, Args) -> "
-                  "ForcedArgs = ale_utils:force_args(Args),"
-                  "Info = ale_utils:assemble_info(~s, ~p, M, F, L),"
-                  "gen_server:call('~s', {log, Info, Fmt, ForcedArgs}, infinity).~n",
-                  [LogLevel, LoggerName, LogLevel, ServerName])
-        end,
-    lists:map(MkEnabled2, Enabled).
+loglevel_2(LogLevel) ->
+    io_lib:format(
+      "~p(M, F, L, Fmt, Args) -> "
+      "generic_~p(M, F, L, undefined, Fmt, Args).~n",
+      [LogLevel, LogLevel]).
 
-xenabled_2(LoggerName, ServerName, Enabled) ->
-    MkXEnabled2 =
-        fun (LogLevel) ->
-                io_lib:format(
-                  "x~p(M, F, L, Data, Fmt, Args) -> "
-                  "ForcedArgs = ale_utils:force_args(Args),"
-                  "Info = ale_utils:assemble_info(~s, ~p, M, F, L, Data),"
-                  "gen_server:call('~s', {log, Info, Fmt, ForcedArgs}, infinity).~n",
-                  [LogLevel, LoggerName, LogLevel, ServerName])
-        end,
-    lists:map(MkXEnabled2, Enabled).
+xloglevel_2(LogLevel) ->
+    io_lib:format(
+      "x~p(M, F, L, Data, Fmt, Args) -> "
+      "generic_~p(M, F, L, Data, Fmt, Args).~n",
+      [LogLevel, LogLevel]).

@@ -26,28 +26,9 @@ loglevel_to_integer(warn)     -> 2;
 loglevel_to_integer(info)     -> 3;
 loglevel_to_integer(debug)    -> 4.
 
--spec integer_to_loglevel(0..4) -> loglevel().
-integer_to_loglevel(0) -> critical;
-integer_to_loglevel(1) -> error;
-integer_to_loglevel(2) -> warn;
-integer_to_loglevel(3) -> info;
-integer_to_loglevel(4) -> debug.
-
--spec loglevel_min(ULogLevel, ULogLevel) -> ULogLevel
-       when ULogLevel :: undefined | loglevel().
-loglevel_min(undefined, _Y) ->
-    undefined;
-loglevel_min(_X, undefined) ->
-    undefined;
-loglevel_min(X, Y) ->
-    X1 = loglevel_to_integer(X),
-    Y1 = loglevel_to_integer(Y),
-    integer_to_loglevel(min(X1, Y1)).
-
--spec loglevel_max([loglevel()]) -> loglevel().
-loglevel_max(LogLevels) ->
-    integer_to_loglevel(lists:max(lists:map(fun loglevel_to_integer/1,
-                                            LogLevels))).
+-spec loglevel_enabled(loglevel(), loglevel()) -> boolean().
+loglevel_enabled(LogLevel, ThresholdLogLevel) ->
+    loglevel_to_integer(LogLevel) =< loglevel_to_integer(ThresholdLogLevel).
 
 -spec assemble_info(atom(), loglevel(), atom(), atom(), integer(), any()) ->
                            #log_info{}.
@@ -71,11 +52,6 @@ assemble_info(Logger, LogLevel, Module, Function, Line, UserData) ->
               process=Process,
               node=Node,
               user_data=UserData}.
-
--spec assemble_info(atom(), loglevel(), atom(), atom(), integer()) ->
-                           #log_info{}.
-assemble_info(Logger, LogLevel, Module, Function, Line) ->
-    assemble_info(Logger, LogLevel, Module, Function, Line, undefined).
 
 -spec force_args(list()) -> list().
 force_args(Exprs) when is_list(Exprs) ->
