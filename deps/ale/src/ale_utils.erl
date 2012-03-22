@@ -94,9 +94,6 @@ child_id(NameSpace, Name) ->
 sink_id(Name) ->
     child_id(sink, Name).
 
-logger_id(Name) ->
-    child_id(logger, Name).
-
 supported_opts(UserOpts, Supported) ->
     UserKeys = proplists:get_keys(UserOpts),
     [] =:= UserKeys -- Supported.
