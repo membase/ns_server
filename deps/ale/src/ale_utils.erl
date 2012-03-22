@@ -108,6 +108,3 @@ interesting_opts(UserOpts, Interesting) ->
                    lists:member(Opt, Interesting)
            end,
     lists:filter(Pred, UserOpts).
-
-get_formatter(Opts) ->
-    proplists:get_value(formatter, Opts, ?DEFAULT_FORMATTER).

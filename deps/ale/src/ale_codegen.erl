@@ -15,7 +15,7 @@
 
 -module(ale_codegen).
 
--export([load_logger/3, logger_impl/1, extended_impl/1, logger/3]).
+-export([load_logger/4, logger_impl/1, extended_impl/1, logger/4]).
 
 -include("ale.hrl").
 
@@ -27,17 +27,17 @@ logger_impl(Logger) ->
 extended_impl(LogLevel) ->
     list_to_atom([$x | atom_to_list(LogLevel)]).
 
-load_logger(LoggerName, LogLevel, Sinks) ->
-    SourceCode = logger(LoggerName, LogLevel, Sinks),
+load_logger(LoggerName, LogLevel, Formatter, Sinks) ->
+    SourceCode = logger(LoggerName, LogLevel, Formatter, Sinks),
     dynamic_compile:load_from_string(SourceCode).
 
-logger(LoggerName, LogLevel, Sinks) ->
+logger(LoggerName, LogLevel, Formatter, Sinks) ->
     LoggerNameStr = atom_to_list(LoggerName),
     lists:flatten([header(LoggerNameStr),
                    "\n",
                    exports(),
                    "\n",
-                   definitions(LoggerNameStr, LogLevel, Sinks)]).
+                   definitions(LoggerNameStr, LogLevel, Formatter, Sinks)]).
 
 header(LoggerName) ->
     io_lib:format("-module('~s').~n", [atom_to_list(logger_impl(LoggerName))]).
@@ -47,13 +47,14 @@ exports() ->
                    [LogLevel, LogLevel, LogLevel, LogLevel]) ||
         LogLevel <- ?LOGLEVELS].
 
-definitions(LoggerName, LoggerLogLevel, Sinks) ->
+definitions(LoggerName, LoggerLogLevel, Formatter, Sinks) ->
     lists:map(
       fun (LogLevel) ->
-              loglevel_definitions(LoggerName, LoggerLogLevel, LogLevel, Sinks)
+              loglevel_definitions(LoggerName, LoggerLogLevel,
+                                   LogLevel, Formatter, Sinks)
       end, ?LOGLEVELS).
 
-loglevel_definitions(LoggerName, LoggerLogLevel, LogLevel, Sinks) ->
+loglevel_definitions(LoggerName, LoggerLogLevel, LogLevel, Formatter, Sinks) ->
     EnabledSinks =
         case ale_utils:loglevel_enabled(LogLevel, LoggerLogLevel) of
             false ->
@@ -70,7 +71,7 @@ loglevel_definitions(LoggerName, LoggerLogLevel, LogLevel, Sinks) ->
                   end, [], Sinks)
         end,
 
-    [generic_loglevel(LoggerName, LogLevel, EnabledSinks),
+    [generic_loglevel(LoggerName, LogLevel, Formatter, EnabledSinks),
      "\n",
      loglevel_1(LogLevel),
      loglevel_2(LogLevel),
@@ -79,7 +80,7 @@ loglevel_definitions(LoggerName, LoggerLogLevel, LogLevel, Sinks) ->
      xloglevel_2(LogLevel),
      "\n"].
 
-generic_loglevel(LoggerName, LogLevel, EnabledSinks) ->
+generic_loglevel(LoggerName, LogLevel, Formatter, EnabledSinks) ->
     %% inline generated function
     [io_lib:format("-compile({inline, [generic_~p/6]}).~n", [LogLevel]),
 
@@ -91,14 +92,15 @@ generic_loglevel(LoggerName, LogLevel, EnabledSinks) ->
          _ ->
              io_lib:format(
                "ForcedArgs = ale_utils:force_args(Args),"
-               "Info = ale_utils:assemble_info(~s, ~p, M, F, L, Data),",
-               [LoggerName, LogLevel])
+               "Info = ale_utils:assemble_info(~s, ~p, M, F, L, Data),"
+               "LogMsg = ~p:format_msg(Info, Fmt, ForcedArgs),",
+               [LoggerName, LogLevel, Formatter])
      end,
 
      lists:map(
        fun (Sink) ->
                io_lib:format(
-                 "ok = gen_server:call('~s', {log, Info, Fmt, ForcedArgs}, infinity),",
+                 "ok = gen_server:call('~s', {log, LogMsg}, infinity),",
                  [Sink])
        end, EnabledSinks),
 

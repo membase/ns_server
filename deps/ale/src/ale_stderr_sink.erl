@@ -26,7 +26,7 @@
 
 -include("ale.hrl").
 
--record(state, {formatter :: atom()}).
+-record(state, {}).
 
 start_link(Name) ->
     start_link(Name, []).
@@ -34,13 +34,11 @@ start_link(Name) ->
 start_link(Name, Opts) ->
     gen_server:start_link({local, Name}, ?MODULE, [Opts], []).
 
-init([Opts]) ->
-    Formatter = ale_utils:get_formatter(Opts),
-    {ok, #state{formatter=Formatter}}.
+init([_Opts]) ->
+    {ok, #state{}}.
 
-handle_call({log, Info, Format, Args}, _From,
-            #state{formatter=Formatter} = State) ->
-    RV = do_log(Formatter, Info, Format, Args),
+handle_call({log, Msg}, _From, State) ->
+    RV = do_log(Msg),
     {reply, RV, State};
 
 handle_call(_Request, _From, State) ->
@@ -58,6 +56,5 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-do_log(Formatter, Info, Format, Args) ->
-    Msg = Formatter:format_msg(Info, Format, Args),
+do_log(Msg) ->
     file:write(standard_error, Msg).

@@ -20,7 +20,7 @@
 -include("ale.hrl").
 
 %% API
--export([start_link/3]).
+-export([start_link/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -29,20 +29,22 @@
 -record(state, { logger_name          :: atom(),
                  loglevel             :: loglevel(),
                  sinks = dict:new()   :: dict(),
+                 formatter            :: module(),
                  compiler = undefined :: pid() | undefined}).
 
-start_link(ServerName, LoggerName, LogLevel) ->
+start_link(ServerName, LoggerName, LogLevel, Formatter) ->
     gen_server:start_link({local, ServerName},
                           ?MODULE,
-                          [LoggerName, LogLevel], []).
+                          [LoggerName, LogLevel, Formatter], []).
 
-init([LoggerName, LogLevel]) ->
+init([LoggerName, LogLevel, Formatter]) ->
     process_flag(trap_exit, true),
 
     case valid_loglevel(LogLevel) of
         true ->
             State = #state{logger_name=LoggerName,
-                           loglevel=LogLevel},
+                           loglevel=LogLevel,
+                           formatter=Formatter},
             compile(State),
             {ok, State};
         false ->
@@ -135,10 +137,11 @@ code_change(_OldVsn, State, _Extra) ->
 
 do_compile(#state{logger_name=LoggerName,
                   loglevel=LogLevel,
+                  formatter=Formatter,
                   sinks=Sinks}) ->
     SinksList = dict:to_list(Sinks),
 
-    ale_codegen:load_logger(LoggerName, LogLevel, SinksList).
+    ale_codegen:load_logger(LoggerName, LogLevel, Formatter, SinksList).
 
 kill_compiler(#state{compiler=Compiler}) ->
     case Compiler of

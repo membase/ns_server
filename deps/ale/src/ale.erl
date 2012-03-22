@@ -60,7 +60,10 @@ start_logger(Name) ->
     start_logger(Name, ?DEFAULT_LOGLEVEL).
 
 start_logger(Name, LogLevel) ->
-    gen_server:call(?MODULE, {start_logger, Name, LogLevel}).
+    start_logger(Name, LogLevel, ?DEFAULT_FORMATTER).
+
+start_logger(Name, LogLevel, Formatter) ->
+    gen_server:call(?MODULE, {start_logger, Name, LogLevel, Formatter}).
 
 stop_logger(Name) ->
     gen_server:call(?MODULE, {stop_logger, Name}).
@@ -89,8 +92,10 @@ get_sink_loglevel(LoggerName, SinkName) ->
 init([MailboxLenLimit]) ->
     State = #state{mailbox_len_limit=MailboxLenLimit},
 
-    {ok, State1} = do_start_logger(?ERROR_LOGGER, ?DEFAULT_LOGLEVEL, State),
-    {ok, State2} = do_start_logger(?ALE_LOGGER, ?DEFAULT_LOGLEVEL, State1),
+    {ok, State1} = do_start_logger(?ERROR_LOGGER,
+                                   ?DEFAULT_LOGLEVEL, ?DEFAULT_FORMATTER, State),
+    {ok, State2} = do_start_logger(?ALE_LOGGER,
+                                   ?DEFAULT_LOGLEVEL, ?DEFAULT_FORMATTER, State1),
 
     set_error_logger_handler(),
     rearm_timer(),
@@ -105,8 +110,8 @@ handle_call({stop_sink, Name}, _From, State) ->
     RV = do_stop_sink(Name, State),
     handle_result(RV, State);
 
-handle_call({start_logger, Name, LogLevel}, _From, State) ->
-    RV = do_start_logger(Name, LogLevel, State),
+handle_call({start_logger, Name, LogLevel, Formatter}, _From, State) ->
+    RV = do_start_logger(Name, LogLevel, Formatter, State),
     handle_result(RV, State);
 
 handle_call({stop_logger, Name}, _From, State) ->
@@ -247,7 +252,7 @@ do_stop_sink(Name, #state{sinks=Sinks} = State) ->
               {ok, NewState}
       end).
 
-do_start_logger(Name, LogLevel, #state{loggers=Loggers} = State) ->
+do_start_logger(Name, LogLevel, Formatter, #state{loggers=Loggers} = State) ->
     case ordsets:is_element(Name, Loggers) of
         true ->
             {error, duplicate_logger};
@@ -255,7 +260,8 @@ do_start_logger(Name, LogLevel, #state{loggers=Loggers} = State) ->
             LoggerId = ale_utils:logger_id(Name),
 
             RV = ale_dynamic_sup:start_child(LoggerId, ale_server,
-                                             [LoggerId, Name, LogLevel]),
+                                             [LoggerId, Name,
+                                              LogLevel, Formatter]),
             case RV of
                 {ok, _} ->
                     NewState =
