@@ -55,6 +55,7 @@ do_cleanup(Bucket, Options, Config) ->
 
                 Config6 = lists:keystore(map, 1, Config1, {map, NewMap}),
                 ns_bucket:set_bucket_config(Bucket, Config6),
+                ns_bucket:update_vbucket_map_history(NewMap, ns_bucket:config_to_map_options(Config6)),
                 {NewMap, S};
             M ->
                 {M, proplists:get_value(servers, Config)}
@@ -199,7 +200,7 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                           {false, _} ->
                               ?log_info("Setting vbucket ~p in ~p on ~p from ~p"
                                         " to dead because we don't have all "
-                                        "copies", [N, Bucket, VBucket, State]),
+                                        "copies~n~p", [N, Bucket, VBucket, State, {ChainStates, ExtraStates}]),
                               ns_memcached:set_vbucket(N, Bucket, VBucket, dead)
                       end
               end, ExtraStates),

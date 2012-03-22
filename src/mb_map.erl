@@ -14,39 +14,222 @@
 %% limitations under the License.
 %%
 %% @doc Functions for manipulating vbucket maps. All code here is
-%% supposed to be purely functional. At least on outside.
+%% supposed to be purely functional. At least on outside. Well,
+%% there's slight use of per-process randomness state in random_map/3
+%% (quite naturally) and generate_map/3 (less naturally)
 
 -module(mb_map).
 
 -include("ns_common.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--export([balance/3,
+-export([promote_replicas/2,
+         generate_map/3,
          is_balanced/3,
          is_valid/1,
-         random_map/3]).
+         random_map/3,
+         vbucket_movements/2]).
 
 
 -export([counts/1]). % for testing
+
+%% removes RemapNodes from head of vbucket map Map. Returns new map
+promote_replicas(undefined, _RemapNode) ->
+    undefined;
+promote_replicas(Map, RemapNodes) ->
+    [promote_replica(Chain, RemapNodes) || Chain <- Map].
+
+%% removes RemapNodes from head of vbucket map Chain for vbucket
+%% V. Actually switches master if head of Chain is in
+%% RemapNodes. Returns new chain.
+promote_replica(Chain, RemapNodes) ->
+    Chain1 = [case lists:member(Node, RemapNodes) of
+                  true -> undefined;
+                  false -> Node
+              end || Node <- Chain],
+    %% Chain now might begin with undefined - put all the undefineds
+    %% at the end
+    {Undefineds, Rest} = lists:partition(fun (undefined) -> true;
+                                             (_) -> false
+                                         end, Chain1),
+    Rest ++ Undefineds.
+
+vbucket_movements_rec(AccMasters, AccReplicas, AccRest, [], []) ->
+    {AccMasters, AccReplicas, AccRest};
+vbucket_movements_rec(AccMasters, AccReplicas, AccRest, [[MasterSrc|_] = SrcChain | RestSrcChains], [[MasterDst|RestDst] | RestDstChains]) ->
+    true = (MasterDst =/= undefined),
+    AccMasters2 = case MasterSrc =:= MasterDst of
+                      true ->
+                          AccMasters;
+                      false ->
+                          AccMasters+1
+                  end,
+    BetterReplicas  = case SrcChain of
+                          [_] ->
+                              SrcChain;
+                          [MasterSrc, FirstSrcReplica | _RestSrc] ->
+                              [MasterSrc, FirstSrcReplica]
+                      end,
+    AccReplicas2 = case RestDst =:= [] orelse hd(RestDst) =:= undefined orelse lists:member(hd(RestDst), BetterReplicas) of
+                       true ->
+                           AccReplicas;
+                       false ->
+                           AccReplicas+1
+                   end,
+    AccRest2 = lists:foldl(
+                 fun (DstNode, Acc) ->
+                         case DstNode =:= undefined orelse lists:member(DstNode, SrcChain) of
+                             true -> Acc;
+                             false -> Acc+1
+                         end
+                 end, AccRest, RestDst),
+    vbucket_movements_rec(AccMasters2, AccReplicas2, AccRest2, RestSrcChains, RestDstChains).
+
+%% returns 'score' for difference between Src and Dst map. It's a
+%% triple. First element is number of takeovers (regardless if from
+%% scratch or not), second element is number first replicas that will
+%% be backfilled from scratch, third element is number any replicas
+%% that will be built from scratch.
+%%
+%% NOTE: we naively assume master and 1st replica are up-to-date so if
+%% future first replica is past master of first replica we think it
+%% won't require backfill.
+vbucket_movements(Src, Dst) ->
+    vbucket_movements_rec(0, 0, 0, Src, Dst).
+
+
+map_nodes_set(Map) ->
+    lists:foldl(
+      fun (Chain, Acc) ->
+              lists:foldl(
+                fun (Node, Acc1) ->
+                        case Node of
+                            undefined ->
+                                Acc1;
+                            _ ->
+                                sets:add_element(Node, Acc1)
+                        end
+                end, Acc, Chain)
+      end, sets:new(), Map).
+
+matching_renamings(KeepNodesSet, CurrentMap, CandidateMap) ->
+    case length(CandidateMap) =:= length(CurrentMap) of
+        false ->
+            [];
+        _ ->
+            case length(hd(CandidateMap)) =:= length(hd(CurrentMap)) of
+                true ->
+                    matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentMap, CandidateMap);
+                false ->
+                    []
+            end
+    end.
+
+matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentMap, CandidateMap) ->
+    CandidateNodesSet = map_nodes_set(CandidateMap),
+    case sets:size(CandidateNodesSet) =:= sets:size(KeepNodesSet) of
+        false ->
+            [];
+        true ->
+            CurrentNotCommon = sets:subtract(KeepNodesSet, CandidateNodesSet),
+            case sets:size(CurrentNotCommon) of
+                0 ->
+                    Moves = vbucket_movements(CurrentMap, CandidateMap),
+                    [{CandidateMap, Moves}];
+                1 ->
+                    [NewNode] = sets:to_list(CurrentNotCommon),
+                    [OldNode] = sets:to_list(sets:subtract(CandidateNodesSet, KeepNodesSet)),
+                    NewMap = misc:rewrite_value(OldNode, NewNode, CandidateMap),
+                    [{NewMap, vbucket_movements(CurrentMap, NewMap)}];
+                2 ->
+                    [NewNodeA, NewNodeB] = sets:to_list(CurrentNotCommon),
+                    [OldNodeA, OldNodeB] = sets:to_list(sets:subtract(CandidateNodesSet, KeepNodesSet)),
+                    NewMapA = misc:rewrite_value(OldNodeB, NewNodeB,
+                                                 misc:rewrite_value(OldNodeA, NewNodeA, CandidateMap)),
+                    NewMapB = misc:rewrite_value(OldNodeA, NewNodeB,
+                                                 misc:rewrite_value(OldNodeB, NewNodeA, CandidateMap)),
+                    [{NewMapA, vbucket_movements(CurrentMap, NewMapA)},
+                     {NewMapB, vbucket_movements(CurrentMap, NewMapB)}];
+                _ ->
+                    %% just try some random mapping just in case. It
+                    %% will work nicely if NewNode-s are all being
+                    %% added to cluster (and CurrentNode-s thus
+                    %% removed). Because in such case exact mapping
+                    %% doesn't really matter, because we'll backfill
+                    %% new nodes and it doesn't matter which.
+                    NewNotCommon = sets:to_list(sets:subtract(CandidateNodesSet, KeepNodesSet)),
+                    NewMap = lists:foldl(
+                               fun ({CurrentNode, CandidateNode}, MapAcc) ->
+                                       misc:rewrite_value(CandidateNode, CurrentNode, MapAcc)
+                               end,
+                               CandidateMap, lists:zip(sets:to_list(CurrentNotCommon), NewNotCommon)),
+                    [{NewMap, vbucket_movements(CurrentMap, NewMap)}]
+            end
+    end.
 
 %%
 %% API
 %%
 
-%% @doc Generate a balanced map.
-balance(Map, Nodes, Options) ->
+map_scores_less(ScoreA, ScoreB) ->
+    {element(1, ScoreA) + element(2, ScoreA), element(3, ScoreA)} < {element(1, ScoreB) + element(2, ScoreB), element(3, ScoreB)}.
+
+generate_map(Map, Nodes, Options) ->
     KeepNodes = lists:sort(Nodes),
+    MapsHistory = proplists:get_value(maps_history, Options, []),
+    NonHistoryOptionsNow = lists:sort(lists:keydelete(maps_history, 1, Options)),
+
+    NaturalMap = balance(Map, KeepNodes, Options),
+    NaturalMapScore = {NaturalMap, vbucket_movements(Map, NaturalMap)},
+
+    ?log_debug("Natural map score: ~p", [element(2, NaturalMapScore)]),
+
+    RndMap1 = balance(Map, misc:shuffle(Nodes), Options),
+    RndMap2 = balance(Map, misc:shuffle(Nodes), Options),
+
+    AllRndMapScores = [RndMap1Score, RndMap2Score] = [{M, vbucket_movements(Map, M)} || M <- [RndMap1, RndMap2]],
+
+    ?log_debug("Rnd maps scores: ~p, ~p", [S || {_, S} <- AllRndMapScores]),
+
+    NodesSet = sets:from_list(Nodes),
+    MapsFromPast = lists:flatmap(fun ({PastMap, NonHistoryOptions}) ->
+                                         case lists:sort(NonHistoryOptions) =:= NonHistoryOptionsNow of
+                                             true ->
+                                                 matching_renamings(NodesSet, Map, PastMap);
+                                             false ->
+                                                 []
+                                         end
+                                 end, MapsHistory),
+
+    AllMaps = sets:to_list(sets:from_list([NaturalMapScore, RndMap1Score, RndMap2Score | MapsFromPast])),
+
+    ?log_debug("Considering ~p maps:~n~p", [length(AllMaps), [S || {_, S} <- AllMaps]]),
+
+    BestMapScore = lists:foldl(fun ({_, CandidateScore} = Candidate, {_, BestScore} = Best) ->
+                                  case map_scores_less(CandidateScore, BestScore) of
+                                      true ->
+                                          Candidate;
+                                      false ->
+                                          Best
+                                  end
+                          end, hd(AllMaps), tl(AllMaps)),
+
+    BestMap = element(1, BestMapScore),
+    ?log_debug("Best map score: ~p (~p,~p,~p)", [element(2, BestMapScore), (BestMap =:= NaturalMap), (BestMap =:= RndMap1), (BestMap =:= RndMap2)]),
+    BestMap.
+
+%% @doc Generate a balanced map.
+balance(Map, KeepNodes, Options) ->
     NumNodes = length(KeepNodes),
     NumVBuckets = length(Map),
-    NumNodes = length(Nodes),
     OrigCopies = length(hd(Map)),
     NumCopies = erlang:min(NumNodes, OrigCopies),
     %% Strip nodes we're removing along with extra copies
-    Map1 = map_strip(Map, NumCopies, Nodes),
+    Map1 = map_strip(Map, NumCopies, KeepNodes),
     %% We always use the slave assignment machinery.
     MaxSlaves = proplists:get_value(max_slaves, Options, NumNodes - 1),
-    Slaves = slaves(Nodes, MaxSlaves),
-    Chains = chains(Nodes, NumVBuckets, NumCopies, Slaves),
+    Slaves = slaves(KeepNodes, MaxSlaves),
+    Chains = chains(KeepNodes, NumVBuckets, NumCopies, Slaves),
     %% Turn the map into a list of {VBucket, Chain} pairs.
     NumberedMap = lists:zip(lists:seq(0, length(Map) - 1), Map1),
     %% Sort the candidate chains.
@@ -394,7 +577,6 @@ balance_test_() ->
                      NumSlaves)
                > 0]}]}.
 
-
 balance_test_gen(MapSize, CopySize, NumNodes, NumSlaves) ->
     Title = lists:flatten(
               io_lib:format(
@@ -413,3 +595,78 @@ balance_test_gen(MapSize, CopySize, NumNodes, NumSlaves) ->
 validate_test() ->
     ?assertEqual(is_valid([]), empty),
     ?assertEqual(is_valid([[]]), empty).
+
+do_failover_and_rebalance_back_trial(NodesCount, FailoverIndex, VBucketCount, ReplicaCount) ->
+    Nodes = testnodes(NodesCount),
+    InitialMap = lists:duplicate(VBucketCount, lists:duplicate(ReplicaCount+1, undefined)),
+    SlavesOptions = [{max_slaves, 10}],
+    FirstMap = generate_map(InitialMap, Nodes, SlavesOptions),
+    true = is_balanced(FirstMap, Nodes, SlavesOptions),
+    FailedNode = lists:nth(FailoverIndex, Nodes),
+    FailoverMap = promote_replicas(FirstMap, [FailedNode]),
+    LiveNodes = lists:sublist(Nodes, FailoverIndex-1) ++ lists:nthtail(FailoverIndex, Nodes),
+    false = lists:member(FailedNode, LiveNodes),
+    true = lists:member(FailedNode, Nodes),
+    ?assertEqual(NodesCount, length(LiveNodes) + 1),
+    ?assertEqual(NodesCount, length(lists:usort(LiveNodes)) + 1),
+    false = is_balanced(FailoverMap, LiveNodes, SlavesOptions),
+    true = (lists:sort(LiveNodes) =:= lists:sort(sets:to_list(map_nodes_set(FailoverMap)))),
+    RebalanceBackMap = generate_map(FailoverMap, Nodes, [{maps_history, [{FirstMap, SlavesOptions}]} | SlavesOptions]),
+    true = (RebalanceBackMap =/= generate_map(FailoverMap, Nodes, [{maps_history, [{FirstMap, lists:keyreplace(max_slaves, 1, SlavesOptions, {max_slaves, 3})}]} | SlavesOptions])),
+    ?assertEqual(FirstMap, RebalanceBackMap).
+
+failover_and_rebalance_back_one_replica_test() ->
+    do_failover_and_rebalance_back_trial(4, 1, 32, 1),
+    do_failover_and_rebalance_back_trial(6, 2, 1260, 1),
+    do_failover_and_rebalance_back_trial(12, 7, 1260, 2).
+
+do_replace_nodes_rebalance_trial(NodesCount, RemoveIndexes, AddIndexes, VBucketCount, ReplicaCount) ->
+    Nodes = testnodes(NodesCount),
+    RemoveIndexes = RemoveIndexes -- AddIndexes,
+    AddIndexes = AddIndexes -- RemoveIndexes,
+    AddedNodes = [lists:nth(I, Nodes) || I <- AddIndexes],
+    RemovedNodes = [lists:nth(I, Nodes) || I <- RemoveIndexes],
+    InitialNodes = Nodes -- AddedNodes,
+    ReplacementNodes = Nodes -- RemovedNodes,
+    InitialMap = lists:duplicate(VBucketCount, lists:duplicate(ReplicaCount+1, undefined)),
+    SlavesOptions = [{max_slaves, 10}],
+    FirstMap = generate_map(InitialMap, InitialNodes, SlavesOptions),
+    ReplaceMap = generate_map(FirstMap, ReplacementNodes, [{maps_history, [{FirstMap, SlavesOptions}]} | SlavesOptions]),
+    ?log_debug("FirstMap:~n~p~nReplaceMap:~n~p~n", [FirstMap, ReplaceMap]),
+    %% we expect all change to be just some rename (i.e. mapping
+    %% from/to) RemovedNodes to AddedNodes. We can find it by finding
+    %% matching 'master_signature'-s. I.e. lists of vbuckets where
+    %% certain node is master. We know it'll uniquely identify node
+    %% 'inside' map structurally. So it can be used as 100% precise
+    %% guard for our isomorphizm search.
+    AddedNodesSignature0 = [{N, master_vbucket_signature(ReplaceMap, N)} || N <- AddedNodes],
+    ?log_debug("AddedNodesSignature0:~n~p~n", [AddedNodesSignature0]),
+    RemovedNodesSignature0 = [{N, master_vbucket_signature(FirstMap, N)} || N <- RemovedNodes],
+    ?log_debug("RemovedNodesSignature0:~n~p~n", [RemovedNodesSignature0]),
+    AddedNodesSignature = lists:keysort(2, AddedNodesSignature0),
+    RemovedNodesSignature = lists:keysort(2, RemovedNodesSignature0),
+    Mapping = [{Rem, Add} || {{Rem, _}, {Add, _}} <- lists:zip(RemovedNodesSignature, AddedNodesSignature)],
+    ?log_debug("Discovered mapping: ~p~n", [Mapping]),
+    %% now rename according to mapping and check
+    ReplaceMap2 = lists:foldl(
+                    fun ({Rem, Add}, Map) ->
+                            misc:rewrite_value(Rem, Add, Map)
+                    end, FirstMap, Mapping),
+    ?assertEqual(ReplaceMap2, ReplaceMap).
+
+replace_nodes_rebalance_test() ->
+    do_replace_nodes_rebalance_trial(9, [7, 3], [5, 1], 32, 1),
+    do_replace_nodes_rebalance_trial(10, [2, 4], [5, 1], 1260, 2),
+    do_replace_nodes_rebalance_trial(19, [2, 4, 19, 17], [5, 1, 9, 7], 1260, 3),
+    do_replace_nodes_rebalance_trial(51, [23], [37], 1440, 2).
+
+
+master_vbucket_signature(Map, Node) ->
+    master_vbucket_signature_rec(Map, Node, [], 0).
+
+master_vbucket_signature_rec([], _Node, Acc, _Idx) ->
+    Acc;
+master_vbucket_signature_rec([[Node | _] | Rest], Node, Acc, Idx) ->
+    master_vbucket_signature_rec(Rest, Node, [Idx | Acc], Idx+1);
+master_vbucket_signature_rec([_ | Rest], Node, Acc, Idx) ->
+    master_vbucket_signature_rec(Rest, Node, Acc, Idx+1).

@@ -53,6 +53,7 @@
 -define(FAILOVER_NODE, 6).
 
 -define(DELETE_BUCKET_TIMEOUT, 5000).
+-define(CREATE_BUCKET_TIMEOUT, 5000).
 
 %% gen_fsm callbacks
 -export([code_change/4,
@@ -94,6 +95,7 @@ wait_for_orchestrator_loop(TriesLeft, SleepTime) ->
 
 -spec create_bucket(memcached|membase, nonempty_string(), list()) ->
                            ok | {error, {already_exists, nonempty_string()}} |
+                           {error, {still_exists, nonempty_string()}} |
                            {error, {port_conflict, integer()}} |
                            {error, {invalid_name, nonempty_string()}} |
                            rebalance_running.
@@ -281,7 +283,20 @@ janitor_running(_Event, State) ->
 idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
     Reply = case ns_bucket:name_conflict(BucketName) of
                 false ->
-                    ns_bucket:create_bucket(BucketType, BucketName, NewConfig);
+                    {Results, FailedNodes} = rpc:multicall(ns_node_disco:nodes_wanted(), ns_memcached, active_buckets, [], ?CREATE_BUCKET_TIMEOUT),
+                    case FailedNodes of
+                        [] -> ok;
+                        _ ->
+                            ?log_warning("Best-effort check for presense of bucket failed to be made on following nodes: ~p", FailedNodes)
+                    end,
+                    case lists:any(fun (StartedBucket) ->
+                                           ns_bucket:names_conflict(StartedBucket, BucketName)
+                                   end, Results) of
+                        true ->
+                            {error, {still_exists, BucketName}};
+                        _ ->
+                            ns_bucket:create_bucket(BucketType, BucketName, NewConfig)
+                        end;
                 true ->
                     {error, {already_exists, BucketName}}
             end,

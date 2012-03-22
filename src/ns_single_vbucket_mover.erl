@@ -23,25 +23,83 @@
 spawn_mover(Node, Bucket, VBucket,
             OldChain, NewChain) ->
     Parent = self(),
-    spawn_link(ns_single_vbucket_mover, mover,
-               [Parent, Node, Bucket, VBucket, OldChain, NewChain]).
+    proc_lib:spawn_link(ns_single_vbucket_mover, mover,
+                        [Parent, Node, Bucket, VBucket, OldChain, NewChain]).
 
-mover(Parent, Node, Bucket, VBucket,
-      OldChain, [NewNode|_] = NewChain) ->
+get_cleanup_list() ->
+    case erlang:get(cleanup_list) of
+        undefined -> [];
+        X -> X
+    end.
+
+cleanup_list_add(Pid) ->
+    List = get_cleanup_list(),
+    List2 = ordsets:add_element(Pid, List),
+    erlang:put(cleanup_list, List2).
+
+cleanup_list_del(Pid) ->
+    List = get_cleanup_list(),
+    List2 = ordsets:del_element(Pid, List),
+    erlang:put(cleanup_list, List2).
+
+
+%% We do a no-op here rather than filtering these out so that the
+%% replication update will still work properly.
+mover(Parent, undefined = Node, _Bucket, VBucket, OldChain, NewChain) ->
+    Parent ! {move_done, {Node, VBucket, OldChain, NewChain}};
+
+mover(Parent, Node, Bucket, VBucket, OldChain, NewChain) ->
+    ns_replicas_builder:try_with_maybe_ignorant_after(
+      fun () ->
+        mover_inner(Parent, Node, Bucket, VBucket, OldChain, NewChain)
+      end,
+      fun () ->
+              ns_replicas_builder:sync_shutdown_many(get_cleanup_list())
+      end),
+    Parent ! {move_done, {Node, VBucket, OldChain, NewChain}}.
+
+mover_inner(Parent, Node, Bucket, VBucket,
+            OldChain, [NewNode|_] = NewChain) ->
     process_flag(trap_exit, true),
-    %% We do a no-op here rather than filtering these out so that the
-    %% replication update will still work properly.
-    if
-        Node =:= undefined ->
-            %% this handles case of missing vbucket (like after failing over
-            %% more nodes then replica count)
-            ok;
-        Node /= NewNode ->
-            run_mover(Bucket, VBucket, Node, NewNode, 2);
-        true ->
+    %% first build new chain as replicas of existing master
+    Node = hd(OldChain),
+    ReplicaNodes = [N || N <- NewChain,
+                         N =/= Node,
+                         N =/= undefined,
+                         N =/= NewNode],
+    JustBackfillNodes = [N || N <- [NewNode],
+                              N =/= Node],
+    true = (JustBackfillNodes =/= [undefined]),
+    Self = self(),
+    ReplicasBuilderPid = ns_replicas_builder:spawn_link(
+                           Bucket, VBucket, Node,
+                           ReplicaNodes, JustBackfillNodes,
+                           fun () ->
+                                   Self ! replicas_done
+                           end),
+    cleanup_list_add(ReplicasBuilderPid),
+    receive
+        {'EXIT', _, _} = ExitMsg ->
+            ?log_info("Got exit message (parent is ~p). Exiting...~n~p", [Parent, ExitMsg]),
+            self() ! ExitMsg,
+            ExitReason = case ExitMsg of
+                             {'EXIT', Parent, shutdown} -> shutdown;
+                             _ -> {exited, ExitMsg}
+                         end,
+            exit(ExitReason);
+        replicas_done ->
+            %% and when all backfills are done and replication into
+            %% new master is stopped we consider doing takeover
             ok
     end,
-    Parent ! {move_done, {Node, VBucket, OldChain, NewChain}}.
+    if
+        Node =:= NewNode ->
+            %% if there's nothing to move, we're done
+            ok;
+        true ->
+            run_mover(Bucket, VBucket, Node, NewNode, 2),
+            ok
+    end.
 
 run_mover(Bucket, V, N1, N2, Tries) ->
     case {ns_memcached:get_vbucket(N1, Bucket, V),
@@ -49,8 +107,8 @@ run_mover(Bucket, V, N1, N2, Tries) ->
         {{ok, active}, {memcached_error, not_my_vbucket, _}} ->
             %% Standard starting state
             ok = ns_memcached:set_vbucket(N2, Bucket, V, replica),
-            {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
-            wait_for_mover(Bucket, V, N1, N2, Tries);
+            {ok, Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
+            wait_for_mover(Bucket, V, N1, N2, Tries, Pid);
         {{ok, dead}, {ok, active}} ->
             %% Standard ending state
             ok;
@@ -68,8 +126,8 @@ run_mover(Bucket, V, N1, N2, Tries) ->
                true ->
                     ok
             end,
-            {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
-            wait_for_mover(Bucket, V, N1, N2, Tries);
+            {ok, Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
+            wait_for_mover(Bucket, V, N1, N2, Tries, Pid);
         {{ok, dead}, {ok, pending}} ->
             %% This is a strange state to end up in - the source
             %% shouldn't close until the destination has acknowledged
@@ -79,13 +137,15 @@ run_mover(Bucket, V, N1, N2, Tries) ->
                                [V, N2]),
             ok = ns_memcached:set_vbucket(N1, Bucket, V, active),
             ok = ns_memcached:set_vbucket(N2, Bucket, V, replica),
-            {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
-            wait_for_mover(Bucket, V, N1, N2, Tries)
+            {ok, Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
+            wait_for_mover(Bucket, V, N1, N2, Tries, Pid)
     end.
 
-wait_for_mover(Bucket, V, N1, N2, Tries) ->
+wait_for_mover(Bucket, V, N1, N2, Tries, Pid) ->
+    cleanup_list_add(Pid),
     receive
-        {'EXIT', _Pid, normal} ->
+        {'EXIT', Pid, normal} ->
+            cleanup_list_del(Pid),
             case {ns_memcached:get_vbucket(N1, Bucket, V),
                   ns_memcached:get_vbucket(N2, Bucket, V)} of
                 {{ok, dead}, {ok, active}} ->
@@ -93,9 +153,8 @@ wait_for_mover(Bucket, V, N1, N2, Tries) ->
                 E ->
                     exit({wrong_state_after_transfer, E, V})
             end;
-        {'EXIT', _Pid, stopped} ->
-            exit(stopped);
-        {'EXIT', _Pid, Reason} ->
+        {'EXIT', Pid, Reason} ->
+            cleanup_list_del(Pid),
             case Tries of
                 0 ->
                     exit({mover_failed, Reason});
@@ -104,8 +163,14 @@ wait_for_mover(Bucket, V, N1, N2, Tries) ->
                                        [Reason]),
                     run_mover(Bucket, V, N1, N2, Tries-1)
             end;
+        {'EXIT', _Pid, shutdown} ->
+            exit(shutdown);
+        {'EXIT', _OtherPid, _Reason} = Msg ->
+            ?log_debug("Got unexpected exit: ~p", [Msg]),
+            self() ! Msg,
+            exit({unexpected_exit, Msg});
         Msg ->
             ?rebalance_warning("Mover parent got unexpected message:~n"
                                "~p", [Msg]),
-            wait_for_mover(Bucket, V, N1, N2, Tries)
+            wait_for_mover(Bucket, V, N1, N2, Tries, Pid)
     end.
