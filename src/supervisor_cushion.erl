@@ -60,15 +60,14 @@ handle_cast(_Msg, State) ->
 handle_info({'EXIT', _Pid, Reason}, State) ->
     ?log_info("Cushion managed supervisor for ~p failed:  ~p",
               [State#state.name, Reason]),
-    State1 = die_slowly({error, cushioned_supervisor, Reason}, State),
+    State1 = die_slowly(Reason, State),
     {noreply, State1};
 handle_info({die, Reason}, State) ->
     {stop, Reason, State};
 handle_info(Info, State) ->
-    ?log_info("Cushion got unexpected info supervising ~p: ~p",
-              [State#state.name, Info]),
-    State1 = die_slowly({error, cushioned_supervisor, Info}, State),
-    {noreply, State1}.
+    ?log_error("Cushion got unexpected info supervising ~p: ~p",
+               [State#state.name, Info]),
+    {noreply, State}.
 
 die_slowly(Reason, State) ->
     %% How long (in microseconds) has this service been running?

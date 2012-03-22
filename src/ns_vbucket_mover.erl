@@ -24,7 +24,7 @@
 -define(MAX_MOVES_PER_NODE, 1).
 
 %% API
--export([start_link/4, stop/1]).
+-export([start_link/4]).
 
 %% gen_server callbacks
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -54,16 +54,6 @@ start_link(Bucket, OldMap, NewMap, ProgressCallback) ->
     gen_server:start_link(?MODULE, {Bucket, OldMap, NewMap, ProgressCallback},
                           []).
 
-
-%% @doc Stop the in-progress moves.
--spec stop(pid()) -> ok.
-stop(Pid) ->
-    gen_server:call(Pid, stop).
-
-
-
-
-
 %%
 %% gen_server callbacks
 %%
@@ -71,21 +61,27 @@ stop(Pid) ->
 code_change(_OldVsn, _Extra, State) ->
     {ok, State}.
 
-
 init({Bucket, OldMap, NewMap, ProgressCallback}) ->
     erlang:put(i_am_master_mover, true),
     erlang:put(replicas_changes, []),
     erlang:put(bucket_name, Bucket),
     erlang:put(total_changes, 0),
     erlang:put(actual_changes, 0),
+    erlang:put(child_processes, []),
 
-    ?rebalance_info("Starting movers with new map =~n~p", [NewMap]),
     %% Dictionary mapping old node to vbucket and new node
-    MoveDict = lists:foldl(fun ({V, [M1|_] = C1, C2}, D) ->
-                                   dict:append(M1, {V, C1, C2}, D)
-                           end, dict:new(),
-                           lists:zip3(lists:seq(0, length(OldMap) - 1), OldMap,
-                                      NewMap)),
+    {MoveDict, TrivialMoves} =
+        lists:foldl(fun ({V, [M1|_] = C1, C2}, {D, TrivialMoves}) ->
+                            if C1 =:= C2 ->
+                                    {D, TrivialMoves + 1};
+                               true ->
+                                    {dict:append(M1, {V, C1, C2}, D), TrivialMoves}
+                            end
+                    end, {dict:new(), 0},
+                    lists:zip3(lists:seq(0, length(OldMap) - 1), OldMap,
+                               NewMap)),
+    ?rebalance_info("The following count of vbuckets do not need to be moved at all: ~p", [TrivialMoves]),
+    ?rebalance_info("The following moves are planned:~n~p", [dict:to_list(MoveDict)]),
     Movers = dict:map(fun (_, _) -> 0 end, MoveDict),
     self() ! spawn_initial,
     process_flag(trap_exit, true),
@@ -106,9 +102,8 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
                 pending_vbucket_updates=0}}.
 
 
-handle_call(stop, _From, State) ->
-    %% All the linked processes should exit when we do.
-    {stop, normal, ok, State}.
+handle_call(_, _From, _State) ->
+    exit(not_supported).
 
 
 handle_cast(unhandled, unhandled) ->
@@ -149,13 +144,34 @@ handle_info({move_done, {Node, VBucket, OldChain, [NewNode|_] = NewChain}},
 
     State1 = spawn_workers(State#state{movers=Movers1}),
     {noreply, inc_vb_updates(State1)};
-handle_info({update_vbucket_map, _Node, VBucket, _OldChain, NewChain},
+handle_info({update_vbucket_map, _Node, VBucket, OldChain, NewChain},
             #state{map=Map, bucket=Bucket} = State) ->
     %% Pull the new chain from the target map
     %% Update the current map
     Map1 = array:set(VBucket, NewChain, Map),
     ns_bucket:set_map(Bucket, array_to_map(Map1)),
     State1 = dec_vb_updates(State#state{map=Map1}),
+    RepSyncRV = (catch begin
+                           ns_config:sync_announcements(),
+                           ns_config_rep:synchronize()
+                       end),
+    case RepSyncRV of
+        ok -> ok;
+        _ ->
+            ?log_error("Config replication sync failed: ~p", [RepSyncRV])
+    end,
+    sync_replicas(),
+    OldCopies = OldChain -- NewChain,
+    DeleteRVs = misc:parallel_map(
+                  fun (CopyNode) ->
+                          {CopyNode, (catch ns_memcached:delete_vbucket(CopyNode, Bucket, VBucket))}
+                  end, OldCopies, infinity),
+    BadDeletes = [P || {_, RV} = P <- DeleteRVs, RV =/= ok],
+    case BadDeletes of
+        [] -> ok;
+        _ ->
+            ?log_error("Deleting some old copies of vbucket failed: ~p", [BadDeletes])
+    end,
     maybe_terminate(State1);
 handle_info({'EXIT', _, normal}, State) ->
     {noreply, State};
@@ -167,15 +183,16 @@ handle_info(Info, State) ->
     {noreply, State}.
 
 
-terminate(_Reason, #state{map=MapArray}) ->
+terminate(Reason, _State) ->
     sync_replicas(),
     TotalChanges = erlang:get(total_changes),
     ActualChanges = erlang:get(actual_changes),
     ?rebalance_info("Savings: ~p (from ~p)~n",
                     [TotalChanges - ActualChanges, TotalChanges]),
 
-    %% By this time map is already updated (see move_done handler)
-    ?rebalance_info("Final map is ~p", [array_to_map(MapArray)]),
+    AllChildsEver = erlang:get(child_processes),
+    [(catch erlang:exit(P, Reason)) || P <- AllChildsEver],
+    [misc:wait_for_process(P, infinity) || P <- AllChildsEver],
     ok.
 
 
@@ -252,11 +269,12 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
                             fun ({V, OldChain, NewChain}) ->
                                     update_replication_pre_move(
                                       V, OldChain, NewChain),
-                                    ns_single_vbucket_mover:spawn_mover(Node,
-                                                                        Bucket,
-                                                                        V,
-                                                                        OldChain,
-                                                                        NewChain)
+                                    Pid = ns_single_vbucket_mover:spawn_mover(Node,
+                                                                              Bucket,
+                                                                              V,
+                                                                              OldChain,
+                                                                              NewChain),
+                                    register_child_process(Pid)
                             end, NewMovers),
                           M1 = dict:store(Node, length(NewMovers) + NumWorkers,
                                           M),
@@ -290,58 +308,38 @@ maybe_terminate(#state{done=true,
 %% @private
 %% @doc Perform pre-move replication fixup.
 update_replication_pre_move(VBucket, OldChain, NewChain) ->
-    [NewMaster|_] = NewChain,
-    OldPairs = pairs(OldChain),
-    NewPairs = pairs(NewChain),
-    %% Stop replication to the new master
-    case lists:keyfind(NewMaster, 2, OldPairs) of
-        {SrcNode, _} ->
-            kill_replica(SrcNode, NewMaster, VBucket),
-            sync_replicas();
-        false ->
-            ok
-    end,
-    %% Start replication to any new replicas that aren't already being
-    %% replicated to
-    lists:foreach(
-      fun ({SrcNode, DstNode}) ->
-              case lists:member(DstNode, OldChain) of
-                  false ->
-                      %% Not the old master or already being replicated to
-                      add_replica(SrcNode, DstNode, VBucket);
-                  true ->
-                      %% Already being replicated to; swing it over after
-                      ok
-              end
-      end, NewPairs -- OldPairs).
+    %% vbucket mover will take care of new replicas, so just stop
+    %% replication for them
+    PairsToStop = [T || {S, D} = T <- pairs(OldChain),
+                        true = if S =:= undefined -> D =:= undefined;
+                                  true -> true
+                               end,
+                        S =/= undefined,
+                        D =/= undefined,
+                        lists:member(D, NewChain)],
+    %% we kind of create holes in old replication chain, but note that
+    %% if some destination replication is stopped, it means we'll soon
+    %% replicate to it in single vbucket mover, so chain is not really
+    %% broken.
+    [kill_replica(S, D, VBucket) || {S, D} <- PairsToStop],
+    sync_replicas().
 
 
 %% @private
 %% @doc Perform post-move replication fixup.
 update_replication_post_move(VBucket, OldChain, NewChain) ->
-    OldPairs = pairs(OldChain),
-    NewPairs = pairs(NewChain),
-    %% Stop replication for any old pair that isn't needed any more.
-    lists:foreach(
-      fun ({SrcNode, DstNode}) when SrcNode =/= undefined ->
-              kill_replica(SrcNode, DstNode, VBucket)
-      end, OldPairs -- NewPairs),
-    %% Start replication for any new pair that wouldn't have already
-    %% been started.
-    lists:foreach(
-      fun ({SrcNode, DstNode}) ->
-              case lists:member(DstNode, OldChain) of
-                  false ->
-                      %% Would have already been started
-                      ok;
-                  true ->
-                      %% Old one was stopped by the previous loop
-                      add_replica(SrcNode, DstNode, VBucket)
-              end
-      end, NewPairs -- OldPairs),
-    %% TODO: wait for backfill to complete and remove obsolete
-    %% copies before continuing. Otherwise rebalance could use a lot
-    %% of space.
+    %% destroy remainings of old replication chain
+    [kill_replica(S, D, VBucket) || {S, D} <- pairs(OldChain),
+                                    S =/= undefined,
+                                    D =/= undefined,
+                                    not lists:member(D, NewChain)],
+    %% just start new chain of replications. Old chain is dead now
+    [add_replica(S, D, VBucket) || {S, D} <- pairs(NewChain),
+                                   true = if S =:= undefined -> D =:= undefined;
+                                             true -> true
+                                          end,
+                                   S =/= undefined,
+                                   D =/= undefined],
     ok.
 
 assert_master_mover() ->
@@ -387,3 +385,8 @@ inc_vb_updates(#state{pending_vbucket_updates=P} = State) ->
 dec_vb_updates(#state{pending_vbucket_updates=P} = State) ->
     true = P > 0,
     State#state{pending_vbucket_updates=(P - 1)}.
+
+register_child_process(Pid) ->
+    List = erlang:get(child_processes),
+    true = is_list(List),
+    erlang:put(child_processes, [Pid | List]).

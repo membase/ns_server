@@ -21,6 +21,9 @@
 
 -export([default/0, mergable/1, upgrade_config/1]).
 
+%% exported for /diag/eval invocation for hot patching
+-export([maybe_add_vbucket_map_history/1]).
+
 % Allow all keys to be mergable.
 
 mergable(ListOfKVLists) ->
@@ -235,6 +238,28 @@ prefix_replace(Prefix, ReplacementPrefix, T) when is_tuple(T) ->
     list_to_tuple(prefix_replace(Prefix, ReplacementPrefix, tuple_to_list(T)));
 prefix_replace(_Prefix, _ReplacementPrefix, X) -> X.
 
+maybe_add_vbucket_map_history(Config) ->
+    case ns_config:search(Config, vbucket_map_history) of
+        {value, _} -> [];
+        false ->
+            Buckets = ns_bucket:get_buckets(Config),
+            History = lists:flatmap(
+                        fun ({_Bucket, BucketConfig}) ->
+                                case proplists:get_value(map, BucketConfig, []) of
+                                    [] -> [];
+                                    Map ->
+                                        case ns_rebalancer:unbalanced(Map, proplists:get_value(servers, BucketConfig, [])) of
+                                            true ->
+                                                [];
+                                            false ->
+                                                MapOptions = [{max_slaves, proplists:get_value(max_slaves, BucketConfig, 10)}],
+                                                [{Map, MapOptions}]
+                                        end
+                                end
+                        end, Buckets),
+            [{set, vbucket_map_history, History}]
+    end.
+
 %% returns list of changes to config to upgrade it to current version.
 %% This will be invoked repeatedly by ns_config until list is empty.
 %%
@@ -256,8 +281,9 @@ upgrade_config(Config) ->
             [{set, {node, node(), config_version}, {1,8,0}} |
              upgrade_config_from_1_7_2_to_1_8_0(Config)];
         {value, {1,8,0}} ->
+            HistoryUpgrade = maybe_add_vbucket_map_history(Config),
             [{set, {node, node(), config_version}, {2,0}} |
-             upgrade_config_from_1_8_0_to_2_0(Config)];
+             upgrade_config_from_1_8_0_to_2_0(Config)] ++ HistoryUpgrade;
         {value, {2,0}} ->
             []
     end.

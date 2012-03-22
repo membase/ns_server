@@ -86,10 +86,10 @@
 %% gen_server API implementation
 %%
 
-start_link(Bucket) ->
+start_link({Bucket, Type} = Tuple) ->
     %% Use proc_lib so that start_link doesn't fail if we can't
     %% connect.
-    gen_server:start_link(?MODULE, Bucket, []).
+    gen_server:start_link({local, server(Bucket, Type)}, ?MODULE, Tuple, []).
 
 
 %%
@@ -109,7 +109,6 @@ init({Bucket, Type}) ->
             ok = mc_client_binary:select_bucket(Sock, Bucket)
     end,
 
-    register(server(Bucket, Type), self()),
 
     % this trap_exit is necessary for terminate callback to work
     process_flag(trap_exit, true),
@@ -333,23 +332,17 @@ terminate(_Reason, #state{bucket=Bucket, sock=Sock, type=data}) ->
     ok = gen_tcp:close(Sock);
 
 terminate(Reason, #state{bucket=Bucket, sock=Sock, type=stats}) ->
-    %% Unregister so nothing else tries to talk to us
-    unregister(server(Bucket, stats)),
-    Deleting = try ns_bucket:get_bucket(Bucket) of
-                   not_present -> true;
-                   {ok, _} -> false
+    NsConfig = try ns_config:get()
                catch T:E ->
-                       ?log_error("Failed to reach ns_bucket:get_bucket(~p). ~p:~p~n~p~n",
-                                  [Bucket,T,E,erlang:get_stacktrace()]),
-                       false
-               end orelse try ns_config:search(i_am_a_dead_man) of
-                              {value, true} -> true;
-                              _ -> false
-                          catch T1:E1 ->
-                                  ?log_error("Failed to reach ns_config. ~p:~p~n~p~n",
-                                             [T1,E1,erlang:get_stacktrace()]),
-                                  false
-                          end,
+                       ?log_error("Failed to reach ns_config:get() ~p:~p~n~p~n",
+                                  [T,E,erlang:get_stacktrace()]),
+                       undefined
+               end,
+    BucketConfigs = ns_bucket:get_buckets(NsConfig),
+    NoBucket = NsConfig =/= undefined andalso not lists:member(Bucket, ns_bucket:node_bucket_names(node(), BucketConfigs)),
+    NodeDying = NsConfig =/= undefined andalso ns_config:search(NsConfig, i_am_a_dead_man),
+    Deleting = NoBucket orelse NodeDying,
+
     if
         Reason == normal; Reason == shutdown ->
             ?user_log(2, "Shutting down bucket ~p on ~p for ~s",
@@ -358,15 +351,19 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock, type=stats}) ->
                                            false -> "server shutdown"
                                        end]),
             try
-                ok = mc_client_binary:delete_bucket(Sock, Bucket, [{force, Deleting}]),
-                case Deleting of
-                    true -> ns_storage_conf:delete_databases(Bucket);
-                    _ -> ok
-                end
+                ok = mc_client_binary:delete_bucket(Sock, Bucket, [{force, Deleting}])
             catch
                 E2:R2 ->
                     ?log_error("Failed to delete bucket ~p: ~p",
                                [Bucket, {E2, R2}])
+            after
+                case NoBucket of
+                    %% if node is being ejected db files will be mass
+                    %% deleted (and possibly backed up) by ns_cluster.
+                    %% So we delete db files only when bucket was regularly deleted
+                    true -> ns_storage_conf:delete_databases(Bucket);
+                    _ -> ok
+                end
             end;
         true ->
             ?user_log(4,
@@ -778,11 +775,13 @@ has_started(Sock) ->
     Fun = fun (<<"ep_warmup_thread">>, V, _) -> V;
               (_, _, CD) -> CD
           end,
-    case mc_client_binary:stats(Sock, <<>>, Fun, missing_stat) of
+    case mc_client_binary:stats(Sock, <<"warmup">>, Fun, missing_stat) of
         {ok, <<"complete">>} ->
             true;
-        {ok, missing_stat} ->
+        %% this is memcached bucket, warmup is done :)
+        {memcached_error, key_enoent, _} ->
             true;
-        {ok, _} ->
+        {ok, V} ->
+            true = is_binary(V),
             false
     end.

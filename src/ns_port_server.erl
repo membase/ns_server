@@ -76,6 +76,10 @@ init({Name, _Cmd, _Args, Opts} = Params) ->
     {ok, #state{port = Port, name = Name, send_eol = SendEOL,
                 messages = ringbuffer:new(?NUM_MESSAGES)}}.
 
+handle_info({send_to_port, Msg}, State) ->
+    ?log_debug("Sending the following to port: ~p", [Msg]),
+    port_command(State#state.port, Msg),
+    {noreply, State};
 handle_info({_Port, {data, {_, Msg}}}, State) ->
     %% Store the last messages in case of a crash
     Messages = ringbuffer:add(Msg, State#state.messages),
@@ -97,6 +101,7 @@ handle_info(log, State) ->
     State1 = log(State),
     {noreply, State1};
 handle_info({_Port, {exit_status, 0}}, State) ->
+    ?log_info("Port server ~p exited with status 0", [State#state.name]),
     {stop, normal, State};
 handle_info({_Port, {exit_status, Status}}, State) ->
     ?user_log(?ABNORMAL,

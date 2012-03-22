@@ -536,6 +536,13 @@ do_engage_cluster_inner(NodeKVList) ->
                 true -> do_change_address(MyIP);
                 _ -> ok
             end,
+            %% we re-init node's cookie to support joining cloned
+            %% nodes. If we don't do that cluster will be able to
+            %% connect to this node too soon. And then initial set of
+            %% nodes_wanted by node thats added to cluster may
+            %% 'pollute' cluster's version and cause issues. See
+            %% MB-4476 for details.
+            ns_cookie_manager:cookie_init(),
             check_can_join_to(NodeKVList);
         X -> X
     end.

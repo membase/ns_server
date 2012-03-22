@@ -132,7 +132,7 @@ init({Src, Dst, Opts}) ->
       end, VBuckets),
     Upstream = connect(Src, Username, Password, Bucket),
     {ok, CheckpointIdsDict} = mc_client_binary:get_open_checkpoint_ids(Upstream),
-    ?rebalance_info("CheckpointIdsDict:~n~p~n", [CheckpointIdsDict]),
+    ?rebalance_debug("CheckpointIdsDict:~n~p~n", [CheckpointIdsDict]),
     ReadyVBuckets = lists:filter(
                       fun (Vb) ->
                               case dict:find(Vb, CheckpointIdsDict) of
@@ -172,7 +172,7 @@ init({Src, Dst, Opts}) ->
     {ok, _TRef} = timer:send_interval(Timeout, check_for_timeout),
 
     UpstreamSender = spawn_link(erlang, apply, [fun upstream_sender_loop/1, [Upstream]]),
-    ?log_info("upstream_sender pid: ~p", [UpstreamSender]),
+    ?rebalance_debug("upstream_sender pid: ~p", [UpstreamSender]),
 
     State = #state{
       upstream=Upstream,
@@ -279,6 +279,7 @@ start_link(Node, Src, Dst, Opts) ->
 connect({Host, Port}, Username, Password, Bucket) ->
     {ok, Sock} = gen_tcp:connect(Host, Port,
                                  [binary, {packet, raw}, {active, false},
+                                  {nodelay, true}, {delay_send, true},
                                   {recbuf, 10*1024*1024},
                                   {sndbuf, 10*1024*1024}],
                                  ?CONNECT_TIMEOUT),
