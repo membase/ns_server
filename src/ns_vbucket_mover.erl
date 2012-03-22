@@ -24,7 +24,7 @@
 -define(MAX_MOVES_PER_NODE, 1).
 
 %% API
--export([start_link/4, stop/1]).
+-export([start_link/4]).
 
 %% gen_server callbacks
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -51,16 +51,6 @@ start_link(Bucket, OldMap, NewMap, ProgressCallback) ->
     gen_server:start_link(?MODULE, {Bucket, OldMap, NewMap, ProgressCallback},
                           []).
 
-
-%% @doc Stop the in-progress moves.
--spec stop(pid()) -> ok.
-stop(Pid) ->
-    gen_server:call(Pid, stop).
-
-
-
-
-
 %%
 %% gen_server callbacks
 %%
@@ -68,13 +58,13 @@ stop(Pid) ->
 code_change(_OldVsn, _Extra, State) ->
     {ok, State}.
 
-
 init({Bucket, OldMap, NewMap, ProgressCallback}) ->
     erlang:put(i_am_master_mover, true),
     erlang:put(replicas_changes, []),
     erlang:put(bucket_name, Bucket),
     erlang:put(total_changes, 0),
     erlang:put(actual_changes, 0),
+    erlang:put(child_processes, []),
 
     %% Dictionary mapping old node to vbucket and new node
     {MoveDict, TrivialMoves} =
@@ -102,9 +92,8 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
                 progress_callback=ProgressCallback}}.
 
 
-handle_call(stop, _From, State) ->
-    %% All the linked processes should exit when we do.
-    {stop, normal, ok, State}.
+handle_call(_, _From, _State) ->
+    exit(not_supported).
 
 
 handle_cast(unhandled, unhandled) ->
@@ -165,15 +154,16 @@ handle_info(Info, State) ->
     {noreply, State}.
 
 
-terminate(_Reason, #state{map=MapArray}) ->
+terminate(Reason, _State) ->
     sync_replicas(),
     TotalChanges = erlang:get(total_changes),
     ActualChanges = erlang:get(actual_changes),
     ?rebalance_info("Savings: ~p (from ~p)~n",
                     [TotalChanges - ActualChanges, TotalChanges]),
 
-    %% By this time map is already updated (see move_done handler)
-    ?rebalance_info("Final map is ~p", [array_to_map(MapArray)]),
+    AllChildsEver = erlang:get(child_processes),
+    [(catch erlang:exit(P, Reason)) || P <- AllChildsEver],
+    [misc:wait_for_process(P, infinity) || P <- AllChildsEver],
     ok.
 
 
@@ -250,11 +240,12 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
                             fun ({V, OldChain, NewChain}) ->
                                     update_replication_pre_move(
                                       V, OldChain, NewChain),
-                                    ns_single_vbucket_mover:spawn_mover(Node,
-                                                                        Bucket,
-                                                                        V,
-                                                                        OldChain,
-                                                                        NewChain)
+                                    Pid = ns_single_vbucket_mover:spawn_mover(Node,
+                                                                              Bucket,
+                                                                              V,
+                                                                              OldChain,
+                                                                              NewChain),
+                                    register_child_process(Pid)
                             end, NewMovers),
                           M1 = dict:store(Node, length(NewMovers) + NumWorkers,
                                           M),
@@ -348,3 +339,8 @@ sync_replicas() ->
             inc_counter(total_changes, length(Changes)),
             inc_counter(actual_changes, ActualCount)
     end.
+
+register_child_process(Pid) ->
+    List = erlang:get(child_processes),
+    true = is_list(List),
+    erlang:put(child_processes, [Pid | List]).

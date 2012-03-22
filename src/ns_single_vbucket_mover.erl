@@ -82,7 +82,11 @@ mover_inner(Parent, Node, Bucket, VBucket,
         {'EXIT', _, _} = ExitMsg ->
             ?log_info("Got exit message (parent is ~p). Exiting...~n~p", [Parent, ExitMsg]),
             self() ! ExitMsg,
-            exit({exited, ExitMsg});
+            ExitReason = case ExitMsg of
+                             {'EXIT', Parent, shutdown} -> shutdown;
+                             _ -> {exited, ExitMsg}
+                         end,
+            exit(ExitReason);
         replicas_done ->
             %% and when all backfills are done and replication into
             %% new master is stopped we consider doing takeover
@@ -159,8 +163,8 @@ wait_for_mover(Bucket, V, N1, N2, Tries, Pid) ->
                                        [Reason]),
                     run_mover(Bucket, V, N1, N2, Tries-1)
             end;
-        {'EXIT', _Pid, stopped} ->
-            exit(stopped);
+        {'EXIT', _Pid, shutdown} ->
+            exit(shutdown);
         {'EXIT', _OtherPid, _Reason} = Msg ->
             ?log_debug("Got unexpected exit: ~p", [Msg]),
             self() ! Msg,

@@ -285,14 +285,23 @@ wait_for_memcached(Nodes, Bucket, Tries) ->
 -spec wait_for_mover(pid()) -> ok | stopped.
 wait_for_mover(Pid) ->
     Ref = erlang:monitor(process, Pid),
+    wait_for_mover_tail(Pid, Ref).
+
+wait_for_mover_tail(Pid, Ref) ->
     receive
         stop ->
-            ns_vbucket_mover:stop(Pid),
-            stopped;
-        {'DOWN', Ref, _, _, normal} ->
-            ok;
+            erlang:unlink(Pid),
+            (catch Pid ! {'EXIT', self(), shutdown}),
+            wait_for_mover_tail(Pid, Ref);
         {'DOWN', Ref, _, _, Reason} ->
-            exit({mover_crashed, Reason})
+            case Reason of
+                normal ->
+                    ok;
+                shutdown ->
+                    stopped;
+                _ ->
+                    exit({mover_crashed, Reason})
+            end
     end.
 
 replication_status(Bucket, BucketConfig) ->
