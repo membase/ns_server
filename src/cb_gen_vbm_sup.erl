@@ -34,7 +34,7 @@
 
 -type replicator() :: any().
 
--define(RPC_TIMEOUT, 20000).
+-define(RPC_TIMEOUT, infinity).
 
 %%
 %% API
