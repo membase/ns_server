@@ -75,14 +75,8 @@ do_cleanup(Bucket, Options, Config) ->
                                 ns_bucket:set_map(Bucket, MapNew),
                                 MapNew
                         end,
-                    %% ReplicasTriples are [{Src::node(), Dst::node(), VBucketId::non_neg_integer()}]
-                    ReplicasTriples = ns_bucket:map_to_replicas(Map1),
-                    Replicas = lists:keysort(2, ReplicasTriples),
-                    ReplicaGroups = lists:ukeymerge(1, misc:keygroup(2, Replicas),
-                                                    [{N, []} || N <- lists:sort(Servers)]),
-                    NodesReplicas = lists:map(fun ({Dst, R}) -> % R is the replicas for this node
-                                                      {Dst, [{V, Src} || {Src, _, V} <- R]}
-                                              end, ReplicaGroups),
+                    Replicas = ns_bucket:map_to_replicas(Map1),
+
                     %% change replication on nodes that are bucket
                     %% members
                     %%
@@ -91,7 +85,18 @@ do_cleanup(Bucket, Options, Config) ->
                     %% don't need to touch them here because replication is
                     %% pull. And we don't care if some of them are
                     %% replicating from bucket members.
-                    ns_vbm_sup:set_replicas_dst(Bucket, NodesReplicas, Servers),
+                    cb_replication:maybe_switch_replication_mode(Bucket),
+
+                    Nodes =
+                        case cb_replication:get_mode(Bucket) of
+                            new ->
+                                Servers;
+                            compat ->
+                                ns_node_disco:nodes_actual_proper()
+                        end,
+
+                    cb_replication:set_replicas(Bucket, Replicas, Nodes),
+
                     case Down of
                         [] ->
                             maybe_stop_replication_status();
@@ -168,11 +173,11 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                                  "This should never happen, but we have an "
                                  "active master, so I'm deleting it.",
                                  [N, Bucket]),
-                      %% %% ns_vbm_sup:stop_outgoing_replications(N, Bucket, [VBucket]),
+                      %% %% cb_replication:stop_replications(N, Bucket, [VBucket]),
                       %%
                       %% was here, but because we're going to call
-                      %% set_replicas_dst at the end of janitor pass
-                      %% this is not required.
+                      %% set_replicas at the end of janitor pass this is not
+                      %% required.
                       ns_memcached:set_vbucket(N, Bucket, VBucket, dead);
                   ({_, {_, replica}})-> % This is what we expect
                       ok;
@@ -183,10 +188,12 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                   ({{_, zombie}, _}) -> ok;
                   ({_, {_, zombie}}) -> ok;
                   ({{undefined, _}, _}) -> ok;
-                  ({_, {DstNode, _}} = Pair) ->
-                      ?log_info("Killing incoming replicators for vbucket ~p on"
-                                " replica ~p because of ~p", [VBucket, DstNode, Pair]),
-                      ns_vbm_sup:stop_incoming_replications(DstNode, Bucket, [VBucket])
+                  ({{SrcNode, _}, {DstNode, _}} = Pair) ->
+                      ?log_info("Killing replicator from ~p to ~p "
+                                "for vbucket ~p because of ~p",
+                                [SrcNode, DstNode, VBucket, Pair]),
+                      cb_replication:stop_replications(Bucket, SrcNode, DstNode,
+                                                       [VBucket])
               end, misc:pairs(C)),
             HaveAllCopies = lists:all(
                               fun ({undefined, _}) -> false;

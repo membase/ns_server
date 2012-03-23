@@ -13,15 +13,15 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
--module(ns_vbm_sup).
+-module(ns_vbm_new_sup).
 
 -include("ns_common.hrl").
 
-%% identifier of ns_vbm_new childs in supervisors. NOTE: vbuckets
+%% identifier of ns_vbm_new_sup childs in supervisors. NOTE: vbuckets
 %% field is sorted. We could use ordsets::ordset() type, but we also
 %% want to underline that vbuckets field is never empty.
--record(child_id, {vbuckets::[non_neg_integer(), ...],
-                   dest_node::atom()}).
+-record(new_child_id, {vbuckets::[vbucket_id(), ...],
+                       src_node::node()}).
 
 %% API
 -export([start_link/1]).
@@ -29,6 +29,7 @@
 %% Callbacks
 -export([server_name/1, supervisor_node/2,
          make_replicator/3, replicator_nodes/2, replicator_vbuckets/1]).
+
 
 %%
 %% API
@@ -44,17 +45,17 @@ server_name(Bucket) ->
     list_to_atom(?MODULE_STRING "-" ++ Bucket).
 
 -spec supervisor_node(node(), node()) -> node().
-supervisor_node(SrcNode, _DstNode) ->
-    SrcNode.
+supervisor_node(_SrcNode, DstNode) ->
+    DstNode.
 
--spec make_replicator(node(), node(), [vbucket_id(), ...]) -> #child_id{}.
-make_replicator(_SrcNode, DstNode, VBuckets) ->
-    #child_id{vbuckets=VBuckets, dest_node=DstNode}.
+-spec make_replicator(node(), node(), [vbucket_id(), ...]) -> #new_child_id{}.
+make_replicator(SrcNode, _DstNode, VBuckets) ->
+    #new_child_id{vbuckets=VBuckets, src_node=SrcNode}.
 
--spec replicator_nodes(node(), #child_id{}) -> {node(), node()}.
-replicator_nodes(SupervisorNode, #child_id{dest_node=Node}) ->
-    {SupervisorNode, Node}.
+-spec replicator_nodes(node(), #new_child_id{}) -> {node(), node()}.
+replicator_nodes(SupervisorNode, #new_child_id{src_node=Node}) ->
+    {Node, SupervisorNode}.
 
--spec replicator_vbuckets(#child_id{}) -> [vbucket_id(), ...].
-replicator_vbuckets(#child_id{vbuckets=VBuckets}) ->
+-spec replicator_vbuckets(#new_child_id{}) -> [vbucket_id(), ...].
+replicator_vbuckets(#new_child_id{vbuckets=VBuckets}) ->
     VBuckets.

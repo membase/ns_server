@@ -248,8 +248,8 @@ verify_replication(Bucket, Nodes, Map) ->
             fun ({V, Chain}) ->
                     [{Src, Dst, V} || {Src, Dst} <- misc:pairs(Chain), Src =/= undefined, Dst =/= undefined]
             end, misc:enumerate(Map, 0))),
-    ActualReplicators =
-        lists:sort(ns_vbm_sup:incoming_replicator_triples(Nodes, Bucket)),
+    ActualReplicators = cb_replication:replicas(Bucket, Nodes),
+
     case misc:comm(ExpectedReplicators, ActualReplicators) of
         {[], [], _} ->
             ok;
@@ -303,4 +303,5 @@ wait_for_mover_tail(Pid, Ref) ->
 
 %% NOTE: this is rpc:multicall-ed by 1.8 nodes.
 buckets_replication_statuses() ->
-    exit(fixme_wrt_backwards_compat).
+    Buckets = ns_bucket:get_bucket_names(),
+    failover_safeness_level:buckets_replication_statuses_compat(Buckets).

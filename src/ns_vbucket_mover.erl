@@ -374,7 +374,8 @@ sync_replicas() ->
         undefined -> ok;
         [] -> ok;
         Changes ->
-            ActualCount = ns_vbm_sup:apply_changes(BucketName, lists:reverse(Changes)),
+            ActualCount = cb_replication:apply_changes(BucketName,
+                                                       lists:reverse(Changes)),
             inc_counter(total_changes, length(Changes)),
             inc_counter(actual_changes, ActualCount)
     end.
