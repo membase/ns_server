@@ -18,7 +18,7 @@
 -behaviour(gen_server).
 
 -export([start_link/0, start_link/1,
-         start_sink/3, stop_sink/1,
+         start_sink/3, start_sink/4, stop_sink/1,
          start_logger/1, start_logger/2,
          stop_logger/1,
          add_sink/2, add_sink/3,
@@ -34,8 +34,8 @@
 
 -include("ale.hrl").
 
--record(state, {sinks = ordsets:new() :: [atom()],
-                mailbox_len_limit     :: integer(),
+-record(state, {sinks             :: dict(),
+                mailbox_len_limit :: integer(),
 
                 loggers   :: dict(),
                 compilers :: dict()}).
@@ -45,6 +45,9 @@
                  sinks     :: dict(),
                  compiler  :: undefined | pid(),
                  formatter :: module()}).
+
+-record(sink, {name     :: atom(),
+               loglevel :: loglevel()}).
 
 -define(CHECK_MAILBOXES_INTERVAL, 3000).
 -define(MAILBOX_LENGTH_LIMIT, 100000).
@@ -58,7 +61,10 @@ start_link(MailboxLenLimit) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [MailboxLenLimit], []).
 
 start_sink(Name, Module, Args) ->
-    gen_server:call(?MODULE, {start_sink, Name, Module, Args}).
+    start_sink(Name, ?DEFAULT_SINK_TYPE, Module, Args).
+
+start_sink(Name, Type, Module, Args) ->
+    gen_server:call(?MODULE, {start_sink, Name, Type, Module, Args}).
 
 stop_sink(Name) ->
     gen_server:call(?MODULE, {stop_sink, Name}).
@@ -79,8 +85,7 @@ add_sink(LoggerName, SinkName) ->
     add_sink(LoggerName, SinkName, debug).
 
 add_sink(LoggerName, SinkName, LogLevel) ->
-    gen_server:call(?MODULE,
-                    {add_sink, LoggerName, SinkName, LogLevel}).
+    gen_server:call(?MODULE, {add_sink, LoggerName, SinkName, LogLevel}).
 
 set_loglevel(LoggerName, LogLevel) ->
     gen_server:call(?MODULE, {set_loglevel, LoggerName, LogLevel}).
@@ -99,7 +104,8 @@ get_sink_loglevel(LoggerName, SinkName) ->
 init([MailboxLenLimit]) ->
     process_flag(trap_exit, true),
 
-    State = #state{mailbox_len_limit=MailboxLenLimit,
+    State = #state{sinks=dict:new(),
+                   mailbox_len_limit=MailboxLenLimit,
                    loggers=dict:new(),
                    compilers=dict:new()},
 
@@ -113,8 +119,8 @@ init([MailboxLenLimit]) ->
 
     {ok, State2}.
 
-handle_call({start_sink, Name, Module, Args}, _From, State) ->
-    RV = do_start_sink(Name, Module, Args, State),
+handle_call({start_sink, Name, Type, Module, Args}, _From, State) ->
+    RV = do_start_sink(Name, Type, Module, Args, State),
     handle_result(RV, State);
 
 handle_call({stop_sink, Name}, _From, State) ->
@@ -129,7 +135,8 @@ handle_call({stop_logger, Name}, _From, State) ->
     RV = do_stop_logger(Name, State),
     handle_result(RV, State);
 
-handle_call({add_sink, LoggerName, SinkName, LogLevel}, _From, State) ->
+handle_call({add_sink, LoggerName, SinkName, LogLevel},
+            _From, State) ->
     RV = do_add_sink(LoggerName, SinkName, LogLevel, State),
     handle_result(RV, State);
 
@@ -171,7 +178,7 @@ handle_info({timeout, _TRef, check_mailboxes},
     ale:info(?ALE_LOGGER, "Checking mailboxes"),
 
     Fn =
-        fun (SinkName) ->
+        fun (SinkName, _SinkType, Acc) ->
                 SinkId = ale_utils:sink_id(SinkName),
                 case whereis(SinkId) of
                     undefined ->
@@ -191,10 +198,12 @@ handle_info({timeout, _TRef, check_mailboxes},
                             false ->
                                 ok
                         end
-                end
+                end,
+
+                Acc
         end,
 
-    lists:foreach(Fn, Sinks),
+    ok = dict:fold(Fn, ok, Sinks),
 
     rearm_timer(),
     {noreply, State};
@@ -239,11 +248,11 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 ensure_sink(SinkName, #state{sinks=Sinks} = _State, Fn) ->
-    case ordsets:is_element(SinkName, Sinks) of
-        false ->
-            {error, unknown_sink};
-        true ->
-            Fn()
+    case dict:find(SinkName, Sinks) of
+        {ok, _} ->
+            Fn();
+        error ->
+            {error, unknown_sink}
     end.
 
 ensure_logger(LoggerName, #state{loggers=Loggers} = _State, Fn) ->
@@ -264,19 +273,19 @@ handle_result(Result, OldState) ->
             {reply, Result, OldState}
     end.
 
-do_start_sink(Name, Module, Args, #state{sinks=Sinks} = State) ->
-    case ordsets:is_element(Name, Sinks) of
-        true ->
+do_start_sink(Name, Type, Module, Args, #state{sinks=Sinks} = State) ->
+    case dict:find(Name, Sinks) of
+        {ok, _} ->
             {error, duplicate_sink};
-        false ->
+        error ->
             SinkId = ale_utils:sink_id(Name),
             Args1 = [SinkId | Args],
 
             RV = ale_dynamic_sup:start_child(SinkId, Module, Args1),
             case RV of
                 {ok, _} ->
-                    NewState =
-                        State#state{sinks=ordsets:add_element(Name, Sinks)},
+                    NewSinks = dict:store(Name, Type, Sinks),
+                    NewState = State#state{sinks=NewSinks},
                     {ok, NewState};
                 _Other ->
                     RV
@@ -289,7 +298,8 @@ do_stop_sink(Name, #state{sinks=Sinks} = State) ->
       fun () ->
               SinkId = ale_utils:sink_id(Name),
               ok = ale_dynamic_sup:stop_child(SinkId),
-              NewState = State#state{sinks=ordsets:del_element(Name, Sinks)},
+              NewSinks = dict:erase(Name, Sinks),
+              NewState = State#state{sinks=NewSinks},
               {ok, NewState}
       end).
 
@@ -344,7 +354,10 @@ do_add_sink_tail(LoggerName, SinkName, LogLevel, State) ->
               ensure_sink(
                 SinkName, State,
                 fun () ->
-                        NewSinks = dict:store(SinkName, LogLevel, Sinks),
+                        Sink = #sink{name=SinkName,
+                                     loglevel=LogLevel},
+
+                        NewSinks = dict:store(SinkName, Sink, Sinks),
                         NewLogger = Logger#logger{sinks=NewSinks},
                         NewState = spawn_compiler_and_store(State, NewLogger),
 
@@ -398,10 +411,12 @@ do_set_sink_loglevel_tail(LoggerName, SinkName, LogLevel, State) ->
                 SinkName, State,
                 fun () ->
                         case dict:find(SinkName, Sinks) of
-                            {ok, LogLevel} ->   % bound above
+                            {ok, #sink{loglevel=LogLevel}} ->   % bound above
                                 {ok, State};
-                            {ok, _} ->
-                                NewSinks = dict:store(SinkName, LogLevel, Sinks),
+                            {ok, Sink} ->
+                                NewSink = Sink#sink{loglevel=LogLevel},
+
+                                NewSinks = dict:store(SinkName, NewSink, Sinks),
                                 NewLogger = Logger#logger{sinks=NewSinks},
                                 NewState = spawn_compiler_and_store(State, NewLogger),
                                 {ok, NewState};
@@ -419,7 +434,7 @@ do_get_sink_loglevel(LoggerName, SinkName, State) ->
                 SinkName, State,
                 fun () ->
                         case dict:find(SinkName, Sinks) of
-                            {ok, LogLevel} ->
+                            {ok, #sink{loglevel=LogLevel}} ->
                                 LogLevel;
                             error ->
                                 {error, bad_sink}
@@ -434,15 +449,19 @@ set_error_logger_handler() ->
 rearm_timer() ->
     erlang:start_timer(?CHECK_MAILBOXES_INTERVAL, self(), check_mailboxes).
 
-do_compile(#logger{name=LoggerName,
+do_compile(#state{sinks=SinkTypes},
+           #logger{name=LoggerName,
                    loglevel=LogLevel,
                    formatter=Formatter,
                    sinks=Sinks}) ->
     SinksList =
         dict:fold(
-          fun (Sink, SinkLogLevel, Acc) ->
-                  SinkId = ale_utils:sink_id(Sink),
-                  [{SinkId, SinkLogLevel} | Acc]
+          fun (SinkName,
+               #sink{name=SinkName, loglevel=SinkLogLevel},
+               Acc) ->
+                  SinkId = ale_utils:sink_id(SinkName),
+                  {ok, SinkType} = dict:find(SinkName, SinkTypes),
+                  [{SinkId, SinkLogLevel, SinkType} | Acc]
           end, [], Sinks),
 
     ale_codegen:load_logger(LoggerName, LogLevel, Formatter, SinksList).
@@ -466,7 +485,7 @@ kill_compiler(#state{compilers=Compilers} = State,
 
 compile(State, Logger) ->
     {State1, Logger1} = kill_compiler(State, Logger),
-    do_compile(Logger1),
+    do_compile(State1, Logger1),
     {State1, Logger1}.
 
 spawn_compiler(#state{compilers=Compilers} = State,
@@ -475,7 +494,7 @@ spawn_compiler(#state{compilers=Compilers} = State,
 
     NewCompiler = proc_lib:spawn_link(
                    fun () ->
-                           do_compile(Logger1)
+                           do_compile(State1, Logger1)
                    end),
     NewCompilers = dict:store(NewCompiler, LoggerName, Compilers),
 

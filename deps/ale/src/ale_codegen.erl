@@ -55,23 +55,31 @@ definitions(LoggerName, LoggerLogLevel, Formatter, Sinks) ->
       end, ?LOGLEVELS).
 
 loglevel_definitions(LoggerName, LoggerLogLevel, LogLevel, Formatter, Sinks) ->
-    EnabledSinks =
+    {Preformatted, Raw} =
         case ale_utils:loglevel_enabled(LogLevel, LoggerLogLevel) of
             false ->
-                [];
+                {[], []};
             true ->
                 lists:foldl(
-                  fun ({Sink, SinkLogLevel}, Acc) ->
-                          case ale_utils:loglevel_enabled(LogLevel, SinkLogLevel) of
+                  fun ({Sink, SinkLogLevel, SinkType}, {P, R} = Acc) ->
+                          Enabled =
+                              ale_utils:loglevel_enabled(LogLevel, SinkLogLevel),
+
+                          case Enabled of
                               true ->
-                                  [Sink | Acc];
+                                  case SinkType of
+                                      preformatted ->
+                                          {[Sink | P], R};
+                                      raw ->
+                                          {P, [Sink | R]}
+                                  end;
                               false ->
                                   Acc
                           end
-                  end, [], Sinks)
+                  end, {[], []}, Sinks)
         end,
 
-    [generic_loglevel(LoggerName, LogLevel, Formatter, EnabledSinks),
+    [generic_loglevel(LoggerName, LogLevel, Formatter, Preformatted, Raw),
      "\n",
      loglevel_1(LogLevel),
      loglevel_2(LogLevel),
@@ -80,21 +88,30 @@ loglevel_definitions(LoggerName, LoggerLogLevel, LogLevel, Formatter, Sinks) ->
      xloglevel_2(LogLevel),
      "\n"].
 
-generic_loglevel(LoggerName, LogLevel, Formatter, EnabledSinks) ->
+generic_loglevel(LoggerName, LogLevel, Formatter, Preformatted, Raw) ->
     %% inline generated function
     [io_lib:format("-compile({inline, [generic_~p/6]}).~n", [LogLevel]),
 
      io_lib:format("generic_~p(M, F, L, Data, Fmt, Args) -> ", [LogLevel]),
 
-     case EnabledSinks of
-         [] ->
-             "";
-         _ ->
+     case Preformatted =/= [] orelse Raw =/= [] of
+         true ->
              io_lib:format(
                "ForcedArgs = ale_utils:force_args(Args),"
                "Info = ale_utils:assemble_info(~s, ~p, M, F, L, Data),"
-               "LogMsg = ~p:format_msg(Info, Fmt, ForcedArgs),",
-               [LoggerName, LogLevel, Formatter])
+               "UserMsg = io_lib:format(Fmt, ForcedArgs),",
+               [LoggerName, LogLevel])
+             ;
+         false ->
+             ""
+     end,
+
+     case Preformatted =/= [] of
+         true ->
+             io_lib:format(
+               "LogMsg = ~p:format_msg(Info, UserMsg),", [Formatter]);
+         false ->
+             ""
      end,
 
      lists:map(
@@ -102,7 +119,14 @@ generic_loglevel(LoggerName, LogLevel, Formatter, EnabledSinks) ->
                io_lib:format(
                  "ok = gen_server:call('~s', {log, LogMsg}, infinity),",
                  [Sink])
-       end, EnabledSinks),
+       end, Preformatted),
+
+     lists:map(
+       fun (Sink) ->
+               io_lib:format(
+                 "ok = gen_server:call('~s', {raw_log, Info, UserMsg}, infinity),",
+                 [Sink])
+       end, Raw),
 
      "ok.\n"].
 

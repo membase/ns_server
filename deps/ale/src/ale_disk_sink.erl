@@ -68,6 +68,10 @@ handle_call({log, Msg}, _From, #state{name=Name} = State) ->
     RV    = disk_log:blog(Name, Bytes),
     {reply, RV, State};
 
+%% we don't handle raw messages
+handle_call({raw_log, _Info, _UserMsg}, _From, State) ->
+    {reply, ok, State};
+
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
