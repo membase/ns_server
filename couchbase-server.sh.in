@@ -150,6 +150,8 @@ _stop() {
         rm "$PIDFILE"
         rm "$COOKIEFILE"
         rm "$NODEFILE"
+
+        epmd -kill || true
     fi
 
     return $errcode
