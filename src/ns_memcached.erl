@@ -329,8 +329,7 @@ handle_info(Msg, State) ->
     {noreply, State}.
 
 
-terminate(_Reason, #state{bucket=Bucket, sock=Sock, type=data}) ->
-    unregister(server(Bucket, data)),
+terminate(_Reason, #state{sock=Sock, type=data}) ->
     ok = gen_tcp:close(Sock);
 
 terminate(Reason, #state{bucket=Bucket, sock=Sock, type=stats}) ->
