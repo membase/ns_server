@@ -261,8 +261,10 @@ upgrade_config(Config) ->
             [{set, {node, node(), config_version}, {1,8,0}} |
              upgrade_config_from_1_7_2_to_1_8_0(Config)];
         {value, {1,8,0}} ->
-            HistoryUpgrade = maybe_add_vbucket_map_history(Config),
-            HistoryUpgrade
+            [{set, {node, node(), config_version}, {1,8,1}} |
+             upgrade_config_from_1_8_0_to_1_8_1(Config)];
+        {value, {1,8,1}} ->
+            []
     end.
 
 upgrade_config_from_1_6_to_1_7(Config) ->
@@ -389,6 +391,10 @@ do_upgrade_config_from_1_7_2_to_1_8_0(Config, DefaultConfig) ->
       end,
       Results,
       [{{node, node(), memcached}, ns_config:search_node(Config, memcached)}]).
+
+upgrade_config_from_1_8_0_to_1_8_1(Config) ->
+    ?log_info("Upgrading config from 1.8.0 to 1.8.1"),
+    maybe_add_vbucket_map_history(Config).
 
 upgrade_1_6_to_1_7_test() ->
     DefaultCfg = [{directory, default_directory},
@@ -538,9 +544,9 @@ upgrade_1_7_2_to_1_8_0_test() ->
                  lists:sort(Res2)),
     ok.
 
-no_upgrade_on_1_8_0_test() ->
+no_upgrade_on_1_8_1_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version},
-                                       {1,8,0}}]])).
+                                       {1,8,1}}]])).
 
 fuller_1_6_test_() ->
     {spawn,
