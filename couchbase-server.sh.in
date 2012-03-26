@@ -48,6 +48,7 @@ _check_nofile () {
     if [ `ulimit -n` -lt 10240 ]
     then
         cat <<EOF
+
 The maximum number of open files for the couchbase user is set too low.
 It must be at least 10240. Normally this can be increased by adding
 the following lines to /etc/security/limits.conf:
@@ -56,6 +57,7 @@ couchbase              soft    nofile                  <value>
 couchbase              hard    nofile                  <value>
 
 Where <value> is greater than 10240.
+
 EOF
     fi
 }
