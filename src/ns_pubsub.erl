@@ -81,7 +81,7 @@ handle_info(_Msg, State) ->
     {ok, State}.
 
 
-terminate(_Reason, _State) ->
+terminate(_Args, _State) ->
     ok.
 
 
@@ -102,30 +102,37 @@ do_subscribe_link(Name, Fun, State, Parent) ->
     erlang:link(Parent),
 
     Ref = make_ref(),
-    ok = gen_event:add_sup_handler(Name, {?MODULE, Ref},
+    Handler = {?MODULE, Ref},
+    ok = gen_event:add_sup_handler(Name, Handler,
                                    #state{func=Fun, func_state=State}),
 
     proc_lib:init_ack(Parent, self()),
 
-    receive
-        unsubscribe ->
-            exit(normal);
-        {'gen_event_EXIT', {?MODULE, Ref}, Reason} ->
-            case Reason =:= normal orelse Reason =:= shutdown of
-                true ->
-                    exit(normal);
-                false ->
-                    exit({handler_crashed, Name, Reason})
-            end;
-        {'EXIT', Parent, Reason} ->
-            ?log_debug("Parent process exited with reason ~p",
-                       [Reason]),
-            exit(normal);
-        {'EXIT', Pid, Reason} ->
-            ?log_error("Dying because linked process ~p died: ~p",
-                       [Pid, Reason]),
-            exit({linked_process_died, Pid, Reason});
-        X ->
-            ?log_error("Got unexpected message: ~p", [X]),
-            exit(unexpected_message)
-    end.
+    ExitReason =
+        receive
+            unsubscribe ->
+                normal;
+            {'gen_event_EXIT', Handler, Reason} ->
+                case Reason =:= normal orelse Reason =:= shutdown of
+                    true ->
+                        normal;
+                    false ->
+                        {handler_crashed, Name, Reason}
+                end;
+            {'EXIT', Parent, Reason} ->
+                ?log_debug("Parent process exited with reason ~p",
+                           [Reason]),
+                normal;
+            {'EXIT', Pid, Reason} ->
+                ?log_error("Dying because linked process ~p died: ~p",
+                           [Pid, Reason]),
+                {linked_process_died, Pid, Reason};
+            X ->
+                ?log_error("Got unexpected message: ~p", [X]),
+                unexpected_message
+        end,
+
+    R = (catch gen_event:delete_handler(Name, Handler, unused)),
+    ?log_debug("Deleting ~p event handler: ~p", [Handler, R]),
+
+    exit(ExitReason).
