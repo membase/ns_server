@@ -45,7 +45,8 @@ cleanup_list_del(Pid) ->
 
 %% We do a no-op here rather than filtering these out so that the
 %% replication update will still work properly.
-mover(Parent, undefined = Node, _Bucket, VBucket, OldChain, NewChain) ->
+mover(Parent, undefined = Node, Bucket, VBucket, OldChain, [NewNode | _NewChainRest] = NewChain) ->
+    ok = ns_memcached:set_vbucket(NewNode, Bucket, VBucket, active),
     Parent ! {move_done, {Node, VBucket, OldChain, NewChain}};
 
 mover(Parent, Node, Bucket, VBucket, OldChain, NewChain) ->
