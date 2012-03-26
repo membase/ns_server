@@ -91,7 +91,7 @@ init_logging() ->
                         ale_disk_sink, [DefaultLogPath, DiskSinkParams]),
     ok = ale:start_sink(disk_error,
                         ale_disk_sink, [ErrorLogPath, DiskSinkParams]),
-    ok = ale:start_sink(ns_log, ns_log_sink, []),
+    ok = ale:start_sink(ns_log, raw, ns_log_sink, []),
 
     lists:foreach(
       fun (Logger) ->
@@ -112,8 +112,8 @@ init_logging() ->
               ok = ale:add_sink(Logger, disk_error, error)
       end, AllLoggers),
 
-    ok = ale:add_sink(?USER_LOGGER, ns_log),
-    ok = ale:add_sink(?MENELAUS_LOGGER, ns_log),
+    ok = ale:add_sink(?USER_LOGGER, ns_log, info),
+    ok = ale:add_sink(?MENELAUS_LOGGER, ns_log, info),
     ok = ale:add_sink(?CLUSTER_LOGGER, ns_log, info),
 
     case misc:get_env_default(dont_suppress_stderr_logger, false) of
