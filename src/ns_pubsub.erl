@@ -19,6 +19,8 @@
 
 -behaviour(gen_event).
 
+-include_lib("eunit/include/eunit.hrl").
+
 -record(state, {func, func_state}).
 
 %% API
@@ -136,3 +138,221 @@ do_subscribe_link(Name, Fun, State, Parent) ->
     ?log_debug("Deleting ~p event handler: ~p", [Handler, R]),
 
     exit(ExitReason).
+
+%% Tests
+-ifdef(EUNIT).
+
+-define(N, 100).
+-define(TABLE, ns_pubsub_test_table).
+-define(COUNTER, counter).
+-define(EVENTS, ns_pubsub_test_events).
+
+times(0, _F, _A) ->
+    ok;
+times(N, F, A) ->
+    apply(F, A),
+    times(N - 1, F, A).
+
+kill_silently_sync(P) ->
+    unlink(P),
+    exit(P, kill),
+    misc:wait_for_process(P, infinity).
+
+create_table() ->
+    ?TABLE = ets:new(?TABLE, [public, set, named_table]),
+    N = random:uniform(1000000),
+    true = ets:insert_new(?TABLE, {?COUNTER, N}),
+    ok.
+
+table_updater() ->
+    proc_lib:spawn_link(
+      fun () ->
+              table_updater_loop()
+      end).
+
+table_updater_loop() ->
+    NewCounter = ets:update_counter(?TABLE, ?COUNTER, 1),
+    gen_event:notify(?EVENTS, {counter_updated, NewCounter}),
+    table_updater_loop().
+
+setup() ->
+    setup(msg_fun(self()), ignored).
+
+setup(Fun, State) ->
+    ok = create_table(),
+    {ok, EventMgr} = gen_event:start_link({local, ?EVENTS}),
+    Updater = table_updater(),
+    Subscription = ns_pubsub:subscribe_link(?EVENTS, Fun, State),
+    {EventMgr, Updater, Subscription}.
+
+cleanup({EventMgr, Updater, Subscription}) ->
+    kill_silently_sync(Updater),
+    kill_silently_sync(Subscription),
+    kill_silently_sync(EventMgr),
+
+    true = ets:delete(?TABLE),
+    flush_all().
+
+wrap(Setup, Cleanup, Body) ->
+    R = Setup(),
+    try
+        Body(R)
+    after
+        Cleanup(R)
+    end.
+
+flush_all() ->
+    receive
+        _Msg ->
+            flush_all()
+    after
+        0 ->
+            ok
+    end.
+
+subscribe_test_() ->
+    {spawn, [{timeout, 20, ?_test(times(?N, fun test_subscribe/0, []))}]}.
+
+%% test that we don't lose notifications right after subscription
+test_subscribe() ->
+    wrap(
+      fun setup/0, fun cleanup/1,
+      fun (_) ->
+              [{?COUNTER, Initial}] = ets:lookup(?TABLE, ?COUNTER),
+
+              receive
+                  {counter_updated, Value} ->
+                      ?assert(Value =< Initial + 1)
+              end
+      end).
+
+unsubscribe_test_() ->
+    {spawn, [{timeout, 20, ?_test(times(?N, fun test_unsubscribe/0, []))}]}.
+
+%% test that we don't receive new updates after we've unsubscribed
+test_unsubscribe() ->
+    wrap(
+      fun setup/0, fun cleanup/1,
+      fun ({_EventMgr, _Updater, Subscription}) ->
+              ok = ns_pubsub:unsubscribe(Subscription),
+              flush_all(),
+
+              Msg =
+                  receive
+                      {counter_updated, _} = M ->
+                          M
+                  after
+                      10 ->
+                          timeout
+                  end,
+
+              ?assertEqual(timeout, Msg)
+      end).
+
+kill_test_() ->
+    {spawn, [?_test(test_shutdown()),
+             ?_test(test_crash()),
+             ?_test(test_parent_crash()),
+             ?_test(test_event_mgr_crash())]}.
+
+test_shutdown() ->
+    wrap(
+      fun setup/0, fun cleanup/1,
+      fun ({EventMgr, Updater, Subscription}) ->
+              process_flag(trap_exit, true),
+
+              exit(Updater, kill),
+              exit(EventMgr, shutdown),
+
+              receive
+                  {'EXIT', Subscription, normal} ->
+                      ok
+              after
+                  100 ->
+                      ?assert(false)
+              end
+      end).
+
+test_crash() ->
+    Crasher =
+        fun (crash, _) ->
+                exit(crashed);
+            (_, _) ->
+                ok
+        end,
+
+    wrap(
+      fun () -> setup(Crasher, ignored) end, fun cleanup/1,
+      fun ({_EventMgr, Updater, Subscription}) ->
+              process_flag(trap_exit, true),
+
+              exit(Updater, kill),
+              gen_event:notify(?EVENTS, crash),
+
+              receive
+                  {'EXIT', Subscription, {handler_crashed, _, {'EXIT', crashed}}} ->
+                      ok
+              after
+                  100 ->
+                      ?assert(false)
+              end
+      end).
+
+test_event_mgr_crash() ->
+    wrap(
+      fun setup/0, fun cleanup/1,
+      fun ({EventMgr, Updater, Subscription}) ->
+              process_flag(trap_exit, true),
+
+              exit(Updater, kill),
+              exit(EventMgr, kill),
+
+              receive
+                  {'EXIT', Subscription, {linked_process_died, _, killed}} ->
+                      ok
+              after
+                  100 ->
+                      ?assert(false)
+              end
+      end).
+
+test_parent_crash() ->
+    process_flag(trap_exit, true),
+    Parent = self(),
+
+    Pid =
+        proc_lib:spawn(
+          fun () ->
+                  wrap(
+                    fun setup/0, fun cleanup/1,
+                    fun ({EventMgr, Updater, _} = R) ->
+                            unlink(EventMgr),
+                            unlink(Updater),
+
+                            Parent ! ({self(), R}),
+
+                            %% just sleep
+                            receive
+                                _Msg -> ok
+                            end
+                    end)
+          end),
+
+    receive
+        {Pid, {EventMgr, Updater, Subscription}} ->
+            link(Subscription),
+            exit(Pid, crash),
+
+            receive
+                {'EXIT', Subscription, normal} ->
+                    ok
+            after
+                100 ->
+                    ?assert(false)
+            end,
+
+            kill_silently_sync(EventMgr),
+            kill_silently_sync(Updater)
+    end.
+
+-endif.
