@@ -294,6 +294,11 @@ wait_for_mover_tail(Pid, Ref) ->
             wait_for_mover_tail(Pid, Ref);
         {'DOWN', Ref, _, _, Reason} ->
             case Reason of
+                %% monitoring was too late, but because we're linked
+                %% and don't trap exits the fact that we're alife
+                %% means it went normal
+                noproc ->
+                    ok;
                 normal ->
                     ok;
                 shutdown ->

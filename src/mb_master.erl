@@ -85,7 +85,7 @@ init([]) ->
     {ok, _} = timer:send_interval(?HEARTBEAT_INTERVAL, send_heartbeat),
     case ns_node_disco:nodes_wanted() of
         [N] = P when N == node() ->
-            ?log_info("I'm the only node, so I'm the master.", []),
+            ale:info(?USER_LOGGER, "I'm the only node, so I'm the master.", []),
             {ok, master, start_master(#state{last_heard=now(), peers=P})};
         Peers when is_list(Peers) ->
             case lists:member(node(), Peers) of
@@ -116,7 +116,7 @@ handle_info(send_heartbeat, candidate, #state{peers=Peers} = StateData) ->
     case timer:now_diff(now(), StateData#state.last_heard) >= ?TIMEOUT of
         true ->
             %% Take over
-            ?log_info("Haven't heard from a higher priority node or "
+            ale:info(?USER_LOGGER, "Haven't heard from a higher priority node or "
                       "a master, so I'm taking over.", []),
             {ok, Pid} = mb_master_sup:start_link(),
             {next_state, master,
@@ -168,7 +168,7 @@ handle_info({peers, Peers}, StateName, StateData) when
     S = update_peers(StateData, Peers),
     case Peers of
         [N] when N == node() ->
-            ?log_info("I'm now the only node, so I'm the master.", []),
+            ale:info(?USER_LOGGER, "I'm now the only node, so I'm the master.", []),
             {next_state, master, start_master(S)};
         _ ->
             case lists:member(node(), Peers) of
