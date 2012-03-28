@@ -40,6 +40,7 @@
 
 -define(DEFAULT_LOG_FILENAME, "log").
 -define(ERRORS_LOG_FILENAME, "errors").
+-define(DEBUG_LOG_FILENAME, "debug").
 
 -define(NS_SERVER_LOGGER, ns_server).
 -define(USER_LOGGER, user).

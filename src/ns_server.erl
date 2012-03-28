@@ -84,6 +84,7 @@ init_logging() ->
 
     DefaultLogPath = filename:join(Dir, ?DEFAULT_LOG_FILENAME),
     ErrorLogPath = filename:join(Dir, ?ERRORS_LOG_FILENAME),
+    DebugLogPath = filename:join(Dir, ?DEBUG_LOG_FILENAME),
 
     DiskSinkParams = [{size, {MaxB, MaxF}}],
 
@@ -91,25 +92,28 @@ init_logging() ->
                         ale_disk_sink, [DefaultLogPath, DiskSinkParams]),
     ok = ale:start_sink(disk_error,
                         ale_disk_sink, [ErrorLogPath, DiskSinkParams]),
+    ok = ale:start_sink(disk_debug,
+                        ale_disk_sink, [DebugLogPath, DiskSinkParams]),
     ok = ale:start_sink(ns_log, raw, ns_log_sink, []),
 
     lists:foreach(
       fun (Logger) ->
-              LogLevel = get_loglevel(Logger),
-              ok = ale:start_logger(Logger, LogLevel)
+              ok = ale:start_logger(Logger, debug)
       end, ?LOGGERS),
 
     lists:foreach(
       fun (Logger) ->
-              LogLevel = get_loglevel(Logger),
-              ok = ale:set_loglevel(Logger, LogLevel)
+              ok = ale:set_loglevel(Logger, debug)
       end,
       StdLoggers),
 
     lists:foreach(
       fun (Logger) ->
-              ok = ale:add_sink(Logger, disk_default),
-              ok = ale:add_sink(Logger, disk_error, error)
+              LogLevel = get_loglevel(Logger),
+              ok = ale:add_sink(Logger, disk_default, LogLevel),
+
+              ok = ale:add_sink(Logger, disk_error, error),
+              ok = ale:add_sink(Logger, disk_debug, debug)
       end, AllLoggers),
 
     ok = ale:add_sink(?USER_LOGGER, ns_log, info),
@@ -122,7 +126,9 @@ init_logging() ->
 
             lists:foreach(
               fun (Logger) ->
-                      ok = ale:add_sink(Logger, stderr)
+                      %% usually used only in dev environment so it makes
+                      %% sense to put all the messages here
+                      ok = ale:add_sink(Logger, stderr, debug)
               end, AllLoggers);
         false ->
             ok
