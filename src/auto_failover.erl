@@ -117,7 +117,7 @@ alert_keys() ->
 
 init([]) ->
     {value, Config} = ns_config:search(ns_config:get(), auto_failover_cfg),
-    ?log_info("init auto_failover.", []),
+    ?log_debug("init auto_failover.", []),
     Timeout = proplists:get_value(timeout, Config),
     Count = proplists:get_value(count, Config),
     State = #state{timeout=Timeout,
@@ -141,7 +141,7 @@ init_logic_state(Timeout) ->
 handle_call({enable_auto_failover, Timeout, Max}, _From,
             #state{tick_ref=nil}=State) ->
     1 = Max,
-    ?log_info("enable auto-failover: ~p", [State]),
+    ?log_debug("enable auto-failover: ~p", [State]),
     {ok, Ref} = timer:send_interval(?HEART_BEAT_PERIOD, tick),
     State2 = State#state{tick_ref=Ref, timeout=Timeout,
                          auto_failover_logic_state=init_logic_state(Timeout)},
@@ -149,7 +149,7 @@ handle_call({enable_auto_failover, Timeout, Max}, _From,
     {reply, ok, State2};
 %% @doc Auto-failover is already enabled, just update the settings.
 handle_call({enable_auto_failover, Timeout, Max}, _From, State) ->
-    ?log_info("updating auto-failover settings: ~p", [State]),
+    ?log_debug("updating auto-failover settings: ~p", [State]),
     1 = Max,
     State2 = State#state{timeout=Timeout,
                          auto_failover_logic_state = init_logic_state(Timeout)},
@@ -161,14 +161,14 @@ handle_call(disable_auto_failover, _From, #state{tick_ref=nil}=State) ->
     {reply, ok, State};
 %% @doc Auto-failover is enabled, disable it
 handle_call(disable_auto_failover, _From, #state{tick_ref=Ref}=State) ->
-    ?log_info("disable_auto_failover: ~p", [State]),
+    ?log_debug("disable_auto_failover: ~p", [State]),
     {ok, cancel} = timer:cancel(Ref),
     State2 = State#state{tick_ref=nil, auto_failover_logic_state = undefined},
     make_state_persistent(State2),
     {reply, ok, State2};
 
 handle_call(reset_auto_failover_count, _From, State) ->
-    ?log_info("reset auto_failover count: ~p", [State]),
+    ?log_debug("reset auto_failover count: ~p", [State]),
     State2 = State#state{count=0,
                          auto_failover_logic_state = init_logic_state(State#state.timeout)},
     make_state_persistent(State2),

@@ -154,7 +154,7 @@ handle_call({unregister_watcher, Pid},
     {ok, ok, State#state{watchers = Watchers2}};
 
 handle_call(Request, State) ->
-    ?log_info("menelaus_event handle_call(~p, ~p)", [Request, State]),
+    ?log_warning("Unexpected handle_call(~p, ~p)", [Request, State]),
     {ok, ok, State}.
 
 handle_info({'DOWN', MonitorRef, _, _, _},

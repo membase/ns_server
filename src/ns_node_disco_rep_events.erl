@@ -39,8 +39,8 @@ handle_event({ns_node_disco_events, Old, New}, State) ->
         [] ->
             ok;
         NewNodes ->
-            ?log_info("Detected a new nodes (~p).  Moving config around.",
-                      [NewNodes]),
+            ?log_debug("Detected a new nodes (~p).  Moving config around.",
+                       [NewNodes]),
             %% we know that new node will also try to replicate config
             %% to/from us. So we half our traffic by enforcing
             %% 'initiative' from higher node to lower node

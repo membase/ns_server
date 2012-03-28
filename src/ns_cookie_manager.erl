@@ -112,7 +112,7 @@ do_cookie_set(Cookie) ->
     X.
 
 do_cookie_sync() ->
-    ?log_info("ns_cookie_manager do_cookie_sync"),
+    ?log_debug("ns_cookie_manager do_cookie_sync"),
     Result =
         case do_cookie_get() of
             undefined ->
@@ -149,9 +149,9 @@ do_cookie_sync() ->
 %% Saves cookie in human readable format.
 -spec do_cookie_save(atom(), string()) -> ok | {error, term()}.
 do_cookie_save(Cookie, Path) ->
-    ?log_info("saving cookie to ~p", [Path]),
+    ?log_debug("saving cookie to ~p", [Path]),
     R = misc:atomic_write_file(Path, erlang:atom_to_list(Cookie) ++ "\n"),
-    ?log_info("attempted to save cookie to ~p: ~p", [Path, R]),
+    ?log_debug("attempted to save cookie to ~p: ~p", [Path, R]),
     R.
 
 -spec do_cookie_save(atom()) -> ok | {error, term()}.

@@ -50,7 +50,7 @@ handle_event(_, State) ->
     {ok, State, hibernate}.
 
 handle_call(Request, State) ->
-    ?log_info("handle_call(~p, ~p)", [Request, State]),
+    ?log_warning("Unexpected handle_call(~p, ~p)", [Request, State]),
     {ok, ok, State, hibernate}.
 
 handle_info(_Info, State) ->

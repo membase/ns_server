@@ -40,7 +40,7 @@ start_link(Name, Delay, M, F, A) ->
 
 init([Name, Delay, M, F, A]) ->
     process_flag(trap_exit, true),
-    ?log_info("starting ~p with delay of ~p", [M, Delay]),
+    ?log_debug("starting ~p with delay of ~p", [M, Delay]),
     case apply(M, F, A) of
         {ok, Pid} ->
             {ok, #state{name=Name, delay=Delay, started=now(), child_pid=Pid}};
@@ -65,8 +65,8 @@ handle_info({'EXIT', _Pid, Reason}, State) ->
 handle_info({die, Reason}, State) ->
     {stop, Reason, State};
 handle_info(Info, State) ->
-    ?log_info("Cushion got unexpected info supervising ~p: ~p",
-              [State#state.name, Info]),
+    ?log_warning("Cushion got unexpected info supervising ~p: ~p",
+                 [State#state.name, Info]),
     State1 = die_slowly({error, cushioned_supervisor, Info}, State),
     {noreply, State1}.
 

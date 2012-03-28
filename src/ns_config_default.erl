@@ -275,7 +275,7 @@ upgrade_config(Config) ->
     end.
 
 upgrade_config_from_1_6_to_1_7(Config) ->
-    ?log_info("Upgrading config from 1.6 to 1.7", []),
+    ?log_info("Upgrading config from 1.6 to 1.7"),
     DefaultConfig = default(),
     do_upgrade_config_from_1_6_to_1_7(Config, DefaultConfig).
 
@@ -298,7 +298,7 @@ do_upgrade_config_from_1_6_to_1_7(Config, DefaultConfig) ->
                      {node, node(), ns_log}]).
 
 upgrade_config_from_1_7_to_1_7_1() ->
-    ?log_info("Upgrading config from 1.7 to 1.7.1", []),
+    ?log_info("Upgrading config from 1.7 to 1.7.1"),
     DefaultConfig = default(),
     do_upgrade_config_from_1_7_to_1_7_1(DefaultConfig).
 
@@ -309,7 +309,7 @@ do_upgrade_config_from_1_7_to_1_7_1(DefaultConfig) ->
      {set, auto_failover_cfg, AutoFailover}].
 
 upgrade_config_from_1_7_1_to_1_7_2(Config) ->
-    ?log_info("Upgrading config from 1.7.1 to 1.7.2", []),
+    ?log_info("Upgrading config from 1.7.1 to 1.7.2"),
     DefaultConfig = default(),
     do_upgrade_config_from_1_7_1_to_1_7_2(Config, DefaultConfig).
 
@@ -345,14 +345,14 @@ do_upgrade_rest_port_config_from_1_7_1_to_1_7_2(Config, DefaultConfig) ->
     {RestChangeValue, NodeRestChangeValue} =
         case lists:usort(RestPorts) of
             [] ->
-                ?log_info("Setting global and node rest port to default", []),
+                ?log_debug("Setting global and node rest port to default"),
                 {DefaultRest, DefaultNodeRest};
             [Port] ->
-                ?log_info("Setting global and per-node rest port to ~p", [Port]),
+                ?log_debug("Setting global and per-node rest port to ~p", [Port]),
                 {[{port, Port}], [{port, Port}, {port_meta, global}]};
             _ ->
-                ?log_info("Setting global rest port to default "
-                          "but keeping per node value ", []),
+                ?log_debug("Setting global rest port to default "
+                           "but keeping per node value "),
                 OurPort = ns_config:search_node_prop(Node, Config, rest, port),
                 {DefaultRest, [{port, OurPort}, {port_meta, local}]}
         end,
@@ -363,7 +363,7 @@ do_upgrade_rest_port_config_from_1_7_1_to_1_7_2(Config, DefaultConfig) ->
     RestChange ++ NodeRestChange.
 
 upgrade_config_from_1_7_2_to_1_8_0(Config) ->
-    ?log_info("Upgrading config from 1.7.2 to 1.8.0", []),
+    ?log_info("Upgrading config from 1.7.2 to 1.8.0"),
     DefaultConfig = default(),
     do_upgrade_config_from_1_7_2_to_1_8_0(Config, DefaultConfig).
 

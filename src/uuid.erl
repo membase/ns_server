@@ -146,7 +146,7 @@ init(Options) ->
         node = proplists:get_value(node, Options, <<0:48>>),
         clock_seq = random:uniform(65536)
     },
-    ?log_info("uuid server started"),
+    ?log_debug("uuid server started"),
     {ok, State}.
 
 handle_call(timestamp, _From, State) ->
@@ -167,7 +167,7 @@ handle_info(_Info, State) ->
     {noreply, State}.
 
 terminate(_Reason, _State) ->
-    ?log_info("uuid server stopped"),
+    ?log_debug("uuid server stopped"),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->

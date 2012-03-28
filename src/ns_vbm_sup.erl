@@ -65,7 +65,8 @@ kill_replica(Bucket, SrcNode, DstNode, VBucket) ->
             case VBuckets of
                 [VBucket] ->
                     %% just kill when it was last vbucket
-                    ?log_info("~p: killed last vbucket (~p) for destination ~p", [SrcNode, VBucket, DstNode]),
+                    ?log_debug("~p: killed last vbucket (~p) for destination ~p",
+                               [SrcNode, VBucket, DstNode]),
                     ok;
                 _ ->
                     {ok, _} = start_child(SrcNode, Bucket, VBuckets -- [VBucket],
@@ -74,7 +75,7 @@ kill_replica(Bucket, SrcNode, DstNode, VBucket) ->
     end.
 
 apply_changes(Bucket, ChangeTuples) ->
-    ?log_info("Applying changes:~n~p~n", [ChangeTuples]),
+    ?log_debug("Applying changes:~n~p~n", [ChangeTuples]),
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
     RelevantSrcNodes = proplists:get_value(servers, BucketConfig),
     true = (undefined =/= RelevantSrcNodes),
@@ -128,10 +129,7 @@ apply_changes(Bucket, ChangeTuples) ->
                             end
                     end, 0, Replicators),
     NewReplicasList = dict:to_list(NewReplicas),
-    %% ?log_info("NewReplicasList:~n~p~n", [NewReplicasList]),
-    %% ?log_info("Replicators before:~n~p~n", [replicators([node() | nodes()], Bucket)]),
     set_replicas(Bucket, NewReplicasList),
-    %% ?log_info("Replicators after:~n~p~n", [replicators([node() | nodes()], Bucket)]),
     ActualChangesCount.
 
 
@@ -184,8 +182,8 @@ spawn_mover(Bucket, VBucket, SrcNode, DstNode) ->
     Args = [SrcNode | Args0],
     case apply(ebucketmigrator_srv, start_link, Args) of
         {ok, Pid} = RV ->
-            ?log_info("Spawned mover ~p ~p ~p -> ~p: ~p",
-                      [Bucket, VBucket, SrcNode, DstNode, Pid]),
+            ?log_debug("Spawned mover ~p ~p ~p -> ~p: ~p",
+                       [Bucket, VBucket, SrcNode, DstNode, Pid]),
             RV;
         X -> X
     end.
@@ -319,8 +317,7 @@ set_replicas(SrcNode, Bucket, Replicas) ->
                          {ok, pid()}.
 start_child(Node, Bucket, VBuckets, DstNode) ->
     Args = args(Node, Bucket, VBuckets, DstNode, false),
-    ?log_info("Starting replicator with args =~n~p",
-              [Args]),
+    ?log_debug("Starting replicator with args =~n~p", [Args]),
     ChildSpec = {#child_id{vbuckets=VBuckets, dest_node=DstNode},
                  {ebucketmigrator_srv, start_link, Args},
                  permanent, 60000, worker, [ebucketmigrator_srv]},

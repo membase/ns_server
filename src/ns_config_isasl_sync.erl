@@ -46,7 +46,7 @@ start_link(Path, AU, AP) when is_list(Path); is_list(AU); is_list(AP) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [Path, AU, AP], []).
 
 init([Path, AU, AP] = Args) ->
-    ?log_info("isasl_sync init: ~p", [Args]),
+    ?log_debug("isasl_sync init: ~p", [Args]),
     Buckets =
         case ns_config:search(buckets) of
             {value, RawBuckets} ->
@@ -54,7 +54,7 @@ init([Path, AU, AP] = Args) ->
             _ -> []
         end,
     %% don't log passwords here
-    ?log_info("isasl_sync init buckets: ~p", [proplists:get_keys(Buckets)]),
+    ?log_debug("isasl_sync init buckets: ~p", [proplists:get_keys(Buckets)]),
     Pid = self(),
     ns_pubsub:subscribe_link(ns_config_events,
                              fun ({buckets, _V}=Evt, _) ->
@@ -126,7 +126,7 @@ writeSASLConf(Path, Buckets, AU, AP, Tries, SleepTime) ->
     {ok, Pwd} = file:get_cwd(),
     TmpPath = filename:join(filename:dirname(Path), "isasl.tmp"),
     ok = filelib:ensure_dir(TmpPath),
-    ?log_info("Writing isasl passwd file: ~p", [filename:join(Pwd, Path)]),
+    ?log_debug("Writing isasl passwd file: ~p", [filename:join(Pwd, Path)]),
     {ok, F} = file:open(TmpPath, [write]),
     io:format(F, "~s ~s~n", [AU, AP]),
     lists:foreach(
@@ -138,7 +138,7 @@ writeSASLConf(Path, Buckets, AU, AP, Tries, SleepTime) ->
     case file:rename(TmpPath, Path) of
         ok -> ok;
         {error, Reason} ->
-            ?log_info("Error renaming ~p to ~p: ~p", [TmpPath, Path, Reason]),
+            ?log_warning("Error renaming ~p to ~p: ~p", [TmpPath, Path, Reason]),
             case Tries of
                 0 -> {error, Reason};
                 _ ->

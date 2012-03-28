@@ -62,7 +62,7 @@ handle_call(_Req, _From, State) ->
 
 
 handle_cast(Msg, State) ->
-    ?rebalance_error("Unhandled cast: ~p", [Msg]),
+    ?rebalance_warning("Unhandled cast: ~p", [Msg]),
     {noreply, State}.
 
 
@@ -109,7 +109,7 @@ handle_info({'EXIT', Pid, Reason}, #state{upstream_sender = SenderPid} = State) 
                      [Reason]),
     {stop, {unexpected_upstream_sender_exit, Reason}, State};
 handle_info(Msg, State) ->
-    ?rebalance_info("handle_info(~p, ~p)", [Msg, State]),
+    ?rebalance_warning("Unexpected handle_info(~p, ~p)", [Msg, State]),
     {noreply, State}.
 
 
@@ -242,8 +242,8 @@ do_config_sent_messages(Sock, Seqno) ->
                     do_config_sent_messages(Sock, Seqno)
             end;
         {error, _} = Crap ->
-            ?rebalance_info("Got error while trying to read close ack:~p~n",
-                            [Crap])
+            ?rebalance_warning("Got error while trying to read close ack:~p~n",
+                               [Crap])
     end.
 
 confirm_sent_messages(State) ->

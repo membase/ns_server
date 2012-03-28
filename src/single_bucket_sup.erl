@@ -21,14 +21,15 @@ start_link(BucketName) ->
 top_loop(ParentPid, Pid, BucketName) ->
     receive
         {'EXIT', Pid, Reason} ->
-            ?log_info("per-bucket supervisor for ~p died with reason ~p~n", [BucketName, Reason]),
+            ?log_debug("per-bucket supervisor for ~p died with reason ~p~n",
+                       [BucketName, Reason]),
             exit(Reason);
         {'EXIT', _, Reason} = X ->
-            ?log_info("Delegating exit ~p to child supervisor: ~p~n", [X, Pid]),
+            ?log_debug("Delegating exit ~p to child supervisor: ~p~n", [X, Pid]),
             exit(Pid, Reason),
             top_loop(ParentPid, Pid, BucketName);
         X ->
-            ?log_info("Delegating ~p to child supervisor: ~p~n", [X, Pid]),
+            ?log_debug("Delegating ~p to child supervisor: ~p~n", [X, Pid]),
             Pid ! X,
             top_loop(ParentPid, Pid, BucketName)
     end.

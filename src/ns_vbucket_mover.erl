@@ -150,7 +150,7 @@ handle_info({'EXIT', Pid, Reason}, State) ->
     ?rebalance_error("~p exited with ~p", [Pid, Reason]),
     {stop, Reason, State};
 handle_info(Info, State) ->
-    ?rebalance_info("Unhandled message ~p", [Info]),
+    ?rebalance_warning("Unhandled message ~p", [Info]),
     {noreply, State}.
 
 
@@ -158,8 +158,8 @@ terminate(Reason, _State) ->
     sync_replicas(),
     TotalChanges = erlang:get(total_changes),
     ActualChanges = erlang:get(actual_changes),
-    ?rebalance_info("Savings: ~p (from ~p)~n",
-                    [TotalChanges - ActualChanges, TotalChanges]),
+    ?rebalance_debug("Savings: ~p (from ~p)~n",
+                     [TotalChanges - ActualChanges, TotalChanges]),
 
     AllChildsEver = erlang:get(child_processes),
     [(catch erlang:exit(P, Reason)) || P <- AllChildsEver],

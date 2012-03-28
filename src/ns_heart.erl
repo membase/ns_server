@@ -88,7 +88,8 @@ handle_cast(_Msg, State) -> {noreply, State}.
 
 handle_info({'EXIT', EventHandler, _} = ExitMsg,
             #state{event_handler=EventHandler} = State) ->
-    ?log_info("Dying because our event subscription was cancelled~n~p~n", [ExitMsg]),
+    ?log_debug("Dying because our event subscription was cancelled~n~p~n",
+               [ExitMsg]),
     {stop, normal, State};
 handle_info(beat, State) ->
     NewState = disarm_forced_beat_timer(State),

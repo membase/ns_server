@@ -49,7 +49,7 @@ strip_full(String) ->
 
 read_address_config() ->
     Path = ip_config_path(),
-    ?log_info("reading ip config from ~p", [Path]),
+    ?log_debug("reading ip config from ~p", [Path]),
     case file:read_file(Path) of
         {ok, BinaryContents} ->
             AddrString = strip_full(binary_to_list(BinaryContents)),
@@ -119,7 +119,7 @@ bringup(MyIP) ->
     %% to save the node name to be able to shutdown the server gracefully.
     ActualNodeName = erlang:atom_to_list(node()),
     RN = save_node(ActualNodeName),
-    ?log_info("Attempted to save node name to disk: ~p", [RN]),
+    ?log_debug("Attempted to save node name to disk: ~p", [RN]),
 
     #state{self_started = Rv, my_ip = MyIP}.
 
@@ -143,7 +143,7 @@ handle_call({adjust_my_address, MyIP}, _From,
                  end,
 
                  RV = save_address_config(NewState),
-                 ?log_info("save_address_config: ~p", [RV]),
+                 ?log_debug("save_address_config: ~p", [RV]),
                  {reply, net_restarted, NewState}
     end;
 handle_call({adjust_my_address, _}, _From,
