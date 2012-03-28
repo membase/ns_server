@@ -690,14 +690,15 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
     Res =
         try streaming_inner(F, HTTPRes, LastRes)
         catch exit:normal ->
-                ?log_info("closing streaming socket~n", []),
+                ale:info(?MENELAUS_LOGGER, "closing streaming socket~n"),
                 HTTPRes:write_chunk(""),
                 exit(normal)
         end,
     receive
         {notify_watcher, _} -> ok;
         _ ->
-            ?log_info("menelaus_web streaming socket closed by client"),
+            ale:info(?MENELAUS_LOGGER,
+                     "menelaus_web streaming socket closed by client"),
             exit(normal)
     after 25000 ->
         ok
@@ -1554,7 +1555,9 @@ handle_node_statuses(Req) ->
                              KF = case lists:keyfind(N, 1, NodeResp) of
                                       %% if reply is not list it is error report
                                       {_, Reply} when not is_list(Reply) ->
-                                          ?log_info("Got error reply from ~p:~n~p", [N, Reply]),
+                                          ale:info(
+                                            ?MENELAUS_LOGGER,
+                                            "Got error reply from ~p:~n~p", [N, Reply]),
                                           false;
                                       X -> X
                                   end,
@@ -1654,7 +1657,8 @@ handle_abortable_get_request(Req, Body) ->
                                        end,
                                        Parent ! {Ref, done};
                                    {tcp_closed, Socket} ->
-                                       ?log_info("I have nobody to live for. Killing myself..."),
+                                       ale:info(?MENELAUS_LOGGER,
+                                                "I have nobody to live for. Killing myself..."),
                                        exit(Parent, kill)
                                end
                        end),
