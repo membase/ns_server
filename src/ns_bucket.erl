@@ -94,6 +94,10 @@ config_string(BucketName) ->
                 {ok, DBDir} = ns_storage_conf:this_node_dbdir(),
                 DBName = filename:join(DBDir, BucketName),
                 CouchPort = ns_config:search_node_prop(Config, memcached, mccouch_port, 11213),
+                DBSubDir = filename:join(DBDir, BucketName),
+                AccessLog = filename:join(DBSubDir, "access.log"),
+                KeyLog = filename:join(DBSubDir, "key.log"),
+                ok = filelib:ensure_dir(DBSubDir),
                 NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
                 ok = filelib:ensure_dir(DBName),
                 %% MemQuota is our per-node bucket memory limit
@@ -104,7 +108,8 @@ config_string(BucketName) ->
                       "max_size=~B;"
                       "tap_keepalive=~B;dbname=~s;"
                       "allow_data_loss_during_shutdown=true;"
-                      "backend=couchdb;couch_bucket=~s;couch_port=~B;max_vbuckets=~B",
+                      "backend=couchdb;couch_bucket=~s;couch_port=~B;max_vbuckets=~B;"
+                      "alog_path=~s;klog_path=~s",
                       [proplists:get_value(
                          ht_size, BucketConfig,
                          misc:getenv_int("MEMBASE_HT_SIZE", 3079)),
@@ -126,7 +131,9 @@ config_string(BucketName) ->
                        DBName,
                        BucketName,
                        CouchPort,
-                       NumVBuckets]),
+                       NumVBuckets,
+                       AccessLog,
+                       KeyLog]),
                 {CFG, {MemQuota, DBName}};
             memcached ->
                 {io_lib:format("cache_size=~B", [MemQuota]),
