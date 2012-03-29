@@ -181,8 +181,23 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 %% @doc Check if nodes should/could be auto-failovered on every tick
-handle_info(tick, State) ->
+handle_info(tick, State0) ->
     Config = ns_config:get(),
+
+    %% Reread autofailover count from config just in case. This value can be
+    %% different, for instance, if due to network issues we get disconnected
+    %% from the part of the cluster. This part of the cluster will elect new
+    %% master node. Now say this new master node autofailovers some other
+    %% node. Then if network issues disappear, we will connect back to the
+    %% rest of the cluster. And say we win the battle over mastership
+    %% again. In this case our failover count will still be zero which is
+    %% incorrect.
+    {value, AutoFailoverConfig} = ns_config:search(Config, auto_failover_cfg),
+    AutoFailoverCount = proplists:get_value(count, AutoFailoverConfig),
+    true = is_integer(AutoFailoverCount),
+
+    State = State0#state{count=AutoFailoverCount},
+
     NonPendingNodes = lists:sort(ns_cluster_membership:active_nodes(Config)),
     CurrentlyDown = actual_down_nodes(NonPendingNodes, Config),
     {Actions, LogicState} =
