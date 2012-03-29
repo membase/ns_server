@@ -87,7 +87,7 @@ do_cleanup(Bucket, Options, Config) ->
                     ns_vbm_sup:set_replicas(Bucket, NodesReplicas),
                     case Down of
                         [] ->
-                            maybe_stop_replication_status();
+                            maybe_stop_rebalance_status();
                         _ -> ok
                     end,
                     ok
@@ -353,10 +353,10 @@ align_chain_replicas([H|T] = _Chain, ReplicasLeft) ->
 align_chain_replicas([] = _Chain, ReplicasLeft) ->
     lists:duplicate(ReplicasLeft, undefined).
 
-maybe_stop_replication_status() ->
+maybe_stop_rebalance_status() ->
     Status = try ns_orchestrator:rebalance_progress_full()
              catch E:T ->
-                     ?log_error("janitor maybe_stop_replication_status cannot reach orchestrator: ~p:~p", [E,T]),
+                     ?log_error("janitor maybe_stop_rebalance_status cannot reach orchestrator: ~p:~p", [E,T]),
                      error
              end,
     case Status of
