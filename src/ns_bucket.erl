@@ -92,6 +92,8 @@ config_string(BucketName) ->
                 {ok, DBDir} = ns_storage_conf:dbdir(Config),
                 DBSubDir = filename:join(DBDir, BucketName ++ "-data"),
                 DBName = filename:join(DBSubDir, BucketName),
+                AccessLog = filename:join(DBSubDir, "access.log"),
+                KeyLog = filename:join(DBSubDir, "key.log"),
                 ok = filelib:ensure_dir(DBName),
                 NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
                 %% MemQuota is our per-node bucket memory limit
@@ -100,7 +102,8 @@ config_string(BucketName) ->
                       "ht_size=~B;ht_locks=~B;db_shards=~B;"
                       "tap_noop_interval=~B;max_txn_size=~B;"
                       "max_size=~B;initfile=~s;"
-                      "tap_keepalive=~B;dbname=~s;max_vbuckets=~B",
+                      "tap_keepalive=~B;dbname=~s;max_vbuckets=~B;"
+                      "alog_path=~s;klog_path=~s",
                       [proplists:get_value(
                          ht_size, BucketConfig,
                          getenv_int("MEMBASE_HT_SIZE", 3079)),
@@ -126,7 +129,9 @@ config_string(BucketName) ->
                          tap_keepalive, BucketConfig,
                          getenv_int("MEMBASE_TAP_KEEPALIVE", 300)),
                        DBName,
-                       NumVBuckets]),
+                       NumVBuckets,
+                       AccessLog,
+                       KeyLog]),
                 {CFG, {MemQuota, DBName}};
             memcached ->
                 {io_lib:format("cache_size=~B", [MemQuota]),
