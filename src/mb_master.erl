@@ -227,12 +227,22 @@ candidate({heartbeat, NodeInfo, master, _H}, #state{peers=Peers} = State) ->
                     false ->
                         State#state{last_heard=now(), master=Node};
                     true ->
-                        ?log_info("Candidate got master heartbeat from node ~p "
-                                  "which has lower priority. "
-                                  "Will try to take over.", [Node]),
+                        case ns_config:search(rebalance_status) of
+                            {value, running} ->
+                                ?log_info("Candidate got master heartbeat from "
+                                          "node ~p which has lower priority. "
+                                          "But I won't try to take over since "
+                                          "rebalance seems to be running",
+                                          [Node]),
+                                State#state{last_heard=now(), master=Node};
+                            _ ->
+                                ?log_info("Candidate got master heartbeat from "
+                                          "node ~p which has lower priority. "
+                                          "Will try to take over.", [Node]),
 
-                        send_heartbeat([Node], master, State),
-                        State#state{master=undefined}
+                                send_heartbeat([Node], master, State),
+                                State#state{master=undefined}
+                        end
                 end,
 
             OldMaster = State#state.master,
