@@ -244,7 +244,8 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
                      {none, <<"Rebalance failed. See logs for detailed reason. "
                               "You can try rebalance again.">>}
              end,
-    ns_config:set(rebalance_status, Status),
+    ns_config:set([{rebalance_status, Status},
+                   {rebalancer_pid, undefined}]),
     {next_state, idle, #idle_state{}};
 handle_info(Msg, StateName, StateData) ->
     ?log_warning("Got unexpected message ~p in state ~p with data ~p",
@@ -362,11 +363,12 @@ idle({start_rebalance, KeepNodes, EjectNodes, FailedNodes}, _From,
               "Starting rebalance, KeepNodes = ~p, EjectNodes = ~p~n",
               [KeepNodes, EjectNodes]),
     ns_cluster:counter_inc(rebalance_start),
-    ns_config:set(rebalance_status, running),
     Pid = spawn_link(
             fun () ->
                     ns_rebalancer:rebalance(KeepNodes, EjectNodes, FailedNodes)
             end),
+    ns_config:set([{rebalance_status, running},
+                   {rebalancer_pid, Pid}]),
     {reply, ok, rebalancing, #rebalancing_state{rebalancer=Pid,
                                                 progress=dict:new()}};
 idle(stop_rebalance, _From, State) ->

@@ -361,14 +361,26 @@ maybe_stop_rebalance_status() ->
              end,
     case Status of
         not_running ->
-            Fun = fun (Value) ->
-                          case Value of
-                              running ->
-                                  {none, <<"status stopped by janitor">>};
-                              _ -> Value
-                          end
+            Sentinel = make_ref(),
+            Fun = fun ({rebalance_status, Value}) ->
+                          NewValue =
+                              case Value of
+                                  running ->
+                                      ale:info(?USER_LOGGER,
+                                               "Resetting rebalance status "
+                                               "since it's not really running"),
+                                      {none, <<"Rebalance stopped by janitor.">>};
+                                  _ ->
+                                      Value
+                              end,
+                          {rebalance_status, NewValue};
+                      ({rebalancer_pid, _}) ->
+                          {rebalancer_pid, undefined};
+                      (Other) ->
+                          Other
                   end,
-            ns_config:update_key(rebalance_status, Fun);
+
+            ns_config:update(Fun, Sentinel);
         _ ->
             ok
     end.
