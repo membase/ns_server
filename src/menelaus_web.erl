@@ -511,7 +511,9 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                  {nodeStatusesUri, <<"/nodeStatuses">>},
                  {stats, {struct,
                           [{uri, bin_concat_path(["pools", Id, "stats"])}]}},
-                 {counters, {struct, ns_cluster:counters()}}],
+                 {counters, {struct, ns_cluster:counters()}},
+                 {stopRebalanceIsSafe,
+                  ns_cluster_membership:is_stop_rebalance_safe()}],
     PropList =
         case InfoLevel of
             normal ->

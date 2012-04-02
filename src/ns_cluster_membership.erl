@@ -29,6 +29,7 @@
          system_joinable/0,
          start_rebalance/2,
          stop_rebalance/0,
+         is_stop_rebalance_safe/0,
          get_rebalance_status/0,
          is_balanced/0
         ]).
@@ -114,6 +115,17 @@ deactivate(Nodes) ->
     ns_config:set([{{node, Node, membership}, inactiveAdded}
                    || Node <- Nodes]).
 
+is_stop_rebalance_safe() ->
+    case ns_config:search(rebalancer_pid) of
+        false ->
+            true;
+        {value, undefined} ->
+            true;
+        {value, Pid} ->
+            PidNode = node(Pid),
+            MasterNode = mb_master:master_node(),
+            PidNode =:= MasterNode
+    end.
 
 stop_rebalance() ->
     ns_orchestrator:stop_rebalance().
