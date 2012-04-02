@@ -51,6 +51,7 @@
 -define(REBALANCE_STARTED, 4).
 -define(REBALANCE_PROGRESS, 5).
 -define(FAILOVER_NODE, 6).
+-define(REBALANCE_STOPPED, 7).
 
 -define(DELETE_BUCKET_TIMEOUT, 5000).
 -define(CREATE_BUCKET_TIMEOUT, 5000).
@@ -230,6 +231,11 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
                      ?user_log(?REBALANCE_SUCCESSFUL,
                                "Rebalance completed successfully.~n"),
                      ns_cluster:counter_inc(rebalance_success),
+                     none;
+                 stopped ->
+                     ?user_log(?REBALANCE_STOPPED,
+                               "Rebalance stopped by user.~n"),
+                     ns_cluster:counter_inc(rebalance_stop),
                      none;
                  _ ->
                      ?user_log(?REBALANCE_FAILED,
