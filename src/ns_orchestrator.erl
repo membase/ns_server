@@ -372,6 +372,13 @@ idle({start_rebalance, KeepNodes, EjectNodes, FailedNodes}, _From,
     {reply, ok, rebalancing, #rebalancing_state{rebalancer=Pid,
                                                 progress=dict:new()}};
 idle(stop_rebalance, _From, State) ->
+    ns_janitor:stop_rebalance_status(
+      fun () ->
+              ?user_log(?REBALANCE_STOPPED,
+                        "Resetting rebalance status since rebalance stop was "
+                        "requested but rebalance isn't orchestrated on our node"),
+              none
+      end),
     {reply, not_rebalancing, idle, State}.
 
 
