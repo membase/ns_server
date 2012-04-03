@@ -34,6 +34,8 @@
 %% half-second is definitely 'slow' for any definition of slow
 -define(SLOW_CALL_THRESHOLD_MICROS, 500000).
 
+-define(CONNECTION_ATTEMPTS, 5).
+
 %% gen_server API
 -export([start_link/1]).
 -export([init/1, handle_call/3, handle_cast/2,
@@ -90,23 +92,23 @@ start_link(Bucket) ->
 %%
 
 init(Bucket) ->
-
-    {ok, Timer} = timer:send_interval(?CHECK_WARMUP_INTERVAL, check_started),
-    Sock = connect(),
-    ensure_bucket(Sock, Bucket),
-
-    % this trap_exit is necessary for terminate callback to work
+    %% this trap_exit is necessary for terminate callback to work
     process_flag(trap_exit, true),
 
-    gen_event:notify(buckets_events, {started, Bucket}),
-
-    {ok, #state{
-       timer=Timer,
-       status=init,
-       start_time=now(),
-       sock=Sock,
-       bucket=Bucket}
-    }.
+    {ok, Timer} = timer:send_interval(?CHECK_WARMUP_INTERVAL, check_started),
+    case connect() of
+        {ok, Sock} ->
+            ensure_bucket(Sock, Bucket),
+            gen_event:notify(buckets_events, {started, Bucket}),
+            {ok, #state{
+               timer=Timer,
+               status=init,
+               start_time=now(),
+               sock=Sock,
+               bucket=Bucket}};
+        {error, _} = Error ->
+            Error
+    end.
 
 handle_call(Msg, From, State) ->
     StartTS = os:timestamp(),
@@ -494,6 +496,11 @@ raw_stats(Node, Bucket, SubStats, Fn, FnState) ->
 %%
 
 connect() ->
+    connect(?CONNECTION_ATTEMPTS).
+
+connect(0) ->
+    {error, couldnt_connect_to_memcached};
+connect(Tries) ->
     Config = ns_config:get(),
     Port = ns_config:search_node_prop(Config, memcached, port),
     User = ns_config:search_node_prop(Config, memcached, admin_user),
@@ -505,12 +512,12 @@ connect() ->
                                        {list_to_binary(User),
                                         list_to_binary(Pass)}}),
         S of
-        Sock -> Sock
+        Sock -> {ok, Sock}
     catch
         E:R ->
             ?log_warning("Unable to connect: ~p, retrying.", [{E, R}]),
             timer:sleep(1000), % Avoid reconnecting too fast.
-            connect()
+            connect(Tries - 1)
     end.
 
 
