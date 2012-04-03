@@ -962,7 +962,7 @@ function plotStatGraph(graphJQ, data, tstamps, options) {
     function formatWithMinutes() {
       var hours = date.getHours();
       var mins = date.getMinutes();
-      var am = (hours > 1 && hours < 13);
+      var am = (hours > 0 && hours < 13);
       if (!am) {
         if (hours == 0) {
           hours = 12;
