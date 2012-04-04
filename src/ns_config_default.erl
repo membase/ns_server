@@ -92,6 +92,7 @@ default() ->
                                                 % Memcached config
      {{node, node(), memcached},
       [{port, misc:get_env_default(memcached_port, 11210)},
+       {dedicated_port, misc:get_env_default(memcached_dedicated_port, 11209)},
        {dbdir, DbDir},
        {admin_user, "_admin"},
        {admin_pass, "_admin"},
@@ -153,7 +154,7 @@ default() ->
        },
        {memcached, path_config:component_path(bin, "memcached"),
         ["-X", path_config:component_path(lib, "memcached/stdin_term_handler.so"),
-         "-p", {"~B", [port]},
+         "-l", {"0.0.0.0:~B,0.0.0.0:~B:1000", [port, dedicated_port]},
          "-E", path_config:component_path(lib, "memcached/bucket_engine.so"),
          "-B", "binary",
          "-r",
@@ -400,7 +401,36 @@ do_upgrade_config_from_1_7_2_to_1_8_0(Config, DefaultConfig) ->
 
 upgrade_config_from_1_8_0_to_1_8_1(Config) ->
     ?log_info("Upgrading config from 1.8.0 to 1.8.1"),
-    maybe_add_vbucket_map_history(Config).
+
+    DefaultConfig = default(),
+    do_upgrade_config_from_1_8_0_to_1_8_1(Config, DefaultConfig).
+
+do_upgrade_config_from_1_8_0_to_1_8_1(Config, DefaultConfig) ->
+    maybe_add_vbucket_map_history(Config) ++
+        add_dedicated_memcached_port(Config, DefaultConfig).
+
+add_dedicated_memcached_port(Config, DefaultConfig) ->
+    McdKey = {node, node(), memcached},
+    PSKey  = {node, node(), port_servers},
+
+    {McdKey, DefaultMemcachedConfig} = lists:keyfind(McdKey, 1, DefaultConfig),
+    {PSKey, DefaultPortServerConfig} = lists:keyfind(PSKey, 1, DefaultConfig),
+
+    {value, MemcachedConfig} = ns_config:search_node(Config, memcached),
+
+    case proplists:get_value(dedicated_port, MemcachedConfig) of
+        undefined ->
+            DefaultDedicatedPort = proplists:get_value(dedicated_port,
+                                                       DefaultMemcachedConfig),
+            true = (DefaultDedicatedPort =/= undefined),
+
+            MemcachedConfig1 =
+                [{dedicated_port, DefaultDedicatedPort} | MemcachedConfig],
+            [{set, McdKey, MemcachedConfig1},
+             {set, PSKey, DefaultPortServerConfig}];
+        _ ->
+            []
+    end.
 
 upgrade_1_6_to_1_7_test() ->
     DefaultCfg = [{directory, default_directory},
@@ -622,6 +652,21 @@ add_vbucket_map_history_test() ->
                     {"test", BucketConfig2}]}]}]],
     ?assertMatch([{set, vbucket_map_history, [{_, [{max_slaves, 10}]}]}],
                  maybe_add_vbucket_map_history(OldCfg7, 1)),
+
+    ok.
+
+add_dedicated_memcached_port_test() ->
+    DefaultCfg = [{{node, node(), port_servers}, default_port_servers},
+                  {{node, node(), memcached},
+                   [{dedicated_port, 1234}]}],
+    OldCfg1 = [[{memcached, []}]],
+    ?assertEqual(lists:sort(add_dedicated_memcached_port(OldCfg1, DefaultCfg)),
+                 lists:sort(
+                   [{set, {node, node(), port_servers}, default_port_servers},
+                    {set, {node, node(), memcached}, [{dedicated_port, 1234}]}])),
+
+    OldCfg2 = [[{memcached, [{dedicated_port, 4321}]}]],
+    ?assertEqual(add_dedicated_memcached_port(OldCfg2, DefaultCfg), []),
 
     ok.
 

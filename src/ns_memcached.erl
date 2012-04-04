@@ -395,7 +395,9 @@ get_vbucket(Node, Bucket, VBucket) ->
                            {nonempty_string(), pos_integer()}.
 host_port(Node) ->
     Config = ns_config:get(),
-    Port = ns_config:search_node_prop(Node, Config, memcached, port),
+    DefaultPort = ns_config:search_node_prop(Node, Config, memcached, port),
+    Port = ns_config:search_node_prop(Node, Config,
+                                      memcached, dedicated_port, DefaultPort),
     {_Name, Host} = misc:node_name_host(Node),
     {Host, Port}.
 
@@ -502,12 +504,12 @@ connect(0) ->
     {error, couldnt_connect_to_memcached};
 connect(Tries) ->
     Config = ns_config:get(),
-    Port = ns_config:search_node_prop(Config, memcached, port),
+    Port = ns_config:search_node_prop(Config, memcached, dedicated_port),
     User = ns_config:search_node_prop(Config, memcached, admin_user),
     Pass = ns_config:search_node_prop(Config, memcached, admin_pass),
     try
-        {ok, S} = gen_tcp:connect("127.0.0.1", Port, [binary, {packet, 0},
-                                                         {active, false}]),
+        {ok, S} = gen_tcp:connect("127.0.0.1", Port,
+                                  [binary, {packet, 0}, {active, false}]),
         ok = mc_client_binary:auth(S, {<<"PLAIN">>,
                                        {list_to_binary(User),
                                         list_to_binary(Pass)}}),
