@@ -153,7 +153,7 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
                 false ->
                     ok
             end,
-            erlang:E(R)
+            erlang:raise(E, R, erlang:get_stacktrace())
     end,
     ns_config:sync_announcements(),
     ns_config_rep:synchronize(),

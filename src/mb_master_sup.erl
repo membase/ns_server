@@ -25,6 +25,7 @@
 
 
 start_link() ->
+    master_activity_events:note_became_master(),
     supervisor:start_link({local, mb_master_sup}, ?MODULE, []).
 
 

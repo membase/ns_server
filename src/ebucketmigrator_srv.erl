@@ -185,6 +185,9 @@ init({Src, Dst, Opts}) ->
       takeover_done=false
      },
     erlang:process_flag(trap_exit, true),
+    (catch master_activity_events:note_ebucketmigrator_start(self(), Src, Dst, [{bucket, Bucket},
+                                                                                {username, Username}
+                                                                                | Args])),
     gen_server:enter_loop(?MODULE, [], State).
 
 upstream_sender_loop(Upstream) ->
@@ -198,7 +201,8 @@ exit_retry_not_ready_vbuckets() ->
     ?rebalance_info("dying to check if some previously not yet ready vbuckets are ready to replicate from"),
     exit(normal).
 
-terminate(_Reason, #state{upstream_sender=UpstreamSender} = State) ->
+terminate(Reason, #state{upstream_sender=UpstreamSender} = State) ->
+    (catch master_activity_events:note_ebucketmigrator_terminate(self(), Reason)),
     timer:kill_after(?TERMINATE_TIMEOUT),
     gen_tcp:close(State#state.upstream),
     exit(UpstreamSender, kill),

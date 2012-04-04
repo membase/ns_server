@@ -50,6 +50,7 @@ mover(Parent, undefined = Node, Bucket, VBucket, OldChain, [NewNode | _NewChainR
     Parent ! {move_done, {Node, VBucket, OldChain, NewChain}};
 
 mover(Parent, Node, Bucket, VBucket, OldChain, NewChain) ->
+    master_activity_events:note_vbucket_mover(self(), Bucket, Node, VBucket, OldChain, NewChain),
     ns_replicas_builder:try_with_maybe_ignorant_after(
       fun () ->
         mover_inner(Parent, Node, Bucket, VBucket, OldChain, NewChain)

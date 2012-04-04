@@ -566,15 +566,20 @@ set_fast_forward_map(Bucket, Map) ->
     update_bucket_config(
       Bucket,
       fun (OldConfig) ->
+              OldMap = proplists:get_value(fastForwardMap, OldConfig, []),
+              master_activity_events:note_set_ff_map(Bucket, Map, OldMap),
               lists:keystore(fastForwardMap, 1, OldConfig,
                              {fastForwardMap, Map})
       end).
+
 
 set_map(Bucket, Map) ->
     true = mb_map:is_valid(Map),
     update_bucket_config(
       Bucket,
       fun (OldConfig) ->
+              OldMap = proplists:get_value(map, OldConfig, []),
+              master_activity_events:note_set_map(Bucket, Map, OldMap),
               lists:keystore(map, 1, OldConfig, {map, Map})
       end).
 

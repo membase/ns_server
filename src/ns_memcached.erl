@@ -60,6 +60,7 @@
          delete_vbucket/2, delete_vbucket/3,
          get_vbucket/3,
          host_port/1,
+         host_port/2,
          host_port_str/1,
          list_vbuckets/1, list_vbuckets/2,
          list_vbuckets_prevstate/2,
@@ -191,6 +192,7 @@ do_handle_call({set_flush_param, Key, Value}, _From, State) ->
     {reply, Reply, State};
 do_handle_call({set_vbucket, VBucket, VBState}, _From,
             #state{sock=Sock} = State) ->
+    (catch master_activity_events:note_vbucket_state_change(State#state.bucket, node(), VBucket, VBState)),
     %% This happens asynchronously, so there's no guarantee the
     %% vbucket will be in the requested state when it returns.
     Reply = mc_client_binary:set_vbucket(Sock, VBucket, VBState),
@@ -391,15 +393,19 @@ get_vbucket(Node, Bucket, VBucket) ->
     gen_server:call({server(Bucket), Node}, {get_vbucket, VBucket}, ?TIMEOUT).
 
 
--spec host_port(node()) ->
+-spec host_port(node(), any()) ->
                            {nonempty_string(), pos_integer()}.
-host_port(Node) ->
-    Config = ns_config:get(),
+host_port(Node, Config) ->
     DefaultPort = ns_config:search_node_prop(Node, Config, memcached, port),
     Port = ns_config:search_node_prop(Node, Config,
                                       memcached, dedicated_port, DefaultPort),
     {_Name, Host} = misc:node_name_host(Node),
     {Host, Port}.
+
+-spec host_port(node()) ->
+                           {nonempty_string(), pos_integer()}.
+host_port(Node) ->
+    host_port(Node, ns_config:get()).
 
 -spec host_port_str(node()) ->
                            nonempty_string().
