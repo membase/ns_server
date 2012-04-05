@@ -21,7 +21,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([cleanup/2, current_states/2]).
+-export([cleanup/2, current_states/2, stop_rebalance_status/1]).
 
 -define(WAIT_FOR_MEMCACHED_TRIES, 5).
 
@@ -102,7 +102,7 @@ do_cleanup(Bucket, Options, Config) ->
 
                     case Down of
                         [] ->
-                            maybe_stop_replication_status();
+                            maybe_stop_rebalance_status();
                         _ -> ok
                     end,
                     ok
@@ -374,22 +374,40 @@ align_chain_replicas([H|T] = _Chain, ReplicasLeft) ->
 align_chain_replicas([] = _Chain, ReplicasLeft) ->
     lists:duplicate(ReplicasLeft, undefined).
 
-maybe_stop_replication_status() ->
+stop_rebalance_status(Fn) ->
+    Sentinel = make_ref(),
+    Fun = fun ({rebalance_status, Value}) ->
+                  NewValue =
+                      case Value of
+                          running ->
+                              Fn();
+                          _ ->
+                              Value
+                      end,
+                  {rebalance_status, NewValue};
+              ({rebalancer_pid, _}) ->
+                  {rebalancer_pid, undefined};
+              (Other) ->
+                  Other
+          end,
+
+    ok = ns_config:update(Fun, Sentinel).
+
+maybe_stop_rebalance_status() ->
     Status = try ns_orchestrator:rebalance_progress_full()
              catch E:T ->
-                     ?log_error("janitor maybe_stop_replication_status cannot reach orchestrator: ~p:~p", [E,T]),
+                     ?log_error("janitor maybe_stop_rebalance_status cannot reach orchestrator: ~p:~p", [E,T]),
                      error
              end,
     case Status of
         not_running ->
-            Fun = fun (Value) ->
-                          case Value of
-                              running ->
-                                  {none, <<"status stopped by janitor">>};
-                              _ -> Value
-                          end
-                  end,
-            ns_config:update_key(rebalance_status, Fun);
+            stop_rebalance_status(
+              fun () ->
+                      ale:info(?USER_LOGGER,
+                               "Resetting rebalance status "
+                               "since it's not really running"),
+                      {none, <<"Rebalance stopped by janitor.">>}
+              end);
         _ ->
             ok
     end.

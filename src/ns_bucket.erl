@@ -655,8 +655,8 @@ update_vbucket_map_history(Map, Options) ->
                        History;
                    false ->
                        History1 = [NewEntry | History],
-                       case length(History1) > 10 of
-                           true -> lists:sublist(History1, 10);
+                       case length(History1) > ?VBMAP_HISTORY_SIZE of
+                           true -> lists:sublist(History1, ?VBMAP_HISTORY_SIZE);
                            false -> History1
                        end
                end,

@@ -92,6 +92,7 @@ default() ->
                                                 % Memcached config
      {{node, node(), memcached},
       [{port, misc:get_env_default(memcached_port, 11210)},
+       {dedicated_port, misc:get_env_default(memcached_dedicated_port, 11209)},
        {dbdir, DbDir},
        {admin_user, "_admin"},
        {admin_pass, "_admin"},
@@ -153,7 +154,7 @@ default() ->
        },
        {memcached, path_config:component_path(bin, "memcached"),
         ["-X", path_config:component_path(lib, "memcached/stdin_term_handler.so"),
-         "-p", {"~B", [port]},
+         "-l", {"0.0.0.0:~B,0.0.0.0:~B:1000", [port, dedicated_port]},
          "-E", path_config:component_path(lib, "memcached/bucket_engine.so"),
          "-B", "binary",
          "-r",
@@ -219,12 +220,16 @@ prefix_replace(Prefix, ReplacementPrefix, T) when is_tuple(T) ->
 prefix_replace(_Prefix, _ReplacementPrefix, X) -> X.
 
 maybe_add_vbucket_map_history(Config) ->
+    maybe_add_vbucket_map_history(Config, ?VBMAP_HISTORY_SIZE).
+
+maybe_add_vbucket_map_history(Config, HistorySize) ->
     case ns_config:search(Config, vbucket_map_history) of
         {value, _} -> [];
         false ->
             Buckets = ns_bucket:get_buckets(Config),
             History = lists:flatmap(
                         fun ({_Bucket, BucketConfig}) ->
+                                ?debugFmt("Bucket: ~p~n", [_Bucket]),
                                 case proplists:get_value(map, BucketConfig, []) of
                                     [] -> [];
                                     Map ->
@@ -237,7 +242,9 @@ maybe_add_vbucket_map_history(Config) ->
                                         end
                                 end
                         end, Buckets),
-            [{set, vbucket_map_history, History}]
+            UniqueHistory = lists:usort(History),
+            FinalHistory = lists:sublist(UniqueHistory, HistorySize),
+            [{set, vbucket_map_history, FinalHistory}]
     end.
 
 %% returns list of changes to config to upgrade it to current version.
@@ -394,7 +401,36 @@ do_upgrade_config_from_1_7_2_to_1_8_0(Config, DefaultConfig) ->
 
 upgrade_config_from_1_8_0_to_1_8_1(Config) ->
     ?log_info("Upgrading config from 1.8.0 to 1.8.1"),
-    maybe_add_vbucket_map_history(Config).
+
+    DefaultConfig = default(),
+    do_upgrade_config_from_1_8_0_to_1_8_1(Config, DefaultConfig).
+
+do_upgrade_config_from_1_8_0_to_1_8_1(Config, DefaultConfig) ->
+    maybe_add_vbucket_map_history(Config) ++
+        add_dedicated_memcached_port(Config, DefaultConfig).
+
+add_dedicated_memcached_port(Config, DefaultConfig) ->
+    McdKey = {node, node(), memcached},
+    PSKey  = {node, node(), port_servers},
+
+    {McdKey, DefaultMemcachedConfig} = lists:keyfind(McdKey, 1, DefaultConfig),
+    {PSKey, DefaultPortServerConfig} = lists:keyfind(PSKey, 1, DefaultConfig),
+
+    {value, MemcachedConfig} = ns_config:search_node(Config, memcached),
+
+    case proplists:get_value(dedicated_port, MemcachedConfig) of
+        undefined ->
+            DefaultDedicatedPort = proplists:get_value(dedicated_port,
+                                                       DefaultMemcachedConfig),
+            true = (DefaultDedicatedPort =/= undefined),
+
+            MemcachedConfig1 =
+                [{dedicated_port, DefaultDedicatedPort} | MemcachedConfig],
+            [{set, McdKey, MemcachedConfig1},
+             {set, PSKey, DefaultPortServerConfig}];
+        _ ->
+            []
+    end.
 
 upgrade_1_6_to_1_7_test() ->
     DefaultCfg = [{directory, default_directory},
@@ -542,6 +578,96 @@ upgrade_1_7_2_to_1_8_0_test() ->
                    [{moxi, "/opt/couchbase/bin/moxi something"},
                     {memcached, "/opt/couchbase/bin/memcached something"}]}],
                  lists:sort(Res2)),
+    ok.
+
+add_vbucket_map_history_test() ->
+    %% existing history is not overwritten
+    OldCfg1 = [[{vbucket_map_history, [some_history]}]],
+    ?assertEqual([], maybe_add_vbucket_map_history(OldCfg1)),
+
+    %% empty history for no buckets
+    OldCfg2 = [[{buckets,
+                 [{configs, []}]}]],
+    ?assertEqual([{set, vbucket_map_history, []}],
+                 maybe_add_vbucket_map_history(OldCfg2)),
+
+    %% empty history if there are some buckets but no maps
+    OldCfg3 = [[{buckets,
+                 [{configs,
+                   [{"default", []}]}]}]],
+    ?assertEqual([{set, vbucket_map_history, []}],
+                 maybe_add_vbucket_map_history(OldCfg3)),
+
+    %% empty history if there's a map but it's unbalanced
+    OldCfg4 = [[{buckets,
+                 [{configs,
+                   [{"default",
+                     [{map, [[n1, n2],
+                             [n1, undefined],
+                             [n1, undefined],
+                             [n1, undefined]]},
+                      {servers, [n1, n2, n3]}]}]}]}]],
+    ?assertEqual([{set, vbucket_map_history, []}],
+                 maybe_add_vbucket_map_history(OldCfg4)),
+
+    %% finally generate some history
+    Map1 = [[n1, n2],
+            [n1, n2],
+            [n2, n1],
+            [n2, n1]],
+    BucketConfig1 =
+        [{num_replicas, 1},
+         {num_vbuckets, 4},
+         {servers, [n1, n2]},
+         {max_slaves, 10},
+         {map, Map1}],
+    OldCfg5 = [[{buckets,
+                 [{configs,
+                   [{"default", BucketConfig1}]}]}]],
+    ?assertEqual([{set, vbucket_map_history, [{Map1, [{max_slaves, 10}]}]}],
+                 maybe_add_vbucket_map_history(OldCfg5)),
+
+    %% don't return duplicated items in map history
+    OldCfg6 = [[{buckets,
+                 [{configs,
+                   [{"default", BucketConfig1},
+                    {"test", BucketConfig1}]}]}]],
+    ?assertEqual([{set, vbucket_map_history, [{Map1, [{max_slaves, 10}]}]}],
+                 maybe_add_vbucket_map_history(OldCfg6)),
+
+    %% don't return more than history size items
+    Map2 = [[n2, n1],
+            [n2, n1],
+            [n1, n2],
+            [n1, n2]],
+    BucketConfig2 =
+        [{num_replicas, 1},
+         {num_vbuckets, 4},
+         {servers, [n1, n2]},
+         {max_slaves, 10},
+         {map, Map2}],
+    OldCfg7 = [[{buckets,
+                 [{configs,
+                   [{"default", BucketConfig1},
+                    {"test", BucketConfig2}]}]}]],
+    ?assertMatch([{set, vbucket_map_history, [{_, [{max_slaves, 10}]}]}],
+                 maybe_add_vbucket_map_history(OldCfg7, 1)),
+
+    ok.
+
+add_dedicated_memcached_port_test() ->
+    DefaultCfg = [{{node, node(), port_servers}, default_port_servers},
+                  {{node, node(), memcached},
+                   [{dedicated_port, 1234}]}],
+    OldCfg1 = [[{memcached, []}]],
+    ?assertEqual(lists:sort(add_dedicated_memcached_port(OldCfg1, DefaultCfg)),
+                 lists:sort(
+                   [{set, {node, node(), port_servers}, default_port_servers},
+                    {set, {node, node(), memcached}, [{dedicated_port, 1234}]}])),
+
+    OldCfg2 = [[{memcached, [{dedicated_port, 4321}]}]],
+    ?assertEqual(add_dedicated_memcached_port(OldCfg2, DefaultCfg), []),
+
     ok.
 
 no_upgrade_on_1_8_1_test() ->

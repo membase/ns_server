@@ -51,6 +51,7 @@
 -define(REBALANCE_STARTED, 4).
 -define(REBALANCE_PROGRESS, 5).
 -define(FAILOVER_NODE, 6).
+-define(REBALANCE_STOPPED, 7).
 
 -define(DELETE_BUCKET_TIMEOUT, 5000).
 -define(CREATE_BUCKET_TIMEOUT, 5000).
@@ -231,6 +232,11 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
                                "Rebalance completed successfully.~n"),
                      ns_cluster:counter_inc(rebalance_success),
                      none;
+                 stopped ->
+                     ?user_log(?REBALANCE_STOPPED,
+                               "Rebalance stopped by user.~n"),
+                     ns_cluster:counter_inc(rebalance_stop),
+                     none;
                  _ ->
                      ?user_log(?REBALANCE_FAILED,
                                "Rebalance exited with reason ~p~n", [Reason]),
@@ -238,7 +244,8 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
                      {none, <<"Rebalance failed. See logs for detailed reason. "
                               "You can try rebalance again.">>}
              end,
-    ns_config:set(rebalance_status, Status),
+    ns_config:set([{rebalance_status, Status},
+                   {rebalancer_pid, undefined}]),
     {next_state, idle, #idle_state{}};
 handle_info(Msg, StateName, StateData) ->
     ?log_warning("Got unexpected message ~p in state ~p with data ~p",
@@ -356,14 +363,22 @@ idle({start_rebalance, KeepNodes, EjectNodes, FailedNodes}, _From,
               "Starting rebalance, KeepNodes = ~p, EjectNodes = ~p~n",
               [KeepNodes, EjectNodes]),
     ns_cluster:counter_inc(rebalance_start),
-    ns_config:set(rebalance_status, running),
     Pid = spawn_link(
             fun () ->
                     ns_rebalancer:rebalance(KeepNodes, EjectNodes, FailedNodes)
             end),
+    ns_config:set([{rebalance_status, running},
+                   {rebalancer_pid, Pid}]),
     {reply, ok, rebalancing, #rebalancing_state{rebalancer=Pid,
                                                 progress=dict:new()}};
 idle(stop_rebalance, _From, State) ->
+    ns_janitor:stop_rebalance_status(
+      fun () ->
+              ?user_log(?REBALANCE_STOPPED,
+                        "Resetting rebalance status since rebalance stop was "
+                        "requested but rebalance isn't orchestrated on our node"),
+              none
+      end),
     {reply, not_rebalancing, idle, State}.
 
 
