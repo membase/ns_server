@@ -592,8 +592,11 @@ handle_call({update_with_changes, Fun}, From, State) ->
             announce_changes(NewPairs),
             handle_call(resave, From, State#config{dynamic=[NewConfig]})
     catch
-        X:Error ->
-            {reply, {X, Error, erlang:get_stacktrace()}, State}
+        T:E ->
+            Stacktrace = erlang:get_stacktrace(),
+            ?log_error("Failed to update config: ~p~nStacktrace: ~n~p",
+                       [{T, E}, Stacktrace]),
+            {reply, {T, E, Stacktrace}, State}
     end;
 
 handle_call({clear, Keep}, From, State) ->

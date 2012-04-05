@@ -1959,6 +1959,27 @@
   </div>
 </div>
 <!-- END failover confirmation dialog -->
+<!-- Stop rebalance confirmation dialog -->
+<div class="dialog" id="stop_rebalance_confirmation_dialog"
+     title="Confirm Rebalance Stop">
+  <div class="lbox type_2">
+    <div class="content">
+      <div class="pas_20">
+        <div class="warning pat_20">
+          <strong>Warning</strong> – Stopping rebalance is unsafe at this
+          moment since cluster may be in a partitioned state. Continue only if
+          you're perfectly sure that this is not the case.
+        </div>
+        <div class="right save_cancel">
+          <button type="submit"
+                  class="save_button float_right">Stop</button>
+          <a class="close cancel_button float_right">Cancel</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- END stop rebalance confirmation dialog -->
 <!-- Leave cluster -->
 <div class="dialog" id="generic_dialog">
   <div class="lbox">

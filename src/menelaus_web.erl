@@ -714,7 +714,9 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                           [{uri, iolist_to_binary([BaseTasksURI, <<"?v=">>, ns_doctor:get_tasks_version()])}]}},
                  {stats, {struct,
                           [{uri, bin_concat_path(["pools", Id, "stats"])}]}},
-                 {counters, {struct, ns_cluster:counters()}}],
+                 {counters, {struct, ns_cluster:counters()}},
+                 {stopRebalanceIsSafe,
+                  ns_cluster_membership:is_stop_rebalance_safe()}],
     PropList =
         case InfoLevel of
             normal ->

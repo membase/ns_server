@@ -34,6 +34,8 @@
 %% half-second is definitely 'slow' for any definition of slow
 -define(SLOW_CALL_THRESHOLD_MICROS, 500000).
 
+-define(CONNECTION_ATTEMPTS, 5).
+
 %% gen_server API
 -export([start_link/1]).
 -export([init/1, handle_call/3, handle_cast/2,
@@ -97,35 +99,33 @@ start_link({Bucket, Type} = Tuple) ->
 %%
 
 init({Bucket, Type}) ->
-
-    Sock = connect(),
-
-    Timer = case Type of
-        stats ->
-            {ok, Tmp} = timer:send_interval(?CHECK_WARMUP_INTERVAL, check_started),
-            ensure_bucket(Sock, Bucket),
-            Tmp;
-        _ ->
-            ok = mc_client_binary:select_bucket(Sock, Bucket)
-    end,
-
-
-    % this trap_exit is necessary for terminate callback to work
+    %% this trap_exit is necessary for terminate callback to work
     process_flag(trap_exit, true),
 
-    case Type of
-        stats -> gen_event:notify(buckets_events, {started, Bucket});
-        _ -> ok
-    end,
+    case connect() of
+        {ok, Sock} ->
+            Timer =
+                case Type of
+                    stats ->
+                        {ok, Tmp} = timer:send_interval(?CHECK_WARMUP_INTERVAL, check_started),
+                        ensure_bucket(Sock, Bucket),
+                        gen_event:notify(buckets_events, {started, Bucket}),
+                        Tmp;
+                    _ ->
+                        ok = mc_client_binary:select_bucket(Sock, Bucket)
+                end,
 
-    {ok, #state{
-       timer=Timer,
-       status=init,
-       start_time=now(),
-       sock=Sock,
-       bucket=Bucket,
-       type=Type}
-    }.
+            {ok, #state{
+               timer=Timer,
+               status=init,
+               start_time=now(),
+               sock=Sock,
+               bucket=Bucket,
+               type=Type}
+            };
+        {error, _} = Error ->
+            Error
+    end.
 
 handle_call(Msg, From, #state{type=stats} = State) ->
     StartTS = os:timestamp(),
@@ -566,7 +566,9 @@ get_vbucket(Node, Bucket, VBucket) ->
                            {nonempty_string(), pos_integer()}.
 host_port(Node) ->
     Config = ns_config:get(),
-    Port = ns_config:search_node_prop(Node, Config, memcached, port),
+    DefaultPort = ns_config:search_node_prop(Node, Config, memcached, port),
+    Port = ns_config:search_node_prop(Node, Config,
+                                      memcached, dedicated_port, DefaultPort),
     {_Name, Host} = misc:node_name_host(Node),
     {Host, Port}.
 
@@ -667,23 +669,28 @@ raw_stats(Node, Bucket, SubStats, Fn, FnState) ->
 %%
 
 connect() ->
+    connect(?CONNECTION_ATTEMPTS).
+
+connect(0) ->
+    {error, couldnt_connect_to_memcached};
+connect(Tries) ->
     Config = ns_config:get(),
-    Port = ns_config:search_node_prop(Config, memcached, port),
+    Port = ns_config:search_node_prop(Config, memcached, dedicated_port),
     User = ns_config:search_node_prop(Config, memcached, admin_user),
     Pass = ns_config:search_node_prop(Config, memcached, admin_pass),
     try
-        {ok, S} = gen_tcp:connect("127.0.0.1", Port, [binary, {packet, 0},
-                                                         {active, false}]),
+        {ok, S} = gen_tcp:connect("127.0.0.1", Port,
+                                  [binary, {packet, 0}, {active, false}]),
         ok = mc_client_binary:auth(S, {<<"PLAIN">>,
                                        {list_to_binary(User),
                                         list_to_binary(Pass)}}),
         S of
-        Sock -> Sock
+        Sock -> {ok, Sock}
     catch
         E:R ->
             ?log_warning("Unable to connect: ~p, retrying.", [{E, R}]),
             timer:sleep(1000), % Avoid reconnecting too fast.
-            connect()
+            connect(Tries - 1)
     end.
 
 

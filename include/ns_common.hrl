@@ -36,6 +36,8 @@
 
 -define(MULTICALL_DEFAULT_TIMEOUT, 30000).
 
+-define(VBMAP_HISTORY_SIZE, 10).
+
 -define(DEFAULT_LOG_FILENAME, "log").
 -define(ERRORS_LOG_FILENAME, "errors").
 -define(VIEWS_LOG_FILENAME, "views").

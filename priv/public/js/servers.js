@@ -264,6 +264,10 @@ var ServersSection = {
     }).name("rebalanceProgress");
     self.rebalanceProgress.equality = _.isEqual;
     self.rebalanceProgress.subscribe($m(self, 'onRebalanceProgress'));
+
+    this.stopRebalanceIsSafe = new Cell(function (poolDetails) {
+      return poolDetails.stopRebalanceIsSafe;
+    }, {poolDetails: self.poolDetails});
   },
   accountForDisabled: function (handler) {
     return function (e) {
@@ -327,7 +331,16 @@ var ServersSection = {
       return;
     }
 
-    this.postAndReload(this.poolDetails.value.stopRebalanceUri, "");
+    if (this.stopRebalanceIsSafe.value) {
+      this.postAndReload(this.poolDetails.value.stopRebalanceUri, "");
+    } else {
+      var self = this;
+      showDialogHijackingSave(
+        "stop_rebalance_confirmation_dialog", ".save_button",
+        function () {
+          self.postAndReload(self.poolDetails.value.stopRebalanceUri, "");
+        });
+    }
   },
   validateJoinClusterParams: function (form) {
     var data = {}
