@@ -247,7 +247,8 @@ do_confirm_sent_messages(Sock, Seqno) ->
             end;
         {error, _} = Crap ->
             ?rebalance_warning("Got error while trying to read close ack:~p~n",
-                               [Crap])
+                               [Crap]),
+            Crap
     end.
 
 confirm_sent_messages(State) ->
@@ -258,11 +259,15 @@ confirm_sent_messages(State) ->
                            #mc_entry{data = <<4:16, ?TAP_FLAG_ACK:16, 1:8, 0:8, 0:8, 0:8, ?TAP_OPAQUE_CLOSE_TAP_STREAM:32>>}),
     case gen_tcp:send(Sock, Msg) of
         ok ->
-            do_config_sent_messages(Sock, Seqno);
-        {error, closed} ->
-            ok;
+            do_confirm_sent_messages(Sock, Seqno);
         X ->
-            ?rebalance_error("Got error while trying to send close confirmation: ~p~n", [X])
+            case X =/= {error, closed} of
+                true ->
+                    ?rebalance_error("Got error while trying to send close confirmation: ~p~n", [X]);
+                false ->
+                    ok
+            end,
+            X
     end.
 
 %%
