@@ -281,9 +281,11 @@ upgrade_config(Config) ->
             [{set, {node, node(), config_version}, {1,8,0}} |
              upgrade_config_from_1_7_2_to_1_8_0(Config)];
         {value, {1,8,0}} ->
-            HistoryUpgrade = maybe_add_vbucket_map_history(Config),
+            [{set, {node, node(), config_version}, {1,8,1}} |
+             upgrade_config_from_1_8_0_to_1_8_1(Config)];
+        {value, {1,8,1}} ->
             [{set, {node, node(), config_version}, {2,0}} |
-             upgrade_config_from_1_8_0_to_2_0(Config)] ++ HistoryUpgrade;
+             upgrade_config_from_1_8_1_to_2_0(Config)];
         {value, {2,0}} ->
             []
     end.
@@ -413,8 +415,12 @@ do_upgrade_config_from_1_7_2_to_1_8_0(Config, DefaultConfig) ->
       Results,
       [{{node, node(), memcached}, ns_config:search_node(Config, memcached)}]).
 
-upgrade_config_from_1_8_0_to_2_0(Config) ->
-    ?log_info("Upgrading config from 1.7.2 to 2.0", []),
+upgrade_config_from_1_8_0_to_1_8_1(Config) ->
+    ?log_info("Upgrading config from 1.8.0 to 1.8.1"),
+    maybe_add_vbucket_map_history(Config).
+
+upgrade_config_from_1_8_1_to_2_0(Config) ->
+    ?log_info("Upgrading config from 1.8.1 to 2.0", []),
     DefaultConfig = default(),
     do_upgrade_config_from_1_8_0_to_2_0(Config, DefaultConfig).
 
@@ -597,7 +603,7 @@ upgrade_1_7_2_to_1_8_0_test() ->
                  lists:sort(Res2)),
     ok.
 
-upgrade_1_8_0_to_2_0_test() ->
+upgrade_1_8_1_to_2_0_test() ->
     Cfg = [[{{node, node(), capi_port}, something},
             {remote_clusters, foobar}]],
     DefaultCfg = [{{node, node(), capi_port}, somethingelse},
