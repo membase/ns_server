@@ -29,9 +29,13 @@
          replicators/2,
          set_replicas/2,
          apply_changes/2,
-         spawn_mover/4]).
+         spawn_mover/4,
+         have_local_change_vbucket_filter/0,
+         local_change_vbucket_filter/4]).
 
 -export([init/1]).
+
+-compile([{parse_transform, quote_transform}]).
 
 %%
 %% API
@@ -177,7 +181,7 @@ set_replicas(Bucket, NodesReplicas) ->
 
 
 spawn_mover(Bucket, VBucket, SrcNode, DstNode) ->
-    Args0 = args(SrcNode, Bucket, [VBucket], DstNode, true),
+    Args0 = args(SrcNode, Bucket, [VBucket], DstNode, true, []),
     %% start ebucketmigrator on source node
     Args = [SrcNode | Args0],
     case apply(ebucketmigrator_srv, start_link, Args) of
@@ -233,9 +237,9 @@ init([]) ->
 %% Internal functions
 %%
 
--spec args(atom(), nonempty_string(), [non_neg_integer(),...], atom(), boolean()) ->
+-spec args(atom(), nonempty_string(), [non_neg_integer(),...], atom(), boolean(), list()) ->
                   [any(), ...].
-args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
+args(Node, Bucket, VBuckets, DstNode, TakeOver, ExtraOptions) ->
     {User, Pass} = ns_bucket:credentials(Bucket),
     Suffix = case TakeOver of
                  true ->
@@ -250,7 +254,7 @@ args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
       {password, Pass},
       {vbuckets, VBuckets},
       {takeover, TakeOver},
-      {suffix, Suffix}]].
+      {suffix, Suffix} | ExtraOptions]].
 
 -spec children(node(), nonempty_string()) -> [#child_id{}].
 children(Node, Bucket) ->
@@ -279,6 +283,142 @@ server(Bucket) ->
     list_to_atom(?MODULE_STRING "-" ++ Bucket).
 
 
+%% execute body in newly spawned process. Function returns when Body
+%% returns and with it's return value. If body produced any exception
+%% it will be rethrown. Care is taken to propagate exits of 'parent'
+%% process to this worker process.
+executing_on_new_process(Body) ->
+    Ref = erlang:make_ref(),
+    Parent = self(),
+    {ChildPid, ChildMRef} = erlang:spawn_monitor(
+                              fun () ->
+                                      ParentMRef = erlang:monitor(process, Parent),
+                                      receive
+                                          proceed -> ok;
+                                          {'DOWN', ParentMRef, _, _, Reason} ->
+                                              exit(Reason)
+                                      end,
+                                      erlang:demonitor(ParentMRef, [flush]),
+                                      try Body() of
+                                          RV ->
+                                              exit({Ref, RV})
+                                      catch T:E ->
+                                              Stack = erlang:get_stacktrace(),
+                                              exit({Ref, T, E, Stack})
+                                      end
+                              end),
+    {_WatcherPid, WatcherMRef} = erlang:spawn_monitor(
+                                   fun () ->
+                                           erlang:monitor(process, Parent),
+                                           erlang:monitor(process, ChildPid),
+                                           receive
+                                               {'DOWN', _, _, _, Reason} ->
+                                                   erlang:exit(ChildPid, Reason)
+                                           end
+                                   end),
+    ChildPid ! proceed,
+    receive
+        {'DOWN', ChildMRef, _, _, ChildReason} ->
+            receive
+                {'DOWN', WatcherMRef, _, _, _} ->
+                    ok
+            end,
+            case ChildReason of
+                {Ref, RV} ->
+                    {ok, RV};
+                {Ref, T, E, Stack} ->
+                    erlang:raise(T, E, Stack);
+                _ ->
+                    ?log_error("Got unexpected reason: ~p", [ChildReason]),
+                    erlang:error({unexpected_reason, ChildReason})
+            end
+    end.
+
+
+have_local_change_vbucket_filter() ->
+    true.
+
+mk_downstream_retriever(Id) ->
+    %% this function's closure will be kept in supervisor, so I want
+    %% it to reference as few stuff as possible thus separate closure maker
+    fun () ->
+            case ns_process_registry:lookup_pid(vbucket_filter_changes_registry, Id) of
+                missing -> undefined;
+                TxnPid ->
+                    case (catch gen_server:call(TxnPid, get_downstream, infinity)) of
+                        {ok, Downstream} ->
+                            ?log_info("Got vbucket filter change downstream. Proceeding vbucket filter change operation"),
+                            Downstream;
+                        TxnCrap ->
+                            ?log_info("Getting downstream for vbucket change operation failed:~n~p", [TxnCrap]),
+                            undefined
+                    end
+            end
+    end.
+
+local_change_vbucket_filter(Bucket, SrcNode, #child_id{dest_node=DstNode} = ChildId, NewVBuckets) ->
+    Server = server(Bucket),
+    RegistryId = {SrcNode, Bucket, NewVBuckets, DstNode},
+    Args = args(SrcNode, Bucket, NewVBuckets, DstNode, false,
+                [{passed_downstream_retriever, mk_downstream_retriever(RegistryId)}]),
+    Childs = supervisor:which_children(Server),
+    MaybeThePid = [Pid || {Id, Pid, _, _} <- Childs,
+                          Id =:= ChildId],
+    case MaybeThePid of
+        [ThePid] ->
+            NewChildId = #child_id{vbuckets=NewVBuckets, dest_node=DstNode},
+            NewChildSpec = {NewChildId,
+                            {ebucketmigrator_srv, start_link, Args},
+                            permanent, 60000, worker, [ebucketmigrator_srv]},
+            executing_on_new_process(
+              fun () ->
+                      ns_process_registry:register_pid(vbucket_filter_changes_registry, RegistryId, self()),
+                      ?log_debug("Registered myself under id:~p", [Args]),
+                      {ok, NewDownstream} = ebucketmigrator_srv:start_vbucket_filter_change(ThePid),
+                      erlang:process_flag(trap_exit, true),
+                      ok = supervisor:terminate_child(Server, ChildId),
+                      ok = supervisor:delete_child(Server, ChildId),
+                      Me = self(),
+                      proc_lib:spawn_link(
+                        fun () ->
+                                {ok, Pid} = supervisor:start_child(Server, NewChildSpec),
+                                Me ! {done, Pid}
+                        end),
+                      Loop = fun (Loop) ->
+                                     receive
+                                         {'EXIT', _From, _Reason} = ExitMsg ->
+                                             ?log_error("Got unexpected exit signal in vbucket change txn body: ~p", [ExitMsg]),
+                                             exit({txn_crashed, ExitMsg});
+                                         {done, RV} ->
+                                             RV;
+                                         {'$gen_call', {Pid, _} = From, get_downstream} ->
+                                             gen_tcp:controlling_process(NewDownstream, Pid),
+                                             gen_server:reply(From, {ok, NewDownstream}),
+                                             Loop(Loop)
+                                     end
+                             end,
+                      Loop(Loop)
+              end);
+        [] ->
+            no_child
+    end.
+
+change_vbucket_filter(Bucket, SrcNode, #child_id{dest_node = DstNode} = ChildId, NewVBuckets) ->
+    Lambda = quote_transform:lambda(fun (Bucket, SrcNode, ChildId, NewVBuckets) ->
+                                            try ns_vbm_sup:have_local_change_vbucket_filter() of
+                                                true -> ns_vbm_sup:local_change_vbucket_filter(Bucket, SrcNode, ChildId, NewVBuckets)
+                                            catch error:undef ->
+                                                    old_version
+                                            end
+                                    end),
+    case rpc:call(SrcNode, erlang, apply, [Lambda, [Bucket, SrcNode, ChildId, NewVBuckets]]) of
+        old_version ->
+            kill_child(SrcNode, Bucket, ChildId),
+            start_child(SrcNode, Bucket, NewVBuckets, DstNode);
+        {ok, Ref} ->
+            Ref
+    end.
+
 %% @doc Set up replication from the given source node to a list of
 %% {VBucket, DstNode} pairs.
 set_replicas(SrcNode, Bucket, Replicas) ->
@@ -301,6 +441,9 @@ set_replicas(SrcNode, Bucket, Replicas) ->
                         {ok, VBuckets} ->
                             %% Already running
                             dict:erase(DstNode, D);
+                        {ok, NewVBuckets} ->
+                            change_vbucket_filter(Bucket, SrcNode, Id, NewVBuckets),
+                            dict:erase(DstNode, D);
                         _ ->
                             %% Either wrong vbuckets or not wanted at all
                             kill_child(SrcNode, Bucket, Id),
@@ -316,7 +459,7 @@ set_replicas(SrcNode, Bucket, Replicas) ->
 -spec start_child(atom(), nonempty_string(), [non_neg_integer(),...], atom()) ->
                          {ok, pid()}.
 start_child(Node, Bucket, VBuckets, DstNode) ->
-    Args = args(Node, Bucket, VBuckets, DstNode, false),
+    Args = args(Node, Bucket, VBuckets, DstNode, false, []),
     ?log_debug("Starting replicator with args =~n~p", [Args]),
     ChildSpec = {#child_id{vbuckets=VBuckets, dest_node=DstNode},
                  {ebucketmigrator_srv, start_link, Args},
