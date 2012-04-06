@@ -222,7 +222,7 @@ test_subscribe() ->
 
               receive
                   {counter_updated, Value} ->
-                      ?assert(Value =< Initial + 1)
+                      true = (Value =< Initial + 1)
               end
       end).
 
@@ -255,6 +255,10 @@ kill_test_() ->
              ?_test(test_parent_crash()),
              ?_test(test_event_mgr_crash())]}.
 
+just_fail() ->
+    %% NOTE: nif_error is to silence dialyzer
+    erlang:nif_error(test_timeout_hit).
+
 test_shutdown() ->
     wrap(
       fun setup/0, fun cleanup/1,
@@ -269,7 +273,7 @@ test_shutdown() ->
                       ok
               after
                   100 ->
-                      ?assert(false)
+                      just_fail()
               end
       end).
 
@@ -294,7 +298,7 @@ test_crash() ->
                       ok
               after
                   100 ->
-                      ?assert(false)
+                      just_fail()
               end
       end).
 
@@ -312,7 +316,7 @@ test_event_mgr_crash() ->
                       ok
               after
                   100 ->
-                      ?assert(false)
+                      just_fail()
               end
       end).
 
@@ -348,7 +352,7 @@ test_parent_crash() ->
                     ok
             after
                 100 ->
-                    ?assert(false)
+                    just_fail()
             end,
 
             kill_silently_sync(EventMgr),
