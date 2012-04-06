@@ -1056,7 +1056,7 @@ build_ebucketmigrator() ->
 
     AleDir = filename:join(["deps", "ale", "ebin"]),
     AleModules = [ale, ale_sup, ale_dynamic_sup, ale_stderr_sink,
-                  ale_server, ale_default_formatter, ale_utils, ale_codegen,
+                  ale_default_formatter, ale_utils, ale_codegen,
                   ale_error_logger_handler, dynamic_compile],
     AleFiles = [read_beam(Mod, AleDir) || Mod <- AleModules],
 

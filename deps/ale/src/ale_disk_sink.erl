@@ -27,8 +27,7 @@
 -include("ale.hrl").
 
 -record(state, {name      :: atom(),
-                path      :: string(),
-                formatter :: atom()}).
+                path      :: string()}).
 
 -define(DEFAULT_MAX_SIZE, 10 * 1024 * 1024).
 -define(DEFAULT_MAX_FILES, 10).
@@ -50,35 +49,31 @@ start_link(Name, Path, Opts) ->
 init([Name, Path, Opts]) ->
     process_flag(trap_exit, true),
 
-    case ale_utils:supported_opts(Opts, [formatter, size]) of
+    case ale_utils:supported_opts(Opts, [size]) of
         false ->
             {stop, invalid_opts};
         true ->
-            Formatter = ale_utils:get_formatter(Opts),
             DiskLogOptions = disk_log_opts(Name, Path, Opts),
 
             case disk_log:open(DiskLogOptions) of
                 {ok, Name} ->
-                    {ok, #state{name=Name, path=Path, formatter=Formatter}};
+                    {ok, #state{name=Name, path=Path}};
                 Error ->
                     {stop, Error}
             end
     end.
 
-handle_call({log, Info, Format, Args}, _From,
-            #state{name=Name, formatter=Formatter} = State) ->
-    Msg = log_msg(Formatter, Info, Format, Args),
-    RV = disk_log:blog(Name, Msg),
+handle_call({log, Msg}, _From, #state{name=Name} = State) ->
+    Bytes = unicode:characters_to_binary(Msg),
+    RV    = disk_log:blog(Name, Bytes),
     {reply, RV, State};
+
+%% we don't handle raw messages
+handle_call({raw_log, _Info, _UserMsg}, _From, State) ->
+    {reply, ok, State};
 
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
-
-handle_cast({log, Info, Format, Args},
-            #state{name=Name, formatter=Formatter} = State) ->
-    Msg = log_msg(Formatter, Info, Format, Args),
-    ok = disk_log:balog(Name, Msg),
-    {noreply, State};
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -91,10 +86,6 @@ terminate(_Reason, #state{name=Name} = _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
-
-log_msg(Formatter, Info, Format, Args) ->
-    Msg = Formatter:format_msg(Info, Format, Args),
-    unicode:characters_to_binary(Msg).
 
 disk_log_opts(Name, Path, Opts) ->
     UserOpts = ale_utils:interesting_opts(Opts, [size]),

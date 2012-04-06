@@ -19,10 +19,6 @@
 
 -include("ale.hrl").
 
-%% force synchronous call even for asynchronous loglevels after so many
-%% asynchronous calls
--define(FORCE_SYNC_INTERVAL, 1000).
-
 logger_impl(Logger) when is_atom(Logger) ->
     logger_impl(atom_to_list(Logger));
 logger_impl(Logger) ->
@@ -31,189 +27,129 @@ logger_impl(Logger) ->
 extended_impl(LogLevel) ->
     list_to_atom([$x | atom_to_list(LogLevel)]).
 
-load_logger(LoggerName, ServerName, LogLevel, SyncLevel) ->
-    SourceCode = logger(LoggerName, ServerName, LogLevel, SyncLevel),
+load_logger(LoggerName, LogLevel, Formatter, Sinks) ->
+    SourceCode = logger(LoggerName, LogLevel, Formatter, Sinks),
     dynamic_compile:load_from_string(SourceCode).
 
-logger(LoggerName, ServerName, LogLevel, SyncLevel) ->
+logger(LoggerName, LogLevel, Formatter, Sinks) ->
     LoggerNameStr = atom_to_list(LoggerName),
-    ServerNameStr = atom_to_list(ServerName),
     lists:flatten([header(LoggerNameStr),
                    "\n",
                    exports(),
                    "\n",
-                   compile(),
-                   "\n",
-                   definitions(LoggerNameStr, ServerNameStr,
-                               LogLevel, SyncLevel)]).
+                   definitions(LoggerNameStr, LogLevel, Formatter, Sinks)]).
 
 header(LoggerName) ->
     io_lib:format("-module('~s').~n", [atom_to_list(logger_impl(LoggerName))]).
 
 exports() ->
-    lists:flatten(
-      [io_lib:format("-export([~p/4, ~p/5, x~p/5, x~p/6]).~n",
-                     [LogLevel, LogLevel, LogLevel, LogLevel]) ||
-          LogLevel <- ?LOGLEVELS]).
+    [io_lib:format("-export([~p/4, ~p/5, x~p/5, x~p/6]).~n",
+                   [LogLevel, LogLevel, LogLevel, LogLevel]) ||
+        LogLevel <- ?LOGLEVELS].
 
-compile() ->
-    "-compile({inline, [do_async_log/2]}).\n".
+definitions(LoggerName, LoggerLogLevel, Formatter, Sinks) ->
+    lists:map(
+      fun (LogLevel) ->
+              loglevel_definitions(LoggerName, LoggerLogLevel,
+                                   LogLevel, Formatter, Sinks)
+      end, ?LOGLEVELS).
 
-definitions(LoggerName, ServerName, LogLevel, SyncLogLevel) ->
-    {Stubs, Enabled} = lists:splitwith(fun (X) -> X =/= LogLevel end,
-                                       ?LOGLEVELS),
+loglevel_definitions(LoggerName, LoggerLogLevel, LogLevel, Formatter, Sinks) ->
+    {Preformatted, Raw} =
+        case ale_utils:loglevel_enabled(LogLevel, LoggerLogLevel) of
+            false ->
+                {[], []};
+            true ->
+                lists:foldl(
+                  fun ({Sink, SinkLogLevel, SinkType}, {P, R} = Acc) ->
+                          Enabled =
+                              ale_utils:loglevel_enabled(LogLevel, SinkLogLevel),
 
-    SyncLogLevel1 = ale_utils:loglevel_min(LogLevel, SyncLogLevel),
-    {Async, Sync} = lists:splitwith(fun (X) -> X =/= SyncLogLevel1 end,
-                                    Enabled),
+                          case Enabled of
+                              true ->
+                                  case SinkType of
+                                      preformatted ->
+                                          {[Sink | P], R};
+                                      raw ->
+                                          {P, [Sink | R]}
+                                  end;
+                              false ->
+                                  Acc
+                          end
+                  end, {[], []}, Sinks)
+        end,
 
-    lists:flatten([do_async_log(),
-                   "\n",
-                   stubs(Stubs),
-                   "\n",
-                   async(LoggerName, ServerName, Async),
-                   "\n",
-                   sync(LoggerName, ServerName, Sync)]).
+    [generic_loglevel(LoggerName, LogLevel, Formatter, Preformatted, Raw),
+     "\n",
+     loglevel_1(LogLevel),
+     loglevel_2(LogLevel),
+     "\n",
+     xloglevel_1(LogLevel),
+     xloglevel_2(LogLevel),
+     "\n"].
 
-do_async_log() ->
+generic_loglevel(LoggerName, LogLevel, Formatter, Preformatted, Raw) ->
+    %% inline generated function
+    [io_lib:format("-compile({inline, [generic_~p/6]}).~n", [LogLevel]),
+
+     io_lib:format("generic_~p(M, F, L, Data, Fmt, Args) -> ", [LogLevel]),
+
+     case Preformatted =/= [] orelse Raw =/= [] of
+         true ->
+             io_lib:format(
+               "ForcedArgs = ale_utils:force_args(Args),"
+               "Info = ale_utils:assemble_info(~s, ~p, M, F, L, Data),"
+               "UserMsg = io_lib:format(Fmt, ForcedArgs),",
+               [LoggerName, LogLevel])
+             ;
+         false ->
+             ""
+     end,
+
+     case Preformatted =/= [] of
+         true ->
+             io_lib:format(
+               "LogMsg = ~p:format_msg(Info, UserMsg),", [Formatter]);
+         false ->
+             ""
+     end,
+
+     lists:map(
+       fun (Sink) ->
+               io_lib:format(
+                 "ok = gen_server:call('~s', {log, LogMsg}, infinity),",
+                 [Sink])
+       end, Preformatted),
+
+     lists:map(
+       fun (Sink) ->
+               io_lib:format(
+                 "ok = gen_server:call('~s', {raw_log, Info, UserMsg}, infinity),",
+                 [Sink])
+       end, Raw),
+
+     "ok.\n"].
+
+loglevel_1(LogLevel) ->
     io_lib:format(
-      "do_async_log(ServerName, Msg) -> "
-      "Sync = random:uniform(~b) =:= 1,"
-      "case Sync of "
-      "true -> gen_server:call(ServerName, Msg, infinity);"
-      "false -> gen_server:cast(ServerName, Msg) "
-      "end.~n",
-      [?FORCE_SYNC_INTERVAL]).
+      "~p(M, F, L, Msg) -> "
+      "generic_~p(M, F, L, undefined, Msg, []).~n",
+      [LogLevel, LogLevel]).
 
-stubs(Stubs) ->
-    lists:flatten([stubs_1(Stubs),
-                   xstubs_1(Stubs),
-                   "\n",
-                   stubs_2(Stubs),
-                   xstubs_2(Stubs)]).
+xloglevel_1(LogLevel) ->
+    io_lib:format(
+      "x~p(M, F, L, Data, Msg) -> "
+      "generic_~p(M, F, L, Data, Msg, []).~n",
+      [LogLevel, LogLevel]).
 
-stubs_1(Stubs) ->
-    lists:flatten(
-      [io_lib:format("~p(_, _, _, _) -> ok.~n", [LogLevel]) ||
-          LogLevel <- Stubs]).
+loglevel_2(LogLevel) ->
+    io_lib:format(
+      "~p(M, F, L, Fmt, Args) -> "
+      "generic_~p(M, F, L, undefined, Fmt, Args).~n",
+      [LogLevel, LogLevel]).
 
-xstubs_1(Stubs) ->
-    lists:flatten(
-      [io_lib:format("x~p(_, _, _, _, _) -> ok.~n", [LogLevel]) ||
-          LogLevel <- Stubs]).
-
-stubs_2(Stubs) ->
-    lists:flatten(
-      [io_lib:format("~p(_, _, _, _, _) -> ok.~n", [LogLevel]) ||
-          LogLevel <- Stubs]).
-
-xstubs_2(Stubs) ->
-    lists:flatten(
-      [io_lib:format("x~p(_, _, _, _, _, _) -> ok.~n", [LogLevel]) ||
-          LogLevel <- Stubs]).
-
-async(LoggerName, ServerName, Async) ->
-    lists:flatten([async_1(LoggerName, ServerName, Async),
-                   xasync_1(LoggerName, ServerName, Async),
-                   "\n",
-                   async_2(LoggerName, ServerName, Async),
-                   xasync_2(LoggerName, ServerName, Async)]).
-
-async_1(LoggerName, ServerName, Async) ->
-    MkAsync1 =
-        fun (LogLevel) ->
-                io_lib:format(
-                  "~p(M, F, L, Msg) -> "
-                  "Info = ale_utils:assemble_info(~s, ~p, M, F, L),"
-                  "do_async_log('~s', {log, Info, Msg, []}).~n",
-                  [LogLevel, LoggerName, LogLevel, ServerName])
-        end,
-    lists:flatten(lists:map(MkAsync1, Async)).
-
-xasync_1(LoggerName, ServerName, Async) ->
-    MkXAsync1 =
-        fun (LogLevel) ->
-                io_lib:format(
-                  "x~p(M, F, L, Data, Msg) -> "
-                  "Info = ale_utils:assemble_info(~s, ~p, M, F, L, Data),"
-                  "do_async_log('~s', {log, Info, Msg, []}).~n",
-                  [LogLevel, LoggerName, LogLevel, ServerName])
-        end,
-    lists:flatten(lists:map(MkXAsync1, Async)).
-
-async_2(LoggerName, ServerName, Async) ->
-    MkAsync2 =
-        fun (LogLevel) ->
-                io_lib:format(
-                  "~p(M, F, L, Fmt, Args) -> "
-                  "ForcedArgs = ale_utils:force_args(Args),"
-                  "Info = ale_utils:assemble_info(~s, ~p, M, F, L),"
-                  "do_async_log('~s', {log, Info, Fmt, ForcedArgs}).~n",
-                  [LogLevel, LoggerName, LogLevel, ServerName])
-        end,
-    lists:flatten(lists:map(MkAsync2, Async)).
-
-xasync_2(LoggerName, ServerName, Async) ->
-    MkXAsync2 =
-        fun (LogLevel) ->
-                io_lib:format(
-                  "x~p(M, F, L, Data, Fmt, Args) -> "
-                  "ForcedArgs = ale_utils:force_args(Args),"
-                  "Info = ale_utils:assemble_info(~s, ~p, M, F, L, Data),"
-                  "do_async_log('~s', {log, Info, Fmt, ForcedArgs}).~n",
-                  [LogLevel, LoggerName, LogLevel, ServerName])
-        end,
-    lists:flatten(lists:map(MkXAsync2, Async)).
-
-sync(LoggerName, ServerName, Sync) ->
-    lists:flatten([sync_1(LoggerName, ServerName, Sync),
-                   xsync_1(LoggerName, ServerName, Sync),
-                   "\n",
-                   sync_2(LoggerName, ServerName, Sync),
-                   xsync_2(LoggerName, ServerName, Sync)]).
-
-sync_1(LoggerName, ServerName, Sync) ->
-    MkSync1 =
-        fun (LogLevel) ->
-                io_lib:format(
-                  "~p(M, F, L, Msg) -> "
-                  "Info = ale_utils:assemble_info(~s, ~p, M, F, L),"
-                  "gen_server:call('~s', {log, Info, Msg, []}, infinity).~n",
-                  [LogLevel, LoggerName, LogLevel, ServerName])
-        end,
-    lists:flatten(lists:map(MkSync1, Sync)).
-
-xsync_1(LoggerName, ServerName, Sync) ->
-    MkXSync1 =
-        fun (LogLevel) ->
-                io_lib:format(
-                  "x~p(M, F, L, Data, Msg) -> "
-                  "Info = ale_utils:assemble_info(~s, ~p, M, F, L, Data),"
-                  "gen_server:call('~s', {log, Info, Msg, []}, infinity).~n",
-                  [LogLevel, LoggerName, LogLevel, ServerName])
-        end,
-    lists:flatten(lists:map(MkXSync1, Sync)).
-
-sync_2(LoggerName, ServerName, Sync) ->
-    MkSync2 =
-        fun (LogLevel) ->
-                io_lib:format(
-                  "~p(M, F, L, Fmt, Args) -> "
-                  "ForcedArgs = ale_utils:force_args(Args),"
-                  "Info = ale_utils:assemble_info(~s, ~p, M, F, L),"
-                  "gen_server:call('~s', {log, Info, Fmt, ForcedArgs}, infinity).~n",
-                  [LogLevel, LoggerName, LogLevel, ServerName])
-        end,
-    lists:flatten(lists:map(MkSync2, Sync)).
-
-xsync_2(LoggerName, ServerName, Sync) ->
-    MkXSync2 =
-        fun (LogLevel) ->
-                io_lib:format(
-                  "x~p(M, F, L, Data, Fmt, Args) -> "
-                  "ForcedArgs = ale_utils:force_args(Args),"
-                  "Info = ale_utils:assemble_info(~s, ~p, M, F, L, Data),"
-                  "gen_server:call('~s', {log, Info, Fmt, ForcedArgs}, infinity).~n",
-                  [LogLevel, LoggerName, LogLevel, ServerName])
-        end,
-    lists:flatten(lists:map(MkXSync2, Sync)).
+xloglevel_2(LogLevel) ->
+    io_lib:format(
+      "x~p(M, F, L, Data, Fmt, Args) -> "
+      "generic_~p(M, F, L, Data, Fmt, Args).~n",
+      [LogLevel, LogLevel]).

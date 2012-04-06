@@ -14,15 +14,16 @@
 %% limitations under the License.
 
 -type loglevel() :: debug | info | warn | error | critical.
+-type sink_type() :: raw | preformatted.
 
 -define(LOGLEVELS, [debug, info, warn, error, critical]).
 
 -define(DEFAULT_LOGLEVEL, warn).
--define(DEFAULT_SYNC_LOGLEVEL, error).
 -define(DEFAULT_FORMATTER, ale_default_formatter).
+-define(DEFAULT_SINK_TYPE, preformatted).
 
 -define(ALE_LOGGER, ale_logger).
--define(ERROR_LOGGER_LOGGER, error_logger).
+-define(ERROR_LOGGER, error_logger).
 
 -type time() :: {integer(), integer(), integer()}.
 

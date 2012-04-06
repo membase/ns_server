@@ -16,20 +16,21 @@
 -module(ale_default_formatter).
 
 %% API
--export([format_msg/3]).
+-export([format_msg/2]).
 
 -include("ale.hrl").
 
 format_msg(#log_info{logger=Logger,
                      loglevel=LogLevel,
                      module=M, function=F, line=L,
-                     time=Time, process=Process, node=Node} = _Info,
-           Format, Args) ->
+                     time=Time, process=Process, node=Node} = _Info, UserMsg) ->
     {{Year, Month, Day}, {Hour, Minute, Second}} =
         calendar:now_to_local_time(Time),
-    io_lib:format("[~s:~s] "
-                  "[~B-~2.10.0B-~2.10.0B ~B:~2.10.0B:~2.10.0B] "
-                  "[~s:~p:~s:~s:~B] " ++ Format ++ "~n",
-                  [Logger, LogLevel,
-                   Year, Month, Day, Hour, Minute, Second,
-                   Node, Process, M, F, L] ++ Args).
+    Header =
+        io_lib:format("[~s:~s] "
+                      "[~B-~2.10.0B-~2.10.0B ~B:~2.10.0B:~2.10.0B] "
+                      "[~s:~p:~s:~s:~B] ",
+                      [Logger, LogLevel,
+                       Year, Month, Day, Hour, Minute, Second,
+                       Node, Process, M, F, L]),
+    [Header, UserMsg, "\n"].
