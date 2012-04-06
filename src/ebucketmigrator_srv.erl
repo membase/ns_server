@@ -105,7 +105,8 @@ handle_info(check_for_timeout, State) ->
             {noreply, State}
     end;
 handle_info({'EXIT', Pid, Reason}, #state{upstream_sender = SenderPid} = State) when Pid =:= SenderPid ->
-    ?rebalance_error("killing myself due to unexpected upstream sender exit with reason: ~p", [Reason]),
+    ?rebalance_error("killing myself due to unexpected upstream sender exit with reason: ~p",
+                     [Reason]),
     {stop, {unexpected_upstream_sender_exit, Reason}, State};
 handle_info(Msg, State) ->
     ?rebalance_info("handle_info(~p, ~p)", [Msg, State]),
@@ -194,7 +195,7 @@ upstream_sender_loop(Upstream) ->
     upstream_sender_loop(Upstream).
 
 exit_retry_not_ready_vbuckets() ->
-    ?log_info("dying to check if some previously not yet ready vbuckets are ready to replicate from"),
+    ?rebalance_info("dying to check if some previously not yet ready vbuckets are ready to replicate from"),
     exit(normal).
 
 terminate(_Reason, #state{upstream_sender=UpstreamSender} = State) ->

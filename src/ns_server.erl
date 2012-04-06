@@ -88,7 +88,7 @@ get_loglevel(LoggerName) ->
     misc:get_env_default(Key, DefaultLogLevel).
 
 init_logging() ->
-    StdLoggers = [?ERROR_LOGGER_LOGGER],
+    StdLoggers = [?ERROR_LOGGER],
     AllLoggers = StdLoggers ++ ?LOGGERS,
 
     {ok, Dir} = application:get_env(error_logger_mf_dir),
@@ -99,6 +99,7 @@ init_logging() ->
     ErrorLogPath = filename:join(Dir, ?ERRORS_LOG_FILENAME),
     ViewsLogPath = filename:join(Dir, ?VIEWS_LOG_FILENAME),
     CouchLogPath = filename:join(Dir, ?COUCHDB_LOG_FILENAME),
+    DebugLogPath = filename:join(Dir, ?DEBUG_LOG_FILENAME),
 
     DiskSinkParams = [{size, {MaxB, MaxF}}],
 
@@ -121,29 +122,32 @@ init_logging() ->
                         ale_disk_sink, [ViewsLogPath, DiskSinkParams]),
     ok = ale:start_sink(disk_couchdb,
                         ale_disk_sink, [CouchLogPath, DiskSinkParams]),
+    ok = ale:start_sink(disk_debug,
+                        ale_disk_sink, [DebugLogPath, DiskSinkParams]),
     ok = ale:start_sink(ns_log, ns_log_sink, []),
 
     lists:foreach(
       fun (Logger) ->
-              LogLevel = get_loglevel(Logger),
-              ok = ale:start_logger(Logger, LogLevel)
+              ok = ale:start_logger(Logger, debug)
       end, ?LOGGERS),
 
     lists:foreach(
       fun (Logger) ->
-              LogLevel = get_loglevel(Logger),
-              ok = ale:set_loglevel(Logger, LogLevel)
+              ok = ale:set_loglevel(Logger, debug)
       end,
       StdLoggers),
 
     lists:foreach(
       fun (Logger) ->
-              ok = ale:add_sink(Logger, disk_default),
-              ok = ale:add_sink(Logger, disk_error, error)
+              LogLevel = get_loglevel(Logger),
+              ok = ale:add_sink(Logger, disk_default, LogLevel),
+
+              ok = ale:add_sink(Logger, disk_error, error),
+              ok = ale:add_sink(Logger, disk_debug, debug)
       end, AllLoggers),
 
-    ok = ale:add_sink(?USER_LOGGER, ns_log),
-    ok = ale:add_sink(?MENELAUS_LOGGER, ns_log),
+    ok = ale:add_sink(?USER_LOGGER, ns_log, info),
+    ok = ale:add_sink(?MENELAUS_LOGGER, ns_log, info),
     ok = ale:add_sink(?CLUSTER_LOGGER, ns_log, info),
 
     ok = ale:add_sink(?VIEWS_LOGGER, disk_views),
@@ -157,7 +161,9 @@ init_logging() ->
 
             lists:foreach(
               fun (Logger) ->
-                      ok = ale:add_sink(Logger, stderr)
+                      %% usually used only in dev environment so it makes
+                      %% sense to put all the messages here
+                      ok = ale:add_sink(Logger, stderr, debug)
               end, AllLoggers);
         false ->
             ok

@@ -42,6 +42,7 @@
 -define(ERRORS_LOG_FILENAME, "errors").
 -define(VIEWS_LOG_FILENAME, "views").
 -define(COUCHDB_LOG_FILENAME, "couchdb").
+-define(DEBUG_LOG_FILENAME, "debug").
 
 -define(NS_SERVER_LOGGER, ns_server).
 -define(COUCHDB_LOGGER, couchdb).

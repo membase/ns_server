@@ -36,16 +36,16 @@ start_link(Name) ->
 init([]) ->
     {ok, #state{}}.
 
-handle_call({log, Info, Format, Args}, _From, State) ->
-    RV = do_log(Info, Format, Args),
+%% we don't handle preformatted logging calls
+handle_call({log, _Msg}, _From, State) ->
+    {reply, ok, State};
+
+handle_call({raw_log, Info, Msg}, _From, State) ->
+    RV = do_log(Info, Msg),
     {reply, RV, State};
 
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
-
-handle_cast({log, Info, Format, Args}, State) ->
-    do_log(Info, Format, Args),
-    {noreply, State};
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -60,15 +60,13 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 do_log(#log_info{loglevel=LogLevel, time=Time, module=Module,
-                 node=Node, user_data=undefined} = _Info,
-       Format, Args) ->
+                 node=Node, user_data=undefined} = _Info, Msg) ->
     Category = loglevel_to_category(LogLevel),
-    ns_log:log(Module, Node, Time, Category, Format, Args);
+    ns_log:log(Module, Node, Time, Category, Msg, []);
 do_log(#log_info{loglevel=LogLevel, time=Time,
-                 node=Node, user_data={Module, Code}} = _Info,
-       Format, Args) ->
+                 node=Node, user_data={Module, Code}} = _Info, Msg) ->
     Category = loglevel_to_category(LogLevel),
-    ns_log:log(Module, Node, Time, Code, Category, Format, Args).
+    ns_log:log(Module, Node, Time, Code, Category, Msg, []).
 
 -spec loglevel_to_category(loglevel()) -> log_classification().
 loglevel_to_category(debug) ->

@@ -942,14 +942,15 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
     Res =
         try streaming_inner(F, HTTPRes, LastRes)
         catch exit:normal ->
-                ?log_info("closing streaming socket~n", []),
+                ale:info(?MENELAUS_LOGGER, "closing streaming socket~n"),
                 HTTPRes:write_chunk(""),
                 exit(normal)
         end,
     receive
         {notify_watcher, _} -> ok;
         _ ->
-            ?log_info("menelaus_web streaming socket closed by client"),
+            ale:info(?MENELAUS_LOGGER,
+                     "menelaus_web streaming socket closed by client"),
             exit(normal)
     after 25000 ->
         ok
