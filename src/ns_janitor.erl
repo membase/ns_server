@@ -221,7 +221,9 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                           {false, _} ->
                               ?log_info("Setting vbucket ~p in ~p on ~p from ~p"
                                         " to dead because we don't have all "
-                                        "copies~n~p", [N, Bucket, VBucket, State, {ChainStates, ExtraStates}]),
+                                        "copies~n~p",
+                                        [N, Bucket, VBucket,
+                                         State, {ChainStates, ExtraStates}]),
                               ns_memcached:set_vbucket(N, Bucket, VBucket, dead)
                       end
               end, ExtraStates),
@@ -396,7 +398,7 @@ stop_rebalance_status(Fn) ->
 maybe_stop_rebalance_status() ->
     Status = try ns_orchestrator:rebalance_progress_full()
              catch E:T ->
-                     ?log_error("janitor maybe_stop_rebalance_status cannot reach orchestrator: ~p:~p", [E,T]),
+                     ?log_error("cannot reach orchestrator: ~p:~p", [E,T]),
                      error
              end,
     case Status of

@@ -80,8 +80,8 @@ handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters, last_ts=LastTS}
                                 true ->
                                     case misc:get_env_default(dont_log_stats, false) of
                                         false ->
-                                            ?stats_info("Stats for bucket ~p:~n~s",
-                                                        [Bucket, format_stats(Stats)]);
+                                            ?stats_debug("Stats for bucket ~p:~n~s",
+                                                         [Bucket, format_stats(Stats)]);
                                         _ -> ok
                                     end,
                                     1;

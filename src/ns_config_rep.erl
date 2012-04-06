@@ -53,13 +53,13 @@ start_link() ->
 
 init([]) ->
     % Start with startup config sync.
-    ?log_info("init pulling~n", []),
+    ?log_debug("init pulling~n", []),
     do_pull(),
-    ?log_info("init pushing~n", []),
+    ?log_debug("init pushing~n", []),
     do_push(),
     % Have ns_config reannounce its config for any synchronization that
     % may have occurred.
-    ?log_info("init reannouncing~n", []),
+    ?log_debug("init reannouncing~n", []),
     ns_config:reannounce(),
     % Schedule some random config syncs.
     schedule_config_sync(),
@@ -77,7 +77,8 @@ merger_loop() ->
             do_merge(KVList),
             case erlang:process_info(self(), message_queue_len) of
                 {message_queue_len, Y} when Y > ?MERGING_EMERGENCY_THRESHOLD ->
-                    ?log_info("Queue size emergency state reached. Will kill myself and resync", []),
+                    ?log_warning("Queue size emergency state reached. "
+                                 "Will kill myself and resync"),
                     exit(emergency_kill);
                 {message_queue_len, _} -> ok
             end
@@ -87,7 +88,7 @@ merger_loop() ->
 handle_call(synchronize, _From, State) ->
     {reply, ok, State};
 handle_call(Msg, _From, State) ->
-    ?log_info("Unhandled call: ~p", [Msg]),
+    ?log_warning("Unhandled call: ~p", [Msg]),
     {reply, error, State}.
 
 handle_cast({merge_compressed, _Blob} = Msg, State) ->
@@ -178,9 +179,9 @@ accumulate_pull_and_push_test() ->
     end.
 
 handle_info({push, List}, State) ->
-    ?log_info("Pushing config"),
+    ?log_debug("Pushing config"),
     do_push(accumulate_kv_pushes(List)),
-    ?log_info("Pushing config done"),
+    ?log_debug("Pushing config done"),
     {noreply, State};
 handle_info({pull_and_push, Nodes}, State) ->
     ?log_info("Replicating config to/from:~n~p", [Nodes]),
@@ -188,7 +189,7 @@ handle_info({pull_and_push, Nodes}, State) ->
     do_pull(FinalNodes, length(FinalNodes)),
     RawKVList = ns_config:get_kv_list(?SELF_PULL_TIMEOUT),
     do_push(RawKVList, FinalNodes),
-    ?log_info("config pull_and_push done.~n", []),
+    ?log_debug("config pull_and_push done.~n", []),
     {noreply, State};
 handle_info(push, State) ->
     misc:flush(push),
@@ -199,7 +200,7 @@ handle_info(sync_random, State) ->
     do_pull(1),
     {noreply, State};
 handle_info(Msg, State) ->
-    ?log_info("Unhandled msg: ~p", [Msg]),
+    ?log_debug("Unhandled msg: ~p", [Msg]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->

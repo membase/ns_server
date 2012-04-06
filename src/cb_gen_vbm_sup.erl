@@ -82,8 +82,8 @@ kill_replica(Policy, Bucket, SrcNode, DstNode, VBucket) ->
             case VBuckets of
                 [VBucket] ->
                     %% just kill when it was last vbucket
-                    ?log_info("~p: killed last vbucket (~p) for destination ~p",
-                              [SrcNode, VBucket, DstNode]),
+                    ?log_debug("~p: killed last vbucket (~p) for destination ~p",
+                               [SrcNode, VBucket, DstNode]),
                     ok;
                 _ ->
                     NewVBuckets = ordsets:del_element(VBucket, VBuckets),
@@ -307,7 +307,7 @@ kill_all_children(Policy, Bucket, Nodes) ->
 start_child(Policy, Bucket, SrcNode, DstNode, VBuckets) ->
     Args = ebucketmigrator_srv:build_args(Bucket,
                                           SrcNode, DstNode, VBuckets, false),
-    ?log_info("Starting replicator with args =~n~p", [Args]),
+    ?log_debug("Starting replicator with args =~n~p", [Args]),
 
     Replicator = Policy:make_replicator(SrcNode, DstNode, VBuckets),
     ChildSpec = {Replicator,

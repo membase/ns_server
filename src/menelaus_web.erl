@@ -693,15 +693,15 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
     Res =
         try streaming_inner(F, HTTPRes, LastRes)
         catch exit:normal ->
-                ale:info(?MENELAUS_LOGGER, "closing streaming socket~n"),
+                ale:debug(?MENELAUS_LOGGER, "closing streaming socket~n"),
                 HTTPRes:write_chunk(""),
                 exit(normal)
         end,
     receive
         {notify_watcher, _} -> ok;
         _ ->
-            ale:info(?MENELAUS_LOGGER,
-                     "menelaus_web streaming socket closed by client"),
+            ale:debug(?MENELAUS_LOGGER,
+                      "menelaus_web streaming socket closed by client"),
             exit(normal)
     after 25000 ->
         ok
@@ -1641,8 +1641,8 @@ handle_abortable_get_request(Req, Body) ->
                                        end,
                                        Parent ! {Ref, done};
                                    {tcp_closed, Socket} ->
-                                       ale:info(?MENELAUS_LOGGER,
-                                                "I have nobody to live for. Killing myself..."),
+                                       ale:debug(?MENELAUS_LOGGER,
+                                                 "I have nobody to live for. Killing myself..."),
                                        exit(Parent, kill)
                                end
                        end),

@@ -334,7 +334,7 @@ delete_all_db_files(DBDir) ->
 
 delete_bucket_db_directory(BucketDBDir) ->
     Result = misc:rm_rf(BucketDBDir),
-    ?log_info("Result of deleting db directory: ~p: ~p", [BucketDBDir, Result]),
+    ?log_debug("Result of deleting db directory: ~p: ~p", [BucketDBDir, Result]),
     Result.
 
 delete_db_files(Bucket) ->

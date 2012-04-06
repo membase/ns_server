@@ -95,7 +95,7 @@ nodes_wanted_updated() ->
 %% gen_server implementation
 
 init([]) ->
-    ?log_info("Initting ns_node_disco with ~p", [nodes()]),
+    ?log_debug("Initting ns_node_disco with ~p", [nodes()]),
     %% Proactively run one round of reconfiguration update.
     %% It may take longer than SYNC_TIMEOUT to complete if nodes are down.
     misc:wait_for_process(do_nodes_wanted_updated(do_nodes_wanted()),
@@ -137,7 +137,7 @@ handle_call(nodes_wanted, _From, State) ->
     {reply, do_nodes_wanted(), State};
 
 handle_call(Msg, _From, State) ->
-    ?log_info("Unhandled ~p call: ~p", [?MODULE, Msg]),
+    ?log_warning("Unhandled ~p call: ~p", [?MODULE, Msg]),
     {reply, error, State}.
 
 handle_info({nodeup, Node}, State) ->
@@ -179,14 +179,14 @@ do_nodes_wanted() ->
 do_nodes_wanted_updated_fun(NodeListIn) ->
     {ok, _Cookie} = ns_cookie_manager:cookie_sync(),
     NodeList = lists:usort(NodeListIn),
-    ?log_info("ns_node_disco: nodes_wanted updated: ~p, with cookie: ~p",
-              [NodeList, erlang:get_cookie()]),
+    ?log_debug("ns_node_disco: nodes_wanted updated: ~p, with cookie: ~p",
+               [NodeList, erlang:get_cookie()]),
     PongList = lists:filter(fun(N) ->
                                     net_adm:ping(N) == pong
                             end,
                             NodeList),
-    ?log_info("ns_node_disco: nodes_wanted pong: ~p, with cookie: ~p",
-              [PongList, erlang:get_cookie()]),
+    ?log_debug("ns_node_disco: nodes_wanted pong: ~p, with cookie: ~p",
+               [PongList, erlang:get_cookie()]),
     case lists:member(node(), NodeList) of
         true ->
             ok;

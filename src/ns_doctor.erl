@@ -29,6 +29,9 @@
 
 -record(state, {nodes}).
 
+-define(doctor_debug(Msg), ale:debug(?NS_DOCTOR_LOGGER, Msg)).
+-define(doctor_debug(Fmt, Args), ale:debug(?NS_DOCTOR_LOGGER, Fmt, Args)).
+
 -define(doctor_info(Msg), ale:info(?NS_DOCTOR_LOGGER, Msg)).
 -define(doctor_info(Fmt, Args), ale:info(?NS_DOCTOR_LOGGER, Fmt, Args)).
 
@@ -83,17 +86,16 @@ handle_info(acquire_initial_status, #state{nodes=NodeDict} = State) ->
     Nodes = lists:foldl(fun ({Node, Status}, Dict) ->
                                 update_status(Node, Status, Dict)
                         end, NodeDict, Replies),
-    ?doctor_info("Got initial status ~p~n", [lists:sort(dict:to_list(Nodes))]),
+    ?doctor_debug("Got initial status ~p~n", [lists:sort(dict:to_list(Nodes))]),
     {noreply, State#state{nodes=Nodes}};
 
 handle_info(log, #state{nodes=NodeDict} = State) ->
-    ?doctor_info("Current node statuses:~n~p",
-                 [lists:sort(dict:to_list(NodeDict))]),
+    ?doctor_debug("Current node statuses:~n~p",
+                  [lists:sort(dict:to_list(NodeDict))]),
     {noreply, State};
 
 handle_info(Info, State) ->
-    ?doctor_warning("Unexpected message ~p in state",
-                    [Info]),
+    ?doctor_warning("Unexpected message ~p in state", [Info]),
     {noreply, State}.
 
 terminate(_Reason, _State) -> ok.

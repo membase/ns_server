@@ -42,7 +42,7 @@ start_link() ->
                           end).
 
 init(_) ->
-    ?log_info("ns_mail_log started up", []),
+    ?log_debug("ns_mail_log started up", []),
     {ok, #state{}, hibernate}.
 
 terminate(_Reason, _State)     -> ok.
@@ -68,15 +68,15 @@ handle_event({ns_log, _Category, Module, Code, Fmt, Args}, State) ->
     end,
     {ok, State, hibernate};
 handle_event(Event, State) ->
-    ?log_info("ns_mail_log handle_event(~p, ~p)~n", [Event, State]),
+    ?log_debug("ns_mail_log handle_event(~p, ~p)~n", [Event, State]),
     {ok, State, hibernate}.
 
 handle_call(Request, State) ->
-    ?log_info("ns_mail_log handle_call(~p, ~p)~n", [Request, State]),
+    ?log_warning("Unexpected handle_call(~p, ~p)~n", [Request, State]),
     {ok, ok, State, hibernate}.
 
 handle_info(Info, State) ->
-    ?log_info("ns_mail_log handle_info(~p, ~p)~n", [Info, State]),
+    ?log_warning("Unexpected handle_info(~p, ~p)~n", [Info, State]),
     {ok, State, hibernate}.
 
 %% @doc Sends an email with the given configuration
