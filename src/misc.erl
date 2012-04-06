@@ -167,7 +167,7 @@ rm_rf(Name) when is_list(Name) ->
                 [filename:join(Name, F) || F <- Filenames]),
               file:del_dir(Name);
           {error, Reason} ->
-              ?log_info("rm_rf failed because ~p", [Reason])
+              ?log_warning("rm_rf failed because ~p", [Reason])
       end
   end.
 
@@ -407,10 +407,10 @@ ping_jointo() ->
     end.
 
 ping_jointo(NodeName) ->
-    ?log_info("jointo: attempting to contact ~p", [NodeName]),
+    ?log_debug("attempting to contact ~p", [NodeName]),
     case net_adm:ping(NodeName) of
-        pong -> ?log_info("jointo: connected to ~p", [NodeName]);
-        pang -> {error, io_lib:format("jointo: could not ping ~p~n", [NodeName])}
+        pong -> ?log_debug("connected to ~p", [NodeName]);
+        pang -> {error, io_lib:format("could not ping ~p~n", [NodeName])}
     end.
 
 mapfilter(F, Ref, List) ->
@@ -800,18 +800,18 @@ comm_test() ->
 start_singleton(Module, Name, Args, Opts) ->
     case Module:start_link({global, Name}, Name, Args, Opts) of
         {error, {already_started, Pid}} ->
-            ?log_info("start_singleton(~p, ~p, ~p, ~p):"
-                      " monitoring ~p from ~p",
-                      [Module, Name, Args, Opts, Pid, node()]),
+            ?log_debug("start_singleton(~p, ~p, ~p, ~p):"
+                       " monitoring ~p from ~p",
+                       [Module, Name, Args, Opts, Pid, node()]),
             {ok, spawn_link(fun () ->
                                     misc:wait_for_process(Pid, infinity),
                                     ?log_info("~p saw ~p exit (was pid ~p).",
                                               [self(), Name, Pid])
                             end)};
         {ok, Pid} = X ->
-            ?log_info("start_singleton(~p, ~p, ~p, ~p):"
-                      " started as ~p on ~p~n",
-                      [Module, Name, Args, Opts, Pid, node()]),
+            ?log_debug("start_singleton(~p, ~p, ~p, ~p):"
+                       " started as ~p on ~p~n",
+                       [Module, Name, Args, Opts, Pid, node()]),
             X;
         X -> X
     end.

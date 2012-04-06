@@ -41,7 +41,7 @@ code_change(_OldVsn, State, _) -> {ok, State}.
 % Don't log values for some password/auth-related config values.
 
 handle_event({rest_creds = K, _V}, State) ->
-    ?log_info("config change: ~p -> ********", [K]),
+    ?log_debug("config change: ~p -> ********", [K]),
     {ok, State, hibernate};
 handle_event({alerts = K, V}, State) ->
     V2 = lists:map(fun({email_server, ES}) ->
@@ -52,12 +52,12 @@ handle_event({alerts = K, V}, State) ->
                       (V2KeyVal) -> V2KeyVal
                    end,
                    V),
-    ?log_info("config change:~n~p ->~n~p", [K, V2]),
+    ?log_debug("config change:~n~p ->~n~p", [K, V2]),
     {ok, State, hibernate};
 handle_event({K, V}, State) ->
     %% These can get pretty big, so pre-format them for the logger.
     VB = list_to_binary(io_lib:print(V, 0, 80, 100)),
-    ?log_info("config change:~n~p ->~n~s", [K, VB]),
+    ?log_debug("config change:~n~p ->~n~s", [K, VB]),
     {ok, State, hibernate};
 
 handle_event(KVList, State) when is_list(KVList) ->
@@ -67,7 +67,7 @@ handle_event(_, State) ->
     {ok, State, hibernate}.
 
 handle_call(Request, State) ->
-    ?log_info("handle_call(~p, ~p)", [Request, State]),
+    ?log_warning("Unexpected handle_call(~p, ~p)", [Request, State]),
     {ok, ok, State, hibernate}.
 
 handle_info(_Info, State) ->

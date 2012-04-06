@@ -61,7 +61,7 @@ init([]) ->
                  {ok, <<>>} -> [];
                  {ok, B} -> binary_to_term(zlib:uncompress(B));
                  E ->
-                     ?log_info("Couldn't load logs from ~p: ~p", [Filename, E]),
+                     ?log_warning("Couldn't load logs from ~p: ~p", [Filename, E]),
                      []
              end,
     %% initiate log syncing

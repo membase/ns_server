@@ -15,6 +15,9 @@
 
 -include("ns_common.hrl").
 
+-define(stats_debug(Msg), ale:debug(?STATS_LOGGER, Msg)).
+-define(stats_debug(Fmt, Args), ale:debug(?STATS_LOGGER, Fmt, Args)).
+
 -define(stats_info(Msg), ale:info(?STATS_LOGGER, Msg)).
 -define(stats_info(Fmt, Args), ale:info(?STATS_LOGGER, Fmt, Args)).
 

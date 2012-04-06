@@ -215,8 +215,8 @@ handle_info({'EXIT', Pid, Reason}, janitor_running,
         normal ->
             ok;
         _ ->
-            ?log_info("Janitor run exited for bucket ~p with reason ~p~n",
-                      [Bucket, Reason])
+            ?log_warning("Janitor run exited for bucket ~p with reason ~p~n",
+                         [Bucket, Reason])
     end,
     case Buckets of
         [] ->

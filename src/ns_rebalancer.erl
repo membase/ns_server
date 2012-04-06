@@ -106,7 +106,7 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
     DeactivateNodes = EjectNodes ++ FailedNodes,
     BucketConfigs = ns_bucket:get_buckets(),
     NumBuckets = length(BucketConfigs),
-    ?rebalance_info("BucketConfigs = ~p", [BucketConfigs]),
+    ?rebalance_debug("BucketConfigs = ~p", [BucketConfigs]),
     EarlyEject = FailedNodes -- [node()],
     try
         %% Eject failed nodes first so they don't cause trouble

@@ -91,19 +91,19 @@ init([]) ->
             case lists:member(node(), Peers) of
                 false ->
                     %% We're a worker, but don't know who the master is yet
-                    ?log_info("Starting as worker. Peers: ~p", [Peers]),
+                    ?log_debug("Starting as worker. Peers: ~p", [Peers]),
                     {ok, worker, #state{last_heard=now()}};
                 true ->
                     %% We're a candidate
-                    ?log_info("Starting as candidate. Peers: ~p", [Peers]),
+                    ?log_debug("Starting as candidate. Peers: ~p", [Peers]),
                     {ok, candidate, #state{last_heard=now(), peers=Peers}}
             end
     end.
 
 
 handle_event(Event, StateName, StateData) ->
-    ?log_info("Got unexpected event ~p in state ~p with data ~p",
-              [Event, StateName, StateData]),
+    ?log_warning("Got unexpected event ~p in state ~p with data ~p",
+                 [Event, StateName, StateData]),
     {next_state, StateName, StateData}.
 
 
@@ -117,7 +117,7 @@ handle_info(send_heartbeat, candidate, #state{peers=Peers} = StateData) ->
         true ->
             %% Take over
             ale:info(?USER_LOGGER, "Haven't heard from a higher priority node or "
-                      "a master, so I'm taking over.", []),
+                     "a master, so I'm taking over.", []),
             {ok, Pid} = mb_master_sup:start_link(),
             {next_state, master,
              StateData#state{child=Pid, master=node()}};
@@ -139,8 +139,8 @@ handle_info(send_heartbeat, master, StateData) ->
                      Node ->
                          StateData;
                      N1 ->
-                         ?log_info("Node changed name from ~p to ~p. "
-                                   "Updating state.", [N1, Node]),
+                         ?log_debug("Node changed name from ~p to ~p. "
+                                    "Updating state.", [N1, Node]),
                          StateData#state{master=node()}
                  end,
     send_heartbeat(ns_node_disco:nodes_wanted(), master, StateData1),
@@ -180,7 +180,8 @@ handle_info({peers, Peers}, StateName, StateData) when
     end;
 
 handle_info(Info, StateName, StateData) ->
-    ?log_info("handle_info(~p, ~p, ~p)", [Info, StateName, StateData]),
+    ?log_warning("Unexpected handle_info(~p, ~p, ~p)",
+                 [Info, StateName, StateData]),
     {next_state, StateName, StateData}.
 
 
@@ -277,7 +278,8 @@ candidate({heartbeat, NodeInfo, candidate, _H}, #state{peers=Peers} = State) ->
     end;
 
 candidate(Event, State) ->
-    ?log_info("Got event ~p as candidate with state ~p", [Event, State]),
+    ?log_warning("Got unexpected event ~p as candidate with state ~p",
+                 [Event, State]),
     {next_state, candidate, State}.
 
 
@@ -314,13 +316,14 @@ master({heartbeat, NodeInfo, candidate, _H}, #state{peers=Peers} = State) ->
         true ->
             ok;
         false ->
-            ?log_info("Master got candidate heartbeat from node ~p which is "
-                      "not in peers ~p", [Node, Peers])
+            ?log_warning("Master got candidate heartbeat from node ~p which is "
+                         "not in peers ~p", [Node, Peers])
     end,
     {next_state, master, State#state{last_heard=now()}};
 
 master(Event, State) ->
-    ?log_info("Got event ~p as master with state ~p", [Event, State]),
+    ?log_warning("Got unexpected event ~p as master with state ~p",
+                 [Event, State]),
     {next_state, master, State}.
 
 
@@ -341,7 +344,8 @@ worker({heartbeat, NodeInfo, master, _H}, State) ->
     end;
 
 worker(Event, State) ->
-    ?log_info("Got event ~p as worker with state ~p", [Event, State]),
+    ?log_warning("Got unextected event ~p as worker with state ~p",
+                 [Event, State]),
     {next_state, worker, State}.
 
 
@@ -370,7 +374,7 @@ send_heartbeat(Nodes, StateName, StateData) ->
                   end
           end, Nodes, 2000)
     catch exit:timeout ->
-            ?log_info("send heartbeat timed out~n", [])
+            ?log_warning("send heartbeat timed out~n", [])
     end.
 
 
@@ -392,7 +396,7 @@ update_peers(StateData, Peers) ->
             %% No change
             StateData;
         false ->
-            ?log_info("List of peers has changed from ~p to ~p", [O, P]),
+            ?log_debug("List of peers has changed from ~p to ~p", [O, P]),
             StateData#state{peers=P}
     end.
 
@@ -403,7 +407,7 @@ shutdown_master_sup(State) ->
         {'EXIT', Pid, _Reason} ->
             ok
     after 10000 ->
-            ?log_info("Killing runaway child supervisor: ~p~n", [Pid]),
+            ?log_debug("Killing runaway child supervisor: ~p~n", [Pid]),
             exit(Pid, kill),
             receive
                 {'EXIT', Pid, _Reason} ->

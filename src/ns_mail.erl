@@ -42,11 +42,11 @@ handle_call({send, Sender, Rcpts, Body, Options}, _From, State) ->
     {reply, Reply, State};
 
 handle_call(Request, From, State) ->
-    ?log_info("ns_mail: unexpected call ~p from ~p", [Request, From]),
+    ?log_warning("ns_mail: unexpected call ~p from ~p", [Request, From]),
     {ok, State}.
 
 handle_cast(Request, State) ->
-    ?log_info("ns_mail: unexpected cast ~p.", [Request]),
+    ?log_warning("ns_mail: unexpected cast ~p.", [Request]),
     {noreply, State}.
 
 handle_info(_Info, State) ->

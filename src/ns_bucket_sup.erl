@@ -83,15 +83,15 @@ update_childs(Buckets) ->
     lists:foreach(fun (StartId) ->
                           Tuple = lists:keyfind(StartId, 1, NewSpecs),
                           true = is_tuple(Tuple),
-                          ?log_info("Starting new child: ~p~n",
-                                    [Tuple]),
+                          ?log_debug("Starting new child: ~p~n",
+                                     [Tuple]),
                           supervisor:start_child(?MODULE, Tuple)
                   end, ToStart),
     lists:foreach(fun (StopId) ->
                           Tuple = lists:keyfind(StopId, 1, OldSpecs),
                           true = is_tuple(Tuple),
-                          ?log_info("Stopping child for dead bucket: ~p~n",
-                                    [Tuple]),
+                          ?log_debug("Stopping child for dead bucket: ~p~n",
+                                     [Tuple]),
                           supervisor:terminate_child(?MODULE, StopId),
                           supervisor:delete_child(?MODULE, StopId)
                   end, ToStop).

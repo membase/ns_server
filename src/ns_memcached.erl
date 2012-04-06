@@ -320,10 +320,10 @@ handle_info(check_config, State) ->
     ensure_bucket(State#state.sock, State#state.bucket),
     {noreply, State};
 handle_info({'EXIT', _, Reason} = Msg, State) ->
-    ?log_info("Got ~p. Exiting.", [Msg]),
+    ?log_debug("Got ~p. Exiting.", [Msg]),
     {stop, Reason, State};
 handle_info(Msg, State) ->
-    ?log_info("handle_info(~p, ~p)", [Msg, State]),
+    ?log_warning("Unexpected handle_info(~p, ~p)", [Msg, State]),
     {noreply, State}.
 
 

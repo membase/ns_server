@@ -183,8 +183,8 @@ spawn_ebucketmigrator_mover(Bucket, VBucket, SrcNode, DstNode) ->
     Args = [SrcNode | Args0],
     case apply(ebucketmigrator_srv, start_link, Args) of
         {ok, Pid} = RV ->
-            ?log_info("Spawned mover ~p ~p ~p -> ~p: ~p",
-                      [Bucket, VBucket, SrcNode, DstNode, Pid]),
+            ?log_debug("Spawned mover ~p ~p ~p -> ~p: ~p",
+                       [Bucket, VBucket, SrcNode, DstNode, Pid]),
             RV;
         X -> X
     end.

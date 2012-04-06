@@ -41,19 +41,19 @@ handle_info(_Info, State)      -> {ok, State, hibernate}.
 handle_call(_Request, State)   -> {ok, ok, State, hibernate}.
 
 handle_event({nodes_wanted, _V}, State) ->
-    ?log_info("ns_node_disco_conf_events config on nodes_wanted"),
+    ?log_debug("ns_node_disco_conf_events config on nodes_wanted"),
     % The event may get to us really late, so don't pass along the param.
     ns_node_disco:nodes_wanted_updated(),
     {ok, State, hibernate};
 
 handle_event({otp, _V}, State) ->
-    ?log_info("ns_node_disco_conf_events config on otp"),
+    ?log_debug("ns_node_disco_conf_events config on otp"),
     % The event may get to us really late, so don't pass along the param.
     ns_node_disco:nodes_wanted_updated(),
     {ok, State, hibernate};
 
 handle_event(Changed, State) when is_list(Changed) ->
-    ?log_info("ns_node_disco_conf_events config all"),
+    ?log_debug("ns_node_disco_conf_events config all"),
     Config = ns_config:get(),
     ChangedRaw =
         lists:foldl(fun({Key, _}, Acc) ->

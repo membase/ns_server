@@ -48,8 +48,8 @@ delete_schema() ->
     %% Shut down mnesia in case something else started it.
     stopped = mnesia:stop(),
     ok = mnesia:delete_schema([node()]),
-    ?log_info("Deleted schema.~nCurrent config: ~p",
-              [mnesia:system_info(all)]).
+    ?log_debug("Deleted schema.~nCurrent config: ~p",
+               [mnesia:system_info(all)]).
 
 
 %% @doc Make sure table exists and has a copy on this node, creating it or
@@ -95,8 +95,8 @@ handle_call({ensure_table, TableName, Opts}, From, State) ->
                 true ->
                     {reply, ok, State};
                 false ->
-                    ?log_info("Creating local copy of ~p",
-                              [TableName]),
+                    ?log_debug("Creating local copy of ~p",
+                               [TableName]),
                     do_with_timeout(
                       fun () ->
                               {atomic, ok} =
@@ -106,7 +106,7 @@ handle_call({ensure_table, TableName, Opts}, From, State) ->
                     {noreply, State}
             end
     catch exit:{aborted, {no_exists, _, _}} ->
-            ?log_info("Creating table ~p", [TableName]),
+            ?log_debug("Creating table ~p", [TableName]),
             do_with_timeout(
               fun () ->
                       {atomic, ok} =
@@ -123,13 +123,13 @@ handle_call({maybe_rename, NewAddr}, _From, State) ->
     OldName = node(),
     case dist_manager:adjust_my_address(NewAddr) of
         nothing ->
-            ?log_info("Not renaming node. Deleting backup.", []),
+            ?log_debug("Not renaming node. Deleting backup.", []),
             ok = file:delete(backup_file()),
             {reply, false, State};
         net_restarted ->
             %% Make sure the cookie's still the same
             NewName = node(),
-            ?log_info("Renaming node from ~p to ~p.", [OldName, NewName]),
+            ?log_debug("Renaming node from ~p to ~p.", [OldName, NewName]),
             rename_node_in_config(OldName, NewName),
             stopped = mnesia:stop(),
             change_node_name(OldName, NewName),
@@ -179,7 +179,7 @@ handle_info({mnesia_system_event, Event}, State) ->
             timer:sleep(3000),
             {stop, mnesia_fatal, State};
         {mnesia_info, Format, Args} ->
-            ?log_info("Info from Mnesia:~n" ++ Format, Args),
+            ?log_debug("Info from Mnesia:~n" ++ Format, Args),
             {noreply, State};
         {mnesia_down, Node} ->
             ?log_info("Saw Mnesia go down on ~p", [Node]),
@@ -200,19 +200,19 @@ handle_info({mnesia_system_event, Event}, State) ->
             ?log_warning("Starting partitioned network with ~p.", [Node]),
             {noreply, State};
         _ ->
-            ?log_info("Mnesia system event: ~p", [Event]),
+            ?log_debug("Mnesia system event: ~p", [Event]),
             {noreply, State}
     end;
 
 handle_info({mnesia_table_event, {write, {schema, cluster, L}, _}},
             State) ->
     NewPeers = proplists:get_value(disc_copies, L),
-    ?log_info("Peers: ~p", [NewPeers]),
+    ?log_debug("Peers: ~p", [NewPeers]),
     gen_event:notify(mb_mnesia_events, {peers, NewPeers}),
     {noreply, State#state{peers=NewPeers}};
 
 handle_info({mnesia_table_event, Event}, State) ->
-    ?log_info("Mnesia table event:~n~p", [Event]),
+    ?log_debug("Mnesia table event:~n~p", [Event]),
     {noreply, State};
 
 handle_info({'EXIT', _Pid, Reason}, State) ->
@@ -258,8 +258,8 @@ init([]) ->
             end
     end,
     Peers = ensure_config_tables(),
-    ?log_info("Current config:~n~p~nPeers: ~p",
-              [mnesia:system_info(all), Peers]),
+    ?log_debug("Current config:~n~p~nPeers: ~p",
+               [mnesia:system_info(all), Peers]),
     %% Send an initial notification of our peer list.
     gen_event:notify(mb_mnesia_events, {peers, Peers}),
     {ok, #state{peers=Peers}}.
@@ -422,7 +422,7 @@ ensure_schema() ->
         false ->
             case mnesia:change_table_copy_type(schema, node(), disc_copies) of
                 {atomic, ok} ->
-                    ?log_info("Committed schema to disk.", []);
+                    ?log_debug("Committed schema to disk.", []);
                 {aborted, {already_exists, _, _, _}} ->
                     ?log_warning("Failed to write schema. Retrying.~n"
                                  "Config = ~p", [mnesia:system_info(all)]),
@@ -430,7 +430,7 @@ ensure_schema() ->
                     ensure_schema()
             end;
         true ->
-            ?log_info("Using existing disk schema on ~p.", [Nodes])
+            ?log_debug("Using existing disk schema on ~p.", [Nodes])
     end,
     %% Lay down copies of all the tables.
     Tables = mnesia:system_info(tables) -- [schema],
@@ -438,9 +438,9 @@ ensure_schema() ->
       fun (Table) ->
               case mnesia:add_table_copy(Table, node(), disc_copies) of
                   {atomic, ok} ->
-                      ?log_info("Created local copy of ~p", [Table]);
+                      ?log_debug("Created local copy of ~p", [Table]);
                   {aborted, {already_exists, _, _}} ->
-                      ?log_info("Have local copy of ~p", [Table])
+                      ?log_debug("Have local copy of ~p", [Table])
               end
       end, Tables),
     ok = mnesia:wait_for_tables(Tables, 2500).
@@ -495,7 +495,7 @@ do_start_mnesia(Options, Repeat) ->
             try
                 ensure_schema()
             catch T:E ->
-                    ?log_info("ensure_schema failed: ~p:~p~n", [T,E]),
+                    ?log_warning("ensure_schema failed: ~p:~p~n", [T,E]),
                     mnesia:unsubscribe({table, schema, simple}),
                     mnesia:unsubscribe(system),
                     stopped = mnesia:stop(),

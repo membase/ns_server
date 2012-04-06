@@ -452,7 +452,7 @@ upgrade_config(Config) ->
 
 do_upgrade_config(Config, [], _Upgrader) -> Config;
 do_upgrade_config(Config, Changes, Upgrader) ->
-    ?log_info("Upgrading config by changes:~n~p~n", [Changes]),
+    ?log_debug("Upgrading config by changes:~n~p~n", [Changes]),
     ConfigList = config_dynamic(Config),
     NewList =
         lists:foldl(fun ({set, K,V}, Acc) ->
@@ -497,7 +497,7 @@ do_init(Config) ->
     InitialState =
         if
             UpgradedConfig =/= Config ->
-                ?log_info("Upgraded initial config:~n~p~n", [UpgradedConfig]),
+                ?log_debug("Upgraded initial config:~n~p~n", [UpgradedConfig]),
                 initiate_save_config(UpgradedConfig);
             true ->
                 UpgradedConfig
