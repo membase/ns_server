@@ -127,6 +127,7 @@ handle_call({maybe_rename, NewAddr}, _From, State) ->
             ok = file:delete(backup_file()),
             {reply, false, State};
         net_restarted ->
+            master_activity_events:note_name_changed(),
             %% Make sure the cookie's still the same
             NewName = node(),
             ?log_debug("Renaming node from ~p to ~p.", [OldName, NewName]),
