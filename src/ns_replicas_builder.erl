@@ -176,7 +176,7 @@ kill_a_bunch_of_tap_names(Bucket, Node, TapNames) ->
     Config = ns_config:get(),
     User = ns_config:search_node_prop(Node, Config, memcached, admin_user),
     Pass = ns_config:search_node_prop(Node, Config, memcached, admin_pass),
-    {Host, Port} = ns_memcached:host_port(Node),
+    McdPair = {Host, Port} = ns_memcached:host_port(Node),
     {ok, Sock} = gen_tcp:connect(Host, Port, [binary,
                                               {packet, 0},
                                               {active, false},
@@ -206,6 +206,7 @@ kill_a_bunch_of_tap_names(Bucket, Node, TapNames) ->
     end,
     ?log_info("Killed the following tap names on ~p: ~p", [Node, TapNames]),
     ok = gen_tcp:close(Sock),
+    [master_activity_events:note_deregister_tap_name(Bucket, McdPair, AName) || AName <- TapNames],
     receive
         {'EXIT', SenderPid, Reason} ->
             normal = Reason

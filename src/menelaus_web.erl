@@ -182,6 +182,7 @@ loop(Req, AppRoot, DocRoot) ->
                              ["diag"] ->
                                  {auth_cookie, fun diag_handler:handle_diag/1};
                              ["diag", "vbuckets"] -> {auth, fun handle_diag_vbuckets/1};
+                             ["diag", "masterEvents"] -> {auth, fun handle_diag_master_events/1};
                              ["pools", PoolId, "rebalanceProgress"] ->
                                  {auth, fun handle_rebalance_progress/2, [PoolId]};
                              ["index.html"] ->
@@ -1571,6 +1572,37 @@ handle_diag_eval(Req) ->
         {json, V} -> reply_json(Req, V, 200);
         _ -> Req:respond({200, [], io_lib:format("~p", [Value])})
     end.
+
+handle_diag_master_events(Req) ->
+    Rep = Req:ok({"text/kind-of-json; charset=utf-8",
+                  server_header(),
+                  chunked}),
+    Parent = self(),
+    Sock = Req:get(socket),
+    inet:setopts(Sock, [{active, true}]),
+    spawn_link(
+      fun () ->
+              master_activity_events:stream_events(
+                fun (Event, _Ignored, _Eof) ->
+                        [Parent ! {write_chunk, iolist_to_binary([mochijson2:encode({struct, JSON}), "\n"])}
+                         || JSON <- master_activity_events:event_to_jsons(Event)],
+                        ok
+                end, [])
+      end),
+    Loop = fun (Loop) ->
+                   receive
+                       {tcp_closed, _} ->
+                           exit(self(), shutdown);
+                       {tcp, _, _} ->
+                           %% eat & ignore
+                           Loop(Loop);
+                       {write_chunk, Chunk} ->
+                           Rep:write_chunk(Chunk),
+                           Loop(Loop)
+                   end
+           end,
+    Loop(Loop).
+
 
 diag_vbucket_accumulate_vbucket_stats(K, V, Dict) ->
     case misc:split_binary_at_char(K, $:) of

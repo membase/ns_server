@@ -114,6 +114,7 @@ handle_info(spawn_initial, State) ->
     spawn_workers(State);
 handle_info({move_done, {Node, VBucket, OldChain, NewChain}},
             #state{movers=Movers, map=Map, bucket=Bucket} = State) ->
+    master_activity_events:note_move_done(Bucket, VBucket),
     %% Update replication
     update_replication_post_move(VBucket, OldChain, NewChain),
     %% Free up a mover for this node
@@ -132,7 +133,7 @@ handle_info({move_done, {Node, VBucket, OldChain, NewChain}},
             ?log_error("Config replication sync failed: ~p", [RepSyncRV])
     end,
     sync_replicas(),
-    OldCopies = OldChain -- NewChain,
+    OldCopies = OldChain -- [undefined | NewChain],
     DeleteRVs = misc:parallel_map(
                   fun (CopyNode) ->
                           {CopyNode, (catch ns_memcached:delete_vbucket(CopyNode, Bucket, VBucket))}

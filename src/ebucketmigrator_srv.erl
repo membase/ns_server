@@ -185,6 +185,9 @@ init({Src, Dst, Opts}) ->
       takeover_done=false
      },
     erlang:process_flag(trap_exit, true),
+    (catch master_activity_events:note_ebucketmigrator_start(self(), Src, Dst, [{bucket, Bucket},
+                                                                                {username, Username}
+                                                                                | Args])),
     gen_server:enter_loop(?MODULE, [], State).
 
 upstream_sender_loop(Upstream) ->
@@ -198,7 +201,8 @@ exit_retry_not_ready_vbuckets() ->
     ?rebalance_info("dying to check if some previously not yet ready vbuckets are ready to replicate from"),
     exit(normal).
 
-terminate(_Reason, #state{upstream_sender=UpstreamSender} = State) ->
+terminate(Reason, #state{upstream_sender=UpstreamSender} = State) ->
+    (catch master_activity_events:note_ebucketmigrator_terminate(self(), Reason)),
     timer:kill_after(?TERMINATE_TIMEOUT),
     gen_tcp:close(State#state.upstream),
     exit(UpstreamSender, kill),
@@ -229,7 +233,7 @@ read_tap_message(Sock) ->
             X2
     end.
 
-do_config_sent_messages(Sock, Seqno) ->
+do_confirm_sent_messages(Sock, Seqno) ->
     case read_tap_message(Sock) of
         {ok, Packet} ->
             <<_Magic:8, _Opcode:8, _KeyLen:16, _ExtLen:8, _DataType: 8,
@@ -239,11 +243,12 @@ do_config_sent_messages(Sock, Seqno) ->
                     ?rebalance_info("Got close ack!~n", []),
                     ok;
                 _ ->
-                    do_config_sent_messages(Sock, Seqno)
+                    do_confirm_sent_messages(Sock, Seqno)
             end;
         {error, _} = Crap ->
             ?rebalance_warning("Got error while trying to read close ack:~p~n",
-                               [Crap])
+                               [Crap]),
+            Crap
     end.
 
 confirm_sent_messages(State) ->
@@ -254,11 +259,15 @@ confirm_sent_messages(State) ->
                            #mc_entry{data = <<4:16, ?TAP_FLAG_ACK:16, 1:8, 0:8, 0:8, 0:8, ?TAP_OPAQUE_CLOSE_TAP_STREAM:32>>}),
     case gen_tcp:send(Sock, Msg) of
         ok ->
-            do_config_sent_messages(Sock, Seqno);
-        {error, closed} ->
-            ok;
+            do_confirm_sent_messages(Sock, Seqno);
         X ->
-            ?rebalance_error("Got error while trying to send close confirmation: ~p~n", [X])
+            case X =/= {error, closed} of
+                true ->
+                    ?rebalance_error("Got error while trying to send close confirmation: ~p~n", [X]);
+                false ->
+                    ok
+            end,
+            X
     end.
 
 %%
