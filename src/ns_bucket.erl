@@ -463,8 +463,12 @@ getenv_int(VariableName, DefaultValue) ->
     end.
 
 new_bucket_default_params(membase) ->
+    NumVBuckets = case ns_config:search(couchbase_num_vbuckets_default) of
+                      false -> getenv_int("COUCHBASE_NUM_VBUCKETS", 1024);
+                      {value, X} -> X
+                  end,
     [{type, membase},
-     {num_vbuckets, getenv_int("COUCHBASE_NUM_VBUCKETS", 1024)},
+     {num_vbuckets, NumVBuckets},
      {num_replicas, 1},
      {ram_quota, 0},
      {servers, []}];
