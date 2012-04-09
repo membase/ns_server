@@ -269,8 +269,10 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                        undefined
                end,
     BucketConfigs = ns_bucket:get_buckets(NsConfig),
-    NoBucket = NsConfig =/= undefined andalso not lists:member(Bucket, ns_bucket:node_bucket_names(node(), BucketConfigs)),
-    NodeDying = NsConfig =/= undefined andalso ns_config:search(NsConfig, i_am_a_dead_man),
+    NoBucket = NsConfig =/= undefined andalso
+        not lists:keymember(Bucket, 1, BucketConfigs),
+    NodeDying = NsConfig =/= undefined
+        andalso ns_config:search(NsConfig, i_am_a_dead_man),
     Deleting = NoBucket orelse NodeDying,
 
     if

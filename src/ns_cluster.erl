@@ -143,7 +143,6 @@ handle_cast(leave, State) ->
 
     RestConf = ns_config:search(Config, {node, node(), rest}),
     GlobalRestConf = ns_config:search(Config, rest),
-    {ok, DBDir} = ns_storage_conf:dbdir(Config),
     ns_config:clear([directory]),
     case GlobalRestConf of
         false -> false;
@@ -155,7 +154,6 @@ handle_cast(leave, State) ->
     end,
     ns_config:set_initial(nodes_wanted, [node()]),
     ns_cookie_manager:cookie_sync(),
-    ns_storage_conf:delete_all_db_files(DBDir),
     ?cluster_debug("Leaving cluster", []),
     timer:sleep(1000),
     {ok, _} = ns_server_cluster_sup:start_cluster(),
