@@ -308,16 +308,18 @@ candidate({heartbeat, NodeInfo, master, _H}, #state{peers=Peers} = State) ->
                     true ->
                         case ns_config:search(rebalance_status) of
                             {value, running} ->
-                                ?log_info("Candidate got master heartbeat from "
-                                          "node ~p which has lower priority. "
-                                          "But I won't try to take over since "
-                                          "rebalance seems to be running",
-                                          [Node]),
+                                ale:info(?USER_LOGGER,
+                                         "Candidate got master heartbeat from "
+                                         "node ~p which has lower priority. "
+                                         "But I won't try to take over since "
+                                         "rebalance seems to be running",
+                                         [Node]),
                                 State#state{last_heard=now(), master=Node};
                             _ ->
-                                ?log_info("Candidate got master heartbeat from "
-                                          "node ~p which has lower priority. "
-                                          "Will try to take over.", [Node]),
+                                ale:info(?USER_LOGGER,
+                                         "Candidate got master heartbeat from "
+                                         "node ~p which has lower priority. "
+                                         "Will try to take over.", [Node]),
 
                                 send_heartbeat_with_peers([Node], master, State#state.peers),
                                 State#state{master=undefined}
