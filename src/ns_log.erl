@@ -120,13 +120,24 @@ handle_cast({log, Module, Node, Time, Code, Category, Fmt, Args},
             Dedup2 = dict:store(Key, {Count+1, FirstSeen, Time}, Dedup),
             {noreply, State#state{dedup=Dedup2}};
         error ->
-            Entry = #log_entry{node=Node, module=Module, code=Code, msg=Fmt,
+            %% Code can be undefined if logging module doesn't define
+            %% ns_log_cat function. We change the code to 0 for such
+            %% cases. Note that it must be done before abcast-ing (not in
+            %% handle_cast) because some of the nodes in the cluster can be of
+            %% the older version (thus this case won't be handled there).
+            Code1 = case Code of
+                        undefined ->
+                            0;
+                        _ when is_integer(Code) ->
+                            Code
+                    end,
+            Entry = #log_entry{node=Node, module=Module, code=Code1, msg=Fmt,
                                args=Args, cat=Category, tstamp=Time},
             gen_server:abcast(?MODULE, {do_log, Entry}),
 
             %% note that if message has undefined code it will be logged with
-            %% 0 code (see do_log handler) but we still announce it here with
-            %% actual undefined code for subscribers to know that the original
+            %% 0 code (see above) but we still announce it here with actual
+            %% undefined code for subscribers to know that the original
             %% message does not have a code attached to it; this will allow
             %% subscribers, for example, just ignore such messages if it's
             %% required by their context
@@ -140,15 +151,7 @@ handle_cast({log, Module, Node, Time, Code, Category, Fmt, Args},
             {noreply, State#state{dedup=Dedup2}}
     end;
 handle_cast({do_log, Entry}, State) ->
-    Entry1 =
-        case Entry#log_entry.code of
-            undefined ->
-                Entry#log_entry{code=0};
-            _Other ->
-                Entry
-        end,
-
-    {noreply, schedule_save(add_pending(State, Entry1))};
+    {noreply, schedule_save(add_pending(State, Entry))};
 handle_cast({sync, SrcNode, Compressed}, StateBefore) ->
     State = flush_pending(StateBefore),
     Recent = State#state.unique_recent,
