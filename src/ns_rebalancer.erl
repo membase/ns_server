@@ -362,6 +362,12 @@ maybe_cleanup_old_buckets(KeepNodes, BucketConfigs) ->
     BucketsServers = buckets_servers(BucketConfigs),
     NewServers = KeepNodes -- BucketsServers,
 
+    case NewServers of
+        [] ->
+            ok;
+        _ ->
+            ale:info(?USER_LOGGER, "Cleaning all data files on nodes before rebalancing them in: ~p", [NewServers])
+    end,
     {Results, BadNodes} =
         rpc:multicall(NewServers, ns_storage_conf, delete_all_db_files, []),
 

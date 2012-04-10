@@ -1038,7 +1038,14 @@ maybe_cleanup_old_buckets() ->
             ns_storage_conf:delete_buckets_db_files(
               DBDir,
               fun (Bucket) ->
-                      not(lists:member(Bucket, BucketNames))
+                      RV = not(lists:member(Bucket, BucketNames)),
+                      case RV of
+                          true ->
+                              ale:info(?USER_LOGGER, "Deleting old data files of bucket ~p", [Bucket]);
+                          _ ->
+                              ok
+                      end,
+                      RV
               end)
     end.
 
