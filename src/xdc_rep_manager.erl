@@ -568,8 +568,7 @@ manage_vbucket_replications() ->
                   target = {_, TgtBucket, _, _, _, _, _, _, _, _}},
              Vbs]) ->
 
-            MaxConcurrentReps = misc:getenv_int("MAX_CONCURRENT_REPS_PER_DOC",
-                                                ?MAX_CONCURRENT_REPS_PER_DOC),
+            MaxConcurrentReps = max_concurrent_reps(SrcBucket),
             NumActiveReps = length(active_replications_for_doc(XDocId)),
             case (MaxConcurrentReps - NumActiveReps) of
             0 ->
@@ -627,6 +626,24 @@ active_replications_for_doc(XDocId) ->
         {CRepPid, _CRep, _, State} <-
             lists:flatten([(ets:lookup(?CSTORE, Pid)) || Pid <- Pids]),
         State == triggered].
+
+
+% Return a safe value for the max concurrent replication streams per doc
+max_concurrent_reps(Bucket) ->
+    {ok, Config} = ns_bucket:get_bucket(?b2l(Bucket)),
+    NumVBuckets = proplists:get_value(num_vbuckets, Config, []),
+    MaxConcurrentReps = misc:getenv_int("MAX_CONCURRENT_REPS_PER_DOC",
+                                        ?MAX_CONCURRENT_REPS_PER_DOC),
+    case (MaxConcurrentReps > NumVBuckets) orelse (MaxConcurrentReps < 1) of
+    true ->
+        ?log_warning("Specified value for MAX_CONCURRENT_REPS_PER_DOC is not "
+                     "in the range [1, ~p]. Reverting to default value of ~p.",
+                     [NumVBuckets, ?MAX_CONCURRENT_REPS_PER_DOC]),
+        ?MAX_CONCURRENT_REPS_PER_DOC;
+    false ->
+        ?log_info("MAX_CONCURRENT_REPS_PER_DOC set to ~p", [MaxConcurrentReps]),
+        MaxConcurrentReps
+    end.
 
 
 %
