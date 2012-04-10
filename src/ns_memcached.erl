@@ -290,9 +290,10 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                                [Bucket, {E2, R2}])
             after
                 case NoBucket of
-                    %% if node is being ejected db files will be mass
-                    %% deleted (and possibly backed up) by ns_cluster.
-                    %% So we delete db files only when bucket was regularly deleted
+                    %% files are deleted here only when bucket is deleted; in
+                    %% all the other cases (like node removal or failover) we
+                    %% leave them on the file system and let others decide
+                    %% when they should be deleted
                     true -> ns_storage_conf:delete_db_files(Bucket);
                     _ -> ok
                 end
