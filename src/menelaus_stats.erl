@@ -522,6 +522,14 @@ computed_stats_lazy_proplist() ->
                         ResidenceCalculator),
     PendingResRate = Z2(vb_pending_num_non_resident, vb_pending_curr_items,
                         ResidenceCalculator),
+
+    AverageWriteSeekDistance = Z2(write_seeks_distance, write_seeks_count,
+                                  fun (Distance, Count) ->
+                                          try Distance / Count
+                                          catch error:badarith -> 0
+                                          end
+                                  end),
+
     [{hit_ratio, HitRatio},
      {ep_cache_miss_rate, EPCacheMissRatio},
      {ep_resident_items_rate, ResidentItemsRatio},
@@ -531,7 +539,8 @@ computed_stats_lazy_proplist() ->
      {vb_avg_total_queue_age, AvgTotalQueueAge},
      {vb_active_resident_items_ratio, ActiveResRate},
      {vb_replica_resident_items_ratio, ReplicaResRate},
-     {vb_pending_resident_items_ratio, PendingResRate}].
+     {vb_pending_resident_items_ratio, PendingResRate},
+     {avg_write_seek_distance, AverageWriteSeekDistance}].
 
 %% converts list of samples to proplist of stat values.
 %%
@@ -718,7 +727,10 @@ membase_stats_description() ->
                           {desc, <<"High water mark for auto-evictions (measured from ep_mem_high_wat)">>}]},
                 {struct, [{title, <<"low water mark">>},
                           {name, <<"ep_mem_low_wat">>},
-                          {desc, <<"Low water mark for auto-evictions (measured from ep_mem_low_wat)">>}]}
+                          {desc, <<"Low water mark for auto-evictions (measured from ep_mem_low_wat)">>}]},
+                {struct, [{title, <<"write seek distance">>},
+                          {name, <<"avg_write_seek_distance">>},
+                          {desc, <<"Average write seek distance in bytes as measured from writeSeek histogram of kvtimings">>}]}
              ]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"withtotal closed">>},
