@@ -123,7 +123,7 @@ do_maybe_invalidate_current_master(TriesLeft, FirstTime) ->
             %% races, but at least we'll delay a bit on some work and
             %% increase chance of it. We'll retry if it's not the case
             ns_config_rep:pull_and_push([MasterToShutdown]),
-            ns_config_rep:synchronize(),
+            ok = ns_config_rep:synchronize_remote([MasterToShutdown]),
             %% ask master to give up
             send_heartbeat_with_peers([MasterToShutdown], master, [node(), MasterToShutdown]),
             %% sync that "surrender" event

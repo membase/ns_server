@@ -203,7 +203,7 @@ leave() ->
     %% MB-3160: sync any pending config before we leave, to make sure,
     %% say, deactivation of membership isn't lost
     ns_config_rep:push(),
-    ns_config_rep:synchronize(),
+    ok = ns_config_rep:synchronize_remote([RemoteNode]),
     ?cluster_debug("ns_cluster: leaving the cluster from ~p.",
                    [RemoteNode]),
     %% Tell the remote server to tell everyone to shun me.

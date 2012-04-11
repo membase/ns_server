@@ -159,7 +159,8 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
             erlang:raise(E, R, erlang:get_stacktrace())
     end,
     ns_config:sync_announcements(),
-    ns_config_rep:synchronize(),
+    ns_config_rep:push(),
+    ok = ns_config_rep:synchronize_remote(KeepNodes),
     eject_nodes(DeactivateNodes -- EarlyEject).
 
 
