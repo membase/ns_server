@@ -32,6 +32,7 @@
 -record(state, {bucket,
                 last_plain_counters,
                 last_tap_counters,
+                last_timings_counters,
                 count = ?LOG_FREQ,
                 last_ts}).
 
@@ -55,13 +56,26 @@ handle_call(unhandled, unhandled, unhandled) ->
 handle_cast(unhandled, unhandled) ->
     unhandled.
 
+interesting_kvtiming_key(<<"writeSeek_", _/binary>>) -> true;
+interesting_kvtiming_key(_) -> false.
+
+%% drops irrelevant keys from proplist for performance
+prefilter_kvtimings(RawKVTimings) ->
+    [KV || {K, _} = KV <- RawKVTimings,
+           interesting_kvtiming_key(K)].
+
 grab_all_stats(Bucket) ->
     {ok, Stats} = ns_memcached:stats(Bucket),
     TapStats = case ns_memcached:stats(Bucket, <<"tapagg _">>) of
                    {ok, Values} -> Values;
                    {memcached_error, key_enoent, _} -> []
                end,
-    {Stats, TapStats}.
+    KVTimings = case ns_memcached:stats(Bucket, <<"kvtimings">>) of
+                    {ok, ValuesK} ->
+                        prefilter_kvtimings(ValuesK);
+                    {memcached_error, key_enoent, _} -> []
+                end,
+    {Stats, TapStats, KVTimings}.
 
 handle_info({tick, TS}, #state{bucket=Bucket} = State) ->
     GrabFreq = misc:get_env_default(grab_stats_every_n_ticks, 1),
@@ -102,25 +116,28 @@ maybe_log_stats(State, RawStats) ->
     end.
 
 process_grabbed_stats(TS,
-                      {PlainStats, TapStats},
+                      {PlainStats, TapStats, KVTimings},
                       #state{bucket = Bucket,
                              last_plain_counters = LastPlainCounters,
                              last_tap_counters = LastTapCounters,
+                             last_timings_counters = LastTimingsCounters,
                              last_ts = LastTS} = State) ->
     {PlainValues, PlainCounters} = parse_plain_stats(TS, PlainStats, LastTS, LastPlainCounters),
     {TapValues, TapCounters} = parse_tapagg_stats(TS, TapStats, LastTS, LastTapCounters),
+    {TimingValues, TimingsCounters} = parse_kvtimings(TS, KVTimings, LastTS, LastTimingsCounters),
     %% Don't send event with undefined values
-    case LastPlainCounters =/= undefined andalso LastTapCounters =/= undefined of
-        true ->
-            Values = lists:merge(PlainValues, TapValues),
+    case lists:member(undefined, [LastTapCounters, LastTapCounters, LastTimingsCounters]) of
+        false ->
+            Values = lists:merge([PlainValues, TapValues, TimingValues]),
             Entry = #stat_entry{timestamp = TS,
                                 values = Values},
             gen_event:notify(ns_stats_event, {stats, Bucket, Entry});
-        false ->
+        true ->
             ok
     end,
     State#state{last_plain_counters = PlainCounters,
                 last_tap_counters = TapCounters,
+                last_timings_counters = TimingsCounters,
                 last_ts = TS}.
 
 terminate(_Reason, _State) ->
@@ -253,6 +270,31 @@ parse_tapagg_stats(TS, TapStats, LastTS, LastTapCounters) ->
     parse_stats_raw(TS, parse_aggregate_tap_stats(TapStats),
                     LastTapCounters, LastTS,
                     [?TAP_STAT_GAUGES], [?TAP_STAT_COUNTERS]).
+
+parse_kvtiming_range(Rest) ->
+    {Begin, End} = misc:split_binary_at_char(Rest, $,),
+    {list_to_integer(binary_to_list(Begin)),
+     list_to_integer(binary_to_list(End))}.
+
+parse_kvtiming_key(<<"writeSeek_", Rest/binary>>) ->
+    parse_kvtiming_range(Rest).
+
+aggregate_kvtimings([], TotalSeeks, TotalDistance) ->
+    {TotalSeeks, TotalDistance};
+aggregate_kvtimings([{K, V} | KVTimingsRest], TotalSeeks, TotalDistance) ->
+    {Start, End} = parse_kvtiming_key(K),
+    ThisSeeks = list_to_integer(binary_to_list(V)),
+    NewSeeks = TotalSeeks + ThisSeeks,
+    NewDistance = TotalDistance + (End + Start) * 0.5 * ThisSeeks,
+    aggregate_kvtimings(KVTimingsRest, NewSeeks, NewDistance).
+
+parse_kvtimings(TS, KVTimings, LastTS, LastTimingCounters) ->
+    {TotalSeeks, TotalDistance} = aggregate_kvtimings(KVTimings, 0, 0),
+    diff_stats_counters(TS, LastTimingCounters, LastTS,
+                        [], [write_seeks_count, write_seeks_distance],
+                        fun (write_seeks_count) -> TotalSeeks;
+                            (write_seeks_distance) -> TotalDistance
+                        end).
 
 %% Tests
 
