@@ -124,7 +124,7 @@ init_logging() ->
                         ale_disk_sink, [CouchLogPath, DiskSinkParams]),
     ok = ale:start_sink(disk_debug,
                         ale_disk_sink, [DebugLogPath, DiskSinkParams]),
-    ok = ale:start_sink(ns_log, ns_log_sink, []),
+    ok = ale:start_sink(ns_log, raw, ns_log_sink, []),
 
     lists:foreach(
       fun (Logger) ->
