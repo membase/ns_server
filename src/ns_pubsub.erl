@@ -272,7 +272,7 @@ test_shutdown() ->
                   {'EXIT', Subscription, normal} ->
                       ok
               after
-                  100 ->
+                  1000 ->
                       just_fail()
               end
       end).
@@ -297,7 +297,7 @@ test_crash() ->
                   {'EXIT', Subscription, {handler_crashed, _, {'EXIT', crashed}}} ->
                       ok
               after
-                  100 ->
+                  1000 ->
                       just_fail()
               end
       end).
@@ -315,7 +315,7 @@ test_event_mgr_crash() ->
                   {'EXIT', Subscription, {linked_process_died, _, killed}} ->
                       ok
               after
-                  100 ->
+                  1000 ->
                       just_fail()
               end
       end).
@@ -351,7 +351,7 @@ test_parent_crash() ->
                 {'EXIT', Subscription, normal} ->
                     ok
             after
-                100 ->
+                1000 ->
                     just_fail()
             end,
 
