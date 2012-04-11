@@ -193,7 +193,7 @@ diff_stats_counters(TS, LastCounters, LastTS, KnownGauges, KnownCounters, GetVal
                      if Delta > 0 ->
                              lists:zipwith(
                                fun (A, B) ->
-                                       Res = (A - B) * 1000 div Delta,
+                                       Res = (A - B) * 1000.0/Delta,
                                        if Res < 0 -> 0;
                                           true -> Res
                                        end
@@ -429,5 +429,7 @@ parse_stats_test() ->
     ?assertEqual([37610,823281,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0],
                  ActualCounters),
 
-    ?assertEqual(lists:keysort(1, ExpectedPropList),
-                 lists:keysort(1, ActualValues)).
+    E = lists:keysort(1, ExpectedPropList),
+    A = lists:keysort(1, ActualValues),
+    ?log_debug("Expected: ~p~nActual:~p", [E, A]),
+    true = (E == A).
