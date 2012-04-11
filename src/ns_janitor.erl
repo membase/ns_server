@@ -154,7 +154,8 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                       [Nodes, Bucket, VBucket]),
                     Chain
             end;
-        C = [{_, MasterState}|ReplicaStates] when MasterState =:= active orelse MasterState =:= zombie ->
+        C = [_|ReplicaStates] ->
+            %% NOTE: here we know that master is either active or zombie
             lists:foreach(
               fun ({_, {N, active}}) ->
                       ?log_error("Active replica ~p for vbucket ~p in ~p. "
@@ -206,25 +207,7 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                               ns_memcached:set_vbucket(N, Bucket, VBucket, dead)
                       end
               end, ExtraStates),
-            Chain;
-        [{Master, State}|ReplicaStates] ->
-            case [N||{N, RState} <- ReplicaStates ++ ExtraStates,
-                     lists:member(RState, [active, pending, replica])] of
-                [] ->
-                    ?log_info("Setting vbucket ~p in ~p on master ~p to active",
-                              [VBucket, Bucket, Master]),
-                    ns_memcached:set_vbucket(Master, Bucket, VBucket,
-                                                   active),
-                    Chain;
-                X ->
-                    case lists:member(Master, Zombies) of
-                        true -> ok;
-                        false ->
-                            ?log_error("Master ~p in state ~p for vbucket ~p in ~p but we have extra nodes ~p!",
-                                       [Master, State, VBucket, Bucket, X])
-                    end,
-                    Chain
-            end
+            Chain
     end.
 
 %% [{Node, VBucket, State}...]
