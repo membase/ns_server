@@ -213,6 +213,8 @@ leave() ->
 
 %% Cause another node to leave the cluster if it's up
 leave(Node) ->
+    ?cluster_debug("Asking node ~p to leave the cluster", [Node]),
+
     case Node == node() of
         true ->
             leave();
