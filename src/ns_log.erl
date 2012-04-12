@@ -120,23 +120,12 @@ handle_cast({log, Module, Node, Time, Code, Category, Fmt, Args},
             Dedup2 = dict:store(Key, {Count+1, FirstSeen, Time}, Dedup),
             {noreply, State#state{dedup=Dedup2}};
         error ->
-            %% Code can be undefined if logging module doesn't define
-            %% ns_log_cat function. We change the code to 0 for such
-            %% cases. Note that it must be done before abcast-ing (not in
-            %% handle_cast) because some of the nodes in the cluster can be of
-            %% the older version (thus this case won't be handled there).
-            Code1 = case Code of
-                        undefined ->
-                            0;
-                        _ when is_integer(Code) ->
-                            Code
-                    end,
-            Entry = #log_entry{node=Node, module=Module, code=Code1, msg=Fmt,
+            Entry = #log_entry{node=Node, module=Module, code=Code, msg=Fmt,
                                args=Args, cat=Category, tstamp=Time},
-            gen_server:abcast(?MODULE, {do_log, Entry}),
+            do_log(Entry),
 
             %% note that if message has undefined code it will be logged with
-            %% 0 code (see above) but we still announce it here with actual
+            %% 0 code (see do_log) but we still announce it here with actual
             %% undefined code for subscribers to know that the original
             %% message does not have a code attached to it; this will allow
             %% subscribers, for example, just ignore such messages if it's
@@ -242,7 +231,7 @@ gc(Now, [{Key, Value} | Rest], DupesList) ->
                                        cat=Category,
 
                                        tstamp=Now},
-                    gen_server:abcast(?MODULE, {do_log, Entry})
+                    do_log(Entry)
             end,
             gc(Now, Rest, DupesList);
         false -> gc(Now, Rest, [{Key, Value} | DupesList])
@@ -254,6 +243,16 @@ schedule_save(State = #state{save_tref=undefined}) ->
 schedule_save(State) ->
     %% Don't reschedule if a save is already scheduled.
     State.
+
+do_log(#log_entry{code=undefined} = Entry) ->
+    %% Code can be undefined if logging module doesn't define ns_log_cat
+    %% function. We change the code to 0 for such cases. Note that it must be
+    %% done before abcast-ing (not in handle_cast) because some of the nodes
+    %% in the cluster can be of the older version (thus this case won't be
+    %% handled there).
+    do_log(Entry#log_entry{code=0});
+do_log(#log_entry{code=Code} = Entry) when is_integer(Code) ->
+    gen_server:abcast(?MODULE, {do_log, Entry}).
 
 
 %% API
