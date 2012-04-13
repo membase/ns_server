@@ -29,7 +29,8 @@
          rebalance/3,
          unbalanced/2,
          replication_status/2,
-         buckets_replication_statuses/0]).
+         buckets_replication_statuses/0,
+         eject_nodes/1]).
 
 
 -define(DATA_LOST, 1).
@@ -103,65 +104,53 @@ generate_initial_map(BucketConfig) ->
     MapRV.
 
 
-rebalance(KeepNodes, EjectNodes, FailedNodes) ->
-    LiveNodes = KeepNodes ++ EjectNodes,
-    AllNodes = LiveNodes ++ FailedNodes,
-    DeactivateNodes = EjectNodes ++ FailedNodes,
+rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
+    %% don't eject ourselves at all here; this will be handled by ns_orchestrator
+    EjectNodes = EjectNodesAll -- [node()],
+    FailedNodes = FailedNodesAll -- [node()],
+
+    LiveNodes = KeepNodes ++ EjectNodesAll,
+    AllNodes = LiveNodes ++ FailedNodesAll,
     BucketConfigs = ns_bucket:get_buckets(),
     NumBuckets = length(BucketConfigs),
     ?rebalance_debug("BucketConfigs = ~p", [BucketConfigs]),
 
     maybe_cleanup_old_buckets(KeepNodes, BucketConfigs),
 
-    EarlyEject = FailedNodes -- [node()],
-    try
-        %% Eject failed nodes first so they don't cause trouble
-        eject_nodes(EarlyEject),
-        lists:foreach(fun ({I, {BucketName, BucketConfig}}) ->
-                              ?rebalance_info("Rebalancing bucket ~p with config ~p",
-                                              [BucketName, BucketConfig]),
-                              BucketCompletion = I / NumBuckets,
-                              ns_orchestrator:update_progress(
-                                dict:from_list([{N, BucketCompletion}
-                                                || N <- AllNodes])),
-                              case proplists:get_value(type, BucketConfig) of
-                                  memcached ->
-                                      ns_bucket:set_servers(BucketName, KeepNodes);
-                                  membase ->
-                                      %% Only start one bucket at a time to avoid
-                                      %% overloading things
-                                      ns_bucket:set_servers(BucketName, LiveNodes),
-                                      wait_for_memcached(LiveNodes, BucketName, 10),
-                                      ns_janitor:cleanup(BucketName, [{timeout, 1}]),
-                                      {ok, NewConf} =
-                                          ns_bucket:get_bucket(BucketName),
-                                      NewMap =
-                                          rebalance(BucketName, NewConf,
-                                                    KeepNodes, BucketCompletion,
-                                                    NumBuckets),
-                                      verify_replication(BucketName, LiveNodes,
-                                                         NewMap)
-                              end
-                      end, misc:enumerate(BucketConfigs, 0))
-    catch
-        E:R ->
-            %% Eject this node since the orchestrator can still be running on a
-            %% failed node (should be fixed)
-            case lists:member(node(), FailedNodes) of
-                true ->
-                    %% Push out the config before we shoot ourselves
-                    %% in the head.
-                    ns_config_rep:push(),
-                    eject_nodes([node()]);
-                false ->
-                    ok
-            end,
-            erlang:raise(E, R, erlang:get_stacktrace())
-    end,
+
+    %% Eject failed nodes first so they don't cause trouble
+    eject_nodes(FailedNodes),
+    lists:foreach(fun ({I, {BucketName, BucketConfig}}) ->
+                          ?rebalance_info("Rebalancing bucket ~p with config ~p",
+                                          [BucketName, BucketConfig]),
+                          BucketCompletion = I / NumBuckets,
+                          ns_orchestrator:update_progress(
+                            dict:from_list([{N, BucketCompletion}
+                                            || N <- AllNodes])),
+                          case proplists:get_value(type, BucketConfig) of
+                              memcached ->
+                                  ns_bucket:set_servers(BucketName, KeepNodes);
+                              membase ->
+                                  %% Only start one bucket at a time to avoid
+                                  %% overloading things
+                                  ns_bucket:set_servers(BucketName, LiveNodes),
+                                  wait_for_memcached(LiveNodes, BucketName, 10),
+                                  ns_janitor:cleanup(BucketName, [{timeout, 1}]),
+                                  {ok, NewConf} =
+                                      ns_bucket:get_bucket(BucketName),
+                                  NewMap =
+                                      rebalance(BucketName, NewConf,
+                                                KeepNodes, BucketCompletion,
+                                                NumBuckets),
+                                  verify_replication(BucketName, LiveNodes,
+                                                     NewMap)
+                          end
+                  end, misc:enumerate(BucketConfigs, 0)),
+
     ns_config:sync_announcements(),
     ns_config_rep:push(),
     ok = ns_config_rep:synchronize_remote(KeepNodes),
-    eject_nodes(DeactivateNodes -- EarlyEject).
+    eject_nodes(EjectNodes).
 
 
 

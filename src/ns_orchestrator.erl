@@ -26,7 +26,8 @@
 
 -record(idle_state, {remaining_buckets=[]}).
 -record(janitor_state, {remaining_buckets, pid}).
--record(rebalancing_state, {rebalancer, progress}).
+-record(rebalancing_state, {rebalancer, progress,
+                            keep_nodes, eject_nodes, failed_nodes}).
 
 
 %% API
@@ -225,7 +226,10 @@ handle_info({'EXIT', Pid, Reason}, janitor_running,
     end,
     {next_state, idle, #idle_state{remaining_buckets = Buckets}};
 handle_info({'EXIT', Pid, Reason}, rebalancing,
-            #rebalancing_state{rebalancer=Pid}) ->
+            #rebalancing_state{rebalancer=Pid,
+                               keep_nodes=KeepNodes,
+                               eject_nodes=EjectNodes,
+                               failed_nodes=FailedNodes}) ->
     master_activity_events:note_rebalance_end(Pid, Reason),
     Status = case Reason of
                  normal ->
@@ -245,8 +249,19 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
                      {none, <<"Rebalance failed. See logs for detailed reason. "
                               "You can try rebalance again.">>}
              end,
+
     ns_config:set([{rebalance_status, Status},
                    {rebalancer_pid, undefined}]),
+    case (lists:member(node(), EjectNodes) andalso Reason =:= normal) orelse
+        lists:member(node(), FailedNodes) of
+        true ->
+            ns_config:sync_announcements(),
+            ns_config_rep:push(),
+            ok = ns_config_rep:synchronize_remote(KeepNodes),
+            ns_rebalancer:eject_nodes([node()]);
+        false ->
+            ok
+    end,
     {next_state, idle, #idle_state{}};
 handle_info(Msg, StateName, StateData) ->
     ?log_warning("Got unexpected message ~p in state ~p with data ~p",
@@ -378,8 +393,12 @@ idle({start_rebalance, KeepNodes, EjectNodes, FailedNodes}, _From,
             end),
     ns_config:set([{rebalance_status, running},
                    {rebalancer_pid, Pid}]),
-    {reply, ok, rebalancing, #rebalancing_state{rebalancer=Pid,
-                                                progress=dict:new()}};
+    {reply, ok, rebalancing,
+     #rebalancing_state{rebalancer=Pid,
+                        progress=dict:new(),
+                        keep_nodes=KeepNodes,
+                        eject_nodes=EjectNodes,
+                        failed_nodes=FailedNodes}};
 idle(stop_rebalance, _From, State) ->
     ns_janitor:stop_rebalance_status(
       fun () ->
