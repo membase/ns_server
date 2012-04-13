@@ -25,7 +25,7 @@
 
 -include("ns_common.hrl").
 
--record(state, {}).
+-record(state, {buckets=[]}).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -67,12 +67,70 @@ handle_info({alerts = K, V}, State) ->
                    V),
     ?log_debug("config change:~n~p ->~n~p", [K, V2]),
     {noreply, State, hibernate};
+handle_info({buckets, RawBuckets}, #state{buckets=OldBuckets} =  State) ->
+    NewBuckets = sort_buckets(RawBuckets),
+    BucketsDiff = compute_buckets_diff(NewBuckets, OldBuckets),
+    NewState = State#state{buckets=NewBuckets},
+    log_common(buckets, BucketsDiff),
+    {noreply, NewState, hibernate};
 handle_info({K, V}, State) ->
-    %% These can get pretty big, so pre-format them for the logger.
-    VB = list_to_binary(io_lib:print(V, 0, 80, 100)),
-    ?log_debug("config change:~n~p ->~n~s", [K, VB]),
+    log_common(K, V),
     {noreply, State, hibernate};
 
 handle_info(Info, State) ->
     ?log_warning("Unexpected handle_info(~p, ~p)", [Info, State]),
     {noreply, State, hibernate}.
+
+%% Internal functions
+compute_buckets_diff(NewBuckets, OldBuckets) ->
+    OldConfigs = proplists:get_value(configs, OldBuckets, []),
+    NewConfigs = proplists:get_value(configs, NewBuckets, []),
+
+    Diffed =
+        merge_bucket_configs(
+          fun (NewValue, OldValue) ->
+                  OldMap = proplists:get_value(map, OldValue, []),
+                  NewMap = proplists:get_value(map, NewValue, []),
+                  MapDiff = misc:compute_map_diff(NewMap, OldMap),
+
+                  OldFFMap = proplists:get_value(fastForwardMap, OldValue, []),
+                  NewFFMap = proplists:get_value(fastForwardMap, NewValue, []),
+                  FFMapDiff = misc:compute_map_diff(NewFFMap, OldFFMap),
+
+                  misc:update_proplist(
+                    NewValue,
+                    [{map, MapDiff},
+                     {fastForwardMap, FFMapDiff}])
+          end, NewConfigs, OldConfigs),
+
+    misc:update_proplist(NewBuckets, [{configs, Diffed}]).
+
+log_common(K, V) ->
+    %% These can get pretty big, so pre-format them for the logger.
+    VB = list_to_binary(io_lib:print(V, 0, 80, 100)),
+    ?log_debug("config change:~n~p ->~n~s", [K, VB]).
+
+sort_buckets(Buckets) ->
+    Configs = proplists:get_value(configs, Buckets, []),
+    SortedConfigs = lists:keysort(1, Configs),
+    misc:update_proplist(Buckets, [{configs, SortedConfigs}]).
+
+%% Merge bucket configs using a function. Note that only those buckets that
+%% are present in the first list will be present in the resulting list.
+merge_bucket_configs(_Fun, [], _) ->
+    [];
+merge_bucket_configs(Fun, [X | Xs], []) ->
+    {_, XValue} = X,
+    [Fun(XValue, []) | merge_bucket_configs(Fun, Xs, [])];
+merge_bucket_configs(Fun, [X | XRest] = Xs, [Y | YRest] = Ys) ->
+    {XName, XValue} = X,
+    {YName, YValue} = Y,
+
+    if
+        XName < YName ->
+            [{XName, Fun(XValue, [])} | merge_bucket_configs(Fun, XRest, Ys)];
+        XName > YName ->
+            merge_bucket_configs(Fun, Xs, YRest);
+        true ->
+            [{XName, Fun(XValue, YValue)} | merge_bucket_configs(Fun, XRest, YRest)]
+    end.

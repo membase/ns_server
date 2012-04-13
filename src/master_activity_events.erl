@@ -90,31 +90,22 @@ note_failover(Node) ->
 note_became_master() ->
     submit_cast({became_master}).
 
-compute_map_diff(NewMap, undefined) ->
-    compute_map_diff(NewMap, []);
-compute_map_diff(NewMap, []) when NewMap =/= [] ->
-    compute_map_diff(NewMap, [[] || _ <- NewMap]);
-compute_map_diff(NewMap, OldMap) ->
-    true = (NewMap =/= undefined),
-    VBucketsCount = erlang:length(NewMap),
-    [{I, ChainOld, ChainNew} ||
-        {I, ChainOld, ChainNew} <- lists:zip3(lists:seq(0, VBucketsCount-1), OldMap, NewMap),
-        ChainOld =/= ChainNew].
-
 note_set_ff_map(BucketName, undefined, _OldMap) ->
     submit_cast({set_ff_map, BucketName, undefined});
 note_set_ff_map(BucketName, NewMap, OldMap) ->
     work_queue:submit_work(
       ?WORK_SERVER,
       fun () ->
-              send_event_cast({set_ff_map, BucketName, compute_map_diff(NewMap, OldMap)})
+              send_event_cast({set_ff_map, BucketName,
+                               misc:compute_map_diff(NewMap, OldMap)})
       end).
 
 note_set_map(BucketName, NewMap, OldMap) ->
     work_queue:submit_work(
       ?WORK_SERVER,
       fun () ->
-              send_event_cast({set_map, BucketName, compute_map_diff(NewMap, OldMap)})
+              send_event_cast({set_map, BucketName,
+                               misc:compute_map_diff(NewMap, OldMap)})
       end).
 
 note_name_changed() ->
