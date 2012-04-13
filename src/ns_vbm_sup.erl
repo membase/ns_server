@@ -28,7 +28,14 @@
 
 %% Callbacks
 -export([server_name/1, supervisor_node/2,
-         make_replicator/3, replicator_nodes/2, replicator_vbuckets/1]).
+         make_replicator/3, replicator_nodes/2,
+         replicator_vbuckets/1, change_vbucket_filter/5]).
+
+%% this is called from erl_eval "lambda" we send for backwards compat
+-export([have_local_change_vbucket_filter/0,
+         local_change_vbucket_filter/4]).
+
+-compile([{parse_transform, quote_transform}]).
 
 %%
 %% API
@@ -58,3 +65,31 @@ replicator_nodes(SupervisorNode, #child_id{dest_node=Node}) ->
 -spec replicator_vbuckets(#child_id{}) -> [vbucket_id(), ...].
 replicator_vbuckets(#child_id{vbuckets=VBuckets}) ->
     VBuckets.
+
+change_vbucket_filter(Bucket, SrcNode, _DstNode, ChildId, NewVBuckets) ->
+    Lambda = quote_transform:lambda(fun (Bucket, SrcNode, ChildId, NewVBuckets) ->
+                                            try ns_vbm_sup:have_local_change_vbucket_filter() of
+                                                true -> ns_vbm_sup:local_change_vbucket_filter(Bucket, SrcNode, ChildId, NewVBuckets)
+                                            catch error:undef ->
+                                                    old_version
+                                            end
+                                    end),
+    case rpc:call(SrcNode, erlang, apply, [Lambda, [Bucket, SrcNode, ChildId, NewVBuckets]]) of
+        old_version ->
+            not_supported;
+        {ok, Ref} ->
+            Ref
+    end.
+
+have_local_change_vbucket_filter() ->
+    true.
+
+local_change_vbucket_filter(Bucket, SrcNode, #child_id{dest_node=DstNode} = ChildId, NewVBuckets) ->
+    NewChildId = #child_id{vbuckets=NewVBuckets, dest_node=DstNode},
+    Args = ebucketmigrator_srv:build_args(Bucket,
+                                          SrcNode, DstNode, NewVBuckets, false),
+    cb_gen_vbm_sup:perform_vbucket_filter_change(Bucket,
+                                                 ChildId,
+                                                 NewChildId,
+                                                 Args,
+                                                 server_name(Bucket)).
