@@ -47,8 +47,6 @@ init([]) ->
 ns_config_event_handler_body({buckets, RawBuckets}, State) ->
     Buckets = ns_bucket:node_bucket_names(node(),
                                           proplists:get_value(configs, RawBuckets, [])),
-    ?log_debug("~nRawBuckets: ~p", [RawBuckets]),
-    ?log_debug("~nBuckets: ~p", [Buckets]),
     work_queue:submit_work(ns_bucket_worker,
                            fun () ->
                                    update_childs(Buckets)
