@@ -143,7 +143,6 @@ handle_cast(leave, State) ->
 
     RestConf = ns_config:search(Config, {node, node(), rest}),
     GlobalRestConf = ns_config:search(Config, rest),
-    {ok, DBDir} = ns_storage_conf:dbdir(Config),
     ns_config:clear([directory]),
     case GlobalRestConf of
         false -> false;
@@ -155,7 +154,6 @@ handle_cast(leave, State) ->
     end,
     ns_config:set_initial(nodes_wanted, [node()]),
     ns_cookie_manager:cookie_sync(),
-    ns_storage_conf:delete_all_db_files(DBDir),
     ?cluster_debug("Leaving cluster", []),
     timer:sleep(1000),
     {ok, _} = ns_server_cluster_sup:start_cluster(),
@@ -205,7 +203,7 @@ leave() ->
     %% MB-3160: sync any pending config before we leave, to make sure,
     %% say, deactivation of membership isn't lost
     ns_config_rep:push(),
-    ns_config_rep:synchronize(),
+    ok = ns_config_rep:synchronize_remote([RemoteNode]),
     ?cluster_debug("ns_cluster: leaving the cluster from ~p.",
                    [RemoteNode]),
     %% Tell the remote server to tell everyone to shun me.
@@ -215,6 +213,8 @@ leave() ->
 
 %% Cause another node to leave the cluster if it's up
 leave(Node) ->
+    ?cluster_debug("Asking node ~p to leave the cluster", [Node]),
+
     case Node == node() of
         true ->
             leave();

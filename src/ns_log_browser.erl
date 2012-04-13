@@ -2,7 +2,7 @@
 
 -export([start/0]).
 -export([log_exists/1, log_exists/2]).
--export([stream_logs/1, stream_logs/2, stream_logs/3, stream_logs/4]).
+-export([stream_logs/2, stream_logs/3, stream_logs/4]).
 
 -include("ns_common.hrl").
 
@@ -19,7 +19,7 @@ usage() ->
 start() ->
     Options = case parse_arguments([{h, 0, undefined, false},
                                     {report_dir, 1, undefined},
-                                    {log, 1, undefined, ?DEFAULT_LOG_FILENAME}],
+                                    {log, 1, undefined, ?DEBUG_LOG_FILENAME}],
                                    init:get_arguments()) of
                   {ok, O} ->
                       O;
@@ -106,9 +106,6 @@ log_exists(Dir, Log) ->
     IdxPath = lists:append(Path, ".idx"),
 
     filelib:is_regular(IdxPath).
-
-stream_logs(Fn) ->
-    stream_logs(?DEFAULT_LOG_FILENAME, Fn).
 
 stream_logs(Log, Fn) ->
     {ok, Dir} = application:get_env(error_logger_mf_dir),

@@ -25,8 +25,9 @@
 -export([memory_quota/1, change_memory_quota/2, prepare_setup_disk_storage_conf/2,
          storage_conf/1, add_storage/4, remove_storage/2,
          local_bucket_disk_usage/1,
-         delete_all_db_files/1, delete_db_files/1,
-         dbdir/1, dbdir/2,
+         delete_buckets_db_files/2,
+         delete_all_db_files/0, delete_all_db_files/1, delete_db_files/1,
+         dbdir/0, dbdir/1, dbdir/2,
          logdir/1, logdir/2,
          bucket_dir/3]).
 
@@ -54,6 +55,10 @@ bucket_dir(Config, Node, BucketName) ->
         {ok, _} = X -> X;
         {error, X, _, _} -> {error, X}
     end.
+
+-spec dbdir() -> {ok, string()} | {error, any()}.
+dbdir() ->
+    dbdir(ns_config:get()).
 
 -spec dbdir(any()) -> {ok, string()} | {error, any()}.
 dbdir(Config) ->
@@ -326,11 +331,33 @@ db_files(Dir, Bucket) ->
     [filename:join(BucketSubDir, lists:append(Bucket, Suffix))
        || Suffix <- lists:flatmap(S, ["", "-0.mb", "-1.mb", "-2.mb", "-3.mb"])].
 
+delete_buckets_db_files(DBDir, Pred) ->
+    BucketDirs = filelib:wildcard("*-data", DBDir),
+    delete_buckets_db_files_loop(DBDir, BucketDirs, Pred).
+
+delete_buckets_db_files_loop(_, [], _Pred) ->
+    ok;
+delete_buckets_db_files_loop(DBDir, [D | Dirs], Pred) ->
+    {match, [Bucket]} = re:run(D, "^\(.*\)-data$", [{capture, [1], list}]),
+    case Pred(Bucket) of
+        true ->
+            R = delete_bucket_db_directory(filename:join(DBDir, D)),
+            case R of
+                ok ->
+                    delete_buckets_db_files_loop(DBDir, Dirs, Pred);
+                Error ->
+                    Error
+            end;
+        false ->
+            delete_buckets_db_files_loop(DBDir, Dirs, Pred)
+    end.
+
+delete_all_db_files() ->
+    {ok, DBDir} = dbdir(),
+    delete_all_db_files(DBDir).
+
 delete_all_db_files(DBDir) ->
-    lists:foreach(fun (F) ->
-                          delete_bucket_db_directory(filename:join(DBDir, F))
-                  end,
-                  filelib:wildcard("*-data", DBDir)).
+    delete_buckets_db_files(DBDir, fun (_) -> true end).
 
 delete_bucket_db_directory(BucketDBDir) ->
     Result = misc:rm_rf(BucketDBDir),

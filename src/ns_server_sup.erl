@@ -64,6 +64,9 @@ child_specs() ->
      {ns_tick_event, {gen_event, start_link, [{local, ns_tick_event}]},
       permanent, 1000, worker, dynamic},
 
+     {mb_master_events, {gen_event, start_link, [{local, mb_master_events}]},
+      permanent, 1000, worker, dynamic},
+
      %% Starts mb_master_sup, which has all processes that start on the master
      %% node.
      {mb_master, {mb_master, start_link, []},

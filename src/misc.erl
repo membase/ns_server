@@ -154,14 +154,41 @@ rm_rf(Name) when is_list(Name) ->
     true ->
       case file:list_dir(Name) of
           {ok, Filenames} ->
-              lists:foreach(
-                fun rm_rf/1,
-                [filename:join(Name, F) || F <- Filenames]),
-              file:del_dir(Name);
-          {error, Reason} ->
-              ?log_warning("rm_rf failed because ~p", [Reason])
+              case rm_rf_loop(Name, Filenames) of
+                  ok ->
+                      case file:del_dir(Name) of
+                          ok ->
+                              ok;
+                          {error, enoent} ->
+                              ok;
+                          Error ->
+                              ?log_warning("Cannot delete ~p: ~p", [Name, Error]),
+                              Error
+                      end;
+                  Error ->
+                      Error
+              end;
+          {error, enoent} ->
+              ok;
+          {error, Reason} = Error ->
+              ?log_warning("rm_rf failed because ~p", [Reason]),
+              Error
       end
   end.
+
+rm_rf_loop(_DirName, []) ->
+    ok;
+rm_rf_loop(DirName, [F | Files]) ->
+    FileName = filename:join(DirName, F),
+    case rm_rf(FileName) of
+        ok ->
+            rm_rf_loop(DirName, Files);
+        {error, enoent} ->
+            rm_rf_loop(DirName, Files);
+        Error ->
+            ?log_warning("Cannot delete ~p: ~p", [FileName, Error]),
+            Error
+    end.
 
 space_split(Bin) ->
     byte_split(Bin, 32). % ASCII space is 32.

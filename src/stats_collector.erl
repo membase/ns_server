@@ -29,7 +29,12 @@
 
 -export([format_stats/1]).
 
--record(state, {bucket, counters=undefined, count=?LOG_FREQ, last_ts}).
+-record(state, {bucket,
+                last_plain_counters,
+                last_tap_counters,
+                last_timings_counters,
+                count = ?LOG_FREQ,
+                last_ts}).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,
@@ -51,45 +56,39 @@ handle_call(unhandled, unhandled, unhandled) ->
 handle_cast(unhandled, unhandled) ->
     unhandled.
 
+interesting_kvtiming_key(<<"writeSeek_", _/binary>>) -> true;
+interesting_kvtiming_key(_) -> false.
+
+%% drops irrelevant keys from proplist for performance
+prefilter_kvtimings(RawKVTimings) ->
+    [KV || {K, _} = KV <- RawKVTimings,
+           interesting_kvtiming_key(K)].
+
 grab_all_stats(Bucket) ->
     {ok, Stats} = ns_memcached:stats(Bucket),
-    case ns_memcached:stats(Bucket, <<"tapagg _">>) of
-        {ok, TapStats} ->
-            {Stats, TapStats};
-        {memcached_error, key_enoent, _} ->
-            {Stats, []}
-    end.
+    TapStats = case ns_memcached:stats(Bucket, <<"tapagg _">>) of
+                   {ok, Values} -> Values;
+                   {memcached_error, key_enoent, _} -> []
+               end,
+    KVTimings = case ns_memcached:stats(Bucket, <<"kvtimings">>) of
+                    {ok, ValuesK} ->
+                        prefilter_kvtimings(ValuesK);
+                    {memcached_error, key_enoent, _} -> []
+                end,
+    {Stats, TapStats, KVTimings}.
 
-handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters, last_ts=LastTS}
-            = State) ->
+handle_info({tick, TS}, #state{bucket=Bucket} = State) ->
     GrabFreq = misc:get_env_default(grab_stats_every_n_ticks, 1),
     GrabNow = 0 =:= (State#state.count rem GrabFreq),
     case GrabNow of
         true ->
             try grab_all_stats(Bucket) of
-                {Stats, TapStats} ->
+                GrabbedStats ->
                     TS1 = latest_tick(TS),
-                    {Entry, NewCounters} = parse_stats(TS1, Stats, TapStats, Counters, LastTS),
-                    case Counters of % Don't send event with undefined values
-                        undefined ->
-                            ok;
-                        _ ->
-                            gen_event:notify(ns_stats_event, {stats, Bucket, Entry})
-                    end,
-                    Count = case State#state.count >= ?LOG_FREQ of
-                                true ->
-                                    case misc:get_env_default(dont_log_stats, false) of
-                                        false ->
-                                            ?stats_debug("Stats for bucket ~p:~n~s",
-                                                         [Bucket, format_stats(Stats)]);
-                                        _ -> ok
-                                    end,
-                                    1;
-                                false ->
-                                    State#state.count + 1
-                            end,
-                    {noreply, State#state{counters=NewCounters, count=Count,
-                                          last_ts=TS1}}
+                    State1 = process_grabbed_stats(TS1, GrabbedStats, State),
+                    PlainStats = element(1, GrabbedStats),
+                    State2 = maybe_log_stats(State1, PlainStats),
+                    {noreply, State2}
             catch T:E ->
                     ?stats_error("Exception in stats collector: ~p~n",
                                  [{T,E, erlang:get_stacktrace()}]),
@@ -100,6 +99,46 @@ handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters, last_ts=LastTS}
     end;
 handle_info(_Msg, State) -> % Don't crash on delayed responses to calls
     {noreply, State}.
+
+maybe_log_stats(State, RawStats) ->
+    OldCount = State#state.count,
+    case OldCount  >= ?LOG_FREQ of
+        true ->
+            case misc:get_env_default(dont_log_stats, false) of
+                false ->
+                    ?stats_debug("Stats for bucket ~p:~n~s",
+                                 [State#state.bucket, format_stats(RawStats)]);
+                _ -> ok
+            end,
+            State#state{count = 1};
+        false ->
+            State#state{count = OldCount + 1}
+    end.
+
+process_grabbed_stats(TS,
+                      {PlainStats, TapStats, KVTimings},
+                      #state{bucket = Bucket,
+                             last_plain_counters = LastPlainCounters,
+                             last_tap_counters = LastTapCounters,
+                             last_timings_counters = LastTimingsCounters,
+                             last_ts = LastTS} = State) ->
+    {PlainValues, PlainCounters} = parse_plain_stats(TS, PlainStats, LastTS, LastPlainCounters),
+    {TapValues, TapCounters} = parse_tapagg_stats(TS, TapStats, LastTS, LastTapCounters),
+    {TimingValues, TimingsCounters} = parse_kvtimings(TS, KVTimings, LastTS, LastTimingsCounters),
+    %% Don't send event with undefined values
+    case lists:member(undefined, [LastTapCounters, LastTapCounters, LastTimingsCounters]) of
+        false ->
+            Values = lists:merge([PlainValues, TapValues, TimingValues]),
+            Entry = #stat_entry{timestamp = TS,
+                                values = Values},
+            gen_event:notify(ns_stats_event, {stats, Bucket, Entry});
+        true ->
+            ok
+    end,
+    State#state{last_plain_counters = PlainCounters,
+                last_tap_counters = TapCounters,
+                last_timings_counters = TimingsCounters,
+                last_ts = TS}.
 
 terminate(_Reason, _State) ->
     ok.
@@ -145,21 +184,24 @@ extract_agg_tap_stats(KVs) ->
     lists:foldl(fun ({K, V}, Acc) -> extract_agg_stat(K, V, Acc) end,
                 #tap_stream_stats{}, KVs).
 
+mk_stats_dict_get(Dict) ->
+    fun (K) ->
+            case orddict:find(K, Dict) of
+                {ok, V} -> list_to_integer(binary_to_list(V));
+                %% Some stats don't exist in some bucket types
+                error -> 0
+            end
+    end.
+
 parse_stats_raw(TS, Stats, LastCounters, LastTS, KnownGauges, KnownCounters) ->
-    GetStat = fun (K, Dict) ->
-                      case orddict:find(K, Dict) of
-                          {ok, V} -> list_to_integer(binary_to_list(V));
-                          %% Some stats don't exist in some bucket types
-                          error -> 0
-                      end
-              end,
     Dict = orddict:from_list([{translate_stat(binary_to_atom(K, latin1)), V}
                               || {K, V} <- Stats]),
-    parse_stats_raw2(TS, LastCounters, LastTS, KnownGauges, KnownCounters, GetStat, Dict).
+    diff_stats_counters(TS, LastCounters, LastTS, KnownGauges, KnownCounters,
+                        mk_stats_dict_get(Dict)).
 
-parse_stats_raw2(TS, LastCounters, LastTS, KnownGauges, KnownCounters, GetStat, Dict) ->
-    Gauges = [GetStat(K, Dict) || K <- KnownGauges],
-    Counters = [GetStat(K, Dict) || K <- KnownCounters],
+diff_stats_counters(TS, LastCounters, LastTS, KnownGauges, KnownCounters, GetValue) ->
+    Gauges = [GetValue(K) || K <- KnownGauges],
+    Counters = [GetValue(K) || K <- KnownCounters],
     Deltas = case LastCounters of
                  undefined ->
                      lists:duplicate(length(KnownCounters), 0);
@@ -168,7 +210,7 @@ parse_stats_raw2(TS, LastCounters, LastTS, KnownGauges, KnownCounters, GetStat, 
                      if Delta > 0 ->
                              lists:zipwith(
                                fun (A, B) ->
-                                       Res = (A - B) * 1000 div Delta,
+                                       Res = (A - B) * 1000.0/Delta,
                                        if Res < 0 -> 0;
                                           true -> Res
                                        end
@@ -195,15 +237,9 @@ parse_aggregate_tap_stats(AggTap) ->
                   tap_stream_stats_to_kvlist(<<"ep_tap_total_">>, TotalStats)]).
 
 
-parse_stats(TS, Stats, TapStats, undefined, LastTS) ->
-    parse_stats(TS, Stats, TapStats, {undefined, undefined}, LastTS);
-parse_stats(TS, Stats, TapStats, {LastCounters, LastTapCounters}, LastTS) ->
-    {StatsValues0, Counters} = parse_stats_raw(TS, Stats, LastCounters, LastTS,
-                                               [?STAT_GAUGES], [?STAT_COUNTERS]),
-    {TapValues0, TapCounters} = parse_stats_raw(TS, parse_aggregate_tap_stats(TapStats),
-                                                LastTapCounters, LastTS,
-                                                [?TAP_STAT_GAUGES], [?TAP_STAT_COUNTERS]),
-    Values0 = lists:merge(TapValues0, StatsValues0),
+parse_plain_stats(TS, PlainStats, LastTS, LastPlainCounters) ->
+    {Values0, Counters} = parse_stats_raw(TS, PlainStats, LastPlainCounters, LastTS,
+                                          [?STAT_GAUGES], [?STAT_COUNTERS]),
     AggregateValues = [{ops, sum_stat_values(Values0, [cmd_get, cmd_set,
                                                        incr_misses, incr_hits,
                                                        decr_misses, decr_hits,
@@ -228,10 +264,37 @@ parse_stats(TS, Stats, TapStats, {LastCounters, LastTapCounters}, LastTS) ->
     Values = orddict:merge(fun (_K, _V1, _V2) -> erlang:error(cannot_happen) end,
                            Values0,
                            lists:sort(AggregateValues)),
-    {#stat_entry{timestamp = TS,
-                 values = Values},
-     {Counters, TapCounters}}.
+    {Values, Counters}.
 
+parse_tapagg_stats(TS, TapStats, LastTS, LastTapCounters) ->
+    parse_stats_raw(TS, parse_aggregate_tap_stats(TapStats),
+                    LastTapCounters, LastTS,
+                    [?TAP_STAT_GAUGES], [?TAP_STAT_COUNTERS]).
+
+parse_kvtiming_range(Rest) ->
+    {Begin, End} = misc:split_binary_at_char(Rest, $,),
+    {list_to_integer(binary_to_list(Begin)),
+     list_to_integer(binary_to_list(End))}.
+
+parse_kvtiming_key(<<"writeSeek_", Rest/binary>>) ->
+    parse_kvtiming_range(Rest).
+
+aggregate_kvtimings([], TotalSeeks, TotalDistance) ->
+    {TotalSeeks, TotalDistance};
+aggregate_kvtimings([{K, V} | KVTimingsRest], TotalSeeks, TotalDistance) ->
+    {Start, End} = parse_kvtiming_key(K),
+    ThisSeeks = list_to_integer(binary_to_list(V)),
+    NewSeeks = TotalSeeks + ThisSeeks,
+    NewDistance = TotalDistance + (End + Start) * 0.5 * ThisSeeks,
+    aggregate_kvtimings(KVTimingsRest, NewSeeks, NewDistance).
+
+parse_kvtimings(TS, KVTimings, LastTS, LastTimingCounters) ->
+    {TotalSeeks, TotalDistance} = aggregate_kvtimings(KVTimings, 0, 0),
+    diff_stats_counters(TS, LastTimingCounters, LastTS,
+                        [], [write_seeks_count, write_seeks_distance],
+                        fun (write_seeks_count) -> TotalSeeks;
+                            (write_seeks_distance) -> TotalDistance
+                        end).
 
 %% Tests
 
@@ -408,5 +471,7 @@ parse_stats_test() ->
     ?assertEqual([37610,823281,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0],
                  ActualCounters),
 
-    ?assertEqual(lists:keysort(1, ExpectedPropList),
-                 lists:keysort(1, ActualValues)).
+    E = lists:keysort(1, ExpectedPropList),
+    A = lists:keysort(1, ActualValues),
+    ?log_debug("Expected: ~p~nActual:~p", [E, A]),
+    true = (E == A).

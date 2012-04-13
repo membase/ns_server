@@ -109,6 +109,9 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
     BucketConfigs = ns_bucket:get_buckets(),
     NumBuckets = length(BucketConfigs),
     ?rebalance_debug("BucketConfigs = ~p", [BucketConfigs]),
+
+    maybe_cleanup_old_buckets(KeepNodes, BucketConfigs),
+
     EarlyEject = FailedNodes -- [node()],
     try
         %% Eject failed nodes first so they don't cause trouble
@@ -155,7 +158,8 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
             erlang:raise(E, R, erlang:get_stacktrace())
     end,
     ns_config:sync_announcements(),
-    ns_config_rep:synchronize(),
+    ns_config_rep:push(),
+    ok = ns_config_rep:synchronize_remote(KeepNodes),
     eject_nodes(DeactivateNodes -- EarlyEject).
 
 
@@ -312,3 +316,80 @@ wait_for_mover_tail(Pid, Ref) ->
 buckets_replication_statuses() ->
     Buckets = ns_bucket:get_bucket_names(),
     failover_safeness_level:buckets_replication_statuses_compat(Buckets).
+
+maybe_cleanup_old_buckets(KeepNodes, BucketConfigs) ->
+    BucketsServers = buckets_servers(BucketConfigs),
+    NewServers = KeepNodes -- BucketsServers,
+
+    case NewServers of
+        [] ->
+            ok;
+        _ ->
+            ale:info(?USER_LOGGER, "Cleaning all data files on nodes before rebalancing them in: ~p", [NewServers])
+    end,
+    {Results, BadNodes} =
+        rpc:multicall(NewServers, ns_storage_conf, delete_all_db_files, []),
+
+    case BadNodes of
+        [] ->
+            {Good, Bad} =
+                misc:multicall_result_to_plist(NewServers, {Results, BadNodes}),
+            ReallyBad =
+                lists:filter(
+                  fun ({_Node, Reason}) ->
+                          case Reason of
+                              %% this must be just an old node; so ignore it
+                              {'EXIT',
+                               {undef,
+                                [{ns_storage_conf,
+                                  delete_all_db_files, [], []} | _]}} ->
+                                  false;
+                              _ ->
+                                  true
+                          end
+                  end, Bad),
+
+            case ReallyBad of
+                [] ->
+                    ok;
+                _ ->
+                    ?rebalance_error(
+                       "Failed to cleanup old buckets on some nodes: ~n~p",
+                       [ReallyBad]),
+                    ReallyBadNodes =
+                        lists:map(fun ({Node, _}) -> Node end, ReallyBad),
+                    exit({buckets_cleanup_failed, ReallyBadNodes})
+            end,
+
+            FailedNodes =
+                lists:foldl(
+                  fun ({Node, Result}, Acc) ->
+                          case Result of
+                              ok ->
+                                  Acc;
+                              Error ->
+                                  ?rebalance_error(
+                                     "Failed to cleanup old buckets on node ~p: ~p",
+                                     [Node, Error]),
+                                  [Node | Acc]
+                          end
+                  end, [], Good),
+
+            case FailedNodes of
+                [] ->
+                    ok;
+                _ ->
+                    exit({buckets_cleanup_failed, FailedNodes})
+            end;
+        _ ->
+            ?rebalance_error("Failed to cleanup old buckets on some nodes: ~p",
+                             [BadNodes]),
+            exit({buckets_cleanup_failed, BadNodes})
+    end.
+
+buckets_servers(BucketConfigs) ->
+    lists:foldl(
+      fun ({_Name, Config}, Acc) ->
+              Servers = proplists:get_value(servers, Config, []),
+              ordsets:union([Acc, ordsets:from_list(Servers)])
+      end, ordsets:new(), BucketConfigs).

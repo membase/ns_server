@@ -71,8 +71,19 @@ do_cleanup(Bucket, Options, Config) ->
                 {Down, _} ->
                     ReadyServers = ordsets:subtract(lists:sort(Servers),
                                                     lists:sort(Down)),
+                    FFMap = case proplists:get_value(fastForwardMap, Config) of
+                                undefined -> [];
+                                FFMap0 ->
+                                    case FFMap0 =:= [] orelse length(FFMap0) =:= length(Map) of
+                                        true ->
+                                            FFMap0;
+                                        false ->
+                                            ?log_warning("fast forward map length doesn't match map length. Ignoring it"),
+                                            []
+                                    end
+                            end,
                     Map1 =
-                        case sanify(Bucket, Map, ReadyServers, Down) of
+                        case sanify(Bucket, Map, FFMap, ReadyServers, Down) of
                             Map -> Map;
                             MapNew ->
                                 ns_bucket:set_map(Bucket, MapNew),
@@ -109,14 +120,23 @@ do_cleanup(Bucket, Options, Config) ->
             end
     end.
 
--spec sanify(string(), map(), [atom()], [atom()]) -> map().
-sanify(Bucket, Map, Servers, DownNodes) ->
+-spec sanify(string(), map(), map(), [atom()], [atom()]) -> map().
+sanify(Bucket, Map, FFMap, Servers, DownNodes) ->
     {ok, States, Zombies} = current_states(Servers, Bucket),
-    [sanify_chain(Bucket, States, Chain, VBucket, Zombies ++ DownNodes)
-     || {VBucket, Chain} <- misc:enumerate(Map, 0)].
+    EffectiveFFMap = case FFMap of
+                         [] ->
+                             [[] || _ <- Map];
+                         _ ->
+                             FFMap
+                     end,
+    EnumeratedChains = lists:zip3(lists:seq(0, length(Map)-1),
+                                  Map,
+                                  EffectiveFFMap),
+    [sanify_chain(Bucket, States, Chain, FutureChain, VBucket, Zombies ++ DownNodes)
+     || {VBucket, Chain, FutureChain} <- EnumeratedChains].
 
-sanify_chain(Bucket, State, Chain, VBucket, Zombies) ->
-    NewChain = do_sanify_chain(Bucket, State, Chain, VBucket, Zombies),
+sanify_chain(Bucket, State, Chain, FutureChain, VBucket, Zombies) ->
+    NewChain = do_sanify_chain(Bucket, State, Chain, FutureChain, VBucket, Zombies),
     %% Fill in any missing replicas
     case length(NewChain) < length(Chain) of
         false ->
@@ -127,7 +147,7 @@ sanify_chain(Bucket, State, Chain, VBucket, Zombies) ->
     end.
 
 
-do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
+do_sanify_chain(Bucket, States, Chain, FutureChain, VBucket, Zombies) ->
     NodeStates = [{N, S} || {N, V, S} <- States, V == VBucket],
     ChainStates = lists:map(fun (N) ->
                                     case lists:keyfind(N, 1, NodeStates) of
@@ -152,16 +172,37 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                     ns_memcached:set_vbucket(Master, Bucket, VBucket, active),
                     Chain;
                 [Node] ->
-                    %% One active node, but it's not the master
-                    case misc:position(Node, Chain) of
+                    PickFutureChain =
+                        case FutureChain of
+                            [Node | _] ->
+                                %% if active is future master check rest of future chain
+                                [FFMasterState | FFReplicaStates] = [proplists:get_value(N, NodeStates)
+                                                                     || N <- FutureChain,
+                                                                        N =/= undefined],
+                                %% and if everything fits -- cool
+                                FFMasterState =:= active
+                                    andalso lists:all(fun (replica) -> true;
+                                                          (_) -> false
+                                                      end, FFReplicaStates);
+                            _ ->
+                                false
+                        end,
+                    case PickFutureChain of
+                        true ->
+                            ?log_warning("Master for vbucket ~p in ~p is not active, but entire fast-forward map chain fits (~p), so using it.", [VBucket, Bucket, FutureChain]),
+                            FutureChain;
                         false ->
-                            %% It's an extra node
-                            ?log_warning(
-                               "Master for vbucket ~p in ~p is not active, but ~p is, so making that the master.",
-                              [VBucket, Bucket, Node]),
-                            [Node];
-                        Pos ->
-                            [Node|lists:nthtail(Pos, Chain)]
+                            %% One active node, but it's not the master
+                            case misc:position(Node, Chain) of
+                                false ->
+                                    %% It's an extra node
+                                    ?log_warning(
+                                       "Master for vbucket ~p in ~p is not active, but ~p is, so making that the master.",
+                                       [VBucket, Bucket, Node]),
+                                    [Node];
+                                Pos ->
+                                    [Node|lists:nthtail(Pos, Chain)]
+                            end
                     end;
                 Nodes ->
                     ?log_error(
@@ -169,7 +210,8 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                       [Nodes, Bucket, VBucket]),
                     Chain
             end;
-        C = [{_, MasterState}|ReplicaStates] when MasterState =:= active orelse MasterState =:= zombie ->
+        C = [_|ReplicaStates] ->
+            %% NOTE: here we know that master is either active or zombie
             lists:foreach(
               fun ({_, {N, active}}) ->
                       ?log_error("Active replica ~p for vbucket ~p in ~p. "
@@ -227,25 +269,7 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                               ns_memcached:set_vbucket(N, Bucket, VBucket, dead)
                       end
               end, ExtraStates),
-            Chain;
-        [{Master, State}|ReplicaStates] ->
-            case [N||{N, RState} <- ReplicaStates ++ ExtraStates,
-                     lists:member(RState, [active, pending, replica])] of
-                [] ->
-                    ?log_info("Setting vbucket ~p in ~p on master ~p to active",
-                              [VBucket, Bucket, Master]),
-                    ns_memcached:set_vbucket(Master, Bucket, VBucket,
-                                                   active),
-                    Chain;
-                X ->
-                    case lists:member(Master, Zombies) of
-                        true -> ok;
-                        false ->
-                            ?log_error("Master ~p in state ~p for vbucket ~p in ~p but we have extra nodes ~p!",
-                                       [Master, State, VBucket, Bucket, X])
-                    end,
-                    Chain
-            end
+            Chain
     end.
 
 %% [{Node, VBucket, State}...]

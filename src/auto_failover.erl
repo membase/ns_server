@@ -200,10 +200,15 @@ handle_info(tick, State0) ->
 
     NonPendingNodes = lists:sort(ns_cluster_membership:active_nodes(Config)),
     CurrentlyDown = actual_down_nodes(NonPendingNodes, Config),
+    RebalanceRunning = case ns_config:search(rebalance_status) of
+                           {value, running} -> true;
+                           _ -> false
+                       end,
     {Actions, LogicState} =
         auto_failover_logic:process_frame(NonPendingNodes,
                                           CurrentlyDown,
-                                          State#state.auto_failover_logic_state),
+                                          State#state.auto_failover_logic_state,
+                                          RebalanceRunning),
     NewState =
         lists:foldl(
           fun ({mail_too_small, Node}, S) ->
@@ -211,6 +216,11 @@ handle_info(tick, State0) ->
                             "Could not auto-failover node (~p). "
                             "Cluster was too small, you need at least 2 other nodes.~n",
                             [Node]),
+                  S;
+              ({rebalance_prevented_failover, Node}, S) ->
+                  ale:info(?USER_LOGGER,
+                           "Could not automatically failover node ~p because I think rebalance is running",
+                           [Node]),
                   S;
               ({_, Node}, #state{count=1} = S) ->
                   ?user_log(?EVENT_MAX_REACHED,

@@ -45,6 +45,7 @@
          build_full_node_info/2,
          handle_streaming/3,
          is_system_provisioned/0,
+         maybe_cleanup_old_buckets/0,
          checking_bucket_hostname_access/5]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
@@ -1028,6 +1029,29 @@ is_system_provisioned() ->
         _ -> false
     end.
 
+maybe_cleanup_old_buckets() ->
+    case is_system_provisioned() of
+        true ->
+            ok;
+        false ->
+            true = ns_node_disco:nodes_wanted() =:= [node()],
+
+            {ok, DBDir} = ns_storage_conf:dbdir(),
+            BucketNames = ns_bucket:get_bucket_names(),
+            ns_storage_conf:delete_buckets_db_files(
+              DBDir,
+              fun (Bucket) ->
+                      RV = not(lists:member(Bucket, BucketNames)),
+                      case RV of
+                          true ->
+                              ale:info(?USER_LOGGER, "Deleting old data files of bucket ~p", [Bucket]);
+                          _ ->
+                              ok
+                      end,
+                      RV
+              end)
+    end.
+
 is_valid_port_number("SAME") -> true;
 is_valid_port_number(String) ->
     PortNumber = (catch list_to_integer(String)),
@@ -1068,16 +1092,11 @@ handle_settings_web_post(Req) ->
             case build_settings_web() =:= build_settings_web(PortInt, U, P) of
                 true -> ok; % No change.
                 false ->
+                    maybe_cleanup_old_buckets(),
                     ns_config:set(rest, [{port, PortInt}]),
-
-                    if
-                        {[], []} == {U, P} ->
-                            ns_config:set(rest_creds, [{creds, []}]);
-                        true ->
-                            ns_config:set(rest_creds,
-                                          [{creds,
-                                            [{U, [{password, P}]}]}])
-                    end
+                    ns_config:set(rest_creds,
+                                  [{creds,
+                                    [{U, [{password, P}]}]}])
                     %% No need to restart right here, as our ns_config
                     %% event watcher will do it later if necessary.
             end,

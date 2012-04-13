@@ -125,7 +125,7 @@ handle_info({move_done, {Node, VBucket, OldChain, NewChain}},
     ns_bucket:set_map(Bucket, array_to_map(Map1)),
     RepSyncRV = (catch begin
                            ns_config:sync_announcements(),
-                           ns_config_rep:synchronize()
+                           ns_config_rep:synchronize_remote()
                        end),
     case RepSyncRV of
         ok -> ok;
