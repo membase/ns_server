@@ -693,6 +693,14 @@ streaming_inner(F, HTTPRes, LastRes) ->
     end,
     Res.
 
+consume_watcher_notifies() ->
+    receive
+        {notify_watcher, _} ->
+            consume_watcher_notifies()
+    after 0 ->
+            ok
+    end.
+
 handle_streaming(F, Req, HTTPRes, LastRes) ->
     Res =
         try streaming_inner(F, HTTPRes, LastRes)
@@ -702,7 +710,10 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
                 exit(normal)
         end,
     receive
-        {notify_watcher, _} -> ok;
+        {notify_watcher, _} ->
+            timer:sleep(50),
+            consume_watcher_notifies(),
+            ok;
         _ ->
             ale:debug(?MENELAUS_LOGGER,
                       "menelaus_web streaming socket closed by client"),
