@@ -687,7 +687,10 @@ streaming_inner(F, HTTPRes, LastRes) ->
         true ->
             ok;
         false ->
-            ResNormal = F(normal),
+            ResNormal = case Res of
+                            {just_write, Stuff} -> Stuff;
+                            _ -> F(normal)
+                        end,
             HTTPRes:write_chunk(mochijson2:encode(ResNormal)),
             HTTPRes:write_chunk("\n\n\n\n")
     end,

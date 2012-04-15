@@ -170,7 +170,7 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
                                              ""))},
                                         {nodes, BucketNodes} | VBM]}
                       end, SASLBuckets),
-                {struct, [{buckets, List}]}
+                {just_write, {struct, [{buckets, List}]}}
         end,
     menelaus_web:handle_streaming(F, Req, undefined).
 
