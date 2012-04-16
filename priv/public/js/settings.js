@@ -266,8 +266,8 @@ var UpdatesNotificationsSection = {
                    $i('notifications_container'));
   },
   remote: {
-    stats: 'http://vmische.appspot.com/stats',
-    email: 'http://vmische.appspot.com/email'
+    stats: 'http://ph.couchbase.net/stats',
+    email: 'http://ph.couchbase.net/email'
   },
   refresh: function() {
     this.phEnabled.recalculate();
