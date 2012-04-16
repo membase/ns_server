@@ -107,8 +107,8 @@ init(Bucket) ->
                start_time=now(),
                sock=Sock,
                bucket=Bucket}};
-        {error, _} = Error ->
-            Error
+        {error, Error} ->
+            {stop, Error}
     end.
 
 handle_call(Msg, From, State) ->
