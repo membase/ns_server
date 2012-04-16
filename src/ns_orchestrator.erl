@@ -434,7 +434,8 @@ rebalancing({update_progress, Progress},
 %% Synchronous rebalancing events
 rebalancing({failover, _Node}, _From, State) ->
     {reply, rebalancing, rebalancing, State};
-rebalancing(start_rebalance, _From, State) ->
+rebalancing({start_rebalance, _KeepNodes, _EjectNodes, _FailedNodes},
+            _From, State) ->
     ?user_log(?REBALANCE_NOT_STARTED,
               "Not rebalancing because rebalance is already in progress.~n"),
     {reply, in_progress, rebalancing, State};
