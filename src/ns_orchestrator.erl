@@ -330,13 +330,26 @@ idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
         _ -> ok
     end,
     {reply, Reply, idle, State};
-idle({delete_bucket, BucketName}, _From, State) ->
+idle({delete_bucket, BucketName}, _From,
+     #idle_state{remaining_buckets=RemainingBuckets} = State) ->
     Reply = ns_bucket:delete_bucket(BucketName),
-    case Reply of
-        ok -> master_activity_events:note_bucket_deletion(BucketName),
-              ns_config:sync_announcements();
-        _ -> ok
-    end,
+    NewState =
+        case Reply of
+            ok ->
+                master_activity_events:note_bucket_deletion(BucketName),
+                ns_config:sync_announcements(),
+                NewRemainingBuckets = RemainingBuckets -- [BucketName],
+                case RemainingBuckets =:= NewRemainingBuckets of
+                    true ->
+                        ok;
+                    false ->
+                        ?log_debug("Deleted bucket ~p from remaining_buckets",
+                                   [BucketName])
+                end,
+                State#idle_state{remaining_buckets=NewRemainingBuckets};
+            _ ->
+                State
+        end,
 
     case Reply of
         ok ->
@@ -369,7 +382,7 @@ idle({delete_bucket, BucketName}, _From, State) ->
             ok
     end,
 
-    {reply, Reply, idle, State};
+    {reply, Reply, idle, NewState};
 idle({failover, Node}, _From, State) ->
     ?log_info("Failing over ~p", [Node]),
     master_activity_events:note_failover(Node),
