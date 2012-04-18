@@ -191,8 +191,10 @@ init({Src, Dst, Opts}=InitArgs) ->
     if
         ReadyVBuckets =/= VBuckets ->
             false = TakeOver,
+            NotReadyVBuckets = VBuckets -- ReadyVBuckets,
+            master_activity_events:note_not_ready_vbuckets(self(), NotReadyVBuckets),
             ?rebalance_info("Some vbuckets were not yet ready to replicate from:~n~p~n",
-                            [VBuckets -- ReadyVBuckets]),
+                            [NotReadyVBuckets]),
             erlang:send_after(30000, self(), retry_not_ready_vbuckets);
         true ->
             ok
