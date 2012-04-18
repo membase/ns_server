@@ -649,26 +649,30 @@ var BucketsSection = {
     this.settingsWidget.reset();
   },
   startCreate: function () {
-    var poolDetails = DAL.cells.currentPoolDetailsCell.value,
-        totals = poolDetails.storageTotals;
+    var poolDetailsCells = DAL.cells.currentPoolDetailsCell;
+    poolDetailsCells.setValue(undefined);
+    poolDetailsCells.invalidate();
+    poolDetailsCells.getValue(function (poolDetails) {
+      var totals = poolDetails.storageTotals;
 
-    if (totals.ram.quotaTotal == totals.ram.quotaUsed) {
-      console.log('full');
-      genericDialog({
-        buttons: {ok: true, cancel: false},
-        header: 'Cluster Memory Fully Allocated',
-        text: 'All the RAM in the cluster is already allocated to existing buckets.\n\nDelete some buckets or change bucket sizes to make RAM available for additional buckets.'
-      });
-      return;
-    }
-    var initValues = {uri: '/pools/default/buckets',
-                      bucketType: 'membase',
-                      authType: 'sasl',
-                      quota: {rawRAM: Math.floor((totals.ram.quotaTotal - totals.ram.quotaUsed) / poolDetails.nodes.length)},
-                      replicaNumber: 1},
+      if (totals.ram.quotaTotal == totals.ram.quotaUsed) {
+        console.log('full');
+        genericDialog({
+          buttons: {ok: true, cancel: false},
+          header: 'Cluster Memory Fully Allocated',
+          text: 'All the RAM in the cluster is already allocated to existing buckets.\n\nDelete some buckets or change bucket sizes to make RAM available for additional buckets.'
+        });
+        return;
+      }
+      var initValues = {uri: '/pools/default/buckets',
+                        bucketType: 'membase',
+                        authType: 'sasl',
+                        quota: {rawRAM: Math.floor((totals.ram.quotaTotal - totals.ram.quotaUsed) / poolDetails.nodes.length)},
+                        replicaNumber: 1},
       dialog = new BucketDetailsDialog(initValues, true);
 
-    dialog.startDialog();
+      dialog.startDialog();
+    });
   },
   startRemovingBucket: function () {
     if (!this.currentlyShownBucket) {
