@@ -193,37 +193,43 @@ init({Src, Dst, Opts}=InitArgs) ->
             false = TakeOver,
             ?rebalance_info("Some vbuckets were not yet ready to replicate from:~n~p~n",
                             [VBuckets -- ReadyVBuckets]),
-            erlang:send_after(30000, self(), retry_not_ready_vbuckets),
-            if ReadyVBuckets =:= [] ->
-                    gen_tcp:close(Upstream),
-                    gen_tcp:close(Downstream),
-                    receive retry_not_ready_vbuckets -> ok end,
-                    exit_retry_not_ready_vbuckets();
-               true -> ok
-            end;
-        true -> ok
-    end,
-    Checkpoints = lists:map(fun ({V, {ok, C}}) -> {V, C};
-                                ({V, _})       -> {V, 0}
-                            end,
-                            [{Vb, mc_client_binary:get_last_closed_checkpoint(Downstream, Vb)} || Vb <- ReadyVBuckets]),
-    Args = [{vbuckets, ReadyVBuckets},
-            {checkpoints, Checkpoints},
-            {name, Name},
-            {takeover, TakeOver}],
-    ?rebalance_info("Starting tap stream:~n~p~n", [Args]),
-    case PassedDownstream =:= undefined of
+            erlang:send_after(30000, self(), retry_not_ready_vbuckets);
         true ->
-            ?log_debug("killing tap named: ~s", [Name]),
-            (catch master_activity_events:note_deregister_tap_name(case Bucket of
-                                                                       undefined -> Username;
-                                                                       _ -> Bucket
-                                                                   end, Src, Name)),
-            ok = mc_client_binary:deregister_tap_client(Upstream, iolist_to_binary(Name));
-        false ->
             ok
     end,
-    {ok, quiet} = mc_client_binary:tap_connect(Upstream, Args),
+    Args = if
+               ReadyVBuckets =:= [] ->
+                   false = TakeOver,
+                   %% don't send tap_connect if no buckets were ready
+                   %% but still enter gen_server loop as normal
+                   [{vbuckets, []},
+                    {checkpoints, []},
+                    {name, Name},
+                    {takeover, false}];
+               true ->
+                   Checkpoints = lists:map(fun ({V, {ok, C}}) -> {V, C};
+                                               ({V, _})       -> {V, 0}
+                                           end,
+                                           [{Vb, mc_client_binary:get_last_closed_checkpoint(Downstream, Vb)} || Vb <- ReadyVBuckets]),
+                   Args0 = [{vbuckets, ReadyVBuckets},
+                            {checkpoints, Checkpoints},
+                            {name, Name},
+                            {takeover, TakeOver}],
+                   ?rebalance_info("Starting tap stream:~n~p~n", [Args0]),
+                   case PassedDownstream =:= undefined of
+                       true ->
+                           ?log_debug("killing tap named: ~s", [Name]),
+                           (catch master_activity_events:note_deregister_tap_name(case Bucket of
+                                                                                      undefined -> Username;
+                                                                                      _ -> Bucket
+                                                                                  end, Src, Name)),
+                           ok = mc_client_binary:deregister_tap_client(Upstream, iolist_to_binary(Name));
+                       false ->
+                           ok
+                   end,
+                   {ok, quiet} = mc_client_binary:tap_connect(Upstream, Args0),
+                   Args0
+           end,
     ok = inet:setopts(Upstream, [{active, once}]),
     ok = inet:setopts(Downstream, [{active, once}]),
 
@@ -248,6 +254,7 @@ init({Src, Dst, Opts}=InitArgs) ->
                                                                                 {username, Username}
                                                                                 | Args])),
     gen_server:enter_loop(?MODULE, [], State).
+
 
 upstream_sender_loop(Upstream) ->
     receive
