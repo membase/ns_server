@@ -24,7 +24,7 @@
 -record(state, {func, func_state}).
 
 %% API
--export([subscribe_link/1, subscribe_link/3, unsubscribe/1]).
+-export([subscribe_link/1, subscribe_link/2, subscribe_link/3, unsubscribe/1]).
 
 %% gen_event callbacks
 -export([code_change/3, init/1, handle_call/2, handle_event/2, handle_info/2,
@@ -40,6 +40,13 @@
 subscribe_link(Name) ->
     subscribe_link(Name, msg_fun(self()), ignored).
 
+subscribe_link(Name, Fun) ->
+    subscribe_link(
+      Name,
+      fun (Event, State) ->
+              Fun(Event),
+              State
+      end, ignored).
 
 subscribe_link(Name, Fun, State) ->
     proc_lib:start(?MODULE, do_subscribe_link, [Name, Fun, State, self()]).

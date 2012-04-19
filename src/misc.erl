@@ -1240,3 +1240,20 @@ atomic_write_file(Path, Contents) ->
             file:rename(TmpPath, Path);
         X -> X
     end.
+
+compute_map_diff(undefined, OldMap) ->
+    compute_map_diff([], OldMap);
+compute_map_diff(NewMap, undefined) ->
+    compute_map_diff(NewMap, []);
+compute_map_diff([], []) ->
+    [];
+compute_map_diff(NewMap, []) when NewMap =/= [] ->
+    compute_map_diff(NewMap, [[] || _ <- NewMap]);
+compute_map_diff([], OldMap) when OldMap =/= [] ->
+    compute_map_diff([[] || _ <- OldMap], OldMap);
+compute_map_diff(NewMap, OldMap) ->
+    VBucketsCount = erlang:length(NewMap),
+    [{I, ChainOld, ChainNew} ||
+        {I, ChainOld, ChainNew} <-
+            lists:zip3(lists:seq(0, VBucketsCount-1), OldMap, NewMap),
+        ChainOld =/= ChainNew].

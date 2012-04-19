@@ -19,6 +19,7 @@
 
 -export([start_link_work_server/0,
          start_link_timestamper/0,
+         note_not_ready_vbuckets/2,
          note_ebucketmigrator_start/4,
          note_ebucketmigrator_terminate/2,
          note_deregister_tap_name/3,
@@ -52,6 +53,9 @@ send_event_cast(Arg) ->
 
 submit_cast(Arg) ->
     work_queue:submit_work(?WORK_SERVER, fun () -> send_event_cast(Arg) end).
+
+note_not_ready_vbuckets(Pid, VBucketIds) ->
+    submit_cast({not_ready_vbuckets, Pid, VBucketIds}).
 
 note_ebucketmigrator_start(Pid, Src, Dst, Options) ->
     submit_cast({ebucketmigrator_start, Pid, Src, Dst, Options}).
@@ -90,31 +94,22 @@ note_failover(Node) ->
 note_became_master() ->
     submit_cast({became_master}).
 
-compute_map_diff(NewMap, undefined) ->
-    compute_map_diff(NewMap, []);
-compute_map_diff(NewMap, []) when NewMap =/= [] ->
-    compute_map_diff(NewMap, [[] || _ <- NewMap]);
-compute_map_diff(NewMap, OldMap) ->
-    true = (NewMap =/= undefined),
-    VBucketsCount = erlang:length(NewMap),
-    [{I, ChainOld, ChainNew} ||
-        {I, ChainOld, ChainNew} <- lists:zip3(lists:seq(0, VBucketsCount-1), OldMap, NewMap),
-        ChainOld =/= ChainNew].
-
 note_set_ff_map(BucketName, undefined, _OldMap) ->
     submit_cast({set_ff_map, BucketName, undefined});
 note_set_ff_map(BucketName, NewMap, OldMap) ->
     work_queue:submit_work(
       ?WORK_SERVER,
       fun () ->
-              send_event_cast({set_ff_map, BucketName, compute_map_diff(NewMap, OldMap)})
+              send_event_cast({set_ff_map, BucketName,
+                               misc:compute_map_diff(NewMap, OldMap)})
       end).
 
 note_set_map(BucketName, NewMap, OldMap) ->
     work_queue:submit_work(
       ?WORK_SERVER,
       fun () ->
-              send_event_cast({set_map, BucketName, compute_map_diff(NewMap, OldMap)})
+              send_event_cast({set_map, BucketName,
+                               misc:compute_map_diff(NewMap, OldMap)})
       end).
 
 note_name_changed() ->
@@ -234,6 +229,11 @@ node_to_host(undefined, _Config) ->
 node_to_host(Node, Config) ->
     format_mcd_pair(ns_memcached:host_port(Node, Config)).
 
+event_to_jsons({TS, not_ready_vbuckets, Pid, VBucketIds}) ->
+    [[{vbuckets, VBucketIds}]
+     ++ format_simple_plist_as_json([{type, notReadyVBuckets},
+                                     {ts, misc:time_to_epoch_float(TS)},
+                                     {pid, Pid}])];
 event_to_jsons({TS, ebucketmigrator_start, Pid, Src, Dst, Opts}) ->
     {Opts1, MaybeVBuckets} = case lists:keyfind(vbuckets, 1, Opts) of
                                  false ->

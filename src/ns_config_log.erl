@@ -15,35 +15,48 @@
 %%
 -module(ns_config_log).
 
--behaviour(gen_event).
+-behaviour(gen_server).
 
 -export([start_link/0]).
 
-%% gen_event callbacks
--export([init/1, handle_event/2, handle_call/2,
-         handle_info/2, terminate/2, code_change/3]).
+%% gen_server callbacks
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+         terminate/2, code_change/3]).
 
 -include("ns_common.hrl").
 
--record(state, {last}).
+-record(state, {buckets=[]}).
 
 start_link() ->
-    misc:start_event_link(fun () ->
-                                  gen_event:add_sup_handler(ns_config_events, ?MODULE, ignored)
-                          end).
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-init(ignored) ->
-    {ok, #state{last = undefined}, hibernate}.
+init([]) ->
+    Self = self(),
+    ns_pubsub:subscribe_link(ns_config_events,
+                             fun ({_K, _V} = Event) ->
+                                     Self ! Event;
+                                 (_) ->
+                                     ok
+                             end),
+    {ok, #state{}, hibernate}.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
 % Don't log values for some password/auth-related config values.
 
-handle_event({rest_creds = K, _V}, State) ->
+handle_call(Request, From, State) ->
+    ?log_warning("Unexpected handle_call(~p, ~p, ~p)", [Request, From, State]),
+    {reply, ok, State, hibernate}.
+
+handle_cast(Request, State) ->
+    ?log_warning("Unexpected handle_cast(~p, ~p)", [Request, State]),
+    {noreply, State, hibernate}.
+
+handle_info({rest_creds = K, _V}, State) ->
     ?log_debug("config change: ~p -> ********", [K]),
-    {ok, State, hibernate};
-handle_event({alerts = K, V}, State) ->
+    {noreply, State, hibernate};
+handle_info({alerts = K, V}, State) ->
     V2 = lists:map(fun({email_server, ES}) ->
                            lists:map(fun({pass, _}) -> {pass, "********"};
                                         (ESKeyVal)  -> ESKeyVal
@@ -53,22 +66,71 @@ handle_event({alerts = K, V}, State) ->
                    end,
                    V),
     ?log_debug("config change:~n~p ->~n~p", [K, V2]),
-    {ok, State, hibernate};
-handle_event({K, V}, State) ->
+    {noreply, State, hibernate};
+handle_info({buckets, RawBuckets}, #state{buckets=OldBuckets} =  State) ->
+    NewBuckets = sort_buckets(RawBuckets),
+    BucketsDiff = compute_buckets_diff(NewBuckets, OldBuckets),
+    NewState = State#state{buckets=NewBuckets},
+    log_common(buckets, BucketsDiff),
+    {noreply, NewState, hibernate};
+handle_info({K, V}, State) ->
+    log_common(K, V),
+    {noreply, State, hibernate};
+
+handle_info(Info, State) ->
+    ?log_warning("Unexpected handle_info(~p, ~p)", [Info, State]),
+    {noreply, State, hibernate}.
+
+%% Internal functions
+compute_buckets_diff(NewBuckets, OldBuckets) ->
+    OldConfigs = proplists:get_value(configs, OldBuckets, []),
+    NewConfigs = proplists:get_value(configs, NewBuckets, []),
+
+    Diffed =
+        merge_bucket_configs(
+          fun (NewValue, OldValue) ->
+                  OldMap = proplists:get_value(map, OldValue, []),
+                  NewMap = proplists:get_value(map, NewValue, []),
+                  MapDiff = misc:compute_map_diff(NewMap, OldMap),
+
+                  OldFFMap = proplists:get_value(fastForwardMap, OldValue, []),
+                  NewFFMap = proplists:get_value(fastForwardMap, NewValue, []),
+                  FFMapDiff = misc:compute_map_diff(NewFFMap, OldFFMap),
+
+                  misc:update_proplist(
+                    NewValue,
+                    [{map, MapDiff},
+                     {fastForwardMap, FFMapDiff}])
+          end, NewConfigs, OldConfigs),
+
+    misc:update_proplist(NewBuckets, [{configs, Diffed}]).
+
+log_common(K, V) ->
     %% These can get pretty big, so pre-format them for the logger.
     VB = list_to_binary(io_lib:print(V, 0, 80, 100)),
-    ?log_debug("config change:~n~p ->~n~s", [K, VB]),
-    {ok, State, hibernate};
+    ?log_debug("config change:~n~p ->~n~s", [K, VB]).
 
-handle_event(KVList, State) when is_list(KVList) ->
-    {ok, State#state{last = KVList}, hibernate};
+sort_buckets(Buckets) ->
+    Configs = proplists:get_value(configs, Buckets, []),
+    SortedConfigs = lists:keysort(1, Configs),
+    misc:update_proplist(Buckets, [{configs, SortedConfigs}]).
 
-handle_event(_, State) ->
-    {ok, State, hibernate}.
+%% Merge bucket configs using a function. Note that only those buckets that
+%% are present in the first list will be present in the resulting list.
+merge_bucket_configs(_Fun, [], _) ->
+    [];
+merge_bucket_configs(Fun, [X | Xs], []) ->
+    {_, XValue} = X,
+    [Fun(XValue, []) | merge_bucket_configs(Fun, Xs, [])];
+merge_bucket_configs(Fun, [X | XRest] = Xs, [Y | YRest] = Ys) ->
+    {XName, XValue} = X,
+    {YName, YValue} = Y,
 
-handle_call(Request, State) ->
-    ?log_warning("Unexpected handle_call(~p, ~p)", [Request, State]),
-    {ok, ok, State, hibernate}.
-
-handle_info(_Info, State) ->
-    {ok, State, hibernate}.
+    if
+        XName < YName ->
+            [{XName, Fun(XValue, [])} | merge_bucket_configs(Fun, XRest, Ys)];
+        XName > YName ->
+            merge_bucket_configs(Fun, Xs, YRest);
+        true ->
+            [{XName, Fun(XValue, YValue)} | merge_bucket_configs(Fun, XRest, YRest)]
+    end.
