@@ -37,7 +37,7 @@
 -define(MERGING_EMERGENCY_THRESHOLD, 2000).
 
 % How to launch the thing.
--export([start_link/0]).
+-export([start_link/0, start_link_merger/0]).
 
 % gen_server
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -48,10 +48,13 @@
          synchronize_local/0, synchronize_remote/0, synchronize_remote/1,
          pull_and_push/1]).
 
--record(state, {merger}).
+-record(state, {}).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+start_link_merger() ->
+    proc_lib:start_link(erlang, apply, [fun merger_init/0, []]).
 
 init([]) ->
     Self = self(),
@@ -71,10 +74,12 @@ init([]) ->
     % Schedule some random config syncs.
     schedule_config_sync(),
     ok = ns_node_disco_rep_events:add_sup_handler(),
-    MergerPid = spawn_link(fun merger_loop/0),
-    (catch erlang:unregister(ns_config_rep_merger)),
-    erlang:register(ns_config_rep_merger, MergerPid),
-    {ok, #state{merger = MergerPid}}.
+    {ok, #state{}}.
+
+merger_init() ->
+    erlang:register(ns_config_rep_merger, self()),
+    proc_lib:init_ack({ok, self()}),
+    merger_loop().
 
 merger_loop() ->
     EnterTime = os:timestamp(),
@@ -95,27 +100,23 @@ merger_loop() ->
                     exit(emergency_kill);
                 false -> ok
             end;
-        {sync, Pid, Ref} ->
-            Pid ! {sync_done, Ref}
+        {'$gen_call', From, sync} ->
+            gen_server:reply(From, sync_done)
     end,
     merger_loop().
 
 handle_call(synchronize, _From, State) ->
     {reply, ok, State};
 handle_call(synchronize_everything, {Pid, _Tag} = _From,
-            #state{merger = Merger} = State) ->
+            State) ->
     RemoteNode = node(Pid),
     ?log_debug("Got full synchronization request from ~p", [RemoteNode]),
 
     StartTS = os:timestamp(),
-    Ref = make_ref(),
-    Merger ! {sync, self(), Ref},
-    receive
-        {sync_done, Ref} ->
-            EndTS = os:timestamp(),
-            Diff = timer:now_diff(EndTS, StartTS),
-            ?log_debug("Fully synchronized config in ~p us", [Diff])
-    end,
+    sync_done = gen_server:call(ns_config_rep_merger, sync),
+    EndTS = os:timestamp(),
+    Diff = timer:now_diff(EndTS, StartTS),
+    ?log_debug("Fully synchronized config in ~p us", [Diff]),
 
     {reply, ok, State};
 handle_call(Msg, _From, State) ->
@@ -123,9 +124,10 @@ handle_call(Msg, _From, State) ->
     {reply, error, State}.
 
 handle_cast({merge_compressed, _Blob} = Msg, State) ->
-    State#state.merger ! Msg,
+    ns_config_rep_merger ! Msg,
     {noreply, State};
-handle_cast(_Msg, State) ->
+handle_cast(Msg, State) ->
+    ?log_error("Unhandled cast: ~p", [Msg]),
     {noreply, State}.
 
 accumulate_X(Acc, X) ->
@@ -230,6 +232,9 @@ handle_info(sync_random, State) ->
     schedule_config_sync(),
     do_pull(1),
     {noreply, State};
+handle_info({'EXIT', _From, Reason} = Msg, _State) ->
+    ?log_warning("Got exit message. Exiting: ~p", [Msg]),
+    {stop, Reason};
 handle_info(Msg, State) ->
     ?log_debug("Unhandled msg: ~p", [Msg]),
     {noreply, State}.

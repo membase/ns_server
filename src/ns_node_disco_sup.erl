@@ -48,7 +48,10 @@ get_child_specs() ->
      {ns_node_disco_conf_events,
       {ns_node_disco_conf_events, start_link, []},
       permanent, 1000, worker, []},
-     % replicate config across nodes.
+     % merges incoming config changes.
+     {ns_config_rep_merger, {ns_config_rep, start_link_merger, []},
+      permanent, brutal_kill, worker, [ns_config_rep]},
+     % replicates config across nodes.
      {ns_config_rep, {ns_config_rep, start_link, []},
       permanent, 1000, worker,
       [ns_config_rep]}
