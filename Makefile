@@ -176,17 +176,20 @@ do_build_plt:
 	dialyzer --output_plt $(COUCHBASE_PLT) --build_plt \
           --apps compiler crypto erts inets kernel mnesia os_mon sasl ssl stdlib xmerl \
             $(COUCH_PATH)/src/mochiweb \
-            $(COUCH_PATH)/src/snappy $(COUCH_PATH)/src/etap $(COUCH_PATH)/src/ibrowse \
+            $(COUCH_PATH)/src/snappy $(COUCH_PATH)/src/etap $(realpath $(COUCH_PATH)/src/ibrowse) \
+            $(realpath $(COUCH_PATH)/src/lhttpc) \
             $(COUCH_PATH)/src/erlang-oauth deps/erlwsh/ebin deps/gen_smtp/ebin
 
 dialyzer: all $(COUCHBASE_PLT)
 	$(MAKE) do-dialyzer DIALYZER_FLAGS="-Wno_return $(DIALYZER_FLAGS)" COUCH_PATH="$(shell . `pwd`/.configuration && echo $$couchdb_src)"
 
+GEOCOUCH_EBIN := $(firstword $(realpath $(COUCH_PATH)/../geocouch/build) $(realpath $(COUCH_PATH)/../geocouch/ebin))
+
 do-dialyzer:
 	dialyzer --plt $(COUCHBASE_PLT) $(DIALYZER_FLAGS) \
             --apps `ls -1 ebin/*.beam | grep -v couch_log` deps/ale/ebin \
             $(COUCH_PATH)/src/couchdb $(COUCH_PATH)/src/couch_set_view $(COUCH_PATH)/../mccouch/ebin \
-            $(COUCH_PATH)/../geocouch/build
+            $(GEOCOUCH_EBIN) $(realpath $(COUCH_PATH)/src/mapreduce)
 
 dialyzer_obsessive: all $(COUCHBASE_PLT)
 	$(MAKE) do-dialyzer DIALYZER_FLAGS="-Wunmatched_returns -Werror_handling -Wrace_conditions -Wbehaviours -Wunderspecs " COUCH_PATH="$(shell . `pwd`/.configuration && echo $$couchdb_src)"
