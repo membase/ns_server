@@ -282,59 +282,6 @@ get_replicator(Bucket, SrcNode, DstNode) ->
 server(Bucket) ->
     list_to_atom(?MODULE_STRING "-" ++ Bucket).
 
-
-%% execute body in newly spawned process. Function returns when Body
-%% returns and with it's return value. If body produced any exception
-%% it will be rethrown. Care is taken to propagate exits of 'parent'
-%% process to this worker process.
-executing_on_new_process(Body) ->
-    Ref = erlang:make_ref(),
-    Parent = self(),
-    {ChildPid, ChildMRef} = erlang:spawn_monitor(
-                              fun () ->
-                                      ParentMRef = erlang:monitor(process, Parent),
-                                      receive
-                                          proceed -> ok;
-                                          {'DOWN', ParentMRef, _, _, Reason} ->
-                                              exit(Reason)
-                                      end,
-                                      erlang:demonitor(ParentMRef, [flush]),
-                                      try Body() of
-                                          RV ->
-                                              exit({Ref, RV})
-                                      catch T:E ->
-                                              Stack = erlang:get_stacktrace(),
-                                              exit({Ref, T, E, Stack})
-                                      end
-                              end),
-    {_WatcherPid, WatcherMRef} = erlang:spawn_monitor(
-                                   fun () ->
-                                           erlang:monitor(process, Parent),
-                                           erlang:monitor(process, ChildPid),
-                                           receive
-                                               {'DOWN', _, _, _, Reason} ->
-                                                   erlang:exit(ChildPid, Reason)
-                                           end
-                                   end),
-    ChildPid ! proceed,
-    receive
-        {'DOWN', ChildMRef, _, _, ChildReason} ->
-            receive
-                {'DOWN', WatcherMRef, _, _, _} ->
-                    ok
-            end,
-            case ChildReason of
-                {Ref, RV} ->
-                    {ok, RV};
-                {Ref, T, E, Stack} ->
-                    erlang:raise(T, E, Stack);
-                _ ->
-                    ?log_error("Got unexpected reason: ~p", [ChildReason]),
-                    erlang:error({unexpected_reason, ChildReason})
-            end
-    end.
-
-
 have_local_change_vbucket_filter() ->
     true.
 
@@ -370,7 +317,7 @@ local_change_vbucket_filter(Bucket, SrcNode, #child_id{dest_node=DstNode} = Chil
             NewChildSpec = {NewChildId,
                             {ebucketmigrator_srv, start_link, Args},
                             permanent, 60000, worker, [ebucketmigrator_srv]},
-            executing_on_new_process(
+            misc:executing_on_new_process(
               fun () ->
                       ns_process_registry:register_pid(vbucket_filter_changes_registry, RegistryId, self()),
                       ?log_debug("Registered myself under id:~p", [Args]),
@@ -406,7 +353,7 @@ local_change_vbucket_filter(Bucket, SrcNode, #child_id{dest_node=DstNode} = Chil
 change_vbucket_filter(Bucket, SrcNode, #child_id{dest_node = DstNode} = ChildId, NewVBuckets) ->
     Lambda = quote_transform:lambda(fun (Bucket, SrcNode, ChildId, NewVBuckets) ->
                                             try ns_vbm_sup:have_local_change_vbucket_filter() of
-                                                true -> ns_vbm_sup:local_change_vbucket_filter(Bucket, SrcNode, ChildId, NewVBuckets)
+                                                true -> {ok, ns_vbm_sup:local_change_vbucket_filter(Bucket, SrcNode, ChildId, NewVBuckets)}
                                             catch error:undef ->
                                                     old_version
                                             end
