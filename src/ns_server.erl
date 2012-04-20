@@ -149,6 +149,7 @@ init_logging() ->
     ok = ale:add_sink(?USER_LOGGER, ns_log, info),
     ok = ale:add_sink(?MENELAUS_LOGGER, ns_log, info),
     ok = ale:add_sink(?CLUSTER_LOGGER, ns_log, info),
+    ok = ale:add_sink(?REBALANCE_LOGGER, ns_log, error),
 
     ok = ale:add_sink(?VIEWS_LOGGER, disk_views),
 

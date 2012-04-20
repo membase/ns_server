@@ -543,10 +543,16 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 handle_cast(stop, State) ->
     {stop, shutdown, State}.
 
-handle_info({'EXIT', Pid, _},
+handle_info({'EXIT', Pid, Reason},
             #config{saver_pid = MyPid,
                     pending_more_save = NeedMore} = State) when MyPid =:= Pid ->
     NewState = State#config{saver_pid = undefined},
+    case Reason of
+        normal ->
+            ok;
+        _ ->
+            ?log_error("Saving ns_config failed. Trying to ignore: ~p", [Reason])
+    end,
     S = case NeedMore of
             true ->
                 initiate_save_config(NewState);
@@ -686,7 +692,7 @@ initiate_save_config(Config) ->
         undefined ->
             {M, F, ASuffix} = Config#config.saver_mfa,
             A = [Config | ASuffix],
-            Pid = spawn_link(M, F, A),
+            Pid = proc_lib:spawn_link(M, F, A),
             Config#config{saver_pid = Pid,
                           pending_more_save = false};
         _ ->

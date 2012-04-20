@@ -28,6 +28,7 @@
          generate_initial_map/1,
          rebalance/3,
          unbalanced/2,
+         eject_nodes/1,
          buckets_replication_statuses/0]).
 
 -export([wait_local_buckets_shutdown_complete/0]). % used via rpc:multicall
