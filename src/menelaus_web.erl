@@ -1035,21 +1035,7 @@ maybe_cleanup_old_buckets() ->
             ok;
         false ->
             true = ns_node_disco:nodes_wanted() =:= [node()],
-
-            {ok, DBDir} = ns_storage_conf:dbdir(),
-            BucketNames = ns_bucket:get_bucket_names(),
-            ns_storage_conf:delete_buckets_db_files(
-              DBDir,
-              fun (Bucket) ->
-                      RV = not(lists:member(Bucket, BucketNames)),
-                      case RV of
-                          true ->
-                              ale:info(?USER_LOGGER, "Deleting old data files of bucket ~p", [Bucket]);
-                          _ ->
-                              ok
-                      end,
-                      RV
-              end)
+            ns_storage_conf:delete_unused_buckets_db_files()
     end.
 
 is_valid_port_number("SAME") -> true;

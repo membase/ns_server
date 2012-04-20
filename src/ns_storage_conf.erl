@@ -27,6 +27,7 @@
          local_bucket_disk_usage/1,
          delete_buckets_db_files/2,
          delete_all_db_files/0, delete_all_db_files/1, delete_db_files/1,
+         delete_unused_buckets_db_files/0,
          dbdir/0, dbdir/1, dbdir/2,
          logdir/1, logdir/2,
          bucket_dir/3]).
@@ -351,6 +352,25 @@ delete_buckets_db_files_loop(DBDir, [D | Dirs], Pred) ->
         false ->
             delete_buckets_db_files_loop(DBDir, Dirs, Pred)
     end.
+
+%% deletes all databases files for buckets not defined for this node
+%% note: this is called remotely
+delete_unused_buckets_db_files() ->
+    Config = ns_config:get(),
+    {ok, DBDir} = ns_storage_conf:dbdir(Config),
+    BucketNames = ns_bucket:node_bucket_names(node(), ns_bucket:get_buckets(Config)),
+    ns_storage_conf:delete_buckets_db_files(
+      DBDir,
+      fun (Bucket) ->
+              RV = not(lists:member(Bucket, BucketNames)),
+              case RV of
+                  true ->
+                      ale:info(?USER_LOGGER, "Deleting old data files of bucket ~p", [Bucket]);
+                  _ ->
+                      ok
+              end,
+              RV
+      end).
 
 delete_all_db_files() ->
     {ok, DBDir} = dbdir(),

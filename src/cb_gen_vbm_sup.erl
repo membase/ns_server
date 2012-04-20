@@ -390,58 +390,6 @@ replicas_to_replicators(Replicas) ->
                 end, [VBucket], D)
       end, dict:new(), Replicas).
 
-%% execute body in newly spawned process. Function returns when Body
-%% returns and with it's return value. If body produced any exception
-%% it will be rethrown. Care is taken to propagate exits of 'parent'
-%% process to this worker process.
-executing_on_new_process(Body) ->
-    Ref = erlang:make_ref(),
-    Parent = self(),
-    {ChildPid, ChildMRef} = erlang:spawn_monitor(
-                              fun () ->
-                                      ParentMRef = erlang:monitor(process, Parent),
-                                      receive
-                                          proceed -> ok;
-                                          {'DOWN', ParentMRef, _, _, Reason} ->
-                                              exit(Reason)
-                                      end,
-                                      erlang:demonitor(ParentMRef, [flush]),
-                                      try Body() of
-                                          RV ->
-                                              exit({Ref, RV})
-                                      catch T:E ->
-                                              Stack = erlang:get_stacktrace(),
-                                              exit({Ref, T, E, Stack})
-                                      end
-                              end),
-    {_WatcherPid, WatcherMRef} = erlang:spawn_monitor(
-                                   fun () ->
-                                           erlang:monitor(process, Parent),
-                                           erlang:monitor(process, ChildPid),
-                                           receive
-                                               {'DOWN', _, _, _, Reason} ->
-                                                   erlang:exit(ChildPid, Reason)
-                                           end
-                                   end),
-    ChildPid ! proceed,
-    receive
-        {'DOWN', ChildMRef, _, _, ChildReason} ->
-            receive
-                {'DOWN', WatcherMRef, _, _, _} ->
-                    ok
-            end,
-            case ChildReason of
-                {Ref, RV} ->
-                    {ok, RV};
-                {Ref, T, E, Stack} ->
-                    erlang:raise(T, E, Stack);
-                _ ->
-                    ?log_error("Got unexpected reason: ~p", [ChildReason]),
-                    erlang:error({unexpected_reason, ChildReason})
-            end
-    end.
-
-
 mk_downstream_retriever(Id) ->
     %% this function's closure will be kept in supervisor, so I want
     %% it to reference as few stuff as possible thus separate closure maker
@@ -476,7 +424,7 @@ perform_vbucket_filter_change(Bucket,
                     permanent, 60000, worker, [ebucketmigrator_srv]},
     case MaybeThePid of
         [ThePid] ->
-            executing_on_new_process(
+            misc:executing_on_new_process(
               fun () ->
                       ns_process_registry:register_pid(vbucket_filter_changes_registry, RegistryId, self()),
                       ?log_debug("Registered myself under id:~p", [Args]),

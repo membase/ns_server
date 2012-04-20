@@ -1257,3 +1257,54 @@ compute_map_diff(NewMap, OldMap) ->
         {I, ChainOld, ChainNew} <-
             lists:zip3(lists:seq(0, VBucketsCount-1), OldMap, NewMap),
         ChainOld =/= ChainNew].
+
+%% execute body in newly spawned process. Function returns when Body
+%% returns and with it's return value. If body produced any exception
+%% it will be rethrown. Care is taken to propagate exits of 'parent'
+%% process to this worker process.
+executing_on_new_process(Body) ->
+    Ref = erlang:make_ref(),
+    Parent = self(),
+    {ChildPid, ChildMRef} = erlang:spawn_monitor(
+                              fun () ->
+                                      ParentMRef = erlang:monitor(process, Parent),
+                                      receive
+                                          proceed -> ok;
+                                          {'DOWN', ParentMRef, _, _, Reason} ->
+                                              exit(Reason)
+                                      end,
+                                      erlang:demonitor(ParentMRef, [flush]),
+                                      try Body() of
+                                          RV ->
+                                              exit({Ref, RV})
+                                      catch T:E ->
+                                              Stack = erlang:get_stacktrace(),
+                                              exit({Ref, T, E, Stack})
+                                      end
+                              end),
+    {_WatcherPid, WatcherMRef} = erlang:spawn_monitor(
+                                   fun () ->
+                                           erlang:monitor(process, Parent),
+                                           erlang:monitor(process, ChildPid),
+                                           receive
+                                               {'DOWN', _, _, _, Reason} ->
+                                                   erlang:exit(ChildPid, Reason)
+                                           end
+                                   end),
+    ChildPid ! proceed,
+    receive
+        {'DOWN', ChildMRef, _, _, ChildReason} ->
+            receive
+                {'DOWN', WatcherMRef, _, _, _} ->
+                    ok
+            end,
+            case ChildReason of
+                {Ref, RV} ->
+                    RV;
+                {Ref, T, E, Stack} ->
+                    erlang:raise(T, E, Stack);
+                _ ->
+                    ?log_error("Got unexpected reason: ~p", [ChildReason]),
+                    erlang:error({unexpected_reason, ChildReason})
+            end
+    end.

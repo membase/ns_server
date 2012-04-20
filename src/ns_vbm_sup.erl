@@ -69,7 +69,7 @@ replicator_vbuckets(#child_id{vbuckets=VBuckets}) ->
 change_vbucket_filter(Bucket, SrcNode, _DstNode, ChildId, NewVBuckets) ->
     Lambda = quote_transform:lambda(fun (Bucket, SrcNode, ChildId, NewVBuckets) ->
                                             try ns_vbm_sup:have_local_change_vbucket_filter() of
-                                                true -> ns_vbm_sup:local_change_vbucket_filter(Bucket, SrcNode, ChildId, NewVBuckets)
+                                                true -> {ok, ns_vbm_sup:local_change_vbucket_filter(Bucket, SrcNode, ChildId, NewVBuckets)}
                                             catch error:undef ->
                                                     old_version
                                             end

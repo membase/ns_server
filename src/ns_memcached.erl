@@ -272,7 +272,8 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
     NoBucket = NsConfig =/= undefined andalso
         not lists:keymember(Bucket, 1, BucketConfigs),
     NodeDying = NsConfig =/= undefined
-        andalso ns_config:search(NsConfig, i_am_a_dead_man),
+        andalso (ns_config:search(NsConfig, i_am_a_dead_man) =/= false
+                 orelse not lists:member(Bucket, ns_bucket:node_bucket_names(node(), BucketConfigs))),
     Deleting = NoBucket orelse NodeDying,
 
     if
