@@ -105,6 +105,15 @@ generate_initial_map(BucketConfig) ->
 
 
 rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
+    %% TODO: pull config reliably here as well
+    ns_config:sync_announcements(),
+    case ns_config_rep:synchronize_remote(KeepNodes) of
+        ok ->
+            cool;
+        {error, SyncFailedNodes} ->
+            exit({pre_rebalance_config_synchronization_failed, SyncFailedNodes})
+    end,
+
     %% don't eject ourselves at all here; this will be handled by ns_orchestrator
     EjectNodes = EjectNodesAll -- [node()],
     FailedNodes = FailedNodesAll -- [node()],
@@ -115,7 +124,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
     NumBuckets = length(BucketConfigs),
     ?rebalance_debug("BucketConfigs = ~p", [BucketConfigs]),
 
-    maybe_cleanup_old_buckets(KeepNodes, BucketConfigs),
+    maybe_cleanup_old_buckets(KeepNodes),
 
 
     %% Eject failed nodes first so they don't cause trouble
@@ -348,23 +357,14 @@ buckets_replication_statuses() ->
     [{Bucket, replication_status(Bucket, BucketConfig)} ||
         {Bucket, BucketConfig} <- BucketConfigs].
 
-maybe_cleanup_old_buckets(KeepNodes, BucketConfigs) ->
-    BucketsServers = buckets_servers(BucketConfigs),
-    NewServers = KeepNodes -- BucketsServers,
-
-    case NewServers of
-        [] ->
-            ok;
-        _ ->
-            ale:info(?USER_LOGGER, "Cleaning all data files on nodes before rebalancing them in: ~p", [NewServers])
-    end,
+maybe_cleanup_old_buckets(KeepNodes) ->
     {Results, BadNodes} =
-        rpc:multicall(NewServers, ns_storage_conf, delete_all_db_files, []),
+        rpc:multicall(KeepNodes, ns_storage_conf, delete_unused_buckets_db_files, []),
 
     case BadNodes of
         [] ->
             {Good, Bad} =
-                misc:multicall_result_to_plist(NewServers, {Results, BadNodes}),
+                misc:multicall_result_to_plist(KeepNodes, {Results, BadNodes}),
             ReallyBad =
                 lists:filter(
                   fun ({_Node, Reason}) ->
@@ -417,10 +417,3 @@ maybe_cleanup_old_buckets(KeepNodes, BucketConfigs) ->
                              [BadNodes]),
             exit({buckets_cleanup_failed, BadNodes})
     end.
-
-buckets_servers(BucketConfigs) ->
-    lists:foldl(
-      fun ({_Name, Config}, Acc) ->
-              Servers = proplists:get_value(servers, Config, []),
-              ordsets:union([Acc, ordsets:from_list(Servers)])
-      end, ordsets:new(), BucketConfigs).
