@@ -149,9 +149,11 @@ do_set_replicas(Policy, Bucket, Replicators, AllNodes) ->
                                                         Node, NodeReplicators)
                                   catch
                                       E:R ->
+                                          Stack = erlang:get_stacktrace(),
                                           ?log_error("Unable to start replicators "
-                                                     "on ~p for bucket ~p: ~p",
-                                                     [Node, Bucket, {E, R}])
+                                                     "on ~p for bucket ~p: ~p~n"
+                                                     "Here's stacktrace:~n~p",
+                                                     [Node, Bucket, {E, R}, Stack])
                                   end
                           end
                   end, AllNodes, ?RPC_TIMEOUT)

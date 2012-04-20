@@ -74,6 +74,5 @@ local_change_vbucket_filter(Bucket, DstNode, #new_child_id{src_node=SrcNode} = C
                                                  server_name(Bucket)).
 
 change_vbucket_filter(Bucket, _SrcNode, DstNode, Child, NewVBuckets) ->
-    {ok, Ref} = rpc:call(DstNode, ns_vbm_new_sup, local_change_vbucket_filter,
-                         [Bucket, DstNode, Child, NewVBuckets]),
-    Ref.
+    rpc:call(DstNode, ns_vbm_new_sup, local_change_vbucket_filter,
+             [Bucket, DstNode, Child, NewVBuckets]).
