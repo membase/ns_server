@@ -428,11 +428,18 @@ delete_disk_buckets_databases_loop(Pred, [Bucket | Rest]) ->
 delete_databases(Bucket) ->
     AllDBs = bucket_databases(Bucket),
     Suffix = <<"/master">>,
-    NegSuffixLen = -erlang:size(Suffix),
+    SuffixLen = erlang:size(Suffix),
     {MaybeMasterDb, RestDBs} = lists:partition(
                             fun (Name) ->
-                                    SuffixC = binary:part(Name, erlang:size(Name), NegSuffixLen),
-                                    SuffixC =:= Suffix
+                                    NameLen = erlang:size(Name),
+                                    case NameLen < SuffixLen of
+                                        true -> % this would cause a badarg
+                                            false;
+                                        false ->
+                                            SuffixC = binary:part(Name,
+                                                                  NameLen, -SuffixLen),
+                                            SuffixC =:= Suffix
+                                    end
                             end, AllDBs),
     delete_databases_loop(MaybeMasterDb ++ RestDBs).
 
