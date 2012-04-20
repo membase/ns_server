@@ -30,7 +30,8 @@
          stop_replications/5,
          replicas/3,
          node_replicator_triples/3,
-         kill_all_children/3]).
+         kill_all_children/3,
+         perform_vbucket_filter_change/5]).
 
 -type replicator() :: any().
 
@@ -389,6 +390,73 @@ replicas_to_replicators(Replicas) ->
                 end, [VBucket], D)
       end, dict:new(), Replicas).
 
+mk_downstream_retriever(Id) ->
+    %% this function's closure will be kept in supervisor, so I want
+    %% it to reference as few stuff as possible thus separate closure maker
+    fun () ->
+            case ns_process_registry:lookup_pid(vbucket_filter_changes_registry, Id) of
+                missing -> undefined;
+                TxnPid ->
+                    case (catch gen_server:call(TxnPid, get_downstream, infinity)) of
+                        {ok, Downstream} ->
+                            ?log_info("Got vbucket filter change downstream. Proceeding vbucket filter change operation"),
+                            Downstream;
+                        TxnCrap ->
+                            ?log_info("Getting downstream for vbucket change operation failed:~n~p", [TxnCrap]),
+                            undefined
+                    end
+            end
+    end.
+
+perform_vbucket_filter_change(Bucket,
+                              OldChildId, NewChildId,
+                              InitialArgs,
+                              Server) ->
+    RegistryId = {Bucket, NewChildId},
+    Args = ebucketmigrator_srv:add_args_option(InitialArgs,
+                                               passed_downstream_retriever,
+                                               mk_downstream_retriever(RegistryId)),
+    Childs = supervisor:which_children(Server),
+    MaybeThePid = [Pid || {Id, Pid, _, _} <- Childs,
+                          Id =:= OldChildId],
+    NewChildSpec = {NewChildId,
+                    {ebucketmigrator_srv, start_link, Args},
+                    permanent, 60000, worker, [ebucketmigrator_srv]},
+    case MaybeThePid of
+        [ThePid] ->
+            misc:executing_on_new_process(
+              fun () ->
+                      ns_process_registry:register_pid(vbucket_filter_changes_registry, RegistryId, self()),
+                      ?log_debug("Registered myself under id:~p", [Args]),
+                      {ok, NewDownstream} = ebucketmigrator_srv:start_vbucket_filter_change(ThePid),
+                      erlang:process_flag(trap_exit, true),
+                      ok = supervisor:terminate_child(Server, OldChildId),
+                      ok = supervisor:delete_child(Server, OldChildId),
+                      Me = self(),
+                      proc_lib:spawn_link(
+                        fun () ->
+                                {ok, Pid} = supervisor:start_child(Server, NewChildSpec),
+                                Me ! {done, Pid}
+                        end),
+                      Loop = fun (Loop) ->
+                                     receive
+                                         {'EXIT', _From, _Reason} = ExitMsg ->
+                                             ?log_error("Got unexpected exit signal in vbucket change txn body: ~p", [ExitMsg]),
+                                             exit({txn_crashed, ExitMsg});
+                                         {done, RV} ->
+                                             RV;
+                                         {'$gen_call', {Pid, _} = From, get_downstream} ->
+                                             gen_tcp:controlling_process(NewDownstream, Pid),
+                                             gen_server:reply(From, {ok, NewDownstream}),
+                                             Loop(Loop)
+                                     end
+                             end,
+                      Loop(Loop)
+              end);
+        [] ->
+            no_child
+    end.
+
 -spec set_node_replicas(module(), bucket_name(), node(), dict()) -> ok.
 set_node_replicas(Policy, Bucket, Node, Replicators) ->
     NeededReplicas0 =
@@ -401,6 +469,16 @@ set_node_replicas(Policy, Bucket, Node, Replicators) ->
                   case dict:find(Nodes, Replicators) of
                       {ok, ActualVBuckets} ->   % bound above
                           dict:erase(Nodes, D);
+                      {ok, NewVBuckets} ->
+                          case Policy:change_vbucket_filter(Bucket, SrcNode, DstNode, Child, NewVBuckets) of
+                              not_supported ->
+                                  %% NOTE: we do not erase node from pending list of changes
+                                  ?log_info("~nkill_child(~p, ~p, ~p, ~p, ~p)",
+                                            [Policy, Bucket, SrcNode, DstNode, Child]),
+                                  kill_child(Policy, Bucket, SrcNode, DstNode, Child);
+                              _ ->
+                                  dict:erase(DstNode, D)
+                          end;
                       _ ->
                           ?log_info("~nkill_child(~p, ~p, ~p, ~p, ~p)",
                                     [Policy, Bucket, SrcNode, DstNode, Child]),

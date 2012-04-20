@@ -91,9 +91,10 @@ get_rebalance_status() ->
 start_rebalance(KnownNodes, KnownNodes) ->
     no_active_nodes_left;
 start_rebalance(KnownNodes, EjectedNodes) ->
-    case {lists:sort(ns_node_disco:nodes_wanted()),
+    case {EjectedNodes -- KnownNodes,
+          lists:sort(ns_node_disco:nodes_wanted()),
           lists:sort(KnownNodes)} of
-        {X, X} ->
+        {[], X, X} ->
             MaybeKeepNodes = KnownNodes -- EjectedNodes,
             FailedNodes =
                 [N || {N, State} <-

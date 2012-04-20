@@ -140,7 +140,6 @@ handle_cast(leave, State) ->
     erlang:set_cookie(node(), NewCookie),
     lists:foreach(fun erlang:disconnect_node/1, nodes()),
     Config = ns_config:get(),
-    Buckets = ns_bucket:get_bucket_names(),
 
     RestConf = ns_config:search(Config, {node, node(), rest}),
     GlobalRestConf = ns_config:search(Config, rest),
@@ -156,7 +155,6 @@ handle_cast(leave, State) ->
     end,
     ns_config:set_initial(nodes_wanted, [node()]),
     ns_cookie_manager:cookie_sync(),
-    ns_storage_conf:delete_all_databases(Buckets),
     ?cluster_debug("Leaving cluster", []),
     timer:sleep(1000),
     {ok, _} = ns_server_cluster_sup:start_cluster(),
@@ -192,7 +190,7 @@ leave() ->
     %% MB-3160: sync any pending config before we leave, to make sure,
     %% say, deactivation of membership isn't lost
     ns_config_rep:push(),
-    ns_config_rep:synchronize(),
+    ok = ns_config_rep:synchronize_remote([RemoteNode]),
     ?cluster_debug("ns_cluster: leaving the cluster from ~p.",
                    [RemoteNode]),
     %% Tell the remote server to tell everyone to shun me.
@@ -202,6 +200,8 @@ leave() ->
 
 %% Cause another node to leave the cluster if it's up
 leave(Node) ->
+    ?cluster_debug("Asking node ~p to leave the cluster", [Node]),
+
     case Node == node() of
         true ->
             leave();

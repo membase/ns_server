@@ -58,6 +58,7 @@
 %%
 
 start_link() ->
+    maybe_invalidate_current_master(),
     gen_fsm:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 
@@ -100,6 +101,83 @@ init([]) ->
             end
     end.
 
+maybe_invalidate_current_master() ->
+    do_maybe_invalidate_current_master(3, true).
+
+do_maybe_invalidate_current_master(0, _FirstTime) ->
+    ale:error(?USER_LOGGER, "We're out of luck taking mastership over older node", []),
+    ok;
+do_maybe_invalidate_current_master(TriesLeft, FirstTime) ->
+    NodesWanted = ns_node_disco:nodes_wanted(),
+    case check_master_takeover_needed(NodesWanted) of
+        false ->
+            case FirstTime of
+                true -> ok;
+                false ->
+                    ale:warn(?USER_LOGGER, "Decided not to forcefully take over mastership", [])
+            end,
+            ok;
+        MasterToShutdown ->
+            %% send our config to this master it doesn't make sure
+            %% mb_master will see us in peers because of a couple of
+            %% races, but at least we'll delay a bit on some work and
+            %% increase chance of it. We'll retry if it's not the case
+            ns_config_rep:pull_and_push([MasterToShutdown]),
+            ok = ns_config_rep:synchronize_remote([MasterToShutdown]),
+            %% ask master to give up
+            send_heartbeat_with_peers([MasterToShutdown], master, [node(), MasterToShutdown]),
+            %% sync that "surrender" event
+            case rpc:call(MasterToShutdown, mb_master, master_node, [], 5000) of
+                Us when Us =:= node() ->
+                    ok;
+                MasterToShutdown ->
+                    do_maybe_invalidate_current_master(TriesLeft-1, false);
+                Other ->
+                    ale:error(?USER_LOGGER,
+                              "Failed to forcefully take mastership over old node (~p): ~p",
+                              [MasterToShutdown, Other])
+            end
+    end.
+
+check_master_takeover_needed(Peers) ->
+    TenNodesToAsk = lists:sublist(misc:shuffle(Peers), 10),
+    {MasterReplies, _} = rpc:multicall(TenNodesToAsk, mb_master, master_node, [], 5000),
+    GoodMasterReplies = [M || M <- MasterReplies,
+                              M =/= undefined,
+                              is_atom(M)],
+    case GoodMasterReplies of
+        [] ->
+            ?log_debug("Was unable to discover master, not going to force mastership takeover"),
+            false;
+        [Master|_] when Master =:= node() ->
+            %% assuming it happens only secound round
+            ale:warn(?USER_LOGGER, "Somebody thinks we're master. Not forcing mastership takover over ourselves"),
+            false;
+        [Master|_] ->
+            ?log_debug("Checking version of current master: ~p", [Master]),
+            case rpc:call(Master, ns_info, version, [ns_server], 5000) of
+                {badrpc, _} = Crap ->
+                    ale:warn(?USER_LOGGER, "Failed to grab master's version. Assuming force mastership takeover is not needed. Reason: ~p", [Crap]),
+                    false;
+                RawVersion ->
+                    ?log_debug("Current master's raw version: ~p", [RawVersion]),
+                    try misc:parse_version(RawVersion) of
+                        Version ->
+                            MasterNodeInfo = {Version, Master},
+                            case strongly_lower_priority_node(MasterNodeInfo) of
+                                true ->
+                                    ale:warn(?USER_LOGGER, "Current master is older and I'll try to takeover", []),
+                                    Master;
+                                false ->
+                                    ?log_debug("Current master is not older"),
+                                    false
+                            end
+                    catch T:E ->
+                            ale:warn(?USER_LOGGER, "Failed to parse master version. Assuming we're older. Error is: ~p", [{T,E}]),
+                            false
+                    end
+            end
+    end.
 
 handle_event(Event, StateName, StateData) ->
     ?log_warning("Got unexpected event ~p in state ~p with data ~p",
@@ -112,7 +190,7 @@ handle_info({'EXIT', _From, Reason} = Msg, _, _) ->
     exit(Reason);
 
 handle_info(send_heartbeat, candidate, #state{peers=Peers} = StateData) ->
-    send_heartbeat(Peers, candidate, StateData),
+    send_heartbeat_with_peers(Peers, candidate, Peers),
     case timer:now_diff(now(), StateData#state.last_heard) >= ?TIMEOUT of
         true ->
             %% Take over
@@ -143,7 +221,7 @@ handle_info(send_heartbeat, master, StateData) ->
                                     "Updating state.", [N1, Node]),
                          StateData#state{master=node()}
                  end,
-    send_heartbeat(ns_node_disco:nodes_wanted(), master, StateData1),
+    send_heartbeat_with_peers(ns_node_disco:nodes_wanted(), master, StateData1#state.peers),
     {next_state, master, StateData1};
 
 handle_info(send_heartbeat, worker, StateData) ->
@@ -230,18 +308,20 @@ candidate({heartbeat, NodeInfo, master, _H}, #state{peers=Peers} = State) ->
                     true ->
                         case ns_config:search(rebalance_status) of
                             {value, running} ->
-                                ?log_info("Candidate got master heartbeat from "
-                                          "node ~p which has lower priority. "
-                                          "But I won't try to take over since "
-                                          "rebalance seems to be running",
-                                          [Node]),
+                                ale:info(?USER_LOGGER,
+                                         "Candidate got master heartbeat from "
+                                         "node ~p which has lower priority. "
+                                         "But I won't try to take over since "
+                                         "rebalance seems to be running",
+                                         [Node]),
                                 State#state{last_heard=now(), master=Node};
                             _ ->
-                                ?log_info("Candidate got master heartbeat from "
-                                          "node ~p which has lower priority. "
-                                          "Will try to take over.", [Node]),
+                                ale:info(?USER_LOGGER,
+                                         "Candidate got master heartbeat from "
+                                         "node ~p which has lower priority. "
+                                         "Will try to take over.", [Node]),
 
-                                send_heartbeat([Node], master, State),
+                                send_heartbeat_with_peers([Node], master, State#state.peers),
                                 State#state{master=undefined}
                         end
                 end,
@@ -355,11 +435,11 @@ worker(Event, State) ->
 
 %% @private
 %% @doc Send an heartbeat to a list of nodes, except this one.
-send_heartbeat(Nodes, StateName, StateData) ->
+send_heartbeat_with_peers(Nodes, StateName, Peers) ->
     NodeInfo = node_info(),
 
     Args = {heartbeat, NodeInfo, StateName,
-            [{peers, StateData#state.peers},
+            [{peers, Peers},
              {versioning, true}]},
     try
         misc:parallel_map(
@@ -414,6 +494,7 @@ shutdown_master_sup(State) ->
                     ok
             end
     end,
+    gen_event:notify(mb_master_events, lost_mastership),
     State#state{child = undefined}.
 
 

@@ -27,8 +27,7 @@
          storage_conf/1, storage_conf_from_node_status/1, add_storage/4, remove_storage/2,
          local_bucket_disk_usage/1,
          this_node_dbdir/0, this_node_ixdir/0, this_node_logdir/0,
-         delete_databases/1,
-         delete_all_databases/0, delete_all_databases/1]).
+         delete_databases/1, delete_unused_buckets_db_files/0]).
 
 -export([node_storage_info/1, cluster_storage_info/0, nodes_storage_info/1]).
 
@@ -393,7 +392,38 @@ bucket_databases(Bucket, AllDBs) ->
 delete_database(DB) ->
     RV = couch_server:delete(DB, []),
     ?log_info("Deleting database ~p: ~p~n", [DB, RV]),
-    ok.
+    RV.
+
+%% scan data directory for bucket names
+bucket_names_from_disk() ->
+    {ok, DbDir} = ns_storage_conf:this_node_dbdir(),
+    Files = filelib:wildcard("*", DbDir),
+    lists:foldl(
+      fun (MaybeBucket, Acc) ->
+              Path = filename:join(DbDir, MaybeBucket),
+              case filelib:is_dir(Path) andalso
+                  ns_bucket:is_valid_bucket_name(MaybeBucket) of
+                  true ->
+                      [MaybeBucket | Acc];
+                  false ->
+                      Acc
+              end
+      end, [], Files).
+
+delete_disk_buckets_databases(Pred) ->
+    Buckets = lists:filter(Pred, bucket_names_from_disk()),
+    delete_disk_buckets_databases_loop(Pred, Buckets).
+
+delete_disk_buckets_databases_loop(_Pred, []) ->
+    ok;
+delete_disk_buckets_databases_loop(Pred, [Bucket | Rest]) ->
+    case delete_databases(Bucket) of
+        ok ->
+            delete_disk_buckets_databases_loop(Pred, Rest);
+        Error ->
+            Error
+    end.
+
 
 delete_databases(Bucket) ->
     AllDBs = bucket_databases(Bucket),
@@ -404,14 +434,38 @@ delete_databases(Bucket) ->
                                     SuffixC = binary:part(Name, erlang:size(Name), NegSuffixLen),
                                     SuffixC =:= Suffix
                             end, AllDBs),
-    lists:foreach(fun delete_database/1, MaybeMasterDb ++ RestDBs).
+    delete_databases_loop(MaybeMasterDb ++ RestDBs).
 
-delete_all_databases() ->
-    Buckets = ns_bucket:get_bucket_names(),
-    delete_all_databases(Buckets).
+delete_databases_loop([]) ->
+    ok;
+delete_databases_loop([Db | Rest]) ->
+    case delete_database(Db) of
+        ok ->
+            delete_databases_loop(Rest);
+        Error ->
+            Error
+    end.
 
-delete_all_databases(Buckets) ->
-    lists:foreach(fun delete_databases/1, Buckets).
+
+%% deletes all databases files for buckets not defined for this node
+%% note: this is called remotely
+%%
+%% it's named a bit differently from other functions here; but this function
+%% is rpc called by older nodes; so we must keep this name unchanged
+delete_unused_buckets_db_files() ->
+    Config = ns_config:get(),
+    BucketNames = ns_bucket:node_bucket_names(node(), ns_bucket:get_buckets(Config)),
+    delete_disk_buckets_databases(
+      fun (Bucket) ->
+              RV = not(lists:member(Bucket, BucketNames)),
+              case RV of
+                  true ->
+                      ale:info(?USER_LOGGER, "Deleting old data files of bucket ~p", [Bucket]);
+                  _ ->
+                      ok
+              end,
+              RV
+      end).
 
 -ifdef(EUNIT).
 extract_disk_stats_for_path_test() ->

@@ -480,7 +480,15 @@ var SetupWizard = {
           genericDialog({
             header: 'Please try again',
             text: '\'Password\' and \'Verify Password\' do not match',
-            buttons: {cancel: false, ok: true}
+            buttons: {cancel: false, ok: true},
+            callback: function (e, name, instance) {
+              instance.close();
+              try {
+                var element = parent.find('[name=password]').get(0);
+                element.focus();
+                element.setSelectionRange(0, String(element.value).length);
+              } catch (ignored) {}
+            }
           });
           return;
         }

@@ -444,9 +444,14 @@ set_bucket_config(Bucket, NewConfig) ->
 %%     }
 %%     return rv;
 %% }
+%%
+%% Now we also disallow bucket names starting with '.'. It's because couchdb
+%% creates (at least now) auxiliary directories which start with dot. We don't
+%% want to conflict with them
 is_valid_bucket_name([]) -> false;
 is_valid_bucket_name(".") -> false;
 is_valid_bucket_name("..") -> false;
+is_valid_bucket_name([$. | _]) -> false;
 is_valid_bucket_name([Char | Rest]) ->
     case ($A =< Char andalso Char =< $Z)
         orelse ($a =< Char andalso Char =< $z)
@@ -496,8 +501,12 @@ validate_bucket_config(BucketName, NewConfig) ->
     end.
 
 new_bucket_default_params(membase) ->
+    NumVBuckets = case ns_config:search(couchbase_num_vbuckets_default) of
+                      false -> misc:getenv_int("COUCHBASE_NUM_VBUCKETS", 256);
+                      {value, X} -> X
+                  end,
     [{type, membase},
-     {num_vbuckets, misc:getenv_int("COUCHBASE_NUM_VBUCKETS", 256)},
+     {num_vbuckets, NumVBuckets},
      {num_replicas, 1},
      {ram_quota, 0},
      {servers, []}];

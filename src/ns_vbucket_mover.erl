@@ -154,7 +154,7 @@ handle_info({update_vbucket_map, _Node, VBucket, OldChain, NewChain},
     State1 = dec_vb_updates(State#state{map=Map1}),
     RepSyncRV = (catch begin
                            ns_config:sync_announcements(),
-                           ns_config_rep:synchronize()
+                           ns_config_rep:synchronize_remote()
                        end),
     case RepSyncRV of
         ok -> ok;

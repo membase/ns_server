@@ -40,11 +40,14 @@
                 takeover :: boolean(),
                 takeover_done :: boolean(),
                 takeover_msgs_seen = 0 :: non_neg_integer(),
+                args,
                 last_seen
                }).
 
 %% external API
--export([start_link/3, start_link/4, build_args/5]).
+-export([start_link/3, start_link/4,
+         build_args/5, add_args_option/3,
+         start_vbucket_filter_change/1]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -56,6 +59,43 @@
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
+continue_start_vbucket_filter_change({Pid, _} = From, State, NewDownstream) ->
+    case confirm_sent_messages(State) of
+        ok ->
+            gen_tcp:close(State#state.downstream),
+            MRef = erlang:monitor(process, Pid),
+            gen_tcp:controlling_process(NewDownstream, Pid),
+            gen_server:reply(From, {ok, NewDownstream}),
+            started_vbucket_filter_loop(State, MRef);
+        _ ->
+            gen_tcp:close(NewDownstream),
+            {stop, old_downstream_failed, old_downstream_failed, State}
+    end.
+
+started_vbucket_filter_loop(State, MRef) ->
+    Reason = receive
+                 {'EXIT', _From, Reason0} = ExitMsg ->
+                     ?log_debug("Got exit signal in vbucket filter changing loop:~p", [ExitMsg]),
+                     Reason0;
+                 {'DOWN', MRef, _, _, Reason0} = DownMsg ->
+                     ?log_error("Got DOWN from vbucket filter change txn owner:~p", [DownMsg]),
+                     {vbucket_txn_abort, Reason0}
+             end,
+    {stop, Reason, State}.
+
+
+handle_call(start_vbucket_filter_change, From, #state{args={_, Dst, Opts}} = State) ->
+    Username = proplists:get_value(username, Opts),
+    Password = proplists:get_value(password, Opts, ""),
+    Bucket = proplists:get_value(bucket, Opts),
+    try connect(Dst, Username, Password, Bucket) of
+        NewDownstream ->
+            continue_start_vbucket_filter_change(From, State, NewDownstream)
+    catch T:E ->
+            Stack = erlang:get_stacktrace(),
+            ?log_info("Failed to establish new downstream connection:~n~p", [{T, E, Stack}]),
+            {reply, failed, Stack}
+    end;
 
 handle_call(_Req, _From, State) ->
     {reply, unhandled, State}.
@@ -113,7 +153,7 @@ handle_info(Msg, State) ->
     {noreply, State}.
 
 
-init({Src, Dst, Opts}) ->
+init({Src, Dst, Opts}=InitArgs) ->
     Username = proplists:get_value(username, Opts),
     Password = proplists:get_value(password, Opts, ""),
     Bucket = proplists:get_value(bucket, Opts),
@@ -124,8 +164,17 @@ init({Src, Dst, Opts}) ->
                true -> "rebalance_" ++ TapSuffix;
                _ -> "replication_" ++ TapSuffix
            end,
+    PassedDownstream = case proplists:get_value(passed_downstream_retriever, Opts) of
+                           undefined ->
+                               undefined;
+                           DownstreamThunk ->
+                               DownstreamThunk()
+                       end,
     proc_lib:init_ack({ok, self()}),
-    Downstream = connect(Dst, Username, Password, Bucket),
+    Downstream = case PassedDownstream of
+                     undefined -> connect(Dst, Username, Password, Bucket);
+                     _ -> PassedDownstream
+                 end,
     %% Set all vbuckets to the replica state on the destination node.
     lists:foreach(
       fun (VBucket) ->
@@ -144,28 +193,47 @@ init({Src, Dst, Opts}) ->
     if
         ReadyVBuckets =/= VBuckets ->
             false = TakeOver,
+            NotReadyVBuckets = VBuckets -- ReadyVBuckets,
+            master_activity_events:note_not_ready_vbuckets(self(), NotReadyVBuckets),
             ?rebalance_info("Some vbuckets were not yet ready to replicate from:~n~p~n",
-                            [VBuckets -- ReadyVBuckets]),
-            erlang:send_after(30000, self(), retry_not_ready_vbuckets),
-            if ReadyVBuckets =:= [] ->
-                    gen_tcp:close(Upstream),
-                    gen_tcp:close(Downstream),
-                    receive retry_not_ready_vbuckets -> ok end,
-                    exit_retry_not_ready_vbuckets();
-               true -> ok
-            end;
-        true -> ok
+                            [NotReadyVBuckets]),
+            erlang:send_after(30000, self(), retry_not_ready_vbuckets);
+        true ->
+            ok
     end,
-    Checkpoints = lists:map(fun ({V, {ok, C}}) -> {V, C};
-                                ({V, _})       -> {V, 0}
-                            end,
-                            [{Vb, mc_client_binary:get_last_closed_checkpoint(Downstream, Vb)} || Vb <- ReadyVBuckets]),
-    Args = [{vbuckets, ReadyVBuckets},
-            {checkpoints, Checkpoints},
-            {name, Name},
-            {takeover, TakeOver}],
-    ?rebalance_info("Starting tap stream:~n~p~n", [Args]),
-    {ok, quiet} = mc_client_binary:tap_connect(Upstream, Args),
+    Args = if
+               ReadyVBuckets =:= [] ->
+                   false = TakeOver,
+                   %% don't send tap_connect if no buckets were ready
+                   %% but still enter gen_server loop as normal
+                   [{vbuckets, []},
+                    {checkpoints, []},
+                    {name, Name},
+                    {takeover, false}];
+               true ->
+                   Checkpoints = lists:map(fun ({V, {ok, C}}) -> {V, C};
+                                               ({V, _})       -> {V, 0}
+                                           end,
+                                           [{Vb, mc_client_binary:get_last_closed_checkpoint(Downstream, Vb)} || Vb <- ReadyVBuckets]),
+                   Args0 = [{vbuckets, ReadyVBuckets},
+                            {checkpoints, Checkpoints},
+                            {name, Name},
+                            {takeover, TakeOver}],
+                   ?rebalance_info("Starting tap stream:~n~p~n", [Args0]),
+                   case PassedDownstream =:= undefined of
+                       true ->
+                           ?log_debug("killing tap named: ~s", [Name]),
+                           (catch master_activity_events:note_deregister_tap_name(case Bucket of
+                                                                                      undefined -> Username;
+                                                                                      _ -> Bucket
+                                                                                  end, Src, Name)),
+                           ok = mc_client_binary:deregister_tap_client(Upstream, iolist_to_binary(Name));
+                       false ->
+                           ok
+                   end,
+                   {ok, quiet} = mc_client_binary:tap_connect(Upstream, Args0),
+                   Args0
+           end,
     ok = inet:setopts(Upstream, [{active, once}]),
     ok = inet:setopts(Downstream, [{active, once}]),
 
@@ -182,13 +250,15 @@ init({Src, Dst, Opts}) ->
       vbuckets=sets:from_list(ReadyVBuckets),
       last_seen=now(),
       takeover=TakeOver,
-      takeover_done=false
+      takeover_done=false,
+      args=InitArgs
      },
     erlang:process_flag(trap_exit, true),
     (catch master_activity_events:note_ebucketmigrator_start(self(), Src, Dst, [{bucket, Bucket},
                                                                                 {username, Username}
                                                                                 | Args])),
     gen_server:enter_loop(?MODULE, [], State).
+
 
 upstream_sender_loop(Upstream) ->
     receive
@@ -303,6 +373,14 @@ build_args(Bucket, SrcNode, DstNode, VBuckets, TakeOver) ->
       {vbuckets, VBuckets},
       {takeover, TakeOver},
       {suffix, Suffix}]].
+
+add_args_option([Src, Dst, Options], OptionName, OptionValue) ->
+    NewOptions = [{OptionName, OptionValue} | lists:keydelete(OptionName, 1, Options)],
+    [Src, Dst, NewOptions].
+
+start_vbucket_filter_change(Pid) ->
+    gen_server:call(Pid, start_vbucket_filter_change).
+
 
 %%
 %% Internal functions

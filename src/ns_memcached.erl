@@ -124,8 +124,8 @@ init({Bucket, Type}) ->
                bucket=Bucket,
                type=Type}
             };
-        {error, _} = Error ->
-            Error
+        {error, Error} ->
+            {stop, Error}
     end.
 
 handle_call(Msg, From, #state{type=stats} = State) ->
@@ -340,8 +340,11 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock, type=stats}) ->
                        undefined
                end,
     BucketConfigs = ns_bucket:get_buckets(NsConfig),
-    NoBucket = NsConfig =/= undefined andalso not lists:member(Bucket, ns_bucket:node_bucket_names(node(), BucketConfigs)),
-    NodeDying = NsConfig =/= undefined andalso ns_config:search(NsConfig, i_am_a_dead_man),
+    NoBucket = NsConfig =/= undefined andalso
+        not lists:keymember(Bucket, 1, BucketConfigs),
+    NodeDying = NsConfig =/= undefined
+        andalso (ns_config:search(NsConfig, i_am_a_dead_man) =/= false
+                 orelse not lists:member(Bucket, ns_bucket:node_bucket_names(node(), BucketConfigs))),
     Deleting = NoBucket orelse NodeDying,
 
     if
@@ -359,9 +362,10 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock, type=stats}) ->
                                [Bucket, {E2, R2}])
             after
                 case NoBucket of
-                    %% if node is being ejected db files will be mass
-                    %% deleted (and possibly backed up) by ns_cluster.
-                    %% So we delete db files only when bucket was regularly deleted
+                    %% files are deleted here only when bucket is deleted; in
+                    %% all the other cases (like node removal or failover) we
+                    %% leave them on the file system and let others decide
+                    %% when they should be deleted
                     true -> ns_storage_conf:delete_databases(Bucket);
                     _ -> ok
                 end

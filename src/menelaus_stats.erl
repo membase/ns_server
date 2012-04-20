@@ -539,6 +539,13 @@ computed_stats_lazy_proplist() ->
                         ResidenceCalculator),
     PendingResRate = Z2(vb_pending_num_non_resident, vb_pending_curr_items,
                         ResidenceCalculator),
+    AverageWriteSeekDistance = Z2(write_seeks_distance, write_seeks_count,
+                                  fun (Distance, Count) ->
+                                          try Distance / Count
+                                          catch error:badarith -> 0
+                                          end
+                                  end),
+
     [{couch_total_disk_size, TotalDisk},
      {couch_docs_fragmentation, DocsFragmentation},
      {couch_views_fragmentation, ViewsFragmentation},
@@ -551,7 +558,8 @@ computed_stats_lazy_proplist() ->
      {vb_avg_total_queue_age, AvgTotalQueueAge},
      {vb_active_resident_items_ratio, ActiveResRate},
      {vb_replica_resident_items_ratio, ReplicaResRate},
-     {vb_pending_resident_items_ratio, PendingResRate}].
+     {vb_pending_resident_items_ratio, PendingResRate},
+     {avg_write_seek_distance, AverageWriteSeekDistance}].
 
 %% converts list of samples to proplist of stat values.
 %%
@@ -744,7 +752,7 @@ membase_stats_description() ->
                 {struct,[{name,<<"couch_total_disk_size">>},
                          {title,<<"total disk size">>},
                          {desc,<<"The total size on disk of all data and view files for this bucket.)">>}]},
-               {struct,[{name,<<"couch_views_data_size">>},
+                {struct,[{name,<<"couch_views_data_size">>},
                          {title,<<"views data size">>},
                          {desc,<<"The size of active data on for all the indexes in this bucket">>}]},
                 {struct,[{name,<<"couch_views_actual_disk_size">>},
@@ -752,7 +760,19 @@ membase_stats_description() ->
                          {desc,<<"The size of all active items in all the indexes for this bucket on disk">>}]},
                 {struct,[{name,<<"couch_views_fragmentation">>},
                          {title,<<"views fragmentation %">>},
-                         {desc,<<"How much fragmented data there is to be compacted compared to real data for the view index files in this bucket">>}]}
+                         {desc,<<"How much fragmented data there is to be compacted compared to real data for the view index files in this bucket">>}]},
+                {struct, [{title, <<"memory used">>},
+                          {name, <<"mem_used">>},
+                          {desc, <<"Memory used as measured from mem_used">>}]},
+                {struct, [{title, <<"high water mark">>},
+                          {name, <<"ep_mem_high_wat">>},
+                          {desc, <<"High water mark for auto-evictions (measured from ep_mem_high_wat)">>}]},
+                {struct, [{title, <<"low water mark">>},
+                          {name, <<"ep_mem_low_wat">>},
+                          {desc, <<"Low water mark for auto-evictions (measured from ep_mem_low_wat)">>}]},
+                {struct, [{title, <<"write seek distance">>},
+                          {name, <<"avg_write_seek_distance">>},
+                          {desc, <<"Average write seek distance in bytes as measured from writeSeek histogram of kvtimings">>}]}
                ]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"withtotal closed">>},

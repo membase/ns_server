@@ -70,6 +70,9 @@ init([]) ->
            {ns_config_sup, {ns_config_sup, start_link, []},
             permanent, infinity, supervisor,
             [ns_config_sup]},
+           {vbucket_filter_changes_registry,
+            {ns_process_registry, start_link, [vbucket_filter_changes_registry]},
+            permanent, 100, worker, [ns_process_registry]},
            {ns_server_sup, {ns_server_sup, start_link, []},
             permanent, infinity, supervisor, [ns_server_sup]}
           ]}}.

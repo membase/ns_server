@@ -45,8 +45,11 @@
         %% Num items in active vbuckets.
         curr_items,
 
-        mem_used,                               % used by memcached
+        mem_used,
         curr_connections,
+
+        ep_mem_high_wat,
+        ep_mem_low_wat,
 
         %% Num current items including those not active (replica, (NOT
         %% including dead) and pending states)

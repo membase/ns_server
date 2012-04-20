@@ -28,8 +28,10 @@
 
 %% Callbacks
 -export([server_name/1, supervisor_node/2,
-         make_replicator/3, replicator_nodes/2, replicator_vbuckets/1]).
+         make_replicator/3, replicator_nodes/2, replicator_vbuckets/1,
+         change_vbucket_filter/5]).
 
+-export([local_change_vbucket_filter/4]).
 
 %%
 %% API
@@ -59,3 +61,19 @@ replicator_nodes(SupervisorNode, #new_child_id{src_node=Node}) ->
 -spec replicator_vbuckets(#new_child_id{}) -> [vbucket_id(), ...].
 replicator_vbuckets(#new_child_id{vbuckets=VBuckets}) ->
     VBuckets.
+
+local_change_vbucket_filter(Bucket, DstNode, #new_child_id{src_node=SrcNode} = ChildId, NewVBuckets) ->
+    NewChildId = #new_child_id{src_node = SrcNode,
+                               vbuckets = NewVBuckets},
+    Args = ebucketmigrator_srv:build_args(Bucket,
+                                          SrcNode, DstNode, NewVBuckets, false),
+    cb_gen_vbm_sup:perform_vbucket_filter_change(Bucket,
+                                                 ChildId,
+                                                 NewChildId,
+                                                 Args,
+                                                 server_name(Bucket)).
+
+change_vbucket_filter(Bucket, _SrcNode, DstNode, Child, NewVBuckets) ->
+    {ok, Ref} = rpc:call(DstNode, ns_vbm_new_sup, local_change_vbucket_filter,
+                         [Bucket, DstNode, Child, NewVBuckets]),
+    Ref.

@@ -162,14 +162,41 @@ rm_rf(Name) when is_list(Name) ->
     true ->
       case file:list_dir(Name) of
           {ok, Filenames} ->
-              lists:foreach(
-                fun rm_rf/1,
-                [filename:join(Name, F) || F <- Filenames]),
-              file:del_dir(Name);
-          {error, Reason} ->
-              ?log_warning("rm_rf failed because ~p", [Reason])
+              case rm_rf_loop(Name, Filenames) of
+                  ok ->
+                      case file:del_dir(Name) of
+                          ok ->
+                              ok;
+                          {error, enoent} ->
+                              ok;
+                          Error ->
+                              ?log_warning("Cannot delete ~p: ~p", [Name, Error]),
+                              Error
+                      end;
+                  Error ->
+                      Error
+              end;
+          {error, enoent} ->
+              ok;
+          {error, Reason} = Error ->
+              ?log_warning("rm_rf failed because ~p", [Reason]),
+              Error
       end
   end.
+
+rm_rf_loop(_DirName, []) ->
+    ok;
+rm_rf_loop(DirName, [F | Files]) ->
+    FileName = filename:join(DirName, F),
+    case rm_rf(FileName) of
+        ok ->
+            rm_rf_loop(DirName, Files);
+        {error, enoent} ->
+            rm_rf_loop(DirName, Files);
+        Error ->
+            ?log_warning("Cannot delete ~p: ~p", [FileName, Error]),
+            Error
+    end.
 
 space_split(Bin) ->
     byte_split(Bin, 32). % ASCII space is 32.
@@ -1258,3 +1285,71 @@ ceiling_test() ->
     ok.
 
 -endif.
+
+compute_map_diff(undefined, OldMap) ->
+    compute_map_diff([], OldMap);
+compute_map_diff(NewMap, undefined) ->
+    compute_map_diff(NewMap, []);
+compute_map_diff([], []) ->
+    [];
+compute_map_diff(NewMap, []) when NewMap =/= [] ->
+    compute_map_diff(NewMap, [[] || _ <- NewMap]);
+compute_map_diff([], OldMap) when OldMap =/= [] ->
+    compute_map_diff([[] || _ <- OldMap], OldMap);
+compute_map_diff(NewMap, OldMap) ->
+    VBucketsCount = erlang:length(NewMap),
+    [{I, ChainOld, ChainNew} ||
+        {I, ChainOld, ChainNew} <-
+            lists:zip3(lists:seq(0, VBucketsCount-1), OldMap, NewMap),
+        ChainOld =/= ChainNew].
+
+%% execute body in newly spawned process. Function returns when Body
+%% returns and with it's return value. If body produced any exception
+%% it will be rethrown. Care is taken to propagate exits of 'parent'
+%% process to this worker process.
+executing_on_new_process(Body) ->
+    Ref = erlang:make_ref(),
+    Parent = self(),
+    {ChildPid, ChildMRef} = erlang:spawn_monitor(
+                              fun () ->
+                                      ParentMRef = erlang:monitor(process, Parent),
+                                      receive
+                                          proceed -> ok;
+                                          {'DOWN', ParentMRef, _, _, Reason} ->
+                                              exit(Reason)
+                                      end,
+                                      erlang:demonitor(ParentMRef, [flush]),
+                                      try Body() of
+                                          RV ->
+                                              exit({Ref, RV})
+                                      catch T:E ->
+                                              Stack = erlang:get_stacktrace(),
+                                              exit({Ref, T, E, Stack})
+                                      end
+                              end),
+    {_WatcherPid, WatcherMRef} = erlang:spawn_monitor(
+                                   fun () ->
+                                           erlang:monitor(process, Parent),
+                                           erlang:monitor(process, ChildPid),
+                                           receive
+                                               {'DOWN', _, _, _, Reason} ->
+                                                   erlang:exit(ChildPid, Reason)
+                                           end
+                                   end),
+    ChildPid ! proceed,
+    receive
+        {'DOWN', ChildMRef, _, _, ChildReason} ->
+            receive
+                {'DOWN', WatcherMRef, _, _, _} ->
+                    ok
+            end,
+            case ChildReason of
+                {Ref, RV} ->
+                    RV;
+                {Ref, T, E, Stack} ->
+                    erlang:raise(T, E, Stack);
+                _ ->
+                    ?log_error("Got unexpected reason: ~p", [ChildReason]),
+                    erlang:error({unexpected_reason, ChildReason})
+            end
+    end.

@@ -142,7 +142,7 @@ handle_diag(Req) ->
                         "view" -> [];
                         _ -> [{"Content-Disposition", "attachment; filename=" ++ generate_diag_filename()}]
                     end,
-    Log = proplists:get_value("log", Params, ?DEFAULT_LOG_FILENAME),
+    Log = proplists:get_value("log", Params, ?DEBUG_LOG_FILENAME),
     do_handle_diag(Req, MaybeContDisp, Log).
 
 
@@ -191,9 +191,6 @@ do_handle_diag(Req, Extra, Log) ->
                          "Requested log file not found.\r\n"})
     end.
 
-handle_logs(Resp) ->
-    ns_log_browser:stream_logs(fun (Data) -> Resp:write_chunk(Data) end).
-
 handle_logs(Resp, LogName) ->
     ns_log_browser:stream_logs(LogName,
                                fun (Data) -> Resp:write_chunk(Data) end).
@@ -211,10 +208,7 @@ handle_sasl_logs(LogName, Req) ->
     end.
 
 handle_sasl_logs(Req) ->
-    Resp = Req:ok({"text/plain; charset=utf-8",
-            menelaus_util:server_header(),
-            chunked}),
-    handle_logs(Resp).
+    handle_sasl_logs(?DEBUG_LOG_FILENAME, Req).
 
 arm_timeout(Millis) ->
     arm_timeout(Millis,

@@ -44,7 +44,9 @@
          terminate/2, code_change/3]).
 
 % API
--export([push/0, initiate_changes_push/1, synchronize/0, pull_and_push/1]).
+-export([push/0, initiate_changes_push/1,
+         synchronize_local/0, synchronize_remote/0, synchronize_remote/1,
+         pull_and_push/1]).
 
 -record(state, {merger}).
 
@@ -71,8 +73,7 @@ init([]) ->
 
 merger_loop() ->
     receive
-        X ->
-            {merge_compressed, Blob} = X,
+        {merge_compressed, Blob} ->
             KVList = binary_to_term(zlib:uncompress(Blob)),
             do_merge(KVList),
             case erlang:process_info(self(), message_queue_len) of
@@ -81,11 +82,29 @@ merger_loop() ->
                                  "Will kill myself and resync"),
                     exit(emergency_kill);
                 {message_queue_len, _} -> ok
-            end
+            end;
+        {sync, Pid, Ref} ->
+            Pid ! {sync_done, Ref}
     end,
     merger_loop().
 
 handle_call(synchronize, _From, State) ->
+    {reply, ok, State};
+handle_call(synchronize_everything, {Pid, _Tag} = _From,
+            #state{merger = Merger} = State) ->
+    RemoteNode = node(Pid),
+    ?log_debug("Got full synchronization request from ~p", [RemoteNode]),
+
+    StartTS = os:timestamp(),
+    Ref = make_ref(),
+    Merger ! {sync, self(), Ref},
+    receive
+        {sync_done, Ref} ->
+            EndTS = os:timestamp(),
+            Diff = timer:now_diff(EndTS, StartTS),
+            ?log_debug("Fully synchronized config in ~p us", [Diff])
+    end,
+
     {reply, ok, State};
 handle_call(Msg, _From, State) ->
     ?log_warning("Unhandled call: ~p", [Msg]),
@@ -220,8 +239,41 @@ initiate_changes_push(List) ->
     ?MODULE ! {push, List}.
 
 % awaits completion of all previous requests
-synchronize() ->
+synchronize_local() ->
     gen_server:call(?MODULE, synchronize, ?SYNCHRONIZE_TIMEOUT).
+
+synchronize_remote() ->
+    synchronize_remote(ns_node_disco:nodes_actual_other()).
+
+synchronize_remote(Nodes) ->
+    ok = synchronize_local(),
+    {Replies, BadNodes} =
+        gen_server:multi_call(Nodes, ?MODULE,
+                              synchronize_everything, ?SYNCHRONIZE_TIMEOUT),
+
+    AllBadNodes =
+        lists:foldl(
+          fun ({Node, Reply}, Acc) ->
+                  case Reply of
+                      ok ->                     % new node
+                          Acc;
+                      error ->
+                          %% must be an old node; see default clause of
+                          %% handle_call
+                          Acc;
+                      _Other ->
+                          [Node | Acc]
+                  end
+          end, BadNodes, Replies),
+
+    case AllBadNodes of
+        [] ->
+            ok;
+        _ ->
+            ?log_error("Failed to synchronize config to some nodes: ~n~p",
+                       [AllBadNodes]),
+            {error, AllBadNodes}
+    end.
 
 pull_and_push([]) -> ok;
 pull_and_push(Nodes) ->

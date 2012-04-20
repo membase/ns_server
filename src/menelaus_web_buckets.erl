@@ -270,6 +270,7 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
 do_bucket_create(Name, ParsedProps) ->
     BucketType = proplists:get_value(bucketType, ParsedProps),
     BucketProps = extract_bucket_props(Name, ParsedProps),
+    menelaus_web:maybe_cleanup_old_buckets(),
     case ns_orchestrator:create_bucket(BucketType, Name, BucketProps) of
         ok ->
             ?MENELAUS_WEB_LOG(?BUCKET_CREATED, "Created bucket \"~s\" of type: ~s~n", [Name, BucketType]),

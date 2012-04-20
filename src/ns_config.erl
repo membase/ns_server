@@ -89,7 +89,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--export([stop/0, reload/0, resave/0, reannounce/0, replace/1]).
+-export([stop/0, resave/0, reannounce/0, replace/1]).
 
 %% API
 
@@ -102,7 +102,6 @@ start_link(Full) ->
 start_link(ConfigPath, PolicyMod) -> start_link([ConfigPath, PolicyMod]).
 
 stop()       -> gen_server:cast(?MODULE, stop).
-reload()     -> gen_server:call(?MODULE, reload).
 resave()     -> gen_server:call(?MODULE, resave).
 reannounce() -> gen_server:call(?MODULE, reannounce).
 

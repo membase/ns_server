@@ -24,7 +24,7 @@
 -record(state, {func, func_state}).
 
 %% API
--export([subscribe_link/1, subscribe_link/3, unsubscribe/1]).
+-export([subscribe_link/1, subscribe_link/2, subscribe_link/3, unsubscribe/1]).
 
 %% gen_event callbacks
 -export([code_change/3, init/1, handle_call/2, handle_event/2, handle_info/2,
@@ -40,6 +40,13 @@
 subscribe_link(Name) ->
     subscribe_link(Name, msg_fun(self()), ignored).
 
+subscribe_link(Name, Fun) ->
+    subscribe_link(
+      Name,
+      fun (Event, State) ->
+              Fun(Event),
+              State
+      end, ignored).
 
 subscribe_link(Name, Fun, State) ->
     proc_lib:start(?MODULE, do_subscribe_link, [Name, Fun, State, self()]).
@@ -222,7 +229,7 @@ test_subscribe() ->
 
               receive
                   {counter_updated, Value} ->
-                      ?assert(Value =< Initial + 1)
+                      true = (Value =< Initial + 1)
               end
       end).
 
@@ -255,6 +262,10 @@ kill_test_() ->
              ?_test(test_parent_crash()),
              ?_test(test_event_mgr_crash())]}.
 
+just_fail() ->
+    %% NOTE: nif_error is to silence dialyzer
+    erlang:nif_error(test_timeout_hit).
+
 test_shutdown() ->
     wrap(
       fun setup/0, fun cleanup/1,
@@ -268,8 +279,8 @@ test_shutdown() ->
                   {'EXIT', Subscription, normal} ->
                       ok
               after
-                  100 ->
-                      ?assert(false)
+                  1000 ->
+                      just_fail()
               end
       end).
 
@@ -293,8 +304,8 @@ test_crash() ->
                   {'EXIT', Subscription, {handler_crashed, _, {'EXIT', crashed}}} ->
                       ok
               after
-                  100 ->
-                      ?assert(false)
+                  1000 ->
+                      just_fail()
               end
       end).
 
@@ -311,8 +322,8 @@ test_event_mgr_crash() ->
                   {'EXIT', Subscription, {linked_process_died, _, killed}} ->
                       ok
               after
-                  100 ->
-                      ?assert(false)
+                  1000 ->
+                      just_fail()
               end
       end).
 
@@ -347,8 +358,8 @@ test_parent_crash() ->
                 {'EXIT', Subscription, normal} ->
                     ok
             after
-                100 ->
-                    ?assert(false)
+                1000 ->
+                    just_fail()
             end,
 
             kill_silently_sync(EventMgr),
