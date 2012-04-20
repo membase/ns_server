@@ -357,29 +357,35 @@ buckets_replication_statuses() ->
     [{Bucket, replication_status(Bucket, BucketConfig)} ||
         {Bucket, BucketConfig} <- BucketConfigs].
 
+is_undef_exit(M, F, A, {undef, [{M, F, A, []} | _]}) -> true; % R15
+is_undef_exit(M, F, A, {undef, [{M, F, A} | _]}) -> true; % R14
+is_undef_exit(_M, _F, _A, _Reason) -> false.
+
+multicall_ignoring_undefined(Nodes, M, F, A) ->
+    {Results, DownNodes} = rpc:multicall(Nodes, M, F, A),
+
+    {Good, Bad} =
+        misc:multicall_result_to_plist(Nodes, {Results, DownNodes}),
+    ReallyBad =
+        lists:filter(
+          fun ({_Node, Reason}) ->
+                  case Reason of
+                      {'EXIT', ExitReason} ->
+                          %% this may be just an old node; if so, ignore it
+                          not is_undef_exit(M, F, A, ExitReason);
+                      _ ->
+                          true
+                  end
+          end, Bad),
+    {Good, ReallyBad, DownNodes}.
+
 maybe_cleanup_old_buckets(KeepNodes) ->
-    {Results, BadNodes} =
-        rpc:multicall(KeepNodes, ns_storage_conf, delete_unused_buckets_db_files, []),
-
-    case BadNodes of
-        [] ->
-            {Good, Bad} =
-                misc:multicall_result_to_plist(KeepNodes, {Results, BadNodes}),
-            ReallyBad =
-                lists:filter(
-                  fun ({_Node, Reason}) ->
-                          case Reason of
-                              %% this must be just an old node; so ignore it
-                              {'EXIT',
-                               {undef,
-                                [{ns_storage_conf,
-                                  delete_all_db_files, [], []} | _]}} ->
-                                  false;
-                              _ ->
-                                  true
-                          end
-                  end, Bad),
-
+    case multicall_ignoring_undefined(KeepNodes, ns_storage_conf, delete_unused_buckets_db_files, []) of
+        {_, _, DownNodes} when DownNodes =/= [] ->
+            ?rebalance_error("Failed to cleanup old buckets on some nodes: ~p",
+                             [DownNodes]),
+            exit({buckets_cleanup_failed, DownNodes});
+        {Good, ReallyBad, []} ->
             case ReallyBad of
                 [] ->
                     ok;
@@ -411,9 +417,5 @@ maybe_cleanup_old_buckets(KeepNodes) ->
                     ok;
                 _ ->
                     exit({buckets_cleanup_failed, FailedNodes})
-            end;
-        _ ->
-            ?rebalance_error("Failed to cleanup old buckets on some nodes: ~p",
-                             [BadNodes]),
-            exit({buckets_cleanup_failed, BadNodes})
+            end
     end.
