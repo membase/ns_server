@@ -32,10 +32,13 @@
          buckets_replication_statuses/0,
          eject_nodes/1]).
 
+-export([wait_local_buckets_shutdown_complete/0]). % used via rpc:multicall
+
 
 -define(DATA_LOST, 1).
 -define(BAD_REPLICATORS, 2).
 
+-define(BUCKETS_SHUTDOWN_WAIT_TIMEOUT, 20000).
 
 %%
 %% API
@@ -103,6 +106,59 @@ generate_initial_map(BucketConfig) ->
     {MapRV, _} = generate_vbucket_map(Map1, Servers, BucketConfig),
     MapRV.
 
+local_buckets_shutdown_loop(Ref, CanWait) ->
+    ExcessiveBuckets = ns_memcached:active_buckets() -- ns_bucket:node_bucket_names(node()),
+    case ExcessiveBuckets of
+        [] ->
+            ok;
+        _ ->
+            case CanWait of
+                false ->
+                    exit({old_buckets_shutdown_wait_failed, ExcessiveBuckets});
+                true ->
+                    ?log_debug("Waiting until the following old bucket instances are gone: ~p", [ExcessiveBuckets]),
+                    receive
+                        {Ref, timeout} ->
+                            local_buckets_shutdown_loop(Ref, false);
+                        {Ref, _Msg} ->
+                            local_buckets_shutdown_loop(Ref, true)
+                    end
+            end
+    end.
+
+%% note: this is rpc:multicall-ed
+wait_local_buckets_shutdown_complete() ->
+    misc:executing_on_new_process(
+      fun () ->
+              Ref = erlang:make_ref(),
+              Parent = self(),
+              Subscription = ns_pubsub:subscribe_link(buckets_events,
+                                                      fun ({stopped, _, _, _} = StoppedMsg) ->
+                                                              Parent ! {Ref, StoppedMsg};
+                                                          (_) ->
+                                                              ok
+                                                      end),
+              erlang:send_after(?BUCKETS_SHUTDOWN_WAIT_TIMEOUT, Parent, {Ref, timeout}),
+              try
+                  local_buckets_shutdown_loop(Ref, true)
+              after
+                  (catch ns_pubsub:unsubscribe(Subscription))
+              end
+      end).
+
+do_wait_buckets_shutdown(KeepNodes) ->
+    {Good, ReallyBad, FailedNodes} = multicall_ignoring_undefined(KeepNodes, ns_rebalancer, wait_local_buckets_shutdown_complete, []),
+    NonOk = [Pair || {_Node, Result} = Pair <- Good,
+                     Result =/= ok],
+    Failures = ReallyBad ++ NonOk ++ [{N, node_was_down} || N <- FailedNodes],
+    case Failures of
+        [] ->
+            ok;
+        _ ->
+            ?rebalance_error("Failed to wait deletion of some buckets on some nodes: ~p~n", [Failures]),
+            exit({buckets_shutdown_wait_failed, Failures})
+    end.
+
 
 rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
     %% TODO: pull config reliably here as well
@@ -113,6 +169,10 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
         {error, SyncFailedNodes} ->
             exit({pre_rebalance_config_synchronization_failed, SyncFailedNodes})
     end,
+
+    %% now wait when all bucket shutdowns are done on nodes we're
+    %% adding (or maybe adding)
+    do_wait_buckets_shutdown(KeepNodes),
 
     %% don't eject ourselves at all here; this will be handled by ns_orchestrator
     EjectNodes = EjectNodesAll -- [node()],
