@@ -119,6 +119,7 @@ init_logging() ->
     ok = ale:add_sink(?USER_LOGGER, ns_log, info),
     ok = ale:add_sink(?MENELAUS_LOGGER, ns_log, info),
     ok = ale:add_sink(?CLUSTER_LOGGER, ns_log, info),
+    ok = ale:add_sink(?REBALANCE_LOGGER, ns_log, error),
 
     case misc:get_env_default(dont_suppress_stderr_logger, false) of
         true ->
