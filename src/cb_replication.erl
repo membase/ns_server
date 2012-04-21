@@ -76,12 +76,16 @@ stop_replications(Bucket, SrcNode, DstNode, VBuckets) ->
                                      Bucket, SrcNode, DstNode, VBuckets).
 
 replicas(Bucket, Nodes) ->
-    Mode = supported_mode(),
-    cb_gen_vbm_sup:replicas(policy_by_mode(Mode), Bucket, Nodes).
+    lists:merge(cb_gen_vbm_sup:replicas(ns_vbm_sup, Bucket, Nodes),
+                cb_gen_vbm_sup:replicas(ns_vbm_new_sup, Bucket, Nodes)).
 
+%% this is only called by
+%% failover_safeness_level:build_local_safeness_info_new. Which in
+%% turn is called by hearbeat. So at all we need to avoid touching
+%% ns_doctor at all costs!
 node_replicator_triples(Bucket, Node) ->
-    Mode = supported_mode(),
-    cb_gen_vbm_sup:node_replicator_triples(policy_by_mode(Mode), Bucket, Node).
+    cb_gen_vbm_sup:node_replicator_triples(ns_vbm_sup, Bucket, Node) ++
+        cb_gen_vbm_sup:node_replicator_triples(ns_vbm_new_sup, Bucket, Node).
 
 supported_mode() ->
     Statuses = ns_doctor:get_nodes(),
