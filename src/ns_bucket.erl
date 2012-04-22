@@ -452,7 +452,10 @@ is_valid_bucket_name([]) -> false;
 is_valid_bucket_name(".") -> false;
 is_valid_bucket_name("..") -> false;
 is_valid_bucket_name([$. | _]) -> false;
-is_valid_bucket_name([Char | Rest]) ->
+is_valid_bucket_name(BucketName) ->
+    is_valid_bucket_name_inner(BucketName).
+
+is_valid_bucket_name_inner([Char | Rest]) ->
     case ($A =< Char andalso Char =< $Z)
         orelse ($a =< Char andalso Char =< $z)
         orelse ($0 =< Char andalso Char =< $9)
@@ -461,7 +464,7 @@ is_valid_bucket_name([Char | Rest]) ->
         true ->
             case Rest of
                 [] -> true;
-                _ -> is_valid_bucket_name(Rest)
+                _ -> is_valid_bucket_name_inner(Rest)
             end;
         _ -> false
     end.
