@@ -114,7 +114,7 @@ def start_cluster(num_nodes, start_index, host, extra_args):
 
         params = {}
 
-        if i > 0:
+        if i > start_index:
             args += ['-noshell']
             params['stdin'] = subprocess.PIPE
 
