@@ -141,7 +141,9 @@ do_maybe_invalidate_current_master(TriesLeft, FirstTime) ->
 
 check_master_takeover_needed(Peers) ->
     TenNodesToAsk = lists:sublist(misc:shuffle(Peers), 10),
+    ?log_debug("Sending master node question to the following nodes: ~p", [TenNodesToAsk]),
     {MasterReplies, _} = rpc:multicall(TenNodesToAsk, mb_master, master_node, [], 5000),
+    ?log_debug("Got replies: ~p", [MasterReplies]),
     GoodMasterReplies = [M || M <- MasterReplies,
                               M =/= undefined,
                               is_atom(M)],
