@@ -30,6 +30,8 @@
 node_name_changed() ->
     ok = supervisor:terminate_child(?MODULE, ns_doctor),
     {ok, _} = supervisor:restart_child(?MODULE, ns_doctor),
+    ok = supervisor:terminate_child(?MODULE, mb_master),
+    {ok, _} = supervisor:restart_child(?MODULE, mb_master),
     ok.
 
 
