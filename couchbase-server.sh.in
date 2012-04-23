@@ -21,9 +21,6 @@ export PATH
 ERL_LIBS="@PREFIX@/lib/ns_server/erlang/lib:@PREFIX@/lib/couchdb/erlang/lib:@PREFIX@/lib/couchdb/plugins"
 export ERL_LIBS
 
-ERL_FULLSWEEP_AFTER=0
-export ERL_FULLSWEEP_AFTER
-
 DEFAULT_CONFIG_DIR="@PREFIX@/etc/couchdb/default.d"
 DEFAULT_CONFIG_FILE="@PREFIX@/etc/couchdb/default.ini"
 LOCAL_CONFIG_DIR="@PREFIX@/etc/couchdb/local.d"
