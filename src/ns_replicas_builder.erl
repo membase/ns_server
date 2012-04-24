@@ -90,6 +90,8 @@ build_replicas_main(Bucket, VBucket, SrcNode, ReplicateIntoNodes, JustBackfillNo
       fun () ->
               observe_wait_all_done(Bucket, VBucket, SrcNode, JustBackfillNodes ++ ReplicateIntoNodes,
                                     fun () ->
+                                            system_stats_collector:increment_counter(replica_builder_sleeps, 1),
+                                            system_stats_collector:increment_counter(replica_builder_sleep_amount, ?COMPLETION_POLLING_INTERVAL),
                                             receive
                                                 {'EXIT', From, Reason} = ExitMsg ->
                                                     case lists:member(From, Replicators) of
@@ -265,6 +267,7 @@ observe_wait_all_done_tail(Bucket, SrcNode, Sleeper, TapNames, FirstTime) ->
             ok;
         _ ->
             if not FirstTime ->
+                    system_stats_collector:increment_counter(replicas_builder_backfill_sleeps, 1),
                     Sleeper();
                true ->
                     ok

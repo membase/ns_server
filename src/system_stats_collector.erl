@@ -32,6 +32,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
+-export([increment_counter/2]).
+
 -record(state, {port, prev_sample}).
 
 start_link() ->
@@ -39,6 +41,7 @@ start_link() ->
 
 
 init([]) ->
+    ets:new(ns_server_system_stats, [public, named_table]),
     Path = path_config:component_path(bin, "sigar_port"),
     Port =
         try open_port({spawn_executable, Path},
@@ -149,3 +152,7 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+increment_counter(Name, By) ->
+    ets:insert_new(ns_server_system_stats, {Name, 0}),
+    ets:update_counter(ns_server_system_stats, Name, By).
