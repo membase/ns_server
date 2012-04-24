@@ -284,30 +284,31 @@ db_ddoc_names(Db) ->
 
 
 maybe_compact_view(BucketName, DDocId, Config) ->
-    try couch_set_view:get_group_info(BucketName, DDocId) of
-    {ok, GroupInfo} ->
-        case can_view_compact(Config, BucketName, DDocId, GroupInfo) of
+    try couch_set_view:get_group_data_size(BucketName, DDocId) of
+    {ok, DataSizeInfo} ->
+        case can_view_compact(Config, BucketName, DDocId, DataSizeInfo) of
         true ->
             case compact_view_group(BucketName, DDocId, main, Config) of
             timeout ->
                 timeout;
             ok ->
-                maybe_compact_replica_group(Config, BucketName, DDocId, GroupInfo)
+                maybe_compact_replica_group(Config, BucketName, DDocId, DataSizeInfo)
             end;
         false ->
-            maybe_compact_replica_group(Config, BucketName, DDocId, GroupInfo)
+            maybe_compact_replica_group(Config, BucketName, DDocId, DataSizeInfo)
         end
     catch T:E ->
+        Stack = erlang:get_stacktrace(),
         ?log_error("Error opening view group `~s` from bucket `~s`: ~p~n~p",
-            [DDocId, BucketName, {T,E}, erlang:get_stacktrace()]),
+            [DDocId, BucketName, {T,E}, Stack]),
         ok
     end.
 
 
-maybe_compact_replica_group(Config, BucketName, DDocId, GroupInfo) ->
-    case couch_util:get_value(replica_group_info, GroupInfo) of
-    {RepGroupInfo} ->
-        case can_view_compact(Config, BucketName, DDocId, RepGroupInfo) of
+maybe_compact_replica_group(Config, BucketName, DDocId, DataSizeInfo) ->
+    case couch_util:get_value(replica_group_info, DataSizeInfo) of
+    RepDataSizeInfo when is_list(RepDataSizeInfo) ->
+        case can_view_compact(Config, BucketName, DDocId, RepDataSizeInfo) of
         true ->
             compact_view_group(BucketName, DDocId, replica, Config);
         false ->
@@ -397,16 +398,16 @@ can_db_compact(#config{db_frag = Threshold} = Config, Db, NumVbs) ->
         end
     end.
 
-can_view_compact(Config, BucketName, DDocId, GroupInfo) ->
+can_view_compact(Config, BucketName, DDocId, DataSizeInfo) ->
     case check_period(Config) of
     false ->
         false;
     true ->
-        case couch_util:get_value(updater_running, GroupInfo) of
+        case couch_util:get_value(updater_running, DataSizeInfo) of
         true ->
             false;
         false ->
-            {FragSize, FragPerc, SpaceRequired} = frag(GroupInfo),
+            {FragSize, FragPerc, SpaceRequired} = frag(DataSizeInfo),
             ?log_debug("Fragmentation for view group `~s` (bucket `~s`) is "
                 "~p%, estimated space for compaction is ~p bytes.",
                 [DDocId, BucketName, FragPerc, SpaceRequired]),
