@@ -92,7 +92,7 @@ handle_call(start_vbucket_filter_change, From, #state{args={_, Dst, Opts}} = Sta
     catch T:E ->
             Stack = erlang:get_stacktrace(),
             ?log_info("Failed to establish new downstream connection:~n~p", [{T, E, Stack}]),
-            {reply, failed, Stack}
+            {reply, failed, State}
     end;
 
 handle_call(_Req, _From, State) ->
