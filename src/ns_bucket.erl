@@ -505,7 +505,7 @@ validate_bucket_config(BucketName, NewConfig) ->
 
 new_bucket_default_params(membase) ->
     NumVBuckets = case ns_config:search(couchbase_num_vbuckets_default) of
-                      false -> misc:getenv_int("COUCHBASE_NUM_VBUCKETS", 256);
+                      false -> misc:getenv_int("COUCHBASE_NUM_VBUCKETS", 1024);
                       {value, X} -> X
                   end,
     [{type, membase},
