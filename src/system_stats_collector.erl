@@ -138,7 +138,7 @@ handle_info({tick, TS}, #state{port = Port, prev_sample = PrevSample}) ->
             Stats = lists:sort(Stats0),
             gen_event:notify(ns_stats_event,
                              {stats, "@system", #stat_entry{timestamp = TS,
-                                                            values = lists:sort(Stats)}})
+                                                            values = Stats}})
     end,
     {noreply, #state{port = Port, prev_sample = NewPrevSample}};
 handle_info(_Info, State) ->
