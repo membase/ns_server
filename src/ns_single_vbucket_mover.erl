@@ -23,8 +23,10 @@
 spawn_mover(Node, Bucket, VBucket,
             OldChain, NewChain) ->
     Parent = self(),
-    proc_lib:spawn_link(ns_single_vbucket_mover, mover,
-                        [Parent, Node, Bucket, VBucket, OldChain, NewChain]).
+    Pid = proc_lib:spawn_link(ns_single_vbucket_mover, mover,
+                              [Parent, Node, Bucket, VBucket, OldChain, NewChain]),
+    ?rebalance_debug("Spawned single vbucket mover: ~p (~p)", [[Parent, Node, Bucket, VBucket, OldChain, NewChain], Pid]),
+    Pid.
 
 get_cleanup_list() ->
     case erlang:get(cleanup_list) of
