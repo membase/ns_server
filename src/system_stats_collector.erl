@@ -48,7 +48,7 @@ init([]) ->
                 ns_pubsub:subscribe_link(ns_tick_event),
                 X
         catch error:enoent ->
-                ?stats_warning("~s is missing. Will not collect system-level stats", [Path]),
+                ale:error(?USER_LOGGER, "~s is missing. Will not collect system-level stats", [Path]),
                 undefined
         end,
     {ok, #state{port = Port}}.
