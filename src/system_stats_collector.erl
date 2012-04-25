@@ -32,7 +32,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--export([increment_counter/2]).
+-export([increment_counter/2, get_ns_server_stats/0]).
 
 -record(state, {port, prev_sample}).
 
@@ -156,3 +156,6 @@ code_change(_OldVsn, State, _Extra) ->
 increment_counter(Name, By) ->
     ets:insert_new(ns_server_system_stats, {Name, 0}),
     ets:update_counter(ns_server_system_stats, Name, By).
+
+get_ns_server_stats() ->
+    ets:tab2list(ns_server_system_stats).
