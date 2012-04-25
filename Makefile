@@ -101,7 +101,7 @@ endif
 
 endif
 
-PREFIX_FOR_CONFIG ?= $(DESTDIR)$(PREFIX)
+PREFIX_FOR_CONFIG ?= $(PREFIX)
 
 ERLWSH_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/erlwsh
 GEN_SMTP_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/gen_smtp
@@ -126,8 +126,8 @@ do-install:
 		 <etc/static_config.in >$(DESTDIR)$(PREFIX)/etc/couchbase/static_config
 	touch $(DESTDIR)$(PREFIX)/etc/couchbase/config
 	mkdir -p $(DESTDIR)$(PREFIX)/bin/
-	sed -e 's|@PREFIX@|$(DESTDIR)$(PREFIX)|g' <couchbase-server.sh.in >$(DESTDIR)$(PREFIX)/bin/couchbase-server
-	sed -e 's|@PREFIX@|$(DESTDIR)$(PREFIX)|g' <cbbrowse_logs.in >$(DESTDIR)$(PREFIX)/bin/cbbrowse_logs
+	sed -e 's|@PREFIX@|$(PREFIX)|g' <couchbase-server.sh.in >$(DESTDIR)$(PREFIX)/bin/couchbase-server
+	sed -e 's|@PREFIX@|$(PREFIX)|g' <cbbrowse_logs.in >$(DESTDIR)$(PREFIX)/bin/cbbrowse_logs
 	cp cbcollect_info $(DESTDIR)$(PREFIX)/bin/cbcollect_info
 	chmod +x $(DESTDIR)$(PREFIX)/bin/couchbase-server $(DESTDIR)$(PREFIX)/bin/cbbrowse_logs $(DESTDIR)$(PREFIX)/bin/cbcollect_info
 	mkdir -p $(DESTDIR)$(PREFIX)/var/lib/couchbase/mnesia
