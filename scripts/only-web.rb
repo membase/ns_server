@@ -1,6 +1,7 @@
 #!/usr/bin/ruby
 
 require 'rubygems'
+gem 'sinatra', '>= 1.3.2' # for :public_folder
 require 'sinatra'
 require 'active_support/core_ext'
 require 'pp'
@@ -58,7 +59,7 @@ end
 
 use Middleware
 
-set :public, $DOCROOT
+set :public_folder, $DOCROOT
 
 get "/" do
   redirect "/index.html"
