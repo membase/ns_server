@@ -32,6 +32,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
+-export([increment_counter/2, get_ns_server_stats/0]).
+
 -record(state, {port, prev_sample}).
 
 start_link() ->
@@ -39,6 +41,7 @@ start_link() ->
 
 
 init([]) ->
+    ets:new(ns_server_system_stats, [public, named_table]),
     Path = path_config:component_path(bin, "sigar_port"),
     Port =
         try open_port({spawn_executable, Path},
@@ -48,7 +51,7 @@ init([]) ->
                 ns_pubsub:subscribe_link(ns_tick_event),
                 X
         catch error:enoent ->
-                ?stats_warning("~s is missing. Will not collect system-level stats", [Path]),
+                ale:error(?USER_LOGGER, "~s is missing. Will not collect system-level stats", [Path]),
                 undefined
         end,
     {ok, #state{port = Port}}.
@@ -138,7 +141,7 @@ handle_info({tick, TS}, #state{port = Port, prev_sample = PrevSample}) ->
             Stats = lists:sort(Stats0),
             gen_event:notify(ns_stats_event,
                              {stats, "@system", #stat_entry{timestamp = TS,
-                                                            values = lists:sort(Stats)}})
+                                                            values = Stats}})
     end,
     {noreply, #state{port = Port, prev_sample = NewPrevSample}};
 handle_info(_Info, State) ->
@@ -149,3 +152,10 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+increment_counter(Name, By) ->
+    ets:insert_new(ns_server_system_stats, {Name, 0}),
+    ets:update_counter(ns_server_system_stats, Name, By).
+
+get_ns_server_stats() ->
+    ets:tab2list(ns_server_system_stats).

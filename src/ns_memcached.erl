@@ -75,6 +75,7 @@
          sync_bucket_config/1,
          deregister_tap_client/2,
          flush/1,
+         get_vbucket_open_checkpoint/3,
          set/4,
          ready_nodes/4,
          sync/4, add/4, get/3, delete/3, delete/4,
@@ -673,6 +674,37 @@ topkeys(Bucket) ->
 raw_stats(Node, Bucket, SubStats, Fn, FnState) ->
     gen_server:call({ns_memcached:server(Bucket, stats), Node},
                     {raw_stats, SubStats, Fn, FnState}).
+
+
+-spec get_vbucket_open_checkpoint(Nodes::[node()],
+                           Bucket::bucket_name(),
+                           VBucketId::vbucket_id()) -> [{node(), integer() | missing}].
+get_vbucket_open_checkpoint(Nodes, Bucket, VBucketId) ->
+    StatName = <<"vb_", (iolist_to_binary(integer_to_list(VBucketId)))/binary, ":open_checkpoint_id">>,
+    {OkNodes, BadNodes} = gen_server:multi_call(Nodes, server(Bucket, stats), {stats, <<"checkpoint">>}, ?TIMEOUT),
+    case BadNodes of
+        [] -> ok;
+        _ ->
+            ?log_error("Some nodes failed checkpoint stats call: ~p", [BadNodes])
+    end,
+    [begin
+         PList = case proplists:get_value(N, OkNodes) of
+                     {ok, Good} -> Good;
+                     undefined ->
+                         [];
+                     Bad ->
+                         ?log_error("checkpoints stats call on ~p returned bad value: ~p", [N, Bad]),
+                         []
+                 end,
+         Value = case proplists:get_value(StatName, PList) of
+                     undefined ->
+                         missing;
+                     Value0 ->
+                         list_to_integer(binary_to_list(Value0))
+                 end,
+         {N, Value}
+     end || N <- Nodes].
+
 
 
 %%

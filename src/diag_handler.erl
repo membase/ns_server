@@ -107,7 +107,9 @@ do_diag_per_node() ->
                   || Pid <- erlang:processes()]},
      {memory, memsup:get_memory_data()},
      {disk, disksup:get_disk_data()},
-     {active_tasks, capi_tasks:fetch_node_tasks()}].
+     {active_tasks, capi_tasks:fetch_node_tasks()},
+     {master_events, (catch master_activity_events_keeper:get_history())},
+     {ns_server_stats, (catch system_stats_collector:get_ns_server_stats())}].
 
 diag_multicall(Mod, F, Args) ->
     Nodes = [node() | nodes()],

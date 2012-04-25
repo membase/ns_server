@@ -154,7 +154,8 @@ auth(Sock, {<<"PLAIN">>, {ForName, AuthName, AuthPswd}}) ->
                        }}) of
         {ok, #mc_header{status=?SUCCESS}, _, _} ->
             ok;
-        _Error -> {error, eauth_cmd}
+        Other ->
+            process_error_response(Other)
     end;
 auth(_Sock, _UnknownMech) ->
     {error, emech_unsupported}.
@@ -529,7 +530,12 @@ map_status(?NOT_SUPPORTED) ->
 map_status(?EINTERNAL) ->
     internal;
 map_status(?EBUSY) ->
-    ebusy.
+    ebusy;
+map_status(?MC_AUTH_ERROR) ->
+    auth_error;
+map_status(?MC_AUTH_CONTINUE) ->
+    auth_continue.
+
 
 -spec process_error_response(any()) ->
                                     mc_error().

@@ -94,7 +94,7 @@ handle_call(start_vbucket_filter_change, From, #state{args={_, Dst, Opts}} = Sta
     catch T:E ->
             Stack = erlang:get_stacktrace(),
             ?log_info("Failed to establish new downstream connection:~n~p", [{T, E, Stack}]),
-            {reply, failed, Stack}
+            {reply, failed, State}
     end;
 
 handle_call(_Req, _From, State) ->
@@ -195,6 +195,8 @@ init({Src, Dst, Opts}=InitArgs) ->
             false = TakeOver,
             NotReadyVBuckets = VBuckets -- ReadyVBuckets,
             master_activity_events:note_not_ready_vbuckets(self(), NotReadyVBuckets),
+            (catch system_stats_collector:increment_counter(ebucketmigrator_not_ready_times, 1)),
+            (catch system_stats_collector:increment_counter(ebucketmigrator_not_ready_vbuckets, length(NotReadyVBuckets))),
             ?rebalance_info("Some vbuckets were not yet ready to replicate from:~n~p~n",
                             [NotReadyVBuckets]),
             erlang:send_after(30000, self(), retry_not_ready_vbuckets);
@@ -466,6 +468,7 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
             ok = gen_tcp:send(Downstream, Packet),
             case Rest of
                 <<?TAP_OPAQUE_INITIAL_VBUCKET_STREAM:32>> ->
+                    (catch system_stats_collector:increment_counter(ebucketmigrator_backfill_starts, 1)),
                     ?rebalance_info("Initial stream for vbucket ~p",
                                     [VBucket]);
                 _ ->
