@@ -392,7 +392,7 @@ do_get_loglevel(LoggerName, State) ->
     ensure_logger(
       LoggerName, State,
       fun (#logger{loglevel=LogLevel}) ->
-              LogLevel
+              {{ok, LogLevel}, State}
       end).
 
 do_set_sink_loglevel(LoggerName, SinkName, LogLevel, State) ->
