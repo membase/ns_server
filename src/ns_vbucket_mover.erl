@@ -33,6 +33,7 @@
 -type progress_callback() :: fun((dict()) -> any()).
 
 -record(state, {bucket::nonempty_string(),
+                disco_events_subscription::pid(),
                 previous_changes,
                 initial_counts::dict(),
                 max_per_node::pos_integer(),
@@ -82,9 +83,17 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
     Movers = dict:map(fun (_, _) -> 0 end, MoveDict),
     self() ! spawn_initial,
     process_flag(trap_exit, true),
+    Self = self(),
+    Subscription = ns_pubsub:subscribe_link(ns_node_disco_events,
+                                            fun ({ns_node_disco_events, _, _} = Event) ->
+                                                    Self ! Event;
+                                                (_) ->
+                                                    ok
+                                            end),
     erlang:start_timer(3000, self(), maybe_sync_changes),
     erlang:start_timer(30000, self(), log_tap_stats),
     {ok, #state{bucket=Bucket,
+                disco_events_subscription=Subscription,
                 previous_changes = [],
                 initial_counts=count_moves(MoveDict),
                 max_per_node=?MAX_MOVES_PER_NODE,
@@ -150,6 +159,11 @@ handle_info({move_done, {Node, VBucket, OldChain, NewChain}},
             ?log_error("Deleting some old copies of vbucket failed: ~p", [BadDeletes])
     end,
     spawn_workers(State#state{movers=Movers1, map=Map1});
+handle_info({ns_node_disco_events, _, _} = Event, State) ->
+    {stop, {detected_nodes_change, Event}, State};
+handle_info({'EXIT', Pid, _} = Msg, #state{disco_events_subscription=Pid}=State) ->
+    ?rebalance_error("Got exit from node disco events subscription"),
+    {stop, {ns_node_disco_events_exited, Msg}, State};
 handle_info({'EXIT', _, normal}, State) ->
     {noreply, State};
 handle_info({'EXIT', Pid, Reason}, State) ->
