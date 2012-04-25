@@ -363,6 +363,7 @@ start_vbucket_filter_change(Pid) ->
 connect({Host, Port}, Username, Password, Bucket) ->
     {ok, Sock} = gen_tcp:connect(Host, Port,
                                  [binary, {packet, raw}, {active, false},
+                                  {keepalive, true},
                                   {recbuf, 10*1024*1024},
                                   {sndbuf, 10*1024*1024}],
                                  ?CONNECT_TIMEOUT),
