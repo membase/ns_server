@@ -252,7 +252,15 @@ handle_info(check_started, #state{timer=Timer, start_time=Start,
     end;
 handle_info(check_config, State) ->
     misc:flush(check_config),
+    StartTS = os:timestamp(),
     ensure_bucket(State#state.sock, State#state.bucket),
+    Diff = timer:now_diff(os:timestamp(), StartTS),
+    if
+        Diff > ?SLOW_CALL_THRESHOLD_MICROS ->
+            ?log_error("handle_info(ensure_bucket,..) took too long: ~p us", [Diff]);
+        true ->
+            ok
+    end,
     {noreply, State};
 handle_info({'EXIT', _, Reason} = Msg, State) ->
     ?log_debug("Got ~p. Exiting.", [Msg]),
