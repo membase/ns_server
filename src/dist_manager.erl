@@ -126,6 +126,7 @@ do_net_kernel_start(Opts, Tries) when is_integer(Tries) ->
                     ?log_warning("Failed to bring up net_kernel because of "
                                  "duplicate name. Will try ~b more times",
                                  [Tries]),
+                    timer:sleep(500),
                     do_net_kernel_start(Opts, Tries - 1)
             end;
         Other ->

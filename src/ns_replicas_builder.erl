@@ -90,6 +90,8 @@ build_replicas_main(Bucket, VBucket, SrcNode, ReplicateIntoNodes, JustBackfillNo
       fun () ->
               observe_wait_all_done(Bucket, VBucket, SrcNode, JustBackfillNodes ++ ReplicateIntoNodes,
                                     fun () ->
+                                            system_stats_collector:increment_counter(replica_builder_sleeps, 1),
+                                            system_stats_collector:increment_counter(replica_builder_sleep_amount, ?COMPLETION_POLLING_INTERVAL),
                                             receive
                                                 {'EXIT', From, Reason} = ExitMsg ->
                                                     case lists:member(From, Replicators) of
@@ -257,7 +259,8 @@ extract_complete_taps(PList, TapNames) ->
 
 observe_wait_all_done(Bucket, VBucket, SrcNode, DstNodes, Sleeper) ->
     TapNames = sets:from_list([iolist_to_binary(tap_name(VBucket, SrcNode, DN)) || DN <- DstNodes]),
-    observe_wait_all_done_tail(Bucket, SrcNode, Sleeper, TapNames, true).
+    observe_wait_all_done_tail(Bucket, SrcNode, Sleeper, TapNames, true),
+    wait_checkpoint_opened(Bucket, VBucket, DstNodes, Sleeper, true).
 
 observe_wait_all_done_tail(Bucket, SrcNode, Sleeper, TapNames, FirstTime) ->
     case sets:size(TapNames) of
@@ -265,6 +268,7 @@ observe_wait_all_done_tail(Bucket, SrcNode, Sleeper, TapNames, FirstTime) ->
             ok;
         _ ->
             if not FirstTime ->
+                    system_stats_collector:increment_counter(replicas_builder_backfill_sleeps, 1),
                     Sleeper();
                true ->
                     ok
@@ -274,3 +278,24 @@ observe_wait_all_done_tail(Bucket, SrcNode, Sleeper, TapNames, FirstTime) ->
             NewTapNames = sets:subtract(TapNames, DoneTaps),
             observe_wait_all_done_tail(Bucket, SrcNode, Sleeper, NewTapNames, false)
     end.
+
+wait_checkpoint_opened(_Bucket, _VBucket, [], _Sleeper, _FirstTime) ->
+    ok;
+wait_checkpoint_opened(Bucket, VBucket, DstNodes, Sleeper, FirstTime) ->
+    case FirstTime of
+        false ->
+            system_stats_collector:increment_counter(replicas_builder_checkpoint_sleeps, 1),
+            Sleeper();
+        true -> ok
+    end,
+    Checkpoints = ns_memcached:get_vbucket_open_checkpoint(DstNodes, Bucket, VBucket),
+    NodesLeft = [N || {N, Checkpoint} <- Checkpoints,
+                      Checkpoint =:= 0 orelse
+                          case Checkpoint of
+                              missing ->
+                                  ?log_error("Node ~p did not have checkpoint stat for vbucket: ~p", [N, VBucket]),
+                                  exit({missing_checkpoint_stat, N, VBucket});
+                              _ ->
+                                  false
+                          end],
+    wait_checkpoint_opened(Bucket, VBucket, NodesLeft, Sleeper, false).

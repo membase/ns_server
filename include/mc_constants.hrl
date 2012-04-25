@@ -81,6 +81,8 @@
 -define(NOT_STORED,       16#05).
 -define(DELTA_BADVAL,     16#06).
 -define(NOT_MY_VBUCKET,   16#07).
+-define(MC_AUTH_ERROR,    16#20).
+-define(MC_AUTH_CONTINUE, 16#21).
 -define(UNKNOWN_COMMAND,  16#81).
 -define(ENOMEM,           16#82).
 -define(NOT_SUPPORTED,    16#83).
