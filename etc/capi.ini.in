@@ -1,5 +1,8 @@
 [couchdb]
 max_dbs_open = 10000
+database_dir = @COUCHBASE_DB_DIR@
+view_index_dir = @COUCHBASE_DB_DIR@
+
 
 [httpd]
 db_frontend = capi_frontend

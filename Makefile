@@ -103,6 +103,8 @@ endif
 
 PREFIX_FOR_CONFIG ?= $(PREFIX)
 
+COUCHBASE_DB_DIR ?= $(PREFIX)/var/lib/couchbase/data/
+
 ERLWSH_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/erlwsh
 GEN_SMTP_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/gen_smtp
 ALE_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ale
@@ -137,7 +139,7 @@ do-install:
 	chmod +x $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
 	cp scripts/cbdumpconfig.escript $(DESTDIR)$(PREFIX)/bin/
 	mkdir -p $(DESTDIR)$(PREFIX)/etc/couchdb/default.d
-	cp etc/capi.ini.in $(DESTDIR)$(PREFIX)/etc/couchdb/default.d/capi.ini
+	sed -e 's|@COUCHBASE_DB_DIR@|$(COUCHBASE_DB_DIR)|g' <etc/capi.ini.in >$(DESTDIR)$(PREFIX)/etc/couchdb/default.d/capi.ini
 	cp etc/geocouch.ini.in $(DESTDIR)$(PREFIX)/etc/couchdb/default.d/geocouch.ini
 
 clean clean_all:
