@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
 
 require 'rubygems'
 gem 'sinatra', '>= 1.3.2' # for :public_folder
