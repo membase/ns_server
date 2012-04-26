@@ -23,7 +23,8 @@
          stop_logger/1,
          add_sink/2, add_sink/3,
          set_loglevel/2, get_loglevel/1,
-         set_sink_loglevel/3, get_sink_loglevel/2]).
+         set_sink_loglevel/3, get_sink_loglevel/2,
+         sync_changes/1]).
 
 
 %% gen_server callbacks
@@ -38,7 +39,8 @@
                 mailbox_len_limit :: integer(),
 
                 loggers   :: dict(),
-                compilers :: dict()}).
+                compilers :: dict(),
+                compiler_sync_waiters = []}).
 
 -record(logger, {name      :: atom(),
                  loglevel  :: loglevel(),
@@ -100,6 +102,9 @@ set_sink_loglevel(LoggerName, SinkName, LogLevel) ->
 get_sink_loglevel(LoggerName, SinkName) ->
     gen_server:call(?MODULE, {get_sink_loglevel, LoggerName, SinkName}).
 
+sync_changes(Timeout) ->
+    gen_server:call(?MODULE, sync_compilers, Timeout).
+
 %% Callbacks
 init([MailboxLenLimit]) ->
     process_flag(trap_exit, true),
@@ -119,6 +124,14 @@ init([MailboxLenLimit]) ->
 
     {ok, State2}.
 
+handle_call(sync_compilers, From, #state{compilers = Compilers, compiler_sync_waiters = Waiters} = State) ->
+    case dict:size(Compilers) =:= 0 of
+        true ->
+            [] = Waiters,
+            {reply, ok, State};
+        false ->
+            {noreply, State#state{compiler_sync_waiters = [From | Waiters]}}
+    end;
 handle_call({start_sink, Name, Type, Module, Args}, _From, State) ->
     RV = do_start_sink(Name, Type, Module, Args, State),
     handle_result(RV, State);
@@ -224,7 +237,15 @@ handle_info({'EXIT', Pid, Reason},
                               end, Loggers),
                         NewState = State#state{compilers=NewCompilers,
                                                loggers=NewLoggers},
-                        {noreply, NewState};
+                        NewState2 = case dict:size(NewCompilers) =:= 0 of
+                                        true ->
+                                            [gen_server:reply(F, ok)
+                                             || F <- NewState#state.compiler_sync_waiters],
+                                            NewState#state{compiler_sync_waiters = []};
+                                        false ->
+                                            NewState
+                                    end,
+                        {noreply, NewState2};
                     _ ->
                         %% should not happen
                         ale:error(?ALE_LOGGER,
