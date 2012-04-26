@@ -252,6 +252,7 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
 
     ns_config:set([{rebalance_status, Status},
                    {rebalancer_pid, undefined}]),
+    rpc:eval_everywhere(diag_handler, log_all_tap_and_checkpoint_stats, []),
     case (lists:member(node(), EjectNodes) andalso Reason =:= normal) orelse
         lists:member(node(), FailedNodes) of
         true ->

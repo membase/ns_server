@@ -18,7 +18,7 @@
 -include("ns_log.hrl").
 
 -define(RB_SIZE, 3000). % Number of recent log entries
--define(DUP_TIME, 300000000). % 300 secs in microsecs
+-define(DUP_TIME, 15000000). % 15 secs in microsecs
 -define(GC_TIME, 60000). % 60 secs in millisecs
 -define(SAVE_DELAY, 5000). % 5 secs in millisecs
 

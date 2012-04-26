@@ -1,13 +1,12 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
 
 require 'rubygems'
+gem 'sinatra', '>= 1.3.2' # for :public_folder
 require 'sinatra'
 require 'active_support/core_ext'
 require 'pp'
 
-#Dir.chdir(File.join(File.dirname($0), '..'))
-
-$DOCROOT = '../priv/public'
+$DOCROOT = File.expand_path(File.join(File.dirname(__FILE__), '../priv/public'))
 
 def sh(cmd)
   puts "# #{cmd}"
@@ -60,7 +59,7 @@ end
 
 use Middleware
 
-set :public, $DOCROOT
+set :public_folder, $DOCROOT
 
 get "/" do
   redirect "/index.html"
@@ -77,7 +76,7 @@ get "/test_auth" do
 end
 
 if ARGV.size == 0
-  name = "ruby #{File.basename($0)} -p 8080"
+  name = "ruby #{$0} -p 8080"
   puts name
   system name
   exit 0
