@@ -38,7 +38,7 @@
 
 -define(VBMAP_HISTORY_SIZE, 10).
 
--define(DEFAULT_LOG_FILENAME, "log").
+-define(DEFAULT_LOG_FILENAME, "info").
 -define(ERRORS_LOG_FILENAME, "errors").
 -define(DEBUG_LOG_FILENAME, "debug").
 
