@@ -37,14 +37,17 @@ start() ->
     end.
 
 stop() ->
+    error_logger:info_msg("Initiated server shutdown"),
     RV = try
              ok = application:stop(ns_server),
+             error_logger:info_msg("Stopped ns_server application"),
              application:stop(os_mon),
              application:stop(sasl),
              application:stop(ale),
 
              ok
          catch T:E ->
+                 (catch error_logger:error_msg("Got error trying to stop applications~n~p", [{T, E, erlang:get_stacktrace()}])),
                  {T, E}
          end,
 
@@ -59,7 +62,9 @@ remote_stop(Node) ->
     RV = rpc:call(Node, ns_bootstrap, stop, []),
     ExitStatus = case RV of
                      ok -> 0;
-                     _ -> 1
+                     Other ->
+                         io:format("NOTE: shutdown failed~n~p~n", [Other]),
+                         1
                  end,
     init:stop(ExitStatus).
 

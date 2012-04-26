@@ -385,7 +385,7 @@ idle({delete_bucket, BucketName}, _From,
 
     {reply, Reply, idle, NewState};
 idle({failover, Node}, _From, State) ->
-    ?log_info("Failing over ~p", [Node]),
+    ale:info(?USER_LOGGER, "Starting failing over ~p", [Node]),
     master_activity_events:note_failover(Node),
     Result = ns_rebalancer:failover(Node),
     ?user_log(?FAILOVER_NODE, "Failed over ~p: ~p", [Node, Result]),
