@@ -49,7 +49,7 @@ strip_full(String) ->
 
 read_address_config() ->
     Path = ip_config_path(),
-    ?log_debug("reading ip config from ~p", [Path]),
+    ?log_info("reading ip config from ~p", [Path]),
     case file:read_file(Path) of
         {ok, BinaryContents} ->
             AddrString = strip_full(binary_to_list(BinaryContents)),
@@ -69,6 +69,9 @@ read_address_config() ->
                             AddrString
                     end
             end;
+        {error, enoent} ->
+            ?log_info("ip config not found. Looks like we're brand new node"),
+            undefined;
         _ -> undefined
     end.
 
