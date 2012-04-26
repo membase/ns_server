@@ -24,6 +24,8 @@
          handle_sasl_logs/1, handle_sasl_logs/2,
          arm_timeout/2, arm_timeout/1, disarm_timeout/1,
          grab_process_info/1, manifest/0,
+         grab_all_tap_and_checkpoint_stats/0,
+         grab_all_tap_and_checkpoint_stats/1,
          diagnosing_timeouts/1]).
 
 diag_filter_out_config_password_list([], UnchangedMarker) ->
@@ -98,7 +100,26 @@ grab_process_info(Pid) ->
                     end || X <- binary:split(Backtrace, <<"\n">>, [global])],
     lists:keyreplace(backtrace, 1, PureInfo, {backtrace, NewBacktrace}).
 
+grab_all_tap_and_checkpoint_stats() ->
+    grab_all_tap_and_checkpoint_stats(15000).
+
+grab_all_tap_and_checkpoint_stats(Timeout) ->
+    ActiveBuckets = ns_memcached:active_buckets(),
+    WorkItems = [{Bucket, Type} || Bucket <- ActiveBuckets,
+                                   Type <- [<<"tap">>, <<"checkpoint">>]],
+    Results = misc:parallel_map(
+                fun ({Bucket, Type}) ->
+                        {ok, _} = timer:kill_after(Timeout),
+                        case ns_memcached:stats(Bucket, Type) of
+                            {ok, V} -> V;
+                            Crap -> Crap
+                        end
+                end, WorkItems, infinity),
+    {WiB, WiT} = lists:unzip(WorkItems),
+    lists:zip3(WiB, WiT, Results).
+
 do_diag_per_node() ->
+    ActiveBuckets = ns_memcached:active_buckets(),
     [{version, ns_info:version()},
      {manifest, manifest()},
      {config, diag_filter_out_config_password(ns_config:get_kv_list())},
@@ -108,7 +129,9 @@ do_diag_per_node() ->
      {memory, memsup:get_memory_data()},
      {disk, disksup:get_disk_data()},
      {master_events, (catch master_activity_events_keeper:get_history())},
-     {ns_server_stats, (catch system_stats_collector:get_ns_server_stats())}].
+     {ns_server_stats, (catch system_stats_collector:get_ns_server_stats())},
+     {active_buckets, ActiveBuckets},
+     {tap_stats, grab_all_tap_and_checkpoint_stats(4000)}].
 
 diag_multicall(Mod, F, Args) ->
     Nodes = [node() | nodes()],
