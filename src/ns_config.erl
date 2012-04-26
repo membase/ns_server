@@ -645,6 +645,7 @@ dynamic_config_path(DirPath) ->
 load_config(ConfigPath, DirPath, PolicyMod) ->
     DefaultConfig = PolicyMod:default(),
     % Static config file.
+    ?log_info("Loading static config from ~p", [ConfigPath]),
     case load_file(txt, ConfigPath) of
         {ok, S} ->
             % Dynamic data directory.
@@ -658,9 +659,12 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
             % Dynamic config file.
             C = dynamic_config_path(DirPath2),
             ok = filelib:ensure_dir(C),
+            ?log_info("Loading dynamic config from ~p", [C]),
             D = case load_file(bin, C) of
                     {ok, DRead} -> DRead;
-                    _           -> []
+                    not_found ->
+                        ?log_info("No dynamic config file found. Assuming we're brand new node"),
+                        []
                 end,
             {_, DynamicPropList} = lists:foldl(fun (Tuple, {Seen, Acc}) ->
                                                        K = element(1, Tuple),
@@ -675,7 +679,9 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
             {ok, #config{static = [S, DefaultConfig],
                          dynamic = [lists:keysort(1, DynamicPropList)],
                          policy_mod = PolicyMod}};
-        E -> E
+        E ->
+            ?log_error("Failed loading static config: ~p", [E]),
+            E
     end.
 
 save_config_sync(#config{dynamic = D}, DirPath) ->

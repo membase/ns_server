@@ -252,6 +252,8 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
             UpdatedProps = extract_bucket_props(BucketId, ParsedProps),
             case ns_bucket:update_bucket_props(BucketType, BucketId, UpdatedProps) of
                 ok ->
+                    ale:info(?USER_LOGGER, "Updated bucket ~s (of type ~s) properties:~n~p",
+                             [BucketId, BucketType, lists:keydelete(sasl_password, 1, UpdatedProps)]),
                     Req:respond({200, server_header(), []});
                 {exit, {not_found, _}, _} ->
                     %% if this happens then our validation raced, so repeat everything
@@ -273,7 +275,8 @@ do_bucket_create(Name, ParsedProps) ->
     menelaus_web:maybe_cleanup_old_buckets(),
     case ns_orchestrator:create_bucket(BucketType, Name, BucketProps) of
         ok ->
-            ?MENELAUS_WEB_LOG(?BUCKET_CREATED, "Created bucket \"~s\" of type: ~s~n", [Name, BucketType]),
+            ?MENELAUS_WEB_LOG(?BUCKET_CREATED, "Created bucket \"~s\" of type: ~s~n~p",
+                              [Name, BucketType, lists:keydelete(sasl_password, 1, BucketProps)]),
             ok;
         {error, {already_exists, _}} ->
             {errors, [{name, <<"Bucket with given name already exists">>}]};

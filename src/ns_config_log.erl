@@ -54,7 +54,7 @@ handle_cast(Request, State) ->
     {noreply, State, hibernate}.
 
 handle_info({rest_creds = K, _V}, State) ->
-    ?log_debug("config change: ~p -> ********", [K]),
+    ?log_info("config change: ~p -> ********", [K]),
     {noreply, State, hibernate};
 handle_info({alerts = K, V}, State) ->
     V2 = lists:map(fun({email_server, ES}) ->
@@ -65,7 +65,7 @@ handle_info({alerts = K, V}, State) ->
                       (V2KeyVal) -> V2KeyVal
                    end,
                    V),
-    ?log_debug("config change:~n~p ->~n~p", [K, V2]),
+    ?log_info("config change:~n~p ->~n~p", [K, V2]),
     {noreply, State, hibernate};
 handle_info({buckets, RawBuckets}, #state{buckets=OldBuckets} =  State) ->
     NewBuckets = sort_buckets(RawBuckets),

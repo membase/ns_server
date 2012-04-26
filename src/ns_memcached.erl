@@ -267,6 +267,12 @@ do_handle_call({set_vbucket, VBucket, VBState}, _From,
     %% This happens asynchronously, so there's no guarantee the
     %% vbucket will be in the requested state when it returns.
     Reply = mc_client_binary:set_vbucket(Sock, VBucket, VBState),
+    case Reply of
+        ok ->
+            ?log_info("Changed vbucket ~p state to ~p", [VBucket, VBState]);
+        _ ->
+            ?log_error("Failed to change vbucket ~p state to ~p: ~p", [VBucket, VBState, Reply])
+    end,
     {reply, Reply, State};
 do_handle_call({stats, Key}, _From, State) ->
     Reply = mc_client_binary:stats(

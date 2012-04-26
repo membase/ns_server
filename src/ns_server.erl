@@ -168,7 +168,9 @@ init_logging() ->
               end, AllLoggers);
         false ->
             ok
-    end.
+    end,
+    ale:sync_changes(infinity),
+    ale:info(?NS_SERVER_LOGGER, "Started & configured logging").
 
 stop(_State) ->
     ok.
