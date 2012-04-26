@@ -17,6 +17,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-include("ns_common.hrl").
+
 -export([process_frame/4,
          init_state/1]).
 
@@ -120,6 +122,11 @@ process_frame(Nodes, DownNodes, State, RebalanceRunning) ->
     UpFun =
         fun (#node_state{state = removed}, Acc) -> Acc;
             (NodeState, Acc) ->
+                case NodeState#node_state.state of
+                    up -> ok;
+                    Prev ->
+                        ?log_debug("Transitioned node ~p state ~p -> up", [NodeState#node_state.name, Prev])
+                end,
                 [NodeState#node_state{state = up,
                                       down_counter = 0,
                                       mailed_down_warning = false}
@@ -130,7 +137,9 @@ process_frame(Nodes, DownNodes, State, RebalanceRunning) ->
     DownFun =
         fun (#node_state{state = removed}, Acc) -> Acc;
             (NodeState, Acc) ->
-                [increment_down_state(NodeState, DownNodes, State, SizeChanged) | Acc]
+                NewState = increment_down_state(NodeState, DownNodes, State, SizeChanged),
+                ?log_debug("Incremented down state:~n~p~n->~p", [NodeState, NewState]),
+                [NewState | Acc]
         end,
     DownStates0 = fold_matching_nodes(DownNodes, State#state.nodes_states, DownFun, []),
     DownStates = lists:reverse(DownStates0),
@@ -166,9 +175,9 @@ process_frame(Nodes, DownNodes, State, RebalanceRunning) ->
                           fun (#node_state{state=nearly_down,name=Node,
                                            mailed_down_warning=false}=S,
                                {Warnings, DS}) ->
-                              {[{mail_down_warning, Node}|Warnings],
-                               [S#node_state{mailed_down_warning=true}|DS]};
-                              % Warning was already sent
+                                  {[{mail_down_warning, Node}|Warnings],
+                                   [S#node_state{mailed_down_warning=true}|DS]};
+                              %% Warning was already sent
                               (S, {Warnings, DS}) ->
                                   {Warnings, [S|DS]}
                           end, {[], []}, Else),
@@ -199,6 +208,11 @@ process_frame(Nodes, DownNodes, State, RebalanceRunning) ->
                                                 _ -> State#state.mailed_too_small_cluster
                                             end
                 },
+    case Actions of
+        [] -> ok;
+        _ ->
+            ?log_debug("Decided on following actions: ~p", [Actions])
+    end,
     {Actions, NewState}.
 
 

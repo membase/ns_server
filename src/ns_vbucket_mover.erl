@@ -86,6 +86,7 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
     self() ! spawn_initial,
     process_flag(trap_exit, true),
     erlang:start_timer(3000, self(), maybe_sync_changes),
+    erlang:start_timer(30000, self(), log_tap_stats),
 
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
     BucketType = ns_bucket:bucket_type(BucketConfig),
@@ -120,6 +121,10 @@ handle_info({_, _, maybe_sync_changes}, #state{previous_changes = PrevChanges} =
             sync_replicas(),
             {noreply, State#state{previous_changes = []}}
     end;
+handle_info({timeout, _, log_tap_stats}, State) ->
+    rpc:eval_everywhere(diag_handler, log_all_tap_and_checkpoint_stats, []),
+    misc:flush(log_tap_stats),
+    {noreply, State};
 handle_info(spawn_initial, State) ->
     maybe_terminate(spawn_workers(State));
 handle_info({move_done, {Node, VBucket, OldChain, [NewNode|_] = NewChain}},

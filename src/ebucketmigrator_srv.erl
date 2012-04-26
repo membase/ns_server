@@ -392,6 +392,7 @@ connect({Host, Port}, Username, Password, Bucket) ->
     {ok, Sock} = gen_tcp:connect(Host, Port,
                                  [binary, {packet, raw}, {active, false},
                                   {nodelay, true}, {delay_send, true},
+                                  {keepalive, true},
                                   {recbuf, 10*1024*1024},
                                   {sndbuf, 10*1024*1024}],
                                  ?CONNECT_TIMEOUT),

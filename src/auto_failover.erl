@@ -238,8 +238,8 @@ handle_info(tick, State0) ->
               ({failover, Node}, S) ->
                   ns_cluster_membership:failover(Node),
                   ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
-                            "Node (~p) was automatically failovered.~n",
-                            [Node]),
+                            "Node (~p) was automatically failovered.~n~p",
+                            [Node, ns_doctor:get_node(Node)]),
                   S#state{count = S#state.count+1}
           end, State#state{auto_failover_logic_state = LogicState}, Actions),
     if
