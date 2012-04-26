@@ -190,6 +190,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
     %% Eject failed nodes first so they don't cause trouble
     eject_nodes(FailedNodes),
     lists:foreach(fun ({I, {BucketName, BucketConfig}}) ->
+                          ale:info(?USER_LOGGER, "Started rebalancing bucket ~s", [BucketName]),
                           ?rebalance_info("Rebalancing bucket ~p with config ~p",
                                           [BucketName, BucketConfig]),
                           BucketCompletion = I / NumBuckets,
