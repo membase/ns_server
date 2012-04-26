@@ -26,6 +26,7 @@
          grab_process_info/1, manifest/0,
          grab_all_tap_and_checkpoint_stats/0,
          grab_all_tap_and_checkpoint_stats/1,
+         log_all_tap_and_checkpoint_stats/0,
          diagnosing_timeouts/1]).
 
 diag_filter_out_config_password_list([], UnchangedMarker) ->
@@ -117,6 +118,13 @@ grab_all_tap_and_checkpoint_stats(Timeout) ->
                 end, WorkItems, infinity),
     {WiB, WiT} = lists:unzip(WorkItems),
     lists:zip3(WiB, WiT, Results).
+
+log_all_tap_and_checkpoint_stats() ->
+    ?log_info("logging tap & checkpoint stats"),
+    [begin
+         ?log_info("~s:~s:~n~p",[Type, Bucket, Values])
+     end || {Bucket, Type, Values} <- grab_all_tap_and_checkpoint_stats()],
+    ?log_info("end of logging tap & checkpoint stats").
 
 do_diag_per_node() ->
     ActiveBuckets = ns_memcached:active_buckets(),
