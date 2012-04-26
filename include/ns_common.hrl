@@ -39,7 +39,7 @@
 -define(VBMAP_HISTORY_SIZE, 10).
 
 -define(DEFAULT_LOG_FILENAME, "info").
--define(ERRORS_LOG_FILENAME, "errors").
+-define(ERRORS_LOG_FILENAME, "error").
 -define(DEBUG_LOG_FILENAME, "debug").
 
 -define(NS_SERVER_LOGGER, ns_server).
