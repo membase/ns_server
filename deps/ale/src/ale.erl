@@ -488,15 +488,14 @@ compile(State, Logger) ->
     do_compile(State1, Logger1),
     {State1, Logger1}.
 
-spawn_compiler(#state{compilers=Compilers} = State,
-               #logger{name=LoggerName} = Logger) ->
+spawn_compiler(State, #logger{name=LoggerName} = Logger) ->
     {State1, Logger1} = kill_compiler(State, Logger),
 
     NewCompiler = proc_lib:spawn_link(
                    fun () ->
                            do_compile(State1, Logger1)
                    end),
-    NewCompilers = dict:store(NewCompiler, LoggerName, Compilers),
+    NewCompilers = dict:store(NewCompiler, LoggerName, State1#state.compilers),
 
     Logger2 = Logger1#logger{compiler=NewCompiler},
     State2  = State1#state{compilers=NewCompilers},
