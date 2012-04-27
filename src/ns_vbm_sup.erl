@@ -35,8 +35,6 @@
 
 -export([init/1]).
 
--compile([{parse_transform, quote_transform}]).
-
 %%
 %% API
 %%
@@ -337,7 +335,7 @@ local_change_vbucket_filter(Bucket, SrcNode, #child_id{dest_node=DstNode} = Chil
                                              ?log_error("Got unexpected exit signal in vbucket change txn body: ~p", [ExitMsg]),
                                              exit({txn_crashed, ExitMsg});
                                          {done, RV} ->
-                                             RV;
+                                             {ok, RV};
                                          {'$gen_call', {Pid, _} = From, get_downstream} ->
                                              gen_tcp:controlling_process(NewDownstream, Pid),
                                              gen_server:reply(From, {ok, NewDownstream}),
@@ -351,19 +349,23 @@ local_change_vbucket_filter(Bucket, SrcNode, #child_id{dest_node=DstNode} = Chil
     end.
 
 change_vbucket_filter(Bucket, SrcNode, #child_id{dest_node = DstNode} = ChildId, NewVBuckets) ->
-    Lambda = quote_transform:lambda(fun (Bucket, SrcNode, ChildId, NewVBuckets) ->
-                                            try ns_vbm_sup:have_local_change_vbucket_filter() of
-                                                true -> {ok, ns_vbm_sup:local_change_vbucket_filter(Bucket, SrcNode, ChildId, NewVBuckets)}
-                                            catch error:undef ->
-                                                    old_version
-                                            end
-                                    end),
-    case rpc:call(SrcNode, erlang, apply, [Lambda, [Bucket, SrcNode, ChildId, NewVBuckets]]) of
-        old_version ->
-            kill_child(SrcNode, Bucket, ChildId),
-            start_child(SrcNode, Bucket, NewVBuckets, DstNode);
+    HaveChangeFilterKey = rpc:async_call(SrcNode, ns_vbm_sup, have_local_change_vbucket_filter, []),
+    ChangeFilterRV = rpc:call(SrcNode, ns_vbm_sup, local_change_vbucket_filter,
+                              [Bucket, SrcNode, ChildId, NewVBuckets]),
+    HaveChangeFilterRV = rpc:yield(HaveChangeFilterKey),
+    case ChangeFilterRV of
         {ok, Ref} ->
-            Ref
+            true = HaveChangeFilterRV,
+            Ref;
+        {badrpc, Error} ->
+            case HaveChangeFilterRV of
+                true ->
+                    erlang:error({change_filter_failed, Error});
+                {badrpc, {'EXIT', {undef, _}}} ->
+                    system_stats_collector:increment_counter(old_style_vbucket_filter_changes, 1),
+                    kill_child(SrcNode, Bucket, ChildId),
+                    start_child(SrcNode, Bucket, NewVBuckets, DstNode)
+            end
     end.
 
 %% @doc Set up replication from the given source node to a list of
