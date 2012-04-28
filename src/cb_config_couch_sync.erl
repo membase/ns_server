@@ -108,6 +108,7 @@ handle_info(_Event, State) ->
 
 is_notable_event({buckets, _}) -> true;
 is_notable_event({max_parallel_indexers, _}) -> true;
+is_notable_event({max_parallel_replica_indexers, _}) -> true;
 is_notable_event(_) -> false.
 
 handle_config_event(KVPair, State) ->
@@ -132,4 +133,9 @@ do_config_sync() ->
         false -> ok;
         {value, MaxParallelIndexers} ->
             couch_config:set("couchdb", "max_parallel_indexers", integer_to_list(MaxParallelIndexers), false)
+    end,
+    case ns_config:search_node(node(), Config, max_parallel_replica_indexers) of
+        false -> ok;
+        {value, MaxParallelReplicaIndexers} ->
+            couch_config:set("couchdb", "max_parallel_replica_indexers", integer_to_list(MaxParallelReplicaIndexers), false)
     end.
