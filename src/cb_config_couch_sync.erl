@@ -158,7 +158,7 @@ do_config_sync() ->
     case ns_config:search_node(node(), Config, max_parallel_indexers) of
         false -> ok;
         {value, MaxParallelIndexers} ->
-            couch_config:set("couchdb", "max_parallel_indexers", integer_to_list(MaxParallelIndexers))
+            couch_config:set("couchdb", "max_parallel_indexers", integer_to_list(MaxParallelIndexers), false)
     end.
 
 decide_autocompaction_config_changes(Config, CouchCompactionsList) ->
@@ -198,10 +198,10 @@ sync_autocompaction(Config) ->
     CouchCompactions = couch_config:get("compactions"),
     {MissingCompactions, ExtraCompactions} = decide_autocompaction_config_changes(Config, CouchCompactions),
     lists:foreach(fun ({Name, Cfg}) ->
-                          couch_config:set("compactions", Name, Cfg)
+                          couch_config:set("compactions", Name, Cfg, false)
                   end, MissingCompactions),
     lists:foreach(fun (Name) ->
-                          couch_config:delete("compactions", Name)
+                          couch_config:delete("compactions", Name, false)
                   end, ExtraCompactions).
 
 
