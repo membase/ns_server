@@ -1,0 +1,144 @@
+This file documents user-visible changes in Couchbase clustering & UI.
+======================================================================
+
+-----------------------------------------
+Between versions 1.8.0 and 1.8.1
+-----------------------------------------
+
+* ruby is not required anymore to build ns_server (and afaik rest of
+  couchbase server)
+
+* bucket deletion now waits for all nodes to complete deletion of
+  bucket. But note there's timeout and it's set to 30 seconds.
+
+* delete bucket request now correctly returns error during rebalance
+  instead of crashing
+
+* create bucket request now returns 503 instead of 400 during
+  rebalance.
+
+* bucket deletion errors are now correctly displayed on UI
+
+* we're now using our own great logging library: ale. Formatting of
+  log messages is greatly improved. With different log categories and
+  separate log files for error and info (and above) levels. So that
+  high-level and important messages are preserved longer without
+  compromising detailedness of debug logs. A lot of improvements to
+  quality of logged messages were made. Another user-visible change is
+  much faster grabbing of logs.
+
+* couchbase_server script now implements reliable
+  shutdown. I.e. couchbase_server -k will gracefully shutdown server
+  persisting all pending mutations before exiting. Actual service stop
+  invocation is synchronous.
+
+* during rebalance vbucket map is now updated after each vbucket
+  move. Providing better guide for (perhaps not so) smart clients.
+
+* new-style mb_master transition grace period is now over. 1.8.1 can
+  coexist (and support online upgrade from) membase 1.7.2 and
+  above. Versions before that are not supported because they don't
+  support new-style master election.
+
+* (MB-4554) stats gathering is now using wall clock time instead of
+  erlang's now function. erlang:now is based on wall clock time, but
+  by definition cannot jump backwards. So certain ntp time adjustments
+  caused issues for stats gathering previously.
+
+* scary looking retry_not_ready_vbuckets log message was
+  fixed. ebucketmigrator process can sometimes restart itself when
+  some of it's source vbucket were not ready when replication was
+  started. That restart was looking like crash. Now it's fixed.
+
+* vbucket map generation code now generates maps with optimal "moves"
+  from current map in the following important cases. When adding back
+  previously failed over node (assuming every other node is same and
+  healthy) and when performing "swap rebalance". Swap rebalance is
+  when you simultaneously add and remove N nodes. Where N can be any
+  natural number (up to current cluster size of course). Rebalance is
+  now significantly faster when this conditions apply.
+
+* (MB-4476) couchbase server now support node cloning better. You can
+  use clone snapshot of empty node and join those VMs into single
+  cluster.
+
+* couchbase server is not more robust when somebody tries to create
+  bucket when bucket with same name is still being shut down on any of
+  nodes
+
+* annoying and repeating log message when there is memcached type
+  buckets, but some nodes are not yet rebalanced it is now fixed
+
+* bug causing couchbase to return 500 error instead of gracefully
+  returning error when bucket parameter "name" is missing is now fixed
+
+* few races when node that orchestrates rebalance is being rebalanced
+  out are now fixed. Previously it was possible to see rebalance as
+  running and other 'rebalance-in-flight' config effects when it was
+  actually completed.
+
+* bug causing failed over node to not delete it's data files was
+  fixed. Note: previously it was only possible when node was added back
+  after being failed over.
+
+* couchbase server now performs rebalance more safely. It builds new
+  replicas before switching to them. It's not completely safe to stop
+  rebalance at any point without risking data loss
+
+* due to safer rebalance we're now deleting old vbuckets as soon as
+  possible during rebalance. Making further vbucket movements faster
+
+* couchbase server avoids reuse of tap names. Previous versions had
+  release notes that recommended to avoid rebalancing for 5 minutes
+  after stopped or failed rebalance. That problem is now fixed.
+
+* (MB-4906 Always fetch autofailover count from config) bug when
+  certain sequence of events could lead to autofailover breaking it's
+  limit of single node to fail over was fixed
+
+* (MB-4963) old "issue" of UI reporting rebalance as failed when it
+  was in fact stopped by user is now fixed
+
+* (MB-5020) bug causing rebalance to be incorrectly displayed as
+  running preventing failover was fixed
+
+* (MB-4023) couchbase server now using dedicated memcached port for
+  it's own stats gathering, orchestration, replication and
+  rebalance. Making it more robust against mis-configured clients.
+
+* /diag/masterEvents cluster events streaming facility was
+  implemented. See doc/master-events.txt for more details.
+
+* (MB-4564) during failover and rebalance out couchbase server now
+  leaves data files. So that accident failover does not leads to
+  catastrophic data loss. Those files are deleted when node is
+  rebalanced back in or becomes independent single-node cluster.
+
+* (MB-4967) couchbase_num_vbuckets_default ns_config variable (absent
+  by default) can now be used to change number of vbuckets for any
+  couchbase buckets created after that change. The only way to change
+  it is via /diag/eval.
+
+* mastership takeover is now clearly logged
+
+* (MB-4960) mem_used and some other stats are now displayed on UI
+
+* (MB-5050) autofailover service is now aware that it's not possible
+  to fail over during rebalance
+
+* (MB-5063) couchbase server now disallows attempts to rebalance out
+  unknown nodes instead of misbehaving
+
+* (MB-5019) bug when create bucket dialog was displaying incorrect
+  remaining quote right after bucket deletion is now fixed
+
+* internal cluster management stats counters facility was
+  implemented. The only way so far to see those stats is in diags or
+  by posting 'system_stats_collector:get_ns_server_stats().' to
+  /diag/eval. So far only few stats related to reliable replica
+  building during rebalance are gathered.
+
+* diags now have tap & checkpoint stats from memcached on all nodes
+
+* local tap & checkpoints stats are now logged after rebalance and
+  each 30 seconds during rebalance
