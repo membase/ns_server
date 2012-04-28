@@ -448,9 +448,10 @@ connected_buckets() ->
     connected_buckets(?CONNECTED_TIMEOUT).
 
 connected_buckets(Timeout) ->
-    lists:filter(fun (N) ->
-                         connected(node(), N, Timeout)
-                 end, active_buckets()).
+    Tmp = misc:parallel_map(fun (N) ->
+                                    {N, connected(node(), N, Timeout)}
+                            end, active_buckets(), infinity),
+    [N || {N, true} <- Tmp].
 
 %% @doc Send flush command to specified bucket
 -spec flush(bucket_name()) -> ok.

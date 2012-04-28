@@ -21,16 +21,13 @@
 -include("ns_common.hrl").
 -include("ns_heart.hrl").
 
--define(EXPENSIVE_CHECK_INTERVAL, 15000). % In ms
-
--export([start_link/0, status_all/0, expensive_checks/0,
+-export([start_link/0, status_all/0,
          force_beat/0, grab_fresh_failover_safeness_infos/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 
 -record(state, {
           forced_beat_timer :: reference() | undefined,
-          expensive_checks_result,
           event_handler :: pid()
          }).
 
@@ -49,8 +46,6 @@ init([]) ->
     process_flag(trap_exit, true),
 
     timer:send_interval(?HEART_BEAT_PERIOD, beat),
-    timer:send_interval(?EXPENSIVE_CHECK_INTERVAL, do_expensive_checks),
-    self() ! do_expensive_checks,
     self() ! beat,
     Self = self(),
     EventHandler =
@@ -82,7 +77,7 @@ disarm_forced_beat_timer(#state{forced_beat_timer = TRef} = State) ->
 
 
 handle_call(status, _From, State) ->
-    {reply, current_status(State#state.expensive_checks_result), State};
+    {reply, current_status(), State};
 handle_call(Request, _From, State) ->
     {reply, {unhandled, ?MODULE, Request}, State}.
 
@@ -96,10 +91,8 @@ handle_info({'EXIT', EventHandler, _} = ExitMsg,
 handle_info(beat, State) ->
     NewState = disarm_forced_beat_timer(State),
     misc:flush(beat),
-    heartbeat(current_status(NewState#state.expensive_checks_result)),
+    heartbeat(current_status()),
     {noreply, NewState};
-handle_info(do_expensive_checks, State) ->
-    {noreply, State#state{expensive_checks_result = expensive_checks()}};
 handle_info(force_beat, State) ->
     {noreply, arm_forced_beat_timer(State)};
 handle_info(_, State) ->
@@ -121,7 +114,7 @@ status_all() ->
     {Replies, _} = gen_server:multi_call([node() | nodes()], ?MODULE, status, 5000),
     Replies.
 
-stats() ->
+erlang_stats() ->
     Stats = [wall_clock, context_switches, garbage_collection, io, reductions,
              run_queue, runtime],
     [{Stat, statistics(Stat)} || Stat <- Stats].
@@ -133,7 +126,7 @@ is_interesting_stat({curr_items_tot, _}) -> true;
 is_interesting_stat({vb_replica_curr_items, _}) -> true;
 is_interesting_stat(_) -> false.
 
-current_status(Expensive) ->
+current_status() ->
     ClusterCompatVersion = case (catch list_to_integer(os:getenv("MEMBASE_CLUSTER_COMPAT_VERSION"))) of
                                X when is_integer(X) -> X;
                                _ -> 1
@@ -179,27 +172,27 @@ current_status(Expensive) ->
                     lists:keyfind(indexer_type, 1, Task) =:= {indexer_type, main}
         end , couch_task_status:all()),
 
+    MaybeMeminfo =
+        case misc:raw_read_file("/proc/meminfo") of
+            {ok, Contents} ->
+                [{meminfo, Contents}];
+            _ -> []
+        end,
+
     failover_safeness_level:build_local_safeness_info(BucketNames) ++
         [{active_buckets, ns_memcached:active_buckets()},
          {ready_buckets, ns_memcached:connected_buckets()},
          {local_tasks, Tasks},
          {memory, erlang:memory()},
+         {system_memory_data, memsup:get_system_memory_data()},
+         {node_storage_conf, cb_config_couch_sync:get_db_and_ix_paths()},
+         {statistics, erlang_stats()},
          {system_stats, [{N, proplists:get_value(N, SystemStats, 0)}
                          || N <- [cpu_utilization_rate, swap_total, swap_used]]},
          {interesting_stats, InterestingStats},
          {cluster_compatibility_version, ClusterCompatVersion}
-         | element(2, ns_info:basic_info())] ++ Expensive.
+         | element(2, ns_info:basic_info())] ++ MaybeMeminfo.
 
-
-expensive_checks() ->
-    BasicData = [{system_memory_data, memsup:get_system_memory_data()},
-                 {node_storage_conf, cb_config_couch_sync:get_db_and_ix_paths()},
-                 {statistics, stats()}],
-    case misc:raw_read_file("/proc/meminfo") of
-        {ok, Contents} ->
-            [{meminfo, Contents} | BasicData];
-        _ -> BasicData
-    end.
 
 %% returns dict as if returned by ns_doctor:get_nodes/0 but containing only
 %% failover safeness fields (or down bool property). Instead of going
