@@ -477,7 +477,8 @@ set_node_replicas(Policy, Bucket, Node, Replicators) ->
                                   %% NOTE: we do not erase node from pending list of changes
                                   ?log_info("~nkill_child(~p, ~p, ~p, ~p, ~p)",
                                             [Policy, Bucket, SrcNode, DstNode, Child]),
-                                  kill_child(Policy, Bucket, SrcNode, DstNode, Child);
+                                  kill_child(Policy, Bucket, SrcNode, DstNode, Child),
+                                  D;
                               _ ->
                                   dict:erase(DstNode, D)
                           end;
