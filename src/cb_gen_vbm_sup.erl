@@ -474,6 +474,7 @@ set_node_replicas(Policy, Bucket, Node, Replicators) ->
                       {ok, NewVBuckets} ->
                           case Policy:change_vbucket_filter(Bucket, SrcNode, DstNode, Child, NewVBuckets) of
                               not_supported ->
+                                  system_stats_collector:increment_counter(old_style_vbucket_filter_changes, 1),
                                   %% NOTE: we do not erase node from pending list of changes
                                   ?log_info("~nkill_child(~p, ~p, ~p, ~p, ~p)",
                                             [Policy, Bucket, SrcNode, DstNode, Child]),

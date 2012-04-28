@@ -31,11 +31,8 @@
          make_replicator/3, replicator_nodes/2,
          replicator_vbuckets/1, change_vbucket_filter/5]).
 
-%% this is called from erl_eval "lambda" we send for backwards compat
 -export([have_local_change_vbucket_filter/0,
          local_change_vbucket_filter/4]).
-
--compile([{parse_transform, quote_transform}]).
 
 %%
 %% API
@@ -67,18 +64,21 @@ replicator_vbuckets(#child_id{vbuckets=VBuckets}) ->
     VBuckets.
 
 change_vbucket_filter(Bucket, SrcNode, _DstNode, ChildId, NewVBuckets) ->
-    Lambda = quote_transform:lambda(fun (Bucket, SrcNode, ChildId, NewVBuckets) ->
-                                            try ns_vbm_sup:have_local_change_vbucket_filter() of
-                                                true -> {ok, ns_vbm_sup:local_change_vbucket_filter(Bucket, SrcNode, ChildId, NewVBuckets)}
-                                            catch error:undef ->
-                                                    old_version
-                                            end
-                                    end),
-    case rpc:call(SrcNode, erlang, apply, [Lambda, [Bucket, SrcNode, ChildId, NewVBuckets]]) of
-        old_version ->
-            not_supported;
-        {ok, Ref} ->
-            Ref
+    HaveChangeFilterKey = rpc:async_call(SrcNode, ns_vbm_sup, have_local_change_vbucket_filter, []),
+    ChangeFilterRV = rpc:call(SrcNode, ns_vbm_sup, local_change_vbucket_filter,
+                              [Bucket, SrcNode, ChildId, NewVBuckets]),
+    HaveChangeFilterRV = rpc:yield(HaveChangeFilterKey),
+    case ChangeFilterRV of
+         {ok, Ref} ->
+            true = HaveChangeFilterRV,
+            Ref;
+        {badrpc, Error} ->
+            case HaveChangeFilterRV of
+                true ->
+                    erlang:error({change_filter_failed, Error});
+                {badrpc, {'EXIT', {undef, _}}} ->
+                    not_supported
+            end
     end.
 
 have_local_change_vbucket_filter() ->
@@ -88,8 +88,8 @@ local_change_vbucket_filter(Bucket, SrcNode, #child_id{dest_node=DstNode} = Chil
     NewChildId = #child_id{vbuckets=NewVBuckets, dest_node=DstNode},
     Args = ebucketmigrator_srv:build_args(Bucket,
                                           SrcNode, DstNode, NewVBuckets, false),
-    cb_gen_vbm_sup:perform_vbucket_filter_change(Bucket,
-                                                 ChildId,
-                                                 NewChildId,
-                                                 Args,
-                                                 server_name(Bucket)).
+    {ok, cb_gen_vbm_sup:perform_vbucket_filter_change(Bucket,
+                                                      ChildId,
+                                                      NewChildId,
+                                                      Args,
+                                                      server_name(Bucket))}.
