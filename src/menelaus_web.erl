@@ -263,7 +263,7 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun menelaus_web_buckets:handle_bucket_create/2,
                                   [PoolId]};
                              ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
-                                 {auth_bucket, fun menelaus_web_buckets:handle_bucket_flush/3,
+                                 {auth, fun menelaus_web_buckets:handle_bucket_flush/3,
                                 [PoolId, Id]};
                              ["logClientError"] -> {auth_any_bucket,
                                                     fun (R) ->
