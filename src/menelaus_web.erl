@@ -667,6 +667,8 @@ handle_pool_info_streaming(Id, Req) ->
     handle_streaming(F, Req, undefined).
 
 handle_streaming(F, Req, LastRes) ->
+    ?log_debug("Starting streaming for ~s path ~s",
+               [menelaus_util:remote_addr_and_port(Req), Req:get(raw_path)]),
     HTTPRes = Req:ok({"application/json; charset=utf-8",
                       server_header(),
                       chunked}),
