@@ -326,11 +326,11 @@ can_listen(Host) ->
         {error, _Err} ->
             false;
         {ok, IpAddr} ->
-            case gen_tcp:listen(0, [inet, {ip, IpAddr}]) of
+            case gen_udp:open(0, [inet, {ip, IpAddr}]) of
                 {error, _ListErr} ->
                     false;
                 {ok, Socket} ->
-                    gen_tcp:close(Socket),
+                    gen_udp:close(Socket),
                     true
             end
     end.
