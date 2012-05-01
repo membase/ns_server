@@ -108,6 +108,9 @@ child_specs() ->
       permanent, infinity, supervisor,
       [menelaus_sup]},
 
+     {mc_sup, {mc_sup, start_link, []},
+      permanent, infinity, supervisor, dynamic},
+
      {ns_port_sup, {ns_port_sup, start_link, []},
       permanent, 60000, worker,
       [ns_port_sup]},

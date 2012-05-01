@@ -51,6 +51,11 @@
 -define(CMD_DEREGISTER_TAP_CLIENT, 16#9e).
 -define(CMD_LAST_CLOSED_CHECKPOINT,  16#97).
 
+% internal mc_couch command notifying us that writes happened in
+% ep-engine
+-define(CMD_NOTIFY_VBUCKET_UPDATE, 16#aa).
+
+
 -define(CMD_GET_META, 16#a0).
 -define(CMD_GETQ_META, 16#a1).
 -define(CMD_SET_WITH_META, 16#a2).

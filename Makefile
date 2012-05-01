@@ -190,7 +190,7 @@ GEOCOUCH_EBIN := $(firstword $(realpath $(COUCH_PATH)/../geocouch/build) $(realp
 do-dialyzer:
 	dialyzer --plt $(COUCHBASE_PLT) $(DIALYZER_FLAGS) \
             --apps `ls -1 ebin/*.beam | grep -v couch_log` deps/ale/ebin \
-            $(COUCH_PATH)/src/couchdb $(COUCH_PATH)/src/couch_set_view $(COUCH_PATH)/../mccouch/ebin \
+            $(COUCH_PATH)/src/couchdb $(COUCH_PATH)/src/couch_set_view \
             $(GEOCOUCH_EBIN) $(realpath $(COUCH_PATH)/src/mapreduce)
 
 dialyzer_obsessive: all $(COUCHBASE_PLT)
