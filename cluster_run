@@ -123,6 +123,9 @@ def start_cluster(num_nodes, start_index, host, extra_args):
         if not params.has_key('env'):
             params['env'] = {}
             params['env'].update(os.environ)
+        path = params['env']['PATH']
+        path = (PREFIX+"/bin") + os.pathsep + path
+        params['env']['PATH'] = path
         return subprocess.Popen(args, **params)
 
     return [start_node(i + start_index) for i in xrange(num_nodes)]
