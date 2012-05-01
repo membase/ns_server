@@ -31,8 +31,7 @@ def setup_path():
     couch_plugins = ebin_search("{0}/lib/couchdb/plugins".format(PREFIX))
 
     if len(couchpath) == 0:
-       print("Couch libs wasn't found. Will disable couch support\n")
-       os.environ['DONT_START_COUCH'] = '1'
+       sys.exit("Couch libs wasn't found.\nCan't handle it")
 
     return couchpath + path + couch_plugins
 
