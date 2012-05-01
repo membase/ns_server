@@ -105,6 +105,8 @@
 -define(VB_STATE_PENDING, 3).
 -define(VB_STATE_DEAD, 4).
 
+-type int_vb_state() :: ?VB_STATE_ACTIVE | ?VB_STATE_REPLICA | ?VB_STATE_PENDING | ?VB_STATE_DEAD.
+
 % TAP CONNECT flags
 -define(BACKFILL,          2#0000001).
 -define(DUMP,              2#0000010).

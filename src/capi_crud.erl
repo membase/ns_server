@@ -178,11 +178,11 @@ get_loop(Bucket, DocId, ReturnDeleted, VBucket) ->
 
             case {Header#mc_header.status, Entry#mc_entry.cas} of
                 {?SUCCESS, CAS} ->
-                    Doc = mc_couch_kv:mk_doc(DocId,
-                                             Entry#mc_entry.flag,
-                                             Entry#mc_entry.expire,
-                                             Entry#mc_entry.data,
-                                             true),
+                    Doc = mk_doc(DocId,
+                                 Entry#mc_entry.flag,
+                                 Entry#mc_entry.expire,
+                                 Entry#mc_entry.data,
+                                 true),
                     {ok, Doc#doc{rev = Rev}};
                 {?SUCCESS, _CAS} ->
                     get_loop(Bucket, DocId, ReturnDeleted, VBucket);
@@ -203,3 +203,14 @@ get_meta(Bucket, VBucket, DocId) ->
 
 mk_deleted_doc(DocId, Rev) ->
     #doc{id = DocId, rev = Rev, deleted = true}.
+
+%% copied from mc_couch_kv
+
+-spec mk_doc(Key :: binary(),
+             Flags :: non_neg_integer(),
+             Expiration :: non_neg_integer(),
+             Value :: binary(),
+             WantJson :: boolean()) -> #doc{}.
+mk_doc(Key, Flags, Expiration, Value, WantJson) ->
+    Doc = couch_doc:from_binary(Key, Value, WantJson),
+    Doc#doc{rev = {1, <<0:64, Expiration:32, Flags:32>>}}.

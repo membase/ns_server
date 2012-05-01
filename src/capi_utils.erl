@@ -18,6 +18,7 @@
 
 -compile(export_all).
 
+-include("ns_common.hrl").
 -include("couch_db.hrl").
 -include("mc_entry.hrl").
 -include("mc_constants.hrl").
@@ -83,3 +84,58 @@ build_info([VBucketStr], R) ->
     {lists:append(lists:reverse(R)), list_to_integer(VBucketStr)};
 build_info([H|T], R)->
     build_info(T, [H|R]).
+
+
+-spec build_dbname(BucketName :: ext_bucket_name(), VBucket :: ext_vbucket_id()) -> binary().
+build_dbname(BucketName, VBucket) ->
+    SubName = case is_binary(VBucket) of
+                  true -> VBucket;
+                  _ -> integer_to_list(VBucket)
+              end,
+    iolist_to_binary([BucketName, $/, SubName]).
+
+
+-spec must_open_vbucket(BucketName :: ext_bucket_name(),
+                        VBucket :: ext_vbucket_id()) -> #db{}.
+must_open_vbucket(BucketName, VBucket) ->
+    DBName = build_dbname(BucketName, VBucket),
+    case couch_db:open_int(DBName, []) of
+        {ok, RealDb} ->
+            RealDb;
+        Error ->
+            exit({open_db_failed, Error})
+    end.
+
+%% copied from mc_couch_vbucket
+
+-spec vbucket_state_to_binary(int_vb_state()) -> binary().
+vbucket_state_to_binary(IntState) ->
+    atom_to_binary(vbucket_state_to_atom(IntState), latin1).
+
+-spec vbucket_state_to_atom(int_vb_state()) -> atom().
+vbucket_state_to_atom(?VB_STATE_ACTIVE) ->
+    active;
+vbucket_state_to_atom(?VB_STATE_REPLICA) ->
+    replica;
+vbucket_state_to_atom(?VB_STATE_PENDING) ->
+    pending;
+vbucket_state_to_atom(?VB_STATE_DEAD) ->
+    dead.
+
+-spec get_vbucket_state_doc(ext_bucket_name(), vbucket_id()) -> binary() | not_found.
+get_vbucket_state_doc(BucketName, VBucket) when is_integer(VBucket) ->
+    try must_open_vbucket(BucketName, VBucket) of
+        DB ->
+            try
+                case couch_db:open_doc_int(DB, <<"_local/vbstate">>, [json_bin_body]) of
+                    {ok, Doc} ->
+                        Doc#doc.body;
+                    {not_found, missing} ->
+                        not_found
+                end
+            after
+                couch_db:close(DB)
+            end
+    catch exit:{open_db_failed, {not_found, no_db_file}} ->
+            not_found
+    end.

@@ -61,26 +61,15 @@ get_db_info(#db{filepath = undefined, name = Name}) ->
 get_db_info(Db) ->
     couch_db:get_db_info(Db).
 
-with_subdb(DbName, VBucket, UserCtx, Fun) when is_binary(DbName) ->
-    SubName = case is_binary(VBucket) of
-                  true -> VBucket;
-                  _ -> integer_to_list(VBucket)
-              end,
-    SubDbName = iolist_to_binary([DbName, $/, SubName]),
-    {ok, RealDb} = couch_db:open(SubDbName, [{user_ctx, UserCtx}]),
+with_subdb(#db{name = DbName}, VBucket, Fun) ->
+    with_subdb(DbName, VBucket, Fun);
+with_subdb(DbName, VBucket, Fun) ->
+    DB = capi_utils:must_open_vbucket(DbName, VBucket),
     try
-        Fun(RealDb)
+        Fun(DB)
     after
-        couch_db:close(RealDb)
-    end;
-with_subdb(DbName, VBucket, UserCtx, Fun) when is_list(DbName) ->
-    with_subdb(?l2b(DbName), VBucket, UserCtx, Fun);
-with_subdb(Db, VBucket, UserCtx, Fun) ->
-    with_subdb(Db#db.name, VBucket, UserCtx, Fun).
-
-with_subdb(Db, VBucket, Fun) ->
-    UserCtx = #user_ctx{roles=[<<"_admin">>]},
-    with_subdb(Db, VBucket, UserCtx, Fun).
+        couch_db:close(DB)
+    end.
 
 update_doc(#db{filepath = undefined, name=Name},
            #doc{id = <<"_design/",_/binary>>} = Doc, _Options) ->

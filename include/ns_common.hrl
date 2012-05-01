@@ -32,6 +32,10 @@
 -type vbucket_id() :: non_neg_integer().
 -type vbucket_state() :: active | dead | replica | pending.
 
+-type ext_bucket_name() :: bucket_name() | binary().
+%% ext vbucket id is vbucket id (potentially as binary) or <<"master">>
+-type ext_vbucket_id() :: vbucket_id() | binary().
+
 -type version() :: {list(integer()), candidate | release, integer()}.
 
 -define(MULTICALL_DEFAULT_TIMEOUT, 30000).

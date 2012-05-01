@@ -462,13 +462,14 @@ apply_map(Bucket, DDocs, OldMap, NewMap, UseReplicaIndex) ->
       end, undefined, DDocs).
 
 do_get_vbucket_state(Bucket, VBucket) ->
-    try
-        {JsonState} = ?JSON_DECODE(mc_couch_vbucket:get_state(VBucket, Bucket)),
-        State = proplists:get_value(<<"state">>, JsonState),
-        erlang:binary_to_atom(State, latin1)
-    catch
-        throw:{open_db_error, _, _, {not_found, no_db_file}} ->
-            dead
+    case capi_utils:get_vbucket_state_doc(Bucket, VBucket) of
+        not_found ->
+            dead;
+        DocBody ->
+            true = is_binary(DocBody),
+            {JsonState} = ?JSON_DECODE(DocBody),
+            State = proplists:get_value(<<"state">>, JsonState),
+            erlang:binary_to_atom(State, latin1)
     end.
 
 get_vbucket_states(Bucket, BucketConfig) ->
