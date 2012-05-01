@@ -97,6 +97,7 @@
 -define(NOT_SUPPORTED,    16#83).
 -define(EINTERNAL,        16#84).
 -define(EBUSY,            16#85).
+-define(ETMPFAIL,         16#86).
 
 % Vbucket States
 -define(VB_STATE_ACTIVE, 1).

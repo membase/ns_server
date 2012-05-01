@@ -531,6 +531,8 @@ map_status(?EINTERNAL) ->
     internal;
 map_status(?EBUSY) ->
     ebusy;
+map_status(?ETMPFAIL) ->
+    etmpfail;
 map_status(?MC_AUTH_ERROR) ->
     auth_error;
 map_status(?MC_AUTH_CONTINUE) ->

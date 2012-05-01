@@ -26,7 +26,7 @@
 -type mc_error_atom() :: key_enoent | key_eexists | e2big | einval |
                          not_stored | delta_badval | not_my_vbucket |
                          unknown_command | enomem | not_supported | internal |
-                         ebusy.
+                         ebusy | etmpfail | auth_error | auth_continue.
 -type mc_error() :: {memcached_error, mc_error_atom(), binary()}.
 -type moves() :: [{non_neg_integer(), atom(), atom()}].
 -type vbucket_id() :: non_neg_integer().
