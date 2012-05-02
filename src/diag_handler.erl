@@ -176,48 +176,57 @@ handle_diag(Req) ->
                         _ -> [{"Content-Disposition", "attachment; filename=" ++ generate_diag_filename()}]
                     end,
     Log = proplists:get_value("log", Params, ?DEBUG_LOG_FILENAME),
-    do_handle_diag(Req, MaybeContDisp, Log).
+    case proplists:get_value("noLogs", Params, "0") of
+        "0" ->
+            do_handle_diag(Req, MaybeContDisp, Log);
+        _ ->
+            Resp = handle_just_diag(Req, MaybeContDisp),
+            Resp:write_chunk(<<>>)
+    end.
+
+handle_just_diag(Req, Extra) ->
+    Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
+                         ns_bucket:get_buckets()),
+    Infos = [["per_node_diag = ~p", diag_multicall(?MODULE, do_diag_per_node, [])],
+             ["nodes_info = ~p", menelaus_web:build_nodes_info()],
+             ["buckets = ~p", Buckets],
+             ["logs:~n-------------------------------~n"]],
+    Text = lists:flatmap(fun ([Fmt | Args]) ->
+                                 io_lib:format(Fmt ++ "~n~n", Args)
+                         end, Infos),
+
+    Resp = Req:ok({"text/plain; charset=utf-8",
+                   Extra ++
+                       [{"Content-Type", "text/plain"}
+                        | menelaus_util:server_header()],
+                   chunked}),
+    Resp:write_chunk(list_to_binary(Text)),
+    lists:foreach(fun (#log_entry{node = Node,
+                                  module = Module,
+                                  code = Code,
+                                  msg = Msg,
+                                  args = Args,
+                                  cat = Cat,
+                                  tstamp = TStamp}) ->
+                          try io_lib:format(Msg, Args) of
+                              S ->
+                                  CodeString = ns_log:code_string(Module, Code),
+                                  Type = menelaus_alert:category_bin(Cat),
+                                  TStampEpoch = misc:time_to_epoch_ms_int(TStamp),
+                                  Resp:write_chunk(iolist_to_binary(diag_format_log_entry(Type, Code, Module, Node, TStampEpoch, CodeString, S)))
+                          catch _:_ -> ok
+                          end
+                  end, lists:keysort(#log_entry.tstamp, ns_log:recent())),
+    Resp.
 
 
 do_handle_diag(Req, Extra, Log) ->
     case ns_log_browser:log_exists(Log) of
         true ->
-            Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
-                                 ns_bucket:get_buckets()),
-            Infos = [["per_node_diag = ~p", diag_multicall(?MODULE, do_diag_per_node, [])],
-                     ["nodes_info = ~p", menelaus_web:build_nodes_info()],
-                     ["buckets = ~p", Buckets],
-                     ["logs:~n-------------------------------~n"]],
-            Text = lists:flatmap(fun ([Fmt | Args]) ->
-                                         io_lib:format(Fmt ++ "~n~n", Args)
-                                 end, Infos),
-
-            Resp = Req:ok({"text/plain; charset=utf-8",
-                           Extra ++
-                               [{"Content-Type", "text/plain"}
-                                | menelaus_util:server_header()],
-                           chunked}),
-            Resp:write_chunk(list_to_binary(Text)),
-            lists:foreach(fun (#log_entry{node = Node,
-                                          module = Module,
-                                          code = Code,
-                                          msg = Msg,
-                                          args = Args,
-                                          cat = Cat,
-                                          tstamp = TStamp}) ->
-                                  try io_lib:format(Msg, Args) of
-                                      S ->
-                                          CodeString = ns_log:code_string(Module, Code),
-                                          Type = menelaus_alert:category_bin(Cat),
-                                          TStampEpoch = misc:time_to_epoch_ms_int(TStamp),
-                                          Resp:write_chunk(iolist_to_binary(diag_format_log_entry(Type, Code, Module, Node, TStampEpoch, CodeString, S)))
-                                  catch _:_ -> ok
-                                  end
-                          end, lists:keysort(#log_entry.tstamp, ns_log:recent())),
+            Resp = handle_just_diag(Req, Extra),
             LogsHeader = io_lib:format("logs_node (~s):~n"
                                        "-------------------------------~n", [Log]),
             Resp:write_chunk(list_to_binary(LogsHeader)),
-
             handle_logs(Resp, Log);
         false ->
             Req:respond({404, menelaus_util:server_header(),

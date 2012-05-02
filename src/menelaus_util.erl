@@ -20,6 +20,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-include("ns_common.hrl").
+
 -ifdef(EUNIT).
 -export([test_under_debugger/0, debugger_apply/2]).
 -endif.
@@ -34,6 +36,7 @@
          expect_config/1,
          get_option/2,
          local_addr/1,
+         remote_addr_and_port/1,
          concat_url_path/1,
          parse_validate_number/3,
          validate_email_address/1,
@@ -219,6 +222,15 @@ validate_email_address(Address) ->
 local_addr(Req) ->
     {ok, {Address, _Port}} = inet:sockname(Req:get(socket)),
     string:join(lists:map(fun integer_to_list/1, tuple_to_list(Address)), ".").
+
+remote_addr_and_port(Req) ->
+    case inet:peername(Req:get(socket)) of
+        {ok, {Address, Port}} ->
+            string:join(lists:map(fun integer_to_list/1, tuple_to_list(Address)), ".") ++ ":" ++ integer_to_list(Port);
+        Error ->
+            ?log_error("remote_addr failed: ~p", Error),
+            "unknown"
+    end.
 
 pipe_through_command_rec(Port, Acc) ->
     receive

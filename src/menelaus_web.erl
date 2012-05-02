@@ -280,7 +280,7 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun menelaus_web_buckets:handle_bucket_create/2,
                                   [PoolId]};
                              ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
-                                 {auth_bucket, fun menelaus_web_buckets:handle_bucket_flush/3,
+                                 {auth, fun menelaus_web_buckets:handle_bucket_flush/3,
                                 [PoolId, Id]};
                              ["pools", "default", "remoteClusters"] ->
                                  {auth, fun menelaus_web_remote_clusters:handle_remote_clusters_post/1};
@@ -919,6 +919,8 @@ handle_pool_info_streaming(Id, Req) ->
     handle_streaming(F, Req, undefined).
 
 handle_streaming(F, Req, LastRes) ->
+    ?log_debug("Starting streaming for ~s path ~s",
+               [menelaus_util:remote_addr_and_port(Req), Req:get(raw_path)]),
     HTTPRes = Req:ok({"application/json; charset=utf-8",
                       server_header(),
                       chunked}),

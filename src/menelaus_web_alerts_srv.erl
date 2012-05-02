@@ -314,12 +314,12 @@ can_listen(Host) ->
             ?log_error("Cannot listen due to ~p from inet:getaddr~n", [Err]),
             false;
         {ok, IpAddr} ->
-            case gen_tcp:listen(0, [inet, {ip, IpAddr}]) of
+            case gen_udp:open(0, [inet, {ip, IpAddr}]) of
                 {error, ListErr} ->
-                    ?log_error("Cannot listen due to ~p from listen~n", [ListErr]),
+                    ?log_error("gen_udp:open failed due to ~p", [ListErr]),
                     false;
                 {ok, Socket} ->
-                    gen_tcp:close(Socket),
+                    gen_udp:close(Socket),
                     true
             end
     end.
