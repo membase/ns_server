@@ -115,10 +115,12 @@ do_notify_vbucket_update(BucketName, VBucket, Body) ->
     ResponseStatus.
 
 do_delete_vbucket(BucketName, VBucket) ->
+    ?log_debug("Notifying mc_couch_events of vbucket deletion: ~s/~p", [BucketName, VBucket]),
     gen_event:sync_notify(mc_couch_events,
                           {delete_vbucket, binary_to_list(BucketName), VBucket}),
 
     DbName = capi_utils:build_dbname(BucketName, VBucket),
+    ?log_info("Deleting vbucket: ~s/~p", [BucketName, VBucket]),
     couch_server:delete(DbName, []),
     ?SUCCESS.
 
