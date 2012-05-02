@@ -97,7 +97,7 @@ _stop() {
         rm "$COOKIEFILE"
         rm "$NODEFILE"
 
-        epmd -kill || true
+        epmd -kill >/dev/null || true
     fi
 
     return $errcode
