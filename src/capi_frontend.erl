@@ -100,8 +100,7 @@ update_doc(#db{filepath = undefined, name=Name} = Db,
 update_docs(#db{name = DbName} = Db,
             [#doc{id = <<?LOCAL_DOC_PREFIX, Rest/binary>>} = Doc],
             Options) ->
-    [VBucketStr | _] = string:tokens(?b2l(Rest), "-"),
-    VBucket = list_to_integer(VBucketStr),
+    [VBucket | _] = string:tokens(?b2l(Rest), "-"),
     [Bucket, _Master] = string:tokens(binary_to_list(DbName), [$/]),
     {ok, Stats0} = ns_memcached:stats(Bucket, <<"checkpoint">>),
     OpenCheckpointId = proplists:get_value(
