@@ -54,7 +54,7 @@
 -define(FAILOVER_NODE, 6).
 -define(REBALANCE_STOPPED, 7).
 
--define(DELETE_BUCKET_TIMEOUT, 5000).
+-define(DELETE_BUCKET_TIMEOUT, 30000).
 -define(CREATE_BUCKET_TIMEOUT, 5000).
 
 %% gen_fsm callbacks
