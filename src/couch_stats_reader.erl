@@ -106,12 +106,11 @@ grab_couch_stats(Bucket) ->
               end,
 
     ViewStats = fun(Id, {DiskSize, DataSize}) ->
-                        {ok, Info} = couch_set_view:get_group_info(?l2b(Bucket), Id),
-                        Group = proplists:get_value(replica_group_info, Info, false),
+                        {ok, Info} = couch_set_view:get_group_data_size(?l2b(Bucket), Id),
                         {ViewDisk, ViewData} = GetStats(Info),
-                        {RDisk, RData} = case Group of
-                                             false -> {0, 0};
-                                             {Replica} -> GetStats(Replica)
+                        {RDisk, RData} = case proplists:get_value(replica_group_info, Info) of
+                                             undefined -> {0, 0};
+                                             RepInfo -> GetStats(RepInfo)
                                          end,
                         {DiskSize + ViewDisk + RDisk,
                          DataSize + ViewData + RData}
