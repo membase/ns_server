@@ -281,8 +281,8 @@ is_balanced(Map, Nodes, Options) ->
                                        lists:min(ChainHist) =< 2
                            end, lists:sublist(Histograms, NumCopies)) of
                         false ->
-                            io:fwrite("Histograms = ~w~n", [Histograms]),
-                            io:fwrite("Counts = ~p~n", [dict:to_list(counts(Map))]),
+                            ?log_debug("Histograms = ~w~n", [Histograms]),
+                            ?log_debug("Counts = ~p~n", [dict:to_list(counts(Map))]),
                             false;
                         true ->
                             Counts = counts(Map),
@@ -292,7 +292,7 @@ is_balanced(Map, Nodes, Options) ->
                                           proplists:get_value(
                                             max_slaves, Options, NumNodes-1),
                                           NumNodes-1),
-                            io:fwrite("Counts = ~p~n", [dict:to_list(counts(Map))]),
+                            ?log_debug("Counts = ~p~n", [dict:to_list(counts(Map))]),
                             dict:fold(
                               fun (_, {Min, Max, SlaveCount}, Acc) ->
                                       Acc andalso SlaveCount == NumSlaves
