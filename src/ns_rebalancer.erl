@@ -204,7 +204,11 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
                                   %% overloading things
                                   ns_bucket:set_servers(BucketName, LiveNodes),
                                   wait_for_memcached(LiveNodes, BucketName, 10),
-                                  ns_janitor:cleanup(BucketName, [{timeout, 1}]),
+                                  case ns_janitor:cleanup(BucketName, [{timeout, 1}]) of
+                                      ok -> ok;
+                                      {error, wait_for_memcached_failed} ->
+                                          exit(pre_rebalance_janitor_run_failed)
+                                  end,
                                   {ok, NewConf} =
                                       ns_bucket:get_bucket(BucketName),
                                   NewMap =
