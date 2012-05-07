@@ -276,8 +276,16 @@ code_change(_OldVsn, StateName, StateData, _Extra) ->
     {ok, StateName, StateData}.
 
 
-terminate(_Reason, _StateName, _StateData) ->
-    ok.
+terminate(_Reason, _StateName, StateData) ->
+    case StateData of
+        #state{child=Child} when is_pid(Child) ->
+            ?log_info("Synchronously shutting down child mb_master_sup"),
+            (catch erlang:unlink(Child)),
+            erlang:exit(Child, shutdown),
+            misc:wait_for_process(Child, infinity);
+        _ ->
+            ok
+    end.
 
 
 %%
