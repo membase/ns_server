@@ -28,7 +28,7 @@
 -define(CLEAN_VBUCKET_MAP_RECOVER, 0).
 -define(UNCLEAN_VBUCKET_MAP_RECOVER, 1).
 
--spec cleanup(string(), list()) -> ok | {error, any()}.
+-spec cleanup(string(), list()) -> ok | {error, wait_for_memcached_failed}.
 cleanup(Bucket, Options) ->
     {ok, Config} = ns_bucket:get_bucket(Bucket),
     case ns_bucket:bucket_type(Config) of

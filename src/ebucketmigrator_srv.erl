@@ -221,7 +221,7 @@ init({Src, Dst, Opts}=InitArgs) ->
                             {checkpoints, Checkpoints},
                             {name, Name},
                             {takeover, TakeOver}],
-                   ?rebalance_info("Starting tap stream:~n~p~n", [Args0]),
+                   ?rebalance_info("Starting tap stream:~n~p~n~p", [Args0, InitArgs]),
                    case PassedDownstream =:= undefined of
                        true ->
                            ?log_debug("killing tap named: ~s", [Name]),
