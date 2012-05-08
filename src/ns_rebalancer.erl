@@ -46,10 +46,17 @@
 %% @doc Fail a node. Doesn't eject the node from the cluster. Takes
 %% effect immediately.
 failover(Node) ->
-    lists:foreach(fun (Bucket) -> failover(Bucket, Node) end,
-                  ns_bucket:get_bucket_names()).
+    RVs = lists:map(fun (Bucket) -> failover(Bucket, Node) end,
+                    ns_bucket:get_bucket_names()),
+    case lists:member(janitor_failed, RVs) of
+        true ->
+            ?log_info("Sleeping a bit because janitor run failed. See http://www.couchbase.com/issues/browse/MB-5247"),
+            timer:sleep(5000);
+        false ->
+            ok
+    end.
 
--spec failover(string(), atom()) -> ok.
+-spec failover(string(), atom()) -> ok | janitor_failed.
 failover(Bucket, Node) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
     Servers = proplists:get_value(servers, BucketConfig),
@@ -79,12 +86,17 @@ failover(Bucket, Node) ->
                     ns_bucket:set_map(Bucket, Map1)
             end,
             ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)),
-            try
-                ns_janitor:cleanup(Bucket, [])
+            try ns_janitor:cleanup(Bucket, []) of
+                ok ->
+                    ok;
+                {error, wait_for_memcached_failed} ->
+                    ?rebalance_error("Skipped vbucket activations and replication topology changes because not all remaining node were found to have healthy bucket ~p", [Bucket]),
+                    janitor_failed
             catch
                 E:R ->
                     ?rebalance_error("Janitor cleanup of ~p failed after failover of ~p: ~p",
-                                     [Bucket, Node, {E, R}])
+                                     [Bucket, Node, {E, R}]),
+                    janitor_failed
             end;
         memcached ->
             ns_bucket:set_servers(Bucket, lists:delete(Node, Servers))
@@ -202,7 +214,11 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
                                   %% overloading things
                                   ns_bucket:set_servers(BucketName, LiveNodes),
                                   wait_for_memcached(LiveNodes, BucketName, 10),
-                                  ns_janitor:cleanup(BucketName, [{timeout, 1}]),
+                                  case ns_janitor:cleanup(BucketName, [{timeout, 1}]) of
+                                      ok -> ok;
+                                      {error, wait_for_memcached_failed} ->
+                                          exit(pre_rebalance_janitor_run_failed)
+                                  end,
                                   {ok, NewConf} =
                                       ns_bucket:get_bucket(BucketName),
                                   NewMap =
