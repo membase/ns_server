@@ -1068,6 +1068,8 @@ var IOCenter = (function () {
             usedOptions.error.call(usedOptions, {status: 500}, 'error');
           }, 200);
           return;
+        } else if (S.pauseAjax) {
+          return;
         }
         op.xhr = $.ajax(usedOptions);
       }
