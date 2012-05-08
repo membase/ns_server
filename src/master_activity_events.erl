@@ -217,6 +217,8 @@ format_simple_plist_as_json(PList) ->
                    iolist_to_binary(Value);
               is_binary(Value) ->
                    Value;
+              is_number(Value) ->
+                   Value;
               true -> iolist_to_binary(io_lib:format("~p", [Value]))
            end}
      || {Key, Value} <- PList1].
