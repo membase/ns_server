@@ -272,12 +272,22 @@ rebalance(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets) ->
 %% than the min.
 -spec unbalanced(map(), [atom()]) -> boolean().
 unbalanced(Map, Servers) ->
-    lists:any(fun (Histogram) ->
-                      case [N || {_, N} <- Histogram] of
-                          [] -> false;
-                          Counts -> lists:max(Counts) - lists:min(Counts) > 2
-                      end
-              end, histograms(Map, Servers)).
+    NumServers = length(Servers),
+
+    lists:any(
+      fun (Chain) ->
+              lists:member(
+                undefined,
+                %% Don't warn about missing replicas when you have
+                %% fewer servers than your copy count!
+                lists:sublist(Chain, NumServers))
+      end, Map) orelse
+        lists:any(fun (Histogram) ->
+                          case [N || {_, N} <- Histogram] of
+                              [] -> false;
+                              Counts -> lists:max(Counts) - lists:min(Counts) > 2
+                          end
+                  end, histograms(Map, Servers)).
 
 
 %%
