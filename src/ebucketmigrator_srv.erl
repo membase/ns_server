@@ -91,8 +91,9 @@ handle_call(start_vbucket_filter_change, From, #state{args={_, Dst, Opts}} = Sta
             continue_start_vbucket_filter_change(From, State, NewDownstream)
     catch T:E ->
             Stack = erlang:get_stacktrace(),
-            ?log_info("Failed to establish new downstream connection:~n~p", [{T, E, Stack}]),
-            {reply, failed, State}
+            Tuple = {T, E, Stack},
+            ?log_info("Failed to establish new downstream connection:~n~p", [Tuple]),
+            {reply, {failed, Tuple}, State}
     end;
 
 handle_call(_Req, _From, State) ->
@@ -352,6 +353,7 @@ start_link(Node, Src, Dst, Opts) ->
     misc:start_link(Node, ?MODULE, init, [{Src, Dst, Opts}]).
 
 
+-spec start_vbucket_filter_change(pid()) -> {ok, port()} | {failed, any()}.
 start_vbucket_filter_change(Pid) ->
     gen_server:call(Pid, start_vbucket_filter_change).
 
