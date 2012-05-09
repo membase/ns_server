@@ -55,7 +55,7 @@
 -define(FAILOVER_NODE, 6).
 -define(REBALANCE_STOPPED, 7).
 
--define(DELETE_BUCKET_TIMEOUT, 5000).
+-define(DELETE_BUCKET_TIMEOUT, 30000).
 -define(CREATE_BUCKET_TIMEOUT, 5000).
 
 %% gen_fsm callbacks
@@ -479,17 +479,8 @@ needs_rebalance(Nodes, BucketConfig) ->
                 [] -> false;
                 _ ->
                     Map = proplists:get_value(map, BucketConfig),
-                    NumServers = length(Servers),
                     Map =:= undefined orelse
                         lists:sort(Nodes) /= lists:sort(Servers) orelse
-                        lists:any(
-                          fun (Chain) ->
-                                  lists:member(
-                                    undefined,
-                                    %% Don't warn about missing replicas when you have
-                                    %% fewer servers than your copy count!
-                                    lists:sublist(Chain, NumServers))
-                          end, Map) orelse
                         ns_rebalancer:unbalanced(Map, Servers)
             end;
         memcached ->
