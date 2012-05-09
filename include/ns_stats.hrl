@@ -110,8 +110,11 @@
         %% Sum of disk queue item age in milliseconds
         vb_replica_queue_age,
         %% Sum of disk queue item age in milliseconds
-        vb_pending_queue_age
+        vb_pending_queue_age,
         %% aggregated by collector: vb_total_queue_age
+
+        %% used by alerts
+        ep_item_commit_failed
 ).
 
 -define(STAT_COUNTERS,
