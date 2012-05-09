@@ -70,11 +70,11 @@ diag_filter_out_config_password(Config) ->
         NewConfig -> NewConfig
     end.
 
-% Read the manifest.txt file
+% Read the manifest.xml file
 manifest() ->
     case file:read_file(filename:join(path_config:component_path(bin, ".."), "manifest.xml")) of
         {ok, C} ->
-            lists:sort(string:tokens(binary_to_list(C), "\n"));
+            string:tokens(binary_to_list(C), "\n");
         _ -> []
     end.
 

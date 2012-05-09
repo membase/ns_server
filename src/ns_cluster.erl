@@ -427,6 +427,12 @@ check_can_add_node(NodeKVList) ->
                         {error, incompatible_cluster_version,
                          <<"Joining 1.6.x node to this cluster does not work">>,
                          incompatible_cluster_version};
+                    <<"1.7.2",_/binary>> ->
+                        ok;
+                    <<"1.7.",_/binary>> = Version ->
+                        {error, incompatible_cluster_version,
+                         iolist_to_binary(io_lib:format("Joining ~s node to this cluster does not work", [Version])),
+                         incompatible_cluster_version};
                     _ ->
                         ok
                 end;
@@ -506,7 +512,7 @@ do_engage_cluster(NodeKVList) ->
                 {error, system_not_joinable,
                  <<"Node is already part of cluster.">>, system_not_joinable};
             true ->
-                do_engage_cluster_check_16x(NodeKVList)
+                do_engage_cluster_check_compatibility(NodeKVList)
         end
     catch
         exit:{unexpected_json, _, _} = Exc ->
@@ -515,15 +521,27 @@ do_engage_cluster(NodeKVList) ->
              Exc}
     end.
 
-do_engage_cluster_check_16x(NodeKVList) ->
+do_engage_cluster_check_compatibility(NodeKVList) ->
     Version = expect_json_property_binary(<<"version">>, NodeKVList),
-    case Version of
-        <<"1.6.", _/binary>> ->
-                {error, incompatible_cluster_version,
-                 <<"Joining 1.6 cluster does not work">>,
-                 incompatible_cluster_version};
+    MaybeError = case Version of
+                     <<"1.6.", _/binary>> ->
+                         {error, incompatible_cluster_version,
+                          <<"Joining 1.6 cluster does not work">>,
+                          incompatible_cluster_version};
+                     <<"1.7.2",_/binary>> ->
+                         ok;
+                     <<"1.7.",_/binary>> = Version ->
+                         {error, incompatible_cluster_version,
+                          iolist_to_binary(io_lib:format("Joining ~s cluster does not work", [Version])),
+                          incompatible_cluster_version};
+                     _ ->
+                         ok
+                 end,
+    case MaybeError of
+        ok ->
+            do_engage_cluster_inner(NodeKVList);
         _ ->
-            do_engage_cluster_inner(NodeKVList)
+            MaybeError
     end.
 
 
