@@ -17,7 +17,8 @@
           queue = [],
           history = [],
           opaque = dict:new(),
-          checker_pid
+          checker_pid,
+          change_counter = 0
          }).
 
 %% Amount of time to wait between state checks (ms)
@@ -35,7 +36,8 @@
 %% Maximum disk usage before warning (%)
 -define(MAX_DISK_USED, 90).
 
--export([start_link/0, stop/0, local_alert/2, global_alert/2, fetch_alerts/0]).
+-export([start_link/0, stop/0, local_alert/2, global_alert/2,
+         fetch_alerts/0, consume_alerts/1]).
 
 
 %% Error constants
@@ -75,12 +77,16 @@ local_alert(Key, Val) ->
 
 %% @doc fetch a list of binary string, clearing out the message
 %% history
--spec fetch_alerts() -> list(binary()).
+-spec fetch_alerts() -> {list(binary()), binary()}.
 fetch_alerts() ->
     diag_handler:diagnosing_timeouts(
       fun () ->
               gen_server:call(?MODULE, fetch_alert)
       end).
+
+-spec consume_alerts(binary()) -> boolean().
+consume_alerts(VersionCookie) ->
+    gen_server:call(?MODULE, {consume_alerts, VersionCookie}).
 
 
 stop() ->
@@ -95,20 +101,31 @@ init([]) ->
     {ok, #state{}}.
 
 
-handle_call(fetch_alert, _From, #state{history=Hist, queue=Msgs}=State) ->
+handle_call({consume_alerts, PassedCounter}, _From, #state{change_counter = Counter}=State) ->
+    NewState = case (catch list_to_integer(binary_to_list(PassedCounter))) of
+                   Counter ->
+                       %% match
+                       State#state{queue=[],
+                                   change_counter=Counter+1};
+                   _ ->
+                       State
+               end,
+    {reply, NewState =/= State, NewState};
+
+handle_call(fetch_alert, _From, #state{queue=Msgs, change_counter=Counter}=State) ->
     Alerts = [Msg || {_Key, Msg, _Time} <- Msgs],
-    {reply, Alerts, State#state{history = Hist ++ Msgs, queue = []}};
+    {reply, {lists:reverse(Alerts), list_to_binary(integer_to_list(Counter))}, State};
 
-handle_call({add_alert, Key, Val}, _, #state{queue=Msgs, history=Hist}=State) ->
-    case not alert_exists(Key, Hist, Msgs)  of
-        true ->
-            {reply, ok, State#state{queue=[{Key, Val, misc:now_int()} | Msgs]}};
+handle_call({add_alert, Key, Val}, _, #state{queue=Msgs, history=Hist, change_counter=Counter}=State) ->
+    case lists:keyfind(Key, 1, Hist) of
         false ->
+            MsgTuple = {Key, Val, misc:now_int()},
+            {reply, ok, State#state{history = [MsgTuple | Hist],
+                                    queue=[MsgTuple | Msgs],
+                                    change_counter=Counter+1}};
+        _ ->
             {reply, ignored, State}
-    end;
-
-handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+    end.
 
 
 handle_cast(stop, State) ->
@@ -174,12 +191,6 @@ code_change(_OldVsn, State, _Extra) ->
 start_timer() ->
     timer:send_interval(?SAMPLE_RATE, check_alerts).
 
-
-%% @doc Check to see if an alert (by key) is currently in either
-%% the message queue or history of recent items sent
-alert_exists(Key, History, MsgQueue) ->
-    lists:keyfind(Key, 1, History) =/= false
-        orelse lists:keyfind(Key, 1, MsgQueue) =/= false.
 
 %% @doc global checks for any server specific problems locally then
 %% broadcast alerts to clients connected to any particular node
@@ -388,29 +399,30 @@ to_str(Msg) ->
 %% calls to the archiver
 -include_lib("eunit/include/eunit.hrl").
 
-%% Need to split these into seperate tests, but eunit dies on them for now
-basic_test_() ->
-    {setup,
-     fun() -> ?MODULE:start_link() end,
-     fun(_) -> ?MODULE:stop() end,
-     fun() -> {inorder,
-               [
-                ?assertEqual(ok, ?MODULE:local_alert(foo, <<"bar">>)),
-                ?assertEqual([<<"bar">>], ?MODULE:fetch_alerts()),
-                ?assertEqual([], ?MODULE:fetch_alerts()),
+run_basic_test_do() ->
+    ?assertEqual(ok, ?MODULE:local_alert(foo, <<"bar">>)),
+    ?assertMatch({[<<"bar">>], _}, ?MODULE:fetch_alerts()),
+    {[<<"bar">>], Opaque1} = ?MODULE:fetch_alerts(),
+    ?assertMatch({true, {[], _}}, {?MODULE:consume_alerts(Opaque1), ?MODULE:fetch_alerts()}),
 
-                ?assertEqual(ok, ?MODULE:local_alert(bar, <<"bar">>)),
-                ?assertEqual(ignored, ?MODULE:local_alert(bar, <<"bar">>)),
-                ?assertEqual([<<"bar">>], ?MODULE:fetch_alerts()),
-                ?assertEqual([], ?MODULE:fetch_alerts()),
+    ?assertEqual(ok, ?MODULE:local_alert(bar, <<"bar">>)),
+    ?assertEqual(ignored, ?MODULE:local_alert(bar, <<"bar">>)),
+    {[<<"bar">>], Opaque2} = ?MODULE:fetch_alerts(),
+    true = (Opaque1 =/= Opaque2),
+    ?assertEqual(false, ?MODULE:consume_alerts(Opaque1)),
+    ?assertEqual(true, ?MODULE:consume_alerts(Opaque2)),
+    ?assertMatch({[], _}, ?MODULE:fetch_alerts()),
 
-                ?assertEqual(ok, ?MODULE:global_alert(fu, <<"bar">>)),
-                ?assertEqual(ok, ?MODULE:global_alert(fu, <<"bar">>)),
+    ?assertEqual(ok, ?MODULE:global_alert(fu, <<"bar">>)),
+    ?assertEqual(ok, ?MODULE:global_alert(fu, <<"bar">>)),
+    ?assertMatch({[<<"bar">>], _}, ?MODULE:fetch_alerts()).
 
-                timer:sleep(50),
-
-                ?assertEqual([<<"bar">>], ?MODULE:fetch_alerts()),
-                ?assertEqual([], ?MODULE:fetch_alerts())
-               ]
-              }
-     end}.
+basic_test() ->
+    {ok, Pid} = ?MODULE:start_link(),
+    try
+        run_basic_test_do()
+    after
+        erlang:unlink(Pid),
+        exit(Pid, shutdown),
+        misc:wait_for_process(Pid, infinity)
+    end.

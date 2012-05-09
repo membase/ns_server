@@ -1120,58 +1120,112 @@ $(function () {
 });
 
 
+function initAlertsCells(ns, poolDetailsCell) {
+  ns.rawAlertsCell = Cell.compute(function (v) {
+    return v.need(poolDetailsCell).alerts;
+  }).name("rawAlertsCell");
+  ns.rawAlertsCell.equality = _.isEqual;
+
+  // this cells adds timestamps to each alert message each message is
+  // added timestamp when it was first seen. With assumption that
+  // alert messages are added to the end of alerts array
+  //
+  // You can see that implementation is using it's own past result if
+  // past messages array are prefix of current messages array to
+  // achieve this behavior.
+  //
+  // Also note that undefined rawAlertsCell leads this cell to
+  // preserve it's past value. So that poolDetailsCell recomputations
+  // do not 'reset history'
+  ns.stampedAlertsCell = Cell.compute(function (v) {
+    var oldStampedAlerts = this.self.value || [];
+    var newRawAlerts = v(ns.rawAlertsCell);
+    if (!newRawAlerts) {
+      return oldStampedAlerts;
+    }
+    var i;
+    if (oldStampedAlerts.length > newRawAlerts.length) {
+      oldStampedAlerts = [];
+    }
+    for (i = 0; i < oldStampedAlerts.length; i++) {
+      if (oldStampedAlerts[i][1] != newRawAlerts[i]) {
+        break;
+      }
+    }
+    var rv = (i == oldStampedAlerts.length) ? _.clone(oldStampedAlerts) : [];
+    _.each(newRawAlerts.slice(rv.length), function (msg) {
+      rv.push([new Date(), msg]);
+    });
+    return rv;
+  }).name("stampedAlertsCell");
+  ns.stampedAlertsCell.equality = _.isEqual;
+
+  ns.alertsAndSilenceURLCell = Cell.compute(function (v) {
+    return {
+      stampedAlerts: v.need(ns.stampedAlertsCell),
+      alertsSilenceURL: v.need(poolDetailsCell).alertsSilenceURL
+    };
+  }).name("alertsAndSilenceURLCell");
+  ns.alertsAndSilenceURLCell.equality = _.isEqual;
+}
+
+
 // uses /pools/default to piggyback any user alerts we want to show
 function initAlertsSubscriber() {
+  var visibleDialog;
 
-  var alertsShown = false,
-      dialog = null,
-      alerts = [];
+  var cells = {};
+  window.alertsCells = cells;
+  initAlertsCells(cells, DAL.cells.currentPoolDetailsCell);
 
-  function addAlert(msg) {
-    for (var i = 0; i < alerts.length; i++) {
-      if (alerts[i].msg === msg) {
-        return;
-      }
+  cells.alertsAndSilenceURLCell.subscribeValue(function (alertsAndSilenceURL) {
+    if (!alertsAndSilenceURL) {
+      return;
     }
-    var tstamp = "<strong>["+window.formatTime(new Date().getTime())+"]</strong>";
-    alerts.push({msg: tstamp + " - " + msg});
-  };
-
-  function createAlertMsg() {
-    for (var i = 0, msg =  ""; i < alerts.length; i++) {
-      msg += alerts[i].msg + "<br />";
+    var alerts = alertsAndSilenceURL.stampedAlerts;
+    var alertsSilenceURL = alertsAndSilenceURL.alertsSilenceURL;
+    if (!alerts.length) {
+      return;
     }
-    return (msg === "" && false) || msg;
-  };
 
-  DAL.cells.currentPoolDetailsCell.subscribeValue(function (sec) {
+    if (visibleDialog) {
+      visibleDialog.close();
+    }
 
-    if (sec && sec.alerts && sec.alerts.length > 0) {
 
-      if (alertsShown) {
-        dialog.close();
-      }
+    var alertsMsg = _.map(alerts, function (alertItem) {
+      var tstamp = "<strong>["+escapeHTML(formatTime(alertItem[0]))+"]</strong>";
+      return tstamp + " - " + escapeHTML(alertItem[1]);
+    }).join("<br />");
 
-      for (var i = 0; i < sec.alerts.length; i++) {
-        addAlert(sec.alerts[i]);
-      }
-
-      alertsShown = true;
-      var alertMsg = createAlertMsg();
-
-      if (alertMsg) {
-        dialog = genericDialog({
-          buttons: {ok: true},
-          header: "Alert",
-          textHTML: alertMsg,
-          callback: function (e, btn, dialog) {
-            alerts = [];
-            alertsShown = false;
-            dialog.close();
+    _.defer(function () {
+      // looks like we cannot reuse dialog immediately if it was
+      // closed via visibleDialog.close, thus deferring a bit
+      visibleDialog = genericDialog({
+        buttons: {ok: true},
+        header: "Alert",
+        textHTML: alertsMsg,
+        dontCloseOnHashchange: true,
+        callback: function (e, btn, thisDialog) {
+          thisDialog.close();
+          if (thisDialog !== visibleDialog) {
+            BUG("thisDialog != visibleDialog");
           }
-        });
-      }
-    }
+          visibleDialog = null;
+          DAL.cells.currentPoolDetailsCell.setValue(undefined);
+          $.ajax({url: alertsSilenceURL,
+                  type: 'POST',
+                  data: '',
+                  timeout: 5000,
+                  success: done,
+                  // we don't care about errors on this request
+                  error: done});
+          function done() {
+            DAL.cells.currentPoolDetailsCell.invalidate();
+          }
+        }
+      });
+    });
   });
 };
 

@@ -698,6 +698,7 @@ var MockedRequest = mkClass({
                              usedByData: 129742735523.0
                            }
                          },
+                         alerts: [],
                          failoverWarnings: [],
                          buckets: {
                            // GET returns first page of bucket details with link to next page

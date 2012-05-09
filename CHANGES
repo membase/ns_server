@@ -145,3 +145,5 @@ Between versions 1.8.0 and 1.8.1
 
 * (MB-5256) but with alert not being generated for failures to save
   item mutatins to disk was fixed
+
+* (MB-5275) bug with alerts not being shown to user sometimes was fixed

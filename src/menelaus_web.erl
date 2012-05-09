@@ -256,6 +256,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_re_add_node/1};
                              ["controller", "stopRebalance"] ->
                                  {auth, fun handle_stop_rebalance/1};
+                             ["controller", "resetAlerts"] ->
+                                 {auth, fun handle_reset_alerts/1};
                              ["pools", PoolId, "buckets", Id] ->
                                  {auth_bucket, fun menelaus_web_buckets:handle_bucket_update/3,
                                   [PoolId, Id]};
@@ -490,7 +492,7 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                       end,
 
     Uri = bin_concat_path(["pools", Id, "controller", "testWorkload"]),
-    Alerts = menelaus_web_alerts_srv:fetch_alerts(),
+    {Alerts, AlertsSilenceToken} = menelaus_web_alerts_srv:fetch_alerts(),
 
     Controllers = {struct, [
         {addNode, {struct, [{uri, <<"/controller/addNode">>}]}},
@@ -502,6 +504,7 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
 
     PropList0 = [{name, list_to_binary(Id)},
                  {alerts, Alerts},
+                 {alertsSilenceURL, iolist_to_binary([<<"/controller/resetAlerts?token=">>, AlertsSilenceToken])},
                  {nodes, Nodes},
                  {buckets, BucketsInfo},
                  {controllers, Controllers},
@@ -1471,6 +1474,11 @@ handle_re_add_node(Req) ->
     Node = list_to_atom(proplists:get_value("otpNode", Params, "undefined")),
     ok = ns_cluster_membership:re_add_node(Node),
     Req:respond({200, [], []}).
+
+handle_reset_alerts(Req) ->
+    Params = Req:parse_qs(),
+    Token = list_to_binary(proplists:get_value("token", Params, "")),
+    reply_json(Req, menelaus_web_alerts_srv:consume_alerts(Token)).
 
 calculate_replication(Node, BucketsAll, BucketsReplications) ->
     ReplicationList = lists:foldl(fun ({BucketName, BucketConfig}, A) ->
