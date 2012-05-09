@@ -406,6 +406,22 @@ var NodeDialog = {
       $(parentName).find('[name=password]')[0].focus();
     });
     form.submit(function (e) {
+      function displayTryAgainDialog(options) {
+        if (options.callback || options.buttons) {
+          BUG();
+        }
+        options.buttons = {cancel: false, ok: true};
+        options.callback = function (e, name, instance) {
+          instance.close();
+          try {
+            var element = parent.find('[name=password]').get(0);
+            element.focus();
+            element.setSelectionRange(0, String(element.value).length);
+          } catch (ignored) {}
+        }
+        return genericDialog(options);
+      }
+
       e.preventDefault();
 
       var parent = $(parentName)
@@ -414,26 +430,16 @@ var NodeDialog = {
       var pw = parent.find('[name=password]').val();
       var vpw = parent.find('[id=secure-password-verify]').val();
       if (pw == null || pw == "") {
-        genericDialog({
+        displayTryAgainDialog({
           header: 'Please try again',
-          text: 'A password of at least six characters is required.',
-          buttons: {cancel: false, ok: true}
+          text: 'A password of at least six characters is required.'
         });
         return;
       }
       if (pw !== vpw) {
-        genericDialog({
+        displayTryAgainDialog({
           header: 'Please try again',
-          text: '\'Password\' and \'Verify Password\' do not match',
-          buttons: {cancel: false, ok: true},
-          callback: function (e, name, instance) {
-            instance.close();
-            try {
-              var element = parent.find('[name=password]').get(0);
-              element.focus();
-              element.setSelectionRange(0, String(element.value).length);
-            } catch (ignored) {}
-          }
+          text: '\'Password\' and \'Verify Password\' do not match'
         });
         return;
       }
