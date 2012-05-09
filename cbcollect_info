@@ -240,6 +240,9 @@ _tasks = [
     AllOsTask("memcached stats timings",
               "cbstats -a 127.0.0.1:11210 timings _admin _admin",
               log_file="stats.log"),
+    AllOsTask("memcached memory stats",
+              "cbstats -a 127.0.0.1:11210 raw memory _admin _admin",
+              log_file="stats.log"),
     AllOsTask("couchbase logs", "cbbrowse_logs", log_file="ns_server.log"),
     ]
 
