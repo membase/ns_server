@@ -24,7 +24,6 @@
          get_cluster_membership/2,
          activate/1,
          deactivate/1,
-         failover/1,
          re_add_node/1,
          system_joinable/0,
          start_rebalance/2,
@@ -133,9 +132,6 @@ stop_rebalance() ->
 
 is_balanced() ->
     not ns_orchestrator:needs_rebalance().
-
-failover(Node) ->
-    ok = ns_orchestrator:failover(Node).
 
 re_add_node(Node) ->
     ns_config:set({node, Node, membership}, inactiveAdded).

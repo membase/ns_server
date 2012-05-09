@@ -1398,8 +1398,12 @@ handle_failover(Req) ->
         undefined ->
             Req:respond({400, add_header(), "No server specified."});
         _ ->
-            ns_cluster_membership:failover(Node),
-            Req:respond({200, [], []})
+            case ns_orchestrator:failover(Node) of
+                ok ->
+                    Req:respond({200, add_header(), []});
+                Failure ->
+                    reply_json(Req, Failure, 400)
+            end
     end.
 
 handle_rebalance(Req) ->
