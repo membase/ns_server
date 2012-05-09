@@ -143,6 +143,11 @@ class UnixTask(SolarisTask, LinuxTask, MacOSXTask):
 class AllOsTask(UnixTask, WindowsTask):
     platforms = UnixTask.platforms + WindowsTask.platforms
 
+def basedir():
+    mydir = os.path.dirname(sys.argv[0])
+    if mydir == "":
+        mydir = "."
+    return mydir
 
 _tasks = [
     UnixTask("uname", "uname -a"),
@@ -198,9 +203,17 @@ _tasks = [
     WindowsTask("Physical memory", "wmic memphysical", reformat=True),
     WindowsTask("Physical memory chip info", "wmic memorychip", reformat=True),
     WindowsTask("Local storage devices", "wmic logicaldisk", reformat=True),
+    WindowsTask("Version file",
+                "type " + basedir() + "\\..\\VERSION.txt", reformat=True),
+    WindowsTask("Manifest file",
+                "type " + basedir() + "\\..\\manifest.txt", reformat=True),
+    WindowsTask("Manifest file",
+                "type " + basedir() + "\\..\\manifest.xml", reformat=True),
     WindowsTask("Couchbase config",
-         "escript.exe " + os.path.dirname(sys.argv[0]) + "/cbdumpconfig.escript " +
-         os.path.dirname(sys.argv[0]) + "/../var/lib/couchbase/config/config.dat"),
+                basedir() + "\\erlang\\bin\\escript.exe " +
+                basedir() + "\\cbdumpconfig.escript " +
+                basedir() + "\\..\\var\\lib\\couchbase\\config\\config.dat",
+                reformat=True),
     UnixTask("Filesystem", "df -ha"),
     UnixTask("System activity reporter", "sar 1 10"),
     UnixTask("System paging activity", "vmstat 1 10"),
@@ -216,6 +229,9 @@ _tasks = [
     UnixTask("System log", "cat /var/adm/messages"),
     LinuxTask("System log", "cat /var/log/syslog"),
     LinuxTask("System log", "cat /var/log/messages"),
+    LinuxTask("Version file", "cat /opt/couchbase/VERSION.txt"),
+    LinuxTask("Manifest file", "cat /opt/couchbase/manifest.txt"),
+    LinuxTask("Manifest file", "cat /opt/couchbase/manifest.xml"),
     UnixTask("Kernel log buffer", "dmesg"),
     LinuxTask("couchbase config",
         os.path.dirname(sys.argv[0]) + "/cbdumpconfig.escript /opt/couchbase/var/lib/couchbase/config/config.dat"),
