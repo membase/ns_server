@@ -1157,6 +1157,7 @@ var ServerStateMock = {
     "failoverWarnings": [
       "hardNodesNeeded"
     ],
+    "alerts": [],
     "rebalanceStatus": "none",
     "rebalanceProgressUri": "/pools/default/rebalanceProgress",
     "stopRebalanceUri": "/controller/stopRebalance",

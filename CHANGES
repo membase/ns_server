@@ -142,3 +142,8 @@ Between versions 1.8.0 and 1.8.1
 
 * local tap & checkpoints stats are now logged after rebalance and
   each 30 seconds during rebalance
+
+* (MB-5256) but with alert not being generated for failures to save
+  item mutatins to disk was fixed
+
+* (MB-5275) bug with alerts not being shown to user sometimes was fixed

@@ -522,11 +522,14 @@ function showDialog(idOrJQ, options) {
   var jq = _.isString(idOrJQ) ? $($i(idOrJQ)) : idOrJQ;
   var w = jq.dialog('widget').hasClass('ui-dialog') ? jq.dialog('widget').width() : jq.width();
   options = _.extend({width: w}, options || {});
-  var onHashChange;
+  var onHashChange, onEscape;
 
-  $(window).bind('hashchange', onHashChange = function () {
-    hideDialog(jq);
-  }).bind('keypress.cancelEscape', function(ev) {
+  if (!options.dontCloseOnHashchange) {
+    $(window).bind('hashchange', onHashChange = function () {
+      hideDialog(jq);
+    });
+  }
+  $(window).bind('keypress.cancelEscape', onEscape = function(ev) {
     // prevent escape from cancelling XHR requests
     var key = ev.keyCode || ev.which;
     if (key === 27) {
@@ -539,6 +542,7 @@ function showDialog(idOrJQ, options) {
 
   function onHide() {
     $(window).unbind('hashchange', onHashChange);
+    $(window).unbind('keypress.cancelEscape', onEscape);
 
     // unbind events that we bound
     iterateBindings(function (e, eventType, callback) {
@@ -554,8 +558,6 @@ function showDialog(idOrJQ, options) {
     if (options.onHide) {
       options.onHide(idOrJQ);
     }
-
-    $(window).unbind('keypress.cancelEscape');
   }
 
   options = _.extend({modal: true, close: onHide, resizable: false,
