@@ -237,7 +237,7 @@ handle_info(tick, State0) ->
                             [Node]),
                   S;
               ({failover, Node}, S) ->
-                  ok = ns_orchestrator:failover(Node),
+                  ns_cluster_membership:failover(Node),
                   ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
                             "Node (~p) was automatically failovered.~n~p",
                             [Node, ns_doctor:get_node(Node)]),

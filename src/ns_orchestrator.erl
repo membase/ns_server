@@ -123,7 +123,7 @@ delete_bucket(BucketName) ->
     gen_fsm:sync_send_event(?SERVER, {delete_bucket, BucketName}, infinity).
 
 
--spec failover(atom()) -> ok | rebalancing | unknown_node.
+-spec failover(atom()) -> ok.
 failover(Node) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {failover, Node}, infinity).
@@ -386,19 +386,13 @@ idle({delete_bucket, BucketName}, _From,
 
     {reply, Reply, idle, NewState};
 idle({failover, Node}, _From, State) ->
-    case ns_config:search(Node) of
-        false ->
-            ale:info(?USER_LOGGER, "Somebody tried to failover unknown node: ~p", [Node]),
-            {reply, unknown_node, idle, State};
-        {value, _} ->
-            ale:info(?USER_LOGGER, "Starting failing over ~p", [Node]),
-            master_activity_events:note_failover(Node),
-            Result = ns_rebalancer:failover(Node),
-            ?user_log(?FAILOVER_NODE, "Failed over ~p: ~p", [Node, Result]),
-            ns_cluster:counter_inc(failover_node),
-            ns_config:set({node, Node, membership}, inactiveFailed),
-            {reply, Result, idle, State}
-    end;
+    ale:info(?USER_LOGGER, "Starting failing over ~p", [Node]),
+    master_activity_events:note_failover(Node),
+    Result = ns_rebalancer:failover(Node),
+    ?user_log(?FAILOVER_NODE, "Failed over ~p: ~p", [Node, Result]),
+    ns_cluster:counter_inc(failover_node),
+    ns_config:set({node, Node, membership}, inactiveFailed),
+    {reply, Result, idle, State};
 idle(rebalance_progress, _From, State) ->
     {reply, not_running, idle, State};
 idle({start_rebalance, KeepNodes, EjectNodes, FailedNodes}, _From,
