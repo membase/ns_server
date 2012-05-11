@@ -58,10 +58,10 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 continue_start_vbucket_filter_change({Pid, _} = From, State, NewDownstream) ->
+    MRef = erlang:monitor(process, Pid),
     case confirm_sent_messages(State) of
         ok ->
             gen_tcp:close(State#state.downstream),
-            MRef = erlang:monitor(process, Pid),
             gen_tcp:controlling_process(NewDownstream, Pid),
             gen_server:reply(From, {ok, NewDownstream}),
             started_vbucket_filter_loop(State, MRef);
