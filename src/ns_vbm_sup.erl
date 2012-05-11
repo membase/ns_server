@@ -208,8 +208,11 @@ kill_all_children(Node, Bucket) ->
 -spec kill_child(node(), nonempty_string(), #child_id{}) ->
                         ok.
 kill_child(Node, Bucket, Child) ->
+    ?log_debug("Stopping replicator:~p on ~p", [Child, {Node, Bucket}]),
     ok = supervisor:terminate_child({server(Bucket), Node}, Child),
-    ok = supervisor:delete_child({server(Bucket), Node}, Child).
+    ok = supervisor:delete_child({server(Bucket), Node}, Child),
+    ?log_info("Stopped replicator:~p on ~p", [Child, {Node, Bucket}]),
+    ok.
 
 
 -spec kill_children(node(), nonempty_string(), [non_neg_integer()]) ->
