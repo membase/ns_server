@@ -306,28 +306,33 @@ var StatsModel = {};
     return rv;
   }).name("nameToStatInfoCell");
 
-  var specificURLAndName = Cell.compute(function (v) {
+  var specificStatsInfo = Cell.compute(function (v) {
     var statName = v(statsStatName);
     if (!statName) {
-      return {url: null, statName: null};
+      return {url: null, statName: null, desc: null};
     }
     var mapping = v.need(nameToStatInfoCell);
     if (!mapping[statName]) {
-      return {url: null, statName: null};
+      return {url: null, statName: null, desc: null};
     }
     return {url: mapping[statName].specificStatsURL,
-            statName: statName};
-  }).name("specificURLAndName");
+            statName: statName, desc: mapping[statName].desc};
+  }).name("specificStatsInfo");
 
   var effectiveSpecificStatName = self.effectiveSpecificStatName = Cell.compute(function (v) {
-    return v.need(specificURLAndName).statName;
+    return v.need(specificStatsInfo).statName;
   }).name("effectiveSpecificStatName");
   effectiveSpecificStatName.equality = function (a,b) {return a===b};
 
   var specificStatsURLCell = self.specificStatsURLCell = Cell.compute(function (v) {
-    return v.need(specificURLAndName).url;
+    return v.need(specificStatsInfo).url;
   }).name("specificStatsURLCell");
   specificStatsURLCell.equality = function (a,b) {return a===b};
+
+  var specificStatDescriptionCell = self.specificStatDescriptionCell = Cell.compute(function (v) {
+    return v.need(specificStatsInfo).desc;
+  }).name("specificStatDescriptionCell");
+  specificStatDescriptionCell.equality = function (a,b) {return a===b};
 
   // true if we should be displaying specific stats and false if we should be displaying normal stats
   var displayingSpecificStatsCell = self.displayingSpecificStatsCell = Cell.compute(function (v) {
@@ -444,12 +449,12 @@ var StatsModel = {};
   var visibleStatsDescCell = self.visibleStatsDescCell = Cell.compute(function (v) {
     if (v.need(displayingSpecificStatsCell)) {
       var nodes = v.need(specificStatsNodesCell);
-
+      var statsDesc = v.need(specificStatDescriptionCell);
       return {thisISSpecificStats: true,
               blocks: [{blockName: "Specific Stats", hideThis: true,
                         stats: _.map(nodes, function (hostname) {
                           return {title: ViewHelpers.maybeStripPort(hostname, nodes),
-                                  name: hostname};
+                                  name: hostname, desc: statsDesc};
                         })}]};
     } else {
       return v.need(rawStatsDescCell);
