@@ -355,7 +355,7 @@ start_link(Node, Src, Dst, Opts) ->
 
 -spec start_vbucket_filter_change(pid()) -> {ok, port()} | {failed, any()}.
 start_vbucket_filter_change(Pid) ->
-    gen_server:call(Pid, start_vbucket_filter_change).
+    gen_server:call(Pid, start_vbucket_filter_change, 30000).
 
 
 %%
