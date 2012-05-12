@@ -1616,8 +1616,7 @@ handle_diag_master_events(Req) ->
       fun () ->
               master_activity_events:stream_events(
                 fun (Event, _Ignored, _Eof) ->
-                        [Parent ! {write_chunk, iolist_to_binary([mochijson2:encode({struct, JSON}), "\n"])}
-                         || JSON <- master_activity_events:event_to_jsons(Event)],
+                        Parent ! {write_chunk, master_activity_events:event_to_formatted_iolist(Event)},
                         ok
                 end, [])
       end),
