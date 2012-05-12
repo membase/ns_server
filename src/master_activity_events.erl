@@ -94,7 +94,7 @@ note_failover(Node) ->
     submit_cast({failover, Node}).
 
 note_became_master() ->
-    submit_cast({became_master}).
+    submit_cast({became_master, node()}).
 
 note_set_ff_map(BucketName, undefined, _OldMap) ->
     submit_cast({set_ff_map, BucketName, undefined});
@@ -363,11 +363,13 @@ event_to_jsons({TS, failover, Node}) ->
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {host, node_to_host(Node, ns_config:get())}])];
 
-event_to_jsons({TS, became_master}) ->
+event_to_jsons({TS, became_master, Node}) ->
     [format_simple_plist_as_json([{type, becameMaster},
                                   {ts, misc:time_to_epoch_float(TS)},
-                                  {node, node()},
-                                  {host, node_to_host(node(), ns_config:get())}])];
+                                  {node, Node},
+                                  {host, node_to_host(Node, ns_config:get())}])];
+event_to_jsons({TS, became_master}) ->
+    event_to_jsons({TS, became_master, 'nonode@unknown'});
 
 event_to_jsons({TS, create_bucket, BucketName, BucketType, NewConfig}) ->
     [format_simple_plist_as_json([{type, createBucket},
