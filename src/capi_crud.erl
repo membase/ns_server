@@ -26,64 +26,17 @@
 open_doc(#db{name = Name}, DocId, Options) ->
     get(Name, DocId, Options).
 
-update_doc(#db{name = Name},
-           #doc{id = DocId, rev = Rev, deleted = true},
-           _Options) ->
-    delete(Name, DocId, Rev);
+update_doc(#db{name = Name}, #doc{id = DocId, deleted = true}, _Options) ->
+    delete(Name, DocId);
 
-update_doc(#db{name = Name},
-           #doc{id = DocId, rev = {0, _}, body = Body},
-           _Options) ->
-    add(Name, DocId, Body);
+update_doc(#db{name = Name}, #doc{id = DocId, body = Body}, _Options) ->
+    set(Name, DocId, Body).
 
-update_doc(#db{name = Name},
-           #doc{id = DocId, rev = Rev,
-                body = Body}, _Options) ->
-    set(Name, DocId, Rev, Body).
-
--spec cas() -> <<_:64>>.
-cas() ->
-    crypto:rand_bytes(8).
-
--spec encode_revid(<<_:64>>, binary(), integer()) -> <<_:128>>.
-encode_revid(CAS, Value, Flags) ->
-    <<CAS:8/binary, (size(Value)):32/big, Flags:32/big>>.
-
--spec decode_revid(<<_:128>>) -> {<<_:64>>, integer(), integer()}.
-decode_revid(<<CAS:8/binary, Length:32/big, Flags:32/big>>) ->
-    {CAS, Length, Flags}.
-
--spec next_rev(Revision, binary()) -> {Revision, Flags}
-  when Revision :: {integer(), <<_:128>>},
-       Flags :: integer().
-next_rev({SeqNo, RevId} = _Rev, Value) ->
-    {_CAS, _Length, Flags} = decode_revid(RevId),
-    NewRevId = encode_revid(cas(), Value, Flags),
-    {{SeqNo + 1, NewRevId}, Flags}.
-
-next_rev(Rev) ->
-    next_rev(Rev, <<>>).
-
-add(BucketBin, DocId, Value) ->
+set(BucketBin, DocId, Value) ->
     Bucket = binary_to_list(BucketBin),
     {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
-
-    {Rev, Flags} =
-        case get_meta(Bucket, VBucket, DocId) of
-            {error, enoent, CAS} ->
-                RevId = encode_revid(CAS, Value, 0),
-                {{1, RevId}, 0};
-            {ok, _Rev, false, _Props} ->
-                throw(conflict);
-            {ok, OldRev, true, _Props} ->
-                next_rev(OldRev, Value)
-        end,
-
-    Meta = {revid, Rev},
-
-    case ns_memcached:add_with_meta(Bucket, DocId,
-                                    VBucket, Value, Meta, Flags, 0) of
-        {ok, _, _} ->
+    case ns_memcached:set(Bucket, DocId, VBucket, Value) of
+        {ok, _, _, _} ->
             ok;
         {memcached_error, not_my_vbucket, _} ->
             throw(not_my_vbucket);
@@ -91,67 +44,15 @@ add(BucketBin, DocId, Value) ->
             throw(conflict)
     end.
 
-set(BucketBin, DocId, PrevRev, Value) ->
+delete(BucketBin, DocId) ->
     Bucket = binary_to_list(BucketBin),
     {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
-
-    {Deleted, CAS}
-        = case get_meta(Bucket, VBucket, DocId) of
-              {error, enoent, _CAS} ->
-                  {true, undefined};
-              {ok, PrevRev, Deleted1, Props} ->
-                  CAS1 = proplists:get_value(cas, Props),
-                  {Deleted1, CAS1};
-              {ok, _Rev, _Deleted, _Props} ->
-                  throw(conflict)
-          end,
-
-    {Rev, Flags} = next_rev(PrevRev, Value),
-    Meta = {revid, Rev},
-
-    R =
-        case CAS =/= undefined andalso not(Deleted) of
-            true ->
-                ns_memcached:set_with_meta(Bucket, DocId,
-                                           VBucket, Value, Meta, CAS, Flags, 0);
-            false ->
-                ns_memcached:add_with_meta(Bucket, DocId,
-                                           VBucket, Value, Meta, Flags, 0)
-        end,
-    case R of
-        {ok, _, _} ->
+    case ns_memcached:delete(Bucket, DocId, VBucket) of
+        {ok, _, _, _} ->
             ok;
         {memcached_error, not_my_vbucket, _} ->
             throw(not_my_vbucket);
         {memcached_error, key_eexists, _} ->
-            throw(conflict)
-    end.
-
-delete(BucketBin, DocId, PrevRev) ->
-    Bucket = binary_to_list(BucketBin),
-    {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
-
-    case get_meta(Bucket, VBucket, DocId) of
-        {error, enoent, _CAS} ->
-            throw({not_found, missing});
-        {ok, _Rev, true, _Props} ->
-            throw({not_found, deleted});
-        {ok, PrevRev, false, Props} ->
-            %% this should not fail because we cannot have non-deleted key
-            %% only in couchdb
-            {cas, CAS} = lists:keyfind(cas, 1, Props),
-            {Rev, _Flags} = next_rev(PrevRev),
-            Meta = {revid, Rev},
-            case ns_memcached:delete_with_meta(Bucket, DocId,
-                                               VBucket, Meta, CAS) of
-                {ok, _, _} ->
-                    ok;
-                {memcached_error, not_my_vbucket, _} ->
-                    throw(not_my_vbucket);
-                {memcached_error, key_enoent, _} ->
-                    throw(conflict)
-            end;
-        {ok, _Rev, false, _Props} ->
             throw(conflict)
     end.
 
