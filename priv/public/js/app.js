@@ -181,7 +181,6 @@ var ThePage = {
              views: ViewsSection,
              replications: ReplicationsSection,
              documents: DocumentsSection,
-             edit_doc: EditDocumentSection,
              log: LogsSection,
              settings: SettingsSection},
 

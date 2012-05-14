@@ -843,7 +843,7 @@ html body .switcher li a.current {color:#e6e6e6 !important;}
 .tab_right .current {background:url(../images/switcher_bg.png) 100% -32px no-repeat !important;}
 ul.tabs.switcher {height:32px; overflow:visible;}
 
-.btn_1 {display:inline-block; height:31px; font-size:14px !important; background:url(../images/btn_1_bg.png) 100% -31px no-repeat; padding:0 4px 0 0 !important; color:#000;cursor:pointer}
+.btn_1 {display:inline-block; height:31px; border: 0; font-size:14px !important; background:url(../images/btn_1_bg.png) 100% -31px no-repeat; padding:0 4px 0 0 !important; color:#000;cursor:pointer}
 .btn_1 span {/*display:inline-block;*/ display:block; text-align:center; height:31px; padding:0 6px 0 10px; line-height:31px; background:url(../images/btn_1_bg.png) 0 0 no-repeat;color:#000; text-shadow:#bbbfc2 1px 1px;}
 .btn_1:hover {text-decoration:none}
 
@@ -1072,6 +1072,7 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 #sample_docs .when-editing, #sample_docs.editing .when-not-editing{display:none}
 
 .editing_ctrls { float:right;position:relative;top:-3px; }
+.editing_ctrls form {display: inline-block; zoom: 1;}
 #doc_save { width: 70px; }
 
 #views .list .empty {padding:15px}

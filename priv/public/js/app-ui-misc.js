@@ -184,7 +184,11 @@
       latestOnChangeVal = undefined;
       buildOptions(q, selected, args.list);
       applyWidget(q.bind('change', onChange));
-      q.next('input').val(q.children(':selected').text());
+      var input = q.next('input');
+      input.val(q.children(':selected').text());
+      if (options.onRenderDone && typeof options.onRenderDone === 'function') {
+        options.onRenderDone(input, args);
+      }
     });
 
     q.data('listCellBinding', {

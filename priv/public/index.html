@@ -490,7 +490,7 @@
                 <td>
                   {% if (this.bucketType == 'membase') { %}
                     <a class="list_button disable-if-stale" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>
-                   <a class="list_button" href="#sec=documents&bucketName={%= this.name %}"><span>Documents</span></a>{% } %}
+                   <a class="list_button" href="#sec=documents&bucketName={%= encodeURIComponent(this.name) %}&documentsPageNumber=0"><span>Documents</span></a>{% } %}
                 </td>
               </tr>
               <tr>
@@ -743,7 +743,7 @@
             <p>You are running version {%= h(version) %}</p>
             {% if (enabled===true) { %}
               {% if (newVersion===undefined) { %}
-              <p class="warning"><strong>Warning</strong> &ndash; There
+              <p class="warning"><strong>Warning</strong> – There
                 was a problem with retreiving the update information.</p>
               {% } else if (newVersion===false) { %}
               <p>No updates available.</p>
@@ -1497,7 +1497,7 @@
           <div id="documents" style="display:none">
             <h1 style="clear:both;overflow:hidden">
               <span style="float:left">
-                <select id="docs_buckets_select"></select> &gt; Documents
+                <select id="docs_buckets_select"></select> &gt; <a id="bread_crump_doc">Documents</a>
               </span>
             <span class="ic_prev_next">
               <a class="arr_prev"></a>
@@ -1506,23 +1506,36 @@
 
             </h1>
 
+            <div id="documents_details" style="display:none;" class="shadow_box">
+                <div class="header_2 servers_header">
+                  <div style="float:left" id="json_doc_id"></div>
+                  <span id="editing-notice"></span>
+                  <div class="editing_ctrls">
+                    <a class="btn_1" id="doc_delete"><span>Delete</span></a>
+                    <a class="btn_1" id="doc_saveas"><span>Save As...</span></a>
+                    <a class="btn_1 btn_save" id="doc_save"><span>Save</span></a>
+                    <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+                  </div>
+                </div>
+                <textarea id="json_doc" spellcheck="false" cols="20" rows="11"></textarea>
+            </div>
+
             <div class="shadow_box">
               <div class="header_2 servers_header">
                 All Documents
                 <div class="editing_ctrls">
-
-                  <input type="text" id="docs_lookup_doc_by_id"
-                         placeholder="Document ID"/>
-                  <a class="btn_1" id="docs_lookup_doc_by_id_btn">
-                    <span>Lookup Id</span>
-                  </a>
-                  &nbsp;&nbsp;
+                  <form id="search_doc" action="#">
+                    <input type="text" id="docs_lookup_doc_by_id"
+                           placeholder="Document ID"/>
+                    <button type="submit" class="btn_1" id="docs_lookup_doc_by_id_btn">
+                      <span>Lookup Id</span>
+                    </button>
+                  </form>
                   <a class="btn_1 btn_create"><span>Create Document</span></a>
                   <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
                 </div>
               </div>
-              <!-- TODO: should we use panes here and pre-populate both all docs & design docs?
-                         or just use a single container and change it's context requesting new data on click? -->
+
               <div id="documents_list_container">Documents</div>
               <script id="documents_list_template" type="text/html">
               <table class="list align_text" style="width:100%">
@@ -1539,11 +1552,11 @@
                 <tr>
                     <td class="keycol">
                         <div class="key">
-                          <a href="#sec=edit_doc&bucketName={%= bucketName %}&docId={%= encodeURIComponent(r.id) %}">{%= h(JSON.stringify(r.key)).replace(/"/g, '') %}</a>
+                          <a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}">{%= h(JSON.stringify(r.key)).replace(/"/g, '') %}</a>
                         </div>
                     </td>
                     <td>{%= $.futon.formatJSON(r.value, {html:true}) %}</td>
-                    <td><a href="#sec=edit_doc&bucketName={%= bucketName %}&docId={%= r.id %}" class="list_button btn_edit"><span>Edit Document</span></a></td>
+                    <td><a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}" class="list_button btn_edit"><span>Edit Document</span></a></td>
                 </tr>
                 </tbody>
                 <!-- {% }); %} -->
@@ -1554,28 +1567,6 @@
               <!-- {% } %} -->
               </table>
               </script>
-            </div>
-          </div>
-
-          <div id="edit_doc" style="display:none">
-            <h1 style="clear:both;overflow:hidden">
-              <span style="float:left">
-                <select id="doc_buckets_select"></select> &gt; <a href="#sec=documents">Documents</a>
-              </span>
-            </h1>
-            <div class="shadow_box">
-              <div class="header_2 servers_header">
-
-                <div style="float:left" id="json_doc_id"></div>
-                <span id="editing-notice"></span>
-                <div class="editing_ctrls">
-                  <a class="btn_1" id="doc_delete"><span>Delete</span></a>
-                  <a class="btn_1" id="doc_saveas"><span>Save As...</span></a>
-                  <a class="btn_1 btn_save" id="doc_save"><span>Save</span></a>
-                  <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
-                </div>
-              </div>
-              <textarea id="json_doc" spellcheck="false" cols="20" rows="11"></textarea>
             </div>
           </div>
 
@@ -1812,6 +1803,7 @@
 
 <!-- Create Document -->
 <div class="dialog join_cluster" id="create_document_dialog" title="Create Document" style="width:400px">
+  <span class="warning pat_10" style="display:none;"></span>
   <form>
     <fieldset style="padding-top:10px">
       <ul>
@@ -1899,7 +1891,7 @@
     <div class="content">
       <div class="pas_20">
         <div class="warning pat_20">
-          <strong>Warning</strong> &ndash; Removing this server from the cluster will reduce cache capacity across all data buckets. Are you sure you want to remove this server?
+          <strong>Warning</strong> – Removing this server from the cluster will reduce cache capacity across all data buckets. Are you sure you want to remove this server?
         </div>
       </div>
       <div class="right save_cancel pas_20 footer_bg">
@@ -1915,7 +1907,7 @@
   <div class="content">
     <div class="pas_20">
       <div class="warning pat_20">
-        <strong>Warning</strong> &ndash; Adding a server to this cluster means all data on that server will be removed.
+        <strong>Warning</strong> – Adding a server to this cluster means all data on that server will be removed.
       </div>
     </div>
     <div class="right save_cancel pas_20 footer_bg">
@@ -2010,7 +2002,25 @@
     <div class="content">
       <div class="pas_20">
         <div class="warning pat_20">
-          <strong>Warning</strong> &ndash; The views contained in this Design Document will no longer be accessible. Are you sure you want to remove this Design Document?
+          <strong>Warning</strong> – The views contained in this Design Document will no longer be accessible. Are you sure you want to remove this Design Document?
+        </div>
+      </div>
+      <div class="right save_cancel pas_20 footer_bg">
+        <button type="submit" class="save_button float_right">Delete</button>
+        <a class="close float_right">Cancel</a>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- END delete designdoc confirmation dialog -->
+<!--  delete designdoc confirmation dialog -->
+<div class="dialog" id="delete_document_confirmation_dialog" title="Delete Document">
+  <div class="lbox">
+    <div class="content">
+      <div class="pas_20">
+        <div class="warning pat_20">
+          <div class="error"></div>
+          <strong>Warning</strong> – Are you sure you want to remove this Document?
         </div>
       </div>
       <div class="right save_cancel pas_20 footer_bg">
