@@ -177,6 +177,7 @@ init({Src, Dst, Opts}=InitArgs) ->
     %% Set all vbuckets to the replica state on the destination node.
     lists:foreach(
       fun (VBucket) ->
+              ?log_info("Setting ~p vbucket ~p to state replica", [Dst, VBucket]),
               ok = mc_client_binary:set_vbucket(Downstream, VBucket, replica)
       end, VBuckets),
     Upstream = connect(Src, Username, Password, Bucket),
