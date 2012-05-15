@@ -60,10 +60,10 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 continue_start_vbucket_filter_change({Pid, _} = From, State, NewDownstream) ->
+    MRef = erlang:monitor(process, Pid),
     case confirm_sent_messages(State) of
         ok ->
             gen_tcp:close(State#state.downstream),
-            MRef = erlang:monitor(process, Pid),
             gen_tcp:controlling_process(NewDownstream, Pid),
             gen_server:reply(From, {ok, NewDownstream}),
             started_vbucket_filter_loop(State, MRef);
@@ -179,6 +179,7 @@ init({Src, Dst, Opts}=InitArgs) ->
     %% Set all vbuckets to the replica state on the destination node.
     lists:foreach(
       fun (VBucket) ->
+              ?log_info("Setting ~p vbucket ~p to state replica", [Dst, VBucket]),
               ok = mc_client_binary:set_vbucket(Downstream, VBucket, replica)
       end, VBuckets),
     Upstream = connect(Src, Username, Password, Bucket),
@@ -383,7 +384,7 @@ add_args_option([Src, Dst, Options], OptionName, OptionValue) ->
 
 -spec start_vbucket_filter_change(pid()) -> {ok, port()} | {failed, any()}.
 start_vbucket_filter_change(Pid) ->
-    gen_server:call(Pid, start_vbucket_filter_change).
+    gen_server:call(Pid, start_vbucket_filter_change, 30000).
 
 
 %%

@@ -35,7 +35,9 @@
          note_failover/1,
          note_became_master/0,
          note_name_changed/0,
-         event_to_jsons/1]).
+         event_to_jsons/1,
+         event_to_formatted_iolist/1,
+         format_some_history/1]).
 
 -export([stream_events/2]).
 
@@ -92,7 +94,7 @@ note_failover(Node) ->
     submit_cast({failover, Node}).
 
 note_became_master() ->
-    submit_cast({became_master}).
+    submit_cast({became_master, node()}).
 
 note_set_ff_map(BucketName, undefined, _OldMap) ->
     submit_cast({set_ff_map, BucketName, undefined});
@@ -159,6 +161,20 @@ stream_events(Callback, State) ->
         stream_events_eat_leftover_messages(Ref)
     end.
 
+event_to_formatted_iolist(Event) ->
+    [iolist_to_binary([mochijson2:encode({struct, JSON}), "\n"])
+     || JSON <- master_activity_events:event_to_jsons(Event)].
+
+-spec format_some_history([[{atom(), any()}]]) -> iolist().
+format_some_history(Events) ->
+    Ref = make_ref(),
+    Callback = fun (Event, Acc, _Dummy) ->
+                       [event_to_formatted_iolist(Event) | Acc]
+               end,
+    {ok, FinalAcc, _} = stream_events_history_loop(Events, Callback, [], Ref, undefined),
+    lists:reverse(FinalAcc).
+
+
 stream_events_history_loop([], _Callback, State, _EofRef, LastTS) ->
     {ok, State, LastTS};
 stream_events_history_loop([Event | HistoryRest], Callback, State, EofRef, _LastTS) ->
@@ -221,7 +237,8 @@ format_simple_plist_as_json(PList) ->
                    Value;
               true -> iolist_to_binary(io_lib:format("~p", [Value]))
            end}
-     || {Key, Value} <- PList1].
+     || {Key, Value} <- PList1,
+        Value =/= skip_this_pair_please].
 
 format_mcd_pair({Host, Port}) ->
     iolist_to_binary([Host, $:, integer_to_list(Port)]).
@@ -229,7 +246,17 @@ format_mcd_pair({Host, Port}) ->
 node_to_host(undefined, _Config) ->
     <<"">>;
 node_to_host(Node, Config) ->
-    format_mcd_pair(ns_memcached:host_port(Node, Config)).
+    case lists:member(Node, [node() | nodes()]) of
+        true ->
+            format_mcd_pair(ns_memcached:host_port(Node, Config));
+        false ->
+            atom_to_binary(Node, latin1)
+    end.
+
+maybe_get_pids_node(Pid) when is_pid(Pid) ->
+    erlang:node(Pid);
+maybe_get_pids_node(_PerhapsBinary) ->
+    skip_this_pair_please.
 
 event_to_jsons({TS, not_ready_vbuckets, Pid, VBucketIds}) ->
     [[{vbuckets, VBucketIds}]
@@ -254,7 +281,7 @@ event_to_jsons({TS, ebucketmigrator_start, Pid, Src, Dst, Opts}) ->
     [MaybeVBuckets ++ MaybeCheckpoints ++
          format_simple_plist_as_json([{type, ebucketmigratorStart},
                                       {ts, misc:time_to_epoch_float(TS)},
-                                      {node, erlang:node(Pid)},
+                                      {node, maybe_get_pids_node(Pid)},
                                       {pid, Pid},
                                       {src, format_mcd_pair(Src)},
                                       {dst, format_mcd_pair(Dst)} | Opts2])];
@@ -268,7 +295,7 @@ event_to_jsons({TS, deregister_tap_name, Pid, Bucket, Src, Name}) ->
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, Bucket},
                                   {pid, Pid},
-                                  {pidNode, erlang:node(Pid)},
+                                  {pidNode, maybe_get_pids_node(Pid)},
                                   {host, format_mcd_pair(Src)},
                                   {name, Name}])];
 event_to_jsons({TS, vbucket_state_change, Bucket, Node, VBucketId, NewState}) ->
@@ -336,11 +363,13 @@ event_to_jsons({TS, failover, Node}) ->
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {host, node_to_host(Node, ns_config:get())}])];
 
-event_to_jsons({TS, became_master}) ->
+event_to_jsons({TS, became_master, Node}) ->
     [format_simple_plist_as_json([{type, becameMaster},
                                   {ts, misc:time_to_epoch_float(TS)},
-                                  {node, node()},
-                                  {host, node_to_host(node(), ns_config:get())}])];
+                                  {node, Node},
+                                  {host, node_to_host(Node, ns_config:get())}])];
+event_to_jsons({TS, became_master}) ->
+    event_to_jsons({TS, became_master, 'nonode@unknown'});
 
 event_to_jsons({TS, create_bucket, BucketName, BucketType, NewConfig}) ->
     [format_simple_plist_as_json([{type, createBucket},

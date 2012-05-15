@@ -147,7 +147,9 @@ handle_info({move_done, {Node, VBucket, OldChain, NewChain}},
             ?log_error("Config replication sync failed: ~p", [RepSyncRV])
     end,
     sync_replicas(),
-    OldCopies = OldChain -- [undefined | NewChain],
+    OldCopies0 = OldChain -- NewChain,
+    OldCopies = [OldCopyNode || OldCopyNode <- OldCopies0,
+                                OldCopyNode =/= undefined],
     DeleteRVs = misc:parallel_map(
                   fun (CopyNode) ->
                           {CopyNode, (catch ns_memcached:delete_vbucket(CopyNode, Bucket, VBucket))}
