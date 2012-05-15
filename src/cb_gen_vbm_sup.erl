@@ -262,9 +262,12 @@ apply_changes_to_replicators(Replicators, Changes) ->
 
 -spec kill_child(module(), bucket_name(), node(), replicator()) -> ok.
 kill_child(Policy, Bucket, SupNode, Replicator) ->
+    ?log_debug("Stopping replicator:~p on ~p", [Replicator, {SupNode, Bucket}]),
     Supervisor = sup_ref(Policy, Bucket, SupNode),
     ok = supervisor:terminate_child(Supervisor, Replicator),
-    ok = supervisor:delete_child(Supervisor, Replicator).
+    ok = supervisor:delete_child(Supervisor, Replicator),
+    ?log_info("Stopped replicator:~p on ~p", [Replicator, {SupNode, Bucket}]),
+    ok.
 
 -spec kill_child(module(), bucket_name(), node(), node(), replicator()) -> ok.
 kill_child(Policy, Bucket, SrcNode, DstNode, Replicator) ->

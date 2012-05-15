@@ -88,7 +88,7 @@ handle_info({tick, TS}, #state{bucket=Bucket} = State) ->
                     TS1 = latest_tick(TS),
                     State1 = process_grabbed_stats(TS1, GrabbedStats, State),
                     PlainStats = element(1, GrabbedStats),
-                    State2 = maybe_log_stats(State1, PlainStats),
+                    State2 = maybe_log_stats(TS1, State1, PlainStats),
                     {noreply, State2}
             catch T:E ->
                     ?stats_error("Exception in stats collector: ~p~n",
@@ -101,14 +101,19 @@ handle_info({tick, TS}, #state{bucket=Bucket} = State) ->
 handle_info(_Msg, State) -> % Don't crash on delayed responses to calls
     {noreply, State}.
 
-maybe_log_stats(State, RawStats) ->
+maybe_log_stats(TS, State, RawStats) ->
     OldCount = State#state.count,
     case OldCount  >= ?LOG_FREQ of
         true ->
             case misc:get_env_default(dont_log_stats, false) of
                 false ->
-                    ?stats_debug("Stats for bucket ~p:~n~s",
-                                 [State#state.bucket, format_stats(RawStats)]);
+                    TSMicros = TS rem 1000000,
+                    TSSec0 = TS div 1000000,
+                    TSMega = TSSec0 div 1000000,
+                    TSSec = TSSec0 rem 1000000,
+                    ?stats_debug("(at ~p) Stats for bucket ~p:~n~s",
+                                 [calendar:now_to_local_time({TSMega, TSSec, TSMicros}),
+                                  State#state.bucket, format_stats(RawStats)]);
                 _ -> ok
             end,
             State#state{count = 1};

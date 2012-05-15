@@ -233,6 +233,7 @@ spawn_replica_builder(Bucket, VBucket, SrcNode, DstNode) ->
                                         ns_memcached:host_port(DstNode),
                                         Opts) of
         {ok, Pid} ->
+            ?log_debug("Replica building ebucketmigrator for vbucket ~p into ~p is ~p", [VBucket, DstNode, Pid]),
             Pid;
         Error ->
             ?log_debug("Failed to spawn ebucketmigrator_srv for replica building: ~p",
@@ -285,6 +286,7 @@ wait_checkpoint_opened(Bucket, VBucket, DstNodes, Sleeper, FirstTime) ->
     case FirstTime of
         false ->
             system_stats_collector:increment_counter(replicas_builder_checkpoint_sleeps, 1),
+            ?log_debug("Incremented replicas_builder_checkpoint_sleeps"),
             Sleeper();
         true -> ok
     end,
