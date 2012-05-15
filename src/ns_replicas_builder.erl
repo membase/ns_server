@@ -286,6 +286,7 @@ wait_checkpoint_opened(Bucket, VBucket, DstNodes, Sleeper, FirstTime) ->
     case FirstTime of
         false ->
             system_stats_collector:increment_counter(replicas_builder_checkpoint_sleeps, 1),
+            ?log_debug("Incremented replicas_builder_checkpoint_sleeps"),
             Sleeper();
         true -> ok
     end,
