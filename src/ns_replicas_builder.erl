@@ -233,6 +233,7 @@ spawn_replica_builder(Bucket, VBucket, SrcNode, DstNode) ->
                                         ns_memcached:host_port(DstNode),
                                         Opts) of
         {ok, Pid} ->
+            ?log_debug("Replica building ebucketmigrator for vbucket ~p into ~p is ~p", [VBucket, DstNode, Pid]),
             Pid;
         Error ->
             ?log_debug("Failed to spawn ebucketmigrator_srv for replica building: ~p",

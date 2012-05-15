@@ -81,6 +81,7 @@ mover_inner(Parent, Node, Bucket, VBucket,
                            fun () ->
                                    Self ! replicas_done
                            end),
+    ?rebalance_debug("child replicas builder for vbucket ~p is ~p", [VBucket, ReplicasBuilderPid]),
     cleanup_list_add(ReplicasBuilderPid),
     receive
         {'EXIT', _, _} = ExitMsg ->
