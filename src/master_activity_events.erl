@@ -85,7 +85,7 @@ note_rebalance_end(Pid, Reason) ->
 
 
 note_vbucket_mover(Pid, BucketName, Node, VBucketId, OldChain, NewChain) ->
-    submit_cast({vbucket_mover_start, Pid, BucketName, Node, VBucketId, OldChain, NewChain}).
+    submit_cast({vbucket_move_start, Pid, BucketName, Node, VBucketId, OldChain, NewChain}).
 
 note_move_done(BucketName, VBucketId) ->
     submit_cast({vbucket_move_done, BucketName, VBucketId}).
@@ -341,16 +341,16 @@ event_to_jsons({TS, rebalance_end, Pid, Reason}) ->
                                   {pid, Pid},
                                   {reason, iolist_to_binary(io_lib:format("~p", [Reason]))}])];
 
-event_to_jsons({TS, vbucket_mover_start, Pid, BucketName, Node, VBucketId, OldChain, NewChain}) ->
+event_to_jsons({TS, vbucket_move_start, Pid, BucketName, Node, VBucketId, OldChain, NewChain}) ->
     Config = ns_config:get(),
-    [format_simple_plist_as_json([{type, vbucketMoverStart},
+    [format_simple_plist_as_json([{type, vbucketMoveStart},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {pid, Pid},
                                   {bucket, BucketName},
                                   {node, Node},
                                   {vbucket, VBucketId}])
-     ++ [{oldChain, [node_to_host(N, Config) || N <- OldChain]},
-         {newChain, [node_to_host(N, Config) || N <- NewChain]}]];
+     ++ [{chainBefore, [node_to_host(N, Config) || N <- OldChain]},
+         {chainAfter, [node_to_host(N, Config) || N <- NewChain]}]];
 
 event_to_jsons({TS, vbucket_move_done, BucketName, VBucketId}) ->
     [format_simple_plist_as_json([{type, vbucketMoveDone},
