@@ -71,6 +71,7 @@ continue_start_vbucket_filter_change({Pid, _} = From, State, NewDownstream) ->
     end.
 
 started_vbucket_filter_loop(State, MRef) ->
+    master_activity_events:note_vbucket_filter_change_started(),
     Reason = receive
                  {'EXIT', _From, Reason0} = ExitMsg ->
                      ?log_debug("Got exit signal in vbucket filter changing loop:~p", [ExitMsg]),

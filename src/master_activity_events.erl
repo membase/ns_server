@@ -34,6 +34,7 @@
          note_became_master/0,
          note_name_changed/0,
          note_observed_death/3,
+         note_vbucket_filter_change_started/0,
          event_to_jsons/1,
          event_to_formatted_iolist/1,
          format_some_history/1]).
@@ -105,6 +106,9 @@ note_name_changed() ->
 
 note_observed_death(Pid, Reason, EventTuple) ->
     submit_cast(list_to_tuple(tuple_to_list(EventTuple) ++ [Pid, Reason])).
+
+note_vbucket_filter_change_started() ->
+    submit_cast({vbucket_filter_change_started, self()}).
 
 start_link_timestamper() ->
     {ok, ns_pubsub:subscribe_link(master_activity_events_ingress, fun timestamper_body/2, [])}.
@@ -378,6 +382,12 @@ event_to_jsons({TS, vbucket_move_done, BucketName, VBucketId}) ->
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
                                   {vbucket, VBucketId}])];
+
+event_to_jsons({TS, vbucket_filter_change_started, Pid}) ->
+    [format_simple_plist_as_json([{type, vbucketFilterChangeStarted},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {pid, Pid},
+                                  {node, maybe_get_pids_node(Pid)}])];
 
 event_to_jsons({TS, failover, Node}) ->
     [format_simple_plist_as_json([{type, failover},
