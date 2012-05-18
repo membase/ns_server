@@ -332,7 +332,7 @@ local_change_vbucket_filter(Bucket, SrcNode, #child_id{dest_node=DstNode} = Chil
                                 {ok, Pid} = supervisor:start_child(Server, NewChildSpec),
                                 Me ! {done, Pid}
                         end),
-                      Loop = fun (Loop) ->
+                      Loop = fun (Loop, SentAlready) ->
                                      receive
                                          {'EXIT', _From, _Reason} = ExitMsg ->
                                              ?log_error("Got unexpected exit signal in vbucket change txn body: ~p", [ExitMsg]),
@@ -340,12 +340,17 @@ local_change_vbucket_filter(Bucket, SrcNode, #child_id{dest_node=DstNode} = Chil
                                          {done, RV} ->
                                              {ok, RV};
                                          {'$gen_call', {Pid, _} = From, get_downstream} ->
-                                             gen_tcp:controlling_process(NewDownstream, Pid),
-                                             gen_server:reply(From, {ok, NewDownstream}),
-                                             Loop(Loop)
+                                             case SentAlready of
+                                                 false ->
+                                                     gen_tcp:controlling_process(NewDownstream, Pid),
+                                                     gen_server:reply(From, {ok, NewDownstream});
+                                                 true ->
+                                                     gen_server:reply(From, refused)
+                                             end,
+                                             Loop(Loop, true)
                                      end
                              end,
-                      Loop(Loop)
+                      Loop(Loop, false)
               end);
         [] ->
             no_child
