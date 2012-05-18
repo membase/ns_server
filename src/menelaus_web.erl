@@ -1616,7 +1616,13 @@ handle_diag_master_events(Req) ->
       fun () ->
               master_activity_events:stream_events(
                 fun (Event, _Ignored, _Eof) ->
-                        Parent ! {write_chunk, master_activity_events:event_to_formatted_iolist(Event)},
+                        IOList = master_activity_events:event_to_formatted_iolist(Event),
+                        case IOList of
+                            [] ->
+                                ok;
+                            _ ->
+                                Parent ! {write_chunk, IOList}
+                        end,
                         ok
                 end, [])
       end),
