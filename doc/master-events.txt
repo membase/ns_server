@@ -62,6 +62,23 @@ Events streamed are:
 * tap name deregister
   {"type":"deregisterTapName","ts":"1333584275.53477","pidNode":"'n_0@10.17.2.163'","pid":"<0.9312.0>","name":"replication_building_1023_'n_2@10.17.2.163'","host":"10.17.2.163:12002","bucket":"default"}
 
+* vbucket filter change request was verified by ebucketmigrator and was just started:
+  {"type":"vbucketFilterChangeStarted","ts":1337311232.576239,"pid":"<0.560.0>","node":"n_0@10.17.2.163"}
+
+* failing over of bucket was started
+  {"type":"bucketFailoverStarted","ts":1337311236.171865,"pid":"<0.509.0>","node":"n_0@10.17.2.163","host":"10.17.2.163:12007","bucket":"default"}
+
+* failing over of bucket completed
+  {"type":"bucketFailoverEnded","ts":1337311234.629357,"pid":"<0.509.0>","node":"n_0@10.17.2.163","host":"10.17.2.163:12010","bucket":"default"}
+
+* rebalance of bucket started
+  {"type":"bucketRebalanceStarted","ts":1337311243.911436,"pid":"<0.843.0>","node":"n_0@10.17.2.163","bucket":"default"}
+
+* rebalance of bucket ended
+  {"type":"bucketRebalanceEnded","ts":1337311282.795146,"pid":"<0.843.0>","node":"n_0@10.17.2.163","bucket":"default"}
+
+
+
 Here's common types of fields:
 
 * type - type of event
