@@ -20,7 +20,7 @@
 -include("ns_common.hrl").
 
 -define(SERVER, ?MODULE).
--define(CONNECT_TIMEOUT, 5000).        % Milliseconds
+-define(CONNECT_TIMEOUT, 30000).        % Milliseconds
 -define(UPSTREAM_TIMEOUT, 600000000).   % Microseconds because we use timer:now_diff
 -define(TIMEOUT_CHECK_INTERVAL, 15000). % Milliseconds
 -define(TERMINATE_TIMEOUT, 30000).
