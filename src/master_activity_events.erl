@@ -34,6 +34,8 @@
          note_name_changed/0,
          note_observed_death/3,
          note_vbucket_filter_change_started/0,
+         note_bucket_rebalance_started/1,
+         note_bucket_rebalance_ended/1,
          event_to_jsons/1,
          event_to_formatted_iolist/1,
          format_some_history/1]).
@@ -106,6 +108,12 @@ note_observed_death(Pid, Reason, EventTuple) ->
 
 note_vbucket_filter_change_started() ->
     submit_cast({vbucket_filter_change_started, self()}).
+
+note_bucket_rebalance_started(BucketName) ->
+    submit_cast({bucket_rebalance_started, BucketName, self()}).
+
+note_bucket_rebalance_ended(BucketName) ->
+    submit_cast({bucket_rebalance_ended, BucketName, self()}).
 
 start_link_timestamper() ->
     {ok, ns_pubsub:subscribe_link(master_activity_events_ingress, fun timestamper_body/2, [])}.
@@ -383,6 +391,20 @@ event_to_jsons({TS, vbucket_move_done, BucketName, VBucketId}) ->
 event_to_jsons({TS, vbucket_filter_change_started, Pid}) ->
     [format_simple_plist_as_json([{type, vbucketFilterChangeStarted},
                                   {ts, misc:time_to_epoch_float(TS)},
+                                  {pid, Pid},
+                                  {node, maybe_get_pids_node(Pid)}])];
+
+event_to_jsons({TS, bucket_rebalance_started, BucketName, Pid}) ->
+    [format_simple_plist_as_json([{type, bucketRebalanceStarted},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
+                                  {pid, Pid},
+                                  {node, maybe_get_pids_node(Pid)}])];
+
+event_to_jsons({TS, bucket_rebalance_ended, BucketName, Pid}) ->
+    [format_simple_plist_as_json([{type, bucketRebalanceEnded},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
                                   {pid, Pid},
                                   {node, maybe_get_pids_node(Pid)}])];
 

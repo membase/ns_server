@@ -220,10 +220,12 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
                                   ns_janitor:cleanup(BucketName, [{timeout, 1}]),
                                   {ok, NewConf} =
                                       ns_bucket:get_bucket(BucketName),
+                                  master_activity_events:note_bucket_rebalance_started(BucketName),
                                   NewMap =
                                       rebalance(BucketName, NewConf,
                                                 KeepNodes, BucketCompletion,
                                                 NumBuckets),
+                                  master_activity_events:note_bucket_rebalance_ended(BucketName),
                                   verify_replication(BucketName, LiveNodes,
                                                      NewMap)
                           end
