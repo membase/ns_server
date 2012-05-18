@@ -36,6 +36,8 @@
          note_vbucket_filter_change_started/0,
          note_bucket_rebalance_started/1,
          note_bucket_rebalance_ended/1,
+         note_bucket_failover_started/2,
+         note_bucket_failover_ended/2,
          event_to_jsons/1,
          event_to_formatted_iolist/1,
          format_some_history/1]).
@@ -114,6 +116,12 @@ note_bucket_rebalance_started(BucketName) ->
 
 note_bucket_rebalance_ended(BucketName) ->
     submit_cast({bucket_rebalance_ended, BucketName, self()}).
+
+note_bucket_failover_started(BucketName, Node) ->
+    submit_cast({bucket_failover_started, BucketName, Node, self()}).
+
+note_bucket_failover_ended(BucketName, Node) ->
+    submit_cast({bucket_failover_ended, BucketName, Node, self()}).
 
 start_link_timestamper() ->
     {ok, ns_pubsub:subscribe_link(master_activity_events_ingress, fun timestamper_body/2, [])}.
@@ -405,6 +413,22 @@ event_to_jsons({TS, bucket_rebalance_ended, BucketName, Pid}) ->
     [format_simple_plist_as_json([{type, bucketRebalanceEnded},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
+                                  {pid, Pid},
+                                  {node, maybe_get_pids_node(Pid)}])];
+
+event_to_jsons({TS, bucket_failover_started, BucketName, Node, Pid}) ->
+    [format_simple_plist_as_json([{type, bucketFailoverStarted},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
+                                  {host, format_mcd_pair(ns_memcached:host_port(Node))},
+                                  {pid, Pid},
+                                  {node, maybe_get_pids_node(Pid)}])];
+
+event_to_jsons({TS, bucket_failover_ended, BucketName, Node, Pid}) ->
+    [format_simple_plist_as_json([{type, bucketFailoverEnded},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
+                                  {host, format_mcd_pair(ns_memcached:host_port(Node))},
                                   {pid, Pid},
                                   {node, maybe_get_pids_node(Pid)}])];
 
