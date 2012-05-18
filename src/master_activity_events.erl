@@ -17,8 +17,7 @@
 
 -include("ns_common.hrl").
 
--export([start_link_work_server/0,
-         start_link_timestamper/0,
+-export([start_link_timestamper/0,
          note_not_ready_vbuckets/2,
          note_ebucketmigrator_start/4,
          note_ebucketmigrator_terminate/2,
@@ -41,20 +40,8 @@
 
 -export([stream_events/2]).
 
--define(WORK_SERVER, master_activity_events_srv).
-
-send_event_cast(Arg) ->
-    Master = mb_master:master_node(),
-    case Master of
-        undefined ->
-            ?log_debug("sending master_activity_events event to trash can: ~p", [Arg]),
-            ok;
-        _ ->
-            gen_event:notify({master_activity_events_ingress, Master}, Arg)
-    end.
-
 submit_cast(Arg) ->
-    work_queue:submit_work(?WORK_SERVER, fun () -> send_event_cast(Arg) end).
+    (catch gen_event:notify(master_activity_events_ingress, {submit_master_event, Arg})).
 
 note_not_ready_vbuckets(Pid, VBucketIds) ->
     submit_cast({not_ready_vbuckets, Pid, VBucketIds}).
@@ -99,31 +86,45 @@ note_became_master() ->
 note_set_ff_map(BucketName, undefined, _OldMap) ->
     submit_cast({set_ff_map, BucketName, undefined});
 note_set_ff_map(BucketName, NewMap, OldMap) ->
-    work_queue:submit_work(
-      ?WORK_SERVER,
-      fun () ->
-              send_event_cast({set_ff_map, BucketName,
-                               misc:compute_map_diff(NewMap, OldMap)})
-      end).
+    Work = fun () ->
+                   {set_ff_map, BucketName,
+                    misc:compute_map_diff(NewMap, OldMap)}
+           end,
+    (catch gen_event:notify(master_activity_events_ingress,
+                            {submit_custom_master_event, Work})).
 
 note_set_map(BucketName, NewMap, OldMap) ->
-    work_queue:submit_work(
-      ?WORK_SERVER,
-      fun () ->
-              send_event_cast({set_map, BucketName,
-                               misc:compute_map_diff(NewMap, OldMap)})
-      end).
+    Work = fun () ->
+                   {set_map, BucketName,
+                    misc:compute_map_diff(NewMap, OldMap)}
+           end,
+    (catch gen_event:notify(master_activity_events_ingress,
+                            {submit_custom_master_event, Work})).
 
 note_name_changed() ->
     Name = node(),
     submit_cast({name_changed, Name}).
 
-start_link_work_server() ->
-    work_queue:start_link(?WORK_SERVER).
-
 start_link_timestamper() ->
     {ok, ns_pubsub:subscribe_link(master_activity_events_ingress, fun timestamper_body/2, [])}.
 
+timestamper_body({submit_custom_master_event, Thunk}, _Ignore) ->
+    Event = Thunk(),
+    timestamper_body({submit_master_event, Event}, []);
+timestamper_body({submit_master_event, Event}, _Ignore) ->
+    Master = mb_master:master_node(),
+    case Master of
+        undefined ->
+            ?log_debug("sending master_activity_events event to trash can: ~p", [Event]),
+            ok;
+        _ when Master =:= node() ->
+            timestamper_body(Event, []);
+        _ ->
+            try gen_event:notify({master_activity_events_ingress, Master}, Event)
+            catch T:E ->
+                    ?log_debug("Failed to send master activity event: ~p", [{T,E}])
+            end
+    end;
 timestamper_body(Event, _Ignore) ->
     StampedEvent = erlang:list_to_tuple([os:timestamp() | erlang:tuple_to_list(Event)]),
     gen_event:notify(master_activity_events, StampedEvent),
