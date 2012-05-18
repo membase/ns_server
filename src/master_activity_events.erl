@@ -25,7 +25,6 @@
          note_bucket_creation/3,
          note_bucket_deletion/1,
          note_rebalance_start/4,
-         note_rebalance_end/2,
          note_set_ff_map/3,
          note_set_map/3,
          note_vbucket_mover/6,
@@ -64,10 +63,8 @@ note_bucket_deletion(BucketName) ->
     submit_cast({delete_bucket, BucketName}).
 
 note_rebalance_start(Pid, KeepNodes, EjectNodes, FailedNodes) ->
-    submit_cast({rebalance_start, Pid, KeepNodes, EjectNodes, FailedNodes}).
-
-note_rebalance_end(Pid, Reason) ->
-    submit_cast({rebalance_end, Pid, Reason}).
+    submit_cast({rebalance_start, Pid, KeepNodes, EjectNodes, FailedNodes}),
+    master_activity_events_pids_watcher:observe_fate_of(Pid, {rebalance_end}).
 
 note_vbucket_mover(Pid, BucketName, Node, VBucketId, OldChain, NewChain) ->
     submit_cast({vbucket_move_start, Pid, BucketName, Node, VBucketId, OldChain, NewChain}),
