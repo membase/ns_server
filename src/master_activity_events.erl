@@ -68,9 +68,9 @@ note_rebalance_start(Pid, KeepNodes, EjectNodes, FailedNodes) ->
 note_rebalance_end(Pid, Reason) ->
     submit_cast({rebalance_end, Pid, Reason}).
 
-
 note_vbucket_mover(Pid, BucketName, Node, VBucketId, OldChain, NewChain) ->
-    submit_cast({vbucket_move_start, Pid, BucketName, Node, VBucketId, OldChain, NewChain}).
+    submit_cast({vbucket_move_start, Pid, BucketName, Node, VBucketId, OldChain, NewChain}),
+    master_activity_events_pids_watcher:observe_fate_of(Pid, {vbucket_mover_terminate, BucketName, VBucketId}).
 
 note_move_done(BucketName, VBucketId) ->
     submit_cast({vbucket_move_done, BucketName, VBucketId}).
@@ -363,6 +363,15 @@ event_to_jsons({TS, vbucket_move_start, Pid, BucketName, Node, VBucketId, OldCha
                                   {vbucket, VBucketId}])
      ++ [{chainBefore, [node_to_host(N, Config) || N <- OldChain]},
          {chainAfter, [node_to_host(N, Config) || N <- NewChain]}]];
+
+event_to_jsons({TS, vbucket_mover_terminate, BucketName, VBucketId, Pid, Reason}) ->
+    [format_simple_plist_as_json([{type, vbucketMoverTerminate},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {pid, Pid},
+                                  {reason, Reason},
+                                  {bucket, BucketName},
+                                  {vbucket, VBucketId},
+                                  {node, maybe_get_pids_node(Pid)}])];
 
 event_to_jsons({TS, vbucket_move_done, BucketName, VBucketId}) ->
     [format_simple_plist_as_json([{type, vbucketMoveDone},
