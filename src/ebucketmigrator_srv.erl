@@ -204,6 +204,17 @@ init({Src, Dst, Opts}=InitArgs) ->
         true ->
             ok
     end,
+    case PassedDownstream =:= undefined of
+        true ->
+            ?log_debug("killing tap named: ~s", [Name]),
+            (catch master_activity_events:note_deregister_tap_name(case Bucket of
+                                                                       undefined -> Username;
+                                                                       _ -> Bucket
+                                                                   end, Src, Name)),
+            ok = mc_client_binary:deregister_tap_client(Upstream, iolist_to_binary(Name));
+        false ->
+            ok
+    end,
     Args = if
                ReadyVBuckets =:= [] ->
                    false = TakeOver,
@@ -223,17 +234,6 @@ init({Src, Dst, Opts}=InitArgs) ->
                             {name, Name},
                             {takeover, TakeOver}],
                    ?rebalance_info("Starting tap stream:~n~p~n~p", [Args0, InitArgs]),
-                   case PassedDownstream =:= undefined of
-                       true ->
-                           ?log_debug("killing tap named: ~s", [Name]),
-                           (catch master_activity_events:note_deregister_tap_name(case Bucket of
-                                                                                      undefined -> Username;
-                                                                                      _ -> Bucket
-                                                                                  end, Src, Name)),
-                           ok = mc_client_binary:deregister_tap_client(Upstream, iolist_to_binary(Name));
-                       false ->
-                           ok
-                   end,
                    {ok, quiet} = mc_client_binary:tap_connect(Upstream, Args0),
                    Args0
            end,
