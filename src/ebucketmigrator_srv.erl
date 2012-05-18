@@ -273,8 +273,7 @@ exit_retry_not_ready_vbuckets() ->
     ?rebalance_info("dying to check if some previously not yet ready vbuckets are ready to replicate from"),
     exit(normal).
 
-terminate(Reason, #state{upstream_sender=UpstreamSender} = State) ->
-    (catch master_activity_events:note_ebucketmigrator_terminate(self(), Reason)),
+terminate(_Reason, #state{upstream_sender=UpstreamSender} = State) ->
     timer:kill_after(?TERMINATE_TIMEOUT),
     gen_tcp:close(State#state.upstream),
     exit(UpstreamSender, kill),

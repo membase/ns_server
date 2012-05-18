@@ -20,7 +20,6 @@
 -export([start_link_timestamper/0,
          note_not_ready_vbuckets/2,
          note_ebucketmigrator_start/4,
-         note_ebucketmigrator_terminate/2,
          note_deregister_tap_name/3,
          note_vbucket_state_change/4,
          note_bucket_creation/3,
@@ -34,6 +33,7 @@
          note_failover/1,
          note_became_master/0,
          note_name_changed/0,
+         note_observed_death/3,
          event_to_jsons/1,
          event_to_formatted_iolist/1,
          format_some_history/1]).
@@ -47,10 +47,8 @@ note_not_ready_vbuckets(Pid, VBucketIds) ->
     submit_cast({not_ready_vbuckets, Pid, VBucketIds}).
 
 note_ebucketmigrator_start(Pid, Src, Dst, Options) ->
-    submit_cast({ebucketmigrator_start, Pid, Src, Dst, Options}).
-
-note_ebucketmigrator_terminate(Pid, Reason) ->
-    submit_cast({ebucketmigrator_terminate, Pid, Reason}).
+    submit_cast({ebucketmigrator_start, Pid, Src, Dst, Options}),
+    master_activity_events_pids_watcher:observe_fate_of(Pid, {ebucketmigrator_terminate, Src, Dst, Options}).
 
 note_deregister_tap_name(Bucket, Src, Name) ->
     submit_cast({deregister_tap_name, self(), Bucket, Src, Name}).
@@ -104,6 +102,9 @@ note_set_map(BucketName, NewMap, OldMap) ->
 note_name_changed() ->
     Name = node(),
     submit_cast({name_changed, Name}).
+
+note_observed_death(Pid, Reason, EventTuple) ->
+    submit_cast(list_to_tuple(tuple_to_list(EventTuple) ++ [Pid, Reason])).
 
 start_link_timestamper() ->
     {ok, ns_pubsub:subscribe_link(master_activity_events_ingress, fun timestamper_body/2, [])}.
@@ -261,12 +262,7 @@ maybe_get_pids_node(Pid) when is_pid(Pid) ->
 maybe_get_pids_node(_PerhapsBinary) ->
     skip_this_pair_please.
 
-event_to_jsons({TS, not_ready_vbuckets, Pid, VBucketIds}) ->
-    [[{vbuckets, VBucketIds}]
-     ++ format_simple_plist_as_json([{type, notReadyVBuckets},
-                                     {ts, misc:time_to_epoch_float(TS)},
-                                     {pid, Pid}])];
-event_to_jsons({TS, ebucketmigrator_start, Pid, Src, Dst, Opts}) ->
+format_ebucketmigrator_options(Opts) ->
     {Opts1, MaybeVBuckets} = case lists:keyfind(vbuckets, 1, Opts) of
                                  false ->
                                      {Opts, []};
@@ -281,18 +277,31 @@ event_to_jsons({TS, ebucketmigrator_start, Pid, Src, Dst, Opts}) ->
                                         {lists:keydelete(checkpoints, 1, Opts1),
                                          [{checkpoints, {struct, Checkpoints}}]}
                                 end,
-    [MaybeVBuckets ++ MaybeCheckpoints ++
+    {MaybeVBuckets ++ MaybeCheckpoints, Opts2}.
+
+event_to_jsons({TS, not_ready_vbuckets, Pid, VBucketIds}) ->
+    [[{vbuckets, VBucketIds}]
+     ++ format_simple_plist_as_json([{type, notReadyVBuckets},
+                                     {ts, misc:time_to_epoch_float(TS)},
+                                     {pid, Pid}])];
+event_to_jsons({TS, ebucketmigrator_start, Pid, Src, Dst, Opts}) ->
+    {FormattedOpts, JustOps} = format_ebucketmigrator_options(Opts),
+    [FormattedOpts ++
          format_simple_plist_as_json([{type, ebucketmigratorStart},
                                       {ts, misc:time_to_epoch_float(TS)},
                                       {node, maybe_get_pids_node(Pid)},
                                       {pid, Pid},
                                       {src, format_mcd_pair(Src)},
-                                      {dst, format_mcd_pair(Dst)} | Opts2])];
-event_to_jsons({TS, ebucketmigrator_terminate, Pid, Reason}) ->
-    [format_simple_plist_as_json([{type, ebucketmigratorTerminate},
-                                  {ts, misc:time_to_epoch_float(TS)},
-                                  {pid, Pid},
-                                  {reason, Reason}])];
+                                      {dst, format_mcd_pair(Dst)} | JustOps])];
+event_to_jsons({TS, ebucketmigrator_terminate, Src, Dst, Opts, Pid, Reason}) ->
+    {FormattedOpts, JustOps} = format_ebucketmigrator_options(Opts),
+    [FormattedOpts ++
+         format_simple_plist_as_json([{type, ebucketmigratorTerminate},
+                                      {ts, misc:time_to_epoch_float(TS)},
+                                      {pid, Pid},
+                                      {reason, Reason},
+                                      {src, format_mcd_pair(Src)},
+                                      {dst, format_mcd_pair(Dst)} | JustOps])];
 event_to_jsons({TS, deregister_tap_name, Pid, Bucket, Src, Name}) ->
     [format_simple_plist_as_json([{type, deregisterTapName},
                                   {ts, misc:time_to_epoch_float(TS)},
