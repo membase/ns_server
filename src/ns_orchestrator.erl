@@ -231,7 +231,6 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
                                keep_nodes=KeepNodes,
                                eject_nodes=EjectNodes,
                                failed_nodes=FailedNodes}) ->
-    master_activity_events:note_rebalance_end(Pid, Reason),
     Status = case Reason of
                  normal ->
                      ?user_log(?REBALANCE_SUCCESSFUL,

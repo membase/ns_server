@@ -1,0 +1,153 @@
+;; -*- Mode: lisp; fill-column: 120 -*-
+
+(supervisor 'ns_server_cluster_sup :mode one-for-one
+            (tmp 'cb_init_loggers)
+            (tmp 'log_os_info)
+            (gen-server 'timeout_diag_logger
+                        "keeps track of blocks of code that are observed for timeouts. If anything takes
+                        longer then expected it'll log lots of details so that we can diagnose reason of
+                        timeout")
+            (gen-server 'dist_manager
+                        "manages changing of node's address. Persists node's address when it's changed")
+            (gen-server 'ns_cookie_manager
+                        "saves node's name and cookie. So that service shutdown can reach us. Guards node's
+                        cookie changes as well")
+            (gen-server 'ns_cluster
+                        "performs node join/leave requests")
+            (supervisor 'mb_mnesia_sup :mode :one_for_one
+                        (gen-event 'mb_mnesia_events)
+                        (gen-server 'mb_mnesia))
+            (supervisor 'ns_config_sup :mode :rest_for_one
+                        (gen-event 'ns_config_events
+                                   "fired when any ns_config variable is changed")
+                        (gen-server 'ns_config
+                                    "maintains local ns_config. Manages loading and (async) saving. Fires
+                                    ns_config_events when any config variable is changed")
+                        (gen-server 'ns_config_remote
+                                    "proxy for ns_config. Why? Because we've found that replying to remote
+                                    ns_config:get() calls may suspend replying process. Thus we have that
+                                    proxy for 'spoonfeeding' of remote callers")
+                        (gen-server 'ns_config_isasl_sync
+                                    "saves bucket passwords to isasl.pw"
+                                    (pubsub-link nil :to 'ns_config_events))
+                        (gen-server 'ns_config_log
+                                    "logs config changes"
+                                    (pubsub-link nil :to 'ns_config_events)))
+            (worker 'vbucket_filter_changes_registry)
+            (supervisor 'ns_server_sup :mode one-for-one
+                        (gen-server 'ns_log)
+                        (gen-event 'ns_log_events) ; ns_mail_log uses this
+                        (supervisor 'ns_node_disco_sup :mode :rest_for_one
+                                    (gen-event 'ns_node_disco_events
+                                               "fired when nodes() or nodes_wanted() changes")
+                                    (gen-server 'ns_node_disco
+                                                "fires ns_node_disco_events and guards (do we still need that ?)
+                                                access to nodes_wanted")
+                                    (event-handler 'ns_node_disco_log :to 'ns_node_disco_events
+                                                   "logs nodes_wanted and actual nodes() changes")
+                                    (event-handler 'ns_node_disco_conf_events :to 'ns_config_events
+                                                   "passes config changes to ns_config_rep for replication")
+                                    (gen-server 'ns_config_rep
+                                                "replicates entire & parts of config to/from other nodes"
+                                                (event-handler 'ns_node_disco_rep_events :to 'ns_node_disco_events
+                                                               "requests complete config replication to/from
+                                                               newly discovered nodes")
+                                                (worker 'ns_config_rep_merger
+                                                        "worker process that does actual config merging and
+                                                        updates config via ns_config:cas_config/2")))
+                        (gen-event 'ns_tick_event
+                                   "local tick event. Singleton ns_tick on master node will fire tick events
+                                   on all nodes")
+                        (gen-event 'mb_master_events
+                                   "used (incorrecly!) for waking up of pool details sleepers when master node
+                                   is changed")
+                        (gen-fsm 'mb_master
+                                 ;; NOTE: the following is just spawn_link relation
+                                 (supervisor 'mb_master_sup :mode :one_for_one
+                                             (gen-fsm (:global 'ns_orchestrator)
+                                                      ;; failover is done on orchestrator process itself
+                                                      (notable-call 'ns_rebalancer 'failover/1)
+                                                      ;; but rebalance is separate process
+                                                      (spawns 'ns_rebalancer 'rebalance/3)
+                                                      ;; and janitor is separate as well
+                                                      (spawns 'ns_janitor 'cleanup/2))
+                                             (gen-server (:global 'ns_tick))
+                                             (gen-server (:global 'auto_failover))))
+                        (gen-event 'master_activity_events
+                                   "Timestamped master activity events. Real data only on master node.")
+                        (gen-event 'master_activity_events_ingress
+                                   "Raw master activity events. Remote nodes send their stuff to master's ingress events process")
+                        (pubsub-link 'master_activity_events_timestamper :to 'master_activity_events_ingress
+                                     "adds timestamps to ingress events also serves queued note_xxx requests
+                                     by sending them to ingress process on master")
+                        (gen-server 'master_activity_events_pids_watcher)
+                        (gen-server 'master_activity_events_keeper
+                                    "local 'archive' of recent master events. Keeps 4k of recent events. Only
+                                    relevant on master node.")
+                        (gen-event 'buckets_events
+                                   "fired when bucket is started/warmed-up/shutdown. Also fired by ns_doctor
+                                   when remote bucket startup/warmup/shutdown discovered")
+                        (supervisor 'ns_mail_sup :mode :one_for_all
+                                    "sends out mails for 'alertful' ns_log entries"
+                                    (gen-server 'ns_mail)
+                                    (event-handler 'ns_mail_log :to 'ns_log_events))
+                        (gen-server 'ns_heart
+                                    "gathers local stats & other info and broadcasts that to all node's ns_doctor")
+                        (gen-server 'ns_doctor
+                                    "keeps track of latest heartbeats from other nodes")
+                        (supervisor 'menelaus_sup :mode :one_for_one
+                                    (worker 'menelaus_web)
+                                    (gen-server 'menelaus_web_alerts_srv)
+                                    (event-handler 'menelaus_event
+                                                   :to ns_config_events
+                                                   :to ns_node_disco_events
+                                                   :to mb_master_events))
+                        (supervisor 'ns_port_sup :mode :one_for_one
+                                    (event-handler 'ns_port_init :to 'ns_config_events)
+                                    ;; dynamic, but typically memcached & moxi ports. Those are in fact
+                                    ;; started through supervisor_cushion
+                                    (gen_server 'ns_port_server "memcached")
+                                    (gen_server 'ns_port_server "moxi"))
+                        (gen-event 'ns_stats_event
+                                   "various stats collectors (for all buckets) fire newly gathered stats
+                                   samples via this guy")
+                        (gen-server 'ns_bucket_worker
+                                    "'work' of starting and shutting down ns_bucket_sup childs is done by this
+                                    guy. I.e. because supervisor:xxx API is synchronous")
+                        (supervisor 'ns_bucket_sup :mode :one_for_one
+                                    (pubsub-link 'buckets_observing_subscription :to 'ns_config_events
+                                                 "observes config for buckets that should be started/stopped
+                                                 on this node and submits work for doing that to ns_bucket_worker")
+                                    ;; dynamic, but lets assume we have bucket "default"
+                                    (worker '(per_bucket_sup "default")
+                                            (supervisor 'single_bucket_sup :mode :rest_for_one
+                                                        (gen-server '(ns_memcached "default") :name 'ns_memcached-default
+                                                                    "our communication channel with
+                                                                    bucket. Creates bucket on
+                                                                    startup. Monitors it for warmup. Monitors
+                                                                    bucket parameters versus config (i.e. if
+                                                                    bucket quota needs to be
+                                                                    adjusted). Performs requests to grab stats
+                                                                    and change vbucket states")
+                                                        (supervisor '(ns_vbm_sup "default") :name 'ns_vbm_sup-default
+                                                                    "hosts replication ebucketmigrators")
+                                                        (gen-server '(stats_collector "default")
+                                                                    "on each tick grabs memcached stats"
+                                                                    "parses/massages them a bit and sends them out to ns_stats_event"
+                                                                    (pubsub-link nil :to 'ns_tick_event))
+                                                        (gen-server '(stats_archiver "default")
+                                                                    "saves stats for this bucket that it sees
+                                                                    on ns_stats_event"
+                                                                    (pubsub-link nil :to 'ns_stats_event))
+                                                        (gen-server '(stats_reader "default")
+                                                                    "used to read mnesia stats archive")
+                                                        (event-handler '(failover_safeness_level "default") :to 'ns_stats_event
+                                                                       "estimates bucket's replication
+                                                                       up-to-date-ness 'from this node' based
+                                                                       on stats it sees"))))
+                        (gen-server 'system_stats_collector)
+                        (gen-server '(stats_archiver "@system"))
+                        (gen-server '(stats_reader "@system"))
+                        (gen-server 'ns_moxi_sup_work_queue)
+                        (supervisor 'ns_moxi_sup :mode :one_for_one
+                                    "hosts per-port moxis")))
