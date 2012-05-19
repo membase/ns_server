@@ -51,7 +51,7 @@ Events streamed are:
   {"vbucket":"36","type":"updateFastForwardMap","ts":"1333576052.76132","bucket":"default","chainBefore":[],"chainAfter":["10.17.2.163:12000","10.17.2.163:12002"]}
 
 * vbucket mover spawned
-  {"vbucket":"43","type":"vbucketMoverStart","ts":"1333576052.782249","pid":"<0.592.0>","node":"'n_1@10.17.2.163'","bucket":"default","oldChain":["10.17.2.163:12002",""],"newChain":["10.17.2.163:12002","10.17.2.163:12004"]}
+  {"vbucket":"43","type":"vbucketMoveStart","ts":"1333576052.782249","pid":"<0.592.0>","node":"'n_1@10.17.2.163'","bucket":"default","chainBefore":["10.17.2.163:12002",""],"chainAfter":["10.17.2.163:12002","10.17.2.163:12004"]}
 
 * vbucket move completed
   {"vbucket":"43","type":"vbucketMoveDone","ts":"1333576052.926554","bucket":"default"}
@@ -61,6 +61,23 @@ Events streamed are:
 
 * tap name deregister
   {"type":"deregisterTapName","ts":"1333584275.53477","pidNode":"'n_0@10.17.2.163'","pid":"<0.9312.0>","name":"replication_building_1023_'n_2@10.17.2.163'","host":"10.17.2.163:12002","bucket":"default"}
+
+* vbucket filter change request was verified by ebucketmigrator and was just started:
+  {"type":"vbucketFilterChangeStarted","ts":1337311232.576239,"pid":"<0.560.0>","node":"n_0@10.17.2.163"}
+
+* failing over of bucket was started
+  {"type":"bucketFailoverStarted","ts":1337311236.171865,"pid":"<0.509.0>","node":"n_0@10.17.2.163","host":"10.17.2.163:12007","bucket":"default"}
+
+* failing over of bucket completed
+  {"type":"bucketFailoverEnded","ts":1337311234.629357,"pid":"<0.509.0>","node":"n_0@10.17.2.163","host":"10.17.2.163:12010","bucket":"default"}
+
+* rebalance of bucket started
+  {"type":"bucketRebalanceStarted","ts":1337311243.911436,"pid":"<0.843.0>","node":"n_0@10.17.2.163","bucket":"default"}
+
+* rebalance of bucket ended
+  {"type":"bucketRebalanceEnded","ts":1337311282.795146,"pid":"<0.843.0>","node":"n_0@10.17.2.163","bucket":"default"}
+
+
 
 Here's common types of fields:
 
@@ -78,3 +95,5 @@ Here's common types of fields:
   usually undefined and real bucket name is username)
 
 * pid - pid of process
+
+* chainBefore, chainAfter - vbucket map chain before and after vbucket map change or vbucket move

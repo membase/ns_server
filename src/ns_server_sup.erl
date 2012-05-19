@@ -75,19 +75,19 @@ child_specs() ->
       permanent, infinity, supervisor, [mb_master]},
 
      {master_activity_events, {gen_event, start_link, [{local, master_activity_events}]},
-      permanent, 1000, worker, dynamic},
+      permanent, brutal_kill, worker, dynamic},
 
      {master_activity_events_ingress, {gen_event, start_link, [{local, master_activity_events_ingress}]},
-      permanent, 1000, worker, dynamic},
+      permanent, brutal_kill, worker, dynamic},
 
      {master_activity_events_timestamper, {master_activity_events, start_link_timestamper, []},
-      permanent, 1000, worker, dynamic},
+      permanent, brutal_kill, worker, dynamic},
+
+     {master_activity_events_pids_watcher, {master_activity_events_pids_watcher, start_link, []},
+      permanent, brutal_kill, worker, dynamic},
 
      {master_activity_events_keeper, {master_activity_events_keeper, start_link, []},
-      permanent, 1000, worker, dynamic},
-
-     {master_activity_events_srv, {master_activity_events, start_link_work_server, []},
-      permanent, 1000, worker, dynamic},
+      permanent, brutal_kill, worker, dynamic},
 
      {buckets_events, {gen_event, start_link, [{local, buckets_events}]},
       permanent, 1000, worker, dynamic},

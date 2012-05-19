@@ -46,7 +46,11 @@
 %% @doc Fail a node. Doesn't eject the node from the cluster. Takes
 %% effect immediately.
 failover(Node) ->
-    RVs = lists:map(fun (Bucket) -> failover(Bucket, Node) end,
+    RVs = lists:map(fun (Bucket) ->
+                            master_activity_events:note_bucket_failover_started(Bucket, Node),
+                            failover(Bucket, Node),
+                            master_activity_events:note_bucket_failover_ended(Bucket, Node)
+                    end,
                     ns_bucket:get_bucket_names()),
     case lists:member(janitor_failed, RVs) of
         true ->
@@ -223,10 +227,12 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
                                   end,
                                   {ok, NewConf} =
                                       ns_bucket:get_bucket(BucketName),
+                                  master_activity_events:note_bucket_rebalance_started(BucketName),
                                   NewMap =
                                       rebalance(BucketName, NewConf,
                                                 KeepNodes, BucketCompletion,
                                                 NumBuckets),
+                                  master_activity_events:note_bucket_rebalance_ended(BucketName),
                                   verify_replication(BucketName, LiveNodes,
                                                      NewMap)
                           end

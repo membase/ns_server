@@ -20,7 +20,7 @@
 -include("ns_common.hrl").
 
 -define(SERVER, ?MODULE).
--define(CONNECT_TIMEOUT, 5000).        % Milliseconds
+-define(CONNECT_TIMEOUT, 30000).        % Milliseconds
 -define(UPSTREAM_TIMEOUT, 600000000).   % Microseconds because we use timer:now_diff
 -define(TIMEOUT_CHECK_INTERVAL, 15000). % Milliseconds
 -define(TERMINATE_TIMEOUT, 30000).
@@ -73,6 +73,7 @@ continue_start_vbucket_filter_change({Pid, _} = From, State, NewDownstream) ->
     end.
 
 started_vbucket_filter_loop(State, MRef) ->
+    master_activity_events:note_vbucket_filter_change_started(),
     Reason = receive
                  {'EXIT', _From, Reason0} = ExitMsg ->
                      ?log_debug("Got exit signal in vbucket filter changing loop:~p", [ExitMsg]),
@@ -205,6 +206,17 @@ init({Src, Dst, Opts}=InitArgs) ->
         true ->
             ok
     end,
+    case PassedDownstream =:= undefined of
+        true ->
+            ?log_debug("killing tap named: ~s", [Name]),
+            (catch master_activity_events:note_deregister_tap_name(case Bucket of
+                                                                       undefined -> Username;
+                                                                       _ -> Bucket
+                                                                   end, Src, Name)),
+            ok = mc_client_binary:deregister_tap_client(Upstream, iolist_to_binary(Name));
+        false ->
+            ok
+    end,
     Args = if
                ReadyVBuckets =:= [] ->
                    false = TakeOver,
@@ -224,17 +236,6 @@ init({Src, Dst, Opts}=InitArgs) ->
                             {name, Name},
                             {takeover, TakeOver}],
                    ?rebalance_info("Starting tap stream:~n~p~n~p", [Args0, InitArgs]),
-                   case PassedDownstream =:= undefined of
-                       true ->
-                           ?log_debug("killing tap named: ~s", [Name]),
-                           (catch master_activity_events:note_deregister_tap_name(case Bucket of
-                                                                                      undefined -> Username;
-                                                                                      _ -> Bucket
-                                                                                  end, Src, Name)),
-                           ok = mc_client_binary:deregister_tap_client(Upstream, iolist_to_binary(Name));
-                       false ->
-                           ok
-                   end,
                    {ok, quiet} = mc_client_binary:tap_connect(Upstream, Args0),
                    Args0
            end,
@@ -275,8 +276,7 @@ exit_retry_not_ready_vbuckets() ->
     ?rebalance_info("dying to check if some previously not yet ready vbuckets are ready to replicate from"),
     exit(normal).
 
-terminate(Reason, #state{upstream_sender=UpstreamSender} = State) ->
-    (catch master_activity_events:note_ebucketmigrator_terminate(self(), Reason)),
+terminate(_Reason, #state{upstream_sender=UpstreamSender} = State) ->
     timer:kill_after(?TERMINATE_TIMEOUT),
     gen_tcp:close(State#state.upstream),
     exit(UpstreamSender, kill),
