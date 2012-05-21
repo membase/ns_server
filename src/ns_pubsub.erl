@@ -78,7 +78,7 @@ init(State) ->
 
 
 handle_call(_Request, State) ->
-    {reply, ok, State}.
+    {ok, ok, State}.
 
 
 handle_event(Event, State = #state{func=Fun, func_state=FS}) ->

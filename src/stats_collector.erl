@@ -50,11 +50,11 @@ init(Bucket) ->
     ns_pubsub:subscribe_link(ns_tick_event),
     {ok, #state{bucket=Bucket}}.
 
-handle_call(unhandled, unhandled, unhandled) ->
-    unhandled.
+handle_call(Request, _From, State) ->
+    {stop, {unhandled, Request}, State}.
 
-handle_cast(unhandled, unhandled) ->
-    unhandled.
+handle_cast(Msg, State) ->
+    {stop, {unhandled, Msg}, State}.
 
 interesting_kvtiming_key(<<"writeSeek_", _/binary>>) -> true;
 interesting_kvtiming_key(_) -> false.

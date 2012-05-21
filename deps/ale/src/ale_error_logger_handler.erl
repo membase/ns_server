@@ -49,7 +49,7 @@ handle_event(_Event, State) ->
     {ok, State}.
 
 handle_call(_Query, State) ->
-    {ok, State}.
+    {ok, ok, State}.
 
 handle_info(_Info, State) ->
     {ok, State}.

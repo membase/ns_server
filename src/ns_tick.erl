@@ -60,8 +60,8 @@ handle_call(time, _From, #state{time=Time} = State) ->
     {reply, Time, State}.
 
 
-handle_cast(unhandled, unhandled) ->
-    unhandled.
+handle_cast(Msg, State) ->
+    {stop, {unhandled, Msg}, State}.
 
 
 %% Called once per second on the node where the gen_server runs

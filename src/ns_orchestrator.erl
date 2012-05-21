@@ -184,12 +184,12 @@ init([]) ->
     {ok, idle, #idle_state{}}.
 
 
-handle_event(unhandled, unhandled, unhandled) ->
-    unhandled.
+handle_event(Event, StateName, State) ->
+    {stop, {unhandled, Event, StateName}, State}.
 
 
-handle_sync_event(unhandled, unhandled, unhandled, unhandled) ->
-    unhandled.
+handle_sync_event(Event, _From, StateName, State) ->
+    {stop, {unhandled, Event, StateName}, State}.
 
 handle_info(janitor, idle, #idle_state{remaining_buckets=[]} = State) ->
     case ns_bucket:get_bucket_names(membase) of

@@ -39,8 +39,8 @@ handle_event(_Event, State) ->
     ok = reconfig(PortServers),
     {ok, State, hibernate}.
 
-handle_call(unhandled, unhandled) ->
-    unhandled.
+handle_call(_Request, _State) ->
+    {remove_handler, unhandled}.
 
 handle_info(_, State) ->
     {ok, State}.
