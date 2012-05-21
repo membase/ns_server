@@ -263,11 +263,11 @@ _tasks = [
     AllOsTask("memcached memory stats",
               "cbstats -a 127.0.0.1:11210 raw memory _admin _admin",
               log_file="stats.log"),
-    AllOsTask("couchbase logs", "cbbrowse_logs", log_file="ns_server.log"),
-    LinuxTask("Couchdb log", "cat /var/log/couchdb/couch.log", log_file="couch.log"),
-    WindowsTask("Couchdb log",
-         "type " + os.path.dirname(sys.argv[0]) + "/../var/log/couchdb/couch.log",
-         log_file="couch.log"),
+    AllOsTask("couchbase logs (debug)", "cbbrowse_logs", log_file="ns_server.debug.log"),
+    AllOsTask("couchbase logs (info)", "cbbrowse_logs info", log_file="ns_server.info.log"),
+    AllOsTask("couchbase logs (error)", "cbbrowse_logs error", log_file="ns_server.error.log"),
+    AllOsTask("couchbase logs (couchdb)", "cbbrowse_logs couchdb", log_file="ns_server.couchdb.log"),
+    AllOsTask("couchbase logs (views)", "cbbrowse_logs views", log_file="ns_server.views.log")
     ]
 
 
