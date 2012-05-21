@@ -284,6 +284,13 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
                                  {auth, fun menelaus_web_buckets:handle_bucket_flush/3,
                                 [PoolId, Id]};
+                             ["pools", PoolId, "buckets", Id, "controller", "compactBucket"] ->
+                                 {auth, fun menelaus_web_buckets:handle_compact_bucket/3, [PoolId, Id]};
+                             ["pools", PoolId, "buckets", Id, "controller", "compactDatabases"] ->
+                                 {auth, fun menelaus_web_buckets:handle_compact_databases/3, [PoolId, Id]};
+                             ["pools", PoolId, "buckets", Id,
+                              "ddocs", DDocId, "controller", "compactView"] ->
+                                 {auth, fun menelaus_web_buckets:handle_compact_view/4, [PoolId, Id, DDocId]};
                              ["pools", "default", "remoteClusters"] ->
                                  {auth, fun menelaus_web_remote_clusters:handle_remote_clusters_post/1};
                              ["pools", "default", "remoteClusters", Id] ->

@@ -37,7 +37,10 @@
          handle_bucket_create/2,
          handle_bucket_flush/3,
          handle_setup_default_bucket_post/1,
-         parse_bucket_params/5]).
+         parse_bucket_params/5,
+         handle_compact_bucket/3,
+         handle_compact_databases/3,
+         handle_compact_view/4]).
 
 -import(menelaus_util,
         [server_header/0,
@@ -746,6 +749,19 @@ parse_validate_ram_quota(Value, _BucketConfig) ->
 extended_cluster_storage_info() ->
     [{nodesCount, length(ns_cluster_membership:active_nodes())}
      | ns_storage_conf:cluster_storage_info()].
+
+
+handle_compact_bucket(_PoolId, Bucket, Req) ->
+    ok = compaction_daemon:force_compact_bucket(Bucket),
+    Req:respond({200, server_header(), []}).
+
+handle_compact_databases(_PoolId, Bucket, Req) ->
+    ok = compaction_daemon:force_compact_db_files(Bucket),
+    Req:respond({200, server_header(), []}).
+
+handle_compact_view(_PoolId, Bucket, DDocId, Req) ->
+    ok = compaction_daemon:force_compact_view(Bucket, DDocId),
+    Req:respond({200, server_header(), []}).
 
 -ifdef(EUNIT).
 basic_bucket_params_screening_test() ->
