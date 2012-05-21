@@ -64,8 +64,10 @@ default() ->
                end,
 
     [{directory, path_config:component_path(data, "config")},
-     {autocompaction, [{database_fragmentation_threshold, {30, nil}},
-                       {view_fragmentation_threshold, {30, nil}}]},
+     {autocompaction, [{database_fragmentation_threshold, {30, undefined}},
+                       {view_fragmentation_threshold, {30, undefined}}]},
+     {{node, node(), compaction_daemon}, [{check_interval, 30},
+                                          {min_file_size, 131072}]},
      {nodes_wanted, [node()]},
      {{node, node(), membership}, active},
                                                 % In general, the value in these key-value pairs are property lists,

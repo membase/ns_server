@@ -838,7 +838,7 @@ var AutoCompactionSection = {
       "viewFragmentationThreshold[percentage]"
     ];
     _.each(fields, function(key) {
-      if (values[key] === 'nil') {
+      if (values[key] === 'undefined') {
         delete values[key];
       }
       if (values[key] &&

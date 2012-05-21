@@ -2063,11 +2063,11 @@ parse_validate_auto_compaction_settings(Params) ->
                 [{F, V} || {ok, F, V} <- ParallelResult]
                 ++
                 [{database_fragmentation_threshold, {
-                    couch_util:get_value(db_fragmentation_percentage, PercPList, nil),
-                    couch_util:get_value(db_fragmentation_size, SizePList, nil)}},
+                    proplists:get_value(db_fragmentation_percentage, PercPList),
+                    proplists:get_value(db_fragmentation_size, SizePList)}},
                  {view_fragmentation_threshold, {
-                    couch_util:get_value(view_fragmentation_percentage, PercPList, nil),
-                    couch_util:get_value(view_fragmentation_size, SizePList, nil)}}],
+                    proplists:get_value(view_fragmentation_percentage, PercPList),
+                    proplists:get_value(view_fragmentation_size, SizePList)}}],
 
             AllFields =
                 case PeriodTimeResults of
@@ -2106,9 +2106,9 @@ basic_parse_validate_auto_compaction_settings_test() ->
                                          {from_minute, 1},
                                          {to_minute, 3},
                                          {abort_outside, false}]},
-                  {database_fragmentation_threshold, {10, nil}},
+                  {database_fragmentation_threshold, {10, undefined}},
                   {parallel_db_and_view_compaction, false},
-                  {view_fragmentation_threshold, {20, nil}}],
+                  {view_fragmentation_threshold, {20, undefined}}],
                  Stuff1),
     ok.
 
@@ -2148,9 +2148,9 @@ basic_parse_validate_bucket_auto_compaction_settings_test() ->
                                          {from_minute, 1},
                                          {to_minute, 3},
                                          {abort_outside, false}]},
-                  {database_fragmentation_threshold, {10, nil}},
+                  {database_fragmentation_threshold, {10, undefined}},
                   {parallel_db_and_view_compaction, false},
-                  {view_fragmentation_threshold, {20, nil}}],
+                  {view_fragmentation_threshold, {20, undefined}}],
                  Stuff1),
     ok.
 
