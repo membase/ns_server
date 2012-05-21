@@ -480,16 +480,18 @@ set_node_replicas(Policy, Bucket, Node, Replicators) ->
                       {ok, ActualVBuckets} ->   % bound above
                           dict:erase(Nodes, D);
                       {ok, NewVBuckets} ->
+                          true = (NewVBuckets =/= []),
                           case Policy:change_vbucket_filter(Bucket, SrcNode, DstNode, Child, NewVBuckets) of
                               not_supported ->
                                   system_stats_collector:increment_counter(old_style_vbucket_filter_changes, 1),
                                   %% NOTE: we do not erase node from pending list of changes
-                                  ?log_info("~nkill_child(~p, ~p, ~p, ~p, ~p)",
+                                  ?log_info("~nkill_child(~p, ~p, ~p, ~p, ~p) (due to not_supported)",
                                             [Policy, Bucket, SrcNode, DstNode, Child]),
                                   kill_child(Policy, Bucket, SrcNode, DstNode, Child),
                                   D;
-                              _ ->
-                                  dict:erase(DstNode, D)
+                              {ok, _Pid} ->
+                                  ?log_info("change_vbucket_filter ~p from ~p to ~p succeeded", [Nodes, ActualVBuckets, NewVBuckets]),
+                                  dict:erase(Nodes, D)
                           end;
                       _ ->
                           ?log_info("~nkill_child(~p, ~p, ~p, ~p, ~p)",
