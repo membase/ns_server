@@ -417,7 +417,7 @@ perform_vbucket_filter_change(Bucket,
                               OldChildId, NewChildId,
                               InitialArgs,
                               Server) ->
-    RegistryId = {Bucket, NewChildId},
+    RegistryId = {Bucket, NewChildId, erlang:make_ref()},
     Args = ebucketmigrator_srv:add_args_option(InitialArgs,
                                                passed_downstream_retriever,
                                                mk_downstream_retriever(RegistryId)),
