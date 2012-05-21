@@ -57,6 +57,7 @@ class TaskRunner(object):
         self.files = {}
         self.tasks = {}
         self.verbosity = verbosity
+        self.start_time = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
 
     def get_file(self, filename):
         if filename in self.files:
@@ -116,7 +117,7 @@ class TaskRunner(object):
         try:
             for name, fp in self.files.iteritems():
                 fp.close()
-                zf.write(fp.name, name)
+                zf.write(fp.name, "cbcollect_info_" + self.start_time + "/" + name)
         finally:
             zf.close()
 
