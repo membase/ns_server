@@ -182,8 +182,11 @@ do_build_plt:
             $(realpath $(COUCH_PATH)/src/lhttpc) \
             $(COUCH_PATH)/src/erlang-oauth deps/erlwsh/ebin deps/gen_smtp/ebin
 
+
+OTP_RELEASE = $(shell erl -noshell -eval 'io:format("~s~n", [erlang:system_info(otp_release)]), erlang:halt().')
+MAYBE_UNDEFINED_CALLBACKS = $(shell echo "$(OTP_RELEASE)" | grep -q "^R1[5-9]B.*$$" && echo -n "-Wno_undefined_callbacks" || echo -n)
 dialyzer: all $(COUCHBASE_PLT)
-	$(MAKE) do-dialyzer DIALYZER_FLAGS="-Wno_return $(DIALYZER_FLAGS)" COUCH_PATH="$(shell . `pwd`/.configuration && echo $$couchdb_src)"
+	$(MAKE) do-dialyzer DIALYZER_FLAGS="-Wno_return $(MAYBE_UNDEFINED_CALLBACKS) $(DIALYZER_FLAGS)" COUCH_PATH="$(shell . `pwd`/.configuration && echo $$couchdb_src)"
 
 GEOCOUCH_EBIN := $(firstword $(realpath $(COUCH_PATH)/../geocouch/build) $(realpath $(COUCH_PATH)/../geocouch/ebin))
 
