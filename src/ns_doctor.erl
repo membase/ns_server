@@ -250,6 +250,10 @@ maybe_refresh_tasks_version(State) ->
                                                        {lists:keyfind(design_documents, 1, Task),
                                                         lists:keyfind(set, 1, Task)}),
                                                      Set0);
+                                bucket_compaction ->
+                                    sets:add_element(
+                                      erlang:phash2(lists:keyfind(bucket, 1, Task)),
+                                      Set0);
                                 _ ->
                                     Set0
                             end
@@ -277,6 +281,12 @@ task_operation(extract, IndexerOrCompaction, RawTask)
 
     [{{IndexerOrCompaction, BucketName, DDocId}, {ChangesDone, TotalChanges}}
        || DDocId <- DDocIds];
+task_operation(extract, BucketCompaction, RawTask)
+  when BucketCompaction =:= bucket_compaction ->
+    {_, VBucketsDone} = lists:keyfind(vbuckets_done, 1, RawTask),
+    {_, TotalVBuckets} = lists:keyfind(total_vbuckets, 1, RawTask),
+    {_, BucketName} = lists:keyfind(bucket, 1, RawTask),
+    [{{BucketCompaction, BucketName}, {VBucketsDone, TotalVBuckets}}];
 task_operation(extract, _, _) ->
     ignore;
 
@@ -290,6 +300,17 @@ task_operation(finalize, {IndexerOrCompaction, BucketName, DDocId}, {ChangesDone
      {designDocument, DDocId},
      {changesDone, ChangesDone},
      {totalChanges, TotalChanges},
+     {progress, Progress}];
+task_operation(finalize, {BucketCompaction, BucketName},
+               {ChangesDone, TotalChanges})
+  when BucketCompaction =:= bucket_compaction ->
+    Progress = (ChangesDone * 100) div TotalChanges,
+    [{type, BucketCompaction},
+     {recommendedRefreshPeriod, 2.0},
+     {status, running},
+     {bucket, BucketName},
+     {changesDone, ChangesDone},
+     {totalChanges, TotalChanges},
      {progress, Progress}].
 
 task_operation(fold, {indexer, _, _},
@@ -297,6 +318,10 @@ task_operation(fold, {indexer, _, _},
                {ChangesDone2, TotalChanges2}) ->
     {ChangesDone1 + ChangesDone2, TotalChanges1 + TotalChanges2};
 task_operation(fold, {view_compaction, _, _},
+               {ChangesDone1, TotalChanges1},
+               {ChangesDone2, TotalChanges2}) ->
+    {ChangesDone1 + ChangesDone2, TotalChanges1 + TotalChanges2};
+task_operation(fold, {bucket_compaction, _},
                {ChangesDone1, TotalChanges1},
                {ChangesDone2, TotalChanges2}) ->
     {ChangesDone1 + ChangesDone2, TotalChanges1 + TotalChanges2}.

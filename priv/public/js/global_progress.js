@@ -36,6 +36,12 @@
       '%"></div></div><span class="message">Compacting index ' + escapeHTML(obj.bucket + "/" + obj.designDocument) + '</span></li>';
   };
 
+  render.bucket_compaction = function (obj) {
+    return '<li class="clearfix"><div class="usage_smallest">' +
+      '<div class="used" style="width:' + (obj.progress >> 0) +
+      '%"></div></div><span class="message">Compacting bucket ' +
+      escapeHTML(obj.bucket) + '</span></li>';
+  };
 
   render.rebalance = function (obj) {
     if (obj.status !== "running") {

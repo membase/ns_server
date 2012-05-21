@@ -164,12 +164,7 @@ current_status() ->
 
     Tasks = lists:filter(
         fun (Task) ->
-                lists:keyfind(set, 1, Task) =/= false andalso
-                    begin
-                        {type, Type} = lists:keyfind(type, 1, Task),
-                        Type =:= indexer orelse Type =:= view_compaction
-                    end andalso
-                    lists:keyfind(indexer_type, 1, Task) =:= {indexer_type, main}
+                is_view_task(Task) orelse is_bucket_compaction_task(Task)
         end , couch_task_status:all()),
 
     MaybeMeminfo =
@@ -243,3 +238,16 @@ do_grab_fresh_failover_safeness_infos(BucketsAll, Timeout) ->
         end,
 
     dict:from_list(NodeResp).
+
+is_view_task(Task) ->
+    lists:keyfind(set, 1, Task) =/= false andalso
+        begin
+            {type, Type} = lists:keyfind(type, 1, Task),
+            Type =:= indexer orelse
+                Type =:= view_compaction
+        end andalso
+        lists:keyfind(indexer_type, 1, Task) =:= {indexer_type, main}.
+
+is_bucket_compaction_task(Task) ->
+    {type, Type} = lists:keyfind(type, 1, Task),
+    Type =:= bucket_compaction.
