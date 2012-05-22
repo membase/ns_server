@@ -417,7 +417,7 @@ perform_vbucket_filter_change(Bucket,
                               OldChildId, NewChildId,
                               InitialArgs,
                               Server) ->
-    RegistryId = {Bucket, NewChildId},
+    RegistryId = {Bucket, NewChildId, erlang:make_ref()},
     Args = ebucketmigrator_srv:add_args_option(InitialArgs,
                                                passed_downstream_retriever,
                                                mk_downstream_retriever(RegistryId)),
@@ -432,8 +432,9 @@ perform_vbucket_filter_change(Bucket,
             misc:executing_on_new_process(
               fun () ->
                       ns_process_registry:register_pid(vbucket_filter_changes_registry, RegistryId, self()),
-                      ?log_debug("Registered myself under id:~p", [Args]),
+                      ?log_debug("Registered myself under id:~p~nArgs:~p", [RegistryId, Args]),
                       {ok, NewDownstream} = ebucketmigrator_srv:start_vbucket_filter_change(ThePid),
+                      ?log_debug("Got new downstream: ~p from previous ebucketmigrator: ~p", [NewDownstream, ThePid]),
                       erlang:process_flag(trap_exit, true),
                       ok = supervisor:terminate_child(Server, OldChildId),
                       ok = supervisor:delete_child(Server, OldChildId),
@@ -453,6 +454,7 @@ perform_vbucket_filter_change(Bucket,
                                          {'$gen_call', {Pid, _} = From, get_downstream} ->
                                              case SentAlready of
                                                  false ->
+                                                     ?log_debug("Sent new downstream to new instance"),
                                                      gen_tcp:controlling_process(NewDownstream, Pid),
                                                      gen_server:reply(From, {ok, NewDownstream});
                                                  true ->
@@ -480,16 +482,18 @@ set_node_replicas(Policy, Bucket, Node, Replicators) ->
                       {ok, ActualVBuckets} ->   % bound above
                           dict:erase(Nodes, D);
                       {ok, NewVBuckets} ->
+                          true = (NewVBuckets =/= []),
                           case Policy:change_vbucket_filter(Bucket, SrcNode, DstNode, Child, NewVBuckets) of
                               not_supported ->
                                   system_stats_collector:increment_counter(old_style_vbucket_filter_changes, 1),
                                   %% NOTE: we do not erase node from pending list of changes
-                                  ?log_info("~nkill_child(~p, ~p, ~p, ~p, ~p)",
+                                  ?log_info("~nkill_child(~p, ~p, ~p, ~p, ~p) (due to not_supported)",
                                             [Policy, Bucket, SrcNode, DstNode, Child]),
                                   kill_child(Policy, Bucket, SrcNode, DstNode, Child),
                                   D;
-                              _ ->
-                                  dict:erase(DstNode, D)
+                              {ok, _Pid} ->
+                                  ?log_info("change_vbucket_filter ~p from ~p to ~p succeeded", [Nodes, ActualVBuckets, NewVBuckets]),
+                                  dict:erase(Nodes, D)
                           end;
                       _ ->
                           ?log_info("~nkill_child(~p, ~p, ~p, ~p, ~p)",

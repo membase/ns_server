@@ -67,12 +67,15 @@ local_change_vbucket_filter(Bucket, DstNode, #new_child_id{src_node=SrcNode} = C
                                vbuckets = NewVBuckets},
     Args = ebucketmigrator_srv:build_args(Bucket,
                                           SrcNode, DstNode, NewVBuckets, false),
-    cb_gen_vbm_sup:perform_vbucket_filter_change(Bucket,
-                                                 ChildId,
-                                                 NewChildId,
-                                                 Args,
-                                                 server_name(Bucket)).
+    {ok, cb_gen_vbm_sup:perform_vbucket_filter_change(Bucket,
+                                                      ChildId,
+                                                      NewChildId,
+                                                      Args,
+                                                      server_name(Bucket))}.
 
+-spec change_vbucket_filter(bucket_name(), node(), node(), #new_child_id{}, [vbucket_id(),...]) ->
+                                   {ok, pid()}.
 change_vbucket_filter(Bucket, _SrcNode, DstNode, Child, NewVBuckets) ->
-    rpc:call(DstNode, ns_vbm_new_sup, local_change_vbucket_filter,
-             [Bucket, DstNode, Child, NewVBuckets]).
+    {ok, _} = RV = rpc:call(DstNode, ns_vbm_new_sup, local_change_vbucket_filter,
+                            [Bucket, DstNode, Child, NewVBuckets]),
+    RV.

@@ -63,15 +63,17 @@ replicator_nodes(SupervisorNode, #child_id{dest_node=Node}) ->
 replicator_vbuckets(#child_id{vbuckets=VBuckets}) ->
     VBuckets.
 
+-spec change_vbucket_filter(bucket_name(), node(), node(), #child_id{}, [vbucket_id(), ...]) ->
+                                   {ok, pid()} | not_supported.
 change_vbucket_filter(Bucket, SrcNode, _DstNode, ChildId, NewVBuckets) ->
     HaveChangeFilterKey = rpc:async_call(SrcNode, ns_vbm_sup, have_local_change_vbucket_filter, []),
     ChangeFilterRV = rpc:call(SrcNode, ns_vbm_sup, local_change_vbucket_filter,
                               [Bucket, SrcNode, ChildId, NewVBuckets]),
     HaveChangeFilterRV = rpc:yield(HaveChangeFilterKey),
     case ChangeFilterRV of
-         {ok, Ref} ->
+         {ok, Pid} ->
             true = HaveChangeFilterRV,
-            Ref;
+            {ok, Pid};
         {badrpc, Error} ->
             case HaveChangeFilterRV of
                 true ->
