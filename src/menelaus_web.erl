@@ -1945,7 +1945,7 @@ diag_vbucket_accumulate_vbucket_stats(K, V, Dict) ->
     end.
 
 diag_vbucket_per_node(BucketName, Node) ->
-    {ok, RV1} = ns_memcached:raw_stats(Node, BucketName, <<"hash">>, fun diag_vbucket_accumulate_vbucket_stats/3, dict:new()),
+    {ok, RV1} = ns_memcached:raw_stats(Node, BucketName, <<"vbucket-details">>, fun diag_vbucket_accumulate_vbucket_stats/3, dict:new()),
     {ok, RV2} = ns_memcached:raw_stats(Node, BucketName, <<"checkpoint">>, fun diag_vbucket_accumulate_vbucket_stats/3, RV1),
     RV2.
 
