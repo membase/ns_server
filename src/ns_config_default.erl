@@ -407,30 +407,27 @@ upgrade_config_from_1_8_0_to_1_8_1(Config) ->
 
 do_upgrade_config_from_1_8_0_to_1_8_1(Config, DefaultConfig) ->
     maybe_add_vbucket_map_history(Config) ++
-        add_dedicated_memcached_port(Config, DefaultConfig).
+        update_binaries_cfg_pathes_and_add_dedicated_port(Config, DefaultConfig).
 
-add_dedicated_memcached_port(Config, DefaultConfig) ->
+update_binaries_cfg_pathes_and_add_dedicated_port(Config, DefaultConfig) ->
+    FullReplacements =
+        [{set, FullK, V} || {{node, N, K} = FullK, V} <- DefaultConfig,
+                        N =:= node(),
+                        lists:member(K, [port_servers, isasl, ns_log])],
     McdKey = {node, node(), memcached},
-    PSKey  = {node, node(), port_servers},
-
-    {McdKey, DefaultMemcachedConfig} = lists:keyfind(McdKey, 1, DefaultConfig),
-    {PSKey, DefaultPortServerConfig} = lists:keyfind(PSKey, 1, DefaultConfig),
-
-    {value, MemcachedConfig} = ns_config:search_node(Config, memcached),
-
-    case proplists:get_value(dedicated_port, MemcachedConfig) of
-        undefined ->
-            DefaultDedicatedPort = proplists:get_value(dedicated_port,
-                                                       DefaultMemcachedConfig),
-            true = (DefaultDedicatedPort =/= undefined),
-
-            MemcachedConfig1 =
-                [{dedicated_port, DefaultDedicatedPort} | MemcachedConfig],
-            [{set, McdKey, MemcachedConfig1},
-             {set, PSKey, DefaultPortServerConfig}];
-        _ ->
-            []
-    end.
+    {value, McdConfig} = ns_config:search_node(Config, memcached),
+    StrippedMcdConfig = [Pair || {K, _} = Pair <- McdConfig,
+                                 not lists:member(K, [bucket_engine, engines])],
+    DedicatedPort = ns_config:search_node_prop(node(), [DefaultConfig], memcached, dedicated_port),
+    true = (DedicatedPort =/= undefined),
+    {_, DefaultMcdConfig} = lists:keyfind(McdKey, 1, DefaultConfig),
+    {_,_} = BucketEnginePair = lists:keyfind(bucket_engine, 1, DefaultMcdConfig),
+    {_,_} = EnginesPair = lists:keyfind(engines, 1, DefaultMcdConfig),
+    [{set, McdKey, [{dedicated_port, DedicatedPort},
+                    BucketEnginePair,
+                    EnginesPair
+                    | StrippedMcdConfig]}
+     | FullReplacements].
 
 upgrade_1_6_to_1_7_test() ->
     DefaultCfg = [{directory, default_directory},
@@ -655,19 +652,30 @@ add_vbucket_map_history_test() ->
 
     ok.
 
-add_dedicated_memcached_port_test() ->
+update_binaries_cfg_pathes_and_add_dedicated_port_test() ->
     DefaultCfg = [{{node, node(), port_servers}, default_port_servers},
+                  {{node, node(), isasl}, default_isasl},
+                  {{node, node(), ns_log}, ns_log_default},
+                  {something_else, else_something},
                   {{node, node(), memcached},
-                   [{dedicated_port, 1234}]}],
-    OldCfg1 = [[{memcached, []}]],
-    ?assertEqual(lists:sort(add_dedicated_memcached_port(OldCfg1, DefaultCfg)),
-                 lists:sort(
+                   [{dedicated_port, 1234},
+                    {port, 1235},
+                    {other_crap, crap},
+                    {bucket_engine, new_bucketen_cfg},
+                    {engines, new_engines_cfg}]}],
+    OldCfg1 = [[{memcached, [{bucket_engine, old_bucketen_cfg},
+                             {some_field, field_some},
+                             {engines, old_engines_cfg}]}]],
+    RV = lists:sort(update_binaries_cfg_pathes_and_add_dedicated_port(OldCfg1, DefaultCfg)),
+    ?assertEqual(lists:sort(
                    [{set, {node, node(), port_servers}, default_port_servers},
-                    {set, {node, node(), memcached}, [{dedicated_port, 1234}]}])),
-
-    OldCfg2 = [[{memcached, [{dedicated_port, 4321}]}]],
-    ?assertEqual(add_dedicated_memcached_port(OldCfg2, DefaultCfg), []),
-
+                    {set, {node, node(), isasl}, default_isasl},
+                    {set, {node, node(), ns_log}, ns_log_default},
+                    {set, {node, node(), memcached}, [{dedicated_port, 1234},
+                                                      {bucket_engine, new_bucketen_cfg},
+                                                      {engines, new_engines_cfg},
+                                                      {some_field, field_some}]}]),
+                 RV),
     ok.
 
 no_upgrade_on_1_8_1_test() ->

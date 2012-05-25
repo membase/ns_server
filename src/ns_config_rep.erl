@@ -72,16 +72,23 @@ init([]) ->
     {ok, #state{merger = MergerPid}}.
 
 merger_loop() ->
+    EnterTime = os:timestamp(),
     receive
         {merge_compressed, Blob} ->
+            WakeTime = os:timestamp(),
             KVList = binary_to_term(zlib:uncompress(Blob)),
+            system_stats_collector:increment_counter(total_config_merger_sleep_time, timer:now_diff(WakeTime, EnterTime)),
             do_merge(KVList),
-            case erlang:process_info(self(), message_queue_len) of
-                {message_queue_len, Y} when Y > ?MERGING_EMERGENCY_THRESHOLD ->
+            system_stats_collector:increment_counter(total_config_merger_run_time, timer:now_diff(os:timestamp(), WakeTime)),
+            system_stats_collector:increment_counter(total_config_merger_runs, 1),
+            {message_queue_len, QL} = erlang:process_info(self(), message_queue_len),
+            system_stats_collector:set_counter(config_merger_queue_len, QL),
+            case QL > ?MERGING_EMERGENCY_THRESHOLD of
+                true ->
                     ?log_warning("Queue size emergency state reached. "
                                  "Will kill myself and resync"),
                     exit(emergency_kill);
-                {message_queue_len, _} -> ok
+                false -> ok
             end;
         {sync, Pid, Ref} ->
             Pid ! {sync_done, Ref}

@@ -119,8 +119,19 @@ handle_call(Msg, From, State) ->
     after
         EndTS = os:timestamp(),
         Diff = timer:now_diff(EndTS, StartTS),
+        ServiceName = "ns_memcached-" ++ State#state.bucket,
+        (catch
+             begin
+                 system_stats_collector:increment_counter({ServiceName, call_time}, Diff),
+                 system_stats_collector:increment_counter({ServiceName, calls}, 1)
+             end),
         if
             Diff > ?SLOW_CALL_THRESHOLD_MICROS ->
+                (catch
+                     begin
+                         system_stats_collector:increment_counter({ServiceName, long_call_time}, Diff),
+                         system_stats_collector:increment_counter({ServiceName, long_calls}, 1)
+                     end),
                 ?log_error("call ~p took too long: ~p us", [Msg, Diff]);
             true ->
                 ok
@@ -341,7 +352,7 @@ active_buckets() ->
 connected(Node, Bucket, Timeout) ->
     Address = {server(Bucket), Node},
     try
-        gen_server:call(Address, connected, Timeout)
+        do_call(Address, connected, Timeout)
     catch
         _:_ ->
             false
@@ -377,7 +388,7 @@ connected_buckets(Timeout) ->
 %% @doc Send flush command to specified bucket
 -spec flush(bucket_name()) -> ok.
 flush(Bucket) ->
-    gen_server:call({server(Bucket), node()}, flush, ?TIMEOUT).
+    do_call({server(Bucket), node()}, flush, ?TIMEOUT).
 
 %% @doc Returns true if backfill is running on this node for the given bucket.
 -spec backfilling(bucket_name()) ->
@@ -390,27 +401,27 @@ backfilling(Bucket) ->
 -spec backfilling(node(), bucket_name()) ->
                          boolean().
 backfilling(Node, Bucket) ->
-    gen_server:call({server(Bucket), Node}, backfilling, ?TIMEOUT).
+    do_call({server(Bucket), Node}, backfilling, ?TIMEOUT).
 
 %% @doc Delete a vbucket. Will set the vbucket to dead state if it
 %% isn't already, blocking until it successfully does so.
 -spec delete_vbucket(bucket_name(), vbucket_id()) ->
                             ok | mc_error().
 delete_vbucket(Bucket, VBucket) ->
-    gen_server:call(server(Bucket), {delete_vbucket, VBucket}, ?TIMEOUT).
+    do_call(server(Bucket), {delete_vbucket, VBucket}, ?TIMEOUT).
 
 
 -spec delete_vbucket(node(), bucket_name(), vbucket_id()) ->
                             ok | mc_error().
 delete_vbucket(Node, Bucket, VBucket) ->
-    gen_server:call({server(Bucket), Node}, {delete_vbucket, VBucket},
+    do_call({server(Bucket), Node}, {delete_vbucket, VBucket},
                     ?TIMEOUT).
 
 
 -spec get_vbucket(node(), bucket_name(), vbucket_id()) ->
                          {ok, vbucket_state()} | mc_error().
 get_vbucket(Node, Bucket, VBucket) ->
-    gen_server:call({server(Bucket), Node}, {get_vbucket, VBucket}, ?TIMEOUT).
+    do_call({server(Bucket), Node}, {get_vbucket, VBucket}, ?TIMEOUT).
 
 
 -spec host_port(node(), any()) ->
@@ -443,12 +454,12 @@ list_vbuckets(Bucket) ->
 -spec list_vbuckets(node(), bucket_name()) ->
     {ok, [{vbucket_id(), vbucket_state()}]} | mc_error().
 list_vbuckets(Node, Bucket) ->
-    gen_server:call({server(Bucket), Node}, list_vbuckets, ?TIMEOUT).
+    do_call({server(Bucket), Node}, list_vbuckets, ?TIMEOUT).
 
 -spec list_vbuckets_prevstate(node(), bucket_name()) ->
     {ok, [{vbucket_id(), vbucket_state()}]} | mc_error().
 list_vbuckets_prevstate(Node, Bucket) ->
-    gen_server:call({server(Bucket), Node}, list_vbuckets_prevstate, ?TIMEOUT).
+    do_call({server(Bucket), Node}, list_vbuckets_prevstate, ?TIMEOUT).
 
 
 -spec list_vbuckets_multi([node()], bucket_name()) ->
@@ -470,13 +481,13 @@ list_vbuckets_multi(Nodes, Bucket) ->
 -spec set_vbucket(bucket_name(), vbucket_id(), vbucket_state()) ->
                          ok | mc_error().
 set_vbucket(Bucket, VBucket, VBState) ->
-    gen_server:call(server(Bucket), {set_vbucket, VBucket, VBState}, ?TIMEOUT).
+    do_call(server(Bucket), {set_vbucket, VBucket, VBState}, ?TIMEOUT).
 
 
 -spec set_vbucket(node(), bucket_name(), vbucket_id(), vbucket_state()) ->
                          ok | mc_error().
 set_vbucket(Node, Bucket, VBucket, VBState) ->
-    gen_server:call({server(Bucket), Node}, {set_vbucket, VBucket, VBState},
+    do_call({server(Bucket), Node}, {set_vbucket, VBucket, VBState},
                     ?TIMEOUT).
 
 
@@ -489,33 +500,33 @@ stats(Bucket) ->
 -spec stats(bucket_name(), binary() | string()) ->
                    {ok, [{binary(), binary()}]} | mc_error().
 stats(Bucket, Key) ->
-    gen_server:call(server(Bucket), {stats, Key}, ?TIMEOUT).
+    do_call(server(Bucket), {stats, Key}, ?TIMEOUT).
 
 
 -spec stats(node(), bucket_name(), binary()) ->
                    {ok, [{binary(), binary()}]} | mc_error().
 stats(Node, Bucket, Key) ->
-    gen_server:call({server(Bucket), Node}, {stats, Key}, ?TIMEOUT).
+    do_call({server(Bucket), Node}, {stats, Key}, ?TIMEOUT).
 
 sync_bucket_config(Bucket) ->
-    gen_server:call(server(Bucket), sync_bucket_config, ?TIMEOUT).
+    do_call(server(Bucket), sync_bucket_config, ?TIMEOUT).
 
 -spec deregister_tap_client(Bucket::bucket_name(),
                             TapName::binary()) -> ok.
 deregister_tap_client(Bucket, TapName) ->
-    gen_server:call(server(Bucket), {deregister_tap_client, TapName}).
+    do_call(server(Bucket), {deregister_tap_client, TapName}).
 
 
 -spec topkeys(bucket_name()) ->
                      {ok, [{nonempty_string(), [{atom(), integer()}]}]} |
                      mc_error().
 topkeys(Bucket) ->
-    gen_server:call(server(Bucket), topkeys, ?TIMEOUT).
+    do_call(server(Bucket), topkeys, ?TIMEOUT).
 
 
 -spec raw_stats(node(), bucket_name(), binary(), fun(), any()) -> {ok, any()} | {exception, any()} | {error, any()}.
 raw_stats(Node, Bucket, SubStats, Fn, FnState) ->
-    gen_server:call({ns_memcached:server(Bucket), Node},
+    do_call({ns_memcached:server(Bucket), Node},
                     {raw_stats, SubStats, Fn, FnState}).
 
 
@@ -676,3 +687,27 @@ has_started(Sock) ->
             true = is_binary(V),
             false
     end.
+
+do_call(Server, Msg, Timeout) ->
+    StartTS = os:timestamp(),
+    try
+        gen_server:call(Server, Msg, Timeout)
+    after
+        try
+            EndTS = os:timestamp(),
+            Diff = timer:now_diff(EndTS, StartTS),
+            Service = case Server of
+                          _ when is_atom(Server) ->
+                              atom_to_list(Server);
+                          _ ->
+                              "unknown"
+                      end,
+            system_stats_collector:increment_counter({Service, e2e_call_time}, Diff),
+            system_stats_collector:increment_counter({Service, e2e_calls}, 1)
+        catch T:E ->
+                ?log_debug("failed to measure ns_memcached call:~n~p", [{T,E,erlang:get_stacktrace()}])
+        end
+    end.
+
+do_call(Server, Msg) ->
+    do_call(Server, Msg, 5000).
