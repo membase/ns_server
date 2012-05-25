@@ -4,7 +4,8 @@ import os
 import sys
 import tempfile
 import time
-
+import subprocess
+import string
 
 class TempFile(object):
     unlink = os.unlink
@@ -150,6 +151,58 @@ def basedir():
         mydir = "."
     return mydir
 
+def dbdir():
+    def_dbdir = "/opt/couchbase/var/lib/couchbase/data"
+    if os.name != 'posix':
+        return def_dbdir
+
+    tmpfile = "dbdir.txt"
+    node_cfg = subprocess.Popen([basedir() + "/cbupgrade",
+                                 "-c",
+                                 "/opt/couchbase/var/lib/couchbase/config",
+                                 "-d",
+                                 tmpfile,
+                                ],
+                                stdout=subprocess.PIPE).communicate()[0]
+
+    node_cfg = string.strip(node_cfg)
+    if len(node_cfg) <= 0:
+        return def_dbdir
+
+    file = open(tmpfile)
+    if file:
+        def_dbdir = file.read().rstrip('\n')
+        file.close()
+        os.remove(tmpfile)
+
+    return def_dbdir
+
+def dbdir_nt():
+    def_dbdir = basedir() + "\\..\\var\\lib\\couchbase\\data"
+    if os.name != 'nt':
+        return def_dbdir
+
+    tmpfile = "dbdir.txt"
+    node_cfg = subprocess.Popen([basedir() + "/cbupgrade.exe",
+                                 "-c",
+                                 basedir() + "\\..\\var\\lib\\couchbase\\config",
+                                 "-d",
+                                 tmpfile,
+                                ],
+                                stdout=subprocess.PIPE).communicate()[0]
+
+    node_cfg = string.strip(node_cfg)
+    if len(node_cfg) <= 0:
+        return def_dbdir
+
+    file = open(tmpfile)
+    if file:
+        def_dbdir = file.read().rstrip('\n')
+        file.close()
+        os.remove(tmpfile)
+
+    return "\"" + def_dbdir.replace("/", "\\") + "\""
+
 _tasks = [
     UnixTask("uname", "uname -a"),
     WindowsTask("System information", "systeminfo"),
@@ -157,6 +210,10 @@ _tasks = [
     WindowsTask("Computer OS", "wmic os", reformat=True),
     UnixTask("Directory structure",
          "ls -lR /opt/couchbase /opt/membase /var/membase /etc/opt/membase"),
+    UnixTask("Database directory structure",
+         "ls -lR " + dbdir()),
+    WindowsTask("Database directory structure",
+         "dir /s " + dbdir_nt()),
     SolarisTask("Process list snapshot", "prstat -a -c -n 100 -t -v -L 1 10"),
     SolarisTask("Process list", "ps -ef"),
     SolarisTask("Service configuration", "svcs -a"),
