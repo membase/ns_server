@@ -32,7 +32,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--export([increment_counter/2, get_ns_server_stats/0]).
+-export([increment_counter/2, get_ns_server_stats/0, set_counter/2]).
 
 -record(state, {port, prev_sample}).
 
@@ -41,7 +41,7 @@ start_link() ->
 
 
 init([]) ->
-    ets:new(ns_server_system_stats, [public, named_table]),
+    ets:new(ns_server_system_stats, [public, named_table, set]),
     Path = path_config:component_path(bin, "sigar_port"),
     Port =
         try open_port({spawn_executable, Path},
@@ -143,6 +143,8 @@ handle_info({tick, TS}, #state{port = Port, prev_sample = PrevSample}) ->
                              {stats, "@system", #stat_entry{timestamp = TS,
                                                             values = Stats}})
     end,
+    update_merger_rates(),
+    sample_ns_memcached_queues(),
     {noreply, #state{port = Port, prev_sample = NewPrevSample}};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -157,5 +159,112 @@ increment_counter(Name, By) ->
     ets:insert_new(ns_server_system_stats, {Name, 0}),
     ets:update_counter(ns_server_system_stats, Name, By).
 
+set_counter(Name, Value) ->
+    case ets:insert_new(ns_server_system_stats, {Name, Value}) of
+        false ->
+            ets:update_element(ns_server_system_stats, Name, {2, Value});
+        true ->
+            ok
+    end.
+
 get_ns_server_stats() ->
     ets:tab2list(ns_server_system_stats).
+
+%% those constants are used to average config merger rates
+%% exponentially. See
+%% http://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
+-define(TEN_SEC_ALPHA, 0.0951625819640405).
+-define(MIN_ALPHA, 0.0165285461783825).
+-define(FIVE_MIN_ALPHA, 0.0799555853706767).
+
+combine_avg_key(Key, Prefix) ->
+    case is_tuple(Key) of
+        true ->
+            list_to_tuple([Prefix | tuple_to_list(Key)]);
+        false ->
+            {Prefix, Key}
+    end.
+
+update_avgs(Key, Value) ->
+    [update_avg(combine_avg_key(Key, Prefix), Value, Alpha)
+     || {Prefix, Alpha} <- [{avg_10s, ?TEN_SEC_ALPHA},
+                            {avg_1m, ?MIN_ALPHA},
+                            {avg_5m, ?FIVE_MIN_ALPHA}]],
+    ok.
+
+update_avg(Key, Value, Alpha) ->
+    OldValue = case ets:lookup(ns_server_system_stats, Key) of
+                   [] ->
+                       0;
+                   [{_, V}] ->
+                       V
+               end,
+    NewValue = OldValue + (Value - OldValue) * Alpha,
+    set_counter(Key, NewValue).
+
+read_counter(Key) ->
+    ets:insert_new(ns_server_system_stats, {Key, 0}),
+    [{_, V}] = ets:lookup(ns_server_system_stats, Key),
+    V.
+
+read_and_dec_counter(Key) ->
+    V = read_counter(Key),
+    increment_counter(Key, -V),
+    V.
+
+update_merger_rates() ->
+    SleepTime = read_and_dec_counter(total_config_merger_sleep_time),
+    update_avgs(config_merger_sleep_time, SleepTime),
+
+    RunTime = read_and_dec_counter(total_config_merger_run_time),
+    update_avgs(config_merger_run_time, RunTime),
+
+    Runs = read_and_dec_counter(total_config_merger_runs),
+    update_avgs(config_merger_runs_rate, Runs),
+
+    QL = read_counter(config_merger_queue_len),
+    update_avgs(config_merger_queue_len, QL).
+
+just_avg_counter(RawKey, AvgKey) ->
+    V = read_and_dec_counter(RawKey),
+    update_avgs(AvgKey, V).
+
+just_avg_counter(RawKey) ->
+    just_avg_counter(RawKey, RawKey).
+
+sample_ns_memcached_queues() ->
+    KnownsServices = case ets:lookup(ns_server_system_stats, tracked_ns_memcacheds) of
+                         [] -> [];
+                         [{_, V}] -> V
+                     end,
+    ActualServices = [ServiceName || ("ns_memcached-" ++ _) = ServiceName <-
+                                         [atom_to_list(Name) || Name <- registered()]],
+    ets:insert(ns_server_system_stats, {tracked_ns_memcacheds, ActualServices}),
+    [begin
+         [ets:delete(ns_server_system_stats, {Prefix, S, Stat})
+          || Prefix <- [avg_10s, avg_1m, avg_5m]],
+         ets:delete(ns_server_system_stats, {S, Stat})
+     end
+     || S <- KnownsServices -- ActualServices,
+        Stat <- [qlen, call_time, calls, calls_rate,
+                 long_call_time, long_calls, long_calls_rate,
+                 e2e_call_time, e2e_calls, e2e_calls_rate]],
+    [begin
+         case (catch erlang:process_info(whereis(list_to_atom(S)), message_queue_len)) of
+             {message_queue_len, QL} ->
+                 QLenKey = {S, qlen},
+                 update_avgs(QLenKey, QL),
+                 set_counter(QLenKey, QL);
+             _ -> ok
+         end,
+
+         just_avg_counter({S, call_time}),
+         just_avg_counter({S, calls}, {S, calls_rate}),
+
+         just_avg_counter({S, long_call_time}),
+         just_avg_counter({S, long_calls}, {S, long_calls_rate}),
+
+         just_avg_counter({S, e2e_call_time}),
+         just_avg_counter({S, e2e_calls}, {S, e2e_calls_rate})
+     end || S <- ["unknown" | ActualServices]],
+    ok.
