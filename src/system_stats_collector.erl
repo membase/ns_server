@@ -32,7 +32,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--export([increment_counter/2, get_ns_server_stats/0]).
+-export([increment_counter/2, get_ns_server_stats/0, set_counter/2]).
 
 -record(state, {port, prev_sample}).
 
@@ -143,6 +143,7 @@ handle_info({tick, TS}, #state{port = Port, prev_sample = PrevSample}) ->
                              {stats, "@system", #stat_entry{timestamp = TS,
                                                             values = Stats}})
     end,
+    update_merger_rates(),
     {noreply, #state{port = Port, prev_sample = NewPrevSample}};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -157,5 +158,55 @@ increment_counter(Name, By) ->
     ets:insert_new(ns_server_system_stats, {Name, 0}),
     ets:update_counter(ns_server_system_stats, Name, By).
 
+set_counter(Name, Value) ->
+    case ets:insert_new(ns_server_system_stats, {Name, Value}) of
+        false ->
+            ets:update_element(ns_server_system_stats, Name, {2, Value});
+        true ->
+            ok
+    end.
+
 get_ns_server_stats() ->
     ets:tab2list(ns_server_system_stats).
+
+%% those constants are used to average config merger rates
+%% exponentially. See
+%% http://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
+-define(TEN_SEC_ALPHA, 0.0951625819640405).
+-define(MIN_ALPHA, 0.0165285461783825).
+-define(FIVE_MIN_ALPHA, 0.0799555853706767).
+
+update_avg(Key, Value, Alpha) ->
+    OldValue = case ets:lookup(ns_server_system_stats, Key) of
+                   [] ->
+                       0;
+                   [{_, V}] ->
+                       V
+               end,
+    NewValue = OldValue + (Value - OldValue) * Alpha,
+    set_counter(Key, NewValue).
+
+update_merger_rates() ->
+    ets:insert_new(ns_server_system_stats, {total_config_merger_sleep_time, 0}),
+    ets:insert_new(ns_server_system_stats, {total_config_merger_run_time, 0}),
+    ets:insert_new(ns_server_system_stats, {total_config_merger_runs, 0}),
+    ets:insert_new(ns_server_system_stats, {config_merger_queue_len, 0}),
+    [{_, SleepTime}] = ets:lookup(ns_server_system_stats, total_config_merger_sleep_time),
+    increment_counter(total_config_merger_sleep_time, -SleepTime),
+    [{_, RunTime}] = ets:lookup(ns_server_system_stats, total_config_merger_run_time),
+    increment_counter(total_config_merger_run_time, -RunTime),
+    [{_, Runs}] = ets:lookup(ns_server_system_stats, total_config_merger_runs),
+    increment_counter(total_config_merger_runs, -Runs),
+    update_avg(avg_10s_config_merger_sleep_time, SleepTime, ?TEN_SEC_ALPHA),
+    update_avg(avg_1m_config_merger_sleep_time, SleepTime, ?MIN_ALPHA),
+    update_avg(avg_5m_config_merger_sleep_time, SleepTime, ?FIVE_MIN_ALPHA),
+    update_avg(avg_10s_config_merger_run_time, RunTime, ?TEN_SEC_ALPHA),
+    update_avg(avg_1m_config_merger_run_time, RunTime, ?MIN_ALPHA),
+    update_avg(avg_5m_config_merger_run_time, RunTime, ?FIVE_MIN_ALPHA),
+    update_avg(avg_10s_config_merger_runs_rate, Runs, ?TEN_SEC_ALPHA),
+    update_avg(avg_1m_config_merger_runs_rate, Runs, ?MIN_ALPHA),
+    update_avg(avg_5m_config_merger_runs_rate, Runs, ?FIVE_MIN_ALPHA),
+    [{_, QL}] = ets:lookup(ns_server_system_stats, config_merger_queue_len),
+    update_avg(avg_10s_config_merger_queue_len, QL, ?TEN_SEC_ALPHA),
+    update_avg(avg_1m_config_merger_queue_len, QL, ?MIN_ALPHA),
+    update_avg(avg_5m_config_merger_queue_len, QL, ?FIVE_MIN_ALPHA).
