@@ -119,8 +119,13 @@ handle_call(Msg, From, State) ->
     after
         EndTS = os:timestamp(),
         Diff = timer:now_diff(EndTS, StartTS),
+        ServiceName = "ns_memcached-" ++ State#state.bucket,
+        system_stats_collector:increment_counter({ServiceName, call_time}, Diff),
+        system_stats_collector:increment_counter({ServiceName, calls}, 1),
         if
             Diff > ?SLOW_CALL_THRESHOLD_MICROS ->
+                system_stats_collector:increment_counter({ServiceName, long_call_time}, Diff),
+                system_stats_collector:increment_counter({ServiceName, long_calls}, 1),
                 ?log_error("call ~p took too long: ~p us", [Msg, Diff]);
             true ->
                 ok

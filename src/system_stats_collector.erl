@@ -41,7 +41,7 @@ start_link() ->
 
 
 init([]) ->
-    ets:new(ns_server_system_stats, [public, named_table]),
+    ets:new(ns_server_system_stats, [public, named_table, set]),
     Path = path_config:component_path(bin, "sigar_port"),
     Port =
         try open_port({spawn_executable, Path},
@@ -144,6 +144,7 @@ handle_info({tick, TS}, #state{port = Port, prev_sample = PrevSample}) ->
                                                             values = Stats}})
     end,
     update_merger_rates(),
+    sample_ns_memcached_queues(),
     {noreply, #state{port = Port, prev_sample = NewPrevSample}};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -176,6 +177,21 @@ get_ns_server_stats() ->
 -define(MIN_ALPHA, 0.0165285461783825).
 -define(FIVE_MIN_ALPHA, 0.0799555853706767).
 
+combine_avg_key(Key, Prefix) ->
+    case is_tuple(Key) of
+        true ->
+            list_to_tuple([Prefix | tuple_to_list(Key)]);
+        false ->
+            {Prefix, Key}
+    end.
+
+update_avgs(Key, Value) ->
+    [update_avg(combine_avg_key(Key, Prefix), Value, Alpha)
+     || {Prefix, Alpha} <- [{avg_10s, ?TEN_SEC_ALPHA},
+                            {avg_1m, ?MIN_ALPHA},
+                            {avg_5m, ?FIVE_MIN_ALPHA}]],
+    ok.
+
 update_avg(Key, Value, Alpha) ->
     OldValue = case ets:lookup(ns_server_system_stats, Key) of
                    [] ->
@@ -186,27 +202,65 @@ update_avg(Key, Value, Alpha) ->
     NewValue = OldValue + (Value - OldValue) * Alpha,
     set_counter(Key, NewValue).
 
+read_counter(Key) ->
+    ets:insert_new(ns_server_system_stats, {Key, 0}),
+    [{_, V}] = ets:lookup(ns_server_system_stats, Key),
+    V.
+
+read_and_dec_counter(Key) ->
+    V = read_counter(Key),
+    increment_counter(Key, -V),
+    V.
+
 update_merger_rates() ->
-    ets:insert_new(ns_server_system_stats, {total_config_merger_sleep_time, 0}),
-    ets:insert_new(ns_server_system_stats, {total_config_merger_run_time, 0}),
-    ets:insert_new(ns_server_system_stats, {total_config_merger_runs, 0}),
-    ets:insert_new(ns_server_system_stats, {config_merger_queue_len, 0}),
-    [{_, SleepTime}] = ets:lookup(ns_server_system_stats, total_config_merger_sleep_time),
-    increment_counter(total_config_merger_sleep_time, -SleepTime),
-    [{_, RunTime}] = ets:lookup(ns_server_system_stats, total_config_merger_run_time),
-    increment_counter(total_config_merger_run_time, -RunTime),
-    [{_, Runs}] = ets:lookup(ns_server_system_stats, total_config_merger_runs),
-    increment_counter(total_config_merger_runs, -Runs),
-    update_avg(avg_10s_config_merger_sleep_time, SleepTime, ?TEN_SEC_ALPHA),
-    update_avg(avg_1m_config_merger_sleep_time, SleepTime, ?MIN_ALPHA),
-    update_avg(avg_5m_config_merger_sleep_time, SleepTime, ?FIVE_MIN_ALPHA),
-    update_avg(avg_10s_config_merger_run_time, RunTime, ?TEN_SEC_ALPHA),
-    update_avg(avg_1m_config_merger_run_time, RunTime, ?MIN_ALPHA),
-    update_avg(avg_5m_config_merger_run_time, RunTime, ?FIVE_MIN_ALPHA),
-    update_avg(avg_10s_config_merger_runs_rate, Runs, ?TEN_SEC_ALPHA),
-    update_avg(avg_1m_config_merger_runs_rate, Runs, ?MIN_ALPHA),
-    update_avg(avg_5m_config_merger_runs_rate, Runs, ?FIVE_MIN_ALPHA),
-    [{_, QL}] = ets:lookup(ns_server_system_stats, config_merger_queue_len),
-    update_avg(avg_10s_config_merger_queue_len, QL, ?TEN_SEC_ALPHA),
-    update_avg(avg_1m_config_merger_queue_len, QL, ?MIN_ALPHA),
-    update_avg(avg_5m_config_merger_queue_len, QL, ?FIVE_MIN_ALPHA).
+    SleepTime = read_and_dec_counter(total_config_merger_sleep_time),
+    update_avgs(config_merger_sleep_time, SleepTime),
+
+    RunTime = read_and_dec_counter(total_config_merger_run_time),
+    update_avgs(config_merger_run_time, RunTime),
+
+    Runs = read_and_dec_counter(total_config_merger_runs),
+    update_avgs(config_merger_runs_rate, Runs),
+
+    QL = read_counter(config_merger_queue_len),
+    update_avgs(config_merger_queue_len, QL).
+
+sample_ns_memcached_queues() ->
+    KnownsServices = case ets:lookup(ns_server_system_stats, tracked_ns_memcacheds) of
+                         [] -> [];
+                         [{_, V}] -> V
+                     end,
+    ActualServices = [ServiceName || ("ns_memcached-" ++ _) = ServiceName <-
+                                         [atom_to_list(Name) || Name <- registered()]],
+    ets:insert(ns_server_system_stats, {tracked_ns_memcacheds, ActualServices}),
+    [begin
+         [ets:delete(ns_server_system_stats, {Prefix, S, Stat})
+          || Prefix <- [avg_10s, avg_1m, avg_5m]],
+         ets:delete(ns_server_system_stats, {S, Stat})
+     end
+     || S <- KnownsServices -- ActualServices,
+        Stat <- [qlen, call_time, calls, calls_rate,
+                long_call_time, long_calls, long_calls_rate]],
+    [begin
+         QLenKey = {S, qlen},
+         update_avgs(QLenKey, QL),
+         set_counter(QLenKey, QL),
+
+         CallTimeKey = {S, call_time},
+         CallTime = read_and_dec_counter(CallTimeKey),
+         update_avgs(CallTimeKey, CallTime),
+
+         CallsKey = {S, calls},
+         Calls = read_and_dec_counter(CallsKey),
+         update_avgs({S, calls_rate}, Calls),
+
+         LongCallTimeKey = {S, long_call_time},
+         LongCallTime = read_and_dec_counter(LongCallTimeKey),
+         update_avgs(LongCallTimeKey, LongCallTime),
+
+         LongCallsKey = {S, long_calls},
+         LongCalls = read_and_dec_counter(LongCallsKey),
+         update_avgs({S, long_calls_rate}, LongCalls)
+     end || S <- ActualServices,
+            {message_queue_len, QL} <- [(catch erlang:process_info(whereis(list_to_atom(S)), message_queue_len))]],
+    ok.
