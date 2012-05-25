@@ -225,6 +225,13 @@ update_merger_rates() ->
     QL = read_counter(config_merger_queue_len),
     update_avgs(config_merger_queue_len, QL).
 
+just_avg_counter(RawKey, AvgKey) ->
+    V = read_and_dec_counter(RawKey),
+    update_avgs(AvgKey, V).
+
+just_avg_counter(RawKey) ->
+    just_avg_counter(RawKey, RawKey).
+
 sample_ns_memcached_queues() ->
     KnownsServices = case ets:lookup(ns_server_system_stats, tracked_ns_memcacheds) of
                          [] -> [];
@@ -240,27 +247,24 @@ sample_ns_memcached_queues() ->
      end
      || S <- KnownsServices -- ActualServices,
         Stat <- [qlen, call_time, calls, calls_rate,
-                long_call_time, long_calls, long_calls_rate]],
+                 long_call_time, long_calls, long_calls_rate,
+                 e2e_call_time, e2e_calls, e2e_calls_rate]],
     [begin
-         QLenKey = {S, qlen},
-         update_avgs(QLenKey, QL),
-         set_counter(QLenKey, QL),
+         case (catch erlang:process_info(whereis(list_to_atom(S)), message_queue_len)) of
+             {message_queue_len, QL} ->
+                 QLenKey = {S, qlen},
+                 update_avgs(QLenKey, QL),
+                 set_counter(QLenKey, QL);
+             _ -> ok
+         end,
 
-         CallTimeKey = {S, call_time},
-         CallTime = read_and_dec_counter(CallTimeKey),
-         update_avgs(CallTimeKey, CallTime),
+         just_avg_counter({S, call_time}),
+         just_avg_counter({S, calls}, {S, calls_rate}),
 
-         CallsKey = {S, calls},
-         Calls = read_and_dec_counter(CallsKey),
-         update_avgs({S, calls_rate}, Calls),
+         just_avg_counter({S, long_call_time}),
+         just_avg_counter({S, long_calls}, {S, long_calls_rate}),
 
-         LongCallTimeKey = {S, long_call_time},
-         LongCallTime = read_and_dec_counter(LongCallTimeKey),
-         update_avgs(LongCallTimeKey, LongCallTime),
-
-         LongCallsKey = {S, long_calls},
-         LongCalls = read_and_dec_counter(LongCallsKey),
-         update_avgs({S, long_calls_rate}, LongCalls)
-     end || S <- ActualServices,
-            {message_queue_len, QL} <- [(catch erlang:process_info(whereis(list_to_atom(S)), message_queue_len))]],
+         just_avg_counter({S, e2e_call_time}),
+         just_avg_counter({S, e2e_calls}, {S, e2e_calls_rate})
+     end || S <- ["unknown" | ActualServices]],
     ok.
