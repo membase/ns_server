@@ -107,8 +107,8 @@ send({OutPid, CmdNum}, Data) when is_pid(OutPid) ->
 send(undefined, _Data)              -> ok;
 send(_Sock, <<>>)                   -> ok;
 send(Sock, List) when is_list(List) -> send(Sock, iolist_to_binary(List));
-send(Sock, Data)                    -> gen_tcp:send(Sock, Data).
+send(Sock, Data)                    -> prim_inet:send(Sock, Data).
 
 %% @doc Receive binary data of specified number of bytes length.
 recv_data(_, 0, _)                 -> {ok, <<>>};
-recv_data(Sock, NumBytes, Timeout) -> gen_tcp:recv(Sock, NumBytes, Timeout).
+recv_data(Sock, NumBytes, Timeout) -> prim_inet:recv(Sock, NumBytes, Timeout).
