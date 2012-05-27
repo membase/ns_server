@@ -23,6 +23,7 @@ usage() ->
         "\t-t           Move buckets from a server to another server (same as -V)~n"
         "\t-b #         Operate on vbucket number #~n"
         "\t-a auth      Try to authenticate as user <auth> (password is then read from stdin)~n"
+        "\t--password password Use given password instead of reading it from stdin~n"
         "\t-d host:port Send all vbuckets to this server~n"
         "\t--bucket-name name send select_bucket on both ends before proceeding~n"
         "\t              (normally not needed with auth)~n"
@@ -63,6 +64,8 @@ parse(["-a", AuthUser | Rest], Acc) ->
     parse(Rest, [{username, AuthUser} | Acc]);
 parse(["--bucket-name", Bucket | Rest], Acc) ->
     parse(Rest, [{bucket, Bucket} | Acc]);
+parse(["--password", Pwd | Rest], Acc) ->
+    parse(Rest, [{password, Pwd} | Acc]);
 parse([Else | Rest], Acc) ->
     io:format("Ignoring ~p flag~n", [Else]),
     parse(Rest, Acc).
@@ -122,10 +125,8 @@ run(Conf) ->
 
     Conf1 = [{suffix, TapSuffix} | Conf],
 
-    Conf2 = case proplists:get_value(username, Conf1) of
-                undefined ->
-                    Conf1;
-                _ ->
+    Conf2 = case {proplists:get_value(username, Conf1), proplists:get_value(password, Conf1)} of
+                {_, undefined} ->
                     io:format("Reading password from stdin~n"),
                     Pwd0 = case file:read_line(standard_io) of
                                eof -> "";
@@ -138,7 +139,12 @@ run(Conf) ->
                               _ ->
                                   Pwd0
                           end,
-                    [{password, Pwd} | Conf1]
+                    [{password, Pwd} | Conf1];
+                {undefined, _} ->
+                    io:format("Given password but not username. I refuse to proceed"),
+                    exit(no_username);
+                {_,_} ->
+                    Conf1
             end,
 
     case {Host, Dest, VBuckets} of
