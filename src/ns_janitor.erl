@@ -52,7 +52,14 @@ do_cleanup(Bucket, Options, Config) ->
 
                 Config6 = lists:keystore(map, 1, Config1, {map, NewMap}),
                 ns_bucket:set_bucket_config(Bucket, Config6),
-                ns_bucket:update_vbucket_map_history(NewMap, ns_bucket:config_to_map_options(Config6)),
+
+                MapOptions = ns_bucket:config_to_map_options(Config6),
+                case ns_rebalancer:unbalanced(NewMap, S) of
+                    false ->
+                        ns_bucket:update_vbucket_map_history(NewMap, MapOptions);
+                    true ->
+                        ok
+                end,
                 {NewMap, S};
             M ->
                 {M, proplists:get_value(servers, Config)}

@@ -160,7 +160,7 @@ handle_call(Msg, From, State) ->
     do_handle_call(Msg, From, State).
 
 do_handle_call({raw_stats, SubStat, StatsFun, StatsFunState}, _From, State) ->
-    try mc_client_binary:stats(State#state.sock, SubStat, StatsFun, StatsFunState) of
+    try mc_binary:quick_stats(State#state.sock, SubStat, StatsFun, StatsFunState) of
         Reply ->
             {reply, Reply, State}
     catch T:E ->
@@ -169,7 +169,7 @@ do_handle_call({raw_stats, SubStat, StatsFun, StatsFunState}, _From, State) ->
 do_handle_call(backfilling, _From, State) ->
     End = <<":pending_backfill">>,
     ES = byte_size(End),
-    {ok, Reply} = mc_client_binary:stats(
+    {ok, Reply} = mc_binary:quick_stats(
                     State#state.sock, <<"tap">>,
                     fun (<<"eq_tapq:", K/binary>>, <<"true">>, Acc) ->
                             S = byte_size(K) - ES,
@@ -200,7 +200,7 @@ do_handle_call(list_buckets, _From, State) ->
     Reply = mc_client_binary:list_buckets(State#state.sock),
     {reply, Reply, State};
 do_handle_call(list_vbuckets_prevstate, _From, State) ->
-    Reply = mc_client_binary:stats(
+    Reply = mc_binary:quick_stats(
               State#state.sock, <<"prev-vbucket">>,
               fun (<<"vb_", K/binary>>, V, Acc) ->
                       [{list_to_integer(binary_to_list(K)),
@@ -208,7 +208,7 @@ do_handle_call(list_vbuckets_prevstate, _From, State) ->
               end, []),
     {reply, Reply, State};
 do_handle_call(list_vbuckets, _From, State) ->
-    Reply = mc_client_binary:stats(
+    Reply = mc_binary:quick_stats(
               State#state.sock, <<"vbucket">>,
               fun (<<"vb_", K/binary>>, V, Acc) ->
                       [{list_to_integer(binary_to_list(K)),
@@ -286,14 +286,10 @@ do_handle_call({set_vbucket, VBucket, VBState}, _From,
     end,
     {reply, Reply, State};
 do_handle_call({stats, Key}, _From, State) ->
-    Reply = mc_client_binary:stats(
-              State#state.sock, Key,
-              fun (K, V, Acc) ->
-                      [{K, V} | Acc]
-              end, []),
+    Reply = mc_binary:quick_stats(State#state.sock, Key, fun mc_binary:quick_stats_append/3, []),
     {reply, Reply, State};
 do_handle_call(topkeys, _From, State) ->
-    Reply = mc_client_binary:stats(
+    Reply = mc_binary:quick_stats(
               State#state.sock, <<"topkeys">>,
               fun (K, V, Acc) ->
                       VString = binary_to_list(V),
@@ -803,7 +799,7 @@ ensure_bucket_config(Sock, Bucket, membase, {MaxSize, DBDir}) ->
     MaxSizeBin = list_to_binary(integer_to_list(MaxSize)),
     DBDirBin = list_to_binary(DBDir),
     {ok, {ActualMaxSizeBin,
-          ActualDBDirBin}} = mc_client_binary:stats(
+          ActualDBDirBin}} = mc_binary:quick_stats(
                                Sock, <<>>,
                                fun (<<"ep_max_data_size">>, V, {_, Path}) ->
                                        {V, Path};
@@ -832,7 +828,7 @@ ensure_bucket_config(Sock, Bucket, membase, {MaxSize, DBDir}) ->
 ensure_bucket_config(Sock, _Bucket, memcached, _MaxSize) ->
     %% TODO: change max size of memcached bucket also
     %% Make sure it's a memcached bucket
-    {ok, present} = mc_client_binary:stats(
+    {ok, present} = mc_binary:quick_stats(
                       Sock, <<>>,
                       fun (<<"evictions">>, _, _) ->
                               present;

@@ -21,12 +21,90 @@
 
 -include("mc_entry.hrl").
 
--export([bin/1, recv/2, recv/3, send/4, encode/3]).
+-export([bin/1, recv/2, recv/3, send/4, encode/3, quick_stats/4, quick_stats/5, quick_stats_append/3]).
 
 -define(FLUSH_TIMEOUT, 15000).
 -define(RECV_TIMEOUT, 15000).
 
 %% Functions to work with memcached binary protocol packets.
+
+recv_with_data(Sock, Len, TimeoutRef, Data) ->
+    DataSize = erlang:size(Data),
+    case DataSize >= Len of
+        true ->
+            RV = binary_part(Data, 0, Len),
+            Rest = binary_part(Data, Len, DataSize-Len),
+            {ok, RV, Rest};
+        false ->
+            ok = inet:setopts(Sock, [{active, once}]),
+            receive
+                {tcp, Sock, NewData} ->
+                    recv_with_data(Sock, Len, TimeoutRef, <<Data/binary, NewData/binary>>);
+                {tcp_closed, Sock} ->
+                    {error, closed};
+                TimeoutRef ->
+                    {error, etimedout}
+            end
+    end.
+
+quick_stats_recv(Sock, Data, TimeoutRef) ->
+    {ok, Hdr, Rest} = recv_with_data(Sock, ?HEADER_LEN, TimeoutRef, Data),
+    {Header, Entry} = decode_header(res, Hdr),
+    #mc_header{extlen = ExtLen,
+               keylen = KeyLen,
+               bodylen = BodyLen} = Header,
+    case BodyLen > 0 of
+        true ->
+            true = BodyLen >= (ExtLen + KeyLen),
+            {ok, Ext, Rest2} = recv_with_data(Sock, ExtLen, TimeoutRef, Rest),
+            {ok, Key, Rest3} = recv_with_data(Sock, KeyLen, TimeoutRef, Rest2),
+            RealBodyLen = erlang:max(0, BodyLen - (ExtLen + KeyLen)),
+            {ok, BodyData, Rest4} = recv_with_data(Sock, RealBodyLen, TimeoutRef, Rest3),
+            {ok, Header, Entry#mc_entry{ext = Ext, key = Key, data = BodyData}, Rest4};
+        false ->
+            {ok, Header, Entry, Rest}
+    end.
+
+quick_stats_append(K, V, Acc) ->
+    [{K, V} | Acc].
+
+quick_stats(Sock, Key, CB, CBState) ->
+    quick_stats(Sock, Key, CB, CBState, ?RECV_TIMEOUT).
+
+%% quick_stats is like mc_client_binary:stats but with own buffering
+%% of stuff and thus much faster. Note: we don't expect any request
+%% pipelining here
+quick_stats(Sock, Key, CB, CBState, Timeout) ->
+    Req = encode(req, #mc_header{opcode=?STAT}, #mc_entry{key=Key}),
+    Ref = make_ref(),
+    MaybeTimer = case Timeout of
+                     infinity ->
+                         [];
+                     _ ->
+                         [erlang:send_after(Timeout, self(), Ref)]
+                 end,
+    try
+        send(Sock, Req),
+        quick_stats_loop(Sock, CB, CBState, Ref, <<>>)
+    after
+        [erlang:cancel_timer(T) || T <- MaybeTimer],
+        receive
+            Ref -> ok
+        after 0 -> ok
+        end
+    end.
+
+quick_stats_loop(Sock, CB, CBState, TimeoutRef, Data) ->
+    {ok, Header, Entry, Rest} = quick_stats_recv(Sock, Data, TimeoutRef),
+    #mc_header{keylen = RKeyLen} = Header,
+    case RKeyLen =:= 0 of
+        true ->
+            <<>> = Rest,
+            {ok, CBState};
+        false ->
+            NewState = CB(Entry#mc_entry.key, Entry#mc_entry.data, CBState),
+            quick_stats_loop(Sock, CB, NewState, TimeoutRef, Rest)
+    end.
 
 send({OutPid, CmdNum}, Kind, Header, Entry) ->
     OutPid ! {send, CmdNum, encode(Kind, Header, Entry)},
@@ -107,8 +185,8 @@ send({OutPid, CmdNum}, Data) when is_pid(OutPid) ->
 send(undefined, _Data)              -> ok;
 send(_Sock, <<>>)                   -> ok;
 send(Sock, List) when is_list(List) -> send(Sock, iolist_to_binary(List));
-send(Sock, Data)                    -> gen_tcp:send(Sock, Data).
+send(Sock, Data)                    -> prim_inet:send(Sock, Data).
 
 %% @doc Receive binary data of specified number of bytes length.
 recv_data(_, 0, _)                 -> {ok, <<>>};
-recv_data(Sock, NumBytes, Timeout) -> gen_tcp:recv(Sock, NumBytes, Timeout).
+recv_data(Sock, NumBytes, Timeout) -> prim_inet:recv(Sock, NumBytes, Timeout).
