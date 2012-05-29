@@ -135,7 +135,7 @@ wait_for_child_death_process_info(Msg, State) ->
     end.
 
 terminate(shutdown, #state{send_eol = true, port = Port} = State) ->
-    port_command(Port, <<10:8>>),               % sending LF
+    port_command(Port, <<"shutdown\n">>),               % sending shutdown command
     timer:send_after(?LF_DEATH_TIMEOUT, {[], {exit_status, -1}}),
     State2 = wait_for_child_death(State),
     log(State2); % Log any remaining messages
