@@ -32,6 +32,7 @@
          get_vbucket/2,
          list_buckets/1,
          get_last_closed_checkpoint/2,
+         refresh_isasl/1,
          noop/1,
          select_bucket/2,
          set_flush_param/3,
@@ -60,7 +61,7 @@
                      ?CMD_LIST_BUCKETS | ?CMD_EXPAND_BUCKET |
                      ?CMD_SELECT_BUCKET | ?CMD_SET_PARAM |
                      ?CMD_SET_VBUCKET | ?CMD_GET_VBUCKET | ?CMD_DELETE_VBUCKET |
-                     ?CMD_LAST_CLOSED_CHECKPOINT |
+                     ?CMD_LAST_CLOSED_CHECKPOINT | ?CMD_ISASL_REFRESH |
                      ?CMD_GET_META | ?CMD_GETQ_META |
                      ?CMD_SET_WITH_META | ?CMD_SETQ_WITH_META |
                      ?CMD_ADD_WITH_META | ?CMD_SETQ_WITH_META |
@@ -241,6 +242,13 @@ get_last_closed_checkpoint(Sock, VBucket) ->
         {ok, #mc_header{status=?SUCCESS}, #mc_entry{data=CheckpointBin}, _NCB} ->
             <<Checkpoint:64>> = CheckpointBin,
             {ok, Checkpoint};
+        Response -> process_error_response(Response)
+    end.
+
+refresh_isasl(Sock) ->
+    case cmd(?CMD_ISASL_REFRESH, Sock, undefined, undefined, {#mc_header{}, #mc_entry{}}) of
+        {ok, #mc_header{status=?SUCCESS}, _, _} ->
+            ok;
         Response -> process_error_response(Response)
     end.
 

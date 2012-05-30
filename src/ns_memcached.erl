@@ -82,7 +82,8 @@
          get_meta/3,
          set_with_meta/5, set_with_meta/6, set_with_meta/8,
          add_with_meta/5, add_with_meta/7,
-         delete_with_meta/5, delete_with_meta/4]).
+         delete_with_meta/5, delete_with_meta/4,
+         connect_and_send_isasl_refresh/0]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -727,7 +728,17 @@ get_vbucket_open_checkpoint(Nodes, Bucket, VBucketId) ->
          {N, Value}
      end || N <- Nodes].
 
-
+connect_and_send_isasl_refresh() ->
+    case connect(1) of
+        {ok, Sock}  ->
+            try
+                ok = mc_client_binary:refresh_isasl(Sock)
+            after
+                gen_tcp:close(Sock)
+            end;
+        Error ->
+            Error
+    end.
 
 %%
 %% Internal functions
