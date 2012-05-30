@@ -813,7 +813,10 @@ compaction_config_props(BucketName) ->
     Config = ns_config:get(),
     Global = search_node_default(Config, autocompaction, []),
     BucketConfig = get_bucket(BucketName, Config),
-    PerBucket = proplists:get_value(autocompaction, BucketConfig, []),
+    PerBucket = case proplists:get_value(autocompaction, BucketConfig, []) of
+                    false -> [];
+                    SomeValue -> SomeValue
+                end,
 
     lists:foldl(
       fun ({Key, _Value} = KV, Acc) ->
