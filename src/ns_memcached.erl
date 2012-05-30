@@ -74,7 +74,8 @@
          deregister_tap_client/2,
          flush/1,
          get_vbucket_open_checkpoint/3,
-         ready_nodes/4]).
+         ready_nodes/4,
+         connect_and_send_isasl_refresh/0]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -555,7 +556,17 @@ get_vbucket_open_checkpoint(Nodes, Bucket, VBucketId) ->
          {N, Value}
      end || N <- Nodes].
 
-
+connect_and_send_isasl_refresh() ->
+    case connect(1) of
+        {ok, Sock}  ->
+            try
+                ok = mc_client_binary:refresh_isasl(Sock)
+            after
+                gen_tcp:close(Sock)
+            end;
+        Error ->
+            Error
+    end.
 
 %%
 %% Internal functions
