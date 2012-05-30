@@ -50,6 +50,8 @@
 
 -define(CMD_LAST_CLOSED_CHECKPOINT,  16#97).
 
+-define(CMD_ISASL_REFRESH, 16#f1).
+
 -define(RGET,        16#30).
 -define(RSET,        16#31).
 -define(RSETQ,       16#32).

@@ -136,7 +136,14 @@ writeSASLConf(Path, Buckets, AU, AP, Tries, SleepTime) ->
       Buckets),
     file:close(F),
     case file:rename(TmpPath, Path) of
-        ok -> ok;
+        ok ->
+            case (catch ns_memcached:connect_and_send_isasl_refresh()) of
+                ok -> ok;
+                %% in case memcached is not yet started
+                {error, couldnt_connect_to_memcached} -> ok;
+                Error ->
+                    ?log_error("Failed to force update of memcached isasl configuration:~p", [Error])
+            end;
         {error, Reason} ->
             ?log_warning("Error renaming ~p to ~p: ~p", [TmpPath, Path, Reason]),
             case Tries of
