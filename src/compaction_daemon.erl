@@ -635,7 +635,23 @@ select_samples([V | VRest], [S | SRest] = Samples, Ix, Acc) ->
     end.
 
 unique_random_ints(R, N) ->
-    unique_random_ints(R, N, ordsets:new()).
+    case R * 2 < N of
+        true ->
+            unique_random_ints(R, N, ordsets:new());
+        false ->
+            case R >= N of
+                true ->
+                    lists:seq(1, N);
+                false ->
+                    %% if R is reasonably close to N, do simpler
+                    %% one-pass pick-with-R/N probability
+                    %% selection. It'll have on average R samples, and
+                    %% I'm ok with that.
+                    [I || I <- lists:seq(1, N),
+                          [{Dice, _}] <- [random:uniform_s(N, now())],
+                          Dice =< R]
+            end
+    end.
 
 unique_random_ints(_, 0, Seen) ->
     Seen;
