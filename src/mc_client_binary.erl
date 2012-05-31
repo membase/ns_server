@@ -21,7 +21,10 @@
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
 
--define(VB_DELETE_TIMEOUT, 30000).
+%% we normally speak to local memcached when issuing delete
+%% vbucket. Thus timeout needs to only cover ep-engine going totally
+%% insane.
+-define(VB_DELETE_TIMEOUT, 300000).
 
 -export([auth/2,
          cmd/5,

@@ -20,10 +20,11 @@
 -include("ns_common.hrl").
 
 -define(SERVER, ?MODULE).
--define(CONNECT_TIMEOUT, 30000).        % Milliseconds
--define(UPSTREAM_TIMEOUT, 600000000).   % Microseconds because we use timer:now_diff
--define(TIMEOUT_CHECK_INTERVAL, 15000). % Milliseconds
--define(TERMINATE_TIMEOUT, 30000).
+-define(CONNECT_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_connect, 30000)).
+% Microseconds because we use timer:now_diff
+-define(UPSTREAM_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_upstream_us, 600000000)).
+-define(TIMEOUT_CHECK_INTERVAL, 15000).
+-define(TERMINATE_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_terminate, 30000)).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,

@@ -154,3 +154,9 @@ Between versions 1.8.0 and 1.8.1
   is known to be heavy. By running it on separate worker we allow
   stats requests to be performed without delays and thus hopefully
   without hitting timeouts.
+
+* simple facility to adjust some timeouts at runtime was
+  implemented. Example, usage is this diag/eval snippet:
+    ns_config:set({node, node(), {timeout, ns_memcached_outer_very_heavy}}, 120000).
+  Which will bump timeout for most heavy ns_memcached calls up to 120
+  seconds (most timeouts are in milliseconds)

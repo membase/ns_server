@@ -36,8 +36,11 @@
 -define(CHECK_INTERVAL, 10000).
 -define(CHECK_WARMUP_INTERVAL, 500).
 -define(VBUCKET_POLL_INTERVAL, 100).
--define(TIMEOUT, 30000).
--define(CONNECTED_TIMEOUT, 5000).
+-define(TIMEOUT, ns_config_ets_dup:get_timeout(ns_memcached_outer, 30000)).
+-define(TIMEOUT_OPEN_CHECKPOINT, ns_config_ets_dup:get_timeout(ns_memcached_open_checkpoint, 30000)).
+-define(TIMEOUT_HEAVY, ns_config_ets_dup:get_timeout(ns_memcached_outer_heavy, 30000)).
+-define(TIMEOUT_VERY_HEAVY, ns_config_ets_dup:get_timeout(ns_memcached_outer_very_heavy, 60000)).
+-define(CONNECTED_TIMEOUT, ns_config_ets_dup:get_timeout(ns_memcached_connected, 5000)).
 %% half-second is definitely 'slow' for any definition of slow
 -define(SLOW_CALL_THRESHOLD_MICROS, 500000).
 
@@ -533,7 +536,7 @@ connected_buckets(Timeout) ->
 %% @doc Send flush command to specified bucket
 -spec flush(bucket_name()) -> ok.
 flush(Bucket) ->
-    do_call({server(Bucket), node()}, flush, ?TIMEOUT).
+    do_call({server(Bucket), node()}, flush, ?TIMEOUT_VERY_HEAVY).
 
 %% @doc Returns true if backfill is running on this node for the given bucket.
 -spec backfilling(bucket_name()) ->
@@ -553,14 +556,14 @@ backfilling(Node, Bucket) ->
 -spec delete_vbucket(bucket_name(), vbucket_id()) ->
                             ok | mc_error().
 delete_vbucket(Bucket, VBucket) ->
-    do_call(server(Bucket), {delete_vbucket, VBucket}, ?TIMEOUT).
+    do_call(server(Bucket), {delete_vbucket, VBucket}, ?TIMEOUT_VERY_HEAVY).
 
 
 -spec delete_vbucket(node(), bucket_name(), vbucket_id()) ->
                             ok | mc_error().
 delete_vbucket(Node, Bucket, VBucket) ->
     do_call({server(Bucket), Node}, {delete_vbucket, VBucket},
-                    ?TIMEOUT).
+                    ?TIMEOUT_VERY_HEAVY).
 
 
 -spec get_vbucket(node(), bucket_name(), vbucket_id()) ->
@@ -626,14 +629,14 @@ list_vbuckets_multi(Nodes, Bucket) ->
 -spec set_vbucket(bucket_name(), vbucket_id(), vbucket_state()) ->
                          ok | mc_error().
 set_vbucket(Bucket, VBucket, VBState) ->
-    do_call(server(Bucket), {set_vbucket, VBucket, VBState}, ?TIMEOUT).
+    do_call(server(Bucket), {set_vbucket, VBucket, VBState}, ?TIMEOUT_HEAVY).
 
 
 -spec set_vbucket(node(), bucket_name(), vbucket_id(), vbucket_state()) ->
                          ok | mc_error().
 set_vbucket(Node, Bucket, VBucket, VBState) ->
     do_call({server(Bucket), Node}, {set_vbucket, VBucket, VBState},
-                    ?TIMEOUT).
+                    ?TIMEOUT_HEAVY).
 
 
 -spec stats(bucket_name()) ->
@@ -654,7 +657,7 @@ stats(Node, Bucket, Key) ->
     do_call({server(Bucket), Node}, {stats, Key}, ?TIMEOUT).
 
 sync_bucket_config(Bucket) ->
-    do_call(server(Bucket), sync_bucket_config, ?TIMEOUT).
+    do_call(server(Bucket), sync_bucket_config, infinity).
 
 -spec deregister_tap_client(Bucket::bucket_name(),
                             TapName::binary()) -> ok.
@@ -680,7 +683,7 @@ raw_stats(Node, Bucket, SubStats, Fn, FnState) ->
                            VBucketId::vbucket_id()) -> [{node(), integer() | missing}].
 get_vbucket_open_checkpoint(Nodes, Bucket, VBucketId) ->
     StatName = <<"vb_", (iolist_to_binary(integer_to_list(VBucketId)))/binary, ":open_checkpoint_id">>,
-    {OkNodes, BadNodes} = gen_server:multi_call(Nodes, server(Bucket), {stats, <<"checkpoint">>}, ?TIMEOUT),
+    {OkNodes, BadNodes} = gen_server:multi_call(Nodes, server(Bucket), {stats, <<"checkpoint">>}, ?TIMEOUT_OPEN_CHECKPOINT),
     case BadNodes of
         [] -> ok;
         _ ->
