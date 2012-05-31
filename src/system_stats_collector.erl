@@ -259,6 +259,7 @@ sample_ns_memcached_queues() ->
          end,
 
          just_avg_counter({S, call_time}),
+         just_avg_counter({S, q_call_time}),
          just_avg_counter({S, calls}, {S, calls_rate}),
 
          just_avg_counter({S, long_call_time}),

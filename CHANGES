@@ -147,3 +147,10 @@ Between versions 1.8.0 and 1.8.1
   item mutatins to disk was fixed
 
 * (MB-5275) bug with alerts not being shown to user sometimes was fixed
+
+* (MB-5408) ns_memcached now implements smarter queuing and
+  prioritization of heavy & light operations. Leading to hopefully
+  much less memcached timeouts. Particularly vbucket delete operation
+  is known to be heavy. By running it on separate worker we allow
+  stats requests to be performed without delays and thus hopefully
+  without hitting timeouts.
