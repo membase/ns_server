@@ -194,6 +194,7 @@ do-dialyzer:
 	dialyzer --plt $(COUCHBASE_PLT) $(DIALYZER_FLAGS) \
             --apps `ls -1 ebin/*.beam | grep -v couch_log` deps/ale/ebin \
             $(COUCH_PATH)/src/couchdb $(COUCH_PATH)/src/couch_set_view \
+            $(COUCH_PATH)/src/couch_index_merger/ebin \
             $(GEOCOUCH_EBIN) $(realpath $(COUCH_PATH)/src/mapreduce)
 
 dialyzer_obsessive: all $(COUCHBASE_PLT)

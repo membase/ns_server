@@ -16,7 +16,7 @@
 -module(capi_spatial).
 
 -include("couch_db.hrl").
--include("couch_index_merger.hrl").
+-include_lib("couch_index_merger/include/couch_index_merger.hrl").
 -include("ns_common.hrl").
 
 -export([handle_spatial_req/3, cleanup_spatial_index_files/1,

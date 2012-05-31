@@ -19,7 +19,7 @@
 
 -include("couch_db.hrl").
 -include("ns_stats.hrl").
--include("couch_index_merger.hrl").
+-include_lib("couch_index_merger/include/couch_index_merger.hrl").
 -include("mc_entry.hrl").
 -include("mc_constants.hrl").
 

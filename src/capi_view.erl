@@ -16,8 +16,8 @@
 -module(capi_view).
 
 -include("couch_db.hrl").
--include("couch_index_merger.hrl").
--include("couch_view_merger.hrl").
+-include_lib("couch_index_merger/include/couch_index_merger.hrl").
+-include_lib("couch_index_merger/include/couch_view_merger.hrl").
 -include("ns_common.hrl").
 
 -export([handle_view_req/3]).
