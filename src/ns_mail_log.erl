@@ -43,7 +43,7 @@ start_link() ->
 
 init(_) ->
     ?log_debug("ns_mail_log started up", []),
-    {ok, #state{}, hibernate}.
+    {ok, #state{}}.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
@@ -66,18 +66,18 @@ handle_event({ns_log, _Category, Module, Code, Fmt, Args}, State) ->
             end;
         false -> ok
     end,
-    {ok, State, hibernate};
+    {ok, State};
 handle_event(Event, State) ->
     ?log_debug("ns_mail_log handle_event(~p, ~p)~n", [Event, State]),
-    {ok, State, hibernate}.
+    {ok, State}.
 
 handle_call(Request, State) ->
     ?log_warning("Unexpected handle_call(~p, ~p)~n", [Request, State]),
-    {ok, ok, State, hibernate}.
+    {ok, ok, State}.
 
 handle_info(Info, State) ->
     ?log_warning("Unexpected handle_info(~p, ~p)~n", [Info, State]),
-    {ok, State, hibernate}.
+    {ok, State}.
 
 %% @doc Sends an email with the given configuration
 send_email_with_config(Subject, Body, Config) ->

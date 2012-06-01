@@ -32,12 +32,12 @@ start_link() ->
                           end).
 
 init(ignored) ->
-    {ok, #state{}, hibernate}.
+    {ok, #state{}}.
 
 handle_event(_Event, State) ->
     {value, PortServers} = ns_port_sup:port_servers_config(),
     ok = reconfig(PortServers),
-    {ok, State, hibernate}.
+    {ok, State}.
 
 handle_call(unhandled, unhandled) ->
     unhandled.
