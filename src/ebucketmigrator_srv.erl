@@ -290,14 +290,14 @@ terminate(_Reason, #state{upstream_sender=UpstreamSender} = State) ->
     end.
 
 read_tap_message(Sock) ->
-    case gen_tcp:recv(Sock, ?HEADER_LEN) of
+    case prim_inet:recv(Sock, ?HEADER_LEN) of
         {ok, <<_Magic:8, _Opcode:8, _KeyLen:16, _ExtLen:8, _DataType: 8,
                _VBucket:16, BodyLen:32, _Opaque:32, _CAS:64>> = Packet} ->
             case BodyLen of
                 0 ->
                     {ok, Packet};
                 _ ->
-                    case gen_tcp:recv(Sock, BodyLen) of
+                    case prim_inet:recv(Sock, BodyLen) of
                         {ok, Extra} ->
                             {ok, <<Packet/binary, Extra/binary>>};
                         X1 ->
@@ -445,7 +445,7 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
                  #state{downstream=Downstream, vbuckets=VBuckets} = State) ->
     case Opcode of
         ?TAP_OPAQUE ->
-            ok = gen_tcp:send(Downstream, Packet),
+            ok = prim_inet:send(Downstream, Packet),
             case Rest of
                 <<?TAP_OPAQUE_INITIAL_VBUCKET_STREAM:32>> ->
                     (catch system_stats_collector:increment_counter(ebucketmigrator_backfill_starts, 1)),
@@ -474,7 +474,7 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
                 end,
             case sets:is_element(VBucket, VBuckets) of
                 true ->
-                    ok = gen_tcp:send(Downstream, Packet),
+                    ok = prim_inet:send(Downstream, Packet),
                     State1#state{last_sent_seqno = Opaque};
                 false ->
                     %% Filter it out and count it
