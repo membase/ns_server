@@ -374,6 +374,8 @@ connect({Host, Port}, Username, Password, Bucket) ->
     case Username of
         undefined ->
             ok;
+        "default" ->
+            ok;
         _ ->
             ok = mc_client_binary:auth(Sock, {<<"PLAIN">>,
                                               {list_to_binary(Username),
