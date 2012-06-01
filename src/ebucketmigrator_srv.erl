@@ -138,7 +138,9 @@ handle_info({tcp_closed, Socket}, #state{upstream=Socket} = State) ->
     end;
 handle_info({tcp_closed, Socket}, #state{downstream=Socket} = State) ->
     {stop, downstream_closed, State};
-handle_info(check_for_timeout, State) ->
+handle_info({check_for_timeout, Timeout} = Msg, State) ->
+    erlang:send_after(Timeout, self(), Msg),
+
     case timer:now_diff(now(), State#state.last_seen) > ?UPSTREAM_TIMEOUT of
         true ->
             {stop, timeout, State};
@@ -242,7 +244,7 @@ init({Src, Dst, Opts}=InitArgs) ->
     ok = inet:setopts(Downstream, [{active, once}]),
 
     Timeout = proplists:get_value(timeout, Opts, ?TIMEOUT_CHECK_INTERVAL),
-    {ok, _TRef} = timer:send_interval(Timeout, check_for_timeout),
+    erlang:send_after(Timeout, self(), {check_for_timeout, Timeout}),
 
     UpstreamSender = spawn_link(erlang, apply, [fun upstream_sender_loop/1, [Upstream]]),
     ?rebalance_debug("upstream_sender pid: ~p", [UpstreamSender]),
