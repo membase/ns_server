@@ -52,21 +52,6 @@ handle_event({otp, _V}, State) ->
     ns_node_disco:nodes_wanted_updated(),
     {ok, State};
 
-handle_event(Changed, State) when is_list(Changed) ->
-    ?log_debug("ns_node_disco_conf_events config all"),
-    Config = ns_config:get(),
-    ChangedRaw =
-        lists:foldl(fun({Key, _}, Acc) ->
-                            case ns_config:search_raw(Config, Key) of
-                                false           -> Acc;
-                                {value, RawVal} -> [{Key, RawVal} | Acc]
-                            end;
-                       (_, Acc) -> Acc
-                    end,
-                    [], Changed),
-    (catch ns_config_rep:initiate_changes_push(ChangedRaw)),
-    {ok, State};
-
 handle_event(_E, State) ->
     {ok, State}.
 

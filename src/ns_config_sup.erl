@@ -37,6 +37,10 @@ init([]) ->
             {gen_event, start_link, [{local, ns_config_events}]},
             permanent, 1000, worker, []},
 
+           {ns_config_events_local,
+            {gen_event, start_link, [{local, ns_config_events_local}]},
+            permanent, brutal_kill, worker, []},
+
            %% current local state.
            {ns_config,
             {ns_config, start_link, [CfgPath, ns_config_default]},
