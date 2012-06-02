@@ -77,17 +77,19 @@ kill_replica(Bucket, SrcNode, DstNode, VBucket) ->
     end.
 
 apply_changes(Bucket, ChangeTuples) ->
+    AffectedNodes = lists:usort([S || {_, S, _, _} <- ChangeTuples]),
     ?log_debug("Applying changes:~n~p~n", [ChangeTuples]),
-    {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
-    RelevantSrcNodes = proplists:get_value(servers, BucketConfig),
-    true = (undefined =/= RelevantSrcNodes),
+    NodeChildrens = misc:parallel_map(
+                      fun (Node) ->
+                              Children = try children(Node, Bucket) catch _:_ -> [] end,
+                              {Node, Children}
+                      end, AffectedNodes, infinity),
     ReplicatorsList =
         lists:flatmap(
-          fun (Node) ->
-                  Children = try children(Node, Bucket) catch _:_ -> [] end,
+          fun ({Node, Children}) ->
                   [{{Node, Dst}, lists:sort(VBuckets)}
                    || #child_id{vbuckets=VBuckets, dest_node=Dst} <- Children]
-          end, RelevantSrcNodes),
+          end, NodeChildrens),
     Replicators = dict:from_list(ReplicatorsList),
     NewReplicators =
         lists:foldl(fun ({Type, SrcNode, DstNode, VBucket}, CurrentReplicators) ->
@@ -131,9 +133,8 @@ apply_changes(Bucket, ChangeTuples) ->
                             end
                     end, 0, Replicators),
     NewReplicasList = dict:to_list(NewReplicas),
-    set_replicas(Bucket, NewReplicasList),
+    set_replicas_on_nodes(Bucket, NewReplicasList, AffectedNodes),
     ActualChangesCount.
-
 
 replicators(Nodes, Bucket) ->
     lists:flatmap(
@@ -150,6 +151,10 @@ replicators(Nodes, Bucket) ->
       end, Nodes).
 
 set_replicas(Bucket, NodesReplicas) ->
+    LiveNodes = ns_node_disco:nodes_actual_proper(),
+    set_replicas_on_nodes(Bucket, NodesReplicas, LiveNodes).
+
+set_replicas_on_nodes(Bucket, NodesReplicas, LiveNodes) ->
     %% Replace with the empty list if replication is disabled
     NR = case ns_config:search_node_prop(node(), ns_config:get(), replication,
                                     enabled, true) of
@@ -157,7 +162,6 @@ set_replicas(Bucket, NodesReplicas) ->
                  NodesReplicas;
              false -> []
          end,
-    LiveNodes = ns_node_disco:nodes_actual_proper(),
     %% Kill all replicators on nodes not in NR
     NodesWithoutReplicas = LiveNodes -- [N || {N, _} <- NR],
     lists:foreach(fun (Node) -> kill_all_children(Node, Bucket) end,
