@@ -43,6 +43,7 @@
          stats/1,
          stats/4,
          get_open_checkpoint_ids/1,
+         get_open_checkpoint_ids/2,
          tap_connect/2,
          deregister_tap_client/2]).
 
@@ -587,6 +588,27 @@ stats_subcommand_test() ->
     ok = gen_tcp:close(Sock).
 
 -endif.
+
+build_stats_dict([], Dict, _Suffix) ->
+    Dict;
+build_stats_dict([VBucket | Rest], Dict, Suffix) ->
+    StatName = iolist_to_binary([<<"vb_">>, integer_to_list(VBucket), Suffix]),
+    NewDict = dict:store(StatName, 0, Dict),
+    build_stats_dict(Rest, NewDict, Suffix).
+
+get_open_checkpoint_ids_aggregator(Key, ValueBin, Dict) ->
+    case dict:find(Key, Dict) of
+        {ok, _} ->
+            Value = list_to_integer(binary_to_list(ValueBin)),
+            dict:store(Key, Value, Dict);
+        _ ->
+            Dict
+    end.
+
+get_open_checkpoint_ids(Sock, InterestingVBuckets) ->
+    Dict = build_stats_dict(InterestingVBuckets, dict:new(), <<":open_checkpoint_id">>),
+    mc_binary:quick_stats(Sock, <<"checkpoint">>,
+                          fun get_open_checkpoint_ids_aggregator/3, Dict).
 
 get_open_checkpoint_ids(Sock) ->
     stats(Sock, <<"checkpoint">>,

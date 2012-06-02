@@ -179,25 +179,37 @@ init({Src, Dst, Opts}=InitArgs) ->
                      _ -> PassedDownstream
                  end,
     %% Set all vbuckets to the replica state on the destination node.
-    lists:foreach(
-      fun (VBucket) ->
-              ?log_info("Setting ~p vbucket ~p to state replica", [Dst, VBucket]),
-              ok = mc_client_binary:set_vbucket(Downstream, VBucket, replica)
-      end, VBuckets),
+    VBucketsToSetToReplica =
+        if
+            PassedDownstream =/= undefined orelse length(VBuckets) > 8 ->
+                {ok, AllReplicaVBuckets} =
+                    mc_binary:quick_stats(
+                      Downstream, <<"vbucket">>,
+                      fun (<<"vb_", K/binary>>, <<"replica">>, Acc) ->
+                              [list_to_integer(binary_to_list(K)) | Acc];
+                          (_, _, Acc) -> Acc
+                      end, []),
+                VBuckets -- AllReplicaVBuckets;
+            true ->
+                VBuckets
+        end,
+    [begin
+         ?log_info("Setting ~p vbucket ~p to state replica", [Dst, VBucket]),
+         ok = mc_client_binary:set_vbucket(Downstream, VBucket, replica)
+     end || VBucket <- VBucketsToSetToReplica],
     Upstream = connect(Src, Username, Password, Bucket),
-    {ok, CheckpointIdsDict} = mc_client_binary:get_open_checkpoint_ids(Upstream),
+    {ok, CheckpointIdsDict} = mc_client_binary:get_open_checkpoint_ids(Upstream, VBuckets),
     ?rebalance_debug("CheckpointIdsDict:~n~p~n", [CheckpointIdsDict]),
-    ReadyVBuckets = lists:filter(
-                      fun (Vb) ->
-                              case dict:find(Vb, CheckpointIdsDict) of
-                                  {ok, X} when is_integer(X) andalso X > 0 -> true;
-                                  _ -> false
-                              end
-                      end, VBuckets),
+    NotReadyVBuckets = dict:fold(
+                         fun (K, 0, Acc) ->
+                                 [K | Acc];
+                             (_K, _V, Acc) ->
+                                 Acc
+                         end, [], CheckpointIdsDict),
+    ReadyVBuckets = VBuckets -- NotReadyVBuckets,
     if
-        ReadyVBuckets =/= VBuckets ->
+        NotReadyVBuckets =/= [] ->
             false = TakeOver,
-            NotReadyVBuckets = VBuckets -- ReadyVBuckets,
             master_activity_events:note_not_ready_vbuckets(self(), NotReadyVBuckets),
             (catch system_stats_collector:increment_counter(ebucketmigrator_not_ready_times, 1)),
             (catch system_stats_collector:increment_counter(ebucketmigrator_not_ready_vbuckets, length(NotReadyVBuckets))),
@@ -228,10 +240,7 @@ init({Src, Dst, Opts}=InitArgs) ->
                     {name, Name},
                     {takeover, false}];
                true ->
-                   Checkpoints = lists:map(fun ({V, {ok, C}}) -> {V, C};
-                                               ({V, _})       -> {V, 0}
-                                           end,
-                                           [{Vb, mc_client_binary:get_last_closed_checkpoint(Downstream, Vb)} || Vb <- ReadyVBuckets]),
+                   Checkpoints = mc_binary:mass_get_last_closed_checkpoint(Downstream, ReadyVBuckets, 60000),
                    Args0 = [{vbuckets, ReadyVBuckets},
                             {checkpoints, Checkpoints},
                             {name, Name},
