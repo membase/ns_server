@@ -39,19 +39,31 @@ is_couchbase_db(<<"_replicator">>) ->
 is_couchbase_db(Name) ->
     nomatch =:= binary:match(Name, <<"/">>).
 
-do_db_req(#httpd{user_ctx=UserCtx,path_parts=[DbName|_]}=Req, Fun) ->
-    case is_couchbase_db(DbName) of
+do_db_req(#httpd{mochi_req=MochiReq,user_ctx=UserCtx,path_parts=[DbName|_]}=Req, Fun) ->
+    % check auth here
+    [BucketName|_] = binary:split(DbName,<<"/">>),
+    ListBucketName = ?b2l(BucketName),
+    BucketConfig = case ns_bucket:get_bucket(ListBucketName) of
+                      not_present -> throw({not_found, missing});
+                      {ok, X} -> X
+                  end,
+    case menelaus_auth:is_bucket_accessible({ListBucketName, BucketConfig}, MochiReq) of
         true ->
-            case ns_bucket:couchbase_bucket_exists(DbName) of
+            case is_couchbase_db(DbName) of
                 true ->
-                    %% undefined #db fields indicate bucket database
-                    Db = #db{user_ctx = UserCtx, name = DbName},
-                    Fun(Req, Db);
-                _ ->
-                    erlang:throw({not_found, no_couchbase_bucket_exists})
+                    case ns_bucket:couchbase_bucket_exists(DbName) of
+                        true ->
+                            %% undefined #db fields indicate bucket database
+                            Db = #db{user_ctx = UserCtx, name = DbName},
+                            Fun(Req, Db);
+                        _ ->
+                            erlang:throw({not_found, no_couchbase_bucket_exists})
+                    end;
+                false ->
+                    couch_db_frontend:do_db_req(Req, Fun)
             end;
-        false ->
-            couch_db_frontend:do_db_req(Req, Fun)
+        _Else ->
+            throw({unauthorized, <<"password required">>})
     end.
 
 get_db_info(#db{filepath = undefined, name = Name}) ->
