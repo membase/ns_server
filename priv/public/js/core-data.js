@@ -110,10 +110,7 @@ $.ajaxSetup({
   timeout: 30000,
   cache: false,
   beforeSend: function (xhr, options) {
-    // NOTE: we're not sending auth header for capi requests because
-    // at this point CAPI is authless and sending auth header only
-    // confuses it
-    if (DAL.login && options.url.substring(0, "/couchBase/".length) !== "/couchBase/") {
+    if (DAL.login) {
       addBasicAuth(xhr, DAL.login, DAL.password);
     }
     xhr.setRequestHeader('invalid-auth-response', 'on');
