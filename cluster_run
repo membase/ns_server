@@ -16,16 +16,10 @@ def setup_path():
                                 stdout=subprocess.PIPE).communicate()[0].split()
 
     path = ebin_search(".")
-    couchpath = ebin_search("{0}/lib/couchdb/erlang/lib".format(PREFIX))
-
-    if len(couchpath) == 0:
-       print("Couch libs wasn't found. Will disable couch support\n")
-       os.environ['DONT_START_COUCH'] = '1'
-
-    return couchpath + path
+    return path
 
 
-def start_cluster(num_nodes, start_index, host, extra_args):
+def start_cluster(num_nodes, start_index, host, extra_args, args_prefix):
     ebin_path = setup_path()
 
     base_direct_port = 12000
@@ -42,8 +36,7 @@ def start_cluster(num_nodes, start_index, host, extra_args):
             os.stat("data/n_{0}/mnesia".format(i))
         except:
             os.makedirs("data/n_{0}/mnesia".format(i))
-        subprocess.Popen(["./scripts/mkcouch.sh", "n_{0}".format(i), str(base_couch_port + i)]).communicate()
-        args = ["erl", "+A", "16", "-pa"] + ebin_path + [
+        args = args_prefix + ["erl", "+A", "16", "-pa"] + ebin_path + [
             "-setcookie", "nocookie",
             "-name", "n_{0}@{1}".format(i, host),
             "-kernel", "inet_dist_listen_min", "21100",
@@ -96,7 +89,7 @@ def find_primary_addr():
 
 def main():
     try:
-        optlist, args = getopt.gnu_getopt(sys.argv[1:], "hn:", ["help", "start-index=", "nodes=", "static-cookie", "dont-start", "host="])
+        optlist, args = getopt.gnu_getopt(sys.argv[1:], "hn:", ["help", "start-index=", "nodes=", "static-cookie", "dont-start", "host=", "prepend-extras"])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -109,6 +102,8 @@ def main():
     static_cookie = False
     start_index = 0
     num_nodes = 1
+    prepend_extras = False
+
     host = "127.0.0.1" if primary_addr == None else primary_addr
 
     for o, a in optlist:
@@ -125,6 +120,8 @@ def main():
             exit(0)
         elif o in("--static-cookie"):
             static_cookie = True
+        elif o == "--prepend-extras":
+            prepend_extras = True
         else:
             assert False, "unhandled options"
 
@@ -141,9 +138,9 @@ def main():
         if terminal_attrs != None:
             termios.tcsetattr(sys.stdin, termios.TCSANOW, terminal_attrs)
 
-    atexit.register(kill_nodes)
-
     testament_child_death()
+
+    atexit.register(kill_nodes)
 
     try:
         terminal_attrs = termios.tcgetattr(sys.stdin)
@@ -152,7 +149,12 @@ def main():
 
     maybe_spawn_epmd()
 
-    extra_args = args[1:]
+    if prepend_extras:
+        extra_args = []
+        prepend_args = args[0:]
+    else:
+        extra_args = args[0:]
+        prepend_args = []
 
     if static_cookie:
         extra_args += ["-ns_server", "dont_reset_cookie", "true"]
@@ -160,7 +162,7 @@ def main():
     if not dont_start:
         extra_args += ["-run", "ns_bootstrap"]
 
-    nodes = start_cluster(num_nodes, start_index, host, extra_args)
+    nodes = start_cluster(num_nodes, start_index, host, extra_args, prepend_args)
 
     for node in nodes:
         node.wait()
