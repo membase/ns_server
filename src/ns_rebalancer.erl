@@ -218,8 +218,11 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
                               membase ->
                                   %% Only start one bucket at a time to avoid
                                   %% overloading things
-                                  ns_bucket:set_servers(BucketName, LiveNodes),
-                                  wait_for_memcached(LiveNodes, BucketName, 10),
+                                  ThisEjected = ordsets:intersection(lists:sort(proplists:get_value(servers, BucketConfig, [])),
+                                                                     lists:sort(EjectNodesAll)),
+                                  ThisLiveNodes = KeepNodes ++ ThisEjected,
+                                  ns_bucket:set_servers(BucketName, ThisLiveNodes),
+                                  wait_for_memcached(ThisLiveNodes, BucketName, 10),
                                   case ns_janitor:cleanup(BucketName, [{timeout, 1}]) of
                                       ok -> ok;
                                       {error, wait_for_memcached_failed} ->
@@ -233,7 +236,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
                                                 KeepNodes, BucketCompletion,
                                                 NumBuckets),
                                   master_activity_events:note_bucket_rebalance_ended(BucketName),
-                                  verify_replication(BucketName, LiveNodes,
+                                  verify_replication(BucketName, ThisLiveNodes,
                                                      NewMap)
                           end
                   end, misc:enumerate(BucketConfigs, 0)),

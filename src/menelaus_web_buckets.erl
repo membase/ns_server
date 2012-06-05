@@ -139,19 +139,23 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
 handle_sasl_buckets_streaming(_PoolId, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
     F = fun (_) ->
-                NF = menelaus_web:build_nodes_info_fun(false, stable,
-                                                       LocalAddr),
+                Config = ns_config:get(),
                 SASLBuckets = lists:filter(
                                 fun ({_, BucketInfo}) ->
                                         ns_bucket:auth_type(BucketInfo) =:= sasl
-                                end, ns_bucket:get_buckets()),
+                                end, ns_bucket:get_buckets(Config)),
                 List =
                     lists:map(
                       fun ({Name, BucketInfo}) ->
                               BucketNodes =
-                                  [NF(Node, Name)
-                                   || Node <- ns_bucket:bucket_nodes(
-                                                BucketInfo)],
+                                  [begin
+                                       Hostname = list_to_binary(menelaus_web:build_node_hostname(Config, N, LocalAddr)),
+                                       DirectPort = ns_config:search_node_prop(N, Config, memcached, port),
+                                       ProxyPort = ns_config:search_node_prop(N, Config, moxi, port),
+                                       {struct, [{hostname, Hostname},
+                                                 {ports, {struct, [{direct, DirectPort},
+                                                                   {proxy, ProxyPort}]}}]}
+                                   end || N <- ns_bucket:bucket_nodes(BucketInfo)],
                               VBM = case ns_bucket:bucket_type(BucketInfo) of
                                         membase ->
                                             [{vBucketServerMap,
@@ -170,7 +174,7 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
                                              ""))},
                                         {nodes, BucketNodes} | VBM]}
                       end, SASLBuckets),
-                {struct, [{buckets, List}]}
+                {just_write, {struct, [{buckets, List}]}}
         end,
     menelaus_web:handle_streaming(F, Req, undefined).
 

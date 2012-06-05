@@ -690,11 +690,22 @@ streaming_inner(F, HTTPRes, LastRes) ->
         true ->
             ok;
         false ->
-            ResNormal = F(normal),
+            ResNormal = case Res of
+                            {just_write, Stuff} -> Stuff;
+                            _ -> F(normal)
+                        end,
             HTTPRes:write_chunk(mochijson2:encode(ResNormal)),
             HTTPRes:write_chunk("\n\n\n\n")
     end,
     Res.
+
+consume_watcher_notifies() ->
+    receive
+        {notify_watcher, _} ->
+            consume_watcher_notifies()
+    after 0 ->
+            ok
+    end.
 
 handle_streaming(F, Req, HTTPRes, LastRes) ->
     Res =
@@ -705,7 +716,10 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
                 exit(normal)
         end,
     receive
-        {notify_watcher, _} -> ok;
+        {notify_watcher, _} ->
+            timer:sleep(50),
+            consume_watcher_notifies(),
+            ok;
         _ ->
             ale:debug(?MENELAUS_LOGGER,
                       "menelaus_web streaming socket closed by client"),

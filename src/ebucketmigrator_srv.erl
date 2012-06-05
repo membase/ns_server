@@ -120,9 +120,17 @@ handle_info({tcp, Socket, Data}, #state{downstream=Downstream,
                      process_data(Data, #state.downbuf,
                                   fun process_downstream/2, State);
                  Upstream ->
-                     process_data(Data, #state.upbuf,
-                                  fun process_upstream/2,
-                                  State#state{last_seen=now()})
+                     RV = process_data(Data, #state.upbuf,
+                                       fun process_upstream/2,
+                                       State#state{last_seen=now()}),
+                     %% memcached normally sends us up 10 items, we
+                     %% want this better than nothing network
+                     %% efficiency. On the other hand Naggle's
+                     %% algorithm will kill performance. So lets ask kernel
+                     %% to send queued stuff even if Naggle is against.
+                     ok = inet:setopts(Downstream, [{nodelay, true}]),
+                     ok = inet:setopts(Downstream, [{nodelay, false}]),
+                     RV
     end,
     {noreply, State1};
 handle_info({tcp_closed, Socket}, #state{upstream=Socket} = State) ->
@@ -140,7 +148,9 @@ handle_info({tcp_closed, Socket}, #state{upstream=Socket} = State) ->
     end;
 handle_info({tcp_closed, Socket}, #state{downstream=Socket} = State) ->
     {stop, downstream_closed, State};
-handle_info(check_for_timeout, State) ->
+handle_info({check_for_timeout, Timeout} = Msg, State) ->
+    erlang:send_after(Timeout, self(), Msg),
+
     case timer:now_diff(now(), State#state.last_seen) > ?UPSTREAM_TIMEOUT of
         true ->
             {stop, timeout, State};
@@ -179,25 +189,40 @@ init({Src, Dst, Opts}=InitArgs) ->
                      _ -> PassedDownstream
                  end,
     %% Set all vbuckets to the replica state on the destination node.
-    lists:foreach(
-      fun (VBucket) ->
-              ?log_info("Setting ~p vbucket ~p to state replica", [Dst, VBucket]),
-              ok = mc_client_binary:set_vbucket(Downstream, VBucket, replica)
-      end, VBuckets),
+    VBucketsToSetToReplica =
+        if
+            PassedDownstream =/= undefined orelse length(VBuckets) > 8 ->
+                {ok, AllReplicaVBuckets} =
+                    mc_binary:quick_stats(
+                      Downstream, <<"vbucket">>,
+                      fun (<<"vb_", K/binary>>, <<"replica">>, Acc) ->
+                              [list_to_integer(binary_to_list(K)) | Acc];
+                          (_, _, Acc) -> Acc
+                      end, []),
+                VBuckets -- AllReplicaVBuckets;
+            true ->
+                VBuckets
+        end,
+    [begin
+         ?log_info("Setting ~p vbucket ~p to state replica", [Dst, VBucket]),
+         ok = mc_client_binary:set_vbucket(Downstream, VBucket, replica)
+     end || VBucket <- VBucketsToSetToReplica],
     Upstream = connect(Src, Username, Password, Bucket),
-    {ok, CheckpointIdsDict} = mc_client_binary:get_open_checkpoint_ids(Upstream),
+    %% TCP_NODELAY on upstream socket seems beneficial. Only ack/nack
+    %% is getting sent here.
+    ok = inet:setopts(Upstream, [{nodelay, true}]),
+    {ok, CheckpointIdsDict} = mc_client_binary:get_open_checkpoint_ids(Upstream, VBuckets),
     ?rebalance_debug("CheckpointIdsDict:~n~p~n", [CheckpointIdsDict]),
-    ReadyVBuckets = lists:filter(
-                      fun (Vb) ->
-                              case dict:find(Vb, CheckpointIdsDict) of
-                                  {ok, X} when is_integer(X) andalso X > 0 -> true;
-                                  _ -> false
-                              end
-                      end, VBuckets),
+    NotReadyVBuckets = dict:fold(
+                         fun (K, 0, Acc) ->
+                                 [K | Acc];
+                             (_K, _V, Acc) ->
+                                 Acc
+                         end, [], CheckpointIdsDict),
+    ReadyVBuckets = VBuckets -- NotReadyVBuckets,
     if
-        ReadyVBuckets =/= VBuckets ->
+        NotReadyVBuckets =/= [] ->
             false = TakeOver,
-            NotReadyVBuckets = VBuckets -- ReadyVBuckets,
             master_activity_events:note_not_ready_vbuckets(self(), NotReadyVBuckets),
             (catch system_stats_collector:increment_counter(ebucketmigrator_not_ready_times, 1)),
             (catch system_stats_collector:increment_counter(ebucketmigrator_not_ready_vbuckets, length(NotReadyVBuckets))),
@@ -228,10 +253,7 @@ init({Src, Dst, Opts}=InitArgs) ->
                     {name, Name},
                     {takeover, false}];
                true ->
-                   Checkpoints = lists:map(fun ({V, {ok, C}}) -> {V, C};
-                                               ({V, _})       -> {V, 0}
-                                           end,
-                                           [{Vb, mc_client_binary:get_last_closed_checkpoint(Downstream, Vb)} || Vb <- ReadyVBuckets]),
+                   Checkpoints = mc_binary:mass_get_last_closed_checkpoint(Downstream, ReadyVBuckets, 60000),
                    Args0 = [{vbuckets, ReadyVBuckets},
                             {checkpoints, Checkpoints},
                             {name, Name},
@@ -244,7 +266,7 @@ init({Src, Dst, Opts}=InitArgs) ->
     ok = inet:setopts(Downstream, [{active, once}]),
 
     Timeout = proplists:get_value(timeout, Opts, ?TIMEOUT_CHECK_INTERVAL),
-    {ok, _TRef} = timer:send_interval(Timeout, check_for_timeout),
+    erlang:send_after(Timeout, self(), {check_for_timeout, Timeout}),
 
     UpstreamSender = spawn_link(erlang, apply, [fun upstream_sender_loop/1, [Upstream]]),
     ?rebalance_debug("upstream_sender pid: ~p", [UpstreamSender]),
@@ -290,14 +312,14 @@ terminate(_Reason, #state{upstream_sender=UpstreamSender} = State) ->
     end.
 
 read_tap_message(Sock) ->
-    case gen_tcp:recv(Sock, ?HEADER_LEN) of
+    case prim_inet:recv(Sock, ?HEADER_LEN) of
         {ok, <<_Magic:8, _Opcode:8, _KeyLen:16, _ExtLen:8, _DataType: 8,
                _VBucket:16, BodyLen:32, _Opaque:32, _CAS:64>> = Packet} ->
             case BodyLen of
                 0 ->
                     {ok, Packet};
                 _ ->
-                    case gen_tcp:recv(Sock, BodyLen) of
+                    case prim_inet:recv(Sock, BodyLen) of
                         {ok, Extra} ->
                             {ok, <<Packet/binary, Extra/binary>>};
                         X1 ->
@@ -403,6 +425,8 @@ connect({Host, Port}, Username, Password, Bucket) ->
     case Username of
         undefined ->
             ok;
+        "default" ->
+            ok;
         _ ->
             ok = mc_client_binary:auth(Sock, {<<"PLAIN">>,
                                               {list_to_binary(Username),
@@ -470,7 +494,7 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
                  #state{downstream=Downstream, vbuckets=VBuckets} = State) ->
     case Opcode of
         ?TAP_OPAQUE ->
-            ok = gen_tcp:send(Downstream, Packet),
+            ok = prim_inet:send(Downstream, Packet),
             case Rest of
                 <<?TAP_OPAQUE_INITIAL_VBUCKET_STREAM:32>> ->
                     (catch system_stats_collector:increment_counter(ebucketmigrator_backfill_starts, 1)),
@@ -499,7 +523,7 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
                 end,
             case sets:is_element(VBucket, VBuckets) of
                 true ->
-                    ok = gen_tcp:send(Downstream, Packet),
+                    ok = prim_inet:send(Downstream, Packet),
                     State1#state{last_sent_seqno = Opaque};
                 false ->
                     %% Filter it out and count it
