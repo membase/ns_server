@@ -712,8 +712,15 @@ aggregated_size_info(SampleVBucketDbs, NumVBuckets) ->
                   {AccDataSize + VDataSize, AccFileSize + VFileSize}
           end, {0, 0}, SampleVBucketDbs),
 
-    {round(DataSize * (NumVBuckets / NumSamples)),
-     round(FileSize * (NumVBuckets / NumSamples))}.
+    %% rarely our sample selection routine can return zero samples;
+    %% we need to handle it
+    case NumSamples of
+        0 ->
+            {0, 0};
+        _ ->
+            {round(DataSize * (NumVBuckets / NumSamples)),
+             round(FileSize * (NumVBuckets / NumSamples))}
+    end.
 
 check_fragmentation({FragLimit, FragSizeLimit}, Frag, FragSize) ->
     true = is_integer(FragLimit),
