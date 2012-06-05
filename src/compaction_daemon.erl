@@ -635,21 +635,23 @@ select_samples([V | VRest], [S | SRest] = Samples, Ix, Acc) ->
     end.
 
 unique_random_ints(Range, NumSamples) ->
-    case Range * 2 < NumSamples of
+    case Range > NumSamples * 2 of
         true ->
             unique_random_ints(Range, NumSamples, ordsets:new());
         false ->
-            case Range >= NumSamples of
+            case NumSamples >= Range of
                 true ->
-                    lists:seq(1, NumSamples);
+                    lists:seq(1, Range);
                 false ->
                     %% if Range is reasonably close to NumSamples, do simpler
-                    %% one-pass pick-with-Range/NumSamples probability
-                    %% selection. It'll have on average Range samples, and
+                    %% one-pass pick-with-NumSamples/Range probability
+                    %% selection. It'll have on average NumSamples samples, and
                     %% I'm ok with that.
-                    [I || I <- lists:seq(1, NumSamples),
-                          [{Dice, _}] <- [random:uniform_s(NumSamples, now())],
-                          Dice =< Range]
+                    [I || I <- lists:seq(1, Range),
+                          begin
+                              {Dice, _} = random:uniform_s(Range, now()),
+                              Dice =< NumSamples
+                          end]
             end
     end.
 
