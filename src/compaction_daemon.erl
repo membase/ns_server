@@ -634,34 +634,35 @@ select_samples([V | VRest], [S | SRest] = Samples, Ix, Acc) ->
             select_samples(VRest, Samples, Ix + 1, Acc)
     end.
 
-unique_random_ints(R, N) ->
-    case R * 2 < N of
+unique_random_ints(Range, NumSamples) ->
+    case Range * 2 < NumSamples of
         true ->
-            unique_random_ints(R, N, ordsets:new());
+            unique_random_ints(Range, NumSamples, ordsets:new());
         false ->
-            case R >= N of
+            case Range >= NumSamples of
                 true ->
-                    lists:seq(1, N);
+                    lists:seq(1, NumSamples);
                 false ->
-                    %% if R is reasonably close to N, do simpler
-                    %% one-pass pick-with-R/N probability
-                    %% selection. It'll have on average R samples, and
+                    %% if Range is reasonably close to NumSamples, do simpler
+                    %% one-pass pick-with-Range/NumSamples probability
+                    %% selection. It'll have on average Range samples, and
                     %% I'm ok with that.
-                    [I || I <- lists:seq(1, N),
-                          [{Dice, _}] <- [random:uniform_s(N, now())],
-                          Dice =< R]
+                    [I || I <- lists:seq(1, NumSamples),
+                          [{Dice, _}] <- [random:uniform_s(NumSamples, now())],
+                          Dice =< Range]
             end
     end.
 
 unique_random_ints(_, 0, Seen) ->
     Seen;
-unique_random_ints(R, N, Seen) ->
-    {I, _} = random:uniform_s(R, now()),
+unique_random_ints(Range, NumSamples, Seen) ->
+    {I, _} = random:uniform_s(Range, now()),
     case ordsets:is_element(I, Seen) of
         true ->
-            unique_random_ints(R, N, Seen);
+            unique_random_ints(Range, NumSamples, Seen);
         false ->
-            unique_random_ints(R, N - 1, ordsets:add_element(I, Seen))
+            unique_random_ints(Range, NumSamples - 1,
+                               ordsets:add_element(I, Seen))
     end.
 
 
