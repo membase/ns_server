@@ -118,9 +118,17 @@ handle_info({tcp, Socket, Data}, #state{downstream=Downstream,
                      process_data(Data, #state.downbuf,
                                   fun process_downstream/2, State);
                  Upstream ->
-                     process_data(Data, #state.upbuf,
-                                  fun process_upstream/2,
-                                  State#state{last_seen=now()})
+                     RV = process_data(Data, #state.upbuf,
+                                       fun process_upstream/2,
+                                       State#state{last_seen=now()}),
+                     %% memcached normally sends us up 10 items, we
+                     %% want this better than nothing network
+                     %% efficiency. On the other hand Naggle's
+                     %% algorithm will kill performance. So lets ask kernel
+                     %% to send queued stuff even if Naggle is against.
+                     ok = inet:setopts(Downstream, [{nodelay, true}]),
+                     ok = inet:setopts(Downstream, [{nodelay, false}]),
+                     RV
     end,
     {noreply, State1};
 handle_info({tcp_closed, Socket}, #state{upstream=Socket} = State) ->
@@ -198,6 +206,9 @@ init({Src, Dst, Opts}=InitArgs) ->
          ok = mc_client_binary:set_vbucket(Downstream, VBucket, replica)
      end || VBucket <- VBucketsToSetToReplica],
     Upstream = connect(Src, Username, Password, Bucket),
+    %% TCP_NODELAY on upstream socket seems beneficial. Only ack/nack
+    %% is getting sent here.
+    ok = inet:setopts(Upstream, [{nodelay, true}]),
     {ok, CheckpointIdsDict} = mc_client_binary:get_open_checkpoint_ids(Upstream, VBuckets),
     ?rebalance_debug("CheckpointIdsDict:~n~p~n", [CheckpointIdsDict]),
     NotReadyVBuckets = dict:fold(
