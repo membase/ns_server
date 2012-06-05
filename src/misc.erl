@@ -1078,7 +1078,7 @@ build_ebucketmigrator() ->
 
     Filename = "ebucketmigrator",
     Modules = [ebucketmigrator, ebucketmigrator_srv,
-               mc_client_binary, mc_binary, misc],
+               mc_client_binary, mc_binary, misc, ns_config_ets_dup],
     Files = [read_beam(Mod, "ebin") || Mod <- Modules],
 
     AleDir = filename:join(["deps", "ale", "ebin"]),

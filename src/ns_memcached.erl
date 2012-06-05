@@ -20,6 +20,13 @@
 %% through distributed erlang, not using memcached prototocol over the
 %% LAN.
 %%
+%% Calls to memcached that potentially can take took long are passed
+%% down to one of worker processes. ns_memcached process is
+%% maintaining list of ready workers and calls queue. When
+%% gen_server:call arrives this is added to calls queue. And if
+%% there's ready worker, it is dequeued and sent to worker. Worker
+%% then does gen_server:reply to caller.
+%%
 -module(ns_memcached).
 
 -behaviour(gen_server).
@@ -29,8 +36,11 @@
 -define(CHECK_INTERVAL, 10000).
 -define(CHECK_WARMUP_INTERVAL, 500).
 -define(VBUCKET_POLL_INTERVAL, 100).
--define(TIMEOUT, 30000).
--define(CONNECTED_TIMEOUT, 5000).
+-define(TIMEOUT, ns_config_ets_dup:get_timeout(ns_memcached_outer, 30000)).
+-define(TIMEOUT_OPEN_CHECKPOINT, ns_config_ets_dup:get_timeout(ns_memcached_open_checkpoint, 30000)).
+-define(TIMEOUT_HEAVY, ns_config_ets_dup:get_timeout(ns_memcached_outer_heavy, 30000)).
+-define(TIMEOUT_VERY_HEAVY, ns_config_ets_dup:get_timeout(ns_memcached_outer_very_heavy, 60000)).
+-define(CONNECTED_TIMEOUT, ns_config_ets_dup:get_timeout(ns_memcached_connected, 5000)).
 %% half-second is definitely 'slow' for any definition of slow
 -define(SLOW_CALL_THRESHOLD_MICROS, 500000).
 
@@ -42,11 +52,20 @@
          handle_info/2, terminate/2, code_change/3]).
 
 -record(state, {
-          timer::any(),
+          running_fast = 0,
+          running_heavy = 0,
+          running_very_heavy = 0,
+          %% NOTE: otherwise dialyzer seemingly thinks it's possible
+          %% for queue fields to be undefined
+          fast_calls_queue = impossible :: queue(),
+          heavy_calls_queue = impossible :: queue(),
+          very_heavy_calls_queue = impossible :: queue(),
           status::atom(),
           start_time::tuple(),
           bucket::nonempty_string(),
-          sock::port()
+          sock::port(),
+          timer::any(),
+          work_requests = []
          }).
 
 %% external API
@@ -101,29 +120,83 @@ init(Bucket) ->
     {ok, Timer} = timer:send_interval(?CHECK_WARMUP_INTERVAL, check_started),
     case connect() of
         {ok, Sock} ->
-            ensure_bucket(Sock, Bucket),
-            gen_event:notify(buckets_events, {started, Bucket}),
-            {ok, #state{
-               timer=Timer,
-               status=init,
-               start_time=now(),
-               sock=Sock,
-               bucket=Bucket}};
+            case ensure_bucket(Sock, Bucket) of
+                ok -> init_with_created_bucket(Bucket, Timer, Sock);
+                EnsureBucketError ->
+                    {stop, {ensure_bucket_failed, EnsureBucketError}}
+            end;
         {error, Error} ->
             {stop, Error}
     end.
 
+init_with_created_bucket(Bucket, Timer, Sock) ->
+    gen_event:notify(buckets_events, {started, Bucket}),
+    Q = queue:new(),
+    WorkersCount = case ns_config:search_node(ns_memcached_workers_count) of
+                       false -> 4;
+                       {value, DefinedWorkersCount} ->
+                           DefinedWorkersCount
+                   end,
+    InitialState = #state{
+      timer=Timer,
+      status=init,
+      start_time=os:timestamp(),
+      sock=Sock,
+      bucket=Bucket,
+      work_requests=[],
+      fast_calls_queue = Q,
+      heavy_calls_queue = Q,
+      very_heavy_calls_queue = Q,
+      running_fast = WorkersCount
+     },
+    Self = self(),
+    [proc_lib:spawn_link(erlang, apply, [fun worker_init/2, [Self, InitialState]])
+     || _ <- lists:seq(1, WorkersCount)],
+    {ok, InitialState}.
+
+worker_init(Parent, ParentState) ->
+    {ok, Sock} = connect(),
+    ok = mc_client_binary:select_bucket(Sock, ParentState#state.bucket),
+    worker_loop(Parent, ParentState#state{sock = Sock}, #state.running_fast).
+
+worker_loop(Parent, State, PrevCounterSlot) ->
+    {Msg, From, StartTS, CounterSlot} = gen_server:call(Parent, {get_work, PrevCounterSlot}, infinity),
+    WorkStartTS = os:timestamp(),
+    %% note we only accept calls that don't mutate state. So in- and
+    %% out- going states asserted to be same.
+    {reply, Reply, State} = do_handle_call(Msg, From, State),
+    gen_server:reply(From, Reply),
+    verify_report_long_call(StartTS, WorkStartTS, State, Msg, []),
+    worker_loop(Parent, State, CounterSlot).
+
+handle_call({get_work, CounterSlot}, From, #state{work_requests = Froms} = State) ->
+    State2 = State#state{work_requests = [From | Froms]},
+    Counter = erlang:element(CounterSlot, State2) - 1,
+    State3 = erlang:setelement(CounterSlot, State2, Counter),
+    {noreply, maybe_deliver_work(State3)};
+handle_call(connected, _From, #state{status=Status} = State) ->
+    {reply, Status =:= connected, State};
+handle_call(sync_bucket_config = Msg, _From, State) ->
+    StartTS = os:timestamp(),
+    handle_info(check_config, State),
+    verify_report_long_call(StartTS, StartTS, State, Msg, {reply, ok, State});
 handle_call(Msg, From, State) ->
     StartTS = os:timestamp(),
+    NewState = queue_call(Msg, From, StartTS, State),
+    {noreply, NewState}.
+
+verify_report_long_call(StartTS, ActualStartTS, State, Msg, RV) ->
     try
-        do_handle_call(Msg, From, State)
+        RV
     after
         EndTS = os:timestamp(),
-        Diff = timer:now_diff(EndTS, StartTS),
+        Diff = timer:now_diff(EndTS, ActualStartTS),
+        QDiff = timer:now_diff(EndTS, StartTS),
         ServiceName = "ns_memcached-" ++ State#state.bucket,
         (catch
              begin
                  system_stats_collector:increment_counter({ServiceName, call_time}, Diff),
+                 system_stats_collector:increment_counter({ServiceName, q_call_time}, QDiff),
                  system_stats_collector:increment_counter({ServiceName, calls}, 1)
              end),
         if
@@ -138,6 +211,92 @@ handle_call(Msg, From, State) ->
                 ok
         end
     end.
+
+%% anything effectful is likely to be heavy
+assign_queue({delete_vbucket, _}) -> #state.very_heavy_calls_queue;
+assign_queue(flush) -> #state.very_heavy_calls_queue;
+assign_queue({set_vbucket, _, _}) -> #state.heavy_calls_queue;
+assign_queue({deregister_tap_client, _}) -> #state.heavy_calls_queue;
+assign_queue(_) -> #state.fast_calls_queue.
+
+queue_to_counter_slot(#state.very_heavy_calls_queue) -> #state.running_very_heavy;
+queue_to_counter_slot(#state.heavy_calls_queue) -> #state.running_heavy;
+queue_to_counter_slot(#state.fast_calls_queue) -> #state.running_fast.
+
+queue_call(Msg, From, StartTS, State) ->
+    QI = assign_queue(Msg),
+    Q = erlang:element(QI, State),
+    CounterSlot = queue_to_counter_slot(QI),
+    Q2 = queue:snoc(Q, {Msg, From, StartTS, CounterSlot}),
+    State2 = erlang:setelement(QI, State, Q2),
+    maybe_deliver_work(State2).
+
+maybe_deliver_work(#state{running_heavy = RunningHeavy,
+                          running_fast = RunningFast,
+                          work_requests = Froms} = State) ->
+    case Froms of
+        [] ->
+            State;
+        [From | RestFroms] ->
+            StartedHeavy =
+                %% we only consider starting heavy calls if
+                %% there's extra free worker for fast calls. Thus
+                %% we're considering heavy queues first. Otherwise
+                %% we'll be starving them.
+                case RestFroms =/= [] orelse RunningFast > 0 of
+                    false ->
+                        failed;
+                    _ ->
+                        StartedVeryHeavy =
+                            case RunningHeavy of
+                                %% we allow only one concurrent very
+                                %% heavy call. Thus it makes sense to
+                                %% consider very heavy queue first
+                                0 ->
+                                    try_deliver_work(State, From, RestFroms, #state.very_heavy_calls_queue);
+                                _ ->
+                                    failed
+                            end,
+                        case StartedVeryHeavy of
+                            failed ->
+                                try_deliver_work(State, From, RestFroms, #state.heavy_calls_queue);
+                            _ ->
+                                StartedVeryHeavy
+                        end
+                end,
+            StartedFast =
+                case StartedHeavy of
+                    failed ->
+                        try_deliver_work(State, From, RestFroms, #state.fast_calls_queue);
+                    _ ->
+                        StartedHeavy
+                end,
+            case StartedFast of
+                failed ->
+                    State;
+                _ ->
+                    maybe_deliver_work(StartedFast)
+            end
+    end.
+
+%% -spec try_deliver_work(#state{}, any(), [any()], (#state.very_heavy_calls_queue) | (#state.heavy_calls_queue) | (#state.fast_calls_queue)) ->
+%%                               failed | #state{}.
+-spec try_deliver_work(#state{}, any(), [any()], 5 | 6 | 7) ->
+                              failed | #state{}.
+try_deliver_work(State, From, RestFroms, QueueSlot) ->
+    Q = erlang:element(QueueSlot, State),
+    case queue:is_empty(Q) of
+        true ->
+            failed;
+        _ ->
+            {_Msg, _From, _StartTS, CounterSlot} = Call = queue:head(Q),
+            gen_server:reply(From, Call),
+            State2 = State#state{work_requests = RestFroms},
+            Counter = erlang:element(CounterSlot, State2),
+            State3 = erlang:setelement(CounterSlot, State2, Counter + 1),
+            erlang:setelement(QueueSlot, State3, queue:tail(Q))
+    end.
+
 
 do_handle_call({raw_stats, SubStat, StatsFun, StatsFunState}, _From, State) ->
     try mc_binary:quick_stats(State#state.sock, SubStat, StatsFun, StatsFunState) of
@@ -195,8 +354,6 @@ do_handle_call(list_vbuckets, _From, State) ->
                         binary_to_existing_atom(V, latin1)} | Acc]
               end, []),
     {reply, Reply, State};
-do_handle_call(connected, _From, #state{status=Status} = State) ->
-    {reply, Status =:= connected, State};
 do_handle_call(flush, _From, State) ->
     Reply = mc_client_binary:flush(State#state.sock),
     {reply, Reply, State};
@@ -206,8 +363,6 @@ do_handle_call({set_flush_param, Key, Value}, _From, State) ->
 do_handle_call({set_vbucket, VBucket, VBState}, _From,
             #state{sock=Sock} = State) ->
     (catch master_activity_events:note_vbucket_state_change(State#state.bucket, node(), VBucket, VBState)),
-    %% This happens asynchronously, so there's no guarantee the
-    %% vbucket will be in the requested state when it returns.
     Reply = mc_client_binary:set_vbucket(Sock, VBucket, VBState),
     case Reply of
         ok ->
@@ -235,9 +390,6 @@ do_handle_call(topkeys, _From, State) ->
               end,
               []),
     {reply, Reply, State};
-do_handle_call(sync_bucket_config, _From, State) ->
-    handle_info(check_config, State),
-    {reply, ok, State};
 do_handle_call({deregister_tap_client, TapName}, _From, State) ->
     mc_client_binary:deregister_tap_client(State#state.sock, TapName),
     {reply, ok, State};
@@ -257,7 +409,7 @@ handle_info(check_started, #state{timer=Timer, start_time=Start,
         true ->
             {ok, cancel} = timer:cancel(Timer),
             ?user_log(1, "Bucket ~p loaded on node ~p in ~p seconds.",
-                      [Bucket, node(), timer:now_diff(now(), Start) div 1000000]),
+                      [Bucket, node(), timer:now_diff(os:timestamp(), Start) div 1000000]),
             gen_event:notify(buckets_events, {loaded, Bucket}),
             timer:send_interval(?CHECK_INTERVAL, check_config),
             {noreply, State#state{status=connected}};
@@ -385,7 +537,7 @@ connected_buckets(Timeout) ->
 %% @doc Send flush command to specified bucket
 -spec flush(bucket_name()) -> ok.
 flush(Bucket) ->
-    do_call({server(Bucket), node()}, flush, ?TIMEOUT).
+    do_call({server(Bucket), node()}, flush, ?TIMEOUT_VERY_HEAVY).
 
 %% @doc Returns true if backfill is running on this node for the given bucket.
 -spec backfilling(bucket_name()) ->
@@ -405,14 +557,14 @@ backfilling(Node, Bucket) ->
 -spec delete_vbucket(bucket_name(), vbucket_id()) ->
                             ok | mc_error().
 delete_vbucket(Bucket, VBucket) ->
-    do_call(server(Bucket), {delete_vbucket, VBucket}, ?TIMEOUT).
+    do_call(server(Bucket), {delete_vbucket, VBucket}, ?TIMEOUT_VERY_HEAVY).
 
 
 -spec delete_vbucket(node(), bucket_name(), vbucket_id()) ->
                             ok | mc_error().
 delete_vbucket(Node, Bucket, VBucket) ->
     do_call({server(Bucket), Node}, {delete_vbucket, VBucket},
-                    ?TIMEOUT).
+                    ?TIMEOUT_VERY_HEAVY).
 
 
 -spec get_vbucket(node(), bucket_name(), vbucket_id()) ->
@@ -478,14 +630,14 @@ list_vbuckets_multi(Nodes, Bucket) ->
 -spec set_vbucket(bucket_name(), vbucket_id(), vbucket_state()) ->
                          ok | mc_error().
 set_vbucket(Bucket, VBucket, VBState) ->
-    do_call(server(Bucket), {set_vbucket, VBucket, VBState}, ?TIMEOUT).
+    do_call(server(Bucket), {set_vbucket, VBucket, VBState}, ?TIMEOUT_HEAVY).
 
 
 -spec set_vbucket(node(), bucket_name(), vbucket_id(), vbucket_state()) ->
                          ok | mc_error().
 set_vbucket(Node, Bucket, VBucket, VBState) ->
     do_call({server(Bucket), Node}, {set_vbucket, VBucket, VBState},
-                    ?TIMEOUT).
+                    ?TIMEOUT_HEAVY).
 
 
 -spec stats(bucket_name()) ->
@@ -506,7 +658,7 @@ stats(Node, Bucket, Key) ->
     do_call({server(Bucket), Node}, {stats, Key}, ?TIMEOUT).
 
 sync_bucket_config(Bucket) ->
-    do_call(server(Bucket), sync_bucket_config, ?TIMEOUT).
+    do_call(server(Bucket), sync_bucket_config, infinity).
 
 -spec deregister_tap_client(Bucket::bucket_name(),
                             TapName::binary()) -> ok.
@@ -532,7 +684,7 @@ raw_stats(Node, Bucket, SubStats, Fn, FnState) ->
                            VBucketId::vbucket_id()) -> [{node(), integer() | missing}].
 get_vbucket_open_checkpoint(Nodes, Bucket, VBucketId) ->
     StatName = <<"vb_", (iolist_to_binary(integer_to_list(VBucketId)))/binary, ":open_checkpoint_id">>,
-    {OkNodes, BadNodes} = gen_server:multi_call(Nodes, server(Bucket), {stats, <<"checkpoint">>}, ?TIMEOUT),
+    {OkNodes, BadNodes} = gen_server:multi_call(Nodes, server(Bucket), {stats, <<"checkpoint">>}, ?TIMEOUT_OPEN_CHECKPOINT),
     case BadNodes of
         [] -> ok;
         _ ->

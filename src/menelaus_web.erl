@@ -1589,6 +1589,18 @@ handle_diag_eval(Req) ->
     end.
 
 handle_diag_master_events(Req) ->
+    Params = Req:parse_qs(),
+    case proplists:get_value("o", Params) of
+        undefined ->
+            do_handle_diag_master_events(Req);
+        _ ->
+            Body = master_activity_events:format_some_history(master_activity_events_keeper:get_history()),
+            Req:ok({"text/kind-of-json; charset=utf-8",
+                    server_header(),
+                    Body})
+    end.
+
+do_handle_diag_master_events(Req) ->
     Rep = Req:ok({"text/kind-of-json; charset=utf-8",
                   server_header(),
                   chunked}),

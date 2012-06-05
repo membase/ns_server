@@ -23,8 +23,8 @@
 
 -export([bin/1, recv/2, recv/3, send/4, encode/3, quick_stats/4, quick_stats/5, quick_stats_append/3]).
 
--define(FLUSH_TIMEOUT, 15000).
--define(RECV_TIMEOUT, 15000).
+-define(RECV_TIMEOUT, ns_config_ets_dup:get_timeout(memcached_recv, 30000)).
+-define(QUICK_STATS_RECV_TIMEOUT, ns_config_ets_dup:get_timeout(memcached_stats_recv, 60000)).
 
 %% Functions to work with memcached binary protocol packets.
 
@@ -69,7 +69,7 @@ quick_stats_append(K, V, Acc) ->
     [{K, V} | Acc].
 
 quick_stats(Sock, Key, CB, CBState) ->
-    quick_stats(Sock, Key, CB, CBState, ?RECV_TIMEOUT).
+    quick_stats(Sock, Key, CB, CBState, ?QUICK_STATS_RECV_TIMEOUT).
 
 %% quick_stats is like mc_client_binary:stats but with own buffering
 %% of stuff and thus much faster. Note: we don't expect any request

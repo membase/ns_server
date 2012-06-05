@@ -156,10 +156,16 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 increment_counter(Name, By) ->
+    (catch do_increment_counter(Name, By)).
+
+do_increment_counter(Name, By) ->
     ets:insert_new(ns_server_system_stats, {Name, 0}),
     ets:update_counter(ns_server_system_stats, Name, By).
 
 set_counter(Name, Value) ->
+    (catch do_set_counter(Name, Value)).
+
+do_set_counter(Name, Value) ->
     case ets:insert_new(ns_server_system_stats, {Name, Value}) of
         false ->
             ets:update_element(ns_server_system_stats, Name, {2, Value});
@@ -259,6 +265,7 @@ sample_ns_memcached_queues() ->
          end,
 
          just_avg_counter({S, call_time}),
+         just_avg_counter({S, q_call_time}),
          just_avg_counter({S, calls}, {S, calls_rate}),
 
          just_avg_counter({S, long_call_time}),
