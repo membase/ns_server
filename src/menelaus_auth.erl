@@ -64,19 +64,7 @@ filter_accessible_buckets(BucketsAll, Req) ->
 %% credentials. No auth buckets are always accessible. SASL auth
 %% buckets are accessible only with admin or bucket credentials.
 is_bucket_accessible(Bucket, Req) ->
-    UserPassword = case extract_auth(Req) of
-                       undefined ->
-                           case Req:get_header_value("Cookie") of
-                               undefined -> undefined;
-                               RawCookies ->
-                                   ParsedCookies = mochiweb_cookies:parse_cookie(RawCookies),
-                                   case proplists:get_value("auth", ParsedCookies) of
-                                       undefined -> undefined;
-                                       V -> parse_user_password(base64:decode_to_string(mochiweb_util:unquote(V)))
-                                   end
-                           end;
-                       X -> X
-                   end,
+    UserPassword = menelaus_auth:extract_auth(Req),
     F = bucket_auth_fun(UserPassword),
     F(Bucket).
 
