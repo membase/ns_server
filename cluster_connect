@@ -10,7 +10,8 @@ def usage():
             -n <number of nodes>\n\
             -s <memory size (min 256) default: 256\n\
             -t <bucket type> (membase, memcached) default: membase\n\
-            -r <num replicas> (max 3) default: 1 (Only for membase buckets!)\n"
+            -r <num replicas> (max 3) default: 1 (Only for membase buckets!)\n\
+            -i (don't index replicas) default: replica index enabled"
 
 
 class PasswordManager(urllib2.HTTPPasswordMgr):
@@ -23,7 +24,7 @@ class PasswordManager(urllib2.HTTPPasswordMgr):
 
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "n:t:s:r:")
+        opts, args = getopt.getopt(sys.argv[1:], "n:t:s:r:i")
     except getopt.GetoptError, err:
         print str(err)
         usage()
@@ -32,6 +33,8 @@ def main():
     buckettype = "membase"
     memsize = 256
     replicas = 1
+    replica_index = True
+
     data_base_path = os.getcwd() + "/data"
     for o, a in opts:
         if o == "-n":
@@ -42,6 +45,8 @@ def main():
             memsize = a
         elif o == "-r":
             replicas = a
+        elif o == "-i":
+            replica_index = False
         else:
             usage()
             sys.exit()
@@ -60,7 +65,8 @@ def main():
     o.open("http://127.0.0.1:9000/pools/default", "memoryQuota=" + str(memsize)).read()
     o.open("http://127.0.0.1:9000/controller/setupDefaultBucket", "bucketType=" + buckettype +
             "&ramQuotaMB=" + str(memsize) +
-            "&replicaNumber=" + str(replicas)).read()
+            "&replicaNumber=" + str(replicas) +
+            "&replicaIndex=" + bool_request_value(replica_index)).read()
     o.open("http://127.0.0.1:9000/settings/web", "port=SAME&username=Administrator&password=asdasd").read()
     for i in range(1, int(nodes)):
         port = 9000 + i
@@ -73,6 +79,9 @@ def main():
     o.open("http://127.0.0.1:9000/controller/rebalance", urllib.urlencode(
             {'knownNodes': ",".join([info[k]['otpNode'] for k in info]),
              'ejectedNodes': ''})).read()
+
+def bool_request_value(Value):
+    return "1" if Value else "0"
 
 if __name__ == '__main__':
     main()
