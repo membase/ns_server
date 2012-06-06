@@ -103,8 +103,8 @@ apply_changes(Policy, Bucket, ChangeTuples) ->
     %% In 1.8.1 we clearly know what nodes are affected by change
     %% tuples (source). But in 1.8.2 it's either source or
     %% destination. Lets count both just in case.
-    RelevantNodes = [N || {_, S, D, _} <- ChangeTuples,
-                          N <- [S, D]],
+    RelevantNodes = lists:usort([N || {_, S, D, _} <- ChangeTuples,
+                                      N <- [S, D]]),
 
     %% dict({Src, Dst}, VBuckets)
     Replicators = replicators(Policy, Bucket, RelevantNodes),
