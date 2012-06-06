@@ -26,23 +26,12 @@ start_link(BucketName) ->
     Name = list_to_atom(?MODULE_STRING ++ "-" ++ BucketName),
     supervisor:start_link({local, Name}, ?MODULE, [BucketName]).
 
-ns_memcached_data_child_specs(BucketName, NumInstances) ->
-    [{{ns_memcached, data, BucketName, Id}, {ns_memcached, start_link,
-                                             [{BucketName, data, Id}]},
-      permanent, brutal_kill, worker, [ns_memcached]}
-     || Id <- lists:seq(1, NumInstances)].
-
 child_specs(BucketName) ->
     [{{ns_memcached, stats, BucketName, 0}, {ns_memcached, start_link,
-                                             [{BucketName, stats, 0}]},
+                                             [BucketName]},
       %% ns_memcached waits for the bucket to sync to disk before exiting
-      permanent, 86400000, worker, [ns_memcached]}] ++
-
-    ns_memcached_data_child_specs(
-        BucketName, misc:getenv_int("NUM_NS_MEMCACHED_DATA_INSTANCES",
-                                    ?NUM_NS_MEMCACHED_DATA_INSTANCES)) ++
-
-    [{{ns_vbm_sup, BucketName}, {ns_vbm_sup, start_link, [BucketName]},
+      permanent, 86400000, worker, [ns_memcached]},
+     {{ns_vbm_sup, BucketName}, {ns_vbm_sup, start_link, [BucketName]},
       permanent, 1000, worker, [ns_vbm_sup]},
      {{ns_vbm_new_sup, BucketName}, {ns_vbm_new_sup, start_link, [BucketName]},
       permanent, 1000, supervisor, [ns_vbm_new_sup]},
