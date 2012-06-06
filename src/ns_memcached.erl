@@ -231,7 +231,7 @@ queue_call(Msg, From, StartTS, State) ->
     State2 = erlang:setelement(QI, State, Q2),
     maybe_deliver_work(State2).
 
-maybe_deliver_work(#state{running_heavy = RunningHeavy,
+maybe_deliver_work(#state{running_very_heavy = RunningVeryHeavy,
                           running_fast = RunningFast,
                           work_requests = Froms} = State) ->
     case Froms of
@@ -248,7 +248,7 @@ maybe_deliver_work(#state{running_heavy = RunningHeavy,
                         failed;
                     _ ->
                         StartedVeryHeavy =
-                            case RunningHeavy of
+                            case RunningVeryHeavy of
                                 %% we allow only one concurrent very
                                 %% heavy call. Thus it makes sense to
                                 %% consider very heavy queue first
