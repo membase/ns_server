@@ -27,7 +27,8 @@
          storage_conf/1, storage_conf_from_node_status/1, add_storage/4, remove_storage/2,
          local_bucket_disk_usage/1,
          this_node_dbdir/0, this_node_ixdir/0, this_node_logdir/0,
-         delete_databases/1, delete_unused_buckets_db_files/0]).
+         delete_databases/1, delete_unused_buckets_db_files/0,
+         bucket_databases/1]).
 
 -export([node_storage_info/1, cluster_storage_info/0, nodes_storage_info/1]).
 
