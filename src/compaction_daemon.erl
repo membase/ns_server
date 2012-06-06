@@ -762,12 +762,20 @@ view_needs_compaction(BucketName, DDocId, Type,
                               daemon=#daemon_config{min_file_size=MinFileSize}}) ->
     Info = get_group_data_info(BucketName, DDocId, Type),
 
-    FileSize = proplists:get_value(disk_size, Info),
-    DataSize = proplists:get_value(data_size, Info, 0),
+    case Info of
+        disabled ->
+            %% replica index can be disabled; so we'll skip it here instead of
+            %% spamming logs with irrelevant crash reports
+            false;
+        _ ->
+            FileSize = proplists:get_value(disk_size, Info),
+            DataSize = proplists:get_value(data_size, Info, 0),
 
-    Title = <<BucketName/binary, $/, DDocId/binary,
-              $/, (atom_to_binary(Type, latin1))/binary>>,
-    file_needs_compaction(Title, DataSize, FileSize, FragThreshold, MinFileSize).
+            Title = <<BucketName/binary, $/, DDocId/binary,
+                      $/, (atom_to_binary(Type, latin1))/binary>>,
+            file_needs_compaction(Title, DataSize, FileSize,
+                                  FragThreshold, MinFileSize)
+    end.
 
 ensure_can_view_compact(BucketName, DDocId, Type) ->
     Info = get_group_data_info(BucketName, DDocId, Type),
@@ -796,7 +804,7 @@ get_group_data_info(BucketName, DDocId, main) ->
     Info;
 get_group_data_info(BucketName, DDocId, replica) ->
     MainInfo = get_group_data_info(BucketName, DDocId, main),
-    proplists:get_value(replica_group_info, MainInfo).
+    proplists:get_value(replica_group_info, MainInfo, disabled).
 
 ddoc_names(BucketName) ->
     MasterDbName = <<BucketName/binary, "/master">>,
