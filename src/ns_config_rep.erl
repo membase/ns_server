@@ -44,7 +44,7 @@
          terminate/2, code_change/3]).
 
 % API
--export([push/0, initiate_changes_push/1,
+-export([push/0,
          synchronize_local/0, synchronize_remote/0, synchronize_remote/1,
          pull_and_push/1]).
 
@@ -54,6 +54,11 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
+    Self = self(),
+    ns_pubsub:subscribe_link(ns_config_events_local,
+                             fun (Keys) ->
+                                     Self ! {push_keys, Keys}
+                             end),
     % Start with startup config sync.
     ?log_debug("init pulling~n", []),
     do_pull(),
@@ -123,68 +128,16 @@ handle_cast({merge_compressed, _Blob} = Msg, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-stack_while(Body, Ref, Tail) ->
-    case Body(Ref) of
-        Ref ->
-            Tail;
-        V -> stack_while(Body, Ref, [V|Tail])
+accumulate_X(Acc, X) ->
+    receive
+        {X, Value} ->
+            accumulate_X(lists:umerge(lists:sort(Value), Acc), X)
+    after 0 ->
+            Acc
     end.
 
-accumulate_kv_pushes(List) ->
-    ListOfLists =
-        stack_while(fun (Ref) ->
-                            receive
-                                {push, X} -> lists:sort(X)
-                            after 0 -> Ref
-                            end
-                    end, erlang:make_ref(), [lists:sort(List)]),
-    lists:foldl(fun (CurList, OrdDict) ->
-                        orddict:merge(fun (_K, _V1, V2) ->
-                                              V2
-                                      end,
-                                      CurList, OrdDict)
-                end, hd(ListOfLists), tl(ListOfLists)).
-
-accumulate_kv_pushes_test() ->
-    receive
-        {push, _} -> exit(bad)
-    after 0 -> ok
-    end,
-    KV1 = [{a, 1}, {b, 2}],
-    KV2 = [{a, 2}, {c, 3}],
-
-    self() ! {push, KV1},
-    self() ! {push, KV2},
-    ?assertEqual([{a,2},{b,2},{c,3}],
-                 accumulate_kv_pushes([])),
-    receive
-        {push, _} -> exit(bad)
-    after 0 -> ok
-    end,
-
-    self() ! {push, KV2},
-    self() ! {push, KV1},
-    ?assertEqual([{a,1},{b,2},{c,3}],
-                 accumulate_kv_pushes([])),
-    receive
-        {push, _} -> exit(bad)
-    after 0 -> ok
-    end,
-
-    self() ! {push, KV2},
-    ?assertEqual([{a,2},{b,2},{c,3}],
-                 accumulate_kv_pushes(KV1)).
-
 accumulate_pull_and_push(Nodes) ->
-    ListOfLists =
-        stack_while(fun (Ref) ->
-                            receive
-                                {pull_and_push, X} -> lists:sort(X)
-                            after 0 ->
-                                    Ref
-                            end
-                    end, erlang:make_ref(), [lists:sort(Nodes)]),
-    lists:umerge(ListOfLists).
+    accumulate_X(lists:sort(Nodes), pull_and_push).
 
 accumulate_pull_and_push_test() ->
     receive
@@ -204,10 +157,62 @@ accumulate_pull_and_push_test() ->
     after 0 -> ok
     end.
 
-handle_info({push, List}, State) ->
-    ?log_debug("Pushing config"),
-    do_push(accumulate_kv_pushes(List)),
-    ?log_debug("Pushing config done"),
+accumulate_push_keys(InitialKeys) ->
+    accumulate_X(lists:sort(InitialKeys), push_keys).
+
+accumulate_push_keys_and_get_config(_Keys0, 0) ->
+    system_stats_collector:increment_counter(ns_config_rep_push_keys_retries_exceeded, 1),
+    ale:warn(?USER_LOGGER, "Exceeded retries count trying to get consistent keys/values for config replication. This is minor bug. Everything is safe, but please file bug and attach logs", []),
+    KVs = lists:sort(ns_config:get_kv_list()),
+    Keys = [K || {K, _} <- KVs],
+    do_push_keys(Keys, KVs);
+accumulate_push_keys_and_get_config(Keys0, RetriesLeft) ->
+    Keys = accumulate_push_keys(Keys0),
+    AllConfigKV = ns_config:get_kv_list(),
+    %% the following ensures that all queued ns_config_events_local
+    %% events are processed (and thus we've {push_keys, ...} in our
+    %% mailbox if there were any local config mutations
+    gen_event:which_handlers(ns_config_events_local),
+    receive
+        {push_keys, _} = Msg ->
+            %% ok, yet another change is detected, we need to retry so
+            %% that AllConfigKV is consistent with list of changed
+            %% keys we have
+            system_stats_collector:increment_counter(ns_config_rep_push_keys_retries, 1),
+            system_stats_collector:increment_counter(ns_config_rep_push_keys_total_retries_left, RetriesLeft),
+            %% ordering of these messages is irrelevant so we can
+            %% resend and retry
+            self() ! Msg,
+            accumulate_push_keys_and_get_config(Keys, RetriesLeft-1)
+    after 0 ->
+            %% we know that AllConfigKV has exactly changes we've seen
+            %% with {push_keys, ...}. I.e. there's no way config
+            %% could've changed by local mutation before us getting it
+            %% and us not detecting it here. Also we can see that
+            %% we're reading values after we've seen keys.
+            %%
+            %% NOTE however that non-local mutation (i.e. incoming
+            %% config replication) may have overriden some local
+            %% mutations. And it's possible for us to see final value
+            %% rather than produced by local mutation. It seems to be
+            %% possible only when there's config conflict btw.
+            %%
+            %% So worst case seems to be that our node accidently
+            %% replicates some value mutated on other node without
+            %% replicating other change(s) by that other
+            %% node. I.e. some third node may see partial config
+            %% mutations of other node via config replication from
+            %% this node. Given that we don't normally cause config
+            %% conflicts and that in some foreseeble future we're
+            %% going to make our config replication even less
+            %% conflict-prone I think it should be ok. I.e. local
+            %% mutation that is overwritten by conflicting incoming
+            %% change is already bug.
+            do_push_keys(Keys, AllConfigKV)
+    end.
+
+handle_info({push_keys, Keys0}, State) ->
+    accumulate_push_keys_and_get_config(Keys0, 10),
     {noreply, State};
 handle_info({pull_and_push, Nodes}, State) ->
     ?log_info("Replicating config to/from:~n~p", [Nodes]),
@@ -241,9 +246,6 @@ code_change(_OldVsn, State, _Extra) ->
 
 push() ->
     ?MODULE ! push.
-
-initiate_changes_push(List) ->
-    ?MODULE ! {push, List}.
 
 % awaits completion of all previous requests
 synchronize_local() ->
@@ -293,6 +295,23 @@ pull_and_push(Nodes) ->
 schedule_config_sync() ->
     Frequency = 5000 + trunc(random:uniform() * 55000),
     timer:send_after(Frequency, self(), sync_random).
+
+extract_kvs([], _KVs, Acc) ->
+    Acc;
+extract_kvs([K | Ks] = AllKs, [{CK,_} = KV | KVs], Acc) ->
+    case K =:= CK of
+        true ->
+            extract_kvs(Ks, KVs, [KV | Acc]);
+        _ ->
+            %% we expect K to be present in kvs
+            true = (K > CK),
+            extract_kvs(AllKs, KVs, Acc)
+    end.
+
+do_push_keys(Keys, AllKVs) ->
+    ?log_debug("Replicating some config keys (~p..)", [lists:sublist(Keys, 6)]),
+    KVsToPush = extract_kvs(Keys, lists:sort(AllKVs), []),
+    do_push(KVsToPush).
 
 do_push() ->
     do_push(ns_config:get_kv_list(?SELF_PULL_TIMEOUT)).

@@ -23,7 +23,9 @@
 -export([init/1, handle_event/2, handle_call/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {}).
+-record(state, {
+          old_port_servers_config
+         }).
 
 % Noop process to get initialized in the supervision tree.
 start_link() ->
@@ -32,12 +34,36 @@ start_link() ->
                           end).
 
 init(ignored) ->
-    {ok, #state{}, hibernate}.
+    {ok, #state{}}.
 
-handle_event(_Event, State) ->
-    {value, PortServers} = ns_port_sup:port_servers_config(),
-    ok = reconfig(PortServers),
-    {ok, State, hibernate}.
+handle_event(Event, State) ->
+    case is_useless_event(Event) of
+        true ->
+            {ok, State};
+        false ->
+            {value, PortServers} = ns_port_sup:port_servers_config(),
+            PortParams = [ns_port_sup:expand_args(NCAO) || NCAO <- PortServers],
+            case State#state.old_port_servers_config =:= PortParams of
+                true ->
+                    {ok, State};
+                false ->
+                    ok = reconfig(PortParams),
+                    {ok, State#state{old_port_servers_config = PortParams}}
+            end
+    end.
+
+%% ns_config announces full list as well which we don't need
+is_useless_event(List) when is_list(List) ->
+    true;
+%% buckets are frequently changing and are generally useless for port
+%% servers
+is_useless_event({buckets, _}) ->
+    true;
+%% config changes for other nodes is quite obviously irrelevant
+is_useless_event({{node, N, _}, _}) when N =/= node() ->
+    true;
+is_useless_event(_) ->
+    false.
 
 handle_call(_Request, _State) ->
     {remove_handler, unhandled}.
@@ -51,14 +77,12 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-reconfig(_PortServers) ->
-    {value, PortServers} = ns_port_sup:port_servers_config(),
+reconfig(PortParams) ->
     % CurrPorts looks like...
     %   [{memcached,<0.77.0>,worker,[ns_port_server]}]
     % Or, if the child process went down, then...
     %   [{memcached,undefined,worker,[ns_port_server]}]
     %
-    PortParams = [ns_port_sup:expand_args(NCAO) || NCAO <- PortServers],
     CurrPortParams = ns_port_sup:current_ports(),
     OldPortParams = CurrPortParams -- PortParams,
     NewPortParams = PortParams -- CurrPortParams,

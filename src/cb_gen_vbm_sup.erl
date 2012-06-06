@@ -99,24 +99,21 @@ kill_replica(Policy, Bucket, SrcNode, DstNode, VBucket) ->
         Type :: add_replica | kill_replica.
 apply_changes(Policy, Bucket, ChangeTuples) ->
     ?log_info("Applying changes:~n~p~n", [ChangeTuples]),
-    {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
 
-    RelevantNodes = proplists:get_value(servers, BucketConfig),
-    true = is_list(RelevantNodes),
+    %% In 1.8.1 we clearly know what nodes are affected by change
+    %% tuples (source). But in 1.8.2 it's either source or
+    %% destination. Lets count both just in case.
+    RelevantNodes = lists:usort([N || {_, S, D, _} <- ChangeTuples,
+                                      N <- [S, D]]),
 
     %% dict({Src, Dst}, VBuckets)
     Replicators = replicators(Policy, Bucket, RelevantNodes),
     NewReplicators = apply_changes_to_replicators(Replicators, ChangeTuples),
 
-    do_set_replicas(Policy, Bucket, NewReplicators),
+    do_set_replicas(Policy, Bucket, NewReplicators, RelevantNodes),
 
     %% return number of actual changes
     changes_count(Replicators, NewReplicators).
-
--spec do_set_replicas(module(), bucket_name(), dict()) -> ok.
-do_set_replicas(Policy, Bucket, Replicators) ->
-    LiveNodes = ns_node_disco:nodes_actual_proper(),
-    do_set_replicas(Policy, Bucket, Replicators, LiveNodes).
 
 -spec set_replicas(module(), bucket_name(), Replicas, [node()]) -> ok
   when Replica :: {SrcNode::node(), DstNode::node(), vbucket_id()},

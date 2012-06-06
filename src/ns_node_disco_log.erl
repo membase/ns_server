@@ -37,21 +37,21 @@ start_link() ->
                     end)}.
 
 init(ignored) ->
-    {ok, #state{}, hibernate}.
+    {ok, #state{}}.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
 handle_event({ns_node_disco_events, _NodesBefore, NodesAfter}, State) ->
     ?log_info("ns_node_disco_log: nodes changed: ~p", [NodesAfter]),
-    {ok, State, hibernate};
+    {ok, State};
 
 handle_event(_, State) ->
-    {ok, State, hibernate}.
+    {ok, State}.
 
 handle_call(Request, State) ->
     ?log_warning("Unexpected handle_call(~p, ~p)", [Request, State]),
-    {ok, ok, State, hibernate}.
+    {ok, ok, State}.
 
 handle_info(_Info, State) ->
-    {ok, State, hibernate}.
+    {ok, State}.

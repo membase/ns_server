@@ -6,6 +6,8 @@ import tempfile
 import time
 import subprocess
 import string
+import re
+import platform
 
 class TempFile(object):
     unlink = os.unlink
@@ -151,57 +153,65 @@ def basedir():
         mydir = "."
     return mydir
 
-def dbdir():
-    def_dbdir = "/opt/couchbase/var/lib/couchbase/data"
-    if os.name != 'posix':
-        return def_dbdir
+def retrieve_config_value(config_key, node=None):
+    config_file = '/opt/couchbase/var/lib/couchbase/config/config.dat'
+    if platform.system() == 'Windows':
+        config_file = "../var/lib/couchbase/config/config.dat"
+    escript_cmd = "escript"
+    if platform.system() == 'Windows':
+        escript_cmd = "escript.exe"
 
-    tmpfile = "dbdir.txt"
-    node_cfg = subprocess.Popen([basedir() + "/cbupgrade",
-                                 "-c",
-                                 "/opt/couchbase/var/lib/couchbase/config",
-                                 "-d",
-                                 tmpfile,
-                                ],
+    cmd_list = [escript_cmd, "cbdumpconfig.escript", config_file]
+    if node:
+        cmd_list.append("node")
+        cmd_list.append(node)
+
+    node_cfg = subprocess.Popen(cmd_list,
                                 stdout=subprocess.PIPE).communicate()[0]
-
     node_cfg = string.strip(node_cfg)
     if len(node_cfg) <= 0:
-        return def_dbdir
+        print("Done: previous node configuration is empty.")
+        sys.exit(0)
 
-    file = open(tmpfile)
-    if file:
-        def_dbdir = file.read().rstrip('\n')
-        file.close()
-        os.remove(tmpfile)
+    node_cfg = node_cfg.split("\n")
+    for line in node_cfg:
+        m = re.match(config_key, line)
+        if m:
+            return m.groups()
+    return None
 
-    return def_dbdir
+def get_ip():
+    ip = None
+    try:
+        f = open('/opt/couchbase/var/lib/couchbase/ip', 'r')
+        ip = string.strip(f.read())
+        f.close()
+    except:
+        pass
+    if (not ip) or (len(ip) <= 0):
+        if platform.system() == 'Windows':
+            ip = subprocess.Popen("ip_addr.bat",
+                                  stdout=subprocess.PIPE).communicate()[0]
+        else:
+            ip = '127.0.0.1'
 
-def dbdir_nt():
-    def_dbdir = basedir() + "\\..\\var\\lib\\couchbase\\data"
-    if os.name != 'nt':
-        return def_dbdir
+    node = 'ns_1@' + ip
+    return node
 
-    tmpfile = "dbdir.txt"
-    node_cfg = subprocess.Popen([basedir() + "/cbupgrade.exe",
-                                 "-c",
-                                 basedir() + "\\..\\var\\lib\\couchbase\\config",
-                                 "-d",
-                                 tmpfile,
-                                ],
-                                stdout=subprocess.PIPE).communicate()[0]
+def get_dbdir():
+    node = get_ip()
+    ret = retrieve_config_value('\s*{dbdir,\s*"(.+)"}', node)
+    if ret:
+        return ret[0]
+    else:
+        return ""
 
-    node_cfg = string.strip(node_cfg)
-    if len(node_cfg) <= 0:
-        return def_dbdir
-
-    file = open(tmpfile)
-    if file:
-        def_dbdir = file.read().rstrip('\n')
-        file.close()
-        os.remove(tmpfile)
-
-    return "\"" + def_dbdir.replace("/", "\\") + "\""
+def get_credential():
+    ret = retrieve_config_value('\s*{creds,\[\{"(.+)",\s*\[\{password,\s*"(.+)"}')
+    if ret:
+        return "{0}:{1}".format(ret[0], ret[1])
+    else:
+        return ""
 
 _tasks = [
     UnixTask("uname", "uname -a"),
@@ -211,9 +221,9 @@ _tasks = [
     UnixTask("Directory structure",
          "ls -lR /opt/couchbase /opt/membase /var/membase /etc/opt/membase"),
     UnixTask("Database directory structure",
-         "ls -lR " + dbdir()),
+         "ls -lR " + get_dbdir()),
     WindowsTask("Database directory structure",
-         "dir /s " + dbdir_nt()),
+         ["dir", "/s", get_dbdir().replace("/", "\\")]),
     UnixTask("Directory structure membase - previous versions",
          "ls -lR /opt/membase /var/membase /var/opt/membase /etc/opt/membase"),
     SolarisTask("Process list snapshot", "prstat -a -c -n 100 -t -v -L 1 10"),
@@ -325,7 +335,10 @@ _tasks = [
     AllOsTask("couchbase logs (info)", "cbbrowse_logs info", log_file="ns_server.info.log"),
     AllOsTask("couchbase logs (error)", "cbbrowse_logs error", log_file="ns_server.error.log"),
     AllOsTask("couchbase logs (couchdb)", "cbbrowse_logs couchdb", log_file="ns_server.couchdb.log"),
-    AllOsTask("couchbase logs (views)", "cbbrowse_logs views", log_file="ns_server.views.log")
+    AllOsTask("couchbase logs (views)", "cbbrowse_logs views", log_file="ns_server.views.log"),
+    AllOsTask("couchbase diags",
+              ["curl", "-u", get_credential(), "localhost:8091/diag?noLogs=1"],
+              log_file="diag.log")
     ]
 
 

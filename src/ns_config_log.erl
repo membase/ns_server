@@ -38,7 +38,7 @@ init([]) ->
                                  (_) ->
                                      ok
                              end),
-    {ok, #state{}, hibernate}.
+    {ok, #state{}}.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
@@ -47,15 +47,15 @@ code_change(_OldVsn, State, _) -> {ok, State}.
 
 handle_call(Request, From, State) ->
     ?log_warning("Unexpected handle_call(~p, ~p, ~p)", [Request, From, State]),
-    {reply, ok, State, hibernate}.
+    {reply, ok, State}.
 
 handle_cast(Request, State) ->
     ?log_warning("Unexpected handle_cast(~p, ~p)", [Request, State]),
-    {noreply, State, hibernate}.
+    {noreply, State}.
 
 handle_info({rest_creds = K, _V}, State) ->
     ?log_info("config change: ~p -> ********", [K]),
-    {noreply, State, hibernate};
+    {noreply, State};
 handle_info({alerts = K, V}, State) ->
     V2 = lists:map(fun({email_server, ES}) ->
                            lists:map(fun({pass, _}) -> {pass, "********"};
@@ -66,20 +66,20 @@ handle_info({alerts = K, V}, State) ->
                    end,
                    V),
     ?log_info("config change:~n~p ->~n~p", [K, V2]),
-    {noreply, State, hibernate};
+    {noreply, State};
 handle_info({buckets, RawBuckets}, #state{buckets=OldBuckets} =  State) ->
     NewBuckets = sort_buckets(RawBuckets),
     BucketsDiff = compute_buckets_diff(NewBuckets, OldBuckets),
     NewState = State#state{buckets=NewBuckets},
     log_common(buckets, BucketsDiff),
-    {noreply, NewState, hibernate};
+    {noreply, NewState};
 handle_info({K, V}, State) ->
     log_common(K, V),
-    {noreply, State, hibernate};
+    {noreply, State};
 
 handle_info(Info, State) ->
     ?log_warning("Unexpected handle_info(~p, ~p)", [Info, State]),
-    {noreply, State, hibernate}.
+    {noreply, State}.
 
 %% Internal functions
 compute_buckets_diff(NewBuckets, OldBuckets) ->

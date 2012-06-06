@@ -21,10 +21,12 @@
 
 -include("mc_entry.hrl").
 
--export([bin/1, recv/2, recv/3, send/4, encode/3, quick_stats/4, quick_stats/5, quick_stats_append/3]).
+-export([bin/1, recv/2, recv/3, send/4, encode/3, quick_stats/4,
+         quick_stats/5, quick_stats_append/3,
+         mass_get_last_closed_checkpoint/3]).
 
--define(FLUSH_TIMEOUT, 15000).
--define(RECV_TIMEOUT, 15000).
+-define(RECV_TIMEOUT, ns_config_ets_dup:get_timeout(memcached_recv, 30000)).
+-define(QUICK_STATS_RECV_TIMEOUT, ns_config_ets_dup:get_timeout(memcached_stats_recv, 60000)).
 
 %% Functions to work with memcached binary protocol packets.
 
@@ -65,11 +67,59 @@ quick_stats_recv(Sock, Data, TimeoutRef) ->
             {ok, Header, Entry, Rest}
     end.
 
+%% assumes active option is false
+mass_get_last_closed_checkpoint(Socket, VBuckets, Timeout) ->
+    ok = inet:setopts(Socket, [{active, true}]),
+    Ref = make_ref(),
+    MaybeTimer = case Timeout of
+                     infinity ->
+                         [];
+                     _ ->
+                         erlang:send_after(Timeout, self(), Ref)
+                 end,
+    try
+        ok = prim_inet:send(
+               Socket,
+               [encode(?REQ_MAGIC,
+                       #mc_header{opcode=?CMD_LAST_CLOSED_CHECKPOINT,
+                                  vbucket=VB},
+                       #mc_entry{})
+                || VB <- VBuckets]),
+        lists:reverse(mass_get_last_closed_checkpoint_loop(Socket, VBuckets, Ref, <<>>, []))
+    after
+        inet:setopts(Socket, [{active, false}]),
+        case MaybeTimer of
+            [] ->
+                [];
+            T ->
+                erlang:cancel_timer(T)
+        end,
+        receive
+            Ref -> ok
+        after 0 -> ok
+        end
+    end.
+
+mass_get_last_closed_checkpoint_loop(_Socket, [], _Ref, <<>>, Acc) ->
+    Acc;
+mass_get_last_closed_checkpoint_loop(Socket, [ThisVBucket | RestVBuckets], Ref, PrevData, Acc) ->
+    {ok, Header, Entry, Rest} = quick_stats_recv(Socket, PrevData, Ref),
+    Checkpoint =
+        case Header of
+            #mc_header{status=?SUCCESS} ->
+                #mc_entry{data = <<CheckpointV:64>>} = Entry,
+                CheckpointV;
+            _ ->
+                0
+        end,
+    NewAcc = [{ThisVBucket, Checkpoint} | Acc],
+    mass_get_last_closed_checkpoint_loop(Socket, RestVBuckets, Ref, Rest, NewAcc).
+
 quick_stats_append(K, V, Acc) ->
     [{K, V} | Acc].
 
 quick_stats(Sock, Key, CB, CBState) ->
-    quick_stats(Sock, Key, CB, CBState, ?RECV_TIMEOUT).
+    quick_stats(Sock, Key, CB, CBState, ?QUICK_STATS_RECV_TIMEOUT).
 
 %% quick_stats is like mc_client_binary:stats but with own buffering
 %% of stuff and thus much faster. Note: we don't expect any request
@@ -81,13 +131,18 @@ quick_stats(Sock, Key, CB, CBState, Timeout) ->
                      infinity ->
                          [];
                      _ ->
-                         [erlang:send_after(Timeout, self(), Ref)]
+                         erlang:send_after(Timeout, self(), Ref)
                  end,
     try
         send(Sock, Req),
         quick_stats_loop(Sock, CB, CBState, Ref, <<>>)
     after
-        [erlang:cancel_timer(T) || T <- MaybeTimer],
+        case MaybeTimer of
+            [] ->
+                [];
+            T ->
+                erlang:cancel_timer(T)
+        end,
         receive
             Ref -> ok
         after 0 -> ok

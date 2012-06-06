@@ -147,3 +147,22 @@ Between versions 1.8.0 and 1.8.1
   item mutatins to disk was fixed
 
 * (MB-5275) bug with alerts not being shown to user sometimes was fixed
+
+* (MB-5408) ns_memcached now implements smarter queuing and
+  prioritization of heavy & light operations. Leading to hopefully
+  much less memcached timeouts. Particularly vbucket delete operation
+  is known to be heavy. By running it on separate worker we allow
+  stats requests to be performed without delays and thus hopefully
+  without hitting timeouts.
+
+* simple facility to adjust some timeouts at runtime was
+  implemented. Example, usage is this diag/eval snippet:
+    ns_config:set({node, node(), {timeout, ns_memcached_outer_very_heavy}}, 120000).
+  Which will bump timeout for most heavy ns_memcached calls up to 120
+  seconds (most timeouts are in milliseconds)
+
+* config replication was improved to avoid avalanche of config NxN
+  replications caused by incoming config replications. Now only
+  locally produced replications are forcefully pushed to all
+  nodes. Note: old random gossip is still there. As well as somewhat
+  excessive full config push&pull to newly discovered node(s).

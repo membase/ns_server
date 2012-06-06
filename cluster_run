@@ -73,7 +73,7 @@ def os_specific(args, params):
                          "ERL_MAX_PORTS": "2048"}
         params['env'].update(os.environ)
 
-def start_cluster(num_nodes, start_index, host, extra_args):
+def start_cluster(num_nodes, start_index, host, extra_args, args_prefix):
     ebin_path = setup_path()
 
     def start_node(i):
@@ -86,7 +86,7 @@ def start_cluster(num_nodes, start_index, host, extra_args):
             os.stat("data/n_{0}/mnesia".format(i))
         except:
             os.makedirs("data/n_{0}/mnesia".format(i))
-        args = ["erl", "+A", "16", "+sbtu", "-pa"] + ebin_path + [
+        args = args_prefix + ["erl", "+A", "16", "+sbtu", "-pa"] + ebin_path + [
             "-setcookie", "nocookie",
             "-kernel", "inet_dist_listen_min", "21100",
             "inet_dist_listen_max", "21199",
@@ -158,7 +158,8 @@ def main():
                                           ["help", "start-index=", "nodes=",
                                            "dont-rename", "interactive",
                                            "static-cookie", "dont-start",
-                                           "host=", "loglevel="])
+                                           "host=", "loglevel=",
+                                           "prepend-extras"])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -171,6 +172,7 @@ def main():
     interactive_shell = False
     start_index = 0
     num_nodes = 1
+    prepend_extras = False
     host = "127.0.0.1"
     loglevel = None
 
@@ -194,6 +196,8 @@ def main():
             static_cookie = True
         elif o == '--loglevel':
             loglevel = a
+        elif o == "--prepend-extras":
+            prepend_extras = True
         else:
             assert False, "unhandled options"
 
@@ -210,9 +214,9 @@ def main():
         if terminal_attrs != None:
             termios.tcsetattr(sys.stdin, termios.TCSANOW, terminal_attrs)
 
-    atexit.register(kill_nodes)
-
     testament_child_death()
+
+    atexit.register(kill_nodes)
 
     try:
         terminal_attrs = termios.tcgetattr(sys.stdin)
@@ -229,7 +233,13 @@ def main():
                   + " node rename will be disabled")
         else:
             extra_args += ["rename_ip", '"' + primary_addr + '"']
+
     extra_args += args[1:]
+    if prepend_extras:
+        prepend_args = args[0:]
+    else:
+        prepend_args = []
+        extra_args += args[0:]
 
     if static_cookie:
         extra_args += ["-ns_server", "dont_reset_cookie", "true"]
@@ -248,7 +258,7 @@ def main():
         for logger in LOGGERS:
             extra_args += ["-ns_server", "loglevel_%s" % logger, loglevel]
 
-    nodes = start_cluster(num_nodes, start_index, host, extra_args)
+    nodes = start_cluster(num_nodes, start_index, host, extra_args, prepend_args)
 
     for node in nodes:
         node.wait()

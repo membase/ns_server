@@ -578,7 +578,8 @@ handle_call(resave, _From, State) ->
     {reply, ok, initiate_save_config(State)};
 
 handle_call(reannounce, _From, State) ->
-    announce_changes(config_dynamic(State)),
+    %% we have to assume those are all genuine just made local changes
+    announce_locally_made_changes(config_dynamic(State)),
     {reply, ok, State};
 
 handle_call(get, _From, State) ->
@@ -594,7 +595,7 @@ handle_call({update_with_changes, Fun}, From, State) ->
     OldList = config_dynamic(State),
     try Fun(OldList) of
         {NewPairs, NewConfig} ->
-            announce_changes(NewPairs),
+            announce_locally_made_changes(NewPairs),
             handle_call(resave, From, State#config{dynamic=[NewConfig]})
     catch
         T:E ->
@@ -705,6 +706,12 @@ initiate_save_config(Config) ->
             Config#config{pending_more_save = true}
     end.
 
+announce_locally_made_changes([]) ->
+    ok;
+announce_locally_made_changes(KVList) ->
+    announce_changes(KVList),
+    gen_event:notify(ns_config_events_local, [K || {K, _} <- KVList]).
+
 announce_changes([]) -> ok;
 announce_changes(KVList) ->
     % Fire a event per changed key.
@@ -799,8 +806,26 @@ read_includes([], Result)      -> {ok, lists:reverse(Result)}.
 %% waits till all config change notifications are processed by
 %% ns_config_events
 sync_announcements() ->
-    gen_event:sync_notify(ns_config_events,
-                          barrier).
+    Pid = spawn(
+            fun () ->
+                    gen_event:sync_notify(ns_config_events,
+                                          barrier)
+            end),
+    %% we don't need return value, but because this request will be
+    %% queued we'll receive reply only after all currently queued
+    %% messages to ns_config_events_local are consumed
+    gen_event:which_handlers(ns_config_events_local),
+    misc:wait_for_process(Pid, infinity),
+    receive
+        %% if our process is trapping exits we need to consume exit
+        %% message. And do that 'linked process died badly' handling
+        %% ourselves
+        {'EXIT', Pid, Reason} ->
+            normal = Reason,
+            ok
+    after 0 ->
+            ok
+    end.
 
 -ifdef(EUNIT).
 
@@ -1023,6 +1048,7 @@ send_config(Config, Pid) ->
 
 setup_with_saver() ->
     {ok, _} = gen_event:start_link({local, ns_config_events}),
+    {ok, _} = gen_event:start_link({local, ns_config_events_local}),
     Parent = self(),
     setup_path_config(),
     %% we don't want to kill this process when ns_config server dies,
@@ -1056,6 +1082,7 @@ teardown_with_saver(_) ->
     teardown_path_config(),
     kill_and_wait(whereis(ns_config)),
     kill_and_wait(whereis(ns_config_events)),
+    kill_and_wait(whereis(ns_config_events_local)),
     ok.
 
 fail_on_incoming_message() ->

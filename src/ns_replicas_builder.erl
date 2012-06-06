@@ -50,7 +50,16 @@ spawn_link(Bucket, VBucket, SrcNode, ReplicateIntoNodes, JustBackfillNodes, Afte
                         [fun build_replicas_main/6,
                          [Bucket, VBucket, SrcNode, ReplicateIntoNodes, JustBackfillNodes, AfterDone]]).
 
--define(COMPLETION_POLLING_INTERVAL, 100).
+%% implements poor man's exponential back off
+sleeps_so_far_to_sleep_interval(SleepsSoFar) ->
+    if
+        SleepsSoFar < 5 ->
+            10;
+        SleepsSoFar < 10 ->
+            30;
+        true ->
+            100
+    end.
 
 %% @doc works like try/after but when try has raised exception, any
 %% exception from AfterBody is logged and ignored. I.e. when we face
@@ -89,9 +98,10 @@ build_replicas_main(Bucket, VBucket, SrcNode, ReplicateIntoNodes, JustBackfillNo
     try_with_maybe_ignorant_after(
       fun () ->
               observe_wait_all_done(Bucket, VBucket, SrcNode, JustBackfillNodes ++ ReplicateIntoNodes,
-                                    fun () ->
+                                    fun (SleepsSoFar) ->
+                                            SleepMS = sleeps_so_far_to_sleep_interval(SleepsSoFar),
                                             system_stats_collector:increment_counter(replica_builder_sleeps, 1),
-                                            system_stats_collector:increment_counter(replica_builder_sleep_amount, ?COMPLETION_POLLING_INTERVAL),
+                                            system_stats_collector:increment_counter(replica_builder_sleep_amount, SleepMS),
                                             receive
                                                 {'EXIT', From, Reason} = ExitMsg ->
                                                     case lists:member(From, Replicators) of
@@ -103,7 +113,7 @@ build_replicas_main(Bucket, VBucket, SrcNode, ReplicateIntoNodes, JustBackfillNo
                                                             ?log_info("Got exit not from child ebucketgrator. Assuming it's our parent: ~p", [ExitMsg]),
                                                             exit(Reason)
                                                     end
-                                            after ?COMPLETION_POLLING_INTERVAL ->
+                                            after SleepMS ->
                                                     ok
                                             end
                                     end),
@@ -260,34 +270,34 @@ extract_complete_taps(PList, TapNames) ->
 
 observe_wait_all_done(Bucket, VBucket, SrcNode, DstNodes, Sleeper) ->
     TapNames = sets:from_list([iolist_to_binary(tap_name(VBucket, SrcNode, DN)) || DN <- DstNodes]),
-    observe_wait_all_done_tail(Bucket, SrcNode, Sleeper, TapNames, true),
-    wait_checkpoint_opened(Bucket, VBucket, DstNodes, Sleeper, true).
+    observe_wait_all_done_tail(Bucket, SrcNode, Sleeper, TapNames, 0),
+    wait_checkpoint_opened(Bucket, VBucket, DstNodes, Sleeper, 0).
 
-observe_wait_all_done_tail(Bucket, SrcNode, Sleeper, TapNames, FirstTime) ->
+observe_wait_all_done_tail(Bucket, SrcNode, Sleeper, TapNames, SleepsSoFar) ->
     case sets:size(TapNames) of
         0 ->
             ok;
         _ ->
-            if not FirstTime ->
+            if SleepsSoFar > 0 ->
                     system_stats_collector:increment_counter(replicas_builder_backfill_sleeps, 1),
-                    Sleeper();
+                    Sleeper(SleepsSoFar);
                true ->
                     ok
             end,
             {ok, PList} = ns_memcached:stats(SrcNode, Bucket, <<"tap">>),
             DoneTaps = extract_complete_taps(PList, TapNames),
             NewTapNames = sets:subtract(TapNames, DoneTaps),
-            observe_wait_all_done_tail(Bucket, SrcNode, Sleeper, NewTapNames, false)
+            observe_wait_all_done_tail(Bucket, SrcNode, Sleeper, NewTapNames, SleepsSoFar+1)
     end.
 
-wait_checkpoint_opened(_Bucket, _VBucket, [], _Sleeper, _FirstTime) ->
+wait_checkpoint_opened(_Bucket, _VBucket, [], _Sleeper, _SleepsSoFar) ->
     ok;
-wait_checkpoint_opened(Bucket, VBucket, DstNodes, Sleeper, FirstTime) ->
-    case FirstTime of
+wait_checkpoint_opened(Bucket, VBucket, DstNodes, Sleeper, SleepsSoFar) ->
+    case SleepsSoFar =:= 0 of
         false ->
             system_stats_collector:increment_counter(replicas_builder_checkpoint_sleeps, 1),
             ?log_debug("Incremented replicas_builder_checkpoint_sleeps"),
-            Sleeper();
+            Sleeper(SleepsSoFar);
         true -> ok
     end,
     Checkpoints = ns_memcached:get_vbucket_open_checkpoint(DstNodes, Bucket, VBucket),
@@ -300,4 +310,4 @@ wait_checkpoint_opened(Bucket, VBucket, DstNodes, Sleeper, FirstTime) ->
                               _ ->
                                   false
                           end],
-    wait_checkpoint_opened(Bucket, VBucket, NodesLeft, Sleeper, false).
+    wait_checkpoint_opened(Bucket, VBucket, NodesLeft, Sleeper, SleepsSoFar+1).

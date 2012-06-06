@@ -33,41 +33,26 @@ start_link() ->
                           end).
 
 init(ignored) ->
-    {ok, #state{}, hibernate}.
+    {ok, #state{}}.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
-handle_info(_Info, State)      -> {ok, State, hibernate}.
-handle_call(_Request, State)   -> {ok, ok, State, hibernate}.
+handle_info(_Info, State)      -> {ok, State}.
+handle_call(_Request, State)   -> {ok, ok, State}.
 
 handle_event({nodes_wanted, _V}, State) ->
     ?log_debug("ns_node_disco_conf_events config on nodes_wanted"),
     % The event may get to us really late, so don't pass along the param.
     ns_node_disco:nodes_wanted_updated(),
-    {ok, State, hibernate};
+    {ok, State};
 
 handle_event({otp, _V}, State) ->
     ?log_debug("ns_node_disco_conf_events config on otp"),
     % The event may get to us really late, so don't pass along the param.
     ns_node_disco:nodes_wanted_updated(),
-    {ok, State, hibernate};
-
-handle_event(Changed, State) when is_list(Changed) ->
-    ?log_debug("ns_node_disco_conf_events config all"),
-    Config = ns_config:get(),
-    ChangedRaw =
-        lists:foldl(fun({Key, _}, Acc) ->
-                            case ns_config:search_raw(Config, Key) of
-                                false           -> Acc;
-                                {value, RawVal} -> [{Key, RawVal} | Acc]
-                            end;
-                       (_, Acc) -> Acc
-                    end,
-                    [], Changed),
-    (catch ns_config_rep:initiate_changes_push(ChangedRaw)),
-    {ok, State, hibernate};
+    {ok, State};
 
 handle_event(_E, State) ->
-    {ok, State, hibernate}.
+    {ok, State}.
 
 

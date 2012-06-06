@@ -126,6 +126,7 @@ run(Conf) ->
     Conf1 = [{suffix, TapSuffix} | Conf],
 
     Conf2 = case {proplists:get_value(username, Conf1), proplists:get_value(password, Conf1)} of
+                {undefined, undefined} -> Conf1;
                 {_, undefined} ->
                     io:format("Reading password from stdin~n"),
                     Pwd0 = case file:read_line(standard_io) of
