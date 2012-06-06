@@ -223,6 +223,15 @@ assign_queue({delete_vbucket, _}) -> #state.very_heavy_calls_queue;
 assign_queue(flush) -> #state.very_heavy_calls_queue;
 assign_queue({set_vbucket, _, _}) -> #state.heavy_calls_queue;
 assign_queue({deregister_tap_client, _}) -> #state.heavy_calls_queue;
+assign_queue({add, _Key, _VBucket, _Value}) -> #state.heavy_calls_queue;
+assign_queue({add_with_meta, _Key, _VBucket, _Value, _Meta, _Flags, _Expiration}) -> #state.heavy_calls_queue;
+assign_queue({get, _Key, _VBucket}) -> #state.heavy_calls_queue;
+assign_queue({get_meta, _Key, _VBucket}) -> #state.heavy_calls_queue;
+assign_queue({delete, _Key, _VBucket, _CAS}) -> #state.heavy_calls_queue;
+assign_queue({delete_with_meta, _Key, _VBucket, _Meta, _CAS}) -> #state.heavy_calls_queue;
+assign_queue({set, _Key, _VBucket, _Value}) -> #state.heavy_calls_queue;
+assign_queue({set_with_meta, _Key, _VBucket, _Value, _Meta, _CAS, _Flags, _Expiration}) -> #state.heavy_calls_queue;
+assign_queue({sync, _Key, _VBucket, _CAS}) -> #state.very_heavy_calls_queue;
 assign_queue(_) -> #state.fast_calls_queue.
 
 queue_to_counter_slot(#state.very_heavy_calls_queue) -> #state.running_very_heavy;
@@ -599,7 +608,7 @@ flush(Bucket) ->
     {ok, #mc_header{}, #mc_entry{}, any()}.
 add(Bucket, Key, VBucket, Value) ->
     do_call({server(Bucket), node()},
-            {add, Key, VBucket, Value}, ?TIMEOUT).
+            {add, Key, VBucket, Value}, ?TIMEOUT_HEAVY).
 
 
 -spec add_with_meta(bucket_name(), binary(),
@@ -608,7 +617,7 @@ add(Bucket, Key, VBucket, Value) ->
 add_with_meta(Bucket, Key, VBucket, Value, Meta, Flags, Expiration) ->
     do_call({server(Bucket), node()},
             {add_with_meta,
-             Key, VBucket, Value, Meta, Flags, Expiration}, ?TIMEOUT).
+             Key, VBucket, Value, Meta, Flags, Expiration}, ?TIMEOUT_HEAVY).
 
 add_with_meta(Bucket, Key, VBucket, Value, Meta) ->
     add_with_meta(Bucket, Key, VBucket, Value, Meta, 0, 0).
@@ -618,7 +627,7 @@ add_with_meta(Bucket, Key, VBucket, Value, Meta) ->
 -spec get(bucket_name(), binary(), integer()) ->
     {ok, #mc_header{}, #mc_entry{}, any()}.
 get(Bucket, Key, VBucket) ->
-    do_call({server(Bucket), node()}, {get, Key, VBucket}, ?TIMEOUT).
+    do_call({server(Bucket), node()}, {get, Key, VBucket}, ?TIMEOUT_HEAVY).
 
 
 %% @doc send an get metadata command to memcached
@@ -628,7 +637,7 @@ get(Bucket, Key, VBucket) ->
     | mc_error().
 get_meta(Bucket, Key, VBucket) ->
     do_call({server(Bucket), node()},
-            {get_meta, Key, VBucket}, ?TIMEOUT).
+            {get_meta, Key, VBucket}, ?TIMEOUT_HEAVY).
 
 
 %% @doc send a set command to memcached instance
@@ -636,7 +645,7 @@ get_meta(Bucket, Key, VBucket) ->
     {ok, #mc_header{}, #mc_entry{}, any()}.
 delete(Bucket, Key, VBucket, CAS) ->
     do_call({server(Bucket), node()},
-            {delete, Key, VBucket, CAS}, ?TIMEOUT).
+            {delete, Key, VBucket, CAS}, ?TIMEOUT_HEAVY).
 
 
 delete(Bucket, Key, VBucket) ->
@@ -647,7 +656,7 @@ delete(Bucket, Key, VBucket) ->
     {ok, #mc_header{}, #mc_entry{}} | mc_error() | {error, invalid_meta}.
 delete_with_meta(Bucket, Key, VBucket, Meta, CAS) ->
     do_call({server(Bucket), node()},
-            {delete_with_meta, Key, VBucket, Meta, CAS}, ?TIMEOUT).
+            {delete_with_meta, Key, VBucket, Meta, CAS}, ?TIMEOUT_HEAVY).
 
 
 delete_with_meta(Bucket, Key, VBucket, Meta) ->
@@ -659,7 +668,7 @@ delete_with_meta(Bucket, Key, VBucket, Meta) ->
     {ok, #mc_header{}, #mc_entry{}, any()}.
 set(Bucket, Key, VBucket, Value) ->
     do_call({server(Bucket), node()},
-            {set, Key, VBucket, Value}, ?TIMEOUT).
+            {set, Key, VBucket, Value}, ?TIMEOUT_HEAVY).
 
 
 -spec set_with_meta(bucket_name(), binary(), integer(), binary(), term(),
@@ -669,7 +678,7 @@ set_with_meta(Bucket, Key, VBucket, Value, Meta, CAS, Flags, Expiration) ->
     do_call({server(Bucket), node()},
             {set_with_meta,
              Key, VBucket, Value, Meta, CAS, Flags, Expiration},
-            ?TIMEOUT).
+            ?TIMEOUT_HEAVY).
 
 set_with_meta(Bucket, Key, VBucket, Value, Meta) ->
     set_with_meta(Bucket, Key, VBucket, Value, Meta, 0, 0, 0).
@@ -683,7 +692,7 @@ set_with_meta(Bucket, Key, VBucket, Value, Meta, CAS) ->
     {ok, #mc_header{}, #mc_entry{}, any()}.
 sync(Bucket, Key, VBucket, CAS) ->
     do_call({server(Bucket), node()},
-            {sync, Key, VBucket, CAS}, ?TIMEOUT * 2).
+            {sync, Key, VBucket, CAS}, ?TIMEOUT_VERY_HEAVY).
 
 %% @doc Returns true if backfill is running on this node for the given bucket.
 -spec backfilling(bucket_name()) ->
