@@ -42,12 +42,13 @@ handle_event(Event, State) ->
             {ok, State};
         false ->
             {value, PortServers} = ns_port_sup:port_servers_config(),
-            case State#state.old_port_servers_config =:= PortServers of
+            PortParams = [ns_port_sup:expand_args(NCAO) || NCAO <- PortServers],
+            case State#state.old_port_servers_config =:= PortParams of
                 true ->
                     {ok, State};
                 false ->
-                    ok = reconfig(PortServers),
-                    {ok, State#state{old_port_servers_config= PortServers}}
+                    ok = reconfig(PortParams),
+                    {ok, State#state{old_port_servers_config = PortParams}}
             end
     end.
 
@@ -76,13 +77,12 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-reconfig(PortServers) ->
+reconfig(PortParams) ->
     % CurrPorts looks like...
     %   [{memcached,<0.77.0>,worker,[ns_port_server]}]
     % Or, if the child process went down, then...
     %   [{memcached,undefined,worker,[ns_port_server]}]
     %
-    PortParams = [ns_port_sup:expand_args(NCAO) || NCAO <- PortServers],
     CurrPortParams = ns_port_sup:current_ports(),
     OldPortParams = CurrPortParams -- PortParams,
     NewPortParams = PortParams -- CurrPortParams,
