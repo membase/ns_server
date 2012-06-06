@@ -165,4 +165,8 @@ Between versions 1.8.0 and 1.8.1
   replications caused by incoming config replications. Now only
   locally produced replications are forcefully pushed to all
   nodes. Note: old random gossip is still there. As well as somewhat
-  excessive full config push&pull to newly discovered node(s).
+  excessive full config push & pull to newly discovered node(s).
+
+* it's now possible to change max concurrent rebalance movers
+  count. Post the following to /diag/eval to set it to 4:
+    ns_config:set(rebalance_moves_per_node, 4).
