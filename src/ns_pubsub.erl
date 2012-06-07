@@ -354,16 +354,19 @@ test_parent_crash() ->
             link(Subscription),
             exit(Pid, crash),
 
-            receive
-                {'EXIT', Subscription, normal} ->
-                    ok
+            try
+                receive
+                    {'EXIT', Subscription, normal} ->
+                        ok
+                after
+                    1000 ->
+                        just_fail()
+                end
             after
-                1000 ->
-                    just_fail()
-            end,
-
-            kill_silently_sync(EventMgr),
-            kill_silently_sync(Updater)
+                kill_silently_sync(Updater),
+                kill_silently_sync(Subscription),
+                kill_silently_sync(EventMgr)
+            end
     end.
 
 -endif.
