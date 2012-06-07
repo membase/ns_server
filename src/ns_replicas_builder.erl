@@ -290,6 +290,8 @@ observe_wait_all_done_tail(Bucket, SrcNode, Sleeper, TapNames, SleepsSoFar) ->
             observe_wait_all_done_tail(Bucket, SrcNode, Sleeper, NewTapNames, SleepsSoFar+1)
     end.
 
+%% this makes sure all nodes have open checkpoint and that they all
+%% have same open checkpoint
 wait_checkpoint_opened(_Bucket, _VBucket, [], _Sleeper, _SleepsSoFar) ->
     ok;
 wait_checkpoint_opened(Bucket, VBucket, DstNodes, Sleeper, SleepsSoFar) ->
@@ -301,13 +303,24 @@ wait_checkpoint_opened(Bucket, VBucket, DstNodes, Sleeper, SleepsSoFar) ->
         true -> ok
     end,
     Checkpoints = ns_memcached:get_vbucket_open_checkpoint(DstNodes, Bucket, VBucket),
-    NodesLeft = [N || {N, Checkpoint} <- Checkpoints,
-                      Checkpoint =:= 0 orelse
-                          case Checkpoint of
-                              missing ->
-                                  ?log_error("Node ~p did not have checkpoint stat for vbucket: ~p", [N, VBucket]),
-                                  exit({missing_checkpoint_stat, N, VBucket});
-                              _ ->
-                                  false
-                          end],
-    wait_checkpoint_opened(Bucket, VBucket, NodesLeft, Sleeper, SleepsSoFar+1).
+    [{_, FirstCheckpoint} | _] = Checkpoints,
+    Done = case FirstCheckpoint of
+               0 ->
+                   false;
+               _ ->
+                   NodesLeft = [N || {N, Checkpoint} <- Checkpoints,
+                                     case Checkpoint of
+                                         missing ->
+                                             ?log_error("Node ~p did not have checkpoint stat for vbucket: ~p", [N, VBucket]),
+                                             exit({missing_checkpoint_stat, N, VBucket});
+                                         _ ->
+                                             false
+                                     end orelse Checkpoint =/= FirstCheckpoint],
+                   NodesLeft =:= []
+           end,
+    case Done of
+        true ->
+            ok;
+        false ->
+            wait_checkpoint_opened(Bucket, VBucket, DstNodes, Sleeper, SleepsSoFar+1)
+    end.
