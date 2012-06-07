@@ -1053,21 +1053,25 @@ setup_with_saver() ->
     setup_path_config(),
     %% we don't want to kill this process when ns_config server dies,
     %% but we wan't to kill ns_config process when this process dies
-    spawn(fun () ->
-                  Cfg = #config{dynamic = [[{config_version, {2,0}},
-                                            {a, [{b, 1}, {c, 2}]},
-                                            {d, 3}]],
-                                policy_mod = ns_config_default,
-                                saver_mfa = {?MODULE, send_config, [save_config_target]}},
-                  {ok, _} = ns_config:start_link({with_state,
-                                                  Cfg}),
-                  MRef = erlang:monitor(process, Parent),
-                  receive
-                      {'DOWN', MRef, _, _, _} ->
-                          ?debugFmt("Commiting suicide~n", []),
-                          exit(death)
-                  end
-          end).
+    proc_lib:start(
+      erlang, apply,
+      [fun () ->
+               Cfg = #config{dynamic = [[{config_version, {2,0}},
+                                         {a, [{b, 1}, {c, 2}]},
+                                         {d, 3}]],
+                             policy_mod = ns_config_default,
+                             saver_mfa = {?MODULE, send_config, [save_config_target]}},
+               {ok, _} = ns_config:start_link({with_state, Cfg}),
+               MRef = erlang:monitor(process, Parent),
+
+               proc_lib:init_ack(self()),
+
+               receive
+                   {'DOWN', MRef, _, _, _} ->
+                       ?debugFmt("Commiting suicide~n", []),
+                       exit(death)
+               end
+       end, []]).
 
 kill_and_wait(undefined) -> ok;
 kill_and_wait(Pid) ->
