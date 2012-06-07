@@ -56,10 +56,17 @@ do_db_req(#httpd{user_ctx=UserCtx,path_parts=[DbName|_]}=Req, Fun) ->
 
 get_db_info(#db{filepath = undefined, name = Name}) ->
     Info = [{db_name, Name},
-            {instance_start_time, 0}],
+            {instance_start_time, <<>>}],
     {ok, Info};
-get_db_info(Db) ->
-    couch_db:get_db_info(Db).
+get_db_info(#db{name = <<"_replicator">>} = Db) ->
+    couch_db:get_db_info(Db);
+get_db_info(#db{name = DbName}) ->
+    [Bucket, _Master] = string:tokens(binary_to_list(DbName), [$/]),
+    {ok, Stats0} = ns_memcached:stats(Bucket, <<"">>),
+    EpStartupTime =  proplists:get_value(<<"ep_startup_time">>, Stats0),
+    Info = [{db_name, DbName},
+            {instance_start_time, EpStartupTime}],
+    {ok, Info}.
 
 with_subdb(#db{name = DbName}, VBucket, Fun) ->
     with_subdb(DbName, VBucket, Fun);
@@ -156,23 +163,18 @@ update_docs(Db, Docs, Options, replicated_changes) ->
 
 -spec ensure_full_commit(any(), integer()) -> {ok, binary()}.
 ensure_full_commit(#db{filepath = undefined} = _Db, _RequiredSeq) ->
-    {ok, 0};
-ensure_full_commit(Db, RequiredSeq) ->
-    UpdateSeq = couch_db:get_update_seq(Db),
-    CommittedSeq = couch_db:get_committed_update_seq(Db),
-    case RequiredSeq of
-        undefined ->
-            couch_db:ensure_full_commit(Db);
-        _ ->
-            if RequiredSeq > UpdateSeq ->
-                    throw({bad_request,
-                           "can't do a full commit ahead of current update_seq"});
-               RequiredSeq > CommittedSeq ->
-                    couch_db:ensure_full_commit(Db);
-               true ->
-                    {ok, Db#db.instance_start_time}
-            end
-    end.
+    {ok, <<>>};
+ensure_full_commit(#db{name = DbName} = _Db, _RequiredSeq) ->
+    % HACK ALERT!!!!! Right now this doesn't ensure things are persisted,
+    % so if there is a crash after this call (or anything else that wants
+    % to ensure commits), we might lose data we thought was persisted.
+    % We are soon going to ensure the commits happen properly.
+    % -Damien 06/07/2012
+    [Bucket, _Master] = string:tokens(binary_to_list(DbName), [$/]),
+    %% get the timestamp from stats
+    {ok, Stats} = ns_memcached:stats(Bucket, <<"">>),
+    {ok, proplists:get_value(
+                        <<"ep_startup_time">>, Stats)}.
 
 
 check_is_admin(_Db) ->
