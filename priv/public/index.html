@@ -410,16 +410,20 @@
               <p id="top_keys_container"></p>
               <script id="top_keys_template" type="text/html">
                       <table class="lined_tab">
-                        <tr>
-                          <th>Key</th>
-                          <th>Ops/Sec</th>
-                        </tr>
-                        <!-- {% $.each(rows, function () { %} -->
-                        <tr>
-                          <td style="max-width:600px;word-wrap:break-word">{%= h(this.name) %}</td>
-                          <td>{%= h(Math.round(this.ops * 100.0) / 100.0) %}</td>
-                        </tr>
-                        <!-- {% }); %} -->
+                        <thead>
+                          <tr>
+                            <th>Key</th>
+                            <th>Ops/Sec</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <!-- {% $.each(rows, function () { %} -->
+                          <tr>
+                            <td style="max-width:600px;word-wrap:break-word">{%= h(this.name) %}</td>
+                            <td>{%= h(Math.round(this.ops * 100.0) / 100.0) %}</td>
+                          </tr>
+                          <!-- {% }); %} -->
+                        </tbody>
                       </table>
               </script>
             </div> <!-- section -->
@@ -568,22 +572,26 @@
             <div class="panes">
               <div id="logs_container"></div>
               <script id="logs_template" type="text/html">
-                        <table class="lined_tab">
-                          <tr>
-                            <th>Event</th>
-                            <th>Module Code</th>
-                            <th>Server Node</th>
-                            <th>Time</th>
-                          </tr>
-                          <!-- {% _.each(rows, function (logRow) { %} -->
-                          <tr>
-                            <td>{%= h(logRow.text).replace(/\n/g, "<br />") %}</td>
-                            <td>{%= h(logRow.module) + (new String(1000 + parseInt(logRow.code))).slice(-3)%}</td>
-                            <td>{%= h(logRow.node) %}</td>
-                            <td class="text_11 nobr">{%=V.formatLogTStamp(logRow.tstamp)%}
-                          </tr>
-                          <!-- {% }); %} -->
-                        </table>
+                <table class="lined_tab">
+                  <thead>
+                    <tr>
+                      <th>Event</th>
+                      <th>Module Code</th>
+                      <th>Server Node</th>
+                      <th>Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- {% _.each(rows, function (logRow) { %} -->
+                    <tr>
+                      <td>{%= h(logRow.text).replace(/\n/g, "<br />") %}</td>
+                      <td>{%= h(logRow.module) + (new String(1000 + parseInt(logRow.code))).slice(-3)%}</td>
+                      <td>{%= h(logRow.node) %}</td>
+                      <td class="text_11 nobr">{%=V.formatLogTStamp(logRow.tstamp)%}
+                    </tr>
+                    <!-- {% }); %} -->
+                  </tbody>
+                </table>
               </script>
             </div>
           </div>
