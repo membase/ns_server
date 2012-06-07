@@ -342,10 +342,7 @@ test_parent_crash() ->
 
                             Parent ! ({self(), R}),
 
-                            %% just sleep
-                            receive
-                                _Msg -> ok
-                            end
+                            simply_sleep()
                     end)
           end),
 
@@ -368,5 +365,9 @@ test_parent_crash() ->
                 kill_silently_sync(EventMgr)
             end
     end.
+
+simply_sleep() ->
+    timer:sleep(10000),
+    simply_sleep().
 
 -endif.
