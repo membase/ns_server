@@ -104,37 +104,10 @@ update_doc(#db{filepath = undefined, name=Name} = Db,
             throw(Error)
     end.
 
-update_docs(#db{name = DbName} = Db,
-            [#doc{id = <<?LOCAL_DOC_PREFIX, Rest/binary>>} = Doc],
+update_docs(Db,
+            [#doc{id = <<?LOCAL_DOC_PREFIX, _Rest/binary>>} = Doc],
             Options) ->
-    [VBucket | _] = string:tokens(?b2l(Rest), "-"),
-    [Bucket, _Master] = string:tokens(binary_to_list(DbName), [$/]),
-    {ok, Stats0} = ns_memcached:stats(Bucket, <<"checkpoint">>),
-    OpenCheckpointId = proplists:get_value(
-        ?l2b(["vb_", VBucket, ":open_checkpoint_id"]), Stats0),
-
-    %% We take a conservative approach to decide when it's safe to update the
-    %% checkpoint document. We wait for the current open checkpoint to be
-    %% persisted. If it gets persisted before we timeout, we update the
-    %% checkpoint document. Otherwise, we don't checkpoint.
-    PollResult = misc:poll_for_condition(
-        fun() ->
-            {ok, Stats1} = ns_memcached:stats(Bucket, <<"checkpoint">>),
-            PersistedCheckpointId = proplists:get_value(
-                ?l2b(["vb_", VBucket, ":persisted_checkpoint_id"]), Stats1),
-            PersistedCheckpointId == OpenCheckpointId
-        end,
-        10000,
-        100),
-
-    case PollResult of
-    ok ->
-        ok = couch_db:update_doc(Db, Doc, Options);
-    timeout ->
-        ?log_warning("Failed to record replication checkpoint ~p. Timed out "
-                     "waiting for open checkpoint to be persisted.",
-                     [Doc#doc.id])
-    end;
+    ok = couch_db:update_doc(Db, Doc, Options);
 
 update_docs(#db{filepath = undefined, name = Name}, Docs, _Options) ->
 
