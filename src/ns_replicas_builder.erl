@@ -149,8 +149,9 @@ build_replicas_main(Bucket, VBucket, SrcNode, ReplicateIntoNodes, JustBackfillNo
 %% NOTE: this assumes that caller is trapping exits
 -spec sync_shutdown_many(Pids :: [pid()]) -> ok.
 sync_shutdown_many(Pids) ->
+    [(catch erlang:exit(Pid, shutdown)) || Pid <- Pids],
     BadShutdowns = [{P, RV} || P <- Pids,
-                               (RV = sync_shutdown(P)) =/= shutdown],
+                               (RV = wait_shutdown(P)) =/= shutdown],
     case BadShutdowns of
         [] -> ok;
         _ ->
@@ -160,9 +161,8 @@ sync_shutdown_many(Pids) ->
     ok.
 
 %% NOTE: this assumes that caller is trapping exits
--spec sync_shutdown(Pid :: pid()) -> term().
-sync_shutdown(Pid) ->
-    (catch erlang:exit(Pid, shutdown)),
+-spec wait_shutdown(Pid :: pid()) -> term().
+wait_shutdown(Pid) ->
     MRef = erlang:monitor(process, Pid),
     MRefReason = receive
                      {'DOWN', MRef, _, _, MRefReason0} ->
