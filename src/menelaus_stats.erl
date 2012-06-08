@@ -746,7 +746,15 @@ membase_stats_description() ->
                           {desc, <<"Low water mark for auto-evictions (measured from ep_mem_low_wat)">>}]},
                 {struct, [{title, <<"disk update time">>},
                           {name, <<"avg_disk_update_time">>},
-                          {desc, <<"Average disk update time in microseconds as from disk_update histogram of timings">>}]}
+                          {desc, <<"Average disk update time in microseconds as from disk_update histogram of timings">>}]},
+                {struct, [{title, <<"disk commit time">>},
+                          {hidden, true},
+                          {name, <<"avg_disk_commit_time">>},
+                          {desc, <<"Average disk commit time in seconds as from disk_update histogram of timings">>}]},
+                {struct, [{title, <<"bg wait time">>},
+                          {hidden, true},
+                          {name, <<"avg_bg_wait_time">>},
+                          {desc, <<"Alrighty">>}]}
              ]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"withtotal closed">>},

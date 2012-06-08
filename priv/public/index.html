@@ -427,7 +427,7 @@
                           {% }); %}
                           </ul>
                         {% } %}
-                        {% _.each(blockInfo.stats, function (statInfo) {var name = statInfo.name; var title = statInfo.title; %}
+                        {% _.each(blockInfo.stats, function (statInfo) {var name = statInfo.name; var title = statInfo.title; if (statInfo.hidden) {return;} %}
                           <div id="{%= h(statInfo.id) %}" class="analytics-small-graph {%= (statInfo.missing ? 'dim' : '') %}" data-graph="{%=h(name)%}">
                             <div class="small_graph_block" style="width: 168px; height: 36px;"></div>
                             <span class="small_graph_label">
