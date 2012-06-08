@@ -103,8 +103,8 @@ do_cleanup(Bucket, Options, Config) ->
                                                       {Src, [{V, Dst} || {_, Dst, V} <- R]}
                                               end, ReplicaGroups),
                     ns_vbm_sup:set_replicas(Bucket, NodesReplicas),
-                    case Down of
-                        [] ->
+                    case Down =:= [] andalso proplists:get_bool(consider_stopping_rebalance_status, Options) of
+                        true ->
                             maybe_stop_rebalance_status();
                         _ -> ok
                     end,
@@ -412,6 +412,9 @@ maybe_stop_rebalance_status() ->
                      error
              end,
     case Status of
+        %% if rebalance is not actually running according to our
+        %% orchestrator, we'll consider checking config and seeing if
+        %% we should unmark is at not running
         not_running ->
             stop_rebalance_status(
               fun () ->
