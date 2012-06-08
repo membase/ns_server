@@ -523,12 +523,26 @@ computed_stats_lazy_proplist() ->
     PendingResRate = Z2(vb_pending_num_non_resident, vb_pending_curr_items,
                         ResidenceCalculator),
 
-    AverageWriteSeekDistance = Z2(write_seeks_distance, write_seeks_count,
-                                  fun (Distance, Count) ->
-                                          try Distance / Count
-                                          catch error:badarith -> 0
-                                          end
-                                  end),
+    AverageDiskUpdateTime = Z2(disk_update_total, disk_update_count,
+                               fun (Total, Count) ->
+                                       try Total / Count
+                                       catch error:badarith -> 0
+                                       end
+                               end),
+
+    AverageCommitTime = Z2(disk_commit_total, disk_commit_count,
+                           fun (Total, Count) ->
+                                   try Total / Count
+                                   catch error:badarith -> 0
+                                   end
+                           end),
+
+    AverageBgWait = Z2(bg_wait_total, bg_wait_count,
+                       fun (Total, Count) ->
+                               try Total / Count
+                               catch error:badarith -> 0
+                               end
+                       end),
 
     [{hit_ratio, HitRatio},
      {ep_cache_miss_rate, EPCacheMissRatio},
@@ -540,7 +554,9 @@ computed_stats_lazy_proplist() ->
      {vb_active_resident_items_ratio, ActiveResRate},
      {vb_replica_resident_items_ratio, ReplicaResRate},
      {vb_pending_resident_items_ratio, PendingResRate},
-     {avg_write_seek_distance, AverageWriteSeekDistance}].
+     {avg_disk_update_time, AverageDiskUpdateTime},
+     {avg_disk_commit_time, AverageCommitTime},
+     {avg_bg_wait_time, AverageBgWait}].
 
 %% converts list of samples to proplist of stat values.
 %%
@@ -728,9 +744,9 @@ membase_stats_description() ->
                 {struct, [{title, <<"low water mark">>},
                           {name, <<"ep_mem_low_wat">>},
                           {desc, <<"Low water mark for auto-evictions (measured from ep_mem_low_wat)">>}]},
-                {struct, [{title, <<"write seek distance">>},
-                          {name, <<"avg_write_seek_distance">>},
-                          {desc, <<"Average write seek distance in bytes as measured from writeSeek histogram of kvtimings">>}]}
+                {struct, [{title, <<"disk update time">>},
+                          {name, <<"avg_disk_update_time">>},
+                          {desc, <<"Average disk update time in microseconds as from disk_update histogram of timings">>}]}
              ]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"withtotal closed">>},
