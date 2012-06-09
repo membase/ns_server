@@ -1852,31 +1852,45 @@ var ViewsSection = {
       if (!ddocURL) {
         return;
       }
-      genericDialog({header: 'Confirm Publishing',
-                     text: 'If there is an existing Design Document ' +
-                       'in production with this name, it will be overwritten. Please confirm.',
-                     buttons: {ok: "Confirm", cancel: true},
-                     callback: function (e, name, instance) {
-                       if (name != 'ok') {
-                         instance.close();
-                         return;
-                       }
-                       publish(instance);
-                     }});
-      return;
+      var name = self.cutOffDesignPrefix(ddoc._id);
+      var newId = "_design/" + name;
+      var toURL = buildDocURL(dbURL, newId);
 
-      function publish(dialogInstance) {
-        var name = self.cutOffDesignPrefix(ddoc._id);
-        var newId = "_design/" + name;
-        var modal = new ModalAction();
-        var spinner = overlayWithSpinner(dialogInstance.dialog.parent());
-        self.doSaveAs(dbURL, ddoc, newId, true, function (arg) {
-          if (arg != 'ok') BUG();
-          spinner.remove();
-          modal.finish();
-          dialogInstance.close();
-          self.allDDocsCell.recalculate();
-          self.modeTabs.setValue('production');
+      publish();
+
+      function publish(overwritten, callback) {
+        self.doSaveAs(dbURL, ddoc, newId, overwritten, function (arg) {
+          if (arg == "conflict") {
+            return genericDialog({
+              header: 'Confirm Publishing',
+              text: 'Design Document with this name already exists, it will be overwritten.',
+              buttons: {
+                ok: "Confirm",
+                cancel: true
+              },
+              callback: function (e, name, instance) {
+                if (name != 'ok') {
+                  instance.close();
+                } else {
+                  var modal = new ModalAction();
+                  var spinner = overlayWithSpinner(instance.dialog.parent());
+                  publish(true, function () {
+                    spinner.remove();
+                    modal.finish();
+                    instance.close();
+                  });
+                }
+             }});
+          }
+          if (callback) {
+            callback();
+          }
+          if (arg == 'ok') {
+            self.allDDocsCell.recalculate();
+            self.modeTabs.setValue('production');
+          } else {
+            BUG();
+          }
         });
       }
     });
