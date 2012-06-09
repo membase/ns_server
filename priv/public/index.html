@@ -991,11 +991,11 @@
                 <td>
                 </td>
                 <td>
-                  <a class="list_button when-in-prod" href="#copyDDoc={%=h(ddoc._id)%}"><span>Copy to Dev</span></a>
-                  <a class="list_button when-in-dev" href="#publishDDoc={%=h(ddoc._id)%}"><span>Publish</span></a>
-                  <a class="list_button when-in-dev" href="#addView={%=h(ddoc._id)%}"><span>Add View</span></a>
-                  <a class="list_button when-in-dev" href="#addSpatial={%=h(ddoc._id)%}"><span>Add Spatial View</span></a>
-                  <a class="list_button" href="#deleteDDoc={%=h(ddoc._id)%}"><span>Delete</span></a>
+                  <a class="list_button when-in-prod" href="#copyDDoc={%=h(encodeURIComponent(ddoc._id))%}"><span>Copy to Dev</span></a>
+                  <a class="list_button when-in-dev" href="#publishDDoc={%=h(encodeURIComponent(ddoc._id))%}"><span>Publish</span></a>
+                  <a class="list_button when-in-dev" href="#addView={%=h(encodeURIComponent(ddoc._id))%}"><span>Add View</span></a>
+                  <a class="list_button when-in-dev" href="#addSpatial={%=h(encodeURIComponent(ddoc._id))%}"><span>Add Spatial View</span></a>
+                  <a class="list_button" href="#deleteDDoc={%=h(encodeURIComponent(ddoc._id))%}"><span>Delete</span></a>
                 </td>
               </tr>
               <!-- {% if (_.size(ddoc.viewInfos) < 1 && _.size(ddoc.spatialInfos) < 1) { %} -->

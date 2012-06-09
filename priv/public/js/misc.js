@@ -71,7 +71,7 @@ function reinterpretInEnv(f, env) {
 // })();
 
 function escapeHTML() {
-  return String(arguments[0]).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  return String(arguments[0]).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&#34;').replace(/'/g,'&#39;');
 }
 
 function escapeJS(string) {
