@@ -14,16 +14,7 @@
 %% limitations under the License.
 %%
 %% @doc This server syncs part of (replicated) ns_config to local
-%% couch config.  Actual sync is performed by worker process that's
-%% direct son of supervisor. ns_config changes are noted by gen_server
-%% process that's son of worker process. And it's using ns_pubsub to
-%% tap into ns_config changes.
-%%
-%% Such seemingly unusual design (with worker being parent of main
-%% process) is to ensure that supervisor shutdown synchronizes with
-%% worker death (which mutates world state). Main process does not
-%% mutate world's state, so worker can exit without waiting for main
-%% process death (it'll die soon but we don't care when).
+%% couch config.
 
 -module(cb_config_couch_sync).
 
@@ -37,42 +28,15 @@
 
 -include("ns_common.hrl").
 
--record(state,
-        {
-          have_notable_change :: boolean(),
-          sync_started :: boolean(),
-          worker_pid :: pid()
-        }).
+-record(state, {}).
 
 start_link() ->
-    proc_lib:start_link(erlang, apply, [fun start_worker_loop/0, []]).
+    gen_server:start({local, ?MODULE}, ?MODULE, [], []).
 
-start_worker_loop() ->
-    erlang:process_flag(trap_exit, true),
-    {ok, _} = gen_server:start_link({local, ?MODULE}, ?MODULE, [self()], []),
-    do_config_sync(),
-    proc_lib:init_ack({ok, self()}),
-    worker_loop().
-
-worker_loop() ->
-    receive
-        {'EXIT', _From, Reason} ->
-            exit(Reason);
-        {sync_config, Pid} ->
-            do_config_sync(),
-            Pid ! sync_done;
-        X ->
-            ?log_error("couch sync worker got unknown message: ~p~n", [X]),
-            exit({unknown_message, X})
-    end,
-    worker_loop().
-
-init([WorkerPid]) ->
-    ns_pubsub:subscribe_link(ns_config_events, fun handle_config_event/2, []),
-    {ok, maybe_start_sync(#state{have_notable_change = true,
-                                 sync_started = false,
-                                 worker_pid = WorkerPid})}.
-
+init([]) ->
+    ns_pubsub:subscribe_link(ns_config_events, fun handle_config_event/1),
+    announce_notable_keys(),
+    {ok, #state{}}.
 
 -spec get_db_and_ix_paths() -> [{db_path | index_path, string()}].
 get_db_and_ix_paths() ->
@@ -94,48 +58,86 @@ code_change(_OldVsn, State, _) ->
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast(notable_config_change, State) ->
-    {noreply, maybe_start_sync(State#state{have_notable_change = true})};
 handle_cast(_Request, State) ->
     {noreply, State}.
 
-handle_info(sync_done, State) ->
-    {noreply, maybe_start_sync(State#state{sync_started = false})};
+handle_info({notable_change, Key}, State) ->
+    flush_for_key(Key),
+
+    {couchdb, SK} = ActualKey = to_global_key(Key),
+
+    {value, ValueRaw} = ns_config:search_node(ActualKey),
+    Value = couch_util:to_list(ValueRaw),
+    {CouchSectionAtom, CouchKeyAtom} =
+        if
+            is_tuple(SK) ->
+                SK;
+            is_atom(SK) ->
+                %% if section is not specified, default to "couchdb"
+                {couchdb, SK}
+        end,
+
+    CouchSection = atom_to_list(CouchSectionAtom),
+    CouchKey     = atom_to_list(CouchKeyAtom),
+
+    Current = couch_config:get(CouchSection, CouchKey),
+    case Current =:= Value of
+        true ->
+            ok;
+        false ->
+            ok = couch_config:set(CouchSection, CouchKey, Value)
+    end,
+
+    {noreply, State};
 handle_info(_Event, State) ->
     {noreply, State}.
 
 %% Auxiliary functions.
 
-is_notable_event({buckets, _}) -> true;
-is_notable_event({max_parallel_indexers, _}) -> true;
-is_notable_event({max_parallel_replica_indexers, _}) -> true;
-is_notable_event(_) -> false.
+is_notable_key({couchdb, _}) -> true;
+is_notable_key({{node, Node, {couchdb, _}}}) when Node =:= node() -> true;
+is_notable_key(_) -> false.
 
-handle_config_event(KVPair, State) ->
-    case is_notable_event(KVPair) of
-        true -> gen_server:cast(?MODULE, notable_config_change);
-        _ -> ok
-    end,
-    State.
+handle_config_event({Key, _Value}) ->
+    case is_notable_key(Key) of
+        true ->
+            ?MODULE ! {notable_change, Key};
+        _ ->
+            ok
+    end;
+handle_config_event(_) ->
+    ok.
 
-maybe_start_sync(#state{have_notable_change = false} = State) ->
-    State;
-maybe_start_sync(#state{sync_started = true} = State) ->
-    State;
-maybe_start_sync(#state{worker_pid = Pid} = State) ->
-    Pid ! {sync_config, self()},
-    State#state{have_notable_change = false,
-                sync_started = true}.
+to_global_key({couchdb, _} = Key) ->
+    Key;
+to_global_key({node, Node, {couchdb, _} = Key}) when Node =:= node() ->
+    Key.
 
-do_config_sync() ->
-    Config = ns_config:get(),
-    case ns_config:search_node(node(), Config, max_parallel_indexers) of
-        false -> ok;
-        {value, MaxParallelIndexers} ->
-            couch_config:set("couchdb", "max_parallel_indexers", integer_to_list(MaxParallelIndexers), false)
-    end,
-    case ns_config:search_node(node(), Config, max_parallel_replica_indexers) of
-        false -> ok;
-        {value, MaxParallelReplicaIndexers} ->
-            couch_config:set("couchdb", "max_parallel_replica_indexers", integer_to_list(MaxParallelReplicaIndexers), false)
+flush_for_key(Key) ->
+    GlobalKey = to_global_key(Key),
+    LocalKey  = {node, node(), GlobalKey},
+
+    do_flush_for_key(GlobalKey),
+    do_flush_for_key(LocalKey).
+
+do_flush_for_key(Key) ->
+    receive
+        {notable_change, Key, _} ->
+            do_flush_for_key(Key)
+    after
+        0 ->
+            ok
     end.
+
+announce_notable_keys() ->
+    KVList = ns_config:get_kv_list(),
+
+    lists:foreach(
+      fun ({Key, _Value}) ->
+              case is_notable_key(Key) of
+                  true ->
+                      ?MODULE ! {notable_change, Key};
+                  false ->
+                      ok
+              end
+      end, KVList).

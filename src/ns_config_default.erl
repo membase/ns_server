@@ -83,8 +83,8 @@ default() ->
      {rest,
       [{port, 8091}]},
 
-     {max_parallel_indexers, 4},
-     {max_parallel_replica_indexers, 2},
+     {{couchdb, max_parallel_indexers}, 4},
+     {{couchdb, max_parallel_replica_indexers}, 2},
 
      {{node, node(), rest},
       [{port, misc:get_env_default(rest_port, 8091)}, % Port number of the REST admin API and UI.

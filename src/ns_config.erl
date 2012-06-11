@@ -59,7 +59,7 @@
          search_node/3, search_node/2, search_node/1,
          search_node_prop/3, search_node_prop/4,
          search_node_prop/5,
-         search/2, search/1,
+         search/3, search/2, search/1,
          search_prop/3, search_prop/4,
          search_prop_tuple/3, search_prop_tuple/4,
          search_raw/2,
@@ -308,6 +308,14 @@ search(Config, Key) ->
     case search_raw(Config, Key) of
         {value, X} -> {value, strip_metadata(X)};
         false      -> false
+    end.
+
+search(Config, Key, Default) ->
+    case ns_config:search(Config, Key) of
+        {value, V} ->
+            V;
+        false ->
+            Default
     end.
 
 search_node(Config, Key) ->
