@@ -209,14 +209,7 @@ init({Src, Dst, Opts}=InitArgs) ->
     %% TCP_NODELAY on upstream socket seems beneficial. Only ack/nack
     %% is getting sent here.
     ok = inet:setopts(Upstream, [{nodelay, true}]),
-    {ok, CheckpointIdsDict} = mc_client_binary:get_open_checkpoint_ids(Upstream, VBuckets),
-    ?rebalance_debug("CheckpointIdsDict:~n~p~n", [CheckpointIdsDict]),
-    NotReadyVBuckets = dict:fold(
-                         fun (K, 0, Acc) ->
-                                 [K | Acc];
-                             (_K, _V, Acc) ->
-                                 Acc
-                         end, [], CheckpointIdsDict),
+    {ok, NotReadyVBuckets} = mc_client_binary:get_zero_open_checkpoint_vbuckets(Upstream, VBuckets),
     ReadyVBuckets = VBuckets -- NotReadyVBuckets,
     if
         NotReadyVBuckets =/= [] ->
