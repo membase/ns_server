@@ -151,7 +151,16 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
                                            undefined -> false;
                                            false -> false;
                                            ACSettings -> menelaus_web:build_auto_compaction_settings(ACSettings)
-                                       end}
+                                       end},
+              {fastWarmupSettings,
+               case proplists:get_value(fast_warmup, BucketConfig) of
+                   undefined ->
+                       false;
+                   false ->
+                       false;
+                   FWSettings ->
+                       menelaus_web:build_fast_warmup_settings(FWSettings)
+               end}
               | Suffix1]}.
 
 handle_sasl_buckets_streaming(_PoolId, Req) ->
@@ -227,7 +236,8 @@ respond_bucket_created(Req, PoolId, BucketId) ->
 %% returns pprop list with only props useful for ns_bucket
 extract_bucket_props(BucketId, Props) ->
     ImportantProps = [X || X <- [lists:keyfind(Y, 1, Props) || Y <- [num_replicas, replica_index, ram_quota, auth_type,
-                                                                     sasl_password, moxi_port, autocompaction]],
+                                                                     sasl_password, moxi_port,
+                                                                     autocompaction, fast_warmup]],
                            X =/= false],
     case BucketId of
         "default" -> lists:keyreplace(auth_type, 1,
@@ -638,10 +648,21 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                       {ok, ACSettings} ->
                           [{ok, autocompaction, ACSettings} | Candidates1]
                   end,
+    Candidates3 =
+        case menelaus_web:parse_validate_bucket_fast_warmup_settings(Params) of
+            nothing ->
+                Candidates2;
+            false ->
+                [{ok, fast_warmup, false} | Candidates2];
+            {errors, FWErrors} ->
+                [{error, F, M} || {F, M} <- FWErrors] ++ Candidates2;
+            {ok, FWSettings} ->
+                [{ok, fast_warmup, FWSettings} | Candidates2]
+        end,
     Candidates = case BucketType of
                      memcached ->
                          [{ok, bucketType, memcached}
-                          | Candidates2];
+                          | Candidates3];
                      membase ->
                          [{ok, bucketType, membase},
                           case IsNew of
@@ -654,10 +675,10 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                               false ->
                                   undefined
                           end
-                          | Candidates2];
+                          | Candidates3];
                      _ ->
                          [{error, bucketType, <<"invalid bucket type">>}
-                          | Candidates2]
+                          | Candidates3]
                  end,
     {[{K,V} || {ok, K, V} <- Candidates],
      [{K,V} || {error, K, V} <- Candidates]}.

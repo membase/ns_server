@@ -49,7 +49,10 @@
          checking_bucket_hostname_access/5,
          build_auto_compaction_settings/1,
          parse_validate_auto_compaction_settings/1,
-         parse_validate_bucket_auto_compaction_settings/1]).
+         parse_validate_bucket_auto_compaction_settings/1,
+         build_fast_warmup_settings/1,
+         parse_validate_fast_warmup_settings/1,
+         parse_validate_bucket_fast_warmup_settings/1]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
@@ -275,6 +278,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun menelaus_web_create_replication:handle_create_replication/1};
                              ["controller", "resetAlerts"] ->
                                  {auth, fun handle_reset_alerts/1};
+                             ["controller", "setFastWarmup"] ->
+                                 {auth, fun handle_set_fast_warmup/1};
                              ["pools", PoolId, "buckets", Id] ->
                                  {auth_bucket, fun menelaus_web_buckets:handle_bucket_update/3,
                                   [PoolId, Id]};
@@ -692,6 +697,12 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
         {createURI, <<"/controller/createReplication">>},
         {replicatorDBURI, <<"/couchBase/_replicator">>},
         {infosURI, <<"/couchBase/_replicator/_design/_replicator_info/_view/infos?group_level=1">>}
+      ]}},
+      %% IMPORTANT: currently all the fast warmup related REST calls are
+      %% stubs; so they must not be documented in any case
+      {setFastWarmup, {struct, [
+        {uri, <<"/controller/setFastWarmup">>},
+        {validateURI, <<"/controller/setFastWarmup?just_validate=1">>}
       ]}}
     ]},
 
@@ -722,6 +733,12 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                                               {value, ACSettings} ->
                                                   build_auto_compaction_settings(ACSettings)
                                           end},
+                 {fastWarmupSettings, case ns_config:search(Config, fast_warmup) of
+                                          false ->
+                                              build_fast_warmup_settings([]);
+                                          {value, FWSettings} ->
+                                              build_fast_warmup_settings(FWSettings)
+                                      end},
                  {tasks, {struct,
                           [{uri, iolist_to_binary([BaseTasksURI, <<"?v=">>, ns_doctor:get_tasks_version()])}]}},
                  {stats, {struct,
@@ -767,7 +784,20 @@ build_auto_compaction_allowed_time_period(AllowedTimePeriod) ->
                                 {toMinute, to_minute},
                                 {abortOutside, abort_outside}]].
 
+build_fast_warmup_settings(Settings) ->
+    Mappings = [{fast_warmup_enabled, fastWarmupEnabled},
+                {min_memory_threshold, minMemoryThreshold},
+                {min_items_threshold, minItemsThreshold}],
+    GetJsonProp =
+        fun (Prop) ->
+                Value = proplists:get_value(Prop, Mappings),
+                true = (Value =/= undefined),
 
+                Value
+        end,
+
+    JsonSettings = [{GetJsonProp(K), V} || {K, V} <- Settings],
+    {struct, JsonSettings}.
 
 
 build_nodes_info() ->
@@ -2010,6 +2040,20 @@ handle_set_autocompaction(Req) ->
             reply_json(Req, [], 200)
     end.
 
+handle_set_fast_warmup(Req) ->
+    Params = Req:parse_post(),
+    SettingsRV = parse_validate_fast_warmup_settings(Params),
+    ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
+    case {ValidateOnly, SettingsRV} of
+        {_, {errors, Errors}} ->
+            reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400);
+        {true, {ok, _FWSettings}} ->
+            reply_json(Req, {struct, [{errors, {struct, []}}]}, 200);
+        {false, {ok, FWSettings}} ->
+            ns_config:set(fast_warmup, FWSettings),
+            reply_json(Req, [], 200)
+    end.
+
 mk_integer_field_validator_error_maker(JSONName, Msg, Args) ->
     [{error, JSONName, iolist_to_binary(io_lib:format(Msg, Args))}].
 
@@ -2113,6 +2157,63 @@ parse_validate_bucket_auto_compaction_settings(Params) ->
         [{ok, _, false}] -> false;
         [{ok, _, true}] ->
             parse_validate_auto_compaction_settings(Params)
+    end.
+
+parse_validate_fast_warmup_settings(Params) ->
+    case parse_validate_boolean_field("fastWarmupEnabled", '_', Params) of
+        [] ->
+            {errors, [{<<"fastWarmupEnabled">>,
+                       <<"fastWarmupEnabled is missing">>}]};
+        [{error, F, V}] ->
+            {errors, [{F, V}]};
+        [{ok, _, false}] ->
+            {ok, [{fast_warmup_enabled, false}]};
+        [{ok, _, true}] ->
+            R = do_parse_validate_fast_warmup_settings(Params),
+            case R of
+                {ok, Fields} ->
+                    {ok, [{fast_warmup_enabled, true} | Fields]};
+                _Other ->
+                    R
+            end
+    end.
+
+do_parse_validate_fast_warmup_settings(Params) ->
+    Results = lists:flatmap(mk_integer_field_validator(0, 100, Params),
+                            [{"minMemoryThreshold", min_memory_threshold,
+                              "minimum memory theshold"},
+                             {"minItemsThreshold", min_items_threshold,
+                                   "minimum items threshold"}]),
+
+    Errors = [{iolist_to_binary(Field), Msg} || {error, Field, Msg} <- Results],
+
+    case Errors of
+        [] ->
+            Fields = [{F, V} || {ok, F, V} <- Results],
+
+            case Fields of
+                [] ->
+                    {errors,
+                     [{<<"_">>,
+                       <<"At least one of minMemoryThreshold and "
+                         "minItemsThreshold fields must be provided">>}]};
+                _ ->
+                    {ok, Fields}
+            end;
+        _ ->
+            {errors, Errors}
+    end.
+
+parse_validate_bucket_fast_warmup_settings(Params) ->
+    case parse_validate_boolean_field("fastWarmupDefined", '_', Params) of
+        [] ->
+            nothing;
+        [{error, F, V}] ->
+            {errors, [{F, V}]};
+        [{ok, _, false}] ->
+            false;
+        [{ok, _, true}] ->
+            parse_validate_fast_warmup_settings(Params)
     end.
 
 -ifdef(EUNIT).
