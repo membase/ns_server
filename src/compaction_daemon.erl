@@ -260,11 +260,13 @@ handle_info(config_changed, compacting,
             #state{compactor_pid=Compactor} = State) ->
     ?log_info("Restarting compactor ~p since "
               "autocompaction config may have changed", [Compactor]),
+    misc:flush(config_changed),
     exit(Compactor, shutdown),
     {next_state, compacting, State};
 handle_info(config_changed, StateName, State) ->
     ?log_debug("Got config_changed in state ~p. "
                "Nothing to do since compaction is not running", [StateName]),
+    misc:flush(config_changed),
     {next_state, StateName, State};
 handle_info(Info, StateName, State) ->
     ?log_warning("Got unexpected message ~p (when in ~p):~n~p",
