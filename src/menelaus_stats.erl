@@ -549,7 +549,7 @@ computed_stats_lazy_proplist() ->
 
     AverageCommitTime = Z2(disk_commit_total, disk_commit_count,
                            fun (Total, Count) ->
-                                   try Total / Count
+                                   try Total / Count / 1000000
                                    catch error:badarith -> 0
                                    end
                            end),
