@@ -17,7 +17,7 @@
 
 -behaviour(gen_server).
 
--export([start_link/0, start_link/3, writeSASLConf/6]).
+-export([start_link/0, start_link/3, writeSASLConf/6, sync/0]).
 
 %% gen_event callbacks
 -export([init/1, handle_cast/2, handle_call/3,
@@ -34,6 +34,10 @@
                 admin_user,
                 admin_pass,
                 write_pending}).
+
+sync() ->
+    ns_config:sync_announcements(),
+    gen_server:call(?MODULE, sync, infinity).
 
 start_link() ->
     Config = ns_config:get(),
@@ -82,10 +86,10 @@ handle_cast(write_sasl_conf, State) ->
     {noreply, State#state{updates = State#state.updates + 1,
                           write_pending = false}};
 handle_cast(Msg, State) ->
-    ?log_error("Unkown cast: ~p", [Msg]),
+    ?log_error("Unknown cast: ~p", [Msg]),
     {noreply, State}.
 
-handle_call(_Request, _From, State) ->
+handle_call(sync, _From, State) ->
     {reply, ok, State}.
 
 handle_info(_Info, State) ->

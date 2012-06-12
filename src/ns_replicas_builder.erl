@@ -303,19 +303,20 @@ wait_checkpoint_opened(Bucket, VBucket, DstNodes, Sleeper, SleepsSoFar) ->
         true -> ok
     end,
     Checkpoints = ns_memcached:get_vbucket_open_checkpoint(DstNodes, Bucket, VBucket),
+    [case Checkpoint of
+         missing ->
+             ?log_error("Node ~p did not have checkpoint stat for vbucket: ~p", [N, VBucket]),
+             exit({missing_checkpoint_stat, N, VBucket});
+         _ ->
+             ok
+     end || {N, Checkpoint} <- Checkpoints],
     [{_, FirstCheckpoint} | _] = Checkpoints,
     Done = case FirstCheckpoint of
                0 ->
                    false;
                _ ->
                    NodesLeft = [N || {N, Checkpoint} <- Checkpoints,
-                                     case Checkpoint of
-                                         missing ->
-                                             ?log_error("Node ~p did not have checkpoint stat for vbucket: ~p", [N, VBucket]),
-                                             exit({missing_checkpoint_stat, N, VBucket});
-                                         _ ->
-                                             false
-                                     end orelse Checkpoint =/= FirstCheckpoint],
+                                     Checkpoint =/= FirstCheckpoint],
                    NodesLeft =:= []
            end,
     case Done of

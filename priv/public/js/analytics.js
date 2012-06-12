@@ -840,7 +840,11 @@ var GraphsWidget = mkClass({
         return;
       }
       var statName = statInfo.name;
-      renderSmallGraph($($i(statInfo.id)), {
+      var graphContainer = $($i(statInfo.id));
+      if (graphContainer.length == 0) {
+        return;
+      }
+      renderSmallGraph(graphContainer, {
         data: stats[statName] || [],
         breakInterval: configuration.interval * 2.5,
         timeOffset: timeOffset,

@@ -56,13 +56,15 @@ handle_call(Request, _From, State) ->
 handle_cast(Msg, State) ->
     {stop, {unhandled, Msg}, State}.
 
-interesting_kvtiming_key(<<"writeSeek_", _/binary>>) -> true;
-interesting_kvtiming_key(_) -> false.
+interesting_timing_key(<<"disk_update_", _/binary>>) -> true;
+interesting_timing_key(<<"disk_commit_", _/binary>>) -> true;
+interesting_timing_key(<<"bg_wait_", _/binary>>) -> true;
+interesting_timing_key(_) -> false.
 
 %% drops irrelevant keys from proplist for performance
-prefilter_kvtimings(RawKVTimings) ->
-    [KV || {K, _} = KV <- RawKVTimings,
-           interesting_kvtiming_key(K)].
+prefilter_timings(RawTimings) ->
+    [KV || {K, _} = KV <- RawTimings,
+           interesting_timing_key(K)].
 
 grab_all_stats(Bucket) ->
     {ok, MemStats} = ns_memcached:stats(Bucket),
@@ -71,12 +73,12 @@ grab_all_stats(Bucket) ->
                    {ok, Values} -> Values;
                    {memcached_error, key_enoent, _} -> []
                end,
-    KVTimings = case ns_memcached:stats(Bucket, <<"kvtimings">>) of
-                    {ok, ValuesK} ->
-                        prefilter_kvtimings(ValuesK);
-                    {memcached_error, key_enoent, _} -> []
-                end,
-    {Stats, TapStats, KVTimings}.
+    Timings = case ns_memcached:stats(Bucket, <<"timings">>) of
+                  {ok, ValuesK} ->
+                      prefilter_timings(ValuesK);
+                  {memcached_error, key_enoent, _} -> []
+              end,
+    {Stats, TapStats, Timings}.
 
 handle_info({tick, TS}, #state{bucket=Bucket} = State) ->
     GrabFreq = misc:get_env_default(grab_stats_every_n_ticks, 1),
@@ -122,7 +124,7 @@ maybe_log_stats(TS, State, RawStats) ->
     end.
 
 process_grabbed_stats(TS,
-                      {PlainStats, TapStats, KVTimings},
+                      {PlainStats, TapStats, Timings},
                       #state{bucket = Bucket,
                              last_plain_counters = LastPlainCounters,
                              last_tap_counters = LastTapCounters,
@@ -130,7 +132,7 @@ process_grabbed_stats(TS,
                              last_ts = LastTS} = State) ->
     {PlainValues, PlainCounters} = parse_plain_stats(TS, PlainStats, LastTS, LastPlainCounters),
     {TapValues, TapCounters} = parse_tapagg_stats(TS, TapStats, LastTS, LastTapCounters),
-    {TimingValues, TimingsCounters} = parse_kvtimings(TS, KVTimings, LastTS, LastTimingsCounters),
+    {TimingValues, TimingsCounters} = parse_timings(TS, Timings, LastTS, LastTimingsCounters),
     %% Don't send event with undefined values
     case lists:member(undefined, [LastTapCounters, LastTapCounters, LastTimingsCounters]) of
         false ->
@@ -277,29 +279,47 @@ parse_tapagg_stats(TS, TapStats, LastTS, LastTapCounters) ->
                     LastTapCounters, LastTS,
                     [?TAP_STAT_GAUGES], [?TAP_STAT_COUNTERS]).
 
-parse_kvtiming_range(Rest) ->
+parse_timing_range(Rest) ->
     {Begin, End} = misc:split_binary_at_char(Rest, $,),
     {list_to_integer(binary_to_list(Begin)),
      list_to_integer(binary_to_list(End))}.
 
-parse_kvtiming_key(<<"writeSeek_", Rest/binary>>) ->
-    parse_kvtiming_range(Rest).
 
-aggregate_kvtimings([], TotalSeeks, TotalDistance) ->
-    {TotalSeeks, TotalDistance};
-aggregate_kvtimings([{K, V} | KVTimingsRest], TotalSeeks, TotalDistance) ->
-    {Start, End} = parse_kvtiming_key(K),
-    ThisSeeks = list_to_integer(binary_to_list(V)),
-    NewSeeks = TotalSeeks + ThisSeeks,
-    NewDistance = TotalDistance + (End + Start) * 0.5 * ThisSeeks,
-    aggregate_kvtimings(KVTimingsRest, NewSeeks, NewDistance).
+parse_timing_key(Prefix, Key) ->
+    case (catch erlang:split_binary(Key, erlang:size(Prefix))) of
+        {Prefix, Suffix} ->
+            parse_timing_range(Suffix);
+        _ ->
+            nothing
+    end.
 
-parse_kvtimings(TS, KVTimings, LastTS, LastTimingCounters) ->
-    {TotalSeeks, TotalDistance} = aggregate_kvtimings(KVTimings, 0, 0),
+aggregate_timings(_Prefix, [], TotalCount, TotalAggregate) ->
+    {TotalCount, TotalAggregate};
+aggregate_timings(Prefix, [{K, V} | TimingsRest], TotalCount, TotalAggregate) ->
+    case parse_timing_key(Prefix, K) of
+        {Start, End} ->
+            ThisSeeks = list_to_integer(binary_to_list(V)),
+            NewSeeks = TotalCount + ThisSeeks,
+            NewDistance = TotalAggregate + (End + Start) * 0.5 * ThisSeeks,
+            aggregate_timings(Prefix, TimingsRest, NewSeeks, NewDistance);
+        nothing ->
+            aggregate_timings(Prefix, TimingsRest, TotalCount, TotalAggregate)
+    end.
+
+parse_timings(TS, Timings, LastTS, LastTimingCounters) ->
+    {BGWaitCount, BGWaitTotal} = aggregate_timings(<<"bg_wait_">>, Timings, 0, 0),
+    {DiskCommitCount, DiskCommitTotal} = aggregate_timings(<<"disk_commit_">>, Timings, 0, 0),
+    {DiskUpdateCount, DiskUpdateTotal} = aggregate_timings(<<"disk_update_">>, Timings, 0, 0),
     diff_stats_counters(TS, LastTimingCounters, LastTS,
-                        [], [write_seeks_count, write_seeks_distance],
-                        fun (write_seeks_count) -> TotalSeeks;
-                            (write_seeks_distance) -> TotalDistance
+                        [], [bg_wait_count, bg_wait_total,
+                             disk_commit_count, disk_commit_total,
+                             disk_update_count, disk_update_total],
+                        fun (bg_wait_count) -> BGWaitCount;
+                            (bg_wait_total) -> BGWaitTotal;
+                            (disk_commit_count) -> DiskCommitCount;
+                            (disk_commit_total) -> DiskCommitTotal;
+                            (disk_update_count) -> DiskUpdateCount;
+                            (disk_update_total) -> DiskUpdateTotal
                         end).
 
 

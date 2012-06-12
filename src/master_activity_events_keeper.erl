@@ -26,6 +26,8 @@
 
 -include("ns_common.hrl").
 
+-define(EVENTS_HISTORY_SIZE, ns_config_ets_dup:unreliable_read_key(master_activity_events_history_size, 8192)).
+
 -record(state, {ring}).
 
 start_link() ->
@@ -40,7 +42,7 @@ init(_) ->
                              fun (Event, _Ignored) ->
                                      gen_server:cast(Self, {note, Event})
                              end, []),
-    {ok, #state{ring=ringbuffer:new(4096)}}.
+    {ok, #state{ring=ringbuffer:new(?EVENTS_HISTORY_SIZE)}}.
 
 handle_call(get_history, _From, State) ->
     {reply, ringbuffer:to_list(State#state.ring), State}.

@@ -201,7 +201,7 @@ handle_info(janitor, idle, #idle_state{remaining_buckets=[]} = State) ->
 handle_info(janitor, idle, #idle_state{remaining_buckets=Buckets}) ->
     misc:verify_name(?MODULE), % MB-3180: Make sure we're still registered
     Bucket = hd(Buckets),
-    Pid = proc_lib:spawn_link(ns_janitor, cleanup, [Bucket, []]),
+    Pid = proc_lib:spawn_link(ns_janitor, cleanup, [Bucket, [consider_stopping_rebalance_status]]),
     %% NOTE: Bucket will be popped from Buckets when janitor run will
     %% complete successfully
     {next_state, janitor_running, #janitor_state{remaining_buckets=Buckets,
