@@ -89,7 +89,7 @@ var OverviewSection = {
              attrs: {style: 'background-color:#7EDB49'},
              tdAttrs: {style: 'color:#409f05;'}},
             {name: 'Unallocated',
-             value: quotaTotal - bucketsQuota,
+             value: Math.max(quotaTotal - bucketsQuota, 0),
              attrs: {style: 'background-color:#E1E2E3'},
              tdAttrs: {style: 'color:#444245;'}}
           ],
