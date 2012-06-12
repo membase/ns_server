@@ -92,7 +92,7 @@
                                 </a>
                               </td>
                               <td class="swap_usage">
-                              <!-- {% if (this.systemStats.swap_total > 0) { %} -->
+                              <!-- {% if (this.systemStats.swap_total > 0 && isFinite(this.systemStats.swap_used)) { %} -->
                                 <div class="usage_smallest_info">
                                   <div class="usage_smallest">
                                       <div class="unused">
@@ -100,7 +100,7 @@
                                       </div>
                                   </div>
                                   {%= V.setPercentBar(this.systemStats.swap_used / this.systemStats.swap_total * 100) %}
-                                  {%= h(truncateTo3Digits(((this.systemStats.swap_used / this.systemStats.swap_total) || 0) * 100, 10)) %}%
+                                  {%= h(truncateTo3Digits((this.systemStats.swap_used / this.systemStats.swap_total) * 100, 10)) %}%
                                 </div>
                               <!-- {% } else { %} -->
                               <span>N/A</span>
@@ -108,6 +108,7 @@
                               </td>
 
                               <td>
+                                <!-- {% if ((this.memoryTotal > 0) && isFinite(this.memoryFree)) { %} -->
                                 <div class="usage_smallest_info">
                                   <div class="usage_smallest">
                                       <div class="unused">
@@ -117,18 +118,25 @@
                                   {%= V.setPercentBar((this.memoryTotal - this.memoryFree) / this.memoryTotal * 100) %}
                                   {%= h(truncateTo3Digits((this.memoryTotal - this.memoryFree) / this.memoryTotal * 100)) %}%
                                 </div>
+                                <!-- {% } else { %} -->
+                                <span>N/A</span>
+                                <!-- {% } %} -->
                               </td>
 
                               <td>
+                                <!-- {% if (isFinite(this.cpu_utilization_rate)) { %} -->
                                 <div class="usage_smallest_info">
                                   <div class="usage_smallest">
                                       <div class="unused">
                                         <div class="used" style="width:1%;"></div>
                                       </div>
                                   </div>
-                                  {%= V.setPercentBar(this.systemStats.cpu_utilization_rate || 0)  %}
+                                  {%= V.setPercentBar(this.systemStats.cpu_utilization_rate)  %}
                                   {%= h(truncateTo3Digits(Math.floor(this.systemStats.cpu_utilization_rate * 100) / 100)) %}%
                                 </div>
+                                <!-- {% } else { %} -->
+                                <span>N/A</span>
+                                <!-- {% } %} -->
                               </td>
 
                               <td>{%= V.formatQuantity(this.interestingStats.curr_items || 0, '', 1000, ' ') %}</td>
