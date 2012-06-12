@@ -153,18 +153,53 @@ update_docs(Db, Docs, Options, replicated_changes) ->
 -spec ensure_full_commit(any(), integer()) -> {ok, binary()}.
 ensure_full_commit(#db{filepath = undefined} = _Db, _RequiredSeq) ->
     {ok, <<>>};
-ensure_full_commit(#db{name = DbName} = _Db, _RequiredSeq) ->
-    % HACK ALERT!!!!! Right now this doesn't ensure things are persisted,
-    % so if there is a crash after this call (or anything else that wants
-    % to ensure commits), we might lose data we thought was persisted.
-    % We are soon going to ensure the commits happen properly.
-    % -Damien 06/07/2012
-    [Bucket, _Master] = string:tokens(binary_to_list(DbName), [$/]),
-    %% get the timestamp from stats
-    {ok, Stats} = ns_memcached:stats(Bucket, <<"">>),
-    {ok, proplists:get_value(
-                        <<"ep_startup_time">>, Stats)}.
 
+ensure_full_commit(#db{name = DbName} = _Db, _RequiredSeq) ->
+
+    [Bucket, VBucket] = string:tokens(binary_to_list(DbName), [$/]),
+
+    %% get the timestamp from stats
+    {ok, Stats0} = ns_memcached:stats(Bucket, <<"">>),
+    EpStartupTime0 =  list_to_integer(?b2l(proplists:get_value(
+                        <<"ep_startup_time">>, Stats0))),
+
+    %% create a new open checkpoint
+    {ok, OpenCheckpointId} = ns_memcached:create_new_checkpoint(Bucket, list_to_integer(VBucket)),
+
+    %% wait til the persited checkpoint ID catch up with open checkpoint ID
+    PollResult = misc:poll_for_condition(
+        fun() ->
+            %% check out ep engine startup time
+            {ok, Stats1} = ns_memcached:stats(Bucket, <<"">>),
+            EpStartupTime1 = list_to_integer(?b2l(proplists:get_value(
+                        <<"ep_startup_time">>, Stats1))),
+
+            {ok, Stats2} = ns_memcached:stats(Bucket, <<"checkpoint">>),
+            PersistedCheckpointId = list_to_integer(?b2l(proplists:get_value(
+                ?l2b(["vb_", VBucket, ":persisted_checkpoint_id"]), Stats2))),
+
+            case EpStartupTime0 == EpStartupTime1 of
+                false ->
+                    %% if startup time mismatch, simply exit the polling
+                    %% and re-query startup time to caller
+                    ?log_warning("Engine startup time mismatch."),
+                    true;
+                _ ->
+                    PersistedCheckpointId >= (OpenCheckpointId - 1)
+            end
+        end,
+        10000,  %% timeout in ms
+        100),   %% sleep time in ms
+
+    case PollResult of
+        ok ->
+            {ok, Stats3} = ns_memcached:stats(Bucket, <<"">>),
+            EpStartupTime = proplists:get_value(<<"ep_startup_time">>, Stats3),
+            {ok, EpStartupTime};
+        timeout ->
+            ?log_warning("Timed out when waiting for open checkpoint to be persisted."),
+            {error, time_out_polling}
+    end.
 
 check_is_admin(_Db) ->
     ok.
