@@ -231,7 +231,7 @@ queue_call(Msg, From, StartTS, State) ->
     State2 = erlang:setelement(QI, State, Q2),
     maybe_deliver_work(State2).
 
-maybe_deliver_work(#state{running_heavy = RunningHeavy,
+maybe_deliver_work(#state{running_very_heavy = RunningVeryHeavy,
                           running_fast = RunningFast,
                           work_requests = Froms} = State) ->
     case Froms of
@@ -248,7 +248,7 @@ maybe_deliver_work(#state{running_heavy = RunningHeavy,
                         failed;
                     _ ->
                         StartedVeryHeavy =
-                            case RunningHeavy of
+                            case RunningVeryHeavy of
                                 %% we allow only one concurrent very
                                 %% heavy call. Thus it makes sense to
                                 %% consider very heavy queue first
@@ -397,22 +397,33 @@ do_handle_call(_, _From, State) ->
     {reply, unhandled, State}.
 
 
-handle_cast(_, State) ->
-    {noreply, State}.
+handle_cast(start_completed, #state{start_time=Start,
+                                    bucket=Bucket} = State) ->
+    ?user_log(1, "Bucket ~p loaded on node ~p in ~p seconds.",
+              [Bucket, node(), timer:now_diff(os:timestamp(), Start) div 1000000]),
+    gen_event:notify(buckets_events, {loaded, Bucket}),
+    timer:send_interval(?CHECK_INTERVAL, check_config),
+    {noreply, State#state{status=connected}}.
 
 
 handle_info(check_started, #state{status=connected} = State) ->
     {noreply, State};
-handle_info(check_started, #state{timer=Timer, start_time=Start,
-                                  sock=Sock, bucket=Bucket} = State) ->
+handle_info(check_started, #state{timer=Timer, sock=Sock} = State) ->
     case has_started(Sock) of
         true ->
             {ok, cancel} = timer:cancel(Timer),
-            ?user_log(1, "Bucket ~p loaded on node ~p in ~p seconds.",
-                      [Bucket, node(), timer:now_diff(os:timestamp(), Start) div 1000000]),
-            gen_event:notify(buckets_events, {loaded, Bucket}),
-            timer:send_interval(?CHECK_INTERVAL, check_config),
-            {noreply, State#state{status=connected}};
+            Pid = self(),
+            proc_lib:spawn_link(
+              fun () ->
+                      ns_config_isasl_sync:sync(),
+                      gen_server:cast(Pid, start_completed),
+                      %% we don't want exit signal in parent's message
+                      %% box if everything went fine. Otherwise
+                      %% ns_memcached would terminate itself (see
+                      %% handle_info for EXIT message below)
+                      erlang:unlink(Pid)
+              end),
+            {noreply, State};
         false ->
             {noreply, State}
     end;

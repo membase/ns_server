@@ -21,7 +21,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--define(MAX_MOVES_PER_NODE, 1).
+-define(MAX_MOVES_PER_NODE, ns_config_ets_dup:unreliable_read_key(rebalance_moves_per_node, 1)).
 
 %% API
 -export([start_link/4]).

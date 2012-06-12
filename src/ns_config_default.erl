@@ -155,6 +155,7 @@ default() ->
        {memcached, path_config:component_path(bin, "memcached"),
         ["-X", path_config:component_path(lib, "memcached/stdin_term_handler.so"),
          "-l", {"0.0.0.0:~B,0.0.0.0:~B:1000", [port, dedicated_port]},
+         "-p", {"~B", [port]},
          "-E", path_config:component_path(lib, "memcached/bucket_engine.so"),
          "-B", "binary",
          "-r",

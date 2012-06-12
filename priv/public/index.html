@@ -92,7 +92,7 @@
                                 </a>
                               </td>
                               <td class="swap_usage">
-                              <!-- {% if (this.systemStats.swap_total > 0) { %} -->
+                              <!-- {% if (this.systemStats.swap_total > 0 && isFinite(this.systemStats.swap_used)) { %} -->
                                 <div class="usage_smallest_info">
                                   <div class="usage_smallest">
                                       <div class="unused">
@@ -100,7 +100,7 @@
                                       </div>
                                   </div>
                                   {%= V.setPercentBar(this.systemStats.swap_used / this.systemStats.swap_total * 100) %}
-                                  {%= h(truncateTo3Digits(((this.systemStats.swap_used / this.systemStats.swap_total) || 0) * 100, 10)) %}%
+                                  {%= h(truncateTo3Digits((this.systemStats.swap_used / this.systemStats.swap_total) * 100, 10)) %}%
                                 </div>
                               <!-- {% } else { %} -->
                               <span>N/A</span>
@@ -108,6 +108,7 @@
                               </td>
 
                               <td>
+                                <!-- {% if ((this.memoryTotal > 0) && isFinite(this.memoryFree)) { %} -->
                                 <div class="usage_smallest_info">
                                   <div class="usage_smallest">
                                       <div class="unused">
@@ -117,18 +118,25 @@
                                   {%= V.setPercentBar((this.memoryTotal - this.memoryFree) / this.memoryTotal * 100) %}
                                   {%= h(truncateTo3Digits((this.memoryTotal - this.memoryFree) / this.memoryTotal * 100)) %}%
                                 </div>
+                                <!-- {% } else { %} -->
+                                <span>N/A</span>
+                                <!-- {% } %} -->
                               </td>
 
                               <td>
+                                <!-- {% if (isFinite(this.cpu_utilization_rate)) { %} -->
                                 <div class="usage_smallest_info">
                                   <div class="usage_smallest">
                                       <div class="unused">
                                         <div class="used" style="width:1%;"></div>
                                       </div>
                                   </div>
-                                  {%= V.setPercentBar(this.systemStats.cpu_utilization_rate || 0)  %}
+                                  {%= V.setPercentBar(this.systemStats.cpu_utilization_rate)  %}
                                   {%= h(truncateTo3Digits(Math.floor(this.systemStats.cpu_utilization_rate * 100) / 100)) %}%
                                 </div>
+                                <!-- {% } else { %} -->
+                                <span>N/A</span>
+                                <!-- {% } %} -->
                               </td>
 
                               <td>{%= V.formatQuantity(this.interestingStats.curr_items || 0, '', 1000, ' ') %}</td>
@@ -419,7 +427,7 @@
                           {% }); %}
                           </ul>
                         {% } %}
-                        {% _.each(blockInfo.stats, function (statInfo) {var name = statInfo.name; var title = statInfo.title; %}
+                        {% _.each(blockInfo.stats, function (statInfo) {var name = statInfo.name; var title = statInfo.title; if (statInfo.hidden) {return;} %}
                           <div id="{%= h(statInfo.id) %}" class="analytics-small-graph {%= (statInfo.missing ? 'dim' : '') %}" data-graph="{%=h(name)%}">
                             <div class="small_graph_block" style="width: 168px; height: 36px;"></div>
                             <span class="small_graph_label">
@@ -1389,11 +1397,7 @@
       <p class="pad_10">Please provide your email address to join the community and receive news on coming events.</p>
     </div>
     <div class="when-enterprise">
-      <h2 class="question">Register and <span style="color: #83B817;">plant a tree</span>
-        <span class="text_11 tooltip wider_tooltip"><span>What's this?</span>
-          <span class="tooltip_msg"><span>Couchbase is proud to partner with <a href="http://www.mokugift.com/" target="_blank" style="color: #83B817;">Mokugift.com</a> to help restore tree cover in depleted lands.<br><br>Once you register your software using your full contact details, look for an e-mail from us that includes a link for choosing and planting your tree.</span></span>
-        </span></h2>
-      <p class="pad_10 clearfix"><img style="float: left; width:48px; height:53px; margin-right:6px;" src="images/no-preload/mokugift-tree.gif" />Register your Enterprise Edition of Couchbase Server with your full contact details and we’ll plant a tree. It’s as simple as that.</p>
+      <p class="pad_10 clearfix">Register your Enterprise Edition of Couchbase Server below.</p>
     </div>
     <div class="pad_10 warn" style="color:#EC5223;font-family:Verdana, Helvetica, Sans-Serif; font-size:10pt; font-weight:lighter; line-height:20px; margin-left:75px; width:500px;" id="update_notifications_errors_container"></div>
     <div class="template" id="update_notifications_errors_template">
@@ -1407,7 +1411,6 @@
       <label for="init-join-community-email">
         <span class="field-label">Email:</span>
         <input id="init-join-community-email">
-        <span class="when-required" style="color:red;">*</span>
         <span class="error-container err-name"></span>
       </label>
     </p>
@@ -1415,7 +1418,6 @@
       <label for="init-join-community-firstname">
         <span class="field-label">First name:</span>
         <input id="init-join-community-firstname">
-        <span class="when-required" style="color:red;">*</span>
         <span class="error-container err-firstname"></span>
       </label>
     </p>
@@ -1431,12 +1433,10 @@
       <label for="init-join-community-company">
         <span class="field-label">Company:</span>
         <input id="init-join-community-company">
-        <span class="when-required" style="color:red;">*</span>
         <span class="error-container err-company"></span>
       </label>
     </p>
     <p class="when-enterprise pad_10">
-      <label for="init-join-tree"><input type="checkbox" id="init-join-tree"> <span>Yes, please plant my tree!</span></label><br />
       <label for="init-join-terms"><input type="checkbox" id="init-join-terms">
         <span>I agree to the <a href="http://www.couchbase.com/agreement/free-license" target="_blank">terms and conditions</a> associated with this product. <span style="color:red">*</span></span>
       </label>

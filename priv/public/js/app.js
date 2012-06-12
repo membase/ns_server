@@ -670,14 +670,7 @@ var NodeDialog = {
       }
     }, 10);
 
-    if (!DAL.isEnterprise) {
-      dialog.find('.when-required').hide();
-      formObserver = dialog.observePotentialChanges(communityFormValidator);
-    } else {
-      formObserver = dialog.observePotentialChanges(enterpriseFormValidator);
-    }
-
-    var plantTree = $('#init-join-tree');
+    formObserver = dialog.observePotentialChanges(emailFieldValidator);
 
     var appliedValidness = {};
     function applyValidness(validness) {
@@ -703,33 +696,7 @@ var NodeDialog = {
     }
 
     var invalidness = {};
-    var invalidDueToEmptiness;
-
-    var oldNeedFields;
-    function enterpriseFormValidator() {
-      var needFields = plantTree.is(':checked');
-      if (oldNeedFields !== needFields) {
-        oldNeedFields = needFields;
-        dialog.find('.when-required').toggle(needFields);
-      }
-
-      invalidDueToEmptiness = false;
-      _.each(dialog.find(":text"), function (element) {
-        var id = element.id;
-        element = $(element);
-        var isEmpty = needFields && ($.trim(element.val()) === "");
-        invalidDueToEmptiness = invalidDueToEmptiness || isEmpty;
-        invalidness[id] = isEmpty;
-      });
-
-      var emailId = emailField.attr('id');
-      var validateEmailResult = validateEmailField();
-      invalidness[emailId] = invalidness[emailId] || validateEmailResult;
-
-      applyValidness(invalidness);
-    }
-
-    function communityFormValidator() {
+    function emailFieldValidator() {
       var emailId = emailField.attr('id');
       invalidness[emailId] = validateEmailField();
       applyValidness(invalidness);
@@ -763,10 +730,6 @@ var NodeDialog = {
         if (!termsChecked) {
           errors.push("Terms and conditions need to be accepted in order to continue");
         }
-
-        if (invalidDueToEmptiness) {
-          errors.push("All fields marked as mandatory (*) need to be filled in");
-        }
       }
 
       if (errors.length) {
@@ -790,7 +753,6 @@ var NodeDialog = {
                  firstname: $.trim($('#init-join-community-firstname').val()),
                  lastname: $.trim($('#init-join-community-lastname').val()),
                  company: $.trim($('#init-join-community-company').val()),
-                 incentive: plantTree.is(':checked') ? 'tree' : 'none',
                  version: DAL.version || "unknown"}
         });
       }

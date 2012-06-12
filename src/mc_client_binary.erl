@@ -42,11 +42,10 @@
          set_vbucket/3,
          stats/1,
          stats/4,
-         get_open_checkpoint_ids/1,
-         get_open_checkpoint_ids/2,
          tap_connect/2,
          deregister_tap_client/2,
-         set_engine_param/4]).
+         set_engine_param/4,
+         get_zero_open_checkpoint_vbuckets/2]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
 -type mc_timeout() :: undefined | infinity | non_neg_integer().
@@ -603,36 +602,39 @@ stats_subcommand_test() ->
 
 -endif.
 
-build_stats_dict([], Dict, _Suffix) ->
-    Dict;
-build_stats_dict([VBucket | Rest], Dict, Suffix) ->
-    StatName = iolist_to_binary([<<"vb_">>, integer_to_list(VBucket), Suffix]),
-    NewDict = dict:store(StatName, 0, Dict),
-    build_stats_dict(Rest, NewDict, Suffix).
-
-get_open_checkpoint_ids_aggregator(Key, ValueBin, Dict) ->
-    case dict:find(Key, Dict) of
-        {ok, _} ->
-            Value = list_to_integer(binary_to_list(ValueBin)),
-            dict:store(Key, Value, Dict);
-        _ ->
-            Dict
+%% seeks Item in sorted list turned into tuple in indices [L, R)
+tuple_binary_search(_Item, _Tuple, L, R) when L >= R ->
+    false;
+tuple_binary_search(Item, Tuple, L, R) ->
+    X = (L + R) div 2,
+    Candidate = erlang:element(X, Tuple),
+    if
+        Candidate =:= Item -> true;
+        true ->
+            if
+                Candidate < Item -> tuple_binary_search(Item, Tuple, X+1, R);
+                true -> tuple_binary_search(Item, Tuple, L, X)
+            end
     end.
 
-get_open_checkpoint_ids(Sock, InterestingVBuckets) ->
-    Dict = build_stats_dict(InterestingVBuckets, dict:new(), <<":open_checkpoint_id">>),
-    mc_binary:quick_stats(Sock, <<"checkpoint">>,
-                          fun get_open_checkpoint_ids_aggregator/3, Dict).
-
-get_open_checkpoint_ids(Sock) ->
-    stats(Sock, <<"checkpoint">>,
-          fun (K,V,Dict) ->
-                  case misc:split_binary_at_char(K, $:) of
+mk_get_zero_open_checkpoint_vbuckets_checker(StatNamesTuple) ->
+    fun (Key, ValueBin, Acc) ->
+            case ValueBin =:= <<"0">>
+                andalso tuple_binary_search(Key, StatNamesTuple, 1, erlang:size(StatNamesTuple)+1) of
+                true ->
+                  case misc:split_binary_at_char(Key, $:) of
                       {<<"vb_", VB/binary>>, <<"open_checkpoint_id">>} ->
-                          dict:store(list_to_integer(binary_to_list(VB)),
-                                     list_to_integer(binary_to_list(V)),
-                                     Dict);
-                      _ ->
-                          Dict
-                  end
-          end, dict:new()).
+                          [list_to_integer(binary_to_list(VB)) | Acc]
+                  end;
+                false ->
+                    Acc
+            end
+    end.
+
+
+get_zero_open_checkpoint_vbuckets(Upstream, VBuckets) ->
+    StatNames = [iolist_to_binary([<<"vb_">>, integer_to_list(VBucket), <<":open_checkpoint_id">>])
+                 || VBucket <- VBuckets],
+    StatNamesTuple = erlang:list_to_tuple(lists:sort(StatNames)),
+    mc_binary:quick_stats(Upstream, <<"checkpoint">>,
+                          mk_get_zero_open_checkpoint_vbuckets_checker(StatNamesTuple), []).
