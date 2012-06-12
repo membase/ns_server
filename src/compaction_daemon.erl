@@ -20,6 +20,7 @@
 
 -record(state, {buckets_to_compact,
                 compactor_pid,
+                compactor_config,
                 compaction_start_ts,
                 scheduled_compaction_tref,
                 forced_compactors}).
@@ -126,6 +127,7 @@ init([]) ->
     Self ! compact,
     {ok, idle, #state{buckets_to_compact=[],
                       compactor_pid=undefined,
+                      compactor_config=undefined,
                       compaction_start_ts=undefined,
                       scheduled_compaction_tref=undefined,
                       forced_compactors=dict:new()}}.
@@ -224,6 +226,7 @@ handle_info({'EXIT', Compactor, Reason}, compacting,
         end,
 
     NewState0 = State#state{compactor_pid=undefined,
+                            compactor_config=undefined,
                             buckets_to_compact=NewBuckets},
     case NewBuckets of
         [] ->
@@ -257,11 +260,20 @@ handle_info({'EXIT', Pid, Reason}, StateName,
             {stop, Reason, State}
     end;
 handle_info(config_changed, compacting,
-            #state{compactor_pid=Compactor} = State) ->
-    ?log_info("Restarting compactor ~p since "
-              "autocompaction config may have changed", [Compactor]),
+            #state{compactor_pid=Compactor,
+                   buckets_to_compact=[CompactedBucket|_],
+                   compactor_config=Config} = State) ->
     misc:flush(config_changed),
-    exit(Compactor, shutdown),
+
+    {MaybeNewConfig, _} = compaction_config(CompactedBucket),
+    case MaybeNewConfig =:= Config of
+        true ->
+            ok;
+        false ->
+            ?log_info("Restarting compactor ~p since "
+                      "autocompaction config has changed", [Compactor]),
+            exit(Compactor, shutdown)
+    end,
     {next_state, compacting, State};
 handle_info(config_changed, StateName, State) ->
     ?log_debug("Got config_changed in state ~p. "
@@ -297,6 +309,7 @@ compacting(pause, _From, #state{compactor_pid=Compactor} = State) ->
     end,
 
     {reply, ok, paused, State#state{compactor_pid=undefined,
+                                    compactor_config=undefined,
                                     compaction_start_ts=undefined}};
 compacting(unpause, _From, State) ->
     {reply, ok, compacting, State}.
@@ -308,16 +321,14 @@ paused(unpause, _From, State) ->
     {reply, ok, idle, State}.
 
 %% Internal functions
--spec spawn_bucket_compactor(binary()) -> pid().
-spawn_bucket_compactor(BucketName) ->
-    spawn_bucket_compactor(BucketName, false).
+-spec spawn_bucket_compactor(binary(), {#config{}, list()}) -> pid().
+spawn_bucket_compactor(BucketName, Configs) ->
+    spawn_bucket_compactor(BucketName, Configs, false).
 
--spec spawn_bucket_compactor(binary(), boolean()) -> pid().
-spawn_bucket_compactor(BucketName, Force) ->
+-spec spawn_bucket_compactor(binary(), {#config{}, list()}, boolean()) -> pid().
+spawn_bucket_compactor(BucketName, {Config, ConfigProps}, Force) ->
     proc_lib:spawn_link(
       fun () ->
-              {Config, ConfigProps} = compaction_config(BucketName),
-
               case Force of
                   true ->
                       ok;
@@ -1008,9 +1019,11 @@ compact_next_bucket(#state{buckets_to_compact=Buckets} = State) ->
     true = [] =/= Buckets,
 
     NextBucket = hd(Buckets),
-    Compactor = spawn_bucket_compactor(NextBucket),
+    {Config, _ConfigProps} = Configs = compaction_config(NextBucket),
+    Compactor = spawn_bucket_compactor(NextBucket, Configs),
 
-    State#state{compactor_pid=Compactor}.
+    State#state{compactor_pid=Compactor,
+                compactor_config=Config}.
 
 -spec schedule_next_compaction(#state{}) -> #state{}.
 schedule_next_compaction(#state{compaction_start_ts=StartTs0,
