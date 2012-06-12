@@ -54,7 +54,7 @@
 
 % internal mc_couch command notifying us that writes happened in
 % ep-engine
--define(CMD_NOTIFY_VBUCKET_UPDATE, 16#aa).
+-define(CMD_NOTIFY_VBUCKET_UPDATE, 16#ac).
 
 
 -define(CMD_GET_META, 16#a0).
