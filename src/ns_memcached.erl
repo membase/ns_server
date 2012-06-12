@@ -100,7 +100,8 @@
          set_with_meta/5, set_with_meta/6, set_with_meta/8,
          add_with_meta/5, add_with_meta/7,
          delete_with_meta/5, delete_with_meta/4,
-         connect_and_send_isasl_refresh/0]).
+         connect_and_send_isasl_refresh/0,
+         create_new_checkpoint/2]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -396,6 +397,12 @@ do_handle_call({set_with_meta, Key, VBucket, Value, Meta, CAS, Flags, Expiration
                                            Value, Meta, CAS, Flags, Expiration),
     {reply, Reply, State};
 
+do_handle_call({create_new_checkpoint, VBucket},
+            _From, State) ->
+    Reply = mc_client_binary:create_new_checkpoint(State#state.sock, VBucket),
+    {reply, Reply, State};
+
+
 do_handle_call({add, Key, VBucket, Val}, _From, State) ->
     Reply = mc_client_binary:cmd(?ADD, State#state.sock, undefined, undefined,
                                  {#mc_header{vbucket = VBucket},
@@ -686,6 +693,13 @@ set_with_meta(Bucket, Key, VBucket, Value, Meta) ->
 set_with_meta(Bucket, Key, VBucket, Value, Meta, CAS) ->
     set_with_meta(Bucket, Key, VBucket, Value, Meta, CAS, 0, 0).
 
+
+-spec create_new_checkpoint(any(), any()) ->
+    {ok, Checkpoint::integer()} | mc_error().
+create_new_checkpoint(Bucket, VBucket) ->
+    do_call(server(Bucket),
+            {create_new_checkpoint, VBucket},
+            ?TIMEOUT_HEAVY).
 
 %% @doc send a sync command to memcached instance
 -spec sync(bucket_name(), binary(), integer(), integer()) ->

@@ -50,6 +50,7 @@
 
 -define(CMD_DEREGISTER_TAP_CLIENT, 16#9e).
 -define(CMD_LAST_CLOSED_CHECKPOINT,  16#97).
+-define(CMD_CREATE_CHECKPOINT,  16#aa).
 
 % internal mc_couch command notifying us that writes happened in
 % ep-engine
