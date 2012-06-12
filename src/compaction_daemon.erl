@@ -474,8 +474,6 @@ spawn_dbs_compactor(BucketName, Config, Force) ->
 
     proc_lib:spawn_link(
       fun () ->
-              process_flag(trap_exit, true),
-
               VBucketDbs = all_bucket_dbs(BucketName),
 
               DoCompact =
@@ -509,6 +507,7 @@ spawn_dbs_compactor(BucketName, Config, Force) ->
                       {fun update_bucket_compaction_progress/2, [Ix, Total]}}] ||
                       {Ix, VBucketDb} <- misc:enumerate(VBucketDbs) ],
 
+              process_flag(trap_exit, true),
               do_chain_compactors(Parent, Compactors),
 
               ?log_info("Finished compaction of databases for bucket ~s",
@@ -526,13 +525,14 @@ spawn_vbucket_compactor(DbName) ->
 
     proc_lib:spawn_link(
       fun () ->
-              process_flag(trap_exit, true),
               {ok, Db} = couch_db:open_int(DbName, []),
 
               %% effectful
               ensure_can_db_compact(Db),
 
               ?log_info("Compacting ~p", [DbName]),
+
+              process_flag(trap_exit, true),
 
               {ok, Compactor} = couch_db:start_compact(Db),
 
@@ -583,8 +583,6 @@ spawn_view_index_compactor(BucketName, DDocId, Type, Config, Force) ->
 
     proc_lib:spawn_link(
       fun () ->
-              process_flag(trap_exit, true),
-
               ViewName = view_name(BucketName, DDocId, Type),
 
               DoCompact =
@@ -603,6 +601,8 @@ spawn_view_index_compactor(BucketName, DDocId, Type, Config, Force) ->
               ensure_can_view_compact(BucketName, DDocId, Type),
 
               ?log_info("Compacting indexes for ~s", [ViewName]),
+
+              process_flag(trap_exit, true),
 
               {ok, Compactor} =
                   couch_set_view_compactor:start_compact(BucketName, DDocId, Type),
