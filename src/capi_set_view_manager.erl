@@ -625,7 +625,9 @@ get_design_docs(Bucket) ->
                         end, DDocs),
     sets:from_list(DDocIds).
 
-fetch_ddocs(Bucket) ->
+fetch_ddocs(Bucket) when is_binary(Bucket) ->
+    fetch_ddocs(binary_to_list(Bucket));
+fetch_ddocs(Bucket) when is_list(Bucket) ->
     gen_server:call(server(Bucket), fetch_ddocs).
 
 added(VBucket, #state{map=Map}) ->

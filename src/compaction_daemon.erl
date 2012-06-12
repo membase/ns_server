@@ -816,25 +816,8 @@ get_group_data_info(BucketName, DDocId, replica) ->
     proplists:get_value(replica_group_info, MainInfo, disabled).
 
 ddoc_names(BucketName) ->
-    MasterDbName = <<BucketName/binary, "/master">>,
-    {ok, MasterDb} = couch_db:open_int(MasterDbName, []),
-
-    try
-        {ok, _, DDocNames} =
-            couch_db:enum_docs(
-              MasterDb,
-              fun(#doc_info{id = <<"_design/", _/binary>>, deleted = true}, _, Acc) ->
-                      {ok, Acc};
-                 (#doc_info{id = <<"_design/", _/binary>> = Id}, _, Acc) ->
-                      {ok, [Id | Acc]};
-                 (_, _, Acc) ->
-                      {stop, Acc}
-              end, [],
-              [{start_key, <<"_design/">>}, {end_key_gt, <<"_design0">>}]),
-        DDocNames
-    after
-        couch_db:close(MasterDb)
-    end.
+    {ok, DDocsSet} = capi_set_view_manager:fetch_ddocs(BucketName),
+    sets:to_list(DDocsSet).
 
 search_node_default(Config, Key, Default) ->
     case ns_config:search_node(Config, Key) of
