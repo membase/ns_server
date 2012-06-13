@@ -36,10 +36,10 @@
 -define(CHECK_INTERVAL, 10000).
 -define(CHECK_WARMUP_INTERVAL, 500).
 -define(VBUCKET_POLL_INTERVAL, 100).
--define(TIMEOUT, ns_config_ets_dup:get_timeout(ns_memcached_outer, 30000)).
--define(TIMEOUT_OPEN_CHECKPOINT, ns_config_ets_dup:get_timeout(ns_memcached_open_checkpoint, 30000)).
--define(TIMEOUT_HEAVY, ns_config_ets_dup:get_timeout(ns_memcached_outer_heavy, 30000)).
--define(TIMEOUT_VERY_HEAVY, ns_config_ets_dup:get_timeout(ns_memcached_outer_very_heavy, 60000)).
+-define(TIMEOUT, ns_config_ets_dup:get_timeout(ns_memcached_outer, 60000)).
+-define(TIMEOUT_OPEN_CHECKPOINT, ns_config_ets_dup:get_timeout(ns_memcached_open_checkpoint, 60000)).
+-define(TIMEOUT_HEAVY, ns_config_ets_dup:get_timeout(ns_memcached_outer_heavy, 60000)).
+-define(TIMEOUT_VERY_HEAVY, ns_config_ets_dup:get_timeout(ns_memcached_outer_very_heavy, 120000)).
 -define(CONNECTED_TIMEOUT, ns_config_ets_dup:get_timeout(ns_memcached_connected, 5000)).
 %% half-second is definitely 'slow' for any definition of slow
 -define(SLOW_CALL_THRESHOLD_MICROS, 500000).
