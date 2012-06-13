@@ -574,7 +574,7 @@ manage_vbucket_replications() ->
             0 ->
                 ok;
             NumFreeSlots ->
-                {Vbs1, Vbs2} = lists:split(NumFreeSlots, Vbs),
+                {Vbs1, Vbs2} = lists:split(erlang:min(NumFreeSlots, length(Vbs)), Vbs),
 
                 % Reread the target vbucket map once before retrying all reps
                 {ok, TgtVbInfo} =
