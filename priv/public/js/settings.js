@@ -835,7 +835,11 @@ var AutoCompactionSection = {
       "databaseFragmentationThreshold[size]",
       "databaseFragmentationThreshold[percentage]",
       "viewFragmentationThreshold[size]",
-      "viewFragmentationThreshold[percentage]"
+      "viewFragmentationThreshold[percentage]",
+      "allowedTimePeriod[fromHour]",
+      "allowedTimePeriod[fromMinute]",
+      "allowedTimePeriod[toHour]",
+      "allowedTimePeriod[toMinute]"
     ];
     _.each(fields, function(key) {
       if (values[key] === 'undefined') {
@@ -845,6 +849,14 @@ var AutoCompactionSection = {
           (key === 'databaseFragmentationThreshold[size]' ||
            key === 'viewFragmentationThreshold[size]')) {
         values[key] = Math.round(values[key] / 1024 / 1024);
+      }
+      if (isFinite(values[key]) &&
+          (key === 'allowedTimePeriod[fromHour]' ||
+           key === 'allowedTimePeriod[fromMinute]' ||
+           key === 'allowedTimePeriod[toHour]' ||
+           key === 'allowedTimePeriod[toMinute]')) {
+        // add leading zero where needed
+        values[key] = (values[key] + 100).toString().substring(1);
       }
     });
     return values;
