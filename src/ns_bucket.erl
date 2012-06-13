@@ -483,6 +483,7 @@ is_port_free(BucketName, Port) ->
 
 is_port_free(BucketName, Port, Config) ->
     Port =/= ns_config:search_node_prop(Config, memcached, port)
+        andalso Port =/= ns_config:search_node_prop(Config, memcached, dedicated_port)
         andalso Port =/= ns_config:search_node_prop(Config, moxi, port)
         andalso Port =/= ns_config:search_node_prop(Config, memcached, mccouch_port, 11213)
         andalso Port =/= capi_utils:capi_port(node(), Config)
