@@ -50,10 +50,10 @@ do_cleanup(Bucket, Options, Config) ->
                                  ns_rebalancer:generate_initial_map(Config1)
                          end,
 
-                Config6 = lists:keystore(map, 1, Config1, {map, NewMap}),
-                ns_bucket:set_bucket_config(Bucket, Config6),
+                Config2 = lists:keystore(map, 1, Config1, {map, NewMap}),
+                ns_bucket:set_bucket_config(Bucket, Config2),
 
-                MapOptions = ns_bucket:config_to_map_options(Config6),
+                MapOptions = ns_bucket:config_to_map_options(Config2),
                 case ns_rebalancer:unbalanced(NewMap, S) of
                     false ->
                         ns_bucket:update_vbucket_map_history(NewMap, MapOptions);
