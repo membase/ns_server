@@ -521,7 +521,7 @@ wait_for_nodes(Nodes, Pred, Timeout) ->
                           Status = ns_doctor:get_node(Node),
                           Active = proplists:get_value(active_buckets,
                                                        Status, []),
-                          Connected = proplists:get_value(connected_buckets,
+                          Connected = proplists:get_value(ready_buckets,
                                                           Status, []),
 
                           case Pred(Active, Connected) of
