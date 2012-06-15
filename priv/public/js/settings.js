@@ -95,15 +95,84 @@ var SettingsSection = {
 };
 
 var UpdatesNotificationsSection = {
+  buildPhoneHomeThingy: function (statsInfo) {
+    var numMembase = 0;
+    for (var i in statsInfo.buckets) {
+      if (statsInfo.buckets[i].bucketType == "membase")
+        numMembase++;
+    }
+    var nodeStats = {
+      os: [],
+      uptime: [],
+      istats: []
+    };
+    for(i in statsInfo.pool.nodes) {
+      nodeStats.os.push(statsInfo.pool.nodes[i].os);
+      nodeStats.uptime.push(statsInfo.pool.nodes[i].uptime);
+      nodeStats.istats.push(statsInfo.pool.nodes[i].interestingStats);
+    }
+    var stats = {
+      version: DAL.version,
+      componentsVersion: DAL.componentsVersion,
+      uuid: DAL.uuid,
+      numNodes: statsInfo.pool.nodes.length,
+      ram: {
+        total: statsInfo.pool.storageTotals.ram.total,
+        quotaTotal: statsInfo.pool.storageTotals.ram.quotaTotal,
+        quotaUsed: statsInfo.pool.storageTotals.ram.quotaUsed
+      },
+      hdd: {
+        total: statsInfo.pool.storageTotals.hdd.total,
+        quotaTotal: statsInfo.pool.storageTotals.hdd.quotaTotal,
+        used: statsInfo.pool.storageTotals.hdd.used,
+        usedByData: statsInfo.pool.storageTotals.hdd.usedByData
+      },
+      buckets: {
+        total: statsInfo.buckets.length,
+        membase: numMembase,
+        memcached: statsInfo.buckets.length - numMembase
+      },
+      counters: statsInfo.pool.counters,
+      nodes: nodeStats,
+      browser: navigator.userAgent
+    };
+
+    return stats;
+  },
+  launchMissiles: function (statsInfo, launchID) {
+    var self = this;
+    var iframe = document.createElement("iframe");
+    document.body.appendChild(iframe);
+    setTimeout(afterDelay, 10);
+
+    // apparently IE8 needs some delay
+    function afterDelay() {
+      var iwin = iframe.contentWindow;
+      var idoc = iwin.document;
+      idoc.body.innerHTML = "<form id=launchpad method=POST><textarea id=sputnik name=stats></textarea></form>";
+      var form = idoc.getElementById('launchpad');
+      var textarea = idoc.getElementById('sputnik');
+      form['action'] = self.remote.stats + '?launchID=' + launchID;
+      textarea.innerText = JSON.stringify(self.buildPhoneHomeThingy(statsInfo));
+      form.submit();
+      setTimeout(function () {
+        document.body.removeChild(iframe);
+      }, 30000);
+    }
+  },
   init: function () {
     var self = this;
 
     // All the infos that are needed to send out the statistics
-    var statsInfo = Cell.compute(function (v) {
+    var statsInfoCell = Cell.computeEager(function (v) {
       return {
         pool: v.need(DAL.cells.currentPoolDetailsCell),
         buckets: v.need(DAL.cells.bucketsListCell)
       };
+    });
+
+    var haveStatsInfo = Cell.computeEager(function (v) {
+      return !!v(statsInfoCell);
     });
 
     var modeDefined = Cell.compute(function (v) {
@@ -116,97 +185,86 @@ var UpdatesNotificationsSection = {
       v.need(modeDefined);
       return future.get({url: "/settings/stats"});
     });
-    this.phEnabled = phEnabled;
+    self.phEnabled = phEnabled;
     phEnabled.equality = _.isEqual;
     phEnabled.keepValueDuringAsync = true;
 
-    phEnabled.subscribeValue(function(val) {
-      if (val!==undefined) {
-        // newVersion has 3 states, either:
-        //  - string => new version available
-        //  - false => no new version available
-        //  - undefined => some error occured, no information available
-        var newVersion = undefined;
-        // Sending off stats is enabled...
-        if (val.sendStats) {
-          var errorFun = function(arg1, arg2, arg3) {
-            self.renderTemplate(val.sendStats, undefined);
-          };
+    var sentPhoneHome = 0;
+    self.hasUpdatesCell = Cell.computeEager(function (v) {
+      if (!v(modeDefined)) {
+        return;
+      }
+      var enabled = v.need(phEnabled);
+      if (!enabled.sendStats) {
+        return false;
+      }
 
-          statsInfo.getValue(function(s) {
-            // JSONP requests don't support error callbacks in
-            // jQuery 1.4, thus we need to hack around it
-            var sendStatsSuccess = false;
+      if (!v(haveStatsInfo)) {
+        return;
+      }
 
-            var numMembase = 0;
-            for (var i in s.buckets) {
-              if (s.buckets[i].bucketType == "membase")
-                numMembase++;
-            }
-            var nodeStats = {
-              os: [],
-              uptime: [],
-              istats: []
-            };
-            for(i in s.pool.nodes) {
-              nodeStats.os.push(s.pool.nodes[i].os);
-              nodeStats.uptime.push(s.pool.nodes[i].uptime);
-              nodeStats.istats.push(s.pool.nodes[i].interestingStats);
-            }
-            var stats = {
-              version: DAL.version,
-              componentsVersion: DAL.componentsVersion,
-              uuid: DAL.uuid,
-              numNodes: s.pool.nodes.length,
-              ram: {
-                total: s.pool.storageTotals.ram.total,
-                quotaTotal: s.pool.storageTotals.ram.quotaTotal,
-                quotaUsed: s.pool.storageTotals.ram.quotaUsed
-              },
-              hdd: {
-                total: s.pool.storageTotals.hdd.total,
-                quotaTotal: s.pool.storageTotals.hdd.quotaTotal,
-                used: s.pool.storageTotals.hdd.used,
-                usedByData: s.pool.storageTotals.hdd.usedByData
-              },
-              buckets: {
-                total: s.buckets.length,
-                membase: numMembase,
-                memcached: s.buckets.length - numMembase
-              },
-              counters: s.pool.counters,
-              nodes: nodeStats,
-              browser: navigator.userAgent
-            };
-            // This is the request that actually sends the data
+      // note: we could've used keepValueDuringAsync option of cell,
+      // but then false returned above when sendStats was off would be
+      // kept while we're fetching new versions info.
+      //
+      // So code below keeps old value iff it's some sensible phone
+      // home result rather than false
+      var nowValue = this.self.value;
+      if (nowValue === false) {
+        nowValue = undefined;
+      }
 
-            $.ajax({
-              url: self.remote.stats,
-              dataType: 'jsonp',
-              data: {stats: JSON.stringify(stats)},
-              // jQuery 1.4 doesn't respond with error, 1.5 should.
-              ///error: function() {
-              //    self.renderTemplate(true, undefined);
-              //},
-              timeout: 5000,
-              success: function (data) {
-                sendStatsSuccess = true;
-                self.renderTemplate(true, data);
-              }
-            });
-            // manual error callback
-            setTimeout(function() {
-              if (!sendStatsSuccess) {
-                self.renderTemplate(true, undefined);
-              }
-            }, 5100);
+      return future(function (valueCallback) {
+        statsInfoCell.getValue(function (statsInfo) {
+          doSendStuff(statsInfo, function () {
+            setTimeout(function () {
+              self.hasUpdatesCell.recalculateAfterDelay(3600*1000);
+            }, 10);
+            return valueCallback.apply(this, arguments);
           });
+        });
+      }, {nowValue: nowValue});
 
-        } else {
-          self.renderTemplate(false, undefined);
-        }
+      function doSendStuff(statsInfo, valueCallback) {
+        var launchID = DAL.uuid + '-' + (new Date()).valueOf() + '-' + ((Math.random() * 65536) >> 0);
+        self.launchMissiles(statsInfo, launchID);
+        var valueDelivered = false;
+
+        $.ajax({
+          url: self.remote.stats,
+          dataType: 'jsonp',
+          data: {launchID: launchID, version: DAL.version},
+          error: function() {
+            valueDelivered = true;
+            valueCallback({failed: true});
+          },
+          timeout: 15000,
+          success: function (data) {
+            sendStatsSuccess = true;
+            valueCallback(data);
+          }
+        });
+        // manual error callback in case timeout & error thing doesn't
+        // work
+        setTimeout(function() {
+          if (!valueDelivered) {
+            valueCallback({failed: true});
+          }
+        }, 15100);
       }
     });
+
+    Cell.subscribeMultipleValues(function (enabled, phoneHomeResult) {
+      if (enabled === undefined || phoneHomeResult === undefined) {
+        self.renderTemplate(enabled ? enabled.sendStats : false, undefined);
+        prepareAreaUpdate($($i('notifications_container')));
+        return;
+      }
+      if (phoneHomeResult.failed) {
+        phoneHomeResult = undefined;
+      }
+      self.renderTemplate(enabled.sendStats, phoneHomeResult);
+    }, phEnabled, self.hasUpdatesCell);
 
     $('#notifications_container').delegate('a.more_info', 'click', function(e) {
       e.preventDefault();
@@ -266,7 +324,7 @@ var UpdatesNotificationsSection = {
                    $i('notifications_container'));
   },
   remote: {
-    stats: 'http://ph.couchbase.net/stats',
+    stats: 'http://ph.couchbase.net/v2',
     email: 'http://ph.couchbase.net/email'
   },
   refresh: function() {

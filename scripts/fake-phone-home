@@ -1,0 +1,37 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'sinatra'
+require 'json'
+# gem install rack-contrib
+require 'rack/contrib/jsonp'
+require 'pp'
+
+use Rack::JSONP
+
+get '/home' do
+  content_type :json
+  puts "got params:"
+  pp params
+  reply = {
+    'newVersion' => '1.8.3',
+    'links' => {
+      :download => 'http://google.com/?q=couchbase+server+download',
+      :release => 'http://google.com/?q=couchbase+server+release+notes'
+    },
+    :info => 'some crap?'
+  }
+  # sleep a bit to simulate internet delay
+  sleep 3.8
+  reply.to_json
+end
+
+post '/home' do
+  statsBody = params['stats']
+  data = JSON.parse(statsBody)
+  puts "got phone home package"
+  pp data
+
+  content_type :html
+  '""'
+end
