@@ -142,7 +142,8 @@ handle_sync_event({force_compact_bucket, Bucket},
                   #state{forced_compactors=Forced} = State) ->
     Record = #forced_compaction{type=bucket,
                                 name=Bucket},
-    Pid = spawn_bucket_compactor(Bucket, true),
+    Configs = compaction_config(Bucket),
+    Pid = spawn_bucket_compactor(Bucket, Configs, true),
     NewForced = dict:store(Pid, Record, Forced),
     {reply, ok, StateName, State#state{forced_compactors=NewForced}};
 handle_sync_event({force_compact_db_files, Bucket},
