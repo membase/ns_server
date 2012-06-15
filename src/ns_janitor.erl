@@ -120,6 +120,9 @@ do_cleanup(Bucket, Options, Config) ->
                             maybe_stop_rebalance_status();
                         _ -> ok
                     end,
+
+                    mark_bucket_warmed(Bucket, Servers),
+
                     ok
             end
     end.
@@ -353,4 +356,20 @@ maybe_stop_rebalance_status() ->
               end);
         _ ->
             ok
+    end.
+
+mark_bucket_warmed(Bucket, Nodes) ->
+    {Replies, BadNodes} = ns_memcached:mark_warmed(Nodes, Bucket),
+    BadReplies = [{N, R} || {N, R} <- Replies,
+                            %% unhandled returned by old nodes
+                            R =/= ok andalso R =/= unhandled],
+
+    case {BadReplies, BadNodes} of
+        {[], []} ->
+            ok;
+        {_, _} ->
+            ?log_error("Failed to mark bucket `~p` as warmed up."
+                       "~nBadNodes:~n~p~nBadReplies:~n~p",
+                       [Bucket, BadNodes, BadReplies]),
+            {error, BadNodes, BadReplies}
     end.
