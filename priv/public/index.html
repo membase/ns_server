@@ -53,7 +53,7 @@
     </div><!-- #headerNav -->
 
     <div id="mainContainer" class="main_holder">
-      <div id="mainPanel">
+      <div id="mainPanel" class="mainPanel">
 
         <div id="overview" style="display:none">
           <h1>Cluster Overview</h1>
@@ -1099,103 +1099,112 @@
               </div>
             </div>
 
-            <div id="view_results_block" class="results_block" style="display:none;">
-              <h1>Filter Results <a id="view_run_button" class="run_button btn_1 bt_marg"><span>Show Results</span></a>
-                <span class="view_query_string"></span>
-                <span class="ic_prev_next">
-                    <a class="arr_prev"></a>
-                    <a class="arr_next"></a>
-                </span> <!--/ic_prev_next-->
-              </h1>
-              <!--filter result-->
-              <div class="f_wrap">
-                <div class="filter_cont">
-                    <a href="#" class="exp_filter"></a>
-                </div><!--/filter_cont-->
-                <div class="f_popup" >
-                  <div class="f_cont">
-                    <div class="br_right"></div>
-                    <div class="wrap">
-                      <select id="view_filters" name="standard-dropdown">
-                          <option value=""></option>
-                          <!-- <option value="conflicts">conflicts</option> -->
-                          <option value="stale">stale</option>
-                          <option value="reduce">reduce</option>
-                          <option value="group">group</option>
-                          <option value="group_level">group_level</option>
-                          <option value="startkey">startkey</option>
-                          <option value="endkey">endkey</option>
-                          <option value="startkey_docid">startkey_docid</option>
-                          <option value="endkey_docid">endkey_docid</option>
-                          <option value="inclusive_end">inclusive_end</option>
-                          <option value="descending">descending</option>
-                          <option value="key">key</option>
-                          <option value="keys">keys</option>
-                          <option value="connection_timeout">connection_timeout</option>
-                      </select>
-                    </div><!--/wrap-->
-                    <a id="view_filter_add" class="ic_plus"></a>
+            <script id="filter_template" type="text/html">
+               <h2>{%= h(title) %}</h2>
+              <div class="filters_container">
+                <div class="filters_btn"></div>
+                <div class="filters_popup">
+                  <div class="wrap">
+                    <select class="filters_dropdown" name="standard-dropdown">
+                        <option value=""></option>
+                        <!--{% if (items.conflict) {%}--><option value="conflicts">conflicts</option><!--{% }%}-->
+                        <!--{% if (items.stale) {%}--><option value="stale">stale</option><!--{% }%}-->
+                        <!--{% if (items.reduce) {%}--><option value="reduce">reduce</option><!--{% }%}-->
+                        <!--{% if (items.group) {%}--><option value="group">group</option><!--{% }%}-->
+                        <!--{% if (items.groupLevel) {%}--><option value="group_level">group_level</option><!--{% }%}-->
+                        <!--{% if (items.startkey) {%}--><option value="startkey">startkey</option><!--{% }%}-->
+                        <!--{% if (items.endkey) {%}--><option value="endkey">endkey</option><!--{% }%}-->
+                        <!--{% if (items.startkeyDocid) {%}--><option value="startkey_docid">startkey_docid</option><!--{% }%}-->
+                        <!--{% if (items.endkeyDocid) {%}--><option value="endkey_docid">endkey_docid</option><!--{% }%}-->
+                        <!--{% if (items.inclusiveEnd) {%}--><option value="inclusive_end">inclusive_end</option><!--{% }%}-->
+                        <!--{% if (items.descending) {%}--><option value="descending">descending</option><!--{% }%}-->
+                        <!--{% if (items.key) {%}--><option value="key">key</option><!--{% }%}-->
+                        <!--{% if (items.keys) {%}--><option value="keys">keys</option><!--{% }%}-->
+                        <!--{% if (items.connectionTimeout) {%}--><option value="connection_timeout">connection_timeout</option><!--{% }%}-->
+                    </select>
+                    <a class="filters_add"></a>
+                  </div>
 
-                    <table class="key">
-                      <!-- <tr><td><div class="btn_x"></div></td> -->
-                        <!-- <td><label for="view_filter_conflicts">conflicts</label></td> -->
-                        <!-- <td><input id="view_filter_conflicts" name="conflicts" type="checkbox" /></td></tr> -->
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_descending">descending</label></td>
-                        <td><input id="view_filter_descending" name="descending" type="checkbox" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_endkey">endkey</label></td>
-                        <td><input id="view_filter_endkey" name="endkey" type="text" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_endkey_docid">endkey_docid</label></td>
-                        <td><input id="view_filter_endkey_docid" name="endkey_docid" type="text" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_group">group</label></td>
-                        <td><input id="view_filter_group" name="group" type="checkbox" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_group_level">group_level</label></td>
-                        <td><input id="view_filter_group_level" name="group_level" type="text" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_include_docs">include_docs</label></td>
-                        <td><input id="view_filter_include_docs" name="include_docs" type="checkbox" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_inclusive_end">inclusive_end</label></td>
-                        <td><input id="view_filter_inclusive_end" name="inclusive_end" type="checkbox" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_key">key</label></td>
-                        <td><input id="view_filter_key" name="key" type="text" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_keys">keys</label></td>
-                        <td><input id="view_filter_keys" name="keys" type="text" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_reduce">reduce</label></td>
-                        <td><input id="view_filter_reduce" name="reduce" type="checkbox" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_startkey">startkey</label></td>
-                        <td><input id="view_filter_startkey" name="startkey" type="text" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_startkey_docid">startkey_docid</label></td>
-                        <td><input id="view_filter_startkey_docid" name="startkey_docid" type="text" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_update_seq">update_seq</label></td>
-                        <td><input id="view_filter_update_seq" name="update_seq" type="checkbox" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_stale">stale</label></td>
-                        <td>
-                          <select id="view_filter_stale" name="stale" class="selectBox">
-                            <option value="false">false</option>
-                            <option value="update_after">update_after</option>
-                            <option value="ok">ok</option>
-                          </select>
-                        </td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_connection_timeout">connection_timeout</label></td>
-                        <td><input id="view_filter_connection_timeout" name="connection_timeout" type="text" placeholder="milliseconds" /></td></tr>
-                    </table><!--/key-->
-
-                  </div><!--f_cont-->
-                </div><!--f_popup-->
+                  <div class="key">
+                    <!--{% if (items.conflict) {%}--><div>
+                      <div class="btn_x"></div><label for="{%= prefix %}_filter_conflicts">conflicts</label>
+                      <input id="{%= prefix %}_filter_conflicts" name="conflicts" type="checkbox">
+                    </div><!--{% }%}-->
+                    <!--{% if (items.descending) {%}--><div>
+                      <div class="btn_x"></div><label for="{%= prefix %}_filter_descending">descending</label>
+                      <input id="{%= prefix %}_filter_descending" name="descending" type="checkbox">
+                    </div><!--{% }%}-->
+                    <!--{% if (items.endkey) {%}--><div>
+                      <div class="btn_x"></div><label for="{%= prefix %}_filter_endkey">endkey</label>
+                      <input id="{%= prefix %}_filter_endkey" name="endkey" type="text">
+                    </div><!--{% }%}-->
+                    <!--{% if (items.endkeyDocid) {%}--><div>
+                      <div class="btn_x"></div><label for="{%= prefix %}_filter_endkey_docid">endkey_docid</label>
+                      <input id="{%= prefix %}_filter_endkey_docid" name="endkey_docid" type="text">
+                    </div><!--{% }%}-->
+                    <!--{% if (items.group) {%}--><div>
+                      <div class="btn_x"></div><label for="{%= prefix %}_filter_group">group</label>
+                      <input id="{%= prefix %}_filter_group" name="group" type="checkbox">
+                    </div><!--{% }%}-->
+                    <!--{% if (items.groupLevel) {%}--><div>
+                      <div class="btn_x"></div><label for="{%= prefix %}_filter_group_level">group_level</label>
+                      <input id="{%= prefix %}_filter_group_level" name="group_level" type="text">
+                    </div><!--{% }%}-->
+                    <!--{% if (items.includeDocs) {%}--><div>
+                      <div class="btn_x"></div><label for="{%= prefix %}_filter_include_docs">include_docs</label>
+                      <input id="{%= prefix %}_filter_include_docs" name="include_docs" type="checkbox">
+                    </div><!--{% }%}-->
+                    <!--{% if (items.inclusiveEnd) {%}--><div>
+                      <div class="btn_x"></div><label for="{%= prefix %}_filter_inclusive_end">inclusive_end</label>
+                      <input id="{%= prefix %}_filter_inclusive_end" name="inclusive_end" type="checkbox">
+                    </div><!--{% }%}-->
+                    <!--{% if (items.key) {%}--><div>
+                      <div class="btn_x"></div><label for="{%= prefix %}_filter_key">key</label>
+                      <input id="{%= prefix %}_filter_key" name="key" type="text">
+                    </div><!--{% }%}-->
+                    <!--{% if (items.keys) {%}--><div>
+                      <div class="btn_x"></div><label for="{%= prefix %}_filter_keys">keys</label>
+                      <input id="{%= prefix %}_filter_keys" name="keys" type="text">
+                    </div><!--{% }%}-->
+                    <!--{% if (items.reduce) {%}--><div>
+                      <div class="btn_x"></div><label for="{%= prefix %}_filter_reduce">reduce</label>
+                      <input id="{%= prefix %}_filter_reduce" name="reduce" type="checkbox">
+                    </div><!--{% }%}-->
+                    <!--{% if (items.startkey) {%}--><div>
+                      <div class="btn_x"></div><label for="{%= prefix %}_filter_startkey">startkey</label>
+                      <input id="{%= prefix %}_filter_startkey" name="startkey" type="text">
+                    </div><!--{% }%}-->
+                    <!--{% if (items.startkeyDocid) {%}--><div>
+                      <div class="btn_x"></div><label for="{%= prefix %}_filter_startkey_docid">startkey_docid</label>
+                      <input id="{%= prefix %}_filter_startkey_docid" name="startkey_docid" type="text">
+                    </div><!--{% }%}-->
+                    <!--{% if (items.updateSeq) {%}--><div>
+                      <div class="btn_x"></div><label for="{%= prefix %}_filter_update_seq">update_seq</label>
+                      <input id="{%= prefix %}_filter_update_seq" name="update_seq" type="checkbox">
+                    </div><!--{% }%}-->
+                    <!--{% if (items.stale) {%}--><div>
+                      <div class="btn_x"></div><label for="{%= prefix %}_filter_stale">stale</label>
+                        <select id="{%= prefix %}_filter_stale" name="stale" class="selectBox">
+                          <option value="false">false</option>
+                          <option value="update_after">update_after</option>
+                          <option value="ok">ok</option>
+                        </select>
+                      </div><!--{% }%}-->
+                    <!--{% if (items.connectionTimeout) {%}--><div>
+                      <div class="btn_x"></div><label for="{%= prefix %}_filter_connection_timeout">connection_timeout</label>
+                      <input id="{%= prefix %}_filter_connection_timeout" name="connection_timeout" type="text" placeholder="milliseconds">
+                    </div><!--{% }%}-->
+                  </div>
+                </div>
               </div>
+              <a href="#" class="filters_url"></a>
+
+            </script>
+
+            <div id="view_results_block" class="results_block" style="display:none;">
+              <div id="view_filter_container" class="filter_container"></div>
+              <a id="view_run_button" class="run_button btn_1 bt_marg"><span>Show Results</span></a>
+              <div class="clr"></div>
               <!--/filter result-->
               <div class="shadow_box">
                 <ul class="tabs dev-subset-switcher when-in-dev">
@@ -1237,90 +1246,10 @@
             </div>
 
             <div id="spatial_results_block" class="results_block" style="display:none;">
-              <h1>Filter Results <a id="spatial_run_button" class="run_button btn_1 bt_marg"><span>Show Results</span></a>
-                <span class="view_query_string"></span>
-                <span class="ic_prev_next">
-                    <a class="arr_prev"></a>
-                    <a class="arr_next"></a>
-                </span> <!--/ic_prev_next-->
-              </h1>
-              <!--filter result-->
-              <div class="f_wrap">
-                <div class="filter_cont">
-                    <a href="#" class="exp_filter"></a>
-                </div><!--/filter_cont-->
-                <div class="f_popup" >
-                  <div class="f_cont">
-                    <div class="br_right"></div>
-                    <div class="wrap">
-                      <select id="spatial_filters" name="standard-dropdown">
-                          <option value=""></option>
-                          <!-- <option value="conflicts">conflicts</option> -->
-                          <option value="stale">stale</option>
-                          <option value="bbox">bbox</option>
-                          <option value="connection_timeout">connection_timeout</option>
-                      </select>
-                    </div><!--/wrap-->
-                    <a id="spatial_filter_add" class="ic_plus"></a>
+              <div id="spatial_filter_container" class="filter_container"></div>
+              <a id="spatial_run_button" class="run_button btn_1 bt_marg"><span>Show Results</span></a>
+              <div class="clr"></div>
 
-                    <table class="key">
-                      <!-- <tr><td><div class="btn_x"></div></td> -->
-                        <!-- <td><label for="view_filter_conflicts">conflicts</label></td> -->
-                        <!-- <td><input id="view_filter_conflicts" name="conflicts" type="checkbox" /></td></tr> -->
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="spatial_filter_bbox">bbox</label></td>
-                        <td><input id="spatial_filter_bbox" name="bbox" type="text" /></td></tr>
-<!--
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_end_key_docid">end_key_docid</label></td>
-                        <td><input id="view_filter_end_key_docid" name="end_key_docid" type="text" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_group">group</label></td>
-                        <td><input id="view_filter_group" name="group" type="checkbox" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_group_level">group_level</label></td>
-                        <td><input id="view_filter_group_level" name="group_level" type="text" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_include_docs">include_docs</label></td>
-                        <td><input id="view_filter_include_docs" name="include_docs" type="checkbox" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_inclusive_end">inclusive_end</label></td>
-                        <td><input id="view_filter_inclusive_end" name="inclusive_end" type="checkbox" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_key">key</label></td>
-                        <td><input id="view_filter_key" name="key" type="text" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_keys">keys</label></td>
-                        <td><input id="view_filter_keys" name="keys" type="text" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_reduce">reduce</label></td>
-                        <td><input id="view_filter_reduce" name="reduce" type="checkbox" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_start_key">start_key</label></td>
-                        <td><input id="view_filter_start_key" name="start_key" type="text" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_start_key_docid">start_key_docid</label></td>
-                        <td><input id="view_filter_start_key_docid" name="start_key_docid" type="text" /></td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_update_seq">update_seq</label></td>
-                        <td><input id="view_filter_update_seq" name="update_seq" type="checkbox" /></td></tr>
--->
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="spatial_filter_stale">stale</label></td>
-                        <td>
-                          <select id="spatial_filter_stale" name="stale" class="selectBox">
-                            <option value="update_after">update_after</option>
-                            <option value="ok">ok</option>
-                          </select>
-                        </td></tr>
-                      <tr><td><div class="btn_x"></div></td>
-                        <td><label for="view_filter_connection_timeout">connection_timeout</label></td>
-                        <td><input id="view_filter_connection_timeout" name="connection_timeout" type="text" placeholder="milliseconds" /></td></tr>
-                    </table><!--/key-->
-
-                  </div><!--f_cont-->
-                </div><!--f_popup-->
-              </div>
               <!--/filter result-->
               <div class="shadow_box">
                 <ul class="tabs dev-subset-switcher when-in-dev">
@@ -2630,6 +2559,7 @@ $(window).bind('template:rendered', function () {
 <script src="js/servers.js"></script>
 <script src="js/settings.js"></script>
 <script src="js/buckets.js"></script>
+<script src="js/filter.js"></script>
 <script src="js/views.js"></script>
 <script src="js/replications.js"></script>
 <script src="js/documents.js"></script>
