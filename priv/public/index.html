@@ -1134,9 +1134,17 @@
                       <div class="btn_x"></div><label for="{%= prefix %}_filter_descending">descending</label>
                       <input id="{%= prefix %}_filter_descending" name="descending" type="checkbox">
                     </div><!--{% }%}-->
+                    <!--{% if (items.startkey) {%}--><div>
+                      <div class="btn_x"></div><label for="{%= prefix %}_filter_startkey">startkey</label>
+                      <input id="{%= prefix %}_filter_startkey" name="startkey" type="text">
+                    </div><!--{% }%}-->
                     <!--{% if (items.endkey) {%}--><div>
                       <div class="btn_x"></div><label for="{%= prefix %}_filter_endkey">endkey</label>
                       <input id="{%= prefix %}_filter_endkey" name="endkey" type="text">
+                    </div><!--{% }%}-->
+                    <!--{% if (items.startkeyDocid) {%}--><div>
+                      <div class="btn_x"></div><label for="{%= prefix %}_filter_startkey_docid">startkey_docid</label>
+                      <input id="{%= prefix %}_filter_startkey_docid" name="startkey_docid" type="text">
                     </div><!--{% }%}-->
                     <!--{% if (items.endkeyDocid) {%}--><div>
                       <div class="btn_x"></div><label for="{%= prefix %}_filter_endkey_docid">endkey_docid</label>
@@ -1169,14 +1177,6 @@
                     <!--{% if (items.reduce) {%}--><div>
                       <div class="btn_x"></div><label for="{%= prefix %}_filter_reduce">reduce</label>
                       <input id="{%= prefix %}_filter_reduce" name="reduce" type="checkbox">
-                    </div><!--{% }%}-->
-                    <!--{% if (items.startkey) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_startkey">startkey</label>
-                      <input id="{%= prefix %}_filter_startkey" name="startkey" type="text">
-                    </div><!--{% }%}-->
-                    <!--{% if (items.startkeyDocid) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_startkey_docid">startkey_docid</label>
-                      <input id="{%= prefix %}_filter_startkey_docid" name="startkey_docid" type="text">
                     </div><!--{% }%}-->
                     <!--{% if (items.updateSeq) {%}--><div>
                       <div class="btn_x"></div><label for="{%= prefix %}_filter_update_seq">update_seq</label>
@@ -1428,34 +1428,37 @@
         </div>
 
           <div id="documents" style="display:none">
-            <h1 style="clear:both;overflow:hidden">
-              <span style="float:left">
+            <div class="doc_header">
+              <div class="wrap">
                 <select id="docs_buckets_select"></select> &gt; <a id="bread_crump_doc">Documents</a>
-              </span>
-            <span class="ic_prev_next">
-              <a class="arr_prev"></a>
-              <a class="arr_next"></a>
-            </span> <!--/ic_prev_next-->
-
-            </h1>
+              </div>
+              <div class="ic_prev_next">
+                <a class="arr_prev disabled"></a>
+                <a class="arr_next disabled"></a>
+              </div>
+              <div class="docs_info">
+                Total items: <span class="docs_total_item">0</span><span class="sep">|</span>
+                Page: <span class="docs_crnt_pg">1 of 1</span>
+              </div>
+            </div>
 
             <div id="documents_details" style="display:none;" class="shadow_box">
                 <div class="header_2 servers_header">
-                  <div style="float:left" id="json_doc_id"></div>
-                  <span id="editing-notice"></span>
+                  <div class="docs_title"></div>
                   <div class="editing_ctrls">
                     <a class="btn_1" id="doc_delete"><span>Delete</span></a>
                     <a class="btn_1" id="doc_saveas"><span>Save As...</span></a>
                     <a class="btn_1 btn_save" id="doc_save"><span>Save</span></a>
                     <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
                   </div>
+                  <div class="documents_notice"></div>
                 </div>
                 <textarea id="json_doc" spellcheck="false" cols="20" rows="11"></textarea>
             </div>
 
-            <div class="shadow_box">
+            <div id="documents_list" class="shadow_box">
               <div class="header_2 servers_header">
-                All Documents
+                <div class="docs_title"></div>
                 <div class="editing_ctrls">
                   <form id="search_doc" action="#">
                     <input type="text" id="docs_lookup_doc_by_id"
@@ -1467,6 +1470,7 @@
                   <a class="btn_1 btn_create"><span>Create Document</span></a>
                   <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
                 </div>
+                <div class="documents_notice"></div>
               </div>
 
               <div id="documents_list_container">Documents</div>

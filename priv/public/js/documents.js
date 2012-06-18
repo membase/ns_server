@@ -149,29 +149,22 @@ function createDocumentsCells(ns, modeCell, capiBaseCell, bucketsListCell) {
     if (currentDocId) {
       return;
     }
-    var param = {};
+    var param = _.extend({}, v(ns.filter.filterParamsCell));
     var page = v.need(ns.currentDocumentsPageNumberCell);
     var limit = v(ns.currentPageLimitCell);
-    var searchTerm = v(ns.searchedDocumentCell);
     var skip = page * limit;
+    var url = v.need(ns.dbURLCell);
 
     param.skip = String(skip);
+    param.include_docs = true;
+    param.limit = String(param.startkey || param.endkey ? limit + 1 : limit);
 
-    if (searchTerm) {
-      param.limit = String(limit + 1);
-      param.startkey = JSON.stringify(searchTerm);
-      param.endkey = JSON.stringify(searchTerm + String.fromCharCode(0xffff));
-    } else {
-      param.limit = String(limit);
-    }
-
-    return buildURL(v.need(ns.dbURLCell), "_all_docs", param);
+    return buildURL(url, "_all_docs", param);
   }).name("currentPageDocsURLCell");
 
   ns.currentPageDocsCell = Cell.compute(function (v) {
     if (v.need(ns.haveBucketsCell)) {
-      //should we catch errors for GET documents list ?
-      return future.get({url: v.need(ns.currentPageDocsURLCell)});
+      return future.capiViewGet({url: v.need(ns.currentPageDocsURLCell)});
     } else {
       return {rows: [], total_rows: 0};
     }
@@ -212,12 +205,36 @@ var DocumentsSection = {
     self.bucketNameCell = new StringHashFragmentCell("bucketName");
     self.documentsPageNumberCell = new StringHashFragmentCell("documentsPageNumber");
     self.documentIdCell = new StringHashFragmentCell("docId");
-    self.searchedDocumentCell = new Cell();
+    self.lookupIdCell = new StringHashFragmentCell("lookupId");
     self.pageLimitCell = new Cell();
 
-    createDocumentsCells(self, DAL.cells.mode, DAL.cells.capiBase, DAL.cells.bucketsListCell);
-
     var documents = $('#documents');
+    var allDocsCont = $('#documents_list', documents);
+    var allDocsTitle = $('.docs_title', allDocsCont);
+
+    self.filter = new Filter({
+      prefix: 'documents',
+      hashName: 'documentsFilter',
+      appendTo: allDocsTitle,
+      onClose: function (param) {
+        if (param.startkey || param.endkey) {
+          self.lookupIdCell.setValue(undefined);
+        }
+      }
+    }, {
+      title: 'Documents Filter',
+      prefix: 'documents',
+      items: {
+        descending: true,
+        inclusiveEnd: true,
+        endkeyDocid: true,
+        startkeyDocid: true,
+        endkey: true,
+        startkey: true
+      }
+    }).init();
+
+    createDocumentsCells(self, DAL.cells.mode, DAL.cells.capiBase, DAL.cells.bucketsListCell);
 
     var createDocDialog = $('#create_document_dialog');
     var createDocWarning = $('.warning', createDocDialog);
@@ -229,10 +246,10 @@ var DocumentsSection = {
     var prevNextCont  = $('.ic_prev_next', documents);
     var prevBtn = $('.arr_prev', documents);
     var nextBtn = $('.arr_next', documents);
-    var allDocsCont = $('.shadow_box', documents);
     var currenDocCont = $('#documents_details', documents);
-    var editingNotice = $('#editing-notice');
-    var jsonDocId = $('#json_doc_id', documents);
+    var allDocsEditingNotice = $('.documents_notice', allDocsCont);
+    var editingNotice = $('.documents_notice', currenDocCont);
+    var jsonDocId = $('.docs_title', currenDocCont);
     var docsLookup = $('#docs_lookup_doc_by_id', documents);
     var docsLookupBtn = $('#docs_lookup_doc_by_id_btn', documents);
     var docDeleteBtn = $('#doc_delete', documents);
@@ -241,6 +258,9 @@ var DocumentsSection = {
     var docCreateBtn = $('.btn_create', documents);
     var docsBucketsSelect = $('#docs_buckets_select', documents);
     var lookupDocForm = $('#search_doc', documents);
+    var docsInfoCont = $('.docs_info', documents);
+    var docsTotalItemCont = $('.docs_total_item', documents);
+    var docsCrntPgCont = $('.docs_crnt_pg', documents);
 
     self.jsonCodeEditor = CodeMirror.fromTextArea($("#json_doc")[0], {
       lineNumbers: true,
@@ -269,14 +289,37 @@ var DocumentsSection = {
       prevBtn.toggleClass('disabled', page.pageNumber === 0);
       nextBtn.toggleClass('disabled', isLastPage(page));
 
-      showDocumentState(false);
+      docsTotalItemCont.text(page.isLookupList ? 'unknown' : page.docs.total_rows || 0);
+      docsCrntPgCont.text(page.pageNumber + 1 + ' of ' + (page.isLookupList ? 'unknown' : Math.ceil(page.docs.total_rows / page.pageLimit) || 1 ) );
 
-      renderTemplate('documents_list', {
-        loading: false,
-        rows: page.docs.rows,
-        pageNumber: page.pageNumber,
-        bucketName: page.bucketName
-      });
+      var firstRow = page.docs.rows[0];
+      if (firstRow && firstRow.key instanceof Object) {
+        var error = new Error(firstRow.key.error);
+        error.explanatoryMessage = '(' + firstRow.key.reason + ')';
+        showDocumetsListErrorState(error);
+
+        renderTemplate('documents_list', {
+          loading: false,
+          rows: [],
+          pageNumber: page.pageNumber,
+          bucketName: page.bucketName
+        });
+      } else {
+        showDocumetsListErrorState(false);
+
+        renderTemplate('documents_list', {
+          loading: false,
+          rows: page.docs.rows,
+          pageNumber: page.pageNumber,
+          bucketName: page.bucketName
+        });
+      }
+    }
+
+    function showDocumetsListErrorState(error) {
+      var message = error ? buildErrorMessage(error) : '';
+      allDocsEditingNotice.text(message);
+      allDocsEditingNotice.attr('title', JSON.stringify(message));
     }
 
     function isLastPage(page) {
@@ -295,6 +338,7 @@ var DocumentsSection = {
 
     function showDocumentState(show) {
       showPrevNextCont(!show);
+      showDocsInfoCont(!show);
       allDocsCont[show ? 'hide' : 'show']();
       currenDocCont[show ? 'show' : 'hide']();
       showCodeEditor(!show);
@@ -303,7 +347,9 @@ var DocumentsSection = {
     function bucketExistsState(exists) {
       enableLookup(exists);
       enableDeleteBtn(exists);
-      showPrevNextCont(exists);
+      if (exists === false) {
+        showPrevNextCont(exists);
+      }
     }
 
     function enableSaveBtns(enable) {
@@ -324,8 +370,16 @@ var DocumentsSection = {
       prevNextCont[show ? 'show' : 'hide']();
     }
 
+    function showDocsInfoCont(show) {
+      docsInfoCont[show ? 'show' : 'hide']();
+    }
+
     function tryShowJson(obj) {
       var isError = obj instanceof Error;
+
+      if (!isError) {
+        removeSpecialKeys(obj);
+      }
 
       editingNotice.text(isError && obj ? buildErrorMessage(obj) : '');
       jsonDocId.text(isError ? '' : obj._id);
@@ -354,19 +408,28 @@ var DocumentsSection = {
       return error.name + ': ' + error.message + ' ' + error.explanatoryMessage;
     }
 
+    function removeSpecialKeys(json) {
+      var i;
+      for (i in json) {
+        if (i.charAt(0) === '$') {
+          delete json[i];
+        }
+      }
+    }
+
     (function () {
       var page = {};
       var prevPage;
       var nextPage;
 
-      Cell.subscribeMultipleValues(function (docs, currentPage, selectedBucket, pageLimit, searchedDoc) {
+      Cell.subscribeMultipleValues(function (docs, currentPage, selectedBucket, pageLimit, filterParamsCell) {
         if (typeof currentPage === 'number') {
           prevPage = currentPage - 1;
           prevPage = prevPage < 0 ? 0 : prevPage;
           nextPage = currentPage + 1;
           page.pageLimit = pageLimit;
           page.pageNumber = currentPage;
-          page.isLookupList = !!searchedDoc;
+          page.isLookupList = !!filterParamsCell.startkey || !!filterParamsCell.endkey;
         }
         if (docs) {
           page.docs = docs;
@@ -374,14 +437,14 @@ var DocumentsSection = {
           showDocumentListState(page);
         } else {
           renderTemplate('documents_list', {loading: true});
-          if (searchedDoc) {
+          if (!!filterParamsCell.startkey || !!filterParamsCell.endkey) {
             // we don't know number of matches. that's why we can't allow user to quick clicks on next button
             nextBtn.toggleClass('disabled', true);
           }
         }
       },
         self.currentPageDocsCell, self.currentDocumentsPageNumberCell, self.selectedBucketCell,
-        self.currentPageLimitCell, self.searchedDocumentCell
+        self.currentPageLimitCell, self.filter.filterParamsCell
       );
 
       nextBtn.click(function (e) {
@@ -394,25 +457,27 @@ var DocumentsSection = {
       prevBtn.click(function (e) {
         self.documentsPageNumberCell.setValue(prevPage);
       });
-
     })();
 
-    self.searchedDocumentCell.subscribeValue(function (searchedDoc) {
-      //for self.searchedDocumentCell.setValue(undefined)
-      if (!searchedDoc) {
-        docsLookup.val('');
-      }
+    self.lookupIdCell.subscribeValue(function (searchedDoc) {
+      docsLookup.val(searchedDoc ? searchedDoc : '');
+    });
+
+    self.currentDocumentIdCell.subscribeValue(function (docId) {
+      showDocumentState(!!docId);
     });
 
     self.currentDocCell.subscribeValue(function (doc) {
       if (!doc) {
         return;
       }
-      showDocumentState(true);
       tryShowJson(doc);
     });
 
     self.selectedBucketCell.subscribeValue(function (selectedBucket) {
+      if (selectedBucket === undefined) {
+        return;
+      }
       bucketExistsState(!!selectedBucket);
     });
 
@@ -427,7 +492,8 @@ var DocumentsSection = {
     breadCrumpDoc.click(function (e) {
       e.preventDefault();
       self.documentIdCell.setValue(undefined);
-      self.currentPageDocsCell.invalidate();
+      self.lookupIdCell.setValue(undefined)
+      self.filter.rawFilterParamsCell.setValue(undefined);
     });
 
     docsBucketsSelect.bindListCell(self.populateBucketsDropboxCell, {
@@ -449,15 +515,35 @@ var DocumentsSection = {
 
     (function(){
       var latestSearch;
-      self.searchedDocumentCell.subscribeValue(function (term) {
+      var currentFilterParams;
+
+      Cell.subscribeMultipleValues(function (term, filterParams) {
         latestSearch = term;
-      });
+        currentFilterParams = filterParams;
+      }, self.lookupIdCell, self.filter.filterParamsCell);
+
       docsLookup.keyup(function (e) {
         var docsLookupVal = $.trim($(this).val());
         if (latestSearch === docsLookupVal) {
           return true;
         }
-        self.searchedDocumentCell.setValue(docsLookupVal);
+        if (!docsLookupVal) {
+          delete currentFilterParams.startkey;
+          delete currentFilterParams.endkey;
+          self.lookupIdCell.setValue(undefined);
+        } else {
+          self.lookupIdCell.setValue(docsLookupVal);
+          var start = JSON.stringify(docsLookupVal);
+          var end = JSON.stringify(docsLookupVal + String.fromCharCode(0xffff));
+          if (currentFilterParams.descending && currentFilterParams.descending === 'true') {  
+            currentFilterParams.startkey = end;
+            currentFilterParams.endkey = start;
+          } else {
+            currentFilterParams.startkey = start;
+            currentFilterParams.endkey = end;
+          }
+        }
+        self.filter.rawFilterParamsCell.setValue($.isEmptyObject(currentFilterParams) ? undefined : $.param(currentFilterParams, true));
         self.documentsPageNumberCell.setValue(0);
       });
     })();
@@ -567,6 +653,7 @@ var DocumentsSection = {
           enableDeleteBtn(false);
           couchReq('PUT', currentDocUrl, json, function () {
             couchReq("GET", currentDocUrl, undefined, function (doc) {
+              removeSpecialKeys(doc);
               self.jsonCodeEditor.setValue(JSON.stringify(doc, null, "  "));
               stopSpinner();
               enableDeleteBtn(true);
@@ -612,7 +699,7 @@ var DocumentsSection = {
   onLeave: function () {
     var self = this;
     self.documentsPageNumberCell.setValue(undefined);
-    self.searchedDocumentCell.setValue(undefined);
+    self.lookupIdCell.setValue(undefined);
   },
   onEnter: function () {
   },

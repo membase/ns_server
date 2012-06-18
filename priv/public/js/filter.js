@@ -176,11 +176,11 @@ Filter.prototype = {
   },
   inputs2filterParams: function () {
     var params = this.parseInputs();
-    var packedParams = encodeURIComponent($.param(params));
+    var packedParams = $.param(params, true);
     var oldFilterParams = this.rawFilterParamsCell.value;
     if (oldFilterParams !== packedParams) {
-      this.rawFilterParamsCell.setValue(packedParams);
-      this.onClose(packedParams);
+      this.rawFilterParamsCell.setValue(packedParams ? packedParams : undefined);
+      this.onClose(params);
     }
   },
   iterateInputs: function (body) {
