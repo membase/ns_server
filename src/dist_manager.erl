@@ -30,6 +30,9 @@
 
 -record(state, {self_started, my_ip}).
 
+-define(WAIT_FOR_ADDRESS_ATTEMPTS, 10).
+-define(WAIT_FOR_ADDRESS_SLEEP, 1000).
+
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
@@ -49,30 +52,51 @@ strip_full(String) ->
 
 read_address_config() ->
     Path = ip_config_path(),
-    ?log_info("reading ip config from ~p", [Path]),
+    ?log_info("Reading ip config from ~p", [Path]),
     case file:read_file(Path) of
         {ok, BinaryContents} ->
-            AddrString = strip_full(binary_to_list(BinaryContents)),
-            case inet:getaddr(AddrString, inet) of
-                {error, Errno1} ->
-                    ?log_error("Got error:~p. Ignoring bad address:~p",
-                               [Errno1, AddrString]),
-                    undefined;
-                {ok, IpAddr} ->
-                    case gen_tcp:listen(0, [inet, {ip, IpAddr}]) of
-                        {error, Errno2} ->
-                            ?log_error("Got error:~p. Cannot listen on configured address:~s",
-                                       [Errno2, AddrString]),
-                            undefined;
-                        {ok, Socket} ->
-                            gen_tcp:close(Socket),
-                            AddrString
-                    end
-            end;
+            strip_full(binary_to_list(BinaryContents));
         {error, enoent} ->
             ?log_info("ip config not found. Looks like we're brand new node"),
             undefined;
-        _ -> undefined
+        {error, Error} ->
+            ?log_error("Failed to read ip config from `~s`: ~p",
+                       [Path, Error]),
+            read_error
+    end.
+
+is_good_address(AddrString) ->
+    case inet:getaddr(AddrString, inet) of
+        {error, Errno1} ->
+            ?log_warning("Could not resolve address `~s`: ~p",
+                         [AddrString, Errno1]),
+            false;
+        {ok, IpAddr} ->
+            case gen_udp:open(0, [inet, {ip, IpAddr}]) of
+                {error, Errno2} ->
+                    ?log_warning("Cannot listen on address `~s`: ~p",
+                                 [AddrString, Errno2]),
+                    false;
+                {ok, Socket} ->
+                    gen_udp:close(Socket),
+                    true
+            end
+    end.
+
+wait_for_address(Address) ->
+    wait_for_address(Address, ?WAIT_FOR_ADDRESS_ATTEMPTS).
+
+wait_for_address(_Address, 0) ->
+    bad_address;
+wait_for_address(Address, N) ->
+    case is_good_address(Address) of
+        true ->
+            ok;
+        false ->
+            ?log_info("Configured address `~s` seems to be invalid. "
+                      "Giving OS a chance to bring it up.", [Address]),
+            timer:sleep(?WAIT_FOR_ADDRESS_SLEEP),
+            wait_for_address(Address, N - 1)
     end.
 
 save_address_config(State) ->
@@ -91,11 +115,30 @@ save_node(NodeName) ->
     end.
 
 init([]) ->
-    InitialAddr = case read_address_config() of
-                      undefined -> "127.0.0.1";
-                      X -> X
-                  end,
-    {ok, bringup(InitialAddr)}.
+    Address =
+        case read_address_config() of
+            undefined ->
+                "127.0.0.1";
+            read_error ->
+                ?log_error("Could not read ip config. "
+                           "Will refuse to start for safety reasons."),
+                ale:sync(?NS_SERVER_LOGGER),
+                erlang:halt(1);
+            V ->
+                V
+        end,
+
+    case wait_for_address(Address) of
+        ok ->
+            ok;
+        bad_address ->
+            ?log_error("Configured address `~s` seems to be invalid. "
+                       "Will refuse to to start for safety reasons.", [Address]),
+            ale:sync(?NS_SERVER_LOGGER),
+            erlang:halt(1)
+    end,
+
+    {ok, bringup(Address)}.
 
 %% There are only two valid cases here:
 %% 1. Successfully started
