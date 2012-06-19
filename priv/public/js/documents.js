@@ -427,6 +427,7 @@ var DocumentsSection = {
     breadCrumpDoc.click(function (e) {
       e.preventDefault();
       self.documentIdCell.setValue(undefined);
+      self.currentPageDocsCell.invalidate();
     });
 
     docsBucketsSelect.bindListCell(self.populateBucketsDropboxCell, {
