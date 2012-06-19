@@ -489,7 +489,7 @@ set_node_replicas(Policy, Bucket, Node, Replicators) ->
                                   kill_child(Policy, Bucket, SrcNode, DstNode, Child),
                                   D;
                               {ok, _Pid} ->
-                                  ?log_info("change_vbucket_filter ~p from ~p to ~p succeeded", [Nodes, ActualVBuckets, NewVBuckets]),
+                                  ?log_info("change_vbucket_filter ~p from ~n~p~nto~n~p succeeded", [Nodes, ActualVBuckets, NewVBuckets]),
                                   dict:erase(Nodes, D)
                           end;
                       _ ->
@@ -504,7 +504,7 @@ set_node_replicas(Policy, Bucket, Node, Replicators) ->
 
     lists:foreach(
       fun ({{SrcNode, DstNode}, VBuckets}) ->
-              ?log_info("~nstart_child(~p, ~p, ~p, ~p, ~p)",
+              ?log_info("~nstart_child(~p, ~p, ~p, ~p,~n~p)",
                         [Policy, Bucket, SrcNode, DstNode, VBuckets]),
               start_child(Policy, Bucket, SrcNode, DstNode, VBuckets)
       end, NeededReplicas),
