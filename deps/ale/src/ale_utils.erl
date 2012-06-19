@@ -105,3 +105,10 @@ interesting_opts(UserOpts, Interesting) ->
                    lists:member(Opt, Interesting)
            end,
     lists:filter(Pred, UserOpts).
+
+intersperse(_X, []) ->
+    [];
+intersperse(_X, [H]) ->
+    [H];
+intersperse(X, [H | T]) ->
+    [H, X | intersperse(X, T)].

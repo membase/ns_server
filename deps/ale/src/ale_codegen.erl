@@ -43,16 +43,29 @@ header(LoggerName) ->
     io_lib:format("-module('~s').~n", [atom_to_list(logger_impl(LoggerName))]).
 
 exports() ->
-    [io_lib:format("-export([~p/4, ~p/5, x~p/5, x~p/6]).~n",
-                   [LogLevel, LogLevel, LogLevel, LogLevel]) ||
-        LogLevel <- ?LOGLEVELS].
+    ["-export([sync/0]).\n",
+     [io_lib:format("-export([~p/4, ~p/5, x~p/5, x~p/6]).~n",
+                    [LogLevel, LogLevel, LogLevel, LogLevel]) ||
+         LogLevel <- ?LOGLEVELS]].
 
 definitions(LoggerName, LoggerLogLevel, Formatter, Sinks) ->
-    lists:map(
-      fun (LogLevel) ->
-              loglevel_definitions(LoggerName, LoggerLogLevel,
-                                   LogLevel, Formatter, Sinks)
-      end, ?LOGLEVELS).
+    sync_definitions(Sinks) ++
+        lists:map(
+          fun (LogLevel) ->
+                  loglevel_definitions(LoggerName, LoggerLogLevel,
+                                       LogLevel, Formatter, Sinks)
+          end, ?LOGLEVELS).
+
+sync_definitions(Sinks) ->
+    Syncs =
+        [io_lib:format("{~p, gen_server:call(~p, sync, infinity)}",
+                       [SinkName, SinkId])
+         || {SinkName, SinkId, _, _} <- Sinks],
+
+    ["sync() -> ",
+     "[",
+     ale_utils:intersperse(",", Syncs),
+     "].\n"].
 
 loglevel_definitions(LoggerName, LoggerLogLevel, LogLevel, Formatter, Sinks) ->
     {Preformatted, Raw} =
@@ -61,7 +74,7 @@ loglevel_definitions(LoggerName, LoggerLogLevel, LogLevel, Formatter, Sinks) ->
                 {[], []};
             true ->
                 lists:foldl(
-                  fun ({Sink, SinkLogLevel, SinkType}, {P, R} = Acc) ->
+                  fun ({_, Sink, SinkLogLevel, SinkType}, {P, R} = Acc) ->
                           Enabled =
                               ale_utils:loglevel_enabled(LogLevel, SinkLogLevel),
 

@@ -44,6 +44,10 @@ handle_call({raw_log, Info, Msg}, _From, State) ->
     RV = do_log(Info, Msg),
     {reply, RV, State};
 
+%% not implemented for now
+handle_call(sync, _From, State) ->
+    {reply, ok, State};
+
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 

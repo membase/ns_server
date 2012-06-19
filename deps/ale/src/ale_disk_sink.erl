@@ -72,6 +72,9 @@ handle_call({log, Msg}, _From, #state{name=Name} = State) ->
 handle_call({raw_log, _Info, _UserMsg}, _From, State) ->
     {reply, ok, State};
 
+handle_call(sync, _From, #state{name=Name} = State) ->
+    {reply, disk_log:sync(Name), State};
+
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 

@@ -24,7 +24,8 @@
          add_sink/2, add_sink/3,
          set_loglevel/2, get_loglevel/1,
          set_sink_loglevel/3, get_sink_loglevel/2,
-         sync_changes/1]).
+         sync_changes/1,
+         sync_sink/1]).
 
 
 %% gen_server callbacks
@@ -104,6 +105,14 @@ get_sink_loglevel(LoggerName, SinkName) ->
 
 sync_changes(Timeout) ->
     gen_server:call(?MODULE, sync_compilers, Timeout).
+
+sync_sink(SinkName) ->
+    try
+        gen_server:call(ale_utils:sink_id(SinkName), sync, infinity)
+    catch
+        exit:{noproc, _} ->
+            {error, unknown_sink}
+    end.
 
 %% Callbacks
 init([MailboxLenLimit]) ->
@@ -482,7 +491,7 @@ do_compile(#state{sinks=SinkTypes},
                Acc) ->
                   SinkId = ale_utils:sink_id(SinkName),
                   {ok, SinkType} = dict:find(SinkName, SinkTypes),
-                  [{SinkId, SinkLogLevel, SinkType} | Acc]
+                  [{SinkName, SinkId, SinkLogLevel, SinkType} | Acc]
           end, [], Sinks),
 
     ale_codegen:load_logger(LoggerName, LogLevel, Formatter, SinksList).

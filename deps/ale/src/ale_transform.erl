@@ -55,6 +55,29 @@ transform({call, Line, {remote, _Line1,
                         {atom, _Line3, delay}},
            [Expr]} = _Stmt) ->
     delay(Line, Expr);
+transform({call, Line, {remote, _Line1,
+                        {atom, _Line2, ale},
+                        {atom, _Line3, sync}},
+           [LoggerExpr]} = Stmt) ->
+    R = case valid_logger_expr(LoggerExpr) of
+        true ->
+            Module =
+                case LoggerExpr of
+                    {atom, L, LoggerAtom} ->
+                        {atom, L, ale_codegen:logger_impl(LoggerAtom)};
+                    _ ->
+                        {call, Line,
+                         {remote, Line,
+                          {atom, Line, ale_codegen},
+                          {atom, Line, logger_impl}},
+                         [LoggerExpr]}
+                end,
+            {call, Line,
+             {remote, Line, Module, {atom, Line, sync}}, []};
+        false ->
+            Stmt
+        end,
+    R;
 transform({call, Line, {remote, Line1,
                         {atom, Line2, ale},
                         {atom, Line3, LogFn}},
