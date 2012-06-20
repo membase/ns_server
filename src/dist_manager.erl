@@ -55,9 +55,13 @@ read_address_config() ->
     ?log_info("Reading ip config from ~p", [Path]),
     case file:read_file(Path) of
         {ok, BinaryContents} ->
-            strip_full(binary_to_list(BinaryContents));
+            case strip_full(binary_to_list(BinaryContents)) of
+                "" ->
+                    undefined;
+                V ->
+                    V
+            end;
         {error, enoent} ->
-            ?log_info("ip config not found. Looks like we're brand new node"),
             undefined;
         {error, Error} ->
             ?log_error("Failed to read ip config from `~s`: ~p",
@@ -118,6 +122,7 @@ init([]) ->
     Address =
         case read_address_config() of
             undefined ->
+                ?log_info("ip config not found. Looks like we're brand new node"),
                 "127.0.0.1";
             read_error ->
                 ?log_error("Could not read ip config. "
