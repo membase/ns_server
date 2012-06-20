@@ -57,6 +57,8 @@ init([]) ->
 %% node.
 -spec add_replica(module(), bucket_name(), node(), node(), vbucket_id()) -> ok.
 add_replica(Policy, Bucket, SrcNode, DstNode, VBucket) ->
+    assert_is_master_node(),
+
     VBuckets =
         case get_replicator(Policy, Bucket, SrcNode, DstNode) of
             undefined ->
@@ -73,6 +75,8 @@ add_replica(Policy, Bucket, SrcNode, DstNode, VBucket) ->
 %% @doc Kill any replication for a given destination node and vbucket.
 -spec kill_replica(module(), bucket_name(), node(), node(), vbucket_id()) -> ok.
 kill_replica(Policy, Bucket, SrcNode, DstNode, VBucket) ->
+    assert_is_master_node(),
+
     case get_replicator(Policy, Bucket, SrcNode, DstNode) of
         undefined ->
             ok;
@@ -98,6 +102,8 @@ kill_replica(Policy, Bucket, SrcNode, DstNode, VBucket) ->
    when Change :: {Type, SrcNode :: node(), DstNode :: node(), vbucket_id()},
         Type :: add_replica | kill_replica.
 apply_changes(Policy, Bucket, ChangeTuples) ->
+    assert_is_master_node(),
+
     ?log_info("Applying changes:~n~p~n", [ChangeTuples]),
 
     %% In 1.8.1 we clearly know what nodes are affected by change
@@ -119,6 +125,8 @@ apply_changes(Policy, Bucket, ChangeTuples) ->
   when Replica :: {SrcNode::node(), DstNode::node(), vbucket_id()},
        Replicas :: [Replica].
 set_replicas(Policy, Bucket, Replicas, AllNodes) when is_list(Replicas) ->
+    assert_is_master_node(),
+
     Replicators = replicas_to_replicators(Replicas),
     do_set_replicas(Policy, Bucket, Replicators, AllNodes).
 
@@ -172,6 +180,8 @@ do_set_replicas(Policy, Bucket, Replicators, AllNodes) ->
 -spec stop_replications(module(), bucket_name(),
                         node(), node(), [vbucket_id()]) -> ok.
 stop_replications(Policy, Bucket, SrcNode, DstNode, VBuckets0) ->
+    assert_is_master_node(),
+
     VBuckets = ordsets:from_list(VBuckets0),
 
     Node = Policy:supervisor_node(SrcNode, DstNode),
@@ -273,22 +283,15 @@ kill_child(Policy, Bucket, SrcNode, DstNode, Replicator) ->
 
 -spec kill_all_children(module(), bucket_name(), node() | [node()]) -> ok.
 kill_all_children(Policy, Bucket, Node) when is_atom(Node) ->
-    try children(Policy, Bucket, Node) of
-        Children ->
-            lists:foreach(
-              fun (Child) ->
-                      kill_child(Policy, Bucket, Node, Child)
-              end, Children)
-    catch exit:{noproc, _} ->
-            %% If the supervisor isn't running, obviously there's no
-            %% replication.
-            ok
-    end;
+    assert_is_master_node(),
+    do_kill_all_children(Policy, Bucket, Node);
 kill_all_children(Policy, Bucket, Nodes) ->
+    assert_is_master_node(),
+
     try
         misc:parallel_map(
           fun (Node) ->
-                  kill_all_children(Policy, Bucket, Node)
+                  do_kill_all_children(Policy, Bucket, Node)
           end, Nodes, ?RPC_TIMEOUT)
     catch
         exit:timeout ->
@@ -527,6 +530,21 @@ group_by_node(Policy, AllNodes, Replicators) ->
               end
       end, dict:from_list([{N, dict:new()} || N <- AllNodes]), Replicators).
 
+assert_is_master_node() ->
+    true = mb_master:master_node() =:= node().
+
+do_kill_all_children(Policy, Bucket, Node) ->
+    try children(Policy, Bucket, Node) of
+        Children ->
+            lists:foreach(
+              fun (Child) ->
+                      kill_child(Policy, Bucket, Node, Child)
+              end, Children)
+    catch exit:{noproc, _} ->
+            %% If the supervisor isn't running, obviously there's no
+            %% replication.
+            ok
+    end.
 
 -ifdef(EUNIT).
 
