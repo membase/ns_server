@@ -95,19 +95,20 @@ do_cleanup(Bucket, Options, Config) ->
                         end,
                     Replicas = ns_bucket:map_to_replicas(Map1),
 
-                    %% change replication on nodes that are bucket
-                    %% members
-                    %%
-                    %% NOTE: other nodes that are part of cluster will
-                    %% shutdown bucket supervisors themselfes. We
-                    %% don't need to touch them here because replication is
-                    %% pull. And we don't care if some of them are
-                    %% replicating from bucket members.
                     cb_replication:maybe_switch_replication_mode(Bucket),
 
                     Nodes =
                         case cb_replication:get_mode(Bucket) of
                             new ->
+                                %% change replication on nodes that are bucket
+                                %% members
+                                %%
+                                %% NOTE: other nodes that are part of cluster
+                                %% will shutdown bucket supervisors
+                                %% themselfes. We don't need to touch them
+                                %% here because replication is pull. And we
+                                %% don't care if some of them are replicating
+                                %% from bucket members.
                                 Servers;
                             compat ->
                                 ns_node_disco:nodes_actual_proper()
