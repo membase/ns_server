@@ -40,7 +40,8 @@
          parse_bucket_params/5,
          handle_compact_bucket/3,
          handle_compact_databases/3,
-         handle_compact_view/4]).
+         handle_compact_view/4,
+         handle_ddocs_list/3]).
 
 -import(menelaus_util,
         [server_header/0,
@@ -101,9 +102,10 @@ build_bucket_info(PoolId, Id, undefined, InfoLevel, LocalAddr) ->
     build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr);
 build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
     Nodes = build_bucket_node_infos(Id, BucketConfig, InfoLevel, LocalAddr),
-    StatsUri = list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "stats"])),
+    StatsUri = bin_concat_path(["pools", PoolId, "buckets", Id, "stats"]),
     StatsDirectoryUri = iolist_to_binary([StatsUri, <<"Directory">>]),
-    NodeStatsListURI = iolist_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "nodes"])),
+    NodeStatsListURI = bin_concat_path(["pools", PoolId, "buckets", Id, "nodes"]),
+    DDocsURI = bin_concat_path(["pools", PoolId, "buckets", Id, "ddocs"]),
     BucketCaps = [{bucketCapabilitiesVer, ''}
                   | case ns_bucket:bucket_type(BucketConfig) of
                         membase -> [{bucketCapabilities, [touch, couchapi]}];
@@ -150,6 +152,7 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
               {stats, {struct, [{uri, StatsUri},
                                 {directoryURI, StatsDirectoryUri},
                                 {nodeStatsListURI, NodeStatsListURI}]}},
+              {ddocs, {struct, [{uri, DDocsURI}]}},
               {nodeLocator, ns_bucket:node_locator(BucketConfig)},
               {autoCompactionSettings, case proplists:get_value(autocompaction, BucketConfig) of
                                            undefined -> false;
@@ -888,3 +891,13 @@ basic_bucket_params_screening_test() ->
     ok.
 
 -endif.
+
+handle_ddocs_list(_PoolId, Bucket, Req) ->
+    DDocs = capi_set_view_manager:fetch_full_ddocs(Bucket),
+    RV = [begin
+              Id = capi_utils:extract_doc_id(Doc),
+              {struct, [{id, Id},
+                        {doc, capi_utils:couch_doc_to_mochi_json(Doc)},
+                        {controllers, {struct, [{compact, bin_concat_path(["pools","default", "buckets", Bucket, "ddocs", Id, "controller", "compactView"])}]}}]}
+          end || Doc <- DDocs],
+    reply_json(Req, RV).

@@ -139,3 +139,17 @@ get_vbucket_state_doc(BucketName, VBucket) when is_integer(VBucket) ->
     catch exit:{open_db_failed, {not_found, no_db_file}} ->
             not_found
     end.
+
+couch_json_to_mochi_json({List}) ->
+    {struct, couch_json_to_mochi_json(List)};
+couch_json_to_mochi_json({K, V}) ->
+    {K, couch_json_to_mochi_json(V)};
+couch_json_to_mochi_json(List) when is_list(List) ->
+    lists:map(fun couch_json_to_mochi_json/1, List);
+couch_json_to_mochi_json(Else) -> Else.
+
+couch_doc_to_mochi_json(Doc) ->
+    couch_json_to_mochi_json(couch_doc:to_json_obj(Doc, [])).
+
+extract_doc_id(Doc) ->
+    Doc#doc.id.

@@ -25,7 +25,7 @@
 -define(EMPTY_MAP, [{active, []}, {passive, []}, {replica, []}, {ignore, []}]).
 
 %% API
--export([start_link/1, wait_until_added/3, fetch_ddocs/1]).
+-export([start_link/1, wait_until_added/3, fetch_ddocs/1, fetch_full_ddocs/1]).
 
 -include("couch_db.hrl").
 -include_lib("couch_set_view/include/couch_set_view.hrl").
@@ -609,21 +609,19 @@ sync(#state{bucket=Bucket,
     end.
 
 get_design_docs(Bucket) ->
-    DDocDbName = master_db(Bucket),
-
-    {ok, DDocDb} = couch_db:open(DDocDbName,
-                                 [{user_ctx, #user_ctx{roles=[<<"_admin">>]}}]),
-    {ok, DDocs} =
-        try
-            couch_db:get_design_docs(DDocDb)
-        after
-            couch_db:close(DDocDb)
-        end,
-
     DDocIds = lists:map(fun (#doc{id=DDocId}) ->
                                 DDocId
-                        end, DDocs),
+                        end, fetch_full_ddocs(Bucket)),
     sets:from_list(DDocIds).
+
+fetch_full_ddocs(Bucket) ->
+    {ok, DDocDB} = couch_db:open_int(master_db(Bucket), []),
+    {ok, DDocs} = try
+                      couch_db:get_design_docs(DDocDB)
+                  after
+                      couch_db:close(DDocDB)
+                  end,
+    DDocs.
 
 fetch_ddocs(Bucket) when is_binary(Bucket) ->
     fetch_ddocs(binary_to_list(Bucket));
