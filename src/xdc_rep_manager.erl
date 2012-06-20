@@ -73,11 +73,14 @@
 -export([start_link/0, init/1, handle_call/3, handle_info/2, handle_cast/2]).
 -export([code_change/3, terminate/2]).
 
+% couchdb header files
 -include("couch_db.hrl").
--include("couch_replicator.hrl").
 -include("couch_js_functions.hrl").
+
+% ns_server header files
 -include("ns_common.hrl").
 -include("replication_infos_ddoc.hrl").
+-include("xdc_replicator.hrl").
 
 -import(couch_util, [
     get_value/2,
@@ -519,7 +522,7 @@ start_couch_replication(SrcCouchURI, TgtCouchURI, Vb, XDocId) ->
     % Until scheduled XDC replication support is added, this function will
     % trigger continuous replication by default at the Couch level.
     {ok, CRep} =
-        couch_replicator_utils:parse_rep_doc(
+        xdc_rep_utils:parse_rep_doc(
             {[{<<"source">>, SrcCouchURI},
               {<<"target">>, TgtCouchURI},
               {<<"worker_processes">>, 1},
@@ -696,9 +699,9 @@ get_xdc_replication_state(XDocId, RepDbName) ->
 
 
 parse_xdc_rep_doc(RepDoc) ->
-    is_valid_xdc_rep_doc(RepDoc),
+    xdc_rep_utils:is_valid_xdc_rep_doc(RepDoc),
     {ok, Rep} = try
-        couch_replicator_utils:parse_rep_doc(RepDoc, #user_ctx{})
+        xdc_rep_utils:parse_rep_doc(RepDoc, #user_ctx{})
     catch
     throw:{error, Reason} ->
         throw({bad_rep_doc, Reason});
@@ -707,7 +710,3 @@ parse_xdc_rep_doc(RepDoc) ->
     end,
     Rep.
 
-
-% FIXME: Add useful sanity checks to ensure we have a valid replication doc
-is_valid_xdc_rep_doc(_RepDoc) ->
-    true.
