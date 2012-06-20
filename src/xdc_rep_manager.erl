@@ -152,11 +152,11 @@ init(_) ->
     maybe_create_replication_info_ddoc(),
 
     {Loop, <<"_replicator">> = RepDbName} =
-        couch_replication_manager:changes_feed_loop(),
+        xdc_rep_manager_helper:changes_feed_loop(),
     {ok, #rep_db_state{
         changes_feed_loop = Loop,
         rep_db_name = RepDbName,
-        db_notifier = couch_replication_manager:db_update_notifier()
+        db_notifier = xdc_rep_manager_helper:db_update_notifier()
     }}.
 
 maybe_create_replication_info_ddoc() ->
@@ -195,7 +195,7 @@ handle_call({rep_db_update, {ChangeProps} = Change}, _From, State) ->
     _Tag:Error ->
         {RepProps} = get_value(doc, ChangeProps),
         DocId = get_value(<<"_id">>, RepProps),
-        couch_replication_manager:update_rep_doc(
+        xdc_rep_manager_helper:update_rep_doc(
             xdc_rep_utils:info_doc_id(DocId),
             [{<<"_replication_state">>, <<"error">>}]),
         ?log_error("~s: xdc replication error: ~p~n~p",
@@ -290,7 +290,7 @@ handle_info({'DOWN', _Ref, process, Pid, Reason}, State) ->
                 % manage_vbucket_replications() is run by the timer
                 % module.
                 true = ets:update_element(?CSTORE, Pid, {4, error}),
-                couch_replication_manager:update_rep_doc(
+                xdc_rep_manager_helper:update_rep_doc(
                     xdc_rep_utils:info_doc_id(XDocId),
                     [{?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"error">>},
                      {<<"_replication_state">>, <<"error">>}]),
@@ -330,7 +330,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 restart(State) ->
     cancel_all_xdc_replications(),
-    {NewLoop, NewRepDbName} = couch_replication_manager:changes_feed_loop(),
+    {NewLoop, NewRepDbName} = xdc_rep_manager_helper:changes_feed_loop(),
     State#rep_db_state{
         changes_feed_loop = NewLoop,
         rep_db_name = NewRepDbName
@@ -389,7 +389,7 @@ maybe_start_xdc_replication(XDocId, XDocBody, RepDbName) ->
         % Ignore but let  the user know.
         ?log_info("~s: xdc replication was already triggered by doc ~s",
                   [XDocId, OtherDocId]),
-        couch_replication_manager:maybe_tag_rep_doc(XDocId, XDocBody,
+        xdc_rep_manager_helper:maybe_tag_rep_doc(XDocId, XDocBody,
                                                     ?l2b(XBaseId))
     end.
 
@@ -457,7 +457,7 @@ maybe_cancel_xdc_replication(XDocId) ->
             end,
             CRepPids),
         true = ets:delete(?XSTORE, XDocId),
-        couch_replication_manager:update_rep_doc(
+        xdc_rep_manager_helper:update_rep_doc(
             xdc_rep_utils:info_doc_id(XDocId),
             [{<<"_replication_state">>, <<"cancelled">>} |
              xdc_rep_utils:vb_rep_state_list(CancelledVbs, <<"cancelled">>)]),
@@ -496,7 +496,7 @@ maybe_adjust_xdc_replication(XDocId, PrevVbs, CurrVbs) ->
 
     % Mark entries for the cancelled Couch replications in the replication
     % info doc as "cancelled"
-    couch_replication_manager:update_rep_doc(
+    xdc_rep_manager_helper:update_rep_doc(
         xdc_rep_utils:info_doc_id(XDocId),
         xdc_rep_utils:vb_rep_state_list(LostVbs, <<"cancelled">>)),
 
@@ -538,7 +538,7 @@ start_couch_replication(SrcCouchURI, TgtCouchURI, Vb, XDocId) ->
         CRepState = triggered,
         true = ets:insert(?CSTORE, {CRepPid, CRep, Vb, CRepState}),
         true = ets:insert(?X2CSTORE, {XDocId, CRepPid}),
-        couch_replication_manager:update_rep_doc(
+        xdc_rep_manager_helper:update_rep_doc(
             xdc_rep_utils:info_doc_id(XDocId),
             [{?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"triggered">>}]),
         ?log_info("~s: triggered replication for vbucket ~p", [XDocId, Vb]),
@@ -676,7 +676,7 @@ create_xdc_rep_info_doc(XDocId, {Base, Ext}, Vbs, RepDbName, XDocBody) ->
         couch_db:update_doc(RepDb, #doc{id = IDocId, body = Body}, [])
     end,
 
-    couch_replication_manager:update_rep_doc(
+    xdc_rep_manager_helper:update_rep_doc(
         IDocId, [{<<"_replication_state">>, <<"triggered">>}]),
     couch_db:close(RepDb),
 
