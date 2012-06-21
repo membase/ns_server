@@ -51,7 +51,8 @@
          add_with_meta/7,
          delete_with_meta/5,
          set_engine_param/4,
-         get_zero_open_checkpoint_vbuckets/2]).
+         get_zero_open_checkpoint_vbuckets/2,
+         change_vbucket_filter/3]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
 -type mc_timeout() :: undefined | infinity | non_neg_integer().
@@ -472,6 +473,23 @@ deregister_tap_client(Sock, TapName) ->
     {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} =
         cmd(?CMD_DEREGISTER_TAP_CLIENT, Sock, undefined, undefined, HeaderEntry),
     ok.
+
+-spec change_vbucket_filter(port(), binary(),
+                            [{vbucket_id(), checkpoint_id()}]) -> ok | mc_error().
+change_vbucket_filter(Sock, TapName, VBuckets) ->
+    VBucketsCount = length(VBuckets),
+    Data =
+        << VBucketsCount:16,
+           << <<V:16, C:64>> || {V, C} <- VBuckets >>/binary >>,
+
+    case cmd(?CMD_CHANGE_VB_FILTER, Sock, undefined, undefined,
+             {#mc_header{}, #mc_entry{key = TapName,
+                                      data = Data}}) of
+        {ok, #mc_header{status=?SUCCESS}, _, _} ->
+            ok;
+        Other ->
+            process_error_response(Other)
+    end.
 
 %% -------------------------------------------------
 

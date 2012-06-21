@@ -38,6 +38,8 @@
 
 -type version() :: {list(integer()), candidate | release, integer()}.
 
+-type checkpoint_id() :: non_neg_integer().
+
 -define(MULTICALL_DEFAULT_TIMEOUT, 30000).
 
 -define(VBMAP_HISTORY_SIZE, 10).

@@ -66,6 +66,8 @@
 -define(CMD_DEL_WITH_META, 16#a8).
 -define(CMD_DELQ_WITH_META, 16#a9).
 
+-define(CMD_CHANGE_VB_FILTER, 16#b0).
+
 -define(CMD_ISASL_REFRESH, 16#f1).
 
 -define(RGET,        16#30).
