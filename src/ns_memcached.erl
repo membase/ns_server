@@ -512,6 +512,7 @@ handle_info(check_started, #state{timer=Timer, sock=Sock} = State) ->
     case has_started(Sock) of
         true ->
             {ok, cancel} = timer:cancel(Timer),
+            misc:flush(check_started),
             Pid = self(),
             proc_lib:spawn_link(
               fun () ->
