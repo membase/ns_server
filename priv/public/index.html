@@ -242,27 +242,35 @@
                 </td>
                 <td class="{%= s.nodeClass %}"></td>
                 <td class="ram">
+                  <!-- {% if ((s.memoryTotal > 0) && isFinite(s.memoryFree)) { %} -->
                   <div class="vertical_bar">
                     <div class="used" style="height:{%= (s.memoryTotal - s.memoryFree) / s.memoryTotal * 100 %}%;top:{%= 105 - ((s.memoryTotal - s.memoryFree) / s.memoryTotal * 100) %}%"></div>
                   </div>
                   <div class="wrap">{%= h(truncateTo3Digits((s.memoryTotal - s.memoryFree) / s.memoryTotal * 100)) %}%</div>
+                  <!-- {% } else { %} -->
+                  <span>N/A</span>
+                  <!-- {% } %} -->
                 </td>
                 <td class="ram">
-                  <!-- {% if (s.systemStats.swap_total > 0) { %} -->
+                  <!-- {% if (s.systemStats.swap_total > 0 && isFinite(s.systemStats.swap_used)) { %} -->
                   <div class="vertical_bar">
                     <div class="used" style="height:{%= s.systemStats.swap_used / s.systemStats.swap_total * 100 %}%;top:{%= 105 - (s.systemStats.swap_used / s.systemStats.swap_total * 100) %}%"></div>
                   </div>
-                  <div class="wrap"> {%= h(truncateTo3Digits(((s.systemStats.swap_used / s.systemStats.swap_total) || 0) * 100)) %}%</div>
+                  <div class="wrap"> {%= h(truncateTo3Digits((s.systemStats.swap_used / s.systemStats.swap_total) * 100)) %}%</div>
                   <!-- {% } else { %} -->
                   <span>N/A</span>
                   <!-- {% } %} -->
                 </td>
 
                 <td class="ram">
+                  <!-- {% if (isFinite(s.systemStats.cpu_utilization_rate)) { %} -->
                   <div class="vertical_bar">
                     <div class="used" style="height:{%= Math.floor(s.systemStats.cpu_utilization_rate * 100) / 100 %}%;top:{%= 105 - (Math.floor(s.systemStats.cpu_utilization_rate * 100) / 100) %}%"></div>
                   </div>
                   <div class="wrap">{%= h(truncateTo3Digits(Math.floor(s.systemStats.cpu_utilization_rate * 100) / 100)) %}%</div>
+                  <!-- {% } else { %} -->
+                  <span>N/A</span>
+                  <!-- {% } %} -->
                 </td>
 
                 <td class="rep">
