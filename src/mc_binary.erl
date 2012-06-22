@@ -45,7 +45,7 @@ recv_with_data(Sock, Len, TimeoutRef, Data) ->
                 {tcp_closed, Sock} ->
                     {error, closed};
                 TimeoutRef ->
-                    {error, etimedout}
+                    {error, timeout}
             end
     end.
 
