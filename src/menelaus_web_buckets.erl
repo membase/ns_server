@@ -765,7 +765,7 @@ parse_validate_ram_quota(undefined, BucketConfig) when BucketConfig =/= false ->
 parse_validate_ram_quota(Value, _BucketConfig) ->
     case menelaus_util:parse_validate_number(Value, 0, undefined) of
         invalid ->
-            {error, ramQuotaMB, <<"The RAM Quota must be specifed and must be a positive integer.">>};
+            {error, ramQuotaMB, <<"The RAM Quota must be specified and must be a positive integer.">>};
         too_small ->
             {error, ramQuotaMB, <<"The RAM Quota cannot be negative.">>};
         {ok, X} -> {ok, ram_quota, X * 1048576}
