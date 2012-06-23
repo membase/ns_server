@@ -502,7 +502,18 @@ handle_cast(start_completed, #state{start_time=Start,
               [Bucket, node(), timer:now_diff(os:timestamp(), Start) div 1000000]),
     gen_event:notify(buckets_events, {loaded, Bucket}),
     timer:send_interval(?CHECK_INTERVAL, check_config),
-    {noreply, State#state{status=connected}}.
+    BucketConfig = case ns_bucket:get_bucket(State#state.bucket) of
+                       {ok, BC} -> BC;
+                       not_present -> []
+                   end,
+    NewStatus = case proplists:get_value(type, BucketConfig, unknown) of
+                    memcached ->
+                        %% memcached buckets are warmed up automagically
+                        warmed;
+                    _ ->
+                        connected
+                end,
+    {noreply, State#state{status=NewStatus}}.
 
 
 handle_info(check_started, #state{status=Status} = State)
