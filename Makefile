@@ -126,7 +126,7 @@ do-install:
 	touch $(DESTDIR)$(PREFIX)/etc/couchbase/config
 	mkdir -p $(DESTDIR)$(PREFIX)/bin/
 	sed -e 's|@PREFIX@|$(DESTDIR)$(PREFIX)|g' <couchbase-server.sh.in >$(DESTDIR)$(PREFIX)/bin/couchbase-server
-	sed -e 's|@PREFIX@|$(DESTDIR)$(PREFIX)|g' <cbbrowse_logs.in >$(DESTDIR)$(PREFIX)/bin/cbbrowse_logs
+	cp cbbrowse_logs $(DESTDIR)$(PREFIX)/bin/cbbrowse_logs
 	cp cbcollect_info $(DESTDIR)$(PREFIX)/bin/cbcollect_info
 	chmod +x $(DESTDIR)$(PREFIX)/bin/couchbase-server $(DESTDIR)$(PREFIX)/bin/cbbrowse_logs $(DESTDIR)$(PREFIX)/bin/cbcollect_info
 	mkdir -p $(DESTDIR)$(PREFIX)/var/lib/couchbase/mnesia

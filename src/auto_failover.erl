@@ -268,22 +268,63 @@ code_change(_OldVsn, State, _Extra) ->
 -spec actual_down_nodes([atom()], [{atom(), term()}]) -> [atom()].
 actual_down_nodes(NonPendingNodes, Config) ->
     % Get all buckets
-    Buckets = lists:sort([Name || {Name, _} <- ns_bucket:get_buckets(Config)]),
-
+    BucketConfigs = ns_bucket:get_buckets(Config),
     NodesDict = ns_doctor:get_nodes(),
+    actual_down_nodes_inner(NonPendingNodes, BucketConfigs, NodesDict, erlang:now()).
 
-    lists:filter(fun (Node) ->
-                         case dict:find(Node, NodesDict) of
-                             {ok, Info} ->
-                                 Ready0 = proplists:get_value(ready_buckets, Info, []),
-                                 case proplists:get_value(last_heard, Info) of
-                                     undefined -> false;
-                                     T -> timer:now_diff(erlang:now(), T) > (?HEART_BEAT_PERIOD + ?STATS_TIMEOUT) * 1000
-                                 end orelse lists:sort(Ready0) =/= Buckets;
-                             error ->
-                                 true
-                         end
-                 end, NonPendingNodes).
+actual_down_nodes_inner(NonPendingNodes, BucketConfigs, NodesDict, Now) ->
+    BucketsServers = [{Name, lists:sort(proplists:get_value(servers, BC, []))}
+                      || {Name, BC} <- BucketConfigs],
+
+    lists:filter(
+      fun (Node) ->
+              case dict:find(Node, NodesDict) of
+                  {ok, Info} ->
+                      case proplists:get_value(last_heard, Info) of
+                          T -> timer:now_diff(Now, T) > (?HEART_BEAT_PERIOD + ?STATS_TIMEOUT) * 1000
+                      end orelse
+                          begin
+                              Ready = proplists:get_value(ready_buckets, Info, []),
+                              ExpectedReady = [Name || {Name, Servers} <- BucketsServers,
+                                                       ordsets:is_element(Node, Servers)],
+                              (ExpectedReady -- Ready) =/= []
+                          end;
+                  error ->
+                      true
+              end
+      end, NonPendingNodes).
+
+actual_down_nodes_inner_test() ->
+    PList0 = [{a, ["bucket1", "bucket2"]},
+              {b, ["bucket1"]},
+              {c, []}],
+    NodesDict = dict:from_list([{N, [{ready_buckets, B},
+                                     {last_heard, {0, 0, 0}}]}
+                                || {N, B} <- PList0]),
+    R = fun (Nodes, Buckets) ->
+                actual_down_nodes_inner(Nodes, Buckets, NodesDict, {0, 0, 0})
+        end,
+    ?assertEqual([], R([a, b, c], [])),
+    ?assertEqual([], R([a, b, c],
+                       [{"bucket1", [{servers, [a]}]}])),
+    ?assertEqual([], R([a, b, c],
+                       [{"bucket1", [{servers, [a, b]}]}])),
+    %% this also tests too "old" hearbeats a bit
+    ?assertEqual([a,b,c],
+                 actual_down_nodes_inner([a,b,c],
+                                         [{"bucket1", [{servers, [a, b]}]}],
+                                         NodesDict, {16#100000000, 0, 0})),
+    ?assertEqual([c], R([a, b, c],
+                        [{"bucket1", [{servers, [a, b, c]}]}])),
+    ?assertEqual([b, c], R([a, b, c],
+                           [{"bucket1", [{servers, [a, b, c]}]},
+                            {"bucket2", [{servers, [a, b, c]}]}])),
+    ?assertEqual([b, c], R([a, b, c],
+                           [{"bucket2", [{servers, [a, b, c]}]}])),
+    ?assertEqual([a, b, c], R([a, b, c],
+                              [{"bucket3", [{servers, [a]}]},
+                               {"bucket2", [{servers, [a, b, c]}]}])),
+    ok.
 
 %% @doc Save the current state in ns_config
 -spec make_state_persistent(State::#state{}) -> ok.

@@ -154,30 +154,48 @@ def basedir():
     return mydir
 
 def retrieve_config_value(config_key, node=None):
-    config_file = '/opt/couchbase/var/lib/couchbase/config/config.dat'
     if platform.system() == 'Windows':
-        config_file = "../var/lib/couchbase/config/config.dat"
-    escript_cmd = "escript"
-    if platform.system() == 'Windows':
-        escript_cmd = "escript.exe"
+        return retrieve_config_value_ex("escript.exe",
+                                        "cbdumpconfig.escript",
+                                        "../var/lib/couchbase/config/config.dat",
+                                        config_key, node=node)
 
-    cmd_list = [escript_cmd, "cbdumpconfig.escript", config_file]
+    places = [("escript",
+               os.path.dirname(os.path.abspath(__file__)) +
+               "/cbdumpconfig.escript",
+               os.path.dirname(os.path.abspath(__file__)) +
+               "/../var/lib/couchbase/config/config.dat"),
+              ("escript",
+               "cbdumpconfig.escript",
+               "~/Library/Application Support/Couchbase/var/lib/couchbase/config/config.dat")]
+
+    for escript_cmd, script, config_file in places:
+        rv = retrieve_config_value_ex(escript_cmd, script, config_file, config_key, node=node)
+        if rv:
+            return rv
+    return None
+
+def retrieve_config_value_ex(escript_cmd, script, config_file, config_key, node=None):
+    cmd_list = [escript_cmd, script, config_file]
     if node:
         cmd_list.append("node")
         cmd_list.append(node)
 
-    node_cfg = subprocess.Popen(cmd_list,
-                                stdout=subprocess.PIPE).communicate()[0]
-    node_cfg = string.strip(node_cfg)
-    if len(node_cfg) <= 0:
-        print("Done: previous node configuration is empty.")
-        sys.exit(0)
+    try:
+        node_cfg = subprocess.Popen(cmd_list,
+                                    stdout=subprocess.PIPE).communicate()[0]
+        node_cfg = string.strip(node_cfg)
+        if len(node_cfg) <= 0:
+            return None
 
-    node_cfg = node_cfg.split("\n")
-    for line in node_cfg:
-        m = re.match(config_key, line)
-        if m:
-            return m.groups()
+        node_cfg = node_cfg.split("\n")
+        for line in node_cfg:
+            m = re.match(config_key, line)
+            if m:
+                return m.groups()
+    except:
+        pass
+
     return None
 
 def get_ip():
@@ -207,13 +225,14 @@ def get_dbdir():
         return ""
 
 def get_credential():
-    ret = retrieve_config_value('\s*{creds,\[\{"(.+)",\s*\[\{password,\s*"(.+)"}')
+    ret = retrieve_config_value('\s*{creds,\[\{"(.+)",\s*\[\{password,\s*"(.*)"\}')
     if ret:
         return "{0}:{1}".format(ret[0], ret[1])
     else:
         return ""
 
-_tasks = [
+def make_tasks():
+  _tasks = [
     UnixTask("uname", "uname -a"),
     WindowsTask("System information", "systeminfo"),
     WindowsTask("Computer system", "wmic computersystem", reformat=True),
@@ -243,7 +262,7 @@ _tasks = [
     LinuxTask("Process usage", "export TERM=linux; top -b -n1 | egrep 'moxi|memcached|vbucketmigrator|CPU|load|Mem:|Swap:|Cpu(s)'"),
     LinuxTask("Core dump settings", "find /proc/sys/kernel -type f -name '*core*' -print -exec cat '{}' ';'"),
     LinuxTask("netstat -nap", "netstat -nap"),
-    LinuxTask("relevant lsof output", "lsof -n | grep 'moxi\|memcached\|vbucketmigrator'"),
+    LinuxTask("relevant lsof output", "lsof -n | grep 'moxi\|memcached\|vbucketmigrator\|beam'"),
     MacOSXTask("Process list snapshot", "top -l 1"),
     MacOSXTask("Disk activity", "iostat 1 10"),
     MacOSXTask("Process list ",
@@ -303,38 +322,50 @@ _tasks = [
     UnixTask("Kernel log buffer", "dmesg"),
     LinuxTask("couchbase config",
         os.path.dirname(sys.argv[0]) + "/cbdumpconfig.escript /opt/couchbase/var/lib/couchbase/config/config.dat"),
-    AllOsTask("memcached stats all",
-              "cbstats -a 127.0.0.1:11210 all _admin _admin",
-              log_file="stats.log"),
-    AllOsTask("memcached stats checkpoint",
-              "cbstats -a 127.0.0.1:11210 checkpoint _admin _admin",
-              log_file="stats.log"),
-    AllOsTask("memcached stats dispatcher",
-              "cbstats -a 127.0.0.1:11210 dispatcher logs _admin _admin",
-              log_file="stats.log"),
-    AllOsTask("memcached stats hash",
-              "cbstats -a 127.0.0.1:11210 hash detail _admin _admin",
-              log_file="stats.log"),
-    AllOsTask("memcached stats tap",
-              "cbstats -a 127.0.0.1:11210 tap _admin _admin",
-              log_file="stats.log"),
-    AllOsTask("memcached stats tapagg",
-              "cbstats -a 127.0.0.1:11210 tapagg _admin _admin",
-              log_file="stats.log"),
-    AllOsTask("memcached stats timings",
-              "cbstats -a 127.0.0.1:11210 timings _admin _admin",
-              log_file="stats.log"),
-    AllOsTask("memcached memory stats",
-              "cbstats -a 127.0.0.1:11210 raw memory _admin _admin",
-              log_file="stats.log"),
     AllOsTask("couchbase logs", "cbbrowse_logs", log_file="ns_server.debug.log"),
     AllOsTask("couchbase logs", "cbbrowse_logs info", log_file="ns_server.info.log"),
-    AllOsTask("couchbase logs", "cbbrowse_logs error", log_file="ns_server.error.log"),
-    AllOsTask("couchbase diags",
-              ["curl", "-u", get_credential(), "localhost:8091/diag?noLogs=1"],
-              log_file="diag.log")
-    ]
+    AllOsTask("couchbase logs", "cbbrowse_logs error", log_file="ns_server.error.log")
+  ]
 
+  c = get_credential()
+  if c:
+      _tasks.append(
+          AllOsTask("couchbase diags",
+                    "curl \"http://%s@127.0.0.1:8091/diag?noLogs=1\"" % (c),
+                    log_file="diag.log"))
+
+  for flg in ['', '-a']:
+      _tasks = _tasks + [
+          AllOsTask("memcached stats all",
+                    "cbstats %s 127.0.0.1:11210 all _admin _admin" % (flg),
+                    log_file="stats.log"),
+          AllOsTask("memcached stats checkpoint",
+                    "cbstats %s 127.0.0.1:11210 checkpoint _admin _admin" % (flg),
+                      log_file="stats.log"),
+          AllOsTask("memcached stats dispatcher",
+                    "cbstats %s 127.0.0.1:11210 dispatcher logs _admin _admin" % (flg),
+                    log_file="stats.log"),
+          AllOsTask("memcached stats hash",
+                    "cbstats %s 127.0.0.1:11210 hash detail _admin _admin" % (flg),
+                    log_file="stats.log"),
+          AllOsTask("memcached stats tap",
+                    "cbstats %s 127.0.0.1:11210 tap _admin _admin" % (flg),
+                    log_file="stats.log"),
+          AllOsTask("memcached stats tapagg",
+                    "cbstats %s 127.0.0.1:11210 tapagg _admin _admin" % (flg),
+                    log_file="stats.log"),
+          AllOsTask("memcached stats timings",
+                    "cbstats %s 127.0.0.1:11210 timings _admin _admin" % (flg),
+                    log_file="stats.log"),
+          AllOsTask("memcached memory stats",
+                    "cbstats %s 127.0.0.1:11210 raw memory _admin _admin" % (flg),
+                    log_file="stats.log"),
+          AllOsTask("memcached allocator stats",
+                    "cbstats %s 127.0.0.1:11210 raw allocator _admin _admin" % (flg),
+                    log_file="stats.log")
+          ]
+
+  return _tasks
 
 def main():
     from optparse import OptionParser
@@ -363,7 +394,7 @@ def main():
         os.environ['PATH'] = ';'.join(path)
 
     runner = TaskRunner(verbosity=options.verbosity)
-    for task in _tasks:
+    for task in make_tasks():
         runner.run(task)
 
     runner.zip(args[0])

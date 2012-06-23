@@ -124,7 +124,7 @@
                               </td>
 
                               <td>
-                                <!-- {% if (isFinite(this.cpu_utilization_rate)) { %} -->
+                                <!-- {% if (isFinite(this.systemStats.cpu_utilization_rate)) { %} -->
                                 <div class="usage_smallest_info">
                                   <div class="usage_smallest">
                                       <div class="unused">
@@ -772,7 +772,7 @@
                 {% } %}
               {% } %}
             {% } %}
-            <label class="for-enable-replication" for="notifications-updates">
+            <label class="for-enable-replication">
               {% if (enabled===true) { %}
               <input type="checkbox" id="notification-updates" checked="checked">
               {% } else { %}
@@ -1397,6 +1397,7 @@
       <p class="pad_10">Please provide your email address to join the community and receive news on coming events.</p>
     </div>
     <div class="when-enterprise">
+      <h2 class="question">Product Registration</h2>
       <p class="pad_10 clearfix">Register your Enterprise Edition of Couchbase Server below.</p>
     </div>
     <div class="pad_10 warn" style="color:#EC5223;font-family:Verdana, Helvetica, Sans-Serif; font-size:10pt; font-weight:lighter; line-height:20px; margin-left:75px; width:500px;" id="update_notifications_errors_container"></div>
