@@ -2,8 +2,8 @@
 # Copyright (c) 2011, Couchbase, Inc.
 # All rights reserved.
 
-COUCHBASE_BIN=`dirname "$0"`
-COUCHBASE_TOP=`dirname "$COUCHBASE_BIN"`
+COUCHBASE_BIN="$(cd "$(dirname "$0")" && pwd)"
+COUCHBASE_TOP="$COUCHBASE_BIN/.."
 export COUCHBASE_TOP
 
 PATH="$COUCHBASE_BIN":$PATH
@@ -17,6 +17,13 @@ then
     extra_args="-log $1"
 fi
 
+REPORT_DIR="$COUCHBASE_TOP/var/lib/couchbase/logs"
+if [ "$(ls "$REPORT_DIR")" == "" ]
+then
+    # If the usual logs dir is empty, try the usual OSX logs location...
+    REPORT_DIR=~/Library/Application\ Support/Couchbase/var/lib/couchbase/logs
+fi
+
 exec erl -pa ebin -noshell -run ns_log_browser \
-         -report_dir "$COUCHBASE_TOP/var/lib/couchbase/logs" ${extra_args} \
+         -report_dir "${REPORT_DIR}" ${extra_args} \
          -run init stop -- "$@"
