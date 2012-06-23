@@ -858,33 +858,39 @@ var BucketsSection = {
     });
   },
   flushCurrentBucket: function() {
+    var self = this;
+    var bucket = self.currentlyShownBucket;
 
-    function ajaxCallback() {
+    if (!bucket) {
+      return;
+    }
+
+    var flushURL = bucket.controllers.flush;
+
+    if (!flushURL) {
+      genericDialog({buttons: {ok: true, cancel: false},
+                     header: "Flush not supported",
+                     text: "Flush operation is seemingly not supported for this bucket"});
+      return;
+    }
+
+    var spinner = overlayWithSpinner('#bucket_flush_dialog');
+    var modal = new ModalAction();
+
+    jsonPostWithErrors(flushURL, {}, function (data, status) {
+      if (status !== 'success') {
+        var errorMessage = (data && data.length) ? data.join(' and ') : "Unknown error happened";
+        genericDialog({buttons: {ok: true, cancel: false},
+                       header: "Failed To Flush Bucket",
+                       text: errorMessage});
+      }
       self.refreshBuckets(function() {
         spinner.remove();
         modal.finish();
         hideDialog('bucket_details_dialog');
         hideDialog('bucket_flush_dialog');
       });
-    }
-
-    var self = this,
-        bucket = self.currentlyShownBucket;
-
-    if (!bucket) {
-      return;
-    }
-
-    var spinner = overlayWithSpinner('#bucket_flush_dialog'),
-        modal = new ModalAction();
-
-    $.ajax({
-      type: 'POST',
-      url: self.currentlyShownBucket.uri + "/controller/doFlush",
-      success: ajaxCallback,
-      errors: ajaxCallback
     });
-    return;
   },
   removeCurrentBucket: function () {
     var self = this;
