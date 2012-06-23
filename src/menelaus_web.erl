@@ -60,6 +60,7 @@
         [server_header/0,
          redirect_permanently/2,
          concat_url_path/1,
+         bin_concat_path/1,
          reply_json/2,
          reply_json/3,
          get_option/2,
@@ -1920,9 +1921,6 @@ average_failover_safenesses_rec(_Node, _NodeInfos, [], Sum, Count) ->
 average_failover_safenesses_rec(Node, NodeInfos, [{BucketName, BucketConfig} | RestBuckets], Sum, Count) ->
     Level = failover_safeness_level:extract_replication_uptodateness(BucketName, BucketConfig, Node, NodeInfos),
     average_failover_safenesses_rec(Node, NodeInfos, RestBuckets, Sum + Level, Count + 1).
-
-bin_concat_path(Path) ->
-    list_to_binary(concat_url_path(Path)).
 
 handle_diag_eval(Req) ->
     {value, Value, _} = eshell:eval(binary_to_list(Req:recv_body()), erl_eval:add_binding('Req', Req, erl_eval:new_bindings())),

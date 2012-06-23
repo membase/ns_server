@@ -38,6 +38,7 @@
          local_addr/1,
          remote_addr_and_port/1,
          concat_url_path/1,
+         bin_concat_path/1,
          parse_validate_number/3,
          validate_email_address/1,
          insecure_pipe_through_command/2]).
@@ -193,6 +194,9 @@ parse_boolean(Value) ->
 
 concat_url_path(Segments) ->
     "/" ++ string:join(lists:map(fun mochiweb_util:quote_plus/1, Segments), "/").
+
+bin_concat_path(Path) ->
+    list_to_binary(concat_url_path(Path)).
 
 -spec parse_validate_number(string(), (integer() | undefined), (integer() | undefined)) ->
                                    invalid | too_small | too_large | {ok, integer()}.

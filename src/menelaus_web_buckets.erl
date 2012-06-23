@@ -46,6 +46,7 @@
         [server_header/0,
          reply_json/2,
          concat_url_path/1,
+         bin_concat_path/1,
          reply_json/3]).
 
 all_accessible_buckets(_PoolId, Req) ->
