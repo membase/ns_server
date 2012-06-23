@@ -572,7 +572,8 @@ handle_info({'EXIT', Pid, Reason},
                 NewState
         end,
     {noreply, S};
-handle_info(_Info, State) ->
+handle_info(Info, State) ->
+    ?log_warning("Unhandled message: ~p", [Info]),
     {noreply, State}.
 
 handle_call({eval, Fun}, _From, State) ->
