@@ -528,10 +528,14 @@ init([ConfigPath, PolicyMod]) ->
 -spec wait_saver(#config{}, infinity | non_neg_integer()) -> {ok, #config{}} | timeout.
 wait_saver(State, Timeout) ->
     case State#config.saver_pid of
-        undefined -> {ok, State};
+        undefined ->
+            ?log_debug("Waited for saver done. State=~n~p", [State]),
+            {ok, State};
         Pid ->
+            ?log_debug("Waiting for running saver"),
             receive
                 {'EXIT', Pid, _Reason} = X ->
+                    ?log_debug("Got exit from saver: ~p", [X]),
                     {noreply, NewState} = handle_info(X, State),
                     wait_saver(NewState, Timeout)
             after Timeout ->
@@ -619,7 +623,9 @@ handle_call({clear, Keep}, From, State) ->
     {reply, _, NewState} = handle_call(resave, From, State#config{dynamic=[NewList]}),
     %% we ignore state from saver, 'cause we're going to reload it anyway
     wait_saver(NewState, infinity),
-    handle_call(reload, From, State);
+    RV = handle_call(reload, From, State),
+    ?log_debug("Full result of clear:~n~p", [RV]),
+    RV;
 
 handle_call({cas_config, NewKVList, OldKVList}, _From, State) ->
     case OldKVList =:= hd(State#config.dynamic) of
@@ -675,6 +681,7 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
                         ?log_info("No dynamic config file found. Assuming we're brand new node"),
                         []
                 end,
+            ?log_debug("Here's full dynamic config we loaded:~n~p", [D]),
             {_, DynamicPropList} = lists:foldl(fun (Tuple, {Seen, Acc}) ->
                                                        K = element(1, Tuple),
                                                        case sets:is_element(K, Seen) of
@@ -685,6 +692,7 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
                                                end,
                                                {sets:from_list([directory]), []},
                                                lists:append(D ++ [S, DefaultConfig])),
+            ?log_info("Here's full dynamic config we loaded + static & default config:~n~p", [DynamicPropList]),
             {ok, #config{static = [S, DefaultConfig],
                          dynamic = [lists:keysort(1, DynamicPropList)],
                          policy_mod = PolicyMod}};
