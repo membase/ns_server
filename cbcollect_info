@@ -227,7 +227,7 @@ def get_dbdir():
 def get_credential():
     ret = retrieve_config_value('\s*{creds,\[\{"(.+)",\s*\[\{password,\s*"(.*)"\}')
     if ret:
-        return "{0}:{1}".format(ret[0], ret[1])
+        return "%s:%s" % (ret[0], ret[1])
     else:
         return ""
 
@@ -324,7 +324,34 @@ def make_tasks():
         os.path.dirname(sys.argv[0]) + "/cbdumpconfig.escript /opt/couchbase/var/lib/couchbase/config/config.dat"),
     AllOsTask("couchbase logs", "cbbrowse_logs", log_file="ns_server.debug.log"),
     AllOsTask("couchbase logs", "cbbrowse_logs info", log_file="ns_server.info.log"),
-    AllOsTask("couchbase logs", "cbbrowse_logs error", log_file="ns_server.error.log")
+    AllOsTask("couchbase logs", "cbbrowse_logs error", log_file="ns_server.error.log"),
+    AllOsTask("memcached stats all",
+              "cbstats -a 127.0.0.1:11210 all -b _admin -p _admin",
+              log_file="stats.log"),
+    AllOsTask("memcached stats checkpoint",
+              "cbstats -a 127.0.0.1:11210 checkpoint -b _admin -p _admin",
+              log_file="stats.log"),
+    AllOsTask("memcached stats dispatcher",
+              "cbstats -a 127.0.0.1:11210 dispatcher logs -b _admin -p _admin",
+              log_file="stats.log"),
+    AllOsTask("memcached stats hash",
+              "cbstats -a 127.0.0.1:11210 hash detail -b _admin -p _admin",
+              log_file="stats.log"),
+    AllOsTask("memcached stats tap",
+              "cbstats -a 127.0.0.1:11210 tap -b _admin -p _admin",
+              log_file="stats.log"),
+    AllOsTask("memcached stats tapagg",
+              "cbstats -a 127.0.0.1:11210 tapagg -b _admin -p _admin",
+              log_file="stats.log"),
+    AllOsTask("memcached stats timings",
+              "cbstats -a 127.0.0.1:11210 timings -b _admin -p _admin",
+              log_file="stats.log"),
+    AllOsTask("memcached memory stats",
+              "cbstats -a 127.0.0.1:11210 raw memory -b _admin -p _admin",
+              log_file="stats.log"),
+    AllOsTask("memcached allocator stats",
+              "cbstats -a 127.0.0.1:11210 raw allocator -b _admin -p _admin",
+              log_file="stats.log")
   ]
 
   c = get_credential()
@@ -333,37 +360,6 @@ def make_tasks():
           AllOsTask("couchbase diags",
                     "curl \"http://%s@127.0.0.1:8091/diag?noLogs=1\"" % (c),
                     log_file="diag.log"))
-
-  for flg in ['', '-a']:
-      _tasks = _tasks + [
-          AllOsTask("memcached stats all",
-                    "cbstats %s 127.0.0.1:11210 all _admin _admin" % (flg),
-                    log_file="stats.log"),
-          AllOsTask("memcached stats checkpoint",
-                    "cbstats %s 127.0.0.1:11210 checkpoint _admin _admin" % (flg),
-                      log_file="stats.log"),
-          AllOsTask("memcached stats dispatcher",
-                    "cbstats %s 127.0.0.1:11210 dispatcher logs _admin _admin" % (flg),
-                    log_file="stats.log"),
-          AllOsTask("memcached stats hash",
-                    "cbstats %s 127.0.0.1:11210 hash detail _admin _admin" % (flg),
-                    log_file="stats.log"),
-          AllOsTask("memcached stats tap",
-                    "cbstats %s 127.0.0.1:11210 tap _admin _admin" % (flg),
-                    log_file="stats.log"),
-          AllOsTask("memcached stats tapagg",
-                    "cbstats %s 127.0.0.1:11210 tapagg _admin _admin" % (flg),
-                    log_file="stats.log"),
-          AllOsTask("memcached stats timings",
-                    "cbstats %s 127.0.0.1:11210 timings _admin _admin" % (flg),
-                    log_file="stats.log"),
-          AllOsTask("memcached memory stats",
-                    "cbstats %s 127.0.0.1:11210 raw memory _admin _admin" % (flg),
-                    log_file="stats.log"),
-          AllOsTask("memcached allocator stats",
-                    "cbstats %s 127.0.0.1:11210 raw allocator _admin _admin" % (flg),
-                    log_file="stats.log")
-          ]
 
   return _tasks
 
