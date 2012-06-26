@@ -36,6 +36,7 @@
 -define(CHECK_INTERVAL, 10000).
 -define(CHECK_WARMUP_INTERVAL, 500).
 -define(VBUCKET_POLL_INTERVAL, 100).
+-define(EVAL_TIMEOUT, ns_config_ets_dup:get_timeout(ns_memcached_eval, 120000)).
 -define(TIMEOUT, ns_config_ets_dup:get_timeout(ns_memcached_outer, 60000)).
 -define(TIMEOUT_OPEN_CHECKPOINT, ns_config_ets_dup:get_timeout(ns_memcached_open_checkpoint, 60000)).
 -define(TIMEOUT_HEAVY, ns_config_ets_dup:get_timeout(ns_memcached_outer_heavy, 60000)).
@@ -108,7 +109,8 @@
          add_with_meta/5, add_with_meta/7,
          delete_with_meta/5, delete_with_meta/4,
          connect_and_send_isasl_refresh/0,
-         create_new_checkpoint/2]).
+         create_new_checkpoint/2,
+         eval/2]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -169,19 +171,34 @@ init_with_created_bucket(Bucket, Timer, Sock) ->
     {ok, InitialState}.
 
 worker_init(Parent, ParentState) ->
-    {ok, Sock} = connect(),
-    ok = mc_client_binary:select_bucket(Sock, ParentState#state.bucket),
-    worker_loop(Parent, ParentState#state{sock = Sock}, #state.running_fast).
+    ParentState1 = do_worker_init(ParentState),
+    worker_loop(Parent, ParentState1, #state.running_fast).
 
-worker_loop(Parent, State, PrevCounterSlot) ->
+do_worker_init(State) ->
+    {ok, Sock} = connect(),
+    ok = mc_client_binary:select_bucket(Sock, State#state.bucket),
+    State#state{sock = Sock}.
+
+worker_loop(Parent, #state{sock = Sock} = State, PrevCounterSlot) ->
     {Msg, From, StartTS, CounterSlot} = gen_server:call(Parent, {get_work, PrevCounterSlot}, infinity),
     WorkStartTS = os:timestamp(),
-    %% note we only accept calls that don't mutate state. So in- and
-    %% out- going states asserted to be same.
-    {reply, Reply, State} = do_handle_call(Msg, From, State),
+
+    {Reply, NewState} =
+        case do_handle_call(Msg, From, State) of
+            %% note we only accept calls that don't mutate state. So in- and
+            %% out- going states asserted to be same.
+            {reply, R, State} ->
+                {R, State};
+            {compromised_reply, R, State} ->
+                ok = gen_tcp:close(Sock),
+                ?log_warning("Call ~p compromised our connection. Reconnecting.",
+                             [Msg]),
+                {R, do_worker_init(State)}
+        end,
+
     gen_server:reply(From, Reply),
-    verify_report_long_call(StartTS, WorkStartTS, State, Msg, []),
-    worker_loop(Parent, State, CounterSlot).
+    verify_report_long_call(StartTS, WorkStartTS, NewState, Msg, []),
+    worker_loop(Parent, NewState, CounterSlot).
 
 handle_call({get_work, CounterSlot}, From, #state{work_requests = Froms} = State) ->
     State2 = State#state{work_requests = [From | Froms]},
@@ -492,6 +509,15 @@ do_handle_call(topkeys, _From, State) ->
 do_handle_call({deregister_tap_client, TapName}, _From, State) ->
     mc_client_binary:deregister_tap_client(State#state.sock, TapName),
     {reply, ok, State};
+do_handle_call({eval, Fn, Ref}, _From, #state{sock=Sock} = State) ->
+    try
+        R = Fn(Sock),
+        {reply, R, State}
+    catch
+        T:E ->
+            {compromised_reply,
+             {thrown, Ref, T, E, erlang:get_stacktrace()}, State}
+    end;
 do_handle_call(_, _From, State) ->
     {reply, unhandled, State}.
 
@@ -800,6 +826,15 @@ create_new_checkpoint(Bucket, VBucket) ->
     do_call(server(Bucket),
             {create_new_checkpoint, VBucket},
             ?TIMEOUT_HEAVY).
+
+eval(Bucket, Fn) ->
+    Ref = make_ref(),
+    case do_call(server(Bucket), {eval, Fn, Ref}, ?EVAL_TIMEOUT) of
+        {thrown, Ref, T, E, Stack} ->
+            erlang:raise(T, E, Stack);
+        V ->
+            V
+    end.
 
 %% @doc send a sync command to memcached instance
 -spec sync(bucket_name(), binary(), integer(), integer()) ->
