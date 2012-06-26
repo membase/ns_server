@@ -443,16 +443,22 @@ process_data(<<_Magic:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
   when byte_size(Buffer) >= BodyLen + ?HEADER_LEN ->
     %% We have a complete command
     {Packet, NewBuffer} = split_binary(Buffer, BodyLen + ?HEADER_LEN),
-    State1 =
+    Result =
         case Opcode of
             ?NOOP ->
                 %% These aren't normal TAP packets; eating them here
                 %% makes everything else easier.
-                State;
+                {ok, State};
             _ ->
                 CB(Packet, State)
         end,
-    process_data(NewBuffer, CB, State1);
+
+    case Result of
+        {ok, State1} ->
+            process_data(NewBuffer, CB, State1);
+        {stop, State1} ->
+            {NewBuffer, State1}
+    end;
 process_data(Buffer, _CB, State) ->
     %% Incomplete
     {Buffer, State}.
@@ -470,16 +476,16 @@ process_data(Data, Elem, CB, State) ->
 
 %% @doc Process a packet from the downstream server.
 -spec process_downstream(<<_:8,_:_*8>>, #state{}) ->
-                                #state{}.
+                                {ok, #state{}}.
 process_downstream(<<?RES_MAGIC:8, _/binary>> = Packet,
                    State) ->
     State#state.upstream_sender ! Packet,
-    State.
+    {ok, State}.
 
 
 %% @doc Process a packet from the upstream server.
 -spec process_upstream(<<_:64,_:_*8>>, #state{}) ->
-                              #state{}.
+                              {ok, #state{}}.
 process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
                    VBucket:16, _BodyLen:32, Opaque:32, _CAS:64, _EnginePriv:16,
                    _Flags:16, _TTL:8, _Res1:8, _Res2:8, _Res3:8, Rest/binary>> =
@@ -496,7 +502,7 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
                 _ ->
                     ok
             end,
-            State;
+            {ok, State};
         _ ->
             State1 =
                 case Opcode of
@@ -514,13 +520,15 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
                     _ ->
                         State
                 end,
-            case sets:is_element(VBucket, VBuckets) of
-                true ->
-                    ok = prim_inet:send(Downstream, Packet),
-                    State1#state{last_sent_seqno = Opaque};
-                false ->
-                    %% Filter it out and count it
-                    State1#state{bad_vbucket_count =
-                                     State1#state.bad_vbucket_count + 1}
-            end
+            State2 =
+                case sets:is_element(VBucket, VBuckets) of
+                    true ->
+                        ok = prim_inet:send(Downstream, Packet),
+                        State1#state{last_sent_seqno = Opaque};
+                    false ->
+                        %% Filter it out and count it
+                        State1#state{bad_vbucket_count =
+                                         State1#state.bad_vbucket_count + 1}
+                end,
+            {ok, State2}
     end.
