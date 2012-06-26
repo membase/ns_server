@@ -1051,7 +1051,12 @@ var ViewsSection = {
       }
       randomId(function(id) {
         showDoc(id, function(err, status, handleUnexpected) {
-          var reason = documentErrorDef[status] || documentErrorDef.unknown;
+          // TODO: this needs to be refactored to handle errors
+          // similarly to documents.js behavior
+          var reason = documentErrors[status] || documentErrors.unexpected;
+          if (status == 404) {
+            reason = 'A document with that ID does not exist';
+          }
           $("#edit_preview_doc").addClass("disabled");
           $("#lookup_doc_by_id").val(id);
           jsonCodeEditor.setValue(reason);
