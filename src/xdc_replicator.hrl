@@ -27,16 +27,16 @@
                      to_binary/1
                     ]).
 
+%% constants used by XDCR
 -define(REP_ID_VERSION, 2).
--define(DOC_TO_REP, couch_rep_doc_id_to_rep_id).
--define(INITIAL_WAIT, 2.5). %% seconds
--define(MAX_WAIT, 600).     %% seconds
+
 %% Maximum number of concurrent vbucket replications allowed per doc
 -define(MAX_CONCURRENT_REPS_PER_DOC, 8).
 
 %% Number of seconds after which the scheduler will periodically wakeup
 -define(XDCR_SCHEDULING_INTERVAL, 5).
 
+%% Internal ETS tables used by XDCR
 -define(XSTORE, xdc_rep_info_store).
 -define(X2CSTORE, xdc_docid_to_couch_rep_pid_store).
 -define(CSTORE, couch_rep_info_store).
@@ -80,8 +80,7 @@
           rep,
           starting,
           retries_left,
-          max_retries,
-          wait = ?INITIAL_WAIT
+          max_retries
          }).
 
 -record(rep_state, {
@@ -123,8 +122,7 @@
 %% Record to store and track changes to the _replicator db
 -record(rep_db_state, {
           changes_feed_loop = nil,
-          rep_db_name = nil,
-          db_notifier = nil
+          rep_db_name = nil
          }).
 
 -record(batch, {

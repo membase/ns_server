@@ -55,8 +55,8 @@
 %%         UntriggeredVbs: Vbuckets whose replication could not be triggered.
 %%                         These are periodically retried.
 %%
-%% X2CSTORE: An ETS bag of {XDocId, CRepPid} tuples
-%%           CRepPid: Pid of the Couch process responsible for an individual
+%% X2CSTORE: An ETS bag of {XDocId, CRepPids} tuples
+%%           CRepPids: List of Pids of the Couch process responsible for an individual
 %%                    vbucket replication
 %%
 %% CSTORE: An ETS set of {CRepPid, CRep, Vb, State, Wait}
@@ -87,12 +87,6 @@ init(_) ->
 
     ?REP_TO_STATE = ets:new(?REP_TO_STATE, [named_table, set, protected]),
 
-    ok = couch_config:register(
-           fun("replicator", "db", NewName) ->
-                   ok = gen_server:cast(Server, {rep_db_changed, ?l2b(NewName)})
-           end
-          ),
-
     %% Subscribe to bucket map changes due to rebalance and failover operations
     %% at the source
     NsConfigEventsHandler = fun ({buckets, _} = Evt, _Acc) ->
@@ -112,12 +106,13 @@ init(_) ->
 
     maybe_create_replication_info_ddoc(),
 
+    %% monitor replication doc change
     {Loop, <<"_replicator">> = RepDbName} =
         xdc_rep_manager_helper:changes_feed_loop(),
+
     {ok, #rep_db_state{
        changes_feed_loop = Loop,
-       rep_db_name = RepDbName,
-       db_notifier = xdc_rep_manager_helper:db_update_notifier()
+       rep_db_name = RepDbName
       }}.
 
 maybe_create_replication_info_ddoc() ->
@@ -129,6 +124,7 @@ maybe_create_replication_info_ddoc() ->
              _Error ->
                  {ok, XDb} = couch_db:create(<<"_replicator">>,
                                              [sys_db, {user_ctx, UserCtx}]),
+                 ?log_info("replication doc created"),
                  XDb
          end,
     try couch_db:open_doc(DB, <<"_design/_replicator_info">>, []) of
@@ -147,8 +143,6 @@ maybe_create_replication_info_ddoc() ->
         couch_db:close(DB)
     end.
 
-
-
 handle_call({rep_db_update, {ChangeProps} = Change}, _From, State) ->
     try
         process_update(Change, State#rep_db_state.rep_db_name)
@@ -165,30 +159,10 @@ handle_call({rep_db_update, {ChangeProps} = Change}, _From, State) ->
     end,
     {reply, ok, State};
 
-
 handle_call(Msg, From, State) ->
     ?log_error("replication manager received unexpected call ~p from ~p",
                [Msg, From]),
     {stop, {error, {unexpected_call, Msg}}, State}.
-
-
-handle_cast({rep_db_changed, NewName},
-            #rep_db_state{rep_db_name = NewName} = State) ->
-    {noreply, State};
-
-
-handle_cast({rep_db_changed, _NewName}, State) ->
-    {noreply, restart(State)};
-
-
-handle_cast({rep_db_created, NewName},
-            #rep_db_state{rep_db_name = NewName} = State) ->
-    {noreply, State};
-
-
-handle_cast({rep_db_created, _NewName}, State) ->
-    {noreply, restart(State)};
-
 
 handle_cast(Msg, State) ->
     ?log_error("replication manager received unexpected cast ~p", [Msg]),
@@ -219,12 +193,6 @@ handle_info({'EXIT', From, normal},
             #rep_db_state{changes_feed_loop = From} = State) ->
     %% replicator DB deleted
     {noreply, State#rep_db_state{changes_feed_loop = nil, rep_db_name = nil}};
-
-
-handle_info({'EXIT', From, Reason},
-            #rep_db_state{db_notifier = From} = State) ->
-    ?log_error("database update notifier died. Reason: ~p", [Reason]),
-    {stop, {db_update_notifier_died, Reason}, State};
 
 handle_info({'EXIT', From, Reason} = Msg, State) ->
     ?log_error("Dying since linked process died: ~p", [Msg]),
@@ -274,29 +242,14 @@ handle_info(Msg, State) ->
     {noreply, State}.
 
 
-terminate(_Reason, State) ->
-    #rep_db_state{
-           db_notifier = DbNotifier
-          } = State,
+terminate(_Reason, _State) ->
     cancel_all_xdc_replications(),
     true = ets:delete(?CSTORE),
     true = ets:delete(?X2CSTORE),
-    true = ets:delete(?XSTORE),
-    couch_db_update_notifier:stop(DbNotifier).
-
+    true = ets:delete(?XSTORE).
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
-
-
-restart(State) ->
-    cancel_all_xdc_replications(),
-    {NewLoop, NewRepDbName} = xdc_rep_manager_helper:changes_feed_loop(),
-    State#rep_db_state{
-      changes_feed_loop = NewLoop,
-      rep_db_name = NewRepDbName
-     }.
-
 
 process_update({Change}, RepDbName) ->
     DocDeleted = get_value(<<"deleted">>, Change, false),
@@ -321,7 +274,7 @@ process_update({Change}, RepDbName) ->
 process_xdc_update(XDocBody, RepDbName) ->
     {XDocProps} = XDocBody,
     XDocId = get_value(<<"_id">>, XDocProps),
-    case get_xdc_replication_state(XDocId, RepDbName) of
+    case xdc_rep_manager_helper:get_xdc_rep_state(XDocId, RepDbName) of
         undefined ->
             maybe_start_xdc_replication(XDocId, XDocBody, RepDbName);
         <<"triggered">> ->
@@ -334,7 +287,8 @@ process_xdc_update(XDocBody, RepDbName) ->
 
 
 maybe_start_xdc_replication(XDocId, XDocBody, RepDbName) ->
-    #rep{id = {XBaseId, _Ext} = XRepId} = XRep = parse_xdc_rep_doc(XDocBody),
+    #rep{id = {XBaseId, _Ext} = XRepId} = XRep =
+        xdc_rep_manager_helper:parse_xdc_rep_doc(XDocBody),
     case lists:flatten(ets:match(?XSTORE, {'$1', #rep{id = XRepId}})) of
         [] ->
             %% A new XDC replication document.
@@ -379,10 +333,10 @@ start_xdc_replication(#rep{id = XRepId,
         {{ok, SrcBucketConfig}, _} ->
             MyVbs = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
             true = ets:insert(?XSTORE, {XDocId, XRep, MyVbs}),
-            create_xdc_rep_info_doc(XDocId, XRepId, MyVbs, RepDbName, XDocBody),
+            xdc_rep_manager_helper:create_xdc_rep_info_doc(
+              XDocId, XRepId, MyVbs, RepDbName, XDocBody),
             ok
     end.
-
 
 cancel_all_xdc_replications() ->
     ?log_info("cancelling all xdc replications"),
@@ -391,7 +345,6 @@ cancel_all_xdc_replications() ->
               maybe_cancel_xdc_replication(XDocId)
       end,
       ok, ?XSTORE).
-
 
 maybe_cancel_xdc_replication(XDocId) ->
     case ets:lookup(?XSTORE, XDocId) of
@@ -423,7 +376,6 @@ maybe_cancel_xdc_replication(XDocId) ->
             ok
     end.
 
-
 maybe_adjust_all_replications(BucketConfigs) ->
     lists:foreach(
       fun([XDocId, #rep{source = SrcBucket}, PrevVbs]) ->
@@ -433,7 +385,6 @@ maybe_adjust_all_replications(BucketConfigs) ->
               maybe_adjust_xdc_replication(XDocId, PrevVbs, CurrVbs)
       end,
       ets:match(?XSTORE, {'$1', '$2', '$3'})).
-
 
 maybe_adjust_xdc_replication(XDocId, PrevVbs, CurrVbs) ->
     {_AcquiredVbs, LostVbs} = xdc_rep_utils:lists_difference(CurrVbs, PrevVbs),
@@ -462,20 +413,15 @@ maybe_adjust_xdc_replication(XDocId, PrevVbs, CurrVbs) ->
     %% Update XSTORE with the current active vbuckets list
     true = ets:update_element(?XSTORE, XDocId, [{3, CurrVbs}]).
 
-
 start_vbucket_replication(XDocId, SrcBucket, {TgtVbMap, TgtNodes}, Vb) ->
     SrcURI = xdc_rep_utils:local_couch_uri_for_vbucket(SrcBucket, Vb),
     TgtURI = xdc_rep_utils:remote_couch_uri_for_vbucket(TgtVbMap, TgtNodes, Vb),
     start_couch_replication(SrcURI, TgtURI, Vb, XDocId).
 
-
 restart_vbucket_replication(XDocId, SrcBucket, TgtVbInfo, Vb, CRepPid) ->
     cancel_couch_replication(XDocId, CRepPid),
     start_vbucket_replication(XDocId, SrcBucket, TgtVbInfo, Vb).
 
-%%
-%% Couch specific functions
-%%
 start_couch_replication(SrcCouchURI, TgtCouchURI, Vb, XDocId) ->
     %% Until scheduled XDC replication support is added, this function will
     %% trigger continuous replication by default at the Couch level.
@@ -507,7 +453,6 @@ start_couch_replication(SrcCouchURI, TgtCouchURI, Vb, XDocId) ->
             {error, Error}
     end.
 
-
 cancel_couch_replication(XDocId, CRepPid) ->
     [CRep, CRepState] =
         lists:flatten(ets:match(?CSTORE, {CRepPid, '$1', '_', '$2'})),
@@ -521,14 +466,12 @@ cancel_couch_replication(XDocId, CRepPid) ->
     true = ets:delete_object(?X2CSTORE, {XDocId, CRepPid}),
     ok.
 
-
 manage_vbucket_replications() ->
     lists:foreach(
       fun([XDocId,
            #rep{source = SrcBucket,
                 target = {_, TgtBucket, _, _, _, _, _, _, _, _}},
            Vbs]) ->
-
               MaxConcurrentReps = max_concurrent_reps(SrcBucket),
               NumActiveReps = length(active_replications_for_doc(XDocId)),
               case (MaxConcurrentReps - NumActiveReps) of
@@ -536,11 +479,9 @@ manage_vbucket_replications() ->
                       ok;
                   NumFreeSlots ->
                       {Vbs1, Vbs2} = lists:split(erlang:min(NumFreeSlots, length(Vbs)), Vbs),
-
                       %% Reread the target vbucket map once before retrying all reps
                       {ok, TgtVbInfo} =
                           xdc_rep_utils:remote_vbucketmap_nodelist(TgtBucket),
-
                       lists:foreach(
                         fun(Vb) ->
                                 case lists:flatten(ets:match(
@@ -562,13 +503,11 @@ manage_vbucket_replications() ->
                                         ok
                                 end
                         end, Vbs1),
-
-                                                % Update XSTORE with the new vbuckets list
+                      %% Update XSTORE with the new vbuckets list
                       true = ets:update_element(?XSTORE, XDocId, [{3, (Vbs2 ++ Vbs1)}])
               end
       end,
       ets:match(?XSTORE, {'$1', '$2', '$3'})).
-
 
 active_replications_for_doc(XDocId) ->
     %% For the given XDocId:
@@ -588,7 +527,6 @@ active_replications_for_doc(XDocId) ->
             lists:flatten([(ets:lookup(?CSTORE, Pid)) || Pid <- Pids]),
         State == triggered].
 
-
 %% Return a safe value for the max concurrent replication streams per doc
 max_concurrent_reps(Bucket) ->
     {ok, Config} = ns_bucket:get_bucket(?b2l(Bucket)),
@@ -605,65 +543,4 @@ max_concurrent_reps(Bucket) ->
             ?log_info("MAX_CONCURRENT_REPS_PER_DOC set to ~p", [MaxConcurrentReps]),
             MaxConcurrentReps
     end.
-
-
-%%
-%% XDC replication and replication info document related functions
-%%
-create_xdc_rep_info_doc(XDocId, {Base, Ext}, Vbs, RepDbName, XDocBody) ->
-    IDocId = xdc_rep_utils:info_doc_id(XDocId),
-    UserCtx = #user_ctx{roles = [<<"_admin">>, <<"_replicator">>]},
-    {ok, RepDb} = couch_db:open(RepDbName, [sys_db, {user_ctx, UserCtx}]),
-
-    VbStates =  xdc_rep_utils:vb_rep_state_list(Vbs, <<"undefined">>),
-    Body = {[
-             {<<"node">>, xdc_rep_utils:node_uuid()},
-             {<<"replication_doc_id">>, XDocId},
-             {<<"replication_id">>, ?l2b(Base ++ Ext)},
-             {<<"replication_fields">>, XDocBody},
-             {<<"source">>, <<"">>},
-             {<<"target">>, <<"">>} |
-             VbStates
-            ]},
-
-    case couch_db:open_doc(RepDb, IDocId, [ejson_body]) of
-        {ok, LatestIDoc} ->
-            couch_db:update_doc(RepDb, LatestIDoc#doc{body = Body}, []);
-        _ ->
-            couch_db:update_doc(RepDb, #doc{id = IDocId, body = Body}, [])
-    end,
-
-    xdc_rep_manager_helper:update_rep_doc(
-      IDocId, [{<<"_replication_state">>, <<"triggered">>}]),
-    couch_db:close(RepDb),
-
-    ?log_info("~s: created replication info doc ~s", [XDocId, IDocId]),
-    ok.
-
-
-get_xdc_replication_state(XDocId, RepDbName) ->
-    {ok, RepDb} = couch_db:open(RepDbName, []),
-    RepState =
-        case couch_db:open_doc(RepDb, xdc_rep_utils:info_doc_id(XDocId),
-                               [ejson_body]) of
-            {ok, #doc{body = {IDocBody}}} ->
-                get_value(<<"_replication_state">>, IDocBody);
-            _ ->
-                undefined
-        end,
-    couch_db:close(RepDb),
-    RepState.
-
-
-parse_xdc_rep_doc(RepDoc) ->
-    xdc_rep_utils:is_valid_xdc_rep_doc(RepDoc),
-    {ok, Rep} = try
-                    xdc_rep_utils:parse_rep_doc(RepDoc, #user_ctx{})
-                catch
-                    throw:{error, Reason} ->
-                        throw({bad_rep_doc, Reason});
-                    Tag:Err ->
-                        throw({bad_rep_doc, to_binary({Tag, Err})})
-                end,
-    Rep.
 

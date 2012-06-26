@@ -16,11 +16,15 @@
 -module(xdc_rep_manager_helper).
 
 %% public API
--export([changes_feed_loop/0, db_update_notifier/0]).
+-export([changes_feed_loop/0]).
 -export([update_rep_doc/2, maybe_tag_rep_doc/3]).
+-export([parse_xdc_rep_doc/1, get_xdc_rep_state/2]).
+-export([create_xdc_rep_info_doc/5]).
 
 -include("xdc_replicator.hrl").
 
+%% monitor replication doc change. msg rep_db_udpate will be sent to
+%% XDCR manager if rep doc is changed.
 changes_feed_loop() ->
     {ok, RepDb} = ensure_rep_db_exists(),
     RepDbName = couch_db:name(RepDb),
@@ -84,7 +88,6 @@ ensure_rep_ddoc_exists(RepDb, DDocID) ->
             ok = couch_db:update_doc(RepDb, DDoc, [])
     end.
 
-
 has_valid_rep_id({Change}) ->
     has_valid_rep_id(get_value(<<"id">>, Change));
 has_valid_rep_id(<<?DESIGN_DOC_PREFIX, _Rest/binary>>) ->
@@ -92,46 +95,16 @@ has_valid_rep_id(<<?DESIGN_DOC_PREFIX, _Rest/binary>>) ->
 has_valid_rep_id(_Else) ->
     true.
 
-%% replication db update notifier, msg rep_db_created will be sent
-%% to XDCR rep manager when replication doc changed.
-db_update_notifier() ->
-    Server = self(),
-    {ok, Notifier} = couch_db_update_notifier:start_link(
-                       fun({created, DbName}) ->
-                               case ?l2b(couch_config:get("replicator", "db", "_replicator")) of
-                                   DbName ->
-                                       ok = gen_server:cast(Server, {rep_db_created, DbName});
-                                   _ ->
-                                       ok
-                               end;
-                          (_) ->
-                               %% no need to handle the 'deleted' event - the changes feed loop
-                               %% dies when the database is deleted
-                               ok
-                       end
-                      ),
-    Notifier.
-
 %% update the replication document
 update_rep_doc(RepDocId, KVs) ->
     {ok, RepDb} = ensure_rep_db_exists(),
-    try
-        case couch_db:open_doc(RepDb, RepDocId, [ejson_body]) of
-            {ok, LatestRepDoc} ->
-                update_rep_doc(RepDb, LatestRepDoc, KVs);
-            _ ->
-                ok
-        end
-    catch throw:conflict ->
-            %% Shouldn't happen, as by default only the role _replicator can
-            %% update replication documents.
-            ?LOG_ERROR("Conflict error when updating replication document `~s`."
-                       " Retrying.", [RepDocId]),
-            ok = timer:sleep(5),
-            update_rep_doc(RepDocId, KVs)
-    after
-        couch_db:close(RepDb)
-    end.
+    case couch_db:open_doc(RepDb, RepDocId, [ejson_body]) of
+        {ok, LatestRepDoc} ->
+            update_rep_doc(RepDb, LatestRepDoc, KVs);
+        _ ->
+            ok
+    end,
+    couch_db:close(RepDb).
 
 update_rep_doc(RepDb, #doc{body = {RepDocBody}} = RepDoc, KVs) ->
     NewRepDocBody = lists:foldl(
@@ -157,7 +130,6 @@ update_rep_doc(RepDb, #doc{body = {RepDocBody}} = RepDoc, KVs) ->
             %% before this update (not an error, ignore).
             couch_db:update_doc(RepDb, RepDoc#doc{body = {NewRepDocBody}}, [])
     end.
-
 
 %% RFC3339 timestamps.
 %% Note: doesn't include the time seconds fraction (RFC3339 says it's optional).
@@ -187,3 +159,62 @@ maybe_tag_rep_doc(DocId, {RepProps}, RepId) ->
         _ ->
             update_rep_doc(DocId, [{<<"_replication_id">>, RepId}])
     end.
+
+%% read the replication state from rep doc
+get_xdc_rep_state(XDocId, RepDbName) ->
+    {ok, RepDb} = couch_db:open(RepDbName, []),
+    RepState =
+        case couch_db:open_doc(RepDb, xdc_rep_utils:info_doc_id(XDocId),
+                               [ejson_body]) of
+            {ok, #doc{body = {IDocBody}}} ->
+                get_value(<<"_replication_state">>, IDocBody);
+            _ ->
+                undefined
+        end,
+    couch_db:close(RepDb),
+    RepState.
+
+%% validate and parse XDC rep doc
+parse_xdc_rep_doc(RepDoc) ->
+    xdc_rep_utils:is_valid_xdc_rep_doc(RepDoc),
+    {ok, Rep} = try
+                    xdc_rep_utils:parse_rep_doc(RepDoc, #user_ctx{})
+                catch
+                    throw:{error, Reason} ->
+                        throw({bad_rep_doc, Reason});
+                    Tag:Err ->
+                        throw({bad_rep_doc, to_binary({Tag, Err})})
+                end,
+    Rep.
+
+
+%% create XDC rep docment
+create_xdc_rep_info_doc(XDocId, {Base, Ext}, Vbs, RepDbName, XDocBody) ->
+    IDocId = xdc_rep_utils:info_doc_id(XDocId),
+    UserCtx = #user_ctx{roles = [<<"_admin">>, <<"_replicator">>]},
+    {ok, RepDb} = couch_db:open(RepDbName, [sys_db, {user_ctx, UserCtx}]),
+
+    VbStates =  xdc_rep_utils:vb_rep_state_list(Vbs, <<"undefined">>),
+    Body = {[
+             {<<"node">>, xdc_rep_utils:node_uuid()},
+             {<<"replication_doc_id">>, XDocId},
+             {<<"replication_id">>, ?l2b(Base ++ Ext)},
+             {<<"replication_fields">>, XDocBody},
+             {<<"source">>, <<"">>},
+             {<<"target">>, <<"">>} |
+             VbStates
+            ]},
+
+    case couch_db:open_doc(RepDb, IDocId, [ejson_body]) of
+        {ok, LatestIDoc} ->
+            couch_db:update_doc(RepDb, LatestIDoc#doc{body = Body}, []);
+        _ ->
+            couch_db:update_doc(RepDb, #doc{id = IDocId, body = Body}, [])
+    end,
+
+    xdc_rep_manager_helper:update_rep_doc(
+      IDocId, [{<<"_replication_state">>, <<"triggered">>}]),
+    couch_db:close(RepDb),
+
+    ?log_info("~s: created replication info doc ~s", [XDocId, IDocId]),
+    ok.
