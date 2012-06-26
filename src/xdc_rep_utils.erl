@@ -212,17 +212,26 @@ parse_rep_db(<<DbName/binary>>, _ProxyParams, _Options) ->
 
 make_options(Props) ->
     Options = lists:ukeysort(1, convert_options(Props)),
-    DefWorkers = couch_config:get("replicator", "worker_processes", "4"),
+    DefWorkers = couch_config:get("replicator", "worker_processes", "1"),
     DefBatchSize = couch_config:get("replicator", "worker_batch_size", "500"),
-    DefConns = couch_config:get("replicator", "http_connections", "20"),
+    DefConns = couch_config:get("replicator", "http_connections", "10"),
     DefTimeout = couch_config:get("replicator", "connection_timeout", "30000"),
     DefRetries = couch_config:get("replicator", "retries_per_request", "10"),
+    DefRepModeStr = couch_config:get("replicator", "continuous", "false"),
+    DefRepMode = case DefRepModeStr of
+                     "true" ->
+                         true;
+                     _ ->
+                         false
+                 end,
+
     {ok, DefSocketOptions} = couch_util:parse_term(
                                couch_config:get("replicator", "socket_options",
                                                 "[{keepalive, true}, {nodelay, false}]")),
     lists:ukeymerge(1, Options, lists:keysort(1, [
                                                   {connection_timeout, list_to_integer(DefTimeout)},
                                                   {retries, list_to_integer(DefRetries)},
+                                                  {continuous, DefRepMode},
                                                   {http_connections, list_to_integer(DefConns)},
                                                   {socket_options, DefSocketOptions},
                                                   {worker_batch_size, list_to_integer(DefBatchSize)},

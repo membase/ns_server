@@ -428,11 +428,7 @@ start_couch_replication(SrcCouchURI, TgtCouchURI, Vb, XDocId) ->
     {ok, CRep} =
         xdc_rep_utils:parse_rep_doc(
           {[{<<"source">>, SrcCouchURI},
-            {<<"target">>, TgtCouchURI},
-            {<<"worker_processes">>, 1},
-            {<<"http_connections">>, 10},
-            {<<"connection_timeout">>, 300000},
-            {<<"continuous">>, false}
+            {<<"target">>, TgtCouchURI}
            ]},
           #user_ctx{roles = [<<"_admin">>]}),
 
