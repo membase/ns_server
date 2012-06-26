@@ -182,11 +182,12 @@ get_signatures(Db) ->
     {ok, DesignDocs} = couch_db:get_design_docs(Db),
     GroupIds = [DD#doc.id || DD <- DesignDocs, DD#doc.deleted == false],
 
-    lists:map(fun(GroupId) ->
-                  {ok, Info} = couch_spatial:get_group_info(Db, GroupId),
-                  ?b2l(couch_util:get_value(signature, Info))
-              end,
-              GroupIds).
+    lists:map(
+      fun(GroupId) ->
+              {ok, Info} = couch_spatial:get_group_info(Db#db.name, GroupId),
+              ?b2l(couch_util:get_value(signature, Info))
+      end,
+      GroupIds).
 
 % Deletes all files that doesn't match any signature
 -spec delete_unused_files(FileList::[string()], Sigs::[string()]) -> ok.
