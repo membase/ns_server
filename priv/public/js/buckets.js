@@ -749,6 +749,18 @@ var BucketsSection = {
   findBucket: function (uri) {
     return this.withBucket(uri, function (r) {return r;});
   },
+  compactBucket: function (name) {
+    DAL.cells.bucketsListCell.subscribeValue(function (buckets) {
+      var currentBucket = _.detect(buckets, function (bucket) {
+        return bucket.name === name;
+      });
+      if (!currentBucket) {
+        return;
+      }
+      var url = currentBucket.controllers.compactAll;
+      $.post(url);
+    });
+  },
   showBucket: function (uri) {
     ThePage.ensureSection('buckets');
     // we don't care about value, but we care if it's defined
@@ -929,6 +941,7 @@ var BucketsSection = {
   }
 };
 
+configureActionHashParam("compactBucket", $m(BucketsSection, 'compactBucket'));
 configureActionHashParam("editBucket", $m(BucketsSection, 'showBucket'));
 
 $(function () {
