@@ -47,12 +47,13 @@ force_update(Srv) ->
 init([ServerName, Mod, Args]) ->
     Self = self(),
     {ok, ModState} = Mod:init(Args),
-    case Mod:open_local_db(ModState) of
-        {ok, Db} ->
-            {ok, Docs} = Mod:load_local_docs(Db, ModState),
-            DocInfos = [{Id,Rev} || #doc{id=Id,rev=Rev} <- Docs],
-            couch_db:close(Db)
-    end,
+    {ok, Db} = Mod:open_local_db(ModState),
+    DocInfos = try
+                   {ok, Docs} = Mod:load_local_docs(Db, ModState),
+                   [{Id,Rev} || #doc{id=Id,rev=Rev} <- Docs]
+               after
+                   ok = couch_db:close(Db)
+               end,
     %% anytime we disconnect or reconnect, force a replicate event.
     ns_pubsub:subscribe_link(
       ns_node_disco_events,
@@ -71,53 +72,58 @@ init([ServerName, Mod, Args]) ->
 
 
 handle_call({interactive_update, #doc{id=Id}=Doc}, _From, State) ->
-    #state{module=Mod, module_state=ModState, local_doc_infos=DocInfos}=State,
+    #state{local_doc_infos=DocInfos}=State,
     Rand = crypto:rand_uniform(0, 16#100000000),
     RandBin = <<Rand:32/integer>>,
-    case proplists:get_value(Id, DocInfos) of
-        undefined ->
-            NewRev = {1, RandBin};
-        {Pos, _DiskRev} ->
-            NewRev = {Pos + 1, RandBin}
-    end,
+    NewRev = case proplists:get_value(Id, DocInfos) of
+                 undefined ->
+                     {1, RandBin};
+                 {Pos, _DiskRev} ->
+                     {Pos + 1, RandBin}
+             end,
     NewDoc = Doc#doc{rev=NewRev},
-    {ok, Db} = Mod:open_local_db(ModState),
     try
-        ok = couch_db:update_doc(Db, NewDoc),
-        replicate_change(State, NewDoc),
-        DocInfos2 = lists:keystore(Id, 1, DocInfos, {Id,NewRev}),
-        {reply, ok, State#state{local_doc_infos=DocInfos2}}
-    catch
-        throw:{invalid_design_doc, _Reason} = Error ->
+        ?log_debug("Writing interactively saved ddoc ~p", [Doc]),
+        SavedDocState = save_doc(NewDoc, State),
+        replicate_change(SavedDocState, NewDoc),
+        {reply, ok, SavedDocState}
+    catch throw:{invalid_design_doc, _} = Error ->
+            ?log_debug("Document validation failed: ~p", [Error]),
             {reply, Error, State}
-    after
-        ok = couch_db:close(Db)
     end.
 
+replicate_change(#state{remote_nodes=Nodes, server_name=ServerName}, Doc) ->
+    [replicate_change_to_node(ServerName, Node, Doc) || Node <- Nodes],
+    ok.
 
+save_doc(#doc{id=Id,rev=Rev}=Doc,
+         #state{module=Mod, module_state=ModState, local_doc_infos=DocInfos}=State) ->
+    {ok, Db} = Mod:open_local_db(ModState),
+    try
+        ok = couch_db:update_doc(Db, Doc)
+    after
+        ok = couch_db:close(Db)
+    end,
+    State#state{local_doc_infos = lists:keystore(Id, 1, DocInfos, {Id,Rev})}.
 
 handle_cast({replicated_update, #doc{id=Id, rev=Rev}=Doc}, State) ->
     %% this is replicated from another node in the cluster. We only accept it
     %% if it doesn't exist or the rev is higher than what we have.
-    #state{module=Mod, module_state=ModState, local_doc_infos=DocInfos} =
-        State,
-    case proplists:get_value(Id, DocInfos) of
-        undefined ->
-            Proceed = true;
-        DiskRev when Rev > DiskRev ->
-            Proceed = true;
-        _ ->
-            Proceed = false
-    end,
+    #state{local_doc_infos=DocInfos} = State,
+    Proceed = case lists:keyfind(Id, 1, DocInfos) of
+                  false ->
+                      true;
+                  {_, DiskRev} when Rev > DiskRev ->
+                      true;
+                  _ ->
+                      false
+              end,
     if Proceed ->
-            {ok, Db} = Mod:open_local_db(ModState),
-            ok = couch_db:update_doc(Db, Doc),
-            ok = couch_db:close(Db),
-            DocInfos2 = lists:keyreplace(Id, 1, DocInfos, {Id,Rev});
+            ?log_debug("Writing replicated ddoc ~p", [Doc]),
+            {noreply, save_doc(Doc, State)};
        true ->
-            DocInfos2 = DocInfos
-    end,
-    {noreply, State#state{local_doc_infos=DocInfos2}}.
+            {noreply, State}
+    end.
 
 
 handle_info({'DOWN', _Ref, _Type, {Server, RemoteNode}, Error},
@@ -148,19 +154,16 @@ replicate_newnodes_docs(State) ->
         _ ->
             [monitor(process, {ServerName, Node}) || Node <- NewNodes],
             {ok, Db} = Mod:open_local_db(ModState),
-            {ok, Docs} = Mod:load_local_docs(Db, ModState),
+            {ok, Docs} = try
+                             Mod:load_local_docs(Db, ModState)
+                         after
+                             ok = couch_db:close(Db)
+                         end,
             [replicate_change_to_node(ServerName, S, D)
-                                      || S <- NewNodes, D <- Docs],
-            ok = couch_db:close(Db)
+                                      || S <- NewNodes, D <- Docs]
     end,
     State#state{remote_nodes=AllNodes}.
 
-
-replicate_change(#state{remote_nodes=Nodes,
-                        server_name=ServerName}, Doc) ->
-    [replicate_change_to_node(ServerName, Node, Doc) || Node <- Nodes].
-
-
 replicate_change_to_node(ServerName, Node, Doc) ->
+    ?log_debug("Sending ~s to ~s", [Doc#doc.id, Node]),
     gen_server:cast({ServerName, Node}, {replicated_update, Doc}).
-
