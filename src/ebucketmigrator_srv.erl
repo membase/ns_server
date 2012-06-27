@@ -217,8 +217,10 @@ init({Src, Dst, Opts}=InitArgs) ->
         NotReadyVBuckets =/= [] ->
             false = TakeOver,
             master_activity_events:note_not_ready_vbuckets(self(), NotReadyVBuckets),
-            (catch system_stats_collector:increment_counter(ebucketmigrator_not_ready_times, 1)),
-            (catch system_stats_collector:increment_counter(ebucketmigrator_not_ready_vbuckets, length(NotReadyVBuckets))),
+            inc_counter(ebucketmigrator_not_ready_times),
+            inc_counter(ebucketmigrator_not_ready_vbuckets,
+                        length(NotReadyVBuckets)),
+
             ?rebalance_info("Some vbuckets were not yet ready to replicate from:~n~p~n",
                             [NotReadyVBuckets]),
             erlang:send_after(30000, self(), retry_not_ready_vbuckets);
@@ -532,3 +534,9 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
                 end,
             {ok, State2}
     end.
+
+inc_counter(Counter) ->
+    inc_counter(Counter, 1).
+
+inc_counter(Counter, V) ->
+    catch system_stats_collector:increment_counter(Counter, V).
