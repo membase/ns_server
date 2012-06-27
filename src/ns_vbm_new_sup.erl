@@ -16,6 +16,7 @@
 -module(ns_vbm_new_sup).
 
 -include("ns_common.hrl").
+-include("ns_version_info.hrl").
 
 %% identifier of ns_vbm_new_sup childs in supervisors. NOTE: vbuckets
 %% field is sorted. We could use ordsets::ordset() type, but we also
@@ -67,10 +68,22 @@ local_change_vbucket_filter(Bucket, DstNode, #new_child_id{src_node=SrcNode} = C
                                vbuckets = NewVBuckets},
     Args = ebucketmigrator_srv:build_args(Bucket,
                                           SrcNode, DstNode, NewVBuckets, false),
+
+    MFA =
+        case ns_version_info:node_compatible(SrcNode, ?VERSION_200) of
+            true ->
+                {ebucketmigrator_srv,
+                 start_vbucket_filter_change, [NewVBuckets]};
+            false ->
+                {ebucketmigrator_srv,
+                 start_old_vbucket_filter_change, []}
+        end,
+
     {ok, cb_gen_vbm_sup:perform_vbucket_filter_change(Bucket,
                                                       ChildId,
                                                       NewChildId,
                                                       Args,
+                                                      MFA,
                                                       server_name(Bucket))}.
 
 -spec change_vbucket_filter(bucket_name(), node(), node(), #new_child_id{}, [vbucket_id(),...]) ->

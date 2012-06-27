@@ -342,7 +342,7 @@ stats(Sock, Key, CB, CBData) ->
 %% socket.
 %%
 %% @spec tap_connect(Sock::port(), Opts::[{vbuckets, [integer()]} |
-%%                                        takeover | {name, string()}]) -> ok.
+%%                                        takeover | {name, binary()}]) -> ok.
 tap_connect(Sock, Opts) ->
     Flags = ?BACKFILL bor ?SUPPORT_ACK bor
         case proplists:get_value(vbuckets, Opts) of

@@ -90,8 +90,11 @@ local_change_vbucket_filter(Bucket, SrcNode, #child_id{dest_node=DstNode} = Chil
     NewChildId = #child_id{vbuckets=NewVBuckets, dest_node=DstNode},
     Args = ebucketmigrator_srv:build_args(Bucket,
                                           SrcNode, DstNode, NewVBuckets, false),
+    MFA = {ebucketmigrator_srv, start_old_vbucket_filter_change, []},
+
     {ok, cb_gen_vbm_sup:perform_vbucket_filter_change(Bucket,
                                                       ChildId,
                                                       NewChildId,
                                                       Args,
+                                                      MFA,
                                                       server_name(Bucket))}.

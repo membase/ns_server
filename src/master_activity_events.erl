@@ -33,7 +33,9 @@
          note_became_master/0,
          note_name_changed/0,
          note_observed_death/3,
-         note_vbucket_filter_change_started/0,
+         note_vbucket_filter_change_old/0,
+         note_vbucket_filter_change_native/2,
+         note_ebucketmigrator_upstream_reused/3,
          note_bucket_rebalance_started/1,
          note_bucket_rebalance_ended/1,
          note_bucket_failover_started/2,
@@ -108,8 +110,14 @@ note_name_changed() ->
 note_observed_death(Pid, Reason, EventTuple) ->
     submit_cast(list_to_tuple(tuple_to_list(EventTuple) ++ [Pid, Reason])).
 
-note_vbucket_filter_change_started() ->
-    submit_cast({vbucket_filter_change_started, self()}).
+note_vbucket_filter_change_old() ->
+    submit_cast({vbucket_filter_change_old, self()}).
+
+note_vbucket_filter_change_native(TapName, Checkpoints) ->
+    submit_cast({vbucket_filter_change_native, self(), TapName, Checkpoints}).
+
+note_ebucketmigrator_upstream_reused(Pid, OldPid, TapName) ->
+    submit_cast({ebucketmigrator_upstream_reused, Pid, OldPid, TapName}).
 
 note_bucket_rebalance_started(BucketName) ->
     submit_cast({bucket_rebalance_started, BucketName, self()}).
@@ -396,11 +404,25 @@ event_to_jsons({TS, vbucket_move_done, BucketName, VBucketId}) ->
                                   {bucket, BucketName},
                                   {vbucket, VBucketId}])];
 
-event_to_jsons({TS, vbucket_filter_change_started, Pid}) ->
-    [format_simple_plist_as_json([{type, vbucketFilterChangeStarted},
+event_to_jsons({TS, vbucket_filter_change_old, Pid}) ->
+    [format_simple_plist_as_json([{type, vbucketFilterChangeOld},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {pid, Pid},
                                   {node, maybe_get_pids_node(Pid)}])];
+event_to_jsons({TS, vbucket_filter_change_native, Pid, TapName, Checkpoints}) ->
+    [format_simple_plist_as_json([{type, vbucketFilterChangeNative},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {pid, Pid},
+                                  {node, maybe_get_pids_node(Pid)},
+                                  {name, TapName}]) ++
+         [{checkpoints, {struct, Checkpoints}}]];
+event_to_jsons({TS, ebucketmigrator_upstream_reused, Pid, OldPid, TapName}) ->
+    [format_simple_plist_as_json([{type, ebucketmigratorUpstreamReused},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {pid, Pid},
+                                  {oldPid, OldPid},
+                                  {node, maybe_get_pids_node(Pid)},
+                                  {name, TapName}])];
 
 event_to_jsons({TS, bucket_rebalance_started, BucketName, Pid}) ->
     [format_simple_plist_as_json([{type, bucketRebalanceStarted},
