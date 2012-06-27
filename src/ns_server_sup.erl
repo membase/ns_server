@@ -124,6 +124,12 @@ child_specs() ->
      {ns_bucket_worker, {work_queue, start_link, [ns_bucket_worker]},
       permanent, 1000, worker, [work_queue]},
 
+     %% per-vbucket replication supervisor, required by XDC manager
+     {xdc_rep_sup,
+      {xdc_rep_sup, start_link, []},
+      permanent, infinity, supervisor, [xdc_rep_sup]},
+
+     %% XDC replication manager
      %% per-bucket supervisor needs xdc_rep_manager. In fact any couch
      %% replication requires xdc_rep_manager to be started, because it
      %% relies on some public ETS tables.

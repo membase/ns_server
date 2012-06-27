@@ -32,10 +32,10 @@
 cancel_replication({BaseId, Extension}) ->
     FullRepId = BaseId ++ Extension,
     ?LOG_INFO("Canceling replication `~s`...", [FullRepId]),
-    case supervisor:terminate_child(couch_rep_sup, FullRepId) of
+    case supervisor:terminate_child(xdc_rep_sup, FullRepId) of
         ok ->
             ?LOG_INFO("Replication `~s` canceled.", [FullRepId]),
-            case supervisor:delete_child(couch_rep_sup, FullRepId) of
+            case supervisor:delete_child(xdc_rep_sup, FullRepId) of
                 ok ->
                     {ok, {cancelled, ?l2b(FullRepId)}};
                 {error, not_found} ->
@@ -69,13 +69,13 @@ async_replicate(#rep{id = {BaseId, Ext}, source = Src, target = Tgt} = Rep) ->
     %%
     ?LOG_INFO("try to start new replication `~s` (`~s` -> `~s`)",
               [RepChildId, Source, Target]),
-    case supervisor:start_child(couch_rep_sup, ChildSpec) of
+    case supervisor:start_child(xdc_rep_sup, ChildSpec) of
         {ok, Pid} ->
             ?LOG_INFO("starting new replication `~s` at ~p (`~s` -> `~s`)",
                       [RepChildId, Pid, Source, Target]),
             {ok, Pid};
         {error, already_present} ->
-            case supervisor:restart_child(couch_rep_sup, RepChildId) of
+            case supervisor:restart_child(xdc_rep_sup, RepChildId) of
                 {ok, Pid} ->
                     ?LOG_INFO("restarting replication `~s` at ~p (`~s` -> `~s`)",
                               [RepChildId, Pid, Source, Target]),
@@ -85,7 +85,7 @@ async_replicate(#rep{id = {BaseId, Ext}, source = Src, target = Tgt} = Rep) ->
                     %% each other to start and somebody else won. Just grab
                     %% the Pid by calling start_child again.
                     {error, {already_started, Pid}} =
-                        supervisor:start_child(couch_rep_sup, ChildSpec),
+                        supervisor:start_child(xdc_rep_sup, ChildSpec),
                     ?LOG_INFO("replication `~s` already running at ~p (`~s` -> `~s`)",
                               [RepChildId, Pid, Source, Target]),
                     {ok, Pid};
@@ -94,7 +94,7 @@ async_replicate(#rep{id = {BaseId, Ext}, source = Src, target = Tgt} = Rep) ->
                     %% Clause to deal with a change in the supervisor module introduced
                     %% in R14B02. For more details consult the thread at:
                     %%     http://erlang.org/pipermail/erlang-bugs/2011-March/002273.html
-                    _ = supervisor:delete_child(couch_rep_sup, RepChildId),
+                    _ = supervisor:delete_child(xdc_rep_sup, RepChildId),
                     async_replicate(Rep);
                 {error, _} = Error ->
                     Error
