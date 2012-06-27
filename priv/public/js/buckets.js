@@ -836,7 +836,7 @@ var BucketsSection = {
                         bucketType: 'membase',
                         authType: 'sasl',
                         quota: {rawRAM: Math.floor((totals.ram.quotaTotal - totals.ram.quotaUsed) / poolDetails.nodes.length)},
-                        replicaIndex: true,
+                        replicaIndex: false,
                         replicaNumber: 1},
 
       dialog = new BucketDetailsDialog(initValues, true);

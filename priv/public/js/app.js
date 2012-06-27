@@ -415,7 +415,7 @@ var SetupWizard = {
                               rawRAM: nodeData.storageTotals.ram.quotaTotal -
                                 nodeData.storageTotals.ram.quotaUsed},
                             replicaNumber: 1,
-                            replicaIndex: true};
+                            replicaIndex: false};
                     continuation(data, 'success');
                   }});
           return;
