@@ -34,28 +34,23 @@
 not_implemented(Arg, Rest) ->
     {not_implemented, Arg, Rest}.
 
-is_couchbase_db(<<"_replicator">>) ->
-    false;
-is_couchbase_db(Name) ->
-    nomatch =:= binary:match(Name, <<"/">>).
-
+do_db_req(#httpd{path_parts=[<<"_replicator">>|_]}=Req, Fun) ->
+    %% TODO: AUTH!!!!
+    couch_db_frontend:do_db_req(Req, Fun);
 do_db_req(#httpd{mochi_req=MochiReq,user_ctx=UserCtx,path_parts=[DbName|_]}=Req, Fun) ->
     % check auth here
-    [BucketName|_] = binary:split(DbName,<<"/">>),
+    [BucketName|AfterSlash] = binary:split(DbName,<<"/">>),
     ListBucketName = ?b2l(BucketName),
-    BucketConfig = case ns_bucket:get_bucket(ListBucketName) of
+    BucketConfig = case ns_bucket:get_bucket_light(ListBucketName) of
                       not_present ->
-                            case DbName of
-                                <<"_replicator">> -> [{auth_type, none}];
-                                _ -> throw({not_found, missing})
-                            end;
+                           throw({not_found, missing});
                       {ok, X} -> X
                   end,
     case menelaus_auth:is_bucket_accessible({ListBucketName, BucketConfig}, MochiReq) of
         true ->
-            case is_couchbase_db(DbName) of
+            case AfterSlash =:= [] of
                 true ->
-                    case ns_bucket:couchbase_bucket_exists(DbName) of
+                    case couch_util:get_value(type, BucketConfig) =:= membase of
                         true ->
                             %% undefined #db fields indicate bucket database
                             Db = #db{user_ctx = UserCtx, name = DbName},
