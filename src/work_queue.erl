@@ -18,7 +18,8 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, submit_work/2, sync_work/1]).
+-export([start_link/1, start_link/2,
+         submit_work/2, submit_sync_work/2, sync_work/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -27,18 +28,30 @@
 start_link(Name) ->
     gen_server:start_link({local, Name}, ?MODULE, [], []).
 
+start_link(Name, InitFun) ->
+    gen_server:start_link({local, Name}, ?MODULE, InitFun, []).
+
 submit_work(Name, Fun) ->
     gen_server:cast(Name, Fun).
 
+submit_sync_work(Name, Fun) ->
+    gen_server:call(Name, Fun).
+
 sync_work(Name) ->
-    gen_server:call(Name, nothing).
+    gen_server:call(Name, fun nothing/0).
+
+nothing() -> [].
 
 init([]) ->
+    {ok, []};
+
+init(InitFun) ->
+    InitFun(),
     {ok, []}.
 
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+handle_call(Fun, _From, State) ->
+    RV = Fun(),
+    {reply, RV, State}.
 
 handle_cast(Fun, State) ->
     Fun(),
