@@ -18,12 +18,10 @@
 -compile(export_all).
 
 -include("couch_db.hrl").
--include("ns_stats.hrl").
 -include_lib("couch_index_merger/include/couch_index_merger.hrl").
+-include("ns_common.hrl").
 -include("mc_entry.hrl").
 -include("mc_constants.hrl").
-
--define(DEV_MULTIPLE, 20).
 
 -record(collect_acc, {
           row_count = undefined,
@@ -214,7 +212,8 @@ handle_random_req(Req, #db{filepath = undefined, name = Bucket} = Db) ->
     {A1, A2, A3} = erlang:now(),
     random:seed(A1, A2, A3),
 
-    case run_on_subset(Bucket) of
+    %% TODO: I want this entire code be fixed soon
+    case capi_view:run_on_subset_according_to_stats(Bucket) of
         {error, no_stats} ->
             no_random_docs(Req);
         true ->
@@ -416,20 +415,6 @@ has_active_vbuckets(Bucket) ->
     {ok, Config} = ns_bucket:get_bucket(?b2l(Bucket)),
     Map = proplists:get_value(map, Config, []),
     first_vbucket(node(), Map, 0) =/= {error, no_vbucket_found}.
-
-%% Decide whether to run a query on a subset of documents or a full cluster
-%% depending on the number of items in the cluster
--spec run_on_subset(binary()) -> true | false | {error, no_stats}.
-run_on_subset(Bucket) ->
-    case catch stats_reader:latest(minute, node(), ?b2l(Bucket), 1) of
-        {ok, [Stats|_]} ->
-            {ok, Config} = ns_bucket:get_bucket(?b2l(Bucket)),
-            NumVBuckets = proplists:get_value(num_vbuckets, Config, []),
-            {ok, N} = orddict:find(curr_items_tot, Stats#stat_entry.values),
-            N > NumVBuckets * ?DEV_MULTIPLE;
-        {'EXIT', _Reason} ->
-            {error, no_stats}
-    end.
 
 %% Keep the last previous non design doc id found so if the random item
 %% picked was a design doc, return last document, or not_found

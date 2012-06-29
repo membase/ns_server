@@ -19,10 +19,11 @@
 -include_lib("couch_index_merger/include/couch_index_merger.hrl").
 -include_lib("couch_index_merger/include/couch_view_merger.hrl").
 -include("ns_common.hrl").
+-include("ns_stats.hrl").                       % used for run_on_subset_according_to_stats/1
 
 -export([handle_view_req/3]).
--export([all_docs_db_req/2, view_merge_params/4]).
-                                                % For capi_spatial
+-export([all_docs_db_req/2, view_merge_params/4, run_on_subset_according_to_stats/1]).
+%% For capi_spatial
 -export([build_local_simple_specs/4, run_on_subset/2,
          node_vbuckets_dict/1, vbucket_db_name/2, when_has_active_vbuckets/3]).
 
@@ -64,13 +65,31 @@ run_on_subset(#httpd{path_parts=[_, _, DName, _, _]}=Req, Name) ->
     case DName of
         <<"dev_", _/binary>> ->
             case get_value("full_set", (Req#httpd.mochi_req):parse_qs()) =/= "true"
-                andalso capi_frontend:run_on_subset(Name) of
+                andalso run_on_subset_according_to_stats(Name) of
                 true -> capi_frontend:first_vbucket(Name);
                 false -> full_set
             end;
         _ ->
             full_set
     end.
+
+-define(DEV_MULTIPLE, 20).
+
+%% Decide whether to run a query on a subset of documents or a full cluster
+%% depending on the number of items in the cluster
+-spec run_on_subset_according_to_stats(binary()) -> true | false | {error, no_stats}.
+run_on_subset_according_to_stats(Bucket) ->
+    case catch stats_reader:latest(minute, node(), ?b2l(Bucket), 1) of
+        {ok, [Stats|_]} ->
+            {ok, Config} = ns_bucket:get_bucket(?b2l(Bucket)),
+            NumVBuckets = proplists:get_value(num_vbuckets, Config, []),
+            {ok, N} = orddict:find(curr_items_tot, Stats#stat_entry.values),
+            N > NumVBuckets * ?DEV_MULTIPLE;
+        {'EXIT', _Reason} ->
+            {error, no_stats}
+    end.
+
+
 
 handle_view_req(Req, Db, DDoc) when Db#db.filepath =/= undefined ->
     couch_httpd_view:handle_view_req(Req, Db, DDoc);
