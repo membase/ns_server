@@ -16,6 +16,7 @@
 -module(ns_bucket).
 
 -include("ns_common.hrl").
+-include("ns_config.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
@@ -28,6 +29,7 @@
          delete_bucket/1,
          failover_warnings/0,
          get_bucket/1,
+         get_bucket_light/1,
          get_bucket/2,
          get_bucket_names/0,
          get_bucket_names/1,
@@ -161,7 +163,51 @@ couchbase_bucket_exists(Bucket) ->
     end.
 
 get_bucket(Bucket) ->
-    get_bucket(Bucket, ns_config:get()).
+    RV = ns_config:eval(
+           fun (#config{dynamic=[PList]}) ->
+                   {_, V} = lists:keyfind(buckets, 1, PList),
+                   BucketsPList = case V of
+                                      [{'_vclock', _}, {configs, X}] -> X;
+                                      [{configs, X}] -> X
+                                  end,
+                   case lists:keyfind(Bucket, 1, BucketsPList) of
+                       false -> not_present;
+                       {_, BucketConfig} ->
+                           {ok, BucketConfig}
+                   end
+           end),
+    case RV of
+        not_present ->
+            RV;
+        {ok, _} ->
+            RV;
+        _ ->
+            erlang:error({get_bucket_failed, RV})
+    end.
+
+get_bucket_light(Bucket) ->
+    RV = ns_config:eval(
+           fun (#config{dynamic=[PList]}) ->
+                   {_, V} = lists:keyfind(buckets, 1, PList),
+                   BucketsPList = case V of
+                                      [{'_vclock', _}, {configs, X}] -> X;
+                                      [{configs, X}] -> X
+                                  end,
+                   case lists:keyfind(Bucket, 1, BucketsPList) of
+                       false -> not_present;
+                       {_, BucketConfig} ->
+                           {ok, lists:keydelete(map, 1, BucketConfig)}
+                   end
+           end),
+    case RV of
+        not_present ->
+            RV;
+        {ok, _} ->
+            RV;
+        _ ->
+            erlang:error({get_bucket_failed, RV})
+    end.
+
 
 get_bucket(Bucket, Config) ->
     BucketConfigs = get_buckets(Config),
