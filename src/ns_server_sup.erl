@@ -65,6 +65,9 @@ child_specs() ->
       permanent, infinity, supervisor,
       [ns_node_disco_sup]},
 
+     {vbucket_map_mirror, {vbucket_map_mirror, start_link, []},
+      permanent, brutal_kill, worker, []},
+
      %% Start ns_tick_event before mb_master as auto_failover needs it
      {ns_tick_event, {gen_event, start_link, [{local, ns_tick_event}]},
       permanent, 1000, worker, dynamic},
