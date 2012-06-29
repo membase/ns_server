@@ -108,7 +108,7 @@ do_handle_spatial_req(Req, #db{name=DbName} = Db, DDocName, SpatialName) ->
       end).
 
 spatial_merge_params(Req, #db{name = BucketName} = Db, DDocId, SpatialName) ->
-    NodeToVBuckets = capi_view:node_vbuckets_dict(?b2l(BucketName)),
+    NodeToVBuckets = vbucket_map_mirror:node_vbuckets_dict(?b2l(BucketName)),
     Config = ns_config:get(),
     %% FullSpatialName = case DDocId of
     %% nil ->
