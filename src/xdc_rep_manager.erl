@@ -85,8 +85,6 @@ init(_) ->
     ?X2CSTORE = ets:new(?X2CSTORE, [named_table, bag, protected]),
     ?CSTORE = ets:new(?CSTORE, [named_table, set, protected]),
 
-    ?REP_TO_STATE = ets:new(?REP_TO_STATE, [named_table, set, protected]),
-
     %% Subscribe to bucket map changes due to rebalance and failover operations
     %% at the source
     NsConfigEventsHandler = fun ({buckets, _} = Evt, _Acc) ->

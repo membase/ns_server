@@ -206,8 +206,6 @@ do_init(#rep{options = Options, id = {BaseId, Ext}} = Rep) ->
 
     ?LOG_DEBUG("Worker pids are: ~p", [Workers]),
 
-    replication_started(Rep),
-
     {ok, State#rep_state{
            changes_queue = ChangesQueue,
            changes_manager = ChangesManager,
@@ -352,11 +350,10 @@ handle_cast({report_seq, Seq},
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-terminate(normal, #rep_state{rep_details = #rep{id = RepId} = Rep,
+terminate(normal, #rep_state{rep_details = #rep{id = RepId} = _Rep,
                              checkpoint_history = CheckpointHistory} = State) ->
     terminate_cleanup(State),
-    xdc_rep_notifier:notify({finished, RepId, CheckpointHistory}),
-    replication_completed(Rep);
+    xdc_rep_notifier:notify({finished, RepId, CheckpointHistory});
 
 terminate(shutdown, #rep_state{rep_details = #rep{id = RepId}} = State) ->
     %% cancelled replication throught ?MODULE:cancel_replication/1
@@ -367,14 +364,12 @@ terminate(Reason, State) ->
     #rep_state{
            source_name = Source,
            target_name = Target,
-           rep_details = #rep{id = {BaseId, Ext} = RepId} = Rep
+           rep_details = #rep{id = {BaseId, Ext} = RepId} = _Rep
           } = State,
     ?LOG_ERROR("Replication `~s` (`~s` -> `~s`) failed: ~s",
                [BaseId ++ Ext, Source, Target, to_binary(Reason)]),
     terminate_cleanup(State),
-    xdc_rep_notifier:notify({error, RepId, Reason}),
-    replication_error(Rep, Reason).
-
+    xdc_rep_notifier:notify({error, RepId, Reason}).
 
 terminate_cleanup(State) ->
     update_task(State),
@@ -869,148 +864,3 @@ commit_to_both(Source, Target) ->
         TargetError ->
             {target_error, TargetError}
     end.
-
-
-replication_started(#rep{id = {BaseId, _} = RepId}) ->
-    case get_rep_state(RepId) of
-        nil ->
-            ok;
-        #rep_state_record{rep = #rep{doc_id = DocId}} ->
-            update_rep_doc(DocId, [
-                                   {<<"_replication_state">>, <<"triggered">>},
-                                   {<<"_replication_id">>, ?l2b(BaseId)}]),
-            ok = gen_server:call(?MODULE, {rep_started, RepId}, infinity),
-            ?LOG_INFO("Document `~s` triggered replication `~s`",
-                      [DocId, pp_rep_id(RepId)])
-    end.
-
-
-replication_completed(#rep{id = RepId}) ->
-    case get_rep_state(RepId) of
-        nil ->
-            ok;
-        #rep_state_record{rep = #rep{doc_id = DocId}} ->
-            update_rep_doc(DocId, [{<<"_replication_state">>, <<"completed">>}]),
-            ok = gen_server:call(?MODULE, {rep_complete, RepId}, infinity),
-            ?LOG_INFO("Replication `~s` finished (triggered by document `~s`)",
-                      [pp_rep_id(RepId), DocId])
-    end.
-
-
-replication_error(#rep{id = {BaseId, _} = RepId}, Error) ->
-    case get_rep_state(RepId) of
-        nil ->
-            ok;
-        #rep_state_record{rep = #rep{doc_id = DocId}} ->
-            %% TODO: maybe add error reason to replication document
-            update_rep_doc(DocId, [
-                                   {<<"_replication_state">>, <<"error">>},
-                                   {<<"_replication_id">>, ?l2b(BaseId)}]),
-            ok = gen_server:call(?MODULE, {rep_error, RepId, Error}, infinity)
-    end.
-
-%% pretty-print replication id
-pp_rep_id(#rep{id = RepId}) ->
-    pp_rep_id(RepId);
-pp_rep_id({Base, Extension}) ->
-    Base ++ Extension.
-
-get_rep_state(RepId) ->
-    case ets:lookup(?REP_TO_STATE, RepId) of
-        [{RepId, RepState}] ->
-            RepState;
-        [] ->
-            nil
-    end.
-
-update_rep_doc(RepDocId, KVs) ->
-    {ok, RepDb} = ensure_rep_db_exists(),
-    try
-        case couch_db:open_doc(RepDb, RepDocId, [ejson_body]) of
-            {ok, LatestRepDoc} ->
-                update_rep_doc(RepDb, LatestRepDoc, KVs);
-            _ ->
-                ok
-        end
-    catch throw:conflict ->
-            %% Shouldn't happen, as by default only the role _replicator can
-            %% update replication documents.
-            ?LOG_ERROR("Conflict error when updating replication document `~s`."
-                       " Retrying.", [RepDocId]),
-            ok = timer:sleep(5),
-            update_rep_doc(RepDocId, KVs)
-    after
-        couch_db:close(RepDb)
-    end.
-
-update_rep_doc(RepDb, #doc{body = {RepDocBody}} = RepDoc, KVs) ->
-    NewRepDocBody = lists:foldl(
-                      fun({<<"_replication_state">> = K, State} = KV, Body) ->
-                              case get_value(K, Body) of
-                                  State ->
-                                      Body;
-                                  _ ->
-                                      Body1 = lists:keystore(K, 1, Body, KV),
-                                      lists:keystore(
-                                        <<"_replication_state_time">>, 1, Body1,
-                                        {<<"_replication_state_time">>, timestamp()})
-                              end;
-                         ({K, _V} = KV, Body) ->
-                              lists:keystore(K, 1, Body, KV)
-                      end,
-                      RepDocBody, KVs),
-    case NewRepDocBody of
-        RepDocBody ->
-            ok;
-        _ ->
-            %% Might not succeed - when the replication doc is deleted right
-            %% before this update (not an error, ignore).
-            couch_db:update_doc(RepDb, RepDoc#doc{body = {NewRepDocBody}}, [])
-    end.
-
-
-%% RFC3339 timestamps.
-%% Note: doesn't include the time seconds fraction (RFC3339 says it's optional).
-timestamp() ->
-    {{Year, Month, Day}, {Hour, Min, Sec}} = calendar:now_to_local_time(now()),
-    UTime = erlang:universaltime(),
-    LocalTime = calendar:universal_time_to_local_time(UTime),
-    DiffSecs = calendar:datetime_to_gregorian_seconds(LocalTime) -
-        calendar:datetime_to_gregorian_seconds(UTime),
-    zone(DiffSecs div 3600, (DiffSecs rem 3600) div 60),
-    iolist_to_binary(
-      io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w~s",
-                    [Year, Month, Day, Hour, Min, Sec,
-                     zone(DiffSecs div 3600, (DiffSecs rem 3600) div 60)])).
-
-zone(Hr, Min) when Hr >= 0, Min >= 0 ->
-    io_lib:format("+~2..0w:~2..0w", [Hr, Min]);
-zone(Hr, Min) ->
-    io_lib:format("-~2..0w:~2..0w", [abs(Hr), abs(Min)]).
-
-ensure_rep_db_exists() ->
-    DbName = ?l2b(couch_config:get("replicator", "db", "_replicator")),
-    UserCtx = #user_ctx{roles = [<<"_admin">>, <<"_replicator">>]},
-    case couch_db:open_int(DbName, [sys_db, {user_ctx, UserCtx}]) of
-        {ok, Db} ->
-            Db;
-        _Error ->
-            {ok, Db} = couch_db:create(DbName, [sys_db, {user_ctx, UserCtx}])
-    end,
-    ensure_rep_ddoc_exists(Db, <<"_design/_replicator">>),
-    {ok, Db}.
-
-ensure_rep_ddoc_exists(RepDb, DDocID) ->
-    case couch_db:open_doc(RepDb, DDocID, []) of
-        {ok, _Doc} ->
-            ok;
-        _ ->
-            DDoc = couch_doc:from_json_obj({[
-                                             {<<"_id">>, DDocID},
-                                             {<<"language">>, <<"javascript">>},
-                                             {<<"validate_doc_update">>,
-                                              ?REP_DB_DOC_VALIDATE_FUN}
-                                            ]}),
-            ok = couch_db:update_doc(RepDb, DDoc, [])
-    end.
-

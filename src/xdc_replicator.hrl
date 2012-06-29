@@ -41,13 +41,6 @@
 -define(X2CSTORE, xdc_docid_to_couch_rep_pid_store).
 -define(CSTORE, couch_rep_info_store).
 
-%% FIXME: Creation of this table is a short term fix for the problem of the tight
-%% coupling between the couch replication manager and couch replicator. Couch
-%% replicator calls functions in couch replication manager that attempt to lookup
-%% state in this table, the absence of which causes it to crash. A better
-%% abstraction of the couch replicator interface will solve this problem.
--define(REP_TO_STATE, couch_rep_id_to_rep_state).
-
 %% TODO: maybe make both buffer max sizes configurable
 -define(DOC_BUFFER_BYTE_SIZE, 512 * 1024).   %% for remote targets
 -define(DOC_BUFFER_LEN, 10).                 %% for local targets, # of documents
