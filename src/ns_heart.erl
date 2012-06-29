@@ -175,7 +175,8 @@ current_status() ->
         end,
 
     failover_safeness_level:build_local_safeness_info(BucketNames) ++
-        [{active_buckets, ns_memcached:active_buckets()},
+        [{version_info, ns_version_info:local_version_info_props()},
+         {active_buckets, ns_memcached:active_buckets()},
          {ready_buckets, ns_memcached:warmed_buckets()},
          {local_tasks, Tasks},
          {memory, erlang:memory()},
