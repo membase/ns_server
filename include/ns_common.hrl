@@ -60,11 +60,12 @@
 -define(REBALANCE_LOGGER, rebalance).
 -define(CLUSTER_LOGGER, cluster).
 -define(VIEWS_LOGGER, views).
+-define(XDCR_LOGGER, xdcr).
 
 -define(LOGGERS, [?COUCHDB_LOGGER, ?NS_SERVER_LOGGER,
                   ?USER_LOGGER, ?MENELAUS_LOGGER,
                   ?NS_DOCTOR_LOGGER, ?STATS_LOGGER,
-                  ?REBALANCE_LOGGER, ?CLUSTER_LOGGER, ?VIEWS_LOGGER]).
+                  ?REBALANCE_LOGGER, ?CLUSTER_LOGGER, ?VIEWS_LOGGER, ?XDCR_LOGGER]).
 
 -define(LOG(Level, Format, Args),
         ale:log(?NS_SERVER_LOGGER, Level, Format, Args)).
@@ -119,6 +120,18 @@
 
 -define(views_error(Format, Args), ale:error(?VIEWS_LOGGER, Format, Args)).
 -define(views_error(Msg), ale:error(?VIEWS_LOGGER, Msg)).
+
+-define(xdcr_debug(Format, Args), ale:debug(?XDCR_LOGGER, Format, Args)).
+-define(xdcr_debug(Msg), ale:debug(?XDCR_LOGGER, Msg)).
+
+-define(xdcr_info(Format, Args), ale:info(?XDCR_LOGGER, Format, Args)).
+-define(xdcr_info(Msg), ale:info(?XDCR_LOGGER, Msg)).
+
+-define(xdcr_warning(Format, Args), ale:warn(?XDCR_LOGGER, Format, Args)).
+-define(xdcr_warning(Msg), ale:warn(?XDCR_LOGGER, Msg)).
+
+-define(xdcr_error(Format, Args), ale:error(?XDCR_LOGGER, Format, Args)).
+-define(xdcr_error(Msg), ale:error(?XDCR_LOGGER, Msg)).
 
 -define(i2l(V), integer_to_list(V)).
 

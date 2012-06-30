@@ -31,10 +31,10 @@
 %% public functions
 cancel_replication({BaseId, Extension}) ->
     FullRepId = BaseId ++ Extension,
-    ?LOG_INFO("Canceling replication `~s`...", [FullRepId]),
+    ?xdcr_info("Canceling replication `~s`...", [FullRepId]),
     case supervisor:terminate_child(xdc_rep_sup, FullRepId) of
         ok ->
-            ?LOG_INFO("Replication `~s` canceled.", [FullRepId]),
+            ?xdcr_info("Replication `~s` canceled.", [FullRepId]),
             case supervisor:delete_child(xdc_rep_sup, FullRepId) of
                 ok ->
                     {ok, {cancelled, ?l2b(FullRepId)}};
@@ -44,7 +44,7 @@ cancel_replication({BaseId, Extension}) ->
                     Error
             end;
         Error ->
-            ?LOG_ERROR("Error canceling replication `~s`: ~p", [FullRepId, Error]),
+            ?xdcr_error("Error canceling replication `~s`: ~p", [FullRepId, Error]),
             Error
     end.
 
@@ -67,18 +67,18 @@ async_replicate(#rep{id = {BaseId, Ext}, source = Src, target = Tgt} = Rep) ->
     %%
     %% http://erlang.2086793.n4.nabble.com/PATCH-supervisor-atomically-delete-child-spec-when-child-terminates-td3226098.html
     %%
-    ?LOG_INFO("try to start new replication `~s` (`~s` -> `~s`)",
-              [RepChildId, Source, Target]),
+    ?xdcr_info("try to start new replication `~s` (`~s` -> `~s`)",
+               [RepChildId, Source, Target]),
     case supervisor:start_child(xdc_rep_sup, ChildSpec) of
         {ok, Pid} ->
-            ?LOG_INFO("starting new replication `~s` at ~p (`~s` -> `~s`)",
-                      [RepChildId, Pid, Source, Target]),
+            ?xdcr_info("starting new replication `~s` at ~p (`~s` -> `~s`)",
+                       [RepChildId, Pid, Source, Target]),
             {ok, Pid};
         {error, already_present} ->
             case supervisor:restart_child(xdc_rep_sup, RepChildId) of
                 {ok, Pid} ->
-                    ?LOG_INFO("restarting replication `~s` at ~p (`~s` -> `~s`)",
-                              [RepChildId, Pid, Source, Target]),
+                    ?xdcr_info("restarting replication `~s` at ~p (`~s` -> `~s`)",
+                               [RepChildId, Pid, Source, Target]),
                     {ok, Pid};
                 {error, running} ->
                     %% this error occurs if multiple replicators are racing
@@ -86,8 +86,8 @@ async_replicate(#rep{id = {BaseId, Ext}, source = Src, target = Tgt} = Rep) ->
                     %% the Pid by calling start_child again.
                     {error, {already_started, Pid}} =
                         supervisor:start_child(xdc_rep_sup, ChildSpec),
-                    ?LOG_INFO("replication `~s` already running at ~p (`~s` -> `~s`)",
-                              [RepChildId, Pid, Source, Target]),
+                    ?xdcr_info("replication `~s` already running at ~p (`~s` -> `~s`)",
+                               [RepChildId, Pid, Source, Target]),
                     {ok, Pid};
                 {error, {'EXIT', {badarg,
                                   [{erlang, apply, [gen_server, start_link, undefined]} | _]}}} ->
@@ -100,8 +100,8 @@ async_replicate(#rep{id = {BaseId, Ext}, source = Src, target = Tgt} = Rep) ->
                     Error
             end;
         {error, {already_started, Pid}} ->
-            ?LOG_INFO("replication `~s` already running at ~p (`~s` -> `~s`)",
-                      [RepChildId, Pid, Source, Target]),
+            ?xdcr_info("replication `~s` already running at ~p (`~s` -> `~s`)",
+                       [RepChildId, Pid, Source, Target]),
             {ok, Pid};
         {error, {Error, _}} ->
             {error, Error}
@@ -186,25 +186,25 @@ do_init(#rep{options = Options, id = {BaseId, Ext}} = Rep) ->
     %% cancel_replication/1) and then start the replication again, but this is
     %% unfortunately not immune to race conditions.
 
-    ?LOG_INFO("Replication `~p` is using:~n"
-              "~c~p worker processes~n"
-              "~ca worker batch size of ~p~n"
-              "~c~p HTTP connections~n"
-              "~ca connection timeout of ~p milliseconds~n"
-              "~c~p retries per request~n"
-              "~csocket options are: ~s~s",
-              [BaseId ++ Ext, $\t, NumWorkers, $\t, BatchSize, $\t,
-               MaxConns, $\t, get_value(connection_timeout, Options),
-               $\t, get_value(retries, Options),
-               $\t, io_lib:format("~p", [get_value(socket_options, Options)]),
-               case StartSeq of
-                   ?LOWEST_SEQ ->
-                       "";
-                   _ ->
-                       io_lib:format("~n~csource start sequence ~p", [$\t, StartSeq])
-               end]),
+    ?xdcr_info("Replication `~p` is using:~n"
+               "~c~p worker processes~n"
+               "~ca worker batch size of ~p~n"
+               "~c~p HTTP connections~n"
+               "~ca connection timeout of ~p milliseconds~n"
+               "~c~p retries per request~n"
+               "~csocket options are: ~s~s",
+               [BaseId ++ Ext, $\t, NumWorkers, $\t, BatchSize, $\t,
+                MaxConns, $\t, get_value(connection_timeout, Options),
+                $\t, get_value(retries, Options),
+                $\t, io_lib:format("~p", [get_value(socket_options, Options)]),
+                case StartSeq of
+                    ?LOWEST_SEQ ->
+                        "";
+                    _ ->
+                        io_lib:format("~n~csource start sequence ~p", [$\t, StartSeq])
+                end]),
 
-    ?LOG_DEBUG("Worker pids are: ~p", [Workers]),
+    ?xdcr_debug("Worker pids are: ~p", [Workers]),
 
     {ok, State#rep_state{
            changes_queue = ChangesQueue,
@@ -216,40 +216,40 @@ do_init(#rep{options = Options, id = {BaseId, Ext}} = Rep) ->
 
 
 handle_info({'DOWN', Ref, _, _, Why}, #rep_state{source_monitor = Ref} = St) ->
-    ?LOG_ERROR("Source database is down. Reason: ~p", [Why]),
+    ?xdcr_error("Source database is down. Reason: ~p", [Why]),
     {stop, source_db_down, St};
 
 handle_info({'DOWN', Ref, _, _, Why}, #rep_state{target_monitor = Ref} = St) ->
-    ?LOG_ERROR("Target database is down. Reason: ~p", [Why]),
+    ?xdcr_error("Target database is down. Reason: ~p", [Why]),
     {stop, target_db_down, St};
 
 handle_info({'DOWN', Ref, _, _, Why}, #rep_state{src_master_db_monitor = Ref} = St) ->
-    ?LOG_ERROR("Source master database is down. Reason: ~p", [Why]),
+    ?xdcr_error("Source master database is down. Reason: ~p", [Why]),
     {stop, src_master_db_down, St};
 
 handle_info({'DOWN', Ref, _, _, Why}, #rep_state{tgt_master_db_monitor = Ref} = St) ->
-    ?LOG_ERROR("Target master database is down. Reason: ~p", [Why]),
+    ?xdcr_error("Target master database is down. Reason: ~p", [Why]),
     {stop, tgt_master_db_down, St};
 
 handle_info({'EXIT', Pid, normal}, #rep_state{changes_reader=Pid} = State) ->
     {noreply, State};
 
 handle_info({'EXIT', Pid, Reason}, #rep_state{changes_reader=Pid} = State) ->
-    ?LOG_ERROR("ChangesReader process died with reason: ~p", [Reason]),
+    ?xdcr_error("ChangesReader process died with reason: ~p", [Reason]),
     {stop, changes_reader_died, cancel_timer(State)};
 
 handle_info({'EXIT', Pid, normal}, #rep_state{changes_manager = Pid} = State) ->
     {noreply, State};
 
 handle_info({'EXIT', Pid, Reason}, #rep_state{changes_manager = Pid} = State) ->
-    ?LOG_ERROR("ChangesManager process died with reason: ~p", [Reason]),
+    ?xdcr_error("ChangesManager process died with reason: ~p", [Reason]),
     {stop, changes_manager_died, cancel_timer(State)};
 
 handle_info({'EXIT', Pid, normal}, #rep_state{changes_queue=Pid} = State) ->
     {noreply, State};
 
 handle_info({'EXIT', Pid, Reason}, #rep_state{changes_queue=Pid} = State) ->
-    ?LOG_ERROR("ChangesQueue process died with reason: ~p", [Reason]),
+    ?xdcr_error("ChangesQueue process died with reason: ~p", [Reason]),
     {stop, changes_queue_died, cancel_timer(State)};
 
 handle_info({'EXIT', Pid, normal}, #rep_state{workers = Workers} = State) ->
@@ -270,7 +270,7 @@ handle_info({'EXIT', Pid, Reason}, #rep_state{workers = Workers} = State) ->
         false ->
             {stop, {unknown_process_died, Pid, Reason}, State2};
         true ->
-            ?LOG_ERROR("Worker ~p died with reason: ~p", [Pid, Reason]),
+            ?xdcr_error("Worker ~p died with reason: ~p", [Pid, Reason]),
             {stop, {worker_died, Pid, Reason}, State2}
     end.
 
@@ -300,12 +300,12 @@ handle_call({report_seq_done, Seq, StatsInc}, From,
                         _ ->
                             NewThroughSeq0
                     end,
-    ?LOG_DEBUG("Worker reported seq ~p, through seq was ~p, "
-               "new through seq is ~p, highest seq done was ~p, "
-               "new highest seq done is ~p~n"
-               "Seqs in progress were: ~p~nSeqs in progress are now: ~p",
-               [Seq, ThroughSeq, NewThroughSeq, HighestDone,
-                NewHighestDone, SeqsInProgress, NewSeqsInProgress]),
+    ?xdcr_debug("Worker reported seq ~p, through seq was ~p, "
+                "new through seq is ~p, highest seq done was ~p, "
+                "new highest seq done is ~p~n"
+                "Seqs in progress were: ~p~nSeqs in progress are now: ~p",
+                [Seq, ThroughSeq, NewThroughSeq, HighestDone,
+                 NewHighestDone, SeqsInProgress, NewSeqsInProgress]),
     SourceCurSeq = source_cur_seq(State),
     NewState = State#rep_state{
                  stats = xdc_rep_utils:sum_stats(Stats, StatsInc),
@@ -366,8 +366,8 @@ terminate(Reason, State) ->
            target_name = Target,
            rep_details = #rep{id = {BaseId, Ext} = RepId} = _Rep
           } = State,
-    ?LOG_ERROR("Replication `~s` (`~s` -> `~s`) failed: ~s",
-               [BaseId ++ Ext, Source, Target, to_binary(Reason)]),
+    ?xdcr_error("Replication `~s` (`~s` -> `~s`) failed: ~s",
+                [BaseId ++ Ext, Source, Target, to_binary(Reason)]),
     terminate_cleanup(State),
     xdc_rep_notifier:notify({error, RepId, Reason}).
 
@@ -464,9 +464,9 @@ read_changes(StartSeq, Db, ChangesQueue, Options) ->
                                                      %% Previous CouchDB releases had a bug which allowed a doc
                                                      %% with an empty ID to be inserted into databases. Such doc
                                                      %% is impossible to GET.
-                                                     ?LOG_ERROR("Replicator: ignoring document with empty ID in "
-                                                                "source database `~s` (_changes sequence ~p)",
-                                                                [couch_api_wrap:db_uri(Db), Seq]);
+                                                     ?xdcr_error("Replicator: ignoring document with empty ID in "
+                                                                 "source database `~s` (_changes sequence ~p)",
+                                                                 [couch_api_wrap:db_uri(Db), Seq]);
                                                  _ ->
                                                      ok = couch_work_queue:queue(ChangesQueue, DocInfo)
                                              end,
@@ -480,14 +480,14 @@ read_changes(StartSeq, Db, ChangesQueue, Options) ->
                     LastSeq = get(last_seq),
                     Db2 = case LastSeq of
                               StartSeq ->
-                                  ?LOG_INFO("Retrying _changes request to source database ~s"
-                                            " with since=~p in ~p seconds",
-                                            [couch_api_wrap:db_uri(Db), LastSeq, Db#httpdb.wait / 1000]),
+                                  ?xdcr_info("Retrying _changes request to source database ~s"
+                                             " with since=~p in ~p seconds",
+                                             [couch_api_wrap:db_uri(Db), LastSeq, Db#httpdb.wait / 1000]),
                                   ok = timer:sleep(Db#httpdb.wait),
                                   Db#httpdb{wait = 2 * Db#httpdb.wait};
                               _ ->
-                                  ?LOG_INFO("Retrying _changes request to source database ~s"
-                                            " with since=~p", [couch_api_wrap:db_uri(Db), LastSeq]),
+                                  ?xdcr_info("Retrying _changes request to source database ~s"
+                                             " with since=~p", [couch_api_wrap:db_uri(Db), LastSeq]),
                                   Db
                           end,
                     read_changes(LastSeq, Db2, ChangesQueue, Options);
@@ -558,10 +558,10 @@ compare_replication_logs(SrcDoc, TgtDoc) ->
         false ->
             SourceHistory = get_value(<<"history">>, RepRecProps, []),
             TargetHistory = get_value(<<"history">>, RepRecPropsTgt, []),
-            ?LOG_INFO("Replication records differ. "
-                      "Scanning histories to find a common ancestor.", []),
-            ?LOG_DEBUG("Record on source:~p~nRecord on target:~p~n",
-                       [RepRecProps, RepRecPropsTgt]),
+            ?xdcr_info("Replication records differ. "
+                       "Scanning histories to find a common ancestor.", []),
+            ?xdcr_debug("Record on source:~p~nRecord on target:~p~n",
+                        [RepRecProps, RepRecPropsTgt]),
             compare_rep_history(SourceHistory, TargetHistory)
     end.
 
@@ -593,7 +593,7 @@ start_timer(State) ->
         {ok, Ref} ->
             Ref;
         Error ->
-            ?LOG_ERROR("Replicator, error scheduling checkpoint:  ~p", [Error]),
+            ?xdcr_error("Replicator, error scheduling checkpoint:  ~p", [Error]),
             nil
     end.
 
@@ -604,23 +604,23 @@ cancel_timer(#rep_state{timer = Timer} = State) ->
     State#rep_state{timer = nil}.
 
 compare_rep_history(S, T) when S =:= [] orelse T =:= [] ->
-    ?LOG_INFO("no common ancestry -- performing full replication", []),
+    ?xdcr_info("no common ancestry -- performing full replication", []),
     {?LOWEST_SEQ, []};
 compare_rep_history([{S} | SourceRest], [{T} | TargetRest] = Target) ->
     SourceId = get_value(<<"session_id">>, S),
     case has_session_id(SourceId, Target) of
         true ->
             RecordSeqNum = get_value(<<"recorded_seq">>, S, ?LOWEST_SEQ),
-            ?LOG_INFO("found a common replication record with source_seq ~p",
-                      [RecordSeqNum]),
+            ?xdcr_info("found a common replication record with source_seq ~p",
+                       [RecordSeqNum]),
             {RecordSeqNum, SourceRest};
         false ->
             TargetId = get_value(<<"session_id">>, T),
             case has_session_id(TargetId, SourceRest) of
                 true ->
                     RecordSeqNum = get_value(<<"recorded_seq">>, T, ?LOWEST_SEQ),
-                    ?LOG_INFO("found a common replication record with source_seq ~p",
-                              [RecordSeqNum]),
+                    ?xdcr_info("found a common replication record with source_seq ~p",
+                               [RecordSeqNum]),
                     {RecordSeqNum, TargetRest};
                 false ->
                     compare_rep_history(SourceRest, TargetRest)
@@ -725,8 +725,8 @@ do_checkpoint(State) ->
             {checkpoint_commit_failure,
              <<"Failure on target commit: ", (to_binary(Reason))/binary>>};
         {SrcInstanceStartTime, TgtInstanceStartTime} ->
-            ?LOG_INFO("recording a checkpoint for `~s` -> `~s` at source update_seq ~p",
-                      [SourceName, TargetName, NewSeq]),
+            ?xdcr_info("recording a checkpoint for `~s` -> `~s` at source update_seq ~p",
+                       [SourceName, TargetName, NewSeq]),
             StartTime = ?l2b(ReplicationStartTime),
             EndTime = ?l2b(httpd_util:rfc1123_date()),
             NewHistoryEntry = {[

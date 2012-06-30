@@ -122,7 +122,7 @@ maybe_create_replication_info_ddoc() ->
              _Error ->
                  {ok, XDb} = couch_db:create(<<"_replicator">>,
                                              [sys_db, {user_ctx, UserCtx}]),
-                 ?log_info("replication doc created"),
+                 ?xdcr_info("replication doc created"),
                  XDb
          end,
     try couch_db:open_doc(DB, <<"_design/_replicator_info">>, []) of
@@ -151,19 +151,19 @@ handle_call({rep_db_update, {ChangeProps} = Change}, _From, State) ->
             xdc_rep_manager_helper:update_rep_doc(
               xdc_rep_utils:info_doc_id(DocId),
               [{<<"_replication_state">>, <<"error">>}]),
-            ?log_error("~s: xdc replication error: ~p~n~p",
-                       [DocId, Error, erlang:get_stacktrace()]),
+            ?xdcr_error("~s: xdc replication error: ~p~n~p",
+                        [DocId, Error, erlang:get_stacktrace()]),
             State
     end,
     {reply, ok, State};
 
 handle_call(Msg, From, State) ->
-    ?log_error("replication manager received unexpected call ~p from ~p",
-               [Msg, From]),
+    ?xdcr_error("replication manager received unexpected call ~p from ~p",
+                [Msg, From]),
     {stop, {error, {unexpected_call, Msg}}, State}.
 
 handle_cast(Msg, State) ->
-    ?log_error("replication manager received unexpected cast ~p", [Msg]),
+    ?xdcr_error("replication manager received unexpected cast ~p", [Msg]),
     {stop, {error, {unexpected_cast, Msg}}, State}.
 
 consume_all_buckets_changes(Buckets) ->
@@ -193,7 +193,7 @@ handle_info({'EXIT', From, normal},
     {noreply, State#rep_db_state{changes_feed_loop = nil, rep_db_name = nil}};
 
 handle_info({'EXIT', From, Reason} = Msg, State) ->
-    ?log_error("Dying since linked process died: ~p", [Msg]),
+    ?xdcr_error("Dying since linked process died: ~p", [Msg]),
     {stop, {linked_process_died, From, Reason}, State};
 
 handle_info({'DOWN', _Ref, process, Pid, Reason}, State) ->
@@ -221,8 +221,8 @@ handle_info({'DOWN', _Ref, process, Pid, Reason}, State) ->
                       xdc_rep_utils:info_doc_id(XDocId),
                       [{?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"error">>},
                        {<<"_replication_state">>, <<"error">>}]),
-                    ?log_info("~s: replication of vbucket ~p failed due to reason: "
-                              "~p", [XDocId, Vb, Reason])
+                    ?xdcr_info("~s: replication of vbucket ~p failed due to reason: "
+                               "~p", [XDocId, Vb, Reason])
             end;
         false ->
             %% Ignore messages regarding Pids not found in the CSTORE. These messages
@@ -236,7 +236,7 @@ handle_info({'DOWN', _Ref, process, Pid, Reason}, State) ->
 
 handle_info(Msg, State) ->
     %% Ignore any other messages but log them
-    ?log_info("ignoring unexpected message: ~p", [Msg]),
+    ?xdcr_info("ignoring unexpected message: ~p", [Msg]),
     {noreply, State}.
 
 
@@ -290,17 +290,17 @@ maybe_start_xdc_replication(XDocId, XDocBody, RepDbName) ->
     case lists:flatten(ets:match(?XSTORE, {'$1', #rep{id = XRepId}})) of
         [] ->
             %% A new XDC replication document.
-            ?log_info("~s: triggering xdc replication", [XDocId]),
+            ?xdcr_info("~s: triggering xdc replication", [XDocId]),
             start_xdc_replication(XRep, RepDbName, XDocBody);
         [XDocId] ->
             %% An XDC replication document previously seen. Ignore.
-            ?log_info("~s: ignoring doc previously seen", [XDocId]),
+            ?xdcr_info("~s: ignoring doc previously seen", [XDocId]),
             ok;
         [OtherDocId] ->
             %% A new XDC replication document specifying a previous replication.
             %% Ignore but let  the user know.
-            ?log_info("~s: xdc replication was already triggered by doc ~s",
-                      [XDocId, OtherDocId]),
+            ?xdcr_info("~s: xdc replication was already triggered by doc ~s",
+                       [XDocId, OtherDocId]),
             xdc_rep_manager_helper:maybe_tag_rep_doc(XDocId, XDocBody,
                                                      ?l2b(XBaseId))
     end.
@@ -317,15 +317,15 @@ start_xdc_replication(#rep{id = XRepId,
 
     case {SrcBucketLookup, TgtBucketLookup} of
         {not_present, not_present} ->
-            ?log_error("~s: source and target buckets not found", [XDocId]),
+            ?xdcr_error("~s: source and target buckets not found", [XDocId]),
             true = ets:insert(?XSTORE, {XDocId, XRep, [], []}),
             {error, not_present};
         {not_present, _} ->
-            ?log_error("~s: source bucket not found", [XDocId]),
+            ?xdcr_error("~s: source bucket not found", [XDocId]),
             true = ets:insert(?XSTORE, {XDocId, XRep, [], []}),
             {error, not_present};
         {_, not_present} ->
-            ?log_error("~s: target bucket not found", [XDocId]),
+            ?xdcr_error("~s: target bucket not found", [XDocId]),
             true = ets:insert(?XSTORE, {XDocId, XRep, [], []}),
             {error, not_present};
         {{ok, SrcBucketConfig}, _} ->
@@ -337,7 +337,7 @@ start_xdc_replication(#rep{id = XRepId,
     end.
 
 cancel_all_xdc_replications() ->
-    ?log_info("cancelling all xdc replications"),
+    ?xdcr_info("cancelling all xdc replications"),
     ets:foldl(
       fun(XDocId, _Ok) ->
               maybe_cancel_xdc_replication(XDocId)
@@ -358,7 +358,7 @@ maybe_cancel_xdc_replication(XDocId) ->
                         []
                 end,
 
-            ?log_info("~s: cancelling xdc replication", [XDocId]),
+            ?xdcr_info("~s: cancelling xdc replication", [XDocId]),
             CancelledVbs = lists:map(
                              fun(CRepPid) ->
                                      Vb = ets:lookup_element(?CSTORE, CRepPid, 3),
@@ -439,11 +439,11 @@ start_couch_replication(SrcCouchURI, TgtCouchURI, Vb, XDocId) ->
             xdc_rep_manager_helper:update_rep_doc(
               xdc_rep_utils:info_doc_id(XDocId),
               [{?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"triggered">>}]),
-            ?log_info("~s: triggered replication for vbucket ~p", [XDocId, Vb]),
+            ?xdcr_info("~s: triggered replication for vbucket ~p", [XDocId, Vb]),
             {ok, CRepPid};
         Error ->
-            ?log_info("~s: triggering of replication for vbucket ~p failed due to: "
-                      "~p", [XDocId, Vb, Error]),
+            ?xdcr_info("~s: triggering of replication for vbucket ~p failed due to: "
+                       "~p", [XDocId, Vb, Error]),
             {error, Error}
     end.
 
@@ -529,12 +529,12 @@ max_concurrent_reps(Bucket) ->
                                         ?MAX_CONCURRENT_REPS_PER_DOC),
     case (MaxConcurrentReps > NumVBuckets) orelse (MaxConcurrentReps < 1) of
         true ->
-            ?log_warning("Specified value for MAX_CONCURRENT_REPS_PER_DOC is not "
-                         "in the range [1, ~p]. Reverting to default value of ~p.",
-                         [NumVBuckets, ?MAX_CONCURRENT_REPS_PER_DOC]),
+            ?xdcr_warning("Specified value for MAX_CONCURRENT_REPS_PER_DOC is not "
+                          "in the range [1, ~p]. Reverting to default value of ~p.",
+                          [NumVBuckets, ?MAX_CONCURRENT_REPS_PER_DOC]),
             ?MAX_CONCURRENT_REPS_PER_DOC;
         false ->
-            ?log_info("MAX_CONCURRENT_REPS_PER_DOC set to ~p", [MaxConcurrentReps]),
+            ?xdcr_info("MAX_CONCURRENT_REPS_PER_DOC set to ~p", [MaxConcurrentReps]),
             MaxConcurrentReps
     end.
 

@@ -216,5 +216,5 @@ create_xdc_rep_info_doc(XDocId, {Base, Ext}, Vbs, RepDbName, XDocBody) ->
       IDocId, [{<<"_replication_state">>, <<"triggered">>}]),
     couch_db:close(RepDb),
 
-    ?log_info("~s: created replication info doc ~s", [XDocId, IDocId]),
+    ?xdcr_info("~s: created replication info doc ~s", [XDocId, IDocId]),
     ok.

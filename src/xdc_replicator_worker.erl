@@ -188,7 +188,7 @@ queue_fetch_loop(Source, Target, Parent, Cp, ChangesManager) ->
             close_db(Target2),
             ok = gen_server:call(Cp, {report_seq_done, ReportSeq, Stats}, infinity),
             erlang:put(last_stats_report, os:timestamp()),
-            ?LOG_DEBUG("Worker reported completion of seq ~p", [ReportSeq]),
+            ?xdcr_debug("Worker reported completion of seq ~p", [ReportSeq]),
             queue_fetch_loop(Source, Target, Parent, Cp, ChangesManager)
     end.
 
@@ -199,9 +199,9 @@ local_process_batch([], _Cp, _Src, _Tgt, #batch{docs = []}, Stats) ->
 local_process_batch([], Cp, Source, Target, #batch{docs = Docs, size = Size}, Stats) ->
     case Target of
         #httpdb{} ->
-            ?LOG_DEBUG("Worker flushing doc batch of size ~p bytes", [Size]);
+            ?xdcr_debug("Worker flushing doc batch of size ~p bytes", [Size]);
         #db{} ->
-            ?LOG_DEBUG("Worker flushing doc batch of ~p docs", [Size])
+            ?xdcr_debug("Worker flushing doc batch of ~p docs", [Size])
     end,
     Stats2 = flush_docs(Target, Docs),
     Stats3 = xdc_rep_utils:sum_stats(Stats, Stats2),
@@ -259,9 +259,9 @@ remote_doc_handler(_, Acc) ->
 spawn_writer(Target, #batch{docs = DocList, size = Size}) ->
     case {Target, Size > 0} of
         {#httpdb{}, true} ->
-            ?LOG_DEBUG("Worker flushing doc batch of size ~p bytes", [Size]);
+            ?xdcr_debug("Worker flushing doc batch of size ~p bytes", [Size]);
         {#db{}, true} ->
-            ?LOG_DEBUG("Worker flushing doc batch of ~p docs", [Size]);
+            ?xdcr_debug("Worker flushing doc batch of ~p docs", [Size]);
         _ ->
             ok
     end,
@@ -303,7 +303,7 @@ maybe_flush_docs(#httpdb{} = Target, Batch, Doc) ->
     JsonDoc = couch_doc:to_raw_json_binary(Doc, false),
     case SizeAcc + iolist_size(JsonDoc) of
         SizeAcc2 when SizeAcc2 > ?DOC_BUFFER_BYTE_SIZE ->
-            ?LOG_DEBUG("Worker flushing doc batch of size ~p bytes", [SizeAcc2]),
+            ?xdcr_debug("Worker flushing doc batch of size ~p bytes", [SizeAcc2]),
             Stats = flush_docs(Target, [JsonDoc | DocAcc]),
             {#batch{}, Stats};
         SizeAcc2 ->
@@ -313,7 +313,7 @@ maybe_flush_docs(#httpdb{} = Target, Batch, Doc) ->
 maybe_flush_docs(#db{} = Target, #batch{docs = DocAcc, size = SizeAcc}, Doc) ->
     case SizeAcc + 1 of
         SizeAcc2 when SizeAcc2 >= ?DOC_BUFFER_LEN ->
-            ?LOG_DEBUG("Worker flushing doc batch of ~p docs", [SizeAcc2]),
+            ?xdcr_debug("Worker flushing doc batch of ~p docs", [SizeAcc2]),
             Stats = flush_docs(Target, [Doc | DocAcc]),
             {#batch{}, Stats};
         SizeAcc2 ->
@@ -332,10 +332,10 @@ flush_docs(Target, DocList) ->
             #rep_stats{docs_written = length(DocList)};
         {ok, {Props}} ->
             DbUri = couch_api_wrap:db_uri(Target),
-            ?LOG_ERROR("Replicator: couldn't write document `~s`, revision `~s`,"
-                       " to target database `~s`. Error: `~s`, reason: `~s`.",
-                       [get_value(id, Props, ""), get_value(rev, Props, ""), DbUri,
-                        get_value(error, Props, ""), get_value(reason, Props, "")]),
+            ?xdcr_error("Replicator: couldn't write document `~s`, revision `~s`,"
+                        " to target database `~s`. Error: `~s`, reason: `~s`.",
+                        [get_value(id, Props, ""), get_value(rev, Props, ""), DbUri,
+                         get_value(error, Props, ""), get_value(reason, Props, "")]),
             #rep_stats{
                         docs_written = 0, doc_write_failures = length(DocList)
                       }
