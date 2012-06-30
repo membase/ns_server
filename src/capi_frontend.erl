@@ -19,6 +19,7 @@
 
 -include("couch_db.hrl").
 -include_lib("couch_index_merger/include/couch_index_merger.hrl").
+-include_lib("couch_index_merger/include/couch_view_merger.hrl").
 -include("ns_common.hrl").
 -include("mc_entry.hrl").
 -include("mc_constants.hrl").
@@ -441,7 +442,10 @@ no_random_docs(Req) ->
 setup_sender(MergeParams) ->
     MergeParams#index_merge{
       user_acc = #collect_acc{},
-      callback = fun collect_ids/2
+      callback = fun collect_ids/2,
+      extra = #view_merge{
+        make_row_fun = fun(RowData) -> RowData end
+       }
      }.
 
 
