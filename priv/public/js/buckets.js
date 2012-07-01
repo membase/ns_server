@@ -723,6 +723,10 @@ var BucketsSection = {
       $('#bucket_details_dialog').dialog('option', 'closeOnEscape', false);
       BucketsSection.startRemovingBucket();
     });
+
+    $('.compact_btn').live('click', function (e) {
+      BucketsSection.compactBucket($(this).attr('id').split('compact_bucket_')[1]);
+    });
   },
   renderBucketDetails: function (item) {
     return this.settingsWidget.renderItemDetails(item);
@@ -750,15 +754,14 @@ var BucketsSection = {
     return this.withBucket(uri, function (r) {return r;});
   },
   compactBucket: function (name) {
-    DAL.cells.bucketsListCell.subscribeValue(function (buckets) {
+    DAL.cells.bucketsListCell.getValue(function (buckets) {
       var currentBucket = _.detect(buckets, function (bucket) {
         return bucket.name === name;
       });
       if (!currentBucket) {
         return;
       }
-      var url = currentBucket.controllers.compactAll;
-      $.post(url);
+      $.post(currentBucket.controllers.compactAll, DAL.cells.tasksProgressCell.refresh);
     });
   },
   showBucket: function (uri) {
@@ -941,7 +944,6 @@ var BucketsSection = {
   }
 };
 
-configureActionHashParam("compactBucket", $m(BucketsSection, 'compactBucket'));
 configureActionHashParam("editBucket", $m(BucketsSection, 'showBucket'));
 
 $(function () {
