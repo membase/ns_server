@@ -511,26 +511,21 @@
           <script id="bucket_settings_template" type="text/html">
             <div class="gong_rb">
               <div class="pad">
-                <a class="edit_btn" href="#editBucket={%= uri %}">Edit</a>
-                <button class="edit_btn compact_btn" id="compact_bucket_{%= h(name) %}">Compact</button>
-                <table class="properties_table">
-                <col width="50%" />
-                <col width="50%" />
-                  <tr>
-                    <td>
-                      Access Control: <span>{%= (authType == 'none') ? 'Port' : ((name == 'default') ? 'None' : 'Authentication') %}{%= (authType == 'none') ? (': ' + proxyPort) : '' %}</span>
-                    </td>
-                    <td>
-                  {% if (bucketType == 'membase') { %}
-                    {% if (replicaNumber != 0) { %}
-                      Replicas: <span>{%= V.count(replicaNumber, 'replica copy') %}</span>
-                    {% } else { %}
-                      Replicas: <span>disabled</span>
-                    {% } %}
-                  {% } %}
-                    </td>
-                  </tr>
-                </table>
+                <div>
+                  Access Control: <span>{%= (authType == 'none') ? 'Port' : ((name == 'default') ? 'None' : 'Authentication') %}{%= (authType == 'none') ? (': ' + proxyPort) : '' %}</span>
+                </div>
+                {% if (bucketType == 'membase') { %}
+                  <div>
+                    Replicas: <span>{%= replicaNumber != 0 ? V.count(replicaNumber, 'replica copy') : 'disabled' %}</span>
+                  </div>
+                {% } %}
+                <div>
+                  Compaction: <span id="bucket_progress_container_{%= h(name) %}">Not active</span>
+                </div>
+                <div class="last">
+                  <a class="inner_btn" href="#editBucket={%= uri %}">Edit</a>
+                  <button class="inner_btn compact_btn" id="compact_bucket_{%= h(name) %}">Compact</button>
+                </div>
               </div>
               <div class="side side_1"></div>
               <div class="side side_2"></div>

@@ -792,7 +792,9 @@ ul.tabs .badge_display .badge {display:block;}
 .list .settings-placeholder td .pad {padding:10px 0 10px 56px; background:none;}
 .list .settings-placeholder td > .pad {width:685px;overflow:hidden;}
 .list .settings-placeholder td .pad .pad {padding:10px 10px 10px 4px !important;min-height:52px;}
-.list .settings-placeholder .edit_btn {float:right;display:block;width:65px;height:21px;border:0;margin: 10px 10px 0;color:#000;background:url(../images/edit-button.png) 0 0 no-repeat;}
+.list .settings-placeholder .inner_btn {float:right;display:block;width:65px;height:21px;border:0;margin:5px 0 0 5px;color:#000;background:url(../images/edit-button.png) 0 0 no-repeat;line-height:20px;text-align:center;text-decoration:none;cursor:pointer;}
+.list .settings-placeholder .edit_btn {margin:20px 10px 0 0;}
+
 .list .keycol {max-width:300px}
 
 /* This is the auto-failover status on the server nodes screen */
@@ -825,9 +827,11 @@ ul.tabs .badge_display .badge {display:block;}
 .list .ovf {padding:10px 0;}
 
 .list .highlight td {background-color:#eee !important;}
-.properties_table {width:80%}
+.properties_table {width:758px;}
 .properties_table tr td {text-align:left !important; vertical-align:top !important; color:#444245;background:none !important; border:0px !important;height:auto;line-height:1em}
-.gong_rb .pad .properties_table td span {color: #7C7D7F;}
+.gong_rb .pad span {color: #7C7D7F;}
+.gong_rb .pad > div {width:23%;padding:1%;float:left;}
+.gong_rb .pad .last {overflow:hidden;}
 .list table.label {float:left;margin:2px 0 0;}
 .list table.label td:first-child {width:175px;color:#444245; text-align:right;}
 
@@ -1004,6 +1008,7 @@ input.view_name{width:20em;padding:5px}
 .bucket_details label.for-replica-number input {width:29px;}
 .bucket_details .save_cancel .flush_button {float:left;margin-right:16px;}
 .bucket_details .save_cancel .delete_button {float:left;margin-right:16px;}
+
 
 .bucket_details.creating .when-editing,
 .bucket_details.editing .when-creating,

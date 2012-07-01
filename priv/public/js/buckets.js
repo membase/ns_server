@@ -626,6 +626,7 @@ var BucketsSection = {
       aroundRendering: function (originalRender, cell, container) {
         originalRender();
         $(container).closest('tr').prev().find('.bucket_name .expander').toggleClass('closed', !cell.interested.value);
+        DAL.cells.tasksProgressCell.getValue(self.renderTasks);
       }
     });
 
@@ -707,6 +708,8 @@ var BucketsSection = {
       $('#manage_buckets_top_bar .create-bucket-button')[staleness ? 'hide' : 'show']();
     });
 
+    DAL.cells.tasksProgressCell.subscribeValue(self.renderTasks);
+
     $('.create-bucket-button').live('click', function (e) {
       e.preventDefault();
       BucketsSection.startCreate();
@@ -725,11 +728,38 @@ var BucketsSection = {
     });
 
     $('.compact_btn').live('click', function (e) {
-      BucketsSection.compactBucket($(this).attr('id').split('compact_bucket_')[1]);
+      if (!$(this).hasClass('disabled')) {
+        BucketsSection.compactBucket($(this).attr('id').split('compact_bucket_')[1]);
+      }
     });
   },
   renderBucketDetails: function (item) {
     return this.settingsWidget.renderItemDetails(item);
+  },
+  showCompactControl: function (bucketName, text, disabled) {
+    $($i('bucket_progress_container_' + bucketName)).text(text);
+    $($i('compact_bucket_' + bucketName))[disabled ? 'addClass' : 'removeClass']('disabled');
+  },
+  renderTasks: function (tasks) {
+    var self = BucketsSection;
+    var bucketsTasks = _.filter(tasks, function (task) { return task.status == 'running' && task.type == 'bucket_compaction' });
+    var currentNames = _.pluck(bucketsTasks, 'bucket');
+
+    if (self.previousNames) {
+      _.each(_.difference(self.previousNames, currentNames), function (bucketName) {
+        self.showCompactControl(bucketName, 'Not active');
+      });
+    }
+
+    self.previousNames = currentNames;
+
+    _.each(bucketsTasks, function (task) {
+      self.showCompactControl(task.bucket, task.progress + '%', true);
+    });
+
+    if (!bucketsTasks.length) {
+      self.previousNames = undefined;
+    }
   },
   refreshBuckets: function (callback) {
     return DAL.cells.bucketsListCell.refresh(callback);
@@ -754,6 +784,7 @@ var BucketsSection = {
     return this.withBucket(uri, function (r) {return r;});
   },
   compactBucket: function (name) {
+    var self = this;
     DAL.cells.bucketsListCell.getValue(function (buckets) {
       var currentBucket = _.detect(buckets, function (bucket) {
         return bucket.name === name;
@@ -761,6 +792,7 @@ var BucketsSection = {
       if (!currentBucket) {
         return;
       }
+      self.showCompactControl(currentBucket.name, 'Starting...', true);
       $.post(currentBucket.controllers.compactAll, DAL.cells.tasksProgressCell.refresh);
     });
   },
