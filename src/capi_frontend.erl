@@ -444,7 +444,7 @@ setup_sender(MergeParams) ->
       user_acc = #collect_acc{},
       callback = fun collect_ids/2,
       extra = #view_merge{
-        make_row_fun = fun(RowData) -> RowData end
+        make_row_fun = fun({{DocId, DocId}, _Value}) -> DocId end
        }
      }.
 
@@ -455,8 +455,7 @@ collect_ids(stop, Acc) ->
     {ok, Acc};
 collect_ids({start, X}, Acc) ->
     {ok, Acc#collect_acc{row_count=X}};
-collect_ids({row, {Doc}}, #collect_acc{rows=Rows} = Acc) ->
-    Id = couch_util:get_value(id, Doc),
+collect_ids({row, Id}, #collect_acc{rows=Rows} = Acc) ->
     case is_design_doc(Id) of
         true -> {ok, Acc};
         false -> {ok, Acc#collect_acc{rows=[Id|Rows]}}
