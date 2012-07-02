@@ -53,7 +53,7 @@ cas_remote_clusters(Old, NewUnsorted) ->
 
 build_remote_cluster_info(KV) ->
     Name = misc:expect_prop_value(name, KV),
-    URI = list_to_binary(menelaus_util:concat_url_path(["pools", "default", "remoteClusters", Name])),
+    URI = menelaus_util:bin_concat_path(["pools", "default", "remoteClusters", Name]),
     {struct, [{name, list_to_binary(Name)},
               {uri, URI},
               {validateURI, iolist_to_binary([URI, <<"?just_validate=1">>])},

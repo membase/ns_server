@@ -531,8 +531,8 @@ implementation_version() ->
 handle_pools(Req) ->
     Pools = [{struct,
               [{name, <<"default">>},
-               {uri, list_to_binary(concat_url_path(["pools", "default"]))},
-               {streamingUri, list_to_binary(concat_url_path(["poolsStreaming", "default"]))}]}],
+               {uri, bin_concat_path(["pools", "default"])},
+               {streamingUri, bin_concat_path(["poolsStreaming", "default"])}]}],
     EffectivePools =
         case is_system_provisioned() of
             true -> Pools;
