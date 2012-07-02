@@ -90,11 +90,11 @@ with_subdb(DbName, VBucket, Fun) ->
 
 update_doc(#db{filepath = undefined, name=Name},
            #doc{id = <<"_design/",_/binary>>} = Doc, _Options) ->
-    case valid_ddoc(Doc) of
+    case capi_ddoc_replication_srv:update_doc(Name, Doc) of
         ok ->
-            capi_ddoc_replication_srv:update_doc(Name, Doc);
-        {error, Reason} ->
-            throw({invalid_design_doc, Reason})
+            ok;
+        {invalid_design_doc, _Reason} = Error ->
+            throw(Error)
     end;
 
 update_doc(#db{name = <<"_replicator">>}, Doc, _Options) ->
@@ -120,17 +120,13 @@ update_docs(Db,
     ok = couch_db:update_doc(Db, Doc, Options);
 
 update_docs(#db{filepath = undefined, name = Name}, Docs, _Options) ->
-
     lists:foreach(fun(#doc{id = <<"_design/",_/binary>>} = Doc) ->
-                          case valid_ddoc(Doc) of
-                              ok -> ok;
-                              {error, Reason} ->
-                                  throw({invalid_design_doc, Reason})
+                          case capi_ddoc_replication_srv:update_doc(Name, Doc) of
+                              ok ->
+                                  ok;
+                              {invalid_design_doc, _Reason} = Error ->
+                                  throw(Error)
                           end
-                  end, Docs),
-
-    lists:foreach(fun(#doc{id = <<"_design/",_/binary>>} = Doc) ->
-                          ok = capi_ddoc_replication_srv:update_doc(Name, Doc)
                   end, Docs).
 
 update_docs(Db, Docs, Options, replicated_changes) ->
@@ -533,34 +529,3 @@ attempt(DbName, DocId, Mod, Fun, Args, fast_forward) ->
         {ok, R1} ->
             R1
     end.
-
-%% Do basic checking on design documents content to ensure it is a valid
-%% design document
--spec valid_ddoc(#doc{}) -> ok | {error, term()}.
-valid_ddoc(Doc) ->
-    case catch validate_ddoc(Doc) of
-        ok ->
-            ok;
-        Error ->
-            {error, Error}
-    end.
-
-validate_ddoc(Doc) ->
-
-    #doc{body={Fields}, content_meta=Meta} = couch_doc:with_ejson_body(Doc),
-
-    Meta == ?CONTENT_META_JSON
-        orelse throw(invalid_json),
-
-    is_json_object(couch_util:get_value(<<"options">>, Fields, {[]}))
-        orelse throw(invalid_options),
-
-    is_json_object(couch_util:get_value(<<"views">>, Fields, {[]}))
-        orelse throw(invalid_view),
-
-    ok.
-
-is_json_object({Obj}) when is_list(Obj) ->
-    true;
-is_json_object(_) ->
-    false.

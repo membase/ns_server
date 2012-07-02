@@ -82,11 +82,18 @@ handle_call({interactive_update, #doc{id=Id}=Doc}, _From, State) ->
     end,
     NewDoc = Doc#doc{rev=NewRev},
     {ok, Db} = Mod:open_local_db(ModState),
-    ok = couch_db:update_doc(Db, NewDoc),
-    ok = couch_db:close(Db),
-    replicate_change(State, NewDoc),
-    DocInfos2 = lists:keystore(Id, 1, DocInfos, {Id,NewRev}),
-    {reply, ok, State#state{local_doc_infos=DocInfos2}}.
+    try
+        ok = couch_db:update_doc(Db, NewDoc),
+        replicate_change(State, NewDoc),
+        DocInfos2 = lists:keystore(Id, 1, DocInfos, {Id,NewRev}),
+        {reply, ok, State#state{local_doc_infos=DocInfos2}}
+    catch
+        throw:{invalid_design_doc, _Reason} = Error ->
+            {reply, Error, State}
+    after
+        ok = couch_db:close(Db)
+    end.
+
 
 
 handle_cast({replicated_update, #doc{id=Id, rev=Rev}=Doc}, State) ->
