@@ -524,14 +524,12 @@ var ViewsSection = {
 
     function enableEditor(editor) {
       editor.setOption('readOnly', false);
-      editor.setOption('lineNumbers', true);
       editor.setOption('matchBrackets', true);
       $(editor.getWrapperElement()).removeClass('read_only');
     }
 
     function disableEditor(editor) {
       editor.setOption('readOnly', 'nocursor');
-      editor.setOption('lineNumbers', false);
       editor.setOption('matchBrackets', false);
       $(editor.getWrapperElement())
         .addClass('read_only')
