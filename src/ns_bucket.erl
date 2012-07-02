@@ -110,7 +110,7 @@ config_string(BucketName) ->
                       "tap_keepalive=~B;dbname=~s;"
                       "allow_data_loss_during_shutdown=true;"
                       "backend=couchdb;couch_bucket=~s;couch_port=~B;max_vbuckets=~B;"
-                      "alog_path=~s",
+                      "alog_path=~s;data_traffic_enabled=false",
                       [proplists:get_value(
                          ht_size, BucketConfig,
                          misc:getenv_int("MEMBASE_HT_SIZE", 3079)),
