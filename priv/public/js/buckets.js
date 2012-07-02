@@ -633,7 +633,7 @@ var BucketsSection = {
       _.each(bucketsListCell.value, function(bucketInfo) {
         var name = bucketInfo.name;
 
-        var healthStats = bucketInfo.healthStats;
+        var healthStats = _.clone(bucketInfo.healthStats);
 
         var total = _.inject(healthStats, function (a,b) {return a+b}, 0);
 
