@@ -167,6 +167,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 queue_fetch_loop(Source, Target, Parent, Cp, ChangesManager) ->
+    ?xdcr_debug("fetch changes from changes manager at ~p (target: ~p)",
+               [ChangesManager, Target]),
     ChangesManager ! {get_changes, self()},
     receive
         {closed, ChangesManager} ->

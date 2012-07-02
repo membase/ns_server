@@ -228,6 +228,14 @@ make_options(Props) ->
     {ok, DefSocketOptions} = couch_util:parse_term(
                                couch_config:get("replicator", "socket_options",
                                                 "[{keepalive, true}, {nodelay, false}]")),
+
+    ?xdcr_debug("Options for replication from couch_config:["
+               "worker processes: ~s, "
+               "worker batch size: ~s, "
+               "HTTP connections: ~s, "
+               "connection timeout: ~s]",
+               [DefWorkers, DefBatchSize, DefConns, DefTimeout]),
+
     lists:ukeymerge(1, Options, lists:keysort(1, [
                                                   {connection_timeout, list_to_integer(DefTimeout)},
                                                   {retries, list_to_integer(DefRetries)},

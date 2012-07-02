@@ -96,6 +96,8 @@ init(_) ->
 
     SchedulingInterval = misc:getenv_int("XDCR_SCHEDULING_INTERVAL",
                                          ?XDCR_SCHEDULING_INTERVAL),
+    ?xdcr_info("scheduling interval in sec of vb manager ~p",
+               [?XDCR_SCHEDULING_INTERVAL]),
     {ok, _Tref} = timer:send_interval(SchedulingInterval * 1000,
                                       manage_vbucket_replications),
 
@@ -122,7 +124,7 @@ maybe_create_replication_info_ddoc() ->
              _Error ->
                  {ok, XDb} = couch_db:create(<<"_replicator">>,
                                              [sys_db, {user_ctx, UserCtx}]),
-                 ?xdcr_info("replication doc created"),
+                 ?xdcr_info("replication doc created: ~n~p", [XDb]),
                  XDb
          end,
     try couch_db:open_doc(DB, <<"_design/_replicator_info">>, []) of
@@ -183,6 +185,7 @@ handle_info({buckets, Buckets0}, State) ->
 
 handle_info(manage_vbucket_replications, State) ->
     _NumMsgs = misc:flush(manage_vbucket_replications),
+    ?xdcr_info("starting vb replication manager"),
     manage_vbucket_replications(),
     {noreply, State};
 
@@ -315,6 +318,7 @@ start_xdc_replication(#rep{id = XRepId,
     SrcBucketLookup = ns_bucket:get_bucket(SrcBucket),
     TgtBucketLookup = xdc_rep_utils:remote_vbucketmap_nodelist(TgtBucket),
 
+    ?xdcr_info("starting xdc replication now..."),
     case {SrcBucketLookup, TgtBucketLookup} of
         {not_present, not_present} ->
             ?xdcr_error("~s: source and target buckets not found", [XDocId]),
@@ -330,6 +334,8 @@ start_xdc_replication(#rep{id = XRepId,
             {error, not_present};
         {{ok, SrcBucketConfig}, _} ->
             MyVbs = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
+            ?xdcr_info("~s: source and target bucket found, insert into XSTORE [~p, ~p]",
+                       [XDocId, XRep, MyVbs]),
             true = ets:insert(?XSTORE, {XDocId, XRep, MyVbs}),
             xdc_rep_manager_helper:create_xdc_rep_info_doc(
               XDocId, XRepId, MyVbs, RepDbName, XDocBody),
@@ -423,6 +429,7 @@ restart_vbucket_replication(XDocId, SrcBucket, TgtVbInfo, Vb, CRepPid) ->
 start_couch_replication(SrcCouchURI, TgtCouchURI, Vb, XDocId) ->
     %% Until scheduled XDC replication support is added, this function will
     %% trigger continuous replication by default at the Couch level.
+    ?xdcr_info("try to start couch replication for vbucket ~p", [Vb]),
     {ok, CRep} =
         xdc_rep_utils:parse_rep_doc(
           {[{<<"source">>, SrcCouchURI},
@@ -468,6 +475,8 @@ manage_vbucket_replications() ->
            Vbs]) ->
               MaxConcurrentReps = max_concurrent_reps(SrcBucket),
               NumActiveReps = length(active_replications_for_doc(XDocId)),
+              ?xdcr_info("current num of active reps ~p", [NumActiveReps]),
+
               case (MaxConcurrentReps - NumActiveReps) of
                   0 ->
                       ok;

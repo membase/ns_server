@@ -151,6 +151,11 @@ do_init(#rep{options = Options, id = {BaseId, Ext}} = Rep) ->
     %% a batch of _changes rows to process -> check which revs are missing in the
     %% target, and for the missing ones, it copies them from the source to the target.
     MaxConns = get_value(http_connections, Options),
+
+    ?xdcr_info("changes reader process (PID: ~p) and manager process (PID: ~p) "
+               "created, now starting worker processes...",
+               [ChangesReader, ChangesManager]),
+
     Workers = lists:map(
                 fun(_) ->
                         {ok, Pid} = xdc_replicator_worker:start_link(
