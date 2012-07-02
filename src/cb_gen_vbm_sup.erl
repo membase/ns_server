@@ -186,18 +186,24 @@ stop_replications(Policy, Bucket, SrcNode, DstNode, VBuckets0) ->
 
     Node = Policy:supervisor_node(SrcNode, DstNode),
 
-    Children =
-        lists:filter(
-          fun (Child) ->
-                  Vs = Policy:replicator_vbuckets(Child),
-                  {SrcNode, DstNode} =:= Policy:replicator_nodes(Node, Child)
-                      andalso (not ordsets:is_disjoint(VBuckets, Vs))
-          end, children(Policy, Bucket, Node)),
+    try
+        Children =
+            lists:filter(
+              fun (Child) ->
+                      Vs = Policy:replicator_vbuckets(Child),
+                      {SrcNode, DstNode} =:= Policy:replicator_nodes(Node, Child)
+                          andalso (not ordsets:is_disjoint(VBuckets, Vs))
+              end, children(Policy, Bucket, Node)),
 
-    lists:foreach(
-      fun (Child) ->
-              kill_child(Policy, Bucket, Node, Child)
-      end, Children).
+        lists:foreach(
+          fun (Child) ->
+                  kill_child(Policy, Bucket, Node, Child)
+          end, Children)
+    catch
+        %% old nodes do not have new supervisor
+        exit:{noproc, _} ->
+            ok
+    end.
 
 -spec replicas(module(), bucket_name(), [node()]) -> [Replica]
   when Replica :: {SrcNode::node(), DstNode::node(), vbucket_id()}.
