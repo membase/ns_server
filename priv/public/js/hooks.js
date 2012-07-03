@@ -844,6 +844,8 @@ var MockedRequest = mkClass({
       [post("pools", "default", "buckets", x), method('handleBucketsPost')],
       [post("pools", "default", "buckets", x, "controller", "doFlush"), method('doNothingPOST')],
       [del("pools", "default", "buckets", x), method('handleBucketRemoval')],
+      [get("pools", "default", "buckets", x, "localRandomKey"), {ok: true, key: "asd"}],
+
 
       [get("nodes", "self"), {
         "memoryQuota":"",
@@ -973,7 +975,6 @@ var MockedRequest = mkClass({
        function () {return ServerStateMock.handleReplicatorInfos(this);}],
       [get("couchBase", x, "_all_docs"), function () {return ServerStateMock.handleAllDocs(this);}],
       // [get("couchBase", x, "_design", x, "_view", x), function () {return ServerStateMock.handleAllDocs(this);}],
-      [get("couchBase", x, "_random"), {ok: true, id: "asd"}],
       [get("couchBase", x, "asd"), function () {return ServerStateMock.handleAnyDoc(this);}],
     ];
 
@@ -1187,6 +1188,7 @@ var ServerStateMock = {
       "proxyPort": 0,
       "uri": "/pools/default/buckets/default",
       "streamingUri": "/pools/default/bucketsStreaming/default",
+      "localRandomKeyUri": "/pools/default/buckets/default/localRandomKey",
       "flushCacheUri": "/pools/default/buckets/default/controller/doFlush",
       "nodes": [],
       "stats": {

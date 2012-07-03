@@ -201,19 +201,31 @@ var ViewsSection = {
     self.pageNumberCell = new StringHashFragmentCell("viewPage");
     self.fullSubsetPageNumberCell = new StringHashFragmentCell("fullSubsetViewPage");
 
-    self.viewsBucketCell = Cell.compute(function (v) {
+    self.viewsBucketInfoCell = Cell.compute(function (v) {
       var selected = v(self.rawViewsBucketCell);
       if (selected) {
         return selected;
       }
       var buckets = v.need(DAL.cells.bucketsListCell).byType.membase;
       var bucketInfo = _.detect(buckets, function (info) {return info.name === "default"}) || buckets[0];
+
+      return bucketInfo;
+    });
+    self.viewsBucketInfoCell.equality = function (a, b) {return a === b;};
+
+    self.viewsBucketCell = Cell.compute(function (v) {
+      var bucketInfo = v(self.viewsBucketInfoCell);
       if (!bucketInfo) {
         return null;
       }
       return bucketInfo.name;
     });
     self.viewsBucketCell.equality = function (a, b) {return a === b;};
+
+    self.randomKeyURLCell = Cell.compute(function (v) {
+      var bucketInfo = v.need(self.viewsBucketInfoCell);
+      return bucketInfo.localRandomKeyUri;
+    });
 
     (function () {
       var cell = Cell.compute(function (v) {
@@ -989,28 +1001,55 @@ var ViewsSection = {
     });
     $(jsonCodeEditor.getWrapperElement()).addClass('read_only');
 
-    function fetchRandomId(fun) {
+    function noSampleDocs() {
+      $('#sample_docs').hide();
+      $('#no_sample_docs').show();
+    }
+
+    function randomIdFromAllDocs(fun) {
       self.dbURLCell.getValue(function (dbURL) {
-        couchReq('GET', buildURL(dbURL, '_random'), null, function (data) {
-          // TODO: handle failed lookup of cookie in a more friendly way (especially on empty buckets)
-          $.cookie("randomKey", data.id);
-          fun(data.id);
-          $('#sample_docs').show();
-          $('#no_sample_docs').hide();
-        }, function() {
-          $('#sample_docs').hide();
-          $('#no_sample_docs').show();
+        var allDocsURL = buildURL(dbURL, "_all_docs", {
+          // precaution not to try to grab really huge number of docs because
+          // of some error
+          limit: 4096
         });
+
+        var onSuccess = function (data) {
+          var length = data.rows.length;
+
+          if (length != 0) {
+            var i = (Math.random() * data.rows.length) >> 0;
+            fun(data.rows[i].id);
+          } else {
+            noSampleDocs();
+          }
+        };
+
+        couchReq('GET', allDocsURL, null, onSuccess, noSampleDocs);
       });
     }
 
     function randomId(fun) {
-      var stored = $.cookie("randomKey");
-      if (stored) {
-        fun(stored);
-      } else {
-        fetchRandomId(fun);
-      }
+      self.randomKeyURLCell.getValue(function (randomKeyURL) {
+        var onSuccess = function (data) {
+          fun(data.key);
+          $('#sample_docs').show();
+          $('#no_sample_docs').hide();
+        };
+
+        var onError = function (response, status, unexpected) {
+          if (status == 404) {
+            if (response.error == "fallback_to_all_docs") {
+              randomIdFromAllDocs(fun);
+              return;
+            }
+          }
+
+          unexpected();
+        };
+
+        couchReq('GET', randomKeyURL, null, onSuccess, onError);
+      });
     }
 
     function showDoc(id, error) {

@@ -14,7 +14,6 @@ _cluster_tasks = {capi_tasks, cluster_tasks_req}
 
 [httpd_db_handlers]
 _all_docs = {capi_view, all_docs_db_req}
-_random = {capi_frontend, handle_random_req}
 
 [httpd_design_handlers]
 _view = {capi_view, handle_view_req}

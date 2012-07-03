@@ -21,6 +21,8 @@
 
 -include("menelaus_web.hrl").
 -include("ns_common.hrl").
+-include("couch_db.hrl").
+-include("ns_stats.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -41,7 +43,8 @@
          handle_compact_bucket/3,
          handle_compact_databases/3,
          handle_compact_view/4,
-         handle_ddocs_list/3]).
+         handle_ddocs_list/3,
+         handle_local_random_key/3]).
 
 -import(menelaus_util,
         [server_header/0,
@@ -142,6 +145,8 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
               {replicaIndex, proplists:get_value(replica_index, BucketConfig, true)},
               {uri, bin_concat_path(["pools", PoolId, "buckets", Id])},
               {streamingUri, bin_concat_path(["pools", PoolId, "bucketsStreaming", Id])},
+              {localRandomKeyUri, bin_concat_path(["pools", PoolId,
+                                                   "buckets", Id, "localRandomKey"])},
               {controllers, [{flush, bin_concat_path(["pools", PoolId,
                                                       "buckets", Id, "controller", "doFlush"])},
                              {compactAll, bin_concat_path(["pools", PoolId,
@@ -901,3 +906,56 @@ handle_ddocs_list(_PoolId, Bucket, Req) ->
                         {controllers, {struct, [{compact, bin_concat_path(["pools","default", "buckets", Bucket, "ddocs", Id, "controller", "compactView"])}]}}]}
           end || Doc <- DDocs],
     reply_json(Req, RV).
+
+
+-define(RANDOM_KEY_ATTEMPTS, 10).
+
+handle_local_random_key(_PoolId, Bucket, Req) ->
+    NodesVBuckets = vbucket_map_mirror:node_vbuckets_dict(Bucket),
+    OurVBuckets = dict:fetch(node(), NodesVBuckets),
+    NumVBuckets = length(OurVBuckets),
+
+    random:seed(erlang:now()),
+    MaybeKey = random_key(Bucket, OurVBuckets,
+                          NumVBuckets, ?RANDOM_KEY_ATTEMPTS),
+
+    case MaybeKey of
+        empty ->
+            reply_json(Req, {struct,
+                             [{ok, false},
+                              {error, <<"fallback_to_all_docs">>}]}, 404);
+        Key ->
+            reply_json(Req, {struct,
+                             [{ok, true},
+                              {key, Key}]})
+    end.
+
+random_key(_Bucket, _VBuckets, _NumVBuckets, 0) ->
+    empty;
+random_key(Bucket, VBuckets, NumVBuckets, Attempts) ->
+    case do_random_key(Bucket, VBuckets, NumVBuckets) of
+        empty ->
+            random_key(Bucket, VBuckets, NumVBuckets, Attempts - 1);
+        Key ->
+            Key
+    end.
+
+do_random_key(Bucket, VBuckets, NumVBuckets) ->
+    Ix = random:uniform(NumVBuckets),
+    VBucket = lists:nth(Ix, VBuckets),
+
+    try
+        capi_frontend:with_subdb(
+          Bucket, VBucket,
+          fun (Db) ->
+                  case couch_db:random_doc_info(Db) of
+                      {ok, #doc_info{id=Key}} ->
+                          Key;
+                      empty ->
+                          empty
+                  end
+          end)
+    catch
+        exit:{open_db_failed, {not_found, no_db_file}} ->
+            empty
+    end.

@@ -199,68 +199,6 @@ handle_changes(ChangesArgs, Req, #db{filepath = undefined} = Db) ->
 handle_changes(ChangesArgs, Req, Db) ->
     couch_changes:handle_changes(ChangesArgs, Req, Db).
 
-
-%% Return a random id from within the cluster, if the full set of data is
-%% large then run on first vbucket on local node, if data set is smaller
-%% then pick key from all document in the cluster
--spec handle_random_req(#httpd{}, #db{}) -> any().
-handle_random_req(Req, #db{filepath = undefined, name = Bucket} = Db) ->
-
-    {A1, A2, A3} = erlang:now(),
-    random:seed(A1, A2, A3),
-
-    %% TODO: I want this entire code be fixed soon
-    case capi_view:run_on_subset_according_to_stats(Bucket) of
-        {error, no_stats} ->
-            no_random_docs(Req);
-        true ->
-            VBucket = capi_frontend:first_vbucket(Bucket),
-            capi_frontend:with_subdb(Db, VBucket,
-                                     fun(RealDb) ->
-                                             handle_random_req(Req, RealDb)
-                                     end);
-
-        false ->
-            Params1 = capi_view:view_merge_params(Req, Db, nil, <<"_all_docs">>),
-            Params2 = setup_sender(Params1),
-
-            #collect_acc{rows=Rows} = couch_index_merger:query_index(
-                                        couch_view_merger, Params2, Req),
-
-            case length(Rows) of
-                0 ->
-                    no_random_docs(Req);
-                N ->
-                    couch_httpd:send_json(Req, 200, {[
-                                                      {ok, true},
-                                                      {<<"id">>, lists:nth(random:uniform(N), Rows)}
-                                                     ]})
-            end
-    end;
-
-handle_random_req(#httpd{method='GET'}=Req, Db) ->
-    {ok, Info} = couch_db:get_db_info(Db),
-    case couch_util:get_value(doc_count, Info) of
-        0 ->
-            no_random_docs(Req);
-        DocCount ->
-            Acc = {random:uniform(DocCount - 1), undefined},
-            case couch_db:enum_docs(Db, fun fold_docs/3, Acc, []) of
-                {ok, _, {error, not_found}} ->
-                    no_random_docs(Req);
-                {ok, _, Id} ->
-                    couch_httpd:send_json(Req, 200, {[
-                                                      {ok, true},
-                                                      {<<"id">>, Id}
-                                                     ]})
-            end
-    end;
-
-
-handle_random_req(Req, _Db) ->
-    couch_httpd:send_method_not_allowed(Req, "GET").
-
-
 start_view_compact(DbName, GroupId) ->
     exit(not_implemented(start_view_compact, [DbName, GroupId])).
 
