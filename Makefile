@@ -137,7 +137,7 @@ do-install:
 	cp priv/init.sql $(DESTDIR)$(PREFIX)/etc/couchbase/
 	cp ebucketmigrator $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
 	chmod +x $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
-	cp scripts/cbdumpconfig.escript $(DESTDIR)$(PREFIX)/bin/
+	cp scripts/cbdump-config $(DESTDIR)$(PREFIX)/bin/
 	mkdir -p $(DESTDIR)$(PREFIX)/etc/couchdb/default.d
 	sed -e 's|@COUCHBASE_DB_DIR@|$(COUCHBASE_DB_DIR)|g' <etc/capi.ini.in >$(DESTDIR)$(PREFIX)/etc/couchdb/default.d/capi.ini
 	cp etc/geocouch.ini.in $(DESTDIR)$(PREFIX)/etc/couchdb/default.d/geocouch.ini

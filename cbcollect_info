@@ -156,17 +156,17 @@ def basedir():
 def retrieve_config_value(config_key, node=None):
     if platform.system() == 'Windows':
         return retrieve_config_value_ex("escript.exe",
-                                        "cbdumpconfig.escript",
+                                        "cbdump-config",
                                         "../var/lib/couchbase/config/config.dat",
                                         config_key, node=node)
 
     places = [("escript",
                os.path.dirname(os.path.abspath(__file__)) +
-               "/cbdumpconfig.escript",
+               "/cbdump-config",
                os.path.dirname(os.path.abspath(__file__)) +
                "/../var/lib/couchbase/config/config.dat"),
               ("escript",
-               "cbdumpconfig.escript",
+               "cbdump-config",
                "~/Library/Application Support/Couchbase/var/lib/couchbase/config/config.dat")]
 
     for escript_cmd, script, config_file in places:
@@ -300,7 +300,7 @@ def make_tasks():
                 "type " + basedir() + "\\..\\manifest.xml", reformat=True),
     WindowsTask("Couchbase config",
                 basedir() + "\\erlang\\bin\\escript.exe " +
-                basedir() + "\\cbdumpconfig.escript " +
+                basedir() + "\\cbdump-config " +
                 basedir() + "\\..\\var\\lib\\couchbase\\config\\config.dat",
                 reformat=True),
     UnixTask("Filesystem", "df -ha"),
@@ -325,7 +325,7 @@ def make_tasks():
     LinuxTask("Manifest file", "cat /opt/couchbase/manifest.xml"),
     UnixTask("Kernel log buffer", "dmesg"),
     LinuxTask("couchbase config",
-        os.path.dirname(sys.argv[0]) + "/cbdumpconfig.escript /opt/couchbase/var/lib/couchbase/config/config.dat"),
+        os.path.dirname(sys.argv[0]) + "/cbdump-config /opt/couchbase/var/lib/couchbase/config/config.dat"),
     AllOsTask("couchbase logs (debug)", "cbbrowse_logs", log_file="ns_server.debug.log"),
     AllOsTask("couchbase logs (info)", "cbbrowse_logs info", log_file="ns_server.info.log"),
     AllOsTask("couchbase logs (error)", "cbbrowse_logs error", log_file="ns_server.error.log"),
