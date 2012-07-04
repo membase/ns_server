@@ -307,6 +307,10 @@ var DocumentsSection = {
       } else {
         showDocumetsListErrorState(false);
 
+        $.each(page.docs.rows, function (i) {
+          removeSpecialKeys(page.docs.rows[i].doc, true);
+        });
+
         renderTemplate('documents_list', {
           loading: false,
           rows: page.docs.rows,
@@ -408,11 +412,16 @@ var DocumentsSection = {
       return error.name + ': ' + error.message + ' ' + error.explanatoryMessage;
     }
 
-    function removeSpecialKeys(json) {
+    function removeSpecialKeys(json, underscore) {
       var i;
       for (i in json) {
         if (i.charAt(0) === '$') {
           delete json[i];
+        }
+        if (underscore) {
+          if (i.charAt(0) === '_') {
+            delete json[i];
+          }
         }
       }
     }

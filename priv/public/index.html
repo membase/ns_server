@@ -1470,39 +1470,44 @@
                   <a class="btn_1 btn_create"><span>Create Document</span></a>
                   <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
                 </div>
-                <div class="documents_notice"></div>
+                <div class="ellipsis documents_notice"></div>
               </div>
 
               <div id="documents_list_container">Documents</div>
               <script id="documents_list_template" type="text/html">
-              <table class="list align_text" style="width:100%">
-                <tr>
-                    <th class="keycol">ID</th>
-                    <th>Revision</th>
-                    <th></th>
-                </tr>
-              <!-- {% if (loading) { %} -->
-                 <div class='spinner' style="height:350px;line-height:350px;width:100%"><span>Loading...</span></div>
-              <!-- {% } else if (rows.length > 0) { %} -->
-                <!-- {% _.each(rows, function (r) { %} -->
-                <tbody>
-                <tr>
-                    <td class="keycol">
-                        <div class="key">
-                          <a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}">{%= h(JSON.stringify(r.key)).replace(/"/g, '') %}</a>
-                        </div>
-                    </td>
-                    <td>{%= $.futon.formatJSON(r.value, {html:true}) %}</td>
-                    <td><a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}" class="list_button btn_edit"><span>Edit Document</span></a></td>
-                </tr>
+                <table class="list" style="width:100%">
+                  <thead>
+                    <tr>
+                      <th class="keycol">ID</th>
+                      <th>Сontent</th>
+                      <th>&#160;</th>
+                      <th>&#160;</th>
+                      <th>&#160;</th>
+                      <th>&#160;</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  <!-- {% if (loading) { %} -->
+                      <tr>
+                        <td colspan="6" class='spinner'><span>Loading...</span></td>
+                      </tr>
+                  <!-- {% } else if (rows.length > 0) { %} -->
+                  <!-- {% _.each(rows, function (r) { %} -->
+                      <tr class="align_text">
+                          <td class="key ellipsis">
+                            <a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}">{%= h(JSON.stringify(r.key)).replace(/"/g, '') %}</a>
+                          </td>
+                          <td class="ellipsis" colspan="3">{%= $.futon.formatJSON(r.doc, {html:true}) %}</td>
+                          <td colspan="2"><a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}" class="list_button btn_edit"><span>Edit Document</span></a></td>
+                      </tr>
+                  <!-- {% }); %} -->
+                <!-- {% } else { %} -->
+                  <tr>
+                    <td colspan="6" class="empty_docs">There are currently no documents in this bucket.</td>
+                  </tr>
+                <!-- {% } %} -->
                 </tbody>
-                <!-- {% }); %} -->
-              <!-- {% } else { %} -->
-                <tbody>
-                <tr><td colspan="2" style="text-align:center">There are currently no documents in this bucket.</td></tr>
-                </tbody>
-              <!-- {% } %} -->
-              </table>
+                </table>
               </script>
             </div>
           </div>
