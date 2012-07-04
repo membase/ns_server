@@ -1238,4 +1238,6 @@ input[type=number].size {width:4em;}
 .documents_notice {font-size:12px;}
 .empty_docs {text-align:center;height:30px;}
 
+.items_per_list_wrap {float:right;margin:0 35px 0 10px;}
+
 .ellipsis {padding-right:10px;overflow:hidden;color:#999;white-space:nowrap;text-overflow:ellipsis;-o-text-overflow:ellipsis;}

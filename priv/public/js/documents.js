@@ -206,7 +206,7 @@ var DocumentsSection = {
     self.documentsPageNumberCell = new StringHashFragmentCell("documentsPageNumber");
     self.documentIdCell = new StringHashFragmentCell("docId");
     self.lookupIdCell = new StringHashFragmentCell("lookupId");
-    self.pageLimitCell = new Cell();
+    self.pageLimitCell = new StringHashFragmentCell("documentsPageLimit");
 
     var documents = $('#documents');
     var allDocsCont = $('#documents_list', documents);
@@ -261,6 +261,10 @@ var DocumentsSection = {
     var docsInfoCont = $('.docs_info', documents);
     var docsTotalItemCont = $('.docs_total_item', documents);
     var docsCrntPgCont = $('.docs_crnt_pg', documents);
+    var itemsPerListWrap = $('.items_per_list_wrap', documents);
+    var itemsPerList = $('select', itemsPerListWrap);
+
+    itemsPerList.selectBox();
 
     self.jsonCodeEditor = CodeMirror.fromTextArea($("#json_doc")[0], {
       lineNumbers: true,
@@ -343,6 +347,7 @@ var DocumentsSection = {
     function showDocumentState(show) {
       showPrevNextCont(!show);
       showDocsInfoCont(!show);
+      showItemsPerPage(!show);
       allDocsCont[show ? 'hide' : 'show']();
       currenDocCont[show ? 'show' : 'hide']();
       showCodeEditor(!show);
@@ -372,6 +377,10 @@ var DocumentsSection = {
 
     function showPrevNextCont(show) {
       prevNextCont[show ? 'show' : 'hide']();
+    }
+
+    function showItemsPerPage(show) {
+      itemsPerListWrap[show ? 'show' : 'hide']();
     }
 
     function showDocsInfoCont(show) {
@@ -476,6 +485,10 @@ var DocumentsSection = {
       showDocumentState(!!docId);
     });
 
+    self.pageLimitCell.getValue(function (value) {
+      itemsPerList.selectBox('value', value);
+    });
+
     self.currentDocCell.subscribeValue(function (doc) {
       if (!doc) {
         return;
@@ -501,8 +514,13 @@ var DocumentsSection = {
     breadCrumpDoc.click(function (e) {
       e.preventDefault();
       self.documentIdCell.setValue(undefined);
-      self.lookupIdCell.setValue(undefined)
+      self.lookupIdCell.setValue(undefined);
       self.filter.rawFilterParamsCell.setValue(undefined);
+    });
+
+    itemsPerList.change(function (e) {
+      self.pageLimitCell.setValue(Number($(this).val()));
+      self.documentsPageNumberCell.setValue(0);
     });
 
     docsBucketsSelect.bindListCell(self.populateBucketsDropboxCell, {
