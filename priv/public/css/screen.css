@@ -1142,14 +1142,13 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 .visib {display:block}
 
 /*select*/
-.selectBox-dropdown {display:inline-block;position:relative;height:31px;outline:medium none;cursor: default;vertical-align:middle;color:#222;font-size:60%;line-height:1.5;text-decoration: none;background:#EEEEEF;border: 1px solid #AAAAAA;border-bottom-left-radius: 4px;border-top-left-radius: 4px;padding-right:20px}
+.selectBox-dropdown {font-size:10px;height:2.1em;display:inline-block;position:relative;outline:medium none;cursor: default;vertical-align:middle;color:#222;line-height:1.2;text-decoration: none;background:#EEEEEF;border: 0.1em solid #AAAAAA;border-bottom-left-radius: 0.4em;border-top-left-radius: 0.4em;padding-right:2em}
 .selectBox-dropdown:hover {text-decoration:none}
-.selectBox-dropdown .selectBox-arrow{font-size: 1.24em !important;position: absolute;right: -2.4em;top: -3px;}
-.firefox .selectBox-dropdown .selectBox-arrow{top:-1px;font-size: 1.24em !important;}
+.selectBox-dropdown .selectBox-arrow{position: absolute;right: -2.4em;margin:-0.1em 0 0 0;}
 .selectBox-dropdown:focus, .selectBox-dropdown:focus .selectBox-arrow {border-color: #666666;}
-.selectBox-dropdown .selectBox-label {display:inline-block;overflow:hidden;padding: 7px 0 0 8px;color:#222222;font-size:14px;white-space:nowrap;}
-.selectBox-dropdown-menu {position: absolute;overflow: auto;z-index: 999;max-height: 200px;background:#eeeeef;border: 1px solid #aaa;}
-.selectBox-inline {display: inline-block;overflow: auto;outline: medium none;border: 1px solid #BBBBBB;}
+.selectBox-dropdown .selectBox-label {display:inline-block;overflow:hidden;padding: 0.48em 0 0.4em 0.45em;color:#222222;white-space:nowrap;}
+.selectBox-dropdown-menu {position: absolute;overflow: auto;z-index: 999;max-height: 200px;background:#eeeeef;border: 0.1em solid #aaa;}
+.selectBox-inline {display: inline-block;overflow: auto;outline: medium none;border: 0.1em solid #BBBBBB;}
 .selectBox-inline:focus {border-color: #666666;}
 .selectBox-options, .selectBox-options LI, .selectBox-options LI A {display:block;cursor:default;margin:0;padding:0;list-style: none outside none;}
 .selectBox-options LI A {overflow: hidden;padding: 0.2em 0.4em;line-height: 1.5;white-space: nowrap;font-size: 1.1em;border: 1px solid #eeeeef;border-left:none;border-right:none;background:#f7f7f7}
@@ -1162,6 +1161,10 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 .selectBox.selectBox-disabled {color: #888888 !important;}
 .selectBox-dropdown.selectBox-disabled .selectBox-arrow {border-color: #666666;opacity: 0.5;}
 .selectBox-inline.selectBox-disabled {color: #cfcdcd !important;}
+
+.ui-autocomplete-input,
+.ui-button-icon-only,
+.selectBox-dropdown {font-size:15px!important;}
 /*select*/
 .f_wrap .selectBox-dropdown {width:130px}
 .f_wrap .selectBox-dropdown-menu {width:100px}
@@ -1202,9 +1205,7 @@ input[type=number].size {width:4em;}
 
 .filter_container .selectBox-dropdown {width:130px}
 .filter_container .selectBox-dropdown-menu {width:100px}
-.filter_container .selectBox-dropdown .selectBox-arrow{font-size: 2.1em !important;}
 
-.filter_container {font-size:12px;}
 .filter_container h2 {font-weight:normal;font-size:20px;margin-left:18px;}
 .filter_container > *,
 .filter_container .wrap > *,
