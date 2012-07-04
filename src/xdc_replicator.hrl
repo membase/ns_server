@@ -40,6 +40,10 @@
 -define(XSTORE, xdc_rep_info_store).
 -define(X2CSTORE, xdc_docid_to_couch_rep_pid_store).
 -define(CSTORE, couch_rep_info_store).
+-define(XSTATS, xdc_rep_stats_store).
+
+%% Max number of replicaiton Pids to store in stat table
+-define(XSTATS_MAX_NUM_REP_PIDS, 1024).
 
 %% TODO: maybe make both buffer max sizes configurable
 -define(DOC_BUFFER_BYTE_SIZE, 512 * 1024).   %% for remote targets
@@ -58,7 +62,9 @@
           target,
           options,
           user_ctx,
-          doc_id
+          doc_id,
+          vb_id,
+          stat_table
          }).
 
 -record(rep_stats, {

@@ -20,7 +20,7 @@
 %% public functions
 -export([cancel_replication/1]).
 -export([async_replicate/1]).
--export([update_task/1]).
+-export([update_task/1, dump_stats/1]).
 
 %% gen_server callbacks
 -export([init/1, terminate/2, code_change/3]).
@@ -28,6 +28,8 @@
 -export([start_db_compaction_notifier/2, stop_db_compaction_notifier/1]).
 
 -include("xdc_replicator.hrl").
+
+-define(GET_STATS_TABLE(State), ((State#rep_state.rep_details)#rep.stat_table)).
 
 %% public functions
 cancel_replication({BaseId, Extension}) ->
@@ -138,6 +140,7 @@ do_init(#rep{options = Options, id = {BaseId, Ext}} = Rep) ->
 
     NumWorkers = get_value(worker_processes, Options),
     BatchSize = get_value(worker_batch_size, Options),
+
     {ok, ChangesQueue} = couch_work_queue:new([
                                                {max_items, BatchSize * NumWorkers * 2},
                                                {max_size, 100 * 1024 * NumWorkers}
@@ -317,6 +320,9 @@ handle_call({report_seq_done, Seq, StatsInc}, From,
                  source_seq = SourceCurSeq
                 },
     update_task(NewState),
+
+    %% update XDC stat table
+    ok = update_stat_table(NewState, StatsInc),
     {noreply, NewState}.
 
 
@@ -662,3 +668,37 @@ update_task(State) ->
                               end
                              ]).
 
+dump_stats(#rep_stats{} = Stat) ->
+    ?xdcr_info("number of missing docs checked: ~p",
+               [Stat#rep_stats.missing_checked]),
+    ?xdcr_info("number of missing docs found: ~p",
+               [Stat#rep_stats.missing_found]),
+    ?xdcr_info("number of docs read: ~p",
+               [Stat#rep_stats.docs_read]),
+    ?xdcr_info("number of docs written: ~p",
+               [Stat#rep_stats.docs_written]),
+    ?xdcr_info("number of docs failed to write: ~p",
+               [Stat#rep_stats.doc_write_failures]),
+    ok.
+
+update_stat_table(State, StatsInc) ->
+    %% get StatTable from replication state
+    StatTable = ?GET_STATS_TABLE(State),
+
+    XDocId = (State#rep_state.rep_details)#rep.doc_id,
+    Vb = (State#rep_state.rep_details)#rep.vb_id,
+    Key = {XDocId, Vb},
+
+    CRepPids = ets:lookup_element(StatTable, Key, 2),
+    ?xdcr_debug("list of processes working for this vb replication: ~p",
+                [CRepPids]),
+
+    Stats = ets:lookup_element(StatTable, Key, 3),
+    NewStats = xdc_rep_utils:sum_stats(Stats, StatsInc),
+    %% atomic update of XSTATS table
+    true = ets:update_element(StatTable, Key, {3, NewStats}),
+
+    ?xdcr_debug("Dump stats (XDoc id (~p), vbucket id (~p) and process id (~p))",
+                [XDocId, Vb, self()]),
+    dump_stats(NewStats),
+    ok.

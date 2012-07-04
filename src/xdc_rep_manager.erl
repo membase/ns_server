@@ -65,6 +65,11 @@
 %%         State: Couch replication state (triggered/completed/error)
 %%         Wait: The amount of time to wait before retrying replication
 %%
+%% XSTATS: An ETS set of {{XDocId, Vb}, CRepPids, Stat} recording XDCR stats, which
+%%         will be exposed to UI.
+%%         {XDocId, Vb}: key of table
+%%         CRepPids: list of replication processes replicating items for this vb
+%%         Stats: XDC replication stats
 
 -module(xdc_rep_manager).
 -behaviour(gen_server).
@@ -84,6 +89,12 @@ init(_) ->
     ?XSTORE = ets:new(?XSTORE, [named_table, set, protected]),
     ?X2CSTORE = ets:new(?X2CSTORE, [named_table, bag, protected]),
     ?CSTORE = ets:new(?CSTORE, [named_table, set, protected]),
+
+    %% stat table is public to all processes and optimized for concurrent
+    %% read and write operations
+    ?XSTATS = ets:new(?XSTATS, [named_table, ordered_set, public,
+                                {read_concurrency, true},
+                                {write_concurrency, true}]),
 
     %% Subscribe to bucket map changes due to rebalance and failover operations
     %% at the source
@@ -186,6 +197,7 @@ handle_info({buckets, Buckets0}, State) ->
 handle_info(manage_vbucket_replications, State) ->
     _NumMsgs = misc:flush(manage_vbucket_replications),
     manage_vbucket_replications(),
+    dump_xdcr_stats(),
     {noreply, State};
 
 
@@ -246,7 +258,9 @@ terminate(_Reason, _State) ->
     cancel_all_xdc_replications(),
     true = ets:delete(?CSTORE),
     true = ets:delete(?X2CSTORE),
-    true = ets:delete(?XSTORE).
+    true = ets:delete(?XSTORE),
+    true = ets:delete(?XSTATS),
+    ?xdcr_debug("all XDCR manager internal tables deleted").
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
@@ -429,12 +443,18 @@ start_couch_replication(SrcCouchURI, TgtCouchURI, Vb, XDocId) ->
     %% Until scheduled XDC replication support is added, this function will
     %% trigger continuous replication by default at the Couch level.
     ?xdcr_info("try to start couch replication for vbucket ~p", [Vb]),
-    {ok, CRep} =
+    {ok, CRep0} =
         xdc_rep_utils:parse_rep_doc(
           {[{<<"source">>, SrcCouchURI},
             {<<"target">>, TgtCouchURI}
            ]},
           #user_ctx{roles = [<<"_admin">>]}),
+
+    CRep = CRep0#rep{
+      doc_id = XDocId,
+      vb_id = Vb,
+      stat_table = ?XSTATS
+     },
 
     case xdc_replicator:async_replicate(CRep) of
         {ok, CRepPid} ->
@@ -442,6 +462,20 @@ start_couch_replication(SrcCouchURI, TgtCouchURI, Vb, XDocId) ->
             CRepState = triggered,
             true = ets:insert(?CSTORE, {CRepPid, CRep, Vb, CRepState}),
             true = ets:insert(?X2CSTORE, {XDocId, CRepPid}),
+            %% update stat table
+            case ets:member(?XSTATS, {XDocId, Vb}) of
+                false ->
+                    VbRepStat = #rep_stats{},
+                    ?xdcr_debug("insert to stat table: [{~p, ~p}, [~p], ~p]",
+                               [XDocId, Vb, CRepPid, VbRepStat]),
+                    true = ets:insert(?XSTATS, {{XDocId, Vb}, [CRepPid], VbRepStat});
+                true ->
+                    ?xdcr_debug("replication exists in stat table, add new RepPid ~p", [CRepPid]),
+                    CRepPids = ets:lookup_element(?XSTATS, {XDocId, Vb}, 2),
+                    NewCRepPids = update_rep_pid_list(CRepPid, CRepPids),
+                    true = ets:update_element(?XSTATS, {XDocId, Vb}, {2, NewCRepPids})
+            end,
+            %% update replication document
             xdc_rep_manager_helper:update_rep_doc(
               xdc_rep_utils:info_doc_id(XDocId),
               [{?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<"triggered">>}]),
@@ -546,3 +580,54 @@ max_concurrent_reps(Bucket) ->
             MaxConcurrentReps
     end.
 
+%% Dump node-wide XDCR stats for all buckets
+dump_xdcr_stats() ->
+    ?xdcr_info("------ start of dumping XDCR stats ------"),
+    case ets:first(?XSTORE) of
+        '$end_of_table' ->
+            ?xdcr_info("no XDC replication in progress"),
+            ok;
+        _ ->
+            XDocIds = lists:flatten(ets:match(?XSTORE, {'$1', '_', '_'})),
+            lists:foreach(
+              fun(XDocId) ->
+                      ok = dump_xdcr_bucket_stats(XDocId)
+              end,
+              XDocIds)
+    end,
+    ok.
+
+%% Dump stats for single bucket XDCR identified by rep doc id
+dump_xdcr_bucket_stats(XDocId) ->
+    %% get all stats for this replication
+    ?xdcr_info("XDocId of bucket replication: ~p", [XDocId]),
+    VbStatList = ets:match(?XSTATS, {{XDocId, '$1'}, '_', '$2'}),
+    lists:foreach(
+      fun([Vb, Stat]) ->
+              ?xdcr_info("stats for vbucket: ~p", [Vb]),
+              xdc_replicator:dump_stats(Stat)
+      end,
+      VbStatList),
+
+    AggStat = lists:foldl(fun xdc_rep_utils:sum_stats/2,
+                          #rep_stats{},
+                          lists:flatten(ets:match(?XSTATS, {{XDocId, '_'}, '_', '$1'}))),
+
+    ?xdcr_info("------ Start dumping aggregated statistics -------"),
+    xdc_replicator:dump_stats(AggStat),
+    ?xdcr_info("------ Finish dumping aggregated statistics -------"),
+    ok.
+
+%% Update replication process id list
+update_rep_pid_list(CRepPid, CRepPidList) ->
+    %% if too many replication Pids to store, expire the oldest
+    NewCRepPidList = case (length(CRepPidList) > ?XSTATS_MAX_NUM_REP_PIDS) of
+                         true ->
+                             [ _ | Tail] = CRepPidList,
+                             lists:append(Tail, [CRepPid]);
+                         _ ->
+                             lists:append(CRepPidList, [CRepPid])
+                     end,
+    ?xdcr_debug("add replicator pid (~p) into the list, the new list is: ~p",
+                [CRepPid, NewCRepPidList]),
+    NewCRepPidList.
