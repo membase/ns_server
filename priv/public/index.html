@@ -1504,7 +1504,7 @@
                   <!-- {% _.each(rows, function (r) { %} -->
                       <tr class="align_text">
                           <td class="key ellipsis">
-                            <a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}">{%= h(JSON.stringify(r.key)).replace(/"/g, '') %}</a>
+                            <a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}">{%= h(r.key) %}</a>
                           </td>
                           <td class="ellipsis" colspan="3">{%= $.futon.formatJSON(r.doc, {html:true}) %}</td>
                           <td colspan="2"><a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}" class="list_button btn_edit"><span>Edit Document</span></a></td>
