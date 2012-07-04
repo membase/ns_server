@@ -273,7 +273,13 @@ var DocumentsSection = {
       mode: { name: "javascript", json: true },
       theme: 'default',
       readOnly: 'nocursor',
-      onKeyEvent: function (doc) {
+      onChange: function (doc) {
+        enableSaveBtn(false);
+        var history = doc.historySize();
+        if (history.redo == 0 && history.undo == 0) {
+          return;
+        }
+        enableSaveBtn(true);
         onDocValueUpdate(doc.getValue());
       }
     });
@@ -361,8 +367,11 @@ var DocumentsSection = {
       }
     }
 
-    function enableSaveBtns(enable) {
+    function enableSaveBtn(enable) {
       docSaveBtn[enable ? 'removeClass' : 'addClass']('disabled');
+    }
+
+    function enableSaveAsBtn(enable) {
       docSaveAsBtn[enable ? 'removeClass' : 'addClass']('disabled');
     }
 
@@ -392,23 +401,26 @@ var DocumentsSection = {
 
       if (!isError) {
         removeSpecialKeys(obj);
+      } else {
+        enableSaveBtn(false);
       }
 
       editingNotice.text(isError && obj ? buildErrorMessage(obj) : '');
       jsonDocId.text(isError ? '' : obj._id);
       self.jsonCodeEditor.setValue(isError ? '' : JSON.stringify(obj, null, "  "));
       enableDeleteBtn(!isError);
-      enableSaveBtns(!isError);
+      enableSaveAsBtn(!isError);
       showCodeEditor(!isError);
     }
 
     function onDocValueUpdate(json) {
-      enableSaveBtns(true);
+      enableSaveAsBtn(true);
       editingNotice.text('');
       try {
         var parsedJSON = JSON.parse(json);
       } catch (error) {
-        enableSaveBtns(false);
+        enableSaveBtn(false);
+        enableSaveAsBtn(false);
         enableDeleteBtn(true);
         error.explanatoryMessage = documentErrors.invalidJson;
         editingNotice.text(buildErrorMessage(error));
@@ -676,7 +688,8 @@ var DocumentsSection = {
         var json = onDocValueUpdate(self.jsonCodeEditor.getValue());
         if (json) {
           startSpinner(codeMirror);
-          enableSaveBtns(false);
+          enableSaveBtn(false);
+          enableSaveAsBtn(false);
           enableDeleteBtn(false);
           couchReq('PUT', currentDocUrl, json, function () {
             couchReq("GET", currentDocUrl, undefined, function (doc) {
@@ -684,7 +697,7 @@ var DocumentsSection = {
               self.jsonCodeEditor.setValue(JSON.stringify(doc, null, "  "));
               stopSpinner();
               enableDeleteBtn(true);
-              enableSaveBtns(true);
+              enableSaveAsBtn(true);
             });
           }, function (error, num, unexpected) {
             if (error.reason) {
