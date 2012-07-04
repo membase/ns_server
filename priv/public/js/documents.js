@@ -451,6 +451,7 @@ var DocumentsSection = {
       var page = {};
       var prevPage;
       var nextPage;
+      var afterPageLoad;
 
       Cell.subscribeMultipleValues(function (docs, currentPage, selectedBucket, pageLimit, filterParamsCell) {
         if (typeof currentPage === 'number') {
@@ -465,6 +466,9 @@ var DocumentsSection = {
           page.docs = docs;
           page.bucketName = selectedBucket;
           showDocumentListState(page);
+          if (afterPageLoad) {
+            afterPageLoad();
+          }
         } else {
           renderTemplate('documents_list', {loading: true});
           if (!!filterParamsCell.startkey || !!filterParamsCell.endkey) {
@@ -477,15 +481,22 @@ var DocumentsSection = {
         self.currentPageLimitCell, self.filter.filterParamsCell
       );
 
+      function prevNextCallback() {
+        $('html, body').animate({scrollTop:0}, 250);
+        afterPageLoad = undefined;
+      }
+
       nextBtn.click(function (e) {
         if (!page.isLookupList && isLastPage(page)) {
           return;
         }
         self.documentsPageNumberCell.setValue(nextPage);
+        afterPageLoad = prevNextCallback;
       });
 
       prevBtn.click(function (e) {
         self.documentsPageNumberCell.setValue(prevPage);
+        afterPageLoad = prevNextCallback;
       });
     })();
 

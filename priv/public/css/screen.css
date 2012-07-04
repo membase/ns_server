@@ -1101,6 +1101,7 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 #views .results_block h1{margin-bottom:5px;padding-top:10px;}
 /*prev next arr*/
 .ic_prev_next {float:right;width:47px;height:25px;margin:5px 0 0}
+.ic_prev_next.bottom {margin:10px;}
 .ic_prev_next a {float:left;width:21px;height:21px;background:url(../images/ic_prev_next_arr.png) no-repeat}
 .ic_prev_next .arr_next {background-position:-4px -1px}
 .ic_prev_next .arr_next:hover {background-position:-4px -27px}
