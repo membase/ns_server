@@ -128,6 +128,8 @@
                         (gen-server 'ns_bucket_worker
                                     "'work' of starting and shutting down ns_bucket_sup childs is done by this
                                     guy. I.e. because supervisor:xxx API is synchronous")
+                        (supervisor 'xdc_rep_sup :mode :one_for_one
+                                    "owns individual replications apparently")
                         ;; (copied this from ns_server_sup.erl)
                         ;; per-bucket supervisor needs xdc_rep_manager. In fact any couch
                         ;; replication requires xdc_rep_manager to be started, because it
@@ -144,7 +146,7 @@
                                             (supervisor 'single_bucket_sup :mode :rest_for_one
                                                         ;; note: 1.8.1 doesn't have ns_memcached_sup but instead
                                                         ;; everything below is direct child of single_bucket_sup
-                                                        (supervisor '(ns_memcached_sup "default")
+                                                        (supervisor '(ns_memcached_sup "default") :mode :rest_for_one
                                                                     (gen-server '(ns_memcached "default") :name 'ns_memcached-default
                                                                                 "our communication channel with
                                                                                  bucket. Creates bucket on
