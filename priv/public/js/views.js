@@ -14,13 +14,6 @@
    limitations under the License.
  **/
 
- var documentErrorDef = {
-  '502': 'The node containing that document is currently down',
-  '503': 'The data has not yet loaded, please wait...',
-  '404': 'A document with that ID does not exist',
-  'unknown': 'There was an unexpected error'
-};
-
 // Builds URL for getting/updating given document via CouchDB API
 // NOTE: couch does redirect when doing _design%2FXX access, so we
 // need special method, instead of using generic buildURL
@@ -207,25 +200,6 @@ var ViewsSection = {
     self.rawSpatialNameCell = new StringHashFragmentCell("viewsSpatialName");
     self.pageNumberCell = new StringHashFragmentCell("viewPage");
     self.fullSubsetPageNumberCell = new StringHashFragmentCell("fullSubsetViewPage");
-
-    Cell.subscribeMultipleValues(function (sec, tabsVal, spatialVal, viewsVal) {
-      if (sec !== 'views') {
-        return;
-      }
-      if (!tabsVal) {
-        return;
-      }
-
-      if (!spatialVal) {
-        var filterParams = "bbox=-180,-90,180,90";
-        filterParams += tabsVal === 'production' ? "&stale=update_after&connection_timeout=60000" : "&connection_timeout=60000";
-        SpatialFilter.rawFilterParamsCell.setValue(filterParams);
-      }
-
-      if (!viewsVal) {
-        ViewsFilter.rawFilterParamsCell.setValue(tabsVal === 'production' ? "stale=update_after&connection_timeout=60000" : "connection_timeout=60000");
-      }
-    }, DAL.cells.mode, self.modeTabs, SpatialFilter.rawFilterParamsCell, ViewsFilter.rawFilterParamsCell);
 
     self.viewsBucketInfoCell = Cell.compute(function (v) {
       var selected = v(self.rawViewsBucketCell);
@@ -684,14 +658,13 @@ var ViewsSection = {
           return;
         }
         (function (builder, intPage, subset) {
+          var html="";
           if (builder) {
             var url = builder(intPage, subset);
             var text = url.substring(url.indexOf('?'));
-            ViewsFilter.filtersUrl.attr('href', escapeHTML(url));
-            ViewsFilter.filtersUrl.text(decodeURIComponent(text));
-            SpatialFilter.filtersUrl.attr('href', escapeHTML(url));
-            SpatialFilter.filtersUrl.text(decodeURIComponent(text));
+            html = "<a href='" + escapeHTML(url) + "'>" + escapeHTML(decodeURIComponent(text)) + '</a>';
           }
+          $('.view_query_string').html(html);
         }).apply(this, args);
       });
 
@@ -1903,6 +1876,7 @@ var ViewsSection = {
       self.rawDDocIdCell.setValue(ddocId);
       self.rawViewNameCell.setValue(viewName);
       self.rawSpatialNameCell.setValue(undefined);
+      ViewsFilter.initFilterFor(buildDocURL(dbURL, ddocId, "_view", viewName));
     });
   },
   doShowView: function (bucketName, ddocId, type, viewName) {
@@ -1972,6 +1946,7 @@ var ViewsSection = {
       self.rawDDocIdCell.setValue(ddocId);
       self.rawViewNameCell.setValue(undefined);
       self.rawSpatialNameCell.setValue(spatialName);
+      SpatialFilter.initFilterFor(buildDocURL(dbURL, ddocId, "_spatial", spatialName));
     });
   },
   doShowSpatial: function (bucketName, ddocId, type, spatialName) {
@@ -2009,38 +1984,392 @@ configureActionHashParam("showSpatial", $m(ViewsSection, "showSpatial"));
 configureActionHashParam("removeSpatial", $m(ViewsSection, "startRemoveSpatial"));
 configureActionHashParam("addSpatial", $m(ViewsSection, "startCreateSpatial"));
 
-var ViewsFilter = Filter({
-  prefix: 'views',
-  hashName: 'viewsFilter',
-  container: $('#view_filter_container'),
-  onClose: function () {
-    ViewsSection.pageNumberCell.setValue(undefined);
-    ViewsSection.fullSubsetPageNumberCell.setValue(undefined);
-  }
-}, {
-  prefix: 'views',
-  items: {
-    all: true,
-    conflict: false,
-  }
-});
+var ViewsFilter = {
+  rawFilterParamsCell: (function () {
+    var klass = mkClass(StringHashFragmentCell, {
+      // NOTE: watchHashParamChange is silently converting empty
+      // string to undefined we cannot easily fix this as some code
+      // might rely on that. Thus we have to request hash parameter
+      // and set 'pure' value
+      interpretHashFragment: function () {
+        this.setValue(getHashFragmentParam(this.paramName));
+      }
+    });
+    return new klass("viewsFilter");
+  })(),
+  reset: function () {
+    if (this.currentViewURL) {
+      this.saveFilterIntoHistory();
+      this.currentViewURL = null;
+    }
+    this.rawFilterParamsCell.setValue(undefined);
+  },
+  init: function () {
+    var self = this;
 
-var SpatialFilter = Filter({
-  prefix: 'spatial',
-  hashName: 'spatialFilter',
-  container: $('#spatial_filter_container'),
-  onClose: function () {
-    ViewsSection.pageNumberCell.setValue(undefined);
-    ViewsSection.fullSubsetPageNumberCell.setValue(undefined);
+    self.filterParamsCell = Cell.computeEager(function (v) {
+      var filterParams = v(self.rawFilterParamsCell);
+      if (filterParams == null) {
+        if (v.need(ViewsSection.modeTabs) === 'production') {
+          filterParams = "stale=update_after&connection_timeout=60000";
+        } else {
+          filterParams = "connection_timeout=60000";
+        }
+      }
+      filterParams = decodeURIComponent(filterParams);
+      return $.deparam(filterParams);
+    });
+
+    self.filter = $('#view_results_block .f_popup');
+
+    var selectInstance = self.selectInstance = $('#view_filters');
+    selectInstance.selectBox();
+    $('#view_filter_stale').selectBox();
+
+    $("#view_results_block .exp_filter").toggle(_.bind(self.openFilter, self),
+                                                _.bind(self.closeFilter, self));
+
+    $("#view_filter_add").bind('click', function (e) {
+      var value = selectInstance.selectBox("value");
+      if (!value) {
+        return;
+      }
+      var input = self.filter.find('[name=' + value + ']');
+      if (input.attr('type') === 'checkbox') {
+        input.prop('checked', false);
+      } else if (value === 'keys') {
+        input.val('[""]');
+      } else {
+        input.val("");
+      }
+      input.closest('tr').show();
+      selectInstance.selectBox("destroy");
+      // jquery is broken. this is workaround, because $%#$%
+      selectInstance.removeData('selectBoxControl').removeData('selectBoxSettings');
+      selectInstance.find("option[value="+value+"]").prop("disabled", true);
+      selectInstance.selectBox();
+    });
+
+    self.filter.delegate('.btn_x', 'click', function () {
+      var row = $(this).closest('tr');
+      var name = row.find('[name]').attr('name')
+      row.hide();
+      selectInstance.selectBox("destroy");
+      // jquery is broken. this is workaround, because $%#$%
+      selectInstance.removeData('selectBoxControl').removeData('selectBoxSettings');
+      selectInstance.find("option[value="+name+"]").prop("disabled", false);
+      selectInstance.selectBox();
+    });
+  },
+  openFilter: function () {
+    var self = this;
+    self.filterParamsCell.getValue(function (params) {
+      self.filter.closest('.f_wrap').find('.exp_filter').addClass("selected");
+      self.filter.addClass("visib");
+      self.fillInputs(params);
+    });
+  },
+  closeFilter: function () {
+    if (!this.filter.hasClass('visib')) {
+      return;
+    }
+    this.inputs2filterParams();
+    this.filter.closest('.f_wrap').find('.exp_filter').removeClass("selected");
+    this.filter.removeClass("visib");
+  },
+  inputs2filterParams: function () {
+    var params = this.parseInputs();
+    var packedParams = encodeURIComponent($.param(params));
+    var oldFilterParams = this.rawFilterParamsCell.value;
+    if (oldFilterParams !== packedParams) {
+      this.rawFilterParamsCell.setValue(packedParams);
+      ViewsSection.pageNumberCell.setValue(undefined);
+      ViewsSection.fullSubsetPageNumberCell.setValue(undefined);
+      this.saveFilterIntoHistory();
+    }
+  },
+  iterateInputs: function (body) {
+    this.filter.find('.key input, .key select').each(function () {
+      var el = $(this);
+      var name = el.attr('name');
+      var type = (el.attr('type') === 'checkbox') ? 'bool' : 'json';
+      var val = (type === 'bool') ? !!el.prop('checked') : el.val();
+      body(name, type, val, el);
+    });
+  },
+  fillInputs: function (params) {
+    this.iterateInputs(function (name, type, val, el) {
+      var row = el.closest('tr');
+      if (params[name] === undefined) {
+        row.hide();
+        return;
+      }
+      row.show();
+      if (type == 'bool') {
+        el.prop('checked', !(params[name] === 'false' || params[name] === false));
+      } else {
+        el.val(params[name]);
+      }
+    });
+    this.selectInstance.selectBox("destroy");
+      // jquery is broken. this is workaround, because $%#$%
+    this.selectInstance.removeData('selectBoxControl').removeData('selectBoxSettings');
+    this.selectInstance.find("option").each(function () {
+      var option = $(this);
+      var value = option.attr('value');
+      option.prop('disabled', value in params);
+    });
+    this.selectInstance.selectBox();
+  },
+  parseInputs: function() {
+    var rv = {};
+    this.iterateInputs(function (name, type, val, el) {
+      var row = el.closest('tr');
+      if (row.get(0).style.display === 'none') {
+        return;
+      }
+      rv[name] = val;
+    });
+    return rv;
+  },
+  loadHistory: function () {
+    try {
+      return JSON.parse(window.localStorage.filterHistory);
+    } catch (e) {
+      return [];
+    }
+  },
+  saveHistory: function (history) {
+    if (!window.localStorage) {
+      return;
+    }
+    window.localStorage.filterHistory = JSON.stringify(history);
+  },
+  initFilterFor: function (url) {
+    var history = this.loadHistory();
+    var entry = _.detect(history, function (entry) {
+      return (entry[0] === url);
+    });
+    this.currentViewURL = url;
+    if (!entry) {
+      this.rawFilterParamsCell.setValue(undefined);
+      return;
+    }
+    this.rawFilterParamsCell.setValue(entry[1]);
+    history = [entry].concat(_.without(history, entry));
+    this.saveHistory(history);
+  },
+  MAX_HISTORY_LENGTH: 256,
+  saveFilterIntoHistory: function () {
+    var history = this.loadHistory();
+    var url = this.currentViewURL;
+    if (!url) {
+      return;
+    }
+    var history = _.select(history, function (entry) {
+      return entry[0] !== url;
+    });
+    if (history >= this.MAX_HISTORY_LENGTH) {
+      history.pop();
+    }
+    history.unshift([url, this.rawFilterParamsCell.value]);
+    this.saveHistory(history);
   }
-}, {
-  prefix: 'spatial',
-  items: {
-    stale: true,
-    bbox: true,
-    connectionTimeout: true
+};
+
+var SpatialFilter = {
+  rawFilterParamsCell: (function () {
+    var klass = mkClass(StringHashFragmentCell, {
+      // NOTE: watchHashParamChange is silently converting empty
+      // string to undefined we cannot easily fix this as some code
+      // might rely on that. Thus we have to request hash parameter
+      // and set 'pure' value
+      interpretHashFragment: function () {
+        this.setValue(getHashFragmentParam(this.paramName));
+      }
+    });
+    return new klass("spatialFilter");
+  })(),
+  reset: function () {
+    if (this.currentViewURL) {
+      this.saveFilterIntoHistory();
+      this.currentViewURL = null;
+    }
+    this.rawFilterParamsCell.setValue(undefined);
+  },
+  init: function () {
+    var self = this;
+
+    self.filterParamsCell = Cell.computeEager(function (v) {
+      var filterParams = v(self.rawFilterParamsCell);
+      if (filterParams == null) {
+          filterParams = "bbox=-180,-90,180,90";
+        if (v.need(ViewsSection.modeTabs) === 'production') {
+          filterParams += "&stale=update_after&connection_timeout=60000";
+        } else {
+          filterParams += "&connection_timeout=60000";
+        }
+      }
+      filterParams = decodeURIComponent(filterParams);
+      return $.deparam(filterParams);
+    });
+
+    self.filter = $('#spatial_results_block .f_popup');
+
+    var selectInstance = self.selectInstance = $('#spatial_filters');
+    selectInstance.selectBox();
+    $('#spatial_filter_stale').selectBox();
+
+    $("#spatial_results_block .exp_filter").toggle(_.bind(self.openFilter, self),
+                                                _.bind(self.closeFilter, self));
+
+    $("#spatial_filter_add").bind('click', function (e) {
+      var value = selectInstance.selectBox("value");
+      if (!value) {
+        return;
+      }
+      var input = self.filter.find('[name=' + value + ']');
+      if (input.attr('type') === 'checkbox') {
+        input.prop('checked', false);
+      } else if (value === 'keys') {
+        input.val('[""]');
+      } else {
+        input.val("");
+      }
+      input.closest('tr').show();
+      selectInstance.selectBox("destroy");
+      // jquery is broken. this is workaround, because $%#$%
+      selectInstance.removeData('selectBoxControl').removeData('selectBoxSettings');
+      selectInstance.find("option[value="+value+"]").prop("disabled", true);
+      selectInstance.selectBox();
+    });
+
+    self.filter.delegate('.btn_x', 'click', function () {
+      var row = $(this).closest('tr');
+      var name = row.find('[name]').attr('name');
+      row.hide();
+      selectInstance.selectBox("destroy");
+      // jquery is broken. this is workaround, because $%#$%
+      selectInstance.removeData('selectBoxControl').removeData('selectBoxSettings');
+      selectInstance.find("option[value="+name+"]").prop("disabled", false);
+      selectInstance.selectBox();
+    });
+  },
+  openFilter: function () {
+    var self = this;
+    self.filterParamsCell.getValue(function (params) {
+      self.filter.closest('.f_wrap').find('.exp_filter').addClass("selected");
+      self.filter.addClass("visib");
+      self.fillInputs(params);
+    });
+  },
+  closeFilter: function () {
+    if (!this.filter.hasClass('visib')) {
+      return;
+    }
+    this.inputs2filterParams();
+    this.filter.closest('.f_wrap').find('.exp_filter').removeClass("selected");
+    this.filter.removeClass("visib");
+  },
+  inputs2filterParams: function () {
+    var params = this.parseInputs();
+    var packedParams = encodeURIComponent($.param(params));
+    var oldFilterParams = this.rawFilterParamsCell.value;
+    if (oldFilterParams !== packedParams) {
+      this.rawFilterParamsCell.setValue(packedParams);
+      ViewsSection.pageNumberCell.setValue(undefined);
+      ViewsSection.fullSubsetPageNumberCell.setValue(undefined);
+      this.saveFilterIntoHistory();
+    }
+  },
+  iterateInputs: function (body) {
+    this.filter.find('.key input, .key select').each(function () {
+      var el = $(this);
+      var name = el.attr('name');
+      var type = (el.attr('type') === 'checkbox') ? 'bool' : 'json';
+      var val = (type === 'bool') ? !!el.prop('checked') : el.val();
+      body(name, type, val, el);
+    });
+  },
+  fillInputs: function (params) {
+    this.iterateInputs(function (name, type, val, el) {
+      var row = el.closest('tr');
+      if (params[name] === undefined) {
+        row.hide();
+        return;
+      }
+      row.show();
+      if (type == 'bool') {
+        el.prop('checked', !(params[name] === 'false' || params[name] === false));
+      } else {
+        el.val(params[name]);
+      }
+    });
+    this.selectInstance.selectBox("destroy");
+      // jquery is broken. this is workaround, because $%#$%
+    this.selectInstance.removeData('selectBoxControl').removeData('selectBoxSettings');
+    this.selectInstance.find("option").each(function () {
+      var option = $(this);
+      var value = option.attr('value');
+      option.prop('disabled', value in params);
+    });
+    this.selectInstance.selectBox();
+  },
+  parseInputs: function() {
+    var rv = {};
+    this.iterateInputs(function (name, type, val, el) {
+      var row = el.closest('tr');
+      if (row.get(0).style.display === 'none') {
+        return;
+      }
+      rv[name] = val;
+    });
+    return rv;
+  },
+  loadHistory: function () {
+    try {
+      return JSON.parse(window.localStorage.filterHistory);
+    } catch (e) {
+      return [];
+    }
+  },
+  saveHistory: function (history) {
+    if (!window.localStorage) {
+      return;
+    }
+    window.localStorage.filterHistory = JSON.stringify(history);
+  },
+  initFilterFor: function (url) {
+    var history = this.loadHistory();
+    var entry = _.detect(history, function (entry) {
+      return (entry[0] === url);
+    });
+    this.currentViewURL = url;
+    if (!entry) {
+      this.rawFilterParamsCell.setValue(undefined);
+      return;
+    }
+    this.rawFilterParamsCell.setValue(entry[1]);
+    history = [entry].concat(_.without(history, entry));
+    this.saveHistory(history);
+  },
+  MAX_HISTORY_LENGTH: 256,
+  saveFilterIntoHistory: function () {
+    var history = this.loadHistory();
+    var url = this.currentViewURL;
+    if (!url) {
+      return;
+    }
+    var history = _.select(history, function (entry) {
+      return entry[0] !== url;
+    });
+    if (history >= this.MAX_HISTORY_LENGTH) {
+      history.pop();
+    }
+    history.unshift([url, this.rawFilterParamsCell.value]);
+    this.saveHistory(history);
   }
-});
+};
 
 $(function () {
   ViewsFilter.init();
