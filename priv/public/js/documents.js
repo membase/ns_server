@@ -261,6 +261,7 @@ var DocumentsSection = {
     var docsInfoCont = $('.docs_info', documents);
     var docsTotalItemCont = $('.docs_total_item', documents);
     var docsCrntPgCont = $('.docs_crnt_pg', documents);
+    var docsTotalPgCont = $('.docs_total_pg', documents);
     var itemsPerListWrap = $('.items_per_list_wrap', documents);
     var itemsPerList = $('select', itemsPerListWrap);
 
@@ -300,7 +301,8 @@ var DocumentsSection = {
       nextBtn.toggleClass('disabled', isLastPage(page));
 
       docsTotalItemCont.text(page.isLookupList ? 'unknown' : page.docs.total_rows || 0);
-      docsCrntPgCont.text(page.pageNumber + 1 + ' of ' + (page.isLookupList ? 'unknown' : Math.ceil(page.docs.total_rows / page.pageLimit) || 1 ) );
+      docsCrntPgCont.text(page.pageNumber + 1);
+      docsTotalPgCont.text(page.isLookupList ? 'unknown' : Math.ceil(page.docs.total_rows / page.pageLimit || 1 ) );
 
       var firstRow = page.docs.rows[0];
       if (firstRow && firstRow.key instanceof Object) {
@@ -499,6 +501,10 @@ var DocumentsSection = {
         afterPageLoad = prevNextCallback;
       });
     })();
+
+    self.currentDocumentsPageNumberCell.subscribeValue(function (value) {
+      docsCrntPgCont.text(value + 1);
+    });
 
     self.lookupIdCell.subscribeValue(function (searchedDoc) {
       docsLookup.val(searchedDoc ? searchedDoc : '');
