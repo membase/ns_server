@@ -279,10 +279,6 @@ handle_info({'EXIT', Pid, Reason}, #rep_state{workers = Workers} = State) ->
             {stop, {worker_died, Pid, Reason}, State2}
     end.
 
-
-handle_call(get_details, _From, #rep_state{rep_details = Rep} = State) ->
-    {reply, {ok, Rep}, State};
-
 handle_call({add_stats, Stats}, From, State) ->
     gen_server:reply(From, ok),
     NewStats = xdc_rep_utils:sum_stats(State#rep_state.stats, Stats),
