@@ -14,6 +14,7 @@
 %% limitations under the License.
 %%
 -module(ns_bootstrap).
+-include("ns_common.hrl").
 
 -export([start/0, stop/0, remote_stop/1, override_resolver/0]).
 
@@ -37,9 +38,11 @@ start() ->
     end.
 
 stop() ->
+    ?log_info("Initiated server shutdown"),
     error_logger:info_msg("Initiated server shutdown"),
     RV = try
              ok = application:stop(ns_server),
+             ?log_info("Stopped ns_server application"),
              error_logger:info_msg("Stopped ns_server application"),
              application:stop(os_mon),
              application:stop(sasl),
@@ -47,7 +50,11 @@ stop() ->
 
              ok
          catch T:E ->
-                 (catch error_logger:error_msg("Got error trying to stop applications~n~p", [{T, E, erlang:get_stacktrace()}])),
+                 Msg = io_lib:format("Got error trying to stop applications~n~p",
+                                     [{T, E, erlang:get_stacktrace()}]),
+
+                 (catch ?log_error(Msg)),
+                 (catch error_logger:error_msg(Msg)),
                  {T, E}
          end,
 
