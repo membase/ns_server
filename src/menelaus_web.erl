@@ -446,7 +446,7 @@ install_samples(Samples) ->
 
     [begin
          Ram = misc:ceiling(?SAMPLE_BUCKET_QUOTA / 1024 / 1024),
-         Cmd = BinDir ++ "/docloader",
+         Cmd = BinDir ++ "/tools/cbdocloader",
          Args = ["-n", Host ++ ":" ++ integer_to_list(Port),
                  "-b", File,
                  "-s", integer_to_list(Ram),
@@ -459,7 +459,7 @@ install_samples(Samples) ->
              {0, _Data} ->
                  ok;
              {Status, Data} ->
-                 ?log_error("docloader failed unexpectedly: status: ~p, msgs: ~p",
+                 ?log_error("cbdocloader failed unexpectedly: status: ~p, msgs: ~p",
                             [Status, Data]),
                  exit({error, docloader_failed, <<"There was an unexpected error.">>})
          end
