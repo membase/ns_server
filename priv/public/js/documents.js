@@ -339,6 +339,9 @@ var DocumentsSection = {
       var message = error ? buildErrorMessage(error) : '';
       allDocsEditingNotice.text(message);
       allDocsEditingNotice.attr('title', JSON.stringify(message));
+      if (error) {
+        self.documentsPageNumberCell.setValue(0);
+      }
     }
 
     function isLastPage(page) {
@@ -364,9 +367,27 @@ var DocumentsSection = {
       showCodeEditor(!show);
     }
 
+    var documentSpinner;
+
+    function showDocumentPendingState(show) {
+      enableDeleteBtn(!show);
+      enableSaveAsBtn(!show);
+      editingNotice.text('');
+      jsonDocId.text('');
+      if (show) {
+        if (!documentSpinner) {
+          documentSpinner = overlayWithSpinner(codeMirror);
+        }
+      } else {
+        if (documentSpinner) {
+          documentSpinner.remove();
+          documentSpinner = undefined;
+        }
+      }
+    }
+
     function bucketExistsState(exists) {
       enableLookup(exists);
-      enableDeleteBtn(exists);
       if (exists === false) {
         showPrevNextCont(exists);
       }
@@ -497,6 +518,9 @@ var DocumentsSection = {
 
     self.currentDocumentIdCell.subscribeValue(function (docId) {
       showDocumentState(!!docId);
+      if (docId) {
+        showDocumentPendingState(true);
+      }
     });
 
     self.pageLimitCell.getValue(function (value) {
@@ -507,6 +531,7 @@ var DocumentsSection = {
       if (!doc) {
         return;
       }
+      showDocumentPendingState(false);
       tryShowJson(doc);
     });
 
@@ -629,7 +654,6 @@ var DocumentsSection = {
             }
           },
           function (error) {
-            startSpinner(createDocDialog);
             couchReq("PUT", newUrl, checkDoc, function () {
               stopSpinner();
               hideDialog(createDocDialog);
@@ -656,6 +680,7 @@ var DocumentsSection = {
             e.preventDefault();
             var val = $.trim(createDocInput.val());
             if (val) {
+              startSpinner(createDocDialog);
               var preDefinedDoc = {"click":"to edit", 
                 "new in 2.0":"there are no reserved field names"};
               checkOnExistence(val, preDefinedDoc);
@@ -677,6 +702,7 @@ var DocumentsSection = {
             if (json) {
               var val = $.trim(createDocInput.val());
               if (val) {
+                startSpinner(createDocDialog);
                 checkOnExistence(val, json);
               } else {
                 createDocWarning.text(documentErrors.idEmpty).show();
@@ -693,16 +719,12 @@ var DocumentsSection = {
         editingNotice.text('');
         var json = onDocValueUpdate(self.jsonCodeEditor.getValue());
         if (json) {
-          startSpinner(codeMirror);
           enableSaveBtn(false);
-          enableSaveAsBtn(false);
-          enableDeleteBtn(false);
+          showDocumentPendingState(true);
           couchReq('PUT', currentDocUrl, json, function () {
             couchReq("GET", currentDocUrl, undefined, function (doc) {
-              self.jsonCodeEditor.setValue(JSON.stringify(doc.json, null, "  "));
-              stopSpinner();
-              enableDeleteBtn(true);
-              enableSaveAsBtn(true);
+              showDocumentPendingState(false);
+              tryShowJson(doc);
             });
           }, function (error, num, unexpected) {
             if (error.reason) {
