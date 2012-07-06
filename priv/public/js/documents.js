@@ -267,6 +267,7 @@ var DocumentsSection = {
     var docsTotalPgCont = $('.docs_total_pg', documents);
     var itemsPerListWrap = $('.items_per_list_wrap', documents);
     var itemsPerList = $('select', itemsPerListWrap);
+    var filterBtn = $('.filters_container', documents);
 
     itemsPerList.selectBox();
 
@@ -388,9 +389,8 @@ var DocumentsSection = {
 
     function bucketExistsState(exists) {
       enableLookup(exists);
-      if (exists === false) {
-        showPrevNextCont(exists);
-      }
+      enableDocCreateBtn(exists);
+      enableFilterBtn(exists);
     }
 
     function enableSaveBtn(enable) {
@@ -404,6 +404,14 @@ var DocumentsSection = {
     function enableLookup(enable) {
       docsLookup.attr({disabled: !enable});
       docsLookupBtn[enable ? 'removeClass' : 'addClass']('disabled');
+    }
+
+    function enableDocCreateBtn(enable) {
+      docCreateBtn[enable ? 'removeClass' : 'addClass']('disabled');
+    }
+
+    function enableFilterBtn(enable) {
+      filterBtn[enable ? 'removeClass' : 'addClass']('disabled');
     }
 
     function enableDeleteBtn(enable) {

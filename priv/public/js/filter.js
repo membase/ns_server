@@ -102,7 +102,15 @@ Filter.prototype = {
 
     _.each([self.filtersAdd, self.filtersCont, self.filtersBtn, self.filtersDropDown], self.tagValidation, self);
 
-    self.filtersBtn.toggle( _.bind(self.openFilter, self), _.bind(self.closeFilter, self));
+    self.filtersBtn.click(function () {
+      if (!self.filtersCont.hasClass('disabled')) {
+        if (!self.filtersCont.hasClass('open')) {
+          self.openFilter();
+        } else {
+          self.closeFilter();
+        }
+      }
+    });
 
     self.filtersDropDown.selectBox();
     $('#' + self.prefix + '_filter_stale', self.container).selectBox();
