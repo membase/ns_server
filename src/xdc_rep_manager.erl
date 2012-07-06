@@ -185,7 +185,6 @@ handle_info({buckets, Buckets0}, State) ->
 
 handle_info(manage_vbucket_replications, State) ->
     _NumMsgs = misc:flush(manage_vbucket_replications),
-    ?xdcr_info("starting vb replication manager"),
     manage_vbucket_replications(),
     {noreply, State};
 
