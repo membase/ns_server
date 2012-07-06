@@ -1400,7 +1400,7 @@ var ServerStateMock = {
           "language":"javascript",
           "views":{
             "query":{
-              "map":"function(doc) {\n  for (var k in doc) {\n    if (k.substr(0,1) !== '_') {\n      emit(doc[k], {\"_id\": doc._id, \"path\": k});\n    }\n  }\n}"
+              "map":"function(doc, meta) {\n  for (var k in doc) {\n    if (k.substr(0,1) !== '_') {\n      emit(doc[k], {\"_id\": meta.id, \"path\": k});\n    }\n  }\n}"
             }
           }
         }

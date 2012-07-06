@@ -45,7 +45,7 @@ function buildDocURL(base, docId/*, ..args */) {
 }
 
 function buildViewPseudoLink(bucketName, ddoc, type, viewName) {
-  return encodeURIComponent(_.map([bucketName, ddoc._id, type, viewName], encodeURIComponent).join("/"));
+  return encodeURIComponent(_.map([bucketName, ddoc.meta.id, type, viewName], encodeURIComponent).join("/"));
 }
 
 function unbuildViewPseudoLink(link, body, context) {
@@ -56,8 +56,33 @@ function unbuildViewPseudoLink(link, body, context) {
   return body.apply(context, _.map(link.split("/"), decodeURIComponent));
 }
 
+// TODO: we'll get rid of this real soon. As soon as Chris'
+// server-side stuff is merged
+function performMetaHack(body) {
+  if (body && ('_id' in body)) {
+    var bodyClone = _.clone(body);
+    delete bodyClone._id;
+    delete bodyClone._rev;
+    delete bodyClone['$expiration'];
+    delete bodyClone['$flags'];
+    body = {
+      json: bodyClone,
+      meta: {id: body._id,
+             rev: body._rev,
+             expiration: body["$expiration"],
+             flags: body["$flags"]}
+    };
+  }
+  return body;
+}
+
 function couchGet(url, callback) {
-  IOCenter.performGet({url: url, dataType: "json", success: callback});
+  IOCenter.performGet({url: url, dataType: "json",
+    success: function(body, status, xhr) {
+      body = performMetaHack(body);
+      callback.call(this, body, status, xhr);
+    }
+  });
 }
 
 // now we can pass Cell instead of url and get callback called when
@@ -73,7 +98,10 @@ function couchReq(method, url, data, success, error) {
     url: url,
     dataType: 'json',
     contentType: 'application/json',
-    success: success,
+    success: function(doc, status, xhr) {
+      doc = performMetaHack(doc);
+      success.call(this, doc, status, xhr);
+    },
     error: function (xhr) {
       var self = this;
       var args = arguments;
@@ -134,6 +162,15 @@ future.capiViewGet = function (ajaxOptions, valueTransformer, newValue, futureWr
   }
   ajaxOptions = _.clone(ajaxOptions);
   ajaxOptions.error = handleError;
+  ajaxOptions.success = function (stuff) {
+    var rv = _.clone(stuff);
+    rv.rows = _.map(stuff.rows, function (row) {
+      row = _.clone(row);
+      row.doc = performMetaHack(row.doc);
+      return row;
+    });
+    dataCallback(rv);
+  }
   ajaxOptions.missingValueProducer = missingValueProducer;
   // we're using future wrapper to get reference to dataCallback
   // so that we can call it from error handler
@@ -147,7 +184,7 @@ future.capiViewGet = function (ajaxOptions, valueTransformer, newValue, futureWr
 
 function isDevModeDoc(ddoc) {
   var devPrefix = "_design/dev_";
-  return ddoc._id.substring(0, devPrefix.length) == devPrefix;
+  return ddoc.meta.id.substring(0, devPrefix.length) == devPrefix;
 }
 
 var codeMirrorOpts = {
@@ -308,7 +345,7 @@ var ViewsSection = {
       return buildURL(v.need(dbURLCell), "_all_docs", {
         startkey: JSON.stringify("_design/"),
         endkey: JSON.stringify("_design0"),
-        include_docs: "true"
+        include_docs: "true" // note: include_docs is deprecated
       });
     }).name("allDDocsURL");
 
@@ -320,7 +357,7 @@ var ViewsSection = {
       var haveBuckets = v.need(haveBucketsCell);
 
       if (haveBuckets) {
-        return _.map(v.need(rawAllDDocsCell).rows, function (r) {return r.doc});
+        return _.map(v.need(rawAllDDocsCell).rows, function (r) {return performMetaHack(r.doc)});
       } else {
         return [];
       }
@@ -334,11 +371,11 @@ var ViewsSection = {
       if (!ddocId || !viewName) {
         return [];
       }
-      var ddoc = _.detect(allDDocs, function (d) {return d._id === ddocId});
+      var ddoc = _.detect(allDDocs, function (d) {return d.meta.id === ddocId});
       if (!ddoc) {
         return [];
       }
-      var view = (ddoc.views || {})[viewName];
+      var view = (ddoc.json.views || {})[viewName];
       if (!view) {
         return [];
       }
@@ -352,11 +389,11 @@ var ViewsSection = {
       if (!ddocId || !spatialName) {
         return [];
       }
-      var ddoc = _.detect(allDDocs, function (d) {return d._id === ddocId});
+      var ddoc = _.detect(allDDocs, function (d) {return d.meta.id === ddocId});
       if (!ddoc) {
         return [];
       }
-      var spatial = (ddoc.spatial || {})[spatialName];
+      var spatial = (ddoc.json.spatial || {})[spatialName];
       if (!spatial) {
         return [];
       }
@@ -378,8 +415,8 @@ var ViewsSection = {
         var ddocAndView = v.need(currentDDocAndView);
         var ddocAndSpatial = v.need(currentDDocAndSpatial);
 
-        var selectedDDocId = ddocAndView.length && ddocAndView[0]._id ||
-          ddocAndSpatial.length && ddocAndSpatial[0]._id;
+        var selectedDDocId = ddocAndView.length && ddocAndView[0].meta.id ||
+          ddocAndSpatial.length && ddocAndSpatial[0].meta.id;
         var selectedViewName = ddocAndView.length && ddocAndView[1] ||
           ddocAndSpatial.length && ddocAndSpatial[1];
         //var selectedType = ddocAndView.length > 0 ? '_view' : '_spatial';
@@ -388,8 +425,8 @@ var ViewsSection = {
         var productionOptgroupOutput = false;
         var groups = _.map(ddocs, function (doc) {
           var rv = "";
-          var viewNames = _.keys(doc.views || {}).sort();
-          var spatialNames = _.keys(doc.spatial || {}).sort();
+          var viewNames = _.keys(doc.json.views || {}).sort();
+          var spatialNames = _.keys(doc.json.spatial || {}).sort();
 
           if (isDevModeDoc(doc) && !devOptgroupOutput) {
             rv += '<optgroup label="Development Views" class="topgroup">';
@@ -398,9 +435,9 @@ var ViewsSection = {
             rv += '</optgroup><optgroup label="Production Views" class="topgroup">';
             productionOptgroupOutput = true;
           }
-          rv += '<optgroup label="' + escapeHTML(doc._id) + '" class="childgroup">';
+          rv += '<optgroup label="' + escapeHTML(doc.meta.id) + '" class="childgroup">';
           _.each(viewNames, function (name) {
-            var maybeSelected = (selectedDDocId === doc._id &&
+            var maybeSelected = (selectedDDocId === doc.meta.id &&
               selectedViewName === name) ? ' selected' : '';
             rv += '<option value="' +
               escapeHTML(buildViewPseudoLink(bucketName, doc, '_view', name)) +
@@ -408,7 +445,7 @@ var ViewsSection = {
               escapeHTML(name) + "</option>";
           });
           _.each(spatialNames, function (name) {
-            var maybeSelected = (selectedDDocId === doc._id &&
+            var maybeSelected = (selectedDDocId === doc.meta.id &&
               selectedViewName === name) ? ' selected' : '';
             rv += '<option value="' +
               escapeHTML(
@@ -434,7 +471,7 @@ var ViewsSection = {
             return;
           }
           unbuildViewPseudoLink(newValue, function (_ignored, ddocId, type, viewName) {
-            var devMode = isDevModeDoc({_id: ddocId});
+            var devMode = isDevModeDoc({meta:{id: ddocId}});
             _.defer(function () {
               $('#views_view_select').parent().find('.selectBox-label')
                 .html(escapeHTML(ddocId).split('/').join('/<strong>') +
@@ -460,7 +497,7 @@ var ViewsSection = {
             .selectBox('options', list.join(''));
           if (selected.length > 0) {
             $('#views_view_select').parent().find('.selectBox-label')
-              .html(escapeHTML(selected[0]._id).split('/').join('/<strong>') + '</strong>/_view/<strong>' + escapeHTML(selected[1]) + '</strong>');
+              .html(escapeHTML(selected[0].meta.id).split('/').join('/<strong>') + '</strong>/_view/<strong>' + escapeHTML(selected[1]) + '</strong>');
           }
         }
       });
@@ -503,7 +540,7 @@ var ViewsSection = {
         if (viewName === undefined) {
           return;
         }
-        return (ddoc.views || {})[viewName];
+        return (ddoc.json.views || {})[viewName];
       }).apply(this, v.need(currentDDocAndView));
     }).name("currentView");
 
@@ -512,7 +549,7 @@ var ViewsSection = {
         if (spatialName === undefined) {
           return;
         }
-        return (ddoc.spatial || {})[spatialName];
+        return (ddoc.json.spatial || {})[spatialName];
       }).apply(this, v.need(currentDDocAndSpatial));
     }).name("currentSpatial");
 
@@ -579,7 +616,7 @@ var ViewsSection = {
       if (!ddoc) {
         return false;
       }
-      return !!ddoc._id.match(/^_design\/dev_/);
+      return !!ddoc.meta.id.match(/^_design\/dev_/);
     }).name("editingDevView");
 
     editingDevView.subscribeValue(function (devView) {
@@ -600,7 +637,7 @@ var ViewsSection = {
       if (!ddoc) {
         return false;
       }
-      return !!ddoc._id.match(/^_design\/dev_/);
+      return !!ddoc.meta.id.match(/^_design\/dev_/);
     }).name("editingDevViewSpatial");
 
     editingDevViewSpatial.subscribeValue(function (devView) {
@@ -649,7 +686,7 @@ var ViewsSection = {
             if (subset === "prod") {
               initial.full_set = 'true';
             }
-            return buildDocURL(dbURL, ddocAndView[0]._id, "_view", ddocAndView[1], _.extend(initial, filterParams, {
+            return buildDocURL(dbURL, ddocAndView[0].meta.id, "_view", ddocAndView[1], _.extend(initial, filterParams, {
               limit: ViewsSection.PAGE_LIMIT.toString(),
               skip: String((pageNo - 1) * 10)
             }));
@@ -666,7 +703,7 @@ var ViewsSection = {
             if (subset === "prod") {
               initial.full_set = 'true';
             }
-            return buildDocURL(dbURL, ddocAndSpatial[0]._id, "_spatial", ddocAndSpatial[1], _.extend(initial, filterParams, {
+            return buildDocURL(dbURL, ddocAndSpatial[0].meta.id, "_spatial", ddocAndSpatial[1], _.extend(initial, filterParams, {
               //limit: ViewsSection.PAGE_LIMIT.toString(),
               //skip: String((pageNo - 1) * 10)
               //bbox: "-180,-90,180,90"
@@ -939,7 +976,7 @@ var ViewsSection = {
         var bucketName = v.need(selectedBucketCell);
         var rv = _.map(ddocs, function (doc) {
           var rv = _.clone(doc);
-          var viewInfos = _.map(rv.views || {}, function (value, key) {
+          var viewInfos = _.map(rv.json.views || {}, function (value, key) {
             var plink = buildViewPseudoLink(bucketName, doc, '_view', key);
             return _.extend({name: key,
                              viewLink: '#showView=' + plink,
@@ -947,8 +984,8 @@ var ViewsSection = {
                             }, value);
           });
           viewInfos = _.sortBy(viewInfos, function (info) {return info.name;});
-          rv.viewInfos = viewInfos;
-          var spatialInfos = _.map(rv.spatial || {}, function (value, key) {
+          rv.json.viewInfos = viewInfos;
+          var spatialInfos = _.map(rv.json.spatial || {}, function (value, key) {
             var plink = buildViewPseudoLink(bucketName, doc, '_spatial', key);
             return _.extend({name: key,
                              viewLink: '#showSpatial=' + plink,
@@ -956,7 +993,7 @@ var ViewsSection = {
                             }, value);
           });
           spatialInfos = _.sortBy(spatialInfos, function (info) {return info.name;});
-          rv.spatialInfos = spatialInfos;
+          rv.json.spatialInfos = spatialInfos;
           return rv;
         });
         rv.tasks = tasks;
@@ -974,7 +1011,7 @@ var ViewsSection = {
         var bucketName = ddocs.bucketName;
 
         _.each(ddocs, function (x) {
-          var task = (ddocs.tasks[x._id] || [])[0];
+          var task = (ddocs.tasks[x.meta.id] || [])[0];
           if (task) {
             x.progress = task.progress;
             x.taskType = task.type;
@@ -1083,9 +1120,10 @@ var ViewsSection = {
       self.dbURLCell.getValue(function (dbURL) {
         couchReq('GET', buildDocURL(dbURL, id), null, function (data) {
           currentDocument = $.extend({}, data);
-          var tmp = JSON.stringify(data, null, "\t");
+          var tmp = JSON.stringify(data.json, null, "\t");
           $("#edit_preview_doc").removeClass("disabled");
-          $("#lookup_doc_by_id").val(data._id);
+          $("#lookup_doc_by_id").val(data.meta.id);
+          $("#sample_meta").text(JSON.stringify(data.meta, null, "\t"))
           jsonCodeEditor.setValue(tmp);
         }, error);
       });
@@ -1178,26 +1216,19 @@ var ViewsSection = {
     $('#save_preview_doc').click(function(ev) {
 
       ev.stopPropagation();
-      var json, doc = jsonCodeEditor.getValue();
+      var json, doc = jsonCodeEditor.getValue(),
+        saveDocId = currentDocument.meta.id;
       try {
         json = JSON.parse(doc);
       } catch(err) {
         docError("You entered invalid JSON");
         return;
       }
-      json._id = currentDocument._id;
-      json._rev = currentDocument._rev;
-
-      for (var key in json) {
-        if (key[0] === "$") {
-          delete json[key];
-        }
-      }
 
       self.dbURLCell.getValue(function (dbURL) {
-        couchReq('PUT', buildDocURL(dbURL, json._id), json, function () {
+        couchReq('PUT', buildDocURL(dbURL, saveDocId), json, function () {
           disableEditor(jsonCodeEditor);
-          showDoc(json._id);
+          showDoc(saveDocId);
         }, function() {
           docError("There was an unknown problem saving your document");
         });
@@ -1217,7 +1248,7 @@ var ViewsSection = {
         return;
       }
       couchReq('DELETE',
-               url + "?" + $.param({rev: ddoc._rev}),
+               url + "?" + $.param({rev: ddoc.meta.rev}),
                {},
                function () {
                  callback(ddoc);
@@ -1242,17 +1273,9 @@ var ViewsSection = {
       if (toDoc && !overwriteConfirmed) {
         return callback("conflict");
       }
-      ddoc = _.clone(ddoc);
-      ddoc._id = toId;
-      if (toDoc) {
-        ddoc._rev = toDoc._rev;
-      } else {
-        delete ddoc._rev;
-      }
-      //TODO: make sure attachments are not screwed
       couchReq('PUT',
                toURL,
-               ddoc,
+               ddoc.json,
                function () {
                  callback("ok");
                },
@@ -1277,12 +1300,12 @@ var ViewsSection = {
     ThePage.ensureSection("views");
     var cell = Cell.compute(function (v) {
       var allDDocs = v.need(ViewsSection.allDDocsCell);
-      var ddoc = _.detect(allDDocs, function (d) {return d._id == id});
+      var ddoc = _.detect(allDDocs, function (d) {return d.meta.id == id});
       if (!ddoc) {
         return [];
       }
       var dbURL = v.need(ViewsSection.dbURLCell);
-      return [buildDocURL(dbURL, ddoc._id), ddoc, dbURL];
+      return [buildDocURL(dbURL, ddoc.meta.id), ddoc, dbURL];
     });
     cell.getValue(function (args) {
       if (!args[0]) {
@@ -1326,7 +1349,7 @@ var ViewsSection = {
       var form = dialog.find("form");
 
       (function () {
-        var name = ViewsSection.cutOffDesignPrefix(ddoc._id);
+        var name = ViewsSection.cutOffDesignPrefix(ddoc.meta.id);
 
         setFormValues(form, {
           "ddoc_name": name
@@ -1384,10 +1407,10 @@ var ViewsSection = {
     }
     function withDoc(ddoc) {
       if (!ddoc) {
-        ddoc = {_id: ddocId,
-                views: {}};
+        ddoc = {meta: {id: ddocId},
+                json: {views: {}}};
       }
-      var views = ddoc.views || (ddoc.views = {});
+      var views = ddoc.json.views || (ddoc.json.views = {});
       if (views[viewName] && !overwriteConfirmed) {
         return callback("conflict");
       }
@@ -1396,7 +1419,7 @@ var ViewsSection = {
       }
       couchReq('PUT',
                ddocURL,
-               ddoc,
+               ddoc.json,
                function () {
                  callback("ok");
                },
@@ -1417,9 +1440,10 @@ var ViewsSection = {
     }
     function withDoc(ddoc) {
       if (!ddoc) {
-        ddoc = {_id: ddocId, spatial: {}};
+          ddoc = {meta: {id: ddocId},
+                  json: {views: {}}};
       }
-      var spatial = ddoc.spatial || (ddoc.spatial = {});
+      var spatial = ddoc.json.spatial || (ddoc.json.spatial = {});
       if (spatial[spatialName] && !overwriteConfirmed) {
         return callback("conflict");
       }
@@ -1427,7 +1451,7 @@ var ViewsSection = {
           "function (doc) {\n  if (doc.geometry) {\n    emit(doc.geometry, null);\n}\n}";
       couchReq('PUT',
                ddocURL,
-               ddoc,
+               ddoc.json,
                function () {
                  callback("ok");
                },
@@ -1496,14 +1520,14 @@ var ViewsSection = {
       if (!ddoc) {
         return;
       }
-      var views = ddoc.views || (ddoc.views = {});
+      var views = ddoc.json.views || (ddoc.json.views = {});
       if (!views[viewName]) {
         return;
       }
       delete views[viewName];
       couchReq('PUT',
                ddocURL,
-               ddoc,
+               ddoc.json,
                function () {
                  callback();
                },
@@ -1562,7 +1586,7 @@ var ViewsSection = {
       var form = dialog.find('form');
 
       setFormValues(form, {
-        'designdoc_name': self.cutOffDesignPrefix(ddoc._id),
+        'designdoc_name': self.cutOffDesignPrefix(ddoc.meta.id),
         'view_name': viewName
       });
 
@@ -1592,7 +1616,7 @@ var ViewsSection = {
       var mapCode = self.mapEditor.getValue();
       var reduceCode = self.reduceEditor.getValue();
 
-      var view = ddoc.views[viewName];
+      var view = ddoc.json.views[viewName];
       if (!view) BUG();
       view = _.clone(view);
       view.map = mapCode;
@@ -1602,7 +1626,7 @@ var ViewsSection = {
         delete view.reduce;
       }
 
-      doSaveView(dbURL, newId, newViewName, view, ddoc._id === newId && newViewName === viewName);
+      doSaveView(dbURL, newId, newViewName, view, ddoc.meta.id === newId && newViewName === viewName);
     }
 
     function doSaveView(dbURL, ddocId, viewName, view, overwriteConfirmed) {
@@ -1664,7 +1688,7 @@ var ViewsSection = {
       } else {
         delete currentView.reduce;
       }
-      return ViewsSection.doSaveView(dbURL, ddoc._id, viewName, true, saveCallback, currentView);
+      return ViewsSection.doSaveView(dbURL, ddoc.meta.id, viewName, true, saveCallback, currentView);
 
       function saveCallback() {
         self.allDDocsCell.recalculate();
@@ -1728,14 +1752,14 @@ var ViewsSection = {
       if (!ddoc) {
         return;
       }
-      var spatial = ddoc.spatial || (ddoc.spatial = {});
+      var spatial = ddoc.json.spatial || (ddoc.json.spatial = {});
       if (!spatial[spatialName]) {
         return;
       }
       delete spatial[spatialName];
       couchReq('PUT',
                ddocURL,
-               ddoc,
+               ddoc.json,
                function () {
                  callback();
                },
@@ -1794,7 +1818,7 @@ var ViewsSection = {
       var form = dialog.find('form');
 
       setFormValues(form, {
-        'designdoc_name': self.cutOffDesignPrefix(ddoc._id),
+        'designdoc_name': self.cutOffDesignPrefix(ddoc.meta.id),
         'view_name': spatialName
       });
 
@@ -1822,7 +1846,7 @@ var ViewsSection = {
       var newId = "_design/dev_" + newDDocName;
       var spatialCode = self.spatialEditor.getValue();
 
-      doSaveSpatial(dbURL, newId, newSpatialName, spatialCode, ddoc._id === newId && newSpatialName === spatialName);
+      doSaveSpatial(dbURL, newId, newSpatialName, spatialCode, ddoc.meta.id === newId && newSpatialName === spatialName);
     }
 
     function doSaveSpatial(dbURL, ddocId, spatialName, spatial, overwriteConfirmed) {
@@ -1878,7 +1902,7 @@ var ViewsSection = {
 
       currentSpatial = _.clone(currentSpatial);
       currentSpatial = spatialCode;
-      return ViewsSection.doSaveSpatial(dbURL, ddoc._id, spatialName, true,
+      return ViewsSection.doSaveSpatial(dbURL, ddoc.meta.id, spatialName, true,
         saveCallback, currentSpatial);
 
       function saveCallback() {
@@ -1911,7 +1935,7 @@ var ViewsSection = {
       if (!ddoc) {
         return;
       }
-      self.setCurrentView(ddoc._id, viewName);
+      self.setCurrentView(ddoc.meta.id, viewName);
     });
   },
   startPublish: function (id) {
@@ -1920,7 +1944,7 @@ var ViewsSection = {
       if (!ddocURL) {
         return;
       }
-      var name = self.cutOffDesignPrefix(ddoc._id);
+      var name = self.cutOffDesignPrefix(ddoc.meta.id);
       var newId = "_design/" + name;
       var toURL = buildDocURL(dbURL, newId);
 
@@ -1980,7 +2004,7 @@ var ViewsSection = {
       if (!ddoc) {
         return;
       }
-      self.setCurrentSpatial(ddoc._id, spatialName);
+      self.setCurrentSpatial(ddoc.meta.id, spatialName);
     });
   },
   onEnter: function () {

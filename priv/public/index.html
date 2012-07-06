@@ -970,7 +970,7 @@
             <tbody>
               <tr>
                 <td class="design_doc_name">
-                  {%= h(ddoc._id) %}
+                  {%= h(ddoc.meta.id) %}
                 </td>
                 <td class="langv">{%= h(ddoc.language || "javascript") %}</td>
                 <td>
@@ -986,17 +986,17 @@
                 <td>
                 </td>
                 <td>
-                  <a class="list_button when-in-prod" href="#copyDDoc={%=h(encodeURIComponent(ddoc._id))%}"><span>Copy to Dev</span></a>
-                  <a class="list_button when-in-dev" href="#publishDDoc={%=h(encodeURIComponent(ddoc._id))%}"><span>Publish</span></a>
-                  <a class="list_button when-in-dev" href="#addView={%=h(encodeURIComponent(ddoc._id))%}"><span>Add View</span></a>
-                  <a class="list_button when-in-dev" href="#addSpatial={%=h(encodeURIComponent(ddoc._id))%}"><span>Add Spatial View</span></a>
-                  <a class="list_button" href="#deleteDDoc={%=h(encodeURIComponent(ddoc._id))%}"><span>Delete</span></a>
+                  <a class="list_button when-in-prod" href="#copyDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Copy to Dev</span></a>
+                  <a class="list_button when-in-dev" href="#publishDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Publish</span></a>
+                  <a class="list_button when-in-dev" href="#addView={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add View</span></a>
+                  <a class="list_button when-in-dev" href="#addSpatial={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add Spatial View</span></a>
+                  <a class="list_button" href="#deleteDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Delete</span></a>
                 </td>
               </tr>
-              <!-- {% if (_.size(ddoc.viewInfos) < 1 && _.size(ddoc.spatialInfos) < 1) { %} -->
+              <!-- {% if (_.size(ddoc.json.viewInfos) < 1 && _.size(ddoc.json.spatialInfos) < 1) { %} -->
               <tr><td colspan="10" style="padding:15px">No views defined!<span class="when-in-dev"> Click "Create Development View" above to create one.</span></td></tr>
-              <!-- {% } else { if (_.size(ddoc.viewInfos) > 0) { %} -->
-              <!-- {% _.each(ddoc.viewInfos, function (viewInfo) { %} -->
+              <!-- {% } else { if (_.size(ddoc.json.viewInfos) > 0) { %} -->
+              <!-- {% _.each(ddoc.json.viewInfos, function (viewInfo) { %} -->
               <tr>
                 <td class="view_name" colspan="4">
                   <a href="{%=h(viewInfo.viewLink)%}">{%= h(viewInfo.name) %}</a>
@@ -1006,8 +1006,8 @@
                 </td>
               </tr>
               <!-- {% }); %} -->
-              <!-- {% } if (_.size(ddoc.spatialInfos) > 0) { %} -->
-              <!-- {% _.each(ddoc.spatialInfos, function (spatialInfo) { %} -->
+              <!-- {% } if (_.size(ddoc.json.spatialInfos) > 0) { %} -->
+              <!-- {% _.each(ddoc.json.spatialInfos, function (spatialInfo) { %} -->
               <tr>
                 <td class="view_name" colspan="4">
                   <a href="{%=h(spatialInfo.viewLink)%}">[Spatial] {%= h(spatialInfo.name) %}</a>
@@ -1050,9 +1050,13 @@
                     <a class="btn_1" id="save_preview_doc"><span>Save</span></a>
                   </span>
 
-                <div class="stats">
+                <div class="stats" style="width:58%; float:left;">
                   <textarea id="sample_doc_editor"></textarea>
                 </div>
+                <div class="stats">
+                  <pre id="sample_meta" style="line-height:1em; font-size:11px"></pre>
+                </div>
+                <br style="clear:both;"/>
               </div>
             </div>
 
@@ -1384,7 +1388,7 @@
                   <td>{%= h(r.when) %}</td>
                   <td>{%= r.lastRun && V.formatLogTStamp(r.lastRun) %}</td>
                   <td>
-                    <a class="list_button" href="#deleteReplication={%=h(r._id)%}"><span>Delete</span></a>
+                    <a class="list_button" href="#deleteReplication={%=h(r.meta.id)%}"><span>Delete</span></a>
                   </td>
                 </tr>
                 <!-- {% }); %} -->
@@ -1522,7 +1526,7 @@
                           <td class="key ellipsis">
                             <a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}">{%= h(r.key) %}</a>
                           </td>
-                          <td class="ellipsis" colspan="3">{%= $.futon.formatJSON(r.doc, {html:true}) %}</td>
+                          <td class="ellipsis" colspan="3">{%= $.futon.formatJSON(r.doc.json, {html:true}) %}</td>
                           <td colspan="2"><a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}" class="list_button btn_edit"><span>Edit Document</span></a></td>
                       </tr>
                   <!-- {% }); %} -->

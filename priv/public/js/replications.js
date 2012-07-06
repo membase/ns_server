@@ -40,14 +40,14 @@ var ReplicationsModel = {};
     if (v.need(DAL.cells.mode) !== 'replications') {
       return;
     }
-    return future.get({url: v.need(replicationInfosURICell)});
+    return future.capiViewGet({url: v.need(replicationInfosURICell)});
   });
   rawReplicationInfos.keepValueDuringAsync = true;
 
   var allReplicationInfos = model.allReplicationInfos = Cell.compute(function (v) {
     return _.map(v.need(rawReplicationInfos).rows, function (r) {
       var info = r.value;
-      var fields = info.replication_fields;
+      var fields = performMetaHack(info.replication_fields);
       if (!fields) {
         return info;
       }
@@ -55,7 +55,8 @@ var ReplicationsModel = {};
       var match = /^\/remoteClusters\/(.*)\/buckets\/(.*)/.exec(targetURI);
 
       info = _.clone(info);
-      info._id = fields._id;
+      info.meta = {};
+      info.meta.id = fields.meta.id;
       info.source = fields.source;
       info.continuous = fields.continuous;
 
@@ -449,7 +450,7 @@ var ReplicationsSection = {
 
     function doDelete(doc) {
       var url = Cell.needing(docURLCell).compute(function (v, docURL) {
-        return docURL + '?' + $.param({rev: doc._rev});
+        return docURL + '?' + $.param({rev: doc.meta.rev});
       });
       couchReq('DELETE', url, {}, function () {
         // this is success callback

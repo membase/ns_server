@@ -114,9 +114,9 @@ function createDocumentsCells(ns, modeCell, capiBaseCell, bucketsListCell) {
         }
         dataCallback(error);
       },
-      success: function (doc, status) {
+      success: function (doc, status, xhr) {
         if (doc) {
-          dataCallback(doc);
+          dataCallback(performMetaHack(doc));
         } else {
           var error = new Error(status);
           error.explanatoryMessage = documentErrors.notExist;
@@ -127,8 +127,7 @@ function createDocumentsCells(ns, modeCell, capiBaseCell, bucketsListCell) {
           dataCallback = __dataCallback;
           initXHR(dataCallback);
         });
-      }
-    );
+      });
   }).name('rawCurrentDocCell');
 
   ns.currentDocCell = Cell.compute(function (v) {
@@ -319,10 +318,6 @@ var DocumentsSection = {
       } else {
         showDocumetsListErrorState(false);
 
-        $.each(page.docs.rows, function (i) {
-          removeSpecialKeys(page.docs.rows[i].doc, true);
-        });
-
         renderTemplate('documents_list', {
           loading: false,
           rows: page.docs.rows,
@@ -400,16 +395,12 @@ var DocumentsSection = {
 
     function tryShowJson(obj) {
       var isError = obj instanceof Error;
-
-      if (!isError) {
-        removeSpecialKeys(obj);
-      } else {
+      if (isError) {
         enableSaveBtn(false);
       }
-
       editingNotice.text(isError && obj ? buildErrorMessage(obj) : '');
-      jsonDocId.text(isError ? '' : obj._id);
-      self.jsonCodeEditor.setValue(isError ? '' : JSON.stringify(obj, null, "  "));
+      jsonDocId.text(isError ? '' : obj.meta.id);
+      self.jsonCodeEditor.setValue(isError ? '' : JSON.stringify(obj.json, null, "  "));
       enableDeleteBtn(!isError);
       enableSaveAsBtn(!isError);
       showCodeEditor(!isError);
@@ -433,20 +424,6 @@ var DocumentsSection = {
 
     function buildErrorMessage(error) {
       return error.name + ': ' + error.message + ' ' + error.explanatoryMessage;
-    }
-
-    function removeSpecialKeys(json, underscore) {
-      var i;
-      for (i in json) {
-        if (i.charAt(0) === '$') {
-          delete json[i];
-        }
-        if (underscore) {
-          if (i.charAt(0) === '_') {
-            delete json[i];
-          }
-        }
-      }
     }
 
     (function () {
@@ -629,7 +606,9 @@ var DocumentsSection = {
         spinner.remove();
       }
 
-      function checkOnExistence(newUrl, preDefDoc) {
+      function checkOnExistence(checkId, checkDoc) {
+        var newUrl = buildDocURL(dbURL, checkId);
+
         couchReq("GET", newUrl, null,
           function (doc) {
             if (doc) {
@@ -638,10 +617,10 @@ var DocumentsSection = {
           },
           function (error) {
             startSpinner(createDocDialog);
-            couchReq("PUT", newUrl, preDefDoc, function () {
+            couchReq("PUT", newUrl, checkDoc, function () {
               stopSpinner();
               hideDialog(createDocDialog);
-              self.documentIdCell.setValue(preDefDoc._id);
+              self.documentIdCell.setValue(checkId);
             }, function (error, num, unexpected) {
               if (error.reason) {
                 stopSpinner();
@@ -664,9 +643,9 @@ var DocumentsSection = {
             e.preventDefault();
             var val = $.trim(createDocInput.val());
             if (val) {
-              var preDefinedDoc = {_id: val};
-              var newDocUrl = buildDocURL(dbURL, val);
-              checkOnExistence(newDocUrl, preDefinedDoc);
+              var preDefinedDoc = {"click":"to edit", 
+                "new in 2.0":"there are no reserved field names"};
+              checkOnExistence(val, preDefinedDoc);
             } else {
               createDocWarning.text(documentErrors.idEmpty).show();
             }
@@ -685,10 +664,7 @@ var DocumentsSection = {
             if (json) {
               var val = $.trim(createDocInput.val());
               if (val) {
-                var preDefinedDoc = json;
-                preDefinedDoc._id = val;
-                var newDocUrl = buildDocURL(dbURL, val);
-                checkOnExistence(newDocUrl, preDefinedDoc);
+                checkOnExistence(val, json);
               } else {
                 createDocWarning.text(documentErrors.idEmpty).show();
               }
@@ -710,8 +686,7 @@ var DocumentsSection = {
           enableDeleteBtn(false);
           couchReq('PUT', currentDocUrl, json, function () {
             couchReq("GET", currentDocUrl, undefined, function (doc) {
-              removeSpecialKeys(doc);
-              self.jsonCodeEditor.setValue(JSON.stringify(doc, null, "  "));
+              self.jsonCodeEditor.setValue(JSON.stringify(doc.json, null, "  "));
               stopSpinner();
               enableDeleteBtn(true);
               enableSaveAsBtn(true);

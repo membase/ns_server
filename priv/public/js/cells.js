@@ -1115,7 +1115,7 @@ var IOCenter = (function () {
             }
             options.success.call(this,
                                  missingValue,
-                                 'notfound');
+                                 'notfound', xhr);
             return;
           }
 
