@@ -582,10 +582,10 @@ max_concurrent_reps(Bucket) ->
 
 %% Dump node-wide XDCR stats for all buckets
 dump_xdcr_stats() ->
-    ?xdcr_info("------ start of dumping XDCR stats ------"),
+    ?xdcr_debug("------ start of dumping XDCR stats ------"),
     case ets:first(?XSTORE) of
         '$end_of_table' ->
-            ?xdcr_info("no XDC replication in progress"),
+            ?xdcr_debug("no XDC replication in progress"),
             ok;
         _ ->
             XDocIds = lists:flatten(ets:match(?XSTORE, {'$1', '_', '_'})),
@@ -600,11 +600,11 @@ dump_xdcr_stats() ->
 %% Dump stats for single bucket XDCR identified by rep doc id
 dump_xdcr_bucket_stats(XDocId) ->
     %% get all stats for this replication
-    ?xdcr_info("XDocId of bucket replication: ~p", [XDocId]),
+    ?xdcr_debug("XDocId of bucket replication: ~p", [XDocId]),
     VbStatList = ets:match(?XSTATS, {{XDocId, '$1'}, '_', '$2'}),
     lists:foreach(
       fun([Vb, Stat]) ->
-              ?xdcr_info("stats for vbucket: ~p", [Vb]),
+              ?xdcr_debug("stats for vbucket: ~p", [Vb]),
               xdc_replicator:dump_stats(Stat)
       end,
       VbStatList),
@@ -613,9 +613,9 @@ dump_xdcr_bucket_stats(XDocId) ->
                           #rep_stats{},
                           lists:flatten(ets:match(?XSTATS, {{XDocId, '_'}, '_', '$1'}))),
 
-    ?xdcr_info("------ Start dumping aggregated statistics -------"),
+    ?xdcr_debug("------ Start dumping aggregated statistics -------"),
     xdc_replicator:dump_stats(AggStat),
-    ?xdcr_info("------ Finish dumping aggregated statistics -------"),
+    ?xdcr_debug("------ Finish dumping aggregated statistics -------"),
     ok.
 
 %% Update replication process id list

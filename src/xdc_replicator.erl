@@ -669,15 +669,15 @@ update_task(State) ->
                              ]).
 
 dump_stats(#rep_stats{} = Stat) ->
-    ?xdcr_info("number of missing docs checked: ~p",
+    ?xdcr_debug("number of missing docs checked: ~p",
                [Stat#rep_stats.missing_checked]),
-    ?xdcr_info("number of missing docs found: ~p",
+    ?xdcr_debug("number of missing docs found: ~p",
                [Stat#rep_stats.missing_found]),
-    ?xdcr_info("number of docs read: ~p",
+    ?xdcr_debug("number of docs read: ~p",
                [Stat#rep_stats.docs_read]),
-    ?xdcr_info("number of docs written: ~p",
+    ?xdcr_debug("number of docs written: ~p",
                [Stat#rep_stats.docs_written]),
-    ?xdcr_info("number of docs failed to write: ~p",
+    ?xdcr_debug("number of docs failed to write: ~p",
                [Stat#rep_stats.doc_write_failures]),
     ok.
 
