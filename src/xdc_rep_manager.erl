@@ -456,25 +456,32 @@ start_couch_replication(SrcCouchURI, TgtCouchURI, Vb, XDocId) ->
       stat_table = ?XSTATS
      },
 
+    %% insert an entry into stat table before creating a replicator worker
+    case ets:member(?XSTATS, {XDocId, Vb}) of
+        false ->
+            ?xdcr_debug("insert a new entry to stat table for XDocId (~p) "
+                        "and Vb (~p)", [XDocId, Vb]),
+            true = ets:insert(?XSTATS, {{XDocId, Vb}, [], #rep_stats{}});
+        true ->
+            ?xdcr_debug("replication for XDocID (~p) and Vb (~p) "
+                        "already exists in stat table", [XDocId, Vb]),
+            ok
+    end,
+
     case xdc_replicator:async_replicate(CRep) of
         {ok, CRepPid} ->
             erlang:monitor(process, CRepPid),
             CRepState = triggered,
             true = ets:insert(?CSTORE, {CRepPid, CRep, Vb, CRepState}),
             true = ets:insert(?X2CSTORE, {XDocId, CRepPid}),
+
             %% update stat table
-            case ets:member(?XSTATS, {XDocId, Vb}) of
-                false ->
-                    VbRepStat = #rep_stats{},
-                    ?xdcr_debug("insert to stat table: [{~p, ~p}, [~p], ~p]",
-                               [XDocId, Vb, CRepPid, VbRepStat]),
-                    true = ets:insert(?XSTATS, {{XDocId, Vb}, [CRepPid], VbRepStat});
-                true ->
-                    ?xdcr_debug("replication exists in stat table, add new RepPid ~p", [CRepPid]),
-                    CRepPids = ets:lookup_element(?XSTATS, {XDocId, Vb}, 2),
-                    NewCRepPids = update_rep_pid_list(CRepPid, CRepPids),
-                    true = ets:update_element(?XSTATS, {XDocId, Vb}, {2, NewCRepPids})
-            end,
+            CRepPids = ets:lookup_element(?XSTATS, {XDocId, Vb}, 2),
+            NewCRepPids = update_rep_pid_list(CRepPid, CRepPids),
+            true = ets:update_element(?XSTATS, {XDocId, Vb}, {2, NewCRepPids}),
+            ?xdcr_debug("add a new RepPid (~p) to the stat table for "
+                        "XDocId (~p) and Vb (~p).", [CRepPid, XDocId, Vb]),
+
             %% update replication document
             xdc_rep_manager_helper:update_rep_doc(
               xdc_rep_utils:info_doc_id(XDocId),
@@ -484,6 +491,8 @@ start_couch_replication(SrcCouchURI, TgtCouchURI, Vb, XDocId) ->
         Error ->
             ?xdcr_info("~s: triggering of replication for vbucket ~p failed due to: "
                        "~p", [XDocId, Vb, Error]),
+            %% we can leave the entry in stat table for the next time we try to
+            %% re-trigger the replication for this vbucket.
             {error, Error}
     end.
 
