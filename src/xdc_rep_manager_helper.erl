@@ -18,7 +18,7 @@
 %% public API
 -export([changes_feed_loop/0]).
 -export([update_rep_doc/2, maybe_tag_rep_doc/3]).
--export([parse_xdc_rep_doc/1, get_xdc_rep_state/2]).
+-export([parse_xdc_rep_doc/2, get_xdc_rep_state/2]).
 -export([create_xdc_rep_info_doc/5]).
 
 -include("xdc_replicator.hrl").
@@ -81,10 +81,11 @@ ensure_rep_ddoc_exists(RepDb, DDocID) ->
             ok;
         _ ->
             DDoc = couch_doc:from_json_obj({[
-                                             {<<"_id">>, DDocID},
-                                             {<<"language">>, <<"javascript">>},
-                                             {<<"validate_doc_update">>, ?REP_DB_DOC_VALIDATE_FUN}
-                                            ]}),
+                {<<"meta">>, {[{<<"id">>, DDocID}]}},
+                {<<"json">>, {[
+                    {<<"language">>, <<"javascript">>},
+                    {<<"validate_doc_update">>, ?REP_DB_DOC_VALIDATE_FUN}
+                ]}}]}),
             ok = couch_db:update_doc(RepDb, DDoc, [])
     end.
 
@@ -175,10 +176,10 @@ get_xdc_rep_state(XDocId, RepDbName) ->
     RepState.
 
 %% validate and parse XDC rep doc
-parse_xdc_rep_doc(RepDoc) ->
+parse_xdc_rep_doc(RepDocId, RepDoc) ->
     xdc_rep_utils:is_valid_xdc_rep_doc(RepDoc),
     {ok, Rep} = try
-                    xdc_rep_utils:parse_rep_doc(RepDoc, #user_ctx{})
+                    xdc_rep_utils:parse_rep_doc(RepDocId, RepDoc, #user_ctx{})
                 catch
                     throw:{error, Reason} ->
                         throw({bad_rep_doc, Reason});

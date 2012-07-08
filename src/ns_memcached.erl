@@ -762,7 +762,7 @@ get_meta(Bucket, Key, VBucket) ->
 
 %% @doc send a set command to memcached instance
 -spec delete(bucket_name(), binary(), integer(), integer()) ->
-    {ok, #mc_header{}, #mc_entry{}, any()}.
+    {ok, #mc_header{}, #mc_entry{}, any()} | {memcached_error, any(), any()}.
 delete(Bucket, Key, VBucket, CAS) ->
     do_call({server(Bucket), node()},
             {delete, Key, VBucket, CAS}, ?TIMEOUT_HEAVY).
@@ -773,7 +773,7 @@ delete(Bucket, Key, VBucket) ->
 
 %% @doc send a set command to memcached instance
 -spec set(bucket_name(), binary(), integer(), binary()) ->
-    {ok, #mc_header{}, #mc_entry{}, any()}.
+    {ok, #mc_header{}, #mc_entry{}, any()} | {memcached_error, any(), any()}.
 set(Bucket, Key, VBucket, Value) ->
     do_call({server(Bucket), node()},
             {set, Key, VBucket, Value}, ?TIMEOUT_HEAVY).

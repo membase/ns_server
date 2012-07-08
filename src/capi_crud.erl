@@ -19,6 +19,7 @@
 -include("couch_db.hrl").
 -include("mc_entry.hrl").
 -include("mc_constants.hrl").
+-include("ns_common.hrl").
 
 -export([open_doc/3, update_doc/3]).
 
@@ -29,7 +30,11 @@ open_doc(#db{name = Name}, DocId, Options) ->
 update_doc(#db{name = Name}, #doc{id = DocId, deleted = true}, _Options) ->
     delete(Name, DocId);
 
-update_doc(#db{name = Name}, #doc{id = DocId, body = Body}, _Options) ->
+update_doc(#db{name = Name}, #doc{id = DocId, body = Body}, _Options) when is_binary(Body) ->
+    set(Name, DocId, Body);
+
+update_doc(#db{name = Name}, #doc{id = DocId}=Doc, _Options) ->
+    {Body, _Meta} = couch_doc:to_raw_json_binary_views(Doc),
     set(Name, DocId, Body).
 
 %% TODO: handle tmp failures here. E.g. during warmup

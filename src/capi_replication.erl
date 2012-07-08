@@ -99,9 +99,9 @@ is_missing_rev(Bucket, VBucket, Id, RemoteMeta) ->
             end
     end.
 
-do_update_replicated_doc_loop(Bucket, VBucket,
-                              #doc{id = DocId, rev = DocRev,
-                                   body = DocValue, deleted = DocDeleted} = Doc) ->
+do_update_replicated_doc_loop(Bucket, VBucket, Doc0) ->
+    Doc = #doc{id = DocId, rev = DocRev,
+        body = DocValue, deleted = DocDeleted} = couch_doc:with_json_body(Doc0),
     {DocSeqNo, DocRevId} = DocRev,
     RV =
         case get_meta(Bucket, VBucket, DocId) of

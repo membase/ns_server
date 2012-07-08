@@ -17,7 +17,7 @@
 
 -module(xdc_rep_utils).
 
--export([parse_rep_doc/2, is_valid_xdc_rep_doc/1]).
+-export([parse_rep_doc/3, is_valid_xdc_rep_doc/1]).
 -export([local_couch_uri_for_vbucket/2]).
 -export([remote_couch_uri_for_vbucket/3, my_active_vbuckets/1]).
 -export([lists_difference/2, node_uuid/0, info_doc_id/1, vb_rep_state_list/2]).
@@ -81,7 +81,7 @@ vb_rep_state_list(VbList, RepState) ->
       VbList).
 
 %% Parse replication document
-parse_rep_doc({Props}, UserCtx) ->
+parse_rep_doc(DocId, {Props}, UserCtx) ->
     ProxyParams = parse_proxy_params(get_value(<<"proxy">>, Props, <<>>)),
     Options = make_options(Props),
     case get_value(cancel, Options, false) andalso
@@ -96,7 +96,7 @@ parse_rep_doc({Props}, UserCtx) ->
               target = Target,
               options = Options,
               user_ctx = UserCtx,
-              doc_id = get_value(<<"_id">>, Props)
+              doc_id = DocId
              },
             {ok, Rep#rep{id = replication_id(Rep)}}
     end.

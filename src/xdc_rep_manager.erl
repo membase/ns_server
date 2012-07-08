@@ -145,12 +145,14 @@ maybe_create_replication_info_ddoc() ->
             ok;
         _ ->
             DDoc = couch_doc:from_json_obj(
-                     {[{<<"_id">>, <<"_design/_replicator_info">>},
-                       {<<"language">>, <<"javascript">>},
-                       {<<"views">>,
-                        {[{<<"infos">>,
-                           {[{<<"map">>, ?REPLICATION_INFOS_MAP},
-                             {<<"reduce">>, ?REPLICATION_INFOS_REDUCE}]}}]}}]}),
+                     {[
+                        {<<"meta">>, {[{<<"id">>, <<"_design/_replicator_info">>}]}},
+                        {<<"json">>, {[
+                          {<<"language">>, <<"javascript">>},
+                          {<<"views">>,
+                            {[{<<"infos">>,
+                               {[{<<"map">>, ?REPLICATION_INFOS_MAP},
+                                 {<<"reduce">>, ?REPLICATION_INFOS_REDUCE}]}}]}}]}}]}),
             ok = couch_db:update_doc(DB, DDoc, [])
     after
         couch_db:close(DB)
@@ -161,8 +163,10 @@ handle_call({rep_db_update, {ChangeProps} = Change}, _From, State) ->
         process_update(Change, State#rep_db_state.rep_db_name)
     catch
         _Tag:Error ->
-            {RepProps} = get_value(doc, ChangeProps),
-            DocId = get_value(<<"_id">>, RepProps),
+            {json, DocJSON} = get_value(doc, ChangeProps),
+            {DocProps} = ?JSON_DECODE(DocJSON),
+            {Meta} = get_value(<<"meta">>, DocProps, {[]}),
+            DocId = get_value(<<"id">>, Meta),
             xdc_rep_manager_helper:update_rep_doc(
               xdc_rep_utils:info_doc_id(DocId),
               [{<<"_replication_state">>, <<"error">>}]),
@@ -269,15 +273,17 @@ code_change(_OldVsn, State, _Extra) ->
 
 process_update({Change}, RepDbName) ->
     DocDeleted = get_value(<<"deleted">>, Change, false),
-    {DocProps} = DocBody = get_value(doc, Change),
+    DocId = get_value(<<"id">>, Change),
+    {json, DocJSON} = get_value(doc, Change),
+    {DocProps} = ?JSON_DECODE(DocJSON),
+    {Props} = get_value(<<"json">>, DocProps, {[]}),
     case DocDeleted of
         true ->
-            DocId = get_value(<<"_id">>, DocProps),
             maybe_cancel_xdc_replication(DocId);
         false ->
-            case get_value(<<"type">>, DocProps) of
+            case get_value(<<"type">>, Props) of
                 <<"xdc">> ->
-                    process_xdc_update(DocBody, RepDbName);
+                    process_xdc_update(DocId, {Props}, RepDbName);
                 _ ->
                     ok
             end
@@ -287,9 +293,7 @@ process_update({Change}, RepDbName) ->
 %%
 %% XDC specific functions
 %%
-process_xdc_update(XDocBody, RepDbName) ->
-    {XDocProps} = XDocBody,
-    XDocId = get_value(<<"_id">>, XDocProps),
+process_xdc_update(XDocId, XDocBody, RepDbName) ->
     case xdc_rep_manager_helper:get_xdc_rep_state(XDocId, RepDbName) of
         undefined ->
             maybe_start_xdc_replication(XDocId, XDocBody, RepDbName);
@@ -304,7 +308,7 @@ process_xdc_update(XDocBody, RepDbName) ->
 
 maybe_start_xdc_replication(XDocId, XDocBody, RepDbName) ->
     #rep{id = {XBaseId, _Ext} = XRepId} = XRep =
-        xdc_rep_manager_helper:parse_xdc_rep_doc(XDocBody),
+        xdc_rep_manager_helper:parse_xdc_rep_doc(XDocId, XDocBody),
     case lists:flatten(ets:match(?XSTORE, {'$1', #rep{id = XRepId}})) of
         [] ->
             %% A new XDC replication document.
@@ -450,12 +454,11 @@ start_couch_replication(SrcCouchURI, TgtCouchURI, Vb, XDocId) ->
     %% trigger continuous replication by default at the Couch level.
     ?xdcr_info("try to start couch replication for vbucket ~p", [Vb]),
     {ok, CRep0} =
-        xdc_rep_utils:parse_rep_doc(
+        xdc_rep_utils:parse_rep_doc(undefined,
           {[{<<"source">>, SrcCouchURI},
             {<<"target">>, TgtCouchURI}
            ]},
           #user_ctx{roles = [<<"_admin">>]}),
-
     CRep = CRep0#rep{
       doc_id = XDocId,
       vb_id = Vb,
