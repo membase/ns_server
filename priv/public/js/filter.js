@@ -99,7 +99,11 @@ Filter.prototype = {
     self.filtersUrl = $('.filters_url', self.container);
     self.filters = $('.key input, .key select', self.filtersCont);
     self.form = $('form', self.filtersCont);
-    self.stale = $('#' + self.prefix + '_filter_stale', self.container)
+    self.stale = $('#' + self.prefix + '_filter_stale', self.container);
+
+    self.filtersCont.bind('clickoutside', function () {
+      self.closeFilter();
+    });
 
     self.form.submit(function (e) {
       e.preventDefault();
