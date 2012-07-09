@@ -96,11 +96,19 @@ Filter.prototype = {
 
     self.filtersCont = $('.filters_container', self.container);
     self.filtersBtn = $('.filters_btn', self.container);
-    self.filtersDropDown = $('.filters_dropdown', self.container);
-    self.filtersAdd = $('.filters_add', self.container);
     self.filtersUrl = $('.filters_url', self.container);
+    self.filters = $('.key input, .key select', self.filtersCont);
+    self.form = $('form', self.filtersCont);
+    self.stale = $('#' + self.prefix + '_filter_stale', self.container)
 
-    _.each([self.filtersAdd, self.filtersCont, self.filtersBtn, self.filtersDropDown], self.tagValidation, self);
+    self.form.submit(function (e) {
+      e.preventDefault();
+      self.closeFilter();
+    });
+
+    self.filters.change(function () {
+      self.inputs2filterParams();
+    });
 
     self.filtersBtn.click(function () {
       if (!self.filtersCont.hasClass('disabled')) {
@@ -112,33 +120,6 @@ Filter.prototype = {
       }
     });
 
-    self.filtersDropDown.selectBox();
-    $('#' + self.prefix + '_filter_stale', self.container).selectBox();
-
-    self.filtersAdd.click(function (e) {
-      var value = self.filtersDropDown.selectBox("value");
-      if (!value) {
-        return;
-      }
-      var input = $('[name=' + value + ']', self.filtersCont);
-      if (input.attr('type') === 'checkbox') {
-        input.prop('checked', false);
-      } else if (value === 'keys') {
-        input.val('[""]');
-      } else {
-        input.val("");
-      }
-      input.parent().show();
-      self.resetDropDown(value, true);
-    });
-
-    self.filtersCont.delegate('.btn_x', 'click', function () {
-      var row = $(this).parent();
-      var name = row.find('[name]').attr('name')
-      row.hide();
-      self.resetDropDown(name);
-    });
-
     return self;
   },
   reset: function () {
@@ -146,13 +127,6 @@ Filter.prototype = {
       this.currentURL = null;
     }
     this.rawFilterParamsCell.setValue(undefined);
-  },
-  resetDropDown: function (name, isDisabled) {
-    this.filtersDropDown.selectBox("destroy");
-    // jquery is broken. this is workaround, because $%#$%
-    this.filtersDropDown.removeData('selectBoxControl').removeData('selectBoxSettings');
-    this.filtersDropDown.find("option[value=" + name + "]").prop("disabled", isDisabled);
-    this.filtersDropDown.selectBox();
   },
   tagValidation: function (tag) {
     var self = this;
@@ -173,6 +147,7 @@ Filter.prototype = {
       self.filtersCont.addClass("open");
       self.fillInputs(params);
     });
+    self.stale.selectBox();
   },
   closeFilter: function () {
     var self = this;
@@ -181,6 +156,10 @@ Filter.prototype = {
     }
     self.filtersCont.removeClass("open");
     self.inputs2filterParams();
+
+    this.stale.selectBox("destroy");
+    // jquery is broken. this is workaround, because $%#$%
+    this.stale.removeData('selectBoxControl').removeData('selectBoxSettings');
   },
   inputs2filterParams: function () {
     var params = this.parseInputs();
@@ -192,7 +171,7 @@ Filter.prototype = {
     }
   },
   iterateInputs: function (body) {
-    $('.key input, .key select', this.filtersCont).each(function () {
+    this.filters.each(function () {
       var el = $(this);
       var name = el.attr('name');
       var type = (el.attr('type') === 'checkbox') ? 'bool' : 'json';
@@ -202,33 +181,22 @@ Filter.prototype = {
   },
   fillInputs: function (params) {
     this.iterateInputs(function (name, type, val, el) {
-      var row = el.parent();
       if (params[name] === undefined) {
-        row.hide();
         return;
       }
-      row.show();
+      var row = el.parent();
       if (type == 'bool') {
         el.prop('checked', !(params[name] === 'false' || params[name] === false));
       } else {
         el.val(params[name]);
       }
     });
-    this.filtersDropDown.selectBox("destroy");
-      // jquery is broken. this is workaround, because $%#$%
-    this.filtersDropDown.removeData('selectBoxControl').removeData('selectBoxSettings');
-    this.filtersDropDown.find("option").each(function () {
-      var option = $(this);
-      var value = option.attr('value');
-      option.prop('disabled', value in params);
-    });
-    this.filtersDropDown.selectBox();
   },
   parseInputs: function() {
     var rv = {};
     this.iterateInputs(function (name, type, val, el) {
       var row = el.parent();
-      if (row.get(0).style.display === 'none') {
+      if (row.get(0).style.display === 'none' || !val) {
         return;
       }
       rv[name] = val;

@@ -1108,103 +1108,86 @@
               <div class="filters_container">
                 <div class="filters_btn"></div>
                 <div class="filters_popup">
-                  <div class="wrap">
-                    <select class="filters_dropdown" name="standard-dropdown">
-                        <option value=""></option>
-                        <!--{% if (items.conflict) {%}--><option value="conflicts">conflicts</option><!--{% }%}-->
-                        <!--{% if (items.bbox) {%}--><option value="bbox">bbox</option><!--{% }%}-->
-                        <!--{% if (items.stale) {%}--><option value="stale">stale</option><!--{% }%}-->
-                        <!--{% if (items.reduce) {%}--><option value="reduce">reduce</option><!--{% }%}-->
-                        <!--{% if (items.group) {%}--><option value="group">group</option><!--{% }%}-->
-                        <!--{% if (items.groupLevel) {%}--><option value="group_level">group_level</option><!--{% }%}-->
-                        <!--{% if (items.startkey) {%}--><option value="startkey">startkey</option><!--{% }%}-->
-                        <!--{% if (items.endkey) {%}--><option value="endkey">endkey</option><!--{% }%}-->
-                        <!--{% if (items.startkeyDocid) {%}--><option value="startkey_docid">startkey_docid</option><!--{% }%}-->
-                        <!--{% if (items.endkeyDocid) {%}--><option value="endkey_docid">endkey_docid</option><!--{% }%}-->
-                        <!--{% if (items.inclusiveEnd) {%}--><option value="inclusive_end">inclusive_end</option><!--{% }%}-->
-                        <!--{% if (items.descending) {%}--><option value="descending">descending</option><!--{% }%}-->
-                        <!--{% if (items.key) {%}--><option value="key">key</option><!--{% }%}-->
-                        <!--{% if (items.keys) {%}--><option value="keys">keys</option><!--{% }%}-->
-                        <!--{% if (items.connectionTimeout) {%}--><option value="connection_timeout">connection_timeout</option><!--{% }%}-->
-                    </select>
-                    <a class="filters_add"></a>
-                  </div>
-
+                <form>
                   <div class="key">
-                    <!--{% if (items.conflict) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_conflicts">conflicts</label>
-                      <input id="{%= prefix %}_filter_conflicts" name="conflicts" type="checkbox">
-                    </div><!--{% }%}-->
-                    <!--{% if (items.bbox) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_bbox">bbox</label>
-                      <input id="{%= prefix %}_filter_bbox" name="bbox" type="text">
-                    </div><!--{% }%}-->
-                    <!--{% if (items.descending) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_descending">descending</label>
-                      <input id="{%= prefix %}_filter_descending" name="descending" type="checkbox">
-                    </div><!--{% }%}-->
-                    <!--{% if (items.startkey) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_startkey">startkey</label>
-                      <input id="{%= prefix %}_filter_startkey" name="startkey" type="text">
-                    </div><!--{% }%}-->
-                    <!--{% if (items.endkey) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_endkey">endkey</label>
-                      <input id="{%= prefix %}_filter_endkey" name="endkey" type="text">
-                    </div><!--{% }%}-->
-                    <!--{% if (items.startkeyDocid) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_startkey_docid">startkey_docid</label>
-                      <input id="{%= prefix %}_filter_startkey_docid" name="startkey_docid" type="text">
-                    </div><!--{% }%}-->
-                    <!--{% if (items.endkeyDocid) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_endkey_docid">endkey_docid</label>
-                      <input id="{%= prefix %}_filter_endkey_docid" name="endkey_docid" type="text">
-                    </div><!--{% }%}-->
-                    <!--{% if (items.group) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_group">group</label>
-                      <input id="{%= prefix %}_filter_group" name="group" type="checkbox">
-                    </div><!--{% }%}-->
-                    <!--{% if (items.groupLevel) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_group_level">group_level</label>
-                      <input id="{%= prefix %}_filter_group_level" name="group_level" type="text">
-                    </div><!--{% }%}-->
-                    <!--{% if (items.includeDocs) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_include_docs">include_docs</label>
-                      <input id="{%= prefix %}_filter_include_docs" name="include_docs" type="checkbox">
-                    </div><!--{% }%}-->
-                    <!--{% if (items.inclusiveEnd) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_inclusive_end">inclusive_end</label>
-                      <input id="{%= prefix %}_filter_inclusive_end" name="inclusive_end" type="checkbox">
-                    </div><!--{% }%}-->
-                    <!--{% if (items.key) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_key">key</label>
-                      <input id="{%= prefix %}_filter_key" name="key" type="text">
-                    </div><!--{% }%}-->
-                    <!--{% if (items.keys) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_keys">keys</label>
-                      <input id="{%= prefix %}_filter_keys" name="keys" type="text">
-                    </div><!--{% }%}-->
-                    <!--{% if (items.reduce) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_reduce">reduce</label>
-                      <input id="{%= prefix %}_filter_reduce" name="reduce" type="checkbox">
-                    </div><!--{% }%}-->
-                    <!--{% if (items.updateSeq) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_update_seq">update_seq</label>
-                      <input id="{%= prefix %}_filter_update_seq" name="update_seq" type="checkbox">
-                    </div><!--{% }%}-->
-                    <!--{% if (items.stale) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_stale">stale</label>
-                        <select id="{%= prefix %}_filter_stale" name="stale" class="selectBox">
-                          <option value="false">false</option>
-                          <option value="update_after">update_after</option>
-                          <option value="ok">ok</option>
-                        </select>
+                      <!--{% if (items.conflict) {%}--><div>
+                        <label for="{%= prefix %}_filter_conflicts">conflicts</label>
+                        <input id="{%= prefix %}_filter_conflicts" name="conflicts" type="checkbox">
                       </div><!--{% }%}-->
-                    <!--{% if (items.connectionTimeout) {%}--><div>
-                      <div class="btn_x"></div><label for="{%= prefix %}_filter_connection_timeout">connection_timeout</label>
-                      <input id="{%= prefix %}_filter_connection_timeout" name="connection_timeout" type="text" placeholder="milliseconds">
-                    </div><!--{% }%}-->
-                  </div>
+                      <!--{% if (items.bbox) {%}--><div>
+                        <label for="{%= prefix %}_filter_bbox">bbox</label>
+                        <input id="{%= prefix %}_filter_bbox" name="bbox" type="text">
+                      </div><!--{% }%}-->
+                      <!--{% if (items.descending) {%}--><div>
+                        <label for="{%= prefix %}_filter_descending">descending</label>
+                        <input id="{%= prefix %}_filter_descending" name="descending" type="checkbox">
+                      </div><!--{% }%}-->
+                      <!--{% if (items.startkey) {%}--><div>
+                        <label for="{%= prefix %}_filter_startkey">startkey</label>
+                        <input id="{%= prefix %}_filter_startkey" name="startkey" type="text">
+                      </div><!--{% }%}-->
+                      <!--{% if (items.endkey) {%}--><div>
+                        <label for="{%= prefix %}_filter_endkey">endkey</label>
+                        <input id="{%= prefix %}_filter_endkey" name="endkey" type="text">
+                      </div><!--{% }%}-->
+                      <!--{% if (items.startkeyDocid) {%}--><div>
+                        <label for="{%= prefix %}_filter_startkey_docid">startkey_docid</label>
+                        <input id="{%= prefix %}_filter_startkey_docid" name="startkey_docid" type="text">
+                      </div><!--{% }%}-->
+                      <!--{% if (items.endkeyDocid) {%}--><div>
+                        <label for="{%= prefix %}_filter_endkey_docid">endkey_docid</label>
+                        <input id="{%= prefix %}_filter_endkey_docid" name="endkey_docid" type="text">
+                      </div><!--{% }%}-->
+                      <!--{% if (items.group) {%}--><div>
+                        <label for="{%= prefix %}_filter_group">group</label>
+                        <input id="{%= prefix %}_filter_group" name="group" type="checkbox">
+                      </div><!--{% }%}-->
+                      <!--{% if (items.groupLevel) {%}--><div>
+                        <label for="{%= prefix %}_filter_group_level">group_level</label>
+                        <input id="{%= prefix %}_filter_group_level" name="group_level" type="text">
+                      </div><!--{% }%}-->
+                      <!--{% if (items.includeDocs) {%}--><div>
+                        <label for="{%= prefix %}_filter_include_docs">include_docs</label>
+                        <input id="{%= prefix %}_filter_include_docs" name="include_docs" type="checkbox">
+                      </div><!--{% }%}-->
+                      <!--{% if (items.inclusiveEnd) {%}--><div>
+                        <label for="{%= prefix %}_filter_inclusive_end">inclusive_end</label>
+                        <input id="{%= prefix %}_filter_inclusive_end" name="inclusive_end" type="checkbox">
+                      </div><!--{% }%}-->
+                      <!--{% if (items.key) {%}--><div>
+                        <label for="{%= prefix %}_filter_key">key</label>
+                        <input id="{%= prefix %}_filter_key" name="key" type="text">
+                      </div><!--{% }%}-->
+                      <!--{% if (items.keys) {%}--><div>
+                        <label for="{%= prefix %}_filter_keys">keys</label>
+                        <input id="{%= prefix %}_filter_keys" name="keys" type="text">
+                      </div><!--{% }%}-->
+                      <!--{% if (items.reduce) {%}--><div>
+                        <label for="{%= prefix %}_filter_reduce">reduce</label>
+                        <input id="{%= prefix %}_filter_reduce" name="reduce" type="checkbox">
+                      </div><!--{% }%}-->
+                      <!--{% if (items.updateSeq) {%}--><div>
+                        <label for="{%= prefix %}_filter_update_seq">update_seq</label>
+                        <input id="{%= prefix %}_filter_update_seq" name="update_seq" type="checkbox">
+                      </div><!--{% }%}-->
+                      <!--{% if (items.stale) {%}--><div>
+                        <label for="{%= prefix %}_filter_stale">stale</label>
+                          <div style="display: inline-block">
+                            <select id="{%= prefix %}_filter_stale" name="stale" class="selectBox" multiple="multiple">
+                              <option value="false">false</option>
+                              <option value="update_after">update_after</option>
+                              <option value="ok">ok</option>
+                            </select>
+                          </div>
+                        </div><!--{% }%}-->
+                      <!--{% if (items.connectionTimeout) {%}--><div>
+                        <label for="{%= prefix %}_filter_connection_timeout">connection_timeout</label>
+                        <input id="{%= prefix %}_filter_connection_timeout" name="connection_timeout" type="text" placeholder="milliseconds">
+                      </div><!--{% }%}-->
+                    </div>
+                    <button type="submit" style="visibility: hidden;position: absolute;"><span>submit</span></button>
                 </div>
+                <form>
               </div>
               <a href="#" class="filters_url"></a>
 
