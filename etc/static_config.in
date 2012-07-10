@@ -17,3 +17,4 @@
 {loglevel_rebalance, info}.
 {loglevel_cluster, info}.
 {loglevel_views, info}.
+{loglevel_mapreduce_errors, info}.

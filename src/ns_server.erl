@@ -98,6 +98,8 @@ init_logging() ->
     DefaultLogPath = filename:join(Dir, ?DEFAULT_LOG_FILENAME),
     ErrorLogPath = filename:join(Dir, ?ERRORS_LOG_FILENAME),
     ViewsLogPath = filename:join(Dir, ?VIEWS_LOG_FILENAME),
+    MapreduceErrorsLogPath = filename:join(Dir,
+                                           ?MAPREDUCE_ERRORS_LOG_FILENAME),
     CouchLogPath = filename:join(Dir, ?COUCHDB_LOG_FILENAME),
     DebugLogPath = filename:join(Dir, ?DEBUG_LOG_FILENAME),
 
@@ -106,6 +108,7 @@ init_logging() ->
     ale:stop_sink(disk_default),
     ale:stop_sink(disk_error),
     ale:stop_sink(disk_views),
+    ale:stop_sink(disk_mapreduce_errors),
     ale:stop_sink(disk_couchdb),
     ale:stop_sink(ns_log),
 
@@ -120,6 +123,9 @@ init_logging() ->
                         ale_disk_sink, [ErrorLogPath, DiskSinkParams]),
     ok = ale:start_sink(disk_views,
                         ale_disk_sink, [ViewsLogPath, DiskSinkParams]),
+    ok = ale:start_sink(disk_mapreduce_errors,
+                        ale_disk_sink,
+                        [MapreduceErrorsLogPath, DiskSinkParams]),
     ok = ale:start_sink(disk_couchdb,
                         ale_disk_sink, [CouchLogPath, DiskSinkParams]),
     ok = ale:start_sink(disk_debug,
@@ -152,6 +158,7 @@ init_logging() ->
     ok = ale:add_sink(?REBALANCE_LOGGER, ns_log, error),
 
     ok = ale:add_sink(?VIEWS_LOGGER, disk_views),
+    ok = ale:add_sink(?MAPREDUCE_ERRORS_LOGGER, disk_mapreduce_errors),
 
     ok = ale:add_sink(?COUCHDB_LOGGER, disk_couchdb),
 

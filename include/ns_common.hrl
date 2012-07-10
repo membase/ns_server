@@ -48,6 +48,7 @@
 -define(DEFAULT_LOG_FILENAME, "info").
 -define(ERRORS_LOG_FILENAME, "error").
 -define(VIEWS_LOG_FILENAME, "views").
+-define(MAPREDUCE_ERRORS_LOG_FILENAME, "mapreduce_errors").
 -define(COUCHDB_LOG_FILENAME, "couchdb").
 -define(DEBUG_LOG_FILENAME, "debug").
 
@@ -60,12 +61,16 @@
 -define(REBALANCE_LOGGER, rebalance).
 -define(CLUSTER_LOGGER, cluster).
 -define(VIEWS_LOGGER, views).
+%% The mapreduce logger is used by the couchdb component, hence don't wonder
+%% if you can't find any calls to it in ns_server
+-define(MAPREDUCE_ERRORS_LOGGER, mapreduce_errors).
 -define(XDCR_LOGGER, xdcr).
 
 -define(LOGGERS, [?COUCHDB_LOGGER, ?NS_SERVER_LOGGER,
                   ?USER_LOGGER, ?MENELAUS_LOGGER,
                   ?NS_DOCTOR_LOGGER, ?STATS_LOGGER,
-                  ?REBALANCE_LOGGER, ?CLUSTER_LOGGER, ?VIEWS_LOGGER, ?XDCR_LOGGER]).
+                  ?REBALANCE_LOGGER, ?CLUSTER_LOGGER, ?VIEWS_LOGGER,
+                  ?MAPREDUCE_ERRORS_LOGGER, ?XDCR_LOGGER]).
 
 -define(LOG(Level, Format, Args),
         ale:log(?NS_SERVER_LOGGER, Level, Format, Args)).
