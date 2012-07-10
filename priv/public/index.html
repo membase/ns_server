@@ -179,59 +179,61 @@
           </div>
           <script id="manage_server_list_template" type="text/html">
           <table class="list" style="width:100%">
-            <tr>
-              <th class="node_name">Server Node Name</th>
-              <th></th>
-              <th style="text-align:left">RAM Usage</th>
-              <th style="text-align:left">Swap Usage</th>
-              <th style="text-align:left">CPU Usage</th>
-              <th colspan="2" style="text-align:left">Items (Active / Replica)</th>
-            </tr>
-          <!-- {% if (!rows.length) { %} -->
-            <tr class="server_row rebalance_empty">
-              <td colspan="7">There are no servers pending rebalance.</td>
-            </tr>
-          <!-- {% } %} -->
-          <!-- {% _.each(rows, function (s) { %} -->
+            <tbody>
+              <tr>
+                <th class="node_name">Server Node Name</th>
+                <th></th>
+                <th></th>
+                <th style="text-align:left">RAM Usage</th>
+                <th style="text-align:left">Swap Usage</th>
+                <th style="text-align:left">CPU Usage</th>
+                <th style="text-align:left" colspan="2">Items (Active / Replica)</th>
+                <th></th>
+              </tr>
+            <!-- {% if (!rows.length) { %} -->
+              <tr class="server_row rebalance_empty">
+                <td colspan="9">There are no servers pending rebalance.</td>
+              </tr>
+            <!-- {% } %} -->
+            <!-- {% _.each(rows, function (s) { %} -->
             <!-- {% if (s.clusterMembership == 'inactiveAdded') { %}-->
-            <tr class="server_row pending_add {%= s.nodeClass %}">
-              <td class="node_name">{%= V.setData('server', s) %}
-              {%= V.stripPortHTML(s.hostname, rows) %}
-              </td>
-              <td colspan="5">
+              <tr class="server_row pending_add {%= s.nodeClass %}">
+                <td class="node_name ellipsis" colspan="2">{%= V.setData('server', s) %}
+                  {%= V.stripPortHTML(s.hostname, rows) %}
+                </td>
+                <td colspan="5">
 
-              </td>
-              <td>
-              <a href="#" class="list_button btn_cancel eject_server"><span>Cancel</span></a>
-              <span class="pending_add_message">Pending Add</span>
-              </td>
-            </tr>
-            <!-- {% } else if (s.pendingEject) { %} -->
-            <tr class="server_row pending_removal {%= s.nodeClass %}">
-              <td class="node_name">{%= V.setData('server', s) %}
-              <a class="{% if (!expandingAllowed) { %} disabled"{% } else { %}" href="#openServer={%= h(s.otpNode) %}"{% } %}><span class="expander closed"></span></a>
-              {%= V.stripPortHTML(s.hostname, rows) %}
-              </td>
-              <td colspan="5">
-              <span class="pending_removal_message">Pending Removal</span>
-              </td>
-              <td>
-              <a href="#" class="list_button btn_cancel remove_from_list"><span>Cancel</span></a>
-              </td>
-            </tr>
-            <!-- {% } else { %} -->
-              <!-- {% if (s.reAddPossible) { %} -->
-              <tr class="add_back_row">
-                <td colspan="7">{%= V.setData('server', s) %}
-                <a href="#" class="add_back_btn re_add_button"></a>
-                <span class="add_b_message">This server is now reachable. Do you
-                want to add it back to the cluster on the next rebalance?</span>
+                </td>
+                <td colspan="2">
+                  <a href="#" class="list_button btn_cancel eject_server"><span>Cancel</span></a>
+                  <span class="pending_add_message">Pending Add</span>
                 </td>
               </tr>
-              <!-- {% } %} -->
+            <!-- {% } else if (s.pendingEject) { %} -->
+              <tr class="server_row pending_removal {%= s.nodeClass %}">
+                <td class="node_name ellipsis" colspan="2">{%= V.setData('server', s) %}
+                  <a class="{% if (!expandingAllowed) { %} disabled"{% } else { %}" href="#openServer={%= h(s.otpNode) %}"{% } %}><span class="expander closed"></span></a>
+                  {%= V.stripPortHTML(s.hostname, rows) %}
+                </td>
+                <td colspan="5">
+                  <span class="pending_removal_message">Pending Removal</span>
+                </td>
+                <td colspan="2">
+                  <a href="#" class="list_button btn_cancel remove_from_list"><span>Cancel</span></a>
+                </td>
+              </tr>
+            <!-- {% } else { %} -->
+            <!-- {% if (s.reAddPossible) { %} -->
+              <tr class="add_back_row">
+                <td colspan="9">{%= V.setData('server', s) %}
+                  <a href="#" class="add_back_btn re_add_button"></a>
+                  <span class="add_b_message">This server is now reachable. Do you want to add it back to the cluster on the next rebalance?</span>
+                </td>
+              </tr>
+            <!-- {% } %} -->
 
               <tr class="server_row {%= s.nodeClass %}" id="{%= h(s.otpNode.replace('@', '-')) %}">
-                <td class="node_name">{%= V.setData('server', s) %}
+                <td class="node_name ellipsis" colspan="2">{%= V.setData('server', s) %}
               <!-- {% if (s.reAddPossible) { %} -->
                   <a href="#openServer={%= h(s.otpNode) %}"><ins class="expander closed"></ins></a>
                   {%= V.stripPortHTML(s.hostname, rows) %}
@@ -277,7 +279,7 @@
                   {%= V.formatQuantity(s.interestingStats.curr_items || 0, '', 1000, ' ') %}/
                   {%= V.formatQuantity(s.interestingStats.vb_replica_curr_items || 0, '', 1000, ' ') %}
                 </td>
-                <td class="actions">
+                <td class="actions" colspan="2">
                   <a class="list_button eject_server"><span>Remove</span></a>
                   <a class="list_button failover_server"><span>Fail Over</span></a>
                   <span class="failed_over_message">Failed Over: Pending Removal</span>
@@ -288,6 +290,7 @@
               <tr><td colspan="9" class="settings-placeholder" style="display:none;">{%= ServersSection.renderServerDetails(s) %}</td></tr>
             <!-- {% } %} -->
           <!-- {% }); %} -->
+            </tbody>
           </table>
           </script>
 
