@@ -138,31 +138,6 @@ update_replicated_docs(#db{name = DbName}, Docs, Options) ->
 
     make_return_tuple({ok, Errors}).
 
-update_replicated_doc(#db{name = BucketBin,
-                          filepath = undefined},
-                      #doc{id = Id} = Doc,
-                      _Options) ->
-    Bucket = binary_to_list(BucketBin),
-    {VBucket, _Node} = cb_util:vbucket_from_id(Bucket, Id),
-
-    case do_update_replicated_doc(Bucket, VBucket, Doc) of
-        ok ->
-            ok;
-        {error, Error} ->
-            throw(Error)
-    end;
-update_replicated_doc(#db{name = DbName},
-                      #doc{} = Doc,
-                      _Options)->
-    {Bucket, VBucket} = capi_utils:split_dbname(DbName),
-
-    case do_update_replicated_doc(Bucket, VBucket, Doc) of
-        ok ->
-            ok;
-        {error, Error} ->
-            throw(Error)
-    end.
-
 winner({_SeqNo1, _RevId1} = Theirs,
        {_SeqNo2, _RevId2} = Ours) ->
     winner_helper(Theirs, Ours);
