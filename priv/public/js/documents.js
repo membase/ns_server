@@ -328,6 +328,10 @@ var DocumentsSection = {
           pageNumber: page.pageNumber,
           bucketName: page.bucketName
         });
+
+        $('.delete_btn', documents).click(function () {
+          self.deleteDocument($(this).attr('data-id'));
+        });
       }
     }
 
@@ -591,6 +595,7 @@ var DocumentsSection = {
       var spinner;
       var dbURL;
       var currentDocUrl;
+      var currentDocId;
 
       self.dbURLCell.subscribeValue(function (url) {;
         dbURL = url;
@@ -598,6 +603,10 @@ var DocumentsSection = {
 
       self.currentDocURLCell.subscribeValue(function (url) {
         currentDocUrl = url;
+      });
+
+      self.currentDocumentIdCell.subscribeValue(function (id) {
+        currentDocId = id;
       });
 
       function startSpinner(dialog) {
@@ -706,19 +715,19 @@ var DocumentsSection = {
         }
       });
 
-      docDeleteBtn.click(function (e) {
-        e.preventDefault();
+      self.deleteDocument = function (id, success) {
         deleteDocDialogWarning.text('').hide();
         showDialog(deleteDocDialog, {
           eventBindings: [['.save_button', 'click', function (e) {
             e.preventDefault();
             startSpinner(deleteDocDialog);
-            //deletion of non json document leads to 409 error
-            couchReq('DELETE', currentDocUrl, null, function () {
+            couchReq('DELETE', buildDocURL(dbURL, id), null, function () {
               stopSpinner();
-               hideDialog(deleteDocDialog);
-              self.documentIdCell.setValue(undefined);
+              hideDialog(deleteDocDialog);
               self.currentPageDocsCell.recalculate();
+              if (success) {
+                success();
+              }
             }, function (error, num, unexpected) {
               if (error.reason) {
                 stopSpinner();
@@ -728,6 +737,13 @@ var DocumentsSection = {
               }
             });
           }]]
+        });
+      }
+
+      docDeleteBtn.click(function (e) {
+        e.preventDefault();
+        self.deleteDocument(currentDocId, function () {
+          self.documentIdCell.setValue(undefined);
         });
       });
     })();

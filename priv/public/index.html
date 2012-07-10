@@ -524,7 +524,7 @@
                 </div>
                 <div class="last">
                   <a class="inner_btn" href="#editBucket={%= h(encodeURIComponent(uri)) %}">Edit</a>
-                  <button class="inner_btn compact_btn" id="compact_bucket_{%= h(name) %}">Compact</button>
+                  <button class="inner_btn compact_btn" id="compact_bucket_{%= h(name) %}"><span>Compact</span></button>
                 </div>
               </div>
               <div class="side side_1"></div>
@@ -1508,7 +1508,11 @@
                   <thead>
                     <tr>
                       <th class="keycol">ID</th>
+                      <th>&#160;</th>
                       <th>Сontent</th>
+                      <th>&#160;</th>
+                      <th>&#160;</th>
+                      <th>&#160;</th>
                       <th>&#160;</th>
                       <th>&#160;</th>
                       <th>&#160;</th>
@@ -1518,21 +1522,23 @@
                   <tbody>
                   <!-- {% if (loading) { %} -->
                       <tr>
-                        <td colspan="6" class='spinner'><span>Loading...</span></td>
+                        <td colspan="10" class='spinner'><span>Loading...</span></td>
                       </tr>
                   <!-- {% } else if (rows.length > 0) { %} -->
                   <!-- {% _.each(rows, function (r) { %} -->
                       <tr class="align_text">
-                          <td class="key ellipsis">
+                          <td class="key ellipsis" colspan="2">
                             <a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}">{%= h(r.key) %}</a>
                           </td>
-                          <td class="ellipsis" colspan="3">{%= $.futon.formatJSON(r.doc.json, {html:true}) %}</td>
-                          <td colspan="2"><a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}" class="list_button btn_edit"><span>Edit Document</span></a></td>
+                          <td class="ellipsis" colspan="5">{%= $.futon.formatJSON(r.doc.json, {html:true}) %}</td>
+                          <td colspan="3">
+                            <button class="list_button delete_btn" data-id="{%= h(r.id) %}"><span>Delete</span></button>
+                            <a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}" class="list_button btn_edit"><span>Edit Document</span></a></td>
                       </tr>
                   <!-- {% }); %} -->
                 <!-- {% } else { %} -->
                   <tr>
-                    <td colspan="6" class="empty_docs">There are currently no documents in this bucket.</td>
+                    <td colspan="10" class="empty_docs">There are currently no documents in this bucket.</td>
                   </tr>
                 <!-- {% } %} -->
                 </tbody>
