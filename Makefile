@@ -188,14 +188,12 @@ MAYBE_UNDEFINED_CALLBACKS = $(shell echo "$(OTP_RELEASE)" | grep -q "^R1[5-9]B.*
 dialyzer: all $(COUCHBASE_PLT)
 	$(MAKE) do-dialyzer DIALYZER_FLAGS="-Wno_return $(MAYBE_UNDEFINED_CALLBACKS) $(DIALYZER_FLAGS)" COUCH_PATH="$(shell . `pwd`/.configuration && echo $$couchdb_src)"
 
-GEOCOUCH_EBIN := $(firstword $(realpath $(COUCH_PATH)/../geocouch/build) $(realpath $(COUCH_PATH)/../geocouch/ebin))
-
 do-dialyzer:
 	dialyzer --plt $(COUCHBASE_PLT) $(DIALYZER_FLAGS) \
             --apps `ls -1 ebin/*.beam | grep -v couch_log` deps/ale/ebin \
             $(COUCH_PATH)/src/couchdb $(COUCH_PATH)/src/couch_set_view \
             $(COUCH_PATH)/src/couch_index_merger/ebin \
-            $(GEOCOUCH_EBIN) $(realpath $(COUCH_PATH)/src/mapreduce)
+            $(realpath $(COUCH_PATH)/src/mapreduce)
 
 dialyzer_obsessive: all $(COUCHBASE_PLT)
 	$(MAKE) do-dialyzer DIALYZER_FLAGS="-Wunmatched_returns -Werror_handling -Wrace_conditions -Wbehaviours -Wunderspecs " COUCH_PATH="$(shell . `pwd`/.configuration && echo $$couchdb_src)"
