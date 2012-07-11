@@ -33,7 +33,6 @@
 -type progress_callback() :: fun((dict()) -> any()).
 
 -record(state, {bucket::nonempty_string(),
-                bucket_type::memcached | membase,
                 disco_events_subscription::pid(),
                 initial_counts::dict(),
                 max_per_node::pos_integer(),
@@ -91,11 +90,7 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
                                             end),
     erlang:start_timer(30000, self(), log_tap_stats),
 
-    {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
-    BucketType = ns_bucket:bucket_type(BucketConfig),
-
     {ok, #state{bucket=Bucket,
-                bucket_type=BucketType,
                 disco_events_subscription=Subscription,
                 initial_counts=count_moves(MoveDict),
                 max_per_node=?MAX_MOVES_PER_NODE,
@@ -124,7 +119,7 @@ handle_info(spawn_initial, State) ->
     maybe_terminate(spawn_workers(State));
 handle_info({move_done, {Node, VBucket, OldChain, [NewNode|_] = NewChain}},
             #state{movers=Movers,
-                   bucket=Bucket, bucket_type=BucketType} = State) ->
+                   bucket=Bucket} = State) ->
     master_activity_events:note_move_done(Bucket, VBucket),
     %% Update replication
     update_replication_post_move(VBucket, OldChain, NewChain),
@@ -134,12 +129,7 @@ handle_info({move_done, {Node, VBucket, OldChain, [NewNode|_] = NewChain}},
     Self = self(),
     spawn_link(
       fun () ->
-              case BucketType of
-                  memcached ->
-                      ok;
-                  membase ->
-                      ok = capi_set_view_manager:wait_until_added(NewNode, Bucket, VBucket)
-              end,
+              ok = capi_set_view_manager:wait_until_added(NewNode, Bucket, VBucket),
               Self ! {update_vbucket_map, Node, VBucket, OldChain, NewChain}
       end),
 
