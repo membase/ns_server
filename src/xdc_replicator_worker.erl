@@ -55,21 +55,19 @@ queue_fetch_loop(Source, Target, Parent, Cp, ChangesManager) ->
 
 local_process_batch([], _Cp, _Src, _Tgt, #batch{docs = []}, Stats) ->
     Stats;
-
-local_process_batch([], Cp, Source, Target, #batch{docs = Docs, size = Size}, Stats) ->
-    case Target of
-        #httpdb{} ->
-            ?xdcr_debug("Worker flushing doc batch of size ~p bytes", [Size]);
-        #db{} ->
-            ?xdcr_debug("Worker flushing doc batch of ~p docs", [Size])
-    end,
+local_process_batch([], Cp, #db{} = Source, #httpdb{} = Target,
+                    #batch{docs = Docs, size = Size}, Stats) ->
+    ?xdcr_debug("worker process flushing a batch docs of total size ~p bytes",
+                [Size]),
     Stats2 = flush_docs(Target, Docs),
     Stats3 = xdc_rep_utils:sum_stats(Stats, Stats2),
     local_process_batch([], Cp, Source, Target, #batch{}, Stats3);
 
-local_process_batch([IdRevs | Rest], Cp, Source, Target, Batch, Stats) ->
+local_process_batch([IdRevs | Rest], Cp, #db{} = Source,
+                    #httpdb{} = Target, Batch, Stats) ->
     {ok, {_, DocList, Stats2, _}} = fetch_doc(
-                                      Source, IdRevs, fun local_doc_handler/2, {Target, [], Stats, Cp}),
+                                      Source, IdRevs, fun local_doc_handler/2,
+                                      {Target, [], Stats, Cp}),
     {Batch2, Stats3} = lists:foldl(
                          fun(Doc, {Batch0, Stats0}) ->
                                  {Batch1, S} = maybe_flush_docs(Target, Batch0, Doc),
@@ -140,11 +138,16 @@ find_missing(DocInfos, Target) ->
                                end,
                                {[], 0}, DocInfos),
     {ok, Missing} = couch_api_wrap:get_missing_revs(Target, IdRevs),
+
     MissingRevsCount = length(Missing),
     Stats = #rep_stats{
       missing_checked = AllRevsCount,
       missing_found = MissingRevsCount
      },
+
+    ?xdcr_debug("after conflict resolution at target (~p), out of all ~p docs "
+                "the number of docs we need to replicate is: ~p",
+                [Target, AllRevsCount, MissingRevsCount]),
     {Missing, Stats}.
 
 open_db(#db{name = Name, user_ctx = UserCtx, options = Options}) ->
