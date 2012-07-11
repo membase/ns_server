@@ -38,7 +38,9 @@
          local_addr/1,
          remote_addr_and_port/1,
          concat_url_path/1,
+         concat_url_path/2,
          bin_concat_path/1,
+         bin_concat_path/2,
          parse_validate_number/3,
          validate_email_address/1,
          insecure_pipe_through_command/2]).
@@ -192,11 +194,26 @@ parse_boolean(Value) ->
         0 -> false
     end.
 
-concat_url_path(Segments) ->
-    "/" ++ string:join(lists:map(fun mochiweb_util:quote_plus/1, Segments), "/").
+url_path_iolist(Segments, Props) ->
+    Path = [[$/, mochiweb_util:quote_plus(S)] || S <- Segments],
 
-bin_concat_path(Path) ->
-    list_to_binary(concat_url_path(Path)).
+    case Props of
+        [] ->
+            Path;
+        _ ->
+            QS = mochiweb_util:urlencode(Props),
+            [Path, $?, QS]
+    end.
+
+concat_url_path(Segments) ->
+    concat_url_path(Segments, []).
+concat_url_path(Segments, Props) ->
+    lists:flatten(url_path_iolist(Segments, Props)).
+
+bin_concat_path(Segments) ->
+    bin_concat_path(Segments, []).
+bin_concat_path(Segments, Props) ->
+    iolist_to_binary(url_path_iolist(Segments, Props)).
 
 -spec parse_validate_number(string(), (integer() | undefined), (integer() | undefined)) ->
                                    invalid | too_small | too_large | {ok, integer()}.

@@ -1128,7 +1128,7 @@ add_specific_stats_url(BlockDesc, Prefix) ->
     NewInfos =
         [{struct, [{specificStatsURL, begin
                                           {name, Name} = lists:keyfind(name, 1, KV),
-                                          iolist_to_binary(Prefix ++ "/" ++ mochiweb_util:quote_plus(Name))
+                                          iolist_to_binary([Prefix, $/, mochiweb_util:quote_plus(Name)])
                                       end} |
                    KV]} || {struct, KV} <- Infos],
     lists:keyreplace(stats, 1, BlockDesc, {stats, NewInfos}).

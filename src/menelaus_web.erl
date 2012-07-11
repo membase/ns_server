@@ -59,8 +59,8 @@
 -import(menelaus_util,
         [server_header/0,
          redirect_permanently/2,
-         concat_url_path/1,
          bin_concat_path/1,
+         bin_concat_path/2,
          reply_json/2,
          reply_json/3,
          get_option/2,
@@ -679,9 +679,8 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
     BucketsVer = erlang:phash2(ns_bucket:get_bucket_names(Config))
         bxor erlang:phash2([{proplists:get_value(hostname, KV),
                              proplists:get_value(status, KV)} || {struct, KV} <- Nodes]),
-    BucketsInfo = {struct, [{uri,
-                             list_to_binary(concat_url_path(["pools", Id, "buckets"])
-                                            ++ "?v=" ++ integer_to_list(BucketsVer))}]},
+    BucketsInfo = {struct, [{uri, bin_concat_path(["pools", Id, "buckets"],
+                                                  [{"v", BucketsVer}])}]},
     RebalanceStatus = case ns_orchestrator:is_rebalance_running() of
                           true -> <<"running">>;
                           _ -> <<"none">>
@@ -712,7 +711,8 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
       ]}}
     ]},
 
-    BaseTasksURI = concat_url_path(["pools", Id, "tasks"]),
+    TasksURI = bin_concat_path(["pools", Id, "tasks"],
+                               [{"v", ns_doctor:get_tasks_version()}]),
 
     PropList0 = [{name, list_to_binary(Id)},
                  {alerts, Alerts},
@@ -745,8 +745,7 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                                           {value, FWSettings} ->
                                               build_fast_warmup_settings(FWSettings)
                                       end},
-                 {tasks, {struct,
-                          [{uri, iolist_to_binary([BaseTasksURI, <<"?v=">>, ns_doctor:get_tasks_version()])}]}},
+                 {tasks, {struct, [{uri, TasksURI}]}},
                  {stats, {struct,
                           [{uri, bin_concat_path(["pools", Id, "stats"])}]}},
                  {counters, {struct, ns_cluster:counters()}},
