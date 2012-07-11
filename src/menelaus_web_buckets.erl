@@ -63,10 +63,14 @@ all_accessible_bucket_names(PoolId, Req) ->
 checking_bucket_access(_PoolId, Id, Req, Body) ->
     E404 = make_ref(),
     try
-        BucketTuple = case lists:keyfind(Id, 1, ns_bucket:get_buckets()) of
-                          false -> exit(E404);
-                          X -> X
-                      end,
+        BucketTuple =
+            case ns_bucket:get_bucket(Id) of
+                not_present ->
+                    exit(E404);
+                {ok, V} ->
+                    {Id, V}
+            end,
+
         case menelaus_auth:is_bucket_accessible(BucketTuple, Req) of
             true -> apply(Body, [fakepool, element(2, BucketTuple)]);
             _ -> menelaus_auth:require_auth(Req)
