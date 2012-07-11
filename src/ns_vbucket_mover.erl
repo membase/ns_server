@@ -35,7 +35,6 @@
 -record(state, {bucket::nonempty_string(),
                 bucket_type::memcached | membase,
                 disco_events_subscription::pid(),
-                previous_changes,
                 initial_counts::dict(),
                 max_per_node::pos_integer(),
                 map::array(),
@@ -64,10 +63,7 @@ code_change(_OldVsn, _Extra, State) ->
 
 init({Bucket, OldMap, NewMap, ProgressCallback}) ->
     erlang:put(i_am_master_mover, true),
-    erlang:put(replicas_changes, []),
     erlang:put(bucket_name, Bucket),
-    erlang:put(total_changes, 0),
-    erlang:put(actual_changes, 0),
     erlang:put(child_processes, []),
 
     %% Dictionary mapping old node to vbucket and new node
@@ -93,7 +89,6 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
                                                 (_) ->
                                                     ok
                                             end),
-    erlang:start_timer(3000, self(), maybe_sync_changes),
     erlang:start_timer(30000, self(), log_tap_stats),
 
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
@@ -102,7 +97,6 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
     {ok, #state{bucket=Bucket,
                 bucket_type=BucketType,
                 disco_events_subscription=Subscription,
-                previous_changes = [],
                 initial_counts=count_moves(MoveDict),
                 max_per_node=?MAX_MOVES_PER_NODE,
                 map = map_to_array(OldMap),
@@ -122,14 +116,6 @@ handle_cast(unhandled, unhandled) ->
 
 %% We intentionally don't handle other exits so we'll die if one of
 %% the movers fails.
-handle_info({_, _, maybe_sync_changes}, #state{previous_changes = PrevChanges} = State) ->
-    Changes = erlang:get('replicas_changes'),
-    case Changes =:= [] orelse Changes =/= PrevChanges of
-        true -> {noreply, State#state{previous_changes = Changes}};
-        _ ->
-            sync_replicas(),
-            {noreply, State#state{previous_changes = []}}
-    end;
 handle_info({timeout, _, log_tap_stats}, State) ->
     rpc:eval_everywhere(diag_handler, log_all_tap_and_checkpoint_stats, []),
     misc:flush(log_tap_stats),
@@ -175,7 +161,6 @@ handle_info({update_vbucket_map, _Node, VBucket, OldChain, NewChain},
         _ ->
             ?log_error("Config replication sync failed: ~p", [RepSyncRV])
     end,
-    sync_replicas(),
     OldCopies0 = OldChain -- NewChain,
     OldCopies = [OldCopyNode || OldCopyNode <- OldCopies0,
                                 OldCopyNode =/= undefined],
@@ -206,12 +191,6 @@ handle_info(Info, State) ->
 
 
 terminate(Reason, _State) ->
-    sync_replicas(),
-    TotalChanges = erlang:get(total_changes),
-    ActualChanges = erlang:get(actual_changes),
-    ?rebalance_debug("Savings: ~p (from ~p)~n",
-                     [TotalChanges - ActualChanges, TotalChanges]),
-
     AllChildsEver = erlang:get(child_processes),
     [(catch erlang:exit(P, Reason)) || P <- AllChildsEver],
     [misc:wait_for_process(P, infinity) || P <- AllChildsEver],
@@ -343,64 +322,36 @@ update_replication_pre_move(VBucket, OldChain, NewChain) ->
     %% if some destination replication is stopped, it means we'll soon
     %% replicate to it in single vbucket mover, so chain is not really
     %% broken.
-    [kill_replica(S, D, VBucket) || {S, D} <- PairsToStop],
-    sync_replicas().
+    Changes = [{kill_replica, S, D, VBucket} || {S, D} <- PairsToStop],
+    BucketName = assert_master_mover(),
+    cb_replication:apply_changes(BucketName, Changes).
 
 
 %% @private
 %% @doc Perform post-move replication fixup.
 update_replication_post_move(VBucket, OldChain, NewChain) ->
     %% destroy remainings of old replication chain
-    [kill_replica(S, D, VBucket) || {S, D} <- pairs(OldChain),
-                                    S =/= undefined,
-                                    D =/= undefined,
-                                    not lists:member(D, NewChain)],
+    K = [{kill_replica, S, D, VBucket}
+         || {S, D} <- pairs(OldChain),
+            S =/= undefined,
+            D =/= undefined,
+            not lists:member(D, NewChain)],
     %% just start new chain of replications. Old chain is dead now
-    [add_replica(S, D, VBucket) || {S, D} <- pairs(NewChain),
-                                   true = if S =:= undefined -> D =:= undefined;
-                                             true -> true
-                                          end,
-                                   S =/= undefined,
-                                   D =/= undefined],
-    ok.
+    A = [{add_replica, S, D, VBucket}
+         || {S, D} <- pairs(NewChain),
+            true = if S =:= undefined -> D =:= undefined;
+                      true -> true
+                   end,
+            S =/= undefined,
+            D =/= undefined],
+    BucketName = assert_master_mover(),
+    cb_replication:apply_changes(BucketName,K++A).
 
 assert_master_mover() ->
     true = erlang:get('i_am_master_mover'),
     BucketName = erlang:get('bucket_name'),
     true = (BucketName =/= undefined),
     BucketName.
-
-batch_replicas_change(Tuple) ->
-    assert_master_mover(),
-    Old = erlang:get('replicas_changes'),
-    true = (undefined =/= Old),
-    New = [Tuple | Old],
-    erlang:put(replicas_changes, New).
-
-kill_replica(SrcNode, DstNode, VBucket) ->
-    assert_master_mover(),
-    batch_replicas_change({kill_replica, SrcNode, DstNode, VBucket}).
-
-add_replica(SrcNode, DstNode, VBucket) ->
-    assert_master_mover(),
-    batch_replicas_change({add_replica, SrcNode, DstNode, VBucket}).
-
-inc_counter(Name, By) ->
-    Old = erlang:get(Name),
-    true = (undefined =/= Old),
-    erlang:put(Name, Old + By).
-
-sync_replicas() ->
-    BucketName = assert_master_mover(),
-    case erlang:put(replicas_changes, []) of
-        undefined -> ok;
-        [] -> ok;
-        Changes ->
-            ActualCount = cb_replication:apply_changes(BucketName,
-                                                       lists:reverse(Changes)),
-            inc_counter(total_changes, length(Changes)),
-            inc_counter(actual_changes, ActualCount)
-    end.
 
 inc_vb_updates(#state{pending_vbucket_updates=P} = State) ->
     State#state{pending_vbucket_updates=(P + 1)}.
