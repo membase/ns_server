@@ -28,6 +28,7 @@
 
 -export([all_accessible_bucket_names/2,
          checking_bucket_access/4,
+         checking_bucket_uuid/4,
          handle_bucket_list/2,
          handle_bucket_info/5,
          build_bucket_node_infos/4,
@@ -51,6 +52,7 @@
          reply_json/2,
          concat_url_path/1,
          bin_concat_path/1,
+         bin_concat_path/2,
          reply_json/3]).
 
 all_accessible_buckets(_PoolId, Req) ->
@@ -78,6 +80,24 @@ checking_bucket_access(_PoolId, Id, Req, Body) ->
     catch
         exit:E404 ->
             Req:respond({404, server_header(), "Requested resource not found.\r\n"})
+    end.
+
+checking_bucket_uuid(_PoolId, Req, BucketConfig, Body) ->
+    ReqUUID0 = proplists:get_value("bucket_uuid", Req:parse_qs()),
+    case ReqUUID0 =/= undefined of
+        true ->
+            ReqUUID = list_to_binary(ReqUUID0),
+            BucketUUID = proplists:get_value(uuid, BucketConfig),
+
+            case BucketUUID =:= undefined orelse BucketUUID =:= ReqUUID of
+                true ->
+                    Body();
+                false ->
+                    Req:respond({404, server_header(),
+                                 "Bucket uuid does not match the requested.\r\n"})
+            end;
+        false ->
+            Body()
     end.
 
 handle_bucket_list(Id, Req) ->
@@ -119,6 +139,17 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
                         memcached -> [{bucketCapabilities, []}]
                     end],
 
+    MaybeBucketUUID = proplists:get_value(uuid, BucketConfig),
+    QSProps = case MaybeBucketUUID of
+                  undefined ->
+                      [];
+                  _ ->
+                      [{"bucket_uuid", MaybeBucketUUID}]
+              end,
+
+    BuildUUIDURI = fun (Segments) ->
+                           bin_concat_path(Segments, QSProps)
+                   end,
 
     Suffix = case InfoLevel of
                  stable -> BucketCaps;
@@ -141,14 +172,22 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
                   memcached ->
                       Suffix
               end,
+
+    Suffix2 = case MaybeBucketUUID of
+                  undefined ->
+                      Suffix1;
+                  _ ->
+                      [{uuid, MaybeBucketUUID} | Suffix1]
+              end,
+
     {struct, [{name, list_to_binary(Id)},
               {bucketType, BucketType},
               {authType, misc:expect_prop_value(auth_type, BucketConfig)},
               {saslPassword, list_to_binary(proplists:get_value(sasl_password, BucketConfig, ""))},
               {proxyPort, proplists:get_value(moxi_port, BucketConfig, 0)},
               {replicaIndex, proplists:get_value(replica_index, BucketConfig, true)},
-              {uri, bin_concat_path(["pools", PoolId, "buckets", Id])},
-              {streamingUri, bin_concat_path(["pools", PoolId, "bucketsStreaming", Id])},
+              {uri, BuildUUIDURI(["pools", PoolId, "buckets", Id])},
+              {streamingUri, BuildUUIDURI(["pools", PoolId, "bucketsStreaming", Id])},
               {localRandomKeyUri, bin_concat_path(["pools", PoolId,
                                                    "buckets", Id, "localRandomKey"])},
               {controllers, [{flush, bin_concat_path(["pools", PoolId,
@@ -177,7 +216,7 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
                    FWSettings ->
                        menelaus_web:build_fast_warmup_settings(FWSettings)
                end}
-              | Suffix1]}.
+              | Suffix2]}.
 
 handle_sasl_buckets_streaming(_PoolId, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),

@@ -580,7 +580,9 @@ create_bucket(BucketType, BucketName, NewConfig) ->
             MergedConfig0 =
                 misc:update_proplist(new_bucket_default_params(BucketType),
                                      NewConfig),
-            MergedConfig = cleanup_bucket_props(MergedConfig0),
+            MergedConfig1 = cleanup_bucket_props(MergedConfig0),
+            BucketUUID = couch_uuids:random(),
+            MergedConfig = [{uuid, BucketUUID} | MergedConfig1],
             ns_config:update_sub_key(
               buckets, configs,
               fun (List) ->

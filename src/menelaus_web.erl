@@ -355,15 +355,29 @@ loop(Req, AppRoot, DocRoot) ->
             {auth_cookie, F, Args} -> menelaus_auth:apply_auth_cookie(Req, F, Args);
             {auth, F, Args} -> menelaus_auth:apply_auth(Req, F, Args);
             {auth_bucket_with_info, F, [ArgPoolId, ArgBucketId | RestArgs]} ->
-                menelaus_web_buckets:checking_bucket_access(ArgPoolId, ArgBucketId, Req,
-                                                            fun (Pool, Bucket) ->
-                                                                    apply(F, [ArgPoolId, ArgBucketId] ++ RestArgs ++ [Req, Pool, Bucket])
-                                                            end);
+                menelaus_web_buckets:checking_bucket_access(
+                  ArgPoolId, ArgBucketId, Req,
+                  fun (Pool, Bucket) ->
+                          menelaus_web_buckets:checking_bucket_uuid(
+                            ArgPoolId, Req, Bucket,
+                            fun () ->
+                                    FArgs = [ArgPoolId, ArgBucketId] ++
+                                        RestArgs ++ [Req, Pool, Bucket],
+                                    apply(F, FArgs)
+                            end)
+                  end);
             {auth_bucket, F, [ArgPoolId, ArgBucketId | RestArgs]} ->
-                menelaus_web_buckets:checking_bucket_access(ArgPoolId, ArgBucketId, Req,
-                                                            fun (_, _) ->
-                                                                    apply(F, [ArgPoolId, ArgBucketId] ++ RestArgs ++ [Req])
-                                                            end);
+                menelaus_web_buckets:checking_bucket_access(
+                  ArgPoolId, ArgBucketId, Req,
+                  fun (_, Bucket) ->
+                          menelaus_web_buckets:checking_bucket_uuid(
+                            ArgPoolId, Req, Bucket,
+                            fun () ->
+                                    FArgs = [ArgPoolId, ArgBucketId] ++
+                                        RestArgs ++ [Req],
+                                    apply(F, FArgs)
+                            end)
+                  end);
             {auth_any_bucket, F} -> menelaus_auth:apply_auth_bucket(Req, F, []);
             {auth_any_bucket, F, Args} -> menelaus_auth:apply_auth_bucket(Req, F, Args)
         end
