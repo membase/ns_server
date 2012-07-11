@@ -554,7 +554,7 @@ slaves([], _, _, Set) ->
 %% @private
 %% @doc Generate a list of nodes for testing.
 testnodes(NumNodes) ->
-    [list_to_atom([$n | integer_to_list(N)]) || N <- lists:seq(1, NumNodes)].
+    [list_to_atom([$n | tl(integer_to_list(1000+N))]) || N <- lists:seq(1, NumNodes)].
 
 
 %%
@@ -705,9 +705,22 @@ run_rebalance_counts_experiment() ->
       end,
       ?LOGGERS),
     ale:sync_changes(infinity),
+
+    %% begin
+    %%     From = 73,
+    %%     To = 75,
+    %%     NodesBefore = testnodes(From),
+    %%     NodesAfter = testnodes(To),
+    %%     Initial = lists:duplicate(1024, lists:duplicate(2, undefined)),
+    %%     BeforeMap = generate_map(Initial, NodesBefore, [{max_slaves, 10}]),
+    %%     AfterMap = generate_map(BeforeMap, NodesAfter, [{max_slaves, 10}]),
+    %%     io:format("~p", [lists:zip3(lists:seq(0, 1023), BeforeMap, AfterMap)]),
+    %%     erlang:halt(0)
+    %% end,
+
     [rebalance_count_experiment(From, To)
-     || From <- lists:seq(20, 100),
-        To <- lists:seq(20, 100)],
+     || From <- lists:seq(1, 100),
+        To <- lists:seq(1, 100)],
     erlang:halt(0).
 
 is_balanced_sort_of_strongly(Map, Nodes, Options) ->
