@@ -96,6 +96,9 @@ child_specs() ->
      {ns_version_info, {ns_version_info, start_link, []},
       permanent, 1000, worker, [ns_version_info]},
 
+     {remote_clusters_info, {remote_clusters_info, start_link, []},
+      permanent, 1000, worker, [remote_servers_info]},
+
      {menelaus, {menelaus_sup, start_link, []},
       permanent, infinity, supervisor,
       [menelaus_sup]},

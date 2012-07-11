@@ -92,6 +92,9 @@
                                     "gathers local stats & other info and broadcasts that to all node's ns_doctor")
                         (gen-server 'ns_doctor
                                     "keeps track of latest heartbeats from other nodes")
+                        (gen-server 'remote_clusters_info
+                                    "service to query and cache remote clusters information (cluster nodes and vbucket
+                                    maps in particular")
                         (supervisor 'menelaus_sup :mode :one_for_one
                                     (worker 'menelaus_web)
                                     (gen-server 'menelaus_web_alerts_srv)
