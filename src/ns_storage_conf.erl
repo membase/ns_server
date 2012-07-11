@@ -27,7 +27,7 @@
          storage_conf/1, storage_conf_from_node_status/1, add_storage/4, remove_storage/2,
          local_bucket_disk_usage/1,
          this_node_dbdir/0, this_node_ixdir/0, this_node_logdir/0,
-         delete_databases/1, delete_unused_buckets_db_files/0,
+         delete_databases_and_files/1, delete_unused_buckets_db_files/0,
          bucket_databases/1]).
 
 -export([node_storage_info/1, cluster_storage_info/0, nodes_storage_info/1]).
@@ -405,7 +405,7 @@ bucket_databases(Bucket) when is_binary(Bucket)->
 
     lists:usort(BucketDbs).
 
-delete_database(DB) ->
+delete_couch_database(DB) ->
     RV = couch_server:delete(DB, []),
     ?log_info("Deleting database ~p: ~p~n", [DB, RV]),
     RV.
@@ -433,7 +433,7 @@ delete_disk_buckets_databases(Pred) ->
 delete_disk_buckets_databases_loop(_Pred, []) ->
     ok;
 delete_disk_buckets_databases_loop(Pred, [Bucket | Rest]) ->
-    case delete_databases(Bucket) of
+    case delete_databases_and_files(Bucket) of
         ok ->
             delete_disk_buckets_databases_loop(Pred, Rest);
         Error ->
@@ -441,7 +441,7 @@ delete_disk_buckets_databases_loop(Pred, [Bucket | Rest]) ->
     end.
 
 
-delete_databases(Bucket) ->
+delete_databases_and_files(Bucket) ->
     AllDBs = bucket_databases(Bucket),
     Suffix = <<"/master">>,
     SuffixLen = erlang:size(Suffix),
@@ -457,12 +457,26 @@ delete_databases(Bucket) ->
                                             SuffixC =:= Suffix
                                     end
                             end, AllDBs),
-    delete_databases_loop(MaybeMasterDb ++ RestDBs).
+    case delete_databases_loop(MaybeMasterDb ++ RestDBs) of
+        ok ->
+            ?log_info("Couch dbs are deleted. Proceeding with bucket directory"),
+            {ok, DbDir} = ns_storage_conf:this_node_dbdir(),
+            Path = filename:join(DbDir, Bucket),
+            case misc:rm_rf(Path) of
+                ok -> ok;
+                Error ->
+                    ale:error(?USER_LOGGER, "Unable to rm -rf bucket database directory ~s~n~p", [Bucket, Error]),
+                    Error
+            end;
+        Error ->
+            ale:error(?USER_LOGGER, "Unable to delete some DBs for bucket ~s. Leaving bucket directory undeleted~n~p", [Bucket, Error]),
+            Error
+    end.
 
 delete_databases_loop([]) ->
     ok;
 delete_databases_loop([Db | Rest]) ->
-    case delete_database(Db) of
+    case delete_couch_database(Db) of
         ok ->
             delete_databases_loop(Rest);
         Error ->

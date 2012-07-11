@@ -638,7 +638,7 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                     %% all the other cases (like node removal or failover) we
                     %% leave them on the file system and let others decide
                     %% when they should be deleted
-                    true -> ns_storage_conf:delete_databases(Bucket);
+                    true -> ns_storage_conf:delete_databases_and_files(Bucket);
                     _ -> ok
                 end
             end;
