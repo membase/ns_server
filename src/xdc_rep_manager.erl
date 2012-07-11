@@ -591,12 +591,11 @@ max_concurrent_reps(Bucket) ->
 
 %% Dump node-wide XDCR stats for all buckets
 dump_xdcr_stats() ->
-    ?xdcr_debug("------ start of dumping XDCR stats ------"),
     case ets:first(?XSTORE) of
         '$end_of_table' ->
-            ?xdcr_debug("no XDC replication in progress"),
             ok;
         _ ->
+            ?xdcr_debug("------ start of dumping XDCR stats ------"),
             XDocIds = lists:flatten(ets:match(?XSTORE, {'$1', '_', '_'})),
             lists:foreach(
               fun(XDocId) ->
