@@ -26,24 +26,25 @@
 -define(FAST_CRASH, 1).
 
 %% API
--export([start_link/5]).
+-export([start_link/6]).
 -export([ns_log_cat/1, ns_log_code_string/1, child_pid/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {name, delay, started, child_pid}).
+-record(state, {name, delay, started, child_pid, shutdown_timeout}).
 
-start_link(Name, Delay, M, F, A) ->
-    gen_server:start_link(?MODULE, [Name, Delay, M, F, A], []).
+start_link(Name, Delay, ShutdownTimeout, M, F, A) ->
+    gen_server:start_link(?MODULE, [Name, Delay, ShutdownTimeout, M, F, A], []).
 
-init([Name, Delay, M, F, A]) ->
+init([Name, Delay, ShutdownTimeout, M, F, A]) ->
     process_flag(trap_exit, true),
     ?log_debug("starting ~p with delay of ~p", [M, Delay]),
     case apply(M, F, A) of
         {ok, Pid} ->
-            {ok, #state{name=Name, delay=Delay, started=now(), child_pid=Pid}};
+            {ok, #state{name=Name, delay=Delay, started=now(),
+                        child_pid=Pid, shutdown_timeout=ShutdownTimeout}};
         X ->
             {ok, die_slowly(X, #state{name=Name, delay=Delay, started=now()})}
     end.
@@ -87,12 +88,19 @@ die_slowly(Reason, State) ->
 
 terminate(_Reason, #state{child_pid = undefined}) ->
     ok;
-terminate(Reason, State) ->
-    Pid = State#state.child_pid,
+terminate(Reason, #state{child_pid=Pid, shutdown_timeout=Timeout}) ->
     erlang:exit(Pid, Reason),
     receive
         {'EXIT', Pid, _Reason2} ->
             ok
+    after Timeout ->
+            ?log_warning("Cushioned process ~p failed to terminate within ~pms. "
+                         "Killing it brutally.", [Pid, Timeout]),
+            erlang:exit(Pid, kill),
+            receive
+                {'EXIT', Pid, _Reason3} ->
+                    ok
+            end
     end.
 
 code_change(_OldVsn, State, _Extra) ->
