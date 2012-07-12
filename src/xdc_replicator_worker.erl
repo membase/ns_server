@@ -62,7 +62,6 @@ local_process_batch([], Cp, #db{} = Source, #httpdb{} = Target,
     Stats2 = flush_docs(Target, Docs),
     Stats3 = xdc_rep_utils:sum_stats(Stats, Stats2),
     local_process_batch([], Cp, Source, Target, #batch{}, Stats3);
-
 local_process_batch([IdRevs | Rest], Cp, #db{} = Source,
                     #httpdb{} = Target, Batch, Stats) ->
     {ok, {_, DocList, Stats2, _}} = fetch_doc(
@@ -97,23 +96,10 @@ maybe_flush_docs(#httpdb{} = Target, Batch, Doc) ->
             {#batch{}, Stats};
         SizeAcc2 ->
             {#batch{docs = [JsonDoc | DocAcc], size = SizeAcc2}, #rep_stats{}}
-    end;
-
-maybe_flush_docs(#db{} = Target, #batch{docs = DocAcc, size = SizeAcc}, Doc) ->
-    case SizeAcc + 1 of
-        SizeAcc2 when SizeAcc2 >= ?DOC_BUFFER_LEN ->
-            ?xdcr_debug("Worker flushing doc batch of ~p docs", [SizeAcc2]),
-            Stats = flush_docs(Target, [Doc | DocAcc]),
-            {#batch{}, Stats};
-        SizeAcc2 ->
-            {#batch{docs = [Doc | DocAcc], size = SizeAcc2}, #rep_stats{}}
     end.
-
-
 
 flush_docs(_Target, []) ->
     #rep_stats{};
-
 flush_docs(Target, DocList) ->
     case couch_api_wrap:update_docs(Target, DocList, [delay_commit],
                                     replicated_changes) of
@@ -129,7 +115,6 @@ flush_docs(Target, DocList) ->
                         docs_written = 0, doc_write_failures = length(DocList)
                       }
     end.
-
 
 find_missing(DocInfos, Target) ->
     {IdRevs, AllRevsCount} = lists:foldr(
