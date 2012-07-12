@@ -117,6 +117,8 @@ do_subscribe_link(Name, Fun, State, Parent) ->
 
     proc_lib:init_ack(Parent, self()),
 
+    ?log_debug("Started subscription ~p", [{Name, Parent}]),
+
     ExitReason =
         receive
             unsubscribe ->
@@ -129,20 +131,22 @@ do_subscribe_link(Name, Fun, State, Parent) ->
                         {handler_crashed, Name, Reason}
                 end;
             {'EXIT', Parent, Reason} ->
-                ?log_debug("Parent process exited with reason ~p",
-                           [Reason]),
+                ?log_debug("Parent process of subscription ~p "
+                           "exited with reason ~p", [{Name, Parent}, Reason]),
                 normal;
             {'EXIT', Pid, Reason} ->
-                ?log_error("Dying because linked process ~p died: ~p",
-                           [Pid, Reason]),
+                ?log_debug("Linked process ~p of subscription ~p "
+                           "died unexpectedly with reason ~p",
+                           [Pid, {Name, Parent}, Reason]),
                 {linked_process_died, Pid, Reason};
             X ->
-                ?log_error("Got unexpected message: ~p", [X]),
+                ?log_error("Subscription ~p got unexpected message: ~p",
+                           [{Name, Parent}, X]),
                 unexpected_message
         end,
 
     R = (catch gen_event:delete_handler(Name, Handler, unused)),
-    ?log_debug("Deleting ~p event handler: ~p", [Handler, R]),
+    ?log_debug("Deleting ~p event handler: ~p", [{Name, Parent}, R]),
 
     exit(ExitReason).
 
