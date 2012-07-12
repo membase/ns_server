@@ -58,23 +58,27 @@ get_missing_revs(#db{name = DbName}, JsonDocIdRevs) ->
           end, [], JsonDocIdRevs),
     {ok, Results}.
 
-is_missing_rev(Bucket, VBucket, Id, Rev) ->
-    case capi_utils:get_meta(Bucket, VBucket, Id) of
-        {error, enoent, _CAS} ->
-            true;
-        {error, not_my_vbucket} ->
-            throw({bad_request, not_my_vbucket});
-        {ok, OurRev, _Deleted, _Props} ->
-            %% we do not have any information about deletedness of
-            %% the remote side thus we use only revisions to
-            %% determine a winner
-            case winner(Rev, OurRev) of
-                ours ->
-                    false;
-                theirs ->
-                    true
-            end
-    end.
+is_missing_rev(Bucket, VBucket, Id, RemoteMeta) ->
+     case capi_utils:get_meta(Bucket, VBucket, Id) of
+         {error, enoent, _CAS} ->
+             true;
+         {error, not_my_vbucket} ->
+             throw({bad_request, not_my_vbucket});
+         {ok, LocalMeta, _Deleted, _Props} ->
+             %% we do not have any information about deletedness of
+             %% the remote side thus we use only revisions to
+             %% determine a winner
+             case max(LocalMeta, RemoteMeta) of
+                 %% if equal, prefer LocalMeta since in this case, no need
+                 %% to replicate the remote item, hence put LocalMeta before
+                 %% RemoteMeta.
+                 LocalMeta ->
+                     false;
+                 RemoteMeta ->
+                     true
+             end
+     end.
+
 
 %% In case of one or more errors, just return the first one. Otherwise,
 %% return ok. Also notice that in case of error, we return {ok, Error}. This is
@@ -138,23 +142,6 @@ update_replicated_docs(#db{name = DbName}, Docs, Options) ->
 
     make_return_tuple({ok, Errors}).
 
-winner({_SeqNo1, _RevId1} = Theirs,
-       {_SeqNo2, _RevId2} = Ours) ->
-    winner_helper(Theirs, Ours);
-winner({_SeqNo1, _NotDeleted1, _RevId1} = Theirs,
-       {_SeqNo2, _NotDeleted2, _RevId3} = Ours) ->
-    winner_helper(Theirs, Ours).
-
-winner_helper(Theirs, Ours) ->
-    %% Ours can be equal to Theirs; in this case we prefer our revision to
-    %% avoid excessive work
-    case max(Theirs, Ours) of
-        Ours ->
-            ours;
-        Theirs ->
-            theirs
-    end.
-
 do_update_replicated_doc(_Bucket, _VBucket,
                          #doc{id = <<?LOCAL_DOC_PREFIX, _/binary>>}) ->
     ok;
@@ -186,13 +173,18 @@ do_update_replicated_doc_loop(Bucket, VBucket, DocId,
             {error, not_my_vbucket} ->
                 {error, {bad_request, not_my_vbucket}};
             {ok, {OurSeqNo, OurRevId}, Deleted, Props} ->
-                DocRevExt = {DocSeqNo, not(DocDeleted), DocRevId},
-                OurRevExt = {OurSeqNo, not(Deleted), OurRevId},
+                RemoteMeta = {DocSeqNo, not(DocDeleted), DocRevId},
+                LocalMeta = {OurSeqNo, not(Deleted), OurRevId},
 
-                case winner(DocRevExt, OurRevExt) of
-                    ours ->
+                case max(LocalMeta, RemoteMeta) of
+                    %% if equal, prefer LocalMeta since in this case, no need
+                    %% to replicate the remote item, hence put LocalMeta before
+                    %% RemoteMeta.
+                    LocalMeta ->
                         ok;
-                    theirs ->
+                    %% if remoteMeta wins, need to persist the remote item, using
+                    %% the same CAS returned from the get_meta() above.
+                    RemoteMeta ->
                         {cas, CAS} = lists:keyfind(cas, 1, Props),
                         case DocDeleted of
                             true ->
