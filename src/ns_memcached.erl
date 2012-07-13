@@ -213,14 +213,23 @@ handle_call(connected, _From, #state{status=Status} = State) ->
     {reply, Reply, State};
 handle_call(mark_warmed, _From, #state{status=Status,
                                        bucket=Bucket,
-                                       start_time=Start} = State) ->
+                                       start_time=Start,
+                                       sock=Sock} = State) ->
     {NewStatus, Reply} =
         case Status of
             connected ->
-                Time = timer:now_diff(os:timestamp(), Start) div 1000000,
-                ?log_info("Bucket ~p marked as warmed in ~p seconds",
-                          [Bucket, Time]),
-                {warmed, ok};
+                ?log_info("Enabling traffic to bucket ~p", [Bucket]),
+                case mc_client_binary:enable_traffic(Sock) of
+                    ok ->
+                        Time = timer:now_diff(os:timestamp(), Start) div 1000000,
+                        ?log_info("Bucket ~p marked as warmed in ~p seconds",
+                                  [Bucket, Time]),
+                        {warmed, ok};
+                    Error ->
+                        ?log_error("Failed to enable traffic to bucket ~p: ~p",
+                                   [Bucket, Error]),
+                        {Status, Error}
+                end;
             warmed ->
                 {warmed, ok};
             _ ->
@@ -545,8 +554,7 @@ handle_cast(start_completed, #state{start_time=Start,
 handle_info(check_started, #state{status=Status} = State)
   when Status =:= connected orelse Status =:= warmed ->
     {noreply, State};
-handle_info(check_started, #state{timer=Timer, sock=Sock,
-                                  bucket=Bucket} = State) ->
+handle_info(check_started, #state{timer=Timer, sock=Sock} = State) ->
     case has_started(Sock) of
         true ->
             {ok, cancel} = timer:cancel(Timer),
@@ -555,23 +563,6 @@ handle_info(check_started, #state{timer=Timer, sock=Sock,
             proc_lib:spawn_link(
               fun () ->
                       ns_config_isasl_sync:sync(),
-
-                      BucketConfig =
-                          case ns_bucket:get_bucket(Bucket) of
-                              {ok, BC} ->
-                                  BC;
-                              not_present ->
-                                  []
-                          end,
-
-                      case proplists:get_value(type, BucketConfig, unknown) of
-                          memcached ->
-                              ok;
-                          Type ->
-                              ?log_info("Sending CMD_ENABLE_TRAFFIC for "
-                                        "bucket `~s` of ~p type", [Bucket, Type]),
-                              ok = mc_client_binary:enable_traffic(Sock)
-                      end,
 
                       gen_server:cast(Pid, start_completed),
                       %% we don't want exit signal in parent's message
