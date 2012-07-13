@@ -109,10 +109,7 @@ handle_info({_Port, {exit_status, Status}}, State) ->
               "Messages: ~s",
               [State#state.name, node(), Status,
                string:join(ringbuffer:to_list(State#state.messages), "\n")]),
-    {stop, {abnormal, Status}, State};
-handle_info({'EXIT', Port, Reason} = Exit, #state{port=Port} = State) ->
-    ?log_error("Got unexpected exit signal from port: ~p. Exiting.", [Exit]),
-    {stop, Reason, State}.
+    {stop, {abnormal, Status}, State}.
 
 handle_call(unhandled, unhandled, unhandled) ->
     unhandled.
@@ -138,8 +135,8 @@ wait_for_child_death_process_info(Msg, State) ->
     end.
 
 terminate(shutdown, #state{send_eol = true, port = Port} = State) ->
-    ?log_debug("Sending 'shutdown' to port"),
     port_command(Port, <<"shutdown\n">>),               % sending shutdown command
+    timer:send_after(?LF_DEATH_TIMEOUT, {[], {exit_status, -1}}),
     State2 = wait_for_child_death(State),
     log(State2); % Log any remaining messages
 terminate(_Reason, State) ->

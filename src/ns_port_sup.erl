@@ -97,7 +97,7 @@ expand_args({Name, Cmd, ArgsIn, OptsIn}) ->
     {Name, Cmd, Args, Opts}.
 
 start_link_memcached_port(Name, Cmd, Args, Opts) ->
-    case supervisor_cushion:start_link(Name, 5000, 60000, ns_port_server, start_link, [Name, Cmd, Args, Opts]) of
+    case supervisor_cushion:start_link(Name, 5000, ns_port_server, start_link, [Name, Cmd, Args, Opts]) of
         {ok, Pid} = RV->
             try
                 ChildPid = supervisor_cushion:child_pid(Pid),
@@ -116,13 +116,13 @@ start_link_memcached_port(Name, Cmd, Args, Opts) ->
 create_child_spec({memcached = Name, Cmd, Args, Opts}) ->
     {{Name, Cmd, Args, Opts},
      {erlang, apply, [fun start_link_memcached_port/4, [Name, Cmd, Args, Opts]]},
-     permanent, infinity, worker,
+     permanent, 86400000, worker,
      [ns_port_server]};
 create_child_spec({Name, Cmd, Args, Opts}) ->
     {{Name, Cmd, Args, Opts},
      {supervisor_cushion, start_link,
-      [Name, 5000, 10000, ns_port_server, start_link, [Name, Cmd, Args, Opts]]},
-     permanent, infinity, worker,
+      [Name, 5000, ns_port_server, start_link, [Name, Cmd, Args, Opts]]},
+     permanent, 10000, worker,
      [ns_port_server]}.
 
 terminate_port(Id) ->
