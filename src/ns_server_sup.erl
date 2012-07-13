@@ -124,7 +124,7 @@ child_specs() ->
       permanent, infinity, supervisor, dynamic},
 
      {ns_port_sup, {ns_port_sup, start_link, []},
-      permanent, 60000, worker,
+      permanent, infinity, worker,
       [ns_port_sup]},
 
      {ns_port_memcached_killer, {ns_port_sup, start_memcached_force_killer, []},
@@ -167,8 +167,8 @@ child_specs() ->
 
      {compaction_daemon,
       {supervisor_cushion, start_link,
-       [compaction_daemon, 3000, compaction_daemon, start_link, []]},
-      permanent, 1000, worker, [compaction_daemon]},
+       [compaction_daemon, 3000, 1000, compaction_daemon, start_link, []]},
+      permanent, infinity, worker, [compaction_daemon]},
 
      {xdc_rdoc_replication_srv, {xdc_rdoc_replication_srv, start_link, []},
       permanent, 1000, worker, [xdc_rdoc_replication_srv]}
