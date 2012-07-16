@@ -1125,6 +1125,9 @@ var ServerStateMock = {
     "buckets": {
       "uri": "/pools/default/buckets?v=86081550"
     },
+    "tasks": {
+      "uri": "/pools/default/buckets?v=86081550"
+    },
     "remoteClusters": {
       "uri": "/pools/default/remoteClusters",
       "validateURI": "/pools/default/remoteClusters?just_validate=1"

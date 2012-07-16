@@ -177,12 +177,480 @@ var codeMirrorOpts = {
     theme: 'default'
 };
 
+function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProgressCell, poolDetailsCell) {
+
+  ns.viewsBucketInfoCell = Cell.compute(function (v) {
+    var selected = v(ns.rawViewsBucketCell);
+    var buckets = v.need(bucketsListCell).byType.membase;
+    var bucketInfo = _.detect(buckets, function (info) {return info.name === selected});
+    if (bucketInfo) {
+      return bucketInfo;
+    }
+    var bucketInfo = _.detect(buckets, function (info) {return info.name === "default"}) || buckets[0];
+
+    return bucketInfo;
+  });
+
+  ns.viewsBucketInfoCell.equality = function (a, b) {return a === b;};
+
+  ns.viewsBucketCell = Cell.compute(function (v) {
+    var bucketInfo = v(ns.viewsBucketInfoCell);
+    if (!bucketInfo) {
+      return null;
+    }
+    return bucketInfo.name;
+  });
+  ns.viewsBucketCell.equality = function (a, b) {return a === b;};
+
+  ns.randomKeyURLCell = Cell.compute(function (v) {
+    var bucketInfo = v.need(ns.viewsBucketInfoCell);
+    return bucketInfo.localRandomKeyUri;
+  });
+
+  ns.populateBucketsDropboxCell = Cell.compute(function (v) {
+    var mode = v.need(modeCell);
+    if (mode != 'views') {
+      return;
+    }
+
+    var buckets = v.need(bucketsListCell).byType.membase;
+    var selectedBucketName = v.need(ns.viewsBucketCell);
+    return {list: _.map(buckets, function (info) {return [info.name, info.name]}),
+            selected: selectedBucketName};
+  });
+  ns.haveBucketsCell = Cell.compute(function (v) {
+    return v.need(ns.viewsBucketCell) !== null;
+  });
+
+  ns.selectedBucketCell = Cell.compute(function (v) {
+    if (v.need(modeCell) != 'views')
+      return;
+    return v.need(ns.viewsBucketCell);
+  }).name("selectedBucket");
+
+  ns.dbURLCell = Cell.computeEager(function (v) {
+    var base = v.need(capiBaseCell);
+    var bucketName = v.need(ns.selectedBucketCell);
+
+    if (bucketName) {
+      return buildURL(base, bucketName) + "/";
+    } else {
+      return;
+    }
+  });
+
+  ns.allDDocsURLCell = Cell.compute(function (v) {
+    var bucketInfo = v.need(ns.viewsBucketInfoCell);
+    return bucketInfo.ddocs.uri;
+  }).name("allDDocsURL");
+
+  ns.rawAllDDocsCell = Cell.compute(function (v) {
+    return future.get({url: v.need(ns.allDDocsURLCell)});
+  }).name("rawAllDDocs");
+
+  ns.allDDocsCell = Cell.compute(function (v) {
+    var haveBuckets = v.need(ns.haveBucketsCell);
+
+    if (haveBuckets) {
+      return _.map(v.need(ns.rawAllDDocsCell).rows, function (r) {
+        var doc = _.clone(r.doc);
+        doc.compactURI = r.controllers.compact;
+        return doc;
+      });
+    } else {
+      return [];
+    }
+  }).name("allDDocs");
+  ns.allDDocsCell.delegateInvalidationMethods(ns.rawAllDDocsCell);
+
+  ns.currentDDocAndView = Cell.computeEager(function (v) {
+    var allDDocs = v.need(ns.allDDocsCell);
+    var ddocId = v(ns.rawDDocIdCell);
+    var viewName = v(ns.rawViewNameCell);
+    if (!ddocId || !viewName) {
+      return [];
+    }
+    var ddoc = _.detect(allDDocs, function (d) {return d.meta.id === ddocId});
+    if (!ddoc) {
+      return [];
+    }
+    var view = (ddoc.json.views || {})[viewName];
+    if (!view) {
+      return [];
+    }
+    return [ddoc, viewName];
+  }).name("currentDDocAndView");
+
+  ns.currentDDocAndSpatial = Cell.computeEager(function (v) {
+    var allDDocs = v.need(ns.allDDocsCell);
+    var ddocId = v(ns.rawDDocIdCell);
+    var spatialName = v(ns.rawSpatialNameCell);
+    if (!ddocId || !spatialName) {
+      return [];
+    }
+    var ddoc = _.detect(allDDocs, function (d) {return d.meta.id === ddocId});
+    if (!ddoc) {
+      return [];
+    }
+    var spatial = (ddoc.json.spatial || {})[spatialName];
+    if (!spatial) {
+      return [];
+    }
+    return [ddoc, spatialName];
+  }).name("currentDDocAndSpatial");
+
+  ns.populateViewsDropboxCell = Cell.compute(function (v) {
+    var mode = v.need(modeCell);
+    if (mode != 'views') {
+      return;
+    }
+
+    var bucketName = v.need(ns.viewsBucketCell);
+
+    var ddocs = _.sortBy(v.need(ns.allDDocsCell), function(ddoc) {
+      return !isDevModeDoc(ddoc);
+    });
+    var ddocAndView = v.need(ns.currentDDocAndView);
+    var ddocAndSpatial = v.need(ns.currentDDocAndSpatial);
+
+    var selectedDDocId = ddocAndView.length && ddocAndView[0].meta.id ||
+      ddocAndSpatial.length && ddocAndSpatial[0].meta.id;
+    var selectedViewName = ddocAndView.length && ddocAndView[1] ||
+      ddocAndSpatial.length && ddocAndSpatial[1];
+    //var selectedType = ddocAndView.length > 0 ? '_view' : '_spatial';
+
+    var devOptgroupOutput = false;
+    var productionOptgroupOutput = false;
+    var groups = _.map(ddocs, function (doc) {
+      var rv = "";
+      var viewNames = _.keys(doc.json.views || {}).sort();
+      var spatialNames = _.keys(doc.json.spatial || {}).sort();
+
+      if (isDevModeDoc(doc) && !devOptgroupOutput) {
+        rv += '<optgroup label="Development Views" class="topgroup">';
+        devOptgroupOutput = true;
+      } else if (!isDevModeDoc(doc) && !productionOptgroupOutput) {
+        rv += '</optgroup><optgroup label="Production Views" class="topgroup">';
+        productionOptgroupOutput = true;
+      }
+      rv += '<optgroup label="' + escapeHTML(doc.meta.id) + '" class="childgroup">';
+      _.each(viewNames, function (name) {
+        var maybeSelected = (selectedDDocId === doc.meta.id &&
+          selectedViewName === name) ? ' selected' : '';
+        rv += '<option value="' +
+          escapeHTML(buildViewPseudoLink(bucketName, doc, '_view', name)) +
+          '"' + maybeSelected + ">" +
+          escapeHTML(name) + "</option>";
+      });
+      _.each(spatialNames, function (name) {
+        var maybeSelected = (selectedDDocId === doc.meta.id &&
+          selectedViewName === name) ? ' selected' : '';
+        rv += '<option value="' +
+          escapeHTML(
+            buildViewPseudoLink(bucketName, doc, '_spatial', name)) +
+          '"' + maybeSelected + '>' +
+          '[Spatial] ' + escapeHTML(name) + "</option>";
+      });
+      rv += "</optgroup>";
+      return rv;
+    });
+    groups.push('</optgroup>');
+    return {
+      list: groups,
+      selected: ddocAndView
+    };
+  });
+
+  ns.currentView = Cell.compute(function (v) {
+    return (function (ddoc, viewName) {
+      if (viewName === undefined) {
+        return;
+      }
+      return (ddoc.json.views || {})[viewName];
+    }).apply(this, v.need(ns.currentDDocAndView));
+  }).name("currentView");
+
+  ns.currentSpatial = Cell.compute(function (v) {
+    return (function (ddoc, spatialName) {
+      if (spatialName === undefined) {
+        return;
+      }
+      return (ddoc.json.spatial || {})[spatialName];
+    }).apply(this, v.need(ns.currentDDocAndSpatial));
+  }).name("currentSpatial");
+
+  ns.editingDevView = Cell.compute(function (v) {
+    var ddoc = v.need(ns.currentDDocAndView)[0];
+    if (!ddoc) {
+      return false;
+    }
+    return !!ddoc.meta.id.match(/^_design\/dev_/);
+  }).name("editingDevView");
+
+  ns.defaultSubsetViewResultsCell = Cell.compute(function (v) {
+    return future.capiViewGet({url: v.need(ns.defaultSubsetResultsURLCell),
+                               timeout: 3600000});
+  }).name("defaultSubsetViewResultsCell")
+
+  ns.fullSubsetViewResultsCell = Cell.compute(function (v) {
+    return future.capiViewGet({url: v.need(ns.fullSubsetResultsURLCell),
+                               timeout: 3600000});
+  }).name("fullSubsetViewResultsCell")
+
+  ns.viewResultsCell = Cell.compute(function (v) {
+    // NOTE: we're requiring both subsets values, because otherwise
+    // cells would deactivate 'other' results cell as not needed
+    // anymore.
+    var fullResults = v(ns.fullSubsetViewResultsCell);
+    var defaultResults = v(ns.defaultSubsetViewResultsCell);
+    return v.need(ns.subsetTabCell) === 'prod' ? fullResults : defaultResults;
+  }).name("viewResultsCell");
+
+  ns.viewResultsCellViews = Cell.compute(function(v) {
+    v.need(ns.currentView);
+    return v(ns.viewResultsCell);
+  });
+
+  ns.viewResultsCellSpatial = Cell.compute(function(v) {
+    v.need(ns.currentSpatial);
+    return v(ns.viewResultsCell);
+  });
+
+  ns.editingDevViewSpatial = Cell.compute(function (v) {
+    var ddoc = v.need(ns.currentDDocAndSpatial)[0];
+    if (!ddoc) {
+      return false;
+    }
+    return !!ddoc.meta.id.match(/^_design\/dev_/);
+  }).name("editingDevViewSpatial");
+
+  ns.proposedURLBuilderCell = Cell.compute(function (v) {
+    if (v(ns.currentView)) {
+      var dbURL = v.need(ns.dbURLCell);
+      var ddocAndView = v.need(ns.currentDDocAndView);
+      if (!ddocAndView[1]) {
+        return;
+      }
+      var filterParams = v.need(ViewsFilter.filterParamsCell);
+      return function (pageNo, subset) {
+        var initial = {};
+        if (subset === "prod") {
+          initial.full_set = 'true';
+        }
+        return buildDocURL(dbURL, ddocAndView[0].meta.id, "_view", ddocAndView[1], _.extend(initial, filterParams, {
+          limit: ViewsSection.PAGE_LIMIT.toString(),
+          skip: String((pageNo - 1) * 10)
+        }));
+      };
+    } else if (v(ns.currentSpatial)) {
+      var dbURL = v.need(ns.dbURLCell);
+      var ddocAndSpatial = v.need(ns.currentDDocAndSpatial);
+      if (!ddocAndSpatial[1]) {
+        return;
+      }
+      var filterParams = v.need(SpatialFilter.filterParamsCell);
+      return function (pageNo, subset) {
+        var initial = {};
+        if (subset === "prod") {
+          initial.full_set = 'true';
+        }
+        return buildDocURL(dbURL, ddocAndSpatial[0].meta.id, "_spatial", ddocAndSpatial[1], _.extend(initial, filterParams, {
+          //limit: ViewsSection.PAGE_LIMIT.toString(),
+          //skip: String((pageNo - 1) * 10)
+          //bbox: "-180,-90,180,90"
+        }));
+      };
+    }
+  }).name("proposedURLBuilderCell");
+
+  ns.intPageCell = Cell.compute(function (v) {
+    var pageVal = v(ns.pageNumberCell);
+    var pageNo = parseInt(pageVal, 10);
+    if (isNaN(pageNo) || pageNo < 1) {
+      pageNo = 1;
+    }
+    if (pageNo > 10) {
+      pageNo = 10;
+    }
+    return pageNo;
+  });
+
+  ns.intFullSubsetPageCell = Cell.compute(function (v) {
+    var pageVal = v(ns.fullSubsetPageNumberCell);
+    var pageNo = parseInt(pageVal, 10);
+    if (isNaN(pageNo) || pageNo < 1) {
+      pageNo = 1;
+    }
+    if (pageNo > 10) {
+      pageNo = 10;
+    }
+    return pageNo;
+  });
+
+  ns.defaultSubsetResultsURLCell = Cell.compute(function (v) {
+    var appliedBuilder = v(ns.defaultSubsetAppliedURLBuilderCell);
+    var proposedBuilder = v.need(ns.proposedURLBuilderCell);
+    if (appliedBuilder !== proposedBuilder) {
+      return;
+    }
+    return appliedBuilder(v.need(ns.intPageCell), "dev");
+  });
+  ns.fullSubsetResultsURLCell = Cell.compute(function (v) {
+    var appliedBuilder = v(ns.fullSubsetAppliedURLBuilderCell);
+    var proposedBuilder = v.need(ns.proposedURLBuilderCell);
+    if (appliedBuilder !== proposedBuilder) {
+      return;
+    }
+    return appliedBuilder(v.need(ns.intFullSubsetPageCell), "prod");
+  });
+  ns.viewResultsURLCell = Cell.compute(function (v) {
+    if (v.need(ns.subsetTabCell) === "prod") {
+      return v.need(ns.fullSubsetResultsURLCell);
+    }
+    return v.need(ns.defaultSubsetResultsURLCell);
+  });
+  ns.showHidePrevNextCell = Cell.compute(function (v) {
+    var intCell = v.need(ns.subsetTabCell) === 'prod' ? ns.intFullSubsetPageCell : ns.intPageCell;
+    return [v(ns.viewResultsCell), v.need(intCell)];
+  });
+  ns.productionDDocsCell = Cell.compute(function (v) {
+    var allDDocs = v.need(ns.allDDocsCell);
+    return _.select(allDDocs, function (ddoc) {
+      return !isDevModeDoc(ddoc);
+    });
+  });
+
+  ns.devDDocsCell = Cell.compute(function (v) {
+    var allDDocs = v.need(ns.allDDocsCell);
+    return _.select(allDDocs, function (ddoc) {
+      return isDevModeDoc(ddoc);
+    });
+  });
+
+  // filters tasks of this bucket and converts them from array of
+  // tasks to hash from ddoc id to array of tasks of on this ddoc
+  // id.
+  //
+  // This also filters out non-view related tasks
+  ns.tasksOfCurrentBucket = Cell.compute(function (v) {
+    var tasks = v.need(tasksProgressCell);
+    var bucketName = v.need(ns.selectedBucketCell);
+    var rv = {};
+    _.each(tasks, function (taskInfo) {
+      if (taskInfo.type !== 'indexer' && taskInfo.type !== 'view_compaction') {
+        return;
+      }
+      if (taskInfo.bucket !== bucketName) {
+        return;
+      }
+      var ddoc = taskInfo.designDocument;
+      var tasks = rv[ddoc] || (rv[ddoc] = []);
+      tasks.push(taskInfo);
+    });
+
+    var importance = {
+      view_compaction: 1,
+      indexer: 2
+    };
+
+    _.each(rv, function (tasks, key) {
+      // lets also sort tasks in descending importance.
+      // NOTE: js's sort is in-place
+      tasks.sort(function (taskA, taskB) {
+        var importanceA = importance[taskA.type] || BUG("bad type");
+        var importanceB = importance[taskB.type] || BUG("bad type");
+        return importanceA - importanceB;
+      });
+    });
+
+    return rv;
+  }).name("tasksOfCurrentBucket");
+  ns.tasksOfCurrentBucket.equality = _.isEqual;
+
+  ns.rawForDoSaveAsView = Cell.compute(function (v) {
+    var dbURL = v.need(ns.dbURLCell);
+    var pair = v.need(ns.currentDDocAndView);
+    return [dbURL].concat(pair);
+  });
+
+  ns.rawForDoSaveView = Cell.compute(function (v) {
+    var dbURL = v.need(ns.dbURLCell);
+    var currentView = v.need(ns.currentView);
+    var pair = v.need(ns.currentDDocAndView);
+    return [dbURL, currentView].concat(pair);
+  });
+
+  ns.rawForSpatialDoSaveAs = Cell.compute(function (v) {
+    var dbURL = v.need(ns.dbURLCell);
+    var pair = v.need(ns.currentDDocAndSpatial);
+    return [dbURL].concat(pair);
+  });
+
+  ns.rawForSpatialDoSave = Cell.compute(function (v) {
+    var dbURL = v.need(ns.dbURLCell);
+    var currentSpatial = v.need(ns.currentSpatial);
+    var pair = v.need(ns.currentDDocAndSpatial);
+    return [dbURL, currentSpatial].concat(pair);
+  });
+
+  ns.mkViewsListCell = function(ddocsCell) {
+    return Cell.compute(function (v) {
+      var tasks = v.need(ns.tasksOfCurrentBucket);
+      var ddocs = v.need(ddocsCell);
+      var poolDetails = v.need(poolDetailsCell);
+
+      var bucketName = v.need(ns.selectedBucketCell);
+      var rv = _.map(ddocs, function (doc) {
+        var rv = _.clone(doc);
+        var viewInfos = _.map(rv.json.views || {}, function (value, key) {
+          var plink = buildViewPseudoLink(bucketName, doc, '_view', key);
+          return _.extend({name: key,
+                           viewLink: '#showView=' + plink,
+                           removeLink: '#removeView=' + plink
+                          }, value);
+        });
+        viewInfos = _.sortBy(viewInfos, function (info) {return info.name;});
+        rv.json.viewInfos = viewInfos;
+        var spatialInfos = _.map(rv.json.spatial || {}, function (value, key) {
+          var plink = buildViewPseudoLink(bucketName, doc, '_spatial', key);
+          return _.extend({name: key,
+                           viewLink: '#showSpatial=' + plink,
+                           removeLink: '#removeSpatial=' + plink
+                          }, value);
+        });
+        spatialInfos = _.sortBy(spatialInfos, function (info) {return info.name;});
+        rv.json.spatialInfos = spatialInfos;
+        return rv;
+      });
+      rv.tasks = tasks;
+      rv.poolDetails = poolDetails;
+      rv.bucketName = bucketName;
+      return rv;
+    });
+  }
+
+  ns.randomDocsUrlCell = Cell.compute(function (v) {
+    var randomIdCell = v.need(ns.randomIdCell);
+    if (!randomIdCell) {
+      return;
+    }
+    return buildURL(v.need(ns.dbURLCell), "_all_docs", {
+      startkey: JSON.stringify(randomIdCell),
+      endkey: JSON.stringify(randomIdCell + String.fromCharCode(0xffff)),
+      include_docs: "true",
+      limit: 1
+    });
+  });
+
+  ns.randomDocsCell = Cell.compute(function (v) {
+    return future.get({url: v.need(ns.randomDocsUrlCell)});
+  });
+
+}
+
 var ViewsSection = {
   timer: null,
   PAGE_LIMIT: 10,
-  mapEditor: CodeMirror.fromTextArea($("#viewcode_map")[0], codeMirrorOpts),
-  reduceEditor: CodeMirror.fromTextArea($("#viewcode_reduce")[0], codeMirrorOpts),
-  spatialEditor: CodeMirror.fromTextArea($("#spatialcode_fun")[0], codeMirrorOpts),
   ensureBucketSelected: function (bucketName, body) {
     var self = this;
     ThePage.ensureSection("views");
@@ -228,10 +696,47 @@ var ViewsSection = {
     self.pageNumberCell = new StringHashFragmentCell("viewPage");
     self.fullSubsetPageNumberCell = new StringHashFragmentCell("fullSubsetViewPage");
 
-    Cell.subscribeMultipleValues(function (sec, tabsVal, spatialVal, viewsVal) {
+    self.defaultSubsetAppliedURLBuilderCell = new Cell();
+    self.fullSubsetAppliedURLBuilderCell = new Cell();
+    self.lastAppliedURLBuilderCell = new Cell();
+    self.randomIdCell = new Cell();
+
+    createViewsCells(self, DAL.cells.bucketsListCell, DAL.cells.capiBase, DAL.cells.mode, DAL.cells.tasksProgressCell, DAL.cells.currentPoolDetailsCell);
+
+    var viewcodeReduce = $('#viewcode_reduce');
+    var viewcodeMap = $('#viewcode_map');
+    var spatialcodeFun = $('#spatialcode_fun');
+
+    self.mapEditor = CodeMirror.fromTextArea(viewcodeMap[0], codeMirrorOpts);
+    self.reduceEditor = CodeMirror.fromTextArea(viewcodeReduce[0], codeMirrorOpts);
+    self.spatialEditor = CodeMirror.fromTextArea(spatialcodeFun[0], codeMirrorOpts);
+
+    var btnCreate = $('.btn_create', views);
+    var viewsBucketSelect = $('#views_bucket_select');
+    var viewsViewSelect = $('#views_view_select');
+    var viewsList = $('#views_list');
+    var viewDetails = $('#view_details');
+    var viewCode = $('#viewcode');
+    var viewResultsBlock = $('#view_results_block');
+    var previewRandomDoc = $('#preview_random_doc');
+    var viewCodeErrors = $('#view_code_errors');
+    var spatialCode = $('#spatialcode');
+    var spatialResultBlock = $('#spatial_results_block');
+    var whenInsideView = $('.when-inside-view', views);
+    var justSaveView = $('#just_save_view');
+    var saveViewAs = $('#save_view_as');
+    var saveSpatialAs = $('#save_spatial_as');
+    var justSaveSpatial = $('#just_save_spatial');
+    var runBtn = $('.run_button',  views);
+
+    var viewResultsContainer = $('#view_results_container');
+    var viewResultsSpinner = $('#view_results_spinner');
+
+    Cell.subscribeMultipleValues(function (sec, tabsVal, spatialVal, viewsVal, subset, intPageFull, intPage, builder) {
       if (sec !== 'views') {
         return;
       }
+
       if (!tabsVal) {
         return;
       }
@@ -245,308 +750,115 @@ var ViewsSection = {
       if (!viewsVal) {
         ViewsFilter.rawFilterParamsCell.setValue(tabsVal === 'production' ? "stale=update_after&connection_timeout=60000" : "connection_timeout=60000");
       }
-    }, DAL.cells.mode, self.modeTabs, SpatialFilter.rawFilterParamsCell, ViewsFilter.rawFilterParamsCell);
 
-    self.viewsBucketInfoCell = Cell.compute(function (v) {
-      var selected = v(self.rawViewsBucketCell);
-      var buckets = v.need(DAL.cells.bucketsListCell).byType.membase;
-      var bucketInfo = _.detect(buckets, function (info) {return info.name === selected});
-      if (bucketInfo) {
-        return bucketInfo;
+      var intPageVal = subset === 'prod' ? intPageFull : intPage;
+
+      if (builder) {
+        var url = builder(intPageVal, subset);
+        var text = url.substring(url.indexOf('?'));
+        ViewsFilter.filtersUrl.attr('href', escapeHTML(url));
+        ViewsFilter.filtersUrl.text(decodeURIComponent(text));
+        SpatialFilter.filtersUrl.attr('href', escapeHTML(url));
+        SpatialFilter.filtersUrl.text(decodeURIComponent(text));
       }
-      var bucketInfo = _.detect(buckets, function (info) {return info.name === "default"}) || buckets[0];
-
-      return bucketInfo;
-    });
-
-    self.viewsBucketCell = Cell.compute(function (v) {
-      var bucketInfo = v(self.viewsBucketInfoCell);
-      if (!bucketInfo) {
-        return null;
+    }, DAL.cells.mode, self.modeTabs, SpatialFilter.rawFilterParamsCell, 
+         ViewsFilter.rawFilterParamsCell, self.subsetTabCell, self.intFullSubsetPageCell, self.intPageCell, self.proposedURLBuilderCell);
+      
+    viewsBucketSelect.bindListCell(self.populateBucketsDropboxCell, {
+      onChange: function (e, newValue) {
+        self.rawViewNameCell.setValue(undefined);
+        self.randomIdCell.setValue(undefined);
+        self.rawDDocIdCell.setValue(undefined);
+        self.rawViewNameCell.setValue(undefined);
+        self.rawViewsBucketCell.setValue(newValue);
       }
-      return bucketInfo.name;
-    });
-    self.viewsBucketCell.equality = function (a, b) {return a === b;};
-
-    self.randomKeyURLCell = Cell.compute(function (v) {
-      var bucketInfo = v.need(self.viewsBucketInfoCell);
-      return bucketInfo.localRandomKeyUri;
     });
 
-    (function () {
-      var cell = Cell.compute(function (v) {
-        var mode = v.need(DAL.cells.mode);
-        if (mode != 'views') {
+    btnCreate.bind('click', function (e) {
+      e.preventDefault();
+      ViewsSection.startCreateView();
+    });
+
+    viewsViewSelect.bindListCell(self.populateViewsDropboxCell, {
+      onChange: function (e, newValue) {
+        if (!newValue) {
+          self.randomIdCell.setValue(undefined);
+          self.rawDDocIdCell.setValue(undefined);
+          self.rawViewNameCell.setValue(undefined);
+          self.rawSpatialNameCell.setValue(undefined);
           return;
         }
-
-        var buckets = v.need(DAL.cells.bucketsListCell).byType.membase;
-        var selectedBucketName = v.need(self.viewsBucketCell);
-        return {list: _.map(buckets, function (info) {return [info.name, info.name]}),
-                selected: selectedBucketName};
-      });
-      $('#views_bucket_select').bindListCell(cell, {
-        onChange: function (e, newValue) {
-          self.rawViewsBucketCell.setValue(newValue);
+        unbuildViewPseudoLink(newValue, function (_ignored, ddocId, type, viewName) {
+          var devMode = isDevModeDoc({meta: {id: ddocId}});
+          _.defer(function () {
+            viewsViewSelect.parent().find('.selectBox-label')
+              .html(escapeHTML(ddocId).split('/').join('/<strong>') +
+                '</strong>/' + type +
+                '/<strong>' + escapeHTML(viewName) + '</strong>');
+            self.modeTabs.setValue(devMode ? 'development' : 'production');
+            if (type === '_view') {
+              self.setCurrentView(ddocId, viewName);
+            } else {
+              self.setCurrentSpatial(ddocId, viewName);
+            }
+          });
+        });
+      },
+      applyWidget: function () {},
+      unapplyWidget: function () {},
+      buildOptions: function (q, selected, list) {
+        _.each(list, function (group) {
+          var option = $(group);
+          q.append(option);
+        });
+        viewsViewSelect.selectBox({autoWidth:false})
+          .selectBox('options', list.join(''));
+        if (selected.length > 0) {
+          viewsViewSelect.parent().find('.selectBox-label')
+            .html(escapeHTML(selected[0].meta.id).split('/').join('/<strong>') + '</strong>/_view/<strong>' + escapeHTML(selected[1]) + '</strong>');
         }
-      });
-    })();
-
-    var haveBucketsCell = Cell.compute(
-      function (v) {
-        return v.need(self.viewsBucketCell) !== null;
-      });
-
-    var selectedBucketCell = self.selectedBucketCell = Cell.compute(function (v) {
-      if (v.need(DAL.cells.mode) != 'views')
-        return;
-      return v.need(self.viewsBucketCell);
-    }).name("selectedBucket");
-
-    var dbURLCell = self.dbURLCell = Cell.compute(function (v) {
-      var base = v.need(DAL.cells.capiBase);
-      var bucketName = v.need(selectedBucketCell);
-
-      if (bucketName) {
-        return buildURL(base, bucketName) + "/";
-      } else {
-        return;
       }
     });
 
-    (function (createBtn) {
-      dbURLCell.subscribeValue(function (value) {
-        createBtn.toggleClass('disabled', !value);
-      });
-      createBtn.bind('click', function (e) {
-        e.preventDefault();
-        ViewsSection.startCreateView();
-      });
-    })(views.find('.btn_create'));
-
-    var allDDocsURLCell = Cell.compute(function (v) {
-      var bucketInfo = v.need(self.viewsBucketInfoCell);
-      return bucketInfo.ddocs.uri;
-    }).name("allDDocsURL");
-
-    var rawAllDDocsCell = Cell.compute(function (v) {
-      return future.get({url: v.need(allDDocsURLCell)});
-    }).name("rawAllDDocs");
-
-    var allDDocsCell = self.allDDocsCell = Cell.compute(function (v) {
-      var haveBuckets = v.need(haveBucketsCell);
-
-      if (haveBuckets) {
-        return _.map(v.need(rawAllDDocsCell).rows, function (r) {
-          var doc = _.clone(r.doc);
-          doc.compactURI = r.controllers.compact;
-          return doc;
-        });
-      } else {
-        return [];
-      }
-    }).name("allDDocs");
-    allDDocsCell.delegateInvalidationMethods(rawAllDDocsCell);
-
-    var currentDDocAndView = self.currentDDocAndView = Cell.computeEager(function (v) {
-      var allDDocs = v.need(allDDocsCell);
-      var ddocId = v(self.rawDDocIdCell);
-      var viewName = v(self.rawViewNameCell);
-      if (!ddocId || !viewName) {
-        return [];
-      }
-      var ddoc = _.detect(allDDocs, function (d) {return d.meta.id === ddocId});
-      if (!ddoc) {
-        return [];
-      }
-      var view = (ddoc.json.views || {})[viewName];
-      if (!view) {
-        return [];
-      }
-      return [ddoc, viewName];
-    }).name("currentDDocAndView");
-
-    var currentDDocAndSpatial = self.currentDDocAndSpatial = Cell.computeEager(function (v) {
-      var allDDocs = v.need(allDDocsCell);
-      var ddocId = v(self.rawDDocIdCell);
-      var spatialName = v(self.rawSpatialNameCell);
-      if (!ddocId || !spatialName) {
-        return [];
-      }
-      var ddoc = _.detect(allDDocs, function (d) {return d.meta.id === ddocId});
-      if (!ddoc) {
-        return [];
-      }
-      var spatial = (ddoc.json.spatial || {})[spatialName];
-      if (!spatial) {
-        return [];
-      }
-      return [ddoc, spatialName];
-    }).name("currentDDocAndSpatial");
-
-    (function () {
-      var cell = Cell.compute(function (v) {
-        var mode = v.need(DAL.cells.mode);
-        if (mode != 'views') {
-          return;
-        }
-
-        var bucketName = v.need(self.viewsBucketCell);
-
-        var ddocs = _.sortBy(v.need(allDDocsCell), function(ddoc) {
-          return !isDevModeDoc(ddoc);
-        });
-        var ddocAndView = v.need(currentDDocAndView);
-        var ddocAndSpatial = v.need(currentDDocAndSpatial);
-
-        var selectedDDocId = ddocAndView.length && ddocAndView[0].meta.id ||
-          ddocAndSpatial.length && ddocAndSpatial[0].meta.id;
-        var selectedViewName = ddocAndView.length && ddocAndView[1] ||
-          ddocAndSpatial.length && ddocAndSpatial[1];
-        //var selectedType = ddocAndView.length > 0 ? '_view' : '_spatial';
-
-        var devOptgroupOutput = false;
-        var productionOptgroupOutput = false;
-        var groups = _.map(ddocs, function (doc) {
-          var rv = "";
-          var viewNames = _.keys(doc.json.views || {}).sort();
-          var spatialNames = _.keys(doc.json.spatial || {}).sort();
-
-          if (isDevModeDoc(doc) && !devOptgroupOutput) {
-            rv += '<optgroup label="Development Views" class="topgroup">';
-            devOptgroupOutput = true;
-          } else if (!isDevModeDoc(doc) && !productionOptgroupOutput) {
-            rv += '</optgroup><optgroup label="Production Views" class="topgroup">';
-            productionOptgroupOutput = true;
-          }
-          rv += '<optgroup label="' + escapeHTML(doc.meta.id) + '" class="childgroup">';
-          _.each(viewNames, function (name) {
-            var maybeSelected = (selectedDDocId === doc.meta.id &&
-              selectedViewName === name) ? ' selected' : '';
-            rv += '<option value="' +
-              escapeHTML(buildViewPseudoLink(bucketName, doc, '_view', name)) +
-              '"' + maybeSelected + ">" +
-              escapeHTML(name) + "</option>";
-          });
-          _.each(spatialNames, function (name) {
-            var maybeSelected = (selectedDDocId === doc.meta.id &&
-              selectedViewName === name) ? ' selected' : '';
-            rv += '<option value="' +
-              escapeHTML(
-                buildViewPseudoLink(bucketName, doc, '_spatial', name)) +
-              '"' + maybeSelected + '>' +
-              '[Spatial] ' + escapeHTML(name) + "</option>";
-          });
-          rv += "</optgroup>";
-          return rv;
-        });
-        groups.push('</optgroup>');
-        return {
-          list: groups,
-          selected: ddocAndView
-        };
-      });
-      $('#views_view_select').bindListCell(cell, {
-        onChange: function (e, newValue) {
-          if (!newValue) {
-            self.rawDDocIdCell.setValue(undefined);
-            self.rawViewNameCell.setValue(undefined);
-            self.rawSpatialNameCell.setValue(undefined);
-            return;
-          }
-          unbuildViewPseudoLink(newValue, function (_ignored, ddocId, type, viewName) {
-            var devMode = isDevModeDoc({meta:{id: ddocId}});
-            _.defer(function () {
-              $('#views_view_select').parent().find('.selectBox-label')
-                .html(escapeHTML(ddocId).split('/').join('/<strong>') +
-                  '</strong>/' + type +
-                  '/<strong>' + escapeHTML(viewName) + '</strong>');
-              self.modeTabs.setValue(devMode ? 'development' : 'production');
-              if (type === '_view') {
-                self.setCurrentView(ddocId, viewName);
-              } else {
-                self.setCurrentSpatial(ddocId, viewName);
-              }
-            });
-          });
-        },
-        applyWidget: function () {},
-        unapplyWidget: function () {},
-        buildOptions: function (q, selected, list) {
-          _.each(list, function (group) {
-            var option = $(group);
-            q.append(option);
-          });
-          $('#views_view_select').selectBox({autoWidth:false})
-            .selectBox('options', list.join(''));
-          if (selected.length > 0) {
-            $('#views_view_select').parent().find('.selectBox-label')
-              .html(escapeHTML(selected[0].meta.id).split('/').join('/<strong>') + '</strong>/_view/<strong>' + escapeHTML(selected[1]) + '</strong>');
-          }
-        }
-      });
-    })();
-
-    DAL.subscribeWhenSection(currentDDocAndView, "views", function (value) {
+    DAL.subscribeWhenSection(self.currentDDocAndView, "views", function (value) {
       // only run it if the current clicked view isn't a spatial one
-      if (currentDDocAndSpatial.value &&
-          currentDDocAndSpatial.value.length == 0) {
-        $('#views_spinner')[value ? 'hide' : 'show']();
-        $('#views_list')[(value && !value.length) ? 'show' : 'hide']();
-        $('#view_details')[(value && value.length) ? 'show' : 'hide']();
+      if (self.currentDDocAndSpatial.value && self.currentDDocAndSpatial.value.length == 0) {
+        viewsList[(value && !value.length) ? 'show' : 'hide']();
+        viewDetails[(value && value.length) ? 'show' : 'hide']();
       }
-      $('#viewcode')[(value && value.length) ? 'show' : 'hide']();
-      $('#view_results_block')[(value && value.length) ? 'show' : 'hide']();
+      viewCode[(value && value.length) ? 'show' : 'hide']();
+      viewResultsBlock[(value && value.length) ? 'show' : 'hide']();
       if (value && value.length) {
-        $('#preview_random_doc').trigger('click', true);
+        previewRandomDoc.trigger('click', true);
         self.mapEditor.refresh();
         self.reduceEditor.refresh();
       }
     });
 
-    DAL.subscribeWhenSection(currentDDocAndSpatial, "views", function (value) {
+    DAL.subscribeWhenSection(self.currentDDocAndSpatial, "views", function (value) {
       // only run it if the current clicked view isn't a non-spatial one
-      if (currentDDocAndView.value && currentDDocAndView.value.length == 0) {
-        $('#views_spinner')[value ? 'hide' : 'show']();
-        $('#views_list')[(value && !value.length) ? 'show' : 'hide']();
-        $('#view_details')[(value && value.length) ? 'show' : 'hide']();
+      if (self.currentDDocAndView.value && self.currentDDocAndView.value.length == 0) {
+        viewsList[(value && !value.length) ? 'show' : 'hide']();
+        viewDetails[(value && value.length) ? 'show' : 'hide']();
       }
-      $('#spatialcode')[(value && value.length) ? 'show' : 'hide']();
-      $('#spatial_results_block')[(value && value.length) ? 'show' : 'hide']();
+      spatialCode[(value && value.length) ? 'show' : 'hide']();
+      spatialResultBlock[(value && value.length) ? 'show' : 'hide']();
       if (value && value.length) {
-        $('#preview_random_doc').trigger('click', true);
+        previewRandomDoc.trigger('click', true);
         self.spatialEditor.refresh();
       }
     });
 
-    var currentView = self.currentView = Cell.compute(function (v) {
-      return (function (ddoc, viewName) {
-        if (viewName === undefined) {
-          return;
-        }
-        return (ddoc.json.views || {})[viewName];
-      }).apply(this, v.need(currentDDocAndView));
-    }).name("currentView");
-
-    var currentSpatial = self.currentSpatial = Cell.compute(function (v) {
-      return (function (ddoc, spatialName) {
-        if (spatialName === undefined) {
-          return;
-        }
-        return (ddoc.json.spatial || {})[spatialName];
-      }).apply(this, v.need(currentDDocAndSpatial));
-    }).name("currentSpatial");
-
     (function () {
-
       var originalMap, originalReduce, originalSpatial;
 
       Cell.subscribeMultipleValues(function (view, spatial) {
-        $('#views .when-inside-view')[view || spatial ? 'show' : 'hide']();
+        whenInsideView[view || spatial ? 'show' : 'hide']();
+
         if (view !== undefined) {
           originalMap = view.map;
           originalReduce = view.reduce || "";
-
+          viewCodeErrors.text('').attr('title','');
           // NOTE: this triggers onChange right now so it needs to be last
           self.mapEditor.setValue(view.map);
           self.reduceEditor.setValue(view.reduce || "");
@@ -556,8 +868,7 @@ var ViewsSection = {
           // NOTE: this triggers onChange right now so it needs to be last
           self.spatialEditor.setValue(spatial);
         }
-
-      }, currentView, currentSpatial);
+      }, self.currentView, self.currentSpatial);
 
       var unchangedCell = new Cell();
 
@@ -576,7 +887,7 @@ var ViewsSection = {
       self.reduceEditor.setOption('onChange', onMapReduceChange);
       self.spatialEditor.setOption('onChange', onMapReduceChange);
       unchangedCell.subscribeValue(function (unchanged) {
-        $('.run_button').toggleClass('disabled', !unchanged);
+        runBtn.toggleClass('disabled', !unchanged);
       });
 
     })();
@@ -595,17 +906,10 @@ var ViewsSection = {
         .closest('.shadow_box').removeClass('editing');
     }
 
-    var editingDevView = Cell.compute(function (v) {
-      var ddoc = v.need(currentDDocAndView)[0];
-      if (!ddoc) {
-        return false;
-      }
-      return !!ddoc.meta.id.match(/^_design\/dev_/);
-    }).name("editingDevView");
+    self.editingDevView.subscribeValue(function (devView) {
 
-    editingDevView.subscribeValue(function (devView) {
-
-      $('#save_view_as, #just_save_view')[devView ? "show" : "hide"]();
+      justSaveView[devView ? "show" : "hide"]();
+      saveViewAs[devView ? "show" : "hide"]();
 
       if (!devView) {
         disableEditor(self.mapEditor);
@@ -616,17 +920,10 @@ var ViewsSection = {
       }
     });
 
-    var editingDevViewSpatial = Cell.compute(function (v) {
-      var ddoc = v.need(currentDDocAndSpatial)[0];
-      if (!ddoc) {
-        return false;
-      }
-      return !!ddoc.meta.id.match(/^_design\/dev_/);
-    }).name("editingDevViewSpatial");
+    self.editingDevViewSpatial.subscribeValue(function (devView) {
 
-    editingDevViewSpatial.subscribeValue(function (devView) {
-
-      $('#save_spatial_as, #just_save_spatial')[devView ? "show" : "hide"]();
+      justSaveSpatial[devView ? "show" : "hide"]();
+      saveSpatialAs[devView ? "show" : "hide"]();
 
       if (!devView) {
         disableEditor(self.spatialEditor);
@@ -635,174 +932,38 @@ var ViewsSection = {
       }
     });
 
-    function mkIntPageCell(pageNumberCell) {
-      return Cell.compute(function (v) {
-        var pageVal = v(pageNumberCell);
-        var pageNo = parseInt(pageVal, 10);
-        if (isNaN(pageNo) || pageNo < 1) {
-          pageNo = 1;
-        }
-        if (pageNo > 10) {
-          pageNo = 10;
-        }
-        return pageNo;
-      })
-    }
-
-    var intPageCell = mkIntPageCell(self.pageNumberCell);
-    var intFullSubsetPageCell = mkIntPageCell(self.fullSubsetPageNumberCell);
-
-    var viewResultsURLCell;
-    var defaultSubsetResultsURLCell;
-    var fullSubsetResultsURLCell;
-
     (function () {
-      var proposedURLBuilderCell = Cell.compute(function (v) {
-        if (v(self.currentView)) {
-          var dbURL = v.need(self.dbURLCell);
-          var ddocAndView = v.need(self.currentDDocAndView);
-          if (!ddocAndView[1]) {
-            return;
-          }
-          var filterParams = v.need(ViewsFilter.filterParamsCell);
-          return function (pageNo, subset) {
-            var initial = {};
-            if (subset === "prod") {
-              initial.full_set = 'true';
-            }
-            return buildDocURL(dbURL, ddocAndView[0].meta.id, "_view", ddocAndView[1], _.extend(initial, filterParams, {
-              limit: ViewsSection.PAGE_LIMIT.toString(),
-              skip: String((pageNo - 1) * 10)
-            }));
-          };
-        } else if (v(self.currentSpatial)) {
-          var dbURL = v.need(self.dbURLCell);
-          var ddocAndSpatial = v.need(self.currentDDocAndSpatial);
-          if (!ddocAndSpatial[1]) {
-            return;
-          }
-          var filterParams = v.need(SpatialFilter.filterParamsCell);
-          return function (pageNo, subset) {
-            var initial = {};
-            if (subset === "prod") {
-              initial.full_set = 'true';
-            }
-            return buildDocURL(dbURL, ddocAndSpatial[0].meta.id, "_spatial", ddocAndSpatial[1], _.extend(initial, filterParams, {
-              //limit: ViewsSection.PAGE_LIMIT.toString(),
-              //skip: String((pageNo - 1) * 10)
-              //bbox: "-180,-90,180,90"
-            }));
-          };
-        }
-      }).name("proposedURLBuilderCell");
-
-      DAL.subscribeWhenSection(Cell.compute(function (v) {
-        var subset = v.need(self.subsetTabCell);
-        var intPage = subset === 'prod' ? v.need(intFullSubsetPageCell) : v.need(intPageCell);
-        return [v(proposedURLBuilderCell), intPage, subset];
-      }), "views", function (args) {
-        if (!args) {
-          return;
-        }
-        (function (builder, intPage, subset) {
-          if (builder) {
-            var url = builder(intPage, subset);
-            var text = url.substring(url.indexOf('?'));
-            ViewsFilter.filtersUrl.attr('href', escapeHTML(url));
-            ViewsFilter.filtersUrl.text(decodeURIComponent(text));
-            SpatialFilter.filtersUrl.attr('href', escapeHTML(url));
-            SpatialFilter.filtersUrl.text(decodeURIComponent(text));
-          }
-        }).apply(this, args);
-      });
-
-      var defaultSubsetAppliedURLBuilderCell = new Cell();
-      var fullSubsetAppliedURLBuilderCell = new Cell();
-      var lastAppliedURLBuilderCell = new Cell();
-
-      defaultSubsetResultsURLCell = Cell.compute(function (v) {
-        var appliedBuilder = v(defaultSubsetAppliedURLBuilderCell);
-        var proposedBuilder = v.need(proposedURLBuilderCell);
-        if (appliedBuilder !== proposedBuilder) {
-          return;
-        }
-        return appliedBuilder(v.need(intPageCell), "dev");
-      });
-      fullSubsetResultsURLCell = Cell.compute(function (v) {
-        var appliedBuilder = v(fullSubsetAppliedURLBuilderCell);
-        var proposedBuilder = v.need(proposedURLBuilderCell);
-        if (appliedBuilder !== proposedBuilder) {
-          return;
-        }
-        return appliedBuilder(v.need(intFullSubsetPageCell), "prod");
-      });
-      self.viewResultsURLCell = viewResultsURLCell = Cell.compute(function (v) {
-        if (v.need(self.subsetTabCell) === "prod") {
-          return v.need(fullSubsetResultsURLCell);
-        }
-        return v.need(defaultSubsetResultsURLCell);
-      });
-
-      viewResultsURLCell.runView = function () {
-        var urlCell = defaultSubsetResultsURLCell;
-        var appliedBuilderCell = defaultSubsetAppliedURLBuilderCell;
+      self.viewResultsURLCell.runView = function () {
+        var urlCell = self.defaultSubsetResultsURLCell;
+        var appliedBuilderCell = self.defaultSubsetAppliedURLBuilderCell;
         if (self.subsetTabCell.value === "prod") {
-          urlCell = fullSubsetResultsURLCell;
-          appliedBuilderCell = fullSubsetAppliedURLBuilderCell;
+          urlCell = self.fullSubsetResultsURLCell;
+          appliedBuilderCell = self.fullSubsetAppliedURLBuilderCell;
         }
 
         urlCell.setValue(undefined);
         Cell.waitQuiescence(function () {
-          proposedURLBuilderCell.getValue(function (value) {
+          self.proposedURLBuilderCell.getValue(function (value) {
             appliedBuilderCell.setValue(value);
-            lastAppliedURLBuilderCell.setValue(value);
+            self.lastAppliedURLBuilderCell.setValue(value);
             urlCell.recalculate();
           });
         });
       };
 
-      proposedURLBuilderCell.subscribeValue(function (proposed) {
-        if (proposed !== lastAppliedURLBuilderCell.value) {
+      self.proposedURLBuilderCell.subscribeValue(function (proposed) {
+        if (proposed !== self.lastAppliedURLBuilderCell.value) {
           self.subsetTabCell.setValue("dev");
           self.pageNumberCell.setValue(undefined);
           self.fullSubsetPageNumberCell.setValue(undefined);
-          lastAppliedURLBuilderCell.setValue(undefined);
-          defaultSubsetAppliedURLBuilderCell.setValue(undefined);
-          fullSubsetAppliedURLBuilderCell.setValue(undefined);
+          self.lastAppliedURLBuilderCell.setValue(undefined);
+          self.defaultSubsetAppliedURLBuilderCell.setValue(undefined);
+          self.fullSubsetAppliedURLBuilderCell.setValue(undefined);
         }
       });
     })();
 
-    var defaultSubsetViewResultsCell = Cell.compute(function (v) {
-      return future.capiViewGet({url: v.need(defaultSubsetResultsURLCell),
-                                 timeout: 3600000});
-    }).name("defaultSubsetViewResultsCell")
-
-    var fullSubsetViewResultsCell = Cell.compute(function (v) {
-      return future.capiViewGet({url: v.need(fullSubsetResultsURLCell),
-                                 timeout: 3600000});
-    }).name("fullSubsetViewResultsCell")
-
-    var viewResultsCell = Cell.compute(function (v) {
-      // NOTE: we're requiring both subsets values, because otherwise
-      // cells would deactivate 'other' results cell as not needed
-      // anymore.
-      var fullResults = v(fullSubsetViewResultsCell);
-      var defaultResults = v(defaultSubsetViewResultsCell);
-      return v.need(self.subsetTabCell) === 'prod' ? fullResults : defaultResults;
-    }).name("viewResultsCell");
-
-    var viewResultsCellViews = Cell.compute(function(v) {
-      v.need(self.currentView);
-      return v(viewResultsCell);
-    });
-
-    var viewResultsCellSpatial = Cell.compute(function(v) {
-      v.need(self.currentSpatial);
-      return v(viewResultsCell);
-    });
-
-    viewResultsCellViews.subscribeValue(function (value) {
+    self.viewResultsCellViews.subscribeValue(function (value) {
       if (value) {
         var rows = _.filter(value.rows, function (r) {return ('key' in r)});
         var targ = {rows: rows};
@@ -818,7 +979,7 @@ var ViewsSection = {
       renderTemplate('view_results', targ);
     });
 
-    viewResultsCellSpatial.subscribeValue(function (value) {
+    self.viewResultsCellSpatial.subscribeValue(function (value) {
       if (value) {
         var rows = _.filter(value.rows, function (r) {return ('bbox' in r)});
         var targ = {rows: rows};
@@ -830,22 +991,21 @@ var ViewsSection = {
 
 
     (function () {
-      var prevBtn = $('#views .results_block .arr_prev');
-      var nextBtn = $('#views .results_block .arr_next');
+      var resultBlock = $('.results_block', views);
+      var prevBtn = $('.arr_prev', resultBlock);
+      var nextBtn = $('.arr_next', resultBlock);
+      var icPrevNext = $('.ic_prev_next', resultBlock);
 
-      DAL.subscribeWhenSection(Cell.compute(function (v) {
-        var intCell = v.need(self.subsetTabCell) === 'prod' ? intFullSubsetPageCell : intPageCell;
-        return [v(viewResultsCell), v.need(intCell)];
-      }), "views", function (args) {
+      DAL.subscribeWhenSection(self.showHidePrevNextCell, "views", function (args) {
         if (!args) {
           return;
         }
         (function (viewResults, intPage) {
           if (!viewResults) {
-            $('#views .results_block .ic_prev_next').hide();
+            icPrevNext.hide();
             return;
           }
-          $('#views .results_block .ic_prev_next').show();
+          icPrevNext.show();
           prevBtn.toggleClass('disabled', intPage == 1);
           nextBtn.toggleClass('disabled', (viewResults.rows.length < ViewsSection.PAGE_LIMIT) || intPage == 10);
         }).apply(this, args);
@@ -857,9 +1017,9 @@ var ViewsSection = {
           if (btn.hasClass('disabled')) {
             return;
           }
-          var cells = [intPageCell, self.pageNumberCell];
+          var cells = [self.intPageCell, self.pageNumberCell];
           if (self.subsetTabCell.value === "prod") {
-            cells = [intFullSubsetPageCell, self.fullSubsetPageNumberCell];
+            cells = [self.intFullSubsetPageCell, self.fullSubsetPageNumberCell];
           }
           cells[0].getValue(function (intPage) {
             body(intPage, cells[1]);
@@ -881,116 +1041,33 @@ var ViewsSection = {
     })();
 
     Cell.subscribeMultipleValues(function (url, results) {
-      $('#view_results_container')[(url && !results) ? 'hide' : 'show']();
-      $('#view_results_spinner')[(url && !results) ? 'show' : 'hide']();
-    }, viewResultsURLCell, viewResultsCell);
+      viewResultsContainer[(url && !results) ? 'hide' : 'show']();
+      viewResultsSpinner[(url && !results) ? 'show' : 'hide']();
+    }, self.viewResultsURLCell, self.viewResultsCell);
 
-    $('#save_view_as').bind('click', $m(self, 'startViewSaveAs'));
-    $('#just_save_view').bind('click', $m(self, 'saveView'));
-    $('#save_spatial_as').bind('click', $m(self, 'startSpatialSaveAs'));
-    $('#just_save_spatial').bind('click', $m(self, 'saveSpatial'));
+    saveViewAs.bind('click', $m(self, 'startViewSaveAs'));
+    justSaveView.bind('click', $m(self, 'saveView'));
+    saveSpatialAs.bind('click', $m(self, 'startSpatialSaveAs'));
+    justSaveSpatial.bind('click', $m(self, 'saveSpatial'));
 
-    var productionDDocsCell = Cell.compute(function (v) {
-      var allDDocs = v.need(allDDocsCell);
-      return _.select(allDDocs, function (ddoc) {
-        return !isDevModeDoc(ddoc);
-      });
-    });
-
-    productionDDocsCell.subscribeValue(function(v) {
+    self.productionDDocsCell.subscribeValue(function(v) {
       if (v !== undefined) {
+        var prodViewCount = $('#prod_view_count');
         if (v.length > 0) {
-          $($i('prod_view_count')).html(v.length).parent().fadeIn('fast');
+          prodViewCount.html(v.length).parent().fadeIn('fast');
         } else {
-          $($i('prod_view_count')).parent().fadeOut('fast');
+          prodViewCount.parent().fadeOut('fast');
         }
       }
     });
 
-    var devDDocsCell = Cell.compute(function (v) {
-      var allDDocs = v.need(allDDocsCell);
-      return _.select(allDDocs, function (ddoc) {
-        return isDevModeDoc(ddoc);
-      });
-    });
-
-    // filters tasks of this bucket and converts them from array of
-    // tasks to hash from ddoc id to array of tasks of on this ddoc
-    // id.
-    //
-    // This also filters out non-view related tasks
-    var tasksOfCurrentBucket = Cell.compute(function (v) {
-      var tasks = v.need(DAL.cells.tasksProgressCell);
-      var bucketName = v.need(selectedBucketCell);
-      var rv = {};
-      _.each(tasks, function (taskInfo) {
-        if (taskInfo.type !== 'indexer' && taskInfo.type !== 'view_compaction') {
-          return;
-        }
-        if (taskInfo.bucket !== bucketName) {
-          return;
-        }
-        var ddoc = taskInfo.designDocument;
-        var tasks = rv[ddoc] || (rv[ddoc] = []);
-        tasks.push(taskInfo);
-      });
-
-      var importance = {
-        view_compaction: 1,
-        indexer: 2
-      };
-
-      _.each(rv, function (tasks, key) {
-        // lets also sort tasks in descending importance.
-        // NOTE: js's sort is in-place
-        tasks.sort(function (taskA, taskB) {
-          var importanceA = importance[taskA.type] || BUG("bad type");
-          var importanceB = importance[taskB.type] || BUG("bad type");
-          return importanceA - importanceB;
-        });
-      });
-
-      return rv;
-    }).name("tasksOfCurrentBucket");
-    tasksOfCurrentBucket.equality = _.isEqual;
-
-    function mkViewsListCell(ddocsCell, containerId) {
-      var cell = Cell.needing(tasksOfCurrentBucket, ddocsCell, DAL.cells.currentPoolDetailsCell)
-        .compute(function (v, tasks, ddocs, poolDetails) {
-        var bucketName = v.need(selectedBucketCell);
-        var rv = _.map(ddocs, function (doc) {
-          var rv = _.clone(doc);
-          var viewInfos = _.map(rv.json.views || {}, function (value, key) {
-            var plink = buildViewPseudoLink(bucketName, doc, '_view', key);
-            return _.extend({name: key,
-                             viewLink: '#showView=' + plink,
-                             removeLink: '#removeView=' + plink
-                            }, value);
-          });
-          viewInfos = _.sortBy(viewInfos, function (info) {return info.name;});
-          rv.json.viewInfos = viewInfos;
-          var spatialInfos = _.map(rv.json.spatial || {}, function (value, key) {
-            var plink = buildViewPseudoLink(bucketName, doc, '_spatial', key);
-            return _.extend({name: key,
-                             viewLink: '#showSpatial=' + plink,
-                             removeLink: '#removeSpatial=' + plink
-                            }, value);
-          });
-          spatialInfos = _.sortBy(spatialInfos, function (info) {return info.name;});
-          rv.json.spatialInfos = spatialInfos;
-          return rv;
-        });
-        rv.tasks = tasks;
-        rv.poolDetails = poolDetails;
-        rv.bucketName = bucketName;
-        return rv;
-      });
-
+    function subscribeViewsList(cell, containerId) {
       DAL.subscribeWhenSection(cell, "views", function (ddocs) {
-
-        if (!ddocs)
+        var container = $i(containerId);
+        if (!ddocs) {
+          renderTemplate('views_list', {loading: true}, container);
           return;
-
+        }
         var poolDetails = ddocs.poolDetails;
         var bucketName = ddocs.bucketName;
 
@@ -1004,34 +1081,41 @@ var ViewsSection = {
 
         renderTemplate('views_list', {
           rows: ddocs,
-          bucketName: bucketName
-        }, $i(containerId));
+          bucketName: bucketName,
+          loading: false
+        }, container);
       });
-
-      return cell;
     }
 
-    var devDDocsViewCell = mkViewsListCell(devDDocsCell, 'development_views_list_container');
-    var productionDDocsViewCell = mkViewsListCell(productionDDocsCell, 'production_views_list_container');
+    subscribeViewsList(self.mkViewsListCell(self.devDDocsCell), 'development_views_list_container');
+    subscribeViewsList(self.mkViewsListCell(self.productionDDocsCell), 'production_views_list_container');
 
-    $('#built_in_reducers a').bind('click', function (e) {
+    var builtInReducers = $('#built_in_reducers a');
+    var viewRunButton = $('#view_run_button');
+    var spatialRunButton = $('#spatial_run_button');
+    var sampleDocsCont = $('#sample_docs');
+    var noSampleDocsCont = $('#no_sample_docs');
+    var lookupDocById = $('#lookup_doc_by_id');
+    var lookupDocByIdBtn = $("#lookup_doc_by_id_btn");
+    var sampleMeta = $("#sample_meta");
+    var docsTitle = $('.docs_title', views);
+
+    builtInReducers.bind('click', function (e) {
       var text = $(this).text();
-      var reduceArea = $('#viewcode_reduce');
-      if (reduceArea.prop('disabled')) {
+      if (viewcodeReduce.prop('disabled')) {
         return;
       }
       self.reduceEditor.setValue(text || "");
     });
 
-
-    $('#view_run_button').bind('click', function (e) {
+    viewRunButton.bind('click', function (e) {
       if ($(this).hasClass('disabled')) {
         return;
       }
       e.preventDefault();
       self.runCurrentView();
     });
-    $('#spatial_run_button').bind('click', function (e) {
+    spatialRunButton.bind('click', function (e) {
       if ($(this).hasClass('disabled')) {
         return;
       }
@@ -1039,19 +1123,9 @@ var ViewsSection = {
       self.runCurrentSpatial();
     });
 
-    var currentDocument = null;
-    var jsonCodeEditor = CodeMirror.fromTextArea($("#sample_doc_editor")[0], {
-      lineNumbers: false,
-      matchBrackets: false,
-      mode: {name: "javascript", json: true},
-      theme: 'default',
-      readOnly: 'nocursor'
-    });
-    $(jsonCodeEditor.getWrapperElement()).addClass('read_only');
-
     function noSampleDocs() {
-      $('#sample_docs').hide();
-      $('#no_sample_docs').show();
+      sampleDocsCont.hide();
+      noSampleDocsCont.show();
     }
 
     function randomIdFromAllDocs(fun) {
@@ -1081,8 +1155,8 @@ var ViewsSection = {
       self.randomKeyURLCell.getValue(function (randomKeyURL) {
         var onSuccess = function (data) {
           fun(data.key);
-          $('#sample_docs').show();
-          $('#no_sample_docs').hide();
+          sampleDocsCont.show();
+          noSampleDocsCont.hide();
         };
 
         var onError = function (response, status, unexpected) {
@@ -1100,125 +1174,43 @@ var ViewsSection = {
       });
     }
 
-    function showDoc(id, error) {
-      self.dbURLCell.getValue(function (dbURL) {
-        couchReq('GET', buildDocURL(dbURL, id), null, function (data) {
-          currentDocument = $.extend({}, data);
-          var tmp = JSON.stringify(data.json, null, "\t");
-          $("#edit_preview_doc").removeClass("disabled");
-          $("#lookup_doc_by_id").val(data.meta.id);
-          $("#sample_meta").text(JSON.stringify(data.meta, null, "\t"))
-          jsonCodeEditor.setValue(tmp);
-        }, error);
-      });
-    }
+    var latestRandom;
+    var selectedBucket;
 
+    self.viewsBucketCell.subscribeValue(function (selected) {
+      selectedBucket = selected;
+    });
 
-    function docError(alertMsg) {
-      var dialog = genericDialog({
-        buttons: {ok: true},
-        header: "Alert",
-        textHTML: alertMsg,
-        callback: function (e, btn, dialog) {
-          dialog.close();
-        }
-      });
-    }
-
-    $('#preview_random_doc').bind('click', function(ev, dontReset) {
-
-      if (ViewsSection.timer !== null) {
-        clearTimeout(ViewsSection.timer);
-        ViewsSection.timer = null;
-      }
-
-      if (typeof dontReset == "undefined") {
-        $.cookie("randomKey", "");
-      }
-      randomId(function(id) {
-        showDoc(id, function(err, status, handleUnexpected) {
-          // TODO: this needs to be refactored to handle errors
-          // similarly to documents.js behavior
-          var reason = documentErrors[status] || documentErrors.unexpected;
-          if (status == 404) {
-            reason = 'A document with that ID does not exist';
-          }
-          $("#edit_preview_doc").addClass("disabled");
-          $("#lookup_doc_by_id").val(id);
-          jsonCodeEditor.setValue(reason);
-          if (status === 503 && ViewsSection.timer === null) {
-            ViewsSection.timer = setTimeout(function() {
-              $('#preview_random_doc').trigger('click', true);
-            }, 2500);
-          }
-        });
+    previewRandomDoc.click(function(ev, dontReset) {
+      self.randomIdCell.setValue(undefined);
+      randomId(function (doc) {
+        self.randomIdCell.setValue(doc);
       });
     });
 
+    self.randomDocsCell.subscribeValue(function (doc) {
+      latestRandom = doc;
 
-    $('#edit_preview_doc').click(function(ev) {
-      ev.stopPropagation();
-      if ($(this).hasClass("disabled")) {
-        return;
-      }
-      $('#sample_docs').addClass('editing')
-          .find('.darker_block').removeClass('closed');
-      enableEditor(jsonCodeEditor);
-    });
+      if (doc) {
+        var row = doc.rows[0];
+        var id = row ? row.doc.meta.id : "";
 
+        docsTitle.text(id);
 
-    $("#lookup_doc_by_id_btn").bind('click', function(e) {
-      e.stopPropagation();
-      var id = $("#lookup_doc_by_id").val();
-      if (id !== "") {
-        $.cookie("randomKey", id);
-        showDoc(id, function(data, status, handleUnexpected) {
-          docError(documentErrorDef[status] || documentErrorDef.unknown);
-        });
+        var param = {};
+        param.data = row ? row.doc : false;
+        param.loading = false;
+        param.bucketName = selectedBucket;
+
+        sampleMeta.text(JSON.stringify(row.doc.meta, null, "\t"));
+        renderTemplate('sample_documents', param);
+
       } else {
-        docError("Id cannot be empty");
+        docsTitle.text('');
+        sampleMeta.text("");
+        renderTemplate('sample_documents', {loading: true});
       }
     });
-
-    $("#lookup_doc_by_id").bind('click', function(e) {
-      e.stopPropagation();
-    });
-
-    $("#view_results_container").bind('mousedown', function(e) {
-      if ($(e.target).is("a.id")) {
-        showDoc($(e.target).text(), function() {
-          docError("Unknown Error");
-        });
-        window.scrollTo(0, 0);
-      }
-    });
-
-    $('#cancel_preview_doc').click(function(ev) {
-      showDoc($.cookie('randomKey'));
-      disableEditor(jsonCodeEditor);
-    });
-    $('#save_preview_doc').click(function(ev) {
-
-      ev.stopPropagation();
-      var json, doc = jsonCodeEditor.getValue(),
-        saveDocId = currentDocument.meta.id;
-      try {
-        json = JSON.parse(doc);
-      } catch(err) {
-        docError("You entered invalid JSON");
-        return;
-      }
-
-      self.dbURLCell.getValue(function (dbURL) {
-        couchReq('PUT', buildDocURL(dbURL, saveDocId), json, function () {
-          disableEditor(jsonCodeEditor);
-          showDoc(saveDocId);
-        }, function() {
-          docError("There was an unknown problem saving your document");
-        });
-      });
-    });
-
   },
   doDeleteDDoc: function (url, callback) {
     begin();
@@ -1282,22 +1274,27 @@ var ViewsSection = {
   },
   withDDoc: function (id, body) {
     ThePage.ensureSection("views");
-    var cell = Cell.compute(function (v) {
-      var allDDocs = v.need(ViewsSection.allDDocsCell);
-      var ddoc = _.detect(allDDocs, function (d) {return d.meta.id == id});
-      if (!ddoc) {
-        return [];
-      }
-      var dbURL = v.need(ViewsSection.dbURLCell);
-      return [buildDocURL(dbURL, ddoc.meta.id), ddoc, dbURL];
+    var allDDocs;
+    var dbURL;
+
+    this.allDDocsCell.getValue(function (val) {
+      allDDocs = val;
     });
-    cell.getValue(function (args) {
-      if (!args[0]) {
-        console.log("ddoc with id:", id, " not found");
-      }
-      args = args || [];
-      body.apply(null, args);
+    this.dbURLCell.getValue(function (val) {
+      dbURL = val;
     });
+
+    var ddoc = _.detect(allDDocs, function (d) {return d.meta.id == id});
+    var rv;
+
+    if (ddoc) {
+      rv = [buildDocURL(dbURL, ddoc.meta.id), ddoc, dbURL];
+    } else {
+      rv = [];
+      console.log("ddoc with id:", id, " not found");
+    }
+
+    body.apply(null, rv);
   },
   startDDocDelete: function (id) {
     this.withDDoc(id, function (ddocURL, ddoc) {
@@ -1423,7 +1420,7 @@ var ViewsSection = {
       }
       var views = ddoc.json.views || (ddoc.json.views = {});
       if (views[viewName] && !overwriteConfirmed) {
-        return callback("conflict");
+        return callback("conflict", "already_exists", "View with given name already exists");
       }
       views[viewName] = viewDef || {
         map:'function (doc, meta) {'
@@ -1436,6 +1433,7 @@ var ViewsSection = {
           + '\n  }'
           + '\n}'
       }
+      $('#view_code_errors').text('').attr('title','');
       couchReq('PUT',
                ddocURL,
                ddoc.json,
@@ -1445,6 +1443,10 @@ var ViewsSection = {
                function (error, status, unexpected) {
                  if (status == 409) {
                    return begin();
+                 }
+                 if (status == 400) {
+                  callback("conflict", error.error, error.reason);
+                  return;
                  }
                  return unexpected();
                });
@@ -1464,10 +1466,13 @@ var ViewsSection = {
       }
       var spatial = ddoc.json.spatial || (ddoc.json.spatial = {});
       if (spatial[spatialName] && !overwriteConfirmed) {
-        return callback("conflict");
+        return callback("conflict", "already_exists", "Spatial Function with given name already exists");
       }
       spatial[spatialName] = spatialDef ||
           "function (doc) {\n  if (doc.geometry) {\n    emit(doc.geometry, null);\n}\n}";
+
+      $('#view_code_errors').text('').attr('title','');
+
       couchReq('PUT',
                ddocURL,
                ddoc.json,
@@ -1512,10 +1517,11 @@ var ViewsSection = {
       // TODO: maybe other validation
       var modal = new ModalAction();
       var spinner = overlayWithSpinner(dialog);
-      ViewsSection.doSaveView(dbURL, "_design/dev_" + ddocName, viewName, false, function (status) {
+      ViewsSection.doSaveView(dbURL, "_design/dev_" + ddocName, viewName, false, function (status, error, reason) {
         var closeDialog = false;
         if (status == "conflict") {
-          warning.text("View with given name already exists").show();
+          warning.text(reason);
+          warning.show();
         } else {
           closeDialog = true;
         }
@@ -1587,11 +1593,7 @@ var ViewsSection = {
     var dialog = $('#copy_view_dialog');
     var warning = dialog.find('.warning').hide();
 
-    Cell.compute(function (v) {
-      var dbURL = v.need(self.dbURLCell);
-      var pair = v.need(self.currentDDocAndView);
-      return [dbURL].concat(pair);
-    }).getValue(function (args) {
+    self.rawForDoSaveAsView.getValue(function (args) {
       begin.apply(self, args);
     });
 
@@ -1651,9 +1653,16 @@ var ViewsSection = {
     function doSaveView(dbURL, ddocId, viewName, view, overwriteConfirmed) {
       return ViewsSection.doSaveView(dbURL, ddocId, viewName, overwriteConfirmed, callback, view);
 
-      function callback(arg) {
+      function callback(arg, error, reason) {
         if (arg === "conflict") {
-          return confirmOverwrite(dbURL, ddocId, viewName, view);
+          if (error === "invalid_design_document") {
+            modal.finish();
+            spinner.remove();
+            warning.show().text(reason);
+          } else {
+            confirmOverwrite(dbURL, ddocId, viewName, view);
+          }
+          return;
         }
         saveSucceeded(ddocId, viewName);
       }
@@ -1684,12 +1693,7 @@ var ViewsSection = {
     var dialog = $('#copy_view_dialog');
     var warning = dialog.find('.warning').hide();
 
-    Cell.compute(function (v) {
-      var dbURL = v.need(self.dbURLCell);
-      var currentView = v.need(self.currentView);
-      var pair = v.need(self.currentDDocAndView);
-      return [dbURL, currentView].concat(pair);
-    }).getValue(function (args) {
+    self.rawForDoSaveView.getValue(function (args) {
       begin.apply(self, args);
     });
 
@@ -1709,8 +1713,12 @@ var ViewsSection = {
       }
       return ViewsSection.doSaveView(dbURL, ddoc.meta.id, viewName, true, saveCallback, currentView);
 
-      function saveCallback() {
-        self.allDDocsCell.recalculate();
+      function saveCallback(arg, error, reason) {
+        if (arg === "conflict") {
+          $('#view_code_errors').text(reason).attr('title', reason);
+        } else {
+          self.allDDocsCell.recalculate();
+        }
       }
     }
   },
@@ -1744,10 +1752,11 @@ var ViewsSection = {
       // TODO: maybe other validation
       var modal = new ModalAction();
       var spinner = overlayWithSpinner(dialog);
-      ViewsSection.doSaveSpatial(dbURL, "_design/dev_" + ddocName, spatialName, false, function (status) {
+      ViewsSection.doSaveSpatial(dbURL, "_design/dev_" + ddocName, spatialName, false, function (status, error, reason) {
         var closeDialog = false;
         if (status == "conflict") {
-          warning.text("Spatial Function with given name already exists").show();
+          warning.text(reason);
+          warning.show();
         } else {
           closeDialog = true;
         }
@@ -1819,11 +1828,7 @@ var ViewsSection = {
     var dialog = $('#copy_view_dialog');
     var warning = dialog.find('.warning').hide();
 
-    Cell.compute(function (v) {
-      var dbURL = v.need(self.dbURLCell);
-      var pair = v.need(self.currentDDocAndSpatial);
-      return [dbURL].concat(pair);
-    }).getValue(function (args) {
+    self.rawForSpatialDoSaveAs.getValue(function (args) {
       begin.apply(self, args);
     });
 
@@ -1899,17 +1904,13 @@ var ViewsSection = {
       self.allDDocsCell.recalculate();
     }
   },
+
   saveSpatial: function () {
     var self = this;
     var dialog = $('#copy_view_dialog');
     var warning = dialog.find('.warning').hide();
 
-    Cell.compute(function (v) {
-      var dbURL = v.need(self.dbURLCell);
-      var currentSpatial = v.need(self.currentSpatial);
-      var pair = v.need(self.currentDDocAndSpatial);
-      return [dbURL, currentSpatial].concat(pair);
-    }).getValue(function (args) {
+    self.rawForSpatialDoSave.getValue(function (args) {
       begin.apply(self, args);
     });
 
@@ -2030,6 +2031,7 @@ var ViewsSection = {
   },
   onLeave: function () {
     this.rawDDocIdCell.setValue(undefined);
+    this.randomIdCell.setValue(undefined);
     this.pageNumberCell.setValue(undefined);
     this.rawViewNameCell.setValue(undefined);
     this.rawSpatialNameCell.setValue(undefined);

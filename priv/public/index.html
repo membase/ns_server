@@ -906,7 +906,6 @@
               </span>
             </span>
           </h1>
-          <div id="views_spinner" class="spinner" style="height:100px;line-height:100px;display:none;"><span>Loading...</span></div>
           <div class="shadow_box" id="views_list">
             <div class="header_2">
               <ul class="tabs switcher">
@@ -925,30 +924,34 @@
             </div>
             <div class="panes">
               <div>
-                <div id="development_views_list_container" class="views_list">Development Views</div>
+                <div id="development_views_list_container" class="views_list"></div>
               </div>
               <div>
-                <div id="production_views_list_container" class="views_list">Production Views</div>
+                <div id="production_views_list_container" class="views_list"></div>
               </div>
             </div>
           </div>
 
           <script id="views_list_template" type="text/html">
-            <table class="list" width="100%">
+            <table class="list">
             <thead>
               <tr>
                 <th>Name</th>
                 <th>Language</th>
                 <th>Status</th>
                 <th><div style="display:none">Disk Size</div></th>
-                <th class="last"></th>
+                <th colspan=2 class="last"></th>
               </tr>
             </thead>
-
-            <!-- {% if (!bucketName) { %} -->
             <tbody>
+            <!-- {% if (loading) { %} -->
+            <tr>
+                <td colspan="6" class='spinner' style="height:400px"><span>Loading...</span></td>
+            </tr>
+            <!-- {% } else { %} -->
+            <!-- {% if (!bucketName) { %} -->
               <tr>
-                <td colspan="10" class="empty">
+                <td colspan="6" class="empty">
                   <span>
                     No buckets currently defined! Go to
                     <a href="#sec=buckets">Data Buckets</a>
@@ -956,18 +959,13 @@
                   </span>
                 </td>
               </tr>
-            </tbody>
-
             <!-- {% } else if (!rows.length) { %} -->
-            <tbody>
-              <tr><td colspan="10" class="empty">
-                <span class="when-in-dev">There are currently no Design Documents in Development. Click "Create Development View" above to create one.</span>
-                <span class="when-in-prod">There are no Design Documents currently published. Please visit "Development Views" to create one.</span>
+              <tr><td colspan="6" class="empty">
+                <span class="when-in-dev" style="line-height:23px">There are currently no Design Documents in Development. Click "Create Development View" above to create one.</span>
+                <span class="when-in-prod" style="line-height:23px">There are no Design Documents currently published. Please visit "Development Views" to create one.</span>
               </td></tr>
-            </tbody>
             <!-- {% } else { %} -->
             <!-- {% _.each(rows, function (ddoc) {  %} -->
-            <tbody>
               <tr>
                 <td class="design_doc_name">
                   {%= h(ddoc.meta.id) %}
@@ -983,9 +981,7 @@
                   </div>
                   <!-- {% } %} -->
                 </td>
-                <td>
-                </td>
-                <td>
+                <td colspan="3">
                   <a class="list_button when-in-prod" href="#copyDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Copy to Dev</span></a>
                   <a class="list_button when-in-dev" href="#publishDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Publish</span></a>
                   <a class="list_button when-in-dev" href="#addView={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add View</span></a>
@@ -995,22 +991,23 @@
                 </td>
               </tr>
               <!-- {% if (_.size(ddoc.json.viewInfos) < 1 && _.size(ddoc.json.spatialInfos) < 1) { %} -->
-              <tr><td colspan="10" style="padding:15px">No views defined!<span class="when-in-dev"> Click "Create Development View" above to create one.</span></td></tr>
+              <tr><td colspan="5" style="padding:15px;line-height:23px;">No views defined!<span class="when-in-dev"> Click "Create Development View" above to create one.</span></td></tr>
               <!-- {% } else { if (_.size(ddoc.json.viewInfos) > 0) { %} -->
               <!-- {% _.each(ddoc.json.viewInfos, function (viewInfo) { %} -->
               <tr>
-                <td class="view_name" colspan="4">
+                <td class="view_name" colspan="5">
                   <a href="{%=h(viewInfo.viewLink)%}">{%= h(viewInfo.name) %}</a>
                 </td>
                 <td>
                   <a class="list_button btn_remove" href="{%=h(viewInfo.removeLink)%}"><span>Delete</span></a>
+                  <a class="list_button btn_edit" href="{%=h(viewInfo.viewLink)%}"><span>Edit</span></a>
                 </td>
               </tr>
               <!-- {% }); %} -->
               <!-- {% } if (_.size(ddoc.json.spatialInfos) > 0) { %} -->
               <!-- {% _.each(ddoc.json.spatialInfos, function (spatialInfo) { %} -->
               <tr>
-                <td class="view_name" colspan="4">
+                <td class="view_name" colspan="5">
                   <a href="{%=h(spatialInfo.viewLink)%}">[Spatial] {%= h(spatialInfo.name) %}</a>
                 </td>
                 <td>
@@ -1019,9 +1016,10 @@
               </tr>
               <!-- {% }); %} -->
               <!-- {% } } %} -->
-            </tbody>
             <!-- {% }); %} -->
             <!-- {% } %} -->
+          <!-- {% } %} -->
+            </tbody>
             </table>
             </script>
 
@@ -1030,36 +1028,31 @@
               <h3 class="block-expander" style="padding:15px">Bucket is currently empty.</h3>
             </div>
             <div id="sample_docs" class="shadow_box">
-              <div class="darker_block bucket_details">
-                <h3 class="block-expander">
-                  <ins></ins><span class="view_head">Sample Document</span>
-
-                  <span class="buttons">
-                    <input type="text" id="lookup_doc_by_id" placeholder="Document ID"/>
-                    <a class="btn_1" id="lookup_doc_by_id_btn"><span>Lookup Id</span></a>
-                    <a class="btn_1" id="preview_random_doc">
-                      <span>Preview a Random Document</span>
-                    </a>
-                  </span>
-
-                </h3>
-                  <span class="buttons when-not-editing">
-                    <a class="btn_1" id="edit_preview_doc"><span>Edit</span></a>
-                  </span>
-                  <span class="buttons when-editing">
-                    <a class="btn_1" id="cancel_preview_doc"><span>Cancel</span></a>
-                    <a class="btn_1" id="save_preview_doc"><span>Save</span></a>
-                  </span>
-
-                <div class="stats" style="width:58%; float:left;">
-                  <textarea id="sample_doc_editor"></textarea>
+              <div class="header_2 servers_header">
+                <div class="docs_title">Sample Document</div>
+                <div class="editing_ctrls">
+                  <a class="btn_1" id="preview_random_doc">
+                    <span>Preview a Random Document</span>
+                  </a>
                 </div>
-                <div class="stats">
-                  <pre id="sample_meta" style="line-height:1em; font-size:11px"></pre>
-                </div>
-                <br style="clear:both;"/>
+                <div class="ellipsis documents_notice"></div>
               </div>
+              <div id="sample_documents_container" class="sample_documents stats"></div>
             </div>
+
+            <script id="sample_documents_template" type="text/html">
+            <!-- {% if (loading) { %} -->
+              <div class="spinner" style="height:100px;line-height:100px;"><span>loading...</span></div>
+            <!-- {% } else { %} -->
+              <!-- {% if (data) { %} -->
+                <a class="btn_1" href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&amp;docId={%= encodeURIComponent(data.meta.id) %}"><span>Edit</span></a>
+                <pre class="json">{%= $.futon.formatJSON(data.json, {html:true}) %}</pre>
+                <pre class="meta">{%= $.futon.formatJSON(data.meta, {html:true}) %}</pre>
+              <!-- {% } else { %} -->
+                <pre style="text-align:center;">A document with that ID does not exist</pre>
+              <!-- {% } %} -->
+            <!-- {% } %} -->
+            </script>
 
             <div class="shadow_box viewcode" id="viewcode" style="display:none;">
               <div class="darker_block">
@@ -1068,6 +1061,7 @@
                     <a id="save_view_as" class="btn_1"><span>Save As...</span></a>
                     <a id="just_save_view" class="btn_1"><span>Save</span></a>
                   </span>
+                  <div id="view_code_errors" class="ellipsis"></div>
                 </h3>
                 <div class="stats">
                   <table class="list"><tbody><tr>

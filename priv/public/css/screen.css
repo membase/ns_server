@@ -470,7 +470,7 @@ button#test_email + span {line-height:2.25em;margin-left:0.5em}
 .lbox .save_cancel {padding:18px;background:#cccfd2;border-top:1px solid #eee;}
 .lbox .pas_20 .save_cancel {margin:0 0 0 -40px;position:relative;left:20px;}
 .lbox .pas_20 + .save_cancel {margin:0;position:static;}
-.warning {font-size:12px; color:#ec5223; padding-left:20px;}
+.warning {display: block; font-size:12px; color:#ec5223; padding-left:20px;}
 .warning ul {list-style-type:disc; margin:5px 0 0 15px;}
 
 .lbox .spinner {background:none/*#e9f3f9 !important*/;}
@@ -1076,9 +1076,6 @@ body.init_sample_buckets #init_sample_buckets_dialog p.pad_10 {color:#444245; fo
 body.staleness-active a.disable-if-stale { text-decoration: none; }
 body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: default; }
 
-#sample_docs.editing .when-editing, #sample_docs .when-not-editing{display:block}
-#sample_docs .when-editing, #sample_docs.editing .when-not-editing{display:none}
-
 .editing_ctrls { float:right;position:relative;top:-3px; }
 .editing_ctrls form {display: inline-block; zoom: 1;}
 #doc_save { width: 70px; }
@@ -1087,6 +1084,7 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 #views.in-production .when-in-dev, #views.in-development .when-in-prod {display:none}
 #views .stats {padding:0;border:none}
 #production_views_list_container .btn_remove, #production_views_list_container .btn_publish, #production_views_list_container .create_view_button{display:none}
+.views_list table {table-layout:fixed;width:100%;}
 
 #view_development .darker_block h3 {padding:15px}
 #view_development .darker_block .buttons {float:right;margin:-8px -10px 0 0;text-transform:none}
@@ -1214,6 +1212,7 @@ input[type=number].size {width:4em;}
 .filter_container .key input[type="text"] {width:166px;color:#000;font-size:14px;background:url(../images/bg_key_inp_text.png) repeat-x;border:1px solid #b3b3b3}
 .filter_container .btn_wrap {overflow:hidden;margin:5px 14px 0 0;}
 
+
 #documents_list .filter_container {margin: -8px -5px -2px -16px;}
 #documents_list .filter_container h2 {font-size:16px;}
 #documents_list_container table {table-layout:fixed;}
@@ -1233,3 +1232,11 @@ input[type=number].size {width:4em;}
 .items_per_list_wrap {float:right;margin:0 35px 0 10px;}
 
 .ellipsis {padding-right:10px;overflow:hidden;color:#999;white-space:nowrap;text-overflow:ellipsis;-o-text-overflow:ellipsis;}
+
+.sample_documents {position:relative;overflow:hidden;border-bottom:1px solid #ccc  !important;}
+.sample_documents .btn_1 {position:absolute;right:10px;top:10px;}
+
+.sample_documents pre {padding:10px;overflow:auto;padding-bottom:2000px !important;margin-bottom:-2000px;}
+.sample_documents .json {width:60%;float:left;}
+
+#view_code_errors {overflow:hidden;font-size:12px;font-weight:normal;text-transform:none;padding:14px 0 0 12px;}
