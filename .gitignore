@@ -8,11 +8,11 @@
 .settings
 /TAGS
 /common_tests/*.beam
+/core*
 /couch
 /coverage
 /data
 /doc/API/_site
-/features/Makefile
 /lib
 /logs
 /ns_server.plt
