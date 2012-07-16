@@ -287,21 +287,24 @@ loop(Req, AppRoot, DocRoot) ->
                              ["controller", "setFastWarmup"] ->
                                  {auth, fun handle_set_fast_warmup/1};
                              ["pools", PoolId, "buckets", Id] ->
-                                 {auth_bucket, fun menelaus_web_buckets:handle_bucket_update/3,
+                                 {auth_check_bucket_uuid, fun menelaus_web_buckets:handle_bucket_update/3,
                                   [PoolId, Id]};
                              ["pools", PoolId, "buckets"] ->
                                  {auth, fun menelaus_web_buckets:handle_bucket_create/2,
                                   [PoolId]};
                              ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
-                                 {auth, fun menelaus_web_buckets:handle_bucket_flush/3,
-                                [PoolId, Id]};
+                                 {auth_check_bucket_uuid,
+                                  fun menelaus_web_buckets:handle_bucket_flush/3, [PoolId, Id]};
                              ["pools", PoolId, "buckets", Id, "controller", "compactBucket"] ->
-                                 {auth, fun menelaus_web_buckets:handle_compact_bucket/3, [PoolId, Id]};
+                                 {auth_check_bucket_uuid,
+                                  fun menelaus_web_buckets:handle_compact_bucket/3, [PoolId, Id]};
                              ["pools", PoolId, "buckets", Id, "controller", "compactDatabases"] ->
-                                 {auth, fun menelaus_web_buckets:handle_compact_databases/3, [PoolId, Id]};
+                                 {auth_check_bucket_uuid,
+                                  fun menelaus_web_buckets:handle_compact_databases/3, [PoolId, Id]};
                              ["pools", PoolId, "buckets", Id,
                               "ddocs", DDocId, "controller", "compactView"] ->
-                                 {auth, fun menelaus_web_buckets:handle_compact_view/4, [PoolId, Id, DDocId]};
+                                 {auth_check_bucket_uuid,
+                                  fun menelaus_web_buckets:handle_compact_view/4, [PoolId, Id, DDocId]};
                              ["pools", "default", "remoteClusters"] ->
                                  {auth, fun menelaus_web_remote_clusters:handle_remote_clusters_post/1};
                              ["pools", "default", "remoteClusters", Id] ->
@@ -326,7 +329,8 @@ loop(Req, AppRoot, DocRoot) ->
                      'DELETE' ->
                          case PathTokens of
                              ["pools", PoolId, "buckets", Id] ->
-                                 {auth, fun menelaus_web_buckets:handle_bucket_delete/3, [PoolId, Id]};
+                                 {auth_check_bucket_uuid,
+                                  fun menelaus_web_buckets:handle_bucket_delete/3, [PoolId, Id]};
                              ["pools", "default", "remoteClusters", Id] ->
                                  {auth, fun menelaus_web_remote_clusters:handle_remote_cluster_delete/2, [Id]};
                              ["nodes", Node, "resources", LocationPath] ->
@@ -351,9 +355,9 @@ loop(Req, AppRoot, DocRoot) ->
         case Action of
             {done, RV} -> RV;
             {auth_cookie, F} -> menelaus_auth:apply_auth_cookie(Req, F, []);
-            {auth, F} -> menelaus_auth:apply_auth(Req, F, []);
+            {auth, F} -> auth(Req, F, []);
             {auth_cookie, F, Args} -> menelaus_auth:apply_auth_cookie(Req, F, Args);
-            {auth, F, Args} -> menelaus_auth:apply_auth(Req, F, Args);
+            {auth, F, Args} -> auth(Req, F, Args);
             {auth_bucket_with_info, F, [ArgPoolId, ArgBucketId | RestArgs]} ->
                 menelaus_web_buckets:checking_bucket_access(
                   ArgPoolId, ArgBucketId, Req,
@@ -378,8 +382,12 @@ loop(Req, AppRoot, DocRoot) ->
                                     apply(F, FArgs)
                             end)
                   end);
-            {auth_any_bucket, F} -> menelaus_auth:apply_auth_bucket(Req, F, []);
-            {auth_any_bucket, F, Args} -> menelaus_auth:apply_auth_bucket(Req, F, Args)
+            {auth_any_bucket, F} ->
+                auth_any_bucket(Req, F, []);
+            {auth_any_bucket, F, Args} ->
+                auth_any_bucket(Req, F, Args);
+            {auth_check_bucket_uuid, F, Args} ->
+                auth_check_bucket_uuid(Req, F, Args)
         end
     catch
         exit:normal ->
@@ -394,6 +402,45 @@ loop(Req, AppRoot, DocRoot) ->
             reply_json(Req, [list_to_binary("Unexpected server error, request logged.")], 500)
     end.
 
+auth(Req, F, Args) ->
+    menelaus_auth:apply_auth(Req, fun check_uuid/3, [F, Args]).
+
+auth_any_bucket(Req, F, Args) ->
+    menelaus_auth:apply_auth_bucket(Req, fun check_uuid/3, [F, Args]).
+
+check_uuid(F, Args, Req) ->
+    ReqUUID0 = proplists:get_value("uuid", Req:parse_qs()),
+    case ReqUUID0 =/= undefined of
+        true ->
+            ReqUUID = list_to_binary(ReqUUID0),
+            UUID = get_uuid(),
+
+            case ReqUUID =:= UUID of
+                true ->
+                    erlang:apply(F, Args ++ [Req]);
+                false ->
+                    Req:respond({404, server_header(),
+                                 "Cluster uuid does not match the requested.\r\n"})
+            end;
+        false ->
+            erlang:apply(F, Args ++ [Req])
+    end.
+
+auth_check_bucket_uuid(Req, F, Args) ->
+    menelaus_auth:apply_auth_bucket(Req, fun check_bucket_uuid/3, [F, Args]).
+
+check_bucket_uuid(F, [PoolId, Bucket | _] = Args, Req) ->
+    case ns_bucket:get_bucket(Bucket) of
+        not_present ->
+            Req:respond({404, server_header(),
+                         "Requested resource not found.\r\n"});
+        {ok, BucketConfig} ->
+            menelaus_web_buckets:checking_bucket_uuid(
+              PoolId, Req, BucketConfig,
+              fun () ->
+                      erlang:apply(F, Args ++ [Req])
+              end)
+    end.
 
 %% Internal API
 -define(SAMPLES_LOADING_TIMEOUT, 60000).
@@ -546,10 +593,12 @@ implementation_version() ->
     list_to_binary(proplists:get_value(ns_server, ns_info:version(), "unknown")).
 
 handle_pools(Req) ->
+    UUID = get_uuid(),
+
     Pools = [{struct,
               [{name, <<"default">>},
-               {uri, bin_concat_path(["pools", "default"])},
-               {streamingUri, bin_concat_path(["poolsStreaming", "default"])}]}],
+               {uri, <<"/pools/default?uuid=", UUID/binary>>},
+               {streamingUri, <<"/poolsStreaming/default?uuid=", UUID/binary>>}]}],
     EffectivePools =
         case is_system_provisioned() of
             true -> Pools;
@@ -557,8 +606,11 @@ handle_pools(Req) ->
         end,
     reply_json(Req,{struct, [{pools, EffectivePools},
                              {isAdminCreds, menelaus_auth:is_under_admin(Req)},
-                             {settings, {struct, [{<<"maxParallelIndexers">>, <<"/settings/maxParallelIndexers">>}]}},
-                             {uuid, get_uuid()}
+                             {settings,
+                              {struct,
+                               [{<<"maxParallelIndexers">>,
+                                 <<"/settings/maxParallelIndexers?uuid=", UUID/binary>>}]}},
+                             {uuid, UUID}
                              | build_versions()]}).
 handle_engage_cluster2(Req) ->
     Body = Req:recv_body(),
@@ -687,6 +739,8 @@ handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag) ->
 
 
 build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
+    UUID = get_uuid(),
+
     F = build_nodes_info_fun(menelaus_auth:check_auth(UserPassword), InfoLevel, LocalAddr),
     Nodes = [F(N, undefined) || N <- ns_node_disco:nodes_wanted()],
     Config = ns_config:get(),
@@ -694,7 +748,8 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
         bxor erlang:phash2([{proplists:get_value(hostname, KV),
                              proplists:get_value(status, KV)} || {struct, KV} <- Nodes]),
     BucketsInfo = {struct, [{uri, bin_concat_path(["pools", Id, "buckets"],
-                                                  [{"v", BucketsVer}])}]},
+                                                  [{"v", BucketsVer},
+                                                   {"uuid", UUID}])}]},
     RebalanceStatus = case ns_orchestrator:is_rebalance_running() of
                           true -> <<"running">>;
                           _ -> <<"none">>
@@ -703,24 +758,24 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
     {Alerts, AlertsSilenceToken} = menelaus_web_alerts_srv:fetch_alerts(),
 
     Controllers = {struct, [
-      {addNode, {struct, [{uri, <<"/controller/addNode">>}]}},
-      {rebalance, {struct, [{uri, <<"/controller/rebalance">>}]}},
-      {failOver, {struct, [{uri, <<"/controller/failOver">>}]}},
-      {reAddNode, {struct, [{uri, <<"/controller/reAddNode">>}]}},
-      {ejectNode, {struct, [{uri, <<"/controller/ejectNode">>}]}},
+      {addNode, {struct, [{uri, <<"/controller/addNode?uuid=", UUID/binary>>}]}},
+      {rebalance, {struct, [{uri, <<"/controller/rebalance?uuid=", UUID/binary>>}]}},
+      {failOver, {struct, [{uri, <<"/controller/failOver?uuid=", UUID/binary>>}]}},
+      {reAddNode, {struct, [{uri, <<"/controller/reAddNode?uuid=", UUID/binary>>}]}},
+      {ejectNode, {struct, [{uri, <<"/controller/ejectNode?uuid=", UUID/binary>>}]}},
       {setAutoCompaction, {struct, [
-        {uri, <<"/controller/setAutoCompaction">>},
+        {uri, <<"/controller/setAutoCompaction?uuid=", UUID/binary>>},
         {validateURI, <<"/controller/setAutoCompaction?just_validate=1">>}
       ]}},
       {replication, {struct, [
-        {createURI, <<"/controller/createReplication">>},
+        {createURI, <<"/controller/createReplication?uuid=", UUID/binary>>},
         {replicatorDBURI, <<"/couchBase/_replicator">>},
         {infosURI, <<"/couchBase/_replicator/_design/_replicator_info/_view/infos?group_level=1">>}
       ]}},
       %% IMPORTANT: currently all the fast warmup related REST calls are
       %% stubs; so they must not be documented in any case
       {setFastWarmup, {struct, [
-        {uri, <<"/controller/setFastWarmup">>},
+        {uri, <<"/controller/setFastWarmup?uuid=", UUID/binary>>},
         {validateURI, <<"/controller/setFastWarmup?just_validate=1">>}
       ]}}
     ]},
@@ -730,7 +785,10 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
 
     PropList0 = [{name, list_to_binary(Id)},
                  {alerts, Alerts},
-                 {alertsSilenceURL, iolist_to_binary([<<"/controller/resetAlerts?token=">>, AlertsSilenceToken])},
+                 {alertsSilenceURL,
+                  iolist_to_binary([<<"/controller/resetAlerts?token=">>,
+                                    AlertsSilenceToken,
+                                    $&, <<"uuid=">>, UUID])},
                  {nodes, case InfoLevel of
                              stable -> Nodes;
                              _ ->
@@ -738,14 +796,15 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                                  misc:shuffle(Nodes)
                          end},
                  {buckets, BucketsInfo},
-                 {remoteClusters, {struct, [{uri, <<"/pools/default/remoteClusters">>},
-                                            {validateURI, <<"/pools/default/remoteClusters?just_validate=1">>}]}},
+                 {remoteClusters,
+                  {struct, [{uri, <<"/pools/default/remoteClusters?uuid=", UUID/binary>>},
+                            {validateURI, <<"/pools/default/remoteClusters?just_validate=1">>}]}},
                  {controllers, Controllers},
                  {balanced, ns_cluster_membership:is_balanced()},
                  {failoverWarnings, ns_bucket:failover_warnings()},
                  {rebalanceStatus, RebalanceStatus},
                  {rebalanceProgressUri, bin_concat_path(["pools", Id, "rebalanceProgress"])},
-                 {stopRebalanceUri, <<"/controller/stopRebalance">>},
+                 {stopRebalanceUri, <<"/controller/stopRebalance?uuid=", UUID/binary>>},
                  {nodeStatusesUri, <<"/nodeStatuses">>},
                  {autoCompactionSettings, case ns_config:search(Config, autocompaction) of
                                               false ->
