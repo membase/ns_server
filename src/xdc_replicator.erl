@@ -305,11 +305,13 @@ handle_call({report_seq_done, Seq, StatsInc}, From,
                         _ ->
                             NewThroughSeq0
                     end,
-    ?xdcr_debug("Worker reported seq ~p, through seq was ~p, "
+
+    Vb = (State#rep_state.rep_details)#rep.vb_id,
+    ?xdcr_debug("Replicator of vbucket ~p: worker reported seq ~p, through seq was ~p, "
                 "new through seq is ~p, highest seq done was ~p, "
                 "new highest seq done is ~p~n"
                 "Seqs in progress were: ~p~nSeqs in progress are now: ~p",
-                [Seq, ThroughSeq, NewThroughSeq, HighestDone,
+                [Vb, Seq, ThroughSeq, NewThroughSeq, HighestDone,
                  NewHighestDone, SeqsInProgress, NewSeqsInProgress]),
     SourceCurSeq = source_cur_seq(State),
     NewState = State#rep_state{

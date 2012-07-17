@@ -69,6 +69,8 @@ remote_vbucketmap_nodelist(BucketURI) ->
                   end,
                   ServerList),
 
+            ?xdcr_debug("updated target vbucketmap: ~p, server list: ~p",
+                        [VbucketMap, ServerList]),
             {ok, {VbucketMap, OrderedNodeList}}
     end.
 

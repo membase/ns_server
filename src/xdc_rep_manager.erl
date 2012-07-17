@@ -404,7 +404,9 @@ maybe_adjust_all_replications(BucketConfigs) ->
       ets:match(?XSTORE, {'$1', '$2', '$3'})).
 
 maybe_adjust_xdc_replication(XDocId, PrevVbs, CurrVbs) ->
-    {_AcquiredVbs, LostVbs} = xdc_rep_utils:lists_difference(CurrVbs, PrevVbs),
+    {AcquiredVbs, LostVbs} = xdc_rep_utils:lists_difference(CurrVbs, PrevVbs),
+    ?xdcr_debug("vbucket map changed, acquired vbs: ~p, lost vbs: ~p",
+                [AcquiredVbs, LostVbs]),
 
     %% Cancel Couch replications for the lost vbuckets
     CRepPidsToCancel =
@@ -505,8 +507,13 @@ cancel_couch_replication(XDocId, CRepPid) ->
         _ ->
             ok
     end,
+    Vb = ets:lookup_element(?CSTORE, CRepPid, 3),
+
     true = ets:delete(?CSTORE, CRepPid),
     true = ets:delete_object(?X2CSTORE, {XDocId, CRepPid}),
+
+    ?xdcr_debug("ongoing replication cancelled for vb: ~p  (pid ~p)",
+               [Vb, CRepPid]),
     ok.
 
 manage_vbucket_replications() ->

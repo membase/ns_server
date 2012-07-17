@@ -27,14 +27,14 @@ start_link(Cp, #db{} = Source, #httpdb{} = Target,
                              queue_fetch_loop(Source, Target, Cp, Cp, ChangesManager)
                      end),
     ?xdcr_debug("create queue_fetch_loop process (pid: ~p) within replicator (pid: ~p) "
-                "Source ~p, Target: ~p, ChangesManager: ~p",
-                [Pid, Cp, Source, Target, ChangesManager]),
+                "Source: ~p, Target: ~p, ChangesManager: ~p",
+                [Pid, Cp, Source#db.name, Target#httpdb.url, ChangesManager]),
 
     {ok, Pid}.
 
 queue_fetch_loop(Source, Target, Parent, Cp, ChangesManager) ->
     ?xdcr_debug("fetch changes from changes manager at ~p (target: ~p)",
-               [ChangesManager, Target]),
+               [ChangesManager, Target#httpdb.url]),
     ChangesManager ! {get_changes, self()},
     receive
         {closed, ChangesManager} ->
@@ -91,7 +91,8 @@ maybe_flush_docs(#httpdb{} = Target, Batch, Doc) ->
     JsonDoc = couch_doc:to_raw_json_binary(Doc, false),
     case SizeAcc + iolist_size(JsonDoc) of
         SizeAcc2 when SizeAcc2 > ?DOC_BUFFER_BYTE_SIZE ->
-            ?xdcr_debug("Worker flushing doc batch of size ~p bytes", [SizeAcc2]),
+            ?xdcr_debug("Worker flushing doc batch of size ~p bytes "
+                        "(batch limit: ~p)", [SizeAcc2, ?DOC_BUFFER_BYTE_SIZE]),
             Stats = flush_docs(Target, [JsonDoc | DocAcc]),
             {#batch{}, Stats};
         SizeAcc2 ->
@@ -132,7 +133,7 @@ find_missing(DocInfos, Target) ->
 
     ?xdcr_debug("after conflict resolution at target (~p), out of all ~p docs "
                 "the number of docs we need to replicate is: ~p",
-                [Target, AllRevsCount, MissingRevsCount]),
+                [Target#httpdb.url, AllRevsCount, MissingRevsCount]),
     {Missing, Stats}.
 
 open_db(#db{name = Name, user_ctx = UserCtx, options = Options}) ->
