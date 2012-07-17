@@ -602,7 +602,6 @@ dump_xdcr_stats() ->
         '$end_of_table' ->
             ok;
         _ ->
-            ?xdcr_debug("------ start of dumping XDCR stats ------"),
             XDocIds = lists:flatten(ets:match(?XSTORE, {'$1', '_', '_'})),
             lists:foreach(
               fun(XDocId) ->
@@ -628,9 +627,7 @@ dump_xdcr_bucket_stats(XDocId) ->
                           #rep_stats{},
                           lists:flatten(ets:match(?XSTATS, {{XDocId, '_'}, '_', '$1'}))),
 
-    ?xdcr_debug("------ Start dumping aggregated statistics -------"),
     xdc_replicator:dump_stats(AggStat),
-    ?xdcr_debug("------ Finish dumping aggregated statistics -------"),
     ok.
 
 %% Update replication process id list
