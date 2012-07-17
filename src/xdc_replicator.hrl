@@ -36,6 +36,9 @@
 %% Number of seconds after which the scheduler will periodically wakeup
 -define(XDCR_SCHEDULING_INTERVAL, 5).
 
+%% Interval of checkpointing in ms
+-define(XDCR_CHECKPOINT_INTERVAL, 60000).
+
 %% Internal ETS tables used by XDCR
 -define(XSTORE, xdc_rep_info_store).
 -define(X2CSTORE, xdc_docid_to_couch_rep_pid_store).

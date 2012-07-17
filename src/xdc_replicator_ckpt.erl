@@ -17,13 +17,13 @@
 -module(xdc_replicator_ckpt).
 
 %% public functions
--export([start_timer/1, cancel_timer/1, checkpoint_interval/1]).
+-export([start_timer/1, cancel_timer/1]).
 -export([do_last_checkpoint/1, do_checkpoint/1]).
 
 -include("xdc_replicator.hrl").
 
-start_timer(State) ->
-    After = checkpoint_interval(State),
+start_timer(_State) ->
+    After = ?XDCR_CHECKPOINT_INTERVAL,
     case timer:apply_after(After, gen_server, cast, [self(), checkpoint]) of
         {ok, Ref} ->
             Ref;
@@ -37,9 +37,6 @@ cancel_timer(#rep_state{timer = nil} = State) ->
 cancel_timer(#rep_state{timer = Timer} = State) ->
     {ok, cancel} = timer:cancel(Timer),
     State#rep_state{timer = nil}.
-
-checkpoint_interval(_State) ->
-    60000.
 
 do_last_checkpoint(#rep_state{seqs_in_progress = [],
                               highest_seq_done = {_Ts, ?LOWEST_SEQ}} = State) ->
