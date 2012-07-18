@@ -70,3 +70,14 @@ be logged. Any unexpected condition, or notable event.
 
 No exception (unless 100% expected) can be just eaten without
 logging. Thats a big sin.
+
+
+5. API
+
+We're using our own logger library: ale. Thus you can use
+ale:{warn,error,...}. But there's a bunch of macros defined in
+ns_common.hrl. And using macros are preferrable.
+
+When logging user-visible message (something you want to be replicated
+and shown in Log section of UI) use this: ale:warn(?USER_LOGGER, "My
+message").
