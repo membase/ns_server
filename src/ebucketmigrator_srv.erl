@@ -149,6 +149,7 @@ fold_messages(Fn, Acc, Producer) ->
 
 complete_native_vb_filter_change(#state{downstream=Downstream,
                                         upstream=Upstream,
+                                        upstream_sender=UpstreamSender,
                                         vb_filter_change_state=ChangeState,
                                         vb_filter_change_owner=Owner} = State) ->
     completed = ChangeState,
@@ -160,6 +161,9 @@ complete_native_vb_filter_change(#state{downstream=Downstream,
     ok = inet:setopts(Downstream, [{active, false}]),
     ok = inet:setopts(Upstream, [{active, false}]),
 
+    ok = gen_server:call(UpstreamSender, silence_upstream),
+    ?log_debug("Silenced upstream sender"),
+
     ?log_debug("Proceeding with reading unread binaries"),
     %% now we need to process pending messages
     State2 = eat_leftover_messages(State),
@@ -167,12 +171,15 @@ complete_native_vb_filter_change(#state{downstream=Downstream,
     reply_and_die(State3).
 
 complete_old_vb_filter_change(#state{downstream=Downstream,
-                                     upstream=Upstream} = State) ->
+                                     upstream=Upstream,
+                                     upstream_sender=UpstreamSender} = State) ->
     inc_counter(non_native_vbucket_filter_changes),
     (catch master_activity_events:note_vbucket_filter_change_old()),
 
+    ok = gen_server:call(UpstreamSender, silence_upstream),
     ok = gen_tcp:close(Upstream),
     ?log_debug("Closed upstream connection"),
+
     ok = inet:setopts(Downstream, [{active, false}]),
 
     State2 = confirm_downstream(State),
