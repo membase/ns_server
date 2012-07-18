@@ -208,9 +208,9 @@ kill_a_bunch_of_tap_names(Bucket, Node, TapNames) ->
                                     || TapName <- TapNames]
                            end),
     try
-        {ok, #mc_header{status = ?SUCCESS}, _} = mc_binary:recv(Sock, res, infinity), % CMD_SASL_AUTH
-        {ok, #mc_header{status = ?SUCCESS}, _} = mc_binary:recv(Sock, res, infinity), % CMD_SELECT_BUCKET
-        [{ok, #mc_header{status = ?SUCCESS}, _} = mc_binary:recv(Sock, res, infinity) || _TapName <- TapNames]
+        {ok, #mc_header{status = ?SUCCESS}, _} = mc_binary:recv(Sock, res, 50000), % CMD_SASL_AUTH
+        {ok, #mc_header{status = ?SUCCESS}, _} = mc_binary:recv(Sock, res, 50000), % CMD_SELECT_BUCKET
+        [{ok, #mc_header{status = ?SUCCESS}, _} = mc_binary:recv(Sock, res, 50000) || _TapName <- TapNames]
     after
         erlang:unlink(SenderPid),
         erlang:exit(SenderPid, kill),
