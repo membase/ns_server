@@ -791,13 +791,19 @@ view_needs_compaction(BucketName, DDocId, Type,
             %% spamming logs with irrelevant crash reports
             false;
         _ ->
-            FileSize = proplists:get_value(disk_size, Info),
-            DataSize = proplists:get_value(data_size, Info, 0),
+            InitialBuild = proplists:get_value(initial_build, Info),
+            case InitialBuild of
+                true ->
+                    false;
+                false ->
+                    FileSize = proplists:get_value(disk_size, Info),
+                    DataSize = proplists:get_value(data_size, Info, 0),
 
-            Title = <<BucketName/binary, $/, DDocId/binary,
-                      $/, (atom_to_binary(Type, latin1))/binary>>,
-            file_needs_compaction(Title, DataSize, FileSize,
-                                  FragThreshold, MinFileSize)
+                    Title = <<BucketName/binary, $/, DDocId/binary,
+                              $/, (atom_to_binary(Type, latin1))/binary>>,
+                    file_needs_compaction(Title, DataSize, FileSize,
+                                          FragThreshold, MinFileSize)
+            end
     end.
 
 ensure_can_view_compact(BucketName, DDocId, Type) ->
