@@ -1349,7 +1349,7 @@ executing_on_new_process(Body) ->
                 {Ref, T, E, Stack} ->
                     erlang:raise(T, E, Stack);
                 _ ->
-                    ?log_error("Got unexpected reason: ~p", [ChildReason]),
+                    ?log_error("Got unexpected reason from ~p: ~p", [ChildPid, ChildReason]),
                     erlang:error({unexpected_reason, ChildReason})
             end
     end.
