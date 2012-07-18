@@ -382,7 +382,7 @@ loop(Req, AppRoot, DocRoot) ->
 
 
 %% Internal API
--define(SAMPLE_TIMEOUT, 30000).
+-define(SAMPLES_LOADING_TIMEOUT, 60000).
 -define(SAMPLE_BUCKET_QUOTA, 1024 * 1024 * 100).
 
 handle_sample_buckets(Req) ->
@@ -419,7 +419,7 @@ handle_post_sample_buckets(Req) ->
             ?log_error("Sample bucket failed unexpectedly with reason: ~p", [Reason]),
             reply_json(Req, Error(unknown_error, <<"There was an unexpected error.">>), 500)
     after
-        ?SAMPLE_TIMEOUT ->
+        ?SAMPLES_LOADING_TIMEOUT ->
             ?log_error("Loading sample buckets timed out", []),
             erlang:exit(Pid, timeout),
             reply_json(Req, Error(timeout, <<"Timeout installing sample buckets">>), 500)
