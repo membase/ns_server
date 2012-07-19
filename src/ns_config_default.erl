@@ -256,7 +256,6 @@ maybe_add_vbucket_map_history(Config, HistorySize) ->
             Buckets = ns_bucket:get_buckets(Config),
             History = lists:flatmap(
                         fun ({_Bucket, BucketConfig}) ->
-                                ?debugFmt("Bucket: ~p~n", [_Bucket]),
                                 case proplists:get_value(map, BucketConfig, []) of
                                     [] -> [];
                                     Map ->
