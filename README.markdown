@@ -3,13 +3,6 @@
 This application represents the top of the hierarchy of all memcached
 smart services.  It is an application in the Erlang OTP sense.
 
-TODO: this picture needs updating
-
-<div>
-    <img src="https://github.com/membase/ns_server/raw/master/doc/images/ns_server.png"
-         alt="[ns server]" style="float: right"/>
-</div>
-
 ## Building
 
 Build dependencies include...
