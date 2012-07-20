@@ -87,14 +87,8 @@ child_specs() ->
      {ns_heart, {ns_heart, start_link, []},
       permanent, 1000, worker, [ns_heart]},
 
-     {ns_doctor_event, {gen_event, start_link, [{local, ns_doctor_event}]},
-      permanent, 1000, worker, dynamic},
-
      {ns_doctor, {ns_doctor, start_link, []},
       permanent, 1000, worker, [ns_doctor]},
-
-     {ns_version_info, {ns_version_info, start_link, []},
-      permanent, 1000, worker, [ns_version_info]},
 
      {remote_clusters_info, {remote_clusters_info, start_link, []},
       permanent, 1000, worker, [remote_servers_info]},

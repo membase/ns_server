@@ -48,7 +48,7 @@ graphviz(Bucket) ->
     {ok, Config} = ns_bucket:get_bucket(Bucket),
     Map = proplists:get_value(map, Config, []),
     Servers = proplists:get_value(servers, Config, []),
-    {ok, States, Zombies} = ns_janitor:current_states(Servers, Bucket),
+    {ok, States, Zombies} = janitor_agent:query_states(Bucket, Servers, 1),
     Nodes = lists:sort(Servers),
     NodeColors = lists:map(fun (Node) ->
                                    case lists:member(Node, Zombies) of
@@ -60,7 +60,12 @@ graphviz(Bucket) ->
                               [I, Color, Node, node_vbuckets(I, Node, States, Map)]) ||
                     {I, {Node, Color}} <- misc:enumerate(NodeColors)],
     Replicants = lists:sort(ns_bucket:map_to_replicas(Map)),
-    Replicators = cb_replication:replicas(Bucket, Nodes),
+    {Replicators, FailedNodes} = janitor_agent:get_src_dst_vbucket_replications(Bucket, Nodes),
+    case FailedNodes of
+        [] -> ok;
+        _ ->
+            ?log_debug("Ignoring failures to get replications from:~p", [FailedNodes])
+    end,
     AllRep = lists:umerge(Replicants, Replicators),
     Edges = [io_lib:format("n~pv~B -> n~pv~B [color=~s];~n",
                             [misc:position(Src, Nodes), V,

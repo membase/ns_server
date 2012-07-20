@@ -157,25 +157,31 @@ check_master_takeover_needed(Peers) ->
             false;
         [Master|_] ->
             ?log_debug("Checking version of current master: ~p", [Master]),
-            case rpc:call(Master, ns_info, version, [ns_server], 5000) of
-                {badrpc, _} = Crap ->
-                    ale:warn(?USER_LOGGER, "Failed to grab master's version. Assuming force mastership takeover is not needed. Reason: ~p", [Crap]),
-                    false;
-                RawVersion ->
-                    ?log_debug("Current master's raw version: ~p", [RawVersion]),
-                    try misc:parse_version(RawVersion) of
-                        Version ->
-                            MasterNodeInfo = {Version, Master},
-                            case strongly_lower_priority_node(MasterNodeInfo) of
-                                true ->
-                                    ale:warn(?USER_LOGGER, "Current master is older and I'll try to takeover", []),
-                                    Master;
-                                false ->
-                                    ?log_debug("Current master is not older"),
-                                    false
-                            end
-                    catch T:E ->
-                            ale:warn(?USER_LOGGER, "Failed to parse master version. Assuming we're older. Error is: ~p", [{T,E}]),
+            case rpc:call(Master, cluster_compat_mode, supported_compat_version, [], 5000) of
+                {badrpc, Reason} = Crap ->
+                    IsUndef = case Reason of
+                                  {'EXIT', ExitReason} ->
+                                      misc:is_undef_exit(cluster_compat_mode, supported_compat_version, [], ExitReason);
+                                  _ ->
+                                      false
+                              end,
+                    case IsUndef of
+                        true ->
+                            ale:warn(?USER_LOGGER, "Current master is older (before 2.0) and I'll try to takeover", []),
+                            Master;
+                        _ ->
+                            ale:warn(?USER_LOGGER, "Failed to grab master's version. Assuming force mastership takeover is not needed. Reason: ~p", [Crap]),
+                            false
+                    end;
+                CompatVersion ->
+                    ?log_debug("Current master's supported compat version: ~p", [CompatVersion]),
+                    MasterNodeInfo = build_node_info(CompatVersion, Master),
+                    case strongly_lower_priority_node(MasterNodeInfo) of
+                        true ->
+                            ale:warn(?USER_LOGGER, "Current master is older and I'll try to takeover", []),
+                            Master;
+                        false ->
+                            ?log_debug("Current master is not older"),
                             false
                     end
             end
@@ -510,12 +516,15 @@ shutdown_master_sup(State) ->
 
 %% Auxiliary functions
 
+build_node_info(CompatVersion, Node) ->
+    VersionStruct = {CompatVersion, release, 0},
+    {VersionStruct, Node}.
+
 %% Return node information for ourselves.
 -spec node_info() -> node_info().
 node_info() ->
-    RawVersion = ns_info:version(ns_server),
-    Version = misc:parse_version(RawVersion),
-    {Version, node()}.
+    Version = cluster_compat_mode:supported_compat_version(),
+    build_node_info(Version, node()).
 
 %% Convert node info to node.
 -spec node_info_to_node(node_info()) -> node().

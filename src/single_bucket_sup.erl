@@ -35,18 +35,15 @@ top_loop(ParentPid, Pid, BucketName) ->
     end.
 
 child_specs(BucketName) ->
-    [{{ns_memcached_sup, BucketName},
+    [{{capi_ddoc_replication_srv, BucketName},
+      {capi_ddoc_replication_srv, start_link, [BucketName]},
+      permanent, 1000, worker, [capi_ddoc_replication_srv]},
+     {{ns_memcached_sup, BucketName},
       {ns_memcached_sup, start_link, [BucketName]},
       %% ns_memcached can take a long time to terminate; but it will do it in
       %% a finite amount of time since all the shutdown timeouts in
       %% ns_memcached_sup are finite
-      permanent, infinity, supervisor, [ns_memcached_sup]},
-     {{capi_ddoc_replication_srv, BucketName},
-      {capi_ddoc_replication_srv, start_link, [BucketName]},
-      permanent, 1000, worker, [capi_ddoc_replication_srv]},
-     {{capi_set_view_manager, BucketName},
-      {capi_set_view_manager, start_link, [BucketName]},
-      permanent, 1000, worker, [capi_set_view_manager]}].
+      permanent, infinity, supervisor, [ns_memcached_sup]}].
 
 init([BucketName]) ->
     {ok, {{one_for_one,

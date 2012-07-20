@@ -43,9 +43,7 @@
 
 -export([start_link/1, get_value/1,
          build_local_safeness_info/1,
-         extract_replication_uptodateness/4,
-         build_local_safeness_info_compat/1,
-         buckets_replication_statuses_compat/1]).
+         extract_replication_uptodateness/4]).
 
 %% gen_event callbacks
 -export([init/1, handle_event/2, handle_call/2,
@@ -183,15 +181,11 @@ handle_call(get_state, State) ->
 handle_info(_Info, State) ->
     {ok, State}.
 
-build_local_safeness_info(BucketNames) ->
-    build_local_safeness_info_new(BucketNames) ++
-        build_local_safeness_info_compat(BucketNames).
-
 %% Builds local replication safeness information. ns_heart normally
 %% broadcasts it with heartbeats. This information from all nodes can
 %% then be used to to estimate failover safeness level of particular
 %% node.
-build_local_safeness_info_new(BucketNames) ->
+build_local_safeness_info(BucketNames) ->
     ReplicationsSafeness =
         [{Name, failover_safeness_level:get_value(Name)} || Name <- BucketNames],
 
@@ -200,30 +194,15 @@ build_local_safeness_info_new(BucketNames) ->
         [{BucketName,
           [{SrcNode, erlang:phash2(VBuckets)} ||
               {SrcNode, _DstNode, VBuckets} <-
-                  cb_replication:node_replicator_triples(BucketName, node())]
+                  janitor_agent:this_node_replicator_triples(BucketName)]
          }
          || BucketName <- BucketNames],
     [{outgoing_replications_safeness_level, ReplicationsSafeness},
      {incoming_replications_conf_hashes, IncomingReplicationConfs}].
 
-build_local_safeness_info_compat(BucketNames) ->
-    [{replication, buckets_replication_statuses_compat(BucketNames)}].
-
-buckets_replication_statuses_compat(BucketNames) ->
-    lists:map(
-      fun (Bucket) ->
-              {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
-              {Bucket, replication_status_compat(Bucket, BucketConfig)}
-      end, BucketNames).
-
 extract_replication_uptodateness(Bucket, BucketConfig, Node, NodeStatuses) ->
-    case cb_replication:supported_mode() of
-        compat ->
-            extract_replication_uptodateness_compat(Bucket, Node, NodeStatuses);
-        new ->
             extract_replication_uptodateness_new(Bucket, BucketConfig,
-                                                 Node, NodeStatuses)
-    end.
+                                                 Node, NodeStatuses).
 
 %% Returns indication of whether it's safe to fail over given node
 %% w.r.t. given bucket. Implementation uses information from
@@ -276,42 +255,3 @@ outgoing_replications_started(BucketName, Map, Node, NodeStatuses) ->
     sets:fold(fun (ReplicaNode, Ok) ->
                       Ok andalso ReplicaOkP(ReplicaNode)
               end, true, ReplicaNodes).
-
-replication_status_compat(Bucket, BucketConfig) ->
-    %% First, check that replication is running
-    case proplists:get_value(map, BucketConfig) of
-        undefined ->
-            1.0;
-        Map ->
-            case [{N, FirstReplica, VBucket}
-                  || {VBucket, [N, FirstReplica | _]} <- misc:enumerate(Map, 0),
-                     N == node()] of
-                [] ->
-                    %% No replicas for this node
-                    1.0;
-                Replicas ->
-                    ActualReplicas =
-                        lists:flatmap(
-                          fun ({Src, Dst, VBuckets}) ->
-                                  [{Src, Dst, V} || V <- VBuckets]
-                          end,
-                          cb_replication:node_replicator_triples(Bucket, node())),
-                    case Replicas -- ActualReplicas of
-                        [] ->
-                            %% Ok, running
-                            case failover_safeness_level:get_value(Bucket) of
-                                unknown -> 0.0;
-                                stale -> 0.0;
-                                green -> 1.0;
-                                yellow -> 0.5
-                            end;
-                        _ ->
-                            0.0
-                    end
-            end
-    end.
-
-extract_replication_uptodateness_compat(Bucket, Node, NodeStatuses) ->
-    NodeStatus = ns_doctor:get_node(Node, NodeStatuses),
-    Replication = proplists:get_value(replication, NodeStatus, []),
-    proplists:get_value(Bucket, Replication, 0.0).

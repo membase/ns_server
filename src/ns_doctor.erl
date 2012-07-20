@@ -213,13 +213,6 @@ update_status(Name, Status0, Dict) ->
             ok
     end,
 
-    case Status0 =/= lists:keydelete(last_heard, 1, PrevStatus) of
-        true ->
-            gen_event:notify(ns_doctor_event, {node_status, Name, Status0});
-        false ->
-            ok
-    end,
-
     dict:store(Name, Status, Dict).
 
 annotate_status(Node, Status, Now, LiveNodes) ->

@@ -127,11 +127,6 @@ is_interesting_stat({vb_replica_curr_items, _}) -> true;
 is_interesting_stat(_) -> false.
 
 current_status() ->
-    ClusterCompatVersion = case (catch list_to_integer(os:getenv("MEMBASE_CLUSTER_COMPAT_VERSION"))) of
-                               X when is_integer(X) -> X;
-                               _ -> 1
-                           end,
-
     SystemStats =
         case catch stats_reader:latest("minute", node(), "@system") of
             {ok, StatsRec} -> StatsRec#stat_entry.values;
@@ -174,9 +169,13 @@ current_status() ->
             _ -> []
         end,
 
+    ClusterCompatVersion = case cluster_compat_mode:get_compat_version() of
+                               undefined -> 1;
+                               [VersionMaj, VersionMin] -> VersionMaj * 16#10000 + VersionMin
+                           end,
+
     failover_safeness_level:build_local_safeness_info(BucketNames) ++
-        [{version_info, ns_version_info:local_version_info_props()},
-         {active_buckets, ns_memcached:active_buckets()},
+        [{active_buckets, ns_memcached:active_buckets()},
          {ready_buckets, ns_memcached:warmed_buckets()},
          {local_tasks, Tasks},
          {memory, erlang:memory()},

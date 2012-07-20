@@ -27,14 +27,19 @@ start_link(BucketName) ->
     supervisor:start_link({local, Name}, ?MODULE, [BucketName]).
 
 child_specs(BucketName) ->
-    [{{ns_memcached, stats, BucketName, 0}, {ns_memcached, start_link,
+    [{{capi_set_view_manager, BucketName},
+      {capi_set_view_manager, start_link, [BucketName]},
+      permanent, 1000, worker, [capi_set_view_manager]},
+     {{ns_memcached, stats, BucketName, 0}, {ns_memcached, start_link,
                                              [BucketName]},
       %% ns_memcached waits for the bucket to sync to disk before exiting
       permanent, 86400000, worker, [ns_memcached]},
-     {{ns_vbm_sup, BucketName}, {ns_vbm_sup, start_link, [BucketName]},
-      permanent, 1000, worker, [ns_vbm_sup]},
      {{ns_vbm_new_sup, BucketName}, {ns_vbm_new_sup, start_link, [BucketName]},
       permanent, 1000, supervisor, [ns_vbm_new_sup]},
+     {{ns_vbm_sup, BucketName}, {ns_vbm_sup, start_link, [BucketName]},
+      permanent, 1000, supervisor, []},
+     {{janitor_agent, BucketName}, {janitor_agent, start_link, [BucketName]},
+      permanent, brutal_kill, worker, []},
      {{couch_stats_reader, BucketName},
       {couch_stats_reader, start_link, [BucketName]},
       permanent, 1000, worker, [couch_stats_reader]},

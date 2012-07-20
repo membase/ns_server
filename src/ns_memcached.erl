@@ -90,6 +90,7 @@
          host_port/2,
          host_port_str/1,
          list_vbuckets/1, list_vbuckets/2,
+         local_connected_and_list_vbuckets/1,
          list_vbuckets_prevstate/2,
          list_vbuckets_multi/2,
          set_vbucket/3, set_vbucket/4,
@@ -209,6 +210,10 @@ handle_call(connected, _From, #state{status=Status} = State) ->
     Reply = [{connected, Connected},
              {warmed, Warmed}],
     {reply, Reply, State};
+handle_call(connected_and_list_vbuckets, _From, #state{status=init} = State) ->
+    {reply, warming_up, State};
+handle_call(connected_and_list_vbuckets, From, State) ->
+    handle_call(list_vbuckets, From, State);
 handle_call(mark_warmed, _From, #state{status=Status,
                                        bucket=Bucket,
                                        start_time=Start,
@@ -874,6 +879,10 @@ list_vbuckets(Bucket) ->
     {ok, [{vbucket_id(), vbucket_state()}]} | mc_error().
 list_vbuckets(Node, Bucket) ->
     do_call({server(Bucket), Node}, list_vbuckets, ?TIMEOUT).
+
+-spec local_connected_and_list_vbuckets(bucket_name()) -> warming_up | {ok, [{vbucket_id(), vbucket_state()}]}.
+local_connected_and_list_vbuckets(Bucket) ->
+    do_call(server(Bucket), connected_and_list_vbuckets, ?TIMEOUT).
 
 -spec list_vbuckets_prevstate(node(), bucket_name()) ->
     {ok, [{vbucket_id(), vbucket_state()}]} | mc_error().

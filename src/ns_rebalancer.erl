@@ -93,8 +93,8 @@ failover(Bucket, Node) ->
             try ns_janitor:cleanup(Bucket, []) of
                 ok ->
                     ok;
-                {error, wait_for_memcached_failed} ->
-                    ?rebalance_error("Skipped vbucket activations and replication topology changes because not all remaining node were found to have healthy bucket ~p", [Bucket]),
+                {error, wait_for_memcached_failed, BadNodes} ->
+                    ?rebalance_error("Skipped vbucket activations and replication topology changes because not all remaining node were found to have healthy bucket ~p: ~p", [Bucket, BadNodes]),
                     janitor_failed
             catch
                 E:R ->
@@ -223,8 +223,8 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
                                   wait_for_memcached(ThisLiveNodes, BucketName, 10),
                                   case ns_janitor:cleanup(BucketName, [{timeout, 1}]) of
                                       ok -> ok;
-                                      {error, wait_for_memcached_failed} ->
-                                          exit(pre_rebalance_janitor_run_failed)
+                                      {error, wait_for_memcached_failed, BadNodes} ->
+                                          exit({pre_rebalance_janitor_run_failed, BadNodes})
                                   end,
                                   {ok, NewConf} =
                                       ns_bucket:get_bucket(BucketName),
@@ -234,8 +234,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
                                                 KeepNodes, BucketCompletion,
                                                 NumBuckets),
                                   master_activity_events:note_bucket_rebalance_ended(BucketName),
-                                  verify_replication(BucketName, ThisLiveNodes,
-                                                     NewMap)
+                                  verify_replication(BucketName, KeepNodes, NewMap)
                           end
                   end, misc:enumerate(BucketConfigs, 0)),
 
@@ -346,7 +345,13 @@ verify_replication(Bucket, Nodes, Map) ->
             fun ({V, Chain}) ->
                     [{Src, Dst, V} || {Src, Dst} <- misc:pairs(Chain), Src =/= undefined, Dst =/= undefined]
             end, misc:enumerate(Map, 0))),
-    ActualReplicators = cb_replication:replicas(Bucket, Nodes),
+    {ActualReplicators, BadNodes} = janitor_agent:get_src_dst_vbucket_replications(Bucket, Nodes),
+    case BadNodes of
+        [] -> ok;
+        _ ->
+            ale:error(?USER_LOGGER, "Failed to get active replicas for following nodes:~p", [BadNodes]),
+            exit(bad_replicas_due_to_bad_results)
+    end,
 
     case misc:comm(ExpectedReplicators, ActualReplicators) of
         {[], [], _} ->
@@ -405,10 +410,12 @@ wait_for_mover_tail(Pid, Ref) ->
     end.
 
 %% NOTE: this is rpc:multicall-ed by 1.8 nodes.
+%%
+%% Returns estimation of up-to-dateness of replications _from_ this
+%% node
 buckets_replication_statuses() ->
     Buckets = ns_bucket:get_bucket_names(),
-    failover_safeness_level:buckets_replication_statuses_compat(Buckets).
-
+    [{Bucket, 0} || Bucket <- Buckets].
 
 multicall_ignoring_undefined(Nodes, M, F, A) ->
     {Results, DownNodes} = rpc:multicall(Nodes, M, F, A),

@@ -620,7 +620,54 @@ handle_engage_cluster2(Req) ->
     process_flag(trap_exit, true),
     case ns_cluster:engage_cluster(NodeKVList) of
         {ok, _} ->
-            handle_node("self", Req);
+            %% NOTE: for 2.1+ cluster compat we may need
+            %% something fancier. For now 2.0 is compatible only with
+            %% itself and 1.8.x thus no extra work is needed.
+            %%
+            %% The idea is that engage_cluster/complete_join sequence
+            %% is our cluster version compat negotiation. First
+            %% cluster sends joinee node it's info in engage_cluster
+            %% payload. Node then checks if it can work in that compat
+            %% mode (node itself being single node cluster works in
+            %% max compat mode it supports, which is perhaps higher
+            %% then cluster's). If node supports this mode, it needs
+            %% to send back engage_cluster reply with
+            %% clusterCompatibility of cluster compat mode. Otherwise
+            %% cluster would refuse this node as it runs in higher
+            %% compat mode. That could much much higher future compat
+            %% mode. So only joinee knows if it can work in backwards
+            %% compatible mode or not. Thus sending back of
+            %% 'corrected' clusterCompatibility in engage_cluster
+            %% response is our only option.
+            %%
+            %% NOTE: we don't need to actually switch to lower compat
+            %% mode during engage_cluster. Because complete_join will
+            %% cause full restart of joinee node, which will cause it
+            %% to start back in cluster's compat mode.
+            %%
+            %% For now we just look if 1.8.x is asking us to join it
+            %% and if it is, then we reply with clusterCompatibility
+            %% of 1 which is the only thing they'll support
+            %%
+            %% NOTE: I was thinking about simply sending back
+            %% clusterCompatibility of cluster, but that would break
+            %% 10.x (i.e. much future version) check of backwards
+            %% compatibility with us. I.e. because 2.0 is not checking
+            %% cluster's compatibility (there's no need), lying about
+            %% our cluster compat mode would not allow cluster to
+            %% check we're compatible with it.
+            LocalAddr = menelaus_util:local_addr(Req),
+            {struct, Result} = build_full_node_info(node(), LocalAddr),
+            {_, _} = CompatTuple = lists:keyfind(<<"clusterCompatibility">>, 1, NodeKVList),
+            Result2 = case CompatTuple of
+                          {_, 1} ->
+                              ?log_info("Lowering our advertised clusterCompatibility to 1 in order to enable joining 1.8.x cluster"),
+                              Result3 = lists:keyreplace(<<"clusterCompatibility">>, 1, Result, CompatTuple),
+                              lists:keyreplace(clusterCompatibility, 1, Result3, CompatTuple);
+                          _ ->
+                              Result
+                      end,
+            reply_json(Req, {struct, Result2});
         {error, _What, Message, _Nested} ->
             reply_json(Req, [Message], 400)
     end,

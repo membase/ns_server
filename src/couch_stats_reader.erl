@@ -122,7 +122,7 @@ grab_couch_stats(Bucket) ->
     DocsActualDiskSize = misc:dir_size(filename:join([CouchDir, Bucket])),
     ViewsActualDiskSize = misc:dir_size(couch_set_view:set_index_dir(ViewRoot, ?l2b(Bucket))),
 
-    {ok, DDocs} = capi_set_view_manager:fetch_ddocs(Bucket),
+    {ok, DDocs} = capi_set_view_manager:fetch_ddocs(Bucket, infinity),
 
     {DocsDiskSize, DocsDataSize} = lists:foldl(DBStats, {0, 0}, VBuckets),
     {ViewsDiskSize, ViewsDataSize} =

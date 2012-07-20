@@ -48,14 +48,14 @@ cleanup_list_del(Pid) ->
 %% We do a no-op here rather than filtering these out so that the
 %% replication update will still work properly.
 mover(Parent, undefined = Node, Bucket, VBucket, OldChain, [NewNode | _NewChainRest] = NewChain) ->
-    ok = ns_memcached:set_vbucket(NewNode, Bucket, VBucket, active),
+    ok = janitor_agent:set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined),
     Parent ! {move_done, {Node, VBucket, OldChain, NewChain}};
 
 mover(Parent, Node, Bucket, VBucket, OldChain, NewChain) ->
     master_activity_events:note_vbucket_mover(self(), Bucket, Node, VBucket, OldChain, NewChain),
     ns_replicas_builder:try_with_maybe_ignorant_after(
       fun () ->
-        mover_inner(Parent, Node, Bucket, VBucket, OldChain, NewChain)
+              mover_inner(Parent, Node, Bucket, VBucket, OldChain, NewChain)
       end,
       fun () ->
               ns_replicas_builder:sync_shutdown_many(get_cleanup_list())
@@ -75,6 +75,11 @@ mover_inner(Parent, Node, Bucket, VBucket,
                               N =/= Node],
     true = (JustBackfillNodes =/= [undefined]),
     Self = self(),
+    Changes = [{Replica, replica, undefined, undefined}
+               || Replica <- ReplicaNodes]
+        ++ [{FutureMaster, replica, passive, undefined}
+            || FutureMaster <- JustBackfillNodes],
+    janitor_agent:bulk_set_vbucket_state(Bucket, Parent, VBucket, Changes),
     ReplicasBuilderPid = ns_replicas_builder:spawn_link(
                            Bucket, VBucket, Node,
                            ReplicaNodes, JustBackfillNodes,
@@ -86,6 +91,10 @@ mover_inner(Parent, Node, Bucket, VBucket,
     receive
         {'EXIT', _, _} = ExitMsg ->
             ?log_info("Got exit message (parent is ~p). Exiting...~n~p", [Parent, ExitMsg]),
+            %% This exit can be from some of our cleanup childs, thus
+            %% we need to requeue exit message so that
+            %% sync_shutdown_many higher up the stack can consume it
+            %% for real
             self() ! ExitMsg,
             ExitReason = case ExitMsg of
                              {'EXIT', Parent, shutdown} -> shutdown;
@@ -100,54 +109,22 @@ mover_inner(Parent, Node, Bucket, VBucket,
     if
         Node =:= NewNode ->
             %% if there's nothing to move, we're done
-            ok = ns_memcached:set_vbucket(NewNode, Bucket, VBucket, active),
-            ok;
+            ok = janitor_agent:set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined);
         true ->
-            run_mover(Bucket, VBucket, Node, NewNode, 2),
+            ok = run_mover(Bucket, VBucket, Node, NewNode),
+            ok = janitor_agent:set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined),
             ok
     end.
 
-run_mover(Bucket, V, N1, N2, Tries) ->
+run_mover(Bucket, V, N1, N2) ->
     case {ns_memcached:get_vbucket(N1, Bucket, V),
           ns_memcached:get_vbucket(N2, Bucket, V)} of
-        {{ok, active}, {memcached_error, not_my_vbucket, _}} ->
-            %% Standard starting state
-            ok = ns_memcached:set_vbucket(N2, Bucket, V, replica),
+        {{ok, active}, {ok, replica}} ->
             {ok, Pid} = spawn_ebucketmigrator_mover(Bucket, V, N1, N2),
-            wait_for_mover(Bucket, V, N1, N2, Tries, Pid);
-        {{ok, dead}, {ok, active}} ->
-            %% Standard ending state
-            ok;
-        {{memcached_error, not_my_vbucket, _}, {ok, active}} ->
-            %% This generally shouldn't happen, but it's an OK final state.
-            ?rebalance_warning("Weird: vbucket ~p missing from source node ~p but "
-                               "active on destination node ~p.", [V, N1, N2]),
-            ok;
-        {{ok, active}, {ok, S}} when S /= active ->
-            %% This better have been a replica, a failed previous
-            %% attempt to migrate, or loaded from a valid copy or this
-            %% will result in inconsistent data!
-            if S /= replica ->
-                    ok = ns_memcached:set_vbucket(N2, Bucket, V, replica);
-               true ->
-                    ok
-            end,
-            {ok, Pid} = spawn_ebucketmigrator_mover(Bucket, V, N1, N2),
-            wait_for_mover(Bucket, V, N1, N2, Tries, Pid);
-        {{ok, dead}, {ok, pending}} ->
-            %% This is a strange state to end up in - the source
-            %% shouldn't close until the destination has acknowledged
-            %% the last message, at which point the state should be
-            %% active.
-            ?rebalance_warning("Weird: vbucket ~p in pending state on node ~p.",
-                               [V, N2]),
-            ok = ns_memcached:set_vbucket(N1, Bucket, V, active),
-            ok = ns_memcached:set_vbucket(N2, Bucket, V, replica),
-            {ok, Pid} = spawn_ebucketmigrator_mover(Bucket, V, N1, N2),
-            wait_for_mover(Bucket, V, N1, N2, Tries, Pid)
+            wait_for_mover(Bucket, V, N1, N2, Pid)
     end.
 
-wait_for_mover(Bucket, V, N1, N2, Tries, Pid) ->
+wait_for_mover(Bucket, V, N1, N2, Pid) ->
     cleanup_list_add(Pid),
     receive
         {'EXIT', Pid, normal} ->
@@ -161,14 +138,7 @@ wait_for_mover(Bucket, V, N1, N2, Tries, Pid) ->
             end;
         {'EXIT', Pid, Reason} ->
             cleanup_list_del(Pid),
-            case Tries of
-                0 ->
-                    exit({mover_failed, Reason});
-                _ ->
-                    ?rebalance_warning("Got unexpected exit reason from mover:~n~p",
-                                       [Reason]),
-                    run_mover(Bucket, V, N1, N2, Tries-1)
-            end;
+            exit({mover_failed, Reason});
         {'EXIT', _Pid, shutdown} ->
             exit(shutdown);
         {'EXIT', _OtherPid, _Reason} = Msg ->
@@ -178,7 +148,7 @@ wait_for_mover(Bucket, V, N1, N2, Tries, Pid) ->
         Msg ->
             ?rebalance_warning("Mover parent got unexpected message:~n"
                                "~p", [Msg]),
-            wait_for_mover(Bucket, V, N1, N2, Tries, Pid)
+            wait_for_mover(Bucket, V, N1, N2, Pid)
     end.
 
 spawn_ebucketmigrator_mover(Bucket, VBucket, SrcNode, DstNode) ->

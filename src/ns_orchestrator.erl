@@ -180,7 +180,14 @@ code_change(_OldVsn, StateName, StateData, _Extra) ->
 
 init([]) ->
     process_flag(trap_exit, true),
+    self() ! janitor,
     timer:send_interval(10000, janitor),
+    try
+        consider_switching_compat_mode()
+    catch exit:normal ->
+            %% There's no need to restart us here. So if we've changed compat mode in init suppress exit
+            ok
+    end,
     {ok, idle, #idle_state{}}.
 
 
@@ -193,7 +200,9 @@ handle_sync_event(Event, _From, StateName, State) ->
 
 handle_info(janitor, idle, #idle_state{remaining_buckets=[]} = State) ->
     case ns_bucket:get_bucket_names(membase) of
-        [] -> {next_state, idle, State#idle_state{remaining_buckets=[]}};
+        [] ->
+            consider_switching_compat_mode(),
+            {next_state, idle, State#idle_state{remaining_buckets=[]}};
         Buckets ->
             handle_info(janitor, idle,
                         State#idle_state{remaining_buckets=Buckets})
@@ -225,6 +234,7 @@ handle_info({'EXIT', Pid, Reason}, janitor_running,
         _ ->
             self() ! janitor
     end,
+    consider_switching_compat_mode(),
     {next_state, idle, #idle_state{remaining_buckets = Buckets}};
 handle_info({'EXIT', Pid, Reason}, rebalancing,
             #rebalancing_state{rebalancer=Pid,
@@ -263,6 +273,7 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
         false ->
             ok
     end,
+    consider_switching_compat_mode(),
     {next_state, idle, #idle_state{}};
 handle_info(Msg, StateName, StateData) ->
     ?log_warning("Got unexpected message ~p in state ~p with data ~p",
@@ -286,6 +297,7 @@ idle({request_janitor_run, BucketName}, State) ->
             self() ! janitor,
             {next_state, idle, State#idle_state{remaining_buckets = [BucketName|RemainingBuckets]}};
         _ ->
+            consider_switching_compat_mode(),
             {next_state, idle, State}
     end;
 idle(_Event, State) ->
@@ -562,3 +574,12 @@ wait_for_nodes(Nodes, Pred, Timeout) ->
 %% ns_orchestrator find out if rebalance is running.
 is_rebalance_running() ->
     ns_config:search(rebalance_status) =:= {value, running}.
+
+consider_switching_compat_mode() ->
+    case cluster_compat_mode:consider_switching_compat_mode() of
+        changed ->
+            ale:warn(?USER_LOGGER, "Changed cluster compat mode to ~p", [cluster_compat_mode:get_compat_version()]),
+            exit(normal);
+        ok ->
+            ok
+    end.

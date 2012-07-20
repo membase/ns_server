@@ -15,8 +15,9 @@
 %%
 -module(ns_vbm_new_sup).
 
+-behavior(supervisor).
+
 -include("ns_common.hrl").
--include("ns_version_info.hrl").
 
 %% identifier of ns_vbm_new_sup childs in supervisors. NOTE: vbuckets
 %% field is sorted. We could use ordsets::ordset() type, but we also
@@ -25,20 +26,28 @@
                        src_node::node()}).
 
 %% API
--export([start_link/1]).
+-export([start_link/1, init/1]).
 
 %% Callbacks
 -export([server_name/1, supervisor_node/2,
-         make_replicator/3, replicator_nodes/2, replicator_vbuckets/1,
-         change_vbucket_filter/5]).
+         make_replicator/3, replicator_nodes/2, replicator_vbuckets/1]).
 
 -export([local_change_vbucket_filter/4]).
+
+-export([perform_vbucket_filter_change/6]).
 
 %%
 %% API
 %%
 start_link(Bucket) ->
-    cb_gen_vbm_sup:start_link(?MODULE, Bucket).
+    supervisor:start_link({local, server_name(Bucket)}, ?MODULE, []).
+
+init([]) ->
+    {ok, {{one_for_one,
+           misc:get_env_default(max_r, 3),
+           misc:get_env_default(max_t, 10)},
+          []}}.
+
 
 %%
 %% Callbacks
@@ -69,26 +78,108 @@ local_change_vbucket_filter(Bucket, DstNode, #new_child_id{src_node=SrcNode} = C
     Args = ebucketmigrator_srv:build_args(Bucket,
                                           SrcNode, DstNode, NewVBuckets, false),
 
-    MFA =
-        case ns_version_info:node_compatible(SrcNode, ?VERSION_200) of
-            true ->
-                {ebucketmigrator_srv,
-                 start_vbucket_filter_change, [NewVBuckets]};
-            false ->
-                {ebucketmigrator_srv,
-                 start_old_vbucket_filter_change, []}
-        end,
+    MFA = {ebucketmigrator_srv, start_vbucket_filter_change, [NewVBuckets]},
 
-    {ok, cb_gen_vbm_sup:perform_vbucket_filter_change(Bucket,
-                                                      ChildId,
-                                                      NewChildId,
-                                                      Args,
-                                                      MFA,
-                                                      server_name(Bucket))}.
+    {ok, perform_vbucket_filter_change(Bucket,
+                                       ChildId,
+                                       NewChildId,
+                                       Args,
+                                       MFA,
+                                       server_name(Bucket))}.
 
--spec change_vbucket_filter(bucket_name(), node(), node(), #new_child_id{}, [vbucket_id(),...]) ->
-                                   {ok, pid()}.
-change_vbucket_filter(Bucket, _SrcNode, DstNode, Child, NewVBuckets) ->
-    {ok, _} = RV = rpc:call(DstNode, ns_vbm_new_sup, local_change_vbucket_filter,
-                            [Bucket, DstNode, Child, NewVBuckets]),
-    RV.
+mk_old_state_retriever(Id) ->
+    %% this function's closure will be kept in supervisor, so I want
+    %% it to reference as few stuff as possible thus separate closure maker
+    fun () ->
+            case ns_process_registry:lookup_pid(vbucket_filter_changes_registry, Id) of
+                missing -> undefined;
+                TxnPid ->
+                    case (catch gen_server:call(TxnPid, get_old_state, infinity)) of
+                        {ok, OldState} ->
+                            ?log_info("Got vbucket filter change old state. "
+                                      "Proceeding vbucket filter change operation"),
+                            OldState;
+                        TxnCrap ->
+                            ?log_info("Getting old state for vbucket "
+                                      "change operation failed:~n~p", [TxnCrap]),
+                            undefined
+                    end
+            end
+    end.
+
+perform_vbucket_filter_change(Bucket,
+                              OldChildId, NewChildId,
+                              InitialArgs,
+                              StartVBFilterChangeMFA,
+                              Server) ->
+    RegistryId = {Bucket, NewChildId, erlang:make_ref()},
+    Args = ebucketmigrator_srv:add_args_option(InitialArgs,
+                                               old_state_retriever,
+                                               mk_old_state_retriever(RegistryId)),
+
+    NewVBuckets = ebucketmigrator_srv:get_args_option(Args, vbuckets),
+    true = NewVBuckets =/= undefined,
+
+    Childs = supervisor:which_children(Server),
+    MaybeThePid = [Pid || {Id, Pid, _, _} <- Childs,
+                          Id =:= OldChildId],
+    NewChildSpec = {NewChildId,
+                    {ebucketmigrator_srv, start_link, Args},
+                    permanent, 60000, worker, [ebucketmigrator_srv]},
+    case MaybeThePid of
+        [ThePid] ->
+            misc:executing_on_new_process(
+              fun () ->
+                      ns_process_registry:register_pid(vbucket_filter_changes_registry,
+                                                       RegistryId, self()),
+                      ?log_debug("Registered myself under id:~p~nArgs:~p",
+                                 [RegistryId, Args]),
+
+                      erlang:link(ThePid),
+                      ?log_debug("Linked myself to old ebucketmigrator ~p",
+                                 [ThePid]),
+
+                      {ok, OldState} = start_vbucket_filter_change(ThePid, StartVBFilterChangeMFA),
+                      ?log_debug("Got old state from previous ebucketmigrator: ~p",
+                                 [ThePid]),
+
+                      erlang:process_flag(trap_exit, true),
+                      ok = supervisor:terminate_child(Server, OldChildId),
+                      ok = supervisor:delete_child(Server, OldChildId),
+                      Me = self(),
+                      proc_lib:spawn_link(
+                        fun () ->
+                                {ok, Pid} = supervisor:start_child(Server, NewChildSpec),
+                                Me ! {done, Pid}
+                        end),
+                      perform_vbucket_filter_change_loop(ThePid, OldState, false)
+              end);
+        [] ->
+            no_child
+    end.
+
+start_vbucket_filter_change(ThePid, {M, F, A}) ->
+    Args = [ThePid | A],
+    erlang:apply(M, F, Args).
+
+perform_vbucket_filter_change_loop(ThePid, OldState, SentAlready) ->
+    receive
+        {'EXIT', ThePid, shutdown} ->
+            perform_vbucket_filter_change_loop(ThePid, OldState, SentAlready);
+        {'EXIT', _From, _Reason} = ExitMsg ->
+            ?log_error("Got unexpected exit signal in "
+                       "vbucket change txn body: ~p", [ExitMsg]),
+            exit({txn_crashed, ExitMsg});
+        {done, RV} ->
+            RV;
+        {'$gen_call', {Pid, _} = From, get_old_state} ->
+            case SentAlready of
+                false ->
+                    ?log_debug("Sent old state to new instance"),
+                    ebucketmigrator_srv:set_controlling_process(OldState, Pid),
+                    gen_server:reply(From, {ok, OldState});
+                true ->
+                    gen_server:reply(From, refused)
+            end,
+            perform_vbucket_filter_change_loop(ThePid, OldState, true)
+    end.

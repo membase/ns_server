@@ -96,9 +96,25 @@ bad_memory_size_error(ThisMegs, Quota) ->
                                  [Quota, ThisMegs])).
 
 incompatible_cluster_version_error(MyVersion, OtherVersion, OtherNode) ->
-    list_to_binary(io_lib:format("This node cannot add another node (~p)"
-                                 " because of cluster version compatibility mismatch (~p =/= ~p).",
-                                 [OtherNode, MyVersion, OtherVersion])).
+    case MyVersion > 1 of
+        true ->
+            RequiredVersion = [MyVersion div 16#10000,
+                               MyVersion rem 16#10000],
+            OtherVersionExpand = case OtherVersion > 1 of
+                                     true ->
+                                         [OtherVersion div 16#10000,
+                                          OtherVersion rem 16#10000];
+                                     false ->
+                                         [1,8]
+                                 end,
+            list_to_binary(io_lib:format("This node cannot add another node (~p)"
+                                         " because of cluster version compatibility mismatch. Cluster works in ~p mode and node only supports ~p",
+                                         [OtherNode, RequiredVersion, OtherVersionExpand]));
+        false ->
+            list_to_binary(io_lib:format("This node cannot add another node (~p)"
+                                         " because of cluster version compatibility mismatch (~p =/= ~p).",
+                                         [OtherNode, MyVersion, OtherVersion]))
+    end.
 
 verify_otp_connectivity_port_error(OtpNode, _Port) ->
     list_to_binary(io_lib:format("Failed to obtain otp port from erlang port mapper for node ~p."

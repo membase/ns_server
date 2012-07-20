@@ -44,10 +44,12 @@ runtime() ->
      {wordsize, erlang:system_info(wordsize)},
      {wall_clock, trunc(WallClockMSecs / 1000)}].
 
+
 basic_info() ->
     {WallClockMSecs, _} = erlang:statistics(wall_clock),
     {erlang:node(),
      [{version, version()},
+      {supported_compat_version, cluster_compat_mode:supported_compat_version()},
       {system_arch, system_arch()},
       {wall_clock, trunc(WallClockMSecs / 1000)},
       {memory_data, memsup:get_memory_data()},

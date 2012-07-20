@@ -24,7 +24,7 @@
 -define(MAX_MOVES_PER_NODE, ns_config_ets_dup:unreliable_read_key(rebalance_moves_per_node, 1)).
 
 %% API
--export([start_link/4]).
+-export([start_link/4, run_code/2]).
 
 %% gen_server callbacks
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -52,6 +52,40 @@
 start_link(Bucket, OldMap, NewMap, ProgressCallback) ->
     gen_server:start_link(?MODULE, {Bucket, OldMap, NewMap, ProgressCallback},
                           []).
+
+run_code(MainMoverPid, Fun) ->
+    true = (node() =:= node(MainMoverPid)),
+    case MainMoverPid =:= self() of
+        true ->
+            Fun();
+        false ->
+            %% You might be wondering why this trickery is employed
+            %% here. The reason is this code is called by childs of
+            %% main mover, which may send them shutdown request. Thus
+            %% simple direct gen_server:call would cause deadlock. And
+            %% in fact it was easily happening in initial version of
+            %% this code.
+            DoneRef = erlang:make_ref(),
+            {_, MRef} = erlang:spawn_monitor(
+                          fun () ->
+                                  RV = gen_server:call(MainMoverPid, {run_code, Fun}, infinity),
+                                  exit({DoneRef, RV})
+                          end),
+            receive
+                {'EXIT', MainMoverPid, Reason} ->
+                    ?log_debug("Got parent exit:~p", [Reason]),
+                    erlang:demonitor(MRef, [flush]),
+                    exit(Reason);
+                {'DOWN', MRef, _, _, Reason} ->
+                    case Reason of
+                        {DoneRef, RV} ->
+                            RV;
+                        _ ->
+                            ?log_debug("Worker process crashed: ~p", [Reason]),
+                            error({run_code_worker_crashed, Reason})
+                    end
+            end
+    end.
 
 %%
 %% gen_server callbacks
@@ -90,6 +124,13 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
                                             end),
     erlang:start_timer(30000, self(), log_tap_stats),
 
+    AllNodesSet0 =
+        lists:foldl(fun (Chain, Acc) ->
+                            sets:union(Acc, sets:from_list(Chain))
+                    end, sets:new(), OldMap ++ NewMap),
+    AllNodesSet = sets:del_element(undefined, AllNodesSet0),
+    ok = janitor_agent:prepare_nodes_for_rebalance(Bucket, sets:to_list(AllNodesSet), self()),
+
     {ok, #state{bucket=Bucket,
                 disco_events_subscription=Subscription,
                 initial_counts=count_moves(MoveDict),
@@ -101,6 +142,8 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
                 pending_vbucket_updates=0}}.
 
 
+handle_call({run_code, Fun}, _From, State) ->
+    {reply, Fun(), State};
 handle_call(_, _From, _State) ->
     exit(not_supported).
 
@@ -116,9 +159,10 @@ handle_info({timeout, _, log_tap_stats}, State) ->
     misc:flush(log_tap_stats),
     {noreply, State};
 handle_info(spawn_initial, State) ->
-    maybe_terminate(spawn_workers(State));
-handle_info({move_done, {Node, VBucket, OldChain, [NewNode|_] = NewChain}},
+    spawn_workers(State);
+handle_info({move_done, {Node, VBucket, OldChain, NewChain}},
             #state{movers=Movers,
+                   map=Map,
                    bucket=Bucket} = State) ->
     master_activity_events:note_move_done(Bucket, VBucket),
     %% Update replication
@@ -126,22 +170,10 @@ handle_info({move_done, {Node, VBucket, OldChain, [NewNode|_] = NewChain}},
     %% Free up a mover for this node
     Movers1 = dict:update(Node, fun (N) -> N - 1 end, Movers),
 
-    Self = self(),
-    spawn_link(
-      fun () ->
-              ok = capi_set_view_manager:wait_until_added(NewNode, Bucket, VBucket),
-              Self ! {update_vbucket_map, Node, VBucket, OldChain, NewChain}
-      end),
-
-    State1 = spawn_workers(State#state{movers=Movers1}),
-    {noreply, inc_vb_updates(State1)};
-handle_info({update_vbucket_map, _Node, VBucket, OldChain, NewChain},
-            #state{map=Map, bucket=Bucket} = State) ->
     %% Pull the new chain from the target map
     %% Update the current map
     Map1 = array:set(VBucket, NewChain, Map),
     ns_bucket:set_map(Bucket, array_to_map(Map1)),
-    State1 = dec_vb_updates(State#state{map=Map1}),
     RepSyncRV = (catch begin
                            ns_config:sync_announcements(),
                            ns_config_rep:synchronize_remote()
@@ -154,17 +186,15 @@ handle_info({update_vbucket_map, _Node, VBucket, OldChain, NewChain},
     OldCopies0 = OldChain -- NewChain,
     OldCopies = [OldCopyNode || OldCopyNode <- OldCopies0,
                                 OldCopyNode =/= undefined],
-    DeleteRVs = misc:parallel_map(
-                  fun (CopyNode) ->
-                          {CopyNode, (catch ns_memcached:delete_vbucket(CopyNode, Bucket, VBucket))}
-                  end, OldCopies, infinity),
-    BadDeletes = [P || {_, RV} = P <- DeleteRVs, RV =/= ok],
-    case BadDeletes of
-        [] -> ok;
-        _ ->
+    ?rebalance_info("Moving vbucket ~p done. Will delete it on: ~p", [VBucket, OldCopies]),
+    case janitor_agent:delete_vbucket_copies(Bucket, self(), OldCopies, VBucket) of
+        ok ->
+            ok;
+        {errors, BadDeletes} ->
             ?log_error("Deleting some old copies of vbucket failed: ~p", [BadDeletes])
     end,
-    maybe_terminate(State1);
+
+    spawn_workers(State#state{movers=Movers1, map=Map1});
 handle_info({ns_node_disco_events, _, _} = Event, State) ->
     {stop, {detected_nodes_change, Event}, State};
 handle_info({'EXIT', Pid, _} = Msg, #state{disco_events_subscription=Pid}=State) ->
@@ -245,7 +275,7 @@ report_progress(#state{initial_counts=Counts, moves=Moves,
 
 %% @private
 %% @doc Spawn workers up to the per-node maximum.
--spec spawn_workers(#state{}) -> #state{}.
+-spec spawn_workers(#state{}) -> {noreply, #state{}} | {stop, normal, #state{}}.
 spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
                      max_per_node=MaxPerNode} = State) ->
     report_progress(State),
@@ -258,8 +288,6 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
                                                     MaxPerNode - NumWorkers),
                           lists:foreach(
                             fun ({V, OldChain, NewChain}) ->
-                                    update_replication_pre_move(
-                                      V, OldChain, NewChain),
                                     Pid = ns_single_vbucket_mover:spawn_mover(Node,
                                                                               Bucket,
                                                                               V,
@@ -280,75 +308,39 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
     Values = dict:fold(fun (_, V, L) -> [V|L] end, [], Movers1),
     case Values /= [] andalso lists:any(fun (V) -> V /= 0 end, Values) of
         true ->
-            State1;
+            {noreply, State1};
         false ->
-            State1#state{done=true}
+            {stop, normal, State1}
     end.
-
-maybe_terminate(#state{done=false} = State) ->
-    {noreply, State};
-maybe_terminate(#state{done=true,
-                       pending_vbucket_updates=P} = State) ->
-    case P =:= 0 of
-        true ->
-            {stop, normal, State};
-        false ->
-            {noreply, State}
-    end.
-
-%% @private
-%% @doc Perform pre-move replication fixup.
-update_replication_pre_move(VBucket, OldChain, NewChain) ->
-    %% vbucket mover will take care of new replicas, so just stop
-    %% replication for them
-    PairsToStop = [T || {S, D} = T <- pairs(OldChain),
-                        true = if S =:= undefined -> D =:= undefined;
-                                  true -> true
-                               end,
-                        S =/= undefined,
-                        D =/= undefined,
-                        lists:member(D, NewChain)],
-    %% we kind of create holes in old replication chain, but note that
-    %% if some destination replication is stopped, it means we'll soon
-    %% replicate to it in single vbucket mover, so chain is not really
-    %% broken.
-    Changes = [{kill_replica, S, D, VBucket} || {S, D} <- PairsToStop],
-    BucketName = assert_master_mover(),
-    cb_replication:apply_changes(BucketName, Changes).
-
 
 %% @private
 %% @doc Perform post-move replication fixup.
 update_replication_post_move(VBucket, OldChain, NewChain) ->
-    %% destroy remainings of old replication chain
-    K = [{kill_replica, S, D, VBucket}
-         || {S, D} <- pairs(OldChain),
-            S =/= undefined,
-            D =/= undefined,
-            not lists:member(D, NewChain)],
-    %% just start new chain of replications. Old chain is dead now
-    A = [{add_replica, S, D, VBucket}
-         || {S, D} <- pairs(NewChain),
-            true = if S =:= undefined -> D =:= undefined;
-                      true -> true
-                   end,
-            S =/= undefined,
-            D =/= undefined],
     BucketName = assert_master_mover(),
-    cb_replication:apply_changes(BucketName,K++A).
+    ChangeReplica = fun (Dst, Src) ->
+                            {Dst, replica, undefined, Src}
+                    end,
+    %% destroy remnants of old replication chain
+    AddChanges = [ChangeReplica(D, undefined)
+                  || {S, D} <- pairs(OldChain),
+                     S =/= undefined,
+                     D =/= undefined,
+                     not lists:member(D, NewChain)],
+    %% just start new chain of replications. Old chain is dead now
+    DelChanges = [ChangeReplica(D, S)
+                  || {S, D} <- pairs(NewChain),
+                     true = if S =:= undefined -> D =:= undefined;
+                               true -> true
+                            end,
+                     S =/= undefined,
+                     D =/= undefined],
+    ok = janitor_agent:bulk_set_vbucket_state(BucketName, self(), VBucket, AddChanges ++ DelChanges).
 
 assert_master_mover() ->
     true = erlang:get('i_am_master_mover'),
     BucketName = erlang:get('bucket_name'),
     true = (BucketName =/= undefined),
     BucketName.
-
-inc_vb_updates(#state{pending_vbucket_updates=P} = State) ->
-    State#state{pending_vbucket_updates=(P + 1)}.
-
-dec_vb_updates(#state{pending_vbucket_updates=P} = State) ->
-    true = P > 0,
-    State#state{pending_vbucket_updates=(P - 1)}.
 
 register_child_process(Pid) ->
     List = erlang:get(child_processes),
