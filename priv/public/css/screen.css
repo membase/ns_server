@@ -1125,21 +1125,6 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
   padding: .4em 0 0; resize: none; width: 100%;
 }
 .viewcode .code textarea:focus { background: #e9f4ff; }
-
-.f_wrap {margin-top:-0.5em;font-size:16px;vertical-align:middle;width:50px;position:absolute;left:7.5em;top:0;}
-.filter_cont .filter {float:left;margin:14px 7px 0 0;color:#616062;font-size:18px;}
-.filter_cont .exp_filter {float:left;width:57px;height:44px; margin:0 1px 0 0;background:url(../images/exp_filter.png) 0 -58px}
-.filter_cont a.selected {background: url("../images/exp_filter2.png") repeat scroll -8px -5px transparent;-moz-border-radius:40px 40px 0 0;-webkit-border-radius:40px 40px 0 0;border-radius: 40px 40px 0 0;-moz-box-shadow: 0 0 10px #777;-webkit-box-shadow: 0 0 10px #777;box-shadow: 0 0 10px #777;height: 39px;margin: 5px 8px;width: 41px;}
-.f_popup {position:absolute;display:none;z-index:1;top:43px;left:9px;width:437px;padding: 24px 0 18px;background:white;-moz-box-shadow: 0 0 10px #777;-webkit-box-shadow: 0 0 10px #777;box-shadow:0 0 10px #777;-moz-border-radius:0 10px 10px 10px;-webkit-border-radius:0 10px 10px 10px;border-radius:0 10px 10px 10px}
-.f_popup .f_cont {position:relative;overflow:hidden;margin: 0 0 0;}
-.f_popup .f_cont .wrap {float:left;width:174px;margin:2px 6px 0 17px}
-.f_popup .f_cont .ic_plus {float:left;width:32px;height:31px;margin: 3px 0 0 8px;background:url(../images/ic_plus.png) no-repeat}
-.f_popup .f_cont .key {float:left;clear:left;width:380px;margin:12px 0 0 23px;padding:0;border:none;border-spacing:0;}
-.f_popup .f_cont .key td {height:48px;vertical-align:top;color:#000}
-.f_popup .f_cont .key td:first-child {width:25px;}
-.f_popup .f_cont .key .last {height:28px}
-.f_popup .f_cont .key td label {float:left;width:160px;margin:7px 0 0 5px;font-size:18px }
-.f_popup .f_cont .key td input[type="text"] {width:166px;height:23px;padding:6px 0 6px 14px;color:#000;font-size:18px;background:url(../images/bg_key_inp_text.png) repeat-x;border:1px solid #b3b3b3}
 .visib {display:block}
 
 /*select*/
@@ -1166,10 +1151,6 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 .ui-autocomplete-input,
 .ui-button-icon-only,
 .selectBox-dropdown {font-size:15px!important;}
-/*select*/
-.f_wrap .selectBox-dropdown {width:130px}
-.f_wrap .selectBox-dropdown-menu {width:100px}
-.f_wrap .selectBox-dropdown .selectBox-arrow{font-size: 1.54em !important;}
 
 ul.tabs.dev-subset-switcher {padding-top:3px;padding-bottom:3px;padding-left:12px;}
 
@@ -1228,6 +1209,7 @@ input[type=number].size {width:4em;}
 .filter_container .selectBox-inline ul li a {padding:0 5px;}
 .filter_container .key label {width:160px;font-size:18px;color:#000;}
 .filter_container .key input[type="text"] {width:166px;color:#000;font-size:14px;background:url(../images/bg_key_inp_text.png) repeat-x;border:1px solid #b3b3b3}
+.filter_container .btn_wrap {overflow:hidden;margin:5px 14px 0 0;}
 
 #documents_list .filter_container {margin: -8px -5px -2px -16px;}
 #documents_list .filter_container h2 {font-size:16px;}

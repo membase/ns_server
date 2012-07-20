@@ -96,6 +96,7 @@ Filter.prototype = {
 
     self.filtersCont = $('.filters_container', self.container);
     self.filtersBtn = $('.filters_btn', self.container);
+    self.filtersReset = $('.btn_wrap [type="reset"]', self.container);
     self.filtersUrl = $('.filters_url', self.container);
     self.filters = $('.key input, .key select', self.filtersCont);
     self.form = $('form', self.filtersCont);
@@ -112,6 +113,11 @@ Filter.prototype = {
 
     self.filters.change(function () {
       self.inputs2filterParams();
+    });
+
+    self.filtersReset.click(function (e) {
+      e.preventDefault();
+      self.clearForm();
     });
 
     self.filtersBtn.click(function () {
@@ -183,12 +189,21 @@ Filter.prototype = {
       body(name, type, val, el);
     });
   },
+  clearForm: function () {
+    this.iterateInputs(function (name, type, val, el) {
+      if (type == 'bool') {
+        el.prop('checked', false);
+      } else {
+        el.val('');
+      }
+      el.change();
+    });
+  },
   fillInputs: function (params) {
     this.iterateInputs(function (name, type, val, el) {
       if (params[name] === undefined) {
         return;
       }
-      var row = el.parent();
       if (type == 'bool') {
         el.prop('checked', !(params[name] === 'false' || params[name] === false));
       } else {
