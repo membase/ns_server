@@ -60,20 +60,73 @@
                                                    "logs nodes_wanted and actual nodes() changes")
                                     (event-handler 'ns_node_disco_conf_events :to 'ns_config_events
                                                    "passes config changes to ns_config_rep for replication")
+                                    (worker 'ns_config_rep_merger
+                                            "worker process that does actual config merging and updates config via
+                                            ns_config:cas_config/2. See ns_config_rep.erl")
                                     (gen-server 'ns_config_rep
                                                 "replicates entire & parts of config to/from other nodes"
                                                 (event-handler 'ns_node_disco_rep_events :to 'ns_node_disco_events
                                                                "requests complete config replication to/from
                                                                newly discovered nodes")
                                                 (worker 'ns_config_rep_merger
-                                                        "worker process that does actual config merging and
-                                                        updates config via ns_config:cas_config/2")))
+                                                        )))
+                        (work_queue 'vbucket_map_mirror :since "2.0"
+                                    "maintains ets cache of vbucket map for faster view merger params generation")
                         (gen-event 'ns_tick_event
                                    "local tick event. Singleton ns_tick on master node will fire tick events
                                    on all nodes")
                         (gen-event 'mb_master_events
                                    "used (incorrecly!) for waking up of pool details sleepers when master node
                                    is changed")
+                        (gen-event 'buckets_events
+                                   "fired when bucket is started/warmed-up/shutdown. Also fired by ns_doctor
+                                   when remote bucket startup/warmup/shutdown discovered")
+                        (supervisor 'ns_mail_sup :mode :one_for_all
+                                    "sends out mails for 'alertful' ns_log entries"
+                                    (gen-server 'ns_mail)
+                                    (event-handler 'ns_mail_log :to 'ns_log_events))
+                        (gen-event 'ns_stats_event
+                                   "various stats collectors (for all buckets) fire newly gathered stats
+                                   samples via this guy") ; NOTE: 1.8.1 spawns this a bit later
+                        (gen-server 'ns_heart
+                                    "gathers local stats & other info and broadcasts that to all node's ns_doctor")
+                        (gen-server 'ns_doctor
+                                    "keeps track of latest heartbeats from other nodes")
+                        (supervisor 'menelaus_sup :mode :one_for_one
+                                    (worker 'menelaus_web)
+                                    (gen-server 'menelaus_web_alerts_srv)
+                                    (event-handler 'menelaus_event
+                                                   :to ns_config_events
+                                                   :to ns_node_disco_events
+                                                   :to mb_master_events))
+                        (supervisor 'mc_sup :mode :rest_for_one :since "2.0"
+                                    "remains of mccouch"
+                                    (gen-event 'mc_couch_events
+                                               "used to signal (synchronously!) vbucket state changes")
+                                    (supervisor 'mc_conn_sup
+                                                "individual mccouch connections live here. See mc_connection")
+                                    (worker 'mc_tcp_listener
+                                            "accept loop for mccouch connections"))
+                        (supervisor 'ns_port_sup :mode :one_for_one
+                                    (event-handler 'ns_port_init :to 'ns_config_events)
+                                    ;; dynamic, but typically memcached & moxi ports. Those are in fact
+                                    ;; started through supervisor_cushion
+                                    (gen_server 'ns_port_server "memcached")
+                                    (gen_server 'ns_port_server "moxi"))
+                        (event-handler 'ns_port_memcached_killer :to ns_config_events
+                                       "implements memcached die! signalling after failover")
+                        (gen-server 'ns_bucket_worker
+                                    "'work' of starting and shutting down ns_bucket_sup childs is done by this
+                                    guy. I.e. because supervisor:xxx API is synchronous")
+                        (supervisor 'xdc_rep_sup :mode :one_for_one
+                                    "owns individual replications apparently")
+                        ;; (copied this from ns_server_sup.erl)
+                        ;; per-bucket supervisor needs xdc_rep_manager. In fact any couch
+                        ;; replication requires xdc_rep_manager to be started, because it
+                        ;; relies on some public ETS tables.
+                        (gen-server 'xdc_rep_manager
+                                    "monitors _replicator db for replications. Babysits couch replications. Interacts
+                                    with couch replicator in really subtle ways")
                         (gen-fsm 'mb_master
                                  ;; NOTE: the following is just spawn_link relation
                                  (supervisor 'mb_master_sup :mode :one_for_one
@@ -97,46 +150,6 @@
                         (gen-server 'master_activity_events_keeper
                                     "local 'archive' of recent master events. Keeps 8k of recent events. Only
                                     relevant on master node.")
-                        (gen-event 'buckets_events
-                                   "fired when bucket is started/warmed-up/shutdown. Also fired by ns_doctor
-                                   when remote bucket startup/warmup/shutdown discovered")
-                        (supervisor 'ns_mail_sup :mode :one_for_all
-                                    "sends out mails for 'alertful' ns_log entries"
-                                    (gen-server 'ns_mail)
-                                    (event-handler 'ns_mail_log :to 'ns_log_events))
-                        (gen-event 'ns_stats_event
-                                   "various stats collectors (for all buckets) fire newly gathered stats
-                                   samples via this guy") ; NOTE: 1.8.1 spawns this a bit later
-                        (gen-server 'ns_heart
-                                    "gathers local stats & other info and broadcasts that to all node's ns_doctor")
-                        (gen-server 'ns_doctor
-                                    "keeps track of latest heartbeats from other nodes")
-                        (supervisor 'menelaus_sup :mode :one_for_one
-                                    (worker 'menelaus_web)
-                                    (gen-server 'menelaus_web_alerts_srv)
-                                    (event-handler 'menelaus_event
-                                                   :to ns_config_events
-                                                   :to ns_node_disco_events
-                                                   :to mb_master_events))
-                        (supervisor 'ns_port_sup :mode :one_for_one
-                                    (event-handler 'ns_port_init :to 'ns_config_events)
-                                    ;; dynamic, but typically memcached & moxi ports. Those are in fact
-                                    ;; started through supervisor_cushion
-                                    (gen_server 'ns_port_server "memcached")
-                                    (gen_server 'ns_port_server "moxi"))
-                        (event-handler 'ns_port_memcached_killer :to ns_config_events)
-                        (gen-server 'ns_bucket_worker
-                                    "'work' of starting and shutting down ns_bucket_sup childs is done by this
-                                    guy. I.e. because supervisor:xxx API is synchronous")
-                        (supervisor 'xdc_rep_sup :mode :one_for_one
-                                    "owns individual replications apparently")
-                        ;; (copied this from ns_server_sup.erl)
-                        ;; per-bucket supervisor needs xdc_rep_manager. In fact any couch
-                        ;; replication requires xdc_rep_manager to be started, because it
-                        ;; relies on some public ETS tables.
-                        (gen-server 'xdc_rep_manager
-                                    "monitors _replicator db for replications. Babysits couch replications. Interacts
-                                    with couch replicator in really subtle ways")
                         (supervisor 'ns_bucket_sup :mode :one_for_one
                                     (pubsub-link 'buckets_observing_subscription :to 'ns_config_events
                                                  "observes config for buckets that should be started/stopped
@@ -146,7 +159,13 @@
                                             (supervisor 'single_bucket_sup :mode :rest_for_one
                                                         ;; note: 1.8.1 doesn't have ns_memcached_sup but instead
                                                         ;; everything below is direct child of single_bucket_sup
+                                                        (cb_generic_replication_srv '(capi_ddoc_replication_srv "default") :since "2.0"
+                                                                                    "replicates ddocs across cluster")
                                                         (supervisor '(ns_memcached_sup "default") :mode :rest_for_one
+                                                                    (gen-server '(capi_set_view_manager "default") :since "2.0"
+                                                                                "changes state of set indexes so that
+                                                                                indexing covers active and only active
+                                                                                vbuckets.")
                                                                     (gen-server '(ns_memcached "default") :name 'ns_memcached-default
                                                                                 "our communication channel with
                                                                                  bucket. Creates bucket on
@@ -158,9 +177,15 @@
                                                                                  vbucket states")
                                                                     (supervisor '(ns_vbm_sup "default") :name 'ns_vbm_sup-default
                                                                                 "hosts replication ebucketmigrators")
-                                                                    (supervisor '(ns_vbm_new_sup "default") :name 'ns_vbm_sup-default :since "1.8.2"
+                                                                    (supervisor '(ns_vbm_new_sup "default") :name 'ns_vbm_sup-default :since "2.0"
                                                                                 "hosts replication ebucketmigrators for
                                                                                 1.8.2 \"replicators on destination\"")
+                                                                    (gen-server '(janitor_agent "default") :name 'janitor_agent-default :since "2.0"
+                                                                                "applies replication and vbucket state
+                                                                                changes decided by janitor and vbuckets
+                                                                                mover")
+                                                                    (gen-server '(couch_stats_reader "default") :name 'couch_stats_reader-default :since "2.0"
+                                                                                "samples & keeps some couch stats so that stats_collector can get them quickly")
                                                                     (gen-server '(stats_collector "default")
                                                                                 "on each tick grabs memcached stats"
                                                                                 "parses/massages them a bit and sends them out to ns_stats_event"
@@ -174,16 +199,11 @@
                                                                     (event-handler '(failover_safeness_level "default") :to 'ns_stats_event
                                                                                    "estimates bucket's replication
                                                                                    up-to-date-ness 'from this node' based
-                                                                                   on stats it sees")))
-                                            (cb_generic_replication_srv '(capi_ddoc_replication_srv "default") :since "2.0"
-                                                                        "replicates ddocs across cluster")
-                                            (gen-server '(capi_set_view_manager "default") :since "2.0"
-                                                        "changes state of set indexes so that indexing covers active and
-                                                         only active vbuckets.")))
+                                                                                   on stats it sees")))))
                         (gen-server 'system_stats_collector)
                         (gen-server '(stats_archiver "@system"))
                         (gen-server '(stats_reader "@system"))
-                        (gen-server 'ns_moxi_sup_work_queue)
+                        (work_queue 'ns_moxi_sup_work_queue)
                         (supervisor 'ns_moxi_sup :mode :one_for_one
                                     "hosts per-port moxis")
                         (gen-server 'compaction_daemon :since "2.0"
