@@ -576,9 +576,15 @@ is_rebalance_running() ->
     ns_config:search(rebalance_status) =:= {value, running}.
 
 consider_switching_compat_mode() ->
+    CurrentVersion = cluster_compat_mode:get_compat_version(),
+
     case cluster_compat_mode:consider_switching_compat_mode() of
         changed ->
-            ale:warn(?USER_LOGGER, "Changed cluster compat mode to ~p", [cluster_compat_mode:get_compat_version()]),
+            NewVersion = cluster_compat_mode:get_compat_version(),
+            ale:warn(?USER_LOGGER, "Changed cluster compat mode from ~p to ~p",
+                     [CurrentVersion, NewVersion]),
+
+            ok = ns_online_config_upgrader:upgrade_config(CurrentVersion, NewVersion),
             exit(normal);
         ok ->
             ok

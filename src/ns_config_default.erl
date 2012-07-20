@@ -21,9 +21,6 @@
 
 -export([default/0, mergable/1, upgrade_config/1]).
 
-%% exported for /diag/eval invocation for hot patching
--export([maybe_add_vbucket_map_history/1]).
-
 % Allow all keys to be mergable.
 
 mergable(ListOfKVLists) ->
@@ -246,33 +243,6 @@ prefix_replace(Prefix, ReplacementPrefix, T) when is_tuple(T) ->
     list_to_tuple(prefix_replace(Prefix, ReplacementPrefix, tuple_to_list(T)));
 prefix_replace(_Prefix, _ReplacementPrefix, X) -> X.
 
-maybe_add_vbucket_map_history(Config) ->
-    maybe_add_vbucket_map_history(Config, ?VBMAP_HISTORY_SIZE).
-
-maybe_add_vbucket_map_history(Config, HistorySize) ->
-    case ns_config:search(Config, vbucket_map_history) of
-        {value, _} -> [];
-        false ->
-            Buckets = ns_bucket:get_buckets(Config),
-            History = lists:flatmap(
-                        fun ({_Bucket, BucketConfig}) ->
-                                case proplists:get_value(map, BucketConfig, []) of
-                                    [] -> [];
-                                    Map ->
-                                        case ns_rebalancer:unbalanced(Map, proplists:get_value(servers, BucketConfig, [])) of
-                                            true ->
-                                                [];
-                                            false ->
-                                                MapOptions = [{max_slaves, proplists:get_value(max_slaves, BucketConfig, 10)}],
-                                                [{Map, MapOptions}]
-                                        end
-                                end
-                        end, Buckets),
-            UniqueHistory = lists:usort(History),
-            FinalHistory = lists:sublist(UniqueHistory, HistorySize),
-            [{set, vbucket_map_history, FinalHistory}]
-    end.
-
 %% returns list of changes to config to upgrade it to current version.
 %% This will be invoked repeatedly by ns_config until list is empty.
 %%
@@ -435,8 +405,7 @@ upgrade_config_from_1_8_0_to_1_8_1(Config) ->
     do_upgrade_config_from_1_8_0_to_1_8_1(Config, DefaultConfig).
 
 do_upgrade_config_from_1_8_0_to_1_8_1(Config, DefaultConfig) ->
-    maybe_add_vbucket_map_history(Config) ++
-        update_binaries_cfg_pathes_and_add_dedicated_port(Config, DefaultConfig).
+    update_binaries_cfg_pathes_and_add_dedicated_port(Config, DefaultConfig).
 
 update_binaries_cfg_pathes_and_add_dedicated_port(Config, DefaultConfig) ->
     FullReplacements =
@@ -640,81 +609,6 @@ upgrade_1_7_2_to_1_8_0_test() ->
                    [{moxi, "/opt/couchbase/bin/moxi something"},
                     {memcached, "/opt/couchbase/bin/memcached something"}]}],
                  lists:sort(Res2)),
-    ok.
-
-add_vbucket_map_history_test() ->
-    %% existing history is not overwritten
-    OldCfg1 = [[{vbucket_map_history, [some_history]}]],
-    ?assertEqual([], maybe_add_vbucket_map_history(OldCfg1)),
-
-    %% empty history for no buckets
-    OldCfg2 = [[{buckets,
-                 [{configs, []}]}]],
-    ?assertEqual([{set, vbucket_map_history, []}],
-                 maybe_add_vbucket_map_history(OldCfg2)),
-
-    %% empty history if there are some buckets but no maps
-    OldCfg3 = [[{buckets,
-                 [{configs,
-                   [{"default", []}]}]}]],
-    ?assertEqual([{set, vbucket_map_history, []}],
-                 maybe_add_vbucket_map_history(OldCfg3)),
-
-    %% empty history if there's a map but it's unbalanced
-    OldCfg4 = [[{buckets,
-                 [{configs,
-                   [{"default",
-                     [{map, [[n1, n2],
-                             [n1, undefined],
-                             [n1, undefined],
-                             [n1, undefined]]},
-                      {servers, [n1, n2, n3]}]}]}]}]],
-    ?assertEqual([{set, vbucket_map_history, []}],
-                 maybe_add_vbucket_map_history(OldCfg4)),
-
-    %% finally generate some history
-    Map1 = [[n1, n2],
-            [n1, n2],
-            [n2, n1],
-            [n2, n1]],
-    BucketConfig1 =
-        [{num_replicas, 1},
-         {num_vbuckets, 4},
-         {servers, [n1, n2]},
-         {max_slaves, 10},
-         {map, Map1}],
-    OldCfg5 = [[{buckets,
-                 [{configs,
-                   [{"default", BucketConfig1}]}]}]],
-    ?assertEqual([{set, vbucket_map_history, [{Map1, [{max_slaves, 10}]}]}],
-                 maybe_add_vbucket_map_history(OldCfg5)),
-
-    %% don't return duplicated items in map history
-    OldCfg6 = [[{buckets,
-                 [{configs,
-                   [{"default", BucketConfig1},
-                    {"test", BucketConfig1}]}]}]],
-    ?assertEqual([{set, vbucket_map_history, [{Map1, [{max_slaves, 10}]}]}],
-                 maybe_add_vbucket_map_history(OldCfg6)),
-
-    %% don't return more than history size items
-    Map2 = [[n2, n1],
-            [n2, n1],
-            [n1, n2],
-            [n1, n2]],
-    BucketConfig2 =
-        [{num_replicas, 1},
-         {num_vbuckets, 4},
-         {servers, [n1, n2]},
-         {max_slaves, 10},
-         {map, Map2}],
-    OldCfg7 = [[{buckets,
-                 [{configs,
-                   [{"default", BucketConfig1},
-                    {"test", BucketConfig2}]}]}]],
-    ?assertMatch([{set, vbucket_map_history, [{_, [{max_slaves, 10}]}]}],
-                 maybe_add_vbucket_map_history(OldCfg7, 1)),
-
     ok.
 
 update_binaries_cfg_pathes_and_add_dedicated_port_test() ->

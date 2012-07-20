@@ -66,7 +66,8 @@
          clear/0, clear/1,
          proplist_get_value/3,
          merge_kv_pairs/2,
-         sync_announcements/0, get_kv_list/0, get_kv_list/1]).
+         sync_announcements/0, get_kv_list/0, get_kv_list/1,
+         upgrade_config_explicitly/1]).
 
 -export([save_config_sync/1]).
 
@@ -409,6 +410,9 @@ search_raw(#config{dynamic = DL, static = SL}, Key) ->
         false          -> search_raw(SL, Key)
     end.
 
+upgrade_config_explicitly(Upgrader) ->
+    gen_server:call(?MODULE, {upgrade_config_explicitly, Upgrader}).
+
 %% Implementation
 
 proplist_get_value(_Key, [], DefaultTuple) -> DefaultTuple;
@@ -455,6 +459,9 @@ upgrade_config(Config) ->
     Upgrader = fun (Cfg) ->
                        (Cfg#config.policy_mod):upgrade_config(Cfg)
                end,
+    upgrade_config(Config, Upgrader).
+
+upgrade_config(Config, Upgrader) ->
     do_upgrade_config(Config, Upgrader(Config), Upgrader).
 
 do_upgrade_config(Config, [], _Upgrader) -> Config;
@@ -636,7 +643,10 @@ handle_call({cas_config, NewKVList, OldKVList}, _From, State) ->
             {reply, true, initiate_save_config(NewState)};
         _ ->
             {reply, false, State}
-    end.
+    end;
+
+handle_call({upgrade_config_explicitly, Upgrader}, _From, State) ->
+    {reply, ok, upgrade_config(State, Upgrader)}.
 
 
 %%--------------------------------------------------------------------
