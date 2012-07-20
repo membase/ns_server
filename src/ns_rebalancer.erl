@@ -409,9 +409,6 @@ buckets_replication_statuses() ->
     Buckets = ns_bucket:get_bucket_names(),
     failover_safeness_level:buckets_replication_statuses_compat(Buckets).
 
-is_undef_exit(M, F, A, {undef, [{M, F, A, []} | _]}) -> true; % R15
-is_undef_exit(M, F, A, {undef, [{M, F, A} | _]}) -> true; % R14
-is_undef_exit(_M, _F, _A, _Reason) -> false.
 
 multicall_ignoring_undefined(Nodes, M, F, A) ->
     {Results, DownNodes} = rpc:multicall(Nodes, M, F, A),
@@ -424,7 +421,7 @@ multicall_ignoring_undefined(Nodes, M, F, A) ->
                   case Reason of
                       {'EXIT', ExitReason} ->
                           %% this may be just an old node; if so, ignore it
-                          not is_undef_exit(M, F, A, ExitReason);
+                          not misc:is_undef_exit(M, F, A, ExitReason);
                       _ ->
                           true
                   end

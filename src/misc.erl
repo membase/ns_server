@@ -1353,3 +1353,8 @@ executing_on_new_process(Body) ->
                     erlang:error({unexpected_reason, ChildReason})
             end
     end.
+
+%% returns if Reason is EXIT caused by undefined function/module
+is_undef_exit(M, F, A, {undef, [{M, F, A, []} | _]}) -> true; % R15
+is_undef_exit(M, F, A, {undef, [{M, F, A} | _]}) -> true; % R14
+is_undef_exit(_M, _F, _A, _Reason) -> false.
