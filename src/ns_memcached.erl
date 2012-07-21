@@ -106,7 +106,6 @@
          sync/4, add/4, get/3, delete/3, delete/4,
          get_meta/3,
          set_with_meta/5, set_with_meta/6, set_with_meta/8,
-         add_with_meta/5, add_with_meta/7,
          delete_with_meta/5, delete_with_meta/4,
          connect_and_send_isasl_refresh/0,
          create_new_checkpoint/2,
@@ -279,7 +278,6 @@ assign_queue(flush) -> #state.very_heavy_calls_queue;
 assign_queue({set_vbucket, _, _}) -> #state.heavy_calls_queue;
 assign_queue({deregister_tap_client, _}) -> #state.heavy_calls_queue;
 assign_queue({add, _Key, _VBucket, _Value}) -> #state.heavy_calls_queue;
-assign_queue({add_with_meta, _Key, _VBucket, _Value, _Meta, _Flags, _Expiration}) -> #state.heavy_calls_queue;
 assign_queue({get, _Key, _VBucket}) -> #state.heavy_calls_queue;
 assign_queue({get_meta, _Key, _VBucket}) -> #state.heavy_calls_queue;
 assign_queue({delete, _Key, _VBucket, _CAS}) -> #state.heavy_calls_queue;
@@ -445,10 +443,10 @@ do_handle_call({set, Key, VBucket, Val}, _From, State) ->
                                   #mc_entry{key = Key, data = Val}}),
     {reply, Reply, State};
 
-do_handle_call({set_with_meta, Key, VBucket, Value, Meta, CAS, Flags, Expiration},
+do_handle_call({set_with_meta, Key, VBucket, Value, Meta, CAS},
             _From, State) ->
     Reply = mc_client_binary:set_with_meta(State#state.sock, Key, VBucket,
-                                           Value, Meta, CAS, Flags, Expiration),
+                                           Value, Meta, CAS),
     {reply, Reply, State};
 
 do_handle_call({create_new_checkpoint, VBucket},
@@ -461,12 +459,6 @@ do_handle_call({add, Key, VBucket, Val}, _From, State) ->
     Reply = mc_client_binary:cmd(?ADD, State#state.sock, undefined, undefined,
                                  {#mc_header{vbucket = VBucket},
                                   #mc_entry{key = Key, data = Val}}),
-    {reply, Reply, State};
-
-do_handle_call({add_with_meta, Key, VBucket, Value, Meta, Flags, Expiration},
-            _From, State) ->
-    Reply = mc_client_binary:add_with_meta(State#state.sock, Key, VBucket,
-                                           Value, Meta, Flags, Expiration),
     {reply, Reply, State};
 
 do_handle_call({get, Key, VBucket}, _From, State) ->
@@ -753,19 +745,6 @@ add(Bucket, Key, VBucket, Value) ->
     do_call({server(Bucket), node()},
             {add, Key, VBucket, Value}, ?TIMEOUT_HEAVY).
 
-
--spec add_with_meta(bucket_name(), binary(),
-                    integer(), binary(), any(), integer(), integer()) ->
-    {ok, #mc_header{}, #mc_entry{}} | mc_error() | {error, invalid_meta}.
-add_with_meta(Bucket, Key, VBucket, Value, Meta, Flags, Expiration) ->
-    do_call({server(Bucket), node()},
-            {add_with_meta,
-             Key, VBucket, Value, Meta, Flags, Expiration}, ?TIMEOUT_HEAVY).
-
-add_with_meta(Bucket, Key, VBucket, Value, Meta) ->
-    add_with_meta(Bucket, Key, VBucket, Value, Meta, 0, 0).
-
-
 %% @doc send an add command to memcached instance
 -spec get(bucket_name(), binary(), integer()) ->
     {ok, #mc_header{}, #mc_entry{}, any()}.
@@ -815,20 +794,13 @@ set(Bucket, Key, VBucket, Value) ->
 
 
 -spec set_with_meta(bucket_name(), binary(), integer(), binary(), term(),
-                    integer(), integer(), integer()) ->
+                    integer()) ->
     {ok, #mc_header{}, #mc_entry{}} | mc_error() | {error, invalid_meta}.
-set_with_meta(Bucket, Key, VBucket, Value, Meta, CAS, Flags, Expiration) ->
+set_with_meta(Bucket, Key, VBucket, Value, Meta, CAS) ->
     do_call({server(Bucket), node()},
             {set_with_meta,
-             Key, VBucket, Value, Meta, CAS, Flags, Expiration},
+             Key, VBucket, Value, Meta, CAS},
             ?TIMEOUT_HEAVY).
-
-set_with_meta(Bucket, Key, VBucket, Value, Meta) ->
-    set_with_meta(Bucket, Key, VBucket, Value, Meta, 0, 0, 0).
-
-set_with_meta(Bucket, Key, VBucket, Value, Meta, CAS) ->
-    set_with_meta(Bucket, Key, VBucket, Value, Meta, CAS, 0, 0).
-
 
 -spec create_new_checkpoint(any(), any()) ->
     {ok, Checkpoint::integer()} | mc_error().

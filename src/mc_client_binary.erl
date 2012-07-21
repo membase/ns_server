@@ -47,8 +47,7 @@
          deregister_tap_client/2,
          sync/4,
          get_meta/3,
-         set_with_meta/8,
-         add_with_meta/7,
+         set_with_meta/6,
          delete_with_meta/5,
          set_engine_param/4,
          get_zero_open_checkpoint_vbuckets/2,
@@ -70,7 +69,7 @@
                      ?CMD_LAST_CLOSED_CHECKPOINT | ?CMD_ISASL_REFRESH |
                      ?CMD_GET_META | ?CMD_GETQ_META | ?CMD_CREATE_CHECKPOINT |
                      ?CMD_SET_WITH_META | ?CMD_SETQ_WITH_META |
-                     ?CMD_ADD_WITH_META | ?CMD_SETQ_WITH_META |
+                     ?CMD_SETQ_WITH_META |
                      ?CMD_DEL_WITH_META | ?CMD_DELQ_WITH_META |
                      ?RGET | ?RSET | ?RSETQ | ?RAPPEND | ?RAPPENDQ | ?RPREPEND |
                      ?RPREPENDQ | ?RDELETE | ?RDELETEQ | ?RINCR | ?RINCRQ |
@@ -401,25 +400,12 @@ decode_meta(Data) ->
 -spec set_with_meta(Sock :: port(), Key :: binary(),
                     VBucket :: integer(), Value :: binary(),
                     Meta :: any(),
-                    Cas :: integer(),
-                    Flags :: integer(),
-                    Expiration :: integer()) -> {ok, #mc_header{}, #mc_entry{}} |
+                    Cas :: integer()) -> {ok, #mc_header{}, #mc_entry{}} |
                                                 {error, invalid_meta} |
                                                 {memcached_error, atom(), binary()}.
-set_with_meta(Sock, Key, VBucket, Value, Meta, CAS, Flags, Expiration) ->
+set_with_meta(Sock, Key, VBucket, Value, Meta, CAS) ->
     meta_cmd(Sock, ?CMD_SET_WITH_META,
-             Key, VBucket, Value, Meta, CAS, Flags, Expiration).
-
--spec add_with_meta(Sock :: port(), Key :: binary(),
-                    VBucket :: integer(), Value :: binary(),
-                    Meta :: any(),
-                    Flags :: integer(),
-                    Expiration :: integer()) -> {ok, #mc_header{}, #mc_entry{}} |
-                                                {error, invalid_meta} |
-                                                mc_error().
-add_with_meta(Sock, Key, VBucket, Value, Meta, Flags, Expiration) ->
-    meta_cmd(Sock, ?CMD_ADD_WITH_META,
-             Key, VBucket, Value, Meta, 0, Flags, Expiration).
+             Key, VBucket, Value, Meta, CAS).
 
 delete_with_meta(Sock, Key, VBucket, Meta, CAS) ->
     case encode_meta(Meta) of
@@ -446,16 +432,15 @@ encode_meta({revid, {SeqNo, RevId}})
 encode_meta(_Other) ->
     {error, invalid_meta}.
 
-meta_cmd(Sock, Cmd, Key, VBucket, Value, Meta, CAS, Flags, Expiration) ->
+meta_cmd(Sock, Cmd, Key, VBucket, Value, Meta, CAS) ->
     case encode_meta(Meta) of
         {ok, MetaBin} ->
             MetaLen = size(MetaBin),
-            Ext = <<MetaLen:32/big, Flags:32/big, Expiration:32/big>>,
+            Ext = <<MetaLen:32/big, 0:32/big, 0:32/big>>,
             Data = <<Value/binary, MetaBin/binary>>,
 
             Header = #mc_header{vbucket = VBucket},
-            Entry = #mc_entry{key = Key, data = Data, ext = Ext,
-                              flag = Flags, expire = Expiration, cas = CAS},
+            Entry = #mc_entry{key = Key, data = Data, ext = Ext, cas = CAS},
 
             Response = cmd(Cmd, Sock, undefined, undefined, {Header, Entry}),
             case Response of
