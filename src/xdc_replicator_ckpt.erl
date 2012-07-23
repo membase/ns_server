@@ -222,14 +222,7 @@ commit_to_both(Source, Target) ->
             {target_error, TargetError}
     end.
 
-source_cur_seq(#rep_state{source = #httpdb{} = Db, source_seq = Seq}) ->
-    case (catch couch_api_wrap:get_db_info(Db#httpdb{retries = 3})) of
-        {ok, Info} ->
-            get_value(<<"update_seq">>, Info, Seq);
-        _ ->
-            Seq
-    end;
-source_cur_seq(#rep_state{source = Db, source_seq = Seq}) ->
+source_cur_seq(#rep_state{source = #db{} = Db, source_seq = Seq}) ->
     {ok, Info} = couch_api_wrap:get_db_info(Db),
     get_value(<<"update_seq">>, Info, Seq).
 
