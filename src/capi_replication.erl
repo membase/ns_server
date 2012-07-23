@@ -65,7 +65,15 @@ update_replicated_docs(#db{name = DbName}, Docs, Options) ->
           end,
           [], Docs),
 
-    make_return_tuple({ok, Errors}).
+    case Errors of
+        [] ->
+            ok;
+        [FirstError | _] ->
+            %% for some reason we can only return one error. Thus
+            %% we're logging everything else here
+            ?xdcr_error("could not update docs:~n~p", [Errors]),
+            {ok, FirstError}
+    end.
 
 %% helper functions
 is_missing_rev(Bucket, VBucket, Id, RemoteMeta) ->
@@ -137,18 +145,6 @@ do_update_replicated_doc_loop(Bucket, VBucket,
         _Other ->
             RV
     end.
-
-%% In case of one or more errors, just return the first one. Otherwise,
-%% return ok. Also notice that in case of error, we return {ok, Error}. This is
-%% per the Couch's update_docs() semantics.
-make_return_tuple({ok, Errors}) ->
-    case Errors of
-        [] ->
-            ok;
-        [Error | _] ->
-            {ok, Error}
-    end.
-
 
 %% ep_engine operation functions
 do_set_with_meta(Bucket, DocId, VBucket, DocValue, DocRev, CAS) ->
