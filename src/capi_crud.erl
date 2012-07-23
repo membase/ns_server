@@ -56,54 +56,24 @@ delete(BucketBin, DocId) ->
             throw(conflict)
     end.
 
-get(BucketBin, DocId, Options) ->
+get(BucketBin, DocId, _Options) ->
     Bucket = binary_to_list(BucketBin),
-    ReturnDeleted = proplists:get_value(deleted, Options, false),
     {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
-    get_loop(Bucket, DocId, ReturnDeleted, VBucket).
+    {ok, Header, Entry, _} = ns_memcached:get(Bucket, DocId, VBucket),
 
-get_loop(Bucket, DocId, ReturnDeleted, VBucket) ->
-    case get_meta(Bucket, VBucket, DocId) of
-        {error, enoent, _CAS} ->
+    case {Header#mc_header.status, Entry#mc_entry.cas} of
+        {?SUCCESS, _CAS} ->
+            Doc = mk_doc(DocId,
+                         0,
+                         0,
+                         Entry#mc_entry.data,
+                         true),
+            {ok, Doc};
+        {?KEY_ENOENT, _} ->
             {not_found, missing};
-        {ok, Rev, true, _Props} ->
-            case ReturnDeleted of
-                true ->
-                    {ok, mk_deleted_doc(DocId, Rev)};
-                false ->
-                    {not_found, deleted}
-            end;
-        {ok, Rev, false, Props} ->
-            {cas, CAS} = lists:keyfind(cas, 1, Props),
-            {ok, Header, Entry, _} = ns_memcached:get(Bucket, DocId, VBucket),
-
-            case {Header#mc_header.status, Entry#mc_entry.cas} of
-                {?SUCCESS, CAS} ->
-                    Doc = mk_doc(DocId,
-                                 Entry#mc_entry.flag,
-                                 Entry#mc_entry.expire,
-                                 Entry#mc_entry.data,
-                                 true),
-                    {ok, Doc#doc{rev = Rev}};
-                {?SUCCESS, _CAS} ->
-                    get_loop(Bucket, DocId, ReturnDeleted, VBucket);
-                {?KEY_ENOENT, _} ->
-                    get_loop(Bucket, DocId, ReturnDeleted, VBucket);
-                {?NOT_MY_VBUCKET, _} ->
-                    throw(not_my_vbucket)
-            end
+        {?NOT_MY_VBUCKET, _} ->
+            throw(not_my_vbucket)
     end.
-
-get_meta(Bucket, VBucket, DocId) ->
-    case capi_utils:get_meta(Bucket, VBucket, DocId) of
-        {error, not_my_vbucket} ->
-            throw(not_my_vbucket);
-        Other ->
-            Other
-    end.
-
-mk_deleted_doc(DocId, Rev) ->
-    #doc{id = DocId, rev = Rev, deleted = true}.
 
 %% copied from mc_couch_kv
 
