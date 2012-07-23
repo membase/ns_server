@@ -60,21 +60,6 @@ capi_bucket_url(Node, BucketName, LocalAddr, Config) ->
 capi_bucket_url(Node, BucketName, LocalAddr) ->
     capi_bucket_url(Node, BucketName, LocalAddr, ns_config:get()).
 
-get_meta(Bucket, VBucket, DocId) ->
-    case ns_memcached:get_meta(Bucket, DocId, VBucket) of
-        {ok, _Header, #mc_entry{cas=CAS, flag=Flag} = _Entry, {revid, Rev}} ->
-            case (Flag band ?GET_META_ITEM_DELETED_FLAG) of
-                ?GET_META_ITEM_DELETED_FLAG ->
-                    {ok, Rev, true, [{cas, CAS}, ep_engine]};
-                _ ->
-                    {ok, Rev, false, [{cas, CAS}, ep_engine]}
-            end;
-        {memcached_error, not_my_vbucket, _} ->
-            {error, not_my_vbucket};
-        {memcached_error, key_enoent, CAS} ->
-            {error, enoent, CAS}
-    end.
-
 split_dbname(DbName) ->
     DbNameStr = binary_to_list(DbName),
     Tokens = string:tokens(DbNameStr, [$/]),

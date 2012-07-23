@@ -32,29 +32,23 @@ update_doc(#db{name = Name}, #doc{id = DocId, deleted = true}, _Options) ->
 update_doc(#db{name = Name}, #doc{id = DocId, body = Body}, _Options) ->
     set(Name, DocId, Body).
 
+%% TODO: handle tmp failures here. E.g. during warmup
+handle_mutation_rv(#mc_header{status = ?SUCCESS} = _Header, _Entry) ->
+    ok;
+handle_mutation_rv(#mc_header{status = ?NOT_MY_VBUCKET} = _Header, _Entry) ->
+    throw(not_my_vbucket).
+
 set(BucketBin, DocId, Value) ->
     Bucket = binary_to_list(BucketBin),
     {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
-    case ns_memcached:set(Bucket, DocId, VBucket, Value) of
-        {ok, _, _, _} ->
-            ok;
-        {memcached_error, not_my_vbucket, _} ->
-            throw(not_my_vbucket);
-        {memcached_error, key_eexists, _} ->
-            throw(conflict)
-    end.
+    {ok, Header, Entry, _} = ns_memcached:set(Bucket, DocId, VBucket, Value),
+    handle_mutation_rv(Header, Entry).
 
 delete(BucketBin, DocId) ->
     Bucket = binary_to_list(BucketBin),
     {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
-    case ns_memcached:delete(Bucket, DocId, VBucket) of
-        {ok, _, _, _} ->
-            ok;
-        {memcached_error, not_my_vbucket, _} ->
-            throw(not_my_vbucket);
-        {memcached_error, key_eexists, _} ->
-            throw(conflict)
-    end.
+    {ok, Header, Entry, _} = ns_memcached:delete(Bucket, DocId, VBucket),
+    handle_mutation_rv(Header, Entry).
 
 get(BucketBin, DocId, _Options) ->
     Bucket = binary_to_list(BucketBin),

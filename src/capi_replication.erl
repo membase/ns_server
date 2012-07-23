@@ -77,15 +77,15 @@ update_replicated_docs(#db{name = DbName}, Docs, Options) ->
 
 %% helper functions
 is_missing_rev(Bucket, VBucket, Id, RemoteMeta) ->
-    case capi_utils:get_meta(Bucket, VBucket, Id) of
-        {error, enoent, _CAS} ->
+    case get_meta(Bucket, VBucket, Id) of
+        {memcached_error, key_enoent, _CAS} ->
             true;
-        {error, not_my_vbucket} ->
+        {memcached_error, not_my_vbucket, _} ->
             throw({bad_request, not_my_vbucket});
-        {ok, LocalMeta, _Deleted, _Props} ->
-            %% we do not have any information about deletedness of
-            %% the remote side thus we use only revisions to
-            %% determine a winner
+        {ok, LocalMeta, _Deleted, _CAS} ->
+             %% we do not have any information about deletedness of
+             %% the remote side thus we use only revisions to
+             %% determine a winner
             case max(LocalMeta, RemoteMeta) of
                 %% if equal, prefer LocalMeta since in this case, no need
                 %% to replicate the remote item, hence put LocalMeta before
@@ -102,26 +102,25 @@ do_update_replicated_doc_loop(Bucket, VBucket,
                                    body = DocValue, deleted = DocDeleted} = Doc) ->
     {DocSeqNo, DocRevId} = DocRev,
     RV =
-        case capi_utils:get_meta(Bucket, VBucket, DocId) of
-            {error, enoent, CAS} ->
+        case get_meta(Bucket, VBucket, DocId) of
+            {memcached_error, key_enoent, CAS} ->
                 update_locally(Bucket, DocId, VBucket, DocValue, DocRev, DocDeleted, CAS);
-            {error, not_my_vbucket} ->
+            {memcached_error, not_my_vbucket, _} ->
                 {error, {bad_request, not_my_vbucket}};
-            {ok, {OurSeqNo, OurRevId}, Deleted, Props} ->
-                RemoteMeta = {DocSeqNo, not(DocDeleted), DocRevId},
-                LocalMeta = {OurSeqNo, not(Deleted), OurRevId},
+            {ok, {OurSeqNo, OurRevId}, Deleted, LocalCAS} ->
+                RemoteFullMeta = {DocSeqNo, not(DocDeleted), DocRevId},
+                LocalFullMeta = {OurSeqNo, not(Deleted), OurRevId},
 
-                case max(LocalMeta, RemoteMeta) of
+                case max(LocalFullMeta, RemoteFullMeta) of
                     %% if equal, prefer LocalMeta since in this case, no need
                     %% to replicate the remote item, hence put LocalMeta before
                     %% RemoteMeta.
-                    LocalMeta ->
+                    LocalFullMeta ->
                         ok;
                     %% if remoteMeta wins, need to persist the remote item, using
                     %% the same CAS returned from the get_meta() above.
-                    RemoteMeta ->
-                        {cas, CAS} = lists:keyfind(cas, 1, Props),
-                        update_locally(Bucket, DocId, VBucket, DocValue, DocRev, DocDeleted, CAS)
+                    RemoteFullMeta ->
+                        update_locally(Bucket, DocId, VBucket, DocValue, DocRev, DocDeleted, LocalCAS)
                 end
         end,
 
@@ -144,4 +143,16 @@ update_locally(Bucket, DocId, VBucket, Value, Rev, DocDeleted, LocalCAS) ->
             {error, {bad_request, not_my_vbucket}};
         {memcached_error, einval, _} ->
             {error, {bad_request, einval}}
+    end.
+
+-include("mc_entry.hrl").
+-include("mc_constants.hrl").
+
+get_meta(Bucket, VBucket, DocId) ->
+    case ns_memcached:get_meta(Bucket, DocId, VBucket) of
+        {ok, _Header, #mc_entry{cas=CAS, flag=Flag} = _Entry, {revid, Rev}} ->
+            Deleted = ((Flag band ?GET_META_ITEM_DELETED_FLAG) =/= 0),
+            {ok, Rev, Deleted, CAS};
+        Other ->
+            Other
     end.
