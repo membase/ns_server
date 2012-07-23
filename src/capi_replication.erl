@@ -104,14 +104,7 @@ do_update_replicated_doc_loop(Bucket, VBucket,
     RV =
         case capi_utils:get_meta(Bucket, VBucket, DocId) of
             {error, enoent, CAS} ->
-                case DocDeleted of
-                    true ->
-                        do_delete_with_meta(Bucket, DocId, VBucket, DocRev,
-                                            CAS);
-                    false ->
-                        do_set_with_meta(Bucket, DocId, VBucket, DocValue,
-                                         DocRev, CAS)
-                end;
+                update_locally(Bucket, DocId, VBucket, DocValue, DocRev, DocDeleted, CAS);
             {error, not_my_vbucket} ->
                 {error, {bad_request, not_my_vbucket}};
             {ok, {OurSeqNo, OurRevId}, Deleted, Props} ->
@@ -128,14 +121,7 @@ do_update_replicated_doc_loop(Bucket, VBucket,
                     %% the same CAS returned from the get_meta() above.
                     RemoteMeta ->
                         {cas, CAS} = lists:keyfind(cas, 1, Props),
-                        case DocDeleted of
-                            true ->
-                                do_delete_with_meta(Bucket, DocId, VBucket,
-                                                    DocRev, CAS);
-                            false ->
-                                do_set_with_meta(Bucket, DocId, VBucket,
-                                                 DocValue, DocRev, CAS)
-                        end
+                        update_locally(Bucket, DocId, VBucket, DocValue, DocRev, DocDeleted, CAS)
                 end
         end,
 
@@ -146,11 +132,8 @@ do_update_replicated_doc_loop(Bucket, VBucket,
             RV
     end.
 
-%% ep_engine operation functions
-do_set_with_meta(Bucket, DocId, VBucket, DocValue, DocRev, CAS) ->
-    case ns_memcached:set_with_meta(Bucket, DocId,
-                                    VBucket, DocValue,
-                                    {revid, DocRev}, CAS) of
+update_locally(Bucket, DocId, VBucket, Value, Rev, DocDeleted, LocalCAS) ->
+    case ns_memcached:update_with_rev(Bucket, VBucket, DocId, Value, Rev, DocDeleted, LocalCAS) of
         {ok, _, _} ->
             ok;
         {memcached_error, key_enoent, _} ->
@@ -162,17 +145,3 @@ do_set_with_meta(Bucket, DocId, VBucket, DocValue, DocRev, CAS) ->
         {memcached_error, einval, _} ->
             {error, {bad_request, einval}}
     end.
-
-do_delete_with_meta(Bucket, DocId, VBucket, DocRev, CAS) ->
-    case ns_memcached:delete_with_meta(Bucket, DocId, VBucket, {revid, DocRev},
-                                       CAS) of
-        {ok, _, _} ->
-            ok;
-        {memcached_error, key_enoent, _} ->
-            retry;
-        {memcached_error, not_my_vbucket, _} ->
-            {error, {bad_request, not_my_vbucket}};
-        {memcached_error, einval, _} ->
-            {error, {bad_request, einval}}
-    end.
-

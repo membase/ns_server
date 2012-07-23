@@ -105,7 +105,8 @@
          ready_nodes/4,
          sync/4, add/4, get/3, delete/3, delete/4,
          get_meta/3,
-         set_with_meta/5, set_with_meta/6, set_with_meta/8,
+         set_with_meta/6,
+         update_with_rev/7,
          delete_with_meta/5, delete_with_meta/4,
          connect_and_send_isasl_refresh/0,
          create_new_checkpoint/2,
@@ -283,7 +284,8 @@ assign_queue({get_meta, _Key, _VBucket}) -> #state.heavy_calls_queue;
 assign_queue({delete, _Key, _VBucket, _CAS}) -> #state.heavy_calls_queue;
 assign_queue({delete_with_meta, _Key, _VBucket, _Meta, _CAS}) -> #state.heavy_calls_queue;
 assign_queue({set, _Key, _VBucket, _Value}) -> #state.heavy_calls_queue;
-assign_queue({set_with_meta, _Key, _VBucket, _Value, _Meta, _CAS, _Flags, _Expiration}) -> #state.heavy_calls_queue;
+assign_queue({set_with_meta, _Key, _VBucket, _Value, _Meta, _LocalCAS}) -> #state.heavy_calls_queue;
+assign_queue({update_with_rev, _Key, _VBucket, _Value, _Meta, _Deleted, _LocalCAS}) -> #state.heavy_calls_queue;
 assign_queue({sync, _Key, _VBucket, _CAS}) -> #state.very_heavy_calls_queue;
 assign_queue(_) -> #state.fast_calls_queue.
 
@@ -447,6 +449,17 @@ do_handle_call({set_with_meta, Key, VBucket, Value, Meta, CAS},
             _From, State) ->
     Reply = mc_client_binary:set_with_meta(State#state.sock, Key, VBucket,
                                            Value, Meta, CAS),
+    {reply, Reply, State};
+do_handle_call({update_with_rev, Key, VBucket, Value, Rev, Deleting, LocalCAS},
+               _From, State) ->
+    Reply = case Deleting of
+                true ->
+                    mc_client_binary:delete_with_meta(State#state.sock, Key, VBucket,
+                                                      {revid, Rev}, LocalCAS);
+                false ->
+                    mc_client_binary:set_with_meta(State#state.sock, Key, VBucket,
+                                                   Value, {revid, Rev}, LocalCAS)
+            end,
     {reply, Reply, State};
 
 do_handle_call({create_new_checkpoint, VBucket},
@@ -797,9 +810,16 @@ set(Bucket, Key, VBucket, Value) ->
                     integer()) ->
     {ok, #mc_header{}, #mc_entry{}} | mc_error() | {error, invalid_meta}.
 set_with_meta(Bucket, Key, VBucket, Value, Meta, CAS) ->
-    do_call({server(Bucket), node()},
+    do_call(server(Bucket),
             {set_with_meta,
              Key, VBucket, Value, Meta, CAS},
+            ?TIMEOUT_HEAVY).
+
+update_with_rev(Bucket, VBucket, Id, Value, RevId, Deleted, LocalCAS) ->
+    do_call(server(Bucket),
+            {update_with_rev, Bucket, VBucket,
+             Id, Value, RevId, Deleted,
+             LocalCAS},
             ?TIMEOUT_HEAVY).
 
 -spec create_new_checkpoint(any(), any()) ->
