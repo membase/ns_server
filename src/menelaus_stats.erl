@@ -1030,7 +1030,7 @@ memcached_stats_description() ->
                [{struct,[{name,<<"ops">>},
                          {title,<<"ops per sec.">>},
                          {default,true},
-                         {desc,<<"Total operations per second serviced by this bucket (measured from cmd_get + cmd_set + incr_misses + incr_hits + decr_misses + decr_hits + delete_misses + delete_hits)">>}]},
+                         {desc,<<"Total operations per second serviced by this bucket (measured from cmd_get + cmd_set + incr_misses + incr_hits + decr_misses + decr_hits + delete_misses + delete_hits + get_meta + set_meta + delete_meta)">>}]},
                 {struct,[{name,<<"hit_ratio">>},
                          {title,<<"hit ratio">>},
                          {maxY,100},
