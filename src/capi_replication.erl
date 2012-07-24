@@ -107,10 +107,9 @@ do_update_replicated_doc_loop(Bucket, VBucket,
                 update_locally(Bucket, DocId, VBucket, DocValue, DocRev, DocDeleted, CAS);
             {memcached_error, not_my_vbucket, _} ->
                 {error, {bad_request, not_my_vbucket}};
-            {ok, {OurSeqNo, OurRevId}, Deleted, LocalCAS} ->
-                RemoteFullMeta = {DocSeqNo, not(DocDeleted), DocRevId},
-                LocalFullMeta = {OurSeqNo, not(Deleted), OurRevId},
-
+            {ok, {OurSeqNo, OurRevId}, _Deleted, LocalCAS} ->
+                RemoteFullMeta = {DocSeqNo, DocRevId},
+                LocalFullMeta = {OurSeqNo, OurRevId},
                 case max(LocalFullMeta, RemoteFullMeta) of
                     %% if equal, prefer LocalMeta since in this case, no need
                     %% to replicate the remote item, hence put LocalMeta before
