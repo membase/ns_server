@@ -86,12 +86,13 @@
 -define(RDECR,       16#3b).
 -define(RDECRQ,      16#3c).
 
--define(TAP_CONNECT,  16#40).
--define(TAP_MUTATION, 16#41).
--define(TAP_DELETE,   16#42).
--define(TAP_FLUSH,    16#43).
--define(TAP_OPAQUE,   16#44).
--define(TAP_VBUCKET,  16#45).
+-define(TAP_CONNECT,          16#40).
+-define(TAP_MUTATION,         16#41).
+-define(TAP_DELETE,           16#42).
+-define(TAP_FLUSH,            16#43).
+-define(TAP_OPAQUE,           16#44).
+-define(TAP_VBUCKET,          16#45).
+-define(TAP_CHECKPOINT_START, 16#46).
 
 % Response status codes.
 -define(SUCCESS,          16#00).

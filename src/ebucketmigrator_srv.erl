@@ -32,6 +32,9 @@
 
 -type vb_filter_change_state() :: not_started | started | completed.
 
+-record(had_backfill, {value :: boolean() | undefined,
+                       waiters = [] :: list()}).
+
 -record(state, {upstream :: port(),
                 upstream_aux :: port(),
                 downstream :: port(),
@@ -50,8 +53,14 @@
                 vb_filter_change_owner = undefined :: {pid(), any()} | undefined,
 
                 tap_name :: binary(),
-                pid :: pid()                    % our own pid for informational
-                                                % purposes
+                pid :: pid(),          % our own pid for informational purposes
+
+                %% from perspective of ns_server we define backfill as
+                %% tap stream that is resetting (i.e. deleting and
+                %% recreating) it's only vbucket. In practice when
+                %% there's multiple vbuckets we'll always set it to
+                %% false.
+                had_backfill = #had_backfill{} :: #had_backfill{}
                }).
 
 %% external API
@@ -59,7 +68,8 @@
          build_args/5, add_args_option/3, get_args_option/2,
          start_vbucket_filter_change/2,
          start_old_vbucket_filter_change/1,
-         set_controlling_process/2]).
+         set_controlling_process/2,
+         had_backfill/1]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -289,6 +299,15 @@ handle_call({start_vbucket_filter_change, VBuckets}, From,
                          "Will not use native vbucket filter change. "
                          "Not ready vbuckets:~n~p", [NotReady]),
             complete_old_vb_filter_change(State1)
+    end;
+handle_call(had_backfill, From, #state{had_backfill = HadBF} = State) ->
+    case HadBF#had_backfill.value of
+        undefined ->
+            OldWaiters = HadBF#had_backfill.waiters,
+            NewBF = HadBF#had_backfill{waiters = [From | OldWaiters]},
+            {noreply, State#state{had_backfill = NewBF}};
+        Value ->
+            {reply, Value, State}
     end;
 handle_call(_Req, _From, State) ->
     {reply, unhandled, State}.
@@ -541,7 +560,13 @@ init({Src, Dst, Opts}=InitArgs) ->
       upbuf=UpstreamBuffer,
       downbuf=DownstreamBuffer,
       tap_name=TapName,
-      pid=self()
+      pid=self(),
+      had_backfill = case VBuckets of
+                         [_] ->
+                             #had_backfill{};
+                         [_,_|_] ->
+                             #had_backfill{value = false}
+                     end
      },
 
     State1 = process_data(<<>>, #state.downbuf, fun process_downstream/2, State),
@@ -699,6 +724,16 @@ set_controlling_process(#state{upstream=Upstream,
               gen_tcp:controlling_process(Conn, Pid)
       end, [Upstream, UpstreamAux, Downstream, DownstreamAux]).
 
+%% returns true iff this migrator is for single vbucket and had
+%% completely reset/overwritten it's destination. It'll block until
+%% ebucketmigrator knows whether backfill happened or not, but we
+%% don't expect this to block for long as tap producer will likely
+%% send either indication of backfill (initial stream opaque message)
+%% or or indication of no backfill (checkpoint start message) pretty
+%% much immediately.
+had_backfill(Pid) ->
+    gen_server:call(Pid, had_backfill).
+
 %%
 %% Internal functions
 %%
@@ -778,6 +813,20 @@ process_downstream(<<?RES_MAGIC:8, _/binary>> = Packet,
     State#state.upstream_sender ! Packet,
     {ok, State}.
 
+mark_takeover_seen(State) ->
+    true = State#state.takeover,
+    0 = State#state.takeover_msgs_seen,
+    State#state{takeover_msgs_seen = 1}.
+
+mark_backfillness(#state{had_backfill = HadBF} = State,
+                  Value) when is_boolean(Value) ->
+    #had_backfill{value = undefined,
+                  waiters = Waiters} = HadBF,
+    NewBF = #had_backfill{value = Value,
+                          waiters = []},
+    [gen_server:reply(From, Value)
+     || From <- Waiters],
+    State#state{had_backfill = NewBF}.
 
 %% @doc Process a packet from the upstream server.
 -spec process_upstream(<<_:64,_:_*8>>, #state{}) ->
@@ -787,41 +836,47 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
                    _Flags:16, _TTL:8, _Res1:8, _Res2:8, _Res3:8, Rest/binary>> =
                      Packet,
                  #state{downstream=Downstream,
-                        vb_filter_change_state = VBFilterChangeState} = State) ->
+                        vb_filter_change_state = VBFilterChangeState} = State0) ->
+    ok = prim_inet:send(Downstream, Packet),
+    State2 = State0#state{last_sent_seqno = Opaque},
     case Opcode of
         ?TAP_OPAQUE ->
-            ok = prim_inet:send(Downstream, Packet),
             case Rest of
                 <<?TAP_OPAQUE_INITIAL_VBUCKET_STREAM:32>> ->
                     (catch system_stats_collector:increment_counter(ebucketmigrator_backfill_starts, 1)),
                     ?rebalance_info("Initial stream for vbucket ~p", [VBucket]),
-                    {ok, State};
+                    case State2#state.had_backfill#had_backfill.value =:= undefined of
+                        true ->
+                            {ok, mark_backfillness(State2, true)};
+                        false ->
+                            {ok, State2}
+                    end;
                 <<?TAP_OPAQUE_VB_FILTER_CHANGE_COMPLETE:32>> ->
                     started = VBFilterChangeState,
-                    NewState = State#state{vb_filter_change_state=completed},
+                    NewState = State2#state{vb_filter_change_state=completed},
                     {stop, NewState};
-                _ ->
-                    {ok, State}
+                _Other ->
+                    {ok, State2}
+            end;
+        ?TAP_CHECKPOINT_START ->
+            %% start of checkpoint if evidence of no backfill
+            NewState = case State2#state.had_backfill#had_backfill.value =:= undefined of
+                           true ->
+                               (catch system_stats_collector:increment_counter(ebucketmigrator_nobackfill_single_vbucket_starts, 1)),
+                               ?rebalance_info("TAP stream is not doing backfill"),
+                               mark_backfillness(State2, false);
+                           false ->
+                               State2
+                       end,
+            {ok, NewState};
+        ?TAP_VBUCKET ->
+            case Rest of
+                <<?VB_STATE_ACTIVE:32>> ->
+                    {ok, mark_takeover_seen(State2)};
+                <<_:32>> -> % Make sure it's still a 32 bit value
+                    {ok, State2}
             end;
         _ ->
-            State1 =
-                case Opcode of
-                    ?TAP_VBUCKET ->
-                        case Rest of
-                            <<?VB_STATE_ACTIVE:32>> ->
-                                true = State#state.takeover,
-                                %% VBucket has been transferred, count it
-                                State#state{takeover_msgs_seen =
-                                                State#state.takeover_msgs_seen
-                                            + 1};
-                            <<_:32>> -> % Make sure it's still a 32 bit value
-                                State
-                        end;
-                    _ ->
-                        State
-                end,
-            ok = prim_inet:send(Downstream, Packet),
-            State2 = State1#state{last_sent_seqno = Opaque},
             {ok, State2}
     end.
 
