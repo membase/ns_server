@@ -33,6 +33,7 @@
 -type vb_filter_change_state() :: not_started | started | completed.
 
 -record(had_backfill, {value :: boolean() | undefined,
+                       backfill_opaque :: undefined | non_neg_integer(),
                        waiters = [] :: list()}).
 
 -record(state, {upstream :: port(),
@@ -69,7 +70,7 @@
          start_vbucket_filter_change/2,
          start_old_vbucket_filter_change/1,
          set_controlling_process/2,
-         had_backfill/1]).
+         had_backfill/2]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -308,13 +309,16 @@ handle_call({start_vbucket_filter_change, VBuckets}, From,
             complete_old_vb_filter_change(State1)
     end;
 handle_call(had_backfill, From, #state{had_backfill = HadBF} = State) ->
-    case HadBF#had_backfill.value of
-        undefined ->
+    #had_backfill{value = Value,
+                  backfill_opaque = BFOpaque} = HadBF,
+    case Value =/= undefined andalso BFOpaque =:= undefined of
+        true ->
+            {reply, Value, State};
+        false ->
             OldWaiters = HadBF#had_backfill.waiters,
             NewBF = HadBF#had_backfill{waiters = [From | OldWaiters]},
-            {noreply, State#state{had_backfill = NewBF}};
-        Value ->
-            {reply, Value, State}
+            ?rebalance_debug("Suspended had_backfill waiter~n~p", [NewBF]),
+            {noreply, State#state{had_backfill = NewBF}}
     end;
 handle_call(_Req, _From, State) ->
     {reply, unhandled, State}.
@@ -738,8 +742,8 @@ set_controlling_process(#state{upstream=Upstream,
 %% send either indication of backfill (initial stream opaque message)
 %% or or indication of no backfill (checkpoint start message) pretty
 %% much immediately.
-had_backfill(Pid) ->
-    gen_server:call(Pid, had_backfill).
+had_backfill(Pid, Timeout) ->
+    gen_server:call(Pid, had_backfill, Timeout).
 
 %%
 %% Internal functions
@@ -815,10 +819,28 @@ process_data(Data, Elem, CB, State) ->
 %% @doc Process a packet from the downstream server.
 -spec process_downstream(<<_:8,_:_*8>>, #state{}) ->
                                 {ok, #state{}}.
-process_downstream(<<?RES_MAGIC:8, _/binary>> = Packet,
+process_downstream(<<?RES_MAGIC:8, _Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
+                     _VBucket:16, _BodyLen:32, Opaque:32, _CAS:64, _Rest/binary>> = Packet,
                    State) ->
     State#state.upstream_sender ! Packet,
-    {ok, State}.
+    #had_backfill{value = BFValue,
+                  waiters = Waiters,
+                  backfill_opaque = BFOpaque} = HadBF = State#state.had_backfill,
+    case BFOpaque =:= Opaque of
+        true ->
+            [gen_server:reply(From, BFValue)
+             || From <- Waiters],
+            case Waiters of
+                [] -> ok;
+                _ ->
+                    ?rebalance_debug("Replied had_backfill: ~p to ~p", [BFValue, Waiters])
+            end,
+            NewBF = HadBF#had_backfill{waiters = [],
+                                       backfill_opaque = undefined},
+            {ok, State#state{had_backfill = NewBF}};
+        false ->
+            {ok, State}
+    end.
 
 mark_takeover_seen(State) ->
     true = State#state.takeover,
@@ -827,12 +849,8 @@ mark_takeover_seen(State) ->
 
 mark_backfillness(#state{had_backfill = HadBF} = State,
                   Value) when is_boolean(Value) ->
-    #had_backfill{value = undefined,
-                  waiters = Waiters} = HadBF,
-    NewBF = #had_backfill{value = Value,
-                          waiters = []},
-    [gen_server:reply(From, Value)
-     || From <- Waiters],
+    NewBF = HadBF#had_backfill{value = Value,
+                               backfill_opaque = State#state.last_sent_seqno},
     State#state{had_backfill = NewBF}.
 
 %% @doc Process a packet from the upstream server.
