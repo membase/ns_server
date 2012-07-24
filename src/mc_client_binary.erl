@@ -47,8 +47,7 @@
          deregister_tap_client/2,
          sync/4,
          get_meta/3,
-         set_with_meta/6,
-         delete_with_meta/5,
+         update_with_rev/7,
          set_engine_param/4,
          get_zero_open_checkpoint_vbuckets/2,
          change_vbucket_filter/3,
@@ -391,66 +390,53 @@ get_meta(Sock, Key, VBucket) ->
             process_error_response(Response)
     end.
 
-decode_meta(<<?META_REVID:8/big, Length:8/big, SeqNo:32/big, RevId/binary>>)
-  when size(RevId) =:= (Length - 4) ->
-    {revid, {SeqNo, RevId}};
-decode_meta(Data) ->
-    {unknown, Data}.
+decode_meta(<<?META_REVID:8/big, Length:8/big, SeqNo:64/big, RevId/binary>>)
+  when size(RevId) =:= (Length - 8) ->
+    {SeqNo, RevId}.
 
--spec set_with_meta(Sock :: port(), Key :: binary(),
-                    VBucket :: integer(), Value :: binary(),
-                    Meta :: any(),
-                    Cas :: integer()) -> {ok, #mc_header{}, #mc_entry{}} |
-                                                {error, invalid_meta} |
-                                                {memcached_error, atom(), binary()}.
-set_with_meta(Sock, Key, VBucket, Value, Meta, CAS) ->
-    meta_cmd(Sock, ?CMD_SET_WITH_META,
-             Key, VBucket, Value, Meta, CAS).
-
-delete_with_meta(Sock, Key, VBucket, Meta, CAS) ->
-    case encode_meta(Meta) of
-        {ok, MetaBin} ->
-            MetaLen = size(MetaBin),
-            Response = cmd(?CMD_DEL_WITH_META, Sock, undefined, undefined,
-                           {#mc_header{vbucket = VBucket},
-                            #mc_entry{key = Key, data = MetaBin,
-                                      ext = <<MetaLen:32/big>>, cas = CAS}}),
-            case Response of
-                {ok, #mc_header{status=?SUCCESS} = RespHeader, RespEntry, _} ->
-                    {ok, RespHeader, RespEntry};
-                _ ->
-                    process_error_response(Response)
-            end;
-        Error ->
-            Error
+-spec update_with_rev(Sock :: port(), VBucket :: vbucket_id(),
+                      Key :: binary(), Value :: binary() | undefined,
+                      Rev :: rev(),
+                      Deleted :: boolean(),
+                      Cas :: integer()) -> {ok, #mc_header{}, #mc_entry{}} |
+                                           {memcached_error, atom(), binary()}.
+update_with_rev(Sock, VBucket, Key, Value, Rev, Deleted, CAS) ->
+    case Deleted of
+        true ->
+            do_update_with_rev(Sock, VBucket, Key, <<>>, Rev, CAS, ?CMD_DEL_WITH_META);
+        false ->
+            do_update_with_rev(Sock, VBucket, Key, Value, Rev, CAS, ?CMD_SET_WITH_META)
     end.
 
-encode_meta({revid, {SeqNo, RevId}})
-  when is_integer(SeqNo), is_binary(RevId) ->
-    Length = size(RevId) + 4,
-    {ok, <<?META_REVID:8/big, Length:8/big, SeqNo:32/big, RevId/binary>>};
-encode_meta(_Other) ->
-    {error, invalid_meta}.
+%% rev is a pair. First element is RevNum (aka SeqNo). It's is tracked
+%% separately inside couchbase bucket. Second part -- RevId, is
+%% actually concatenation of CAS, Flags and Expiration.
+%%
+%% HISTORICAL/PERSONAL PERSPECTIVE:
+%%
+%% It can be seen that couch, xdcr and rest of ns_server are working
+%% with RevIds as opaque entities. Never assuming it has CAS,
+%% etc. Thus it would be possible to avoid _any_ mentions of them
+%% here. We're just (re)packing some bits in the end. But I believe
+%% this "across-the-project" perspective is extremely valuable. Thus
+%% this informational (and, presumably, helpful) comment.
+%%
+%% For xxx-with-meta they're re-assembled as shown below. Apparently
+%% to make flags and expiration to 'match' normal set command
+%% layout.
+rev_to_mcd_ext({SeqNo, <<CASPart:64, FlagsExpPart:64>>}) ->
+    <<FlagsExpPart:64, SeqNo:64, CASPart:64>>.
 
-meta_cmd(Sock, Cmd, Key, VBucket, Value, Meta, CAS) ->
-    case encode_meta(Meta) of
-        {ok, MetaBin} ->
-            MetaLen = size(MetaBin),
-            Ext = <<MetaLen:32/big, 0:32/big, 0:32/big>>,
-            Data = <<Value/binary, MetaBin/binary>>,
-
-            Header = #mc_header{vbucket = VBucket},
-            Entry = #mc_entry{key = Key, data = Data, ext = Ext, cas = CAS},
-
-            Response = cmd(Cmd, Sock, undefined, undefined, {Header, Entry}),
-            case Response of
-                {ok, #mc_header{status=?SUCCESS} = RespHeader, RespEntry, _} ->
-                    {ok, RespHeader, RespEntry};
-                _ ->
-                    process_error_response(Response)
-            end;
-        Error ->
-            Error
+do_update_with_rev(Sock, VBucket, Key, Value, Rev, CAS, OpCode) ->
+    Ext = rev_to_mcd_ext(Rev),
+    Hdr = #mc_header{vbucket = VBucket},
+    Entry = #mc_entry{key = Key, data = Value, ext = Ext, cas = CAS},
+    Response = cmd(OpCode, Sock, undefined, undefined, {Hdr, Entry}),
+    case Response of
+        {ok, #mc_header{status=?SUCCESS} = RespHeader, RespEntry, _} ->
+            {ok, RespHeader, RespEntry};
+        _ ->
+            process_error_response(Response)
     end.
 
 -spec deregister_tap_client(Sock::port(), TapName::binary()) -> ok.

@@ -31,6 +31,9 @@
 -type moves() :: [{non_neg_integer(), atom(), atom()}].
 -type vbucket_id() :: non_neg_integer().
 -type vbucket_state() :: active | dead | replica | pending.
+-type rev_id() :: <<_:128>>.
+-type seq_no() :: non_neg_integer().
+-type rev() :: {seq_no(), rev_id()}.
 
 -type ext_bucket_name() :: bucket_name() | binary().
 %% ext vbucket id is vbucket id (potentially as binary) or <<"master">>

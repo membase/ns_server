@@ -438,14 +438,8 @@ do_handle_call({set, Key, VBucket, Val}, _From, State) ->
 
 do_handle_call({update_with_rev, VBucket, Key, Value, Rev, Deleting, LocalCAS},
                _From, State) ->
-    Reply = case Deleting of
-                true ->
-                    mc_client_binary:delete_with_meta(State#state.sock, Key, VBucket,
-                                                      {revid, Rev}, LocalCAS);
-                false ->
-                    mc_client_binary:set_with_meta(State#state.sock, Key, VBucket,
-                                                   Value, {revid, Rev}, LocalCAS)
-            end,
+    Reply = mc_client_binary:update_with_rev(State#state.sock,
+                                             VBucket, Key, Value, Rev, Deleting, LocalCAS),
     {reply, Reply, State};
 
 do_handle_call({create_new_checkpoint, VBucket},
@@ -780,10 +774,15 @@ set(Bucket, Key, VBucket, Value) ->
             {set, Key, VBucket, Value}, ?TIMEOUT_HEAVY).
 
 
-update_with_rev(Bucket, VBucket, Id, Value, RevId, Deleted, LocalCAS) ->
+-spec update_with_rev(Bucket::bucket_name(), VBucket::vbucket_id(),
+                      Id::binary(), Value::binary() | undefined, Rev :: rev(),
+                      Deleted::boolean(), LocalCAS::non_neg_integer()) ->
+                             {ok, #mc_header{}, #mc_entry{}} |
+                             {memcached_error, atom(), binary()}.
+update_with_rev(Bucket, VBucket, Id, Value, Rev, Deleted, LocalCAS) ->
     do_call(server(Bucket),
             {update_with_rev, VBucket,
-             Id, Value, RevId, Deleted,
+             Id, Value, Rev, Deleted,
              LocalCAS},
             ?TIMEOUT_HEAVY).
 

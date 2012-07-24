@@ -149,7 +149,7 @@ update_locally(Bucket, DocId, VBucket, Value, Rev, DocDeleted, LocalCAS) ->
 
 get_meta(Bucket, VBucket, DocId) ->
     case ns_memcached:get_meta(Bucket, DocId, VBucket) of
-        {ok, _Header, #mc_entry{cas = CAS} = _Entry, {revid, Rev}} ->
+        {ok, _Header, #mc_entry{cas = CAS} = _Entry, Rev} ->
             {ok, Rev, CAS};
         Other ->
             Other
