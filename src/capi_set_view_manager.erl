@@ -353,9 +353,12 @@ apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
             %% alive. Eventually we will get a notification from master db
             %% watcher and delete it from a list of design documents.
             ok;
+        throw:{error, view_undefined} ->
+            %% see below
+            ok;
         throw:view_undefined ->
             %% Design document has been updated but we have not reacted on it
-            %% yet. As previously eventually we will get a notification about
+            %% yet. Eventually we will get a notification about
             %% this change and define a group again.
             ok
     end.
