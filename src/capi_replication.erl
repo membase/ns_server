@@ -19,6 +19,8 @@
 -export([get_missing_revs/2, update_replicated_docs/3]).
 
 -include("xdc_replicator.hrl").
+-include("mc_entry.hrl").
+-include("mc_constants.hrl").
 
 %% public functions
 get_missing_revs(#db{name = DbName}, JsonDocIdRevs) ->
@@ -82,7 +84,7 @@ is_missing_rev(Bucket, VBucket, Id, RemoteMeta) ->
             true;
         {memcached_error, not_my_vbucket, _} ->
             throw({bad_request, not_my_vbucket});
-        {ok, LocalMeta, _Deleted, _CAS} ->
+        {ok, LocalMeta, _CAS} ->
              %% we do not have any information about deletedness of
              %% the remote side thus we use only revisions to
              %% determine a winner
@@ -107,7 +109,7 @@ do_update_replicated_doc_loop(Bucket, VBucket,
                 update_locally(Bucket, DocId, VBucket, DocValue, DocRev, DocDeleted, CAS);
             {memcached_error, not_my_vbucket, _} ->
                 {error, {bad_request, not_my_vbucket}};
-            {ok, {OurSeqNo, OurRevId}, _Deleted, LocalCAS} ->
+            {ok, {OurSeqNo, OurRevId}, LocalCAS} ->
                 RemoteFullMeta = {DocSeqNo, DocRevId},
                 LocalFullMeta = {OurSeqNo, OurRevId},
                 case max(LocalFullMeta, RemoteFullMeta) of
@@ -144,14 +146,11 @@ update_locally(Bucket, DocId, VBucket, Value, Rev, DocDeleted, LocalCAS) ->
             {error, {bad_request, einval}}
     end.
 
--include("mc_entry.hrl").
--include("mc_constants.hrl").
 
 get_meta(Bucket, VBucket, DocId) ->
     case ns_memcached:get_meta(Bucket, DocId, VBucket) of
-        {ok, _Header, #mc_entry{cas=CAS, flag=Flag} = _Entry, {revid, Rev}} ->
-            Deleted = ((Flag band ?GET_META_ITEM_DELETED_FLAG) =/= 0),
-            {ok, Rev, Deleted, CAS};
+        {ok, _Header, #mc_entry{cas = CAS} = _Entry, {revid, Rev}} ->
+            {ok, Rev, CAS};
         Other ->
             Other
     end.
