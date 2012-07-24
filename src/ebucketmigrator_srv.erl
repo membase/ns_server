@@ -32,8 +32,7 @@
 
 -type vb_filter_change_state() :: not_started | started | completed.
 
--record(state, {bad_vbucket_count = 0 :: non_neg_integer(),
-                upstream :: port(),
+-record(state, {upstream :: port(),
                 upstream_aux :: port(),
                 downstream :: port(),
                 downstream_aux :: port(),
@@ -787,7 +786,7 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
                    VBucket:16, _BodyLen:32, Opaque:32, _CAS:64, _EnginePriv:16,
                    _Flags:16, _TTL:8, _Res1:8, _Res2:8, _Res3:8, Rest/binary>> =
                      Packet,
-                 #state{downstream=Downstream, vbuckets=VBuckets,
+                 #state{downstream=Downstream,
                         vb_filter_change_state = VBFilterChangeState} = State) ->
     case Opcode of
         ?TAP_OPAQUE ->
@@ -821,16 +820,8 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
                     _ ->
                         State
                 end,
-            State2 =
-                case sets:is_element(VBucket, VBuckets) of
-                    true ->
-                        ok = prim_inet:send(Downstream, Packet),
-                        State1#state{last_sent_seqno = Opaque};
-                    false ->
-                        %% Filter it out and count it
-                        State1#state{bad_vbucket_count =
-                                         State1#state.bad_vbucket_count + 1}
-                end,
+            ok = prim_inet:send(Downstream, Packet),
+            State2 = State1#state{last_sent_seqno = Opaque},
             {ok, State2}
     end.
 
