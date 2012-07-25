@@ -68,7 +68,7 @@ include/replication_infos_ddoc.hrl:
 	scripts/build_replication_infos_ddoc.rb >$@ || (rm $@ && false)
 
 rebuild_replication_infos_ddoc:
-	rm include/replication_infos_ddoc.hrl
+	rm -f include/replication_infos_ddoc.hrl
 	$(MAKE) include/replication_infos_ddoc.hrl
 
 .PHONY: rebuild_replication_infos_ddoc
