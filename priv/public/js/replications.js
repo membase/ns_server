@@ -28,14 +28,6 @@ var ReplicationsModel = {};
     });
   });
   remoteClustersListCell.keepValueDuringAsync = true;
-  var remoteClustersListHostPort = model.remoteClustersListHostPort = Cell.compute(function (v) {
-    var list = v.need(remoteClustersListCell);
-    return _.map(list, function (remoteClusterInfo) {
-      var hostname = remoteClusterInfo.hostname;
-      var match = /^(.+?)(?::([^:]+))?$/.exec(hostname);
-      return [remoteClusterInfo.name, match[1], match[2] || "8091"];
-    });
-  });
 
   var createReplicationURICell = model.createReplicationURICell = Cell.computeEager(function (v) {
     return v.need(DAL.cells.currentPoolDetailsCell).controllers.replication.createURI;
@@ -53,7 +45,6 @@ var ReplicationsModel = {};
   rawReplicationInfos.keepValueDuringAsync = true;
 
   var allReplicationInfos = model.allReplicationInfos = Cell.compute(function (v) {
-    var name2hostport = v.need(remoteClustersListHostPort);
     return _.map(v.need(rawReplicationInfos).rows, function (r) {
       var info = r.value;
       var fields = info.replication_fields;
@@ -61,32 +52,25 @@ var ReplicationsModel = {};
         return info;
       }
       var targetURI = fields.target;
-      var match1 = /^http:\/\/(.*?)\/(.*)/.exec(targetURI);
-      if (!match1) {
-        return info;
-      }
+      var match = /^\/remoteClusters\/(.*)\/buckets\/(.*)/.exec(targetURI);
 
-      var authAndHost = match1[1];
-      var match2 = /^(.*@)?(.*?)(?::([^:]+))?$/.exec(authAndHost);
-      if (!match2) {
-        BUG("!match2");
-      }
-      var host = match2[2];
-      var port = match2[3] || "80";
-      var triple = _.detect(name2hostport, function (ct) {
-        return ct[1] === host && ct[2] === port;
-      });
-      if (triple) {
-        targetURI = triple[0];
-      }
       info = _.clone(info);
       info._id = fields._id;
       info.source = fields.source;
-      info.target = targetURI;
       info.continuous = fields.continuous;
-      if (triple && fields.targetBucket !== info.source) {
-        info.target += ' bucket ' + fields.targetBucket;
+
+      if (match) {
+        var cluster = match[1];
+        var bucket = match[2];
+
+        info.target = cluster;
+        if (bucket !== info.source) {
+          info.target += ' bucket ' + bucket;
+        }
+      } else {
+        info.target = targetURI;
       }
+
       return info;
     });
   });

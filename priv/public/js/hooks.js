@@ -1507,8 +1507,8 @@ var ServerStateMock = {
             "_replication_fields": {
               "_id": "missing-rep_2",
               "source": "default",
-              "target": "http://admin:asdasd@other.local/other-bucket",
-              "targetBucket": "other-bucket",
+              "targetUUID": "other.local-uuid",
+              "target": "/remoteClusters/other.local/buckets/other-bucket",
               "continuous": false
             },
             "have_replicator_doc": false,
@@ -1525,8 +1525,8 @@ var ServerStateMock = {
             "_replication_fields": {
               "_id": "rep_1",
               "source": "default",
-              "target": "http://admin:asdasd@kyiv-mb01.yyy.com:8091/default",
-              "targetBucket": "default",
+              "targetUUID": "kyiv-uuid",
+              "target": "/remoteClusters/kyiv/buckets/default",
               "continuous": false
             },
             "have_replicator_doc": true,
@@ -1543,8 +1543,8 @@ var ServerStateMock = {
             "_replication_fields": {
               "_id": "rep_2",
               "source": "other-bucket",
-              "target": "http://admin:asdasd@london-mb04.yyy.com/very-other-bucket",
-              "targetBucket": "very-other-bucket",
+              "targetUUID": "london-uuid",
+              "target": "/remoteClusters/london/buckets/very-other-bucket",
               "continuous": true
             },
             "have_replicator_doc": true,

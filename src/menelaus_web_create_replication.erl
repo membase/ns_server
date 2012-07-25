@@ -21,6 +21,7 @@
 -include("menelaus_web.hrl").
 -include("ns_common.hrl").
 -include("couch_db.hrl").
+-include("remote_clusters_info.hrl").
 
 -export([handle_create_replication/1]).
 
@@ -30,11 +31,12 @@ handle_create_replication(Req) ->
     Params = Req:parse_post(),
     Config = ns_config:get(),
     Buckets = ns_bucket:get_buckets(Config),
-    RemoteClusters = menelaus_web_remote_clusters:get_remote_clusters(Config),
-    ParseRV = parse_validate_new_replication_params(Params, Buckets, RemoteClusters, fun json_get/5),
+    ParseRV = parse_validate_new_replication_params(Params, Buckets),
     case ParseRV of
         {error, Errors} ->
             menelaus_util:reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400);
+        {error, Status, Errors} ->
+            menelaus_util:reply_json(Req, {struct, [{errors, {struct, Errors}}]}, Status);
         {ok, ReplicationFields} ->
             CapiURL = capi_utils:capi_url(node(), "/_replicator", menelaus_util:local_addr(Req)),
             menelaus_util:reply_json(Req, {struct, [{database, list_to_binary(CapiURL)},
@@ -77,11 +79,12 @@ screen_extract_new_replication_params(Params) ->
             {error, Errors}
     end.
 
-parse_validate_new_replication_params(Params, Buckets, RemoteClusters, JsonGet) ->
+parse_validate_new_replication_params(Params, Buckets) ->
     case screen_extract_new_replication_params(Params) of
         {ok, FromBucket, ToBucket, ReplicationType, ToCluster} ->
-            validate_new_replication_params_check_from_bucket(FromBucket, ToBucket, ReplicationType,
-                                                              ToCluster, Buckets, RemoteClusters, JsonGet);
+            validate_new_replication_params_check_from_bucket(FromBucket, ToCluster,
+                                                              ToBucket, ReplicationType,
+                                                              Buckets);
         Crap ->
             Crap
     end.
@@ -93,173 +96,67 @@ check_from_bucket(FromBucket, Buckets) ->
         {_, BucketConfig} ->
             case proplists:get_value(type, BucketConfig) of
                 membase ->
-                    [];
+                    {ok, BucketConfig};
                 X ->
-                    [{<<"fromBucket">>, list_to_binary("cannot replicate from this bucket type: " ++ atom_to_list(X))}]
+                    [{<<"fromBucket">>,
+                      list_to_binary("cannot replicate from this bucket type: " ++ atom_to_list(X))}]
             end
     end.
 
-check_find_to_cluster(ToCluster, RemoteClusters) ->
-    MaybeThisCluster = lists:filter(fun (KV) ->
-                                            lists:keyfind(name, 1, KV) =:= {name, ToCluster}
-                                    end, RemoteClusters),
-    case MaybeThisCluster of
-        [] ->
-            {undefined, [{<<"toCluster">>, <<"could not find remote cluster with given name">>}]};
-        [ThisCluster] ->
-            {ThisCluster, []}
+check_bucket_uuid(BucketConfig, RemoteUUID) ->
+    BucketUUID = proplists:get_value(uuid, BucketConfig),
+    true = (BucketUUID =/= undefined),
+
+    case BucketUUID =:= RemoteUUID of
+        true ->
+            [{<<"toBucket">>,
+              <<"Replication to the same bucket on the same cluster is disallowed">>}];
+        false ->
+            ok
     end.
 
-validate_new_replication_params_check_from_bucket(FromBucket, ToBucket, ReplicationType, ToCluster, Buckets, RemoteClusters, JsonGet) ->
+validate_new_replication_params_check_from_bucket(FromBucket, ToCluster, ToBucket,
+                                                  ReplicationType, Buckets) ->
     MaybeBucketError = check_from_bucket(FromBucket, Buckets),
-    {ToClusterKV, MaybeToClusterError} = check_find_to_cluster(ToCluster, RemoteClusters),
-    case MaybeBucketError ++ MaybeToClusterError of
-        [] ->
-            validate_new_replication_params_with_cluster(FromBucket, ToBucket, ReplicationType, ToClusterKV, JsonGet);
+    case MaybeBucketError of
+        {ok, BucketConfig} ->
+            case remote_clusters_info:get_remote_bucket(ToCluster, ToBucket, true) of
+                {ok, #remote_bucket{uuid=BucketUUID,
+                                    cluster_uuid=ClusterUUID}} ->
+                    case check_bucket_uuid(BucketConfig, BucketUUID) of
+                        ok ->
+                            {ok, build_replication_doc(FromBucket, ToCluster,
+                                                       ClusterUUID,
+                                                       ToBucket, ReplicationType)};
+                        Errors ->
+                            {error, Errors}
+                    end;
+                {error, Type, Msg} when Type =:= not_present;
+                                        Type =:= not_capable ->
+                    {error, [{<<"toBucket">>, Msg}]};
+                {error, cluster_not_found, Msg} ->
+                    {error, [{<<"toCluster">>, Msg}]};
+                {error, all_nodes_failed, Msg} ->
+                    {error, [{<<"_">>, Msg}]};
+                {error, timeout} ->
+                    Msg = <<"Timeout exceeded when trying to reach remote cluster">>,
+                    {error, [{<<"_">>, Msg}]};
+                _ ->
+                    Errors = [{<<"_">>, <<"Unexpected error occurred. See logs for details.">>}],
+                    {error, 500, Errors}
+            end;
         Errors ->
             {error, Errors}
     end.
 
--spec throw_simple_json_get_error(binary(), iolist()) -> no_return().
-throw_simple_json_get_error(Field, Msg) ->
-    erlang:throw({json_get_error, {error, [{Field, iolist_to_binary(Msg)}]}}).
+build_replication_doc(FromBucket, Cluster, ClusterUUID, ToBucket, ReplicationType) ->
+    Reference = remote_clusters_info:remote_bucket_reference(Cluster, ToBucket),
 
--spec throw_simple_json_get_error(string()) -> no_return().
-throw_simple_json_get_error(Msg) ->
-    throw_simple_json_get_error(<<"_">>, Msg).
-
-json_get(Host, Port, Path, Username, Password) ->
-    case menelaus_rest:json_request_hilevel(get, {Host, Port, Path}, {Username, Password}) of
-        {ok, RV} ->
-            RV;
-        X ->
-            ?log_debug("json_get(~p, ~p, ~p, ~p, ~p) failed:~n~p", [Host, Port, Path, Username, Password, X]),
-            case X of
-                {client_error, _} ->
-                    throw_simple_json_get_error(<<"remote cluster unexpectedly returned 400 status code">>);
-                {error, rest_error, B, _Nested} ->
-                    throw_simple_json_get_error([<<"remote cluster access failed: ">>, B])
-            end
-    end.
-
-validate_new_replication_params_with_cluster(FromBucket, ToBucket, ReplicationType, ToClusterKV, JsonGet) ->
-    try do_validate_new_replication_params_with_cluster(FromBucket, ToBucket, ReplicationType, ToClusterKV, JsonGet)
-    catch throw:{json_get_error, X} ->
-            X
-    end.
-
-
-do_validate_new_replication_params_with_cluster(FromBucket, ToBucket, ReplicationType, ToClusterKV, JsonGet0) ->
-    UserName = proplists:get_value(username, ToClusterKV),
-    true = (UserName =/= undefined),
-    Password = proplists:get_value(password, ToClusterKV),
-    true = (Password =/= undefined),
-    Hostname0 = proplists:get_value(hostname, ToClusterKV),
-    true = (Hostname0 =/= undefined),
-    {Host, Port} = case re:run(Hostname0, <<"(.*):(.*)">>, [anchored, {capture, all_but_first, list}]) of
-                       nomatch ->
-                           {Hostname0, "8091"};
-                       {match, [_Host, _Port] = HPair} ->
-                           list_to_tuple(HPair)
-                   end,
-    JsonGet = fun (Path) ->
-                      JsonGet0(Host, Port, Path, UserName, Password)
-              end,
-    ?log_debug("Will use the following json_get params: ~p, ~p, ~p, ~p", [Host, Port, UserName, Password]),
-    {struct, Pools} = JsonGet("/pools"),
-    DefaultPoolPath = case proplists:get_value(<<"pools">>, Pools) of
-                          [] ->
-                              throw_simple_json_get_error(<<"pools request returned empty pools list">>);
-                          [{struct, KV} | _] ->
-                              case proplists:get_value(<<"uri">>, KV) of
-                                  undefined -> undefined;
-                                  URI -> binary_to_list(URI)
-                              end;
-                          _ -> undefined
-                      end,
-    case DefaultPoolPath of
-        undefined ->
-            throw_simple_json_get_error(<<"pools request returned invalid object">>);
-        _ -> ok
-    end,
-    {struct, PoolDetails} = JsonGet(DefaultPoolPath),
-    ?log_debug("Got pool details~n~p~n", [PoolDetails]),
-    BucketsURL = case proplists:get_value(<<"buckets">>, PoolDetails) of
-                     undefined ->
-                         throw_simple_json_get_error(<<"pool details request returned json without buckets field">>);
-                     {struct, BucketsField} ->
-                         case proplists:get_value(<<"uri">>, BucketsField) of
-                             undefined ->
-                                 throw_simple_json_get_error(<<"pool details request returned json with invalid buckets field">>);
-                             XBuckets ->
-                                 binary_to_list(XBuckets)
-                         end
-                 end,
-    BinToBucket = list_to_binary(ToBucket),
-    BucketsList = JsonGet(BucketsURL),
-
-    BucketPath = case [KV || {struct, KV} <- BucketsList,
-                             lists:keyfind(<<"name">>, 1, KV) =:= {<<"name">>, BinToBucket}] of
-                     [TargetBucket | _] ->
-                         case proplists:get_value(<<"uri">>, TargetBucket) of
-                             undefined ->
-                                 throw_simple_json_get_error(<<"buckets list request returned invalid json">>);
-                             X ->
-                                 binary_to_list(X)
-                         end;
-                     _ ->
-                         throw_simple_json_get_error(<<"toBucket">>,
-                                                     <<"target cluster doesn't have given bucket or authentication failed">>)
-                 end,
-
-    {struct, BucketDetails} = JsonGet(BucketPath),
-    MaybeErrors0 =
-        [case proplists:get_value(<<"bucketType">>, BucketDetails) of
-             <<"membase">> -> undefined;
-             XBucketType -> "target bucket has unsupported bucket type: " ++ binary_to_list(XBucketType)
-         end,
-         case proplists:get_value(<<"vBucketServerMap">>, BucketDetails) of
-             {struct, [_|_]} ->
-                 undefined;
-             _ ->
-                 "target bucket is missing vbucket map"
-         end,
-         case proplists:get_value(<<"nodes">>, BucketDetails) of
-             Nodes when is_list(Nodes) ->
-                 case [N || {struct, N} <- Nodes,
-                            case proplists:get_value(<<"couchApiBase">>, N) of
-                                undefined -> true;
-                                _ -> false
-                            end] of
-                     [] ->
-                         undefined;
-                     _ ->
-                         "not all nodes in target bucket have couch api url"
-                 end;
-             _ ->
-                 "target bucket is missing nodes list"
-         end],
-    MaybeErrors = lists:filter(fun (undefined) -> false;
-                                   (_) -> true
-                               end, MaybeErrors0),
-    case MaybeErrors of
-        [] ->
-            {ok, [{type, <<"xdc">>},
-                  {source, list_to_binary(FromBucket)},
-                  {targetBucket, BinToBucket},
-                  {target, iolist_to_binary([<<"http://">>,
-                                             mochiweb_util:quote_plus(UserName),
-                                             <<":">>,
-                                             mochiweb_util:quote_plus(Password),
-                                             <<"@">>,
-                                             Host,
-                                             <<":">>,
-                                             Port,
-                                             BucketPath])},
-                  {continuous, case ReplicationType of
-                                   continuous -> true;
-                                   _ -> false
-                               end}]};
-        _ ->
-            throw_simple_json_get_error(string:join(MaybeErrors, " and "))
-    end.
+    [{type, <<"xdc">>},
+     {source, list_to_binary(FromBucket)},
+     {target, Reference},
+     {targetUUID, ClusterUUID},
+     {continuous, case ReplicationType of
+                      continuous -> true;
+                      _ -> false
+                  end}].

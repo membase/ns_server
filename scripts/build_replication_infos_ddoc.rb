@@ -41,7 +41,6 @@ function (keys, values, rereduce) {
       _id: a._id,
       source: a.source,
       target: a.target,
-      targetBucket: a.targetBucket,
       continuous: a.continuous
     }
     if (b === null) {
@@ -50,7 +49,6 @@ function (keys, values, rereduce) {
     if (rv._id !== b._id
         || rv.source !== b.source
         || rv.target !== b.target
-        || rv.targetBucket !== b.targetBucket
         || rv.continuous !== b.continuous) {
       return;
     }
