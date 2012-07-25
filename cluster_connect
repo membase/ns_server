@@ -11,7 +11,8 @@ def usage():
             -s <memory size (min 256) default: 256\n\
             -t <bucket type> (membase, memcached) default: membase\n\
             -r <num replicas> (max 3) default: 1 (Only for membase buckets!)\n\
-            -i (don't index replicas) default: replica index enabled"
+            -i (don't index replicas) default: replica index enabled\n\
+            -S <start index> default: 0"
 
 
 class PasswordManager(urllib2.HTTPPasswordMgr):
@@ -24,7 +25,7 @@ class PasswordManager(urllib2.HTTPPasswordMgr):
 
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "n:t:s:r:i")
+        opts, args = getopt.getopt(sys.argv[1:], "n:t:s:r:i:S:")
     except getopt.GetoptError, err:
         print str(err)
         usage()
@@ -34,6 +35,7 @@ def main():
     memsize = 256
     replicas = 1
     replica_index = True
+    start_index = 0
 
     data_base_path = os.getcwd() + "/data"
     for o, a in opts:
@@ -47,6 +49,8 @@ def main():
             replicas = a
         elif o == "-i":
             replica_index = False
+        elif o == "-S":
+            start_index = int(a)
         else:
             usage()
             sys.exit()
@@ -59,24 +63,37 @@ def main():
     handler = urllib2.HTTPBasicAuthHandler(password_mgr)
     o = urllib2.build_opener(handler)
 
-    print "Connecting " + str(nodes) + " nodes, bucket type " + buckettype + " mem size " + str(memsize) + " with " +\
-           str(replicas) + " replica copies, password asdasd\n"
+    print "Connecting {0} nodes, bucket type {1}, mem size {2} " \
+        "with {3} replica copies, start index {4}, " \
+        "password asdasd\n".format(nodes, buckettype,
+                                   memsize, replicas, start_index)
 
-    o.open("http://127.0.0.1:9000/pools/default", "memoryQuota=" + str(memsize)).read()
-    o.open("http://127.0.0.1:9000/controller/setupDefaultBucket", "bucketType=" + buckettype +
-            "&ramQuotaMB=" + str(memsize) +
-            "&replicaNumber=" + str(replicas) +
-            "&replicaIndex=" + bool_request_value(replica_index)).read()
-    o.open("http://127.0.0.1:9000/settings/web", "port=SAME&username=Administrator&password=asdasd").read()
+    base_port = 9000 + start_index
+
+    o.open("http://127.0.0.1:{0}/pools/default".format(base_port),
+           "memoryQuota=" + str(memsize)).read()
+    o.open("http://127.0.0.1:{0}/controller/setupDefaultBucket".format(base_port),
+           "bucketType=" + buckettype +
+           "&ramQuotaMB=" + str(memsize) +
+           "&replicaNumber=" + str(replicas) +
+           "&replicaIndex=" + bool_request_value(replica_index)).read()
+    o.open("http://127.0.0.1:{0}/settings/web".format(base_port),
+           "port=SAME&username=Administrator&password=asdasd").read()
+
     for i in range(1, int(nodes)):
-        port = 9000 + i
+        port = base_port + i
         print "Connecting node {0}".format(i)
         o.open("http://127.0.0.1:{0}/node/controller/doJoinCluster".format(port),
-               "user=Administrator&password=asdasd&clusterMemberHostIp=127.0.0.1&clusterMemberPort=9000").read()
+               "user=Administrator&password=asdasd&" \
+                   "clusterMemberHostIp=127.0.0.1" \
+                   "&clusterMemberPort={0}".format(base_port)).read()
+
     print "Getting node list"
-    info = json.loads(o.open("http://127.0.0.1:9000/nodeStatuses").read())
+    info = json.loads(o.open("http://127.0.0.1:{0}/nodeStatuses".format(base_port)).read())
+
     print "Servers added, triggering rebalance."
-    o.open("http://127.0.0.1:9000/controller/rebalance", urllib.urlencode(
+    o.open("http://127.0.0.1:{0}/controller/rebalance".format(base_port),
+           urllib.urlencode(
             {'knownNodes': ",".join([info[k]['otpNode'] for k in info]),
              'ejectedNodes': ''})).read()
 
