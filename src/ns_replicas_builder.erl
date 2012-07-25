@@ -110,7 +110,7 @@ build_replicas_main(Bucket, VBucket, SrcNode, ReplicateIntoNodes, JustBackfillNo
                                                             self() ! ExitMsg, % we'll process it again in after block
                                                             exit({replicator_died, ExitMsg});
                                                         _ ->
-                                                            ?log_info("Got exit not from child ebucketgrator. Assuming it's our parent: ~p", [ExitMsg]),
+                                                            ?log_info("Got exit not from child ebucketmigrator. Assuming it's our parent: ~p", [ExitMsg]),
                                                             exit(Reason)
                                                     end
                                             after SleepMS ->
