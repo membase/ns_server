@@ -18,7 +18,7 @@
 -module(xdc_rep_utils).
 
 -export([parse_rep_doc/2, is_valid_xdc_rep_doc/1]).
--export([remote_vbucketmap_nodelist/1, local_couch_uri_for_vbucket/2]).
+-export([local_couch_uri_for_vbucket/2]).
 -export([remote_couch_uri_for_vbucket/3, my_active_vbuckets/1]).
 -export([lists_difference/2, node_uuid/0, info_doc_id/1, vb_rep_state_list/2]).
 -export([replication_id/2]).
@@ -27,53 +27,6 @@
 -export([get_master_db/1, get_checkpoint_log_id/2]).
 
 -include("xdc_replicator.hrl").
-
-%% Given a remote bucket URI, this function fetches the node list and the vbucket
-%% map.
-remote_vbucketmap_nodelist(BucketURI) ->
-    case httpc:request(get, {BucketURI, []}, [], []) of
-        {ok, {{_, 404, _}, _, _}} ->
-            not_present;
-        {ok, {_, _, JsonStr}} ->
-            {KVList} = ejson:decode(JsonStr),
-            {VbucketServerMap} = couch_util:get_value(<<"vBucketServerMap">>,
-                                                      KVList),
-            VbucketMap = couch_util:get_value(<<"vBucketMap">>, VbucketServerMap),
-            ServerList = couch_util:get_value(<<"serverList">>, VbucketServerMap),
-            NodeList = couch_util:get_value(<<"nodes">>, KVList),
-
-            %% We purposefully mangle the order of the elements of the <<"nodes">>
-            %% list -- presumably to achieve better load balancing by not letting
-            %% unmindful clients always target nodes at the same ordinal position in
-            %% the list.
-            %%
-            %% The code below imposes a consistent ordering of the nodes w.r.t. the
-            %% vbucket map. In order to be efficient, we first build a dictionary
-            %% out of the node list elements so that lookups are cheaper later while
-            %% reordering them.
-            NodeDict = dict:from_list(
-                         lists:map(
-                           fun({Props} = Node) ->
-                                   [Hostname, _] =
-                                       string:tokens(?b2l(
-                                                        couch_util:get_value(<<"hostname">>, Props)), ":"),
-                                   {Ports} = couch_util:get_value(<<"ports">>, Props),
-                                   DirectPort = couch_util:get_value(<<"direct">>, Ports),
-                                   {?l2b(Hostname ++ ":" ++ integer_to_list(DirectPort)), Node}
-                           end,
-                           NodeList)),
-            OrderedNodeList =
-                lists:map(
-                  fun(Server) ->
-                          dict:fetch(Server, NodeDict)
-                  end,
-                  ServerList),
-
-            ?xdcr_debug("updated target vbucketmap: ~p, server list: ~p",
-                        [VbucketMap, ServerList]),
-            {ok, {VbucketMap, OrderedNodeList}}
-    end.
-
 
 %% Given a Bucket name and a vbucket id, this function computes the Couch URI to
 %% locally access it.
@@ -460,34 +413,46 @@ sum_stats(#rep_stats{} = S1, #rep_stats{} = S2) ->
 
 
 get_checkpoint_log_id(#db{name = DbName0}, LogId0) ->
-    get_checkpoint_log_id(DbName0, LogId0);
+    get_checkpoint_log_id(?b2l(DbName0), LogId0);
 get_checkpoint_log_id(#httpdb{url = DbUrl0}, LogId0) ->
     [_, _, DbName0] = [couch_httpd:unquote(Token) ||
                           Token <- string:tokens(DbUrl0, "/")],
-    get_checkpoint_log_id(?l2b(DbName0), LogId0);
+    get_checkpoint_log_id(mochiweb_util:unquote(DbName0), LogId0);
 get_checkpoint_log_id(DbName0, LogId0) ->
-    {_, VBucket} = split_dbname(DbName0),
+    {DbName, _UUID} = split_uuid(DbName0),
+    {_, VBucket} = split_dbname(DbName),
     ?l2b([?LOCAL_DOC_PREFIX, integer_to_list(VBucket), "-", LogId0]).
 
-get_master_db(#db{name = DbName0}) ->
-    get_master_db(DbName0);
+get_master_db(#db{name = DbName}) ->
+    ?l2b(get_master_db(?b2l(DbName)));
 get_master_db(#httpdb{url=DbUrl0}) ->
     [Scheme, Host, DbName0] = [couch_httpd:unquote(Token) ||
                                   Token <- string:tokens(DbUrl0, "/")],
-    DbName = get_master_db(?l2b(DbName0)),
+    DbName = get_master_db(DbName0),
+
     DbUrl = Scheme ++ "//" ++ Host ++ "/" ++ couch_httpd:quote(DbName) ++ "/",
     #httpdb{url = DbUrl, timeout = 300000};
 get_master_db(DbName0) ->
-    {Bucket, _} = split_dbname(DbName0),
-    iolist_to_binary([Bucket, $/, <<"master">>]).
+    {DbName, UUID} = split_uuid(DbName0),
+    {Bucket, _} = split_dbname(DbName),
+    MasterDbName = Bucket ++ "/master",
+    unsplit_uuid({MasterDbName, UUID}).
 
 split_dbname(DbName) ->
-    DbNameStr = binary_to_list(DbName),
-    Tokens = string:tokens(DbNameStr, [$/]),
-    build_info(Tokens, []).
+    %% couchbase does not support slashes in bucket names; thus we can have only
+    %% two items in this list
+    [BucketName, VBucketStr] = string:tokens(DbName, [$/]),
+    {BucketName, list_to_integer(VBucketStr)}.
 
-build_info([VBucketStr], R) ->
-    {lists:append(lists:reverse(R)), list_to_integer(VBucketStr)};
-build_info([H|T], R)->
-    build_info(T, [H|R]).
+split_uuid(DbName) ->
+    case string:tokens(DbName, [$;]) of
+        [RealDbName, UUID] ->
+            {RealDbName, UUID};
+        _ ->
+            {DbName, undefined}
+    end.
 
+unsplit_uuid({DbName, undefined}) ->
+    DbName;
+unsplit_uuid({DbName, UUID}) ->
+    DbName ++ ";" ++ UUID.

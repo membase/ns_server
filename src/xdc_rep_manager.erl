@@ -24,7 +24,8 @@
 %%   "_id" : "my_xdc_rep",
 %%   "type" : "xdc",
 %%   "source" : "bucket0",
-%%   "target" : "http://uid:pwd@10.1.6.190:8091/pools/default/buckets/bucket0",
+%%   "target" : "/remoteClusters/cluster_name/buckets/bucket0",
+%%   "targetUUID" : "fe919bda0242eac3ddf9e47586c3e67b",
 %%   "continuous" : true
 %% }
 %%
@@ -78,6 +79,7 @@
 -export([code_change/3, terminate/2]).
 
 -include("xdc_replicator.hrl").
+-include("remote_clusters_info.hrl").
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -323,17 +325,26 @@ maybe_start_xdc_replication(XDocId, XDocBody, RepDbName) ->
 
 start_xdc_replication(#rep{id = XRepId,
                            source = SrcBucketBinary,
-                           target = {_, TgtBucket, _, _, _, _, _, _, _, _},
+                           target = TgtReference,
+                           %% target = {_, TgtBucket, _, _, _, _, _, _, _, _},
                            doc_id = XDocId} = XRep,
                       RepDbName,
                       XDocBody) ->
     SrcBucket = ?b2l(SrcBucketBinary),
     SrcBucketLookup = ns_bucket:get_bucket(SrcBucket),
-    TgtBucketLookup = xdc_rep_utils:remote_vbucketmap_nodelist(TgtBucket),
+    TgtBucketLookup = remote_clusters_info:get_remote_bucket_by_ref(TgtReference, true),
 
     ?xdcr_info("starting xdc replication now..."),
     case {SrcBucketLookup, TgtBucketLookup} of
-        {not_present, not_present} ->
+        {{ok, SrcBucketConfig}, {ok, _DstBucketConfig}} ->
+            MyVbs = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
+            ?xdcr_info("~s: source and target bucket found, insert into XSTORE:~n~p,~n~p",
+                       [XDocId, XRep, MyVbs]),
+            true = ets:insert(?XSTORE, {XDocId, XRep, MyVbs}),
+            xdc_rep_manager_helper:create_xdc_rep_info_doc(
+              XDocId, XRepId, MyVbs, RepDbName, XDocBody),
+            ok;
+        {not_present, {error, _, _}} ->
             ?xdcr_error("~s: source and target buckets not found", [XDocId]),
             true = ets:insert(?XSTORE, {XDocId, XRep, [], []}),
             {error, not_present};
@@ -341,18 +352,10 @@ start_xdc_replication(#rep{id = XRepId,
             ?xdcr_error("~s: source bucket not found", [XDocId]),
             true = ets:insert(?XSTORE, {XDocId, XRep, [], []}),
             {error, not_present};
-        {_, not_present} ->
+        {_, {error, _, _}} ->
             ?xdcr_error("~s: target bucket not found", [XDocId]),
             true = ets:insert(?XSTORE, {XDocId, XRep, [], []}),
-            {error, not_present};
-        {{ok, SrcBucketConfig}, _} ->
-            MyVbs = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
-            ?xdcr_info("~s: source and target bucket found, insert into XSTORE [~p, ~p]",
-                       [XDocId, XRep, MyVbs]),
-            true = ets:insert(?XSTORE, {XDocId, XRep, MyVbs}),
-            xdc_rep_manager_helper:create_xdc_rep_info_doc(
-              XDocId, XRepId, MyVbs, RepDbName, XDocBody),
-            ok
+            {error, not_present}
     end.
 
 cancel_all_xdc_replications() ->
@@ -432,14 +435,15 @@ maybe_adjust_xdc_replication(XDocId, PrevVbs, CurrVbs) ->
     %% Update XSTORE with the current active vbuckets list
     true = ets:update_element(?XSTORE, XDocId, [{3, CurrVbs}]).
 
-start_vbucket_replication(XDocId, SrcBucket, {TgtVbMap, TgtNodes}, Vb) ->
+start_vbucket_replication(XDocId, SrcBucket, TgtVbMap, Vb) ->
     SrcURI = xdc_rep_utils:local_couch_uri_for_vbucket(SrcBucket, Vb),
-    TgtURI = xdc_rep_utils:remote_couch_uri_for_vbucket(TgtVbMap, TgtNodes, Vb),
+    %% TODO TgtURI can be undefined; this should be handled
+    TgtURI = hd(dict:fetch(Vb, TgtVbMap)),
     start_couch_replication(SrcURI, TgtURI, Vb, XDocId).
 
-restart_vbucket_replication(XDocId, SrcBucket, TgtVbInfo, Vb, CRepPid) ->
+restart_vbucket_replication(XDocId, SrcBucket, TgtVbMap, Vb, CRepPid) ->
     cancel_couch_replication(XDocId, CRepPid),
-    start_vbucket_replication(XDocId, SrcBucket, TgtVbInfo, Vb).
+    start_vbucket_replication(XDocId, SrcBucket, TgtVbMap, Vb).
 
 start_couch_replication(SrcCouchURI, TgtCouchURI, Vb, XDocId) ->
     %% Until scheduled XDC replication support is added, this function will
@@ -520,7 +524,7 @@ manage_vbucket_replications() ->
     lists:foreach(
       fun([XDocId,
            #rep{source = SrcBucket,
-                target = {_, TgtBucket, _, _, _, _, _, _, _, _}},
+                target = TgtReference},
            Vbs]) ->
               MaxConcurrentReps = max_concurrent_reps(SrcBucket),
               NumActiveReps = length(active_replications_for_doc(XDocId)),
@@ -532,8 +536,8 @@ manage_vbucket_replications() ->
                   NumFreeSlots ->
                       {Vbs1, Vbs2} = lists:split(erlang:min(NumFreeSlots, length(Vbs)), Vbs),
                       %% Reread the target vbucket map once before retrying all reps
-                      {ok, TgtVbInfo} =
-                          xdc_rep_utils:remote_vbucketmap_nodelist(TgtBucket),
+                      {ok, #remote_bucket{vbucket_map=TgtVbMap}} =
+                          remote_clusters_info:get_remote_bucket_by_ref(TgtReference, true),
                       lists:foreach(
                         fun(Vb) ->
                                 case lists:flatten(ets:match(
@@ -541,15 +545,15 @@ manage_vbucket_replications() ->
                                     [] ->
                                         %% New vbucket
                                         start_vbucket_replication(XDocId, SrcBucket,
-                                                                  TgtVbInfo, Vb);
+                                                                  TgtVbMap, Vb);
                                     [CRepPid, error] ->
                                         %% Failed vbucket
                                         restart_vbucket_replication(XDocId, SrcBucket,
-                                                                    TgtVbInfo, Vb, CRepPid);
+                                                                    TgtVbMap, Vb, CRepPid);
                                     [CRepPid, completed] ->
                                         %% Completed vbucket
                                         restart_vbucket_replication(XDocId, SrcBucket,
-                                                                    TgtVbInfo, Vb, CRepPid);
+                                                                    TgtVbMap, Vb, CRepPid);
                                     [_, triggered] ->
                                         %% In progress vbucket
                                         ok
