@@ -45,7 +45,8 @@ do_upgrade_config(Config, FinalVersion) ->
 
 upgrade_config_from_pre_2_0_to_2_0(Config) ->
     ?log_info("Performing online config upgrade to 2.0 version"),
-    maybe_add_vbucket_map_history(Config).
+    maybe_add_vbucket_map_history(Config) ++
+        maybe_add_buckets_uuids(Config).
 
 maybe_add_vbucket_map_history(Config) ->
     maybe_add_vbucket_map_history(Config, ?VBMAP_HISTORY_SIZE).
@@ -72,6 +73,32 @@ maybe_add_vbucket_map_history(Config, HistorySize) ->
             UniqueHistory = lists:usort(History),
             FinalHistory = lists:sublist(UniqueHistory, HistorySize),
             [{set, vbucket_map_history, FinalHistory}]
+    end.
+
+maybe_add_buckets_uuids(Config) ->
+    case ns_config:search(Config, buckets) of
+        {value, Buckets} ->
+            Configs = proplists:get_value(configs, Buckets, []),
+            NewConfigs = lists:map(fun maybe_add_bucket_uuid/1, Configs),
+
+            case NewConfigs =:= Configs of
+                true ->
+                    [];
+                false ->
+                    NewBuckets = misc:update_proplist(Buckets,
+                                                      [{configs, NewConfigs}]),
+                    [{set, buckets, NewBuckets}]
+            end;
+        false ->
+            []
+    end.
+
+maybe_add_bucket_uuid({BucketName, BucketConfig} = Bucket) ->
+    case proplists:get_value(uuid, BucketConfig) of
+        undefined ->
+            {BucketName, [{uuid, couch_uuids:random()} | BucketConfig]};
+        _UUID ->
+            Bucket
     end.
 
 -ifdef(EUNIT).
@@ -148,6 +175,46 @@ add_vbucket_map_history_test() ->
                     {"test", BucketConfig2}]}]}]],
     ?assertMatch([{set, vbucket_map_history, [{_, [{max_slaves, 10}]}]}],
                  maybe_add_vbucket_map_history(OldCfg7, 1)),
+
+    ok.
+
+add_buckets_uuids_test() ->
+    OldCfg1 = [[{buckets,
+                 [{configs, []}]}]],
+    ?assertEqual([],
+                 maybe_add_buckets_uuids(OldCfg1)),
+
+    OldCfg2 = [[{buckets,
+                 [{configs, [{"default", []}]}]}]],
+    ?assertMatch([{set, buckets, [{configs, [{"default", [{uuid, _}]}]}]}],
+                 maybe_add_buckets_uuids(OldCfg2)),
+
+    OldCfg3 = [[{buckets,
+                 [{configs, [{"default", [{uuid, some_uuid}]}]}]}]],
+    ?assertEqual([],
+                 maybe_add_buckets_uuids(OldCfg3)),
+
+    OldCfg4 = [[{buckets,
+                 [{configs, [{"default", []}]},
+                  {other, other}]}]],
+    ?assertMatch([{set, buckets, [{configs, [{"default", [{uuid, _}]}]},
+                                  {other, other}]}],
+                 maybe_add_buckets_uuids(OldCfg4)),
+
+    OldCfg5 = [[{buckets,
+                 [{configs, [{"default", [{bucket_prop, bucket_prop}]},
+                             {"bucket", [{uuid, some_uuid}]}]},
+                  {other, other}]}]],
+    ?assertMatch([{set, buckets,
+                   [{configs, [{"default", [{uuid, _},
+                                            {bucket_prop, bucket_prop}]},
+                               {"bucket", [{uuid, some_uuid}]}]},
+                    {other, other}]}],
+                 maybe_add_buckets_uuids(OldCfg5)),
+
+    OldCfg6 = [[]],
+    ?assertEqual([],
+                 maybe_add_buckets_uuids(OldCfg6)),
 
     ok.
 
