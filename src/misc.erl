@@ -1086,6 +1086,8 @@ split_binary_at_char(Binary, Chr) ->
         [Part1, Part2] -> {Part1, Part2}
     end.
 
+is_binary_ends_with(Binary, Suffix) ->
+    binary:longest_common_suffix([Binary, Suffix]) =:= size(Suffix).
 
 %% Quick function to build the ebucketmigrator escript, partially copied from
 %% https://bitbucket.org/basho/rebar/src/d4fcc10abc0b/src/rebar_escripter.erl
