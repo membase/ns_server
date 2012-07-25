@@ -23,6 +23,7 @@
 
 -export([get_remote_clusters/0,
          get_remote_clusters/1,
+         cas_remote_clusters/2,
          handle_remote_clusters/1,
          handle_remote_clusters_post/1,
          handle_remote_cluster_update/2,
