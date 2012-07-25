@@ -523,7 +523,7 @@
                   Compaction: <span id="bucket_progress_container_{%= h(name) %}">Not active</span>
                 </div>
                 <div class="last">
-                  <a class="inner_btn" href="#editBucket={%= uri %}">Edit</a>
+                  <a class="inner_btn" href="#editBucket={%= h(encodeURIComponent(uri)) %}">Edit</a>
                   <button class="inner_btn compact_btn" id="compact_bucket_{%= h(name) %}">Compact</button>
                 </div>
               </div>
