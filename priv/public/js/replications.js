@@ -134,6 +134,9 @@ var ReplicationForm = mkClass({
     this.form.bind('submit', this.onSubmit);
 
     DAL.cells.bucketsListCell.subscribeValue(function(buckets) {
+      if (!buckets) {
+        return;
+      }
       var rb = $('#replication_from_bucket');
       rb.html('<option value="">select a bucket</option>');
       _.each(buckets.byType.membase, function (bucket) {
