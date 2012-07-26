@@ -462,9 +462,10 @@ do_remote_cluster(JsonGet) ->
                           fun (NodeProps) ->
                                   Nodes = lists:map(fun props_to_remote_node/1,
                                                     NodeProps),
+                                  SortedNodes = lists:sort(Nodes),
 
                                   {ok, #remote_cluster{uuid=UUID,
-                                                       nodes=Nodes}}
+                                                       nodes=SortedNodes}}
                           end)
                 end)
       end).
