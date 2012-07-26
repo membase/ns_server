@@ -34,7 +34,9 @@ that. Feel free to ask --help. You normally need something like -n2
 where 2 is number of nodes you want.
 
 It'll start REST API on ports 9000...9000+n. memcached on ports
-12000+2*i and moxi ports on 12001+2*i ports.
+12000+2*i and 11999-i and moxi ports on 12001+2*i ports. CAPI (which
+was originally expected to be couch-compatible http API
+implementation) is 9500...9500+n
 
 Note that blank nodes are not configured and need to be setup. I
 suggest trying web UI first to get the feeling of what's
@@ -64,4 +66,4 @@ stats.
 Another notable tool is couchbase-cli. Script is called just couchbase.
 
 * * * * *
-Copyright (c) 2011, Couchbase, Inc.
+Copyright (c) 2012, Couchbase, Inc.

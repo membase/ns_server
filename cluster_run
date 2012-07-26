@@ -103,9 +103,9 @@ def start_cluster(num_nodes, start_index, host, extra_args, args_prefix):
             "path_config_tmpdir", '"tmp/"',
             "rest_port", str(base_api_port + i),
             "mccouch_port", str(base_mccouch_port + i),
-            "memcached_port", str(base_direct_port + i * 3),
-            "memcached_dedicated_port", str(base_direct_port + i * 3 + 1),
-            "moxi_port", str(base_direct_port + i * 3 + 2),
+            "memcached_port", str(base_direct_port + i * 2),
+            "moxi_port", str(base_direct_port + i * 2 + 1),
+            "memcached_dedicated_port", str(base_direct_port - 1 - i),
             "short_name", '"n_{0}"'.format(i)
             ] + extra_args
 
