@@ -50,6 +50,20 @@
 %%    Construct remote bucket reference that can be used by
 %%    get_remote_bucket_by_ref functions.
 
+%% The service maintains protected ets table that is used to cache obtained
+%% information. It's structure is as follows.
+%%
+%%   clusters: an ordered list of UUIDs of cached remote clusters
+%%
+%%   <UUID>: a cached information for the remote cluster denoted by <UUID>
+%%
+%%   {buckets, <UUID>}: an ordered list of buckets cached for a cluster
+%%                      denoted by <UUID>
+%%
+%%   {bucket, <UUID>, <RemoteBucketName>}: a cached information about remote
+%%                                         bucket <RemoteBucketName> on the
+%%                                         cluster denoted by <UUID>
+
 -module(remote_clusters_info).
 
 -behaviour(gen_server).
