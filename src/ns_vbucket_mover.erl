@@ -38,9 +38,7 @@
                 max_per_node::pos_integer(),
                 map::array(),
                 moves::dict(), movers::dict(),
-                progress_callback::progress_callback(),
-                done::boolean(),
-                pending_vbucket_updates::non_neg_integer()}).
+                progress_callback::progress_callback()}).
 
 %%
 %% API
@@ -137,9 +135,7 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
                 max_per_node=?MAX_MOVES_PER_NODE,
                 map = map_to_array(OldMap),
                 moves=MoveDict, movers=Movers,
-                progress_callback=ProgressCallback,
-                done=false,
-                pending_vbucket_updates=0}}.
+                progress_callback=ProgressCallback}}.
 
 
 handle_call({run_code, Fun}, _From, State) ->
