@@ -944,50 +944,75 @@ get_cached_remote_clusters_ids() ->
 
 get_cached_remote_buckets(ClusterId) ->
     [{_, Buckets}] = ets:lookup(?CACHE, {buckets, ClusterId}),
-    [{bucket, ClusterId, Bucket} || Bucket <- Buckets].
+    Buckets.
 
 gc() ->
     Clusters = get_remote_clusters_ids(),
     CachedClusters = get_cached_remote_clusters_ids(),
 
     RemovedClusters = ordsets:subtract(CachedClusters, Clusters),
-    lists:foreach(fun gc_cluster/1, RemovedClusters),
+    LeftClusters = ordsets:subtract(CachedClusters, RemovedClusters),
 
-    gc_buckets().
+    lists:foreach(fun gc_cluster/1, RemovedClusters),
+    true = ets:insert(?CACHE, {clusters, LeftClusters}),
+
+    gc_buckets(LeftClusters).
 
 gc_cluster(Cluster) ->
     CachedBuckets = get_cached_remote_buckets(Cluster),
     lists:foreach(
       fun (Bucket) ->
-              true = ets:delete(?CACHE, Bucket)
-      end, CachedBuckets).
+              true = ets:delete(?CACHE, {bucket, Cluster, Bucket})
+      end, CachedBuckets),
 
-gc_buckets() ->
-    PresentReplications = build_present_replications_set(),
+    true = ets:delete(?CACHE, {buckets, Cluster}),
+    true = ets:delete(?CACHE, Cluster).
+
+gc_buckets(CachedClusters) ->
+    PresentReplications = build_present_replications_dict(),
+
     lists:foreach(
-      fun ([UUID, Bucket]) ->
-              case sets:is_element({UUID, Bucket}, PresentReplications) of
-                  true ->
-                      ok;
-                  false ->
-                      true = ets:delete(?CACHE, {bucket, UUID, Bucket})
-              end
-      end, ets:match(?CACHE, {{bucket, '$1', '$2'}, '_'})).
+      fun (Cluster) ->
+              Buckets = case dict:find(Cluster, PresentReplications) of
+                            {ok, V} ->
+                                V;
+                            error ->
+                                []
+                        end,
 
-build_present_replications_set() ->
+              CachedBuckets = get_cached_remote_buckets(Cluster),
+
+              Removed = ordsets:subtract(CachedBuckets, Buckets),
+              Left = ordsets:subtract(CachedBuckets, Removed),
+
+              lists:foreach(
+                fun (Bucket) ->
+                        true = ets:delete(?CACHE, {bucket, Cluster, Bucket})
+                end, Removed),
+
+              true = ets:insert(?CACHE, {{buckets, Cluster}, Left})
+      end, CachedClusters).
+
+build_present_replications_dict() ->
     with_replicator_db(
       fun (Db) ->
               {ok, _, Set} =
                   couch_db:enum_docs(
                     Db,
-                    fun (DocInfo, _, S) ->
+                    fun (DocInfo, _, D) ->
                             case get_rdoc_info(DocInfo, Db) of
                                 next ->
-                                    {ok, S};
+                                    {ok, D};
                                 {UUID, BucketName} ->
-                                    {ok, sets:add_element({UUID, BucketName}, S)}
+                                    D1 = dict:update(
+                                           UUID,
+                                           fun (S) ->
+                                                   ordsets:add_element(BucketName, S)
+                                           end, [BucketName], D),
+
+                                    {ok, D1}
                             end
-                    end, sets:new(), []),
+                    end, dict:new(), []),
               Set
       end).
 
