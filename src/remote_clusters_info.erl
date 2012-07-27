@@ -1010,7 +1010,7 @@ maybe_schedule_cluster_config_update(
   #remote_cluster{uuid=UUID} = RemoteCluster,
   #state{scheduled_config_updates=Scheduled} = State) ->
     case not(sets:is_element(UUID, Scheduled)) andalso
-        is_cluster_config_udpate_required(RemoteCluster,
+        is_cluster_config_update_required(RemoteCluster,
                                           get_remote_clusters()) of
         true ->
             ?log_debug("Scheduling config update for cluster ~s",
@@ -1038,7 +1038,7 @@ find_cluster_by_uuid(RemoteUUID, Clusters) ->
 
     find_cluster(P, Clusters).
 
-is_cluster_config_udpate_required(#remote_cluster{uuid=RemoteUUID,
+is_cluster_config_update_required(#remote_cluster{uuid=RemoteUUID,
                                                   nodes=Nodes},
                                   Clusters) ->
     case find_cluster_by_uuid(RemoteUUID, Clusters) of
@@ -1058,7 +1058,7 @@ try_update_cluster_config(UUID, LastAttempt) ->
             true;
         [{_, RemoteCluster}] ->
             Clusters = get_remote_clusters(),
-            case is_cluster_config_udpate_required(RemoteCluster, Clusters) of
+            case is_cluster_config_update_required(RemoteCluster, Clusters) of
                 true ->
                     {Cluster, Rest} = find_cluster_by_uuid(UUID, Clusters),
 
