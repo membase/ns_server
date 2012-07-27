@@ -13,6 +13,43 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
+%% This service provides a way to get an information about remote
+%% clusters. The main consumer for it is xdc_rep_manager.
+%%
+%% There're several important functions exposed:
+%%
+%%  - fetch_remote_cluster/{1,2}
+%%
+%%    Basically returns a list of nodes that remote cluster have. Used by
+%%    menelaus_web_remote_clusters. This function always goes to remote
+%%    cluster no matter if there's a cached information or not.
+%%
+%%  - get_remote_bucket/{3,4}
+%%
+%%    Returns remote bucket information by remote cluster name and bucket
+%%    name. The most important piece here is a vbucket map for that
+%%    bucket. Vbucket map is returned as an erlang dict mapping vbuckets to
+%%    replication chains. The chain contains ready URLs to remote vbucket
+%%    databases so that xdc_rep_manager could just easily use it without any
+%%    additional preparation. There's one exception though. Replication chains
+%%    can contain 'undefined' atoms where there's corresponding master or
+%%    replica for the vbucket.
+%%
+%%    `Through` parameter controls if client can accept stale
+%%    information. When set to 'true' the most up to date information will be
+%%    queried from the remote cluster. When set to 'false' cached information
+%%    (if it's existent) will be returned.
+%%
+%%  - get_remote_bucket_by_ref/{2,3}
+%%
+%%    Same as previous functions. But remote cluster and bucket is identified
+%%    by the 'target' reference stored in replication document.
+%%
+%%  - remote_bucket_reference/2
+%%
+%%    Construct remote bucket reference that can be used by
+%%    get_remote_bucket_by_ref functions.
+
 -module(remote_clusters_info).
 
 -behaviour(gen_server).
