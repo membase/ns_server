@@ -1289,9 +1289,20 @@ do_handle_eject_post(Req, OtpNode) ->
 handle_settings_max_parallel_indexers(Req) ->
     Config = ns_config:get(),
 
-    GlobalValue = ns_config:search(Config, {couchdb, max_parallel_indexers}),
+    GlobalValue =
+        case ns_config:search(Config, {couchdb, max_parallel_indexers}) of
+            false ->
+                null;
+            {value, V} ->
+                V
+        end,
     ThisNodeValue =
-        ns_config:search_node(node(), Config, {couchdb, max_parallel_indexers}),
+        case ns_config:search_node(node(), Config, {couchdb, max_parallel_indexers}) of
+            false ->
+                null;
+            {value, V2} ->
+                V2
+        end,
 
     reply_json(Req, {struct, [{globalValue, GlobalValue},
                               {nodes, [{node(), ThisNodeValue}]}]}).
