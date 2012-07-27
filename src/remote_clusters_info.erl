@@ -950,19 +950,20 @@ get_rdoc_info(#doc_info{id=Id} = DocInfo, Db) ->
             {ok, Doc} = couch_db:open_doc_int(Db, DocInfo, [ejson_body]),
             case Doc#doc.body of
                 {Props} ->
-                    Target = proplists:get_value(<<"target">>, Props),
-                    UUID = proplists:get_value(<<"targetUUID">>, Props),
+                    case proplists:get_value(<<"type">>, Props) of
+                        <<"xdc">> ->
+                            Target = proplists:get_value(<<"target">>, Props),
+                            UUID = proplists:get_value(<<"targetUUID">>, Props),
 
-                    case Target =:= undefined orelse UUID =:= undefined of
-                        true ->
-                            next;
-                        false ->
-                            case parse_remote_bucket_reference(Target) of
-                                {ok, {_ClusterName, BucketName}} ->
-                                    {UUID, BucketName};
-                                {error, bad_reference} ->
-                                    next
-                            end
+                            true = (Target =/= undefined),
+                            true = (UUID =/= undefined),
+
+                            {ok, {_ClusterName, BucketName}} =
+                                parse_remote_bucket_reference(Target),
+
+                            {UUID, BucketName};
+                        _ ->
+                            next
                     end;
                 _ ->
                     next
