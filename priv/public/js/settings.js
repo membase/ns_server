@@ -646,22 +646,22 @@ var EmailAlertsSection = {
       if (val!==undefined) {
         val.recipients = val.recipients.join('\n');
         val.alerts = [{
-          label: 'Node was auto-failovered',
+          label: 'Node was auto-failed-over',
           enabled: $.inArray('auto_failover_node', val.alerts)!==-1,
           value: 'auto_failover_node'
         },{
-          label: 'Maximum number of auto-failovered nodes was reached',
+          label: 'Maximum number of auto-failed-over nodes was reached',
           enabled: $.inArray('auto_failover_maximum_reached',
                              val.alerts)!==-1,
           value: 'auto_failover_maximum_reached'
         },{
-          label: 'Node wasn\'t auto-failovered as other nodes are down ' +
+          label: 'Node wasn\'t auto-failed-over as other nodes are down ' +
             'at the same time',
           enabled: $.inArray('auto_failover_other_nodes_down',
                              val.alerts)!==-1,
           value: 'auto_failover_other_nodes_down'
         },{
-          label: 'Node wasn\'t auto-failovered as the cluster ' +
+          label: 'Node wasn\'t auto-failed-over as the cluster ' +
             'was too small (less than 3 nodes)',
           enabled: $.inArray('auto_failover_cluster_too_small',
                              val.alerts)!==-1,
