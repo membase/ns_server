@@ -53,25 +53,7 @@ stop() ->
     couch_event_sup:stop(couch_log).
 
 init([]) ->
-    % read config and register for configuration changes
-
-    % just stop if one of the config settings change. couch_server_sup
-    % will restart us and then we will pick up the new settings.
-    ok = couch_config:register(
-           fun ("log", "level") ->
-                   ?MODULE:stop()
-           end),
-
-    Level0 = list_to_atom(couch_config:get("log", "level", "info")),
-    Level =
-        case lists:member(Level0, [info, debug, error]) of
-            true ->
-                Level0;
-            false ->
-                error
-        end,
-
-    set_level(Level).
+    ok.
 
 debug_on() ->
     true.
