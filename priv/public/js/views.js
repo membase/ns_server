@@ -56,30 +56,16 @@ function unbuildViewPseudoLink(link, body, context) {
   return body.apply(context, _.map(link.split("/"), decodeURIComponent));
 }
 
-// TODO: we'll get rid of this real soon. As soon as Chris'
-// server-side stuff is merged
-function performMetaHack(body) {
-  if (body && ('_id' in body)) {
-    var bodyClone = _.clone(body);
-    delete bodyClone._id;
-    delete bodyClone._rev;
-    delete bodyClone['$expiration'];
-    delete bodyClone['$flags'];
-    body = {
-      json: bodyClone,
-      meta: {id: body._id,
-             rev: body._rev,
-             expiration: body["$expiration"],
-             flags: body["$flags"]}
-    };
-  }
-  return body;
-}
-
 function couchGet(url, callback) {
   IOCenter.performGet({url: url, dataType: "json",
     success: function(body, status, xhr) {
-      body = performMetaHack(body);
+      var meta = xhr.getResponseHeader("X-Couchbase-Meta");
+      if (meta) { // we have a doc not a view
+        body = {
+          json : body,
+          meta : JSON.parse(meta)
+        }
+      }
       callback.call(this, body, status, xhr);
     }
   });
@@ -99,7 +85,13 @@ function couchReq(method, url, data, success, error) {
     dataType: 'json',
     contentType: 'application/json',
     success: function(doc, status, xhr) {
-      doc = performMetaHack(doc);
+      var meta = xhr.getResponseHeader("X-Couchbase-Meta");
+      if (meta) {
+        doc = {
+          json : doc,
+          meta : JSON.parse(meta)
+        }
+      }
       success.call(this, doc, status, xhr);
     },
     error: function (xhr) {
@@ -162,15 +154,6 @@ future.capiViewGet = function (ajaxOptions, valueTransformer, newValue, futureWr
   }
   ajaxOptions = _.clone(ajaxOptions);
   ajaxOptions.error = handleError;
-  ajaxOptions.success = function (stuff) {
-    var rv = _.clone(stuff);
-    rv.rows = _.map(stuff.rows, function (row) {
-      row = _.clone(row);
-      row.doc = performMetaHack(row.doc);
-      return row;
-    });
-    dataCallback(rv);
-  }
   ajaxOptions.missingValueProducer = missingValueProducer;
   // we're using future wrapper to get reference to dataCallback
   // so that we can call it from error handler
@@ -357,7 +340,7 @@ var ViewsSection = {
       var haveBuckets = v.need(haveBucketsCell);
 
       if (haveBuckets) {
-        return _.map(v.need(rawAllDDocsCell).rows, function (r) {return performMetaHack(r.doc)});
+        return _.map(v.need(rawAllDDocsCell).rows, function (r) {return r.doc});
       } else {
         return [];
       }
@@ -1415,7 +1398,15 @@ var ViewsSection = {
         return callback("conflict");
       }
       views[viewName] = viewDef || {
-        map: "function (doc) {\n  emit(doc._id, null);\n}"
+        map:'function (doc, meta) {'
+          + '\n  if (meta.type == "json") {'
+          + '\n    // If the document is JSON, sort by the schema'
+          + '\n    var keys = Object.keys(doc);'
+          + '\n    emit(["json", keys.length], keys);'
+          + '\n  } else {'
+          + '\n    emit(["blob"]);'
+          + '\n  }'
+          + '\n}'
       }
       couchReq('PUT',
                ddocURL,

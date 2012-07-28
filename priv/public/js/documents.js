@@ -116,7 +116,11 @@ function createDocumentsCells(ns, modeCell, capiBaseCell, bucketsListCell) {
       },
       success: function (doc, status, xhr) {
         if (doc) {
-          dataCallback(performMetaHack(doc));
+          var meta = xhr.getResponseHeader("X-Couchbase-Meta");
+          dataCallback({
+            json : doc,
+            meta : JSON.parse(meta)
+          });
         } else {
           var error = new Error(status);
           error.explanatoryMessage = documentErrors.notExist;
