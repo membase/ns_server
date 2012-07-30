@@ -169,8 +169,10 @@ handle_info(compact, idle,
     Buckets =
         case Buckets0 of
             [] ->
-                [list_to_binary(Bucket) ||
-                    Bucket <- ns_bucket:get_bucket_names(membase)];
+                [list_to_binary(Name) ||
+                    {Name, Config} <- ns_bucket:get_buckets(),
+                    ns_bucket:bucket_type(Config) =:= membase,
+                    lists:member(node(), ns_bucket:bucket_nodes(Config))];
             _ ->
                 Buckets0
         end,
@@ -298,6 +300,14 @@ spawn_bucket_compactor(BucketName, {Config, ConfigProps}, Force) ->
                   false ->
                       %% effectful
                       check_period(Config)
+              end,
+
+              case bucket_exists(BucketName) of
+                  true ->
+                      ok;
+                  false ->
+                      %% bucket's gone; so just terminate normally
+                      exit(normal)
               end,
 
               AllBucketDbs = all_bucket_dbs(BucketName),
@@ -1104,4 +1114,13 @@ do_check_all_dbs_exist([E | ERest] = _Existing,
             do_check_all_dbs_exist(ERest, RRest);
         true ->
             {missing, R}
+    end.
+
+bucket_exists(BucketName) ->
+    case ns_bucket:get_bucket_light(binary_to_list(BucketName)) of
+        {ok, Config} ->
+            (ns_bucket:bucket_type(Config) =:= membase) andalso
+                lists:member(node(), ns_bucket:bucket_nodes(Config));
+        not_present ->
+            false
     end.
