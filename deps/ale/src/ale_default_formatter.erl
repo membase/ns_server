@@ -26,11 +26,12 @@ format_msg(#log_info{logger=Logger,
                      time=Time, process=Process, node=Node} = _Info, UserMsg) ->
     {{Year, Month, Day}, {Hour, Minute, Second}} =
         calendar:now_to_local_time(Time),
+    Millis = erlang:element(3, Time) div 1000,
     Header =
-        io_lib:format("[~s:~s] "
-                      "[~B-~2.10.0B-~2.10.0B ~B:~2.10.0B:~2.10.0B] "
-                      "[~s:~p:~s:~s:~B] ",
+        io_lib:format("[~s:~s,"
+                      "~B-~2.10.0B-~2.10.0BT~B:~2.10.0B:~2.10.0B.~3.10.0B,"
+                      "~s:~p:~s:~s:~B]",
                       [Logger, LogLevel,
-                       Year, Month, Day, Hour, Minute, Second,
+                       Year, Month, Day, Hour, Minute, Second, Millis,
                        Node, Process, M, F, L]),
     [Header, UserMsg, "\n"].
