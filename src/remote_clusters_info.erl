@@ -111,22 +111,107 @@
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
+-spec fetch_remote_cluster(list()) -> {ok, #remote_cluster{}} |
+                                      {error, timeout} |
+                                      {error, rest_error, Msg, Details} |
+                                      {error, client_error, Msg} |
+                                      {error, bad_value, Msg} |
+                                      {error, {bad_value, Field}, Msg} |
+                                      {error, {missing_field, Field}, Msg}
+  when Details :: {error, term()} | {bad_status, integer(), string()},
+       Msg :: binary(),
+       Field :: binary().
 fetch_remote_cluster(Cluster) ->
     fetch_remote_cluster(Cluster, ?FETCH_CLUSTER_TIMEOUT).
 
+-spec fetch_remote_cluster(list(), integer()) ->
+                                  {ok, #remote_cluster{}} |
+                                  {error, timeout} |
+                                  {error, rest_error, Msg, Details} |
+                                  {error, client_error, Msg} |
+                                  {error, bad_value, Msg} |
+                                  {error, {bad_value, Field}, Msg} |
+                                  {error, {missing_field, Field}, Msg}
+  when Details :: {error, term()} | {bad_status, integer(), string()},
+       Msg :: binary(),
+       Field :: binary().
 fetch_remote_cluster(Cluster, Timeout) ->
     gen_server:call(?MODULE, {fetch_remote_cluster, Cluster, Timeout}, infinity).
 
+-spec get_remote_bucket_by_ref(binary(), boolean()) ->
+                                      {ok, #remote_bucket{}} |
+                                      {error, cluster_not_found, Msg} |
+                                      {error, timeout} |
+                                      {error, rest_error, Msg, Details} |
+                                      {error, client_error, Msg} |
+                                      {error, bad_value, Msg} |
+                                      {error, {bad_value, Field}, Msg} |
+                                      {error, {missing_field, Field}, Msg} |
+                                      {error, all_nodes_failed, Msg} |
+                                      {error, other_cluster, Msg} |
+                                      {error, not_capable, Msg} |
+                                      {error, not_present, Msg}
+  when Details :: {error, term()} | {bad_status, integer(), string()},
+       Msg :: binary(),
+       Field :: binary().
 get_remote_bucket_by_ref(Reference, Through) ->
     get_remote_bucket_by_ref(Reference, Through, ?GET_BUCKET_TIMEOUT).
 
+-spec get_remote_bucket_by_ref(binary(), boolean(), integer()) ->
+                                      {ok, #remote_bucket{}} |
+                                      {error, cluster_not_found, Msg} |
+                                      {error, timeout} |
+                                      {error, rest_error, Msg, Details} |
+                                      {error, client_error, Msg} |
+                                      {error, bad_value, Msg} |
+                                      {error, {bad_value, Field}, Msg} |
+                                      {error, {missing_field, Field}, Msg} |
+                                      {error, all_nodes_failed, Msg} |
+                                      {error, other_cluster, Msg} |
+                                      {error, not_capable, Msg} |
+                                      {error, not_present, Msg}
+  when Details :: {error, term()} | {bad_status, integer(), string()},
+       Msg :: binary(),
+       Field :: binary().
 get_remote_bucket_by_ref(Reference, Through, Timeout) ->
     {ok, {ClusterName, BucketName}} = parse_remote_bucket_reference(Reference),
     get_remote_bucket(ClusterName, BucketName, Through, Timeout).
 
+-spec get_remote_bucket(string(), bucket_name(), boolean()) ->
+                               {ok, #remote_bucket{}} |
+                               {error, cluster_not_found, Msg} |
+                               {error, timeout} |
+                               {error, rest_error, Msg, Details} |
+                               {error, client_error, Msg} |
+                               {error, bad_value, Msg} |
+                               {error, {bad_value, Field}, Msg} |
+                               {error, {missing_field, Field}, Msg} |
+                               {error, all_nodes_failed, Msg} |
+                               {error, other_cluster, Msg} |
+                               {error, not_capable, Msg} |
+                               {error, not_present, Msg}
+  when Details :: {error, term()} | {bad_status, integer(), string()},
+       Msg :: binary(),
+       Field :: binary().
 get_remote_bucket(ClusterName, Bucket, Through) ->
     get_remote_bucket(ClusterName, Bucket, Through, ?GET_BUCKET_TIMEOUT).
 
+-spec get_remote_bucket(string(), bucket_name(), boolean(), integer()) ->
+                               {ok, #remote_bucket{}} |
+                               {error, cluster_not_found, Msg} |
+                               {error, timeout} |
+                               {error, rest_error, Msg, Details} |
+                               {error, client_error, Msg} |
+                               {error, bad_value, Msg} |
+                               {error, {bad_value, Field}, Msg} |
+                               {error, {missing_field, Field}, Msg} |
+                               {error, all_nodes_failed, Msg} |
+                               {error, other_cluster, Msg} |
+                               {error, not_capable, Msg} |
+                               {error, not_present, Msg}
+  when Details :: {error, term()} | {bad_status, integer(), string()},
+       Msg :: binary(),
+       Field :: binary().
 get_remote_bucket(ClusterName, Bucket, Through, Timeout) ->
     Cluster = find_cluster_by_name(ClusterName),
     gen_server:call(?MODULE,
@@ -871,6 +956,7 @@ mk_json_get(Host, Port, Username, Password) ->
             end
     end.
 
+-spec remote_bucket_reference(string(), bucket_name()) -> binary().
 remote_bucket_reference(ClusterName, BucketName) ->
     iolist_to_binary(
       [<<"/remoteClusters/">>,
