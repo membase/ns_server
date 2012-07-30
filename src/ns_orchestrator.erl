@@ -182,6 +182,10 @@ init([]) ->
     process_flag(trap_exit, true),
     self() ! janitor,
     timer:send_interval(10000, janitor),
+
+    CurrentCompat = cluster_compat_mode:get_compat_version(),
+    ok = ns_online_config_upgrader:upgrade_config_on_join(CurrentCompat),
+
     try
         consider_switching_compat_mode()
     catch exit:normal ->

@@ -19,10 +19,28 @@
 -include("ns_common.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--export([upgrade_config/2]).
+-export([upgrade_config/2, upgrade_config_on_join/1]).
 
 %% exported for /diag/eval invocation for hot patching
 -export([maybe_add_vbucket_map_history/1]).
+
+upgrade_config_on_join(OldVersion) ->
+    case OldVersion =:= [2, 0] of
+        true ->
+            ok;
+        false ->
+            ns_config:set(dynamic_config_version, OldVersion),
+            ok = ns_config:upgrade_config_explicitly(fun do_upgrade_config_on_join/1)
+    end.
+
+do_upgrade_config_on_join(Config) ->
+    case ns_config:search(Config, dynamic_config_version) of
+        {value, undefined} ->
+            [{set, dynamic_config_version, [2, 0]} |
+             upgrade_config_on_join_from_pre_2_0_to_2_0(Config)];
+        {value, [2, 0]} ->
+            []
+    end.
 
 upgrade_config(OldVersion, NewVersion) ->
     true = (OldVersion =/= NewVersion),
@@ -43,10 +61,13 @@ do_upgrade_config(Config, FinalVersion) ->
             []
     end.
 
+upgrade_config_on_join_from_pre_2_0_to_2_0(Config) ->
+    ?log_info("Adding some 2.0 specific keys to the config"),
+    maybe_add_vbucket_map_history(Config).
+
 upgrade_config_from_pre_2_0_to_2_0(Config) ->
     ?log_info("Performing online config upgrade to 2.0 version"),
-    maybe_add_vbucket_map_history(Config) ++
-        maybe_add_buckets_uuids(Config).
+    maybe_add_buckets_uuids(Config).
 
 maybe_add_vbucket_map_history(Config) ->
     maybe_add_vbucket_map_history(Config, ?VBMAP_HISTORY_SIZE).
