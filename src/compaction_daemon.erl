@@ -7,16 +7,13 @@
 
 %% API
 -export([start_link/0,
-         pause/0, unpause/0,
 
          force_compact_bucket/1,
          force_compact_db_files/1, force_compact_view/2]).
 
 %% gen_fsm callbacks
 -export([init/1, handle_event/3, handle_sync_event/4, handle_info/3,
-         code_change/4, terminate/3,
-
-         idle/3, compacting/3, paused/3]).
+         code_change/4, terminate/3]).
 
 -record(state, {buckets_to_compact,
                 compactor_pid,
@@ -52,12 +49,6 @@
 %% API
 start_link() ->
     gen_fsm:start_link({local, ?MODULE}, ?MODULE, [], []).
-
-pause() ->
-    gen_fsm:sync_send_event(?MODULE, pause).
-
-unpause() ->
-    gen_fsm:sync_send_event(?MODULE, unpause).
 
 force_compact_bucket(Bucket) ->
     BucketBin = list_to_binary(Bucket),
@@ -291,35 +282,6 @@ terminate(_Reason, _StateName, _State) ->
 
 code_change(_OldVsn, StateName, State, _Extra) ->
     {ok, StateName, State}.
-
-idle(pause, _From, State) ->
-    {reply, ok, paused, maybe_kill_scheduled_compaction(State)};
-idle(unpause, _From, State) ->
-    {reply, ok, idle, State}.
-
-compacting(pause, _From, #state{compactor_pid=Compactor} = State) ->
-    exit(Compactor, shutdown),
-    receive
-        {'EXIT', Compactor, normal} ->
-            ok;
-        {'EXIT', Compactor, shutdown} ->
-            ok;
-        {'EXIT', Compactor, Reason} ->
-            ?log_error("Compactor ~p exited with non-normal reason: ~p",
-                       [Compactor, Reason])
-    end,
-
-    {reply, ok, paused, State#state{compactor_pid=undefined,
-                                    compactor_config=undefined,
-                                    compaction_start_ts=undefined}};
-compacting(unpause, _From, State) ->
-    {reply, ok, compacting, State}.
-
-paused(pause, _From, State) ->
-    {reply, ok, paused, State};
-paused(unpause, _From, State) ->
-    self() ! compact,
-    {reply, ok, idle, State}.
 
 %% Internal functions
 -spec spawn_bucket_compactor(binary(), {#config{}, list()}) -> pid().
@@ -1066,17 +1028,6 @@ schedule_next_compaction(#state{compaction_start_ts=StartTs0,
         end,
 
     NewState0#state{compaction_start_ts=undefined}.
-
-maybe_kill_scheduled_compaction(#state{scheduled_compaction_tref=TRef} = State) ->
-    timer:cancel(TRef),
-    receive
-        compact ->
-            ok
-    after 0 ->
-            ok
-    end,
-
-    State#state{scheduled_compaction_tref=undefined}.
 
 now_utc_seconds() ->
     calendar:datetime_to_gregorian_seconds(erlang:universaltime()).
