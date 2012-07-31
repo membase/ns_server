@@ -298,13 +298,23 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools", PoolId, "buckets", Id, "controller", "compactBucket"] ->
                                  {auth_check_bucket_uuid,
                                   fun menelaus_web_buckets:handle_compact_bucket/3, [PoolId, Id]};
+                             ["pools", PoolId, "buckets", Id, "controller", "cancelBucketCompaction"] ->
+                                 {auth_check_bucket_uuid,
+                                  fun menelaus_web_buckets:handle_cancel_bucket_compaction/3, [PoolId, Id]};
                              ["pools", PoolId, "buckets", Id, "controller", "compactDatabases"] ->
                                  {auth_check_bucket_uuid,
                                   fun menelaus_web_buckets:handle_compact_databases/3, [PoolId, Id]};
+                             ["pools", PoolId, "buckets", Id, "controller", "cancelDatabasesCompaction"] ->
+                                 {auth_check_bucket_uuid,
+                                  fun menelaus_web_buckets:handle_cancel_databases_compaction/3, [PoolId, Id]};
                              ["pools", PoolId, "buckets", Id,
                               "ddocs", DDocId, "controller", "compactView"] ->
                                  {auth_check_bucket_uuid,
                                   fun menelaus_web_buckets:handle_compact_view/4, [PoolId, Id, DDocId]};
+                             ["pools", PoolId, "buckets", Id,
+                              "ddocs", DDocId, "controller", "cancelViewCompaction"] ->
+                                 {auth_check_bucket_uuid,
+                                  fun menelaus_web_buckets:handle_cancel_view_compaction/4, [PoolId, Id, DDocId]};
                              ["pools", "default", "remoteClusters"] ->
                                  {auth, fun menelaus_web_remote_clusters:handle_remote_clusters_post/1};
                              ["pools", "default", "remoteClusters", Id] ->

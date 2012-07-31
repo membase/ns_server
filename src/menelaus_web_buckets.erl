@@ -42,8 +42,11 @@
          handle_setup_default_bucket_post/1,
          parse_bucket_params/5,
          handle_compact_bucket/3,
+         handle_cancel_bucket_compaction/3,
          handle_compact_databases/3,
+         handle_cancel_databases_compaction/3,
          handle_compact_view/4,
+         handle_cancel_view_compaction/4,
          handle_ddocs_list/3,
          handle_local_random_key/3]).
 
@@ -835,12 +838,24 @@ handle_compact_bucket(_PoolId, Bucket, Req) ->
     ok = compaction_daemon:force_compact_bucket(Bucket),
     Req:respond({200, server_header(), []}).
 
+handle_cancel_bucket_compaction(_PoolId, Bucket, Req) ->
+    ok = compaction_daemon:cancel_forced_bucket_compaction(Bucket),
+    Req:respond({200, server_header(), []}).
+
 handle_compact_databases(_PoolId, Bucket, Req) ->
     ok = compaction_daemon:force_compact_db_files(Bucket),
     Req:respond({200, server_header(), []}).
 
+handle_cancel_databases_compaction(_PoolId, Bucket, Req) ->
+    ok = compaction_daemon:cancel_forced_db_compaction(Bucket),
+    Req:respond({200, server_header(), []}).
+
 handle_compact_view(_PoolId, Bucket, DDocId, Req) ->
     ok = compaction_daemon:force_compact_view(Bucket, DDocId),
+    Req:respond({200, server_header(), []}).
+
+handle_cancel_view_compaction(_PoolId, Bucket, DDocId, Req) ->
+    ok = compaction_daemon:cancel_forced_view_compaction(Bucket, DDocId),
     Req:respond({200, server_header(), []}).
 
 -ifdef(EUNIT).
