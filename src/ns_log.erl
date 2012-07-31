@@ -54,16 +54,26 @@ start_link() ->
 log_filename() ->
     ns_config:search_node_prop(ns_config:get(), ns_log, filename).
 
+read_logs(Filename) ->
+    case file:read_file(Filename) of
+        {ok, <<>>} -> [];
+        {ok, B} ->
+            try zlib:uncompress(B) of
+                B2 ->
+                    binary_to_term(B2)
+            catch error:data_error ->
+                    ?log_error("Couldn't load logs from ~p. Apparently ns_logs file is corrupted", [Filename]),
+                    []
+            end;
+        E ->
+            ?log_warning("Couldn't load logs from ~p (perhaps it's first startup): ~p", [Filename, E]),
+            []
+    end.
+
 init([]) ->
     timer:send_interval(?GC_TIME, garbage_collect),
     Filename = log_filename(),
-    Recent = case file:read_file(Filename) of
-                 {ok, <<>>} -> [];
-                 {ok, B} -> binary_to_term(zlib:uncompress(B));
-                 E ->
-                     ?log_warning("Couldn't load logs from ~p (perhaps it's first startup): ~p", [Filename, E]),
-                     []
-             end,
+    Recent = read_logs(Filename),
     %% initiate log syncing
     self() ! sync,
     erlang:process_flag(trap_exit, true),
