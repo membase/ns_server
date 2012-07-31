@@ -1064,7 +1064,7 @@ membase_stats_description(BucketId) ->
                          {desc,<<"Number of items still on disk to be loaded for \"client\" TAP connections to this bucket (measured from ep_tap_user_queue_itemondisk)">>}]},
                 {struct,[{title,<<"remaining on disk">>},
                          {name,<<"ep_tap_total_queue_itemondisk">>},
-                         {desc,<<"Total number of items still on disk to be loaded for TAP connections to this bucket (measured from ep_tao_total_queue_itemonsidk)">>}]}]}]}]
+                         {desc,<<"Total number of items still on disk to be loaded for TAP connections to this bucket (measured from ep_tap_total_queue_itemonsidk)">>}]}]}]}]
                 ++ couchbase_view_stats_descriptions(BucketId).
 
 
