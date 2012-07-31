@@ -67,8 +67,13 @@ prefilter_timings(RawTimings) ->
            interesting_timing_key(K)].
 
 grab_all_stats(Bucket) ->
-    {ok, MemStats} = ns_memcached:stats(Bucket),
-    Stats = MemStats ++ couch_stats_reader:fetch_stats(Bucket),
+    {ok, PlainStats} = ns_memcached:stats(Bucket),
+    CouchStats = case (catch couch_stats_reader:fetch_stats(Bucket)) of
+                     {ok, CS} -> CS;
+                     Crap ->
+                         ?log_info("Failed to fetch couch stats:~n~p", [Crap]),
+                         []
+                 end,
     TapStats = case ns_memcached:stats(Bucket, <<"tapagg _">>) of
                    {ok, Values} -> Values;
                    {memcached_error, key_enoent, _} -> []
@@ -78,7 +83,7 @@ grab_all_stats(Bucket) ->
                       prefilter_timings(ValuesK);
                   {memcached_error, key_enoent, _} -> []
               end,
-    {Stats, TapStats, Timings}.
+    {PlainStats, TapStats, Timings, CouchStats}.
 
 handle_info({tick, TS}, #state{bucket=Bucket} = State) ->
     GrabFreq = misc:get_env_default(grab_stats_every_n_ticks, 1),
@@ -124,7 +129,7 @@ maybe_log_stats(TS, State, RawStats) ->
     end.
 
 process_grabbed_stats(TS,
-                      {PlainStats, TapStats, Timings},
+                      {PlainStats, TapStats, Timings, CouchStats},
                       #state{bucket = Bucket,
                              last_plain_counters = LastPlainCounters,
                              last_tap_counters = LastTapCounters,
@@ -136,7 +141,7 @@ process_grabbed_stats(TS,
     %% Don't send event with undefined values
     case lists:member(undefined, [LastTapCounters, LastTapCounters, LastTimingsCounters]) of
         false ->
-            Values = lists:merge([PlainValues, TapValues, TimingValues]),
+            Values = lists:merge([PlainValues, TapValues, TimingValues, CouchStats]),
             Entry = #stat_entry{timestamp = TS,
                                 values = Values},
             gen_event:notify(ns_stats_event, {stats, Bucket, Entry});

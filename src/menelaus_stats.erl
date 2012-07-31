@@ -53,15 +53,16 @@ extract_stat(StatName, Sample) ->
 
 last_membase_sample(BucketName, Nodes) ->
     lists:foldl(fun ({_Node, []}, Acc) -> Acc;
-                    ({_Node, [Sample|_]}, {AccMem, AccItems, AccOps, AccFetches, AccDisk, AccData}) ->
+                    ({_Node, [Sample|_]}, {AccMem, AccItems, AccOps, AccFetches, AccDisk, AccData, AccViewsOps}) ->
                         {extract_stat(mem_used, Sample) + AccMem,
                          extract_stat(curr_items, Sample) + AccItems,
                          extract_stat(ops, Sample) + AccOps,
                          extract_stat(ep_bg_fetched, Sample) + AccFetches,
                          extract_stat(couch_docs_actual_disk_size, Sample) +
-                           extract_stat(couch_view_actual_disk_size, Sample) + AccDisk,
-                         extract_stat(couch_docs_data_size, Sample) + AccData}
-                end, {0, 0, 0, 0, 0, 0}, invoke_archiver(BucketName, Nodes, {1, minute, 1})).
+                           extract_stat(couch_views_actual_disk_size, Sample) + AccDisk,
+                         extract_stat(couch_docs_data_size, Sample) + AccData,
+                         extract_stat(couch_views_ops, Sample) + AccViewsOps}
+                end, {0, 0, 0, 0, 0, 0, 0}, invoke_archiver(BucketName, Nodes, {1, minute, 1})).
 
 last_memcached_sample(BucketName, Nodes) ->
     {MemUsed,
@@ -85,9 +86,10 @@ last_memcached_sample(BucketName, Nodes) ->
      end}.
 
 last_bucket_stats(membase, BucketName, Nodes) ->
-    {MemUsed, ItemsCount, Ops, Fetches, Disk, Data}
+    {MemUsed, ItemsCount, Ops, Fetches, Disk, Data, ViewOps}
         = last_membase_sample(BucketName, Nodes),
     [{opsPerSec, Ops},
+     {viewOps, ViewOps},
      {diskFetches, Fetches},
      {itemCount, ItemsCount},
      {diskUsed, Disk},
@@ -716,7 +718,45 @@ aggregate_stat_entries(A, B) ->
                                         []),
     A#stat_entry{values = NewValues}.
 
-membase_stats_description() ->
+-define(SPACE_CHAR, 16#20).
+
+couchbase_view_stats_descriptions(BucketId) ->
+    {ok, DesignDocIds} = capi_set_view_manager:fetch_ddocs(BucketId, infinity),
+
+    % fold over design docs and get the signature
+    DictBySig = sets:fold(
+      fun (DDocId, BySig) ->
+              {ok, Info} = couch_set_view:get_group_info(list_to_binary(BucketId), DDocId),
+              Signature = couch_util:get_value(signature, Info),
+              dict:append(Signature, DDocId, BySig)
+      end, dict:new(), DesignDocIds),
+
+    dict:fold(
+      fun(Sig, DDocIds0, Stats) ->
+              Prefix = <<"views/", Sig/binary,"/">>,
+              DDocIds = lists:sort(DDocIds0),
+              Ids = iolist_to_binary([hd(DDocIds) |
+                                      [[?SPACE_CHAR | Id]
+                                       || Id <- tl(DDocIds)]]),
+              MyStats = {struct,[{blockName,<<"View Stats: ",Ids/binary>>},
+                                 {extraCSSClasses,<<"closed">>},
+                                 {columns,
+                                  [<<"Data">>,<<"Disk">>,<<"Read Ops">>]},
+                                 {stats,
+                                  [{struct,[{title,<<"data size">>},
+                                            {name,<<Prefix/binary,"data_size">>},
+                                            {desc,<<"How many bytes stored">>}]},
+                                   {struct,[{title,<<"disk size">>},
+                                            {name,<<Prefix/binary,"disk_size">>},
+                                            {desc,<<"How much storage used">>}]},
+                                   {struct,[{title,<<"view reads per sec.">>},
+                                            {name,<<Prefix/binary,"accesses">>},
+                                            {desc,<<"Traffic to the views in this design doc">>}]}
+                                  ]}]},
+              [MyStats|Stats]
+      end, [], DictBySig).
+
+membase_stats_description(BucketId) ->
     [{struct,[{blockName,<<"Summary">>},
               {stats,
                [{struct,[{title,<<"ops per second">>},
@@ -778,6 +818,9 @@ membase_stats_description() ->
                 {struct,[{name,<<"couch_views_fragmentation">>},
                          {title,<<"views fragmentation %">>},
                          {desc,<<"How much fragmented data there is to be compacted compared to real data for the view index files in this bucket">>}]},
+                 {struct,[{name,<<"couch_views_ops">>},
+                          {title,<<"view reads per sec.">>},
+                          {desc,<<"All the view reads for all design documents including scatter gather.">>}]},
                 {struct, [{title, <<"memory used">>},
                           {name, <<"mem_used">>},
                           {desc, <<"Memory used as measured from mem_used">>}]},
@@ -1021,7 +1064,8 @@ membase_stats_description() ->
                          {desc,<<"Number of items still on disk to be loaded for \"client\" TAP connections to this bucket (measured from ep_tap_user_queue_itemondisk)">>}]},
                 {struct,[{title,<<"remaining on disk">>},
                          {name,<<"ep_tap_total_queue_itemondisk">>},
-                         {desc,<<"Total number of items still on disk to be loaded for TAP connections to this bucket (measured from ep_tao_total_queue_itemonsidk)">>}]}]}]}].
+                         {desc,<<"Total number of items still on disk to be loaded for TAP connections to this bucket (measured from ep_tao_total_queue_itemonsidk)">>}]}]}]}]
+                ++ couchbase_view_stats_descriptions(BucketId).
 
 
 memcached_stats_description() ->
@@ -1115,7 +1159,7 @@ server_resources_stats_description() ->
 serve_stats_directory(_PoolId, BucketId, Req) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),
     BaseDescription = case ns_bucket:bucket_type(BucketConfig) of
-                          membase -> membase_stats_description();
+                          membase -> membase_stats_description(BucketId);
                           memcached -> memcached_stats_description()
                       end,
     BaseDescription1 = [{struct, server_resources_stats_description()} | BaseDescription],

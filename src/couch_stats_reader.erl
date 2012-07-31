@@ -15,10 +15,27 @@
 
 -module(couch_stats_reader).
 
+-include_lib("eunit/include/eunit.hrl").
+
 -include("couch_db.hrl").
 -include("ns_common.hrl").
+-include("ns_stats.hrl").
 
 -behaviour(gen_server).
+
+-type per_ddoc_stats() :: {Sig::binary(),
+                           DiskSize::integer(),
+                           DataSize::integer(),
+                           Accesses::integer()}.
+
+-record(ns_server_couch_stats, {couch_docs_actual_disk_size,
+                                couch_views_actual_disk_size,
+                                couch_docs_disk_size,
+                                couch_docs_data_size,
+                                couch_views_disk_size,
+                                couch_views_data_size,
+                                per_ddoc_stats :: [per_ddoc_stats()]}).
+
 
 %% API
 -export([start_link/1, fetch_stats/1]).
@@ -27,10 +44,10 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {bucket, stats = []}).
+-record(state, {bucket, last_ts, last_view_stats}).
 
 %% Amount of time to wait between fetching stats
--define(SAMPLE_RATE, 5000).
+-define(SAMPLE_INTERVAL, 5000).
 
 
 start_link(Bucket) ->
@@ -39,22 +56,31 @@ start_link(Bucket) ->
 init(Bucket) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
     case ns_bucket:bucket_type(BucketConfig) of
-        membase -> start_timer();
-        memcached -> ok
+        membase ->
+            self() ! refresh_stats,
+            timer:send_interval(?SAMPLE_INTERVAL, refresh_stats);
+        memcached ->
+            ok
     end,
+    ets:new(server(Bucket), [protected, named_table, set]),
     {ok, #state{bucket=Bucket}}.
 
-handle_call(fetch_stats, _From, State) ->
-    {reply, State#state.stats, State};
-
-handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+handle_call(_, _From, State) ->
+    {reply, erlang:nif_error(unhandled), State}.
 
 handle_cast(_Msg, State) ->
-  {noreply, State}.
+    {noreply, State}.
 
-handle_info(check_alerts, #state{bucket = Bucket} = State) ->
-    {noreply, State#state{stats = grab_couch_stats(Bucket)}};
+handle_info(refresh_stats, #state{bucket = Bucket,
+                                  last_ts = LastTS,
+                                  last_view_stats = LastViewStats} = State) ->
+    misc:flush(refresh_stats),
+    TS = misc:time_to_epoch_ms_int(os:timestamp()),
+    NewStats = grab_couch_stats(Bucket),
+    {ProcessedSamples, NewLastViewStats} = parse_couch_stats(TS, NewStats, LastTS, LastViewStats),
+    ets:insert(server(Bucket), {stuff, ProcessedSamples}),
+    {noreply, State#state{last_view_stats = NewLastViewStats,
+                          last_ts = TS}};
 
 handle_info(_Msg, State) ->
     {noreply, State}.
@@ -65,72 +91,197 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-
-start_timer() ->
-    timer:send_interval(?SAMPLE_RATE, check_alerts).
-
 server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
 
 fetch_stats(Bucket) ->
-    Stats = gen_server:call({server(Bucket), node()}, fetch_stats),
-    [{iolist_to_binary([<<"couch_">>, atom_to_list(Key)]), ?l2b(?i2l(Val))}
-     || {Key, Val} <- Stats].
+    [{_, CouchStats}] = ets:lookup(server(Bucket), stuff),
+    {ok, CouchStats}.
 
--spec grab_couch_stats(string()) -> list().
+vbuckets_aggregation_loop(_Bucket, DiskSize, DataSize, _VBucketBinaries = []) ->
+    {DiskSize, DataSize};
+vbuckets_aggregation_loop(Bucket, DiskSize, DataSize, [VBucketBin | RestVBucketBinaries]) ->
+    VBucket = iolist_to_binary([Bucket, <<"/">>, VBucketBin]),
+    case couch_db:open_int(VBucket, []) of
+        {ok, Db} ->
+            {ok, Info} = try
+                             couch_db:get_db_info(Db)
+                         after
+                             ok = couch_db:close(Db)
+                         end,
+            NewDiskSize = DiskSize + couch_util:get_value(disk_size, Info),
+            NewDataSize = DataSize + couch_util:get_value(data_size, Info),
+            vbuckets_aggregation_loop(Bucket, NewDiskSize, NewDataSize, RestVBucketBinaries);
+        Why ->
+            ?log_debug("Failed to open vbucket: ~s (~p). Ignoring", [VBucketBin, Why]),
+            vbuckets_aggregation_loop(Bucket, DiskSize, DataSize, RestVBucketBinaries)
+    end.
+
+views_collection_loop_iteration(BinBucket, NameToStatsETS,  DDocId) ->
+    case (catch couch_set_view:get_group_data_size(BinBucket, DDocId)) of
+        {ok, PList} ->
+            {_, Signature} = lists:keyfind(signature, 1, PList),
+            case ets:lookup(NameToStatsETS, Signature) of
+                [] ->
+                    {_, DiskSize} = lists:keyfind(disk_size, 1, PList),
+                    {_, DataSize} = lists:keyfind(data_size, 1, PList),
+                    {_, Accesses} = lists:keyfind(accesses, 1, PList),
+                    ets:insert(NameToStatsETS, {Signature, DiskSize, DataSize, Accesses});
+                _ ->
+                    ok
+            end;
+        Why ->
+            ?log_debug("Get group info (~s/~s) failed:~n~p", [BinBucket, DDocId, Why])
+    end.
+
+collect_view_stats(BinBucket, DDocIdsSet) ->
+    NameToStatsETS = ets:new(ok, []),
+    try
+        sets:fold(fun (DDocId, []) ->
+                          views_collection_loop_iteration(BinBucket, NameToStatsETS, DDocId),
+                          []
+                  end, [], DDocIdsSet),
+        ets:tab2list(NameToStatsETS)
+    after
+        ets:delete(NameToStatsETS)
+    end.
+
+aggregate_view_stats_loop(DiskSize, DataSize, [{_, ThisDiskSize, ThisDataSize, _ThisAccesses} | RestViewStats]) ->
+    aggregate_view_stats_loop(DiskSize + ThisDiskSize,
+                              DataSize + ThisDataSize,
+                              RestViewStats);
+aggregate_view_stats_loop(DiskSize, DataSize, []) ->
+    {DiskSize, DataSize}.
+
+
+-spec grab_couch_stats(bucket_name()) -> #ns_server_couch_stats{}.
 grab_couch_stats(Bucket) ->
-
+    BinBucket = ?l2b(Bucket),
     {ok, Conf} = ns_bucket:get_bucket(Bucket),
-    VBuckets = ns_bucket:all_node_vbuckets(Conf),
+    VBucketIds = ns_bucket:all_node_vbuckets(Conf),
+    {VBucketsDiskSize, VBucketsDataSize} = vbuckets_aggregation_loop(BinBucket, 0, 0, [list_to_binary(integer_to_list(I)) || I <- VBucketIds]),
 
-    GetStats = fun(List) ->
-                       {proplists:get_value(disk_size, List),
-                        proplists:get_value(data_size, List)}
-               end,
+    {ok, DDocIds} = capi_set_view_manager:fetch_ddocs(Bucket, infinity),
+    ViewStats = collect_view_stats(BinBucket, DDocIds),
+    {ViewsDiskSize, ViewsDataSize} = aggregate_view_stats_loop(0, 0, ViewStats),
 
-    DBStats = fun(Id, {DiskSize, DataSize}) ->
-                      VBucket = iolist_to_binary([Bucket, <<"/">>, ?i2l(Id)]),
-                      case couch_db:open(VBucket, []) of
-                          {ok, Db} ->
-                              try
-                                  {ok, Info} = couch_db:get_db_info(Db),
-                                  {BucketDisk, BucketData} = GetStats(Info),
-                                  {DiskSize + BucketDisk,
-                                   DataSize + BucketData}
-                              after
-                                  ok = couch_db:close(Db)
-                              end;
-                          _ ->
-                              {DiskSize, DataSize}
-                      end
-              end,
-
-    ViewStats = fun(Id, {DiskSize, DataSize}) ->
-                        {ok, Info} = couch_set_view:get_group_data_size(?l2b(Bucket), Id),
-                        {ViewDisk, ViewData} = GetStats(Info),
-                        {RDisk, RData} = case proplists:get_value(replica_group_info, Info) of
-                                             undefined -> {0, 0};
-                                             RepInfo -> GetStats(RepInfo)
-                                         end,
-                        {DiskSize + ViewDisk + RDisk,
-                         DataSize + ViewData + RData}
-                end,
-
+    {ok, CouchDir} = ns_storage_conf:this_node_dbdir(),
     CouchDir = couch_config:get("couchdb", "database_dir"),
+    {ok, ViewRoot} = ns_storage_conf:this_node_ixdir(),
     ViewRoot = couch_config:get("couchdb", "view_index_dir"),
 
     DocsActualDiskSize = misc:dir_size(filename:join([CouchDir, Bucket])),
-    ViewsActualDiskSize = misc:dir_size(couch_set_view:set_index_dir(ViewRoot, ?l2b(Bucket))),
+    ViewsActualDiskSize = misc:dir_size(couch_set_view:set_index_dir(ViewRoot, BinBucket)),
 
-    {ok, DDocs} = capi_set_view_manager:fetch_ddocs(Bucket, infinity),
+    #ns_server_couch_stats{couch_docs_actual_disk_size = DocsActualDiskSize,
+                           couch_views_actual_disk_size = ViewsActualDiskSize,
+                           couch_docs_disk_size = VBucketsDiskSize,
+                           couch_docs_data_size = VBucketsDataSize,
+                           couch_views_disk_size = ViewsDiskSize,
+                           couch_views_data_size = ViewsDataSize,
+                           per_ddoc_stats = lists:sort(ViewStats)}.
 
-    {DocsDiskSize, DocsDataSize} = lists:foldl(DBStats, {0, 0}, VBuckets),
-    {ViewsDiskSize, ViewsDataSize} =
-        lists:foldl(ViewStats, {0, 0}, sets:to_list(DDocs)),
+find_not_less_sig(Sig, [{CandidateSig, _, _, _} | RestViewStatsTuples] = VS) ->
+    case CandidateSig < Sig of
+        true ->
+            find_not_less_sig(Sig, RestViewStatsTuples);
+        false ->
+            VS
+    end;
+find_not_less_sig(_Sig, []) ->
+    [].
 
-    [{docs_actual_disk_size, DocsActualDiskSize},
-     {views_actual_disk_size, ViewsActualDiskSize},
-     {docs_data_size, DocsDataSize},
-     {views_data_size, ViewsDataSize},
-     {docs_disk_size, DocsDiskSize},
-     {views_disk_size, ViewsDiskSize}].
+diff_view_accesses_loop(TSDelta, LastVS, [{Sig, DiskS, DataS, AccC} | VSRest]) ->
+    NewLastVS = find_not_less_sig(Sig, LastVS),
+    PrevAccC = case NewLastVS of
+                   [{Sig, _, _, X} | _] -> X;
+                   _ -> AccC
+               end,
+    Res0 = (AccC - PrevAccC) * 1000 / TSDelta,
+    Res = case Res0 < 0 of
+              true -> 0;
+              _ -> Res0
+          end,
+    NewTuple = {Sig, DiskS, DataS, Res},
+    [NewTuple | diff_view_accesses_loop(TSDelta, NewLastVS, VSRest)];
+diff_view_accesses_loop(_TSDelta, _LastVS, [] = _ViewStats) ->
+    [].
+
+build_basic_couch_stats(CouchStats) ->
+    #ns_server_couch_stats{couch_docs_actual_disk_size = DocsActualDiskSize,
+                           couch_views_actual_disk_size = ViewsActualDiskSize,
+                           couch_docs_disk_size = VBucketsDiskSize,
+                           couch_docs_data_size = VBucketsDataSize,
+                           couch_views_disk_size = ViewsDiskSize,
+                           couch_views_data_size = ViewsDataSize} = CouchStats,
+    [{couch_docs_actual_disk_size, DocsActualDiskSize},
+     {couch_views_actual_disk_size, ViewsActualDiskSize},
+     {couch_docs_disk_size, VBucketsDiskSize},
+     {couch_docs_data_size, VBucketsDataSize},
+     {couch_views_disk_size, ViewsDiskSize},
+     {couch_views_data_size, ViewsDataSize}].
+
+parse_couch_stats(_TS, CouchStats, undefined = _LastTS, _) ->
+    Basic = build_basic_couch_stats(CouchStats),
+    {lists:sort([{couch_views_ops, 0.0} | Basic]), []};
+parse_couch_stats(TS, CouchStats, LastTS, LastViewsStats0) ->
+    BasicThings = build_basic_couch_stats(CouchStats),
+    #ns_server_couch_stats{per_ddoc_stats = ViewStats} = CouchStats,
+    LastViewsStats = case LastViewsStats0 of
+                         undefined -> [];
+                         _ -> LastViewsStats0
+                     end,
+    TSDelta = TS - LastTS,
+    WithDiffedOps =
+        case TSDelta > 0 of
+            true ->
+                diff_view_accesses_loop(TSDelta, LastViewsStats, ViewStats);
+            false ->
+                [{Sig, DiskS, DataS, 0} || {Sig, DiskS, DataS, _} <- ViewStats]
+        end,
+    AggregatedOps = lists:sum([Ops || {_, _, _, Ops} <- WithDiffedOps]),
+    LL = [begin
+              DiskKey = iolist_to_binary([<<"views/">>, Sig, <<"/disk_size">>]),
+              DataKey = iolist_to_binary([<<"views/">>, Sig, <<"/data_size">>]),
+              OpsKey = iolist_to_binary([<<"views/">>, Sig, <<"/accesses">>]),
+              [{DiskKey, DiskS},
+               {DataKey, DataS},
+               {OpsKey, OpsSec}]
+          end || {Sig, DiskS, DataS, OpsSec} <- WithDiffedOps],
+    {lists:sort(lists:append([[{couch_views_ops, AggregatedOps}], BasicThings | LL])),
+     ViewStats}.
+
+%% Tests
+
+basic_parse_couch_stats_test() ->
+    CouchStatsRecord = #ns_server_couch_stats{couch_docs_actual_disk_size = 1,
+                                              couch_views_actual_disk_size = 2,
+                                              couch_docs_disk_size = 3,
+                                              couch_docs_data_size = 4,
+                                              couch_views_disk_size = 5,
+                                              couch_views_data_size = 6,
+                                              per_ddoc_stats = [{<<"a">>, 8, 9, 10},
+                                                                {<<"b">>, 11, 12, 13}]},
+    ExpectedOut1Pre = [{couch_docs_actual_disk_size, 1},
+                       {couch_views_actual_disk_size, 2},
+                       {couch_docs_disk_size, 3},
+                       {couch_docs_data_size, 4},
+                       {couch_views_disk_size, 5},
+                       {couch_views_data_size, 6},
+                       {couch_views_ops, 0.0}]
+        ++ [{<<"views/a/disk_size">>, 8},
+            {<<"views/a/data_size">>, 9},
+            {<<"views/a/accesses">>, 0.0},
+            {<<"views/b/disk_size">>, 11},
+            {<<"views/b/data_size">>, 12},
+            {<<"views/b/accesses">>, 0.0}],
+    ExpectedOut1 = lists:sort([{K, V} || {K, V} <- ExpectedOut1Pre,
+                                         not is_binary(K)]),
+    ExpectedOut2 = lists:sort(ExpectedOut1Pre),
+    {Out1, State1} = parse_couch_stats(1000, CouchStatsRecord, undefined, undefined),
+    ?debugFmt("Got first result~n~p~n~p", [Out1, State1]),
+    {Out2, State2} = parse_couch_stats(2000, CouchStatsRecord, 1000, State1),
+    ?debugFmt("Got second result~n~p~n~p", [Out2, State2]),
+    ?assertEqual(CouchStatsRecord#ns_server_couch_stats.per_ddoc_stats, State2),
+    ?assertEqual(ExpectedOut1, Out1),
+    ?assertEqual(ExpectedOut2, Out2).
