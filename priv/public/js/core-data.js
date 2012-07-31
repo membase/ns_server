@@ -636,3 +636,51 @@ var DAL = {
     tasksProgressCell.recalculateAfterDelay(period);
   }, tasksRefreshPeriod, tasksProgressCell);
 })();
+
+var RecentlyCompacted = mkClass.turnIntoLazySingleton(mkClass({
+  initialize: function () {
+    setInterval(_.bind(this.onInterval, this), 2000);
+    this.triggeredCompactions = {};
+  },
+  registerAsTriggered: function (url, undoBody, element) {
+    if (this.triggeredCompactions[url]) {
+      this.gcThings();
+      if (this.triggeredCompactions[url]) {
+        return;
+      }
+    }
+    var desc = {url: url,
+                undoBody: undoBody,
+                gcAt: (new Date()).valueOf() + 10000};
+    this.triggeredCompactions[url] = desc;
+  },
+  canCompact: function (url) {
+    var desc = this.triggeredCompactions[url];
+    if (!desc) {
+      return true;
+    }
+    return desc.gcAt <= (new Date()).valueOf();
+  },
+  gcThings: function () {
+    var now = new Date();
+    var expired = [];
+    var notExpired = {};
+    _.each(this.triggeredCompactions, function (desc) {
+      if (desc.gcAt > now) {
+        notExpired[desc.url] = desc;
+      } else {
+        expired.push(desc);
+      }
+    });
+    this.triggeredCompactions = notExpired;
+    _.each(expired, function (desc) {
+      var undo = desc.undoBody;
+      if (undo) {
+        undo();
+      }
+    });
+  },
+  onInterval: function () {
+    this.gcThings();
+  }
+}));

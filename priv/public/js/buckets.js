@@ -793,7 +793,7 @@ var BucketsSection = {
         return;
       }
       self.showCompactControl(currentBucket.name, 'Starting...', true);
-      $.post(currentBucket.controllers.compactAll, DAL.cells.tasksProgressCell.refresh);
+      $.post(currentBucket.controllers.compactAll, function () {DAL.cells.tasksProgressCell.invalidate()});
     });
   },
   showBucket: function (uri) {

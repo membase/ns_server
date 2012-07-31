@@ -325,11 +325,8 @@ var ViewsSection = {
     })(views.find('.btn_create'));
 
     var allDDocsURLCell = Cell.compute(function (v) {
-      return buildURL(v.need(dbURLCell), "_all_docs", {
-        startkey: JSON.stringify("_design/"),
-        endkey: JSON.stringify("_design0"),
-        include_docs: "true" // note: include_docs is deprecated
-      });
+      var bucketInfo = v.need(self.viewsBucketInfoCell);
+      return bucketInfo.ddocs.uri;
     }).name("allDDocsURL");
 
     var rawAllDDocsCell = Cell.compute(function (v) {
@@ -340,7 +337,11 @@ var ViewsSection = {
       var haveBuckets = v.need(haveBucketsCell);
 
       if (haveBuckets) {
-        return _.map(v.need(rawAllDDocsCell).rows, function (r) {return r.doc});
+        return _.map(v.need(rawAllDDocsCell), function (r) {
+          var doc = _.clone(r.doc);
+          doc.compactURI = r.controllers.compact;
+          return doc;
+        });
       } else {
         return [];
       }
@@ -1322,6 +1323,33 @@ var ViewsSection = {
   },
   cutOffDesignPrefix: function (id) {
     return id.replace(/^_design\/(dev_|)/, "");
+  },
+  maybeDisabledCompactButtonAttr: function (ddoc) {
+    var can = (ddoc.taskType != 'view_compaction') && RecentlyCompacted.instance().canCompact(ddoc.compactURI);
+    return can ? "" : "disabled";
+  },
+  compactDDoc: function (id, button) {
+    var btn = $(button);
+    if (btn.is('.disabled')) {
+      return;
+    }
+    this.withDDoc(id, function (ddocURL, ddoc, dbURL) {
+      var compactURI = ddoc.compactURI;
+      btn.addClass('disabled');
+      RecentlyCompacted.instance().registerAsTriggered(compactURI, function () {
+        if (!btn.closest('body').length) {
+          // btn is removed already
+          return;
+        }
+        btn.removeClass('disabled');
+      });
+      $.ajax({
+        url: compactURI,
+        type: 'POST',
+        success: function () {},
+        error: function () {}
+      });
+    });
   },
   startDDocCopy: function (id) {
     this.withDDoc(id, function (ddocURL, ddoc, dbURL) {
