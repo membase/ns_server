@@ -26,7 +26,7 @@
          code_change/3]).
 %% API
 -export([get_nodes/0, get_node/1, get_node/2,
-         get_tasks_version/0, build_tasks_list/1]).
+         get_tasks_version/0, build_tasks_list/2]).
 
 -record(state, {
           nodes :: dict(),
@@ -168,9 +168,9 @@ get_node(Node) ->
 get_tasks_version() ->
     gen_server:call(?MODULE, get_tasks_version).
 
-build_tasks_list(NodeNeededP) ->
+build_tasks_list(NodeNeededP, PoolId) ->
     NodesDict = gen_server:call(?MODULE, get_nodes),
-    do_build_tasks_list(NodesDict, NodeNeededP).
+    do_build_tasks_list(NodesDict, NodeNeededP, PoolId).
 
 %% Internal functions
 
@@ -287,7 +287,10 @@ task_operation(extract, BucketCompaction, RawTask)
     {_, VBucketsDone} = lists:keyfind(vbuckets_done, 1, RawTask),
     {_, TotalVBuckets} = lists:keyfind(total_vbuckets, 1, RawTask),
     {_, BucketName} = lists:keyfind(bucket, 1, RawTask),
-    [{{BucketCompaction, BucketName}, {VBucketsDone, TotalVBuckets}}];
+    {_, Subtype} = lists:keyfind(subtype, 1, RawTask),
+    {_, TriggerType} = lists:keyfind(trigger_type, 1, RawTask),
+    [{{BucketCompaction, BucketName, Subtype, TriggerType},
+      {VBucketsDone, TotalVBuckets}}];
 task_operation(extract, _, _) ->
     ignore;
 
@@ -302,10 +305,10 @@ task_operation(finalize, {IndexerOrCompaction, BucketName, DDocId}, {ChangesDone
      {changesDone, ChangesDone},
      {totalChanges, TotalChanges},
      {progress, Progress}];
-task_operation(finalize, {BucketCompaction, BucketName},
-               {ChangesDone, TotalChanges})
+task_operation(finalize, {BucketCompaction, BucketName, _, _}, {ChangesDone, TotalChanges})
   when BucketCompaction =:= bucket_compaction ->
     Progress = (ChangesDone * 100) div TotalChanges,
+
     [{type, BucketCompaction},
      {recommendedRefreshPeriod, 2.0},
      {status, running},
@@ -322,14 +325,28 @@ task_operation(fold, {view_compaction, _, _},
                {ChangesDone1, TotalChanges1},
                {ChangesDone2, TotalChanges2}) ->
     {ChangesDone1 + ChangesDone2, TotalChanges1 + TotalChanges2};
-task_operation(fold, {bucket_compaction, _},
+task_operation(fold, {bucket_compaction, _, _, _},
                {ChangesDone1, TotalChanges1},
                {ChangesDone2, TotalChanges2}) ->
     {ChangesDone1 + ChangesDone2, TotalChanges1 + TotalChanges2}.
 
+task_maybe_add_cancel_uri({bucket_compaction, BucketName, Subtype, manual}, Value, PoolId) ->
+    Ending = case Subtype of
+                 db ->
+                     "cancelDatabasesCompaction";
+                 bucket ->
+                     "cancelBucketCompaction"
+             end,
 
+    URI = menelaus_util:bin_concat_path(
+            ["pools", PoolId, "buckets", BucketName,
+             "controller", Ending]),
 
-do_build_tasks_list(NodesDict, NeedNodeP) ->
+    [{cancelURI, URI} | Value];
+task_maybe_add_cancel_uri(_, Value, _) ->
+    Value.
+
+do_build_tasks_list(NodesDict, NeedNodeP, PoolId) ->
     TasksDict =
         dict:fold(
           fun (Node, NodeInfo, TasksDict) ->
@@ -360,7 +377,9 @@ do_build_tasks_list(NodesDict, NeedNodeP) ->
           dict:new(),
           NodesDict),
     PreRebalanceTasks = dict:fold(fun (Signature, Value, Acc) ->
-                                          [{struct, task_operation(finalize, Signature, Value)} | Acc]
+                                          Value1 = task_operation(finalize, Signature, Value),
+                                          FinalValue = task_maybe_add_cancel_uri(Signature, Value1, PoolId),
+                                          [{struct, FinalValue} | Acc]
                                   end, [], TasksDict),
     RebalanceTask0 =
         case ns_cluster_membership:get_rebalance_status() of

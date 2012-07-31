@@ -205,7 +205,7 @@ handle_sync_event({force_compact_db_files, Bucket}, _From, StateName, State) ->
                 State;
             false ->
                 {Config, _} = compaction_config(Bucket),
-                Pid = spawn_dbs_compactor(Bucket, Config, true),
+                Pid = spawn_dbs_compactor(Bucket, Config, true, db),
                 register_forced_compaction(Pid, Compaction, State)
         end,
     {reply, ok, StateName, NewState};
@@ -408,8 +408,8 @@ spawn_bucket_compactor(BucketName, {Config, ConfigProps}, Force) ->
                   [{type, database},
                    {important, true},
                    {name, BucketName},
-                   {fa, {fun spawn_dbs_compactor/3,
-                         [BucketName, Config, Force]}}],
+                   {fa, {fun spawn_dbs_compactor/4,
+                         [BucketName, Config, Force, bucket]}}],
               DDocCompactors =
                   [ [{type, view},
                      {name, <<BucketName/binary, $/, DDocId/binary>>},
@@ -520,7 +520,7 @@ do_chain_compactors(Parent, [Compactor | Compactors]) ->
             end
     end.
 
-spawn_dbs_compactor(BucketName, Config, Force) ->
+spawn_dbs_compactor(BucketName, Config, Force, Subtype) ->
     Parent = self(),
 
     proc_lib:spawn_link(
@@ -542,8 +542,17 @@ spawn_dbs_compactor(BucketName, Config, Force) ->
               ?log_info("Compacting databases for bucket ~s", [BucketName]),
 
               Total = length(VBucketDbs),
+              TriggerType = case Force of
+                                true ->
+                                    manual;
+                                false ->
+                                    scheduled
+                            end,
+
               ok = couch_task_status:add_task(
                      [{type, bucket_compaction},
+                      {subtype, Subtype},
+                      {trigger_type, TriggerType},
                       {bucket, BucketName},
                       {vbuckets_done, 0},
                       {total_vbuckets, Total},

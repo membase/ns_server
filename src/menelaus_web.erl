@@ -202,8 +202,8 @@ loop(Req, AppRoot, DocRoot) ->
                              ["diag", "masterEvents"] -> {auth, fun handle_diag_master_events/1};
                              ["pools", PoolId, "rebalanceProgress"] ->
                                  {auth, fun handle_rebalance_progress/2, [PoolId]};
-                             ["pools", _PoolId, "tasks"] ->
-                                 {auth, fun handle_tasks/1, []};
+                             ["pools", PoolId, "tasks"] ->
+                                 {auth, fun handle_tasks/2, [PoolId]};
                              ["index.html"] ->
                                  {done, serve_static_file(Req, {AppRoot, Path},
                                                          "text/html; charset=utf8",
@@ -1956,12 +1956,12 @@ handle_re_add_node(Req) ->
     ok = ns_cluster_membership:re_add_node(Node),
     Req:respond({200, [], []}).
 
-handle_tasks(Req) ->
+handle_tasks(PoolId, Req) ->
     NodesSet = sets:from_list(ns_node_disco:nodes_wanted()),
     JSON = ns_doctor:build_tasks_list(
              fun (Node) ->
                      sets:is_element(Node, NodesSet)
-             end),
+             end, PoolId),
     reply_json(Req, JSON, 200).
 
 handle_reset_alerts(Req) ->
