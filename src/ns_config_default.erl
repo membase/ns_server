@@ -63,6 +63,7 @@ default() ->
     [{directory, path_config:component_path(data, "config")},
      {autocompaction, [{database_fragmentation_threshold, {30, undefined}},
                        {view_fragmentation_threshold, {30, undefined}}]},
+     {cluster_compat_version, cluster_compat_mode:supported_compat_version()},
      {fast_warmup, [{fast_warmup_enabled, true},
                     {min_memory_threshold, 10},
                     {min_items_threshold, 10}]},
