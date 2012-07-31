@@ -8,8 +8,9 @@
 %% API
 -export([start_link/0,
 
-         force_compact_bucket/1,
-         force_compact_db_files/1, force_compact_view/2]).
+         force_compact_bucket/1, force_compact_db_files/1, force_compact_view/2,
+         cancel_forced_bucket_compaction/1, cancel_forced_db_compaction/1,
+         cancel_forced_view_compaction/2]).
 
 %% gen_fsm callbacks
 -export([init/1, handle_event/3, handle_sync_event/4, handle_info/3,
@@ -102,6 +103,54 @@ force_compact_view(Bucket, DDocId) ->
 
     ok.
 
+cancel_forced_bucket_compaction(Bucket) ->
+    BucketBin = list_to_binary(Bucket),
+    R = multi_sync_send_all_state_event({cancel_forced_bucket_compaction, BucketBin}),
+
+    case R of
+        [] ->
+            ok;
+        Failed ->
+            ale:error(?USER_LOGGER,
+                      "Failed to cancel bucket compaction "
+                      "for `~s` on some nodes: ~n~p", [Bucket, Failed])
+    end,
+
+    ok.
+
+cancel_forced_db_compaction(Bucket) ->
+    BucketBin = list_to_binary(Bucket),
+    R = multi_sync_send_all_state_event({cancel_forced_db_compaction, BucketBin}),
+
+    case R of
+        [] ->
+            ok;
+        Failed ->
+            ale:error(?USER_LOGGER,
+                      "Failed to cancel bucket databases compaction "
+                      "for `~s` on some nodes: ~n~p", [Bucket, Failed])
+    end,
+
+    ok.
+
+cancel_forced_view_compaction(Bucket, DDocId) ->
+    BucketBin = list_to_binary(Bucket),
+    DDocIdBin = list_to_binary(DDocId),
+    R = multi_sync_send_all_state_event(
+          {cancel_forced_view_compaction, BucketBin, DDocIdBin}),
+
+    case R of
+        [] ->
+            ok;
+        Failed ->
+            ale:error(?USER_LOGGER,
+                      "Failed to cancel index compaction "
+                      "for `~s/~s` on some nodes: ~n~p",
+                      [Bucket, DDocId, Failed])
+    end,
+
+    ok.
+
 %% gen_fsm callbacks
 init([]) ->
     process_flag(trap_exit, true),
@@ -174,6 +223,19 @@ handle_sync_event({force_compact_view, Bucket, DDocId}, _From, StateName, State)
                 register_forced_compaction(Pid, Compaction, State)
         end,
     {reply, ok, StateName, NewState};
+handle_sync_event({cancel_forced_bucket_compaction, Bucket}, _From,
+                  StateName, State) ->
+    Compaction = #forced_compaction{type=bucket, name=Bucket},
+    {reply, ok, StateName, maybe_cancel_compaction(Compaction, State)};
+handle_sync_event({cancel_forced_db_compaction, Bucket}, _From,
+                  StateName, State) ->
+    Compaction = #forced_compaction{type=db, name=Bucket},
+    {reply, ok, StateName, maybe_cancel_compaction(Compaction, State)};
+handle_sync_event({cancel_forced_view_compaction, Bucket, DDocId},
+                  _From, StateName, State) ->
+    Name = <<Bucket/binary, $/, DDocId/binary>>,
+    Compaction = #forced_compaction{type=view, name=Name},
+    {reply, ok, StateName, maybe_cancel_compaction(Compaction, State)};
 handle_sync_event(Event, _From, StateName, State) ->
     ?log_warning("Got unexpected sync event ~p (when in ~p):~n~p",
                  [Event, StateName, State]),
@@ -1170,3 +1232,23 @@ unregister_forced_compaction(Pid,
 is_already_being_compacted(Compaction,
                            #state{running_forced_compactions=Compactions}) ->
     dict:find(Compaction, Compactions) =/= error.
+
+-spec maybe_cancel_compaction(#forced_compaction{}, #state{}) -> #state{}.
+maybe_cancel_compaction(Compaction,
+                        #state{forced_compaction_pids=CompactionPids} = State) ->
+    case dict:find(Compaction, CompactionPids) of
+        error ->
+            State;
+        {ok, Pid} ->
+            exit(Pid, shutdown),
+            receive
+                %% let all the other exit messages be handled by corresponding
+                %% handle_info clause so that error message is logged
+                {'EXIT', Pid, shutdown} ->
+                    unregister_forced_compaction(Pid, State);
+                {'EXIT', Pid, _Reason} = Exit ->
+                    {next_state, ignored, NewState} = handle_info(Exit,
+                                                                  ignored, State),
+                    NewState
+            end
+    end.
