@@ -20,7 +20,11 @@
                 compactor_config,
                 compaction_start_ts,
                 scheduled_compaction_tref,
-                forced_compactors}).
+
+                %% mapping from compactor pid to #forced_compaction{}
+                running_forced_compactions,
+                %% reverse mapping from #forced_compaction{} to compactor pid
+                forced_compaction_pids}).
 
 -record(config, {db_fragmentation,
                  view_fragmentation,
@@ -37,7 +41,8 @@
                  to_minute,
                  abort_outside}).
 
--record(forced_compaction, {type, name}).
+-record(forced_compaction, {type :: bucket | db | view,
+                            name :: binary()}).
 
 % If N vbucket databases of a bucket need to be compacted, we trigger compaction
 % for all the vbucket databases of that bucket.
@@ -121,41 +126,54 @@ init([]) ->
                       compactor_config=undefined,
                       compaction_start_ts=undefined,
                       scheduled_compaction_tref=undefined,
-                      forced_compactors=dict:new()}}.
+                      running_forced_compactions=dict:new(),
+                      forced_compaction_pids=dict:new()}}.
 
 handle_event(Event, StateName, State) ->
     ?log_warning("Got unexpected event ~p (when in ~p):~n~p",
                  [Event, StateName, State]),
     {next_state, StateName, State}.
 
-handle_sync_event({force_compact_bucket, Bucket},
-                  _From, StateName,
-                  #state{forced_compactors=Forced} = State) ->
-    Record = #forced_compaction{type=bucket,
-                                name=Bucket},
-    Configs = compaction_config(Bucket),
-    Pid = spawn_bucket_compactor(Bucket, Configs, true),
-    NewForced = dict:store(Pid, Record, Forced),
-    {reply, ok, StateName, State#state{forced_compactors=NewForced}};
-handle_sync_event({force_compact_db_files, Bucket},
-                  _From, StateName,
-                  #state{forced_compactors=Forced} = State) ->
-    Record = #forced_compaction{type=database,
-                                name=Bucket},
-    {Config, _} = compaction_config(Bucket),
-    Pid = spawn_dbs_compactor(Bucket, Config, true),
-    NewForced = dict:store(Pid, Record, Forced),
-    {reply, ok, StateName, State#state{forced_compactors=NewForced}};
-handle_sync_event({force_compact_view, Bucket, DDocId},
-                  _From, StateName,
-                  #state{forced_compactors=Forced} = State) ->
-    RecordName = <<Bucket/binary, $/, DDocId/binary>>,
-    Record = #forced_compaction{type=view,
-                                name=RecordName},
-    {Config, _} = compaction_config(Bucket),
-    Pid = spawn_view_compactor(Bucket, DDocId, Config, true),
-    NewForced = dict:store(Pid, Record, Forced),
-    {reply, ok, StateName, State#state{forced_compactors=NewForced}};
+handle_sync_event({force_compact_bucket, Bucket}, _From, StateName, State) ->
+    Compaction = #forced_compaction{type=bucket, name=Bucket},
+
+    NewState =
+        case is_already_being_compacted(Compaction, State) of
+            true ->
+                State;
+            false ->
+                Configs = compaction_config(Bucket),
+                Pid = spawn_bucket_compactor(Bucket, Configs, true),
+                register_forced_compaction(Pid, Compaction, State)
+        end,
+    {reply, ok, StateName, NewState};
+handle_sync_event({force_compact_db_files, Bucket}, _From, StateName, State) ->
+    Compaction = #forced_compaction{type=db, name=Bucket},
+
+    NewState =
+        case is_already_being_compacted(Compaction, State) of
+            true ->
+                State;
+            false ->
+                {Config, _} = compaction_config(Bucket),
+                Pid = spawn_dbs_compactor(Bucket, Config, true),
+                register_forced_compaction(Pid, Compaction, State)
+        end,
+    {reply, ok, StateName, NewState};
+handle_sync_event({force_compact_view, Bucket, DDocId}, _From, StateName, State) ->
+    Name = <<Bucket/binary, $/, DDocId/binary>>,
+    Compaction = #forced_compaction{type=view, name=Name},
+
+    NewState =
+        case is_already_being_compacted(Compaction, State) of
+            true ->
+                State;
+            false ->
+                {Config, _} = compaction_config(Bucket),
+                Pid = spawn_view_compactor(Bucket, DDocId, Config, true),
+                register_forced_compaction(Pid, Compaction, State)
+        end,
+    {reply, ok, StateName, NewState};
 handle_sync_event(Event, _From, StateName, State) ->
     ?log_warning("Got unexpected sync event ~p (when in ~p):~n~p",
                  [Event, StateName, State]),
@@ -230,8 +248,8 @@ handle_info({'EXIT', Compactor, Reason}, compacting,
             {next_state, compacting, compact_next_bucket(NewState0)}
     end;
 handle_info({'EXIT', Pid, Reason}, StateName,
-            #state{forced_compactors=Compactors} = State) ->
-    case dict:find(Pid, Compactors) of
+            #state{running_forced_compactions=Compactions} = State) ->
+    case dict:find(Pid, Compactions) of
         {ok, #forced_compaction{type=Type, name=Name}} ->
             case Reason of
                 normal ->
@@ -245,9 +263,7 @@ handle_info({'EXIT', Pid, Reason}, StateName,
                               [Type, Name, Reason])
             end,
 
-            NewCompactors = dict:erase(Pid, Compactors),
-            {next_state, StateName,
-             State#state{forced_compactors=NewCompactors}};
+            {next_state, StateName, unregister_forced_compaction(Pid, State)};
         error ->
             ?log_error("Unexpected process termination ~p: ~p. Dying.",
                        [Pid, Reason]),
@@ -1124,3 +1140,33 @@ bucket_exists(BucketName) ->
         not_present ->
             false
     end.
+
+-spec register_forced_compaction(pid(), #forced_compaction{},
+                                 #state{}) -> #state{}.
+register_forced_compaction(Pid, Compaction,
+                    #state{running_forced_compactions=Compactions,
+                           forced_compaction_pids=CompactionPids} = State) ->
+    error = dict:find(Compaction, CompactionPids),
+
+    NewCompactions = dict:store(Pid, Compaction, Compactions),
+    NewCompactionPids = dict:store(Compaction, Pid, CompactionPids),
+
+    State#state{running_forced_compactions=NewCompactions,
+                forced_compaction_pids=NewCompactionPids}.
+
+-spec unregister_forced_compaction(pid(), #state{}) -> #state{}.
+unregister_forced_compaction(Pid,
+                             #state{running_forced_compactions=Compactions,
+                                    forced_compaction_pids=CompactionPids} = State) ->
+    Compaction = dict:fetch(Pid, Compactions),
+
+    NewCompactions = dict:erase(Pid, Compactions),
+    NewCompactionPids = dict:erase(Compaction, CompactionPids),
+
+    State#state{running_forced_compactions=NewCompactions,
+                forced_compaction_pids=NewCompactionPids}.
+
+-spec is_already_being_compacted(#forced_compaction{}, #state{}) -> boolean().
+is_already_being_compacted(Compaction,
+                           #state{running_forced_compactions=Compactions}) ->
+    dict:find(Compaction, Compactions) =/= error.
