@@ -634,6 +634,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
                              (_) -> BlackSpot
                          end, BlackSpot),
         ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
+        ns_config:set_initial(cluster_compat_version, undefined),
         ?cluster_debug("pre-join cleaned config is:~n~p", [ns_config:get()]),
         {ok, _Cookie} = ns_cookie_manager:cookie_sync(),
         %% Let's verify connectivity.
