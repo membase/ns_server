@@ -479,7 +479,7 @@ start_couch_replication(SrcCouchURI, TgtCouchURI, Vb, XDocId) ->
             ok
     end,
 
-    case xdc_replicator:async_replicate(CRep) of
+    case xdc_vbucket_rep:async_replicate(CRep) of
         {ok, CRepPid} ->
             erlang:monitor(process, CRepPid),
             CRepState = triggered,
@@ -512,7 +512,7 @@ cancel_couch_replication(XDocId, CRepPid) ->
         lists:flatten(ets:match(?CSTORE, {CRepPid, '$1', '_', '$2'})),
     case CRepState of
         triggered ->
-            xdc_replicator:cancel_replication(CRep#rep.id);
+            xdc_vbucket_rep:cancel_replication(CRep#rep.id);
         _ ->
             ok
     end,
@@ -628,7 +628,7 @@ dump_xdcr_bucket_stats(XDocId) ->
     lists:foreach(
       fun([Vb, Stat]) ->
               ?xdcr_debug("stats for vbucket: ~p", [Vb]),
-              xdc_replicator:dump_stats(Stat)
+              xdc_vbucket_rep:dump_stats(Stat)
       end,
       VbStatList),
 
@@ -636,7 +636,7 @@ dump_xdcr_bucket_stats(XDocId) ->
                           #rep_stats{},
                           lists:flatten(ets:match(?XSTATS, {{XDocId, '_'}, '_', '$1'}))),
 
-    xdc_replicator:dump_stats(AggStat),
+    xdc_vbucket_rep:dump_stats(AggStat),
     ok.
 
 %% Update replication process id list

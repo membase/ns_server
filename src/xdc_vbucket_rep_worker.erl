@@ -10,7 +10,7 @@
 %% License for the specific language governing permissions and limitations under
 %% the License.
 
--module(xdc_replicator_worker).
+-module(xdc_vbucket_rep_worker).
 
 %% public API
 -export([start_link/5]).

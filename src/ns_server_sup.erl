@@ -111,9 +111,9 @@ child_specs() ->
       permanent, 1000, worker, [work_queue]},
 
      %% per-vbucket replication supervisor, required by XDC manager
-     {xdc_rep_sup,
-      {xdc_rep_sup, start_link, []},
-      permanent, infinity, supervisor, [xdc_rep_sup]},
+     {xdc_vbucket_rep_sup,
+      {xdc_vbucket_rep_sup, start_link, []},
+      permanent, infinity, supervisor, [xdc_vbucket_rep_sup]},
 
      %% XDC replication manager
      %% per-bucket supervisor needs xdc_rep_manager. In fact any couch

@@ -121,7 +121,7 @@
                         (gen-server 'ns_bucket_worker
                                     "'work' of starting and shutting down ns_bucket_sup childs is done by this
                                     guy. I.e. because supervisor:xxx API is synchronous")
-                        (supervisor 'xdc_rep_sup :mode :one_for_one
+                        (supervisor 'xdc_vbucket_rep_sup :mode :one_for_one
                                     "owns individual replications apparently")
                         ;; (copied this from ns_server_sup.erl)
                         ;; per-bucket supervisor needs xdc_rep_manager. In fact any couch

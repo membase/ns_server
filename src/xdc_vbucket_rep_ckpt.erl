@@ -14,7 +14,7 @@
 %% the License.
 
 %% XDC Replicator Checkpoint Functions
--module(xdc_replicator_ckpt).
+-module(xdc_vbucket_rep_ckpt).
 
 %% public functions
 -export([start_timer/1, cancel_timer/1]).
@@ -53,7 +53,7 @@ do_last_checkpoint(#rep_state{seqs_in_progress = [],
 do_checkpoint(#rep_state{current_through_seq=Seq, committed_seq=Seq} = State) ->
     SourceCurSeq = source_cur_seq(State),
     NewState = State#rep_state{source_seq = SourceCurSeq},
-    xdc_replicator:update_task(NewState),
+    xdc_vbucket_rep:update_task(NewState),
     {ok, NewState};
 do_checkpoint(State) ->
     #rep_state{
@@ -140,7 +140,7 @@ do_checkpoint(State) ->
                              source_log = SourceLog#doc{rev=SrcRev},
                              target_log = TargetLog#doc{rev=TgtRev}
                             },
-                xdc_replicator:update_task(NewState),
+                xdc_vbucket_rep:update_task(NewState),
                 {ok, NewState}
             catch throw:{checkpoint_commit_failure, _} = Failure ->
                     Failure

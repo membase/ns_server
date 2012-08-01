@@ -14,7 +14,7 @@
 %% the License.
 
 %% XDC Replicator Functions
--module(xdc_replicator).
+-module(xdc_vbucket_rep).
 -behaviour(gen_server).
 
 %% public functions
@@ -35,10 +35,10 @@
 cancel_replication({BaseId, Extension}) ->
     FullRepId = BaseId ++ Extension,
     ?xdcr_info("Canceling replication `~s`...", [FullRepId]),
-    case supervisor:terminate_child(xdc_rep_sup, FullRepId) of
+    case supervisor:terminate_child(xdc_vbucket_rep_sup, FullRepId) of
         ok ->
             ?xdcr_info("Replication `~s` canceled.", [FullRepId]),
-            case supervisor:delete_child(xdc_rep_sup, FullRepId) of
+            case supervisor:delete_child(xdc_vbucket_rep_sup, FullRepId) of
                 ok ->
                     {ok, {cancelled, ?l2b(FullRepId)}};
                 {error, not_found} ->
@@ -72,13 +72,13 @@ async_replicate(#rep{id = {BaseId, Ext}, source = Src, target = Tgt} = Rep) ->
     %%
     ?xdcr_info("try to start new replication `~s` (`~s` -> `~s`)",
                [RepChildId, Source, Target]),
-    case supervisor:start_child(xdc_rep_sup, ChildSpec) of
+    case supervisor:start_child(xdc_vbucket_rep_sup, ChildSpec) of
         {ok, Pid} ->
             ?xdcr_info("starting new replication `~s` at ~p (`~s` -> `~s`)",
                        [RepChildId, Pid, Source, Target]),
             {ok, Pid};
         {error, already_present} ->
-            case supervisor:restart_child(xdc_rep_sup, RepChildId) of
+            case supervisor:restart_child(xdc_vbucket_rep_sup, RepChildId) of
                 {ok, Pid} ->
                     ?xdcr_info("restarting replication `~s` at ~p (`~s` -> `~s`)",
                                [RepChildId, Pid, Source, Target]),
@@ -88,7 +88,7 @@ async_replicate(#rep{id = {BaseId, Ext}, source = Src, target = Tgt} = Rep) ->
                     %% each other to start and somebody else won. Just grab
                     %% the Pid by calling start_child again.
                     {error, {already_started, Pid}} =
-                        supervisor:start_child(xdc_rep_sup, ChildSpec),
+                        supervisor:start_child(xdc_vbucket_rep_sup, ChildSpec),
                     ?xdcr_info("replication `~s` already running at ~p (`~s` -> `~s`)",
                                [RepChildId, Pid, Source, Target]),
                     {ok, Pid};
@@ -97,7 +97,7 @@ async_replicate(#rep{id = {BaseId, Ext}, source = Src, target = Tgt} = Rep) ->
                     %% Clause to deal with a change in the supervisor module introduced
                     %% in R14B02. For more details consult the thread at:
                     %%     http://erlang.org/pipermail/erlang-bugs/2011-March/002273.html
-                    _ = supervisor:delete_child(xdc_rep_sup, RepChildId),
+                    _ = supervisor:delete_child(xdc_vbucket_rep_sup, RepChildId),
                     async_replicate(Rep);
                 {error, _} = Error ->
                     Error
@@ -162,7 +162,7 @@ do_init(#rep{options = Options, id = {BaseId, Ext}} = Rep) ->
 
     Workers = lists:map(
                 fun(_) ->
-                        {ok, Pid} = xdc_replicator_worker:start_link(
+                        {ok, Pid} = xdc_vbucket_rep_worker:start_link(
                                       self(), Source, Target, ChangesManager, MaxConns),
                         Pid
                 end,
@@ -245,21 +245,21 @@ handle_info({'EXIT', Pid, normal}, #rep_state{changes_reader=Pid} = State) ->
 
 handle_info({'EXIT', Pid, Reason}, #rep_state{changes_reader=Pid} = State) ->
     ?xdcr_error("ChangesReader process died with reason: ~p", [Reason]),
-    {stop, changes_reader_died, xdc_replicator_ckpt:cancel_timer(State)};
+    {stop, changes_reader_died, xdc_vbucket_rep_ckpt:cancel_timer(State)};
 
 handle_info({'EXIT', Pid, normal}, #rep_state{changes_manager = Pid} = State) ->
     {noreply, State};
 
 handle_info({'EXIT', Pid, Reason}, #rep_state{changes_manager = Pid} = State) ->
     ?xdcr_error("ChangesManager process died with reason: ~p", [Reason]),
-    {stop, changes_manager_died, xdc_replicator_ckpt:cancel_timer(State)};
+    {stop, changes_manager_died, xdc_vbucket_rep_ckpt:cancel_timer(State)};
 
 handle_info({'EXIT', Pid, normal}, #rep_state{changes_queue=Pid} = State) ->
     {noreply, State};
 
 handle_info({'EXIT', Pid, Reason}, #rep_state{changes_queue=Pid} = State) ->
     ?xdcr_error("ChangesQueue process died with reason: ~p", [Reason]),
-    {stop, changes_queue_died, xdc_replicator_ckpt:cancel_timer(State)};
+    {stop, changes_queue_died, xdc_vbucket_rep_ckpt:cancel_timer(State)};
 
 handle_info({'EXIT', Pid, normal}, #rep_state{workers = Workers} = State) ->
     case Workers -- [Pid] of
@@ -268,13 +268,13 @@ handle_info({'EXIT', Pid, normal}, #rep_state{workers = Workers} = State) ->
         [] ->
             catch unlink(State#rep_state.changes_manager),
             catch exit(State#rep_state.changes_manager, kill),
-            xdc_replicator_ckpt:do_last_checkpoint(State);
+            xdc_vbucket_rep_ckpt:do_last_checkpoint(State);
         Workers2 ->
             {noreply, State#rep_state{workers = Workers2}}
     end;
 
 handle_info({'EXIT', Pid, Reason}, #rep_state{workers = Workers} = State) ->
-    State2 = xdc_replicator_ckpt:cancel_timer(State),
+    State2 = xdc_vbucket_rep_ckpt:cancel_timer(State),
     case lists:member(Pid, Workers) of
         false ->
             {stop, {unknown_process_died, Pid, Reason}, State2};
@@ -344,9 +344,9 @@ handle_cast({db_compacted, DbName},
     {noreply, State#rep_state{src_master_db = NewSrcMasterDb}};
 
 handle_cast(checkpoint, State) ->
-    case xdc_replicator_ckpt:do_checkpoint(State) of
+    case xdc_vbucket_rep_ckpt:do_checkpoint(State) of
         {ok, NewState} ->
-            {noreply, NewState#rep_state{timer = xdc_replicator_ckpt:start_timer(State)}};
+            {noreply, NewState#rep_state{timer = xdc_vbucket_rep_ckpt:start_timer(State)}};
         Error ->
             {stop, Error, State}
     end;
@@ -451,7 +451,7 @@ init_state(Rep) ->
       tgt_master_db_monitor = db_monitor(TgtMasterDb),
       source_seq = get_value(<<"update_seq">>, SourceInfo, ?LOWEST_SEQ)
      },
-    State#rep_state{timer = xdc_replicator_ckpt:start_timer(State)}.
+    State#rep_state{timer = xdc_vbucket_rep_ckpt:start_timer(State)}.
 
 
 spawn_changes_reader(StartSeq, #httpdb{} = Db, ChangesQueue, Options) ->
