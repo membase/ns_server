@@ -337,7 +337,7 @@ var ViewsSection = {
       var haveBuckets = v.need(haveBucketsCell);
 
       if (haveBuckets) {
-        return _.map(v.need(rawAllDDocsCell), function (r) {
+        return _.map(v.need(rawAllDDocsCell).rows, function (r) {
           var doc = _.clone(r.doc);
           doc.compactURI = r.controllers.compact;
           return doc;

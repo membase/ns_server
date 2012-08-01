@@ -959,11 +959,10 @@ handle_ddocs_list(_PoolId, Bucket, Req) ->
     DDocs = capi_set_view_manager:fetch_full_ddocs(Bucket),
     RV = [begin
               Id = capi_utils:extract_doc_id(Doc),
-              {struct, [{id, Id},
-                        {doc, capi_utils:couch_doc_to_mochi_json(Doc)},
+              {struct, [{doc, capi_utils:couch_doc_to_mochi_json(Doc)},
                         {controllers, {struct, [{compact, bin_concat_path(["pools","default", "buckets", Bucket, "ddocs", Id, "controller", "compactView"])}]}}]}
           end || Doc <- DDocs],
-    reply_json(Req, RV).
+    reply_json(Req, {struct, [{rows, RV}]}).
 
 
 -define(RANDOM_KEY_ATTEMPTS, 10).
