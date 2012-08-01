@@ -55,7 +55,7 @@ var ReplicationsModel = {};
       var match = /^\/remoteClusters\/(.*)\/buckets\/(.*)/.exec(targetURI);
 
       info = _.clone(info);
-      info.meta.id = fields.meta.id;
+      info.id = fields._id;
       info.source = fields.source;
       info.continuous = fields.continuous;
 

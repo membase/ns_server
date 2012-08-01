@@ -1,8 +1,10 @@
 -define(REPLICATION_INFOS_MAP, <<
-"function (d) {\n"
+"function (d, meta) {\n"
+"  d._id = meta.id;\n"
 "  if (d.type === 'xdc') {\n"
 "    emit([d._id], d);\n"
-"  } else if (d.node && d.replication_doc_id) {\n"
+"  } else if (d.node && d.replication_doc_id && d.replication_fields) {\n"
+"    d.replication_fields._id = d.replication_doc_id;\n"
 "    emit([d.replication_doc_id, d._id], d);\n"
 "  }\n"
 "}\n"

@@ -4,10 +4,12 @@ require 'stringio'
 
 functions = {
   :map => <<-HERE,
-function (d) {
+function (d, meta) {
+  d._id = meta.id;
   if (d.type === 'xdc') {
     emit([d._id], d);
-  } else if (d.node && d.replication_doc_id) {
+  } else if (d.node && d.replication_doc_id && d.replication_fields) {
+    d.replication_fields._id = d.replication_doc_id;
     emit([d.replication_doc_id, d._id], d);
   }
 }
