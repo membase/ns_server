@@ -71,23 +71,8 @@ ensure_rep_db_exists() ->
         _Error ->
             {ok, Db} = couch_db:create(DbName, [sys_db, {user_ctx, UserCtx}])
     end,
-    ensure_rep_ddoc_exists(Db, <<"_design/_replicator">>),
     {ok, Db}.
 
-
-ensure_rep_ddoc_exists(RepDb, DDocID) ->
-    case couch_db:open_doc(RepDb, DDocID, []) of
-        {ok, _Doc} ->
-            ok;
-        _ ->
-            DDoc = couch_doc:from_json_obj({[
-                {<<"meta">>, {[{<<"id">>, DDocID}]}},
-                {<<"json">>, {[
-                    {<<"language">>, <<"javascript">>},
-                    {<<"validate_doc_update">>, ?REP_DB_DOC_VALIDATE_FUN}
-                ]}}]}),
-            ok = couch_db:update_doc(RepDb, DDoc, [])
-    end.
 
 has_valid_rep_id({Change}) ->
     has_valid_rep_id(get_value(<<"id">>, Change));
