@@ -194,6 +194,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_settings_auto_failover/1};
                              ["settings", "maxParallelIndexers"] ->
                                  {auth, fun handle_settings_max_parallel_indexers/1};
+                             ["settings", "viewUpdateDaemon"] ->
+                                 {auth, fun handle_settings_view_update_daemon/1};
                              ["nodes", NodeId] ->
                                  {auth, fun handle_node/2, [NodeId]};
                              ["diag"] ->
@@ -261,6 +263,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_settings_auto_failover_reset_count/1};
                              ["settings", "maxParallelIndexers"] ->
                                  {auth, fun handle_settings_max_parallel_indexers_post/1};
+                             ["settings", "viewUpdateDaemon"] ->
+                                 {auth, fun handle_settings_view_update_daemon_post/1};
                              ["pools", PoolId] ->
                                  {auth, fun handle_pool_settings/2,
                                   [PoolId]};
@@ -619,7 +623,9 @@ handle_pools(Req) ->
                              {settings,
                               {struct,
                                [{<<"maxParallelIndexers">>,
-                                 <<"/settings/maxParallelIndexers?uuid=", UUID/binary>>}]}},
+                                 <<"/settings/maxParallelIndexers?uuid=", UUID/binary>>},
+                                {<<"viewUpdateDaemon">>,
+                                 <<"/settings/viewUpdateDaemon?uuid=", UUID/binary>>}]}},
                              {uuid, UUID}
                              | build_versions()]}).
 handle_engage_cluster2(Req) ->
@@ -1326,6 +1332,53 @@ handle_settings_max_parallel_indexers_post(Req) ->
             handle_settings_max_parallel_indexers(Req);
         Error ->
             reply_json(Req, {struct, [{'_', iolist_to_binary(io_lib:format("Invalid globalValue: ~p", [Error]))}]}, 400)
+    end.
+
+handle_settings_view_update_daemon(Req) ->
+    {value, Config} = ns_config:search(set_view_update_daemon),
+
+    UpdateInterval = proplists:get_value(update_interval, Config),
+    UpdateMinChanges = proplists:get_value(update_min_changes, Config),
+
+    true = (UpdateInterval =/= undefined),
+    true = (UpdateMinChanges =/= undefined),
+
+    reply_json(Req, {struct, [{updateInterval, UpdateInterval},
+                              {updateMinChanges, UpdateMinChanges}]}).
+
+handle_settings_view_update_daemon_post(Req) ->
+    Params = Req:parse_post(),
+
+    {Props, Errors} =
+        lists:foldl(
+          fun ({Key, RestKey}, {AccProps, AccErrors} = Acc) ->
+                  Raw = proplists:get_value(RestKey, Params),
+
+                  case Raw of
+                      undefined ->
+                          Acc;
+                      _ ->
+                          case parse_validate_number(Raw, 0, undefined) of
+                              {ok, Value} ->
+                                  {[{Key, Value} | AccProps], AccErrors};
+                              Error ->
+                                  Msg = io_lib:format("Invalid ~s: ~p",
+                                                      [RestKey, Error]),
+                                  {AccProps, [{RestKey, iolist_to_binary(Msg)}]}
+                          end
+                  end
+          end, {[], []},
+          [{update_interval, "updateInterval"},
+           {update_min_changes, "updateMinChanges"}]),
+
+    case Errors of
+        [] ->
+            {value, CurrentProps} = ns_config:search(set_view_update_daemon),
+            MergedProps = misc:update_proplist(CurrentProps, Props),
+            ns_config:set(set_view_update_daemon, MergedProps),
+            handle_settings_view_update_daemon(Req);
+        _ ->
+            reply_json(Req, {struct, Errors}, 400)
     end.
 
 handle_pool_settings(_PoolId, Req) ->
