@@ -243,7 +243,9 @@ handle_info({'DOWN', _Ref, process, Pid, Reason}, State) ->
                        {<<"_replication_state">>, <<"error">>}]),
                     ?xdcr_info("~s: replication of vbucket ~p failed due to reason: "
                                "~p", [XDocId, Vb, Reason])
-            end;
+            end,
+            %% activate xdcr manager to schedule new replications
+            self() ! manage_vbucket_replications;
         false ->
             %% Ignore messages regarding Pids not found in the CSTORE. These messages
             %% may come from either Couch replications that were explicitly cancelled
