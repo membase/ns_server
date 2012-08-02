@@ -212,4 +212,6 @@
                         (gen-server 'compaction_daemon :since "2.0"
                                     "triggers and monitors bucket's db and views compactions")
                         (cb_generic_replication_srv 'xdc_rdoc_replication_srv :since "2.0"
-                                                    "replicates _replicator docs across cluster")))
+                                                    "replicates _replicator docs across cluster")
+                        (gen-server 'set_view_update_daemon :since "2.0"
+                                    "periodically triggers set view indexes update"))

@@ -168,5 +168,8 @@ child_specs() ->
       permanent, 86400000, worker, [compaction_daemon]},
 
      {xdc_rdoc_replication_srv, {xdc_rdoc_replication_srv, start_link, []},
-      permanent, 1000, worker, [xdc_rdoc_replication_srv]}
+      permanent, 1000, worker, [xdc_rdoc_replication_srv]},
+
+     {set_view_update_daemon, {set_view_update_daemon, start_link, []},
+      permanent, 1000, worker, [set_view_update_daemon]}
 ].
