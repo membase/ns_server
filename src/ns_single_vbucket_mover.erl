@@ -53,12 +53,12 @@ mover(Parent, undefined = Node, Bucket, VBucket, OldChain, [NewNode | _NewChainR
 
 mover(Parent, Node, Bucket, VBucket, OldChain, NewChain) ->
     master_activity_events:note_vbucket_mover(self(), Bucket, Node, VBucket, OldChain, NewChain),
-    ns_replicas_builder:try_with_maybe_ignorant_after(
+    misc:try_with_maybe_ignorant_after(
       fun () ->
               mover_inner(Parent, Node, Bucket, VBucket, OldChain, NewChain)
       end,
       fun () ->
-              ns_replicas_builder:sync_shutdown_many(get_cleanup_list())
+              misc:sync_shutdown_many_i_am_trapping_exits(get_cleanup_list())
       end),
     Parent ! {move_done, {Node, VBucket, OldChain, NewChain}}.
 

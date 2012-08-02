@@ -1360,3 +1360,55 @@ executing_on_new_process(Body) ->
 is_undef_exit(M, F, A, {undef, [{M, F, A, []} | _]}) -> true; % R15
 is_undef_exit(M, F, A, {undef, [{M, F, A} | _]}) -> true; % R14
 is_undef_exit(_M, _F, _A, _Reason) -> false.
+
+-spec sync_shutdown_many_i_am_trapping_exits(Pids :: [pid()]) -> ok.
+sync_shutdown_many_i_am_trapping_exits(Pids) ->
+    {trap_exit, true} = erlang:process_info(self(), trap_exit),
+    [(catch erlang:exit(Pid, shutdown)) || Pid <- Pids],
+    BadShutdowns = [{P, RV} || P <- Pids,
+                               (RV = inner_wait_shutdown(P)) =/= shutdown],
+    case BadShutdowns of
+        [] -> ok;
+        _ ->
+            ?log_error("Shutdown of the following failed: ~p", [BadShutdowns])
+    end,
+    [] = BadShutdowns,
+    ok.
+
+%% NOTE: this is internal helper, despite everything being exported
+%% from here
+-spec inner_wait_shutdown(Pid :: pid()) -> term().
+inner_wait_shutdown(Pid) ->
+    MRef = erlang:monitor(process, Pid),
+    MRefReason = receive
+                     {'DOWN', MRef, _, _, MRefReason0} ->
+                         MRefReason0
+                 end,
+    receive
+        {'EXIT', Pid, Reason} ->
+            Reason
+    after 5000 ->
+            ?log_error("Expected exit signal from ~p but could not get it in 5 seconds. This is a bug, but process we're waiting for is dead (~p), so trying to ignore...", [Pid, MRefReason]),
+            ?log_debug("Here's messages:~n~p", [erlang:process_info(self(), messages)]),
+            MRefReason
+    end.
+
+%% @doc works like try/after but when try has raised exception, any
+%% exception from AfterBody is logged and ignored. I.e. when we face
+%% exceptions from both try-block and after-block, exception from
+%% after-block is logged and ignored and exception from try-block is
+%% rethrown. Use this when exception from TryBody is more important
+%% than exception from AfterBody.
+try_with_maybe_ignorant_after(TryBody, AfterBody) ->
+    RV =
+        try TryBody()
+        catch T:E ->
+                Stacktrace = erlang:get_stacktrace(),
+                try AfterBody()
+                catch T2:E2 ->
+                        ?log_error("Eating exception from ignorant after-block:~n~p", [{T2, E2, erlang:get_stacktrace()}])
+                end,
+                erlang:raise(T, E, Stacktrace)
+        end,
+    AfterBody(),
+    RV.

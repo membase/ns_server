@@ -27,8 +27,7 @@
 
 -include("ns_common.hrl").
 
--export([spawn_link/6,
-         sync_shutdown_many/1, try_with_maybe_ignorant_after/2]).
+-export([spawn_link/6]).
 
 %% @doc spawns replicas builder for given bucket, vbucket, source and
 %% destination node(s). AfterDone will be called after all backfills
@@ -61,26 +60,6 @@ sleeps_so_far_to_sleep_interval(SleepsSoFar) ->
             100
     end.
 
-%% @doc works like try/after but when try has raised exception, any
-%% exception from AfterBody is logged and ignored. I.e. when we face
-%% exceptions from both try-block and after-block, exception from
-%% after-block is logged and ignored and exception from try-block is
-%% rethrown. Use this when exception from TryBody is more important
-%% than exception from AfterBody.
-try_with_maybe_ignorant_after(TryBody, AfterBody) ->
-    RV =
-        try TryBody()
-        catch T:E ->
-                Stacktrace = erlang:get_stacktrace(),
-                try AfterBody()
-                catch T2:E2 ->
-                        ?log_error("Eating exception from ignorant after-block:~n~p", [{T2, E2, erlang:get_stacktrace()}])
-                end,
-                erlang:raise(T, E, Stacktrace)
-        end,
-    AfterBody(),
-    RV.
-
 -spec build_replicas_main(bucket_name(), vbucket_id(), node(), [node()], [node()], fun(() -> ok)) -> ok.
 build_replicas_main(Bucket, VBucket, SrcNode, ReplicateIntoNodes, JustBackfillNodes, AfterDone) ->
     erlang:process_flag(trap_exit, true),
@@ -95,7 +74,7 @@ build_replicas_main(Bucket, VBucket, SrcNode, ReplicateIntoNodes, JustBackfillNo
     ContinuousReplicators = [spawn_replica_builder(Bucket, VBucket, SrcNode, DNode) || DNode <- ReplicateIntoNodes],
     Replicators = StopEarlyReplicators ++ ContinuousReplicators,
 
-    try_with_maybe_ignorant_after(
+    misc:try_with_maybe_ignorant_after(
       fun () ->
               observe_wait_all_done(Bucket, VBucket, SrcNode, JustBackfillNodes ++ ReplicateIntoNodes,
                                     fun (SleepsSoFar) ->
@@ -118,7 +97,7 @@ build_replicas_main(Bucket, VBucket, SrcNode, ReplicateIntoNodes, JustBackfillNo
                                             end
                                     end),
 
-              sync_shutdown_many(StopEarlyReplicators),
+              misc:sync_shutdown_many_i_am_trapping_exits(StopEarlyReplicators),
 
               AfterDone(),
 
@@ -130,9 +109,9 @@ build_replicas_main(Bucket, VBucket, SrcNode, ReplicateIntoNodes, JustBackfillNo
               end
       end,
       fun () ->
-              try_with_maybe_ignorant_after(
+              misc:try_with_maybe_ignorant_after(
                 fun () ->
-                        sync_shutdown_many(ContinuousReplicators)
+                        misc:sync_shutdown_many_i_am_trapping_exits(ContinuousReplicators)
                 end,
                 fun () ->
                         kill_tap_names(Bucket, VBucket, SrcNode, JustBackfillNodes ++ ReplicateIntoNodes)
@@ -146,36 +125,6 @@ build_replicas_main(Bucket, VBucket, SrcNode, ReplicateIntoNodes, JustBackfillNo
             ok
     end.
 
-%% NOTE: this assumes that caller is trapping exits
--spec sync_shutdown_many(Pids :: [pid()]) -> ok.
-sync_shutdown_many(Pids) ->
-    [(catch erlang:exit(Pid, shutdown)) || Pid <- Pids],
-    BadShutdowns = [{P, RV} || P <- Pids,
-                               (RV = wait_shutdown(P)) =/= shutdown],
-    case BadShutdowns of
-        [] -> ok;
-        _ ->
-            ?log_error("Shutdown of the following failed: ~p", [BadShutdowns])
-    end,
-    [] = BadShutdowns,
-    ok.
-
-%% NOTE: this assumes that caller is trapping exits
--spec wait_shutdown(Pid :: pid()) -> term().
-wait_shutdown(Pid) ->
-    MRef = erlang:monitor(process, Pid),
-    MRefReason = receive
-                     {'DOWN', MRef, _, _, MRefReason0} ->
-                         MRefReason0
-                 end,
-    receive
-        {'EXIT', Pid, Reason} ->
-            Reason
-    after 5000 ->
-            ?log_error("Expected exit signal from ~p but could not get it in 5 seconds. This is a bug, but process we're waiting for is dead (~p), so trying to ignore...", [Pid, MRefReason]),
-            ?log_debug("Here's messages:~n~p", [erlang:process_info(self(), messages)]),
-            MRefReason
-    end.
 
 
 tap_name(VBucket, _SrcNode, DstNode) ->
