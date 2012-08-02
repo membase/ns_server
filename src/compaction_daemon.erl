@@ -249,10 +249,8 @@ handle_info(compact, idle,
     Buckets =
         case Buckets0 of
             [] ->
-                [list_to_binary(Name) ||
-                    {Name, Config} <- ns_bucket:get_buckets(),
-                    ns_bucket:bucket_type(Config) =:= membase,
-                    lists:member(node(), ns_bucket:bucket_nodes(Config))];
+                lists:map(fun list_to_binary/1,
+                          ns_bucket:node_bucket_names_of_type(node(), membase));
             _ ->
                 Buckets0
         end,

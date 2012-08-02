@@ -60,8 +60,9 @@
          filter_ready_buckets/1,
          update_bucket_props/2,
          update_bucket_props/3,
-         node_bucket_names/2,
          node_bucket_names/1,
+         node_bucket_names/2,
+         node_bucket_names_of_type/2,
          all_node_vbuckets/1,
          update_vbucket_map_history/2,
          past_vbucket_maps/0,
@@ -716,6 +717,11 @@ node_bucket_names(Node, BucketsConfigs) ->
 
 node_bucket_names(Node) ->
     node_bucket_names(Node, get_buckets()).
+
+node_bucket_names_of_type(Node, Type) ->
+    [B || {B, C} <- get_buckets(),
+          lists:member(Node, proplists:get_value(servers, C, [])),
+          bucket_type(C) =:= Type].
 
 
 %% All the vbuckets (active or replica) on a node
