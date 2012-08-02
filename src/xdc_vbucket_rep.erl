@@ -13,102 +13,39 @@
 %% License for the specific language governing permissions and limitations under
 %% the License.
 
+% This module is responsible for replicating an individual vbucket. It gets
+% started and stopped by the xdc_replicator module when the local vbucket maps
+% changes and moves its vb. When the remote vbucket map changes, it receives
+% an error and restarts, thereby reloading it's the remote vb info.
+
+% It waiting for changes to the local vbucket (state=idle), and calculates
+% the amount of work it needs to do. Then it asks the concurrency throttle
+% for a turn to replicate (state=waiting_turn). When it gets it's turn, it
+% replicates a single snapshot of the local vbucket (state=replicating).
+% it waits for the last worker to complete, then enters the idle state
+% and it checks to see if any work is to be done again.
+
+% While it's idle or waiting_turn, it will update the amount of work it
+% needs to do during the next replication, but it won't while it's
+% replicating. This can be enhanced in the future to update it's count while
+% it has a snapshot.cd bi
+
 %% XDC Replicator Functions
 -module(xdc_vbucket_rep).
 -behaviour(gen_server).
 
 %% public functions
--export([cancel_replication/1]).
--export([async_replicate/1]).
--export([update_task/1, dump_stats/1]).
+-export([start_link/4]).
 
 %% gen_server callbacks
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
--export([start_db_compaction_notifier/2, stop_db_compaction_notifier/1]).
 
 -include("xdc_replicator.hrl").
+-include("remote_clusters_info.hrl").
 
--define(GET_STATS_TABLE(State), ((State#rep_state.rep_details)#rep.stat_table)).
-
-%% public functions
-cancel_replication({BaseId, Extension}) ->
-    FullRepId = BaseId ++ Extension,
-    ?xdcr_info("Canceling replication `~s`...", [FullRepId]),
-    case supervisor:terminate_child(xdc_vbucket_rep_sup, FullRepId) of
-        ok ->
-            ?xdcr_info("Replication `~s` canceled.", [FullRepId]),
-            case supervisor:delete_child(xdc_vbucket_rep_sup, FullRepId) of
-                ok ->
-                    {ok, {cancelled, ?l2b(FullRepId)}};
-                {error, not_found} ->
-                    {ok, {cancelled, ?l2b(FullRepId)}};
-                Error ->
-                    Error
-            end;
-        Error ->
-            ?xdcr_error("Error canceling replication `~s`: ~p", [FullRepId, Error]),
-            Error
-    end.
-
-async_replicate(#rep{id = {BaseId, Ext}, source = Src, target = Tgt} = Rep) ->
-    RepChildId = BaseId ++ Ext,
-    Source = couch_api_wrap:db_uri(Src),
-    Target = couch_api_wrap:db_uri(Tgt),
-    Timeout = get_value(connection_timeout, Rep#rep.options),
-    ChildSpec = {
-      RepChildId,
-      {gen_server, start_link, [?MODULE, Rep, [{timeout, Timeout}]]},
-      temporary,
-      1,
-      worker,
-      [?MODULE]
-     },
-    %% All these nested cases to attempt starting/restarting a replication child
-    %% are ugly and not 100%% race condition free. The following patch submission
-    %% is a solution:
-    %%
-    %% http://erlang.2086793.n4.nabble.com/PATCH-supervisor-atomically-delete-child-spec-when-child-terminates-td3226098.html
-    %%
-    ?xdcr_info("try to start new replication `~s` (`~s` -> `~s`)",
-               [RepChildId, Source, Target]),
-    case supervisor:start_child(xdc_vbucket_rep_sup, ChildSpec) of
-        {ok, Pid} ->
-            ?xdcr_info("starting new replication `~s` at ~p (`~s` -> `~s`)",
-                       [RepChildId, Pid, Source, Target]),
-            {ok, Pid};
-        {error, already_present} ->
-            case supervisor:restart_child(xdc_vbucket_rep_sup, RepChildId) of
-                {ok, Pid} ->
-                    ?xdcr_info("restarting replication `~s` at ~p (`~s` -> `~s`)",
-                               [RepChildId, Pid, Source, Target]),
-                    {ok, Pid};
-                {error, running} ->
-                    %% this error occurs if multiple replicators are racing
-                    %% each other to start and somebody else won. Just grab
-                    %% the Pid by calling start_child again.
-                    {error, {already_started, Pid}} =
-                        supervisor:start_child(xdc_vbucket_rep_sup, ChildSpec),
-                    ?xdcr_info("replication `~s` already running at ~p (`~s` -> `~s`)",
-                               [RepChildId, Pid, Source, Target]),
-                    {ok, Pid};
-                {error, {'EXIT', {badarg,
-                                  [{erlang, apply, [gen_server, start_link, undefined]} | _]}}} ->
-                    %% Clause to deal with a change in the supervisor module introduced
-                    %% in R14B02. For more details consult the thread at:
-                    %%     http://erlang.org/pipermail/erlang-bugs/2011-March/002273.html
-                    _ = supervisor:delete_child(xdc_vbucket_rep_sup, RepChildId),
-                    async_replicate(Rep);
-                {error, _} = Error ->
-                    Error
-            end;
-        {error, {already_started, Pid}} ->
-            ?xdcr_info("replication `~s` already running at ~p (`~s` -> `~s`)",
-                       [RepChildId, Pid, Source, Target]),
-            {ok, Pid};
-        {error, {Error, _}} ->
-            {error, Error}
-    end.
+start_link(Rep, Vb, Throttle, Parent) ->
+    gen_server:start_link(?MODULE, {Rep, Vb, Throttle, Parent}, []).
 
 
 %% gen_server behavior callback functions
@@ -125,163 +62,39 @@ init(InitArgs) ->
             {stop, Error}
     end.
 
-do_init(#rep{options = Options, id = {BaseId, Ext}} = Rep) ->
-    process_flag(trap_exit, true),
+do_init({Rep, Vb, Throttle, Parent}) ->
+    self() ! src_db_updated, % signal to self to check for changes
+    {ok, init_replication_state(Rep, Vb, Throttle, Parent)}.
 
-    #rep_state{
-                source = Source,
-                target = Target,
-                source_name = SourceName,
-                target_name = TargetName,
-                start_seq = {_Ts, StartSeq},
-                source_seq = SourceCurSeq,
-                committed_seq = {_, CommittedSeq}
-              } = State = init_state(Rep),
+handle_info({'EXIT',_Pid, normal}, St) ->
+    {noreply, St};
 
-    NumWorkers = get_value(worker_processes, Options),
-    BatchSize = get_value(worker_batch_size, Options),
+handle_info({'EXIT',_Pid, Reason}, St) ->
+    {stop, Reason, St};
 
-    {ok, ChangesQueue} = couch_work_queue:new([
-                                               {max_items, BatchSize * NumWorkers * 2},
-                                               {max_size, 100 * 1024 * NumWorkers}
-                                              ]),
-    %% This starts the _changes reader process. It adds the changes from
-    %% the source db to the ChangesQueue.
-    ChangesReader = spawn_changes_reader(StartSeq, Source, ChangesQueue, Options),
-    %% Changes manager - responsible for dequeing batches from the changes queue
-    %% and deliver them to the worker processes.
-    ChangesManager = spawn_changes_manager(self(), ChangesQueue, BatchSize),
-    %% This starts the worker processes. They ask the changes queue manager for a
-    %% a batch of _changes rows to process -> check which revs are missing in the
-    %% target, and for the missing ones, it copies them from the source to the target.
-    MaxConns = get_value(http_connections, Options),
-
-    ?xdcr_info("changes reader process (PID: ~p) and manager process (PID: ~p) "
-               "created, now starting worker processes...",
-               [ChangesReader, ChangesManager]),
-
-    Workers = lists:map(
-                fun(_) ->
-                        {ok, Pid} = xdc_vbucket_rep_worker:start_link(
-                                      self(), Source, Target, ChangesManager, MaxConns),
-                        Pid
-                end,
-                lists:seq(1, NumWorkers)),
-
-    couch_task_status:add_task([
-                                {type, replication},
-                                {replication_id, ?l2b(BaseId ++ Ext)},
-                                {source, ?l2b(SourceName)},
-                                {target, ?l2b(TargetName)},
-                                {continuous, get_value(continuous, Options, false)},
-                                {revisions_checked, 0},
-                                {missing_revisions_found, 0},
-                                {docs_read, 0},
-                                {docs_written, 0},
-                                {doc_write_failures, 0},
-                                {source_seq, SourceCurSeq},
-                                {checkpointed_source_seq, CommittedSeq},
-                                {progress, 0}
-                               ]),
-    couch_task_status:set_update_frequency(1000),
-
-    %% Until OTP R14B03:
-    %%
-    %% Restarting a temporary supervised child implies that the original arguments
-    %% (#rep{} record) specified in the MFA component of the supervisor
-    %% child spec will always be used whenever the child is restarted.
-    %% This implies the same replication performance tunning parameters will
-    %% always be used. The solution is to delete the child spec (see
-    %% cancel_replication/1) and then start the replication again, but this is
-    %% unfortunately not immune to race conditions.
-
-    ?xdcr_info("Replication `~p` is using:~n"
-               "~c~p worker processes~n"
-               "~ca worker batch size of ~p~n"
-               "~c~p HTTP connections~n"
-               "~ca connection timeout of ~p milliseconds~n"
-               "~c~p retries per request~n"
-               "~csocket options are: ~s~s",
-               [BaseId ++ Ext, $\t, NumWorkers, $\t, BatchSize, $\t,
-                MaxConns, $\t, get_value(connection_timeout, Options),
-                $\t, get_value(retries, Options),
-                $\t, io_lib:format("~p", [get_value(socket_options, Options)]),
-                case StartSeq of
-                    ?LOWEST_SEQ ->
-                        "";
-                    _ ->
-                        io_lib:format("~n~csource start sequence ~p", [$\t, StartSeq])
-                end]),
-
-    ?xdcr_debug("Worker pids are: ~p", [Workers]),
-
-    {ok, State#rep_state{
-           changes_queue = ChangesQueue,
-           changes_manager = ChangesManager,
-           changes_reader = ChangesReader,
-           workers = Workers
-          }
-    }.
-
-
-handle_info({'DOWN', Ref, _, _, Why}, #rep_state{source_monitor = Ref} = St) ->
-    ?xdcr_error("Source database is down. Reason: ~p", [Why]),
-    {stop, source_db_down, St};
-
-handle_info({'DOWN', Ref, _, _, Why}, #rep_state{target_monitor = Ref} = St) ->
-    ?xdcr_error("Target database is down. Reason: ~p", [Why]),
-    {stop, target_db_down, St};
-
-handle_info({'DOWN', Ref, _, _, Why}, #rep_state{src_master_db_monitor = Ref} = St) ->
-    ?xdcr_error("Source master database is down. Reason: ~p", [Why]),
-    {stop, src_master_db_down, St};
-
-handle_info({'DOWN', Ref, _, _, Why}, #rep_state{tgt_master_db_monitor = Ref} = St) ->
-    ?xdcr_error("Target master database is down. Reason: ~p", [Why]),
-    {stop, tgt_master_db_down, St};
-
-handle_info({'EXIT', Pid, normal}, #rep_state{changes_reader=Pid} = State) ->
-    {noreply, State};
-
-handle_info({'EXIT', Pid, Reason}, #rep_state{changes_reader=Pid} = State) ->
-    ?xdcr_error("ChangesReader process died with reason: ~p", [Reason]),
-    {stop, changes_reader_died, xdc_vbucket_rep_ckpt:cancel_timer(State)};
-
-handle_info({'EXIT', Pid, normal}, #rep_state{changes_manager = Pid} = State) ->
-    {noreply, State};
-
-handle_info({'EXIT', Pid, Reason}, #rep_state{changes_manager = Pid} = State) ->
-    ?xdcr_error("ChangesManager process died with reason: ~p", [Reason]),
-    {stop, changes_manager_died, xdc_vbucket_rep_ckpt:cancel_timer(State)};
-
-handle_info({'EXIT', Pid, normal}, #rep_state{changes_queue=Pid} = State) ->
-    {noreply, State};
-
-handle_info({'EXIT', Pid, Reason}, #rep_state{changes_queue=Pid} = State) ->
-    ?xdcr_error("ChangesQueue process died with reason: ~p", [Reason]),
-    {stop, changes_queue_died, xdc_vbucket_rep_ckpt:cancel_timer(State)};
-
-handle_info({'EXIT', Pid, normal}, #rep_state{workers = Workers} = State) ->
-    case Workers -- [Pid] of
-        Workers ->
-            {stop, {unknown_process_died, Pid, normal}, State};
-        [] ->
-            catch unlink(State#rep_state.changes_manager),
-            catch exit(State#rep_state.changes_manager, kill),
-            xdc_vbucket_rep_ckpt:do_last_checkpoint(State);
-        Workers2 ->
-            {noreply, State#rep_state{workers = Workers2}}
+handle_info(src_db_updated, #rep_state{current_state = idle} = St) ->
+    misc:flush(src_db_updated),
+    case update_number_of_changes(St) of
+        #rep_state{num_changes_left = 0} = St2 ->
+            {noreply, St2};
+         St2 ->
+             ok = concurrency_throttle:send_back_when_can_go(St2#rep_state.throttle,
+                                                             start_replication),
+            {noreply, St2#rep_state{current_state = waiting_turn}}
     end;
 
-handle_info({'EXIT', Pid, Reason}, #rep_state{workers = Workers} = State) ->
-    State2 = xdc_vbucket_rep_ckpt:cancel_timer(State),
-    case lists:member(Pid, Workers) of
-        false ->
-            {stop, {unknown_process_died, Pid, Reason}, State2};
-        true ->
-            ?xdcr_error("Worker ~p died with reason: ~p", [Pid, Reason]),
-            {stop, {worker_died, Pid, Reason}, State2}
-    end.
+handle_info(src_db_updated, #rep_state{current_state = waiting_turn} = St) ->
+    misc:flush(src_db_updated),
+    {noreply, update_number_of_changes(St)};
+
+handle_info(src_db_updated, #rep_state{current_state = replicating} = St) ->
+    misc:flush(src_db_updated),
+    {noreply, St};
+
+handle_info(start_replication, #rep_state{current_state = waiting_turn} = St) ->
+    St2 = update_number_of_changes(St#rep_state{current_state = replicating}),
+    {noreply, start_replication(St2)}.
+
 
 handle_call({add_stats, Stats}, From, State) ->
     gen_server:reply(From, ok),
@@ -306,7 +119,7 @@ handle_call({report_seq_done, Seq, StatsInc}, From,
                             NewThroughSeq0
                     end,
 
-    Vb = (State#rep_state.rep_details)#rep.vb_id,
+    Vb = State#rep_state.vb,
     ?xdcr_debug("Replicator of vbucket ~p: worker reported seq ~p, through seq was ~p, "
                 "new through seq is ~p, highest seq done was ~p, "
                 "new highest seq done is ~p~n"
@@ -321,27 +134,32 @@ handle_call({report_seq_done, Seq, StatsInc}, From,
                  highest_seq_done = NewHighestDone,
                  source_seq = SourceCurSeq
                 },
-    update_task(NewState),
+    {noreply, NewState};
 
-    %% update XDC stat table
-    ok = update_stat_table(NewState, StatsInc),
-    {noreply, NewState}.
+handle_call({worker_done, Pid}, _From, #rep_state{workers = Workers} = State) ->
+    case Workers -- [Pid] of
+        Workers ->
+            {stop, {unknown_worker_done, Pid}, ok, State};
+        [] ->
+            % all workers completed. Now shutdown everything and prepare for
+            % more changes from src.
+            State1 = State#rep_state{workers = []},
+            State2 = xdc_vbucket_rep_ckpt:do_last_checkpoint(State1),
+            % allow another replicator to go
+            % do we have any changes?
+            State3 = replication_turn_is_done(State2),
+            couch_api_wrap:db_close(State3#rep_state.target),
+            couch_api_wrap:db_close(State3#rep_state.tgt_master_db),
+            % force check for changes since we last snapshop
+            self() ! src_db_updated,
+            {reply, ok, State3#rep_state{
+                                        current_state = idle,
+                                        target = undefined,
+                                        tgt_master_db = undefined}};
+        Workers2 ->
+            {reply, ok, State#rep_state{workers = Workers2}}
+    end.
 
-
-handle_cast({db_compacted, DbName},
-            #rep_state{source = #db{name = DbName} = Source} = State) ->
-    {ok, NewSource} = couch_db:reopen(Source),
-    {noreply, State#rep_state{source = NewSource}};
-
-handle_cast({db_compacted, DbName},
-            #rep_state{target = #db{name = DbName} = Target} = State) ->
-    {ok, NewTarget} = couch_db:reopen(Target),
-    {noreply, State#rep_state{target = NewTarget}};
-
-handle_cast({db_compacted, DbName},
-            #rep_state{src_master_db = #db{name = DbName} = SrcMasterDb} = State) ->
-    {ok, NewSrcMasterDb} = couch_db:reopen(SrcMasterDb),
-    {noreply, State#rep_state{src_master_db = NewSrcMasterDb}};
 
 handle_cast(checkpoint, State) ->
     case xdc_vbucket_rep_ckpt:do_checkpoint(State) of
@@ -360,56 +178,67 @@ handle_cast({report_seq, Seq},
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-terminate(normal, #rep_state{rep_details = #rep{id = RepId} = _Rep,
-                             checkpoint_history = CheckpointHistory} = State) ->
-    terminate_cleanup(State),
-    xdc_rep_notifier:notify({finished, RepId, CheckpointHistory});
 
-terminate(shutdown, #rep_state{rep_details = #rep{id = RepId}} = State) ->
-    %% cancelled replication throught ?MODULE:cancel_replication/1
-    xdc_rep_notifier:notify({error, RepId, <<"cancelled">>}),
+terminate(Reason, State) when Reason == normal orelse Reason == shutdown ->
     terminate_cleanup(State);
 
 terminate(Reason, State) ->
     #rep_state{
            source_name = Source,
            target_name = Target,
-           rep_details = #rep{id = {BaseId, Ext} = RepId} = _Rep
+           rep_details = #rep{id = Id} = _Rep
           } = State,
     ?xdcr_error("Replication `~s` (`~s` -> `~s`) failed: ~s",
-                [BaseId ++ Ext, Source, Target, to_binary(Reason)]),
-    terminate_cleanup(State),
-    xdc_rep_notifier:notify({error, RepId, Reason}).
+                [Id, Source, Target, to_binary(Reason)]),
+    % an unhandled error happened. Invalidate target vb map cache.
+    invalidate_target_vb_map_cache(State),
+    terminate_cleanup(State).
+
+
+invalidate_target_vb_map_cache(_State) ->
+    % TODO: make this work
+    ok.
+
 
 terminate_cleanup(State) ->
-    update_task(State),
-    stop_db_compaction_notifier(State#rep_state.source_db_compaction_notifier),
-    stop_db_compaction_notifier(State#rep_state.target_db_compaction_notifier),
-    couch_api_wrap:db_close(State#rep_state.source),
-    couch_api_wrap:db_close(State#rep_state.target),
-    couch_api_wrap:db_close(State#rep_state.src_master_db),
-    couch_api_wrap:db_close(State#rep_state.tgt_master_db).
+    Dbs = [State#rep_state.source,
+           State#rep_state.target,
+           State#rep_state.src_master_db,
+           State#rep_state.tgt_master_db],
+    [catch couch_api_wrap:db_close(Db) || Db <- Dbs, Db /= undefined].
 
 
-%% internal helper functions
-init_state(Rep) ->
+%% internal helper function
+
+replication_turn_is_done(#rep_state{throttle = T} = State) ->
+    % TODO: signal to parent we are not replicating
+    concurrency_throttle:is_done(T),
+    State.
+
+init_replication_state(Rep, Vb, Throttle, Parent) ->
     #rep{
-          source = Src, target = Tgt,
-          options = Options, user_ctx = UserCtx
+          source = Src,
+          target = Tgt,
+          options = Options
         } = Rep,
-    {ok, Source} = couch_api_wrap:db_open(Src, [{user_ctx, UserCtx}]),
-    {ok, Target} = couch_api_wrap:db_open(Tgt, [{user_ctx, UserCtx}],
-                                          get_value(create_target, Options, false)),
+    Parent ! {set_vb_rep_state, #rep_vb_state{vb = Vb, pid = self()}},
+    SrcVbDb = xdc_rep_utils:local_couch_uri_for_vbucket(Src, Vb),
+    {ok, RemoteBucket} =
+              remote_clusters_info:get_remote_bucket_by_ref(Tgt, true),
+    TgtURI = hd(dict:fetch(Vb, RemoteBucket#remote_bucket.vbucket_map)),
+    TgtDb = xdc_rep_utils:parse_rep_db(TgtURI),
+    {ok, Source} = couch_api_wrap:db_open(SrcVbDb, []),
+    {ok, Target} = couch_api_wrap:db_open(TgtDb, []),
 
     {ok, SourceInfo} = couch_api_wrap:get_db_info(Source),
     {ok, TargetInfo} = couch_api_wrap:get_db_info(Target),
 
     {ok, SrcMasterDb} = couch_api_wrap:db_open(
                           xdc_rep_utils:get_master_db(Source),
-                          [{user_ctx, UserCtx}]),
+                          []),
     {ok, TgtMasterDb} = couch_api_wrap:db_open(
                           xdc_rep_utils:get_master_db(Target),
-                          [{user_ctx, UserCtx}]),
+                          []),
 
     %% We have to pass the vbucket database along with the master database
     %% because the replication log id needs to be prefixed with the vbucket id
@@ -419,116 +248,155 @@ init_state(Rep) ->
                                Rep),
 
     {StartSeq0, History} = compare_replication_logs(SourceLog, TargetLog),
-    StartSeq1 = get_value(since_seq, Options, StartSeq0),
-    StartSeq = {0, StartSeq1},
+    StartSeq = get_value(since_seq, Options, StartSeq0),
     #doc{body={CheckpointHistory}} = SourceLog,
-    State = #rep_state{
+    couch_api_wrap:db_close(Target),
+    couch_api_wrap:db_close(TgtMasterDb),
+    #rep_state{
       rep_details = Rep,
-      source_name = couch_api_wrap:db_uri(Source),
-      target_name = couch_api_wrap:db_uri(Target),
+      vb = Vb,
+      throttle = Throttle,
+      parent = Parent,
+      source_name = SrcVbDb,
+      target_name = TgtURI,
       source = Source,
-      target = Target,
       src_master_db = SrcMasterDb,
-      tgt_master_db = TgtMasterDb,
       history = History,
       checkpoint_history = {[{<<"no_changes">>, true}| CheckpointHistory]},
       start_seq = StartSeq,
       current_through_seq = StartSeq,
-      committed_seq = StartSeq,
+      source_cur_seq = StartSeq,
       source_log = SourceLog,
       target_log = TargetLog,
       rep_starttime = httpd_util:rfc1123_date(),
       src_starttime = get_value(<<"instance_start_time">>, SourceInfo),
       tgt_starttime = get_value(<<"instance_start_time">>, TargetInfo),
       session_id = couch_uuids:random(),
-      source_db_compaction_notifier =
-          start_db_compaction_notifier(Source, self()),
-      target_db_compaction_notifier =
-          start_db_compaction_notifier(Target, self()),
-      source_monitor = db_monitor(Source),
-      target_monitor = db_monitor(Target),
-      src_master_db_monitor = db_monitor(SrcMasterDb),
-      tgt_master_db_monitor = db_monitor(TgtMasterDb),
       source_seq = get_value(<<"update_seq">>, SourceInfo, ?LOWEST_SEQ)
-     },
-    State#rep_state{timer = xdc_vbucket_rep_ckpt:start_timer(State)}.
+     }.
 
 
-spawn_changes_reader(StartSeq, #httpdb{} = Db, ChangesQueue, Options) ->
-    spawn_link(fun() ->
-                       put(last_seq, StartSeq),
-                       put(retries_left, Db#httpdb.retries),
-                       read_changes(StartSeq, Db#httpdb{retries = 0}, ChangesQueue, Options)
-               end);
-spawn_changes_reader(StartSeq, Db, ChangesQueue, Options) ->
-    spawn_link(fun() ->
-                       read_changes(StartSeq, Db, ChangesQueue, Options)
-               end).
+start_replication(#rep_state{
+                           source = Source,
+                           target_name = TargetName,
+                           start_seq = StartSeq,
+                           rep_details = #rep{id = Id, options = Options}
+                         } = State) ->
+     NumWorkers = get_value(worker_processes, Options),
+     BatchSize = get_value(worker_batch_size, Options),
 
-read_changes(StartSeq, Db, ChangesQueue, Options) ->
-    try
-        couch_api_wrap:changes_since(Db, all_docs, StartSeq,
-                                     fun(#doc_info{local_seq = Seq, id = Id} = DocInfo) ->
-                                             case Id of
-                                                 <<>> ->
-                                                     %% Previous CouchDB releases had a bug which allowed a doc
-                                                     %% with an empty ID to be inserted into databases. Such doc
-                                                     %% is impossible to GET.
-                                                     ?xdcr_error("Replicator: ignoring document with empty ID in "
-                                                                 "source database `~s` (_changes sequence ~p)",
-                                                                 [couch_api_wrap:db_uri(Db), Seq]);
-                                                 _ ->
-                                                     ok = couch_work_queue:queue(ChangesQueue, DocInfo)
-                                             end,
-                                             put(last_seq, Seq)
-                                     end, Options),
-        couch_work_queue:close(ChangesQueue)
-    catch exit:{http_request_failed, _, _, _} = Error ->
-            case get(retries_left) of
-                N when N > 0 ->
-                    put(retries_left, N - 1),
-                    LastSeq = get(last_seq),
-                    Db2 = case LastSeq of
-                              StartSeq ->
-                                  ?xdcr_info("Retrying _changes request to source database ~s"
-                                             " with since=~p in ~p seconds",
-                                             [couch_api_wrap:db_uri(Db), LastSeq, Db#httpdb.wait / 1000]),
-                                  ok = timer:sleep(Db#httpdb.wait),
-                                  Db#httpdb{wait = 2 * Db#httpdb.wait};
-                              _ ->
-                                  ?xdcr_info("Retrying _changes request to source database ~s"
-                                             " with since=~p", [couch_api_wrap:db_uri(Db), LastSeq]),
-                                  Db
-                          end,
-                    read_changes(LastSeq, Db2, ChangesQueue, Options);
-                _ ->
-                    exit(Error)
-            end
+     TgtURI = xdc_rep_utils:parse_rep_db(TargetName),
+     {ok, Target} = couch_api_wrap:db_open(TgtURI, []),
+     {ok, TgtMasterDb} = couch_api_wrap:db_open(
+                                      xdc_rep_utils:get_master_db(Target), []),
+
+     {ok, ChangesQueue} = couch_work_queue:new([
+                                                {max_items, BatchSize * NumWorkers * 2},
+                                                {max_size, 100 * 1024 * NumWorkers}
+                                               ]),
+     %% This starts the _changes reader process. It adds the changes from
+     %% the source db to the ChangesQueue.
+     ChangesReader = spawn_changes_reader(StartSeq, Source, ChangesQueue),
+     %% Changes manager - responsible for dequeing batches from the changes queue
+     %% and deliver them to the worker processes.
+     ChangesManager = spawn_changes_manager(self(), ChangesQueue, BatchSize),
+     %% This starts the worker processes. They ask the changes queue manager for a
+     %% a batch of _changes rows to process -> check which revs are missing in the
+     %% target, and for the missing ones, it copies them from the source to the target.
+     MaxConns = get_value(http_connections, Options),
+
+     ?xdcr_info("changes reader process (PID: ~p) and manager process (PID: ~p) "
+                "created, now starting worker processes...",
+                [ChangesReader, ChangesManager]),
+
+     Workers = lists:map(
+                 fun(_) ->
+                         {ok, Pid} = xdc_vbucket_rep_worker:start_link(
+                                       self(), Source, Target, ChangesManager, MaxConns),
+                         Pid
+                 end,
+                 lists:seq(1, NumWorkers)),
+
+     ?xdcr_info("Replication `~p` is using:~n"
+                "~c~p worker processes~n"
+                "~ca worker batch size of ~p~n"
+                "~c~p HTTP connections~n"
+                "~ca connection timeout of ~p milliseconds~n"
+                "~c~p retries per request~n"
+                "~csocket options are: ~s~s",
+                [Id, $\t, NumWorkers, $\t, BatchSize, $\t,
+                 MaxConns, $\t, get_value(connection_timeout, Options),
+                 $\t, get_value(retries, Options),
+                 $\t, io_lib:format("~p", [get_value(socket_options, Options)]),
+                 case StartSeq of
+                     ?LOWEST_SEQ ->
+                         "";
+                     _ ->
+                         io_lib:format("~n~csource start sequence ~p", [$\t, StartSeq])
+                 end]),
+
+     ?xdcr_debug("Worker pids are: ~p", [Workers]),
+
+     State#rep_state{
+            changes_queue = ChangesQueue,
+            changes_manager = ChangesManager,
+            changes_reader = ChangesReader,
+            workers = Workers,
+            target = Target,
+            tgt_master_db = TgtMasterDb,
+            timer = xdc_vbucket_rep_ckpt:start_timer(State)
+           }.
+
+update_number_of_changes(#rep_state{source = Src,
+                                 current_through_seq = Seq} = State) ->
+    case couch_db:reopen(Src) of
+        {ok, Src2} ->
+            Changes = couch_db:count_changes_since(Src2, Seq),
+            % write to parent for stats
+            State#rep_state{source = Src2, num_changes_left = Changes};
+        {not_found, no_db_file} ->
+            % oops our file was deleted.
+            % We'll get shutdown when the vbucket map message is processed
+            State
     end.
 
 
-spawn_changes_manager(Parent, ChangesQueue, BatchSize) ->
+spawn_changes_reader(StartSeq, Db, ChangesQueue) ->
     spawn_link(fun() ->
-                       changes_manager_loop_open(Parent, ChangesQueue, BatchSize, 1)
+                       read_changes(StartSeq, Db, ChangesQueue)
                end).
 
-changes_manager_loop_open(Parent, ChangesQueue, BatchSize, Ts) ->
+read_changes(StartSeq, Db, ChangesQueue) ->
+    couch_db:changes_since(Db, StartSeq,
+                                 fun(#doc_info{local_seq = Seq} = DocInfo, ok) ->
+                                         ok = couch_work_queue:queue(ChangesQueue, DocInfo),
+                                         put(last_seq, Seq),
+                                         {ok, ok}
+                                 end, [], ok),
+    couch_work_queue:close(ChangesQueue).
+
+spawn_changes_manager(Parent, ChangesQueue, BatchSize) ->
+    spawn_link(fun() ->
+                       changes_manager_loop_open(Parent, ChangesQueue, BatchSize)
+               end).
+
+changes_manager_loop_open(Parent, ChangesQueue, BatchSize) ->
     receive
         {get_changes, From} ->
             case couch_work_queue:dequeue(ChangesQueue, BatchSize) of
                 closed ->
-                    From ! {closed, self()};
+                    ok; % now done!
                 {ok, Changes, _Size} ->
                     #doc_info{local_seq = Seq} = lists:last(Changes),
-                    ReportSeq = {Ts, Seq},
+                    ReportSeq = Seq,
                     ok = gen_server:cast(Parent, {report_seq, ReportSeq}),
-                    From ! {changes, self(), Changes, ReportSeq}
-            end,
-            changes_manager_loop_open(Parent, ChangesQueue, BatchSize, Ts + 1)
+                    From ! {changes, self(), Changes, ReportSeq},
+                    changes_manager_loop_open(Parent, ChangesQueue, BatchSize)
+            end
     end.
 
-find_replication_logs(DbList, #rep{id = {BaseId, _}} = Rep) ->
-    fold_replication_logs(DbList, ?REP_ID_VERSION, BaseId, BaseId, Rep, []).
+find_replication_logs(DbList, #rep{id = Id} = Rep) ->
+    fold_replication_logs(DbList, ?REP_ID_VERSION, Id, Id, Rep, []).
 
 
 fold_replication_logs([], _Vsn, _LogId, _NewId, _Rep, Acc) ->
@@ -539,9 +407,9 @@ fold_replication_logs([{Db, MasterDb} | Rest] = Dbs, Vsn, LogId0, NewId0, Rep, A
     NewId = xdc_rep_utils:get_checkpoint_log_id(Db, NewId0),
     case couch_api_wrap:open_doc(MasterDb, LogId, [ejson_body]) of
         {error, <<"not_found">>} when Vsn > 1 ->
-            OldRepId = xdc_rep_utils:replication_id(Rep, Vsn - 1),
+            OldRepId = Rep#rep.id,
             fold_replication_logs(Dbs, Vsn - 1,
-                                  ?l2b(OldRepId), NewId0, Rep, Acc);
+                                  OldRepId, NewId0, Rep, Acc);
         {error, <<"not_found">>} ->
             fold_replication_logs(
               Rest, ?REP_ID_VERSION, NewId0, NewId0, Rep, [#doc{id = NewId, body = {[]}} | Acc]);
@@ -574,27 +442,6 @@ compare_replication_logs(SrcDoc, TgtDoc) ->
                         [RepRecProps, RepRecPropsTgt]),
             compare_rep_history(SourceHistory, TargetHistory)
     end.
-
-start_db_compaction_notifier(#db{name = DbName}, Server) ->
-    {ok, Notifier} = couch_db_update_notifier:start_link(
-                       fun({compacted, DbName1}) when DbName1 =:= DbName ->
-                               ok = gen_server:cast(Server, {db_compacted, DbName});
-                          (_) ->
-                               ok
-                       end),
-    Notifier;
-start_db_compaction_notifier(_, _) ->
-    nil.
-
-stop_db_compaction_notifier(nil) ->
-    ok;
-stop_db_compaction_notifier(Notifier) ->
-    couch_db_update_notifier:stop(Notifier).
-
-db_monitor(#db{} = Db) ->
-    couch_db:monitor(Db);
-db_monitor(_HttpDb) ->
-    nil.
 
 compare_rep_history(S, T) when S =:= [] orelse T =:= [] ->
     ?xdcr_info("no common ancestry -- performing full replication", []),
@@ -630,77 +477,7 @@ has_session_id(SessionId, [{Props} | Rest]) ->
             has_session_id(SessionId, Rest)
     end.
 
-source_cur_seq(#rep_state{source = #httpdb{} = Db, source_seq = Seq}) ->
-    case (catch couch_api_wrap:get_db_info(Db#httpdb{retries = 3})) of
-        {ok, Info} ->
-            get_value(<<"update_seq">>, Info, Seq);
-        _ ->
-            Seq
-    end;
 source_cur_seq(#rep_state{source = Db, source_seq = Seq}) ->
     {ok, Info} = couch_api_wrap:get_db_info(Db),
     get_value(<<"update_seq">>, Info, Seq).
 
-
-update_task(State) ->
-    #rep_state{
-             current_through_seq = {_, CurSeq},
-             committed_seq = {_, CommittedSeq},
-             source_seq = SourceCurSeq,
-             stats = Stats
-            } = State,
-    couch_task_status:update([
-                              {revisions_checked, Stats#rep_stats.missing_checked},
-                              {missing_revisions_found, Stats#rep_stats.missing_found},
-                              {docs_read, Stats#rep_stats.docs_read},
-                              {docs_written, Stats#rep_stats.docs_written},
-                              {doc_write_failures, Stats#rep_stats.doc_write_failures},
-                              {source_seq, SourceCurSeq},
-                              {checkpointed_source_seq, CommittedSeq},
-                              case is_number(CurSeq) andalso is_number(SourceCurSeq) of
-                                  true ->
-                                      case SourceCurSeq of
-                                          0 ->
-                                              {progress, 0};
-                                          _ ->
-                                              {progress, (CurSeq * 100) div SourceCurSeq}
-                                      end;
-                                  false ->
-                                      {progress, null}
-                              end
-                             ]).
-
-dump_stats(#rep_stats{} = Stat) ->
-    ?xdcr_debug("number of missing docs checked: ~p",
-               [Stat#rep_stats.missing_checked]),
-    ?xdcr_debug("number of missing docs found: ~p",
-               [Stat#rep_stats.missing_found]),
-    ?xdcr_debug("number of docs read: ~p",
-               [Stat#rep_stats.docs_read]),
-    ?xdcr_debug("number of docs written: ~p",
-               [Stat#rep_stats.docs_written]),
-    ?xdcr_debug("number of docs failed to write: ~p",
-               [Stat#rep_stats.doc_write_failures]),
-    ok.
-
-update_stat_table(State, StatsInc) ->
-    %% get StatTable from replication state
-    StatTable = ?GET_STATS_TABLE(State),
-
-    XDocId = (State#rep_state.rep_details)#rep.doc_id,
-    Vb = (State#rep_state.rep_details)#rep.vb_id,
-    Key = {XDocId, Vb},
-
-    CRepPids = ets:lookup_element(StatTable, Key, 2),
-    ?xdcr_debug("list of processes working for this vb replication: ~p",
-                [CRepPids]),
-
-    Stats = ets:lookup_element(StatTable, Key, 3),
-    NewStats = xdc_rep_utils:sum_stats(Stats, StatsInc),
-    %% atomic update of XSTATS table
-    true = ets:update_element(StatTable, Key, {3, NewStats}),
-
-    ?xdcr_debug("Dump stats (XDoc id (~p), vbucket id (~p) and process id (~p))",
-                [XDocId, Vb, self()]),
-    dump_stats(NewStats),
-    ok.

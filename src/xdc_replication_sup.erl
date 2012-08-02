@@ -10,30 +10,52 @@
 % License for the specific language governing permissions and limitations under
 % the License.
 
--module(xdc_vbucket_rep_sup).
+-module(xdc_replication_sup).
 -behaviour(supervisor).
--export([shutdown/1]).
 
--export([init/1, start_link/1]).
+-export([start_replication/1, stop_replication/1, shutdown/0]).
 
--include("couch_db.hrl").
+-export([init/1, start_link/0]).
 
-start_link(ChildSpecs) ->
-    supervisor:start_link({local,?MODULE}, ?MODULE, ChildSpecs).
+-include("xdc_replicator.hrl").
 
-shutdown(Sup) ->
-    MonRef = erlang:monitor(process, Sup),
-    exit(Sup, shutdown),
-    receive {'DOWN', MonRef, _Type, _Object, _Info} ->
-        ok
+start_link() ->
+    supervisor:start_link({local,?MODULE}, ?MODULE, []).
+
+start_replication(#rep{id=Id} = Rep) ->
+    Spec = {Id,
+             {xdc_replication, start_link, [Rep]},
+             permanent,
+             100,
+             worker,
+             [xdc_replication]
+            },
+    supervisor:start_child(?MODULE, Spec).
+
+
+stop_replication(Id) ->
+    supervisor:terminate_child(?MODULE, Id),
+    supervisor:delete_child(?MODULE, Id).
+
+
+shutdown() ->
+    case whereis(?MODULE) of
+        undefined ->
+            ok;
+        Pid ->
+            MonRef = erlang:monitor(process, Pid),
+            exit(Pid, shutdown),
+            receive {'DOWN', MonRef, _Type, _Object, _Info} ->
+                ok
+            end
     end.
 
 %%=============================================================================
 %% supervisor callbacks
 %%=============================================================================
 
-init(ChildSpecs) ->
-    {ok, {{one_for_one, 3, 10}, ChildSpecs}}.
+init([]) ->
+    {ok, {{one_for_one, 3, 10}, []}}.
 
 %%=============================================================================
 %% internal functions

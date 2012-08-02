@@ -17,12 +17,11 @@
 
 -module(xdc_rep_utils).
 
--export([parse_rep_doc/3, is_valid_xdc_rep_doc/1]).
+-export([parse_rep_doc/2]).
 -export([local_couch_uri_for_vbucket/2]).
 -export([remote_couch_uri_for_vbucket/3, my_active_vbuckets/1]).
--export([lists_difference/2, node_uuid/0, info_doc_id/1, vb_rep_state_list/2]).
--export([replication_id/2]).
--export([sum_stats/2]).
+-export([vb_rep_state_list/2]).
+-export([sum_stats/2,parse_rep_db/1]).
 -export([split_dbname/1]).
 -export([get_master_db/1, get_checkpoint_log_id/2]).
 
@@ -52,24 +51,6 @@ my_active_vbuckets(BucketConfig) ->
         Owner == node()].
 
 
-%% Computes the differences between two lists and returns them as a tuple.
-lists_difference(List1, List2) ->
-    {List1 -- List2, List2 -- List1}.
-
-
-%% Fetches the UUID of the current node.
-node_uuid() ->
-    {value, UUID} = ns_config:search_node(uuid),
-    UUID.
-
-
-%% Given an XDC doc id, this function generates the correspondence replication
-%% info doc id.
-info_doc_id(XDocId) ->
-    UUID = node_uuid(),
-    <<XDocId/binary, "_info_", UUID/binary>>.
-
-
 %% Generate a list of tuples corresponding to the given list of vbucket ids. Each
 %% tuple consists of the "replication_state_vb_" tag for a vbucket id in the list
 %% and the given replication state value.
@@ -81,25 +62,15 @@ vb_rep_state_list(VbList, RepState) ->
       VbList).
 
 %% Parse replication document
-parse_rep_doc(DocId, {Props}, UserCtx) ->
+parse_rep_doc(DocId, {Props}) ->
     ProxyParams = parse_proxy_params(get_value(<<"proxy">>, Props, <<>>)),
     Options = make_options(Props),
-    case get_value(cancel, Options, false) andalso
-        (get_value(id, Options, nil) =/= nil) of
-        true ->
-            {ok, #rep{options = Options, user_ctx = UserCtx}};
-        false ->
-            Source = parse_rep_db(get_value(<<"source">>, Props), ProxyParams, Options),
-            Target = parse_rep_db(get_value(<<"target">>, Props), ProxyParams, Options),
-            Rep = #rep{
-              source = Source,
-              target = Target,
-              options = Options,
-              user_ctx = UserCtx,
-              doc_id = DocId
-             },
-            {ok, Rep#rep{id = replication_id(Rep)}}
-    end.
+    Source = parse_rep_db(get_value(<<"source">>, Props), ProxyParams, Options),
+    Target = parse_rep_db(get_value(<<"target">>, Props), ProxyParams, Options),
+    #rep{id = DocId,
+         source = Source,
+         target = Target,
+         options = Options}.
 
 parse_proxy_params(ProxyUrl) when is_binary(ProxyUrl) ->
     parse_proxy_params(?b2l(ProxyUrl));
@@ -108,6 +79,9 @@ parse_proxy_params([]) ->
 parse_proxy_params(ProxyUrl) ->
     [{proxy, ProxyUrl}].
 
+parse_rep_db(Db) ->
+    Options = make_options([]),
+    parse_rep_db(Db, [], Options).
 
 parse_rep_db({Props}, ProxyParams, Options) ->
     Url = maybe_add_trailing_slash(get_value(<<"url">>, Props)),
@@ -202,40 +176,6 @@ make_options(Props) ->
                                                  ])).
 
 
-replication_id(#rep{options = Options} = Rep) ->
-    BaseId = replication_id(Rep, ?REP_ID_VERSION),
-    {BaseId, maybe_append_options([continuous, create_target], Options)}.
-
-
-
-%% Versioned clauses for generating replication IDs.
-%% If a change is made to how replications are identified,
-%% please add a new clause and increase ?REP_ID_VERSION.
-
-replication_id(#rep{user_ctx = UserCtx} = Rep, 2) ->
-    {ok, HostName} = inet:gethostname(),
-    Port = case (catch mochiweb_socket_server:get(couch_httpd, port)) of
-               P when is_number(P) ->
-                   P;
-               _ ->
-                   %% On restart we might be called before the couch_httpd process is
-                   %% started.
-                   %% TODO: we might be under an SSL socket server only, or both under
-                   %% SSL and a non-SSL socket.
-                   %% ... mochiweb_socket_server:get(https, port)
-                   list_to_integer(couch_config:get("httpd", "port", "5984"))
-           end,
-    Src = get_rep_endpoint(UserCtx, Rep#rep.source),
-    Tgt = get_rep_endpoint(UserCtx, Rep#rep.target),
-    maybe_append_filters([HostName, Port, Src, Tgt], Rep);
-
-replication_id(#rep{user_ctx = UserCtx} = Rep, 1) ->
-    {ok, HostName} = inet:gethostname(),
-    Src = get_rep_endpoint(UserCtx, Rep#rep.source),
-    Tgt = get_rep_endpoint(UserCtx, Rep#rep.target),
-    maybe_append_filters([HostName, Src, Tgt], Rep).
-
-
 maybe_add_trailing_slash(Url) when is_binary(Url) ->
     maybe_add_trailing_slash(?b2l(Url));
 maybe_add_trailing_slash(Url) ->
@@ -246,17 +186,6 @@ maybe_add_trailing_slash(Url) ->
             Url ++ "/"
     end.
 
-
-maybe_append_options(Options, RepOptions) ->
-    lists:foldl(fun(Option, Acc) ->
-                        Acc ++
-                            case get_value(Option, RepOptions, false) of
-                                true ->
-                                    "+" ++ atom_to_list(Option);
-                                false ->
-                                    ""
-                            end
-                end, [], Options).
 
 
 
@@ -301,8 +230,6 @@ convert_options([{<<"create_target">>, V} | R]) ->
     [{create_target, V} | convert_options(R)];
 convert_options([{<<"continuous">>, V} | R]) ->
     [{continuous, V} | convert_options(R)];
-convert_options([{<<"filter">>, V} | R]) ->
-    [{filter, V} | convert_options(R)];
 convert_options([{<<"query_params">>, V} | R]) ->
     [{query_params, V} | convert_options(R)];
 convert_options([{<<"doc_ids">>, V} | R]) ->
@@ -328,77 +255,6 @@ convert_options([{<<"since_seq">>, V} | R]) ->
 convert_options([_ | R]) -> %% skip unknown option
     convert_options(R).
 
-
-
-get_rep_endpoint(_UserCtx, #httpdb{url=Url, headers=Headers, oauth=OAuth}) ->
-    DefaultHeaders = (#httpdb{})#httpdb.headers,
-    case OAuth of
-        nil ->
-            {remote, Url, Headers -- DefaultHeaders};
-        #oauth{} ->
-            {remote, Url, Headers -- DefaultHeaders, OAuth}
-    end;
-get_rep_endpoint(UserCtx, <<DbName/binary>>) ->
-    {local, DbName, UserCtx}.
-
-
-maybe_append_filters(Base,
-                     #rep{source = Source, user_ctx = UserCtx, options = Options}) ->
-    Base2 = Base ++
-        case get_value(filter, Options) of
-            undefined ->
-                case get_value(doc_ids, Options) of
-                    undefined ->
-                        [];
-                    DocIds ->
-                        [DocIds]
-                end;
-            Filter ->
-                [filter_code(Filter, Source, UserCtx),
-                 get_value(query_params, Options, {[]})]
-        end,
-    couch_util:to_hex(couch_util:md5(term_to_binary(Base2))).
-
-
-filter_code(Filter, Source, UserCtx) ->
-    {DDocName, FilterName} =
-        case re:run(Filter, "(.*?)/(.*)", [{capture, [1, 2], binary}]) of
-            {match, [DDocName0, FilterName0]} ->
-                {DDocName0, FilterName0};
-            _ ->
-                throw({error, <<"Invalid filter. Must match `ddocname/filtername`.">>})
-        end,
-    Db = case (catch couch_api_wrap:db_open(Source, [{user_ctx, UserCtx}])) of
-             {ok, Db0} ->
-                 Db0;
-             DbError ->
-                 DbErrorMsg = io_lib:format("Could not open source database `~s`: ~s",
-                                            [couch_api_wrap:db_uri(Source), couch_util:to_binary(DbError)]),
-                 throw({error, iolist_to_binary(DbErrorMsg)})
-         end,
-    try
-        Body = case (catch couch_api_wrap:open_doc(
-                             Db, <<"_design/", DDocName/binary>>, [ejson_body])) of
-                   {ok, #doc{body = Body0}} ->
-                       Body0;
-                   DocError ->
-                       DocErrorMsg = io_lib:format(
-                                       "Couldn't open document `_design/~s` from source "
-                                       "database `~s`: ~s", [DDocName, couch_api_wrap:db_uri(Source),
-                                                             couch_util:to_binary(DocError)]),
-                       throw({error, iolist_to_binary(DocErrorMsg)})
-               end,
-        Code = couch_util:get_nested_json_value(
-                 Body, [<<"filters">>, FilterName]),
-        re:replace(Code, [$^, "\s*(.*?)\s*", $$], "\\1", [{return, binary}])
-    after
-        couch_api_wrap:db_close(Db)
-    end.
-
-
-%% FIXME: Add useful sanity checks to ensure we have a valid replication doc
-is_valid_xdc_rep_doc(_RepDoc) ->
-    true.
 
 sum_stats(#rep_stats{} = S1, #rep_stats{} = S2) ->
     #rep_stats{

@@ -23,8 +23,9 @@
 start_link(Cp, #db{} = Source, #httpdb{} = Target,
            ChangesManager, _MaxConns) ->
     Pid = spawn_link(fun() ->
+                             erlang:monitor(process, ChangesManager),
                              erlang:put(last_stats_report, os:timestamp()),
-                             queue_fetch_loop(Source, Target, Cp, Cp, ChangesManager)
+                             queue_fetch_loop(Source, Target, Cp, ChangesManager)
                      end),
     ?xdcr_debug("create queue_fetch_loop process (pid: ~p) within replicator (pid: ~p) "
                 "Source: ~p, Target: ~p, ChangesManager: ~p",
@@ -32,25 +33,21 @@ start_link(Cp, #db{} = Source, #httpdb{} = Target,
 
     {ok, Pid}.
 
-queue_fetch_loop(Source, Target, Parent, Cp, ChangesManager) ->
+queue_fetch_loop(Source, Target, Cp, ChangesManager) ->
     ?xdcr_debug("fetch changes from changes manager at ~p (target: ~p)",
                [ChangesManager, Target#httpdb.url]),
     ChangesManager ! {get_changes, self()},
     receive
-        {closed, ChangesManager} ->
-            ok;
+        {'DOWN', _, _, _, _} ->
+            ok = gen_server:call(Cp, {worker_done, self()}, infinity);
         {changes, ChangesManager, Changes, ReportSeq} ->
-            Target2 = open_db(Target),
-            {IdRevs, Stats0} = find_missing(Changes, Target2),
-            Source2 = open_db(Source),
+            {IdRevs, Stats0} = find_missing(Changes, Target),
             Stats = local_process_batch(
-                      IdRevs, Cp, Source2, Target2, #batch{}, Stats0),
-            close_db(Source2),
-            close_db(Target2),
+                      IdRevs, Cp, Source, Target, #batch{}, Stats0),
             ok = gen_server:call(Cp, {report_seq_done, ReportSeq, Stats}, infinity),
             erlang:put(last_stats_report, os:timestamp()),
             ?xdcr_debug("Worker reported completion of seq ~p", [ReportSeq]),
-            queue_fetch_loop(Source, Target, Parent, Cp, ChangesManager)
+            queue_fetch_loop(Source, Target, Cp, ChangesManager)
     end.
 
 local_process_batch([], _Cp, _Src, _Tgt, #batch{docs = []}, Stats) ->
@@ -88,7 +85,7 @@ local_doc_handler(_, Acc) ->
 
 maybe_flush_docs(#httpdb{} = Target, Batch, Doc) ->
     #batch{docs = DocAcc, size = SizeAcc} = Batch,
-    JsonDoc = couch_doc:to_json_bin(Doc),
+    JsonDoc = couch_doc:to_json_base64(Doc),
     case SizeAcc + iolist_size(JsonDoc) of
         SizeAcc2 when SizeAcc2 > ?DOC_BUFFER_BYTE_SIZE ->
             ?xdcr_debug("Worker flushing doc batch of size ~p bytes "
@@ -135,14 +132,3 @@ find_missing(DocInfos, Target) ->
                 "the number of docs we need to replicate is: ~p",
                 [Target#httpdb.url, AllRevsCount, MissingRevsCount]),
     {Missing, Stats}.
-
-open_db(#db{name = Name, user_ctx = UserCtx, options = Options}) ->
-    {ok, Db} = couch_db:open(Name, [{user_ctx, UserCtx} | Options]),
-    Db;
-open_db(HttpDb) ->
-    HttpDb.
-
-close_db(#db{} = Db) ->
-    couch_db:close(Db);
-close_db(_HttpDb) ->
-    ok.

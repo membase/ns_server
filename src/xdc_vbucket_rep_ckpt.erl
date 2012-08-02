@@ -40,20 +40,20 @@ cancel_timer(#rep_state{timer = Timer} = State) ->
 
 do_last_checkpoint(#rep_state{seqs_in_progress = [],
                               highest_seq_done = {_Ts, ?LOWEST_SEQ}} = State) ->
-    {stop, normal, cancel_timer(State)};
+    cancel_timer(State);
 do_last_checkpoint(#rep_state{seqs_in_progress = [],
                               highest_seq_done = Seq} = State) ->
     case do_checkpoint(State#rep_state{current_through_seq = Seq}) of
         {ok, NewState} ->
-            {stop, normal, cancel_timer(NewState)};
+            cancel_timer(NewState);
         Error ->
-            {stop, Error, State}
+            cancel_timer(State),
+            throw(Error)
     end.
 
 do_checkpoint(#rep_state{current_through_seq=Seq, committed_seq=Seq} = State) ->
     SourceCurSeq = source_cur_seq(State),
     NewState = State#rep_state{source_seq = SourceCurSeq},
-    xdc_vbucket_rep:update_task(NewState),
     {ok, NewState};
 do_checkpoint(State) ->
     #rep_state{
@@ -64,8 +64,8 @@ do_checkpoint(State) ->
                src_master_db = SrcMasterDb,
                tgt_master_db = TgtMasterDb,
                history = OldHistory,
-               start_seq = {_, StartSeq},
-               current_through_seq = {_Ts, NewSeq} = NewTsSeq,
+               start_seq = StartSeq,
+               current_through_seq = NewSeq,
                source_log = SourceLog,
                target_log = TargetLog,
                rep_starttime = ReplicationStartTime,
@@ -136,11 +136,10 @@ do_checkpoint(State) ->
                 NewState = State#rep_state{
                              source_seq = SourceCurSeq,
                              checkpoint_history = NewRepHistory,
-                             committed_seq = NewTsSeq,
+                             committed_seq = NewSeq,
                              source_log = SourceLog#doc{rev=SrcRev},
                              target_log = TargetLog#doc{rev=TgtRev}
                             },
-                xdc_vbucket_rep:update_task(NewState),
                 {ok, NewState}
             catch throw:{checkpoint_commit_failure, _} = Failure ->
                     Failure

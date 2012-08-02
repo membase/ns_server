@@ -30,23 +30,12 @@
 %% constants used by XDCR
 -define(REP_ID_VERSION, 2).
 
-%% Maximum number of concurrent vbucket replications allowed per doc
--define(MAX_CONCURRENT_REPS_PER_DOC, 8).
-
-%% Number of seconds after which the scheduler will periodically wakeup
--define(XDCR_SCHEDULING_INTERVAL, 5).
-
-%% Interval of checkpointing in ms
 -define(XDCR_CHECKPOINT_INTERVAL, 60000).
 
-%% Internal ETS tables used by XDCR
--define(XSTORE, xdc_rep_info_store).
--define(X2CSTORE, xdc_docid_to_couch_rep_pid_store).
--define(CSTORE, couch_rep_info_store).
 -define(XSTATS, xdc_rep_stats_store).
 
-%% Max number of replicaiton Pids to store in stat table
--define(XSTATS_MAX_NUM_REP_PIDS, 1024).
+%% Maximum number of concurrent vbucket replications allowed per doc
+-define(MAX_CONCURRENT_REPS_PER_DOC, 8).
 
 %% TODO: maybe make both buffer max sizes configurable
 -define(DOC_BUFFER_BYTE_SIZE, 512 * 1024).   %% for remote targets
@@ -63,11 +52,7 @@
           id,
           source,
           target,
-          options,
-          user_ctx,
-          doc_id,
-          vb_id,
-          stat_table
+          options
          }).
 
 -record(rep_stats, {
@@ -87,6 +72,9 @@
 
 -record(rep_state, {
           rep_details,
+          vb,
+          throttle,
+          parent,
           source_name,
           target_name,
           source,
@@ -98,8 +86,9 @@
           start_seq,
           committed_seq,
           current_through_seq,
+          source_cur_seq,
           seqs_in_progress = [],
-          highest_seq_done = {0, ?LOWEST_SEQ},
+          highest_seq_done = ?LOWEST_SEQ,
           source_log,
           target_log,
           rep_starttime,
@@ -112,12 +101,8 @@
           workers,
           stats = #rep_stats{},
           session_id,
-          source_db_compaction_notifier = nil,
-          target_db_compaction_notifier = nil,
-          source_monitor = nil,
-          target_monitor = nil,
-          src_master_db_monitor = nil,
-          tgt_master_db_monitor = nil,
+          num_changes_left = 0,
+          current_state = idle,
           source_seq = nil
          }).
 
@@ -126,6 +111,11 @@
           changes_feed_loop = nil,
           rep_db_name = nil
          }).
+
+-record(rep_vb_state, {
+        vb,
+        pid
+    }).
 
 -record(batch, {
           docs = [],
