@@ -319,6 +319,10 @@ loop(Req, AppRoot, DocRoot) ->
                               "ddocs", DDocId, "controller", "cancelViewCompaction"] ->
                                  {auth_check_bucket_uuid,
                                   fun menelaus_web_buckets:handle_cancel_view_compaction/4, [PoolId, Id, DDocId]};
+                             ["pools", PoolId, "buckets", Id,
+                              "ddocs", DDocId, "controller", "setUpdateMinChanges"] ->
+                                 {auth_check_bucket_uuid,
+                                  fun menelaus_web_buckets:handle_set_ddoc_update_min_changes/4, [PoolId, Id, DDocId]};
                              ["pools", "default", "remoteClusters"] ->
                                  {auth, fun menelaus_web_remote_clusters:handle_remote_clusters_post/1};
                              ["pools", "default", "remoteClusters", Id] ->

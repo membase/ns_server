@@ -48,6 +48,7 @@
          handle_compact_view/4,
          handle_cancel_view_compaction/4,
          handle_ddocs_list/3,
+         handle_set_ddoc_update_min_changes/4,
          handle_local_random_key/3]).
 
 -import(menelaus_util,
@@ -955,15 +956,63 @@ basic_bucket_params_screening_test() ->
 
 -endif.
 
-handle_ddocs_list(_PoolId, Bucket, Req) ->
+handle_ddocs_list(PoolId, Bucket, Req) ->
     DDocs = capi_set_view_manager:fetch_full_ddocs(Bucket),
     RV = [begin
               Id = capi_utils:extract_doc_id(Doc),
               {struct, [{doc, capi_utils:couch_doc_to_mochi_json(Doc)},
-                        {controllers, {struct, [{compact, bin_concat_path(["pools","default", "buckets", Bucket, "ddocs", Id, "controller", "compactView"])}]}}]}
+                        {controllers, {struct, [{compact, bin_concat_path(["pools", PoolId, "buckets", Bucket, "ddocs", Id, "controller", "compactView"])},
+                                                {setUpdateMinChanges,
+                                                 bin_concat_path(["pools", PoolId, "buckets", Bucket,
+                                                                  "ddocs", Id, "controller", "setUpdateMinChanges"])}]}}]}
           end || Doc <- DDocs],
     reply_json(Req, {struct, [{rows, RV}]}).
 
+handle_set_ddoc_update_min_changes(_PoolId, Bucket, DDocIdStr, Req) ->
+    DDocId = list_to_binary(DDocIdStr),
+
+    capi_frontend:with_subdb(
+      Bucket, <<"master">>,
+      fun (MasterDb) ->
+              case couch_db:open_doc(MasterDb, DDocId, [ejson_body]) of
+                  {ok, #doc{body={Body}} = DDoc} ->
+                      {Options0} = proplists:get_value(<<"options">>, Body, {[]}),
+                      Options1 = lists:keydelete(<<"updateMinChanges">>, 1, Options0),
+
+                      Params = Req:parse_post(),
+                      case proplists:get_value("updateMinChanges", Params) of
+                          undefined ->
+                              %% just unset updateMinChanges
+                              complete_update_ddoc_options(Req, Bucket, DDoc, Options1);
+                          Value ->
+                              case menelaus_util:parse_validate_number(Value, 0, undefined) of
+                                  {ok, Parsed} ->
+                                      NewOptions = [{<<"updateMinChanges">>, Parsed} | Options1],
+                                      complete_update_ddoc_options(Req, Bucket, DDoc, NewOptions);
+                                  Error ->
+                                      Msg = io_lib:format("Invalid updateMinChanges: ~p",
+                                                          [Error]),
+                                      reply_json(Req,
+                                                 {struct, [{updateMinChanges,
+                                                            iolist_to_binary(Msg)}]},
+                                                 400)
+                              end
+                      end;
+                  {not_found, _} ->
+                      reply_json(Req, {struct, [{'_',
+                                                 <<"Design document not found">>}]}, 400)
+              end
+      end).
+
+complete_update_ddoc_options(Req, Bucket, #doc{body={Body0}}= DDoc, Options0) ->
+    Options = {Options0},
+    NewBody0 = [{<<"options">>, Options} |
+                lists:keydelete(<<"options">>, 1, Body0)],
+
+    NewBody = {NewBody0},
+    NewDDoc = DDoc#doc{body=NewBody},
+    ok = capi_ddoc_replication_srv:update_doc(Bucket, NewDDoc),
+    reply_json(Req, capi_utils:couch_json_to_mochi_json(Options)).
 
 -define(RANDOM_KEY_ATTEMPTS, 10).
 
