@@ -219,7 +219,8 @@ handle_sync_event({force_compact_view, Bucket, DDocId}, _From, StateName, State)
                 State;
             false ->
                 {Config, _} = compaction_config(Bucket),
-                Pid = spawn_view_compactor(Bucket, DDocId, Config, true),
+                Pid = spawn_view_compactor(Bucket, DDocId, Config, true,
+                                           {view, DDocId}),
                 register_forced_compaction(Pid, Compaction, State)
         end,
     {reply, ok, StateName, NewState};
@@ -412,8 +413,8 @@ spawn_bucket_compactor(BucketName, {Config, ConfigProps}, Force) ->
                   [ [{type, view},
                      {name, <<BucketName/binary, $/, DDocId/binary>>},
                      {important, false},
-                     {fa, {fun spawn_view_compactor/4,
-                           [BucketName, DDocId, Config, Force]}}] ||
+                     {fa, {fun spawn_view_compactor/5,
+                           [BucketName, DDocId, Config, Force, bucket]}}] ||
                       DDocId <- DDocNames ],
 
               case Config#config.parallel_view_compact of
@@ -614,7 +615,7 @@ spawn_vbucket_compactor(DbName) ->
               end
       end).
 
-spawn_view_compactor(BucketName, DDocId, Config, Force) ->
+spawn_view_compactor(BucketName, DDocId, Config, Force, OriginalTarget) ->
     Parent = self(),
 
     proc_lib:spawn_link(
@@ -625,8 +626,9 @@ spawn_view_compactor(BucketName, DDocId, Config, Force) ->
                   [ [{type, view},
                      {important, true},
                      {name, view_name(BucketName, DDocId, Type)},
-                     {fa, {fun spawn_view_index_compactor/5,
-                           [BucketName, DDocId, Type, Config, Force]}}] ||
+                     {fa, {fun spawn_view_index_compactor/6,
+                           [BucketName, DDocId,
+                            Type, Config, Force, OriginalTarget]}}] ||
                       Type <- [main, replica] ],
 
               do_chain_compactors(Parent, Compactors)
@@ -636,7 +638,8 @@ view_name(BucketName, DDocId, Type) ->
     <<BucketName/binary, $/, DDocId/binary, $/,
       (atom_to_binary(Type, latin1))/binary>>.
 
-spawn_view_index_compactor(BucketName, DDocId, Type, Config, Force) ->
+spawn_view_index_compactor(BucketName, DDocId,
+                           Type, Config, Force, OriginalTarget) ->
     Parent = self(),
 
     proc_lib:spawn_link(
@@ -662,8 +665,19 @@ spawn_view_index_compactor(BucketName, DDocId, Type, Config, Force) ->
 
               process_flag(trap_exit, true),
 
+              TriggerType = case Force of
+                                true ->
+                                    manual;
+                                false ->
+                                    scheduled
+                            end,
+
+              InitialStatus = [{original_target, OriginalTarget},
+                               {trigger_type, TriggerType}],
+
               {ok, Compactor} =
-                  couch_set_view_compactor:start_compact(BucketName, DDocId, Type),
+                  couch_set_view_compactor:start_compact(BucketName, DDocId,
+                                                         Type, InitialStatus),
               CompactorRef = erlang:monitor(process, Compactor),
 
               receive

@@ -273,14 +273,26 @@ maybe_refresh_tasks_version(State) ->
                         tasks_version = integer_to_list(TasksAndRebalanceHash)}
     end.
 
-task_operation(extract, IndexerOrCompaction, RawTask)
-  when IndexerOrCompaction =:= indexer orelse IndexerOrCompaction =:= view_compaction ->
+task_operation(extract, Indexer, RawTask)
+  when Indexer =:= indexer ->
     {_, ChangesDone} = lists:keyfind(changes_done, 1, RawTask),
     {_, TotalChanges} = lists:keyfind(total_changes, 1, RawTask),
     {_, BucketName} = lists:keyfind(set, 1, RawTask),
     {_, DDocIds} = lists:keyfind(design_documents, 1, RawTask),
 
-    [{{IndexerOrCompaction, BucketName, DDocId}, {ChangesDone, TotalChanges}}
+    [{{Indexer, BucketName, DDocId}, {ChangesDone, TotalChanges}}
+       || DDocId <- DDocIds];
+task_operation(extract, ViewCompaction, RawTask)
+  when ViewCompaction =:= view_compaction ->
+    {_, ChangesDone} = lists:keyfind(changes_done, 1, RawTask),
+    {_, TotalChanges} = lists:keyfind(total_changes, 1, RawTask),
+    {_, BucketName} = lists:keyfind(set, 1, RawTask),
+    {_, DDocIds} = lists:keyfind(design_documents, 1, RawTask),
+    {_, OriginalTarget} = lists:keyfind(original_target, 1, RawTask),
+    {_, TriggerType} = lists:keyfind(trigger_type, 1, RawTask),
+
+    [{{ViewCompaction, BucketName, DDocId, OriginalTarget, TriggerType},
+      {ChangesDone, TotalChanges}}
        || DDocId <- DDocIds];
 task_operation(extract, BucketCompaction, RawTask)
   when BucketCompaction =:= bucket_compaction ->
@@ -294,17 +306,12 @@ task_operation(extract, BucketCompaction, RawTask)
 task_operation(extract, _, _) ->
     ignore;
 
-task_operation(finalize, {IndexerOrCompaction, BucketName, DDocId}, {ChangesDone, TotalChanges})
-  when IndexerOrCompaction =:= indexer orelse IndexerOrCompaction =:= view_compaction ->
-    Progress = erlang:min((ChangesDone * 100) div TotalChanges, 100),
-    [{type, IndexerOrCompaction},
-     {recommendedRefreshPeriod, 2.0},
-     {status, running},
-     {bucket, BucketName},
-     {designDocument, DDocId},
-     {changesDone, ChangesDone},
-     {totalChanges, TotalChanges},
-     {progress, Progress}];
+task_operation(finalize, {Indexer, BucketName, DDocId}, Changes)
+  when Indexer =:= indexer ->
+    finalize_indexer_or_compaction(Indexer, BucketName, DDocId, Changes);
+task_operation(finalize, {ViewCompaction, BucketName, DDocId, _, _}, Changes)
+  when ViewCompaction =:= view_compaction ->
+    finalize_indexer_or_compaction(ViewCompaction, BucketName, DDocId, Changes);
 task_operation(finalize, {BucketCompaction, BucketName, _, _}, {ChangesDone, TotalChanges})
   when BucketCompaction =:= bucket_compaction ->
     Progress = (ChangesDone * 100) div TotalChanges,
@@ -317,11 +324,23 @@ task_operation(finalize, {BucketCompaction, BucketName, _, _}, {ChangesDone, Tot
      {totalChanges, TotalChanges},
      {progress, Progress}].
 
+finalize_indexer_or_compaction(IndexerOrCompaction, BucketName, DDocId,
+                               {ChangesDone, TotalChanges}) ->
+    Progress = erlang:min((ChangesDone * 100) div TotalChanges, 100),
+    [{type, IndexerOrCompaction},
+     {recommendedRefreshPeriod, 2.0},
+     {status, running},
+     {bucket, BucketName},
+     {designDocument, DDocId},
+     {changesDone, ChangesDone},
+     {totalChanges, TotalChanges},
+     {progress, Progress}].
+
 task_operation(fold, {indexer, _, _},
                {ChangesDone1, TotalChanges1},
                {ChangesDone2, TotalChanges2}) ->
     {ChangesDone1 + ChangesDone2, TotalChanges1 + TotalChanges2};
-task_operation(fold, {view_compaction, _, _},
+task_operation(fold, {view_compaction, _, _, _, _},
                {ChangesDone1, TotalChanges1},
                {ChangesDone2, TotalChanges2}) ->
     {ChangesDone1 + ChangesDone2, TotalChanges1 + TotalChanges2};
@@ -343,6 +362,21 @@ task_maybe_add_cancel_uri({bucket_compaction, BucketName, OriginalTarget, manual
             ["pools", PoolId, "buckets", BucketName,
              "controller", Ending]),
 
+    [{cancelURI, URI} | Value];
+task_maybe_add_cancel_uri({view_compaction, BucketName, _DDocId,
+                           OriginalTarget, manual},
+                          Value, PoolId) ->
+    URIComponents =
+        case OriginalTarget of
+            bucket ->
+                ["pools", PoolId, "buckets", BucketName,
+                 "controller", "cancelBucketCompaction"];
+            {view, TargetDDocId} ->
+                ["pools", PoolId, "buckets", BucketName, "ddoc", TargetDDocId,
+                 "controller", "cancelViewCompaction"]
+        end,
+
+    URI = menelaus_util:bin_concat_path(URIComponents),
     [{cancelURI, URI} | Value];
 task_maybe_add_cancel_uri(_, Value, _) ->
     Value.
