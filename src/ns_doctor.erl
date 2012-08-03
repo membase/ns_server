@@ -287,9 +287,9 @@ task_operation(extract, BucketCompaction, RawTask)
     {_, VBucketsDone} = lists:keyfind(vbuckets_done, 1, RawTask),
     {_, TotalVBuckets} = lists:keyfind(total_vbuckets, 1, RawTask),
     {_, BucketName} = lists:keyfind(bucket, 1, RawTask),
-    {_, Subtype} = lists:keyfind(subtype, 1, RawTask),
+    {_, OriginalTarget} = lists:keyfind(original_target, 1, RawTask),
     {_, TriggerType} = lists:keyfind(trigger_type, 1, RawTask),
-    [{{BucketCompaction, BucketName, Subtype, TriggerType},
+    [{{BucketCompaction, BucketName, OriginalTarget, TriggerType},
       {VBucketsDone, TotalVBuckets}}];
 task_operation(extract, _, _) ->
     ignore;
@@ -330,8 +330,9 @@ task_operation(fold, {bucket_compaction, _, _, _},
                {ChangesDone2, TotalChanges2}) ->
     {ChangesDone1 + ChangesDone2, TotalChanges1 + TotalChanges2}.
 
-task_maybe_add_cancel_uri({bucket_compaction, BucketName, Subtype, manual}, Value, PoolId) ->
-    Ending = case Subtype of
+task_maybe_add_cancel_uri({bucket_compaction, BucketName, OriginalTarget, manual},
+                          Value, PoolId) ->
+    Ending = case OriginalTarget of
                  db ->
                      "cancelDatabasesCompaction";
                  bucket ->

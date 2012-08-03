@@ -518,7 +518,7 @@ do_chain_compactors(Parent, [Compactor | Compactors]) ->
             end
     end.
 
-spawn_dbs_compactor(BucketName, Config, Force, Subtype) ->
+spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
     Parent = self(),
 
     proc_lib:spawn_link(
@@ -549,7 +549,7 @@ spawn_dbs_compactor(BucketName, Config, Force, Subtype) ->
 
               ok = couch_task_status:add_task(
                      [{type, bucket_compaction},
-                      {subtype, Subtype},
+                      {original_target, OriginalTarget},
                       {trigger_type, TriggerType},
                       {bucket, BucketName},
                       {vbuckets_done, 0},
