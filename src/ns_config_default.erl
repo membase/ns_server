@@ -462,10 +462,21 @@ do_upgrade_config_from_1_8_0_to_2_0(Config, DefaultConfig) ->
                                   {_, RemoteClustersV} = lists:keyfind(remote_clusters, 1, DefaultConfig),
                                   [{set, remote_clusters, RemoteClustersV}]
                           end,
+
+    MaybeCompactionDaemon = case ns_config:search(Config, {node, node(), compaction_daemon}) of
+                                {value, _} ->
+                                    [];
+                                false ->
+                                    {_, CompactionDaemonSettings} = lists:keyfind({node, node(), compaction_daemon},
+                                                                                  1, DefaultConfig),
+                                    [{set, {node, node(), compaction_daemon}, CompactionDaemonSettings}]
+                            end,
+
     MaybeCapiPort ++
         MaybeNodeUUID ++
         MaybeAutoCompaction ++
-        MaybeRemoteClusters.
+        MaybeRemoteClusters ++
+        MaybeCompactionDaemon.
 
 upgrade_1_6_to_1_7_test() ->
     DefaultCfg = [{directory, default_directory},
@@ -647,12 +658,15 @@ upgrade_1_8_1_to_2_0_test() ->
     DefaultCfg = [{{node, node(), capi_port}, somethingelse},
                   {{node, node(), uuid}, <<"--uuid--">>},
                   {remote_clusters, foobar_2},
-                  {autocompaction, compaction_something}],
+                  {autocompaction, compaction_something},
+                  {{node, node(), compaction_daemon}, compaction_daemon_settings}],
     Result = do_upgrade_config_from_1_8_0_to_2_0(Cfg, DefaultCfg),
     ?assertEqual([{set, {node, node(), uuid}, <<"--uuid--">>},
-                  {set, autocompaction, compaction_something}],
+                  {set, autocompaction, compaction_something},
+                  {set, {node, node(), compaction_daemon}, compaction_daemon_settings}],
                  Result),
-    Cfg2 = [[{remote_clusters, foobar}]],
+    Cfg2 = [[{remote_clusters, foobar},
+             {{node, node(), compaction_daemon}, compaction_daemon_existing}]],
     Result2 = do_upgrade_config_from_1_8_0_to_2_0(Cfg2, DefaultCfg),
     ?assertEqual([{set, {node, node(), capi_port}, somethingelse},
                   {set, {node, node(), uuid}, <<"--uuid--">>},
