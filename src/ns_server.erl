@@ -87,6 +87,17 @@ get_loglevel(LoggerName) ->
     Key = list_to_atom("loglevel_" ++ LoggerNameStr),
     misc:get_env_default(Key, DefaultLogLevel).
 
+%% If LogLevel is less restricitve than ThresholdLogLevel (meaning that more
+%% message would be printed with that LogLevel) then return ThresholdLogLevel.
+%% Otherwise return LogLevel itself.
+adjust_loglevel(LogLevel, ThresholdLogLevel) ->
+    case ale_utils:loglevel_enabled(LogLevel, ThresholdLogLevel) of
+        true ->
+            LogLevel;
+        false ->
+            ThresholdLogLevel
+    end.
+
 init_logging() ->
     StdLoggers = [?ERROR_LOGGER],
     AllLoggers = StdLoggers ++ ?LOGGERS,
@@ -146,10 +157,15 @@ init_logging() ->
     lists:foreach(
       fun (Logger) ->
               LogLevel = get_loglevel(Logger),
-              ok = ale:add_sink(Logger, disk_default, LogLevel),
+              ok = ale:add_sink(Logger, disk_default,
+                                adjust_loglevel(LogLevel, info)),
 
-              ok = ale:add_sink(Logger, disk_error, error),
-              ok = ale:add_sink(Logger, disk_debug, debug)
+              ok = ale:add_sink(Logger, disk_error,
+                                adjust_loglevel(LogLevel, error)),
+
+              %% no need to adjust loglevel for debug log since 'debug' is
+              %% already the least restrictive loglevel
+              ok = ale:add_sink(Logger, disk_debug, LogLevel)
       end, AllLoggers),
 
     ok = ale:add_sink(?USER_LOGGER, ns_log, info),
@@ -169,9 +185,8 @@ init_logging() ->
 
             lists:foreach(
               fun (Logger) ->
-                      %% usually used only in dev environment so it makes
-                      %% sense to put all the messages here
-                      ok = ale:add_sink(Logger, stderr, debug)
+                      LogLevel = get_loglevel(Logger),
+                      ok = ale:add_sink(Logger, stderr, LogLevel)
               end, AllLoggers);
         false ->
             ok

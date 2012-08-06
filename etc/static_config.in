@@ -6,15 +6,16 @@
 {path_config_libdir, "@BIN_PREFIX@/lib"}.
 {path_config_datadir, "@DATA_PREFIX@/var/lib/couchbase"}.
 {path_config_tmpdir, "@DATA_PREFIX@/var/lib/couchbase/tmp"}.
-{loglevel_default, info}.
+
+{loglevel_default, debug}.
 {loglevel_couchdb, info}.
-{loglevel_ns_server, info}.
-{loglevel_error_logger, info}.
-{loglevel_user, info}.
-{loglevel_menelaus, info}.
-{loglevel_ns_doctor, info}.
-{loglevel_stats, info}.
-{loglevel_rebalance, info}.
-{loglevel_cluster, info}.
-{loglevel_views, info}.
-{loglevel_mapreduce_errors, info}.
+{loglevel_ns_server, debug}.
+{loglevel_error_logger, debug}.
+{loglevel_user, debug}.
+{loglevel_menelaus, debug}.
+{loglevel_ns_doctor, debug}.
+{loglevel_stats, debug}.
+{loglevel_rebalance, debug}.
+{loglevel_cluster, debug}.
+{loglevel_views, debug}.
+{loglevel_mapreduce_errors, debug}.
