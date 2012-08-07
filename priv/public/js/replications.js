@@ -60,8 +60,14 @@ var ReplicationsModel = {};
       info.continuous = fields.continuous;
 
       if (match) {
-        var cluster = match[1];
+        var clusterUUID = match[1];
         var bucket = match[2];
+
+        var cluster = _.detect(v.need(remoteClustersListCell),
+                               function (c) {
+                                 return (c.uuid === clusterUUID);
+                               });
+        cluster = cluster ? cluster.name : "unknown";
 
         info.target = cluster;
         if (bucket !== info.source) {

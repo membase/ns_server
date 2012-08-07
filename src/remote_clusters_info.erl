@@ -175,8 +175,11 @@ get_remote_bucket_by_ref(Reference, Through) ->
        Msg :: binary(),
        Field :: binary().
 get_remote_bucket_by_ref(Reference, Through, Timeout) ->
-    {ok, {ClusterName, BucketName}} = parse_remote_bucket_reference(Reference),
-    get_remote_bucket(ClusterName, BucketName, Through, Timeout).
+    {ok, {ClusterUUID, BucketName}} = parse_remote_bucket_reference(Reference),
+    Cluster = find_cluster_by_uuid(ClusterUUID),
+    gen_server:call(?MODULE,
+                    {get_remote_bucket, Cluster,
+                                        BucketName, Through, Timeout}, infinity).
 
 invalidate_remote_bucket_by_ref(Reference) ->
     {ok, {ClusterName, BucketName}} = parse_remote_bucket_reference(Reference),
@@ -977,19 +980,19 @@ mk_json_get(Host, Port, Username, Password) ->
             end
     end.
 
--spec remote_bucket_reference(string(), bucket_name()) -> binary().
-remote_bucket_reference(ClusterName, BucketName) ->
+-spec remote_bucket_reference(binary(), bucket_name()) -> binary().
+remote_bucket_reference(ClusterUUID, BucketName) ->
     iolist_to_binary(
       [<<"/remoteClusters/">>,
-       mochiweb_util:quote_plus(ClusterName),
+       mochiweb_util:quote_plus(ClusterUUID),
        <<"/buckets/">>,
        mochiweb_util:quote_plus(BucketName)]).
 
 parse_remote_bucket_reference(Reference) ->
     case binary:split(Reference, <<"/">>, [global]) of
-        [<<>>, <<"remoteClusters">>, ClusterName, <<"buckets">>, BucketName] ->
-            {ok, {mochiweb_util:unquote(ClusterName),
-                  mochiweb_util:unquote(BucketName)}};
+        [<<>>, <<"remoteClusters">>, ClusterUUID, <<"buckets">>, BucketName] ->
+            ClusterUUID1 = list_to_binary(mochiweb_util:unquote(ClusterUUID)),
+            {ok, {ClusterUUID1, mochiweb_util:unquote(BucketName)}};
         _ ->
             {error, bad_reference}
     end.
@@ -1002,24 +1005,24 @@ find_cluster_by_name(ClusterName) ->
                 Name =:= ClusterName
         end,
 
-    case find_cluster(P, get_remote_clusters()) of
+    case partition_clusters(P, get_remote_clusters()) of
         not_found ->
             {error, cluster_not_found, <<"Requested cluster not found">>};
         {Cluster, _} ->
             Cluster
     end.
 
-find_cluster(P, Clusters) ->
-    do_find_cluster(P, Clusters, []).
+partition_clusters(P, Clusters) ->
+    do_partition_clusters(P, Clusters, []).
 
-do_find_cluster(_, [], _) ->
+do_partition_clusters(_, [], _) ->
     not_found;
-do_find_cluster(P, [C | Rest], Before) ->
+do_partition_clusters(P, [C | Rest], Before) ->
     case P(C) of
         true ->
             {C, Before ++ Rest};
         false ->
-            do_find_cluster(P, Rest, [C | Before])
+            do_partition_clusters(P, Rest, [C | Before])
     end.
 
 last_cache_request(Type, Id, Value) ->
@@ -1212,7 +1215,18 @@ schedule_cluster_config_update(UUID, Tries) ->
     Sleep = random:uniform(?CONFIG_UPDATE_INTERVAL),
     erlang:send_after(Sleep, self(), {update_cluster_config, UUID, Tries}).
 
+find_cluster_by_uuid(RemoteUUID) ->
+    find_cluster_by_uuid(RemoteUUID, get_remote_clusters()).
+
 find_cluster_by_uuid(RemoteUUID, Clusters) ->
+    case partition_clusters_by_uuid(RemoteUUID, Clusters) of
+        {Cluster, _Rest} ->
+            Cluster;
+        Error ->
+            Error
+    end.
+
+partition_clusters_by_uuid(RemoteUUID, Clusters) ->
     P = fun (Cluster) ->
                 UUID = proplists:get_value(uuid, Cluster),
                 true = (UUID =/= undefined),
@@ -1220,7 +1234,7 @@ find_cluster_by_uuid(RemoteUUID, Clusters) ->
                 UUID =:= RemoteUUID
         end,
 
-    find_cluster(P, Clusters).
+    partition_clusters(P, Clusters).
 
 is_cluster_config_update_required(#remote_cluster{uuid=RemoteUUID,
                                                   nodes=Nodes},
@@ -1228,7 +1242,7 @@ is_cluster_config_update_required(#remote_cluster{uuid=RemoteUUID,
     case find_cluster_by_uuid(RemoteUUID, Clusters) of
         not_found ->
             false;
-        {Cluster, _} ->
+        Cluster ->
             Hostname = proplists:get_value(hostname, Cluster),
             true = (Hostname =/= undefined),
             Node = hostname_to_remote_node(Hostname),
@@ -1244,7 +1258,7 @@ try_update_cluster_config(UUID, LastAttempt) ->
             Clusters = get_remote_clusters(),
             case is_cluster_config_update_required(RemoteCluster, Clusters) of
                 true ->
-                    {Cluster, Rest} = find_cluster_by_uuid(UUID, Clusters),
+                    {Cluster, Rest} = partition_clusters_by_uuid(UUID, Clusters),
 
                     ClusterName = proplists:get_value(name, Cluster),
                     Hostname = proplists:get_value(hostname, Cluster),

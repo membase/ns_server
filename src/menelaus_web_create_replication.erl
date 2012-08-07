@@ -125,7 +125,7 @@ validate_new_replication_params_check_from_bucket(FromBucket, ToCluster, ToBucke
                                     cluster_uuid=ClusterUUID}} ->
                     case check_bucket_uuid(BucketConfig, BucketUUID) of
                         ok ->
-                            {ok, build_replication_doc(FromBucket, ToCluster,
+                            {ok, build_replication_doc(FromBucket,
                                                        ClusterUUID,
                                                        ToBucket, ReplicationType)};
                         Errors ->
@@ -149,8 +149,8 @@ validate_new_replication_params_check_from_bucket(FromBucket, ToCluster, ToBucke
             {error, Errors}
     end.
 
-build_replication_doc(FromBucket, Cluster, ClusterUUID, ToBucket, ReplicationType) ->
-    Reference = remote_clusters_info:remote_bucket_reference(Cluster, ToBucket),
+build_replication_doc(FromBucket, ClusterUUID, ToBucket, ReplicationType) ->
+    Reference = remote_clusters_info:remote_bucket_reference(ClusterUUID, ToBucket),
 
     [{type, <<"xdc">>},
      {source, list_to_binary(FromBucket)},
