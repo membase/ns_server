@@ -177,6 +177,12 @@ var codeMirrorOpts = {
     theme: 'default'
 };
 
+// ns is assumed to have:
+//   * rawViewsBucketCell
+//   * rawDDocIdCell
+//   * rawSpatialNameCell
+//   * rawViewNameCell
+//   * pageNumberCell
 function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProgressCell, poolDetailsCell) {
 
   ns.viewsBucketInfoCell = Cell.compute(function (v) {
@@ -189,7 +195,7 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
     var bucketInfo = _.detect(buckets, function (info) {return info.name === "default"}) || buckets[0];
 
     return bucketInfo;
-  });
+  }).name("viewsBucketInfoCell");
 
   ns.viewsBucketInfoCell.equality = function (a, b) {return a === b;};
 
@@ -199,13 +205,8 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
       return null;
     }
     return bucketInfo.name;
-  });
+  }).name("viewsBucketCell");
   ns.viewsBucketCell.equality = function (a, b) {return a === b;};
-
-  ns.randomKeyURLCell = Cell.compute(function (v) {
-    var bucketInfo = v.need(ns.viewsBucketInfoCell);
-    return bucketInfo.localRandomKeyUri;
-  });
 
   ns.populateBucketsDropboxCell = Cell.compute(function (v) {
     var mode = v.need(modeCell);
@@ -237,7 +238,7 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
     } else {
       return;
     }
-  });
+  }).name("dbURLCell");
 
   ns.allDDocsURLCell = Cell.compute(function (v) {
     var bucketInfo = v.need(ns.viewsBucketInfoCell);
@@ -593,7 +594,7 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
     return [dbURL, currentSpatial].concat(pair);
   });
 
-  ns.mkViewsListCell = function(ddocsCell) {
+  function mkViewsListCell(ddocsCell) {
     return Cell.compute(function (v) {
       var tasks = v.need(ns.tasksOfCurrentBucket);
       var ddocs = v.need(ddocsCell);
@@ -629,23 +630,112 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
     });
   }
 
-  ns.randomDocsUrlCell = Cell.compute(function (v) {
-    var randomIdCell = v.need(ns.randomIdCell);
-    if (!randomIdCell) {
+  ns.massagedDevDDocsCell = mkViewsListCell(ns.devDDocsCell);
+  ns.massagedProductionDDocsCell = mkViewsListCell(ns.productionDDocsCell);
+}
+
+function createRandomDocCells(ns, modeCell) {
+  function fetchRandomId(randomKeyURL, dbURL, dataCallback) {
+    couchReq('GET', randomKeyURL, null,
+             randomKeySuccess, randomKeyError);
+    return;
+
+    function randomKeySuccess(data) {
+      dataCallback(data.key);
+      // sampleDocsCont.show();
+      // noSampleDocsCont.hide();
+    };
+
+    function randomKeyError(response, status, unexpected) {
+      if (status == 404) {
+        if (response.error == "fallback_to_all_docs") {
+          console.log("using fallback to all docs");
+          randomIdFromAllDocs();
+          return;
+        }
+      }
+
+      unexpected();
+    };
+
+    function randomIdFromAllDocs() {
+      var allDocsURL = buildURL(dbURL, "_all_docs", {
+        // precaution not to try to grab really huge number of docs because
+        // of some error
+        limit: 4096
+      });
+
+      couchReq('GET', allDocsURL, null, allDocsSuccess, allDocsError);
+    }
+
+    function allDocsSuccess(data) {
+      var length = data.rows.length;
+
+      if (length != 0) {
+        var i = (Math.random() * data.rows.length) >> 0;
+        var result = data.rows[i].id;
+        // TODO: we'll cut this when _all_docs will stop seeing
+        // design docs
+        if (result.substring(0, "_design/".length) == "_design/") {
+          allDocsSuccess({rows:_.without(data.rows, data.rows[i])});
+        }
+        dataCallback(result);
+      } else {
+        allDocsError();
+      }
+    }
+
+    function allDocsError() {
+      dataCallback(null);
+    }
+  }
+
+  ns.randomKeyURLCell = Cell.compute(function (v) {
+    var bucketInfo = v.need(ns.viewsBucketInfoCell);
+    return bucketInfo.localRandomKeyUri;
+  }).name("randomKeyURLCell");
+
+  // null value of this cells means no docs exist
+  ns.randomDocIdCell = Cell.computeEager(function (v) {
+    if (v.need(modeCell) != 'views') {
       return;
     }
-    return buildURL(v.need(ns.dbURLCell), "_all_docs", {
-      startkey: JSON.stringify(randomIdCell),
-      endkey: JSON.stringify(randomIdCell + String.fromCharCode(0xffff)),
-      include_docs: "true",
-      limit: 1
+    var randomIdURL = v.need(ns.viewsBucketInfoCell).localRandomKeyUri;
+    var dbURL = v.need(ns.dbURLCell);
+    return future(function (dataCallback) {
+      fetchRandomId(randomIdURL, dbURL, dataCallback);
     });
   });
+  ns.randomDocIdCell.equality = function (a, b) {return a === b};
 
-  ns.randomDocsCell = Cell.compute(function (v) {
-    return future.get({url: v.need(ns.randomDocsUrlCell)});
+  // null value means no docs exist
+  ns.randomDocCell = Cell.computeEager(function (v) {
+    var randomId = v(ns.randomDocIdCell);
+    if (randomId == null) {//null or undefined
+      return randomId;
+    }
+
+    var futureWrap = future.wrap(function (dataCallback, initateXHR) {
+      function myCallback(body, status, xhr) {
+        if (!body) {
+          return dataCallback(body);
+        }
+        var meta = xhr.getResponseHeader("X-Couchbase-Meta");
+        var trueBody = {
+          json: body,
+          meta: JSON.parse(meta)
+        }
+        dataCallback(trueBody)
+      }
+      initateXHR(myCallback);
+    });
+    var url = buildURL(v.need(ns.dbURLCell), randomId);
+    return future.get({url: url,
+                       missingValue: null
+                      }, undefined, undefined, futureWrap)
   });
-
+  ns.randomDocCell.equality = function (a, b) {return a === b};
+  ns.randomDocCell.delegateInvalidationMethods(ns.randomDocIdCell);
 }
 
 var ViewsSection = {
@@ -699,9 +789,9 @@ var ViewsSection = {
     self.defaultSubsetAppliedURLBuilderCell = new Cell();
     self.fullSubsetAppliedURLBuilderCell = new Cell();
     self.lastAppliedURLBuilderCell = new Cell();
-    self.randomIdCell = new Cell();
 
     createViewsCells(self, DAL.cells.bucketsListCell, DAL.cells.capiBase, DAL.cells.mode, DAL.cells.tasksProgressCell, DAL.cells.currentPoolDetailsCell);
+    createRandomDocCells(self, DAL.cells.mode);
 
     var viewcodeReduce = $('#viewcode_reduce');
     var viewcodeMap = $('#viewcode_map');
@@ -761,13 +851,12 @@ var ViewsSection = {
         SpatialFilter.filtersUrl.attr('href', escapeHTML(url));
         SpatialFilter.filtersUrl.text(decodeURIComponent(text));
       }
-    }, DAL.cells.mode, self.modeTabs, SpatialFilter.rawFilterParamsCell, 
+    }, DAL.cells.mode, self.modeTabs, SpatialFilter.rawFilterParamsCell,
          ViewsFilter.rawFilterParamsCell, self.subsetTabCell, self.intFullSubsetPageCell, self.intPageCell, self.proposedURLBuilderCell);
-      
+
     viewsBucketSelect.bindListCell(self.populateBucketsDropboxCell, {
       onChange: function (e, newValue) {
         self.rawViewNameCell.setValue(undefined);
-        self.randomIdCell.setValue(undefined);
         self.rawDDocIdCell.setValue(undefined);
         self.rawViewNameCell.setValue(undefined);
         self.rawViewsBucketCell.setValue(newValue);
@@ -782,7 +871,6 @@ var ViewsSection = {
     viewsViewSelect.bindListCell(self.populateViewsDropboxCell, {
       onChange: function (e, newValue) {
         if (!newValue) {
-          self.randomIdCell.setValue(undefined);
           self.rawDDocIdCell.setValue(undefined);
           self.rawViewNameCell.setValue(undefined);
           self.rawSpatialNameCell.setValue(undefined);
@@ -1087,8 +1175,8 @@ var ViewsSection = {
       });
     }
 
-    subscribeViewsList(self.mkViewsListCell(self.devDDocsCell), 'development_views_list_container');
-    subscribeViewsList(self.mkViewsListCell(self.productionDDocsCell), 'production_views_list_container');
+    subscribeViewsList(self.massagedDevDDocsCell, 'development_views_list_container');
+    subscribeViewsList(self.massagedProductionDDocsCell, 'production_views_list_container');
 
     var builtInReducers = $('#built_in_reducers a');
     var viewRunButton = $('#view_run_button');
@@ -1123,92 +1211,42 @@ var ViewsSection = {
       self.runCurrentSpatial();
     });
 
-    function noSampleDocs() {
-      sampleDocsCont.hide();
-      noSampleDocsCont.show();
-    }
-
-    function randomIdFromAllDocs(fun) {
-      self.dbURLCell.getValue(function (dbURL) {
-        var allDocsURL = buildURL(dbURL, "_all_docs", {
-          // precaution not to try to grab really huge number of docs because
-          // of some error
-          limit: 4096
-        });
-
-        var onSuccess = function (data) {
-          var length = data.rows.length;
-
-          if (length != 0) {
-            var i = (Math.random() * data.rows.length) >> 0;
-            fun(data.rows[i].id);
-          } else {
-            noSampleDocs();
-          }
-        };
-
-        couchReq('GET', allDocsURL, null, onSuccess, noSampleDocs);
-      });
-    }
-
-    function randomId(fun) {
-      self.randomKeyURLCell.getValue(function (randomKeyURL) {
-        var onSuccess = function (data) {
-          fun(data.key);
-          sampleDocsCont.show();
-          noSampleDocsCont.hide();
-        };
-
-        var onError = function (response, status, unexpected) {
-          if (status == 404) {
-            if (response.error == "fallback_to_all_docs") {
-              randomIdFromAllDocs(fun);
-              return;
-            }
-          }
-
-          unexpected();
-        };
-
-        couchReq('GET', randomKeyURL, null, onSuccess, onError);
-      });
-    }
-
-    var latestRandom;
     var selectedBucket;
 
     self.viewsBucketCell.subscribeValue(function (selected) {
       selectedBucket = selected;
     });
 
-    previewRandomDoc.click(function(ev, dontReset) {
-      self.randomIdCell.setValue(undefined);
-      randomId(function (doc) {
-        self.randomIdCell.setValue(doc);
-      });
+    previewRandomDoc.click(function (ev) {
+      self.randomDocCell.setValue(undefined);
+      self.randomDocCell.invalidate();
     });
 
-    self.randomDocsCell.subscribeValue(function (doc) {
-      latestRandom = doc;
-
+    self.randomDocCell.subscribeValue(function (doc) {
       if (doc) {
-        var row = doc.rows[0];
-        var id = row ? row.doc.meta.id : "";
+        sampleDocsCont.show();
+        noSampleDocsCont.hide();
+
+        var id = doc.meta.id;
 
         docsTitle.text(id);
 
         var param = {};
-        param.data = row ? row.doc : false;
+        param.data = doc;
         param.loading = false;
         param.bucketName = selectedBucket;
 
-        sampleMeta.text(JSON.stringify(row.doc.meta, null, "\t"));
+        sampleMeta.text(JSON.stringify(doc.meta, null, "\t"));
         renderTemplate('sample_documents', param);
-
       } else {
-        docsTitle.text('');
-        sampleMeta.text("");
-        renderTemplate('sample_documents', {loading: true});
+        if (doc === null) {
+          sampleDocsCont.hide();
+          noSampleDocsCont.show();
+        } else {
+          docsTitle.text('');
+          sampleMeta.text("");
+          renderTemplate('sample_documents', {loading: true});
+        }
       }
     });
   },
@@ -2031,7 +2069,6 @@ var ViewsSection = {
   },
   onLeave: function () {
     this.rawDDocIdCell.setValue(undefined);
-    this.randomIdCell.setValue(undefined);
     this.pageNumberCell.setValue(undefined);
     this.rawViewNameCell.setValue(undefined);
     this.rawSpatialNameCell.setValue(undefined);
