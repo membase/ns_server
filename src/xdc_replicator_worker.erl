@@ -110,8 +110,8 @@ flush_docs(Target, DocList) ->
             DbUri = couch_api_wrap:db_uri(Target),
             ?xdcr_error("Replicator: couldn't write document `~s`, revision `~s`,"
                         " to target database `~s`. Error: `~s`, reason: `~s`.",
-                        [get_value(id, Props, ""), get_value(rev, Props, ""), DbUri,
-                         get_value(error, Props, ""), get_value(reason, Props, "")]),
+                        [get_value(<<"id">>, Props, ""), get_value(<<"rev">>, Props, ""), DbUri,
+                         get_value(<<"error">>, Props, ""), get_value(<<"reason">>, Props, "")]),
             #rep_stats{
                         docs_written = 0, doc_write_failures = length(DocList)
                       }
