@@ -1002,7 +1002,9 @@ find_cluster_by_name(ClusterName) ->
                 Name = proplists:get_value(name, Cluster),
                 true = (Name =/= undefined),
 
-                Name =:= ClusterName
+                Deleted = proplists:get_value(deleted, Cluster, false),
+
+                Name =:= ClusterName andalso Deleted =:= false
         end,
 
     case partition_clusters(P, get_remote_clusters()) of

@@ -22,10 +22,15 @@ var ReplicationsModel = {};
       return;
     return v.need(DAL.cells.currentPoolDetailsCell).remoteClusters.uri;
   });
-  var remoteClustersListCell = model.remoteClustersListCell = Cell.compute(function (v) {
+  var rawRemoteClustersListCell = model.remoteClustersAllListCell = Cell.compute(function (v) {
     return future.get({url: v.need(remoteClustersListURICell)}, function (list) {
       return _.sortBy(list, function (info) {return info.name});
     });
+  });
+  rawRemoteClustersListCell.keepValueDuringAsync = true;
+
+  var remoteClustersListCell = model.remoteClustersListCell = Cell.compute(function (v) {
+    return _.filter(v.need(rawRemoteClustersListCell), function (info) { return !info.deleted });
   });
   remoteClustersListCell.keepValueDuringAsync = true;
 
@@ -63,11 +68,20 @@ var ReplicationsModel = {};
         var clusterUUID = match[1];
         var bucket = match[2];
 
-        var cluster = _.detect(v.need(remoteClustersListCell),
+        var cluster = _.detect(v.need(rawRemoteClustersListCell),
                                function (c) {
                                  return (c.uuid === clusterUUID);
                                });
-        cluster = cluster ? cluster.name : "unknown";
+
+        if (cluster) {
+          if (cluster.deleted) {
+            cluster = cluster.hostname + ' (removed)';
+          } else {
+            cluster = cluster.name;
+          }
+        } else {
+          cluster = "unknown";
+        }
 
         info.target = cluster;
         if (bucket !== info.source) {
@@ -101,7 +115,7 @@ var ReplicationsModel = {};
     if (!softly) {
       remoteClustersListCell.setValue(undefined);
     }
-    remoteClustersListCell.invalidate();
+    rawRemoteClustersListCell.invalidate();
     rawReplicationInfos.invalidate();
   }
 

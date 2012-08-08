@@ -55,13 +55,15 @@ cas_remote_clusters(Old, NewUnsorted) ->
 
 build_remote_cluster_info(KV) ->
     Name = misc:expect_prop_value(name, KV),
+    Deleted = proplists:get_value(deleted, KV, false),
     URI = menelaus_util:bin_concat_path(["pools", "default", "remoteClusters", Name]),
     {struct, [{name, list_to_binary(Name)},
               {uri, URI},
               {validateURI, iolist_to_binary([URI, <<"?just_validate=1">>])},
               {hostname, list_to_binary(misc:expect_prop_value(hostname, KV))},
               {username, list_to_binary(misc:expect_prop_value(username, KV))},
-              {uuid, misc:expect_prop_value(uuid, KV)}]}.
+              {uuid, misc:expect_prop_value(uuid, KV)},
+              {deleted, Deleted}]}.
 
 handle_remote_clusters(Req) ->
     RemoteClusters = get_remote_clusters(),
@@ -83,7 +85,7 @@ do_handle_remote_clusters_post(Req, Params, JustValidate, TriesLeft) ->
                 {ok, FinalKVList} ->
                     case JustValidate of
                         undefined ->
-                            NewClusters = [FinalKVList | ExistingClusters],
+                            NewClusters = add_new_cluster(FinalKVList, ExistingClusters),
 
                             case cas_remote_clusters(ExistingClusters, NewClusters) of
                                 ok ->
@@ -142,7 +144,8 @@ validate_remote_cluster_params(Params, ExistingClusters) ->
                               (_) -> true
                           end, [NameError, HostnameError, UsernameError, PasswordError]),
     Errors = case lists:any(fun (KV) ->
-                                    lists:keyfind(name, 1, KV) =:= {name, Name}
+                                    lists:keyfind(name, 1, KV) =:= {name, Name} andalso
+                                        proplists:get_value(deleted, KV, false) =:= false
                             end, ExistingClusters) of
                  true ->
                      [{<<"name">>, <<"duplicate cluster names are not allowed">>}
@@ -191,23 +194,26 @@ do_handle_remote_cluster_update(_Id, _Req, _Params, _JustValidate, _TriesLeft = 
 do_handle_remote_cluster_update(Id, Req, Params, JustValidate, TriesLeft) ->
     ExistingClusters = get_remote_clusters(),
     {MaybeThisCluster, OtherClusters} = lists:partition(fun (KV) ->
-                                                                lists:keyfind(name, 1, KV) =:= {name, Id}
+                                                                lists:keyfind(name, 1, KV) =:= {name, Id} andalso
+                                                                    proplists:get_value(deleted, KV, false) =:= false
                                                         end, ExistingClusters),
     case MaybeThisCluster of
         [] ->
             menelaus_util:reply_json(Req, <<"unkown remote cluster">>, 404);
-        _ ->
-            do_handle_remote_cluster_update_found_this(Id, Req, Params, JustValidate, OtherClusters, ExistingClusters, TriesLeft)
+        [ThisCluster] ->
+            do_handle_remote_cluster_update_found_this(Id, ThisCluster,
+                                                       Req, Params, JustValidate, OtherClusters, ExistingClusters, TriesLeft)
     end.
 
-do_handle_remote_cluster_update_found_this(Id, Req, Params, JustValidate, OtherClusters, ExistingClusters, TriesLeft) ->
+do_handle_remote_cluster_update_found_this(Id, OldCluster, Req, Params, JustValidate,
+                                           OtherClusters, ExistingClusters, TriesLeft) ->
     case validate_remote_cluster_params(Params, OtherClusters) of
         {ok, KVList} ->
             case validate_remote_cluster(KVList, OtherClusters) of
                 {ok, FinalKVList} ->
                     case JustValidate of
                         undefined ->
-                            NewClusters = [FinalKVList | OtherClusters],
+                            NewClusters = update_cluster(OldCluster, FinalKVList, OtherClusters),
 
                             case cas_remote_clusters(ExistingClusters, NewClusters) of
                                 ok ->
@@ -233,7 +239,9 @@ check_remote_cluster_already_exists(RemoteUUID, Clusters) ->
                    UUID = proplists:get_value(uuid, Cluster),
                    true = (UUID =/= undefined),
 
-                   UUID =/= RemoteUUID
+                   Deleted = proplists:get_value(deleted, Cluster, false),
+
+                   UUID =/= RemoteUUID orelse Deleted =:= true
            end, Clusters) of
         [] ->
             ok;
@@ -271,6 +279,46 @@ validate_remote_cluster(Cluster, OtherClusters) ->
             {errors, 500, Errors}
     end.
 
+add_new_cluster(NewCluster, Clusters) ->
+    NewClusterUUID = proplists:get_value(uuid, NewCluster),
+    true = (NewClusterUUID =/= undefined),
+
+    %% there might be a deleted cluster with the same uuid; we must not leave
+    %% a duplicate
+    {Matched, Other} =
+        lists:partition(
+          fun (KV) ->
+                  proplists:get_value(uuid, KV) =:= NewClusterUUID
+          end, Clusters),
+
+    case Matched of
+        [] ->
+            [NewCluster | Clusters];
+        [MatchedCluster] ->
+            true = proplists:get_value(deleted, MatchedCluster),
+            [NewCluster | Other]
+        %% our invariant is that there's at most one cluster (deleted or not)
+        %% with the same UUID in the cluster list; hence other case should not
+        %% happen
+    end.
+
+update_cluster(OldCluster, NewCluster, OtherClusters) ->
+    OldClusterUUID = proplists:get_value(uuid, OldCluster),
+    NewClusterUUID = proplists:get_value(uuid, NewCluster),
+
+    true = (OldClusterUUID =/= undefined),
+    true = (NewClusterUUID =/= undefined),
+
+    case OldClusterUUID =:= NewClusterUUID of
+        true ->
+            [NewCluster | OtherClusters];
+        false ->
+            OldCluster1 = misc:update_proplist(OldCluster,
+                                               [{deleted, true}]),
+            %% there can still be deleted cluster with the same uuid
+            add_new_cluster(NewCluster, [OldCluster1 | OtherClusters])
+    end.
+
 handle_remote_cluster_delete(Id, Req) ->
     do_handle_remote_cluster_delete(Id, Req, 10).
 
@@ -278,15 +326,22 @@ do_handle_remote_cluster_delete(_Id, _Req, _TriesLeft = 0) ->
     erlang:error(cas_retries_exceeded);
 do_handle_remote_cluster_delete(Id, Req, TriesLeft) ->
     ExistingClusters = get_remote_clusters(),
-    {MaybeThisCluster, OtherClusters} = lists:partition(fun (KV) ->
-                                                                lists:keyfind(name, 1, KV) =:= {name, Id}
-                                                        end, ExistingClusters),
+    {MaybeThisCluster, OtherClusters} =
+        lists:partition(fun (KV) ->
+                                lists:keyfind(name, 1, KV) =:= {name, Id} andalso
+                                    proplists:get_value(deleted, KV, false) =:= false
+                        end, ExistingClusters),
     case MaybeThisCluster of
         [] ->
             menelaus_util:reply_json(Req, <<"unknown remote cluster">>, 404);
-        _ ->
-            case cas_remote_clusters(ExistingClusters, OtherClusters) of
-                ok -> menelaus_util:reply_json(Req, ok);
-                _ -> do_handle_remote_cluster_delete(Id, Req, TriesLeft-1)
+        [ThisCluster] ->
+            DeletedCluster = misc:update_proplist(ThisCluster, [{deleted, true}]),
+            NewClusters = [DeletedCluster | OtherClusters],
+
+            case cas_remote_clusters(ExistingClusters, NewClusters) of
+                ok ->
+                    menelaus_util:reply_json(Req, ok);
+                _ ->
+                    do_handle_remote_cluster_delete(Id, Req, TriesLeft-1)
             end
     end.
