@@ -65,6 +65,7 @@ default() ->
     file:make_dir(RawLogDir),
 
     [{directory, path_config:component_path(data, "config")},
+     {index_aware_rebalance_disabled, true},
      {autocompaction, [{database_fragmentation_threshold, {30, undefined}},
                        {view_fragmentation_threshold, {30, undefined}}]},
      {cluster_compat_version, cluster_compat_mode:supported_compat_version()},

@@ -34,7 +34,7 @@
 -type rev_id() :: <<_:128>>.
 -type seq_no() :: non_neg_integer().
 -type rev() :: {seq_no(), rev_id()}.
--type rebalance_vbucket_state() :: passive | undefined.
+-type rebalance_vbucket_state() :: passive | undefined | paused.
 
 -type ext_bucket_name() :: bucket_name() | binary().
 %% ext vbucket id is vbucket id (potentially as binary) or <<"master">>

@@ -35,9 +35,9 @@
                 num_vbuckets :: non_neg_integer(),
                 use_replica_index :: boolean(),
                 master_db_watcher :: pid(),
-                ddocs,
+                ddocs :: set(),
                 wanted_states :: [missing | active | replica],
-                rebalance_states :: [passive | undefined],
+                rebalance_states :: [rebalance_vbucket_state()],
                 usable_vbuckets}).
 
 set_vbucket_states(Bucket, WantedStates, RebalanceStates) ->
@@ -83,6 +83,9 @@ fetch_ddocs(Bucket, Timeout) when is_list(Bucket) ->
 
 compute_index_states(WantedStates, RebalanceStates, ExistingVBuckets) ->
     AllVBs = lists:seq(0, erlang:length(WantedStates)-1),
+    Triples = lists:zip3(AllVBs,
+                         WantedStates,
+                         RebalanceStates),
     WantedPairs = lists:flatmap(
                     fun ({VBucket, WantedState, TmpState}) ->
                             case sets:is_element(VBucket, ExistingVBuckets) of
@@ -103,15 +106,23 @@ compute_index_states(WantedStates, RebalanceStates, ExistingVBuckets) ->
                                     []
                             end
                     end,
-                    lists:zip3(AllVBs,
-                               WantedStates,
-                               RebalanceStates)),
+                    Triples),
     Active = [VB || {VB, active} <- WantedPairs],
     Passive = [VB || {VB, passive} <- WantedPairs],
     Replica = [VB || {VB, replica} <- WantedPairs],
-    MainCleanup = (AllVBs -- Active) -- Passive,
+    AllMain = Active ++ Passive,
+    MainCleanup = AllVBs -- AllMain,
     ReplicaCleanup = ((AllVBs -- Replica) -- Active),
-    {Active, Passive, MainCleanup, Replica, ReplicaCleanup}.
+    PauseVBuckets = [VBucket
+                     || {VBucket, WantedState, TmpState} <- Triples,
+                        TmpState =:= paused,
+                        sets:is_element(VBucket, ExistingVBuckets),
+                        begin
+                            active = WantedState,
+                            true
+                        end],
+    UnpauseVBuckets = AllVBs -- PauseVBuckets,
+    {Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets}.
 
 get_usable_vbuckets_set(Bucket) ->
     PrefixLen = erlang:length(Bucket) + 1,
@@ -123,8 +134,12 @@ get_usable_vbuckets_set(Bucket) ->
 
 apply_vbucket_states(Bucket, DDocIds, WantedStates, RebalanceStates, UseReplicaIndex, ExistingVBuckets) ->
     SetName = list_to_binary(Bucket),
-    {Active, Passive, MainCleanup, Replica, ReplicaCleanup} = compute_index_states(WantedStates, RebalanceStates, ExistingVBuckets),
-    [apply_index_states(SetName, DDocId, Active, Passive, MainCleanup, Replica, ReplicaCleanup, UseReplicaIndex)
+    {Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets} =
+        compute_index_states(WantedStates, RebalanceStates, ExistingVBuckets),
+    [apply_index_states(SetName, DDocId,
+                        Active, Passive, MainCleanup, Replica, ReplicaCleanup,
+                        PauseVBuckets, UnpauseVBuckets,
+                        UseReplicaIndex)
      || DDocId <- DDocIds],
     ok.
 
@@ -208,7 +223,7 @@ handle_call({delete_vbucket, VBucket}, _From, #state{bucket = Bucket,
     [] = RebalanceStates,
     ?log_info("Deleting vbucket ~p from all indexes", [VBucket]),
     SetName = list_to_binary(Bucket),
-    [apply_index_states(SetName, DDocId, [], [], [VBucket], [], [VBucket], UseReplicaIndex)
+    [apply_index_states(SetName, DDocId, [], [], [VBucket], [], [VBucket], [], [], UseReplicaIndex)
      || DDocId <- sets:to_list(DDocsSet)],
     {reply, ok, State};
 handle_call({delete_vbucket, VBucket}, _From, #state{usable_vbuckets = UsableVBuckets,
@@ -330,9 +345,17 @@ maybe_define_group(DDocId, State) ->
     end.
 
 apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
-                   Replica, ReplicaCleanup, UseReplicaIndex) ->
+                   Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, UseReplicaIndex) ->
 
     try
+        case ns_config_ets_dup:unreliable_read_key(index_pausing_disabled, false) of
+            true ->
+                ok;
+            false ->
+                ok = ?csv_call(mark_partitions_indexable,
+                               [SetName, DDocId, UnpauseVBuckets])
+        end,
+
         %% this should go first because some of the replica vbuckets might
         %% need to be cleaned up from main index
         ok = ?csv_call(set_partition_states,
@@ -346,6 +369,14 @@ apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
                                [SetName, DDocId, ReplicaCleanup]);
             false ->
                 ok
+        end,
+
+        case ns_config_ets_dup:unreliable_read_key(index_pausing_disabled, false) of
+            true ->
+                ok;
+            false ->
+                ok = ?csv_call(mark_partitions_unindexable,
+                               [SetName, DDocId, PauseVBuckets])
         end
 
     catch

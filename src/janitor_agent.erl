@@ -33,6 +33,7 @@
 -record(state, {bucket_name :: bucket_name(),
                 rebalance_pid :: undefined | pid(),
                 rebalance_mref :: undefined | reference(),
+                rebalance_subprocesses = [] :: [{From :: term(), Worker :: pid()}],
                 last_applied_vbucket_states :: undefined | list(),
                 rebalance_only_vbucket_states :: list()}).
 
@@ -45,7 +46,12 @@
          bulk_set_vbucket_state/4,
          set_vbucket_state/7,
          get_src_dst_vbucket_replications/2,
-         get_src_dst_vbucket_replications/3]).
+         get_src_dst_vbucket_replications/3,
+         initiate_indexing/5,
+         wait_index_updated/5,
+         create_new_checkpoint/4,
+         get_replication_persistence_checkpoint_id/4,
+         wait_checkpoint_persisted/5]).
 
 -export([start_link/1, wait_for_memcached_new_style/4]).
 
@@ -283,7 +289,8 @@ delete_vbucket_copies(Bucket, RebalancerPid, Nodes, VBucket) ->
 
 do_delete_vbucket_new_style(Bucket, RebalancerPid, Nodes, VBucket) ->
     {Replies, BadNodes} = gen_server:multi_call(Nodes, server_name(Bucket),
-                                                {delete_vbucket, RebalancerPid, VBucket},
+                                                {if_rebalance, RebalancerPid,
+                                                 {delete_vbucket, VBucket}},
                                                 ?DELETE_VBUCKET_TIMEOUT),
     BadReplies = [R || {_, RV} = R <- Replies,
                        RV =/= ok],
@@ -389,8 +396,9 @@ set_vbucket_state(Bucket, Node, RebalancerPid, VBucket, VBucketState, VBucketReb
     case new_style_enabled() of
         true ->
             ok = gen_server:call(server_name(Bucket, Node),
-                                 {update_vbucket_state, RebalancerPid,
-                                  VBucket, VBucketState, VBucketRebalanceState, ReplicateFrom},
+                                 {if_rebalance, RebalancerPid,
+                                  {update_vbucket_state,
+                                   VBucket, VBucketState, VBucketRebalanceState, ReplicateFrom}},
                                 ?SET_VBUCKET_STATE_TIMEOUT);
         false ->
             bulk_set_vbucket_state(Bucket, RebalancerPid, VBucket, [{Node, VBucketState, VBucketRebalanceState, ReplicateFrom}])
@@ -414,6 +422,47 @@ get_src_dst_vbucket_replications(Bucket, Nodes, Timeout) ->
         false ->
             {lists:sort(ns_vbm_sup:replicators(Nodes, Bucket)), []}
     end.
+
+initiate_indexing(_Bucket, _Rebalancer, [] = _MaybeMaster, _ReplicaNodes, _VBucket) ->
+    ok;
+initiate_indexing(Bucket, Rebalancer, [NewMasterNode], _ReplicaNodes, _VBucket) ->
+    ?rebalance_info("~s: Doing initiate_indexing call for ~s", [Bucket, NewMasterNode]),
+    ok = gen_server:call(server_name(Bucket, NewMasterNode),
+                         {if_rebalance, Rebalancer, initiate_indexing},
+                         infinity).
+
+wait_index_updated(Bucket, Rebalancer, NewMasterNode, _ReplicaNodes, VBucket) ->
+    ?rebalance_info("~s: Doing wait_index_updated call for ~s (vbucket ~p)", [Bucket, NewMasterNode, VBucket]),
+    ok = gen_server:call(server_name(Bucket, NewMasterNode),
+                         {if_rebalance, Rebalancer,
+                          {wait_index_updated, VBucket}},
+                         infinity).
+
+
+%% returns checkpoint id which 100% contains all currently persisted
+%% docs. Normally it's persisted_checkpoint_id + 1 (assuming
+%% checkpoint after persisted one has some stuff persisted already)
+get_replication_persistence_checkpoint_id(Bucket, Rebalancer, MasterNode, VBucket) ->
+    ?rebalance_info("~s: Doing get_replication_persistence_checkpoint_id call for vbucket ~p on ~s", [Bucket, VBucket, MasterNode]),
+    RV = gen_server:call(server_name(Bucket, MasterNode),
+                         {if_rebalance, Rebalancer, {get_replication_persistence_checkpoint_id, VBucket}},
+                         infinity),
+    true = is_integer(RV),
+    RV.
+
+-spec create_new_checkpoint(bucket_name(), pid(), node(), vbucket_id()) -> {checkpoint_id(), checkpoint_id()}.
+create_new_checkpoint(Bucket, Rebalancer, MasterNode, VBucket) ->
+    ?rebalance_info("~s: Doing create_new_checkpoint call for vbucket ~p on ~s", [Bucket, VBucket, MasterNode]),
+    {_PersistedCheckpointId, _OpenCheckpointId} =
+        gen_server:call(server_name(Bucket, MasterNode),
+                        {if_rebalance, Rebalancer, {create_new_checkpoint, VBucket}},
+                        infinity).
+
+-spec wait_checkpoint_persisted(bucket_name(), pid(), node(), vbucket_id(), checkpoint_id()) -> ok.
+wait_checkpoint_persisted(Bucket, Rebalancer, Node, VBucket, WaitedCheckpointId) ->
+    ok = gen_server:call({server_name(Bucket), Node},
+                         {if_rebalance, Rebalancer, {wait_checkpoint_persisted, VBucket, WaitedCheckpointId}},
+                         infinity).
 
 server_name(Bucket, Node) ->
     {server_name(Bucket), Node}.
@@ -442,10 +491,16 @@ handle_call({prepare_rebalance, Pid}, _From,
     ns_vbm_sup:kill_all_local_children(BucketName),
     State1 = State#state{rebalance_only_vbucket_states = [undefined || _ <- State#state.rebalance_only_vbucket_states]},
     {reply, ok, set_rebalance_mref(Pid, State1)};
-handle_call({update_vbucket_state, Pid, _VBucket, _NormaState, _RebalanceState}, _From,
-            #state{rebalance_pid = RPid} = State) when Pid =/= RPid ->
-    {reply, wrong_rebalancer_pid, State};
-handle_call({update_vbucket_state, _Pid, VBucket, NormalState, RebalanceState, ReplicateFrom}, _From,
+handle_call({if_rebalance, RebalancerPid, Subcall},
+            From,
+            #state{rebalance_pid = RealRebalancerPid} = State) ->
+    case RealRebalancerPid =:= RebalancerPid of
+        true ->
+            handle_call(Subcall, From, State);
+        false ->
+            {reply, wrong_rebalancer_pid, State}
+    end;
+handle_call({update_vbucket_state, VBucket, NormalState, RebalanceState, ReplicateFrom}, _From,
             #state{bucket_name = BucketName,
                    last_applied_vbucket_states = WantedVBuckets,
                    rebalance_only_vbucket_states = RebalanceVBuckets} = State) ->
@@ -527,13 +582,52 @@ handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, _From, #state{
                          rebalance_only_vbucket_states = NewRebalance},
     State3 = set_rebalance_mref(undefined, State2),
     {reply, ok, pass_vbucket_states_to_set_view_manager(State3)};
-handle_call({delete_vbucket, RebalancerPid, VBucket}, _From, #state{bucket_name = BucketName,
-                                                                    rebalance_pid = RealRebalancerPid} = State) ->
-    case RebalancerPid =:= RealRebalancerPid of
+handle_call({delete_vbucket, VBucket}, _From, #state{bucket_name = BucketName} = State) ->
+    {reply, ok = ns_memcached:delete_vbucket(BucketName, VBucket), State};
+handle_call({wait_index_updated, VBucket}, From, #state{bucket_name = Bucket} = State) ->
+    State2 = spawn_rebalance_subprocess(
+               State,
+               From,
+               fun () ->
+                       wait_index_updated_on_master(Bucket, VBucket)
+               end),
+    {noreply, State2};
+handle_call(initiate_indexing, From, #state{bucket_name = Bucket} = State) ->
+    State2 = spawn_rebalance_subprocess(
+               State,
+               From,
+               fun () ->
+                       do_initiate_indexing(Bucket),
+                       ok
+               end),
+    {noreply, State2};
+handle_call({create_new_checkpoint, VBucket},
+            _From,
+            #state{bucket_name = Bucket} = State) ->
+    {ok, {PersistedCheckpointId, _}} = ns_memcached:get_vbucket_checkpoint_ids(Bucket, VBucket),
+    {ok, OpenCheckpointId} = ns_memcached:create_new_checkpoint(Bucket, VBucket),
+    {reply, {PersistedCheckpointId, OpenCheckpointId}, State};
+handle_call({wait_checkpoint_persisted, VBucket, CheckpointId},
+           From,
+           #state{bucket_name = Bucket} = State) ->
+    State2 = spawn_rebalance_subprocess(
+               State,
+               From,
+               fun () ->
+                       ok = do_wait_checkpoint_persisted(Bucket, VBucket, CheckpointId, 0)
+               end),
+    {noreply, State2};
+handle_call({get_replication_persistence_checkpoint_id, VBucket},
+            _From,
+            #state{bucket_name = Bucket} = State) ->
+    {ok, {PersistedCheckpointId, OpenCheckpointId}} = ns_memcached:get_vbucket_checkpoint_ids(Bucket, VBucket),
+    case PersistedCheckpointId + 1 < OpenCheckpointId of
         true ->
-            {reply, ok = ns_memcached:delete_vbucket(BucketName, VBucket), State};
+            {reply, PersistedCheckpointId + 1, State};
         false ->
-            {reply, wrong_rebalancer_pid, State}
+            {ok, NewOpenCheckpointId} = ns_memcached:create_new_checkpoint(Bucket, VBucket),
+            ?log_debug("After creating new checkpoint here's what we have: ~p", [{PersistedCheckpointId, OpenCheckpointId, NewOpenCheckpointId}]),
+            {reply, erlang:min(PersistedCheckpointId + 1, NewOpenCheckpointId - 1), State}
     end.
 
 handle_cast(_, _State) ->
@@ -547,6 +641,15 @@ handle_info({'DOWN', MRef, _, _, _}, #state{rebalance_mref = RMRef,
                                                           || _ <- WantedVBuckets]},
     State3 = set_rebalance_mref(undefined, State2),
     {noreply, pass_vbucket_states_to_set_view_manager(State3)};
+handle_info({subprocess_done, Pid, RV}, #state{rebalance_subprocesses = Subprocesses} = State) ->
+    ?log_debug("Got done message from subprocess: ~p (~p)", [Pid, RV]),
+    case lists:keyfind(Pid, 2, Subprocesses) of
+        false ->
+            {noreply, State};
+        {From, _} = Pair ->
+            gen_server:reply(From, RV),
+            {noreply, State#state{rebalance_subprocesses = Subprocesses -- [Pair]}}
+    end;
 handle_info(Info, State) ->
     ?log_debug("Ignoring unexpected message: ~p", [Info]),
     {noreply, State}.
@@ -575,7 +678,15 @@ set_rebalance_mref(Pid, State0) ->
         OldMRef ->
             erlang:demonitor(OldMRef, [flush])
     end,
-    State = State0#state{rebalance_pid = Pid},
+    [begin
+         ?log_debug("Killing rebalance-related subprocess: ~p", [P]),
+         erlang:unlink(P),
+         exit(P, shutdown),
+         misc:wait_for_process(P, infinity),
+         gen_server:reply(From, rebalance_aborted)
+     end || {From, P} <- State0#state.rebalance_subprocesses],
+    State = State0#state{rebalance_pid = Pid,
+                         rebalance_subprocesses = []},
     case Pid of
         undefined ->
             State#state{rebalance_mref = undefined};
@@ -587,3 +698,100 @@ update_list_nth(Index, List, Value) ->
     Tuple = list_to_tuple(List),
     Tuple2 = setelement(Index, Tuple, Value),
     tuple_to_list(Tuple2).
+
+iterate_ddocs(BinBucket, Body, DeletedDDoc) ->
+    {ok, DDocsSet} = capi_set_view_manager:fetch_ddocs(BinBucket, infinity),
+    DDocsList = sets:to_list(DDocsSet),
+    [try
+         Body(DDocId)
+     catch T:E ->
+             BT = erlang:get_stacktrace(),
+             HaveDDoc = try
+                            couch_set_view:get_group_pid(BinBucket, DDocId),
+                            true
+                        catch _:_ ->
+                                false
+                        end,
+             case HaveDDoc of
+                 true ->
+                     erlang:raise(T, E, BT);
+                 false ->
+                     ?log_debug("Got couch_set_view exception seemingly caused by ddoc deletion~n~p~n~p", [{T, E}, BT]),
+                     DeletedDDoc(DDocId)
+             end
+     end || DDocId <- DDocsList].
+
+spawn_rebalance_subprocess(#state{rebalance_subprocesses = Subprocesses} = State, From, Fun) ->
+    Parent = self(),
+    Pid = proc_lib:spawn_link(fun () ->
+                                      RV = Fun(),
+                                      Parent ! {subprocess_done, self(), RV}
+                              end),
+    State#state{rebalance_subprocesses = [{From, Pid} | Subprocesses]}.
+
+wait_index_updated_on_master(Bucket, VBucket) ->
+    BinBucket = list_to_binary(Bucket),
+    Refs0 = iterate_ddocs(
+              BinBucket,
+              fun (DDocId) ->
+                      case DDocId of
+                          <<"_design/dev_", _/binary>> ->
+                              %% we don't need to wait-for/update dev indexes at all
+                              undefined;
+                          _ ->
+                              RV = couch_set_view:monitor_partition_update(BinBucket, DDocId, VBucket),
+                              couch_set_view:trigger_update(BinBucket, DDocId, 0),
+                              RV
+                      end
+              end,
+              fun (_DDocId) ->
+                      %% NOTE: Ref may have been created but
+                      %% that's harmless because this function
+                      %% is being called on it's own process
+                      undefined
+              end),
+    Refs = [R || R <- Refs0,
+                 R =/= undefined],
+    ?log_debug("References to wait: ~p (~p, ~p)", [Refs, Bucket, VBucket]),
+    [receive
+         {Ref, Msg} -> % Ref is bound
+             case Msg of
+                 updated -> ok;
+                 _ ->
+                     ?log_debug("Got unexpected message from ddoc monitoring. Assuming that's shutdown: ~p", [Msg])
+             end
+     end
+     || Ref <- Refs],
+    ?log_debug("Got my stuff"),
+    ok.
+
+do_initiate_indexing(Bucket) ->
+    BinBucket = list_to_binary(Bucket),
+    iterate_ddocs(BinBucket,
+                  fun (DDocId) ->
+                          case DDocId of
+                              <<"_design/dev_", _/binary>> ->
+                                  ok;
+                              _ ->
+                                  couch_set_view:trigger_update(BinBucket, DDocId, 0)
+                          end
+                  end,
+                  fun (_DDocId) ->
+                          ok
+                  end),
+    ok.
+
+do_wait_checkpoint_persisted(Bucket, VBucket, WaitedCheckpointId, TriesCounter) ->
+    {ok, {CheckpointId, _}} = ns_memcached:get_vbucket_checkpoint_ids(Bucket, VBucket),
+    case CheckpointId < WaitedCheckpointId of
+        true ->
+            ?log_debug("Waiting persisted checkpoint ~p on ~p, now ~p", [WaitedCheckpointId, VBucket, CheckpointId]),
+            timer:sleep(if
+                            TriesCounter < 5 -> 10;
+                            TriesCounter < 10 -> 30;
+                            true -> 100
+                        end),
+            do_wait_checkpoint_persisted(Bucket, VBucket, WaitedCheckpointId, TriesCounter+1);
+        false ->
+            ok
+    end.
