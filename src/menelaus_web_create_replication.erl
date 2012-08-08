@@ -123,6 +123,22 @@ check_bucket_uuid(BucketConfig, RemoteUUID) ->
             ok
     end.
 
+check_no_duplicated_replication(ClusterUUID, FromBucket, ToBucket) ->
+    ReplicationId = replication_id(ClusterUUID, FromBucket, ToBucket),
+    {ok, Db} = couch_db:open_int(<<"_replicator">>, []),
+
+    try
+        case couch_db:open_doc(Db, ReplicationId) of
+            {ok, _Doc} ->
+                [{<<"_">>,
+                  <<"Replication to the same remote cluster and bucket already exists">>}];
+            {not_found, _} ->
+                 ok
+        end
+    after
+        couch_db:close(Db)
+    end.
+
 validate_new_replication_params_check_from_bucket(FromBucket, ToCluster, ToBucket,
                                                   ReplicationType, Buckets) ->
     MaybeBucketError = check_from_bucket(FromBucket, Buckets),
@@ -133,9 +149,16 @@ validate_new_replication_params_check_from_bucket(FromBucket, ToCluster, ToBucke
                                     cluster_uuid=ClusterUUID}} ->
                     case check_bucket_uuid(BucketConfig, BucketUUID) of
                         ok ->
-                            {ok, build_replication_doc(FromBucket,
-                                                       ClusterUUID,
-                                                       ToBucket, ReplicationType)};
+                            case check_no_duplicated_replication(ClusterUUID,
+                                                                 FromBucket, ToBucket) of
+                                ok ->
+                                    {ok, build_replication_doc(FromBucket,
+                                                               ClusterUUID,
+                                                               ToBucket,
+                                                               ReplicationType)};
+                                Errors ->
+                                    {error, Errors}
+                            end;
                         Errors ->
                             {error, Errors}
                     end;
