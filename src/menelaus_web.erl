@@ -836,6 +836,7 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
       ]}},
       {replication, {struct, [
         {createURI, <<"/controller/createReplication?uuid=", UUID/binary>>},
+        {validateURI, <<"/controller/createReplication?just_validate=1">>},
         {replicatorDBURI, <<"/couchBase/_replicator">>},
         {infosURI, <<"/couchBase/_replicator/_design/_replicator_info/_view/infos?group_level=1">>}
       ]}},

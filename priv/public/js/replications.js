@@ -191,21 +191,17 @@ var ReplicationForm = mkClass({
     e.preventDefault();
 
     var self = this;
-    var validateURI = ReplicationsModel.createReplicationURICell.value;
-    if (!validateURI) {
+    var URI = ReplicationsModel.createReplicationURICell.value;
+    if (!URI) {
       return;
     }
-    var spinner = overlayWithSpinner(self.dialog, null, "Verifying...");
+    var spinner = overlayWithSpinner(self.dialog, null, "Creating replication...");
     var formValues = serializeForm(self.form);
     self.showErrors(false);
-    jsonPostWithErrors(validateURI, formValues, function (data, status, errorObject) {
+    jsonPostWithErrors(URI, formValues, function (data, status, errorObject) {
       spinner.remove();
       if (status == 'success') {
-        var createSpinner = overlayWithSpinner(self.dialog, null, "Creating replication...");
-        couchReq('POST', data.database, data.document, function () {
-          createSpinner.remove();
-          self.close();
-        });
+        self.close();
       } else {
         self.showErrors(errorObject || data);
       }

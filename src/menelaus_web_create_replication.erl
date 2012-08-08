@@ -37,11 +37,19 @@ handle_create_replication(Req) ->
             menelaus_util:reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400);
         {error, Status, Errors} ->
             menelaus_util:reply_json(Req, {struct, [{errors, {struct, Errors}}]}, Status);
-        {ok, ReplicationFields} ->
-            CapiURL = capi_utils:capi_url(node(), "/_replicator", menelaus_util:local_addr(Req)),
-            menelaus_util:reply_json(Req, {struct, [{database, list_to_binary(CapiURL)},
-                                                    {document, {struct, ReplicationFields}}]},
-                                     200)
+        {ok, ReplicationDoc} ->
+            case proplists:get_value("just_validate", Req:parse_qs()) =:= "1" of
+                true ->
+                    ok;
+                false ->
+                    ok = xdc_rdoc_replication_srv:update_doc(ReplicationDoc)
+            end,
+
+            CapiURL = capi_utils:capi_url(node(), "/_replicator",
+                                          menelaus_util:local_addr(Req)),
+            menelaus_util:reply_json(Req,
+                                     {struct, [{database, list_to_binary(CapiURL)},
+                                               {id, ReplicationDoc#doc.id}]})
     end.
 
 get_parameter(Name, Params, HumanName) ->
@@ -152,11 +160,17 @@ validate_new_replication_params_check_from_bucket(FromBucket, ToCluster, ToBucke
 build_replication_doc(FromBucket, ClusterUUID, ToBucket, ReplicationType) ->
     Reference = remote_clusters_info:remote_bucket_reference(ClusterUUID, ToBucket),
 
-    [{type, <<"xdc">>},
-     {source, list_to_binary(FromBucket)},
-     {target, Reference},
-     {targetUUID, ClusterUUID},
-     {continuous, case ReplicationType of
-                      continuous -> true;
-                      _ -> false
-                  end}].
+    Body =
+        {[{type, <<"xdc">>},
+          {source, list_to_binary(FromBucket)},
+          {target, Reference},
+          {targetUUID, ClusterUUID},
+          {continuous, case ReplicationType of
+                           continuous -> true;
+                           _ -> false
+                       end}]},
+    #doc{id=replication_id(ClusterUUID, FromBucket, ToBucket),
+         body=Body}.
+
+replication_id(ClusterUUID, FromBucket, ToBucket) ->
+    iolist_to_binary([ClusterUUID, $/, FromBucket, $/, ToBucket]).
