@@ -791,7 +791,7 @@ update_with_rev(Bucket, VBucket, Id, Value, Rev, Deleted, LocalCAS) ->
              LocalCAS},
             ?TIMEOUT_HEAVY).
 
--spec create_new_checkpoint(any(), any()) ->
+-spec create_new_checkpoint(bucket_name(), vbucket_id()) ->
     {ok, Checkpoint::integer()} | mc_error().
 create_new_checkpoint(Bucket, VBucket) ->
     do_call(server(Bucket),
