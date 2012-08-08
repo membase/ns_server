@@ -70,8 +70,10 @@ build_replicas_main(Bucket, VBucket, SrcNode, ReplicateIntoNodes, JustBackfillNo
         _ -> ok
     end,
 
-    StopEarlyReplicators = [spawn_replica_builder(Bucket, VBucket, SrcNode, DNode) || DNode <- JustBackfillNodes],
-    ContinuousReplicators = [spawn_replica_builder(Bucket, VBucket, SrcNode, DNode) || DNode <- ReplicateIntoNodes],
+    StopEarlyReplicators = [ns_replicas_builder_utils:spawn_replica_builder(Bucket, VBucket, SrcNode, DNode)
+                            || DNode <- JustBackfillNodes],
+    ContinuousReplicators = [ns_replicas_builder_utils:spawn_replica_builder(Bucket, VBucket, SrcNode, DNode)
+                             || DNode <- ReplicateIntoNodes],
     Replicators = StopEarlyReplicators ++ ContinuousReplicators,
 
     misc:try_with_maybe_ignorant_after(
@@ -114,7 +116,7 @@ build_replicas_main(Bucket, VBucket, SrcNode, ReplicateIntoNodes, JustBackfillNo
                         misc:sync_shutdown_many_i_am_trapping_exits(ContinuousReplicators)
                 end,
                 fun () ->
-                        kill_tap_names(Bucket, VBucket, SrcNode, JustBackfillNodes ++ ReplicateIntoNodes)
+                        ns_replicas_builder_utils:kill_tap_names(Bucket, VBucket, SrcNode, JustBackfillNodes ++ ReplicateIntoNodes)
                 end)
       end),
     receive
@@ -127,79 +129,28 @@ build_replicas_main(Bucket, VBucket, SrcNode, ReplicateIntoNodes, JustBackfillNo
 
 
 
-tap_name(VBucket, _SrcNode, DstNode) ->
-    lists:flatten(io_lib:format("building_~p_~p", [VBucket, DstNode])).
+observe_wait_all_done(Bucket, VBucket, SrcNode, DstNodes, Sleeper) ->
+    TapNames = sets:from_list(
+                 [iolist_to_binary(ns_replicas_builder_utils:tap_name(VBucket, SrcNode, DN))
+                  || DN <- DstNodes]),
+    observe_wait_all_done_old_style_loop(Bucket, SrcNode, Sleeper, TapNames, 0),
+    wait_checkpoint_opened(Bucket, VBucket, DstNodes, Sleeper, 0).
 
--include("mc_constants.hrl").
--include("mc_entry.hrl").
-
-kill_a_bunch_of_tap_names(Bucket, Node, TapNames) ->
-    Config = ns_config:get(),
-    User = ns_config:search_node_prop(Node, Config, memcached, admin_user),
-    Pass = ns_config:search_node_prop(Node, Config, memcached, admin_pass),
-    McdPair = {Host, Port} = ns_memcached:host_port(Node),
-    {ok, Sock} = gen_tcp:connect(Host, Port, [binary,
-                                              {packet, 0},
-                                              {active, false},
-                                              {nodelay, true},
-                                              {delay_send, true}]),
-    UserBin = mc_binary:bin(User),
-    PassBin = mc_binary:bin(Pass),
-    SenderPid = spawn_link(fun () ->
-                                   ok = mc_binary:send(Sock, req, #mc_header{opcode = ?CMD_SASL_AUTH},
-                                                       #mc_entry{key = <<"PLAIN">>,
-                                                                 data = <<UserBin/binary, 0:8,
-                                                                          UserBin/binary, 0:8,
-                                                                          PassBin/binary, 0:8>>}),
-                                   ok = mc_binary:send(Sock, req, #mc_header{opcode = ?CMD_SELECT_BUCKET},
-                                                       #mc_entry{key = iolist_to_binary(Bucket)}),
-                                   [ok = mc_binary:send(Sock, req, #mc_header{opcode = ?CMD_DEREGISTER_TAP_CLIENT}, #mc_entry{key = TapName})
-                                    || TapName <- TapNames]
-                           end),
-    try
-        {ok, #mc_header{status = ?SUCCESS}, _} = mc_binary:recv(Sock, res, 50000), % CMD_SASL_AUTH
-        {ok, #mc_header{status = ?SUCCESS}, _} = mc_binary:recv(Sock, res, 50000), % CMD_SELECT_BUCKET
-        [{ok, #mc_header{status = ?SUCCESS}, _} = mc_binary:recv(Sock, res, 50000) || _TapName <- TapNames]
-    after
-        erlang:unlink(SenderPid),
-        erlang:exit(SenderPid, kill),
-        misc:wait_for_process(SenderPid, infinity)
-    end,
-    ?log_info("Killed the following tap names on ~p: ~p", [Node, TapNames]),
-    ok = gen_tcp:close(Sock),
-    [master_activity_events:note_deregister_tap_name(Bucket, McdPair, AName) || AName <- TapNames],
-    receive
-        {'EXIT', SenderPid, Reason} ->
-            normal = Reason
-    after 0 ->
-            ok
-    end,
-    ok.
-
-kill_tap_names(Bucket, VBucket, SrcNode, DstNodes) ->
-    kill_a_bunch_of_tap_names(Bucket, SrcNode,
-                              [iolist_to_binary([<<"replication_">>, tap_name(VBucket, SrcNode, DNode)]) || DNode <- DstNodes]).
-
-spawn_replica_builder(Bucket, VBucket, SrcNode, DstNode) ->
-    {User, Pass} = ns_bucket:credentials(Bucket),
-    Opts = [{vbuckets, [VBucket]},
-            {takeover, false},
-            {suffix, tap_name(VBucket, SrcNode, DstNode)},
-            {username, User},
-            {password, Pass}],
-    case ebucketmigrator_srv:start_link(DstNode,
-                                        ns_memcached:host_port(SrcNode),
-                                        ns_memcached:host_port(DstNode),
-                                        Opts) of
-        {ok, Pid} ->
-            ?log_debug("Replica building ebucketmigrator for vbucket ~p into ~p is ~p", [VBucket, DstNode, Pid]),
-            Pid;
-        Error ->
-            ?log_debug("Failed to spawn ebucketmigrator_srv for replica building: ~p",
-                       [{VBucket, SrcNode, DstNode}]),
-            spawn_link(fun () ->
-                               exit({start_link_failed, VBucket, SrcNode, DstNode, Error})
-                       end)
+observe_wait_all_done_old_style_loop(Bucket, SrcNode, Sleeper, TapNames, SleepsSoFar) ->
+    case sets:size(TapNames) of
+        0 ->
+            ok;
+        _ ->
+            if SleepsSoFar > 0 ->
+                    system_stats_collector:increment_counter(replicas_builder_backfill_sleeps, 1),
+                    Sleeper(SleepsSoFar);
+               true ->
+                    ok
+            end,
+            {ok, PList} = ns_memcached:stats(SrcNode, Bucket, <<"tap">>),
+            DoneTaps = extract_complete_taps(PList, TapNames),
+            NewTapNames = sets:subtract(TapNames, DoneTaps),
+            observe_wait_all_done_old_style_loop(Bucket, SrcNode, Sleeper, NewTapNames, SleepsSoFar+1)
     end.
 
 -spec filter_true_producers(list(), set(), binary()) -> [binary()].
@@ -216,28 +167,6 @@ filter_true_producers(PList, TapNamesSet, StatName) ->
 
 extract_complete_taps(PList, TapNames) ->
     sets:from_list(filter_true_producers(PList, TapNames, <<"backfill_completed">>)).
-
-observe_wait_all_done(Bucket, VBucket, SrcNode, DstNodes, Sleeper) ->
-    TapNames = sets:from_list([iolist_to_binary(tap_name(VBucket, SrcNode, DN)) || DN <- DstNodes]),
-    observe_wait_all_done_tail(Bucket, SrcNode, Sleeper, TapNames, 0),
-    wait_checkpoint_opened(Bucket, VBucket, DstNodes, Sleeper, 0).
-
-observe_wait_all_done_tail(Bucket, SrcNode, Sleeper, TapNames, SleepsSoFar) ->
-    case sets:size(TapNames) of
-        0 ->
-            ok;
-        _ ->
-            if SleepsSoFar > 0 ->
-                    system_stats_collector:increment_counter(replicas_builder_backfill_sleeps, 1),
-                    Sleeper(SleepsSoFar);
-               true ->
-                    ok
-            end,
-            {ok, PList} = ns_memcached:stats(SrcNode, Bucket, <<"tap">>),
-            DoneTaps = extract_complete_taps(PList, TapNames),
-            NewTapNames = sets:subtract(TapNames, DoneTaps),
-            observe_wait_all_done_tail(Bucket, SrcNode, Sleeper, NewTapNames, SleepsSoFar+1)
-    end.
 
 %% this makes sure all nodes have open checkpoint and that they all
 %% have same open checkpoint
