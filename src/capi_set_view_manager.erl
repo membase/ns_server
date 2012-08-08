@@ -52,6 +52,7 @@ fetch_full_ddocs(Bucket) ->
                   end,
     DDocs.
 
+-spec fetch_ddocs(bucket_name() | binary(), infinity | non_neg_integer()) -> {ok, set()}.
 fetch_ddocs(Bucket, Timeout) when is_binary(Bucket) ->
     fetch_ddocs(binary_to_list(Bucket), Timeout);
 fetch_ddocs(Bucket, Timeout) when is_list(Bucket) ->
@@ -425,6 +426,7 @@ handle_mc_couch_event(_, _) ->
     ok.
 
 
+-spec get_design_docs(bucket_name()) -> set().
 get_design_docs(Bucket) ->
     DDocIds = lists:map(fun (#doc{id=DDocId}) ->
                                 DDocId
