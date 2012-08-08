@@ -847,9 +847,9 @@ var ViewsSection = {
       if (builder) {
         var url = builder(intPageVal, subset);
         var text = url.substring(url.indexOf('?'));
-        ViewsFilter.filtersUrl.attr('href', escapeHTML(url));
+        ViewsFilter.filtersUrl.attr('href', url);
         ViewsFilter.filtersUrl.text(decodeURIComponent(text));
-        SpatialFilter.filtersUrl.attr('href', escapeHTML(url));
+        SpatialFilter.filtersUrl.attr('href', url);
         SpatialFilter.filtersUrl.text(decodeURIComponent(text));
       }
     }, DAL.cells.mode, self.modeTabs, SpatialFilter.rawFilterParamsCell,
