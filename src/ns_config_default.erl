@@ -60,6 +60,10 @@ default() ->
                    undefined -> global
                end,
 
+    RawLogDir = path_config:component_path(data, "log"),
+    filelib:ensure_dir(RawLogDir),
+    file:make_dir(RawLogDir),
+
     [{directory, path_config:component_path(data, "config")},
      {autocompaction, [{database_fragmentation_threshold, {30, undefined}},
                        {view_fragmentation_threshold, {30, undefined}}]},
@@ -133,6 +137,13 @@ default() ->
           [{engine,
             path_config:component_path(lib, "memcached/default_engine.so")},
            {static_config_string, "vb0=true"}]}]},
+       {log_path, path_config:component_path(data, "log")},
+       %% Prefix of the log files within the log path that should be rotated.
+       {log_prefix, "memcached.log"},
+       %% Number of recent log files to retain.
+       {log_generations, 10},
+       %% Milliseconds between log rotation runs.
+       {log_rotation_period, 900000},
        {verbosity, ""}]},
 
      {memory_quota, InitQuota},
@@ -179,6 +190,10 @@ default() ->
        },
        {memcached, path_config:component_path(bin, "memcached"),
         ["-X", path_config:component_path(lib, "memcached/stdin_term_handler.so"),
+         "-X", {path_config:component_path(lib,
+                                           "memcached/file_logger.so" ++
+                                               ",filename=~s/~s"),
+                [log_path, log_prefix]},
          "-l", {"0.0.0.0:~B,0.0.0.0:~B:1000", [port, dedicated_port]},
          "-p", {"~B", [port]},
          "-E", path_config:component_path(lib, "memcached/bucket_engine.so"),
