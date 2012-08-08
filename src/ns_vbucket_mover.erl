@@ -92,12 +92,54 @@ run_code(MainMoverPid, Fun) ->
 code_change(_OldVsn, _Extra, State) ->
     {ok, State}.
 
+assert_dict_mapping(Dict, E1, E2) ->
+    case dict:find(E1, Dict) of
+        error ->
+            dict:store(E1, E2, Dict);
+        {ok, E2} -> % note: E2 is bound
+            Dict;
+        {ok, _SomethingElse} ->
+            false
+    end.
+
+is_swap_rebalance(MapTriples, OldMap, NewMap) ->
+    OldNodes = lists:usort(lists:append(OldMap)) -- [undefined],
+    NewNodes = lists:usort(lists:append(NewMap)) -- [undefined],
+    AddedNodes = ordsets:subtract(NewNodes, OldNodes),
+    RemovedNodes = ordsets:subtract(OldNodes, NewNodes),
+
+    try
+        lists:foldl(
+          fun ({_VB, OldChain, NewChain}, Dict0) ->
+                  Changed = [Pair || {From, To} = Pair <- lists:zip(OldChain, NewChain),
+                                     From =/= To,
+                                     From =/= undefined,
+                                     To =/= undefined],
+                  lists:foldl(
+                    fun ({From, To}, Dict) ->
+                            ordsets:is_element(From, RemovedNodes) orelse erlang:throw(not_swap),
+                            ordsets:is_element(To, AddedNodes) orelse erlang:throw(not_swap),
+                            Dict2 = assert_dict_mapping(Dict, From, To),
+                            Dict2 =/= false orelse erlang:throw(not_swap),
+                            Dict3 = assert_dict_mapping(Dict2, To, From),
+                            Dict3 =/= false orelse erlang:throw(not_swap),
+                            Dict3
+                    end, Dict0, Changed)
+          end, dict:new(), MapTriples),
+        true
+    catch throw:not_swap ->
+            false
+    end.
+
 init({Bucket, OldMap, NewMap, ProgressCallback}) ->
     erlang:put(i_am_master_mover, true),
     erlang:put(bucket_name, Bucket),
     erlang:put(child_processes, []),
 
     %% Dictionary mapping old node to vbucket and new node
+    MapTriples = lists:zip3(lists:seq(0, length(OldMap) - 1),
+                            OldMap,
+                            NewMap),
     {MoveDict, TrivialMoves} =
         lists:foldl(fun ({V, [M1|_] = C1, C2}, {D, TrivialMoves}) ->
                             if C1 =:= C2 ->
@@ -106,11 +148,16 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
                                     {dict:append(M1, {V, C1, C2}, D), TrivialMoves}
                             end
                     end, {dict:new(), 0},
-                    lists:zip3(lists:seq(0, length(OldMap) - 1), OldMap,
-                               NewMap)),
+                    MapTriples),
     ?rebalance_info("The following count of vbuckets do not need to be moved at all: ~p", [TrivialMoves]),
     ?rebalance_info("The following moves are planned:~n~p", [dict:to_list(MoveDict)]),
     Movers = dict:map(fun (_, _) -> 0 end, MoveDict),
+    case is_swap_rebalance(MapTriples, OldMap, NewMap) of
+        true ->
+            ale:info(?USER_LOGGER, "Bucket ~p rebalance appears to be swap rebalance", [Bucket]);
+        false ->
+            ale:info(?USER_LOGGER, "Bucket ~p rebalance does not seem to be swap rebalance", [Bucket])
+    end,
     self() ! spawn_initial,
     process_flag(trap_exit, true),
     Self = self(),
