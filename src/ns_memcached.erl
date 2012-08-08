@@ -108,6 +108,7 @@
          get_meta/3,
          update_with_rev/7,
          connect_and_send_isasl_refresh/0,
+         get_vbucket_checkpoint_ids/2,
          create_new_checkpoint/2,
          eval/2]).
 
@@ -517,6 +518,24 @@ do_handle_call({eval, Fn, Ref}, _From, #state{sock=Sock} = State) ->
             {compromised_reply,
              {thrown, Ref, T, E, erlang:get_stacktrace()}, State}
     end;
+do_handle_call({get_vbucket_checkpoint_ids, VBucketId}, _From, State) ->
+    Res = mc_binary:quick_stats(
+            State#state.sock, iolist_to_binary([<<"checkpoint ">>, integer_to_list(VBucketId)]),
+            fun (K, V, {PersistedAcc, OpenAcc} = Acc) ->
+                    case misc:is_binary_ends_with(K, <<":persisted_checkpoint_id">>) of
+                        true ->
+                            {list_to_integer(binary_to_list(V)), OpenAcc};
+                        _->
+                            case misc:is_binary_ends_with(K, <<":open_checkpoint_id">>) of
+                                true ->
+                                    {PersistedAcc, list_to_integer(binary_to_list(V))};
+                                _ ->
+                                    Acc
+                            end
+                    end
+            end,
+            {undefined, undefined}),
+    {reply, Res, State};
 do_handle_call(_, _From, State) ->
     {reply, unhandled, State}.
 
@@ -986,6 +1005,10 @@ get_vbucket_open_checkpoint(Nodes, Bucket, VBucketId) ->
                  end,
          {N, Value}
      end || N <- Nodes].
+
+-spec get_vbucket_checkpoint_ids(bucket_name(), vbucket_id()) -> {ok, {checkpoint_id(), checkpoint_id()}}.
+get_vbucket_checkpoint_ids(Bucket, VBucketId) ->
+    do_call(server(Bucket), {get_vbucket_checkpoint_ids, VBucketId}, ?TIMEOUT).
 
 connect_and_send_isasl_refresh() ->
     case connect(1) of
