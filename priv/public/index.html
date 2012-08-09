@@ -486,7 +486,7 @@
               <!-- {% $.each(rows, function () { %} -->
               <tr class="{%= this.bucketTypeName.toLowerCase() %}">
                 <td class="bucket_name" colspan="2">
-                  <a class="disable-if-stale" href="#visitBucket={%=h(this.name)%}" title="Show Bucket info"><span class="expander closed"></span></a>
+                  <a class="disable-if-stale" href="#visitBucket={%= h(encodeURIComponent(this.name)) %}" title="Show Bucket info"><span class="expander closed"></span></a>
                   <a class="disable-if-stale" title="View Analytics for {%= h(this.name) %}" href="#sec=analytics&statsBucket={%= h(encodeURIComponent(this.uri)) %}">{%= h(this.name) %}</a>
                 </td>
                 <td>
@@ -536,13 +536,16 @@
                   <div>
                     Replicas: <span>{%= replicaNumber != 0 ? V.count(replicaNumber, 'replica copy') : 'disabled' %}</span>
                   </div>
+                  <div>
+                    Compaction: <span class="bucket_progress_container" data-name="{%= name %}">Not active</span>
+                  </div>
                 {% } %}
-                <div>
-                  Compaction: <span id="bucket_progress_container_{%= h(name) %}">Not active</span>
-                </div>
                 <div class="last">
                   <a class="inner_btn" href="#editBucket={%= h(encodeURIComponent(uri)) %}">Edit</a>
-                  <button class="inner_btn compact_btn" id="compact_bucket_{%= h(name) %}"><span>Compact</span></button>
+                  {% if (bucketType == 'membase') { %}
+                    <button class="inner_btn compact_btn" data-name="{%= name %}"><span>Compact</span></button>
+                    <button class="inner_btn cancel_compact_btn" data-name="{%= name %}" style="display: none;"><span>Cancel</span></button>
+                  {% } %}
                 </div>
               </div>
               <div class="side side_1"></div>

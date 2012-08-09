@@ -10,7 +10,7 @@ ul ul {margin-left:2em}
 :focus {outline:0;}
 ::-moz-focus-inner {border:0;}
 button::-moz-focus-inner {padding:0;}
-button {font-family:Helvetica, Verdana;font-size:12px;}
+button {font-family:Helvetica, Verdana;font-size:12px;padding:0;}
 ins {text-decoration:none;}
 del {text-decoration:line-through;}
 /* tables still need 'cellspacing="0"' in the markup */
@@ -797,8 +797,8 @@ ul.tabs .badge_display .badge {display:block;}
 .list .settings-placeholder td > .pad {width:685px;overflow:hidden;}
 .list .settings-placeholder td .pad .pad {padding:10px 10px 10px 4px !important;min-height:52px;}
 .list .settings-placeholder .inner_btn {float:right;display:block;width:65px;height:21px;border:0;margin:5px 0 0 5px;color:#000;background:url(../images/edit-button.png) 0 0 no-repeat;line-height:20px;text-align:center;text-decoration:none;cursor:pointer;}
-.list .settings-placeholder button.inner_btn {line-height:18px;}
 .list .settings-placeholder .edit_btn {margin:20px 10px 0 0;}
+.compact_btn span, .cancel_compact_btn span {display:block;line-height:20px;height:21px;}
 
 .list .keycol {max-width:300px}
 
@@ -838,7 +838,7 @@ ul.tabs .badge_display .badge {display:block;}
 .properties_table tr td {text-align:left !important; vertical-align:top !important; color:#444245;background:none !important; border:0px !important;height:auto;line-height:1em}
 .gong_rb .pad > div > span {color: #7C7D7F;}
 .gong_rb .pad > div {width:23%;padding:1%;float:left;}
-.gong_rb .pad .last {overflow:hidden;}
+.gong_rb .pad .last {overflow:hidden;width:auto;float:none;}
 .list table.label {float:left;margin:2px 0 0;}
 .list table.label td:first-child {width:175px;color:#444245; text-align:right;}
 

@@ -620,6 +620,7 @@ var BucketsSection = {
       valueTransformer: function (bucketInfo, bucketSettings) {
         var rv = _.extend({}, bucketInfo, bucketSettings);
         rv.storageInfoRelevant = (rv.bucketType == 'membase');
+
         return rv;
       },
       listCell: bucketsListCell,
@@ -729,17 +730,35 @@ var BucketsSection = {
 
     $('.compact_btn').live('click', function (e) {
       if (!$(this).hasClass('disabled')) {
-        BucketsSection.compactBucket($(this).attr('id').split('compact_bucket_')[1]);
+        $(this).addClass('disabled');
+        BucketsSection.compactBucket($(this).attr('data-name'));
+      }
+    });
+    $('.cancel_compact_btn').live('click', function (e) {
+      if (!$(this).hasClass('disabled')) {
+        $(this).addClass('disabled');
+        BucketsSection.cancelCompactBucket($(this).attr('data-name'));
       }
     });
   },
   renderBucketDetails: function (item) {
     return this.settingsWidget.renderItemDetails(item);
   },
-  showCompactControl: function (bucketName, text, disabled) {
-    $($i('bucket_progress_container_' + bucketName)).text(text);
-    $($i('compact_bucket_' + bucketName))[disabled ? 'addClass' : 'removeClass']('disabled');
+  showCompactControl: function (bucketName, text, showCancel, enableCancel, enableCompact) {
+    var compactBucket = $('.compact_btn[data-name="' + bucketName + '"]');
+    var cancelCompactBucket = $('.cancel_compact_btn[data-name="' + bucketName + '"]');
+
+    $('.bucket_progress_container[data-name="'+ bucketName +'"]').text(text);
+    compactBucket[showCancel ? 'hide' : 'show']();
+    cancelCompactBucket[showCancel ? 'show' : 'hide']();
+    if (enableCompact) {
+      compactBucket.removeClass('disabled');
+    }
+    if (enableCancel) {
+      cancelCompactBucket.removeClass('disabled');
+    }
   },
+  stopRenderBucket: {},
   renderTasks: function (tasks) {
     var self = BucketsSection;
     var bucketsTasks = _.filter(tasks, function (task) { return task.status == 'running' && task.type == 'bucket_compaction' });
@@ -747,14 +766,14 @@ var BucketsSection = {
 
     if (self.previousNames) {
       _.each(_.difference(self.previousNames, currentNames), function (bucketName) {
-        self.showCompactControl(bucketName, 'Not active');
+        self.showCompactControl(bucketName, 'Not active', false, false, true);
       });
     }
 
     self.previousNames = currentNames;
 
     _.each(bucketsTasks, function (task) {
-      self.showCompactControl(task.bucket, task.progress + '%', true);
+      self.showCompactControl(task.bucket, task.progress + '%', true, true, true);
     });
 
     if (!bucketsTasks.length) {
@@ -783,6 +802,25 @@ var BucketsSection = {
   findBucket: function (uri) {
     return this.withBucket(uri, function (r) {return r;});
   },
+  getBucketTask: function (name) {
+    var tasks;
+    DAL.cells.tasksProgressCell.getValue(function (value) {
+      tasks = value;
+    });
+    return _.filter(tasks, function (task) {
+      return task.status == 'running' &&
+             task.type == 'bucket_compaction' &&
+             task.bucket == name;
+    })[0];
+  },
+  cancelCompactBucket: function (name) {
+    var self = this;
+    bucketTask = self.getBucketTask(name);
+    if (!bucketTask) {
+      return;
+    }
+    $.post(bucketTask.cancelURI);
+  },
   compactBucket: function (name) {
     var self = this;
     DAL.cells.bucketsListCell.getValue(function (buckets) {
@@ -792,8 +830,16 @@ var BucketsSection = {
       if (!currentBucket) {
         return;
       }
-      self.showCompactControl(currentBucket.name, 'Starting...', true);
-      $.post(currentBucket.controllers.compactAll, function () {DAL.cells.tasksProgressCell.invalidate()});
+
+      RecentlyCompacted.instance().registerAsTriggered(currentBucket.controllers.compactAll, function () {
+        var bucketTask = self.getBucketTask(name);
+        if (bucketTask) {
+          return
+        }
+        self.showCompactControl(name, 'Not active', false, true, true);
+      });
+
+      $.post(currentBucket.controllers.compactAll);
     });
   },
   showBucket: function (uri) {
