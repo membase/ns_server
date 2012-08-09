@@ -1189,7 +1189,13 @@
                       </div><!--{% }%}-->
                       <!--{% if (items.reduce) {%}--><div>
                         <label for="{%= prefix %}_filter_reduce">reduce</label>
-                        <input id="{%= prefix %}_filter_reduce" name="reduce" type="checkbox">
+                        <div style="display: inline-block">
+                          <select id="{%= prefix %}_filter_reduce" name="reduce" class="selectBox" multiple="multiple">
+                            <option value="true">true</option>
+                            <option value="false">false</option>
+                            <option value="none">none</option>
+                          </select>
+                        </div>
                       </div><!--{% }%}-->
                       <!--{% if (items.updateSeq) {%}--><div>
                         <label for="{%= prefix %}_filter_update_seq">update_seq</label>

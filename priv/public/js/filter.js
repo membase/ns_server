@@ -100,6 +100,7 @@ Filter.prototype = {
     self.filters = $('.key input, .key select', self.filtersCont);
     self.form = $('form', self.filtersCont);
     self.stale = $('#' + self.prefix + '_filter_stale', self.container);
+    self.selectBoxes = $('.selectBox', self.container);
 
     self.filtersCont.bind('clickoutside', function () {
       self.closeFilter();
@@ -156,7 +157,7 @@ Filter.prototype = {
       self.filtersCont.addClass("open");
       self.fillInputs(params);
     });
-    self.stale.selectBox();
+    self.selectBoxes.selectBox();
   },
   closeFilter: function () {
     var self = this;
@@ -166,9 +167,9 @@ Filter.prototype = {
     self.filtersCont.removeClass("open");
     self.inputs2filterParams();
 
-    this.stale.selectBox("destroy");
+    self.selectBoxes.selectBox("destroy");
     // jquery is broken. this is workaround, because $%#$%
-    this.stale.removeData('selectBoxControl').removeData('selectBoxSettings');
+    self.selectBoxes.removeData('selectBoxControl').removeData('selectBoxSettings');
   },
   inputs2filterParams: function () {
     var params = this.parseInputs();
@@ -184,7 +185,7 @@ Filter.prototype = {
       var el = $(this);
       var name = el.attr('name');
       var type = (el.attr('type') === 'checkbox') ? 'bool' : 'json';
-      var val = (type === 'bool') ? !!el.prop('checked') : el.val();
+      var val = (type === 'bool') ? !!el.prop('checked') : $.isArray(el.val()) ? el.val()[0] :  el.val();
       body(name, type, val, el);
     });
   },
@@ -212,9 +213,10 @@ Filter.prototype = {
   },
   parseInputs: function() {
     var rv = {};
+    var self = this;
     this.iterateInputs(function (name, type, val, el) {
       var row = el.parent();
-      if (row.get(0).style.display === 'none' || !val) {
+      if (row.get(0).style.display === 'none' ||  val === 'none' || !val) {
         return;
       }
       rv[name] = val;
