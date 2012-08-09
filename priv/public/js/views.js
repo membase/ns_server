@@ -174,7 +174,8 @@ var codeMirrorOpts = {
   lineNumbers: true,
     matchBrackets: true,
     mode: "javascript",
-    theme: 'default'
+    theme: 'default',
+    tabSize: 2
 };
 
 // ns is assumed to have:
@@ -1187,6 +1188,7 @@ var ViewsSection = {
     var lookupDocByIdBtn = $("#lookup_doc_by_id_btn");
     var sampleMeta = $("#sample_meta");
     var docsTitle = $('.docs_title', views);
+    var editDocument = $('#edit_sample_doc', views);
 
     builtInReducers.bind('click', function (e) {
       var text = $(this).text();
@@ -1210,6 +1212,12 @@ var ViewsSection = {
       e.preventDefault();
       self.runCurrentSpatial();
     });
+    editDocument.bind('click', function (e) {
+      if ($(this).hasClass('disabled')) {
+        e.preventDefault();
+        return;
+      }
+    });
 
     var selectedBucket;
 
@@ -1223,6 +1231,7 @@ var ViewsSection = {
     });
 
     self.randomDocCell.subscribeValue(function (doc) {
+      editDocument.removeClass('disabled');
       if (doc) {
         sampleDocsCont.show();
         noSampleDocsCont.hide();
@@ -1234,11 +1243,12 @@ var ViewsSection = {
         var param = {};
         param.data = doc;
         param.loading = false;
-        param.bucketName = selectedBucket;
 
         sampleMeta.text(JSON.stringify(doc.meta, null, "\t"));
         renderTemplate('sample_documents', param);
+        editDocument.attr('href', '#sec=documents&bucketName=' + encodeURIComponent(selectedBucket) + '&docId=' + encodeURIComponent(doc.meta.id));
       } else {
+        editDocument.addClass('disabled');
         if (doc === null) {
           sampleDocsCont.hide();
           noSampleDocsCont.show();

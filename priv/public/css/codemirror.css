@@ -67,7 +67,7 @@ span.CodeMirror-selected {
   background: Highlight !important;
 }
 
-.CodeMirror-matchingbracket {color: #0f0 !important;}
+.CodeMirror-matchingbracket {text-decoration:underline;}
 .CodeMirror-nonmatchingbracket {color: #f22 !important;}
 
 /** embedded default theme **/
