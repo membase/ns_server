@@ -30,8 +30,7 @@ child_specs(BucketName) ->
     [{{capi_set_view_manager, BucketName},
       {capi_set_view_manager, start_link, [BucketName]},
       permanent, 1000, worker, [capi_set_view_manager]},
-     {{ns_memcached, stats, BucketName, 0}, {ns_memcached, start_link,
-                                             [BucketName]},
+     {{ns_memcached, BucketName}, {ns_memcached, start_link, [BucketName]},
       %% ns_memcached waits for the bucket to sync to disk before exiting
       permanent, 86400000, worker, [ns_memcached]},
      {{ns_vbm_new_sup, BucketName}, {ns_vbm_new_sup, start_link, [BucketName]},
