@@ -251,14 +251,13 @@ build_remote_set_specs(Node, BucketName, DDocId, ViewName, VBuckets) ->
 
 build_local_simple_specs(BucketName, DDocId, ViewName, VBuckets) ->
     DDocDbName = iolist_to_binary([BucketName, $/, "master"]),
-    lists:map(fun(VBucket) ->
-                      #simple_index_spec{
-                   database = vbucket_db_name(BucketName, VBucket),
-                   ddoc_database = DDocDbName,
-                   ddoc_id = DDocId,
-                   index_name = ViewName
-                  }
-              end, [<<"master">> | VBuckets]).
+    lists:map(
+      fun(VBucket) ->
+              #simple_index_spec{database = vbucket_db_name(BucketName, VBucket),
+                                 ddoc_database = DDocDbName,
+                                 ddoc_id = DDocId,
+                                 index_name = ViewName}
+              end, VBuckets).
 
 build_remote_simple_specs(Node, BucketName, FullViewName, VBuckets) ->
     MergeURL = iolist_to_binary([vbucket_map_mirror:node_to_inner_capi_base_url(Node), <<"/_view_merge">>]),
