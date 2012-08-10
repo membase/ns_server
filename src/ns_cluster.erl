@@ -155,6 +155,10 @@ handle_cast(leave, State) ->
     end,
     ns_config:set_initial(nodes_wanted, [node()]),
     ns_cookie_manager:cookie_sync(),
+
+    ReplicatorDeleteRV = couch_server:delete(<<"_replicator">>, []),
+    ?cluster_debug("Deleted _replicator db: ~p", [ReplicatorDeleteRV]),
+
     ?cluster_debug("Leaving cluster", []),
     timer:sleep(1000),
     {ok, _} = ns_server_cluster_sup:start_cluster(),
