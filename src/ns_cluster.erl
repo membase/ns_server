@@ -45,6 +45,7 @@
 -export([leave/0,
          leave/1,
          leave_async/0,
+         force_eject_self/0,
          shun/1,
          start_link/0]).
 
@@ -201,6 +202,14 @@ leave() ->
     rpc:cast(RemoteNode, ?MODULE, shun, [node()]),
     %% Then drop ourselves into a leaving state.
     leave_async().
+
+force_eject_self() ->
+    %% first send leave
+    gen_server:cast(?MODULE, leave),
+    %% then sync. This will return error, but will be processed
+    %% strictly after cast
+    gen_server:call(?MODULE, {complete_join, []}, infinity),
+    ok.
 
 %% Cause another node to leave the cluster if it's up
 leave(Node) ->

@@ -1272,6 +1272,9 @@ handle_eject_post(Req) ->
     OtpNodeStr = case proplists:get_value("otpNode", PostArgs) of
                      undefined -> undefined;
                      "Self" -> atom_to_list(node());
+                     "zzzzForce" ->
+                         handle_force_self_eject(Req),
+                         exit(normal);
                      X -> X
                  end,
     case OtpNodeStr of
@@ -1285,6 +1288,12 @@ handle_eject_post(Req) ->
                     do_handle_eject_post(Req, OtpNode)
             end
     end.
+
+handle_force_self_eject(Req) ->
+    erlang:process_flag(trap_exit, true),
+    ns_cluster:force_eject_self(),
+    Req:respond({200, [], "done"}),
+    ok.
 
 do_handle_eject_post(Req, OtpNode) ->
     case OtpNode =:= node() of
