@@ -399,6 +399,12 @@ idle({start_rebalance, KeepNodes, EjectNodes, FailedNodes}, _From,
               "Starting rebalance, KeepNodes = ~p, EjectNodes = ~p~n",
               [KeepNodes, EjectNodes]),
     ns_cluster:counter_inc(rebalance_start),
+    case ns_config_default:maybe_add_vbucket_map_history(ns_config:get()) of
+        [{set, vbucket_map_history, History}] ->
+            ns_config:set(vbucket_map_history, History);
+        [] ->
+            ok
+    end,
     Pid = spawn_link(
             fun () ->
                     master_activity_events:note_rebalance_start(self(), KeepNodes, EjectNodes, FailedNodes),

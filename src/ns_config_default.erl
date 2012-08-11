@@ -225,8 +225,8 @@ maybe_add_vbucket_map_history(Config) ->
 
 maybe_add_vbucket_map_history(Config, HistorySize) ->
     case ns_config:search(Config, vbucket_map_history) of
-        {value, _} -> [];
-        false ->
+        {value, [_|_]} -> [];
+        _ -> %% no history or empty history
             Buckets = ns_bucket:get_buckets(Config),
             History = lists:flatmap(
                         fun ({_Bucket, BucketConfig}) ->
