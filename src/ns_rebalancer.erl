@@ -221,7 +221,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
                                   ThisLiveNodes = KeepNodes ++ ThisEjected,
                                   ns_bucket:set_servers(BucketName, ThisLiveNodes),
                                   wait_for_memcached(ThisLiveNodes, BucketName, 10),
-                                  case ns_janitor:cleanup(BucketName, [{timeout, 1}]) of
+                                  case ns_janitor:cleanup(BucketName, [{timeout, 10}]) of
                                       ok -> ok;
                                       {error, wait_for_memcached_failed, BadNodes} ->
                                           exit({pre_rebalance_janitor_run_failed, BadNodes})
