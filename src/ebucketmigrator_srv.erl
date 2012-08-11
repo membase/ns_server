@@ -388,10 +388,9 @@ handle_info({check_for_timeout, Timeout} = Msg, State) ->
         false ->
             {noreply, State}
     end;
-handle_info({'EXIT', Pid, Reason}, #state{upstream_sender = SenderPid} = State) when Pid =:= SenderPid ->
-    ?rebalance_error("killing myself due to unexpected upstream sender exit with reason: ~p",
-                     [Reason]),
-    {stop, {unexpected_upstream_sender_exit, Reason}, State};
+handle_info({'EXIT', _Pid, _Reason} = ExitSignal, State) ->
+    ?rebalance_error("killing myself due to exit signal: ~p", [ExitSignal]),
+    {stop, {got_exit, ExitSignal}, State};
 handle_info(Msg, State) ->
     ?rebalance_warning("Unexpected handle_info(~p, ~p)", [Msg, State]),
     {noreply, State}.
