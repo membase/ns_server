@@ -821,3 +821,79 @@ CellsTest.prototype.testWrapWithArgsResolving = function () {
   assertEquals(3, timesCalled);
   assertEquals("123", result);
 }
+
+
+CellsTest.prototype.testLazyCellsDetachEffects = function () {
+  var dataCallback;
+  var usedA;
+  var usedB;
+  var cellA = new Cell();
+  var cellB = new Cell();
+  var cellCalculations = 0;
+
+  var cell = Cell.compute(function (v) {
+    var a = v.need(cellA);
+    var b = v.need(cellB);
+    cellCalculations++;
+    return future(function (_dataCallback) {
+      usedA = a;
+      usedB = b;
+      dataCallback = _dataCallback;
+    });
+  });
+
+  cellA.setValue(1);
+  cellB.setValue("b");
+  Clock.tickFarAway();
+
+  // no value for cell yet
+  assertEquals(undefined, cell.value);
+  // and since there's no interest for value, it wasn't even calculated
+  assertEquals(0, cellCalculations);
+  assertEquals(false, !!cell.pendingFuture);
+
+  // now we express our interest
+  var gotValue = "hey";
+  cell.getValue(function (val) {gotValue = val;});
+  // since there's no value yet getValue callback wasn't called yet
+  assertEquals("hey", gotValue);
+
+  // time passes (we have interest in cell's value)
+  Clock.tickFarAway();
+  // since our formula produces future we don't have value yet
+  assertEquals(undefined, cell.value);
+  assertEquals("hey", gotValue);
+  // but we've started our future computation
+  assertEquals(true, cellCalculations > 0);
+  assertEquals(true, !!cell.pendingFuture);
+  assertEquals(1, usedA);
+  assertEquals("b", usedB);
+
+  // lets deliver some value through future
+  dataCallback("stuff");
+
+  Clock.tickFarAway();
+  // we expect:
+  // cell value to be delivered
+  assertEquals("stuff", gotValue);
+  // no pending future.
+  assertEquals(false, !!cell.pendingFuture);
+  // and no demand
+  assertEquals(0, cell.changedSlot.slaves.length);
+  assertEquals(0, cell.undefinedSlot.slaves.length);
+
+  var markedCalculations = cellCalculations;
+  // now if we change cellA and cellB
+  cellA.setValue(2);
+  cellB.setValue("a");
+  Clock.tickFarAway();
+  // we don't recompute cell, 'cause there's not demand for value
+  assertEquals(markedCalculations, cellCalculations);
+
+  // and now getValue should not see old value
+  var gotValue2 = "hey";
+  cell.getValue(function (val) {gotValue2 = val});
+  // AND WE FAIL IN THIS CODE
+  assertEquals("hey", gotValue2);
+  // TODO: fix and finish this test
+}

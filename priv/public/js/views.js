@@ -200,7 +200,7 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
 
   ns.viewsBucketInfoCell.equality = function (a, b) {return a === b;};
 
-  ns.viewsBucketCell = Cell.compute(function (v) {
+  ns.viewsBucketCell = Cell.computeEager(function (v) {
     var bucketInfo = v(ns.viewsBucketInfoCell);
     if (!bucketInfo) {
       return null;
@@ -241,7 +241,7 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
     }
   }).name("dbURLCell");
 
-  ns.allDDocsURLCell = Cell.compute(function (v) {
+  ns.allDDocsURLCell = Cell.computeEager(function (v) {
     var bucketInfo = v.need(ns.viewsBucketInfoCell);
     return bucketInfo.ddocs.uri;
   }).name("allDDocsURL");
@@ -426,7 +426,7 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
     return !!ddoc.meta.id.match(/^_design\/dev_/);
   }).name("editingDevViewSpatial");
 
-  ns.proposedURLBuilderCell = Cell.compute(function (v) {
+  ns.proposedURLBuilderCell = Cell.computeEager(function (v) {
     if (v(ns.currentView)) {
       var dbURL = v.need(ns.dbURLCell);
       var ddocAndView = v.need(ns.currentDDocAndView);
@@ -465,7 +465,7 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
     }
   }).name("proposedURLBuilderCell");
 
-  ns.intPageCell = Cell.compute(function (v) {
+  ns.intPageCell = Cell.computeEager(function (v) {
     var pageVal = v(ns.pageNumberCell);
     var pageNo = parseInt(pageVal, 10);
     if (isNaN(pageNo) || pageNo < 1) {
@@ -477,7 +477,7 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
     return pageNo;
   });
 
-  ns.intFullSubsetPageCell = Cell.compute(function (v) {
+  ns.intFullSubsetPageCell = Cell.computeEager(function (v) {
     var pageVal = v(ns.fullSubsetPageNumberCell);
     var pageNo = parseInt(pageVal, 10);
     if (isNaN(pageNo) || pageNo < 1) {
@@ -569,26 +569,26 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
   }).name("tasksOfCurrentBucket");
   ns.tasksOfCurrentBucket.equality = _.isEqual;
 
-  ns.rawForDoSaveAsView = Cell.compute(function (v) {
+  ns.rawForDoSaveAsView = Cell.computeEager(function (v) {
     var dbURL = v.need(ns.dbURLCell);
     var pair = v.need(ns.currentDDocAndView);
     return [dbURL].concat(pair);
   });
 
-  ns.rawForDoSaveView = Cell.compute(function (v) {
+  ns.rawForDoSaveView = Cell.computeEager(function (v) {
     var dbURL = v.need(ns.dbURLCell);
     var currentView = v.need(ns.currentView);
     var pair = v.need(ns.currentDDocAndView);
     return [dbURL, currentView].concat(pair);
   });
 
-  ns.rawForSpatialDoSaveAs = Cell.compute(function (v) {
+  ns.rawForSpatialDoSaveAs = Cell.computeEager(function (v) {
     var dbURL = v.need(ns.dbURLCell);
     var pair = v.need(ns.currentDDocAndSpatial);
     return [dbURL].concat(pair);
   });
 
-  ns.rawForSpatialDoSave = Cell.compute(function (v) {
+  ns.rawForSpatialDoSave = Cell.computeEager(function (v) {
     var dbURL = v.need(ns.dbURLCell);
     var currentSpatial = v.need(ns.currentSpatial);
     var pair = v.need(ns.currentDDocAndSpatial);
