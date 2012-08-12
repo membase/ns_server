@@ -331,7 +331,7 @@ idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
                     end,
                     case lists:any(fun (StartedBucket) ->
                                            ns_bucket:names_conflict(StartedBucket, BucketName)
-                                   end, Results) of
+                                   end, lists:append(Results)) of
                         true ->
                             {error, {still_exists, BucketName}};
                         _ ->

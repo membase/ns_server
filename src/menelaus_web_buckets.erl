@@ -357,7 +357,7 @@ do_bucket_create(Name, ParsedProps) ->
         {error, {already_exists, _}} ->
             {errors, [{name, <<"Bucket with given name already exists">>}]};
         {error, {still_exists, _}} ->
-            {errors_500, [{name, <<"Bucket with given name still exists">>}]};
+            {errors_500, [{'_', <<"Bucket with given name still exists">>}]};
         {error, {port_conflict, _}} ->
             {errors, [{proxyPort, <<"A bucket is already using this port">>}]};
         {error, {invalid_name, _}} ->
