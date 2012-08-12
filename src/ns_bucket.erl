@@ -27,6 +27,7 @@
          create_bucket/3,
          credentials/1,
          delete_bucket/1,
+         delete_bucket_returning_config/1,
          failover_warnings/0,
          get_bucket/1,
          get_bucket_light/1,
@@ -614,6 +615,33 @@ delete_bucket(BucketName) ->
         {exit, {not_found, _}, _} -> ok
     end,
     RV.
+
+-spec delete_bucket_returning_config(bucket_name()) ->
+                                            {ok, BucketConfig :: list()} |
+                                            {exit, {not_found, bucket_name()}, any()}.
+delete_bucket_returning_config(BucketName) ->
+    Ref = make_ref(),
+    Process = self(),
+    RV = ns_config:update_sub_key(buckets, configs,
+                                  fun (List) ->
+                                          case lists:keyfind(BucketName, 1, List) of
+                                              false -> exit({not_found, BucketName});
+                                              {_, BucketConfig} = Tuple ->
+                                                  Process ! {Ref, BucketConfig},
+                                                  lists:delete(Tuple, List)
+                                          end
+                                  end),
+    case RV of
+        ok ->
+            receive
+                {Ref, BucketConfig} ->
+                    {ok, BucketConfig}
+            after 0 ->
+                    exit(this_cannot_happen)
+            end;
+        {exit, {not_found, _}, _} ->
+            RV
+    end.
 
 filter_ready_buckets(BucketInfos) ->
     lists:filter(fun ({_Name, PList}) ->

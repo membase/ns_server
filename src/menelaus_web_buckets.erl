@@ -283,6 +283,8 @@ handle_bucket_delete(_PoolId, BucketId, Req) ->
             Req:respond({200, server_header(), []});
         rebalance_running ->
             reply_json(Req, {struct, [{'_', <<"Cannot delete buckets during rebalance">>}]}, 503);
+        {shutdown_failed, _} ->
+            reply_json(Req, {struct, [{'_', <<"Some nodes are still deleting bucket">>}]}, 500);
         {exit, {not_found, _}, _} ->
             Req:respond({404, server_header(), "The bucket to be deleted was not found.\r\n"})
     end.

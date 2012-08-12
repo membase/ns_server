@@ -175,7 +175,7 @@ function jsonPostWithErrors(url, data, callback, ajaxOptions) {
       errorsData = "Got no response from save request.";
     } else {
       errorsData = "Request returned error.";
-      if (textStatus == 'error' && (status == 400 || status == 503)) {
+      if (textStatus == 'error' && (status == 400 || status >= 500)) {
         try {
           errorsData = $.parseJSON(data.responseText);
         } catch (e) {

@@ -117,7 +117,7 @@ create_bucket(BucketType, BucketName, NewConfig) ->
 %% rebalance_running if delete bucket request came while rebalancing;
 %% and {exit, ...} if bucket does not really exists
 -spec delete_bucket(bucket_name()) ->
-                           ok | rebalance_running | {exit, {not_found, bucket_name()}, _}.
+                           ok | rebalance_running | {shutdown_failed, [node()]} | {exit, {not_found, bucket_name()}, _}.
 delete_bucket(BucketName) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {delete_bucket, BucketName}, infinity).
@@ -349,10 +349,10 @@ idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
     {reply, Reply, idle, State};
 idle({delete_bucket, BucketName}, _From,
      #idle_state{remaining_buckets=RemainingBuckets} = State) ->
-    Reply = ns_bucket:delete_bucket(BucketName),
+    DeleteRV = ns_bucket:delete_bucket_returning_config(BucketName),
     NewState =
-        case Reply of
-            ok ->
+        case DeleteRV of
+            {ok, _} ->
                 master_activity_events:note_bucket_deletion(BucketName),
                 ns_config:sync_announcements(),
                 NewRemainingBuckets = RemainingBuckets -- [BucketName],
@@ -368,35 +368,43 @@ idle({delete_bucket, BucketName}, _From,
                 State
         end,
 
-    case Reply of
-        ok ->
-            Pred = fun (Active, _Connected) ->
-                           not lists:member(BucketName, Active)
-                   end,
+    Reply =
+        case DeleteRV of
+            {ok, BucketConfig} ->
+                Nodes = ns_bucket:bucket_nodes(BucketConfig),
+                Pred = fun (Active, _Connected) ->
+                               not lists:member(BucketName, Active)
+                       end,
+                LeftoverNodes =
+                    case wait_for_nodes(Nodes, Pred, ?DELETE_BUCKET_TIMEOUT) of
+                        ok ->
+                            [];
+                        {timeout, LeftoverNodes0} ->
+                            ?log_warning("Nodes ~p failed to delete bucket ~p "
+                                         "within expected time.",
+                                         [LeftoverNodes0, BucketName]),
+                            LeftoverNodes0
+                    end,
 
-            Nodes = ns_cluster_membership:active_nodes(),
-            LiveNodes =
-                case wait_for_nodes(Nodes, Pred, ?DELETE_BUCKET_TIMEOUT) of
-                    ok ->
-                        Nodes;
-                    {timeout, LeftoverNodes} ->
-                        ?log_warning("Nodes ~p failed to delete bucket ~p "
-                                     "within expected time.",
-                                     [LeftoverNodes, BucketName]),
-                        Nodes -- LeftoverNodes
-            end,
+                LiveNodes = Nodes -- LeftoverNodes,
 
-            ?log_info("Restarting moxi on nodes ~p", [LiveNodes]),
-            case rpc:multicall(LiveNodes, ns_port_sup, restart_port_by_name, [moxi],
-                               ?DELETE_BUCKET_TIMEOUT) of
-                {_Results, []} ->
-                    ok;
-                {_Results, FailedNodes} ->
-                    ?log_warning("Failed to restart moxi on following nodes ~p",
-                                 [FailedNodes])
-            end;
-        _Other ->
-            ok
+                ?log_info("Restarting moxi on nodes ~p", [LiveNodes]),
+                case rpc:multicall(LiveNodes, ns_port_sup, restart_port_by_name, [moxi],
+                                   ?DELETE_BUCKET_TIMEOUT) of
+                    {_Results, []} ->
+                        ok;
+                    {_Results, FailedNodes} ->
+                        ?log_warning("Failed to restart moxi on following nodes ~p",
+                                     [FailedNodes])
+                end,
+                case LeftoverNodes of
+                    [] ->
+                        ok;
+                    _ ->
+                        {shutdown_failed, LeftoverNodes}
+                end;
+            _ ->
+                DeleteRV
     end,
 
     {reply, Reply, idle, NewState};

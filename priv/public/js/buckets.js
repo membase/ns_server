@@ -950,6 +950,7 @@ var BucketsSection = {
     var spinner = overlayWithSpinner('#bucket_remove_dialog');
 
     jsonPostWithErrors(self.currentlyShownBucket.uri, undefined, ajaxCallback, {
+      timeout: 60000,
       type: 'DELETE'
     });
     return;
