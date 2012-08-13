@@ -1,6 +1,6 @@
 ;; -*- Mode: lisp; fill-column: 120 -*-
 
-(supervisor 'ns_server_cluster_sup :mode one-for-one
+(supervisor 'ns_server_cluster_sup :mode :one_for_one
             (supervisor 'cb_couch_sup :mode :one_for_one :since "2.0"
                         (supervisor 'couch_app))
             (tmp 'cb_init_loggers)
