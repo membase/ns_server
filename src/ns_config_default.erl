@@ -492,7 +492,30 @@ do_upgrade_config_from_1_8_1_to_2_0(Config, DefaultConfig) ->
         MaybeNodeUUID ++
         MaybeAutoCompaction ++
         MaybeRemoteClusters ++
-        MaybeCompactionDaemon.
+        MaybeCompactionDaemon ++
+        maybe_upgrade_engines_add_mccouch_port_log_params(Config, DefaultConfig).
+
+maybe_upgrade_engines_add_mccouch_port_log_params(Config, DefaultConfig) ->
+    McdKey = {node, node(), memcached},
+
+    {value, McdConfig} = ns_config:search(Config, McdKey),
+    {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdKey),
+
+    NewOrUpdatedParams =
+        lists:filter(
+          fun ({Key, _Value}) ->
+                  lists:member(Key, [mccouch_port, log_path, log_prefix,
+                                     log_generations, log_rotation_period,
+                                     engines])
+          end, DefaultMcdConfig),
+
+    StrippedMcdConfig =
+        lists:filter(
+          fun ({Key, _Value}) ->
+                  not lists:keymember(Key, 1, NewOrUpdatedParams)
+          end, McdConfig),
+
+    [{set, McdKey, NewOrUpdatedParams ++ StrippedMcdConfig}].
 
 upgrade_1_6_to_1_7_test() ->
     DefaultCfg = [{directory, default_directory},
@@ -670,23 +693,50 @@ update_binaries_cfg_pathes_and_add_dedicated_port_test() ->
 
 upgrade_1_8_1_to_2_0_test() ->
     Cfg = [[{{node, node(), capi_port}, something},
-            {remote_clusters, foobar}]],
+            {remote_clusters, foobar},
+            {{node, node(), memcached}, [{engines, old_engines},
+                                         {something, something}]}]],
     DefaultCfg = [{{node, node(), capi_port}, somethingelse},
                   {{node, node(), uuid}, <<"--uuid--">>},
                   {remote_clusters, foobar_2},
                   {autocompaction, compaction_something},
-                  {{node, node(), compaction_daemon}, compaction_daemon_settings}],
+                  {{node, node(), compaction_daemon}, compaction_daemon_settings},
+                  {{node, node(), memcached},
+                   [{mccouch_port, mccouch_port},
+                    {log_path, log_path},
+                    {log_prefix, log_prefix},
+                    {log_generations, log_generations},
+                    {log_rotation_period, log_rotation_period},
+                    {engines, new_engines},
+                    {something_else, something_else}]}],
     Result = do_upgrade_config_from_1_8_1_to_2_0(Cfg, DefaultCfg),
     ?assertEqual([{set, {node, node(), uuid}, <<"--uuid--">>},
                   {set, autocompaction, compaction_something},
-                  {set, {node, node(), compaction_daemon}, compaction_daemon_settings}],
+                  {set, {node, node(), compaction_daemon}, compaction_daemon_settings},
+                  {set, {node, node(), memcached},
+                   [{mccouch_port, mccouch_port},
+                    {log_path, log_path},
+                    {log_prefix, log_prefix},
+                    {log_generations, log_generations},
+                    {log_rotation_period, log_rotation_period},
+                    {engines, new_engines},
+                    {something, something}]}],
                  Result),
     Cfg2 = [[{remote_clusters, foobar},
-             {{node, node(), compaction_daemon}, compaction_daemon_existing}]],
+             {{node, node(), compaction_daemon}, compaction_daemon_existing},
+             {{node, node(), memcached}, [{something, something}]}]],
     Result2 = do_upgrade_config_from_1_8_1_to_2_0(Cfg2, DefaultCfg),
     ?assertEqual([{set, {node, node(), capi_port}, somethingelse},
                   {set, {node, node(), uuid}, <<"--uuid--">>},
-                  {set, autocompaction, compaction_something}],
+                  {set, autocompaction, compaction_something},
+                  {set, {node, node(), memcached},
+                   [{mccouch_port, mccouch_port},
+                    {log_path, log_path},
+                    {log_prefix, log_prefix},
+                    {log_generations, log_generations},
+                    {log_rotation_period, log_rotation_period},
+                    {engines, new_engines},
+                    {something, something}]}],
                  Result2).
 
 no_upgrade_on_2_0_test() ->
