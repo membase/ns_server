@@ -134,7 +134,6 @@ do-install:
 	chmod +x $(DESTDIR)$(PREFIX)/bin/couchbase-server $(DESTDIR)$(PREFIX)/bin/cbbrowse_logs $(DESTDIR)$(PREFIX)/bin/cbcollect_info
 	mkdir -p $(DESTDIR)$(PREFIX)/var/lib/couchbase/mnesia
 	mkdir -p $(DESTDIR)$(PREFIX)/var/lib/couchbase/logs
-	cp priv/init.sql $(DESTDIR)$(PREFIX)/etc/couchbase/
 	cp ebucketmigrator $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
 	chmod +x $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
 	cp scripts/cbdump-config $(DESTDIR)$(PREFIX)/bin/
