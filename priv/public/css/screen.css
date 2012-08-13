@@ -1027,7 +1027,7 @@ input.view_name{width:20em;padding:5px}
 .auto_compaction ul ul li {line-height:1.5em}
 .auto_compaction label {display:inline;}
 .auto_compaction label span {display:inline;float:none;margin:0}
-.auto_compaction .toggle {display:block;float:left;width:17em}
+.auto_compaction .toggle {display:block;float:left;padding-right:10px;}
 .auto_compaction input[type="checkbox"], .auto_compaction input[type="radio"] {position:static}
 .auto_compaction .error-container {line-height: 1.5em;padding-left:2.2em;width: 100%;}
 
