@@ -450,9 +450,9 @@ update_binaries_cfg_pathes_and_add_dedicated_port(Config, DefaultConfig) ->
 upgrade_config_from_1_8_1_to_2_0(Config) ->
     ?log_info("Upgrading config from 1.8.1 to 2.0", []),
     DefaultConfig = default(),
-    do_upgrade_config_from_1_8_0_to_2_0(Config, DefaultConfig).
+    do_upgrade_config_from_1_8_1_to_2_0(Config, DefaultConfig).
 
-do_upgrade_config_from_1_8_0_to_2_0(Config, DefaultConfig) ->
+do_upgrade_config_from_1_8_1_to_2_0(Config, DefaultConfig) ->
     MaybeCapiPort = case ns_config:search(Config, {node, node(), capi_port}) of
                         false ->
                             {_, DefaultCapiPort} = lists:keyfind({node, node(), capi_port}, 1, DefaultConfig),
@@ -676,14 +676,14 @@ upgrade_1_8_1_to_2_0_test() ->
                   {remote_clusters, foobar_2},
                   {autocompaction, compaction_something},
                   {{node, node(), compaction_daemon}, compaction_daemon_settings}],
-    Result = do_upgrade_config_from_1_8_0_to_2_0(Cfg, DefaultCfg),
+    Result = do_upgrade_config_from_1_8_1_to_2_0(Cfg, DefaultCfg),
     ?assertEqual([{set, {node, node(), uuid}, <<"--uuid--">>},
                   {set, autocompaction, compaction_something},
                   {set, {node, node(), compaction_daemon}, compaction_daemon_settings}],
                  Result),
     Cfg2 = [[{remote_clusters, foobar},
              {{node, node(), compaction_daemon}, compaction_daemon_existing}]],
-    Result2 = do_upgrade_config_from_1_8_0_to_2_0(Cfg2, DefaultCfg),
+    Result2 = do_upgrade_config_from_1_8_1_to_2_0(Cfg2, DefaultCfg),
     ?assertEqual([{set, {node, node(), capi_port}, somethingelse},
                   {set, {node, node(), uuid}, <<"--uuid--">>},
                   {set, autocompaction, compaction_something}],
