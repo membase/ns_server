@@ -848,9 +848,9 @@ var ViewsSection = {
         var url = builder(intPageVal, subset);
         var text = url.substring(url.indexOf('?'));
         ViewsFilter.filtersUrl.attr('href', url);
-        ViewsFilter.filtersUrl.text(decodeURIComponent(text));
+        ViewsFilter.filtersUrl.text(text);
         SpatialFilter.filtersUrl.attr('href', url);
-        SpatialFilter.filtersUrl.text(decodeURIComponent(text));
+        SpatialFilter.filtersUrl.text(text);
       }
     }, DAL.cells.mode, self.modeTabs, SpatialFilter.rawFilterParamsCell,
          ViewsFilter.rawFilterParamsCell, self.subsetTabCell, self.intFullSubsetPageCell, self.intPageCell, self.proposedURLBuilderCell);
