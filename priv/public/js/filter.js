@@ -10,7 +10,6 @@ function createFilterCells(ns) {
   ns.filterParamsCell = Cell.compute(function (v) {
     var filterParams = v(ns.rawFilterParamsCell);
     if (filterParams) {
-      filterParams = decodeURIComponent(filterParams);
       return $.deparam(filterParams);
     } else {
       return {};
