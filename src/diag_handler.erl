@@ -140,7 +140,7 @@ do_diag_per_node() ->
      {master_events, (catch master_activity_events_keeper:get_history())},
      {ns_server_stats, (catch system_stats_collector:get_ns_server_stats())},
      {active_buckets, ActiveBuckets},
-     {tap_stats, grab_all_tap_and_checkpoint_stats(4000)}].
+     {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))}].
 
 diag_multicall(Mod, F, Args) ->
     Nodes = [node() | nodes()],
