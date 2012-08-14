@@ -63,7 +63,7 @@ send(Sender, Rcpts, Subject, Body, Options) ->
                               make_headers(Sender, Rcpts, Subject), [],
                               list_to_binary(Body)}),
     gen_server:call(?MODULE, {send, Sender, Rcpts, binary_to_list(Message),
-                              Options ++ [{tls, never}]}).
+                              Options}).
 
 ns_log_cat(0001) -> warn.
 
