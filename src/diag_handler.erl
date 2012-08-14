@@ -106,7 +106,10 @@ grab_all_tap_and_checkpoint_stats() ->
 
 grab_all_tap_and_checkpoint_stats(Timeout) ->
     ActiveBuckets = ns_memcached:active_buckets(),
-    WorkItems = [{Bucket, Type} || Bucket <- ActiveBuckets,
+    ThisNodeBuckets = ns_bucket:node_bucket_names_of_type(node(), membase),
+    InterestingBuckets = ordsets:intersection(lists:sort(ActiveBuckets),
+                                              lists:sort(ThisNodeBuckets)),
+    WorkItems = [{Bucket, Type} || Bucket <- InterestingBuckets,
                                    Type <- [<<"tap">>, <<"checkpoint">>]],
     Results = misc:parallel_map(
                 fun ({Bucket, Type}) ->
