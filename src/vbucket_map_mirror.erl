@@ -95,26 +95,32 @@ call_compute_map(BucketName) ->
                   {ok, BucketConfig} ->
                       case proplists:get_value(map, BucketConfig) of
                           undefined ->
-                              ok;
+                              no_map;
                           Map ->
-                              NodeToVBuckets = compute_map_to_vbuckets_dict(Map),
-                              ets:insert(vbucket_map_mirror, {BucketName, NodeToVBuckets})
+                              case ets:lookup(vbucket_map_mirror, BucketName) of
+                                  [] ->
+                                      NodeToVBuckets = compute_map_to_vbuckets_dict(Map),
+                                      ets:insert(vbucket_map_mirror, {BucketName, NodeToVBuckets}),
+                                      NodeToVBuckets;
+                                  [{_, Dict}] ->
+                                      Dict
+                              end
                       end;
                   not_present ->
-                      ok
+                      not_present
               end
       end).
 
 node_vbuckets_dict(BucketName) ->
-    node_vbuckets_dict(BucketName, 1000).
-
-node_vbuckets_dict(BucketName, 0) ->
-    erlang:error({aaarhg_does_not_work, BucketName});
-node_vbuckets_dict(BucketName, TriesLeft) ->
     case ets:lookup(vbucket_map_mirror, BucketName) of
         [] ->
-            call_compute_map(BucketName),
-            node_vbuckets_dict(BucketName, TriesLeft-1);
+            RV = call_compute_map(BucketName),
+            case RV of
+                RV when is_atom(RV) ->
+                    erlang:error({node_vbuckets_dict_failed, RV});
+                _ ->
+                    RV
+            end;
         [{_, Dict}] ->
             Dict
     end.
