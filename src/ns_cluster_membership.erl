@@ -88,24 +88,8 @@ system_joinable() ->
 get_rebalance_status() ->
     ns_orchestrator:rebalance_progress().
 
-start_rebalance(KnownNodes, KnownNodes) ->
-    no_active_nodes_left;
 start_rebalance(KnownNodes, EjectedNodes) ->
-    case {EjectedNodes -- KnownNodes,
-          lists:sort(ns_node_disco:nodes_wanted()),
-          lists:sort(KnownNodes)} of
-        {[], X, X} ->
-            MaybeKeepNodes = KnownNodes -- EjectedNodes,
-            FailedNodes =
-                [N || {N, State} <-
-                          get_nodes_cluster_membership(KnownNodes),
-                      State == inactiveFailed],
-            KeepNodes = MaybeKeepNodes -- FailedNodes,
-            activate(KeepNodes),
-            ns_orchestrator:start_rebalance(KeepNodes, EjectedNodes -- FailedNodes,
-                                            FailedNodes);
-        _ -> nodes_mismatch
-    end.
+    ns_orchestrator:start_rebalance(KnownNodes, EjectedNodes).
 
 activate(Nodes) ->
     ns_config:set([{{node, Node, membership}, active} ||

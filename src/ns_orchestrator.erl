@@ -39,7 +39,8 @@
          rebalance_progress/0,
          rebalance_progress_full/0,
          start_link/0,
-         start_rebalance/3,
+         start_rebalance_old_style/3,
+         start_rebalance/2,
          stop_rebalance/0,
          update_progress/1,
          is_rebalance_running/0
@@ -156,12 +157,19 @@ rebalance_progress() ->
 request_janitor_run(BucketName) ->
     gen_fsm:send_event(?SERVER, {request_janitor_run, BucketName}).
 
--spec start_rebalance([node()], [node()], [node()]) ->
-                             ok | in_progress | already_balanced.
-start_rebalance(KeepNodes, EjectNodes, FailedNodes) ->
+-spec start_rebalance_old_style([node()], [node()], [node()]) ->
+                                       ok | in_progress | already_balanced.
+start_rebalance_old_style(KeepNodes, EjectedNodes, FailedNodes) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {start_rebalance, KeepNodes,
-                                      EjectNodes, FailedNodes}).
+                                      EjectedNodes, FailedNodes}).
+
+
+-spec start_rebalance([node()], [node()]) ->
+                                       ok | in_progress | already_balanced | nodes_mismatch | no_active_nodes_left.
+start_rebalance(KnownNodes, EjectNodes) ->
+    wait_for_orchestrator(),
+    gen_fsm:sync_send_all_state_event(?SERVER, {maybe_start_rebalance, KnownNodes, EjectNodes}).
 
 
 -spec stop_rebalance() -> ok | not_rebalancing.
@@ -198,6 +206,32 @@ init([]) ->
 handle_event(Event, StateName, State) ->
     {stop, {unhandled, Event, StateName}, State}.
 
+
+handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes},
+                  From, StateName, State) ->
+    case {EjectedNodes -- KnownNodes,
+          lists:sort(ns_node_disco:nodes_wanted()),
+          lists:sort(KnownNodes)} of
+        {[], X, X} ->
+            MaybeKeepNodes = KnownNodes -- EjectedNodes,
+            FailedNodes =
+                [N || {N, MShip} <-
+                          ns_cluster_membership:get_nodes_cluster_membership(KnownNodes),
+                      MShip == inactiveFailed],
+            KeepNodes = MaybeKeepNodes -- FailedNodes,
+            case KeepNodes of
+                [] ->
+                    no_active_nodes_left;
+                _ ->
+                    ns_cluster_membership:activate(KeepNodes),
+                    StartEvent = {start_rebalance,
+                                  KeepNodes,
+                                  EjectedNodes -- FailedNodes,
+                                  FailedNodes},
+                    ?MODULE:StateName(StartEvent, From, State)
+            end;
+        _ -> nodes_mismatch
+    end;
 
 handle_sync_event(Event, _From, StateName, State) ->
     {stop, {unhandled, Event, StateName}, State}.
@@ -418,6 +452,7 @@ idle({failover, Node}, _From, State) ->
     {reply, Result, idle, State};
 idle(rebalance_progress, _From, State) ->
     {reply, not_running, idle, State};
+%% NOTE: this is being remotely called by 1.8.x nodes and used by maybe_start_rebalance
 idle({start_rebalance, KeepNodes, EjectNodes, FailedNodes}, _From,
             _State) ->
     ?user_log(?REBALANCE_STARTED,
