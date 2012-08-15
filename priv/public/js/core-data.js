@@ -522,7 +522,6 @@ var DAL = {
       }
       values.byType[bucket.bucketType].push(bucket);
 
-      bucket.serversCount = massagedDetails.serversCount;
       bucket.ramQuota = bucket.quota.ram;
       bucket.totalRAMSize = storageTotals.ram.total;
       bucket.totalRAMUsed = bucket.basicStats.memUsed;

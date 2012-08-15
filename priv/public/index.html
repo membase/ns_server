@@ -488,7 +488,7 @@
                 </td>
                 <td>
                   <span id="{%= h(this.name) %}_health" class="health_graph"></span>
-                  {%= this.serversCount %}
+                  {%= this.nodes.length %}
                 </td>
                 <td>{%= h(this.basicStats.itemCount) %}</td>
                 <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
