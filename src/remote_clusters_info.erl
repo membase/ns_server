@@ -74,7 +74,8 @@
 -export([fetch_remote_cluster/1, fetch_remote_cluster/2,
          get_remote_bucket/3, get_remote_bucket/4,
          get_remote_bucket_by_ref/2, get_remote_bucket_by_ref/3,
-         remote_bucket_reference/2]).
+         remote_bucket_reference/2,
+         invalidate_remote_bucket/2, invalidate_remote_bucket_by_ref/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -177,6 +178,10 @@ get_remote_bucket_by_ref(Reference, Through, Timeout) ->
     {ok, {ClusterName, BucketName}} = parse_remote_bucket_reference(Reference),
     get_remote_bucket(ClusterName, BucketName, Through, Timeout).
 
+invalidate_remote_bucket_by_ref(Reference) ->
+    {ok, {ClusterName, BucketName}} = parse_remote_bucket_reference(Reference),
+    invalidate_remote_bucket(ClusterName, BucketName).
+
 -spec get_remote_bucket(string(), bucket_name(), boolean()) ->
                                {ok, #remote_bucket{}} |
                                {error, cluster_not_found, Msg} |
@@ -217,6 +222,12 @@ get_remote_bucket(ClusterName, Bucket, Through, Timeout) ->
     gen_server:call(?MODULE,
                     {get_remote_bucket, Cluster, Bucket, Through, Timeout}, infinity).
 
+
+invalidate_remote_bucket(ClusterName, Bucket) ->
+    Cluster = find_cluster_by_name(ClusterName),
+    gen_server:call(?MODULE,
+                    {invalidate_remote_bucket, Cluster, Bucket}, infinity).
+
 %% gen_server callbacks
 init([]) ->
     CachePath = path_config:component_path(data, "remote_clusters_cache"),
@@ -244,6 +255,11 @@ handle_call({fetch_remote_cluster, Cluster, Timeout}, From, State) ->
       end),
 
     {noreply, State};
+handle_call({invalidate_remote_bucket, Cluster, Bucket}, _From, State) ->
+    UUID = proplists:get_value(uuid, Cluster),
+    true = (UUID =/= undefined),
+    ets:delete(?CACHE, {bucket, UUID, Bucket}),
+    {reply, ok, State};
 handle_call({get_remote_bucket, Cluster, Bucket, false, Timeout}, From, State) ->
     UUID = proplists:get_value(uuid, Cluster),
     true = (UUID =/= undefined),
