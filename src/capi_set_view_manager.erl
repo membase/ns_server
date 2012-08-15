@@ -24,8 +24,7 @@
 -export([start_link/1]).
 
 %% API
--export([fetch_ddocs/2, fetch_full_ddocs/1,
-         set_vbucket_states/3]).
+-export([set_vbucket_states/3]).
 
 -include("couch_db.hrl").
 -include_lib("couch_set_view/include/couch_set_view.hrl").
@@ -35,28 +34,12 @@
                 num_vbuckets :: non_neg_integer(),
                 use_replica_index :: boolean(),
                 master_db_watcher :: pid(),
-                ddocs :: set(),
                 wanted_states :: [missing | active | replica],
                 rebalance_states :: [rebalance_vbucket_state()],
                 usable_vbuckets}).
 
 set_vbucket_states(Bucket, WantedStates, RebalanceStates) ->
     gen_server:call(server(Bucket), {set_vbucket_states, WantedStates, RebalanceStates}, infinity).
-
-fetch_full_ddocs(Bucket) ->
-    {ok, DDocDB} = couch_db:open_int(master_db(Bucket), []),
-    {ok, DDocs} = try
-                      couch_db:get_design_docs(DDocDB)
-                  after
-                      couch_db:close(DDocDB)
-                  end,
-    DDocs.
-
--spec fetch_ddocs(bucket_name() | binary(), infinity | non_neg_integer()) -> {ok, set()}.
-fetch_ddocs(Bucket, Timeout) when is_binary(Bucket) ->
-    fetch_ddocs(binary_to_list(Bucket), Timeout);
-fetch_ddocs(Bucket, Timeout) when is_list(Bucket) ->
-    gen_server:call(server(Bucket), fetch_ddocs, Timeout).
 
 -define(csv_call(Call, Args),
         %% hack to not introduce any variables in the caller environment
@@ -132,24 +115,39 @@ get_usable_vbuckets_set(Bucket) ->
           VBucketName <- [binary:part(FullName, PrefixLen, erlang:size(FullName) - PrefixLen)],
           VBucketName =/= <<"master">>]).
 
-apply_vbucket_states(Bucket, DDocIds, WantedStates, RebalanceStates, UseReplicaIndex, ExistingVBuckets) ->
+apply_vbucket_states(Bucket, WantedStates, RebalanceStates, UseReplicaIndex, ExistingVBuckets) ->
     SetName = list_to_binary(Bucket),
     {Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets} =
         compute_index_states(WantedStates, RebalanceStates, ExistingVBuckets),
-    [apply_index_states(SetName, DDocId,
-                        Active, Passive, MainCleanup, Replica, ReplicaCleanup,
-                        PauseVBuckets, UnpauseVBuckets,
-                        UseReplicaIndex)
-     || DDocId <- DDocIds],
+    do_apply_vbucket_states(SetName, Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, UseReplicaIndex).
+
+
+do_apply_vbucket_states(SetName, Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, UseReplicaIndex) ->
+    RVs = capi_ddoc_replication_srv:foreach_live_ddoc_id(
+            SetName,
+            fun (DDocId) ->
+                    apply_index_states(SetName, DDocId,
+                                       Active, Passive, MainCleanup, Replica, ReplicaCleanup,
+                                       PauseVBuckets, UnpauseVBuckets,
+                                       UseReplicaIndex),
+                    ok
+            end),
+    BadDDocs = [Pair || {_Id, Val} = Pair <- RVs,
+                        Val =/= ok],
+    case BadDDocs of
+        [] ->
+            ok;
+        _ ->
+            ?log_error("Failed to apply index states for the following ddocs:~n~p", [BadDDocs])
+    end,
     ok.
 
-change_vbucket_states(DDocIds,
-                      #state{bucket = Bucket,
+change_vbucket_states(#state{bucket = Bucket,
                              wanted_states = WantedStates,
                              rebalance_states = RebalanceStates,
                              use_replica_index = UseReplicaIndex,
                              usable_vbuckets = UsableVBuckets} = _State) ->
-    apply_vbucket_states(Bucket, DDocIds, WantedStates, RebalanceStates, UseReplicaIndex, UsableVBuckets).
+    apply_vbucket_states(Bucket, WantedStates, RebalanceStates, UseReplicaIndex, UsableVBuckets).
 
 start_link(Bucket) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
@@ -175,56 +173,36 @@ init({Bucket, UseReplicaIndex, NumVBuckets}) ->
         proc_lib:start_link(erlang, apply,
                              [fun master_db_watcher/2, [Bucket, Self]]),
 
-    State0 = #state{bucket=Bucket,
-                    num_vbuckets = NumVBuckets,
-                    use_replica_index=UseReplicaIndex,
-                    master_db_watcher=Watcher,
-                    wanted_states = [],
-                    rebalance_states = [],
-                    usable_vbuckets = get_usable_vbuckets_set(Bucket)},
-
-    State = refresh_ddocs(State0),
+    State = #state{bucket=Bucket,
+                   num_vbuckets = NumVBuckets,
+                   use_replica_index=UseReplicaIndex,
+                   master_db_watcher=Watcher,
+                   wanted_states = [],
+                   rebalance_states = [],
+                   usable_vbuckets = get_usable_vbuckets_set(Bucket)},
 
     {ok, State}.
 
-flush_update_ddoc_messages() ->
-    receive
-        {update_ddoc, _, _} ->
-            flush_update_ddoc_messages()
-    after 0 ->
-            ok
-    end.
-
-refresh_ddocs(#state{bucket = Bucket} = State) ->
-    flush_update_ddoc_messages(),
-    DDocs = get_design_docs(Bucket),
-    [maybe_define_group(DDocId, State) || DDocId <- sets:to_list(DDocs)],
-    State#state{ddocs = DDocs}.
-
 handle_call({set_vbucket_states, WantedStates, RebalanceStates}, _From,
-            #state{ddocs = DDocsSet} = State) ->
+            State) ->
     State2 = State#state{wanted_states = WantedStates,
                          rebalance_states = RebalanceStates},
     case State2 =:= State of
         true ->
             {reply, ok, State};
         false ->
-            change_vbucket_states(sets:to_list(DDocsSet), State2),
+            change_vbucket_states(State2),
             {reply, ok, State2}
     end;
 
-handle_call(fetch_ddocs, _From, #state{ddocs=DDocs} = State) ->
-    {reply, {ok, DDocs}, State};
 handle_call({delete_vbucket, VBucket}, _From, #state{bucket = Bucket,
-                                                     ddocs = DDocsSet,
                                                      wanted_states = [],
                                                      rebalance_states = RebalanceStates,
                                                      use_replica_index = UseReplicaIndex} = State) ->
     [] = RebalanceStates,
     ?log_info("Deleting vbucket ~p from all indexes", [VBucket]),
     SetName = list_to_binary(Bucket),
-    [apply_index_states(SetName, DDocId, [], [], [VBucket], [], [VBucket], [], [], UseReplicaIndex)
-     || DDocId <- sets:to_list(DDocsSet)],
+    do_apply_vbucket_states(SetName, [], [], [VBucket], [], [VBucket], [], [], UseReplicaIndex),
     {reply, ok, State};
 handle_call({delete_vbucket, VBucket}, _From, #state{usable_vbuckets = UsableVBuckets,
                                                      wanted_states = WantedStates,
@@ -235,7 +213,7 @@ handle_call({delete_vbucket, VBucket}, _From, #state{usable_vbuckets = UsableVBu
                    orelse lists:nth(VBucket+1, RebalanceStates) =/= undefined)) of
         true ->
             NewState = State#state{usable_vbuckets = NewUsableVBuckets},
-            change_vbucket_states(sets:to_list(State#state.ddocs), NewState),
+            change_vbucket_states(NewState),
             {reply, ok, NewState};
         false ->
             {reply, ok, State}
@@ -252,31 +230,21 @@ aggregate_update_ddoc_messages(DDocId, Deleted) ->
             Deleted
     end.
 
-handle_info({update_ddoc, DDocId, Deleted0},
-            #state{ddocs=DDocs} = State) ->
+handle_info({update_ddoc, DDocId, Deleted0}, State) ->
     Deleted = aggregate_update_ddoc_messages(DDocId, Deleted0),
     ?log_info("Processing update_ddoc ~s (~p)", [DDocId, Deleted]),
-    State1 =
-        case Deleted of
-            false ->
-                %% we need to redefine set view whenever document changes; but
-                %% previous group for current value of design document can
-                %% still be alive; thus using maybe_define_group
-                maybe_define_group(DDocId, State),
-                %% NOTE: already_defined return may still happen for
-                %% brand-new ddoc id. That will happen when new ddoc
-                %% is identical to some old ddoc. But we still need to
-                %% track all ddocs. Thus adding it to set regardless
-                %% of return value
-                DDocs1 = sets:add_element(DDocId, DDocs),
-                change_vbucket_states([DDocId], State),
-                State#state{ddocs=DDocs1};
-            true ->
-                DDocs1 = sets:del_element(DDocId, DDocs),
-                State#state{ddocs=DDocs1}
-        end,
-
-    {noreply, State1};
+    case Deleted of
+        false ->
+            %% we need to redefine set view whenever document changes; but
+            %% previous group for current value of design document can
+            %% still be alive; thus using maybe_define_group
+            maybe_define_group(DDocId, State),
+            change_vbucket_states(State),
+            State;
+        true ->
+            ok
+    end,
+    {noreply, State};
 
 handle_info(refresh_usable_vbuckets,
             #state{bucket=Bucket,
@@ -288,7 +256,7 @@ handle_info(refresh_usable_vbuckets,
             {noreply, State};
         false ->
             State2 = State#state{usable_vbuckets = NewUsableVBuckets},
-            change_vbucket_states(sets:to_list(State2#state.ddocs), State2),
+            change_vbucket_states(State2),
             {noreply, State2}
     end;
 
@@ -455,11 +423,3 @@ handle_mc_couch_event(Self,
     ok = gen_server:call(Self, {delete_vbucket, VBucket}, infinity);
 handle_mc_couch_event(_, _) ->
     ok.
-
-
--spec get_design_docs(bucket_name()) -> set().
-get_design_docs(Bucket) ->
-    DDocIds = lists:map(fun (#doc{id=DDocId}) ->
-                                DDocId
-                        end, fetch_full_ddocs(Bucket)),
-    sets:from_list(DDocIds).

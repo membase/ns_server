@@ -699,27 +699,21 @@ update_list_nth(Index, List, Value) ->
     Tuple2 = setelement(Index, Tuple, Value),
     tuple_to_list(Tuple2).
 
-iterate_ddocs(BinBucket, Body, DeletedDDoc) ->
-    {ok, DDocsSet} = capi_set_view_manager:fetch_ddocs(BinBucket, infinity),
-    DDocsList = sets:to_list(DDocsSet),
-    [try
-         Body(DDocId)
-     catch T:E ->
-             BT = erlang:get_stacktrace(),
-             HaveDDoc = try
-                            couch_set_view:get_group_pid(BinBucket, DDocId),
-                            true
-                        catch _:_ ->
-                                false
-                        end,
-             case HaveDDoc of
-                 true ->
-                     erlang:raise(T, E, BT);
-                 false ->
-                     ?log_debug("Got couch_set_view exception seemingly caused by ddoc deletion~n~p~n~p", [{T, E}, BT]),
-                     DeletedDDoc(DDocId)
-             end
-     end || DDocId <- DDocsList].
+iterate_ddocs(BinBucket, Body) ->
+    RVs = capi_ddoc_replication_srv:foreach_live_ddoc_id(
+            BinBucket,
+            fun (DDocId) ->
+                    {ok, Body(DDocId)}
+            end),
+    {GoodRVs, BadRVs} = lists:partition(fun ({ok, _}) -> true;
+                                            (_) -> false
+                                        end, RVs),
+    case BadRVs of
+        [] ->
+            [V || {ok, V} <- GoodRVs];
+        _ ->
+            erlang:error({iterate_ddocs_failed, BadRVs})
+    end.
 
 spawn_rebalance_subprocess(#state{rebalance_subprocesses = Subprocesses} = State, From, Fun) ->
     Parent = self(),
@@ -731,27 +725,19 @@ spawn_rebalance_subprocess(#state{rebalance_subprocesses = Subprocesses} = State
 
 wait_index_updated_on_master(Bucket, VBucket) ->
     BinBucket = list_to_binary(Bucket),
-    Refs0 = iterate_ddocs(
-              BinBucket,
-              fun (DDocId) ->
-                      case DDocId of
-                          <<"_design/dev_", _/binary>> ->
-                              %% we don't need to wait-for/update dev indexes at all
-                              undefined;
-                          _ ->
-                              RV = couch_set_view:monitor_partition_update(BinBucket, DDocId, VBucket),
-                              couch_set_view:trigger_update(BinBucket, DDocId, 0),
-                              RV
-                      end
-              end,
-              fun (_DDocId) ->
-                      %% NOTE: Ref may have been created but
-                      %% that's harmless because this function
-                      %% is being called on it's own process
-                      undefined
-              end),
-    Refs = [R || R <- Refs0,
-                 R =/= undefined],
+    Refs = iterate_ddocs(
+             BinBucket,
+             fun (DDocId) ->
+                     case DDocId of
+                         <<"_design/dev_", _/binary>> ->
+                             %% we don't need to wait-for/update dev indexes at all
+                             undefined;
+                         _ ->
+                             RV = couch_set_view:monitor_partition_update(BinBucket, DDocId, VBucket),
+                             couch_set_view:trigger_update(BinBucket, DDocId, 0),
+                             RV
+                     end
+             end),
     ?log_debug("References to wait: ~p (~p, ~p)", [Refs, Bucket, VBucket]),
     [receive
          {Ref, Msg} -> % Ref is bound
@@ -775,9 +761,6 @@ do_initiate_indexing(Bucket) ->
                               _ ->
                                   couch_set_view:trigger_update(BinBucket, DDocId, 0)
                           end
-                  end,
-                  fun (_DDocId) ->
-                          ok
                   end),
     ok.
 

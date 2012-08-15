@@ -18,8 +18,12 @@
 
 -module(capi_ddoc_replication_srv).
 -include("couch_db.hrl").
+-include("ns_common.hrl").
 
--export([start_link/1, update_doc/2, force_update/1]).
+-export([start_link/1, update_doc/2, force_update/1,
+         foreach_doc/2, fetch_ddoc_ids/1,
+         full_live_ddocs/1,
+         foreach_live_ddoc_id/2]).
 
 -behaviour(cb_generic_replication_srv).
 -export([server_name/1, init/1, get_remote_nodes/1,
@@ -32,9 +36,50 @@ update_doc(Bucket, Doc) ->
     gen_server:call(server_name(Bucket),
                     {interactive_update, Doc}, infinity).
 
+-spec fetch_ddoc_ids(bucket_name() | binary()) -> [binary()].
+fetch_ddoc_ids(Bucket) ->
+    Pairs = foreach_live_ddoc_id(Bucket, fun (_) -> ok end),
+    erlang:element(1, lists:unzip(Pairs)).
 
 force_update(Bucket) ->
     cb_generic_replication_srv:force_update(server_name(Bucket)).
+
+-spec foreach_live_ddoc_id(bucket_name() | binary(),
+                           fun ((binary()) -> any())) -> [{binary(), any()}].
+foreach_live_ddoc_id(Bucket, Fun) ->
+    Ref = make_ref(),
+    RVs = foreach_doc(
+            Bucket,
+            fun (Doc) ->
+                    case Doc of
+                        #doc{deleted = true} ->
+                            Ref;
+                        _ ->
+                            Fun(Doc#doc.id)
+                    end
+            end),
+    [Pair || {_Id, V} = Pair <- RVs,
+             V =/= Ref].
+
+full_live_ddocs(Bucket) ->
+    Ref = make_ref(),
+    RVs = foreach_doc(
+            Bucket,
+            fun (Doc) ->
+                    case Doc of
+                        #doc{deleted = true} ->
+                            Ref;
+                        _ ->
+                            Doc
+                    end
+            end),
+    [V || {_Id, V} <- RVs,
+          V =/= Ref].
+
+-spec foreach_doc(bucket_name() | binary(),
+                   fun ((#doc{}) -> any())) -> [{binary(), any()}].
+foreach_doc(Bucket, Fun) ->
+    cb_generic_replication_srv:foreach_doc(server_name(Bucket), Fun).
 
 
 start_link(Bucket) ->
@@ -81,5 +126,3 @@ open_local_db(#state{master=MasterVBucket}) ->
         {not_found, _} ->
             couch_db:create(MasterVBucket, [])
     end.
-
-

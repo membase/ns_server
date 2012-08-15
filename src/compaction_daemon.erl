@@ -907,8 +907,7 @@ get_group_data_info(BucketName, DDocId, replica) ->
     proplists:get_value(replica_group_info, MainInfo, disabled).
 
 ddoc_names(BucketName) ->
-    {ok, DDocsSet} = capi_set_view_manager:fetch_ddocs(BucketName, infinity),
-    sets:to_list(DDocsSet).
+    capi_ddoc_replication_srv:fetch_ddoc_ids(BucketName).
 
 search_node_default(Config, Key, Default) ->
     case ns_config:search_node(Config, Key) of

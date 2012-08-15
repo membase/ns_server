@@ -721,10 +721,10 @@ aggregate_stat_entries(A, B) ->
 -define(SPACE_CHAR, 16#20).
 
 couchbase_view_stats_descriptions(BucketId) ->
-    {ok, DesignDocIds} = capi_set_view_manager:fetch_ddocs(BucketId, infinity),
+    DesignDocIds = capi_ddoc_replication_srv:fetch_ddoc_ids(BucketId),
 
     % fold over design docs and get the signature
-    DictBySig = sets:fold(
+    DictBySig = lists:foldl(
       fun (DDocId, BySig) ->
               {ok, Info} = couch_set_view:get_group_info(list_to_binary(BucketId), DDocId),
               Signature = couch_util:get_value(signature, Info),

@@ -134,13 +134,11 @@ views_collection_loop_iteration(BinBucket, NameToStatsETS,  DDocId) ->
             ?log_debug("Get group info (~s/~s) failed:~n~p", [BinBucket, DDocId, Why])
     end.
 
-collect_view_stats(BinBucket, DDocIdsSet) ->
+collect_view_stats(BinBucket, DDocIdList) ->
     NameToStatsETS = ets:new(ok, []),
     try
-        sets:fold(fun (DDocId, []) ->
-                          views_collection_loop_iteration(BinBucket, NameToStatsETS, DDocId),
-                          []
-                  end, [], DDocIdsSet),
+        [views_collection_loop_iteration(BinBucket, NameToStatsETS, DDocId)
+         || DDocId <- DDocIdList],
         ets:tab2list(NameToStatsETS)
     after
         ets:delete(NameToStatsETS)
@@ -161,8 +159,8 @@ grab_couch_stats(Bucket) ->
     VBucketIds = ns_bucket:all_node_vbuckets(Conf),
     {VBucketsDiskSize, VBucketsDataSize} = vbuckets_aggregation_loop(BinBucket, 0, 0, [list_to_binary(integer_to_list(I)) || I <- VBucketIds]),
 
-    {ok, DDocIds} = capi_set_view_manager:fetch_ddocs(Bucket, infinity),
-    ViewStats = collect_view_stats(BinBucket, DDocIds),
+    DDocIdList = capi_ddoc_replication_srv:fetch_ddoc_ids(BinBucket),
+    ViewStats = collect_view_stats(BinBucket, DDocIdList),
     {ViewsDiskSize, ViewsDataSize} = aggregate_view_stats_loop(0, 0, ViewStats),
 
     {ok, CouchDir} = ns_storage_conf:this_node_dbdir(),

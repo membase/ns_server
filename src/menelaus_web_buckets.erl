@@ -959,7 +959,7 @@ basic_bucket_params_screening_test() ->
 -endif.
 
 handle_ddocs_list(PoolId, Bucket, Req) ->
-    DDocs = capi_set_view_manager:fetch_full_ddocs(Bucket),
+    DDocs = capi_ddoc_replication_srv:full_live_ddocs(Bucket),
     RV = [begin
               Id = capi_utils:extract_doc_id(Doc),
               {struct, [{doc, capi_utils:couch_doc_to_mochi_json(Doc)},

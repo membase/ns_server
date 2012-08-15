@@ -121,7 +121,7 @@ trigger_updates_for_bucket(Bucket, MinNumChanges) ->
                                                                  Id, DDocMinNumChanges)
                       end
               end
-      end, capi_set_view_manager:fetch_full_ddocs(Bucket)).
+      end, capi_ddoc_replication_srv:full_live_ddocs(Bucket)).
 
 ddoc_update_min_changes(#doc{body={Body}}, Default) ->
     {Options} = proplists:get_value(<<"options">>, Body, {[]}),

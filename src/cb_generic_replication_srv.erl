@@ -19,12 +19,16 @@
 -include("couch_db.hrl").
 -include("ns_common.hrl").
 
--export([start_link/2,force_update/1]).
+-export([start_link/2,
+         force_update/1,
+         foreach_doc/2]).
+
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
 -record(state, {module, module_state, server_name,
-                remote_nodes = [], local_doc_infos=[]}).
+                remote_nodes = [],
+                local_docs = [] :: [#doc{}]}).
 
 -export([behaviour_info/1]).
 
@@ -41,6 +45,8 @@ start_link(Mod, Args) ->
 force_update(Srv) ->
     Srv ! replicate_newnodes_docs.
 
+foreach_doc(Srv, Fun) ->
+    gen_server:call(Srv, {foreach_doc, Fun}, infinity).
 
 %% Callbacks
 
@@ -48,12 +54,12 @@ init([ServerName, Mod, Args]) ->
     Self = self(),
     {ok, ModState} = Mod:init(Args),
     {ok, Db} = Mod:open_local_db(ModState),
-    DocInfos = try
-                   {ok, Docs} = Mod:load_local_docs(Db, ModState),
-                   [{Id,Rev} || #doc{id=Id,rev=Rev} <- Docs]
-               after
-                   ok = couch_db:close(Db)
-               end,
+    Docs = try
+               {ok, ADocs} = Mod:load_local_docs(Db, ModState),
+               ADocs
+           after
+               ok = couch_db:close(Db)
+           end,
     %% anytime we disconnect or reconnect, force a replicate event.
     ns_pubsub:subscribe_link(
       ns_node_disco_events,
@@ -67,18 +73,18 @@ init([ServerName, Mod, Args]) ->
     [{ServerName, N} ! replicate_newnodes_docs ||
         N <- Mod:get_remote_nodes(ModState)],
 
-    {ok, #state{module=Mod, module_state=ModState, local_doc_infos=DocInfos,
+    {ok, #state{module=Mod, module_state=ModState, local_docs=Docs,
                 server_name=ServerName}}.
 
 
 handle_call({interactive_update, #doc{id=Id}=Doc}, _From, State) ->
-    #state{local_doc_infos=DocInfos}=State,
+    #state{local_docs=Docs}=State,
     Rand = crypto:rand_uniform(0, 16#100000000),
     RandBin = <<Rand:32/integer>>,
-    NewRev = case proplists:get_value(Id, DocInfos) of
-                 undefined ->
+    NewRev = case lists:keyfind(Id, #doc.id, Docs) of
+                 false ->
                      {1, RandBin};
-                 {Pos, _DiskRev} ->
+                 #doc{rev = {Pos, _DiskRev}} ->
                      {Pos + 1, RandBin}
              end,
     NewDoc = Doc#doc{rev=NewRev},
@@ -90,30 +96,33 @@ handle_call({interactive_update, #doc{id=Id}=Doc}, _From, State) ->
     catch throw:{invalid_design_doc, _} = Error ->
             ?log_debug("Document validation failed: ~p", [Error]),
             {reply, Error, State}
-    end.
+    end;
+handle_call({foreach_doc, Fun}, _From, #state{local_docs = Docs} = State) ->
+    Res = [{Id, (catch Fun(Doc))} || #doc{id = Id} = Doc <- Docs],
+    {reply, Res, State}.
 
 replicate_change(#state{remote_nodes=Nodes, server_name=ServerName}, Doc) ->
     [replicate_change_to_node(ServerName, Node, Doc) || Node <- Nodes],
     ok.
 
-save_doc(#doc{id=Id,rev=Rev}=Doc,
-         #state{module=Mod, module_state=ModState, local_doc_infos=DocInfos}=State) ->
+save_doc(#doc{id = Id} = Doc,
+         #state{module=Mod, module_state=ModState, local_docs=Docs}=State) ->
     {ok, Db} = Mod:open_local_db(ModState),
     try
         ok = couch_db:update_doc(Db, Doc)
     after
         ok = couch_db:close(Db)
     end,
-    State#state{local_doc_infos = lists:keystore(Id, 1, DocInfos, {Id,Rev})}.
+    State#state{local_docs = lists:keystore(Id, #doc.id, Docs, Doc)}.
 
 handle_cast({replicated_update, #doc{id=Id, rev=Rev}=Doc}, State) ->
     %% this is replicated from another node in the cluster. We only accept it
     %% if it doesn't exist or the rev is higher than what we have.
-    #state{local_doc_infos=DocInfos} = State,
-    Proceed = case lists:keyfind(Id, 1, DocInfos) of
+    #state{local_docs=Docs} = State,
+    Proceed = case lists:keyfind(Id, #doc.id, Docs) of
                   false ->
                       true;
-                  {_, DiskRev} when Rev > DiskRev ->
+                  #doc{rev = DiskRev} when Rev > DiskRev ->
                       true;
                   _ ->
                       false
@@ -132,6 +141,7 @@ handle_info({'DOWN', _Ref, _Type, {Server, RemoteNode}, Error},
                  [{Server, RemoteNode}, Error]),
     {noreply, State#state{remote_nodes=RemoteNodes -- [RemoteNode]}};
 handle_info(replicate_newnodes_docs, State) ->
+    ?log_debug("doing replicate_newnodes_docs"),
     {noreply, replicate_newnodes_docs(State)}.
 
 
@@ -145,7 +155,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 replicate_newnodes_docs(State) ->
     #state{remote_nodes=OldNodes, module=Mod, module_state=ModState,
-           server_name=ServerName} = State,
+           server_name=ServerName,
+           local_docs = Docs} = State,
     AllNodes = Mod:get_remote_nodes(ModState),
     NewNodes = AllNodes -- OldNodes,
     case NewNodes of
@@ -153,14 +164,9 @@ replicate_newnodes_docs(State) ->
             ok;
         _ ->
             [monitor(process, {ServerName, Node}) || Node <- NewNodes],
-            {ok, Db} = Mod:open_local_db(ModState),
-            {ok, Docs} = try
-                             Mod:load_local_docs(Db, ModState)
-                         after
-                             ok = couch_db:close(Db)
-                         end,
             [replicate_change_to_node(ServerName, S, D)
-                                      || S <- NewNodes, D <- Docs]
+             || S <- NewNodes,
+                D <- Docs]
     end,
     State#state{remote_nodes=AllNodes}.
 
