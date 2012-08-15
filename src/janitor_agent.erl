@@ -705,7 +705,7 @@ iterate_ddocs(BinBucket, Body) ->
             fun (DDocId) ->
                     {ok, Body(DDocId)}
             end),
-    {GoodRVs, BadRVs} = lists:partition(fun ({ok, _}) -> true;
+    {GoodRVs, BadRVs} = lists:partition(fun ({_, {ok, _}}) -> true;
                                             (_) -> false
                                         end, RVs),
     case BadRVs of
