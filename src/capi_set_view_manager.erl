@@ -181,6 +181,8 @@ init({Bucket, UseReplicaIndex, NumVBuckets}) ->
                    rebalance_states = [],
                    usable_vbuckets = get_usable_vbuckets_set(Bucket)},
 
+    ?log_debug("Usable vbuckets:~n~p", [sets:to_list(State#state.usable_vbuckets)]),
+
     {ok, State}.
 
 handle_call({set_vbucket_states, WantedStates, RebalanceStates}, _From,
@@ -256,6 +258,7 @@ handle_info(refresh_usable_vbuckets,
             {noreply, State};
         false ->
             State2 = State#state{usable_vbuckets = NewUsableVBuckets},
+            ?log_debug("Usable vbuckets:~n~p", [sets:to_list(State2#state.usable_vbuckets)]),
             change_vbucket_states(State2),
             {noreply, State2}
     end;
