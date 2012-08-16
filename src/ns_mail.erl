@@ -21,7 +21,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 
--export([send/5, ns_log_cat/1]).
+-export([send/5]).
 
 -include("ns_common.hrl").
 
@@ -36,7 +36,9 @@ handle_call({send, Sender, Rcpts, Body, Options}, _From, State) ->
     Reply = gen_smtp_client:send_blocking({Sender, Rcpts, Body}, Options),
     case Reply of
         {error, _, Reason} ->
-            ?user_log(0001, "error sending mail: ~p", [Reason]);
+            ale:warn(?USER_LOGGER,
+                     "Could not send email: ~p. "
+                     "Make sure that your email settings are correct.", [Reason]);
         _ -> ok
     end,
     {reply, Reply, State};
@@ -64,8 +66,6 @@ send(Sender, Rcpts, Subject, Body, Options) ->
                               list_to_binary(Body)}),
     gen_server:call(?MODULE, {send, Sender, Rcpts, binary_to_list(Message),
                               Options}).
-
-ns_log_cat(0001) -> warn.
 
 %% Internal functions
 
