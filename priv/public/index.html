@@ -557,9 +557,11 @@
               <div class="size-gauge for-hdd"></div>
             {%= V.thisElement(function (e) {BucketsSection.renderHDDDetailsGauge(e, obj)}) %}
 
-              <label class="for-hdd-quota">
+              <label class="for-hdd-quota" style="padding:0;">
                 <span>Disk Usage:</span>
-                <span>{%= h(V.formatQuantity(basicStats.diskUsed)) %}</span>
+                <span>{%= h(V.formatQuantity(basicStats.diskUsed)) %}</span><br>
+                <span>Data Usage:</span>
+                <span>{%= h(V.formatQuantity(basicStats.dataUsed)) %}</span>
                 <abbr></abbr>
               </label>
             {% } %} <!-- storageInfoRelevant -->
