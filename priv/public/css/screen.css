@@ -195,9 +195,12 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .usage_smallest_info {width:135px; font-size:11px; color:#8a8a8d; line-height:15px;}
 .usage_smallest_info .usage_smallest {float:left; margin:0 5px 0 0;}
 
-.vertical_bar {position:relative;float:left;display:inline-block;vertical-align:middle;overflow:hidden;width:1em;height:3em;background:white;border:1px solid #999;border-radius:2px;margin-right:5px}
+#servers .list th {text-align:left;padding-right:0;padding-left:0;}
+#servers .list td.ram {padding-left:5px;padding-right:0;}
+#servers .list th.node_name {padding-left:5px;}
+.vertical_bar {float:left;overflow:hidden;width:1em;height:3em;background:white;border:1px solid #999;border-radius:2px;margin-right:5px}
 .vertical_bar .used{position:relative;background:#00BCE9;}
-.wrap {float:left;margin: 13px 0 0;}
+.wrap {float:left;margin-top:12px;}
 
 /* analytics graph */
 #analytics{margin:auto}
@@ -686,9 +689,9 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 .btn_x {margin: 4px 0 0;width:25px;height:24px;background:url(../images/btn_x.png) no-repeat}
 
 .server_up, .server_down, .failed_over, .server_warmup, .pending_add {width:65px;padding: 0 !important;}
-.server_up {background:transparent url(../images/server_status_icons_solid_bg.png) right 19px no-repeat !important;}
-.server_down {background:transparent url(../images/server_status_icons_solid_bg.png) right -160px no-repeat !important;}
-.failed_over , .server_warmup, .pending_add {background:transparent url(../images/server_status_icons_solid_bg.png) right -310px no-repeat !important;}
+.server_up {background:transparent url(../images/server_status_icons_solid_bg.png) center 19px no-repeat !important;}
+.server_down {background:transparent url(../images/server_status_icons_solid_bg.png) center -160px no-repeat !important;}
+.failed_over , .server_warmup, .pending_add {background:transparent url(../images/server_status_icons_solid_bg.png) center -310px no-repeat !important;}
 
 #servers h2 { height: 25px;}
 .servers_list ul {*margin:-1px 0 0;*position:relative;*top:1px;}
@@ -701,7 +704,8 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 .servers_list .rebalance_empty {padding:0 15px; background:none; color:#656565;}
 .servers_list .pending_add {background:url(../images/server_status_icons.png) 10px -309px no-repeat;}
 
-.pending_removal_message, .pending_add_message {float:right; margin:0 10px 0 0; color:#e54c2a;padding:1em}
+.servers_list .actions {padding-left:0;}
+.pending_removal_message, .pending_add_message {float:right; margin:0 10px 0 0; color:#e54c2a;padding:1em 0;}
 .pending_add_message {margin:0}
 .server_row.status_up {background-position:10px 20px !important;}
 .server_row.status_down {background-position:10px -157px !important; background-color:#61696c;}
@@ -789,7 +793,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list td.bucket_name, .list td.node_name{padding-left:35px}
 .list td.bucket_name a:first-child, .list td.node_name a:first-child {position:absolute;left:10px}
 .list td.node_name {font-size:120%;white-space:nowrap;}
-.list td.ram {width:77px}
+.list td.ram {width:77px;padding-left:25px;}
 .list td.rep {width:38px;white-space:nowrap}
 .list td.view_name{padding-left:3em;color:#616062}
 .list .settings-placeholder {display:none; padding:9px 12px 8px 13px;border-top:2px solid #ced5d9;background:#e6e7e8;text-align:left}

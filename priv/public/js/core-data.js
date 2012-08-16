@@ -403,6 +403,11 @@ var DAL = {
     }
 
     _.each(allNodes, function (n) {
+      var interestingStats = n.interestingStats;
+      if (interestingStats && ('couch_docs_data_size' in interestingStats)) {
+        n.couchDataSize = interestingStats.couch_docs_data_size + interestingStats.couch_views_data_size;
+        n.couchDiskUsage = interestingStats.couch_docs_actual_disk_size + interestingStats.couch_views_actual_disk_size;
+      }
 
       n.ejectPossible = !detailsAreStale && !n.pendingEject;
       n.failoverPossible = !detailsAreStale && (n.clusterMembership !== 'inactiveFailed');

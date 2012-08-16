@@ -127,6 +127,8 @@ is_interesting_stat({vb_replica_curr_items, _}) -> true;
 is_interesting_stat({mem_used, _}) -> true;
 is_interesting_stat({couch_docs_actual_disk_size, _}) -> true;
 is_interesting_stat({couch_views_actual_disk_size, _}) -> true;
+is_interesting_stat({couch_docs_data_size, _}) -> true;
+is_interesting_stat({couch_views_data_size, _}) -> true;
 is_interesting_stat(_) -> false.
 
 current_status() ->
