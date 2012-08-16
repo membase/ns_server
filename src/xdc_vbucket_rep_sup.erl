@@ -16,10 +16,10 @@
 
 -export([init/1, start_link/1]).
 
--include("couch_db.hrl").
+-include("xdc_replicator.hrl").
 
 start_link(ChildSpecs) ->
-    supervisor:start_link({local,?MODULE}, ?MODULE, ChildSpecs).
+    supervisor:start_link(?MODULE, ChildSpecs).
 
 shutdown(Sup) ->
     MonRef = erlang:monitor(process, Sup),

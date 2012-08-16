@@ -33,13 +33,33 @@
 -module(xdc_rep_manager).
 -behaviour(gen_server).
 
+-export([stats/1]).
 -export([start_link/0, init/1, handle_call/3, handle_info/2, handle_cast/2]).
 -export([code_change/3, terminate/2]).
 
 -include("xdc_replicator.hrl").
 
+
+%% Record to store and track changes to the _replicator db
+-record(rep_db_state, {
+    changes_feed_loop = nil,
+    rep_db_name = nil
+    }).
+
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+% returns a list of replication stats for the bucket. the format for each
+% item in the list is:
+% {ReplicationDocId,           & the settings doc id for this replication
+%    [{changes_left, Integer}, % amount of work remaining
+%     {docs_checked, Integer}, % total number of docs checked on target, survives restarts
+%     {docs_written, Integer}, % total number of docs written to target, survives restarts
+%     {vbs_replicating,[Integer, ...]} % list of vbuckets actively replicating
+%    ]
+% }
+stats(Bucket) ->
+    gen_server:call(?MODULE, {stats, Bucket}).
 
 
 init(_) ->
@@ -86,9 +106,36 @@ maybe_create_replication_info_ddoc() ->
         couch_db:close(DB)
     end.
 
-handle_call({rep_db_update, {ChangeProps} = Change}, _From, State) ->
+handle_call({stats, Bucket0}, _, State) ->
+    Bucket = list_to_binary(Bucket0),
+    case catch xdc_replication_sup:get_replications(Bucket) of
+        {ok, Reps} ->
+            ok;
+        Error0 ->
+            ?xdcr_error("xdcr stats Error:~p", [Error0]),
+            Reps = []
+    end,
+    Stats = lists:foldl(
+        fun({Id, Pid}, Acc) ->
+                case catch xdc_replication:stats(Pid) of
+                    {ok, Stats} ->
+                        [{Id, Stats} | Acc];
+                    Error ->
+                        ?xdcr_error("Error getting stats for bucket ~s with"
+                                   " id ~s :~p", [Bucket, Id, Error])
+                end
+        end, [], Reps),
+    {reply, Stats, State};
+
+handle_call(Msg, From, State) ->
+    ?xdcr_error("replication manager received unexpected call ~p from ~p",
+                [Msg, From]),
+    {stop, {error, {unexpected_call, Msg}}, State}.
+
+
+handle_cast({rep_db_update, {ChangeProps} = Change}, State) ->
     try
-        process_update(Change)
+        {noreply, process_update(Change, State)}
     catch
         _Tag:Error ->
             {json, DocJSON} = get_value(doc, ChangeProps),
@@ -97,14 +144,8 @@ handle_call({rep_db_update, {ChangeProps} = Change}, _From, State) ->
             DocId = get_value(<<"id">>, Meta),
             ?xdcr_error("~s: xdc replication error: ~p~n~p",
                         [DocId, Error, erlang:get_stacktrace()]),
-            State
-    end,
-    {reply, ok, State};
-
-handle_call(Msg, From, State) ->
-    ?xdcr_error("replication manager received unexpected call ~p from ~p",
-                [Msg, From]),
-    {stop, {error, {unexpected_call, Msg}}, State}.
+            {noreply, State}
+    end;
 
 handle_cast(Msg, State) ->
     ?xdcr_error("replication manager received unexpected cast ~p", [Msg]),
@@ -118,14 +159,12 @@ handle_info(Msg, State) ->
 
 
 terminate(_Reason, _State) ->
-    xdc_replication_sup:shutdown(),
-    true = ets:delete(?XSTATS),
-    ?xdcr_debug("all XDCR manager internal tables deleted").
+    xdc_replication_sup:shutdown().
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-process_update({Change}) ->
+process_update({Change}, State) ->
     DocDeleted = get_value(<<"deleted">>, Change, false),
     DocId = get_value(<<"id">>, Change),
     {json, DocJSON} = get_value(doc, Change),
@@ -133,15 +172,17 @@ process_update({Change}) ->
     {Props} = get_value(<<"json">>, DocProps, {[]}),
     case DocDeleted of
         true ->
-            xdc_replication_sup:stop_replication(DocId);
+            xdc_replication_sup:stop_replication(DocId),
+            State;
         false ->
             case get_value(<<"type">>, Props) of
                 <<"xdc">> ->
                     XRep = parse_xdc_rep_doc(DocId, {Props}),
                     xdc_replication_sup:stop_replication(DocId),
-                    xdc_replication_sup:start_replication(XRep);
+                    xdc_replication_sup:start_replication(XRep),
+                    State;
                 _ ->
-                    ok
+                    State
             end
     end.
 
@@ -170,8 +211,8 @@ changes_feed_loop() ->
                       fun({change, Change, _}, _) ->
                               case has_valid_rep_id(Change) of
                                   true ->
-                                      ok = gen_server:call(
-                                             Server, {rep_db_update, Change}, infinity);
+                                      ok = gen_server:cast(
+                                             Server, {rep_db_update, Change});
                                   false ->
                                       ok
                               end;

@@ -39,7 +39,7 @@ cancel_timer(#rep_state{timer = Timer} = State) ->
     State#rep_state{timer = nil}.
 
 do_last_checkpoint(#rep_state{seqs_in_progress = [],
-                              highest_seq_done = {_Ts, ?LOWEST_SEQ}} = State) ->
+                              highest_seq_done = ?LOWEST_SEQ} = State) ->
     cancel_timer(State);
 do_last_checkpoint(#rep_state{seqs_in_progress = [],
                               highest_seq_done = Seq} = State) ->
@@ -71,9 +71,9 @@ do_checkpoint(State) ->
                rep_starttime = ReplicationStartTime,
                src_starttime = SrcInstanceStartTime,
                tgt_starttime = TgtInstanceStartTime,
-               stats = Stats,
-               rep_details = #rep{options = Options},
-               session_id = SessionId
+               session_id = SessionId,
+               status = #rep_vb_status{docs_checked = Checked,
+                                     docs_written = Written}
               } = State,
     case commit_to_both(Source, Target) of
         {source_error, Reason} ->
@@ -94,31 +94,17 @@ do_checkpoint(State) ->
                                 {<<"start_last_seq">>, StartSeq},
                                 {<<"end_last_seq">>, NewSeq},
                                 {<<"recorded_seq">>, NewSeq},
-                                {<<"missing_checked">>, Stats#rep_stats.missing_checked},
-                                {<<"missing_found">>, Stats#rep_stats.missing_found},
-                                {<<"docs_read">>, Stats#rep_stats.docs_read},
-                                {<<"docs_written">>, Stats#rep_stats.docs_written},
-                                {<<"doc_write_failures">>, Stats#rep_stats.doc_write_failures}
+                                {<<"docs_checked">>, Checked},
+                                {<<"docs_written">>, Written}
                                ]},
             BaseHistory = [
                            {<<"session_id">>, SessionId},
                            {<<"source_last_seq">>, NewSeq},
-                           {<<"replication_id_version">>, ?REP_ID_VERSION}
-                          ] ++ case get_value(doc_ids, Options) of
-                                   undefined ->
-                                       [];
-                                   _DocIds ->
-                                       %% backwards compatibility with the result of a replication by
-                                       %% doc IDs in versions 0.11.x and 1.0.x
-                                       %% TODO: deprecate (use same history format, simplify code)
-                                       [
-                                        {<<"start_time">>, StartTime},
-                                        {<<"end_time">>, EndTime},
-                                        {<<"docs_read">>, Stats#rep_stats.docs_read},
-                                        {<<"docs_written">>, Stats#rep_stats.docs_written},
-                                        {<<"doc_write_failures">>, Stats#rep_stats.doc_write_failures}
-                                       ]
-                               end,
+                           {<<"start_time">>, StartTime},
+                           {<<"end_time">>, EndTime},
+                           {<<"docs_checked">>, Checked},
+                           {<<"docs_written">>, Written}
+                         ],
             %% limit history to 50 entries
             NewRepHistory = {
               BaseHistory ++

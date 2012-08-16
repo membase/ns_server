@@ -21,6 +21,7 @@
 -module(xdc_replication).
 -behaviour(gen_server).
 
+-export([stats/1]).
 -export([start_link/1, init/1, handle_call/3, handle_info/2, handle_cast/2]).
 -export([code_change/3, terminate/2]).
 
@@ -35,8 +36,12 @@
     vb_rep_dict = dict:new()% contains state and stats for each replicator
     }).
 
+
 start_link(Rep) ->
     gen_server:start_link(?MODULE, [Rep], []).
+
+stats(Pid) ->
+    gen_server:call(Pid, stats).
 
 
 init([#rep{source = SrcBucketBinary} = Rep]) ->
@@ -48,22 +53,26 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
                                 (_, Acc) ->
                                     Acc
                             end,
+                        ?xdcr_error("initting 0", []),
     ns_pubsub:subscribe_link(ns_config_events, NsConfigEventsHandler, []),
 
     MaxConcurrentReps = misc:getenv_int("MAX_CONCURRENT_REPS_PER_DOC",
                                         ?MAX_CONCURRENT_REPS_PER_DOC),
     SrcSize = size(SrcBucketBinary),
-    Self = self(),
     NotifyFun = fun({updated, {<<Src:SrcSize/binary, $/, VbStr/binary>>, _}})
                             when Src == SrcBucketBinary->
                         Vb = list_to_integer(binary_to_list(VbStr)),
-                        Self ! {src_db_updated, Vb};
+                        Server ! {src_db_updated, Vb};
                     (_Evt) ->
                         ok
                 end,
+    ?xdcr_error("initting 1", []),
     {ok, _} = couch_db_update_notifier:start_link(NotifyFun),
+?xdcr_error("initting 2", []),
     {ok, Throttle} = concurrency_throttle:start_link(MaxConcurrentReps),
+?xdcr_error("initting 3", []),
     {ok, Sup} = xdc_vbucket_rep_sup:start_link([]),
+?xdcr_error("initting 4", []),
     case ns_bucket:get_bucket(?b2l(SrcBucketBinary)) of
     {ok, SrcBucketConfig} ->
         Vbs = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
@@ -79,6 +88,30 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
     end,
     {ok, RepState}.
 
+handle_call(stats, _From, #replication{vb_rep_dict = Dict} = State) ->
+    Stats = dict:fold(
+                    fun(_,
+                        #rep_vb_status{vb = Vb,
+                                       status = Status,
+                                       num_changes_left = Left,
+                                       docs_checked = Checked,
+                                       docs_written = Written},
+                        {WorkLeftAcc, CheckedAcc, WrittenAcc, VbReplicatingAcc}) ->
+                                {WorkLeftAcc + Left,
+                                 CheckedAcc + Checked,
+                                 WrittenAcc + Written,
+                                 if Status == replicating ->
+                                     [Vb | VbReplicatingAcc];
+                                 true ->
+                                     VbReplicatingAcc
+                                 end}
+                        end, {0, 0, 0, []}, Dict),
+    {Left1, Checked1, Written1, VbsReplicating1} = Stats,
+    Props = [{changes_left, Left1},
+             {docs_checked, Checked1},
+             {docs_written, Written1},
+             {vbs_replicating, VbsReplicating1}],
+    {reply, {ok, Props}, State};
 
 handle_call(Msg, From, State) ->
     ?xdcr_error("replication manager received unexpected call ~p from ~p",
@@ -99,7 +132,7 @@ consume_all_buckets_changes(Buckets) ->
 
 handle_info({src_db_updated, Vb}, #replication{vb_rep_dict = Dict} = State) ->
     case dict:find(Vb, Dict) of
-    {ok, #rep_vb_state{pid = Pid}} ->
+    {ok, #rep_vb_status{pid = Pid}} ->
         Pid ! src_db_updated;
     error ->
         % no state yet, or already erased
@@ -107,7 +140,7 @@ handle_info({src_db_updated, Vb}, #replication{vb_rep_dict = Dict} = State) ->
     end,
     {noreply, State};
 
-handle_info({set_vb_rep_state, #rep_vb_state{vb = Vb} = VbState},
+handle_info({set_vb_rep_status, #rep_vb_status{vb = Vb} = VbState},
             #replication{vb_rep_dict = Dict} = State) ->
     Dict2 = dict:store(Vb, VbState, Dict),
     {noreply, State#replication{vb_rep_dict = Dict2}};
@@ -122,8 +155,8 @@ handle_info({buckets, Buckets0},
         undefined ->
             % our bucket went away or never existed
             xdc_vbucket_rep_sup:shutdown(Sup),
-            {ok, Sup} = xdc_vbucket_rep_sup:start_link([]),
-            NewState = State#replication{vbucket_sup = Sup};
+            {ok, Sup2} = xdc_vbucket_rep_sup:start_link([]),
+            NewState = State#replication{vbucket_sup = Sup2};
         SrcConfig ->
             NewVbs = xdc_rep_utils:my_active_vbuckets(SrcConfig),
             NewState = start_vb_replicators(State#replication{vbs = NewVbs})

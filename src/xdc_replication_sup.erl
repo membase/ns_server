@@ -13,7 +13,7 @@
 -module(xdc_replication_sup).
 -behaviour(supervisor).
 
--export([start_replication/1, stop_replication/1, shutdown/0]).
+-export([start_replication/1, stop_replication/1, shutdown/0, get_replications/1]).
 
 -export([init/1, start_link/0]).
 
@@ -22,8 +22,8 @@
 start_link() ->
     supervisor:start_link({local,?MODULE}, ?MODULE, []).
 
-start_replication(#rep{id=Id} = Rep) ->
-    Spec = {Id,
+start_replication(#rep{id = Id, source = SourceBucket} = Rep) ->
+    Spec = {{SourceBucket, Id},
              {xdc_replication, start_link, [Rep]},
              permanent,
              100,
@@ -33,9 +33,20 @@ start_replication(#rep{id=Id} = Rep) ->
     supervisor:start_child(?MODULE, Spec).
 
 
+get_replications(SourceBucket) ->
+    {ok, [{element(2, element(1, Child)), element(2, Child)} || Child <-
+        supervisor:which_children(?MODULE), element(1, element(1, Child)) == SourceBucket]}.
+
+
 stop_replication(Id) ->
-    supervisor:terminate_child(?MODULE, Id),
-    supervisor:delete_child(?MODULE, Id).
+    lists:foreach(
+        fun(Child) when element(2, element(1, Child)) == Id ->
+                supervisor:terminate_child(?MODULE, element(1, Child)),
+                ok = supervisor:delete_child(?MODULE, element(1, Child));
+           (_) ->
+                ok
+        end,  supervisor:which_children(?MODULE)),
+    ok.
 
 
 shutdown() ->

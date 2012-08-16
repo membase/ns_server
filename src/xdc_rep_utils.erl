@@ -20,8 +20,7 @@
 -export([parse_rep_doc/2]).
 -export([local_couch_uri_for_vbucket/2]).
 -export([remote_couch_uri_for_vbucket/3, my_active_vbuckets/1]).
--export([vb_rep_state_list/2]).
--export([sum_stats/2,parse_rep_db/1]).
+-export([parse_rep_db/1]).
 -export([split_dbname/1]).
 -export([get_master_db/1, get_checkpoint_log_id/2]).
 
@@ -49,17 +48,6 @@ my_active_vbuckets(BucketConfig) ->
     [Ordinal-1 ||
         {Ordinal, Owner} <- misc:enumerate([Head || [Head|_] <- VBucketMap]),
         Owner == node()].
-
-
-%% Generate a list of tuples corresponding to the given list of vbucket ids. Each
-%% tuple consists of the "replication_state_vb_" tag for a vbucket id in the list
-%% and the given replication state value.
-vb_rep_state_list(VbList, RepState) ->
-    lists:map(
-      fun(Vb) ->
-              {?l2b("replication_state_vb_" ++ ?i2l(Vb)), <<RepState/binary>>}
-      end,
-      VbList).
 
 %% Parse replication document
 parse_rep_doc(DocId, {Props}) ->
@@ -254,18 +242,6 @@ convert_options([{<<"since_seq">>, V} | R]) ->
     [{since_seq, V} | convert_options(R)];
 convert_options([_ | R]) -> %% skip unknown option
     convert_options(R).
-
-
-sum_stats(#rep_stats{} = S1, #rep_stats{} = S2) ->
-    #rep_stats{
-           missing_checked =
-               S1#rep_stats.missing_checked + S2#rep_stats.missing_checked,
-           missing_found = S1#rep_stats.missing_found + S2#rep_stats.missing_found,
-           docs_read = S1#rep_stats.docs_read + S2#rep_stats.docs_read,
-           docs_written = S1#rep_stats.docs_written + S2#rep_stats.docs_written,
-           doc_write_failures =
-               S1#rep_stats.doc_write_failures + S2#rep_stats.doc_write_failures
-          }.
 
 
 get_checkpoint_log_id(#db{name = DbName0}, LogId0) ->

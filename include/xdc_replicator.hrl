@@ -32,8 +32,6 @@
 
 -define(XDCR_CHECKPOINT_INTERVAL, 60000).
 
--define(XSTATS, xdc_rep_stats_store).
-
 %% Maximum number of concurrent vbucket replications allowed per doc
 -define(MAX_CONCURRENT_REPS_PER_DOC, 8).
 
@@ -44,23 +42,12 @@
 -define(MAX_BULK_ATTS_PER_DOC, 8).
 -define(STATS_DELAY, 10000000).              %% 10 seconds (in microseconds)
 
--define(inc_stat(StatPos, Stats, Inc),
-        setelement(StatPos, Stats, element(StatPos, Stats) + Inc)).
-
 %% data structures
 -record(rep, {
           id,
           source,
           target,
           options
-         }).
-
--record(rep_stats, {
-          missing_checked = 0,
-          missing_found = 0,
-          docs_read = 0,
-          docs_written = 0,
-          doc_write_failures = 0
          }).
 
 -record(rep_state_record, {
@@ -70,9 +57,19 @@
           max_retries
          }).
 
+
+-record(rep_vb_status, {
+          vb,
+          pid,
+          status = idle,
+          num_changes_left = 0,
+          docs_checked = 0,
+          docs_written = 0
+ }).
+
 -record(rep_state, {
           rep_details,
-          vb,
+          status = #rep_vb_status{},
           throttle,
           parent,
           source_name,
@@ -95,27 +92,10 @@
           src_starttime,
           tgt_starttime,
           timer, %% checkpoint timer
-          changes_queue,
-          changes_manager,
-          changes_reader,
           workers,
-          stats = #rep_stats{},
           session_id,
-          num_changes_left = 0,
-          current_state = idle,
           source_seq = nil
          }).
-
-%% Record to store and track changes to the _replicator db
--record(rep_db_state, {
-          changes_feed_loop = nil,
-          rep_db_name = nil
-         }).
-
--record(rep_vb_state, {
-        vb,
-        pid
-    }).
 
 -record(batch, {
           docs = [],
@@ -132,7 +112,6 @@
           writer = nil,
           pending_fetch = nil,
           flush_waiter = nil,
-          stats = #rep_stats{},
           source_db_compaction_notifier = nil,
           target_db_compaction_notifier = nil,
           batch = #batch{}
