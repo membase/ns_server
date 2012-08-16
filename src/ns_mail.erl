@@ -15,7 +15,7 @@
 %%
 -module(ns_mail).
 
--export([send_async/3, send/3, send/4, send_alert_async/3]).
+-export([send_async/3, send/3, send/4, send_alert_async/4]).
 
 -include("ns_common.hrl").
 
@@ -41,11 +41,13 @@ send(Subject, Body, Config, Timeout) ->
 
     await_response(Ref, Pid, Timeout).
 
-send_alert_async(AlertKey, Message, Config) when is_atom(AlertKey) ->
+send_alert_async(AlertKey, Subject0, Message, Config) when is_atom(AlertKey) ->
     EnabledAlerts = proplists:get_value(alerts, Config, []),
     case lists:member(AlertKey, EnabledAlerts) of
         true ->
-            Subject = "Couchbase Server alert: " ++ atom_to_list(AlertKey),
+            Subject =
+                lists:flatten(
+                  io_lib:format("Couchbase Server alert: ~s", [Subject0])),
             send_async(Subject, Message, Config);
         false ->
             ok
@@ -60,7 +62,7 @@ do_send_async(Subject, Body, Config, Callback) ->
     Options = config_to_options(ServerConfig),
     Message0 = mimemail:encode({<<"text">>, <<"plain">>,
                                 make_headers(Sender, Recipients, Subject), [],
-                                list_to_binary(Body)}),
+                                couch_util:to_binary(Body)}),
     Message = binary_to_list(Message0),
 
     {ok, Pid} =
@@ -104,9 +106,9 @@ format_addr(Rcpts) ->
     string:join(["<" ++ Addr ++ ">" || Addr <- Rcpts], ", ").
 
 make_headers(Sender, Rcpts, Subject) ->
-    [{<<"From">>, list_to_binary(format_addr([Sender]))},
-     {<<"To">>, list_to_binary(format_addr(Rcpts))},
-     {<<"Subject">>, list_to_binary(Subject)}].
+    [{<<"From">>, couch_util:to_binary(format_addr([Sender]))},
+     {<<"To">>, couch_util:to_binary(format_addr(Rcpts))},
+     {<<"Subject">>, couch_util:to_binary(Subject)}].
 
 config_to_options(ServerConfig) ->
     Username = proplists:get_value(user, ServerConfig),

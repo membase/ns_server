@@ -668,6 +668,27 @@ var EmailAlertsSection = {
           enabled: $.inArray('auto_failover_cluster_too_small',
                              val.alerts)!==-1,
           value: 'auto_failover_cluster_too_small'
+        },{
+          label: 'Node\'s IP address has changed unexpectedly',
+          enabled: $.inArray('ip', val.alerts)!==-1,
+          value: 'ip'
+        },{
+          label: 'Disk space used for persistent storage has reached ' +
+            'at least 90% of capacity',
+          enabled: $.inArray('disk', val.alerts)!==-1,
+          value: 'disk'
+        },{
+          label: 'Metadata overhead is more than 50%',
+          enabled: $.inArray('overhead', val.alerts)!==-1,
+          value: 'overhead'
+        },{
+          label: 'Bucket memory on a node is entirely used for metadata',
+          enabled: $.inArray('ep_oom_errors', val.alerts)!==-1,
+          value: 'ep_oom_errors'
+        },{
+          label: 'Writing data to disk for a specific bucket has failed',
+          enabled: $.inArray('ep_oom_errors', val.alerts)!==-1,
+          value: 'ep_item_commit_failed'
         }];
 
         renderTemplate('email_alerts', val, $i('email_alerts_container'));

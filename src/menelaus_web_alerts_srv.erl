@@ -3,10 +3,16 @@
 -include("ns_common.hrl").
 -include("ns_stats.hrl").
 
+-include_lib("eunit/include/eunit.hrl").
+%% needed to mock ns_config in tests
+-include("ns_config.hrl").
+
 -behaviour(gen_server).
 -define(SERVER, ?MODULE).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
+
+-export([alert_keys/0]).
 
 %% @doc Hold client state for any alerts that need to be shown in
 %% the browser, is used by menelaus_web to piggy back for a transport
@@ -40,6 +46,21 @@
          fetch_alerts/0, consume_alerts/1]).
 
 
+%% short description for a specific error; used in email subject
+short_description(ip) ->
+    "IP address changed";
+short_description(ep_oom_errors) ->
+    "hard out of memory error";
+short_description(ep_item_commit_failed) ->
+    "write commit failure";
+short_description(overhead) ->
+    "metadata overhead warning";
+short_description(disk) ->
+    "approaching full disk warning";
+short_description(Other) ->
+    %% this case is needed for tests to work
+    couch_util:to_list(Other).
+
 %% Error constants
 errors(ip) ->
     "IP address seems to have changed. Unable to listen on ~p.";
@@ -64,7 +85,7 @@ start_link() ->
 -spec global_alert(any(), binary() | string()) -> ok.
 global_alert(Type, Msg) ->
     ?user_log(1, to_str(Msg)),
-    [rpc:cast(Node, ?MODULE, local_alert, [Type, Msg])
+    [rpc:cast(Node, ?MODULE, local_alert, [{Type, node()}, Msg])
      || Node <- [node() | nodes()]],
     ok.
 
@@ -120,7 +141,8 @@ handle_call({add_alert, Key, Val}, _, #state{queue=Msgs, history=Hist, change_co
     case lists:keyfind(Key, 1, Hist) of
         false ->
             MsgTuple = {Key, Val, misc:now_int()},
-            {reply, ok, State#state{history = [MsgTuple | Hist],
+            maybe_send_out_email_alert(Key, Val),
+            {reply, ok, State#state{history=[MsgTuple | Hist],
                                     queue=[MsgTuple | Msgs],
                                     change_counter=Counter+1}};
         _ ->
@@ -208,7 +230,7 @@ check(ip, Opaque, _History, _Stats) ->
     {_Name, Host} = misc:node_name_host(node()),
     case can_listen(Host) of
         false ->
-            global_alert({ip, node()}, fmt_to_bin(errors(ip), [node()]));
+            global_alert(ip, fmt_to_bin(errors(ip), [node()]));
         true ->
             ok
     end,
@@ -238,7 +260,7 @@ check(disk, Opaque, _History, _Stats) ->
                       false ->
                           {_Sname, Host} = misc:node_name_host(node()),
                           Err = fmt_to_bin(errors(disk), [Disk, Host, Used]),
-                          global_alert({disk, node()}, Err),
+                          global_alert(disk, Err),
                           dict:store(Key, misc:now_int(), Acc);
                       true ->
                           Acc
@@ -254,7 +276,7 @@ check(overhead, Opaque, _History, Stats) ->
          {true, X} ->
              {_Sname, Host} = misc:node_name_host(node()),
              Err = fmt_to_bin(errors(overhead), [erlang:trunc(X), Bucket, Host]),
-             global_alert({overhead, node()}, Err);
+             global_alert(overhead, Err);
          false  ->
              ok
      end || Bucket <- ns_memcached:active_buckets()],
@@ -307,8 +329,7 @@ check_stat_increased(Stats, StatName, Opaque) ->
                     ok;
                 Buckets ->
                     {_Sname, Host} = misc:node_name_host(node()),
-                    Key = {stat, node()},
-                    [global_alert(Key, fmt_to_bin(errors(StatName), [Bucket, Host]))
+                    [global_alert(StatName, fmt_to_bin(errors(StatName), [Bucket, Host]))
                      || Bucket <- Buckets]
             end,
             dict:store(StatName, New, Opaque)
@@ -393,9 +414,23 @@ to_str(Msg) when is_binary(Msg) ->
 to_str(Msg) ->
     Msg.
 
+maybe_send_out_email_alert({Key, Node}, Message) when is_atom(Node) ->
+    case Node =:= node() of
+        true ->
+            Description = short_description(Key),
+            {value, Config} = ns_config:search(email_alerts),
+            ns_mail:send_alert_async(Key, Description, Message, Config);
+        false ->
+            ok
+    end;
+maybe_send_out_email_alert(Key, Message) when is_atom(Key) ->
+    maybe_send_out_email_alert({Key, node()}, Message).
+
+alert_keys() ->
+    [ip, disk, overhead, ep_oom_errors, ep_item_commit_failed].
+
 %% Cant currently test the alert timeouts as would need to mock
 %% calls to the archiver
--include_lib("eunit/include/eunit.hrl").
 
 run_basic_test_do() ->
     ?assertEqual(ok, ?MODULE:local_alert(foo, <<"bar">>)),
@@ -417,9 +452,22 @@ run_basic_test_do() ->
 
 basic_test() ->
     {ok, Pid} = ?MODULE:start_link(),
+
+    {ok, ConfigPid} = mock_gen_server:start_link({local, ns_config}),
+    %% return empty alerts configuration so that no attempts to send anything
+    %% are performed
+    mock_gen_server:stub_call(ns_config, get,
+                              fun (_) ->
+                                      #config{dynamic=[[{email_alerts, []}]]}
+                              end),
+
     try
         run_basic_test_do()
     after
+        erlang:unlink(ConfigPid),
+        exit(ConfigPid, shutdown),
+        misc:wait_for_process(ConfigPid, infinity),
+
         erlang:unlink(Pid),
         exit(Pid, shutdown),
         misc:wait_for_process(Pid, infinity)

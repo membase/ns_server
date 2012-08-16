@@ -122,7 +122,7 @@ parse_settings_alerts_post(PostArgs) ->
 %% implement an alert_keys/0 function that returns all its alert keys.
 -spec alert_keys() -> [atom()].
 alert_keys() ->
-    Modules = [auto_failover],
+    Modules = [auto_failover, menelaus_web_alerts_srv],
     Keys = [M:alert_keys() || M <- Modules],
     lists:append(Keys).
 
@@ -349,4 +349,3 @@ test() ->
                [verbose]).
 
 -endif.
-
