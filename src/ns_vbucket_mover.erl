@@ -167,7 +167,8 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
                                                 (_) ->
                                                     ok
                                             end),
-    erlang:start_timer(30000, self(), log_tap_stats),
+
+    timer:send_interval(30000, log_tap_stats),
 
     AllNodesSet0 =
         lists:foldl(fun (Chain, Acc) ->
@@ -195,9 +196,7 @@ handle_cast(unhandled, unhandled) ->
     unhandled.
 
 
-%% We intentionally don't handle other exits so we'll die if one of
-%% the movers fails.
-handle_info({timeout, _, log_tap_stats}, State) ->
+handle_info(log_tap_stats, State) ->
     rpc:eval_everywhere(diag_handler, log_all_tap_and_checkpoint_stats, []),
     misc:flush(log_tap_stats),
     {noreply, State};
@@ -240,6 +239,8 @@ handle_info({move_done, {Node, VBucket, OldChain, NewChain}},
     spawn_workers(State#state{movers=Movers1, map=Map1});
 handle_info({ns_node_disco_events, _, _} = Event, State) ->
     {stop, {detected_nodes_change, Event}, State};
+%% We intentionally don't handle other exits so we'll die if one of
+%% the movers fails.
 handle_info({'EXIT', Pid, _} = Msg, #state{disco_events_subscription=Pid}=State) ->
     ?rebalance_error("Got exit from node disco events subscription"),
     {stop, {ns_node_disco_events_exited, Msg}, State};
