@@ -823,6 +823,10 @@ var ViewsSection = {
     var viewResultsContainer = $('#view_results_container');
     var viewResultsSpinner = $('#view_results_spinner');
 
+    self.viewsBucketCell.subscribeValue(function (val) {
+      btnCreate[val ? 'removeClass' : 'addClass']('disabled');
+    });
+
     Cell.subscribeMultipleValues(function (sec, tabsVal, spatialVal, viewsVal, subset, intPageFull, intPage, builder) {
       if (sec !== 'views') {
         return;
