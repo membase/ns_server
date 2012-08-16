@@ -23,7 +23,6 @@
 -export([init/1, handle_event/2, handle_call/2,
          handle_info/2, terminate/2, code_change/3]).
 %% API
--export([send_email_with_config/3]).
 
 -record(state, {}).
 
@@ -53,17 +52,8 @@ handle_event({ns_log, _Category, Module, Code, Fmt, Args}, State) ->
     case proplists:get_bool(enabled, Config) of
         true ->
             AlertKey = menelaus_alert:alert_key(Module, Code),
-            EnabledAlerts = proplists:get_value(alerts, Config, []),
-            case lists:member(AlertKey, EnabledAlerts) of
-                true ->
-                    send_email(proplists:get_value(sender, Config),
-                               proplists:get_value(recipients, Config),
-                               AlertKey,
-                               lists:flatten(io_lib:format(Fmt, Args)),
-                               proplists:get_value(email_server, Config));
-                false ->
-                    ok
-            end;
+            Message = lists:flatten(io_lib:format(Fmt, Args)),
+            ns_mail:send_alert(AlertKey, Message, Config);
         false -> ok
     end,
     {ok, State};
@@ -78,37 +68,3 @@ handle_call(Request, State) ->
 handle_info(Info, State) ->
     ?log_warning("Unexpected handle_info(~p, ~p)~n", [Info, State]),
     {ok, State}.
-
-%% @doc Sends an email with the given configuration
-send_email_with_config(Subject, Body, Config) ->
-    ServerConfig = proplists:get_value(email_server, Config),
-    Options = config_to_options(ServerConfig),
-    ns_mail:send(proplists:get_value(sender, Config),
-                 proplists:get_value(recipients, Config),
-                 Subject, Body, Options).
-
-
-%% Internal functions
-
-config_to_options(ServerConfig) ->
-    Username = proplists:get_value(user, ServerConfig),
-    Password = proplists:get_value(pass, ServerConfig),
-    Relay = proplists:get_value(host, ServerConfig),
-    Port = proplists:get_value(port, ServerConfig),
-    Encrypt = proplists:get_bool(encrypt, ServerConfig),
-    Options = [{relay, Relay}, {port, Port}],
-    Options2 = case Username of
-        "" ->
-            Options;
-        _ ->
-            [{username, Username}, {password, Password}] ++ Options
-    end,
-    case Encrypt of
-        true -> [{tls, always} | Options2];
-        false -> Options2
-    end.
-
-send_email(Sender, Rcpts, AlertKey, Message, ServerConfig) ->
-    Options = config_to_options(ServerConfig),
-    Subject = "Couchbase Server alert: " ++ atom_to_list(AlertKey),
-    ns_mail:send(Sender, Rcpts, Subject, Message, Options).

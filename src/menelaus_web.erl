@@ -1661,7 +1661,7 @@ handle_settings_alerts_send_test_email(Req) ->
     Body = proplists:get_value("body", PostArgs),
     {ok, Config} = menelaus_alert:parse_settings_alerts_post(PostArgs),
 
-    case ns_mail_log:send_email_with_config(Subject, Body, Config) of
+    case ns_mail:send(Subject, Body, Config) of
         {error, _, {_, _, {error, Reason}}} ->
             reply_json(Req, {struct, [{error, Reason}]}, 400);
         {error, Reason} ->
