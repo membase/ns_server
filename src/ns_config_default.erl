@@ -69,6 +69,7 @@ default() ->
      {autocompaction, [{database_fragmentation_threshold, {30, undefined}},
                        {view_fragmentation_threshold, {30, undefined}}]},
      {cluster_compat_version, cluster_compat_mode:supported_compat_version()},
+     {{node, node(), this_is_2_0_prerelease}, true},
      {set_view_update_daemon,
       [{update_interval, 5000},
        {update_min_changes, 5000}]},
