@@ -151,30 +151,28 @@ handle_info(check_alerts, #state{checker_pid = Pid} = State) ->
             end,
             Self = self(),
             CheckerPid = erlang:spawn_link(fun () ->
-                                                   NewState = do_handle_check_alerts_info(State),
-                                                   Self ! {merge_state_from_checker, NewState}
+                                                   NewOpaque = do_handle_check_alerts_info(State),
+                                                   Self ! {merge_opaque_from_checker, NewOpaque}
                                            end),
             {noreply, State#state{checker_pid = CheckerPid}}
     end;
 
-handle_info({merge_state_from_checker, NewState}, State) ->
-    {noreply, State#state{opaque = NewState#state.opaque,
-                          history = NewState#state.history,
+handle_info({merge_opaque_from_checker, NewOpaque},
+            #state{history=History} = State) ->
+    {noreply, State#state{opaque = NewOpaque,
+                          history = expire_history(History),
                           checker_pid = undefined}};
 
 handle_info(_Info, State) ->
     {noreply, State}.
 
-do_handle_check_alerts_info(#state{history=Hist, opaque=Opaque} = State) ->
+do_handle_check_alerts_info(#state{history=Hist, opaque=Opaque}) ->
     BucketNames = ordsets:intersection(lists:sort(ns_memcached:active_buckets()),
                                        lists:sort(ns_bucket:node_bucket_names(node()))),
     RawPairs = [{Name, stats_reader:latest(minute, node(), Name, 1)} || Name <- BucketNames],
     Stats = [{Name, OrdDict}
              || {Name, {ok, [#stat_entry{values = OrdDict}|_]}} <- RawPairs],
-    State#state{
-      opaque = check_alerts(Opaque, Hist, Stats),
-      history = expire_history(Hist)
-     }.
+    check_alerts(Opaque, Hist, Stats).
 
 terminate(_Reason, _State) ->
     ok.
