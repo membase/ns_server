@@ -111,7 +111,8 @@ trigger_updates_for_bucket(Bucket, MinNumChanges) ->
                   <<"_design/dev_", _/binary>> ->
                       ok;
                   _Other ->
-                      DDocMinNumChanges = ddoc_update_min_changes(DDoc, MinNumChanges),
+                      DDoc2 = couch_doc:with_ejson_body(DDoc),
+                      DDocMinNumChanges = ddoc_update_min_changes(DDoc2, MinNumChanges),
 
                       case DDocMinNumChanges of
                           0 ->
