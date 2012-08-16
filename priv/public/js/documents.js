@@ -75,7 +75,7 @@ function createDocumentsCells(ns, modeCell, capiBaseCell, bucketsListCell) {
   ns.currentDocumentIdCell = Cell.compute(function (v) {
     var docId = v(ns.documentIdCell);
     if (docId) {
-      return decodeURIComponent(docId);
+      return docId;
     }
     return null;
   }).name("currentDocumentIdCell");
