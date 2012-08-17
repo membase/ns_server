@@ -445,10 +445,10 @@
           <h1>Data Buckets</h1>
           <div class="shadow_box" id="couchbase_buckets">
             <div id="manage_buckets_top_bar" class="header_2">
-              <h4 style="float:left">Couchbase Buckets</h4>
-              <div class="right">
+              <h4 style="float:left;line-height:34px;">Couchbase Buckets</h4>
+              <div class="right" style="overflow:hidden;">
+                <button class="button_200 create-bucket-button" style="float:right;">Create New Data Bucket</button>
                 <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
-                <button class="button_200 create-bucket-button">Create New Data Bucket</button>
               </div>
             </div>
             <div id="bucket_list_container"></div>
@@ -468,21 +468,24 @@
             <table class="list" width="100%">
               <tr>
                 <th class="bucket_name">Bucket Name</th>
+                <th></th>
                 <th>Nodes</th>
                 <th>Item Count</th>
                 <th>Ops/sec</th>
-                <th class="disk_fetch">Disk Fetches/sec</th>
-                <th class="hit_ratio">Hit Ratio</th>
-                <th>RAM Usage/Quota</th>
-                <th>Disk / Data Usage</th>
+                <th colspan="2" class="disk_fetch">Disk Fetches/sec</th>
+                <th colspan="2" class="hit_ratio">Hit Ratio</th>
+                <th colspan="2">RAM Usage/Quota</th>
+                <th colspan="2">Disk / Data Usage</th>
+                <th></th>
+                <th></th>
                 <th class="last"></th>
               </tr>
               <!-- {% if (!rows.length) { %} -->
-              <tr><td colspan="10" style="padding:15px">No buckets currently defined! Click "Create New Data Bucket" above to create one.</td></tr>
+              <tr><td colspan="14" style="padding:15px">No buckets currently defined! Click "Create New Data Bucket" above to create one.</td></tr>
               <!-- {% } %} -->
               <!-- {% $.each(rows, function () { %} -->
               <tr class="{%= this.bucketTypeName.toLowerCase() %}">
-                <td class="bucket_name">
+                <td class="bucket_name" colspan="2">
                   <a class="disable-if-stale" href="#visitBucket={%=h(this.name)%}" title="Show Bucket info"><span class="expander closed"></span></a>
                   <a class="disable-if-stale" title="View Analytics for {%= h(this.name) %}" href="#sec=analytics&statsBucket={%= h(encodeURIComponent(this.uri)) %}">{%= h(this.name) %}</a>
                 </td>
@@ -492,20 +495,32 @@
                 </td>
                 <td>{%= h(this.basicStats.itemCount) %}</td>
                 <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
-                {% if (this.bucketType == 'membase') { %}<td>{% if (this.basicStats.diskFetches !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}{% } else { %}N/A{% } %}</td>{% } %}
-                {% if (this.bucketType == 'memcached') { %}<td>{%= h(truncateTo3Digits(this.basicStats.hitRatio * 100)) %}%</td>{% } %}
-                <td>{%= V.formatQuantity(this.basicStats.memUsed) %} / {%= V.formatQuantity(this.quota.ram) %}</td>
-                <td>{% if (this.bucketType == 'membase') { %}
-                {%= V.formatQuantity(this.basicStats.diskUsed) %} / {%= V.formatQuantity(this.basicStats.dataUsed) %}
-                {% } else { %}N/A{% } %}</td>
-                <td>
+                {% if (this.bucketType == 'membase') { %}
+                  <td colspan="2">
+                    {% if (this.basicStats.diskFetches !== undefined) { %}
+                    {%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}
+                    {% } else { %}N/A{% } %}
+                  </td>
+                {% } %}
+                {% if (this.bucketType == 'memcached') { %}
+                  <td colspan="2">{%= h(truncateTo3Digits(this.basicStats.hitRatio * 100)) %}%</td>
+                {% } %}
+                <td colspan="2">{%= V.formatQuantity(this.basicStats.memUsed) %} / {%= V.formatQuantity(this.quota.ram) %}</td>
+                <td colspan="2">
+                  {% if (this.bucketType == 'membase') { %}
+                    {%= V.formatQuantity(this.basicStats.diskUsed) %} / {%= V.formatQuantity(this.basicStats.dataUsed) %}
+                  {% } else { %}N/A{% } %}
+                </td>
+                <td colspan="3">
                   {% if (this.bucketType == 'membase') { %}
                     <a class="list_button disable-if-stale" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>
-                   <a class="list_button" href="#sec=documents&bucketName={%= encodeURIComponent(this.name) %}&documentsPageNumber=0"><span>Documents</span></a>{% } %}
+                    <a class="list_button" href="#sec=documents&bucketName={%= encodeURIComponent(this.name) %}&documentsPageNumber=0"><span>Documents</span></a>{% } %}
                 </td>
               </tr>
               <tr>
-                <td class="settings-placeholder" colspan="10">{%= BucketsSection.renderBucketDetails(this) %}</td>
+                <td colspan="14" class="settings-placeholder">
+                  {%= BucketsSection.renderBucketDetails(this) %}
+                </td>
               </tr>
               <!-- {% }); %} -->
             </table>
