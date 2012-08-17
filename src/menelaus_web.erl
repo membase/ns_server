@@ -1352,12 +1352,15 @@ handle_settings_view_update_daemon(Req) ->
 
     UpdateInterval = proplists:get_value(update_interval, Config),
     UpdateMinChanges = proplists:get_value(update_min_changes, Config),
+    ReplicaUpdateMinChanges = proplists:get_value(replica_update_min_changes, Config),
 
     true = (UpdateInterval =/= undefined),
     true = (UpdateMinChanges =/= undefined),
+    true = (UpdateMinChanges =/= undefined),
 
     reply_json(Req, {struct, [{updateInterval, UpdateInterval},
-                              {updateMinChanges, UpdateMinChanges}]}).
+                              {updateMinChanges, UpdateMinChanges},
+                              {replicaUpdateMinChanges, ReplicaUpdateMinChanges}]}).
 
 handle_settings_view_update_daemon_post(Req) ->
     Params = Req:parse_post(),
@@ -1382,7 +1385,8 @@ handle_settings_view_update_daemon_post(Req) ->
                   end
           end, {[], []},
           [{update_interval, "updateInterval"},
-           {update_min_changes, "updateMinChanges"}]),
+           {update_min_changes, "updateMinChanges"},
+           {replica_update_min_changes, "replicaUpdateMinChanges"}]),
 
     case Errors of
         [] ->

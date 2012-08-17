@@ -29,6 +29,7 @@
 
 -record(state, {interval,
                 num_changes,
+                replica_num_changes,
                 timer_ref}).
 
 start_link() ->
@@ -57,11 +58,14 @@ handle_call(Msg, _From, State) ->
     {stop, {unexpected_call, Msg}, State}.
 
 
-handle_cast(trigger_updates, #state{num_changes = MinNumChanges} = State) ->
+handle_cast(trigger_updates,
+            #state{num_changes=MinNumChanges,
+                   replica_num_changes=ReplicaMinNumChanges} = State) ->
     Buckets = ns_bucket:node_bucket_names_of_type(node(), membase),
     lists:foreach(
       fun (Bucket) ->
-              ok = trigger_updates_for_bucket(Bucket, MinNumChanges)
+              ok = trigger_updates_for_bucket(Bucket,
+                                              MinNumChanges, ReplicaMinNumChanges)
       end, Buckets),
     {noreply, schedule_timer(State)}.
 
@@ -98,11 +102,14 @@ read_config(State) ->
     Opts = ns_config:search(Config, set_view_update_daemon, []),
     UpdateInterval = proplists:get_value(update_interval, Opts, 5000),
     UpdateMinChanges = proplists:get_value(update_min_changes, Opts, 5000),
+    ReplicaUpdateMinChanges =
+        proplists:get_value(replica_update_min_changes, Opts, 5000),
 
     State#state{interval=UpdateInterval,
-                num_changes=UpdateMinChanges}.
+                num_changes=UpdateMinChanges,
+                replica_num_changes=ReplicaUpdateMinChanges}.
 
-trigger_updates_for_bucket(Bucket, MinNumChanges) ->
+trigger_updates_for_bucket(Bucket, MinNumChanges, ReplicaMinNumChanges) ->
     SetName = list_to_binary(Bucket),
 
     lists:foreach(
@@ -111,22 +118,37 @@ trigger_updates_for_bucket(Bucket, MinNumChanges) ->
                   <<"_design/dev_", _/binary>> ->
                       ok;
                   _Other ->
-                      DDoc2 = couch_doc:with_ejson_body(DDoc),
-                      DDocMinNumChanges = ddoc_update_min_changes(DDoc2, MinNumChanges),
-
-                      case DDocMinNumChanges of
-                          0 ->
-                              ok;
-                          _ ->
-                              ok = couch_set_view:trigger_update(SetName,
-                                                                 Id, DDocMinNumChanges)
-                      end
+                      do_trigger_update_for_ddoc(SetName, DDoc,
+                                                 MinNumChanges, ReplicaMinNumChanges)
               end
       end, capi_ddoc_replication_srv:full_live_ddocs(Bucket)).
 
-ddoc_update_min_changes(#doc{body={Body}}, Default) ->
+do_trigger_update_for_ddoc(SetName, DDoc0, MinNumChanges, ReplicaMinNumChanges) ->
+    #doc{id=Id} = DDoc = couch_doc:with_ejson_body(DDoc0),
+    DDocMinNumChanges =
+        ddoc_update_min_changes(<<"updateMinChanges">>, DDoc, MinNumChanges),
+    DDocReplicaMinNumChanges =
+        ddoc_update_min_changes(<<"replicaUpdateMinChanges">>,
+                                DDoc, ReplicaMinNumChanges),
+
+    case DDocMinNumChanges of
+        0 ->
+            ok;
+        _ ->
+            ok = couch_set_view:trigger_update(SetName, Id, DDocMinNumChanges)
+    end,
+
+    case DDocReplicaMinNumChanges of
+        0 ->
+            ok;
+        _ ->
+            ok = couch_set_view:trigger_replica_update(SetName, Id,
+                                                       DDocReplicaMinNumChanges)
+    end.
+
+ddoc_update_min_changes(Key, #doc{body={Body}}, Default) ->
     {Options} = proplists:get_value(<<"options">>, Body, {[]}),
-    case proplists:get_value(<<"updateMinChanges">>, Options) of
+    case proplists:get_value(Key, Options) of
         V when is_integer(V) ->
             V;
         _ ->

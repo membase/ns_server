@@ -979,26 +979,42 @@ handle_set_ddoc_update_min_changes(_PoolId, Bucket, DDocIdStr, Req) ->
               case couch_db:open_doc(MasterDb, DDocId, [ejson_body]) of
                   {ok, #doc{body={Body}} = DDoc} ->
                       {Options0} = proplists:get_value(<<"options">>, Body, {[]}),
-                      Options1 = lists:keydelete(<<"updateMinChanges">>, 1, Options0),
-
                       Params = Req:parse_post(),
-                      case proplists:get_value("updateMinChanges", Params) of
-                          undefined ->
-                              %% just unset updateMinChanges
+
+                      {Options1, Errors} =
+                          lists:foldl(
+                            fun (Key, {AccOptions, AccErrors}) ->
+                                    BinKey = list_to_binary(Key),
+                                    %% just unset the option
+                                    AccOptions1 = lists:keydelete(BinKey, 1, AccOptions),
+
+                                    case proplists:get_value(Key, Params) of
+                                        undefined ->
+                                            {AccOptions1, AccErrors};
+                                        Value ->
+                                            case menelaus_util:parse_validate_number(
+                                                   Value, 0, undefined) of
+                                                {ok, Parsed} ->
+                                                    AccOptions2 =
+                                                        [{BinKey, Parsed} | AccOptions1],
+                                                    {AccOptions2, AccErrors};
+                                                Error ->
+                                                    Msg = io_lib:format(
+                                                            "Invalid ~s: ~p",
+                                                            [Key, Error]),
+                                                    AccErrors1 =
+                                                        [{Key, iolist_to_binary(Msg)}],
+                                                    {AccOptions, AccErrors1}
+                                            end
+                                    end
+                            end, {Options0, []},
+                            ["updateMinChanges", "replicaUpdateMinChanges"]),
+
+                      case Errors of
+                          [] ->
                               complete_update_ddoc_options(Req, Bucket, DDoc, Options1);
-                          Value ->
-                              case menelaus_util:parse_validate_number(Value, 0, undefined) of
-                                  {ok, Parsed} ->
-                                      NewOptions = [{<<"updateMinChanges">>, Parsed} | Options1],
-                                      complete_update_ddoc_options(Req, Bucket, DDoc, NewOptions);
-                                  Error ->
-                                      Msg = io_lib:format("Invalid updateMinChanges: ~p",
-                                                          [Error]),
-                                      reply_json(Req,
-                                                 {struct, [{updateMinChanges,
-                                                            iolist_to_binary(Msg)}]},
-                                                 400)
-                              end
+                          _ ->
+                              reply_json(Req, {struct, Errors}, 400)
                       end;
                   {not_found, _} ->
                       reply_json(Req, {struct, [{'_',
