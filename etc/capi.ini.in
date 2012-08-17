@@ -8,6 +8,9 @@ view_index_dir = @COUCHBASE_DB_DIR@
 db_frontend = capi_frontend
 bind_address = 0.0.0.0
 port = 8092
+; this gets us auth support on capi port
+WWW-Authenticate = Basic realm="capi"
+
 
 [httpd_global_handlers]
 _cluster_tasks = {capi_tasks, cluster_tasks_req}
