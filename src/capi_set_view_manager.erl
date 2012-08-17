@@ -178,7 +178,12 @@ init({Bucket, UseReplicaIndex, NumVBuckets}) ->
 
     ?log_debug("Usable vbuckets:~n~p", [sets:to_list(State#state.usable_vbuckets)]),
 
-    {ok, State}.
+    proc_lib:init_ack({ok, self()}),
+
+    [maybe_define_group(DDocId, State)
+     || DDocId <- capi_ddoc_replication_srv:fetch_ddoc_ids(Bucket)],
+
+    gen_server:enter_loop(?MODULE, [], State).
 
 handle_call({set_vbucket_states, WantedStates, RebalanceStates}, _From,
             State) ->
