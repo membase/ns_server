@@ -1914,7 +1914,7 @@ validate_add_node_params(Hostname, Port, User, Password) ->
                            case {User, Password} of
                                {[], []} -> true;
                                {[_Head | _], [_PasswordHead | _]} -> true;
-                               {[], [_PasswordHead | _]} -> <<"If a username is specified, a password must be supplied.">>;
+                               {[], [_PasswordHead | _]} -> <<"If a username is not specified, a password must not be supplied.">>;
                                _ -> <<"A password must be supplied.">>
                            end]
                  end,
