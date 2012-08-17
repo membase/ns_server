@@ -53,7 +53,7 @@ handle_event({ns_log, _Category, Module, Code, Fmt, Args}, State) ->
         true ->
             AlertKey = menelaus_alert:alert_key(Module, Code),
             Message = lists:flatten(io_lib:format(Fmt, Args)),
-            ns_mail:send_alert(AlertKey, Message, Config);
+            ns_mail:send_alert_async(AlertKey, Message, Config);
         false -> ok
     end,
     {ok, State};

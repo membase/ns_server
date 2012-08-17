@@ -15,50 +15,90 @@
 %%
 -module(ns_mail).
 
--export([send/3, send_alert/3]).
+-export([send_async/3, send/3, send/4, send_alert_async/3]).
 
 -include("ns_common.hrl").
 
+-define(SEND_TIMEOUT, 15000).
 
 %% API
 
+send_async(Subject, Body, Config) ->
+    do_send_async(Subject, Body, Config, fun (_) -> ok end),
+    ok.
+
 send(Subject, Body, Config) ->
-    Sender = proplists:get_value(sender, Config),
-    Recipients = proplists:get_value(recipients, Config),
-    ServerConfig = proplists:get_value(email_server, Config),
-    Options = config_to_options(ServerConfig),
+    send(Subject, Body, Config, ?SEND_TIMEOUT).
 
-    do_send(Sender, Recipients, Subject, Body, Options).
+send(Subject, Body, Config, Timeout) ->
+    Caller = self(),
+    Ref = make_ref(),
 
-send_alert(AlertKey, Message, Config) when is_atom(AlertKey) ->
+    Pid = do_send_async(Subject, Body, Config,
+                        fun (Reply) ->
+                                Caller ! {Ref, Reply}
+                        end),
+
+    await_response(Ref, Pid, Timeout).
+
+send_alert_async(AlertKey, Message, Config) when is_atom(AlertKey) ->
     EnabledAlerts = proplists:get_value(alerts, Config, []),
     case lists:member(AlertKey, EnabledAlerts) of
         true ->
             Subject = "Couchbase Server alert: " ++ atom_to_list(AlertKey),
-            send(Subject, Message, Config);
+            send_async(Subject, Message, Config);
         false ->
             ok
     end.
 
 %% Internal functions
 
-do_send(Sender, Rcpts, Subject, Body, Options) ->
+do_send_async(Subject, Body, Config, Callback) ->
+    Sender = proplists:get_value(sender, Config),
+    Recipients = proplists:get_value(recipients, Config),
+    ServerConfig = proplists:get_value(email_server, Config),
+    Options = config_to_options(ServerConfig),
     Message0 = mimemail:encode({<<"text">>, <<"plain">>,
-                                make_headers(Sender, Rcpts, Subject), [],
+                                make_headers(Sender, Recipients, Subject), [],
                                 list_to_binary(Body)}),
     Message = binary_to_list(Message0),
-    Reply = gen_smtp_client:send_blocking({Sender, Rcpts, Message}, Options),
-    case Reply of
-        {error, _, Reason} ->
-            ale:warn(?USER_LOGGER,
-                     "Could not send email: ~p. "
-                     "Make sure that your email settings are correct.", [Reason]);
-        _ ->
-            ok
-    end,
-    Reply.
 
-%% Internal functions
+    {ok, Pid} =
+        gen_smtp_client:send(
+          {Sender, Recipients, Message}, Options,
+          fun (Reply) ->
+                  case Reply of
+                      {error, _, Reason} ->
+                          ale:warn(?USER_LOGGER,
+                                   "Could not send email: ~p. "
+                                   "Make sure that your email settings are correct.",
+                                   [Reason]);
+                      _ ->
+                          ok
+                  end,
+
+                  Callback(Reply)
+          end),
+    Pid.
+
+await_response(Ref, Pid, Timeout) ->
+    receive
+        {Ref, Reply} ->
+            Reply
+    after Timeout ->
+            %% gen_smtp_client:send/3 does not link spawned process to anyone;
+            %% hence there's no need receive {'EXIT', Pid, _} messages here
+            exit(Pid, kill),
+            receive
+                {Ref, Reply} ->
+                    Reply
+            after 0 ->
+                    ale:warn(?USER_LOGGER,
+                             "Could not send email: timeout exceeded. "
+                             "Make sure that your email settings are correct."),
+                    {error, timeout}
+            end
+    end.
 
 format_addr(Rcpts) ->
     string:join(["<" ++ Addr ++ ">" || Addr <- Rcpts], ", ").
