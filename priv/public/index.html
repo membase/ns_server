@@ -484,7 +484,7 @@
               <tr class="{%= this.bucketTypeName.toLowerCase() %}">
                 <td class="bucket_name">
                   <a class="disable-if-stale" href="#visitBucket={%=h(this.name)%}" title="Show Bucket info"><span class="expander closed"></span></a>
-                  <a class="disable-if-stale" title="View Analytics for {%= h(this.name) %}" href="#sec=analytics&statsBucket={%= h(this.uri) %}">{%= h(this.name) %}</a>
+                  <a class="disable-if-stale" title="View Analytics for {%= h(this.name) %}" href="#sec=analytics&statsBucket={%= h(encodeURIComponent(this.uri)) %}">{%= h(this.name) %}</a>
                 </td>
                 <td>
                   <span id="{%= h(this.name) %}_health" class="health_graph"></span>
