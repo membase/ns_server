@@ -352,8 +352,10 @@ var ServersSection = {
 
     if (data['hostname'] == "")
       errors.push("Server IP Address cannot be blank.");
-    if (!data['user'] || !data['password'])
-      errors.push("Username and Password are both required to join a cluster.");
+    if (!data['user'] || !data['password']) {
+      data['user'] = '';
+      data['password'] = '';
+    }
 
     if (!errors.length)
       return data;
@@ -382,8 +384,8 @@ var ServersSection = {
     form.bind('submit', function (e) {
       e.preventDefault();
 
-      var errors = self.validateJoinClusterParams(form);
-      if (errors.length) {
+      var errorsOrData = self.validateJoinClusterParams(form);
+      if (errorsOrData.length) {
         renderTemplate('join_cluster_dialog_errors', errors);
         return;
       }
@@ -404,7 +406,7 @@ var ServersSection = {
 
           self.poolDetails.setValue(undefined);
 
-          jsonPostWithErrors(uri, form, function (data, status) {
+          jsonPostWithErrors(uri, $.param(errorsOrData), function (data, status) {
             self.poolDetails.invalidate();
             overlay.remove();
             if (status != 'success') {
