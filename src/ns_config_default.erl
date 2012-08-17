@@ -60,7 +60,7 @@ default() ->
                    undefined -> global
                end,
 
-    RawLogDir = path_config:component_path(data, "log"),
+    RawLogDir = path_config:component_path(data, "logs"),
     filelib:ensure_dir(RawLogDir),
     file:make_dir(RawLogDir),
 
@@ -139,7 +139,7 @@ default() ->
           [{engine,
             path_config:component_path(lib, "memcached/default_engine.so")},
            {static_config_string, "vb0=true"}]}]},
-       {log_path, path_config:component_path(data, "log")},
+       {log_path, path_config:component_path(data, "logs")},
        %% Prefix of the log files within the log path that should be rotated.
        {log_prefix, "memcached.log"},
        %% Number of recent log files to retain.
