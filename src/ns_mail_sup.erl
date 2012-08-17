@@ -28,8 +28,6 @@ init([]) ->
     {ok, {{one_for_all,
            misc:get_env_default(max_r, 3),
            misc:get_env_default(max_t, 10)},
-           [{ns_mail, {ns_mail, start_link, []},
-             permanent, 1000, worker, [ns_mail]},
-            {ns_mail_log, {ns_mail_log, start_link, []},
+           [{ns_mail_log, {ns_mail_log, start_link, []},
              permanent, 1000, worker, [ns_mail_log]}
            ]}}.
