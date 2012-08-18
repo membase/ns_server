@@ -195,13 +195,8 @@ terminate(Reason, State) ->
     ?xdcr_error("Replication `~s` (`~s` -> `~s`) failed: ~s",
                 [Id, Source, Target, to_binary(Reason)]),
     % an unhandled error happened. Invalidate target vb map cache.
-    invalidate_target_vb_map_cache(State),
+    remote_clusters_info:invalidate_remote_bucket_by_ref(Target),
     terminate_cleanup(State).
-
-
-invalidate_target_vb_map_cache(_State) ->
-    % TODO: make this work
-    ok.
 
 
 terminate_cleanup(State) ->
@@ -230,8 +225,8 @@ init_replication_state(Rep, Vb, Throttle, Parent) ->
           options = Options
         } = Rep,
     SrcVbDb = xdc_rep_utils:local_couch_uri_for_vbucket(Src, Vb),
-    {ok, RemoteBucket} =
-              remote_clusters_info:get_remote_bucket_by_ref(Tgt, true),
+    {ok, RemoteBucket} = remote_clusters_info:get_remote_bucket_by_ref(Tgt, 
+                                                                       false),
     TgtURI = hd(dict:fetch(Vb, RemoteBucket#remote_bucket.vbucket_map)),
     TgtDb = xdc_rep_utils:parse_rep_db(TgtURI),
     {ok, Source} = couch_api_wrap:db_open(SrcVbDb, []),
