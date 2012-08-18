@@ -39,6 +39,8 @@
 
 -define(BUCKETS_SHUTDOWN_WAIT_TIMEOUT, 20000).
 
+-define(REBALANCER_READINESS_WAIT_SECONDS, 60).
+
 %%
 %% API
 %%
@@ -220,7 +222,25 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
                                                                      lists:sort(EjectNodesAll)),
                                   ThisLiveNodes = KeepNodes ++ ThisEjected,
                                   ns_bucket:set_servers(BucketName, ThisLiveNodes),
-                                  wait_for_memcached(ThisLiveNodes, BucketName, 10),
+                                  Pid = erlang:spawn_link(
+                                          fun () ->
+                                                  ?rebalance_info("Waiting for bucket ~p to be ready on ~p", [BucketName, ThisLiveNodes]),
+                                                  {ok, _States, Zombies} = janitor_agent:query_states(BucketName, ThisLiveNodes, ?REBALANCER_READINESS_WAIT_SECONDS),
+                                                  case Zombies of
+                                                      [] ->
+                                                          ?rebalance_info("Bucket is ready on all nodes"),
+                                                          ok;
+                                                      _ ->
+                                                          exit({not_all_nodes_are_ready_yet, Zombies})
+                                                  end
+                                          end),
+                                  MRef = erlang:monitor(process, Pid),
+                                  receive
+                                      stop ->
+                                          exit(stop);
+                                      {'DOWN', MRef, _, _, _} ->
+                                          ok
+                                  end,
                                   case ns_janitor:cleanup(BucketName, [{timeout, 10}]) of
                                       ok -> ok;
                                       {error, wait_for_memcached_failed, BadNodes} ->
@@ -362,25 +382,6 @@ verify_replication(Bucket, Nodes, Map) ->
                       [Missing, Extra]),
             exit(bad_replicas)
     end.
-
-
-%% @doc Wait until either all memcacheds are up or stop is pressed.
-wait_for_memcached(Nodes, Bucket, -1) ->
-    exit({wait_for_memcached_failed, Bucket, Nodes});
-wait_for_memcached(Nodes, Bucket, Tries) ->
-    case [Node || Node <- Nodes, not ns_memcached:connected(Node, Bucket)] of
-        [] ->
-            ok;
-        Down ->
-            receive
-                stop ->
-                    exit(stopped)
-            after 1000 ->
-                    ?rebalance_info("Waiting for ~p", [Down]),
-                    wait_for_memcached(Down, Bucket, Tries-1)
-            end
-    end.
-
 
 -spec wait_for_mover(pid()) -> ok | stopped.
 wait_for_mover(Pid) ->
