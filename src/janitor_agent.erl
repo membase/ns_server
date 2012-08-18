@@ -26,7 +26,7 @@
 
 -define(PREPARE_REBALANCE_TIMEOUT, ns_config_ets_dup:get_timeout(janitor_agent_prepare_rebalance, 30000)).
 
--define(SET_VBUCKET_STATE_TIMEOUT, ns_config_ets_dup:get_timeout(janitor_agent_set_vbucket_state, 60000)).
+-define(SET_VBUCKET_STATE_TIMEOUT, infinity).
 
 -define(GET_SRC_DST_REPLICATIONS_TIMEOUT, ns_config_ets_dup:get_timeout(janitor_agent_get_src_dst_replications, 30000)).
 
