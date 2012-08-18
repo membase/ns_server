@@ -319,10 +319,11 @@ apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
                    Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, UseReplicaIndex) ->
 
     try
-        case ns_config_ets_dup:unreliable_read_key(index_pausing_disabled, false) of
-            true ->
-                ok;
+        PausingOn = cluster_compat_mode:is_index_pausing_on(),
+        case PausingOn of
             false ->
+                ok;
+            true ->
                 ok = ?csv_call(mark_partitions_indexable,
                                [SetName, DDocId, UnpauseVBuckets])
         end,
@@ -342,10 +343,10 @@ apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
                 ok
         end,
 
-        case ns_config_ets_dup:unreliable_read_key(index_pausing_disabled, false) of
-            true ->
-                ok;
+        case PausingOn of
             false ->
+                ok;
+            true ->
                 ok = ?csv_call(mark_partitions_unindexable,
                                [SetName, DDocId, PauseVBuckets])
         end
