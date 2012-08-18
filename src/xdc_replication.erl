@@ -197,5 +197,5 @@ start_vb_replicators(#replication{rep = Rep,
                                     [xdc_vbucket_rep]
                                    },
                             supervisor:start_child(Sup, Spec)
-                    end, NewVbs),
+                    end, misc:shuffle(NewVbs)),
     Replication#replication{vb_rep_dict = Dict2}.
