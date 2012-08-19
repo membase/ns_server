@@ -568,6 +568,7 @@ handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, _From, #state{
                                         Dst =:= node()],
     WantedReplications = [{Src, [VB || {_, VB} <- Pairs]}
                           || {Src, Pairs} <- misc:keygroup(1, lists:sort(WantedReplicas))],
+    ns_vbm_new_sup:ping_all_replicators(BucketName),
     ok = replication_changes:set_incoming_replication_map(BucketName, WantedReplications),
     [case dict:find(VBucket, CurrentVBuckets) of
          {ok, dead} ->

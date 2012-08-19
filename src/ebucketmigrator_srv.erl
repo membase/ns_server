@@ -70,7 +70,8 @@
          start_vbucket_filter_change/2,
          start_old_vbucket_filter_change/1,
          set_controlling_process/2,
-         had_backfill/2]).
+         had_backfill/2,
+         ping_connections/2]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -235,6 +236,11 @@ process_last_messages(State) ->
               end
       end).
 
+handle_call(ping_connections, _From, #state{upstream_aux = UpstreamAux,
+                                            downstream_aux = DownstreamAux} = State) ->
+    _ = mc_client_binary:get_vbucket(UpstreamAux, 0),
+    _ = mc_client_binary:get_vbucket(DownstreamAux, 0),
+    {reply, ok, State};
 handle_call(start_old_vbucket_filter_change, {Pid, _} = _From,
             #state{vb_filter_change_state=VBFilterChangeState} = State)
   when VBFilterChangeState =/= not_started ->
@@ -721,6 +727,9 @@ start_vbucket_filter_change(Pid, Args) ->
 -spec start_old_vbucket_filter_change(pid()) -> {ok, port()} | {failed, any()}.
 start_old_vbucket_filter_change(Pid) ->
     gen_server:call(Pid, start_old_vbucket_filter_change, 30000).
+
+ping_connections(Pid, Timeout) ->
+    gen_server:call(Pid, ping_connections, Timeout).
 
 -spec set_controlling_process(#state{}, pid()) -> ok.
 set_controlling_process(#state{upstream=Upstream,

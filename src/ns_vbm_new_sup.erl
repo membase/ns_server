@@ -30,7 +30,8 @@
 
 %% Callbacks
 -export([server_name/1, supervisor_node/2,
-         make_replicator/3, replicator_nodes/2, replicator_vbuckets/1]).
+         make_replicator/3, replicator_nodes/2, replicator_vbuckets/1,
+         ping_all_replicators/1]).
 
 -export([local_change_vbucket_filter/4]).
 
@@ -182,4 +183,19 @@ perform_vbucket_filter_change_loop(ThePid, OldState, SentAlready) ->
                     gen_server:reply(From, refused)
             end,
             perform_vbucket_filter_change_loop(ThePid, OldState, true)
+    end.
+
+%% make sure all migrators have up-to-date connections
+ping_all_replicators(Bucket) ->
+    Childs = try supervisor:which_children(server_name(Bucket))
+             catch exit:{noproc, _} ->
+                     []
+             end,
+    [ping_some_replicator(Pid) || {_Id, Pid, _, _} <- Childs],
+    ok.
+
+ping_some_replicator(Pid) ->
+    try ebucketmigrator_srv:ping_connections(Pid, infinity)
+    catch T:E ->
+            ?log_error("Pinging migrator ~p failed:~n~p", [Pid, {T,E}])
     end.
