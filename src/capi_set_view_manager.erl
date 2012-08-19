@@ -115,21 +115,14 @@ get_usable_vbuckets_set(Bucket) ->
           VBucketName <- [binary:part(FullName, PrefixLen, erlang:size(FullName) - PrefixLen)],
           VBucketName =/= <<"master">>]).
 
-apply_vbucket_states(Bucket, WantedStates, RebalanceStates, UseReplicaIndex, ExistingVBuckets) ->
-    SetName = list_to_binary(Bucket),
-    {Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets} =
-        compute_index_states(WantedStates, RebalanceStates, ExistingVBuckets),
-    do_apply_vbucket_states(SetName, Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, UseReplicaIndex).
-
-
-do_apply_vbucket_states(SetName, Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, UseReplicaIndex) ->
+do_apply_vbucket_states(SetName, Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, State) ->
     RVs = capi_ddoc_replication_srv:foreach_live_ddoc_id(
             SetName,
             fun (DDocId) ->
                     apply_index_states(SetName, DDocId,
                                        Active, Passive, MainCleanup, Replica, ReplicaCleanup,
                                        PauseVBuckets, UnpauseVBuckets,
-                                       UseReplicaIndex),
+                                       State),
                     ok
             end),
     BadDDocs = [Pair || {_Id, Val} = Pair <- RVs,
@@ -145,9 +138,11 @@ do_apply_vbucket_states(SetName, Active, Passive, MainCleanup, Replica, ReplicaC
 change_vbucket_states(#state{bucket = Bucket,
                              wanted_states = WantedStates,
                              rebalance_states = RebalanceStates,
-                             use_replica_index = UseReplicaIndex,
-                             usable_vbuckets = UsableVBuckets} = _State) ->
-    apply_vbucket_states(Bucket, WantedStates, RebalanceStates, UseReplicaIndex, UsableVBuckets).
+                             usable_vbuckets = UsableVBuckets} = State) ->
+    SetName = list_to_binary(Bucket),
+    {Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets} =
+        compute_index_states(WantedStates, RebalanceStates, UsableVBuckets),
+    do_apply_vbucket_states(SetName, Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, State).
 
 start_link(Bucket) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
@@ -199,12 +194,11 @@ handle_call({set_vbucket_states, WantedStates, RebalanceStates}, _From,
 
 handle_call({delete_vbucket, VBucket}, _From, #state{bucket = Bucket,
                                                      wanted_states = [],
-                                                     rebalance_states = RebalanceStates,
-                                                     use_replica_index = UseReplicaIndex} = State) ->
+                                                     rebalance_states = RebalanceStates} = State) ->
     [] = RebalanceStates,
     ?log_info("Deleting vbucket ~p from all indexes", [VBucket]),
     SetName = list_to_binary(Bucket),
-    do_apply_vbucket_states(SetName, [], [], [VBucket], [], [VBucket], [], [], UseReplicaIndex),
+    do_apply_vbucket_states(SetName, [], [], [VBucket], [], [VBucket], [], [], State),
     {reply, ok, State};
 handle_call({delete_vbucket, VBucket}, _From, #state{usable_vbuckets = UsableVBuckets,
                                                      wanted_states = WantedStates,
@@ -287,9 +281,10 @@ server(Bucket) ->
 master_db(Bucket) ->
     list_to_binary(Bucket ++ "/master").
 
-define_group(DDocId, #state{bucket = Bucket,
-                            num_vbuckets = NumVBuckets,
-                            use_replica_index = UseReplicaIndex} = _State) ->
+maybe_define_group(DDocId,
+                   #state{bucket = Bucket,
+                          num_vbuckets = NumVBuckets,
+                          use_replica_index = UseReplicaIndex} = _State) ->
     SetName = list_to_binary(Bucket),
     Params = #set_view_params{max_partitions=NumVBuckets,
                               active_partitions=[],
@@ -303,20 +298,39 @@ define_group(DDocId, #state{bucket = Bucket,
             %% The document has been deleted but we still think it's
             %% alive. Eventually we will get a notification from master db
             %% watcher and delete it from a list of design documents.
-            ok
-    end.
-
-maybe_define_group(DDocId, State) ->
-    try
-        define_group(DDocId, State),
-        ok
-    catch
+            ok;
         throw:view_already_defined ->
             already_defined
     end.
 
+define_and_reapply_index_states(SetName, DDocId, Active, Passive, Cleanup,
+                                Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets,
+                                State, OriginalException, NowException) ->
+    ?log_info("Got view_undefined exception:~n~p", [NowException]),
+    case OriginalException of
+        undefined ->
+            ok;
+        _ ->
+            ?log_error("Got second exception after trying to redefine undefined view:~n~p~nOriginal exception was:~n~p",
+                       [NowException, OriginalException]),
+            erlang:apply(erlang, raise, OriginalException)
+    end,
+    maybe_define_group(DDocId, State),
+    apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
+                       Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets,
+                       State, NowException).
+
 apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
-                   Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, UseReplicaIndex) ->
+                   Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets,
+                   State) ->
+    apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
+                       Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets,
+                       State, undefined).
+
+apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
+                   Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets,
+                   #state{use_replica_index = UseReplicaIndex} = State,
+                   PastException) ->
 
     try
         PausingOn = cluster_compat_mode:is_index_pausing_on(),
@@ -357,14 +371,26 @@ apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
             %% alive. Eventually we will get a notification from master db
             %% watcher and delete it from a list of design documents.
             ok;
-        throw:{error, view_undefined} ->
-            %% see below
-            ok;
-        throw:view_undefined ->
-            %% Design document has been updated but we have not reacted on it
-            %% yet. Eventually we will get a notification about
-            %% this change and define a group again.
-            ok
+        T:E ->
+            Stack = erlang:get_stacktrace(),
+            Exc = [T, E, Stack],
+            Undefined = case Exc of
+                            [throw, {error, view_undefined}, _] ->
+                                true;
+                            [error, view_undefined, _] ->
+                                true;
+                            _ ->
+                                false
+                        end,
+            case Undefined of
+                true ->
+                    define_and_reapply_index_states(
+                      SetName, DDocId, Active, Passive, Cleanup,
+                      Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets,
+                      State, PastException, Exc);
+                _ ->
+                    erlang:raise(T, E, Stack)
+            end
     end.
 
 master_db_watcher(Bucket, Parent) ->
