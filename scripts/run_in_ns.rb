@@ -33,6 +33,14 @@ if ARGV == ["--setup"]
   exit
 end
 
+if ARGV == ["--help"]
+  puts <<HERE
+Example:
+# NS_NODE_NAME='n_11@lh' ./cluster_run -n1 --start-index=11 --dont-rename -i --prepend-extras ./scripts/run_in_ns.rb
+HERE
+  exit
+end
+
 # apparently vde is eating HUP. Or maybe not. Anyway ruby is normally
 # messing up with SIGHUP, so lets make it at least do some work for
 # us. That sending out of SIGTERM is really crucial here
@@ -61,14 +69,18 @@ Process.kill("STOP", sleeper)
 
 dummy_name, node_name = ARGV.each_cons(2).detect {|(maybe_name, val)| maybe_name == "-name"}
 
-raise unless node_name =~ /\Ans?_([0-9]+)@/
+node_name ||= ENV['NS_NODE_NAME']
+
+raise "dont't have node -name" unless node_name =~ /\Ans?_([0-9]+)@/
 
 node_number = $1.to_i
 node_host = $'
 
-vde_sock = "/tmp/vdesock/c_node_#{node_number}"
+puts "node_number: #{node_number}\nnode_host: #{node_host}"
+
+vde_sock = "/tmp/vdesock/cs_node_#{node_number}"
 tap_if = "tapCNode#{node_number}"
-netns = "c_node_#{node_number}"
+netns = "cs_node_#{node_number}"
 ifaddr = "172.25.0.#{2+node_number}"
 
 puts "Creating vde switch"
@@ -85,6 +97,7 @@ rd.close
 # ourselves (in fact it'll be open in erlang and all it's child :). So
 # when we're 'done' wirefilter has less chance 'escaping'
 puts "Creating netns"
+sh "ip netns exec #{netns} ifconfig lo down || true"
 sh "ip netns del #{netns}; ip netns add #{netns}"
 sh "ip netns exec #{netns} ifconfig lo 127.0.0.1/8 up"
 puts "Passing tap interface into netns"
