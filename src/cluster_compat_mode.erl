@@ -57,7 +57,7 @@ is_index_aware_rebalance_on() ->
 
 is_index_pausing_on() ->
     is_index_aware_rebalance_on() andalso
-        (not ns_config_ets_dup:unreliable_read_key(index_aware_rebalance_disabled, false)).
+        (not ns_config_ets_dup:unreliable_read_key(index_pausing_disabled, false)).
 
 consider_switching_compat_mode() ->
     Config = ns_config:get(),
