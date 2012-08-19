@@ -711,7 +711,7 @@ iterate_ddocs(BinBucket, Body) ->
                                         end, RVs),
     case BadRVs of
         [] ->
-            [V || {ok, V} <- GoodRVs];
+            [V || {_, {ok, V}} <- GoodRVs];
         _ ->
             erlang:error({iterate_ddocs_failed, BadRVs})
     end.
