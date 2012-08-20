@@ -190,12 +190,12 @@ terminate(Reason, State) ->
     #rep_state{
            source_name = Source,
            target_name = Target,
-           rep_details = #rep{id = Id} = _Rep
+           rep_details = #rep{id = Id, target = TargetRef} = _Rep
           } = State,
     ?xdcr_error("Replication `~s` (`~s` -> `~s`) failed: ~s",
                 [Id, Source, Target, to_binary(Reason)]),
     % an unhandled error happened. Invalidate target vb map cache.
-    remote_clusters_info:invalidate_remote_bucket_by_ref(Target),
+    remote_clusters_info:invalidate_remote_bucket_by_ref(TargetRef),
     terminate_cleanup(State).
 
 
