@@ -461,7 +461,7 @@ check_bucket_uuid(F, [PoolId, Bucket | _] = Args, Req) ->
     end.
 
 %% Internal API
--define(SAMPLES_LOADING_TIMEOUT, 60000).
+-define(SAMPLES_LOADING_TIMEOUT, 120000).
 -define(SAMPLE_BUCKET_QUOTA, 1024 * 1024 * 100).
 
 handle_sample_buckets(Req) ->

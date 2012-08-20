@@ -943,6 +943,8 @@ var SetupWizard = {
               textHTML: errReason
             });
           }
+        }, {
+          timeout: 140000
         });
       });
 

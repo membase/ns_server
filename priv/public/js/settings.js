@@ -465,6 +465,8 @@ var SampleBucketSection = {
             textHTML: errReason
           });
         }
+      }, {
+        timeout: 140000
       });
 
     });
