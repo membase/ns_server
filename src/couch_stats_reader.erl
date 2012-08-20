@@ -63,6 +63,7 @@ init(Bucket) ->
             ok
     end,
     ets:new(server(Bucket), [protected, named_table, set]),
+    ets:insert(server(Bucket), {stuff, []}),
     {ok, #state{bucket=Bucket}}.
 
 handle_call(_, _From, State) ->
