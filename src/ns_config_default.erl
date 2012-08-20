@@ -230,10 +230,9 @@ default() ->
                        {host, "localhost"},
                        {port, 25},
                        {encrypt, false}]},
-       {alerts, [auto_failover_node,
-                 auto_failover_maximum_reached,
-                 auto_failover_other_nodes_down,
-                 auto_failover_cluster_too_small]}
+       {alerts, [auto_failover_node,auto_failover_maximum_reached,
+                 auto_failover_other_nodes_down,auto_failover_cluster_too_small,ip,
+                 disk,overhead,ep_oom_errors,ep_item_commit_failed]}
       ]},
      {replication, [{enabled, true}]},
      {auto_failover_cfg, [{enabled, false},
