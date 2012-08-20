@@ -138,16 +138,7 @@ send_no_active_vbuckets(Req) ->
 
 all_docs_db_req(#httpd{method='GET'} = Req,
                 #db{filepath = undefined} = Db) ->
-    case {couch_httpd:qs_json_value(Req, "startkey", nil),
-          couch_httpd:qs_json_value(Req, "endkey", nil)} of
-        {<<"_design/">>, <<"_design0">>} ->
-            capi_frontend:with_subdb(Db, <<"master">>,
-                                     fun (RealDb) ->
-                                             couch_httpd_db:db_req(Req, RealDb)
-                                     end);
-        _ ->
-            do_capi_all_docs_db_req(Req, Db)
-    end;
+    do_capi_all_docs_db_req(Req, Db);
 
 all_docs_db_req(#httpd{method='POST'} = Req,
                 #db{filepath = undefined} = Db) ->
