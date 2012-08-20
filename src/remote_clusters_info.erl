@@ -225,8 +225,13 @@ get_remote_bucket(ClusterName, Bucket, Through, Timeout) ->
 
 invalidate_remote_bucket(ClusterName, Bucket) ->
     Cluster = find_cluster_by_name(ClusterName),
-    gen_server:call(?MODULE,
-                    {invalidate_remote_bucket, Cluster, Bucket}, infinity).
+    case Cluster of
+        {error, _, _} ->
+            Cluster;
+        _ ->
+            gen_server:call(?MODULE,
+                            {invalidate_remote_bucket, Cluster, Bucket}, infinity)
+    end.
 
 %% gen_server callbacks
 init([]) ->
