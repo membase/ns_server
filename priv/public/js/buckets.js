@@ -293,7 +293,10 @@ var BucketDetailsDialog = mkClass({
     this.cleanups.push($m(errorsCellSubscription, 'cancel'));
 
     var form = dialog.find('form');
-    this.formValidator = setupFormValidation(form, this.initValues.uri + '?just_validate=1', function (status, errors) {
+    var validateURL = this.initValues.uri;
+    validateURL += (validateURL.match(/\?/)) ? '&': '?';
+    validateURL += 'just_validate=1'
+    this.formValidator = setupFormValidation(form, validateURL, function (status, errors) {
       console.log("setting errors: ", errors);
       errorsCell.setValue(errors);
     }, function() {
