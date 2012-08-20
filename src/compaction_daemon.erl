@@ -928,23 +928,28 @@ view_needs_compaction(BucketName, DDocId, Type,
 ensure_can_view_compact(BucketName, DDocId, Type) ->
     Info = get_group_data_info(BucketName, DDocId, Type),
 
-    DataSize = proplists:get_value(data_size, Info, 0),
-    SpaceRequired = space_required(DataSize),
+    case Info of
+        disabled ->
+            exit(normal);
+        _ ->
+            DataSize = proplists:get_value(data_size, Info, 0),
+            SpaceRequired = space_required(DataSize),
 
-    {ok, ViewsDir} = ns_storage_conf:this_node_ixdir(),
-    Free = free_space(ViewsDir),
+            {ok, ViewsDir} = ns_storage_conf:this_node_ixdir(),
+            Free = free_space(ViewsDir),
 
-    case Free >= SpaceRequired of
-        true ->
-            ok;
-        false ->
-            ale:error(?USER_LOGGER,
-                      "Cannot compact view ~s/~s/~p: "
-                      "the estimated necessary disk space is about ~p bytes "
-                      "but the currently available disk space is ~p bytes.",
-                      [BucketName, DDocId, Type, SpaceRequired, Free]),
-            exit({not_enough_space,
-                  BucketName, DDocId, SpaceRequired, Free})
+            case Free >= SpaceRequired of
+                true ->
+                    ok;
+                false ->
+                    ale:error(?USER_LOGGER,
+                              "Cannot compact view ~s/~s/~p: "
+                              "the estimated necessary disk space is about ~p bytes "
+                              "but the currently available disk space is ~p bytes.",
+                              [BucketName, DDocId, Type, SpaceRequired, Free]),
+                    exit({not_enough_space,
+                          BucketName, DDocId, SpaceRequired, Free})
+            end
     end.
 
 get_group_data_info(BucketName, DDocId, main) ->
