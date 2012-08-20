@@ -77,8 +77,7 @@ handle_info(src_db_updated,
         #rep_state{status = #rep_vb_status{num_changes_left = 0}} = St2 ->
             {noreply, St2};
         #rep_state{status =VbStatus} = St2 ->
-             ok = concurrency_throttle:send_back_when_can_go(St2#rep_state.throttle,
-                                                             start_replication),
+            ok = concurrency_throttle:send_back_when_can_go(St2, start_replication),
             {noreply, update_state_to_parent(St2#rep_state{status = VbStatus#rep_vb_status{status = waiting_turn}})}
     end;
 
@@ -94,7 +93,10 @@ handle_info(src_db_updated, #rep_state{status = #rep_vb_status{status = replicat
     misc:flush(src_db_updated),
     {noreply, St};
 
-handle_info(start_replication, #rep_state{status = #rep_vb_status{status = waiting_turn} = VbStatus} = St) ->
+handle_info(start_replication, #rep_state{throttle = Throttle,
+                                          status = #rep_vb_status{vb = Vb, status = waiting_turn} = VbStatus} = St) ->
+
+    ?xdcr_debug("get start replication for vb ~p from throttle (pid: ~p)", [Vb, Throttle]),
     {noreply, start_replication(St#rep_state{status = VbStatus#rep_vb_status{status = replicating}})}.
 
 handle_call({report_seq_done, Seq, NumChecked, NumWritten}, From,
@@ -225,7 +227,7 @@ init_replication_state(Rep, Vb, Throttle, Parent) ->
           options = Options
         } = Rep,
     SrcVbDb = xdc_rep_utils:local_couch_uri_for_vbucket(Src, Vb),
-    {ok, RemoteBucket} = remote_clusters_info:get_remote_bucket_by_ref(Tgt, 
+    {ok, RemoteBucket} = remote_clusters_info:get_remote_bucket_by_ref(Tgt,
                                                                        false),
     TgtURI = hd(dict:fetch(Vb, RemoteBucket#remote_bucket.vbucket_map)),
     TgtDb = xdc_rep_utils:parse_rep_db(TgtURI),

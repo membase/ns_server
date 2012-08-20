@@ -118,3 +118,20 @@
          }).
 
 
+
+-record(concurrency_throttle_state, {
+          %% token counter
+          count,
+          %% table of replications waiting to be scheduled
+          %% (key = Pid, value = {Signal, TargetNode})
+          waiting_reps,
+          %% table of active replications
+          %% (key = Pid, value = target node replicated to)
+          active_reps,
+          %% table of load at target node
+          %% (key = TargetNode, value = number of active reps on that node)
+          target_load,
+          %% table of monitoring refs
+          %% (key = Pid of reps, value = monitoring reference)
+          monitor_dict
+         }).

@@ -172,10 +172,10 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 start_vb_replicators(#replication{rep = Rep,
-                                vbucket_sup = Sup,
-                                concurrency_throttle = Throttle,
-                                vbs = Vbs,
-                                vb_rep_dict = Dict} = Replication) ->
+                                  vbucket_sup = Sup,
+                                  concurrency_throttle = Throttle,
+                                  vbs = Vbs,
+                                  vb_rep_dict = Dict} = Replication) ->
     CurrentVbs = [element(1, Spec) || Spec <- supervisor:which_children(Sup)],
     NewVbs = Vbs -- CurrentVbs,
     RemovedVbs = CurrentVbs -- Vbs,
