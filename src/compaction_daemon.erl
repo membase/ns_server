@@ -452,21 +452,25 @@ try_to_cleanup_indexes(BucketName, AllBucketDbs) ->
 
     %% we still use ordinary views for development subset
     lists:foreach(
-      fun (DbName) ->
-              try
-                  {ok, Db} = couch_db:open_int(DbName, []),
-
-                  try
-                      couch_view:cleanup_index_files(Db)
-                  after
-                      couch_db:close(Db)
-                  end
-              catch
-                  ViewT:ViewE ->
-                      ?log_error(
-                         "Error while doing cleanup of old "
-                         "index files for database `~s`: ~p~n~p",
-                         [DbName, {ViewT, ViewE}, erlang:get_stacktrace()])
+      fun ({_, DbName} = VBucketAndDbName) ->
+              case open_db(BucketName, VBucketAndDbName) of
+                  {ok, Db} ->
+                      try
+                          couch_view:cleanup_index_files(Db)
+                      catch
+                          ViewE:ViewT ->
+                              ?log_error(
+                                 "Error while doing cleanup of old "
+                                 "index files for database `~s`: ~p~n~p",
+                                 [DbName, {ViewT, ViewE}, erlang:get_stacktrace()])
+                      after
+                          couch_db:close(Db)
+                      end;
+                  vbucket_moved ->
+                      ok;
+                  Error ->
+                      ?log_error("Failed to open database `~s`: ~p",
+                                 [DbName, Error])
               end
       end, AllBucketDbs).
 
@@ -559,12 +563,13 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
 
               Compactors =
                   [ [{type, vbucket},
-                     {name, VBucketDb},
+                     {name, element(2, VBucketAndDbName)},
                      {important, false},
-                     {fa, {fun spawn_vbucket_compactor/1, [VBucketDb]}},
+                     {fa, {fun spawn_vbucket_compactor/2,
+                           [BucketName, VBucketAndDbName]}},
                      {on_success,
                       {fun update_bucket_compaction_progress/2, [Ix, Total]}}] ||
-                      {Ix, VBucketDb} <- misc:enumerate(VBucketDbs) ],
+                      {Ix, VBucketAndDbName} <- misc:enumerate(VBucketDbs) ],
 
               process_flag(trap_exit, true),
               do_chain_compactors(Parent, Compactors),
@@ -579,12 +584,55 @@ update_bucket_compaction_progress(Ix, Total) ->
            [{vbuckets_done, Ix},
             {progress, Progress}]).
 
-spawn_vbucket_compactor(DbName) ->
+open_db(BucketName, {VBucket, DbName}) ->
+    case couch_db:open_int(DbName, []) of
+        {ok, Db} ->
+            {ok, Db};
+        {not_found, no_db_file} = NotFoundError ->
+            %% It can be a real error which we don't want to hide. But at the
+            %% same time it can be a result of, for instance, rebalance. In
+            %% the second case we can expect many databases to be missing. So
+            %% we don't want all the resulting harmless errors be spamming the
+            %% log. To handle this we will check if the vbucket corresponding
+            %% to the database still belongs to our node according to vbucket
+            %% map. And if it's not the case we'll indicate that the error can
+            %% be ignored.
+            case is_integer(VBucket) of
+                true ->
+                    BucketConfig = get_bucket(BucketName),
+                    NodeVBuckets = ns_bucket:all_node_vbuckets(BucketConfig),
+
+                    case ordsets:is_element(VBucket, NodeVBuckets) of
+                        true ->
+                            %% this is a real error we want to report
+                            NotFoundError;
+                        false ->
+                            vbucket_moved
+                    end;
+                false ->
+                    NotFoundError
+            end;
+         Error ->
+            Error
+    end.
+
+open_db_or_fail(BucketName, {_, DbName} = VBucketAndDbName) ->
+    case open_db(BucketName, VBucketAndDbName) of
+        {ok, Db} ->
+            Db;
+        vbucket_moved ->
+            exit(normal);
+        Error ->
+            ?log_error("Failed to open database `~s`: ~p", [DbName, Error]),
+            exit({open_db_failed, Error})
+    end.
+
+spawn_vbucket_compactor(BucketName, {_, DbName} = VBucketAndDb) ->
     Parent = self(),
 
     proc_lib:spawn_link(
       fun () ->
-              {ok, Db} = couch_db:open_int(DbName, []),
+              Db = open_db_or_fail(BucketName, VBucketAndDb),
 
               %% effectful
               ensure_can_db_compact(Db),
@@ -787,7 +835,7 @@ aggregated_size_info(SampleVBucketDbs, NumVBuckets) ->
 
     {DataSize, FileSize} =
         lists:foldl(
-          fun (DbName, {AccDataSize, AccFileSize}) ->
+          fun ({_VBucket, DbName}, {AccDataSize, AccFileSize}) ->
                   {ok, Db} = couch_db:open_int(DbName, []),
 
                   %% unfortunately I can't just bind this inside try block
@@ -1152,9 +1200,9 @@ db_name(BucketName, SubName) when is_binary(SubName) ->
 all_bucket_dbs(BucketName) ->
     BucketConfig = get_bucket(BucketName),
     NodeVBuckets = ns_bucket:all_node_vbuckets(BucketConfig),
-    VBucketDbs = [db_name(BucketName, V) || V <- NodeVBuckets],
+    VBucketDbs = [{V, db_name(BucketName, V)} || V <- NodeVBuckets],
 
-    [db_name(BucketName, "master") | VBucketDbs].
+    [{master, db_name(BucketName, "master")} | VBucketDbs].
 
 get_bucket(BucketName) ->
     get_bucket(BucketName, ns_config:get()).
@@ -1184,7 +1232,8 @@ multi_sync_send_all_state_event(Event) ->
               Result =/= ok
       end, lists:zip(Nodes, Results)).
 
-check_all_dbs_exist(BucketName, RequiredDbs) ->
+check_all_dbs_exist(BucketName, RequiredDbs0) ->
+    {_VBuckets, RequiredDbs} = lists:unzip(RequiredDbs0),
     ExistingDbs = ns_storage_conf:bucket_databases(BucketName),
     SortedRequiredDbs = lists:usort(RequiredDbs),
 
