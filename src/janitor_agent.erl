@@ -726,19 +726,35 @@ spawn_rebalance_subprocess(#state{rebalance_subprocesses = Subprocesses} = State
 
 wait_index_updated_on_master(Bucket, VBucket) ->
     BinBucket = list_to_binary(Bucket),
-    Refs = iterate_ddocs(
-             BinBucket,
-             fun (DDocId) ->
-                     case DDocId of
-                         <<"_design/dev_", _/binary>> ->
-                             %% we don't need to wait-for/update dev indexes at all
-                             undefined;
-                         _ ->
-                             RV = couch_set_view:monitor_partition_update(BinBucket, DDocId, VBucket),
-                             couch_set_view:trigger_update(BinBucket, DDocId, 0),
-                             RV
-                     end
-             end),
+    Self = self(),
+    ?log_debug("entered wait_index_updated_on_master(~p, ~p)", [Bucket, VBucket]),
+    Refs0 = iterate_ddocs(
+              BinBucket,
+              fun (DDocId) ->
+                      case DDocId of
+                          <<"_design/dev_", _/binary>> ->
+                              %% we don't need to wait-for/update dev indexes at all
+                              undefined;
+                          _ ->
+                              F = fun () ->
+                                          erlang:link(Self),
+                                          erlang:monitor(process, Self),
+                                          RV = couch_set_view:monitor_partition_update(BinBucket, DDocId, VBucket),
+                                          couch_set_view:trigger_update(BinBucket, DDocId, 0),
+                                          ?log_debug("got Ref: ~p", [RV]),
+                                          proc_lib:init_ack(RV),
+                                          receive
+                                              Msg ->
+                                                  ?log_debug("Forwarding message to parent: ~p", [Msg]),
+                                                  Self ! Msg
+                                          end
+                                  end,
+                              RV = proc_lib:start(erlang, apply, [F, []]),
+                              RV
+                      end
+              end),
+    Refs = [R || R <- Refs0,
+                 R =/= undefined],
     ?log_debug("References to wait: ~p (~p, ~p)", [Refs, Bucket, VBucket]),
     [receive
          {Ref, Msg} -> % Ref is bound
