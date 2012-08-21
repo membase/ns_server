@@ -145,7 +145,7 @@ default() ->
        %% Number of recent log files to retain.
        {log_generations, 10},
        %% Milliseconds between log rotation runs.
-       {log_rotation_period, 900000},
+       {log_rotation_period, 39003},
        {verbosity, ""}]},
 
      {memory_quota, InitQuota},
