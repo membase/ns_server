@@ -33,7 +33,7 @@
 -define(XDCR_CHECKPOINT_INTERVAL, 60000).
 
 %% Maximum number of concurrent vbucket replications allowed per doc
--define(MAX_CONCURRENT_REPS_PER_DOC, 8).
+-define(MAX_CONCURRENT_REPS_PER_DOC, 32).
 
 %% TODO: maybe make both buffer max sizes configurable
 -define(DOC_BUFFER_BYTE_SIZE, 512 * 1024).   %% for remote targets
