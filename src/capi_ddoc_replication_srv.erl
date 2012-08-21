@@ -23,6 +23,7 @@
 -export([start_link/1, update_doc/2, force_update/1,
          foreach_doc/2, fetch_ddoc_ids/1,
          full_live_ddocs/1,
+         sorted_full_live_ddocs/1,
          foreach_live_ddoc_id/2]).
 
 -behaviour(cb_generic_replication_srv).
@@ -75,6 +76,9 @@ full_live_ddocs(Bucket) ->
             end),
     [V || {_Id, V} <- RVs,
           V =/= Ref].
+
+sorted_full_live_ddocs(Bucket) ->
+    lists:keysort(#doc.id, full_live_ddocs(Bucket)).
 
 -spec foreach_doc(bucket_name() | binary(),
                    fun ((#doc{}) -> any())) -> [{binary(), any()}].
