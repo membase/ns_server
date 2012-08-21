@@ -144,6 +144,9 @@ default() ->
        {log_prefix, "memcached.log"},
        %% Number of recent log files to retain.
        {log_generations, 10},
+       %% how big log file needs to grow before memcached starts using
+       %% next file
+       {log_cyclesize, 1024*1024*100},
        %% Milliseconds between log rotation runs.
        {log_rotation_period, 39003},
        {verbosity, ""}]},
@@ -194,8 +197,8 @@ default() ->
         ["-X", path_config:component_path(lib, "memcached/stdin_term_handler.so"),
          "-X", {path_config:component_path(lib,
                                            "memcached/file_logger.so" ++
-                                               ",filename=~s/~s"),
-                [log_path, log_prefix]},
+                                               ",cyclesize=~B;filename=~s/~s"),
+                [log_cyclesize, log_path, log_prefix]},
          "-l", {"0.0.0.0:~B,0.0.0.0:~B:1000", [port, dedicated_port]},
          "-p", {"~B", [port]},
          "-E", path_config:component_path(lib, "memcached/bucket_engine.so"),
