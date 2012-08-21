@@ -28,7 +28,7 @@
 -module(concurrency_throttle).
 -behaviour(gen_server).
 
--export([send_back_when_can_go/2, is_done/1]).
+-export([send_back_when_can_go/2, send_back_when_can_go/3, is_done/1]).
 
 -export([start_link/1, init/1, handle_call/3, handle_info/2, handle_cast/2]).
 -export([code_change/3, terminate/2]).
@@ -38,13 +38,12 @@
 start_link(MaxConcurrency) ->
     gen_server:start_link(?MODULE, MaxConcurrency, []).
 
-send_back_when_can_go(#rep_state{throttle = Server, target_name = TgtURI} = State,
-                      Signal) ->
-    #rep_state{status = VBStatus} = State,
-    #rep_vb_status{vb = Vb} = VBStatus,
-    TargetNode =  target_uri_to_node(TgtURI),
-    ?xdcr_debug("ask for token for rep of vb: ~p at target node: ~p", [Vb, TargetNode]),
-    gen_server:call(Server, {send_signal, {TargetNode, Signal}}, infinity).
+
+send_back_when_can_go(Server, Signal) ->
+    send_back_when_can_go(Server, "NULL", Signal).
+
+send_back_when_can_go(Server, LoadKey, Signal) ->
+    gen_server:call(Server, {send_signal, {LoadKey, Signal}}, infinity).
 
 is_done(Server) ->
     gen_server:call(Server, done, infinity).
@@ -52,23 +51,23 @@ is_done(Server) ->
 init(Count) ->
     ?xdcr_debug("init concurrent throttle process, pid: ~p, "
                 "# of available token: ~p", [self(), Count]),
-    WaitingReps = dict:new(),
-    ActiveReps = dict:new(),
+    WaitingPool = dict:new(),
+    ActivePool = dict:new(),
     TargetLoad = dict:new(),
     MonitorDict = dict:new(),
     {ok, #concurrency_throttle_state{count = Count,
-                                     waiting_reps = WaitingReps,
-                                     active_reps = ActiveReps,
+                                     waiting_pool = WaitingPool,
+                                     active_pool = ActivePool,
                                      target_load = TargetLoad,
                                      monitor_dict = MonitorDict}}.
 
 handle_call({send_signal, {TargetNode, Signal}}, {Pid, _Tag},
             #concurrency_throttle_state{count = 0} = State) ->
 
-    #concurrency_throttle_state{waiting_reps = WaitingReps,
+    #concurrency_throttle_state{waiting_pool = WaitingPool,
                                 target_load = TargetLoad} = State,
 
-    NewWaitingReps = dict:store(Pid, {Signal, TargetNode}, WaitingReps),
+    NewWaitingPool = dict:store(Pid, {Signal, TargetNode}, WaitingPool),
     NewTargetLoad = case dict:is_key(TargetNode, TargetLoad) of
                         false ->
                             dict:store(TargetNode, 0, TargetLoad);
@@ -78,7 +77,7 @@ handle_call({send_signal, {TargetNode, Signal}}, {Pid, _Tag},
 
     NewState = State#concurrency_throttle_state{
                  target_load = NewTargetLoad,
-                 waiting_reps = NewWaitingReps},
+                 waiting_pool = NewWaitingPool},
 
     ?xdcr_debug("no token available, put (pid:~p, signal: ~p, targetnode: ~p) "
                 "waiting pool", [Pid, Signal, TargetNode]),
@@ -90,13 +89,13 @@ handle_call({send_signal, {TargetNode, Signal}}, {Pid, _Tag}, State) ->
     MonRef = erlang:monitor(process, Pid),
 
     #concurrency_throttle_state{count = Count,
-                                waiting_reps = _WaitingReps,
-                                active_reps = ActiveReps,
+                                waiting_pool = _WaitingPool,
+                                active_pool = ActivePool,
                                 target_load = TargetLoad,
                                 monitor_dict = MonDict} = State,
 
     NewMonDict = dict:store(Pid, MonRef, MonDict),
-    NewActiveReps = dict:store(Pid, TargetNode, ActiveReps),
+    NewActivePool = dict:store(Pid, TargetNode, ActivePool),
     %% update target_load
     NewTargetLoad = case dict:is_key(TargetNode, TargetLoad) of
                         false ->
@@ -116,19 +115,19 @@ handle_call({send_signal, {TargetNode, Signal}}, {Pid, _Tag}, State) ->
                   count = NewCount,
                   monitor_dict = NewMonDict,
                   target_load = NewTargetLoad,
-                  active_reps = NewActiveReps}};
+                  active_pool = NewActivePool}};
 
 handle_call(done, {Pid, _Tag},
             #concurrency_throttle_state{count = Count, monitor_dict = MonDict,
-                                        active_reps = ActiveReps,
+                                        active_pool = ActivePool,
                                         target_load = TargetLoad} = State) ->
 
     true = erlang:demonitor(dict:fetch(Pid, MonDict), [flush]),
     %% update monitoring and active reps tables
     NewMonDict = dict:erase(Pid, MonDict),
-    NewActiveReps = dict:erase(Pid, ActiveReps),
+    NewActivePool = dict:erase(Pid, ActivePool),
     %% update target_load
-    TargetNode = dict:fetch(Pid, ActiveReps),
+    TargetNode = dict:fetch(Pid, ActivePool),
     NewLoad = dict:fetch(TargetNode, TargetLoad) - 1,
     NewTargetLoad = case NewLoad > 0 of
                         true ->
@@ -146,7 +145,7 @@ handle_call(done, {Pid, _Tag},
                               count = NewCount,
                               monitor_dict = NewMonDict,
                               target_load = NewTargetLoad,
-                              active_reps = NewActiveReps}),
+                              active_pool = NewActivePool}),
     {reply, ok, State2}.
 
 handle_cast(Msg, State) ->
@@ -165,24 +164,24 @@ handle_info({'DOWN', _MonRef, _Type, Pid, _Info},
 
 
 signal_waiting(#concurrency_throttle_state{count = Count,
-                                           waiting_reps = WaitingReps,
-                                           active_reps = ActiveReps,
+                                           waiting_pool = WaitingPool,
+                                           active_pool = ActivePool,
                                            target_load = TargetLoad,
                                            monitor_dict = MonDict} = State) ->
 
-    case dict:size(WaitingReps) of
+    case dict:size(WaitingPool) of
         0 ->
             ?xdcr_debug("nothing to schedule, # of active reps: ~p, # of acrtive target nodes: ~p",
-                        [dict:size(ActiveReps), dict:size(TargetLoad)]),
+                        [dict:size(ActivePool), dict:size(TargetLoad)]),
             State;
         _ ->
-            {WaitingPid, Signal, TargetNode} = choose_pid_to_schedule(WaitingReps,
+            {WaitingPid, Signal, TargetNode} = choose_pid_to_schedule(WaitingPool,
                                                                       TargetLoad),
             %% signal to next it can go
             %% if WaitingPid died, we'll get a 'DOWN' message
             MonRef = erlang:monitor(process, WaitingPid),
-            NewWaitingReps = dict:erase(WaitingPid, WaitingReps),
-            NewActiveReps = dict:store(WaitingPid, TargetNode, ActiveReps),
+            NewWaitingPool = dict:erase(WaitingPid, WaitingPool),
+            NewActivePool = dict:store(WaitingPid, TargetNode, ActivePool),
             NewTargetLoad = case dict:is_key(TargetNode, TargetLoad) of
                                 false ->
                                     dict:store(TargetNode, 1, TargetLoad);
@@ -198,8 +197,8 @@ signal_waiting(#concurrency_throttle_state{count = Count,
             State#concurrency_throttle_state{
               count = Count - 1,
               monitor_dict = dict:store(WaitingPid, MonRef, MonDict),
-              active_reps = NewActiveReps,
-              waiting_reps = NewWaitingReps,
+              active_pool = NewActivePool,
+              waiting_pool = NewWaitingPool,
               target_load = NewTargetLoad}
     end.
 
@@ -214,7 +213,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% based on laod table and table of waiting reps, choose one
 %% replication to schedule such that the target node has the
 %% minimum active replications
-choose_pid_to_schedule(WaitingReps, TargetLoad) ->
+choose_pid_to_schedule(WaitingPool, TargetLoad) ->
     {MinimumPid, _Load} = dict:fold(
                            fun(Pid, {_, CurrNode}, {MinPid, MinLoad}) ->
                                    case dict:is_key(CurrNode, TargetLoad) of
@@ -232,13 +231,7 @@ choose_pid_to_schedule(WaitingReps, TargetLoad) ->
                            end,
                            %% the max # of active resp per node is the number of vbuckets
                            {0, 9999},
-                           WaitingReps),
+                           WaitingPool),
 
-    {Signal, TargetNode} = dict:fetch(MinimumPid, WaitingReps),
+    {Signal, TargetNode} = dict:fetch(MinimumPid, WaitingPool),
     {MinimumPid, Signal, TargetNode}.
-
-target_uri_to_node(TgtURI) ->
-    TargetURI = binary_to_list(TgtURI),
-    [_Prefix, NodeDB] = string:tokens(TargetURI, "@"),
-    [Node, _Bucket] = string:tokens(NodeDB, "/"),
-    Node.

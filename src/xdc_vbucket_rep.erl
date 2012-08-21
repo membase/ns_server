@@ -76,8 +76,11 @@ handle_info(src_db_updated,
     case update_number_of_changes(St) of
         #rep_state{status = #rep_vb_status{num_changes_left = 0}} = St2 ->
             {noreply, St2};
-        #rep_state{status =VbStatus} = St2 ->
-            ok = concurrency_throttle:send_back_when_can_go(St2, start_replication),
+        #rep_state{status =VbStatus, throttle = Throttle, target_name = TgtURI} = St2 ->
+            #rep_vb_status{vb = Vb} = VbStatus,
+            TargetNode =  target_uri_to_node(TgtURI),
+            ?xdcr_debug("ask for token for rep of vb: ~p to target node: ~p", [Vb, TargetNode]),
+            ok = concurrency_throttle:send_back_when_can_go(Throttle, TargetNode, start_replication),
             {noreply, update_state_to_parent(St2#rep_state{status = VbStatus#rep_vb_status{status = waiting_turn}})}
     end;
 
@@ -512,3 +515,8 @@ source_cur_seq(#rep_state{source = Db, source_seq = Seq}) ->
     {ok, Info} = couch_api_wrap:get_db_info(Db),
     get_value(<<"update_seq">>, Info, Seq).
 
+target_uri_to_node(TgtURI) ->
+    TargetURI = binary_to_list(TgtURI),
+    [_Prefix, NodeDB] = string:tokens(TargetURI, "@"),
+    [Node, _Bucket] = string:tokens(NodeDB, "/"),
+    Node.
