@@ -27,7 +27,6 @@ init([Dir, Prefix]) ->
     {_Generations, Period} = log_params(),
     ?log_info("Starting log rotator on ~p/~p* with an initial period of ~pms",
               [Dir, Prefix, Period]),
-    {ok, _} = timer:send_interval(Period, timeout),
     self() ! timeout,
     {ok, #state{dir=Dir, prefix=Prefix}, Period}.
 
