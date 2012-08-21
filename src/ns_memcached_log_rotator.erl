@@ -42,8 +42,12 @@ handle_cast(Msg, State) ->
 handle_info(timeout, State) ->
     {Generations, Period} = log_params(),
     N = remove(State#state.dir, State#state.prefix, Generations),
-    ?log_info("Removed ~p ~p log files from ~p (retaining up to ~p)",
-              [N, State#state.prefix, State#state.dir, Generations]),
+    if N > 0 ->
+            ?log_info("Removed ~p ~p log files from ~p (retaining up to ~p)",
+                      [N, State#state.prefix, State#state.dir, Generations]);
+       true ->
+            ok
+    end,
     {noreply, State, Period}.
 
 terminate(_Reason, _State) ->
