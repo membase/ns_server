@@ -707,6 +707,10 @@ function createRandomDocCells(ns, modeCell) {
 
   // null value means no docs exist
   ns.randomDocCell = Cell.computeEager(function (v) {
+    // this will prevent loading random doc when it's not needed
+    if (!v(ns.currentView) && !v(ns.currentSpatial)) {
+      return;
+    }
     var randomId = v(ns.randomDocIdCell);
     if (randomId == null) {//null or undefined
       return randomId;
