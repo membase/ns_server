@@ -1476,13 +1476,7 @@ var ViewsSection = {
       }
       views[viewName] = viewDef || {
         map:'function (doc, meta) {'
-          + '\n  if (meta.type == "json") {'
-          + '\n    // If the document is JSON, sort by the schema'
-          + '\n    var keys = Object.keys(doc);'
-          + '\n    emit(["json", keys.length], keys);'
-          + '\n  } else {'
-          + '\n    emit(["blob"]);'
-          + '\n  }'
+          + '\n  emit(meta.id, null);'
           + '\n}'
       }
       $('#view_code_errors').text('').attr('title','');
