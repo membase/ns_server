@@ -48,9 +48,6 @@ child_specs(BucketName) ->
       permanent, 1000, worker, [stats_archiver]},
      {{stats_reader, BucketName}, {stats_reader, start_link, [BucketName]},
       permanent, 1000, worker, [stats_reader]},
-     {{log_rotator, BucketName}, {ns_memcached_log_rotator, start_link,
-                                  [BucketName]},
-      permanent, 1000, worker, [ns_memcached_log_rotator, file_util]},
      {{failover_safeness_level, BucketName},
       {failover_safeness_level, start_link, [BucketName]},
       permanent, 1000, worker, [failover_safeness_level]}].

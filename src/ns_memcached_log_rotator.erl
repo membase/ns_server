@@ -4,7 +4,7 @@
 
 -include("ns_common.hrl").
 
--export([start_link/1]).
+-export([start_link/0]).
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
@@ -16,7 +16,7 @@ log_params() ->
     {ns_config:search_node_prop(Conf, memcached, log_generations),
      ns_config:search_node_prop(Conf, memcached, log_rotation_period)}.
 
-start_link(_Bucket) ->
+start_link() ->
     Conf = ns_config:get(),
     Dir = ns_config:search_node_prop(Conf, memcached, log_path),
     Prefix = ns_config:search_node_prop(Conf, memcached, log_prefix),
