@@ -643,8 +643,6 @@ function createRandomDocCells(ns, modeCell) {
 
     function randomKeySuccess(data) {
       dataCallback(data.key);
-      // sampleDocsCont.show();
-      // noSampleDocsCont.hide();
     };
 
     function randomKeyError(response, status, unexpected) {
@@ -656,7 +654,10 @@ function createRandomDocCells(ns, modeCell) {
         }
       }
 
-      unexpected();
+      // TODO: we don't handle warmup very well and other 'expected'
+      // errors like some nodes being down. So for now let's just fail
+      // silently which is better than nothing
+      allDocsError();
     };
 
     function randomIdFromAllDocs() {
@@ -675,11 +676,6 @@ function createRandomDocCells(ns, modeCell) {
       if (length != 0) {
         var i = (Math.random() * data.rows.length) >> 0;
         var result = data.rows[i].id;
-        // TODO: we'll cut this when _all_docs will stop seeing
-        // design docs
-        if (result.substring(0, "_design/".length) == "_design/") {
-          allDocsSuccess({rows:_.without(data.rows, data.rows[i])});
-        }
         dataCallback(result);
       } else {
         allDocsError();
