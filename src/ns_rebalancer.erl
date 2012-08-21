@@ -369,7 +369,7 @@ verify_replication(Bucket, Nodes, Map) ->
     case BadNodes of
         [] -> ok;
         _ ->
-            ale:error(?USER_LOGGER, "Failed to get active replicas for following nodes:~p", [BadNodes]),
+            ale:error(?USER_LOGGER, "Rebalance is done, but failed to verify replications on following nodes:~p", [BadNodes]),
             exit(bad_replicas_due_to_bad_results)
     end,
 
