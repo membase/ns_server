@@ -147,6 +147,8 @@ default() ->
        %% how big log file needs to grow before memcached starts using
        %% next file
        {log_cyclesize, 1024*1024*100},
+       %% flush interval of memcached's logger in seconds
+       {log_sleeptime, 19},
        %% Milliseconds between log rotation runs.
        {log_rotation_period, 39003},
        {verbosity, ""}]},
@@ -197,8 +199,8 @@ default() ->
         ["-X", path_config:component_path(lib, "memcached/stdin_term_handler.so"),
          "-X", {path_config:component_path(lib,
                                            "memcached/file_logger.so" ++
-                                               ",cyclesize=~B;filename=~s/~s"),
-                [log_cyclesize, log_path, log_prefix]},
+                                               ",cyclesize=~B;sleeptime=~B;filename=~s/~s"),
+                [log_cyclesize, log_sleeptime, log_path, log_prefix]},
          "-l", {"0.0.0.0:~B,0.0.0.0:~B:1000", [port, dedicated_port]},
          "-p", {"~B", [port]},
          "-E", path_config:component_path(lib, "memcached/bucket_engine.so"),
