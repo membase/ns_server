@@ -510,8 +510,10 @@ maybe_upgrade_engines_add_mccouch_port_log_params(Config, DefaultConfig) ->
     NewOrUpdatedParams =
         lists:filter(
           fun ({Key, _Value}) ->
-                  lists:member(Key, [mccouch_port, log_path, log_prefix,
-                                     log_generations, log_rotation_period,
+                  lists:member(Key, [mccouch_port,
+                                     log_path, log_prefix, log_generations,
+                                     log_cyclesize, log_sleeptime,
+                                     log_rotation_period,
                                      engines])
           end, DefaultMcdConfig),
 
