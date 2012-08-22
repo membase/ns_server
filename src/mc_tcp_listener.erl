@@ -17,6 +17,8 @@ start_link(PortNum) ->
 init(PortNum) ->
     {ok, LS} = gen_tcp:listen(PortNum, [binary,
                                         {reuseaddr, true},
+                                        inet,
+                                        {ip, {127, 0, 0, 1}},
                                         {packet, raw},
                                         {active, false}]),
     ?log_info("mccouch is listening on port ~p", [PortNum]),
