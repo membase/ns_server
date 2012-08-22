@@ -98,6 +98,8 @@ flush_docs(Target, DocList) ->
     case couch_api_wrap:update_docs(Target, DocList, [delay_commit],
                                     replicated_changes) of
         ok ->
+            ?xdcr_debug("worker process replicated ~p docs to target ~p",
+                        [length(DocList), Target#httpdb.url]),
             ok;
         {ok, {Props}} ->
             DbUri = couch_api_wrap:db_uri(Target),

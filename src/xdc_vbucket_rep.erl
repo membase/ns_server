@@ -99,7 +99,7 @@ handle_info(src_db_updated, #rep_state{status = #rep_vb_status{status = replicat
 handle_info(start_replication, #rep_state{throttle = Throttle,
                                           status = #rep_vb_status{vb = Vb, status = waiting_turn} = VbStatus} = St) ->
 
-    ?xdcr_debug("get start replication for vb ~p from throttle (pid: ~p)", [Vb, Throttle]),
+    ?xdcr_debug("get start-replication token for vb ~p from throttle (pid: ~p)", [Vb, Throttle]),
     {noreply, start_replication(St#rep_state{status = VbStatus#rep_vb_status{status = replicating}})}.
 
 handle_call({report_seq_done, Seq, NumChecked, NumWritten}, From,
@@ -127,9 +127,11 @@ handle_call({report_seq_done, Seq, NumChecked, NumWritten}, From,
     ?xdcr_debug("Replicator of vbucket ~p: worker reported seq ~p, through seq was ~p, "
                 "new through seq is ~p, highest seq done was ~p, "
                 "new highest seq done is ~p~n"
-                "Seqs in progress were: ~p~nSeqs in progress are now: ~p",
+                "Seqs in progress were: ~p~nSeqs in progress are now: ~p"
+                "(total docs checked: ~p, total docs written: ~p)",
                 [Vb, Seq, ThroughSeq, NewThroughSeq, HighestDone,
-                 NewHighestDone, SeqsInProgress, NewSeqsInProgress]),
+                 NewHighestDone, SeqsInProgress, NewSeqsInProgress,
+                 TotalChecked, TotalWritten]),
     SourceCurSeq = source_cur_seq(State),
     NewState = State#rep_state{
                  current_through_seq = NewThroughSeq,
