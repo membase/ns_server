@@ -411,11 +411,22 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId) ->
           end,
           dict:new(),
           NodesDict),
-    PreRebalanceTasks = dict:fold(fun (Signature, Value, Acc) ->
-                                          Value1 = task_operation(finalize, Signature, Value),
-                                          FinalValue = task_maybe_add_cancel_uri(Signature, Value1, PoolId),
-                                          [{struct, FinalValue} | Acc]
-                                  end, [], TasksDict),
+    PreRebalanceTasks0 = dict:fold(fun (Signature, Value, Acc) ->
+                                           Value1 = task_operation(finalize, Signature, Value),
+                                           FinalValue = task_maybe_add_cancel_uri(Signature, Value1, PoolId),
+                                           [FinalValue | Acc]
+                                           %% [{struct, FinalValue} | Acc]
+                                   end, [], TasksDict),
+
+    PreRebalanceTasks1 =
+        lists:sort(
+          fun (A, B) ->
+                  {task_priority(A), task_name(A)} =<
+                      {task_priority(B), task_name(B)}
+          end, PreRebalanceTasks0),
+
+    PreRebalanceTasks = [ {struct, V} || V <- PreRebalanceTasks1 ],
+
     RebalanceTask0 =
         case ns_cluster_membership:get_rebalance_status() of
             {running, PerNode} ->
@@ -443,6 +454,25 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId) ->
         end,
     RebalanceTask = {struct, RebalanceTask0},
     [RebalanceTask | PreRebalanceTasks].
+
+task_priority(Task) ->
+    Type = proplists:get_value(type, Task),
+    true = (Type =/= undefined),
+    type_priority(Type).
+
+type_priority(indexer) ->
+    0;
+type_priority(bucket_compaction) ->
+    1;
+type_priority(view_compaction) ->
+    2.
+
+task_name(Task) ->
+    Bucket = proplists:get_value(bucket, Task),
+    true = (Bucket =/= undefined),
+
+    MaybeDDoc = proplists:get_value(designDocument, Task),
+    {Bucket, MaybeDDoc}.
 
 get_node(Node, NodeStatuses) ->
     case dict:find(Node, NodeStatuses) of
