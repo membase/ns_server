@@ -108,7 +108,7 @@ child_specs() ->
       permanent, brutal_kill, worker, [ns_port_sup]},
 
      {log_rotator, {ns_memcached_log_rotator, start_link, []},
-      permanent, 1000, worker, [ns_memcached_log_rotator, file_util]},
+      permanent, 1000, worker, [ns_memcached_log_rotator]},
 
      {ns_bucket_worker, {work_queue, start_link, [ns_bucket_worker]},
       permanent, 1000, worker, [work_queue]},
