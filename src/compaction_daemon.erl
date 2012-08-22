@@ -723,9 +723,8 @@ spawn_view_index_compactor(BucketName, DDocId,
               InitialStatus = [{original_target, OriginalTarget},
                                {trigger_type, TriggerType}],
 
-              {ok, Compactor} =
-                  couch_set_view_compactor:start_compact(BucketName, DDocId,
-                                                         Type, InitialStatus),
+              Compactor = start_view_index_compactor(BucketName, DDocId,
+                                                     Type, InitialStatus),
               CompactorRef = erlang:monitor(process, Compactor),
 
               receive
@@ -747,6 +746,15 @@ spawn_view_index_compactor(BucketName, DDocId,
 
               ?log_info("Finished compacting indexes for ~s", [ViewName])
       end).
+
+start_view_index_compactor(BucketName, DDocId, Type, InitialStatus) ->
+    case couch_set_view_compactor:start_compact(BucketName, DDocId,
+                                                Type, InitialStatus) of
+        {ok, Pid} ->
+            Pid;
+        {error, initial_build} ->
+            exit(normal)
+    end.
 
 bucket_needs_compaction(BucketName, VBucketDbs,
                         #config{daemon=#daemon_config{min_file_size=MinFileSize},
