@@ -18,13 +18,8 @@
 -export([start_link/0]).
 
 start_link() ->
-    supress_loggers(),
     set_couchdb_loglevel(),
     ignore.
-
-supress_loggers() ->
-    error_logger:delete_report_handler(error_logger_tty_h),
-    error_logger:delete_report_handler(sasl_report_tty_h).
 
 set_couchdb_loglevel() ->
     LogLevel = ns_server:get_loglevel(couchdb),

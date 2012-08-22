@@ -90,6 +90,8 @@ def start_cluster(num_nodes, start_index, host, extra_args, args_prefix):
             "-setcookie", "nocookie",
             "-kernel", "inet_dist_listen_min", "21100",
             "inet_dist_listen_max", "21199",
+            "error_logger", "false",
+            "-sasl", "sasl_error_logger", "false",
             "-couch_ini"] + couch_configs(i) + [
             "-ns_server", "config_path", '"etc/static_config.in"',
             "error_logger_mf_dir", '"{0}"'.format(logdir),

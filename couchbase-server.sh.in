@@ -121,6 +121,8 @@ _start() {
         +K true \
         -setcookie nocookie \
         -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21299 \
+                error_logger false \
+        -sasl sasl_error_logger false \
         $* \
         -run ns_bootstrap -- \
         -couch_ini $couch_start_arguments \
