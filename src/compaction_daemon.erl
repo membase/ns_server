@@ -710,7 +710,6 @@ spawn_view_index_compactor(BucketName, DDocId,
               ensure_can_view_compact(BucketName, DDocId, Type),
 
               ?log_info("Compacting indexes for ~s", [ViewName]),
-
               process_flag(trap_exit, true),
 
               TriggerType = case Force of
@@ -723,29 +722,40 @@ spawn_view_index_compactor(BucketName, DDocId,
               InitialStatus = [{original_target, OriginalTarget},
                                {trigger_type, TriggerType}],
 
-              Compactor = start_view_index_compactor(BucketName, DDocId,
-                                                     Type, InitialStatus),
-              CompactorRef = erlang:monitor(process, Compactor),
-
-              receive
-                  {'EXIT', Parent, Reason} = Exit ->
-                      ?log_debug("Got exit signal from parent: ~p", [Exit]),
-
-                      erlang:demonitor(CompactorRef),
-                      ok = couch_set_view_compactor:cancel_compact(
-                             BucketName, DDocId, Type),
-                      exit(Reason);
-                  {'DOWN', CompactorRef, process, Compactor, normal} ->
-                      ok;
-                  {'DOWN', CompactorRef, process, Compactor, noproc} ->
-                      exit({index_compactor_died_too_soon,
-                            BucketName, DDocId, Type});
-                  {'DOWN', CompactorRef, process, Compactor, Reason} ->
-                      exit(Reason)
-              end,
+              do_spawn_view_index_compactor(Parent, BucketName,
+                                            DDocId, Type, InitialStatus),
 
               ?log_info("Finished compacting indexes for ~s", [ViewName])
       end).
+
+do_spawn_view_index_compactor(Parent, BucketName, DDocId, Type, InitialStatus) ->
+    Compactor = start_view_index_compactor(BucketName, DDocId,
+                                           Type, InitialStatus),
+    CompactorRef = erlang:monitor(process, Compactor),
+
+    receive
+        {'EXIT', Parent, Reason} = Exit ->
+            ?log_debug("Got exit signal from parent: ~p", [Exit]),
+
+            erlang:demonitor(CompactorRef),
+            ok = couch_set_view_compactor:cancel_compact(
+                   BucketName, DDocId, Type),
+            exit(Reason);
+        {'DOWN', CompactorRef, process, Compactor, normal} ->
+            ok;
+        {'DOWN', CompactorRef, process, Compactor, noproc} ->
+            exit({index_compactor_died_too_soon,
+                  BucketName, DDocId, Type});
+        {'DOWN', CompactorRef, process, Compactor, Reason}
+          when Reason =:= shutdown;
+               Reason =:= {updater_died, shutdown};
+               Reason =:= {updated_died, noproc};
+               Reason =:= {updater_died, {updater_error, shutdown}} ->
+            do_spawn_view_index_compactor(Parent, BucketName,
+                                          DDocId, Type, InitialStatus);
+        {'DOWN', CompactorRef, process, Compactor, Reason} ->
+            exit(Reason)
+    end.
 
 start_view_index_compactor(BucketName, DDocId, Type, InitialStatus) ->
     case couch_set_view_compactor:start_compact(BucketName, DDocId,
