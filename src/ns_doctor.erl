@@ -349,9 +349,12 @@ task_operation(fold, {bucket_compaction, _, _, _},
                {ChangesDone2, TotalChanges2}) ->
     {ChangesDone1 + ChangesDone2, TotalChanges1 + TotalChanges2}.
 
-task_maybe_add_cancel_uri({bucket_compaction, BucketName, OriginalTarget, manual},
+task_maybe_add_cancel_uri({bucket_compaction, BucketName, {OriginalTarget}, manual},
                           Value, PoolId) ->
-    Ending = case OriginalTarget of
+    OriginalTargetType = proplists:get_value(type, OriginalTarget),
+    true = (OriginalTargetType =/= undefined),
+
+    Ending = case OriginalTargetType of
                  db ->
                      "cancelDatabasesCompaction";
                  bucket ->
@@ -364,14 +367,20 @@ task_maybe_add_cancel_uri({bucket_compaction, BucketName, OriginalTarget, manual
 
     [{cancelURI, URI} | Value];
 task_maybe_add_cancel_uri({view_compaction, BucketName, _DDocId,
-                           OriginalTarget, manual},
+                           {OriginalTarget}, manual},
                           Value, PoolId) ->
+    OriginalTargetType = proplists:get_value(type, OriginalTarget),
+    true = (OriginalTargetType =/= undefined),
+
     URIComponents =
-        case OriginalTarget of
+        case OriginalTargetType of
             bucket ->
                 ["pools", PoolId, "buckets", BucketName,
                  "controller", "cancelBucketCompaction"];
-            {view, TargetDDocId} ->
+            view ->
+                TargetDDocId = proplists:get_value(name, OriginalTarget),
+                true = (TargetDDocId =/= undefined),
+
                 ["pools", PoolId, "buckets", BucketName, "ddoc", TargetDDocId,
                  "controller", "cancelViewCompaction"]
         end,

@@ -205,7 +205,8 @@ handle_sync_event({force_compact_db_files, Bucket}, _From, StateName, State) ->
                 State;
             false ->
                 {Config, _} = compaction_config(Bucket),
-                Pid = spawn_dbs_compactor(Bucket, Config, true, db),
+                OriginalTarget = {[{type, db}]},
+                Pid = spawn_dbs_compactor(Bucket, Config, true, OriginalTarget),
                 register_forced_compaction(Pid, Compaction, State)
         end,
     {reply, ok, StateName, NewState};
@@ -219,8 +220,10 @@ handle_sync_event({force_compact_view, Bucket, DDocId}, _From, StateName, State)
                 State;
             false ->
                 {Config, _} = compaction_config(Bucket),
+                OriginalTarget = {[{type, view},
+                                   {name, DDocId}]},
                 Pid = spawn_view_compactor(Bucket, DDocId, Config, true,
-                                           {view, DDocId}),
+                                           OriginalTarget),
                 register_forced_compaction(Pid, Compaction, State)
         end,
     {reply, ok, StateName, NewState};
@@ -403,18 +406,19 @@ spawn_bucket_compactor(BucketName, {Config, ConfigProps}, Force) ->
 
               DDocNames = ddoc_names(BucketName),
 
+              OriginalTarget = {[{type, bucket}]},
               DbsCompactor =
                   [{type, database},
                    {important, true},
                    {name, BucketName},
                    {fa, {fun spawn_dbs_compactor/4,
-                         [BucketName, Config, Force, bucket]}}],
+                         [BucketName, Config, Force, OriginalTarget]}}],
               DDocCompactors =
                   [ [{type, view},
                      {name, <<BucketName/binary, $/, DDocId/binary>>},
                      {important, false},
                      {fa, {fun spawn_view_compactor/5,
-                           [BucketName, DDocId, Config, Force, bucket]}}] ||
+                           [BucketName, DDocId, Config, Force, OriginalTarget]}}] ||
                       DDocId <- DDocNames ],
 
               case Config#config.parallel_view_compact of
