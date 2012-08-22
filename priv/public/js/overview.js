@@ -237,7 +237,7 @@ var OverviewSection = {
     if (haveStats) {
       this.graphAreaJQ.removeClass('no-samples-yet');
       this.plotGraph(this.opsGraphJQ, stats, 'ops');
-      this.plotGraph(this.readsGraphJQ, stats, 'ep_io_num_read');
+      this.plotGraph(this.readsGraphJQ, stats, 'ep_bg_fetched');
     } else {
       this.graphAreaJQ.addClass('no-samples-yet');
     }

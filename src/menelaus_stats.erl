@@ -133,10 +133,10 @@ handle_overview_stats(PoolId, Req) ->
                     end,
     TStamps = [X#stat_entry.timestamp || X <- MergedSamples],
     Ops = [extract_stat(ops, X) || X <- MergedSamples],
-    DiskReads = [extract_stat(ep_io_num_read, X) || X <- MergedSamples],
+    DiskReads = [extract_stat(ep_bg_fetched, X) || X <- MergedSamples],
     menelaus_util:reply_json(Req, {struct, [{timestamp, TStamps},
                                             {ops, Ops},
-                                            {ep_io_num_read, DiskReads}]}).
+                                            {ep_bg_fetched, DiskReads}]}).
 
 %% GET /pools/default/stats
 %% Supported query params:
