@@ -273,6 +273,10 @@ init_replication_state(Rep, Vb, Throttle, Parent) ->
       parent = Parent,
       source_name = SrcVbDb,
       target_name = TgtURI,
+      source = Source,
+      target = Target,
+      src_master_db = SrcMasterDb,
+      tgt_master_db = TgtMasterDb,
       history = History,
       checkpoint_history = {[{<<"no_changes">>, true}| CheckpointHistory]},
       start_seq = StartSeq,
@@ -290,7 +294,6 @@ init_replication_state(Rep, Vb, Throttle, Parent) ->
                               docs_written = DocsWritten},
       source_seq = get_value(<<"update_seq">>, SourceInfo, ?LOWEST_SEQ)
      }.
-
 
 start_replication(#rep_state{
                            source_name = SourceName,
