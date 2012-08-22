@@ -1326,8 +1326,8 @@ unregister_forced_compaction(Pid,
 
 -spec is_already_being_compacted(#forced_compaction{}, #state{}) -> boolean().
 is_already_being_compacted(Compaction,
-                           #state{running_forced_compactions=Compactions}) ->
-    dict:find(Compaction, Compactions) =/= error.
+                           #state{forced_compaction_pids=CompactionPids}) ->
+    dict:find(Compaction, CompactionPids) =/= error.
 
 -spec maybe_cancel_compaction(#forced_compaction{}, #state{}) -> #state{}.
 maybe_cancel_compaction(Compaction,
