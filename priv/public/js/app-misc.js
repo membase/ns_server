@@ -210,7 +210,7 @@ function truncateTo3Digits(value, leastScale) {
     scale = leastScale;
   }
   scale = 100 / scale;
-  return Math.floor(value*scale)/scale;
+  return Math.round(value*scale)/scale;
 }
 
 function prepareTemplateForCell(templateName, cell) {
