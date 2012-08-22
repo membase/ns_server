@@ -108,8 +108,8 @@ do_maybe_invalidate_current_master(0, _FirstTime) ->
     ale:error(?USER_LOGGER, "We're out of luck taking mastership over older node", []),
     ok;
 do_maybe_invalidate_current_master(TriesLeft, FirstTime) ->
-    NodesWanted = ns_node_disco:nodes_wanted(),
-    case check_master_takeover_needed(NodesWanted) of
+    NodesWantedActual = ns_node_disco:nodes_actual_proper(),
+    case check_master_takeover_needed(NodesWantedActual -- [node()]) of
         false ->
             case FirstTime of
                 true -> ok;
