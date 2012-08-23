@@ -183,10 +183,11 @@ init_logging() ->
             ale:stop_sink(stderr),
             ok = ale:start_sink(stderr, ale_stderr_sink, []),
 
+            StderrLogLevel = get_loglevel(stderr),
+
             lists:foreach(
               fun (Logger) ->
-                      LogLevel = get_loglevel(Logger),
-                      ok = ale:add_sink(Logger, stderr, LogLevel)
+                      ok = ale:add_sink(Logger, stderr, StderrLogLevel)
               end, AllLoggers);
         false ->
             ok

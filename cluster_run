@@ -15,10 +15,6 @@ base_api_port = 9000
 base_couch_port = 9500
 base_mccouch_port = 13000
 
-LOGGERS = ["default", "couchdb", "ns_server",
-           "error_logger", "user", "menelaus",
-           "ns_doctor", "stats", "rebalance", "cluster"]
-
 LOGLEVELS = ["debug", "info", "warn", "error", "critical"]
 
 def setup_path():
@@ -176,7 +172,7 @@ def main():
     num_nodes = 1
     prepend_extras = False
     host = "127.0.0.1"
-    loglevel = None
+    loglevel = 'debug'
 
     for o, a in optlist:
         if o in ("--nodes", "-n"):
@@ -252,13 +248,10 @@ def main():
     if not interactive_shell:
         extra_args += ["-noinput"]
 
-    if loglevel is not None:
-        if loglevel not in LOGLEVELS:
-            print "Valid log levels are the following: %s" % ', '.join(LOGLEVELS)
-            sys.exit(1)
-
-        for logger in LOGGERS:
-            extra_args += ["-ns_server", "loglevel_%s" % logger, loglevel]
+    if loglevel not in LOGLEVELS:
+        print "Valid log levels are the following: %s" % ', '.join(LOGLEVELS)
+        sys.exit(1)
+    extra_args += ["-ns_server", "loglevel_stderr", loglevel]
 
     nodes = start_cluster(num_nodes, start_index, host, extra_args, prepend_args)
 
