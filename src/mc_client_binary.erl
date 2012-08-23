@@ -380,19 +380,19 @@ get_meta(Sock, Key, VBucket) ->
     case cmd(?CMD_GET_META, Sock, undefined, undefined,
              {#mc_header{vbucket = VBucket},
               #mc_entry{key = Key}}) of
-        {ok, #mc_header{status=?SUCCESS} = Header,
-             #mc_entry{data=MetaBin} = Entry, _NCB} ->
-            {ok, Header, Entry, decode_meta(MetaBin)};
+        {ok, #mc_header{status=?SUCCESS},
+             #mc_entry{ext = Ext, cas = CAS}, _NCB} ->
+            <<MetaFlags:32/big, ItemFlags:32/big,
+              Expiration:32/big, SeqNo:64/big>> = Ext,
+            RevId = <<CAS:64/big, Expiration:32/big, ItemFlags:32/big>>,
+            Rev = {SeqNo, RevId},
+            {ok, Rev, CAS, MetaFlags};
         {ok, #mc_header{status=?KEY_ENOENT},
              #mc_entry{cas=CAS}, _NCB} ->
             {memcached_error, key_enoent, CAS};
         Response ->
             process_error_response(Response)
     end.
-
-decode_meta(<<?META_REVID:8/big, Length:8/big, SeqNo:64/big, RevId/binary>>)
-  when size(RevId) =:= (Length - 8) ->
-    {SeqNo, RevId}.
 
 -spec update_with_rev(Sock :: port(), VBucket :: vbucket_id(),
                       Key :: binary(), Value :: binary() | undefined,
