@@ -798,18 +798,24 @@ merge_list_values({K, RV} = RP, {_, LV} = LP) ->
                 true ->
                     lists:max([LP, RP]);
                 false ->
-                    V = case vclock:likely_newer(LClock, RClock) of
+                    ChooseLeft = case RClock =:= LClock of
+                                     true ->
+                                         LV < RV;
+                                     false ->
+                                         vclock:likely_newer(LClock, RClock)
+                                 end,
+                    V = case ChooseLeft of
                             true ->
                                 ?user_log(?CONFIG_CONFLICT,
                                           "Conflicting configuration changes to field "
                                           "~p:~n~p and~n~p, choosing the former, which looks newer.~n",
-                                          [K, LV, RV]),
+                                          [K, {LClock, LV}, {RClock, RV}]),
                                 LV;
                             false ->
                                 ?user_log(?CONFIG_CONFLICT,
                                           "Conflicting configuration changes to field "
                                           "~p:~n~p and~n~p, choosing the former.~n",
-                                          [K, RV, LV]),
+                                          [K, {RClock, RV}, {LClock, LV}]),
                                 RV
                         end,
                     %% Increment the merged vclock so we don't pingpong
