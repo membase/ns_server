@@ -477,7 +477,7 @@ computed_stats_lazy_proplist() ->
                   end),
     EPCacheMissRatio = Z2(ep_bg_fetched, cmd_get,
                          fun (BGFetches, Gets) ->
-                                 try (100 - (Gets - BGFetches) * 100 / Gets)
+                                 try BGFetches * 100 / Gets
                                  catch error:badarith -> 0
                                  end
                          end),
@@ -784,7 +784,7 @@ membase_stats_description(BucketId) ->
                          {default,true}]},
                 {struct,[{title,<<"cache miss ratio">>},
                          {name,<<"ep_cache_miss_rate">>},
-                         {desc,<<"Percentage of reads per second to this bucket from disk as opposed to RAM (measured from 100 - (gets - ep_bg_fetches) * 100 / gets)">>},
+                         {desc,<<"Percentage of reads per second to this bucket from disk as opposed to RAM (measured from ep_bg_fetches / gets * 100)">>},
                          {maxY,100}]},
                 {struct,[{title,<<"creates per sec.">>},
                          {name,<<"ep_ops_create">>},
