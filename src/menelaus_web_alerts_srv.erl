@@ -417,9 +417,14 @@ to_str(Msg) ->
 maybe_send_out_email_alert({Key, Node}, Message) when is_atom(Node) ->
     case Node =:= node() of
         true ->
-            Description = short_description(Key),
             {value, Config} = ns_config:search(email_alerts),
-            ns_mail:send_alert_async(Key, Description, Message, Config);
+            case proplists:get_bool(enabled, Config) of
+                true ->
+                    Description = short_description(Key),
+                    ns_mail:send_alert_async(Key, Description, Message, Config);
+                false ->
+                    ok
+            end;
         false ->
             ok
     end;
