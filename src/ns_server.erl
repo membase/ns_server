@@ -187,7 +187,9 @@ init_logging() ->
 
             lists:foreach(
               fun (Logger) ->
-                      ok = ale:add_sink(Logger, stderr, StderrLogLevel)
+                      LogLevel = get_loglevel(Logger),
+                      ok = ale:add_sink(Logger, stderr,
+                                        adjust_loglevel(LogLevel, StderrLogLevel))
               end, AllLoggers);
         false ->
             ok
