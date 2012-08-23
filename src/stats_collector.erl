@@ -83,7 +83,12 @@ grab_all_stats(Bucket) ->
                       prefilter_timings(ValuesK);
                   {memcached_error, key_enoent, _} -> []
               end,
-    {PlainStats, TapStats, Timings, CouchStats}.
+    XDCStats = case xdc_rep_manager:stats(Bucket) of
+                  Reps when is_list(Reps) -> Reps;
+                  Err -> ?log_info("Failed fetching XDCR stats:~n~p", [Err]),
+                         []
+                 end,
+    {PlainStats, TapStats, Timings, CouchStats, XDCStats}.
 
 handle_info({tick, TS}, #state{bucket=Bucket} = State) ->
     GrabFreq = misc:get_env_default(grab_stats_every_n_ticks, 1),
@@ -129,19 +134,20 @@ maybe_log_stats(TS, State, RawStats) ->
     end.
 
 process_grabbed_stats(TS,
-                      {PlainStats, TapStats, Timings, CouchStats},
+                      {PlainStats, TapStats, Timings, CouchStats, XDCStats},
                       #state{bucket = Bucket,
                              last_plain_counters = LastPlainCounters,
                              last_tap_counters = LastTapCounters,
                              last_timings_counters = LastTimingsCounters,
                              last_ts = LastTS} = State) ->
+    XDCValues = transform_xdc_stats(XDCStats),
     {PlainValues, PlainCounters} = parse_plain_stats(TS, PlainStats, LastTS, LastPlainCounters),
     {TapValues, TapCounters} = parse_tapagg_stats(TS, TapStats, LastTS, LastTapCounters),
     {TimingValues, TimingsCounters} = parse_timings(TS, Timings, LastTS, LastTimingsCounters),
     %% Don't send event with undefined values
     case lists:member(undefined, [LastTapCounters, LastTapCounters, LastTimingsCounters]) of
         false ->
-            Values = lists:merge([PlainValues, TapValues, TimingValues, CouchStats]),
+            Values = lists:merge([PlainValues, TapValues, TimingValues, CouchStats, XDCValues]),
             Entry = #stat_entry{timestamp = TS,
                                 values = Values},
             gen_event:notify(ns_stats_event, {stats, Bucket, Entry});
@@ -161,6 +167,23 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 %% Internal functions
+transform_xdc_stats_loop([], Out) -> Out;
+transform_xdc_stats_loop([In | T], {{TotalLeft, TotalChecked, TotalWritten}, Reps}) ->
+    {RepID, RepStats} = In,
+    PerRepStats = [{iolist_to_binary([<<"replications/">>, RepID, <<"/">>, atom_to_binary(StatK, latin1)]),
+                    StatV} || {StatK, StatV} <- RepStats, is_integer(StatV)],
+    [{_, Left0}, {_, Checked0}, {_, Written0}] =
+            [proplists:lookup(K, RepStats) || K <- [changes_left, docs_checked, docs_written]],
+    transform_xdc_stats_loop(T, {{TotalLeft + Left0, TotalChecked + Checked0, TotalWritten + Written0},
+                                 lists:append(PerRepStats, Reps)}).
+
+transform_xdc_stats(XDCStats) ->
+    {{TotalLeft, TotalChecked, TotalWritten}, RepStats} = transform_xdc_stats_loop(XDCStats, {{0,0,0},[]}),
+    TotalStats = [{replication_changes_left, TotalLeft},
+                  {replication_docs_checked, TotalChecked},
+                  {replication_docs_written, TotalWritten}],
+    lists:append(TotalStats, RepStats).
+
 format_stats(Stats) ->
     erlang:list_to_binary(
       [[K, lists:duplicate(erlang:max(1, ?WIDTH - byte_size(K)), $\s), V, $\n]
@@ -260,6 +283,9 @@ parse_plain_stats(TS, PlainStats, LastTS, LastPlainCounters) ->
                                                        ep_num_ops_del_meta,
                                                        ep_num_ops_get_meta,
                                                        ep_num_ops_set_meta])},
+                       {xdc_ops, sum_stat_values(Values0, [ep_num_ops_del_meta,
+                                                           ep_num_ops_get_meta,
+                                                           ep_num_ops_set_meta])},
                        {misses, sum_stat_values(Values0, [get_misses, delete_misses,
                                                           incr_misses, decr_misses,
                                                           cas_misses])},

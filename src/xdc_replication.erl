@@ -21,7 +21,7 @@
 -module(xdc_replication).
 -behaviour(gen_server).
 
--export([stats/1]).
+-export([stats/1, target/1]).
 -export([start_link/1, init/1, handle_call/3, handle_info/2, handle_cast/2]).
 -export([code_change/3, terminate/2]).
 
@@ -43,6 +43,8 @@ start_link(Rep) ->
 stats(Pid) ->
     gen_server:call(Pid, stats).
 
+target(Pid) ->
+    gen_server:call(Pid, target).
 
 init([#rep{source = SrcBucketBinary} = Rep]) ->
     %% Subscribe to bucket map changes due to rebalance and failover operations
@@ -112,6 +114,9 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict} = State) ->
              {docs_written, Written1},
              {vbs_replicating, VbsReplicating1}],
     {reply, {ok, Props}, State};
+
+handle_call(target, _From, State) ->
+    {reply, {ok, (State#replication.rep)#rep.target}, State};
 
 handle_call(Msg, From, State) ->
     ?xdcr_error("replication manager received unexpected call ~p from ~p",

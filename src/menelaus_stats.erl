@@ -720,6 +720,25 @@ aggregate_stat_entries(A, B) ->
 
 -define(SPACE_CHAR, 16#20).
 
+couchbase_replication_stats_descriptions(BucketId) ->
+    {ok, Reps} = xdc_replication_sup:get_replications(list_to_binary(BucketId)),
+    lists:map(fun ({Id, Pid}) ->
+                {ok, Targ} = xdc_replication:target(Pid),
+                Prefix = <<"replications/", Id/binary,"/">>,
+                {struct,[{blockName,<<"Replication Stats: ", Targ/binary>>},
+                         {extraCSSClasses,<<"closed">>},
+                         {stats,
+                             [{struct,[{title,<<"changes queue">>},
+                                       {name,<<Prefix/binary,"changes_left">>},
+                                       {desc,<<"Changes currently needing to be replicated">>}]},
+                              {struct,[{title,<<"documents checked">>},
+                                       {name,<<Prefix/binary,"docs_checked">>},
+                                       {desc,<<"Documents checked for replication">>}]},
+                              {struct,[{title,<<"documents written">>},
+                                       {name,<<Prefix/binary,"docs_written">>},
+                                       {desc,<<"Documents written by this replication">>}]}]}]}
+              end, Reps).
+
 couchbase_view_stats_descriptions(BucketId) ->
     DesignDocIds = capi_ddoc_replication_srv:fetch_ddoc_ids(BucketId),
 
@@ -773,6 +792,9 @@ membase_stats_description(BucketId) ->
                 {struct,[{title,<<"updates per sec.">>},
                          {name,<<"ep_ops_update">>},
                          {desc,<<"Number of items updated on disk per second for this bucket (measured from vb_active_ops_update + vb_replica_ops_update + vb_pending_ops_update)">>}]},
+                {struct,[{title,<<"XDC ops per sec.">>},
+                         {name,<<"xdc_ops">>},
+                         {desc,<<"Cross-datacenter replication related operations per second to this bucket.">>}]},
                 {struct,[{title,<<"disk reads per sec.">>},
                          {name,<<"ep_bg_fetched">>},
                          {desc,<<"Number of reads per second from disk for this bucket (measured from ep_bg_fetched)">>}]},
@@ -806,6 +828,9 @@ membase_stats_description(BucketId) ->
                 {struct,[{name,<<"couch_docs_fragmentation">>},
                          {title,<<"docs fragmentation %">>},
                          {desc,<<"How much fragmented data there is to be compacted compared to real data for the data files in this bucket">>}]},
+                {struct,[{title,<<"XDC replication queue">>},
+                         {name,<<"replication_changes_left">>},
+                         {desc,<<"Number of items waiting to be replicated to other clusters">>}]},
                 {struct,[{name,<<"couch_total_disk_size">>},
                          {title,<<"total disk size">>},
                          {desc,<<"The total size on disk of all data and view files for this bucket.)">>}]},
@@ -1064,8 +1089,21 @@ membase_stats_description(BucketId) ->
                          {desc,<<"Number of items still on disk to be loaded for \"client\" TAP connections to this bucket (measured from ep_tap_user_queue_itemondisk)">>}]},
                 {struct,[{title,<<"remaining on disk">>},
                          {name,<<"ep_tap_total_queue_itemondisk">>},
-                         {desc,<<"Total number of items still on disk to be loaded for TAP connections to this bucket (measured from ep_tap_total_queue_itemonsidk)">>}]}]}]}]
-                ++ couchbase_view_stats_descriptions(BucketId).
+                         {desc,<<"Total number of items still on disk to be loaded for TAP connections to this bucket (measured from ep_tap_total_queue_itemonsidk)">>}]}]}]},
+     {struct,[{blockName,<<"XDC Destination">>},
+              {extraCSSClasses,<<"closed">>},
+              {stats,
+                  [{struct,[{title,<<"gets per sec.">>},
+                            {name,<<"ep_num_ops_get_meta">>},
+                            {desc,<<"Number of get operations per second related to this bucket being the target of cross datacenter replication">>}]},
+                   {struct,[{title,<<"sets per sec.">>},
+                            {name,<<"ep_num_ops_set_meta">>},
+                            {desc,<<"Number of set operations per second related to this bucket being the target of cross datacenter replication">>}]},
+                   {struct,[{title,<<"deletes per sec.">>},
+                            {name,<<"ep_num_ops_del_meta">>},
+                            {desc,<<"Number of delete operations per second related to this bucket being the target of cross datacenter replication">>}]}]}]}]
+                ++ couchbase_view_stats_descriptions(BucketId)
+                ++ couchbase_replication_stats_descriptions(BucketId).
 
 
 memcached_stats_description() ->
