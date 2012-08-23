@@ -39,7 +39,7 @@ info(Format, Args) ->
     ale:info(?COUCHDB_LOGGER, Format, Args).
 
 error(Format, Args) ->
-    ale:info(?COUCHDB_LOGGER, Format, Args).
+    ale:error(?COUCHDB_LOGGER, Format, Args).
 
 level_integer(error) -> ?LEVEL_ERROR;
 level_integer(info)  -> ?LEVEL_INFO;
