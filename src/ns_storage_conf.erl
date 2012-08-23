@@ -377,10 +377,12 @@ mk_is_bucket_database_predicate(BucketName) ->
     N = byte_size(Prefix),
 
     fun (DbName) ->
-            case DbName of
-                <<ActualPrefix:N/binary, _/binary>> when ActualPrefix =:= Prefix ->
-                    true;
-                _ ->
+            try
+                ActualPrefix = binary:part(DbName, 0, N),
+                ActualPrefix =:= Prefix
+            catch
+                %% can happen when DbName is shorter than expected prefix
+                error:badarg ->
                     false
             end
     end.
@@ -401,11 +403,7 @@ bucket_databases(Bucket) when is_binary(Bucket)->
                   end
           end, []),
 
-    BucketDbs2 = [D || D <- couch_server:all_known_databases(),
-                       Pred(D)],
-
-    lists:umerge(lists:usort(BucketDbs),
-                 lists:usort(BucketDbs2)).
+    lists:usort(BucketDbs).
 
 delete_couch_database(DB) ->
     RV = couch_server:delete(DB, []),
@@ -445,10 +443,19 @@ delete_disk_buckets_databases_loop(Pred, [Bucket | Rest]) ->
 
 delete_databases_and_files(Bucket) ->
     AllDBs = bucket_databases(Bucket),
-    MasterDB = iolist_to_binary([Bucket, <<"/master">>]),
+    Suffix = <<"/master">>,
+    SuffixLen = erlang:size(Suffix),
     {MaybeMasterDb, RestDBs} = lists:partition(
                             fun (Name) ->
-                                    Name =:= MasterDB
+                                    NameLen = erlang:size(Name),
+                                    case NameLen < SuffixLen of
+                                        true -> % this would cause a badarg
+                                            false;
+                                        false ->
+                                            SuffixC = binary:part(Name,
+                                                                  NameLen, -SuffixLen),
+                                            SuffixC =:= Suffix
+                                    end
                             end, AllDBs),
     case delete_databases_loop(MaybeMasterDb ++ RestDBs) of
         ok ->
