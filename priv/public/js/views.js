@@ -78,8 +78,8 @@ couchGet = Cell.wrapWithArgsResolving(couchGet);
 // same for couchReq, below
 couchReq = Cell.wrapWithArgsResolving(couchReq);
 
-function couchReq(method, url, data, success, error) {
-  var postData = {
+function couchReq(method, url, data, success, error, extraArgs) {
+  var postData = _.extend({}, extraArgs || {}, {
     type: method,
     url: url,
     dataType: 'json',
@@ -117,7 +117,7 @@ function couchReq(method, url, data, success, error) {
 
       return error(parsedJSON, status, handleUnexpected);
     }
-  };
+  });
 
   if (data) {
     postData.data = JSON.stringify(data);
@@ -1315,6 +1315,8 @@ var ViewsSection = {
                    return callback("conflict");
                  }
                  return unexpected();
+               }, {
+                 timeout: 60000
                });
     }
   },
