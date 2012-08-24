@@ -589,8 +589,7 @@ with_bucket_tail(Name, BucketObject, K) ->
                                 K(BucketObject, BucketUUID)
                         end);
                   false ->
-                      Msg = io_lib:format("Bucket `~s` does not support "
-                                          "`couchapi` capability", [Name]),
+                      Msg = io_lib:format("Incompatible remote bucket `~s`", [Name]),
                       {error, not_capable, iolist_to_binary(Msg)}
               end
       end).
