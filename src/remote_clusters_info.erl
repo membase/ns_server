@@ -87,6 +87,7 @@
 -include("ns_common.hrl").
 -include("couch_db.hrl").
 -include("remote_clusters_info.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 
 -define(CACHE, ?MODULE).
@@ -1105,64 +1106,40 @@ gc_buckets(CachedClusters) ->
       end, CachedClusters).
 
 build_present_replications_dict() ->
-    with_replicator_db(
-      fun (Db) ->
-              {ok, _, Set} =
-                  couch_db:enum_docs(
-                    Db,
-                    fun (DocInfo, _, D) ->
-                            case get_rdoc_info(DocInfo, Db) of
-                                next ->
-                                    {ok, D};
-                                {UUID, BucketName} ->
-                                    D1 = dict:update(
-                                           UUID,
-                                           fun (S) ->
-                                                   ordsets:add_element(BucketName, S)
-                                           end, [BucketName], D),
+    Docs = xdc_rdoc_replication_srv:find_all_replication_docs(),
+    do_build_present_replications_dict(Docs).
 
-                                    {ok, D1}
-                            end
-                    end, dict:new(), []),
-              Set
-      end).
+do_build_present_replications_dict(DocPLists) ->
+    Pairs = [begin
+                 {ok, Pair} = parse_remote_bucket_reference(Target),
+                 Pair
+             end
+             || PList <- DocPLists,
+                {<<"target">>, Target} <- PList],
+    lists:foldl(
+      fun ({UUID, BucketName}, D) ->
+              dict:update(UUID,
+                          fun (S) ->
+                                  ordsets:add_element(BucketName, S)
+                          end, [BucketName], D)
+      end, dict:new(), Pairs).
 
-get_rdoc_info(#doc_info{deleted=true}, _Db) ->
-    next;
-get_rdoc_info(#doc_info{id= <<"_design", _/binary>>}, _Db) ->
-    next;
-get_rdoc_info(#doc_info{} = DocInfo, Db) ->
-    {ok, Doc} = couch_db:open_doc_int(Db, DocInfo, [ejson_body]),
-    case Doc#doc.body of
-        {Props} ->
-            case proplists:get_value(<<"type">>, Props) of
-                <<"xdc">> ->
-                    Target = proplists:get_value(<<"target">>, Props),
-                    true = (Target =/= undefined),
+-ifdef(EUNIT).
 
-                    {ok, {UUID, BucketName}} =
-                        parse_remote_bucket_reference(Target),
+do_build_present_replications_dict_test() ->
+    Docs = [[{<<"assd">>, 1},
+             {<<"target">>, <<"/remoteClusters/uuu/buckets/asd">>}],
+            [],
+            [{<<"target">>, <<"/remoteClusters/uuu/buckets/asd">>}],
+            [{<<"target">>, <<"/remoteClusters/uuu2/buckets/asd">>}],
+            [{<<"target">>, <<"/remoteClusters/uuu/buckets/default">>}]],
+    D = do_build_present_replications_dict(Docs),
+    DL = lists:sort(dict:to_list(D)),
+    ?assertEqual([{<<"uuu">>, ["asd", "default"]},
+                  {<<"uuu2">>, ["asd"]}],
+                 DL).
 
-                    {UUID, BucketName};
-                _ ->
-                    next
-            end;
-        _ ->
-            next
-    end.
-
-with_replicator_db(Fn) ->
-    case couch_db:open_int(<<"_replicator">>, []) of
-        {ok, Db} ->
-            try
-                Fn(Db)
-            after
-                couch_db:close(Db)
-            end;
-        Error ->
-            ?log_error("Failed to open replicator database: ~p", [Error]),
-            exit({open_replicator_db_failed, Error})
-    end.
+-endif.
 
 reply_async(From, Timeout, Computation) ->
     proc_lib:spawn_link(

@@ -164,7 +164,10 @@ distclean: clean dataclean
 TEST_EFLAGS=-pa ./ebin ./deps/*/ebin ./deps/*/deps/*/ebin $(shell . `pwd`/.configuration && echo $$couchdb_src)/src/couchdb
 
 test: ebins
-	erl $(TEST_EFLAGS) -noshell -kernel error_logger silent -shutdown_time 10000 -eval 'application:start(sasl).' -eval "case t:$(TEST_TARGET)() of ok -> init:stop(); _ -> init:stop(1) end."
+	$(MAKE) do-test COUCH_PATH="$(shell . `pwd`/.configuration && echo $$couchdb_src)"
+
+do-test:
+	erl $(TEST_EFLAGS) -pa "$(COUCH_PATH)/src/mochiweb" -noshell -kernel error_logger silent -shutdown_time 10000 -eval 'application:start(sasl).' -eval "case t:$(TEST_TARGET)() of ok -> init:stop(); _ -> init:stop(1) end."
 
 # assuming exuberant-ctags
 TAGS:

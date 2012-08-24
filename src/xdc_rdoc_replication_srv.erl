@@ -20,7 +20,7 @@
 
 -behaviour(cb_generic_replication_srv).
 -export([server_name/1, init/1, get_remote_nodes/1,
-         load_local_docs/2, open_local_db/1]).
+         load_local_docs/2, open_local_db/1, find_all_replication_docs/0]).
 
 
 update_doc(Doc) ->
@@ -62,4 +62,38 @@ open_local_db(_) ->
             {ok, Db};
         {not_found, _} ->
             couch_db:create(<<"_replicator">>, [])
+    end.
+
+-spec find_all_replication_docs() -> [Doc :: [{Key :: atom(), Value :: _}]].
+find_all_replication_docs() ->
+    RVs = cb_generic_replication_srv:foreach_doc(server_name([]), fun find_all_replication_docs_body/1),
+    [Doc || {_, Doc} <- RVs,
+            Doc =/= undefined].
+
+find_all_replication_docs_body(Doc0) ->
+    Doc = couch_doc:with_ejson_body(Doc0),
+    case Doc of
+        #doc{deleted = true} ->
+            undefined;
+        #doc{id = <<"_design", _/binary>>} ->
+            undefined;
+        #doc{body = {Props0}, id = Id} ->
+            Props = [{K2, V}
+                     || {K, V} <- Props0,
+                        K2 <- case K of
+                                  <<"type">> -> [type];
+                                  <<"source">> -> [source];
+                                  <<"target">> -> [target];
+                                  <<"continuous">> -> [continuous];
+                                  _ when is_atom(K) -> [K];
+                                  _ -> []
+                              end],
+            case proplists:get_value(type, Props) =:= <<"xdc">> of
+                false ->
+                    undefined;
+                true ->
+                    [{id, Id} | Props]
+            end;
+        _ ->
+            undefined
     end.
