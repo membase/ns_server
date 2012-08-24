@@ -1131,27 +1131,22 @@ get_rdoc_info(#doc_info{deleted=true}, _Db) ->
     next;
 get_rdoc_info(#doc_info{id= <<"_design", _/binary>>}, _Db) ->
     next;
-get_rdoc_info(#doc_info{id=Id} = DocInfo, Db) ->
-    case binary:match(Id, <<"_info_">>) of
-        nomatch ->
-            {ok, Doc} = couch_db:open_doc_int(Db, DocInfo, [ejson_body]),
-            case Doc#doc.body of
-                {Props} ->
-                    case proplists:get_value(<<"type">>, Props) of
-                        <<"xdc">> ->
-                            Target = proplists:get_value(<<"target">>, Props),
-                            UUID = proplists:get_value(<<"targetUUID">>, Props),
+get_rdoc_info(#doc_info{} = DocInfo, Db) ->
+    {ok, Doc} = couch_db:open_doc_int(Db, DocInfo, [ejson_body]),
+    case Doc#doc.body of
+        {Props} ->
+            case proplists:get_value(<<"type">>, Props) of
+                <<"xdc">> ->
+                    Target = proplists:get_value(<<"target">>, Props),
+                    UUID = proplists:get_value(<<"targetUUID">>, Props),
 
-                            true = (Target =/= undefined),
-                            true = (UUID =/= undefined),
+                    true = (Target =/= undefined),
+                    true = (UUID =/= undefined),
 
-                            {ok, {_ClusterName, BucketName}} =
-                                parse_remote_bucket_reference(Target),
+                    {ok, {_ClusterName, BucketName}} =
+                        parse_remote_bucket_reference(Target),
 
-                            {UUID, BucketName};
-                        _ ->
-                            next
-                    end;
+                    {UUID, BucketName};
                 _ ->
                     next
             end;
