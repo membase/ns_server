@@ -137,11 +137,7 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
     StatsDirectoryUri = iolist_to_binary([StatsUri, <<"Directory">>]),
     NodeStatsListURI = bin_concat_path(["pools", PoolId, "buckets", Id, "nodes"]),
     DDocsURI = bin_concat_path(["pools", PoolId, "buckets", Id, "ddocs"]),
-    BucketCaps = [{bucketCapabilitiesVer, ''}
-                  | case ns_bucket:bucket_type(BucketConfig) of
-                        membase -> [{bucketCapabilities, [touch, couchapi]}];
-                        memcached -> [{bucketCapabilities, []}]
-                    end],
+    BucketCaps = build_bucket_capabilities(BucketConfig),
 
     MaybeBucketUUID = proplists:get_value(uuid, BucketConfig),
     QSProps = case MaybeBucketUUID of
@@ -221,6 +217,23 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
                        menelaus_web:build_fast_warmup_settings(FWSettings)
                end}
               | Suffix2]}.
+
+build_bucket_capabilities(BucketConfig) ->
+    Caps =
+        case ns_bucket:bucket_type(BucketConfig) of
+            membase ->
+                case cluster_compat_mode:is_cluster_20() of
+                    true ->
+                        [touch, couchapi];
+                    false ->
+                        []
+                end;
+            memcached ->
+                []
+        end,
+
+    [{bucketCapabilitiesVer, ''},
+     {bucketCapabilities, Caps}].
 
 handle_sasl_buckets_streaming(_PoolId, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
