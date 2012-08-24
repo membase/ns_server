@@ -268,6 +268,8 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools", PoolId] ->
                                  {auth, fun handle_pool_settings/2,
                                   [PoolId]};
+                             ["controller", "cancelXCDR", XID] ->
+                                 {auth, fun handle_cancel_xdcr/2, [XID]};
                              ["controller", "setupDefaultBucket"] ->
                                  {auth, fun menelaus_web_buckets:handle_setup_default_bucket_post/1};
                              ["controller", "ejectNode"] ->
@@ -351,6 +353,8 @@ loop(Req, AppRoot, DocRoot) ->
                                   fun menelaus_web_buckets:handle_bucket_delete/3, [PoolId, Id]};
                              ["pools", "default", "remoteClusters", Id] ->
                                  {auth, fun menelaus_web_remote_clusters:handle_remote_cluster_delete/2, [Id]};
+                             ["controller", "cancelXCDR", XID] ->
+                                 {auth, fun handle_cancel_xdcr/2, [XID]};
                              ["nodes", Node, "resources", LocationPath] ->
                                  {auth, fun handle_resource_delete/3, [Node, LocationPath]};
                              ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
@@ -2266,6 +2270,14 @@ handle_set_fast_warmup(Req) ->
         {false, {ok, FWSettings}} ->
             ns_config:set(fast_warmup, FWSettings),
             reply_json(Req, [], 200)
+    end.
+
+handle_cancel_xdcr(XID, Req) ->
+    case xdc_rdoc_replication_srv:delete_replicator_doc(XID) of
+        ok ->
+            reply_json(Req, [], 200);
+        not_found ->
+            reply_json(Req, [], 404)
     end.
 
 mk_integer_field_validator_error_maker(JSONName, Msg, Args) ->

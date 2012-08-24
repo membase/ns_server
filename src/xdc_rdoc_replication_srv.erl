@@ -15,12 +15,16 @@
 
 -module(xdc_rdoc_replication_srv).
 -include("couch_db.hrl").
+-include("ns_common.hrl").
 
--export([start_link/0, update_doc/1]).
+-export([start_link/0,
+         update_doc/1,
+         find_all_replication_docs/0,
+         delete_replicator_doc/1]).
 
 -behaviour(cb_generic_replication_srv).
 -export([server_name/1, init/1, get_remote_nodes/1,
-         load_local_docs/2, open_local_db/1, find_all_replication_docs/0]).
+         load_local_docs/2, open_local_db/1]).
 
 
 update_doc(Doc) ->
@@ -96,4 +100,20 @@ find_all_replication_docs_body(Doc0) ->
             end;
         _ ->
             undefined
+    end.
+
+-spec delete_replicator_doc(string()) -> ok | not_found.
+delete_replicator_doc(IdList) ->
+    Id = erlang:list_to_binary(IdList),
+    Docs = find_all_replication_docs(),
+    MaybeDoc = [Doc || [{id, CandId} | _] = Doc <- Docs,
+                       CandId =:= Id],
+    case MaybeDoc of
+        [] ->
+            not_found;
+        [_] ->
+            NewDoc = couch_doc:from_json_obj(
+                       {[{<<"meta">>,
+                          {[{<<"id">>, Id}, {<<"deleted">>, true}]}}]}),
+            ok = update_doc(NewDoc)
     end.
