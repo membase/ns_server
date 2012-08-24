@@ -13,7 +13,8 @@
 -module(xdc_replication_sup).
 -behaviour(supervisor).
 
--export([start_replication/1, stop_replication/1, shutdown/0, get_replications/1]).
+-export([start_replication/1, stop_replication/1, shutdown/0,
+         get_replications/1, all_local_replication_infos/0]).
 
 -export([init/1, start_link/0]).
 
@@ -38,6 +39,16 @@ get_replications(SourceBucket) ->
      || {{Bucket, Id}, Pid, _, _} <- supervisor:which_children(?MODULE),
         Bucket =:= SourceBucket].
 
+-spec all_local_replication_infos() -> [{Id :: binary(), [{atom(), _}]}].
+all_local_replication_infos() ->
+    [{Id, Stats}
+     || {{_Bucket, Id}, Pid, _, _} <- supervisor:which_children(?MODULE),
+        Stats <- try xdc_replication:stats(Pid) of
+                     {ok, X} -> [X]
+                 catch T:E ->
+                         ?xdcr_debug("Ignoring error getting possibly stale stats:~n~p", [{T,E,erlang:get_stacktrace()}]),
+                         []
+                 end].
 
 stop_replication(Id) ->
     lists:foreach(

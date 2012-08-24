@@ -170,7 +170,8 @@ get_tasks_version() ->
 
 build_tasks_list(NodeNeededP, PoolId) ->
     NodesDict = gen_server:call(?MODULE, get_nodes),
-    do_build_tasks_list(NodesDict, NodeNeededP, PoolId).
+    AllRepDocs = xdc_rdoc_replication_srv:find_all_replication_docs(),
+    do_build_tasks_list(NodesDict, NodeNeededP, PoolId, AllRepDocs).
 
 %% Internal functions
 
@@ -303,6 +304,13 @@ task_operation(extract, BucketCompaction, RawTask)
     {_, TriggerType} = lists:keyfind(trigger_type, 1, RawTask),
     [{{BucketCompaction, BucketName, OriginalTarget, TriggerType},
       {VBucketsDone, TotalVBuckets}}];
+task_operation(extract, XDCR, RawTask)
+  when XDCR =:= xdcr ->
+    {_, ChangesLeft} = lists:keyfind(changes_left, 1, RawTask),
+    {_, DocsChecked} = lists:keyfind(docs_checked, 1, RawTask),
+    {_, DocsWritten} = lists:keyfind(docs_written, 1, RawTask),
+    {_, Id} = lists:keyfind(id, 1, RawTask),
+    [{{XDCR, Id}, {ChangesLeft, DocsChecked, DocsWritten}}];
 task_operation(extract, _, _) ->
     ignore;
 
@@ -323,6 +331,15 @@ task_operation(finalize, {BucketCompaction, BucketName, _, _}, {ChangesDone, Tot
      {changesDone, ChangesDone},
      {totalChanges, TotalChanges},
      {progress, Progress}].
+
+
+finalize_xcdr_plist({ChangesLeft, DocsChecked, DocsWritten}) ->
+    [{type, xdcr},
+     {recommendedRefreshPeriod, 2.0},
+     {changesLeft, ChangesLeft},
+     {docsChecked, DocsChecked},
+     {docsWritten, DocsWritten}].
+
 
 finalize_indexer_or_compaction(IndexerOrCompaction, BucketName, DDocId,
                                {ChangesDone, TotalChanges}) ->
@@ -347,7 +364,14 @@ task_operation(fold, {view_compaction, _, _, _, _},
 task_operation(fold, {bucket_compaction, _, _, _},
                {ChangesDone1, TotalChanges1},
                {ChangesDone2, TotalChanges2}) ->
-    {ChangesDone1 + ChangesDone2, TotalChanges1 + TotalChanges2}.
+    {ChangesDone1 + ChangesDone2, TotalChanges1 + TotalChanges2};
+task_operation(fold, {xdcr, _},
+              {ChangesLeft1, DocsChecked1, DocsWritten1},
+              {ChangesLeft2, DocsChecked2, DocsWritten2}) ->
+    {ChangesLeft1 + ChangesLeft2,
+     DocsChecked1 + DocsChecked2,
+     DocsWritten1 + DocsWritten2}.
+
 
 task_maybe_add_cancel_uri({bucket_compaction, BucketName, {OriginalTarget}, manual},
                           Value, PoolId) ->
@@ -390,7 +414,7 @@ task_maybe_add_cancel_uri({view_compaction, BucketName, _DDocId,
 task_maybe_add_cancel_uri(_, Value, _) ->
     Value.
 
-do_build_tasks_list(NodesDict, NeedNodeP, PoolId) ->
+do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
     TasksDict =
         dict:fold(
           fun (Node, NodeInfo, TasksDict) ->
@@ -420,21 +444,41 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId) ->
           end,
           dict:new(),
           NodesDict),
-    PreRebalanceTasks0 = dict:fold(fun (Signature, Value, Acc) ->
+    PreRebalanceTasks0 = dict:fold(fun ({xdcr, _}, _, Acc) -> Acc;
+                                       (Signature, Value, Acc) ->
                                            Value1 = task_operation(finalize, Signature, Value),
                                            FinalValue = task_maybe_add_cancel_uri(Signature, Value1, PoolId),
                                            [FinalValue | Acc]
-                                           %% [{struct, FinalValue} | Acc]
                                    end, [], TasksDict),
 
-    PreRebalanceTasks1 =
+    XDCRTasks = [begin
+                     {_, Id} = lists:keyfind(id, 1, Doc0),
+                     Sig = {xdcr, Id},
+                     Doc1 = lists:keydelete(type, 1, Doc0),
+                     Doc2 =
+                         case dict:find(Sig, TasksDict) of
+                             {ok, Value} ->
+                                 PList = finalize_xcdr_plist(Value),
+                                 [{status, running} | Doc1] ++ PList;
+                             _ ->
+                                 [{status, notRunning} | Doc1]
+                         end,
+                     CancelURI = menelaus_util:bin_concat_path(["controller", "cancelXCDR", Id]),
+                     [{cancelURI, CancelURI} | Doc2]
+                 end || Doc0 <- AllRepDocs],
+
+    PreRebalanceTasks1 = XDCRTasks ++ PreRebalanceTasks0,
+
+    PreRebalanceTasks2 =
         lists:sort(
           fun (A, B) ->
-                  {task_priority(A), task_name(A)} =<
-                      {task_priority(B), task_name(B)}
-          end, PreRebalanceTasks0),
+                  PrioA = task_priority(A),
+                  PrioB = task_priority(B),
+                  {PrioA, task_name(A, PrioA)} =<
+                      {PrioB, task_name(B, PrioB)}
+          end, PreRebalanceTasks1),
 
-    PreRebalanceTasks = [ {struct, V} || V <- PreRebalanceTasks1 ],
+    PreRebalanceTasks = [{struct, V} || V <- PreRebalanceTasks2],
 
     RebalanceTask0 =
         case ns_cluster_membership:get_rebalance_status() of
@@ -466,17 +510,22 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId) ->
 
 task_priority(Task) ->
     Type = proplists:get_value(type, Task),
-    true = (Type =/= undefined),
+    {true, Task} = {(Type =/= undefined), Task},
+    {true, Task} = {(Type =/= false), Task},
     type_priority(Type).
 
-type_priority(indexer) ->
+type_priority(xdcr) ->
     0;
-type_priority(bucket_compaction) ->
+type_priority(indexer) ->
     1;
+type_priority(bucket_compaction) ->
+    2;
 type_priority(view_compaction) ->
-    2.
+    3.
 
-task_name(Task) ->
+task_name(Task, 0) -> %% NOTE: 0 is priority of xdcr type
+    proplists:get_value(id, Task);
+task_name(Task, _Prio) ->
     Bucket = proplists:get_value(bucket, Task),
     true = (Bucket =/= undefined),
 

@@ -160,7 +160,7 @@ current_status() ->
     Tasks = lists:filter(
         fun (Task) ->
                 is_view_task(Task) orelse is_bucket_compaction_task(Task)
-        end , couch_task_status:all()),
+        end , couch_task_status:all()) ++ grab_local_xdcr_replications(),
 
     MaybeMeminfo =
         case misc:raw_read_file("/proc/meminfo") of
@@ -251,3 +251,15 @@ is_view_task(Task) ->
 is_bucket_compaction_task(Task) ->
     {type, Type} = lists:keyfind(type, 1, Task),
     Type =:= bucket_compaction.
+
+grab_local_xdcr_replications() ->
+    try xdc_replication_sup:all_local_replication_infos() of
+        Infos ->
+            [begin
+                 Props = lists:keydelete(vbs_replicating, 1, Props0),
+                 [{type, xdcr}, {id, Id} | Props]
+             end || {Id, Props0} <- Infos]
+    catch T:E ->
+            ?log_debug("Ignoring exception getting xdcr replication infos~n~p", [{T,E,erlang:get_stacktrace()}]),
+            []
+    end.
