@@ -107,13 +107,11 @@ maybe_create_replication_info_ddoc() ->
 
 handle_call({stats, Bucket0}, _, State) ->
     Bucket = list_to_binary(Bucket0),
-    case catch xdc_replication_sup:get_replications(Bucket) of
-        {ok, Reps} ->
-            ok;
-        Error0 ->
-            ?xdcr_error("xdcr stats Error:~p", [Error0]),
-            Reps = []
-    end,
+    Reps = try xdc_replication_sup:get_replications(Bucket)
+           catch T:E ->
+                   ?xdcr_error("xdcr stats Error:~p", [{T,E,erlang:get_stacktrace()}]),
+                   []
+           end,
     Stats = lists:foldl(
         fun({Id, Pid}, Acc) ->
                 case catch xdc_replication:stats(Pid) of

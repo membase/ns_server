@@ -721,7 +721,7 @@ aggregate_stat_entries(A, B) ->
 -define(SPACE_CHAR, 16#20).
 
 couchbase_replication_stats_descriptions(BucketId) ->
-    {ok, Reps} = xdc_replication_sup:get_replications(list_to_binary(BucketId)),
+    Reps = xdc_replication_sup:get_replications(list_to_binary(BucketId)),
     lists:map(fun ({Id, Pid}) ->
                 {ok, Targ} = xdc_replication:target(Pid),
                 Prefix = <<"replications/", Id/binary,"/">>,

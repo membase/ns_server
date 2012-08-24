@@ -32,10 +32,11 @@ start_replication(#rep{id = Id, source = SourceBucket} = Rep) ->
             },
     supervisor:start_child(?MODULE, Spec).
 
-
+-spec get_replications(binary()) -> [{_, pid()}].
 get_replications(SourceBucket) ->
-    {ok, [{element(2, element(1, Child)), element(2, Child)} || Child <-
-        supervisor:which_children(?MODULE), element(1, element(1, Child)) == SourceBucket]}.
+    [{Id, Pid}
+     || {{Bucket, Id}, Pid, _, _} <- supervisor:which_children(?MODULE),
+        Bucket =:= SourceBucket].
 
 
 stop_replication(Id) ->
