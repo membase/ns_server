@@ -96,9 +96,7 @@ child_to_supervisor_spec(Bucket, Child) ->
     {SrcNode, VBuckets} = childs_node_and_vbuckets(Child),
     Args = ebucketmigrator_srv:build_args(Bucket,
                                           SrcNode, node(), VBuckets, false),
-    {Child,
-     {ebucketmigrator_srv, start_link, Args},
-     permanent, 60000, worker, [ebucketmigrator_srv]}.
+    ns_vbm_new_sup:build_child_spec(Child, Args).
 
 
 -spec get_children(bucket_name()) -> list() | not_running.

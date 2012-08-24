@@ -31,7 +31,7 @@
 %% Callbacks
 -export([server_name/1, supervisor_node/2,
          make_replicator/3, replicator_nodes/2, replicator_vbuckets/1,
-         ping_all_replicators/1]).
+         ping_all_replicators/1, build_child_spec/2]).
 
 -export([local_change_vbucket_filter/4]).
 
@@ -124,9 +124,7 @@ perform_vbucket_filter_change(Bucket,
     Childs = supervisor:which_children(Server),
     MaybeThePid = [Pid || {Id, Pid, _, _} <- Childs,
                           Id =:= OldChildId],
-    NewChildSpec = {NewChildId,
-                    {ebucketmigrator_srv, start_link, Args},
-                    permanent, 60000, worker, [ebucketmigrator_srv]},
+    NewChildSpec = build_child_spec(NewChildId, Args),
     case MaybeThePid of
         [ThePid] ->
             misc:executing_on_new_process(
@@ -146,7 +144,6 @@ perform_vbucket_filter_change(Bucket,
 
                       erlang:process_flag(trap_exit, true),
                       ok = supervisor:terminate_child(Server, OldChildId),
-                      ok = supervisor:delete_child(Server, OldChildId),
                       Me = self(),
                       proc_lib:spawn_link(
                         fun () ->
@@ -199,3 +196,8 @@ ping_some_replicator(Pid) ->
     catch T:E ->
             ?log_error("Pinging migrator ~p failed:~n~p", [Pid, {T,E}])
     end.
+
+build_child_spec(ChildId, Args) ->
+    {ChildId,
+     {ebucketmigrator_srv, start_link, Args},
+     temporary, 60000, worker, [ebucketmigrator_srv]}.
