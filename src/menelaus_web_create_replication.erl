@@ -187,7 +187,6 @@ build_replication_doc(FromBucket, ClusterUUID, ToBucket, ReplicationType) ->
         {[{type, <<"xdc">>},
           {source, list_to_binary(FromBucket)},
           {target, Reference},
-          {targetUUID, ClusterUUID},
           {continuous, case ReplicationType of
                            continuous -> true;
                            _ -> false

@@ -182,8 +182,8 @@ get_remote_bucket_by_ref(Reference, Through, Timeout) ->
                                         BucketName, Through, Timeout}, infinity).
 
 invalidate_remote_bucket_by_ref(Reference) ->
-    {ok, {ClusterName, BucketName}} = parse_remote_bucket_reference(Reference),
-    invalidate_remote_bucket(ClusterName, BucketName).
+    {ok, {ClusterUUID, BucketName}} = parse_remote_bucket_reference(Reference),
+    invalidate_remote_bucket(ClusterUUID, BucketName).
 
 -spec get_remote_bucket(string(), bucket_name(), boolean()) ->
                                {ok, #remote_bucket{}} |
@@ -1138,12 +1138,9 @@ get_rdoc_info(#doc_info{} = DocInfo, Db) ->
             case proplists:get_value(<<"type">>, Props) of
                 <<"xdc">> ->
                     Target = proplists:get_value(<<"target">>, Props),
-                    UUID = proplists:get_value(<<"targetUUID">>, Props),
-
                     true = (Target =/= undefined),
-                    true = (UUID =/= undefined),
 
-                    {ok, {_ClusterName, BucketName}} =
+                    {ok, {UUID, BucketName}} =
                         parse_remote_bucket_reference(Target),
 
                     {UUID, BucketName};

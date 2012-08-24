@@ -24,8 +24,7 @@
 %%   "_id" : "my_xdc_rep",
 %%   "type" : "xdc",
 %%   "source" : "bucket0",
-%%   "target" : "/remoteClusters/cluster_name/buckets/bucket0",
-%%   "targetUUID" : "fe919bda0242eac3ddf9e47586c3e67b",
+%%   "target" : "/remoteClusters/clusterUUID/buckets/bucket0",
 %%   "continuous" : true
 %% }
 %%

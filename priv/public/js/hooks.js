@@ -1510,7 +1510,6 @@ var ServerStateMock = {
             "_replication_fields": {
               "_id": "missing-rep_2",
               "source": "default",
-              "targetUUID": "other.local-uuid",
               "target": "/remoteClusters/other.local/buckets/other-bucket",
               "continuous": false
             },
@@ -1528,7 +1527,6 @@ var ServerStateMock = {
             "_replication_fields": {
               "_id": "rep_1",
               "source": "default",
-              "targetUUID": "kyiv-uuid",
               "target": "/remoteClusters/kyiv/buckets/default",
               "continuous": false
             },
@@ -1546,7 +1544,6 @@ var ServerStateMock = {
             "_replication_fields": {
               "_id": "rep_2",
               "source": "other-bucket",
-              "targetUUID": "london-uuid",
               "target": "/remoteClusters/london/buckets/very-other-bucket",
               "continuous": true
             },
