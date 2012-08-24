@@ -450,20 +450,38 @@ delete_databases_and_files(Bucket) ->
                             fun (Name) ->
                                     Name =:= MasterDB
                             end, AllDBs),
-    case delete_databases_loop(MaybeMasterDb ++ RestDBs) of
-        ok ->
-            ?log_info("Couch dbs are deleted. Proceeding with bucket directory"),
-            {ok, DbDir} = ns_storage_conf:this_node_dbdir(),
-            Path = filename:join(DbDir, Bucket),
-            case misc:rm_rf(Path) of
-                ok -> ok;
+    RV = case delete_databases_loop(MaybeMasterDb ++ RestDBs) of
+             ok ->
+                 ?log_info("Couch dbs are deleted. Proceeding with bucket directory"),
+                 {ok, DbDir} = ns_storage_conf:this_node_dbdir(),
+                 Path = filename:join(DbDir, Bucket),
+                 case misc:rm_rf(Path) of
+                     ok -> ok;
+                     Error ->
+                         ale:error(?USER_LOGGER, "Unable to rm -rf bucket database directory ~s~n~p", [Bucket, Error]),
+                         Error
+                 end;
+             Error ->
+                 ale:error(?USER_LOGGER, "Unable to delete some DBs for bucket ~s. Leaving bucket directory undeleted~n~p", [Bucket, Error]),
+                 Error
+         end,
+    do_delete_bucket_indexes(Bucket),
+    RV.
+
+do_delete_bucket_indexes(Bucket) ->
+    {ok, BaseIxDir} = this_node_ixdir(),
+    IxDir = filename:join([BaseIxDir, "@indexes", Bucket]),
+    case file:read_file_info(IxDir) of
+        {error, enoent} ->
+            ?log_debug("indexes directory doesn't exist already. fine.");
+        _ ->
+            ?log_debug("Going to delete indexes directory: ~p", [IxDir]),
+            case misc:rm_rf(IxDir) of
+                ok ->
+                    ?log_debug("done deleting indexes directory");
                 Error ->
-                    ale:error(?USER_LOGGER, "Unable to rm -rf bucket database directory ~s~n~p", [Bucket, Error]),
-                    Error
-            end;
-        Error ->
-            ale:error(?USER_LOGGER, "Unable to delete some DBs for bucket ~s. Leaving bucket directory undeleted~n~p", [Bucket, Error]),
-            Error
+                    ?log_debug("failed to delete indexes directory (~p). Will try to ignore", [Error])
+            end
     end.
 
 delete_databases_loop([]) ->
