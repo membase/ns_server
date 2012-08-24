@@ -617,6 +617,7 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
     NodeDying = NsConfig =/= undefined
         andalso (ns_config:search(NsConfig, i_am_a_dead_man) =/= false
                  orelse not lists:member(Bucket, ns_bucket:node_bucket_names(node(), BucketConfigs))),
+
     Deleting = NoBucket orelse NodeDying,
 
     if
@@ -627,9 +628,16 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                                            false -> "server shutdown"
                                        end]),
             try
-                ok = mc_client_binary:delete_bucket(Sock, Bucket, [{force, Deleting}])
-            catch
-                E2:R2 ->
+                case Deleting of
+                    false ->
+                        %% if this is system shutdown bucket engine
+                        %% now can reliably delete all buckets as part of shutdown.
+                        %% if this is supervisor crash, we're fine too
+                        ?log_info("This bucket shutdown is not due to bucket deletion. Doing nothing");
+                    true ->
+                        ok = mc_client_binary:delete_bucket(Sock, Bucket, [{force, true}])
+                end
+            catch E2:R2 ->
                     ?log_error("Failed to delete bucket ~p: ~p",
                                [Bucket, {E2, R2}])
             after
