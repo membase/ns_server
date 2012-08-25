@@ -1,0 +1,337 @@
+REST API doc
+-------------
+
+Notation:
+
+We're using quite informal Backus-Naur-like json. With use of round
+braces to show group repeatable/optional stuff. I'm also omiting
+quotes of json object keys.
+
+<someVariable:type> is used to show that "someVariable" is here. type (normally
+string or number) is used to spec what json type this thing is.
+
+I'l mark some fields as private if their use is discouraged. And I'll
+mark some fields as deprecated if their is use is forbidden.
+
+E.g.
+
+{
+  type: ("book" | "library" | "user"), // this means type is always present and is either book or library or user
+  id: <id:string>, // id is always present and is of type string,
+  (name: <name:string>,)? // ? means this piece of optional
+  (<someAdditionalKey:string>: <someAdditionalValue>,)* // this means 0 and more additional k-v pairs can appear here, + is used to show 1 or more appareances,
+}
+
+
+
+=========
+GETs
+=========
+
+GET /versions =>
+{
+ implementationVersion: <implementationVersion:string>,
+ componentsVersion: {(<component:string>: <version:string>,)+}
+}
+
+GET /pools =>
+
+{
+ isAdminCreds: <:bool>, // private: if we're asking pools using admin user-password
+ settings: { // private
+  maxParallelIndexers: <url-for-this-setting:string>,
+  viewUpdateDaemon: <url-for-this-setting:string>
+ },
+ uuid: <:string>, // this contains cluster's uniq id
+ implementationVersion: <implementationVersion:string>,
+ componentsVersion: {(<component:string>: <version:string>,)+}
+ pools: [{ // exactly one pool. But note, it'll be omited completely if cluster is not yet provisioned
+  name: "default",
+  uri: "/pools/default?uuid="<:string>, // url for pool details
+  streamingUri: <:string>
+ }]
+}
+
+GET /pools/default =>
+
+{
+    "storageTotals": { // private. Not deprecated yet, but planned for removal
+        "ram": {
+            "usedByData": 13795200,
+            "total": 134871662592,
+            "quotaTotal": 7969177600,
+            "quotaUsed": 7969177600,
+            "used": 49712103424
+        },
+        "hdd": {
+            "usedByData": 27544534,
+            "total": 2145071923200,
+            "quotaTotal": 2145071923200,
+            "used": 1673156100096,
+            "free": 471915823104
+        }
+    },
+    "name": "default",
+    "alerts": [
+      (<message:string>)* // list of alerts to show to user
+    ],
+    "alertsSilenceURL": "/controller/resetAlerts?"<:string>, // POST here in order to confirm alerts above are seen by user
+    "nodes": [
+        (<nodeInfo>)+ // contains info on all nodes of this cluster
+    ],
+    "buckets": {
+        "uri": "/pools/default/buckets?v=53787695&uuid=14c408ed8df50823715f47b900bd1b4f"
+    },
+    "remoteClusters": {
+        "uri": "/pools/default/remoteClusters?uuid=14c408ed8df50823715f47b900bd1b4f", // url for defined remote clusters
+        "validateURI": "/pools/default/remoteClusters?just_validate=1"
+    },
+    "controllers": {
+        "addNode": {
+            "uri": "/controller/addNode?uuid=14c408ed8df50823715f47b900bd1b4f"
+        },
+        "rebalance": {
+            "uri": "/controller/rebalance?uuid=14c408ed8df50823715f47b900bd1b4f"
+        },
+        "failOver": {
+            "uri": "/controller/failOver?uuid=14c408ed8df50823715f47b900bd1b4f"
+        },
+        "reAddNode": {
+            "uri": "/controller/reAddNode?uuid=14c408ed8df50823715f47b900bd1b4f"
+        },
+        "ejectNode": {
+            "uri": "/controller/ejectNode?uuid=14c408ed8df50823715f47b900bd1b4f"
+        },
+        "setAutoCompaction": {
+            "uri": "/controller/setAutoCompaction?uuid=14c408ed8df50823715f47b900bd1b4f",
+            "validateURI": "/controller/setAutoCompaction?just_validate=1"
+        },
+        "replication": {
+            "createURI": "/controller/createReplication?uuid=14c408ed8df50823715f47b900bd1b4f", // POST here in order to create xdcr replication
+            "validateURI": "/controller/createReplication?just_validate=1", // private
+            "replicatorDBURI": "/couchBase/_replicator", // private, deprecated
+            "infosURI": "/couchBase/_replicator/_design/_replicator_info/_view/infos?group_level=1" // very private, very deprecated
+        },
+        "setFastWarmup": {
+            "uri": "/controller/setFastWarmup?uuid=14c408ed8df50823715f47b900bd1b4f",
+            "validateURI": "/controller/setFastWarmup?just_validate=1"
+        }
+    },
+    "balanced": <:bool>,
+    "failoverWarnings": [
+      (<message:string>)+ // list of messages to show about safety of data (need rebalance, need more nodes, stuff like that)
+    ],
+    "rebalanceStatus": "none", // deprectated. see /pools/default/tasks
+    "rebalanceProgressUri": "/pools/default/rebalanceProgress", // deprectated
+    "stopRebalanceUri": "/controller/stopRebalance?uuid=14c408ed8df50823715f47b900bd1b4f", // POST here in order to stop rebalance
+    "nodeStatusesUri": "/nodeStatuses", // private
+    "autoCompactionSettings": <compactionSettings> = { // cluster-wide auto-compaction settings
+        "parallelDBAndViewCompaction": false,
+        "databaseFragmentationThreshold": {
+            "percentage": 30,
+            "size": "undefined"
+        },
+        "viewFragmentationThreshold": {
+            "percentage": 30,
+            "size": "undefined"
+        }
+    },
+    "fastWarmupSettings": { // private, deprecated
+        "fastWarmupEnabled": true,
+        "minMemoryThreshold": 10,
+        "minItemsThreshold": 10
+    },
+    "tasks": {
+        "uri": "/pools/default/tasks?v=84138772" // pointer to tasks API. Note ?v= thing is changing each time list of tasks (but not their progress) is changed
+                                                 //  thus you can use streaming pool details in order to be up-to-date w.r.t. list of tasks cluster is doing
+    },
+    "stats": { //private. broken
+        "uri": "/pools/default/stats"
+    },
+    "counters": { // private
+        "rebalance_success": 1,
+        "rebalance_start": 1
+    },
+    "stopRebalanceIsSafe": <:bool> // private. normally true, meaning if rebalance is running we're sure process doing that is indeed alive
+}
+
+<nodeInfo> =>
+
+        {
+            "systemStats": { // private
+                "cpu_utilization_rate": 3.6802030456852792,
+                "swap_total": 0,
+                "swap_used": 0
+            },
+            "interestingStats": { // private
+                "curr_items": 0,
+                "curr_items_tot": 0,
+                "vb_replica_curr_items": 0
+            },
+            "uptime": "2258", //private
+            "memoryTotal": 33717915648, // private, deprecated
+            "memoryFree": 21289889792, // private, deprecated
+            "mcdMemoryReserved": 25724, // private, deprecated
+            "mcdMemoryAllocated": 25724, // private, deprecated
+            "couchApiBase": "http://10.17.20.233:9501/", // base URL used to communicate to CAPI. I.e. views.
+            "clusterMembership": ("active" // this node is active part of cluster
+                                  | "inactiveFailed" // node was failed over
+                                  | "inactiveAdded"), // node is just added. Next rebalance is going to make it active and move data into it
+            "status": ("healthy" // node is ok
+                       | "warmup" // at least one of node's buckets is warming up
+                       | "unhealthy"),
+            "hostname": "10.17.20.233:9001", // host:port for management REST API on this node
+            "clusterCompatibility": 131072, // private.
+            "version": "2.0.0r_276_ged5c769",
+            "os": "i486-pc-linux-gnu",
+            "ports": {
+                "proxy": 12003, // moxi port of this node
+                "direct": 12002 // memcached port of this node
+            }
+        }
+
+
+GET /pools/default/buckets/default =>
+
+{
+    "name": "default",
+    "bucketType": ("membase" | "memcached"), // note: membase bucket type is actually couchbase
+    "authType": ("sasl" | "none"),
+    "saslPassword": "",
+    "proxyPort": 0, // per-bucket moxi port if authType is none
+    "replicaIndex": true,
+    "uri": "/pools/default/buckets/default?bucket_uuid=7554c64cd513f87c806b307efeb0a842",
+    "streamingUri": "/pools/default/bucketsStreaming/default?bucket_uuid=7554c64cd513f87c806b307efeb0a842",
+    // very much private
+    "localRandomKeyUri": "/pools/default/buckets/default/localRandomKey",
+    "controllers": {
+        "flush": "/pools/default/buckets/default/controller/doFlush", // POST here to reset all bucket's data
+        "compactAll": "/pools/default/buckets/default/controller/compactBucket", // POST here to initiate compaction of bucket's db and view files
+        "compactDB": "/pools/default/buckets/default/controller/compactDatabases" // POST here to initiate compaction of bucket's db files
+    },
+    "nodes": [
+        (<nodeInfo>+) // NOTE: will only contain active nodes of this bucket.
+    ],
+    "stats": {
+        "uri": "/pools/default/buckets/default/stats",
+        "directoryURI": "/pools/default/buckets/default/statsDirectory",
+        "nodeStatsListURI": "/pools/default/buckets/default/nodes"
+    },
+    "ddocs": {
+        "uri": "/pools/default/buckets/default/ddocs" // GET this in order to get design docs of this bucket
+    },
+    "nodeLocator": ("vbucket" | "ketama"), // ketama is used for memcached buckets, vbucket for membase/couchbase. if vbucket is present you need to use vbucket map below
+    "autoCompactionSettings": (false | <compactionSettings>), // false if bucket inherits cluster-wide compaction settings or own compaction settings info as can be seen in pool details
+    "fastWarmupSettings": false,
+    "uuid": "7554c64cd513f87c806b307efeb0a842", // yes bucket has it's own unique id. If bucket is deleted and re-created new bucket instance will have different uuid
+    "vBucketServerMap": { // this will in fact only present for non-memcached buckets
+        "hashAlgorithm": "CRC",
+        "numReplicas": 1,
+        "serverList": [
+            "10.17.20.233:12000", // host:port of _memcached_ vbucket-aware sockets
+            "10.17.20.233:12002",
+            "10.17.20.233:12004",
+            "10.17.20.233:12006"
+        ],
+        "vBucketMap": <vbucketMap>
+    },
+    "replicaNumber": 1,
+    "quota": {
+        "ram": 3984588800, // private, very much
+        "rawRAM": 996147200 // private, very much
+    },
+    "basicStats": { // private, going to become deprecated
+        "quotaPercentUsed": 0.17310694644325658,
+        "opsPerSec": 0.0,
+        "viewOps": 0,
+        "diskFetches": 0.0,
+        "itemCount": 0,
+        "diskUsed": 14808580,
+        "dataUsed": 47872,
+        "memUsed": 6897600
+    },
+    "bucketCapabilitiesVer": "",
+    "bucketCapabilities": [
+        "touch",
+        "couchapi"
+    ]
+}
+
+
+GET /pools/default/tasks =>
+
+[
+    {
+        "type": "rebalance",
+        "status": ("notRunning" | "running") // running rebalance normally has more fields. TBD
+    },
+    ({
+        "type": "xdcr",
+        "cancelURI": "/controller/cancelXCDR/14c408ed8df50823715f47b900bd1b4f%2Fdefault%2Fother", // POST here in order to stop
+        "status": ("running" | "notRunning"), // notRunning if we don't see any stats about this replication doc yet
+        "id": "14c408ed8df50823715f47b900bd1b4f/default/other",
+        "source": "default", // source bucket
+        "target": "/remoteClusters/14c408ed8df50823715f47b900bd1b4f/buckets/other", // target ref. We'll likely have API endpoint for this. But basically /remoteClusters/<remote-cluster-uuid>/buckets/<remoteBucket>
+        "continuous": true, // always true for now
+        "recommendedRefreshPeriod": 2.0, // how often we recommend polling for task progress in seconds
+        "changesLeft": 0,
+        "docsChecked": 0,
+        "docsWritten": 0
+    } | {
+        "type": "bucket_compaction",
+        "bucket": "default",
+        "status": "running",
+        "cancelURI": "/pools/default/buckets/default/controller/cancelBucketCompaction", // POST here in order to stop
+        "recommendedRefreshPeriod": 2.0,
+        "changesDone": 97,
+        "totalChanges": 129,
+        "progress": 75
+    })* // NOTE: we also have "indexer" and "index_compaction" task types TBD
+]
+
+
+GET /pools/default/remoteClusters =>
+
+[
+    ({
+        "name": <:string>,
+        "uri": "/pools/default/remoteClusters/self", // url for updating/deleting
+        "validateURI": "/pools/default/remoteClusters/self?just_validate=1", // private
+        "hostname": "10.17.20.233:9000", // one of nodes of remote cluster we know
+        "username": "Administrator",
+        "uuid": "14c408ed8df50823715f47b900bd1b4f", // uuid of remote cluster
+        "deleted": <:bool> // just skip deleted remoteClusters
+    })*
+]
+
+
+======
+POST
+======
+
+// creates remote cluster with given parameters. NOTE: we actually try to reach remote cluster
+POST /pools/default/remoteClusters
+name=<name>&hostname=<hostname>&username=<username>&password=<password>
+
+
+POST /controller/createReplication
+fromBucket=<local-bucket-name>&toBucket=<remote-bucket-name>&replicationType=continuous&toCluster=<remote cluster name>
+
+// empty post here deletes xdcr replication
+POST /controller/cancelXCDR/<:string>
+
+
+====
+PUT
+===
+
+// updates and potentially renamed remote cluster info
+PUT /pools/default/remoteClusters/<name>
+name=<name>&hostname=<hostname>&username=<username>&password=<password>
+
+===
+DELETE
+===
+
+// deletes remote cluster info
+DELETE /pools/default/remoteClusters/<name>
