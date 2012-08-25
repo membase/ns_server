@@ -10,17 +10,16 @@
   }
 
   function refreshProgress(tasks) {
-    if ($.isEmptyObject(tasks)) {
+    var html = "";
+    _.each(tasks, function (obj) {
+      html += (render[obj.type] || renderNothing)(obj);
+    });
+    if (html == "") {
       progressWrapper.hide('fade');
     } else {
-      var html = "";
-      _.each(tasks, function (obj) {
-        html += (render[obj.type] || renderNothing)(obj);
-      });
-
       progressWrapper.toggleClass('disable_toggle', tasks.length < 2);
       progressContainer.html(html);
-      progressWrapper.show('fade');
+      progressWrapper.show();
     }
   }
 
