@@ -77,10 +77,7 @@ kill_child(Bucket, SrcNode, VBuckets) ->
     ?log_info("Going to stop replication from ~p", [SrcNode]),
     Sup = ns_vbm_new_sup:server_name(Bucket),
     Child = ns_vbm_new_sup:make_replicator(SrcNode, SrcNode, VBuckets),
-    %% TODO: we can do better error handling here
-    %% (i.e. w.r.t. max_restart_intensity_reached)
-    ok = supervisor:terminate_child(Sup, Child),
-    ok = supervisor:delete_child(Sup, Child).
+    ok = supervisor:terminate_child(Sup, Child).
 
 change_vbucket_filter(Bucket, SrcNode, OldVBuckets, NewVBuckets) ->
     ?log_info("Going to change replication from ~p to have~n~p (~p, ~p)", [SrcNode, NewVBuckets, NewVBuckets--OldVBuckets, OldVBuckets--NewVBuckets]),
