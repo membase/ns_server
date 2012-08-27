@@ -69,33 +69,32 @@ compute_index_states(WantedStates, RebalanceStates, ExistingVBuckets) ->
     Triples = lists:zip3(AllVBs,
                          WantedStates,
                          RebalanceStates),
-    WantedPairs = lists:flatmap(
-                    fun ({VBucket, WantedState, TmpState}) ->
-                            case sets:is_element(VBucket, ExistingVBuckets) of
-                                true ->
-                                    case {WantedState, TmpState} of
-                                        %% {replica, passive} ->
-                                        %%     [{VBucket, replica}, {VBucket, passive}];
-                                        {_, passive} ->
-                                            [{VBucket, passive}];
-                                        {active, _} ->
-                                            [{VBucket, active}];
-                                        {replica, _} ->
-                                            [{VBucket, replica}];
-                                        _ ->
-                                            []
-                                    end;
-                                false ->
-                                    []
-                            end
-                    end,
-                    Triples),
-    Active = [VB || {VB, active} <- WantedPairs],
-    Passive = [VB || {VB, passive} <- WantedPairs],
-    Replica = [VB || {VB, replica} <- WantedPairs],
-    AllMain = Active ++ Passive,
-    MainCleanup = AllVBs -- AllMain,
-    ReplicaCleanup = ((AllVBs -- Replica) -- Active),
+    % Ensure Active, Passive and Replica are ordsets
+    {Active, Passive, Replica} = lists:foldr(
+                                   fun ({VBucket, WantedState, TmpState}, {AccActive, AccPassive, AccReplica}) ->
+                                           case sets:is_element(VBucket, ExistingVBuckets) of
+                                               true ->
+                                                   case {WantedState, TmpState} of
+                                                       %% {replica, passive} ->
+                                                       %%     {AccActibe, [VBucket | AccPassive], [VBucket | AccReplica]};
+                                                       {_, passive} ->
+                                                           {AccActive, [VBucket | AccPassive], AccReplica};
+                                                       {active, _} ->
+                                                           {[VBucket | AccActive], AccPassive, AccReplica};
+                                                       {replica, _} ->
+                                                           {AccActive, AccPassive, [VBucket | AccReplica]};
+                                                       _ ->
+                                                           {AccActive, AccPassive, AccReplica}
+                                                   end;
+                                               false ->
+                                                   {AccActive, AccPassive, AccReplica}
+                                           end
+                                   end,
+                                   {[], [], []},
+                                   Triples),
+    AllMain = ordsets:union(Active, Passive),
+    MainCleanup = ordsets:subtract(AllVBs, AllMain),
+    ReplicaCleanup = ordsets:subtract(ordsets:subtract(AllVBs, Replica), Active),
     PauseVBuckets = [VBucket
                      || {VBucket, WantedState, TmpState} <- Triples,
                         TmpState =:= paused,
@@ -104,7 +103,7 @@ compute_index_states(WantedStates, RebalanceStates, ExistingVBuckets) ->
                             active = WantedState,
                             true
                         end],
-    UnpauseVBuckets = AllVBs -- PauseVBuckets,
+    UnpauseVBuckets = ordsets:subtract(AllVBs, PauseVBuckets),
     {Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets}.
 
 get_usable_vbuckets_set(Bucket) ->
