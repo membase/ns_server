@@ -19,6 +19,7 @@
 %% public functions
 -export([start_timer/1, cancel_timer/1]).
 -export([do_last_checkpoint/1, do_checkpoint/1]).
+-export([source_cur_seq/1]).
 
 -include("xdc_replicator.hrl").
 
@@ -207,7 +208,11 @@ commit_to_both(Source, Target) ->
             {target_error, TargetError}
     end.
 
+
 source_cur_seq(#rep_state{source = #db{} = Db, source_seq = Seq}) ->
     {ok, Info} = couch_api_wrap:get_db_info(Db),
-    get_value(<<"update_seq">>, Info, Seq).
+    get_value(<<"update_seq">>, Info, Seq);
 
+source_cur_seq(#rep_state{source_seq = Seq} = State) ->
+    ?xdcr_debug("unknown source in state: ~p", [State]),
+    Seq.

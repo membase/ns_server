@@ -132,7 +132,7 @@ handle_call({report_seq_done, Seq, NumChecked, NumWritten}, From,
                 [Vb, Seq, ThroughSeq, NewThroughSeq, HighestDone,
                  NewHighestDone, SeqsInProgress, NewSeqsInProgress,
                  TotalChecked, TotalWritten]),
-    SourceCurSeq = source_cur_seq(State),
+    SourceCurSeq = xdc_vbucket_rep_ckpt:source_cur_seq(State),
     NewState = State#rep_state{
                  current_through_seq = NewThroughSeq,
                  seqs_in_progress = NewSeqsInProgress,
@@ -162,6 +162,7 @@ handle_call({worker_done, Pid}, _From,
             couch_api_wrap:db_close(State3#rep_state.tgt_master_db),
             % force check for changes since we last snapshop
             self() ! src_db_updated,
+            misc:flush(checkpoint),
             {reply, ok, update_state_to_parent(State3#rep_state{
                                         source = undefined,
                                         src_master_db = undefined,
@@ -267,7 +268,7 @@ init_replication_state(Rep, Vb, Throttle, Parent) ->
     couch_api_wrap:db_close(TgtMasterDb),
     couch_api_wrap:db_close(Target),
     couch_api_wrap:db_close(TgtMasterDb),
-    #rep_state{
+    InitState = #rep_state{
       rep_details = Rep,
       throttle = Throttle,
       parent = Parent,
@@ -293,7 +294,9 @@ init_replication_state(Rep, Vb, Throttle, Parent) ->
                               docs_checked = DocsChecked,
                               docs_written = DocsWritten},
       source_seq = get_value(<<"update_seq">>, SourceInfo, ?LOWEST_SEQ)
-     }.
+     },
+    ?xdcr_debug("vb ~p repication state initialized: ~p", [Vb, InitState]),
+    InitState.
 
 start_replication(#rep_state{
                            source_name = SourceName,
@@ -515,10 +518,6 @@ has_session_id(SessionId, [{Props} | Rest]) ->
         _Else ->
             has_session_id(SessionId, Rest)
     end.
-
-source_cur_seq(#rep_state{source = Db, source_seq = Seq}) ->
-    {ok, Info} = couch_api_wrap:get_db_info(Db),
-    get_value(<<"update_seq">>, Info, Seq).
 
 target_uri_to_node(TgtURI) ->
     TargetURI = binary_to_list(TgtURI),
