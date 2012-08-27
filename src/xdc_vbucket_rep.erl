@@ -50,25 +50,34 @@ start_link(Rep, Vb, Throttle, Parent) ->
 
 %% gen_server behavior callback functions
 init({Rep, Vb, Throttle, Parent}) ->
-    try
-        self() ! src_db_updated, % signal to self to check for changes
-        State = init_replication_state(Rep, Vb, Throttle, Parent),
-        {ok, update_state_to_parent(State)}
-    catch
-        throw:{unauthorized, DbUri} ->
-            {stop, {unauthorized,
-                    <<"unauthorized to access or create database ", DbUri/binary>>}};
-        throw:{db_not_found, DbUri} ->
-            {stop, {db_not_found, <<"could not open ", DbUri/binary>>}};
-        throw:Error ->
-            {stop, Error}
-    end.
+    process_flag(trap_exit, true),
+    % signal to self to initialize
+    self() ! {init, ?VB_REP_VB_MISSING_WAIT_TIME_INITIAL},
+    {ok, {Rep, Vb, Throttle, Parent}}.
 
 handle_info({'EXIT',_Pid, normal}, St) ->
     {noreply, St};
 
 handle_info({'EXIT',_Pid, Reason}, St) ->
     {stop, Reason, St};
+
+handle_info({init, RetryTime}, {Rep, Vb, Throttle, Parent} = InitState) ->
+    try
+        State = init_replication_state(Rep, Vb, Throttle, Parent),
+        self() ! src_db_updated, % signal to self to check for changes
+        {noreply, update_state_to_parent(State)}
+    catch
+        throw:{db_not_found, _DbUri} when RetryTime < ?VB_REP_VB_MISSING_WAIT_TIME_MAX ->
+            % if RetryTime is less than max, retry again, otherwise
+            % we stop.
+            % double retry time
+            timer:send_after(RetryTime*2, {init, RetryTime*2}),
+            {noreply, InitState};
+        throw:{db_not_found, DbUri} ->
+            {stop, {db_not_found, <<"timeout: could not open ", DbUri/binary>>}, InitState};
+        throw:Error ->
+            {stop, Error, InitState}
+    end;
 
 handle_info(src_db_updated,
             #rep_state{status = #rep_vb_status{status = idle}} = St) ->
@@ -190,16 +199,18 @@ handle_cast({report_seq, Seq},
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
+terminate(Reason, {_Rep, _Vb, _Throttle, _Parent}) ->
+    ?xdcr_error("Shutting down without ever successfully initilizing: ~p", [Reason]),
+    ok;
 
 terminate(Reason, State) when Reason == normal orelse Reason == shutdown ->
     terminate_cleanup(State);
 
-terminate(Reason, State) ->
-    #rep_state{
-           source_name = Source,
-           target_name = Target,
-           rep_details = #rep{id = Id, target = TargetRef} = _Rep
-          } = State,
+terminate(Reason, #rep_state{
+                           source_name = Source,
+                           target_name = Target,
+                           rep_details = #rep{id = Id, target = TargetRef} = _Rep
+                          } = State) ->
     ?xdcr_error("Replication `~s` (`~s` -> `~s`) failed: ~s",
                 [Id, Source, Target, to_binary(Reason)]),
     % an unhandled error happened. Invalidate target vb map cache.

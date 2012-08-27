@@ -178,7 +178,7 @@ process_update({Change}, State) ->
                 <<"xdc">> ->
                     XRep = parse_xdc_rep_doc(DocId, {Props}),
                     xdc_replication_sup:stop_replication(DocId),
-                    xdc_replication_sup:start_replication(XRep),
+                    {ok, _Pid} = xdc_replication_sup:start_replication(XRep),
                     State;
                 _ ->
                     State
