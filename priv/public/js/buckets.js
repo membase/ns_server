@@ -776,7 +776,7 @@ var BucketsSection = {
     self.previousNames = currentNames;
 
     _.each(bucketsTasks, function (task) {
-      self.showCompactControl(task.bucket, task.progress + '%', true, true, true);
+      self.showCompactControl(task.bucket, task.progress + '% complete', true, true, true);
     });
 
     if (!bucketsTasks.length) {
