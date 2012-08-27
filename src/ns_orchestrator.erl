@@ -221,7 +221,7 @@ handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes},
             KeepNodes = MaybeKeepNodes -- FailedNodes,
             case KeepNodes of
                 [] ->
-                    no_active_nodes_left;
+                    {reply, no_active_nodes_left, StateName, State};
                 _ ->
                     ns_cluster_membership:activate(KeepNodes),
                     StartEvent = {start_rebalance,
@@ -230,7 +230,8 @@ handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes},
                                   FailedNodes},
                     ?MODULE:StateName(StartEvent, From, State)
             end;
-        _ -> nodes_mismatch
+        _ ->
+            {reply, nodes_mismatch, StateName, State}
     end;
 
 handle_sync_event(Event, _From, StateName, State) ->
