@@ -84,7 +84,7 @@ maybe_create_replication_info_ddoc() ->
              _Error ->
                  {ok, XDb} = couch_db:create(<<"_replicator">>,
                                              [sys_db, {user_ctx, UserCtx}]),
-                 ?xdcr_info("replication doc created: ~n~p", [XDb]),
+                 ?xdcr_info("replication info doc created: ~n~p", [XDb]),
                  XDb
          end,
     try couch_db:open_doc(DB, <<"_design/_replicator_info">>, []) of
@@ -171,11 +171,19 @@ process_update({Change}, State) ->
     {Props} = get_value(<<"json">>, DocProps, {[]}),
     case DocDeleted of
         true ->
+            ?xdcr_debug("replication doc deleted (docId: ~p), stop all replications",
+                        [DocId]),
             xdc_replication_sup:stop_replication(DocId),
             State;
         false ->
             case get_value(<<"type">>, Props) of
                 <<"xdc">> ->
+                    ?xdcr_debug("replication doc (docId: ~p) modified, parse "
+                                "new doc and adjsut replications for change ("
+                                "source ~p, target: ~p)",
+                                [DocId, get_value(<<"source">>, Props),
+                                 get_value(<<"target">>, Props)]),
+
                     XRep = parse_xdc_rep_doc(DocId, {Props}),
                     xdc_replication_sup:stop_replication(DocId),
                     {ok, _Pid} = xdc_replication_sup:start_replication(XRep),

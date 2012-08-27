@@ -46,6 +46,7 @@ stop_replication(Id) ->
            (_) ->
                 ok
         end,  supervisor:which_children(?MODULE)),
+    ?xdcr_debug("all replications for DocId ~p have been stopped", [Id]),
     ok.
 
 
