@@ -196,33 +196,7 @@
               </tr>
             <!-- {% } %} -->
             <!-- {% _.each(rows, function (s) { %} -->
-            <!-- {% if (s.clusterMembership == 'inactiveAdded') { %}-->
-              <tr class="server_row pending_add {%= s.nodeClass %}">
-                <td class="node_name ellipsis" colspan="2">{%= V.setData('server', s) %}
-                  {%= V.stripPortHTML(s.hostname, rows) %}
-                </td>
-                <td colspan="5">
 
-                </td>
-                <td colspan="2">
-                  <a href="#" class="list_button btn_cancel eject_server"><span>Cancel</span></a>
-                  <span class="pending_add_message">Pending Add</span>
-                </td>
-              </tr>
-            <!-- {% } else if (s.pendingEject) { %} -->
-              <tr class="server_row pending_removal {%= s.nodeClass %}">
-                <td class="node_name ellipsis" colspan="2">{%= V.setData('server', s) %}
-                  <a class="{% if (!expandingAllowed) { %} disabled"{% } else { %}" href="#openServer={%= h(s.otpNode) %}"{% } %}><span class="expander closed"></span></a>
-                  {%= V.stripPortHTML(s.hostname, rows) %}
-                </td>
-                <td colspan="5">
-                  <span class="pending_removal_message">Pending Removal</span>
-                </td>
-                <td colspan="2">
-                  <a href="#" class="list_button btn_cancel remove_from_list"><span>Cancel</span></a>
-                </td>
-              </tr>
-            <!-- {% } else { %} -->
             <!-- {% if (s.reAddPossible) { %} -->
               <tr class="add_back_row">
                 <td colspan="9">{%= V.setData('server', s) %}
@@ -233,6 +207,7 @@
             <!-- {% } %} -->
 
               <tr class="server_row {%= s.nodeClass %}" id="{%= h(s.otpNode.replace('@', '-')) %}">
+
                 <td class="node_name ellipsis" colspan="2">{%= V.setData('server', s) %}
               <!-- {% if (s.reAddPossible) { %} -->
                   <a href="#openServer={%= h(s.otpNode) %}"><ins class="expander closed"></ins></a>
@@ -242,7 +217,9 @@
                   <a href="#sec=analytics&statsHostname={%= h(s.hostname) %}" title="View Analytics for {%= h(s.hostname) %}">{%= V.stripPortHTML(s.hostname, rows) %}</a>
               <!-- {% } %} -->
                 </td>
+
                 <td class="{%= s.nodeClass %}"></td>
+
                 <td class="ram">
                   <!-- {% if ((s.memoryTotal > 0) && isFinite(s.memoryFree)) { %} -->
                   <div class="vertical_bar">
@@ -253,6 +230,7 @@
                   <span>N/A</span>
                   <!-- {% } %} -->
                 </td>
+
                 <td class="ram">
                   <!-- {% if (s.systemStats.swap_total > 0 && isFinite(s.systemStats.swap_used)) { %} -->
                   <div class="vertical_bar">
@@ -279,13 +257,26 @@
                   {%= V.formatQuantity(s.interestingStats.curr_items || 0, '', 1000, ' ') %}/
                   {%= V.formatQuantity(s.interestingStats.vb_replica_curr_items || 0, '', 1000, ' ') %}
                 </td>
+
+                <!-- {% if (s.clusterMembership == 'inactiveAdded') { %} -->
+                <td colspan="2">
+                  <a href="#" class="list_button btn_cancel eject_server"><span>Cancel</span></a>
+                  <span class="pending_add_message">Pending Add</span>
+                </td>
+                <!-- {% } else if (s.pendingEject) { %} -->
+                <td colspan="2">
+                  <a href="#" class="list_button btn_cancel remove_from_list"><span>Cancel</span></a>
+                  <span class="pending_add_message">Pending Removal</span>
+                </td>
+                <!-- {% } else { %} -->
                 <td class="actions" colspan="2">
                   <a class="list_button eject_server"><span>Remove</span></a>
                   <a class="list_button failover_server"><span>Fail Over</span></a>
                   <span class="failed_over_message">Failed Over: Pending Removal</span>
                 </td>
+                <!-- {% } %} -->
+
               </tr>
-            <!-- {% } %} -->
             <!-- {% if (expandingAllowed) { %} -->
               <tr><td colspan="9" class="settings-placeholder" style="display:none;">{%= ServersSection.renderServerDetails(s) %}</td></tr>
             <!-- {% } %} -->

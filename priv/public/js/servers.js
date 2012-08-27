@@ -83,7 +83,7 @@ var ServersSection = {
       }, $i('active_server_list_container'));
       renderTemplate('manage_server_list', {
         rows: pending,
-        expandingAllowed: false
+        expandingAllowed: true
       }, $i('pending_server_list_container'));
     }
 
@@ -181,7 +181,10 @@ var ServersSection = {
       valueTransformer: function (nodeInfo, nodeSettings) {
         return _.extend({}, nodeInfo, nodeSettings);
       },
-      listCell: Cell.compute(function (v) {return v.need(DAL.cells.serversCell).active}),
+      listCell: Cell.compute(function (v) {
+        var serversCell = v.need(DAL.cells.serversCell);
+        return serversCell.active.concat(serversCell.pending);
+      }),
       aroundRendering: function (originalRender, cell, container) {
         originalRender();
         $(container).closest('tr').prev().find('.node_name .expander').toggleClass('closed', !cell.interested.value);
