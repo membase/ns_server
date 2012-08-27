@@ -1257,7 +1257,7 @@ var ViewsSection = {
           sampleDocsCont.hide();
           noSampleDocsCont.show();
         } else {
-          docsTitle.text('');
+          docsTitle.text('Sample Document');
           sampleMeta.text("");
           renderTemplate('sample_documents', {loading: true});
         }
