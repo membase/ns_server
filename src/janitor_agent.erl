@@ -263,16 +263,28 @@ apply_new_bucket_config_old_style(Bucket, _Servers, [] = _Zombies, NewBucketConf
      end || {Node, VBucket, VBucketCurrentState} <- StatesToDelete],
     ok.
 
-apply_new_bucket_config_new_style(Bucket, Servers, [] = Zombies, NewBucketConfig, IgnoredVBuckets) ->
-    {Replies, BadNodes} = gen_server:multi_call(Servers -- Zombies, server_name(Bucket),
-                                                {apply_new_config, NewBucketConfig, IgnoredVBuckets},
-                                                ?APPLY_NEW_CONFIG_TIMEOUT),
+process_apply_config_rv(Bucket, {Replies, BadNodes}, Call) ->
     BadReplies = [R || {_, RV} = R<- Replies,
                        RV =/= ok],
     case BadReplies =/= [] orelse BadNodes =/= [] of
         true ->
-            ?log_info("~s:Some janitor state change requests have failed:~n~p~n~p", [Bucket, BadReplies, BadNodes]);
+            ?log_info("~s:Some janitor state change requests (~p) have failed:~n~p~n~p", [Bucket, Call, BadReplies, BadNodes]),
+            error;
         false ->
+            ok
+    end.
+
+apply_new_bucket_config_new_style(Bucket, Servers, [] = Zombies, NewBucketConfig, IgnoredVBuckets) ->
+    RV1 = gen_server:multi_call(Servers -- Zombies, server_name(Bucket),
+                                {apply_new_config, NewBucketConfig, IgnoredVBuckets},
+                                ?APPLY_NEW_CONFIG_TIMEOUT),
+    case process_apply_config_rv(Bucket, RV1, apply_new_config) of
+        ok ->
+            RV2= gen_server:multi_call(Servers -- Zombies, server_name(Bucket),
+                                       {apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
+                                       ?APPLY_NEW_CONFIG_TIMEOUT),
+            process_apply_config_rv(Bucket, RV2, apply_new_config_replicas_phase);
+        _ ->
             ok
     end,
     ok.
@@ -564,12 +576,6 @@ handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, _From, #state{
             end, {0, [], [], []}, Map),
     [ns_memcached:set_vbucket(BucketName, VBucket, StateToSet)
      || {VBucket, StateToSet} <- ToSet],
-    WantedReplicas = [{Src, VBucket} || {Src, Dst, VBucket} <- ns_bucket:map_to_replicas(Map),
-                                        Dst =:= node()],
-    WantedReplications = [{Src, [VB || {_, VB} <- Pairs]}
-                          || {Src, Pairs} <- misc:keygroup(1, lists:sort(WantedReplicas))],
-    ns_vbm_new_sup:ping_all_replicators(BucketName),
-    ok = replication_changes:set_incoming_replication_map(BucketName, WantedReplications),
     [case dict:find(VBucket, CurrentVBuckets) of
          {ok, dead} ->
              ns_memcached:set_vbucket(BucketName, VBucket, dead),
@@ -583,6 +589,19 @@ handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, _From, #state{
                          rebalance_only_vbucket_states = NewRebalance},
     State3 = set_rebalance_mref(undefined, State2),
     {reply, ok, pass_vbucket_states_to_set_view_manager(State3)};
+handle_call({apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
+            _From, #state{bucket_name = BucketName} = State) ->
+        Map = proplists:get_value(map, NewBucketConfig),
+    true = (Map =/= undefined),
+    %% TODO: unignore ignored vbuckets
+    [] = IgnoredVBuckets,
+    WantedReplicas = [{Src, VBucket} || {Src, Dst, VBucket} <- ns_bucket:map_to_replicas(Map),
+                                        Dst =:= node()],
+    WantedReplications = [{Src, [VB || {_, VB} <- Pairs]}
+                          || {Src, Pairs} <- misc:keygroup(1, lists:sort(WantedReplicas))],
+    ns_vbm_new_sup:ping_all_replicators(BucketName),
+    ok = replication_changes:set_incoming_replication_map(BucketName, WantedReplications),
+    {reply, ok, State};
 handle_call({delete_vbucket, VBucket}, _From, #state{bucket_name = BucketName} = State) ->
     {reply, ok = ns_memcached:delete_vbucket(BucketName, VBucket), State};
 handle_call({wait_index_updated, VBucket}, From, #state{bucket_name = Bucket} = State) ->
