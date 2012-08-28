@@ -1352,7 +1352,7 @@
                 <!-- {% _.each(rows, function (r) { %} -->
                 <tr data-name="{%= h(r.name) %}">
                   <td>{%= h(r.name) %}</td>
-                  <td>{%= h(r.hostname) %}</td>
+                  <td><a href="{%= window.location.protocol +'//'+ h(r.hostname) + '/index.html#sec=analytics&amp;statsHostname=' + h(encodeURIComponent(r.hostname)) %}" target="blank">{%= h(r.hostname) %}</a></td>
                   <td>
                     <a class="list_button edit-button"><span>Edit</span></a>
                     <a class="list_button delete-button"><span>Delete</span></a>
