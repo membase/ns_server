@@ -724,42 +724,71 @@ stats_subcommand_test() ->
 
 -endif.
 
-%% seeks Item in sorted list turned into tuple in indices [L, R)
-tuple_binary_search(_Item, _Tuple, L, R) when L >= R ->
-    false;
-tuple_binary_search(Item, Tuple, L, R) ->
-    X = (L + R) div 2,
-    Candidate = erlang:element(X, Tuple),
-    if
-        Candidate =:= Item -> true;
-        true ->
-            if
-                Candidate < Item -> tuple_binary_search(Item, Tuple, X+1, R);
-                true -> tuple_binary_search(Item, Tuple, L, X)
-            end
+get_zero_open_checkpoint_vbuckets(Upstream, VBuckets, QuickStats) ->
+    T = ets:new('', [private, set]),
+    try
+        [case iolist_to_binary([<<"vb_">>, integer_to_list(VBucket), <<":open_checkpoint_id">>]) of
+             StatName -> ets:insert(T, {StatName, VBucket})
+         end || VBucket <- VBuckets],
+        Checker = fun (Key, ValueBin, Acc) ->
+                          case ets:lookup(T, Key) of
+                              [] ->
+                                  Acc;
+                              _ ->
+                                  ets:delete(T, Key),
+                                  case ValueBin =:= <<"0">> of
+                                      true ->
+                                          %% NOTE: beam compiler is smart enough to fold erlang:length of constant here
+                                          VBLen = erlang:size(Key) - erlang:length("vb_" ":open_checkpoint_id"),
+                                          case Key of
+                                              <<"vb_", VB:VBLen/binary, ":open_checkpoint_id">> ->
+                                                  VBInt = list_to_integer(binary_to_list(VB)),
+                                                  [VBInt | Acc];
+                                              _ ->
+                                                  Acc
+                                          end;
+                                      _ ->
+                                          Acc
+                                  end
+                          end
+                  end,
+        {ok, Zeros} = QuickStats(Upstream, <<"checkpoint">>, Checker, []),
+        Missing = ets:match(T, {'_', '$1'}),
+        lists:flatten([Missing | Zeros])
+    after
+        ets:delete(T)
     end.
 
-mk_get_zero_open_checkpoint_vbuckets_checker(StatNamesTuple) ->
-    fun (Key, ValueBin, Acc) ->
-            case ValueBin =:= <<"0">>
-                andalso tuple_binary_search(Key, StatNamesTuple, 1, erlang:size(StatNamesTuple)+1) of
-                true ->
-                  case misc:split_binary_at_char(Key, $:) of
-                      {<<"vb_", VB/binary>>, <<"open_checkpoint_id">>} ->
-                          [list_to_integer(binary_to_list(VB)) | Acc]
-                  end;
-                false ->
-                    Acc
-            end
-    end.
+-ifdef(EUNIT).
 
+get_zero_open_checkpoint_vbuckets_test() ->
+    Stats = [{<<"vb_10:open_checkpoint_id">>, <<"0">>},
+             {<<"vb_11:open_checkpoint_id">>, <<"1">>},
+             {<<"vb_1:open_checkpoint_id">>, <<"3">>},
+             {<<"vb_1:casdsd_checkpoint_id">>, <<"0">>},
+             {<<"vb_5:open_checkpoint_id_">>, <<"0">>},
+             {<<"vb_678:open_checkpoint_id_">>, <<"1000232">>},
+             {<<"vb_678:open_checkpoint_id">>, <<"1000232">>},
+             {<<"vb_679:open_checkpoint_id_">>, <<"1">>}],
+    Run = fun (VBuckets, S) ->
+                  F = fun (_, <<"checkpoint">>, Folder, Acc) ->
+                              {ok, lists:foldl(fun ({K, V}, Acc1) ->
+                                                       Folder(K, V, Acc1)
+                                               end, Acc, S)}
+                      end,
+                  get_zero_open_checkpoint_vbuckets([], VBuckets, F)
+          end,
+    ?assertEqual([], lists:sort(Run([1], Stats))),
+    ?assertEqual([5, 10], lists:sort(Run([1, 5, 10], Stats))),
+    ?assertEqual([5, 10, 15], lists:sort(Run([1, 5, 10, 15], Stats))),
+    ?assertEqual([5, 10, 15], lists:sort(Run([15, 5, 10, 1], Stats))),
+    ?assertEqual([5, 10, 15, 679], lists:sort(Run([15, 5, 10, 1, 679, 678], Stats))).
 
+-endif.
+
+-spec get_zero_open_checkpoint_vbuckets(port(), [vbucket_id()]) -> [vbucket_id()].
 get_zero_open_checkpoint_vbuckets(Upstream, VBuckets) ->
-    StatNames = [iolist_to_binary([<<"vb_">>, integer_to_list(VBucket), <<":open_checkpoint_id">>])
-                 || VBucket <- VBuckets],
-    StatNamesTuple = erlang:list_to_tuple(lists:sort(StatNames)),
-    mc_binary:quick_stats(Upstream, <<"checkpoint">>,
-                          mk_get_zero_open_checkpoint_vbuckets_checker(StatNamesTuple), []).
+    get_zero_open_checkpoint_vbuckets(Upstream, VBuckets, fun mc_binary:quick_stats/4).
 
 build_sync_flags(Key, VBucket, CAS) ->
     <<

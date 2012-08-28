@@ -276,7 +276,7 @@ handle_call({start_vbucket_filter_change, VBuckets}, From,
     State1 = State#state{vb_filter_change_state=started,
                          vb_filter_change_owner=From},
 
-    {ok, NotReady} =
+    NotReady =
         mc_client_binary:get_zero_open_checkpoint_vbuckets(UpstreamAux,
                                                            NewVBuckets),
     case NotReady of
@@ -471,7 +471,7 @@ init({Src, Dst, Opts}=InitArgs) ->
          ok = mc_client_binary:set_vbucket(DownstreamAux, VBucket, replica)
      end || VBucket <- VBucketsToSetToReplica],
 
-    {ok, NotReadyVBuckets} = mc_client_binary:get_zero_open_checkpoint_vbuckets(UpstreamAux, VBuckets),
+    NotReadyVBuckets = mc_client_binary:get_zero_open_checkpoint_vbuckets(UpstreamAux, VBuckets),
     ReadyVBuckets = VBuckets -- NotReadyVBuckets,
 
     if
