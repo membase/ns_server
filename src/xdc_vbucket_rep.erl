@@ -492,7 +492,8 @@ compare_replication_logs(SrcDoc, TgtDoc) ->
 
 compare_rep_history(S, T) when S =:= [] orelse T =:= [] ->
     ?xdcr_info("no common ancestry -- performing full replication", []),
-    {?LOWEST_SEQ, []};
+    {?LOWEST_SEQ, 0, 0, []};
+
 compare_rep_history([{S} | SourceRest], [{T} | TargetRest] = Target) ->
     SourceId = get_value(<<"session_id">>, S),
     case has_session_id(SourceId, Target) of
