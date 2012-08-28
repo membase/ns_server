@@ -111,7 +111,7 @@ get_usable_vbuckets_set(Bucket) ->
     sets:from_list(
       [list_to_integer(binary_to_list(VBucketName))
        || FullName <- ns_storage_conf:bucket_databases(Bucket),
-          VBucketName <- [binary:part(FullName, PrefixLen, erlang:size(FullName) - PrefixLen)],
+          <<_:PrefixLen/binary, VBucketName/binary>> <- [FullName],
           VBucketName =/= <<"master">>]).
 
 do_apply_vbucket_states(SetName, Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, State) ->

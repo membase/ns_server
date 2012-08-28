@@ -1261,7 +1261,7 @@ multi_sync_send_all_state_event(Event) ->
 
 check_all_dbs_exist(BucketName, RequiredDbs0) ->
     {_VBuckets, RequiredDbs} = lists:unzip(RequiredDbs0),
-    ExistingDbs = ns_storage_conf:bucket_databases(BucketName),
+    ExistingDbs = lists:sort(ns_storage_conf:bucket_databases(BucketName)),
     SortedRequiredDbs = lists:usort(RequiredDbs),
 
     case do_check_all_dbs_exist(ExistingDbs, SortedRequiredDbs) of

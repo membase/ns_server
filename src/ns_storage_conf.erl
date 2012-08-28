@@ -372,40 +372,10 @@ extract_disk_stats_for_path(StatsList, Path0) ->
     SortedList = lists:sort(LessEqFn, StatsList),
     extract_disk_stats_for_path_rec(SortedList, Path).
 
-mk_is_bucket_database_predicate(BucketName) ->
-    Prefix = <<BucketName/binary, $/>>,
-    N = byte_size(Prefix),
-
-    fun (DbName) ->
-            case DbName of
-                <<ActualPrefix:N/binary, _/binary>> when ActualPrefix =:= Prefix ->
-                    true;
-                _ ->
-                    false
-            end
-    end.
-
 bucket_databases(Bucket) when is_list(Bucket) ->
     bucket_databases(list_to_binary(Bucket));
-bucket_databases(Bucket) when is_binary(Bucket)->
-    Pred = mk_is_bucket_database_predicate(Bucket),
-
-    {ok, BucketDbs} =
-        couch_server:all_databases(
-          fun (DbName, Acc) ->
-                  case Pred(DbName) of
-                      true ->
-                          {ok, [DbName | Acc]};
-                      false ->
-                          {ok, Acc}
-                  end
-          end, []),
-
-    BucketDbs2 = [D || D <- couch_server:all_known_databases(),
-                       Pred(D)],
-
-    lists:umerge(lists:usort(BucketDbs),
-                 lists:usort(BucketDbs2)).
+bucket_databases(Bucket) when is_binary(Bucket) ->
+    couch_server:all_known_databases_with_prefix(iolist_to_binary([Bucket, $/])).
 
 delete_couch_database(DB) ->
     RV = couch_server:delete(DB, []),
@@ -535,41 +505,6 @@ extract_disk_stats_for_path_test() ->
     ?assertEqual({ok, {"/dev", 10240, 2}},
                  extract_disk_stats_for_path(DiskSupStats, "/dev")).
 
-mk_is_bucket_database_predicate_test() ->
-    Pred = mk_is_bucket_database_predicate(<<"default">>),
-
-    AllDBs = lists:map(fun list_to_binary/1,
-                           ["_users",
-                            "_replicator",
-                            "bucket/master",
-                            "bucket/0",
-                            "bucket/1",
-                            "bucket/2",
-                            "bucket/3",
-                            "default_bucket/master",
-                            "default_bucket/0",
-                            "default_bucket/1",
-                            "default_bucket/2",
-                            "default_bucket/3",
-                            "default/master",
-                            "default/0",
-                            "default/1",
-                            "default/2",
-                            "default/3",
-                            "db/master",
-                            "db/0",
-                            "db/1",
-                            "db/2",
-                            "db/3"]),
-    DefaultBucketDBs = lists:map(fun list_to_binary/1,
-                                 ["default/master",
-                                  "default/0",
-                                  "default/1",
-                                  "default/2",
-                                  "default/3"]),
-
-    ?assertEqual(DefaultBucketDBs,
-                 lists:filter(Pred, AllDBs)).
 
 -endif.
 
