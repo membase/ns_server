@@ -657,6 +657,7 @@ var DocumentsSection = {
 
         couchReq("GET", newUrl, null,
           function (doc) {
+            stopSpinner();
             if (doc) {
               createDocWarning.text(documentErrors.alreadyExists).show();
             }
@@ -667,8 +668,8 @@ var DocumentsSection = {
               hideDialog(createDocDialog);
               self.documentIdCell.setValue(checkId);
             }, function (error, num, unexpected) {
+              stopSpinner();
               if (error.reason) {
-                stopSpinner();
                 createDocWarning.text(error.reason).show();
               } else {
                 unexpected();
@@ -735,8 +736,8 @@ var DocumentsSection = {
               tryShowJson(doc);
             });
           }, function (error, num, unexpected) {
+            showDocumentPendingState(false);
             if (error.reason) {
-              stopSpinner();
               editingNotice.text(error.reason).show();
             } else {
               unexpected();
@@ -759,8 +760,8 @@ var DocumentsSection = {
                 success();
               }
             }, function (error, num, unexpected) {
+              stopSpinner();
               if (error.reason) {
-                stopSpinner();
                 deleteDocDialogWarning.text(error.reason).show();
               } else {
                 unexpected();
