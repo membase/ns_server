@@ -13,7 +13,16 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  **/
-var LogoutTimer = {
+var LogoutTimer = ({
+  init: function () {
+    var debounce = _.debounce(function () {
+      LogoutTimer.reset();
+    }, 700, true);
+
+    $(document).bind('keydown mousedown scroll', debounce);
+
+    return this;
+  },
   reset: function () {
     if (this.timeoutId) {
       clearTimeout(this.timeoutId);
@@ -25,7 +34,7 @@ var LogoutTimer = {
   onTimeout: function () {
     performSignOut();
   }
-};
+}).init();
 
 function performSignOut(isVoluntary) {
   if (ModalAction.isActive()) {
