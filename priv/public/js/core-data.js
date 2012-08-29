@@ -410,7 +410,7 @@ var DAL = {
 
       var nodeClass = '';
       if (n.clusterMembership === 'inactiveFailed') {
-        nodeClass = 'failed_over';
+        nodeClass = n.status === 'unhealthy' ? 'server_down' : 'failed_over';
       } else if (n.status === 'healthy') {
         nodeClass = 'server_up';
       } else if (n.status === 'unhealthy') {

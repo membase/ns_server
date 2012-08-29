@@ -213,8 +213,12 @@
                   <a href="#openServer={%= h(s.otpNode) %}"><ins class="expander closed"></ins></a>
                   {%= V.stripPortHTML(s.hostname, rows) %}
               <!-- {% } else { %} -->
-                  <a class="{% if (!expandingAllowed) { %} disabled"{% } else { %}" href="#openServer={%= h(s.otpNode) %}"{% } %} title="Show Server Node info"><ins class="expander closed"></ins></a>
+                  <!-- {% if (s.nodeClass == 'server_down' || !expandingAllowed) { %} -->
+                  {%= h(s.hostname) %}
+                  <!-- {% } else { %} -->
+                  <a href="#openServer={%= h(s.otpNode) %}" title="Show Server Node info"><ins class="expander closed"></ins></a>
                   <a href="#sec=analytics&statsHostname={%= h(s.hostname) %}" title="View Analytics for {%= h(s.hostname) %}">{%= V.stripPortHTML(s.hostname, rows) %}</a>
+                  <!-- {% } %} -->
               <!-- {% } %} -->
                 </td>
 
