@@ -257,13 +257,13 @@ get_checkpoint_log_id(DbName0, LogId0) ->
 
 get_master_db(#db{name = DbName}) ->
     ?l2b(get_master_db(?b2l(DbName)));
-get_master_db(#httpdb{url=DbUrl0}) ->
+get_master_db(#httpdb{url=DbUrl0}=Http) ->
     [Scheme, Host, DbName0] = [couch_httpd:unquote(Token) ||
                                   Token <- string:tokens(DbUrl0, "/")],
     DbName = get_master_db(DbName0),
 
     DbUrl = Scheme ++ "//" ++ Host ++ "/" ++ couch_httpd:quote(DbName) ++ "/",
-    #httpdb{url = DbUrl, timeout = 300000};
+    Http#httpdb{url = DbUrl, httpc_pool = nil};
 get_master_db(DbName0) ->
     {DbName, UUID} = split_uuid(DbName0),
     {Bucket, _} = split_dbname(DbName),
