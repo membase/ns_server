@@ -55,8 +55,8 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
                                 (_, Acc) ->
                                     Acc
                             end,
-                        ?xdcr_error("initting 0", []),
     ns_pubsub:subscribe_link(ns_config_events, NsConfigEventsHandler, []),
+    ?xdcr_debug("ns config event handler subscribed", []),
 
     MaxConcurrentReps = misc:getenv_int("MAX_CONCURRENT_REPS_PER_DOC",
                                         ?MAX_CONCURRENT_REPS_PER_DOC),
@@ -68,13 +68,10 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
                     (_Evt) ->
                         ok
                 end,
-    ?xdcr_error("initting 1", []),
     {ok, _} = couch_db_update_notifier:start_link(NotifyFun),
-?xdcr_error("initting 2", []),
+    ?xdcr_debug("couch_db update notifier started", []),
     {ok, Throttle} = concurrency_throttle:start_link(MaxConcurrentReps),
-?xdcr_error("initting 3", []),
     {ok, Sup} = xdc_vbucket_rep_sup:start_link([]),
-?xdcr_error("initting 4", []),
     case ns_bucket:get_bucket(?b2l(SrcBucketBinary)) of
     {ok, SrcBucketConfig} ->
         Vbs = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),

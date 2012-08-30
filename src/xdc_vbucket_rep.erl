@@ -245,7 +245,7 @@ init_replication_state(Rep, Vb, Throttle, Parent) ->
         } = Rep,
     SrcVbDb = xdc_rep_utils:local_couch_uri_for_vbucket(Src, Vb),
     {ok, RemoteBucket} = remote_clusters_info:get_remote_bucket_by_ref(Tgt,
-                                                                       false),
+                                                                       true),
     TgtURI = hd(dict:fetch(Vb, RemoteBucket#remote_bucket.vbucket_map)),
     TgtDb = xdc_rep_utils:parse_rep_db(TgtURI),
     {ok, Source} = couch_api_wrap:db_open(SrcVbDb, []),

@@ -36,8 +36,9 @@
 -include("xdc_replicator.hrl").
 
 start_link(MaxConcurrency) ->
-    gen_server:start_link(?MODULE, MaxConcurrency, []).
-
+    {ok, Pid} = gen_server:start_link(?MODULE, MaxConcurrency, []),
+    ?xdcr_debug("concurrency throttle started: ~p", [Pid]),
+    {ok, Pid}.
 
 send_back_when_can_go(Server, Signal) ->
     send_back_when_can_go(Server, "NULL", Signal).

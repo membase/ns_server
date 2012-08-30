@@ -19,9 +19,12 @@
 -include("xdc_replicator.hrl").
 
 start_link(ChildSpecs) ->
-    supervisor:start_link(?MODULE, ChildSpecs).
+    {ok, Sup} = supervisor:start_link(?MODULE, ChildSpecs),
+    ?xdcr_debug("xdc vbucket replicator supervisor started: ~p", [Sup]),
+    {ok, Sup}.
 
 shutdown(Sup) ->
+    ?xdcr_debug("shutdown xdc vbucket replicator supervisor ~p",  [Sup]),
     MonRef = erlang:monitor(process, Sup),
     exit(Sup, shutdown),
     receive {'DOWN', MonRef, _Type, _Object, _Info} ->
