@@ -241,7 +241,7 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .darker_block.closed > div, .darker_block.closed ul.col_headers {display:none !important;}
 .darker_block.closed h3 ins, .expander.closed {margin:-3px 1.2em 0 4px;border-width:10px 0 10px 10px;border-color:transparent transparent transparent #01b0ff;}
 .darker_block.closed h3:hover ins, .expander.closed:hover {border-left-color:#339ACA;}
-.darker_block .analytics-small-graph {overflow:visible;width:174px !important;height:60px !important; margin:4px 7px 5px 12px}
+.darker_block .analytics-small-graph {overflow:visible;width:174px !important;height:60px !important; margin:4px 7px 5px 12px;z-index:1;}
 .darker_block .analytics-small-graph:hover {background-position:0 -122px;z-index:90;}
 .darker_block .analytics-small-graph.selected {background-position:0 -61px;}
 
