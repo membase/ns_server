@@ -1548,7 +1548,7 @@
                   <!-- {% }); %} -->
                 <!-- {% } else { %} -->
                   <tr>
-                    <td colspan="10" class="empty_docs">There are currently no documents in this bucket.</td>
+                    <td colspan="10" class="empty_docs">There are currently no documents in this bucket{%= searchCriteria ? ' corresponding to the search criteria' : '.' %}</td>
                   </tr>
                 <!-- {% } %} -->
                 </tbody>

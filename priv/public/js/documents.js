@@ -308,24 +308,28 @@ var DocumentsSection = {
       docsCrntPgCont.text(page.pageNumber + 1);
       docsTotalPgCont.text(page.isLookupList ? 'unknown' : Math.ceil(page.docs.total_rows / page.pageLimit || 1 ) );
 
+      var searchCriteria;
+      self.filter.filterParamsCell.getValue(function (value) {
+        searchCriteria = !$.isEmptyObject(value);
+      });
       var firstRow = page.docs.rows[0];
       if (firstRow && firstRow.key instanceof Object) {
         var error = new Error(firstRow.key.error);
         error.explanatoryMessage = '(' + firstRow.key.reason + ')';
         showDocumetsListErrorState(error);
-
         renderTemplate('documents_list', {
           loading: false,
           rows: [],
+          searchCriteria: searchCriteria,
           pageNumber: page.pageNumber,
           bucketName: page.bucketName
         });
       } else {
         showDocumetsListErrorState(false);
-
         renderTemplate('documents_list', {
           loading: false,
           rows: page.docs.rows,
+          searchCriteria: searchCriteria,
           pageNumber: page.pageNumber,
           bucketName: page.bucketName
         });
