@@ -448,9 +448,9 @@ mk_mc_couch_event_handler() ->
     end.
 
 handle_mc_couch_event(Self,
-                      {set_vbucket, Bucket, VBucket, State, _Checkpoint}) ->
-    ?views_debug("Got set_vbucket event for ~s/~b. Updated state: ~p",
-                 [Bucket, VBucket, State]),
+                      {set_vbucket, Bucket, VBucket, State, Checkpoint}) ->
+    ?views_debug("Got set_vbucket event for ~s/~b. Updated state: ~p (~B)",
+                 [Bucket, VBucket, State, Checkpoint]),
     Self ! refresh_usable_vbuckets;
 handle_mc_couch_event(Self,
                       {delete_vbucket, _Bucket, VBucket}) ->
