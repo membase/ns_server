@@ -160,47 +160,45 @@
                                             (supervisor 'single_bucket_sup :mode :rest_for_one
                                                         ;; note: 1.8.1 doesn't have ns_memcached_sup but instead
                                                         ;; everything below is direct child of single_bucket_sup
-                                                        (cb_generic_replication_srv '(capi_ddoc_replication_srv "default") :since "2.0"
-                                                                                    "replicates ddocs across cluster")
-                                                        (supervisor '(ns_memcached_sup "default") :mode :rest_for_one
-                                                                    (gen-server '(capi_set_view_manager "default") :since "2.0"
-                                                                                "changes state of set indexes so that
-                                                                                indexing covers active and only active
-                                                                                vbuckets.")
-                                                                    (gen-server '(ns_memcached "default") :name 'ns_memcached-default
-                                                                                "our communication channel with
-                                                                                 bucket. Creates bucket on
-                                                                                 startup. Monitors it for
-                                                                                 warmup. Monitors bucket parameters
-                                                                                 versus config (i.e. if bucket quota
-                                                                                 needs to be adjusted). Performs
-                                                                                 requests to grab stats and change
-                                                                                 vbucket states")
-                                                                    (supervisor '(ns_vbm_sup "default") :name 'ns_vbm_sup-default
-                                                                                "hosts replication ebucketmigrators")
-                                                                    (supervisor '(ns_vbm_new_sup "default") :name 'ns_vbm_sup-default :since "2.0"
-                                                                                "hosts replication ebucketmigrators for
-                                                                                1.8.2 \"replicators on destination\"")
-                                                                    (gen-server '(janitor_agent "default") :name 'janitor_agent-default :since "2.0"
-                                                                                "applies replication and vbucket state
-                                                                                changes decided by janitor and vbuckets
-                                                                                mover")
-                                                                    (gen-server '(couch_stats_reader "default") :name 'couch_stats_reader-default :since "2.0"
-                                                                                "samples & keeps some couch stats so that stats_collector can get them quickly")
-                                                                    (gen-server '(stats_collector "default")
-                                                                                "on each tick grabs memcached stats"
-                                                                                "parses/massages them a bit and sends them out to ns_stats_event"
-                                                                                (pubsub-link nil :to 'ns_tick_event))
-                                                                    (gen-server '(stats_archiver "default")
-                                                                                "saves stats for this bucket that it sees
-                                                                                 on ns_stats_event"
-                                                                                (pubsub-link nil :to 'ns_stats_event))
-                                                                    (gen-server '(stats_reader "default")
-                                                                                "used to read mnesia stats archive")
-                                                                    (event-handler '(failover_safeness_level "default") :to 'ns_stats_event
-                                                                                   "estimates bucket's replication
-                                                                                   up-to-date-ness 'from this node' based
-                                                                                   on stats it sees")))))
+                                                        (gen-server '(ns_memcached "default") :name 'ns_memcached-default
+                                                                    "our communication channel with bucket. Creates
+                                                                     bucket on startup. Monitors it for warmup. Monitors
+                                                                     bucket parameters versus config (i.e. if bucket
+                                                                     quota needs to be adjusted). requests to grab stats
+                                                                     and change vbucket states"
+                                                                    (worker :name 'capi_ddoc_replication_srv-default
+                                                                            "In order to avoid breaking backwards compat
+                                                                             with C-release all ddoc replication casts
+                                                                             are actually sent to this guy, which merely
+                                                                             proxies them to capi_set_view_manager"))
+                                                        (supervisor '(ns_vbm_sup "default") :name 'ns_vbm_sup-default
+                                                                    "hosts replication ebucketmigrators")
+                                                        (gen_server '(tap_replication_manager "default") :name 'tap_replication_manager-default
+                                                                    "keeps track of desired replications. Serializes
+                                                                    replication changes w.r.t. not-ready-vbuckets
+                                                                    restarts.")
+                                                        (supervisor '(ns_vbm_new_sup "default") :name 'ns_vbm_sup-default :since "2.0"
+                                                                    "hosts replication ebucketmigrators for 2.0
+                                                                     \"replicators on destination\"")
+                                                        (gen-server '(janitor_agent "default") :name 'janitor_agent-default :since "2.0"
+                                                                    "applies replication and vbucket state changes
+                                                                     decided by janitor and vbuckets mover")
+                                                        (gen-server '(couch_stats_reader "default") :name 'couch_stats_reader-default :since "2.0"
+                                                                    "samples & keeps some couch stats so that
+                                                                    stats_collector can get them quickly")
+                                                        (gen-server '(stats_collector "default")
+                                                                    "on each tick grabs memcached stats parses/massages
+                                                                     them a bit and sends them out to ns_stats_event"
+                                                                    (pubsub-link nil :to 'ns_tick_event))
+                                                        (gen-server '(stats_archiver "default")
+                                                                    "saves stats for this bucket that it sees on
+                                                                     ns_stats_event"
+                                                                    (pubsub-link nil :to 'ns_stats_event))
+                                                        (gen-server '(stats_reader "default")
+                                                                    "used to read mnesia stats archive")
+                                                        (event-handler '(failover_safeness_level "default") :to 'ns_stats_event
+                                                                       "estimates bucket's replication up-to-date-ness
+                                                                        'from this node' based on stats it sees"))))
                         (gen-server 'system_stats_collector)
                         (gen-server '(stats_archiver "@system"))
                         (gen-server '(stats_reader "@system"))
@@ -212,4 +210,4 @@
                         (cb_generic_replication_srv 'xdc_rdoc_replication_srv :since "2.0"
                                                     "replicates _replicator docs across cluster")
                         (gen-server 'set_view_update_daemon :since "2.0"
-                                    "periodically triggers set view indexes update"))
+                                    "periodically triggers set view indexes update")))
