@@ -404,7 +404,7 @@ do_bulk_set_vbucket_state_old_style(RebalancerPid, Bucket, VBucket, NodeVBucketS
     ok = ns_vbm_sup:set_vbucket_replications(RebalancerPid, Bucket, VBucket, DstSrcPairs).
 
 set_vbucket_state(Bucket, Node, RebalancerPid, VBucket, VBucketState, VBucketRebalanceState, ReplicateFrom) ->
-    ?rebalance_info("Doing vbucket ~p state change: ~p", [VBucket, {Node, VBucketState, VBucketRebalanceState, ReplicateFrom}]), 
+    ?rebalance_info("Doing vbucket ~p state change: ~p", [VBucket, {Node, VBucketState, VBucketRebalanceState, ReplicateFrom}]),
     case new_style_enabled() of
         true ->
             ok = gen_server:call(server_name(Bucket, Node),
