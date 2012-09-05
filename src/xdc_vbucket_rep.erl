@@ -199,8 +199,9 @@ handle_cast({report_seq, Seq},
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-terminate(Reason, {_Rep, _Vb, _Throttle, _Parent}) ->
+terminate(Reason, {#rep{target = TargetRef}, _Vb, _Throttle, _Parent}) ->
     ?xdcr_error("Shutting down without ever successfully initilizing: ~p", [Reason]),
+    remote_clusters_info:invalidate_remote_bucket_by_ref(TargetRef),
     ok;
 
 terminate(Reason, State) when Reason == normal orelse Reason == shutdown ->
@@ -209,7 +210,7 @@ terminate(Reason, State) when Reason == normal orelse Reason == shutdown ->
 terminate(Reason, #rep_state{
                            source_name = Source,
                            target_name = Target,
-                           rep_details = #rep{id = Id, target = TargetRef} = _Rep
+                           rep_details = #rep{id = Id, target = TargetRef}
                           } = State) ->
     ?xdcr_error("Replication `~s` (`~s` -> `~s`) failed: ~s",
                 [Id, Source, Target, to_binary(Reason)]),
@@ -245,7 +246,7 @@ init_replication_state(Rep, Vb, Throttle, Parent) ->
         } = Rep,
     SrcVbDb = xdc_rep_utils:local_couch_uri_for_vbucket(Src, Vb),
     {ok, RemoteBucket} = remote_clusters_info:get_remote_bucket_by_ref(Tgt,
-                                                                       true),
+                                                                       false),
     TgtURI = hd(dict:fetch(Vb, RemoteBucket#remote_bucket.vbucket_map)),
     TgtDb = xdc_rep_utils:parse_rep_db(TgtURI),
     {ok, Source} = couch_api_wrap:db_open(SrcVbDb, []),
