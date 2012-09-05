@@ -38,12 +38,33 @@ child_specs(BucketName) ->
     [{{capi_ddoc_replication_srv, BucketName},
       {capi_ddoc_replication_srv, start_link, [BucketName]},
       permanent, 1000, worker, [capi_ddoc_replication_srv]},
-     {{ns_memcached_sup, BucketName},
-      {ns_memcached_sup, start_link, [BucketName]},
-      %% ns_memcached can take a long time to terminate; but it will do it in
-      %% a finite amount of time since all the shutdown timeouts in
-      %% ns_memcached_sup are finite
-      permanent, infinity, supervisor, [ns_memcached_sup]}].
+     {{capi_set_view_manager, BucketName},
+      {capi_set_view_manager, start_link, [BucketName]},
+      permanent, 1000, worker, [capi_set_view_manager]},
+     {{ns_memcached, BucketName}, {ns_memcached, start_link, [BucketName]},
+      %% sometimes bucket deletion is slow. NOTE: we're not deleting
+      %% bucket on system shutdown anymore
+      permanent, 86400000, worker, [ns_memcached]},
+     {{tap_replication_manager, BucketName}, {tap_replication_manager, start_link, [BucketName]},
+      permanent, 1000, worker, []},
+     {{ns_vbm_new_sup, BucketName}, {ns_vbm_new_sup, start_link, [BucketName]},
+      permanent, infinity, supervisor, [ns_vbm_new_sup]},
+     {{ns_vbm_sup, BucketName}, {ns_vbm_sup, start_link, [BucketName]},
+      permanent, 1000, supervisor, []},
+     {{janitor_agent, BucketName}, {janitor_agent, start_link, [BucketName]},
+      permanent, brutal_kill, worker, []},
+     {{couch_stats_reader, BucketName},
+      {couch_stats_reader, start_link, [BucketName]},
+      permanent, 1000, worker, [couch_stats_reader]},
+     {{stats_collector, BucketName}, {stats_collector, start_link, [BucketName]},
+      permanent, 1000, worker, [stats_collector]},
+     {{stats_archiver, BucketName}, {stats_archiver, start_link, [BucketName]},
+      permanent, 1000, worker, [stats_archiver]},
+     {{stats_reader, BucketName}, {stats_reader, start_link, [BucketName]},
+      permanent, 1000, worker, [stats_reader]},
+     {{failover_safeness_level, BucketName},
+      {failover_safeness_level, start_link, [BucketName]},
+      permanent, 1000, worker, [failover_safeness_level]}].
 
 init([BucketName]) ->
     {ok, {{one_for_one,
