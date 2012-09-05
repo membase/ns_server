@@ -356,7 +356,7 @@ do_prepare_nodes_for_rebalance(Bucket, Nodes, RebalancerPid) ->
 %% because stale data is ok.
 this_node_replicator_triples(Bucket) ->
     case new_style_enabled() of
-        true -> case replication_changes:get_incoming_replication_map(Bucket) of
+        true -> case tap_replication_manager:get_incoming_replication_map(Bucket) of
                     not_running ->
                         [];
                     List ->
@@ -493,7 +493,7 @@ handle_call(query_vbucket_states, _From, #state{bucket_name = BucketName} = Stat
     {reply, RV, State};
 handle_call(get_incoming_replication_map, _From, #state{bucket_name = BucketName} = State) ->
     %% NOTE: has infinite timeouts but uses only local communication
-    RV = replication_changes:get_incoming_replication_map(BucketName),
+    RV = tap_replication_manager:get_incoming_replication_map(BucketName),
     {reply, RV, State};
 handle_call({prepare_rebalance, _Pid}, _From,
             #state{last_applied_vbucket_states = undefined} = State) ->
@@ -522,19 +522,7 @@ handle_call({update_vbucket_state, VBucket, NormalState, RebalanceState, Replica
                            rebalance_only_vbucket_states = NewRebalanceVBuckets},
     %% TODO: consider infinite timeout. It's local memcached after all
     ok = ns_memcached:set_vbucket(BucketName, VBucket, NormalState),
-    CurrentReps = replication_changes:get_incoming_replication_map(BucketName),
-    CurrentReps0 = [{Node, ordsets:del_element(VBucket, VBuckets)}
-                    || {Node, VBuckets} <- CurrentReps],
-    DesiredReps = case ReplicateFrom of
-                      undefined ->
-                          CurrentReps0;
-                      _ ->
-                          misc:ukeymergewith(fun ({Node, VBucketsA}, {_, VBucketsB}) ->
-                                                     {Node, ordsets:union(VBucketsA, VBucketsB)}
-                                             end, 1,
-                                             CurrentReps0, [{ReplicateFrom, [VBucket]}])
-                  end,
-    ok = replication_changes:set_incoming_replication_map(BucketName, DesiredReps),
+    ok = tap_replication_manager:change_vbucket_replication(BucketName, VBucket, ReplicateFrom),
     {reply, ok, pass_vbucket_states_to_set_view_manager(NewState)};
 handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, _From, #state{bucket_name = BucketName} = State) ->
     ns_vbm_sup:kill_all_local_children(BucketName),
@@ -600,7 +588,7 @@ handle_call({apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
     WantedReplications = [{Src, [VB || {_, VB} <- Pairs]}
                           || {Src, Pairs} <- misc:keygroup(1, lists:sort(WantedReplicas))],
     ns_vbm_new_sup:ping_all_replicators(BucketName),
-    ok = replication_changes:set_incoming_replication_map(BucketName, WantedReplications),
+    ok = tap_replication_manager:set_incoming_replication_map(BucketName, WantedReplications),
     {reply, ok, State};
 handle_call({delete_vbucket, VBucket}, _From, #state{bucket_name = BucketName} = State) ->
     {reply, ok = ns_memcached:delete_vbucket(BucketName, VBucket), State};

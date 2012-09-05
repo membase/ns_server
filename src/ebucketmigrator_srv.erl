@@ -481,10 +481,15 @@ init({Src, Dst, Opts}=InitArgs) ->
             inc_counter(ebucketmigrator_not_ready_times),
             inc_counter(ebucketmigrator_not_ready_vbuckets,
                         length(NotReadyVBuckets)),
-
             ?rebalance_info("Some vbuckets were not yet ready to replicate from:~n~p~n",
                             [NotReadyVBuckets]),
-            erlang:send_after(30000, self(), retry_not_ready_vbuckets);
+
+            case proplists:get_value(on_not_ready_vbuckets, Opts) of
+                undefined ->
+                    erlang:send_after(30000, self(), retry_not_ready_vbuckets);
+                Action ->
+                    Action()
+            end;
         true ->
             ok
     end,

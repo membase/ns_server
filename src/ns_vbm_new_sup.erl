@@ -30,10 +30,8 @@
 
 %% Callbacks
 -export([server_name/1, supervisor_node/2,
-         make_replicator/3, replicator_nodes/2, replicator_vbuckets/1,
+         make_replicator/2, replicator_nodes/2, replicator_vbuckets/1,
          ping_all_replicators/1, build_child_spec/2]).
-
--export([local_change_vbucket_filter/4]).
 
 -export([perform_vbucket_filter_change/6]).
 
@@ -61,8 +59,8 @@ server_name(Bucket) ->
 supervisor_node(_SrcNode, DstNode) ->
     DstNode.
 
--spec make_replicator(node(), node(), [vbucket_id(), ...]) -> #new_child_id{}.
-make_replicator(SrcNode, _DstNode, VBuckets) ->
+-spec make_replicator(node(), [vbucket_id(), ...]) -> #new_child_id{}.
+make_replicator(SrcNode, VBuckets) ->
     #new_child_id{vbuckets=VBuckets, src_node=SrcNode}.
 
 -spec replicator_nodes(node(), #new_child_id{}) -> {node(), node()}.
@@ -72,21 +70,6 @@ replicator_nodes(SupervisorNode, #new_child_id{src_node=Node}) ->
 -spec replicator_vbuckets(#new_child_id{}) -> [vbucket_id(), ...].
 replicator_vbuckets(#new_child_id{vbuckets=VBuckets}) ->
     VBuckets.
-
-local_change_vbucket_filter(Bucket, DstNode, #new_child_id{src_node=SrcNode} = ChildId, NewVBuckets) ->
-    NewChildId = #new_child_id{src_node = SrcNode,
-                               vbuckets = NewVBuckets},
-    Args = ebucketmigrator_srv:build_args(Bucket,
-                                          SrcNode, DstNode, NewVBuckets, false),
-
-    MFA = {ebucketmigrator_srv, start_vbucket_filter_change, [NewVBuckets]},
-
-    {ok, perform_vbucket_filter_change(Bucket,
-                                       ChildId,
-                                       NewChildId,
-                                       Args,
-                                       MFA,
-                                       server_name(Bucket))}.
 
 mk_old_state_retriever(Id) ->
     %% this function's closure will be kept in supervisor, so I want

@@ -31,10 +31,13 @@ child_specs(BucketName) ->
       {capi_set_view_manager, start_link, [BucketName]},
       permanent, 1000, worker, [capi_set_view_manager]},
      {{ns_memcached, BucketName}, {ns_memcached, start_link, [BucketName]},
-      %% ns_memcached waits for the bucket to sync to disk before exiting
+      %% sometimes bucket deletion is slow. NOTE: we're not deleting
+      %% bucket on system shutdown anymore
       permanent, 86400000, worker, [ns_memcached]},
+     {{tap_replication_manager, BucketName}, {tap_replication_manager, start_link, [BucketName]},
+      permanent, 1000, worker, []},
      {{ns_vbm_new_sup, BucketName}, {ns_vbm_new_sup, start_link, [BucketName]},
-      permanent, 1000, supervisor, [ns_vbm_new_sup]},
+      permanent, infinity, supervisor, [ns_vbm_new_sup]},
      {{ns_vbm_sup, BucketName}, {ns_vbm_sup, start_link, [BucketName]},
       permanent, 1000, supervisor, []},
      {{janitor_agent, BucketName}, {janitor_agent, start_link, [BucketName]},
