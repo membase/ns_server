@@ -33,7 +33,8 @@
          nodes_actual/0,
          random_node/0,
          nodes_actual_proper/0,
-         nodes_actual_other/0]).
+         nodes_actual_other/0,
+         register_node_renaming_txn/1]).
 
 -export([ns_log_cat/1, ns_log_code_string/1]).
 
@@ -44,7 +45,8 @@
 
 -record(state, {
           nodes :: [node()],
-          we_were_shunned = false :: boolean()
+          we_were_shunned = false :: boolean(),
+          node_renaming_txt_mref :: undefined | reference()
          }).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -64,6 +66,9 @@ nodes_actual() ->
 
 nodes_actual_proper() ->
     gen_server:call(?MODULE, nodes_actual_proper).
+
+register_node_renaming_txn(Pid) ->
+    gen_server:call(?MODULE, {register_node_renaming_txn, Pid}).
 
 random_node() ->
     WorkingNodes = lists:filter(fun(N) ->
@@ -131,6 +136,15 @@ handle_cast(_Msg, State)       -> {noreply, State}.
 % Read from ns_config nodes_wanted, and add ourselves to the
 % nodes_wanted list, if not already there.
 
+handle_call({register_node_renaming_txn, Pid}, _From, State) ->
+    case State of
+        #state{node_renaming_txt_mref = undefined} ->
+            MRef = erlang:monitor(process, Pid),
+            NewState = State#state{node_renaming_txt_mref = MRef},
+            {reply, ok, NewState};
+        _ ->
+            {reply, already_doing_renaming, State}
+    end;
 handle_call(nodes_actual_proper, _From, State) ->
     {reply, do_nodes_actual_proper(), State};
 
@@ -141,6 +155,9 @@ handle_call(Msg, _From, State) ->
     ?log_warning("Unhandled ~p call: ~p", [?MODULE, Msg]),
     {reply, error, State}.
 
+handle_info({'DOWN', MRef, _, _, _}, #state{node_renaming_txt_mref = MRef} = State) ->
+    self() ! notify_clients,
+    {noreply, State#state{node_renaming_txt_mref = undefined}};
 handle_info({nodeup, Node}, State) ->
     ?user_log(?NODE_UP, "Node ~p saw that node ~p came up.",
               [node(), Node]),
@@ -163,7 +180,9 @@ handle_info(ping_all, State) ->
     spawn_link(fun ping_all/0),
     {noreply, State};
 
-handle_info(_Msg, State) -> {noreply, State}.
+handle_info(Msg, State) ->
+    ?log_warning("dropping unknown message on the floor:~n~p", [Msg]),
+    {noreply, State}.
 
 % -----------------------------------------------------------
 
@@ -212,6 +231,8 @@ do_nodes_actual_proper() ->
     Diff = lists:subtract(Curr, Want),
     lists:usort(lists:subtract(Curr, Diff)).
 
+do_notify(#state{node_renaming_txt_mref = MRef} = State) when MRef =/= undefined ->
+    State;
 do_notify(#state{nodes = NodesOld} = State) ->
     NodesNew = do_nodes_actual_proper(),
     case NodesNew =:= NodesOld of

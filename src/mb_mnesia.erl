@@ -121,23 +121,29 @@ handle_call({maybe_rename, NewAddr}, _From, State) ->
     %% because it will fail if the node name doesn't match the schema.
     backup(),
     OldName = node(),
-    case dist_manager:adjust_my_address(NewAddr) of
-        nothing ->
-            ?log_debug("Not renaming node. Deleting backup.", []),
-            ok = file:delete(backup_file()),
-            {reply, false, State};
-        net_restarted ->
-            master_activity_events:note_name_changed(),
-            %% Make sure the cookie's still the same
-            NewName = node(),
-            ?log_debug("Renaming node from ~p to ~p.", [OldName, NewName]),
-            rename_node_in_config(OldName, NewName),
-            stopped = mnesia:stop(),
-            change_node_name(OldName, NewName),
-            ok = mnesia:delete_schema([NewName]),
-            {ok, State1} = init([]),
-            {reply, true, State1}
-    end;
+    misc:executing_on_new_process(
+      fun () ->
+              %% prevent node disco events while we're in the middle
+              %% of renaming
+              ns_node_disco:register_node_renaming_txn(self()),
+              case dist_manager:adjust_my_address(NewAddr) of
+                  nothing ->
+                      ?log_debug("Not renaming node. Deleting backup.", []),
+                      ok = file:delete(backup_file()),
+                      {reply, false, State};
+                  net_restarted ->
+                      master_activity_events:note_name_changed(),
+                      %% Make sure the cookie's still the same
+                      NewName = node(),
+                      ?log_debug("Renaming node from ~p to ~p.", [OldName, NewName]),
+                      rename_node_in_config(OldName, NewName),
+                      stopped = mnesia:stop(),
+                      change_node_name(OldName, NewName),
+                      ok = mnesia:delete_schema([NewName]),
+                      {ok, State1} = init([]),
+                      {reply, true, State1}
+              end
+      end);
 
 handle_call(wipe, _From, State) ->
     stopped = mnesia:stop(),
