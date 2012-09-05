@@ -144,6 +144,13 @@ perform_vbucket_filter_change(Bucket,
 
                       erlang:process_flag(trap_exit, true),
                       ok = supervisor:terminate_child(Server, OldChildId),
+                      %% new style replication does not need this, but old style does
+                      case cluster_compat_mode:is_cluster_20() of
+                          true ->
+                              ok;
+                          _ ->
+                              ok = supervisor:delete_child(Server, OldChildId)
+                      end,
                       Me = self(),
                       proc_lib:spawn_link(
                         fun () ->
@@ -198,6 +205,12 @@ ping_some_replicator(Pid) ->
     end.
 
 build_child_spec(ChildId, Args) ->
+    RestartType = case cluster_compat_mode:is_cluster_20() of
+                      true ->
+                          temporary;
+                      false ->
+                          permanent
+                  end,
     {ChildId,
      {ebucketmigrator_srv, start_link, Args},
-     temporary, 60000, worker, [ebucketmigrator_srv]}.
+     RestartType, 60000, worker, [ebucketmigrator_srv]}.
