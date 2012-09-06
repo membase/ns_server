@@ -989,7 +989,7 @@
             <!-- {% } else { %} -->
             <!-- {% _.each(rows, function (ddoc) {  %} -->
               <tr>
-                <td class="design_doc_name">
+                <td class="design_doc_name ellipsis">
                   {%= h(ddoc.meta.id) %}
                 </td>
                 <td class="langv">{%= h(ddoc.language || "javascript") %}</td>
@@ -1017,7 +1017,7 @@
               <!-- {% } else { if (_.size(ddoc.json.viewInfos) > 0) { %} -->
               <!-- {% _.each(ddoc.json.viewInfos, function (viewInfo) { %} -->
               <tr>
-                <td class="view_name" colspan="5">
+                <td class="view_name ellipsis" colspan="5">
                   <a style="display:block;line-height:33px;" href="{%=h(viewInfo.viewLink)%}">{%= h(viewInfo.name) %}</a>
                 </td>
                 <td>
@@ -1029,7 +1029,7 @@
               <!-- {% } if (_.size(ddoc.json.spatialInfos) > 0) { %} -->
               <!-- {% _.each(ddoc.json.spatialInfos, function (spatialInfo) { %} -->
               <tr>
-                <td class="view_name" colspan="5">
+                <td class="view_name ellipsis" colspan="5">
                   <a href="{%=h(spatialInfo.viewLink)%}">[Spatial] {%= h(spatialInfo.name) %}</a>
                 </td>
                 <td>
