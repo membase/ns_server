@@ -1022,7 +1022,7 @@
                 </td>
                 <td>
                   <a class="list_button btn_remove" href="{%=h(viewInfo.removeLink)%}"><span>Delete</span></a>
-                  <a class="list_button btn_edit" href="{%=h(viewInfo.viewLink)%}"><span>Edit</span></a>
+                  <a class="list_button btn_edit" href="{%=h(viewInfo.viewLink)%}"><span>{%= ddoc.isDevModeDoc ? 'Edit' : 'Show' %}</span></a>
                 </td>
               </tr>
               <!-- {% }); %} -->

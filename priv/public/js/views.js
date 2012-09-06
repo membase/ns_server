@@ -257,6 +257,7 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
       return _.map(v.need(ns.rawAllDDocsCell).rows, function (r) {
         var doc = _.clone(r.doc);
         doc.compactURI = r.controllers.compact;
+        doc.isDevModeDoc = isDevModeDoc(doc);
         return doc;
       });
     } else {
@@ -310,7 +311,7 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
     var bucketName = v.need(ns.viewsBucketCell);
 
     var ddocs = _.sortBy(v.need(ns.allDDocsCell), function(ddoc) {
-      return !isDevModeDoc(ddoc);
+      return !ddoc.isDevModeDoc;
     });
     var ddocAndView = v.need(ns.currentDDocAndView);
     var ddocAndSpatial = v.need(ns.currentDDocAndSpatial);
@@ -328,10 +329,10 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
       var viewNames = _.keys(doc.json.views || {}).sort();
       var spatialNames = _.keys(doc.json.spatial || {}).sort();
 
-      if (isDevModeDoc(doc) && !devOptgroupOutput) {
+      if (doc.isDevModeDoc && !devOptgroupOutput) {
         rv += '<optgroup label="Development Views" class="topgroup">';
         devOptgroupOutput = true;
-      } else if (!isDevModeDoc(doc) && !productionOptgroupOutput) {
+      } else if (!doc.isDevModeDoc && !productionOptgroupOutput) {
         rv += '</optgroup><optgroup label="Production Views" class="topgroup">';
         productionOptgroupOutput = true;
       }
@@ -518,14 +519,14 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
   ns.productionDDocsCell = Cell.compute(function (v) {
     var allDDocs = v.need(ns.allDDocsCell);
     return _.select(allDDocs, function (ddoc) {
-      return !isDevModeDoc(ddoc);
+      return !ddoc.isDevModeDoc;
     });
   });
 
   ns.devDDocsCell = Cell.compute(function (v) {
     var allDDocs = v.need(ns.allDDocsCell);
     return _.select(allDDocs, function (ddoc) {
-      return isDevModeDoc(ddoc);
+      return ddoc.isDevModeDoc
     });
   });
 
