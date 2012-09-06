@@ -720,7 +720,8 @@ remote_bucket_from_nodes([Node | Rest], Bucket, Username, Password, UUID) ->
         {error, Type, _} when Type =:= not_present;
                               Type =:= not_capable ->
             R;
-        _Other ->
+        Other ->
+            ?log_info("Failed to get bucket info from node ~p:~n~p", [Node, Other]),
             remote_bucket_from_nodes(Rest, Bucket, Username, Password, UUID)
     end.
 
