@@ -35,7 +35,7 @@
 -behaviour(gen_server).
 
 %% public functions
--export([start_link/4]).
+-export([start_link/5]).
 
 %% gen_server callbacks
 -export([init/1, terminate/2, code_change/3]).
@@ -44,16 +44,16 @@
 -include("xdc_replicator.hrl").
 -include("remote_clusters_info.hrl").
 
-start_link(Rep, Vb, Throttle, Parent) ->
-    gen_server:start_link(?MODULE, {Rep, Vb, Throttle, Parent}, []).
+start_link(Rep, Vb, InitThrottle, WorkThrottle, Parent) ->
+    gen_server:start_link(?MODULE, {Rep, Vb, InitThrottle, WorkThrottle, Parent}, []).
 
 
 %% gen_server behavior callback functions
-init({Rep, Vb, Throttle, Parent}) ->
+init({Rep, Vb, InitThrottle, WorkThrottle, Parent}) ->
     process_flag(trap_exit, true),
     % signal to self to initialize
-    self() ! {init, ?VB_REP_VB_MISSING_WAIT_TIME_INITIAL},
-    {ok, {Rep, Vb, Throttle, Parent}}.
+    ok = concurrency_throttle:send_back_when_can_go(InitThrottle, {init, ?VB_REP_VB_MISSING_WAIT_TIME_INITIAL}),
+    {ok, {Rep, Vb, InitThrottle, WorkThrottle, Parent}}.
 
 handle_info({'EXIT',_Pid, normal}, St) ->
     {noreply, St};
@@ -61,9 +61,9 @@ handle_info({'EXIT',_Pid, normal}, St) ->
 handle_info({'EXIT',_Pid, Reason}, St) ->
     {stop, Reason, St};
 
-handle_info({init, RetryTime}, {Rep, Vb, Throttle, Parent} = InitState) ->
+handle_info({init, RetryTime}, {Rep, Vb, InitThrottle, WorkThrottle, Parent} = InitState) ->
     try
-        State = init_replication_state(Rep, Vb, Throttle, Parent),
+        State = init_replication_state(Rep, Vb, WorkThrottle, Parent),
         self() ! src_db_updated, % signal to self to check for changes
         {noreply, update_state_to_parent(State)}
     catch
@@ -72,11 +72,17 @@ handle_info({init, RetryTime}, {Rep, Vb, Throttle, Parent} = InitState) ->
             % we stop.
             % double retry time
             timer:send_after(RetryTime*2, {init, RetryTime*2}),
-            {noreply, InitState};
+            {noreply, {Rep, Vb, nil, WorkThrottle, Parent} };
         throw:{db_not_found, DbUri} ->
             {stop, {db_not_found, <<"timeout: could not open ", DbUri/binary>>}, InitState};
         throw:Error ->
             {stop, Error, InitState}
+    after
+        if InitThrottle /= nil ->
+            concurrency_throttle:is_done(InitThrottle);
+        true ->
+            ok
+        end
     end;
 
 handle_info(src_db_updated,

@@ -32,7 +32,8 @@
     rep,                    % the basic replication settings
     vbucket_sup,            % the supervisor for vb replicators
     vbs = [],               % list of vb we should be replicating
-    concurrency_throttle,   % limits # of concurrent vb replicators
+    init_throttle,          % limits # of concurrent vb replicators initializing
+    work_throttle,          % limits # of concurrent vb replicators working
     vb_rep_dict = dict:new()% contains state and stats for each replicator
     }).
 
@@ -70,19 +71,22 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
                 end,
     {ok, _} = couch_db_update_notifier:start_link(NotifyFun),
     ?xdcr_debug("couch_db update notifier started", []),
-    {ok, Throttle} = concurrency_throttle:start_link(MaxConcurrentReps),
+    {ok, InitThrottle} = concurrency_throttle:start_link(MaxConcurrentReps),
+    {ok, WorkThrottle} = concurrency_throttle:start_link(MaxConcurrentReps),
     {ok, Sup} = xdc_vbucket_rep_sup:start_link([]),
     case ns_bucket:get_bucket(?b2l(SrcBucketBinary)) of
     {ok, SrcBucketConfig} ->
         Vbs = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
         RepState0 = #replication{rep = Rep,
                                  vbs = Vbs,
-                                 concurrency_throttle = Throttle,
+                                 init_throttle = InitThrottle,
+                                 work_throttle = WorkThrottle,
                                  vbucket_sup = Sup},
         RepState = start_vb_replicators(RepState0);
     _Else ->
         RepState = #replication{rep = Rep,
-                                concurrency_throttle = Throttle,
+                                init_throttle = InitThrottle,
+                                work_throttle = WorkThrottle,
                                 vbucket_sup = Sup}
     end,
     {ok, RepState}.
@@ -175,7 +179,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 start_vb_replicators(#replication{rep = Rep,
                                   vbucket_sup = Sup,
-                                  concurrency_throttle = Throttle,
+                                  init_throttle = InitThrottle,
+                                  work_throttle = WorkThrottle,
                                   vbs = Vbs,
                                   vb_rep_dict = Dict} = Replication) ->
     CurrentVbs = [element(1, Spec) || Spec <- supervisor:which_children(Sup)],
@@ -192,7 +197,7 @@ start_vb_replicators(#replication{rep = Rep,
     lists:foreach(
                     fun(Vb) ->
                             Spec = {Vb,
-                                    {xdc_vbucket_rep, start_link, [Rep, Vb, Throttle, self()]},
+                                    {xdc_vbucket_rep, start_link, [Rep, Vb, InitThrottle, WorkThrottle, self()]},
                                     permanent,
                                     100,
                                     worker,
