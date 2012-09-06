@@ -40,10 +40,7 @@
 -define(DOC_BUFFER_LEN, 10).                 %% for local targets, # of documents
 -define(MAX_BULK_ATT_SIZE, 64 * 1024).
 -define(MAX_BULK_ATTS_PER_DOC, 8).
--define(STATS_DELAY, 10000000).              %% 10 seconds (in microseconds)
 
--define(VB_REP_VB_MISSING_WAIT_TIME_INITIAL, 250). % in MS
--define(VB_REP_VB_MISSING_WAIT_TIME_MAX, (1000*60*10)). % in MS
 
 %% data structures
 -record(rep, {

@@ -52,7 +52,7 @@ start_link(Rep, Vb, InitThrottle, WorkThrottle, Parent) ->
 init({Rep, Vb, InitThrottle, WorkThrottle, Parent}) ->
     process_flag(trap_exit, true),
     % signal to self to initialize
-    ok = concurrency_throttle:send_back_when_can_go(InitThrottle, {init, ?VB_REP_VB_MISSING_WAIT_TIME_INITIAL}),
+    ok = concurrency_throttle:send_back_when_can_go(InitThrottle, init),
     {ok, {Rep, Vb, InitThrottle, WorkThrottle, Parent}}.
 
 handle_info({'EXIT',_Pid, normal}, St) ->
@@ -61,28 +61,17 @@ handle_info({'EXIT',_Pid, normal}, St) ->
 handle_info({'EXIT',_Pid, Reason}, St) ->
     {stop, Reason, St};
 
-handle_info({init, RetryTime}, {Rep, Vb, InitThrottle, WorkThrottle, Parent} = InitState) ->
+handle_info(init, {Rep, Vb, InitThrottle, WorkThrottle, Parent} = InitState) ->
     try
         State = init_replication_state(Rep, Vb, WorkThrottle, Parent),
         self() ! src_db_updated, % signal to self to check for changes
         {noreply, update_state_to_parent(State)}
     catch
-        throw:{db_not_found, _DbUri} when RetryTime < ?VB_REP_VB_MISSING_WAIT_TIME_MAX ->
-            % if RetryTime is less than max, retry again, otherwise
-            % we stop.
-            % double retry time
-            timer:send_after(RetryTime*2, {init, RetryTime*2}),
-            {noreply, {Rep, Vb, nil, WorkThrottle, Parent} };
-        throw:{db_not_found, DbUri} ->
-            {stop, {db_not_found, <<"timeout: could not open ", DbUri/binary>>}, InitState};
-        throw:Error ->
+        ErrorType:Error ->
+            ?xdcr_error("Error initializing vb replicator ~p ~p:~p", [Vb, Rep, {ErrorType,Error}]),
             {stop, Error, InitState}
     after
-        if InitThrottle /= nil ->
-            concurrency_throttle:is_done(InitThrottle);
-        true ->
-            ok
-        end
+        concurrency_throttle:is_done(InitThrottle)
     end;
 
 handle_info(src_db_updated,

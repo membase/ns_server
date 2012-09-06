@@ -11,17 +11,37 @@
 % the License.
 
 -module(xdc_vbucket_rep_sup).
--behaviour(supervisor).
--export([shutdown/1]).
+-behaviour(supervisor2).
+-export([start_link/1, shutdown/1, start_vbucket_rep/6, stop_vbucket_rep/2]).
+-export([vbucket_reps/1]).
 
--export([init/1, start_link/1]).
+-export([init/1]).
 
 -include("xdc_replicator.hrl").
 
 start_link(ChildSpecs) ->
-    {ok, Sup} = supervisor:start_link(?MODULE, ChildSpecs),
+    {ok, Sup} = supervisor2:start_link(?MODULE, ChildSpecs),
     ?xdcr_debug("xdc vbucket replicator supervisor started: ~p", [Sup]),
     {ok, Sup}.
+
+start_vbucket_rep(Sup, Rep, Vb, InitThrottle, WorkThrottle, Parent) ->
+    {value, RestartWaitTime} = ns_config:search(xdcr_failure_restart_interval),
+    Spec = {Vb,
+            {xdc_vbucket_rep, start_link, [Rep, Vb, InitThrottle, WorkThrottle, Parent]},
+            {permanent, RestartWaitTime},
+            100,
+            worker,
+            [xdc_vbucket_rep]
+           },
+    supervisor2:start_child(Sup, Spec).
+
+% return all the child vbucket replicators being supervised
+vbucket_reps(Sup) ->
+    [element(1, Spec) || Spec <- supervisor2:which_children(Sup)].
+
+stop_vbucket_rep(Sup, Vb) ->
+    supervisor2:terminate_child(Sup, Vb),
+    supervisor2:delete_child(Sup, Vb).
 
 shutdown(Sup) ->
     ?xdcr_debug("shutdown xdc vbucket replicator supervisor ~p",  [Sup]),
@@ -36,7 +56,10 @@ shutdown(Sup) ->
 %%=============================================================================
 
 init(ChildSpecs) ->
-    {ok, {{one_for_one, 100, 600}, ChildSpecs}}.
+    % we fast retry 2 times in one second, after that we use the restart
+    % setting environment var XDCR_FAILURE_RESTART_INTERVAL that is added to
+    % the child spec
+    {ok, {{one_for_one, 2, 1}, ChildSpecs}}.
 
 %%=============================================================================
 %% internal functions

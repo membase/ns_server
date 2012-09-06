@@ -183,26 +183,23 @@ start_vb_replicators(#replication{rep = Rep,
                                   work_throttle = WorkThrottle,
                                   vbs = Vbs,
                                   vb_rep_dict = Dict} = Replication) ->
-    CurrentVbs = [element(1, Spec) || Spec <- supervisor:which_children(Sup)],
+    CurrentVbs = xdc_vbucket_rep_sup:vbucket_reps(Sup),
     NewVbs = Vbs -- CurrentVbs,
     RemovedVbs = CurrentVbs -- Vbs,
     % now delete the removed Vbs
     Dict2 = lists:foldl(
-                    fun(RemoveVb, DictAcc) ->
-                            ok = supervisor:terminate_child(Sup, RemoveVb),
-                            ok = supervisor:delete_child(Sup, RemoveVb),
-                            dict:erase(RemoveVb, DictAcc)
-                    end, Dict, RemovedVbs),
+                fun(RemoveVb, DictAcc) ->
+                        ok = xdc_vbucket_rep_sup:stop_vbucket_rep(Sup, RemoveVb),
+                        dict:erase(RemoveVb, DictAcc)
+                end, Dict, RemovedVbs),
     % now start the new Vbs
     lists:foreach(
-                    fun(Vb) ->
-                            Spec = {Vb,
-                                    {xdc_vbucket_rep, start_link, [Rep, Vb, InitThrottle, WorkThrottle, self()]},
-                                    permanent,
-                                    100,
-                                    worker,
-                                    [xdc_vbucket_rep]
-                                   },
-                            {ok, _Pid} = supervisor:start_child(Sup, Spec)
-                    end, misc:shuffle(NewVbs)),
+                fun(Vb) ->
+                        {ok, _Pid} = xdc_vbucket_rep_sup:start_vbucket_rep(Sup,
+                                                                           Rep,
+                                                                           Vb,
+                                                                           InitThrottle,
+                                                                           WorkThrottle,
+                                                                           self())
+                end, misc:shuffle(NewVbs)),
     Replication#replication{vb_rep_dict = Dict2}.
