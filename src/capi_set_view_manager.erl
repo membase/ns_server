@@ -24,7 +24,8 @@
 -export([start_link/1]).
 
 %% API
--export([set_vbucket_states/3, server/1]).
+-export([set_vbucket_states/3, server/1,
+         wait_index_updated/2, initiate_indexing/1]).
 
 -include("couch_db.hrl").
 -include_lib("couch_set_view/include/couch_set_view.hrl").
@@ -43,6 +44,12 @@
 
 set_vbucket_states(Bucket, WantedStates, RebalanceStates) ->
     gen_server:call(server(Bucket), {set_vbucket_states, WantedStates, RebalanceStates}, infinity).
+
+wait_index_updated(Bucket, VBucket) ->
+    gen_server:call(server(Bucket), {wait_index_updated, VBucket}, infinity).
+
+initiate_indexing(Bucket) ->
+    gen_server:call(server(Bucket), initiate_indexing, infinity).
 
 -define(csv_call(Call, Args),
         %% hack to not introduce any variables in the caller environment
@@ -217,6 +224,18 @@ init({Bucket, UseReplicaIndex, NumVBuckets}) ->
 get_live_ddoc_ids(#state{local_docs = Docs}) ->
     [Id || #doc{id = Id, deleted = false} <- Docs].
 
+handle_call({wait_index_updated, VBucket}, From, State) ->
+    ok = proc_lib:start_link(erlang, apply, [fun do_wait_index_updated/4, [From, VBucket, self(), State]]),
+    {noreply, State};
+handle_call(initiate_indexing, _From, State) ->
+    BinBucket = list_to_binary(State#state.bucket),
+    DDocIds = get_live_ddoc_ids(State),
+    [case DDocId of
+         <<"_design/dev_", _/binary>> -> ok;
+         _ ->
+             couch_set_view:trigger_update(BinBucket, DDocId, 0)
+     end || DDocId <- DDocIds],
+    {reply, ok, State};
 handle_call({interactive_update, #doc{id=Id}=Doc}, _From, State) ->
     #state{local_docs=Docs}=State,
     Rand = crypto:rand_uniform(0, 16#100000000),
@@ -552,3 +571,40 @@ save_doc(#doc{id = Id} = Doc,
     end,
     self() ! {update_ddoc, Id, Doc#doc.deleted},
     State#state{local_docs = lists:keystore(Id, #doc.id, Docs, Doc)}.
+
+do_wait_index_updated({Pid, _} = From, VBucket,
+                      ParentPid, #state{bucket = Bucket} = State) ->
+    DDocIds = get_live_ddoc_ids(State),
+    BinBucket = list_to_binary(Bucket),
+    Refs = lists:foldl(
+             fun (DDocId, Acc) ->
+                     case DDocId of
+                         <<"_design/dev_", _/binary>> -> Acc;
+                         _ ->
+                             Ref = couch_set_view:monitor_partition_update(BinBucket, DDocId, VBucket),
+                             couch_set_view:trigger_update(BinBucket, DDocId, 0),
+                             [Ref | Acc]
+                     end
+             end, [], DDocIds),
+    ?log_debug("References to wait: ~p (~p, ~p)", [Refs, Bucket, VBucket]),
+    ParentMRef = erlang:monitor(process, ParentPid),
+    CallerMRef = erlang:monitor(process, Pid),
+    proc_lib:init_ack(ok),
+    erlang:unlink(ParentPid),
+    [receive
+         {Ref, Msg} -> % Ref is bound
+             case Msg of
+                 updated -> ok;
+                 _ ->
+                     ?log_debug("Got unexpected message from ddoc monitoring. Assuming that's shutdown: ~p", [Msg])
+             end;
+         {'DOWN', ParentMRef, _, _, _} = DownMsg ->
+             ?log_debug("Parent died: ~p", [DownMsg]),
+             exit({parent_exited, DownMsg});
+         {'DOWN', CallerMRef, _, _, _} = DownMsg ->
+             ?log_debug("Caller died: ~p", [DownMsg]),
+             exit(normal)
+     end
+     || Ref <- Refs],
+    ?log_debug("All refs fired"),
+    gen_server:reply(From, ok).
