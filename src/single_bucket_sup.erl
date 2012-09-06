@@ -35,10 +35,7 @@ top_loop(ParentPid, Pid, BucketName) ->
     end.
 
 child_specs(BucketName) ->
-    [{{capi_ddoc_replication_srv, BucketName},
-      {capi_ddoc_replication_srv, start_link, [BucketName]},
-      permanent, 1000, worker, [capi_ddoc_replication_srv]},
-     {{capi_set_view_manager, BucketName},
+    [{{capi_set_view_manager, BucketName},
       {capi_set_view_manager, start_link, [BucketName]},
       permanent, 1000, worker, [capi_set_view_manager]},
      {{ns_memcached, BucketName}, {ns_memcached, start_link, [BucketName]},
