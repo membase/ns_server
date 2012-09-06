@@ -476,7 +476,7 @@
               <!-- {% } %} -->
               <!-- {% $.each(rows, function () { %} -->
               <tr class="{%= this.bucketTypeName.toLowerCase() %}">
-                <td class="bucket_name" colspan="2">
+                <td class="bucket_name ellipsis" colspan="2">
                   <a class="disable-if-stale" href="#visitBucket={%= h(encodeURIComponent(this.name)) %}" title="Show Bucket info"><span class="expander closed"></span></a>
                   <a class="disable-if-stale" title="View Analytics for {%= h(this.name) %}" href="#sec=analytics&statsBucket={%= h(encodeURIComponent(this.uri)) %}">{%= h(this.name) %}</a>
                 </td>
