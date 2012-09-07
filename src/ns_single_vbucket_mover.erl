@@ -155,7 +155,12 @@ mover_inner(Parent, Node, Bucket, VBucket,
             janitor_agent:set_vbucket_state(Bucket, Node, Parent, VBucket, active, paused, undefined),
             SecondWaitedCheckpointId = janitor_agent:get_replication_persistence_checkpoint_id(Bucket, Parent, Node, VBucket),
             ok = wait_checkpoint_persisted_many(Bucket, Parent, AllBuiltNodes, VBucket, SecondWaitedCheckpointId),
-            janitor_agent:wait_index_updated(Bucket, Parent, NewNode, ReplicaNodes, VBucket),
+            case ns_config_ets_dup:unreliable_read_key(rebalance_index_waiting_disabled, false) of
+                false ->
+                    janitor_agent:wait_index_updated(Bucket, Parent, NewNode, ReplicaNodes, VBucket);
+                _ ->
+                    ok
+            end,
             new_ns_replicas_builder:shutdown_replicator(BuilderPid, NewNode),
             ok = run_mover(Bucket, VBucket, Node, NewNode),
             ok = janitor_agent:set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined),
