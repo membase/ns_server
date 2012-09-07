@@ -273,25 +273,32 @@ handle_call({set_vbucket_states, WantedStates, RebalanceStates}, _From,
 
 handle_call({delete_vbucket, VBucket}, _From, #state{bucket = Bucket,
                                                      wanted_states = [],
+                                                     usable_vbuckets = UsableVBuckets,
                                                      rebalance_states = RebalanceStates} = State) ->
     [] = RebalanceStates,
     ?log_info("Deleting vbucket ~p from all indexes", [VBucket]),
     SetName = list_to_binary(Bucket),
     do_apply_vbucket_states(SetName, [], [], [VBucket], [], [VBucket], [], [], State),
-    {reply, ok, State};
+    {reply, ok, State#state{usable_vbuckets = sets:del_element(VBucket, UsableVBuckets)}};
 handle_call({delete_vbucket, VBucket}, _From, #state{usable_vbuckets = UsableVBuckets,
                                                      wanted_states = WantedStates,
                                                      rebalance_states = RebalanceStates} = State) ->
     NewUsableVBuckets = sets:del_element(VBucket, UsableVBuckets),
-    case (NewUsableVBuckets =/= UsableVBuckets
-          andalso (lists:nth(VBucket+1, WantedStates) =/= missing
-                   orelse lists:nth(VBucket+1, RebalanceStates) =/= undefined)) of
+    case NewUsableVBuckets =:= UsableVBuckets of
         true ->
+            {reply, ok, State};
+        _ ->
             NewState = State#state{usable_vbuckets = NewUsableVBuckets},
-            change_vbucket_states(NewState),
-            {reply, ok, NewState};
-        false ->
-            {reply, ok, State}
+            case (lists:nth(VBucket+1, WantedStates) =:= missing
+                  andalso lists:nth(VBucket+1, RebalanceStates) =:= undefined) of
+                true ->
+                    %% skipping vbucket changes pass iff it's totally
+                    %% uninteresting vbucket
+                    ok;
+                false ->
+                    change_vbucket_states(NewState)
+            end,
+            {reply, ok, NewState}
     end.
 
 handle_cast({replicated_update, #doc{id=Id, rev=Rev}=Doc}, State) ->
