@@ -371,7 +371,7 @@ handle_info(Info, State) ->
 terminate(_Reason, _State) ->
     case erlang:get('ddoc_replication_proxy') of
         Pid when is_pid(Pid) ->
-            erlang:kill(Pid, kill),
+            erlang:exit(Pid, kill),
             misc:wait_for_process(Pid, infinity);
         _ ->
             ok
