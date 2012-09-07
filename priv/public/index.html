@@ -18,7 +18,8 @@
     <div class="page-header">
       <div class="cnt_holder main_holder">
         <div class="topper_nav">
-          <a id="switch_support_docs" href="http://docs.couchbase.org/couchbase-manual-2.0/couchbase-getting-started.html" target="cbdocs">Documentation</a>
+          <a onclick="runInternalSettingsDialog();">Edit internal settings</a>
+          <b>&bull;</b> <a id="switch_support_docs" href="http://docs.couchbase.org/couchbase-manual-2.0/couchbase-getting-started.html" target="cbdocs">Documentation</a>
           <b>&bull;</b> <a id="switch_support_forums" href="http://www.couchbase.org/forums/couchbase/couchbase-server-20-developer-preview" target="cbforums">Support Forums</a>
           <b>&bull;</b> <a href="javascript:showAbout();">About</a>
           <i class="sign-out-link"><b>&bull;</b> <a href="javascript:ThePage.signOut();">Sign Out</a></i>
@@ -1577,6 +1578,25 @@
   <!-- #container -->
 
 <!-- dialogs -->
+<div class="dialog bucket_details really" id="internal_settings_dialog">
+  <form>
+    <fieldset style="padding:0; padding-right: 10px;">
+      <input type="hidden" name="indexAwareRebalanceDisabled" value="false">
+      <input type="hidden" name="rebalanceIndexWaitingDisabled" value="false">
+      <input type="hidden" name="rebalanceIndexPausingDisabled" value="false">
+      <label><span style="min-width:300px;cursor:help;float:none;display:inline-block;" title="When not disabled makes sure indexes are always up-to-date during rebalance">Disable index aware rebalance:</span><input type="checkbox" name="indexAwareRebalanceDisabled" value="true"></label>
+      <label><span style="min-width:300px;cursor:help;float:none;display:inline-block;" title="Whether index aware rebalance waiting for index up-to-dateness should be disabled. Makes rebalance faster">Disable index waiting during rebalance:</span><input type="checkbox" name="rebalanceIndexWaitingDisabled" value="true"></label>
+      <label><span style="min-width:300px;cursor:help;float:none;display:inline-block;" title="That's too complex to explain">Disable index pausing during rebalance:</span><input type="checkbox" name="rebalanceIndexPausingDisabled" value="true"></label>
+      <label><span style="min-width:300px;float:none;display:inline-block;">Max parallel main index tasks per node:</span><input maxlength="5" style="width:1.5em;" name="maxParallelIndexers"></label>
+      <label><span style="min-width:300px;float:none;display:inline-block;">Max parallel replica index tasks per node:</span><input maxlength="5" style="width:1.5em;" name="maxParallelReplicaIndexers"></label>
+    </fieldset>
+    <div class="save_cancel">
+      <button class="save_button float_right" type="submit">Save</button>
+      <a class="close">Cancel</a>
+    </div>
+  </form>
+</div>
+
 <div class="dialog bucket_details really" id="bucket_details_dialog">
   <h1><span class="when-editing">Configure Bucket</span><span class="when-creating">Create Bucket</span></h1>
   <form>

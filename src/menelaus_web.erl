@@ -196,6 +196,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_settings_max_parallel_indexers/1};
                              ["settings", "viewUpdateDaemon"] ->
                                  {auth, fun handle_settings_view_update_daemon/1};
+                             ["internalSettings"] ->
+                                 {auth, fun handle_internal_settings/1};
                              ["nodes", NodeId] ->
                                  {auth, fun handle_node/2, [NodeId]};
                              ["diag"] ->
@@ -265,6 +267,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_settings_max_parallel_indexers_post/1};
                              ["settings", "viewUpdateDaemon"] ->
                                  {auth, fun handle_settings_view_update_daemon_post/1};
+                             ["internalSettings"] ->
+                                 {auth, fun handle_internal_settings_post/1};
                              ["pools", PoolId] ->
                                  {auth, fun handle_pool_settings/2,
                                   [PoolId]};
@@ -2441,6 +2445,58 @@ parse_validate_bucket_fast_warmup_settings(Params) ->
         [{ok, _, true}] ->
             parse_validate_fast_warmup_settings(Params)
     end.
+
+build_internal_settings_kvs() ->
+    Triples = [{index_aware_rebalance_disabled, indexAwareRebalanceDisabled, false},
+               {rebalance_index_waiting_disabled, rebalanceIndexWaitingDisabled, false},
+               {index_pausing_disabled, rebalanceIndexPausingDisabled, false},
+               {{couchdb, max_parallel_indexers}, maxParallelIndexers, <<>>},
+               {{couchdb, max_parallel_replica_indexers}, maxParallelReplicaIndexers, <<>>}],
+    [{JK, ns_config_ets_dup:unreliable_read_key(CK, DV)}
+     || {CK, JK, DV} <- Triples].
+
+handle_internal_settings(Req) ->
+    reply_json(Req, {struct, build_internal_settings_kvs()}).
+
+handle_internal_settings_post(Req) ->
+    Params = Req:parse_post(),
+    CurrentValues = build_internal_settings_kvs(),
+    MaybeSet = fun (JK, CK, V) ->
+                       case proplists:get_value(JK, CurrentValues) of
+                           V -> undefined;
+                           _ ->
+                               fun () -> ns_config:set(CK, V) end
+                       end
+               end,
+    Actions = [case parse_validate_boolean_field("indexAwareRebalanceDisabled", [], Params) of
+                   [] -> undefined;
+                   [{ok, _, V}] -> MaybeSet(indexAwareRebalanceDisabled, index_aware_rebalance_disabled, V)
+               end,
+               case parse_validate_boolean_field("rebalanceIndexWaitingDisabled", [], Params) of
+                   [] -> undefined;
+                   [{ok, _, V}] -> MaybeSet(rebalanceIndexWaitingDisabled, rebalance_index_waiting_disabled, V)
+               end,
+               case parse_validate_boolean_field("rebalanceIndexPausingDisabled", [], Params) of
+                   [] -> undefined;
+                   [{ok, _, V}] -> MaybeSet(rebalanceIndexPausingDisabled, index_pausing_disabled, V)
+               end,
+               case proplists:get_value("maxParallelIndexers", Params) of
+                   undefined -> undefined;
+                   SV ->
+                       {ok, V} = parse_validate_number(SV, 1, 1024),
+                       MaybeSet(maxParallelIndexers, {couchdb, max_parallel_indexers}, V)
+               end,
+               case proplists:get_value("maxParallelReplicaIndexers", Params) of
+                   undefined -> undefined;
+                   SV ->
+                       {ok, V} = parse_validate_number(SV, 1, 1024),
+                       MaybeSet(maxParallelReplicaIndexers, {couchdb, max_parallel_replica_indexers}, V)
+               end],
+    [Action()
+     || Action <- Actions,
+        Action =/= undefined],
+    reply_json(Req, []).
+
 
 -ifdef(EUNIT).
 

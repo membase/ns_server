@@ -1196,6 +1196,57 @@ $(function () {
 });
 
 
+function runInternalSettingsDialog() {
+  var dialog = $('#internal_settings_dialog');
+  var form = dialog.find("form");
+  showDialog(dialog, {
+    closeOnEscape: true,
+    title: 'Tweak internal settings',
+    onHide: onHide
+  });
+
+  var cleanups = [];
+  var firedSubmit = false;
+  var spinner;
+  setTimeout(start, 10);
+  return;
+
+  function start() {
+    spinner = overlayWithSpinner(form);
+    $.getJSON("/internalSettings", populateForm);
+  }
+
+  function populateForm(data) {
+    setFormValues(form, data);
+    spinner.remove();
+    var undoBind = BucketDetailsDialog.prototype.bindWithCleanup(form, "submit", onSubmit);
+    cleanups.push(undoBind);
+  }
+
+  function onSubmit(ev) {
+    ev.preventDefault();
+    if (firedSubmit) {
+      return;
+    }
+    firedSubmit = true;
+    var data = serializeForm(form);
+    var secondSpinner = overlayWithSpinner(dialog, undefined, "Saving...");
+    $.post('/internalSettings', data, submittedOk);
+    cleanups.push(function () {
+      secondSpinner.remove();
+    });
+  }
+
+  function submittedOk() {
+    hideDialog(dialog);
+  }
+
+  function onHide() {
+    _.each(cleanups, function (c) {c()});
+  }
+}
+
+
 function initAlertsCells(ns, poolDetailsCell) {
   ns.rawAlertsCell = Cell.compute(function (v) {
     return v.need(poolDetailsCell).alerts;

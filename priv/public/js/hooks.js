@@ -507,6 +507,12 @@ var MockedRequest = mkClass({
     }
 
     var rv = [
+      [get("internalSettings"), {
+        "indexAwareRebalanceDisabled": true,
+        "rebalanceIndexWaitingDisabled": false,
+        "rebalanceIndexPausingDisabled": true
+      }],
+      [post("internalSettings"), method('doNothingPOST')],
       [post("logClientError"), method('doNothingPOST')],
       [get("logs"), {list: [{type: "info", code: 1, module: "ns_config_log", tstamp: 1265358398000, shortText: "message", text: "config changed"},
                             {type: "info", code: 1, module: "ns_node_disco", tstamp: 1265358398000, shortText: "message", text: "otp cookie generated: bloeahcdnsddpotx"},
