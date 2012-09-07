@@ -158,19 +158,26 @@
                                     ;; dynamic, but lets assume we have bucket "default"
                                     (worker '(per_bucket_sup "default")
                                             (supervisor 'single_bucket_sup :mode :rest_for_one
-                                                        ;; note: 1.8.1 doesn't have ns_memcached_sup but instead
-                                                        ;; everything below is direct child of single_bucket_sup
-                                                        (gen-server '(ns_memcached "default") :name 'ns_memcached-default
-                                                                    "our communication channel with bucket. Creates
-                                                                     bucket on startup. Monitors it for warmup. Monitors
-                                                                     bucket parameters versus config (i.e. if bucket
-                                                                     quota needs to be adjusted). requests to grab stats
-                                                                     and change vbucket states"
+                                                        (gen-server '(capi_set_view_manager "default") :since "2.0"
+                                                                    "changes state of set indexes so that indexing
+                                                                     covers active and only active vbuckets. Plus keeps
+                                                                     track of all ddocs and replicates them across the
+                                                                     cluster."
                                                                     (worker :name 'capi_ddoc_replication_srv-default
                                                                             "In order to avoid breaking backwards compat
                                                                              with C-release all ddoc replication casts
                                                                              are actually sent to this guy, which merely
                                                                              proxies them to capi_set_view_manager"))
+                                                        (gen-server '(ns_memcached "default") :name 'ns_memcached-default
+                                                                    "our communication channel with bucket. Creates
+                                                                     bucket on startup. Monitors it for warmup. Monitors
+                                                                     bucket parameters versus config (i.e. if bucket
+                                                                     quota needs to be adjusted). Performs requests to
+                                                                     grab stats and change vbucket states. Since 1.8.1
+                                                                     we maintain pool of workers and each worker has 1
+                                                                     connection to memcached. Main process is passing
+                                                                     requests to workers in pool trying to be smart
+                                                                     about queuing.")
                                                         (supervisor '(ns_vbm_sup "default") :name 'ns_vbm_sup-default
                                                                     "hosts replication ebucketmigrators")
                                                         (gen_server '(tap_replication_manager "default") :name 'tap_replication_manager-default
