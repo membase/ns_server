@@ -44,16 +44,28 @@
 -include("xdc_replicator.hrl").
 -include("remote_clusters_info.hrl").
 
+-record(init_state, {
+        rep,
+        vb,
+        init_throttle,
+        work_throttle,
+        parent}).
+
 start_link(Rep, Vb, InitThrottle, WorkThrottle, Parent) ->
-    gen_server:start_link(?MODULE, {Rep, Vb, InitThrottle, WorkThrottle, Parent}, []).
+    InitState = #init_state{rep = Rep,
+                            vb = Vb,
+                            init_throttle = InitThrottle,
+                            work_throttle = WorkThrottle,
+                            parent = Parent},
+    gen_server:start_link(?MODULE, InitState, []).
 
 
 %% gen_server behavior callback functions
-init({Rep, Vb, InitThrottle, WorkThrottle, Parent}) ->
+init(#init_state{init_throttle = InitThrottle} = InitState) ->
     process_flag(trap_exit, true),
     % signal to self to initialize
     ok = concurrency_throttle:send_back_when_can_go(InitThrottle, init),
-    {ok, {Rep, Vb, InitThrottle, WorkThrottle, Parent}}.
+    {ok, InitState}.
 
 handle_info({'EXIT',_Pid, normal}, St) ->
     {noreply, St};
@@ -61,14 +73,14 @@ handle_info({'EXIT',_Pid, normal}, St) ->
 handle_info({'EXIT',_Pid, Reason}, St) ->
     {stop, Reason, St};
 
-handle_info(init, {Rep, Vb, InitThrottle, WorkThrottle, Parent} = InitState) ->
+handle_info(init, #init_state{init_throttle = InitThrottle} = InitState) ->
     try
-        State = init_replication_state(Rep, Vb, WorkThrottle, Parent),
+        State = init_replication_state(InitState),
         self() ! src_db_updated, % signal to self to check for changes
         {noreply, update_state_to_parent(State)}
     catch
         ErrorType:Error ->
-            ?xdcr_error("Error initializing vb replicator ~p ~p:~p", [Vb, Rep, {ErrorType,Error}]),
+            ?xdcr_error("Error initializing vb replicator (~p):~p", [InitState, {ErrorType,Error}]),
             {stop, Error, InitState}
     after
         concurrency_throttle:is_done(InitThrottle)
@@ -194,8 +206,8 @@ handle_cast({report_seq, Seq},
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-terminate(Reason, {#rep{target = TargetRef}, _Vb, _Throttle, _Parent}) ->
-    ?xdcr_error("Shutting down without ever successfully initilizing: ~p", [Reason]),
+terminate(Reason, #init_state{rep = #rep{target = TargetRef}} = InitState) ->
+    ?xdcr_error("Shutting xdcr vb replicator (~p) down without ever successfully initializing: ~p", [InitState, Reason]),
     remote_clusters_info:invalidate_remote_bucket_by_ref(TargetRef),
     ok;
 
@@ -233,7 +245,10 @@ update_state_to_parent(#rep_state{parent = Parent,
     Parent ! {set_vb_rep_status, VbStatus},
     State.
 
-init_replication_state(Rep, Vb, Throttle, Parent) ->
+init_replication_state(#init_state{rep = Rep,
+                                   vb = Vb,
+                                   work_throttle = Throttle,
+                                   parent = Parent}) ->
     #rep{
           source = Src,
           target = Tgt,
@@ -275,7 +290,7 @@ init_replication_state(Rep, Vb, Throttle, Parent) ->
     couch_api_wrap:db_close(TgtMasterDb),
     couch_api_wrap:db_close(Target),
     couch_api_wrap:db_close(TgtMasterDb),
-    InitState = #rep_state{
+    RepState = #rep_state{
       rep_details = Rep,
       throttle = Throttle,
       parent = Parent,
@@ -302,8 +317,8 @@ init_replication_state(Rep, Vb, Throttle, Parent) ->
                               docs_written = DocsWritten},
       source_seq = get_value(<<"update_seq">>, SourceInfo, ?LOWEST_SEQ)
      },
-    ?xdcr_debug("vb ~p repication state initialized: ~p", [Vb, InitState]),
-    InitState.
+    ?xdcr_debug("vb ~p replication state initialized: ~p", [Vb, RepState]),
+    RepState.
 
 start_replication(#rep_state{
                            source_name = SourceName,
