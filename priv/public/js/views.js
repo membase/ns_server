@@ -267,12 +267,12 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
   ns.allDDocsCell.delegateInvalidationMethods(ns.rawAllDDocsCell);
 
   ns.currentDDocAndView = Cell.computeEager(function (v) {
-    var allDDocs = v.need(ns.allDDocsCell);
     var ddocId = v(ns.rawDDocIdCell);
     var viewName = v(ns.rawViewNameCell);
     if (!ddocId || !viewName) {
       return [];
     }
+    var allDDocs = v.need(ns.allDDocsCell);
     var ddoc = _.detect(allDDocs, function (d) {return d.meta.id === ddocId});
     if (!ddoc) {
       return [];
@@ -285,12 +285,12 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
   }).name("currentDDocAndView");
 
   ns.currentDDocAndSpatial = Cell.computeEager(function (v) {
-    var allDDocs = v.need(ns.allDDocsCell);
     var ddocId = v(ns.rawDDocIdCell);
     var spatialName = v(ns.rawSpatialNameCell);
     if (!ddocId || !spatialName) {
       return [];
     }
+    var allDDocs = v.need(ns.allDDocsCell);
     var ddoc = _.detect(allDDocs, function (d) {return d.meta.id === ddocId});
     if (!ddoc) {
       return [];
@@ -517,6 +517,9 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
     return [v(ns.viewResultsCell), v.need(intCell)];
   });
   ns.productionDDocsCell = Cell.compute(function (v) {
+    if (v.need(modeCell) != 'views') {
+      return;
+    }
     var allDDocs = v.need(ns.allDDocsCell);
     return _.select(allDDocs, function (ddoc) {
       return !ddoc.isDevModeDoc;
@@ -524,6 +527,9 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
   });
 
   ns.devDDocsCell = Cell.compute(function (v) {
+    if (v.need(modeCell) != 'views') {
+      return;
+    }
     var allDDocs = v.need(ns.allDDocsCell);
     return _.select(allDDocs, function (ddoc) {
       return ddoc.isDevModeDoc
