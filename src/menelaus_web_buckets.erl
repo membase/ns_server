@@ -47,7 +47,7 @@
          handle_cancel_databases_compaction/3,
          handle_compact_view/4,
          handle_cancel_view_compaction/4,
-         handle_ddocs_list/3,
+         handle_ddocs_list/5,
          handle_set_ddoc_update_min_changes/4,
          handle_local_random_key/3]).
 
@@ -971,7 +971,17 @@ basic_bucket_params_screening_test() ->
 
 -endif.
 
-handle_ddocs_list(PoolId, Bucket, Req) ->
+handle_ddocs_list(PoolId, BucketName, Req, _, BucketConfig) ->
+    FoundBucket = ns_bucket:bucket_type(BucketConfig) =:= membase
+        andalso lists:member(node(), ns_bucket:bucket_nodes(BucketConfig)),
+    case FoundBucket of
+        true ->
+            do_handle_ddocs_list(PoolId, BucketName, Req);
+        _ ->
+            reply_json(Req, {struct, [{error, no_ddocs_service}]}, 400)
+    end.
+
+do_handle_ddocs_list(PoolId, Bucket, Req) ->
     DDocs = capi_ddoc_replication_srv:sorted_full_live_ddocs(Bucket),
     RV = [begin
               Id = capi_utils:extract_doc_id(Doc),
@@ -1049,7 +1059,14 @@ complete_update_ddoc_options(Req, Bucket, #doc{body={Body0}}= DDoc, Options0) ->
 
 handle_local_random_key(_PoolId, Bucket, Req) ->
     NodesVBuckets = vbucket_map_mirror:node_vbuckets_dict(Bucket),
-    OurVBuckets = dict:fetch(node(), NodesVBuckets),
+    case dict:find(node(), NodesVBuckets) of
+        error ->
+            reply_json(Req, {struct, [{error, no_ddocs_service}]}, 400);
+        {ok, OurVBuckets} ->
+            handle_local_random_key_have_vbuckets(Bucket, Req, OurVBuckets)
+    end.
+
+handle_local_random_key_have_vbuckets(Bucket, Req, OurVBuckets) ->
     NumVBuckets = length(OurVBuckets),
 
     random:seed(erlang:now()),

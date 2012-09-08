@@ -246,9 +246,29 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
     return bucketInfo.ddocs.uri;
   }).name("allDDocsURL");
 
+  var missingDDocsMarker = [];
+
+  function missingDDocsValueProducer(xhr, options) {
+    var responseJSON;
+    try {
+      responseJSON = $.parseJSON(xhr.responseText);
+    } catch (e) {
+      return undefined;
+    }
+    if (responseJSON.error === "no_ddocs_service") {
+      return missingDDocsMarker;
+    }
+    return undefined;
+  }
+
   ns.rawAllDDocsCell = Cell.compute(function (v) {
-    return future.get({url: v.need(ns.allDDocsURLCell)});
+    return future.get({url: v.need(ns.allDDocsURLCell),
+                       missingValueProducer: missingDDocsValueProducer});
   }).name("rawAllDDocs");
+
+  ns.ddocsAreInFactMissingCell = Cell.compute(function (v) {
+    return v.need(ns.rawAllDDocsCell) === missingDDocsMarker;
+  }).name("ddocsAreInFactMissingCell");
 
   ns.allDDocsCell = Cell.compute(function (v) {
     var haveBuckets = v.need(ns.haveBucketsCell);
@@ -631,6 +651,7 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
         rv.json.spatialInfos = spatialInfos;
         return rv;
       });
+      rv.ddocsAreInFactMissing = v.need(ns.ddocsAreInFactMissingCell);
       rv.tasks = tasks;
       rv.poolDetails = poolDetails;
       rv.bucketName = bucketName;
@@ -830,7 +851,12 @@ var ViewsSection = {
     var viewResultsContainer = $('#view_results_container');
     var viewResultsSpinner = $('#view_results_spinner');
 
-    self.viewsBucketCell.subscribeValue(function (val) {
+    self.canCreateDDocCell = Cell.compute(function (v) {
+      return (v.need(DAL.cells.mode) == 'views')
+        && !!v(self.viewsBucketCell)
+        && !v.need(self.ddocsAreInFactMissingCell);
+    }).name("canCreateDDocCell");
+    self.canCreateDDocCell.subscribeValue(function (val) {
       btnCreate[val ? 'removeClass' : 'addClass']('disabled');
     });
 
