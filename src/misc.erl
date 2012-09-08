@@ -58,6 +58,11 @@ randomize() ->
             ok
     end.
 
+% formats time (see erlang:localtime/0) as ISO-8601 text
+iso_8601_fmt({{Year,Month,Day},{Hour,Min,Sec}}) ->
+    io_lib:format("~4.10.0B-~2.10.0B-~2.10.0B ~2.10.0B:~2.10.0B:~2.10.0B",
+                  [Year, Month, Day, Hour, Min, Sec]).
+
 %% applies (catch Fun(X)) for each element of list in parallel. If
 %% execution takes longer than given Timeout it'll exit with reason
 %% timeout (which is consistent with behavior of gen_XXX:call

@@ -20,7 +20,7 @@
 -export([parse_rep_doc/2]).
 -export([local_couch_uri_for_vbucket/2]).
 -export([remote_couch_uri_for_vbucket/3, my_active_vbuckets/1]).
--export([parse_rep_db/1]).
+-export([parse_rep_db/1,parse_rep_db/3]).
 -export([split_dbname/1]).
 -export([get_master_db/1, get_checkpoint_log_id/2]).
 

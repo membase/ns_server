@@ -206,7 +206,8 @@ handle_cast({report_seq, Seq},
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-terminate(Reason, #init_state{rep = #rep{target = TargetRef}} = InitState) ->
+terminate(Reason, #init_state{rep = #rep{target = TargetRef}, parent = P, vb = Vb} = InitState) ->
+    report_error(Reason, Vb, P),
     ?xdcr_error("Shutting xdcr vb replicator (~p) down without ever successfully initializing: ~p", [InitState, Reason]),
     remote_clusters_info:invalidate_remote_bucket_by_ref(TargetRef),
     ok;
@@ -217,10 +218,14 @@ terminate(Reason, State) when Reason == normal orelse Reason == shutdown ->
 terminate(Reason, #rep_state{
                            source_name = Source,
                            target_name = Target,
-                           rep_details = #rep{id = Id, target = TargetRef}
+                           rep_details = #rep{id = Id, target = TargetRef},
+                           status = #rep_vb_status{vb = Vb} = Status,
+                           parent = P
                           } = State) ->
     ?xdcr_error("Replication `~s` (`~s` -> `~s`) failed: ~s",
                 [Id, Source, Target, to_binary(Reason)]),
+    update_state_to_parent(State#rep_state{status = Status#rep_vb_status{status = idle}}),
+    report_error(Reason, Vb, P),
     % an unhandled error happened. Invalidate target vb map cache.
     remote_clusters_info:invalidate_remote_bucket_by_ref(TargetRef),
     terminate_cleanup(State).
@@ -235,6 +240,15 @@ terminate_cleanup(State) ->
 
 
 %% internal helper function
+
+report_error(Err, _Vb, _Parent) when Err == normal orelse Err == shutdown ->
+    ok;
+report_error(Err, Vb, Parent) ->
+    % TODO: convert common errors into human understandable strings
+    Time = misc:iso_8601_fmt(erlang:localtime()),
+    String = iolist_to_binary(io_lib:format("~s - Error replicating vbucket ~p: ~p",
+                                            [Time, Vb, Err])),
+    gen_server:cast(Parent, {report_error, String}).
 
 replication_turn_is_done(#rep_state{throttle = T} = State) ->
     concurrency_throttle:is_done(T),
@@ -329,9 +343,8 @@ start_replication(#rep_state{
                          } = State) ->
      NumWorkers = get_value(worker_processes, Options),
      BatchSize = get_value(worker_batch_size, Options),
-
      {ok, Source} = couch_api_wrap:db_open(SourceName, []),
-     TgtURI = xdc_rep_utils:parse_rep_db(TargetName),
+     TgtURI = xdc_rep_utils:parse_rep_db(TargetName, [], Options),
      {ok, Target} = couch_api_wrap:db_open(TgtURI, []),
      {ok, SrcMasterDb} = couch_api_wrap:db_open(
                            xdc_rep_utils:get_master_db(Source),

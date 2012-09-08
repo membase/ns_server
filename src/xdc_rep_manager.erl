@@ -32,7 +32,7 @@
 -module(xdc_rep_manager).
 -behaviour(gen_server).
 
--export([stats/1]).
+-export([stats/1, latest_errors/0]).
 -export([start_link/0, init/1, handle_call/3, handle_info/2, handle_cast/2]).
 -export([code_change/3, terminate/2]).
 
@@ -59,6 +59,10 @@ start_link() ->
 % }
 stats(Bucket) ->
     gen_server:call(?MODULE, {stats, Bucket}).
+
+
+latest_errors() ->
+    gen_server:call(?MODULE, get_errors).
 
 
 init(_) ->
@@ -105,6 +109,25 @@ maybe_create_replication_info_ddoc() ->
         couch_db:close(DB)
     end.
 
+handle_call(get_errors, _, State) ->
+    Reps = try xdc_replication_sup:get_replications()
+           catch T:E ->
+                   ?xdcr_error("xdcr stats Error:~p", [{T,E,erlang:get_stacktrace()}]),
+                   []
+           end,
+    Errors = lists:foldl(
+        fun({Bucket, Id, Pid}, Acc) ->
+                case catch xdc_replication:latest_errors(Pid) of
+                    {ok, Errors} ->
+                        [{Bucket, Id, Errors} | Acc];
+                    Error ->
+                        ?xdcr_error("Error getting errors for bucket ~s with"
+                                   " id ~s :~p", [Bucket, Id, Error]),
+                        Acc
+                end
+        end, [], Reps),
+    {reply, Errors, State};
+
 handle_call({stats, Bucket0}, _, State) ->
     Bucket = list_to_binary(Bucket0),
     Reps = try xdc_replication_sup:get_replications(Bucket)
@@ -119,7 +142,8 @@ handle_call({stats, Bucket0}, _, State) ->
                         [{Id, Stats} | Acc];
                     Error ->
                         ?xdcr_error("Error getting stats for bucket ~s with"
-                                   " id ~s :~p", [Bucket, Id, Error])
+                                   " id ~s :~p", [Bucket, Id, Error]),
+                        Acc
                 end
         end, [], Reps),
     {reply, Stats, State};

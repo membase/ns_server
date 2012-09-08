@@ -21,7 +21,7 @@
 -module(xdc_replication).
 -behaviour(gen_server).
 
--export([stats/1, target/1]).
+-export([stats/1, target/1, latest_errors/1]).
 -export([start_link/1, init/1, handle_call/3, handle_info/2, handle_cast/2]).
 -export([code_change/3, terminate/2]).
 
@@ -34,7 +34,8 @@
     vbs = [],               % list of vb we should be replicating
     init_throttle,          % limits # of concurrent vb replicators initializing
     work_throttle,          % limits # of concurrent vb replicators working
-    vb_rep_dict = dict:new()% contains state and stats for each replicator
+    vb_rep_dict = dict:new(),% contains state and stats for each replicator
+    error_reports = ringbuffer:new(10) % contains most recent errors
     }).
 
 
@@ -46,6 +47,9 @@ stats(Pid) ->
 
 target(Pid) ->
     gen_server:call(Pid, target).
+
+latest_errors(Pid) ->
+    gen_server:call(Pid, get_errors).
 
 init([#rep{source = SrcBucketBinary} = Rep]) ->
     %% Subscribe to bucket map changes due to rebalance and failover operations
@@ -75,19 +79,19 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
     {ok, WorkThrottle} = concurrency_throttle:start_link(MaxConcurrentReps),
     {ok, Sup} = xdc_vbucket_rep_sup:start_link([]),
     case ns_bucket:get_bucket(?b2l(SrcBucketBinary)) of
-    {ok, SrcBucketConfig} ->
-        Vbs = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
-        RepState0 = #replication{rep = Rep,
-                                 vbs = Vbs,
-                                 init_throttle = InitThrottle,
-                                 work_throttle = WorkThrottle,
-                                 vbucket_sup = Sup},
-        RepState = start_vb_replicators(RepState0);
-    _Else ->
-        RepState = #replication{rep = Rep,
-                                init_throttle = InitThrottle,
-                                work_throttle = WorkThrottle,
-                                vbucket_sup = Sup}
+        {ok, SrcBucketConfig} ->
+            Vbs = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
+            RepState0 = #replication{rep = Rep,
+                                     vbs = Vbs,
+                                     init_throttle = InitThrottle,
+                                     work_throttle = WorkThrottle,
+                                     vbucket_sup = Sup},
+            RepState = start_vb_replicators(RepState0);
+        _Else ->
+            RepState = #replication{rep = Rep,
+                                    init_throttle = InitThrottle,
+                                    work_throttle = WorkThrottle,
+                                    vbucket_sup = Sup}
     end,
     {ok, RepState}.
 
@@ -119,10 +123,16 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict} = State) ->
 handle_call(target, _From, State) ->
     {reply, {ok, (State#replication.rep)#rep.target}, State};
 
+handle_call(get_errors, _From, State) ->
+    {reply, {ok, ringbuffer:to_list(State#replication.error_reports)}, State};
+
 handle_call(Msg, From, State) ->
     ?xdcr_error("replication manager received unexpected call ~p from ~p",
                 [Msg, From]),
     {stop, {error, {unexpected_call, Msg}}, State}.
+
+handle_cast({report_error, Err}, #replication{error_reports = Errs} = State) ->
+    {noreply, State#replication{error_reports = ringbuffer:add(Err, Errs)}};
 
 handle_cast(Msg, State) ->
     ?xdcr_error("replication manager received unexpected cast ~p", [Msg]),
@@ -138,11 +148,11 @@ consume_all_buckets_changes(Buckets) ->
 
 handle_info({src_db_updated, Vb}, #replication{vb_rep_dict = Dict} = State) ->
     case dict:find(Vb, Dict) of
-    {ok, #rep_vb_status{pid = Pid}} ->
-        Pid ! src_db_updated;
-    error ->
-        % no state yet, or already erased
-        ok
+        {ok, #rep_vb_status{pid = Pid}} ->
+            Pid ! src_db_updated;
+        error ->
+            % no state yet, or already erased
+            ok
     end,
     {noreply, State};
 

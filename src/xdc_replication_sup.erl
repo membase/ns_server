@@ -14,7 +14,8 @@
 -behaviour(supervisor).
 
 -export([start_replication/1, stop_replication/1, shutdown/0,
-         get_replications/1, all_local_replication_infos/0]).
+         get_replications/0, get_replications/1,
+         all_local_replication_infos/0]).
 
 -export([init/1, start_link/0]).
 
@@ -32,6 +33,11 @@ start_replication(#rep{id = Id, source = SourceBucket} = Rep) ->
              [xdc_replication]
             },
     supervisor:start_child(?MODULE, Spec).
+
+-spec get_replications() -> [{Bucket :: binary(), Id :: binary(), pid()}].
+get_replications() ->
+    [{Bucket, Id, Pid}
+     || {{Bucket, Id}, Pid, _, _} <- supervisor:which_children(?MODULE)].
 
 -spec get_replications(binary()) -> [{_, pid()}].
 get_replications(SourceBucket) ->
