@@ -25,6 +25,7 @@
 -include("ns_stats.hrl").
 
 -export([failover/1,
+         validate_autofailover/1,
          generate_initial_map/1,
          rebalance/3,
          unbalanced/2,
@@ -59,6 +60,36 @@ failover(Node) ->
             timer:sleep(5000);
         false ->
             ok
+    end.
+
+validate_autofailover(Node) ->
+    BucketPairs = ns_bucket:get_buckets(),
+    UnsafeBuckets =
+        [BucketName
+         || {BucketName, BucketConfig} <- BucketPairs,
+            validate_autofailover_bucket(BucketConfig, Node) =:= false],
+    case UnsafeBuckets of
+        [] -> ok;
+        _ -> {error, UnsafeBuckets}
+    end.
+
+validate_autofailover_bucket(BucketConfig, Node) ->
+    case proplists:get_value(type, BucketConfig) of
+        membase ->
+            Map = proplists:get_value(map, BucketConfig),
+            Map1 = mb_map:promote_replicas(Map, [Node]),
+            case Map1 of
+                undefined ->
+                    true;
+                _ ->
+                    case [I || {I, [undefined|_]} <- misc:enumerate(Map1, 0)] of
+                        [] -> true;
+                        _MissingVBuckets ->
+                            false
+                    end
+            end;
+        _ ->
+            true
     end.
 
 -spec failover(string(), atom()) -> ok | janitor_failed.
