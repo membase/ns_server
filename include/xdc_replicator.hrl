@@ -64,7 +64,9 @@
           status = idle,
           num_changes_left = 0,
           docs_checked = 0,
-          docs_written = 0
+          docs_written = 0,
+          total_work_time = 0, % in MS
+          total_commit_time = 0 % in MS
  }).
 
 -record(rep_state, {
@@ -92,6 +94,7 @@
           src_starttime,
           tgt_starttime,
           timer, %% checkpoint timer
+          start_work_time,
           workers,
           session_id,
           source_seq = nil

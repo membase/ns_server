@@ -96,27 +96,39 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
     {ok, RepState}.
 
 handle_call(stats, _From, #replication{vb_rep_dict = Dict} = State) ->
+    % sum all the vb stats and collect list of vb replicating
     Stats = dict:fold(
                     fun(_,
                         #rep_vb_status{vb = Vb,
                                        status = Status,
                                        num_changes_left = Left,
                                        docs_checked = Checked,
-                                       docs_written = Written},
-                        {WorkLeftAcc, CheckedAcc, WrittenAcc, VbReplicatingAcc}) ->
+                                       docs_written = Written,
+                                       total_work_time = WorkTime,
+                                       total_commit_time = CommitTime},
+                        {WorkLeftAcc,
+                         CheckedAcc,
+                         WrittenAcc,
+                         WorkTimeAcc,
+                         CommitTimeAcc,
+                         VbReplicatingAcc}) ->
                                 {WorkLeftAcc + Left,
                                  CheckedAcc + Checked,
                                  WrittenAcc + Written,
+                                 WorkTimeAcc + WorkTime,
+                                 CommitTimeAcc + CommitTime,
                                  if Status == replicating ->
                                      [Vb | VbReplicatingAcc];
                                  true ->
                                      VbReplicatingAcc
                                  end}
-                        end, {0, 0, 0, []}, Dict),
-    {Left1, Checked1, Written1, VbsReplicating1} = Stats,
+                        end, {0, 0, 0, 0, 0, []}, Dict),
+    {Left1, Checked1, Written1, WorkTime1, CommitTime1, VbsReplicating1} = Stats,
     Props = [{changes_left, Left1},
              {docs_checked, Checked1},
              {docs_written, Written1},
+             {time_working, WorkTime1 div 1000},
+             {time_committing, CommitTime1 div 1000},
              {vbs_replicating, VbsReplicating1}],
     {reply, {ok, Props}, State};
 

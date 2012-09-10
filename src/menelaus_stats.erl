@@ -736,7 +736,13 @@ couchbase_replication_stats_descriptions(BucketId) ->
                                        {desc,<<"Document mutations checked for XDCR">>}]},
                               {struct,[{title,<<"documents replicated">>},
                                        {name,<<Prefix/binary,"docs_written">>},
-                                       {desc,<<"Document mutations replicated to remote cluster">>}]}]}]}
+                                       {desc,<<"Document mutations replicated to remote cluster">>}]},
+                              {struct,[{title,<<"secs working">>},
+                                       {name,<<Prefix/binary,"time_working">>},
+                                       {desc,<<"Total time all vb replicators spent checking and writing">>}]},
+                              {struct,[{title,<<"secs committing">>},
+                                       {name,<<Prefix/binary,"time_committing">>},
+                                       {desc,<<"Total time all vb replicators spent waiting for commit and checkpoint">>}]}]}]}
               end, Reps).
 
 couchbase_view_stats_descriptions(BucketId) ->

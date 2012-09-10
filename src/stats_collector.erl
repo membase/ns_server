@@ -168,20 +168,25 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% Internal functions
 transform_xdc_stats_loop([], Out) -> Out;
-transform_xdc_stats_loop([In | T], {{TotalLeft, TotalChecked, TotalWritten}, Reps}) ->
+transform_xdc_stats_loop([In | T], {Totals, Reps}) ->
     {RepID, RepStats} = In,
     PerRepStats = [{iolist_to_binary([<<"replications/">>, RepID, <<"/">>, atom_to_binary(StatK, latin1)]),
                     StatV} || {StatK, StatV} <- RepStats, is_integer(StatV)],
-    [{_, Left0}, {_, Checked0}, {_, Written0}] =
-            [proplists:lookup(K, RepStats) || K <- [changes_left, docs_checked, docs_written]],
-    transform_xdc_stats_loop(T, {{TotalLeft + Left0, TotalChecked + Checked0, TotalWritten + Written0},
+   Totals2 = {element(1, Totals) + proplists:get_value(changes_left, RepStats),
+              element(2, Totals) + proplists:get_value(docs_checked, RepStats),
+              element(3, Totals) + proplists:get_value(docs_written, RepStats),
+              element(4, Totals) + proplists:get_value(time_working, RepStats),
+              element(5, Totals) + proplists:get_value(time_committing, RepStats)},
+    transform_xdc_stats_loop(T, {Totals2,
                                  lists:append(PerRepStats, Reps)}).
 
 transform_xdc_stats(XDCStats) ->
-    {{TotalLeft, TotalChecked, TotalWritten}, RepStats} = transform_xdc_stats_loop(XDCStats, {{0,0,0},[]}),
-    TotalStats = [{replication_changes_left, TotalLeft},
-                  {replication_docs_checked, TotalChecked},
-                  {replication_docs_written, TotalWritten}],
+    {Totals, RepStats} = transform_xdc_stats_loop(XDCStats, {{0,0,0,0,0},[]}),
+    TotalStats = [{replication_changes_left, element(1, Totals)},
+                  {replication_docs_checked, element(2, Totals)},
+                  {replication_docs_written, element(3, Totals)},
+                  {replication_work_time, element(4, Totals)},
+                  {replication_commit_time, element(5, Totals)}],
     lists:append(TotalStats, RepStats).
 
 format_stats(Stats) ->

@@ -167,19 +167,28 @@ handle_call({worker_done, Pid}, _From,
             {stop, {unknown_worker_done, Pid}, ok, State};
         [] ->
             % all workers completed. Now shutdown everything and prepare for
-            % more changes from src.
-            State1 = State#rep_state{workers = [], status = VbStatus#rep_vb_status{status = idle}},
-            State2 = xdc_vbucket_rep_ckpt:do_last_checkpoint(State1),
+            % more changes from src
+            WorkTime = timer:now_diff(now(), State#rep_state.start_work_time) div 1000,
+            TotalWorkTime = VbStatus#rep_vb_status.total_work_time + WorkTime,
+            CommitStart = now(),
+            State1 = xdc_vbucket_rep_ckpt:do_last_checkpoint(State),
+            CommitTime = timer:now_diff(now(), CommitStart) div 1000,
+            TotalCommitTime = VbStatus#rep_vb_status.total_commit_time + CommitTime,
             % allow another replicator to go
-            State3 = replication_turn_is_done(State2),
-            couch_api_wrap:db_close(State3#rep_state.source),
-            couch_api_wrap:db_close(State3#rep_state.src_master_db),
-            couch_api_wrap:db_close(State3#rep_state.target),
-            couch_api_wrap:db_close(State3#rep_state.tgt_master_db),
+            State2 = replication_turn_is_done(State1),
+            couch_api_wrap:db_close(State2#rep_state.source),
+            couch_api_wrap:db_close(State2#rep_state.src_master_db),
+            couch_api_wrap:db_close(State2#rep_state.target),
+            couch_api_wrap:db_close(State2#rep_state.tgt_master_db),
             % force check for changes since we last snapshop
             self() ! src_db_updated,
             misc:flush(checkpoint),
-            {reply, ok, update_state_to_parent(State3#rep_state{
+            VbState2 = VbStatus#rep_vb_status{status = idle,
+                                              total_work_time = TotalWorkTime,
+                                              total_commit_time = TotalCommitTime},
+            {reply, ok, update_state_to_parent(State2#rep_state{
+                                        workers = [],
+                                        status = VbState2,
                                         source = undefined,
                                         src_master_db = undefined,
                                         target = undefined,
@@ -189,10 +198,15 @@ handle_call({worker_done, Pid}, _From,
     end.
 
 
-handle_cast(checkpoint, State) ->
+handle_cast(checkpoint, #rep_state{status = VbStatus} = State) ->
+    Start = now(),
     case xdc_vbucket_rep_ckpt:do_checkpoint(State) of
         {ok, NewState} ->
-            {noreply, NewState#rep_state{timer = xdc_vbucket_rep_ckpt:start_timer(State)}};
+            CommitTime = timer:now_diff(now(), Start) div 1000,
+            TotalCommitTime = CommitTime + VbStatus#rep_vb_status.total_commit_time,
+            VbStatus2 = VbStatus#rep_vb_status{total_commit_time = TotalCommitTime},
+            {noreply, NewState#rep_state{timer = xdc_vbucket_rep_ckpt:start_timer(State),
+                                         status = VbStatus2}};
         Error ->
             {stop, Error, State}
     end;
@@ -341,6 +355,7 @@ start_replication(#rep_state{
                            rep_details = #rep{id = Id, options = Options},
                            status = VbStatus
                          } = State) ->
+     WorkStart = now(),
      NumWorkers = get_value(worker_processes, Options),
      BatchSize = get_value(worker_batch_size, Options),
      {ok, Source} = couch_api_wrap:db_open(SourceName, []),
@@ -407,7 +422,8 @@ start_replication(#rep_state{
             target = Target,
             tgt_master_db = TgtMasterDb,
             status = VbStatus#rep_vb_status{num_changes_left = Changes},
-            timer = xdc_vbucket_rep_ckpt:start_timer(State)
+            timer = xdc_vbucket_rep_ckpt:start_timer(State),
+            start_work_time = WorkStart
            }).
 
 update_number_of_changes(#rep_state{source_name = Src,
