@@ -1409,48 +1409,7 @@
                 <!-- {% }); %} -->
                 <!-- {% } else { %} -->
                 <tr><td colspan="7" style="text-align:center">There are no
-                replications currently in progress. Check Past Replications
-                below, or create a new replication.</td></tr>
-                <!-- {% } %} -->
-              </table>
-              </script>
-            </div>
-          </div>
-
-          <!-- Past Replicaitons -->
-          <div id="past_replications" class="shadow_box">
-            <div class="darker_block bucket_details">
-              <h3 class="block-expander">
-                <ins></ins><span class="view_head">Past Replications</span>
-              </h3>
-
-              <div class="stats" id="past_replications_list_container">
-              </div>
-              <script id="past_replications_list_template" type="text/html">
-              <table class="list" style="width:100%">
-                <tr>
-                  <th>Bucket</th>
-                  <th>From</th>
-                  <th>To</th>
-                  <th>Status</th>
-                  <th>When</th>
-                  <th>Last Run</th>
-                </tr>
-                <!-- {% if (rows.length > 0) { %} -->
-                <!-- {% _.each(rows, function (r) { %} -->
-                <tr>
-                  <td>{%= h(r.bucket) %}</td>
-                  <td style="color:#777">this cluster</td>
-                  <td>{%= h(r.to) %}</td>
-                  <td>{%= h(r.status) %}</td>
-                  <td>{%= h(r.when) %}</td>
-                  <td>{%= r.lastRun && V.formatLogTStamp(r.lastRun) %}</td>
-                </tr>
-                <!-- {% }); %} -->
-                <!-- {% } else { %} -->
-                <tr><td colspan="7" style="text-align:center">No replications
-                have been run from this cluster yet. Create one in the Ongoing
-                Replicaitons section above.</td></tr>
+                replications currently in progress.</td></tr>
                 <!-- {% } %} -->
               </table>
               </script>

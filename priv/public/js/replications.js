@@ -107,10 +107,6 @@ var ReplicationsModel = {};
     return _.select(v.need(allReplicationInfos), currentReplicationInfoP);
   });
 
-  var pastReplicationInfos = model.pastReplicationInfos = Cell.compute(function (v) {
-    return _.reject(v.need(allReplicationInfos), currentReplicationInfoP);
-  });
-
   model.refreshReplications = function (softly) {
     if (!softly) {
       remoteClustersListCell.setValue(undefined);
@@ -126,23 +122,19 @@ var ReplicationsModel = {};
   // right after creating replication there are no info docs yet so
   // state is undefined, we want to keep refreshing this list in order to get to right state
   model.initiateRefreshingReplicationsList = function () {
-    Cell.subscribeMultipleValues(function (currentReplications, pastReplications) {
+    Cell.subscribeMultipleValues(function (currentReplications) {
       console.log("currentReplications: ", currentReplications);
-      console.log("pastReplications: ", pastReplications);
-      if (!currentReplications || !pastReplications) {
+      if (!currentReplications) {
         return;
       }
       var needReload = _.detect(currentReplications, function (info) {
         return (info._replication_state === undefined)
       });
-      needReload = needReload || _.detect(pastReplications, function (info) {
-        return (info._replication_state !== 'cancelled') && (info._replication_state !== 'error');
-      });
       console.log("needReload: ", needReload);
       if (needReload) {
         rawReplicationInfos.recalculateAfterDelay(3000);
       }
-    }, currentReplicationInfos, pastReplicationInfos);
+    }, currentReplicationInfos);
   }
 })();
 
@@ -281,11 +273,6 @@ var ReplicationsSection = {
 
     renderCellTemplate(ReplicationsModel.currentReplicationInfos,
                        'ongoing_replications_list', {
-                         valueTransformer: replicationInfoValueTransformer
-                       });
-
-    renderCellTemplate(ReplicationsModel.pastReplicationInfos,
-                       'past_replications_list', {
                          valueTransformer: replicationInfoValueTransformer
                        });
 
