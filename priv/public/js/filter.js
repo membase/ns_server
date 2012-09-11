@@ -48,7 +48,6 @@ Filter.prototype = {
     var forAllItems = {
       connectionTimeout: true,
       stale: true,
-      updateSeq: true,
       startkeyDocid: true,
       startkey: true,
       reduce: true,
