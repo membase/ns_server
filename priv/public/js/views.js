@@ -765,6 +765,43 @@ function createRandomDocCells(ns, modeCell) {
   });
   ns.randomDocCell.equality = function (a, b) {return a === b};
   ns.randomDocCell.delegateInvalidationMethods(ns.randomDocIdCell);
+
+  ns.viewResultsMassagedForTemplateCell = Cell.compute(function (v) {
+    var viewResult = v(ns.viewResultsCellViews);
+    if (!viewResult) {
+      return {rows: {lackOfValue: true},
+              errors: false}
+    }
+
+    var selectedBucket = v.need(ns.viewsBucketCell);
+
+    var rows = _.filter(viewResult.rows, function (r) {return ('key' in r)});
+    var errors = _.clone(viewResult.errors);
+    if (errors) {
+      // NOTE: we need snapshot of current tasks. I.e. we don't want
+      // this cell to be recomputed when tasks change.
+      var tasks = ns.tasksOfCurrentBucket.value;
+      if (!tasks) {
+        v(ns.tasksOfCurrentBucket);
+        return;
+      }
+      var currentDoc = v.need(ns.rawDDocIdCell);
+
+      var indexingRunning = _.filter(tasks[currentDoc], function (item) {
+        return item.type == "indexer" && item.status == "running" && item.designDocument == currentDoc;
+      }).length;
+
+      _.each(errors, function (item, i) {
+        if (item.reason == 'timeout' && indexingRunning) {
+          item = errors[i] = _.clone(item);
+          item.explain = "node is still building up the index";
+          item.showBtn = true;
+        }
+      });
+    }
+
+    return {rows: rows, errors: errors, selectedBucket: selectedBucket};
+  });
 }
 
 var ViewsSection = {
@@ -1089,20 +1126,11 @@ var ViewsSection = {
       });
     })();
 
-    self.viewResultsCellViews.subscribeValue(function (value) {
-      if (value) {
-        var rows = _.filter(value.rows, function (r) {return ('key' in r)});
-        var targ = {rows: rows};
-        if (value.errors) {
-          var errorsMsg = "Subset of nodes failed with the following error:\n" + JSON.stringify(value.errors, null, "  ");
-          postClientErrorReport(errorsMsg);
-          genericDialog({text: errorsMsg,
-                         buttons: {ok: true, cancel: false}});
-        }
-      } else {
-        var targ = {rows: {lackOfValue: true}};
+    self.viewResultsMassagedForTemplateCell.subscribeValue(function (value) {
+      if (!value) {
+        return;
       }
-      renderTemplate('view_results', targ);
+      renderTemplate('view_results', value);
     });
 
     self.viewResultsCellSpatial.subscribeValue(function (value) {
@@ -1114,7 +1142,6 @@ var ViewsSection = {
       }
       renderTemplate('spatial_results', targ);
     });
-
 
     (function () {
       var resultBlock = $('.results_block', views);

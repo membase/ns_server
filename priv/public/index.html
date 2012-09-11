@@ -1249,6 +1249,29 @@
               </div>
               <script id="view_results_template" type="text/html">
               <table class="list align_text" style="width:100%">
+                <!-- {% if (errors) { %} -->
+                  <tr>
+                      <th class="keycol">Errors</th>
+                      <th></th>
+                  </tr>
+                  <tbody class="list_errors">
+                  <!-- {% _.each(errors, function (r) { %} -->
+                    <tr>
+                        <td>
+                          <span class="label">from:</span> {%= r.from %} <br>
+                          <span class="label">reason:</span> {%= r.reason %} {%= r.explain ? "(" + r.explain + ")" : "" %}
+                        </td>
+                        <td>
+                        <!-- {% if (r.showBtn) { %} -->
+                          <a class="list_button buttontn_remove" onclick="ViewsSection.viewResultsURLCell.runView();"><span>
+                            Run Query Again
+                          </span></a>
+                        <!-- {% } %} -->
+                        </td>
+                    </tr>
+                  <!-- {% }); %} -->
+                  </tbody>
+                <!-- {% } %} -->
                 <tr>
                     <th class="keycol">Key</th>
                     <th>Value</th>
