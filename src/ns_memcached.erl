@@ -84,6 +84,7 @@
          warmed_buckets/1,
          mark_warmed/2,
          mark_warmed/3,
+         disable_traffic/2,
          delete_vbucket/2, delete_vbucket/3,
          get_vbucket/3,
          host_port/1,
@@ -215,6 +216,22 @@ handle_call(connected_and_list_vbuckets, _From, #state{status=init} = State) ->
     {reply, warming_up, State};
 handle_call(connected_and_list_vbuckets, From, State) ->
     handle_call(list_vbuckets, From, State);
+handle_call(disable_traffic, _From, State) ->
+    case State#state.status of
+        Status when Status =:= warmed; Status =:= connected ->
+            ?log_info("Disabling traffic and unmarking bucket as warmed"),
+            case mc_client_binary:disable_traffic(State#state.sock) of
+                ok ->
+                    State2 = State#state{status=connected,
+                                         start_time = os:timestamp()},
+                    {reply, ok, State2};
+                {memcached_error, _, _} = Error ->
+                    ?log_error("disabling traffic failed: ~p", [Error]),
+                    {reply, Error, State}
+            end;
+        _ ->
+            {reply, bad_status, State}
+    end;
 handle_call(mark_warmed, _From, #state{status=Status,
                                        bucket=Bucket,
                                        start_time=Start,
@@ -1201,3 +1218,7 @@ extract_new_response_warmed(Resp) when is_list(Resp) ->
     R = proplists:get_value(warmed, Resp),
     true = is_boolean(R),
     R.
+
+-spec disable_traffic(bucket_name(), non_neg_integer() | infinity) -> ok | bad_status | mc_error().
+disable_traffic(Bucket, Timeout) ->
+    gen_server:call(server(Bucket), disable_traffic, Timeout).

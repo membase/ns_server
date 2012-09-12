@@ -67,6 +67,7 @@
 -define(CMD_DELQ_WITH_META, 16#a9).
 
 -define(CMD_ENABLE_TRAFFIC, 16#ad).
+-define(CMD_DISABLE_TRAFFIC, 16#ae).
 
 -define(CMD_CHANGE_VB_FILTER, 16#b0).
 

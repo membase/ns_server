@@ -51,7 +51,8 @@
          set_engine_param/4,
          get_zero_open_checkpoint_vbuckets/2,
          change_vbucket_filter/3,
-         enable_traffic/1]).
+         enable_traffic/1,
+         disable_traffic/1]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
 -type mc_timeout() :: undefined | infinity | non_neg_integer().
@@ -474,6 +475,17 @@ enable_traffic(Sock) ->
         Other ->
             process_error_response(Other)
     end.
+
+disable_traffic(Sock) ->
+    case cmd(?CMD_DISABLE_TRAFFIC, Sock, undefined, undefined,
+             {#mc_header{}, #mc_entry{}}) of
+        {ok, #mc_header{status=?SUCCESS}, _, _} ->
+            ok;
+        Other ->
+            process_error_response(Other)
+    end.
+
+
 
 %% -------------------------------------------------
 
