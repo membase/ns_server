@@ -95,14 +95,11 @@ config_string(BucketName) ->
     {DynamicConfigString, ExtraParams} =
         case BucketType of
             membase ->
-                {ok, DBDir} = ns_storage_conf:this_node_dbdir(),
-                DBName = filename:join(DBDir, BucketName),
-                CouchPort = ns_config:search_node_prop(Config, memcached, mccouch_port, 11213),
-                DBSubDir = filename:join(DBDir, BucketName),
-                AccessLog = filename:join(DBSubDir, "access.log"),
+                {ok, DBSubDir} = ns_storage_conf:this_node_bucket_dbdir(BucketName),
                 ok = filelib:ensure_dir(DBSubDir),
+                CouchPort = ns_config:search_node_prop(Config, memcached, mccouch_port, 11213),
+                AccessLog = filename:join(DBSubDir, "access.log"),
                 NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
-                ok = filelib:ensure_dir(DBName),
                 %% MemQuota is our per-node bucket memory limit
                 CFG =
                     io_lib:format(
@@ -131,12 +128,12 @@ config_string(BucketName) ->
                        proplists:get_value(
                          tap_keepalive, BucketConfig,
                          misc:getenv_int("MEMBASE_TAP_KEEPALIVE", 300)),
-                       DBName,
+                       DBSubDir,
                        BucketName,
                        CouchPort,
                        NumVBuckets,
                        AccessLog]),
-                {CFG, {MemQuota, DBName}};
+                {CFG, {MemQuota, DBSubDir}};
             memcached ->
                 {io_lib:format("cache_size=~B", [MemQuota]),
                  MemQuota}

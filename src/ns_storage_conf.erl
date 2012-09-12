@@ -27,6 +27,7 @@
          storage_conf/1, storage_conf_from_node_status/1, add_storage/4, remove_storage/2,
          local_bucket_disk_usage/1,
          this_node_dbdir/0, this_node_ixdir/0, this_node_logdir/0,
+         this_node_bucket_dbdir/1,
          delete_databases_and_files/1, delete_unused_buckets_db_files/0,
          bucket_databases/1]).
 
@@ -68,6 +69,12 @@ couch_storage_path(Field) ->
 -spec this_node_dbdir() -> {ok, string()} | {error, binary()}.
 this_node_dbdir() ->
     couch_storage_path(db_path).
+
+-spec this_node_bucket_dbdir(bucket_name()) -> {ok, string()}.
+this_node_bucket_dbdir(BucketName) ->
+    {ok, DBDir} = ns_storage_conf:this_node_dbdir(),
+    DBSubDir = filename:join(DBDir, BucketName),
+    {ok, DBSubDir}.
 
 -spec this_node_ixdir() -> {ok, string()} | {error, binary()}.
 this_node_ixdir() ->
