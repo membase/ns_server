@@ -737,7 +737,7 @@ function usageGaugeHTML(options) {
         percent++;
       }
     }
-    var style="left:" + percent + '%;';
+    var style="left:" + (percent > 100 ? 100 : percent) + '%;';
     return mkTag("i", extendHTMLAttrs({style: style}, marker.attrs));
   });
 
