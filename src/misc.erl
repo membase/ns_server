@@ -1161,7 +1161,26 @@ atomic_write_file(Path, Contents) ->
     TmpPath = Path ++ ".tmp",
     case file:write_file(TmpPath, Contents) of
         ok ->
-            file:rename(TmpPath, Path);
+            case file:open(TmpPath, [raw, binary, read, write]) of
+                {ok, IO} ->
+                    SyncRV =
+                        try
+                            file:sync(IO)
+                        after
+                            ok = file:close(IO)
+                        end,
+                    case SyncRV of
+                        ok ->
+                            %% NOTE: linux manpages also mention sync
+                            %% on directory, but erlang can't do that
+                            %% and that's not portable
+                            file:rename(TmpPath, Path);
+                        _ ->
+                            SyncRV
+                    end;
+                Err ->
+                    Err
+            end;
         X -> X
     end.
 
