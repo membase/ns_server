@@ -86,6 +86,7 @@
          mark_warmed/3,
          disable_traffic/2,
          delete_vbucket/2, delete_vbucket/3,
+         sync_delete_vbucket/2,
          get_vbucket/3,
          host_port/1,
          host_port/2,
@@ -296,6 +297,7 @@ verify_report_long_call(StartTS, ActualStartTS, State, Msg, RV) ->
 
 %% anything effectful is likely to be heavy
 assign_queue({delete_vbucket, _}) -> #state.very_heavy_calls_queue;
+assign_queue({sync_delete_vbucket, _}) -> #state.very_heavy_calls_queue;
 assign_queue(flush) -> #state.very_heavy_calls_queue;
 assign_queue({set_vbucket, _, _}) -> #state.heavy_calls_queue;
 assign_queue({deregister_tap_client, _}) -> #state.heavy_calls_queue;
@@ -421,6 +423,11 @@ do_handle_call({delete_vbucket, VBucket}, _From, #state{sock=Sock} = State) ->
             Reply = mc_client_binary:delete_vbucket(Sock, VBucket),
             {reply, Reply, State}
     end;
+do_handle_call({sync_delete_vbucket, VBucket}, _From, #state{sock=Sock} = State) ->
+    ?log_info("sync-deleting vbucket ~p", [VBucket]),
+    ok = mc_client_binary:set_vbucket(Sock, VBucket, dead),
+    Reply = mc_client_binary:sync_delete_vbucket(Sock, VBucket),
+    {reply, Reply, State};
 do_handle_call({get_vbucket, VBucket}, _From, State) ->
     Reply = mc_client_binary:get_vbucket(State#state.sock, VBucket),
     {reply, Reply, State};
@@ -886,6 +893,13 @@ delete_vbucket(Bucket, VBucket) ->
 delete_vbucket(Node, Bucket, VBucket) ->
     do_call({server(Bucket), Node}, {delete_vbucket, VBucket},
             ?TIMEOUT_VERY_HEAVY).
+
+
+-spec sync_delete_vbucket(bucket_name(), vbucket_id()) ->
+                                 ok | mc_error().
+sync_delete_vbucket(Bucket, VBucket) ->
+    do_call(server(Bucket), {sync_delete_vbucket, VBucket},
+            infinity).
 
 
 -spec get_vbucket(node(), bucket_name(), vbucket_id()) ->

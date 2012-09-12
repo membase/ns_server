@@ -31,6 +31,7 @@
          create_bucket/4,
          delete_bucket/3,
          delete_vbucket/2,
+         sync_delete_vbucket/2,
          flush/1,
          get_vbucket/2,
          list_buckets/1,
@@ -200,6 +201,15 @@ delete_vbucket(Sock, VBucket) ->
     case cmd(?CMD_DELETE_VBUCKET, Sock, undefined, undefined,
              {#mc_header{vbucket = VBucket}, #mc_entry{}},
              ?VB_DELETE_TIMEOUT) of
+        {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
+            ok;
+        Response -> process_error_response(Response)
+    end.
+
+sync_delete_vbucket(Sock, VBucket) ->
+    case cmd(?CMD_DELETE_VBUCKET, Sock, undefined, undefined,
+             {#mc_header{vbucket = VBucket}, #mc_entry{data = <<"async=0">>}},
+             infinity) of
         {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
             ok;
         Response -> process_error_response(Response)
