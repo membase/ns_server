@@ -33,6 +33,7 @@
 %% API
 -export([create_bucket/3,
          delete_bucket/1,
+         flush_bucket/1,
          failover/1,
          needs_rebalance/0,
          request_janitor_run/1,
@@ -57,6 +58,7 @@
 -define(REBALANCE_STOPPED, 7).
 
 -define(DELETE_BUCKET_TIMEOUT, 30000).
+-define(FLUSH_BUCKET_TIMEOUT, 60000).
 -define(CREATE_BUCKET_TIMEOUT, 5000).
 
 %% gen_fsm callbacks
@@ -122,6 +124,20 @@ create_bucket(BucketType, BucketName, NewConfig) ->
 delete_bucket(BucketName) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {delete_bucket, BucketName}, infinity).
+
+-spec flush_bucket(bucket_name()) ->
+                          ok |
+                          rebalance_running |
+                          bucket_not_found |
+                          not_supported |       % if we're in 1.8.x compat mode and trying to flush couchbase bucket
+                          {prepare_flush_failed, _, _} |
+                          {initial_config_sync_failed, _} |
+                          {flush_config_sync_failed, _} |
+                          {flush_wait_failed, _, _} |
+                          {old_style_flush_failed, _, _}.
+flush_bucket(BucketName) ->
+    wait_for_orchestrator(),
+    gen_fsm:sync_send_event(?SERVER, {flush_bucket, BucketName}, infinity).
 
 
 -spec failover(atom()) -> ok.
@@ -382,6 +398,8 @@ idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
         _ -> ok
     end,
     {reply, Reply, idle, State};
+idle({flush_bucket, BucketName}, _From, State) ->
+    perform_bucket_flushing(BucketName, State);
 idle({delete_bucket, BucketName}, _From,
      #idle_state{remaining_buckets=RemainingBuckets} = State) ->
     DeleteRV = ns_bucket:delete_bucket_returning_config(BucketName),
@@ -637,3 +655,88 @@ consider_switching_compat_mode() ->
         ok ->
             ok
     end.
+
+perform_bucket_flushing(BucketName, State) ->
+    case ns_bucket:get_bucket(BucketName) of
+        not_present ->
+            {reply, bucket_not_found, idle, State};
+        {ok, BucketConfig} ->
+            perform_bucket_flushing_with_config(BucketName, State, BucketConfig)
+    end.
+
+
+perform_bucket_flushing_with_config(BucketName, State, BucketConfig) ->
+    ale:info(?MENELAUS_LOGGER, "Flushing bucket ~p from node ~p", [BucketName, erlang:node()]),
+    case ns_bucket:bucket_type(BucketConfig) =:= memcached of
+        true ->
+            {reply, do_flush_old_style(BucketName, BucketConfig), idle, State};
+        _ ->
+            case cluster_compat_mode:is_cluster_20() of
+                true ->
+                    RV = do_flush_bucket(BucketName, BucketConfig),
+                    case RV of
+                        ok ->
+                            ?log_info("Requesting janitor run to actually revive bucket ~p after flush", [BucketName]),
+                            request_janitor_run(BucketName),
+                            {reply, RV, idle, State};
+                        _ ->
+                            {reply, RV, idle, State}
+                    end;
+                _ ->
+                    {reply, not_supported, idle, State}
+            end
+    end.
+
+do_flush_bucket(BucketName, BucketConfig) ->
+    ns_config:sync_announcements(),
+    Nodes = ns_bucket:bucket_nodes(BucketConfig),
+    case ns_config_rep:synchronize_remote(Nodes) of
+        ok ->
+            case janitor_agent:mass_prepare_flush(BucketName, Nodes) of
+                {_, [], []} ->
+                    continue_flush_bucket(BucketName, BucketConfig, Nodes);
+                {_, BadResults, BadNodes} ->
+                    %% NOTE: I'd like to undo prepared flush on good
+                    %% nodes, but given we've lost information whether
+                    %% janitor ever marked them as warmed up I
+                    %% cannot. We'll do it after some partial
+                    %% janitoring support is achieved. And for now
+                    %% we'll rely on janitor cleaning things up.
+                    {error, {prepare_flush_failed, BadNodes, BadResults}}
+            end;
+        {error, SyncFailedNodes} ->
+            {error, {initial_config_sync_failed, SyncFailedNodes}}
+    end.
+
+continue_flush_bucket(BucketName, BucketConfig, Nodes) ->
+    OldFlushCount = proplists:get_value(flushseq, BucketConfig, 0),
+    NewConfig = lists:keystore(flushseq, 1, BucketConfig, {flushseq, OldFlushCount + 1}),
+    ns_bucket:set_bucket_config(BucketName, NewConfig),
+    ns_config:sync_announcements(),
+    case ns_config_rep:synchronize_remote(Nodes) of
+        ok ->
+            finalize_flush_bucket(BucketName, Nodes);
+        {error, SyncFailedNodes} ->
+            {error, {flush_config_sync_failed, SyncFailedNodes}}
+    end.
+
+finalize_flush_bucket(BucketName, Nodes) ->
+    {_GoodNodes, FailedCalls, FailedNodes} = janitor_agent:complete_flush(BucketName, Nodes, ?FLUSH_BUCKET_TIMEOUT),
+    case FailedCalls =:= [] andalso FailedNodes =:= [] of
+        true ->
+            ok;
+        _ ->
+            {error, {flush_wait_failed, FailedNodes, FailedCalls}}
+    end.
+
+do_flush_old_style(BucketName, BucketConfig) ->
+    Nodes = ns_bucket:bucket_nodes(BucketConfig),
+    {Results, BadNodes} = rpc:multicall(Nodes, ns_memcached, flush, [BucketName],
+                                        ?MULTICALL_DEFAULT_TIMEOUT),
+    case BadNodes =:= [] andalso lists:all(fun(A) -> A =:= ok end, Results) of
+        true ->
+            ok;
+        false ->
+            {old_style_flush_failed, Results, BadNodes}
+    end.
+

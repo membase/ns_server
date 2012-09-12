@@ -25,7 +25,7 @@
 
 %% API
 -export([set_vbucket_states/3, server/1,
-         wait_index_updated/2, initiate_indexing/1]).
+         wait_index_updated/2, initiate_indexing/1, reset_master_vbucket/1]).
 
 -include("couch_db.hrl").
 -include_lib("couch_set_view/include/couch_set_view.hrl").
@@ -50,6 +50,9 @@ wait_index_updated(Bucket, VBucket) ->
 
 initiate_indexing(Bucket) ->
     gen_server:call(server(Bucket), initiate_indexing, infinity).
+
+reset_master_vbucket(Bucket) ->
+    gen_server:call(server(Bucket), reset_master_vbucket, infinity).
 
 -define(csv_call(Call, Args),
         %% hack to not introduce any variables in the caller environment
@@ -299,7 +302,14 @@ handle_call({delete_vbucket, VBucket}, _From, #state{usable_vbuckets = UsableVBu
                     change_vbucket_states(NewState)
             end,
             {reply, ok, NewState}
-    end.
+    end;
+handle_call(reset_master_vbucket, _From, #state{bucket = Bucket,
+                                                local_docs = LocalDocs} = State) ->
+    MasterVBucket = iolist_to_binary([Bucket, <<"/master">>]),
+    {ok, master_db_deletion} = {couch_server:delete(MasterVBucket, []), master_db_deletion},
+    [save_doc(Doc, State) || Doc <- LocalDocs],
+    {reply, ok, State}.
+
 
 handle_cast({replicated_update, #doc{id=Id, rev=Rev}=Doc}, State) ->
     %% this is replicated from another node in the cluster. We only accept it

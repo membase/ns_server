@@ -428,17 +428,17 @@ perform_warnings_validation(ParsedProps, Errors) ->
             end
     end.
 
-handle_bucket_flush(PoolId, Id, Req) ->
-    ?MENELAUS_WEB_LOG(0005, "Flushing pool ~p bucket ~p from node ~p",
-                      [PoolId, Id, erlang:node()]),
-    Nodes = ns_node_disco:nodes_wanted(),
-    {Results, []} = rpc:multicall(Nodes, ns_memcached, flush, [Id],
-                                  ?MULTICALL_DEFAULT_TIMEOUT),
-    case lists:all(fun(A) -> A =:= ok end, Results) of
-        true ->
+handle_bucket_flush(_PoolId, Id, Req) ->
+    case ns_orchestrator:flush_bucket(Id) of
+        ok ->
             Req:respond({200, server_header(), []});
-        false ->
-            Req:respond({503, server_header(), "Unexpected error flushing buckets"})
+        rebalance_running ->
+            reply_json(Req, {struct, [{'_', <<"Cannot flush buckets during rebalance">>}]}, 503);
+        bucket_not_found ->
+            Req:respond({404, server_header(), []});
+        OtherError ->
+            Msg = io_lib:format("Got error: ~p", [OtherError]),
+            Req:respond({503, server_header(), Msg})
     end.
 
 handle_setup_default_bucket_post(Req) ->

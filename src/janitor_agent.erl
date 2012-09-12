@@ -26,6 +26,8 @@
 
 -define(PREPARE_REBALANCE_TIMEOUT, ns_config_ets_dup:get_timeout(janitor_agent_prepare_rebalance, 30000)).
 
+-define(PREPARE_FLUSH_TIMEOUT, ns_config_ets_dup:get_timeout(janitor_agent_prepare_flush, 30000)).
+
 -define(SET_VBUCKET_STATE_TIMEOUT, infinity).
 
 -define(GET_SRC_DST_REPLICATIONS_TIMEOUT, ns_config_ets_dup:get_timeout(janitor_agent_get_src_dst_replications, 30000)).
@@ -35,7 +37,8 @@
                 rebalance_mref :: undefined | reference(),
                 rebalance_subprocesses = [] :: [{From :: term(), Worker :: pid()}],
                 last_applied_vbucket_states :: undefined | list(),
-                rebalance_only_vbucket_states :: list()}).
+                rebalance_only_vbucket_states :: list(),
+                flushseq}).
 
 -export([wait_for_bucket_creation/2, query_states/3,
          apply_new_bucket_config/6,
@@ -50,6 +53,8 @@
          initiate_indexing/5,
          wait_index_updated/5,
          create_new_checkpoint/4,
+         mass_prepare_flush/2,
+         complete_flush/3,
          get_replication_persistence_checkpoint_id/4,
          wait_checkpoint_persisted/5]).
 
@@ -155,6 +160,13 @@ wait_for_memcached_new_style(Nodes, Bucket, Type, SecondsToWait) ->
                end || {Node, P} <- NodePids]
       end).
 
+
+complete_flush(Bucket, Nodes, Timeout) ->
+    true = new_style_enabled(),
+    {Replies, BadNodes} = gen_server:multi_call(Nodes, server_name(Bucket), complete_flush, Timeout),
+    {GoodReplies, BadReplies} = lists:partition(fun ({_N, R}) -> R =:= ok end, Replies),
+    GoodNodes = [N || {N, _R} <- GoodReplies],
+    {GoodNodes, BadReplies, BadNodes}.
 
 -spec query_states(bucket_name(), [node()], undefined | pos_integer()) -> {ok, [{node(), vbucket_id(), vbucket_state()}], [node()]}.
 query_states(Bucket, Nodes, ReadynessWaitTimeout0) ->
@@ -476,6 +488,12 @@ wait_checkpoint_persisted(Bucket, Rebalancer, Node, VBucket, WaitedCheckpointId)
                          {if_rebalance, Rebalancer, {wait_checkpoint_persisted, VBucket, WaitedCheckpointId}},
                          infinity).
 
+mass_prepare_flush(Bucket, Nodes) ->
+    {Replies, BadNodes} = gen_server:multi_call(Nodes, server_name(Bucket), prepare_flush, ?PREPARE_FLUSH_TIMEOUT),
+    {GoodReplies, BadReplies} = lists:partition(fun ({_N, R}) -> R =:= ok end, Replies),
+    GoodNodes = [N || {N, _R} <- GoodReplies],
+    {GoodNodes, BadReplies, BadNodes}.
+
 server_name(Bucket, Node) ->
     {server_name(Bucket), Node}.
 
@@ -485,12 +503,19 @@ start_link(Bucket) ->
     gen_server:start_link({local, server_name(Bucket)}, ?MODULE, Bucket, []).
 
 init(BucketName) ->
-    {ok, #state{bucket_name = BucketName}}.
+    {ok, #state{bucket_name = BucketName,
+                flushseq = read_flush_counter(BucketName)}}.
 
+handle_call(prepare_flush, _From, #state{bucket_name = BucketName} = State) ->
+    ?log_info("Preparing flush by disabling bucket traffic"),
+    {reply, ns_memcached:disable_traffic(BucketName, infinity), State};
+handle_call(complete_flush, _From, State) ->
+    {reply, ok, consider_doing_flush(State)};
 handle_call(query_vbucket_states, _From, #state{bucket_name = BucketName} = State) ->
+    NewState = consider_doing_flush(State),
     %% NOTE: uses 'outer' memcached timeout of 60 seconds
     RV = (catch ns_memcached:local_connected_and_list_vbuckets(BucketName)),
-    {reply, RV, State};
+    {reply, RV, NewState};
 handle_call(get_incoming_replication_map, _From, #state{bucket_name = BucketName} = State) ->
     %% NOTE: has infinite timeouts but uses only local communication
     RV = tap_replication_manager:get_incoming_replication_map(BucketName),
@@ -728,3 +753,80 @@ do_wait_checkpoint_persisted(Bucket, VBucket, WaitedCheckpointId, TriesCounter) 
         false ->
             ok
     end.
+
+flushseq_file_path(BucketName) ->
+    {ok, DBSubDir} = ns_storage_conf:this_node_bucket_dbdir(BucketName),
+    filename:join(DBSubDir, "flushseq").
+
+read_flush_counter(BucketName) ->
+    FlushSeqFile = flushseq_file_path(BucketName),
+    case file:read_file(FlushSeqFile) of
+        {ok, Contents} ->
+            try list_to_integer(binary_to_list(Contents)) of
+                FlushSeq ->
+                    ?log_info("Got flushseq from local file: ~p", [FlushSeq]),
+                    FlushSeq
+            catch T:E ->
+                    ?log_error("Parsing flushseq failed: ~p", [{T, E, erlang:get_stacktrace()}]),
+                    read_flush_counter_from_config(BucketName)
+            end;
+        Error ->
+            ?log_info("Loading flushseq failed: ~p. Assuming it's equal to global config.", [Error]),
+            read_flush_counter_from_config(BucketName)
+    end.
+
+read_flush_counter_from_config(BucketName) ->
+    {ok, BucketConfig} = ns_bucket:get_bucket(BucketName),
+    RV = proplists:get_value(flushseq, BucketConfig, 0),
+    ?log_info("Initialized flushseq ~p from bucket config", [RV]),
+    RV.
+
+consider_doing_flush(State) ->
+    BucketName = State#state.bucket_name,
+    case ns_bucket:get_bucket(BucketName) of
+        {ok, BucketConfig} ->
+            ConfigFlushSeq = proplists:get_value(flushseq, BucketConfig, 0),
+            MyFlushSeq = State#state.flushseq,
+            case ConfigFlushSeq > MyFlushSeq of
+                true ->
+                    ?log_info("Config flushseq ~p is greater than local flushseq ~p. Going to flush", [ConfigFlushSeq, MyFlushSeq]),
+                    perform_flush(State, BucketConfig, ConfigFlushSeq);
+                false ->
+                    case ConfigFlushSeq =/= MyFlushSeq of
+                        true ->
+                            ?log_error("That's weird. Config flushseq is lower than ours: ~p vs. ~p. Ignoring", [ConfigFlushSeq, MyFlushSeq]),
+                            State#state{flushseq = ConfigFlushSeq};
+                        _ ->
+                            State
+                    end
+            end;
+        not_present ->
+            ?log_info("Detected that our bucket is actually dead"),
+            State
+    end.
+
+perform_flush(#state{bucket_name = BucketName} = State, BucketConfig, ConfigFlushSeq) ->
+    ?log_info("Doing local bucket flush"),
+    {ok, VBStates} = ns_memcached:local_connected_and_list_vbuckets(BucketName),
+    NewVBStates = lists:duplicate(proplists:get_value(num_vbuckets, BucketConfig), missing),
+    RebalanceVBStates = lists:duplicate(proplists:get_value(num_vbuckets, BucketConfig), undefined),
+    NewState = State#state{last_applied_vbucket_states = NewVBStates,
+                           rebalance_only_vbucket_states = RebalanceVBStates,
+                           flushseq = ConfigFlushSeq},
+    ?log_info("Removing all vbuckets from indexes"),
+    pass_vbucket_states_to_set_view_manager(NewState),
+    ok = capi_set_view_manager:reset_master_vbucket(BucketName),
+    ?log_info("Shutting down incoming replications"),
+    ns_vbm_new_sup:ping_all_replicators(BucketName),
+    ok = tap_replication_manager:set_incoming_replication_map(BucketName, []),
+    %% kill all vbuckets
+    [ok = ns_memcached:sync_delete_vbucket(BucketName, VB)
+     || {VB, _} <- VBStates],
+    ?log_info("Local flush is done"),
+    save_flushseq(BucketName, ConfigFlushSeq),
+    NewState.
+
+save_flushseq(BucketName, ConfigFlushSeq) ->
+    ?log_info("Saving new flushseq: ~p", [ConfigFlushSeq]),
+    Cont = list_to_binary(integer_to_list(ConfigFlushSeq)),
+    misc:atomic_write_file(flushseq_file_path(BucketName), Cont).
