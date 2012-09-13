@@ -179,47 +179,62 @@ ensure_full_commit(#db{name = DbName} = _Db, _RequiredSeq) ->
 
     [Bucket, VBucket] = string:tokens(binary_to_list(DbName), [$/]),
 
-    %% get the timestamp from stats
-    {ok, Stats0} = ns_memcached:stats(Bucket, <<"">>),
-    EpStartupTime0 =  list_to_integer(?b2l(proplists:get_value(
-                        <<"ep_startup_time">>, Stats0))),
+    %% subscribe to capture mc_couch_events
+    Server = self(),
+    MyEventId = create_ckpt_event_id(Bucket, VBucket),
+    {value, TimeoutSec} = ns_config:search(xdcr_capi_checkpoint_timeout),
+
+    CkptEventsHandler = fun ({EventId, VBCheckpoint}, _) ->
+                                case EventId ==  MyEventId of
+                                    true ->
+                                        Event2Capi = {persisted_ckpt, VBCheckpoint},
+                                        Server ! Event2Capi;
+                                    _  ->
+                                        []
+                                end;
+                            (_UnmacthedEvt, _) ->
+                                ok
+                        end,
+
+    ns_pubsub:subscribe_link(mc_couch_events, CkptEventsHandler, []),
 
     %% create a new open checkpoint
+    StartTime = now(),
     {ok, OpenCheckpointId} = ns_memcached:create_new_checkpoint(Bucket, list_to_integer(VBucket)),
 
-    %% wait til the persited checkpoint ID catch up with open checkpoint ID
-    PollResult = misc:poll_for_condition(
-        fun() ->
-            %% check out ep engine startup time
-            {ok, Stats1} = ns_memcached:stats(Bucket, <<"">>),
-            EpStartupTime1 = list_to_integer(?b2l(proplists:get_value(
-                        <<"ep_startup_time">>, Stats1))),
+    %% waiting for persisted ckpt to catch up, time out in milliseconds
+    ?xdcr_debug("rep (bucket: ~p, vbucket ~p) waiting for chkpt persisted (open ckpt: ~p, timeout: ~p secs)",
+                [Bucket, VBucket, OpenCheckpointId, TimeoutSec]),
+    Result = ensure_full_commit_loop(OpenCheckpointId, TimeoutSec*1000),
 
-            {ok, Stats2} = ns_memcached:stats(Bucket, <<"checkpoint">>),
-            PersistedCheckpointId = list_to_integer(?b2l(proplists:get_value(
-                ?l2b(["vb_", VBucket, ":persisted_checkpoint_id"]), Stats2))),
+    case Result of
+        {ok, LastPersistedCkptId} ->
+            {ok, Stats2} = ns_memcached:stats(Bucket, <<"">>),
+            EpStartupTime = proplists:get_value(<<"ep_startup_time">>, Stats2),
+            WorkTime = timer:now_diff(now(), StartTime) div 1000,
+            ?xdcr_debug("last persisted ckpt: ~p, open ckpt: ~p for rep (bucket: ~p, vbucket ~p), "
+                        "time spent in millisecs: ~p",
+                        [LastPersistedCkptId, OpenCheckpointId, Bucket, VBucket, WorkTime]),
 
-            case EpStartupTime0 == EpStartupTime1 of
-                false ->
-                    %% if startup time mismatch, simply exit the polling
-                    %% and re-query startup time to caller
-                    ?log_warning("Engine startup time mismatch."),
-                    true;
-                _ ->
-                    PersistedCheckpointId >= (OpenCheckpointId - 1)
-            end
-        end,
-        10000,  %% timeout in ms
-        100),   %% sleep time in ms
-
-    case PollResult of
-        ok ->
-            {ok, Stats3} = ns_memcached:stats(Bucket, <<"">>),
-            EpStartupTime = proplists:get_value(<<"ep_startup_time">>, Stats3),
             {ok, EpStartupTime};
         timeout ->
-            ?log_warning("Timed out when waiting for open checkpoint to be persisted."),
+            ?xdcr_warning("Timed out when rep (bucket ~p, vb: ~p) waiting for open checkpoint "
+                         "(id: ~p) to be persisted.",
+                         [Bucket, VBucket, OpenCheckpointId]),
             {error, time_out_polling}
+    end.
+
+ensure_full_commit_loop(OpenCheckpointId, Timeout) ->
+    receive
+        {persisted_ckpt, PersistedCheckpointId} ->
+            case PersistedCheckpointId >= (OpenCheckpointId - 1) of
+                true ->
+                    {ok, PersistedCheckpointId};
+                _ ->
+                    ensure_full_commit_loop(OpenCheckpointId, Timeout)
+            end
+    after Timeout ->
+            timeout
     end.
 
 check_is_admin(_Db) ->
@@ -498,3 +513,8 @@ attempt(DbName, DocId, Mod, Fun, Args, fast_forward) ->
         {ok, R1} ->
             R1
     end.
+
+-spec create_ckpt_event_id(string(), string()) -> binary().
+create_ckpt_event_id(Bucket, VBucket) ->
+    EventName = "persisted_ckpt_" ++  Bucket ++ "_vb_" ++  VBucket,
+    list_to_binary(EventName).

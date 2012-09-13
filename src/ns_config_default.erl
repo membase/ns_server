@@ -65,6 +65,7 @@ default() ->
     file:make_dir(RawLogDir),
 
     [{xdcr_failure_restart_interval, 30}, % in secs
+     {xdcr_capi_checkpoint_timeout, 10}, % in secs
      {directory, path_config:component_path(data, "config")},
      {index_aware_rebalance_disabled, true},
      {autocompaction, [{database_fragmentation_threshold, {30, undefined}},

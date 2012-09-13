@@ -101,7 +101,29 @@ do_notify_vbucket_update(BucketName, VBucket, Body) ->
                 ?EINVAL
         end,
     case VBStateUpdated of
+        3 ->
+            %% both vb state and checkpoint id change
+            EventId = capi_frontend:create_ckpt_event_id(binary_to_list(BucketName), integer_to_list(VBucket)),
+            gen_event:sync_notify(mc_couch_events,
+                                  {EventId,
+                                   VBCheckpoint}),
+
+            VBStateAtom = capi_utils:vbucket_state_to_atom(VBState),
+            gen_event:sync_notify(mc_couch_events,
+                                  {set_vbucket,
+                                   binary_to_list(BucketName),
+                                   VBucket,
+                                   VBStateAtom,
+                                   VBCheckpoint});
+        2 ->
+            %% checkpoint id change
+            EventId = capi_frontend:create_ckpt_event_id(binary_to_list(BucketName), integer_to_list(VBucket)),
+            gen_event:sync_notify(mc_couch_events,
+                                  {EventId,
+                                   VBCheckpoint});
+
         1 ->
+            %% vbstate change
             VBStateAtom = capi_utils:vbucket_state_to_atom(VBState),
             gen_event:sync_notify(mc_couch_events,
                                   {set_vbucket,
@@ -110,8 +132,10 @@ do_notify_vbucket_update(BucketName, VBucket, Body) ->
                                    VBStateAtom,
                                    VBCheckpoint});
         0 ->
+            %% changes I do not care
             ok
     end,
+
     ResponseStatus.
 
 do_delete_vbucket(BucketName, VBucket) ->
@@ -193,3 +217,4 @@ run_loop(Socket, ProcessFunction) ->
             ?log_error("Got error reading mccouch command: ~p", [Error]),
             exit({error_reading_command, Error})
     end.
+
