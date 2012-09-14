@@ -56,6 +56,9 @@
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
+-export([handle_streaming_wakeup/4,
+         handle_pool_info_wait_wake/5]).
+
 -import(menelaus_util,
         [server_header/0,
          redirect_permanently/2,
@@ -749,12 +752,7 @@ handle_versions(Req) ->
 check_and_handle_pool_info(Id, Req) ->
     case is_system_provisioned() of
         true ->
-            Timeout = diag_handler:arm_timeout(23000),
-            try
-                handle_pool_info(Id, Req)
-            after
-                diag_handler:disarm_timeout(Timeout)
-            end;
+            handle_pool_info(Id, Req);
         _ ->
             reply_json(Req, <<"unknown pool">>, 404)
     end.
@@ -770,30 +768,31 @@ handle_pool_info(Id, Req) ->
         _ ->
             WaitChange = list_to_integer(WaitChangeS),
             menelaus_event:register_watcher(self()),
-            TargetTS = misc:time_to_epoch_ms_int(os:timestamp()) + WaitChange,
-            handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, TargetTS, PassedETag)
+            erlang:send_after(WaitChange, self(), wait_expired),
+            handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, PassedETag)
     end.
 
-handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, TargetTS, PassedETag) ->
+handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, PassedETag) ->
     Info = mochijson2:encode(build_pool_info(Id, UserPassword, stable, LocalAddr)),
-    %% ETag = base64:encode_to_string(crypto:sha(Info)),
     ETag = integer_to_list(erlang:phash2(Info)),
-    Now = misc:time_to_epoch_ms_int(os:timestamp()),
-    WaitChange = TargetTS - Now,
     if
-        WaitChange > 0 andalso ETag =:= PassedETag ->
-            receive
-                {notify_watcher, _} ->
-                    timer:sleep(200), %% delay a bit to catch more notifications
-                    consume_notifications(),
-                    handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, TargetTS, PassedETag);
-                _ ->
-                    exit(normal)
-            after WaitChange ->
-                    handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag)
-            end;
+        ETag =:= PassedETag ->
+            erlang:hibernate(?MODULE, handle_pool_info_wait_wake,
+                             [Req, Id, UserPassword, LocalAddr, PassedETag]);
         true ->
             handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag)
+    end.
+
+handle_pool_info_wait_wake(Req, Id, UserPassword, LocalAddr, PassedETag) ->
+    receive
+        wait_expired ->
+            handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, PassedETag);
+        {notify_watcher, _} ->
+            timer:sleep(200), %% delay a bit to catch more notifications
+            consume_notifications(),
+            handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, PassedETag);
+        _ ->
+            exit(normal)
     end.
 
 consume_notifications() ->
@@ -810,7 +809,11 @@ handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag) ->
     %% and reply
     {struct, PList} = build_pool_info(Id, UserPassword, normal, LocalAddr),
     Info = {struct, [{etag, list_to_binary(ETag)} | PList]},
-    reply_json(Req, Info).
+    reply_json(Req, Info),
+    %% this will cause some extra latency on ui perhaps,
+    %% because browsers commonly assume we'll keepalive, but
+    %% keeping memory usage low is imho more important
+    exit(normal).
 
 
 build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
@@ -1155,6 +1158,9 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
                 HTTPRes:write_chunk(""),
                 exit(normal)
         end,
+    erlang:hibernate(?MODULE, handle_streaming_wakeup, [F, Req, HTTPRes, Res]).
+
+handle_streaming_wakeup(F, Req, HTTPRes, Res) ->
     receive
         {notify_watcher, _} ->
             timer:sleep(50),
@@ -1165,7 +1171,7 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
                       "menelaus_web streaming socket closed by client"),
             exit(normal)
     after 25000 ->
-        ok
+            ok
     end,
     handle_streaming(F, Req, HTTPRes, Res).
 
