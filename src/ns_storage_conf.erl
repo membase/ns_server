@@ -295,19 +295,6 @@ nodes_storage_info(NodeNames) ->
 cluster_storage_info() ->
     nodes_storage_info(ns_cluster_membership:active_nodes()).
 
-add_used_by_data_prop(UsedByData, Props) ->
-    %% because of disk usage update lags and because disksup provides
-    %% disk usage information in (rounded down) percentage we can have
-    %% UsedByData > Used.
-    Used = misc:expect_prop_value(used, Props),
-    Props2 = case Used < UsedByData of
-                 true ->
-                     lists:keyreplace(used, 1, Props, {used, UsedByData});
-                 _ ->
-                     Props
-             end,
-    [{usedByData, UsedByData} | Props2].
-
 extract_subprop(NodeInfos, Key, SubKey) ->
     [proplists:get_value(SubKey, proplists:get_value(Key, NodeInfo, [])) ||
      NodeInfo <- NodeInfos].
@@ -326,31 +313,63 @@ do_cluster_storage_info(NodeInfos) ->
                     || {Node, NodeInfo} <- NodeInfos],
     HddTotals = extract_subprop(StorageInfos, hdd, total),
     HddUsed = extract_subprop(StorageInfos, hdd, used),
-    PList1 = [{ram, [{total, lists:sum(extract_subprop(StorageInfos, ram, total))},
-                     {quotaTotal, lists:sum(extract_subprop(StorageInfos, ram,
-                                                            quotaTotal))},
-                     {quotaUsed, RAMQuotaUsed},
-                     {used, lists:sum(extract_subprop(StorageInfos, ram, used))}
-                    ]},
-              {hdd, [{total, lists:sum(HddTotals)},
-                     {quotaTotal, lists:sum(HddTotals)},
-                     {used, lists:sum(HddUsed)},
-                     {free, lists:min(lists:zipwith(fun (A, B) -> A - B end,
-                                                    HddTotals, HddUsed))
-                      * length(HddUsed)} % Minimum amount free on any node * number of nodes
-                    ]}],
 
-    {BucketsRAMUsage, BucketsHDDUsage}
-        = lists:foldl(fun ({Name, _}, {RAM, HDD}) ->
-                              BasicStats = menelaus_stats:basic_stats(Name, AllNodes),
-                              {RAM + proplists:get_value(memUsed, BasicStats),
-                               HDD + proplists:get_value(diskUsed, BasicStats, 0)}
-                      end, {0, 0}, AllBuckets),
-    lists:map(fun ({ram, Props}) ->
-                      {ram, add_used_by_data_prop(BucketsRAMUsage, Props)};
-                  ({hdd, Props}) ->
-                      {hdd, add_used_by_data_prop(BucketsHDDUsage, Props)}
-              end, PList1).
+
+    BucketsRAMUsage = lists:foldl(
+                        fun ({_, Info}, RAMUsage) ->
+                                case lists:keyfind(interesting_stats, 1, Info) of
+                                    false ->
+                                        RAMUsage;
+                                    {_, InterestingStats} ->
+                                        case lists:keyfind(mem_used, 1, InterestingStats) of
+                                            false ->
+                                                RAMUsage;
+                                            {_, V} ->
+                                                RAMUsage + V
+                                        end
+                                end
+                        end, 0, NodeInfos),
+
+    BucketsDiskUsage = lists:foldl(
+                         fun ({_, Info}, DiskUsage) ->
+                                 case lists:keyfind(interesting_stats, 1, Info) of
+                                     false ->
+                                         DiskUsage;
+                                     {_, InterestingStats} ->
+                                         V2 = case lists:keyfind(couch_docs_actual_disk_size, 1, InterestingStats) of
+                                                  false ->
+                                                      DiskUsage;
+                                                  {_, X} ->
+                                                      DiskUsage + X
+                                              end,
+                                         case lists:keyfind(couch_views_actual_disk_size, 1, InterestingStats) of
+                                             false ->
+                                                 V2;
+                                             {_, V} ->
+                                                 V2 + V
+                                         end
+                                 end
+                         end, 0, NodeInfos),
+
+    RAMUsed = erlang:max(lists:sum(extract_subprop(StorageInfos, ram, used)),
+                         BucketsRAMUsage),
+    HDDUsed = erlang:max(lists:sum(HddUsed),
+                         BucketsDiskUsage),
+
+    [{ram, [{total, lists:sum(extract_subprop(StorageInfos, ram, total))},
+            {quotaTotal, lists:sum(extract_subprop(StorageInfos, ram,
+                                                   quotaTotal))},
+            {quotaUsed, RAMQuotaUsed},
+            {used, RAMUsed},
+            {usedByData, BucketsRAMUsage}
+           ]},
+     {hdd, [{total, lists:sum(HddTotals)},
+            {quotaTotal, lists:sum(HddTotals)},
+            {used, HDDUsed},
+            {usedByData, BucketsDiskUsage},
+            {free, lists:min(lists:zipwith(fun (A, B) -> A - B end,
+                                           HddTotals, HddUsed)) * length(HddUsed)} % Minimum amount free on any node * number of nodes
+           ]}].
 
 extract_disk_stats_for_path_rec([], _Path) ->
     none;

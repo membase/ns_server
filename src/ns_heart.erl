@@ -124,6 +124,9 @@ erlang_stats() ->
 is_interesting_stat({curr_items, _}) -> true;
 is_interesting_stat({curr_items_tot, _}) -> true;
 is_interesting_stat({vb_replica_curr_items, _}) -> true;
+is_interesting_stat({mem_used, _}) -> true;
+is_interesting_stat({couch_docs_actual_disk_size, _}) -> true;
+is_interesting_stat({couch_views_actual_disk_size, _}) -> true;
 is_interesting_stat(_) -> false.
 
 current_status() ->
