@@ -1033,13 +1033,7 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
                                                 failover_safeness_level:extract_replication_uptodateness(Bucket, BucketConfig,
                                                                                                          WantENode, NodeStatuses)
                                         end,
-                          KVRep = [{replication, Replication} | KV2],
-                          case capi_utils:capi_bucket_url_bin(WantENode, Bucket, LocalAddr) of
-                              undefined -> KVRep;
-                              CapiBucketUrl ->
-                                  [{couchApiBase, CapiBucketUrl}
-                                   | KVRep]
-                          end
+                          [{replication, Replication} | KV2]
                   end,
             KV4 = case InfoLevel of
                       stable -> KV3;

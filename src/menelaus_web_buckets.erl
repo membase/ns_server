@@ -123,7 +123,37 @@ build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr, IncludeO
     %% Only list nodes this bucket is mapped to
     F = menelaus_web:build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr),
     misc:randomize(),
-    [F(N, BucketName) || N <- misc:shuffle(proplists:get_value(servers, BucketConfig, []))].
+    Nodes = proplists:get_value(servers, BucketConfig, []),
+    %% NOTE: there's potential inconsistency here between BucketConfig
+    %% and (potentially more up-to-date) vbuckets dict. Given that
+    %% nodes list is mostly informational I find it ok.
+    Dict = case vbucket_map_mirror:node_vbuckets_dict_or_not_present(BucketName) of
+               not_present -> dict:new();
+               no_map -> dict:new();
+               DV -> DV
+           end,
+    add_couch_api_base_loop(Nodes, BucketName, LocalAddr, F, Dict, [], []).
+
+
+add_couch_api_base_loop([], _BucketName, _LocalAddr, _F, _Dict, CAPINodes, NonCAPINodes) ->
+    misc:shuffle(CAPINodes) ++ NonCAPINodes;
+add_couch_api_base_loop([Node | RestNodes], BucketName, LocalAddr, F, Dict, CAPINodes, NonCAPINodes) ->
+    {struct, KV} = F(Node, BucketName),
+    case dict:find(Node, Dict) of
+        {ok, V} when V =/= [] ->
+            S = {struct, maybe_add_couch_api_base(BucketName, KV, Node, LocalAddr)},
+            add_couch_api_base_loop(RestNodes, BucketName, LocalAddr, F, Dict, [S | CAPINodes], NonCAPINodes);
+        _ ->
+            S = {struct, KV},
+            add_couch_api_base_loop(RestNodes, BucketName, LocalAddr, F, Dict, CAPINodes, [S | NonCAPINodes])
+    end.
+
+maybe_add_couch_api_base(BucketName, KV, Node, LocalAddr) ->
+    case capi_utils:capi_bucket_url_bin(Node, BucketName, LocalAddr) of
+        undefined -> KV;
+        CapiBucketUrl ->
+            [{couchApiBase, CapiBucketUrl} | KV]
+    end.
 
 build_bucket_info(PoolId, Id, Bucket, LocalAddr) ->
     build_bucket_info(PoolId, Id, Bucket, normal, LocalAddr).
