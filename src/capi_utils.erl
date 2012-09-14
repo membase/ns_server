@@ -22,43 +22,40 @@
 -include("couch_db.hrl").
 -include("mc_entry.hrl").
 -include("mc_constants.hrl").
+-include("ns_config.hrl").
 
 %% returns capi port for given node or undefined if node doesn't have CAPI
-capi_port(Node, Config) ->
+compute_capi_port(Node) ->
+    ns_config:eval(
+      fun (#config{dynamic=[PList]}) ->
+              case lists:keyfind({node, Node, capi_port}, 1, PList) of
+                  {_, V} ->
+                      case V of
+                          [{'_vclock', _} | V2] -> V2;
+                          _ -> V
+                      end;
+                  false ->
+                      undefined
+              end
+      end).
+
+get_capi_port(Node, Config) ->
     case ns_config:search(Config, {node, Node, capi_port}) of
         false -> undefined;
         {value, X} -> X
     end.
 
-%% returns capi port for given node or undefined if node doesn't have CAPI
-capi_port(Node) ->
-    capi_port(Node, ns_config:get()).
-
 %% returns http url to capi on given node with given path
-capi_url(Node, Path, LocalAddr, Config) ->
-    CapiPort = capi_port(Node, Config),
-    case CapiPort of
+-spec capi_url_bin(node(), iolist() | binary(), iolist() | binary()) -> undefined | binary().
+capi_url_bin(Node, Path, LocalAddr) ->
+    case vbucket_map_mirror:node_to_capi_base_url(Node, LocalAddr) of
         undefined -> undefined;
-        _ ->
-            Host = case misc:node_name_host(Node) of
-                       {_, "127.0.0.1"} -> LocalAddr;
-                       {_Name, H} -> H
-                   end,
-            lists:append(["http://",
-                          Host,
-                          ":",
-                          integer_to_list(CapiPort),
-                          Path])
+        X ->
+            iolist_to_binary([X, Path])
     end.
 
-capi_url(Node, Path, LocalAddr) ->
-    capi_url(Node, Path, LocalAddr, ns_config:get()).
-
-capi_bucket_url(Node, BucketName, LocalAddr, Config) ->
-    capi_url(Node, menelaus_util:concat_url_path([BucketName]), LocalAddr, Config).
-
-capi_bucket_url(Node, BucketName, LocalAddr) ->
-    capi_bucket_url(Node, BucketName, LocalAddr, ns_config:get()).
+capi_bucket_url_bin(Node, BucketName, LocalAddr) ->
+    capi_url_bin(Node, menelaus_util:concat_url_path([BucketName]), LocalAddr).
 
 split_dbname(DbName) ->
     DbNameStr = binary_to_list(DbName),

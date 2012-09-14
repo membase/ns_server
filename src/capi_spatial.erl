@@ -109,7 +109,6 @@ do_handle_spatial_req(Req, #db{name=DbName} = Db, DDocName, SpatialName) ->
 
 spatial_merge_params(Req, #db{name = BucketName} = Db, DDocId, SpatialName) ->
     NodeToVBuckets = vbucket_map_mirror:node_vbuckets_dict(?b2l(BucketName)),
-    Config = ns_config:get(),
     %% FullSpatialName = case DDocId of
     %% nil ->
     %%     % _all_docs and other special builtin views
@@ -126,7 +125,7 @@ spatial_merge_params(Req, #db{name = BucketName} = Db, DDocId, SpatialName) ->
                                                                 VBuckets) ++ Acc;
                         (Node, VBuckets, Acc) ->
                              [build_remote_specs(
-                                Node, BucketName, FullSpatialName, VBuckets, Config) | Acc]
+                                Node, BucketName, FullSpatialName, VBuckets) | Acc]
                      end, [], NodeToVBuckets),
     spatial_merge_params(Req, Db, DDocId, SpatialName, SpatialSpecs).
 
@@ -142,9 +141,9 @@ spatial_merge_params(Req, _Db, _DDocId, _SpatialName, SpatialSpecs) ->
     %     perhaps be moved into a utils module
     couch_httpd_view_merger:apply_http_config(Req, Body, MergeParams0).
 
-build_remote_specs(Node, BucketName, FullViewName, VBuckets, Config) ->
-    MergeURL = iolist_to_binary(capi_utils:capi_url(Node, "/_spatial_merge",
-                                                    "127.0.0.1", Config)),
+build_remote_specs(Node, BucketName, FullViewName, VBuckets) ->
+    MergeURL = capi_utils:capi_url_bin(Node, <<"/_spatial_merge">>,
+                                       <<"127.0.0.1">>),
     Props = {[
               {<<"spatial">>,
                {[{capi_view:vbucket_db_name(BucketName, VBId), FullViewName} ||

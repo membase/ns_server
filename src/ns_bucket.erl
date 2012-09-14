@@ -531,7 +531,7 @@ is_port_free(BucketName, Port, Config) ->
         andalso Port =/= ns_config:search_node_prop(Config, memcached, dedicated_port)
         andalso Port =/= ns_config:search_node_prop(Config, moxi, port)
         andalso Port =/= ns_config:search_node_prop(Config, memcached, mccouch_port, 11213)
-        andalso Port =/= capi_utils:capi_port(node(), Config)
+        andalso Port =/= capi_utils:get_capi_port(node(), Config)
         andalso Port =/= proplists:get_value(port, menelaus_web:webconfig(Config))
         andalso is_open_proxy_port(BucketName, Port).
 

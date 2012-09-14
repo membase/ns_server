@@ -45,10 +45,10 @@ handle_create_replication(Req) ->
                     ok = xdc_rdoc_replication_srv:update_doc(ReplicationDoc)
             end,
 
-            CapiURL = capi_utils:capi_url(node(), "/_replicator",
-                                          menelaus_util:local_addr(Req)),
+            CapiURL = capi_utils:capi_url_bin(node(), <<"/_replicator">>,
+                                              menelaus_util:local_addr(Req)),
             menelaus_util:reply_json(Req,
-                                     {struct, [{database, list_to_binary(CapiURL)},
+                                     {struct, [{database, CapiURL},
                                                {id, ReplicationDoc#doc.id}]})
     end.
 
