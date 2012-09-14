@@ -215,10 +215,13 @@ translate_stat(bytes) -> % memcached calls it bytes
 translate_stat(Stat) ->
     Stat.
 
+orddict_fetch(Name, Dict) ->
+    element(2, lists:keyfind(Name, 1, Dict)).
+
 sum_stat_values(Dict, [FirstName | RestNames]) ->
     lists:foldl(fun (Name, Acc) ->
-                        orddict:fetch(Name, Dict) + Acc
-                end, orddict:fetch(FirstName, Dict), RestNames).
+                        orddict_fetch(Name, Dict) + Acc
+                end, orddict_fetch(FirstName, Dict), RestNames).
 
 
 extract_agg_tap_stats(KVs) ->
@@ -227,16 +230,15 @@ extract_agg_tap_stats(KVs) ->
 
 mk_stats_dict_get(Dict) ->
     fun (K) ->
-            case orddict:find(K, Dict) of
-                {ok, V} -> list_to_integer(binary_to_list(V));
-                %% Some stats don't exist in some bucket types
-                error -> 0
+            case lists:keyfind(K, 1, Dict) of
+                {_, V} -> list_to_integer(binary_to_list(V));
+                false -> 0
             end
     end.
 
 parse_stats_raw(TS, Stats, LastCounters, LastTS, KnownGauges, KnownCounters) ->
-    Dict = orddict:from_list([{translate_stat(binary_to_atom(K, latin1)), V}
-                              || {K, V} <- Stats]),
+    Dict = lists:sort([{translate_stat(binary_to_atom(K, latin1)), V}
+                        || {K, V} <- Stats]),
     diff_stats_counters(TS, LastCounters, LastTS, KnownGauges, KnownCounters,
                         mk_stats_dict_get(Dict)).
 
