@@ -491,73 +491,15 @@ handle_sample_buckets(Req) ->
 
 
 handle_post_sample_buckets(Req) ->
-
     Samples = mochijson2:decode(Req:recv_body()),
-    Pid = spawn(fun() -> install_samples(Samples) end),
-    Ref = erlang:monitor(process, Pid),
-
-    Error = fun(Type, Reason) ->
-                    {struct, [{error, true}, {type, Type}, {reason, Reason}]}
-            end,
-
-    receive
-        {'DOWN', Ref, process, Pid, normal} ->
-            reply_json(Req, {struct, [{ok, true}]}, 200);
-        {'DOWN', Ref, process, Pid, {error, Type, Reason}} ->
-            reply_json(Req, Error(Type, Reason), 400);
-        {'DOWN', Ref, process, Pid, Reason} ->
-            ?log_error("Sample bucket failed unexpectedly with reason: ~p", [Reason]),
-            reply_json(Req, Error(unknown_error, <<"There was an unexpected error.">>), 500)
-    after
-        ?SAMPLES_LOADING_TIMEOUT ->
-            ?log_error("Loading sample buckets timed out", []),
-            erlang:exit(Pid, timeout),
-            reply_json(Req, Error(timeout, <<"Timeout installing sample buckets">>), 500)
-    end.
-
-
-install_samples(Samples) ->
-
-    {_Name, Host} = misc:node_name_host(node()),
-    Port = misc:node_rest_port(ns_config:get(), node()),
-    BinDir = path_config:component_path(bin),
 
     ok = check_valid_samples(Samples),
     ok = check_quota(Samples),
 
-    case ns_config:search_prop(ns_config:get(), rest_creds, creds, []) of
-        [] ->
-            ok;
-        [{UserName, Attrs}] ->
-            {password, Password} = lists:keyfind(password, 1, Attrs),
-            os:putenv("REST_USERNAME", UserName),
-            os:putenv("REST_PASSWORD", Password)
-    end,
+    [samples_loader_tasks:start_loading_sample(binary_to_list(File))
+     || File <- Samples],
 
-    [begin
-         Ram = misc:ceiling(?SAMPLE_BUCKET_QUOTA / 1024 / 1024),
-         Cmd = BinDir ++ "/tools/cbdocloader",
-         Args = ["-n", Host ++ ":" ++ integer_to_list(Port),
-                 "-b", File,
-                 "-s", integer_to_list(Ram),
-                 filename:join([BinDir, "..", "samples", binary_to_list(File) ++ ".zip"])],
-
-         Pid = open_port({spawn_executable, Cmd}, [exit_status,
-                                                   {args, Args},
-                                                   stderr_to_stdout]),
-         case wait_for_exit(Pid, []) of
-             {0, _Data} ->
-                 ok;
-             {Status, Data} ->
-                 ?log_error("cbdocloader failed unexpectedly: status: ~p, msgs: ~p",
-                            [Status, Data]),
-                 exit({error, docloader_failed, <<"There was an unexpected error.">>})
-         end
-
-     end || File <- Samples],
-
-    ok.
-
+    reply_json(Req, [], 202).
 
 list_sample_files() ->
     BinDir = path_config:component_path(bin),
@@ -603,15 +545,6 @@ check_valid_samples(Samples) ->
          end
      end || Name <- Samples],
     ok.
-
-
-wait_for_exit(Pid, Acc) ->
-    receive
-        {_Port, {exit_status, Status}} ->
-            {Status, Acc};
-        Msg ->
-            wait_for_exit(Pid, [Msg | Acc])
-    end.
 
 
 format_MB(X) ->

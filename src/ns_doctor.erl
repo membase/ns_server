@@ -256,6 +256,8 @@ maybe_refresh_tasks_version(State) ->
                                     sets:add_element(
                                       erlang:phash2(lists:keyfind(bucket, 1, Task)),
                                       Set0);
+                                loadingSampleBucket ->
+                                    sets:add_element(erlang:phash2(Task), Set0);
                                 _ ->
                                     Set0
                             end
@@ -421,35 +423,39 @@ task_maybe_add_cancel_uri(_, Value, _) ->
     Value.
 
 do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
-    TasksDict =
+    AllRawTasks0 =
         dict:fold(
-          fun (Node, NodeInfo, TasksDict) ->
+          fun (Node, NodeInfo, Acc) ->
                   case NeedNodeP(Node) of
                       true ->
                           NodeTasks = proplists:get_value(local_tasks, NodeInfo, []),
-                          lists:foldl(
-                            fun (RawTask, TasksDict0) ->
-                                    case task_operation(extract, proplists:get_value(type, RawTask), RawTask) of
-                                        ignore -> TasksDict0;
-                                        Signatures ->
-                                            lists:foldl(
-                                              fun ({Signature, Value}, AccDict) ->
-                                                      dict:update(
-                                                        Signature,
-                                                        fun (ValueOld) ->
-                                                                task_operation(fold, Signature, ValueOld, Value)
-                                                        end,
-                                                        Value,
-                                                        AccDict)
-                                              end, TasksDict0, Signatures)
-                                    end
-                            end, TasksDict, NodeTasks);
+                          [NodeTasks | Acc];
                       false ->
-                          TasksDict
+                          Acc
                   end
-          end,
-          dict:new(),
-          NodesDict),
+          end, [], NodesDict),
+
+    AllRawTasks = lists:append(AllRawTasks0),
+
+    TasksDict =
+        lists:foldl(
+          fun (RawTask, TasksDict0) ->
+                  case task_operation(extract, proplists:get_value(type, RawTask), RawTask) of
+                      ignore -> TasksDict0;
+                      Signatures ->
+                          lists:foldl(
+                            fun ({Signature, Value}, AccDict) ->
+                                    dict:update(
+                                      Signature,
+                                      fun (ValueOld) ->
+                                              task_operation(fold, Signature, ValueOld, Value)
+                                      end,
+                                      Value,
+                                      AccDict)
+                            end, TasksDict0, Signatures)
+                  end
+          end, dict:new(), AllRawTasks),
+
     PreRebalanceTasks0 = dict:fold(fun ({xdcr, _}, _, Acc) -> Acc;
                                        (Signature, Value, Acc) ->
                                            Value1 = task_operation(finalize, Signature, Value),
@@ -473,7 +479,16 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
                      [{cancelURI, CancelURI} | Doc2]
                  end || Doc0 <- AllRepDocs],
 
-    PreRebalanceTasks1 = XDCRTasks ++ PreRebalanceTasks0,
+    SampleBucketTasks0 = lists:filter(fun (RawTask) ->
+                                              case lists:keyfind(type, 1, RawTask) of
+                                                  {_, loadingSampleBucket} -> true;
+                                                  _ -> false
+                                              end
+                                      end, AllRawTasks),
+    SampleBucketTasks = [[{status, running} | KV]
+                         || KV <- SampleBucketTasks0],
+
+    PreRebalanceTasks1 = SampleBucketTasks ++ XDCRTasks ++ PreRebalanceTasks0,
 
     PreRebalanceTasks2 =
         lists:sort(
@@ -527,10 +542,14 @@ type_priority(indexer) ->
 type_priority(bucket_compaction) ->
     2;
 type_priority(view_compaction) ->
-    3.
+    3;
+type_priority(_) ->
+    4.
 
 task_name(Task, 0) -> %% NOTE: 0 is priority of xdcr type
     proplists:get_value(id, Task);
+task_name(_Task, 4) -> %% NOTE: 4 is priority of unknown type
+    undefined;
 task_name(Task, _Prio) ->
     Bucket = proplists:get_value(bucket, Task),
     true = (Bucket =/= undefined),

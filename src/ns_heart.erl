@@ -163,7 +163,9 @@ current_status() ->
     Tasks = lists:filter(
         fun (Task) ->
                 is_view_task(Task) orelse is_bucket_compaction_task(Task)
-        end , couch_task_status:all()) ++ grab_local_xdcr_replications(),
+        end , couch_task_status:all())
+        ++ grab_local_xdcr_replications()
+        ++ grab_samples_loading_tasks(),
 
     MaybeMeminfo =
         case misc:raw_read_file("/proc/meminfo") of
@@ -264,5 +266,17 @@ grab_local_xdcr_replications() ->
              end || {Id, Props0} <- Infos]
     catch T:E ->
             ?log_debug("Ignoring exception getting xdcr replication infos~n~p", [{T,E,erlang:get_stacktrace()}]),
+            []
+    end.
+
+grab_samples_loading_tasks() ->
+    try samples_loader_tasks:get_tasks(2000) of
+        RawTasks ->
+            [[{type, loadingSampleBucket},
+              {bucket, list_to_binary(Name)},
+              {pid, list_to_binary(pid_to_list(Pid))}]
+             || {Name, Pid} <- RawTasks]
+    catch T:E ->
+            ?log_error("Failed to grab samples loader tasks: ~p", [{T,E,erlang:get_stacktrace()}]),
             []
     end.

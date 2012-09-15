@@ -174,5 +174,8 @@ child_specs() ->
       permanent, 1000, worker, [xdc_rdoc_replication_srv]},
 
      {set_view_update_daemon, {set_view_update_daemon, start_link, []},
-      permanent, 1000, worker, [set_view_update_daemon]}
+      permanent, 1000, worker, [set_view_update_daemon]},
+
+     {samples_loader_tasks, {samples_loader_tasks, start_link, []},
+      permanent, 1000, worker, []}
 ].

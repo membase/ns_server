@@ -55,6 +55,10 @@
       ' nodes</span></li>';
   };
 
+  render.loadingSampleBucket = function (obj) {
+    return '<li class="clearfix"><span class="message">Loading sample: ' + escapeHTML(obj.bucket) + '&nbsp;</span></li>';
+  }
+
 
   progressWrapper.find('.toggle').bind('click', function() {
     if (!progressWrapper.is('.disable_toggle')) {

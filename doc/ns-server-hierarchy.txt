@@ -216,4 +216,6 @@
                         (cb_generic_replication_srv 'xdc_rdoc_replication_srv :since "2.0"
                                                     "replicates _replicator docs across cluster")
                         (gen-server 'set_view_update_daemon :since "2.0"
-                                    "periodically triggers set view indexes update")))
+                                    "periodically triggers set view indexes update")
+                        (gen-server 'samples_loader_tasks :since "2.0"
+                                    "babysits sample loading tasks and exposes them via tasks API")))
