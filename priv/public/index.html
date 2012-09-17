@@ -1390,7 +1390,6 @@
                   <th>To</th>
                   <th>Status</th>
                   <th>When</th>
-                  <th>Last Run</th>
                   <th></th>
                 </tr>
                 <!-- {% if (rows.length > 0) { %} -->
@@ -1401,7 +1400,6 @@
                   <td>{%= h(r.to) %}</td>
                   <td>{%= h(r.status) %}</td>
                   <td>{%= h(r.when) %}</td>
-                  <td>{%= r.lastRun && V.formatLogTStamp(r.lastRun) %}</td>
                   <td>
                     <a class="list_button" href="#deleteReplication={%=h(encodeURIComponent(r.id))%}"><span>Delete</span></a>
                   </td>
