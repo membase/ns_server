@@ -1279,7 +1279,7 @@
                     <td class="keycol">
                         <div class="key">{%= h(JSON.stringify(r.key)) %}</div>
                         {% if (h(r.id) !== "undefined") { %}
-                          <a class="id">{%= h(r.id) %}</a>
+                          <a class="id" href="#sec=documents&bucketName={%=encodeURIComponent(selectedBucket) %}&docId={%= encodeURIComponent(r.id) %}">{%= h(r.id) %}</a>
                         {% } else { %}
                           <div class="id">{%= h(r.id) %}</div>
                         {% } %}
