@@ -115,10 +115,10 @@ handle_info({'EXIT', Port, Reason} = Exit, #state{port=Port} = State) ->
     {stop, Reason, State}.
 
 handle_call(unhandled, unhandled, unhandled) ->
-    unhandled.
+    erlang:exit(unhandled).
 
 handle_cast(unhandled, unhandled) ->
-    unhandled.
+    erlang:exit(unhandled).
 
 wait_for_child_death(State) ->
     receive

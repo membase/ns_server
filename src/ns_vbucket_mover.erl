@@ -193,7 +193,7 @@ handle_call(_, _From, _State) ->
 
 
 handle_cast(unhandled, unhandled) ->
-    unhandled.
+    exit(unhandled).
 
 
 handle_info(log_tap_stats, State) ->
