@@ -32,7 +32,8 @@ input[type=radio], input[type=checkbox] {border:none}
 ::-webkit-input-placeholder {color:#999}
 :-moz-placeholder{color:#999 !important}
 
-code.key { color: #333; font-weight: bold; }
+/* note: .list here increases specifity w.r.t. .list .key rule */
+.list code.key, code.key { color: #333; font-weight: bold; font-size: 12px;}
 code.string { color: #393; }
 code.number, code.boolean { color: #339; }
 code.null { color: #666; }
