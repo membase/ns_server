@@ -318,8 +318,9 @@
             </div>
             <h3>Disk Storage</h3>
             <div class="info_block">
-              <span class="disk_storage">Disk One:
-                <span class="path">{%= h(storage.hdd[0].path) %}</span>
+              <span class="disk_storage">
+                <span>Disk One: </span>
+                  <span class="path" title="{%= h(storage.hdd[0].path) %}">{%= h(storage.hdd[0].path.length > 25 ? "..." + storage.hdd[0].path.slice( -25 ) : storage.hdd[0].path) %}</span>
               </span>
               <div class="usage-block">{%= V.thisElement(function (e) {ServersSection.renderUsage(e, obj.storageTotals.hdd)}) %}</div>
             </div>

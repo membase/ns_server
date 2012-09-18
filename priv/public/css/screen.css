@@ -742,7 +742,7 @@ ul.tabs .badge_display .badge {display:block;}
 .additional_server_info {display:block;overflow:hidden;}
 .additional_server_info h3 { margin:0 0 10px 0;padding:5px 0 10px 0;color:#5391BA;font-weight:bold;font-size:14px;border-bottom:1px solid #bbbdbf;}
 .additional_server_info .info_block {display:block; overflow:hidden;}
-.additional_server_info .info_block .path {display:block;padding:2px 0 0 0; font-size:11px;word-wrap:break-word;line-height:1.25em}
+.additional_server_info .info_block .path {display:block;width:160px;font-size:11px;line-height:1.25;padding-top:8px;white-space:nowrap;overflow:hidden;}
 .additional_server_info .info_block.last {padding:10px 0 10px 0;}
 .additional_server_info .dynamic_ram {display:block; height:40px; padding:0 0 0 77px; background:url(../images/icons.png) -6px -190px no-repeat; float:left;}
 .total_ram {display:block; height:14px; text-align:right;}
