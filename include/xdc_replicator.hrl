@@ -35,13 +35,6 @@
 %% Maximum number of concurrent vbucket replications allowed per doc
 -define(MAX_CONCURRENT_REPS_PER_DOC, 32).
 
-%% TODO: maybe make both buffer max sizes configurable
--define(DOC_BUFFER_BYTE_SIZE, 512 * 1024).   %% for remote targets
--define(DOC_BUFFER_LEN, 10).                 %% for local targets, # of documents
--define(MAX_BULK_ATT_SIZE, 64 * 1024).
--define(MAX_BULK_ATTS_PER_DOC, 8).
-
-
 %% data structures
 -record(rep, {
           id,

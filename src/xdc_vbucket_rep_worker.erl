@@ -82,10 +82,12 @@ local_doc_handler(_, Acc) ->
 maybe_flush_docs(#httpdb{} = Target, Batch, Doc) ->
     #batch{docs = DocAcc, size = SizeAcc} = Batch,
     JsonDoc = couch_doc:to_json_base64(Doc),
+    {value, DocBatchSize} = ns_config:search(xdcr_doc_batch_size_kb),
+    DocBatchSizeByte = 1024*DocBatchSize,
     case SizeAcc + iolist_size(JsonDoc) of
-        SizeAcc2 when SizeAcc2 > ?DOC_BUFFER_BYTE_SIZE ->
+        SizeAcc2 when SizeAcc2 > DocBatchSizeByte ->
             ?xdcr_debug("Worker flushing doc batch of size ~p bytes "
-                        "(batch limit: ~p)", [SizeAcc2, ?DOC_BUFFER_BYTE_SIZE]),
+                        "(batch limit: ~p)", [SizeAcc2, DocBatchSizeByte]),
             flush_docs(Target, [JsonDoc | DocAcc]),
             #batch{};
         SizeAcc2 ->
