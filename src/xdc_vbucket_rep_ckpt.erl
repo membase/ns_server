@@ -24,7 +24,10 @@
 -include("xdc_replicator.hrl").
 
 start_timer(_State) ->
-    After = ?XDCR_CHECKPOINT_INTERVAL,
+    {value, DefaultAfterSecs} = ns_config:search(xdcr_checkpoint_interval),
+    AfterSecs = misc:getenv_int("XDCR_CHECKPOINT_INTERVAL", DefaultAfterSecs),
+    %% convert to milliseconds
+    After = AfterSecs*1000,
     case timer:apply_after(After, gen_server, cast, [self(), checkpoint]) of
         {ok, Ref} ->
             Ref;

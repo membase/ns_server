@@ -30,8 +30,6 @@
 %% constants used by XDCR
 -define(REP_ID_VERSION, 2).
 
--define(XDCR_CHECKPOINT_INTERVAL, 60000).
-
 %% Maximum number of concurrent vbucket replications allowed per doc
 -define(MAX_CONCURRENT_REPS_PER_DOC, 32).
 

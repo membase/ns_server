@@ -64,7 +64,8 @@ default() ->
     filelib:ensure_dir(RawLogDir),
     file:make_dir(RawLogDir),
 
-    [{xdcr_doc_batch_size_kb, 512},  % in kilobytes
+    [{xdcr_checkpoint_interval, 300},  % in secs
+     {xdcr_doc_batch_size_kb, 512},  % in kilobytes
      {xdcr_failure_restart_interval, 30}, % in secs
      {xdcr_capi_checkpoint_timeout, 10}, % in secs
      {directory, path_config:component_path(data, "config")},
