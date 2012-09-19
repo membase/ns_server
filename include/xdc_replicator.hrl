@@ -86,6 +86,8 @@
           tgt_starttime,
           timer, %% checkpoint timer
           start_work_time,
+          last_checkpoint_time,
+          num_checkpoints, %% number of checkpoints made
           workers,
           session_id,
           source_seq = nil

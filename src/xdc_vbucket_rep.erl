@@ -77,7 +77,7 @@ handle_info(init, #init_state{init_throttle = InitThrottle} = InitState) ->
     try
         State = init_replication_state(InitState),
         self() ! src_db_updated, % signal to self to check for changes
-        {noreply, update_state_to_parent(State)}
+        {noreply, update_status_to_parent(State)}
     catch
         ErrorType:Error ->
             ?xdcr_error("Error initializing vb replicator (~p):~p", [InitState, {ErrorType,Error}]),
@@ -97,13 +97,13 @@ handle_info(src_db_updated,
             TargetNode =  target_uri_to_node(TgtURI),
             ?xdcr_debug("ask for token for rep of vb: ~p to target node: ~p", [Vb, TargetNode]),
             ok = concurrency_throttle:send_back_when_can_go(Throttle, TargetNode, start_replication),
-            {noreply, update_state_to_parent(St2#rep_state{status = VbStatus#rep_vb_status{status = waiting_turn}})}
+            {noreply, update_status_to_parent(St2#rep_state{status = VbStatus#rep_vb_status{status = waiting_turn}})}
     end;
 
 handle_info(src_db_updated,
             #rep_state{status = #rep_vb_status{status = waiting_turn}} = St) ->
     misc:flush(src_db_updated),
-    {noreply, update_state_to_parent(update_number_of_changes(St))};
+    {noreply, update_status_to_parent(update_number_of_changes(St))};
 
 handle_info(src_db_updated, #rep_state{status = #rep_vb_status{status = replicating}} = St) ->
     % we ignore this message when replicating, because it's difficult to
@@ -155,10 +155,10 @@ handle_call({report_seq_done, Seq, NumChecked, NumWritten}, From,
                  highest_seq_done = NewHighestDone,
                  source_seq = SourceCurSeq,
                  status = VbStatus#rep_vb_status{num_changes_left = ChangesLeft - NumChecked,
-                                               docs_checked = TotalChecked + NumChecked,
-                                               docs_written = TotalWritten + NumWritten}
+                                                 docs_checked = TotalChecked + NumChecked,
+                                                 docs_written = TotalWritten + NumWritten}
                 },
-    {noreply, update_state_to_parent(NewState)};
+    {noreply, update_status_to_parent(NewState)};
 
 handle_call({worker_done, Pid}, _From,
             #rep_state{workers = Workers, status = VbStatus} = State) ->
@@ -170,12 +170,8 @@ handle_call({worker_done, Pid}, _From,
             % more changes from src
             WorkTime = timer:now_diff(now(), State#rep_state.start_work_time) div 1000,
             TotalWorkTime = VbStatus#rep_vb_status.total_work_time + WorkTime,
-            CommitStart = now(),
-            State1 = xdc_vbucket_rep_ckpt:do_last_checkpoint(State),
-            CommitTime = timer:now_diff(now(), CommitStart) div 1000,
-            TotalCommitTime = VbStatus#rep_vb_status.total_commit_time + CommitTime,
             % allow another replicator to go
-            State2 = replication_turn_is_done(State1),
+            State2 = replication_turn_is_done(State),
             couch_api_wrap:db_close(State2#rep_state.source),
             couch_api_wrap:db_close(State2#rep_state.src_master_db),
             couch_api_wrap:db_close(State2#rep_state.target),
@@ -183,12 +179,35 @@ handle_call({worker_done, Pid}, _From,
             % force check for changes since we last snapshop
             self() ! src_db_updated,
             misc:flush(checkpoint),
-            VbState2 = VbStatus#rep_vb_status{status = idle,
-                                              total_work_time = TotalWorkTime,
-                                              total_commit_time = TotalCommitTime},
-            {reply, ok, update_state_to_parent(State2#rep_state{
+            VbStatus2 = VbStatus#rep_vb_status{status = idle,
+                                              total_work_time = TotalWorkTime},
+
+            Vb = VbStatus2#rep_vb_status.vb,
+            Throttle = State2#rep_state.throttle,
+            HighestDone = State2#rep_state.highest_seq_done,
+            ChangesLeft = VbStatus2#rep_vb_status.num_changes_left,
+            TotalChecked = VbStatus2#rep_vb_status.docs_checked,
+            TotalWritten = VbStatus2#rep_vb_status.docs_written,
+            TotalCommitTime = VbStatus2#rep_vb_status.total_commit_time,
+            NumCkpts = State2#rep_state.num_checkpoints,
+            LastCkptTime = State2#rep_state.last_checkpoint_time,
+            StartWorkTime = State2#rep_state.start_work_time,
+            ?xdcr_debug("Replicator of vbucket ~p done, return token to throttle: ~p~n"
+                        "(highest seq done is ~p, number of changes left: ~p~n"
+                        "total docs checked: ~p, total docs written: ~p~n"
+                        "total working time (ms): ~p, total commit time (ms): ~p~n"
+                        "total number of ckpts: ~p, last ckpt time: ~p~n"
+                        "start work time: ~p, work time in this turn (ms): ~p).",
+                        [Vb, Throttle, HighestDone, ChangesLeft, TotalChecked, TotalWritten,
+                         TotalWorkTime, TotalCommitTime, NumCkpts,
+                         calendar:now_to_local_time(LastCkptTime),
+                         calendar:now_to_local_time(StartWorkTime),
+                         WorkTime
+                        ]),
+
+            {reply, ok, update_status_to_parent(State2#rep_state{
                                         workers = [],
-                                        status = VbState2,
+                                        status = VbStatus2,
                                         source = undefined,
                                         src_master_db = undefined,
                                         target = undefined,
@@ -199,16 +218,32 @@ handle_call({worker_done, Pid}, _From,
 
 
 handle_cast(checkpoint, #rep_state{status = VbStatus} = State) ->
-    Start = now(),
-    case xdc_vbucket_rep_ckpt:do_checkpoint(State) of
-        {ok, NewState} ->
-            CommitTime = timer:now_diff(now(), Start) div 1000,
-            TotalCommitTime = CommitTime + VbStatus#rep_vb_status.total_commit_time,
-            VbStatus2 = VbStatus#rep_vb_status{total_commit_time = TotalCommitTime},
-            {noreply, NewState#rep_state{timer = xdc_vbucket_rep_ckpt:start_timer(State),
-                                         status = VbStatus2}};
-        Error ->
-            {stop, Error, State}
+    Result = case VbStatus#rep_vb_status.status of
+                 replicating ->
+                     Start = now(),
+                     case xdc_vbucket_rep_ckpt:do_checkpoint(State) of
+                         {ok, NewState} ->
+                             CommitTime = timer:now_diff(now(), Start) div 1000,
+                             TotalCommitTime = CommitTime + State#rep_state.status#rep_vb_status.total_commit_time,
+                             VbStatus2 = State#rep_state.status#rep_vb_status{total_commit_time = TotalCommitTime},
+                             NewState2 = NewState#rep_state{timer = xdc_vbucket_rep_ckpt:start_timer(State),
+                                                            status = VbStatus2},
+                             {ok, NewState2};
+                         Error ->
+                             {stop, Error, State}
+                     end;
+                 _ ->
+                     %% if get checkpoint when not in replicating state, continue to wait until we
+                     %% get our next turn, we'll do the checkpoint at the start of that.
+                     misc:flush(checkpoint),
+                     {ok, #rep_state{timer = xdc_vbucket_rep_ckpt:cancel_timer(State)}}
+             end,
+
+    case Result of
+        {ok, NewState3} ->
+            {noreply, NewState3};
+        {stop, _, _} ->
+            Result
     end;
 
 handle_cast({report_seq, Seq},
@@ -238,7 +273,7 @@ terminate(Reason, #rep_state{
                           } = State) ->
     ?xdcr_error("Replication `~s` (`~s` -> `~s`) failed: ~s",
                 [Id, Source, Target, to_binary(Reason)]),
-    update_state_to_parent(State#rep_state{status = Status#rep_vb_status{status = idle}}),
+    update_status_to_parent(State#rep_state{status = Status#rep_vb_status{status = idle}}),
     report_error(Reason, Vb, P),
     % an unhandled error happened. Invalidate target vb map cache.
     remote_clusters_info:invalidate_remote_bucket_by_ref(TargetRef),
@@ -268,8 +303,8 @@ replication_turn_is_done(#rep_state{throttle = T} = State) ->
     concurrency_throttle:is_done(T),
     State.
 
-update_state_to_parent(#rep_state{parent = Parent,
-                                  status = VbStatus} = State) ->
+update_status_to_parent(#rep_state{parent = Parent,
+                                   status = VbStatus} = State) ->
     Parent ! {set_vb_rep_status, VbStatus},
     State.
 
@@ -338,6 +373,8 @@ init_replication_state(#init_state{rep = Rep,
       rep_starttime = httpd_util:rfc1123_date(),
       src_starttime = get_value(<<"instance_start_time">>, SourceInfo),
       tgt_starttime = get_value(<<"instance_start_time">>, TargetInfo),
+      last_checkpoint_time = now(),
+      num_checkpoints = 0,
       session_id = couch_uuids:random(),
       status = #rep_vb_status{vb = Vb,
                               pid = self(),
@@ -352,6 +389,8 @@ start_replication(#rep_state{
                            source_name = SourceName,
                            target_name = TargetName,
                            current_through_seq = StartSeq,
+                           last_checkpoint_time = LastCkptTime,
+                           num_checkpoints = NumCkpts,
                            rep_details = #rep{id = Id, options = Options},
                            status = VbStatus
                          } = State) ->
@@ -395,36 +434,49 @@ start_replication(#rep_state{
                  end,
                  lists:seq(1, NumWorkers)),
 
-     ?xdcr_info("Replication `~p` is using:~n"
-                "~c~p worker processes~n"
-                "~ca worker batch size of ~p~n"
-                "~c~p HTTP connections~n"
-                "~ca connection timeout of ~p milliseconds~n"
-                "~c~p retries per request~n"
-                "~csocket options are: ~s~s",
-                [Id, $\t, NumWorkers, $\t, BatchSize, $\t,
-                 MaxConns, $\t, get_value(connection_timeout, Options),
-                 $\t, get_value(retries, Options),
-                 $\t, io_lib:format("~p", [get_value(socket_options, Options)]),
-                 case StartSeq of
-                     ?LOWEST_SEQ ->
-                         "";
-                     _ ->
-                         io_lib:format("~n~csource start sequence ~p", [$\t, StartSeq])
-                 end]),
+    ?xdcr_info("Replication `~p` is using:~n"
+               "~c~p worker processes~n"
+               "~ca worker batch size of ~p~n"
+               "~c~p HTTP connections~n"
+               "~ca connection timeout of ~p milliseconds~n"
+               "~c~p retries per request~n"
+               "~csocket options are: ~s~s",
+               [Id, $\t, NumWorkers, $\t, BatchSize, $\t,
+                MaxConns, $\t, get_value(connection_timeout, Options),
+                $\t, get_value(retries, Options),
+                $\t, io_lib:format("~p", [get_value(socket_options, Options)]),
+                case StartSeq of
+                    ?LOWEST_SEQ ->
+                        "";
+                    _ ->
+                        io_lib:format("~n~csource start sequence ~p", [$\t, StartSeq])
+                end]),
 
-     ?xdcr_debug("Worker pids are: ~p", [Workers]),
+    {value, IntervalSecs} = ns_config:search(xdcr_checkpoint_interval),
+    TimeSinceLastCkpt = timer:now_diff(now(), LastCkptTime) div 1000000,
+    ?xdcr_debug("Worker pids are: ~p, last checkpt time: ~p (total # of ckpts: ~p, "
+                "secs since last ckpt: ~p, ckpt interval: ~p)",
+                [Workers, calendar:now_to_local_time(LastCkptTime), NumCkpts,
+                 TimeSinceLastCkpt, IntervalSecs]),
 
-     update_state_to_parent(State#rep_state{
-            workers = Workers,
-            source = Source,
-            src_master_db = SrcMasterDb,
-            target = Target,
-            tgt_master_db = TgtMasterDb,
-            status = VbStatus#rep_vb_status{num_changes_left = Changes},
-            timer = xdc_vbucket_rep_ckpt:start_timer(State),
-            start_work_time = WorkStart
-           }).
+    %% check if we need do checkpointing, replicator will crash if checkpoint failure
+    {ok, NewState} = case TimeSinceLastCkpt > IntervalSecs of
+                         true ->
+                             xdc_vbucket_rep_ckpt:do_checkpoint(State);
+                         _ ->
+                             {ok, State}
+                     end,
+
+    update_status_to_parent(NewState#rep_state{
+                             workers = Workers,
+                             source = Source,
+                             src_master_db = SrcMasterDb,
+                             target = Target,
+                             tgt_master_db = TgtMasterDb,
+                             status = VbStatus#rep_vb_status{num_changes_left = Changes},
+                             timer = xdc_vbucket_rep_ckpt:start_timer(State),
+                             start_work_time = WorkStart
+                            }).
 
 update_number_of_changes(#rep_state{source_name = Src,
                                     current_through_seq = Seq,

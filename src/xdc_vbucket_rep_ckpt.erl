@@ -18,7 +18,7 @@
 
 %% public functions
 -export([start_timer/1, cancel_timer/1]).
--export([do_last_checkpoint/1, do_checkpoint/1]).
+-export([do_checkpoint/1]).
 -export([source_cur_seq/1]).
 
 -include("xdc_replicator.hrl").
@@ -42,19 +42,6 @@ cancel_timer(#rep_state{timer = Timer} = State) ->
     {ok, cancel} = timer:cancel(Timer),
     State#rep_state{timer = nil}.
 
-do_last_checkpoint(#rep_state{seqs_in_progress = [],
-                              highest_seq_done = ?LOWEST_SEQ} = State) ->
-    cancel_timer(State);
-do_last_checkpoint(#rep_state{seqs_in_progress = [],
-                              highest_seq_done = Seq} = State) ->
-    case do_checkpoint(State#rep_state{current_through_seq = Seq}) of
-        {ok, NewState} ->
-            cancel_timer(NewState);
-        Error ->
-            cancel_timer(State),
-            throw(Error)
-    end.
-
 do_checkpoint(#rep_state{current_through_seq=Seq, committed_seq=Seq} = State) ->
     SourceCurSeq = source_cur_seq(State),
     NewState = State#rep_state{source_seq = SourceCurSeq},
@@ -76,6 +63,7 @@ do_checkpoint(State) ->
                src_starttime = SrcInstanceStartTime,
                tgt_starttime = TgtInstanceStartTime,
                session_id = SessionId,
+               num_checkpoints = NumCkpts,
                status = #rep_vb_status{docs_checked = Checked,
                                      docs_written = Written}
               } = State,
@@ -127,6 +115,8 @@ do_checkpoint(State) ->
                              source_seq = SourceCurSeq,
                              checkpoint_history = NewRepHistory,
                              committed_seq = NewSeq,
+                             last_checkpoint_time = now(),
+                             num_checkpoints = NumCkpts + 1,
                              source_log = SourceLog#doc{rev=SrcRev},
                              target_log = TargetLog#doc{rev=TgtRev}
                             },
