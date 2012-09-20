@@ -161,33 +161,44 @@ sys_info(IO) ->
     ok = file:write(IO, erlang:system_info(procs)).
 
 rm_rf(Name) when is_list(Name) ->
-  case filelib:is_dir(Name) of
-    false ->
-      file:delete(Name);
-    true ->
-      case file:list_dir(Name) of
-          {ok, Filenames} ->
-              case rm_rf_loop(Name, Filenames) of
-                  ok ->
-                      case file:del_dir(Name) of
-                          ok ->
-                              ok;
-                          {error, enoent} ->
-                              ok;
-                          Error ->
-                              ?log_warning("Cannot delete ~p: ~p", [Name, Error]),
-                              Error
-                      end;
-                  Error ->
-                      Error
-              end;
-          {error, enoent} ->
-              ok;
-          {error, Reason} = Error ->
-              ?log_warning("rm_rf failed because ~p", [Reason]),
-              Error
-      end
+  case rm_rf_is_dir(Name) of
+      {ok, false} ->
+          file:delete(Name);
+      {ok, true} ->
+          case file:list_dir(Name) of
+              {ok, Filenames} ->
+                  case rm_rf_loop(Name, Filenames) of
+                      ok ->
+                          case file:del_dir(Name) of
+                              ok ->
+                                  ok;
+                              {error, enoent} ->
+                                  ok;
+                              Error ->
+                                  ?log_warning("Cannot delete ~p: ~p", [Name, Error]),
+                                  Error
+                          end;
+                      Error ->
+                          Error
+                  end;
+              {error, enoent} ->
+                  ok;
+              {error, Reason} = Error ->
+                  ?log_warning("rm_rf failed because ~p", [Reason]),
+                  Error
+          end;
+      Error ->
+          ?log_warning("stat on ~s failed: ~p", [Name, Error]),
+          Error
   end.
+
+rm_rf_is_dir(Name) ->
+    case file:read_link_info(Name) of
+        {ok, Info} ->
+            {ok, Info#file_info.type =:= directory};
+        Error ->
+            Error
+    end.
 
 rm_rf_loop(_DirName, []) ->
     ok;
