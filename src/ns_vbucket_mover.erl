@@ -23,6 +23,8 @@
 
 -define(MAX_MOVES_PER_NODE, ns_config_ets_dup:unreliable_read_key(rebalance_moves_per_node, 1)).
 
+-define(TAP_STATS_LOGGING_INTERVAL, 10*60*1000).
+
 %% API
 -export([start_link/4, run_code/2]).
 
@@ -168,7 +170,7 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
                                                     ok
                                             end),
 
-    timer:send_interval(30000, log_tap_stats),
+    timer:send_interval(?TAP_STATS_LOGGING_INTERVAL, log_tap_stats),
 
     AllNodesSet0 =
         lists:foldl(fun (Chain, Acc) ->
