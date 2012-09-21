@@ -1236,7 +1236,7 @@ input[type=number].size {width:4em;}
 
 .items_per_list_wrap {float:right;margin:0 35px 0 10px;}
 
-.ellipsis {padding-right:10px;overflow:hidden;color:#999;white-space:nowrap;text-overflow:ellipsis;-o-text-overflow:ellipsis;}
+.ellipsis {padding-right:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;-o-text-overflow:ellipsis;}
 
 .sample_documents:hover .btn_1 {opacity:0.7;}
 .sample_documents {position:relative;overflow:hidden;border-bottom:1px solid #ccc  !important;}
@@ -1246,5 +1246,8 @@ input[type=number].size {width:4em;}
 .sample_documents .json {width:60%;float:left;}
 
 #view_code_errors {overflow:hidden;font-size:12px;font-weight:normal;text-transform:none;padding:14px 0 0 12px;}
+
 .list .list_errors td {background: #fca0a0;}
 .list .list_errors .label {display:inline-block;width:71px;font-weight:bold;}
+
+#view_details .results_block .list {table-layout:fixed;}
