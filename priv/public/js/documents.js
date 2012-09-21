@@ -551,6 +551,7 @@ var DocumentsSection = {
       if (selectedBucket === undefined) {
         return;
       }
+      self.filter.reset();
       bucketExistsState(!!selectedBucket);
     });
 

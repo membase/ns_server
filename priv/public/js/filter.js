@@ -136,6 +136,7 @@ Filter.prototype = {
       this.currentURL = null;
     }
     this.rawFilterParamsCell.setValue(undefined);
+    this.clearForm();
   },
   tagValidation: function (tag) {
     var self = this;
