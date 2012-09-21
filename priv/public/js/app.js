@@ -219,6 +219,13 @@ var ThePage = {
   initialize: function () {
     var self = this;
 
+    function preventKeys(e) {
+      if (e.keyCode === 27) { //esc
+        e.preventDefault();
+      }
+    }
+    $(document).keydown(preventKeys).keypress(preventKeys);
+
     _.each(_.uniq(_.values(this.sections)), function (sec) {
       if (sec.init)
         sec.init();
