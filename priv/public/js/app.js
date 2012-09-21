@@ -557,6 +557,8 @@ var SetupWizard = {
             return SetupWizard.panicAndReload();
           }
 
+          $('#init_cluster_dialog .when-enterprise').toggle(!!DAL.isEnterprise);
+
           // we have node data and can finally display our wizard page
           // and pre-fill the form
           continueShowDialog();

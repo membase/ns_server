@@ -919,6 +919,7 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
     width: 120px;
 }
 .disk_setup_block input { border: 1px solid #ccd3d7;width: 366px;  padding: 3px;}
+.disk_setup_block .when-enterprise {font-size: 11px;}
 
 #overview_servers_block .actservers + ul li.is-zero a { color: #0095D6;}
 #overview_servers_block .when-zero {display:none;}
