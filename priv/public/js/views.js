@@ -920,6 +920,7 @@ var ViewsSection = {
 
       if (builder) {
         var url = builder(intPageVal, subset);
+        url = url.replace(/^http:\/\/(.*?):/, "http://" + window.location.hostname + ":");
         var text = url.substring(url.indexOf('?'));
         ViewsFilter.filtersUrl.attr('href', url);
         ViewsFilter.filtersUrl.text(text);
