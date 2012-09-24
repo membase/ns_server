@@ -258,6 +258,10 @@ maybe_refresh_tasks_version(State) ->
                                       Set0);
                                 loadingSampleBucket ->
                                     sets:add_element(erlang:phash2(Task), Set0);
+                                xdcr ->
+                                    sets:add_element(
+                                      erlang:phash2(lists:keyfind(id, 1, Task)),
+                                      Set0);
                                 _ ->
                                     Set0
                             end
