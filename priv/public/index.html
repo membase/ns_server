@@ -1427,7 +1427,7 @@
                   <th>Bucket</th>
                   <th>From</th>
                   <th>To</th>
-                  <!-- <th>Status</th> -->
+                  <th>Status</th>
                   <th>When</th>
                   <th></th>
                 </tr>
@@ -1437,7 +1437,7 @@
                   <td>{%= h(r.bucket) %}</td>
                   <td style="color:#777">this cluster</td>
                   <td>{%= h(r.to) %}</td>
-                  <!-- <td>{ % = h(r.status) %}</td> -->
+                  <td>{%= h(r.status) %}</td>
                   <td>{%= h(r.when) %}</td>
                   <td>
                     <a class="list_button" href="#deleteReplication={%=h(encodeURIComponent(r.id))%}"><span>Delete</span></a>

@@ -37,105 +37,19 @@ var ReplicationsModel = {};
   var createReplicationURICell = model.createReplicationURICell = Cell.computeEager(function (v) {
     return v.need(DAL.cells.currentPoolDetailsCell).controllers.replication.createURI;
   });
-  var replicationInfosURICell = model.replicationInfosURICell = Cell.computeEager(function (v) {
-    return v.need(DAL.cells.currentPoolDetailsCell).controllers.replication.infosURI;
-  });
-
-  var rawReplicationInfos = model.rawReplicationInfos = Cell.computeEager(function (v) {
-    if (v.need(DAL.cells.mode) !== 'replications') {
-      return;
-    }
-    return future.get({url: v.need(replicationInfosURICell)});
-  });
-  rawReplicationInfos.keepValueDuringAsync = true;
-
-  var allReplicationInfos = model.allReplicationInfos = Cell.compute(function (v) {
-    return _.map(v.need(rawReplicationInfos).rows, function (r) {
-      var info = r.value;
-      var fields = info.replication_fields;
-      if (!fields) {
-        return info;
-      }
-      var targetURI = fields.target;
-      var match = /^\/remoteClusters\/(.*)\/buckets\/(.*)/.exec(targetURI);
-
-      info = _.clone(info);
-      info.id = fields._id;
-      info.source = fields.source;
-      info.continuous = fields.continuous;
-
-      if (match) {
-        var clusterUUID = match[1];
-        var bucket = match[2];
-
-        var cluster = _.detect(v.need(rawRemoteClustersListCell),
-                               function (c) {
-                                 return (c.uuid === clusterUUID);
-                               });
-
-        if (cluster) {
-          if (cluster.deleted) {
-            cluster = cluster.hostname + ' (removed)';
-          } else {
-            cluster = cluster.name;
-          }
-        } else {
-          cluster = "unknown";
-        }
-
-        info.target = cluster;
-        if (bucket !== info.source) {
-          info.target += ' bucket ' + bucket;
-        }
-      } else {
-        info.target = targetURI;
-      }
-
-      return info;
-    });
-  });
-
-  function currentReplicationInfoP(info) {
-    return (info.have_replicator_doc
-            && info._replication_state !== 'cancelled'
-            && (info._replication_state !== 'completed' || info.continuous === true));
-  }
-
-  model.currentReplicationInfoP = currentReplicationInfoP;
-
-  var currentReplicationInfos = model.currentReplicationInfos = Cell.compute(function (v) {
-    return _.select(v.need(allReplicationInfos), currentReplicationInfoP);
-  });
 
   model.refreshReplications = function (softly) {
     if (!softly) {
       remoteClustersListCell.setValue(undefined);
     }
     rawRemoteClustersListCell.invalidate();
-    rawReplicationInfos.invalidate();
+    DAL.cells.tasksProgressCell.invalidate();
   }
 
   var replicatorDBURIBaseCell = model.replicatorDBURIBaseCell = Cell.computeEager(function (v) {
     return v.need(DAL.cells.currentPoolDetailsCell).controllers.replication.replicatorDBURI + "/";
   });
 
-  // right after creating replication there are no info docs yet so
-  // state is undefined, we want to keep refreshing this list in order to get to right state
-  model.initiateRefreshingReplicationsList = function () {
-    Cell.subscribeMultipleValues(function (currentReplications) {
-      console.log("currentReplications: ", currentReplications);
-      if (!currentReplications) {
-        return;
-      }
-      var needReload = _.detect(currentReplications, function (info) {
-        return (info._replication_state === undefined)
-      });
-      console.log("needReload: ", needReload);
-      if (needReload) {
-        rawReplicationInfos.recalculateAfterDelay(3000);
-      }
-    }, currentReplicationInfos);
-  }
 })();
 
 var ReplicationForm = mkClass({
@@ -227,54 +141,45 @@ mkClass.turnIntoLazySingleton(ReplicationForm);
 
 var ReplicationsSection = {
   init: function () {
-    ReplicationsModel.initiateRefreshingReplicationsList();
-
     renderCellTemplate(ReplicationsModel.remoteClustersListCell, 'cluster_reference_list');
 
-    function replicationInfoValueTransformer(manyInfos) {
-      return _.map(manyInfos, function (info) {
-        return _.extend({}, info, {
-          bucket: info.source,
-          to: info.target,
-          status: (function (status) {
-            switch (status) {
-            case undefined:
-              return 'Starting Up';
-            case 'error':
-              return 'Failed';
-            case 'triggered':
-              return 'Replicating';
-            case 'completed':
-              return 'Completed';
-            case 'cancelled':
-              return 'Cancelled';
-            }
-            return status;
-          })(info._replication_state),
-          lastRun: (function (tstamp) {
-            if (tstamp == null) {
-              return;
-            }
-            var parsed = parseRFC3339Date(tstamp);
-            if (parsed) {
-              return parsed.valueOf();
-            }
-          })(info._replication_state_time),
-          when: (function (continuous) {
-            if (continuous) {
-              return "on change";
-            } else {
-              return "one time sync";
-            }
-          })(info.continuous)
-        });
+    var maybeXDCRTaskCell = Cell.compute(function (v) {
+      var progresses = v.need(DAL.cells.tasksProgressCell);
+      return _.filter(progresses, function (task) {
+        return task.type === 'xdcr';
       });
-    }
+    });
+    maybeXDCRTaskCell.equality = _.isEqual;
 
-    renderCellTemplate(ReplicationsModel.currentReplicationInfos,
-                       'ongoing_replications_list', {
-                         valueTransformer: replicationInfoValueTransformer
-                       });
+    Cell.compute(function (v) {
+      if (v.need(DAL.cells.mode) != 'replications') {
+        return;
+      }
+
+      var replications = v.need(maybeXDCRTaskCell);
+      var clusters = v.need(ReplicationsModel.remoteClustersListCell);
+
+      return _.map(replications, function (replication) {
+        var name = _.filter(clusters, function (cluster) {
+          return cluster.uuid === replication.id.split("/")[0];
+        })[0];
+
+        name = name ? name.name : 'unknown';
+
+        return {
+          id: replication.id,
+          bucket: replication.source,
+          to: 'bucket "' + replication.target.split('buckets/')[1] + '" on cluster "' + name + '"',
+          status: replication.status == 'running' ? 'Replicating' : 'Starting Up',
+          when: replication.continuous ? "on change" : "one time sync"
+        }
+      });
+    }).subscribeValue(function (rows) {
+      if (!rows) {
+        return;
+      }
+      renderTemplate('ongoing_replications_list', rows);
+    });
 
     $('#create_cluster_reference').click($m(this, 'startAddRemoteCluster'));
     $('#cluster_reference_list_container').delegate('.list_button.edit-button', 'click', function() {
