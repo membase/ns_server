@@ -343,7 +343,7 @@ task_operation(finalize, {BucketCompaction, BucketName, _, _}, {ChangesDone, Tot
 
 finalize_xcdr_plist({ChangesLeft, DocsChecked, DocsWritten, TimeWorking, TimeCommitting}) ->
     [{type, xdcr},
-     {recommendedRefreshPeriod, 2.0},
+     {recommendedRefreshPeriod, 10.0},
      {changesLeft, ChangesLeft},
      {docsChecked, DocsChecked},
      {docsWritten, DocsWritten},
