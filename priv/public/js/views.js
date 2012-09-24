@@ -573,8 +573,8 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
         return;
       }
       var ddoc = taskInfo.designDocument;
-      var tasks = rv[ddoc] || (rv[ddoc] = []);
-      tasks.push(taskInfo);
+      var ddocTasks = rv[ddoc] || (rv[ddoc] = []);
+      ddocTasks.push(taskInfo);
     });
 
     var importance = {
@@ -582,10 +582,10 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
       indexer: 2
     };
 
-    _.each(rv, function (tasks, key) {
+    _.each(rv, function (ddocTasks, key) {
       // lets also sort tasks in descending importance.
       // NOTE: js's sort is in-place
-      tasks.sort(function (taskA, taskB) {
+      ddocTasks.sort(function (taskA, taskB) {
         var importanceA = importance[taskA.type] || BUG("bad type");
         var importanceB = importance[taskB.type] || BUG("bad type");
         return importanceA - importanceB;
