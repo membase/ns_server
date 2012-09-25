@@ -307,6 +307,8 @@ handle_call(reset_master_vbucket, _From, #state{bucket = Bucket,
                                                 local_docs = LocalDocs} = State) ->
     MasterVBucket = iolist_to_binary([Bucket, <<"/master">>]),
     {ok, master_db_deletion} = {couch_server:delete(MasterVBucket, []), master_db_deletion},
+    {ok, MasterDB} = open_local_db(Bucket),
+    ok = couch_db:close(MasterDB),
     [save_doc(Doc, State) || Doc <- LocalDocs],
     {reply, ok, State}.
 
