@@ -16,6 +16,25 @@
 if (!('console' in window))
   window.console = {log: function () {}};
 
+// mostly stolen from MIT-licensed prototypejs.org (String#toQueryParams)
+function deserializeQueryString(dataString) {
+  return _.reduce(dataString.split('&'), function(hash, pair) {
+    if ((pair = pair.split('='))[0]) {
+      var key = decodeURIComponent(pair.shift());
+      var value = pair.length > 1 ? pair.join('=') : pair[0];
+      if (value != undefined) value = decodeURIComponent(value);
+
+      if (key in hash) {
+        if (!_.isArray(hash[key]))
+          hash[key] = [hash[key]];
+        hash[key].push(value);
+      }
+      else hash[key] = value;
+    }
+    return hash;
+  }, {})
+}
+
 function getBacktrace() {
   try {
     throw new Error();

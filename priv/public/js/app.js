@@ -1388,3 +1388,14 @@ function initAlertsSubscriber() {
   IOCenter.staleness.subscribeValue(processLinks);
   $(window).bind('template:rendered', processLinks);
 })();
+
+$(function () {
+  var href = window.location.href;
+  var match = /\?(.*?)(?:$|#)/.exec(href);
+  if (!match)
+    return;
+  var params = deserializeQueryString(match[1]);
+  if (params['enableInternalSettings']) {
+    $('#edit-internal-settings-link').show();
+  }
+});

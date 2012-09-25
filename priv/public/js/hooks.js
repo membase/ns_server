@@ -90,25 +90,6 @@ var TestingSupervisor = {
 
 var ajaxRespondDelay = 100;
 
-// mostly stolen from MIT-licensed prototypejs.org (String#toQueryParams)
-function deserializeQueryString(dataString) {
-  return _.reduce(dataString.split('&'), function(hash, pair) {
-    if ((pair = pair.split('='))[0]) {
-      var key = decodeURIComponent(pair.shift());
-      var value = pair.length > 1 ? pair.join('=') : pair[0];
-      if (value != undefined) value = decodeURIComponent(value);
-
-      if (key in hash) {
-        if (!_.isArray(hash[key]))
-          hash[key] = [hash[key]];
-        hash[key].push(value);
-      }
-      else hash[key] = value;
-    }
-    return hash;
-  }, {})
-}
-
 function dateToFakeRFC1123(date) {
   function twoDigits(n) {
     return String(100 + n).slice(1);
