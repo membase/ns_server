@@ -637,7 +637,7 @@ handle_call({create_new_checkpoint, VBucket},
             _From,
             #state{bucket_name = Bucket} = State) ->
     {ok, {PersistedCheckpointId, _}} = ns_memcached:get_vbucket_checkpoint_ids(Bucket, VBucket),
-    {ok, OpenCheckpointId} = ns_memcached:create_new_checkpoint(Bucket, VBucket),
+    {ok, OpenCheckpointId, _LastPersistedCkpt} = ns_memcached:create_new_checkpoint(Bucket, VBucket),
     {reply, {PersistedCheckpointId, OpenCheckpointId}, State};
 handle_call({wait_checkpoint_persisted, VBucket, CheckpointId},
            From,
@@ -657,7 +657,7 @@ handle_call({get_replication_persistence_checkpoint_id, VBucket},
         true ->
             {reply, PersistedCheckpointId + 1, State};
         false ->
-            {ok, NewOpenCheckpointId} = ns_memcached:create_new_checkpoint(Bucket, VBucket),
+            {ok, NewOpenCheckpointId, _LastPersistedCkpt} = ns_memcached:create_new_checkpoint(Bucket, VBucket),
             ?log_debug("After creating new checkpoint here's what we have: ~p", [{PersistedCheckpointId, OpenCheckpointId, NewOpenCheckpointId}]),
             {reply, erlang:min(PersistedCheckpointId + 1, NewOpenCheckpointId - 1), State}
     end.

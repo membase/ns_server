@@ -264,8 +264,8 @@ create_new_checkpoint(Sock, VBucket) ->
     case cmd(?CMD_CREATE_CHECKPOINT, Sock, undefined, undefined,
              {#mc_header{vbucket = VBucket}, #mc_entry{}}) of
         {ok, #mc_header{status=?SUCCESS}, #mc_entry{data=CheckpointBin}, _NCB} ->
-            <<Checkpoint:64>> = CheckpointBin,
-            {ok, Checkpoint};
+            <<Checkpoint:64, PersistedCkpt:64>> = CheckpointBin,
+            {ok, Checkpoint, PersistedCkpt};
         Response -> process_error_response(Response)
     end.
 

@@ -200,12 +200,19 @@ ensure_full_commit(#db{name = DbName} = _Db, _RequiredSeq) ->
 
     %% create a new open checkpoint
     StartTime = now(),
-    {ok, OpenCheckpointId} = ns_memcached:create_new_checkpoint(Bucket, list_to_integer(VBucket)),
+    {ok, OpenCheckpointId, PersistedCkptId} = ns_memcached:create_new_checkpoint(Bucket, list_to_integer(VBucket)),
 
-    %% waiting for persisted ckpt to catch up, time out in milliseconds
-    ?xdcr_debug("rep (bucket: ~p, vbucket ~p) waiting for chkpt persisted (open ckpt: ~p, timeout: ~p secs)",
-                [Bucket, VBucket, OpenCheckpointId, TimeoutSec]),
-    Result = ensure_full_commit_loop(OpenCheckpointId, TimeoutSec*1000),
+    Result = case PersistedCkptId >= (OpenCheckpointId - 1) of
+                 true ->
+                     ?xdcr_debug("rep (bucket: ~p, vbucket ~p) issues an empty open ckpt, no need to wait (open ckpt: ~p, persisted ckpt: ~p)",
+                                 [Bucket, VBucket, OpenCheckpointId, PersistedCkptId]),
+                     {ok, PersistedCkptId};
+                 _ ->
+                     %% waiting for persisted ckpt to catch up, time out in milliseconds
+                     ?xdcr_debug("rep (bucket: ~p, vbucket ~p) waiting for chkpt persisted (open ckpt: ~p, timeout: ~p secs)",
+                                 [Bucket, VBucket, OpenCheckpointId, TimeoutSec]),
+                     ensure_full_commit_loop(OpenCheckpointId, TimeoutSec*1000)
+             end,
 
     case Result of
         {ok, LastPersistedCkptId} ->
