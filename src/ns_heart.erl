@@ -250,8 +250,7 @@ is_view_task(Task) ->
             {type, Type} = lists:keyfind(type, 1, Task),
             Type =:= indexer orelse
                 Type =:= view_compaction
-        end andalso
-        lists:keyfind(indexer_type, 1, Task) =:= {indexer_type, main}.
+        end.
 
 is_bucket_compaction_task(Task) ->
     {type, Type} = lists:keyfind(type, 1, Task),
