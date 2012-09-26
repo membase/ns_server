@@ -651,7 +651,7 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
         rv.json.spatialInfos = spatialInfos;
         return rv;
       });
-      rv.ddocsAreInFactMissing = v.need(ns.ddocsAreInFactMissingCell);
+      rv.ddocsAreInFactMissing = v(ns.ddocsAreInFactMissingCell);
       rv.tasks = tasks;
       rv.poolDetails = poolDetails;
       rv.bucketName = bucketName;
@@ -662,6 +662,8 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
   ns.massagedDevDDocsCell = mkViewsListCell(ns.devDDocsCell);
   ns.massagedProductionDDocsCell = mkViewsListCell(ns.productionDDocsCell);
 }
+
+
 
 function createRandomDocCells(ns, modeCell) {
   function fetchRandomId(randomKeyURL, dbURL, dataCallback) {
@@ -1218,10 +1220,12 @@ var ViewsSection = {
     function subscribeViewsList(cell, containerId) {
       DAL.subscribeWhenSection(cell, "views", function (ddocs) {
         var container = $i(containerId);
+
         if (!ddocs) {
           renderTemplate('views_list', {loading: true}, container);
           return;
         }
+
         var poolDetails = ddocs.poolDetails;
         var bucketName = ddocs.bucketName;
 
