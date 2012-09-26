@@ -649,6 +649,8 @@ with_nodes(Object, Context, Props, K) ->
               end
       end).
 
+extract_node_props(PropsExtractor, Context, NodeStruct) when is_function(PropsExtractor) ->
+    PropsExtractor(NodeStruct, Context);
 extract_node_props(Props, Context, {struct, Node}) ->
     R =
         lists:foldl(
@@ -768,9 +770,7 @@ remote_bucket_with_pool_details(PoolDetails, UUID, Bucket, Creds, JsonGet) ->
                           fun (BucketObject, BucketUUID) ->
                                   with_nodes(
                                     BucketObject, <<"bucket details">>,
-                                    [{<<"hostname">>, fun extract_string/2},
-                                     {<<"couchApiBase">>, fun extract_string/2},
-                                     {<<"ports">>, fun extract_object/2}],
+                                    fun maybe_extract_important_buckets_props/2,
                                     fun (BucketNodeProps) ->
                                             remote_bucket_with_bucket(BucketObject,
                                                                       UUID,
@@ -782,6 +782,21 @@ remote_bucket_with_pool_details(PoolDetails, UUID, Bucket, Creds, JsonGet) ->
                           end)
                 end)
       end).
+
+maybe_extract_important_buckets_props({struct, NodeKV}, Ctx) ->
+    case proplists:get_value(<<"couchApiBase">>, NodeKV) of
+        undefined ->
+            ?log_debug("skipping node without couchApiBase: ~p", [NodeKV]),
+            [];
+        _ ->
+            extract_node_props([{<<"hostname">>, fun extract_string/2},
+                                {<<"couchApiBase">>, fun extract_string/2},
+                                {<<"ports">>, fun extract_object/2}],
+                               Ctx, {struct, NodeKV})
+    end;
+maybe_extract_important_buckets_props(BadNodeStruct, Ctx) ->
+    extract_node_props([], Ctx, BadNodeStruct).
+
 
 remote_bucket_with_bucket(BucketObject, UUID,
                           BucketUUID, PoolNodeProps, BucketNodeProps, Creds) ->
