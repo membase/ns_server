@@ -475,23 +475,26 @@
               <tr>
                 <th class="bucket_name">Bucket Name</th>
                 <th></th>
+                <th></th>
+                <th></th>
                 <th>Nodes</th>
-                <th>Item Count</th>
+                <th colspan="2">Item Count</th>
                 <th>Ops/sec</th>
                 <th colspan="2" class="disk_fetch">Disk Fetches/sec</th>
                 <th colspan="2" class="hit_ratio">Hit Ratio</th>
-                <th colspan="2">RAM Usage/Quota</th>
-                <th colspan="2">Disk / Data Usage</th>
+                <th colspan="2">RAM/Quota Usage</th>
+                <th colspan="2">Data/Disk Usage</th>
+                <th></th>
                 <th></th>
                 <th></th>
                 <th class="last"></th>
               </tr>
               <!-- {% if (!rows.length) { %} -->
-              <tr><td colspan="14" style="padding:15px">No buckets currently defined! Click "Create New Data Bucket" above to create one.</td></tr>
+              <tr><td colspan="18" style="padding:15px">No buckets currently defined! Click "Create New Data Bucket" above to create one.</td></tr>
               <!-- {% } %} -->
               <!-- {% $.each(rows, function () { %} -->
               <tr class="{%= this.bucketTypeName.toLowerCase() %}">
-                <td class="bucket_name ellipsis" colspan="2">
+                <td class="bucket_name ellipsis" colspan="4">
                   <a class="disable-if-stale" href="#visitBucket={%= h(encodeURIComponent(this.name)) %}" title="Show Bucket info"><span class="expander closed"></span></a>
                   <a class="disable-if-stale" title="View Analytics for {%= h(this.name) %}" href="#sec=analytics&statsBucket={%= h(encodeURIComponent(this.uri)) %}">{%= h(this.name) %}</a>
                 </td>
@@ -499,7 +502,7 @@
                   <span id="{%= h(this.name) %}_health" class="health_graph"></span>
                   {%= this.nodes.length %}
                 </td>
-                <td>{%= h(this.basicStats.itemCount) %}</td>
+                <td colspan="2">{%= h(this.basicStats.itemCount) %}</td>
                 <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
                 {% if (this.bucketType == 'membase') { %}
                   <td colspan="2">
@@ -511,20 +514,20 @@
                 {% if (this.bucketType == 'memcached') { %}
                   <td colspan="2">{%= h(truncateTo3Digits(this.basicStats.hitRatio * 100)) %}%</td>
                 {% } %}
-                <td colspan="2">{%= V.formatQuantity(this.basicStats.memUsed) %} / {%= V.formatQuantity(this.quota.ram) %}</td>
+                <td colspan="2">{%= V.formatQuantity(this.basicStats.memUsed) %} /<br> {%= V.formatQuantity(this.quota.ram) %}</td>
                 <td colspan="2">
                   {% if (this.bucketType == 'membase') { %}
-                    {%= V.formatQuantity(this.basicStats.diskUsed) %} / {%= V.formatQuantity(this.basicStats.dataUsed) %}
+                    {%= V.formatQuantity(this.basicStats.dataUsed) %} /<br> {%= V.formatQuantity(this.basicStats.diskUsed) %}
                   {% } else { %}N/A{% } %}
                 </td>
-                <td colspan="3">
+                <td colspan="4" class="last">
                   {% if (this.bucketType == 'membase') { %}
                     <a class="list_button disable-if-stale" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>
                     <a class="list_button" href="#sec=documents&bucketName={%= encodeURIComponent(this.name) %}&documentsPageNumber=0"><span>Documents</span></a>{% } %}
                 </td>
               </tr>
               <tr>
-                <td colspan="14" class="settings-placeholder">
+                <td colspan="18" class="settings-placeholder">
                   {%= BucketsSection.renderBucketDetails(this) %}
                 </td>
               </tr>

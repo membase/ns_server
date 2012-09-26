@@ -395,6 +395,10 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 #bucket_list_container, #memcached_bucket_list_container {border-left:1px solid #c8ccce; border-bottom:1px solid #c8ccce;}
 #bucket_list_container .hit_ratio {display:none}
 #memcached_bucket_list_container .disk_fetch {display:none}
+#bucket_list_container .list .couchbase td {padding-right:0; padding-left: 0;}
+#bucket_list_container .list td.bucket_name  {line-height: 30px;padding-left: 35px;}
+#bucket_list_container .list td.last  {padding-right: 10px;}
+#bucket_list_container .settings-placeholder {line-height: 30px;}
 
 #get_started {display:none;}
 
@@ -772,7 +776,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list {border-right:1px solid #d9dce0;background:none #eee;}
 .list td {background:none #eee;border-bottom:1px solid #ced5d9; padding:10px;border-right:0px; text-align:center;vertical-align:middle;}
 .align_text td {text-align:left}
-#buckets .list td {line-height:30px}
+
 #buckets .properties_table td {color:#404042}
 #buckets .properties_table td span {color:#7c7d7f}
 .list td table td {background:none;border:none}
@@ -846,7 +850,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list table.label {float:left;margin:2px 0 0;}
 .list table.label td:first-child {width:175px;color:#444245; text-align:right;}
 
-.list .health_graph {position:relative;top:0.5em}
+.list .health_graph {display:inline-block;vertical-align:middle;}
 
 .switcher {float:left}
 .switcher li {padding:0px !important; background:none !important;}
