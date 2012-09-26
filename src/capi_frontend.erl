@@ -197,7 +197,7 @@ ensure_full_commit(#db{name = DbName} = _Db, _RequiredSeq) ->
                                 ok
                         end,
 
-    ns_pubsub:subscribe_link(mc_couch_events, CkptEventsHandler, []),
+    LinkPid = ns_pubsub:subscribe_link(mc_couch_events, CkptEventsHandler, []),
 
     %% create a new open checkpoint
     StartTime = now(),
@@ -214,6 +214,11 @@ ensure_full_commit(#db{name = DbName} = _Db, _RequiredSeq) ->
                                  [Bucket, VBucket, OpenCheckpointId, TimeoutSec]),
                      ensure_full_commit_loop(OpenCheckpointId, TimeoutSec*1000)
              end,
+
+    ns_pubsub:unsubscribe(LinkPid),
+
+    %% clear all unprocessed msg
+    clear_ckpt_msg_loop(),
 
     case Result of
         {ok, LastPersistedCkptId} ->
@@ -243,6 +248,14 @@ ensure_full_commit_loop(OpenCheckpointId, Timeout) ->
             end
     after Timeout ->
             timeout
+    end.
+
+clear_ckpt_msg_loop() ->
+    receive
+        {persisted_ckpt, _PersistedCheckpointId} ->
+            clear_ckpt_msg_loop()
+    after 0 ->
+            ok
     end.
 
 check_is_admin(_Db) ->
