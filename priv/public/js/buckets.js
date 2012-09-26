@@ -641,7 +641,7 @@ var BucketsSection = {
         var total = _.inject(healthStats, function (a,b) {return a+b}, 0);
 
         var minimalAngle = Math.PI/180*30;
-        var nodeSize = Math.PI*2/total;
+        var nodeSize = total < 1E-6 ? 0 : Math.PI*2/total;
 
         var stolenSize = 0;
         var maxAngle = 0;
