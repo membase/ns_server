@@ -821,27 +821,23 @@ remote_bucket_with_server_map(ServerMap, BucketUUID, RemoteCluster, McdToCouchDi
     with_server_list(
       ServerMap,
       fun (ServerList) ->
-              case build_ix_to_couch_uri_dict(ServerList,
-                                              McdToCouchDict) of
-                  {ok, IxToCouchDict} ->
-                      expect_nested_array(
-                        <<"vBucketMap">>, ServerMap, <<"vbucket server map">>,
-                        fun (VBucketMap) ->
-                                VBucketMapDict =
-                                    build_vbmap(VBucketMap,
-                                                BucketUUID, IxToCouchDict),
+              IxToCouchDict = build_ix_to_couch_uri_dict(ServerList,
+                                                         McdToCouchDict),
+              expect_nested_array(
+                <<"vBucketMap">>, ServerMap, <<"vbucket server map">>,
+                fun (VBucketMap) ->
+                        VBucketMapDict =
+                            build_vbmap(VBucketMap,
+                                        BucketUUID, IxToCouchDict),
 
-                                #remote_cluster{uuid=ClusterUUID} = RemoteCluster,
-                                RemoteBucket =
-                                    #remote_bucket{uuid=BucketUUID,
-                                                   cluster_uuid=ClusterUUID,
-                                                   vbucket_map=VBucketMapDict},
+                        #remote_cluster{uuid=ClusterUUID} = RemoteCluster,
+                        RemoteBucket =
+                            #remote_bucket{uuid=BucketUUID,
+                                           cluster_uuid=ClusterUUID,
+                                           vbucket_map=VBucketMapDict},
 
-                                {ok, {RemoteCluster, RemoteBucket}}
-                        end);
-                  Error ->
-                      Error
-              end
+                        {ok, {RemoteCluster, RemoteBucket}}
+                end)
       end).
 
 build_vbmap(RawVBucketMap, BucketUUID, IxToCouchDict) ->
@@ -864,18 +860,13 @@ do_build_vbmap([ChainRaw | Rest], BucketUUID, IxToCouchDict, VBucket, D) ->
       end).
 
 build_vbmap_chain(Chain, BucketUUID, IxToCouchDict, VBucket) ->
-    do_build_vbmap_chain(Chain, BucketUUID, IxToCouchDict, VBucket, []).
-
-do_build_vbmap_chain([], _, _, _, R) ->
-    {ok, lists:reverse(R)};
-do_build_vbmap_chain([NodeIxRaw | Rest], BucketUUID, IxToCouchDict, VBucket, R) ->
+    [NodeIxRaw | _Rest] = Chain,
     expect_number(
       NodeIxRaw, <<"Vbucket map chain">>,
       fun (NodeIx) ->
               case NodeIx of
                   -1 ->
-                      do_build_vbmap_chain(Rest, BucketUUID, IxToCouchDict,
-                                           VBucket, [undefined | R]);
+                      {ok, [undefined]};
                   _ ->
                       case dict:find(NodeIx, IxToCouchDict) of
                           error ->
@@ -883,12 +874,17 @@ do_build_vbmap_chain([NodeIxRaw | Rest], BucketUUID, IxToCouchDict, VBucket, R) 
                                                   "vbucket map chain: ~p", [NodeIx]),
                               ?log_error("~s", [Msg]),
                               {error, bad_value, iolist_to_binary(Msg)};
+                          {ok, none} ->
+                              Msg = io_lib:format("Invalid node reference in "
+                                                  "vbucket map chain: ~p. "
+                                                  "Found node without couchApiBase in active vbucket map position", [NodeIx]),
+                              ?log_error("~s", [Msg]),
+                              {error, bad_value, iolist_to_binary(Msg)};
                           {ok, URL} ->
                               VBucketURL0 = [URL, "%2f", integer_to_list(VBucket),
                                              "%3b", BucketUUID],
                               VBucketURL = iolist_to_binary(VBucketURL0),
-                              do_build_vbmap_chain(Rest, BucketUUID, IxToCouchDict,
-                                                   VBucket, [VBucketURL | R])
+                              {ok, [VBucketURL]}
                       end
               end
       end).
@@ -897,16 +893,14 @@ build_ix_to_couch_uri_dict(ServerList, McdToCouchDict) ->
     do_build_ix_to_couch_uri_dict(ServerList, McdToCouchDict, 0, dict:new()).
 
 do_build_ix_to_couch_uri_dict([], _McdToCouchDict, _Ix, D) ->
-    {ok, D};
+    D;
 do_build_ix_to_couch_uri_dict([S | Rest], McdToCouchDict, Ix, D) ->
     case dict:find(S, McdToCouchDict) of
         error ->
-            ?log_error("Was not able to find node corresponding to server ~s",
-                       [S]),
+            ?log_debug("Was not able to find node corresponding to server ~s. Assuming it's couchApiBase-less node", [S]),
 
-            Msg = io_lib:format("(bucket server list) got bad server value: ~s",
-                                [S]),
-            {error, bad_value, iolist_to_binary(Msg)};
+            D1 = disc:store(Ix, none, D),
+            do_build_ix_to_couch_uri_dict(Rest, McdToCouchDict, Ix + 1, D1);
         {ok, Value} ->
             D1 = dict:store(Ix, Value, D),
             do_build_ix_to_couch_uri_dict(Rest, McdToCouchDict, Ix + 1, D1)
