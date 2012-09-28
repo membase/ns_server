@@ -45,11 +45,11 @@ init(_) ->
     {ok, #state{ring=ringbuffer:new(?EVENTS_HISTORY_SIZE)}}.
 
 handle_call(get_history, _From, State) ->
-    {reply, ringbuffer:to_list(State#state.ring), State}.
+    {reply, ringbuffer:to_list(State#state.ring), State, hibernate}.
 
 handle_cast({note, Event}, #state{ring = Ring} = State) ->
     NewState = State#state{ring = ringbuffer:add(Event, Ring)},
-    {noreply, NewState}.
+    {noreply, NewState, hibernate}.
 
 handle_info(_Info, _State) ->
     exit(unexpected).
