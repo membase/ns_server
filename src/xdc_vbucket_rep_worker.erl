@@ -82,7 +82,11 @@ local_doc_handler(_, Acc) ->
 maybe_flush_docs(#httpdb{} = Target, Batch, Doc) ->
     #batch{docs = DocAcc, size = SizeAcc} = Batch,
     JsonDoc = couch_doc:to_json_base64(Doc),
-    {value, DocBatchSize} = ns_config:search(xdcr_doc_batch_size_kb),
+
+    %% env parameter can override the ns_config parameter
+    {value, DefaultDocBatchSize} = ns_config:search(xdcr_doc_batch_size_kb),
+    DocBatchSize = misc:getenv_int("XDCR_DOC_BATCH_SIZE_KB", DefaultDocBatchSize),
+
     DocBatchSizeByte = 1024*DocBatchSize,
     case SizeAcc + iolist_size(JsonDoc) of
         SizeAcc2 when SizeAcc2 > DocBatchSizeByte ->

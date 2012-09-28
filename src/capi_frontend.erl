@@ -182,7 +182,8 @@ ensure_full_commit(#db{name = DbName} = _Db, _RequiredSeq) ->
     %% subscribe to capture mc_couch_events
     Server = self(),
     MyEventId = create_ckpt_event_id(Bucket, VBucket),
-    {value, TimeoutSec} = ns_config:search(xdcr_capi_checkpoint_timeout),
+    {value, DefaultTimeoutSec} = ns_config:search(xdcr_capi_checkpoint_timeout),
+    TimeoutSec = misc:getenv_int("XDCR_CAPI_CHECKPOINT_TIMEOUT", DefaultTimeoutSec),
 
     CkptEventsHandler = fun ({EventId, VBCheckpoint}, _) ->
                                 case EventId ==  MyEventId of

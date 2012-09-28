@@ -25,7 +25,11 @@ start_link(ChildSpecs) ->
     {ok, Sup}.
 
 start_vbucket_rep(Sup, Rep, Vb, InitThrottle, WorkThrottle, Parent) ->
-    {value, RestartWaitTime} = ns_config:search(xdcr_failure_restart_interval),
+    {value, DefaultRestartWaitTime} = ns_config:search(xdcr_failure_restart_interval),
+    RestartWaitTime = misc:getenv_int("XDCR_FAILURE_RESTART_INTERVAL", DefaultRestartWaitTime),
+    ?xdcr_debug("start xdc vbucket replicator (vb: ~p, restart wait time: ~p, parent pid: ~p)",
+                [Vb, RestartWaitTime, Parent]),
+
     Spec = {Vb,
             {xdc_vbucket_rep, start_link, [Rep, Vb, InitThrottle, WorkThrottle, Parent]},
             {permanent, RestartWaitTime},
