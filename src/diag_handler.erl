@@ -147,7 +147,7 @@ do_diag_per_node() ->
 
 diag_multicall(Mod, F, Args) ->
     Nodes = [node() | nodes()],
-    {Results, BadNodes} = rpc:multicall(Nodes, Mod, F, Args, 5000),
+    {Results, BadNodes} = rpc:multicall(Nodes, Mod, F, Args, 45000),
     lists:zipwith(fun (Node,Res) -> {Node, Res} end,
                   lists:subtract(Nodes, BadNodes),
                   Results)
