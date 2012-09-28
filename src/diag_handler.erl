@@ -96,8 +96,8 @@ grab_process_info(Pid) ->
     Backtrace = proplists:get_value(backtrace, PureInfo),
     NewBacktrace = [case erlang:size(X) of
                         L when L =< 90 ->
-                            X;
-                        _ -> binary:part(X, 1, 90)
+                            binary:copy(X);
+                        _ -> binary:copy(binary:part(X, 1, 90))
                     end || X <- binary:split(Backtrace, <<"\n">>, [global])],
     lists:keyreplace(backtrace, 1, PureInfo, {backtrace, NewBacktrace}).
 
