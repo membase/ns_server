@@ -135,8 +135,7 @@ do_diag_per_node() ->
      {manifest, manifest()},
      {config, diag_filter_out_config_password(ns_config:get_kv_list())},
      {basic_info, element(2, ns_info:basic_info())},
-     {processes, [{Pid, (catch grab_process_info(Pid))}
-                  || Pid <- erlang:processes()]},
+     {processes, grab_process_infos_loop(erlang:processes(), [])},
      {memory, memsup:get_memory_data()},
      {disk, disksup:get_disk_data()},
      {active_tasks, capi_frontend:task_status_all()},
@@ -144,6 +143,12 @@ do_diag_per_node() ->
      {ns_server_stats, (catch system_stats_collector:get_ns_server_stats())},
      {active_buckets, ActiveBuckets},
      {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))}].
+
+grab_process_infos_loop([], Acc) ->
+    Acc;
+grab_process_infos_loop([P | RestPids], Acc) ->
+    NewAcc = [{P, (catch grab_process_info(P))} | Acc],
+    grab_process_infos_loop(RestPids, NewAcc).
 
 diag_multicall(Mod, F, Args) ->
     Nodes = [node() | nodes()],
@@ -188,22 +193,51 @@ handle_diag(Req) ->
     end.
 
 handle_just_diag(Req, Extra) ->
-    Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
-                         ns_bucket:get_buckets()),
-    Infos = [["per_node_diag = ~p", diag_multicall(?MODULE, do_diag_per_node, [])],
-             ["nodes_info = ~p", menelaus_web:build_nodes_info()],
-             ["buckets = ~p", Buckets],
-             ["logs:~n-------------------------------~n"]],
-    Text = lists:flatmap(fun ([Fmt | Args]) ->
-                                 io_lib:format(Fmt ++ "~n~n", Args)
-                         end, Infos),
-
     Resp = Req:ok({"text/plain; charset=utf-8",
                    Extra ++
                        [{"Content-Type", "text/plain"}
                         | menelaus_util:server_header()],
                    chunked}),
-    Resp:write_chunk(list_to_binary(Text)),
+
+    PerNodeDiags = diag_multicall(?MODULE, do_diag_per_node, []),
+
+    Resp:write_chunk(erlang:list_to_binary("per_node_diag =\n")),
+
+    [begin
+         Text = io_lib:format("    ~p~n",
+                              [{N, lists:keydelete(processes, 1, PList)}]),
+         Resp:write_chunk(list_to_binary(Text))
+     end || {N, PList} <- PerNodeDiags],
+
+    DiagsWithProcesses =
+        [{N, proplists:get_value(processes, PList)}
+         || {N, PList} <- PerNodeDiags],
+
+    continue_handling_just_diag(Resp, DiagsWithProcesses).
+
+continue_handling_just_diag(Resp, DiagsWithProcesses) ->
+    erlang:garbage_collect(),
+
+    Resp:write_chunk(list_to_binary(io_lib:format("~n~nper_node_processes =~n", []))),
+
+    [begin
+         Text = io_lib:format("    ~p", [Processes]),
+         Resp:write_chunk(list_to_binary(Text)),
+         erlang:garbage_collect()
+     end || Processes <- DiagsWithProcesses],
+
+    Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
+                         ns_bucket:get_buckets()),
+
+    Infos = [["~n~nnodes_info = ~p", menelaus_web:build_nodes_info()],
+             ["buckets = ~p", Buckets],
+             ["logs:~n-------------------------------~n"]],
+
+    [begin
+         Text = io_lib:format(Fmt ++ "~n~n", Args),
+         Resp:write_chunk(list_to_binary(Text))
+     end || [Fmt | Args] <- Infos],
+
     lists:foreach(fun (#log_entry{node = Node,
                                   module = Module,
                                   code = Code,
