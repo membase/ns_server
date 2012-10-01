@@ -645,6 +645,15 @@ var RecentlyCompacted = mkClass.turnIntoLazySingleton(mkClass({
   initialize: function () {
     setInterval(_.bind(this.onInterval, this), 2000);
     this.triggeredCompactions = {};
+    this.startedCompactionsCell = (new Cell()).name("startedCompactionsCell");
+    this.updateCell();
+  },
+  updateCell: function () {
+    var obj = {};
+    _.each(this.triggeredCompactions, function (v, k) {
+      obj[k] = true;
+    });
+    this.startedCompactionsCell.setValue(obj);
   },
   registerAsTriggered: function (url, undoBody, element) {
     if (this.triggeredCompactions[url]) {
@@ -654,9 +663,10 @@ var RecentlyCompacted = mkClass.turnIntoLazySingleton(mkClass({
       }
     }
     var desc = {url: url,
-                undoBody: undoBody,
+                undoBody: undoBody || Function(),
                 gcAt: (new Date()).valueOf() + 10000};
     this.triggeredCompactions[url] = desc;
+    this.updateCell();
   },
   canCompact: function (url) {
     var desc = this.triggeredCompactions[url];
@@ -683,6 +693,7 @@ var RecentlyCompacted = mkClass.turnIntoLazySingleton(mkClass({
         undo();
       }
     });
+    this.updateCell();
   },
   onInterval: function () {
     this.gcThings();
