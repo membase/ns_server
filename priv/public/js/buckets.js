@@ -633,10 +633,59 @@ var BucketsSection = {
       actionLinkCallback: function () {
         ThePage.ensureSection('buckets');
       },
-      uriExtractor: function (item) {return item.uri;},
       valueTransformer: function (bucketInfo, bucketSettings) {
         var rv = _.extend({}, bucketInfo, bucketSettings);
         rv.storageInfoRelevant = (rv.bucketType == 'membase');
+
+        return rv;
+      },
+      detailsCellMaker: function (bucketInfo, bucketName) {
+        var maybeBucketCompactionTaskCell = Cell.compute(function (v) {
+          var progresses = v.need(DAL.cells.tasksProgressCell);
+          return _.find(progresses, function (task) {
+            return task.type === 'bucket_compaction' && task.bucket === bucketName;
+          }) || null;
+        });
+        maybeBucketCompactionTaskCell.equality = _.isEqual;
+        var compactionWasStartedCell = Cell.compute(function (v) {
+          var compactURL = bucketInfo.controllers.compactAll;
+          var allRecentCompactions = v.need(RecentlyCompacted.instance().startedCompactionsCell);
+          return allRecentCompactions[compactURL] || false;
+        });
+        var compactionWasPausedCell = Cell.compute(function (v) {
+          var task = v.need(maybeBucketCompactionTaskCell);
+          if (!task || !task.cancelURI) {
+            return false;
+          }
+          var allRecentPosts = v.need(RecentlyCompacted.instance().startedCompactionsCell);
+          return allRecentPosts[task.cancelURI] || false;
+        });
+        var rawBucketDetails = Cell.compute(function (v) {
+          return future.get({url: bucketInfo.uri});
+        });
+        var rv = Cell.compute(function (v) {
+          var thisBucketCompactionTask = v.need(maybeBucketCompactionTaskCell);
+          var recentlyCompacted = v.need(compactionWasStartedCell);
+          var data = _.clone(v.need(rawBucketDetails));
+
+          data.thisBucketCompactionTask = thisBucketCompactionTask;
+          data.recentlyCompacted = recentlyCompacted;
+          data.showCancel = false;
+          data.disableCompact = false;
+          data.noCompaction = false;
+          data.disableCancel = false;
+          if (thisBucketCompactionTask && !!thisBucketCompactionTask.cancelURI) {
+            data.showCancel = true;
+            data.disableCancel = v.need(compactionWasPausedCell);
+          } else {
+            data.disableCompact = recentlyCompacted || thisBucketCompactionTask;
+          }
+          if (data.bucketType !== 'membase') {
+            data.noCompaction = true;
+          }
+          return data;
+        });
+        rv.delegateInvalidationMethods(rawBucketDetails);
 
         return rv;
       },
@@ -644,7 +693,6 @@ var BucketsSection = {
       aroundRendering: function (originalRender, cell, container) {
         originalRender();
         $(container).closest('tr').prev().find('.bucket_name .expander').toggleClass('closed', !cell.interested.value);
-        DAL.cells.tasksProgressCell.getValue(self.renderTasks);
       }
     });
 
@@ -726,8 +774,6 @@ var BucketsSection = {
       $('#manage_buckets_top_bar .create-bucket-button')[staleness ? 'hide' : 'show']();
     });
 
-    DAL.cells.tasksProgressCell.subscribeValue(self.renderTasks);
-
     $('.create-bucket-button').live('click', function (e) {
       e.preventDefault();
       BucketsSection.startCreate();
@@ -747,55 +793,17 @@ var BucketsSection = {
 
     $('.compact_btn').live('click', function (e) {
       if (!$(this).hasClass('disabled')) {
-        $(this).addClass('disabled');
-        BucketsSection.compactBucket($(this).attr('data-name'));
+        BucketsSection.compactBucket($(this).attr('data-uri'));
       }
     });
     $('.cancel_compact_btn').live('click', function (e) {
       if (!$(this).hasClass('disabled')) {
-        $(this).addClass('disabled');
-        BucketsSection.cancelCompactBucket($(this).attr('data-name'));
+        BucketsSection.cancelCompactBucket($(this).attr('data-uri'));
       }
     });
   },
   renderBucketDetails: function (item) {
     return this.settingsWidget.renderItemDetails(item);
-  },
-  showCompactControl: function (bucketName, text, showCancel, enableCancel, enableCompact) {
-    var compactBucket = $('.compact_btn[data-name="' + bucketName + '"]');
-    var cancelCompactBucket = $('.cancel_compact_btn[data-name="' + bucketName + '"]');
-
-    $('.bucket_progress_container[data-name="'+ bucketName +'"]').text(text);
-    compactBucket[showCancel ? 'hide' : 'show']();
-    cancelCompactBucket[showCancel ? 'show' : 'hide']();
-    if (enableCompact) {
-      compactBucket.removeClass('disabled');
-    }
-    if (enableCancel) {
-      cancelCompactBucket.removeClass('disabled');
-    }
-  },
-  stopRenderBucket: {},
-  renderTasks: function (tasks) {
-    var self = BucketsSection;
-    var bucketsTasks = _.filter(tasks, function (task) { return task.status == 'running' && task.type == 'bucket_compaction' });
-    var currentNames = _.pluck(bucketsTasks, 'bucket');
-
-    if (self.previousNames) {
-      _.each(_.difference(self.previousNames, currentNames), function (bucketName) {
-        self.showCompactControl(bucketName, 'Not active', false, false, true);
-      });
-    }
-
-    self.previousNames = currentNames;
-
-    _.each(bucketsTasks, function (task) {
-      self.showCompactControl(task.bucket, task.progress + '% complete', true, true, true);
-    });
-
-    if (!bucketsTasks.length) {
-      self.previousNames = undefined;
-    }
   },
   refreshBuckets: function (callback) {
     return DAL.cells.bucketsListCell.refresh(callback);
@@ -819,45 +827,19 @@ var BucketsSection = {
   findBucket: function (uri) {
     return this.withBucket(uri, function (r) {return r;});
   },
-  getBucketTask: function (name) {
-    var tasks;
-    DAL.cells.tasksProgressCell.getValue(function (value) {
-      tasks = value;
-    });
-    return _.filter(tasks, function (task) {
-      return task.status == 'running' &&
-             task.type == 'bucket_compaction' &&
-             task.bucket == name;
-    })[0];
-  },
-  cancelCompactBucket: function (name) {
-    var self = this;
-    bucketTask = self.getBucketTask(name);
-    if (!bucketTask) {
+  cancelCompactBucket: function (uri) {
+    if (!uri) {
       return;
     }
-    $.post(bucketTask.cancelURI);
+    RecentlyCompacted.instance().registerAsTriggered(uri);
+    $.post(uri);
   },
-  compactBucket: function (name) {
-    var self = this;
-    DAL.cells.bucketsListCell.getValue(function (buckets) {
-      var currentBucket = _.detect(buckets, function (bucket) {
-        return bucket.name === name;
-      });
-      if (!currentBucket) {
-        return;
-      }
-
-      RecentlyCompacted.instance().registerAsTriggered(currentBucket.controllers.compactAll, function () {
-        var bucketTask = self.getBucketTask(name);
-        if (bucketTask) {
-          return
-        }
-        self.showCompactControl(name, 'Not active', false, true, true);
-      });
-
-      $.post(currentBucket.controllers.compactAll);
-    });
+  compactBucket: function (uri) {
+    if (!uri) {
+      return;
+    }
+    $.post(uri);
+    RecentlyCompacted.instance().registerAsTriggered(uri);
   },
   showBucket: function (uri) {
     ThePage.ensureSection('buckets');
