@@ -1153,16 +1153,22 @@ var MultiDrawersWidget = mkClass({
     var detailsCellProducer = (function (self) {
       return function (item, key) {
         console.log("producing details cell for key: ", key, ", item: ", item);
-        var detailsCell = Cell.compute(function (v) {
-          var url;
+        var detailsCell;
 
-          if (self.options.uriExtractor)
-            url = self.options.uriExtractor(item);
-          else
-            url = key;
+        if (options.detailsCellMaker) {
+          detailsCell = (options.detailsCellMaker)(item, key);
+        } else {
+          detailsCell = Cell.compute(function (v) {
+            var url;
 
-          return future.get({url: url});
-        });
+            if (self.options.uriExtractor)
+              url = self.options.uriExtractor(item);
+            else
+              url = key;
+
+            return future.get({url: url});
+          });
+        }
 
         var interested = Cell.compute(function (v) {
           if (v.need(IOCenter.staleness))
