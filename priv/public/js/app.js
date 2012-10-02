@@ -13,30 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  **/
-var LogoutTimer = ({
-  init: function () {
-    var debounce = _.debounce(function () {
-      LogoutTimer.reset();
-    }, 700, true);
-
-    $(document).bind('keydown mousedown scroll', debounce);
-
-    return this;
-  },
-  reset: function () {
-    if (this.timeoutId) {
-      clearTimeout(this.timeoutId);
-    }
-    if (!DAL.login)
-      return;
-    this.timeoutId = setTimeout($m(this, 'onTimeout'), 300000);
-  },
-  onTimeout: function () {
-    performSignOut();
-  }
-}).init();
-
-function performSignOut(isVoluntary) {
+function performSignOut() {
   if (ModalAction.isActive()) {
     $(window).one('modal-action:complete', function () {performSignOut()});
     return;
@@ -51,8 +28,6 @@ function performSignOut(isVoluntary) {
   DAL.ready = false;
 
   $(document.body).addClass('auth');
-  if (!isVoluntary)
-    $('#auth_inactivity_message').show();
 
   $('.sign-out-link').hide();
   DAL.onReady(function () {
@@ -198,7 +173,7 @@ var ThePage = {
   currentSection: null,
   currentSectionName: null,
   signOut: function () {
-    performSignOut(true);
+    performSignOut();
   },
   ensureSection: function (section) {
     if (this.currentSectionName != section)

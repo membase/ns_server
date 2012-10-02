@@ -116,9 +116,6 @@ $.ajaxSetup({
     xhr.setRequestHeader('invalid-auth-response', 'on');
     xhr.setRequestHeader('Cache-Control', 'no-cache');
     xhr.setRequestHeader('Pragma', 'no-cache');
-    if (!options || !options.pushRequest) {
-      LogoutTimer.reset();
-    }
   },
   dataFilter: function (data, type) {
     if (type === "json" && data == "") {
