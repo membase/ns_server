@@ -187,7 +187,7 @@ transform_xdc_stats(XDCStats) ->
                   {replication_docs_written, element(3, Totals)},
                   {replication_work_time, element(4, Totals)},
                   {replication_commit_time, element(5, Totals)}],
-    lists:append(TotalStats, RepStats).
+    lists:sort(lists:append(TotalStats, RepStats)).
 
 format_stats(Stats) ->
     erlang:list_to_binary(
