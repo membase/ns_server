@@ -230,8 +230,6 @@ var DocumentsSection = {
       items: {
         descending: true,
         inclusiveEnd: true,
-        endkeyDocid: true,
-        startkeyDocid: true,
         endkey: true,
         startkey: true
       }
