@@ -30,6 +30,7 @@ start_timer(_State) ->
     After = AfterSecs*1000,
     case timer:apply_after(After, gen_server, cast, [self(), checkpoint]) of
         {ok, Ref} ->
+            ?xdcr_debug("schedule next checkpoint in ~p seconds", [AfterSecs]),
             Ref;
         Error ->
             ?xdcr_error("Replicator, error scheduling checkpoint:  ~p", [Error]),
