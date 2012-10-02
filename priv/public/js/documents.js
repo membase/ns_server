@@ -160,7 +160,7 @@ function createDocumentsCells(ns, modeCell, capiBaseCell, bucketsListCell) {
 
     param.skip = String(skip);
     param.include_docs = true;
-    param.limit = String(param.startkey || param.endkey ? limit + 1 : limit);
+    param.limit = String(limit + 1);
 
     return buildURL(url, "_all_docs", param);
   }).name("currentPageDocsURLCell");
@@ -169,7 +169,7 @@ function createDocumentsCells(ns, modeCell, capiBaseCell, bucketsListCell) {
     if (v.need(ns.haveBucketsCell)) {
       return future.capiViewGet({url: v.need(ns.currentPageDocsURLCell)});
     } else {
-      return {rows: [], total_rows: 0};
+      return {rows: []};
     }
   }).name("currentPageDocsCell");
 
@@ -260,9 +260,7 @@ var DocumentsSection = {
     var docsBucketsSelect = $('#docs_buckets_select', documents);
     var lookupDocForm = $('#search_doc', documents);
     var docsInfoCont = $('.docs_info', documents);
-    var docsTotalItemCont = $('.docs_total_item', documents);
     var docsCrntPgCont = $('.docs_crnt_pg', documents);
-    var docsTotalPgCont = $('.docs_total_pg', documents);
     var itemsPerListWrap = $('.items_per_list_wrap', documents);
     var itemsPerList = $('select', itemsPerListWrap);
     var filterBtn = $('.filters_container', documents);
@@ -302,9 +300,7 @@ var DocumentsSection = {
       prevBtn.toggleClass('disabled', page.pageNumber === 0);
       nextBtn.toggleClass('disabled', isLastPage(page));
 
-      docsTotalItemCont.text(page.isLookupList ? 'unknown' : page.docs.total_rows || 0);
       docsCrntPgCont.text(page.pageNumber + 1);
-      docsTotalPgCont.text(page.isLookupList ? 'unknown' : Math.ceil(page.docs.total_rows / page.pageLimit || 1 ) );
 
       var searchCriteria;
       self.filter.filterParamsCell.getValue(function (value) {
@@ -348,11 +344,7 @@ var DocumentsSection = {
     }
 
     function isLastPage(page) {
-      if (page.isLookupList) {
-        return page.docs.rows.length <= page.pageLimit ? true : !page.docs.rows.pop();
-      } else {
-        return page.docs.rows.length < page.pageLimit ? true : (page.pageLimit * (page.pageNumber + 1)) >= page.docs.total_rows;
-      }
+      return page.docs.rows.length <= page.pageLimit ? true : !page.docs.rows.pop();
     }
 
     function showCodeEditor(show) {
@@ -471,14 +463,13 @@ var DocumentsSection = {
       var nextPage;
       var afterPageLoad;
 
-      Cell.subscribeMultipleValues(function (docs, currentPage, selectedBucket, pageLimit, filterParamsCell) {
+      Cell.subscribeMultipleValues(function (docs, currentPage, selectedBucket, pageLimit) {
         if (typeof currentPage === 'number') {
           prevPage = currentPage - 1;
           prevPage = prevPage < 0 ? 0 : prevPage;
           nextPage = currentPage + 1;
           page.pageLimit = pageLimit;
           page.pageNumber = currentPage;
-          page.isLookupList = !!filterParamsCell.startkey || !!filterParamsCell.endkey;
         }
         if (docs) {
           page.docs = docs;
@@ -489,14 +480,12 @@ var DocumentsSection = {
           }
         } else {
           renderTemplate('documents_list', {loading: true});
-          if (!!filterParamsCell.startkey || !!filterParamsCell.endkey) {
-            // we don't know number of matches. that's why we can't allow user to quick clicks on next button
-            nextBtn.toggleClass('disabled', true);
-          }
+          // we don't know total rows. that's why we can't allow user to quick clicks on next button
+          nextBtn.toggleClass('disabled', true);
         }
       },
         self.currentPageDocsCell, self.currentDocumentsPageNumberCell, self.selectedBucketCell,
-        self.currentPageLimitCell, self.filter.filterParamsCell
+        self.currentPageLimitCell
       );
 
       function prevNextCallback() {
@@ -505,9 +494,6 @@ var DocumentsSection = {
       }
 
       nextBtn.click(function (e) {
-        if (!page.isLookupList && isLastPage(page)) {
-          return;
-        }
         self.documentsPageNumberCell.setValue(nextPage);
         afterPageLoad = prevNextCallback;
       });
