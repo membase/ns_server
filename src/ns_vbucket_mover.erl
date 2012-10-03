@@ -280,7 +280,8 @@ array_to_map(Array) ->
 -spec count_moves(dict()) -> dict().
 count_moves(Moves) ->
     %% Number of moves FROM a given node.
-    FromCount = dict:map(fun (_, M) -> length(M) end, Moves),
+    FromCount = dict:map(fun (_, M) -> length(M) end,
+                         dict:filter(fun (N, _) -> N =/= undefined end, Moves)),
     %% Add moves TO each node.
     dict:fold(fun (_, M, D) ->
                       lists:foldl(
