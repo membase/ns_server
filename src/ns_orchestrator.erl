@@ -129,6 +129,7 @@ delete_bucket(BucketName) ->
                           ok |
                           rebalance_running |
                           bucket_not_found |
+                          flush_disabled |
                           not_supported |       % if we're in 1.8.x compat mode and trying to flush couchbase bucket
                           {prepare_flush_failed, _, _} |
                           {initial_config_sync_failed, _} |
@@ -661,7 +662,12 @@ perform_bucket_flushing(BucketName, State) ->
         not_present ->
             {reply, bucket_not_found, idle, State};
         {ok, BucketConfig} ->
-            perform_bucket_flushing_with_config(BucketName, State, BucketConfig)
+            case proplists:get_value(flush_enabled, BucketConfig, false) of
+                true ->
+                    perform_bucket_flushing_with_config(BucketName, State, BucketConfig);
+                false ->
+                    {reply, flush_disabled, idle, State}
+            end
     end.
 
 

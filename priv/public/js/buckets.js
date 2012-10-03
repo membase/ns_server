@@ -205,6 +205,11 @@ var BucketDetailsDialog = mkClass({
 
     dialog.find('[name=ramQuotaMB][type=hidden]').val(initValues.ramQuotaMB);
 
+    var flushEnabled = initValues.controllers !== undefined &&
+          initValues.controllers.flush !== undefined;
+    dialog.find('.for-enable-flush input').boolAttr('checked', flushEnabled);
+    dialog.find('.flush_button')[flushEnabled && !isNew ? 'show' : 'hide']();
+
     this.cleanups = [];
 
     (function () {
@@ -284,6 +289,17 @@ var BucketDetailsDialog = mkClass({
       });
     }).call(this);
 
+    (function () {
+      var oldFlushEnabled;
+      return this.observePotentialChangesWithCleanup(function () {
+        var flushEnabled = !!(dialog.find('.for-enable-flush input').attr('checked'));
+        if (flushEnabled === oldFlushEnabled) {
+          return;
+        }
+        oldFlushEnabled = flushEnabled;
+      });
+    }).call(this);
+
     this.setupDefaultNameReaction(dialog);
 
     var errorsCell = this.errorsCell = new Cell();
@@ -293,7 +309,7 @@ var BucketDetailsDialog = mkClass({
     var form = dialog.find('form');
     var validateURL = this.initValues.uri;
     validateURL += (validateURL.match(/\?/)) ? '&': '?';
-    validateURL += 'just_validate=1'
+    validateURL += 'just_validate=1';
     this.formValidator = setupFormValidation(form, validateURL, function (status, errors) {
       console.log("setting errors: ", errors);
       errorsCell.setValue(errors);

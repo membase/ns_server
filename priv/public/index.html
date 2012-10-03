@@ -1753,6 +1753,14 @@
       </ul>
     </fieldset> <!-- .auto_compaction -->
 
+    <fieldset style="margin-top:0">
+      <legend>Flush</legend>
+      <label class="for-enable-flush">
+        <input type="checkbox" name="flushEnabled" value="1">
+        <span>Enable </span>
+      </label>
+    </fieldset>
+
     <div class="save_cancel">
       <span class="when-editing">
         <button class="save_button float_right" type="submit">Save</button>
@@ -2421,6 +2429,13 @@
         <input type="hidden" name="replicaIndex" value="0"/>
         <label style="padding-left: 20px; clear:both;"><input type="checkbox" name="replicaIndex" value="1" style="margin-right:5px;"/>Index replicas</label>
       </div><!-- .persistent-only -->
+
+      <h2>Flush</h2>
+      <label class="for-enable-flush">
+        <input type="checkbox" name="flushEnabled" value="1">
+        <span>Enable </span>
+      </label>
+
     </div><div class="config-bottom clearfix">
     <button name="finish" class="submit finish direction-button" type="submit">Next</button>
     <button name="back" class="submit back direction-button" id="step-init-bucket-back" type="button">Back</button>

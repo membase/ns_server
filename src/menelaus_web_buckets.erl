@@ -210,6 +210,16 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
                       [{uuid, MaybeBucketUUID} | Suffix1]
               end,
 
+    FlushEnabled = proplists:get_value(flush_enabled, BucketConfig, false),
+    MaybeFlushController =
+        case FlushEnabled of
+            true ->
+                [{flush, bin_concat_path(["pools", PoolId,
+                                          "buckets", Id, "controller", "doFlush"])}];
+            false ->
+                []
+        end,
+
     {struct, [{name, list_to_binary(Id)},
               {bucketType, BucketType},
               {authType, misc:expect_prop_value(auth_type, BucketConfig)},
@@ -220,12 +230,12 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
               {streamingUri, BuildUUIDURI(["pools", PoolId, "bucketsStreaming", Id])},
               {localRandomKeyUri, bin_concat_path(["pools", PoolId,
                                                    "buckets", Id, "localRandomKey"])},
-              {controllers, [{flush, bin_concat_path(["pools", PoolId,
-                                                      "buckets", Id, "controller", "doFlush"])},
-                             {compactAll, bin_concat_path(["pools", PoolId,
-                                                           "buckets", Id, "controller", "compactBucket"])},
-                             {compactDB, bin_concat_path(["pools", PoolId,
-                                                          "buckets", Id, "controller", "compactDatabases"])}]},
+              {controllers,
+               MaybeFlushController ++
+                   [{compactAll, bin_concat_path(["pools", PoolId,
+                                                  "buckets", Id, "controller", "compactBucket"])},
+                    {compactDB, bin_concat_path(["pools", PoolId,
+                                                 "buckets", Id, "controller", "compactDatabases"])}]},
               {nodes, Nodes},
               {stats, {struct, [{uri, StatsUri},
                                 {directoryURI, StatsDirectoryUri},
@@ -341,7 +351,8 @@ respond_bucket_created(Req, PoolId, BucketId) ->
 extract_bucket_props(BucketId, Props) ->
     ImportantProps = [X || X <- [lists:keyfind(Y, 1, Props) || Y <- [num_replicas, replica_index, ram_quota, auth_type,
                                                                      sasl_password, moxi_port,
-                                                                     autocompaction, fast_warmup]],
+                                                                     autocompaction, fast_warmup,
+                                                                     flush_enabled]],
                            X =/= false],
     case BucketId of
         "default" -> lists:keyreplace(auth_type, 1,
@@ -466,6 +477,8 @@ handle_bucket_flush(_PoolId, Id, Req) ->
             reply_json(Req, {struct, [{'_', <<"Cannot flush buckets during rebalance">>}]}, 503);
         bucket_not_found ->
             Req:respond({404, server_header(), []});
+        flush_disabled ->
+            reply_json(Req, {struct, [{'_', <<"Flush is disabled for the bucket">>}]}, 400);
         OtherError ->
             Msg = io_lib:format("Got error: ~p", [OtherError]),
             Req:respond({503, server_header(), Msg})
@@ -638,6 +651,7 @@ basic_bucket_params_screening(IsNew, BucketName, Params, AllBuckets) ->
 basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, AuthType) ->
     Candidates0 = [{ok, name, BucketName},
                    {ok, auth_type, AuthType},
+                   parse_validate_flush_enabled(proplists:get_value("flushEnabled", Params, "0")),
                    case IsNew of
                        true ->
                            case BucketConfig of
@@ -863,6 +877,10 @@ parse_validate_replicas_number(NumReplicas) ->
 parse_validate_replica_index("0") -> {ok, replica_index, false};
 parse_validate_replica_index("1") -> {ok, replica_index, true};
 parse_validate_replica_index(_ReplicaValue) -> {error, replicaIndex, <<"replicaIndex can only be 1 or 0">>}.
+
+parse_validate_flush_enabled("0") -> {ok, flush_enabled, false};
+parse_validate_flush_enabled("1") -> {ok, flush_enabled, true};
+parse_validate_flush_enabled(_ReplicaValue) -> {error, flushEnabled, <<"flushEnabled can only be 1 or 0">>}.
 
 parse_validate_ram_quota(undefined, BucketConfig) when BucketConfig =/= false ->
     ns_bucket:raw_ram_quota(BucketConfig);

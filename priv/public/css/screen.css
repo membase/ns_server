@@ -1017,6 +1017,8 @@ input.view_name{width:20em;padding:5px}
 .bucket_details .save_cancel .flush_button {float:left;margin-right:16px;}
 .bucket_details .save_cancel .delete_button {float:left;margin-right:16px;}
 
+.bucket_details label.for-enable-flush {padding-left:20px;width:150px;float:left;}
+.bucket_details label.for-enable-flush span {display:inline;float:none;margin-left:5px;}
 
 .bucket_details.creating .when-editing,
 .bucket_details.editing .when-creating,
