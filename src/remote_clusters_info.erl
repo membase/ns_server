@@ -899,7 +899,7 @@ do_build_ix_to_couch_uri_dict([S | Rest], McdToCouchDict, Ix, D) ->
         error ->
             ?log_debug("Was not able to find node corresponding to server ~s. Assuming it's couchApiBase-less node", [S]),
 
-            D1 = disc:store(Ix, none, D),
+            D1 = dict:store(Ix, none, D),
             do_build_ix_to_couch_uri_dict(Rest, McdToCouchDict, Ix + 1, D1);
         {ok, Value} ->
             D1 = dict:store(Ix, Value, D),
