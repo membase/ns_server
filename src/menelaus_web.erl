@@ -1802,7 +1802,8 @@ handle_node_settings_post(S, Req) when is_list(S) -> handle_node_settings_post(l
 handle_node_settings_post(Node, Req) ->
     Params = Req:parse_post(),
 
-    DbPath = proplists:get_value("path", Params, []),
+    {ok, DefaultDbPath} = ns_storage_conf:this_node_dbdir(),
+    DbPath = proplists:get_value("path", Params, DefaultDbPath),
     IxPath = proplists:get_value("index_path", Params, DbPath),
 
     case Node =/= node() of
@@ -1811,18 +1812,23 @@ handle_node_settings_post(Node, Req) ->
     end,
 
     ValidatePath =
-        fun (Path) ->
+        fun ({Param, Path}) ->
                 case Path of
-                    [] -> <<"The database or index path cannot be empty.">>;
+                    [] ->
+                        iolist_to_binary(io_lib:format("~p cannot be empty", [Param]));
                     Path ->
                         case misc:is_absolute_path(Path) of
-                           false -> <<"An absolute path is required.">>;
+                           false ->
+                                iolist_to_binary(
+                                  io_lib:format("An absolute path is required for ~p",
+                                                [Param]));
                            _ -> ok
                         end
                 end
         end,
 
-    Results0 = lists:usort(lists:map(ValidatePath, [DbPath, IxPath])),
+    Results0 = lists:usort(lists:map(ValidatePath, [{path, DbPath},
+                                                    {index_path, IxPath}])),
     Results1 =
         case Results0 of
             [ok] ->
