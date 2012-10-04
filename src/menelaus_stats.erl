@@ -225,37 +225,55 @@ handle_specific_stat_for_buckets_group_per_node(PoolId, BucketName, StatName, Re
       PoolId, BucketName, Req,
       fun (_Pool, _BucketConfig) ->
               Params = Req:parse_qs(),
-              try
-                  menelaus_util:reply_json(
-                    Req,
-                    build_per_node_stats(BucketName, StatName, Params, menelaus_util:local_addr(Req)))
-              catch throw:bad_stat_name ->
-                      menelaus_util:reply_json(Req, <<"unknown stat">>, 404)
-              end
+              menelaus_util:reply_json(
+                Req,
+                build_per_node_stats(BucketName, StatName, Params, menelaus_util:local_addr(Req)))
       end).
 
-build_simple_stat_extractor(StatAtom) ->
+build_simple_stat_extractor(StatAtom, StatBinary) ->
     fun (#stat_entry{timestamp = TS, values = VS}) ->
-            {TS, dict_safe_fetch(StatAtom, VS, undefined)}
+            V = case orddict:find(StatAtom, VS) of
+                    error ->
+                        dict_safe_fetch(StatBinary, VS, undefined);
+                    {ok, V1} ->
+                        V1
+                end,
+
+            {TS, V}
+    end.
+
+build_raw_stat_extractor(StatBinary) ->
+    fun (#stat_entry{timestamp = TS, values = VS}) ->
+            {TS, dict_safe_fetch(StatBinary, VS, undefined)}
     end.
 
 build_stat_extractor(StatName) ->
     ExtraStats = computed_stats_lazy_proplist(),
-    StatAtom = try list_to_existing_atom(StatName)
-               catch error:badarg ->
-                       erlang:throw(bad_stat_name)
-               end,
-    case lists:keyfind(StatAtom, 1, ExtraStats) of
-        {_K, {F, Meta}} ->
-            fun (#stat_entry{timestamp = TS, values = VS}) ->
-                    Args = [dict_safe_fetch(Name, VS, undefined) || Name <- Meta],
-                    case lists:member(undefined, Args) of
-                        true -> {TS, undefined};
-                        _ -> {TS, erlang:apply(F, Args)}
-                    end
+
+    Stat = try
+               {ok, list_to_existing_atom(StatName)}
+           catch
+               error:badarg ->
+                   error
+           end,
+    StatBinary = list_to_binary(StatName),
+
+    case Stat of
+        {ok, StatAtom} ->
+            case lists:keyfind(StatAtom, 1, ExtraStats) of
+                {_K, {F, Meta}} ->
+                    fun (#stat_entry{timestamp = TS, values = VS}) ->
+                            Args = [dict_safe_fetch(Name, VS, undefined) || Name <- Meta],
+                            case lists:member(undefined, Args) of
+                                true -> {TS, undefined};
+                                _ -> {TS, erlang:apply(F, Args)}
+                            end
+                    end;
+                false ->
+                    build_simple_stat_extractor(StatAtom, StatBinary)
             end;
-        false ->
-            build_simple_stat_extractor(StatAtom)
+        error ->
+            build_raw_stat_extractor(StatBinary)
     end.
 
 dict_safe_fetch(K, Dict, Default) ->
