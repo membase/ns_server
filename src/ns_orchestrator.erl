@@ -35,6 +35,7 @@
          delete_bucket/1,
          flush_bucket/1,
          failover/1,
+         try_autofailover/1,
          needs_rebalance/0,
          request_janitor_run/1,
          rebalance_progress/0,
@@ -145,6 +146,12 @@ flush_bucket(BucketName) ->
 failover(Node) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {failover, Node}, infinity).
+
+
+-spec try_autofailover(atom()) -> ok | {autofailover_unsafe, [bucket_name()]}.
+try_autofailover(Node) ->
+    wait_for_orchestrator(),
+    gen_fsm:sync_send_event(?SERVER, {try_autofailover, Node}, infinity).
 
 
 -spec needs_rebalance() -> boolean().
@@ -470,6 +477,13 @@ idle({failover, Node}, _From, State) ->
     ns_cluster:counter_inc(failover_node),
     ns_config:set({node, Node, membership}, inactiveFailed),
     {reply, Result, idle, State};
+idle({try_autofailover, Node}, From, State) ->
+    case ns_rebalancer:validate_autofailover(Node) of
+        {error, UnsafeBuckets} ->
+            {reply, {autofailover_unsafe, UnsafeBuckets}, idle, State};
+        ok ->
+            idle({failover, Node}, From, State)
+    end;
 idle(rebalance_progress, _From, State) ->
     {reply, not_running, idle, State};
 %% NOTE: this is being remotely called by 1.8.x nodes and used by maybe_start_rebalance

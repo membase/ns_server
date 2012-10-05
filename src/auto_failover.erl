@@ -237,11 +237,18 @@ handle_info(tick, State0) ->
                             [Node]),
                   S;
               ({failover, Node}, S) ->
-                  ns_cluster_membership:failover(Node),
-                  ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
-                            "Node (~p) was automatically failovered.~n~p",
-                            [Node, ns_doctor:get_node(Node)]),
-                  S#state{count = S#state.count+1}
+                  case ns_orchestrator:try_autofailover(Node) of
+                      ok ->
+                          ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
+                                    "Node (~p) was automatically failovered.~n~p",
+                                    [Node, ns_doctor:get_node(Node)]),
+                          S#state{count = S#state.count+1};
+                      {autofailover_unsafe, UnsafeBuckets} ->
+                          ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
+                                    "Could not automatically fail over node (~p)."
+                                    " Would lose vbuckets in the following buckets: ~p", [Node, UnsafeBuckets]),
+                          S#state{count = S#state.count+1}
+                  end
           end, State#state{auto_failover_logic_state = LogicState}, Actions),
     if
         NewState#state.count =/= State#state.count ->
