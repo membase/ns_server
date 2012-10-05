@@ -316,6 +316,21 @@ rebalance(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets) ->
         ns_vbucket_mover:start_link(Bucket, Map, FastForwardMap, ProgressFun),
     case wait_for_mover(Pid) of
         ok ->
+            HadRebalanceOut = ((proplists:get_value(servers, Config, []) -- KeepNodes) =/= []),
+            case HadRebalanceOut of
+                true ->
+                    SecondsToWait = ns_config_ets_dup:unreliable_read_key(rebalance_out_delay_seconds, 10),
+                    ?rebalance_info("Waiting ~w seconds before completing rebalance out."
+                                    " So that clients receive graceful not my vbucket instead of silent closed connection", [SecondsToWait]),
+                    receive
+                        stop ->
+                            exit(stopped)
+                    after (SecondsToWait * 1000) ->
+                            ok
+                    end;
+                false ->
+                    ok
+            end,
             ns_bucket:set_fast_forward_map(Bucket, undefined),
             ns_bucket:set_servers(Bucket, KeepNodes),
             FastForwardMap;
