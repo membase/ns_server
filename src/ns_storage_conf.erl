@@ -147,16 +147,34 @@ setup_disk_storage_conf(DbPath, IxPath) ->
         true ->
             case ensure_dirs([NewDbDir, NewIxDir]) of
                 ok ->
-                    case NewDbDir =:= CurrentDbDir of
-                        true ->
-                            ok;
-                        false ->
-                            [ns_orchestrator:delete_bucket(Bucket)
-                             || {Bucket, _} <- ns_bucket:get_buckets()]
-                    end,
+                    RV =
+                        case NewDbDir =:= CurrentDbDir of
+                            true ->
+                                ok;
+                            false ->
+                                ?log_info("Removing all the buckets because "
+                                          "database path has changed"),
+                                [ns_orchestrator:delete_bucket(Bucket)
+                                 || {Bucket, _} <- ns_bucket:get_buckets()],
 
-                    cb_config_couch_sync:set_db_and_ix_paths(NewDbDir, NewIxDir),
-                    ok;
+                                ?log_info("Removing all unused database files"),
+                                case delete_unused_buckets_db_files() of
+                                    ok ->
+                                        ok;
+                                    Error ->
+                                        Msg = iolist_to_binary(
+                                                io_lib:format("Could not delete unused database files: ~p",
+                                                              [Error])),
+                                        {errors, [Msg]}
+                                end
+                        end,
+
+                    case RV of
+                        ok ->
+                            cb_config_couch_sync:set_db_and_ix_paths(NewDbDir, NewIxDir);
+                        _ ->
+                            RV
+                    end;
                 error ->
                     {errors, [<<"Could not set the storage path. It must be a directory writable by 'couchbase' user.">>]}
             end;
