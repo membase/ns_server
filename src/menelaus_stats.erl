@@ -540,10 +540,7 @@ computed_stats_lazy_proplist() ->
                                   end
                           end,
 
-    MinFileSize = list_to_integer(
-                    couch_config:get("compaction_daemon", "min_file_size", "131072")),
-
-    Fragmentation = fun(_Data, Disk) when Disk < MinFileSize -> 0;
+    Fragmentation = fun(_Data, 0) -> 0;
                        (0, _) -> 100;
                        (Data, Disk) -> round((Disk - Data) / Disk * 100)
                     end,

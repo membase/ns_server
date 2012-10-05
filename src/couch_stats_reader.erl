@@ -21,6 +21,9 @@
 -include("ns_common.hrl").
 -include("ns_stats.hrl").
 
+%% included to import #config{} record only
+-include("ns_config.hrl").
+
 -behaviour(gen_server).
 
 -type per_ddoc_stats() :: {Sig::binary(),
@@ -77,8 +80,14 @@ handle_info(refresh_stats, #state{bucket = Bucket,
                                   last_view_stats = LastViewStats} = State) ->
     misc:flush(refresh_stats),
     TS = misc:time_to_epoch_ms_int(os:timestamp()),
-    NewStats = grab_couch_stats(Bucket),
-    {ProcessedSamples, NewLastViewStats} = parse_couch_stats(TS, NewStats, LastTS, LastViewStats),
+
+    Config = ns_config:get(),
+    MinFileSize = ns_config:search_node_prop(Config,
+                                             compaction_daemon, min_file_size, 131072),
+
+    NewStats = grab_couch_stats(Bucket, Config, MinFileSize),
+    {ProcessedSamples, NewLastViewStats} = parse_couch_stats(TS, NewStats, LastTS,
+                                                             LastViewStats, MinFileSize),
     ets:insert(server(Bucket), {stuff, ProcessedSamples}),
     {noreply, State#state{last_view_stats = NewLastViewStats,
                           last_ts = TS}};
@@ -118,15 +127,18 @@ vbuckets_aggregation_loop(Bucket, DiskSize, DataSize, [VBucketBin | RestVBucketB
             vbuckets_aggregation_loop(Bucket, DiskSize, DataSize, RestVBucketBinaries)
     end.
 
-views_collection_loop_iteration(BinBucket, NameToStatsETS,  DDocId) ->
+views_collection_loop_iteration(BinBucket, NameToStatsETS,  DDocId, MinFileSize) ->
     case (catch couch_set_view:get_group_data_size(BinBucket, DDocId)) of
         {ok, PList} ->
             {_, Signature} = lists:keyfind(signature, 1, PList),
             case ets:lookup(NameToStatsETS, Signature) of
                 [] ->
                     {_, DiskSize} = lists:keyfind(disk_size, 1, PList),
-                    {_, DataSize} = lists:keyfind(data_size, 1, PList),
+                    {_, DataSize0} = lists:keyfind(data_size, 1, PList),
                     {_, Accesses} = lists:keyfind(accesses, 1, PList),
+
+                    DataSize = maybe_adjust_data_size(DataSize0, DiskSize, MinFileSize),
+
                     ets:insert(NameToStatsETS, {Signature, DiskSize, DataSize, Accesses});
                 _ ->
                     ok
@@ -135,10 +147,10 @@ views_collection_loop_iteration(BinBucket, NameToStatsETS,  DDocId) ->
             ?log_debug("Get group info (~s/~s) failed:~n~p", [BinBucket, DDocId, Why])
     end.
 
-collect_view_stats(BinBucket, DDocIdList) ->
+collect_view_stats(BinBucket, DDocIdList, MinFileSize) ->
     NameToStatsETS = ets:new(ok, []),
     try
-        [views_collection_loop_iteration(BinBucket, NameToStatsETS, DDocId)
+        [views_collection_loop_iteration(BinBucket, NameToStatsETS, DDocId, MinFileSize)
          || DDocId <- DDocIdList],
         ets:tab2list(NameToStatsETS)
     after
@@ -152,16 +164,26 @@ aggregate_view_stats_loop(DiskSize, DataSize, [{_, ThisDiskSize, ThisDataSize, _
 aggregate_view_stats_loop(DiskSize, DataSize, []) ->
     {DiskSize, DataSize}.
 
+maybe_adjust_data_size(DataSize, DiskSize, MinFileSize) ->
+    case DiskSize < MinFileSize of
+        true ->
+            DiskSize;
+        false ->
+            DataSize
+    end.
 
--spec grab_couch_stats(bucket_name()) -> #ns_server_couch_stats{}.
-grab_couch_stats(Bucket) ->
+-spec grab_couch_stats(bucket_name(), #config{}, integer()) -> #ns_server_couch_stats{}.
+grab_couch_stats(Bucket, Config, MinFileSize) ->
     BinBucket = ?l2b(Bucket),
-    {ok, Conf} = ns_bucket:get_bucket(Bucket),
-    VBucketIds = ns_bucket:all_node_vbuckets(Conf),
-    {VBucketsDiskSize, VBucketsDataSize} = vbuckets_aggregation_loop(BinBucket, 0, 0, [list_to_binary(integer_to_list(I)) || I <- VBucketIds]),
+    {ok, BucketConfig} = ns_bucket:get_bucket(Bucket, Config),
+    VBucketIds = ns_bucket:all_node_vbuckets(BucketConfig),
+    {VBucketsDiskSize, VBucketsDataSize0} = vbuckets_aggregation_loop(BinBucket, 0, 0, [list_to_binary(integer_to_list(I)) || I <- VBucketIds]),
+
+    VBucketsDataSize = maybe_adjust_data_size(VBucketsDataSize0, VBucketsDiskSize,
+                                              MinFileSize * length(VBucketIds)),
 
     DDocIdList = capi_ddoc_replication_srv:fetch_ddoc_ids(BinBucket),
-    ViewStats = collect_view_stats(BinBucket, DDocIdList),
+    ViewStats = collect_view_stats(BinBucket, DDocIdList, MinFileSize),
     {ViewsDiskSize, ViewsDataSize} = aggregate_view_stats_loop(0, 0, ViewStats),
 
     {ok, CouchDir} = ns_storage_conf:this_node_dbdir(),
@@ -220,10 +242,10 @@ build_basic_couch_stats(CouchStats) ->
      {couch_views_disk_size, ViewsDiskSize},
      {couch_views_data_size, ViewsDataSize}].
 
-parse_couch_stats(_TS, CouchStats, undefined = _LastTS, _) ->
+parse_couch_stats(_TS, CouchStats, undefined = _LastTS, _, _) ->
     Basic = build_basic_couch_stats(CouchStats),
     {lists:sort([{couch_views_ops, 0.0} | Basic]), []};
-parse_couch_stats(TS, CouchStats, LastTS, LastViewsStats0) ->
+parse_couch_stats(TS, CouchStats, LastTS, LastViewsStats0, MinFileSize) ->
     BasicThings = build_basic_couch_stats(CouchStats),
     #ns_server_couch_stats{per_ddoc_stats = ViewStats} = CouchStats,
     LastViewsStats = case LastViewsStats0 of
@@ -243,10 +265,12 @@ parse_couch_stats(TS, CouchStats, LastTS, LastViewsStats0) ->
               DiskKey = iolist_to_binary([<<"views/">>, Sig, <<"/disk_size">>]),
               DataKey = iolist_to_binary([<<"views/">>, Sig, <<"/data_size">>]),
               OpsKey = iolist_to_binary([<<"views/">>, Sig, <<"/accesses">>]),
+              DataS = maybe_adjust_data_size(DataS0, DiskS, MinFileSize),
+
               [{DiskKey, DiskS},
                {DataKey, DataS},
                {OpsKey, OpsSec}]
-          end || {Sig, DiskS, DataS, OpsSec} <- WithDiffedOps],
+          end || {Sig, DiskS, DataS0, OpsSec} <- WithDiffedOps],
     {lists:sort(lists:append([[{couch_views_ops, AggregatedOps}], BasicThings | LL])),
      ViewStats}.
 
@@ -277,9 +301,9 @@ basic_parse_couch_stats_test() ->
     ExpectedOut1 = lists:sort([{K, V} || {K, V} <- ExpectedOut1Pre,
                                          not is_binary(K)]),
     ExpectedOut2 = lists:sort(ExpectedOut1Pre),
-    {Out1, State1} = parse_couch_stats(1000, CouchStatsRecord, undefined, undefined),
+    {Out1, State1} = parse_couch_stats(1000, CouchStatsRecord, undefined, undefined, 0),
     ?debugFmt("Got first result~n~p~n~p", [Out1, State1]),
-    {Out2, State2} = parse_couch_stats(2000, CouchStatsRecord, 1000, State1),
+    {Out2, State2} = parse_couch_stats(2000, CouchStatsRecord, 1000, State1, 0),
     ?debugFmt("Got second result~n~p~n~p", [Out2, State2]),
     ?assertEqual(CouchStatsRecord#ns_server_couch_stats.per_ddoc_stats, State2),
     ?assertEqual(ExpectedOut1, Out1),
