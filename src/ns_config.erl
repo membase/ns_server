@@ -143,7 +143,7 @@ update_config_key_rec(Key, Value, Rest, AccList) ->
 %% of list and removes old version for rest of list
 update_config_key(Key, Value, KVList) ->
     case update_config_key_rec(Key, Value, KVList, []) of
-        none -> [{Key, Value} | KVList];
+        none -> [{Key, increment_vclock(Value, Value)} | KVList];
         NewList -> NewList
     end.
 
