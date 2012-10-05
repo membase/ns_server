@@ -72,7 +72,6 @@ default() ->
      {index_aware_rebalance_disabled, false},
      {autocompaction, [{database_fragmentation_threshold, {30, undefined}},
                        {view_fragmentation_threshold, {30, undefined}}]},
-     {cluster_compat_version, [{'_vclock',[{'_',{1,0}}]} | cluster_compat_mode:supported_compat_version()]},
      {{node, node(), this_is_2_0_prerelease}, true},
      {set_view_update_daemon,
       [{update_interval, 5000},
