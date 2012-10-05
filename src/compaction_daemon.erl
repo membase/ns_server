@@ -916,7 +916,7 @@ space_required(DataSize) ->
     round(DataSize * 2.0).
 
 free_space(Path) ->
-    Stats = disksup:get_disk_data(),
+    Stats = ns_info:get_disk_data(),
     {ok, {_, Total, Usage}} =
         ns_storage_conf:extract_disk_stats_for_path(Stats, Path),
     trunc(Total - (Total * (Usage / 100))) * 1024.

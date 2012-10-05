@@ -137,7 +137,7 @@ do_diag_per_node() ->
      {basic_info, element(2, ns_info:basic_info())},
      {processes, grab_process_infos_loop(erlang:processes(), [])},
      {memory, memsup:get_memory_data()},
-     {disk, disksup:get_disk_data()},
+     {disk, ns_info:get_disk_data()},
      {active_tasks, capi_frontend:task_status_all()},
      {master_events, (catch master_activity_events_keeper:get_history())},
      {ns_server_stats, (catch system_stats_collector:get_ns_server_stats())},
