@@ -111,6 +111,9 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict} = State) ->
                         #rep_vb_status{vb = Vb,
                                        status = Status,
                                        num_changes_left = Left,
+                                       num_checkpoints = NumCheckpoint,
+                                       docs_changes_queue = DocsQueue,
+                                       size_changes_queue = SizeQueue,
                                        docs_checked = Checked,
                                        docs_written = Written,
                                        total_work_time = WorkTime,
@@ -120,24 +123,34 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict} = State) ->
                          WrittenAcc,
                          WorkTimeAcc,
                          CommitTimeAcc,
+                         NumCkptAcc,
+                         DocsQueueAcc,
+                         SizeQueueAcc,
                          VbReplicatingAcc}) ->
                                 {WorkLeftAcc + Left,
                                  CheckedAcc + Checked,
                                  WrittenAcc + Written,
                                  WorkTimeAcc + WorkTime,
                                  CommitTimeAcc + CommitTime,
+                                 NumCkptAcc + NumCheckpoint,
+                                 DocsQueueAcc + DocsQueue,
+                                 SizeQueueAcc + SizeQueue,
                                  if Status == replicating ->
                                      [Vb | VbReplicatingAcc];
                                  true ->
                                      VbReplicatingAcc
                                  end}
-                        end, {0, 0, 0, 0, 0, []}, Dict),
-    {Left1, Checked1, Written1, WorkTime1, CommitTime1, VbsReplicating1} = Stats,
+                        end, {0, 0, 0, 0, 0, 0, 0, 0, []}, Dict),
+    {Left1, Checked1, Written1, WorkTime1, CommitTime1, NumCheckpoints1, DocsChangesQueue1,
+     SizeChangesQueue1, VbsReplicating1} = Stats,
     Props = [{changes_left, Left1},
              {docs_checked, Checked1},
              {docs_written, Written1},
              {time_working, WorkTime1 div 1000},
              {time_committing, CommitTime1 div 1000},
+             {num_checkpoints, NumCheckpoints1},
+             {docs_rep_queue, DocsChangesQueue1},
+             {size_rep_queue, SizeChangesQueue1},
              {vbs_replicating, VbsReplicating1}],
     {reply, {ok, Props}, State};
 

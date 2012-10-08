@@ -54,6 +54,12 @@
           pid,
           status = idle,
           num_changes_left = 0,
+          %% num of docs in changes queue
+          docs_changes_queue = 0,
+          %% size of changes queues
+          size_changes_queue = 0,
+          %% num of checkpoints issued
+          num_checkpoints = 0,
           docs_checked = 0,
           docs_written = 0,
           total_work_time = 0, % in MS
@@ -89,6 +95,7 @@
           last_checkpoint_time,
           num_checkpoints, %% number of checkpoints made
           workers,
+          changes_queue,
           session_id,
           source_seq = nil
          }).

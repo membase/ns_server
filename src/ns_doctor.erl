@@ -318,9 +318,13 @@ task_operation(extract, XDCR, RawTask)
     {_, DocsWritten} = lists:keyfind(docs_written, 1, RawTask),
     {_, TimeWorking} = lists:keyfind(time_working, 1, RawTask),
     {_, TimeCommitting} = lists:keyfind(time_committing, 1, RawTask),
+    {_, NumCheckpoints} = lists:keyfind(num_checkpoints, 1, RawTask),
+    {_, DocsRepQueue} = lists:keyfind(docs_rep_queue, 1, RawTask),
+    {_, SizeRepQueue} = lists:keyfind(size_rep_queue, 1, RawTask),
     Errors = proplists:get_value(errors, RawTask, []),
     {_, Id} = lists:keyfind(id, 1, RawTask),
-    [{{XDCR, Id}, {ChangesLeft, DocsChecked, DocsWritten, TimeWorking, TimeCommitting, Errors}}];
+    [{{XDCR, Id}, {ChangesLeft, DocsChecked, DocsWritten, TimeWorking, TimeCommitting,
+                   NumCheckpoints, DocsRepQueue, SizeRepQueue, Errors}}];
 task_operation(extract, _, _) ->
     ignore;
 
@@ -343,7 +347,8 @@ task_operation(finalize, {BucketCompaction, BucketName, _, _}, {ChangesDone, Tot
      {progress, Progress}].
 
 
-finalize_xcdr_plist({ChangesLeft, DocsChecked, DocsWritten, TimeWorking, TimeCommitting, Errors}) ->
+finalize_xcdr_plist({ChangesLeft, DocsChecked, DocsWritten, TimeWorking, TimeCommitting,
+                     NumCheckpoints, DocsRepQueue, SizeRepQueue, Errors}) ->
     FlattenedErrors = lists:flatten(Errors),
     SortedErrors = lists:reverse(lists:sort(FlattenedErrors)),
     Len = length(SortedErrors),
@@ -361,6 +366,9 @@ finalize_xcdr_plist({ChangesLeft, DocsChecked, DocsWritten, TimeWorking, TimeCom
      {docsWritten, DocsWritten},
      {timeWorking, TimeWorking},
      {timeCommitting, TimeCommitting},
+     {numCheckpoints, NumCheckpoints},
+     {docsRepQueue, DocsRepQueue},
+     {sizeRepQueue, SizeRepQueue},
      {errors, OutputErrors}].
 
 
@@ -389,13 +397,18 @@ task_operation(fold, {bucket_compaction, _, _, _},
                {ChangesDone2, TotalChanges2}) ->
     {ChangesDone1 + ChangesDone2, TotalChanges1 + TotalChanges2};
 task_operation(fold, {xdcr, _},
-              {ChangesLeft1, DocsChecked1, DocsWritten1, TimeWorking1, TimeCommitting1, Errors1},
-              {ChangesLeft2, DocsChecked2, DocsWritten2, TimeWorking2, TimeCommitting2, Errors2}) ->
+              {ChangesLeft1, DocsChecked1, DocsWritten1, TimeWorking1, TimeCommitting1,
+               NumCkpts1, DocsRepQueue1, SizeRepQueue1, Errors1},
+              {ChangesLeft2, DocsChecked2, DocsWritten2, TimeWorking2, TimeCommitting2,
+               NumCkpts2, DocsRepQueue2, SizeRepQueue2, Errors2}) ->
     {ChangesLeft1 + ChangesLeft2,
      DocsChecked1 + DocsChecked2,
      DocsWritten1 + DocsWritten2,
      TimeWorking1 + TimeWorking2,
      TimeCommitting1 + TimeCommitting2,
+     NumCkpts1 + NumCkpts2,
+     DocsRepQueue1 + DocsRepQueue2,
+     SizeRepQueue1 + SizeRepQueue2,
      [Errors1 | Errors2]}.
 
 

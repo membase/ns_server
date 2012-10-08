@@ -176,17 +176,23 @@ transform_xdc_stats_loop([In | T], {Totals, Reps}) ->
               element(2, Totals) + proplists:get_value(docs_checked, RepStats),
               element(3, Totals) + proplists:get_value(docs_written, RepStats),
               element(4, Totals) + proplists:get_value(time_working, RepStats),
-              element(5, Totals) + proplists:get_value(time_committing, RepStats)},
+              element(5, Totals) + proplists:get_value(time_committing, RepStats),
+              element(6, Totals) + proplists:get_value(num_checkpoints, RepStats),
+              element(7, Totals) + proplists:get_value(docs_rep_queue, RepStats),
+              element(8, Totals) + proplists:get_value(size_rep_queue, RepStats)},
     transform_xdc_stats_loop(T, {Totals2,
                                  lists:append(PerRepStats, Reps)}).
 
 transform_xdc_stats(XDCStats) ->
-    {Totals, RepStats} = transform_xdc_stats_loop(XDCStats, {{0,0,0,0,0},[]}),
+    {Totals, RepStats} = transform_xdc_stats_loop(XDCStats, {{0,0,0,0,0,0,0,0},[]}),
     TotalStats = [{replication_changes_left, element(1, Totals)},
                   {replication_docs_checked, element(2, Totals)},
                   {replication_docs_written, element(3, Totals)},
                   {replication_work_time, element(4, Totals)},
-                  {replication_commit_time, element(5, Totals)}],
+                  {replication_commit_time, element(5, Totals)},
+                  {replication_num_checkpoints, element(6, Totals)},
+                  {replication_docs_rep_queue, element(7, Totals)},
+                  {replication_size_rep_queue, element(8, Totals)}],
     lists:sort(lists:append(TotalStats, RepStats)).
 
 format_stats(Stats) ->

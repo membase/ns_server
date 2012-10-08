@@ -149,12 +149,19 @@ handle_call({report_seq_done, Seq, NumChecked, NumWritten}, From,
                  NewHighestDone, SeqsInProgress, NewSeqsInProgress,
                  TotalChecked, TotalWritten]),
     SourceCurSeq = xdc_vbucket_rep_ckpt:source_cur_seq(State),
+
+    %% get stats
+    {ChangesQueueSize, ChangesQueueDocs, NumCkpts} = get_vb_rep_stats(State),
+
     NewState = State#rep_state{
                  current_through_seq = NewThroughSeq,
                  seqs_in_progress = NewSeqsInProgress,
                  highest_seq_done = NewHighestDone,
                  source_seq = SourceCurSeq,
                  status = VbStatus#rep_vb_status{num_changes_left = ChangesLeft - NumChecked,
+                                                 docs_changes_queue = ChangesQueueDocs,
+                                                 size_changes_queue = ChangesQueueSize,
+                                                 num_checkpoints = NumCkpts,
                                                  docs_checked = TotalChecked + NumChecked,
                                                  docs_written = TotalWritten + NumWritten}
                 },
@@ -179,7 +186,14 @@ handle_call({worker_done, Pid}, _From,
             %% force check for changes since we last snapshop
             self() ! src_db_updated,
             misc:flush(checkpoint),
+
+            %% changes may or may not be closed
+            {_, _, NumCkpts} = get_vb_rep_stats(State),
+
             VbStatus2 = VbStatus#rep_vb_status{status = idle,
+                                               size_changes_queue = 0,
+                                               docs_changes_queue = 0,
+                                               num_checkpoints = NumCkpts,
                                                total_work_time = TotalWorkTime},
 
             Vb = VbStatus2#rep_vb_status.vb,
@@ -475,6 +489,7 @@ start_replication(#rep_state{
                      end,
 
     update_status_to_parent(NewState#rep_state{
+                              changes_queue = ChangesQueue,
                               workers = Workers,
                               source = Source,
                               src_master_db = SrcMasterDb,
@@ -635,3 +650,22 @@ target_uri_to_node(TgtURI) ->
     [_Prefix, NodeDB] = string:tokens(TargetURI, "@"),
     [Node, _Bucket] = string:tokens(NodeDB, "/"),
     Node.
+
+get_vb_rep_stats(#rep_state{changes_queue = ChangesQueue} = State) ->
+    ChangesQueueSize = case couch_work_queue:size(ChangesQueue) of
+                           closed ->
+                               0;
+                           QueueSize ->
+                               QueueSize
+                       end,
+    %% num of docs in changes queue
+    ChangesQueueDocs = case couch_work_queue:item_count(ChangesQueue) of
+                           closed ->
+                               0;
+                           QueueDocs ->
+                               QueueDocs
+                       end,
+    %% number of checkpoints issued
+    NumCkpts = State#rep_state.num_checkpoints,
+
+    {ChangesQueueSize, ChangesQueueDocs, NumCkpts}.
