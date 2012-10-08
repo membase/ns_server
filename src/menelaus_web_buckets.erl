@@ -470,6 +470,18 @@ perform_warnings_validation(ParsedProps, Errors) ->
     end.
 
 handle_bucket_flush(_PoolId, Id, Req) ->
+    XDCRDocs = xdc_rdoc_replication_srv:find_all_replication_docs(),
+    case lists:any(
+           fun (PList) ->
+                   erlang:binary_to_list(proplists:get_value(source, PList)) =:= Id
+           end, XDCRDocs) of
+        false ->
+            do_handle_bucket_flush(Id, Req);
+        true ->
+            reply_json(Req, {struct, [{'_', <<"Cannot flush buckets with outgoing XDCR">>}]}, 503)
+    end.
+
+do_handle_bucket_flush(Id, Req) ->
     case ns_orchestrator:flush_bucket(Id) of
         ok ->
             Req:respond({200, server_header(), []});
