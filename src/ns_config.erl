@@ -931,8 +931,7 @@ test_set() ->
     Updater0 = (fun () -> receive {update_with_changes, F} -> F end end)(),
 
     ?assertConfigEquals([{test, 1}], element(2, Updater0([]))),
-    %% this is initial set, so no vclock
-    {[{test, 1}], Val2} = Updater0([{foo, 2}]),
+    {[{test, [{'_vclock', _} | 1]}], Val2} = Updater0([{foo, 2}]),
     ?assertConfigEquals([{test, 1}, {foo, 2}], Val2),
 
     %% and here we're changing value, so expecting vclock
@@ -1004,7 +1003,7 @@ test_update_config() ->
 
 test_set_kvlist() ->
     {NewPairs, [{foo, FooVal},
-                {bar, false},
+                {bar, [{'_vclock', _} | false]},
                 {baz, [{nothing, false}]}]} =
         set_kvlist([{bar, false},
                     {foo, [{suba, a}, {subb, b}]}],
