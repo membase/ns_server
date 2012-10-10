@@ -58,29 +58,34 @@ delete(BucketBin, DocId) ->
 get(BucketBin, DocId, _Options) ->
     Bucket = binary_to_list(BucketBin),
     {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
+    get_inner(Bucket, DocId, VBucket, 10).
+
+get_inner(_Bucket, _DocId, _VBucket, _RetriesLeft = 0) ->
+    erlang:error(cas_retries_exceeded);
+get_inner(Bucket, DocId, VBucket, RetriesLeft) ->
     {ok, Header, Entry, _} = ns_memcached:get(Bucket, DocId, VBucket),
 
-    case {Header#mc_header.status, Entry#mc_entry.cas} of
-        {?SUCCESS, _CAS} ->
-            Doc = mk_doc(DocId,
-                         0,
-                         0,
-                         Entry#mc_entry.data,
-                         true),
-            {ok, Doc};
-        {?KEY_ENOENT, _} ->
+    case Header#mc_header.status of
+        ?SUCCESS ->
+            continue_get(Bucket, DocId, VBucket, Entry, RetriesLeft);
+        ?KEY_ENOENT ->
             {not_found, missing};
-        {?NOT_MY_VBUCKET, _} ->
+        ?NOT_MY_VBUCKET ->
             throw(not_my_vbucket)
     end.
 
-%% copied from mc_couch_kv
-
--spec mk_doc(Key :: binary(),
-             Flags :: non_neg_integer(),
-             Expiration :: non_neg_integer(),
-             Value :: binary(),
-             WantJson :: boolean()) -> #doc{}.
-mk_doc(Key, Flags, Expiration, Value, WantJson) ->
-    Doc = couch_doc:from_binary(Key, Value, WantJson),
-    Doc#doc{rev = {1, <<0:64, Expiration:32, Flags:32>>}}.
+continue_get(Bucket, DocId, VBucket, Entry, RetriesLeft) ->
+    case ns_memcached:get_meta(Bucket, DocId, VBucket) of
+        {ok, Rev, NowCAS, MetaFlags} ->
+            case NowCAS =:= Entry#mc_entry.cas of
+                true ->
+                    %% GET above could only 'see' live item
+                    0 = (MetaFlags band ?GET_META_ITEM_DELETED_FLAG),
+                    Doc0 = couch_doc:from_binary(DocId, Entry#mc_entry.data, true),
+                    {ok, Doc0#doc{rev = Rev}};
+                false ->
+                    get_inner(Bucket, DocId, VBucket, RetriesLeft-1)
+            end;
+        _ ->
+            get_inner(Bucket, DocId, VBucket, RetriesLeft-1)
+    end.
