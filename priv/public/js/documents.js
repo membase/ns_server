@@ -299,6 +299,7 @@ var DocumentsSection = {
     function showDocumentListState(page) {
       prevBtn.toggleClass('disabled', page.pageNumber === 0);
       nextBtn.toggleClass('disabled', isLastPage(page));
+      page.docs.rows.pop();
 
       docsCrntPgCont.text(page.pageNumber + 1);
 
@@ -344,7 +345,7 @@ var DocumentsSection = {
     }
 
     function isLastPage(page) {
-      return page.docs.rows.length <= page.pageLimit ? true : !page.docs.rows.pop();
+      return page.docs.rows.length <= page.pageLimit;
     }
 
     function showCodeEditor(show) {
