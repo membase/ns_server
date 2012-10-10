@@ -912,16 +912,30 @@ var BucketsSection = {
         });
         return;
       }
-      var initValues = {uri: '/pools/default/buckets',
-                        bucketType: 'membase',
-                        authType: 'sasl',
-                        quota: {rawRAM: Math.floor((totals.ram.quotaTotal - totals.ram.quotaUsed) / poolDetails.nodes.length)},
-                        replicaIndex: false,
-                        replicaNumber: 1},
 
-      dialog = new BucketDetailsDialog(initValues, true);
+      var maxBucketCount = poolDetails.maxBucketCount;
 
-      dialog.startDialog();
+      DAL.cells.bucketsListCell.getValue(function (buckets) {
+        if (buckets.length >= maxBucketCount) {
+          genericDialog({
+            buttons: {ok: true, cancel: false},
+            header: 'Maximum Bucket Count Reached',
+            text: 'Maximum number of buckets has been reached.\n\nFor optimal performance, no more than ' + maxBucketCount + ' buckets are allowed.'
+          });
+          return;
+        }
+
+        var initValues = {uri: '/pools/default/buckets',
+                          bucketType: 'membase',
+                          authType: 'sasl',
+                          quota: {rawRAM: Math.floor((totals.ram.quotaTotal - totals.ram.quotaUsed) / poolDetails.nodes.length)},
+                          replicaIndex: false,
+                          replicaNumber: 1},
+
+        dialog = new BucketDetailsDialog(initValues, true);
+
+        dialog.startDialog();
+      })
     });
   },
   startRemovingBucket: function () {

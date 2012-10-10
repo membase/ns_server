@@ -818,6 +818,7 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                  {rebalanceProgressUri, bin_concat_path(["pools", Id, "rebalanceProgress"])},
                  {stopRebalanceUri, <<"/controller/stopRebalance?uuid=", UUID/binary>>},
                  {nodeStatusesUri, <<"/nodeStatuses">>},
+                 {maxBucketCount, ns_config_ets_dup:unreliable_read_key(max_bucket_count, 10)},
                  {autoCompactionSettings, case ns_config:search(Config, autocompaction) of
                                               false ->
                                                   build_auto_compaction_settings([]);
@@ -2395,7 +2396,8 @@ build_internal_settings_kvs() ->
                {rebalance_index_waiting_disabled, rebalanceIndexWaitingDisabled, false},
                {index_pausing_disabled, rebalanceIndexPausingDisabled, false},
                {{couchdb, max_parallel_indexers}, maxParallelIndexers, <<>>},
-               {{couchdb, max_parallel_replica_indexers}, maxParallelReplicaIndexers, <<>>}],
+               {{couchdb, max_parallel_replica_indexers}, maxParallelReplicaIndexers, <<>>},
+               {max_bucket_count, maxBucketCount, 10}],
     [{JK, ns_config_ets_dup:unreliable_read_key(CK, DV)}
      || {CK, JK, DV} <- Triples].
 
@@ -2435,6 +2437,12 @@ handle_internal_settings_post(Req) ->
                    SV ->
                        {ok, V} = parse_validate_number(SV, 1, 1024),
                        MaybeSet(maxParallelReplicaIndexers, {couchdb, max_parallel_replica_indexers}, V)
+               end,
+               case proplists:get_value("maxBucketCount", Params) of
+                   undefined -> undefined;
+                   SV ->
+                       {ok, V} = parse_validate_number(SV, 1, 128),
+                       MaybeSet(maxBucketCount, max_bucket_count, V)
                end],
     [Action()
      || Action <- Actions,

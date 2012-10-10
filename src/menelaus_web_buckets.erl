@@ -431,32 +431,38 @@ handle_bucket_create(PoolId, Req) ->
     Params = Req:parse_post(),
     Name = proplists:get_value("name", Params),
     ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
-    case {ValidateOnly,
-          parse_bucket_params(true,
-                              Name,
-                              Params,
-                              ns_bucket:get_buckets(),
-                              extended_cluster_storage_info())} of
-        {_, {errors, Errors, JSONSummaries}} ->
-            reply_json(Req, {struct, [{errors, {struct, Errors}},
-                                      {summaries, {struct, JSONSummaries}}]}, 400);
-        {false, {ok, ParsedProps, _}} ->
-            case do_bucket_create(Name, ParsedProps) of
-                ok ->
-                    respond_bucket_created(Req, PoolId, Name);
-                {errors, Errors} ->
-                    reply_json(Req, {struct, Errors}, 400);
-                {errors_500, Errors} ->
-                    reply_json(Req, {struct, Errors}, 503)
-            end;
-        {true, {ok, ParsedProps, JSONSummaries}} ->
-            FinalErrors = perform_warnings_validation(ParsedProps, []),
-            reply_json(Req, {struct, [{errors, {struct, FinalErrors}},
-                                      {summaries, {struct, JSONSummaries}}]},
-                       case FinalErrors of
-                           [] -> 200;
-                           _ -> 400
-                       end)
+    MaxBuckets = ns_config_ets_dup:unreliable_read_key(max_bucket_count, 10),
+    case length(ns_bucket:get_buckets()) >= MaxBuckets of
+        true ->
+            reply_json(Req, {struct, [{'_', iolist_to_binary(io_lib:format("Cannot create more than ~w buckets", [MaxBuckets]))}]}, 400);
+        false ->
+            case {ValidateOnly,
+                  parse_bucket_params(true,
+                                      Name,
+                                      Params,
+                                      ns_bucket:get_buckets(),
+                                      extended_cluster_storage_info())} of
+                {_, {errors, Errors, JSONSummaries}} ->
+                    reply_json(Req, {struct, [{errors, {struct, Errors}},
+                                              {summaries, {struct, JSONSummaries}}]}, 400);
+                {false, {ok, ParsedProps, _}} ->
+                    case do_bucket_create(Name, ParsedProps) of
+                        ok ->
+                            respond_bucket_created(Req, PoolId, Name);
+                        {errors, Errors} ->
+                            reply_json(Req, {struct, Errors}, 400);
+                        {errors_500, Errors} ->
+                            reply_json(Req, {struct, Errors}, 503)
+                    end;
+                {true, {ok, ParsedProps, JSONSummaries}} ->
+                    FinalErrors = perform_warnings_validation(ParsedProps, []),
+                    reply_json(Req, {struct, [{errors, {struct, FinalErrors}},
+                                              {summaries, {struct, JSONSummaries}}]},
+                               case FinalErrors of
+                                   [] -> 200;
+                                   _ -> 400
+                               end)
+            end
     end.
 
 perform_warnings_validation(ParsedProps, Errors) ->

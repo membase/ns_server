@@ -70,6 +70,7 @@ default() ->
      {xdcr_capi_checkpoint_timeout, 10}, % in secs
      {directory, path_config:component_path(data, "config")},
      {index_aware_rebalance_disabled, false},
+     {max_bucket_count, 10},
      {autocompaction, [{database_fragmentation_threshold, {30, undefined}},
                        {view_fragmentation_threshold, {30, undefined}}]},
      {{node, node(), this_is_2_0_prerelease}, true},
