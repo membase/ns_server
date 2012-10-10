@@ -281,9 +281,6 @@ prefix_replace(_Prefix, _ReplacementPrefix, X) -> X.
 upgrade_config(Config) ->
     case ns_config:search_node(node(), Config, config_version) of
         false ->
-            [{set, {node, node(), config_version}, {1,7}} |
-             upgrade_config_from_1_6_to_1_7(Config)];
-        {value, {1,7}} ->
             [{set, {node, node(), config_version}, {1,7,1}} |
              upgrade_config_from_1_7_to_1_7_1()];
         {value, {1,7,1}} ->
@@ -301,29 +298,6 @@ upgrade_config(Config) ->
         {value, {2,0}} ->
             []
     end.
-
-upgrade_config_from_1_6_to_1_7(Config) ->
-    ?log_info("Upgrading config from 1.6 to 1.7"),
-    DefaultConfig = default(),
-    do_upgrade_config_from_1_6_to_1_7(Config, DefaultConfig).
-
-do_upgrade_config_from_1_6_to_1_7(Config, DefaultConfig) ->
-    {value, MemcachedCfg} = ns_config:search_node(Config, memcached),
-    {_, DefaultMemcachedCfg} = lists:keyfind({node, node(), memcached}, 1, DefaultConfig),
-    {bucket_engine, _} = BucketEnCfg = lists:keyfind(bucket_engine, 1, DefaultMemcachedCfg),
-    {engines, _} = EnginesCfg = lists:keyfind(engines, 1, DefaultMemcachedCfg),
-    NewMemcachedCfg = lists:foldl(fun (T, Acc) ->
-                                          lists:keyreplace(element(1, T), 1, Acc, T)
-                                  end, MemcachedCfg, [BucketEnCfg,
-                                                      EnginesCfg]),
-    [{set, {node, node(), memcached}, NewMemcachedCfg}] ++
-        lists:foldl(fun (K, Acc) ->
-                            {K,V} = lists:keyfind(K, 1, DefaultConfig),
-                            [{set, K, V} | Acc]
-                    end, [],
-                    [directory,
-                     {node, node(), isasl},
-                     {node, node(), ns_log}]).
 
 upgrade_config_from_1_7_to_1_7_1() ->
     ?log_info("Upgrading config from 1.7 to 1.7.1"),
@@ -528,33 +502,6 @@ maybe_upgrade_engines_add_mccouch_port_log_params(Config, DefaultConfig) ->
 
     [{set, McdKey, NewOrUpdatedParams ++ StrippedMcdConfig}].
 
-upgrade_1_6_to_1_7_test() ->
-    DefaultCfg = [{directory, default_directory},
-                  {{node, node(), isasl}, [{path, default_isasl}]},
-                  {some_random, value},
-                  {{node, node(), memcached},
-                   [{bucket_engine, "new-be"},
-                    {engines, "new-engines"}]},
-                  {{node, node(), port_servers},
-                   [{moxi, "moxi something"},
-                    {memcached, "memcached something"}]},
-                  {{node, node(), ns_log}, default_log}],
-    OldCfg = [{{node, node(), memcached},
-               [{dbdir, "dbdir"},
-                {bucket_engine, "old-be"},
-                {engines, "old-engines"}]}],
-    Res = do_upgrade_config_from_1_6_to_1_7([OldCfg], DefaultCfg),
-    ?assertEqual(lists:sort([{set, directory, default_directory},
-                             {set, {node, node(), isasl}, [{path, default_isasl}]},
-                             {set, {node, node(), memcached},
-                              [{dbdir, "dbdir"},
-                               {bucket_engine, "new-be"},
-                               {engines, "new-engines"}]},
-                             %% we don't expect to find port_servers here;
-                             %% 1.6->1.7 procedure has changed in 1.8
-                             {set, {node, node(), ns_log}, default_log}]),
-                 lists:sort(Res)).
-
 upgrade_1_7_1_to_1_7_2_test() ->
     DefaultCfg = [{rest, [{port, 8091}]},
                   {{node, node(), rest},
@@ -752,43 +699,6 @@ upgrade_1_8_1_to_2_0_test() ->
 
 no_upgrade_on_2_0_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, {2, 0}}]])).
-
-fuller_1_6_test_() ->
-    {spawn,
-     fun () ->
-             Cfg = [[{directory, old_directory},
-                     {{node, node(), isasl}, [{path, old_isasl}]},
-                     {some_random, value},
-                     {{node, node(), memcached},
-                      [{dbdir, "dbdir"},
-                       {bucket_engine, "old-be"},
-                       {engines, "old-engines"}]},
-                     {{node, node(), port_servers},
-                      [{moxi, "moxi old something"},
-                       {memcached, "memcached old something"}]},
-                     {{node, node(), ns_log}, default_log}]],
-             erlang:put(capi_port_override, 5984),
-             erlang:put(node_uuid_override, <<"--uuid--">>),
-             ets:new(path_config_override, [public, named_table, {read_concurrency, true}]),
-             [ets:insert(path_config_override, {K, "."}) || K <- [path_config_tmpdir, path_config_datadir,
-                                                                  path_config_bindir, path_config_libdir,
-                                                                  path_config_etcdir]],
-             Changes = upgrade_config(Cfg),
-             ?assertMatch([{set, {node, _, config_version}, {1,7}}],
-                          [X || {set, {node, N, config_version}, _} = X <- Changes, N =:= node()]),
-
-             ?assertEqual([], Changes -- [X || {set, _, _} = X <- Changes]),
-
-             DefaultConfig = default(),
-
-             {directory, Dir} = lists:keyfind(directory, 1, DefaultConfig),
-
-             ?assertEqual([{set, directory, Dir}],
-                          [X || {set, directory, _} = X <- Changes]),
-
-             {set, _, NewMemcached} = lists:keyfind({node, node(), memcached}, 2, Changes),
-             ?assertEqual({dbdir, "dbdir"}, lists:keyfind(dbdir, 1, NewMemcached))
-     end}.
 
 prefix_replace_test() ->
     ?assertEqual("", prefix_replace("/foo", "/bar", "")),
