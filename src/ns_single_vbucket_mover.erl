@@ -152,9 +152,15 @@ mover_inner(Parent, Node, Bucket, VBucket,
             ok = janitor_agent:set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined);
         false ->
             %% pause index updates on old master node
-            janitor_agent:set_vbucket_state(Bucket, Node, Parent, VBucket, active, paused, undefined),
-            SecondWaitedCheckpointId = janitor_agent:get_replication_persistence_checkpoint_id(Bucket, Parent, Node, VBucket),
-            ok = wait_checkpoint_persisted_many(Bucket, Parent, AllBuiltNodes, VBucket, SecondWaitedCheckpointId),
+            case cluster_compat_mode:is_index_pausing_on() of
+                true ->
+                    system_stats_collector:increment_counter(index_pausing_runs, 1),
+                    janitor_agent:set_vbucket_state(Bucket, Node, Parent, VBucket, active, paused, undefined),
+                    SecondWaitedCheckpointId = janitor_agent:get_replication_persistence_checkpoint_id(Bucket, Parent, Node, VBucket),
+                    ok = wait_checkpoint_persisted_many(Bucket, Parent, AllBuiltNodes, VBucket, SecondWaitedCheckpointId);
+                false ->
+                    ok
+            end,
             case ns_config_ets_dup:unreliable_read_key(rebalance_index_waiting_disabled, false) of
                 false ->
                     janitor_agent:wait_index_updated(Bucket, Parent, NewNode, ReplicaNodes, VBucket);
