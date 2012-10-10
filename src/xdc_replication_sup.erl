@@ -45,16 +45,22 @@ get_replications(SourceBucket) ->
      || {{Bucket, Id}, Pid, _, _} <- supervisor:which_children(?MODULE),
         Bucket =:= SourceBucket].
 
--spec all_local_replication_infos() -> [{Id :: binary(), [{atom(), _}]}].
+-spec all_local_replication_infos() -> [{Id :: binary(), [{atom(), _}], any()}].
 all_local_replication_infos() ->
-    [{Id, Stats}
+    [{Id, Stats, Errors}
      || {{_Bucket, Id}, Pid, _, _} <- supervisor:which_children(?MODULE),
         Stats <- try xdc_replication:stats(Pid) of
                      {ok, X} -> [X]
                  catch T:E ->
                          ?xdcr_debug("Ignoring error getting possibly stale stats:~n~p", [{T,E,erlang:get_stacktrace()}]),
                          []
-                 end].
+                 end,
+        Errors <- try xdc_replication:latest_errors(Pid) of
+                      {ok, AnErrors} ->
+                          [AnErrors]
+                  catch T:E ->
+                          ?xdcr_debug("Ignoring error getting possibly stale errors:~n~p", [{T,E,erlang:get_stacktrace()}])
+                  end].
 
 stop_replication(Id) ->
     lists:foreach(

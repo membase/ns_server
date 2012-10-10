@@ -32,6 +32,8 @@ input[type=radio], input[type=checkbox] {border:none}
 ::-webkit-input-placeholder {color:#999}
 :-moz-placeholder{color:#999 !important}
 
+.xdcr-error-link { color: red; }
+
 /* note: .list here increases specifity w.r.t. .list .key rule */
 .list code.key, code.key { color: #333; font-weight: bold; font-size: 12px;}
 code.string { color: #393; }

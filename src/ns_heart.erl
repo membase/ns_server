@@ -263,8 +263,8 @@ grab_local_xdcr_replications() ->
         Infos ->
             [begin
                  Props = lists:keydelete(vbs_replicating, 1, Props0),
-                 [{type, xdcr}, {id, Id} | Props]
-             end || {Id, Props0} <- Infos]
+                 [{type, xdcr}, {id, Id}, {errors, LastErrors} | Props]
+             end || {Id, Props0, LastErrors} <- Infos]
     catch T:E ->
             ?log_debug("Ignoring exception getting xdcr replication infos~n~p", [{T,E,erlang:get_stacktrace()}]),
             []

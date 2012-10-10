@@ -17,6 +17,7 @@
 
 -define(STALE_TIME, 5000000). % 5 seconds in microseconds
 -define(LOG_INTERVAL, 60000). % How often to dump current status to the logs
+-define(MAX_XDCR_TASK_ERRORS, 10).
 
 -include("ns_common.hrl").
 
@@ -317,8 +318,9 @@ task_operation(extract, XDCR, RawTask)
     {_, DocsWritten} = lists:keyfind(docs_written, 1, RawTask),
     {_, TimeWorking} = lists:keyfind(time_working, 1, RawTask),
     {_, TimeCommitting} = lists:keyfind(time_committing, 1, RawTask),
+    Errors = proplists:get_value(errors, RawTask, []),
     {_, Id} = lists:keyfind(id, 1, RawTask),
-    [{{XDCR, Id}, {ChangesLeft, DocsChecked, DocsWritten, TimeWorking, TimeCommitting}}];
+    [{{XDCR, Id}, {ChangesLeft, DocsChecked, DocsWritten, TimeWorking, TimeCommitting, Errors}}];
 task_operation(extract, _, _) ->
     ignore;
 
@@ -341,14 +343,25 @@ task_operation(finalize, {BucketCompaction, BucketName, _, _}, {ChangesDone, Tot
      {progress, Progress}].
 
 
-finalize_xcdr_plist({ChangesLeft, DocsChecked, DocsWritten, TimeWorking, TimeCommitting}) ->
+finalize_xcdr_plist({ChangesLeft, DocsChecked, DocsWritten, TimeWorking, TimeCommitting, Errors}) ->
+    FlattenedErrors = lists:flatten(Errors),
+    SortedErrors = lists:reverse(lists:sort(FlattenedErrors)),
+    Len = length(SortedErrors),
+    OutputErrors =
+        case Len > ?MAX_XDCR_TASK_ERRORS of
+            true ->
+                lists:sublist(SortedErrors, ?MAX_XDCR_TASK_ERRORS);
+            false ->
+                SortedErrors
+        end,
     [{type, xdcr},
      {recommendedRefreshPeriod, 10.0},
      {changesLeft, ChangesLeft},
      {docsChecked, DocsChecked},
      {docsWritten, DocsWritten},
      {timeWorking, TimeWorking},
-     {timeCommitting, TimeCommitting}].
+     {timeCommitting, TimeCommitting},
+     {errors, OutputErrors}].
 
 
 finalize_indexer_or_compaction(IndexerOrCompaction, BucketName, DDocId,
@@ -376,13 +389,14 @@ task_operation(fold, {bucket_compaction, _, _, _},
                {ChangesDone2, TotalChanges2}) ->
     {ChangesDone1 + ChangesDone2, TotalChanges1 + TotalChanges2};
 task_operation(fold, {xdcr, _},
-              {ChangesLeft1, DocsChecked1, DocsWritten1, TimeWorking1, TimeCommitting1},
-              {ChangesLeft2, DocsChecked2, DocsWritten2, TimeWorking2, TimeCommitting2}) ->
+              {ChangesLeft1, DocsChecked1, DocsWritten1, TimeWorking1, TimeCommitting1, Errors1},
+              {ChangesLeft2, DocsChecked2, DocsWritten2, TimeWorking2, TimeCommitting2, Errors2}) ->
     {ChangesLeft1 + ChangesLeft2,
      DocsChecked1 + DocsChecked2,
      DocsWritten1 + DocsWritten2,
      TimeWorking1 + TimeWorking2,
-     TimeCommitting1 + TimeCommitting2}.
+     TimeCommitting1 + TimeCommitting2,
+     [Errors1 | Errors2]}.
 
 
 task_maybe_add_cancel_uri({bucket_compaction, BucketName, {OriginalTarget}, manual},

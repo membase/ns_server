@@ -139,6 +139,38 @@ var ReplicationForm = mkClass({
 // this turns ReplicationForm into lazily initialized singleton
 mkClass.turnIntoLazySingleton(ReplicationForm);
 
+ViewHelpers.formatReplicationStatus = function (info) {
+  var rawStatus = escapeHTML(info.status);
+  var errors = (info.errors || []);
+  if (errors.length === 0) {
+    return rawStatus;
+  }
+
+  var id = _.uniqueId('xdcr_errors');
+  var rv = rawStatus + " <a class='xdcr-error-link' onclick='showXDCRErrors(" + JSON.stringify(id) + ");'>" + errors.length;
+  rv += " errors</a>"
+  rv += "<script type='text/html' id='" + escapeHTML(id) + "'>"
+  rv += JSON.stringify(errors)
+  rv += "</script>"
+  return rv;
+}
+
+function showXDCRErrors(id) {
+  var text;
+  try {
+    text = document.getElementById(id).innerHTML;
+  } catch (e) {
+    console.log("apparently our data element is dead. Ignoring exception: ", e);
+    return;
+  }
+  elements = JSON.parse(text);
+  genericDialog({
+    buttons: {ok: true},
+    header: "XDCR errors",
+    textHTML: "<ul>" + _.map(elements, function (anError) {return "<li>" + escapeHTML(anError) + "</li>"}).join('') + "</ul>"
+  });
+}
+
 var ReplicationsSection = {
   init: function () {
     renderCellTemplate(ReplicationsModel.remoteClustersListCell, 'cluster_reference_list');
@@ -171,7 +203,8 @@ var ReplicationsSection = {
           bucket: replication.source,
           to: 'bucket "' + replication.target.split('buckets/')[1] + '" on cluster "' + name + '"',
           status: replication.status == 'running' ? 'Replicating' : 'Starting Up',
-          when: replication.continuous ? "on change" : "one time sync"
+          when: replication.continuous ? "on change" : "one time sync",
+          errors: replication.errors
         }
       });
     }).subscribeValue(function (rows) {
