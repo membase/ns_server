@@ -31,10 +31,7 @@
 
 
 get_compat_version() ->
-    ns_config:eval(
-      fun (State) ->
-              ns_config:search(State, cluster_compat_version, undefined)
-      end).
+    ns_config_ets_dup:unreliable_read_key(cluster_compat_version, undefined).
 
 %% NOTE: this is rpc:call-ed by mb_master
 supported_compat_version() ->
@@ -86,6 +83,8 @@ do_consider_switching_compat_mode(Config, CurrentVersion) ->
                 AnotherVersion ->
                     ns_config:set(cluster_compat_version, AnotherVersion),
                     try
+                        %% NOTE: this sync through ns_config_events
+                        %% also ensures that ns_config_ets_dup sees new value
                         ns_config:sync_announcements(),
                         case ns_config_rep:synchronize_remote(NodesWanted) of
                             ok -> ok;
