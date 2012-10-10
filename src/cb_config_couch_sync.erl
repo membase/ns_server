@@ -34,6 +34,7 @@ start_link() ->
     gen_server:start({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
+    consider_changing_db_path(),
     ns_pubsub:subscribe_link(ns_config_events, fun handle_config_event/1),
     announce_notable_keys(),
     {ok, #state{}}.
@@ -141,3 +142,25 @@ announce_notable_keys() ->
                       ok
               end
       end, KVList).
+
+consider_changing_db_path() ->
+    {value, MCDPList} = ns_config:search({node, node(), memcached}),
+    case proplists:get_value(dbdir, MCDPList) of
+        undefined ->
+            ok;
+        SomeValue ->
+            consider_changing_db_path_with_dbdir(filename:absname(SomeValue), MCDPList)
+    end.
+
+consider_changing_db_path_with_dbdir(NSConfigDBDir, MCDPList) ->
+    DbPath = couch_config:get("couchdb", "database_dir"),
+    IxPath = couch_config:get("couchdb", "view_index_dir", DbPath),
+    case NSConfigDBDir =:= DbPath andalso NSConfigDBDir =:= IxPath of
+        true ->
+            ok;
+        _ ->
+            set_db_and_ix_paths(NSConfigDBDir, NSConfigDBDir),
+            cb_couch_sup:restart_couch()
+    end,
+    NewMCDPList = lists:keydelete(dbdir, 1, MCDPList),
+    ns_config:set({node, node(), memcached}, NewMCDPList).
