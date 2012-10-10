@@ -190,18 +190,34 @@ var ReplicationsSection = {
 
       var replications = v.need(maybeXDCRTaskCell);
       var clusters = v.need(ReplicationsModel.remoteClustersListCell);
+      var rawClusters = v.need(ReplicationsModel.remoteClustersAllListCell);
 
       return _.map(replications, function (replication) {
-        var name = _.filter(clusters, function (cluster) {
-          return cluster.uuid === replication.id.split("/")[0];
+        var clusterUUID = replication.id.split("/")[0];
+        var cluster = _.filter(clusters, function (cluster) {
+          return cluster.uuid === clusterUUID;
         })[0];
 
-        name = name ? name.name : 'unknown';
+        var name;
+        if (cluster) {
+          name = '"' + cluster.name + '"';
+        } else {
+          cluster = _.filter(rawClusters, function (cluster) {
+            return cluster.uuid === clusterUUID;
+          })[0];
+          if (cluster) {
+            // if we found cluster among rawClusters we assume it was
+            // deleted
+            name = 'at ' + cluster.hostname;
+          } else {
+            name = '"unknown"';
+          }
+        }
 
         return {
           id: replication.id,
           bucket: replication.source,
-          to: 'bucket "' + replication.target.split('buckets/')[1] + '" on cluster "' + name + '"',
+          to: 'bucket "' + replication.target.split('buckets/')[1] + '" on cluster ' + name,
           status: replication.status == 'running' ? 'Replicating' : 'Starting Up',
           when: replication.continuous ? "on change" : "one time sync",
           errors: replication.errors
