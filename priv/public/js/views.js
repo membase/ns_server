@@ -1237,11 +1237,23 @@ var ViewsSection = {
           }
         });
 
+        _.each(ddocs, function (doc, i) {
+            ddocs[i].isEmpty = _.isEmpty(doc.json.spatial) && _.isEmpty(doc.json.views);
+        });
+
         renderTemplate('views_list', {
           rows: ddocs,
           bucketName: bucketName,
           loading: false
         }, container);
+
+        $('#development_views_list_container .list_button').click(function (e) {
+          if ($(this).hasClass('disabled')) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+          }
+        });
+
       });
     }
 
