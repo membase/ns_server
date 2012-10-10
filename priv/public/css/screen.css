@@ -397,10 +397,10 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 #bucket_list_container, #memcached_bucket_list_container {border-left:1px solid #c8ccce; border-bottom:1px solid #c8ccce;}
 #bucket_list_container .hit_ratio {display:none}
 #memcached_bucket_list_container .disk_fetch {display:none}
-#bucket_list_container .list .couchbase td {padding-right:0; padding-left: 0;}
-#bucket_list_container .list td.bucket_name  {line-height: 30px;padding-left: 35px;}
-#bucket_list_container .list td.last  {padding-right: 10px;}
-#bucket_list_container .settings-placeholder {line-height: 30px;}
+#buckets .list .couchbase td {padding-right:0; padding-left: 0;}
+#buckets .list td.bucket_name  {line-height: 30px;padding-left: 35px;}
+#buckets .list td.last  {padding-right: 10px;}
+#buckets .settings-placeholder {line-height: 30px;}
 
 #get_started {display:none;}
 
