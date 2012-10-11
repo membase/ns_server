@@ -38,6 +38,9 @@ do_db_req(#httpd{path_parts=[<<"_replicator">>|_]}=Req, Fun) ->
     couch_db_frontend:do_db_req(Req, Fun);
 do_db_req(#httpd{mochi_req=MochiReq, user_ctx=UserCtx,
                  path_parts=[DbName | RestPathParts]} = Req, Fun) ->
+    %% it'll just crash if somebody wants to access CAPI in older
+    %% compat mode
+    true = cluster_compat_mode:is_cluster_20(),
 
     % check auth here
     [BucketName | AfterSlash] = binary:split(DbName, <<"/">>),
