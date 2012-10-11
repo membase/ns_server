@@ -99,10 +99,17 @@ wait_backfill_determination(Replicators) ->
 wait_checkpoint_persisted_many(Bucket, Parent, FewNodes, VBucket, WaitedCheckpointId) ->
     spawn_and_wait(
       fun () ->
-              misc:parallel_map(
-                fun (Node) ->
-                        janitor_agent:wait_checkpoint_persisted(Bucket, Parent, Node, VBucket, WaitedCheckpointId)
-                end, FewNodes, infinity)
+              RVs = misc:parallel_map(
+                      fun (Node) ->
+                              {Node, (catch janitor_agent:wait_checkpoint_persisted(Bucket, Parent, Node, VBucket, WaitedCheckpointId))}
+                      end, FewNodes, infinity),
+              NonOks = [P || {_N, V} = P <- RVs,
+                             V =/= ok],
+              case NonOks =:= [] of
+                  true -> ok;
+                  false ->
+                      erlang:error({wait_checkpoint_persisted_failed, Bucket, VBucket, WaitedCheckpointId, NonOks})
+              end
       end).
 
 mover_inner(Parent, Node, Bucket, VBucket,
