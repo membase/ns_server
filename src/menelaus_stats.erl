@@ -540,9 +540,12 @@ computed_stats_lazy_proplist() ->
                                   end
                           end,
 
-    Fragmentation = fun(_Data, 0) -> 0;
-                       (0, _) -> 100;
-                       (Data, Disk) -> round((Disk - Data) / Disk * 100)
+    Fragmentation = fun (Data, Disk) ->
+                            try
+                                round((Disk - Data) / Disk * 100)
+                            catch error:badarith ->
+                                    0
+                            end
                     end,
 
     DocsFragmentation = Z2(couch_docs_data_size, couch_docs_disk_size,
