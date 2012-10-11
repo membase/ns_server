@@ -1047,7 +1047,8 @@ get_vbucket_open_checkpoint(Nodes, Bucket, VBucketId) ->
          {N, Value}
      end || N <- Nodes].
 
--spec get_vbucket_checkpoint_ids(bucket_name(), vbucket_id()) -> {ok, {checkpoint_id(), checkpoint_id()}}.
+-spec get_vbucket_checkpoint_ids(bucket_name(), vbucket_id()) ->
+                                        {ok, {undefined | checkpoint_id(), undefined | checkpoint_id()}}.
 get_vbucket_checkpoint_ids(Bucket, VBucketId) ->
     do_call(server(Bucket), {get_vbucket_checkpoint_ids, VBucketId}, ?TIMEOUT).
 

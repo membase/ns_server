@@ -636,6 +636,8 @@ handle_call(initiate_indexing, From, #state{bucket_name = Bucket} = State) ->
 handle_call({create_new_checkpoint, VBucket},
             _From,
             #state{bucket_name = Bucket} = State) ->
+    %% NOTE: this happens on current master of vbucket thus undefined
+    %% persisted checkpoint id should not be possible here
     {ok, {PersistedCheckpointId, _}} = ns_memcached:get_vbucket_checkpoint_ids(Bucket, VBucket),
     {ok, OpenCheckpointId, _LastPersistedCkpt} = ns_memcached:create_new_checkpoint(Bucket, VBucket),
     {reply, {PersistedCheckpointId, OpenCheckpointId}, State};
@@ -652,6 +654,8 @@ handle_call({wait_checkpoint_persisted, VBucket, CheckpointId},
 handle_call({get_replication_persistence_checkpoint_id, VBucket},
             _From,
             #state{bucket_name = Bucket} = State) ->
+    %% NOTE: this happens on current master of vbucket thus undefined
+    %% persisted checkpoint id should not be possible here
     {ok, {PersistedCheckpointId, OpenCheckpointId}} = ns_memcached:get_vbucket_checkpoint_ids(Bucket, VBucket),
     case PersistedCheckpointId + 1 < OpenCheckpointId of
         true ->
@@ -740,7 +744,15 @@ spawn_rebalance_subprocess(#state{rebalance_subprocesses = Subprocesses} = State
     State#state{rebalance_subprocesses = [{From, Pid} | Subprocesses]}.
 
 do_wait_checkpoint_persisted(Bucket, VBucket, WaitedCheckpointId, TriesCounter) ->
-    {ok, {CheckpointId, _}} = ns_memcached:get_vbucket_checkpoint_ids(Bucket, VBucket),
+    {ok, {CheckpointId0, _}} = ns_memcached:get_vbucket_checkpoint_ids(Bucket, VBucket),
+    CheckpointId = case CheckpointId0 of
+                       undefined ->
+                           %% if checkpoint does not exist (yet) we
+                           %% assume it's 0 (but use -1 for better
+                           %% diagnostics)
+                           -1;
+                       _ -> CheckpointId0
+                   end,
     case CheckpointId < WaitedCheckpointId of
         true ->
             ?log_debug("Waiting persisted checkpoint ~p on ~p, now ~p", [WaitedCheckpointId, VBucket, CheckpointId]),
