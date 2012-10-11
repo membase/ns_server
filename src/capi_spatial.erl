@@ -178,15 +178,8 @@ list_index_files(BucketName) ->
 % Get the signatures of all Design Documents of a certain database
 -spec get_signatures(Db::#db{}) -> [string()].
 get_signatures(Db) ->
-    {ok, DesignDocs} = couch_db:get_design_docs(Db),
-    GroupIds = [DD#doc.id || DD <- DesignDocs, DD#doc.deleted == false],
-
-    lists:map(
-      fun(GroupId) ->
-              {ok, Info} = couch_spatial:get_group_info(Db#db.name, GroupId),
-              ?b2l(couch_util:get_value(signature, Info))
-      end,
-      GroupIds).
+    {ok, DesignDocs} = couch_db:get_design_docs(Db, no_deletes),
+    lists:map(fun couch_spatial_group:get_signature/1, DesignDocs).
 
 % Deletes all files that doesn't match any signature
 -spec delete_unused_files(FileList::[string()], Sigs::[string()]) -> ok.
@@ -195,13 +188,26 @@ delete_unused_files(FileList, Sigs) ->
     {ok, Mp} = re:compile("(" ++ string:join(Sigs, "|") ++ ")"),
 
     % filter out the ones in use
-    DeleteFiles = [FilePath
-           || FilePath <- FileList,
-              re:run(FilePath, Mp, [{capture, none}]) =:= nomatch],
-
+    DeleteFiles = case Sigs of
+                      [] ->
+                          FileList;
+                      _ ->
+                          [FilePath || FilePath <- FileList,
+                                       re:run(FilePath, Mp,
+                                              [{capture, none}]) =:= nomatch]
+                  end,
+    % delete unused files
+    case DeleteFiles of
+        [] ->
+            ok;
+        _ ->
+            ?LOG_INFO("(capi_spatial) Deleting unused (old) spatial index files:~n~n~s",
+                      [string:join(DeleteFiles, "\n")])
+    end,
     RootDir = couch_config:get("couchdb", "view_index_dir"),
-    [couch_file:delete(RootDir, File, false) || File <- DeleteFiles],
-    ok.
+    lists:foreach(
+      fun(File) -> couch_file:delete(RootDir, File, false) end,
+      DeleteFiles).
 
 
 handle_compact_req(#httpd{method='POST',
