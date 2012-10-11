@@ -1406,3 +1406,26 @@ $(function () {
     $('#edit-internal-settings-link').show();
   }
 });
+
+(function () {
+  var lastCompatMode;
+
+  DAL.cells.runningInCompatMode.subscribeValue(function (value) {
+    if (value === undefined) {
+      return;
+    }
+    lastCompatMode = value;
+    updateVisibleStuff();
+  });
+
+  function updateVisibleStuff() {
+    $('.only-when-20')[lastCompatMode ? 'hide' : 'show']();
+    $('.only-when-below-20')[lastCompatMode ? 'show' : 'hide']();
+  }
+
+  $(window).bind('template:rendered', function () {
+    if (lastCompatMode !== undefined) {
+      updateVisibleStuff();
+    }
+  });
+})();

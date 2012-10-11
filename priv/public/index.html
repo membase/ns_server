@@ -18,6 +18,7 @@
     <div class="page-header">
       <div class="cnt_holder main_holder">
         <div class="topper_nav">
+          <span class="only-when-below-20" style="display:none;">NOTE: need all 2.0 nodes to enable 2.0-only features<b>&bull;</b></span>
           <span id="edit-internal-settings-link" style="display:none;"><a onclick="runInternalSettingsDialog();">Edit internal settings</a> <b>&bull;</b></span>
           <a id="switch_support_docs" href="http://docs.couchbase.org/couchbase-manual-2.0/couchbase-getting-started.html" target="cbdocs">Documentation</a>
           <b>&bull;</b> <a id="switch_support_forums" href="http://www.couchbase.org/forums/couchbase/couchbase-server-20-developer-preview" target="cbforums">Support Forums</a>
@@ -39,8 +40,8 @@
           <li class="line"><a id="switch_overview" href="#visitSec=overview">Cluster Overview</a></li>
           <li class="line"><a id="switch_servers" href="#visitSec=servers">Server Nodes</a></li>
           <li class="line"><a id="switch_buckets" href="#visitSec=buckets">Data Buckets</a></li>
-          <li class="line"><a id="switch_views" href="#visitSec=views">Views</a></li>
-          <li class="line"><a id="switch_replications" href="#visitSec=replications">XDCR</a></li>
+          <li class="line only-when-20"><a id="switch_views" href="#visitSec=views">Views</a></li>
+          <li class="line only-when-20"><a id="switch_replications" href="#visitSec=replications">XDCR</a></li>
           <li class="line"><a id="switch_log" href="#visitSec=log">Log</a></li>
           <li class="line" id="nav_settings_container"><a href="#visitSec=settings" id="switch_settings">Settings</a></li>
         </ul>
@@ -522,8 +523,8 @@
                 </td>
                 <td colspan="4" class="last">
                   {% if (this.bucketType == 'membase') { %}
-                    <a class="list_button disable-if-stale" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>
-                    <a class="list_button" href="#sec=documents&bucketName={%= encodeURIComponent(this.name) %}&documentsPageNumber=0"><span>Documents</span></a>{% } %}
+                    <a class="list_button disable-if-stale only-when-20" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>
+                    <a class="list_button only-when-20" href="#sec=documents&bucketName={%= encodeURIComponent(this.name) %}&documentsPageNumber=0"><span>Documents</span></a>{% } %}
                 </td>
               </tr>
               <tr>

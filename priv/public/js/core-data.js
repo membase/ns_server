@@ -586,6 +586,15 @@ var DAL = {
     return thisNode.couchApiBase;
   }).name("capiBaseCell");
 
+  DAL.cells.runningInCompatMode = Cell.computeEager(function (v) {
+    var details = v(DAL.cells.currentPoolDetailsCell);
+    if (!details) {
+      // when our dependent cells is unknown we keep our old value
+      return this.self.value;
+    }
+    return !v(capiBaseCell);
+  });
+
   $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
     var capiBase = capiBaseCell.value;
     if (!capiBase) {
