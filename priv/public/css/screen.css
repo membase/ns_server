@@ -703,6 +703,7 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 .servers_list ul {*margin:-1px 0 0;*position:relative;*top:1px;}
 .servers_list li {height-min:25px;display:block;padding:0 10px; *zoom:1;*margin:-2px 0 0;}
 .servers_list .server_row.server_down {background:url(../images/server_status_icons.png) 10px -157px no-repeat; background-color:#61696c;border-color:#61696c;}
+.servers_list .not_active {text-align: left;}
 
 .servers_list .server_warmup {background:url(../images/server_status_icons.png) 10px -308px no-repeat;}
 .servers_list .failed_over .list_button {display:none;}

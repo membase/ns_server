@@ -233,7 +233,7 @@
                   </div>
                   <div class="wrap">{%= h(truncateTo3Digits((s.memoryTotal - s.memoryFree) / s.memoryTotal * 100)) %}%</div>
                   <!-- {% } else { %} -->
-                  <span>N/A</span>
+                  <div class="not_active">N/A</div>
                   <!-- {% } %} -->
                 </td>
 
@@ -244,7 +244,7 @@
                   </div>
                   <div class="wrap"> {%= h(truncateTo3Digits((s.systemStats.swap_used / s.systemStats.swap_total) * 100)) %}%</div>
                   <!-- {% } else { %} -->
-                  <span>N/A</span>
+                  <div class="not_active">N/A</div>
                   <!-- {% } %} -->
                 </td>
 
@@ -255,7 +255,7 @@
                   </div>
                   <div class="wrap">{%= h(truncateTo3Digits(Math.floor(s.systemStats.cpu_utilization_rate * 100) / 100)) %}%</div>
                   <!-- {% } else { %} -->
-                  <span>N/A</span>
+                  <div class="not_active">N/A</div>
                   <!-- {% } %} -->
                 </td>
 
@@ -269,7 +269,7 @@
                 </td>
 
                 <td class="rep">
-                  {%= V.formatQuantity(s.interestingStats.curr_items || 0, '', 1000, ' ') %}/
+                  {%= V.formatQuantity(s.interestingStats.curr_items || 0, '', 1000, ' ') %}/<br>
                   {%= V.formatQuantity(s.interestingStats.vb_replica_curr_items || 0, '', 1000, ' ') %}
                 </td>
 
