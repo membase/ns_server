@@ -183,10 +183,9 @@ handle_diag(Req) ->
                         "view" -> [];
                         _ -> [{"Content-Disposition", "attachment; filename=" ++ generate_diag_filename()}]
                     end,
-    Log = proplists:get_value("log", Params, ?DEBUG_LOG_FILENAME),
     case proplists:get_value("noLogs", Params, "0") of
         "0" ->
-            do_handle_diag(Req, MaybeContDisp, Log);
+            do_handle_diag(Req, MaybeContDisp);
         _ ->
             Resp = handle_just_diag(Req, MaybeContDisp),
             Resp:write_chunk(<<>>)
@@ -257,22 +256,27 @@ continue_handling_just_diag(Resp, DiagsWithProcesses) ->
     Resp.
 
 
-do_handle_diag(Req, Extra, Log) ->
-    case ns_log_browser:log_exists(Log) of
-        true ->
-            Resp = handle_just_diag(Req, Extra),
-            LogsHeader = io_lib:format("logs_node (~s):~n"
-                                       "-------------------------------~n", [Log]),
-            Resp:write_chunk(list_to_binary(LogsHeader)),
-            handle_logs(Resp, Log);
-        false ->
-            Req:respond({404, menelaus_util:server_header(),
-                         "Requested log file not found.\r\n"})
-    end.
+do_handle_diag(Req, Extra) ->
+    Resp = handle_just_diag(Req, Extra),
 
-handle_logs(Resp, LogName) ->
+    Logs = [?DEBUG_LOG_FILENAME, ?DEFAULT_LOG_FILENAME, ?ERRORS_LOG_FILENAME,
+            ?XDCR_LOG_FILENAME, ?COUCHDB_LOG_FILENAME,
+            ?VIEWS_LOG_FILENAME, ?MAPREDUCE_ERRORS_LOG_FILENAME],
+
+    Resp1 = lists:foldl(
+              fun (Log, AccResp) ->
+                      handle_log(AccResp, Log)
+              end, Resp, Logs),
+    Resp1:write_chunk(<<"">>).
+
+handle_log(Resp, LogName) ->
+    LogsHeader = io_lib:format("logs_node (~s):~n"
+                               "-------------------------------~n", [LogName]),
+    Resp:write_chunk(list_to_binary(LogsHeader)),
     ns_log_browser:stream_logs(LogName,
-                               fun (Data) -> Resp:write_chunk(Data) end).
+                               fun (Data) -> Resp:write_chunk(Data) end),
+    Resp:write_chunk(<<"-------------------------------\n">>),
+    Resp.
 
 handle_sasl_logs(LogName, Req) ->
     case ns_log_browser:log_exists(LogName) of
@@ -280,7 +284,7 @@ handle_sasl_logs(LogName, Req) ->
             Resp = Req:ok({"text/plain; charset=utf-8",
                            menelaus_util:server_header(),
                            chunked}),
-            handle_logs(Resp, LogName);
+            handle_log(Resp, LogName);
         false ->
             Req:respond({404, menelaus_util:server_header(),
                          "Requested log file not found.\r\n"})

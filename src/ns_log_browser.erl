@@ -131,9 +131,7 @@ stream_logs(Dir, Log, Fn, ChunkSz) ->
                       ok
               end
       end,
-      Ixs),
-
-    Fn(<<"">>).
+      Ixs).
 
 stream_logs_loop(IO, ChunkSz, Fn) ->
     case file:read(IO, ChunkSz) of
