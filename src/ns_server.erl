@@ -166,9 +166,15 @@ init_logging() ->
       end,
       StdLoggers),
 
+    OverrideLoglevels = [{?COUCHDB_LOGGER, warn},
+                         {?STATS_LOGGER, warn},
+                         {?NS_DOCTOR_LOGGER, warn}],
+
     lists:foreach(
       fun (Logger) ->
-              LogLevel = get_loglevel(Logger),
+              LogLevel = proplists:get_value(Logger, OverrideLoglevels,
+                                             get_loglevel(Logger)),
+
               ok = ale:add_sink(Logger, disk_default,
                                 adjust_loglevel(LogLevel, info)),
 
@@ -188,7 +194,7 @@ init_logging() ->
     ok = ale:add_sink(?VIEWS_LOGGER, disk_views),
     ok = ale:add_sink(?MAPREDUCE_ERRORS_LOGGER, disk_mapreduce_errors),
 
-    ok = ale:add_sink(?COUCHDB_LOGGER, disk_couchdb),
+    ok = ale:add_sink(?COUCHDB_LOGGER, disk_couchdb, get_loglevel(?COUCHDB_LOGGER)),
     ok = ale:add_sink(?XDCR_LOGGER, disk_xdcr, get_loglevel(?XDCR_LOGGER)),
     ok = ale:add_sink(?XDCR_LOGGER, disk_xdcr_errors,
                       adjust_loglevel(get_loglevel(?XDCR_LOGGER), error)),
