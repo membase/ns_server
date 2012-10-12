@@ -28,17 +28,6 @@
 -include("xdc_replicator.hrl").
 -include("remote_clusters_info.hrl").
 
--record(replication, {
-    rep,                    % the basic replication settings
-    vbucket_sup,            % the supervisor for vb replicators
-    vbs = [],               % list of vb we should be replicating
-    init_throttle,          % limits # of concurrent vb replicators initializing
-    work_throttle,          % limits # of concurrent vb replicators working
-    vb_rep_dict = dict:new(),% contains state and stats for each replicator
-    error_reports = ringbuffer:new(10) % contains most recent errors
-    }).
-
-
 start_link(Rep) ->
     gen_server:start_link(?MODULE, [Rep], []).
 
@@ -84,8 +73,8 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
 
     {ok, _} = couch_db_update_notifier:start_link(NotifyFun),
     ?xdcr_debug("couch_db update notifier started", []),
-    {ok, InitThrottle} = concurrency_throttle:start_link(MaxConcurrentReps),
-    {ok, WorkThrottle} = concurrency_throttle:start_link(MaxConcurrentReps),
+    {ok, InitThrottle} = concurrency_throttle:start_link(MaxConcurrentReps, self()),
+    {ok, WorkThrottle} = concurrency_throttle:start_link(MaxConcurrentReps, self()),
     {ok, Sup} = xdc_vbucket_rep_sup:start_link([]),
     case ns_bucket:get_bucket(?b2l(SrcBucketBinary)) of
         {ok, SrcBucketConfig} ->
@@ -104,7 +93,9 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
     end,
     {ok, RepState}.
 
-handle_call(stats, _From, #replication{vb_rep_dict = Dict} = State) ->
+handle_call(stats, _From, #replication{vb_rep_dict = Dict,
+                                       num_active  = ActiveVbReps,
+                                       num_waiting = WaitingVbReps} = State) ->
     % sum all the vb stats and collect list of vb replicating
     Stats = dict:fold(
                     fun(_,
@@ -116,11 +107,13 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict} = State) ->
                                        size_changes_queue = SizeQueue,
                                        docs_checked = Checked,
                                        docs_written = Written,
+                                       data_replicated = DataRepd,
                                        total_work_time = WorkTime,
                                        total_commit_time = CommitTime},
                         {WorkLeftAcc,
                          CheckedAcc,
                          WrittenAcc,
+                         DataRepdAcc,
                          WorkTimeAcc,
                          CommitTimeAcc,
                          NumCkptAcc,
@@ -130,6 +123,7 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict} = State) ->
                                 {WorkLeftAcc + Left,
                                  CheckedAcc + Checked,
                                  WrittenAcc + Written,
+                                 DataRepdAcc + DataRepd,
                                  WorkTimeAcc + WorkTime,
                                  CommitTimeAcc + CommitTime,
                                  NumCkptAcc + NumCheckpoint,
@@ -140,12 +134,18 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict} = State) ->
                                  true ->
                                      VbReplicatingAcc
                                  end}
-                        end, {0, 0, 0, 0, 0, 0, 0, 0, []}, Dict),
-    {Left1, Checked1, Written1, WorkTime1, CommitTime1, NumCheckpoints1, DocsChangesQueue1,
+                        end, {0, 0, 0, 0,
+                              0, 0, 0, 0,
+                              0, []}, Dict),
+    {Left1, Checked1, Written1, DataRepd1,
+     WorkTime1, CommitTime1, NumCheckpoints1, DocsChangesQueue1,
      SizeChangesQueue1, VbsReplicating1} = Stats,
     Props = [{changes_left, Left1},
              {docs_checked, Checked1},
              {docs_written, Written1},
+             {data_replicated, DataRepd1},
+             {active_vbreps, ActiveVbReps},
+             {waiting_vbreps, WaitingVbReps},
              {time_working, WorkTime1 div 1000},
              {time_committing, CommitTime1 div 1000},
              {num_checkpoints, NumCheckpoints1},
@@ -194,6 +194,11 @@ handle_info({set_vb_rep_status, #rep_vb_status{vb = Vb} = VbState},
             #replication{vb_rep_dict = Dict} = State) ->
     Dict2 = dict:store(Vb, VbState, Dict),
     {noreply, State#replication{vb_rep_dict = Dict2}};
+
+handle_info({set_throttle_status, {NumActiveReps, NumWaitingReps}},
+            State) ->
+    {noreply, State#replication{num_active = NumActiveReps,
+                                num_waiting = NumWaitingReps}};
 
 handle_info({buckets, Buckets0},
             #replication{rep = #rep{source = SrcBucket},

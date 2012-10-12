@@ -42,32 +42,36 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager) ->
         {changes, ChangesManager, Changes, ReportSeq} ->
             IdRevs = find_missing(Changes, Target),
             NumChecked = length(Changes),
-            local_process_batch(
-                      IdRevs, Cp, Source, Target, #batch{}),
-            ok = gen_server:call(Cp, {report_seq_done, ReportSeq, NumChecked, length(IdRevs)}, infinity),
+            {ok, DataRepd} = local_process_batch(
+                               IdRevs, Cp, Source, Target, #batch{}),
+            ok = gen_server:call(Cp, {report_seq_done, ReportSeq, NumChecked, length(IdRevs), DataRepd}, infinity),
             ?xdcr_debug("Worker reported completion of seq ~p", [ReportSeq]),
             queue_fetch_loop(Source, Target, Cp, ChangesManager)
     end.
 
 local_process_batch([], _Cp, _Src, _Tgt, #batch{docs = []}) ->
-    ok;
+    {ok, 0};
 local_process_batch([], Cp, #db{} = Source, #httpdb{} = Target,
                     #batch{docs = Docs, size = Size}) ->
     ?xdcr_debug("worker process flushing a batch docs of total size ~p bytes",
                 [Size]),
     ok = flush_docs(Target, Docs),
-    local_process_batch([], Cp, Source, Target, #batch{});
+    {ok, DataRepd1} = local_process_batch([], Cp, Source, Target, #batch{}),
+    {ok, DataRepd1 + Size};
+
 local_process_batch([IdRevs | Rest], Cp, #db{} = Source,
                     #httpdb{} = Target, Batch) ->
     {ok, {_, DocList, _}} = fetch_doc(
                                       Source, IdRevs, fun local_doc_handler/2,
                                       {Target, [], Cp}),
-    Batch2 = lists:foldl(
-                         fun(Doc, Batch0) ->
-                                 maybe_flush_docs(Target, Batch0, Doc)
+    {Batch2, DataFlushed} = lists:foldl(
+                         fun(Doc, {Batch0, DataFlushed1}) ->
+                                 maybe_flush_docs(Target, Batch0, Doc, DataFlushed1)
                          end,
-                         Batch, DocList),
-    local_process_batch(Rest, Cp, Source, Target, Batch2).
+                         {Batch, 0}, DocList),
+    {ok, DataFlushed2} = local_process_batch(Rest, Cp, Source, Target, Batch2),
+    %% return total data flushed
+    {ok, DataFlushed + DataFlushed2}.
 
 fetch_doc(Source, {Id, _Rev}, DocHandler, Acc) ->
     couch_api_wrap:open_doc(
@@ -79,7 +83,7 @@ local_doc_handler({ok, Doc}, {Target, DocList, Cp}) ->
 local_doc_handler(_, Acc) ->
     {ok, Acc}.
 
-maybe_flush_docs(#httpdb{} = Target, Batch, Doc) ->
+maybe_flush_docs(#httpdb{} = Target, Batch, Doc, DataFlushed) ->
     #batch{docs = DocAcc, size = SizeAcc} = Batch,
     JsonDoc = couch_doc:to_json_base64(Doc),
 
@@ -93,9 +97,11 @@ maybe_flush_docs(#httpdb{} = Target, Batch, Doc) ->
             ?xdcr_debug("Worker flushing doc batch of size ~p bytes "
                         "(batch limit: ~p)", [SizeAcc2, DocBatchSizeByte]),
             flush_docs(Target, [JsonDoc | DocAcc]),
-            #batch{};
+            %% data flushed, return empty batch and size of data flushed
+            {#batch{}, SizeAcc2 + DataFlushed};
         SizeAcc2 ->
-            #batch{docs = [JsonDoc | DocAcc], size = SizeAcc2}
+            %% no data flushed in this turn, return the new batch
+            {#batch{docs = [JsonDoc | DocAcc], size = SizeAcc2}, DataFlushed}
     end.
 
 flush_docs(_Target, []) ->

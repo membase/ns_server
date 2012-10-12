@@ -118,13 +118,14 @@ handle_info(start_replication, #rep_state{throttle = Throttle,
     ?xdcr_debug("get start-replication token for vb ~p from throttle (pid: ~p)", [Vb, Throttle]),
     {noreply, start_replication(St#rep_state{status = VbStatus#rep_vb_status{status = replicating}})}.
 
-handle_call({report_seq_done, Seq, NumChecked, NumWritten}, From,
+handle_call({report_seq_done, Seq, NumChecked, NumWritten, DataReplicated}, From,
             #rep_state{seqs_in_progress = SeqsInProgress,
                        highest_seq_done = HighestDone,
                        current_through_seq = ThroughSeq,
                        status = #rep_vb_status{num_changes_left = ChangesLeft,
                                                docs_checked = TotalChecked,
                                                docs_written = TotalWritten,
+                                               data_replicated = TotalDataReplicated,
                                                vb = Vb} = VbStatus} = State) ->
     gen_server:reply(From, ok),
     {NewThroughSeq0, NewSeqsInProgress} = case SeqsInProgress of
@@ -162,6 +163,7 @@ handle_call({report_seq_done, Seq, NumChecked, NumWritten}, From,
                                                  docs_changes_queue = ChangesQueueDocs,
                                                  size_changes_queue = ChangesQueueSize,
                                                  num_checkpoints = NumCkpts,
+                                                 data_replicated = TotalDataReplicated + DataReplicated,
                                                  docs_checked = TotalChecked + NumChecked,
                                                  docs_written = TotalWritten + NumWritten}
                 },
@@ -202,18 +204,19 @@ handle_call({worker_done, Pid}, _From,
             ChangesLeft = VbStatus2#rep_vb_status.num_changes_left,
             TotalChecked = VbStatus2#rep_vb_status.docs_checked,
             TotalWritten = VbStatus2#rep_vb_status.docs_written,
+            TotalDataRepd = VbStatus2#rep_vb_status.data_replicated,
             TotalCommitTime = VbStatus2#rep_vb_status.total_commit_time,
             NumCkpts = State2#rep_state.num_checkpoints,
             LastCkptTime = State2#rep_state.last_checkpoint_time,
             StartWorkTime = State2#rep_state.start_work_time,
             ?xdcr_debug("Replicator of vbucket ~p done, return token to throttle: ~p~n"
                         "(highest seq done is ~p, number of changes left: ~p~n"
-                        "total docs checked: ~p, total docs written: ~p~n"
+                        "total docs checked: ~p, total docs written: ~p (total data repd: ~p)~n"
                         "total working time (ms): ~p, total commit time (ms): ~p~n"
                         "total number of ckpts: ~p, last ckpt time: ~p~n"
                         "start work time: ~p, work time in this turn (ms): ~p).",
                         [Vb, Throttle, HighestDone, ChangesLeft, TotalChecked, TotalWritten,
-                         TotalWorkTime, TotalCommitTime, NumCkpts,
+                         TotalDataRepd, TotalWorkTime, TotalCommitTime, NumCkpts,
                          calendar:now_to_local_time(LastCkptTime),
                          calendar:now_to_local_time(StartWorkTime),
                          WorkTime
@@ -360,6 +363,7 @@ init_replication_state(#init_state{rep = Rep,
     {StartSeq0,
      DocsChecked,
      DocsWritten,
+     DataReplicated,
      History} = compare_replication_logs(SourceLog, TargetLog),
     StartSeq = get_value(since_seq, Options, StartSeq0),
     #doc{body={CheckpointHistory}} = SourceLog,
@@ -393,6 +397,7 @@ init_replication_state(#init_state{rep = Rep,
       session_id = couch_uuids:random(),
       status = #rep_vb_status{vb = Vb,
                               pid = self(),
+                              data_replicated = DataReplicated,
                               docs_checked = DocsChecked,
                               docs_written = DocsWritten},
       source_seq = get_value(<<"update_seq">>, SourceInfo, ?LOWEST_SEQ)
@@ -593,6 +598,7 @@ compare_replication_logs(SrcDoc, TgtDoc) ->
             {OldSeqNum,
              get_value(<<"docs_checked">>, RepRecProps, 0),
              get_value(<<"docs_written">>, RepRecProps, 0),
+             get_value(<<"data_replicated">>, RepRecProps, 0),
              OldHistory};
         false ->
             SourceHistory = get_value(<<"history">>, RepRecProps, []),
@@ -606,7 +612,7 @@ compare_replication_logs(SrcDoc, TgtDoc) ->
 
 compare_rep_history(S, T) when S =:= [] orelse T =:= [] ->
     ?xdcr_info("no common ancestry -- performing full replication", []),
-    {?LOWEST_SEQ, 0, 0, []};
+    {?LOWEST_SEQ, 0, 0, 0, []};
 
 compare_rep_history([{S} | SourceRest], [{T} | TargetRest] = Target) ->
     SourceId = get_value(<<"session_id">>, S),
@@ -618,6 +624,7 @@ compare_rep_history([{S} | SourceRest], [{T} | TargetRest] = Target) ->
             {RecordSeqNum,
              get_value(<<"docs_checked">>, S, 0),
              get_value(<<"docs_written">>, S, 0),
+             get_value(<<"data_replicated">>, S, 0),
              SourceRest};
         false ->
             TargetId = get_value(<<"session_id">>, T),
@@ -629,6 +636,7 @@ compare_rep_history([{S} | SourceRest], [{T} | TargetRest] = Target) ->
                     {RecordSeqNum,
                      get_value(<<"docs_checked">>, T, 0),
                      get_value(<<"docs_written">>, T, 0),
+                     get_value(<<"data_replicated">>, T, 0),
                      TargetRest};
                 false ->
                     compare_rep_history(SourceRest, TargetRest)

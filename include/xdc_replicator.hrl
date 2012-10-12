@@ -34,6 +34,8 @@
 -define(MAX_CONCURRENT_REPS_PER_DOC, 32).
 
 %% data structures
+
+%% replication settings used by bucket level and vbucket level replicators
 -record(rep, {
           id,
           source,
@@ -41,14 +43,7 @@
           options
          }).
 
--record(rep_state_record, {
-          rep,
-          starting,
-          retries_left,
-          max_retries
-         }).
-
-
+%% vbucket replication status and statistics, used by xdc_vbucket_rep
 -record(rep_vb_status, {
           vb,
           pid,
@@ -60,14 +55,38 @@
           size_changes_queue = 0,
           %% num of checkpoints issued
           num_checkpoints = 0,
+          %% bytes of data replicated
+          data_replicated = 0,
+          %% average latency of replication
+          rep_latency = 0,
           docs_checked = 0,
           docs_written = 0,
           total_work_time = 0, % in MS
           total_commit_time = 0 % in MS
  }).
 
+%% batch of documents usd by vb replicator worker process
+-record(batch, {
+          docs = [],
+          size = 0
+         }).
+
+%% bucket level replication state used by module xdc_replication
+-record(replication, {
+          rep = #rep{},                    % the basic replication settings
+          vbucket_sup,                     % the supervisor for vb replicators
+          vbs = [],                        % list of vb we should be replicating
+          init_throttle,                   % limits # of concurrent vb replicators initializing
+          work_throttle,                   % limits # of concurrent vb replicators working
+          num_active = 0,                  % number of active replicators
+          num_waiting = 0,                 % number of waiting replicators
+          vb_rep_dict = dict:new(),        % contains state and stats for each replicator
+          error_reports = ringbuffer:new(10) % contains most recent errors
+         }).
+
+%% vbucket level replication state used by module xdc_vbucket_rep
 -record(rep_state, {
-          rep_details,
+          rep_details = #rep{},
           status = #rep_vb_status{},
           throttle,
           parent,
@@ -100,11 +119,7 @@
           source_seq = nil
          }).
 
--record(batch, {
-          docs = [],
-          size = 0
-         }).
-
+%% vbucket replicator worker process state used by xdc_vbucket_rep_worker
 -record(rep_worker_state, {
           cp,
           loop,
@@ -120,9 +135,10 @@
           batch = #batch{}
          }).
 
-
-
+%% concurrency throttle state used by module concurrency_throttle
 -record(concurrency_throttle_state, {
+          %% parent process creating the throttle server
+          parent,
           %% token counter
           count,
           %% table of waiting requests to be scheduled

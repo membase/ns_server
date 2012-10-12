@@ -66,7 +66,8 @@ do_checkpoint(State) ->
                session_id = SessionId,
                num_checkpoints = NumCkpts,
                status = #rep_vb_status{docs_checked = Checked,
-                                     docs_written = Written}
+                                       docs_written = Written,
+                                       data_replicated = DataRepd}
               } = State,
     case commit_to_both(Source, Target) of
         {source_error, Reason} ->
@@ -88,7 +89,8 @@ do_checkpoint(State) ->
                                 {<<"end_last_seq">>, NewSeq},
                                 {<<"recorded_seq">>, NewSeq},
                                 {<<"docs_checked">>, Checked},
-                                {<<"docs_written">>, Written}
+                                {<<"docs_written">>, Written},
+                                {<<"data_replicated">>, DataRepd}
                                ]},
             BaseHistory = [
                            {<<"session_id">>, SessionId},
@@ -96,7 +98,8 @@ do_checkpoint(State) ->
                            {<<"start_time">>, StartTime},
                            {<<"end_time">>, EndTime},
                            {<<"docs_checked">>, Checked},
-                           {<<"docs_written">>, Written}
+                           {<<"docs_written">>, Written},
+                           {<<"data_replicated">>, DataRepd}
                          ],
             %% limit history to 50 entries
             NewRepHistory = {

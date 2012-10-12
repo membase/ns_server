@@ -30,13 +30,13 @@
 
 -export([send_back_when_can_go/2, send_back_when_can_go/3, is_done/1]).
 
--export([start_link/1, init/1, handle_call/3, handle_info/2, handle_cast/2]).
+-export([start_link/2, init/1, handle_call/3, handle_info/2, handle_cast/2]).
 -export([code_change/3, terminate/2]).
 
 -include("xdc_replicator.hrl").
 
-start_link(MaxConcurrency) ->
-    {ok, Pid} = gen_server:start_link(?MODULE, MaxConcurrency, []),
+start_link(MaxConcurrency, Parent) ->
+    {ok, Pid} = gen_server:start_link(?MODULE, {MaxConcurrency, Parent}, []),
     ?xdcr_debug("concurrency throttle started: ~p", [Pid]),
     {ok, Pid}.
 
@@ -49,14 +49,15 @@ send_back_when_can_go(Server, LoadKey, Signal) ->
 is_done(Server) ->
     gen_server:call(Server, done, infinity).
 
-init(Count) ->
+init({Count, Parent}) ->
     ?xdcr_debug("init concurrent throttle process, pid: ~p, "
                 "# of available token: ~p", [self(), Count]),
     WaitingPool = dict:new(),
     ActivePool = dict:new(),
     TargetLoad = dict:new(),
     MonitorDict = dict:new(),
-    {ok, #concurrency_throttle_state{count = Count,
+    {ok, #concurrency_throttle_state{parent = Parent,
+                                     count = Count,
                                      waiting_pool = WaitingPool,
                                      active_pool = ActivePool,
                                      target_load = TargetLoad,
@@ -85,7 +86,7 @@ handle_call({send_signal, {TargetNode, Signal}}, {Pid, _Tag},
                 "into waiting pool (active reps: ~p, waiting reps: ~p)",
                 [Pid, Signal, TargetNode, dict:size(ActivePool), dict:size(NewWaitingPool)]),
 
-    {reply, ok, NewState};
+    {reply, ok, update_status_to_parent(NewState)};
 
 handle_call({send_signal, {TargetNode, Signal}}, {Pid, _Tag}, State) ->
 
@@ -114,11 +115,13 @@ handle_call({send_signal, {TargetNode, Signal}}, {Pid, _Tag}, State) ->
     ?xdcr_debug("grant one token to rep (pid: ~p, targetnode: ~p), available tokens: ~p",
                 [Pid, TargetNode, NewCount]),
 
-    {reply, ok, State#concurrency_throttle_state{
+    NewState = State#concurrency_throttle_state{
                   count = NewCount,
                   monitor_dict = NewMonDict,
                   target_load = NewTargetLoad,
-                  active_pool = NewActivePool}};
+                  active_pool = NewActivePool},
+
+    {reply, ok, update_status_to_parent(NewState)};
 
 handle_call(done, {Pid, _Tag},
             #concurrency_throttle_state{monitor_dict = MonDict} = State) ->
@@ -126,7 +129,7 @@ handle_call(done, {Pid, _Tag},
     true = erlang:demonitor(dict:fetch(Pid, MonDict), [flush]),
     NewState = clean_concurr_throttle_state(Pid, normal, State),
     State2 = signal_waiting(NewState),
-    {reply, ok, State2}.
+    {reply, ok, update_status_to_parent(State2)}.
 
 handle_cast(Msg, State) ->
     {stop, {error, {unexpected_cast, Msg}}, State}.
@@ -170,12 +173,13 @@ signal_waiting(#concurrency_throttle_state{count = Count,
                         [WaitingPid, TargetNode, dict:size(NewActivePool), dict:size(NewWaitingPool)]),
 
             WaitingPid ! Signal,
-            State#concurrency_throttle_state{
-              count = Count - 1,
-              monitor_dict = dict:store(WaitingPid, MonRef, MonDict),
-              active_pool = NewActivePool,
-              waiting_pool = NewWaitingPool,
-              target_load = NewTargetLoad}
+            NewState = State#concurrency_throttle_state{
+                         count = Count - 1,
+                         monitor_dict = dict:store(WaitingPid, MonRef, MonDict),
+                         active_pool = NewActivePool,
+                         waiting_pool = NewWaitingPool,
+                         target_load = NewTargetLoad},
+            update_status_to_parent(NewState)
     end.
 
 
@@ -251,3 +255,12 @@ clean_concurr_throttle_state(Pid, Reason, #concurrency_throttle_state{
                          dict:size(NewActivePool), dict:size(WaitingPool)])
     end,
     NewState.
+
+update_status_to_parent(#concurrency_throttle_state{
+                         parent = Parent,
+                         waiting_pool = WaitingPool,
+                         active_pool = ActivePool} = State) ->
+    NumActive = dict:size(ActivePool),
+    NumWaiting = dict:size(WaitingPool),
+    Parent ! {set_throttle_status, {NumActive, NumWaiting}},
+    State.
