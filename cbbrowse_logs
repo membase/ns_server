@@ -18,7 +18,7 @@ then
 fi
 
 REPORT_DIR="$COUCHBASE_TOP/var/lib/couchbase/logs"
-if [ "$(ls "$REPORT_DIR")" == "" ]
+if [ "x$(ls "$REPORT_DIR")" = "x" ]
 then
     # If the usual logs dir is empty, try the usual OSX logs location...
     REPORT_DIR=~/Library/Application\ Support/Couchbase/var/lib/couchbase/logs
