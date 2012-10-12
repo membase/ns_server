@@ -41,11 +41,9 @@ def mk_node_couch_config(i):
         f.write("[httpd]\n")
         f.write("port={0}\n".format(base_couch_port + i))
         f.write("[couchdb]\n")
-        f.write("database_dir={0}/couch/{1}\n".format(os.getcwd(), i))
-        f.write("view_index_dir={0}/couch/{1}\n".format(os.getcwd(), i))
+        f.write("database_dir={0}/data/n_{1}/data\n".format(os.getcwd(), i))
+        f.write("view_index_dir={0}/data/n_{1}/data\n".format(os.getcwd(), i))
         f.write("max_dbs_open=10000\n")
-        f.write("[log]\n")
-        f.write("file={0}/couch/{1}.log\n".format(os.getcwd(), i))
 
 def couch_configs(i):
     mk_node_couch_config(i)
