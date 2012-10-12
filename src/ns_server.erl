@@ -170,6 +170,8 @@ init_logging() ->
                          {?STATS_LOGGER, warn},
                          {?NS_DOCTOR_LOGGER, warn}],
 
+    MainFilesLoggers = AllLoggers -- [?XDCR_LOGGER],
+
     lists:foreach(
       fun (Logger) ->
               LogLevel = proplists:get_value(Logger, OverrideLoglevels,
@@ -184,7 +186,7 @@ init_logging() ->
               %% no need to adjust loglevel for debug log since 'debug' is
               %% already the least restrictive loglevel
               ok = ale:add_sink(Logger, disk_debug, LogLevel)
-      end, AllLoggers),
+      end, MainFilesLoggers),
 
     ok = ale:add_sink(?USER_LOGGER, ns_log, info),
     ok = ale:add_sink(?MENELAUS_LOGGER, ns_log, info),
