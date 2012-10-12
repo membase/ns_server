@@ -648,7 +648,8 @@ handle_call({wait_checkpoint_persisted, VBucket, CheckpointId},
                State,
                From,
                fun () ->
-                       ok = do_wait_checkpoint_persisted(Bucket, VBucket, CheckpointId, 0)
+                       ?rebalance_debug("Going to wait for persistence of checkpoint ~B in vbucket ~B", [CheckpointId, VBucket]),
+                       ok = do_wait_checkpoint_persisted(Bucket, VBucket, CheckpointId)
                end),
     {noreply, State2};
 handle_call({get_replication_persistence_checkpoint_id, VBucket},
@@ -743,29 +744,6 @@ spawn_rebalance_subprocess(#state{rebalance_subprocesses = Subprocesses} = State
                               end),
     State#state{rebalance_subprocesses = [{From, Pid} | Subprocesses]}.
 
-do_wait_checkpoint_persisted(Bucket, VBucket, WaitedCheckpointId, TriesCounter) ->
-    {ok, {CheckpointId0, _}} = ns_memcached:get_vbucket_checkpoint_ids(Bucket, VBucket),
-    CheckpointId = case CheckpointId0 of
-                       undefined ->
-                           %% if checkpoint does not exist (yet) we
-                           %% assume it's 0 (but use -1 for better
-                           %% diagnostics)
-                           -1;
-                       _ -> CheckpointId0
-                   end,
-    case CheckpointId < WaitedCheckpointId of
-        true ->
-            ?log_debug("Waiting persisted checkpoint ~p on ~p, now ~p", [WaitedCheckpointId, VBucket, CheckpointId]),
-            timer:sleep(if
-                            TriesCounter < 5 -> 10;
-                            TriesCounter < 10 -> 30;
-                            true -> 100
-                        end),
-            do_wait_checkpoint_persisted(Bucket, VBucket, WaitedCheckpointId, TriesCounter+1);
-        false ->
-            ok
-    end.
-
 flushseq_file_path(BucketName) ->
     {ok, DBSubDir} = ns_storage_conf:this_node_bucket_dbdir(BucketName),
     filename:join(DBSubDir, "flushseq").
@@ -842,3 +820,11 @@ save_flushseq(BucketName, ConfigFlushSeq) ->
     ?log_info("Saving new flushseq: ~p", [ConfigFlushSeq]),
     Cont = list_to_binary(integer_to_list(ConfigFlushSeq)),
     misc:atomic_write_file(flushseq_file_path(BucketName), Cont).
+
+do_wait_checkpoint_persisted(Bucket, VBucket, CheckpointId) ->
+  case ns_memcached:wait_for_checkpoint_persistence(Bucket, VBucket, CheckpointId) of
+      ok -> ok;
+      {memcached_error, etmpfail, _} ->
+          ?rebalance_debug("Got etmpfail waiting for checkpoint persistence. Will try again"),
+          do_wait_checkpoint_persisted(Bucket, VBucket, CheckpointId)
+  end.
