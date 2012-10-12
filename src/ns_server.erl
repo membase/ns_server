@@ -113,6 +113,7 @@ init_logging() ->
                                            ?MAPREDUCE_ERRORS_LOG_FILENAME),
     CouchLogPath = filename:join(Dir, ?COUCHDB_LOG_FILENAME),
     DebugLogPath = filename:join(Dir, ?DEBUG_LOG_FILENAME),
+    XdcrLogPath = filename:join(Dir, ?XDCR_LOG_FILENAME),
 
     DiskSinkParams = [{size, {MaxB, MaxF}}],
 
@@ -121,6 +122,7 @@ init_logging() ->
     ale:stop_sink(disk_views),
     ale:stop_sink(disk_mapreduce_errors),
     ale:stop_sink(disk_couchdb),
+    ale:stop_sink(disk_xdcr),
     ale:stop_sink(ns_log),
 
     lists:foreach(
@@ -141,6 +143,8 @@ init_logging() ->
                         ale_disk_sink, [CouchLogPath, DiskSinkParams]),
     ok = ale:start_sink(disk_debug,
                         ale_disk_sink, [DebugLogPath, DiskSinkParams]),
+    ok = ale:start_sink(disk_xdcr,
+                        ale_disk_sink, [XdcrLogPath, DiskSinkParams]),
     ok = ale:start_sink(ns_log, raw, ns_log_sink, []),
 
     lists:foreach(
@@ -177,6 +181,7 @@ init_logging() ->
     ok = ale:add_sink(?MAPREDUCE_ERRORS_LOGGER, disk_mapreduce_errors),
 
     ok = ale:add_sink(?COUCHDB_LOGGER, disk_couchdb),
+    ok = ale:add_sink(?XDCR_LOGGER, disk_xdcr, get_loglevel(?XDCR_LOGGER)),
 
     case misc:get_env_default(dont_suppress_stderr_logger, false) of
         true ->

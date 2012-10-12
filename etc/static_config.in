@@ -19,3 +19,4 @@
 {loglevel_cluster, debug}.
 {loglevel_views, debug}.
 {loglevel_mapreduce_errors, debug}.
+{loglevel_xdcr, debug}.

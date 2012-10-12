@@ -55,6 +55,7 @@
 -define(MAPREDUCE_ERRORS_LOG_FILENAME, "mapreduce_errors").
 -define(COUCHDB_LOG_FILENAME, "couchdb").
 -define(DEBUG_LOG_FILENAME, "debug").
+-define(XDCR_LOG_FILENAME, "xdcr").
 
 -define(NS_SERVER_LOGGER, ns_server).
 -define(COUCHDB_LOGGER, couchdb).
