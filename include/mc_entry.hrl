@@ -15,6 +15,3 @@
                     extlen = undefined,
                     bodylen = undefined,
                     opaque = 0}).
-
--define(CHUNK_SIZE, 5120).
-
