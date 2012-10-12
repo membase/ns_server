@@ -93,6 +93,26 @@ child_specs() ->
      {remote_clusters_info, {remote_clusters_info, start_link, []},
       permanent, 1000, worker, [remote_servers_info]},
 
+     %% Starts mb_master_sup, which has all processes that start on the master
+     %% node.
+     {mb_master, {mb_master, start_link, []},
+      permanent, infinity, supervisor, [mb_master]},
+
+     {master_activity_events, {gen_event, start_link, [{local, master_activity_events}]},
+      permanent, brutal_kill, worker, dynamic},
+
+     {master_activity_events_ingress, {gen_event, start_link, [{local, master_activity_events_ingress}]},
+      permanent, brutal_kill, worker, dynamic},
+
+     {master_activity_events_timestamper, {master_activity_events, start_link_timestamper, []},
+      permanent, brutal_kill, worker, dynamic},
+
+     {master_activity_events_pids_watcher, {master_activity_events_pids_watcher, start_link, []},
+      permanent, brutal_kill, worker, dynamic},
+
+     {master_activity_events_keeper, {master_activity_events_keeper, start_link, []},
+      permanent, brutal_kill, worker, dynamic},
+
      {menelaus, {menelaus_sup, start_link, []},
       permanent, infinity, supervisor,
       [menelaus_sup]},
@@ -125,26 +145,6 @@ child_specs() ->
      {xdc_rep_manager,
       {xdc_rep_manager, start_link, []},
       permanent, 30000, worker, []},
-
-     %% Starts mb_master_sup, which has all processes that start on the master
-     %% node.
-     {mb_master, {mb_master, start_link, []},
-      permanent, infinity, supervisor, [mb_master]},
-
-     {master_activity_events, {gen_event, start_link, [{local, master_activity_events}]},
-      permanent, brutal_kill, worker, dynamic},
-
-     {master_activity_events_ingress, {gen_event, start_link, [{local, master_activity_events_ingress}]},
-      permanent, brutal_kill, worker, dynamic},
-
-     {master_activity_events_timestamper, {master_activity_events, start_link_timestamper, []},
-      permanent, brutal_kill, worker, dynamic},
-
-     {master_activity_events_pids_watcher, {master_activity_events_pids_watcher, start_link, []},
-      permanent, brutal_kill, worker, dynamic},
-
-     {master_activity_events_keeper, {master_activity_events_keeper, start_link, []},
-      permanent, brutal_kill, worker, dynamic},
 
      {ns_bucket_sup, {ns_bucket_sup, start_link, []},
       permanent, infinity, supervisor, [ns_bucket_sup]},
