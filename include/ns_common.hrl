@@ -57,6 +57,7 @@
 -define(DEBUG_LOG_FILENAME, "debug").
 -define(XDCR_LOG_FILENAME, "xdcr").
 -define(XDCR_ERRORS_LOG_FILENAME, "xdcr_errors").
+-define(STATS_LOG_FILENAME, "stats").
 
 -define(NS_SERVER_LOGGER, ns_server).
 -define(COUCHDB_LOGGER, couchdb).

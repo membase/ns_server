@@ -115,6 +115,7 @@ init_logging() ->
     DebugLogPath = filename:join(Dir, ?DEBUG_LOG_FILENAME),
     XdcrLogPath = filename:join(Dir, ?XDCR_LOG_FILENAME),
     XdcrErrorsLogPath = filename:join(Dir, ?XDCR_ERRORS_LOG_FILENAME),
+    StatsLogPath = filename:join(Dir, ?STATS_LOG_FILENAME),
 
     DiskSinkParams = [{size, {MaxB, MaxF}}],
 
@@ -125,6 +126,7 @@ init_logging() ->
     ale:stop_sink(disk_couchdb),
     ale:stop_sink(disk_xdcr),
     ale:stop_sink(disk_xdcr_errors),
+    ale:stop_sink(disk_stats),
     ale:stop_sink(ns_log),
 
     lists:foreach(
@@ -149,6 +151,8 @@ init_logging() ->
                         ale_disk_sink, [XdcrLogPath, DiskSinkParams]),
     ok = ale:start_sink(disk_xdcr_errors,
                         ale_disk_sink, [XdcrErrorsLogPath, DiskSinkParams]),
+    ok = ale:start_sink(disk_stats,
+                        ale_disk_sink, [StatsLogPath, DiskSinkParams]),
     ok = ale:start_sink(ns_log, raw, ns_log_sink, []),
 
     lists:foreach(
@@ -188,6 +192,9 @@ init_logging() ->
     ok = ale:add_sink(?XDCR_LOGGER, disk_xdcr, get_loglevel(?XDCR_LOGGER)),
     ok = ale:add_sink(?XDCR_LOGGER, disk_xdcr_errors,
                       adjust_loglevel(get_loglevel(?XDCR_LOGGER), error)),
+
+    ok = ale:add_sink(?STATS_LOGGER, disk_stats, get_loglevel(?STATS_LOGGER)),
+    ok = ale:add_sink(?NS_DOCTOR_LOGGER, disk_stats, get_loglevel(?NS_DOCTOR_LOGGER)),
 
     case misc:get_env_default(dont_suppress_stderr_logger, false) of
         true ->
