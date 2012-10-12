@@ -743,7 +743,14 @@ couchbase_replication_stats_descriptions(BucketId) ->
     lists:map(fun ({Id, Pid}) ->
                 {ok, Targ} = xdc_replication:target(Pid),
                 Prefix = <<"replications/", Id/binary,"/">>,
-                {struct,[{blockName,<<"Outgoing XDCR: ", Targ/binary>>},
+
+                {ok, {RemoteClusterUUID, RemoteBucket}} = remote_clusters_info:parse_remote_bucket_reference(Targ),
+                RemoteCluster = remote_clusters_info:find_cluster_by_uuid(RemoteClusterUUID),
+                RemoteClusterName = proplists:get_value(name, RemoteCluster),
+                BlockName = io_lib:format("Outbound XDCR Operations to bucket ~p "
+                                          "on remote cluster ~p",[RemoteBucket, RemoteClusterName]),
+
+                {struct,[{blockName, iolist_to_binary(BlockName)},
                          {extraCSSClasses,<<"closed">>},
                          {stats,
                              [{struct,[{title,<<"docs to replicate">>},

@@ -74,8 +74,9 @@
 -export([fetch_remote_cluster/1, fetch_remote_cluster/2,
          get_remote_bucket/3, get_remote_bucket/4,
          get_remote_bucket_by_ref/2, get_remote_bucket_by_ref/3,
-         remote_bucket_reference/2,
-         invalidate_remote_bucket/2, invalidate_remote_bucket_by_ref/1]).
+         remote_bucket_reference/2, parse_remote_bucket_reference/1,
+         invalidate_remote_bucket/2, invalidate_remote_bucket_by_ref/1,
+         find_cluster_by_uuid/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
