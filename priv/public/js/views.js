@@ -1526,8 +1526,11 @@ var ViewsSection = {
       });
     });
   },
-  doSaveView: function (dbURL, ddocId, viewName, overwriteConfirmed, callback, viewDef) {
+  doViewSave: function (dbURL, ddocId, viewName, viewDef, callback) {
     var ddocURL = buildDocURL(dbURL, ddocId);
+    var overwriteConfirmed;
+    var viewsLimitConfirmed;
+
     return begin();
     function begin() {
       couchGet(ddocURL, withDoc);
@@ -1539,7 +1542,15 @@ var ViewsSection = {
       }
       var views = ddoc.json.views || (ddoc.json.views = {});
       if (views[viewName] && !overwriteConfirmed) {
-        return callback("conflict", "already_exists", "View with given name already exists");
+        return callback("error", "already_exists", "View with given name already exists", function () {
+          overwriteConfirmed = true;
+          begin();
+        });
+      } else if (!viewsLimitConfirmed && _.keys(views).length >= 10) {
+        return callback("error", "confirm_views_limit", undefined, function () {
+          viewsLimitConfirmed = true;
+          begin();
+        });
       }
       views[viewName] = viewDef || {
         map:'function (doc, meta) {'
@@ -1558,8 +1569,10 @@ var ViewsSection = {
                    return begin();
                  }
                  if (status == 400) {
-                  callback("conflict", error.error, error.reason);
-                  return;
+                   callback("error", error.error, error.reason, function () {
+                     BUG("this is not expected");
+                   });
+                   return;
                  }
                  return unexpected();
                });
@@ -1621,18 +1634,32 @@ var ViewsSection = {
         startSaving(ddocNameInput.val(), dialog.find('[name=view_name]').val());
       }]]
     });
+    return;
 
     function startSaving(ddocName, viewName) {
       if (!ddocName || !viewName) {
         warning.text("Design Document and View names cannot be empty").show();
         return;
       }
-      // TODO: maybe other validation
       var modal = new ModalAction();
       var spinner = overlayWithSpinner(dialog);
-      ViewsSection.doSaveView(dbURL, "_design/dev_" + ddocName, viewName, false, function (status, error, reason) {
+      return ViewsSection.doViewSave(dbURL, "_design/dev_" + ddocName, viewName, undefined, saveCallback);
+
+      function saveCallback(status, error, reason, continueSaving) {
+        if (error == 'confirm_views_limit') {
+          return ViewsSection.displayViewsLimitConfirmation(function (e, name, instance) {
+            modal.finish();
+            instance.close();
+            if (name == 'ok') {
+              modal = new ModalAction();
+              return continueSaving();
+            }
+            spinner.remove();
+          });
+        }
+
         var closeDialog = false;
-        if (status == "conflict") {
+        if (status != "ok") {
           warning.text(reason);
           warning.show();
         } else {
@@ -1646,7 +1673,7 @@ var ViewsSection = {
           ViewsSection.allDDocsCell.recalculate();
           ViewsSection.modeTabs.setValue("development");
         }
-      });
+      }
     }
   },
   doRemoveView: function (ddocURL, viewName, callback) {
@@ -1760,36 +1787,47 @@ var ViewsSection = {
         delete view.reduce;
       }
 
-      doSaveView(dbURL, newId, newViewName, view, ddoc.meta.id === newId && newViewName === viewName);
+      saveView(dbURL, newId, newViewName, view, ddoc.meta.id === newId && newViewName === viewName);
     }
 
-    function doSaveView(dbURL, ddocId, viewName, view, overwriteConfirmed) {
-      return ViewsSection.doSaveView(dbURL, ddocId, viewName, overwriteConfirmed, callback, view);
+    function saveView(dbURL, ddocId, viewName, view, sameDoc) {
+      return ViewsSection.doViewSave(dbURL, ddocId, viewName, view, callback);
 
-      function callback(arg, error, reason) {
-        if (arg === "conflict") {
-          if (error === "invalid_design_document") {
-            modal.finish();
-            spinner.remove();
-            warning.show().text(reason);
-          } else {
-            confirmOverwrite(dbURL, ddocId, viewName, view);
-          }
-          return;
+      function callback(arg, error, reason, continueSaving) {
+        if (arg === 'ok') {
+          return saveSucceeded(ddocId, viewName);
         }
-        saveSucceeded(ddocId, viewName);
-      }
-    }
 
-    function confirmOverwrite(dbURL, ddocId, viewName, view) {
-      genericDialog({text: "Please, confirm overwriting exiting view.",
-                     callback: function (e, name, instance) {
-                       if (name == 'ok') {
-                         return doSaveView(dbURL, ddocId, viewName, view, true);
-                       }
-                       modal.finish();
-                       spinner.remove();
-                     }});
+        if (error == 'already_exists') {
+          if (sameDoc) {
+            return continueSaving();
+          }
+          return genericDialog({text: "Please, confirm overwriting exiting view.",
+                                callback: function (e, name, instance) {
+                                  if (name == 'ok') {
+                                    return continueSaving();
+                                  }
+                                  modal.finish();
+                                  spinner.remove();
+                                }});
+        }
+
+        if (error == 'confirm_views_limit') {
+          return self.displayViewsLimitConfirmation(function (e, name, instance) {
+            modal.finish();
+            instance.close();
+            if (name == 'ok') {
+              modal = new ModalAction();
+              return continueSaving();
+            }
+            spinner.remove();
+          });
+        }
+
+        modal.finish();
+        spinner.remove();
+        warning.show().text(reason);
+      }
     }
 
     function saveSucceeded(ddocId, viewName) {
@@ -1800,6 +1838,10 @@ var ViewsSection = {
       self.rawViewNameCell.setValue(viewName);
       self.allDDocsCell.recalculate();
     }
+  },
+  displayViewsLimitConfirmation: function (callback) {
+    genericDialog({text: "Creating more than 10 views per design document may decrease performance. Please, confirm.",
+                   callback: callback});
   },
   saveView: function () {
     var self = this;
@@ -1824,10 +1866,14 @@ var ViewsSection = {
       } else {
         delete currentView.reduce;
       }
-      return ViewsSection.doSaveView(dbURL, ddoc.meta.id, viewName, true, saveCallback, currentView);
+      return ViewsSection.doViewSave(dbURL, ddoc.meta.id, viewName, currentView, saveCallback);
 
-      function saveCallback(arg, error, reason) {
-        if (arg === "conflict") {
+      function saveCallback(status, error, reason, continueSaving) {
+        if (error === 'confirm_views_limit' || error === 'already_exists') {
+          return continueSaving();
+        }
+
+        if (status !== "ok") {
           $('#view_code_errors').text(reason).attr('title', reason);
         } else {
           self.allDDocsCell.recalculate();
