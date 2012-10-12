@@ -112,7 +112,8 @@
          connect_and_send_isasl_refresh/0,
          get_vbucket_checkpoint_ids/2,
          create_new_checkpoint/2,
-         eval/2]).
+         eval/2,
+         wait_for_checkpoint_persistence/3]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -263,6 +264,10 @@ handle_call(sync_bucket_config = Msg, _From, State) ->
     StartTS = os:timestamp(),
     handle_info(check_config, State),
     verify_report_long_call(StartTS, StartTS, State, Msg, {reply, ok, State});
+handle_call({wait_for_checkpoint_persistence, VBucket, CheckpointId}, From, State) ->
+    proc_lib:spawn_link(erlang, apply, [fun perform_wait_for_checkpoint_persistence/5,
+                                        [self(), VBucket, CheckpointId, From, State]]),
+    {noreply, State};
 handle_call(Msg, From, State) ->
     StartTS = os:timestamp(),
     NewState = queue_call(Msg, From, StartTS, State),
@@ -294,6 +299,13 @@ verify_report_long_call(StartTS, ActualStartTS, State, Msg, RV) ->
                 ok
         end
     end.
+
+%% for wait_for_checkpoint_persistence we just always establish new connection
+perform_wait_for_checkpoint_persistence(Parent, VBucket, CheckpointId, From, State0) ->
+    #state{sock = Sock} = do_worker_init(State0),
+    RV = mc_client_binary:wait_for_checkpoint_persistence(Sock, VBucket, CheckpointId),
+    erlang:unlink(Parent),
+    gen_server:reply(From, RV).
 
 %% anything effectful is likely to be heavy
 assign_queue({delete_vbucket, _}) -> #state.very_heavy_calls_queue;
@@ -1237,3 +1249,7 @@ extract_new_response_warmed(Resp) when is_list(Resp) ->
 -spec disable_traffic(bucket_name(), non_neg_integer() | infinity) -> ok | bad_status | mc_error().
 disable_traffic(Bucket, Timeout) ->
     gen_server:call(server(Bucket), disable_traffic, Timeout).
+
+-spec wait_for_checkpoint_persistence(bucket_name(), vbucket_id(), checkpoint_id()) -> ok | mc_error().
+wait_for_checkpoint_persistence(Bucket, VBucketId, CheckpointId) ->
+    gen_server:call(server(Bucket), {wait_for_checkpoint_persistence, VBucketId, CheckpointId}, infinity).

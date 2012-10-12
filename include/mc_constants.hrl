@@ -71,6 +71,8 @@
 
 -define(CMD_CHANGE_VB_FILTER, 16#b0).
 
+-define(CMD_CHECKPOINT_PERSISTENCE, 16#b1).
+
 -define(CMD_ISASL_REFRESH, 16#f1).
 
 -define(RGET,        16#30).

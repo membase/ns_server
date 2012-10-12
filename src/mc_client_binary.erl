@@ -53,7 +53,8 @@
          get_zero_open_checkpoint_vbuckets/2,
          change_vbucket_filter/3,
          enable_traffic/1,
-         disable_traffic/1]).
+         disable_traffic/1,
+         wait_for_checkpoint_persistence/3]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
 -type mc_timeout() :: undefined | infinity | non_neg_integer().
@@ -74,7 +75,7 @@
                      ?CMD_DEL_WITH_META | ?CMD_DELQ_WITH_META |
                      ?RGET | ?RSET | ?RSETQ | ?RAPPEND | ?RAPPENDQ | ?RPREPEND |
                      ?RPREPENDQ | ?RDELETE | ?RDELETEQ | ?RINCR | ?RINCRQ |
-                     ?RDECR | ?RDECRQ | ?SYNC.
+                     ?RDECR | ?RDECRQ | ?SYNC | ?CMD_CHECKPOINT_PERSISTENCE.
 
 %% A memcached client that speaks binary protocol.
 -spec cmd(mc_opcode(), port(), recv_callback(), any(),
@@ -827,3 +828,16 @@ build_sync_flags(Key, VBucket, CAS) ->
      (erlang:size(Key)):16/big,
      Key/binary
      >>.
+
+wait_for_checkpoint_persistence(Sock, VBucket, CheckpointId) ->
+    RV = cmd(?CMD_CHECKPOINT_PERSISTENCE, Sock, undefined, undefined,
+             {#mc_header{vbucket = VBucket},
+              #mc_entry{key = <<"">>,
+                        data = <<CheckpointId:64/big>>}},
+             infinity),
+    case RV of
+        {ok, #mc_header{status=?SUCCESS}, _, _} ->
+            ok;
+        Other ->
+            process_error_response(Other)
+    end.
