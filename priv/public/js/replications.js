@@ -220,7 +220,8 @@ var ReplicationsSection = {
           to: 'bucket "' + replication.target.split('buckets/')[1] + '" on cluster ' + name,
           status: replication.status == 'running' ? 'Replicating' : 'Starting Up',
           when: replication.continuous ? "on change" : "one time sync",
-          errors: replication.errors
+          errors: replication.errors,
+          cancelURI: replication.cancelURI
         }
       });
     }).subscribeValue(function (rows) {
@@ -364,32 +365,19 @@ var ReplicationsSection = {
       ReplicationsModel.refreshReplications();
     });
   },
-  startDeleteReplication: function (id) {
+  startDeleteReplication: function (cancelURI) {
     ThePage.ensureSection("replications");
     var startedDeleteReplication = ReplicationsSection.startedDeleteReplication = {};
-    var docURLCell = buildDocURL(ReplicationsModel.replicatorDBURIBaseCell, id);
-    var confirmed;
 
-    fetchDocument();
+    if (startedDeleteReplication !== ReplicationsSection.startedDeleteReplication) {
+      // this guards us against a bunch of rapid delete button
+      // presses. Only latest delete operation should pass through this gates
+      return;
+    }
+    askDeleteConfirmation(cancelURI);
     return;
 
-    function fetchDocument() {
-      couchGet(docURLCell, function (doc) {
-        if (!doc || startedDeleteReplication !== ReplicationsSection.startedDeleteReplication) {
-          // this guards us against a bunch of rapid delete button
-          // presses. Only latest delete operation should pass through this gates
-          return;
-        }
-
-        if (!confirmed) {
-          askDeleteConfirmation(doc);
-        } else {
-          doDelete(doc);
-        }
-      });
-    }
-
-    function askDeleteConfirmation(doc) {
+    function askDeleteConfirmation(cancelURI) {
       genericDialog({
         header: "Confirm delete",
         text: "Please, confirm deleting this replication",
@@ -398,26 +386,19 @@ var ReplicationsSection = {
           if (name !== 'ok') {
             return;
           }
-          confirmed = true;
-          doDelete(doc);
+          doDelete(cancelURI);
         }
       });
     }
 
-    function doDelete(doc) {
-      var url = Cell.needing(docURLCell).compute(function (v, docURL) {
-        return docURL + '?' + $.param({rev: doc.meta.rev});
-      });
-      couchReq('DELETE', url, {}, function () {
+    function doDelete(cancelURI) {
+      couchReq('DELETE', cancelURI, {}, function () {
         // this is success callback
         ReplicationsModel.refreshReplications();
       }, function (error, status, handleUnexpected) {
         if (status === 404) {
           ReplicationsModel.refreshReplications();
           return;
-        }
-        if (status === 409) {
-          return fetchDocument();
         }
         return handleUnexpected();
       });
