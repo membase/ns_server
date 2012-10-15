@@ -697,7 +697,12 @@ perform_bucket_flushing_with_config(BucketName, State, BucketConfig) ->
                     case RV of
                         ok ->
                             ?log_info("Requesting janitor run to actually revive bucket ~p after flush", [BucketName]),
-                            request_janitor_run(BucketName),
+                            JanitorRV = ns_janitor:cleanup(BucketName, [{timeout, 1}]),
+                            case JanitorRV of
+                                ok -> ok;
+                                _ ->
+                                    ?log_error("Flusher's janitor run failed: ~p", [JanitorRV])
+                            end,
                             {reply, RV, idle, State};
                         _ ->
                             {reply, RV, idle, State}
