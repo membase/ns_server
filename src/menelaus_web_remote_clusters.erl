@@ -89,6 +89,13 @@ do_handle_remote_clusters_post(Req, Params, JustValidate, TriesLeft) ->
 
                             case cas_remote_clusters(ExistingClusters, NewClusters) of
                                 ok ->
+                                    Name = misc:expect_prop_value(name, FinalKVList),
+                                    Hostname = misc:expect_prop_value(hostname, FinalKVList),
+
+                                    ale:info(?USER_LOGGER,
+                                             "Created remote cluster reference \"~s\" via ~s.",
+                                             [Name, Hostname]),
+
                                     menelaus_util:reply_json(Req,
                                                              build_remote_cluster_info(FinalKVList));
                                 _ ->
@@ -217,6 +224,33 @@ do_handle_remote_cluster_update_found_this(Id, OldCluster, Req, Params, JustVali
 
                             case cas_remote_clusters(ExistingClusters, NewClusters) of
                                 ok ->
+                                    OldName = misc:expect_prop_value(name, OldCluster),
+                                    OldHostname = misc:expect_prop_value(hostname, OldCluster),
+
+                                    NewName = misc:expect_prop_value(name, FinalKVList),
+                                    NewHostName = misc:expect_prop_value(hostname, FinalKVList),
+
+                                    case OldName =:= NewName andalso OldHostname =:= NewHostName of
+                                        true ->
+                                            ok;
+                                        false ->
+                                            ale:info(?USER_LOGGER,
+                                                     "Remote cluster reference \"~s\" udpated.~s~s",
+                                                     [OldName,
+                                                      case OldName =:= NewName of
+                                                          true ->
+                                                              "";
+                                                          false ->
+                                                              io_lib:format(" New name is \"~s\".", [NewName])
+                                                      end,
+                                                      case OldHostname =:= NewHostName of
+                                                          true ->
+                                                              "";
+                                                          false ->
+                                                              io_lib:format(" New contact point is ~s.", [NewHostName])
+                                                      end])
+                                    end,
+
                                     menelaus_util:reply_json(
                                       Req, build_remote_cluster_info(FinalKVList));
                                 _ ->
@@ -340,6 +374,13 @@ do_handle_remote_cluster_delete(Id, Req, TriesLeft) ->
 
             case cas_remote_clusters(ExistingClusters, NewClusters) of
                 ok ->
+                    Name = misc:expect_prop_value(name, ThisCluster),
+                    Hostname = misc:expect_prop_value(hostname, ThisCluster),
+
+                    ale:info(?USER_LOGGER,
+                             "Remote cluster reference \"~s\" known via ~s removed.",
+                             [Name, Hostname]),
+
                     menelaus_util:reply_json(Req, ok);
                 _ ->
                     do_handle_remote_cluster_delete(Id, Req, TriesLeft-1)

@@ -223,7 +223,7 @@ find_all_replication_docs_body(Doc0) ->
             undefined
     end.
 
--spec delete_replicator_doc(string()) -> ok | not_found.
+-spec delete_replicator_doc(string()) -> {ok, list()} | not_found.
 delete_replicator_doc(IdList) ->
     Id = erlang:list_to_binary(IdList),
     Docs = find_all_replication_docs(),
@@ -232,9 +232,10 @@ delete_replicator_doc(IdList) ->
     case MaybeDoc of
         [] ->
             not_found;
-        [_] ->
+        [Doc] ->
             NewDoc = couch_doc:from_json_obj(
                        {[{<<"meta">>,
                           {[{<<"id">>, Id}, {<<"deleted">>, true}]}}]}),
-            ok = update_doc(NewDoc)
+            ok = update_doc(NewDoc),
+            {ok, Doc}
     end.

@@ -37,12 +37,19 @@ handle_create_replication(Req) ->
             menelaus_util:reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400);
         {error, Status, Errors} ->
             menelaus_util:reply_json(Req, {struct, [{errors, {struct, Errors}}]}, Status);
-        {ok, ReplicationDoc} ->
+        {ok, ReplicationDoc, ParsedParams} ->
             case proplists:get_value("just_validate", Req:parse_qs()) =:= "1" of
                 true ->
                     ok;
                 false ->
-                    ok = xdc_rdoc_replication_srv:update_doc(ReplicationDoc)
+                    ok = xdc_rdoc_replication_srv:update_doc(ReplicationDoc),
+
+                    ale:info(?USER_LOGGER,
+                             "Replication from bucket \"~s\" to "
+                             "bucket \"~s\" on cluster \"~s\" created.",
+                             [misc:expect_prop_value(from_bucket, ParsedParams),
+                              misc:expect_prop_value(to_bucket, ParsedParams),
+                              misc:expect_prop_value(to_cluster, ParsedParams)])
             end,
 
             CapiURL = capi_utils:capi_url_bin(node(), <<"/_replicator">>,
@@ -90,9 +97,18 @@ screen_extract_new_replication_params(Params) ->
 parse_validate_new_replication_params(Params, Buckets) ->
     case screen_extract_new_replication_params(Params) of
         {ok, FromBucket, ToBucket, ReplicationType, ToCluster} ->
-            validate_new_replication_params_check_from_bucket(FromBucket, ToCluster,
-                                                              ToBucket, ReplicationType,
-                                                              Buckets);
+            case validate_new_replication_params_check_from_bucket(FromBucket, ToCluster,
+                                                                   ToBucket, ReplicationType,
+                                                                   Buckets) of
+                {ok, ReplicationDoc} ->
+                    ParsedParams = [{from_bucket, FromBucket},
+                                    {to_bucket, ToBucket},
+                                    {replication_type, ReplicationType},
+                                    {to_cluster, ToCluster}],
+                    {ok, ReplicationDoc, ParsedParams};
+                Other ->
+                    Other
+            end;
         Crap ->
             Crap
     end.

@@ -2223,7 +2223,28 @@ handle_set_fast_warmup(Req) ->
 
 handle_cancel_xdcr(XID, Req) ->
     case xdc_rdoc_replication_srv:delete_replicator_doc(XID) of
-        ok ->
+        {ok, OldDoc} ->
+            Source = misc:expect_prop_value(source, OldDoc),
+            Target = misc:expect_prop_value(target, OldDoc),
+
+            {ok, {UUID, BucketName}} = remote_clusters_info:parse_remote_bucket_reference(Target),
+            ClusterName =
+                case remote_clusters_info:find_cluster_by_uuid(UUID) of
+                    not_found ->
+                        "\"unknown\"";
+                    Cluster ->
+                        case proplists:get_value(deleted, Cluster, false) of
+                            false ->
+                                io_lib:format("\"~s\"", [misc:expect_prop_value(name, Cluster)]);
+                            true ->
+                                io_lib:format("at ~s", [misc:expect_prop_value(hostname, Cluster)])
+                        end
+                end,
+
+            ale:info(?USER_LOGGER,
+                     "Replication from bucket \"~s\" to bucket \"~s\" on cluster ~s removed.",
+                     [Source, BucketName, ClusterName]),
+
             reply_json(Req, [], 200);
         not_found ->
             reply_json(Req, [], 404)
