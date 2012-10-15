@@ -383,7 +383,8 @@ var SampleBucketSection = {
     var processing = false;
     var form = $("#sample_buckets_form");
     var button = $("#sample_buckets_settings_btn");
-    var warning = $("#sample_buckets_warning");
+    var quotaWarning = $("#sample_buckets_quota_warning");
+    var rebalanceWarning = $("#sample_buckets_rebalance_warning");
 
     var hasBuckets = false;
     var quotaAvailable = false;
@@ -409,12 +410,21 @@ var SampleBucketSection = {
       if (!isStorageAvailable) {
         $('#sampleQuotaRequired')
           .text(Math.ceil(storageNeeded - quotaAvailable) / 1024 / 1024 / numServers);
-        warning.show();
+        quotaWarning.show();
       } else {
-        warning.hide();
+        quotaWarning.hide();
       }
 
-      if (hasBuckets && isStorageAvailable) {
+      var rebalanceTasks;
+      DAL.cells.tasksProgressCell.getValue(function (tasks) {
+        rebalanceTasks = _.filter(tasks, function (task) {
+          return task.type === 'rebalance' && task.status !== "notRunning";
+        });
+      });
+      rebalanceTasks = rebalanceTasks || [];
+      rebalanceWarning[rebalanceTasks.length ? "show" : "hide"]();
+
+      if (hasBuckets && isStorageAvailable && !rebalanceTasks.length) {
         button.removeAttr('disabled');
       } else {
         button.attr('disabled', true);
@@ -438,6 +448,7 @@ var SampleBucketSection = {
       quotaAvailable = storage.ram.quotaTotal - storage.ram.quotaUsed;
       maybeEnableCreateButton();
     });
+
 
     form.bind('submit', function(e) {
 
