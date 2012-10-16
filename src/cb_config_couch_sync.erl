@@ -163,4 +163,5 @@ consider_changing_db_path_with_dbdir(NSConfigDBDir, MCDPList) ->
             cb_couch_sup:restart_couch()
     end,
     NewMCDPList = lists:keydelete(dbdir, 1, MCDPList),
+    ale:info(?USER_LOGGER, "Removed db dir from per node memcached config after setting it as couch's db and index directory. Path is: ~s", [NSConfigDBDir]),
     ns_config:set({node, node(), memcached}, NewMCDPList).
