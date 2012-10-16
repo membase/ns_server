@@ -113,7 +113,7 @@ do_handle_view_req(Req, #db{name=DbName} = Db, DDocName, ViewName) ->
     VBucketsDict = vbucket_map_mirror:node_vbuckets_dict(binary_to_list(DbName)),
     case dict:find(node(), VBucketsDict) of
         error ->
-            send_no_active_vbuckets(Req);
+            send_no_active_vbuckets(Req, DbName);
         _ ->
             case run_on_subset(Req, DbName) of
                 full_set ->
@@ -128,13 +128,40 @@ when_has_active_vbuckets(Req, Bucket, Fn) ->
         true ->
             Fn();
         false ->
-            send_no_active_vbuckets(Req)
+            send_no_active_vbuckets(Req, Bucket)
     end.
 
-send_no_active_vbuckets(Req) ->
-    couch_httpd:send_error(
-      Req, 404, <<"no_active_vbuckets">>,
-      <<"Cannot execute view query since the node has no active vbuckets">>).
+find_node_with_vbuckets(BucketBin) ->
+    Bucket = erlang:binary_to_list(BucketBin),
+    VBucketsDict = vbucket_map_mirror:node_vbuckets_dict(Bucket),
+    Nodes = dict:fetch_keys(VBucketsDict),
+    Len = erlang:length(Nodes),
+    case Len of
+        0 ->
+            undefined;
+        _ ->
+            random:seed(erlang:now()),
+            lists:nth(random:uniform(Len), Nodes)
+    end.
+
+send_no_active_vbuckets(CouchReq, Bucket0) ->
+    Req = CouchReq#httpd.mochi_req,
+    Bucket = iolist_to_binary(Bucket0),
+    LocalAddr = menelaus_util:local_addr(Req),
+    Headers0 = [{"Content-Type", "application/json"} |
+                menelaus_util:server_header()],
+    RedirectNode = find_node_with_vbuckets(Bucket),
+    Headers = case RedirectNode of
+                  undefined -> Headers0;
+                  _ ->
+                      Path = erlang:iolist_to_binary(Req:get(raw_path)),
+                      [{"Location", capi_utils:capi_url_bin(RedirectNode, Path, LocalAddr)}
+                       | Headers0]
+              end,
+    Tuple = {302,
+             Headers,
+             <<"{\"error\":\"no_active_vbuckets\",\"reason\":\"Cannot execute view query since the node has no active vbuckets\"}">>},
+    {ok, Req:respond(Tuple)}.
 
 all_docs_db_req(#httpd{method='GET'} = Req,
                 #db{filepath = undefined} = Db) ->
