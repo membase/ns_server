@@ -185,23 +185,31 @@ function createDocumentsCells(ns, modeCell, capiBaseCell, bucketsListCell) {
   ns.currentPageLimitCell = Cell.compute(function (v) {
     var pageLimit = v(ns.pageLimitCell);
     if (pageLimit) {
-      return pageLimit;
+      return Number(pageLimit);
     }
     return 5;
   });
 
   ns.currentDocumentsPageNumberCell = Cell.compute(function (v) {
     var page = v(ns.documentsPageNumberCell);
-    page = Number(page);
-    if (page) {
-      return page;
-    } else {
+    if (!page) {
       return 0;
     }
+    page = Number(page);
+    var pageLimit = v.need(ns.currentPageLimitCell);
+    var docsLimit = ns.docsLimit;
+    var currentSkip = (page + 1) * pageLimit;
+
+    if (currentSkip > docsLimit) {
+      page = (docsLimit / pageLimit) - 1;
+    }
+
+    return page;
   }).name('currentDocumentsPageNumberCell');
 }
 
 var DocumentsSection = {
+  docsLimit: 1000,
   init: function () {
     var self = this;
 
@@ -345,7 +353,7 @@ var DocumentsSection = {
     }
 
     function isLastPage(page) {
-      return page.docs.rows.length <= page.pageLimit;
+      return  page.docs.rows.length <= page.pageLimit || page.pageLimit * (page.pageNumber + 1) === self.docsLimit;
     }
 
     function showCodeEditor(show) {
