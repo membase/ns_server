@@ -50,11 +50,6 @@ default() ->
                    CAPIVal -> CAPIVal
                end,
 
-    NodeUUID = case erlang:get(node_uuid_override) of
-                   undefined -> couch_uuids:random();
-                   UUIDVal -> UUIDVal
-               end,
-
     PortMeta = case application:get_env(rest_port) of
                    {ok, _Port} -> local;
                    undefined -> global
@@ -253,9 +248,7 @@ default() ->
                           % automatically failovered
                           {max_nodes, 1},
                           % count is the number of nodes that were auto-failovered
-                          {count, 0}]},
-     {{node, node(), uuid},
-      NodeUUID}
+                          {count, 0}]}
     ].
 
 %% Recursively replace all strings in a hierarchy that start
@@ -444,12 +437,6 @@ do_upgrade_config_from_1_8_1_to_2_0(Config, DefaultConfig) ->
                         _ ->
                             []
                     end,
-    MaybeNodeUUID = case ns_config:search(Config, {node, node(), uuid}) of
-                        {value, _} -> [];
-                        false ->
-                            {_, NodeUUID} = lists:keyfind({node, node(), uuid}, 1, DefaultConfig),
-                            [{set, {node, node(), uuid}, NodeUUID}]
-                    end,
     MaybeAutoCompaction = case ns_config:search(Config, autocompaction) of
                               {value, _} -> [];
                               false ->
@@ -473,7 +460,6 @@ do_upgrade_config_from_1_8_1_to_2_0(Config, DefaultConfig) ->
                             end,
 
     MaybeCapiPort ++
-        MaybeNodeUUID ++
         MaybeAutoCompaction ++
         MaybeRemoteClusters ++
         MaybeCompactionDaemon ++
@@ -656,7 +642,6 @@ upgrade_1_8_1_to_2_0_test() ->
             {{node, node(), memcached}, [{engines, old_engines},
                                          {something, something}]}]],
     DefaultCfg = [{{node, node(), capi_port}, somethingelse},
-                  {{node, node(), uuid}, <<"--uuid--">>},
                   {remote_clusters, foobar_2},
                   {autocompaction, compaction_something},
                   {{node, node(), compaction_daemon}, compaction_daemon_settings},
@@ -669,8 +654,7 @@ upgrade_1_8_1_to_2_0_test() ->
                     {engines, new_engines},
                     {something_else, something_else}]}],
     Result = do_upgrade_config_from_1_8_1_to_2_0(Cfg, DefaultCfg),
-    ?assertEqual([{set, {node, node(), uuid}, <<"--uuid--">>},
-                  {set, autocompaction, compaction_something},
+    ?assertEqual([{set, autocompaction, compaction_something},
                   {set, {node, node(), compaction_daemon}, compaction_daemon_settings},
                   {set, {node, node(), memcached},
                    [{mccouch_port, mccouch_port},
@@ -686,7 +670,6 @@ upgrade_1_8_1_to_2_0_test() ->
              {{node, node(), memcached}, [{something, something}]}]],
     Result2 = do_upgrade_config_from_1_8_1_to_2_0(Cfg2, DefaultCfg),
     ?assertEqual([{set, {node, node(), capi_port}, somethingelse},
-                  {set, {node, node(), uuid}, <<"--uuid--">>},
                   {set, autocompaction, compaction_something},
                   {set, {node, node(), memcached},
                    [{mccouch_port, mccouch_port},
