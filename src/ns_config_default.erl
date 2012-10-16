@@ -126,7 +126,6 @@ default() ->
       [{port, misc:get_env_default(memcached_port, 11210)},
        {mccouch_port, misc:get_env_default(mccouch_port, 11213)},
        {dedicated_port, misc:get_env_default(memcached_dedicated_port, 11209)},
-       {dbdir, DbDir},
        {admin_user, "_admin"},
        {admin_pass, "_admin"},
        {bucket_engine, path_config:component_path(lib, "memcached/bucket_engine.so")},
