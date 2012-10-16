@@ -311,11 +311,12 @@ terminate_cleanup(State) ->
 report_error(Err, _Vb, _Parent) when Err == normal orelse Err == shutdown ->
     ok;
 report_error(Err, Vb, Parent) ->
-    %% TODO: convert common errors into human understandable strings
-    Time = misc:iso_8601_fmt(erlang:localtime()),
+    %% return raw erlang time to make it sortable
+    RawTime = erlang:localtime(),
+    Time = misc:iso_8601_fmt(RawTime),
     String = iolist_to_binary(io_lib:format("~s - Error replicating vbucket ~p: ~p",
                                             [Time, Vb, Err])),
-    gen_server:cast(Parent, {report_error, String}).
+    gen_server:cast(Parent, {report_error, {RawTime, String}}).
 
 replication_turn_is_done(#rep_state{throttle = T} = State) ->
     concurrency_throttle:is_done(T),
