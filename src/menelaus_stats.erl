@@ -907,7 +907,7 @@ membase_stats_description(BucketId) ->
                 {struct,[{title,<<"XDCR dest ops per sec.">>},
                          {name,<<"xdc_ops">>},
                          {desc,<<"Cross datacenter replication operations per second for this bucket.">>}]},
-                {struct,[{title,<<"XDCR replication queue">>},
+                {struct,[{title,<<"XDCR docs to replicate">>},
                          {name,<<"replication_changes_left">>},
                          {desc,<<"Number of items waiting to be replicated to other clusters">>}]}
              ]}]},
