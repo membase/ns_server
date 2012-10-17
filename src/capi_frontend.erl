@@ -174,33 +174,15 @@ update_docs(Db, Docs, Options, replicated_changes) ->
         end,
     Result.
 
+
+%% new ensure_full_commit uses CMD_CHECKPOINT_PERSISTENCE to issue
+%% priority checkpoint
 -spec ensure_full_commit(any(), integer()) -> {ok, binary()}.
 ensure_full_commit(#db{filepath = undefined} = _Db, _RequiredSeq) ->
     {ok, <<>>};
 
 ensure_full_commit(#db{name = DbName} = _Db, _RequiredSeq) ->
-
     [Bucket, VBucket] = string:tokens(binary_to_list(DbName), [$/]),
-
-    %% subscribe to capture mc_couch_events
-    Server = self(),
-    MyEventId = create_ckpt_event_id(Bucket, VBucket),
-    {value, DefaultTimeoutSec} = ns_config:search(xdcr_capi_checkpoint_timeout),
-    TimeoutSec = misc:getenv_int("XDCR_CAPI_CHECKPOINT_TIMEOUT", DefaultTimeoutSec),
-
-    CkptEventsHandler = fun ({EventId, VBCheckpoint}, _) ->
-                                case EventId ==  MyEventId of
-                                    true ->
-                                        Event2Capi = {persisted_ckpt, VBCheckpoint},
-                                        Server ! Event2Capi;
-                                    _  ->
-                                        []
-                                end;
-                            (_UnmacthedEvt, _) ->
-                                ok
-                        end,
-
-    LinkPid = ns_pubsub:subscribe_link(mc_couch_events, CkptEventsHandler, []),
 
     %% create a new open checkpoint
     StartTime = now(),
@@ -210,27 +192,22 @@ ensure_full_commit(#db{name = DbName} = _Db, _RequiredSeq) ->
                  true ->
                      ?xdcr_debug("rep (bucket: ~p, vbucket ~p) issues an empty open ckpt, no need to wait (open ckpt: ~p, persisted ckpt: ~p)",
                                  [Bucket, VBucket, OpenCheckpointId, PersistedCkptId]),
-                     {ok, PersistedCkptId};
+                     ok;
                  _ ->
                      %% waiting for persisted ckpt to catch up, time out in milliseconds
-                     ?xdcr_debug("rep (bucket: ~p, vbucket ~p) waiting for chkpt persisted (open ckpt: ~p, timeout: ~p secs)",
-                                 [Bucket, VBucket, OpenCheckpointId, TimeoutSec]),
-                     ensure_full_commit_loop(OpenCheckpointId, TimeoutSec*1000)
+                     ?xdcr_debug("rep (bucket: ~p, vbucket ~p)  wait for priority chkpt persisted: ~p",
+                                 [Bucket, VBucket, (OpenCheckpointId-1)]),
+                     wait_priority_checkpoint_persisted(Bucket, list_to_integer(VBucket), (OpenCheckpointId - 1))
              end,
 
-    ns_pubsub:unsubscribe(LinkPid),
-
-    %% clear all unprocessed msg
-    clear_ckpt_msg_loop(),
-
     case Result of
-        {ok, LastPersistedCkptId} ->
+        ok ->
             {ok, Stats2} = ns_memcached:stats(Bucket, <<"">>),
             EpStartupTime = proplists:get_value(<<"ep_startup_time">>, Stats2),
             WorkTime = timer:now_diff(now(), StartTime) div 1000,
-            ?xdcr_debug("last persisted ckpt: ~p, open ckpt: ~p for rep (bucket: ~p, vbucket ~p), "
+            ?xdcr_debug("persistend open ckpt: ~p for rep (bucket: ~p, vbucket ~p), "
                         "time spent in millisecs: ~p",
-                        [LastPersistedCkptId, OpenCheckpointId, Bucket, VBucket, WorkTime]),
+                        [OpenCheckpointId, Bucket, VBucket, WorkTime]),
 
             {ok, EpStartupTime};
         timeout ->
@@ -240,26 +217,17 @@ ensure_full_commit(#db{name = DbName} = _Db, _RequiredSeq) ->
             {error, time_out_polling}
     end.
 
-ensure_full_commit_loop(OpenCheckpointId, Timeout) ->
-    receive
-        {persisted_ckpt, PersistedCheckpointId} ->
-            case PersistedCheckpointId >= (OpenCheckpointId - 1) of
-                true ->
-                    {ok, PersistedCheckpointId};
-                _ ->
-                    ensure_full_commit_loop(OpenCheckpointId, Timeout)
-            end
-    after Timeout ->
-            timeout
-    end.
-
-clear_ckpt_msg_loop() ->
-    receive
-        {persisted_ckpt, _PersistedCheckpointId} ->
-            clear_ckpt_msg_loop()
-    after 0 ->
-            ok
-    end.
+wait_priority_checkpoint_persisted(Bucket, VBucket, CheckpointId) ->
+  case ns_memcached:wait_for_checkpoint_persistence(Bucket, VBucket, CheckpointId) of
+      ok ->
+          ?xdcr_debug("rep (bucket: ~p, vbucket ~p)  priority chkpt persisted successfully: ~p",
+                      [Bucket, VBucket, CheckpointId]),
+          ok;
+      {memcached_error, etmpfail, _} ->
+          ?xdcr_debug("rep (bucket: ~p, vbucket ~p)  fail to persist priority chkpt: ~p",
+                      [Bucket, VBucket, CheckpointId]),
+          timeout
+  end.
 
 check_is_admin(_Db) ->
     ok.
