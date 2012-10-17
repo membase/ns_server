@@ -1049,8 +1049,6 @@ handle_pool_info_streaming(Id, Req) ->
     handle_streaming(F, Req, undefined).
 
 handle_streaming(F, Req, LastRes) ->
-    ?log_debug("Starting streaming for ~s path ~s",
-               [menelaus_util:remote_addr_and_port(Req), Req:get(raw_path)]),
     HTTPRes = Req:ok({"application/json; charset=utf-8",
                       server_header(),
                       chunked}),
@@ -1087,7 +1085,6 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
     Res =
         try streaming_inner(F, HTTPRes, LastRes)
         catch exit:normal ->
-                ale:debug(?MENELAUS_LOGGER, "closing streaming socket~n"),
                 HTTPRes:write_chunk(""),
                 exit(normal)
         end,
@@ -1100,8 +1097,6 @@ handle_streaming_wakeup(F, Req, HTTPRes, Res) ->
             consume_watcher_notifies(),
             ok;
         _ ->
-            ale:debug(?MENELAUS_LOGGER,
-                      "menelaus_web streaming socket closed by client"),
             exit(normal)
     after 25000 ->
             ok
