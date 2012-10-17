@@ -61,7 +61,8 @@
                 %% recreating) it's only vbucket. In practice when
                 %% there's multiple vbuckets we'll always set it to
                 %% false.
-                had_backfill = #had_backfill{} :: #had_backfill{}
+                had_backfill = #had_backfill{} :: #had_backfill{},
+                no_ready_vbuckets :: boolean()
                }).
 
 %% external API
@@ -279,8 +280,16 @@ handle_call({start_vbucket_filter_change, VBuckets}, From,
     NotReady =
         mc_client_binary:get_zero_open_checkpoint_vbuckets(UpstreamAux,
                                                            NewVBuckets),
-    case NotReady of
-        [] ->
+
+    if
+        State#state.no_ready_vbuckets ->
+            %% NOTE: we unregistered tap name when we discovered we
+            %% can't do anything and decided to not establish tap
+            %% connection. Thus new-style vbucket filter change cannot
+            %% even be used.
+            ?log_warning("Have no currently replicated vbuckets. TAP name is dead thus using old style vbucket filter change"),
+            complete_old_vb_filter_change(State1);
+        NotReady =:= [] ->
             Checkpoints =
                 mc_binary:mass_get_last_closed_checkpoint(DownstreamAux,
                                                           VBuckets, 60000),
@@ -303,13 +312,13 @@ handle_call({start_vbucket_filter_change, VBuckets}, From,
                                  "Falling back to old behaviour", [Other]),
                     complete_old_vb_filter_change(State1)
             end;
-        _ ->
+        true ->
             %% We don't expect this case (though it can still happen). And by
             %% the time new ebucketmigrator starts some of the vbuckets may
             %% have already become ready. It will complicate the logic there
             %% significantly so let's just use old vbucket filter change
             %% approach.
-            ?log_warning("Some of new vbuckets are not ready to replicate from."
+            ?log_warning("Some of new vbuckets are not ready to replicate from. "
                          "Will not use native vbucket filter change. "
                          "Not ready vbuckets:~n~p", [NotReady]),
             complete_old_vb_filter_change(State1)
@@ -494,14 +503,14 @@ init({Src, Dst, Opts}=InitArgs) ->
             ok
     end,
 
-    case OldState of
-        undefined ->
+    true = not(TakeOver andalso (ReadyVBuckets =:= [])),
+
+    case OldState =:= undefined orelse ReadyVBuckets =:= [] of
+        true ->
             ok = kill_tapname(UpstreamAux, TapName, Bucket, Src, Username);
         _ ->
             ok
     end,
-
-    true = not(TakeOver andalso (ReadyVBuckets =:= [])),
 
     {Upstream, Args} =
         case OldState =:= undefined orelse
@@ -512,22 +521,28 @@ init({Src, Dst, Opts}=InitArgs) ->
                 %% beneficial. Only ack/nack is getting sent here.
                 ok = inet:setopts(Upstream0, [{nodelay, true}]),
 
-                %% if there's no old state or upstream is
-                %% undefined in it then we promote we'll just
-                %% create a new upstream connection
-                Checkpoints =
-                    mc_binary:mass_get_last_closed_checkpoint(DownstreamAux,
-                                                              ReadyVBuckets, 60000),
+                case ReadyVBuckets =/= [] of
+                    true ->
+                        %% if there's no old state or upstream is
+                        %% undefined in it then we promote we'll just
+                        %% create a new upstream connection
+                        Checkpoints =
+                            mc_binary:mass_get_last_closed_checkpoint(DownstreamAux,
+                                                                      ReadyVBuckets, 60000),
 
-                Args0 = [{vbuckets, ReadyVBuckets},
-                        {checkpoints, Checkpoints},
-                        {name, TapName},
-                        {takeover, TakeOver}],
+                        Args0 = [{vbuckets, ReadyVBuckets},
+                                 {checkpoints, Checkpoints},
+                                 {name, TapName},
+                                 {takeover, TakeOver}],
 
-                ?rebalance_info("Starting tap stream:~n~p~n~p",
-                                [Args0, InitArgs]),
-                {ok, quiet} = mc_client_binary:tap_connect(Upstream0, Args0),
-                {Upstream0, Args0};
+                        ?rebalance_info("Starting tap stream:~n~p~n~p",
+                                        [Args0, InitArgs]),
+                        {ok, quiet} = mc_client_binary:tap_connect(Upstream0, Args0),
+                        {Upstream0, Args0};
+                    false ->
+                        ?rebalance_info("Doing nothing due to no vbuckets ready"),
+                        {Upstream0, [{fake, true}]}
+                end;
             false ->
                 Args0 = [{vbuckets, ReadyVBuckets},
                          {name, TapName},
@@ -587,7 +602,8 @@ init({Src, Dst, Opts}=InitArgs) ->
                              #had_backfill{};
                          [_,_|_] ->
                              #had_backfill{value = false}
-                     end
+                     end,
+      no_ready_vbuckets = (ReadyVBuckets =:= [])
      },
 
     State1 = process_data(<<>>, #state.downbuf, fun process_downstream/2, State),
