@@ -117,8 +117,6 @@ do_subscribe_link(Name, Fun, State, Parent) ->
 
     proc_lib:init_ack(Parent, self()),
 
-    ?log_debug("Started subscription ~p", [{Name, Parent}]),
-
     ExitReason =
         receive
             unsubscribe ->
@@ -145,8 +143,7 @@ do_subscribe_link(Name, Fun, State, Parent) ->
                 unexpected_message
         end,
 
-    R = (catch gen_event:delete_handler(Name, Handler, unused)),
-    ?log_debug("Deleting ~p event handler: ~p", [{Name, Parent}, R]),
+    (catch gen_event:delete_handler(Name, Handler, unused)),
 
     exit(ExitReason).
 
