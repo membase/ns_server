@@ -757,19 +757,11 @@ get_zero_open_checkpoint_vbuckets(Upstream, VBuckets, QuickStats) ->
                           case ets:lookup(T, Key) of
                               [] ->
                                   Acc;
-                              _ ->
+                              [{_, VBucket}] ->
                                   ets:delete(T, Key),
                                   case ValueBin =:= <<"0">> of
                                       true ->
-                                          %% NOTE: beam compiler is smart enough to fold erlang:length of constant here
-                                          VBLen = erlang:size(Key) - erlang:length("vb_" ":open_checkpoint_id"),
-                                          case Key of
-                                              <<"vb_", VB:VBLen/binary, ":open_checkpoint_id">> ->
-                                                  VBInt = list_to_integer(binary_to_list(VB)),
-                                                  [VBInt | Acc];
-                                              _ ->
-                                                  Acc
-                                          end;
+                                          [VBucket | Acc];
                                       _ ->
                                           Acc
                                   end
