@@ -204,7 +204,7 @@ init({Bucket, UseReplicaIndex, NumVBuckets}) ->
         N <- get_remote_nodes(Bucket)],
 
     ns_pubsub:subscribe_link(mc_couch_events,
-                             mk_mc_couch_event_handler(), ignored),
+                             mk_mc_couch_event_handler(Bucket), ignored),
 
     State = #state{bucket=Bucket,
                    proxy_server_name = ServerName,
@@ -517,22 +517,22 @@ apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
             end
     end.
 
-mk_mc_couch_event_handler() ->
+mk_mc_couch_event_handler(Bucket) ->
     Self = self(),
 
     fun (Event, _) ->
-            handle_mc_couch_event(Self, Event)
+            handle_mc_couch_event(Self, Bucket, Event)
     end.
 
-handle_mc_couch_event(Self,
+handle_mc_couch_event(Self, Bucket,
                       {set_vbucket, Bucket, VBucket, State, Checkpoint}) ->
     ?views_debug("Got set_vbucket event for ~s/~b. Updated state: ~p (~B)",
                  [Bucket, VBucket, State, Checkpoint]),
     Self ! refresh_usable_vbuckets;
-handle_mc_couch_event(Self,
-                      {delete_vbucket, _Bucket, VBucket}) ->
+handle_mc_couch_event(Self, Bucket,
+                      {delete_vbucket, Bucket, VBucket}) ->
     ok = gen_server:call(Self, {delete_vbucket, VBucket}, infinity);
-handle_mc_couch_event(_, _) ->
+handle_mc_couch_event(_, _, _) ->
     ok.
 
 replicate_newnodes_docs(State) ->
