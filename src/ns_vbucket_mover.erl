@@ -39,7 +39,8 @@
                 disco_events_subscription::pid(),
                 map::array(),
                 moves_scheduler_state,
-                progress_callback::progress_callback()}).
+                progress_callback::progress_callback(),
+                all_nodes_set::set()}).
 
 %%
 %% API
@@ -173,7 +174,8 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
                 moves_scheduler_state = vbucket_move_scheduler:prepare(OldMap, NewMap,
                                                                        ?MAX_MOVES_PER_NODE, ?MOVES_BEFORE_COMPACTION,
                                                                        fun (Msg, Args) -> ?log_debug(Msg, Args) end),
-                progress_callback=ProgressCallback}}.
+                progress_callback=ProgressCallback,
+                all_nodes_set=AllNodesSet}}.
 
 
 handle_call({run_code, Fun}, _From, State) ->
@@ -208,8 +210,16 @@ handle_info({move_done_new_style, {_Node, _VBucket, _OldChain, _NewChain} = Tupl
     on_move_done(Tuple, State);
 handle_info({backfill_done, {_Node, _VBucket, _OldChain, _NewChain} = Tuple}, State) ->
     on_backfill_done(Tuple, State);
-handle_info({ns_node_disco_events, _, _} = Event, State) ->
-    {stop, {detected_nodes_change, Event}, State};
+handle_info({ns_node_disco_events, OldNodes, NewNodes} = Event,
+            #state{all_nodes_set=AllNodesSet} = State) ->
+    WentDownNodes = sets:from_list(ordsets:subtract(OldNodes, NewNodes)),
+
+    case sets:is_disjoint(AllNodesSet, WentDownNodes) of
+        true ->
+            {noreply, State};
+        false ->
+            {stop, {important_nodes_went_down, Event}, State}
+    end;
 %% We intentionally don't handle other exits so we'll die if one of
 %% the movers fails.
 handle_info({'EXIT', Pid, _} = Msg, #state{disco_events_subscription=Pid}=State) ->
