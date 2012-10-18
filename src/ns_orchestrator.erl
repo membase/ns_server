@@ -493,6 +493,23 @@ idle({start_rebalance, KeepNodes, EjectNodes, FailedNodes}, _From,
                         keep_nodes=KeepNodes,
                         eject_nodes=EjectNodes,
                         failed_nodes=FailedNodes}};
+idle({move_vbuckets, Bucket, Moves}, _From, _State) ->
+    Pid = spawn_link(
+            fun () ->
+                    {ok, Config} = ns_bucket:get_bucket(Bucket),
+                    Map = proplists:get_value(map, Config),
+                    TMap = lists:foldl(fun ({VBucket, TargetChain}, Map0) ->
+                                               setelement(VBucket+1, Map0, TargetChain)
+                                       end, list_to_tuple(Map), Moves),
+                    NewMap = tuple_to_list(TMap),
+                    ns_rebalancer:run_mover(Bucket, Config, proplists:get_value(servers, Config),
+                                            0, 1, Map, NewMap)
+            end),
+    ns_config:set([{rebalance_status, running},
+                   {rebalancer_pid, Pid}]),
+    {reply, ok, rebalancing,
+     #rebalancing_state{rebalancer=Pid,
+                        progress=dict:new()}};
 idle(stop_rebalance, _From, State) ->
     ns_janitor:stop_rebalance_status(
       fun () ->

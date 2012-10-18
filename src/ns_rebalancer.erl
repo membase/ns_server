@@ -28,6 +28,7 @@
          validate_autofailover/1,
          generate_initial_map/1,
          rebalance/3,
+         run_mover/7,
          unbalanced/2,
          eject_nodes/1,
          buckets_replication_statuses/0]).
@@ -302,8 +303,11 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
 rebalance(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets) ->
     Map = proplists:get_value(map, Config),
     {FastForwardMap, MapOptions} = generate_vbucket_map(Map, KeepNodes, Config),
-    ?rebalance_info("Target map (distance: ~p):~n~p", [(catch mb_map:vbucket_movements(Map, FastForwardMap)), FastForwardMap]),
     ns_bucket:update_vbucket_map_history(FastForwardMap, MapOptions),
+    run_mover(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets, Map, FastForwardMap).
+
+run_mover(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets, Map, FastForwardMap) ->
+    ?rebalance_info("Target map (distance: ~p):~n~p", [(catch mb_map:vbucket_movements(Map, FastForwardMap)), FastForwardMap]),
     ns_bucket:set_fast_forward_map(Bucket, FastForwardMap),
     ProgressFun =
         fun (P) ->
