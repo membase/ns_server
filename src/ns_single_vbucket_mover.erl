@@ -170,7 +170,10 @@ mover_inner(Parent, Node, Bucket, VBucket,
             end,
             case ns_config_ets_dup:unreliable_read_key(rebalance_index_waiting_disabled, false) of
                 false ->
-                    janitor_agent:wait_index_updated(Bucket, Parent, NewNode, ReplicaNodes, VBucket);
+                    spawn_and_wait(
+                      fun () ->
+                              ok = janitor_agent:wait_index_updated(Bucket, Parent, NewNode, ReplicaNodes, VBucket)
+                      end);
                 _ ->
                     ok
             end,
