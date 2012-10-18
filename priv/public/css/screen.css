@@ -1259,6 +1259,7 @@ input[type=number].size {width:4em;}
 #view_code_errors {overflow:hidden;font-size:12px;font-weight:normal;text-transform:none;padding:14px 0 0 12px;}
 
 .list .list_errors td {background: #fca0a0;}
-.list .list_errors .label {display:inline-block;width:71px;font-weight:bold;}
+.list .list_errors .label {float:left;width:71px;font-weight:bold;}
+.list .list_errors span {display:block;overflow:hidden;}
 
 #view_details .results_block .list {table-layout:fixed;}

@@ -1271,41 +1271,51 @@
                   <tbody class="list_errors">
                   <!-- {% _.each(errors, function (r) { %} -->
                     <tr>
-                        <td>
-                          <span class="label">from:</span> {%= r.from %} <br>
-                          <span class="label">reason:</span> {%= r.reason %} {%= r.explain ? "(" + r.explain + ")" : "" %}
+                        <td {%= !r.showBtn ? 'colspan="2"' : "" %}>
+                          <div><span class="label">from:</span> <span>{%= r.from %}</span></div>
+                          <div><span class="label">reason:</span> <span>{%= r.reason %} {%= r.explain ? "(" + r.explain + ")" : "" %}</span></div>
                         </td>
-                        <td>
                         <!-- {% if (r.showBtn) { %} -->
+                        <td>
                           <a class="list_button buttontn_remove" onclick="ViewsSection.viewResultsURLCell.runView();"><span>
                             Run Query Again
                           </span></a>
-                        <!-- {% } %} -->
                         </td>
+                        <!-- {% } %} -->
                     </tr>
                   <!-- {% }); %} -->
                   </tbody>
                 <!-- {% } %} -->
+                <!-- {% if (!errors || rows.length) { %} -->
                 <tr>
                     <th class="keycol">Key</th>
                     <th>Value</th>
                 </tr>
+                <!-- {% } %} -->
               <!-- {% if (!rows.lackOfValue) { %} -->
+                <!-- {% if (rows.length) { %}
                 <!-- {% _.each(rows, function (r) { %} -->
-                <tbody>
-                <tr>
-                    <td class="keycol">
-                        <div class="key ellipsis" title="{%= h(JSON.stringify(r.key)) %}">{%= h(JSON.stringify(r.key)) %}</div>
-                        {% if (h(r.id) !== "undefined") { %}
-                          <a class="id ellipsis" href="#sec=documents&bucketName={%=encodeURIComponent(selectedBucket) %}&docId={%= encodeURIComponent(r.id) %}">{%= h(r.id) %}</a>
-                        {% } else { %}
-                          <div class="id ellipsis">{%= h(r.id) %}</div>
-                        {% } %}
-                    </td>
-                    <td class="ellipsis">{%= $.futon.formatJSON(r.value, {html:true}) %}</td>
-                </tr>
-                </tbody>
+                  <tbody>
+                  <tr>
+                      <td class="keycol">
+                          <div class="key ellipsis" title="{%= h(JSON.stringify(r.key)) %}">{%= h(JSON.stringify(r.key)) %}</div>
+                          {% if (h(r.id) !== "undefined") { %}
+                            <a class="id ellipsis" href="#sec=documents&bucketName={%=encodeURIComponent(selectedBucket) %}&docId={%= encodeURIComponent(r.id) %}">{%= h(r.id) %}</a>
+                          {% } else { %}
+                            <div class="id ellipsis">{%= h(r.id) %}</div>
+                          {% } %}
+                      </td>
+                      <td class="ellipsis">{%= $.futon.formatJSON(r.value, {html:true}) %}</td>
+                  </tr>
+                  </tbody>
                 <!-- {% }); %} -->
+                <!-- {% } else { %} -->
+                  <!--{% if (!errors) { %} -->
+                    <tr>
+                        <td colspan="2" style="text-align:center">The results of this view is empty.</td>
+                    </tr>
+                  <!-- {% } %} -->
+                <!-- {% } %} -->
               <!-- {% } else { %} -->
                 <tbody>
                 <tr><td colspan="2" style="text-align:center">To see the results of this view, click "Show Results" above.</td></tr>

@@ -127,25 +127,23 @@ function couchReq(method, url, data, success, error, extraArgs) {
 }
 
 future.capiViewGet = function (ajaxOptions, valueTransformer, newValue, futureWrapper) {
-  function missingValueProducer(xhr, options) {
-    return {rows: [{key: JSON.parse(xhr.responseText)}]};
-  }
   function handleError(xhr, xhrStatus, errMsg) {
-    var text;
-    try {
-      text = xhr.responseText;
-    } catch (e) {}
-    if (text) {
-      try {
-        text = JSON.parse(text);
-      } catch (e) {
-        text = undefined;
-      }
+    var error = {
+      from: ajaxOptions.url
     }
-    if (!text) {
-      text = {error: {xhrStatus: xhrStatus, errMsg: errMsg}};
+
+    if (xhr.responseText) {
+      response = JSON.parse(xhr.responseText);
+      error.reason = response.error;
+      error.explain = response.reason;
     }
-    dataCallback({rows: [{key: text}]});
+
+    error.reason = error.reason || "unexpected";
+
+    dataCallback({
+      rows: [],
+      errors: [error]
+    });
   }
 
   var dataCallback;
@@ -154,7 +152,7 @@ future.capiViewGet = function (ajaxOptions, valueTransformer, newValue, futureWr
   }
   ajaxOptions = _.clone(ajaxOptions);
   ajaxOptions.error = handleError;
-  ajaxOptions.missingValueProducer = missingValueProducer;
+  ajaxOptions.missingValueProducer = handleError;
   // we're using future wrapper to get reference to dataCallback
   // so that we can call it from error handler
   return future.get(ajaxOptions, valueTransformer, newValue, function (initXHR) {
