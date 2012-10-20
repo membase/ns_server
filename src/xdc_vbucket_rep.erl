@@ -291,7 +291,12 @@ terminate(Reason, #rep_state{
            } = State) ->
     ?xdcr_error("Replication `~s` (`~s` -> `~s`) failed: ~s",
                 [Id, Source, Target, to_binary(Reason)]),
-    update_status_to_parent(State#rep_state{status = Status#rep_vb_status{status = idle}}),
+    update_status_to_parent(State#rep_state{status =
+                                                Status#rep_vb_status{status = idle,
+                                                                     num_changes_left = 0,
+                                                                     docs_changes_queue = 0,
+                                                                     size_changes_queue = 0
+                                                                    }}),
     report_error(Reason, Vb, P),
     %% an unhandled error happened. Invalidate target vb map cache.
     remote_clusters_info:invalidate_remote_bucket_by_ref(TargetRef),

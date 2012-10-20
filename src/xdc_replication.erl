@@ -186,6 +186,8 @@ handle_info({src_db_updated, Vb}, #replication{vb_rep_dict = Dict} = State) ->
             Pid ! src_db_updated;
         error ->
             % no state yet, or already erased
+            ?xdcr_debug("get src_db_updated event for vb ~p without an entry in "
+                        "replicator dictionary ~p", [Vb, Dict]),
             ok
     end,
     {noreply, State};
