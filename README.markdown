@@ -53,7 +53,7 @@ development clusters. Ask --help.
 
 Sometimes during debugging/development you want smaller number of
 vbuckets. You can change vbuckets number by setting
-COUCHBASE_NUM_VBUCKET environment variable to desired number of vbuckets
+COUCHBASE_NUM_VBUCKETS environment variable to desired number of vbuckets
 before creating new couchbase bucket.
 
 ### Other tools
