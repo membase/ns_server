@@ -399,7 +399,7 @@ spawn_bucket_compactor(BucketName, {Config, ConfigProps}, Force) ->
               %% no_db_file} reason.
               check_all_dbs_exist(BucketName, AllBucketDbs),
 
-              try_to_cleanup_indexes(BucketName, AllBucketDbs),
+              try_to_cleanup_indexes(BucketName),
 
               ?log_info("Compacting bucket ~s with config: ~n~p",
                         [BucketName, ConfigProps]),
@@ -435,7 +435,7 @@ spawn_bucket_compactor(BucketName, {Config, ConfigProps}, Force) ->
               end
       end).
 
-try_to_cleanup_indexes(BucketName, AllBucketDbs) ->
+try_to_cleanup_indexes(BucketName) ->
     ?log_info("Cleaning up indexes for bucket `~s`", [BucketName]),
 
     try
@@ -455,29 +455,24 @@ try_to_cleanup_indexes(BucketName, AllBucketDbs) ->
     end,
 
     %% we still use ordinary views for development subset
-    lists:foreach(
-      fun ({_, DbName} = VBucketAndDbName) ->
-              case open_db(BucketName, VBucketAndDbName) of
-                  {ok, Db} ->
-                      try
-                          couch_view:cleanup_index_files(Db)
-                      catch
-                          ViewE:ViewT ->
-                              ?log_error(
-                                 "Error while doing cleanup of old "
-                                 "index files for database `~s`: ~p~n~p",
-                                 [DbName, {ViewT, ViewE}, erlang:get_stacktrace()])
-                      after
-                          couch_db:close(Db)
-                      end;
-                  vbucket_moved ->
-                      ok;
-                  Error ->
-                      ?log_error("Failed to open database `~s`: ~p",
-                                 [DbName, Error])
-              end
-      end, AllBucketDbs).
-
+    MasterDbName = db_name(BucketName, <<"master">>),
+    case couch_db:open_int(MasterDbName, []) of
+        {ok, Db} ->
+            try
+                couch_view:cleanup_index_files(Db)
+            catch
+                ViewE:ViewT ->
+                    ?log_error(
+                       "Error while doing cleanup of old "
+                       "index files for database `~s`: ~p~n~p",
+                       [MasterDbName, {ViewT, ViewE}, erlang:get_stacktrace()])
+            after
+                couch_db:close(Db)
+            end;
+        Error ->
+            ?log_error("Failed to open database `~s`: ~p",
+                       [MasterDbName, Error])
+    end.
 
 chain_compactors(Compactors) ->
     Parent = self(),
