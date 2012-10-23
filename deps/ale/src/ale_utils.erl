@@ -34,12 +34,12 @@ loglevel_enabled(LogLevel, ThresholdLogLevel) ->
                            #log_info{}.
 assemble_info(Logger, LogLevel, Module, Function, Line, UserData) ->
     Time = now(),
-    Self = self(),
-    Process =
-        case erlang:process_info(Self, registered_name) of
-            {registered_name, ProcessName} ->
-                ProcessName;
-            _ -> Self
+    RegName =
+        case erlang:process_info(self(), registered_name) of
+            {registered_name, Name} ->
+                Name;
+            _ ->
+                undefined
         end,
     Node = node(),
 
@@ -49,7 +49,8 @@ assemble_info(Logger, LogLevel, Module, Function, Line, UserData) ->
               function=Function,
               line=Line,
               time=Time,
-              process=Process,
+              pid=self(),
+              registered_name=RegName,
               node=Node,
               user_data=UserData}.
 
