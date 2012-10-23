@@ -118,6 +118,8 @@ def start_cluster(num_nodes, start_index, host, extra_args, args_prefix):
             params['env'].update(os.environ)
         path = params['env']['PATH']
         path = (PREFIX+"/bin") + os.pathsep + path
+        if not params['env'].has_key('ERL_FULLSWEEP_AFTER'):
+            params['env']['ERL_FULLSWEEP_AFTER'] = '512'
         params['env']['PATH'] = path
         return subprocess.Popen(args, **params)
 

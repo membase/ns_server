@@ -38,6 +38,9 @@ export LD_LIBRARY_PATH
 ERL_CRASH_DUMP=erl_crash.dump.$(date +%m-%d-%Y-%H:%M:%S).$$
 export ERL_CRASH_DUMP
 
+ERL_FULLSWEEP_AFTER=512
+export ERL_FULLSWEEP_AFTER
+
 # For some obscure reason erl requires HOME environment variable to be set.
 if [ -z "$HOME" ]
 then
