@@ -117,7 +117,7 @@ _start() {
     export GLIBCXX_FORCE_NEW
 
     exec erl \
-        +A 16 \
+        +S 128:128 \
         -smp enable \
         +sbt u \
         +P 327680 \
