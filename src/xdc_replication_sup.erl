@@ -45,7 +45,7 @@ get_replications(SourceBucket) ->
      || {{Bucket, Id}, Pid, _, _} <- supervisor:which_children(?MODULE),
         Bucket =:= SourceBucket].
 
--spec all_local_replication_infos() -> [{Id :: binary(), [{atom(), _}], any()}].
+-spec all_local_replication_infos() -> [{Id :: binary(), [{atom(), _}], [{erlang:timestamp(), ErrorMsg :: binary()}]}].
 all_local_replication_infos() ->
     [{Id, Stats, Errors}
      || {{_Bucket, Id}, Pid, _, _} <- supervisor:which_children(?MODULE),
