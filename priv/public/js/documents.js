@@ -307,7 +307,6 @@ var DocumentsSection = {
     function showDocumentListState(page) {
       prevBtn.toggleClass('disabled', page.pageNumber === 0);
       nextBtn.toggleClass('disabled', isLastPage(page));
-      page.docs.rows.pop();
 
       docsCrntPgCont.text(page.pageNumber + 1);
 
@@ -328,6 +327,9 @@ var DocumentsSection = {
           bucketName: page.bucketName
         });
       } else {
+        if (page.docs.rows.length > page.pageLimit) {
+          page.docs.rows.pop();
+        }
         showDocumetsListErrorState(false);
         renderTemplate('documents_list', {
           loading: false,
