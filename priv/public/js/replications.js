@@ -147,8 +147,8 @@ ViewHelpers.formatReplicationStatus = function (info) {
   }
 
   var id = _.uniqueId('xdcr_errors');
-  var rv = rawStatus + " <a class='xdcr-error-link' onclick='showXDCRErrors(" + JSON.stringify(id) + ");'>" + errors.length;
-  rv += " errors</a>"
+  var rv = rawStatus + " <a onclick='showXDCRErrors(" + JSON.stringify(id) + ");'>Last " + ViewHelpers.count(errors.length, 'error');
+  rv += "</a>"
   rv += "<script type='text/html' id='" + escapeHTML(id) + "'>"
   rv += JSON.stringify(errors)
   rv += "</script>"
