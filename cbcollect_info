@@ -232,14 +232,14 @@ def get_credential():
     else:
         return ""
 
-def make_tasks():
+def make_tasks(root="/opt/couchbase"):
   _tasks = [
     UnixTask("uname", "uname -a"),
     WindowsTask("System information", "systeminfo"),
     WindowsTask("Computer system", "wmic computersystem", reformat=True),
     WindowsTask("Computer OS", "wmic os", reformat=True),
     UnixTask("Directory structure",
-         "ls -lR /opt/couchbase /opt/membase /var/membase /etc/opt/membase"),
+             "ls -lR '%s' /opt/membase /var/membase /etc/opt/membase" % root),
     UnixTask("Database directory structure",
          "ls -lR " + get_dbdir()),
     WindowsTask("Database directory structure",
@@ -324,14 +324,16 @@ def make_tasks():
     UnixTask("System log", "cat /var/adm/messages"),
     LinuxTask("System log", "cat /var/log/syslog"),
     LinuxTask("System log", "cat /var/log/messages"),
-    LinuxTask("Version file", "cat /opt/couchbase/VERSION.txt"),
-    LinuxTask("Manifest file", "cat /opt/couchbase/manifest.txt"),
-    LinuxTask("Manifest file", "cat /opt/couchbase/manifest.xml"),
-    LinuxTask("Memcached logs", "cat /opt/couchbase/var/lib/couchbase/logs/memcached.log.*",
+    LinuxTask("Version file", "cat '%s/VERSION.txt'" % root),
+    LinuxTask("Manifest file", "cat '%s/manifest.txt'" % root),
+    LinuxTask("Manifest file", "cat '%s/manifest.xml'" % root),
+    LinuxTask("Memcached logs",
+              "cat '%s/var/lib/couchbase/logs/memcached.log.*'" % root,
               log_file="memcached.log"),
     UnixTask("Kernel log buffer", "dmesg"),
     LinuxTask("couchbase config",
-        os.path.dirname(sys.argv[0]) + "/cbdump-config /opt/couchbase/var/lib/couchbase/config/config.dat"),
+              "%s/cbdump-config '%s/var/lib/couchbase/config/config.dat'"
+              % (os.path.dirname(sys.argv[0]), root)),
     AllOsTask("couchbase logs (debug)", "cbbrowse_logs", log_file="ns_server.debug.log"),
     AllOsTask("couchbase logs (info)", "cbbrowse_logs info", log_file="ns_server.info.log"),
     AllOsTask("couchbase logs (error)", "cbbrowse_logs error", log_file="ns_server.error.log"),
@@ -383,6 +385,9 @@ def make_tasks():
 def main():
     from optparse import OptionParser
     parser = OptionParser("usage: %prog [options] output_file.zip")
+    parser.add_option("-r", dest="root",
+                      help="root directory - defaults to /opt/couchbase",
+                      default="/opt/couchbase")
     parser.add_option("-v", dest="verbosity", help="increase verbosity level",
                       action="count", default=0)
     options, args = parser.parse_args()
@@ -407,7 +412,7 @@ def main():
         os.environ['PATH'] = ';'.join(path)
 
     runner = TaskRunner(verbosity=options.verbosity)
-    for task in make_tasks():
+    for task in make_tasks(options.root):
         runner.run(task)
 
     runner.zip(args[0], get_node())
