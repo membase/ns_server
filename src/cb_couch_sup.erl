@@ -29,6 +29,7 @@ start_link() ->
 %% Restart couch_app.
 restart_couch() ->
     ok = supervisor:terminate_child(?MODULE, couch_app),
+    couch_app:stop(fake),
     {ok, _} = supervisor:restart_child(?MODULE, couch_app),
     ok.
 
