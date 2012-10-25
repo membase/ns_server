@@ -113,14 +113,15 @@ class TaskRunner(object):
             print >> sys.stderr, 'Skipping "%s" (%s): not for platform %s' \
                 % (task.description, task.command, sys.platform)
 
-    def zip(self, filename):
+    def zip(self, filename, node):
         """Write all our logs to a zipfile"""
         from zipfile import ZipFile, ZIP_DEFLATED
         zf = ZipFile(filename, mode='w', compression=ZIP_DEFLATED)
         try:
             for name, fp in self.files.iteritems():
                 fp.close()
-                zf.write(fp.name, "cbcollect_info_" + self.start_time + "/" + name)
+                zf.write(fp.name,
+                         "cbcollect_info_%s_%s/%s" % (node, self.start_time, name))
         finally:
             zf.close()
 
@@ -198,7 +199,7 @@ def retrieve_config_value_ex(escript_cmd, script, config_file, config_key, node=
 
     return None
 
-def get_ip():
+def get_node():
     ip = None
     try:
         f = open('/opt/couchbase/var/lib/couchbase/ip', 'r')
@@ -217,7 +218,7 @@ def get_ip():
     return node
 
 def get_dbdir():
-    node = get_ip()
+    node = get_node()
     ret = retrieve_config_value('\s*{dbdir,\s*"(.+)"}', node)
     if ret:
         return ret[0]
@@ -409,7 +410,7 @@ def main():
     for task in make_tasks():
         runner.run(task)
 
-    runner.zip(args[0])
+    runner.zip(args[0], get_node())
 
 
 if __name__ == '__main__':
