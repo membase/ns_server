@@ -782,7 +782,10 @@ couchbase_replication_stats_descriptions(BucketId) ->
                                  %% third row
                                  {struct,[{title,<<"checkpoints issued">>},
                                           {name,<<Prefix/binary,"num_checkpoints">>},
-                                          {desc,<<"Number of checkpoints all vb replicators have issued in current replication">>}]},
+                                          {desc,<<"Number of checkpoints all vb replicators have issued successfully in current replication">>}]},
+                                 {struct,[{title,<<"checkpoints failed">>},
+                                          {name,<<Prefix/binary,"num_failedckpts">>},
+                                          {desc,<<"Number of checkpoints all vb replicators have failed to issue in current replication">>}]},
                                  {struct,[{title,<<"docs in queue">>},
                                           {name,<<Prefix/binary,"docs_rep_queue">>},
                                           {desc,<<"Number of document mutations in XDC replication queue">>}]},

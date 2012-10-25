@@ -48,19 +48,32 @@
           vb,
           pid,
           status = idle,
+
+          %% persisted stats to checkpoint doc, we read them from
+          %% checkpoint doc when vb replicator process starts.
+
+          %% # of docs have been checked for eligibility of replication
+          docs_checked = 0,
+          %% of docs have been replicated
+          docs_written = 0,
+          %% bytes of data replicated
+          data_replicated = 0,
+
+          %% following stats initialized to 0 when vb replicator starts, and we do not
+          %% persist them in checkpoint doc. Consequently the lifetime of these stats
+          %% is the same as that of vb replicator process, we may need to accumulate
+          %% some of them when vb rep publishes stats to bucket replicator
+
+          %% # of docs to replicate
           num_changes_left = 0,
           %% num of docs in changes queue
           docs_changes_queue = 0,
           %% size of changes queues
           size_changes_queue = 0,
-          %% num of checkpoints issued
+          %% num of checkpoints issued successfully
           num_checkpoints = 0,
-          %% bytes of data replicated
-          data_replicated = 0,
-          %% average latency of replication
-          rep_latency = 0,
-          docs_checked = 0,
-          docs_written = 0,
+          %% total num of failed checkpoints
+          num_failedckpts = 0,
           total_work_time = 0, % in MS
           total_commit_time = 0 % in MS
  }).
@@ -87,7 +100,10 @@
 %% vbucket level replication state used by module xdc_vbucket_rep
 -record(rep_state, {
           rep_details = #rep{},
+          %% vbreplication stats
           status = #rep_vb_status{},
+          %% time the vb replicator intialized
+          rep_start_time,
           throttle,
           parent,
           source_name,
@@ -110,9 +126,11 @@
           src_starttime,
           tgt_starttime,
           timer, %% checkpoint timer
-          start_work_time,
+
+          %% timer to account the working time, reset every time we publish stats to
+          %% bucket replicator
+          work_start_time,
           last_checkpoint_time,
-          num_checkpoints, %% number of checkpoints made
           workers,
           changes_queue,
           session_id,

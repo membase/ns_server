@@ -152,7 +152,7 @@ handle_call({report_seq_done, Seq, NumChecked, NumWritten, DataReplicated}, From
     SourceCurSeq = xdc_vbucket_rep_ckpt:source_cur_seq(State),
 
     %% get stats
-    {ChangesQueueSize, ChangesQueueDocs, NumCkpts} = get_vb_rep_stats(State),
+    {ChangesQueueSize, ChangesQueueDocs} = get_changes_queue_stats(State),
 
     NewState = State#rep_state{
                  current_through_seq = NewThroughSeq,
@@ -162,7 +162,6 @@ handle_call({report_seq_done, Seq, NumChecked, NumWritten, DataReplicated}, From
                  status = VbStatus#rep_vb_status{num_changes_left = ChangesLeft - NumChecked,
                                                  docs_changes_queue = ChangesQueueDocs,
                                                  size_changes_queue = ChangesQueueSize,
-                                                 num_checkpoints = NumCkpts,
                                                  data_replicated = TotalDataReplicated + DataReplicated,
                                                  docs_checked = TotalChecked + NumChecked,
                                                  docs_written = TotalWritten + NumWritten}
@@ -177,8 +176,7 @@ handle_call({worker_done, Pid}, _From,
         [] ->
             %% all workers completed. Now shutdown everything and prepare for
             %% more changes from src
-            WorkTime = timer:now_diff(now(), State#rep_state.start_work_time) div 1000,
-            TotalWorkTime = VbStatus#rep_vb_status.total_work_time + WorkTime,
+
             %% allow another replicator to go
             State2 = replication_turn_is_done(State),
             couch_api_wrap:db_close(State2#rep_state.source),
@@ -190,14 +188,9 @@ handle_call({worker_done, Pid}, _From,
             misc:flush(checkpoint),
 
             %% changes may or may not be closed
-            {_, _, NumCkpts} = get_vb_rep_stats(State),
-
-            VbStatus2 = VbStatus#rep_vb_status{status = idle,
-                                               size_changes_queue = 0,
-                                               docs_changes_queue = 0,
-                                               num_checkpoints = NumCkpts,
-                                               total_work_time = TotalWorkTime},
-
+            VbStatus2 = VbStatus#rep_vb_status{size_changes_queue = 0,
+                                               docs_changes_queue = 0},
+            %% dump a bunch of stats
             Vb = VbStatus2#rep_vb_status.vb,
             Throttle = State2#rep_state.throttle,
             HighestDone = State2#rep_state.highest_seq_done,
@@ -205,30 +198,32 @@ handle_call({worker_done, Pid}, _From,
             TotalChecked = VbStatus2#rep_vb_status.docs_checked,
             TotalWritten = VbStatus2#rep_vb_status.docs_written,
             TotalDataRepd = VbStatus2#rep_vb_status.data_replicated,
-            TotalCommitTime = VbStatus2#rep_vb_status.total_commit_time,
-            NumCkpts = State2#rep_state.num_checkpoints,
+            NumCkpts = VbStatus2#rep_vb_status.num_checkpoints,
+            NumFailedCkpts = VbStatus2#rep_vb_status.num_failedckpts,
             LastCkptTime = State2#rep_state.last_checkpoint_time,
-            StartWorkTime = State2#rep_state.start_work_time,
+            StartRepTime = State2#rep_state.rep_start_time,
             ?xdcr_debug("Replicator of vbucket ~p done, return token to throttle: ~p~n"
                         "(highest seq done is ~p, number of changes left: ~p~n"
                         "total docs checked: ~p, total docs written: ~p (total data repd: ~p)~n"
-                        "total working time (ms): ~p, total commit time (ms): ~p~n"
-                        "total number of ckpts: ~p, last ckpt time: ~p~n"
-                        "start work time: ~p, work time in this turn (ms): ~p).",
-                        [Vb, Throttle, HighestDone, ChangesLeft, TotalChecked, TotalWritten,
-                         TotalDataRepd, TotalWorkTime, TotalCommitTime, NumCkpts,
+                        "total number of succ ckpts: ~p (failed ckpts: ~p)~n"
+                        "last succ ckpt time: ~p, replicator start time: ~p.",
+                        [Vb, Throttle, HighestDone, ChangesLeft, TotalChecked, TotalWritten, TotalDataRepd,
+                         NumCkpts, NumFailedCkpts,
                          calendar:now_to_local_time(LastCkptTime),
-                         calendar:now_to_local_time(StartWorkTime),
-                         WorkTime
+                         calendar:now_to_local_time(StartRepTime)
                         ]),
-
-            {reply, ok, update_status_to_parent(State2#rep_state{
+            %% report stats to bucket replicator
+            NewState = update_status_to_parent(State2#rep_state{
                                                   workers = [],
                                                   status = VbStatus2,
                                                   source = undefined,
                                                   src_master_db = undefined,
                                                   target = undefined,
-                                                  tgt_master_db = undefined})};
+                                                  tgt_master_db = undefined}),
+
+            %% finally we mark the vb rep  status to idle after reporting stats to bucket replicator
+            VbStatus3 = VbStatus2#rep_vb_status{status = idle},
+            {reply, ok, NewState#rep_state{status = VbStatus3}};
         Workers2 ->
             {reply, ok, State#rep_state{workers = Workers2}}
     end.
@@ -239,15 +234,16 @@ handle_cast(checkpoint, #rep_state{status = VbStatus} = State) ->
                  replicating ->
                      Start = now(),
                      case xdc_vbucket_rep_ckpt:do_checkpoint(State) of
-                         {ok, NewState} ->
+                         {ok, _, NewState} ->
                              CommitTime = timer:now_diff(now(), Start) div 1000,
-                             TotalCommitTime = CommitTime + State#rep_state.status#rep_vb_status.total_commit_time,
-                             VbStatus2 = State#rep_state.status#rep_vb_status{total_commit_time = TotalCommitTime},
+                             TotalCommitTime = CommitTime + NewState#rep_state.status#rep_vb_status.total_commit_time,
+                             VbStatus2 = NewState#rep_state.status#rep_vb_status{total_commit_time = TotalCommitTime},
                              NewState2 = NewState#rep_state{timer = xdc_vbucket_rep_ckpt:start_timer(State),
                                                             status = VbStatus2},
                              {ok, NewState2};
                          Error ->
-                             {stop, Error, State}
+                             %% update the failed ckpt stats to bucket replicator
+                             {stop, Error, update_status_to_parent(State)}
                      end;
                  _ ->
                      %% if get checkpoint when not in replicating state, continue to wait until we
@@ -329,8 +325,32 @@ replication_turn_is_done(#rep_state{throttle = T} = State) ->
 
 update_status_to_parent(#rep_state{parent = Parent,
                                    status = VbStatus} = State) ->
-    Parent ! {set_vb_rep_status, VbStatus},
-    State.
+    %% compute work time since last update the status, note we only compute
+    %% the work time if the status is replicating
+    WorkTime = case VbStatus#rep_vb_status.status of
+                   replicating ->
+                       case State#rep_state.work_start_time of
+                           0 ->
+                               %% timer not initalized yet
+                               0;
+                           _ ->
+                               timer:now_diff(now(), State#rep_state.work_start_time) div 1000
+                       end;
+                   %% if not replicating (idling or waiting for turn), do not count the work time
+                   _ ->
+                       0
+               end,
+
+    %% post to parent bucket replicator
+    Parent ! {set_vb_rep_status,  VbStatus#rep_vb_status{total_work_time = WorkTime}},
+
+    %% reset stats and start work time
+    NewVbStat = VbStatus#rep_vb_status{total_work_time = 0,
+                                       total_commit_time = 0,
+                                       num_checkpoints = 0,
+                                       num_failedckpts = 0},
+    State#rep_state{status = NewVbStat,
+                    work_start_time = now()}.
 
 init_replication_state(#init_state{rep = Rep,
                                    vb = Vb,
@@ -399,13 +419,23 @@ init_replication_state(#init_state{rep = Rep,
       src_starttime = get_value(<<"instance_start_time">>, SourceInfo),
       tgt_starttime = get_value(<<"instance_start_time">>, TargetInfo),
       last_checkpoint_time = now(),
-      num_checkpoints = 0,
+      rep_start_time = now(),
+      %% temporarily initialized to 0, when vb rep gets the token it will
+      %% initialize the work start time in start_replication()
+      work_start_time = 0,
       session_id = couch_uuids:random(),
       status = #rep_vb_status{vb = Vb,
                               pid = self(),
                               data_replicated = DataReplicated,
                               docs_checked = DocsChecked,
-                              docs_written = DocsWritten},
+                              docs_written = DocsWritten,
+                              %% only record the # succ/fail checkpoints during the
+                              %% life of this vb replicator process, the accumulated
+                              %% stats will be computed at parent bucket replicator
+                              %% when vb rep push the stats to its parent.
+                              num_checkpoints = 0,
+                              num_failedckpts = 0
+                             },
       source_seq = get_value(<<"update_seq">>, SourceInfo, ?LOWEST_SEQ)
      },
     ?xdcr_debug("vb ~p replication state initialized: ~p", [Vb, RepState]),
@@ -416,10 +446,10 @@ start_replication(#rep_state{
                      target_name = TargetName,
                      current_through_seq = StartSeq,
                      last_checkpoint_time = LastCkptTime,
-                     num_checkpoints = NumCkpts,
                      rep_details = #rep{id = Id, options = Options},
                      status = VbStatus
                     } = State) ->
+
     WorkStart = now(),
     NumWorkers = get_value(worker_processes, Options),
     BatchSize = get_value(worker_batch_size, Options),
@@ -481,9 +511,9 @@ start_replication(#rep_state{
     {value, DefaultIntervalSecs} = ns_config:search(xdcr_checkpoint_interval),
     IntervalSecs =  misc:getenv_int("XDCR_CHECKPOINT_INTERVAL", DefaultIntervalSecs),
     TimeSinceLastCkpt = timer:now_diff(now(), LastCkptTime) div 1000000,
-    ?xdcr_debug("Worker pids are: ~p, last checkpt time: ~p (total # of ckpts: ~p, "
+    ?xdcr_debug("Worker pids are: ~p, last checkpt time: ~p"
                 "secs since last ckpt: ~p, ckpt interval: ~p)",
-                [Workers, calendar:now_to_local_time(LastCkptTime), NumCkpts,
+                [Workers, calendar:now_to_local_time(LastCkptTime),
                  TimeSinceLastCkpt, IntervalSecs]),
 
     %% check if we need do checkpointing, replicator will crash if checkpoint failure
@@ -492,24 +522,35 @@ start_replication(#rep_state{
                target = Target,
                src_master_db = SrcMasterDb,
                tgt_master_db = TgtMasterDb},
-    {ok, NewState} = case TimeSinceLastCkpt > IntervalSecs of
-                         true ->
-                             xdc_vbucket_rep_ckpt:do_checkpoint(State1);
-                         _ ->
-                             {ok, State1}
-                     end,
 
-    update_status_to_parent(NewState#rep_state{
-                              changes_queue = ChangesQueue,
-                              workers = Workers,
-                              source = Source,
-                              src_master_db = SrcMasterDb,
-                              target = Target,
-                              tgt_master_db = TgtMasterDb,
-                              status = VbStatus#rep_vb_status{num_changes_left = Changes},
-                              timer = xdc_vbucket_rep_ckpt:start_timer(State),
-                              start_work_time = WorkStart
-                             }).
+    {Succ, ErrorMsg, NewState} = case TimeSinceLastCkpt > IntervalSecs of
+                                     true ->
+                                         xdc_vbucket_rep_ckpt:do_checkpoint(State1);
+                                     _ ->
+                                         {ok, <<"no checkpoint">>, State1}
+                                 end,
+
+    ResultState = update_status_to_parent(NewState#rep_state{
+                                            changes_queue = ChangesQueue,
+                                            workers = Workers,
+                                            source = Source,
+                                            src_master_db = SrcMasterDb,
+                                            target = Target,
+                                            tgt_master_db = TgtMasterDb,
+                                            status = VbStatus#rep_vb_status{num_changes_left = Changes},
+                                            timer = xdc_vbucket_rep_ckpt:start_timer(State),
+                                            work_start_time = WorkStart
+                                           }),
+
+    %% finally crash myself if fail to commit, after posting status to parent
+    case Succ of
+        ok ->
+            ok;
+        checkpoint_commit_failure ->
+            exit(ErrorMsg)
+    end,
+
+    ResultState.
 
 update_number_of_changes(#rep_state{source_name = Src,
                                     current_through_seq = Seq,
@@ -665,7 +706,7 @@ target_uri_to_node(TgtURI) ->
     [Node, _Bucket] = string:tokens(NodeDB, "/"),
     Node.
 
-get_vb_rep_stats(#rep_state{changes_queue = ChangesQueue} = State) ->
+get_changes_queue_stats(#rep_state{changes_queue = ChangesQueue} = _State) ->
     ChangesQueueSize = case couch_work_queue:size(ChangesQueue) of
                            closed ->
                                0;
@@ -679,7 +720,6 @@ get_vb_rep_stats(#rep_state{changes_queue = ChangesQueue} = State) ->
                            QueueDocs ->
                                QueueDocs
                        end,
-    %% number of checkpoints issued
-    NumCkpts = State#rep_state.num_checkpoints,
 
-    {ChangesQueueSize, ChangesQueueDocs, NumCkpts}.
+    {ChangesQueueSize, ChangesQueueDocs}.
+

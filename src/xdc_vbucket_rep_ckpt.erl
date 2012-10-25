@@ -43,10 +43,12 @@ cancel_timer(#rep_state{timer = Timer} = State) ->
     {ok, cancel} = timer:cancel(Timer),
     State#rep_state{timer = nil}.
 
+-spec do_checkpoint(#rep_state{}) -> {ok, binary(), #rep_state{}} |
+                                     {checkpoint_commit_failure, binary(), #rep_state{}}.
 do_checkpoint(#rep_state{current_through_seq=Seq, committed_seq=Seq} = State) ->
     SourceCurSeq = source_cur_seq(State),
     NewState = State#rep_state{source_seq = SourceCurSeq},
-    {ok, NewState};
+    {ok, <<"no checkpoint">>, NewState};
 do_checkpoint(State) ->
     #rep_state{
                source_name=SourceName,
@@ -64,81 +66,96 @@ do_checkpoint(State) ->
                src_starttime = SrcInstanceStartTime,
                tgt_starttime = TgtInstanceStartTime,
                session_id = SessionId,
-               num_checkpoints = NumCkpts,
-               status = #rep_vb_status{docs_checked = Checked,
-                                       docs_written = Written,
-                                       data_replicated = DataRepd}
+               status = Status
               } = State,
-    case commit_to_both(Source, Target) of
-        {source_error, Reason} ->
-            {checkpoint_commit_failure,
-             <<"Failure on source commit: ", (to_binary(Reason))/binary>>};
-        {target_error, Reason} ->
-            {checkpoint_commit_failure,
-             <<"Failure on target commit: ", (to_binary(Reason))/binary>>};
-        {SrcInstanceStartTime, TgtInstanceStartTime} ->
-            ?xdcr_info("recording a checkpoint for `~s` -> `~s` at source update_seq ~p",
-                       [SourceName, TargetName, NewSeq]),
-            StartTime = ?l2b(ReplicationStartTime),
-            EndTime = ?l2b(httpd_util:rfc1123_date()),
-            NewHistoryEntry = {[
-                                {<<"session_id">>, SessionId},
-                                {<<"start_time">>, StartTime},
-                                {<<"end_time">>, EndTime},
-                                {<<"start_last_seq">>, StartSeq},
-                                {<<"end_last_seq">>, NewSeq},
-                                {<<"recorded_seq">>, NewSeq},
-                                {<<"docs_checked">>, Checked},
-                                {<<"docs_written">>, Written},
-                                {<<"data_replicated">>, DataRepd}
-                               ]},
-            BaseHistory = [
-                           {<<"session_id">>, SessionId},
-                           {<<"source_last_seq">>, NewSeq},
-                           {<<"start_time">>, StartTime},
-                           {<<"end_time">>, EndTime},
-                           {<<"docs_checked">>, Checked},
-                           {<<"docs_written">>, Written},
-                           {<<"data_replicated">>, DataRepd}
-                         ],
-            %% limit history to 50 entries
-            NewRepHistory = {
-              BaseHistory ++
-                  [{<<"history">>, lists:sublist([NewHistoryEntry | OldHistory], 50)}]
-             },
 
-            Rand = crypto:rand_uniform(0, 16#100000000),
-            RandBin = <<Rand:32/integer>>,
-            try
-                SrcRev = update_checkpoint(
-                           SrcMasterDb, SourceLog#doc{body = NewRepHistory, rev={1, RandBin}}, source),
-                TgtRev = update_checkpoint(
-                           TgtMasterDb, TargetLog#doc{body = NewRepHistory, rev={1, RandBin}}, target),
-                SourceCurSeq = source_cur_seq(State),
-                NewState = State#rep_state{
-                             source_seq = SourceCurSeq,
-                             checkpoint_history = NewRepHistory,
-                             committed_seq = NewSeq,
-                             last_checkpoint_time = now(),
-                             num_checkpoints = NumCkpts + 1,
-                             source_log = SourceLog#doc{rev=SrcRev},
-                             target_log = TargetLog#doc{rev=TgtRev}
-                            },
-                {ok, NewState}
-            catch throw:{checkpoint_commit_failure, _} = Failure ->
-                    Failure
-            end;
-        {SrcInstanceStartTime, _NewTgtInstanceStartTime} ->
-            {checkpoint_commit_failure, <<"Target database out of sync. "
-                                          "Try to increase max_dbs_open at the target's server.">>};
-        {_NewSrcInstanceStartTime, TgtInstanceStartTime} ->
-            {checkpoint_commit_failure, <<"Source database out of sync. "
-                                          "Try to increase max_dbs_open at the source's server.">>};
-        {_NewSrcInstanceStartTime, _NewTgtInstanceStartTime} ->
-            {checkpoint_commit_failure, <<"Source and target databases out of "
-                                          "sync. Try to increase max_dbs_open at both servers.">>}
+    #rep_vb_status{docs_checked = Checked,
+                   docs_written = Written,
+                   data_replicated = DataRepd,
+                   num_checkpoints = NumCkpts,
+                   num_failedckpts = NumFailedCkpts} = Status,
+
+    CheckpointResult = case commit_to_both(Source, Target) of
+                           {source_error, Reason} ->
+                               {checkpoint_commit_failure,
+                                <<"Failure on source commit: ", (to_binary(Reason))/binary>>};
+                           {target_error, Reason} ->
+                               {checkpoint_commit_failure,
+                                <<"Failure on target commit: ", (to_binary(Reason))/binary>>};
+                           {SrcInstanceStartTime, TgtInstanceStartTime} ->
+                               ?xdcr_info("recording a checkpoint for `~s` -> `~s` at source update_seq ~p",
+                                          [SourceName, TargetName, NewSeq]),
+                               StartTime = ?l2b(ReplicationStartTime),
+                               EndTime = ?l2b(httpd_util:rfc1123_date()),
+                               NewHistoryEntry = {[
+                                                   {<<"session_id">>, SessionId},
+                                                   {<<"start_time">>, StartTime},
+                                                   {<<"end_time">>, EndTime},
+                                                   {<<"start_last_seq">>, StartSeq},
+                                                   {<<"end_last_seq">>, NewSeq},
+                                                   {<<"recorded_seq">>, NewSeq},
+                                                   {<<"docs_checked">>, Checked},
+                                                   {<<"docs_written">>, Written},
+                                                   {<<"data_replicated">>, DataRepd}
+                                                  ]},
+                               BaseHistory = [
+                                              {<<"session_id">>, SessionId},
+                                              {<<"source_last_seq">>, NewSeq},
+                                              {<<"start_time">>, StartTime},
+                                              {<<"end_time">>, EndTime},
+                                              {<<"docs_checked">>, Checked},
+                                              {<<"docs_written">>, Written},
+                                              {<<"data_replicated">>, DataRepd}
+                                             ],
+                               %% limit history to 50 entries
+                               NewRepHistory = {
+                                 BaseHistory ++
+                                     [{<<"history">>, lists:sublist([NewHistoryEntry | OldHistory], 50)}]
+                                },
+
+                               Rand = crypto:rand_uniform(0, 16#100000000),
+                               RandBin = <<Rand:32/integer>>,
+                               try
+                                   SrcRev = update_checkpoint(
+                                              SrcMasterDb, SourceLog#doc{body = NewRepHistory, rev={1, RandBin}}, source),
+                                   TgtRev = update_checkpoint(
+                                              TgtMasterDb, TargetLog#doc{body = NewRepHistory, rev={1, RandBin}}, target),
+                                   SourceCurSeq = source_cur_seq(State),
+                                   NewState = State#rep_state{
+                                                source_seq = SourceCurSeq,
+                                                checkpoint_history = NewRepHistory,
+                                                committed_seq = NewSeq,
+                                                last_checkpoint_time = now(),
+                                                source_log = SourceLog#doc{rev=SrcRev},
+                                                target_log = TargetLog#doc{rev=TgtRev}
+                                               },
+                                   {ok, NewState}
+                               catch throw:{checkpoint_commit_failure, _Msg, _Error} = Failure ->
+                                       Failure
+                               end;
+                           {SrcInstanceStartTime, _NewTgtInstanceStartTime} ->
+                               {checkpoint_commit_failure, <<"Target database out of sync. "
+                                                             "Try to increase max_dbs_open at the target's server.">>};
+                           {_NewSrcInstanceStartTime, TgtInstanceStartTime} ->
+                               {checkpoint_commit_failure, <<"Source database out of sync. "
+                                                             "Try to increase max_dbs_open at the source's server.">>};
+                           {_NewSrcInstanceStartTime, _NewTgtInstanceStartTime} ->
+                               {checkpoint_commit_failure, <<"Source and target databases out of "
+                                                             "sync. Try to increase max_dbs_open at both servers.">>}
+                       end,
+
+
+    %% update stats
+    case CheckpointResult of
+        {ok, State1} ->
+            %% no error, return the new state
+            NewStat = Status#rep_vb_status{num_checkpoints = NumCkpts + 1},
+            {ok, <<"Successfully persisted checkpoint">>, State1#rep_state{status = NewStat}};
+        {checkpoint_commit_failure, ErrorMsg} ->
+            %% failed to commit, return error msg and new state
+            NewStat = Status#rep_vb_status{num_failedckpts = NumFailedCkpts + 1},
+            {checkpoint_commit_failure, ErrorMsg, State#rep_state{status = NewStat}}
     end.
-
 
 update_checkpoint(Db, Doc, DbType) ->
     try

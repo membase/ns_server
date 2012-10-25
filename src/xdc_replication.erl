@@ -103,6 +103,7 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                                        status = Status,
                                        num_changes_left = Left,
                                        num_checkpoints = NumCheckpoint,
+                                       num_failedckpts = NumFailedCkpts,
                                        docs_changes_queue = DocsQueue,
                                        size_changes_queue = SizeQueue,
                                        docs_checked = Checked,
@@ -117,6 +118,7 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                          WorkTimeAcc,
                          CommitTimeAcc,
                          NumCkptAcc,
+                         NumFailedCkptAcc,
                          DocsQueueAcc,
                          SizeQueueAcc,
                          VbReplicatingAcc}) ->
@@ -127,6 +129,7 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                                  WorkTimeAcc + WorkTime,
                                  CommitTimeAcc + CommitTime,
                                  NumCkptAcc + NumCheckpoint,
+                                 NumFailedCkptAcc + NumFailedCkpts,
                                  DocsQueueAcc + DocsQueue,
                                  SizeQueueAcc + SizeQueue,
                                  if Status == replicating ->
@@ -136,10 +139,10 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                                  end}
                         end, {0, 0, 0, 0,
                               0, 0, 0, 0,
-                              0, []}, Dict),
+                              0, 0, []}, Dict),
     {Left1, Checked1, Written1, DataRepd1,
-     WorkTime1, CommitTime1, NumCheckpoints1, DocsChangesQueue1,
-     SizeChangesQueue1, VbsReplicating1} = Stats,
+     WorkTime1, CommitTime1, NumCheckpoints1,
+     NumFailedCkpts1, DocsChangesQueue1, SizeChangesQueue1, VbsReplicating1} = Stats,
     Props = [{changes_left, Left1},
              {docs_checked, Checked1},
              {docs_written, Written1},
@@ -149,6 +152,7 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
              {time_working, WorkTime1 div 1000},
              {time_committing, CommitTime1 div 1000},
              {num_checkpoints, NumCheckpoints1},
+             {num_failedckpts, NumFailedCkpts1},
              {docs_rep_queue, DocsChangesQueue1},
              {size_rep_queue, SizeChangesQueue1},
              {vbs_replicating, VbsReplicating1}],
@@ -190,9 +194,35 @@ handle_info({src_db_updated, Vb}, #replication{vb_rep_dict = Dict} = State) ->
     end,
     {noreply, State};
 
-handle_info({set_vb_rep_status, #rep_vb_status{vb = Vb} = VbState},
+handle_info({set_vb_rep_status, #rep_vb_status{vb = Vb} = NewStat},
             #replication{vb_rep_dict = Dict} = State) ->
-    Dict2 = dict:store(Vb, VbState, Dict),
+    Stat = case dict:is_key(Vb, Dict) of
+               false ->
+                   %% first time the vb rep post the stat
+                   NewStat;
+                _ ->
+                   %% already exists an entry in stat table
+                   %% compute accumulated stats
+                   OldStat = dict:fetch(Vb, Dict),
+                   OldWorkTime = OldStat#rep_vb_status.total_work_time,
+                   OldCkptTime = OldStat#rep_vb_status.total_commit_time,
+                   OldNumCkpts = OldStat#rep_vb_status.num_checkpoints,
+                   OldNumFailedCkpts = OldStat#rep_vb_status.num_failedckpts,
+
+                   %% compute accumulated stats
+                   AccuWorkTime = OldWorkTime + NewStat#rep_vb_status.total_work_time,
+                   AccuCkptTime = OldCkptTime + NewStat#rep_vb_status.total_commit_time,
+                   AccuNumCkpts = OldNumCkpts + NewStat#rep_vb_status.num_checkpoints,
+                   AccuNumFailedCkpts = OldNumFailedCkpts + NewStat#rep_vb_status.num_failedckpts,
+
+                   %% update with the accumulated stats
+                   NewStat#rep_vb_status{total_work_time = AccuWorkTime,
+                                         total_commit_time = AccuCkptTime,
+                                         num_checkpoints = AccuNumCkpts,
+                                         num_failedckpts = AccuNumFailedCkpts}
+           end,
+
+    Dict2 = dict:store(Vb, Stat, Dict),
     {noreply, State#replication{vb_rep_dict = Dict2}};
 
 handle_info({set_throttle_status, {NumActiveReps, NumWaitingReps}},
