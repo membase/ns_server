@@ -124,6 +124,8 @@ wait_for_child_death(State) ->
     receive
         {Port, _} = Msg when Port =:= State#state.port ->
             wait_for_child_death_process_info(Msg, State);
+        {'EXIT', Port, _} = Msg when Port =:= State#state.port ->
+            wait_for_child_death_process_info(Msg, State);
         log = Msg ->
             wait_for_child_death_process_info(Msg, State);
         X ->
