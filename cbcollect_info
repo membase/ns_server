@@ -9,6 +9,15 @@ import string
 import re
 import platform
 
+USAGE = """usage: %prog [options] output_file.zip
+
+- Linux/Windows:
+    %prog output_file.zip
+    %prog -v output_file.zip
+
+- Mac OSX:
+    %prog -r ../ output_file.zip"""
+
 class TempFile(object):
     unlink = os.unlink
     def __init__(self):
@@ -384,7 +393,7 @@ def make_tasks(root="/opt/couchbase"):
 
 def main():
     from optparse import OptionParser
-    parser = OptionParser("usage: %prog [options] output_file.zip")
+    parser = OptionParser(usage=USAGE)
     parser.add_option("-r", dest="root",
                       help="root directory - defaults to /opt/couchbase",
                       default="/opt/couchbase")
