@@ -49,4 +49,4 @@ couch_args() ->
 init([]) ->
     {ok, {{one_for_one, 10, 1},
           [{couch_app, {couch_app, start, couch_args()},
-            permanent, 5000, supervisor, [couch_app]}]}}.
+            permanent, infinity, supervisor, [couch_app]}]}}.
