@@ -2199,6 +2199,9 @@ var ViewsSection = {
     });
   },
   onEnter: function () {
+    this.allDDocsURLCell.setValue(undefined);
+    this.allDDocsURLCell.recalculate();
+    this.onLeave();
   },
   onLeave: function () {
     this.rawDDocIdCell.setValue(undefined);
