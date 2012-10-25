@@ -505,8 +505,3 @@ attempt(DbName, DocId, Mod, Fun, Args, fast_forward) ->
         {ok, R1} ->
             R1
     end.
-
--spec create_ckpt_event_id(string(), string()) -> binary().
-create_ckpt_event_id(Bucket, VBucket) ->
-    EventName = "persisted_ckpt_" ++  Bucket ++ "_vb_" ++  VBucket,
-    list_to_binary(EventName).

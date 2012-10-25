@@ -100,43 +100,30 @@ do_notify_vbucket_update(BucketName, VBucket, Body) ->
                 %% Somehow the file we updated can't be found. What?
                 ?EINVAL
         end,
-    case VBStateUpdated of
-        3 ->
-            %% both vb state and checkpoint id change
-            EventId = capi_frontend:create_ckpt_event_id(binary_to_list(BucketName), integer_to_list(VBucket)),
-            gen_event:sync_notify(mc_couch_events,
-                                  {EventId,
-                                   VBCheckpoint}),
-
-            VBStateAtom = capi_utils:vbucket_state_to_atom(VBState),
+    if
+        (VBStateUpdated band 1) =:= 1 ->
+            VBStateAtom = vbucket_state_to_atom(VBState),
             gen_event:sync_notify(mc_couch_events,
                                   {set_vbucket,
                                    binary_to_list(BucketName),
                                    VBucket,
                                    VBStateAtom,
                                    VBCheckpoint});
-        2 ->
-            %% checkpoint id change
-            EventId = capi_frontend:create_ckpt_event_id(binary_to_list(BucketName), integer_to_list(VBucket)),
-            gen_event:sync_notify(mc_couch_events,
-                                  {EventId,
-                                   VBCheckpoint});
-
-        1 ->
-            %% vbstate change
-            VBStateAtom = capi_utils:vbucket_state_to_atom(VBState),
-            gen_event:sync_notify(mc_couch_events,
-                                  {set_vbucket,
-                                   binary_to_list(BucketName),
-                                   VBucket,
-                                   VBStateAtom,
-                                   VBCheckpoint});
-        0 ->
-            %% changes I do not care
+        true ->
             ok
     end,
 
     ResponseStatus.
+
+-spec vbucket_state_to_atom(int_vb_state()) -> atom().
+vbucket_state_to_atom(?VB_STATE_ACTIVE) ->
+    active;
+vbucket_state_to_atom(?VB_STATE_REPLICA) ->
+    replica;
+vbucket_state_to_atom(?VB_STATE_PENDING) ->
+    pending;
+vbucket_state_to_atom(?VB_STATE_DEAD) ->
+    dead.
 
 do_delete_vbucket(BucketName, VBucket) ->
     ?log_debug("Notifying mc_couch_events of vbucket deletion: ~s/~p", [BucketName, VBucket]),

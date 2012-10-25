@@ -90,20 +90,6 @@ must_open_vbucket(BucketName, VBucket) ->
 
 %% copied from mc_couch_vbucket
 
--spec vbucket_state_to_binary(int_vb_state()) -> binary().
-vbucket_state_to_binary(IntState) ->
-    atom_to_binary(vbucket_state_to_atom(IntState), latin1).
-
--spec vbucket_state_to_atom(int_vb_state()) -> atom().
-vbucket_state_to_atom(?VB_STATE_ACTIVE) ->
-    active;
-vbucket_state_to_atom(?VB_STATE_REPLICA) ->
-    replica;
-vbucket_state_to_atom(?VB_STATE_PENDING) ->
-    pending;
-vbucket_state_to_atom(?VB_STATE_DEAD) ->
-    dead.
-
 -spec get_vbucket_state_doc(ext_bucket_name(), vbucket_id()) -> binary() | not_found.
 get_vbucket_state_doc(BucketName, VBucket) when is_integer(VBucket) ->
     try must_open_vbucket(BucketName, VBucket) of
