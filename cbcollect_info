@@ -374,7 +374,7 @@ def make_tasks():
   if c:
       _tasks.append(
           AllOsTask("couchbase diags",
-                    "curl \"http://%s@127.0.0.1:8091/diag?noLogs=1\"" % (c),
+                    "curl -sS \"http://%s@127.0.0.1:8091/diag?noLogs=1\"" % (c),
                     log_file="diag.log"))
 
   return _tasks
