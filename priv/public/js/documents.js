@@ -499,6 +499,10 @@ var DocumentsSection = {
         self.currentPageLimitCell
       );
 
+      self.currentPageLimitCell.subscribeValue(function (val) {
+        itemsPerList.selectBox("value", val);
+      });
+
       function prevNextCallback() {
         $('html, body').animate({scrollTop:0}, 250);
         afterPageLoad = undefined;
