@@ -122,7 +122,8 @@ default() ->
 
                                                 % Memcached config
      {{node, node(), memcached},
-      [{port, misc:get_env_default(memcached_port, 11210)},
+      [{'_vclock', [{'_', {1, 0}}]},
+       {port, misc:get_env_default(memcached_port, 11210)},
        {mccouch_port, misc:get_env_default(mccouch_port, 11213)},
        {dedicated_port, misc:get_env_default(memcached_dedicated_port, 11209)},
        {admin_user, "_admin"},
