@@ -94,6 +94,29 @@
                         (gen-server 'remote_clusters_info
                                     "service to query and cache remote clusters information (cluster nodes and vbucket
                                     maps in particular")
+                        (gen-fsm 'mb_master
+                                 ;; NOTE: the following is just spawn_link relation
+                                 (supervisor 'mb_master_sup :mode :one_for_one
+                                             (gen-fsm (:global 'ns_orchestrator)
+                                                      ;; failover is done on orchestrator process itself
+                                                      (notable-call 'ns_rebalancer 'failover/1)
+                                                      ;; but rebalance is separate process
+                                                      (spawns 'ns_rebalancer 'rebalance/3)
+                                                      ;; and janitor is separate as well
+                                                      (spawns 'ns_janitor 'cleanup/2))
+                                             (gen-server (:global 'ns_tick))
+                                             (gen-server (:global 'auto_failover))))
+                        (gen-event 'master_activity_events
+                                   "Timestamped master activity events. Real data only on master node.")
+                        (gen-event 'master_activity_events_ingress
+                                   "Raw master activity events. Remote nodes send their stuff to master's ingress events process")
+                        (pubsub-link 'master_activity_events_timestamper :to 'master_activity_events_ingress
+                                     "adds timestamps to ingress events also serves queued note_xxx requests
+                                     by sending them to ingress process on master")
+                        (gen-server 'master_activity_events_pids_watcher)
+                        (gen-server 'master_activity_events_keeper
+                                    "local 'archive' of recent master events. Keeps 8k of recent events. Only
+                                    relevant on master node.")
                         (supervisor 'menelaus_sup :mode :one_for_one
                                     (worker 'menelaus_web)
                                     (gen-server 'menelaus_web_alerts_srv)
@@ -127,29 +150,6 @@
                         (gen-server 'xdc_rep_manager
                                     "monitors _replicator db for replications. Babysits couch replications. Interacts
                                     with couch replicator in really subtle ways")
-                        (gen-fsm 'mb_master
-                                 ;; NOTE: the following is just spawn_link relation
-                                 (supervisor 'mb_master_sup :mode :one_for_one
-                                             (gen-fsm (:global 'ns_orchestrator)
-                                                      ;; failover is done on orchestrator process itself
-                                                      (notable-call 'ns_rebalancer 'failover/1)
-                                                      ;; but rebalance is separate process
-                                                      (spawns 'ns_rebalancer 'rebalance/3)
-                                                      ;; and janitor is separate as well
-                                                      (spawns 'ns_janitor 'cleanup/2))
-                                             (gen-server (:global 'ns_tick))
-                                             (gen-server (:global 'auto_failover))))
-                        (gen-event 'master_activity_events
-                                   "Timestamped master activity events. Real data only on master node.")
-                        (gen-event 'master_activity_events_ingress
-                                   "Raw master activity events. Remote nodes send their stuff to master's ingress events process")
-                        (pubsub-link 'master_activity_events_timestamper :to 'master_activity_events_ingress
-                                     "adds timestamps to ingress events also serves queued note_xxx requests
-                                     by sending them to ingress process on master")
-                        (gen-server 'master_activity_events_pids_watcher)
-                        (gen-server 'master_activity_events_keeper
-                                    "local 'archive' of recent master events. Keeps 8k of recent events. Only
-                                    relevant on master node.")
                         (supervisor 'ns_bucket_sup :mode :one_for_one
                                     (pubsub-link 'buckets_observing_subscription :to 'ns_config_events
                                                  "observes config for buckets that should be started/stopped
