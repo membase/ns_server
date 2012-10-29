@@ -19,6 +19,7 @@
 
 -include("ns_common.hrl").
 -include("ns_log.hrl").
+-include_lib("kernel/include/file.hrl").
 
 -export([do_diag_per_node/0, handle_diag/1,
          handle_sasl_logs/1, handle_sasl_logs/2,
@@ -263,11 +264,11 @@ do_handle_diag(Req, Extra) ->
             ?XDCR_LOG_FILENAME, ?COUCHDB_LOG_FILENAME,
             ?VIEWS_LOG_FILENAME, ?MAPREDUCE_ERRORS_LOG_FILENAME],
 
-    Resp1 = lists:foldl(
-              fun (Log, AccResp) ->
-                      handle_log(AccResp, Log)
-              end, Resp, Logs),
-    Resp1:write_chunk(<<"">>).
+    lists:foreach(fun (Log) ->
+                          handle_log(Resp, Log)
+                  end, Logs),
+    handle_memcached_logs(Resp),
+    Resp:write_chunk(<<"">>).
 
 handle_log(Resp, LogName) ->
     LogsHeader = io_lib:format("logs_node (~s):~n"
@@ -275,8 +276,52 @@ handle_log(Resp, LogName) ->
     Resp:write_chunk(list_to_binary(LogsHeader)),
     ns_log_browser:stream_logs(LogName,
                                fun (Data) -> Resp:write_chunk(Data) end),
-    Resp:write_chunk(<<"-------------------------------\n">>),
-    Resp.
+    Resp:write_chunk(<<"-------------------------------\n">>).
+
+
+handle_memcached_logs(Resp) ->
+    Config = ns_config:get(),
+    Path = ns_config:search_node_prop(Config, memcached, log_path),
+    Prefix = ns_config:search_node_prop(Config, memcached, log_prefix),
+
+    {ok, AllFiles} = file:list_dir(Path),
+    Logs = [filename:join(Path, F) || F <- AllFiles,
+                                      string:str(F, Prefix) == 1],
+    TsLogs = lists:map(fun(F) ->
+                               case file:read_file_info(F) of
+                                   {ok, Info} ->
+                                       {F, Info#file_info.mtime};
+                                   {error, enoent} ->
+                                       deleted
+                               end
+                       end, Logs),
+
+    Sorted = lists:keysort(2, lists:filter(fun (X) -> X /= deleted end, TsLogs)),
+
+    Resp:write_chunk(<<"memcached logs:\n-------------------------------\n">>),
+
+    lists:foreach(fun ({Log, _}) ->
+                          handle_memcached_log(Resp, Log)
+                  end, Sorted).
+
+handle_memcached_log(Resp, Log) ->
+    case file:open(Log, [raw, binary]) of
+        {ok, File} ->
+            do_handle_memcached_log(Resp, File);
+        Error ->
+            Resp:write_chunk(
+              list_to_binary(io_lib:format("Could not open file ~s: ~p~n", [Log, Error])))
+    end.
+
+-define(CHUNK_SIZE, 65536).
+
+do_handle_memcached_log(Resp, File) ->
+    case file:read(File, ?CHUNK_SIZE) of
+        eof ->
+            ok;
+        {ok, Data} ->
+            Resp:write_chunk(Data)
+    end.
 
 handle_sasl_logs(LogName, Req) ->
     case ns_log_browser:log_exists(LogName) of
