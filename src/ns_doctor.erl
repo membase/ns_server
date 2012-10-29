@@ -362,7 +362,11 @@ finalize_xcdr_plist({ChangesLeft, DocsChecked, DocsWritten, Errors}) ->
 
 finalize_indexer_or_compaction(IndexerOrCompaction, BucketName, DDocId,
                                {ChangesDone, TotalChanges}) ->
-    Progress = erlang:min((ChangesDone * 100) div TotalChanges, 100),
+    Progress = case TotalChanges =:= 0 orelse ChangesDone > TotalChanges of
+                   true -> 100;
+                   _ ->
+                       (ChangesDone * 100) div TotalChanges
+               end,
     [{type, IndexerOrCompaction},
      {recommendedRefreshPeriod, 2.0},
      {status, running},
