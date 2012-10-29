@@ -337,7 +337,7 @@ def make_tasks(root="/opt/couchbase"):
     LinuxTask("Manifest file", "cat '%s/manifest.txt'" % root),
     LinuxTask("Manifest file", "cat '%s/manifest.xml'" % root),
     LinuxTask("Memcached logs",
-              "cat '%s'/var/lib/couchbase/logs/memcached.log.*" % root,
+              "cd '%s'/var/lib/couchbase/logs && cat $(ls -tr memcached.log.*)" % root,
               log_file="memcached.log"),
     UnixTask("Kernel log buffer", "dmesg"),
     LinuxTask("couchbase config",
