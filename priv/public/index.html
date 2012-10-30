@@ -1300,7 +1300,7 @@
                       <td class="keycol">
                           <div class="key ellipsis" title="{%= h(JSON.stringify(r.key)) %}">{%= h(JSON.stringify(r.key)) %}</div>
                           {% if (h(r.id) !== "undefined") { %}
-                            <a class="id ellipsis" href="#sec=documents&bucketName={%=encodeURIComponent(selectedBucket) %}&docId={%= encodeURIComponent(r.id) %}">{%= h(r.id) %}</a>
+                            <a class="id ellipsis sample-document-link" data-sample-doc-id="{%= h(r.id) %}" href="#">{%= h(r.id) %}</a>
                           {% } else { %}
                             <div class="id ellipsis">{%= h(r.id) %}</div>
                           {% } %}

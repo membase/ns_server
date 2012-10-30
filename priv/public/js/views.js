@@ -734,12 +734,12 @@ function createRandomDocCells(ns, modeCell) {
   ns.randomDocIdCell.equality = function (a, b) {return a === b};
 
   // null value means no docs exist
-  ns.randomDocCell = Cell.computeEager(function (v) {
+  ns.sampleDocCell = Cell.computeEager(function (v) {
     // this will prevent loading random doc when it's not needed
     if (!v(ns.currentView) && !v(ns.currentSpatial)) {
       return;
     }
-    var randomId = v(ns.randomDocIdCell);
+    var randomId = v(ns.sampleDocumentIdCell) || v(ns.randomDocIdCell);
     if (randomId == null) {//null or undefined
       return randomId;
     }
@@ -763,8 +763,8 @@ function createRandomDocCells(ns, modeCell) {
                        missingValue: null
                       }, undefined, undefined, futureWrap)
   });
-  ns.randomDocCell.equality = function (a, b) {return a === b};
-  ns.randomDocCell.delegateInvalidationMethods(ns.randomDocIdCell);
+  ns.sampleDocCell.equality = function (a, b) {return a === b};
+  ns.sampleDocCell.delegateInvalidationMethods(ns.randomDocIdCell);
 
   ns.viewResultsMassagedForTemplateCell = Cell.compute(function (v) {
     var viewResult = v(ns.viewResultsCellViews);
@@ -855,6 +855,7 @@ var ViewsSection = {
     self.defaultSubsetAppliedURLBuilderCell = new Cell();
     self.fullSubsetAppliedURLBuilderCell = new Cell();
     self.lastAppliedURLBuilderCell = new Cell();
+    self.sampleDocumentIdCell = new Cell();
 
     createViewsCells(self, DAL.cells.bucketsListCell, DAL.cells.capiBase, DAL.cells.mode, DAL.cells.tasksProgressCell, DAL.cells.currentPoolDetailsCell);
     createRandomDocCells(self, DAL.cells.mode);
@@ -1132,6 +1133,10 @@ var ViewsSection = {
         return;
       }
       renderTemplate('view_results', value);
+      $('.sample-document-link').click(function (e) {
+        e.preventDefault();
+        self.sampleDocumentIdCell.setValue($(this).attr('data-sample-doc-id'));
+      });
     });
 
     self.viewResultsCellSpatial.subscribeValue(function (value) {
@@ -1305,11 +1310,12 @@ var ViewsSection = {
     });
 
     previewRandomDoc.click(function (ev) {
-      self.randomDocCell.setValue(undefined);
-      self.randomDocCell.invalidate();
+      self.sampleDocumentIdCell.setValue(undefined);
+      self.sampleDocCell.setValue(undefined);
+      self.sampleDocCell.invalidate();
     });
 
-    self.randomDocCell.subscribeValue(function (doc) {
+    self.sampleDocCell.subscribeValue(function (doc) {
       editDocument.removeClass('disabled');
       if (doc) {
         sampleDocsCont.show();
