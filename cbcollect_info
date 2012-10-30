@@ -314,7 +314,8 @@ def make_tasks(root="/opt/couchbase"):
                 basedir() + "\\..\\var\\lib\\couchbase\\config\\config.dat",
                 reformat=True),
     WindowsTask("Memcached logs",
-                "type " + basedir() + "\\..\\var\\lib\\couchbase\\logs\\memcached.log.*",
+                "cd " + basedir() + "\\..\\var\\lib\\couchbase\\logs && " +
+                "for /f %a IN ('dir /od /b memcached.log.*') do type %a",
                 log_file="memcached.log", reformat=True),
     UnixTask("Filesystem", "df -ha"),
     UnixTask("System activity reporter", "sar 1 10"),
