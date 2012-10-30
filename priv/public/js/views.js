@@ -578,8 +578,8 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
     });
 
     var importance = {
-      view_compaction: 1,
-      indexer: 2
+      view_compaction: 2,
+      indexer: 1
     };
 
     _.each(rv, function (ddocTasks, key) {
