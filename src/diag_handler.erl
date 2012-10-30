@@ -221,7 +221,7 @@ continue_handling_just_diag(Resp, DiagsWithProcesses) ->
     Resp:write_chunk(list_to_binary(io_lib:format("~n~nper_node_processes =~n", []))),
 
     [begin
-         Text = io_lib:format("    ~p", [Processes]),
+         Text = io_lib:format("    ~p~n", [Processes]),
          Resp:write_chunk(list_to_binary(Text)),
          erlang:garbage_collect()
      end || Processes <- DiagsWithProcesses],
