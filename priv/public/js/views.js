@@ -877,6 +877,7 @@ var ViewsSection = {
     var viewResultsBlock = $('#view_results_block');
     var previewRandomDoc = $('#preview_random_doc');
     var viewCodeErrors = $('#view_code_errors');
+    var spatialCodeErrors = $('#spatial_code_errors');
     var spatialCode = $('#spatialcode');
     var spatialResultBlock = $('#spatial_results_block');
     var whenInsideView = $('.when-inside-view', views);
@@ -1029,6 +1030,7 @@ var ViewsSection = {
           self.reduceEditor.setValue(view.reduce || "");
         } else if (spatial !== undefined) {
           originalSpatial = spatial;
+          spatialCodeErrors.text('').attr('title','');
 
           // NOTE: this triggers onChange right now so it needs to be last
           self.spatialEditor.setValue(spatial);
@@ -1613,7 +1615,7 @@ var ViewsSection = {
       spatial[spatialName] = spatialDef ||
           "function (doc) {\n  if (doc.geometry) {\n    emit(doc.geometry, null);\n}\n}";
 
-      $('#view_code_errors').text('').attr('title','');
+      $('#spatial_code_errors').text('').attr('title','');
 
       couchReq('PUT',
                ddocURL,
@@ -1624,6 +1626,12 @@ var ViewsSection = {
                function (error, status, unexpected) {
                  if (status == 409) {
                    return begin();
+                 }
+                 if (status == 400) {
+                   callback("error", error.error, error.reason, function () {
+                     BUG("this is not expected");
+                   });
+                   return;
                  }
                  return unexpected();
                });
@@ -2051,11 +2059,19 @@ var ViewsSection = {
     function doSaveSpatial(dbURL, ddocId, spatialName, spatial, overwriteConfirmed) {
       return ViewsSection.doSaveSpatial(dbURL, ddocId, spatialName, overwriteConfirmed, callback, spatial);
 
-      function callback(arg) {
+      function callback(arg, error, reason) {
         if (arg === "conflict") {
           return confirmOverwrite(dbURL, ddocId, spatialName, spatial);
         }
-        saveSucceeded(ddocId, spatialName);
+
+        modal.finish();
+        spinner.remove();
+
+        if (arg == "error") {
+          warning.show().text(reason);
+        } else {
+          saveSucceeded(ddocId, spatialName);
+        }
       }
     }
 
@@ -2071,8 +2087,6 @@ var ViewsSection = {
     }
 
     function saveSucceeded(ddocId, spatialName) {
-      modal.finish();
-      spinner.remove();
       hideDialog(dialog);
       self.rawDDocIdCell.setValue(ddocId);
       self.rawSpatialNameCell.setValue(spatialName);
@@ -2100,8 +2114,16 @@ var ViewsSection = {
       return ViewsSection.doSaveSpatial(dbURL, ddoc.meta.id, spatialName, true,
         saveCallback, currentSpatial);
 
-      function saveCallback() {
-        self.allDDocsCell.recalculate();
+      function saveCallback(status, error, reason, continueSaving) {
+        if (error === 'confirm_views_limit' || error === 'already_exists') {
+          return continueSaving();
+        }
+
+        if (status !== "ok") {
+          $('#spatial_code_errors').text(reason).attr('title', reason);
+        } else {
+          self.allDDocsCell.recalculate();
+        }
       }
     }
   },
