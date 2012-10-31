@@ -103,12 +103,13 @@ do_notify_vbucket_update(BucketName, VBucket, Body) ->
     if
         (VBStateUpdated band 1) =:= 1 ->
             VBStateAtom = vbucket_state_to_atom(VBState),
-            gen_event:sync_notify(mc_couch_events,
-                                  {set_vbucket,
-                                   binary_to_list(BucketName),
-                                   VBucket,
-                                   VBStateAtom,
-                                   VBCheckpoint});
+            Event = {set_vbucket,
+                     binary_to_list(BucketName),
+                     VBucket,
+                     VBStateAtom,
+                     VBCheckpoint},
+            gen_event:sync_notify(mc_couch_events, Event),
+            ?log_debug("Signaled mc_couch_event: ~p", [Event]);
         true ->
             ok
     end,
