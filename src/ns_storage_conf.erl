@@ -34,6 +34,7 @@
 -export([node_storage_info/1, cluster_storage_info/0, nodes_storage_info/1]).
 
 -export([allowed_node_quota_range/1, allowed_node_quota_range/0,
+         default_memory_quota/1,
          allowed_node_quota_range_for_joined_nodes/0,
          this_node_memory_data/0]).
 
@@ -595,3 +596,16 @@ allowed_node_quota_range(MemSupData, MinusMegs) ->
                                    end
                            end,
     {MinMemoryMB, MaxMemoryMB, QuotaErrorDetailsFun}.
+
+default_memory_quota(MemSupData) ->
+    {Min, Max, _} = allowed_node_quota_range(MemSupData),
+    {MaxMemoryBytes0, _, _} = MemSupData,
+    MiB = 1048576,
+    Value = (MaxMemoryBytes0 * 3) div (5 * MiB),
+    if Value > Max ->
+            Max;
+       Value < Min ->
+            Min;
+       true ->
+            Value
+    end.

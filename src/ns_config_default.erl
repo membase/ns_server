@@ -42,7 +42,7 @@ default() ->
     DbDir = filename:join(DbDir0, "data"),
     InitQuota = case memsup:get_memory_data() of
                     {_, _, _} = MemData ->
-                        element(2, ns_storage_conf:allowed_node_quota_range(MemData));
+                        ns_storage_conf:default_memory_quota(MemData);
                     _ -> undefined
                 end,
     CAPIPort = case erlang:get(capi_port_override) of
