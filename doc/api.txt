@@ -304,6 +304,21 @@ GET /pools/default/remoteClusters =>
     })*
 ]
 
+GET /internalSettings =>
+
+{
+    "indexAwareRebalanceDisabled": <:bool>, // false by default (private!)
+    "rebalanceIndexWaitingDisabled": <:bool>, // false by default (private!)
+    "rebalanceIndexPausingDisabled": <:bool>, // false by default (private!)
+    "maxParallelIndexers": <:integer>,       // 4 by default
+    "maxParallelReplicaIndexers": <:integer>, // 2 by default
+    "maxBucketCount": <:integer> // 10 by default
+}
+
+NOTE: we'll add/remove some fields over time here. All internal
+settings are by definition somewhat implementation-details and may
+change from release to release.
+
 
 ======
 POST
@@ -319,6 +334,14 @@ fromBucket=<local-bucket-name>&toBucket=<remote-bucket-name>&replicationType=con
 
 // empty post here deletes xdcr replication
 POST /controller/cancelXCDR/<:string>
+
+POST /internalSettings
+<setting-name>=<setting-value>(&<setting-name>=<setting-value>)*
+
+See corresponding GET for valid setting-name and setting-value. NOTE:
+subset of settings can be posted. Even single setting may be changed
+by POST. So unknown/ignored fields may be easily omitted and kept on
+default values.
 
 
 ====
