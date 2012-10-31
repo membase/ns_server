@@ -205,12 +205,18 @@ handle_just_diag(Req, Extra) ->
 
     [begin
          Text = io_lib:format("    ~p~n",
-                              [{N, lists:keydelete(processes, 1, PList)}]),
+                              [{N, case is_list(PList) of
+                                       true -> lists:keydelete(processes, 1, PList);
+                                       _ -> PList
+                                   end}]),
          Resp:write_chunk(list_to_binary(Text))
      end || {N, PList} <- PerNodeDiags],
 
     DiagsWithProcesses =
-        [{N, proplists:get_value(processes, PList)}
+        [{N, case is_list(PList) of
+                 true -> proplists:get_value(processes, PList);
+                 _ -> PList
+             end}
          || {N, PList} <- PerNodeDiags],
 
     continue_handling_just_diag(Resp, DiagsWithProcesses).
