@@ -204,22 +204,32 @@ handle_info({set_vb_rep_status, #rep_vb_status{vb = Vb} = NewStat},
                    %% already exists an entry in stat table
                    %% compute accumulated stats
                    OldStat = dict:fetch(Vb, Dict),
+                   OldDocsChecked = OldStat#rep_vb_status.docs_checked,
+                   OldDocsWritten = OldStat#rep_vb_status.docs_written,
+                   OldDataRepd = OldStat#rep_vb_status.data_replicated,
                    OldWorkTime = OldStat#rep_vb_status.total_work_time,
                    OldCkptTime = OldStat#rep_vb_status.total_commit_time,
                    OldNumCkpts = OldStat#rep_vb_status.num_checkpoints,
                    OldNumFailedCkpts = OldStat#rep_vb_status.num_failedckpts,
 
                    %% compute accumulated stats
+                   AccuDocsChecked = OldDocsChecked + NewStat#rep_vb_status.docs_checked,
+                   AccuDocsWritten = OldDocsWritten + NewStat#rep_vb_status.docs_written,
+                   AccuDataRepd = OldDataRepd + NewStat#rep_vb_status.data_replicated,
                    AccuWorkTime = OldWorkTime + NewStat#rep_vb_status.total_work_time,
                    AccuCkptTime = OldCkptTime + NewStat#rep_vb_status.total_commit_time,
                    AccuNumCkpts = OldNumCkpts + NewStat#rep_vb_status.num_checkpoints,
                    AccuNumFailedCkpts = OldNumFailedCkpts + NewStat#rep_vb_status.num_failedckpts,
 
                    %% update with the accumulated stats
-                   NewStat#rep_vb_status{total_work_time = AccuWorkTime,
-                                         total_commit_time = AccuCkptTime,
-                                         num_checkpoints = AccuNumCkpts,
-                                         num_failedckpts = AccuNumFailedCkpts}
+                   NewStat#rep_vb_status{
+                     docs_checked = AccuDocsChecked,
+                     docs_written = AccuDocsWritten,
+                     data_replicated = AccuDataRepd,
+                     total_work_time = AccuWorkTime,
+                     total_commit_time = AccuCkptTime,
+                     num_checkpoints = AccuNumCkpts,
+                     num_failedckpts = AccuNumFailedCkpts}
            end,
 
     Dict2 = dict:store(Vb, Stat, Dict),

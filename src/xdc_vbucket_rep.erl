@@ -344,11 +344,15 @@ update_status_to_parent(#rep_state{parent = Parent,
     %% post to parent bucket replicator
     Parent ! {set_vb_rep_status,  VbStatus#rep_vb_status{total_work_time = WorkTime}},
 
-    %% reset stats and start work time
-    NewVbStat = VbStatus#rep_vb_status{total_work_time = 0,
-                                       total_commit_time = 0,
-                                       num_checkpoints = 0,
-                                       num_failedckpts = 0},
+    %% reset accumulated stats and start work time
+    NewVbStat = VbStatus#rep_vb_status{
+                  docs_checked = 0,
+                  docs_written = 0,
+                  data_replicated = 0,
+                  total_work_time = 0,
+                  total_commit_time = 0,
+                  num_checkpoints = 0,
+                  num_failedckpts = 0},
     State#rep_state{status = NewVbStat,
                     work_start_time = now()}.
 
@@ -391,6 +395,9 @@ init_replication_state(#init_state{rep = Rep,
      DocsWritten,
      DataReplicated,
      History} = compare_replication_logs(SourceLog, TargetLog),
+    ?xdcr_debug("history log at src and dest: startseq: ~p, docs checked: ~p,"
+                "docs_written: ~p, data replicated: ~p",
+                [StartSeq0, DocsChecked, DocsWritten, DataReplicated]),
     StartSeq = get_value(since_seq, Options, StartSeq0),
     #doc{body={CheckpointHistory}} = SourceLog,
     couch_db:close(Source),
@@ -426,13 +433,15 @@ init_replication_state(#init_state{rep = Rep,
       session_id = couch_uuids:random(),
       status = #rep_vb_status{vb = Vb,
                               pid = self(),
-                              data_replicated = DataReplicated,
-                              docs_checked = DocsChecked,
-                              docs_written = DocsWritten,
-                              %% only record the # succ/fail checkpoints during the
-                              %% life of this vb replicator process, the accumulated
-                              %% stats will be computed at parent bucket replicator
-                              %% when vb rep push the stats to its parent.
+                              %% the accumulated stats are cleared here. They
+                              %% will be computed during the lifetime of vb
+                              %% replicator and aggregated at the parent bucket
+                              %% replicator when vb replicator pushes the stats
+                              docs_checked = 0,
+                              docs_written = 0,
+                              total_work_time = 0,
+                              total_commit_time = 0,
+                              data_replicated = 0,
                               num_checkpoints = 0,
                               num_failedckpts = 0
                              },

@@ -49,8 +49,12 @@
           pid,
           status = idle,
 
-          %% persisted stats to checkpoint doc, we read them from
-          %% checkpoint doc when vb replicator process starts.
+          %% following stats initialized to 0 when vb replicator starts, and refreshed
+          %% when update stat to bucket replicator. The bucket replicator is responsible
+          %% for aggretating the statistics for each vb. These stats may be from different
+          %% vb replicator processes. We do not need to persist these stats in checkpoint
+          %% doc. Consequently the lifetime of these stats at vb replicator level is the
+          %% same as that of its parent vb replicator process.
 
           %% # of docs have been checked for eligibility of replication
           docs_checked = 0,
@@ -58,24 +62,24 @@
           docs_written = 0,
           %% bytes of data replicated
           data_replicated = 0,
+          %% num of checkpoints issued successfully
+          num_checkpoints = 0,
+          %% total num of failed checkpoints
+          num_failedckpts = 0,
+          total_work_time = 0, % in MS
+          total_commit_time = 0,  % in MS
 
-          %% following stats initialized to 0 when vb replicator starts, and we do not
-          %% persist them in checkpoint doc. Consequently the lifetime of these stats
-          %% is the same as that of vb replicator process, we may need to accumulate
-          %% some of them when vb rep publishes stats to bucket replicator
+          %% following stats are handled differently from above. They will not be
+          %% aggregated at bucket replicator, instead, each vb replicator will
+          %% fetch these stats from couchdb and worker_queue, and publish them
+          %% directly to bucket replicator
 
           %% # of docs to replicate
           num_changes_left = 0,
           %% num of docs in changes queue
           docs_changes_queue = 0,
           %% size of changes queues
-          size_changes_queue = 0,
-          %% num of checkpoints issued successfully
-          num_checkpoints = 0,
-          %% total num of failed checkpoints
-          num_failedckpts = 0,
-          total_work_time = 0, % in MS
-          total_commit_time = 0 % in MS
+          size_changes_queue = 0
  }).
 
 %% batch of documents usd by vb replicator worker process
