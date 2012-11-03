@@ -30,7 +30,7 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--type vb_filter_change_state() :: not_started | started | completed.
+-type vb_filter_change_state() :: not_started | started | half_completed | completed.
 
 -record(had_backfill, {value :: boolean() | undefined,
                        backfill_opaque :: undefined | non_neg_integer(),
@@ -152,7 +152,6 @@ fold_messages(Fn, Acc, Producer) ->
 
 complete_native_vb_filter_change(#state{downstream=Downstream,
                                         upstream=Upstream,
-                                        upstream_sender=UpstreamSender,
                                         vb_filter_change_state=ChangeState,
                                         vb_filter_change_owner=Owner} = State) ->
     completed = ChangeState,
@@ -163,9 +162,6 @@ complete_native_vb_filter_change(#state{downstream=Downstream,
     %% ok so first lets disable socket's active flags
     ok = inet:setopts(Downstream, [{active, false}]),
     ok = inet:setopts(Upstream, [{active, false}]),
-
-    ok = gen_server:call(UpstreamSender, silence_upstream),
-    ?log_debug("Silenced upstream sender"),
 
     ?log_debug("Proceeding with reading unread binaries"),
     %% now we need to process pending messages
@@ -179,7 +175,8 @@ complete_old_vb_filter_change(#state{downstream=Downstream,
     inc_counter(non_native_vbucket_filter_changes),
     (catch master_activity_events:note_vbucket_filter_change_old()),
 
-    ok = gen_server:call(UpstreamSender, silence_upstream),
+    erlang:unlink(UpstreamSender),
+    exit(UpstreamSender, shutdown),
     ok = gen_tcp:close(Upstream),
     ?log_debug("Closed upstream connection"),
 
@@ -346,6 +343,11 @@ handle_cast(Msg, State) ->
 
 handle_info(retry_not_ready_vbuckets, _State) ->
     exit_retry_not_ready_vbuckets();
+handle_info(upstream_silenced, State) ->
+    {state_is_half_complete, half_completed} = {state_is_half_complete, State#state.vb_filter_change_state},
+    ?log_info("Got reply from upstream silencing request. "
+              "Completing state transition to a new ebucketmigrator."),
+    complete_native_vb_filter_change(State#state{vb_filter_change_state = completed});
 handle_info({tcp, Socket, Data},
             #state{downstream=Downstream,
                    upstream=Upstream} = State) ->
@@ -353,8 +355,22 @@ handle_info({tcp, Socket, Data},
     ok = inet:setopts(Socket, [{active, once}]),
     State1 = case Socket of
                  Downstream ->
-                     process_data(Data, #state.downbuf,
-                                  fun process_downstream/2, State);
+                     case State#state.vb_filter_change_state =:= half_completed of
+                         true ->
+                             %% half completed state is when we cannot
+                             %% send anything upstream, we're keeping
+                             %% it in our buffer instead. This is
+                             %% related to same deadlock that caused
+                             %% us to introduce
+                             %% upstream_sender. I.e. git log (with or
+                             %% without 'pickaxe' option), and git
+                             %% blame will tell you that story.
+                             #state{downbuf = Downbuf} = State,
+                             State#state{downbuf = <<Downbuf/binary, Data/binary>>};
+                         _ ->
+                             process_data(Data, #state.downbuf,
+                                          fun process_downstream/2, State)
+                     end;
                  Upstream ->
                      RV = process_data(Data, #state.upbuf,
                                        fun process_upstream/2,
@@ -371,14 +387,9 @@ handle_info({tcp, Socket, Data},
                      RV
     end,
 
-    case State1#state.vb_filter_change_state =:= completed of
-        true ->
-            ?log_info("Got vbucket filter change completion message. "
-                      "Completing state transition to a new ebucketmigrator."),
-            complete_native_vb_filter_change(State1);
-        false ->
-            {noreply, State1}
-    end;
+    {state_is_not_completed, true} = {state_is_not_completed, State1#state.vb_filter_change_state =/= completed},
+
+    {noreply, State1};
 handle_info({tcp_closed, Socket}, #state{upstream=Socket} = State) ->
     case State#state.takeover of
         true ->
@@ -618,8 +629,8 @@ init({Src, Dst, Opts}=InitArgs) ->
 
 upstream_sender_loop(Upstream) ->
     receive
-        {'$gen_call', From, silence_upstream} ->
-            gen_server:reply(From, ok),
+        {silence_upstream_new_style, Pid} ->
+            Pid ! upstream_silenced,
             erlang:hibernate(erlang, exit, [silenced]);
         Data ->
             ok = gen_tcp:send(Upstream, Data)
@@ -907,7 +918,9 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
                     end;
                 <<?TAP_OPAQUE_VB_FILTER_CHANGE_COMPLETE:32>> ->
                     started = VBFilterChangeState,
-                    NewState = State2#state{vb_filter_change_state=completed},
+                    NewState = State2#state{vb_filter_change_state=half_completed},
+                    ?log_info("Got vbucket filter change completion message. Silencing upstream sender"),
+                    NewState#state.upstream_sender ! {silence_upstream_new_style, self()},
                     {stop, NewState};
                 _Other ->
                     {ok, State2}
