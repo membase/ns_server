@@ -271,15 +271,36 @@ filter_out_stale_xdcr_errors(Errors, NowGregorian) ->
      || {DateTime, Msg} <- Errors,
         NowGregorian - calendar:datetime_to_gregorian_seconds(DateTime) < ?STALE_XDCR_ERROR_SECONDS].
 
+convert_non_ascii_chars(Msg) ->
+    do_convert_non_ascii_chars(Msg, <<"">>).
+
+do_convert_non_ascii_chars(<<"">>, Acc) ->
+    Acc;
+do_convert_non_ascii_chars(<<C, Rest/binary>>, Acc) ->
+    C1 = C band 16#7f,
+    do_convert_non_ascii_chars(Rest, <<Acc/binary, C1>>).
+
 grab_local_xdcr_replications() ->
     NowGregorian = calendar:datetime_to_gregorian_seconds(erlang:localtime()),
     try xdc_replication_sup:all_local_replication_infos() of
         Infos ->
             [begin
                  Props = lists:keydelete(vbs_replicating, 1, Props0),
+                 RecentErrors = filter_out_stale_xdcr_errors(LastErrors, NowGregorian),
+
+                 %% When mochijson encodes strings, it expects them to be already utf8-encoded.
+                 %% And if it's not true, it fails with some bad_utf8_character_code error.
+                 %% In some cases errors that we get from xdc_replictaion_sup might contain
+                 %% non-ASCII characters that are not properly encoded. For example if
+                 %% it's just a pretty-printed stacktrace referring to some document body.
+                 %% We'll just keep 7 least signi significant bits of every character to make it
+                 %% look like proper ASCII. We don't really care that we'll get some garbage
+                 %% because the messages are already very far from being human-readable.
+                 AsciiErrors = lists:map(fun convert_non_ascii_chars/1, RecentErrors),
+
                  [{type, xdcr},
                   {id, Id},
-                  {errors, filter_out_stale_xdcr_errors(LastErrors, NowGregorian)}
+                  {errors, AsciiErrors}
                   | Props]
              end || {Id, Props0, LastErrors} <- Infos]
     catch T:E ->
