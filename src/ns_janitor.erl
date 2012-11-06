@@ -67,6 +67,14 @@ cleanup_with_membase_bucket_check_map(Bucket, Options, BucketConfig) ->
                                      ?log_info("janitor decided to generate initial vbucket map"),
                                      ns_rebalancer:generate_initial_map(BucketConfig)
                              end,
+
+                    case ns_rebalancer:unbalanced(NewMap, Servers) of
+                        false ->
+                            ns_bucket:update_vbucket_map_history(NewMap, ns_bucket:config_to_map_options(BucketConfig));
+                        true ->
+                            ok
+                    end,
+
                     ns_bucket:set_map(Bucket, NewMap),
                     cleanup(Bucket, Options)
             end;
