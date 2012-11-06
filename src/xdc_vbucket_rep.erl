@@ -91,19 +91,19 @@ handle_info(src_db_updated,
     misc:flush(src_db_updated),
     case update_number_of_changes(St) of
         #rep_state{status = #rep_vb_status{num_changes_left = 0}} = St2 ->
-            {noreply, St2};
+            {noreply, St2, hibernate};
         #rep_state{status =VbStatus, throttle = Throttle, target_name = TgtURI} = St2 ->
             #rep_vb_status{vb = Vb} = VbStatus,
             TargetNode =  target_uri_to_node(TgtURI),
             ?xdcr_debug("ask for token for rep of vb: ~p to target node: ~p", [Vb, TargetNode]),
             ok = concurrency_throttle:send_back_when_can_go(Throttle, TargetNode, start_replication),
-            {noreply, update_status_to_parent(St2#rep_state{status = VbStatus#rep_vb_status{status = waiting_turn}})}
+            {noreply, update_status_to_parent(St2#rep_state{status = VbStatus#rep_vb_status{status = waiting_turn}}), hibernate}
     end;
 
 handle_info(src_db_updated,
             #rep_state{status = #rep_vb_status{status = waiting_turn}} = St) ->
     misc:flush(src_db_updated),
-    {noreply, update_status_to_parent(update_number_of_changes(St))};
+    {noreply, update_status_to_parent(update_number_of_changes(St)), hibernate};
 
 handle_info(src_db_updated, #rep_state{status = #rep_vb_status{status = replicating}} = St) ->
     %% we ignore this message when replicating, because it's difficult to
@@ -223,7 +223,8 @@ handle_call({worker_done, Pid}, _From,
 
             %% finally we mark the vb rep  status to idle after reporting stats to bucket replicator
             VbStatus3 = VbStatus2#rep_vb_status{status = idle},
-            {reply, ok, NewState#rep_state{status = VbStatus3}};
+            % hibernate to reduce memory footprint while idle
+            {reply, ok, NewState#rep_state{status = VbStatus3}, hibernate};
         Workers2 ->
             {reply, ok, State#rep_state{workers = Workers2}}
     end.
