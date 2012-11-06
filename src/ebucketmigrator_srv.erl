@@ -697,18 +697,16 @@ confirm_sent_messages(State) ->
     inet:setopts(Sock, [{active, false}, {nodelay, true}]),
     Msg = mc_binary:encode(req, #mc_header{opcode = ?TAP_OPAQUE, opaque = Seqno},
                            #mc_entry{data = <<4:16, ?TAP_FLAG_ACK:16, 1:8, 0:8, 0:8, 0:8, ?TAP_OPAQUE_CLOSE_TAP_STREAM:32>>}),
-    case gen_tcp:send(Sock, Msg) of
-        ok ->
-            do_confirm_sent_messages(Sock, Seqno, State);
-        X ->
-            case X =/= {error, closed} of
-                true ->
-                    ?rebalance_error("Got error while trying to send close confirmation: ~p~n", [X]);
-                false ->
-                    ok
-            end,
-            X
-    end.
+    Parent = self(),
+    proc_lib:spawn_link(
+      fun () ->
+              ?log_debug("Sending opaque message to confirm downstream reception"),
+              ok = gen_tcp:send(Sock, Msg),
+              ?log_debug("Sent fine"),
+              erlang:unlink(Parent)
+      end),
+    ?log_debug("Going to wait for reception of opaque message ack"),
+    do_confirm_sent_messages(Sock, Seqno, State).
 
 %%
 %% API
