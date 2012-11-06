@@ -242,9 +242,12 @@ handle_cast(checkpoint, #rep_state{status = VbStatus} = State) ->
                              NewState2 = NewState#rep_state{timer = xdc_vbucket_rep_ckpt:start_timer(State),
                                                             status = VbStatus2},
                              {ok, NewState2};
-                         Error ->
+                         {checkpoint_commit_failure, ErrorMsg, NewState} ->
                              %% update the failed ckpt stats to bucket replicator
-                             {stop, Error, update_status_to_parent(State)}
+                             Vb = (NewState#rep_state.status)#rep_vb_status.vb,
+                             ?xdcr_error("checkpoint commit failure during replication for vb ~p, "
+                                         "error: ~p", [Vb, ErrorMsg]),
+                             {stop, ErrorMsg, update_status_to_parent(NewState)}
                      end;
                  _ ->
                      %% if get checkpoint when not in replicating state, continue to wait until we
@@ -456,8 +459,7 @@ start_replication(#rep_state{
                      target_name = TargetName,
                      current_through_seq = StartSeq,
                      last_checkpoint_time = LastCkptTime,
-                     rep_details = #rep{id = Id, options = Options},
-                     status = VbStatus
+                     rep_details = #rep{id = Id, options = Options}
                     } = State) ->
 
     WorkStart = now(),
@@ -540,6 +542,7 @@ start_replication(#rep_state{
                                          {ok, <<"no checkpoint">>, State1}
                                  end,
 
+    NewVbStatus = NewState#rep_state.status,
     ResultState = update_status_to_parent(NewState#rep_state{
                                             changes_queue = ChangesQueue,
                                             workers = Workers,
@@ -547,7 +550,7 @@ start_replication(#rep_state{
                                             src_master_db = SrcMasterDb,
                                             target = Target,
                                             tgt_master_db = TgtMasterDb,
-                                            status = VbStatus#rep_vb_status{num_changes_left = Changes},
+                                            status = NewVbStatus#rep_vb_status{num_changes_left = Changes},
                                             timer = xdc_vbucket_rep_ckpt:start_timer(State),
                                             work_start_time = WorkStart
                                            }),
@@ -557,6 +560,9 @@ start_replication(#rep_state{
         ok ->
             ok;
         checkpoint_commit_failure ->
+            Vb = (ResultState#rep_state.status)#rep_vb_status.vb,
+            ?xdcr_debug("checkpoint commit failure at start of replication for vb ~p, "
+                        "error: ~p", [Vb, ErrorMsg]),
             exit(ErrorMsg)
     end,
 
