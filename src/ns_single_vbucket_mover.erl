@@ -171,11 +171,14 @@ mover_inner(Parent, Node, Bucket, VBucket,
     %%
 
     ok = janitor_agent:initiate_indexing(Bucket, Parent, JustBackfillNodes, ReplicaNodes, VBucket),
+    master_activity_events:note_indexing_initiated(Bucket, JustBackfillNodes, VBucket),
 
     WaitedCheckpointId = janitor_agent:get_replication_persistence_checkpoint_id(Bucket, Parent, Node, VBucket),
     ?rebalance_info("Will wait for checkpoint ~p on replicas", [WaitedCheckpointId]),
 
+    master_activity_events:note_checkpoint_waiting_started(Bucket, VBucket, WaitedCheckpointId, AllBuiltNodes),
     ok = wait_checkpoint_persisted_many(Bucket, Parent, AllBuiltNodes, VBucket, WaitedCheckpointId),
+    master_activity_events:note_checkpoint_waiting_ended(Bucket, VBucket, WaitedCheckpointId, AllBuiltNodes),
 
     IndexAware = cluster_compat_mode:is_index_aware_rebalance_on(),
     case IndexAware of
@@ -202,10 +205,12 @@ mover_inner(Parent, Node, Bucket, VBucket,
             end,
             case ns_config_ets_dup:unreliable_read_key(rebalance_index_waiting_disabled, false) of
                 false ->
+                    master_activity_events:note_wait_index_updated_started(Bucket, NewNode, VBucket),
                     spawn_and_wait(
                       fun () ->
                               ok = janitor_agent:wait_index_updated(Bucket, Parent, NewNode, ReplicaNodes, VBucket)
-                      end);
+                      end),
+                    master_activity_events:note_wait_index_updated_ended(Bucket, NewNode, VBucket);
                 _ ->
                     ok
             end,

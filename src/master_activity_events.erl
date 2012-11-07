@@ -40,6 +40,11 @@
          note_bucket_rebalance_ended/1,
          note_bucket_failover_started/2,
          note_bucket_failover_ended/2,
+         note_indexing_initiated/3,
+         note_checkpoint_waiting_started/4,
+         note_checkpoint_waiting_ended/4,
+         note_wait_index_updated_started/3,
+         note_wait_index_updated_ended/3,
          event_to_jsons/1,
          event_to_formatted_iolist/1,
          format_some_history/1]).
@@ -130,6 +135,22 @@ note_bucket_failover_started(BucketName, Node) ->
 
 note_bucket_failover_ended(BucketName, Node) ->
     submit_cast({bucket_failover_ended, BucketName, Node, self()}).
+
+note_indexing_initiated(_BucketName, [], _VBucket) -> ok;
+note_indexing_initiated(BucketName, [MasterNode], VBucket) ->
+    submit_cast({indexing_initated, BucketName, MasterNode, VBucket}).
+
+note_checkpoint_waiting_started(BucketName, VBucket, WaitedCheckpointId, Nodes) ->
+    submit_cast({checkpoint_waiting_started, BucketName, VBucket, WaitedCheckpointId, Nodes}).
+
+note_checkpoint_waiting_ended(BucketName, VBucket, WaitedCheckpointId, Nodes) ->
+    submit_cast({checkpoint_waiting_ended, BucketName, VBucket, WaitedCheckpointId, Nodes}).
+
+note_wait_index_updated_started(BucketName, Node, VBucket) ->
+    submit_cast({wait_index_updated_started, BucketName, Node, VBucket}).
+
+note_wait_index_updated_ended(BucketName, Node, VBucket) ->
+    submit_cast({wait_index_updated_ended, BucketName, Node, VBucket}).
 
 start_link_timestamper() ->
     {ok, ns_pubsub:subscribe_link(master_activity_events_ingress, fun timestamper_body/2, [])}.
@@ -484,6 +505,47 @@ event_to_jsons({TS, name_changed, NewName}) ->
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {node, NewName},
                                   {host, node_to_host(NewName, ns_config:get())}])];
+
+event_to_jsons({TS, indexing_initated, BucketName, Node, VBucket}) ->
+    [format_simple_plist_as_json([{type, indexingInitiated},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {node, node_to_host(Node, ns_config:get())},
+                                  {bucket, BucketName},
+                                  {vbucket, VBucket}])];
+
+event_to_jsons({TS, checkpoint_waiting_started, BucketName, VBucket, WaitedCheckpointId, Nodes}) ->
+    Config = ns_config:get(),
+    [format_simple_plist_as_json([{type, checkpointWaitingStarted},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
+                                  {vbucket, VBucket},
+                                  {checkpointId, WaitedCheckpointId},
+                                  {node, node_to_host(N, Config)}])
+     || N <- Nodes];
+
+event_to_jsons({TS, checkpoint_waiting_ended, BucketName, VBucket, WaitedCheckpointId, Nodes}) ->
+    Config = ns_config:get(),
+    [format_simple_plist_as_json([{type, checkpointWaitingEnded},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
+                                  {vbucket, VBucket},
+                                  {checkpointId, WaitedCheckpointId},
+                                  {node, node_to_host(N, Config)}])
+     || N <- Nodes];
+
+event_to_jsons({TS, wait_index_updated_started, BucketName, Node, VBucket}) ->
+    [format_simple_plist_as_json([{type, waitIndexUpdatedStarted},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
+                                  {vbucket, VBucket},
+                                  {node, node_to_host(Node, ns_config:get())}])];
+
+event_to_jsons({TS, wait_index_updated_ended, BucketName, Node, VBucket}) ->
+    [format_simple_plist_as_json([{type, waitIndexUpdatedEnded},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
+                                  {vbucket, VBucket},
+                                  {node, node_to_host(Node, ns_config:get())}])];
 
 event_to_jsons(Event) ->
     ?log_warning("Got unknown kind of event: ~p", [Event]),
