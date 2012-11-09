@@ -26,7 +26,9 @@
 
 -include("ns_common.hrl").
 
--define(EVENTS_HISTORY_SIZE, ns_config_ets_dup:unreliable_read_key(master_activity_events_history_size, 8192)).
+-define(HIBERNATE_TIMEOUT, 1000).
+
+-define(EVENTS_HISTORY_SIZE, ns_config_ets_dup:unreliable_read_key(master_activity_events_history_size, 81920)).
 
 -record(state, {ring}).
 
@@ -34,7 +36,7 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 get_history() ->
-    gen_server:call(?MODULE, get_history).
+    [binary_to_term(B) || B <- gen_server:call(?MODULE, get_history)].
 
 init(_) ->
     Self = self(),
@@ -45,12 +47,14 @@ init(_) ->
     {ok, #state{ring=ringbuffer:new(?EVENTS_HISTORY_SIZE)}}.
 
 handle_call(get_history, _From, State) ->
-    {reply, ringbuffer:to_list(State#state.ring), State, hibernate}.
+    {reply, ringbuffer:to_list(State#state.ring), State, ?HIBERNATE_TIMEOUT}.
 
 handle_cast({note, Event}, #state{ring = Ring} = State) ->
-    NewState = State#state{ring = ringbuffer:add(Event, Ring)},
-    {noreply, NewState, hibernate}.
+    NewState = State#state{ring = ringbuffer:add(term_to_binary(Event), Ring)},
+    {noreply, NewState, ?HIBERNATE_TIMEOUT}.
 
+handle_info(timeout, State) ->
+    {noreply, State, hibernate};
 handle_info(_Info, _State) ->
     exit(unexpected).
 
