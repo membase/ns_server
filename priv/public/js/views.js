@@ -631,7 +631,8 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
 
       var bucketName = v.need(ns.selectedBucketCell);
       var rv = _.map(ddocs, function (doc) {
-        var rv = _.clone(doc);
+        // that does deep cloning
+        var rv = JSON.parse(JSON.stringify(doc));
         var viewInfos = _.map(rv.json.views || {}, function (value, key) {
           var plink = buildViewPseudoLink(bucketName, doc, '_view', key);
           return _.extend({name: key,
