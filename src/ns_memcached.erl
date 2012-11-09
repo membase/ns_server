@@ -37,10 +37,10 @@
 -define(CHECK_WARMUP_INTERVAL, 500).
 -define(VBUCKET_POLL_INTERVAL, 100).
 -define(EVAL_TIMEOUT, ns_config_ets_dup:get_timeout(ns_memcached_eval, 120000)).
--define(TIMEOUT, ns_config_ets_dup:get_timeout(ns_memcached_outer, 60000)).
--define(TIMEOUT_OPEN_CHECKPOINT, ns_config_ets_dup:get_timeout(ns_memcached_open_checkpoint, 60000)).
--define(TIMEOUT_HEAVY, ns_config_ets_dup:get_timeout(ns_memcached_outer_heavy, 60000)).
--define(TIMEOUT_VERY_HEAVY, ns_config_ets_dup:get_timeout(ns_memcached_outer_very_heavy, 120000)).
+-define(TIMEOUT, ns_config_ets_dup:get_timeout(ns_memcached_outer, 180000)).
+-define(TIMEOUT_OPEN_CHECKPOINT, ns_config_ets_dup:get_timeout(ns_memcached_open_checkpoint, 180000)).
+-define(TIMEOUT_HEAVY, ns_config_ets_dup:get_timeout(ns_memcached_outer_heavy, 180000)).
+-define(TIMEOUT_VERY_HEAVY, ns_config_ets_dup:get_timeout(ns_memcached_outer_very_heavy, 360000)).
 -define(CONNECTED_TIMEOUT, ns_config_ets_dup:get_timeout(ns_memcached_connected, 5000)).
 -define(WARMED_TIMEOUT, ns_config_ets_dup:get_timeout(ns_memcached_warmed, 5000)).
 -define(MARK_WARMED_TIMEOUT,

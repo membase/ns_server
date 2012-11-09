@@ -20,11 +20,13 @@
 -include("ns_common.hrl").
 
 -define(SERVER, ?MODULE).
--define(CONNECT_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_connect, 60000)).
+-define(CONNECT_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_connect, 180000)).
+-define(START_VBUCKET_FILTER_CHANGE_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_start_vbucket_filter_change, 120000)).
 % Microseconds because we use timer:now_diff
 -define(UPSTREAM_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_upstream_us, 600000000)).
 -define(TIMEOUT_CHECK_INTERVAL, 15000).
 -define(TERMINATE_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_terminate, 30000)).
+
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,
@@ -752,11 +754,11 @@ get_args_option([_Src, _Dst, Options], OptionName) ->
 -spec start_vbucket_filter_change(pid(), [{node(), node(), list()}]) ->
                                          {ok, port()} | {failed, any()}.
 start_vbucket_filter_change(Pid, Args) ->
-    gen_server:call(Pid, {start_vbucket_filter_change, Args}, 30000).
+    gen_server:call(Pid, {start_vbucket_filter_change, Args}, ?START_VBUCKET_FILTER_CHANGE_TIMEOUT).
 
 -spec start_old_vbucket_filter_change(pid()) -> {ok, port()} | {failed, any()}.
 start_old_vbucket_filter_change(Pid) ->
-    gen_server:call(Pid, start_old_vbucket_filter_change, 30000).
+    gen_server:call(Pid, start_old_vbucket_filter_change, ?START_VBUCKET_FILTER_CHANGE_TIMEOUT).
 
 ping_connections(Pid, Timeout) ->
     gen_server:call(Pid, ping_connections, Timeout).

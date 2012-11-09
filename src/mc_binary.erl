@@ -25,8 +25,8 @@
          quick_stats/5, quick_stats_append/3,
          mass_get_last_closed_checkpoint/3]).
 
--define(RECV_TIMEOUT, ns_config_ets_dup:get_timeout(memcached_recv, 30000)).
--define(QUICK_STATS_RECV_TIMEOUT, ns_config_ets_dup:get_timeout(memcached_stats_recv, 60000)).
+-define(RECV_TIMEOUT, ns_config_ets_dup:get_timeout(memcached_recv, 120000)).
+-define(QUICK_STATS_RECV_TIMEOUT, ns_config_ets_dup:get_timeout(memcached_stats_recv, 180000)).
 
 %% Functions to work with memcached binary protocol packets.
 
