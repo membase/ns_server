@@ -25,6 +25,8 @@
 %% public functions
 get_missing_revs(#db{name = DbName}, JsonDocIdRevs) ->
     {Bucket, VBucket} = capi_utils:split_dbname(DbName),
+    TimeStart = now(),
+    %% enumerate all keys and fetch meta data by getMeta for each of them to ep_engine
     Results =
         lists:foldr(
           fun ({Id, Rev}, Acc) ->
@@ -40,9 +42,12 @@ get_missing_revs(#db{name = DbName}, JsonDocIdRevs) ->
 
     NumCandidates = length(JsonDocIdRevs),
     RemoteWinners = length(Results),
-    ?xdcr_debug("after conflict resolution for ~p docs, num of remote winners is ~p and "
-                "number of local winners is ~p.",
-                [NumCandidates, RemoteWinners, (NumCandidates-RemoteWinners)]),
+    TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
+    AvgLatency = TimeSpent div NumCandidates,
+    ?xdcr_debug("[Bucket:~p, Vb:~p]: after conflict resolution for ~p docs, num of remote winners is ~p and "
+                "number of local winners is ~p. (time spent in ms: ~p, avg latency in ms per doc: ~p)",
+                [Bucket, VBucket, NumCandidates, RemoteWinners, (NumCandidates-RemoteWinners),
+                 TimeSpent, AvgLatency]),
     {ok, Results}.
 
 update_replicated_docs(#db{name = DbName}, Docs, Options) ->
@@ -55,6 +60,8 @@ update_replicated_docs(#db{name = DbName}, Docs, Options) ->
             ok
     end,
 
+    TimeStart = now(),
+    %% enumerate all docs and update them
     Errors =
         lists:foldr(
           fun (#doc{id = Id, rev = Rev} = Doc, ErrorsAcc) ->
@@ -67,13 +74,21 @@ update_replicated_docs(#db{name = DbName}, Docs, Options) ->
           end,
           [], Docs),
 
+    TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
+    AvgLatency = TimeSpent div length(Docs),
     case Errors of
         [] ->
+            ?xdcr_debug("[Bucket:~p, Vb:~p]: successfully update ~p replicated mutations "
+                        "(time spent in ms: ~p, avg latency per doc in ms: ~p)",
+                        [Bucket, VBucket, length(Docs), TimeSpent, AvgLatency]),
+
             ok;
         [FirstError | _] ->
             %% for some reason we can only return one error. Thus
             %% we're logging everything else here
-            ?xdcr_error("could not update docs:~n~p", [Errors]),
+            ?xdcr_error("[Bucket: ~p, Vb: ~p] Error: could not update docs. Time spent in ms: ~p, "
+                        "# of docs trying to update: ~p, error msg: ~n~p",
+                        [Bucket, VBucket, TimeSpent, length(Docs), Errors]),
             {ok, FirstError}
     end.
 
