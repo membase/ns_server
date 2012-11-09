@@ -454,11 +454,14 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
       }
       var filterParams = v.need(ViewsFilter.filterParamsCell);
       return function (pageNo, subset) {
+        var ddoc = ddocAndView[0];
         var initial = {};
         if (subset === "prod") {
           initial.full_set = 'true';
+        } else if (isDevModeDoc(ddoc)) {
+          initial.stale = 'false'
         }
-        return buildDocURL(dbURL, ddocAndView[0].meta.id, "_view", ddocAndView[1], _.extend(initial, filterParams, {
+        return buildDocURL(dbURL, ddoc.meta.id, "_view", ddocAndView[1], _.extend(initial, filterParams, {
           limit: ViewsSection.PAGE_LIMIT.toString(),
           skip: String((pageNo - 1) * 10)
         }));
