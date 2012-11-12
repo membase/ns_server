@@ -22,6 +22,7 @@
 -include("xdc_replicator.hrl").
 
 start_link() ->
+    ?xdcr_info("start XDCR bucket replicator supervisor..."),
     supervisor:start_link({local,?MODULE}, ?MODULE, []).
 
 start_replication(#rep{id = Id, source = SourceBucket} = Rep) ->
@@ -32,6 +33,7 @@ start_replication(#rep{id = Id, source = SourceBucket} = Rep) ->
              worker,
              [xdc_replication]
             },
+    ?xdcr_info("start bucket replicator using spec: ~p.", [Spec]),
     supervisor:start_child(?MODULE, Spec).
 
 -spec get_replications() -> [{Bucket :: binary(), Id :: binary(), pid()}].

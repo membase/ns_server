@@ -46,6 +46,7 @@
     }).
 
 start_link() ->
+    ?xdcr_info("start XDCR replication manager..."),
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 % returns a list of replication stats for the bucket. the format for each
@@ -88,7 +89,7 @@ maybe_create_replication_info_ddoc() ->
              _Error ->
                  {ok, XDb} = couch_db:create(<<"_replicator">>,
                                              [sys_db, {user_ctx, UserCtx}]),
-                 ?xdcr_info("replication info doc created: ~n~p", [XDb]),
+                 ?xdcr_info("replication document created: ~n~p", [XDb]),
                  XDb
          end,
     try couch_db:open_doc(DB, <<"_design/_replicator_info">>, []) of
@@ -104,6 +105,7 @@ maybe_create_replication_info_ddoc() ->
                             {[{<<"infos">>,
                                {[{<<"map">>, ?REPLICATION_INFOS_MAP},
                                  {<<"reduce">>, ?REPLICATION_INFOS_REDUCE}]}}]}}]}}]}),
+            ?xdcr_info("create XDCR replication info doc...", []),
             ok = couch_db:update_doc(DB, DDoc, [])
     after
         couch_db:close(DB)
@@ -262,6 +264,7 @@ ensure_rep_db_exists() ->
         {ok, Db} ->
             Db;
         _Error ->
+            ?xdcr_debug("rep doc did not exist, create a new one"),
             {ok, Db} = couch_db:create(DbName, [sys_db, {user_ctx, UserCtx}])
     end,
     {ok, Db}.

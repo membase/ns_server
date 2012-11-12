@@ -241,6 +241,9 @@ handle_cast(checkpoint, #rep_state{status = VbStatus} = State) ->
                              VbStatus2 = NewState#rep_state.status#rep_vb_status{total_commit_time = TotalCommitTime},
                              NewState2 = NewState#rep_state{timer = xdc_vbucket_rep_ckpt:start_timer(State),
                                                             status = VbStatus2},
+                             Vb = (NewState2#rep_state.status)#rep_vb_status.vb,
+                             ?xdcr_debug("checkpoint issued during replication for vb ~p, "
+                                         "commit time: ~p", [Vb, CommitTime]),
                              {ok, NewState2};
                          {checkpoint_commit_failure, ErrorMsg, NewState} ->
                              %% update the failed ckpt stats to bucket replicator
@@ -556,12 +559,14 @@ start_replication(#rep_state{
                                            }),
 
     %% finally crash myself if fail to commit, after posting status to parent
+    Vb = (ResultState#rep_state.status)#rep_vb_status.vb,
     case Succ of
         ok ->
+            ?xdcr_debug("checkpoint at start of replication for vb ~p, "
+                        "msg: ~p", [Vb, ErrorMsg]),
             ok;
         checkpoint_commit_failure ->
-            Vb = (ResultState#rep_state.status)#rep_vb_status.vb,
-            ?xdcr_debug("checkpoint commit failure at start of replication for vb ~p, "
+            ?xdcr_error("checkpoint commit failure at start of replication for vb ~p, "
                         "error: ~p", [Vb, ErrorMsg]),
             exit(ErrorMsg)
     end,
@@ -658,6 +663,8 @@ compare_replication_logs(SrcDoc, TgtDoc) ->
             %% then we have a valid replication history
             OldSeqNum = get_value(<<"source_last_seq">>, RepRecProps, ?LOWEST_SEQ),
             OldHistory = get_value(<<"history">>, RepRecProps, []),
+            ?xdcr_info("Records on source and target the same session id, "
+                       "a valid history: ~p", [OldHistory]),
             {OldSeqNum,
              get_value(<<"docs_checked">>, RepRecProps, 0),
              get_value(<<"docs_written">>, RepRecProps, 0),

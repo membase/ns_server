@@ -29,6 +29,7 @@
 -include("remote_clusters_info.hrl").
 
 start_link(Rep) ->
+    ?xdcr_info("start XDCR bucket replicator for rep: ~p.", [Rep]),
     gen_server:start_link(?MODULE, [Rep], []).
 
 stats(Pid) ->
@@ -75,6 +76,8 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
     ?xdcr_debug("couch_db update notifier started", []),
     {ok, InitThrottle} = concurrency_throttle:start_link(MaxConcurrentReps, self()),
     {ok, WorkThrottle} = concurrency_throttle:start_link(MaxConcurrentReps, self()),
+    ?xdcr_debug("throttle process created (init throttle: ~p, work throttle: ~p)",
+                [InitThrottle, WorkThrottle]),
     {ok, Sup} = xdc_vbucket_rep_sup:start_link([]),
     case ns_bucket:get_bucket(?b2l(SrcBucketBinary)) of
         {ok, SrcBucketConfig} ->
@@ -85,7 +88,9 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
                                      work_throttle = WorkThrottle,
                                      vbucket_sup = Sup},
             RepState = start_vb_replicators(RepState0);
-        _Else ->
+        Error ->
+            ?xdcr_error("fail to fetch a valid bucket config and no vb replicator "
+                        "would be created (error: ~p)", [Error]),
             RepState = #replication{rep = Rep,
                                     init_throttle = InitThrottle,
                                     work_throttle = WorkThrottle,
@@ -251,9 +256,13 @@ handle_info({buckets, Buckets0},
             % our bucket went away or never existed
             xdc_vbucket_rep_sup:shutdown(Sup),
             {ok, Sup2} = xdc_vbucket_rep_sup:start_link([]),
+            ?xdcr_debug("bucket gone or never existed, shut down current vb rep "
+                        "supervisor: ~p and create a new one :~p", [Sup, Sup2]),
             NewState = State#replication{vbucket_sup = Sup2};
         SrcConfig ->
             NewVbs = xdc_rep_utils:my_active_vbuckets(SrcConfig),
+            ?xdcr_debug("vbucket map changed for bucket ~p "
+                        "adjust replicators for new vbs :~p", [?b2l(SrcBucket), NewVbs]),
             NewState = start_vb_replicators(State#replication{vbs = NewVbs})
     end,
     {noreply, NewState}.
@@ -276,12 +285,14 @@ start_vb_replicators(#replication{rep = Rep,
     NewVbs = Vbs -- CurrentVbs,
     RemovedVbs = CurrentVbs -- Vbs,
     % now delete the removed Vbs
+    ?xdcr_debug("deleting replicator for expired vbs :~p", [RemovedVbs]),
     Dict2 = lists:foldl(
                 fun(RemoveVb, DictAcc) ->
                         ok = xdc_vbucket_rep_sup:stop_vbucket_rep(Sup, RemoveVb),
                         dict:erase(RemoveVb, DictAcc)
                 end, Dict, RemovedVbs),
     % now start the new Vbs
+    ?xdcr_debug("starting replicators for new vbs :~p", [NewVbs]),
     lists:foreach(
                 fun(Vb) ->
                         {ok, _Pid} = xdc_vbucket_rep_sup:start_vbucket_rep(Sup,
