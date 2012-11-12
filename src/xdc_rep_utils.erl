@@ -129,11 +129,26 @@ parse_rep_db(<<DbName/binary>>, _ProxyParams, _Options) ->
 
 make_options(Props) ->
     Options = lists:ukeysort(1, convert_options(Props)),
-    DefWorkers = couch_config:get("replicator", "worker_processes", "1"),
-    DefBatchSize = couch_config:get("replicator", "worker_batch_size", "500"),
-    DefConns = couch_config:get("replicator", "http_connections", "10"),
-    DefTimeout = couch_config:get("replicator", "connection_timeout", "30000"),
-    DefRetries = couch_config:get("replicator", "retries_per_request", "10"),
+
+    {value, DefaultWorkerBatchSize} = ns_config:search(xdcr_worker_batch_size),
+    DefBatchSize = misc:getenv_int("XDCR_WORKER_BATCH_SIZE", DefaultWorkerBatchSize),
+
+    {value, DefaultConnTimeout} = ns_config:search(xdcr_connection_timeout),
+    DefTimeoutSecs = misc:getenv_int("XDCR_CONNECTION_TIMEOUT", DefaultConnTimeout),
+    %% convert to ms
+    DefTimeout = 1000*DefTimeoutSecs,
+
+    {value, DefaultWorkers} = ns_config:search(xdcr_num_worker_process),
+    DefWorkers = misc:getenv_int("XDCR_NUM_WORKER_PROCESS", DefaultWorkers),
+
+    {value, DefaultConns} = ns_config:search(xdcr_num_http_connections),
+    DefConns = misc:getenv_int("XDCR_NUM_HTTP_CONNECTIONS", DefaultConns),
+
+    {value, DefaultRetries} = ns_config:search(xdcr_num_retries_per_request),
+    DefRetries = misc:getenv_int("XDCR_NUM_RETRIES_PER_REQUEST", DefaultRetries),
+
+    %% todo: XDCR parameters should be consistently from ns_config instead of
+    %% couch_config
     DefRepModeStr = couch_config:get("replicator", "continuous", "false"),
     DefRepMode = case DefRepModeStr of
                      "true" ->
@@ -146,21 +161,22 @@ make_options(Props) ->
                                couch_config:get("replicator", "socket_options",
                                                 "[{keepalive, true}, {nodelay, false}]")),
 
-    ?xdcr_debug("Options for replication from couch_config:["
-               "worker processes: ~s, "
-               "worker batch size: ~s, "
-               "HTTP connections: ~s, "
-               "connection timeout: ~s]",
-               [DefWorkers, DefBatchSize, DefConns, DefTimeout]),
+    ?xdcr_debug("Options for replication:["
+               "worker processes: ~p, "
+               "worker batch size (# of mutations): ~p, "
+               "HTTP connections: ~p, "
+               "connection timeout (ms): ~p,"
+               "num of retries per request: ~p]",
+               [DefWorkers, DefBatchSize, DefConns, DefTimeout, DefRetries]),
 
     lists:ukeymerge(1, Options, lists:keysort(1, [
-                                                  {connection_timeout, list_to_integer(DefTimeout)},
-                                                  {retries, list_to_integer(DefRetries)},
+                                                  {connection_timeout, DefTimeout},
+                                                  {retries, DefRetries},
                                                   {continuous, DefRepMode},
-                                                  {http_connections, list_to_integer(DefConns)},
+                                                  {http_connections, DefConns},
                                                   {socket_options, DefSocketOptions},
-                                                  {worker_batch_size, list_to_integer(DefBatchSize)},
-                                                  {worker_processes, list_to_integer(DefWorkers)}
+                                                  {worker_batch_size, DefBatchSize},
+                                                  {worker_processes, DefWorkers}
                                                  ])).
 
 

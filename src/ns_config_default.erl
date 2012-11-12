@@ -63,6 +63,12 @@ default() ->
      {xdcr_doc_batch_size_kb, 512},  % in kilobytes
      {xdcr_failure_restart_interval, 30}, % in secs
      {xdcr_capi_checkpoint_timeout, 10}, % in secs
+     {xdcr_worker_batch_size, 100}, % in # of mutations
+     {xdcr_connection_timeout, 60}, % in secs
+     {xdcr_num_worker_process, 4}, % # of worker process
+     {xdcr_num_http_connections, 20}, % max # of http conns
+     {xdcr_num_retries_per_request, 2}, % # of retries
+
      {directory, path_config:component_path(data, "config")},
      {index_aware_rebalance_disabled, false},
      {max_bucket_count, 10},
