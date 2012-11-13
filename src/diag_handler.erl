@@ -266,7 +266,8 @@ continue_handling_just_diag(Resp, DiagsWithProcesses) ->
 do_handle_diag(Req, Extra) ->
     Resp = handle_just_diag(Req, Extra),
 
-    Logs = [?DEBUG_LOG_FILENAME, ?DEFAULT_LOG_FILENAME, ?ERRORS_LOG_FILENAME,
+    Logs = [?DEBUG_LOG_FILENAME, ?STATS_LOG_FILENAME,
+            ?DEFAULT_LOG_FILENAME, ?ERRORS_LOG_FILENAME,
             ?XDCR_LOG_FILENAME, ?COUCHDB_LOG_FILENAME,
             ?VIEWS_LOG_FILENAME, ?MAPREDUCE_ERRORS_LOG_FILENAME],
 
