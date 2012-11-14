@@ -456,7 +456,7 @@ check_uuid(F, Args, Req) ->
     end.
 
 auth_check_bucket_uuid(Req, F, Args) ->
-    menelaus_auth:apply_auth_bucket(Req, fun check_bucket_uuid/3, [F, Args]).
+    menelaus_auth:apply_auth(Req, fun check_bucket_uuid/3, [F, Args]).
 
 check_bucket_uuid(F, [PoolId, Bucket | _] = Args, Req) ->
     case ns_bucket:get_bucket(Bucket) of
