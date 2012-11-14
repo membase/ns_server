@@ -59,8 +59,9 @@ default() ->
     filelib:ensure_dir(RawLogDir),
     file:make_dir(RawLogDir),
 
-    [{xdcr_checkpoint_interval, 1800},  % in secs
-     {xdcr_doc_batch_size_kb, 512},  % in kilobytes
+    [{xdcr_max_concurrent_reps, 32},  % num of concurrent reps per bucket
+     {xdcr_checkpoint_interval, 1800},  % in secs
+     {xdcr_doc_batch_size_kb, 2048},  % in kilobytes
      {xdcr_failure_restart_interval, 30}, % in secs
      {xdcr_capi_checkpoint_timeout, 10}, % in secs
      {xdcr_worker_batch_size, 500}, % in # of mutations

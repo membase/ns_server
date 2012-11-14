@@ -53,8 +53,10 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
     ns_pubsub:subscribe_link(ns_config_events, NsConfigEventsHandler, []),
     ?xdcr_debug("ns config event handler subscribed", []),
 
+    {value, DefaultMaxConcurrentReps} = ns_config:search(xdcr_max_concurrent_reps),
     MaxConcurrentReps = misc:getenv_int("MAX_CONCURRENT_REPS_PER_DOC",
-                                        ?MAX_CONCURRENT_REPS_PER_DOC),
+                                        DefaultMaxConcurrentReps),
+
     SrcSize = size(SrcBucketBinary),
     NotifyFun = fun({updated, {<<Src:SrcSize/binary, $/, VbStr/binary>>, _}})
                             when Src == SrcBucketBinary->

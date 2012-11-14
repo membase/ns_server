@@ -48,6 +48,20 @@ get_missing_revs(#db{name = DbName}, JsonDocIdRevs) ->
                 "number of local winners is ~p. (time spent in ms: ~p, avg latency in ms per doc: ~p)",
                 [Bucket, VBucket, NumCandidates, RemoteWinners, (NumCandidates-RemoteWinners),
                  TimeSpent, AvgLatency]),
+
+    %% dump error msg if timeout
+    {value, DefaultConnTimeout} = ns_config:search(xdcr_connection_timeout),
+    DefTimeoutSecs = misc:getenv_int("XDCR_CONNECTION_TIMEOUT", DefaultConnTimeout),
+    TimeSpentSecs = TimeSpent div 1000,
+    case TimeSpentSecs > DefTimeoutSecs of
+        true ->
+            ?xdcr_error("[Bucket:~p, Vb:~p]: conflict resolution for ~p docs  takes too long to finish!"
+                        "(total time spent: ~p secs, default connection time out: ~p secs)",
+                        [Bucket, VBucket, NumCandidates, TimeSpentSecs, DefTimeoutSecs]);
+        _ ->
+            ok
+    end,
+
     {ok, Results}.
 
 update_replicated_docs(#db{name = DbName}, Docs, Options) ->
@@ -76,6 +90,20 @@ update_replicated_docs(#db{name = DbName}, Docs, Options) ->
 
     TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
     AvgLatency = TimeSpent div length(Docs),
+
+    %% dump error msg if timeout
+    {value, DefaultConnTimeout} = ns_config:search(xdcr_connection_timeout),
+    DefTimeoutSecs = misc:getenv_int("XDCR_CONNECTION_TIMEOUT", DefaultConnTimeout),
+    TimeSpentSecs = TimeSpent div 1000,
+    case TimeSpentSecs > DefTimeoutSecs of
+        true ->
+            ?xdcr_error("[Bucket:~p, Vb:~p]: update ~p docs takes too long to finish!"
+                        "(total time spent: ~p secs, default connection time out: ~p secs)",
+                        [Bucket, VBucket, length(Docs), TimeSpentSecs, DefTimeoutSecs]);
+        _ ->
+            ok
+    end,
+
     case Errors of
         [] ->
             ?xdcr_debug("[Bucket:~p, Vb:~p]: successfully update ~p replicated mutations "

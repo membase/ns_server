@@ -30,9 +30,6 @@
 %% constants used by XDCR
 -define(REP_ID_VERSION, 2).
 
-%% Maximum number of concurrent vbucket replications allowed per doc
--define(MAX_CONCURRENT_REPS_PER_DOC, 32).
-
 %% data structures
 
 %% replication settings used by bucket level and vbucket level replicators
