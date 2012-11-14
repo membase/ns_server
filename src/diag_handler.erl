@@ -359,8 +359,10 @@ arm_timeout(Millis, Callback) ->
                        receive
                            done -> ok
                        after Millis ->
-                                 Callback(Pid)
-                       end
+                               erlang:unlink(Pid),
+                               Callback(Pid)
+                       end,
+                       erlang:unlink(Pid)
                end).
 
 disarm_timeout(Pid) ->
