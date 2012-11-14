@@ -204,8 +204,16 @@ handle_info(send_heartbeat, candidate, #state{peers=Peers} = StateData) ->
             ?log_warning("Skipped ~p heartbeats~n", [Eaten])
     end,
 
+    StartTS = now(),
+
+    MostOfTimeoutMicros = ?TIMEOUT * 4 div 5,
+
+    Armed = diag_handler:arm_timeout(MostOfTimeoutMicros div 1000),
     send_heartbeat_with_peers(Peers, candidate, Peers),
-    case timer:now_diff(now(), StateData#state.last_heard) >= ?TIMEOUT of
+    diag_handler:disarm_timeout(Armed),
+
+    case (timer:now_diff(StartTS, StateData#state.last_heard) >= ?TIMEOUT
+          andalso timer:now_diff(now(), StartTS) < MostOfTimeoutMicros) of
         true ->
             %% Take over
             ale:info(?USER_LOGGER, "Haven't heard from a higher priority node or "
