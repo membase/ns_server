@@ -336,7 +336,8 @@ handle_sasl_logs(LogName, Req) ->
             Resp = Req:ok({"text/plain; charset=utf-8",
                            menelaus_util:server_header(),
                            chunked}),
-            handle_log(Resp, LogName);
+            handle_log(Resp, LogName),
+            Resp:write_chunk(<<"">>);
         false ->
             Req:respond({404, menelaus_util:server_header(),
                          "Requested log file not found.\r\n"})
