@@ -198,6 +198,12 @@ handle_info({'EXIT', _From, Reason} = Msg, _, _) ->
     exit(Reason);
 
 handle_info(send_heartbeat, candidate, #state{peers=Peers} = StateData) ->
+    case misc:flush(send_heartbeat) of
+        0 -> ok;
+        Eaten ->
+            ?log_warning("Skipped ~p heartbeats~n", [Eaten])
+    end,
+
     send_heartbeat_with_peers(Peers, candidate, Peers),
     case timer:now_diff(now(), StateData#state.last_heard) >= ?TIMEOUT of
         true ->
