@@ -117,8 +117,15 @@ spatial_merge_params(Req, #db{name = BucketName} = Db, DDocId, SpatialName) ->
     %%     iolist_to_binary([BucketName, "%2F", "master", $/, DDocId, $/,
     %%         SpatialName])
     %% end,
-    FullSpatialName = iolist_to_binary([BucketName, "%2F", "master", $/, DDocId, $/,
-                                        SpatialName]),
+    DDocName = case DDocId of
+                   <<"_design/", Rest/binary>> ->
+                       Rest;
+                   _ ->
+                       DDocId
+               end,
+    FullSpatialName = iolist_to_binary([BucketName, "%2F", "master", $/,
+                                        couch_httpd:quote(DDocName), $/,
+                                        couch_httpd:quote(SpatialName)]),
     SpatialSpecs = dict:fold(
                      fun(Node, VBuckets, Acc) when Node =:= node() ->
                              capi_view:build_local_simple_specs(BucketName, DDocId, SpatialName,
