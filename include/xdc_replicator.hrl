@@ -126,7 +126,7 @@
           rep_starttime,
           src_starttime,
           tgt_starttime,
-          timer, %% checkpoint timer
+          timer = nil, %% checkpoint timer
 
           %% timer to account the working time, reset every time we publish stats to
           %% bucket replicator

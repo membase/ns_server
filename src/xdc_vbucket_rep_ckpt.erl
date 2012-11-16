@@ -23,14 +23,17 @@
 
 -include("xdc_replicator.hrl").
 
-start_timer(_State) ->
+start_timer(State) ->
     {value, DefaultAfterSecs} = ns_config:search(xdcr_checkpoint_interval),
     AfterSecs = misc:getenv_int("XDCR_CHECKPOINT_INTERVAL", DefaultAfterSecs),
     %% convert to milliseconds
     After = AfterSecs*1000,
+    %% cancel old timer if exists
+    cancel_timer(State),
+    %% start a new timer
     case timer:apply_after(After, gen_server, cast, [self(), checkpoint]) of
         {ok, Ref} ->
-            ?xdcr_debug("schedule next checkpoint in ~p seconds", [AfterSecs]),
+            ?xdcr_debug("schedule next checkpoint in ~p seconds (ref: ~p)", [AfterSecs, Ref]),
             Ref;
         Error ->
             ?xdcr_error("Replicator, error scheduling checkpoint:  ~p", [Error]),
@@ -38,9 +41,11 @@ start_timer(_State) ->
     end.
 
 cancel_timer(#rep_state{timer = nil} = State) ->
+    ?xdcr_debug("no checkpoint timer to cancel"),
     State;
 cancel_timer(#rep_state{timer = Timer} = State) ->
     {ok, cancel} = timer:cancel(Timer),
+    ?xdcr_debug("checkpoint timer has been cancelled (ref: ~p)", [Timer]),
     State#rep_state{timer = nil}.
 
 -spec do_checkpoint(#rep_state{}) -> {ok, binary(), #rep_state{}} |

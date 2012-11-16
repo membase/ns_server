@@ -197,6 +197,8 @@ handle_info({src_db_updated, Vb}, #replication{vb_rep_dict = Dict} = State) ->
             Pid ! src_db_updated;
         error ->
             % no state yet, or already erased
+            ?xdcr_debug("get src_db_udpated from vb ~p, but the vb replicator has not "
+                        "been initialized yet or has been deleted.", [Vb]),
             ok
     end,
     {noreply, State};

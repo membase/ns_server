@@ -223,8 +223,10 @@ handle_call({worker_done, Pid}, _From,
 
             %% finally we mark the vb rep  status to idle after reporting stats to bucket replicator
             VbStatus3 = VbStatus2#rep_vb_status{status = idle},
+            %% cancel the timer since we will start it next time the vb rep waken up
+            NewState2 = xdc_vbucket_rep_ckpt:cancel_timer(NewState),
             % hibernate to reduce memory footprint while idle
-            {reply, ok, NewState#rep_state{status = VbStatus3}, hibernate};
+            {reply, ok, NewState2#rep_state{status = VbStatus3}, hibernate};
         Workers2 ->
             {reply, ok, State#rep_state{workers = Workers2}}
     end.
@@ -255,10 +257,11 @@ handle_cast(checkpoint, #rep_state{status = VbStatus} = State) ->
                  _ ->
                      %% if get checkpoint when not in replicating state, continue to wait until we
                      %% get our next turn, we'll do the checkpoint at the start of that.
-                     misc:flush(checkpoint),
                      NewState = xdc_vbucket_rep_ckpt:cancel_timer(State),
                      {ok, NewState}
              end,
+    %% flush all checkpoint msgs, waiting for the next one
+    misc:flush(checkpoint),
 
     case Result of
         {ok, NewState3} ->
@@ -306,7 +309,8 @@ terminate(Reason, #rep_state{
     terminate_cleanup(State).
 
 
-terminate_cleanup(State) ->
+terminate_cleanup(State0) ->
+    State = xdc_vbucket_rep_ckpt:cancel_timer(State0),
     Dbs = [State#rep_state.source,
            State#rep_state.target,
            State#rep_state.src_master_db,
@@ -540,6 +544,7 @@ start_replication(#rep_state{
 
     {Succ, ErrorMsg, NewState} = case TimeSinceLastCkpt > IntervalSecs of
                                      true ->
+                                         misc:flush(checkpoint),
                                          xdc_vbucket_rep_ckpt:do_checkpoint(State1);
                                      _ ->
                                          {ok, <<"no checkpoint">>, State1}
