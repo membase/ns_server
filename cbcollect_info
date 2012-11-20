@@ -226,13 +226,14 @@ def get_node():
     node = 'ns_1@' + ip
     return node
 
-def get_dbdir():
-    node = get_node()
-    ret = retrieve_config_value('\s*{dbdir,\s*"(.+)"}', node)
-    if ret:
-        return ret[0]
-    else:
-        return ""
+def get_dbdir(parentdir="."):
+    for f in ["../etc/runtime.ini", "../etc/couchdb/local.ini"]:
+        path = os.path.join(parentdir, f)
+        for line in open(path):
+            if "database_dir = " in line:
+                return string.strip(line.split("= ")[-1])
+
+    return "/opt/couchbase/var/lib/couchbase/data"
 
 def get_credential():
     ret = retrieve_config_value('\s*{creds,\[\{"(.+)",\s*\[\{password,\s*"(.*)"\}')
@@ -241,7 +242,7 @@ def get_credential():
     else:
         return ""
 
-def make_tasks(root="/opt/couchbase"):
+def make_tasks(root="/opt/couchbase", dbdir=""):
   _tasks = [
     UnixTask("uname", "uname -a"),
     WindowsTask("System information", "systeminfo"),
@@ -250,9 +251,9 @@ def make_tasks(root="/opt/couchbase"):
     UnixTask("Directory structure",
              "ls -lR '%s' /opt/membase /var/membase /etc/opt/membase" % root),
     UnixTask("Database directory structure",
-             "ls -lR " + get_dbdir()),
+             "ls -lR " + dbdir),
     WindowsTask("Database directory structure",
-                ["dir", "/s", get_dbdir().replace("/", "\\")]),
+                ["dir", "/s", dbdir.replace("/", "\\")]),
     UnixTask("Directory structure membase - previous versions",
              "ls -lR /opt/membase /var/membase /var/opt/membase /etc/opt/membase"),
     SolarisTask("Process list snapshot", "prstat -a -c -n 100 -t -v -L 1 10"),
@@ -421,7 +422,6 @@ def make_tasks(root="/opt/couchbase"):
           AllOsTask("couchbase diags",
                     "curl -sS \"http://%s@127.0.0.1:8091/diag?noLogs=1\"" % (c),
                     log_file="diag.log"))
-
   return _tasks
 
 def main():
@@ -452,9 +452,9 @@ def main():
     elif os.name == 'nt':
         path = [mydir, erldir, os.environ['PATH']]
         os.environ['PATH'] = ';'.join(path)
-
+    dbdir = get_dbdir(mydir)
     runner = TaskRunner(verbosity=options.verbosity)
-    for task in make_tasks(options.root):
+    for task in make_tasks(options.root, dbdir):
         runner.run(task)
 
     runner.zip(args[0], get_node())
