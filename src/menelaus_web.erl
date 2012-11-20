@@ -2413,7 +2413,12 @@ build_internal_settings_kvs() ->
                {index_pausing_disabled, rebalanceIndexPausingDisabled, false},
                {{couchdb, max_parallel_indexers}, maxParallelIndexers, <<>>},
                {{couchdb, max_parallel_replica_indexers}, maxParallelReplicaIndexers, <<>>},
-               {max_bucket_count, maxBucketCount, 10}],
+               {max_bucket_count, maxBucketCount, 10},
+               {xdcr_max_concurrent_reps, xdcrMaxConcurrentReps, 32},
+               {xdcr_checkpoint_interval, xdcrCheckpointInterval, 1800},
+               {xdcr_worker_batch_size, xdcrWorkerBatchSize, 500},
+               {xdcr_doc_batch_size_kb, xdcrDocBatchSizeKb, 2048},
+               {xdcr_failure_restart_interval, xdcrFailureRestartInterval, 30}],
     [{JK, ns_config_ets_dup:unreliable_read_key(CK, DV)}
      || {CK, JK, DV} <- Triples].
 
@@ -2459,6 +2464,36 @@ handle_internal_settings_post(Req) ->
                    SV ->
                        {ok, V} = parse_validate_number(SV, 1, 128),
                        MaybeSet(maxBucketCount, max_bucket_count, V)
+               end,
+               case proplists:get_value("xdcrMaxConcurrentReps", Params) of
+                   undefined -> undefined;
+                   SV ->
+                       {ok, V} = parse_validate_number(SV, 8, 256),
+                       MaybeSet(xdcrMaxConcurrentReps, xdcr_max_concurrent_reps, V)
+               end,
+               case proplists:get_value("xdcrCheckpointInterval", Params) of
+                   undefined -> undefined;
+                   SV ->
+                       {ok, V} = parse_validate_number(SV, 60, 14400),
+                       MaybeSet(xdcrCheckpointInterval, xdcr_checkpoint_interval, V)
+               end,
+               case proplists:get_value("xdcrWorkerBatchSize", Params) of
+                   undefined -> undefined;
+                   SV ->
+                       {ok, V} = parse_validate_number(SV, 500, 10000),
+                       MaybeSet(xdcrWorkerBatchSize, xdcr_worker_batch_size, V)
+               end,
+               case proplists:get_value("xdcrDocBatchSizeKb", Params) of
+                   undefined -> undefined;
+                   SV ->
+                       {ok, V} = parse_validate_number(SV, 10, 100000),
+                       MaybeSet(xdcrDocBatchSizeKb, xdcr_doc_batch_size_kb, V)
+               end,
+               case proplists:get_value("xdcrFailureRestartInterval", Params) of
+                   undefined -> undefined;
+                   SV ->
+                       {ok, V} = parse_validate_number(SV, 1, 300),
+                       MaybeSet(xdcrFailureRestartInterval, xdcr_failure_restart_interval, V)
                end],
     [Action()
      || Action <- Actions,
