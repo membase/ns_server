@@ -20,10 +20,11 @@
   idEmpty: 'Document ID cannot be empty',
   notExist: '(Document does not exist)',
   unexpected: '(Unexpected error)',
-  invalidJson: '(Document is invalid JSON)',
+  invalidDoc: '(Invalid document)',
   alreadyExists: 'Document with given ID already exists',
   bucketNotExist: 'Bucket does not exist',
-  bucketListEmpty: 'Buckets list empty'
+  bucketListEmpty: 'Buckets list empty',
+  documentLimitError: "Editing of document with size more than 2.5kb is not allowed"
  }
 
 function createDocumentsCells(ns, modeCell, capiBaseCell, bucketsListCell) {
@@ -102,14 +103,7 @@ function createDocumentsCells(ns, modeCell, capiBaseCell, bucketsListCell) {
             error.explanatoryMessage = documentErrors['503'];
             break;
           default:
-            try {
-              JSON.parse(xhr.responseText);
               error.explanatoryMessage = documentErrors.unexpected;
-            } catch (jsonError) {
-              jsonError.explanatoryMessage = documentErrors.invalidJson;
-              dataCallback(jsonError);
-              return;
-            }
             break;
         }
         dataCallback(error);
@@ -218,6 +212,7 @@ function createDocumentsCells(ns, modeCell, capiBaseCell, bucketsListCell) {
 
 var DocumentsSection = {
   docsLimit: 1000,
+  docBytesLimit: 2500,
   init: function () {
     var self = this;
 
@@ -277,6 +272,16 @@ var DocumentsSection = {
 
     itemsPerList.selectBox();
 
+    function jsonCodeEditorOnChange(doc) {
+      if (isDocumentChanged(doc.historySize())) {
+        enableSaveAsBtn(true);
+        enableSaveBtn(true);
+        onDocValueUpdate(doc.getValue());
+      } else {
+        enableSaveBtn(false);
+      }
+    }
+
     self.jsonCodeEditor = CodeMirror.fromTextArea($("#json_doc")[0], {
       lineNumbers: true,
       matchBrackets: false,
@@ -284,15 +289,7 @@ var DocumentsSection = {
       mode: { name: "javascript", json: true },
       theme: 'default',
       readOnly: 'nocursor',
-      onChange: function (doc) {
-        enableSaveBtn(false);
-        var history = doc.historySize();
-        if (history.redo == 0 && history.undo == 0) {
-          return;
-        }
-        enableSaveBtn(true);
-        onDocValueUpdate(doc.getValue());
-      }
+      onChange: jsonCodeEditorOnChange
     });
 
     var documentsDetails = $('#documents_details');
@@ -357,7 +354,15 @@ var DocumentsSection = {
     }
 
     function isLastPage(page) {
-      return  page.docs.rows.length <= page.pageLimit || page.pageLimit * (page.pageNumber + 1) === self.docsLimit;
+      return page.docs.rows.length <= page.pageLimit || page.pageLimit * (page.pageNumber + 1) === self.docsLimit;
+    }
+
+    function isJsonOverLimited(json) {
+      return getStringBytes(json) > self.docBytesLimit;
+    }
+
+    function isDocumentChanged(history) {
+      return history.redo != 0 || history.undo != 0;
     }
 
     function showCodeEditor(show) {
@@ -381,7 +386,6 @@ var DocumentsSection = {
       enableDeleteBtn(!show);
       enableSaveAsBtn(!show);
       editingNotice.text('');
-      jsonDocId.text('');
       if (show) {
         if (!documentSpinner) {
           documentSpinner = overlayWithSpinner(codeMirror);
@@ -437,29 +441,42 @@ var DocumentsSection = {
       docsInfoCont[show ? 'show' : 'hide']();
     }
 
+    function generateWarning(message) {
+      var warning = new Error(message);
+      warning.name = "Warning";
+      return warning;
+    }
+
     function tryShowJson(obj) {
       var isError = obj instanceof Error;
-      if (isError) {
-        enableSaveBtn(false);
+
+      if (!isError && isJsonOverLimited(JSON.stringify(obj.json))) {
+        tryShowJson(generateWarning(documentErrors.documentLimitError));
+        return;
       }
-      editingNotice.text(isError && obj ? buildErrorMessage(obj) : '');
-      jsonDocId.text(isError ? '' : obj.meta.id);
-      self.jsonCodeEditor.setValue(isError ? '' : JSON.stringify(obj.json, null, "  "));
+
+      enableSaveBtn(!isError);
       enableDeleteBtn(!isError);
       enableSaveAsBtn(!isError);
       showCodeEditor(!isError);
+
+      editingNotice.text(isError ? buildErrorMessage(obj) : '');
+      self.jsonCodeEditor.setOption("onChange", isError ? function () {} : jsonCodeEditorOnChange);
+      self.jsonCodeEditor.setValue(isError ? '' : JSON.stringify(obj.json, null, "  "));
     }
 
     function onDocValueUpdate(json) {
-      enableSaveAsBtn(true);
       editingNotice.text('');
       try {
+        if (isJsonOverLimited(json)) {
+          throw generateWarning(documentErrors.documentLimitError);
+        }
         var parsedJSON = JSON.parse(json);
       } catch (error) {
         enableSaveBtn(false);
         enableSaveAsBtn(false);
         enableDeleteBtn(true);
-        error.explanatoryMessage = documentErrors.invalidJson;
+        error.explanatoryMessage = documentErrors.invalidDoc;
         editingNotice.text(buildErrorMessage(error));
         return false;
       }
@@ -467,7 +484,7 @@ var DocumentsSection = {
     }
 
     function buildErrorMessage(error) {
-      return error.name + ': ' + error.message + ' ' + error.explanatoryMessage;
+      return error.name + ': ' + error.message + ' ' + (error.explanatoryMessage || '');
     }
 
     (function () {
@@ -528,6 +545,7 @@ var DocumentsSection = {
     self.currentDocumentIdCell.subscribeValue(function (docId) {
       showDocumentState(!!docId);
       if (docId) {
+        jsonDocId.text(docId).attr({title: docId});
         showDocumentPendingState(true);
       }
     });
