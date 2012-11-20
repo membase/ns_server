@@ -63,7 +63,6 @@ default() ->
      {xdcr_checkpoint_interval, 1800},  % in secs
      {xdcr_doc_batch_size_kb, 2048},  % in kilobytes
      {xdcr_failure_restart_interval, 30}, % in secs
-     {xdcr_capi_checkpoint_timeout, 10}, % in secs
      {xdcr_worker_batch_size, 500}, % in # of mutations
      {xdcr_connection_timeout, 180}, % in secs
      {xdcr_num_worker_process, 4}, % # of worker process
