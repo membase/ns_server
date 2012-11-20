@@ -8,6 +8,7 @@ import subprocess
 import string
 import re
 import platform
+import glob
 
 USAGE = """usage: %prog [options] output_file.zip
 
@@ -422,6 +423,20 @@ def make_tasks(root="/opt/couchbase", dbdir=""):
           AllOsTask("couchbase diags",
                     "curl -sS \"http://%s@127.0.0.1:8091/diag?noLogs=1\"" % (c),
                     log_file="diag.log"))
+
+  for f in os.listdir(dbdir):
+      path = os.path.join(dbdir, f)
+      #find bucket directory
+      if os.path.isdir(path) and f not in [".delete", "@indexes"]:
+          os.chdir(path)
+          files = glob.glob("master.couch.[0-9]*")
+          if files:
+              ddoc = sorted(files, key=lambda x: int(x.split(".")[-1]))[-1]
+              _tasks.append(
+                  AllOsTask("couchbase design docs - bucket:%s" % f,
+                            "couch_dbdump \"%s\"" % (os.path.join(path, ddoc)),
+                            log_file="ddocs.log"))
+
   return _tasks
 
 def main():
