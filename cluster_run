@@ -80,7 +80,7 @@ def start_cluster(num_nodes, start_index, host, extra_args, args_prefix):
             os.stat("data/n_{0}/mnesia".format(i))
         except:
             os.makedirs("data/n_{0}/mnesia".format(i))
-        args = args_prefix + ["erl", "+S", "128:128", "+sbtu", "+P", "327680", "-pa"] + ebin_path + [
+        args = args_prefix + ["erl", "+S", "16:16", "+sbtu", "+P", "327680", "-pa"] + ebin_path + [
             "-setcookie", "nocookie",
             "-kernel", "inet_dist_listen_min", "21100",
             "inet_dist_listen_max", "21199",
