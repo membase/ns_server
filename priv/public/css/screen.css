@@ -225,7 +225,7 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .graph_info_label {padding:3px; font-size:11px;position:absolute;top:-6px;left:30px;}
 .darker_block {position:relative;*zoom:1;}
 .darker_block.withtotal {background:url(../images/bg_total.gif) 100% 0 repeat-y;}
-.darker_block h3 {overflow:hidden;background:#EEEEEF;padding:5px 10px;font-size:14px;*zoom:1;}
+.darker_block h3 {overflow:hidden;background:#EEEEEF;padding:5px 10px;font-size:14px;text-transform:uppercase;*zoom:1;}
 #analytics .darker_block h3{min-height:auto}
 .darker_block h3 ins, .expander {float:left;width:0;height:0;margin:2px 0.75em 0 0;border-style:solid;border-width:10px 10px 0 10px;border-color:#01b0ff transparent transparent transparent;cursor:pointer;}
 .darker_block h3:hover ins, .expander:hover {border-top-color:#339ACA;}
