@@ -22,6 +22,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -define(MAX_MOVES_PER_NODE, ns_config_ets_dup:unreliable_read_key(rebalance_moves_per_node, 1)).
+-define(MOVES_BEFORE_COMPACTION, ns_config_ets_dup:unreliable_read_key(rebalance_moves_before_compaction, 16)).
 
 -define(TAP_STATS_LOGGING_INTERVAL, 10*60*1000).
 
@@ -36,10 +37,8 @@
 
 -record(state, {bucket::nonempty_string(),
                 disco_events_subscription::pid(),
-                initial_counts::dict(),
-                max_per_node::pos_integer(),
                 map::array(),
-                moves::dict(), movers::dict(),
+                moves_scheduler_state,
                 progress_callback::progress_callback()}).
 
 %%
@@ -138,22 +137,13 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
     erlang:put(bucket_name, Bucket),
     erlang:put(child_processes, []),
 
-    %% Dictionary mapping old node to vbucket and new node
     MapTriples = lists:zip3(lists:seq(0, length(OldMap) - 1),
                             OldMap,
                             NewMap),
-    {MoveDict, TrivialMoves} =
-        lists:foldl(fun ({V, [M1|_] = C1, C2}, {D, TrivialMoves}) ->
-                            if C1 =:= C2 ->
-                                    {D, TrivialMoves + 1};
-                               true ->
-                                    {dict:append(M1, {V, C1, C2}, D), TrivialMoves}
-                            end
-                    end, {dict:new(), 0},
-                    MapTriples),
-    ?rebalance_info("The following count of vbuckets do not need to be moved at all: ~p", [TrivialMoves]),
-    ?rebalance_info("The following moves are planned:~n~p", [dict:to_list(MoveDict)]),
-    Movers = dict:map(fun (_, _) -> 0 end, MoveDict),
+    AllNodesSet0 =
+        lists:foldl(fun (Chain, Acc) ->
+                            sets:union(Acc, sets:from_list(Chain))
+                    end, sets:new(), OldMap ++ NewMap),
     case is_swap_rebalance(MapTriples, OldMap, NewMap) of
         true ->
             ale:info(?USER_LOGGER, "Bucket ~p rebalance appears to be swap rebalance", [Bucket]);
@@ -172,19 +162,17 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
 
     timer:send_interval(?TAP_STATS_LOGGING_INTERVAL, log_tap_stats),
 
-    AllNodesSet0 =
-        lists:foldl(fun (Chain, Acc) ->
-                            sets:union(Acc, sets:from_list(Chain))
-                    end, sets:new(), OldMap ++ NewMap),
     AllNodesSet = sets:del_element(undefined, AllNodesSet0),
     ok = janitor_agent:prepare_nodes_for_rebalance(Bucket, sets:to_list(AllNodesSet), self()),
 
+    ets:new(compaction_inhibitions, [named_table, private, set]),
+
     {ok, #state{bucket=Bucket,
                 disco_events_subscription=Subscription,
-                initial_counts=count_moves(MoveDict),
-                max_per_node=?MAX_MOVES_PER_NODE,
                 map = map_to_array(OldMap),
-                moves=MoveDict, movers=Movers,
+                moves_scheduler_state = vbucket_move_scheduler:prepare(OldMap, NewMap,
+                                                                       ?MAX_MOVES_PER_NODE, ?MOVES_BEFORE_COMPACTION,
+                                                                       fun (Msg, Args) -> ?log_debug(Msg, Args) end),
                 progress_callback=ProgressCallback}}.
 
 
@@ -203,42 +191,23 @@ handle_info(log_tap_stats, State) ->
     misc:flush(log_tap_stats),
     {noreply, State};
 handle_info(spawn_initial, State) ->
+    report_progress(State),
     spawn_workers(State);
-handle_info({move_done, {Node, VBucket, OldChain, NewChain}},
-            #state{movers=Movers,
-                   map=Map,
-                   bucket=Bucket} = State) ->
-    master_activity_events:note_move_done(Bucket, VBucket),
-    %% Update replication
-    update_replication_post_move(VBucket, OldChain, NewChain),
-    %% Free up a mover for this node
-    Movers1 = dict:update(Node, fun (N) -> N - 1 end, Movers),
-
-    %% Pull the new chain from the target map
-    %% Update the current map
-    Map1 = array:set(VBucket, NewChain, Map),
-    ns_bucket:set_map(Bucket, array_to_map(Map1)),
-    RepSyncRV = (catch begin
-                           ns_config:sync_announcements(),
-                           ns_config_rep:synchronize_remote()
-                       end),
-    case RepSyncRV of
-        ok -> ok;
-        _ ->
-            ?log_error("Config replication sync failed: ~p", [RepSyncRV])
-    end,
-    OldCopies0 = OldChain -- NewChain,
-    OldCopies = [OldCopyNode || OldCopyNode <- OldCopies0,
-                                OldCopyNode =/= undefined],
-    ?rebalance_info("Moving vbucket ~p done. Will delete it on: ~p", [VBucket, OldCopies]),
-    case janitor_agent:delete_vbucket_copies(Bucket, self(), OldCopies, VBucket) of
-        ok ->
-            ok;
-        {errors, BadDeletes} ->
-            ?log_error("Deleting some old copies of vbucket failed: ~p", [BadDeletes])
-    end,
-
-    spawn_workers(State#state{movers=Movers1, map=Map1});
+handle_info({inhibited_view_compaction, N, MRef}, State) ->
+    true = ets:insert_new(compaction_inhibitions, {N, MRef}),
+    {noreply, State};
+handle_info({compaction_done, N}, #state{moves_scheduler_state = SubState} = State) ->
+    A = {compact, N},
+    ?log_debug("noted compaction done: ~p", [A]),
+    SubState2 = vbucket_move_scheduler:note_compaction_done(SubState, A),
+    spawn_workers(State#state{moves_scheduler_state = SubState2});
+handle_info({move_done, {_Node, _VBucket, _OldChain, _NewChain} = Tuple}, State) ->
+    {noreply, State1} = on_backfill_done(Tuple, State),
+    on_move_done(Tuple, State1);
+handle_info({move_done_new_style, {_Node, _VBucket, _OldChain, _NewChain} = Tuple}, State) ->
+    on_move_done(Tuple, State);
+handle_info({backfill_done, {_Node, _VBucket, _OldChain, _NewChain} = Tuple}, State) ->
+    on_backfill_done(Tuple, State);
 handle_info({ns_node_disco_events, _, _} = Event, State) ->
     {stop, {detected_nodes_change, Event}, State};
 %% We intentionally don't handle other exits so we'll die if one of
@@ -274,23 +243,6 @@ terminate(Reason, _State) ->
 array_to_map(Array) ->
     array:to_list(Array).
 
-
-%% @private
-%% @doc Count of remaining moves per node.
--spec count_moves(dict()) -> dict().
-count_moves(Moves) ->
-    %% Number of moves FROM a given node.
-    FromCount = dict:map(fun (_, M) -> length(M) end,
-                         dict:filter(fun (N, _) -> N =/= undefined end, Moves)),
-    %% Add moves TO each node.
-    dict:fold(fun (_, M, D) ->
-                      lists:foldl(
-                        fun ({_, _, [N|_]}, E) ->
-                                dict:update_counter(N, 1, E)
-                        end, D, M)
-              end, FromCount, Moves).
-
-
 %% @private
 %% @doc Convert a map, which is normally a list, into an array so that
 %% we can randomly access the replication chains.
@@ -301,64 +253,118 @@ map_to_array(Map) ->
 
 
 %% @private
+%% @doc Report progress using the supplied progress callback.
+-spec report_progress(#state{}) -> any().
+report_progress(#state{moves_scheduler_state = SubState,
+                       progress_callback = Callback}) ->
+    Progress = vbucket_move_scheduler:extract_progress(SubState),
+    Callback(Progress).
+
+on_backfill_done({_Node, VBucket, OldChain, NewChain}, #state{moves_scheduler_state = SubState} = State) ->
+    Move = {move, {VBucket, OldChain, NewChain}},
+    NextState = State#state{moves_scheduler_state = vbucket_move_scheduler:note_backfill_done(SubState, Move)},
+    ?log_debug("noted backfill done: ~p", [Move]),
+    {noreply, _} = spawn_workers(NextState).
+
+on_move_done({_Node, VBucket, OldChain, NewChain}, #state{bucket = Bucket,
+                                                          map = Map,
+                                                          moves_scheduler_state = SubState} = State) ->
+    update_replication_post_move(VBucket, OldChain, NewChain),
+
+    %% Pull the new chain from the target map
+    %% Update the current map
+    Map1 = array:set(VBucket, NewChain, Map),
+    ns_bucket:set_map(Bucket, array_to_map(Map1)),
+    RepSyncRV = (catch begin
+                           ns_config:sync_announcements(),
+                           ns_config_rep:synchronize_remote()
+                       end),
+    case RepSyncRV of
+        ok -> ok;
+        _ ->
+            ?log_error("Config replication sync failed: ~p", [RepSyncRV])
+    end,
+    OldCopies0 = OldChain -- NewChain,
+    OldCopies = [OldCopyNode || OldCopyNode <- OldCopies0,
+                                OldCopyNode =/= undefined],
+    ?rebalance_info("Moving vbucket ~p done. Will delete it on: ~p", [VBucket, OldCopies]),
+    case janitor_agent:delete_vbucket_copies(Bucket, self(), OldCopies, VBucket) of
+        ok ->
+            ok;
+        {errors, BadDeletes} ->
+            ?log_error("Deleting some old copies of vbucket failed: ~p", [BadDeletes])
+    end,
+
+    Move = {move, {VBucket, OldChain, NewChain}},
+    NextState = State#state{moves_scheduler_state = vbucket_move_scheduler:note_move_completed(SubState, Move),
+                            map = Map1},
+
+    report_progress(NextState),
+
+    master_activity_events:note_move_done(Bucket, VBucket),
+
+    spawn_workers(NextState).
+
+spawn_compaction_uninhibitor(Bucket, Node, MRef) ->
+    Parent = self(),
+    erlang:spawn_link(
+      fun () ->
+              case cluster_compat_mode:is_index_aware_rebalance_on() of
+                  true ->
+                      case compaction_daemon:uninhibit_view_compaction(Bucket, Node, MRef) of
+                          ok ->
+                              ok;
+                          nack ->
+                              erlang:exit({failed_to_initiate_compaction, Bucket, Node, MRef})
+                      end;
+                  _ ->
+                      ok
+              end,
+              Parent ! {compaction_done, Node}
+      end).
+
+%% @doc Spawn workers up to the per-node maximum.
+-spec spawn_workers(#state{}) -> {noreply, #state{}} | {stop, normal, #state{}}.
+spawn_workers(#state{bucket=Bucket, moves_scheduler_state = SubState} = State) ->
+    {Actions, NewSubState} = vbucket_move_scheduler:choose_action(SubState),
+    ?log_debug("Got actions: ~p", [Actions]),
+    [case A of
+         {move, {V, OldChain, NewChain}} ->
+             Node = hd(OldChain),
+             Pid = ns_single_vbucket_mover:spawn_mover(Node,
+                                                       Bucket,
+                                                       V,
+                                                       OldChain,
+                                                       NewChain),
+             register_child_process(Pid);
+         {compact, N} ->
+             case cluster_compat_mode:is_index_aware_rebalance_on() of
+                 true ->
+                     [{N, MRef}] = ets:lookup(compaction_inhibitions, N),
+                     ets:delete(compaction_inhibitions, N),
+                     Pid = spawn_compaction_uninhibitor(Bucket, N, MRef),
+                     register_child_process(Pid);
+                 _ ->
+                     self() ! {compaction_done, N}
+             end
+     end || A <- Actions],
+    NextState = State#state{moves_scheduler_state = NewSubState},
+    Done = Actions =:= [] andalso begin
+                                      true = (NewSubState =:= SubState),
+                                      vbucket_move_scheduler:is_done(NewSubState)
+                                  end,
+    case Done of
+        true ->
+            {stop, normal, NextState};
+        _ ->
+            {noreply, NextState}
+    end.
+
+%% @private
 %% @doc {Src, Dst} pairs from a chain with unmapped nodes filtered out.
 pairs(Chain) ->
     [Pair || {Src, Dst} = Pair <- misc:pairs(Chain), Src /= undefined,
              Dst /= undefined].
-
-
-%% @private
-%% @doc Report progress using the supplied progress callback.
--spec report_progress(#state{}) -> any().
-report_progress(#state{initial_counts=Counts, moves=Moves,
-                       progress_callback=Callback}) ->
-    Remaining = count_moves(Moves),
-    Progress = dict:map(fun (Node, R) ->
-                                Total = dict:fetch(Node, Counts),
-                                1.0 - R / Total
-                        end, Remaining),
-    Callback(Progress).
-
-
-%% @private
-%% @doc Spawn workers up to the per-node maximum.
--spec spawn_workers(#state{}) -> {noreply, #state{}} | {stop, normal, #state{}}.
-spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
-                     max_per_node=MaxPerNode} = State) ->
-    report_progress(State),
-    {Movers1, Remaining} =
-        dict:fold(
-          fun (Node, RemainingMoves, {M, R}) ->
-                  NumWorkers = dict:fetch(Node, Movers),
-                  if NumWorkers < MaxPerNode ->
-                          NewMovers = lists:sublist(RemainingMoves,
-                                                    MaxPerNode - NumWorkers),
-                          lists:foreach(
-                            fun ({V, OldChain, NewChain}) ->
-                                    Pid = ns_single_vbucket_mover:spawn_mover(Node,
-                                                                              Bucket,
-                                                                              V,
-                                                                              OldChain,
-                                                                              NewChain),
-                                    register_child_process(Pid)
-                            end, NewMovers),
-                          M1 = dict:store(Node, length(NewMovers) + NumWorkers,
-                                          M),
-                          R1 = dict:store(Node, lists:nthtail(length(NewMovers),
-                                                              RemainingMoves), R),
-                          {M1, R1};
-                     true ->
-                          {M, R}
-                  end
-          end, {Movers, Moves}, Moves),
-    State1 = State#state{movers=Movers1, moves=Remaining},
-    Values = dict:fold(fun (_, V, L) -> [V|L] end, [], Movers1),
-    case Values /= [] andalso lists:any(fun (V) -> V /= 0 end, Values) of
-        true ->
-            {noreply, State1};
-        false ->
-            {stop, normal, State1}
-    end.
 
 %% @private
 %% @doc Perform post-move replication fixup.
