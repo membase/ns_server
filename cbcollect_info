@@ -234,7 +234,10 @@ def get_dbdir(parentdir="."):
             if "database_dir = " in line:
                 return string.strip(line.split("= ")[-1])
 
-    return "/opt/couchbase/var/lib/couchbase/data"
+    if platform.system() == 'Windows':
+        return "c:/Program Files/Couchbase/Server/var/lib/couchbase/data"
+    else:
+        return "/opt/couchbase/var/lib/couchbase/data"
 
 def get_credential():
     ret = retrieve_config_value('\s*{creds,\[\{"(.+)",\s*\[\{password,\s*"(.*)"\}')
@@ -428,8 +431,7 @@ def make_tasks(root="/opt/couchbase", dbdir=""):
       path = os.path.join(dbdir, f)
       #find bucket directory
       if os.path.isdir(path) and f not in [".delete", "@indexes"]:
-          os.chdir(path)
-          files = glob.glob("master.couch.[0-9]*")
+          files = glob.glob("%s/master.couch.[0-9]*" % path)
           if files:
               ddoc = sorted(files, key=lambda x: int(x.split(".")[-1]))[-1]
               _tasks.append(
