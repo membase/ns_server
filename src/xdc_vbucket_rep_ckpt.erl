@@ -77,6 +77,9 @@ do_checkpoint(State) ->
     #rep_vb_status{docs_checked = Checked,
                    docs_written = Written,
                    data_replicated = DataRepd,
+                   total_docs_checked = TotalChecked,
+                   total_docs_written = TotalWritten,
+                   total_data_replicated = TotalDataRepd,
                    num_checkpoints = NumCkpts,
                    num_failedckpts = NumFailedCkpts} = Status,
 
@@ -99,18 +102,18 @@ do_checkpoint(State) ->
                                                    {<<"start_last_seq">>, StartSeq},
                                                    {<<"end_last_seq">>, NewSeq},
                                                    {<<"recorded_seq">>, NewSeq},
-                                                   {<<"docs_checked">>, Checked},
-                                                   {<<"docs_written">>, Written},
-                                                   {<<"data_replicated">>, DataRepd}
+                                                   {<<"docs_checked">>, Checked + TotalChecked},
+                                                   {<<"docs_written">>, Written + TotalWritten},
+                                                   {<<"data_replicated">>, DataRepd + TotalDataRepd}
                                                   ]},
                                BaseHistory = [
                                               {<<"session_id">>, SessionId},
                                               {<<"source_last_seq">>, NewSeq},
                                               {<<"start_time">>, StartTime},
                                               {<<"end_time">>, EndTime},
-                                              {<<"docs_checked">>, Checked},
-                                              {<<"docs_written">>, Written},
-                                              {<<"data_replicated">>, DataRepd}
+                                              {<<"docs_checked">>, Checked + TotalChecked},
+                                              {<<"docs_written">>, Written + TotalWritten},
+                                              {<<"data_replicated">>, DataRepd + TotalDataRepd}
                                              ],
                                %% limit history to 50 entries
                                NewRepHistory = {

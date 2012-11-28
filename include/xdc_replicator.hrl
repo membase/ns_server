@@ -63,8 +63,8 @@
           num_checkpoints = 0,
           %% total num of failed checkpoints
           num_failedckpts = 0,
-          total_work_time = 0, % in MS
-          total_commit_time = 0,  % in MS
+          work_time = 0, % in MS
+          commit_time = 0,  % in MS
 
           %% following stats are handled differently from above. They will not be
           %% aggregated at bucket replicator, instead, each vb replicator will
@@ -76,7 +76,15 @@
           %% num of docs in changes queue
           docs_changes_queue = 0,
           %% size of changes queues
-          size_changes_queue = 0
+          size_changes_queue = 0,
+
+          %% following are per vb stats since the replication starts
+          %% from the very beginning. They are persisted in the checkpoint
+          %% documents and may span the lifetime of multiple vb replicators
+          %% for the same vbucket
+          total_docs_checked = 0,
+          total_docs_written = 0,
+          total_data_replicated = 0
  }).
 
 %% batch of documents usd by vb replicator worker process
