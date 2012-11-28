@@ -120,17 +120,25 @@ save_node(NodeName) ->
 
 init([]) ->
     Address =
-        case read_address_config() of
-            undefined ->
-                ?log_info("ip config not found. Looks like we're brand new node"),
-                "127.0.0.1";
-            read_error ->
-                ?log_error("Could not read ip config. "
-                           "Will refuse to start for safety reasons."),
-                ale:sync(?NS_SERVER_LOGGER),
-                erlang:halt(1);
-            V ->
-                V
+        case node() of
+            nonode@nohost ->
+                case read_address_config() of
+                    undefined ->
+                        ?log_info("ip config not found. Looks like we're brand new node"),
+                        "127.0.0.1";
+                    read_error ->
+                        ?log_error("Could not read ip config. "
+                                   "Will refuse to start for safety reasons."),
+                        ale:sync(?NS_SERVER_LOGGER),
+                        erlang:halt(1);
+                    V ->
+                        V
+                end;
+            NodeName ->
+                {_Node, Host} = misc:node_name_host(NodeName),
+                ?log_info("Node name is already configured. "
+                          "Reusing `~s' as address.", [Host]),
+                Host
         end,
 
     case wait_for_address(Address) of
