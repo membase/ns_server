@@ -239,8 +239,8 @@ handle_cast(checkpoint, #rep_state{status = VbStatus} = State) ->
                      case xdc_vbucket_rep_ckpt:do_checkpoint(State) of
                          {ok, _, NewState} ->
                              CommitTime = timer:now_diff(now(), Start) div 1000,
-                             TotalCommitTime = CommitTime + NewState#rep_state.status#rep_vb_status.total_commit_time,
-                             VbStatus2 = NewState#rep_state.status#rep_vb_status{total_commit_time = TotalCommitTime},
+                             TotalCommitTime = CommitTime + NewState#rep_state.status#rep_vb_status.commit_time,
+                             VbStatus2 = NewState#rep_state.status#rep_vb_status{commit_time = TotalCommitTime},
                              NewState2 = NewState#rep_state{timer = xdc_vbucket_rep_ckpt:start_timer(State),
                                                             status = VbStatus2},
                              Vb = (NewState2#rep_state.status)#rep_vb_status.vb,
@@ -353,15 +353,24 @@ update_status_to_parent(#rep_state{parent = Parent,
                end,
 
     %% post to parent bucket replicator
-    Parent ! {set_vb_rep_status,  VbStatus#rep_vb_status{total_work_time = WorkTime}},
+    Parent ! {set_vb_rep_status,  VbStatus#rep_vb_status{work_time = WorkTime}},
+
+    %% account stats to persist
+    TotalChecked = VbStatus#rep_vb_status.total_docs_checked + VbStatus#rep_vb_status.docs_checked,
+    TotalWritten = VbStatus#rep_vb_status.total_docs_written + VbStatus#rep_vb_status.docs_written,
+    TotalDataRepd = VbStatus#rep_vb_status.total_data_replicated +
+        VbStatus#rep_vb_status.data_replicated,
 
     %% reset accumulated stats and start work time
     NewVbStat = VbStatus#rep_vb_status{
+                  total_docs_checked = TotalChecked,
+                  total_docs_written = TotalWritten,
+                  total_data_replicated = TotalDataRepd,
                   docs_checked = 0,
                   docs_written = 0,
                   data_replicated = 0,
-                  total_work_time = 0,
-                  total_commit_time = 0,
+                  work_time = 0,
+                  commit_time = 0,
                   num_checkpoints = 0,
                   num_failedckpts = 0},
     State#rep_state{status = NewVbStat,
@@ -402,13 +411,13 @@ init_replication_state(#init_state{rep = Rep,
                                Rep),
 
     {StartSeq0,
-     DocsChecked,
-     DocsWritten,
-     DataReplicated,
+     TotalDocsChecked,
+     TotalDocsWritten,
+     TotalDataReplicated,
      History} = compare_replication_logs(SourceLog, TargetLog),
     ?xdcr_debug("history log at src and dest: startseq: ~p, docs checked: ~p,"
                 "docs_written: ~p, data replicated: ~p",
-                [StartSeq0, DocsChecked, DocsWritten, DataReplicated]),
+                [StartSeq0, TotalDocsChecked, TotalDocsWritten, TotalDataReplicated]),
     StartSeq = get_value(since_seq, Options, StartSeq0),
     #doc{body={CheckpointHistory}} = SourceLog,
     couch_db:close(Source),
@@ -444,14 +453,18 @@ init_replication_state(#init_state{rep = Rep,
       session_id = couch_uuids:random(),
       status = #rep_vb_status{vb = Vb,
                               pid = self(),
-                              %% the accumulated stats are cleared here. They
+                              %% init per vb replication stats from checkpoint doc
+                              total_docs_checked = TotalDocsChecked,
+                              total_docs_written = TotalDocsWritten,
+                              total_data_replicated = TotalDataReplicated,
+                              %% the per vb replicator stats are cleared here. They
                               %% will be computed during the lifetime of vb
                               %% replicator and aggregated at the parent bucket
                               %% replicator when vb replicator pushes the stats
                               docs_checked = 0,
                               docs_written = 0,
-                              total_work_time = 0,
-                              total_commit_time = 0,
+                              work_time = 0,
+                              commit_time = 0,
                               data_replicated = 0,
                               num_checkpoints = 0,
                               num_failedckpts = 0
@@ -542,6 +555,7 @@ start_replication(#rep_state{
                src_master_db = SrcMasterDb,
                tgt_master_db = TgtMasterDb},
 
+    Start = now(),
     {Succ, ErrorMsg, NewState} = case TimeSinceLastCkpt > IntervalSecs of
                                      true ->
                                          misc:flush(checkpoint),
@@ -549,6 +563,8 @@ start_replication(#rep_state{
                                      _ ->
                                          {ok, <<"no checkpoint">>, State1}
                                  end,
+    CommitTime = timer:now_diff(now(), Start) div 1000,
+    TotalCommitTime = CommitTime + NewState#rep_state.status#rep_vb_status.commit_time,
 
     NewVbStatus = NewState#rep_state.status,
     ResultState = update_status_to_parent(NewState#rep_state{
@@ -558,7 +574,8 @@ start_replication(#rep_state{
                                             src_master_db = SrcMasterDb,
                                             target = Target,
                                             tgt_master_db = TgtMasterDb,
-                                            status = NewVbStatus#rep_vb_status{num_changes_left = Changes},
+                                            status = NewVbStatus#rep_vb_status{num_changes_left = Changes,
+                                                                               commit_time = TotalCommitTime},
                                             timer = xdc_vbucket_rep_ckpt:start_timer(State),
                                             work_start_time = WorkStart
                                            }),
@@ -567,14 +584,20 @@ start_replication(#rep_state{
     Vb = (ResultState#rep_state.status)#rep_vb_status.vb,
     case Succ of
         ok ->
-            ?xdcr_debug("checkpoint at start of replication for vb ~p, "
-                        "msg: ~p", [Vb, ErrorMsg]),
+            ?xdcr_debug("checkpoint at start of replication for vb ~p "
+                        "commit time: ~p ms, msg: ~p", [Vb, CommitTime, ErrorMsg]),
             ok;
         checkpoint_commit_failure ->
             ?xdcr_error("checkpoint commit failure at start of replication for vb ~p, "
                         "error: ~p", [Vb, ErrorMsg]),
             exit(ErrorMsg)
     end,
+
+    %% finally the vb replicator has been started
+    Src = ResultState#rep_state.source_name,
+    Tgt = ResultState#rep_state.target_name,
+    ?xdcr_info("replicator of vb ~p for replication from src ~p to target ~p has been started.",
+               [Vb, Src, Tgt]),
 
     ResultState.
 
