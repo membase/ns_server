@@ -166,17 +166,17 @@ def basedir():
 
 def retrieve_config_value(config_key, node=None):
     if platform.system() == 'Windows':
-        return retrieve_config_value_ex("escript.exe",
-                                        "cbdump-config",
-                                        "../var/lib/couchbase/config/config.dat",
+        return retrieve_config_value_ex("%s\\escript.exe" % basedir(),
+                                        "%s\\cbdump-config" % basedir(),
+                                        "%s/../var/lib/couchbase/config/config.dat" % basedir(),
                                         config_key, node=node)
 
-    places = [("escript",
+    places = [("%s/escript" % basedir(),
                os.path.dirname(os.path.abspath(__file__)) +
                "/cbdump-config",
                os.path.dirname(os.path.abspath(__file__)) +
                "/../var/lib/couchbase/config/config.dat"),
-              ("escript",
+              ("%s/escript" % basedir(),
                "cbdump-config",
                "~/Library/Application Support/Couchbase/var/lib/couchbase/config/config.dat")]
 
@@ -314,7 +314,7 @@ def make_tasks(root="/opt/couchbase", dbdir=""):
     WindowsTask("Manifest file",
                 "type " + basedir() + "\\..\\manifest.xml", reformat=True),
     WindowsTask("Couchbase config",
-                basedir() + "\\erlang\\bin\\escript.exe " +
+                basedir() + "\\escript.exe " +
                 basedir() + "\\cbdump-config " +
                 basedir() + "\\..\\var\\lib\\couchbase\\config\\config.dat",
                 reformat=True),
@@ -347,8 +347,8 @@ def make_tasks(root="/opt/couchbase", dbdir=""):
               log_file="memcached.log"),
     UnixTask("Kernel log buffer", "dmesg"),
     LinuxTask("couchbase config",
-              "%s/cbdump-config '%s/var/lib/couchbase/config/config.dat'"
-              % (os.path.dirname(sys.argv[0]), root)),
+              "'%s'/escript '%s'/cbdump-config '%s/var/lib/couchbase/config/config.dat'"
+              % (os.path.dirname(sys.argv[0]), os.path.dirname(sys.argv[0]), root)),
     AllOsTask("couchbase logs (debug)", "cbbrowse_logs",
               log_file="ns_server.debug.log"),
     AllOsTask("couchbase logs (info)", "cbbrowse_logs info",
