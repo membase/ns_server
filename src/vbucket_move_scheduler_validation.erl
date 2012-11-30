@@ -10,6 +10,8 @@
         is_done/1,
         all_performed_moves/1]).
 
+-export([simulate_that_rebalance/0]).
+
 -record(vs, { %% vs is verifier state
           max_backfills_per_node :: pos_integer(),
           moves_before_compaction :: pos_integer(),
@@ -175,7 +177,7 @@ simulate_rebalance(CurrentMap, TargetMap, BackfillsLimit, MovesBeforeCompaction)
 
     VirtualTime = 0,
 
-    simulate_rebalance_loop(S, InFlight, R, VirtualTime).
+    simulate_rebalance_loop(S, InFlight, R, VirtualTime, []).
 
 %% generate approximately normal distribution with mean 0 and std
 %% deviation of 1. Uses old school method of just adding 12 uniform
@@ -189,19 +191,29 @@ rnd_normal_s_loop(R, N, Acc) ->
     {V, R1} = random:uniform_s(R),
     rnd_normal_s_loop(R1, N-1, Acc + V).
 
-generate_action_run_time(R) ->
+generate_action_run_time(Action, R) ->
+    %% RandV is normally distributed random variable with mean of 0
+    %% and std deviation of 1
     {RandV, R1} = rnd_normal_s(R),
-    %% 13 is our average here. Thus expected time is 13 with std
-    %% deviation of 1
-    {RandV + 13, R1}.
+    %% And then we add some mean time that depends on type move itself
+    AvgTime = case Action of
+                  {move, _} ->
+                      %% backfill
+                      13;
+                  {compact, _} ->
+                      26;
+                  {complete_move, _} ->
+                      130
+              end,
+    {erlang:max(0.001, RandV + AvgTime), R1}.
 
 add_action(Action, InFlight, R, VirtualTime) ->
-    {Runtime, R1} = generate_action_run_time(R),
+    {Runtime, R1} = generate_action_run_time(Action, R),
     EndTime = VirtualTime + Runtime,
     InFlight1 = gb_sets:insert({EndTime, Action}, InFlight),
     {InFlight1, R1}.
 
-simulate_rebalance_loop(S, InFlight, R, VirtualTime) ->
+simulate_rebalance_loop(S, InFlight, R, VirtualTime, Acc) ->
     ?D("Time: ~p", [VirtualTime]),
     {Actions, S1} = choose_action(S),
     MoreRV = choose_action(S1),
@@ -212,25 +224,29 @@ simulate_rebalance_loop(S, InFlight, R, VirtualTime) ->
           fun (Action, {InFlight0, R0}) ->
                   add_action(Action, InFlight0, R0, VirtualTime)
           end, {InFlight, R}, Actions),
+    Acc1 = Acc ++ [{VirtualTime, start, A} || A <- Actions],
     case Actions =:= [] andalso is_done(S1) of
         true ->
-            {S1, VirtualTime};
+            {S1, VirtualTime, Acc1};
         _ ->
             miniassert(not gb_sets:is_empty(NewInFlight), "NewInFlight is not empty"),
             {{NextVTime, DoneAction}, NewInFlight1} = gb_sets:take_smallest(NewInFlight),
             true = (NextVTime >= VirtualTime),
             case DoneAction of
                 {move, M} ->
+                    Acc2 = [{NextVTime, backfill_done, DoneAction} | Acc1],
                     S2 = note_backfill_done(S1, DoneAction),
                     ?D2("S1:~p~nS2.sub:~n~p", [S1#vs.sched_state, S2#vs.sched_state]),
                     {InFlight2, R2} = add_action({complete_move, M}, NewInFlight1, NewR, NextVTime),
-                    simulate_rebalance_loop(S2, InFlight2, R2, NextVTime);
+                    simulate_rebalance_loop(S2, InFlight2, R2, NextVTime, Acc2);
                 {complete_move, M} ->
+                    Acc2 = [{NextVTime, done, {move, M}} | Acc1],
                     S2 = note_move_completed(S1, {move, M}),
-                    simulate_rebalance_loop(S2, NewInFlight1, NewR, NextVTime);
+                    simulate_rebalance_loop(S2, NewInFlight1, NewR, NextVTime, Acc2);
                 {compact, _} ->
+                    Acc2 = [{NextVTime, done, DoneAction} | Acc1],
                     S2 = note_compaction_done(S1, DoneAction),
-                    simulate_rebalance_loop(S2, NewInFlight1, NewR, NextVTime)
+                    simulate_rebalance_loop(S2, NewInFlight1, NewR, NextVTime, Acc2)
             end
     end.
 
@@ -241,7 +257,7 @@ test_rebalance(Replicas, VBuckets, BackfillsLimit, MovesBeforeCompaction, NodesB
 
 do_test_rebalance(VBuckets, BackfillsLimit, MovesBeforeCompaction, InitialMap, TargetMap) ->
     try
-        {S, _VirtualTime} = simulate_rebalance(InitialMap, TargetMap, BackfillsLimit, MovesBeforeCompaction),
+        {S, _VirtualTime, _} = simulate_rebalance(InitialMap, TargetMap, BackfillsLimit, MovesBeforeCompaction),
         AllMoves = all_performed_moves(S),
         InitialIndexed = lists:zip(lists:seq(0, VBuckets-1), InitialMap),
         FinalIndexed =
@@ -338,3 +354,42 @@ run_rebalance_after_data_loss(Nodes, FailedOverNodes, VBuckets, Replicas, Backfi
 
 rebalance_after_data_loss_test() ->
     run_rebalance_after_data_loss([a, b, c, d, e, f], [a, c], 16, 1, 1, 2).
+
+
+simulate_that_rebalance() ->
+    ok = application:start(ale),
+
+    ok = ale:start_sink(stderr, ale_stderr_sink, []),
+
+    lists:foreach(
+      fun (Logger) ->
+              ok = ale:start_logger(Logger, debug),
+              ok = ale:add_sink(Logger, stderr)
+      end,
+      ?LOGGERS),
+
+    Before = generate_a_map(256, 0, [a, b, c, d]),
+    After = mb_map:generate_map(Before, [a, b, c], []),
+    {_, _, Events} = simulate_rebalance(Before, After, 1, 16),
+    {ok, F} = file:open("simulate-results", [write, binary]),
+    Rows =
+        [begin
+             case Action of
+                 {compact, N} ->
+                     {struct, [{ts, TS},
+                               {subtype, Type},
+                               {type, compact},
+                               {node, N}]};
+                 {move, {Vb, ChainBefore, ChainAfter}} ->
+                     {struct, [{ts, TS},
+                               {subtype, Type},
+                               {type, move},
+                               {vb, Vb},
+                               {chainBefore, ChainBefore},
+                               {chainAfter, ChainAfter}]}
+             end
+         end || {TS, Type, Action} <- Events],
+    [begin
+         ok = file:write(F, iolist_to_binary([mochijson2:encode(J), <<"\n">>]))
+     end || J <- Rows],
+    ok = file:close(F).
