@@ -1593,9 +1593,11 @@
       <input type="hidden" name="indexAwareRebalanceDisabled" value="false">
       <input type="hidden" name="rebalanceIndexWaitingDisabled" value="false">
       <input type="hidden" name="rebalanceIndexPausingDisabled" value="false">
+      <input type="hidden" name="rebalanceIgnoreViewCompactions" value="false">
       <label><span style="min-width:300px;cursor:help;float:none;display:inline-block;" title="When not disabled makes sure indexes are always up-to-date during rebalance">Disable index aware rebalance:</span><input type="checkbox" name="indexAwareRebalanceDisabled" value="true"></label>
       <label><span style="min-width:300px;cursor:help;float:none;display:inline-block;" title="Whether index aware rebalance waiting for index up-to-dateness should be disabled. Makes rebalance faster">Disable index waiting during rebalance:</span><input type="checkbox" name="rebalanceIndexWaitingDisabled" value="true"></label>
       <label><span style="min-width:300px;cursor:help;float:none;display:inline-block;" title="That's too complex to explain">Disable index pausing during rebalance:</span><input type="checkbox" name="rebalanceIndexPausingDisabled" value="true"></label>
+      <label><span style="min-width:300px;cursor:help;float:none;display:inline-block;">Don't compact views during rebalance</span><input type="checkbox" name="rebalanceIgnoreViewCompactions" value="true"></label>
       <label><span style="min-width:300px;float:none;display:inline-block;">Max parallel main index tasks per node:</span><input maxlength="5" style="width:1.5em;" name="maxParallelIndexers"></label>
       <label><span style="min-width:300px;float:none;display:inline-block;">Max parallel replica index tasks per node:</span><input maxlength="5" style="width:1.5em;" name="maxParallelReplicaIndexers"></label>
       <label><span style="min-width:300px;float:none;display:inline-block;">Maximum Bucket Count:</span><input maxlength="3" style="width:1.5em;" name="maxBucketCount"></label>

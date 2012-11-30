@@ -122,22 +122,27 @@ mover_inner(Parent, Node, Bucket, VBucket,
             OldChain, [NewNode|_] = NewChain) ->
     process_flag(trap_exit, true),
 
-    spawn_and_wait(
-      fun () ->
-              InhibitedNodes = lists:usort([Node, NewNode]),
-              InhibitRVs = misc:parallel_map(
-                             fun (N) ->
-                                     {N, compaction_daemon:inhibit_view_compaction(Bucket, N, Parent)}
-                             end, InhibitedNodes, infinity),
+    case cluster_compat_mode:rebalance_ignore_view_compactions() of
+        false ->
+            spawn_and_wait(
+              fun () ->
+                      InhibitedNodes = lists:usort([Node, NewNode]),
+                      InhibitRVs = misc:parallel_map(
+                                     fun (N) ->
+                                             {N, compaction_daemon:inhibit_view_compaction(Bucket, N, Parent)}
+                                     end, InhibitedNodes, infinity),
 
-              [case IRV of
-                   {N, {ok, MRef}} ->
-                       Parent ! {inhibited_view_compaction, N, MRef};
-                   _ ->
-                       ?log_debug("Got nack for inhibited_view_compaction. Thats normal: ~p", [IRV])
-               end || IRV <- InhibitRVs],
-              ok
-      end),
+                      [case IRV of
+                           {N, {ok, MRef}} ->
+                               Parent ! {inhibited_view_compaction, N, MRef};
+                           _ ->
+                               ?log_debug("Got nack for inhibited_view_compaction. Thats normal: ~p", [IRV])
+                       end || IRV <- InhibitRVs],
+                      ok
+              end);
+        _ ->
+            ok
+    end,
 
     %% first build new chain as replicas of existing master
     Node = hd(OldChain),

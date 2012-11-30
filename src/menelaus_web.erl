@@ -2429,6 +2429,7 @@ build_internal_settings_kvs() ->
     Triples = [{index_aware_rebalance_disabled, indexAwareRebalanceDisabled, false},
                {rebalance_index_waiting_disabled, rebalanceIndexWaitingDisabled, false},
                {index_pausing_disabled, rebalanceIndexPausingDisabled, false},
+               {rebalance_ignore_view_compactions, rebalanceIgnoreViewCompactions, false},
                {{couchdb, max_parallel_indexers}, maxParallelIndexers, <<>>},
                {{couchdb, max_parallel_replica_indexers}, maxParallelReplicaIndexers, <<>>},
                {max_bucket_count, maxBucketCount, 10},
@@ -2464,6 +2465,10 @@ handle_internal_settings_post(Req) ->
                case parse_validate_boolean_field("rebalanceIndexPausingDisabled", [], Params) of
                    [] -> undefined;
                    [{ok, _, V}] -> MaybeSet(rebalanceIndexPausingDisabled, index_pausing_disabled, V)
+               end,
+               case parse_validate_boolean_field("rebalanceIgnoreViewCompactions", [], Params) of
+                   [] -> undefined;
+                   [{ok, _, V}] -> MaybeSet(rebalanceIgnoreViewCompactions, rebalance_ignore_view_compactions, V)
                end,
                case proplists:get_value("maxParallelIndexers", Params) of
                    undefined -> undefined;
