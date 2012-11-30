@@ -313,6 +313,7 @@ spawn_compaction_uninhibitor(Bucket, Node, MRef) ->
                   true ->
                       case compaction_daemon:uninhibit_view_compaction(Bucket, Node, MRef) of
                           ok ->
+                              master_activity_events:note_compaction_uninhibited(Bucket, Node),
                               ok;
                           nack ->
                               erlang:exit({failed_to_initiate_compaction, Bucket, Node, MRef})

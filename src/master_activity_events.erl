@@ -45,6 +45,8 @@
          note_checkpoint_waiting_ended/4,
          note_wait_index_updated_started/3,
          note_wait_index_updated_ended/3,
+         note_compaction_inhibited/2,
+         note_compaction_uninhibited/2,
          event_to_jsons/1,
          event_to_formatted_iolist/1,
          format_some_history/1]).
@@ -151,6 +153,12 @@ note_wait_index_updated_started(BucketName, Node, VBucket) ->
 
 note_wait_index_updated_ended(BucketName, Node, VBucket) ->
     submit_cast({wait_index_updated_ended, BucketName, Node, VBucket}).
+
+note_compaction_inhibited(BucketName, Node) ->
+    submit_cast({compaction_inhibited, BucketName, Node}).
+
+note_compaction_uninhibited(BucketName, Node) ->
+    submit_cast({compaction_uninhibited, BucketName, Node}).
 
 start_link_timestamper() ->
     {ok, ns_pubsub:subscribe_link(master_activity_events_ingress, fun timestamper_body/2, [])}.
@@ -545,6 +553,18 @@ event_to_jsons({TS, wait_index_updated_ended, BucketName, Node, VBucket}) ->
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
                                   {vbucket, VBucket},
+                                  {node, node_to_host(Node, ns_config:get())}])];
+
+event_to_jsons({TS, compaction_inhibited, BucketName, Node}) ->
+    [format_simple_plist_as_json([{type, compactionInhibited},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
+                                  {node, node_to_host(Node, ns_config:get())}])];
+
+event_to_jsons({TS, compaction_uninhibited, BucketName, Node}) ->
+    [format_simple_plist_as_json([{type, compactionUninhibited},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
                                   {node, node_to_host(Node, ns_config:get())}])];
 
 event_to_jsons(Event) ->
