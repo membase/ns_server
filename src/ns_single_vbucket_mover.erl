@@ -183,12 +183,55 @@ mover_inner(Parent, Node, Bucket, VBucket,
     WaitedCheckpointId = janitor_agent:get_replication_persistence_checkpoint_id(Bucket, Parent, Node, VBucket),
     ?rebalance_info("Will wait for checkpoint ~p on replicas", [WaitedCheckpointId]),
 
+    Self = self(),
+
+    spawn_and_wait(
+      fun () ->
+              RVs = misc:parallel_map(
+                      fun ({N, Pid}) ->
+                              {N, (catch ebucketmigrator_srv:wait_backfill_complete(Pid))}
+                      end, BuilderReplicators, infinity),
+              misc:letrec(
+                [RVs, [], false],
+                fun (Rec, [RV | RestRVs], BadRetvals, HadUnhandled) ->
+                        case RV of
+                            {_, ok} ->
+                                Rec(Rec, RestRVs, BadRetvals, HadUnhandled);
+                            {_, not_backfilling} ->
+                                Rec(Rec, RestRVs, BadRetvals, HadUnhandled);
+                            {_, unhandled} ->
+                                Rec(Rec, RestRVs, BadRetvals, true);
+                            _ ->
+                                Rec(Rec, RestRVs, [RV | BadRetvals], HadUnhandled)
+                        end;
+                    (_Rec, [], [], HadUnhandled) ->
+                        Self ! {had_unhandled, HadUnhandled};
+                    (_Rec, [], BadRVs, _) ->
+                        erlang:error({wait_backfill_complete_failed_for, BadRVs})
+                end)
+      end),
+    master_activity_events:note_backfill_phase_ended(Bucket, VBucket),
+    HadUnhandled = receive
+                       {had_unhandled, HadUnhandledVal} ->
+                           HadUnhandledVal
+                   end,
+    case HadUnhandled of
+        false ->
+            %% we could handle wait_backfill_complete for all nodes,
+            %% so we can report backfill as done
+            Parent ! {backfill_done, {Node, VBucket, OldChain, NewChain}};
+        true ->
+            %% could not handle it. Must be 2.0.0 node(s). We'll
+            %% report backfill as done after checkpoint persisted
+            %% event
+            ok
+    end,
+
     master_activity_events:note_checkpoint_waiting_started(Bucket, VBucket, WaitedCheckpointId, AllBuiltNodes),
     ok = wait_checkpoint_persisted_many(Bucket, Parent, AllBuiltNodes, VBucket, WaitedCheckpointId),
     master_activity_events:note_checkpoint_waiting_ended(Bucket, VBucket, WaitedCheckpointId, AllBuiltNodes),
 
-    IndexAware = cluster_compat_mode:is_index_aware_rebalance_on(),
-    case IndexAware of
+    case HadUnhandled of
         true ->
             Parent ! {backfill_done, {Node, VBucket, OldChain, NewChain}};
         _ ->
