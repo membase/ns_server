@@ -97,7 +97,7 @@ expand_args({Name, Cmd, ArgsIn, OptsIn}) ->
     {Name, Cmd, Args, Opts}.
 
 start_link_memcached_port(Name, Cmd, Args, Opts) ->
-    case supervisor_cushion:start_link(Name, 5000, 60000, ns_port_server, start_link, [Name, Cmd, Args, Opts]) of
+    case supervisor_cushion:start_link(Name, 5000, infinity, ns_port_server, start_link, [Name, Cmd, Args, Opts]) of
         {ok, Pid} = RV->
             try
                 ChildPid = supervisor_cushion:child_pid(Pid),
