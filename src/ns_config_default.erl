@@ -493,7 +493,11 @@ maybe_upgrade_engines_add_mccouch_port_log_params(Config, DefaultConfig) ->
                   not lists:keymember(Key, 1, NewOrUpdatedParams)
           end, McdConfig),
 
-    [{set, McdKey, NewOrUpdatedParams ++ StrippedMcdConfig}].
+    PortServersKey = {node, node(), port_servers},
+    {value, DefaultPortServers} = ns_config:search([DefaultConfig], PortServersKey),
+
+    [{set, McdKey, NewOrUpdatedParams ++ StrippedMcdConfig},
+     {set, PortServersKey, DefaultPortServers}].
 
 upgrade_1_7_1_to_1_7_2_test() ->
     DefaultCfg = [{rest, [{port, 8091}]},
@@ -646,7 +650,8 @@ upgrade_1_8_1_to_2_0_test() ->
     Cfg = [[{{node, node(), capi_port}, something},
             {remote_clusters, foobar},
             {{node, node(), memcached}, [{engines, old_engines},
-                                         {something, something}]}]],
+                                         {something, something}]},
+            {{node, node(), port_servers}, old_port_servers}]],
     DefaultCfg = [{{node, node(), capi_port}, somethingelse},
                   {remote_clusters, foobar_2},
                   {autocompaction, compaction_something},
@@ -658,7 +663,8 @@ upgrade_1_8_1_to_2_0_test() ->
                     {log_generations, log_generations},
                     {log_rotation_period, log_rotation_period},
                     {engines, new_engines},
-                    {something_else, something_else}]}],
+                    {something_else, something_else}]},
+                  {{node, node(), port_servers}, new_port_servers}],
     Result = do_upgrade_config_from_1_8_1_to_2_0(Cfg, DefaultCfg),
     ?assertEqual([{set, autocompaction, compaction_something},
                   {set, {node, node(), compaction_daemon}, compaction_daemon_settings},
@@ -669,7 +675,8 @@ upgrade_1_8_1_to_2_0_test() ->
                     {log_generations, log_generations},
                     {log_rotation_period, log_rotation_period},
                     {engines, new_engines},
-                    {something, something}]}],
+                    {something, something}]},
+                  {set, {node, node(), port_servers}, new_port_servers}],
                  Result),
     Cfg2 = [[{remote_clusters, foobar},
              {{node, node(), compaction_daemon}, compaction_daemon_existing},
@@ -684,7 +691,8 @@ upgrade_1_8_1_to_2_0_test() ->
                     {log_generations, log_generations},
                     {log_rotation_period, log_rotation_period},
                     {engines, new_engines},
-                    {something, something}]}],
+                    {something, something}]},
+                  {set, {node, node(), port_servers}, new_port_servers}],
                  Result2).
 
 no_upgrade_on_2_0_test() ->
