@@ -179,13 +179,22 @@ current_status() ->
 
     ClusterCompatVersion = effective_cluster_compat_version(),
 
+    StorageConf0 = cb_config_couch_sync:get_db_and_ix_paths(),
+    StorageConf =
+        lists:map(
+          fun ({Key, Path}) ->
+                  %% db_path and index_path are guaranteed to be absolute
+                  {ok, RealPath} = misc:realpath(Path, "/"),
+                  {Key, RealPath}
+          end, StorageConf0),
+
     failover_safeness_level:build_local_safeness_info(BucketNames) ++
         [{active_buckets, ns_memcached:active_buckets()},
          {ready_buckets, ns_memcached:warmed_buckets()},
          {local_tasks, Tasks},
          {memory, erlang:memory()},
          {system_memory_data, memsup:get_system_memory_data()},
-         {node_storage_conf, cb_config_couch_sync:get_db_and_ix_paths()},
+         {node_storage_conf, StorageConf},
          {statistics, erlang_stats()},
          {system_stats, [{N, proplists:get_value(N, SystemStats, 0)}
                          || N <- [cpu_utilization_rate, swap_total, swap_used]]},

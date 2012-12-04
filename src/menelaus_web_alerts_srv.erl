@@ -247,7 +247,8 @@ check(disk, Opaque, _History, _Stats) ->
     UsedFiles = [X || {ok, X} <- UsedPre],
 
     UsedMountsTmp =
-        [begin {ok, Mnt} = ns_storage_conf:extract_disk_stats_for_path(Mounts, File),
+        [begin {ok, RealFile} = misc:realpath(File, "/"),
+               {ok, Mnt} = ns_storage_conf:extract_disk_stats_for_path(Mounts, RealFile),
                Mnt
          end || File <- UsedFiles],
     UsedMounts = sets:to_list(sets:from_list(UsedMountsTmp)),

@@ -407,9 +407,10 @@ extract_disk_stats_for_path_rec([{MountPoint0, _, _} = Info | Rest], Path) ->
             end,
     case MPath =:= string:substr(Path, 1, length(MPath)) of
         true -> {ok, Info};
-        _ -> extract_disk_stats_for_path(Rest, Path)
+        _ -> extract_disk_stats_for_path_rec(Rest, Path)
     end.
 
+%% Path0 must be an absolute path with all symlinks resolved.
 extract_disk_stats_for_path(StatsList, Path0) ->
     Path = case filename:join([Path0]) of
                "/" -> "/";

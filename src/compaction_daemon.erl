@@ -912,8 +912,9 @@ space_required(DataSize) ->
 
 free_space(Path) ->
     Stats = ns_info:get_disk_data(),
+    {ok, RealPath} = misc:realpath(Path, "/"),
     {ok, {_, Total, Usage}} =
-        ns_storage_conf:extract_disk_stats_for_path(Stats, Path),
+        ns_storage_conf:extract_disk_stats_for_path(Stats, RealPath),
     trunc(Total - (Total * (Usage / 100))) * 1024.
 
 view_needs_compaction(BucketName, DDocId, Type,
