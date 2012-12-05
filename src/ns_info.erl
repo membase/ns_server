@@ -73,13 +73,15 @@ get_disk_data() ->
         {unix, darwin} ->
             case os:version() of
                 {12, _Minor, _Rel} ->
-                   Result = os:cmd("/bin/df -i -k -t ufs,hfs"),
-                   osx_get_disk_data(string:tokens(Result,"\n"));
+                    Result = os:cmd("/bin/df -i -k -t ufs,hfs"),
+                    osx_get_disk_data(string:tokens(Result,"\n"));
                 _DefaultV ->
-                   disksup:get_disk_data()
+                    application:start(os_mon),
+                    disksup:get_disk_data()
             end;
         _DefaultT ->
-           disksup:get_disk_data()
+            application:start(os_mon),
+            disksup:get_disk_data()
     end.
 
 osx_get_disk_data([]) ->
