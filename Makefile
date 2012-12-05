@@ -103,7 +103,7 @@ endif
 
 PREFIX_FOR_CONFIG ?= $(PREFIX)
 
-COUCHBASE_DB_DIR ?= $(PREFIX)/var/lib/couchbase/data/
+COUCHBASE_DB_DIR ?= $(PREFIX)/var/lib/couchbase/data
 
 ERLWSH_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/erlwsh
 GEN_SMTP_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/gen_smtp

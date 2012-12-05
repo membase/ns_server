@@ -43,11 +43,14 @@ init([]) ->
 get_db_and_ix_paths() ->
     DbPath = couch_config:get("couchdb", "database_dir"),
     IxPath = couch_config:get("couchdb", "view_index_dir", DbPath),
-    [{db_path, DbPath},
-     {index_path, IxPath}].
+    [{db_path, filename:join([DbPath])},
+     {index_path, filename:join([IxPath])}].
 
 -spec set_db_and_ix_paths(DbPath :: string(), IxPath :: string()) -> ok.
-set_db_and_ix_paths(DbPath, IxPath) ->
+set_db_and_ix_paths(DbPath0, IxPath0) ->
+    DbPath = filename:join([DbPath0]),
+    IxPath = filename:join([IxPath0]),
+
     couch_config:set("couchdb", "database_dir", DbPath),
     couch_config:set("couchdb", "view_index_dir", IxPath).
 
@@ -153,8 +156,9 @@ consider_changing_db_path() ->
     end.
 
 consider_changing_db_path_with_dbdir(NSConfigDBDir, MCDPList) ->
-    DbPath = couch_config:get("couchdb", "database_dir"),
-    IxPath = couch_config:get("couchdb", "view_index_dir", DbPath),
+    [{db_path, DbPath},
+     {index_path, IxPath}] = lists:sort(get_db_and_ix_paths()),
+
     case NSConfigDBDir =:= DbPath andalso NSConfigDBDir =:= IxPath of
         true ->
             ok;
