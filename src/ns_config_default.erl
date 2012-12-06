@@ -59,6 +59,9 @@ default() ->
     filelib:ensure_dir(RawLogDir),
     file:make_dir(RawLogDir),
 
+    InstanceUuid = couch_uuids:random(),
+    InstanceVClock = {'_vclock', [{InstanceUuid, {1, vclock:timestamp()}}]},
+
     [{xdcr_max_concurrent_reps, 32},  % num of concurrent reps per bucket
      {xdcr_checkpoint_interval, 1800},  % in secs
      {xdcr_doc_batch_size_kb, 2048},  % in kilobytes
@@ -125,11 +128,12 @@ default() ->
 
                                                 % This is also a parameter to memcached ports below.
      {remote_clusters, []},
-     {{node, node(), isasl}, [{path, filename:join(DbDir, "isasl.pw")}]},
+     {{node, node(), isasl}, [InstanceVClock,
+                              {path, filename:join(DbDir, "isasl.pw")}]},
 
                                                 % Memcached config
      {{node, node(), memcached},
-      [{'_vclock', [{'_', {1, 0}}]},
+      [InstanceVClock,
        {port, misc:get_env_default(memcached_port, 11210)},
        {mccouch_port, misc:get_env_default(mccouch_port, 11213)},
        {dedicated_port, misc:get_env_default(memcached_dedicated_port, 11209)},
@@ -228,7 +232,8 @@ default() ->
        }]
      },
 
-     {{node, node(), ns_log}, [{filename, filename:join(DbDir, "ns_log")}]},
+     {{node, node(), ns_log}, [InstanceVClock,
+                               {filename, filename:join(DbDir, "ns_log")}]},
 
                                                 % Modifiers: menelaus
                                                 % Listeners: ? possibly ns_log
