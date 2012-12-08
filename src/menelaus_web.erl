@@ -306,7 +306,7 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun menelaus_web_buckets:handle_bucket_create/2,
                                   [PoolId]};
                              ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
-                                 {auth_check_bucket_uuid,
+                                 {auth_bucket,
                                   fun menelaus_web_buckets:handle_bucket_flush/3, [PoolId, Id]};
                              ["pools", PoolId, "buckets", Id, "controller", "compactBucket"] ->
                                  {auth_check_bucket_uuid,
