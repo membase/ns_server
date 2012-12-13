@@ -252,7 +252,14 @@ build_local_set_specs(BucketName, DDocId, ViewName, VBuckets) ->
        }].
 
 build_remote_set_specs(Node, BucketName, DDocId, ViewName, VBuckets) ->
-    FullViewName = iolist_to_binary([DDocId, $/, ViewName]),
+    DDocName = case DDocId of
+                   <<"_design/", Rest/binary>> ->
+                       Rest;
+                   _ ->
+                       DDocId
+               end,
+    FullViewName = iolist_to_binary(["_design/", couch_httpd:quote(DDocName),
+                                     $/, couch_httpd:quote(ViewName)]),
     MergeURL = iolist_to_binary([vbucket_map_mirror:node_to_inner_capi_base_url(Node),
                                  <<"/_view_merge">>]),
 

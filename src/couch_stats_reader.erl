@@ -187,9 +187,7 @@ grab_couch_stats(Bucket, Config, MinFileSize) ->
     {ViewsDiskSize, ViewsDataSize} = aggregate_view_stats_loop(0, 0, ViewStats),
 
     {ok, CouchDir} = ns_storage_conf:this_node_dbdir(),
-    CouchDir = couch_config:get("couchdb", "database_dir"),
     {ok, ViewRoot} = ns_storage_conf:this_node_ixdir(),
-    ViewRoot = couch_config:get("couchdb", "view_index_dir"),
 
     DocsActualDiskSize = misc:dir_size(filename:join([CouchDir, Bucket])),
     ViewsActualDiskSize = misc:dir_size(couch_set_view:set_index_dir(ViewRoot, BinBucket)),

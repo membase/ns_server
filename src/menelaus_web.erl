@@ -1812,6 +1812,18 @@ handle_node_settings_post(Node, Req) ->
         _ -> ok
     end,
 
+    case is_system_provisioned() andalso DbPath =/= DefaultDbPath of
+        true ->
+            %% MB-7344: we had 1.8.1 instructions allowing that. And
+            %% 2.0 works very differently making that original
+            %% instructions lose data. Thus we decided it's much safer
+            %% to un-support this path.
+            reply_json(Req, {struct, [{error, <<"Changing data of nodes that are part of provisioned cluster is not supported">>}]}, 400),
+            exit(normal);
+        _ ->
+            ok
+    end,
+
     ValidatePath =
         fun ({Param, Path}) ->
                 case Path of

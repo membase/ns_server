@@ -155,7 +155,8 @@ setup_disk_storage_conf(DbPath, IxPath) ->
                                 ok;
                             false ->
                                 ?log_info("Removing all the buckets because "
-                                          "database path has changed"),
+                                          "database path has changed (old database path ~s)",
+                                          [CurrentDbDir]),
                                 [ns_orchestrator:delete_bucket(Bucket)
                                  || {Bucket, _} <- ns_bucket:get_buckets()],
 
