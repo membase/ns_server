@@ -28,7 +28,7 @@ class TempFile(object):
     def __getattr__(self, name):
         return getattr(self.__dict__['fp'], name)
 
-    def __delete__(self):
+    def __del__(self):
         try:
             self.fp.close()
         except:
