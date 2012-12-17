@@ -40,6 +40,19 @@ start(_Type, _Args) ->
     self() ! done,
     log_pending(),
 
+    case misc:get_env_default(ns_server, enable_mlockall, true) of
+        true ->
+            case mlockall:lock([current, future]) of
+                ok ->
+                    ?log_info("Locked myself into a memory successfully.");
+                Error ->
+                    ?log_warning("Could not lock "
+                                 "myself into a memory: ~p. Ignoring.", [Error])
+            end;
+        false ->
+            ok
+    end,
+
     ns_server_cluster_sup:start_link().
 
 restart() ->
