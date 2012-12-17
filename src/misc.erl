@@ -534,6 +534,29 @@ wait_for_process_test() ->
     ok = wait_for_process(Pid, 100),
     ok = wait_for_process(Pid, 100).
 
+-define(WAIT_FOR_GLOBAL_NAME_SLEEP, 200).
+
+%% waits until given name is globally registered. I.e. until calling
+%% {global, Name} starts working
+wait_for_global_name(Name, TimeoutMillis) ->
+    Tries = (TimeoutMillis + ?WAIT_FOR_GLOBAL_NAME_SLEEP-1) div ?WAIT_FOR_GLOBAL_NAME_SLEEP,
+    wait_for_global_name_loop(Name, Tries).
+
+wait_for_global_name_loop(Name, 0) ->
+    case is_pid(global:whereis_name(Name)) of
+        true ->
+            ok;
+        _ -> failed
+    end;
+wait_for_global_name_loop(Name, TriesLeft) ->
+    case is_pid(global:whereis_name(Name)) of
+        true ->
+            ok;
+        false ->
+            timer:sleep(?WAIT_FOR_GLOBAL_NAME_SLEEP),
+            wait_for_global_name_loop(Name, TriesLeft-1)
+    end.
+
 spawn_link_safe(Fun) ->
     spawn_link_safe(node(), Fun).
 

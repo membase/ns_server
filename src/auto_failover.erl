@@ -41,7 +41,6 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--define(SERVER, {global, ?MODULE}).
 %% @doc Fired when a node was auto-failovered.
 -define(EVENT_NODE_AUTO_FAILOVERED, 1).
 %% @doc Fired when the maximum number of nodes that can be auto-failovered
@@ -84,17 +83,21 @@ start_link() ->
 -spec enable(Timeout::integer(), Max::integer()) -> ok.
 enable(Timeout, Max) ->
     1 = Max,
-    gen_server:call(?SERVER, {enable_auto_failover, Timeout, Max}).
+    call({enable_auto_failover, Timeout, Max}).
 
 %% @doc Disable auto-failover
 -spec disable() -> ok.
 disable() ->
-    gen_server:call(?SERVER, disable_auto_failover).
+    call(disable_auto_failover).
 
 %% @doc Reset the number of nodes that were auto-failovered to zero
 -spec reset_count() -> ok.
 reset_count() ->
-    gen_server:call(?SERVER, reset_auto_failover_count).
+    call(reset_auto_failover_count).
+
+call(Call) ->
+    misc:wait_for_global_name(?MODULE, 20000),
+    gen_server:call({global, ?MODULE}, Call).
 
 -spec alert_key(Code::integer()) -> atom().
 alert_key(?EVENT_NODE_AUTO_FAILOVERED) -> auto_failover_node;
