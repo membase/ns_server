@@ -322,6 +322,10 @@ def make_tasks(root="/opt/couchbase", dbdir=""):
                 "cd " + basedir() + "\\..\\var\\lib\\couchbase\\logs && " +
                 "for /f %a IN ('dir /od /b memcached.log.*') do type %a",
                 log_file="memcached.log", reformat=True),
+    WindowsTask("Ini files",
+                "cd " + basedir() + "\\..\\etc && " +
+                "for /f %a IN ('dir /od /s /b *.ini') do type %a",
+                log_file="ini.log", reformat=True),
     UnixTask("Filesystem", "df -ha"),
     UnixTask("System activity reporter", "sar 1 10"),
     UnixTask("System paging activity", "vmstat 1 10"),
@@ -345,6 +349,11 @@ def make_tasks(root="/opt/couchbase", dbdir=""):
     LinuxTask("Memcached logs",
               "cd '%s'/var/lib/couchbase/logs && cat $(ls -tr memcached.log.*)" % root,
               log_file="memcached.log"),
+    LinuxTask("Ini files",
+              "cd '%s'/etc && " % root +
+              "for file in $(find . -type f -name '*.ini'); do echo -e \"\nFile: ${file}\n\";" +
+              "cat \"$file\"; done",
+              log_file="ini.log"),
     UnixTask("Kernel log buffer", "dmesg"),
     LinuxTask("couchbase config",
               "'%s'/escript '%s'/cbdump-config '%s/var/lib/couchbase/config/config.dat'"
