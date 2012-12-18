@@ -53,9 +53,10 @@ mover(Parent, undefined = Node, Bucket, VBucket, OldChain, [NewNode | _NewChainR
 
 mover(Parent, Node, Bucket, VBucket, OldChain, NewChain) ->
     master_activity_events:note_vbucket_mover(self(), Bucket, Node, VBucket, OldChain, NewChain),
+    IndexAware = cluster_compat_mode:is_index_aware_rebalance_on(),
     misc:try_with_maybe_ignorant_after(
       fun () ->
-              case cluster_compat_mode:is_index_aware_rebalance_on() of
+              case IndexAware of
                   true ->
                       mover_inner(Parent, Node, Bucket, VBucket, OldChain, NewChain);
                   false ->
@@ -65,7 +66,12 @@ mover(Parent, Node, Bucket, VBucket, OldChain, NewChain) ->
       fun () ->
               misc:sync_shutdown_many_i_am_trapping_exits(get_cleanup_list())
       end),
-    Parent ! {move_done, {Node, VBucket, OldChain, NewChain}}.
+    case IndexAware of
+        false ->
+            Parent ! {move_done, {Node, VBucket, OldChain, NewChain}};
+        true ->
+            Parent ! {move_done_new_style, {Node, VBucket, OldChain, NewChain}}
+    end.
 
 spawn_and_wait(Body) ->
     WorkerPid = erlang:spawn_link(Body),
@@ -115,6 +121,31 @@ wait_checkpoint_persisted_many(Bucket, Parent, FewNodes, VBucket, WaitedCheckpoi
 mover_inner(Parent, Node, Bucket, VBucket,
             OldChain, [NewNode|_] = NewChain) ->
     process_flag(trap_exit, true),
+
+    case cluster_compat_mode:rebalance_ignore_view_compactions() of
+        false ->
+            spawn_and_wait(
+              fun () ->
+                      InhibitedNodes = lists:usort([Node, NewNode]),
+                      InhibitRVs = misc:parallel_map(
+                                     fun (N) ->
+                                             {N, compaction_daemon:inhibit_view_compaction(Bucket, N, Parent)}
+                                     end, InhibitedNodes, infinity),
+
+                      [case IRV of
+                           {N, {ok, MRef}} ->
+                               [master_activity_events:note_compaction_inhibited(Bucket, ANode)
+                                || ANode <- InhibitedNodes],
+                               Parent ! {inhibited_view_compaction, N, MRef};
+                           _ ->
+                               ?log_debug("Got nack for inhibited_view_compaction. Thats normal: ~p", [IRV])
+                       end || IRV <- InhibitRVs],
+                      ok
+              end);
+        _ ->
+            ok
+    end,
+
     %% first build new chain as replicas of existing master
     Node = hd(OldChain),
     ReplicaNodes = [N || N <- NewChain,
@@ -147,11 +178,22 @@ mover_inner(Parent, Node, Bucket, VBucket,
     %%
 
     ok = janitor_agent:initiate_indexing(Bucket, Parent, JustBackfillNodes, ReplicaNodes, VBucket),
+    master_activity_events:note_indexing_initiated(Bucket, JustBackfillNodes, VBucket),
 
     WaitedCheckpointId = janitor_agent:get_replication_persistence_checkpoint_id(Bucket, Parent, Node, VBucket),
     ?rebalance_info("Will wait for checkpoint ~p on replicas", [WaitedCheckpointId]),
 
+    master_activity_events:note_checkpoint_waiting_started(Bucket, VBucket, WaitedCheckpointId, AllBuiltNodes),
     ok = wait_checkpoint_persisted_many(Bucket, Parent, AllBuiltNodes, VBucket, WaitedCheckpointId),
+    master_activity_events:note_checkpoint_waiting_ended(Bucket, VBucket, WaitedCheckpointId, AllBuiltNodes),
+
+    IndexAware = cluster_compat_mode:is_index_aware_rebalance_on(),
+    case IndexAware of
+        true ->
+            Parent ! {backfill_done, {Node, VBucket, OldChain, NewChain}};
+        _ ->
+            ok
+    end,
 
     case Node =:= NewNode of
         true ->
@@ -170,17 +212,18 @@ mover_inner(Parent, Node, Bucket, VBucket,
             end,
             case ns_config_ets_dup:unreliable_read_key(rebalance_index_waiting_disabled, false) of
                 false ->
+                    master_activity_events:note_wait_index_updated_started(Bucket, NewNode, VBucket),
                     spawn_and_wait(
                       fun () ->
                               ok = janitor_agent:wait_index_updated(Bucket, Parent, NewNode, ReplicaNodes, VBucket)
-                      end);
+                      end),
+                    master_activity_events:note_wait_index_updated_ended(Bucket, NewNode, VBucket);
                 _ ->
                     ok
             end,
             new_ns_replicas_builder:shutdown_replicator(BuilderPid, NewNode),
             ok = run_mover(Bucket, VBucket, Node, NewNode),
-            ok = janitor_agent:set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined),
-            ok
+            ok = janitor_agent:set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined)
     end.
 
 

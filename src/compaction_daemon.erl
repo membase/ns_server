@@ -7,7 +7,7 @@
 
 %% API
 -export([start_link/0,
-
+         inhibit_view_compaction/3, uninhibit_view_compaction/3,
          force_compact_bucket/1, force_compact_db_files/1, force_compact_view/2,
          cancel_forced_bucket_compaction/1, cancel_forced_db_compaction/1,
          cancel_forced_view_compaction/2]).
@@ -16,11 +16,29 @@
 -export([init/1, handle_event/3, handle_sync_event/4, handle_info/3,
          code_change/4, terminate/3]).
 
--record(state, {buckets_to_compact,
+-record(state, {buckets_to_compact :: [binary()],
                 compactor_pid,
                 compactor_config,
                 compaction_start_ts,
                 scheduled_compaction_tref,
+
+                %% bucket for which view compaction is either already
+                %% inhibited or in progress to become inhibited
+                %% (i.e. we're waiting for current view compaction
+                %% round of this bucket to complete)
+                view_compaction_inhibited_bucket :: undefined | binary(),
+                %% if view compaction is in progress to become
+                %% inhibited this will hold From to gen_server:reply
+                %% to when we're done waiting
+                view_compaction_inhibited_completion_waiter,
+                %% if view compaction is inhibited this field will
+                %% hold monitor ref of the guy who requested it. If
+                %% that guy dies, inhibition will be canceled
+                view_compaction_inhibited_ref :: (undefined | reference()),
+                %% final stage of view compaction is when we wait for
+                %% next round of view compaction to complete
+                view_compaction_inhibited_final_stage = false :: boolean(),
+                view_compaction_inhibited_final_stage_waiter,
 
                 %% mapping from compactor pid to #forced_compaction{}
                 running_forced_compactions,
@@ -55,6 +73,37 @@
 %% API
 start_link() ->
     gen_fsm:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+
+%% While Pid is alive prevents autocompaction of views for given
+%% bucket and given node. Returned Ref can be used to uninhibit
+%% autocompaction.
+%%
+%% If views of given bucket are being compacted right now, it'll wait
+%% for end of compaction rather than aborting it.
+%%
+%% Attempt to inhibit already inhibited compaction will result in nack.
+%%
+%% Note: we assume that caller of both inhibit_view_compaction and
+%% uninhibit_view_compaction is somehow related to Pid and will die
+%% automagically if Pid dies, because autocompaction daemon may
+%% actually forget about this calls.
+-spec inhibit_view_compaction(bucket_name(), node(), pid()) ->
+                                     {ok, reference()} | nack.
+inhibit_view_compaction(Bucket, Node, Pid) ->
+    gen_fsm:sync_send_all_state_event({?MODULE, Node},
+                                      {inhibit_view_compaction, list_to_binary(Bucket), Pid},
+                                      infinity).
+
+
+%% Using Ref returned from inhibit_view_compaction undoes it's
+%% effect. It'll also consider kicking views autocompaction for given
+%% bucket asap. And it's do it _before_ replying.
+-spec uninhibit_view_compaction(bucket_name(), node(), reference()) -> ok | nack.
+uninhibit_view_compaction(Bucket, Node, Ref) ->
+    gen_fsm:sync_send_all_state_event({?MODULE, Node},
+                                      {uninhibit_view_compaction, list_to_binary(Bucket), Ref},
+                                      infinity).
 
 force_compact_bucket(Bucket) ->
     BucketBin = list_to_binary(Bucket),
@@ -240,6 +289,46 @@ handle_sync_event({cancel_forced_view_compaction, Bucket, DDocId},
     Name = <<Bucket/binary, $/, DDocId/binary>>,
     Compaction = #forced_compaction{type=view, name=Name},
     {reply, ok, StateName, maybe_cancel_compaction(Compaction, State)};
+handle_sync_event({inhibit_view_compaction, BinBucketName, Pid}, From, StateName,
+                  #state{view_compaction_inhibited_ref = OldRef,
+                         buckets_to_compact = BucketsToCompact} = State) ->
+    case OldRef =/= undefined of
+        true ->
+            gen_server:reply(From, nack),
+            {next_state, StateName, State};
+        _ ->
+            MRef = erlang:monitor(process, Pid),
+            NewState = State#state{
+                         view_compaction_inhibited_bucket = BinBucketName,
+                         view_compaction_inhibited_completion_waiter = undefined,
+                         view_compaction_inhibited_ref = MRef,
+                         view_compaction_inhibited_final_stage = false,
+                         view_compaction_inhibited_final_stage_waiter = undefined},
+            case StateName =:= compacting andalso hd(BucketsToCompact) =:= BinBucketName of
+                true ->
+                    NewState2 = NewState#state{
+                                  view_compaction_inhibited_completion_waiter = From},
+                    {next_state, StateName, NewState2};
+                false ->
+                    {reply, {ok, MRef}, StateName, NewState}
+            end
+    end;
+handle_sync_event({uninhibit_view_compaction, BinBucketName, MRef}, From, StateName,
+                  #state{view_compaction_inhibited_bucket = ABinBucketName,
+                         view_compaction_inhibited_ref = AnMRef,
+                         view_compaction_inhibited_final_stage = false} = State)
+  when AnMRef =:= MRef andalso ABinBucketName =:= BinBucketName ->
+    case StateName of
+        compacting ->
+            ok;
+        idle ->
+            self() ! compact
+    end,
+    {next_state, StateName, State#state{view_compaction_inhibited_final_stage_waiter = From,
+                                        view_compaction_inhibited_final_stage = true}};
+handle_sync_event({uninhibit_view_compaction, _BinBucketName, _MRef} = Msg, _From, StateName, State) ->
+    ?log_debug("Sending back nack on uninhibit_view_compaction: ~p, state: ~p", [Msg, State]),
+    {reply, nack, StateName, State};
 handle_sync_event(Event, _From, StateName, State) ->
     ?log_warning("Got unexpected sync event ~p (when in ~p):~n~p",
                  [Event, StateName, State]),
@@ -273,6 +362,12 @@ handle_info(compact, idle,
             NewState = compact_next_bucket(NewState1),
             {next_state, compacting, NewState}
     end;
+handle_info({'DOWN', MRef, _, _, _}, StateName, #state{view_compaction_inhibited_ref=MRef,
+                                                       view_compaction_inhibited_bucket=BinBucket}=State) ->
+    ?log_debug("Looks like vbucket mover inhibiting view compaction for for bucket \"~s\" is dead."
+               " Canceling inhibition", [BinBucket]),
+    {next_state, StateName, State#state{view_compaction_inhibited_ref = undefined,
+                                        view_compaction_inhibited_bucket = undefined}};
 handle_info({'EXIT', Compactor, Reason}, compacting,
             #state{compactor_pid=Compactor,
                    buckets_to_compact=Buckets} = State) ->
@@ -301,15 +396,33 @@ handle_info({'EXIT', Compactor, Reason}, compacting,
                 tl(Buckets)
         end,
 
-    NewState0 = State#state{compactor_pid=undefined,
-                            compactor_config=undefined,
-                            buckets_to_compact=NewBuckets},
+    NewState0 = case NewBuckets =:= Buckets of
+                    true ->
+                        State;
+                    false ->
+                        DoneBucket = hd(Buckets),
+                        case State of
+                            #state{view_compaction_inhibited_completion_waiter = Waiter,
+                                   view_compaction_inhibited_bucket = Bucket,
+                                   view_compaction_inhibited_ref = MRef}
+                              when (Bucket =:= DoneBucket andalso Waiter =/= undefined) ->
+                                ?log_debug("View compaction inhibition occurred for bucket ~s. Replying to ~p", [DoneBucket, Waiter]),
+                                gen_server:reply(Waiter, {ok, MRef}),
+                                State#state{view_compaction_inhibited_completion_waiter = undefined};
+                            _ ->
+                                State
+                        end
+                end,
+
+    NewState1 = NewState0#state{compactor_pid=undefined,
+                                compactor_config=undefined,
+                                buckets_to_compact=NewBuckets},
     case NewBuckets of
         [] ->
             ?log_debug("Finished compaction iteration."),
-            {next_state, idle, schedule_next_compaction(NewState0)};
+            {next_state, idle, schedule_next_compaction(NewState1)};
         _ ->
-            {next_state, compacting, compact_next_bucket(NewState0)}
+            {next_state, compacting, compact_next_bucket(NewState1)}
     end;
 handle_info({'EXIT', Pid, Reason}, StateName,
             #state{running_forced_compactions=Compactions} = State) ->
@@ -366,18 +479,14 @@ code_change(_OldVsn, StateName, State, _Extra) ->
     {ok, StateName, State}.
 
 %% Internal functions
--spec spawn_bucket_compactor(binary(), {#config{}, list()}) -> pid().
-spawn_bucket_compactor(BucketName, Configs) ->
-    spawn_bucket_compactor(BucketName, Configs, false).
-
--spec spawn_bucket_compactor(binary(), {#config{}, list()}, boolean()) -> pid().
+-spec spawn_bucket_compactor(binary(), {#config{}, list()}, boolean() | view_inhibited) -> pid().
 spawn_bucket_compactor(BucketName, {Config, ConfigProps}, Force) ->
     proc_lib:spawn_link(
       fun () ->
               case Force of
                   true ->
                       ok;
-                  false ->
+                  _ ->
                       %% effectful
                       check_period(Config)
               end,
@@ -412,14 +521,20 @@ spawn_bucket_compactor(BucketName, {Config, ConfigProps}, Force) ->
                    {important, true},
                    {name, BucketName},
                    {fa, {fun spawn_dbs_compactor/4,
-                         [BucketName, Config, Force, OriginalTarget]}}],
+                         [BucketName, Config, Force =:= true, OriginalTarget]}}],
+
               DDocCompactors =
-                  [ [{type, view},
-                     {name, <<BucketName/binary, $/, DDocId/binary>>},
-                     {important, false},
-                     {fa, {fun spawn_view_compactor/5,
-                           [BucketName, DDocId, Config, Force, OriginalTarget]}}] ||
-                      DDocId <- DDocNames ],
+                  case Force =/= view_inhibited of
+                      true ->
+                          [ [{type, view},
+                             {name, <<BucketName/binary, $/, DDocId/binary>>},
+                             {important, false},
+                             {fa, {fun spawn_view_compactor/5,
+                                   [BucketName, DDocId, Config, Force =:= true, OriginalTarget]}}] ||
+                              DDocId <- DDocNames ];
+                      _ ->
+                          []
+                  end,
 
               case Config#config.parallel_view_compact of
                   true ->
@@ -1162,16 +1277,68 @@ shutdown_compactor_after(MinutesLeft) ->
       end).
 
 -spec compact_next_bucket(#state{}) -> #state{}.
-compact_next_bucket(#state{buckets_to_compact=Buckets} = State) ->
+compact_next_bucket(#state{buckets_to_compact=Buckets,
+                           view_compaction_inhibited_final_stage_waiter = FinalStateWaiter} = State) ->
     undefined = State#state.compactor_pid,
     true = [] =/= Buckets,
 
-    NextBucket = hd(Buckets),
-    {Config, _ConfigProps} = Configs = compaction_config(NextBucket),
-    Compactor = spawn_bucket_compactor(NextBucket, Configs),
+    PausedBucket = case State of
+                       #state{view_compaction_inhibited_bucket = CandPausedBucket,
+                              view_compaction_inhibited_final_stage = true} ->
+                           CandPausedBucket;
+                       _ ->
+                           undefined
+                   end,
 
-    State#state{compactor_pid=Compactor,
-                compactor_config=Config}.
+    Buckets1 = case PausedBucket =/= undefined of
+                   true ->
+                       [PausedBucket | lists:delete(PausedBucket, Buckets)];
+                   _ ->
+                       Buckets
+               end,
+
+    NextBucket = hd(Buckets1),
+
+    {InitialConfig, _ConfigProps} = Configs0 = compaction_config(NextBucket),
+    Configs = case PausedBucket =/= undefined of
+                  true ->
+                      ?log_debug("Going to spawn bucket compaction with forced view compaction for bucket ~s", [NextBucket]),
+                      {OldConfig, OldConfigProps} = Configs0,
+                      {OldConfig#config{view_fragmentation = {0, 0},
+                                        allowed_period = undefined},
+                       [forced_previously_inhibited_view_compaction | OldConfigProps]};
+                  _ ->
+                      Configs0
+              end,
+
+    MaybeViewInhibited = case State of
+                             #state{view_compaction_inhibited_bucket = InhibitedBucket,
+                                    view_compaction_inhibited_final_stage = false}
+                               when InhibitedBucket =:= NextBucket ->
+                                 view_inhibited;
+                             _ ->
+                                 false
+                         end,
+
+    Compactor = spawn_bucket_compactor(NextBucket, Configs, MaybeViewInhibited),
+
+    case PausedBucket =/= undefined of
+        true ->
+            ?log_debug("Replying to view_compaction_inhibited_final_stage_waiter: ~p", [FinalStateWaiter]),
+            gen_server:reply(FinalStateWaiter, ok),
+            erlang:demonitor(State#state.view_compaction_inhibited_ref),
+            State#state{compactor_pid=Compactor,
+                        compactor_config=InitialConfig,
+                        view_compaction_inhibited_final_stage_waiter = undefined,
+                        view_compaction_inhibited_bucket = undefined,
+                        view_compaction_inhibited_ref = undefined,
+                        view_compaction_inhibited_final_stage = false};
+        _ ->
+            {fsw, undefined} = {fsw, FinalStateWaiter},
+            State#state{compactor_pid=Compactor,
+                        compactor_config=InitialConfig}
+    end.
+
 
 -spec schedule_next_compaction(#state{}) -> #state{}.
 schedule_next_compaction(#state{compaction_start_ts=StartTs0,
