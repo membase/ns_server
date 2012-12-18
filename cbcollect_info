@@ -347,7 +347,8 @@ def make_tasks(root="/opt/couchbase", dbdir=""):
     LinuxTask("Manifest file", "cat '%s/manifest.txt'" % root),
     LinuxTask("Manifest file", "cat '%s/manifest.xml'" % root),
     LinuxTask("Memcached logs",
-              "cd '%s'/var/lib/couchbase/logs && cat $(ls -tr memcached.log.*)" % root,
+              "cd '%s'/var/lib/couchbase/logs && " % root +
+              "for file in $(ls -tr memcached.log.*); do cat \"$file\"; done",
               log_file="memcached.log"),
     LinuxTask("Ini files",
               "cd '%s'/etc && " % root +
