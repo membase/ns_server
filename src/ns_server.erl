@@ -17,7 +17,7 @@
 
 -behavior(application).
 
--export([start/2, stop/1, get_loglevel/1, restart/0]).
+-export([start/2, stop/1, get_loglevel/1, restart/0, setup_babysitter_node/0, get_babysitter_node/0]).
 
 -include("ns_common.hrl").
 -include_lib("ale/include/ale.hrl").
@@ -239,3 +239,15 @@ init_logging() ->
 
 stop(_State) ->
     ok.
+
+setup_babysitter_node() ->
+    {Name, _} = misc:node_name_host(node()),
+    Babysitter = list_to_atom("babysitter_of_" ++ Name ++ "@127.0.0.1"),
+    application:set_env(ns_server, babysitter_node, Babysitter),
+    ignore.
+
+get_babysitter_node() ->
+    {ok, Node} = application:get_env(ns_server, babysitter_node),
+    {ok, CookieString} = application:get_env(ns_server, babysitter_cookie),
+    erlang:set_cookie(Node, CookieString),
+    Node.

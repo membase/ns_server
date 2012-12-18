@@ -534,11 +534,10 @@ idle({delete_bucket, BucketName}, _From,
                 LiveNodes = Nodes -- LeftoverNodes,
 
                 ?log_info("Restarting moxi on nodes ~p", [LiveNodes]),
-                case rpc:multicall(LiveNodes, ns_port_sup, restart_port_by_name, [moxi],
-                                   ?DELETE_BUCKET_TIMEOUT) of
-                    {_Results, []} ->
+                case multicall_moxi_restart(LiveNodes, ?DELETE_BUCKET_TIMEOUT) of
+                    ok ->
                         ok;
-                    {_Results, FailedNodes} ->
+                    FailedNodes ->
                         ?log_warning("Failed to restart moxi on following nodes ~p",
                                      [FailedNodes])
                 end,
@@ -1054,3 +1053,19 @@ maybe_drop_recovery_status() ->
 
 ensure_recovery_status(Bucket, UUID) ->
     ns_config:set(recovery_status, {running, Bucket, UUID}).
+
+%% NOTE: 2.0.1 and earlier nodes only had
+%% ns_port_sup. I believe it's harmless not to clean
+%% their moxis
+-spec multicall_moxi_restart([node()], _) -> ok | [{node(), _} | node()].
+multicall_moxi_restart(Nodes, Timeout) ->
+    {Results, FailedNodes} = rpc:multicall(Nodes, ns_ports_setup, restart_moxi, [],
+                                           Timeout),
+    BadResults = [Pair || {_N, R} = Pair <- lists:zip(Nodes -- FailedNodes, Results),
+                          R =/= ok],
+    case BadResults =:= [] andalso FailedNodes =:= [] of
+        true ->
+            ok;
+        _ ->
+            FailedNodes ++ BadResults
+    end.

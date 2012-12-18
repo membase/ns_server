@@ -5,6 +5,32 @@ This file documents user-visible changes in Couchbase clustering & UI.
 Between versions 2.0.1 and 2.0.2
 -----------------------------------------
 
+* (CBD-220) Erlang VM was split into 2. One is called babysitter
+  VM. That erlang VM instance is only capable of starting and
+  babysitting main erlang VM as well as memcached and moxi. Babysitter
+  is designed to be small and simple and thus very unlikely to crash
+  or be affected by any bug.
+
+  Most user-visible effect of this change is that crash of main erlang
+  VM (e.g. due to lack of memory) cannot bring down memcached or moxi
+  anymore.
+
+  But it also finally enables same ip address/hostname management
+  features on windows just like it works for as any other OS. That's
+  because erlsrv which is a way to run erlang VM as windows service
+  does not allow changing node name at runtime. But because now
+  service just runs babysitter which we don't need to rename, we are
+  now able to run main erlang VM in a way that allows node to rename
+  itself.
+
+  This change also enables some more powerful ways of on-line
+  upgrade. I.e. we'll be able to shoot old version of "erlang bits" in
+  the head and start new version. All that without interfering with
+  running instance of memcached or moxi.
+
+  There's new set of log files for log messages from babysitter
+  VM. cbcollect_info will save them as ns_server.babysitter.log.
+
 * (MB-7574) Support for REST call /pools/default/stats is discontinued.
 
   This REST call was meant to aggregate stats for several buckets. And

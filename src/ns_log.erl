@@ -32,6 +32,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
+-export([start_link_crash_consumer/0]).
+
 -export([log/6, log/7, recent/0, recent/1, delete_log/0]).
 
 -export([code_string/2]).
@@ -50,6 +52,18 @@
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+start_link_crash_consumer() ->
+    {ok, proc_lib:spawn_link(fun crash_consumption_loop/0)}.
+
+crash_consumption_loop() ->
+    {Name, Node, Status, Messages} = ns_crash_log:consume_oldest_message_from_inside_ns_server(),
+    ?user_log(0,
+              "Port server ~p on node ~p exited with status ~p. Restarting. "
+              "Messages: ~s",
+              [Name, Node, Status, Messages]),
+    crash_consumption_loop().
+
 
 log_filename() ->
     ns_config:search_node_prop(ns_config:get(), ns_log, filename).

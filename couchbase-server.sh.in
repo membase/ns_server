@@ -126,41 +126,39 @@ _start() {
         +P 327680 \
         +K true \
         +MMmcs ${COUCHBASE_MSEG_CACHE_SIZE:-30} \
-        -setcookie nocookie \
         -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21299 \
                 error_logger false \
         -sasl sasl_error_logger false \
+        -name 'babysitter_of_ns_1@127.0.0.1' \
         $* \
-        -run ns_bootstrap -- \
+        -run ns_babysitter_bootstrap -- \
         -couch_ini $couch_start_arguments \
+        -ns_babysitter cookiefile "\"$COOKIEFILE\"" \
         -ns_server config_path "\"@PREFIX@/etc/couchbase/static_config\"" \
         -ns_server pidfile "\"$PIDFILE\"" \
         -ns_server nodefile "\"$NODEFILE\"" \
-        -ns_server cookiefile "\"$COOKIEFILE\"" \
+        -ns_server cookiefile "\"$COOKIEFILE-ns-server\"" \
         -ns_server enable_mlockall ${COUCHBASE_ENABLE_MLOCKALL:-true}
 }
 
 _stop() {
-    [ -f $PIDFILE ] && [ -f $NODEFILE ] && [ -f $COOKIEFILE ] || return 1
+    [ -f $COOKIEFILE ] || return 1
 
     cookie=`cat "$COOKIEFILE"`
-    nodename=`cat "$NODEFILE"`
 
     erl \
         -name executioner@executioner \
         -noshell \
         -hidden \
         -setcookie "$cookie" \
-        -eval "ns_bootstrap:remote_stop('$nodename')"
+        -eval "ns_babysitter_bootstrap:remote_stop('babysitter_of_ns_1@127.0.0.1')"
 
     errcode=$?
 
     if [ $errcode -eq 0 ]; then
-        rm "$PIDFILE"
         rm "$COOKIEFILE"
-        rm "$NODEFILE"
 
-        epmd -kill >/dev/null || true
+        epmd -kill >/dev/null
     fi
 
     return $errcode

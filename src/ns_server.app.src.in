@@ -26,7 +26,6 @@
              ns_node_disco,
              ns_node_disco_conf_events,
              ns_node_disco_log,
-             ns_port_init,
              ns_port_server,
              ns_port_sup,
              ns_server,

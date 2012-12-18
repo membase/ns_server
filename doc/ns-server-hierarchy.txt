@@ -40,7 +40,15 @@
                                     (pubsub-link nil :to 'ns_config_events)))
             (worker 'vbucket_filter_changes_registry)
             (supervisor 'ns_server_sup :mode :one_for_one
+                        (transient 'setup_babysitter_node '(ns_server setup_babysitter_node)
+                                   "Runs ns_server:setup_babysitter_node once which sets application environment
+                                   variable holding babysitter node name")
+                        (gen-server 'dir_size
+                                    "Spawns go du implementation as a port on supported OSes and implements quick
+                                     DU (directory size) service via that port")
                         (gen-server 'ns_log)
+                        (worker 'ns_crash_log_consumer '(ns_log start_link_crash_consumer)
+                                "eats crash records from babysitter's ns_crash_log service and ns_log-s them")
                         (event-handler 'ns_config_ets_dup :to 'ns_config_events :since "1.8.1"
                                        "This guy merely maintains public ets table with copy of ns_config. For real
                                         quick but not necessarily reliable access. This is used to get timeout values in
@@ -129,6 +137,12 @@
                                                 "individual mccouch connections live here. See mc_connection")
                                     (worker 'mc_tcp_listener
                                             "accept loop for mccouch connections"))
+                        (worker 'ns_ports_setup '(ns_ports_setup start)
+                                "build list of port servers (with full command line and environment) and passes it to
+                                babysitter's ns_child_ports_sup. It links to babysitter's ns_child_ports_sup.  And
+                                reacts on ns_config changes in order to reconfigure set of servers we need to run.
+
+                                Those port servers are usually memcached and moxi and all per-port moxis")
                         (supervisor 'ns_port_sup :mode :one_for_one
                                     (event-handler 'ns_port_init :to 'ns_config_events)
                                     ;; dynamic, but typically memcached & moxi ports. Those are in fact
@@ -205,9 +219,6 @@
                         (gen-server 'system_stats_collector)
                         (gen-server '(stats_archiver "@system"))
                         (gen-server '(stats_reader "@system"))
-                        (work_queue 'ns_moxi_sup_work_queue)
-                        (supervisor 'ns_moxi_sup :mode :one_for_one
-                                    "hosts per-port moxis")
                         (gen-server 'compaction_daemon :since "2.0"
                                     "triggers and monitors bucket's db and views compactions")
                         (cb_generic_replication_srv 'xdc_rdoc_replication_srv :since "2.0"

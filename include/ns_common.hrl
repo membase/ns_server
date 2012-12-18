@@ -58,6 +58,7 @@
 -define(XDCR_LOG_FILENAME, "xdcr").
 -define(XDCR_ERRORS_LOG_FILENAME, "xdcr_errors").
 -define(STATS_LOG_FILENAME, "stats").
+-define(BABYSITTER_LOG_FILENAME, "babysitter").
 
 -define(NS_SERVER_LOGGER, ns_server).
 -define(COUCHDB_LOGGER, couchdb).

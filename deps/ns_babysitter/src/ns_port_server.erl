@@ -100,15 +100,11 @@ handle_info({_Port, {data, {_, Msg}}}, State) ->
 handle_info(log, State) ->
     State1 = log(State),
     {noreply, State1};
-handle_info({_Port, {exit_status, 0}}, State) ->
-    ?log_info("Port server ~p exited with status 0", [State#state.name]),
-    {stop, normal, State};
 handle_info({_Port, {exit_status, Status}}, State) ->
-    ?user_log(?ABNORMAL,
-              "Port server ~p on node ~p exited with status ~p. Restarting. "
-              "Messages: ~s",
-              [State#state.name, node(), Status,
-               string:join(ringbuffer:to_list(State#state.messages), "\n")]),
+    ns_crash_log:record_crash({State#state.name,
+                               node(),
+                               Status,
+                               string:join(ringbuffer:to_list(State#state.messages), "\n")}),
     {stop, {abnormal, Status}, State};
 handle_info({'EXIT', Port, Reason} = Exit, #state{port=Port} = State) ->
     ?log_error("Got unexpected exit signal from port: ~p. Exiting.", [Exit]),
@@ -140,8 +136,9 @@ wait_for_child_death_process_info(Msg, State) ->
     end.
 
 terminate(shutdown, #state{send_eol = true, port = Port} = State) ->
-    ?log_debug("Sending 'shutdown' to port"),
-    port_command(Port, <<"shutdown\n">>),               % sending shutdown command
+    ShutdownCmd = misc:get_env_default(ns_babysitter, port_shutdown_command, "shutdown"),
+    ?log_debug("Sending ~s to port", [ShutdownCmd]),
+    port_command(Port, [ShutdownCmd, 10]),
     State2 = wait_for_child_death(State),
     log(State2); % Log any remaining messages
 terminate(_Reason, State) ->
@@ -185,7 +182,13 @@ open_port({_Name, Cmd, Args, OptsIn}) ->
     Opts0 = OptsIn ++ [{args, Args}, exit_status, {line, 8192},
                        stderr_to_stdout],
     WriteDataArg = proplists:get_value(write_data, Opts0),
-    Opts = lists:keydelete(write_data, 1, Opts0),
+    Opts1 = lists:keydelete(write_data, 1, Opts0),
+    Opts = case lists:delete(ns_server_no_stderr_to_stdout, Opts1) of
+               Opts1 ->
+                   Opts1;
+               Opts3 ->
+                   lists:delete(stderr_to_stdout, Opts3)
+           end,
     Port = open_port({spawn_executable, Cmd}, Opts),
     case WriteDataArg of
         undefined ->

@@ -50,13 +50,20 @@ pre_start() ->
     misc:ping_jointo().
 
 child_specs() ->
-    [{dir_size, {dir_size, start_link, []},
+    [{setup_babysitter_node,
+      {ns_server, setup_babysitter_node, []},
+      transient, brutal_kill, worker, []},
+
+     {dir_size, {dir_size, start_link, []},
       permanent, 1000, worker, [dir_size]},
 
      %% ns_log starts after ns_config because it needs the config to
      %% find where to persist the logs
      {ns_log, {ns_log, start_link, []},
       permanent, 1000, worker, [ns_log]},
+
+     {ns_crash_log_consumer, {ns_log, start_link_crash_consumer, []},
+      {permanent, 4}, 1000, worker, []},
 
      {ns_config_ets_dup, {ns_config_ets_dup, start_link, []},
       permanent, brutal_kill, worker, [ns_config, ns_config_ets_dup]},
@@ -126,12 +133,11 @@ child_specs() ->
      {mc_sup, {mc_sup, start_link, []},
       permanent, infinity, supervisor, dynamic},
 
-     {ns_port_sup, {ns_port_sup, start_link, []},
-      permanent, infinity, supervisor,
-      [ns_port_sup]},
+     {ns_ports_setup, {ns_ports_setup, start, []},
+      {permanent, 4}, brutal_kill, worker, []},
 
-     {ns_port_memcached_killer, {ns_port_sup, start_memcached_force_killer, []},
-      permanent, brutal_kill, worker, [ns_port_sup]},
+     {ns_port_memcached_killer, {ns_ports_setup, start_memcached_force_killer, []},
+      permanent, brutal_kill, worker, []},
 
      {ns_memcached_log_rotator, {ns_memcached_log_rotator, start_link, []},
       permanent, 1000, worker, [ns_memcached_log_rotator]},
@@ -163,13 +169,6 @@ child_specs() ->
 
      {{stats_reader, "@system"}, {stats_reader, start_link, ["@system"]},
       permanent, 1000, worker, [start_reader]},
-
-     {ns_moxi_sup_work_queue, {work_queue, start_link, [ns_moxi_sup_work_queue]},
-      permanent, 1000, worker, [work_queue]},
-
-     {ns_moxi_sup, {ns_moxi_sup, start_link, []},
-      permanent, infinity, supervisor,
-      [ns_moxi_sup]},
 
      {compaction_daemon, {compaction_daemon, start_link, []},
       {permanent, 4}, 86400000, worker, [compaction_daemon]},

@@ -54,7 +54,10 @@ deps_ale:
 deps_mlockall:
 	(cd deps/mlockall; $(MAKE))
 
-deps_all: deps_smtp deps_erlwsh deps_ale deps_mlockall
+deps_ns_babysitter:
+	(cd deps/ns_babysitter; $(MAKE))
+
+deps_all: deps_smtp deps_erlwsh deps_ale deps_mlockall deps_ns_babysitter
 
 docs:
 	priv/erldocs $(DOC_DIR)
@@ -62,8 +65,10 @@ docs:
 ebins: src/ns_server.app.src include/replication_infos_ddoc.hrl deps_all
 	$(REBAR) compile
 
-src/ns_server.app.src: src/ns_server.app.src.in $(TMP_VER)
+%.app.src: %.app.src.in $(TMP_VER)
 	(sed s/0.0.0/'$(if $(PRODUCT_VERSION),$(PRODUCT_VERSION),$(shell cat $(TMP_VER)))$(if $(PRODUCT_LICENSE),-$(PRODUCT_LICENSE))'/g $< > $@) || (rm $@ && false)
+
+# src/ns_server.app.src: src/ns_server.app.src.in $(TMP_VER)
 
 # NOTE: not depending on scripts/build_replication_infos_ddoc.rb because we're uploading both files to git.
 # If you need to rebuild this file, remove it first.
@@ -77,7 +82,7 @@ rebuild_replication_infos_ddoc:
 .PHONY: rebuild_replication_infos_ddoc
 
 ifdef PRODUCT_VERSION
-.PHONY: src/ns_server.app.src
+.PHONY: src/ns_server.app.src src/ns_babysitter.app.src
 endif
 
 priv/public/js/all-images.js: priv/public/images priv/public/images/spinner scripts/build-all-images.sh
@@ -112,6 +117,7 @@ ERLWSH_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/erlwsh
 GEN_SMTP_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/gen_smtp
 ALE_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ale
 MLOCKALL_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/mlockall
+NS_BABYSITTER_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ns_babysitter
 
 do-install:
 	echo $(DESTDIR)$(PREFIX)
@@ -128,6 +134,8 @@ do-install:
 	cp -r deps/gen_smtp/ebin $(GEN_SMTP_LIBDIR)/
 	mkdir -p $(ALE_LIBDIR)
 	cp -r deps/ale/ebin $(ALE_LIBDIR)/
+	mkdir -p $(NS_BABYSITTER_LIBDIR)
+	cp -r deps/ns_babysitter/ebin $(NS_BABYSITTER_LIBDIR)/
 	mkdir -p $(MLOCKALL_LIBDIR)
 	cp -r deps/mlockall/ebin $(MLOCKALL_LIBDIR)/
 	[ ! -d deps/mlockall/priv ] || cp -r deps/mlockall/priv $(MLOCKALL_LIBDIR)/
@@ -160,6 +168,7 @@ clean clean_all:
 	rm -f erl_crash.dump
 	rm -f ns_server_*.tar.gz
 	rm -f src/ns_server.app
+	rm -f src/ns_babysitter.app
 	rm -rf test/log
 	rm -rf ebin
 	rm -rf docs
@@ -203,7 +212,8 @@ do-dialyzer:
             --apps `ls -1 ebin/*.beam | grep -v couch_log` deps/ale/ebin \
             $(COUCH_PATH)/src/couchdb $(COUCH_PATH)/src/couch_set_view $(COUCH_PATH)/src/couch_view_parser \
             $(COUCH_PATH)/src/couch_index_merger/ebin \
-            $(realpath $(COUCH_PATH)/src/mapreduce)
+            $(realpath $(COUCH_PATH)/src/mapreduce) \
+            deps/ns_babysitter/ebin
 
 dialyzer_obsessive: all $(COUCHBASE_PLT)
 	$(MAKE) do-dialyzer DIALYZER_FLAGS="-Wunmatched_returns -Werror_handling -Wrace_conditions -Wbehaviours -Wunderspecs " COUCH_PATH="$(shell . `pwd`/.configuration && echo $$couchdb_src)"

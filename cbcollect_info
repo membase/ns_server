@@ -408,6 +408,8 @@ def make_tasks(root="/opt/couchbase", dbdir=""):
               log_file="ns_server.mapreduce_errors.log"),
     AllOsTask("couchbase logs (stats)", "cbbrowse_logs stats",
               log_file="ns_server.stats.log"),
+    AllOsTask("couchbase logs (babysitter)", "cbbrowse_logs babysitter",
+              log_file="ns_server.babysitter.log"),
     AllOsTask("memcached stats all",
               "cbstats -a 127.0.0.1:11210 all -b _admin -p _admin",
               log_file="stats.log"),

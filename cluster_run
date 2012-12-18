@@ -1,12 +1,5 @@
 #!/usr/bin/env python
-import os, subprocess, sys, signal, termios, atexit, socket, getopt
-
-def testament_child_death():
-    rv = os.fork()
-    if rv == 0:
-        os.kill(os.getpid(), signal.SIGSTOP)
-        os._exit(0)
-    os.waitpid(rv, os.WUNTRACED)
+import os, subprocess, sys, signal, atexit, socket, getopt, select
 
 PREFIX = subprocess.Popen(". $(pwd)/.configuration && echo $prefix", shell = True, stdout=subprocess.PIPE).communicate()[0].rstrip()
 
@@ -67,8 +60,59 @@ def os_specific(args, params):
                          "ERL_MAX_PORTS": "2048"}
         params['env'].update(os.environ)
 
-def start_cluster(num_nodes, start_index, host, extra_args, args_prefix):
+ebin_path = None
+cluster_extra_args = None
+cluster_args_prefix = None
+
+def prepare_start_cluster(extra_args, args_prefix):
+    global cluster_args_prefix
+    global cluster_extra_args
+    global ebin_path
+
     ebin_path = setup_path()
+    cluster_extra_args = extra_args
+    cluster_args_prefix = args_prefix
+
+def erlang_args_for_node(i):
+    logdir = "logs/n_{0}".format(i)
+
+    args = cluster_args_prefix + ["erl", "+MMmcs" "30",
+                                  "+A", "16", "+sbtu",
+                                  "+P", "327680", "-pa"] + ebin_path
+    args += [
+        "-setcookie", "nocookie",
+        "-kernel", "inet_dist_listen_min", "21100",
+        "inet_dist_listen_max", "21199",
+        "error_logger", "false",
+        "-sasl", "sasl_error_logger", "false",
+        "-couch_ini"] + couch_configs(i)
+
+    args += [
+        "-name", "babysitter_of_n_{0}@127.0.0.1".format(i),
+        "-hidden",
+        "-ns_server", "config_path", '"etc/static_config.in"',
+        "-ns_server", "enable_mlockall", "true",
+        "error_logger_mf_dir", '"{0}"'.format(logdir),
+        "error_logger_mf_maxbytes", "10485760",
+        "error_logger_mf_maxfiles", "10",
+        "dont_suppress_stderr_logger", "true",
+        "path_config_etcdir", '"priv"',
+        "path_config_bindir", '"{0}"'.format(PREFIX+"/bin"),
+        "path_config_libdir", '"{0}"'.format(PREFIX+"/lib"),
+        "path_config_datadir", '"data/n_{0}"'.format(i),
+        "path_config_tmpdir", '"tmp/"',
+        "rest_port", str(base_api_port + i),
+        "mccouch_port", str(base_mccouch_port + i),
+        "memcached_port", str(base_direct_port + i * 2),
+        "moxi_port", str(base_direct_port + i * 2 + 1),
+        "memcached_dedicated_port", str(base_direct_port - 1 - i),
+        "short_name", '"n_{0}"'.format(i),
+        ] + cluster_extra_args
+
+    return args
+
+def start_cluster(num_nodes, start_index, host, extra_args, args_prefix):
+    prepare_start_cluster(extra_args, args_prefix)
 
     def start_node(i):
         logdir = "logs/n_{0}".format(i)
@@ -76,39 +120,10 @@ def start_cluster(num_nodes, start_index, host, extra_args, args_prefix):
             os.makedirs(logdir)
         except:
             pass
-        args = args_prefix + ["erl", "+MMmcs" "30",
-                              "+A", "16", "+sbtu",
-                              "+P", "327680", "-pa"] + ebin_path + [
-            "-setcookie", "nocookie",
-            "-kernel", "inet_dist_listen_min", "21100",
-            "inet_dist_listen_max", "21199",
-            "error_logger", "false",
-            "-sasl", "sasl_error_logger", "false",
-            "-couch_ini"] + couch_configs(i) + [
-            "-ns_server", "config_path", '"etc/static_config.in"',
-            "-ns_server", "enable_mlockall", "true",
-            "error_logger_mf_dir", '"{0}"'.format(logdir),
-            "error_logger_mf_maxbytes", "10485760",
-            "error_logger_mf_maxfiles", "10",
-            "dont_suppress_stderr_logger", "true",
-            "path_config_etcdir", '"priv"',
-            "path_config_bindir", '"{0}"'.format(PREFIX+"/bin"),
-            "path_config_libdir", '"{0}"'.format(PREFIX+"/lib"),
-            "path_config_datadir", '"data/n_{0}"'.format(i),
-            "path_config_tmpdir", '"tmp/"',
-            "rest_port", str(base_api_port + i),
-            "mccouch_port", str(base_mccouch_port + i),
-            "memcached_port", str(base_direct_port + i * 2),
-            "moxi_port", str(base_direct_port + i * 2 + 1),
-            "memcached_dedicated_port", str(base_direct_port - 1 - i),
-            "short_name", '"n_{0}"'.format(i)
-            ] + extra_args
+
+        args = erlang_args_for_node(i)
 
         params = {}
-
-        if i > start_index:
-            args += ['-noshell']
-            params['stdin'] = subprocess.PIPE
 
         os_specific(args, params)
 
@@ -120,7 +135,27 @@ def start_cluster(num_nodes, start_index, host, extra_args, args_prefix):
         if not params['env'].has_key('ERL_FULLSWEEP_AFTER'):
             params['env']['ERL_FULLSWEEP_AFTER'] = '512'
         params['env']['PATH'] = path
-        return subprocess.Popen(args, **params)
+
+        params['close_fds'] = True
+
+        w = None
+
+        if "-noinput" in args:
+            (r,w) = os.pipe()
+
+            params['stdin'] = r
+
+            if 'setpgrp' in os.__dict__:
+                # this puts child out of our process group. So that
+                # Ctrl-C doesn't deliver SIGINT to it, leaving us
+                # ability to it shutdown carefully or otherwise
+                params['preexec_fn'] = os.setpgrp
+
+        pr = subprocess.Popen(args, **params)
+        if w != None:
+            os.close(r)
+        pr.write_side = w
+        return pr
 
     return [start_node(i + start_index) for i in xrange(num_nodes)]
 
@@ -203,19 +238,26 @@ def main():
 
     def kill_nodes(*args):
         for n in nodes:
-            try:
-                n.kill()
-                n.wait()
-            except OSError:
-                pass
+            if n.write_side != None:
+                print("Closing %d\n", n.write_side)
+                # os.write(n.write_side, "shutdown\n") # this line does graceful shutdown versus quick
+                os.close(n.write_side)
+            else:
+                try:
+                    n.kill()
+                except OSError:
+                    pass
+
+        for n in nodes:
+            n.wait()
+
         if terminal_attrs != None:
             termios.tcsetattr(sys.stdin, termios.TCSANOW, terminal_attrs)
-
-    testament_child_death()
 
     atexit.register(kill_nodes)
 
     try:
+        import termios
         terminal_attrs = termios.tcgetattr(sys.stdin)
     except:
         pass
@@ -241,11 +283,13 @@ def main():
     if static_cookie:
         extra_args += ["-ns_server", "dont_reset_cookie", "true"]
 
-    if not dont_start:
-        extra_args += ["-run", "ns_bootstrap"]
-
     if not interactive_shell:
         extra_args += ["-noinput"]
+        if not dont_start:
+            extra_args += ["-run", "child_erlang", "child_start", "ns_babysitter_bootstrap"]
+    else:
+        if not dont_start:
+            extra_args += ["-run", "ns_babysitter_bootstrap"]
 
     if loglevel not in LOGLEVELS:
         print "Valid log levels are the following: %s" % ', '.join(LOGLEVELS)
