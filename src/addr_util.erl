@@ -37,7 +37,7 @@ list_all_addresses() ->
                                            lists:flatten(lists:map(fun(Z) -> element(2, Z) end,
                                                          AddrInfo)))),
     lists:sort(lists:map(fun(X) -> addr_to_s(X) end,
-                         lists:filter(fun(Y) -> size(Y) == 4 end,
+                         lists:filter(fun is_valid_ip/1,
                                       CandidateList))
                -- ["127.0.0.1"]).
 
@@ -45,6 +45,21 @@ list_all_addresses_test() ->
     %% I can't test too much here since this isn't functional, but
     %% I'll verify we go through the code and return something.
     true = is_list(list_all_addresses()).
+
+%% check for some common invalid addresses
+is_valid_ip(Addr) ->
+    case Addr of
+        {0, 0, 0, 0} -> false;
+        {255, 255, 255, 255} -> false;
+        {169, 254, _, _ } -> false;
+        {224, _, _, _ } -> false;
+        {_, _, _, _} -> true;
+        _ -> false
+    end.
+
+is_valid_ip_test() ->
+    true = is_valid_ip({192,168,1,1}),
+    false = is_valid_ip({169,254,1,1}).
 
 %% [X,...] -> X
 extract_addr([H|_Tl]) ->

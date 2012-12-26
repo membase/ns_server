@@ -218,7 +218,7 @@ loop(Req, AppRoot, DocRoot) ->
                                                            {"Cache-Control", "must-revalidate"}])};
                              ["docs" | _PRem ] ->
                                  DocFile = string:sub_string(Path, 6),
-                                 {done, Req:serve_file(safe_path(DocFile), DocRoot)};
+                                 {done, Req:serve_file(DocFile, DocRoot)};
                              ["dot", Bucket] ->
                                  {auth_cookie, fun handle_dot/2, [Bucket]};
                              ["dotsvg", Bucket] ->
@@ -230,12 +230,12 @@ loop(Req, AppRoot, DocRoot) ->
                              ["erlwsh" | _] ->
                                  {auth_cookie, fun (R) -> erlwsh_web:loop(R, erlwsh_deps:local_path(["priv", "www"])) end};
                              ["images" | _] ->
-                                 {done, Req:serve_file(safe_path(Path), AppRoot,
+                                 {done, Req:serve_file(Path, AppRoot,
                                                        [{"Cache-Control", "max-age=30000000"}])};
                              ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
                              ["sampleBuckets"] -> {auth, fun handle_sample_buckets/1};
                              _ ->
-                                 {done, Req:serve_file(safe_path(Path), AppRoot,
+                                 {done, Req:serve_file(Path, AppRoot,
                                   [{"Cache-Control", "max-age=10"}])}
                         end;
                      'POST' ->
@@ -1654,12 +1654,6 @@ serve_static_file(Req, File, ContentType, ExtraHeaders) ->
         {error, _} ->
             Req:not_found(ExtraHeaders)
     end.
-
-% Mochiweb allows access to arbitrary files on Windows as it does not 
-% detect backslash. Abort such requests.
-safe_path(Path) ->
-    0 = string:chr(Path, $\\),
-    Path.
 
 % too much typing to add this, and I'd rather not hide the response too much
 add_header() ->
