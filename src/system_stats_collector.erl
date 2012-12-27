@@ -85,7 +85,7 @@ recv_data(Port, Acc, WantedLength) ->
             end
     end.
 
--define(STATS_BLOCK_SIZE, 88).
+-define(STATS_BLOCK_SIZE, 112).
 
 unpack_data(Bin, PrevSample) ->
     <<Version:32/native,
@@ -99,9 +99,12 @@ unpack_data(Bin, PrevSample) ->
       MemTotal:64/native,
       MemUsed:64/native,
       MemActualUsed:64/native,
-      MemActualFree:64/native>> = Bin,
+      MemActualFree:64/native,
+      MinorFaults:64/native,
+      MajorFaults:64/native,
+      PageFaults:64/native>> = Bin,
     StructSize = erlang:size(Bin),
-    Version = 0,
+    Version = 1,
     RawStats = [{cpu_local_ms, CPULocalMS},
                 {cpu_idle_ms, CPUIdleMS},
                 {swap_total, SwapTotal},
@@ -111,19 +114,32 @@ unpack_data(Bin, PrevSample) ->
                 {mem_total, MemTotal},
                 {mem_used, MemUsed},
                 {mem_actual_used, MemActualUsed},
-                {mem_actual_free, MemActualFree}],
+                {mem_actual_free, MemActualFree},
+                {minor_faults, MinorFaults},
+                {major_faults, MajorFaults},
+                {page_faults, PageFaults}],
     NowSamples = case PrevSample of
                      undefined -> undefined;
                      _ -> {_, OldCPULocal} = lists:keyfind(cpu_local_ms, 1, PrevSample),
                           {_, OldCPUIdle} = lists:keyfind(cpu_idle_ms, 1, PrevSample),
+                          {_, OldMinorFaults} = lists:keyfind(minor_faults, 1, PrevSample),
+                          {_, OldMajorFaults} = lists:keyfind(major_faults, 1, PrevSample),
+                          {_, OldPageFaults} = lists:keyfind(page_faults, 1, PrevSample),
                           LocalDiff = CPULocalMS - OldCPULocal,
                           IdleDiff = CPUIdleMS - OldCPUIdle,
-                          RV1 = lists:keyreplace(cpu_local_ms, 1, RawStats, {cpu_local_ms, LocalDiff}),
-                          RV2 = lists:keyreplace(cpu_idle_ms, 1, RV1, {cpu_idle_ms, IdleDiff}),
+                          MinorFaultsDiff = MinorFaults - OldMinorFaults,
+                          MajorFaultsDiff = MajorFaults - OldMajorFaults,
+                          PageFaultsDiff = PageFaults - OldPageFaults,
+                          RV1 = misc:update_proplist(RawStats,
+                                                     [{cpu_local_ms, LocalDiff},
+                                                      {cpu_idle_ms, IdleDiff},
+                                                      {minor_faults, MinorFaultsDiff},
+                                                      {major_faults, MajorFaultsDiff},
+                                                      {page_faults, PageFaultsDiff}]),
                           [{mem_free, MemTotal - MemUsed},
                            {cpu_utilization_rate, try 100 * (LocalDiff - IdleDiff) / LocalDiff
                                                   catch error:badarith -> 0 end}
-                           | RV2]
+                           | RV1]
                  end,
     {NowSamples, RawStats}.
 
