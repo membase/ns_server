@@ -128,7 +128,7 @@ _start() {
         fi
     fi
     exec erl \
-        +S 16:16 \
+        +A 16 \
         -smp enable \
         +sbt u \
         +P 327680 \
