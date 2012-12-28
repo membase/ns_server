@@ -86,14 +86,14 @@
         %% vbuckets)
         ep_num_non_resident,
 
+        %% Memeory used to store keys and values
+        ep_meta_data_memory,
         %% Memory used to store keys and values (hashtable memory)
         vb_active_meta_data_memory,
         %% Memory used to store keys and values
         vb_replica_meta_data_memory,
         %% Memory used to store keys and values
         vb_pending_meta_data_memory,
-
-        %% aggregated by collector: ep_ht_memory
 
         %% Active items in disk queue (incremented when item is
         %% dirtied and decremented when it's cleaned)

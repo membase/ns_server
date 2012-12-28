@@ -620,7 +620,7 @@ var MockedRequest = mkClass({
               {"specificStatsURL":"/pools/default/buckets/default/stats/vb_active_meta_data_memory","title":"metadata in RAM","name":"vb_active_meta_data_memory","desc":"Amount of active item metadata consuming RAM in this bucket (measured from vb_active_meta_data_memory)"},
               {"specificStatsURL":"/pools/default/buckets/default/stats/vb_replica_meta_data_memory","title":"metadata in RAM","name":"vb_replica_meta_data_memory","desc":"Amount of replica item metadata consuming in RAM in this bucket (measured from vb_replica_meta_memory)"},
               {"specificStatsURL":"/pools/default/buckets/default/stats/vb_pending_meta_data_memory","title":"metadata in RAM","name":"vb_pending_meta_data_memory","desc":"Amount of pending item metadata consuming RAM in this bucket and should be transient during rebalancing (measured from vb_pending_meta_memory)"},
-              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_ht_memory","title":"metadata in RAM","name":"ep_ht_memory","desc":"Total amount of item  metadata consuming RAM in this bucket (measured from ep_ht_memory)"}
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_meta_data_memory","title":"metadata in RAM","name":"ep_meta_data_memory","desc":"Total amount of item  metadata consuming RAM in this bucket (measured from ep_meta_data_memory)"}
             ]},
           {"blockName":"Disk Queues","extraCSSClasses":"withtotal closed",
             "columns":["Active","Replica","Pending","Total"],
