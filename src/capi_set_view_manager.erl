@@ -54,28 +54,22 @@ initiate_indexing(Bucket) ->
 reset_master_vbucket(Bucket) ->
     gen_server:call(server(Bucket), reset_master_vbucket, infinity).
 
--define(csv_call(Call, Args),
-        %% hack to not introduce any variables in the caller environment
-        ((fun () ->
-                  %% we may want to downgrade it to ?views_debug at some point
-                  ?views_debug("~nCalling couch_set_view:~p(~p)", [Call, Args]),
-                  try
-                      {__Time, __Result} = timer:tc(couch_set_view, Call, Args),
+csv_call(Call, Args) ->
+    ?views_debug("~nCalling couch_set_view:~p(~p)", [Call, Args]),
+    try
+        {__Time, __Result} = timer:tc(couch_set_view, Call, Args),
 
-                      ?views_debug("~ncouch_set_view:~p(~p) returned ~p in ~bms",
-                                   [Call, Args, __Result, __Time div 1000]),
-                      __Result
-                  catch
-                      __T:__E ->
-                          ?views_debug("~ncouch_set_view:~p(~p) raised ~p:~p",
-                                       [Call, Args, __T, __E]),
+        ?views_debug("~ncouch_set_view:~p call returned ~p in ~bms",
+                     [Call, __Result, __Time div 1000]),
+        __Result
+    catch
+        __T:__E ->
+            ?views_debug("~ncouch_set_view:~p(~p) raised ~p:~p",
+                         [Call, Args, __T, __E]),
 
-                          %% rethrowing the exception
-                          __Stack = erlang:get_stacktrace(),
-                          erlang:raise(__T, __E, __Stack)
-                  end
-          end)())).
-
+            __Stack = erlang:get_stacktrace(),
+            erlang:raise(__T, __E, __Stack)
+    end.
 
 compute_index_states(WantedStates, RebalanceStates, ExistingVBuckets) ->
     AllVBs = lists:seq(0, erlang:length(WantedStates)-1),
@@ -127,8 +121,32 @@ get_usable_vbuckets_set(Bucket) ->
           <<_:PrefixLen/binary, VBucketName/binary>> <- [FullName],
           VBucketName =/= <<"master">>]).
 
-do_apply_vbucket_states(SetName, Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, State) ->
-    DDocIds = get_live_ddoc_ids(State),
+change_vbucket_states_inner(SetName, Active, Passive, MainCleanup,
+                            Replica0, ReplicaCleanup0,
+                            PauseVBuckets0, UnpauseVBuckets0,
+                            State, DDocIds) ->
+    PausingOn = cluster_compat_mode:is_index_pausing_on(),
+
+    PauseVBuckets = case PausingOn of
+                        true -> PauseVBuckets0;
+                        _ -> []
+                    end,
+    UnpauseVBuckets = case PausingOn of
+                          true -> UnpauseVBuckets0;
+                          _ -> []
+                      end,
+
+    UseReplicaIndex = State#state.use_replica_index,
+    Replica = case UseReplicaIndex of
+                  true -> Replica0;
+                  _ ->
+                      []
+              end,
+    ReplicaCleanup = case UseReplicaIndex of
+                         true -> ReplicaCleanup0;
+                         _ -> []
+                     end,
+
     RVs = [{DDocId, (catch begin
                                apply_index_states(SetName, DDocId,
                                                   Active, Passive, MainCleanup, Replica, ReplicaCleanup,
@@ -143,18 +161,28 @@ do_apply_vbucket_states(SetName, Active, Passive, MainCleanup, Replica, ReplicaC
         [] ->
             ok;
         _ ->
-            ?log_error("Failed to apply index states for the following ddocs:~n~p", [BadDDocs])
-    end,
-    ok.
+            ?log_error("Failed to apply index states for the following ddocs:~n~p", [BadDDocs]),
+            ok
+    end.
 
-change_vbucket_states(#state{bucket = Bucket,
+update_vbucket_states(#state{bucket = Bucket,
                              wanted_states = WantedStates,
                              rebalance_states = RebalanceStates,
                              usable_vbuckets = UsableVBuckets} = State) ->
     SetName = list_to_binary(Bucket),
     {Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets} =
         compute_index_states(WantedStates, RebalanceStates, UsableVBuckets),
-    do_apply_vbucket_states(SetName, Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, State).
+    DDocIds = get_live_ddoc_ids(State),
+    system_stats_collector:increment_counter(set_view_state_update_calls, 1),
+    change_vbucket_states_inner(SetName, Active, Passive, MainCleanup,
+                                Replica, ReplicaCleanup,
+                                PauseVBuckets, UnpauseVBuckets,
+                                State, DDocIds).
+
+apply_one_off_vbucket_states(SetName, Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, State) ->
+    #state{wanted_states = []} = State,
+    DDocIds = get_live_ddoc_ids(State),
+    change_vbucket_states_inner(SetName, Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, State, DDocIds).
 
 start_link(Bucket) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
@@ -270,7 +298,7 @@ handle_call({set_vbucket_states, WantedStates, RebalanceStates}, _From,
         true ->
             {reply, ok, State};
         false ->
-            change_vbucket_states(State2),
+            update_vbucket_states(State2),
             {reply, ok, State2}
     end;
 
@@ -279,9 +307,9 @@ handle_call({delete_vbucket, VBucket}, _From, #state{bucket = Bucket,
                                                      usable_vbuckets = UsableVBuckets,
                                                      rebalance_states = RebalanceStates} = State) ->
     [] = RebalanceStates,
-    ?log_info("Deleting vbucket ~p from all indexes", [VBucket]),
+    ?log_info("Deleting vbucket ~p from all indexes (empty wanted_states case)", [VBucket]),
     SetName = list_to_binary(Bucket),
-    do_apply_vbucket_states(SetName, [], [], [VBucket], [], [VBucket], [], [], State),
+    apply_one_off_vbucket_states(SetName, [], [], [VBucket], [], [VBucket], [], [], State),
     {reply, ok, State#state{usable_vbuckets = sets:del_element(VBucket, UsableVBuckets)}};
 handle_call({delete_vbucket, VBucket}, _From, #state{usable_vbuckets = UsableVBuckets,
                                                      wanted_states = WantedStates,
@@ -299,7 +327,7 @@ handle_call({delete_vbucket, VBucket}, _From, #state{usable_vbuckets = UsableVBu
                     %% uninteresting vbucket
                     ok;
                 false ->
-                    change_vbucket_states(NewState)
+                    update_vbucket_states(NewState)
             end,
             {reply, ok, NewState}
     end;
@@ -357,11 +385,11 @@ handle_info({update_ddoc, DDocId, Deleted0}, State) ->
             %% previous group for current value of design document can
             %% still be alive; thus using maybe_define_group
             maybe_define_group(DDocId, State),
-            change_vbucket_states(State),
             State;
         true ->
             ok
     end,
+    update_vbucket_states(State),
     {noreply, State};
 
 handle_info(refresh_usable_vbuckets,
@@ -375,7 +403,7 @@ handle_info(refresh_usable_vbuckets,
         false ->
             State2 = State#state{usable_vbuckets = NewUsableVBuckets},
             ?log_debug("Usable vbuckets:~n~p", [sets:to_list(State2#state.usable_vbuckets)]),
-            change_vbucket_states(State2),
+            update_vbucket_states(State2),
             {noreply, State2}
     end;
 
@@ -416,7 +444,7 @@ maybe_define_group(DDocId,
                               use_replica_index=UseReplicaIndex},
 
     try
-        ok = ?csv_call(define_group, [SetName, DDocId, Params])
+        ok = csv_call(define_group, [SetName, DDocId, Params])
     catch
         throw:{not_found, deleted} ->
             %% The document has been deleted but we still think it's
@@ -453,48 +481,53 @@ apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
 
 apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
                    Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets,
-                   #state{use_replica_index = UseReplicaIndex} = State,
-                   PastException) ->
+                   State, PastException) ->
 
     try
-        PausingOn = cluster_compat_mode:is_index_pausing_on(),
-        case PausingOn of
-            false ->
+        case UnpauseVBuckets of
+            [] ->
                 ok;
-            true ->
-                ok = ?csv_call(mark_partitions_indexable,
-                               [SetName, DDocId, UnpauseVBuckets])
+            _ ->
+                ok = csv_call(mark_partitions_indexable,
+                              [SetName, DDocId, UnpauseVBuckets])
         end,
 
         %% this should go first because some of the replica vbuckets might
         %% need to be cleaned up from main index
-        ok = ?csv_call(set_partition_states,
-                       [SetName, DDocId, Active, Passive, Cleanup]),
-
-        case UseReplicaIndex of
-            true ->
-                ok = ?csv_call(add_replica_partitions,
-                               [SetName, DDocId, Replica]),
-                ok = ?csv_call(remove_replica_partitions,
-                               [SetName, DDocId, ReplicaCleanup]);
-            false ->
-                ok
+        case Active =/= [] orelse Passive =/= [] orelse Cleanup =/= [] of
+            true->
+                ok = csv_call(set_partition_states,
+                              [SetName, DDocId, Active, Passive, Cleanup]);
+            _ -> ok
         end,
 
-        case PausingOn of
-            false ->
-                ok;
-            true ->
-                ok = ?csv_call(mark_partitions_unindexable,
-                               [SetName, DDocId, PauseVBuckets])
+        case Replica of
+            [] -> ok;
+            _ ->
+                ok = csv_call(add_replica_partitions,
+                              [SetName, DDocId, Replica])
+        end,
+        case ReplicaCleanup of
+            [] -> ok;
+            _ ->
+                ok = csv_call(remove_replica_partitions,
+                              [SetName, DDocId, ReplicaCleanup])
+        end,
+
+        case PauseVBuckets of
+            [] -> ok;
+            _ ->
+                ok = csv_call(mark_partitions_unindexable,
+                              [SetName, DDocId, PauseVBuckets])
         end
 
     catch
-        throw:{not_found, deleted} ->
+        throw:{not_found, deleted} = E ->
             %% The document has been deleted but we still think it's
             %% alive. Eventually we will get a notification from master db
             %% watcher and delete it from a list of design documents.
-            ok;
+            Stack = erlang:get_stacktrace(),
+            erlang:raise(throw, E, Stack);
         T:E ->
             Stack = erlang:get_stacktrace(),
             Exc = [T, E, Stack],
