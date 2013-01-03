@@ -25,7 +25,7 @@ class PasswordManager(urllib2.HTTPPasswordMgr):
 
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "n:t:s:r:i:S:")
+        opts, args = getopt.getopt(sys.argv[1:], "n:t:s:r:iS:")
     except getopt.GetoptError, err:
         print str(err)
         usage()
