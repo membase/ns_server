@@ -26,7 +26,7 @@
          rebalance_ignore_view_compactions/0]).
 
 %% NOTE: this is rpc:call-ed by mb_master
--export([supported_compat_version/0]).
+-export([supported_compat_version/0, mb_master_advertised_version/0]).
 
 -export([pre_force_compat_version/0, post_force_compat_version/0]).
 
@@ -34,9 +34,16 @@
 get_compat_version() ->
     ns_config_ets_dup:unreliable_read_key(cluster_compat_version, undefined).
 
-%% NOTE: this is rpc:call-ed by mb_master
+%% NOTE: this is rpc:call-ed by mb_master of 2.0.0
 supported_compat_version() ->
     [2, 0].
+
+%% NOTE: this is rpc:call-ed by mb_master of 2.0.1+
+%%
+%% I.e. we want later version to be able to take over mastership even
+%% without requiring compat mode upgrade
+mb_master_advertised_version() ->
+    [2, 0, 1].
 
 is_enabled_at(undefined = _ClusterVersion, _FeatureVersion) ->
     false;
