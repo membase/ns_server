@@ -2,6 +2,15 @@ This file documents user-visible changes in Couchbase clustering & UI.
 ======================================================================
 
 -----------------------------------------
+Between versions 2.0.0 and 2.0.1
+-----------------------------------------
+
+* new REST call:
+  /pools/default/buckets/<bucketname>/controller/unsafePurgeBucket
+  Which will trigger a special type of forced compaction that will
+  "forget" deleted items.
+
+-----------------------------------------
 Between versions 1.8.0 and 1.8.1
 -----------------------------------------
 

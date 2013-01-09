@@ -9,6 +9,7 @@
 -export([start_link/0,
          inhibit_view_compaction/3, uninhibit_view_compaction/3,
          force_compact_bucket/1, force_compact_db_files/1, force_compact_view/2,
+         force_purge_compact_bucket/1,
          cancel_forced_bucket_compaction/1, cancel_forced_db_compaction/1,
          cancel_forced_view_compaction/2]).
 
@@ -49,6 +50,7 @@
                  view_fragmentation,
                  allowed_period,
                  parallel_view_compact = false,
+                 do_purge = false,
                  daemon}).
 
 -record(daemon_config, {check_interval,
@@ -60,7 +62,7 @@
                  to_minute,
                  abort_outside}).
 
--record(forced_compaction, {type :: bucket | db | view,
+-record(forced_compaction, {type :: bucket | bucket_purge | db | view,
                             name :: binary()}).
 
 % If N vbucket databases of a bucket need to be compacted, we trigger compaction
@@ -115,6 +117,21 @@ force_compact_bucket(Bucket) ->
         Failed ->
             ale:error(?USER_LOGGER,
                       "Failed to start bucket compaction "
+                      "for `~s` on some nodes: ~n~p", [Bucket, Failed])
+    end,
+
+    ok.
+
+force_purge_compact_bucket(Bucket) ->
+    BucketBin = list_to_binary(Bucket),
+    R = multi_sync_send_all_state_event({force_purge_compact_bucket, BucketBin}),
+
+    case R of
+        [] ->
+            ok;
+        Failed ->
+            ale:error(?USER_LOGGER,
+                      "Failed to start deletion purge compaction "
                       "for `~s` on some nodes: ~n~p", [Bucket, Failed])
     end,
 
@@ -242,6 +259,20 @@ handle_sync_event({force_compact_bucket, Bucket}, _From, StateName, State) ->
             false ->
                 Configs = compaction_config(Bucket),
                 Pid = spawn_bucket_compactor(Bucket, Configs, true),
+                register_forced_compaction(Pid, Compaction, State)
+        end,
+    {reply, ok, StateName, NewState};
+handle_sync_event({force_purge_compact_bucket, Bucket}, _From, StateName, State) ->
+    Compaction = #forced_compaction{type=bucket_purge, name=Bucket},
+
+    NewState =
+        case is_already_being_compacted(Compaction, State) of
+            true ->
+                State;
+            false ->
+                {Config, Props} = compaction_config(Bucket),
+                Pid = spawn_bucket_compactor(Bucket,
+                    {Config#config{do_purge = true}, Props}, true),
                 register_forced_compaction(Pid, Compaction, State)
         end,
     {reply, ok, StateName, NewState};
@@ -675,12 +706,20 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
                       {total_vbuckets, Total},
                       {progress, 0}]),
 
+              Options =
+                  case Config#config.do_purge of
+                      true ->
+                          [dropdeletes];
+                      _ ->
+                          []
+                  end,
+
               Compactors =
                   [ [{type, vbucket},
                      {name, element(2, VBucketAndDbName)},
                      {important, false},
-                     {fa, {fun spawn_vbucket_compactor/2,
-                           [BucketName, VBucketAndDbName]}},
+                     {fa, {fun spawn_vbucket_compactor/3,
+                           [BucketName, VBucketAndDbName, Options]}},
                      {on_success,
                       {fun update_bucket_compaction_progress/2, [Ix, Total]}}] ||
                       {Ix, VBucketAndDbName} <- misc:enumerate(VBucketDbs) ],
@@ -741,7 +780,7 @@ open_db_or_fail(BucketName, {_, DbName} = VBucketAndDbName) ->
             exit({open_db_failed, Error})
     end.
 
-spawn_vbucket_compactor(BucketName, {_, DbName} = VBucketAndDb) ->
+spawn_vbucket_compactor(BucketName, {_, DbName} = VBucketAndDb, Options) ->
     Parent = self(),
 
     proc_lib:spawn_link(
@@ -755,7 +794,7 @@ spawn_vbucket_compactor(BucketName, {_, DbName} = VBucketAndDb) ->
 
               process_flag(trap_exit, true),
 
-              {ok, Compactor} = couch_db:start_compact(Db),
+              {ok, Compactor} = couch_db:start_compact(Db, Options),
 
               CompactorRef = erlang:monitor(process, Compactor),
 
