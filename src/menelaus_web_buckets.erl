@@ -340,9 +340,9 @@ handle_bucket_delete(_PoolId, BucketId, Req) ->
             ?MENELAUS_WEB_LOG(?BUCKET_DELETED, "Deleted bucket \"~s\"~n", [BucketId]),
             Req:respond({200, server_header(), []});
         rebalance_running ->
-            reply_json(Req, {struct, [{'_', <<"Cannot delete buckets during rebalance">>}]}, 503);
+            reply_json(Req, {struct, [{'_', <<"Cannot delete buckets during rebalance.\r\n">>}]}, 503);
         {shutdown_failed, _} ->
-            reply_json(Req, {struct, [{'_', <<"Some nodes are still deleting bucket">>}]}, 500);
+            reply_json(Req, {struct, [{'_', <<"Bucket deletion not yet complete, but will continue.\r\n">>}]}, 500);
         {exit, {not_found, _}, _} ->
             Req:respond({404, server_header(), "The bucket to be deleted was not found.\r\n"})
     end.
