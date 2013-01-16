@@ -129,7 +129,7 @@ do-install:
 	cp -r deps/ale/ebin $(ALE_LIBDIR)/
 	mkdir -p $(MLOCKALL_LIBDIR)
 	cp -r deps/mlockall/ebin $(MLOCKALL_LIBDIR)/
-	[ -d deps/mlockall/priv ] && cp -r deps/mlockall/priv $(MLOCKALL_LIBDIR)/
+	[ ! -d deps/mlockall/priv ] || cp -r deps/mlockall/priv $(MLOCKALL_LIBDIR)/
 	mkdir -p $(DESTDIR)$(PREFIX)/etc/couchbase
 	sed -e 's|@DATA_PREFIX@|$(PREFIX_FOR_CONFIG)|g' -e 's|@BIN_PREFIX@|$(PREFIX_FOR_CONFIG)|g' \
 		 <etc/static_config.in >$(DESTDIR)$(PREFIX)/etc/couchbase/static_config
