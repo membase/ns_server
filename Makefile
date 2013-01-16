@@ -51,7 +51,10 @@ deps_erlwsh:
 deps_ale:
 	(cd deps/ale; $(MAKE))
 
-deps_all: deps_smtp deps_erlwsh deps_ale
+deps_mlockall:
+	(cd deps/mlockall; $(MAKE))
+
+deps_all: deps_smtp deps_erlwsh deps_ale deps_mlockall
 
 docs:
 	priv/erldocs $(DOC_DIR)
@@ -108,6 +111,7 @@ COUCHBASE_DB_DIR ?= $(PREFIX)/var/lib/couchbase/data
 ERLWSH_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/erlwsh
 GEN_SMTP_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/gen_smtp
 ALE_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ale
+MLOCKALL_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/mlockall
 
 do-install:
 	echo $(DESTDIR)$(PREFIX)
@@ -123,6 +127,9 @@ do-install:
 	cp -r deps/gen_smtp/ebin $(GEN_SMTP_LIBDIR)/
 	mkdir -p $(ALE_LIBDIR)
 	cp -r deps/ale/ebin $(ALE_LIBDIR)/
+	mkdir -p $(MLOCKALL_LIBDIR)
+	cp -r deps/mlockall/ebin $(MLOCKALL_LIBDIR)/
+	[ -d deps/mlockall/priv ] && cp -r deps/mlockall/priv $(MLOCKALL_LIBDIR)/
 	mkdir -p $(DESTDIR)$(PREFIX)/etc/couchbase
 	sed -e 's|@DATA_PREFIX@|$(PREFIX_FOR_CONFIG)|g' -e 's|@BIN_PREFIX@|$(PREFIX_FOR_CONFIG)|g' \
 		 <etc/static_config.in >$(DESTDIR)$(PREFIX)/etc/couchbase/static_config
@@ -145,6 +152,7 @@ clean clean_all:
 	@(cd deps/gen_smtp && $(MAKE) clean)
 	@(cd deps/erlwsh && $(MAKE) clean)
 	@(cd deps/ale && $(MAKE) clean)
+	@(cd deps/mlockall && $(MAKE) clean)
 	rm -f $(TMP_VER)
 	rm -f $(TMP_DIR)/*.cov.html
 	rm -f cov.html

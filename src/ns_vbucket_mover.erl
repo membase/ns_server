@@ -352,10 +352,14 @@ spawn_workers(#state{bucket=Bucket, moves_scheduler_state = SubState} = State) -
              case (cluster_compat_mode:is_index_aware_rebalance_on()
                    andalso not cluster_compat_mode:rebalance_ignore_view_compactions()) of
                  true ->
-                     [{N, MRef}] = ets:lookup(compaction_inhibitions, N),
-                     ets:delete(compaction_inhibitions, N),
-                     Pid = spawn_compaction_uninhibitor(Bucket, N, MRef),
-                     register_child_process(Pid);
+                     case ets:lookup(compaction_inhibitions, N) of
+                         [] ->
+                             self() ! {compaction_done, N};
+                         [{N, MRef}] ->
+                             ets:delete(compaction_inhibitions, N),
+                             Pid = spawn_compaction_uninhibitor(Bucket, N, MRef),
+                             register_child_process(Pid)
+                     end;
                  _ ->
                      self() ! {compaction_done, N}
              end

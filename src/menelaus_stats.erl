@@ -616,13 +616,13 @@ samples_to_proplists(Samples) ->
     InitialAcc = orddict:store(timestamp, [LastSample#stat_entry.timestamp], InitialAcc0),
     Dict = lists:foldl(fun (Sample, Acc) ->
                                orddict:map(fun (timestamp, AccValues) ->
-                                                [Sample#stat_entry.timestamp | AccValues];
-                                            (K, AccValues) ->
-                                                case orddict:find(K, Sample#stat_entry.values) of
-                                                    {ok, ThisValue} -> [ThisValue | AccValues];
-                                                    _ -> [null | AccValues]
-                                                end
-                                        end, Acc)
+                                                   [Sample#stat_entry.timestamp | AccValues];
+                                               (K, AccValues) ->
+                                                   case orddict:find(K, Sample#stat_entry.values) of
+                                                       {ok, ThisValue} -> [ThisValue | AccValues];
+                                                       _ -> [null | AccValues]
+                                                   end
+                                           end, Acc)
                        end, InitialAcc, ReversedRest),
 
     ExtraStats = lists:map(fun ({K, {F, [StatNameA, StatNameB]}}) ->
@@ -630,7 +630,12 @@ samples_to_proplists(Samples) ->
                                    ResB = orddict:find(StatNameB, Dict),
                                    ValR = case {ResA, ResB} of
                                               {{ok, ValA}, {ok, ValB}} ->
-                                                  lists:zipwith(F, ValA, ValB);
+                                                  lists:zipwith(
+                                                    fun (A, B) when A =/= null, B =/= null ->
+                                                            F(A, B);
+                                                        (_, _) ->
+                                                            null
+                                                    end, ValA, ValB);
                                               _ -> undefined
                                           end,
                                    {K, ValR}

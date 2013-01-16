@@ -80,7 +80,9 @@ def start_cluster(num_nodes, start_index, host, extra_args, args_prefix):
             os.stat("data/n_{0}/mnesia".format(i))
         except:
             os.makedirs("data/n_{0}/mnesia".format(i))
-        args = args_prefix + ["erl", "+A", "16", "+sbtu", "+P", "327680", "-pa"] + ebin_path + [
+        args = args_prefix + ["erl", "+MMmcs" "30",
+                              "+A", "16", "+sbtu",
+                              "+P", "327680", "-pa"] + ebin_path + [
             "-setcookie", "nocookie",
             "-kernel", "inet_dist_listen_min", "21100",
             "inet_dist_listen_max", "21199",
@@ -88,6 +90,7 @@ def start_cluster(num_nodes, start_index, host, extra_args, args_prefix):
             "-sasl", "sasl_error_logger", "false",
             "-couch_ini"] + couch_configs(i) + [
             "-ns_server", "config_path", '"etc/static_config.in"',
+            "-ns_server", "enable_mlockall", "true",
             "error_logger_mf_dir", '"{0}"'.format(logdir),
             "error_logger_mf_maxbytes", "10485760",
             "error_logger_mf_maxfiles", "10",

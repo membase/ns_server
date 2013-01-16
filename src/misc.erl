@@ -430,6 +430,14 @@ get_env_default(Var, Def) ->
         undefined -> Def
     end.
 
+get_env_default(App, Var, Def) ->
+    case application:get_env(App, Var) of
+        {ok, Value} ->
+            Value;
+        undefined ->
+            Def
+    end.
+
 make_pidfile() ->
     case application:get_env(pidfile) of
         {ok, PidFile} -> make_pidfile(PidFile);

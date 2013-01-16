@@ -133,6 +133,7 @@ _start() {
         +sbt u \
         +P 327680 \
         +K true \
+        +MMmcs ${COUCHBASE_MSEG_CACHE_SIZE:-30} \
         -setcookie nocookie \
         -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21299 \
                 error_logger false \
@@ -143,7 +144,8 @@ _start() {
         -ns_server config_path "\"@PREFIX@/etc/couchbase/static_config\"" \
         -ns_server pidfile "\"$PIDFILE\"" \
         -ns_server nodefile "\"$NODEFILE\"" \
-        -ns_server cookiefile "\"$COOKIEFILE\""
+        -ns_server cookiefile "\"$COOKIEFILE\"" \
+        -ns_server enable_mlockall ${COUCHBASE_ENABLE_MLOCKALL:-true}
 }
 
 _stop() {
