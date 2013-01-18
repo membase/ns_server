@@ -64,6 +64,7 @@
                 %% there's multiple vbuckets we'll always set it to
                 %% false.
                 had_backfill = #had_backfill{} :: #had_backfill{},
+                backfill_end_waiter :: undefined | completed | {pid(), _},
                 no_ready_vbuckets :: boolean()
                }).
 
@@ -74,6 +75,7 @@
          start_old_vbucket_filter_change/1,
          set_controlling_process/2,
          had_backfill/2,
+         wait_backfill_complete/1,
          ping_connections/2]).
 
 -include("mc_constants.hrl").
@@ -333,6 +335,21 @@ handle_call(had_backfill, From, #state{had_backfill = HadBF} = State) ->
             NewBF = HadBF#had_backfill{waiters = [From | OldWaiters]},
             ?rebalance_debug("Suspended had_backfill waiter~n~p", [NewBF]),
             {noreply, State#state{had_backfill = NewBF}}
+    end;
+handle_call(wait_backfill_complete, From, #state{had_backfill = HadBF,
+                                                 backfill_end_waiter = CurrentWaiter} = State) ->
+    case HadBF#had_backfill.value of
+        true ->
+            case CurrentWaiter of
+                completed ->
+                    {reply, ok, State};
+                undefined ->
+                    {noreply, State#state{backfill_end_waiter = From}};
+                _ ->
+                    {reply, already_waiting, State}
+            end;
+        _ ->
+            {reply, not_backfilling, State}
     end;
 handle_call(_Req, _From, State) ->
     {reply, unhandled, State}.
@@ -785,6 +802,9 @@ set_controlling_process(#state{upstream=Upstream,
 had_backfill(Pid, Timeout) ->
     gen_server:call(Pid, had_backfill, Timeout).
 
+wait_backfill_complete(Pid) ->
+    gen_server:call(Pid, wait_backfill_complete, infinity).
+
 %%
 %% Internal functions
 %%
@@ -922,6 +942,17 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
                     ?log_info("Got vbucket filter change completion message. Silencing upstream sender"),
                     NewState#state.upstream_sender ! {silence_upstream_new_style, self()},
                     {stop, NewState};
+                <<?TAP_OPAQUE_CLOSE_BACKFILL:32>> ->
+                    ?log_debug("seen backfill-close message"),
+                    case State2#state.backfill_end_waiter of
+                        undefined ->
+                            ok;
+                        completed ->
+                            ok;
+                        WaiterPid ->
+                            gen_server:reply(WaiterPid, ok)
+                    end,
+                    {ok, State2#state{backfill_end_waiter = completed}};
                 _Other ->
                     {ok, State2}
             end;
@@ -935,7 +966,15 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
                            false ->
                                State2
                        end,
-            {ok, NewState};
+            case NewState#state.backfill_end_waiter of
+                undefined ->
+                    ok;
+                completed ->
+                    ok;
+                WaiterPid ->
+                    gen_server:reply(WaiterPid, ok)
+            end,
+            {ok, NewState#state{backfill_end_waiter = completed}};
         ?TAP_VBUCKET ->
             case Rest of
                 <<?VB_STATE_ACTIVE:32>> ->
