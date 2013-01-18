@@ -1455,3 +1455,6 @@ try_with_maybe_ignorant_after(TryBody, AfterBody) ->
         end,
     AfterBody(),
     RV.
+
+letrec(Args, F) ->
+    erlang:apply(F, [F | Args]).

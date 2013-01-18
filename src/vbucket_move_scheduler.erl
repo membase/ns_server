@@ -145,9 +145,6 @@
           left_move_counts :: dict()
          }).
 
-letrec(Args, F) ->
-    erlang:apply(F, [F | Args]).
-
 %% @doc prepares state (list of moves etc) based on current and target map
 prepare(CurrentMap, TargetMap, BackfillsLimit, MovesBeforeCompaction, InfoLogger) ->
     %% Dictionary mapping old node to vbucket and new node
@@ -155,7 +152,7 @@ prepare(CurrentMap, TargetMap, BackfillsLimit, MovesBeforeCompaction, InfoLogger
                             CurrentMap,
                             TargetMap),
     {Moves, UndefinedMoves, TrivialMoves} =
-        letrec(
+        misc:letrec(
           [MapTriples, [], [], 0],
           fun (Rec, MapTriples0, MovesAcc, UndefinedMoves0, TrivialMoves0) ->
                   case MapTriples0 of
@@ -176,34 +173,36 @@ prepare(CurrentMap, TargetMap, BackfillsLimit, MovesBeforeCompaction, InfoLogger
     NewDict = dict:new(),
 
     MovesPerNode =
-        letrec([Moves, NewDict],
-               fun (_Rec, [] = _Moves, MovesPerNode0) ->
-                       MovesPerNode0;
-                   (Rec, [{_V, [Src|_], [Dst|_]} | RestMoves], MovesPerNode0) ->
-                       MovesPerNode1 = case Src =:= Dst of
-                                           true ->
-                                               %% no index changes will be done here
-                                               MovesPerNode0;
-                                           _ ->
-                                               D = dict:update_counter(Src, 1, MovesPerNode0),
-                                               dict:update_counter(Dst, 1, D)
-                                       end,
-                       Rec(Rec, RestMoves, MovesPerNode1)
-               end),
+        misc:letrec(
+          [Moves, NewDict],
+          fun (_Rec, [] = _Moves, MovesPerNode0) ->
+                  MovesPerNode0;
+              (Rec, [{_V, [Src|_], [Dst|_]} | RestMoves], MovesPerNode0) ->
+                  MovesPerNode1 = case Src =:= Dst of
+                                      true ->
+                                          %% no index changes will be done here
+                                          MovesPerNode0;
+                                      _ ->
+                                          D = dict:update_counter(Src, 1, MovesPerNode0),
+                                          dict:update_counter(Dst, 1, D)
+                                  end,
+                  Rec(Rec, RestMoves, MovesPerNode1)
+          end),
 
     InitialMoveCounts =
-        letrec([Moves, NewDict],
-               fun (Rec, Moves0, InitialMoveCounts0) ->
-                       case Moves0 of
-                           [] ->
-                               InitialMoveCounts0;
-                           [Move | RestMoves] ->
-                               {_V, [Src|_], [Dst|_]} = Move,
-                               D = dict:update_counter(Src, 1, InitialMoveCounts0),
-                               InitialMoveCounts1 = dict:update_counter(Dst, 1, D),
-                               Rec(Rec, RestMoves, InitialMoveCounts1)
-                       end
-               end),
+        misc:letrec(
+          [Moves, NewDict],
+          fun (Rec, Moves0, InitialMoveCounts0) ->
+                  case Moves0 of
+                      [] ->
+                          InitialMoveCounts0;
+                      [Move | RestMoves] ->
+                          {_V, [Src|_], [Dst|_]} = Move,
+                          D = dict:update_counter(Src, 1, InitialMoveCounts0),
+                          InitialMoveCounts1 = dict:update_counter(Dst, 1, D),
+                          Rec(Rec, RestMoves, InitialMoveCounts1)
+                  end
+          end),
 
     CompactionCountdownPerNode = dict:map(fun (_K, _V) ->
                                                   MovesBeforeCompaction
@@ -281,12 +280,13 @@ choose_action(State) ->
                                   end, CompactionCountdownPerNode, Nodes)
                         end),
     {OtherActions, NewState2} = choose_action_not_compaction(NewState1),
-    Actions = letrec([Nodes],
-                     fun (_Rec, []) ->
-                             OtherActions;
-                         (Rec, [N | RestNodes]) ->
-                             [{compact, N} | Rec(Rec, RestNodes)]
-                     end),
+    Actions = misc:letrec(
+                [Nodes],
+                fun (_Rec, []) ->
+                        OtherActions;
+                    (Rec, [N | RestNodes]) ->
+                        [{compact, N} | Rec(Rec, RestNodes)]
+                end),
     {Actions, NewState2}.
 
 sortby(List, KeyFn, LessEqFn) ->
@@ -374,58 +374,60 @@ choose_action_not_compaction(#state{
 
     %% NOTE: we know that first move is always allowed
     {SelectedMoves, NewNowBackfills, NewCompactionCountdown} =
-        letrec([SortedMoves, NowBackfills, CompactionCountdown, []],
-               fun (Rec, [{_V, [Src|_], [Dst|_]} = Move | RestMoves], NowBackfills0, CompactionCountdown0, Acc) ->
-                       case move_is_possible(Src, Dst, BackfillsLimit, NowBackfills0, CompactionCountdown0) of
-                           true ->
-                               NowBackfills1 = dict:update_counter(Src, 1, NowBackfills0),
-                               NowBackfills2 = case Src =:= Dst of
-                                                   true ->
-                                                       NowBackfills1;
-                                                   _ ->
-                                                       dict:update_counter(Dst, 1, NowBackfills1)
-                                               end,
-                               CompactionCountdown1 = case Src =:= Dst of
-                                                          true ->
-                                                              CompactionCountdown0;
-                                                            _ ->
-                                                              D = dict:update_counter(Src, -1, CompactionCountdown0),
-                                                              dict:update_counter(Dst, -1, D)
-                                                        end,
-                               NewAcc = [Move | Acc],
-                               Rec(Rec, RestMoves, NowBackfills2, CompactionCountdown1, NewAcc);
-                           _ ->
-                               Rec(Rec, RestMoves, NowBackfills0, CompactionCountdown0, Acc)
-                       end;
-                   (_Rec, [], NowBackfills0, MovesBeforeCompaction0, Acc) ->
-                       {Acc, NowBackfills0, MovesBeforeCompaction0}
-               end),
+        misc:letrec(
+          [SortedMoves, NowBackfills, CompactionCountdown, []],
+          fun (Rec, [{_V, [Src|_], [Dst|_]} = Move | RestMoves], NowBackfills0, CompactionCountdown0, Acc) ->
+                  case move_is_possible(Src, Dst, BackfillsLimit, NowBackfills0, CompactionCountdown0) of
+                      true ->
+                          NowBackfills1 = dict:update_counter(Src, 1, NowBackfills0),
+                          NowBackfills2 = case Src =:= Dst of
+                                              true ->
+                                                  NowBackfills1;
+                                              _ ->
+                                                  dict:update_counter(Dst, 1, NowBackfills1)
+                                          end,
+                          CompactionCountdown1 = case Src =:= Dst of
+                                                     true ->
+                                                         CompactionCountdown0;
+                                                     _ ->
+                                                         D = dict:update_counter(Src, -1, CompactionCountdown0),
+                                                         dict:update_counter(Dst, -1, D)
+                                                 end,
+                          NewAcc = [Move | Acc],
+                          Rec(Rec, RestMoves, NowBackfills2, CompactionCountdown1, NewAcc);
+                      _ ->
+                          Rec(Rec, RestMoves, NowBackfills0, CompactionCountdown0, Acc)
+                  end;
+              (_Rec, [], NowBackfills0, MovesBeforeCompaction0, Acc) ->
+                  {Acc, NowBackfills0, MovesBeforeCompaction0}
+          end),
 
     NewMovesLeft = MovesLeft -- SelectedMoves,
     {NewLeftCount, NewNowInFlight} =
-        letrec([SelectedMoves, LeftCount, NowInFlight],
-               fun (Rec, SelectedMoves0, LeftCount0, NowInFlight0) ->
-                       case SelectedMoves0 of
-                           [] ->
-                               {LeftCount0, NowInFlight0};
-                           [{_V, [Src|_], [Dst|_]} | RestMoves] ->
-                               LeftCount1 = case Src =:= Dst of
-                                                true ->
-                                                    LeftCount0;
-                                                false ->
-                                                    D = dict:update_counter(Src, -1, LeftCount0),
-                                                    dict:update_counter(Dst, -1, D)
-                                            end,
-                               NowInFlight1 = dict:update_counter(Src, 1, NowInFlight0),
-                               NowInFlight2 = case Src =:= Dst of
-                                                  true ->
-                                                      NowInFlight1;
-                                                  _ ->
-                                                      dict:update_counter(Dst, 1, NowInFlight1)
-                                              end,
-                               Rec(Rec, RestMoves, LeftCount1, NowInFlight2)
-                       end
-               end),
+        misc:letrec(
+          [SelectedMoves, LeftCount, NowInFlight],
+          fun (Rec, SelectedMoves0, LeftCount0, NowInFlight0) ->
+                  case SelectedMoves0 of
+                      [] ->
+                          {LeftCount0, NowInFlight0};
+                      [{_V, [Src|_], [Dst|_]} | RestMoves] ->
+                          LeftCount1 = case Src =:= Dst of
+                                           true ->
+                                               LeftCount0;
+                                           false ->
+                                               D = dict:update_counter(Src, -1, LeftCount0),
+                                               dict:update_counter(Dst, -1, D)
+                                       end,
+                          NowInFlight1 = dict:update_counter(Src, 1, NowInFlight0),
+                          NowInFlight2 = case Src =:= Dst of
+                                             true ->
+                                                 NowInFlight1;
+                                             _ ->
+                                                 dict:update_counter(Dst, 1, NowInFlight1)
+                                         end,
+                          Rec(Rec, RestMoves, LeftCount1, NowInFlight2)
+                  end
+          end),
 
     NewState = State#state{in_flight_backfills_per_node = NewNowBackfills,
                            in_flight_per_node = NewNowInFlight,
