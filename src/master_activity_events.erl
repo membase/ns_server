@@ -43,6 +43,7 @@
          note_indexing_initiated/3,
          note_checkpoint_waiting_started/4,
          note_checkpoint_waiting_ended/4,
+         note_backfill_phase_ended/2,
          note_wait_index_updated_started/3,
          note_wait_index_updated_ended/3,
          note_compaction_inhibited/2,
@@ -147,6 +148,9 @@ note_checkpoint_waiting_started(BucketName, VBucket, WaitedCheckpointId, Nodes) 
 
 note_checkpoint_waiting_ended(BucketName, VBucket, WaitedCheckpointId, Nodes) ->
     submit_cast({checkpoint_waiting_ended, BucketName, VBucket, WaitedCheckpointId, Nodes}).
+
+note_backfill_phase_ended(BucketName, VBucket) ->
+    submit_cast({backfill_phase_ended, BucketName, VBucket}).
 
 note_wait_index_updated_started(BucketName, Node, VBucket) ->
     submit_cast({wait_index_updated_started, BucketName, Node, VBucket}).
@@ -540,6 +544,12 @@ event_to_jsons({TS, checkpoint_waiting_ended, BucketName, VBucket, WaitedCheckpo
                                   {checkpointId, WaitedCheckpointId},
                                   {node, node_to_host(N, Config)}])
      || N <- Nodes];
+
+event_to_jsons({TS, backfill_phase_ended, BucketName, VBucket}) ->
+    [format_simple_plist_as_json([{type, backfillPhaseEnded},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
+                                  {vbucket, VBucket}])];
 
 event_to_jsons({TS, wait_index_updated_started, BucketName, Node, VBucket}) ->
     [format_simple_plist_as_json([{type, waitIndexUpdatedStarted},
