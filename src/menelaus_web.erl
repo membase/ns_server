@@ -311,6 +311,9 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools", PoolId, "buckets", Id, "controller", "compactBucket"] ->
                                  {auth_check_bucket_uuid,
                                   fun menelaus_web_buckets:handle_compact_bucket/3, [PoolId, Id]};
+                             ["pools", PoolId, "buckets", Id, "controller", "unsafePurgeBucket"] ->
+                                 {auth_check_bucket_uuid,
+                                  fun menelaus_web_buckets:handle_purge_compact_bucket/3, [PoolId, Id]};
                              ["pools", PoolId, "buckets", Id, "controller", "cancelBucketCompaction"] ->
                                  {auth_check_bucket_uuid,
                                   fun menelaus_web_buckets:handle_cancel_bucket_compaction/3, [PoolId, Id]};

@@ -42,6 +42,7 @@
          handle_setup_default_bucket_post/1,
          parse_bucket_params/5,
          handle_compact_bucket/3,
+         handle_purge_compact_bucket/3,
          handle_cancel_bucket_compaction/3,
          handle_compact_databases/3,
          handle_cancel_databases_compaction/3,
@@ -240,7 +241,9 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
                    [{compactAll, bin_concat_path(["pools", PoolId,
                                                   "buckets", Id, "controller", "compactBucket"])},
                     {compactDB, bin_concat_path(["pools", PoolId,
-                                                 "buckets", Id, "controller", "compactDatabases"])}]},
+                                                 "buckets", Id, "controller", "compactDatabases"])},
+                    {purgeDeletes, bin_concat_path(["pools", PoolId,
+                                                    "buckets", Id, "controller", "unsafePurgeBucket"])}]},
               {nodes, Nodes},
               {stats, {struct, [{uri, StatsUri},
                                 {directoryURI, StatsDirectoryUri},
@@ -923,6 +926,10 @@ extended_cluster_storage_info() ->
 
 handle_compact_bucket(_PoolId, Bucket, Req) ->
     ok = compaction_daemon:force_compact_bucket(Bucket),
+    Req:respond({200, server_header(), []}).
+
+handle_purge_compact_bucket(_PoolId, Bucket, Req) ->
+    ok = compaction_daemon:force_purge_compact_bucket(Bucket),
     Req:respond({200, server_header(), []}).
 
 handle_cancel_bucket_compaction(_PoolId, Bucket, Req) ->
