@@ -314,7 +314,11 @@ handle_memcached_logs(Resp) ->
 handle_memcached_log(Resp, Log) ->
     case file:open(Log, [raw, binary]) of
         {ok, File} ->
-            do_handle_memcached_log(Resp, File);
+            try
+                do_handle_memcached_log(Resp, File)
+            after
+                file:close(File)
+            end;
         Error ->
             Resp:write_chunk(
               list_to_binary(io_lib:format("Could not open file ~s: ~p~n", [Log, Error])))
