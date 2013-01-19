@@ -5,10 +5,93 @@ This file documents user-visible changes in Couchbase clustering & UI.
 Between versions 2.0.0 and 2.0.1
 -----------------------------------------
 
-* new REST call:
+* (CBD-790) new REST call:
   /pools/default/buckets/<bucketname>/controller/unsafePurgeBucket
   Which will trigger a special type of forced compaction that will
   "forget" deleted items.
+
+  Normally couchstore keeps deletion "tombstones" forever, which
+  naturally creates space problem for some use-cases (i.e. session
+  stores). But tombstones are required for XDCR. So this unsupported
+  and undocumented facility is only safe to use when XDCR is not used
+  and was never used.
+
+* orchestration of vbucket moves during rebalance was changed to make
+  rebalance faster in some cases. Most important change is that
+  vbucket move is now split into two phases. During first phase tap
+  backfills happen (i.e. bulk of data is sent to replicas and future
+  master), second phase is when we're waiting for index update
+  completion and performing "consistent" views takeover. First phase
+  (like entire vbucket move in previous version) is sequential. Node
+  only performs one in- or out-going backfill at a time. But second
+  phase is allowed to proceed in parallel. We've found that it allows
+  index updater to see larger batches and be "utilized" larger share
+  of the time.
+
+  New moves orchestration also attempts to keep all nodes busy all the
+  time. Which is especially visible on rebalance out tests, where all
+  remaining nodes need to index about same subset of data. 2.0.0
+  couldn't keep all the nodes busy all the time. Data moved from
+  rebalanced out node was essentially indexed sequentially, vbucket
+  after vbucket.
+
+  See tickets: MB-6726 and MB-7523
+
+  Old implementation was seen to often start with (re)building
+  replicas. New moves orchestration on the other hand attempts to
+  move active vbuckets sooner, so that mutations are more evently
+  spread sooner.
+
+  We've also found that we need to coordinate index compactions with
+  massive index updates that happen as part of rebalance. Main reason
+  for that is given that all vbuckets of node are indexed in single
+  file. This file can be big. And compacting it is quite heavy
+  operation. Given that couch-style rebalance has performance issues
+  when there's heavy mutations at same time as compaction (i.e. it has
+  to reapply them to new version of file after bulk compaction is
+  done), we have seen massive waste of CPU and disk if view compaction
+  happens in parallell with index updating.
+
+  To prevent that we allow 16 moves (configurable via internal UI
+  settings) to be made to or from any given node, after which index
+  compaction is forced (unless disabled via other internal
+  setting). During moves, view compaction is disabled. We've found it
+  solves problem of huge disk space blowup during rebalance: MB-6799.
+
+* Heavy timeouts caused by lack of +A erlang option were finally
+  fixed. We couldn't enable it previously due to crash in Erlang that
+  this option seemingly caused. We managed to understand problem and
+  implemented workaround, which allowed as to get back to +A. See
+  MB-7182.
+
+* Another, less frequent, cause of timeouts was addressed too. We've
+  found that major and even minor page faults can significantly
+  degrate erlang latencies. As part of MB-6595 we're now locking
+  erlang pages in ram (so that kernel doesn't evict them e.g. to swap)
+  and we also tuned erlang's memory allocator to be far less agressive
+  in returned previously used pages to kernel.
+
+* bucket flush REST API call is now allowed with just bucket
+  credentials, instead of always requiring admin credentials in
+  past. MB-7381
+
+* We closed dangerous, but windows-specific security problem in
+  "MB-7390: Prohibit arbitrary access to files on Windows"
+
+* windows was also taught not to pick link local addresses. MB-7417
+
+* subtle issue on offline upgrade from 1.8.x was fixed (MB-7369
+  MB-7370)
+
+* views whose names have slashes work now. MB-7193
+
+-----------------------------------------
+Between versions 1.8.1 and 2.0.0
+-----------------------------------------
+
+We didn't keep changelog for 2.0.0 release. It has too many new
+features to mention here.
+
 
 -----------------------------------------
 Between versions 1.8.0 and 1.8.1
