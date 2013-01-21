@@ -138,35 +138,11 @@ handle_overview_stats(PoolId, Req) ->
                                             {ops, Ops},
                                             {ep_bg_fetched, DiskReads}]}).
 
-%% GET /pools/default/stats
-%% Supported query params:
-%%  resampleForUI - pass 1 if you need 60 samples
-%%  zoom - stats zoom level (minute | hour | day | week | month | year)
-%%  haveTStamp - omit samples earlier than given
-%%
-%% Response:
-%%  {hot_keys: [{name: "key, ops: 12.4}, ...],
-%%   op: {lastTStamp: 123343434, // last timestamp in served samples. milliseconds
-%%        tstampParam: 123342434, // haveTStamp param is given, understood and found
-%%        interval: 1000, // samples interval in milliseconds
-%%        samplesCount: 60, // number of samples that cover selected zoom level
-%%        samples: {timestamp: [..tstamps..],
-%%                  ops: [..ops samples..],
-%%                  ...}
-%%        }}
-
-handle_bucket_stats(PoolId, all, Req) ->
-    BucketNames = menelaus_web_buckets:all_accessible_bucket_names(PoolId, Req),
-    handle_buckets_stats(PoolId, BucketNames, Req);
-
 %% GET /pools/{PoolID}/buckets/{Id}/stats
 handle_bucket_stats(PoolId, Id, Req) ->
-    handle_buckets_stats(PoolId, [Id], Req).
-
-handle_buckets_stats(PoolId, BucketIds, Req) ->
     Params = Req:parse_qs(),
-    {struct, PropList1} = build_buckets_stats_ops_response(PoolId, all, BucketIds, Params),
-    {struct, PropList2} = build_buckets_stats_hks_response(PoolId, BucketIds),
+    {struct, PropList1} = build_bucket_stats_ops_response(PoolId, all, Id, Params),
+    {struct, PropList2} = build_bucket_stats_hks_response(PoolId, Id),
     menelaus_util:reply_json(Req, {struct, PropList1 ++ PropList2}).
 
 %% Per-Node Stats
@@ -180,7 +156,7 @@ handle_bucket_node_stats(PoolId, BucketName, HostName, Req) ->
       fun (_Req, _BucketInfo, HostInfo) ->
               Node = binary_to_atom(proplists:get_value(otpNode, HostInfo), latin1),
               Params = Req:parse_qs(),
-              {struct, [{op, {struct, OpsPropList}}]} = build_buckets_stats_ops_response(PoolId, [Node], [BucketName], Params),
+              {struct, [{op, {struct, OpsPropList}}]} = build_bucket_stats_ops_response(PoolId, [Node], BucketName, Params),
 
               SystemStatsSamples =
                   case grab_aggregate_op_stats("@system", [Node], Params) of
@@ -646,7 +622,7 @@ samples_to_proplists(Samples) ->
                  end, ExtraStats)
         ++ orddict:to_list(Dict).
 
-build_buckets_stats_ops_response(_PoolId, Nodes, [BucketName], Params) ->
+build_bucket_stats_ops_response(_PoolId, Nodes, BucketName, Params) ->
     {Samples, ClientTStamp, Step, TotalNumber} = grab_aggregate_op_stats(BucketName, Nodes, Params),
 
 
@@ -671,7 +647,7 @@ is_safe_key_name(Name) ->
                       C >= 16#20 andalso C =< 16#7f
               end, Name).
 
-build_buckets_stats_hks_response(_PoolId, [BucketName]) ->
+build_bucket_stats_hks_response(_PoolId, BucketName) ->
     BucketsTopKeys = case hot_keys_keeper:bucket_hot_keys(BucketName) of
                          undefined -> [];
                          X -> X
