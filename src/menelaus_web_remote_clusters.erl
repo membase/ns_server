@@ -48,7 +48,7 @@ cas_remote_clusters(Old, NewUnsorted) ->
                                           _ ->
                                               erlang:throw(mismatch)
                                       end
-                              end) of
+                              end, New) of
         ok -> ok;
         {throw, mismatch, _} -> mismatch
     end.
