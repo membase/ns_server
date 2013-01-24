@@ -54,7 +54,7 @@
          merge/1,
          get/2, get/1, get/0, set/2, set/1,
          cas_config/2,
-         set_initial/2, update/2, update_key/2,
+         set_initial/2, update/2, update_key/2, update_key/3,
          update_sub_key/3, set_sub/2, set_sub/3,
          search_node/3, search_node/2, search_node/1,
          search_node_prop/3, search_node_prop/4,
@@ -219,18 +219,40 @@ update(Fun, Sentinel) ->
                         ok | {error | exit | throw, any(), any()}.
 update_key(Key, Fun) ->
     update_with_changes(fun (Config) ->
-                                case lists:keyfind(Key, 1, Config) of
-                                    {_, OldValue} ->
-                                        StrippedValue = strip_metadata(OldValue),
-                                        case Fun(StrippedValue) of
-                                            StrippedValue ->
-                                                {[], Config};
-                                            NewValue ->
-                                                NewConfig = update_config_key(Key, NewValue, Config),
-                                                {[hd(NewConfig)], NewConfig}
-                                        end
+                                case update_key_inner(Config, Key, Fun) of
+                                    false ->
+                                        erlang:throw({config_key_not_found, Key});
+                                    V ->
+                                        V
                                 end
                         end).
+
+update_key(Key, Fun, Default) ->
+    update_with_changes(fun (Config) ->
+                                case update_key_inner(Config, Key, Fun) of
+                                    false ->
+                                        NewConfig = update_config_key(Key, Default, Config),
+                                        {[hd(NewConfig)], NewConfig};
+                                    V ->
+                                        V
+                                end
+                        end).
+
+update_key_inner(Config, Key, Fun) ->
+    case lists:keyfind(Key, 1, Config) of
+        false ->
+            false;
+        {_, OldValue} ->
+            StrippedValue = strip_metadata(OldValue),
+            case Fun(StrippedValue) of
+                StrippedValue ->
+                    {[], Config};
+                NewValue ->
+                    NewConfig = update_config_key(Key, NewValue, Config),
+                    {[hd(NewConfig)], NewConfig}
+            end
+    end.
+
 
 -spec update_sub_key(term(), term(), fun((term()) -> term())) ->
                             ok | {error | exit | throw, any(), any()}.
