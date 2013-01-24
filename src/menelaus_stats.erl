@@ -735,9 +735,9 @@ couchbase_replication_stats_descriptions(BucketId) ->
                                {extraCSSClasses,<<"closed">>},
                                {stats,
                                 [%% first row
-                                 {struct,[{title,<<"mutations to replicate">>},
+                                 {struct,[{title,<<"outbound XDCR mutations">>},
                                           {name,<<Prefix/binary,"changes_left">>},
-                                          {desc,<<"Document mutations pending XDC replication">>}]},
+                                          {desc,<<"Number of mutations to be replicated to other clusters">>}]},
                                  {struct,[{title,<<"mutations checked">>},
                                           {name,<<Prefix/binary,"docs_checked">>},
                                           {desc,<<"Document mutations checked for XDC replication">>}]},
@@ -770,7 +770,7 @@ couchbase_replication_stats_descriptions(BucketId) ->
                                  {struct,[{title,<<"mutations in queue">>},
                                           {name,<<Prefix/binary,"docs_rep_queue">>},
                                           {desc,<<"Number of document mutations in XDC replication queue">>}]},
-                                 {struct,[{title,<<"queue size">>},
+                                 {struct,[{title,<<"XDCR queue size">>},
                                           {name,<<Prefix/binary,"size_rep_queue">>},
                                           {desc,<<"Size in bytes of XDC replication queue">>}]}]}]}
               end, Reps).
@@ -900,12 +900,12 @@ membase_stats_description(BucketId) ->
                           {hidden, true},
                           {name, <<"avg_bg_wait_time">>},
                           {desc, <<"Alrighty">>}]},
-                {struct,[{title,<<"XDCR dest ops per sec.">>},
+                {struct,[{title,<<"incoming XDCR ops/sec.">>},
                          {name,<<"xdc_ops">>},
-                         {desc,<<"Cross datacenter replication operations per second for this bucket.">>}]},
-                {struct,[{title,<<"XDCR docs to replicate">>},
+                         {desc,<<"Incoming XDCR operations per second for this bucket.">>}]},
+                {struct,[{title,<<"outbound XDCR mutations">>},
                          {name,<<"replication_changes_left">>},
-                         {desc,<<"Number of items waiting to be replicated to other clusters">>}]}
+                         {desc,<<"Number of mutations to be replicated to other clusters">>}]}
              ]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"withtotal closed">>},
