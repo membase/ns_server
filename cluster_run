@@ -76,10 +76,6 @@ def start_cluster(num_nodes, start_index, host, extra_args, args_prefix):
             os.makedirs(logdir)
         except:
             pass
-        try:
-            os.stat("data/n_{0}/mnesia".format(i))
-        except:
-            os.makedirs("data/n_{0}/mnesia".format(i))
         args = args_prefix + ["erl", "+MMmcs" "30",
                               "+A", "16", "+sbtu",
                               "+P", "327680", "-pa"] + ebin_path + [

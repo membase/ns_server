@@ -13,31 +13,33 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc Store and aggregate statistics collected from stats_collector into
-%% mnesia, emitting 'sample_archived' events when aggregates are created.
+%% @doc Store and aggregate statistics collected from stats_collector into a
+%% collection of ETS tables, emitting 'sample_archived' events when aggregates
+%% are created. The contents of ETS table is periodically dumped to files that
+%% then used to restore ETS tables after restart.
 %%
 
 -module(stats_archiver).
-
--include_lib("eunit/include/eunit.hrl").
--include_lib("stdlib/include/qlc.hrl").
 
 -include("ns_common.hrl").
 -include("ns_stats.hrl").
 
 -behaviour(gen_server).
 
--define(RETRIES, 10).
-
 -record(state, {bucket}).
 
 -export([ start_link/1,
           archives/0,
           table/2,
-          avg/2 ]).
+          avg/2,
+          latest_sample/2,
+          wipe/0 ]).
 
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2]).
+
+-define(BACKUP_INTERVAL,
+        ns_config_ets_dup:get_timeout(stats_archiver_backup_interval, 120000)).
 
 
 %%
@@ -59,10 +61,39 @@ archives() ->
      {year,   21600, 1464}]. % 366 days
 
 
-%% @doc Generate a suitable name for the Mnesia table.
+%% @doc Generate a suitable name for the ETS stats table.
 table(Bucket, Period) ->
     list_to_atom(fmt("~s-~s-~s", [?MODULE_STRING, Bucket, Period])).
 
+logger_file(Bucket, Period) ->
+    Name = io_lib:format("~s-~s.~s", [?MODULE_STRING, Bucket, Period]),
+    filename:join(stats_dir(), Name).
+
+%% Ensure directory for stats archiver ETS table backup files
+ensure_stats_storage() ->
+    StatsDir = stats_dir(),
+    R = case filelib:ensure_dir(StatsDir) of
+            ok ->
+                case file:make_dir(StatsDir) of
+                    ok ->
+                        ok;
+                    {error, eexist} ->
+                        ok;
+                    Error ->
+                        Error
+                end;
+            Error ->
+                Error
+        end,
+
+    case R of
+        ok ->
+            ok;
+        _ ->
+            ?log_error("Failed to create ETS stats directory with error: ~p~n", [R])
+    end,
+
+    R.
 
 %% @doc Compute the average of a list of entries.
 -spec avg(atom() | integer(), list()) -> #stat_entry{}.
@@ -79,6 +110,28 @@ avg(TS, [First|Rest]) ->
                                          (_Key, Value) -> Value / Count
                                      end, Sums)}.
 
+%% @doc Fetch the latest stats sample
+latest_sample(Bucket, Period) ->
+    Tab = table(Bucket, Period),
+    case ets:last(Tab) of
+        '$end_of_table' ->
+            {error, no_samples};
+        Key ->
+            {_, Sample} = hd(ets:lookup(Tab, Key)),
+            {ok, Sample}
+    end.
+
+%% This function is called when ns_server_sup is shut down. So we don't race
+%% with 'backup' handler here.
+wipe() ->
+    R = misc:rm_rf(stats_dir()),
+    case R of
+        ok ->
+            ?log_info("Deleted stats directory.");
+        _ ->
+            ?log_error("Failed to delete stats directory: ~p", [R])
+    end,
+    R.
 
 %%
 %% gen_server callbacks
@@ -89,8 +142,10 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 init(Bucket) ->
+    ok = ensure_stats_storage(),
     start_timers(),
     ns_pubsub:subscribe_link(ns_stats_event),
+    process_flag(trap_exit, true),
     self() ! init,
     {ok, #state{bucket=Bucket}}.
 
@@ -115,25 +170,40 @@ do_handle_info(init, State) ->
     {noreply, State};
 do_handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket}) ->
     Tab = table(Bucket, minute),
-    {atomic, ok} = mnesia:transaction(fun () ->
-                                              mnesia:write(Tab, Sample, write)
-                                      end, ?RETRIES),
+    #stat_entry{timestamp=TS} = Sample,
+    ets:insert(Tab, {TS, Sample}),
     gen_event:notify(ns_stats_event, {sample_archived, Bucket, Sample}),
     {noreply, State};
 do_handle_info({sample_archived, _, _}, State) ->
     {noreply, State};
 do_handle_info({truncate, Period, N}, #state{bucket=Bucket} = State) ->
     Tab = table(Bucket, Period),
-    mb_mnesia:truncate(Tab, N),
+    truncate_logger(Tab, N),
     {noreply, State};
 do_handle_info({cascade, Prev, Period, Step}, #state{bucket=Bucket} = State) ->
-    cascade(Bucket, Prev, Period, Step),
+    cascade_logger(Bucket, Prev, Period, Step),
+    {noreply, State};
+do_handle_info(backup, #state{bucket=Bucket} = State) ->
+    misc:flush(backup),
+    proc_lib:spawn_link(
+      fun () ->
+              backup_loggers(Bucket)
+      end),
+    {noreply, State};
+do_handle_info({'EXIT', _Pid, Reason} = Exit, State) ->
+    case Reason of
+        normal ->
+            ok;
+        _Other ->
+            ?log_warning("Process exited unexpectedly: ~p", [Exit])
+    end,
     {noreply, State};
 do_handle_info(_Msg, State) -> % Don't crash on delayed responses from calls
     {noreply, State}.
 
 
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{bucket=Bucket} = _State) ->
+    backup_loggers(Bucket),
     ok.
 
 
@@ -141,46 +211,96 @@ terminate(_Reason, _State) ->
 %% Internal functions
 %%
 
-cascade(Bucket, Prev, Period, Step) ->
-    PrevTab = table(Bucket, Prev),
-    NextTab = table(Bucket, Period),
-    {atomic, ok} = mnesia:transaction(
-                     fun () ->
-                             case last_chunk(PrevTab, Step) of
-                                 false -> ok;
-                                 Avg ->
-                                     mnesia:write(NextTab, Avg, write)
-                             end
-                     end, ?RETRIES).
-
 create_tables(Bucket) ->
-    Table = [{record_name, stat_entry},
-             {type, ordered_set},
-             {local_content, true},
-             {attributes, record_info(fields, stat_entry)}],
-    [ mb_mnesia:ensure_table(table(Bucket, Period), Table)
-      || {Period, _, _} <- archives() ].
+    %% create stats logger tables
+    [ check_logger(Bucket, Period) || {Period, _, _} <- archives() ].
 
+check_logger(Bucket, Period) ->
+    File = logger_file(Bucket, Period),
+    %% check existence of stats backup file in data/<node>/stats
+    Create =
+        case filelib:is_regular(File) of
+            true ->
+                case ets:file2tab(File) of
+                    {error, Reason} ->
+                        ?log_error("Failed to restore stats table from "
+                                   "file ~p with error ~p~n", [File, Reason]),
+                        true;
+                    {ok, _} ->
+                        false
+                end;
+            false ->
+                true
+        end,
 
-last_chunk(Tab, Step) ->
-    case mnesia:last(Tab) of
-        '$end_of_table' ->
-            false;
-        TS ->
-            last_chunk(Tab, TS, Step, [])
+    case Create of
+        true ->
+            ets:new(table(Bucket, Period), [ordered_set, protected, named_table]);
+        false ->
+            ok
+    end,
+    ok.
+
+backup_logger(Bucket, Period) ->
+    Tab = table(Bucket, Period),
+    File = logger_file(Bucket, Period),
+    TempFile = File ++ ".tmp",
+    case ets:tab2file(Tab, TempFile) of
+        {error, Reason} = Error ->
+            ?log_error("Failed to backup stats table ~p with error ~p~n", [Tab, Reason]),
+            Error;
+        _ ->
+            misc:atomic_rename(TempFile, File)
     end.
 
-last_chunk(Tab, TS, Step, Samples) ->
-    Samples1 = [hd(mnesia:read(Tab, TS))|Samples],
-    TS1 = mnesia:prev(Tab, TS),
-    T = misc:trunc_ts(TS, Step),
-    case TS1 == '$end_of_table' orelse misc:trunc_ts(TS1, Step) /= T of
+backup_loggers(Bucket) ->
+    lists:foreach(
+      fun ({Period, _, _}) ->
+              backup_logger(Bucket, Period)
+      end, archives()).
+
+%% keep the last N stats samples and delete the rest
+truncate_logger(Tab, NumToKeep) ->
+    ets:foldr(fun ({Key, _}, I) ->
+                      case I >= NumToKeep of
+                          true ->
+                              ets:delete(Tab, Key);
+                          false ->
+                              ok
+                      end,
+                      I + 1
+              end, 0, Tab).
+
+cascade_logger(Bucket, Prev, Period, Step) ->
+    true = (Period =/= minute),
+
+    PrevTab = table(Bucket, Prev),
+    NextTab = table(Bucket, Period),
+    case coalesce_stats(PrevTab, Step) of
         false ->
-            last_chunk(Tab, TS1, Step, Samples1);
+            ok;
+        Avg ->
+            #stat_entry{timestamp=TS} = Avg,
+            ets:insert(NextTab, {TS, Avg})
+    end.
+
+coalesce_stats(Tab, Step) ->
+    case ets:last(Tab) of
+        '$end_of_table' -> false;
+        LastTS -> coalesce_stats(Tab, LastTS, Step, [])
+    end.
+
+coalesce_stats(Tab, TS, Step, Samples) ->
+    [{_, OneSample}] = ets:lookup(Tab, TS),
+    Samples1 = [OneSample|Samples],
+    PrevTS = ets:prev(Tab, TS),
+    T = misc:trunc_ts(TS, Step),
+    case PrevTS == '$end_of_table' orelse misc:trunc_ts(PrevTS, Step) /= T of
+        false ->
+            coalesce_stats(Tab, PrevTS, Step, Samples1);
         true ->
             avg(T, Samples1)
     end.
-
 
 %% @doc Generate a suitable name for the per-bucket gen_server.
 server(Bucket) ->
@@ -195,7 +315,6 @@ start_cascade_timers([{Prev, _, _} | [{Next, Step, _} | _] = Rest]) ->
 start_cascade_timers([_]) ->
     ok.
 
-
 %% @doc Start timers for various housekeeping tasks.
 start_timers() ->
     Archives = archives(),
@@ -205,8 +324,12 @@ start_timers() ->
                                                 % total samples
               timer:send_interval(Interval, {truncate, Period, Samples})
       end, Archives),
-    start_cascade_timers(Archives).
+    start_cascade_timers(Archives),
+    timer:send_interval(?BACKUP_INTERVAL, backup).
 
 -spec fmt(string(), list()) -> list().
 fmt(Str, Args)  ->
     lists:flatten(io_lib:format(Str, Args)).
+
+stats_dir() ->
+    path_config:component_path(data, "stats").

@@ -16,9 +16,6 @@
                         cookie changes as well")
             (gen-server 'ns_cluster
                         "performs node join/leave requests")
-            (supervisor 'mb_mnesia_sup :mode :one_for_one
-                        (gen-event 'mb_mnesia_events)
-                        (gen-server 'mb_mnesia))
             (supervisor 'ns_config_sup :mode :rest_for_one
                         (gen-event 'ns_config_events
                                    "fired when any ns_config variable is changed")
@@ -201,7 +198,7 @@
                                                                      ns_stats_event"
                                                                     (pubsub-link nil :to 'ns_stats_event))
                                                         (gen-server '(stats_reader "default")
-                                                                    "used to read mnesia stats archive")
+                                                                    "used to read stats archive")
                                                         (event-handler '(failover_safeness_level "default") :to 'ns_stats_event
                                                                        "estimates bucket's replication up-to-date-ness
                                                                         'from this node' based on stats it sees"))))

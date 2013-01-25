@@ -136,7 +136,7 @@ handle_call({complete_join, NodeKVList}, _From, State) ->
 handle_cast(leave, State) ->
     ?cluster_log(0001, "Node ~p is leaving cluster.", [node()]),
     ok = ns_server_cluster_sup:stop_cluster(),
-    mb_mnesia:wipe(),
+    stats_archiver:wipe(),
     NewCookie = ns_cookie_manager:cookie_gen(),
     erlang:set_cookie(node(), NewCookie),
     lists:foreach(fun erlang:disconnect_node/1, nodes()),
@@ -279,7 +279,7 @@ do_change_address(NewAddr) ->
             ok;
         {_, _} ->
             ?cluster_info("Decided to change address to ~p~n", [NewAddr1]),
-            case mb_mnesia:maybe_rename(NewAddr1) of
+            case maybe_rename(NewAddr1) of
                 false ->
                     ok;
                 true ->
@@ -289,6 +289,40 @@ do_change_address(NewAddr) ->
             end,
             ok
     end.
+
+maybe_rename(NewAddr) ->
+    OldName = node(),
+    misc:executing_on_new_process(
+      fun () ->
+              %% prevent node disco events while we're in the middle
+              %% of renaming
+              ns_node_disco:register_node_renaming_txn(self()),
+              case dist_manager:adjust_my_address(NewAddr) of
+                  nothing ->
+                      ?cluster_debug("Not renaming node.", []),
+                      false;
+                  net_restarted ->
+                      master_activity_events:note_name_changed(),
+                      NewName = node(),
+                      ?cluster_debug("Renaming node from ~p to ~p.", [OldName, NewName]),
+                      rename_node_in_config(OldName, NewName),
+                      true
+              end
+      end).
+
+rename_node_in_config(Old, New) ->
+    ns_config:update(fun ({K, V} = Pair) ->
+                             NewK = misc:rewrite_value(Old, New, K),
+                             NewV = misc:rewrite_value(Old, New, V),
+                             if
+                                 NewK =/= K orelse NewV =/= V ->
+                                     ?cluster_debug("renaming node conf ~p -> ~p:~n  ~p ->~n  ~p",
+                                                    [K, NewK, V, NewV]),
+                                     {NewK, NewV};
+                                 true ->
+                                     Pair
+                             end
+                     end, erlang:make_ref()).
 
 check_add_possible(Body) ->
     case menelaus_web:is_system_provisioned() of

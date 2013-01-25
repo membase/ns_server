@@ -1196,34 +1196,41 @@ start_event_link(SubscriptionBody) ->
                         end
                 end)}.
 
-%% Writes to file atomically using write_file + rename trick.
-%% NB: this does not work on Windows
-%% (http://osdir.com/ml/racket.development/2011-01/msg00149.html).
+%% Writes to file atomically using write_file + atomic_rename
 atomic_write_file(Path, Contents) ->
     TmpPath = Path ++ ".tmp",
     case file:write_file(TmpPath, Contents) of
         ok ->
-            case file:open(TmpPath, [raw, binary, read, write]) of
-                {ok, IO} ->
-                    SyncRV =
-                        try
-                            file:sync(IO)
-                        after
-                            ok = file:close(IO)
-                        end,
-                    case SyncRV of
-                        ok ->
-                            %% NOTE: linux manpages also mention sync
-                            %% on directory, but erlang can't do that
-                            %% and that's not portable
-                            file:rename(TmpPath, Path);
-                        _ ->
-                            SyncRV
-                    end;
-                Err ->
-                    Err
+            atomic_rename(TmpPath, Path);
+        X ->
+            X
+    end.
+
+%% Rename file (more or less) atomically.
+%% See https://lwn.net/Articles/351422/ for some details.
+%%
+%% NB: this does not work on Windows
+%% (http://osdir.com/ml/racket.development/2011-01/msg00149.html).
+atomic_rename(From, To) ->
+    case file:open(From, [raw, binary, read, write]) of
+        {ok, IO} ->
+            SyncRV =
+                try
+                    file:sync(IO)
+                after
+                    ok = file:close(IO)
+                end,
+            case SyncRV of
+                ok ->
+                    %% NOTE: linux manpages also mention sync
+                    %% on directory, but erlang can't do that
+                    %% and that's not portable
+                    file:rename(From, To);
+                _ ->
+                    SyncRV
             end;
-        X -> X
+        Err ->
+            Err
     end.
 
 %% Return a list containing all but the last elements of the source list.
