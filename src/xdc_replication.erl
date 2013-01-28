@@ -102,15 +102,15 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
 
 handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                                        num_active  = ActiveVbReps,
-                                       num_waiting = WaitingVbReps} = State) ->
+                                       num_waiting = WaitingVbReps,
+                                       checkpoint_history = CkptHistory} = State) ->
+
     % sum all the vb stats and collect list of vb replicating
     Stats = dict:fold(
                     fun(_,
                         #rep_vb_status{vb = Vb,
                                        status = Status,
                                        num_changes_left = Left,
-                                       num_checkpoints = NumCheckpoint,
-                                       num_failedckpts = NumFailedCkpts,
                                        docs_changes_queue = DocsQueue,
                                        size_changes_queue = SizeQueue,
                                        docs_checked = Checked,
@@ -124,8 +124,6 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                          DataRepdAcc,
                          WorkTimeAcc,
                          CommitTimeAcc,
-                         NumCkptAcc,
-                         NumFailedCkptAcc,
                          DocsQueueAcc,
                          SizeQueueAcc,
                          VbReplicatingAcc}) ->
@@ -135,8 +133,6 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                                  DataRepdAcc + DataRepd,
                                  WorkTimeAcc + WorkTime,
                                  CommitTimeAcc + CommitTime,
-                                 NumCkptAcc + NumCheckpoint,
-                                 NumFailedCkptAcc + NumFailedCkpts,
                                  DocsQueueAcc + DocsQueue,
                                  SizeQueueAcc + SizeQueue,
                                  if Status == replicating ->
@@ -146,10 +142,12 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                                  end}
                         end, {0, 0, 0, 0,
                               0, 0, 0, 0,
-                              0, 0, []}, Dict),
+                              []}, Dict),
     {Left1, Checked1, Written1, DataRepd1,
-     WorkTime1, CommitTime1, NumCheckpoints1,
-     NumFailedCkpts1, DocsChangesQueue1, SizeChangesQueue1, VbsReplicating1} = Stats,
+     WorkTime1, CommitTime1,
+     DocsChangesQueue1, SizeChangesQueue1, VbsReplicating1} = Stats,
+    %% get checkpoint stats
+    {NumCheckpoints1, NumFailedCkpts1} = checkpoint_status(CkptHistory),
     Props = [{changes_left, Left1},
              {docs_checked, Checked1},
              {docs_written, Written1},
@@ -244,6 +242,21 @@ handle_info({set_vb_rep_status, #rep_vb_status{vb = Vb} = NewStat},
     Dict2 = dict:store(Vb, Stat, Dict),
     {noreply, State#replication{vb_rep_dict = Dict2}};
 
+handle_info({set_checkpoint_status, #rep_checkpoint_status{vb = VBucket,
+                                                           ts = TimeStamp,
+                                                           time = TimeString,
+                                                           succ = Succ,
+                                                           error = Error}},
+            #replication{checkpoint_history = CkptHistory, rep = Rep} = State) ->
+
+    Entry = {TimeStamp, TimeString, VBucket, Succ, Error},
+    NewCkptHistory = ringbuffer:add(Entry, CkptHistory),
+
+    ?xdcr_debug("add a ckpt entry (~p) to ckpt history of replication (src: ~p, target: ~p)",
+                [Entry, Rep#rep.source, Rep#rep.target]),
+
+    {noreply, State#replication{checkpoint_history = NewCkptHistory}};
+
 handle_info({set_throttle_status, {NumActiveReps, NumWaitingReps}},
             State) ->
     {noreply, State#replication{num_active = NumActiveReps,
@@ -307,3 +320,22 @@ start_vb_replicators(#replication{rep = Rep,
                                                                            self())
                 end, misc:shuffle(NewVbs)),
     Replication#replication{vb_rep_dict = Dict2}.
+
+%% get the number of succ and failed checkpoints from checkpoint history
+checkpoint_status(CheckpointHistory) ->
+    %% get most recent N entry in history
+    HistoryList = ringbuffer:to_list(?XDCR_CHECKPOINT_HISTORY, CheckpointHistory),
+
+    %% count # of successful ckpts and failed ckpts
+    {NumSuccCkpts, NumFailedCkpts} = lists:foldl(
+                                       fun ({_TimeStamp, _TimeString, _Vb, Succ, _Error}, {SuccAcc, FailedAcc}) ->
+                                               case Succ of
+                                                   true ->
+                                                       {SuccAcc + 1, FailedAcc};
+                                                   false ->
+                                                       {SuccAcc, FailedAcc + 1}
+                                               end
+                                       end,
+                                       {0, 0},
+                                       HistoryList),
+    {NumSuccCkpts, NumFailedCkpts}.
