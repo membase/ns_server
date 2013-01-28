@@ -29,6 +29,10 @@
 
 %% constants used by XDCR
 -define(REP_ID_VERSION, 2).
+%% capture the last 10 entries of checkpoint history per bucket replicator
+-define(XDCR_CHECKPOINT_HISTORY, 10).
+%% capture the last 10 entries of error history per bucket replicator
+-define(XDCR_ERROR_HISTORY, 10).
 
 %% data structures
 
@@ -87,6 +91,18 @@
           total_data_replicated = 0
  }).
 
+%% vbucket checkpoint status used by each vbucket replicator and status reporting
+%% to bucket replicator
+-record(rep_checkpoint_status, {
+          %% timestamp of the checkpoint from now() with granularity of microsecond, used
+          %% as key for ordering
+          ts,
+          time,   % human readable local time
+          vb,     % vbucket id
+          succ,   % true if a succesful checkpoint, false otherwise
+          error   % error msg
+ }).
+
 %% batch of documents usd by vb replicator worker process
 -record(batch, {
           docs = [],
@@ -103,7 +119,11 @@
           num_active = 0,                  % number of active replicators
           num_waiting = 0,                 % number of waiting replicators
           vb_rep_dict = dict:new(),        % contains state and stats for each replicator
-          error_reports = ringbuffer:new(10) % contains most recent errors
+
+          %% history of last N errors
+          error_reports = ringbuffer:new(?XDCR_ERROR_HISTORY),
+          %% history of last N checkpoints
+          checkpoint_history = ringbuffer:new(?XDCR_CHECKPOINT_HISTORY)
          }).
 
 %% vbucket level replication state used by module xdc_vbucket_rep

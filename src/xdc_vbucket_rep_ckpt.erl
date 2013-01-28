@@ -158,11 +158,15 @@ do_checkpoint(State) ->
         {ok, State1} ->
             %% no error, return the new state
             NewStat = Status#rep_vb_status{num_checkpoints = NumCkpts + 1},
-            {ok, <<"Successfully persisted checkpoint">>, State1#rep_state{status = NewStat}};
+            State2 = State1#rep_state{status = NewStat},
+            update_checkpoint_status_to_parent(State2, true, "no error"),
+            {ok, <<"Successfully persisted checkpoint">>, State2};
         {checkpoint_commit_failure, ErrorMsg} ->
             %% failed to commit, return error msg and new state
             NewStat = Status#rep_vb_status{num_failedckpts = NumFailedCkpts + 1},
-            {checkpoint_commit_failure, ErrorMsg, State#rep_state{status = NewStat}}
+            State2 = State#rep_state{status = NewStat},
+            update_checkpoint_status_to_parent(State2, false, ErrorMsg),
+            {checkpoint_commit_failure, ErrorMsg, State2}
     end.
 
 update_checkpoint(Db, Doc, DbType) ->
@@ -238,3 +242,24 @@ source_cur_seq(#rep_state{source = #db{} = Db, source_seq = Seq}) ->
 source_cur_seq(#rep_state{source_seq = Seq} = State) ->
     ?xdcr_debug("unknown source in state: ~p", [State]),
     Seq.
+
+%% update the checkpoint status to parent bucket replicator
+update_checkpoint_status_to_parent(#rep_state{
+                                      rep_details = RepDetails,
+                                      parent = Parent,
+                                      status = RepStatus}, Succ, Error) ->
+
+    VBucket = RepStatus#rep_vb_status.vb,
+    RawTime = now(),
+    LocalTime = calendar:now_to_local_time(RawTime),
+
+    ?xdcr_debug("replicator (vb: ~p, source: ~p, dest: ~p) reports checkpoint "
+                "status: {succ: ~p, msg: ~p} to parent: ~p",
+                [VBucket, RepDetails#rep.source, RepDetails#rep.target, Succ, Error, Parent]),
+
+    %% post to parent bucket replicator
+    Parent ! {set_checkpoint_status, #rep_checkpoint_status{ts = RawTime,
+                                                            time = LocalTime,
+                                                            vb = VBucket,
+                                                            succ = Succ,
+                                                            error = Error}}.
