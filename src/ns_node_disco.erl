@@ -46,7 +46,7 @@
 -record(state, {
           nodes :: [node()],
           we_were_shunned = false :: boolean(),
-          node_renaming_txt_mref :: undefined | reference()
+          node_renaming_txn_mref :: undefined | reference()
          }).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -138,9 +138,9 @@ handle_cast(_Msg, State)       -> {noreply, State}.
 
 handle_call({register_node_renaming_txn, Pid}, _From, State) ->
     case State of
-        #state{node_renaming_txt_mref = undefined} ->
+        #state{node_renaming_txn_mref = undefined} ->
             MRef = erlang:monitor(process, Pid),
-            NewState = State#state{node_renaming_txt_mref = MRef},
+            NewState = State#state{node_renaming_txn_mref = MRef},
             {reply, ok, NewState};
         _ ->
             {reply, already_doing_renaming, State}
@@ -155,9 +155,9 @@ handle_call(Msg, _From, State) ->
     ?log_warning("Unhandled ~p call: ~p", [?MODULE, Msg]),
     {reply, error, State}.
 
-handle_info({'DOWN', MRef, _, _, _}, #state{node_renaming_txt_mref = MRef} = State) ->
+handle_info({'DOWN', MRef, _, _, _}, #state{node_renaming_txn_mref = MRef} = State) ->
     self() ! notify_clients,
-    {noreply, State#state{node_renaming_txt_mref = undefined}};
+    {noreply, State#state{node_renaming_txn_mref = undefined}};
 handle_info({nodeup, Node}, State) ->
     ?user_log(?NODE_UP, "Node ~p saw that node ~p came up.",
               [node(), Node]),
@@ -231,7 +231,7 @@ do_nodes_actual_proper() ->
     Diff = lists:subtract(Curr, Want),
     lists:usort(lists:subtract(Curr, Diff)).
 
-do_notify(#state{node_renaming_txt_mref = MRef} = State) when MRef =/= undefined ->
+do_notify(#state{node_renaming_txn_mref = MRef} = State) when MRef =/= undefined ->
     State;
 do_notify(#state{nodes = NodesOld} = State) ->
     NodesNew = do_nodes_actual_proper(),
