@@ -735,8 +735,8 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
                   [ [{type, vbucket},
                      {name, element(2, VBucketAndDbName)},
                      {important, false},
-                     {fa, {fun spawn_vbucket_compactor/3,
-                           [BucketName, VBucketAndDbName, Options]}},
+                     {fa, {fun spawn_vbucket_compactor/5,
+                           [BucketName, VBucketAndDbName, Config, Force, Options]}},
                      {on_success,
                       {fun update_bucket_compaction_progress/2, [Ix, Total]}}] ||
                       {Ix, VBucketAndDbName} <- misc:enumerate(VBucketDbs) ],
@@ -797,15 +797,31 @@ open_db_or_fail(BucketName, {_, DbName} = VBucketAndDbName) ->
             exit({open_db_failed, Error})
     end.
 
-spawn_vbucket_compactor(BucketName, {_, DbName} = VBucketAndDb, Options) ->
+vbucket_needs_compaction({DataSize, FileSize}, Config) ->
+    #config{daemon=#daemon_config{min_file_size=MinFileSize},
+            db_fragmentation=FragThreshold} = Config,
+
+    file_needs_compaction(DataSize, FileSize, FragThreshold, MinFileSize).
+
+spawn_vbucket_compactor(BucketName, {_, DbName} = VBucketAndDb,
+                        Config, Force, Options) ->
     Parent = self(),
 
     proc_lib:spawn_link(
       fun () ->
               Db = open_db_or_fail(BucketName, VBucketAndDb),
+              {ok, DbInfo} = couch_db:get_db_info(Db),
+              SizeInfo = db_size_info(DbInfo),
+
+              case Force orelse vbucket_needs_compaction(SizeInfo, Config) of
+                  true ->
+                      ok;
+                  false ->
+                      exit(normal)
+              end,
 
               %% effectful
-              ensure_can_db_compact(Db),
+              ensure_can_db_compact(Db, SizeInfo),
 
               ?log_info("Compacting ~p", [DbName]),
 
@@ -1029,8 +1045,7 @@ aggregated_size_info(SampleVBucketDbs, NumVBuckets) ->
                           couch_db:close(Db)
                       end,
 
-                  VFileSize = proplists:get_value(disk_size, DbInfo),
-                  VDataSize = proplists:get_value(data_size, DbInfo, 0),
+                  {VDataSize, VFileSize} = db_size_info(DbInfo),
                   {AccDataSize + VDataSize, AccFileSize + VFileSize}
           end, {0, 0}, SampleVBucketDbs),
 
@@ -1044,15 +1059,19 @@ aggregated_size_info(SampleVBucketDbs, NumVBuckets) ->
              round(FileSize * (NumVBuckets / NumSamples))}
     end.
 
+db_size_info(DbInfo) ->
+    FileSize = proplists:get_value(disk_size, DbInfo),
+    DataSize = proplists:get_value(data_size, DbInfo, 0),
+
+    {DataSize, FileSize}.
+
 check_fragmentation({FragLimit, FragSizeLimit}, Frag, FragSize) ->
     true = is_integer(FragLimit),
     true = is_integer(FragSizeLimit),
 
     (Frag >= FragLimit) orelse (FragSize >= FragSizeLimit).
 
-ensure_can_db_compact(Db) ->
-    {ok, DbInfo} = couch_db:get_db_info(Db),
-    DataSize = proplists:get_value(data_size, DbInfo, 0),
+ensure_can_db_compact(Db, {DataSize, _}) ->
     SpaceRequired = space_required(DataSize),
 
     {ok, DbDir} = ns_storage_conf:this_node_dbdir(),
