@@ -945,9 +945,11 @@ bucket_needs_compaction(BucketName, VBucketDbs,
 
     {DataSize, FileSize} = aggregated_size_info(SampleVBucketDbs, NumVBuckets),
 
-    file_needs_compaction(BucketName,
-                          DataSize, FileSize, FragThreshold,
-                          MinFileSize * NumVBuckets).
+    ?log_debug("`~s` data size is ~p, disk size is ~p",
+               [BucketName, DataSize, FileSize]),
+
+    file_needs_compaction(DataSize, FileSize,
+                          FragThreshold, MinFileSize * NumVBuckets).
 
 select_samples(VBucketDbs, SampleIxs) ->
     select_samples(VBucketDbs, SampleIxs, 1, []).
@@ -997,23 +999,13 @@ unique_random_ints(Range, NumSamples, Seen) ->
                                ordsets:add_element(I, Seen))
     end.
 
-
-file_needs_compaction(Title, DataSize, FileSize, FragThreshold, MinFileSize) ->
-    ?log_debug("Estimated size for `~s`: data ~p, file ~p",
-               [Title, DataSize, FileSize]),
-
+file_needs_compaction(DataSize, FileSize, FragThreshold, MinFileSize) ->
     case FileSize < MinFileSize of
         true ->
-            ?log_debug("Estimated file size for `~s` is less "
-                       "than min_file_size ~p; skipping",
-                       [Title, MinFileSize]),
             false;
         false ->
             FragSize = FileSize - DataSize,
             Frag = round((FragSize / FileSize) * 100),
-
-            ?log_debug("Estimated fragmentation for `~s`: ~p bytes/~p%",
-                       [Title, FragSize, Frag]),
 
             check_fragmentation(FragThreshold, Frag, FragSize)
     end.
@@ -1107,9 +1099,10 @@ view_needs_compaction(BucketName, DDocId, Type,
                     FileSize = proplists:get_value(disk_size, Info),
                     DataSize = proplists:get_value(data_size, Info, 0),
 
-                    Title = <<BucketName/binary, $/, DDocId/binary,
-                              $/, (atom_to_binary(Type, latin1))/binary>>,
-                    file_needs_compaction(Title, DataSize, FileSize,
+                    ?log_debug("`~s/~s/~s` data_size is ~p, disk_size is ~p",
+                               [BucketName, DDocId, Type, DataSize, FileSize]),
+
+                    file_needs_compaction(DataSize, FileSize,
                                           FragThreshold, MinFileSize)
             end
     end.
