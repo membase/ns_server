@@ -349,14 +349,14 @@ handle_sync_event({uninhibit_view_compaction, BinBucketName, MRef}, From, StateN
                          view_compaction_inhibited_ref = AnMRef,
                          view_compaction_inhibited_final_stage = false} = State)
   when AnMRef =:= MRef andalso ABinBucketName =:= BinBucketName ->
-    case StateName of
-        compacting ->
-            ok;
-        idle ->
-            self() ! compact
-    end,
-    {next_state, StateName, State#state{view_compaction_inhibited_final_stage_waiter = From,
-                                        view_compaction_inhibited_final_stage = true}};
+    State1 = case StateName of
+                 compacting ->
+                     State;
+                 idle ->
+                     schedule_immediate_compaction(State)
+             end,
+    {next_state, StateName, State1#state{view_compaction_inhibited_final_stage_waiter = From,
+                                         view_compaction_inhibited_final_stage = true}};
 handle_sync_event({uninhibit_view_compaction, _BinBucketName, _MRef} = Msg, _From, StateName, State) ->
     ?log_debug("Sending back nack on uninhibit_view_compaction: ~p, state: ~p", [Msg, State]),
     {reply, nack, StateName, State};
@@ -1413,6 +1413,31 @@ schedule_next_compaction(#state{compaction_start_ts=StartTs0,
         end,
 
     NewState0#state{compaction_start_ts=undefined}.
+
+-spec schedule_immediate_compaction(#state{}) -> #state{}.
+schedule_immediate_compaction(#state{buckets_to_compact=Buckets,
+                                     compactor_pid=Compactor} = State0) ->
+    [] = Buckets,
+    undefined = Compactor,
+
+    State1 = cancel_scheduled_compaction(State0),
+    self() ! compact,
+    State1.
+
+-spec cancel_scheduled_compaction(#state{}) -> #state{}.
+cancel_scheduled_compaction(#state{scheduled_compaction_tref=undefined} = State) ->
+    State;
+cancel_scheduled_compaction(#state{scheduled_compaction_tref=TRef} = State) ->
+    {ok, cancel} = timer:cancel(TRef),
+
+    receive
+        compact ->
+            ok
+    after 0 ->
+            ok
+    end,
+
+    State#state{scheduled_compaction_tref=undefined}.
 
 now_utc_seconds() ->
     calendar:datetime_to_gregorian_seconds(erlang:universaltime()).
