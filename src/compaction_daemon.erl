@@ -513,8 +513,6 @@ handle_info(config_changed, compacting,
     end,
     {next_state, compacting, State};
 handle_info(config_changed, StateName, State) ->
-    ?log_debug("Got config_changed in state ~p. "
-               "Nothing to do since compaction is not running", [StateName]),
     misc:flush(config_changed),
     {next_state, StateName, State};
 handle_info(Info, StateName, State) ->
