@@ -6,9 +6,10 @@ Between versions 2.0.0 and 2.0.1
 -----------------------------------------
 
 * (CBD-790) new REST call:
+  empty POST request to
   /pools/default/buckets/<bucketname>/controller/unsafePurgeBucket
-  Which will trigger a special type of forced compaction that will
-  "forget" deleted items.
+  will trigger a special type of forced compaction that will "forget"
+  deleted items.
 
   Normally couchstore keeps deletion "tombstones" forever, which
   naturally creates space problem for some use-cases (i.e. session
