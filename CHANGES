@@ -2,7 +2,7 @@ This file documents user-visible changes in Couchbase clustering & UI.
 ======================================================================
 
 -----------------------------------------
-Between versions 2.0.0 and 2.0.1
+Between versions 2.0.0 and 2.0.1 
 -----------------------------------------
 
 * (CBD-790) new REST call:
