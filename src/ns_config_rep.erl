@@ -113,7 +113,7 @@ handle_call(synchronize_everything, {Pid, _Tag} = _From,
     ?log_debug("Got full synchronization request from ~p", [RemoteNode]),
 
     StartTS = os:timestamp(),
-    sync_done = gen_server:call(ns_config_rep_merger, sync),
+    sync_done = gen_server:call(ns_config_rep_merger, sync, ?SYNCHRONIZE_TIMEOUT),
     EndTS = os:timestamp(),
     Diff = timer:now_diff(EndTS, StartTS),
     ?log_debug("Fully synchronized config in ~p us", [Diff]),
