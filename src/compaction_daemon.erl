@@ -273,7 +273,11 @@ handle_sync_event({force_purge_compact_bucket, Bucket}, _From, StateName, State)
                 {Config, Props} = compaction_config(Bucket),
                 Pid = spawn_bucket_compactor(Bucket,
                     {Config#config{do_purge = true}, Props}, true),
-                register_forced_compaction(Pid, Compaction, State)
+                State1 = register_forced_compaction(Pid, Compaction, State),
+                ale:info(?USER_LOGGER,
+                         "Started deletion purge compaction for bucket `~s`",
+                         [Bucket]),
+                State1
         end,
     {reply, ok, StateName, NewState};
 handle_sync_event({force_compact_db_files, Bucket}, _From, StateName, State) ->
@@ -461,14 +465,29 @@ handle_info({'EXIT', Pid, Reason}, StateName,
         {ok, #forced_compaction{type=Type, name=Name}} ->
             case Reason of
                 normal ->
-                    ale:info(?USER_LOGGER,
-                             "User-triggered compaction of ~p `~s` completed.",
-                             [Type, Name]);
+                    case Type of
+                        bucket_purge ->
+                            ale:info(?USER_LOGGER,
+                                     "Purge deletion compaction of bucket `~s` completed",
+                                     [Name]);
+                        _ ->
+                            ale:info(?USER_LOGGER,
+                                     "User-triggered compaction of ~p `~s` completed.",
+                                     [Type, Name])
+                    end;
                 _ ->
-                    ale:error(?USER_LOGGER,
-                              "User-triggered compaction of ~p `~s` failed: ~p. "
-                              "See logs for detailed reason.",
-                              [Type, Name, Reason])
+                    case Type of
+                        bucket_purge ->
+                            ale:info(?USER_LOGGER,
+                                     "Purge delection compaction of bucket `~s` failed: ~p. "
+                                     "See logs for detailed reason.",
+                                     [Name, Reason]);
+                        _ ->
+                            ale:error(?USER_LOGGER,
+                                      "User-triggered compaction of ~p `~s` failed: ~p. "
+                                      "See logs for detailed reason.",
+                                      [Type, Name, Reason])
+                    end
             end,
 
             {next_state, StateName, unregister_forced_compaction(Pid, State)};
