@@ -772,7 +772,14 @@ couchbase_replication_stats_descriptions(BucketId) ->
                                           {desc,<<"Number of document mutations in XDC replication queue">>}]},
                                  {struct,[{title,<<"XDCR queue size">>},
                                           {name,<<Prefix/binary,"size_rep_queue">>},
-                                          {desc,<<"Size in bytes of XDC replication queue">>}]}]}]}
+                                          {desc,<<"Size in bytes of XDC replication queue">>}]},
+                                 %% fourth row
+                                 {struct,[{title,<<"mutation replication rate">>},
+                                          {name,<<Prefix/binary,"rate_replication">>},
+                                          {desc,<<"Rate of replication in terms of number of replicated mutations per second">>}]},
+                                 {struct,[{title,<<"data replication rate">>},
+                                          {name,<<Prefix/binary,"bandwidth_usage">>},
+                                          {desc,<<"Rate of replication in terms of bytes replicated per second">>}]}]}]}
               end, Reps).
 
 couchbase_view_stats_descriptions(BucketId) ->
