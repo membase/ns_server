@@ -40,11 +40,13 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager) ->
         {'DOWN', _, _, _, _} ->
             ok = gen_server:call(Cp, {worker_done, self()}, infinity);
         {changes, ChangesManager, Changes, ReportSeq} ->
-            IdRevs = find_missing(Changes, Target),
+            %% get docinfo of missing ids
+            MissingDocInfoList = find_missing(Changes, Target),
             NumChecked = length(Changes),
+            %% use ptr in docinfo to fetch document from storage
             {ok, DataRepd} = local_process_batch(
-                               IdRevs, Cp, Source, Target, #batch{}),
-            ok = gen_server:call(Cp, {report_seq_done, ReportSeq, NumChecked, length(IdRevs), DataRepd}, infinity),
+                               MissingDocInfoList, Cp, Source, Target, #batch{}),
+            ok = gen_server:call(Cp, {report_seq_done, ReportSeq, NumChecked, length(MissingDocInfoList), DataRepd}, infinity),
             ?xdcr_debug("Worker reported completion of seq ~p", [ReportSeq]),
             queue_fetch_loop(Source, Target, Cp, ChangesManager)
     end.
@@ -59,10 +61,10 @@ local_process_batch([], Cp, #db{} = Source, #httpdb{} = Target,
     {ok, DataRepd1} = local_process_batch([], Cp, Source, Target, #batch{}),
     {ok, DataRepd1 + Size};
 
-local_process_batch([IdRevs | Rest], Cp, #db{} = Source,
+local_process_batch([DocInfo | Rest], Cp, #db{} = Source,
                     #httpdb{} = Target, Batch) ->
     {ok, {_, DocList, _}} = fetch_doc(
-                                      Source, IdRevs, fun local_doc_handler/2,
+                                      Source, DocInfo, fun local_doc_handler/2,
                                       {Target, [], Cp}),
     {Batch2, DataFlushed} = lists:foldl(
                          fun(Doc, {Batch0, DataFlushed1}) ->
@@ -73,10 +75,10 @@ local_process_batch([IdRevs | Rest], Cp, #db{} = Source,
     %% return total data flushed
     {ok, DataFlushed + DataFlushed2}.
 
-fetch_doc(Source, {Id, _Rev}, DocHandler, Acc) ->
-    couch_api_wrap:open_doc(
-      Source, Id, [deleted], DocHandler, Acc).
 
+%% fetch doc using doc info
+fetch_doc(Source, #doc_info{body_ptr = _BodyPtr} = DocInfo, DocHandler, Acc) ->
+    couch_api_wrap:open_doc(Source, DocInfo, [deleted], DocHandler, Acc).
 
 local_doc_handler({ok, Doc}, {Target, DocList, Cp}) ->
     {ok, {Target, [Doc | DocList], Cp}};
@@ -122,6 +124,8 @@ flush_docs(Target, DocList) ->
             exit({failed_write, Props})
     end.
 
+%% return list of Docsinfos of missing keys
+-spec find_missing(list(), #httpdb{}) -> list().
 find_missing(DocInfos, Target) ->
     {IdRevs, AllRevsCount} = lists:foldr(
                                fun(#doc_info{id = Id, rev = Rev}, {IdRevAcc, CountAcc}) ->
@@ -130,7 +134,21 @@ find_missing(DocInfos, Target) ->
                                {[], 0}, DocInfos),
     {ok, Missing} = couch_api_wrap:get_missing_revs(Target, IdRevs),
 
+    %%build list of docinfo for all missing ids
+    MissingDocInfoList = lists:filter(
+                           fun(#doc_info{id = Id, rev = _Rev} = _DocInfo) ->
+                                   case lists:keyfind(Id, 1, Missing) of
+                                       %% not a missing key
+                                       false ->
+                                           false;
+                                       %% a missing key
+                                       _  -> true
+                                   end
+                           end,
+                           DocInfos),
+
     ?xdcr_debug("after conflict resolution at target (~p), out of all ~p docs "
                 "the number of docs we need to replicate is: ~p",
                 [Target#httpdb.url, AllRevsCount, length(Missing)]),
-    Missing.
+
+    MissingDocInfoList.
