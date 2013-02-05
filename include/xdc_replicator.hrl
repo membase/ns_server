@@ -102,7 +102,16 @@
           total_data_replicated = 0,
 
           %% rate of replication
-          ratestat = #ratestat{}
+          ratestat = #ratestat{},
+
+          %% latency stats
+          meta_latency_aggr = 0,
+          meta_latency_wt = 0,
+          docs_latency_aggr = 0,
+          docs_latency_wt = 0,
+
+          %% worker stats
+          workers_stat = dict:new() %% dict of each worker's latency stats (key = pid, value = #worker_stat{})
  }).
 
 %% vbucket checkpoint status used by each vbucket replicator and status reporting
@@ -226,3 +235,12 @@
           latency_opt              %% latenty optimized option
          }).
 
+%% statistics reported from worker process to its parent vbucket replicator
+-record(worker_stat, {
+          seq = 0,
+          worker_meta_latency_aggr = 0,
+          worker_docs_latency_aggr = 0,
+          worker_data_replicated = 0,
+          worker_item_checked = 0,
+          worker_item_replicated = 0
+         }).

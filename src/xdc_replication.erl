@@ -118,7 +118,11 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                                        data_replicated = DataRepd,
                                        ratestat = RateStat,
                                        work_time = WorkTime,
-                                       commit_time = CommitTime},
+                                       commit_time = CommitTime,
+                                       meta_latency_aggr = MetaLatency,
+                                       meta_latency_wt = MetaLatencyWt,
+                                       docs_latency_aggr = DocsLatency,
+                                       docs_latency_wt = DocsLatencyWt},
                         {WorkLeftAcc,
                          CheckedAcc,
                          WrittenAcc,
@@ -129,8 +133,23 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                          SizeQueueAcc,
                          RepRateItemAcc,
                          RepRateDataAcc,
+                         MetaLatencyAcc,
+                         MetaLatencyWtAcc,
+                         DocsLatencyAcc,
+                         DocsLatencyWtAcc,
                          VbReplicatingAcc}) ->
 
+                            %% only count replicating vb reps when computing latency stats and replication rates
+                            {MetaL, MetaLWt} = case Status of
+                                                   replicating ->
+                                                       {MetaLatency, MetaLatencyWt};
+                                                   _ -> {0, 0}
+                                               end,
+                            {DocsL, DocsLWt} = case Status of
+                                                 replicating ->
+                                                     {DocsLatency, DocsLatencyWt};
+                                                 _ -> {0, 0}
+                                             end,
                             RepRateItem = case Status of
                                               replicating ->
                                                   RateStat#ratestat.curr_rate_item;
@@ -148,12 +167,20 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                              CheckedAcc + Checked,
                              WrittenAcc + Written,
                              DataRepdAcc + DataRepd,
+
                              WorkTimeAcc + WorkTime,
                              CommitTimeAcc + CommitTime,
                              DocsQueueAcc + DocsQueue,
                              SizeQueueAcc + SizeQueue,
+
                              RepRateItemAcc + RepRateItem,
                              RepRateDataAcc + RepRateData,
+                             MetaLatencyAcc + MetaL,
+                             MetaLatencyWtAcc + MetaLWt,
+
+                             DocsLatencyAcc + DocsL,
+                             DocsLatencyWtAcc + DocsLWt,
+
                              if Status == replicating ->
                                      [Vb | VbReplicatingAcc];
                                 true ->
@@ -161,11 +188,13 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                              end}
                     end, {0, 0, 0, 0,
                           0, 0, 0, 0,
+                          0, 0, 0, 0,
                           0, 0, []}, Dict),
     {Left1, Checked1, Written1, DataRepd1,
      WorkTime1, CommitTime1,
      DocsChangesQueue1, SizeChangesQueue1,
-     RepRateItem1, RepRateData1, VbsReplicating1} = Stats,
+     RepRateItem1, RepRateData1,
+     MetaLatency1, MetaLatencyWt1, DocsLatency1, DocsLatencyWt1, VbsReplicating1} = Stats,
     %% get checkpoint stats
     {NumCheckpoints1, NumFailedCkpts1} = checkpoint_status(CkptHistory),
 
@@ -183,7 +212,11 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
              {size_rep_queue, SizeChangesQueue1},
              {vbs_replicating, VbsReplicating1},
              {rate_replication, round(RepRateItem1)},
-             {bandwidth_usage, round(RepRateData1)}],
+             {bandwidth_usage, round(RepRateData1)},
+             {meta_latency_aggr, round(MetaLatency1)},
+             {meta_latency_wt, MetaLatencyWt1},
+             {docs_latency_aggr, round(DocsLatency1)},
+             {docs_latency_wt, DocsLatencyWt1}],
     {reply, {ok, Props}, State};
 
 handle_call(target, _From, State) ->

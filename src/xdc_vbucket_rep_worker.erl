@@ -41,12 +41,25 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager, LatencyOptimized) ->
             ok = gen_server:call(Cp, {worker_done, self()}, infinity);
         {changes, ChangesManager, Changes, ReportSeq} ->
             %% get docinfo of missing ids
-            MissingDocInfoList = find_missing(Changes, Target, LatencyOptimized),
+            {MissingDocInfoList, MetaLatency} = find_missing(Changes, Target, LatencyOptimized),
             NumChecked = length(Changes),
+            NumWritten = length(MissingDocInfoList),
             %% use ptr in docinfo to fetch document from storage
+            Start = now(),
             {ok, DataRepd} = local_process_batch(
                                MissingDocInfoList, Cp, Source, Target, #batch{}),
-            ok = gen_server:call(Cp, {report_seq_done, ReportSeq, NumChecked, length(MissingDocInfoList), DataRepd}, infinity),
+
+            %% latency in millisecond
+            DocLatency = timer:now_diff(now(), Start) div 1000,
+            %% report seq done and stats to vb replicator
+            ok = gen_server:call(Cp, {report_seq_done,
+                                      #worker_stat{
+                                        seq = ReportSeq,
+                                        worker_meta_latency_aggr = MetaLatency*NumChecked,
+                                        worker_docs_latency_aggr = DocLatency*NumWritten,
+                                        worker_data_replicated = DataRepd,
+                                        worker_item_checked = NumChecked,
+                                        worker_item_replicated = NumWritten}}, infinity),
             ?xdcr_debug("Worker reported completion of seq ~p", [ReportSeq]),
             queue_fetch_loop(Source, Target, Cp, ChangesManager, LatencyOptimized)
     end.
@@ -125,8 +138,9 @@ flush_docs(Target, DocList) ->
     end.
 
 %% return list of Docsinfos of missing keys
--spec find_missing(list(), #httpdb{}, boolean()) -> list().
+-spec find_missing(list(), #httpdb{}, boolean()) -> {list(), integer()}.
 find_missing(DocInfos, Target, LatencyOptimized) ->
+    Start = now(),
     {IdRevs, AllRevsCount} = lists:foldr(
                                fun(#doc_info{id = Id, rev = Rev}, {IdRevAcc, CountAcc}) ->
                                        {[{Id, Rev} | IdRevAcc], CountAcc + 1}
@@ -166,4 +180,12 @@ find_missing(DocInfos, Target, LatencyOptimized) ->
                         [Target#httpdb.url, length(IdRevs)])
     end,
 
-    MissingDocInfoList.
+    %% latency in millisecond, 0 if latency opt mode
+    Latency = case LatencyOptimized of
+                  false ->
+                      (timer:now_diff(now(), Start) div 1000);
+                  _ ->
+                      0
+              end,
+
+    {MissingDocInfoList, round(Latency)}.
