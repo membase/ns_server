@@ -23,23 +23,25 @@
                 compaction_start_ts,
                 scheduled_compaction_tref,
 
-                %% bucket for which view compaction is either already
-                %% inhibited or in progress to become inhibited
-                %% (i.e. we're waiting for current view compaction
-                %% round of this bucket to complete)
+                %% bucket for which view compaction is inhibited (note
+                %% it's also set when we're running 'uninhibit' views
+                %% compaction as 'final stage')
                 view_compaction_inhibited_bucket :: undefined | binary(),
-                %% if view compaction is in progress to become
-                %% inhibited this will hold From to gen_server:reply
-                %% to when we're done waiting
-                view_compaction_inhibited_completion_waiter,
                 %% if view compaction is inhibited this field will
                 %% hold monitor ref of the guy who requested it. If
                 %% that guy dies, inhibition will be canceled
                 view_compaction_inhibited_ref :: (undefined | reference()),
-                %% final stage of view compaction is when we wait for
-                %% next round of view compaction to complete
-                view_compaction_inhibited_final_stage = false :: boolean(),
-                view_compaction_inhibited_final_stage_waiter,
+                %% when we have 'uninhibit' request, we're starting
+                %% our compaction with 'forced' view compaction asap
+                %%
+                %% requested indicates we have this request
+                view_compaction_uninhibit_requested = false :: boolean(),
+                %% started indicates we have started such compaction
+                %% and waiting for it to complete
+                view_compaction_uninhibit_started = false :: boolean(),
+                %% this is From to reply to when such compaction is
+                %% done
+                view_compaction_uninhibit_requested_waiter,
 
                 %% mapping from compactor pid to #forced_compaction{}
                 running_forced_compactions,
@@ -326,8 +328,9 @@ handle_sync_event({cancel_forced_view_compaction, Bucket, DDocId},
     {reply, ok, StateName, maybe_cancel_compaction(Compaction, State)};
 handle_sync_event({inhibit_view_compaction, BinBucketName, Pid}, From, StateName,
                   #state{view_compaction_inhibited_ref = OldRef,
+                         view_compaction_uninhibit_requested = UninhibitRequested,
                          buckets_to_compact = BucketsToCompact} = State) ->
-    case OldRef =/= undefined of
+    case OldRef =/= undefined orelse UninhibitRequested of
         true ->
             gen_server:reply(From, nack),
             {next_state, StateName, State};
@@ -335,32 +338,35 @@ handle_sync_event({inhibit_view_compaction, BinBucketName, Pid}, From, StateName
             MRef = erlang:monitor(process, Pid),
             NewState = State#state{
                          view_compaction_inhibited_bucket = BinBucketName,
-                         view_compaction_inhibited_completion_waiter = undefined,
                          view_compaction_inhibited_ref = MRef,
-                         view_compaction_inhibited_final_stage = false,
-                         view_compaction_inhibited_final_stage_waiter = undefined},
+                         view_compaction_uninhibit_requested = false},
             case StateName =:= compacting andalso hd(BucketsToCompact) =:= BinBucketName of
                 true ->
-                    NewState2 = NewState#state{
-                                  view_compaction_inhibited_completion_waiter = From},
-                    {next_state, StateName, NewState2};
+                    ?log_info("Killing currently running compactor to handle inhibit_view_compaction request for ~s", [BinBucketName]),
+                    erlang:exit(NewState#state.compactor_pid, shutdown);
                 false ->
-                    {reply, {ok, MRef}, StateName, NewState}
-            end
+                    ok
+            end,
+            {reply, {ok, MRef}, StateName, NewState}
     end;
 handle_sync_event({uninhibit_view_compaction, BinBucketName, MRef}, From, StateName,
                   #state{view_compaction_inhibited_bucket = ABinBucketName,
                          view_compaction_inhibited_ref = AnMRef,
-                         view_compaction_inhibited_final_stage = false} = State)
+                         view_compaction_uninhibit_requested = false} = State)
   when AnMRef =:= MRef andalso ABinBucketName =:= BinBucketName ->
     State1 = case StateName of
                  compacting ->
+                     ?log_info("Killing current compactor to speed up uninhibit_view_compaction: ~p", [State]),
+                     erlang:exit(State#state.compactor_pid, shutdown),
                      State;
                  idle ->
                      schedule_immediate_compaction(State)
              end,
-    {next_state, StateName, State1#state{view_compaction_inhibited_final_stage_waiter = From,
-                                         view_compaction_inhibited_final_stage = true}};
+    erlang:demonitor(State#state.view_compaction_inhibited_ref),
+    {next_state, StateName, State1#state{view_compaction_uninhibit_requested_waiter = From,
+                                         view_compaction_inhibited_ref = undefined,
+                                         view_compaction_uninhibit_started = false,
+                                         view_compaction_uninhibit_requested = true}};
 handle_sync_event({uninhibit_view_compaction, _BinBucketName, _MRef} = Msg, _From, StateName, State) ->
     ?log_debug("Sending back nack on uninhibit_view_compaction: ~p, state: ~p", [Msg, State]),
     {reply, nack, StateName, State};
@@ -418,7 +424,7 @@ handle_info({'EXIT', Compactor, Reason}, compacting,
                        "Moving to the next bucket.", [Compactor, Reason])
     end,
 
-    NewBuckets =
+    {DoneBucket, NewBuckets} =
         case Reason of
             shutdown ->
                 %% this can happen either on config change or if compaction
@@ -426,27 +432,21 @@ handle_info({'EXIT', Compactor, Reason}, compacting,
                 %% latter case there's no need to compact bucket again; but it
                 %% won't hurt: compaction shall be terminated rightaway with
                 %% reason normal
-                Buckets;
+                {undefined, Buckets};
             _ ->
-                tl(Buckets)
+                {hd(Buckets), tl(Buckets)}
         end,
 
-    NewState0 = case NewBuckets =:= Buckets of
+    NewState0 = case (DoneBucket =:= State#state.view_compaction_inhibited_bucket
+                      andalso State#state.view_compaction_uninhibit_started) of
                     true ->
-                        State;
-                    false ->
-                        DoneBucket = hd(Buckets),
-                        case State of
-                            #state{view_compaction_inhibited_completion_waiter = Waiter,
-                                   view_compaction_inhibited_bucket = Bucket,
-                                   view_compaction_inhibited_ref = MRef}
-                              when (Bucket =:= DoneBucket andalso Waiter =/= undefined) ->
-                                ?log_debug("View compaction inhibition occurred for bucket ~s. Replying to ~p", [DoneBucket, Waiter]),
-                                gen_server:reply(Waiter, {ok, MRef}),
-                                State#state{view_compaction_inhibited_completion_waiter = undefined};
-                            _ ->
-                                State
-                        end
+                        gen_server:reply(State#state.view_compaction_uninhibit_requested_waiter, ok),
+                        State#state{view_compaction_inhibited_bucket = undefined,
+                                    view_compaction_uninhibit_requested_waiter = undefined,
+                                    view_compaction_uninhibit_requested = false,
+                                    view_compaction_uninhibit_started = false};
+                    _ ->
+                        State
                 end,
 
     NewState1 = NewState0#state{compactor_pid=undefined,
@@ -1346,16 +1346,18 @@ shutdown_compactor_after(MinutesLeft) ->
               end
       end).
 
+
+
 -spec compact_next_bucket(#state{}) -> #state{}.
 compact_next_bucket(#state{buckets_to_compact=Buckets,
-                           view_compaction_inhibited_final_stage_waiter = FinalStateWaiter} = State) ->
+                           view_compaction_inhibited_bucket = InhibitedBucket} = State) ->
     undefined = State#state.compactor_pid,
     true = [] =/= Buckets,
 
     PausedBucket = case State of
-                       #state{view_compaction_inhibited_bucket = CandPausedBucket,
-                              view_compaction_inhibited_final_stage = true} ->
-                           CandPausedBucket;
+                       #state{view_compaction_inhibited_bucket = CandidatePausedBucket,
+                              view_compaction_uninhibit_requested = true} ->
+                           CandidatePausedBucket;
                        _ ->
                            undefined
                    end,
@@ -1374,7 +1376,13 @@ compact_next_bucket(#state{buckets_to_compact=Buckets,
                   true ->
                       ?log_debug("Going to spawn bucket compaction with forced view compaction for bucket ~s", [NextBucket]),
                       {OldConfig, OldConfigProps} = Configs0,
+                      %% for 'uninhibit' compaction we don't want to
+                      %% wait for db compaction because we assume DBs
+                      %% are going to be much bigger than views. Plus
+                      %% we _do_ need to wait for index compaction,
+                      %% but we don't need to wait for db compaction.
                       {OldConfig#config{view_fragmentation = {0, 0},
+                                        db_fragmentation = {100, 1 bsl 64},
                                         allowed_period = undefined},
                        [forced_previously_inhibited_view_compaction | OldConfigProps]};
                   _ ->
@@ -1383,8 +1391,9 @@ compact_next_bucket(#state{buckets_to_compact=Buckets,
 
     MaybeViewInhibited = case State of
                              #state{view_compaction_inhibited_bucket = InhibitedBucket,
-                                    view_compaction_inhibited_final_stage = false}
+                                    view_compaction_uninhibit_requested = false}
                                when InhibitedBucket =:= NextBucket ->
+                                 {paused, undefined} = {paused, PausedBucket},
                                  view_inhibited;
                              _ ->
                                  false
@@ -1394,19 +1403,15 @@ compact_next_bucket(#state{buckets_to_compact=Buckets,
 
     case PausedBucket =/= undefined of
         true ->
-            ?log_debug("Replying to view_compaction_inhibited_final_stage_waiter: ~p", [FinalStateWaiter]),
-            gen_server:reply(FinalStateWaiter, ok),
-            erlang:demonitor(State#state.view_compaction_inhibited_ref),
-            State#state{compactor_pid=Compactor,
-                        compactor_config=InitialConfig,
-                        view_compaction_inhibited_final_stage_waiter = undefined,
-                        view_compaction_inhibited_bucket = undefined,
-                        view_compaction_inhibited_ref = undefined,
-                        view_compaction_inhibited_final_stage = false};
+            ?log_debug("Spawned 'uninhibited' compaction for ~s", [PausedBucket]),
+            {next_bucket, NextBucket} = {next_bucket, PausedBucket},
+            {next_bucket, InhibitedBucket} = {next_bucket, PausedBucket},
+            State#state{compactor_pid = Compactor,
+                        compactor_config = InitialConfig,
+                        view_compaction_uninhibit_started = true};
         _ ->
-            {fsw, undefined} = {fsw, FinalStateWaiter},
-            State#state{compactor_pid=Compactor,
-                        compactor_config=InitialConfig}
+            State#state{compactor_pid = Compactor,
+                        compactor_config = InitialConfig}
     end.
 
 
