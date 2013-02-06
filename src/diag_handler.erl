@@ -239,6 +239,24 @@ handle_per_node_just_diag(Resp, [Node | Nodes]) ->
 do_handle_per_node_just_diag(Resp, Node, {badrpc, _}) ->
     write_chunk_format(Resp, "per_node_diag(~p) = diag_failed~n~n~n", [Node]);
 do_handle_per_node_just_diag(Resp, Node, PerNodeDiag) ->
+    MasterEvents = proplists:get_value(master_events, PerNodeDiag, []),
+    DiagNoMasterEvents = lists:keydelete(master_events, 1, PerNodeDiag),
+
+    write_chunk_format(Resp, "master_events(~p) =~n", [Node]),
+    lists:foreach(
+      fun (Event) ->
+              lists:foreach(
+                fun (JSON) ->
+                        write_chunk_format(Resp, "     ~p~n", [JSON])
+                end, master_activity_events:event_to_jsons(Event))
+      end, MasterEvents),
+    Resp:write_chunk(<<"\n\n">>),
+
+    do_handle_per_node_processes(Resp, Node, DiagNoMasterEvents).
+
+do_handle_per_node_processes(Resp, Node, PerNodeDiag) ->
+    erlang:garbage_collect(),
+
     Processes = proplists:get_value(processes, PerNodeDiag),
     DiagNoProcesses = lists:keydelete(processes, 1, PerNodeDiag),
 
