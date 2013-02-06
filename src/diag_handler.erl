@@ -243,8 +243,12 @@ do_handle_per_node_just_diag(Resp, Node, PerNodeDiag) ->
     DiagNoProcesses = lists:keydelete(processes, 1, PerNodeDiag),
 
     write_chunk_format(Resp, "per_node_processes(~p) =~n", [Node]),
-    write_chunk_format(Resp, "    ~p~n", [Processes]),
+    lists:foreach(
+      fun (Process) ->
+              write_chunk_format(Resp, "     ~p~n", [Process])
+      end, Processes),
     Resp:write_chunk(<<"\n\n">>),
+
     do_continue_handling_per_node_just_diag(Resp, Node, DiagNoProcesses).
 
 do_continue_handling_per_node_just_diag(Resp, Node, DiagNoProcesses) ->
