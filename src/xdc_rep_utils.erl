@@ -23,6 +23,7 @@
 -export([parse_rep_db/1,parse_rep_db/3]).
 -export([split_dbname/1]).
 -export([get_master_db/1, get_checkpoint_log_id/2]).
+-export([is_latency_optimized/0]).
 
 -include("xdc_replicator.hrl").
 
@@ -161,13 +162,16 @@ make_options(Props) ->
                                couch_config:get("replicator", "socket_options",
                                                 "[{keepalive, true}, {nodelay, false}]")),
 
+    LatencyOpt= is_latency_optimized(),
+
     ?xdcr_debug("Options for replication:["
-               "worker processes: ~p, "
-               "worker batch size (# of mutations): ~p, "
-               "HTTP connections: ~p, "
-               "connection timeout (ms): ~p,"
-               "num of retries per request: ~p]",
-               [DefWorkers, DefBatchSize, DefConns, DefTimeout, DefRetries]),
+                "latency optimized: ~p, "
+                "worker processes: ~p, "
+                "worker batch size (# of mutations): ~p, "
+                "HTTP connections: ~p, "
+                "connection timeout (ms): ~p,"
+                "num of retries per request: ~p]",
+                [LatencyOpt, DefWorkers, DefBatchSize, DefConns, DefTimeout, DefRetries]),
 
     lists:ukeymerge(1, Options, lists:keysort(1, [
                                                   {connection_timeout, DefTimeout},
@@ -176,7 +180,8 @@ make_options(Props) ->
                                                   {http_connections, DefConns},
                                                   {socket_options, DefSocketOptions},
                                                   {worker_batch_size, DefBatchSize},
-                                                  {worker_processes, DefWorkers}
+                                                  {worker_processes, DefWorkers},
+                                                  {latency_opt, LatencyOpt}
                                                  ])).
 
 
@@ -304,3 +309,26 @@ unsplit_uuid({DbName, undefined}) ->
     DbName;
 unsplit_uuid({DbName, UUID}) ->
     DbName ++ ";" ++ UUID.
+
+-spec is_latency_optimized() -> boolean().
+is_latency_optimized() ->
+    {value, DefaultLatencyOpt} = ns_config:search(xdcr_optimistic_replication),
+
+    EnvVar = case (catch string:to_lower(os:getenv("XDCR_OPTIMISTIC_REPLICATION"))) of
+                 "true" ->
+                     true;
+                 "false" ->
+                     false;
+                 _ ->
+                     undefined
+             end,
+
+    %% env var overrides ns_config parameter, use default ns_config parameter
+    %% only when env var is undefined
+    case EnvVar of
+        undefined ->
+            DefaultLatencyOpt;
+        _ ->
+            EnvVar
+    end.
+

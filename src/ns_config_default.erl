@@ -72,6 +72,11 @@ default() ->
      {xdcr_num_http_connections, 20}, % max # of http conns
      {xdcr_num_retries_per_request, 2}, % # of retries
 
+     %% an option to optimistically send mutations to the destination
+     %% without first doing a look-up to see if the mutation is needed
+     %% on the other side without issuing a getwithmeta().
+     {xdcr_optimistic_replication, false},
+
      {directory, path_config:component_path(data, "config")},
      {index_aware_rebalance_disabled, false},
      {max_bucket_count, 10},

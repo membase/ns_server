@@ -215,3 +215,14 @@
           %% (key = Pid, value = monitoring reference)
           monitor_dict
          }).
+
+%% options to start xdc replication worker process
+-record(rep_worker_option, {
+          cp,                      %% parent vb replicator process
+          source = #db{},          %% source db
+          target = #httpdb{},      %% target db
+          changes_manager,         %% process to queue changes from storage
+          max_conns,               %% max connections
+          latency_opt              %% latenty optimized option
+         }).
+

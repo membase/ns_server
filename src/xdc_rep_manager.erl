@@ -320,7 +320,10 @@ dump_parameters() ->
     {value, DefaultRestartWaitTime} = ns_config:search(xdcr_failure_restart_interval),
     RestartWaitTime = misc:getenv_int("XDCR_FAILURE_RESTART_INTERVAL", DefaultRestartWaitTime),
 
+    LatencyOpt = xdc_rep_utils:is_latency_optimized(),
+
     ?xdcr_debug("default XDCR parameters:~n \t"
+                "latency optimization mode: ~p;~n \t"
                 "number of max concurrent reps per bucket: ~p;~n \t"
                 "checkpoint interval in secs: ~p;~n \t"
                 "limit of replication batch size:  ~p docs, ~p kilobytes;~n \t"
@@ -329,7 +332,8 @@ dump_parameters() ->
                 "max number HTTP connections per vb replicator: ~p;~n \t"
                 "max number retries per connection: ~p;~n \t"
                 "vb replicator waiting time before restart: ~p ",
-               [MaxConcurrentReps,
+               [LatencyOpt,
+                MaxConcurrentReps,
                 IntervalSecs,
                 DefBatchSize, DocBatchSizeKB,
                 DefTimeoutSecs,
@@ -339,3 +343,4 @@ dump_parameters() ->
                 RestartWaitTime
                 ]),
     ok.
+
