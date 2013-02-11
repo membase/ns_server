@@ -21,7 +21,8 @@
 -include("ns_log.hrl").
 -include_lib("kernel/include/file.hrl").
 
--export([do_diag_per_node/0, handle_diag/1,
+-export([do_diag_per_node/0, do_diag_per_node_binary/0,
+         handle_diag/1,
          handle_sasl_logs/1, handle_sasl_logs/2,
          arm_timeout/2, arm_timeout/1, disarm_timeout/1,
          grab_process_info/1, manifest/0,
@@ -145,20 +146,27 @@ do_diag_per_node() ->
      {active_buckets, ActiveBuckets},
      {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))}].
 
+do_diag_per_node_binary() ->
+    ActiveBuckets = ns_memcached:active_buckets(),
+    Diag = [{version, ns_info:version()},
+            {manifest, manifest()},
+            {config, diag_filter_out_config_password(ns_config:get_kv_list())},
+            {basic_info, element(2, ns_info:basic_info())},
+            {processes, grab_process_infos_loop(erlang:processes(), [])},
+            {memory, memsup:get_memory_data()},
+            {disk, ns_info:get_disk_data()},
+            {active_tasks, capi_frontend:task_status_all()},
+            {master_events, (catch master_activity_events_keeper:get_history_raw())},
+            {ns_server_stats, (catch system_stats_collector:get_ns_server_stats())},
+            {active_buckets, ActiveBuckets},
+            {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))}],
+    term_to_binary(Diag).
+
 grab_process_infos_loop([], Acc) ->
     Acc;
 grab_process_infos_loop([P | RestPids], Acc) ->
     NewAcc = [{P, (catch grab_process_info(P))} | Acc],
     grab_process_infos_loop(RestPids, NewAcc).
-
-diag_multicall(Mod, F, Args) ->
-    Nodes = [node() | nodes()],
-    {Results, BadNodes} = rpc:multicall(Nodes, Mod, F, Args, 45000),
-    lists:zipwith(fun (Node,Res) -> {Node, Res} end,
-                  lists:subtract(Nodes, BadNodes),
-                  Results)
-        ++ lists:map(fun (Node) -> {Node, diag_failed} end,
-                     BadNodes).
 
 diag_format_timestamp(EpochMilliseconds) ->
     SecondsRaw = trunc(EpochMilliseconds/1000),
@@ -192,6 +200,32 @@ handle_diag(Req) ->
             Resp:write_chunk(<<>>)
     end.
 
+grab_per_node_diag(Nodes) ->
+    {Results0, BadNodes} = rpc:multicall(Nodes,
+                                         ?MODULE, do_diag_per_node_binary, [], 45000),
+    {OldNodeResults, Results1} =
+        lists:partition(
+          fun ({_Node, {badrpc, {'EXIT', R}}}) ->
+                  misc:is_undef_exit(?MODULE, do_diag_per_node_binary, [], R);
+              (_) ->
+                  false
+          end,
+          lists:zip(lists:subtract(Nodes, BadNodes), Results0)),
+
+    OldNodes = [N || {N, _} <- OldNodeResults],
+    {Results2, BadResults} =
+        lists:partition(
+          fun ({_, {badrpc, _}}) ->
+                  false;
+              (_) ->
+                  true
+          end, Results1),
+
+    Results = [{N, diag_failed} || N <- BadNodes] ++
+        [{N, diag_failed} || {N, _} <- BadResults] ++ Results2,
+
+    {Results, OldNodes}.
+
 handle_just_diag(Req, Extra) ->
     Resp = Req:ok({"text/plain; charset=utf-8",
                    Extra ++
@@ -199,43 +233,16 @@ handle_just_diag(Req, Extra) ->
                         | menelaus_util:server_header()],
                    chunked}),
 
-    PerNodeDiags = diag_multicall(?MODULE, do_diag_per_node, []),
+    Nodes = ns_node_disco:nodes_actual_proper(),
+    {Results, OldNodes} = grab_per_node_diag(Nodes),
 
-    Resp:write_chunk(erlang:list_to_binary("per_node_diag =\n")),
-
-    [begin
-         Text = io_lib:format("    ~p~n",
-                              [{N, case is_list(PList) of
-                                       true -> lists:keydelete(processes, 1, PList);
-                                       _ -> PList
-                                   end}]),
-         Resp:write_chunk(list_to_binary(Text))
-     end || {N, PList} <- PerNodeDiags],
-
-    DiagsWithProcesses =
-        [{N, case is_list(PList) of
-                 true -> proplists:get_value(processes, PList);
-                 _ -> PList
-             end}
-         || {N, PList} <- PerNodeDiags],
-
-    continue_handling_just_diag(Resp, DiagsWithProcesses).
-
-continue_handling_just_diag(Resp, DiagsWithProcesses) ->
-    erlang:garbage_collect(),
-
-    Resp:write_chunk(list_to_binary(io_lib:format("~n~nper_node_processes =~n", []))),
-
-    [begin
-         Text = io_lib:format("    ~p~n", [Processes]),
-         Resp:write_chunk(list_to_binary(Text)),
-         erlang:garbage_collect()
-     end || Processes <- DiagsWithProcesses],
+    handle_per_node_just_diag(Resp, Results),
+    handle_per_node_just_diag_old_nodes(Resp, OldNodes),
 
     Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
                          ns_bucket:get_buckets()),
 
-    Infos = [["~n~nnodes_info = ~p", menelaus_web:build_nodes_info()],
+    Infos = [["nodes_info = ~p", menelaus_web:build_nodes_info()],
              ["buckets = ~p", Buckets],
              ["logs:~n-------------------------------~n"]],
 
@@ -262,6 +269,76 @@ continue_handling_just_diag(Resp, DiagsWithProcesses) ->
                   end, lists:keysort(#log_entry.tstamp, ns_log:recent())),
     Resp.
 
+write_chunk_format(Resp, Fmt, Args) ->
+    Text = io_lib:format(Fmt, Args),
+    Resp:write_chunk(list_to_binary(Text)).
+
+handle_per_node_just_diag(_Resp, []) ->
+    erlang:garbage_collect();
+handle_per_node_just_diag(Resp, [{Node, DiagBinary} | Results]) ->
+    erlang:garbage_collect(),
+
+    Diag = binary_to_term(DiagBinary),
+    do_handle_per_node_just_diag(Resp, Node, Diag),
+    handle_per_node_just_diag(Resp, Results).
+
+handle_per_node_just_diag_old_nodes(_Resp, []) ->
+    erlang:garbage_collect();
+handle_per_node_just_diag_old_nodes(Resp, [Node | Nodes]) ->
+    erlang:garbage_collect(),
+
+    PerNodeDiag = rpc:call(Node, ?MODULE, do_diag_per_node, [], 20000),
+    do_handle_per_node_just_diag(Resp, Node, PerNodeDiag),
+    handle_per_node_just_diag_old_nodes(Resp, Nodes).
+
+do_handle_per_node_just_diag(Resp, Node, {badrpc, _}) ->
+    do_handle_per_node_just_diag(Resp, Node, diag_failed);
+do_handle_per_node_just_diag(Resp, Node, diag_failed) ->
+    write_chunk_format(Resp, "per_node_diag(~p) = diag_failed~n~n~n", [Node]);
+do_handle_per_node_just_diag(Resp, Node, PerNodeDiag) ->
+    MasterEvents = proplists:get_value(master_events, PerNodeDiag, []),
+    DiagNoMasterEvents = lists:keydelete(master_events, 1, PerNodeDiag),
+
+    write_chunk_format(Resp, "master_events(~p) =~n", [Node]),
+    lists:foreach(
+      fun (Event0) ->
+              Event = case is_binary(Event0) of
+                          true ->
+                              binary_to_term(Event0);
+                          false ->
+                              Event0
+                      end,
+
+              lists:foreach(
+                fun (JSON) ->
+                        write_chunk_format(Resp, "     ~p~n", [JSON])
+                end, master_activity_events:event_to_jsons(Event))
+      end, MasterEvents),
+    Resp:write_chunk(<<"\n\n">>),
+
+    do_handle_per_node_processes(Resp, Node, DiagNoMasterEvents).
+
+do_handle_per_node_processes(Resp, Node, PerNodeDiag) ->
+    erlang:garbage_collect(),
+
+    Processes = proplists:get_value(processes, PerNodeDiag),
+    DiagNoProcesses = lists:keydelete(processes, 1, PerNodeDiag),
+
+    write_chunk_format(Resp, "per_node_processes(~p) =~n", [Node]),
+    lists:foreach(
+      fun (Process) ->
+              write_chunk_format(Resp, "     ~p~n", [Process])
+      end, Processes),
+    Resp:write_chunk(<<"\n\n">>),
+
+    do_continue_handling_per_node_just_diag(Resp, Node, DiagNoProcesses).
+
+do_continue_handling_per_node_just_diag(Resp, Node, DiagNoProcesses) ->
+    erlang:garbage_collect(),
+
+    write_chunk_format(Resp, "per_node_diag(~p) =~n", [Node]),
+    write_chunk_format(Resp, "     ~p~n", [DiagNoProcesses]),
+    Resp:write_chunk(<<"\n\n">>).
 
 do_handle_diag(Req, Extra) ->
     Resp = handle_just_diag(Req, Extra),

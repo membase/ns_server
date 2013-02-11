@@ -18,7 +18,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, get_history/0]).
+-export([start_link/0, get_history/0, get_history_raw/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,
@@ -37,6 +37,9 @@ start_link() ->
 
 get_history() ->
     [binary_to_term(B) || B <- gen_server:call(?MODULE, get_history)].
+
+get_history_raw() ->
+    gen_server:call(?MODULE, get_history).
 
 init(_) ->
     Self = self(),

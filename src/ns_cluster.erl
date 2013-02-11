@@ -637,6 +637,15 @@ perform_actual_join(RemoteNode, NewCookie) ->
     Status = try
         ?cluster_debug("ns_cluster: joining cluster. Child has exited.", []),
 
+        RV = couch_server:delete(<<"_replicator">>, []),
+        ?cluster_debug("Deleted _replicator db: ~p.", [RV]),
+        case RV =:= ok orelse RV =:= not_found of
+            true ->
+                ok;
+            false ->
+                throw({could_not_delete_replicator_db, RV})
+        end,
+
         BlackSpot = make_ref(),
         MyNode = node(),
         ns_config:update(fun ({directory,_} = X) -> X;

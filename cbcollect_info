@@ -228,16 +228,27 @@ def get_node():
     return node
 
 def get_dbdir(parentdir="."):
-    for f in ["../etc/runtime.ini", "../etc/couchdb/local.ini"]:
+    for f in ["../etc/runtime.ini",
+              "../etc/couchdb/local.ini",
+              "~/Library/Application Support/Couchbase/etc/couchdb/local.ini"]:
         path = os.path.join(parentdir, f)
-        for line in open(path):
-            if "database_dir = " in line:
-                return string.strip(line.split("= ")[-1])
+        try:
+            f = open(path)
+            for line in f:
+                if "database_dir = " in line:
+                    close(f)
+                    return string.strip(line.split("= ")[-1])
+            close(f)
+        except:
+            pass
 
     if platform.system() == 'Windows':
         return "c:/Program Files/Couchbase/Server/var/lib/couchbase/data"
     else:
-        return "/opt/couchbase/var/lib/couchbase/data"
+        if sys.platform == "darwin":
+            return "~/Library/Application Support/Couchbase/var/lib/couchbase/data"
+        else:
+            return "/opt/couchbase/var/lib/couchbase/data"
 
 def get_credential():
     ret = retrieve_config_value('\s*{creds,\[\{"(.+)",\s*\[\{password,\s*"(.*)"\}')
@@ -437,7 +448,8 @@ def make_tasks(root="/opt/couchbase", dbdir=""):
                     "curl -sS \"http://%s@127.0.0.1:8091/diag?noLogs=1\"" % (c),
                     log_file="diag.log"))
 
-  for f in os.listdir(dbdir):
+  try:
+    for f in os.listdir(dbdir):
       path = os.path.join(dbdir, f)
       #find bucket directory
       if os.path.isdir(path) and f not in [".delete", "@indexes"]:
@@ -448,7 +460,8 @@ def make_tasks(root="/opt/couchbase", dbdir=""):
                   AllOsTask("couchbase design docs - bucket:%s" % f,
                             "couch_dbdump \"%s\"" % (os.path.join(path, ddoc)),
                             log_file="ddocs.log"))
-
+  except:
+    pass
   return _tasks
 
 def main():
