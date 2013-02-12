@@ -233,9 +233,10 @@ prepare(CurrentMap, TargetMap, BackfillsLimit, MovesBeforeCompaction, InfoLogger
 %% @doc true iff we're done. NOTE: is_done is only valid if
 %% choose_action returned empty actions list
 is_done(#state{moves_left = MovesLeft,
+               moves_from_undefineds = UndefinedMoves,
                total_in_flight = TotalInFlight,
                in_flight_compactions = InFlightCompactions} = _State) ->
-    MovesLeft =:= []
+    MovesLeft =:= [] andalso UndefinedMoves =:= []
         andalso TotalInFlight =:= 0 andalso sets:new() =:= InFlightCompactions.
 
 updatef(Record, Field, Body) ->
@@ -262,8 +263,10 @@ consider_starting_compaction(State) ->
 %% builds list of actions to do now (in passed state) and returns it
 %% with new state (assuming actions are started)
 -spec choose_action(#state{}) -> {[action()], #state{}}.
-choose_action(#state{moves_from_undefineds = [_|_] = Moves} = State) ->
-    NewState = State#state{moves_from_undefineds = []},
+choose_action(#state{moves_from_undefineds = [_|_] = Moves,
+                     total_in_flight = TotalInFlight} = State) ->
+    NewState = State#state{moves_from_undefineds = [],
+                           total_in_flight = TotalInFlight + length(Moves)},
     {OtherActions, NewState2} = choose_action(NewState),
     {OtherActions ++ [{move, M} || M <- Moves], NewState2};
 choose_action(State) ->
@@ -474,7 +477,7 @@ note_backfill_done(State, {move, {_V, [Src|_], [Dst|_]}}) ->
 %% done. Users of this code will call it when move is done to update
 %% state so that next moves and/or compactions can be started.
 note_move_completed(State, {move, {_V, [undefined|_], [_Dst|_]}}) ->
-    State;
+    updatef(State, #state.total_in_flight, fun (V) -> V - 1 end);
 note_move_completed(State, {move, {_V, [Src|_], [Dst|_]}}) ->
     State1 =
         updatef(State, #state.in_flight_per_node,
