@@ -48,6 +48,7 @@
          note_wait_index_updated_ended/3,
          note_compaction_inhibited/2,
          note_compaction_uninhibited/2,
+         note_forced_inhibited_view_compaction/1,
          event_to_jsons/1,
          event_to_formatted_iolist/1,
          format_some_history/1]).
@@ -163,6 +164,9 @@ note_compaction_inhibited(BucketName, Node) ->
 
 note_compaction_uninhibited(BucketName, Node) ->
     submit_cast({compaction_uninhibited, BucketName, Node}).
+
+note_forced_inhibited_view_compaction(BucketName) ->
+    submit_cast({forced_inhibited_view_compaction, BucketName, node()}).
 
 start_link_timestamper() ->
     {ok, ns_pubsub:subscribe_link(master_activity_events_ingress, fun timestamper_body/2, [])}.
@@ -573,6 +577,12 @@ event_to_jsons({TS, compaction_inhibited, BucketName, Node}) ->
 
 event_to_jsons({TS, compaction_uninhibited, BucketName, Node}) ->
     [format_simple_plist_as_json([{type, compactionUninhibited},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
+                                  {node, node_to_host(Node, ns_config:get())}])];
+
+event_to_jsons({TS, forced_inhibited_view_compaction, BucketName, Node}) ->
+    [format_simple_plist_as_json([{type, forcedPreviouslyInhibitedViewCompaction},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
                                   {node, node_to_host(Node, ns_config:get())}])];

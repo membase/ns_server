@@ -1402,6 +1402,7 @@ compact_next_bucket(#state{buckets_to_compact=Buckets,
     case PausedBucket =/= undefined of
         true ->
             ?log_debug("Spawned 'uninhibited' compaction for ~s", [PausedBucket]),
+            master_activity_events:note_forced_inhibited_view_compaction(PausedBucket),
             {next_bucket, NextBucket} = {next_bucket, PausedBucket},
             {next_bucket, InhibitedBucket} = {next_bucket, PausedBucket},
             State#state{compactor_pid = Compactor,
