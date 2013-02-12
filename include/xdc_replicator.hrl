@@ -33,6 +33,8 @@
 -define(XDCR_CHECKPOINT_HISTORY, 10).
 %% capture the last 10 entries of error history per bucket replicator
 -define(XDCR_ERROR_HISTORY, 10).
+%% interval (secs) to compute rate stats
+-define(XDCR_RATE_STAT_INTERVAL, 1).
 
 %% data structures
 
@@ -43,6 +45,15 @@
           target,
           options
          }).
+
+%% rate of replicaiton stat maintained in bucket replicator
+-record(ratestat, {
+          timestamp = now(),
+          item_replicated = 0,
+          data_replicated = 0,
+          curr_rate_item = 0,
+          curr_rate_data = 0
+}).
 
 %% vbucket replication status and statistics, used by xdc_vbucket_rep
 -record(rep_vb_status, {
@@ -88,7 +99,10 @@
           %% for the same vbucket
           total_docs_checked = 0,
           total_docs_written = 0,
-          total_data_replicated = 0
+          total_data_replicated = 0,
+
+          %% rate of replication
+          ratestat = #ratestat{}
  }).
 
 %% vbucket checkpoint status used by each vbucket replicator and status reporting

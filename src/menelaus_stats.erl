@@ -138,35 +138,11 @@ handle_overview_stats(PoolId, Req) ->
                                             {ops, Ops},
                                             {ep_bg_fetched, DiskReads}]}).
 
-%% GET /pools/default/stats
-%% Supported query params:
-%%  resampleForUI - pass 1 if you need 60 samples
-%%  zoom - stats zoom level (minute | hour | day | week | month | year)
-%%  haveTStamp - omit samples earlier than given
-%%
-%% Response:
-%%  {hot_keys: [{name: "key, ops: 12.4}, ...],
-%%   op: {lastTStamp: 123343434, // last timestamp in served samples. milliseconds
-%%        tstampParam: 123342434, // haveTStamp param is given, understood and found
-%%        interval: 1000, // samples interval in milliseconds
-%%        samplesCount: 60, // number of samples that cover selected zoom level
-%%        samples: {timestamp: [..tstamps..],
-%%                  ops: [..ops samples..],
-%%                  ...}
-%%        }}
-
-handle_bucket_stats(PoolId, all, Req) ->
-    BucketNames = menelaus_web_buckets:all_accessible_bucket_names(PoolId, Req),
-    handle_buckets_stats(PoolId, BucketNames, Req);
-
 %% GET /pools/{PoolID}/buckets/{Id}/stats
 handle_bucket_stats(PoolId, Id, Req) ->
-    handle_buckets_stats(PoolId, [Id], Req).
-
-handle_buckets_stats(PoolId, BucketIds, Req) ->
     Params = Req:parse_qs(),
-    {struct, PropList1} = build_buckets_stats_ops_response(PoolId, all, BucketIds, Params),
-    {struct, PropList2} = build_buckets_stats_hks_response(PoolId, BucketIds),
+    {struct, PropList1} = build_bucket_stats_ops_response(PoolId, all, Id, Params),
+    {struct, PropList2} = build_bucket_stats_hks_response(PoolId, Id),
     menelaus_util:reply_json(Req, {struct, PropList1 ++ PropList2}).
 
 %% Per-Node Stats
@@ -180,7 +156,7 @@ handle_bucket_node_stats(PoolId, BucketName, HostName, Req) ->
       fun (_Req, _BucketInfo, HostInfo) ->
               Node = binary_to_atom(proplists:get_value(otpNode, HostInfo), latin1),
               Params = Req:parse_qs(),
-              {struct, [{op, {struct, OpsPropList}}]} = build_buckets_stats_ops_response(PoolId, [Node], [BucketName], Params),
+              {struct, [{op, {struct, OpsPropList}}]} = build_bucket_stats_ops_response(PoolId, [Node], BucketName, Params),
 
               SystemStatsSamples =
                   case grab_aggregate_op_stats("@system", [Node], Params) of
@@ -646,7 +622,7 @@ samples_to_proplists(Samples) ->
                  end, ExtraStats)
         ++ orddict:to_list(Dict).
 
-build_buckets_stats_ops_response(_PoolId, Nodes, [BucketName], Params) ->
+build_bucket_stats_ops_response(_PoolId, Nodes, BucketName, Params) ->
     {Samples, ClientTStamp, Step, TotalNumber} = grab_aggregate_op_stats(BucketName, Nodes, Params),
 
 
@@ -671,7 +647,7 @@ is_safe_key_name(Name) ->
                       C >= 16#20 andalso C =< 16#7f
               end, Name).
 
-build_buckets_stats_hks_response(_PoolId, [BucketName]) ->
+build_bucket_stats_hks_response(_PoolId, BucketName) ->
     BucketsTopKeys = case hot_keys_keeper:bucket_hot_keys(BucketName) of
                          undefined -> [];
                          X -> X
@@ -796,7 +772,14 @@ couchbase_replication_stats_descriptions(BucketId) ->
                                           {desc,<<"Number of document mutations in XDC replication queue">>}]},
                                  {struct,[{title,<<"XDCR queue size">>},
                                           {name,<<Prefix/binary,"size_rep_queue">>},
-                                          {desc,<<"Size in bytes of XDC replication queue">>}]}]}]}
+                                          {desc,<<"Size in bytes of XDC replication queue">>}]},
+                                 %% fourth row
+                                 {struct,[{title,<<"mutation replication rate">>},
+                                          {name,<<Prefix/binary,"rate_replication">>},
+                                          {desc,<<"Rate of replication in terms of number of replicated mutations per second">>}]},
+                                 {struct,[{title,<<"data replication rate">>},
+                                          {name,<<Prefix/binary,"bandwidth_usage">>},
+                                          {desc,<<"Rate of replication in terms of bytes replicated per second">>}]}]}]}
               end, Reps).
 
 couchbase_view_stats_descriptions(BucketId) ->
@@ -1159,9 +1142,9 @@ membase_stats_description(BucketId) ->
         ++ [{struct,[{blockName,<<"Incoming XDCR Operations">>},
                      {extraCSSClasses,<<"closed">>},
                      {stats,
-                      [{struct,[{title,<<"gets per sec.">>},
+                      [{struct,[{title,<<"metadata reads per sec.">>},
                                 {name,<<"ep_num_ops_get_meta">>},
-                                {desc,<<"Number of get operations per second for this bucket as the target for XDCR">>}]},
+                                {desc,<<"Number of metadata read operations per second for this bucket as the target for XDCR">>}]},
                        {struct,[{title,<<"sets per sec.">>},
                                 {name,<<"ep_num_ops_set_meta">>},
                                 {desc,<<"Number of set operations per second for this bucket as the target for XDCR">>}]},
@@ -1254,6 +1237,15 @@ server_resources_stats_description() ->
                 {title,<<"CPU utilization %">>},
                 {desc,<<"Percentage of CPU in use across all available cores on this server">>},
                 {maxY,100}]},
+       {struct,[{name,<<"minor_faults">>},
+                {title,<<"Minor page faults">>},
+                {desc,<<"Number of minor page faults experienced by the server (may not be availalbe on all platforms)">>}]},
+       {struct,[{name,<<"major_faults">>},
+                {title,<<"Major page faults">>},
+                {desc,<<"Number of major page faults experienced by the server (may not be available on all platforms)">>}]},
+       {struct,[{name,<<"page_faults">>},
+                {title,<<"Page faults">>},
+                {desc,<<"Total number of page faults experienced by the server">>}]},
        {struct,[{name,<<"curr_connections">>},
                 {title,<<"connections">>},
                 {desc,<<"Number of connections to this server "

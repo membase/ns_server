@@ -116,6 +116,7 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                                        docs_checked = Checked,
                                        docs_written = Written,
                                        data_replicated = DataRepd,
+                                       ratestat = RateStat,
                                        work_time = WorkTime,
                                        commit_time = CommitTime},
                         {WorkLeftAcc,
@@ -126,28 +127,48 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                          CommitTimeAcc,
                          DocsQueueAcc,
                          SizeQueueAcc,
+                         RepRateItemAcc,
+                         RepRateDataAcc,
                          VbReplicatingAcc}) ->
-                                {WorkLeftAcc + Left,
-                                 CheckedAcc + Checked,
-                                 WrittenAcc + Written,
-                                 DataRepdAcc + DataRepd,
-                                 WorkTimeAcc + WorkTime,
-                                 CommitTimeAcc + CommitTime,
-                                 DocsQueueAcc + DocsQueue,
-                                 SizeQueueAcc + SizeQueue,
-                                 if Status == replicating ->
+
+                            RepRateItem = case Status of
+                                              replicating ->
+                                                  RateStat#ratestat.curr_rate_item;
+                                              _ ->
+                                                  0
+                                          end,
+                            RepRateData = case Status of
+                                              replicating ->
+                                                  RateStat#ratestat.curr_rate_data;
+                                              _ ->
+                                                  0
+                                          end,
+
+                            {WorkLeftAcc + Left,
+                             CheckedAcc + Checked,
+                             WrittenAcc + Written,
+                             DataRepdAcc + DataRepd,
+                             WorkTimeAcc + WorkTime,
+                             CommitTimeAcc + CommitTime,
+                             DocsQueueAcc + DocsQueue,
+                             SizeQueueAcc + SizeQueue,
+                             RepRateItemAcc + RepRateItem,
+                             RepRateDataAcc + RepRateData,
+                             if Status == replicating ->
                                      [Vb | VbReplicatingAcc];
-                                 true ->
+                                true ->
                                      VbReplicatingAcc
-                                 end}
-                        end, {0, 0, 0, 0,
-                              0, 0, 0, 0,
-                              []}, Dict),
+                             end}
+                    end, {0, 0, 0, 0,
+                          0, 0, 0, 0,
+                          0, 0, []}, Dict),
     {Left1, Checked1, Written1, DataRepd1,
      WorkTime1, CommitTime1,
-     DocsChangesQueue1, SizeChangesQueue1, VbsReplicating1} = Stats,
+     DocsChangesQueue1, SizeChangesQueue1,
+     RepRateItem1, RepRateData1, VbsReplicating1} = Stats,
     %% get checkpoint stats
     {NumCheckpoints1, NumFailedCkpts1} = checkpoint_status(CkptHistory),
+
     Props = [{changes_left, Left1},
              {docs_checked, Checked1},
              {docs_written, Written1},
@@ -160,7 +181,9 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
              {num_failedckpts, NumFailedCkpts1},
              {docs_rep_queue, DocsChangesQueue1},
              {size_rep_queue, SizeChangesQueue1},
-             {vbs_replicating, VbsReplicating1}],
+             {vbs_replicating, VbsReplicating1},
+             {rate_replication, round(RepRateItem1)},
+             {bandwidth_usage, round(RepRateData1)}],
     {reply, {ok, Props}, State};
 
 handle_call(target, _From, State) ->
@@ -206,7 +229,13 @@ handle_info({set_vb_rep_status, #rep_vb_status{vb = Vb} = NewStat},
     Stat = case dict:is_key(Vb, Dict) of
                false ->
                    %% first time the vb rep post the stat
-                   NewStat;
+
+                   %% update rate stats when vb report its progress to bucket replicator
+                   NewRateStat = compute_rate_status(NewStat#rep_vb_status.docs_written,
+                                                     NewStat#rep_vb_status.data_replicated,
+                                                     NewStat#rep_vb_status.ratestat),
+
+                   NewStat#rep_vb_status{ratestat = NewRateStat};
                 _ ->
                    %% already exists an entry in stat table
                    %% compute accumulated stats
@@ -228,6 +257,11 @@ handle_info({set_vb_rep_status, #rep_vb_status{vb = Vb} = NewStat},
                    AccuNumCkpts = OldNumCkpts + NewStat#rep_vb_status.num_checkpoints,
                    AccuNumFailedCkpts = OldNumFailedCkpts + NewStat#rep_vb_status.num_failedckpts,
 
+                   %% update rate stats when vb report its progress to bucket replicator
+                   NewRateStat = compute_rate_status(AccuDocsWritten,
+                                                     AccuDataRepd,
+                                                     OldStat#rep_vb_status.ratestat),
+
                    %% update with the accumulated stats
                    NewStat#rep_vb_status{
                      docs_checked = AccuDocsChecked,
@@ -236,7 +270,8 @@ handle_info({set_vb_rep_status, #rep_vb_status{vb = Vb} = NewStat},
                      work_time = AccuWorkTime,
                      commit_time = AccuCkptTime,
                      num_checkpoints = AccuNumCkpts,
-                     num_failedckpts = AccuNumFailedCkpts}
+                     num_failedckpts = AccuNumFailedCkpts,
+                     ratestat = NewRateStat}
            end,
 
     Dict2 = dict:store(Vb, Stat, Dict),
@@ -339,3 +374,38 @@ checkpoint_status(CheckpointHistory) ->
                                        {0, 0},
                                        HistoryList),
     {NumSuccCkpts, NumFailedCkpts}.
+
+
+
+%% compute the replicaiton rate, and return the new rate stat
+-spec compute_rate_status(integer(), integer(), #ratestat{}) -> {#ratestat{}}.
+compute_rate_status(Written1, DataRepd1, RateStat) ->
+    T2 = now(),
+    T1 = RateStat#ratestat.timestamp,
+    %% compute elapsed time in microsecond
+    Delta = timer:now_diff(T2, T1),
+    %% convert from us to secs
+    DeltaSecs = Delta / 1000000,
+    %% to smooth the stats, only compute rate when interval is big enough
+    Interval = misc:getenv_int("XDCR_RATE_STAT_INTERVAL", ?XDCR_RATE_STAT_INTERVAL),
+
+    NewRateStat = case DeltaSecs < Interval of
+                      true ->
+                          %% sampling interval is too small,
+                          %% just return the last results
+                          RateStat;
+                      _ ->
+                          %% compute vb replicator rate stat
+                          %% replication rate in terms of # items per second
+                          RateItem1 = (Written1 - RateStat#ratestat.item_replicated) / DeltaSecs,
+                          %% replicaiton rate in terms of bytes per second
+                          RateData1 = (DataRepd1 - RateStat#ratestat.data_replicated) / DeltaSecs,
+                          %% update rate stat
+                          RateStat#ratestat{timestamp = T2,
+                                            item_replicated = Written1,
+                                            data_replicated = DataRepd1,
+                                            curr_rate_item = RateItem1,
+                                            curr_rate_data = RateData1
+                                           }
+                  end,
+    NewRateStat.

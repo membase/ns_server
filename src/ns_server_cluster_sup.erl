@@ -65,8 +65,6 @@ init([]) ->
             permanent, 1000, worker, []},
            {ns_cluster, {ns_cluster, start_link, []},
             permanent, 5000, worker, [ns_cluster]},
-           {mb_mnesia_sup, {mb_mnesia_sup, start_link, []},
-            permanent, infinity, supervisor, [mb_mnesia_sup]},
            {ns_config_sup, {ns_config_sup, start_link, []},
             permanent, infinity, supervisor,
             [ns_config_sup]},

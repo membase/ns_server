@@ -139,7 +139,6 @@ do-install:
 	cp cbbrowse_logs $(DESTDIR)$(PREFIX)/bin/cbbrowse_logs
 	cp cbcollect_info $(DESTDIR)$(PREFIX)/bin/cbcollect_info
 	chmod +x $(DESTDIR)$(PREFIX)/bin/couchbase-server $(DESTDIR)$(PREFIX)/bin/cbbrowse_logs $(DESTDIR)$(PREFIX)/bin/cbcollect_info
-	mkdir -p $(DESTDIR)$(PREFIX)/var/lib/couchbase/mnesia
 	mkdir -p $(DESTDIR)$(PREFIX)/var/lib/couchbase/logs
 	cp ebucketmigrator $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
 	chmod +x $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
@@ -186,7 +185,7 @@ $(COUCHBASE_PLT): | all
 
 do_build_plt:
 	dialyzer --output_plt $(COUCHBASE_PLT) --build_plt \
-          --apps compiler crypto erts inets kernel mnesia os_mon sasl ssl stdlib xmerl \
+          --apps compiler crypto erts inets kernel os_mon sasl ssl stdlib xmerl \
             $(COUCH_PATH)/src/mochiweb \
             $(COUCH_PATH)/src/snappy $(COUCH_PATH)/src/etap $(realpath $(COUCH_PATH)/src/ibrowse) \
             $(realpath $(COUCH_PATH)/src/lhttpc) \

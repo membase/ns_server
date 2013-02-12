@@ -197,7 +197,8 @@ current_status() ->
          {node_storage_conf, StorageConf},
          {statistics, erlang_stats()},
          {system_stats, [{N, proplists:get_value(N, SystemStats, 0)}
-                         || N <- [cpu_utilization_rate, swap_total, swap_used]]},
+                         || N <- [cpu_utilization_rate, swap_total, swap_used,
+                                  minor_faults, major_faults, page_faults]]},
          {interesting_stats, InterestingStats},
          {cluster_compatibility_version, ClusterCompatVersion}
          | element(2, ns_info:basic_info())] ++ MaybeMeminfo.

@@ -212,21 +212,25 @@ handle_call({worker_done, Pid}, _From,
                          calendar:now_to_local_time(LastCkptTime),
                          calendar:now_to_local_time(StartRepTime)
                         ]),
-            %% report stats to bucket replicator
+
+            %% we mark the vb rep status to idle
+            NewRateStat = (VbStatus2#rep_vb_status.ratestat)#ratestat{curr_rate_item = 0,
+                                                                      curr_rate_data = 0},
+            VbStatus3 = VbStatus2#rep_vb_status{status = idle, ratestat = NewRateStat},
+
+            %% finally report stats to bucket replicator and tell it that I am idle
             NewState = update_status_to_parent(State2#rep_state{
                                                   workers = [],
-                                                  status = VbStatus2,
+                                                  status = VbStatus3,
                                                   source = undefined,
                                                   src_master_db = undefined,
                                                   target = undefined,
                                                   tgt_master_db = undefined}),
 
-            %% finally we mark the vb rep  status to idle after reporting stats to bucket replicator
-            VbStatus3 = VbStatus2#rep_vb_status{status = idle},
             %% cancel the timer since we will start it next time the vb rep waken up
             NewState2 = xdc_vbucket_rep_ckpt:cancel_timer(NewState),
             % hibernate to reduce memory footprint while idle
-            {reply, ok, NewState2#rep_state{status = VbStatus3}, hibernate};
+            {reply, ok, NewState2, hibernate};
         Workers2 ->
             {reply, ok, State#rep_state{workers = Workers2}}
     end.

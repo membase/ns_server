@@ -68,7 +68,8 @@ run_on_subset(#httpd{path_parts=[_, _, DName, _, _]}=Req, Name) ->
             case get_value("full_set", (Req#httpd.mochi_req):parse_qs()) =/= "true"
                 andalso run_on_subset_according_to_stats(Name) of
                 true -> capi_frontend:first_vbucket(Name);
-                false -> full_set
+                false -> full_set;
+                {error, no_stats} -> capi_frontend:first_vbucket(Name)
             end;
         _ ->
             full_set
@@ -86,7 +87,7 @@ run_on_subset_according_to_stats(Bucket) ->
             NumVBuckets = proplists:get_value(num_vbuckets, Config, []),
             {ok, N} = orddict:find(curr_items_tot, Stats#stat_entry.values),
             N > NumVBuckets * ?DEV_MULTIPLE;
-        {'EXIT', _Reason} ->
+        _Error ->
             {error, no_stats}
     end.
 

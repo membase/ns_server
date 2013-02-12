@@ -2,6 +2,24 @@ This file documents user-visible changes in Couchbase clustering & UI.
 ======================================================================
 
 -----------------------------------------
+Between versions 2.0.1 and 2.*
+-----------------------------------------
+
+* (MB-7574) Support for REST call /pools/default/stats is discontinued.
+
+  This REST call was meant to aggregate stats for several buckets. And
+  it used to do so long time ago (Northscale Server 1.0.3). But after
+  'membase' bucket type was introduced, it worked only for a single
+  bucket and failed with badmatch error otherwise. The proper way to
+  grab bucket stats now is /pools/default/buckets/<bucket name>/stats
+  REST call.
+
+* (CBD-771) Stats archives are not stored in mnesia anymore.
+
+  Instead they are collected in ETS tables and saved to plain files
+  from time to time.
+
+-----------------------------------------
 Between versions 2.0.0 and 2.0.1
 -----------------------------------------
 

@@ -71,23 +71,39 @@ flush_ticks(Acc) ->
             Acc
     end.
 
-recv_data(Port, Acc, WantedLength) ->
+-define(STATS_V0_BLOCK_SIZE, 88).
+-define(STATS_V1_BLOCK_SIZE, 112).
+
+recv_data(Port) ->
+    recv_data_loop(Port, <<"">>).
+
+recv_data_loop(Port, <<0:32/native, _/binary>> = Acc) ->
+    Data = recv_data_with_length(Port, Acc, ?STATS_V0_BLOCK_SIZE - erlang:size(Acc)),
+    {Data, fun unpack_data_v0/2};
+recv_data_loop(Port, <<1:32/native, _/binary>> = Acc) ->
+    Data = recv_data_with_length(Port, Acc, ?STATS_V1_BLOCK_SIZE - erlang:size(Acc)),
+    {Data, fun unpack_data_v1/2};
+recv_data_loop(Port, Acc) ->
+    receive
+        {Port, {data, Data}} ->
+            recv_data_loop(Port, <<Data/binary, Acc/binary>>)
+    end.
+
+recv_data_with_length(_Port, Acc, _WantedLength = 0) ->
+    erlang:iolist_to_binary(Acc);
+recv_data_with_length(Port, Acc, WantedLength) ->
     receive
         {Port, {data, Data}} ->
             Size = size(Data),
             if
-                Size < WantedLength ->
-                    recv_data(Port, [Data | Acc], WantedLength - Size);
-                Size =:= WantedLength ->
-                    erlang:iolist_to_binary(lists:reverse([Data | Acc]));
+                Size =< WantedLength ->
+                    recv_data_with_length(Port, [Acc | Data], WantedLength - Size);
                 Size > WantedLength ->
                     erlang:error({too_big_recv, Size, WantedLength, Data, Acc})
             end
     end.
 
--define(STATS_BLOCK_SIZE, 88).
-
-unpack_data(Bin, PrevSample) ->
+unpack_data_v0(Bin, PrevSample) ->
     <<Version:32/native,
       StructSize:32/native,
       CPULocalMS:64/native,
@@ -111,7 +127,10 @@ unpack_data(Bin, PrevSample) ->
                 {mem_total, MemTotal},
                 {mem_used, MemUsed},
                 {mem_actual_used, MemActualUsed},
-                {mem_actual_free, MemActualFree}],
+                {mem_actual_free, MemActualFree},
+                {minor_faults, 0},
+                {major_faults, 0},
+                {page_faults, 0}],
     NowSamples = case PrevSample of
                      undefined -> undefined;
                      _ -> {_, OldCPULocal} = lists:keyfind(cpu_local_ms, 1, PrevSample),
@@ -127,14 +146,71 @@ unpack_data(Bin, PrevSample) ->
                  end,
     {NowSamples, RawStats}.
 
+
+unpack_data_v1(Bin, PrevSample) ->
+    <<Version:32/native,
+      StructSize:32/native,
+      CPULocalMS:64/native,
+      CPUIdleMS:64/native,
+      SwapTotal:64/native,
+      SwapUsed:64/native,
+      _SwapPageIn:64/native,
+      _SwapPageOut:64/native,
+      MemTotal:64/native,
+      MemUsed:64/native,
+      MemActualUsed:64/native,
+      MemActualFree:64/native,
+      MinorFaults:64/native,
+      MajorFaults:64/native,
+      PageFaults:64/native>> = Bin,
+    StructSize = erlang:size(Bin),
+    Version = 1,
+    RawStats = [{cpu_local_ms, CPULocalMS},
+                {cpu_idle_ms, CPUIdleMS},
+                {swap_total, SwapTotal},
+                {swap_used, SwapUsed},
+                %% {swap_page_in, SwapPageIn},
+                %% {swap_page_out, SwapPageOut},
+                {mem_total, MemTotal},
+                {mem_used, MemUsed},
+                {mem_actual_used, MemActualUsed},
+                {mem_actual_free, MemActualFree},
+                {minor_faults, MinorFaults},
+                {major_faults, MajorFaults},
+                {page_faults, PageFaults}],
+    NowSamples = case PrevSample of
+                     undefined -> undefined;
+                     _ -> {_, OldCPULocal} = lists:keyfind(cpu_local_ms, 1, PrevSample),
+                          {_, OldCPUIdle} = lists:keyfind(cpu_idle_ms, 1, PrevSample),
+                          {_, OldMinorFaults} = lists:keyfind(minor_faults, 1, PrevSample),
+                          {_, OldMajorFaults} = lists:keyfind(major_faults, 1, PrevSample),
+                          {_, OldPageFaults} = lists:keyfind(page_faults, 1, PrevSample),
+                          LocalDiff = CPULocalMS - OldCPULocal,
+                          IdleDiff = CPUIdleMS - OldCPUIdle,
+                          MinorFaultsDiff = MinorFaults - OldMinorFaults,
+                          MajorFaultsDiff = MajorFaults - OldMajorFaults,
+                          PageFaultsDiff = PageFaults - OldPageFaults,
+                          RV1 = misc:update_proplist(RawStats,
+                                                     [{cpu_local_ms, LocalDiff},
+                                                      {cpu_idle_ms, IdleDiff},
+                                                      {minor_faults, MinorFaultsDiff},
+                                                      {major_faults, MajorFaultsDiff},
+                                                      {page_faults, PageFaultsDiff}]),
+                          [{mem_free, MemTotal - MemUsed},
+                           {cpu_utilization_rate, try 100 * (LocalDiff - IdleDiff) / LocalDiff
+                                                  catch error:badarith -> 0 end}
+                           | RV1]
+                 end,
+    {NowSamples, RawStats}.
+
 handle_info({tick, TS}, #state{port = Port, prev_sample = PrevSample}) ->
     case flush_ticks(0) of
         0 -> ok;
         N -> ?stats_warning("lost ~p ticks", [N])
     end,
     port_command(Port, <<0:32/native>>),
-    Binary = recv_data(Port, [], ?STATS_BLOCK_SIZE),
-    {Stats0, NewPrevSample} = unpack_data(Binary, PrevSample),
+    {Binary, UnpackFn} = recv_data(Port),
+    {Stats0, NewPrevSample} = UnpackFn(Binary, PrevSample),
     case Stats0 of
         undefined -> ok;
         _ ->

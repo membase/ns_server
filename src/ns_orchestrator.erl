@@ -84,20 +84,7 @@ start_link() ->
     misc:start_singleton(gen_fsm, ?MODULE, [], []).
 
 wait_for_orchestrator() ->
-    SecondsToWait = 20,
-    SleepTime = 0.2,
-    wait_for_orchestrator_loop(erlang:round(SecondsToWait/SleepTime), erlang:round(SleepTime * 1000)).
-
-wait_for_orchestrator_loop(0, _SleepTime) ->
-    failed;
-wait_for_orchestrator_loop(TriesLeft, SleepTime) ->
-    case is_pid(global:whereis_name(?MODULE)) of
-        true ->
-            ok;
-        false ->
-            timer:sleep(SleepTime),
-            wait_for_orchestrator_loop(TriesLeft-1, SleepTime)
-    end.
+    misc:wait_for_global_name(?MODULE, 20000).
 
 
 -spec create_bucket(memcached|membase, nonempty_string(), list()) ->

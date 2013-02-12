@@ -135,9 +135,6 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth_any_bucket, fun handle_pools/1};
                              ["pools", Id] ->
                                  {auth_any_bucket, fun check_and_handle_pool_info/2, [Id]};
-                             ["pools", Id, "stats"] ->
-                                 {auth_any_bucket, fun menelaus_stats:handle_bucket_stats/3,
-                                  [Id, all]};
                              ["pools", Id, "overviewStats"] ->
                                  {auth, fun menelaus_stats:handle_overview_stats/2, [Id]};
                              ["poolsStreaming", Id] ->
@@ -835,8 +832,6 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                                               build_fast_warmup_settings(FWSettings)
                                       end},
                  {tasks, {struct, [{uri, TasksURI}]}},
-                 {stats, {struct,
-                          [{uri, bin_concat_path(["pools", Id, "stats"])}]}},
                  {counters, {struct, ns_cluster:counters()}},
                  {stopRebalanceIsSafe,
                   ns_cluster_membership:is_stop_rebalance_safe()}],

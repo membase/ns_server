@@ -107,18 +107,7 @@ handle_call(Req, From, State) ->
     end.
 
 do_handle_call({latest, Period}, _From, #state{bucket=Bucket} = State) ->
-    Reply = try mnesia:activity(
-                  async_dirty,
-                  fun () ->
-                          Tab = stats_archiver:table(Bucket, Period),
-                          Key = mnesia:last(Tab),
-                          hd(mnesia:read(Tab, Key))
-                  end, []) of
-                Result ->
-                    {ok, Result}
-            catch
-                Type:Err -> {error, {Type, Err}}
-            end,
+    Reply = stats_archiver:latest_sample(Bucket, Period),
     {reply, Reply, State};
 do_handle_call({latest, Period, N}, _From, #state{bucket=Bucket} = State) ->
     Reply = try fetch_latest(Bucket, Period, N) of
@@ -160,14 +149,12 @@ fetch_latest(Bucket, Period, N) ->
         {_, Interval, _} ->
             Seconds = N * Interval,
             Tab = stats_archiver:table(Bucket, Period),
-            case mnesia:dirty_last(Tab) of
+            case ets:last(Tab) of
                 '$end_of_table' ->
                     {ok, []};
                 Key ->
                     Oldest = Key - Seconds * 1000 + 500,
-                    Handle = qlc:q([Sample || #stat_entry{timestamp=TS} = Sample
-                                                  <- mnesia:table(Tab), TS > Oldest]),
-                    case mnesia:activity(async_dirty, fun qlc:eval/1, [Handle]) of
+                    case qlc:eval(qlc:q([Sample || {TS,Sample} <- ets:table(Tab), TS > Oldest])) of
                         {error, _, _} = Error ->
                             Error;
                         Results ->
@@ -196,13 +183,13 @@ log_bad_responses({Replies, Zombies}) ->
 resample(Bucket, Period, Step, N) ->
     Seconds = N * Step,
     Tab = stats_archiver:table(Bucket, Period),
-    case mnesia:dirty_last(Tab) of
+    case ets:last(Tab) of
         '$end_of_table' ->
             {ok, []};
         Key ->
             Oldest = Key - Seconds * 1000 + 500,
-            Handle = qlc:q([Sample || #stat_entry{timestamp=TS} = Sample
-                                          <- mnesia:table(Tab), TS > Oldest]),
+            Handle = qlc:q([Sample || {TS, Sample}
+                                          <- ets:table(Tab), TS > Oldest]),
             F = fun (#stat_entry{timestamp = T} = Sample,
                      {T1, Acc, Chunk}) ->
                         case misc:trunc_ts(T, Step) of
@@ -214,9 +201,7 @@ resample(Bucket, Period, Step, N) ->
                                 {T2, [avg(T1, Chunk)|Acc], [Sample]}
                         end
                 end,
-            case mnesia:activity(async_dirty, fun qlc:fold/3,
-                                 [F, {undefined, [], []},
-                                  Handle]) of
+            case qlc:fold(F, {undefined, [], []}, Handle) of
                 {error, _, _} = Error ->
                     Error;
                 {undefined, [], []} ->

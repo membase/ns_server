@@ -146,7 +146,7 @@ init([]) ->
             ok;
         bad_address ->
             ?log_error("Configured address `~s` seems to be invalid. "
-                       "Will refuse to to start for safety reasons.", [Address]),
+                       "Will refuse to start for safety reasons.", [Address]),
             ale:sync(?NS_SERVER_LOGGER),
             erlang:halt(1)
     end,
