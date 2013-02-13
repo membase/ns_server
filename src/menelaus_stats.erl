@@ -571,6 +571,13 @@ computed_stats_lazy_proplist() ->
                                end
                        end),
 
+    PercentCompleteness = Z2(replication_docs_checked, replication_changes_left,
+                       fun (Checked, Left) ->
+                               try (100 * Checked) / (Checked + Left)
+                               catch error:badarith -> 0
+                               end
+                       end),
+
     [{couch_total_disk_size, TotalDisk},
      {couch_docs_fragmentation, DocsFragmentation},
      {couch_views_fragmentation, ViewsFragmentation},
@@ -588,7 +595,8 @@ computed_stats_lazy_proplist() ->
      {avg_disk_commit_time, AverageCommitTime},
      {avg_bg_wait_time, AverageBgWait},
      {replication_wtavg_meta_latency, WtAvgMetaLatency},
-     {replication_wtavg_docs_latency, WtAvgDocsLatency}].
+     {replication_wtavg_docs_latency, WtAvgDocsLatency},
+     {replication_percent_completeness, PercentCompleteness}].
 
 %% converts list of samples to proplist of stat values.
 %%
@@ -801,7 +809,12 @@ couchbase_replication_stats_descriptions(BucketId) ->
                                           {desc,<<"Weighted average latency in ms of sending getMeta and waiting for conflict solution result from remote cluster">>}]},
                                  {struct,[{title,<<"ms doc ops latency">>},
                                           {name,<<"replication_wtavg_docs_latency">>},
-                                          {desc,<<"Weighted average latency in ms of sending replicated mutations to remote cluster">>}]}]}]}
+                                          {desc,<<"Weighted average latency in ms of sending replicated mutations to remote cluster">>}]},
+                                 %% fifth row
+                                 {struct,[{title,<<"percent completed">>},
+                                          {name,<<"replication_percent_completeness">>},
+                                          {desc,<<"Percentage of checked items out of all checked and to-be-replicated items">>}]}]}]}
+
               end, Reps).
 
 couchbase_view_stats_descriptions(BucketId) ->
