@@ -512,16 +512,22 @@ start_replication(#rep_state{
     %% a batch of _changes rows to process -> check which revs are missing in the
     %% target, and for the missing ones, it copies them from the source to the target.
     MaxConns = get_value(http_connections, Options),
+    LatencyOpt = get_value(latency_opt, Options),
 
     ?xdcr_info("changes reader process (PID: ~p) and manager process (PID: ~p) "
                "created, now starting worker processes...",
                [ChangesReader, ChangesManager]),
     Changes = couch_db:count_changes_since(Source, StartSeq),
 
+    %% build start option for worker process
+    WorkerOption = #rep_worker_option{
+      cp = self(), source = Source, target = Target,
+      changes_manager = ChangesManager, max_conns = MaxConns,
+      latency_opt = LatencyOpt},
+
     Workers = lists:map(
                 fun(_) ->
-                        {ok, Pid} = xdc_vbucket_rep_worker:start_link(
-                                      self(), Source, Target, ChangesManager, MaxConns),
+                        {ok, Pid} = xdc_vbucket_rep_worker:start_link(WorkerOption),
                         Pid
                 end,
                 lists:seq(1, NumWorkers)),

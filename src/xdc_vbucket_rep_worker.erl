@@ -13,26 +13,26 @@
 -module(xdc_vbucket_rep_worker).
 
 %% public API
--export([start_link/5]).
+-export([start_link/1]).
 
 -include("xdc_replicator.hrl").
 
 %% in XDCR the Source should always from local with record #db{}, while
 %% the target should always from remote with record #httpdb{}. There is
 %% no intra-cluster XDCR
-start_link(Cp, #db{} = Source, #httpdb{} = Target,
-           ChangesManager, _MaxConns) ->
+start_link(#rep_worker_option{cp = Cp, source = Source, target = Target,
+              changes_manager = ChangesManager, latency_opt = LatencyOptimized} = _WorkerOption) ->
     Pid = spawn_link(fun() ->
                              erlang:monitor(process, ChangesManager),
-                             queue_fetch_loop(Source, Target, Cp, ChangesManager)
+                             queue_fetch_loop(Source, Target, Cp, ChangesManager, LatencyOptimized)
                      end),
     ?xdcr_debug("create queue_fetch_loop process (pid: ~p) within replicator (pid: ~p) "
-                "Source: ~p, Target: ~p, ChangesManager: ~p",
-                [Pid, Cp, Source#db.name, Target#httpdb.url, ChangesManager]),
+                "Source: ~p, Target: ~p, ChangesManager: ~p, latency optimized: ~p",
+                [Pid, Cp, Source#db.name, Target#httpdb.url, ChangesManager, LatencyOptimized]),
 
     {ok, Pid}.
 
-queue_fetch_loop(Source, Target, Cp, ChangesManager) ->
+queue_fetch_loop(Source, Target, Cp, ChangesManager, LatencyOptimized) ->
     ?xdcr_debug("fetch changes from changes manager at ~p (target: ~p)",
                [ChangesManager, Target#httpdb.url]),
     ChangesManager ! {get_changes, self()},
@@ -41,14 +41,14 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager) ->
             ok = gen_server:call(Cp, {worker_done, self()}, infinity);
         {changes, ChangesManager, Changes, ReportSeq} ->
             %% get docinfo of missing ids
-            MissingDocInfoList = find_missing(Changes, Target),
+            MissingDocInfoList = find_missing(Changes, Target, LatencyOptimized),
             NumChecked = length(Changes),
             %% use ptr in docinfo to fetch document from storage
             {ok, DataRepd} = local_process_batch(
                                MissingDocInfoList, Cp, Source, Target, #batch{}),
             ok = gen_server:call(Cp, {report_seq_done, ReportSeq, NumChecked, length(MissingDocInfoList), DataRepd}, infinity),
             ?xdcr_debug("Worker reported completion of seq ~p", [ReportSeq]),
-            queue_fetch_loop(Source, Target, Cp, ChangesManager)
+            queue_fetch_loop(Source, Target, Cp, ChangesManager, LatencyOptimized)
     end.
 
 local_process_batch([], _Cp, _Src, _Tgt, #batch{docs = []}) ->
@@ -125,14 +125,22 @@ flush_docs(Target, DocList) ->
     end.
 
 %% return list of Docsinfos of missing keys
--spec find_missing(list(), #httpdb{}) -> list().
-find_missing(DocInfos, Target) ->
+-spec find_missing(list(), #httpdb{}, boolean()) -> list().
+find_missing(DocInfos, Target, LatencyOptimized) ->
     {IdRevs, AllRevsCount} = lists:foldr(
                                fun(#doc_info{id = Id, rev = Rev}, {IdRevAcc, CountAcc}) ->
                                        {[{Id, Rev} | IdRevAcc], CountAcc + 1}
                                end,
                                {[], 0}, DocInfos),
-    {ok, Missing} = couch_api_wrap:get_missing_revs(Target, IdRevs),
+
+    %% if latency optimized, skip the getMeta ops and send all docs
+    Missing = case LatencyOptimized of
+                  false ->
+                      {ok, MissingIdRevs} = couch_api_wrap:get_missing_revs(Target, IdRevs),
+                      MissingIdRevs;
+                  _ ->
+                      IdRevs
+              end,
 
     %%build list of docinfo for all missing ids
     MissingDocInfoList = lists:filter(
@@ -147,8 +155,15 @@ find_missing(DocInfos, Target) ->
                            end,
                            DocInfos),
 
-    ?xdcr_debug("after conflict resolution at target (~p), out of all ~p docs "
-                "the number of docs we need to replicate is: ~p",
-                [Target#httpdb.url, AllRevsCount, length(Missing)]),
+    case LatencyOptimized of
+        false ->
+            ?xdcr_debug("after conflict resolution at target (~p), out of all ~p docs "
+                        "the number of docs we need to replicate is: ~p",
+                        [Target#httpdb.url, AllRevsCount, length(Missing)]);
+        _ ->
+            ?xdcr_debug("latency optimized mode, no conflict resolution at target (~p), "
+                        "all ~p docs will be replicated",
+                        [Target#httpdb.url, length(IdRevs)])
+    end,
 
     MissingDocInfoList.
