@@ -474,8 +474,6 @@ check_can_add_node(NodeKVList) ->
                         {error, incompatible_cluster_version,
                          <<"Joining 1.6.x node to this cluster does not work">>,
                          incompatible_cluster_version};
-                    <<"1.7.2",_/binary>> ->
-                        ok;
                     <<"1.7.",_/binary>> = Version ->
                         {error, incompatible_cluster_version,
                          iolist_to_binary(io_lib:format("Joining ~s node to this cluster does not work", [Version])),
