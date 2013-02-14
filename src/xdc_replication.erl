@@ -411,7 +411,7 @@ checkpoint_status(CheckpointHistory) ->
 
 
 %% compute the replicaiton rate, and return the new rate stat
--spec compute_rate_status(integer(), integer(), #ratestat{}) -> {#ratestat{}}.
+-spec compute_rate_status(integer(), integer(), #ratestat{}) -> #ratestat{}.
 compute_rate_status(Written1, DataRepd1, RateStat) ->
     T2 = now(),
     T1 = RateStat#ratestat.timestamp,
