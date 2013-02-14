@@ -24,7 +24,8 @@ start_link() ->
     misc:start_event_link(
       fun () ->
               ets:new(ns_config_ets_dup, [public, set, named_table]),
-              ns_pubsub:subscribe_link(ns_config_events, fun event_loop/1)
+              ns_pubsub:subscribe_link(ns_config_events, fun event_loop/1),
+              ns_config:reannounce()
       end).
 
 event_loop({_K, _V} = Pair) ->
@@ -33,12 +34,10 @@ event_loop(_SomethingElse) ->
     ok.
 
 unreliable_read_key(Key, Default) ->
-    try ets:lookup(ns_config_ets_dup, Key) of
+    case ets:lookup(ns_config_ets_dup, Key) of
         [{_, V}] ->
             V;
         _ -> Default
-    catch _E:_T ->
-            Default
     end.
 
 get_timeout(Operation, Default) ->
