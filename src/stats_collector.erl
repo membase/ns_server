@@ -119,12 +119,14 @@ maybe_log_stats(TS, State, RawStats) ->
         true ->
             case misc:get_env_default(dont_log_stats, false) of
                 false ->
-                    TSMicros = TS rem 1000000,
-                    TSSec0 = TS div 1000000,
+                    %% TS is epoch _milli_seconds
+                    TSMicros = (TS rem 1000) * 1000,
+                    TSSec0 = TS div 1000,
                     TSMega = TSSec0 div 1000000,
                     TSSec = TSSec0 rem 1000000,
-                    ?stats_debug("(at ~p) Stats for bucket ~p:~n~s",
+                    ?stats_debug("(at ~p (~p)) Stats for bucket ~p:~n~s",
                                  [calendar:now_to_local_time({TSMega, TSSec, TSMicros}),
+                                  TS,
                                   State#state.bucket, format_stats(RawStats)]);
                 _ -> ok
             end,
