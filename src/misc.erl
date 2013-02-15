@@ -1281,15 +1281,6 @@ parse_base_version(BaseVersionStr) ->
     {lists:map(fun list_to_integer/1,
                string:tokens(NumericVersion, ".")), Type}.
 
-%% Returns the size of directory's content (du -s).
-dir_size(Dir) ->
-    Fn =
-        fun (File, Acc) ->
-                Size = filelib:file_size(File),
-                Acc + Size
-        end,
-    filelib:fold_files(Dir, ".*", true, Fn, 0).
-
 this_node_rest_port() ->
     node_rest_port(node()).
 

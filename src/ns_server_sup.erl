@@ -50,7 +50,10 @@ pre_start() ->
     misc:ping_jointo().
 
 child_specs() ->
-    [%% ns_log starts after ns_config because it needs the config to
+    [{dir_size, {dir_size, start_link, []},
+      permanent, 1000, worker, [dir_size]},
+
+     %% ns_log starts after ns_config because it needs the config to
      %% find where to persist the logs
      {ns_log, {ns_log, start_link, []},
       permanent, 1000, worker, [ns_log]},

@@ -120,6 +120,7 @@ do-install:
 	cp -r ebin $(NS_SERVER_LIBDIR)/
 	mkdir -p $(NS_SERVER_LIBDIR)/priv
 	cp -r priv/public $(NS_SERVER_LIBDIR)/priv/
+	cp priv/i386-linux-godu priv/i386-win32-godu.exe $(NS_SERVER_LIBDIR)/priv/
 	mkdir -p $(ERLWSH_LIBDIR)
 	cp -r deps/erlwsh/ebin $(ERLWSH_LIBDIR)/
 	cp -r deps/erlwsh/priv $(ERLWSH_LIBDIR)/
