@@ -192,7 +192,7 @@ update_with_changes(Fun) ->
 %% Function returns a pair {NewPairs, NewConfig} where NewConfig is
 %% new config and NewPairs is list of changed pairs
 do_update_rec(_Fun, _Sentinel, [], NewConfig, NewPairs) ->
-    {NewPairs, NewConfig};
+    {NewPairs, lists:reverse(NewConfig)};
 do_update_rec(Fun, Sentinel, [Pair | Rest], NewConfig, NewPairs) ->
     StrippedPair = case Pair of
                        {K0, [_|_] = V0} -> {K0, strip_metadata(V0)};
