@@ -536,7 +536,7 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
             _ ->
                 [{type, rebalance},
                  {status, notRunning}
-                 | case ns_config:search(rebalance_status) of
+                 | case ns_config:search_quick(rebalance_status) of
                        {value, {none, ErrorMessage}} ->
                            [{errorMessage, iolist_to_binary(ErrorMessage)}];
                        _ -> []

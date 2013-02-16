@@ -641,7 +641,7 @@ wait_for_nodes(Nodes, Pred, Timeout) ->
 %% quickly and _without_ communication to potentially remote
 %% ns_orchestrator find out if rebalance is running.
 is_rebalance_running() ->
-    ns_config:search(rebalance_status) =:= {value, running}.
+    ns_config:search_quick(rebalance_status) =:= {value, running}.
 
 consider_switching_compat_mode() ->
     CurrentVersion = cluster_compat_mode:get_compat_version(),
