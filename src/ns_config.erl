@@ -636,6 +636,8 @@ handle_call({replace, KVList}, _From, State) ->
 handle_call({update_with_changes, Fun}, From, State) ->
     OldList = config_dynamic(State),
     try Fun(OldList) of
+        {[], _} ->
+            {reply, ok, State};
         {NewPairs, NewConfig} ->
             announce_locally_made_changes(NewPairs),
             handle_call(resave, From, State#config{dynamic=[NewConfig]})
