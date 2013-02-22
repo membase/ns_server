@@ -712,6 +712,9 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
                 HTTPRes:write_chunk(""),
                 exit(normal)
         end,
+    erlang:hibernate(erlang, apply, [fun handle_streaming_wakeup/4, [F, Req, HTTPRes, Res]]).
+
+handle_streaming_wakeup(F, Req, HTTPRes, Res) ->
     receive
         {notify_watcher, _} ->
             timer:sleep(50),
