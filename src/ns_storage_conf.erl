@@ -48,15 +48,6 @@ memory_quota(_Node, Config) ->
     {value, RV} = ns_config:search(Config, memory_quota),
     RV.
 
-
--spec this_node_bucket_dirs(BucketName :: string()) -> [string()].
-this_node_bucket_dirs(BucketName) ->
-    {ok, DBDir} = this_node_dbdir(),
-    {ok, IxDir} = this_node_ixdir(),
-
-    [filename:join(DBDir, BucketName),
-     filename:join(IxDir, "." ++ BucketName)].
-
 couch_storage_path(Field) ->
     try cb_config_couch_sync:get_db_and_ix_paths() of
         PList ->
@@ -185,9 +176,12 @@ setup_disk_storage_conf(DbPath, IxPath) ->
             ok
     end.
 
+%% this is RPCed by pre-2.0 nodes
 local_bucket_disk_usage(BucketName) ->
-    BucketDirs = this_node_bucket_dirs(BucketName),
-    lists:sum([misc:dir_size(Dir) || Dir <- BucketDirs]).
+    {ok, Stats} = couch_stats_reader:fetch_stats(BucketName),
+    Docs = proplists:get_value(couch_docs_actual_disk_size, Stats, 0),
+    Views = proplists:get_value(couch_views_actual_disk_size, Stats, 0),
+    Docs + Views.
 
 % Returns a proplist of lists of proplists.
 %
