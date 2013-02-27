@@ -114,7 +114,7 @@ add_pending(#state{pending_length = Length,
 %% Request for recent items.
 handle_call(recent, _From, StateBefore) ->
     State = flush_pending(StateBefore),
-    {reply, State#state.unique_recent, State}.
+    {reply, State#state.unique_recent, State, hibernate}.
 
 %% Inbound logging request.
 handle_cast({log, Module, Node, Time, Code, Category, Fmt, Args},
@@ -128,7 +128,7 @@ handle_cast({log, Module, Node, Time, Code, Category, Fmt, Args},
                        Count+1, timer:now_diff(Time, FirstSeen) / 1000000,
                        timer:now_diff(Time, LastSeen) / 1000000]),
             Dedup2 = dict:store(Key, {Count+1, FirstSeen, Time}, Dedup),
-            {noreply, State#state{dedup=Dedup2}};
+            {noreply, State#state{dedup=Dedup2}, hibernate};
         error ->
             Entry = #log_entry{node=Node, module=Module, code=Code, msg=Fmt,
                                args=Args, cat=Category, tstamp=Time},
@@ -147,16 +147,16 @@ handle_cast({log, Module, Node, Time, Code, Category, Fmt, Args},
                                [Reason])
             end,
             Dedup2 = dict:store(Key, {0, Time, Time}, Dedup),
-            {noreply, State#state{dedup=Dedup2}}
+            {noreply, State#state{dedup=Dedup2}, hibernate}
     end;
 handle_cast({do_log, Entry}, State) ->
-    {noreply, schedule_save(add_pending(State, Entry))};
+    {noreply, schedule_save(add_pending(State, Entry)), hibernate};
 handle_cast({sync, SrcNode, Compressed}, StateBefore) ->
     State = flush_pending(StateBefore),
     Recent = State#state.unique_recent,
     case binary_to_term(zlib:uncompress(Compressed)) of
         Recent ->
-            {noreply, State};
+            {noreply, State, hibernate};
         Logs ->
             State1 = schedule_save(State),
             NewRecent = tail_of_length(lists:umerge(Recent, Logs),
@@ -167,10 +167,10 @@ handle_cast({sync, SrcNode, Compressed}, StateBefore) ->
                 true -> send_sync_to(NewRecent, SrcNode, SrcNode);
                 _ -> nothing
             end,
-            {noreply, State1#state{unique_recent=NewRecent}}
+            {noreply, State1#state{unique_recent=NewRecent}, hibernate}
     end;
 handle_cast(_, State) ->
-    {noreply, State}.
+    {noreply, State, hibernate}.
 
 send_sync_to(Recent, Node) ->
     send_sync_to(Recent, Node, node()).
@@ -183,7 +183,7 @@ send_sync_to(Recent, Node, Src) ->
 %% Nothing special.
 handle_info(garbage_collect, State) ->
     misc:flush(garbage_collect),
-    {noreply, gc(State)};
+    {noreply, gc(State), hibernate};
 handle_info(sync, StateBefore) ->
     State = flush_pending(StateBefore),
     Recent = State#state.unique_recent,
@@ -194,7 +194,7 @@ handle_info(sync, StateBefore) ->
             Node = lists:nth(random:uniform(length(Nodes)), Nodes),
             send_sync_to(Recent, Node)
     end,
-    {noreply, State};
+    {noreply, State, hibernate};
 handle_info(save, StateBefore = #state{filename=Filename}) ->
     State = flush_pending(StateBefore),
     Recent = State#state.unique_recent,
@@ -204,9 +204,9 @@ handle_info(save, StateBefore = #state{filename=Filename}) ->
         E ->
             ?log_error("unable to write log to ~p: ~p", [Filename, E])
     end,
-    {noreply, State#state{save_tref=undefined}};
+    {noreply, State#state{save_tref=undefined}, hibernate};
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {noreply, State, hibernate}.
 
 terminate(shutdown, State) ->
     handle_info(save, State);

@@ -34,28 +34,28 @@ start_link(Name) ->
     gen_server:start_link({local, Name}, ?MODULE, [], []).
 
 init([]) ->
-    {ok, #state{}}.
+    {ok, #state{}, hibernate}.
 
 %% we don't handle preformatted logging calls
 handle_call({log, _Msg}, _From, State) ->
-    {reply, ok, State};
+    {reply, ok, State, hibernate};
 
 handle_call({raw_log, Info, Msg}, _From, State) ->
     RV = do_log(Info, Msg),
-    {reply, RV, State};
+    {reply, RV, State, hibernate};
 
 %% not implemented for now
 handle_call(sync, _From, State) ->
-    {reply, ok, State};
+    {reply, ok, State, hibernate};
 
 handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+    {reply, ok, State, hibernate}.
 
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {noreply, State, hibernate}.
 
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {noreply, State, hibernate}.
 
 terminate(_Reason, _State) ->
     ok.
