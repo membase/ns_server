@@ -21,18 +21,18 @@
 %% the target should always from remote with record #httpdb{}. There is
 %% no intra-cluster XDCR
 start_link(#rep_worker_option{cp = Cp, source = Source, target = Target,
-              changes_manager = ChangesManager, latency_opt = LatencyOptimized} = _WorkerOption) ->
+              changes_manager = ChangesManager, opt_rep_threshold = OptRepThreshold} = _WorkerOption) ->
     Pid = spawn_link(fun() ->
                              erlang:monitor(process, ChangesManager),
-                             queue_fetch_loop(Source, Target, Cp, ChangesManager, LatencyOptimized)
+                             queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold)
                      end),
     ?xdcr_debug("create queue_fetch_loop process (pid: ~p) within replicator (pid: ~p) "
                 "Source: ~p, Target: ~p, ChangesManager: ~p, latency optimized: ~p",
-                [Pid, Cp, Source#db.name, Target#httpdb.url, ChangesManager, LatencyOptimized]),
+                [Pid, Cp, Source#db.name, Target#httpdb.url, ChangesManager, OptRepThreshold]),
 
     {ok, Pid}.
 
-queue_fetch_loop(Source, Target, Cp, ChangesManager, LatencyOptimized) ->
+queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold) ->
     ?xdcr_debug("fetch changes from changes manager at ~p (target: ~p)",
                [ChangesManager, Target#httpdb.url]),
     ChangesManager ! {get_changes, self()},
@@ -41,7 +41,7 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager, LatencyOptimized) ->
             ok = gen_server:call(Cp, {worker_done, self()}, infinity);
         {changes, ChangesManager, Changes, ReportSeq} ->
             %% get docinfo of missing ids
-            {MissingDocInfoList, MetaLatency} = find_missing(Changes, Target, LatencyOptimized),
+            {MissingDocInfoList, MetaLatency} = find_missing(Changes, Target, OptRepThreshold),
             NumChecked = length(Changes),
             NumWritten = length(MissingDocInfoList),
             %% use ptr in docinfo to fetch document from storage
@@ -61,7 +61,7 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager, LatencyOptimized) ->
                                         worker_item_checked = NumChecked,
                                         worker_item_replicated = NumWritten}}, infinity),
             ?xdcr_debug("Worker reported completion of seq ~p", [ReportSeq]),
-            queue_fetch_loop(Source, Target, Cp, ChangesManager, LatencyOptimized)
+            queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold)
     end.
 
 local_process_batch([], _Cp, _Src, _Tgt, #batch{docs = []}) ->
@@ -139,24 +139,48 @@ flush_docs(Target, DocList) ->
 
 %% return list of Docsinfos of missing keys
 -spec find_missing(list(), #httpdb{}, boolean()) -> {list(), integer()}.
-find_missing(DocInfos, Target, LatencyOptimized) ->
+find_missing(DocInfos, Target, OptRepThreshold) ->
     Start = now(),
-    {IdRevs, AllRevsCount} = lists:foldr(
-                               fun(#doc_info{id = Id, rev = Rev}, {IdRevAcc, CountAcc}) ->
-                                       {[{Id, Rev} | IdRevAcc], CountAcc + 1}
-                               end,
-                               {[], 0}, DocInfos),
 
-    %% if latency optimized, skip the getMeta ops and send all docs
-    Missing = case LatencyOptimized of
-                  false ->
-                      {ok, MissingIdRevs} = couch_api_wrap:get_missing_revs(Target, IdRevs),
-                      MissingIdRevs;
-                  _ ->
-                      IdRevs
-              end,
+    %% depending on doc body size, we separate all keys into two groups:
+    %% keys with doc body size greater than the threshold, and keys with doc body
+    %% smaller than or equal to threshold.
+    {BigDocIdRevs, SmallDocIdRevs, DelCount, BigDocCount,
+     SmallDocCount, AllRevsCount} = lists:foldr(
+                                      fun(#doc_info{id = Id, rev = Rev, deleted = Deleted, size = DocSize},
+                                          {BigIdRevAcc, SmallIdRevAcc, DelAcc, BigAcc, SmallAcc, CountAcc}) ->
+                                              %% deleted doc is always treated as small doc, regardless of doc size
+                                              {BigIdRevAcc1, SmallIdRevAcc1, DelAcc1, BigAcc1, SmallAcc1} =
+                                                  case Deleted of
+                                                      true ->
+                                                          {BigIdRevAcc, [{Id, Rev} | SmallIdRevAcc], DelAcc + 1,
+                                                           BigAcc, SmallAcc + 1};
+                                                      _ ->
+                                                          %% for all other mutations, check its doc size
+                                                          case DocSize > OptRepThreshold of
+                                                              true ->
+                                                                  {[{Id, Rev} | BigIdRevAcc], SmallIdRevAcc, DelAcc,
+                                                                   BigAcc + 1, SmallAcc};
+                                                              _  ->
+                                                                  {BigIdRevAcc, [{Id, Rev} | SmallIdRevAcc], DelAcc,
+                                                                   BigAcc, SmallAcc + 1}
+                                                          end
+                                                  end,
+                                              {BigIdRevAcc1, SmallIdRevAcc1, DelAcc1, BigAcc1, SmallAcc1, CountAcc + 1}
+                                      end,
+                                      {[], [], 0, 0, 0, 0}, DocInfos),
 
-    %%build list of docinfo for all missing ids
+    %% metadata operation for big docs only
+    {Missing, MissingBigDocCount} =
+        case length(BigDocIdRevs) of
+            V when V > 0 ->
+                {ok , MissingBigIdRevs} = couch_api_wrap:get_missing_revs(Target, BigDocIdRevs),
+                {lists:flatten([SmallDocIdRevs | MissingBigIdRevs]), length(MissingBigIdRevs)};
+            _ ->
+                {SmallDocIdRevs, 0}
+        end,
+
+    %% build list of docinfo for all missing keys
     MissingDocInfoList = lists:filter(
                            fun(#doc_info{id = Id, rev = _Rev} = _DocInfo) ->
                                    case lists:keyfind(Id, 1, Missing) of
@@ -169,23 +193,16 @@ find_missing(DocInfos, Target, LatencyOptimized) ->
                            end,
                            DocInfos),
 
-    case LatencyOptimized of
-        false ->
-            ?xdcr_debug("after conflict resolution at target (~p), out of all ~p docs "
-                        "the number of docs we need to replicate is: ~p",
-                        [Target#httpdb.url, AllRevsCount, length(Missing)]);
-        _ ->
-            ?xdcr_debug("latency optimized mode, no conflict resolution at target (~p), "
-                        "all ~p docs will be replicated",
-                        [Target#httpdb.url, length(IdRevs)])
-    end,
+    %% latency in millisecond
+    Latency = round(timer:now_diff(now(), Start) div 1000),
 
-    %% latency in millisecond, 0 if latency opt mode
-    Latency = case LatencyOptimized of
-                  false ->
-                      (timer:now_diff(now(), Start) div 1000);
-                  _ ->
-                      0
-              end,
+    ?xdcr_debug("out of all ~p docs, number of small docs (including dels: ~p) is ~p, "
+                "number of big docs is ~p, threshold is ~p bytes, ~n\t"
+                "after conflict resolution at target (~p), out of all big ~p docs "
+                "the number of docs we need to replicate is: ~p; ~n\t "
+                "total # of docs to be replicated is: ~p, total latency: ~p ms",
+                [AllRevsCount, DelCount, SmallDocCount, BigDocCount, OptRepThreshold,
+                 Target#httpdb.url, BigDocCount, MissingBigDocCount,
+                 length(MissingDocInfoList), Latency]),
 
-    {MissingDocInfoList, round(Latency)}.
+    {MissingDocInfoList, Latency}.

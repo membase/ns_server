@@ -232,7 +232,7 @@
           target = #httpdb{},      %% target db
           changes_manager,         %% process to queue changes from storage
           max_conns,               %% max connections
-          latency_opt              %% latenty optimized option
+          opt_rep_threshold        %% optimistic replication threshold
          }).
 
 %% statistics reported from worker process to its parent vbucket replicator

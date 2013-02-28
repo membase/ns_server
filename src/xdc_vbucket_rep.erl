@@ -543,7 +543,7 @@ start_replication(#rep_state{
     %% a batch of _changes rows to process -> check which revs are missing in the
     %% target, and for the missing ones, it copies them from the source to the target.
     MaxConns = get_value(http_connections, Options),
-    LatencyOpt = get_value(latency_opt, Options),
+    OptRepThreshold = get_value(opt_rep_threshold, Options),
 
     ?xdcr_info("changes reader process (PID: ~p) and manager process (PID: ~p) "
                "created, now starting worker processes...",
@@ -554,7 +554,7 @@ start_replication(#rep_state{
     WorkerOption = #rep_worker_option{
       cp = self(), source = Source, target = Target,
       changes_manager = ChangesManager, max_conns = MaxConns,
-      latency_opt = LatencyOpt},
+      opt_rep_threshold = OptRepThreshold},
 
     Workers = lists:map(
                 fun(_) ->

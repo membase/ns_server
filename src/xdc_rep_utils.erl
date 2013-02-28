@@ -23,7 +23,7 @@
 -export([parse_rep_db/1,parse_rep_db/3]).
 -export([split_dbname/1]).
 -export([get_master_db/1, get_checkpoint_log_id/2]).
--export([is_latency_optimized/0]).
+-export([get_opt_replication_threshold/0]).
 
 -include("xdc_replicator.hrl").
 
@@ -162,16 +162,16 @@ make_options(Props) ->
                                couch_config:get("replicator", "socket_options",
                                                 "[{keepalive, true}, {nodelay, false}]")),
 
-    LatencyOpt= is_latency_optimized(),
+    OptRepThreshold = get_opt_replication_threshold(),
 
     ?xdcr_debug("Options for replication:["
-                "latency optimized: ~p, "
+                "optimistic replication threshold: ~p bytes, "
                 "worker processes: ~p, "
                 "worker batch size (# of mutations): ~p, "
                 "HTTP connections: ~p, "
                 "connection timeout (ms): ~p,"
                 "num of retries per request: ~p]",
-                [LatencyOpt, DefWorkers, DefBatchSize, DefConns, DefTimeout, DefRetries]),
+                [OptRepThreshold, DefWorkers, DefBatchSize, DefConns, DefTimeout, DefRetries]),
 
     lists:ukeymerge(1, Options, lists:keysort(1, [
                                                   {connection_timeout, DefTimeout},
@@ -181,7 +181,7 @@ make_options(Props) ->
                                                   {socket_options, DefSocketOptions},
                                                   {worker_batch_size, DefBatchSize},
                                                   {worker_processes, DefWorkers},
-                                                  {latency_opt, LatencyOpt}
+                                                  {opt_rep_threshold, OptRepThreshold}
                                                  ])).
 
 
@@ -310,25 +310,14 @@ unsplit_uuid({DbName, undefined}) ->
 unsplit_uuid({DbName, UUID}) ->
     DbName ++ ";" ++ UUID.
 
--spec is_latency_optimized() -> boolean().
-is_latency_optimized() ->
-    {value, DefaultLatencyOpt} = ns_config:search(xdcr_optimistic_replication),
+-spec get_opt_replication_threshold() -> integer().
+get_opt_replication_threshold() ->
+    {value, DefaultOptRepThreshold} = ns_config:search(xdcr_optimistic_replication_threshold),
+    Threshold = misc:getenv_int("XDCR_OPTIMISTIC_REPLICATION_THRESHOLD", DefaultOptRepThreshold),
 
-    EnvVar = case (catch string:to_lower(os:getenv("XDCR_OPTIMISTIC_REPLICATION"))) of
-                 "true" ->
-                     true;
-                 "false" ->
-                     false;
-                 _ ->
-                     undefined
-             end,
-
-    %% env var overrides ns_config parameter, use default ns_config parameter
-    %% only when env var is undefined
-    case EnvVar of
-        undefined ->
-            DefaultLatencyOpt;
+    case Threshold of
+        V when V < 0 ->
+            0;
         _ ->
-            EnvVar
+            Threshold
     end.
-
