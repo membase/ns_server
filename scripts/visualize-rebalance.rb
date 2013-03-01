@@ -133,7 +133,7 @@ $latest_time = $timelines.flatten.select {|e| e.kind_of?(Numeric)}.max
 $earliest_time = $timelines.flatten.select {|e| e.kind_of?(Numeric)}.min
 
 def ts_to_y(ts)
-  100 + (ts - $earliest_time) / ($latest_time - $earliest_time) * 10000
+  10 + (ts - $earliest_time)
 end
 
 # pp $timelines
@@ -149,14 +149,27 @@ def do_svg(filename, width, height)
   end
 end
 
-$width_per_node = 200
+$width_per_node = 300
 
-do_svg(ARGV[0]+".svg", $width_per_node * $timelines.size, 12000) do |img|
+lower_edge = ts_to_y($latest_time)+10
+right_edge = $width_per_node * ($timelines.size + 1)
+
+do_svg(ARGV[0]+".svg", right_edge, lower_edge) do |img|
+  pos = $width_per_node*0.5
+  time = 100
+  while time < ($latest_time - $earliest_time)
+    y = ts_to_y(time + $earliest_time)
+    width = ((time % 1000 == 0) ? 8 : 2)
+    img.line(0, y, right_edge, y, :'stroke-width' => width, :stroke => 'blue', :opacity => 0.2)
+    img.text(pos + 6, y + 20 + width * 0.5 + 6, time.to_s, "font-size" => "20px")
+    time += 100
+  end
+
   $timelines.each_with_index do |(_node, lines), idx|
     lines.reverse!
-    pos = (idx + 0.5) * $width_per_node
+    pos = (idx + 1 + 0.5) * $width_per_node
     # general timeline
-    img.line pos, 0, pos, 11000, :'stroke-width' => 1, :opacity => 1.0, :stroke => '#000'
+    img.line pos, 0, pos, lower_edge, :'stroke-width' => 1, :opacity => 1.0, :stroke => '#000'
 
     lines.each do |(start, done, type)|
       start_y = ts_to_y(start)
@@ -173,3 +186,5 @@ do_svg(ARGV[0]+".svg", $width_per_node * $timelines.size, 12000) do |img|
     end
   end
 end
+
+puts "events range: #{Time.at($earliest_time)}..#{Time.at($latest_time)} (#{$latest_time-$earliest_time})"
