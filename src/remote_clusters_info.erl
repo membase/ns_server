@@ -109,7 +109,10 @@
           {node, node(), remote_clusters_info_config_update_interval}, 10000)).
 
 -record(state, {cache_path :: string(),
-                scheduled_config_updates :: set()}).
+                scheduled_config_updates :: set(),
+                remote_bucket_requests :: dict(),
+                remote_bucket_waiters :: dict(),
+                remote_bucket_waiters_trefs :: dict()}).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -247,16 +250,20 @@ init([]) ->
     schedule_gc(),
 
     {ok, #state{cache_path=CachePath,
-                scheduled_config_updates=sets:new()}}.
+                scheduled_config_updates=sets:new(),
+                remote_bucket_requests=dict:new(),
+                remote_bucket_waiters=dict:new(),
+                remote_bucket_waiters_trefs=dict:new()}}.
 
 handle_call({fetch_remote_cluster, Cluster, Timeout}, From, State) ->
+    Self = self(),
     reply_async(
       From, Timeout,
       fun () ->
               R = remote_cluster(Cluster),
               case R of
                   {ok, #remote_cluster{uuid=UUID} = RemoteCluster} ->
-                      ?MODULE ! {cache_remote_cluster, UUID, RemoteCluster};
+                      Self ! {cache_remote_cluster, UUID, RemoteCluster};
                   _ ->
                       ok
               end,
@@ -302,22 +309,11 @@ handle_call({get_remote_bucket, Cluster, Bucket, true, Timeout}, From, State) ->
                 FoundCluster
         end,
 
-    reply_async(
-      From, Timeout,
-      fun () ->
-              R = remote_cluster_and_bucket(RemoteCluster, Bucket, Username, Password),
-              case R of
-                  {ok, {NewRemoteCluster, RemoteBucket}} ->
-                      ?MODULE ! {cache_remote_cluster, UUID, NewRemoteCluster},
-                      ?MODULE ! {cache_remote_bucket, {UUID, Bucket}, RemoteBucket},
+    State1 = enqueue_waiter({UUID, Bucket}, From, Timeout, State),
+    State2 = request_remote_bucket(RemoteCluster, Bucket,
+                                   Username, Password, State1),
 
-                      {ok, RemoteBucket};
-                  Error ->
-                      Error
-              end
-      end),
-
-    {noreply, State};
+    {noreply, State2};
 handle_call(Request, From, State) ->
     ?log_warning("Got unexpected call request: ~p", [{Request, From}]),
     {reply, unhandled, State}.
@@ -328,24 +324,104 @@ handle_cast(Msg, State) ->
 
 handle_info({cache_remote_cluster, UUID, RemoteCluster0}, State) ->
     RemoteCluster = last_cache_request(cache_remote_cluster, UUID, RemoteCluster0),
+    {noreply, cache_remote_cluster(UUID, RemoteCluster, State)};
+handle_info({remote_bucket_request_result, TargetNode, {UUID, Bucket} = Id, R},
+            #state{remote_bucket_requests=Requests,
+                   remote_bucket_waiters=Waiters,
+                   remote_bucket_waiters_trefs=TRefs} = State) ->
+    BucketWaiters = misc:dict_get(Id, Waiters, []),
+    BucketTRef = misc:dict_get(Id, TRefs, make_ref()),
 
-    true = ets:insert(?CACHE, {UUID, RemoteCluster}),
+    BucketRequests0 = dict:fetch(Id, Requests),
+    BucketRequests1 = dict:erase(TargetNode, BucketRequests0),
+    Requests1 = case dict:size(BucketRequests1) of
+                    0 ->
+                        dict:erase(Id, Requests);
+                    _ ->
+                        dict:store(Id, BucketRequests1, Requests)
+                end,
 
-    [{clusters, Clusters}] = ets:lookup(?CACHE, clusters),
-    NewClusters = ordsets:add_element(UUID, Clusters),
-    true = ets:insert(?CACHE, {clusters, NewClusters}),
+    {NewState0, Reply} =
+        case R of
+            {ok, {RemoteCluster, RemoteBucket}} ->
+                State1 = cache_remote_cluster(UUID, RemoteCluster, State),
+                State2 = cache_remote_bucket(Id, RemoteBucket, State1),
 
-    ets:insert_new(?CACHE, {{buckets, UUID}, []}),
-    {noreply, maybe_schedule_cluster_config_update(RemoteCluster, State)};
-handle_info({cache_remote_bucket, {UUID, Bucket} = Id, RemoteBucket0}, State) ->
-    [{_, Buckets}] = ets:lookup(?CACHE, {buckets, UUID}),
-    NewBuckets = ordsets:add_element(Bucket, Buckets),
-    true = ets:insert(?CACHE, {{buckets, UUID}, NewBuckets}),
+                {State2, {ok, RemoteBucket}};
+            {error, Type, _} when Type =:= not_present;
+                                  Type =:= not_capable ->
+                {State, R};
+            Error ->
+                ?log_error("Failed to grab remote bucket `~s`: ~p", [Bucket, Error]),
+                case dict:size(BucketRequests1) of
+                    0 ->
+                        %% no more ongoing request so we just return an error to
+                        %% the caller
+                        Msg = io_lib:format("Failed to grab remote bucket `~s`"
+                                            "from any of known nodes", [Bucket]),
 
-    RemoteBucket = last_cache_request(cache_remote_bucket, Id, RemoteBucket0),
-    true = ets:insert(?CACHE, {{bucket, UUID, Bucket}, RemoteBucket}),
+                        {State, {error, all_nodes_failed, iolist_to_binary(Msg)}};
+                    _ ->
+                        %% let's try to wait for the other requests to return
+                        {State, undefined}
+                end
+        end,
 
-    {noreply, State};
+    NewState1 = NewState0#state{remote_bucket_requests=Requests1},
+    NewState2 = case Reply of
+                    undefined ->
+                        NewState1;
+                    _ ->
+                        cancel_bucket_request_tref(Id, BucketTRef),
+
+                        lists:foreach(
+                          fun ({_, Waiter}) ->
+                                  gen_server:reply(Waiter, Reply)
+                          end, BucketWaiters),
+
+                        Waiters1 = dict:erase(Id, Waiters),
+                        TRefs1 = dict:erase(Id, TRefs),
+                        %% we don't drop other requests to prevent overloading of
+                        %% possibly busy nodes
+                        NewState1#state{remote_bucket_waiters=Waiters1,
+                                        remote_bucket_waiters_trefs=TRefs1}
+                end,
+
+    {noreply, NewState2};
+handle_info({remote_bucket_request_timeout, Id},
+            #state{remote_bucket_waiters=Waiters,
+                   remote_bucket_waiters_trefs=TRefs} = State) ->
+    Now = misc:time_to_epoch_ms_int(os:timestamp()),
+
+    BucketWaiters = dict:fetch(Id, Waiters),
+    BucketTRef = dict:fetch(Id, TRefs),
+
+    %% tref must already canceled
+    false = erlang:read_timer(BucketTRef),
+
+    [{_, From} | BucketWaiters1] = BucketWaiters,
+    gen_server:reply(From, {error, timeout}),
+
+    NewState =
+        case BucketWaiters1 of
+            [] ->
+                Waiters1 = dict:erase(Id, Waiters),
+                TRefs1 = dict:erase(Id, TRefs),
+
+                State#state{remote_bucket_waiters=Waiters1,
+                            remote_bucket_waiters_trefs=TRefs1};
+            [{Expiration, _} | _] ->
+                Waiters1 = dict:store(Id, BucketWaiters1, Waiters),
+
+                BucketTRef1 = erlang:send_after(max(Expiration - Now, 0), self(),
+                                                {remote_bucket_request_timeout, Id}),
+                TRefs1 = dict:store(Id, BucketTRef1, TRefs),
+
+                State#state{remote_bucket_waiters=Waiters1,
+                            remote_bucket_waiters_trefs=TRefs1}
+        end,
+
+    {noreply, NewState};
 handle_info(gc, #state{cache_path=CachePath} = State) ->
     gc(),
     dump_table(?CACHE, CachePath),
@@ -411,6 +487,115 @@ dump_table(TableName, Path) ->
                        [TableName, Path, Error]),
             ok
     end.
+
+cache_remote_cluster(UUID, RemoteCluster, State) ->
+    true = ets:insert(?CACHE, {UUID, RemoteCluster}),
+
+    [{clusters, Clusters}] = ets:lookup(?CACHE, clusters),
+    NewClusters = ordsets:add_element(UUID, Clusters),
+    true = ets:insert(?CACHE, {clusters, NewClusters}),
+
+    ets:insert_new(?CACHE, {{buckets, UUID}, []}),
+    maybe_schedule_cluster_config_update(RemoteCluster, State).
+
+cache_remote_bucket({UUID, Bucket}, RemoteBucket, State) ->
+    [{_, Buckets}] = ets:lookup(?CACHE, {buckets, UUID}),
+    NewBuckets = ordsets:add_element(Bucket, Buckets),
+    true = ets:insert(?CACHE, {{buckets, UUID}, NewBuckets}),
+    true = ets:insert(?CACHE, {{bucket, UUID, Bucket}, RemoteBucket}),
+    State.
+
+cancel_bucket_request_tref(Id, TRef) ->
+    erlang:cancel_timer(TRef),
+    receive
+        {remote_bucket_request_timeout, Id} ->
+            ok
+    after 0 ->
+            ok
+    end.
+
+enqueue_waiter(Id, From, Timeout,
+               #state{remote_bucket_waiters=Waiters,
+                      remote_bucket_waiters_trefs=TRefs} = State) ->
+    Now = misc:time_to_epoch_ms_int(os:timestamp()),
+    Expiration = Now + Timeout,
+
+    BucketWaiters = misc:dict_get(Id, Waiters, []),
+    BucketTRef = misc:dict_get(Id, TRefs, make_ref()),
+
+    BucketWaiters1 = lists:keymerge(1, BucketWaiters, [{Expiration, From}]),
+    First = ({Expiration, From} =:= hd(BucketWaiters1)),
+
+    BucketTRef1 =
+        case First of
+            true ->
+                %% we need to cancel current timer and arm new one
+                cancel_bucket_request_tref(Id, BucketTRef),
+
+                erlang:send_after(Timeout, self(),
+                                  {remote_bucket_request_timeout, Id});
+            false ->
+                BucketTRef
+    end,
+
+    true = (BucketTRef =/= undefined),
+
+    Waiters1 = dict:store(Id, BucketWaiters1, Waiters),
+    TRefs1 = dict:store(Id, BucketTRef1, TRefs),
+
+    State#state{remote_bucket_waiters=Waiters1,
+                remote_bucket_waiters_trefs=TRefs1}.
+
+request_remote_bucket(#remote_cluster{nodes=Nodes, uuid=UUID} = RemoteCluster,
+                      Bucket, Username, Password,
+                      #state{remote_bucket_requests=Requests} = State) ->
+    BucketRequests = misc:dict_get({UUID, Bucket}, Requests, dict:new()),
+
+    case request_remote_bucket_random_free_node(Nodes, BucketRequests) of
+        failed ->
+            %% no free nodes just return old state
+            State;
+        {ok, FreeNode} ->
+            Pid = spawn_request_remote_bucket(FreeNode, RemoteCluster, Bucket,
+                                              Username, Password),
+            BucketRequests1 = dict:store(FreeNode, Pid, BucketRequests),
+            Requests1 = dict:store({UUID, Bucket}, BucketRequests1, Requests),
+            State#state{remote_bucket_requests=Requests1}
+    end.
+
+request_remote_bucket_random_free_node(Nodes, BucketRequests) ->
+    request_remote_bucket_random_free_node(Nodes, undefined, 0, BucketRequests).
+
+request_remote_bucket_random_free_node([], undefined, _, _) ->
+    failed;
+request_remote_bucket_random_free_node([], R, _, _) ->
+    {ok, R};
+request_remote_bucket_random_free_node([Node | Rest], R, Count, BucketRequests) ->
+    case dict:find(Node, BucketRequests) of
+        {ok, _} ->
+            request_remote_bucket_random_free_node(Rest, R, Count, BucketRequests);
+        error ->
+            case random:uniform(Count + 1) of
+                1 ->
+                    request_remote_bucket_random_free_node(Rest, Node,
+                                                           Count + 1, BucketRequests);
+                _ ->
+                    request_remote_bucket_random_free_node(Rest, R,
+                                                           Count + 1, BucketRequests)
+            end
+    end.
+
+spawn_request_remote_bucket(TargetNode,
+                            #remote_cluster{uuid=UUID} = RemoteCluster, Bucket,
+                            Username, Password) ->
+    Self = self(),
+    proc_lib:spawn_link(
+      fun () ->
+              R = remote_cluster_and_bucket(TargetNode, RemoteCluster, Bucket,
+                                            Username, Password),
+              Self ! {remote_bucket_request_result,
+                      TargetNode, {UUID, Bucket}, R}
+      end).
 
 expect(Value, Context, Extract, K) ->
     case Extract(Value, Context) of
@@ -703,33 +888,13 @@ host_and_port(Hostname) ->
             end
     end.
 
-remote_cluster_and_bucket(#remote_cluster{nodes=Nodes,
-                                          uuid=UUID},
+remote_cluster_and_bucket(TargetNode, #remote_cluster{uuid=UUID},
                           BucketStr, Username, Password) ->
     Bucket = list_to_binary(BucketStr),
-    ShuffledNodes = misc:shuffle(Nodes),
+    remote_bucket_from_node(TargetNode, Bucket, Username, Password, UUID).
 
-    remote_bucket_from_nodes(ShuffledNodes, Bucket, Username, Password, UUID).
-
-remote_bucket_from_nodes([], _, _, _, _) ->
-    {error, all_nodes_failed,
-     <<"Failed to grab remote bucket info from any of known nodes">>};
-remote_bucket_from_nodes([Node | Rest], Bucket, Username, Password, UUID) ->
-    R = remote_bucket(Node, Bucket, Username, Password, UUID),
-
-    case R of
-        {ok, _} ->
-            R;
-        {error, Type, _} when Type =:= not_present;
-                              Type =:= not_capable ->
-            R;
-        Other ->
-            ?log_info("Failed to get bucket info from node ~p:~n~p", [Node, Other]),
-            remote_bucket_from_nodes(Rest, Bucket, Username, Password, UUID)
-    end.
-
-remote_bucket(#remote_node{host=Host, port=Port},
-              Bucket, Username, Password, UUID) ->
+remote_bucket_from_node(#remote_node{host=Host, port=Port},
+                        Bucket, Username, Password, UUID) ->
     Creds = {Username, Password},
 
     JsonGet = mk_json_get(Host, Port, Username, Password),
@@ -968,8 +1133,8 @@ mk_json_get(Host, Port, Username, Password) ->
             R = menelaus_rest:json_request_hilevel(get,
                                                    {Host, Port, Path},
                                                    {Username, Password},
-                                                   [{connect_timeout, 5000},
-                                                    {timeout, 5000}]),
+                                                   [{connect_timeout, 30000},
+                                                    {timeout, 60000}]),
 
             case R of
                 {ok, Value} ->
