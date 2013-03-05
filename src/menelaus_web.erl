@@ -1527,6 +1527,24 @@ is_valid_port_number(String) ->
     PortNumber = (catch list_to_integer(String)),
     (is_integer(PortNumber) andalso (PortNumber > 0) andalso (PortNumber =< 65535)).
 
+validate_username(Username) ->
+    V = lists:all(
+          fun (C) ->
+                  C > 32 andalso C =/= 127 andalso
+                      not lists:member(C, "()<>@,;:\\\"/[]?={}")
+          end, Username),
+
+    V orelse
+        <<"The username must not contain spaces, control or any of ()<>@,;:\\\"/[]?={} characters">>.
+
+validate_password(Password) ->
+    V = lists:all(
+          fun (C) ->
+                  C > 31 andalso c =/= 127
+          end, Password),
+
+    V orelse <<"The password must not contain control characters">>.
+
 validate_settings(Port, U, P) ->
     case lists:all(fun erlang:is_list/1, [Port, U, P]) of
         false -> [<<"All parameters must be given">>];
@@ -1535,9 +1553,16 @@ validate_settings(Port, U, P) ->
                            case {U, P} of
                                {[], _} -> <<"Username and password are required.">>;
                                {[_Head | _], P} ->
-                                   case length(P) =< 5 of
-                                       true -> <<"The password must be at least six characters.">>;
-                                       _ -> true
+                                   case validate_username(U) of
+                                       true ->
+                                           case length(P) =< 5 of
+                                               true ->
+                                                   <<"The password must be at least six characters.">>;
+                                               false ->
+                                                   validate_password(P)
+                                           end;
+                                       Msg ->
+                                           Msg
                                    end
                            end],
              lists:filter(fun (E) -> E =/= true end,
