@@ -77,6 +77,10 @@ Between versions 2.0.0 and 2.0.1
   setting). During moves, view compaction is disabled. We've found it
   solves problem of huge disk space blowup during rebalance: MB-6799.
 
+  New internal setting (POST-able to /internalSettings and changeable
+  via internal settings UI) rebalanceMovesBeforeCompaction allows to
+  change that number of moves before compaction "constant".
+
 * Heavy timeouts caused by lack of +A erlang option were finally
   fixed. We couldn't enable it previously due to crash in Erlang that
   this option seemingly caused. We managed to understand problem and
@@ -110,6 +114,11 @@ Between versions 1.8.1 and 2.0.0
 
 We didn't keep changelog for 2.0.0 release. It has too many new
 features to mention here.
+
+* we have internal settings API and UI. API is GET and POST to
+  /internalSettings. UI is hidden by default but it'll be visible if
+  index.html is replaced with index.html?enableInternalSettings=1 in
+  UI url.
 
 
 -----------------------------------------
