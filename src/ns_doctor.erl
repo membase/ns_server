@@ -90,9 +90,14 @@ handle_call(get_tasks_version, _From, State) ->
     {reply, NewState#state.tasks_version, NewState};
 
 handle_call({get_node, Node}, _From, #state{nodes=Nodes} = State) ->
-    Status = dict:fetch(Node, Nodes),
-    LiveNodes = [node() | nodes()],
-    {reply, annotate_status(Node, Status, now(), LiveNodes), State};
+    RV = case dict:find(Node, Nodes) of
+             {ok, Status} ->
+                 LiveNodes = [node() | nodes()],
+                 annotate_status(Node, Status, now(), LiveNodes);
+             _ ->
+                 []
+         end,
+    {reply, RV, State};
 
 handle_call(get_nodes, _From, #state{nodes=Nodes} = State) ->
     Now = erlang:now(),
