@@ -298,6 +298,7 @@ def make_tasks(root="/opt/couchbase", dbdir=""):
                "stat,wchan:12,start,bsdtime,command"),
     WindowsTask("Service list", "wmic service where state=\"running\" GET caption, name, state", reformat=True),
     WindowsTask("Process list", "wmic process", reformat=True),
+    WindowsTask("Process usage", "tasklist /V /fo list", reformat=True),
     WindowsTask("Swap settings", "wmic pagefile", reformat=True),
     WindowsTask("Disk partition", "wmic partition", reformat=True),
     WindowsTask("Disk volumes", "wmic volume", reformat=True),
