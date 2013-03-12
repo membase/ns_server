@@ -60,7 +60,6 @@
          search_node_prop/3, search_node_prop/4,
          search_node_prop/5,
          search/3, search/2, search/1,
-         search_quick/1,
          search_prop/3, search_prop/4,
          search_prop_tuple/3, search_prop_tuple/4,
          search_raw/2,
@@ -324,9 +323,7 @@ get_kv_list(Timeout) -> config_dynamic(ns_config:get(node(), Timeout)).
 
 % ----------------------------------------
 
-search(Key) -> search(?MODULE:get(), Key).
-
-search_quick(Key) ->
+search(Key) ->
     eval(
       fun (Config) ->
               search(Config, Key)

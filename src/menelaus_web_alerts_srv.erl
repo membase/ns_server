@@ -462,9 +462,9 @@ basic_test() ->
     {ok, ConfigPid} = mock_gen_server:start_link({local, ns_config}),
     %% return empty alerts configuration so that no attempts to send anything
     %% are performed
-    mock_gen_server:stub_call(ns_config, get,
-                              fun (_) ->
-                                      #config{dynamic=[[{email_alerts, []}]]}
+    mock_gen_server:stub_call(ns_config, eval,
+                              fun ({eval, Fn}) ->
+                                      Fn(#config{dynamic=[[{email_alerts, []}]]})
                               end),
 
     try
