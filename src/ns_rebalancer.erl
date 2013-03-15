@@ -31,7 +31,8 @@
          run_mover/7,
          unbalanced/2,
          eject_nodes/1,
-         buckets_replication_statuses/0]).
+         buckets_replication_statuses/0,
+         maybe_cleanup_old_buckets/1]).
 
 -export([wait_local_buckets_shutdown_complete/0]). % used via rpc:multicall
 
@@ -231,7 +232,12 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
     NumBuckets = length(BucketConfigs),
     ?rebalance_debug("BucketConfigs = ~p", [BucketConfigs]),
 
-    maybe_cleanup_old_buckets(KeepNodes),
+    case maybe_cleanup_old_buckets(KeepNodes) of
+        ok ->
+            ok;
+        Error ->
+            exit(Error)
+    end,
 
 
     %% Eject failed nodes first so they don't cause trouble
@@ -491,19 +497,18 @@ maybe_cleanup_old_buckets(KeepNodes) ->
         {_, _, DownNodes} when DownNodes =/= [] ->
             ?rebalance_error("Failed to cleanup old buckets on some nodes: ~p",
                              [DownNodes]),
-            exit({buckets_cleanup_failed, DownNodes});
+            {buckets_cleanup_failed, DownNodes};
         {Good, ReallyBad, []} ->
-            case ReallyBad of
-                [] ->
-                    ok;
-                _ ->
-                    ?rebalance_error(
-                       "Failed to cleanup old buckets on some nodes: ~n~p",
-                       [ReallyBad]),
-                    ReallyBadNodes =
-                        lists:map(fun ({Node, _}) -> Node end, ReallyBad),
-                    exit({buckets_cleanup_failed, ReallyBadNodes})
-            end,
+            ReallyBadNodes =
+                case ReallyBad of
+                    [] ->
+                        [];
+                    _ ->
+                        ?rebalance_error(
+                           "Failed to cleanup old buckets on some nodes: ~n~p",
+                           [ReallyBad]),
+                        lists:map(fun ({Node, _}) -> Node end, ReallyBad)
+                end,
 
             FailedNodes =
                 lists:foldl(
@@ -519,10 +524,10 @@ maybe_cleanup_old_buckets(KeepNodes) ->
                           end
                   end, [], Good),
 
-            case FailedNodes of
+            case FailedNodes ++ ReallyBadNodes of
                 [] ->
                     ok;
-                _ ->
-                    exit({buckets_cleanup_failed, FailedNodes})
+                AllFailedNodes ->
+                    {buckets_cleanup_failed, AllFailedNodes}
             end
     end.
