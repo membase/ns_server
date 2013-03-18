@@ -594,13 +594,8 @@ handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, _From, #state{
             end, {0, [], [], []}, Map),
     [ns_memcached:set_vbucket(BucketName, VBucket, StateToSet)
      || {VBucket, StateToSet} <- ToSet],
-    [case dict:find(VBucket, CurrentVBuckets) of
-         {ok, dead} ->
-             ns_memcached:set_vbucket(BucketName, VBucket, dead),
-             ns_memcached:delete_vbucket(BucketName, VBucket);
-         _ ->
-             ns_memcached:delete_vbucket(BucketName, VBucket)
-     end || VBucket <- ToDelete],
+
+    [ns_memcached:delete_vbucket(BucketName, VBucket) || VBucket <- ToDelete],
     NewWanted = lists:reverse(NewWantedRev),
     NewRebalance = [undefined || _ <- NewWantedRev],
     State2 = State#state{last_applied_vbucket_states = NewWanted,
