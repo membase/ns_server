@@ -28,15 +28,15 @@
 %% @doc Notify the supervisor that the node's name has changed so it
 %% can restart children that care.
 node_name_changed() ->
-    ok = supervisor:terminate_child(?MODULE, ns_doctor),
-    {ok, _} = supervisor:restart_child(?MODULE, ns_doctor),
-    ok = supervisor:terminate_child(?MODULE, mb_master),
-    {ok, _} = supervisor:restart_child(?MODULE, mb_master),
+    ok = supervisor2:terminate_child(?MODULE, ns_doctor),
+    {ok, _} = supervisor2:restart_child(?MODULE, ns_doctor),
+    ok = supervisor2:terminate_child(?MODULE, mb_master),
+    {ok, _} = supervisor2:restart_child(?MODULE, mb_master),
     ok.
 
 
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor2:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
     pre_start(),
@@ -171,10 +171,8 @@ child_specs() ->
       permanent, infinity, supervisor,
       [ns_moxi_sup]},
 
-     {compaction_daemon,
-      {supervisor_cushion, start_link,
-       [compaction_daemon, 3000, 1000, compaction_daemon, start_link, []]},
-      permanent, 86400000, worker, [compaction_daemon]},
+     {compaction_daemon, {compaction_daemon, start_link, []},
+      {permanent, 4}, 86400000, worker, [compaction_daemon]},
 
      {xdc_rdoc_replication_srv, {xdc_rdoc_replication_srv, start_link, []},
       permanent, 1000, worker, [xdc_rdoc_replication_srv]},
