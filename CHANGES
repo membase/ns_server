@@ -2,7 +2,7 @@ This file documents user-visible changes in Couchbase clustering & UI.
 ======================================================================
 
 -----------------------------------------
-Between versions 2.0.1 and 2.*
+Between versions 2.0.1 and 2.0.2
 -----------------------------------------
 
 * (MB-7574) Support for REST call /pools/default/stats is discontinued.
@@ -18,6 +18,197 @@ Between versions 2.0.1 and 2.*
 
   Instead they are collected in ETS tables and saved to plain files
   from time to time.
+
+* (CBD-816) Recovery mode support
+
+  When a membase (couchbase) bucket has some vbuckets missing it can
+  be put into a recovery mode using startRecovery REST call:
+
+   curl -sX POST -u Administrator:asdasd \
+        http://lh:9000/pools/default/buckets/default/controller/startRecovery
+
+  In case of success, the response looks as follows:
+
+   {
+       "code": "ok",
+       "recoveryMap": [
+           {
+               "node": "n_1@10.17.40.207",
+               "vbuckets": [
+                   33,
+                   34,
+                   35,
+                   36,
+                   37,
+                   38,
+                   39,
+                   40,
+                   41,
+                   42,
+                   54,
+                   55,
+                   56,
+                   57,
+                   58,
+                   59,
+                   60,
+                   61,
+                   62,
+                   63
+               ]
+           }
+       ],
+       "uuid": "8e02b3a84e0bbf58cbbb58919f1a6563"
+   }
+
+  So in this case replica vbuckets 33-42 and 54-63 were created on
+  node n_2@10.17.40.207. Now the client can start pushing data to
+  these vbuckets.
+
+  All the important recovery URIs are advertised via tasks:
+
+   curl -sX GET -u 'Administrator:asdasd' http://lh:9000/pools/default/tasks
+
+   [
+       {
+           "bucket": "default",
+           "commitVbucketURI": "/pools/default/buckets/default/controller/commitVBucket?recovery_uuid=8e02b3a84e0bbf58cbbb58919f1a6563",
+           "recommendedRefreshPeriod": 10.0,
+           "recoveryStatusURI": "/pools/default/buckets/default/recoveryStatus?recovery_uuid=8e02b3a84e0bbf58cbbb58919f1a6563",
+           "stopURI": "/pools/default/buckets/default/controller/stopRecovery?recovery_uuid=8e02b3a84e0bbf58cbbb58919f1a6563",
+           "type": "recovery",
+           "uuid": "8e02b3a84e0bbf58cbbb58919f1a6563"
+       },
+       {
+           "status": "notRunning",
+           "type": "rebalance"
+       }
+   ]
+
+   - stopURI can be used to abort the recovery
+   - recoveryStatusURI will return information about the recovery in the
+     same format as startRecovery
+   - commitVBucketURI will activate certain vbucket
+
+     This call should be used after the client is done with pushing
+     the data to it. VBucket is passed as a POST parameter:
+
+      curl -sX POST -u 'Administrator:asdasd' \
+           http://lh:9000/pools/default/buckets/default/controller/commitVBucket?recovery_uuid=8e02b3a84e0bbf58cbbb58919f1a6563 \
+           -d vbucket=33
+
+      {
+          "code": "ok"
+      }
+
+
+  All the recovery related REST calls return a JSON object having a
+  "code" field. This (together with HTTP status code) indicates if the
+  call was successful.
+
+  Here's a complete list of possible REST calls replies.
+
+   - startRecovery
+
+     +-------------+-------------------+------------------------------------+
+     | HTTP Status |       Code        |              Comment               |
+     |             |                   |                                    |
+     +-------------+-------------------+------------------------------------+
+     |          200|        ok         |Recovery started. Recovery map is   |
+     |             |                   |returned in recoveryMap field.      |
+     +-------------+-------------------+------------------------------------+
+     |          400|    unsupported    |Not all nodes in the cluster support|
+     |             |                   |recovery.                           |
+     +-------------+-------------------+------------------------------------+
+     |          400|    not_needed     |Recovery is not needed.             |
+     +-------------+-------------------+------------------------------------+
+     |          404|    not_present    |Specified bucket not found.         |
+     +-------------+-------------------+------------------------------------+
+     |          500|   failed_nodes    |Could not start recovery because    |
+     |             |                   |some nodes failed. A list of failed |
+     |             |                   |nodes can be found in the           |
+     |             |                   |"failedNodes" field of the reply.   |
+     +-------------+-------------------+------------------------------------+
+     |          503| rebalance_running |Could not start recovery because    |
+     |             |                   |rebalance is running.               |
+     +-------------+-------------------+------------------------------------+
+
+   - stopRecovery
+
+     +-------------+---------------+------------------------------------+
+     | HTTP Status |     Code      |              Comment               |
+     |             |               |                                    |
+     +-------------+---------------+------------------------------------+
+     |          200|      ok       |Recovery stopped successfully.      |
+     +-------------+---------------+------------------------------------+
+     |          400| uuid_missing  |recovery_uuid query parameter has   |
+     |             |               |not been specified.                 |
+     +-------------+---------------+------------------------------------+
+     |          404| bad_recovery  |Either no recovery is in progress or|
+     |             |               |provided uuid does not match the    |
+     |             |               |uuid of running recovery.           |
+     +-------------+---------------+------------------------------------+
+
+   - commitVBucket
+
+     +-------------+------------------------+------------------------------------+
+     | HTTP Status |          Code          |              Comment               |
+     |             |                        |                                    |
+     +-------------+------------------------+------------------------------------+
+     |          200|           ok           |VBucket commited successfully.      |
+     +-------------+------------------------+------------------------------------+
+     |          200|   recovery_completed   |VBucket commited successfully. No   |
+     |             |                        |more vbuckets to recover. So the    |
+     |             |                        |cluster is not in recovery mode     |
+     |             |                        |anymore.                            |
+     +-------------+------------------------+------------------------------------+
+     |          400|      uuid_missing      |recovery_uuid query parameter has   |
+     |             |                        |not been specified.                 |
+     +-------------+------------------------+------------------------------------+
+     |          400| bad_or_missing_vbucket |VBucket is either unspecified or    |
+     |             |                        |couldn't be converted to integer.   |
+     +-------------+------------------------+------------------------------------+
+     |          404|   vbucket_not_found    |Specified VBucket is not part of the|
+     |             |                        |recovery map.                       |
+     +-------------+------------------------+------------------------------------+
+     |          404|      bad_recovery      |Either no recovery is in progress or|
+     |             |                        |provided uuid does not match the    |
+     |             |                        |uuid of running recovery.           |
+     +-------------+------------------------+------------------------------------+
+     |          500|      failed_nodes      |Could not commit vbucket because    |
+     |             |                        |some nodes faileed. A list of failed|
+     |             |                        |nodes can be found in the           |
+     |             |                        |"failedNodes" field of the reply.   |
+     +-------------+------------------------+------------------------------------+
+
+   - recoveryStatus
+
+     +-------------+---------------+------------------------------------+
+     | HTTP Status |     Code      |              Comment               |
+     |             |               |                                    |
+     +-------------+---------------+------------------------------------+
+     |          200|      ok       |Success. Recovery information is    |
+     |             |               |returned in the same format as for  |
+     |             |               |startRecovery.                      |
+     +-------------+---------------+------------------------------------+
+     |          400| uuid_missing  |recovery_uuid query parameter has   |
+     |             |               |not been specified.                 |
+     +-------------+---------------+------------------------------------+
+     |          404| bad_recovery  |Either no recovery is in progress or|
+     |             |               |provided uuid does not match the    |
+     |             |               |uuid of running recovery.           |
+     +-------------+---------------+------------------------------------+
+
+
+  Recovery map generation is very simplistic. It just distributes
+  missing vbuckets to the available nodes and tries to ensure that
+  nodes get about the same number of vbuckets. It's not always
+  possible though, because after failover we often have quite
+  unbalanced map. The resulting map is likely very unbalanced too. And
+  recovered vbuckets are not even replicated. So in a nutshell,
+  recovery is not a means of avoiding rebalance. It's suitable only
+  for recovering data. And rebalance will be needed anyway.
+
 
 -----------------------------------------
 Between versions 2.0.0 and 2.0.1

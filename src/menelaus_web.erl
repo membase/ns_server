@@ -176,6 +176,9 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools", PoolId, "buckets", Id, "stats", StatName] ->
                                  {auth_bucket, fun menelaus_stats:handle_specific_stat_for_buckets/4,
                                   [PoolId, Id, StatName]};
+                             ["pools", PoolId, "buckets", Id, "recoveryStatus"] ->
+                                 {auth, fun menelaus_web_recovery:handle_recovery_status/3,
+                                  [PoolId, Id]};
                              ["pools", "default", "remoteClusters"] ->
                                  {auth, fun menelaus_web_remote_clusters:handle_remote_clusters/1};
                              ["nodeStatuses"] ->
@@ -320,6 +323,12 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools", PoolId, "buckets", Id, "controller", "cancelDatabasesCompaction"] ->
                                  {auth_check_bucket_uuid,
                                   fun menelaus_web_buckets:handle_cancel_databases_compaction/3, [PoolId, Id]};
+                             ["pools", PoolId, "buckets", Id, "controller", "startRecovery"] ->
+                                 {auth, fun menelaus_web_recovery:handle_start_recovery/3, [PoolId, Id]};
+                             ["pools", PoolId, "buckets", Id, "controller", "stopRecovery"] ->
+                                 {auth, fun menelaus_web_recovery:handle_stop_recovery/3, [PoolId, Id]};
+                             ["pools", PoolId, "buckets", Id, "controller", "commitVBucket"] ->
+                                 {auth, fun menelaus_web_recovery:handle_commit_vbucket/3, [PoolId, Id]};
                              ["pools", PoolId, "buckets", Id,
                               "ddocs", DDocId, "controller", "compactView"] ->
                                  {auth_check_bucket_uuid,
@@ -1944,7 +1953,10 @@ handle_failover(Req) ->
                 ok ->
                     Req:respond({200, [], []});
                 rebalance_running ->
-                    Req:respond({503, add_header(), "Rebalance running."})
+                    Req:respond({503, add_header(), "Rebalance running."});
+                in_recovery ->
+                    Req:respond({503, add_header(),
+                                 "Cluster is in recovery mode."})
             end
     end.
 
@@ -1984,6 +1996,8 @@ do_handle_rebalance(Req, KnownNodesS, EjectedNodesS) ->
             reply_json(Req, {struct, [{mismatch, 1}]}, 400);
         no_active_nodes_left ->
             Req:respond({400, [], []});
+        in_recovery ->
+            Req:respond({503, [], "Cluster is in recovery mode."});
         ok ->
             Req:respond({200, [], []})
     end.

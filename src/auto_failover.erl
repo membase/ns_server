@@ -71,7 +71,10 @@
           reported_max_reached=false :: boolean(),
           %% Whether we reported that we could not auto failover because of
           %% rebalance
-          reported_rebalance_running=false :: boolean()
+          reported_rebalance_running=false :: boolean(),
+          %% Whether we reported that we could not auto failover because of
+          %% recovery mode
+          reported_in_recovery=false :: boolean()
          }).
 
 %%
@@ -270,6 +273,16 @@ handle_info(tick, State0) ->
                                   note_reported(#state.reported_rebalance_running, S);
                               false ->
                                   S
+                          end;
+                      in_recovery ->
+                          case should_report(#state.reported_in_recovery, S) of
+                              true ->
+                                  ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
+                                            "Could not automatically fail over node (~p)."
+                                            "Cluster is in recovery mode.", [Node]),
+                                  note_reported(#state.reported_in_recovery, S);
+                              false ->
+                                  S
                           end
                   end
           end, State#state{auto_failover_logic_state = LogicState}, Actions),
@@ -349,7 +362,8 @@ should_report(Flag, State) ->
 init_reported(State) ->
     State#state{reported_autofailover_unsafe=false,
                 reported_max_reached=false,
-                reported_rebalance_running=false}.
+                reported_rebalance_running=false,
+                reported_in_recovery=false}.
 
 update_reported_flags_by_actions(Actions, State) ->
     case lists:keymember(failover, 1, Actions) of
