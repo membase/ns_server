@@ -268,9 +268,8 @@ convert_options([_ | R]) -> %% skip unknown option
 get_checkpoint_log_id(#db{name = DbName0}, LogId0) ->
     get_checkpoint_log_id(?b2l(DbName0), LogId0);
 get_checkpoint_log_id(#httpdb{url = DbUrl0}, LogId0) ->
-    [_, _, DbName0] = [couch_httpd:unquote(Token) ||
-                          Token <- string:tokens(DbUrl0, "/")],
-    get_checkpoint_log_id(mochiweb_util:unquote(DbName0), LogId0);
+    [_, _, DbName0] = [Token || Token <- string:tokens(DbUrl0, "/")],
+    get_checkpoint_log_id(couch_httpd:unquote(DbName0), LogId0);
 get_checkpoint_log_id(DbName0, LogId0) ->
     {DbName, _UUID} = split_uuid(DbName0),
     {_, VBucket} = split_dbname(DbName),
@@ -279,9 +278,8 @@ get_checkpoint_log_id(DbName0, LogId0) ->
 get_master_db(#db{name = DbName}) ->
     ?l2b(get_master_db(?b2l(DbName)));
 get_master_db(#httpdb{url=DbUrl0}=Http) ->
-    [Scheme, Host, DbName0] = [couch_httpd:unquote(Token) ||
-                                  Token <- string:tokens(DbUrl0, "/")],
-    DbName = get_master_db(DbName0),
+    [Scheme, Host, DbName0] = [Token || Token <- string:tokens(DbUrl0, "/")],
+    DbName = get_master_db(couch_httpd:unquote(DbName0)),
 
     DbUrl = Scheme ++ "//" ++ Host ++ "/" ++ couch_httpd:quote(DbName) ++ "/",
     Http#httpdb{url = DbUrl, httpc_pool = nil};
