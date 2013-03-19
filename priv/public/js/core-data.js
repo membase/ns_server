@@ -645,6 +645,19 @@ var DAL = {
     }
     tasksProgressCell.recalculateAfterDelay(period);
   }, tasksRefreshPeriod, tasksProgressCell);
+
+  var tasksRecoveryCell = DAL.cells.tasksRecoveryCell =
+        Cell.computeEager(function (v) {
+          var tasks = v.need(tasksProgressCell);
+          return _.detect(tasks, function (taskInfo) {
+            return taskInfo.type === "recovery";
+          });
+        }).name("tasksRecoveryCell");
+
+  var inRecoveryModeCell = DAL.cells.inRecoveryModeCell =
+        Cell.computeEager(function (v) {
+          return !!v.need(tasksRecoveryCell);
+        }).name("inRecoveryModeCell");
 })();
 
 var RecentlyCompacted = mkClass.turnIntoLazySingleton(mkClass({

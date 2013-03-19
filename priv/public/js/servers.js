@@ -41,15 +41,18 @@ var ServersSection = {
     var details = this.poolDetails.value;
     var rebalancing = details && details.rebalanceStatus != 'none';
 
+    var inRecovery = this.inRecoveryModeCell.value;
+
     var pending = this.pending;
     var active = this.active;
 
     this.serversQ.find('.add_button').toggle(!!(details && !rebalancing));
     this.serversQ.find('.stop_rebalance_button').toggle(!!rebalancing);
+    this.serversQ.find('.stop_recovery_button').toggle(!!inRecovery);
 
-    var mayRebalance = !rebalancing && pending.length !=0;
+    var mayRebalance = !rebalancing && !inRecovery && pending.length !=0;
 
-    if (details && !rebalancing && !details.balanced)
+    if (details && !rebalancing && !inRecovery && !details.balanced)
       mayRebalance = true;
 
     var unhealthyActive = _.detect(active, function (n) {
@@ -107,6 +110,10 @@ var ServersSection = {
 
     $('#active_server_list_container .server_down .eject_server').addClass('disabled');
     $('.failed_over .eject_server, .failed_over .failover_server').hide();
+
+    if (inRecovery) {
+      $('#active_server_list_container, #pending_server_list_container').find('.re_add_button, .eject_server, .failover_server, .remove_from_list').addClass('disabled');
+    }
   },
   renderServerDetails: function (item) {
     return this.detailsWidget.renderItemDetails(item);
@@ -160,6 +167,10 @@ var ServersSection = {
     var self = this;
 
     self.poolDetails = DAL.cells.currentPoolDetailsCell;
+    self.inRecoveryModeCell = DAL.cells.inRecoveryModeCell;
+    self.stopRecoveryURI = Cell.computeEager(function (v) {
+      return v.need(DAL.cells.tasksRecoveryCell).stopURI;
+    });
 
     self.tabs = new TabsCell("serversTab",
                              "#servers .tabs",
@@ -228,6 +239,7 @@ var ServersSection = {
     });
 
     self.serversCell.subscribeAny($m(self, "refreshEverything"));
+    self.inRecoveryModeCell.subscribeAny($m(self, "refreshEverything"));
 
     prepareTemplateForCell('active_server_list', self.serversCell);
     prepareTemplateForCell('pending_server_list', self.serversCell);
@@ -237,6 +249,7 @@ var ServersSection = {
     serversQ.find('.rebalance_button').live('click', self.accountForDisabled($m(self, 'onRebalance')));
     serversQ.find('.add_button').live('click', $m(self, 'onAdd'));
     serversQ.find('.stop_rebalance_button').live('click', $m(self, 'onStopRebalance'));
+    serversQ.find('.stop_recovery_button').live('click', $m(self, 'onStopRecovery'));
 
     function mkServerRowHandler(handler) {
       return function (e) {
@@ -344,6 +357,14 @@ var ServersSection = {
           self.postAndReload(self.poolDetails.value.stopRebalanceUri, "");
         });
     }
+  },
+  onStopRecovery: function () {
+    var uri = this.stopRecoveryURI.value;
+    if (!uri) {
+      return;
+    }
+
+    this.postAndReload(uri, "");
   },
   validateJoinClusterParams: function (form) {
     var data = {}
