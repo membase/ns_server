@@ -42,6 +42,7 @@
 
 -export([wait_for_bucket_creation/2, query_states/3,
          apply_new_bucket_config/6,
+         apply_new_bucket_config_new_style/5,
          mark_bucket_warmed/2,
          delete_vbucket_copies/4,
          prepare_nodes_for_rebalance/3,
@@ -239,7 +240,8 @@ mark_bucket_warmed(Bucket, Nodes) ->
 apply_new_bucket_config(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets, CurrentStates) ->
     case new_style_enabled() of
         true ->
-            apply_new_bucket_config_new_style(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets);
+            apply_new_bucket_config_new_style(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets),
+            ok;
         false ->
             apply_new_bucket_config_old_style(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets, CurrentStates)
     end.
@@ -286,25 +288,27 @@ process_apply_config_rv(Bucket, {Replies, BadNodes}, Call) ->
     case BadReplies =/= [] orelse BadNodes =/= [] of
         true ->
             ?log_info("~s:Some janitor state change requests (~p) have failed:~n~p~n~p", [Bucket, Call, BadReplies, BadNodes]),
-            error;
+            FailedNodes = [N || {N, _} <- BadReplies] ++ BadNodes,
+            {error, {failed_nodes, FailedNodes}};
         false ->
             ok
     end.
 
 apply_new_bucket_config_new_style(Bucket, Servers, [] = Zombies, NewBucketConfig, IgnoredVBuckets) ->
+    true = new_style_enabled(),
+
     RV1 = gen_server:multi_call(Servers -- Zombies, server_name(Bucket),
                                 {apply_new_config, NewBucketConfig, IgnoredVBuckets},
                                 ?APPLY_NEW_CONFIG_TIMEOUT),
     case process_apply_config_rv(Bucket, RV1, apply_new_config) of
         ok ->
-            RV2= gen_server:multi_call(Servers -- Zombies, server_name(Bucket),
-                                       {apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
-                                       ?APPLY_NEW_CONFIG_TIMEOUT),
+            RV2 = gen_server:multi_call(Servers -- Zombies, server_name(Bucket),
+                                        {apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
+                                        ?APPLY_NEW_CONFIG_TIMEOUT),
             process_apply_config_rv(Bucket, RV2, apply_new_config_replicas_phase);
-        _ ->
-            ok
-    end,
-    ok.
+        Other ->
+            Other
+    end.
 
 -spec do_delete_vbucket_new_style(bucket_name(), pid(), [node()], vbucket_id()) ->
                                          ok | {errors, [{node(), term()}]}.
