@@ -66,7 +66,9 @@
           count=0 :: non_neg_integer(),
 
           %% Whether we reported to the user autofailover_unsafe condition
-          reported_autofailover_unsafe=false :: boolean()
+          reported_autofailover_unsafe=false :: boolean(),
+          %% Whether we reported that max number of auto failovers was reached
+          reported_max_reached=false :: boolean()
          }).
 
 %%
@@ -232,12 +234,17 @@ handle_info(tick, State0) ->
                            [Node]),
                   S;
               ({_, Node}, #state{count=1} = S) ->
-                  ?user_log(?EVENT_MAX_REACHED,
-                            "Could not auto-failover more nodes (~p). "
-                            "Maximum number of nodes that will be "
-                            "automatically failovered (1) is reached.~n",
-                            [Node]),
-                  S;
+                  case should_report(#state.reported_max_reached, S) of
+                      true ->
+                          ?user_log(?EVENT_MAX_REACHED,
+                                    "Could not auto-failover more nodes (~p). "
+                                    "Maximum number of nodes that will be "
+                                    "automatically failovered (1) is reached.~n",
+                                    [Node]),
+                          note_reported(#state.reported_max_reached, S);
+                      false ->
+                          S
+                  end;
               ({mail_down_warning, Node}, S) ->
                   ?user_log(?EVENT_OTHER_NODES_DOWN,
                             "Could not auto-failover node (~p). "
@@ -337,7 +344,8 @@ should_report(Flag, State) ->
     not(element(Flag, State)).
 
 init_reported(State) ->
-    State#state{reported_autofailover_unsafe=false}.
+    State#state{reported_autofailover_unsafe=false,
+                reported_max_reached=false}.
 
 update_reported_flags_by_actions(Actions, State) ->
     case lists:keymember(failover, 1, Actions) of
