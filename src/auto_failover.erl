@@ -63,7 +63,10 @@
           % Time a node needs to be down until it is automatically failovered
           timeout=nil :: nil | integer(),
           % Counts the number of nodes that were already auto-failovered
-          count=0 :: non_neg_integer()
+          count=0 :: non_neg_integer(),
+
+          %% Whether we reported to the user autofailover_unsafe condition
+          reported_autofailover_unsafe=false :: boolean()
          }).
 
 %%
@@ -123,17 +126,18 @@ init([]) ->
     ?log_debug("init auto_failover.", []),
     Timeout = proplists:get_value(timeout, Config),
     Count = proplists:get_value(count, Config),
-    State = #state{timeout=Timeout,
-                   count=Count,
-                   auto_failover_logic_state = undefined},
+    State0 = #state{timeout=Timeout,
+                    count=Count,
+                    auto_failover_logic_state = undefined},
+    State1 = init_reported(State0),
     case proplists:get_value(enabled, Config) of
         true ->
             {reply, ok, State2} = handle_call(
                                     {enable_auto_failover, Timeout, 1},
-                                    self(), State),
+                                    self(), State1),
             {ok, State2};
         false ->
-            {ok, State}
+            {ok, State1}
     end.
 
 init_logic_state(Timeout) ->
@@ -175,8 +179,9 @@ handle_call(reset_auto_failover_count, _From, State) ->
     ?log_debug("reset auto_failover count: ~p", [State]),
     State2 = State#state{count=0,
                          auto_failover_logic_state = init_logic_state(State#state.timeout)},
-    make_state_persistent(State2),
-    {reply, ok, State2};
+    State3 = init_reported(State2),
+    make_state_persistent(State3),
+    {reply, ok, State3};
 
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
@@ -245,20 +250,28 @@ handle_info(tick, State0) ->
                           ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
                                     "Node (~p) was automatically failovered.~n~p",
                                     [Node, ns_doctor:get_node(Node)]),
-                          S#state{count = S#state.count+1};
+                          init_reported(S#state{count = S#state.count+1});
                       {autofailover_unsafe, UnsafeBuckets} ->
-                          ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
-                                    "Could not automatically fail over node (~p)."
-                                    " Would lose vbuckets in the following buckets: ~p", [Node, UnsafeBuckets]),
-                          S#state{count = S#state.count+1}
+                          case should_report(#state.reported_autofailover_unsafe, S) of
+                              true ->
+                                  ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
+                                            "Could not automatically fail over node (~p)."
+                                            " Would lose vbuckets in the following buckets: ~p", [Node, UnsafeBuckets]),
+                                  note_reported(#state.reported_autofailover_unsafe, S);
+                              false ->
+                                  S
+                          end
                   end
           end, State#state{auto_failover_logic_state = LogicState}, Actions),
+
+    NewState1 = update_reported_flags_by_actions(Actions, NewState),
+
     if
-        NewState#state.count =/= State#state.count ->
-            make_state_persistent(NewState);
+        NewState1#state.count =/= State#state.count ->
+            make_state_persistent(NewState1);
         true -> ok
     end,
-    {noreply, NewState};
+    {noreply, NewState1};
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -304,6 +317,39 @@ actual_down_nodes_inner(NonPendingNodes, BucketConfigs, NodesDict, Now) ->
               end
       end, NonPendingNodes).
 
+%% @doc Save the current state in ns_config
+-spec make_state_persistent(State::#state{}) -> ok.
+make_state_persistent(State) ->
+    Enabled = case State#state.tick_ref of
+        nil -> false;
+        _ -> true
+    end,
+    ns_config:set(auto_failover_cfg,
+                  [{enabled, Enabled},
+                   {timeout, State#state.timeout},
+                   {count, State#state.count}]).
+
+note_reported(Flag, State) ->
+    false = element(Flag, State),
+    setelement(Flag, State, true).
+
+should_report(Flag, State) ->
+    not(element(Flag, State)).
+
+init_reported(State) ->
+    State#state{reported_autofailover_unsafe=false}.
+
+update_reported_flags_by_actions(Actions, State) ->
+    case lists:keymember(failover, 1, Actions) of
+        false ->
+            init_reported(State);
+        true ->
+            State
+    end.
+
+
+-ifdef(EUNIT).
+
 actual_down_nodes_inner_test() ->
     PList0 = [{a, ["bucket1", "bucket2"]},
               {b, ["bucket1"]},
@@ -336,14 +382,29 @@ actual_down_nodes_inner_test() ->
                                {"bucket2", [{servers, [a, b, c]}]}])),
     ok.
 
-%% @doc Save the current state in ns_config
--spec make_state_persistent(State::#state{}) -> ok.
-make_state_persistent(State) ->
-    Enabled = case State#state.tick_ref of
-        nil -> false;
-        _ -> true
-    end,
-    ns_config:set(auto_failover_cfg,
-                  [{enabled, Enabled},
-                   {timeout, State#state.timeout},
-                   {count, State#state.count}]).
+-define(FLAG, #state.reported_autofailover_unsafe).
+reported_test() ->
+    %% nothing reported initially
+    State = init_reported(#state{}),
+
+    %% we correctly instructed to report the condition for the first time
+    ?assertEqual(should_report(?FLAG, State), true),
+    State1 = note_reported(?FLAG, State),
+    State2 = update_reported_flags_by_actions([{failover, some_node}], State1),
+
+    %% we don't report it second time
+    ?assertEqual(should_report(?FLAG, State2), false),
+
+    %% we report the condition again for the other "instance" of failover
+    %% (i.e. failover is not needed for some time, but the it's needed again)
+    State3 = update_reported_flags_by_actions([], State2),
+    ?assertEqual(should_report(?FLAG, State3), true),
+
+    %% we report the condition after we explicitly drop it (note that we use
+    %% State2)
+    State4 = init_reported(State2),
+    ?assertEqual(should_report(?FLAG, State4), true),
+
+    ok.
+
+-endif.
