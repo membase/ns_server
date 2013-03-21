@@ -19,7 +19,7 @@
 
 -include("ns_common.hrl").
 
--export([process_frame/4,
+-export([process_frame/3,
          init_state/1]).
 
 %% number of frames where node that we think is down needs to be down
@@ -38,14 +38,7 @@
 -record(state, {
           nodes_states :: [#node_state{}],
           mailed_too_small_cluster :: integer(),
-          down_threshold :: pos_integer(),
-          %% this flag indicates that rebalance_prevented_failover
-          %% warning was sent out. We reset it back to false when we
-          %% don't have 'desire' to autofailover anymore that's
-          %% prevented by rebalance. Like when node becames healthy
-          %% again. Or rebalance is stopped/completed. Or additional
-          %% nodes become down preventing any auto-failover.
-          rebalance_prevented_failover = false :: boolean()
+          down_threshold :: pos_integer()
          }).
 
 init_state(DownThreshold) ->
@@ -114,7 +107,7 @@ increment_down_state(NodeState, DownNodes, BigState, SizeChanged) ->
     end.
 
 
-process_frame(Nodes, DownNodes, State, RebalanceRunning) ->
+process_frame(Nodes, DownNodes, State) ->
     SortedNodes = ordsets:from_list(Nodes),
     SortedDownNodes = ordsets:from_list(DownNodes),
     SizeChanged = (length(Nodes) =/= length(State#state.nodes_states)),
@@ -147,23 +140,21 @@ process_frame(Nodes, DownNodes, State, RebalanceRunning) ->
         lists:any(fun (#node_state{state = nearly_down}) -> true;
                       (_) -> false
                   end, DownStates),
-    {Actions0, DownStates2} =
+    {Actions, DownStates2} =
         case DownStates of
             [#node_state{state = failover, name = Node}] ->
                 ClusterSize = length(Nodes),
-                case {ClusterSize > 2, RebalanceRunning} of
-                    {true, false} ->
+                case ClusterSize > 2 of
+                    true ->
                         %% doing failover
                         {[{failover, Node}], DownStates};
-                    {false, _} ->
+                    false ->
                         case State#state.mailed_too_small_cluster =:= ClusterSize of
                             true ->
                                 {[], DownStates};
                             false ->
                                 {[{mail_too_small, Node}], DownStates}
-                        end;
-                    {_, true} ->
-                        {[{rebalance_prevented_failover, Node}], DownStates}
+                        end
                 end;
             [#node_state{state = nearly_down}] -> {[], DownStates};
             Else ->
@@ -186,22 +177,7 @@ process_frame(Nodes, DownNodes, State, RebalanceRunning) ->
                         {[], DownStates}
                 end
         end,
-    Actions = case State#state.rebalance_prevented_failover of
-                  true ->
-                      [A || A <- Actions0,
-                            case A of
-                                %% filter out this if we already sent out this warning
-                                {rebalance_prevented_failover, _} -> false;
-                                _ -> true
-                            end];
-                  false ->
-                      Actions0
-              end,
     NewState = State#state{
-                 rebalance_prevented_failover =
-                     lists:any(fun ({rebalance_prevented_failover, _}) -> true;
-                                   (_) -> false
-                               end, Actions0),
                  nodes_states = lists:umerge(UpStates, DownStates2),
                  mailed_too_small_cluster = case Actions of
                                                 [{mail_too_small, _}] -> length(Nodes);
@@ -218,87 +194,30 @@ process_frame(Nodes, DownNodes, State, RebalanceRunning) ->
 
 -ifdef(EUNIT).
 
-process_frame_no_action(0, _Nodes, _DownNodes, State, _RebalanceRunning) ->
+process_frame_no_action(0, _Nodes, _DownNodes, State) ->
     State;
-process_frame_no_action(Times, Nodes, DownNodes, State, RebalanceRunning) ->
-    {[], NewState} = process_frame(Nodes, DownNodes, State, RebalanceRunning),
-    process_frame_no_action(Times-1, Nodes, DownNodes, NewState, RebalanceRunning).
+process_frame_no_action(Times, Nodes, DownNodes, State) ->
+    {[], NewState} = process_frame(Nodes, DownNodes, State),
+    process_frame_no_action(Times-1, Nodes, DownNodes, NewState).
 
 basic_1_test() ->
     State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    {[], State1} = process_frame([a,b,c], [], State0, false),
-    State2 = process_frame_no_action(4, [a,b,c], [b], State1, false),
-    {[{failover, b}], _} = process_frame([a,b,c], [b], State2, false).
-
-rebalance_test() ->
-    State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    {[], State1} = process_frame([a,b,c], [], State0, false),
-    State2 = process_frame_no_action(4, [a,b,c], [b], State1, false),
-    %% basic case: we won't autofailover during rebalance
-    {[{rebalance_prevented_failover, b}], _} = process_frame([a,b,c], [b], State2, true).
-
-rebalance_2_test() ->
-    State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    {[], State1} = process_frame([a,b,c], [], State0, true),
-    State2 = process_frame_no_action(4, [a,b,c], [b], State1, true),
-    %% same as basic but note that rebalance was running all the time
-    {[{rebalance_prevented_failover, b}], State3} = process_frame([a,b,c], [b], State2, true),
-    #state{rebalance_prevented_failover = true} = State3,
-    %% now we have reported that we couldn't we still cannot but don't report
-    {[], _} = process_frame([a,b,c], [b], State3, true),
-    lists:foldl(
-      fun (_, State4) ->
-              %% and now when rebalance is done we can
-              {[{failover, b}], #state{rebalance_prevented_failover = false}} = process_frame([a,b,c], [b], State4, false),
-              %% but in parallel world continue rebalance and see how it goes
-              {[], #state{rebalance_prevented_failover = true} = State5} = process_frame([a,b,c], [b], State4, true),
-              State5
-      end, State3, lists:seq(0, 100)).
-
-rebalance_2a_test() ->
-    State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    {[], State1} = process_frame([a,b,c], [], State0, true),
-    State2 = process_frame_no_action(4, [a,b,c], [b], State1, true),
-    {[{rebalance_prevented_failover, b}], State3} = process_frame([a,b,c], [b], State2, true),
-    #state{rebalance_prevented_failover = true} = State3,
-    {[], State4} = process_frame([a,b,c], [b], State3, true),
-    %% the following checks that we don't lose our internal 'warned about rebalance' flag
-    lists:foldl(fun (_, State5) ->
-                        {[], FollowingState} = process_frame([a,b,c], [b], State5, true),
-                        #state{rebalance_prevented_failover = true} = FollowingState,
-                        FollowingState
-                end, State4, lists:seq(0, 100)).
-
-
-rebalance_3_test() ->
-    State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    {[], State1} = process_frame([a,b,c], [], State0, true),
-    State2 = process_frame_no_action(4, [a,b,c], [b], State1, true),
-    {[{rebalance_prevented_failover, b}], State3} = process_frame([a,b,c], [b], State2, true),
-    #state{rebalance_prevented_failover = true} = State3,
-    {[], State4} = process_frame([a,b,c], [b], State3, true),
-    {[], State5} = process_frame([a,b,c], [b], State4, true),
-    %% checking that we reset our 'warned about rebalance flag' if
-    %% additional node goes down
-    State6 = process_frame_no_action(2, [a,b,c], [b,c], State5, true),
-    {[{mail_down_warning, _}], State7} = process_frame([a,b,c], [b,c], State6, true),
-    #state{rebalance_prevented_failover = false} = State7,
-    %% which implies another message next time
-    {[{rebalance_prevented_failover, b}], State8} = process_frame([a,b,c], [b], State7, true),
-    #state{rebalance_prevented_failover = true} = State8.
+    {[], State1} = process_frame([a,b,c], [], State0),
+    State2 = process_frame_no_action(4, [a,b,c], [b], State1),
+    {[{failover, b}], _} = process_frame([a,b,c], [b], State2).
 
 basic_2_test() ->
     State0 = init_state(4+?DOWN_GRACE_PERIOD),
-    {[], State1} = process_frame([a,b,c], [b], State0, false),
-    State2 = process_frame_no_action(4, [a,b,c], [b], State1, false),
-    {[{failover, b}], _} = process_frame([a,b,c], [b], State2, false).
+    {[], State1} = process_frame([a,b,c], [b], State0),
+    State2 = process_frame_no_action(4, [a,b,c], [b], State1),
+    {[{failover, b}], _} = process_frame([a,b,c], [b], State2).
 
 min_size_test_body(Threshold) ->
     State0 = init_state(Threshold+?DOWN_GRACE_PERIOD),
-    {[], State1} = process_frame([a,b], [b], State0, false),
-    State2 = process_frame_no_action(Threshold, [a,b], [b], State1, false),
-    {[{mail_too_small, _}], State3} = process_frame([a,b], [b], State2, false),
-    process_frame_no_action(30, [a,b], [b], State3, false).
+    {[], State1} = process_frame([a,b], [b], State0),
+    State2 = process_frame_no_action(Threshold, [a,b], [b], State1),
+    {[{mail_too_small, _}], State3} = process_frame([a,b], [b], State2),
+    process_frame_no_action(30, [a,b], [b], State3).
 
 min_size_test() ->
     min_size_test_body(2),
@@ -307,44 +226,44 @@ min_size_test() ->
 
 min_size_and_increasing_test() ->
     State = min_size_test_body(2),
-    State2 = process_frame_no_action(3, [a,b,c], [b], State, false),
-    {[{failover, b}], _} = process_frame([a,b,c], [b], State2, false).
+    State2 = process_frame_no_action(3, [a,b,c], [b], State),
+    {[{failover, b}], _} = process_frame([a,b,c], [b], State2).
 
 other_down_test() ->
     State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    {[], State1} = process_frame([a,b,c], [b], State0, false),
-    State2 = process_frame_no_action(3, [a,b,c], [b], State1, false),
-    {[{mail_down_warning, _}], State3} = process_frame([a,b,c], [b,c], State2, false),
-    State4 = process_frame_no_action(1, [a,b,c], [b], State3, false),
-    {[{failover, b}], _} = process_frame([a,b,c], [b], State4, false),
-    {[], State5} = process_frame([a,b,c],[b,c], State4, false),
-    State6 = process_frame_no_action(1, [a,b,c], [b], State5, false),
-    {[{failover, b}], _} = process_frame([a,b,c],[b], State6, false).
+    {[], State1} = process_frame([a,b,c], [b], State0),
+    State2 = process_frame_no_action(3, [a,b,c], [b], State1),
+    {[{mail_down_warning, _}], State3} = process_frame([a,b,c], [b,c], State2),
+    State4 = process_frame_no_action(1, [a,b,c], [b], State3),
+    {[{failover, b}], _} = process_frame([a,b,c], [b], State4),
+    {[], State5} = process_frame([a,b,c],[b,c], State4),
+    State6 = process_frame_no_action(1, [a,b,c], [b], State5),
+    {[{failover, b}], _} = process_frame([a,b,c],[b], State6).
 
 two_down_at_same_time_test() ->
     State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    State1 = process_frame_no_action(2, [a,b,c,d], [b,c], State0, false),
+    State1 = process_frame_no_action(2, [a,b,c,d], [b,c], State0),
     {[{mail_down_warning, b}, {mail_down_warning, c}], _} =
-        process_frame([a,b,c,d], [b,c], State1, false).
+        process_frame([a,b,c,d], [b,c], State1).
 
 multiple_mail_down_warning_test() ->
     State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    {[], State1} = process_frame([a,b,c], [b], State0, false),
-    State2 = process_frame_no_action(2, [a,b,c], [b], State1, false),
-    {[{mail_down_warning, b}], State3} = process_frame([a,b,c], [b,c], State2, false),
+    {[], State1} = process_frame([a,b,c], [b], State0),
+    State2 = process_frame_no_action(2, [a,b,c], [b], State1),
+    {[{mail_down_warning, b}], State3} = process_frame([a,b,c], [b,c], State2),
     % Make sure not every tick sends out a message
-    State4 = process_frame_no_action(1, [a,b,c], [b,c], State3, false),
-    {[{mail_down_warning, c}], _} = process_frame([a,b,c], [b,c], State4, false).
+    State4 = process_frame_no_action(1, [a,b,c], [b,c], State3),
+    {[{mail_down_warning, c}], _} = process_frame([a,b,c], [b,c], State4).
 
 % Test if mail_down_warning is sent again if node was up in between
 mail_down_warning_down_up_down_test() ->
     State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    {[], State1} = process_frame([a,b,c], [b], State0, false),
-    State2 = process_frame_no_action(2, [a,b,c], [b], State1, false),
-    {[{mail_down_warning, b}], State3} = process_frame([a,b,c], [b,c], State2, false),
+    {[], State1} = process_frame([a,b,c], [b], State0),
+    State2 = process_frame_no_action(2, [a,b,c], [b], State1),
+    {[{mail_down_warning, b}], State3} = process_frame([a,b,c], [b,c], State2),
     % Node is up again
-    State4 = process_frame_no_action(1, [a,b,c], [], State3, false),
-    State5 = process_frame_no_action(2, [a,b,c], [b], State4, false),
-    {[{mail_down_warning, b}], _} = process_frame([a,b,c], [b,c], State5, false).
+    State4 = process_frame_no_action(1, [a,b,c], [], State3),
+    State5 = process_frame_no_action(2, [a,b,c], [b], State4),
+    {[{mail_down_warning, b}], _} = process_frame([a,b,c], [b,c], State5).
 
 -endif.

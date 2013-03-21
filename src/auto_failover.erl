@@ -68,7 +68,10 @@
           %% Whether we reported to the user autofailover_unsafe condition
           reported_autofailover_unsafe=false :: boolean(),
           %% Whether we reported that max number of auto failovers was reached
-          reported_max_reached=false :: boolean()
+          reported_max_reached=false :: boolean(),
+          %% Whether we reported that we could not auto failover because of
+          %% rebalance
+          reported_rebalance_running=false :: boolean()
          }).
 
 %%
@@ -211,15 +214,10 @@ handle_info(tick, State0) ->
 
     NonPendingNodes = lists:sort(ns_cluster_membership:active_nodes(Config)),
     CurrentlyDown = actual_down_nodes(NonPendingNodes, Config),
-    RebalanceRunning = case ns_config:search(rebalance_status) of
-                           {value, running} -> true;
-                           _ -> false
-                       end,
     {Actions, LogicState} =
         auto_failover_logic:process_frame(NonPendingNodes,
                                           CurrentlyDown,
-                                          State#state.auto_failover_logic_state,
-                                          RebalanceRunning),
+                                          State#state.auto_failover_logic_state),
     NewState =
         lists:foldl(
           fun ({mail_too_small, Node}, S) ->
@@ -227,11 +225,6 @@ handle_info(tick, State0) ->
                             "Could not auto-failover node (~p). "
                             "Cluster was too small, you need at least 2 other nodes.~n",
                             [Node]),
-                  S;
-              ({rebalance_prevented_failover, Node}, S) ->
-                  ale:info(?USER_LOGGER,
-                           "Could not automatically failover node ~p because I think rebalance is running",
-                           [Node]),
                   S;
               ({_, Node}, #state{count=1} = S) ->
                   case should_report(#state.reported_max_reached, S) of
@@ -265,6 +258,16 @@ handle_info(tick, State0) ->
                                             "Could not automatically fail over node (~p)."
                                             " Would lose vbuckets in the following buckets: ~p", [Node, UnsafeBuckets]),
                                   note_reported(#state.reported_autofailover_unsafe, S);
+                              false ->
+                                  S
+                          end;
+                      rebalance_running ->
+                          case should_report(#state.reported_rebalance_running, S) of
+                              true ->
+                                  ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
+                                            "Could not automatically fail over node (~p). "
+                                            "Rebalance is running.", [Node]),
+                                  note_reported(#state.reported_rebalance_running, S);
                               false ->
                                   S
                           end
@@ -345,7 +348,8 @@ should_report(Flag, State) ->
 
 init_reported(State) ->
     State#state{reported_autofailover_unsafe=false,
-                reported_max_reached=false}.
+                reported_max_reached=false,
+                reported_rebalance_running=false}.
 
 update_reported_flags_by_actions(Actions, State) ->
     case lists:keymember(failover, 1, Actions) of
