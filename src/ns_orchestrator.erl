@@ -129,13 +129,14 @@ flush_bucket(BucketName) ->
     gen_fsm:sync_send_event(?SERVER, {flush_bucket, BucketName}, infinity).
 
 
--spec failover(atom()) -> ok.
+-spec failover(atom()) -> ok | rebalance_running.
 failover(Node) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {failover, Node}, infinity).
 
 
--spec try_autofailover(atom()) -> ok | {autofailover_unsafe, [bucket_name()]}.
+-spec try_autofailover(atom()) -> ok | rebalance_running |
+                                  {autofailover_unsafe, [bucket_name()]}.
 try_autofailover(Node) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {try_autofailover, Node}, infinity).
@@ -543,8 +544,6 @@ rebalancing({update_progress, Progress},
      State#rebalancing_state{progress=NewProgress}}.
 
 %% Synchronous rebalancing events
-rebalancing({failover, _Node}, _From, State) ->
-    {reply, rebalancing, rebalancing, State};
 rebalancing({start_rebalance, _KeepNodes, _EjectNodes, _FailedNodes},
             _From, State) ->
     ?user_log(?REBALANCE_NOT_STARTED,

@@ -1940,8 +1940,12 @@ handle_failover(Req) ->
         undefined ->
             Req:respond({400, add_header(), "No server specified."});
         _ ->
-            ns_cluster_membership:failover(Node),
-            Req:respond({200, [], []})
+            case ns_cluster_membership:failover(Node) of
+                ok ->
+                    Req:respond({200, [], []});
+                rebalance_running ->
+                    Req:respond({503, add_header(), "Rebalance running."})
+            end
     end.
 
 handle_rebalance(Req) ->
