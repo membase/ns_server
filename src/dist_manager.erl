@@ -69,34 +69,25 @@ read_address_config() ->
             read_error
     end.
 
-is_good_address(AddrString) ->
-    case inet:getaddr(AddrString, inet) of
-        {error, Errno1} ->
-            ?log_warning("Could not resolve address `~s`: ~p",
-                         [AddrString, Errno1]),
-            false;
-        {ok, IpAddr} ->
-            case gen_udp:open(0, [inet, {ip, IpAddr}]) of
-                {error, Errno2} ->
-                    ?log_warning("Cannot listen on address `~s`: ~p",
-                                 [AddrString, Errno2]),
-                    false;
-                {ok, Socket} ->
-                    gen_udp:close(Socket),
-                    true
-            end
-    end.
-
 wait_for_address(Address) ->
     wait_for_address(Address, ?WAIT_FOR_ADDRESS_ATTEMPTS).
 
 wait_for_address(_Address, 0) ->
     bad_address;
 wait_for_address(Address, N) ->
-    case is_good_address(Address) of
-        true ->
+    case misc:is_good_address(Address) of
+        ok ->
             ok;
-        false ->
+        Other ->
+            case Other of
+                {cannot_resolve, Errno} ->
+                    ?log_warning("Could not resolve address `~s`: ~p",
+                                 [Address, Errno]);
+                {cannot_listen, Errno} ->
+                    ?log_warning("Cannot listen on address `~s`: ~p",
+                                 [Address, Errno])
+            end,
+
             ?log_info("Configured address `~s` seems to be invalid. "
                       "Giving OS a chance to bring it up.", [Address]),
             timer:sleep(?WAIT_FOR_ADDRESS_SLEEP),

@@ -1479,3 +1479,19 @@ try_with_maybe_ignorant_after(TryBody, AfterBody) ->
 
 letrec(Args, F) ->
     erlang:apply(F, [F | Args]).
+
+-spec is_good_address(string()) -> ok | {cannot_resolve, inet:posix()}
+                                       | {cannot_listen, inet:posix()}.
+is_good_address(Address) ->
+    case inet:getaddr(Address, inet) of
+        {error, Errno} ->
+            {cannot_resolve, Errno};
+        {ok, IpAddr} ->
+            case gen_udp:open(0, [inet, {ip, IpAddr}]) of
+                {error, Errno} ->
+                    {cannot_listen, Errno};
+                {ok, Socket} ->
+                    gen_udp:close(Socket),
+                    ok
+            end
+    end.
