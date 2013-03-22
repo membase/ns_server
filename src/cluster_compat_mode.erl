@@ -43,7 +43,7 @@ supported_compat_version() ->
 %% I.e. we want later version to be able to take over mastership even
 %% without requiring compat mode upgrade
 mb_master_advertised_version() ->
-    [2, 0, 1].
+    [2, 0, 2].
 
 is_enabled_at(undefined = _ClusterVersion, _FeatureVersion) ->
     false;
