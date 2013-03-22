@@ -248,6 +248,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_complete_join/1};
                              ["node", "controller", "doJoinCluster"] ->
                                  {auth, fun handle_join/1};
+                             ["node", "controller", "rename"] ->
+                                 {auth, fun handle_node_rename/1};
                              ["nodes", NodeId, "controller", "settings"] ->
                                  {auth, fun handle_node_settings_post/2,
                                   [NodeId]};
@@ -2572,6 +2574,35 @@ handle_internal_settings_post(Req) ->
         Action =/= undefined],
     reply_json(Req, []).
 
+handle_node_rename(Req) ->
+    Params = Req:parse_post(),
+
+    Reply =
+        case proplists:get_value("hostname", Params) of
+            undefined ->
+                {error, <<"The name cannot be empty">>, 400};
+            Hostname ->
+                case ns_cluster:change_address(Hostname) of
+                    ok ->
+                        ok;
+                    {cannot_resolve, Errno} ->
+                        Msg = io_lib:format("Could not resolve the hostname: ~p", [Errno]),
+                        {error, iolist_to_binary(Msg), 400};
+                    {cannot_listen, Errno} ->
+                        Msg = io_lib:format("Could not listen: ~p", [Errno]),
+                        {error, iolist_to_binary(Msg), 400};
+                    not_self_started ->
+                        Msg = <<"Could not rename the node because name was fixed at server start-up.">>,
+                        {error, Msg, 403}
+            end
+        end,
+
+    case Reply of
+        ok ->
+            Req:respond({200, add_header(), []});
+        {error, Error, Status} ->
+            reply_json(Req, [Error], Status)
+    end.
 
 -ifdef(EUNIT).
 
