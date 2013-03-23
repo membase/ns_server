@@ -1144,11 +1144,12 @@ connect(Tries) ->
 
 ensure_bucket(Sock, Bucket) ->
     try ns_bucket:config_string(Bucket) of
-        {Engine, ConfigString, BucketType, ExtraParams} ->
+        {Engine, ConfigString, BucketType, ExtraParams, DBSubDir} ->
             case mc_client_binary:select_bucket(Sock, Bucket) of
                 ok ->
                     ensure_bucket_config(Sock, Bucket, BucketType, ExtraParams);
                 {memcached_error, key_enoent, _} ->
+                    ok = filelib:ensure_dir(DBSubDir),
                     case mc_client_binary:create_bucket(Sock, Bucket, Engine,
                                                         ConfigString) of
                         ok ->

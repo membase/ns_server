@@ -92,11 +92,10 @@ config_string(BucketName) ->
         proplists:get_value(
           extra_config_string, BucketConfig,
           proplists:get_value(extra_config_string, EngineConfig, "")),
-    {DynamicConfigString, ExtraParams} =
+    {DynamicConfigString, ExtraParams, ReturnDBDir} =
         case BucketType of
             membase ->
                 {ok, DBSubDir} = ns_storage_conf:this_node_bucket_dbdir(BucketName),
-                ok = filelib:ensure_dir(DBSubDir),
                 CouchPort = ns_config:search_node_prop(Config, memcached, mccouch_port, 11213),
                 AccessLog = filename:join(DBSubDir, "access.log"),
                 NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
@@ -133,14 +132,14 @@ config_string(BucketName) ->
                        CouchPort,
                        NumVBuckets,
                        AccessLog]),
-                {CFG, {MemQuota, DBSubDir}};
+                {CFG, {MemQuota, DBSubDir}, DBSubDir};
             memcached ->
                 {io_lib:format("cache_size=~B", [MemQuota]),
-                 MemQuota}
+                 MemQuota, undefined}
         end,
     ConfigString = lists:flatten([DynamicConfigString, $;, StaticConfigString,
                                   $;, ExtraConfigString]),
-    {Engine, ConfigString, BucketType, ExtraParams}.
+    {Engine, ConfigString, BucketType, ExtraParams, ReturnDBDir}.
 
 %% @doc Return {Username, Password} for a bucket.
 -spec credentials(nonempty_string()) ->
