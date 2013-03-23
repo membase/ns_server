@@ -1045,7 +1045,7 @@ maybe_drop_recovery_status() ->
                   not_running ->
                       P;
                   {running, _Bucket, _UUID} ->
-                      ?log_warning("Dropping stale recovery status ~p", [P]),
+                      ale:info(?USER_LOGGER, "Apparently recovery ns_orchestrator died. Dropped stale recovery status ~p", [P]),
                       {recovery_status, not_running}
               end;
           (Other) ->
