@@ -562,6 +562,9 @@ var SetupWizard = {
 
           data['node'] = data['node'] || node;
 
+          var hostname = dialog.find('[name=hostname]');
+          hostname.val(data['otpNode'].split('@')[1] || '127.0.0.1');
+
           var storageTotals = data.storageTotals;
 
           var totalRAMMegs = Math.floor(storageTotals.ram.total/Math.Mi);
@@ -657,14 +660,18 @@ var SetupWizard = {
         var dbPath = dialog.find('[name=db_path]').val() || "";
         var ixPath = dialog.find('[name=index_path]').val() || "";
 
+        var hostname = dialog.find('[name=hostname]').val() || "";
+
         var m = dialog.find('[name=dynamic-ram-quota]').val() || "";
         if (m == "") {
           m = "none";
         }
 
         var pathErrorsContainer = dialog.find('.init_cluster_dialog_errors_container');
+        var hostnameErrorsContainer = $('#init_cluster_dialog_hostname_errors_container');
         var memoryErrorsContainer = $('#init_cluster_dialog_memory_errors_container');
         pathErrorsContainer.hide();
+        hostnameErrorsContainer.hide();
         memoryErrorsContainer.hide();
 
         var spinner = overlayWithSpinner(dialog);
@@ -676,27 +683,23 @@ var SetupWizard = {
                            afterDisk);
 
         var diskArguments;
+        var hostnameArguments;
 
         function afterDisk() {
           // remember our arguments so that we can display validation
           // errors later. We're doing that to display validation errors
           // from memory quota and disk path posts simultaneously
           diskArguments = arguments;
-          if ($('#no-join-cluster')[0].checked) {
-            jsonPostWithErrors('/pools/default',
-                               $.param({memoryQuota: m}),
-                               memPost);
-            return;
-          }
 
-          if (handleDiskStatus.apply(null, diskArguments))
-            SetupWizard.doClusterJoin();
+          jsonPostWithErrors('/node/controller/rename',
+                             $.param({hostname: hostname}),
+                             afterHostname);
         }
 
         function handleDiskStatus(data, status) {
           saving = false;
           spinner.remove();
-          var ok = (status == 'success')
+          var ok = (status == 'success');
           if (!ok) {
             renderTemplate('join_cluster_dialog_errors', data, pathErrorsContainer[0]);
             pathErrorsContainer.show();
@@ -704,8 +707,33 @@ var SetupWizard = {
           return ok;
         }
 
+        function afterHostname() {
+          hostnameArguments = arguments;
+
+          if ($('#no-join-cluster')[0].checked) {
+            jsonPostWithErrors('/pools/default',
+                               $.param({memoryQuota: m}),
+                               memPost);
+            return;
+          }
+
+          if (handleDiskStatus.apply(null, diskArguments) &&
+              handleHostnameStatus.apply(null, hostnameArguments))
+            SetupWizard.doClusterJoin();
+        }
+
+        function handleHostnameStatus(data, status) {
+          var ok = (status == 'success') ;
+          if (!ok) {
+            hostnameErrorsContainer.text(data[0]);
+            hostnameErrorsContainer.show();
+          }
+          return ok;
+        }
+
         function memPost(data, status) {
-          var ok = handleDiskStatus.apply(null, diskArguments);
+          var ok = handleDiskStatus.apply(null, diskArguments) &&
+                handleHostnameStatus.apply(null, hostnameArguments);
 
           if (status == 'success') {
             if (ok) {
