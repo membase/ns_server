@@ -17,7 +17,8 @@ Between versions 2.0.1 and 2.0.2
 * (CBD-771) Stats archives are not stored in mnesia anymore.
 
   Instead they are collected in ETS tables and saved to plain files
-  from time to time.
+  from time to time. This means historical stats from pre-upgrade to
+  2.0.2 is going to be lost.
 
 * (CBD-816) Recovery mode support
 
