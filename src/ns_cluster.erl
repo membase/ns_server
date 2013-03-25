@@ -388,7 +388,9 @@ do_add_node_allowed(RemoteAddr, RestPort, Auth) ->
     end.
 
 do_add_node_with_connectivity(RemoteAddr, RestPort, Auth) ->
-    Struct = menelaus_web:build_full_node_info(node(), "127.0.0.1"),
+    {struct, NodeInfo} = menelaus_web:build_full_node_info(node(), "127.0.0.1"),
+    Struct = {struct, [{<<"requestedTargetNodeHostname">>, list_to_binary(RemoteAddr)}
+                       | NodeInfo]},
 
     ?cluster_debug("Posting node info to engage_cluster on ~p:~n~p~n",
                    [{RemoteAddr, RestPort}, Struct]),
@@ -623,16 +625,30 @@ do_engage_cluster_check_compatibility(NodeKVList) ->
             MaybeError
     end.
 
-
 do_engage_cluster_inner(NodeKVList) ->
     OtpNode = expect_json_property_atom(<<"otpNode">>, NodeKVList),
+    MaybeTargetHost = proplists:get_value(<<"requestedTargetNodeHostname">>, NodeKVList),
     {_, Host} = misc:node_name_host(OtpNode),
     case check_host_connectivity(Host) of
         {ok, MyIP} ->
-            case should_change_address() of
-                true -> do_change_address(MyIP, false);
-                _ -> ok
-            end,
+            {Address, UserSupplied} =
+                case MaybeTargetHost of
+                    undefined ->
+                        {MyIP, false};
+                    _ ->
+                        TargetHost = binary_to_list(MaybeTargetHost),
+                        case misc:is_good_address(TargetHost) of
+                            ok ->
+                                {TargetHost, true};
+                            Error ->
+                                ?cluster_error("Cannot use address ~s: ~p",
+                                               [TargetHost, Error]),
+                                {MyIP, false}
+                        end
+                end,
+
+            do_change_address(Address, UserSupplied),
+
             %% we re-init node's cookie to support joining cloned
             %% nodes. If we don't do that cluster will be able to
             %% connect to this node too soon. And then initial set of
