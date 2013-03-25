@@ -177,7 +177,8 @@ decode_status({error, {{already_started, _Pid}, _Stack}}) ->
     false.
 
 -spec adjust_my_address(string(), boolean()) ->
-                               net_restarted | not_self_started | nothing.
+                               net_restarted | not_self_started | nothing |
+                               {address_save_failed, term()}.
 adjust_my_address(MyIP, UserSupplied) ->
     gen_server:call(?MODULE, {adjust_my_address, MyIP, UserSupplied}).
 
@@ -246,9 +247,17 @@ handle_call({adjust_my_address, MyIP, UserSupplied}, _From,
                      true -> ok
                  end,
 
-                 RV = save_address_config(NewState, UserSupplied),
-                 ?log_debug("save_address_config: ~p", [RV]),
-                 {reply, net_restarted, NewState}
+                 case save_address_config(NewState, UserSupplied) of
+                     ok ->
+                         ?log_info("Persisted the address successfully"),
+                         {reply, net_restarted, NewState};
+                     {error, Error} ->
+                         ?log_warning("Failed to persist the address: ~p", [Error]),
+                         {stop,
+                          {address_save_failed, Error},
+                          {address_save_failed, Error},
+                          State}
+                 end
     end;
 handle_call({adjust_my_address, _, _}, _From,
             #state{self_started = false} = State) ->

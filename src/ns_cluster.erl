@@ -95,7 +95,8 @@ complete_join(NodeKVList) ->
 -spec change_address(string()) -> ok
                                       | {cannot_resolve, inet:posix()}
                                       | {cannot_listen, inet:posix()}
-                                      | not_self_started.
+                                      | not_self_started
+                                      | {address_save_failed, any()}.
 change_address(Address) ->
     case misc:is_good_address(Address) of
         ok ->
@@ -304,14 +305,14 @@ do_change_address(NewAddr, UserSupplied) ->
         {_, _} ->
             ?cluster_info("Decided to change address to ~p~n", [NewAddr1]),
             case maybe_rename(NewAddr1, UserSupplied) of
-                not_self_started ->
-                    not_self_started;
                 not_renamed ->
                     ok;
                 renamed ->
                     ns_server_sup:node_name_changed(),
                     ?cluster_info("Renamed node. New name is ~p.~n", [node()]),
-                    ok
+                    ok;
+                Other ->
+                    Other
             end
     end.
 
@@ -330,6 +331,8 @@ maybe_rename(NewAddr, UserSupplied) ->
                       ?cluster_debug("Didn't rename the node because net_kernel "
                                      "is not self started", []),
                       not_self_started;
+                  {address_save_failed, _} = Error ->
+                      Error;
                   net_restarted ->
                       master_activity_events:note_name_changed(),
                       NewName = node(),
@@ -379,11 +382,25 @@ should_change_address() ->
 do_add_node_allowed(RemoteAddr, RestPort, Auth) ->
     case check_host_connectivity(RemoteAddr) of
         {ok, MyIP} ->
-            case should_change_address() of
-                true -> do_change_address(MyIP, false);
-                _ -> ok
-            end,
-            do_add_node_with_connectivity(RemoteAddr, RestPort, Auth);
+            R = case should_change_address() of
+                    true ->
+                        case do_change_address(MyIP, false) of
+                            {address_save_failed, _} = E ->
+                                E;
+                            _ ->
+                                ok
+                        end;
+                    _ ->
+                        ok
+                end,
+            case R of
+                ok ->
+                    do_add_node_with_connectivity(RemoteAddr, RestPort, Auth);
+                {address_save_failed, Error} = Nested ->
+                    Msg = io_lib:format("Could not save address after rename: ~p",
+                                        [Error]),
+                    {error, rename_failed, iolist_to_binary(Msg), Nested}
+            end;
         X -> X
     end.
 
@@ -647,16 +664,21 @@ do_engage_cluster_inner(NodeKVList) ->
                         end
                 end,
 
-            do_change_address(Address, UserSupplied),
-
-            %% we re-init node's cookie to support joining cloned
-            %% nodes. If we don't do that cluster will be able to
-            %% connect to this node too soon. And then initial set of
-            %% nodes_wanted by node thats added to cluster may
-            %% 'pollute' cluster's version and cause issues. See
-            %% MB-4476 for details.
-            ns_cookie_manager:cookie_init(),
-            check_can_join_to(NodeKVList);
+            case do_change_address(Address, UserSupplied) of
+                {address_save_failed, Error1} = Nested ->
+                    Msg = io_lib:format("Could not save address after rename: ~p",
+                                        [Error1]),
+                    {error, rename_failed, iolist_to_binary(Msg), Nested};
+                _ ->
+                    %% we re-init node's cookie to support joining cloned
+                    %% nodes. If we don't do that cluster will be able to
+                    %% connect to this node too soon. And then initial set of
+                    %% nodes_wanted by node thats added to cluster may
+                    %% 'pollute' cluster's version and cause issues. See
+                    %% MB-4476 for details.
+                    ns_cookie_manager:cookie_init(),
+                    check_can_join_to(NodeKVList)
+            end;
         X -> X
     end.
 

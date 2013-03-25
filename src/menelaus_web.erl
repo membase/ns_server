@@ -2593,7 +2593,10 @@ handle_node_rename(Req) ->
                         {error, iolist_to_binary(Msg), 400};
                     not_self_started ->
                         Msg = <<"Could not rename the node because name was fixed at server start-up.">>,
-                        {error, Msg, 403}
+                        {error, Msg, 403};
+                    {address_save_failed, E} ->
+                        Msg = io_lib:format("Could not save address after rename: ~p", [E]),
+                        {error, iolist_to_binary(Msg), 500}
             end
         end,
 
