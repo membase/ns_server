@@ -119,6 +119,8 @@ save_node(NodeName) ->
     end.
 
 init([]) ->
+    net_kernel:stop(),
+
     Address =
         case node() of
             nonode@nohost ->
