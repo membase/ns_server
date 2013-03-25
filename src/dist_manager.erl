@@ -39,6 +39,9 @@ start_link() ->
 ip_config_path() ->
     path_config:component_path(data, "ip").
 
+ip_start_config_path() ->
+    path_config:component_path(data, "ip_start").
+
 strip_full(String) ->
     String2 = string:strip(String),
     String3 = string:strip(String2, both, $\n),
@@ -51,7 +54,18 @@ strip_full(String) ->
     end.
 
 read_address_config() ->
-    Path = ip_config_path(),
+    IpStartPath = ip_start_config_path(),
+    case read_address_config_from_path(IpStartPath) of
+        Address when is_list(Address) ->
+            Address;
+        read_error ->
+            read_error;
+        undefined ->
+            IpPath = ip_config_path(),
+            read_address_config_from_path(IpPath)
+    end.
+
+read_address_config_from_path(Path) ->
     ?log_info("Reading ip config from ~p", [Path]),
     case file:read_file(Path) of
         {ok, BinaryContents} ->

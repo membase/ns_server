@@ -29,7 +29,6 @@ LOCAL_CONFIG_FILE="@PREFIX@/etc/couchdb/local.ini"
 PIDFILE="@PREFIX@/var/lib/couchbase/couchbase-server.pid"
 NODEFILE="@PREFIX@/var/lib/couchbase/couchbase-server.node"
 COOKIEFILE="@PREFIX@/var/lib/couchbase/couchbase-server.cookie"
-IP_START="@PREFIX@/var/lib/couchbase/ip_start"
 
 couch_start_arguments=""
 
@@ -120,13 +119,6 @@ _start() {
     GLIBCXX_FORCE_NEW=1
     export GLIBCXX_FORCE_NEW
 
-    extra=""
-    if [ -f "$IP_START" ]; then
-        ip=`cat "$IP_START"`
-        if [ -n "$ip" ]; then
-            extra="-name ns_1@$ip"
-        fi
-    fi
     exec erl \
         +A 16 \
         -smp enable \
@@ -139,7 +131,7 @@ _start() {
                 error_logger false \
         -sasl sasl_error_logger false \
         $* \
-        -run ns_bootstrap -- $extra \
+        -run ns_bootstrap -- \
         -couch_ini $couch_start_arguments \
         -ns_server config_path "\"@PREFIX@/etc/couchbase/static_config\"" \
         -ns_server pidfile "\"$PIDFILE\"" \
