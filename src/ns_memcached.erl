@@ -957,7 +957,7 @@ get_vbucket(Node, Bucket, VBucket) ->
 
 
 -spec host_port(node(), any()) ->
-                           {nonempty_string(), pos_integer()}.
+                           {nonempty_string(), pos_integer() | undefined}.
 host_port(Node, Config) ->
     DefaultPort = ns_config:search_node_prop(Node, Config, memcached, port),
     Port = ns_config:search_node_prop(Node, Config,

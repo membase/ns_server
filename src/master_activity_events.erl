@@ -312,11 +312,11 @@ format_mcd_pair({Host, Port}) ->
 node_to_host(undefined, _Config) ->
     <<"">>;
 node_to_host(Node, Config) ->
-    case lists:member(Node, [node() | nodes()]) of
-        true ->
-            format_mcd_pair(ns_memcached:host_port(Node, Config));
-        false ->
-            atom_to_binary(Node, latin1)
+    case ns_memcached:host_port(Node, Config) of
+        {_, undefined} ->
+            atom_to_binary(Node, latin1);
+        HostPort ->
+            format_mcd_pair(HostPort)
     end.
 
 maybe_get_pids_node(Pid) when is_pid(Pid) ->
@@ -373,11 +373,10 @@ event_to_jsons({TS, deregister_tap_name, Pid, Bucket, Src, Name}) ->
                                   {host, format_mcd_pair(Src)},
                                   {name, Name}])];
 event_to_jsons({TS, vbucket_state_change, Bucket, Node, VBucketId, NewState}) ->
-    Host = ns_memcached:host_port(Node),
     [format_simple_plist_as_json([{type, vbucketStateChange},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, Bucket},
-                                  {host, format_mcd_pair(Host)},
+                                  {host, node_to_host(Node, ns_config:get())},
                                   {vbucket, VBucketId},
                                   {state, NewState}])];
 
@@ -479,7 +478,7 @@ event_to_jsons({TS, bucket_failover_started, BucketName, Node, Pid}) ->
     [format_simple_plist_as_json([{type, bucketFailoverStarted},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
-                                  {host, format_mcd_pair(ns_memcached:host_port(Node))},
+                                  {host, node_to_host(Node, ns_config:get())},
                                   {pid, Pid},
                                   {node, maybe_get_pids_node(Pid)}])];
 
@@ -487,7 +486,7 @@ event_to_jsons({TS, bucket_failover_ended, BucketName, Node, Pid}) ->
     [format_simple_plist_as_json([{type, bucketFailoverEnded},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
-                                  {host, format_mcd_pair(ns_memcached:host_port(Node))},
+                                  {host, node_to_host(Node, ns_config:get())},
                                   {pid, Pid},
                                   {node, maybe_get_pids_node(Pid)}])];
 
