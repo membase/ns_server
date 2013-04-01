@@ -25,7 +25,8 @@
          set_loglevel/2, get_loglevel/1,
          set_sink_loglevel/3, get_sink_loglevel/2,
          sync_changes/1,
-         sync_sink/1]).
+         sync_sink/1,
+         sync_all_sinks/0]).
 
 
 %% gen_server callbacks
@@ -114,6 +115,11 @@ sync_sink(SinkName) ->
             {error, unknown_sink}
     end.
 
+sync_all_sinks() ->
+    Sinks = gen_server:call(?MODULE, get_sink_names, infinity),
+    [sync_sink(SinkName) || SinkName <- Sinks],
+    ok.
+
 %% Callbacks
 init([MailboxLenLimit]) ->
     process_flag(trap_exit, true),
@@ -178,6 +184,9 @@ handle_call({set_sink_loglevel, LoggerName, SinkName, LogLevel},
 handle_call({get_sink_loglevel, LoggerName, SinkName}, _From, State) ->
     RV = do_get_sink_loglevel(LoggerName, SinkName, State),
     handle_result(RV, State);
+
+handle_call(get_sink_names, _From, State) ->
+    {reply, dict:fetch_keys(State#state.sinks), State};
 
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
