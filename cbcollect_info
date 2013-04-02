@@ -50,13 +50,14 @@ class Task(object):
     def execute(self, fp):
         """Run the task"""
         import subprocess
+        use_shell = not isinstance(self.command, list)
         if hasattr(self, 'reformat') and self.reformat:
             p = subprocess.Popen(self.command, stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE, shell=True)
+                                 stderr=subprocess.PIPE, shell = use_shell)
             print >> fp, p.stdout.read()
         else:
             p = subprocess.Popen(self.command, bufsize=-1, stdout=fp, stderr=fp,
-                             shell=True)
+                                 shell = use_shell)
         return p.wait()
 
     def will_run(self):
@@ -464,7 +465,7 @@ def make_tasks(root="/opt/couchbase", dbdir=""):
   if c:
       _tasks.append(
           AllOsTask("couchbase diags",
-                    "curl -sS \"http://%s@127.0.0.1:8091/diag?noLogs=1\"" % (c),
+                    ["curl", "-sS", "-u", c, "http://127.0.0.1:8091/diag?noLogs=1"],
                     log_file="diag.log"))
 
   try:
