@@ -87,6 +87,9 @@ child_specs() ->
      {ns_stats_event, {gen_event, start_link, [{local, ns_stats_event}]},
       permanent, 1000, worker, dynamic},
 
+     {samples_loader_tasks, {samples_loader_tasks, start_link, []},
+      permanent, 1000, worker, []},
+
      {ns_heart, {ns_heart, start_link, []},
       permanent, 1000, worker, [ns_heart]},
 
@@ -177,8 +180,5 @@ child_specs() ->
       permanent, 1000, worker, [xdc_rdoc_replication_srv]},
 
      {set_view_update_daemon, {set_view_update_daemon, start_link, []},
-      permanent, 1000, worker, [set_view_update_daemon]},
-
-     {samples_loader_tasks, {samples_loader_tasks, start_link, []},
-      permanent, 1000, worker, []}
+      permanent, 1000, worker, [set_view_update_daemon]}
 ].
