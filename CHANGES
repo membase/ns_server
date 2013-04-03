@@ -5,6 +5,24 @@ This file documents user-visible changes in Couchbase clustering & UI.
 Between versions 2.0.1 and 2.0.2
 -----------------------------------------
 
+* (MB-7398) There's now full support of assigning symbolic hostnames
+  to cluster nodes that replaces old "manual" and kludgy
+  procedure. Now as part of node setup wizard there's input field to
+  assign it a name. When node is added to cluster as part of Add
+  Server button (or corresponding REST API), then IP address or name
+  that's used to specify that node is attempted to be assigned to this
+  node.
+
+  There's also new REST API call for renaming node.
+
+  POST to /node/controller/rename with hostname parameter will trigger
+  node rename.
+
+  Using hostnames instead of relying on built-in detection of node ip
+  address is recommended in environments where ip addresses are
+  volatile. I.e. EC2 or developer's laptop(s) in network where
+  addresses are assigned via DHCP.
+
 * (CBD-220) Erlang VM was split into 2. One is called babysitter
   VM. That erlang VM instance is only capable of starting and
   babysitting main erlang VM as well as memcached and moxi. Babysitter
