@@ -1481,8 +1481,17 @@ letrec(Args, F) ->
     erlang:apply(F, [F | Args]).
 
 -spec is_good_address(string()) -> ok | {cannot_resolve, inet:posix()}
-                                       | {cannot_listen, inet:posix()}.
+                                       | {cannot_listen, inet:posix()}
+                                       | {address_not_allowed, string()}.
 is_good_address(Address) ->
+    case string:tokens(Address, ".") of
+        [_] ->
+            {address_not_allowed, "short names are not allowed. Erlang requires at least one dot in a name"};
+        _ ->
+            is_good_address_when_allowed(Address)
+    end.
+
+is_good_address_when_allowed(Address) ->
     case inet:getaddr(Address, inet) of
         {error, Errno} ->
             {cannot_resolve, Errno};

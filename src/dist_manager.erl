@@ -103,6 +103,9 @@ wait_for_address(Address, N) ->
     case misc:is_good_address(Address) of
         ok ->
             ok;
+        {address_not_allowed, Message}  ->
+            ?log_error("Desired address ~s is not allowed by erlang: ~s", [Address, Message]),
+            bad_address;
         Other ->
             case Other of
                 {cannot_resolve, Errno} ->

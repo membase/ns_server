@@ -2596,7 +2596,10 @@ handle_node_rename(Req) ->
                         {error, Msg, 403};
                     {address_save_failed, E} ->
                         Msg = io_lib:format("Could not save address after rename: ~p", [E]),
-                        {error, iolist_to_binary(Msg), 500}
+                        {error, iolist_to_binary(Msg), 500};
+                    {address_not_allowed, Message} ->
+                        Msg = io_lib:format("Requested name hostname is not allowed: ~s", [Message]),
+                        {error, iolist_to_binary(Msg), 400}
             end
         end,
 

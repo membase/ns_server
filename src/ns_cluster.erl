@@ -96,7 +96,8 @@ complete_join(NodeKVList) ->
                                       | {cannot_resolve, inet:posix()}
                                       | {cannot_listen, inet:posix()}
                                       | not_self_started
-                                      | {address_save_failed, any()}.
+                                      | {address_save_failed, any()}
+                                      | {address_not_allowed, string()}.
 change_address(Address) ->
     case misc:is_good_address(Address) of
         ok ->
