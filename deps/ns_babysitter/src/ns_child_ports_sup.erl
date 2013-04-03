@@ -23,7 +23,7 @@
 
 -export([init/1, launch_port/1, terminate_port/1,
          restart_port/1, restart_port_by_name/1,
-         current_ports/0]).
+         current_ports/0, find_port/1]).
 
 -include("ns_common.hrl").
 
@@ -42,11 +42,15 @@ send_command(PortName, Command) ->
             {T, E}
     end.
 
-do_send_command(PortName, Command) ->
+find_port(PortName) ->
     Childs = supervisor:which_children(?MODULE),
     [Pid] = [Pid || {{Name, _, _, _}, Pid, _, _} <- Childs,
                     Pid =/= undefined,
                     Name =:= PortName],
+    Pid.
+
+do_send_command(PortName, Command) ->
+    Pid = find_port(PortName),
     Pid ! {send_to_port, Command}.
 
 -spec set_dynamic_children([any()]) -> pid().
