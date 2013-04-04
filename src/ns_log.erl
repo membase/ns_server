@@ -85,7 +85,7 @@ read_logs(Filename) ->
     end.
 
 init([]) ->
-    timer:send_interval(?GC_TIME, garbage_collect),
+    timer2:send_interval(?GC_TIME, garbage_collect),
     Filename = log_filename(),
     Recent = read_logs(Filename),
     %% initiate log syncing
@@ -262,7 +262,7 @@ gc(Now, [{Key, Value} | Rest], DupesList) ->
     end.
 
 schedule_save(State = #state{save_tref=undefined}) ->
-    {ok, TRef} = timer:send_after(?SAVE_DELAY, save),
+    {ok, TRef} = timer2:send_after(?SAVE_DELAY, save),
     State#state{save_tref=TRef};
 schedule_save(State) ->
     %% Don't reschedule if a save is already scheduled.

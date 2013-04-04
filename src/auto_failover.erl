@@ -157,7 +157,7 @@ handle_call({enable_auto_failover, Timeout, Max}, _From,
             #state{tick_ref=nil}=State) ->
     1 = Max,
     ale:info(?USER_LOGGER, "Enabled auto-failover with timeout ~p", [Timeout]),
-    {ok, Ref} = timer:send_interval(?HEART_BEAT_PERIOD, tick),
+    {ok, Ref} = timer2:send_interval(?HEART_BEAT_PERIOD, tick),
     State2 = State#state{tick_ref=Ref, timeout=Timeout,
                          auto_failover_logic_state=init_logic_state(Timeout)},
     make_state_persistent(State2),
@@ -178,7 +178,7 @@ handle_call(disable_auto_failover, _From, #state{tick_ref=nil}=State) ->
 %% @doc Auto-failover is enabled, disable it
 handle_call(disable_auto_failover, _From, #state{tick_ref=Ref}=State) ->
     ?log_debug("disable_auto_failover: ~p", [State]),
-    {ok, cancel} = timer:cancel(Ref),
+    {ok, cancel} = timer2:cancel(Ref),
     State2 = State#state{tick_ref=nil, auto_failover_logic_state = undefined},
     make_state_persistent(State2),
     {reply, ok, State2};

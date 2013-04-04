@@ -60,7 +60,7 @@ init([]) ->
                              fun handle_config_event/2, undefined),
     case misc:get_env_default(dont_log_stats, false) of
         false ->
-            timer:send_interval(?LOG_INTERVAL, log);
+            timer2:send_interval(?LOG_INTERVAL, log);
         _ -> ok
     end,
     {ok, #state{nodes=dict:new()}}.

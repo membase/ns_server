@@ -133,14 +133,14 @@ wait_for_memcached_new_style(Nodes, Bucket, Type, SecondsToWait) ->
               Me = self(),
               NodePids = [{Node, proc_lib:spawn_link(
                                    fun () ->
-                                           {ok, TRef} = timer:kill_after(SecondsToWait * 1000),
+                                           {ok, TRef} = timer2:kill_after(SecondsToWait * 1000),
                                            RV = new_style_query_vbucket_states_loop(Node, Bucket, Type),
                                            Me ! {'EXIT', self(), {Ref, RV}},
                                            %% doing cancel is quite
                                            %% important. kill_after is
                                            %% not automagically
                                            %% canceled
-                                           timer:cancel(TRef),
+                                           timer2:cancel(TRef),
                                            %% Nodes list can be reasonably
                                            %% big. Let's not slow down
                                            %% receive loop below due to

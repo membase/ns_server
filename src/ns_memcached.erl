@@ -591,7 +591,7 @@ handle_cast({connect_done, WorkersCount, RV}, #state{bucket = Bucket,
 
             ?log_info("Main ns_memcached connection established: ~p", [RV]),
 
-            {ok, Timer} = timer:send_interval(?CHECK_WARMUP_INTERVAL, check_started),
+            {ok, Timer} = timer2:send_interval(?CHECK_WARMUP_INTERVAL, check_started),
             Self = self(),
             Self ! check_started,
             erlang:process_flag(trap_exit, true),
@@ -615,7 +615,7 @@ handle_cast(start_completed, #state{start_time=Start,
     ?user_log(1, "Bucket ~p loaded on node ~p in ~p seconds.",
               [Bucket, node(), timer:now_diff(os:timestamp(), Start) div 1000000]),
     gen_event:notify(buckets_events, {loaded, Bucket}),
-    timer:send_interval(?CHECK_INTERVAL, check_config),
+    timer2:send_interval(?CHECK_INTERVAL, check_config),
     BucketConfig = case ns_bucket:get_bucket(State#state.bucket) of
                        {ok, BC} -> BC;
                        not_present -> []
@@ -636,7 +636,7 @@ handle_info(check_started, #state{status=Status} = State)
 handle_info(check_started, #state{timer=Timer, sock=Sock} = State) ->
     case has_started(Sock) of
         true ->
-            {ok, cancel} = timer:cancel(Timer),
+            {ok, cancel} = timer2:cancel(Timer),
             misc:flush(check_started),
             Pid = self(),
             proc_lib:spawn_link(

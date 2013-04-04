@@ -46,7 +46,7 @@ is_interesting_buckets_event(_Event) -> false.
 init([]) ->
     process_flag(trap_exit, true),
 
-    timer:send_interval(?HEART_BEAT_PERIOD, beat),
+    timer2:send_interval(?HEART_BEAT_PERIOD, beat),
     self() ! beat,
     Self = self(),
     EventHandler =

@@ -107,7 +107,7 @@ init([]) ->
                           ?SYNC_TIMEOUT),
     % Register for nodeup/down messages as handle_info callbacks.
     ok = net_kernel:monitor_nodes(true, [nodedown_reason]),
-    timer:send_interval(?PING_FREQ, ping_all),
+    timer2:send_interval(?PING_FREQ, ping_all),
     self() ! notify_clients,
     % Track the last list of actual ndoes.
     {ok, #state{nodes = []}}.

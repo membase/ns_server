@@ -161,7 +161,7 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
                                                     ok
                                             end),
 
-    timer:send_interval(?TAP_STATS_LOGGING_INTERVAL, log_tap_stats),
+    timer2:send_interval(?TAP_STATS_LOGGING_INTERVAL, log_tap_stats),
 
     AllNodesSet = sets:del_element(undefined, AllNodesSet0),
     ok = janitor_agent:prepare_nodes_for_rebalance(Bucket, sets:to_list(AllNodesSet), self()),

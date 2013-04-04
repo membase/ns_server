@@ -81,7 +81,7 @@ handle_call({change_vbucket_replication, VBucket, NewSrc}, _From, #state{bucket_
 
 
 handle_info({have_not_ready_vbuckets, Node}, #state{not_readys_per_node_ets = T} = State) ->
-    {ok, TRef} = timer:send_after(30000, {restart_replicator, Node}),
+    {ok, TRef} = timer2:send_after(30000, {restart_replicator, Node}),
     ets:insert(T, {Node, TRef}),
     {noreply, State};
 handle_info({restart_replicator, Node}, State) ->
@@ -146,7 +146,7 @@ cancel_replicator_reset(T, SrcNode) ->
         [] ->
             ok;
         [{SrcNode, TRef}] ->
-            timer:cancel(TRef),
+            timer2:cancel(TRef),
             ets:delete(T, SrcNode)
     end.
 

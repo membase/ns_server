@@ -115,7 +115,7 @@ grab_all_tap_and_checkpoint_stats(Timeout) ->
                                    Type <- [<<"tap">>, <<"checkpoint">>]],
     Results = misc:parallel_map(
                 fun ({Bucket, Type}) ->
-                        {ok, _} = timer:kill_after(Timeout),
+                        {ok, _} = timer2:kill_after(Timeout),
                         case ns_memcached:stats(Bucket, Type) of
                             {ok, V} -> V;
                             Crap -> Crap

@@ -209,7 +209,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% @doc Remind myself to check the alert status
 start_timer() ->
-    timer:send_interval(?SAMPLE_RATE, check_alerts).
+    timer2:send_interval(?SAMPLE_RATE, check_alerts).
 
 
 %% @doc global checks for any server specific problems locally then

@@ -61,7 +61,7 @@ init(Bucket) ->
     case ns_bucket:bucket_type(BucketConfig) of
         membase ->
             self() ! refresh_stats,
-            timer:send_interval(?SAMPLE_INTERVAL, refresh_stats);
+            timer2:send_interval(?SAMPLE_INTERVAL, refresh_stats);
         memcached ->
             ok
     end,

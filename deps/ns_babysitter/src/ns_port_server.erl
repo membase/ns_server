@@ -91,7 +91,7 @@ handle_info({_Port, {data, {_, Msg}}}, State) ->
                      end,
     TRef = case State#state.log_tref of
                undefined ->
-                   timer:send_after(?INTERVAL, log);
+                   timer2:send_after(?INTERVAL, log);
                T ->
                    T
            end,

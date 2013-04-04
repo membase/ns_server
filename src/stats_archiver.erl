@@ -305,7 +305,7 @@ server(Bucket) ->
 
 %% @doc Start the timers to cascade samples to the next resolution.
 start_cascade_timers([{Prev, _, _} | [{Next, Step, _} | _] = Rest]) ->
-    timer:send_interval(200 * Step, {cascade, Prev, Next, Step}),
+    timer2:send_interval(200 * Step, {cascade, Prev, Next, Step}),
     start_cascade_timers(Rest);
 
 start_cascade_timers([_]) ->
@@ -318,10 +318,10 @@ start_timers() ->
       fun ({Period, Step, Samples}) ->
               Interval = 100 * Step * Samples,  % Allow to go over by 10% of the
                                                 % total samples
-              timer:send_interval(Interval, {truncate, Period, Samples})
+              timer2:send_interval(Interval, {truncate, Period, Samples})
       end, Archives),
     start_cascade_timers(Archives),
-    timer:send_interval(?BACKUP_INTERVAL, backup).
+    timer2:send_interval(?BACKUP_INTERVAL, backup).
 
 -spec fmt(string(), list()) -> list().
 fmt(Str, Args)  ->

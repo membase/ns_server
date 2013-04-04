@@ -1440,7 +1440,7 @@ schedule_next_compaction(#state{compaction_start_ts=StartTs0,
                 RepeatIn = (CheckInterval - Diff),
                 ?log_debug("Finished compaction too soon. Next run will be in ~ps",
                            [RepeatIn]),
-                {ok, NewTRef} = timer:send_after(RepeatIn * 1000, compact),
+                {ok, NewTRef} = timer2:send_after(RepeatIn * 1000, compact),
                 State#state{scheduled_compaction_tref=NewTRef};
             false ->
                 self() ! compact,
@@ -1463,7 +1463,7 @@ schedule_immediate_compaction(#state{buckets_to_compact=Buckets,
 cancel_scheduled_compaction(#state{scheduled_compaction_tref=undefined} = State) ->
     State;
 cancel_scheduled_compaction(#state{scheduled_compaction_tref=TRef} = State) ->
-    {ok, cancel} = timer:cancel(TRef),
+    {ok, cancel} = timer2:cancel(TRef),
 
     receive
         compact ->

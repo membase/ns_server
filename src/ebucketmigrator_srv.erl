@@ -195,9 +195,9 @@ complete_old_vb_filter_change(#state{downstream=Downstream,
 
 confirm_downstream(State) ->
     ?log_debug("Going to confirm reception downstream messages"),
-    {ok, ConfirmTRef} = timer:kill_after(?TERMINATE_TIMEOUT),
+    {ok, ConfirmTRef} = timer2:kill_after(?TERMINATE_TIMEOUT),
     {ok, NewState} = confirm_sent_messages(State),
-    timer:cancel(ConfirmTRef),
+    timer2:cancel(ConfirmTRef),
     ?log_debug("Confirmed upstream messages are feeded to kernel"),
     NewState.
 
@@ -661,7 +661,7 @@ exit_retry_not_ready_vbuckets() ->
     exit(normal).
 
 terminate(_Reason, #state{upstream_sender=UpstreamSender} = State) ->
-    timer:kill_after(?TERMINATE_TIMEOUT),
+    timer2:kill_after(?TERMINATE_TIMEOUT),
     gen_tcp:close(State#state.upstream),
     exit(UpstreamSender, kill),
     case State#state.takeover_done of
