@@ -1004,7 +1004,7 @@ raw_read_file(Path) ->
         Crap -> Crap
     end.
 raw_read_loop(File, Acc) ->
-    case file:read(File, 10) of
+    case file:read(File, 16384) of
         {ok, Bytes} ->
             raw_read_loop(File, [Acc | Bytes]);
         eof ->
