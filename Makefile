@@ -65,10 +65,8 @@ docs:
 ebins: src/ns_server.app.src include/replication_infos_ddoc.hrl deps_all
 	$(REBAR) compile
 
-%.app.src: %.app.src.in $(TMP_VER)
+src/ns_server.app.src: src/ns_server.app.src.in $(TMP_VER)
 	(sed s/0.0.0/'$(if $(PRODUCT_VERSION),$(PRODUCT_VERSION),$(shell cat $(TMP_VER)))$(if $(PRODUCT_LICENSE),-$(PRODUCT_LICENSE))'/g $< > $@) || (rm $@ && false)
-
-# src/ns_server.app.src: src/ns_server.app.src.in $(TMP_VER)
 
 # NOTE: not depending on scripts/build_replication_infos_ddoc.rb because we're uploading both files to git.
 # If you need to rebuild this file, remove it first.
@@ -80,10 +78,6 @@ rebuild_replication_infos_ddoc:
 	$(MAKE) include/replication_infos_ddoc.hrl
 
 .PHONY: rebuild_replication_infos_ddoc
-
-ifdef PRODUCT_VERSION
-.PHONY: src/ns_server.app.src src/ns_babysitter.app.src
-endif
 
 priv/public/js/all-images.js: priv/public/images priv/public/images/spinner scripts/build-all-images.sh
 	scripts/build-all-images.sh >$@ || (rm $@ && false)
