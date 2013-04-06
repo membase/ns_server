@@ -126,13 +126,19 @@ replications_difference(RepsA, RepsB) ->
               end,
     misc:ukeymergewith(MergeFn, 1, L, R).
 
+categorize_replications([] = _Diff, AccToKill, AccToStart, AccToChange) ->
+    {AccToKill, AccToStart, AccToChange};
+categorize_replications([{N, NewVBs, OldVBs} = T | Rest], AccToKill, AccToStart, AccToChange) ->
+    if
+        NewVBs =:= [] -> categorize_replications(Rest, [{N, OldVBs} | AccToKill], AccToStart, AccToChange);
+        OldVBs =:= [] -> categorize_replications(Rest, AccToKill, [{N, NewVBs} | AccToStart], AccToChange);
+        NewVBs =:= OldVBs -> categorize_replications(Rest, AccToKill, AccToStart, AccToChange);
+        true -> categorize_replications(Rest, AccToKill, AccToStart, [T | AccToChange])
+    end.
+
 do_set_incoming_replication_map(State, DesiredReps, CurrentReps) ->
     Diff = replications_difference(DesiredReps, CurrentReps),
-    NodesToKill = [{N, VBs} || {N, [], VBs} <- Diff],
-    NodesToStart = [{N, VBs} || {N, VBs, []} <- Diff],
-    NodesToChange = [T
-                     || {_N, NewVBs, OldVBs} = T <- Diff,
-                        NewVBs =/= OldVBs],
+    {NodesToKill, NodesToStart, NodesToChange} = categorize_replications(Diff, [], [], []),
     [kill_child(State, SrcNode, VBuckets)
      || {SrcNode, VBuckets} <- NodesToKill],
     [start_child(State, SrcNode, VBuckets)
