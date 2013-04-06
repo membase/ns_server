@@ -110,7 +110,7 @@ maybe_save(State) ->
 
 read_crash_log(Path) ->
     case file:read_file(Path) of
-        {ok, <<>>} -> [];
+        {ok, <<>>} -> queue:new();
         {ok, B} ->
             try
                 B2 = zlib:uncompress(B),
