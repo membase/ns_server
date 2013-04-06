@@ -621,7 +621,7 @@ handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, _From, #state{
     {reply, ok, pass_vbucket_states_to_set_view_manager(State3)};
 handle_call({apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
             _From, #state{bucket_name = BucketName} = State) ->
-        Map = proplists:get_value(map, NewBucketConfig),
+    Map = proplists:get_value(map, NewBucketConfig),
     true = (Map =/= undefined),
     %% TODO: unignore ignored vbuckets
     [] = IgnoredVBuckets,
