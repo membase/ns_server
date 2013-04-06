@@ -596,10 +596,23 @@ handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, _From, #state{
                             end
                     end
             end, {0, [], [], []}, Map),
+
+    %% before changing vbucket states (i.e. activating or killing
+    %% vbuckets) we must stop replications into those vbuckets
+    WantedReplicas = [{Src, VBucket} || {Src, Dst, VBucket} <- ns_bucket:map_to_replicas(Map),
+                                        Dst =:= node()],
+    WantedReplications = [{Src, [VB || {_, VB} <- Pairs]}
+                          || {Src, Pairs} <- misc:keygroup(1, lists:sort(WantedReplicas))],
+    ns_vbm_new_sup:ping_all_replicators(BucketName),
+    ok = tap_replication_manager:remove_undesired_replications(BucketName, WantedReplications),
+
+    %% then we're ok to change vbucket states
     [ns_memcached:set_vbucket(BucketName, VBucket, StateToSet)
      || {VBucket, StateToSet} <- ToSet],
 
+    %% and ok to delete vbuckets we want to delete
     [ns_memcached:delete_vbucket(BucketName, VBucket) || VBucket <- ToDelete],
+
     NewWanted = lists:reverse(NewWantedRev),
     NewRebalance = [undefined || _ <- NewWantedRev],
     State2 = State#state{last_applied_vbucket_states = NewWanted,
