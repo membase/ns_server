@@ -72,6 +72,17 @@ handle_cast({crash, Crash}, #state{crashes = Q,
 handle_info({'DOWN', MRef, _, _, _}, #state{consumer_mref = CMRef} = State)
   when CMRef =:= MRef ->
     {noreply, reset_consumer(State)};
+handle_info(consider_save, #state{file_path = Path,
+                                  crashes = Q,
+                                  crashes_saved = OldQ} = State) ->
+    misc:flush(consider_save),
+    case Q =/= OldQ of
+        true ->
+            save_crash_log(Path, Q),
+            {noreply, State#state{crashes_saved = Q}};
+        _ ->
+            {noreply, State}
+    end;
 handle_info(_, State) ->
     {noreply, State}.
 
@@ -99,12 +110,11 @@ do_maybe_consume(#state{consumer_from = From,
 maybe_consume(State) ->
     maybe_save(do_maybe_consume(State)).
 
-maybe_save(#state{file_path = Path,
-                  crashes = Q,
+maybe_save(#state{crashes = Q,
                   crashes_saved = OldQ} = State)
   when Q =/= OldQ ->
-    save_crash_log(Path, Q),
-    State#state{crashes_saved = Q};
+    self() ! consider_save,
+    State;
 maybe_save(State) ->
     State.
 
