@@ -482,6 +482,7 @@ do_get_sink_loglevel(LoggerName, SinkName, State) ->
       end).
 
 set_error_logger_handler() ->
+    error_logger:swap_handler(silent),
     ok = gen_event:add_sup_handler(error_logger, ale_error_logger_handler,
                                    [?ERROR_LOGGER]).
 
