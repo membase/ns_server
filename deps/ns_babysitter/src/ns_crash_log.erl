@@ -128,7 +128,7 @@ read_crash_log(Path) ->
 
 save_crash_log(Path, Q) ->
     Compressed = zlib:compress(term_to_binary(Q)),
-    case file:write_file(Path, Compressed) of
+    case misc:atomic_write_file(Path, Compressed) of
         ok -> ok;
         E ->
             ?log_error("unable to write crash log to ~s: ~p. Ignoring", [Path, E])
