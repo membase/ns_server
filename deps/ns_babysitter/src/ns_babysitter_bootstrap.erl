@@ -14,6 +14,7 @@ start() ->
 
 stop() ->
     application:stop(ns_babysitter),
+    ale:sync_all_sinks(),
     init:stop().
 
 remote_stop(Node) ->
