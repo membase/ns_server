@@ -358,9 +358,29 @@ timer_timeout(SysTime) ->
 		    ets:delete(?TIMER_TAB,Key),
 		    do_apply(MFA),
 		    timer_timeout(SysTime);
-		[{{Time, Ref}, Repeat = {repeat, Interv, To}, MFA}] ->
+		[{{Time, Ref}, Repeat = {repeat, Interv, To}, MFA} = TimerEntry] ->
 		    ets:delete(?TIMER_TAB,Key),
-		    NewTime = Time + Interv,
+		    NewTime0 = Time + Interv,
+                    NewTime =
+                        case NewTime0 < SysTime of
+                            true ->
+                                %% if next tick is still behind "now"
+                                %% let's see if it's too much behind
+                                %% (which would be a sign of sudden
+                                %% clock jump forward) and consider
+                                %% skipping lots of ticks
+                                SkipCount = (SysTime - NewTime0 + Interv - 1) div Interv,
+                                if
+                                    SkipCount < 10 -> % if we're less then 10 ticks behind, we're fine
+                                        NewTime0;
+                                    true ->       % otherwise, we just skip ahead so that next tick is after current time
+                                        SkipAmount = SkipCount * Interv,
+                                        error_logger:error_msg("Detected time forward jump (or too large erlang scheduling latency). Skipping ~w samples (or ~w milliseconds) (~p)", [SkipCount, SkipAmount, TimerEntry]),
+                                        NewTime0 + SkipAmount
+                                end;
+                            _ ->
+                                NewTime0
+                        end,
 		    %% Update the interval entry (last in table)
 		    ets:insert(?INTERVAL_TAB,{{interval,Ref},{NewTime,Ref},To}),
 		    do_apply(MFA),
