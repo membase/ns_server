@@ -243,11 +243,13 @@ stop(_State) ->
 setup_babysitter_node() ->
     {Name, _} = misc:node_name_host(node()),
     Babysitter = list_to_atom("babysitter_of_" ++ Name ++ "@127.0.0.1"),
+    CookieString = case os:getenv("NS_SERVER_BABYSITTER_COOKIE") of
+                       X when is_list(X) -> X
+                   end,
+    erlang:set_cookie(Babysitter, list_to_atom(CookieString)),
     application:set_env(ns_server, babysitter_node, Babysitter),
     ignore.
 
 get_babysitter_node() ->
     {ok, Node} = application:get_env(ns_server, babysitter_node),
-    {ok, CookieString} = application:get_env(ns_server, babysitter_cookie),
-    erlang:set_cookie(Node, CookieString),
     Node.

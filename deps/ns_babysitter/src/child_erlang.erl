@@ -18,13 +18,13 @@ open_port_args() ->
                   "error_logger", "false",
                   "-sasl", "sasl_error_logger", "false",
                   "-nouser",
-                  "-ns_server", "babysitter_cookie", "'" ++ atom_to_list(erlang:get_cookie()) ++ "'",
                   "-run", "child_erlang", "child_start", "ns_bootstrap", "--"],
     AllArgs = ErlangArgs ++ AppArgs,
     ErlPath = filename:join([hd(proplists:get_value(root, init:get_arguments())),
                              "bin", "erl"]),
     [{spawn_executable, ErlPath},
      [{args, AllArgs},
+      {env, [{"NS_SERVER_BABYSITTER_COOKIE", atom_to_list(erlang:get_cookie())}]},
       exit_status, use_stdio, stream, eof]].
 
 child_start(Arg) ->
