@@ -22,7 +22,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -define(MAX_MOVES_PER_NODE, ns_config_ets_dup:unreliable_read_key(rebalance_moves_per_node, 1)).
--define(MOVES_BEFORE_COMPACTION, ns_config_ets_dup:unreliable_read_key(rebalance_moves_before_compaction, 16)).
+-define(MOVES_BEFORE_COMPACTION, ns_config_ets_dup:unreliable_read_key(rebalance_moves_before_compaction, 64)).
 
 -define(TAP_STATS_LOGGING_INTERVAL, 10*60*1000).
 

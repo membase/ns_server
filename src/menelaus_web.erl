@@ -2468,7 +2468,7 @@ build_internal_settings_kvs() ->
                {index_pausing_disabled, rebalanceIndexPausingDisabled, false},
                {rebalance_ignore_view_compactions, rebalanceIgnoreViewCompactions, false},
                {rebalance_moves_per_node, rebalanceMovesPerNode, 1},
-               {rebalance_moves_before_compaction, rebalanceMovesBeforeCompaction, 16},
+               {rebalance_moves_before_compaction, rebalanceMovesBeforeCompaction, 64},
                {{couchdb, max_parallel_indexers}, maxParallelIndexers, <<>>},
                {{couchdb, max_parallel_replica_indexers}, maxParallelReplicaIndexers, <<>>},
                {max_bucket_count, maxBucketCount, 10},

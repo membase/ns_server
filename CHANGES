@@ -5,6 +5,9 @@ This file documents user-visible changes in Couchbase clustering & UI.
 Between versions 2.0.1 and 2.0.2
 -----------------------------------------
 
+* (MB-8045) Default value of rebalanceMovesBeforeCompaction was raised
+  to 64 for severe gains in rebalance time.
+
 * (MB-7398) There's now full support of assigning symbolic hostnames
   to cluster nodes that replaces old "manual" and kludgy
   procedure. Now as part of node setup wizard there's input field to
