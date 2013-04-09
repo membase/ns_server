@@ -450,7 +450,7 @@ positive(X) ->
 
 
 system_time_millis() ->
-    {M,S,U} = os:timestamp(),
+    {M,S,U} = erlang:now(),
     1000 * (M*1000000 + S) + U div 1000.
 
 
