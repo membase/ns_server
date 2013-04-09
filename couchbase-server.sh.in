@@ -130,6 +130,7 @@ _start() {
                 error_logger false \
         -sasl sasl_error_logger false \
         -name 'babysitter_of_ns_1@127.0.0.1' \
+        -setcookie nocookie \
         $* \
         -run ns_babysitter_bootstrap -- \
         -couch_ini $couch_start_arguments \
