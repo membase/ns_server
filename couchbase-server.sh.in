@@ -119,6 +119,8 @@ _start() {
     GLIBCXX_FORCE_NEW=1
     export GLIBCXX_FORCE_NEW
 
+    umask 007
+
     exec erl \
         +A 16 \
         -smp enable \

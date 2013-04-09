@@ -142,7 +142,8 @@ do-install:
 	cp cbbrowse_logs $(DESTDIR)$(PREFIX)/bin/cbbrowse_logs
 	cp cbcollect_info $(DESTDIR)$(PREFIX)/bin/cbcollect_info
 	chmod +x $(DESTDIR)$(PREFIX)/bin/couchbase-server $(DESTDIR)$(PREFIX)/bin/cbbrowse_logs $(DESTDIR)$(PREFIX)/bin/cbcollect_info
-	mkdir -p $(DESTDIR)$(PREFIX)/var/lib/couchbase/logs
+	mkdir -p -m 0770 $(DESTDIR)$(PREFIX)/var/lib/couchbase
+	mkdir -p -m 0770 $(DESTDIR)$(PREFIX)/var/lib/couchbase/logs
 	cp ebucketmigrator $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
 	chmod +x $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
 	cp scripts/cbdump-config $(DESTDIR)$(PREFIX)/bin/
