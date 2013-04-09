@@ -54,7 +54,7 @@ deps_ale:
 deps_mlockall:
 	(cd deps/mlockall; $(MAKE))
 
-deps_ns_babysitter:
+deps_ns_babysitter: deps_ale
 	(cd deps/ns_babysitter; $(MAKE))
 
 deps_all: deps_smtp deps_erlwsh deps_ale deps_mlockall deps_ns_babysitter
