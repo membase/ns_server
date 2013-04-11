@@ -288,14 +288,14 @@ code_string(Module, Code) ->
         _                 -> "message"
     end.
 
--spec log(atom(), node(), Time, log_classification(), string(), list()) -> ok
+-spec log(atom(), node(), Time, log_classification(), iolist(), list()) -> ok
        when Time :: {integer(), integer(), integer()}.
 log(Module, Node, Time, Category, Fmt, Args) ->
     log(Module, Node, Time, undefined, Category, Fmt, Args).
 
 %% A Code is an number which is module-specific.
 -spec log(atom(), node(), Time,
-          Code, log_classification(), string(), list()) -> ok
+          Code, log_classification(), iolist(), list()) -> ok
       when Time :: {integer(), integer(), integer()},
            Code :: integer() | undefined.
 log(Module, Node, Time, Code, Category, Fmt, Args) ->
