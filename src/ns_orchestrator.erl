@@ -639,7 +639,8 @@ idle({start_recovery, Bucket}, _From, State) ->
                 throw(not_needed)
         end,
 
-        Servers = ns_node_disco:nodes_wanted(),
+        FailedOverNodes = [N || {N, inactiveFailed} <- ns_cluster_membership:get_nodes_cluster_membership()],
+        Servers = ns_node_disco:nodes_wanted() -- FailedOverNodes,
         BucketConfig = misc:update_proplist(BucketConfig0, [{servers, Servers}]),
         ns_cluster_membership:activate(Servers),
         ns_config:sync_announcements(),
