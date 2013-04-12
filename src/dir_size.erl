@@ -29,7 +29,11 @@ godu_name() ->
             "i386-win32-godu.exe";
         "x86_64-pc-linux-gnu" ->
             "i386-linux-godu";
+        "x86_64-unknown-linux-gnu" ->
+            "i386-linux-godu";
         "i" ++ [_ | "86-pc-linux-gnu"] ->
+            "i386-linux-godu";
+        "i" ++ [_ | "86-unknown-linux-gnu"] ->
             "i386-linux-godu";
         _ ->
             undefined
