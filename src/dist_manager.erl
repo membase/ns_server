@@ -123,12 +123,16 @@ wait_for_address(Address, N) ->
     end.
 
 save_address_config(State, UserSupplied) ->
-    Path = case UserSupplied of
-               true ->
-                   ip_start_config_path();
-               false ->
-                   ip_config_path()
-           end,
+    PathPair = [ip_start_config_path(), ip_config_path()],
+    [Path, ClearPath] =
+        case UserSupplied of
+            true ->
+                PathPair;
+            false ->
+                lists:reverse(PathPair)
+        end,
+    DeleteRV = file:delete(ClearPath),
+    ?log_info("Deleting irrelevant ip file ~p: ~p", [ClearPath, DeleteRV]),
     ?log_info("saving ip config to ~p", [Path]),
     misc:atomic_write_file(Path, State#state.my_ip).
 
