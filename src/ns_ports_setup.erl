@@ -55,7 +55,7 @@ childs_loop_continue(Childs) ->
         X ->
             erlang:error({unexpected_message, X})
     after 0 ->
-            error:error(expected_some_message)
+            erlang:error(expected_some_message)
     end,
     %% this sets bound on frequency of checking of port_servers
     %% configuration updates. NOTE: this thing also depends on other
