@@ -2,10 +2,10 @@
 
 -include("ns_common.hrl").
 
--export([start/0, start_memcached_force_killer/0, setup_body/0, restart_moxi/0]).
+-export([start/0, start_memcached_force_killer/0, setup_body_tramp/0, restart_moxi/0]).
 
 start() ->
-    {ok, proc_lib:spawn_link(?MODULE, setup_body, [])}.
+    {ok, proc_lib:spawn_link(?MODULE, setup_body_tramp, [])}.
 
 %% ns_config announces full list as well which we don't need
 is_useless_event(List) when is_list(List) ->
@@ -15,6 +15,9 @@ is_useless_event({{node, N, _}, _}) when N =/= node() ->
     true;
 is_useless_event(_) ->
     false.
+
+setup_body_tramp() ->
+    misc:delaying_crash(1000, fun setup_body/0).
 
 setup_body() ->
     Self = self(),

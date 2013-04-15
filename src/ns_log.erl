@@ -54,7 +54,10 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 start_link_crash_consumer() ->
-    {ok, proc_lib:spawn_link(fun crash_consumption_loop/0)}.
+    {ok, proc_lib:spawn_link(fun crash_consumption_loop_tramp/0)}.
+
+crash_consumption_loop_tramp() ->
+    misc:delaying_crash(1000, fun crash_consumption_loop/0).
 
 crash_consumption_loop() ->
     {Name, Node, Status, Messages} = ns_crash_log:consume_oldest_message_from_inside_ns_server(),

@@ -1504,3 +1504,12 @@ is_good_address_when_allowed(Address) ->
                     ok
             end
     end.
+
+delaying_crash(DelayBy, Body) ->
+    try
+        Body()
+    catch T:E ->
+            ST = erlang:get_stacktrace(),
+            timer:sleep(DelayBy),
+            erlang:raise(T, E, ST)
+    end.
