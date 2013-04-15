@@ -142,6 +142,7 @@ save_node(NodeName, Path) ->
 
 save_node(NodeName) ->
     case application:get_env(nodefile) of
+        {ok, undefined} -> nothing;
         {ok, NodeFile} -> save_node(NodeName, NodeFile);
         X -> X
     end.

@@ -27,7 +27,6 @@ LOCAL_CONFIG_DIR="@PREFIX@/etc/couchdb/local.d"
 LOCAL_CONFIG_FILE="@PREFIX@/etc/couchdb/local.ini"
 
 PIDFILE="@PREFIX@/var/lib/couchbase/couchbase-server.pid"
-NODEFILE="@PREFIX@/var/lib/couchbase/couchbase-server.node"
 COOKIEFILE="@PREFIX@/var/lib/couchbase/couchbase-server.cookie"
 
 couch_start_arguments=""
@@ -139,7 +138,6 @@ _start() {
         -ns_babysitter cookiefile "\"$COOKIEFILE\"" \
         -ns_server config_path "\"@PREFIX@/etc/couchbase/static_config\"" \
         -ns_server pidfile "\"$PIDFILE\"" \
-        -ns_server nodefile "\"$NODEFILE\"" \
         -ns_server cookiefile "\"$COOKIEFILE-ns-server\"" \
         -ns_server enable_mlockall ${COUCHBASE_ENABLE_MLOCKALL:-true}
 }
