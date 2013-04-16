@@ -9,6 +9,7 @@ import string
 import re
 import platform
 import glob
+import socket
 
 USAGE = """usage: %prog [options] output_file.zip
 
@@ -457,12 +458,25 @@ def main():
         for task in make_product_task(guts, guts_initargs_path):
             runner.run(task)
 
+    if zip_node.split("@")[-1] == "127.0.0.1":
+        zip_node = '@'.join(zip_node.split("@")[:-1] + [find_primary_addr("127.0.0.1")])
+
     zip_filename = args[0]
     if zip_filename[-4:] != '.zip':
         zip_filename = zip_filename + '.zip'
 
     runner.zip(zip_filename, zip_node)
 
+def find_primary_addr(default = None):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 56))
+        addr, port = s.getsockname()
+        return addr
+    except socket.error:
+        return default
+    finally:
+        s.close()
 
 if __name__ == '__main__':
     main()
