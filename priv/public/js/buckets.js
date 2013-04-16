@@ -733,7 +733,8 @@ var BucketsSection = {
         $($i(name+'_health')).sparkline(healthStats, {
           type: 'pie',
           sliceColors: ['#4A0', '#fac344', '#f00'],
-          height: (isCanvasSupported ? '1.5em' : 'auto')
+          height: (isCanvasSupported ? '1.5em' : 'auto'),
+          disableTooltips: true
         }).mouseover(function(ev) {
           $(ev.target).attr('title',
               bucketInfo.healthStats[0] + ' healthy, ' +
