@@ -454,7 +454,11 @@ def main():
         for task in make_product_task(guts, guts_initargs_path):
             runner.run(task)
 
-    runner.zip(args[0], zip_node)
+    zip_filename = args[0]
+    if zip_filename[-4:] != '.zip':
+        zip_filename = zip_filename + '.zip'
+
+    runner.zip(zip_filename, zip_node)
 
 
 if __name__ == '__main__':
