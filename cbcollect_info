@@ -296,6 +296,8 @@ def make_product_task(guts, initargs_path):
                  ["ls", "-lR", root, "/opt/membase", "/var/membase", "/etc/opt/membase"]),
         UnixTask("Database directory structure",
                  ["ls", "-lR", dbdir]),
+        LinuxTask("Database directory filefrag info",
+                  ["find", dbdir, "-type", "f", "-exec", "filefrag", "-v", "{}", "+"]),
         WindowsTask("Database directory structure",
                     "dir /s " + winquote_path(dbdir)),
         UnixTask("Directory structure membase - previous versions",
