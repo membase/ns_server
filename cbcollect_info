@@ -288,6 +288,14 @@ def read_guts(guts, key):
 def winquote_path(s):
     return '"'+s.replace("\\\\", "\\").replace('/', "\\")+'"'
 
+# python's split splits empty string to [''] which doesn't make any
+# sense. So this function works around that.
+def correct_split(string, splitchar):
+    rv = string.split(splitchar)
+    if rv == ['']:
+        rv = []
+    return rv
+
 def make_product_task(guts, initargs_path):
     root = os.path.abspath(os.path.join(initargs_path, "..", ".."))
     dbdir = read_guts(guts, "db_dir")
@@ -350,24 +358,17 @@ def make_product_task(guts, initargs_path):
                   ["curl", "-sS",
                    "-u", '%s:%s' % (read_guts(guts, "rest_user"), read_guts(guts, "rest_pass")),
                    "http://127.0.0.1:%s/diag?noLogs=1" % guts["rest_port"]],
-                  log_file="diag.log")]
+                  log_file="diag.log"),
+
+        [AllOsTask("ddocs for %s (%s)" % (bucket, path),
+                   ["couch_dbdump", path],
+                   log_file = "ddocs.log")
+         for bucket in set(correct_split(read_guts(guts, "buckets"), ",")) - set(correct_split(read_guts(guts, "memcached_buckets"), ","))
+         for path in glob.glob(os.path.join(dbdir, bucket, "master.couch*"))]
+        ]
 
     _tasks = flatten(_tasks)
 
-    try:
-        for f in os.listdir(dbdir):
-            path = os.path.join(dbdir, f)
-            #find bucket directory
-            if os.path.isdir(path) and f not in [".delete", "@indexes"]:
-                files = glob.glob("%s/master.couch.[0-9]*" % path)
-        if files:
-            ddoc = sorted(files, key=lambda x: int(x.split(".")[-1]))[-1]
-            _tasks.append(
-                AllOsTask("couchbase design docs - bucket:%s" % f,
-                          "couch_dbdump \"%s\"" % (os.path.join(path, ddoc)),
-                          log_file="ddocs.log"))
-    except:
-        pass
     return _tasks
 
 
