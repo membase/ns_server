@@ -337,7 +337,7 @@ def make_product_task(guts, initargs_path):
                    flatten(["cbstats", "-a", "127.0.0.1:%s" % read_guts(guts, "memcached_port"), kind, "-b", read_guts(guts, "memcached_admin"), "-p", read_guts(guts, "memcached_pass")]),
                    log_file="stats.log")
          for kind in ["all", "checkpoint", "config", "dispatcher",
-                      "hash", "klog", "kvstore", "kvtimings",
+                      "klog", "kvstore", "kvtimings",
                       "tap", "tapagg", "timings",
                       ["raw", "memory"], ["raw", "allocator"],
                       "prev-vbucket", "vbucket", "vbucket-details",
