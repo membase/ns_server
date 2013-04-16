@@ -159,7 +159,6 @@ function createDocumentsCells(ns, modeCell, capiBaseCell, bucketsListCell) {
     var url = v.need(ns.dbURLCell);
 
     param.skip = String(skip);
-    param.include_docs = true;
     param.limit = String(limit + 1);
 
     return buildURL(url, "_all_docs", param);

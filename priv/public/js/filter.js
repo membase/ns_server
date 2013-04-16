@@ -54,7 +54,6 @@ Filter.prototype = {
       keys: true,
       key: true,
       inclusiveEnd: true,
-      includeDocs: true,
       groupLevel: true,
       group: true,
       endkeyDocid: true,

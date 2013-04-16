@@ -1193,10 +1193,6 @@
                         <label for="{%= prefix %}_filter_group_level">group_level</label>
                         <input id="{%= prefix %}_filter_group_level" name="group_level" type="text">
                       </div><!--{% }%}-->
-                      <!--{% if (items.includeDocs) {%}--><div>
-                        <label for="{%= prefix %}_filter_include_docs">include_docs</label>
-                        <input id="{%= prefix %}_filter_include_docs" name="include_docs" type="checkbox">
-                      </div><!--{% }%}-->
                       <!--{% if (items.inclusiveEnd) {%}--><div>
                         <label for="{%= prefix %}_filter_inclusive_end">inclusive_end</label>
                         <input id="{%= prefix %}_filter_inclusive_end" name="inclusive_end" type="checkbox">
@@ -1533,7 +1529,6 @@
                     <tr>
                       <th class="keycol">ID</th>
                       <th>&#160;</th>
-                      <th>Сontent</th>
                       <th>&#160;</th>
                       <th>&#160;</th>
                       <th>&#160;</th>
@@ -1546,15 +1541,14 @@
                   <tbody>
                   <!-- {% if (loading) { %} -->
                       <tr>
-                        <td colspan="10" class='spinner'><span>Loading...</span></td>
+                        <td colspan="9" class='spinner'><span>Loading...</span></td>
                       </tr>
                   <!-- {% } else if (rows.length > 0) { %} -->
                   <!-- {% _.each(rows, function (r) { %} -->
                       <tr class="align_text">
-                          <td class="key ellipsis" colspan="2">
+                          <td class="key ellipsis" colspan="6">
                             <a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}">{%= h(r.key) %}</a>
                           </td>
-                          <td class="ellipsis" colspan="5">{%= $.futon.formatJSON(r.doc.json, {html:true}) %}</td>
                           <td colspan="3">
                             <button class="list_button delete_btn" data-id="{%= h(r.id) %}"><span>Delete</span></button>
                             <a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}" class="list_button btn_edit"><span>Edit Document</span></a></td>
@@ -1562,7 +1556,7 @@
                   <!-- {% }); %} -->
                 <!-- {% } else { %} -->
                   <tr>
-                    <td colspan="10" class="empty_docs">There are currently no documents in this bucket{%= searchCriteria ? ' corresponding to the search criteria' : '.' %}</td>
+                    <td colspan="9" class="empty_docs">There are currently no documents in this bucket{%= searchCriteria ? ' corresponding to the search criteria' : '.' %}</td>
                   </tr>
                 <!-- {% } %} -->
                 </tbody>
