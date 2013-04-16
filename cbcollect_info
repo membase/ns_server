@@ -402,6 +402,8 @@ def main():
                       default=os.path.abspath(os.path.join(mydir, "..")))
     parser.add_option("-v", dest="verbosity", help="increase verbosity level",
                       action="count", default=0)
+    parser.add_option("-p", dest="product_only", help="gather only product related information",
+                      action="store_true", default=False)
     options, args = parser.parse_args()
 
     if len(args) != 1:
@@ -424,8 +426,9 @@ def main():
 
     runner = TaskRunner(verbosity=options.verbosity)
 
-    for task in make_os_tasks():
-      runner.run(task)
+    if not options.product_only:
+        for task in make_os_tasks():
+            runner.run(task)
 
     initargs_variants = [os.path.abspath(os.path.join(options.root, "var", "lib", "couchbase", "initargs")),
                          "/opt/couchbase/var/lib/couchbase/initargs",
