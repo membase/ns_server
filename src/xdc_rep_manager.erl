@@ -94,24 +94,7 @@ maybe_create_replication_info_ddoc() ->
                  ?xdcr_info("replication document created: ~n~p", [XDb]),
                  XDb
          end,
-    try couch_db:open_doc(DB, <<"_design/_replicator_info">>, []) of
-        {ok, _Doc} ->
-            ok;
-        _ ->
-            DDoc = couch_doc:from_json_obj(
-                     {[
-                        {<<"meta">>, {[{<<"id">>, <<"_design/_replicator_info">>}]}},
-                        {<<"json">>, {[
-                          {<<"language">>, <<"javascript">>},
-                          {<<"views">>,
-                            {[{<<"infos">>,
-                               {[{<<"map">>, ?REPLICATION_INFOS_MAP},
-                                 {<<"reduce">>, ?REPLICATION_INFOS_REDUCE}]}}]}}]}}]}),
-            ?xdcr_info("create XDCR replication info doc...", []),
-            ok = couch_db:update_doc(DB, DDoc, [])
-    after
-        couch_db:close(DB)
-    end.
+    couch_db:close(DB).
 
 handle_call(get_errors, _, State) ->
     Reps = try xdc_replication_sup:get_replications()

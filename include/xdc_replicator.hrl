@@ -18,7 +18,6 @@
 
 %% ns_server headers
 -include("ns_common.hrl").
--include("replication_infos_ddoc.hrl").
 
 %% imported functions
 -import(couch_util, [

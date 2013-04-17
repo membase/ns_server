@@ -45,11 +45,6 @@ var ReplicationsModel = {};
     rawRemoteClustersListCell.invalidate();
     DAL.cells.tasksProgressCell.invalidate();
   }
-
-  var replicatorDBURIBaseCell = model.replicatorDBURIBaseCell = Cell.computeEager(function (v) {
-    return v.need(DAL.cells.currentPoolDetailsCell).controllers.replication.replicatorDBURI + "/";
-  });
-
 })();
 
 var ReplicationForm = mkClass({
