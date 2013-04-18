@@ -249,7 +249,9 @@ mover_inner(Parent, Node, Bucket, VBucket,
                     system_stats_collector:increment_counter(index_pausing_runs, 1),
                     janitor_agent:set_vbucket_state(Bucket, Node, Parent, VBucket, active, paused, undefined),
                     SecondWaitedCheckpointId = janitor_agent:get_replication_persistence_checkpoint_id(Bucket, Parent, Node, VBucket),
-                    ok = wait_checkpoint_persisted_many(Bucket, Parent, AllBuiltNodes, VBucket, SecondWaitedCheckpointId);
+                    master_activity_events:note_checkpoint_waiting_started(Bucket, VBucket, SecondWaitedCheckpointId, AllBuiltNodes),
+                    ok = wait_checkpoint_persisted_many(Bucket, Parent, AllBuiltNodes, VBucket, SecondWaitedCheckpointId),
+                    master_activity_events:note_checkpoint_waiting_ended(Bucket, VBucket, SecondWaitedCheckpointId, AllBuiltNodes);
                 false ->
                     ok
             end,
