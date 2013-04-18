@@ -302,15 +302,22 @@ def correct_split(string, splitchar):
 def make_product_task(guts, initargs_path):
     root = os.path.abspath(os.path.join(initargs_path, "..", ".."))
     dbdir = read_guts(guts, "db_dir")
+    viewdir = read_guts(guts, "idx_dir")
     _tasks = [
         UnixTask("Directory structure",
                  ["ls", "-lR", root, "/opt/membase", "/var/membase", "/etc/opt/membase"]),
         UnixTask("Database directory structure",
                  ["ls", "-lR", dbdir]),
+        UnixTask("Index directory structure",
+                 ["ls", "-lR", viewdir]),
         LinuxTask("Database directory filefrag info",
                   ["find", dbdir, "-type", "f", "-exec", "filefrag", "-v", "{}", "+"]),
+        LinuxTask("Index directory filefrag info",
+                  ["find", viewdir, "-type", "f", "-exec", "filefrag", "-v", "{}", "+"]),
         WindowsTask("Database directory structure",
                     "dir /s " + winquote_path(dbdir)),
+        WindowsTask("Index directory structure",
+                    "dir /s " + winquote_path(viewdir)),
         UnixTask("Directory structure membase - previous versions",
                  "ls -lR /opt/membase /var/membase /var/opt/membase /etc/opt/membase"),
         WindowsTask("Version file",
