@@ -26,7 +26,7 @@ $events = $events.select {|ev| range.include? ev["ts"]}
 $nodes = Set.new
 
 $events.each do |ev|
-  next unless ev["type"] == "updateFastForwardMap"
+  next unless ev["type"] == "updateFastForwardMap" || ev["type"] == "vbucketMoveStart"
   (ev["chainBefore"] + ev["chainAfter"]).each {|n| $nodes << n}
 end
 
