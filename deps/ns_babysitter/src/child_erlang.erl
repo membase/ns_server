@@ -13,6 +13,7 @@ open_port_args() ->
                   "+sbt",  "u",
                   "+P", "327680",
                   "+K", "true",
+                  "+MMmcs", misc:get_env_default("COUCHBASE_MSEG_CACHE_SIZE", "30"),
                   "-setcookie", "nocookie",
                   "-kernel", "inet_dist_listen_min", "21100", "inet_dist_listen_max", "21299",
                   "error_logger", "false",
