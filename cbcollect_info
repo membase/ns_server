@@ -483,11 +483,12 @@ def main():
 def find_primary_addr(default = None):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        s.connect(("8.8.8.8", 56))
-        addr, port = s.getsockname()
-        return addr
-    except socket.error:
-        return default
+        try:
+            s.connect(("8.8.8.8", 56))
+            addr, port = s.getsockname()
+            return addr
+        except socket.error:
+            return default
     finally:
         s.close()
 
