@@ -120,19 +120,19 @@ _start() {
 
     umask 007
 
+    ERL_MAX_PORTS=1024
+    export ERL_MAX_PORTS
+
     exec erl \
         +A 16 \
         -smp enable \
-        +sbt u \
-        +P 327680 \
-        +K true \
-        +MMmcs ${COUCHBASE_MSEG_CACHE_SIZE:-30} \
         -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21299 \
                 error_logger false \
         -sasl sasl_error_logger false \
         -name 'babysitter_of_ns_1@127.0.0.1' \
         -setcookie nocookie \
         $* \
+        -eval 'os:putenv("ERL_MAX_PORTS","").' \
         -run ns_babysitter_bootstrap -- \
         -couch_ini $couch_start_arguments \
         -ns_babysitter cookiefile "\"$COOKIEFILE\"" \

@@ -35,19 +35,6 @@ start(_, _) ->
     self() ! done,
     log_pending(),
 
-    case misc:get_env_default(ns_server, enable_mlockall, true) of
-        true ->
-            case mlockall:lock([current, future]) of
-                ok ->
-                    ?log_info("Locked myself into a memory successfully.");
-                Error ->
-                    ?log_warning("Could not lock "
-                                 "myself into a memory: ~p. Ignoring.", [Error])
-            end;
-        false ->
-            ok
-    end,
-
     {have_host, true} = {have_host, ('nonode@nohost' =/= node())},
 
     Cookie =
