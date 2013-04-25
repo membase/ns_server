@@ -252,7 +252,9 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
                                             || N <- AllNodes])),
                           case proplists:get_value(type, BucketConfig) of
                               memcached ->
-                                  ns_bucket:set_servers(BucketName, KeepNodes);
+                                  master_activity_events:note_bucket_rebalance_started(BucketName),
+                                  ns_bucket:set_servers(BucketName, KeepNodes),
+                                  master_activity_events:note_bucket_rebalance_ended(BucketName);
                               membase ->
                                   %% Only start one bucket at a time to avoid
                                   %% overloading things
