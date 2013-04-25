@@ -186,8 +186,44 @@ var ServersSection = {
       actionLinkCallback: function () {
         ThePage.ensureSection('servers');
       },
-      uriExtractor: function (nodeInfo) {
-        return "/nodes/" + encodeURIComponent(nodeInfo.otpNode);
+      detailsCellMaker: function (nodeInfo, nodeName) {
+        var rebalanceTaskCell = Cell.compute(function (v) {
+          var progresses = v.need(DAL.cells.tasksProgressCell);
+          return _.find(progresses, function (task) {
+            return task.type === 'rebalance' && task.status === 'running';
+          }) || undefined;
+        });
+
+        var rawNodeDetails = Cell.compute(function (v) {
+          return future.get({url:  "/nodes/" + encodeURIComponent(nodeInfo.otpNode)});
+        });
+        rawNodeDetails.keepValueDuringAsync = true;
+
+        var rv = Cell.compute(function (v) {
+          var data = _.clone(v.need(rawNodeDetails));
+          var rebalanceTask = v(rebalanceTaskCell);
+
+          if (rebalanceTask &&
+              rebalanceTask.detailedProgress &&
+              rebalanceTask.detailedProgress.bucket &&
+              rebalanceTask.detailedProgress.bucketNumber !== undefined &&
+              rebalanceTask.detailedProgress.bucketsCount !== undefined &&
+              rebalanceTask.detailedProgress.perNode &&
+              rebalanceTask.detailedProgress.perNode[nodeName]) {
+            data.detailedProgress = rebalanceTask.detailedProgress.perNode[nodeName];
+            data.detailedProgress.bucket = rebalanceTask.detailedProgress.bucket;
+            data.detailedProgress.bucketNumber = rebalanceTask.detailedProgress.bucketNumber;
+            data.detailedProgress.bucketsCount = rebalanceTask.detailedProgress.bucketsCount;
+          } else {
+            data.detailedProgress = false;
+          }
+
+          return data;
+        });
+
+        rv.delegateInvalidationMethods(rawNodeDetails);
+
+        return rv;
       },
       valueTransformer: function (nodeInfo, nodeSettings) {
         return _.extend({}, nodeInfo, nodeSettings);

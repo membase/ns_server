@@ -197,6 +197,7 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 #servers .list th {text-align:left;padding-right:0;padding-left:0;}
 #servers .list td.ram {padding-left:5px;padding-right:0;}
 #servers .list th.node_name {padding-left:5px;}
+
 .vertical_bar {float:left;overflow:hidden;width:1em;height:3em;background:white;border:1px solid #999;border-radius:2px;margin-right:5px}
 .vertical_bar .used{position:relative;background:#00BCE9;}
 .wrap {float:left;margin-top:12px;}
@@ -747,6 +748,9 @@ ul.tabs .badge_display .badge {display:block;}
 
 #servers .gong_rb {margin-top:10px 0 10px; padding-left:3px;}
 
+.additional_server_info .rebalance_progress {padding-left: 246px; background:url(../images/icons.png) 0 -480px no-repeat;}
+.additional_server_info .rebalance_progress p {margin: 10px 0; white-space: nowrap;}
+.additional_server_info .rebalance_progress span {display: inline-block; width: 400px;}
 .additional_server_info {display:block;overflow:hidden;}
 .additional_server_info h3 { margin:0 0 10px 0;padding:5px 0 10px 0;color:#5391BA;font-weight:bold;font-size:14px;border-bottom:1px solid #bbbdbf;}
 .additional_server_info .info_block {display:block; overflow:hidden;}

@@ -321,6 +321,31 @@
             <div class="side side_4"></div>
           </div>
           <div class="additional_server_info">
+            <!-- {% if (detailedProgress) { %}-->
+              <h3>Rebalance Progress</h3>
+              <div class="rebalance_progress">
+                <p>
+                  <span>Bucket:</span>
+                  {%= detailedProgress.bucket %}
+                  ({%= detailedProgress.bucketNumber %} out of {%= detailedProgress.bucketsCount %})
+                </p>
+                <p>
+                  <span>Total number of keys to be transferred out:</span>
+                  {%= detailedProgress.docsTotal %}
+                </p>
+                <p>
+                  <span>Estimated number of keys transferred:</span>
+                  {%= detailedProgress.docsTransferred %}
+                </p>
+                <p>
+                  <span>
+                    Number of Active# vBuckets and Replica# vBuckets to transfer:
+                  </span>
+                  Active#-{%= detailedProgress.activeVBucketsLeft %}
+                  Replica#-{%= detailedProgress.replicaVBucketsLeft %}
+                </p>
+              </div>
+            <!-- {% } %}-->
             <h3>Memory Cache</h3>
             <div class="info_block">
               <span class="dynamic_ram">Dynamic RAM:</span>
