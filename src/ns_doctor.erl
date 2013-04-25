@@ -550,6 +550,8 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
     RebalanceTask0 =
         case ns_cluster_membership:get_rebalance_status() of
             {running, PerNode} ->
+                DetailedProgress = get_detailed_progress(),
+
                 [{type, rebalance},
                  {recommendedRefreshPeriod, 0.25},
                  {status, running},
@@ -562,7 +564,8 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
                             end},
                  {perNode,
                   {struct, [{Node, {struct, [{progress, Progress * 100}]}}
-                            || {Node, Progress} <- PerNode]}}];
+                            || {Node, Progress} <- PerNode]}},
+                 {detailedProgress, DetailedProgress}];
             _ ->
                 [{type, rebalance},
                  {status, notRunning}
@@ -576,6 +579,16 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
     MaybeRecoveryTask = build_recovery_task(PoolId),
 
     MaybeRecoveryTask ++ [RebalanceTask | PreRebalanceTasks].
+
+get_detailed_progress() ->
+    case ns_rebalance_observer:get_detailed_progress() of
+        {ok, GlobalDetails, PerNode} ->
+            PerNodeJSON0 = [{N, {struct, Details}} || {N, Details} <- PerNode],
+            PerNodeJSON = {struct, PerNodeJSON0},
+            {struct, GlobalDetails ++ [{perNode, PerNodeJSON}]};
+        not_running ->
+            {struct, []}
+    end.
 
 task_priority(Task) ->
     Type = proplists:get_value(type, Task),
