@@ -106,13 +106,13 @@ child_specs() ->
      {remote_clusters_info, {remote_clusters_info, start_link, []},
       permanent, 1000, worker, [remote_servers_info]},
 
+     {master_activity_events, {gen_event, start_link, [{local, master_activity_events}]},
+      permanent, brutal_kill, worker, dynamic},
+
      %% Starts mb_master_sup, which has all processes that start on the master
      %% node.
      {mb_master, {mb_master, start_link, []},
       permanent, infinity, supervisor, [mb_master]},
-
-     {master_activity_events, {gen_event, start_link, [{local, master_activity_events}]},
-      permanent, brutal_kill, worker, dynamic},
 
      {master_activity_events_ingress, {gen_event, start_link, [{local, master_activity_events_ingress}]},
       permanent, brutal_kill, worker, dynamic},

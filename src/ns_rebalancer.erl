@@ -239,6 +239,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
             exit(Error)
     end,
 
+    {ok, RebalanceObserver} = ns_rebalance_observer:start_link(BucketConfigs),
 
     %% Eject failed nodes first so they don't cause trouble
     eject_nodes(FailedNodes),
@@ -297,6 +298,10 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
                                   verify_replication(BucketName, KeepNodes, NewMap)
                           end
                   end, misc:enumerate(BucketConfigs, 0)),
+
+    unlink(RebalanceObserver),
+    exit(RebalanceObserver, shutdown),
+    misc:wait_for_process(RebalanceObserver, infinity),
 
     ns_config:sync_announcements(),
     ns_config_rep:push(),

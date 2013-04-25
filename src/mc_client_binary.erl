@@ -54,7 +54,10 @@
          change_vbucket_filter/3,
          enable_traffic/1,
          disable_traffic/1,
-         wait_for_checkpoint_persistence/3]).
+         wait_for_checkpoint_persistence/3,
+         get_tap_docs_estimate/3,
+         get_mass_tap_docs_estimate/2
+        ]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
 -type mc_timeout() :: undefined | infinity | non_neg_integer().
@@ -833,3 +836,27 @@ wait_for_checkpoint_persistence(Sock, VBucket, CheckpointId) ->
         Other ->
             process_error_response(Other)
     end.
+
+-spec get_tap_docs_estimate(port(), vbucket_id(), binary()) ->
+                                   {ok, {non_neg_integer(), non_neg_integer(), binary()}}.
+get_tap_docs_estimate(Sock, VBucket, TapName) ->
+    mc_binary:quick_stats(Sock,
+                          iolist_to_binary([<<"tap-vbtakeover ">>, integer_to_list(VBucket), $\s | TapName]),
+                          fun (<<"estimate">>, V, {_, AccChkItems, AccStatus}) ->
+                                  {list_to_integer(binary_to_list(V)), AccChkItems, AccStatus};
+                              (<<"chk_items">>, V, {AccEstimate, _, AccStatus}) ->
+                                  {AccEstimate, list_to_integer(binary_to_list(V)), AccStatus};
+                              (<<"status">>, V, {AccEstimate, AccChkItems, _}) ->
+                                  {AccEstimate, AccChkItems, V};
+                              (_, _, Acc) ->
+                                  Acc
+                          end, {0, 0, <<"unknown">>}).
+
+-spec get_mass_tap_docs_estimate(port(), [vbucket_id()]) ->
+                                        {ok, [{non_neg_integer(), non_neg_integer(), binary()}]}.
+get_mass_tap_docs_estimate(Sock, VBuckets) ->
+    %% TODO: consider pipelining that stuff. For now it just does
+    %% vbucket after vbucket sequentially
+    {ok, [case get_tap_docs_estimate(Sock, VB, <<>>) of
+              {ok, V} -> V
+          end || VB <- VBuckets]}.
