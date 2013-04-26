@@ -260,6 +260,14 @@ Between versions 2.0.1 and 2.0.2
   recovery is not a means of avoiding rebalance. It's suitable only
   for recovering data. And rebalance will be needed anyway.
 
+* (MB-8013) Detailed rebalance progress implemented.
+
+  This gives user an estimate of the number of items to be transferred
+  from each node during rebalance, number of items transferred so far,
+  number of vbuckets to be moved in/out of the node. This works on a
+  per bucket level so we also show which bucket is being rebalanced
+  right now and how many has already been rebalanced.
+
 
 -----------------------------------------
 Between versions 2.0.0 and 2.0.1
