@@ -280,7 +280,19 @@ handle_per_node_just_diag(_Resp, []) ->
 handle_per_node_just_diag(Resp, [{Node, DiagBinary} | Results]) ->
     erlang:garbage_collect(),
 
-    Diag = binary_to_term(DiagBinary),
+    Diag = case is_binary(DiagBinary) of
+               true ->
+                   try
+                       binary_to_term(DiagBinary)
+                   catch
+                       error:badarg ->
+                           ?log_error("Could not convert "
+                                      "binary diag to term (node ~p)", [Node]),
+                           diag_failed
+                   end;
+               false ->
+                   DiagBinary
+           end,
     do_handle_per_node_just_diag(Resp, Node, Diag),
     handle_per_node_just_diag(Resp, Results).
 
