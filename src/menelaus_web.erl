@@ -2474,7 +2474,8 @@ build_internal_settings_kvs() ->
                {xdcr_checkpoint_interval, xdcrCheckpointInterval, 1800},
                {xdcr_worker_batch_size, xdcrWorkerBatchSize, 500},
                {xdcr_doc_batch_size_kb, xdcrDocBatchSizeKb, 2048},
-               {xdcr_failure_restart_interval, xdcrFailureRestartInterval, 30}],
+               {xdcr_failure_restart_interval, xdcrFailureRestartInterval, 30},
+               {xdcr_optimistic_replication_threshold, xdcrOptimisticReplicationThreshold, <<>>}],
     [{JK, ns_config_ets_dup:unreliable_read_key(CK, DV)}
      || {CK, JK, DV} <- Triples].
 
@@ -2566,6 +2567,13 @@ handle_internal_settings_post(Req) ->
                    SV ->
                        {ok, V} = parse_validate_number(SV, 1, 300),
                        MaybeSet(xdcrFailureRestartInterval, xdcr_failure_restart_interval, V)
+               end,
+               case proplists:get_value("xdcrOptimisticReplicationThreshold", Params) of
+                   undefined -> undefined;
+                   "" -> undefined;
+                   SV ->
+                       {ok, V} = parse_validate_number(SV, 0, 20*1024*1024),
+                       MaybeSet(xdcrOptimisticReplicationThreshold, xdcr_optimistic_replication_threshold, V)
                end],
     [Action()
      || Action <- Actions,
