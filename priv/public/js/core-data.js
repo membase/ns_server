@@ -392,7 +392,7 @@ var DAL = {
     allNodes = _.uniq(active.concat(pending));
 
     var reallyActive = _.select(active, function (n) {
-      return n.clusterMembership === 'active' && !n.pendingEject && n.status !== 'unhealthy';
+      return n.clusterMembership === 'active' && !n.pendingEject;
     });
 
     if (reallyActive.length == 1) {
