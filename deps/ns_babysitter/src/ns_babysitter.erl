@@ -106,10 +106,10 @@ init_logging() ->
     ok = ale:start_sink(babysitter_sink,
                         ale_disk_sink, [LogPath, DiskSinkParams]),
 
-    ok = ale:start_logger(ns_server, debug),
+    ok = ale:start_logger(?NS_SERVER_LOGGER, debug),
     ok = ale:set_loglevel(?ERROR_LOGGER, debug),
 
-    ok = ale:add_sink(ns_server, babysitter_sink, debug),
+    ok = ale:add_sink(?NS_SERVER_LOGGER, babysitter_sink, debug),
     ok = ale:add_sink(?ERROR_LOGGER, babysitter_sink, debug),
 
     case misc:get_env_default(ns_server, dont_suppress_stderr_logger, false) of
@@ -120,7 +120,7 @@ init_logging() ->
             lists:foreach(
               fun (Logger) ->
                       ok = ale:add_sink(Logger, stderr, debug)
-              end, [ns_server, ?ERROR_LOGGER]);
+              end, [?NS_SERVER_LOGGER, ?ERROR_LOGGER]);
         false ->
             ok
     end,
