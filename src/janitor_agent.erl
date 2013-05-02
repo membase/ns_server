@@ -743,7 +743,9 @@ handle_call({get_mass_tap_docs_estimate, VBucketsR}, From, State) ->
               ns_memcached:get_mass_tap_docs_estimate(Bucket, VBuckets)
       end).
 
-handle_call_via_servant({_, Tag} = From, State, Req, Body) ->
+handle_call_via_servant({Pid, _Tag}, State, Req, Body) ->
+    Tag = erlang:make_ref(),
+    From = {Pid, Tag},
     Pid = proc_lib:spawn(fun () ->
                                  gen_server:reply(From, Body(Req, State))
                          end),
