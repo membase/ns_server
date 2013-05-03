@@ -6,7 +6,7 @@ start() ->
     try
         ok = application:start(ale),
         ok = application:start(sasl),
-        ok = application:start(ns_babysitter)
+        ok = application:start(ns_babysitter, permanent)
     catch T:E ->
             timer:sleep(500),
             erlang:T(E)
