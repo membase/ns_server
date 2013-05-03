@@ -129,6 +129,7 @@ _start() {
         -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21299 \
                 error_logger false \
         -sasl sasl_error_logger false \
+        -hidden \
         -name 'babysitter_of_ns_1@127.0.0.1' \
         -setcookie nocookie \
         $* \
