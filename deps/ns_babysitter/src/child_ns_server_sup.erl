@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
--module(ns_babysitter_sup).
+-module(child_ns_server_sup).
 
 -behavior(supervisor).
 
@@ -25,13 +25,5 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
-    {ok, {{one_for_one, 3, 10},
-          child_specs()}}.
-
-child_specs() ->
-    [{ns_crash_log, {ns_crash_log, start_link, []},
-      permanent, 1000, worker, []},
-     {child_ns_server_sup, {child_ns_server_sup, start_link, []},
-      permanent, infinity, supervisor, []},
-     {ns_child_ports_sup, {ns_child_ports_sup, start_link, []},
-      permanent, infinity, supervisor, []}].
+    {ok, {{one_for_one, 1000, 10},
+          [ns_child_ports_sup:create_ns_server_supervisor_spec()]}}.
