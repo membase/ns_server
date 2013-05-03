@@ -147,8 +147,9 @@ do_svg(ARGV[0]+".svg", right_edge, lower_edge) do |img|
     waiting_evs.each do |ev|
       case ev["type"]
       when "checkpointWaitingStarted"
-        ending = waiting_evs.detect {|cev| cev["type"] == "checkpointWaitingEnded" && cev["node"] == ev["node"]}
-        raise unless ending && !(ending["starting"])
+        ending = waiting_evs.detect {|cev| cev["type"] == "checkpointWaitingEnded" && cev["node"] == ev["node"] && ev["ts"] <= cev["ts"]}
+        raise unless ending
+        raise "already have starting event: #{ending["starting"].inspect} for #{ev.inspect}" if ending["starting"]
         ending["starting"] = ev
         ev["ending"] = ending
       when "checkpointWaitingEnded"
