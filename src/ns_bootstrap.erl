@@ -31,7 +31,7 @@ start() ->
             "win32" -> inet_db:set_lookup([native, file]);
             _ -> ok
         end,
-        ok = application:start(ns_server)
+        ok = application:start(ns_server, permanent)
     catch T:E ->
             timer:sleep(500),
             erlang:T(E)
