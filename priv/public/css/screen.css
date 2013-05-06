@@ -85,7 +85,9 @@ a.disabled{text-decoration:none;cursor:default;}
 #container {background-color:#fff;position:absolute;width:100%;min-width:960px;min-height:100%;}
 #mainContainer {position:relative;width:960px;left:12%;margin-top:15px;padding:0 0 220px;}
 .main_holder {position:relative; margin:auto; left:0px !important;}
-.cnt_holder {width:960px; position:relative; left:12%;}
+.cnt_holder {width:960px; position:relative; margin: 0 auto;}
+.log_wrap {overflow: hidden;}
+.log_wrap a {display: block; width: 109px; height: 60px; background: url(../images/couchbase_small_2.0.2.png) no-repeat 50% 50%;}
 
 .page-header {background:url('../images/header_bg.png') 0 bottom repeat-x;height:60px;}
 
@@ -602,8 +604,7 @@ body.init_welcome, body.init_cluster, body.init_resources, body.init_secure, bod
 body.init_welcome #init_block, body.init_cluster #init_block, body.init_resources #init_block, body.init_secure #init_block, body.init_bucket_dialog #init_block, body.init_update_notifications #init_block, body.init_sample_buckets #init_block { display: block; }
 body.init_welcome #container, body.init_cluster #container, body.init_resources #container, body.init_secure #container, body.init_bucket_dialog #container, body.init_update_notifications #container, body.init_sample_buckets #container { display: none; }
 body.init_welcome #init_welcome_dialog { display: block;-moz-box-shadow:0 0 10px #999;-webkit-box-shadow:0 0 10px #999;box-shadow:0 0 10px #999;background-color: white;height: 470px;position:relative}
-body.init_welcome #init_welcome_dialog .pad-header {float:left;margin:96px 0 0 159px}
-body.init_welcome #init_welcome_dialog .pad-header .tagline {color: #50d0f0;font-size: 1.5em;margin: 0.5em;text-align: center}
+body.init_welcome #init_welcome_dialog .pad-header {margin:0 auto;width: 266px; margin: 0 auto; padding-top: 75px;}
 body.init_welcome #init_welcome_dialog .version {color: #837c7b;display: inline-block;padding-top: 1em;vertical-align: top}
 
 body.init_welcome form#init_welcome_form {position:absolute;right:15px;bottom:15px;text-align:right}
