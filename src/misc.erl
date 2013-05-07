@@ -521,8 +521,7 @@ wait_for_process(Pid, Timeout) ->
     Me = self(),
     Signal = make_ref(),
     spawn(fun() ->
-                  process_flag(trap_exit, true),
-                  link(Pid),
+                  erlang:monitor(process, Pid),
                   erlang:monitor(process, Me),
                   receive _ -> Me ! Signal end
           end),
