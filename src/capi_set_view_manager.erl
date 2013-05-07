@@ -236,7 +236,7 @@ handle_call(initiate_indexing, _From, State) ->
     [case DDocId of
          <<"_design/dev_", _/binary>> -> ok;
          _ ->
-             couch_set_view:trigger_update(BinBucket, DDocId, 0)
+             couch_set_view:trigger_update(mapreduce_view, BinBucket, DDocId, 0)
      end || DDocId <- DDocIds],
     {reply, ok, State};
 handle_call({interactive_update, #doc{id=Id}=Doc}, _From, State) ->
@@ -416,7 +416,7 @@ maybe_define_group(DDocId,
                               use_replica_index=UseReplicaIndex},
 
     try
-        ok = ?csv_call(define_group, [SetName, DDocId, Params])
+        ok = ?csv_call(define_group, [mapreduce_view, SetName, DDocId, Params])
     catch
         throw:{not_found, deleted} ->
             %% The document has been deleted but we still think it's
@@ -463,20 +463,23 @@ apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
                 ok;
             true ->
                 ok = ?csv_call(mark_partitions_indexable,
-                               [SetName, DDocId, UnpauseVBuckets])
+                               [mapreduce_view, SetName, DDocId,
+                                UnpauseVBuckets])
         end,
 
         %% this should go first because some of the replica vbuckets might
         %% need to be cleaned up from main index
         ok = ?csv_call(set_partition_states,
-                       [SetName, DDocId, Active, Passive, Cleanup]),
+                       [mapreduce_view, SetName, DDocId, Active, Passive,
+                        Cleanup]),
 
         case UseReplicaIndex of
             true ->
                 ok = ?csv_call(add_replica_partitions,
-                               [SetName, DDocId, Replica]),
+                               [mapreduce_view, SetName, DDocId, Replica]),
                 ok = ?csv_call(remove_replica_partitions,
-                               [SetName, DDocId, ReplicaCleanup]);
+                               [mapreduce_view, SetName, DDocId,
+                                ReplicaCleanup]);
             false ->
                 ok
         end,
@@ -486,7 +489,8 @@ apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
                 ok;
             true ->
                 ok = ?csv_call(mark_partitions_unindexable,
-                               [SetName, DDocId, PauseVBuckets])
+                               [mapreduce_view, SetName, DDocId,
+                                PauseVBuckets])
         end
 
     catch
@@ -600,8 +604,11 @@ do_wait_index_updated({Pid, _} = From, VBucket,
                      case DDocId of
                          <<"_design/dev_", _/binary>> -> Acc;
                          _ ->
-                             Ref = couch_set_view:monitor_partition_update(BinBucket, DDocId, VBucket),
-                             couch_set_view:trigger_update(BinBucket, DDocId, 0),
+                             Ref = couch_set_view:monitor_partition_update(
+                                     mapreduce_view, BinBucket, DDocId,
+                                     VBucket),
+                             couch_set_view:trigger_update(
+                               mapreduce_view, BinBucket, DDocId, 0),
                              [Ref | Acc]
                      end
              end, [], DDocIds),

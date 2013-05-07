@@ -835,7 +835,9 @@ couchbase_view_stats_descriptions(BucketId) ->
     % fold over design docs and get the signature
     DictBySig = lists:foldl(
       fun (DDocId, BySig) ->
-              {ok, Signature} = couch_set_view:get_group_signature(list_to_binary(BucketId), DDocId),
+              {ok, Signature} = couch_set_view:get_group_signature(
+                                  mapreduce_view, list_to_binary(BucketId),
+                                  DDocId),
               dict:append(Signature, DDocId, BySig)
       end, dict:new(), DesignDocIds),
 
