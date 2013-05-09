@@ -109,7 +109,7 @@ handle_cast({note, Fun, Ev}, State) ->
     {noreply, NewState};
 
 handle_cast({update_stats, VBucket, NodeToDocsLeft}, State) ->
-    ?log_debug("Got update_stats: ~p, ~p~n~p", [VBucket, NodeToDocsLeft, State]),
+    ?log_debug("Got update_stats: ~p, ~p", [VBucket, NodeToDocsLeft]),
     {noreply, update_move(
                 State, VBucket,
                 fun (Move) ->
