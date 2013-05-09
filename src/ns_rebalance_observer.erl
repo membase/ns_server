@@ -85,8 +85,6 @@ init(BucketConfigs) ->
                                      end
                              end, []),
 
-    {ok, _} = timer2:send_interval(5000, log_state),
-
     proc_lib:spawn_link(erlang, apply, [fun docs_left_updater_init/1, [Self]]),
 
     {ok, #state{bucket = undefined,
@@ -234,6 +232,7 @@ handle_vbucket_move_start({_, vbucket_move_start, _Pid, _BucketName, _Node, VBuc
             ?log_error("Weird vbucket move start for move not in pending moves: ~p", [Ev]),
             {noreply, State};
         NewState ->
+            ?log_debug("Noted vbucket move start (vbucket ~p)", [VBucketId]),
             {noreply, NewState}
     end.
 
@@ -261,6 +260,7 @@ handle_vbucket_move_done({_, vbucket_move_done, _BucketName, VBucket} = Ev, Stat
             ?log_error("Weird vbucket_move_done for move not in current_moves: ~p", [Ev]),
             {noreply, State1};
         NewState ->
+            ?log_debug("Noted vbucket move end (vbucket ~p)", [VBucket]),
             {noreply, NewState}
     end.
 
@@ -305,15 +305,8 @@ update_tap_estimate_in_move(#move_state{stats = RStats} = Move, Dst, Fun) ->
                        Fun(Stat)
                end || Stat <- RStats]}.
 
-handle_info(log_state, State) ->
-    case State#state.bucket of
-        undefined ->
-            ok;
-        _ ->
-            ?log_info("rebalance observer state:~n~p", [State])
-    end,
-    {noreply, State};
-handle_info(_Msg, State) ->
+handle_info(Msg, State) ->
+    ?log_error("Got unexpected message: ~p", [Msg]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
