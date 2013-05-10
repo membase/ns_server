@@ -2605,7 +2605,10 @@ handle_node_rename(Req) ->
                         {error, iolist_to_binary(Msg), 500};
                     {address_not_allowed, Message} ->
                         Msg = io_lib:format("Requested name hostname is not allowed: ~s", [Message]),
-                        {error, iolist_to_binary(Msg), 400}
+                        {error, iolist_to_binary(Msg), 400};
+                    already_part_of_cluster ->
+                        Msg = <<"Renaming is disallowed for nodes that are already part of a cluster">>,
+                        {error, Msg, 400}
             end
         end,
 

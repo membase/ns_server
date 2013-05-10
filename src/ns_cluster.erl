@@ -97,7 +97,8 @@ complete_join(NodeKVList) ->
                                       | {cannot_listen, inet:posix()}
                                       | not_self_started
                                       | {address_save_failed, any()}
-                                      | {address_not_allowed, string()}.
+                                      | {address_not_allowed, string()}
+                                      | already_part_of_cluster.
 change_address(Address) ->
     case misc:is_good_address(Address) of
         ok ->
@@ -150,7 +151,14 @@ handle_call({complete_join, NodeKVList}, _From, State) ->
 
 handle_call({change_address, Address}, _From, State) ->
     ?cluster_info("Changing address to ~p due to client request", [Address]),
-    {reply, do_change_address(Address, true), State}.
+    RV = case ns_cluster_membership:system_joinable() of
+             true ->
+                 %% we're the only node in the cluster; allowing rename
+                 do_change_address(Address, true);
+             false ->
+                 already_part_of_cluster
+         end,
+    {reply, RV, State}.
 
 handle_cast(leave, State) ->
     ?cluster_log(0001, "Node ~p is leaving cluster.", [node()]),
