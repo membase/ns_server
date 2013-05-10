@@ -149,7 +149,7 @@ handle_call({complete_join, NodeKVList}, _From, State) ->
     {reply, RV, State};
 
 handle_call({change_address, Address}, _From, State) ->
-    ?cluster_info("Changing address to '~p' due to client request", [Address]),
+    ?cluster_info("Changing address to ~p due to client request", [Address]),
     {reply, do_change_address(Address, true), State}.
 
 handle_cast(leave, State) ->
