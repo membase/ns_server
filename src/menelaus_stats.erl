@@ -161,7 +161,7 @@ handle_bucket_node_stats(PoolId, BucketName, HostName, Req) ->
               SystemStatsSamples =
                   case grab_aggregate_op_stats("@system", [Node], Params) of
                       {SystemRawSamples, _, _, _} ->
-                          samples_to_proplists(SystemRawSamples)
+                          samples_to_proplists(SystemRawSamples, BucketName)
                   end,
               {samples, {struct, OpsSamples}} = lists:keyfind(samples, 1, OpsPropList),
 
@@ -223,8 +223,8 @@ build_raw_stat_extractor(StatBinary) ->
             {TS, dict_safe_fetch(StatBinary, VS, undefined)}
     end.
 
-build_stat_extractor(StatName) ->
-    ExtraStats = computed_stats_lazy_proplist(),
+build_stat_extractor(BucketName, StatName) ->
+    ExtraStats = computed_stats_lazy_proplist(BucketName),
 
     Stat = try
                {ok, list_to_existing_atom(StatName)}
@@ -262,7 +262,7 @@ build_per_node_stats(BucketName, StatName, Params, LocalAddr) ->
     {MainSamples, Replies, ClientTStamp, {Step, _, Window}}
         = gather_op_stats(BucketName, all, Params),
 
-    StatExtractor = build_stat_extractor(StatName),
+    StatExtractor = build_stat_extractor(BucketName, StatName),
 
     RestSamplesRaw = lists:keydelete(node(), 1, Replies),
     Nodes = [node() | [N || {N, _} <- RestSamplesRaw]],
@@ -461,7 +461,7 @@ gather_op_stats_body(Bucket, Nodes, ClientTStamp,
             end
     end.
 
-computed_stats_lazy_proplist() ->
+computed_stats_lazy_proplist(BucketName) ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
                  {Combiner, [StatNameA, StatNameB]}
          end,
@@ -557,26 +557,41 @@ computed_stats_lazy_proplist() ->
                                end
                        end),
 
-    WtAvgMetaLatency = Z2(replication_meta_latency_aggr, replication_meta_latency_wt,
-                       fun (Total, Count) ->
-                               try Total / Count
-                               catch error:badarith -> 0
-                               end
-                       end),
+    %% compute a list of per replication XDC stats
+    Reps = xdc_replication_sup:get_replications(list_to_binary(BucketName)),
+    XDCAllRepStats =
+        lists:flatmap(fun ({Id, _Pid}) ->
+                              Prefix = <<"replications/", Id/binary,"/">>,
 
-    WtAvgDocsLatency = Z2(replication_docs_latency_aggr, replication_docs_latency_wt,
-                       fun (Total, Count) ->
-                               try Total / Count
-                               catch error:badarith -> 0
-                               end
-                       end),
+                              WtAvgMetaLatency = Z2(<<Prefix/binary, "meta_latency_aggr">>,
+                                                    <<Prefix/binary, "meta_latency_wt">>,
+                                                    fun (Total, Count) ->
+                                                            try Total / Count
+                                                            catch error:badarith -> 0
+                                                            end
+                                                    end),
 
-    PercentCompleteness = Z2(replication_docs_checked, replication_changes_left,
-                       fun (Checked, Left) ->
-                               try (100 * Checked) / (Checked + Left)
-                               catch error:badarith -> 0
-                               end
-                       end),
+                              WtAvgDocsLatency = Z2(<<Prefix/binary, "docs_latency_aggr">>,
+                                                    <<Prefix/binary, "docs_latency_wt">>,
+                                                    fun (Total, Count) ->
+                                                            try Total / Count
+                                                            catch error:badarith -> 0
+                                                            end
+                                                    end),
+
+                              PercentCompleteness = Z2(<<Prefix/binary, "docs_checked">>,
+                                                       <<Prefix/binary, "changes_left">>,
+                                                       fun (Checked, Left) ->
+                                                               try (100 * Checked) / (Checked + Left)
+                                                               catch error:badarith -> 0
+                                                               end
+                                                       end),
+
+                              [{<<Prefix/binary, "wtavg_meta_latency">>, WtAvgMetaLatency},
+                               {<<Prefix/binary, "wtavg_docs_latency">>, WtAvgDocsLatency},
+                               {<<Prefix/binary, "percent_completeness">>, PercentCompleteness}]
+                      end,
+                      Reps),
 
     [{couch_total_disk_size, TotalDisk},
      {couch_docs_fragmentation, DocsFragmentation},
@@ -593,10 +608,7 @@ computed_stats_lazy_proplist() ->
      {vb_pending_resident_items_ratio, PendingResRate},
      {avg_disk_update_time, AverageDiskUpdateTime},
      {avg_disk_commit_time, AverageCommitTime},
-     {avg_bg_wait_time, AverageBgWait},
-     {replication_wtavg_meta_latency, WtAvgMetaLatency},
-     {replication_wtavg_docs_latency, WtAvgDocsLatency},
-     {replication_percent_completeness, PercentCompleteness}].
+     {avg_bg_wait_time, AverageBgWait}] ++ XDCAllRepStats.
 
 %% converts list of samples to proplist of stat values.
 %%
@@ -605,9 +617,9 @@ computed_stats_lazy_proplist() ->
 %% example due to older membase version. I.e. when we upgrade we
 %% sometimes add new kinds of stats and null values are used to mark
 %% those past samples that don't have new stats gathered.
--spec samples_to_proplists([#stat_entry{}]) -> [{atom(), [null | number()]}].
-samples_to_proplists([]) -> [{timestamp, []}];
-samples_to_proplists(Samples) ->
+-spec samples_to_proplists([#stat_entry{}], list()) -> [{atom(), [null | number()]}].
+samples_to_proplists([], _BucketName) -> [{timestamp, []}];
+samples_to_proplists(Samples, BucketName) ->
     %% we're assuming that last sample has currently supported stats,
     %% that's why we are folding from backward and why we're ignoring
     %% other keys of other samples
@@ -639,7 +651,7 @@ samples_to_proplists(Samples) ->
                                               _ -> undefined
                                           end,
                                    {K, ValR}
-                           end, computed_stats_lazy_proplist()),
+                           end, computed_stats_lazy_proplist(BucketName)),
 
     lists:filter(fun ({_, undefined}) -> false;
                      ({_, _}) -> true
@@ -650,7 +662,7 @@ build_bucket_stats_ops_response(_PoolId, Nodes, BucketName, Params) ->
     {Samples, ClientTStamp, Step, TotalNumber} = grab_aggregate_op_stats(BucketName, Nodes, Params),
 
 
-    PropList2 = samples_to_proplists(Samples),
+    PropList2 = samples_to_proplists(Samples, BucketName),
     OpPropList0 = [{samples, {struct, PropList2}},
                    {samplesCount, TotalNumber},
                    {isPersistent, ns_bucket:is_persistent(BucketName)},
@@ -805,14 +817,14 @@ couchbase_replication_stats_descriptions(BucketId) ->
                                           {name,<<Prefix/binary,"bandwidth_usage">>},
                                           {desc,<<"Rate of replication in terms of bytes replicated per second">>}]},
                                  {struct,[{title,<<"ms meta ops latency">>},
-                                          {name,<<"replication_wtavg_meta_latency">>},
+                                          {name,<<Prefix/binary, "wtavg_meta_latency">>},
                                           {desc,<<"Weighted average latency in ms of sending getMeta and waiting for conflict solution result from remote cluster">>}]},
                                  {struct,[{title,<<"ms doc ops latency">>},
-                                          {name,<<"replication_wtavg_docs_latency">>},
+                                          {name,<<Prefix/binary, "wtavg_docs_latency">>},
                                           {desc,<<"Weighted average latency in ms of sending replicated mutations to remote cluster">>}]},
                                  %% fifth row
                                  {struct,[{title,<<"percent completed">>},
-                                          {name,<<"replication_percent_completeness">>},
+                                          {name,<<Prefix/binary, "percent_completeness">>},
                                           {desc,<<"Percentage of checked items out of all checked and to-be-replicated items">>}]}]}]}
 
               end, Reps).
