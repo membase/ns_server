@@ -286,7 +286,11 @@ var ReplicationsSection = {
   },
   submitRemoteCluster: function (uri, form) {
     var spinner = overlayWithSpinner(form);
-    jsonPostWithErrors(uri, form, function (data, status, errorObject) {
+    var formValues = $.deparam(serializeForm(form));
+    if (formValues.hostname && !formValues.hostname.split(":")[1]) {
+      formValues.hostname += ":8091";
+    }
+    jsonPostWithErrors(uri, $.param(formValues), function (data, status, errorObject) {
       spinner.remove();
       if (status == 'success') {
         hideDialog('create_cluster_reference_dialog');
