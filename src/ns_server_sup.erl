@@ -57,6 +57,9 @@ child_specs() ->
      {dir_size, {dir_size, start_link, []},
       permanent, 1000, worker, [dir_size]},
 
+     {request_throttler, {request_throttler, start_link, []},
+      permanent, 1000, worker, [request_throttler]},
+
      %% ns_log starts after ns_config because it needs the config to
      %% find where to persist the logs
      {ns_log, {ns_log, start_link, []},
