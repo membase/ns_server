@@ -958,8 +958,6 @@ var MockedRequest = mkClass({
       [post("settings", "web"), expectParams(method("doNothingPOST"),
                                              "port", "username", "password")],
       [post("settings", "stats"), method("doNothingPOST")],
-      [get("couchBase", "my_replicator", "_design", "_replicator_info", "_view", x),
-       function () {return ServerStateMock.handleReplicatorInfos(this);}],
       [get("couchBase", x, "_all_docs"), function () {return ServerStateMock.handleAllDocs(this);}],
       // [get("couchBase", x, "_design", x, "_view", x), function () {return ServerStateMock.handleAllDocs(this);}],
       [get("couchBase", x, "asd"), function () {return ServerStateMock.handleAnyDoc(this);}],
@@ -1140,8 +1138,7 @@ var ServerStateMock = {
         "validateURI": "/controller/setAutoCompaction?just_validate=1"
       },
       "replication": {
-        "createURI": "/controller/createReplication",
-        "infosURI": "/couchBase/my_replicator/_design/_replicator_info/_view/infos?group_level=1"
+        "createURI": "/controller/createReplication"
       }
     },
     "balanced": true,

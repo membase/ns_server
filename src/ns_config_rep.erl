@@ -299,7 +299,7 @@ pull_and_push(Nodes) ->
 
 schedule_config_sync() ->
     Frequency = 5000 + trunc(random:uniform() * 55000),
-    timer:send_after(Frequency, self(), sync_random).
+    timer2:send_after(Frequency, self(), sync_random).
 
 extract_kvs([], _KVs, Acc) ->
     Acc;

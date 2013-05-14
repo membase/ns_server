@@ -122,7 +122,8 @@ generic_loglevel(LoggerName, LogLevel, Formatter, Preformatted, Raw) ->
      case Preformatted =/= [] of
          true ->
              io_lib:format(
-               "LogMsg = ~p:format_msg(Info, UserMsg),", [Formatter]);
+               "LogMsg0 = ~p:format_msg(Info, UserMsg),"
+               "LogMsg = unicode:characters_to_binary(LogMsg0),", [Formatter]);
          false ->
              ""
      end,

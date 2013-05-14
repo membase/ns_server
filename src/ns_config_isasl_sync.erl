@@ -155,6 +155,6 @@ writeSASLConf(Path, Buckets, AU, AP, Tries, SleepTime) ->
                 _ ->
                     ?log_info("Trying again after ~p ms (~p tries remaining)",
                               [SleepTime, Tries]),
-                    {ok, _TRef} = timer:apply_after(SleepTime, ?MODULE, writeSASLConf, [Path, Buckets, AU, AP, Tries - 1, SleepTime * 2.0])
+                    {ok, _TRef} = timer2:apply_after(SleepTime, ?MODULE, writeSASLConf, [Path, Buckets, AU, AP, Tries - 1, SleepTime * 2.0])
             end
     end.

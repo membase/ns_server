@@ -557,6 +557,27 @@ computed_stats_lazy_proplist() ->
                                end
                        end),
 
+    WtAvgMetaLatency = Z2(replication_meta_latency_aggr, replication_meta_latency_wt,
+                       fun (Total, Count) ->
+                               try Total / Count
+                               catch error:badarith -> 0
+                               end
+                       end),
+
+    WtAvgDocsLatency = Z2(replication_docs_latency_aggr, replication_docs_latency_wt,
+                       fun (Total, Count) ->
+                               try Total / Count
+                               catch error:badarith -> 0
+                               end
+                       end),
+
+    PercentCompleteness = Z2(replication_docs_checked, replication_changes_left,
+                       fun (Checked, Left) ->
+                               try (100 * Checked) / (Checked + Left)
+                               catch error:badarith -> 0
+                               end
+                       end),
+
     [{couch_total_disk_size, TotalDisk},
      {couch_docs_fragmentation, DocsFragmentation},
      {couch_views_fragmentation, ViewsFragmentation},
@@ -572,7 +593,10 @@ computed_stats_lazy_proplist() ->
      {vb_pending_resident_items_ratio, PendingResRate},
      {avg_disk_update_time, AverageDiskUpdateTime},
      {avg_disk_commit_time, AverageCommitTime},
-     {avg_bg_wait_time, AverageBgWait}].
+     {avg_bg_wait_time, AverageBgWait},
+     {replication_wtavg_meta_latency, WtAvgMetaLatency},
+     {replication_wtavg_docs_latency, WtAvgDocsLatency},
+     {replication_percent_completeness, PercentCompleteness}].
 
 %% converts list of samples to proplist of stat values.
 %%
@@ -779,7 +803,18 @@ couchbase_replication_stats_descriptions(BucketId) ->
                                           {desc,<<"Rate of replication in terms of number of replicated mutations per second">>}]},
                                  {struct,[{title,<<"data replication rate">>},
                                           {name,<<Prefix/binary,"bandwidth_usage">>},
-                                          {desc,<<"Rate of replication in terms of bytes replicated per second">>}]}]}]}
+                                          {desc,<<"Rate of replication in terms of bytes replicated per second">>}]},
+                                 {struct,[{title,<<"ms meta ops latency">>},
+                                          {name,<<"replication_wtavg_meta_latency">>},
+                                          {desc,<<"Weighted average latency in ms of sending getMeta and waiting for conflict solution result from remote cluster">>}]},
+                                 {struct,[{title,<<"ms doc ops latency">>},
+                                          {name,<<"replication_wtavg_docs_latency">>},
+                                          {desc,<<"Weighted average latency in ms of sending replicated mutations to remote cluster">>}]},
+                                 %% fifth row
+                                 {struct,[{title,<<"percent completed">>},
+                                          {name,<<"replication_percent_completeness">>},
+                                          {desc,<<"Percentage of checked items out of all checked and to-be-replicated items">>}]}]}]}
+
               end, Reps).
 
 couchbase_view_stats_descriptions(BucketId) ->

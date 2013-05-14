@@ -195,9 +195,9 @@ complete_old_vb_filter_change(#state{downstream=Downstream,
 
 confirm_downstream(State) ->
     ?log_debug("Going to confirm reception downstream messages"),
-    {ok, ConfirmTRef} = timer:kill_after(?TERMINATE_TIMEOUT),
+    {ok, ConfirmTRef} = timer2:kill_after(?TERMINATE_TIMEOUT),
     {ok, NewState} = confirm_sent_messages(State),
-    timer:cancel(ConfirmTRef),
+    timer2:cancel(ConfirmTRef),
     ?log_debug("Confirmed upstream messages are feeded to kernel"),
     NewState.
 
@@ -643,8 +643,44 @@ init({Src, Dst, Opts}=InitArgs) ->
     (catch master_activity_events:note_ebucketmigrator_start(self(), Src, Dst, [{bucket, Bucket},
                                                                                 {username, Username}
                                                                                 | Args])),
+
+    case proplists:get_value(note_tap_stats, Opts) of
+        undefined ->
+            ok;
+        NoteTapTag ->
+            do_note_tap_stats(State, NoteTapTag)
+    end,
+
     gen_server:enter_loop(?MODULE, [], State2).
 
+-define(TAP_STATS_ATTEMPTS, 5).
+do_note_tap_stats(State, NoteTapTag) ->
+    ?rebalance_debug("Handling note_tap_stats"),
+    do_note_tap_stats(State, NoteTapTag, ?TAP_STATS_ATTEMPTS).
+
+do_note_tap_stats(_State, _NoteTapTag, 0) ->
+    ?rebalance_error("Failed to get tap stats after ~p attempts", [?TAP_STATS_ATTEMPTS]);
+do_note_tap_stats(#state{upstream_aux = Aux,
+                         vbuckets = VBs,
+                         tap_name = TapName} = State,
+                  NoteTapTag, Tries) ->
+    VB = hd(sets:to_list(VBs)),
+    case (catch mc_client_binary:get_tap_docs_estimate(Aux, VB, TapName)) of
+        {ok, {Estimate, _, Status}} ->
+            case Status =:= <<"backfilling">> orelse
+                Status =:= <<"backfill completed">> of
+                true ->
+                    %% ok, tap stream exists
+                    (catch master_activity_events:note_tap_stats(NoteTapTag, Estimate, self(), TapName));
+                false ->
+                    %% tap stream does not exist yet; let's try to wait for a bit
+                    timer:sleep(10),
+                    ?rebalance_debug("Tap stream still didn't exist. Will try to again in a moment"),
+                    do_note_tap_stats(State, NoteTapTag, Tries-1)
+            end;
+        Error ->
+            ?rebalance_error("Failed to get tap docs estimate: ~p~n~p", [Error, erlang:get_stacktrace()])
+    end.
 
 upstream_sender_loop(Upstream) ->
     receive
@@ -661,7 +697,7 @@ exit_retry_not_ready_vbuckets() ->
     exit(normal).
 
 terminate(_Reason, #state{upstream_sender=UpstreamSender} = State) ->
-    timer:kill_after(?TERMINATE_TIMEOUT),
+    timer2:kill_after(?TERMINATE_TIMEOUT),
     gen_tcp:close(State#state.upstream),
     exit(UpstreamSender, kill),
     case State#state.takeover_done of

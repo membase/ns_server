@@ -48,6 +48,8 @@
          note_wait_index_updated_ended/3,
          note_compaction_inhibited/2,
          note_compaction_uninhibited/2,
+         note_forced_inhibited_view_compaction/1,
+         note_tap_stats/4,
          event_to_jsons/1,
          event_to_formatted_iolist/1,
          format_some_history/1]).
@@ -163,6 +165,12 @@ note_compaction_inhibited(BucketName, Node) ->
 
 note_compaction_uninhibited(BucketName, Node) ->
     submit_cast({compaction_uninhibited, BucketName, Node}).
+
+note_forced_inhibited_view_compaction(BucketName) ->
+    submit_cast({forced_inhibited_view_compaction, BucketName, node()}).
+
+note_tap_stats(NoteTag, Estimate, Pid, TapName) ->
+    submit_cast({tap_estimate, NoteTag, Estimate, Pid, TapName}).
 
 start_link_timestamper() ->
     {ok, ns_pubsub:subscribe_link(master_activity_events_ingress, fun timestamper_body/2, [])}.
@@ -308,11 +316,11 @@ format_mcd_pair({Host, Port}) ->
 node_to_host(undefined, _Config) ->
     <<"">>;
 node_to_host(Node, Config) ->
-    case lists:member(Node, [node() | nodes()]) of
-        true ->
-            format_mcd_pair(ns_memcached:host_port(Node, Config));
-        false ->
-            atom_to_binary(Node, latin1)
+    case ns_memcached:host_port(Node, Config) of
+        {_, undefined} ->
+            atom_to_binary(Node, latin1);
+        HostPort ->
+            format_mcd_pair(HostPort)
     end.
 
 maybe_get_pids_node(Pid) when is_pid(Pid) ->
@@ -369,11 +377,10 @@ event_to_jsons({TS, deregister_tap_name, Pid, Bucket, Src, Name}) ->
                                   {host, format_mcd_pair(Src)},
                                   {name, Name}])];
 event_to_jsons({TS, vbucket_state_change, Bucket, Node, VBucketId, NewState}) ->
-    Host = ns_memcached:host_port(Node),
     [format_simple_plist_as_json([{type, vbucketStateChange},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, Bucket},
-                                  {host, format_mcd_pair(Host)},
+                                  {host, node_to_host(Node, ns_config:get())},
                                   {vbucket, VBucketId},
                                   {state, NewState}])];
 
@@ -475,7 +482,7 @@ event_to_jsons({TS, bucket_failover_started, BucketName, Node, Pid}) ->
     [format_simple_plist_as_json([{type, bucketFailoverStarted},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
-                                  {host, format_mcd_pair(ns_memcached:host_port(Node))},
+                                  {host, node_to_host(Node, ns_config:get())},
                                   {pid, Pid},
                                   {node, maybe_get_pids_node(Pid)}])];
 
@@ -483,7 +490,7 @@ event_to_jsons({TS, bucket_failover_ended, BucketName, Node, Pid}) ->
     [format_simple_plist_as_json([{type, bucketFailoverEnded},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
-                                  {host, format_mcd_pair(ns_memcached:host_port(Node))},
+                                  {host, node_to_host(Node, ns_config:get())},
                                   {pid, Pid},
                                   {node, maybe_get_pids_node(Pid)}])];
 
@@ -576,6 +583,26 @@ event_to_jsons({TS, compaction_uninhibited, BucketName, Node}) ->
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
                                   {node, node_to_host(Node, ns_config:get())}])];
+
+event_to_jsons({TS, forced_inhibited_view_compaction, BucketName, Node}) ->
+    [format_simple_plist_as_json([{type, forcedPreviouslyInhibitedViewCompaction},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
+                                  {node, node_to_host(Node, ns_config:get())}])];
+
+event_to_jsons({TS, tap_estimate, {Type, BucketName, VBucket, SrcNode, DstNode}, Estimate, Pid, TapName}) ->
+    Cfg = ns_config:get(),
+    [format_simple_plist_as_json([{type, tapEstimate},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {tapType, Type},
+                                  {tapName, TapName},
+                                  {vbucket, VBucket},
+                                  {bucket, BucketName},
+                                  {src, node_to_host(SrcNode, Cfg)},
+                                  {dst, node_to_host(DstNode, Cfg)},
+                                  {estimate, Estimate},
+                                  {pid, Pid},
+                                  {node, maybe_get_pids_node(Pid)}])];
 
 event_to_jsons(Event) ->
     ?log_warning("Got unknown kind of event: ~p", [Event]),

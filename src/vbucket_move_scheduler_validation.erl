@@ -355,6 +355,8 @@ run_rebalance_after_data_loss(Nodes, FailedOverNodes, VBuckets, Replicas, Backfi
 rebalance_after_data_loss_test() ->
     run_rebalance_after_data_loss([a, b, c, d, e, f], [a, c], 16, 1, 1, 2).
 
+rebalance_after_data_loss_no_replicas_test() ->
+    run_rebalance_after_data_loss([a, b, c, d, e, f], [a, c], 16, 0, 1, 2).
 
 simulate_that_rebalance() ->
     ok = application:start(ale),

@@ -23,7 +23,8 @@
          consider_switching_compat_mode/0,
          is_index_aware_rebalance_on/0,
          is_index_pausing_on/0,
-         rebalance_ignore_view_compactions/0]).
+         rebalance_ignore_view_compactions/0,
+         check_is_progress_tracking_supported/0]).
 
 %% NOTE: this is rpc:call-ed by mb_master
 -export([supported_compat_version/0, mb_master_advertised_version/0]).
@@ -43,7 +44,19 @@ supported_compat_version() ->
 %% I.e. we want later version to be able to take over mastership even
 %% without requiring compat mode upgrade
 mb_master_advertised_version() ->
-    [2, 0, 1].
+    [2, 0, 2].
+
+%% TODO: in 2.1 reimplement as compat_version 2.1 to make things
+%% simpler. For 2.0.2 I don't want to prevent rolling downgrades yet.
+check_is_progress_tracking_supported() ->
+    is_cluster_20() andalso
+        case rpc:multicall(ns_node_disco:nodes_wanted(), cluster_compat_mode, mb_master_advertised_version, [], 30000) of
+            {Replies, []} ->
+                [R || R <- Replies,
+                      R < [2, 0, 2]] =:= [];
+            _ ->
+                false
+        end.
 
 is_enabled_at(undefined = _ClusterVersion, _FeatureVersion) ->
     false;

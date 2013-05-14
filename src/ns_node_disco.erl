@@ -106,8 +106,8 @@ init([]) ->
     misc:wait_for_process(do_nodes_wanted_updated(do_nodes_wanted()),
                           ?SYNC_TIMEOUT),
     % Register for nodeup/down messages as handle_info callbacks.
-    ok = net_kernel:monitor_nodes(true),
-    timer:send_interval(?PING_FREQ, ping_all),
+    ok = net_kernel:monitor_nodes(true, [nodedown_reason]),
+    timer2:send_interval(?PING_FREQ, ping_all),
     self() ! notify_clients,
     % Track the last list of actual ndoes.
     {ok, #state{nodes = []}}.
@@ -158,15 +158,15 @@ handle_call(Msg, _From, State) ->
 handle_info({'DOWN', MRef, _, _, _}, #state{node_renaming_txn_mref = MRef} = State) ->
     self() ! notify_clients,
     {noreply, State#state{node_renaming_txn_mref = undefined}};
-handle_info({nodeup, Node}, State) ->
-    ?user_log(?NODE_UP, "Node ~p saw that node ~p came up.",
-              [node(), Node]),
+handle_info({nodeup, Node, InfoList}, State) ->
+    ?user_log(?NODE_UP, "Node ~p saw that node ~p came up. Tags: ~p",
+              [node(), Node, InfoList]),
     self() ! notify_clients,
     {noreply, State};
 
-handle_info({nodedown, Node}, State) ->
-    ?user_log(?NODE_DOWN, "Node ~p saw that node ~p went down.",
-              [node(), Node]),
+handle_info({nodedown, Node, InfoList}, State) ->
+    ?user_log(?NODE_DOWN, "Node ~p saw that node ~p went down. Details: ~p",
+              [node(), Node, InfoList]),
     self() ! notify_clients,
     {noreply, State};
 

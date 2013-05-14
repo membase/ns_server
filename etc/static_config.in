@@ -7,6 +7,8 @@
 {path_config_datadir, "@DATA_PREFIX@/var/lib/couchbase"}.
 {path_config_tmpdir, "@DATA_PREFIX@/var/lib/couchbase/tmp"}.
 
+{nodefile, "@DATA_PREFIX@/var/lib/couchbase/couchbase-server.node"}.
+
 {loglevel_default, debug}.
 {loglevel_couchdb, info}.
 {loglevel_ns_server, debug}.

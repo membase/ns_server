@@ -28,9 +28,11 @@
          validate_autofailover/1,
          generate_initial_map/1,
          rebalance/3,
+         run_mover/7,
          unbalanced/2,
          eject_nodes/1,
-         buckets_replication_statuses/0]).
+         buckets_replication_statuses/0,
+         maybe_cleanup_old_buckets/1]).
 
 -export([wait_local_buckets_shutdown_complete/0]). % used via rpc:multicall
 
@@ -230,8 +232,20 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
     NumBuckets = length(BucketConfigs),
     ?rebalance_debug("BucketConfigs = ~p", [BucketConfigs]),
 
-    maybe_cleanup_old_buckets(KeepNodes),
+    case maybe_cleanup_old_buckets(KeepNodes) of
+        ok ->
+            ok;
+        Error ->
+            exit(Error)
+    end,
 
+    RebalanceObserver = case cluster_compat_mode:check_is_progress_tracking_supported() of
+                            true ->
+                                {ok, X} = ns_rebalance_observer:start_link(BucketConfigs),
+                                X;
+                            _ ->
+                                undefined
+                        end,
 
     %% Eject failed nodes first so they don't cause trouble
     eject_nodes(FailedNodes),
@@ -245,7 +259,9 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
                                             || N <- AllNodes])),
                           case proplists:get_value(type, BucketConfig) of
                               memcached ->
-                                  ns_bucket:set_servers(BucketName, KeepNodes);
+                                  master_activity_events:note_bucket_rebalance_started(BucketName),
+                                  ns_bucket:set_servers(BucketName, KeepNodes),
+                                  master_activity_events:note_bucket_rebalance_ended(BucketName);
                               membase ->
                                   %% Only start one bucket at a time to avoid
                                   %% overloading things
@@ -289,6 +305,15 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
                           end
                   end, misc:enumerate(BucketConfigs, 0)),
 
+    case RebalanceObserver of
+        undefined ->
+            ok;
+        _Pid ->
+            unlink(RebalanceObserver),
+            exit(RebalanceObserver, shutdown),
+            misc:wait_for_process(RebalanceObserver, infinity)
+    end,
+
     ns_config:sync_announcements(),
     ns_config_rep:push(),
     ok = ns_config_rep:synchronize_remote(KeepNodes),
@@ -302,8 +327,11 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
 rebalance(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets) ->
     Map = proplists:get_value(map, Config),
     {FastForwardMap, MapOptions} = generate_vbucket_map(Map, KeepNodes, Config),
-    ?rebalance_info("Target map (distance: ~p):~n~p", [(catch mb_map:vbucket_movements(Map, FastForwardMap)), FastForwardMap]),
     ns_bucket:update_vbucket_map_history(FastForwardMap, MapOptions),
+    run_mover(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets, Map, FastForwardMap).
+
+run_mover(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets, Map, FastForwardMap) ->
+    ?rebalance_info("Target map (distance: ~p):~n~p", [(catch mb_map:vbucket_movements(Map, FastForwardMap)), FastForwardMap]),
     ns_bucket:set_fast_forward_map(Bucket, FastForwardMap),
     ProgressFun =
         fun (P) ->
@@ -487,19 +515,18 @@ maybe_cleanup_old_buckets(KeepNodes) ->
         {_, _, DownNodes} when DownNodes =/= [] ->
             ?rebalance_error("Failed to cleanup old buckets on some nodes: ~p",
                              [DownNodes]),
-            exit({buckets_cleanup_failed, DownNodes});
+            {buckets_cleanup_failed, DownNodes};
         {Good, ReallyBad, []} ->
-            case ReallyBad of
-                [] ->
-                    ok;
-                _ ->
-                    ?rebalance_error(
-                       "Failed to cleanup old buckets on some nodes: ~n~p",
-                       [ReallyBad]),
-                    ReallyBadNodes =
-                        lists:map(fun ({Node, _}) -> Node end, ReallyBad),
-                    exit({buckets_cleanup_failed, ReallyBadNodes})
-            end,
+            ReallyBadNodes =
+                case ReallyBad of
+                    [] ->
+                        [];
+                    _ ->
+                        ?rebalance_error(
+                           "Failed to cleanup old buckets on some nodes: ~n~p",
+                           [ReallyBad]),
+                        lists:map(fun ({Node, _}) -> Node end, ReallyBad)
+                end,
 
             FailedNodes =
                 lists:foldl(
@@ -515,10 +542,10 @@ maybe_cleanup_old_buckets(KeepNodes) ->
                           end
                   end, [], Good),
 
-            case FailedNodes of
+            case FailedNodes ++ ReallyBadNodes of
                 [] ->
                     ok;
-                _ ->
-                    exit({buckets_cleanup_failed, FailedNodes})
+                AllFailedNodes ->
+                    {buckets_cleanup_failed, AllFailedNodes}
             end
     end.

@@ -28,15 +28,15 @@
 %% @doc Notify the supervisor that the node's name has changed so it
 %% can restart children that care.
 node_name_changed() ->
-    ok = supervisor:terminate_child(?MODULE, ns_doctor),
-    {ok, _} = supervisor:restart_child(?MODULE, ns_doctor),
-    ok = supervisor:terminate_child(?MODULE, mb_master),
-    {ok, _} = supervisor:restart_child(?MODULE, mb_master),
+    ok = supervisor2:terminate_child(?MODULE, ns_doctor),
+    {ok, _} = supervisor2:restart_child(?MODULE, ns_doctor),
+    ok = supervisor2:terminate_child(?MODULE, mb_master),
+    {ok, _} = supervisor2:restart_child(?MODULE, mb_master),
     ok.
 
 
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor2:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
     pre_start(),
@@ -50,10 +50,20 @@ pre_start() ->
     misc:ping_jointo().
 
 child_specs() ->
-    [%% ns_log starts after ns_config because it needs the config to
+    [{setup_babysitter_node,
+      {ns_server, setup_babysitter_node, []},
+      transient, brutal_kill, worker, []},
+
+     {dir_size, {dir_size, start_link, []},
+      permanent, 1000, worker, [dir_size]},
+
+     %% ns_log starts after ns_config because it needs the config to
      %% find where to persist the logs
      {ns_log, {ns_log, start_link, []},
       permanent, 1000, worker, [ns_log]},
+
+     {ns_crash_log_consumer, {ns_log, start_link_crash_consumer, []},
+      {permanent, 4}, 1000, worker, []},
 
      {ns_config_ets_dup, {ns_config_ets_dup, start_link, []},
       permanent, brutal_kill, worker, [ns_config, ns_config_ets_dup]},
@@ -84,6 +94,9 @@ child_specs() ->
      {ns_stats_event, {gen_event, start_link, [{local, ns_stats_event}]},
       permanent, 1000, worker, dynamic},
 
+     {samples_loader_tasks, {samples_loader_tasks, start_link, []},
+      permanent, 1000, worker, []},
+
      {ns_heart, {ns_heart, start_link, []},
       permanent, 1000, worker, [ns_heart]},
 
@@ -93,13 +106,13 @@ child_specs() ->
      {remote_clusters_info, {remote_clusters_info, start_link, []},
       permanent, 1000, worker, [remote_servers_info]},
 
+     {master_activity_events, {gen_event, start_link, [{local, master_activity_events}]},
+      permanent, brutal_kill, worker, dynamic},
+
      %% Starts mb_master_sup, which has all processes that start on the master
      %% node.
      {mb_master, {mb_master, start_link, []},
       permanent, infinity, supervisor, [mb_master]},
-
-     {master_activity_events, {gen_event, start_link, [{local, master_activity_events}]},
-      permanent, brutal_kill, worker, dynamic},
 
      {master_activity_events_ingress, {gen_event, start_link, [{local, master_activity_events_ingress}]},
       permanent, brutal_kill, worker, dynamic},
@@ -120,12 +133,11 @@ child_specs() ->
      {mc_sup, {mc_sup, start_link, []},
       permanent, infinity, supervisor, dynamic},
 
-     {ns_port_sup, {ns_port_sup, start_link, []},
-      permanent, infinity, supervisor,
-      [ns_port_sup]},
+     {ns_ports_setup, {ns_ports_setup, start, []},
+      {permanent, 4}, brutal_kill, worker, []},
 
-     {ns_port_memcached_killer, {ns_port_sup, start_memcached_force_killer, []},
-      permanent, brutal_kill, worker, [ns_port_sup]},
+     {ns_port_memcached_killer, {ns_ports_setup, start_memcached_force_killer, []},
+      permanent, brutal_kill, worker, []},
 
      {ns_memcached_log_rotator, {ns_memcached_log_rotator, start_link, []},
       permanent, 1000, worker, [ns_memcached_log_rotator]},
@@ -158,24 +170,12 @@ child_specs() ->
      {{stats_reader, "@system"}, {stats_reader, start_link, ["@system"]},
       permanent, 1000, worker, [start_reader]},
 
-     {ns_moxi_sup_work_queue, {work_queue, start_link, [ns_moxi_sup_work_queue]},
-      permanent, 1000, worker, [work_queue]},
-
-     {ns_moxi_sup, {ns_moxi_sup, start_link, []},
-      permanent, infinity, supervisor,
-      [ns_moxi_sup]},
-
-     {compaction_daemon,
-      {supervisor_cushion, start_link,
-       [compaction_daemon, 3000, 1000, compaction_daemon, start_link, []]},
-      permanent, 86400000, worker, [compaction_daemon]},
+     {compaction_daemon, {compaction_daemon, start_link, []},
+      {permanent, 4}, 86400000, worker, [compaction_daemon]},
 
      {xdc_rdoc_replication_srv, {xdc_rdoc_replication_srv, start_link, []},
       permanent, 1000, worker, [xdc_rdoc_replication_srv]},
 
      {set_view_update_daemon, {set_view_update_daemon, start_link, []},
-      permanent, 1000, worker, [set_view_update_daemon]},
-
-     {samples_loader_tasks, {samples_loader_tasks, start_link, []},
-      permanent, 1000, worker, []}
+      permanent, 1000, worker, [set_view_update_daemon]}
 ].

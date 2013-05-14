@@ -42,6 +42,7 @@
 
 -export([wait_for_bucket_creation/2, query_states/3,
          apply_new_bucket_config/6,
+         apply_new_bucket_config_new_style/5,
          mark_bucket_warmed/2,
          delete_vbucket_copies/4,
          prepare_nodes_for_rebalance/3,
@@ -56,7 +57,10 @@
          mass_prepare_flush/2,
          complete_flush/3,
          get_replication_persistence_checkpoint_id/4,
-         wait_checkpoint_persisted/5]).
+         wait_checkpoint_persisted/5,
+         get_tap_docs_estimate/4,
+         get_tap_docs_estimate_many_taps/4,
+         get_mass_tap_docs_estimate/3]).
 
 -export([start_link/1, wait_for_memcached_new_style/4]).
 
@@ -132,9 +136,14 @@ wait_for_memcached_new_style(Nodes, Bucket, Type, SecondsToWait) ->
               Me = self(),
               NodePids = [{Node, proc_lib:spawn_link(
                                    fun () ->
-                                           timer:kill_after(SecondsToWait * 1000),
+                                           {ok, TRef} = timer2:kill_after(SecondsToWait * 1000),
                                            RV = new_style_query_vbucket_states_loop(Node, Bucket, Type),
                                            Me ! {'EXIT', self(), {Ref, RV}},
+                                           %% doing cancel is quite
+                                           %% important. kill_after is
+                                           %% not automagically
+                                           %% canceled
+                                           timer2:cancel(TRef),
                                            %% Nodes list can be reasonably
                                            %% big. Let's not slow down
                                            %% receive loop below due to
@@ -234,7 +243,8 @@ mark_bucket_warmed(Bucket, Nodes) ->
 apply_new_bucket_config(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets, CurrentStates) ->
     case new_style_enabled() of
         true ->
-            apply_new_bucket_config_new_style(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets);
+            apply_new_bucket_config_new_style(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets),
+            ok;
         false ->
             apply_new_bucket_config_old_style(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets, CurrentStates)
     end.
@@ -281,25 +291,27 @@ process_apply_config_rv(Bucket, {Replies, BadNodes}, Call) ->
     case BadReplies =/= [] orelse BadNodes =/= [] of
         true ->
             ?log_info("~s:Some janitor state change requests (~p) have failed:~n~p~n~p", [Bucket, Call, BadReplies, BadNodes]),
-            error;
+            FailedNodes = [N || {N, _} <- BadReplies] ++ BadNodes,
+            {error, {failed_nodes, FailedNodes}};
         false ->
             ok
     end.
 
 apply_new_bucket_config_new_style(Bucket, Servers, [] = Zombies, NewBucketConfig, IgnoredVBuckets) ->
+    true = new_style_enabled(),
+
     RV1 = gen_server:multi_call(Servers -- Zombies, server_name(Bucket),
                                 {apply_new_config, NewBucketConfig, IgnoredVBuckets},
                                 ?APPLY_NEW_CONFIG_TIMEOUT),
     case process_apply_config_rv(Bucket, RV1, apply_new_config) of
         ok ->
-            RV2= gen_server:multi_call(Servers -- Zombies, server_name(Bucket),
-                                       {apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
-                                       ?APPLY_NEW_CONFIG_TIMEOUT),
+            RV2 = gen_server:multi_call(Servers -- Zombies, server_name(Bucket),
+                                        {apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
+                                        ?APPLY_NEW_CONFIG_TIMEOUT),
             process_apply_config_rv(Bucket, RV2, apply_new_config_replicas_phase);
-        _ ->
-            ok
-    end,
-    ok.
+        Other ->
+            Other
+    end.
 
 -spec do_delete_vbucket_new_style(bucket_name(), pid(), [node()], vbucket_id()) ->
                                          ok | {errors, [{node(), term()}]}.
@@ -488,6 +500,43 @@ wait_checkpoint_persisted(Bucket, Rebalancer, Node, VBucket, WaitedCheckpointId)
                          {if_rebalance, Rebalancer, {wait_checkpoint_persisted, VBucket, WaitedCheckpointId}},
                          infinity).
 
+initiate_servant_call(Server, Request) ->
+    {ServantPid, Tag} = gen_server:call(Server, Request, infinity),
+    MRef = erlang:monitor(process, ServantPid),
+    {MRef, Tag}.
+
+get_servant_call_reply({MRef, Tag}) ->
+    receive
+        {'DOWN', MRef, _, _, Reason} ->
+            receive
+                {Tag, Reply} ->
+                    Reply
+            after 0 ->
+                    erlang:error({janitor_agent_servant_died, Reason})
+            end
+    end.
+
+do_servant_call(Server, Request) ->
+    get_servant_call_reply(initiate_servant_call(Server, Request)).
+
+get_tap_docs_estimate(Bucket, SrcNode, VBucket, TapName) ->
+    RV = do_servant_call({server_name(Bucket), SrcNode},
+                         {get_tap_docs_estimate, VBucket, TapName}),
+    {ok, _} = RV,
+    RV.
+
+-spec get_tap_docs_estimate_many_taps(bucket_name(), node(), vbucket_id(), [binary()]) ->
+                                             [{ok, {non_neg_integer(), non_neg_integer(), binary()}}].
+get_tap_docs_estimate_many_taps(Bucket, SrcNode, VBucket, TapNames) ->
+    do_servant_call({server_name(Bucket), SrcNode},
+                    {get_tap_docs_estimate_many_taps, VBucket, TapNames}).
+
+get_mass_tap_docs_estimate(Bucket, Node, VBuckets) ->
+    RV = do_servant_call({server_name(Bucket), Node},
+                         {get_mass_tap_docs_estimate, VBuckets}),
+    {ok, _} = RV,
+    RV.
+
 mass_prepare_flush(Bucket, Nodes) ->
     {Replies, BadNodes} = gen_server:multi_call(Nodes, server_name(Bucket), prepare_flush, ?PREPARE_FLUSH_TIMEOUT),
     {GoodReplies, BadReplies} = lists:partition(fun ({_N, R}) -> R =:= ok end, Replies),
@@ -587,15 +636,23 @@ handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, _From, #state{
                             end
                     end
             end, {0, [], [], []}, Map),
+
+    %% before changing vbucket states (i.e. activating or killing
+    %% vbuckets) we must stop replications into those vbuckets
+    WantedReplicas = [{Src, VBucket} || {Src, Dst, VBucket} <- ns_bucket:map_to_replicas(Map),
+                                        Dst =:= node()],
+    WantedReplications = [{Src, [VB || {_, VB} <- Pairs]}
+                          || {Src, Pairs} <- misc:keygroup(1, lists:sort(WantedReplicas))],
+    ns_vbm_new_sup:ping_all_replicators(BucketName),
+    ok = tap_replication_manager:remove_undesired_replications(BucketName, WantedReplications),
+
+    %% then we're ok to change vbucket states
     [ns_memcached:set_vbucket(BucketName, VBucket, StateToSet)
      || {VBucket, StateToSet} <- ToSet],
-    [case dict:find(VBucket, CurrentVBuckets) of
-         {ok, dead} ->
-             ns_memcached:set_vbucket(BucketName, VBucket, dead),
-             ns_memcached:delete_vbucket(BucketName, VBucket);
-         _ ->
-             ns_memcached:delete_vbucket(BucketName, VBucket)
-     end || VBucket <- ToDelete],
+
+    %% and ok to delete vbuckets we want to delete
+    [ns_memcached:delete_vbucket(BucketName, VBucket) || VBucket <- ToDelete],
+
     NewWanted = lists:reverse(NewWantedRev),
     NewRebalance = [undefined || _ <- NewWantedRev],
     State2 = State#state{last_applied_vbucket_states = NewWanted,
@@ -604,7 +661,7 @@ handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, _From, #state{
     {reply, ok, pass_vbucket_states_to_set_view_manager(State3)};
 handle_call({apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
             _From, #state{bucket_name = BucketName} = State) ->
-        Map = proplists:get_value(map, NewBucketConfig),
+    Map = proplists:get_value(map, NewBucketConfig),
     true = (Map =/= undefined),
     %% TODO: unignore ignored vbuckets
     [] = IgnoredVBuckets,
@@ -665,7 +722,35 @@ handle_call({get_replication_persistence_checkpoint_id, VBucket},
             {ok, NewOpenCheckpointId, _LastPersistedCkpt} = ns_memcached:create_new_checkpoint(Bucket, VBucket),
             ?log_debug("After creating new checkpoint here's what we have: ~p", [{PersistedCheckpointId, OpenCheckpointId, NewOpenCheckpointId}]),
             {reply, erlang:min(PersistedCheckpointId + 1, NewOpenCheckpointId - 1), State}
-    end.
+    end;
+handle_call({get_tap_docs_estimate, _VBucketId, _TapName} = Req, From, State) ->
+    handle_call_via_servant(
+      From, State, Req,
+      fun ({_, VBucketId, TapName}, #state{bucket_name = Bucket}) ->
+              ns_memcached:get_tap_docs_estimate(Bucket, VBucketId, TapName)
+      end);
+handle_call({get_tap_docs_estimate_many_taps, _VBucketId, _TapName} = Req, From, State) ->
+    handle_call_via_servant(
+      From, State, Req,
+      fun ({_, VBucketId, TapNames}, #state{bucket_name = Bucket}) ->
+              [ns_memcached:get_tap_docs_estimate(Bucket, VBucketId, Name)
+               || Name <- TapNames]
+      end);
+handle_call({get_mass_tap_docs_estimate, VBucketsR}, From, State) ->
+    handle_call_via_servant(
+      From, State, VBucketsR,
+      fun (VBuckets, #state{bucket_name = Bucket}) ->
+              ns_memcached:get_mass_tap_docs_estimate(Bucket, VBuckets)
+      end).
+
+handle_call_via_servant({FromPid, _Tag}, State, Req, Body) ->
+    Tag = erlang:make_ref(),
+    From = {FromPid, Tag},
+    Pid = proc_lib:spawn(fun () ->
+                                 gen_server:reply(From, Body(Req, State))
+                         end),
+    {reply, {Pid, Tag}, State}.
+
 
 handle_cast(_, _State) ->
     erlang:error(cannot_do).

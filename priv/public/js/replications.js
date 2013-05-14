@@ -45,11 +45,6 @@ var ReplicationsModel = {};
     rawRemoteClustersListCell.invalidate();
     DAL.cells.tasksProgressCell.invalidate();
   }
-
-  var replicatorDBURIBaseCell = model.replicatorDBURIBaseCell = Cell.computeEager(function (v) {
-    return v.need(DAL.cells.currentPoolDetailsCell).controllers.replication.replicatorDBURI + "/";
-  });
-
 })();
 
 var ReplicationForm = mkClass({
@@ -291,7 +286,11 @@ var ReplicationsSection = {
   },
   submitRemoteCluster: function (uri, form) {
     var spinner = overlayWithSpinner(form);
-    jsonPostWithErrors(uri, form, function (data, status, errorObject) {
+    var formValues = $.deparam(serializeForm(form));
+    if (formValues.hostname && !formValues.hostname.split(":")[1]) {
+      formValues.hostname += ":8091";
+    }
+    jsonPostWithErrors(uri, $.param(formValues), function (data, status, errorObject) {
       spinner.remove();
       if (status == 'success') {
         hideDialog('create_cluster_reference_dialog');

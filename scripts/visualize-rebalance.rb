@@ -2,6 +2,7 @@
 
 require 'json'
 require 'pp'
+require 'set'
 
 begin
   filename = ARGV[0] || (raise "need filename arg")
@@ -22,138 +23,117 @@ raise unless rebalance_start["ts"] <= rebalance_end["ts"]
 range = (rebalance_start["ts"]..rebalance_end["ts"])
 $events = $events.select {|ev| range.include? ev["ts"]}
 
-$in_flight = {}
-$backfilled = {}
-
-$output_events = []
-
-$now = nil
-
-def output_event(type, subtype, node)
-  raise unless $now
-  $output_events << [$now, type, subtype, node]
-end
-
-$vbucket_to_ev = {}
-
-def inc_node(hash, node, by)
-  hash[node] ||= 0
-  hash[node] += by
-end
-
-def note_move_started_on(node)
-  $in_flight[node] ||= 0
-  if $in_flight[node] == 0
-    output_event :move, :start, node
-  end
-  output_event :backfill, :start, node
-  $in_flight[node] += 1
-end
-
-def note_backfill_done_on(node)
-  raise unless $in_flight[node] > 0
-  output_event :backfill, :done, node
-end
-
-def note_move_done_on(node)
-  raise unless $in_flight[node] > 0
-  $in_flight[node] -= 1
-  if $in_flight[node] == 0
-    output_event :move, :done, node
-  end
-end
-
-$backfill_ts_to_vbucket = {}
+$nodes = Set.new
 
 $events.each do |ev|
-  type = ev["type"]
-  $now = ev["ts"]
-  case type
-  when "vbucketMoveStart"
-    $vbucket_to_ev[ev["vbucket"]] = ev
-    $backfill_ts_to_vbucket[$now] = ev["vbucket"]
-    note_move_started_on(ev["chainBefore"][0])
-    note_move_started_on(ev["chainAfter"][0])
-  when "vbucketMoveDone"
-    oev = $vbucket_to_ev[ev["vbucket"]] || raise
-    note_move_done_on(oev["chainBefore"][0])
-    note_move_done_on(oev["chainAfter"][0])
-  when "checkpointWaitingEnded"
-    next if $backfilled[ev["vbucket"]]
-    $backfilled[ev["vbucket"]] = true
-    oev = $vbucket_to_ev[ev["vbucket"]] || raise
-    note_backfill_done_on(oev["chainBefore"][0])
-    note_backfill_done_on(oev["chainAfter"][0])
-  else
-    next
-  end
+  next unless ev["type"] == "updateFastForwardMap" || ev["type"] == "vbucketMoveStart"
+  (ev["chainBefore"] + ev["chainAfter"]).each {|n| $nodes << n}
 end
 
+$nodes = $nodes.to_a.sort
 
-$output_events = $output_events.sort do |(now_a, _, subtype_a, _), (now_b, _, subtype_b, _)|
-  rv = now_a - now_b
-  if rv == 0
-    rv = case [subtype_a, subtype_b]
-         when [:done, :start]
-           -1
-         when [:done, :done]
-           0
-         when [:start, :start]
-           0
-         else
-           1
-         end
-  end
-  rv
+$vbucket_to_move_start = {}
+
+$events.each do |ev|
+  next unless ev["type"] == "vbucketMoveStart"
+  vb = ev["vbucket"]
+  raise if $vbucket_to_move_start[vb]
+  $vbucket_to_move_start[vb] = ev
 end
 
-# pp $output_events
+def mild_next it
+  it.next
+rescue StopIteration
+  nil
+end
 
-$timelines = {}
+def move_affects_node(node, ev)
+  ev["chainBefore"][0] == node ||
+    ev["chainAfter"][0] == node
+end
 
-$open_things = {}
-
-$backfill_vbuckets = []
-
-$output_events.each do |(ts, type, subtype, node)|
-  $timelines[node] ||= []
-  k = [node, type]
-  case subtype
-  when :start
-    $open_things[k] = ts
-  when :done
-    start_ts = $open_things[k]
-    raise "shit: #{k.inspect} #{ts}" unless start_ts
-    $open_things.delete k
-    entry = [start_ts, ts, type]
-    $timelines[node] << entry
-    if type == :backfill
-      $backfill_vbuckets << [$backfill_ts_to_vbucket[start_ts], *entry]
+def next_node_event(node, it)
+  while (ev = mild_next(it))
+    case ev["type"]
+    when "vbucketMoveStart"
+      return ev if move_affects_node node, ev
+    when "vbucketMoveDone", "backfillPhaseEnded", "checkpointWaitingStarted", "checkpointWaitingEnded"
+      move_event = $vbucket_to_move_start[ev["vbucket"]]
+      return ev if move_affects_node(node, move_event)
+    when "waitIndexUpdatedStarted", "waitIndexUpdatedEnded", "indexingInitiated"
+      return ev if ev["node"] == node
     end
   end
 end
 
-raise unless $open_things.keys.empty?
+$timelines = []
 
-longest_backfills = $backfill_vbuckets.sort_by {|r| r[1] - r[2]}.uniq
+$nodes.each do |node|
+  iter = $events.each
 
-puts "longest backfills:"
-top_of_longest = longest_backfills.map {|r| r.dup << r[2] - r[1]}
-pp top_of_longest[0...30]
+  timeline = []
 
-puts "sum of times: #{top_of_longest.inject(0) {|s,r| r[-1]+s}}, #{top_of_longest[0...30].inject(0) {|s,r| r[-1]+s}}"
+  state = :idle
+  prev_state = state
+  move_count = 0
+  move_start_ts = nil
+  backfill_start_ts = nil
+  backfill_vbucket = nil
 
+  while (ev = next_node_event(node, iter))
+    if prev_state != state
+      puts "changed state #{prev_state} -> #{state}"
+      prev_state = state
+    end
 
-$timelines = $timelines.to_a.map do |(node, events)|
-  new_events = events.sort_by {|(start, done,_)| [start, start - done]}
-  [node, new_events]
-end.sort
+    type = ev["type"]
+    ts = ev["ts"]
+
+    puts "processing: #{ev.inspect}"
+
+    if type == "vbucketMoveStart"
+      raise if state == :backfill
+      move_count += 1
+      backfill_start_ts = ts
+      move_start_ts = ts unless state == :moving
+      backfill_vbucket = ev["vbucket"]
+      state = :backfill
+      next
+    end
+
+    if state == :idle
+      raise "expected vbucketMoveStart in idle. Have: #{ev.inspect}"
+    end
+
+    case type
+    when "backfillPhaseEnded"
+      raise "expected backfill for #{ev.inspect} got #{state.inspect}" unless state == :backfill
+      raise "expecte vbucket #{backfill_vbucket} for #{ev.inspect}" unless backfill_vbucket == ev["vbucket"]
+      state = :moving
+      timeline << [backfill_start_ts, ts, :backfill]
+    when "vbucketMoveDone"
+      move_count -= 1
+      if move_count == 0
+        raise unless state == :moving
+        timeline << [move_start_ts, ts, :move]
+        state = :idle
+      end
+    else
+      # other event types are ignored yet
+    end
+  end
+
+  raise "bad final state: #{state}" unless state == :idle
+
+  $timelines << [node, timeline]
+end
+
 
 $latest_time = $timelines.flatten.select {|e| e.kind_of?(Numeric)}.max
 $earliest_time = $timelines.flatten.select {|e| e.kind_of?(Numeric)}.min
 
 def ts_to_y(ts)
-  100 + (ts - $earliest_time) / ($latest_time - $earliest_time) * 10000
+  10 + (ts - $earliest_time)
 end
 
 # pp $timelines
@@ -169,13 +149,27 @@ def do_svg(filename, width, height)
   end
 end
 
-$width_per_node = 200
+$width_per_node = 300
 
-do_svg(ARGV[0]+".svg", $width_per_node * $timelines.size, 12000) do |img|
+lower_edge = ts_to_y($latest_time)+10
+right_edge = $width_per_node * ($timelines.size + 1)
+
+do_svg(ARGV[0]+".svg", right_edge, lower_edge) do |img|
+  pos = $width_per_node*0.5
+  time = 100
+  while time < ($latest_time - $earliest_time)
+    y = ts_to_y(time + $earliest_time)
+    width = ((time % 1000 == 0) ? 8 : 2)
+    img.line(0, y, right_edge, y, :'stroke-width' => width, :stroke => 'blue', :opacity => 0.2)
+    img.text(pos + 6, y + 20 + width * 0.5 + 6, time.to_s, "font-size" => "20px")
+    time += 100
+  end
+
   $timelines.each_with_index do |(_node, lines), idx|
-    pos = (idx + 0.5) * $width_per_node
+    lines.reverse!
+    pos = (idx + 1 + 0.5) * $width_per_node
     # general timeline
-    img.line pos, 0, pos, 11000, :'stroke-width' => 1, :opacity => 1.0, :stroke => '#000'
+    img.line pos, 0, pos, lower_edge, :'stroke-width' => 1, :opacity => 1.0, :stroke => '#000'
 
     lines.each do |(start, done, type)|
       start_y = ts_to_y(start)
@@ -192,3 +186,5 @@ do_svg(ARGV[0]+".svg", $width_per_node * $timelines.size, 12000) do |img|
     end
   end
 end
+
+puts "events range: #{Time.at($earliest_time)}..#{Time.at($latest_time)} (#{$latest_time-$earliest_time})"

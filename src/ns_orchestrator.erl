@@ -28,6 +28,9 @@
 -record(janitor_state, {remaining_buckets, pid}).
 -record(rebalancing_state, {rebalancer, progress,
                             keep_nodes, eject_nodes, failed_nodes}).
+-record(recovery_state, {uuid :: binary(),
+                         bucket :: bucket_name(),
+                         recoverer_state :: any()}).
 
 
 %% API
@@ -45,8 +48,13 @@
          start_rebalance/2,
          stop_rebalance/0,
          update_progress/1,
-         is_rebalance_running/0
-        ]).
+         is_rebalance_running/0,
+         start_recovery/1,
+         stop_recovery/2,
+         commit_vbucket/3,
+         recovery_status/0,
+         recovery_map/2,
+         is_recovery_running/0]).
 
 -define(SERVER, {global, ?MODULE}).
 
@@ -73,7 +81,8 @@
 %% States
 -export([idle/2, idle/3,
          janitor_running/2, janitor_running/3,
-         rebalancing/2, rebalancing/3]).
+         rebalancing/2, rebalancing/3,
+         recovery/2, recovery/3]).
 
 
 %%
@@ -92,7 +101,7 @@ wait_for_orchestrator() ->
                            {error, {still_exists, nonempty_string()}} |
                            {error, {port_conflict, integer()}} |
                            {error, {invalid_name, nonempty_string()}} |
-                           rebalance_running.
+                           rebalance_running | in_recovery.
 create_bucket(BucketType, BucketName, NewConfig) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {create_bucket, BucketType, BucketName,
@@ -108,7 +117,8 @@ create_bucket(BucketType, BucketName, NewConfig) ->
 %% rebalance_running if delete bucket request came while rebalancing;
 %% and {exit, ...} if bucket does not really exists
 -spec delete_bucket(bucket_name()) ->
-                           ok | rebalance_running | {shutdown_failed, [node()]} | {exit, {not_found, bucket_name()}, _}.
+                           ok | rebalance_running | in_recovery |
+                           {shutdown_failed, [node()]} | {exit, {not_found, bucket_name()}, _}.
 delete_bucket(BucketName) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {delete_bucket, BucketName}, infinity).
@@ -116,6 +126,7 @@ delete_bucket(BucketName) ->
 -spec flush_bucket(bucket_name()) ->
                           ok |
                           rebalance_running |
+                          in_recovery |
                           bucket_not_found |
                           flush_disabled |
                           not_supported |       % if we're in 1.8.x compat mode and trying to flush couchbase bucket
@@ -129,13 +140,14 @@ flush_bucket(BucketName) ->
     gen_fsm:sync_send_event(?SERVER, {flush_bucket, BucketName}, infinity).
 
 
--spec failover(atom()) -> ok.
+-spec failover(atom()) -> ok | rebalance_running | in_recovery.
 failover(Node) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {failover, Node}, infinity).
 
 
--spec try_autofailover(atom()) -> ok | {autofailover_unsafe, [bucket_name()]}.
+-spec try_autofailover(atom()) -> ok | rebalance_running | in_recovery |
+                                  {autofailover_unsafe, [bucket_name()]}.
 try_autofailover(Node) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {try_autofailover, Node}, infinity).
@@ -177,7 +189,8 @@ start_rebalance_old_style(KeepNodes, EjectedNodes, FailedNodes) ->
 
 
 -spec start_rebalance([node()], [node()]) ->
-                                       ok | in_progress | already_balanced | nodes_mismatch | no_active_nodes_left.
+                             ok | in_progress | already_balanced |
+                             nodes_mismatch | no_active_nodes_left | in_recovery.
 start_rebalance(KnownNodes, EjectNodes) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_all_state_event(?SERVER, {maybe_start_rebalance, KnownNodes, EjectNodes}).
@@ -188,6 +201,59 @@ stop_rebalance() ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, stop_rebalance).
 
+
+-spec start_recovery(bucket_name()) ->
+                            {ok, UUID, RecoveryMap} |
+                            unsupported |
+                            rebalance_running |
+                            not_present |
+                            not_needed |
+                            {error, {failed_nodes, [node()]}}
+  when UUID :: binary(),
+       RecoveryMap :: dict().
+start_recovery(Bucket) ->
+    wait_for_orchestrator(),
+    gen_fsm:sync_send_event(?SERVER, {start_recovery, Bucket}).
+
+-spec recovery_status() -> not_in_recovery | {ok, Status}
+  when Status :: [{bucket, bucket_name()} |
+                  {uuid, binary()} |
+                  {recovery_map, RecoveryMap}],
+       RecoveryMap :: dict().
+recovery_status() ->
+    wait_for_orchestrator(),
+    gen_fsm:sync_send_all_state_event(?SERVER, recovery_status).
+
+-spec recovery_map(bucket_name(), UUID) -> bad_recovery | {ok, RecoveryMap}
+  when RecoveryMap :: dict(),
+       UUID :: binary().
+recovery_map(Bucket, UUID) ->
+    wait_for_orchestrator(),
+    gen_fsm:sync_send_all_state_event(?SERVER, {recovery_map, Bucket, UUID}).
+
+-spec commit_vbucket(bucket_name(), UUID, vbucket_id()) ->
+                            ok | recovery_completed |
+                            vbucket_not_found | bad_recovery |
+                            {error, {failed_nodes, [node()]}}
+  when UUID :: binary().
+commit_vbucket(Bucket, UUID, VBucket) ->
+    wait_for_orchestrator(),
+    gen_fsm:sync_send_all_state_event(?SERVER, {commit_vbucket, Bucket, UUID, VBucket}).
+
+-spec stop_recovery(bucket_name(), UUID) -> ok | bad_recovery
+  when UUID :: binary().
+stop_recovery(Bucket, UUID) ->
+    wait_for_orchestrator(),
+    gen_fsm:sync_send_all_state_event(?SERVER, {stop_recovery, Bucket, UUID}).
+
+-spec is_recovery_running() -> boolean().
+is_recovery_running() ->
+    case ns_config:search(recovery_status) of
+        {value, {running, _Bucket, _UUID}} ->
+            true;
+        _ ->
+            false
+    end.
 
 %%
 %% gen_fsm callbacks
@@ -200,7 +266,7 @@ code_change(_OldVsn, StateName, StateData, _Extra) ->
 init([]) ->
     process_flag(trap_exit, true),
     self() ! janitor,
-    timer:send_interval(10000, janitor),
+    timer2:send_interval(10000, janitor),
 
     CurrentCompat = cluster_compat_mode:get_compat_version(),
     ok = ns_online_config_upgrader:upgrade_config_on_join(CurrentCompat),
@@ -211,6 +277,7 @@ init([]) ->
             %% There's no need to restart us here. So if we've changed compat mode in init suppress exit
             ok
     end,
+
     {ok, idle, #idle_state{}}.
 
 
@@ -245,6 +312,35 @@ handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes},
             {reply, nodes_mismatch, StateName, State}
     end;
 
+handle_sync_event(recovery_status, From, StateName, State) ->
+    case StateName of
+        recovery ->
+            ?MODULE:recovery(recovery_status, From, State);
+        _ ->
+            {reply, not_in_recovery, StateName, State}
+    end;
+handle_sync_event(Msg, From, StateName, State)
+  when element(1, Msg) =:= recovery_map;
+       element(1, Msg) =:= commit_vbucket;
+       element(1, Msg) =:= stop_recovery ->
+    case StateName of
+        recovery ->
+            Bucket = element(2, Msg),
+            UUID = element(3, Msg),
+
+            #recovery_state{bucket=BucketInRecovery,
+                            uuid=RecoveryUUID} = State,
+
+            case Bucket =:= BucketInRecovery andalso UUID =:= RecoveryUUID of
+                true ->
+                    ?MODULE:recovery(Msg, From, State);
+                false ->
+                    {reply, bad_recovery, recovery, State}
+            end;
+        _ ->
+            {reply, bad_recovery, StateName, State}
+    end;
+
 handle_sync_event(Event, _From, StateName, State) ->
     {stop, {unhandled, Event, StateName}, State}.
 
@@ -259,6 +355,7 @@ handle_info(janitor, idle, #idle_state{remaining_buckets=[]} = State) ->
     end;
 handle_info(janitor, idle, #idle_state{remaining_buckets=Buckets}) ->
     misc:verify_name(?MODULE), % MB-3180: Make sure we're still registered
+    maybe_drop_recovery_status(),
     Bucket = hd(Buckets),
     Pid = proc_lib:spawn_link(ns_janitor, cleanup, [Bucket, [consider_stopping_rebalance_status]]),
     %% NOTE: Bucket will be popped from Buckets when janitor run will
@@ -266,7 +363,7 @@ handle_info(janitor, idle, #idle_state{remaining_buckets=Buckets}) ->
     {next_state, janitor_running, #janitor_state{remaining_buckets=Buckets,
                                                  pid = Pid}};
 handle_info(janitor, StateName, StateData) ->
-    ?log_info("Skipping janitor in state ~p: ~p", [StateName, StateData]),
+    ?log_info("Skipping janitor in state ~p", [StateName]),
     {next_state, StateName, StateData};
 handle_info({'EXIT', Pid, Reason}, janitor_running,
             #janitor_state{pid = Pid,
@@ -437,11 +534,10 @@ idle({delete_bucket, BucketName}, _From,
                 LiveNodes = Nodes -- LeftoverNodes,
 
                 ?log_info("Restarting moxi on nodes ~p", [LiveNodes]),
-                case rpc:multicall(LiveNodes, ns_port_sup, restart_port_by_name, [moxi],
-                                   ?DELETE_BUCKET_TIMEOUT) of
-                    {_Results, []} ->
+                case multicall_moxi_restart(LiveNodes, ?DELETE_BUCKET_TIMEOUT) of
+                    ok ->
                         ok;
-                    {_Results, FailedNodes} ->
+                    FailedNodes ->
                         ?log_warning("Failed to restart moxi on following nodes ~p",
                                      [FailedNodes])
                 end,
@@ -493,6 +589,23 @@ idle({start_rebalance, KeepNodes, EjectNodes, FailedNodes}, _From,
                         keep_nodes=KeepNodes,
                         eject_nodes=EjectNodes,
                         failed_nodes=FailedNodes}};
+idle({move_vbuckets, Bucket, Moves}, _From, _State) ->
+    Pid = spawn_link(
+            fun () ->
+                    {ok, Config} = ns_bucket:get_bucket(Bucket),
+                    Map = proplists:get_value(map, Config),
+                    TMap = lists:foldl(fun ({VBucket, TargetChain}, Map0) ->
+                                               setelement(VBucket+1, Map0, TargetChain)
+                                       end, list_to_tuple(Map), Moves),
+                    NewMap = tuple_to_list(TMap),
+                    ns_rebalancer:run_mover(Bucket, Config, proplists:get_value(servers, Config),
+                                            0, 1, Map, NewMap)
+            end),
+    ns_config:set([{rebalance_status, running},
+                   {rebalancer_pid, Pid}]),
+    {reply, ok, rebalancing,
+     #rebalancing_state{rebalancer=Pid,
+                        progress=dict:new()}};
 idle(stop_rebalance, _From, State) ->
     ns_janitor:stop_rebalance_status(
       fun () ->
@@ -501,7 +614,92 @@ idle(stop_rebalance, _From, State) ->
                         "requested but rebalance isn't orchestrated on our node"),
               none
       end),
-    {reply, not_rebalancing, idle, State}.
+    {reply, not_rebalancing, idle, State};
+idle({start_recovery, Bucket}, _From, State) ->
+    try
+
+        case cluster_compat_mode:is_cluster_20() of
+            true ->
+                ok;
+            false ->
+                throw(unsupported)
+        end,
+
+        BucketConfig0 = case ns_bucket:get_bucket(Bucket) of
+                            {ok, V} ->
+                                V;
+                            Error0 ->
+                                throw(Error0)
+                        end,
+
+        case ns_bucket:bucket_type(BucketConfig0) of
+            membase ->
+                ok;
+            _ ->
+                throw(not_needed)
+        end,
+
+        FailedOverNodes = [N || {N, inactiveFailed} <- ns_cluster_membership:get_nodes_cluster_membership()],
+        Servers = ns_node_disco:nodes_wanted() -- FailedOverNodes,
+        BucketConfig = misc:update_proplist(BucketConfig0, [{servers, Servers}]),
+        ns_cluster_membership:activate(Servers),
+        ns_config:sync_announcements(),
+        case ns_config_rep:synchronize_remote(Servers) of
+            ok ->
+                ok;
+            {error, BadNodes} ->
+                ?log_error("Failed to syncrhonize config to some nodes: ~p", [BadNodes]),
+                throw({error, {failed_nodes, BadNodes}})
+        end,
+
+        case ns_rebalancer:maybe_cleanup_old_buckets(Servers) of
+            ok ->
+                ok;
+            {buckets_cleanup_failed, FailedNodes0} ->
+                throw({error, {failed_nodes, FailedNodes0}})
+        end,
+
+        ns_bucket:set_servers(Bucket, Servers),
+
+        case ns_janitor:cleanup(Bucket, [{timeout, 10}]) of
+            ok ->
+                ok;
+            {error, wait_for_memcached_failed, FailedNodes1} ->
+                error({error, {failed_nodes, FailedNodes1}})
+        end,
+
+        {ok, RecoveryMap, {NewServers, NewBucketConfig}, RecovererState} =
+            case recoverer:start_recovery(BucketConfig) of
+                {ok, _, _, _} = R ->
+                    R;
+                Error1 ->
+                    throw(Error1)
+            end,
+
+        true = (Servers =:= NewServers),
+
+        RV = apply_recoverer_bucket_config(Bucket, NewBucketConfig, NewServers),
+        case RV of
+            ok ->
+                RecoveryUUID = couch_uuids:random(),
+                NewState =
+                    #recovery_state{bucket=Bucket,
+                                    uuid=RecoveryUUID,
+                                    recoverer_state=RecovererState},
+
+                ensure_recovery_status(Bucket, RecoveryUUID),
+
+                ale:info(?USER_LOGGER, "Put bucket `~s` into recovery mode", [Bucket]),
+
+                {reply, {ok, RecoveryUUID, RecoveryMap}, recovery, NewState};
+            Error2 ->
+                throw(Error2)
+        end
+
+    catch
+        throw:E ->
+            {reply, E, idle, State}
+    end.
 
 
 janitor_running(rebalance_progress, _From, State) ->
@@ -526,8 +724,6 @@ rebalancing({update_progress, Progress},
      State#rebalancing_state{progress=NewProgress}}.
 
 %% Synchronous rebalancing events
-rebalancing({failover, _Node}, _From, State) ->
-    {reply, rebalancing, rebalancing, State};
 rebalancing({start_rebalance, _KeepNodes, _EjectNodes, _FailedNodes},
             _From, State) ->
     ?user_log(?REBALANCE_NOT_STARTED,
@@ -544,6 +740,85 @@ rebalancing(Event, _From, State) ->
     ?log_warning("Got event ~p while rebalancing.", [Event]),
     {reply, rebalance_running, rebalancing, State}.
 
+recovery(Event, State) ->
+    ?log_warning("Got unexpected event: ~p", [Event]),
+    {next_state, recovery_running, State}.
+
+recovery({start_recovery, Bucket}, _From,
+         #recovery_state{bucket=BucketInRecovery,
+                         uuid=RecoveryUUID,
+                         recoverer_state=RState} = State) ->
+    case Bucket =:= BucketInRecovery of
+        true ->
+            RecoveryMap = recoverer:get_recovery_map(RState),
+            {reply, {ok, RecoveryUUID, RecoveryMap}, recovery, State};
+        false ->
+            {reply, recovery_running, recovery, State}
+    end;
+
+recovery({commit_vbucket, Bucket, UUID, VBucket}, _From,
+         #recovery_state{recoverer_state=RState} = State) ->
+    Bucket = State#recovery_state.bucket,
+    UUID = State#recovery_state.uuid,
+
+    case recoverer:commit_vbucket(VBucket, RState) of
+        {ok, {Servers, NewBucketConfig}, RState1} ->
+            RV = apply_recoverer_bucket_config(Bucket, NewBucketConfig, Servers),
+            case RV of
+                ok ->
+                    {ok, Map, RState2} = recoverer:note_commit_vbucket_done(VBucket, RState1),
+                    ns_bucket:set_map(Bucket, Map),
+                    case recoverer:is_recovery_complete(RState2) of
+                        true ->
+                            ale:info(?USER_LOGGER, "Recovery of bucket `~s` completed", [Bucket]),
+                            {reply, recovery_completed, idle, #idle_state{}};
+                        false ->
+                            ?log_debug("Committed vbucket ~b (recovery of `~s`)", [VBucket, Bucket]),
+                            {reply, ok, recovery,
+                             State#recovery_state{recoverer_state=RState2}}
+                    end;
+                Error ->
+                    {reply, Error, recovery,
+                     State#recovery_state{recoverer_state=RState1}}
+            end;
+        Error ->
+            {reply, Error, recovery, State}
+    end;
+
+recovery({stop_recovery, Bucket, UUID}, _From, State) ->
+    Bucket = State#recovery_state.bucket,
+    UUID = State#recovery_state.uuid,
+
+    ns_config:set(recovery_status, not_running),
+
+    ale:info(?USER_LOGGER, "Recovery of bucket `~s` aborted", [Bucket]),
+
+    {reply, ok, idle, #idle_state{}};
+
+recovery(recovery_status, _From,
+         #recovery_state{uuid=RecoveryUUID,
+                         bucket=Bucket,
+                         recoverer_state=RState} = State) ->
+    RecoveryMap = recoverer:get_recovery_map(RState),
+
+    Status = [{bucket, Bucket},
+              {uuid, RecoveryUUID},
+              {recovery_map, RecoveryMap}],
+
+    {reply, {ok, Status}, recovery, State};
+recovery({recovery_map, Bucket, RecoveryUUID}, _From,
+         #recovery_state{uuid=RecoveryUUID,
+                         bucket=Bucket,
+                         recoverer_state=RState} = State) ->
+    RecoveryMap = recoverer:get_recovery_map(RState),
+    {reply, {ok, RecoveryMap}, recovery, State};
+
+recovery(rebalance_progress, _From, State) ->
+    {reply, not_running, recovery, State};
+recovery(stop_rebalance, _From, State) ->
+    {reply, not_rebalancing, recovery, State};
+recovery(_Event, _From, State) ->
+    {reply, in_recovery, recovery, State}.
 
 
 %%
@@ -752,3 +1027,46 @@ do_flush_old_style(BucketName, BucketConfig) ->
             {old_style_flush_failed, Results, BadNodes}
     end.
 
+apply_recoverer_bucket_config(Bucket, BucketConfig, Servers) ->
+    {ok, _, Zombies} = janitor_agent:query_states(Bucket, Servers, 1),
+    case Zombies of
+        [] ->
+            janitor_agent:apply_new_bucket_config_new_style(
+              Bucket, Servers, [], BucketConfig, []);
+        _ ->
+            ?log_error("Failed to query states from some of the nodes: ~p", [Zombies]),
+            {error, {failed_nodes, Zombies}}
+    end.
+
+maybe_drop_recovery_status() ->
+    ns_config:update(
+      fun ({recovery_status, Value} = P) ->
+              case Value of
+                  not_running ->
+                      P;
+                  {running, _Bucket, _UUID} ->
+                      ale:info(?USER_LOGGER, "Apparently recovery ns_orchestrator died. Dropped stale recovery status ~p", [P]),
+                      {recovery_status, not_running}
+              end;
+          (Other) ->
+              Other
+      end, make_ref()).
+
+ensure_recovery_status(Bucket, UUID) ->
+    ns_config:set(recovery_status, {running, Bucket, UUID}).
+
+%% NOTE: 2.0.1 and earlier nodes only had
+%% ns_port_sup. I believe it's harmless not to clean
+%% their moxis
+-spec multicall_moxi_restart([node()], _) -> ok | [{node(), _} | node()].
+multicall_moxi_restart(Nodes, Timeout) ->
+    {Results, FailedNodes} = rpc:multicall(Nodes, ns_ports_setup, restart_moxi, [],
+                                           Timeout),
+    BadResults = [Pair || {_N, R} = Pair <- lists:zip(Nodes -- FailedNodes, Results),
+                          R =/= ok],
+    case BadResults =:= [] andalso FailedNodes =:= [] of
+        true ->
+            ok;
+        _ ->
+            FailedNodes ++ BadResults
+    end.

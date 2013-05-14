@@ -157,40 +157,32 @@ handle_call(Request, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info(Msg, State) ->
-    {ok, TRef} = timer:kill_after(60000),
-    try
-        do_handle_info(Msg, State)
-    after
-        timer:cancel(TRef)
-    end.
-
-do_handle_info(init, State) ->
+handle_info(init, State) ->
     create_tables(State#state.bucket),
     {noreply, State};
-do_handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket}) ->
+handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket}) ->
     Tab = table(Bucket, minute),
     #stat_entry{timestamp=TS} = Sample,
     ets:insert(Tab, {TS, Sample}),
     gen_event:notify(ns_stats_event, {sample_archived, Bucket, Sample}),
     {noreply, State};
-do_handle_info({sample_archived, _, _}, State) ->
+handle_info({sample_archived, _, _}, State) ->
     {noreply, State};
-do_handle_info({truncate, Period, N}, #state{bucket=Bucket} = State) ->
+handle_info({truncate, Period, N}, #state{bucket=Bucket} = State) ->
     Tab = table(Bucket, Period),
     truncate_logger(Tab, N),
     {noreply, State};
-do_handle_info({cascade, Prev, Period, Step}, #state{bucket=Bucket} = State) ->
+handle_info({cascade, Prev, Period, Step}, #state{bucket=Bucket} = State) ->
     cascade_logger(Bucket, Prev, Period, Step),
     {noreply, State};
-do_handle_info(backup, #state{bucket=Bucket} = State) ->
+handle_info(backup, #state{bucket=Bucket} = State) ->
     misc:flush(backup),
     proc_lib:spawn_link(
       fun () ->
               backup_loggers(Bucket)
       end),
     {noreply, State};
-do_handle_info({'EXIT', _Pid, Reason} = Exit, State) ->
+handle_info({'EXIT', _Pid, Reason} = Exit, State) ->
     case Reason of
         normal ->
             ok;
@@ -198,7 +190,7 @@ do_handle_info({'EXIT', _Pid, Reason} = Exit, State) ->
             ?log_warning("Process exited unexpectedly: ~p", [Exit])
     end,
     {noreply, State};
-do_handle_info(_Msg, State) -> % Don't crash on delayed responses from calls
+handle_info(_Msg, State) -> % Don't crash on delayed responses from calls
     {noreply, State}.
 
 
@@ -313,7 +305,7 @@ server(Bucket) ->
 
 %% @doc Start the timers to cascade samples to the next resolution.
 start_cascade_timers([{Prev, _, _} | [{Next, Step, _} | _] = Rest]) ->
-    timer:send_interval(200 * Step, {cascade, Prev, Next, Step}),
+    timer2:send_interval(200 * Step, {cascade, Prev, Next, Step}),
     start_cascade_timers(Rest);
 
 start_cascade_timers([_]) ->
@@ -326,10 +318,10 @@ start_timers() ->
       fun ({Period, Step, Samples}) ->
               Interval = 100 * Step * Samples,  % Allow to go over by 10% of the
                                                 % total samples
-              timer:send_interval(Interval, {truncate, Period, Samples})
+              timer2:send_interval(Interval, {truncate, Period, Samples})
       end, Archives),
     start_cascade_timers(Archives),
-    timer:send_interval(?BACKUP_INTERVAL, backup).
+    timer2:send_interval(?BACKUP_INTERVAL, backup).
 
 -spec fmt(string(), list()) -> list().
 fmt(Str, Args)  ->

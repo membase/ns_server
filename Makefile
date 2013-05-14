@@ -54,31 +54,19 @@ deps_ale:
 deps_mlockall:
 	(cd deps/mlockall; $(MAKE))
 
-deps_all: deps_smtp deps_erlwsh deps_ale deps_mlockall
+deps_ns_babysitter: deps_ale
+	(cd deps/ns_babysitter; $(MAKE))
+
+deps_all: deps_smtp deps_erlwsh deps_ale deps_mlockall deps_ns_babysitter
 
 docs:
 	priv/erldocs $(DOC_DIR)
 
-ebins: src/ns_server.app.src include/replication_infos_ddoc.hrl deps_all
+ebins: src/ns_server.app.src deps_all
 	$(REBAR) compile
 
 src/ns_server.app.src: src/ns_server.app.src.in $(TMP_VER)
 	(sed s/0.0.0/'$(if $(PRODUCT_VERSION),$(PRODUCT_VERSION),$(shell cat $(TMP_VER)))$(if $(PRODUCT_LICENSE),-$(PRODUCT_LICENSE))'/g $< > $@) || (rm $@ && false)
-
-# NOTE: not depending on scripts/build_replication_infos_ddoc.rb because we're uploading both files to git.
-# If you need to rebuild this file, remove it first.
-include/replication_infos_ddoc.hrl:
-	scripts/build_replication_infos_ddoc.rb >$@ || (rm $@ && false)
-
-rebuild_replication_infos_ddoc:
-	rm -f include/replication_infos_ddoc.hrl
-	$(MAKE) include/replication_infos_ddoc.hrl
-
-.PHONY: rebuild_replication_infos_ddoc
-
-ifdef PRODUCT_VERSION
-.PHONY: src/ns_server.app.src
-endif
 
 priv/public/js/all-images.js: priv/public/images priv/public/images/spinner scripts/build-all-images.sh
 	scripts/build-all-images.sh >$@ || (rm $@ && false)
@@ -112,6 +100,7 @@ ERLWSH_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/erlwsh
 GEN_SMTP_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/gen_smtp
 ALE_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ale
 MLOCKALL_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/mlockall
+NS_BABYSITTER_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ns_babysitter
 
 do-install:
 	echo $(DESTDIR)$(PREFIX)
@@ -120,6 +109,7 @@ do-install:
 	cp -r ebin $(NS_SERVER_LIBDIR)/
 	mkdir -p $(NS_SERVER_LIBDIR)/priv
 	cp -r priv/public $(NS_SERVER_LIBDIR)/priv/
+	cp priv/i386-linux-godu priv/i386-win32-godu.exe $(NS_SERVER_LIBDIR)/priv/
 	mkdir -p $(ERLWSH_LIBDIR)
 	cp -r deps/erlwsh/ebin $(ERLWSH_LIBDIR)/
 	cp -r deps/erlwsh/priv $(ERLWSH_LIBDIR)/
@@ -127,6 +117,8 @@ do-install:
 	cp -r deps/gen_smtp/ebin $(GEN_SMTP_LIBDIR)/
 	mkdir -p $(ALE_LIBDIR)
 	cp -r deps/ale/ebin $(ALE_LIBDIR)/
+	mkdir -p $(NS_BABYSITTER_LIBDIR)
+	cp -r deps/ns_babysitter/ebin $(NS_BABYSITTER_LIBDIR)/
 	mkdir -p $(MLOCKALL_LIBDIR)
 	cp -r deps/mlockall/ebin $(MLOCKALL_LIBDIR)/
 	[ ! -d deps/mlockall/priv ] || cp -r deps/mlockall/priv $(MLOCKALL_LIBDIR)/
@@ -139,10 +131,12 @@ do-install:
 	cp cbbrowse_logs $(DESTDIR)$(PREFIX)/bin/cbbrowse_logs
 	cp cbcollect_info $(DESTDIR)$(PREFIX)/bin/cbcollect_info
 	chmod +x $(DESTDIR)$(PREFIX)/bin/couchbase-server $(DESTDIR)$(PREFIX)/bin/cbbrowse_logs $(DESTDIR)$(PREFIX)/bin/cbcollect_info
-	mkdir -p $(DESTDIR)$(PREFIX)/var/lib/couchbase/logs
+	mkdir -p -m 0770 $(DESTDIR)$(PREFIX)/var/lib/couchbase
+	mkdir -p -m 0770 $(DESTDIR)$(PREFIX)/var/lib/couchbase/logs
 	cp ebucketmigrator $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
 	chmod +x $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
 	cp scripts/cbdump-config $(DESTDIR)$(PREFIX)/bin/
+	cp scripts/dump-guts $(DESTDIR)$(PREFIX)/bin/
 	mkdir -p $(DESTDIR)$(PREFIX)/etc/couchdb/default.d
 	sed -e 's|@COUCHBASE_DB_DIR@|$(COUCHBASE_DB_DIR)|g' <etc/capi.ini.in >$(DESTDIR)$(PREFIX)/etc/couchdb/default.d/capi.ini
 	cp etc/geocouch.ini.in $(DESTDIR)$(PREFIX)/etc/couchdb/default.d/geocouch.ini
@@ -159,6 +153,7 @@ clean clean_all:
 	rm -f erl_crash.dump
 	rm -f ns_server_*.tar.gz
 	rm -f src/ns_server.app
+	rm -f src/ns_babysitter.app
 	rm -rf test/log
 	rm -rf ebin
 	rm -rf docs
@@ -202,7 +197,8 @@ do-dialyzer:
             --apps `ls -1 ebin/*.beam | grep -v couch_log` deps/ale/ebin \
             $(COUCH_PATH)/src/couchdb $(COUCH_PATH)/src/couch_set_view $(COUCH_PATH)/src/couch_view_parser \
             $(COUCH_PATH)/src/couch_index_merger/ebin \
-            $(realpath $(COUCH_PATH)/src/mapreduce)
+            $(realpath $(COUCH_PATH)/src/mapreduce) \
+            deps/ns_babysitter/ebin
 
 dialyzer_obsessive: all $(COUCHBASE_PLT)
 	$(MAKE) do-dialyzer DIALYZER_FLAGS="-Wunmatched_returns -Werror_handling -Wrace_conditions -Wbehaviours -Wunderspecs " COUCH_PATH="$(shell . `pwd`/.configuration && echo $$couchdb_src)"

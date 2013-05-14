@@ -521,8 +521,7 @@ wait_for_process(Pid, Timeout) ->
     Me = self(),
     Signal = make_ref(),
     spawn(fun() ->
-                  process_flag(trap_exit, true),
-                  link(Pid),
+                  erlang:monitor(process, Pid),
                   erlang:monitor(process, Me),
                   receive _ -> Me ! Signal end
           end),
@@ -1004,7 +1003,7 @@ raw_read_file(Path) ->
         Crap -> Crap
     end.
 raw_read_loop(File, Acc) ->
-    case file:read(File, 10) of
+    case file:read(File, 16384) of
         {ok, Bytes} ->
             raw_read_loop(File, [Acc | Bytes]);
         eof ->
@@ -1281,15 +1280,6 @@ parse_base_version(BaseVersionStr) ->
     {lists:map(fun list_to_integer/1,
                string:tokens(NumericVersion, ".")), Type}.
 
-%% Returns the size of directory's content (du -s).
-dir_size(Dir) ->
-    Fn =
-        fun (File, Acc) ->
-                Size = filelib:file_size(File),
-                Acc + Size
-        end,
-    filelib:fold_files(Dir, ".*", true, Fn, 0).
-
 this_node_rest_port() ->
     node_rest_port(node()).
 
@@ -1488,3 +1478,37 @@ try_with_maybe_ignorant_after(TryBody, AfterBody) ->
 
 letrec(Args, F) ->
     erlang:apply(F, [F | Args]).
+
+-spec is_good_address(string()) -> ok | {cannot_resolve, inet:posix()}
+                                       | {cannot_listen, inet:posix()}
+                                       | {address_not_allowed, string()}.
+is_good_address(Address) ->
+    case string:tokens(Address, ".") of
+        [_] ->
+            {address_not_allowed, "short names are not allowed. Erlang requires at least one dot in a name"};
+        _ ->
+            is_good_address_when_allowed(Address)
+    end.
+
+is_good_address_when_allowed(Address) ->
+    case inet:getaddr(Address, inet) of
+        {error, Errno} ->
+            {cannot_resolve, Errno};
+        {ok, IpAddr} ->
+            case gen_udp:open(0, [inet, {ip, IpAddr}]) of
+                {error, Errno} ->
+                    {cannot_listen, Errno};
+                {ok, Socket} ->
+                    gen_udp:close(Socket),
+                    ok
+            end
+    end.
+
+delaying_crash(DelayBy, Body) ->
+    try
+        Body()
+    catch T:E ->
+            ST = erlang:get_stacktrace(),
+            timer:sleep(DelayBy),
+            erlang:raise(T, E, ST)
+    end.

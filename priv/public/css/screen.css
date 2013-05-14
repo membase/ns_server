@@ -85,10 +85,11 @@ a.disabled{text-decoration:none;cursor:default;}
 #container {background-color:#fff;position:absolute;width:100%;min-width:960px;min-height:100%;}
 #mainContainer {position:relative;width:960px;left:12%;margin-top:15px;padding:0 0 220px;}
 .main_holder {position:relative; margin:auto; left:0px !important;}
-.cnt_holder {width:960px; position:relative; left:12%;}
+.cnt_holder {width:960px; position:relative; margin: 0 auto;}
+.log_wrap {overflow: hidden;}
+.log_wrap a {display: block; width: 109px; height: 60px; background: url(../images/couchbase_small_2.0.2.png) no-repeat 50% 50%;}
 
 .page-header {background:url('../images/header_bg.png') 0 bottom repeat-x;height:60px;}
-.page-header .logo {position:absolute;background:url('../images/couchbase_logo.png') no-repeat;width:200px;height:40px;top:15px;left:9px;}
 
 #headerNav {clear:both;height:50px;background:url('../images/navigation_bg.png') repeat-x;}
 #headerNav .contents{width:55em;margin:auto;}
@@ -198,6 +199,7 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 #servers .list th {text-align:left;padding-right:0;padding-left:0;}
 #servers .list td.ram {padding-left:5px;padding-right:0;}
 #servers .list th.node_name {padding-left:5px;}
+
 .vertical_bar {float:left;overflow:hidden;width:1em;height:3em;background:white;border:1px solid #999;border-radius:2px;margin-right:5px}
 .vertical_bar .used{position:relative;background:#00BCE9;}
 .wrap {float:left;margin-top:12px;}
@@ -601,9 +603,8 @@ span.tooltip {color:#0095D6;cursor:pointer;}
 body.init_welcome, body.init_cluster, body.init_resources, body.init_secure, body.init_bucket_dialog, body.init_update_notifications, body.init_sample_buckets  {background:#F0EEE7}
 body.init_welcome #init_block, body.init_cluster #init_block, body.init_resources #init_block, body.init_secure #init_block, body.init_bucket_dialog #init_block, body.init_update_notifications #init_block, body.init_sample_buckets #init_block { display: block; }
 body.init_welcome #container, body.init_cluster #container, body.init_resources #container, body.init_secure #container, body.init_bucket_dialog #container, body.init_update_notifications #container, body.init_sample_buckets #container { display: none; }
-body.init_welcome #init_welcome_dialog { display: block;-moz-box-shadow:0 0 10px #999;-webkit-box-shadow:0 0 10px #999;box-shadow:0 0 10px #999;background:url('../images/intro_logo.png') no-repeat white;height: 470px;position:relative}
-body.init_welcome #init_welcome_dialog .pad-header {float:left;margin:130px 0 0 250px}
-body.init_welcome #init_welcome_dialog .pad-header .tagline {color: #0A72A3;font-size: 1.5em;margin: 0.5em;text-align: center}
+body.init_welcome #init_welcome_dialog { display: block;-moz-box-shadow:0 0 10px #999;-webkit-box-shadow:0 0 10px #999;box-shadow:0 0 10px #999;background-color: white;height: 470px;position:relative}
+body.init_welcome #init_welcome_dialog .pad-header {margin:0 auto;width: 266px; margin: 0 auto; padding-top: 75px;}
 body.init_welcome #init_welcome_dialog .version {color: #837c7b;display: inline-block;padding-top: 1em;vertical-align: top}
 
 body.init_welcome form#init_welcome_form {position:absolute;right:15px;bottom:15px;text-align:right}
@@ -668,7 +669,7 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 .init_block .alert_red {width:588px; height:71px; position:absolute; left:-8px; top:60px; line-height:65px; font-size:14px; color:#fff; background:url(../images/alert_red.png) 0 0 no-repeat; z-index:1000;}
 .init_block .alert_red .al_text {padding:0 0 0 30px;}
 
-.list_button, #servers .add_button, #servers .rebalance_button, #servers .stop_rebalance_button {display: block; float: right; *float:right !important; margin-top: 2px;margin-left: 5px; text-decoration:none !important;border:0;cursor:pointer;}
+.list_button, #servers .add_button, #servers .rebalance_button, #servers .stop_rebalance_button, #servers .stop_recovery_button {display: block; float: right; *float:right !important; margin-top: 2px;margin-left: 5px; text-decoration:none !important;border:0;cursor:pointer;}
 .list_button {height:31px; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000 !important; font-size:14px; text-decoration:none !important; position:relative; }
 #servers .list_button.failover_server.threat_red {color:#f00 !important;font-weight:bold;border: 1px solid #f00;border-radius:5px;-moz-box-shadow: 0 0 3px #f00;-webkit-box-shadow: 0 0 3px #f00;box-shadow:0 0 3px #f00}
 #servers .list_button.failover_server.threat_yellow {color:#E5A800 !important;font-weight:bold;border: 1px solid #fac344;border-radius:5px;-moz-box-shadow: 0 0 3px #fac344;-webkit-box-shadow: 0 0 3px #fac344;box-shadow:0 0 3px #fac344}
@@ -748,6 +749,9 @@ ul.tabs .badge_display .badge {display:block;}
 
 #servers .gong_rb {margin-top:10px 0 10px; padding-left:3px;}
 
+.additional_server_info .rebalance_progress {padding-left: 246px; background:url(../images/icons.png) 0 -480px no-repeat;}
+.additional_server_info .rebalance_progress p {margin: 10px 0; white-space: nowrap;}
+.additional_server_info .rebalance_progress span {display: inline-block; width: 400px;}
 .additional_server_info {display:block;overflow:hidden;}
 .additional_server_info h3 { margin:0 0 10px 0;padding:5px 0 10px 0;color:#5391BA;font-weight:bold;font-size:14px;border-bottom:1px solid #bbbdbf;}
 .additional_server_info .info_block {display:block; overflow:hidden;}
@@ -929,6 +933,17 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 }
 .disk_setup_block input { border: 1px solid #ccd3d7;width: 366px;  padding: 3px;}
 .disk_setup_block .when-enterprise {font-size: 11px;}
+
+.hostname_setup_block {margin:6px 0 0 84px;line-height:25px;overflow:hidden;}
+.hostname_setup_block > div {float:left;width:500px;}
+.hostname_setup_block > div + div {padding:0 0 0 11px}
+.hostname_setup_block > .warning {float:none;width:auto;clear:both;}
+.hostname_setup_block label {
+    margin-right: 6px;
+    float: left;
+    width: 120px;
+}
+.hostname_setup_block input { border: 1px solid #ccd3d7;width: 366px;  padding: 3px;}
 
 #overview_servers_block .actservers + ul li.is-zero a { color: #0095D6;}
 #overview_servers_block .when-zero {display:none;}

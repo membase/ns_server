@@ -108,9 +108,7 @@ GET /pools/default =>
         },
         "replication": {
             "createURI": "/controller/createReplication?uuid=14c408ed8df50823715f47b900bd1b4f", // POST here in order to create xdcr replication
-            "validateURI": "/controller/createReplication?just_validate=1", // private
-            "replicatorDBURI": "/couchBase/_replicator", // private, deprecated
-            "infosURI": "/couchBase/_replicator/_design/_replicator_info/_view/infos?group_level=1" // very private, very deprecated
+            "validateURI": "/controller/createReplication?just_validate=1" // private
         },
         "setFastWarmup": {
             "uri": "/controller/setFastWarmup?uuid=14c408ed8df50823715f47b900bd1b4f",

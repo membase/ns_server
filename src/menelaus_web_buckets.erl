@@ -243,7 +243,9 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
                     {compactDB, bin_concat_path(["pools", PoolId,
                                                  "buckets", Id, "controller", "compactDatabases"])},
                     {purgeDeletes, bin_concat_path(["pools", PoolId,
-                                                    "buckets", Id, "controller", "unsafePurgeBucket"])}]},
+                                                    "buckets", Id, "controller", "unsafePurgeBucket"])},
+                    {startRecovery, bin_concat_path(["pools", PoolId,
+                                                     "buckets", Id, "controller", "startRecovery"])}]},
               {nodes, Nodes},
               {stats, {struct, [{uri, StatsUri},
                                 {directoryURI, StatsDirectoryUri},
@@ -344,6 +346,8 @@ handle_bucket_delete(_PoolId, BucketId, Req) ->
             Req:respond({200, server_header(), []});
         rebalance_running ->
             reply_json(Req, {struct, [{'_', <<"Cannot delete buckets during rebalance.\r\n">>}]}, 503);
+        in_recovery ->
+            reply_json(Req, {struct, [{'_', <<"Cannot delete buckets when cluster is in recovery mode.\r\n">>}]}, 503);
         {shutdown_failed, _} ->
             reply_json(Req, {struct, [{'_', <<"Bucket deletion not yet complete, but will continue.\r\n">>}]}, 500);
         {exit, {not_found, _}, _} ->
@@ -427,7 +431,9 @@ do_bucket_create(Name, ParsedProps) ->
         {error, {invalid_name, _}} ->
             {errors, [{name, <<"Name is invalid.">>}]};
         rebalance_running ->
-            {errors_500, [{'_', <<"Cannot create buckets during rebalance">>}]}
+            {errors_500, [{'_', <<"Cannot create buckets during rebalance">>}]};
+        in_recovery ->
+            {errors_500, [{'_', <<"Cannot create buckets when cluster is in recovery mode">>}]}
     end.
 
 handle_bucket_create(PoolId, Req) ->
@@ -501,6 +507,8 @@ do_handle_bucket_flush(Id, Req) ->
             Req:respond({200, server_header(), []});
         rebalance_running ->
             reply_json(Req, {struct, [{'_', <<"Cannot flush buckets during rebalance">>}]}, 503);
+        in_recovery ->
+            reply_json(Req, {struct, [{'_', <<"Cannot flush buckets when cluster is in recovery mode">>}]}, 503);
         bucket_not_found ->
             Req:respond({404, server_header(), []});
         flush_disabled ->

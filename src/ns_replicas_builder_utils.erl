@@ -76,6 +76,7 @@ spawn_replica_builder(Bucket, VBucket, SrcNode, DstNode) ->
     Opts = [{vbuckets, [VBucket]},
             {takeover, false},
             {suffix, tap_name(VBucket, SrcNode, DstNode)},
+            {note_tap_stats, {replica_building, Bucket, VBucket, SrcNode, DstNode}},
             {username, User},
             {password, Pass}],
     case ebucketmigrator_srv:start_link(DstNode,

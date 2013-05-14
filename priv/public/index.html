@@ -25,7 +25,9 @@
           <b>&bull;</b> <a href="javascript:showAbout();">About</a>
           <i class="sign-out-link"><b>&bull;</b> <a href="javascript:ThePage.signOut();">Sign Out</a></i>
         </div>
-        <a href="index.html"><span class="logo">&nbsp;</span></a>
+        <div class="log_wrap">
+          <a href="/index.html"></a>
+        </div>
         <div id="global_progress" class="closed disable_toggle">
           <i class="toggle">i</i>
           <ul id="global_progress_container"></ul>
@@ -163,6 +165,7 @@
               <a class="add_button btn_1"><span>Add Server</span></a>
               <a class="rebalance_button btn_1"><span>Rebalance</span></a>
               <a class="stop_rebalance_button btn_1"><span>Stop Rebalance</span></a>
+              <a class="stop_recovery_button btn_1"><span>Stop Recovery</span></a>
               <ul class="tabs">
                 <li class="tab_left"><a>Active Servers</a></li>
                 <li class="tab_right" id="rebalance_tab">
@@ -321,6 +324,31 @@
             <div class="side side_4"></div>
           </div>
           <div class="additional_server_info">
+            <!-- {% if (detailedProgress) { %}-->
+              <h3>Rebalance Progress</h3>
+              <div class="rebalance_progress">
+                <p>
+                  <span>Bucket:</span>
+                  {%= detailedProgress.bucket %}
+                  ({%= detailedProgress.bucketNumber %} out of {%= detailedProgress.bucketsCount %})
+                </p>
+                <p>
+                  <span>Total number of keys to be transferred out:</span>
+                  {%= detailedProgress.docsTotal %}
+                </p>
+                <p>
+                  <span>Estimated number of keys transferred:</span>
+                  {%= detailedProgress.docsTransferred %}
+                </p>
+                <p>
+                  <span>
+                    Number of Active# vBuckets and Replica# vBuckets to transfer:
+                  </span>
+                  Active#-{%= detailedProgress.activeVBucketsLeft %}
+                  Replica#-{%= detailedProgress.replicaVBucketsLeft %}
+                </p>
+              </div>
+            <!-- {% } %}-->
             <h3>Memory Cache</h3>
             <div class="info_block">
               <span class="dynamic_ram">Dynamic RAM:</span>
@@ -1193,10 +1221,6 @@
                         <label for="{%= prefix %}_filter_group_level">group_level</label>
                         <input id="{%= prefix %}_filter_group_level" name="group_level" type="text">
                       </div><!--{% }%}-->
-                      <!--{% if (items.includeDocs) {%}--><div>
-                        <label for="{%= prefix %}_filter_include_docs">include_docs</label>
-                        <input id="{%= prefix %}_filter_include_docs" name="include_docs" type="checkbox">
-                      </div><!--{% }%}-->
                       <!--{% if (items.inclusiveEnd) {%}--><div>
                         <label for="{%= prefix %}_filter_inclusive_end">inclusive_end</label>
                         <input id="{%= prefix %}_filter_inclusive_end" name="inclusive_end" type="checkbox">
@@ -1533,7 +1557,6 @@
                     <tr>
                       <th class="keycol">ID</th>
                       <th>&#160;</th>
-                      <th>Сontent</th>
                       <th>&#160;</th>
                       <th>&#160;</th>
                       <th>&#160;</th>
@@ -1546,15 +1569,14 @@
                   <tbody>
                   <!-- {% if (loading) { %} -->
                       <tr>
-                        <td colspan="10" class='spinner'><span>Loading...</span></td>
+                        <td colspan="9" class='spinner'><span>Loading...</span></td>
                       </tr>
                   <!-- {% } else if (rows.length > 0) { %} -->
                   <!-- {% _.each(rows, function (r) { %} -->
                       <tr class="align_text">
-                          <td class="key ellipsis" colspan="2">
+                          <td class="key ellipsis" colspan="6">
                             <a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}">{%= h(r.key) %}</a>
                           </td>
-                          <td class="ellipsis" colspan="5">{%= $.futon.formatJSON(r.doc.json, {html:true}) %}</td>
                           <td colspan="3">
                             <button class="list_button delete_btn" data-id="{%= h(r.id) %}"><span>Delete</span></button>
                             <a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}" class="list_button btn_edit"><span>Edit Document</span></a></td>
@@ -1562,7 +1584,7 @@
                   <!-- {% }); %} -->
                 <!-- {% } else { %} -->
                   <tr>
-                    <td colspan="10" class="empty_docs">There are currently no documents in this bucket{%= searchCriteria ? ' corresponding to the search criteria' : '.' %}</td>
+                    <td colspan="9" class="empty_docs">There are currently no documents in this bucket{%= searchCriteria ? ' corresponding to the search criteria' : '.' %}</td>
                   </tr>
                 <!-- {% } %} -->
                 </tbody>
@@ -1580,7 +1602,7 @@
 
     <div class="page-footer">
       <div class="main_holder">
-        <h1>Copyright &copy; 2012 <a href="http://couchbase.com" target="_blank">Couchbase, Inc.</a> All rights reserved.</h1>
+        <h1>Copyright &copy; 2013 <a href="http://couchbase.com" target="_blank">Couchbase, Inc.</a> All rights reserved.</h1>
       </div>
     </div>
   </div>
@@ -1608,6 +1630,7 @@
       <label><span style="min-width:300px;float:none;display:inline-block;">XDCR Batch Count:</span><input maxlength="5" style="width:2.5em;" name="xdcrWorkerBatchSize"></label>
       <label><span style="min-width:300px;float:none;display:inline-block;">XDCR Batch Size (kB):</span><input maxlength="6" style="width:2.5em;" name="xdcrDocBatchSizeKb"></label>
       <label><span style="min-width:300px;float:none;display:inline-block;">XDCR Failure Retry Interval:</span><input maxlength="3" style="width:1.5em;" name="xdcrFailureRestartInterval"></label>
+      <label><span style="min-width:300px;float:none;display:inline-block;">XDCR Optimistic Replication Threshold:</span><input maxlength="6" style="width:2.5em;" name="xdcrOptimisticReplicationThreshold"></label>
     </fieldset>
     <div class="save_cancel">
       <button class="save_button float_right" type="submit">Save</button>
@@ -2115,7 +2138,6 @@
 <div class="dialog" id="about_server_dialog">
   <div class="lbox">
     <div class="config-top">
-      <img src="images/couchbase_logo.png" alt="Couchbase Logo" />
       <h1>About Couchbase Server</h1>
     </div>
     <div class="center">
@@ -2184,7 +2206,7 @@
     <!-- {% }); %} -->
   </script>
   <form>
-    <fieldset></fieldset>
+    <fieldset>
       <fieldset style="float:left;">
         <legend>Replicate changes from:</legend>
         <ul>
@@ -2254,7 +2276,6 @@
           <a href="javascript:showAbout();">About</a>
           <i class="sign-out-link" style="display:none"><b>&bull;</b> <a href="javascript:ThePage.signOut();">Sign Out</a></i>
       </div>
-      <a href="index.html"><span class="logo"> </span></a>
     </div>
   </div>
   <div class="pad">
@@ -2292,17 +2313,14 @@
 
   <div class="pad" id="init_welcome_dialog">
     <div class="pad-header">
-      <img class="logo" src="images/logo_large.png" alt="Couchbase logo" />
-      <div class="tagline">
-        Simple. Fast. Elastic.
-      </div>
+      <img class="logo" src="images/couchbase_2.0.2.png" alt="Couchbase logo">
     </div>
     <form id="init_welcome_form" class="clearfix">
       <div class="version" style="display:none;"><span class="couchbase-version"></span></div>
       <input type="image" name="setup" alt="Setup" class="submit next focusme" src="images/welcome-setup-button.png" />
     </form>
     <div class="welcome-footer">
-      Copyright &copy; 2012 Couchbase, Inc. All Rights Reserved
+      Copyright &copy; 2013 Couchbase, Inc. All Rights Reserved
       <a href="http://www.couchbase.com/company/contact" id="welcome-footer-contact" target="_blank">Contact</a> <a href="javascript:showAbout();">About</a>
     </div>
   </div>
@@ -2321,7 +2339,7 @@
           <div>
             <label for="setup_db_path_input">Databases Path:</label>
             <input type="text" name="db_path"
-                   id="setup_db_path_input" class="path-box" />
+                   id="setup_db_path_input" />
             <br class="clear" />
           </div>
 
@@ -2334,7 +2352,7 @@
           <div>
             <label for="setup_index_path_input">Indices Path:</label>
             <input type="text" name="index_path"
-                   id="setup_index_path_input" class="path-box" />
+                   id="setup_index_path_input" />
             <br class="clear" />
           </div>
 
@@ -2351,6 +2369,26 @@
       </div>
       <div class="warning pat_10 init_cluster_dialog_errors_container" style="display:none;"></div>
     </div>
+
+    <h2 class="question">Configure Server Hostname</h2>
+    <div class="hostname_setup_block">
+      <div>
+        <form>
+          <input type="submit" style="width:0px; height: 0px; visibility: hidden;">
+
+          <div>
+            <label for="setup_hostname">Hostname:</label>
+            <input type="text" name="hostname" id="setup_hostname" />
+            <br class="clear" />
+          </div>
+
+        </form>
+      </div>
+      <div class="warning pat_10"
+           id="init_cluster_dialog_hostname_errors_container"
+           style="display:none;"></div>
+    </div>
+
     <h2 class="question">Join Cluster / Start new Cluster</h2>
     <p class="pad_10">
     If you want to add this server to an existing Couchbase Cluster, select "Join a

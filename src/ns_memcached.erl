@@ -64,10 +64,10 @@
           fast_calls_queue = impossible :: queue(),
           heavy_calls_queue = impossible :: queue(),
           very_heavy_calls_queue = impossible :: queue(),
-          status :: init | connected | warmed,
+          status :: connecting | init | connected | warmed,
           start_time::tuple(),
           bucket::nonempty_string(),
-          sock::port(),
+          sock = still_connecting :: port() | still_connecting,
           timer::any(),
           work_requests = []
          }).
@@ -113,7 +113,9 @@
          get_vbucket_checkpoint_ids/2,
          create_new_checkpoint/2,
          eval/2,
-         wait_for_checkpoint_persistence/3]).
+         wait_for_checkpoint_persistence/3,
+         get_tap_docs_estimate/3,
+         get_mass_tap_docs_estimate/2]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -133,45 +135,39 @@ start_link(Bucket) ->
 %%
 
 init(Bucket) ->
-    %% this trap_exit is necessary for terminate callback to work
-    process_flag(trap_exit, true),
-
-    {ok, Timer} = timer:send_interval(?CHECK_WARMUP_INTERVAL, check_started),
-    case connect() of
-        {ok, Sock} ->
-            case ensure_bucket(Sock, Bucket) of
-                ok -> init_with_created_bucket(Bucket, Timer, Sock);
-                EnsureBucketError ->
-                    {stop, {ensure_bucket_failed, EnsureBucketError}}
-            end;
-        {error, Error} ->
-            {stop, Error}
-    end.
-
-init_with_created_bucket(Bucket, Timer, Sock) ->
-    gen_event:notify(buckets_events, {started, Bucket}),
+    ?log_debug("Starting ns_memcached"),
     Q = queue:new(),
     WorkersCount = case ns_config:search_node(ns_memcached_workers_count) of
                        false -> 4;
                        {value, DefinedWorkersCount} ->
                            DefinedWorkersCount
                    end,
-    InitialState = #state{
-      timer=Timer,
-      status=init,
-      start_time=os:timestamp(),
-      sock=Sock,
-      bucket=Bucket,
-      work_requests=[],
-      fast_calls_queue = Q,
-      heavy_calls_queue = Q,
-      very_heavy_calls_queue = Q,
-      running_fast = WorkersCount
-     },
     Self = self(),
-    [proc_lib:spawn_link(erlang, apply, [fun worker_init/2, [Self, InitialState]])
-     || _ <- lists:seq(1, WorkersCount)],
-    {ok, InitialState}.
+    proc_lib:spawn_link(erlang, apply, [fun run_connect_phase/3, [Self, Bucket, WorkersCount]]),
+    proc_lib:init_ack({ok, Self}),
+    gen_server:enter_loop(?MODULE, [],
+                          #state{
+                                  status = connecting,
+                                  bucket = Bucket,
+                                  work_requests = [],
+                                  fast_calls_queue = Q,
+                                  heavy_calls_queue = Q,
+                                  very_heavy_calls_queue = Q,
+                                  running_fast = WorkersCount
+                                }),
+    erlang:error(impossible).
+
+run_connect_phase(Parent, Bucket, WorkersCount) ->
+    ?log_debug("Started 'connecting' phase of ns_memcached-~s. Parent is ~p", [Bucket, Parent]),
+    RV = case connect() of
+             {ok, Sock} ->
+                 gen_tcp:controlling_process(Sock, Parent),
+                 {ok, Sock};
+             {error, _} = Error  ->
+                 Error
+         end,
+    gen_server:cast(Parent, {connect_done, WorkersCount, RV}),
+    erlang:unlink(Parent).
 
 worker_init(Parent, ParentState) ->
     ParentState1 = do_worker_init(ParentState),
@@ -214,7 +210,8 @@ handle_call(connected, _From, #state{status=Status} = State) ->
     Reply = [{connected, Connected},
              {warmed, Warmed}],
     {reply, Reply, State};
-handle_call(connected_and_list_vbuckets, _From, #state{status=init} = State) ->
+handle_call(connected_and_list_vbuckets, _From, #state{status = Status} = State)
+  when Status =:= init orelse Status =:= connecting ->
     {reply, warming_up, State};
 handle_call(connected_and_list_vbuckets, From, State) ->
     handle_call(list_vbuckets, From, State);
@@ -320,6 +317,7 @@ assign_queue({delete, _Key, _VBucket, _CAS}) -> #state.heavy_calls_queue;
 assign_queue({set, _Key, _VBucket, _Value}) -> #state.heavy_calls_queue;
 assign_queue({update_with_rev, _Key, _VBucket, _Value, _Meta, _Deleted, _LocalCAS}) -> #state.heavy_calls_queue;
 assign_queue({sync, _Key, _VBucket, _CAS}) -> #state.very_heavy_calls_queue;
+assign_queue({get_mass_tap_docs_estimate, _VBuckets}) -> #state.very_heavy_calls_queue;
 assign_queue(_) -> #state.fast_calls_queue.
 
 queue_to_counter_slot(#state.very_heavy_calls_queue) -> #state.running_very_heavy;
@@ -526,6 +524,10 @@ do_handle_call({set_vbucket, VBucket, VBState}, _From,
 do_handle_call({stats, Key}, _From, State) ->
     Reply = mc_binary:quick_stats(State#state.sock, Key, fun mc_binary:quick_stats_append/3, []),
     {reply, Reply, State};
+do_handle_call({get_tap_docs_estimate, VBucketId, TapName}, _From, State) ->
+    {reply, mc_client_binary:get_tap_docs_estimate(State#state.sock, VBucketId, TapName), State};
+do_handle_call({get_mass_tap_docs_estimate, VBuckets}, _From, State) ->
+    {reply, mc_client_binary:get_mass_tap_docs_estimate(State#state.sock, VBuckets), State};
 do_handle_call(topkeys, _From, State) ->
     Reply = mc_binary:quick_stats(
               State#state.sock, <<"topkeys">>,
@@ -576,12 +578,51 @@ do_handle_call(_, _From, State) ->
     {reply, unhandled, State}.
 
 
+complete_connection_phase({ok, Sock}, Bucket) ->
+    case ensure_bucket(Sock, Bucket) of
+        ok ->
+            {ok, Sock};
+        EnsureBucketError ->
+            {ensure_bucket_failed, EnsureBucketError}
+    end;
+complete_connection_phase(Err, _Bucket) ->
+    Err.
+
+handle_cast({connect_done, WorkersCount, RV}, #state{bucket = Bucket,
+                                                     status = OldStatus} = State) ->
+    gen_event:notify(buckets_events, {started, Bucket}),
+
+    case complete_connection_phase(RV, Bucket) of
+        {ok, Sock} ->
+            connecting = OldStatus,
+
+            ?log_info("Main ns_memcached connection established: ~p", [RV]),
+
+            {ok, Timer} = timer2:send_interval(?CHECK_WARMUP_INTERVAL, check_started),
+            Self = self(),
+            Self ! check_started,
+            erlang:process_flag(trap_exit, true),
+
+            InitialState = State#state{
+                             timer = Timer,
+                             start_time = os:timestamp(),
+                             sock = Sock,
+                             status = init
+                            },
+            [proc_lib:spawn_link(erlang, apply, [fun worker_init/2, [Self, InitialState]])
+             || _ <- lists:seq(1, WorkersCount)],
+            {noreply, InitialState};
+        Error ->
+            ?log_info("Failed to establish ns_memcached connection: ~p", [RV]),
+            {stop, Error}
+    end;
+
 handle_cast(start_completed, #state{start_time=Start,
                                     bucket=Bucket} = State) ->
     ?user_log(1, "Bucket ~p loaded on node ~p in ~p seconds.",
               [Bucket, node(), timer:now_diff(os:timestamp(), Start) div 1000000]),
     gen_event:notify(buckets_events, {loaded, Bucket}),
-    timer:send_interval(?CHECK_INTERVAL, check_config),
+    timer2:send_interval(?CHECK_INTERVAL, check_config),
     BucketConfig = case ns_bucket:get_bucket(State#state.bucket) of
                        {ok, BC} -> BC;
                        not_present -> []
@@ -602,7 +643,7 @@ handle_info(check_started, #state{status=Status} = State)
 handle_info(check_started, #state{timer=Timer, sock=Sock} = State) ->
     case has_started(Sock) of
         true ->
-            {ok, cancel} = timer:cancel(Timer),
+            {ok, cancel} = timer2:cancel(Timer),
             misc:flush(check_started),
             Pid = self(),
             proc_lib:spawn_link(
@@ -640,6 +681,8 @@ handle_info(Msg, State) ->
     {noreply, State}.
 
 
+terminate(_Reason, #state{sock = still_connecting}) ->
+    ?log_debug("Dying when socket is not yet connected");
 terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
     NsConfig = try ns_config:get()
                catch T:E ->
@@ -921,7 +964,7 @@ get_vbucket(Node, Bucket, VBucket) ->
 
 
 -spec host_port(node(), any()) ->
-                           {nonempty_string(), pos_integer()}.
+                           {nonempty_string(), pos_integer() | undefined}.
 host_port(Node, Config) ->
     DefaultPort = ns_config:search_node_prop(Node, Config, memcached, port),
     Port = ns_config:search_node_prop(Node, Config,
@@ -1108,23 +1151,18 @@ connect(Tries) ->
 
 ensure_bucket(Sock, Bucket) ->
     try ns_bucket:config_string(Bucket) of
-        {Engine, ConfigString, BucketType, ExtraParams} ->
+        {Engine, ConfigString, BucketType, ExtraParams, DBSubDir} ->
             case mc_client_binary:select_bucket(Sock, Bucket) of
                 ok ->
                     ensure_bucket_config(Sock, Bucket, BucketType, ExtraParams);
                 {memcached_error, key_enoent, _} ->
+                    ok = filelib:ensure_dir(DBSubDir),
                     case mc_client_binary:create_bucket(Sock, Bucket, Engine,
                                                         ConfigString) of
                         ok ->
                             ?log_info("Created bucket ~p with config string ~p",
                                       [Bucket, ConfigString]),
                             ok = mc_client_binary:select_bucket(Sock, Bucket);
-                        {memcached_error, key_eexists, <<"Bucket exists: stopping">>} ->
-                            %% Waiting for an old bucket with this name to shut down
-                            ?log_info("Waiting for ~p to finish shutting down before we start it.",
-                                      [Bucket]),
-                            timer:sleep(1000),
-                            ensure_bucket(Sock, Bucket);
                         Error ->
                             {error, {bucket_create_error, Error}}
                     end;
@@ -1253,3 +1291,11 @@ disable_traffic(Bucket, Timeout) ->
 -spec wait_for_checkpoint_persistence(bucket_name(), vbucket_id(), checkpoint_id()) -> ok | mc_error().
 wait_for_checkpoint_persistence(Bucket, VBucketId, CheckpointId) ->
     gen_server:call(server(Bucket), {wait_for_checkpoint_persistence, VBucketId, CheckpointId}, infinity).
+
+-spec get_tap_docs_estimate(bucket_name(), vbucket_id(), binary()) ->
+                                   {ok, {non_neg_integer(), non_neg_integer(), binary()}}.
+get_tap_docs_estimate(Bucket, VBucketId, TapName) ->
+    do_call(server(Bucket), {get_tap_docs_estimate, VBucketId, TapName}, ?TIMEOUT).
+
+get_mass_tap_docs_estimate(Bucket, VBuckets) ->
+    do_call(server(Bucket), {get_mass_tap_docs_estimate, VBuckets}, ?TIMEOUT_VERY_HEAVY).

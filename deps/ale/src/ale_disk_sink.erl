@@ -63,9 +63,8 @@ init([Name, Path, Opts]) ->
             end
     end.
 
-handle_call({log, Msg}, _From, #state{name=Name} = State) ->
-    Bytes = unicode:characters_to_binary(Msg),
-    RV    = disk_log:blog(Name, Bytes),
+handle_call({log, Bytes}, _From, #state{name=Name} = State) ->
+    RV = disk_log:blog(Name, Bytes),
     {reply, RV, State};
 
 %% we don't handle raw messages

@@ -115,7 +115,7 @@ grab_all_tap_and_checkpoint_stats(Timeout) ->
                                    Type <- [<<"tap">>, <<"checkpoint">>]],
     Results = misc:parallel_map(
                 fun ({Bucket, Type}) ->
-                        {ok, _} = timer:kill_after(Timeout),
+                        {ok, _} = timer2:kill_after(Timeout),
                         case ns_memcached:stats(Bucket, Type) of
                             {ok, V} -> V;
                             Crap -> Crap
@@ -159,6 +159,8 @@ do_diag_per_node_binary() ->
             {master_events, (catch master_activity_events_keeper:get_history_raw())},
             {ns_server_stats, (catch system_stats_collector:get_ns_server_stats())},
             {active_buckets, ActiveBuckets},
+            {replication_docs, (catch xdc_rdoc_replication_srv:find_all_replication_docs())},
+            {design_docs, [{Bucket, (catch capi_ddoc_replication_srv:full_live_ddocs(Bucket))} || Bucket <- ActiveBuckets]},
             {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))}],
     term_to_binary(Diag).
 
@@ -278,7 +280,19 @@ handle_per_node_just_diag(_Resp, []) ->
 handle_per_node_just_diag(Resp, [{Node, DiagBinary} | Results]) ->
     erlang:garbage_collect(),
 
-    Diag = binary_to_term(DiagBinary),
+    Diag = case is_binary(DiagBinary) of
+               true ->
+                   try
+                       binary_to_term(DiagBinary)
+                   catch
+                       error:badarg ->
+                           ?log_error("Could not convert "
+                                      "binary diag to term (node ~p)", [Node]),
+                           diag_failed
+                   end;
+               false ->
+                   DiagBinary
+           end,
     do_handle_per_node_just_diag(Resp, Node, Diag),
     handle_per_node_just_diag(Resp, Results).
 
@@ -346,7 +360,8 @@ do_handle_diag(Req, Extra) ->
     Logs = [?DEBUG_LOG_FILENAME, ?STATS_LOG_FILENAME,
             ?DEFAULT_LOG_FILENAME, ?ERRORS_LOG_FILENAME,
             ?XDCR_LOG_FILENAME, ?COUCHDB_LOG_FILENAME,
-            ?VIEWS_LOG_FILENAME, ?MAPREDUCE_ERRORS_LOG_FILENAME],
+            ?VIEWS_LOG_FILENAME, ?MAPREDUCE_ERRORS_LOG_FILENAME,
+            ?BABYSITTER_LOG_FILENAME],
 
     lists:foreach(fun (Log) ->
                           handle_log(Resp, Log)

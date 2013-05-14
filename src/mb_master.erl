@@ -83,7 +83,7 @@ init([]) ->
               State
       end, empty),
     erlang:process_flag(trap_exit, true),
-    {ok, _} = timer:send_interval(?HEARTBEAT_INTERVAL, send_heartbeat),
+    {ok, _} = timer2:send_interval(?HEARTBEAT_INTERVAL, send_heartbeat),
     case ns_node_disco:nodes_wanted() of
         [N] = P when N == node() ->
             ale:info(?USER_LOGGER, "I'm the only node, so I'm the master.", []),

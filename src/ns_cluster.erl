@@ -49,10 +49,11 @@
          shun/1,
          start_link/0]).
 
--export([add_node/3, engage_cluster/1, complete_join/1, check_host_connectivity/1]).
+-export([add_node/3, engage_cluster/1, complete_join/1,
+         check_host_connectivity/1, change_address/1]).
 
 %% debugging & diagnostic export
--export([do_change_address/1]).
+-export([do_change_address/2]).
 
 -export([counters/0,
          counter_inc/1]).
@@ -90,6 +91,21 @@ engage_cluster(NodeKVList) ->
 
 complete_join(NodeKVList) ->
     gen_server:call(?MODULE, {complete_join, NodeKVList}, ?COMPLETE_TIMEOUT).
+
+-spec change_address(string()) -> ok
+                                      | {cannot_resolve, inet:posix()}
+                                      | {cannot_listen, inet:posix()}
+                                      | not_self_started
+                                      | {address_save_failed, any()}
+                                      | {address_not_allowed, string()}
+                                      | already_part_of_cluster.
+change_address(Address) ->
+    case misc:is_good_address(Address) of
+        ok ->
+            gen_server:call(?MODULE, {change_address, Address});
+        Error ->
+            Error
+    end.
 
 %% @doc Returns proplist of cluster-wide counters.
 counters() ->
@@ -131,6 +147,17 @@ handle_call({complete_join, NodeKVList}, _From, State) ->
     ?cluster_debug("handling complete_join(~p)~n", [NodeKVList]),
     RV = do_complete_join(NodeKVList),
     ?cluster_debug("complete_join(~p) -> ~p~n", [NodeKVList, RV]),
+    {reply, RV, State};
+
+handle_call({change_address, Address}, _From, State) ->
+    ?cluster_info("Changing address to ~p due to client request", [Address]),
+    RV = case ns_cluster_membership:system_joinable() of
+             true ->
+                 %% we're the only node in the cluster; allowing rename
+                 do_change_address(Address, true);
+             false ->
+                 already_part_of_cluster
+         end,
     {reply, RV, State}.
 
 handle_cast(leave, State) ->
@@ -270,43 +297,57 @@ check_host_connectivity(OtherHost) ->
             {error, host_connectivity, M, X}
     end.
 
-do_change_address(NewAddr) ->
+do_change_address(NewAddr, UserSupplied) ->
     MyNode = node(),
-    NewAddr1 = misc:get_env_default(rename_ip, NewAddr),
+
+    NewAddr1 =
+        case UserSupplied of
+            false ->
+                misc:get_env_default(rename_ip, NewAddr);
+            true ->
+                NewAddr
+        end,
     case misc:node_name_host(MyNode) of
         {_, NewAddr1} ->
             %% Don't do anything if we already have the right address.
             ok;
         {_, _} ->
             ?cluster_info("Decided to change address to ~p~n", [NewAddr1]),
-            case maybe_rename(NewAddr1) of
-                false ->
+            case maybe_rename(NewAddr1, UserSupplied) of
+                not_renamed ->
                     ok;
-                true ->
+                renamed ->
                     ns_server_sup:node_name_changed(),
                     ?cluster_info("Renamed node. New name is ~p.~n", [node()]),
-                    ok
-            end,
-            ok
+                    ok;
+                Other ->
+                    Other
+            end
     end.
 
-maybe_rename(NewAddr) ->
+maybe_rename(NewAddr, UserSupplied) ->
     OldName = node(),
     misc:executing_on_new_process(
       fun () ->
               %% prevent node disco events while we're in the middle
               %% of renaming
               ns_node_disco:register_node_renaming_txn(self()),
-              case dist_manager:adjust_my_address(NewAddr) of
+              case dist_manager:adjust_my_address(NewAddr, UserSupplied) of
                   nothing ->
                       ?cluster_debug("Not renaming node.", []),
-                      false;
+                      not_renamed;
+                  not_self_started ->
+                      ?cluster_debug("Didn't rename the node because net_kernel "
+                                     "is not self started", []),
+                      not_self_started;
+                  {address_save_failed, _} = Error ->
+                      Error;
                   net_restarted ->
                       master_activity_events:note_name_changed(),
                       NewName = node(),
                       ?cluster_debug("Renaming node from ~p to ~p.", [OldName, NewName]),
                       rename_node_in_config(OldName, NewName),
-                      true
+                      renamed
               end
       end).
 
@@ -322,7 +363,11 @@ rename_node_in_config(Old, New) ->
                                  true ->
                                      Pair
                              end
-                     end, erlang:make_ref()).
+                     end, erlang:make_ref()),
+    ns_config:sync_announcements(),
+    ns_config_rep:push(),
+    ns_config_rep:synchronize_remote(ns_node_disco:nodes_actual_other()).
+
 
 check_add_possible(Body) ->
     case menelaus_web:is_system_provisioned() of
@@ -340,21 +385,38 @@ do_add_node(RemoteAddr, RestPort, Auth) ->
 
 should_change_address() ->
     %% adjust our name if we're alone
-    ns_node_disco:nodes_wanted() =:= [node()].
+    ns_node_disco:nodes_wanted() =:= [node()] andalso
+        not dist_manager:using_user_supplied_address().
 
 do_add_node_allowed(RemoteAddr, RestPort, Auth) ->
     case check_host_connectivity(RemoteAddr) of
         {ok, MyIP} ->
-            case should_change_address() of
-                true -> do_change_address(MyIP);
-                _ -> ok
-            end,
-            do_add_node_with_connectivity(RemoteAddr, RestPort, Auth);
+            R = case should_change_address() of
+                    true ->
+                        case do_change_address(MyIP, false) of
+                            {address_save_failed, _} = E ->
+                                E;
+                            _ ->
+                                ok
+                        end;
+                    _ ->
+                        ok
+                end,
+            case R of
+                ok ->
+                    do_add_node_with_connectivity(RemoteAddr, RestPort, Auth);
+                {address_save_failed, Error} = Nested ->
+                    Msg = io_lib:format("Could not save address after rename: ~p",
+                                        [Error]),
+                    {error, rename_failed, iolist_to_binary(Msg), Nested}
+            end;
         X -> X
     end.
 
 do_add_node_with_connectivity(RemoteAddr, RestPort, Auth) ->
-    Struct = menelaus_web:build_full_node_info(node(), "127.0.0.1"),
+    {struct, NodeInfo} = menelaus_web:build_full_node_info(node(), "127.0.0.1"),
+    Struct = {struct, [{<<"requestedTargetNodeHostname">>, list_to_binary(RemoteAddr)}
+                       | NodeInfo]},
 
     ?cluster_debug("Posting node info to engage_cluster on ~p:~n~p~n",
                    [{RemoteAddr, RestPort}, Struct]),
@@ -474,8 +536,6 @@ check_can_add_node(NodeKVList) ->
                         {error, incompatible_cluster_version,
                          <<"Joining 1.6.x node to this cluster does not work">>,
                          incompatible_cluster_version};
-                    <<"1.7.2",_/binary>> ->
-                        ok;
                     <<"1.7.",_/binary>> = Version ->
                         {error, incompatible_cluster_version,
                          iolist_to_binary(io_lib:format("Joining ~s node to this cluster does not work", [Version])),
@@ -591,24 +651,43 @@ do_engage_cluster_check_compatibility(NodeKVList) ->
             MaybeError
     end.
 
-
 do_engage_cluster_inner(NodeKVList) ->
     OtpNode = expect_json_property_atom(<<"otpNode">>, NodeKVList),
+    MaybeTargetHost = proplists:get_value(<<"requestedTargetNodeHostname">>, NodeKVList),
     {_, Host} = misc:node_name_host(OtpNode),
     case check_host_connectivity(Host) of
         {ok, MyIP} ->
-            case should_change_address() of
-                true -> do_change_address(MyIP);
-                _ -> ok
-            end,
-            %% we re-init node's cookie to support joining cloned
-            %% nodes. If we don't do that cluster will be able to
-            %% connect to this node too soon. And then initial set of
-            %% nodes_wanted by node thats added to cluster may
-            %% 'pollute' cluster's version and cause issues. See
-            %% MB-4476 for details.
-            ns_cookie_manager:cookie_init(),
-            check_can_join_to(NodeKVList);
+            {Address, UserSupplied} =
+                case MaybeTargetHost of
+                    undefined ->
+                        {MyIP, false};
+                    _ ->
+                        TargetHost = binary_to_list(MaybeTargetHost),
+                        case misc:is_good_address(TargetHost) of
+                            ok ->
+                                {TargetHost, true};
+                            Error ->
+                                ?cluster_error("Cannot use address ~s: ~p",
+                                               [TargetHost, Error]),
+                                {MyIP, false}
+                        end
+                end,
+
+            case do_change_address(Address, UserSupplied) of
+                {address_save_failed, Error1} = Nested ->
+                    Msg = io_lib:format("Could not save address after rename: ~p",
+                                        [Error1]),
+                    {error, rename_failed, iolist_to_binary(Msg), Nested};
+                _ ->
+                    %% we re-init node's cookie to support joining cloned
+                    %% nodes. If we don't do that cluster will be able to
+                    %% connect to this node too soon. And then initial set of
+                    %% nodes_wanted by node thats added to cluster may
+                    %% 'pollute' cluster's version and cause issues. See
+                    %% MB-4476 for details.
+                    ns_cookie_manager:cookie_init(),
+                    check_can_join_to(NodeKVList)
+            end;
         X -> X
     end.
 

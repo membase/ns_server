@@ -89,7 +89,7 @@ cleanup_with_membase_bucket_vbucket_map(Bucket, Options, BucketConfig) ->
     cleanup_with_states(Bucket, Options, BucketConfig, Servers, States, Zombies).
 
 cleanup_with_states(Bucket, _Options, _BucketConfig, _Servers, _States, Zombies) when Zombies =/= [] ->
-    ?log_error("Bucket ~p not yet ready on ~p", [Bucket, Zombies]),
+    ?log_info("Bucket ~p not yet ready on ~p", [Bucket, Zombies]),
     {error, wait_for_memcached_failed, Zombies};
 cleanup_with_states(Bucket, Options, BucketConfig, Servers, States, [] = Zombies) ->
     {NewBucketConfig, IgnoredVBuckets} = compute_vbucket_map_fixup(Bucket, BucketConfig, States, [] = Zombies),

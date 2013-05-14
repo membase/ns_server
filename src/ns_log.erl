@@ -32,6 +32,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
+-export([start_link_crash_consumer/0]).
+
 -export([log/6, log/7, recent/0, recent/1, delete_log/0]).
 
 -export([code_string/2]).
@@ -50,6 +52,21 @@
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+start_link_crash_consumer() ->
+    {ok, proc_lib:spawn_link(fun crash_consumption_loop_tramp/0)}.
+
+crash_consumption_loop_tramp() ->
+    misc:delaying_crash(1000, fun crash_consumption_loop/0).
+
+crash_consumption_loop() ->
+    {Name, Node, Status, Messages} = ns_crash_log:consume_oldest_message_from_inside_ns_server(),
+    ?user_log(0,
+              "Port server ~p on node ~p exited with status ~p. Restarting. "
+              "Messages: ~s",
+              [Name, Node, Status, Messages]),
+    crash_consumption_loop().
+
 
 log_filename() ->
     ns_config:search_node_prop(ns_config:get(), ns_log, filename).
@@ -71,7 +88,7 @@ read_logs(Filename) ->
     end.
 
 init([]) ->
-    timer:send_interval(?GC_TIME, garbage_collect),
+    timer2:send_interval(?GC_TIME, garbage_collect),
     Filename = log_filename(),
     Recent = read_logs(Filename),
     %% initiate log syncing
@@ -114,7 +131,7 @@ add_pending(#state{pending_length = Length,
 %% Request for recent items.
 handle_call(recent, _From, StateBefore) ->
     State = flush_pending(StateBefore),
-    {reply, State#state.unique_recent, State}.
+    {reply, State#state.unique_recent, State, hibernate}.
 
 %% Inbound logging request.
 handle_cast({log, Module, Node, Time, Code, Category, Fmt, Args},
@@ -128,7 +145,7 @@ handle_cast({log, Module, Node, Time, Code, Category, Fmt, Args},
                        Count+1, timer:now_diff(Time, FirstSeen) / 1000000,
                        timer:now_diff(Time, LastSeen) / 1000000]),
             Dedup2 = dict:store(Key, {Count+1, FirstSeen, Time}, Dedup),
-            {noreply, State#state{dedup=Dedup2}};
+            {noreply, State#state{dedup=Dedup2}, hibernate};
         error ->
             Entry = #log_entry{node=Node, module=Module, code=Code, msg=Fmt,
                                args=Args, cat=Category, tstamp=Time},
@@ -147,16 +164,16 @@ handle_cast({log, Module, Node, Time, Code, Category, Fmt, Args},
                                [Reason])
             end,
             Dedup2 = dict:store(Key, {0, Time, Time}, Dedup),
-            {noreply, State#state{dedup=Dedup2}}
+            {noreply, State#state{dedup=Dedup2}, hibernate}
     end;
 handle_cast({do_log, Entry}, State) ->
-    {noreply, schedule_save(add_pending(State, Entry))};
+    {noreply, schedule_save(add_pending(State, Entry)), hibernate};
 handle_cast({sync, SrcNode, Compressed}, StateBefore) ->
     State = flush_pending(StateBefore),
     Recent = State#state.unique_recent,
     case binary_to_term(zlib:uncompress(Compressed)) of
         Recent ->
-            {noreply, State};
+            {noreply, State, hibernate};
         Logs ->
             State1 = schedule_save(State),
             NewRecent = tail_of_length(lists:umerge(Recent, Logs),
@@ -167,10 +184,10 @@ handle_cast({sync, SrcNode, Compressed}, StateBefore) ->
                 true -> send_sync_to(NewRecent, SrcNode, SrcNode);
                 _ -> nothing
             end,
-            {noreply, State1#state{unique_recent=NewRecent}}
+            {noreply, State1#state{unique_recent=NewRecent}, hibernate}
     end;
 handle_cast(_, State) ->
-    {noreply, State}.
+    {noreply, State, hibernate}.
 
 send_sync_to(Recent, Node) ->
     send_sync_to(Recent, Node, node()).
@@ -183,7 +200,7 @@ send_sync_to(Recent, Node, Src) ->
 %% Nothing special.
 handle_info(garbage_collect, State) ->
     misc:flush(garbage_collect),
-    {noreply, gc(State)};
+    {noreply, gc(State), hibernate};
 handle_info(sync, StateBefore) ->
     State = flush_pending(StateBefore),
     Recent = State#state.unique_recent,
@@ -194,7 +211,7 @@ handle_info(sync, StateBefore) ->
             Node = lists:nth(random:uniform(length(Nodes)), Nodes),
             send_sync_to(Recent, Node)
     end,
-    {noreply, State};
+    {noreply, State, hibernate};
 handle_info(save, StateBefore = #state{filename=Filename}) ->
     State = flush_pending(StateBefore),
     Recent = State#state.unique_recent,
@@ -204,9 +221,9 @@ handle_info(save, StateBefore = #state{filename=Filename}) ->
         E ->
             ?log_error("unable to write log to ~p: ~p", [Filename, E])
     end,
-    {noreply, State#state{save_tref=undefined}};
+    {noreply, State#state{save_tref=undefined}, hibernate};
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {noreply, State, hibernate}.
 
 terminate(shutdown, State) ->
     handle_info(save, State);
@@ -248,7 +265,7 @@ gc(Now, [{Key, Value} | Rest], DupesList) ->
     end.
 
 schedule_save(State = #state{save_tref=undefined}) ->
-    {ok, TRef} = timer:send_after(?SAVE_DELAY, save),
+    {ok, TRef} = timer2:send_after(?SAVE_DELAY, save),
     State#state{save_tref=TRef};
 schedule_save(State) ->
     %% Don't reschedule if a save is already scheduled.
@@ -274,14 +291,14 @@ code_string(Module, Code) ->
         _                 -> "message"
     end.
 
--spec log(atom(), node(), Time, log_classification(), string(), list()) -> ok
+-spec log(atom(), node(), Time, log_classification(), iolist(), list()) -> ok
        when Time :: {integer(), integer(), integer()}.
 log(Module, Node, Time, Category, Fmt, Args) ->
     log(Module, Node, Time, undefined, Category, Fmt, Args).
 
 %% A Code is an number which is module-specific.
 -spec log(atom(), node(), Time,
-          Code, log_classification(), string(), list()) -> ok
+          Code, log_classification(), iolist(), list()) -> ok
       when Time :: {integer(), integer(), integer()},
            Code :: integer() | undefined.
 log(Module, Node, Time, Code, Category, Fmt, Args) ->

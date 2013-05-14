@@ -392,7 +392,7 @@ var DAL = {
     allNodes = _.uniq(active.concat(pending));
 
     var reallyActive = _.select(active, function (n) {
-      return n.clusterMembership === 'active' && !n.pendingEject && n.status !== 'unhealthy';
+      return n.clusterMembership === 'active' && !n.pendingEject;
     });
 
     if (reallyActive.length == 1) {
@@ -645,6 +645,19 @@ var DAL = {
     }
     tasksProgressCell.recalculateAfterDelay(period);
   }, tasksRefreshPeriod, tasksProgressCell);
+
+  var tasksRecoveryCell = DAL.cells.tasksRecoveryCell =
+        Cell.computeEager(function (v) {
+          var tasks = v.need(tasksProgressCell);
+          return _.detect(tasks, function (taskInfo) {
+            return taskInfo.type === "recovery";
+          });
+        }).name("tasksRecoveryCell");
+
+  var inRecoveryModeCell = DAL.cells.inRecoveryModeCell =
+        Cell.computeEager(function (v) {
+          return !!v.need(tasksRecoveryCell);
+        }).name("inRecoveryModeCell");
 })();
 
 var RecentlyCompacted = mkClass.turnIntoLazySingleton(mkClass({

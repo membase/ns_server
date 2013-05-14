@@ -63,7 +63,18 @@
           % Time a node needs to be down until it is automatically failovered
           timeout=nil :: nil | integer(),
           % Counts the number of nodes that were already auto-failovered
-          count=0 :: non_neg_integer()
+          count=0 :: non_neg_integer(),
+
+          %% Whether we reported to the user autofailover_unsafe condition
+          reported_autofailover_unsafe=false :: boolean(),
+          %% Whether we reported that max number of auto failovers was reached
+          reported_max_reached=false :: boolean(),
+          %% Whether we reported that we could not auto failover because of
+          %% rebalance
+          reported_rebalance_running=false :: boolean(),
+          %% Whether we reported that we could not auto failover because of
+          %% recovery mode
+          reported_in_recovery=false :: boolean()
          }).
 
 %%
@@ -123,17 +134,18 @@ init([]) ->
     ?log_debug("init auto_failover.", []),
     Timeout = proplists:get_value(timeout, Config),
     Count = proplists:get_value(count, Config),
-    State = #state{timeout=Timeout,
-                   count=Count,
-                   auto_failover_logic_state = undefined},
+    State0 = #state{timeout=Timeout,
+                    count=Count,
+                    auto_failover_logic_state = undefined},
+    State1 = init_reported(State0),
     case proplists:get_value(enabled, Config) of
         true ->
             {reply, ok, State2} = handle_call(
                                     {enable_auto_failover, Timeout, 1},
-                                    self(), State),
+                                    self(), State1),
             {ok, State2};
         false ->
-            {ok, State}
+            {ok, State1}
     end.
 
 init_logic_state(Timeout) ->
@@ -145,7 +157,7 @@ handle_call({enable_auto_failover, Timeout, Max}, _From,
             #state{tick_ref=nil}=State) ->
     1 = Max,
     ale:info(?USER_LOGGER, "Enabled auto-failover with timeout ~p", [Timeout]),
-    {ok, Ref} = timer:send_interval(?HEART_BEAT_PERIOD, tick),
+    {ok, Ref} = timer2:send_interval(?HEART_BEAT_PERIOD, tick),
     State2 = State#state{tick_ref=Ref, timeout=Timeout,
                          auto_failover_logic_state=init_logic_state(Timeout)},
     make_state_persistent(State2),
@@ -166,7 +178,7 @@ handle_call(disable_auto_failover, _From, #state{tick_ref=nil}=State) ->
 %% @doc Auto-failover is enabled, disable it
 handle_call(disable_auto_failover, _From, #state{tick_ref=Ref}=State) ->
     ?log_debug("disable_auto_failover: ~p", [State]),
-    {ok, cancel} = timer:cancel(Ref),
+    {ok, cancel} = timer2:cancel(Ref),
     State2 = State#state{tick_ref=nil, auto_failover_logic_state = undefined},
     make_state_persistent(State2),
     {reply, ok, State2};
@@ -175,8 +187,9 @@ handle_call(reset_auto_failover_count, _From, State) ->
     ?log_debug("reset auto_failover count: ~p", [State]),
     State2 = State#state{count=0,
                          auto_failover_logic_state = init_logic_state(State#state.timeout)},
-    make_state_persistent(State2),
-    {reply, ok, State2};
+    State3 = init_reported(State2),
+    make_state_persistent(State3),
+    {reply, ok, State3};
 
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
@@ -204,15 +217,10 @@ handle_info(tick, State0) ->
 
     NonPendingNodes = lists:sort(ns_cluster_membership:active_nodes(Config)),
     CurrentlyDown = actual_down_nodes(NonPendingNodes, Config),
-    RebalanceRunning = case ns_config:search(rebalance_status) of
-                           {value, running} -> true;
-                           _ -> false
-                       end,
     {Actions, LogicState} =
         auto_failover_logic:process_frame(NonPendingNodes,
                                           CurrentlyDown,
-                                          State#state.auto_failover_logic_state,
-                                          RebalanceRunning),
+                                          State#state.auto_failover_logic_state),
     NewState =
         lists:foldl(
           fun ({mail_too_small, Node}, S) ->
@@ -221,18 +229,18 @@ handle_info(tick, State0) ->
                             "Cluster was too small, you need at least 2 other nodes.~n",
                             [Node]),
                   S;
-              ({rebalance_prevented_failover, Node}, S) ->
-                  ale:info(?USER_LOGGER,
-                           "Could not automatically failover node ~p because I think rebalance is running",
-                           [Node]),
-                  S;
               ({_, Node}, #state{count=1} = S) ->
-                  ?user_log(?EVENT_MAX_REACHED,
-                            "Could not auto-failover more nodes (~p). "
-                            "Maximum number of nodes that will be "
-                            "automatically failovered (1) is reached.~n",
-                            [Node]),
-                  S;
+                  case should_report(#state.reported_max_reached, S) of
+                      true ->
+                          ?user_log(?EVENT_MAX_REACHED,
+                                    "Could not auto-failover more nodes (~p). "
+                                    "Maximum number of nodes that will be "
+                                    "automatically failovered (1) is reached.~n",
+                                    [Node]),
+                          note_reported(#state.reported_max_reached, S);
+                      false ->
+                          S
+                  end;
               ({mail_down_warning, Node}, S) ->
                   ?user_log(?EVENT_OTHER_NODES_DOWN,
                             "Could not auto-failover node (~p). "
@@ -245,20 +253,48 @@ handle_info(tick, State0) ->
                           ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
                                     "Node (~p) was automatically failovered.~n~p",
                                     [Node, ns_doctor:get_node(Node)]),
-                          S#state{count = S#state.count+1};
+                          init_reported(S#state{count = S#state.count+1});
                       {autofailover_unsafe, UnsafeBuckets} ->
-                          ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
-                                    "Could not automatically fail over node (~p)."
-                                    " Would lose vbuckets in the following buckets: ~p", [Node, UnsafeBuckets]),
-                          S#state{count = S#state.count+1}
+                          case should_report(#state.reported_autofailover_unsafe, S) of
+                              true ->
+                                  ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
+                                            "Could not automatically fail over node (~p)."
+                                            " Would lose vbuckets in the following buckets: ~p", [Node, UnsafeBuckets]),
+                                  note_reported(#state.reported_autofailover_unsafe, S);
+                              false ->
+                                  S
+                          end;
+                      rebalance_running ->
+                          case should_report(#state.reported_rebalance_running, S) of
+                              true ->
+                                  ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
+                                            "Could not automatically fail over node (~p). "
+                                            "Rebalance is running.", [Node]),
+                                  note_reported(#state.reported_rebalance_running, S);
+                              false ->
+                                  S
+                          end;
+                      in_recovery ->
+                          case should_report(#state.reported_in_recovery, S) of
+                              true ->
+                                  ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
+                                            "Could not automatically fail over node (~p)."
+                                            "Cluster is in recovery mode.", [Node]),
+                                  note_reported(#state.reported_in_recovery, S);
+                              false ->
+                                  S
+                          end
                   end
           end, State#state{auto_failover_logic_state = LogicState}, Actions),
+
+    NewState1 = update_reported_flags_by_actions(Actions, NewState),
+
     if
-        NewState#state.count =/= State#state.count ->
-            make_state_persistent(NewState);
+        NewState1#state.count =/= State#state.count ->
+            make_state_persistent(NewState1);
         true -> ok
     end,
-    {noreply, NewState};
+    {noreply, NewState1};
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -304,6 +340,42 @@ actual_down_nodes_inner(NonPendingNodes, BucketConfigs, NodesDict, Now) ->
               end
       end, NonPendingNodes).
 
+%% @doc Save the current state in ns_config
+-spec make_state_persistent(State::#state{}) -> ok.
+make_state_persistent(State) ->
+    Enabled = case State#state.tick_ref of
+        nil -> false;
+        _ -> true
+    end,
+    ns_config:set(auto_failover_cfg,
+                  [{enabled, Enabled},
+                   {timeout, State#state.timeout},
+                   {count, State#state.count}]).
+
+note_reported(Flag, State) ->
+    false = element(Flag, State),
+    setelement(Flag, State, true).
+
+should_report(Flag, State) ->
+    not(element(Flag, State)).
+
+init_reported(State) ->
+    State#state{reported_autofailover_unsafe=false,
+                reported_max_reached=false,
+                reported_rebalance_running=false,
+                reported_in_recovery=false}.
+
+update_reported_flags_by_actions(Actions, State) ->
+    case lists:keymember(failover, 1, Actions) of
+        false ->
+            init_reported(State);
+        true ->
+            State
+    end.
+
+
+-ifdef(EUNIT).
+
 actual_down_nodes_inner_test() ->
     PList0 = [{a, ["bucket1", "bucket2"]},
               {b, ["bucket1"]},
@@ -336,14 +408,29 @@ actual_down_nodes_inner_test() ->
                                {"bucket2", [{servers, [a, b, c]}]}])),
     ok.
 
-%% @doc Save the current state in ns_config
--spec make_state_persistent(State::#state{}) -> ok.
-make_state_persistent(State) ->
-    Enabled = case State#state.tick_ref of
-        nil -> false;
-        _ -> true
-    end,
-    ns_config:set(auto_failover_cfg,
-                  [{enabled, Enabled},
-                   {timeout, State#state.timeout},
-                   {count, State#state.count}]).
+-define(FLAG, #state.reported_autofailover_unsafe).
+reported_test() ->
+    %% nothing reported initially
+    State = init_reported(#state{}),
+
+    %% we correctly instructed to report the condition for the first time
+    ?assertEqual(should_report(?FLAG, State), true),
+    State1 = note_reported(?FLAG, State),
+    State2 = update_reported_flags_by_actions([{failover, some_node}], State1),
+
+    %% we don't report it second time
+    ?assertEqual(should_report(?FLAG, State2), false),
+
+    %% we report the condition again for the other "instance" of failover
+    %% (i.e. failover is not needed for some time, but the it's needed again)
+    State3 = update_reported_flags_by_actions([], State2),
+    ?assertEqual(should_report(?FLAG, State3), true),
+
+    %% we report the condition after we explicitly drop it (note that we use
+    %% State2)
+    State4 = init_reported(State2),
+    ?assertEqual(should_report(?FLAG, State4), true),
+
+    ok.
+
+-endif.

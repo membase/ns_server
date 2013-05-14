@@ -19,15 +19,11 @@
 -module(supervisor_cushion).
 
 -behaviour(gen_server).
--behavior(ns_log_categorizing).
 
 -include("ns_common.hrl").
 
--define(FAST_CRASH, 1).
-
 %% API
--export([start_link/6]).
--export([ns_log_cat/1, ns_log_code_string/1, child_pid/1]).
+-export([start_link/6, child_pid/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -65,6 +61,9 @@ handle_info({'EXIT', _Pid, Reason}, State) ->
     {noreply, State1};
 handle_info({die, Reason}, State) ->
     {stop, Reason, State};
+handle_info({send_to_port, _}= Msg, State) ->
+    State#state.child_pid ! Msg,
+    {noreply, State};
 handle_info(Info, State) ->
     ?log_warning("Cushion got unexpected info supervising ~p: ~p",
                  [State#state.name, Info]),
@@ -78,8 +77,7 @@ die_slowly(Reason, State) ->
     %% If the restart was too soon, slow down a bit.
     case Lifetime < MinDelay of
         true ->
-            ?user_log(?FAST_CRASH,
-                      "Service ~p exited on node ~p in ~.2fs~n",
+            ?log_info("Service ~p exited on node ~p in ~.2fs~n",
                       [State#state.name, node(), Lifetime / 1000000]),
             timer:send_after(State#state.delay, {die, Reason});
         _ -> self() ! {die, Reason}
@@ -105,10 +103,6 @@ terminate(Reason, #state{child_pid=Pid, shutdown_timeout=Timeout}) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
-
-ns_log_cat(?FAST_CRASH) -> warn.
-
-ns_log_code_string(?FAST_CRASH) -> "port exited too soon after restart".
 
 %% API
 child_pid(Pid) ->

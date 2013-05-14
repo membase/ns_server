@@ -119,12 +119,14 @@ maybe_log_stats(TS, State, RawStats) ->
         true ->
             case misc:get_env_default(dont_log_stats, false) of
                 false ->
-                    TSMicros = TS rem 1000000,
-                    TSSec0 = TS div 1000000,
+                    %% TS is epoch _milli_seconds
+                    TSMicros = (TS rem 1000) * 1000,
+                    TSSec0 = TS div 1000,
                     TSMega = TSSec0 div 1000000,
                     TSSec = TSSec0 rem 1000000,
-                    ?stats_debug("(at ~p) Stats for bucket ~p:~n~s",
+                    ?stats_debug("(at ~p (~p)) Stats for bucket ~p:~n~s",
                                  [calendar:now_to_local_time({TSMega, TSSec, TSMicros}),
+                                  TS,
                                   State#state.bucket, format_stats(RawStats)]);
                 _ -> ok
             end,
@@ -185,7 +187,11 @@ transform_xdc_stats_loop([In | T], {Totals, Reps}) ->
               element(11, Totals) + proplists:get_value(docs_rep_queue, RepStats),
               element(12, Totals) + proplists:get_value(size_rep_queue, RepStats),
               element(13, Totals) + proplists:get_value(rate_replication, RepStats),
-              element(14, Totals) + proplists:get_value(bandwidth_usage, RepStats)},
+              element(14, Totals) + proplists:get_value(bandwidth_usage, RepStats),
+              element(15, Totals) + proplists:get_value(meta_latency_aggr, RepStats),
+              element(16, Totals) + proplists:get_value(meta_latency_wt, RepStats),
+              element(17, Totals) + proplists:get_value(docs_latency_aggr, RepStats),
+              element(18, Totals) + proplists:get_value(docs_latency_wt, RepStats)},
     transform_xdc_stats_loop(T, {Totals2,
                                  lists:append(PerRepStats, Reps)}).
 
@@ -194,7 +200,7 @@ transform_xdc_stats(XDCStats) ->
                                                   {{0,0,0,0,
                                                     0,0,0,0,
                                                     0,0,0,0,
-                                                    0,0},[]}),
+                                                    0,0,0,0,0,0},[]}),
 
     TotalStats = [{replication_changes_left, element(1, Totals)},
                   {replication_docs_checked, element(2, Totals)},
@@ -209,7 +215,12 @@ transform_xdc_stats(XDCStats) ->
                   {replication_docs_rep_queue, element(11, Totals)},
                   {replication_size_rep_queue, element(12, Totals)},
                   {replication_rate_replication, element(13, Totals)},
-                  {replication_bandwidth_usage, element(14, Totals)}],
+                  {replication_bandwidth_usage, element(14, Totals)},
+                  {replication_meta_latency_aggr, element(15, Totals)},
+                  {replication_meta_latency_wt, element(16, Totals)},
+                  {replication_docs_latency_aggr, element(17, Totals)},
+                  {replication_docs_latency_wt, element(18, Totals)}],
+
     lists:sort(lists:append(TotalStats, RepStats)).
 
 format_stats(Stats) ->

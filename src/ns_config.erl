@@ -192,7 +192,7 @@ update_with_changes(Fun) ->
 %% Function returns a pair {NewPairs, NewConfig} where NewConfig is
 %% new config and NewPairs is list of changed pairs
 do_update_rec(_Fun, _Sentinel, [], NewConfig, NewPairs) ->
-    {NewPairs, NewConfig};
+    {NewPairs, lists:reverse(NewConfig)};
 do_update_rec(Fun, Sentinel, [Pair | Rest], NewConfig, NewPairs) ->
     StrippedPair = case Pair of
                        {K0, [_|_] = V0} -> {K0, strip_metadata(V0)};
@@ -323,7 +323,11 @@ get_kv_list(Timeout) -> config_dynamic(ns_config:get(node(), Timeout)).
 
 % ----------------------------------------
 
-search(Key) -> search(?MODULE:get(), Key).
+search(Key) ->
+    eval(
+      fun (Config) ->
+              search(Config, Key)
+      end).
 
 search_node(Key) -> search_node(?MODULE:get(), Key).
 
@@ -636,6 +640,8 @@ handle_call({replace, KVList}, _From, State) ->
 handle_call({update_with_changes, Fun}, From, State) ->
     OldList = config_dynamic(State),
     try Fun(OldList) of
+        {[], _} ->
+            {reply, ok, State};
         {NewPairs, NewConfig} ->
             announce_locally_made_changes(NewPairs),
             handle_call(resave, From, State#config{dynamic=[NewConfig]})

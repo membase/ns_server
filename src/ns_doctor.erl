@@ -60,7 +60,7 @@ init([]) ->
                              fun handle_config_event/2, undefined),
     case misc:get_env_default(dont_log_stats, false) of
         false ->
-            timer:send_interval(?LOG_INTERVAL, log);
+            timer2:send_interval(?LOG_INTERVAL, log);
         _ -> ok
     end,
     {ok, #state{nodes=dict:new()}}.
@@ -73,14 +73,38 @@ handle_rebalance_status_change(_, running) ->
 handle_rebalance_status_change(_, State) ->
     {State, false}.
 
-handle_config_event({rebalance_status, NewValue}, State) ->
-    {NewState, Changed} = handle_rebalance_status_change(NewValue, State),
+handle_recovery_status_change(not_running, {running, _Bucket, _UUID}) ->
+    {not_running, true};
+handle_recovery_status_change({running, _NewBucket, NewUUID} = New,
+                              {running, _OldBucket, OldUUID}) ->
+    case OldUUID =:= NewUUID of
+        true ->
+            {New, false};
+        false ->
+            {New, true}
+    end;
+handle_recovery_status_change({running, _NewBucket, _NewUUID} = New, not_running) ->
+    {New, true};
+handle_recovery_status_change(not_running, not_running) ->
+    {not_running, false}.
+
+handle_config_event({rebalance_status, NewValue}, {RebalanceState, RecoveryState}) ->
+    {NewState, Changed} = handle_rebalance_status_change(NewValue, RebalanceState),
     case Changed of
         true ->
-            ns_doctor ! rebalance_status_changed;
+            ns_doctor ! significant_change;
         _ -> ok
     end,
-    NewState;
+    {NewState, RecoveryState};
+handle_config_event({recovery_status, NewValue}, {RebalanceState, RecoveryState}) ->
+    {NewState, Changed} = handle_recovery_status_change(NewValue, RecoveryState),
+    case Changed of
+        true ->
+            ns_doctor ! significant_change;
+        false ->
+            ok
+    end,
+    {RebalanceState, NewState};
 handle_config_event(_, State) ->
     State.
 
@@ -90,9 +114,14 @@ handle_call(get_tasks_version, _From, State) ->
     {reply, NewState#state.tasks_version, NewState};
 
 handle_call({get_node, Node}, _From, #state{nodes=Nodes} = State) ->
-    Status = dict:fetch(Node, Nodes),
-    LiveNodes = [node() | nodes()],
-    {reply, annotate_status(Node, Status, now(), LiveNodes), State};
+    RV = case dict:find(Node, Nodes) of
+             {ok, Status} ->
+                 LiveNodes = [node() | nodes()],
+                 annotate_status(Node, Status, now(), LiveNodes);
+             _ ->
+                 []
+         end,
+    {reply, RV, State};
 
 handle_call(get_nodes, _From, #state{nodes=Nodes} = State) ->
     Now = erlang:now(),
@@ -121,7 +150,7 @@ handle_cast(Msg, State) ->
     {noreply, State}.
 
 
-handle_info(rebalance_status_changed, State) ->
+handle_info(significant_change, State) ->
     %% force hash recomputation next time maybe_refresh_tasks_version is called
     {noreply, State#state{tasks_hash_nodes = undefined}};
 handle_info(acquire_initial_status, #state{nodes=NodeDict} = State) ->
@@ -268,17 +297,18 @@ maybe_refresh_tasks_version(State) ->
                             end
                     end, Set, proplists:get_value(local_tasks, NodeInfo, []))
           end, sets:new(), Nodes),
-    TasksAndRebalanceHash = erlang:phash2({erlang:phash2(TasksHashesSet),
-                                           ns_orchestrator:is_rebalance_running()}),
-    case TasksAndRebalanceHash =:= State#state.tasks_hash of
+    TasksRebalanceAndRecoveryHash = erlang:phash2({erlang:phash2(TasksHashesSet),
+                                                   ns_orchestrator:is_rebalance_running(),
+                                                   ns_orchestrator:is_recovery_running()}),
+    case TasksRebalanceAndRecoveryHash =:= State#state.tasks_hash of
         true ->
             %% hash did not change, only nodes. Cool
             State#state{tasks_hash_nodes = Nodes};
         _ ->
             %% hash changed. Generate new version
             State#state{tasks_hash_nodes = Nodes,
-                        tasks_hash = TasksAndRebalanceHash,
-                        tasks_version = integer_to_list(TasksAndRebalanceHash)}
+                        tasks_hash = TasksRebalanceAndRecoveryHash,
+                        tasks_version = integer_to_list(TasksRebalanceAndRecoveryHash)}
     end.
 
 task_operation(extract, Indexer, RawTask)
@@ -520,6 +550,8 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
     RebalanceTask0 =
         case ns_cluster_membership:get_rebalance_status() of
             {running, PerNode} ->
+                DetailedProgress = get_detailed_progress(),
+
                 [{type, rebalance},
                  {recommendedRefreshPeriod, 0.25},
                  {status, running},
@@ -532,7 +564,8 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
                             end},
                  {perNode,
                   {struct, [{Node, {struct, [{progress, Progress * 100}]}}
-                            || {Node, Progress} <- PerNode]}}];
+                            || {Node, Progress} <- PerNode]}},
+                 {detailedProgress, DetailedProgress}];
             _ ->
                 [{type, rebalance},
                  {status, notRunning}
@@ -543,7 +576,19 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
                    end]
         end,
     RebalanceTask = {struct, RebalanceTask0},
-    [RebalanceTask | PreRebalanceTasks].
+    MaybeRecoveryTask = build_recovery_task(PoolId),
+
+    MaybeRecoveryTask ++ [RebalanceTask | PreRebalanceTasks].
+
+get_detailed_progress() ->
+    case ns_rebalance_observer:get_detailed_progress() of
+        {ok, GlobalDetails, PerNode} ->
+            PerNodeJSON0 = [{N, {struct, Details}} || {N, Details} <- PerNode],
+            PerNodeJSON = {struct, PerNodeJSON0},
+            {struct, GlobalDetails ++ [{perNode, PerNodeJSON}]};
+        not_running ->
+            {struct, []}
+    end.
 
 task_priority(Task) ->
     Type = proplists:get_value(type, Task),
@@ -577,4 +622,37 @@ get_node(Node, NodeStatuses) ->
     case dict:find(Node, NodeStatuses) of
         {ok, Info} -> Info;
         error -> [down]
+    end.
+
+build_recovery_task(PoolId) ->
+    case ns_orchestrator:recovery_status() of
+        not_in_recovery ->
+            [];
+        {ok, Status} ->
+            Bucket = proplists:get_value(bucket, Status),
+            RecoveryUUID = proplists:get_value(uuid, Status),
+            true = (Bucket =/= undefined),
+            true = (RecoveryUUID =/= undefined),
+
+            StopURI = menelaus_util:bin_concat_path(
+                        ["pools", PoolId, "buckets", Bucket,
+                         "controller", "stopRecovery"],
+                        [{recovery_uuid, RecoveryUUID}]),
+            CommitURI = menelaus_util:bin_concat_path(
+                          ["pools", PoolId, "buckets", Bucket,
+                           "controller", "commitVBucket"],
+                          [{recovery_uuid, RecoveryUUID}]),
+            RecoveryStatusURI =
+                menelaus_util:bin_concat_path(
+                  ["pools", PoolId, "buckets", Bucket, "recoveryStatus"],
+                  [{recovery_uuid, RecoveryUUID}]),
+
+            [[{type, recovery},
+              {bucket, list_to_binary(Bucket)},
+              {uuid, RecoveryUUID},
+              {recommendedRefreshPeriod, 10.0},
+
+              {stopURI, StopURI},
+              {commitVBucketURI, CommitURI},
+              {recoveryStatusURI, RecoveryStatusURI}]]
     end.

@@ -17,7 +17,7 @@
 
 -behavior(application).
 
--export([start/2, stop/1, get_loglevel/1, restart/0]).
+-export([start/2, stop/1, get_loglevel/1, restart/0, setup_babysitter_node/0, get_babysitter_node/0]).
 
 -include("ns_common.hrl").
 -include_lib("ale/include/ale.hrl").
@@ -34,6 +34,17 @@ log_pending() ->
 start(_Type, _Args) ->
     setup_static_config(),
     init_logging(),
+
+    {ok, DataDir} = application:get_env(ns_server, path_config_datadir),
+    InitArgs = init:get_arguments(),
+    InitArgs1 = [{pid, os:getpid()} | InitArgs],
+    InitArgs2 = case file:get_cwd() of
+                    {ok, CWD} ->
+                        [{cwd, CWD} | InitArgs1];
+                    _ ->
+                        InitArgs1
+                end,
+    ok = file:write_file(filename:join(DataDir, "initargs"), term_to_binary(InitArgs2)),
 
     %% To initialize logging static config must be setup thus this weird
     %% machinery is required to log messages from setup_static_config().
@@ -239,3 +250,17 @@ init_logging() ->
 
 stop(_State) ->
     ok.
+
+setup_babysitter_node() ->
+    {Name, _} = misc:node_name_host(node()),
+    Babysitter = list_to_atom("babysitter_of_" ++ Name ++ "@127.0.0.1"),
+    application:set_env(ns_server, babysitter_node, Babysitter),
+    ignore.
+
+get_babysitter_node() ->
+    {ok, Node} = application:get_env(ns_server, babysitter_node),
+    CookieString = case os:getenv("NS_SERVER_BABYSITTER_COOKIE") of
+                       X when is_list(X) -> X
+                   end,
+    erlang:set_cookie(Node, list_to_atom(CookieString)),
+    Node.

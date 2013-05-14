@@ -176,6 +176,9 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools", PoolId, "buckets", Id, "stats", StatName] ->
                                  {auth_bucket, fun menelaus_stats:handle_specific_stat_for_buckets/4,
                                   [PoolId, Id, StatName]};
+                             ["pools", PoolId, "buckets", Id, "recoveryStatus"] ->
+                                 {auth, fun menelaus_web_recovery:handle_recovery_status/3,
+                                  [PoolId, Id]};
                              ["pools", "default", "remoteClusters"] ->
                                  {auth, fun menelaus_web_remote_clusters:handle_remote_clusters/1};
                              ["nodeStatuses"] ->
@@ -245,6 +248,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_complete_join/1};
                              ["node", "controller", "doJoinCluster"] ->
                                  {auth, fun handle_join/1};
+                             ["node", "controller", "rename"] ->
+                                 {auth, fun handle_node_rename/1};
                              ["nodes", NodeId, "controller", "settings"] ->
                                  {auth, fun handle_node_settings_post/2,
                                   [NodeId]};
@@ -320,6 +325,12 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools", PoolId, "buckets", Id, "controller", "cancelDatabasesCompaction"] ->
                                  {auth_check_bucket_uuid,
                                   fun menelaus_web_buckets:handle_cancel_databases_compaction/3, [PoolId, Id]};
+                             ["pools", PoolId, "buckets", Id, "controller", "startRecovery"] ->
+                                 {auth, fun menelaus_web_recovery:handle_start_recovery/3, [PoolId, Id]};
+                             ["pools", PoolId, "buckets", Id, "controller", "stopRecovery"] ->
+                                 {auth, fun menelaus_web_recovery:handle_stop_recovery/3, [PoolId, Id]};
+                             ["pools", PoolId, "buckets", Id, "controller", "commitVBucket"] ->
+                                 {auth, fun menelaus_web_recovery:handle_commit_vbucket/3, [PoolId, Id]};
                              ["pools", PoolId, "buckets", Id,
                               "ddocs", DDocId, "controller", "compactView"] ->
                                  {auth_check_bucket_uuid,
@@ -780,9 +791,7 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
       ]}},
       {replication, {struct, [
         {createURI, <<"/controller/createReplication?uuid=", UUID/binary>>},
-        {validateURI, <<"/controller/createReplication?just_validate=1">>},
-        {replicatorDBURI, <<"/couchBase/_replicator">>},
-        {infosURI, <<"/couchBase/_replicator/_design/_replicator_info/_view/infos?group_level=1">>}
+        {validateURI, <<"/controller/createReplication?just_validate=1">>}
       ]}},
       %% IMPORTANT: currently all the fast warmup related REST calls are
       %% stubs; so they must not be documented in any case
@@ -1527,6 +1536,24 @@ is_valid_port_number(String) ->
     PortNumber = (catch list_to_integer(String)),
     (is_integer(PortNumber) andalso (PortNumber > 0) andalso (PortNumber =< 65535)).
 
+validate_username(Username) ->
+    V = lists:all(
+          fun (C) ->
+                  C > 32 andalso C =/= 127 andalso
+                      not lists:member(C, "()<>@,;:\\\"/[]?={}")
+          end, Username),
+
+    V orelse
+        <<"The username must not contain spaces, control or any of ()<>@,;:\\\"/[]?={} characters">>.
+
+validate_password(Password) ->
+    V = lists:all(
+          fun (C) ->
+                  C > 31 andalso c =/= 127
+          end, Password),
+
+    V orelse <<"The password must not contain control characters">>.
+
 validate_settings(Port, U, P) ->
     case lists:all(fun erlang:is_list/1, [Port, U, P]) of
         false -> [<<"All parameters must be given">>];
@@ -1535,9 +1562,16 @@ validate_settings(Port, U, P) ->
                            case {U, P} of
                                {[], _} -> <<"Username and password are required.">>;
                                {[_Head | _], P} ->
-                                   case length(P) =< 5 of
-                                       true -> <<"The password must be at least six characters.">>;
-                                       _ -> true
+                                   case validate_username(U) of
+                                       true ->
+                                           case length(P) =< 5 of
+                                               true ->
+                                                   <<"The password must be at least six characters.">>;
+                                               false ->
+                                                   validate_password(P)
+                                           end;
+                                       Msg ->
+                                           Msg
                                    end
                            end],
              lists:filter(fun (E) -> E =/= true end,
@@ -1915,8 +1949,15 @@ handle_failover(Req) ->
         undefined ->
             Req:respond({400, add_header(), "No server specified."});
         _ ->
-            ns_cluster_membership:failover(Node),
-            Req:respond({200, [], []})
+            case ns_cluster_membership:failover(Node) of
+                ok ->
+                    Req:respond({200, [], []});
+                rebalance_running ->
+                    Req:respond({503, add_header(), "Rebalance running."});
+                in_recovery ->
+                    Req:respond({503, add_header(),
+                                 "Cluster is in recovery mode."})
+            end
     end.
 
 handle_rebalance(Req) ->
@@ -1955,6 +1996,8 @@ do_handle_rebalance(Req, KnownNodesS, EjectedNodesS) ->
             reply_json(Req, {struct, [{mismatch, 1}]}, 400);
         no_active_nodes_left ->
             Req:respond({400, [], []});
+        in_recovery ->
+            Req:respond({503, [], "Cluster is in recovery mode."});
         ok ->
             Req:respond({200, [], []})
     end.
@@ -2423,7 +2466,7 @@ build_internal_settings_kvs() ->
                {index_pausing_disabled, rebalanceIndexPausingDisabled, false},
                {rebalance_ignore_view_compactions, rebalanceIgnoreViewCompactions, false},
                {rebalance_moves_per_node, rebalanceMovesPerNode, 1},
-               {rebalance_moves_before_compaction, rebalanceMovesBeforeCompaction, 16},
+               {rebalance_moves_before_compaction, rebalanceMovesBeforeCompaction, 64},
                {{couchdb, max_parallel_indexers}, maxParallelIndexers, <<>>},
                {{couchdb, max_parallel_replica_indexers}, maxParallelReplicaIndexers, <<>>},
                {max_bucket_count, maxBucketCount, 10},
@@ -2431,7 +2474,8 @@ build_internal_settings_kvs() ->
                {xdcr_checkpoint_interval, xdcrCheckpointInterval, 1800},
                {xdcr_worker_batch_size, xdcrWorkerBatchSize, 500},
                {xdcr_doc_batch_size_kb, xdcrDocBatchSizeKb, 2048},
-               {xdcr_failure_restart_interval, xdcrFailureRestartInterval, 30}],
+               {xdcr_failure_restart_interval, xdcrFailureRestartInterval, 30},
+               {xdcr_optimistic_replication_threshold, xdcrOptimisticReplicationThreshold, <<>>}],
     [{JK, ns_config_ets_dup:unreliable_read_key(CK, DV)}
      || {CK, JK, DV} <- Triples].
 
@@ -2523,12 +2567,57 @@ handle_internal_settings_post(Req) ->
                    SV ->
                        {ok, V} = parse_validate_number(SV, 1, 300),
                        MaybeSet(xdcrFailureRestartInterval, xdcr_failure_restart_interval, V)
+               end,
+               case proplists:get_value("xdcrOptimisticReplicationThreshold", Params) of
+                   undefined -> undefined;
+                   "" -> undefined;
+                   SV ->
+                       {ok, V} = parse_validate_number(SV, 0, 20*1024*1024),
+                       MaybeSet(xdcrOptimisticReplicationThreshold, xdcr_optimistic_replication_threshold, V)
                end],
     [Action()
      || Action <- Actions,
         Action =/= undefined],
     reply_json(Req, []).
 
+handle_node_rename(Req) ->
+    Params = Req:parse_post(),
+
+    Reply =
+        case proplists:get_value("hostname", Params) of
+            undefined ->
+                {error, <<"The name cannot be empty">>, 400};
+            Hostname ->
+                case ns_cluster:change_address(Hostname) of
+                    ok ->
+                        ok;
+                    {cannot_resolve, Errno} ->
+                        Msg = io_lib:format("Could not resolve the hostname: ~p", [Errno]),
+                        {error, iolist_to_binary(Msg), 400};
+                    {cannot_listen, Errno} ->
+                        Msg = io_lib:format("Could not listen: ~p", [Errno]),
+                        {error, iolist_to_binary(Msg), 400};
+                    not_self_started ->
+                        Msg = <<"Could not rename the node because name was fixed at server start-up.">>,
+                        {error, Msg, 403};
+                    {address_save_failed, E} ->
+                        Msg = io_lib:format("Could not save address after rename: ~p", [E]),
+                        {error, iolist_to_binary(Msg), 500};
+                    {address_not_allowed, Message} ->
+                        Msg = io_lib:format("Requested name hostname is not allowed: ~s", [Message]),
+                        {error, iolist_to_binary(Msg), 400};
+                    already_part_of_cluster ->
+                        Msg = <<"Renaming is disallowed for nodes that are already part of a cluster">>,
+                        {error, Msg, 400}
+            end
+        end,
+
+    case Reply of
+        ok ->
+            Req:respond({200, add_header(), []});
+        {error, Error, Status} ->
+            reply_json(Req, [Error], Status)
+    end.
 
 -ifdef(EUNIT).
 

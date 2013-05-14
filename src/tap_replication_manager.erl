@@ -21,7 +21,8 @@
          server_name/1,
          get_incoming_replication_map/1,
          set_incoming_replication_map/2,
-         change_vbucket_replication/3]).
+         change_vbucket_replication/3,
+         remove_undesired_replications/2]).
 
 -export([init/1, handle_call/3, handle_info/2, terminate/2, code_change/3]).
 -export([handle_cast/2]).
@@ -42,7 +43,7 @@ start_link(Bucket) ->
     gen_server:start_link({local, server_name(Bucket)}, ?MODULE, [Bucket], []).
 
 -spec set_incoming_replication_map(bucket_name(),
-                                   [{node(), [vbucket_id()]}]) -> ok.
+                                   [{node(), [vbucket_id(),...]}]) -> ok.
 set_incoming_replication_map(Bucket, DesiredReps) ->
     gen_server:call(server_name(Bucket), {set_desired_replications, DesiredReps}, infinity).
 
@@ -50,6 +51,9 @@ set_incoming_replication_map(Bucket, DesiredReps) ->
 change_vbucket_replication(Bucket, VBucket, ReplicateFrom) ->
     gen_server:call(server_name(Bucket), {change_vbucket_replication, VBucket, ReplicateFrom}, infinity).
 
+-spec remove_undesired_replications(bucket_name(), [{node(), [vbucket_id(),...]}]) -> ok.
+remove_undesired_replications(Bucket, DesiredReps) ->
+    gen_server:call(server_name(Bucket), {remove_undesired_replications, DesiredReps}, infinity).
 
 init([Bucket]) ->
     T = ets:new(a, [set, private]),
@@ -60,6 +64,11 @@ init([Bucket]) ->
 handle_cast(Msg, State) ->
     {stop, {unexpected_cast, Msg}, State}.
 
+handle_call({remove_undesired_replications, FutureReps}, From, #state{desired_replications = CurrentReps} = State) ->
+    Diff = replications_difference(FutureReps, CurrentReps),
+    CleanedReps0 = [{N, ordsets:intersection(FutureVBs, CurrentVBs)} || {N, FutureVBs, CurrentVBs} <- Diff],
+    CleanedReps = [{N, VBs} || {N, [_|_] = VBs} <- CleanedReps0],
+    handle_call({set_desired_replications, CleanedReps}, From, State);
 handle_call({set_desired_replications, DesiredReps}, _From, #state{} = State) ->
     ok = do_set_incoming_replication_map(State, DesiredReps),
     {reply, ok, State#state{desired_replications = DesiredReps}};
@@ -81,7 +90,7 @@ handle_call({change_vbucket_replication, VBucket, NewSrc}, _From, #state{bucket_
 
 
 handle_info({have_not_ready_vbuckets, Node}, #state{not_readys_per_node_ets = T} = State) ->
-    {ok, TRef} = timer:send_after(30000, {restart_replicator, Node}),
+    {ok, TRef} = timer2:send_after(30000, {restart_replicator, Node}),
     ets:insert(T, {Node, TRef}),
     {noreply, State};
 handle_info({restart_replicator, Node}, State) ->
@@ -126,13 +135,19 @@ replications_difference(RepsA, RepsB) ->
               end,
     misc:ukeymergewith(MergeFn, 1, L, R).
 
+categorize_replications([] = _Diff, AccToKill, AccToStart, AccToChange) ->
+    {AccToKill, AccToStart, AccToChange};
+categorize_replications([{N, NewVBs, OldVBs} = T | Rest], AccToKill, AccToStart, AccToChange) ->
+    if
+        NewVBs =:= [] -> categorize_replications(Rest, [{N, OldVBs} | AccToKill], AccToStart, AccToChange);
+        OldVBs =:= [] -> categorize_replications(Rest, AccToKill, [{N, NewVBs} | AccToStart], AccToChange);
+        NewVBs =:= OldVBs -> categorize_replications(Rest, AccToKill, AccToStart, AccToChange);
+        true -> categorize_replications(Rest, AccToKill, AccToStart, [T | AccToChange])
+    end.
+
 do_set_incoming_replication_map(State, DesiredReps, CurrentReps) ->
     Diff = replications_difference(DesiredReps, CurrentReps),
-    NodesToKill = [{N, VBs} || {N, [], VBs} <- Diff],
-    NodesToStart = [{N, VBs} || {N, VBs, []} <- Diff],
-    NodesToChange = [T
-                     || {_N, NewVBs, OldVBs} = T <- Diff,
-                        NewVBs =/= OldVBs],
+    {NodesToKill, NodesToStart, NodesToChange} = categorize_replications(Diff, [], [], []),
     [kill_child(State, SrcNode, VBuckets)
      || {SrcNode, VBuckets} <- NodesToKill],
     [start_child(State, SrcNode, VBuckets)
@@ -146,7 +161,7 @@ cancel_replicator_reset(T, SrcNode) ->
         [] ->
             ok;
         [{SrcNode, TRef}] ->
-            timer:cancel(TRef),
+            timer2:cancel(TRef),
             ets:delete(T, SrcNode)
     end.
 

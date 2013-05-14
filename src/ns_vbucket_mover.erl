@@ -22,7 +22,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -define(MAX_MOVES_PER_NODE, ns_config_ets_dup:unreliable_read_key(rebalance_moves_per_node, 1)).
--define(MOVES_BEFORE_COMPACTION, ns_config_ets_dup:unreliable_read_key(rebalance_moves_before_compaction, 16)).
+-define(MOVES_BEFORE_COMPACTION, ns_config_ets_dup:unreliable_read_key(rebalance_moves_before_compaction, 64)).
 
 -define(TAP_STATS_LOGGING_INTERVAL, 10*60*1000).
 
@@ -161,7 +161,7 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
                                                     ok
                                             end),
 
-    timer:send_interval(?TAP_STATS_LOGGING_INTERVAL, log_tap_stats),
+    timer2:send_interval(?TAP_STATS_LOGGING_INTERVAL, log_tap_stats),
 
     AllNodesSet = sets:del_element(undefined, AllNodesSet0),
     ok = janitor_agent:prepare_nodes_for_rebalance(Bucket, sets:to_list(AllNodesSet), self()),

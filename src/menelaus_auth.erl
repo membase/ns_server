@@ -146,10 +146,17 @@ extract_auth(Req) ->
     end.
 
 parse_user_password(UserPasswordStr) ->
-    case string:tokens(UserPasswordStr, ":") of
-        [] -> undefined;
-        [User] -> {User, ""};
-        [User, Password] -> {User, Password}
+    case string:chr(UserPasswordStr, $:) of
+        0 ->
+            case UserPasswordStr of
+                "" ->
+                    undefined;
+                _ ->
+                    {UserPasswordStr, ""}
+            end;
+        I ->
+            {string:substr(UserPasswordStr, 1, I - 1),
+             string:substr(UserPasswordStr, I + 1)}
     end.
 
 parse_user(UserPasswordStr) ->

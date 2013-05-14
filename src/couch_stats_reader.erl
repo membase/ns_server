@@ -61,7 +61,7 @@ init(Bucket) ->
     case ns_bucket:bucket_type(BucketConfig) of
         membase ->
             self() ! refresh_stats,
-            timer:send_interval(?SAMPLE_INTERVAL, refresh_stats);
+            timer2:send_interval(?SAMPLE_INTERVAL, refresh_stats);
         memcached ->
             ok
     end,
@@ -108,17 +108,46 @@ fetch_stats(Bucket) ->
     [{_, CouchStats}] = ets:lookup(server(Bucket), stuff),
     {ok, CouchStats}.
 
+get_db_info_quick(VBucket) ->
+    case ets:lookup(couch_dbs_by_name, VBucket) of
+        [{_, MainPid}] ->
+            case (catch gen_server:call(MainPid, get_db)) of
+                {ok, Db} ->
+                    case (catch couch_db:get_db_info(Db)) of
+                        {ok, _} = RV ->
+                            RV;
+                        Error ->
+                            get_db_info_slow_with_error(VBucket, Error)
+                    end;
+                Error ->
+                    get_db_info_slow_with_error(VBucket, Error)
+            end;
+        Error ->
+            get_db_info_slow_with_error(VBucket, Error)
+    end.
+
+get_db_info_slow_with_error(VBucket, Error) ->
+    ?log_debug("Quick db info failed for ~s: ~p", [VBucket, Error]),
+    get_db_info_slow(VBucket).
+
+get_db_info_slow(VBucket) ->
+    case couch_db:open_int(VBucket, []) of
+        {ok, Db} ->
+            try
+                couch_db:get_db_info(Db)
+            after
+                ok = couch_db:close(Db)
+            end;
+        Error ->
+            Error
+    end.
+
 vbuckets_aggregation_loop(_Bucket, DiskSize, DataSize, _VBucketBinaries = []) ->
     {DiskSize, DataSize};
 vbuckets_aggregation_loop(Bucket, DiskSize, DataSize, [VBucketBin | RestVBucketBinaries]) ->
     VBucket = iolist_to_binary([Bucket, <<"/">>, VBucketBin]),
-    case couch_db:open_int(VBucket, []) of
-        {ok, Db} ->
-            {ok, Info} = try
-                             couch_db:get_db_info(Db)
-                         after
-                             ok = couch_db:close(Db)
-                         end,
+    case get_db_info_quick(VBucket) of
+        {ok, Info} ->
             NewDiskSize = DiskSize + couch_util:get_value(disk_size, Info),
             NewDataSize = DataSize + couch_util:get_value(data_size, Info),
             vbuckets_aggregation_loop(Bucket, NewDiskSize, NewDataSize, RestVBucketBinaries);
@@ -189,8 +218,8 @@ grab_couch_stats(Bucket, Config, MinFileSize) ->
     {ok, CouchDir} = ns_storage_conf:this_node_dbdir(),
     {ok, ViewRoot} = ns_storage_conf:this_node_ixdir(),
 
-    DocsActualDiskSize = misc:dir_size(filename:join([CouchDir, Bucket])),
-    ViewsActualDiskSize = misc:dir_size(couch_set_view:set_index_dir(ViewRoot, BinBucket)),
+    DocsActualDiskSize = dir_size:get(filename:join([CouchDir, Bucket])),
+    ViewsActualDiskSize = dir_size:get(couch_set_view:set_index_dir(ViewRoot, BinBucket)),
 
     #ns_server_couch_stats{couch_docs_actual_disk_size = DocsActualDiskSize,
                            couch_views_actual_disk_size = ViewsActualDiskSize,

@@ -118,7 +118,7 @@ is_balanced() ->
     not ns_orchestrator:needs_rebalance().
 
 failover(Node) ->
-    ok = ns_orchestrator:failover(Node).
+    ns_orchestrator:failover(Node).
 
 re_add_node(Node) ->
     ns_config:set({node, Node, membership}, inactiveAdded).

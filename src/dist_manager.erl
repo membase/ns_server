@@ -26,9 +26,12 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--export([adjust_my_address/1, read_address_config/0, save_address_config/1, ip_config_path/0]).
+-export([adjust_my_address/2, read_address_config/0, save_address_config/2,
+         ip_config_path/0, using_user_supplied_address/0]).
 
--record(state, {self_started, my_ip}).
+-record(state, {self_started,
+                user_supplied,
+                my_ip}).
 
 -define(WAIT_FOR_ADDRESS_ATTEMPTS, 10).
 -define(WAIT_FOR_ADDRESS_SLEEP, 1000).
@@ -38,6 +41,12 @@ start_link() ->
 
 ip_config_path() ->
     path_config:component_path(data, "ip").
+
+ip_start_config_path() ->
+    path_config:component_path(data, "ip_start").
+
+using_user_supplied_address() ->
+    gen_server:call(?MODULE, using_user_supplied_address).
 
 strip_full(String) ->
     String2 = string:strip(String),
@@ -51,7 +60,23 @@ strip_full(String) ->
     end.
 
 read_address_config() ->
-    Path = ip_config_path(),
+    IpStartPath = ip_start_config_path(),
+    case read_address_config_from_path(IpStartPath) of
+        Address when is_list(Address) ->
+            {Address, true};
+        read_error ->
+            read_error;
+        undefined ->
+            IpPath = ip_config_path(),
+            case read_address_config_from_path(IpPath) of
+                Address when is_list(Address) ->
+                    {Address, false};
+                Other ->
+                    Other
+            end
+    end.
+
+read_address_config_from_path(Path) ->
     ?log_info("Reading ip config from ~p", [Path]),
     case file:read_file(Path) of
         {ok, BinaryContents} ->
@@ -69,42 +94,45 @@ read_address_config() ->
             read_error
     end.
 
-is_good_address(AddrString) ->
-    case inet:getaddr(AddrString, inet) of
-        {error, Errno1} ->
-            ?log_warning("Could not resolve address `~s`: ~p",
-                         [AddrString, Errno1]),
-            false;
-        {ok, IpAddr} ->
-            case gen_udp:open(0, [inet, {ip, IpAddr}]) of
-                {error, Errno2} ->
-                    ?log_warning("Cannot listen on address `~s`: ~p",
-                                 [AddrString, Errno2]),
-                    false;
-                {ok, Socket} ->
-                    gen_udp:close(Socket),
-                    true
-            end
-    end.
-
 wait_for_address(Address) ->
     wait_for_address(Address, ?WAIT_FOR_ADDRESS_ATTEMPTS).
 
 wait_for_address(_Address, 0) ->
     bad_address;
 wait_for_address(Address, N) ->
-    case is_good_address(Address) of
-        true ->
+    case misc:is_good_address(Address) of
+        ok ->
             ok;
-        false ->
+        {address_not_allowed, Message}  ->
+            ?log_error("Desired address ~s is not allowed by erlang: ~s", [Address, Message]),
+            bad_address;
+        Other ->
+            case Other of
+                {cannot_resolve, Errno} ->
+                    ?log_warning("Could not resolve address `~s`: ~p",
+                                 [Address, Errno]);
+                {cannot_listen, Errno} ->
+                    ?log_warning("Cannot listen on address `~s`: ~p",
+                                 [Address, Errno])
+            end,
+
             ?log_info("Configured address `~s` seems to be invalid. "
                       "Giving OS a chance to bring it up.", [Address]),
             timer:sleep(?WAIT_FOR_ADDRESS_SLEEP),
             wait_for_address(Address, N - 1)
     end.
 
-save_address_config(State) ->
-    Path = ip_config_path(),
+save_address_config(State, UserSupplied) ->
+    PathPair = [ip_start_config_path(), ip_config_path()],
+    [Path, ClearPath] =
+        case UserSupplied of
+            true ->
+                PathPair;
+            false ->
+                lists:reverse(PathPair)
+        end,
+    DeleteRV = file:delete(ClearPath),
+    ?log_info("Deleting irrelevant ip file ~p: ~p", [ClearPath, DeleteRV]),
     ?log_info("saving ip config to ~p", [Path]),
     misc:atomic_write_file(Path, State#state.my_ip).
 
@@ -114,31 +142,26 @@ save_node(NodeName, Path) ->
 
 save_node(NodeName) ->
     case application:get_env(nodefile) of
+        {ok, undefined} -> nothing;
         {ok, NodeFile} -> save_node(NodeName, NodeFile);
         X -> X
     end.
 
 init([]) ->
-    Address =
-        case node() of
-            nonode@nohost ->
-                case read_address_config() of
-                    undefined ->
-                        ?log_info("ip config not found. Looks like we're brand new node"),
-                        "127.0.0.1";
-                    read_error ->
-                        ?log_error("Could not read ip config. "
-                                   "Will refuse to start for safety reasons."),
-                        ale:sync(?NS_SERVER_LOGGER),
-                        erlang:halt(1);
-                    V ->
-                        V
-                end;
-            NodeName ->
-                {_Node, Host} = misc:node_name_host(NodeName),
-                ?log_info("Node name is already configured. "
-                          "Reusing `~s' as address.", [Host]),
-                Host
+    net_kernel:stop(),
+
+    {Address, UserSupplied} =
+        case read_address_config() of
+            undefined ->
+                ?log_info("ip config not found. Looks like we're brand new node"),
+                {"127.0.0.1", false};
+            read_error ->
+                ?log_error("Could not read ip config. "
+                           "Will refuse to start for safety reasons."),
+                ale:sync(?NS_SERVER_LOGGER),
+                erlang:halt(1);
+            V ->
+                V
         end,
 
     case wait_for_address(Address) of
@@ -151,7 +174,7 @@ init([]) ->
             erlang:halt(1)
     end,
 
-    {ok, bringup(Address)}.
+    {ok, bringup(Address, UserSupplied)}.
 
 %% There are only two valid cases here:
 %% 1. Successfully started
@@ -161,8 +184,11 @@ decode_status({ok, _Pid}) ->
 decode_status({error, {{already_started, _Pid}, _Stack}}) ->
     false.
 
-adjust_my_address(MyIP) ->
-    gen_server:call(?MODULE, {adjust_my_address, MyIP}).
+-spec adjust_my_address(string(), boolean()) ->
+                               net_restarted | not_self_started | nothing |
+                               {address_save_failed, term()}.
+adjust_my_address(MyIP, UserSupplied) ->
+    gen_server:call(?MODULE, {adjust_my_address, MyIP, UserSupplied}).
 
 %% Call net_kernel:start(Opts) but ignore {error, duplicate_name} error for
 %% several times. Then give up if error is still returned. This weird logic is
@@ -193,7 +219,7 @@ do_net_kernel_start(Opts, Tries) when is_integer(Tries) ->
     end.
 
 %% Bring up distributed erlang.
-bringup(MyIP) ->
+bringup(MyIP, UserSupplied) ->
     ShortName = misc:get_env_default(short_name, "ns_1"),
     MyNodeNameStr = ShortName ++ "@" ++ MyIP,
     MyNodeName = list_to_atom(MyNodeNameStr),
@@ -208,20 +234,20 @@ bringup(MyIP) ->
     RN = save_node(ActualNodeName),
     ?log_debug("Attempted to save node name to disk: ~p", [RN]),
 
-    #state{self_started = Rv, my_ip = MyIP}.
+    #state{self_started = Rv, my_ip = MyIP, user_supplied = UserSupplied}.
 
 %% Tear down distributed erlang.
 teardown() ->
     ok = net_kernel:stop().
 
-handle_call({adjust_my_address, MyIP}, _From,
+handle_call({adjust_my_address, MyIP, UserSupplied}, _From,
             #state{self_started = true, my_ip = MyOldIP} = State) ->
     case MyIP =:= MyOldIP of
         true -> {reply, nothing, State};
         false -> Cookie = erlang:get_cookie(),
                  teardown(),
                  ?log_info("Adjusted IP to ~p", [MyIP]),
-                 NewState = bringup(MyIP),
+                 NewState = bringup(MyIP, UserSupplied),
                  if
                      NewState#state.self_started ->
                          ?log_info("Re-setting cookie ~p", [{Cookie, node()}]),
@@ -229,13 +255,24 @@ handle_call({adjust_my_address, MyIP}, _From,
                      true -> ok
                  end,
 
-                 RV = save_address_config(NewState),
-                 ?log_debug("save_address_config: ~p", [RV]),
-                 {reply, net_restarted, NewState}
+                 case save_address_config(NewState, UserSupplied) of
+                     ok ->
+                         ?log_info("Persisted the address successfully"),
+                         {reply, net_restarted, NewState};
+                     {error, Error} ->
+                         ?log_warning("Failed to persist the address: ~p", [Error]),
+                         {stop,
+                          {address_save_failed, Error},
+                          {address_save_failed, Error},
+                          State}
+                 end
     end;
-handle_call({adjust_my_address, _}, _From,
+handle_call({adjust_my_address, _, _}, _From,
             #state{self_started = false} = State) ->
-    {reply, nothing, State};
+    {reply, not_self_started, State};
+handle_call(using_user_supplied_address, _From,
+            #state{user_supplied = UserSupplied} = State) ->
+    {reply, UserSupplied, State};
 handle_call(_Request, _From, State) ->
     {reply, unhandled, State}.
 
