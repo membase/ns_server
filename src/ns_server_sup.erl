@@ -142,9 +142,6 @@ child_specs() ->
      {ns_memcached_log_rotator, {ns_memcached_log_rotator, start_link, []},
       permanent, 1000, worker, [ns_memcached_log_rotator]},
 
-     {ns_bucket_worker, {work_queue, start_link, [ns_bucket_worker]},
-      permanent, 1000, worker, [work_queue]},
-
      %% per-vbucket replication supervisor, required by XDC manager
      {xdc_replication_sup,
       {xdc_replication_sup, start_link, []},
@@ -158,8 +155,8 @@ child_specs() ->
       {xdc_rep_manager, start_link, []},
       permanent, 30000, worker, []},
 
-     {ns_bucket_sup, {ns_bucket_sup, start_link, []},
-      permanent, infinity, supervisor, [ns_bucket_sup]},
+     {ns_bucket_worker_sup, {ns_bucket_worker_sup, start_link, []},
+      permanent, infinity, supervisor, [ns_bucket_worker_sup]},
 
      {system_stats_collector, {system_stats_collector, start_link, []},
       permanent, 1000, worker, [system_stats_collector]},
