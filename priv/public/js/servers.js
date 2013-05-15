@@ -210,7 +210,28 @@ var ServersSection = {
               rebalanceTask.detailedProgress.bucketsCount !== undefined &&
               rebalanceTask.detailedProgress.perNode &&
               rebalanceTask.detailedProgress.perNode[nodeName]) {
-            data.detailedProgress = rebalanceTask.detailedProgress.perNode[nodeName];
+            data.detailedProgress = {};
+
+            var ingoing = rebalanceTask.detailedProgress.perNode[nodeName].ingoing;
+            if (ingoing.activeVBucketsLeft != 0 ||
+                ingoing.replicaVBucketsLeft != 0 ||
+                ingoing.docsTotal != 0 ||
+                ingoing.docsTransferred != 0) {
+              data.detailedProgress.ingoing = ingoing;
+            } else {
+              data.detailedProgress.ingoing = false;
+            }
+
+            var outgoing = rebalanceTask.detailedProgress.perNode[nodeName].outgoing;
+            if (outgoing.activeVBucketsLeft != 0 ||
+                outgoing.replicaVBucketsLeft != 0 ||
+                outgoing.docsTotal != 0 ||
+                outgoing.docsTransferred != 0) {
+              data.detailedProgress.outgoing = outgoing;
+            } else {
+              data.detailedProgress.outgoing = false;
+            }
+
             data.detailedProgress.bucket = rebalanceTask.detailedProgress.bucket;
             data.detailedProgress.bucketNumber = rebalanceTask.detailedProgress.bucketNumber;
             data.detailedProgress.bucketsCount = rebalanceTask.detailedProgress.bucketsCount;

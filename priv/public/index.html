@@ -327,26 +327,60 @@
             <!-- {% if (detailedProgress) { %}-->
               <h3>Rebalance Progress</h3>
               <div class="rebalance_progress">
-                <p>
-                  <span>Bucket:</span>
-                  {%= detailedProgress.bucket %}
-                  ({%= detailedProgress.bucketNumber %} out of {%= detailedProgress.bucketsCount %})
-                </p>
-                <p>
-                  <span>Total number of keys to be transferred out:</span>
-                  {%= detailedProgress.docsTotal %}
-                </p>
-                <p>
-                  <span>Estimated number of keys transferred:</span>
-                  {%= detailedProgress.docsTransferred %}
-                </p>
-                <p>
-                  <span>
-                    Number of Active# vBuckets and Replica# vBuckets to transfer:
-                  </span>
-                  Active#-{%= detailedProgress.activeVBucketsLeft %}
-                  Replica#-{%= detailedProgress.replicaVBucketsLeft %}
-                </p>
+
+                <!-- {% if (detailedProgress.outgoing) { %} -->
+                <div>
+                  <p class="direction">Data being transferred out</p>
+
+                  <p>
+                    <span>Bucket:</span>
+                    {%= detailedProgress.bucket %}
+                    ({%= detailedProgress.bucketNumber %} out of {%= detailedProgress.bucketsCount %})
+                  </p>
+                  <p>
+                    <span>Total number of keys to be transferred:</span>
+                    {%= detailedProgress.outgoing.docsTotal %}
+                  </p>
+                  <p>
+                    <span>Estimated number of keys transferred:</span>
+                    {%= detailedProgress.outgoing.docsTransferred %}
+                  </p>
+                  <p>
+                    <span>
+                      Number of Active# vBuckets and Replica# vBuckets to transfer:
+                    </span>
+                    Active#-{%= detailedProgress.outgoing.activeVBucketsLeft %}
+                    Replica#-{%= detailedProgress.outgoing.replicaVBucketsLeft %}
+                  </p>
+                </div>
+                <!-- {% } %} -->
+
+                <!-- {% if (detailedProgress.ingoing) { %} -->
+                <div>
+                  <p class="direction">Data being transferred in</p>
+                  <p>
+                    <span>Bucket:</span>
+                    {%= detailedProgress.bucket %}
+                    ({%= detailedProgress.bucketNumber %} out of {%= detailedProgress.bucketsCount %})
+                  </p>
+                  <p>
+                    <span>Total number of keys to be transferred:</span>
+                    {%= detailedProgress.ingoing.docsTotal %}
+                  </p>
+                  <p>
+                    <span>Estimated number of keys transferred:</span>
+                    {%= detailedProgress.ingoing.docsTransferred %}
+                  </p>
+                  <p>
+                    <span>
+                      Number of Active# vBuckets and Replica# vBuckets to transfer:
+                    </span>
+                    Active#-{%= detailedProgress.ingoing.activeVBucketsLeft %}
+                    Replica#-{%= detailedProgress.ingoing.replicaVBucketsLeft %}
+                  </p>
+                </div>
+                <!-- {% } %}-->
+
               </div>
             <!-- {% } %}-->
             <h3>Memory Cache</h3>

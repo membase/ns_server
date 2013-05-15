@@ -392,9 +392,7 @@ do_get_detailed_progress(#state{bucket=Bucket,
                                 pending_moves=PendingMoves,
                                 done_moves=DoneMoves}) ->
     AllMoves = lists:append([CurrentMoves, PendingMoves, DoneMoves]),
-    AllMovesWithMaster = [{N, Move} ||
-                             #move_state{before_chain=[N|_]} = Move <- AllMoves],
-    MasterToMoves = keygroup_sorted(lists:sort(AllMovesWithMaster)),
+    {OutMovesStats, InMovesStats} = moves_stats(AllMoves),
 
     Inc = fun (undefined, Dict) ->
                   Dict;
@@ -405,54 +403,57 @@ do_get_detailed_progress(#state{bucket=Bucket,
                               end, 1, Dict)
           end,
 
-    {MovesLeftActive, MovesLeftReplica} =
+    {MovesInActive, MovesOutActive, MovesInReplica, MovesOutReplica} =
         lists:foldl(
           fun (#move_state{before_chain=[OldMaster|OldReplicas],
-                           after_chain=[NewMaster|NewReplicas]}, {AccA, AccR}) ->
-                  AccA1 = case OldMaster =:= NewMaster of
-                              true ->
-                                  AccA;
-                              false ->
-                                  Inc(OldMaster, Inc(NewMaster, AccA))
-                          end,
+                           after_chain=[NewMaster|NewReplicas]},
+               {AccInA, AccOutA, AccInR, AccOutR}) ->
+                  {AccInA1, AccOutA1} =
+                      case OldMaster =:= NewMaster of
+                          true ->
+                              {AccInA, AccOutA};
+                          false ->
+                              {Inc(NewMaster, AccInA), Inc(OldMaster, AccOutA)}
+                      end,
 
-                  AccR1 = lists:foldl(
-                            fun (N, Acc) ->
-                                    Inc(N, Acc)
-                            end, AccR, lists:usort((OldReplicas -- NewReplicas) ++
-                                                       (NewReplicas -- OldReplicas))),
+                  AccInR1 =
+                      lists:foldl(
+                        fun (N, Acc) ->
+                                Inc(N, Acc)
+                        end, AccInR, NewReplicas -- OldReplicas),
 
-                  {AccA1, AccR1}
-          end, {dict:new(), dict:new()}, CurrentMoves ++ PendingMoves),
+                  AccOutR1 =
+                      lists:foldl(
+                        fun (N, Acc) ->
+                                Inc(N, Acc)
+                        end, AccOutR, OldReplicas -- NewReplicas),
+
+                  {AccInA1, AccOutA1, AccInR1, AccOutR1}
+          end, {dict:new(), dict:new(), dict:new(), dict:new()},
+          CurrentMoves ++ PendingMoves),
 
     NodesProgress =
         lists:foldl(
           fun (N, Acc) ->
-                  {Total, Left} = case lists:keyfind(N, 1, MasterToMoves) of
-                                      false ->
-                                          {0, 0};
-                                      {N, Moves} ->
-                                         moves_stats(Moves)
-                                  end,
+                  {InTotal, InLeft} = misc:dict_get(N, InMovesStats, {0, 0}),
+                  {OutTotal, OutLeft} = misc:dict_get(N, OutMovesStats, {0, 0}),
 
-                  A = case dict:find(N, MovesLeftActive) of
-                          {ok, VA} ->
-                              VA;
-                          error ->
-                              0
-                      end,
+                  InA = misc:dict_get(N, MovesInActive, 0),
+                  OutA = misc:dict_get(N, MovesOutActive, 0),
+                  InR = misc:dict_get(N, MovesInReplica, 0),
+                  OutR = misc:dict_get(N, MovesOutReplica, 0),
 
-                  R = case dict:find(N, MovesLeftReplica) of
-                          {ok, VR} ->
-                              VR;
-                          error ->
-                              0
-                      end,
+                  Ingoing = [{docsTotal, InTotal},
+                             {docsTransferred, InTotal - InLeft},
+                             {activeVBucketsLeft, InA},
+                             {replicaVBucketsLeft, InR}],
 
-                  Info = {N, [{docsTotal, Total},
-                              {docsTransferred, Total - Left},
-                              {activeVBucketsLeft, A},
-                              {replicaVBucketsLeft, R}]},
+                  Outgoing = [{docsTotal, OutTotal},
+                              {docsTransferred, OutTotal - OutLeft},
+                              {activeVBucketsLeft, OutA},
+                              {replicaVBucketsLeft, OutR}],
+
+                  Info = {N, Ingoing, Outgoing},
                   [Info | Acc]
           end, [], ns_node_disco:nodes_wanted()),
 
@@ -464,13 +465,26 @@ do_get_detailed_progress(#state{bucket=Bucket,
 
 moves_stats(Moves) ->
     lists:foldl(
-      fun (#move_state{stats=Stats}, Acc) ->
+      fun (#move_state{stats=Stats,
+                       before_chain=[OldMaster|_]}, Acc) ->
+              true = (OldMaster =/= undefined),
+
               lists:foldl(
-                fun (#replica_building_stats{docs_total=Total,
+                fun (#replica_building_stats{node=DstNode,
+                                             docs_total=Total,
                                              docs_left=Left},
-                     {AccTotal, AccLeft}) ->
+                     {AccOut, AccIn}) ->
                         true = (Left =< Total),
 
-                        {AccTotal + Total, AccLeft + Left}
+                        AccOut1 = dict:update(OldMaster,
+                                              fun ({AccTotal, AccLeft}) ->
+                                                      {AccTotal + Total, AccLeft + Left}
+                                              end, {Total, Left}, AccOut),
+                        AccIn1 = dict:update(DstNode,
+                                             fun ({AccTotal, AccLeft}) ->
+                                                     {AccTotal + Total, AccLeft + Left}
+                                             end, {Total, Left}, AccIn),
+
+                        {AccOut1, AccIn1}
                 end, Acc, Stats)
-      end, {0, 0}, Moves).
+      end, {dict:new(), dict:new()}, Moves).
