@@ -360,7 +360,12 @@ update_docs_left_for_move(Parent, BucketName,
                           end
                   end, lists:zip(NewLefts, RStats)),
 
-            gen_server:cast(Parent, {update_stats, VBucket, Stuff})
+            case Stuff of
+                [] ->
+                    ok;
+                _ ->
+                    gen_server:cast(Parent, {update_stats, VBucket, Stuff})
+            end
     catch error:{janitor_agent_servant_died, _} ->
             ?log_debug("Apparently move of ~p is already done", [VBucket]),
             ok
