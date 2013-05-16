@@ -926,7 +926,7 @@ do_spawn_view_index_compactor(Parent, BucketName, DDocId, Type, InitialStatus) -
             erlang:demonitor(CompactorRef),
             ok = couch_set_view_compactor:cancel_compact(mapreduce_view,
                                                          BucketName, DDocId,
-                                                         Type),
+                                                         Type, prod),
             exit(Reason);
         {'DOWN', CompactorRef, process, Compactor, normal} ->
             ok;
@@ -946,7 +946,8 @@ do_spawn_view_index_compactor(Parent, BucketName, DDocId, Type, InitialStatus) -
 
 start_view_index_compactor(BucketName, DDocId, Type, InitialStatus) ->
     case couch_set_view_compactor:start_compact(mapreduce_view, BucketName,
-                                                DDocId, Type, InitialStatus) of
+                                                DDocId, Type, prod,
+                                                InitialStatus) of
         {ok, Pid} ->
             Pid;
         {error, initial_build} ->
