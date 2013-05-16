@@ -2611,31 +2611,39 @@ handle_internal_settings_post(Req) ->
                        {ok, V} = parse_validate_number(SV, 0, 20*1024*1024),
                        MaybeSet(xdcrOptimisticReplicationThreshold, xdcr_optimistic_replication_threshold, V)
                end,
-               MaybeSet(restRequestLimit, {request_limit, rest},
-                        case proplists:get_value("restRequestLimit", Params) of
-                            undefined -> undefined;
-                            "" -> undefined;
-                            SV ->
-                                {ok, V0} = parse_validate_number(SV, 0, 99999),
-                                V0
-                        end),
-               MaybeSet(capiRequestLimit, {request_limit, capi},
-                        case proplists:get_value("capiRequestLimit", Params) of
-                            undefined -> undefined;
-                            "" -> undefined;
-                            SV ->
-                                {ok, V0} = parse_validate_number(SV, 0, 99999),
-                                V0
-                        end),
-               MaybeSet(dropRequestMemoryThresholdMiB, drop_request_memory_threshold_mib,
-                        case proplists:get_value("dropRequestMemoryThresholdMiB", Params) of
-                            undefined -> undefined;
-                            "" -> undefined;
-                            SV ->
-                                {ok, V0} = parse_validate_number(SV, 0, 99999),
-                                V0
-                        end)
-              ],
+               case proplists:get_value("restRequestLimit", Params) of
+                   undefined -> undefined;
+                   Other ->
+                       MaybeSet(restRequestLimit, {request_limit, rest},
+                                case Other of
+                                    "" -> undefined;
+                                    SV ->
+                                        {ok, V0} = parse_validate_number(SV, 0, 99999),
+                                        V0
+                                end)
+               end,
+               case proplists:get_value("capiRequestLimit", Params) of
+                   undefined -> undefined;
+                   Other ->
+                       MaybeSet(capiRequestLimit, {request_limit, capi},
+                                case Other of
+                                    "" -> undefined;
+                                    SV ->
+                                        {ok, V0} = parse_validate_number(SV, 0, 99999),
+                                        V0
+                                end)
+               end,
+               case proplists:get_value("dropRequestMemoryThresholdMiB", Params) of
+                   undefined -> undefined;
+                   Other ->
+                       MaybeSet(dropRequestMemoryThresholdMiB, drop_request_memory_threshold_mib,
+                                case Other of
+                                    "" -> undefined;
+                                    SV ->
+                                        {ok, V0} = parse_validate_number(SV, 0, 99999),
+                                        V0
+                                end)
+               end],
     [Action()
      || Action <- Actions,
         Action =/= undefined],
