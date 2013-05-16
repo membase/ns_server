@@ -35,18 +35,18 @@ start_link() ->
 
 request(Type, Body, RejectBody) ->
     case note_request(Type) of
-        ok ->
-            do_request(Type, Body);
+        {ok, ThrottlerPid} ->
+            do_request(Type, Body, ThrottlerPid);
         {reject, Error} ->
             system_stats_collector:increment_counter({Type, Error}, 1),
             RejectBody(Error, describe_error(Error))
     end.
 
-do_request(Type, Body) ->
+do_request(Type, Body, ThrottlerPid) ->
     try
         Body()
     after
-        note_request_done(Type)
+        note_request_done(Type, ThrottlerPid)
     end.
 
 note_request(Type) ->
@@ -57,8 +57,8 @@ note_request(Type) ->
             {reject, memory_limit_exceeded}
     end.
 
-note_request_done(Type) ->
-    gen_server:call(?MODULE, {note_request_done, self(), Type}).
+note_request_done(Type, ThrottlerPid) ->
+    gen_server:cast(ThrottlerPid, {note_request_done, self(), Type}).
 
 %% gen_server callbacks
 init([]) ->
@@ -76,21 +76,21 @@ handle_call({note_request, Pid, Type}, _From, State) ->
                  ets:update_counter(?TABLE, Type, 1),
                  MRef = erlang:monitor(process, Pid),
                  true = ets:insert_new(?TABLE, {Pid, Type, MRef}),
-                 ok
+                 {ok, self()}
          end,
     {reply, RV, State};
-handle_call({note_request_done, Pid, Type}, _From, State) ->
-    Count = ets:update_counter(?TABLE, Type, -1),
-    true = (Count >= 0),
-
-    [{_, Type, MRef}] = ets:lookup(?TABLE, Pid),
-    erlang:demonitor(MRef),
-    true = ets:delete(?TABLE, Pid),
-    {reply, ok, State};
 handle_call(Request, _From, State) ->
     ?log_error("Got unknown request ~p", [Request]),
     {reply, unhandled, State}.
 
+handle_cast({note_request_done, Pid, Type}, State) ->
+    Count = ets:update_counter(?TABLE, Type, -1),
+    true = (Count >= 0),
+
+    [{_, Type, MRef}] = ets:lookup(?TABLE, Pid),
+    erlang:demonitor(MRef, [flush]),
+    true = ets:delete(?TABLE, Pid),
+    {noreply, State};
 handle_cast(Cast, State) ->
     ?log_error("Got unknown cast ~p", [Cast]),
     {noreply, State}.
