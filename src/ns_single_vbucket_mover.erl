@@ -74,7 +74,7 @@ mover(Parent, Node, Bucket, VBucket, OldChain, NewChain) ->
     end.
 
 spawn_and_wait(Body) ->
-    WorkerPid = erlang:spawn_link(Body),
+    WorkerPid = proc_lib:spawn_link(Body),
     cleanup_list_add(WorkerPid),
     receive
         {'EXIT', From, Reason} = ExitMsg ->
