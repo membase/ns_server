@@ -29,7 +29,9 @@
          grab_all_tap_and_checkpoint_stats/0,
          grab_all_tap_and_checkpoint_stats/1,
          log_all_tap_and_checkpoint_stats/0,
-         diagnosing_timeouts/1]).
+         diagnosing_timeouts/1,
+         %% rpc-ed to grab babysitter processes
+         grab_process_infos/0]).
 
 diag_filter_out_config_password_list([], UnchangedMarker) ->
     UnchangedMarker;
@@ -137,7 +139,8 @@ do_diag_per_node() ->
      {manifest, manifest()},
      {config, diag_filter_out_config_password(ns_config:get_kv_list())},
      {basic_info, element(2, ns_info:basic_info())},
-     {processes, grab_process_infos_loop(erlang:processes(), [])},
+     {processes, grab_process_infos()},
+     {babysitter_processes, (catch grab_babysitter_process_infos())},
      {memory, memsup:get_memory_data()},
      {disk, ns_info:get_disk_data()},
      {active_tasks, capi_frontend:task_status_all()},
@@ -152,7 +155,8 @@ do_diag_per_node_binary() ->
             {manifest, manifest()},
             {config, diag_filter_out_config_password(ns_config:get_kv_list())},
             {basic_info, element(2, ns_info:basic_info())},
-            {processes, grab_process_infos_loop(erlang:processes(), [])},
+            {processes, grab_process_infos()},
+            {babysitter_processes, (catch grab_babysitter_process_infos())},
             {memory, memsup:get_memory_data()},
             {disk, ns_info:get_disk_data()},
             {active_tasks, capi_frontend:task_status_all()},
@@ -163,6 +167,12 @@ do_diag_per_node_binary() ->
             {design_docs, [{Bucket, (catch capi_ddoc_replication_srv:full_live_ddocs(Bucket))} || Bucket <- ActiveBuckets]},
             {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))}],
     term_to_binary(Diag).
+
+grab_babysitter_process_infos() ->
+    rpc:call(ns_server:get_babysitter_node(), ?MODULE, grab_process_infos, []).
+
+grab_process_infos() ->
+    grab_process_infos_loop(erlang:processes(), []).
 
 grab_process_infos_loop([], Acc) ->
     Acc;
@@ -336,13 +346,32 @@ do_handle_per_node_processes(Resp, Node, PerNodeDiag) ->
     erlang:garbage_collect(),
 
     Processes = proplists:get_value(processes, PerNodeDiag),
-    DiagNoProcesses = lists:keydelete(processes, 1, PerNodeDiag),
+
+    BabysitterProcesses0 = proplists:get_value(babysitter_processes, PerNodeDiag, []),
+    %% it may be rpc or any other error; just pretend it's the process so that
+    %% the error is visible
+    BabysitterProcesses = case is_list(BabysitterProcesses0) of
+                              true ->
+                                  BabysitterProcesses0;
+                              false ->
+                                  [BabysitterProcesses0]
+                          end,
+
+    DiagNoProcesses = lists:keydelete(processes, 1,
+                                       lists:keydelete(babysitter_processes, 1, PerNodeDiag)),
 
     write_chunk_format(Resp, "per_node_processes(~p) =~n", [Node]),
     lists:foreach(
       fun (Process) ->
               write_chunk_format(Resp, "     ~p~n", [Process])
       end, Processes),
+    Resp:write_chunk(<<"\n\n">>),
+
+    write_chunk_format(Resp, "per_node_babysitter_processes(~p) =~n", [Node]),
+    lists:foreach(
+      fun (Process) ->
+              write_chunk_format(Resp, "     ~p~n", [Process])
+      end, BabysitterProcesses),
     Resp:write_chunk(<<"\n\n">>),
 
     do_continue_handling_per_node_just_diag(Resp, Node, DiagNoProcesses).
