@@ -486,19 +486,7 @@ delete_databases_and_files(Bucket) ->
 
 do_delete_bucket_indexes(Bucket) ->
     {ok, BaseIxDir} = this_node_ixdir(),
-    IxDir = filename:join([BaseIxDir, "@indexes", Bucket]),
-    case file:read_file_info(IxDir) of
-        {error, enoent} ->
-            ?log_debug("indexes directory doesn't exist already. fine.");
-        _ ->
-            ?log_debug("Going to delete indexes directory: ~p", [IxDir]),
-            case misc:rm_rf(IxDir) of
-                ok ->
-                    ?log_debug("done deleting indexes directory");
-                Error ->
-                    ?log_debug("failed to delete indexes directory (~p). Will try to ignore", [Error])
-            end
-    end.
+    couch_set_view:delete_index_dir(BaseIxDir, list_to_binary(Bucket)).
 
 delete_databases_loop([]) ->
     ok;
