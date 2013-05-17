@@ -268,6 +268,37 @@ Between versions 2.0.1 and 2.0.2
   per bucket level so we also show which bucket is being rebalanced
   right now and how many has already been rebalanced.
 
+* (MB-8199) REST and CAPI request throttler implemented.
+
+  It's behavior is controlled by three parameters which can be set via
+  /internalSettings REST endpoint:
+
+    - restRequestLimit
+
+      Maximum number of simultaneous connections each node should
+      accept on REST port. Diagnostics related endpoints and
+      /internalSettings are not counted.
+
+    - capiRequestLimit
+
+      Maximum number of simultaneous connections each node should
+      accept on CAPI port. It should be noted that it includes XDCR
+      connections.
+
+    - dropRequestMemoryThresholdMiB
+
+      The amount of memory used by Erlang VM that should not be
+      exceeded. If it's exceeded the server will start dropping
+      incoming connections.
+
+  When the server decides to reject incoming connection because some
+  limit was exceeded, it does so by responding with status code of 503
+  and Retry-After header set appropriately (more or less). On REST
+  port textual description of why request was rejected returned in a
+  body. On CAPI port in CouchDB tradition a JSON object is returned
+  with "error" and "reason" fields.
+
+  By default all the thresholds are set to be unlimited.
 
 -----------------------------------------
 Between versions 2.0.0 and 2.0.1
