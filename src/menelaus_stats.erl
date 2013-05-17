@@ -253,9 +253,9 @@ build_stat_extractor(BucketName, StatName) ->
     end.
 
 dict_safe_fetch(K, Dict, Default) ->
-    case orddict:find(K, Dict) of
-        error -> Default;
-        {ok, V} -> V
+    case lists:keyfind(K, 1, Dict) of
+        {_, V} -> V;
+        _ -> Default
     end.
 
 build_per_node_stats(BucketName, StatName, Params, LocalAddr) ->
@@ -630,8 +630,8 @@ samples_to_proplists(Samples, BucketName) ->
                                orddict:map(fun (timestamp, AccValues) ->
                                                    [Sample#stat_entry.timestamp | AccValues];
                                                (K, AccValues) ->
-                                                   case orddict:find(K, Sample#stat_entry.values) of
-                                                       {ok, ThisValue} -> [ThisValue | AccValues];
+                                                   case lists:keyfind(K, 1, Sample#stat_entry.values) of
+                                                       {_, ThisValue} -> [ThisValue | AccValues];
                                                        _ -> [null | AccValues]
                                                    end
                                            end, Acc)
