@@ -191,11 +191,10 @@ init_logging() ->
       end,
       StdLoggers),
 
-    OverrideLoglevels = [{?COUCHDB_LOGGER, warn},
-                         {?STATS_LOGGER, warn},
+    OverrideLoglevels = [{?STATS_LOGGER, warn},
                          {?NS_DOCTOR_LOGGER, warn}],
 
-    MainFilesLoggers = AllLoggers -- [?XDCR_LOGGER],
+    MainFilesLoggers = AllLoggers -- [?XDCR_LOGGER, ?COUCHDB_LOGGER],
 
     lists:foreach(
       fun (Logger) ->

@@ -308,9 +308,21 @@ GET /internalSettings =>
     "indexAwareRebalanceDisabled": <:bool>, // false by default (private!)
     "rebalanceIndexWaitingDisabled": <:bool>, // false by default (private!)
     "rebalanceIndexPausingDisabled": <:bool>, // false by default (private!)
+    "rebalanceIgnoreViewCompactions": <:bool>, // false by default
+    "rebalanceMovesPerNode": <:integer>, // 1 by default
+    "rebalanceMovesBeforeCompaction": <:integer>, // 64 by default
     "maxParallelIndexers": <:integer>,       // 4 by default
     "maxParallelReplicaIndexers": <:integer>, // 2 by default
-    "maxBucketCount": <:integer> // 10 by default
+    "maxBucketCount": <:integer>, // 10 by default
+    "xdcrCheckpointInterval": <:integer>, // 1800 by default
+    "xdcrDocBatchSizeKb": <:integer>, // 2048 by default
+    "xdcrFailureRestartInterval": <:integer>, // 30 by default
+    "xdcrMaxConcurrentReps": <:integer>, // 32 by default
+    "xdcrOptimisticReplicationThreshold": <:integer>, // 256 by default
+    "xdcrWorkerBatchSize": <:integer>, // 500 by default
+    "capiRequestLimit": (<:integer> | ""), // unset by default (unlimited)
+    "dropRequestMemoryThresholdMiB": (<:integer> | ""), // unset by default (unlimited)
+    "restRequestLimit": (<:integer> | ""), // unset by default (unlimited)
 }
 
 NOTE: we'll add/remove some fields over time here. All internal

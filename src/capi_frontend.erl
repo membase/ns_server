@@ -36,20 +36,34 @@ not_implemented(Arg, Rest) ->
 do_db_req(#httpd{path_parts=[<<"_replicator">>|_]}=Req, Fun) ->
     %% TODO: AUTH!!!!
     couch_db_frontend:do_db_req(Req, Fun);
-do_db_req(#httpd{mochi_req=MochiReq, user_ctx=UserCtx,
-                 path_parts=[DbName | RestPathParts]} = Req, Fun) ->
+do_db_req(Req, Fun) ->
     %% it'll just crash if somebody wants to access CAPI in older
     %% compat mode
     true = cluster_compat_mode:is_cluster_20(),
 
-    % check auth here
+    request_throttler:request(
+      capi,
+      fun () ->
+              continue_do_db_req(Req, Fun)
+      end,
+      fun (Error, Reason) ->
+              random:seed(os:timestamp()),
+              Retry = integer_to_list(random:uniform(10)),
+              couch_httpd:send_json(Req, 503, [{"Retry-After", Retry}],
+                                    {[{<<"error">>, couch_util:to_binary(Error)},
+                                      {<<"reason">>, couch_util:to_binary(Reason)}]})
+      end).
+
+continue_do_db_req(#httpd{mochi_req=MochiReq, user_ctx=UserCtx,
+                          path_parts=[DbName | RestPathParts]} = Req, Fun) ->
+    %% check auth here
     [BucketName | AfterSlash] = binary:split(DbName, <<"/">>),
     ListBucketName = ?b2l(BucketName),
     BucketConfig = case ns_bucket:get_bucket_light(ListBucketName) of
-                      not_present ->
+                       not_present ->
                            throw({not_found, missing});
-                      {ok, X} -> X
-                  end,
+                       {ok, X} -> X
+                   end,
     case menelaus_auth:is_bucket_accessible({ListBucketName, BucketConfig}, MochiReq) of
         true ->
             case AfterSlash of

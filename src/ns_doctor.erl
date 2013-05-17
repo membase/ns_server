@@ -583,7 +583,9 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
 get_detailed_progress() ->
     case ns_rebalance_observer:get_detailed_progress() of
         {ok, GlobalDetails, PerNode} ->
-            PerNodeJSON0 = [{N, {struct, Details}} || {N, Details} <- PerNode],
+            PerNodeJSON0 = [{N, {struct, [{ingoing, {struct, Ingoing}},
+                                          {outgoing, {struct, Outgoing}}]}} ||
+                               {N, Ingoing, Outgoing} <- PerNode],
             PerNodeJSON = {struct, PerNodeJSON0},
             {struct, GlobalDetails ++ [{perNode, PerNodeJSON}]};
         not_running ->
