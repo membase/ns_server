@@ -25,7 +25,7 @@
 % Microseconds because we use timer:now_diff
 -define(UPSTREAM_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_upstream_us, 600000000)).
 -define(TIMEOUT_CHECK_INTERVAL, 15000).
--define(TERMINATE_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_terminate, 30000)).
+-define(TERMINATE_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_terminate, 110000)).
 
 
 %% gen_server callbacks
