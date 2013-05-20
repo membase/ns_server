@@ -300,7 +300,7 @@ def correct_split(string, splitchar):
     return rv
 
 def make_product_task(guts, initargs_path):
-    root = os.path.abspath(os.path.join(initargs_path, "..", ".."))
+    root = os.path.abspath(os.path.join(initargs_path, "..", "..", "..", ".."))
     dbdir = read_guts(guts, "db_dir")
     viewdir = read_guts(guts, "idx_dir")
     _tasks = [
