@@ -188,6 +188,14 @@ current_status() ->
                   {Key, RealPath}
           end, StorageConf0),
 
+    ProcessesStats =
+        lists:filter(
+          fun ({<<"proc/", _/binary>>, _}) ->
+                  true;
+              (_) ->
+                  false
+          end, SystemStats),
+
     failover_safeness_level:build_local_safeness_info(BucketNames) ++
         [{active_buckets, ns_memcached:active_buckets()},
          {ready_buckets, ns_memcached:warmed_buckets()},
@@ -197,9 +205,9 @@ current_status() ->
          {node_storage_conf, StorageConf},
          {statistics, erlang_stats()},
          {system_stats, [{N, proplists:get_value(N, SystemStats, 0)}
-                         || N <- [cpu_utilization_rate, swap_total, swap_used,
-                                  minor_faults, major_faults, page_faults]]},
+                         || N <- [cpu_utilization_rate, swap_total, swap_used]]},
          {interesting_stats, InterestingStats},
+         {processes_stats, ProcessesStats},
          {cluster_compatibility_version, ClusterCompatVersion}
          | element(2, ns_info:basic_info())] ++ MaybeMeminfo.
 
