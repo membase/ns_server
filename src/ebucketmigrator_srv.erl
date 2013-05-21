@@ -659,7 +659,7 @@ do_note_tap_stats(State, NoteTapTag) ->
     do_note_tap_stats(State, NoteTapTag, ?TAP_STATS_ATTEMPTS).
 
 do_note_tap_stats(_State, _NoteTapTag, 0) ->
-    ?rebalance_error("Failed to get tap stats after ~p attempts", [?TAP_STATS_ATTEMPTS]);
+    ?rebalance_warning("Failed to get tap stats after ~p attempts", [?TAP_STATS_ATTEMPTS]);
 do_note_tap_stats(#state{upstream_aux = Aux,
                          vbuckets = VBs,
                          tap_name = TapName} = State,
@@ -679,7 +679,7 @@ do_note_tap_stats(#state{upstream_aux = Aux,
                     do_note_tap_stats(State, NoteTapTag, Tries-1)
             end;
         Error ->
-            ?rebalance_error("Failed to get tap docs estimate: ~p~n~p", [Error, erlang:get_stacktrace()])
+            ?rebalance_warning("Failed to get tap docs estimate: ~p~n~p", [Error, erlang:get_stacktrace()])
     end.
 
 upstream_sender_loop(Upstream) ->
