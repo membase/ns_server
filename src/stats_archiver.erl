@@ -33,6 +33,7 @@
           table/2,
           avg/2,
           latest_sample/2,
+          dump_samples/1,
           wipe/0 ]).
 
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -120,6 +121,9 @@ latest_sample(Bucket, Period) ->
             {_, Sample} = hd(ets:lookup(Tab, Key)),
             {ok, Sample}
     end.
+
+dump_samples(Bucket) ->
+    [{Period, ets:tab2list(table(Bucket, Period))} || {Period, _, _} <- archives()].
 
 %% This function is called when ns_server_sup is shut down. So we don't race
 %% with 'backup' handler here.

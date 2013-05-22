@@ -147,7 +147,8 @@ do_diag_per_node() ->
      {master_events, (catch master_activity_events_keeper:get_history())},
      {ns_server_stats, (catch system_stats_collector:get_ns_server_stats())},
      {active_buckets, ActiveBuckets},
-     {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))}].
+     {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))},
+     {stats, (catch grab_all_buckets_stats())}].
 
 do_diag_per_node_binary() ->
     ActiveBuckets = ns_memcached:active_buckets(),
@@ -165,7 +166,8 @@ do_diag_per_node_binary() ->
             {active_buckets, ActiveBuckets},
             {replication_docs, (catch xdc_rdoc_replication_srv:find_all_replication_docs())},
             {design_docs, [{Bucket, (catch capi_ddoc_replication_srv:full_live_ddocs(Bucket))} || Bucket <- ActiveBuckets]},
-            {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))}],
+            {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))},
+            {stats, (catch grab_all_buckets_stats())}],
     term_to_binary(Diag).
 
 grab_babysitter_process_infos() ->
@@ -179,6 +181,10 @@ grab_process_infos_loop([], Acc) ->
 grab_process_infos_loop([P | RestPids], Acc) ->
     NewAcc = [{P, (catch grab_process_info(P))} | Acc],
     grab_process_infos_loop(RestPids, NewAcc).
+
+grab_all_buckets_stats() ->
+    Buckets = ["@system" | ns_bucket:get_bucket_names(node())],
+    [{Bucket, stats_archiver:dump_samples(Bucket)} || Bucket <- Buckets].
 
 diag_format_timestamp(EpochMilliseconds) ->
     SecondsRaw = trunc(EpochMilliseconds/1000),
@@ -374,13 +380,40 @@ do_handle_per_node_processes(Resp, Node, PerNodeDiag) ->
       end, BabysitterProcesses),
     Resp:write_chunk(<<"\n\n">>),
 
-    do_continue_handling_per_node_just_diag(Resp, Node, DiagNoProcesses).
+    do_handle_per_node_stats(Resp, Node, DiagNoProcesses).
 
-do_continue_handling_per_node_just_diag(Resp, Node, DiagNoProcesses) ->
+do_handle_per_node_stats(Resp, Node, PerNodeDiag)->
+    Stats0 = proplists:get_value(stats, PerNodeDiag, []),
+    Stats = case is_list(Stats0) of
+                true ->
+                    Stats0;
+                false ->
+                    [{"_", [{'_', [Stats0]}]}]
+            end,
+
+    lists:foreach(
+      fun ({Bucket, BucketStats}) ->
+              lists:foreach(
+                fun ({Period, Samples}) ->
+                        write_chunk_format(Resp, "per_node_stats(~p, ~p, ~p) =~n",
+                                           [Node, Bucket, Period]),
+
+                        lists:foreach(
+                          fun (Sample) ->
+                                  write_chunk_format(Resp, "     ~p~n", [Sample])
+                          end, Samples)
+                end, BucketStats)
+      end, Stats),
+    Resp:write_chunk(<<"\n\n">>),
+
+    DiagNoStats = lists:keydelete(stats, 1, PerNodeDiag),
+    do_continue_handling_per_node_just_diag(Resp, Node, DiagNoStats).
+
+do_continue_handling_per_node_just_diag(Resp, Node, Diag) ->
     erlang:garbage_collect(),
 
     write_chunk_format(Resp, "per_node_diag(~p) =~n", [Node]),
-    write_chunk_format(Resp, "     ~p~n", [DiagNoProcesses]),
+    write_chunk_format(Resp, "     ~p~n", [Diag]),
     Resp:write_chunk(<<"\n\n">>).
 
 do_handle_diag(Req, Extra) ->

@@ -73,6 +73,7 @@ flush_ticks(Acc) ->
 
 -define(STATS_V0_BLOCK_SIZE, 88).
 -define(STATS_V1_BLOCK_SIZE, 112).
+-define(STATS_V2_BLOCK_SIZE, 808).
 
 recv_data(Port) ->
     recv_data_loop(Port, <<"">>).
@@ -83,6 +84,9 @@ recv_data_loop(Port, <<0:32/native, _/binary>> = Acc) ->
 recv_data_loop(Port, <<1:32/native, _/binary>> = Acc) ->
     Data = recv_data_with_length(Port, Acc, ?STATS_V1_BLOCK_SIZE - erlang:size(Acc)),
     {Data, fun unpack_data_v1/2};
+recv_data_loop(Port, <<2:32/native, _/binary>> = Acc) ->
+    Data = recv_data_with_length(Port, Acc, ?STATS_V2_BLOCK_SIZE - erlang:size(Acc)),
+    {Data, fun unpack_data_v2/2};
 recv_data_loop(Port, Acc) ->
     receive
         {Port, {data, Data}} ->
@@ -202,6 +206,179 @@ unpack_data_v1(Bin, PrevSample) ->
                            | RV1]
                  end,
     {NowSamples, RawStats}.
+
+unpack_data_v2(Bin, PrevSample) ->
+    <<Version:32/native,
+      StructSize:32/native,
+      CPULocalMS:64/native,
+      CPUIdleMS:64/native,
+      SwapTotal:64/native,
+      SwapUsed:64/native,
+      _SwapPageIn:64/native,
+      _SwapPageOut:64/native,
+      MemTotal:64/native,
+      MemUsed:64/native,
+      MemActualUsed:64/native,
+      MemActualFree:64/native,
+      Rest/binary>> = Bin,
+
+    StructSize = erlang:size(Bin),
+    Version = 2,
+
+    {PrevSampleGlobal, PrevSampleProcs} =
+        case PrevSample of
+            undefined ->
+                {undefined, []};
+            _ ->
+                PrevSample
+        end,
+
+    {NowSamplesProcs, PrevSampleProcs1} = unpack_processes_v2(Rest, PrevSampleProcs),
+
+    RawStatsGlobal = [{cpu_local_ms, CPULocalMS},
+                      {cpu_idle_ms, CPUIdleMS},
+                      {swap_total, SwapTotal},
+                      {swap_used, SwapUsed},
+                      %% {swap_page_in, SwapPageIn},
+                      %% {swap_page_out, SwapPageOut},
+                      {mem_total, MemTotal},
+                      {mem_used, MemUsed},
+                      {mem_actual_used, MemActualUsed},
+                      {mem_actual_free, MemActualFree}],
+
+    NowSamples = case PrevSampleGlobal of
+                     undefined ->
+                         undefined;
+                     _ ->
+                         {_, OldCPULocal} = lists:keyfind(cpu_local_ms, 1, PrevSampleGlobal),
+                         {_, OldCPUIdle} = lists:keyfind(cpu_idle_ms, 1, PrevSampleGlobal),
+                         LocalDiff = CPULocalMS - OldCPULocal,
+                         IdleDiff = CPUIdleMS - OldCPUIdle,
+
+                         MajorFaults = beam_stat(major_faults, NowSamplesProcs, 0),
+                         MinorFaults = beam_stat(minor_faults, NowSamplesProcs, 0),
+                         PageFaults = beam_stat(page_faults, NowSamplesProcs, 0),
+
+                         RV1 = misc:update_proplist(RawStatsGlobal,
+                                                    [{cpu_local_ms, LocalDiff},
+                                                     {cpu_idle_ms, IdleDiff}]),
+
+                         [{mem_free, MemTotal - MemUsed},
+                          {cpu_utilization_rate, try 100 * (LocalDiff - IdleDiff) / LocalDiff
+                                                 catch error:badarith -> 0 end},
+                          {major_faults, MajorFaults},
+                          {minor_faults, MinorFaults},
+                          {page_faults, PageFaults}
+                          | RV1 ++ NowSamplesProcs]
+                 end,
+
+    {NowSamples, {RawStatsGlobal, PrevSampleProcs1}}.
+
+unpack_processes_v2(Bin, PrevSamples) ->
+    do_unpack_processes_v2(Bin, {[], PrevSamples}).
+
+do_unpack_processes_v2(Bin, Acc) when size(Bin) =:= 0 ->
+    Acc;
+do_unpack_processes_v2(Bin, {NewSampleAcc, PrevSampleAcc} = Acc) ->
+    <<Name0:12/binary,
+      CpuUtilization:32/native,
+      Pid:64/native,
+      MemSize:64/native,
+      MemResident:64/native,
+      MemShare:64/native,
+      MinorFaults:64/native,
+      MajorFaults:64/native,
+      PageFaults:64/native,
+      Rest/binary>> = Bin,
+
+    Name = extract_string(Name0),
+    case Name of
+        <<>> ->
+            Acc;
+        _ ->
+            NewSample0 =
+                [{proc_stat_name(Name, mem_size), MemSize},
+                 {proc_stat_name(Name, mem_resident), MemResident},
+                 {proc_stat_name(Name, mem_share), MemShare},
+                 {proc_stat_name(Name, cpu_utilization), CpuUtilization},
+                 {proc_stat_name(Name, minor_faults_raw), MinorFaults},
+                 {proc_stat_name(Name, major_faults_raw), MajorFaults},
+                 {proc_stat_name(Name, page_faults_raw), PageFaults}],
+
+            OldPid = proc_stat(Name, pid, PrevSampleAcc),
+            {MinorFaultsDiff, MajorFaultsDiff, PageFaultsDiff} =
+                case OldPid =:= Pid of
+                    true ->
+                        OldMinorFaults = proc_stat(Name, minor_faults, PrevSampleAcc),
+                        OldMajorFaults = proc_stat(Name, major_faults, PrevSampleAcc),
+                        OldPageFaults = proc_stat(Name, page_faults, PrevSampleAcc),
+
+                        true = (OldMinorFaults =/= undefined),
+                        true = (OldMajorFaults =/= undefined),
+                        true = (OldPageFaults =/= undefined),
+
+                        {MinorFaults - OldMinorFaults,
+                         MajorFaults - OldMajorFaults,
+                         PageFaults - OldPageFaults};
+                    false ->
+                        {MinorFaults, MajorFaults, PageFaults}
+                end,
+
+            NewSample1 =
+                [{proc_stat_name(Name, major_faults), MajorFaultsDiff},
+                 {proc_stat_name(Name, minor_faults), MinorFaultsDiff},
+                 {proc_stat_name(Name, page_faults), PageFaultsDiff} |
+                 NewSample0],
+
+            PrevSample1 = misc:update_proplist(PrevSampleAcc,
+                                               [{proc_stat_name(Name, pid), Pid},
+                                                {proc_stat_name(Name, major_faults), MajorFaults},
+                                                {proc_stat_name(Name, minor_faults), MinorFaults},
+                                                {proc_stat_name(Name, page_faults), PageFaults}]),
+
+            Acc1 = {NewSample1 ++ NewSampleAcc, PrevSample1},
+            do_unpack_processes_v2(Rest, Acc1)
+    end.
+
+extract_string(Bin) ->
+    do_extract_string(Bin, size(Bin) - 1).
+
+do_extract_string(_Bin, 0) ->
+    <<>>;
+do_extract_string(Bin, Pos) ->
+    case binary:at(Bin, Pos) of
+        0 ->
+            do_extract_string(Bin, Pos - 1);
+        _ ->
+            binary:part(Bin, 0, Pos + 1)
+    end.
+
+beam_stat(Stat, Sample, Default) ->
+    case proc_stat(<<"beam.smp">>, Stat, Sample) of
+        undefined ->
+            case proc_stat(<<"erl">>, Stat, Sample) of
+                undefined ->
+                    proc_stat(<<"beam">>, Stat, Sample, Default);
+                V ->
+                    V
+            end;
+        V ->
+            V
+    end.
+
+proc_stat(Name, Stat, Sample) ->
+    proc_stat(Name, Stat, Sample, undefined).
+
+proc_stat(Name, Stat, Sample, Default) ->
+    case lists:keyfind(proc_stat_name(Name, Stat), 1, Sample) of
+        {_, V} ->
+            V;
+        _ ->
+            Default
+    end.
+
+proc_stat_name(Name, Stat) ->
+    <<"proc/", Name/binary, $/, (atom_to_binary(Stat, latin1))/binary>>.
 
 handle_info({tick, TS}, #state{port = Port, prev_sample = PrevSample}) ->
     case flush_ticks(0) of
