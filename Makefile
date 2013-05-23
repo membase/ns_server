@@ -79,18 +79,9 @@ REST_PREFIX := $(DESTDIR)$(PREFIX)
 NS_SERVER := $(DESTDIR)$(PREFIX)/ns_server
 
 install: all ebucketmigrator $(TMP_VER) fail-unless-configured
-	$(MAKE) do-install "NS_SERVER_VER=$(strip $(shell cat $(TMP_VER)))" "PREFIX=$(strip $(shell . `pwd`/.configuration && echo $$prefix))"
+	$(MAKE) do-install "PREFIX=$(strip $(shell . `pwd`/.configuration && echo $$prefix))"
 
 NS_SERVER_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ns_server
-
-ifdef NS_SERVER_VER
-NS_SERVER_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ns_server-$(NS_SERVER_VER)
-
-ifeq (,$(DESTDIR)$(PREFIX))
-$(error "need PREFIX defined")
-endif
-
-endif
 
 PREFIX_FOR_CONFIG ?= $(PREFIX)
 
