@@ -265,7 +265,7 @@ GET /pools/default/tasks =>
     },
     ({
         "type": "xdcr",
-        "cancelURI": "/controller/cancelXCDR/14c408ed8df50823715f47b900bd1b4f%2Fdefault%2Fother", // POST here in order to stop
+        "cancelURI": "/controller/cancelXDCR/14c408ed8df50823715f47b900bd1b4f%2Fdefault%2Fother", // POST here in order to stop
         "status": ("running" | "notRunning"), // notRunning if we don't see any stats about this replication doc yet
         "id": "14c408ed8df50823715f47b900bd1b4f/default/other",
         "source": "default", // source bucket
@@ -343,7 +343,7 @@ POST /controller/createReplication
 fromBucket=<local-bucket-name>&toBucket=<remote-bucket-name>&replicationType=continuous&toCluster=<remote cluster name>
 
 // empty post here deletes xdcr replication
-POST /controller/cancelXCDR/<:string>
+POST /controller/cancelXDCR/<:string>
 
 POST /internalSettings
 <setting-name>=<setting-value>(&<setting-name>=<setting-value>)*
