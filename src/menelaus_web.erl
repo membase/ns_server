@@ -317,6 +317,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["pools", PoolId] ->
                              {auth, fun handle_pool_settings/2,
                               [PoolId]};
+                         ["controller", "cancelXDCR", XID] ->
+                             {auth, fun handle_cancel_xdcr/2, [XID]};
                          ["controller", "cancelXCDR", XID] ->
                              {auth, fun handle_cancel_xdcr/2, [XID]};
                          ["controller", "setupDefaultBucket"] ->
@@ -412,6 +414,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["pools", "default", "remoteClusters", Id] ->
                              {auth, fun menelaus_web_remote_clusters:handle_remote_cluster_delete/2, [Id]};
                          ["controller", "cancelXCDR", XID] ->
+                             {auth, fun handle_cancel_xdcr/2, [XID]};
+                         ["controller", "cancelXDCR", XID] ->
                              {auth, fun handle_cancel_xdcr/2, [XID]};
                          ["nodes", Node, "resources", LocationPath] ->
                              {auth, fun handle_resource_delete/3, [Node, LocationPath]};

@@ -521,7 +521,7 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
                              _ ->
                                  [{status, notRunning}, {type, xdcr} | Doc1]
                          end,
-                     CancelURI = menelaus_util:bin_concat_path(["controller", "cancelXCDR", Id]),
+                     CancelURI = menelaus_util:bin_concat_path(["controller", "cancelXDCR", Id]),
                      [{cancelURI, CancelURI} | Doc2]
                  end || Doc0 <- AllRepDocs],
 
