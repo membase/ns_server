@@ -450,6 +450,9 @@ def main():
     from optparse import OptionParser
 
     mydir = os.path.dirname(sys.argv[0])
+    #(MB-8239)erl script fails in OSX as it is unable to find COUCHBASE_TOP -ravi 
+    if platform.system() == 'Darwin':
+        os.environ["COUCHBASE_TOP"] = os.path.abspath(os.path.join(mydir, ".."))
 
     parser = OptionParser(usage=USAGE)
     parser.add_option("-r", dest="root",

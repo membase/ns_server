@@ -55,6 +55,8 @@ Between versions 2.0.1 and 2.0.2
   There's new set of log files for log messages from babysitter
   VM. cbcollect_info will save them as ns_server.babysitter.log.
 
+  See also doc/some-babysitting-details.txt in source tree.
+
 * (MB-7574) Support for REST call /pools/default/stats is discontinued.
 
   This REST call was meant to aggregate stats for several buckets. And
