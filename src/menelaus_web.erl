@@ -2497,6 +2497,7 @@ build_internal_settings_kvs() ->
                {rebalance_index_waiting_disabled, rebalanceIndexWaitingDisabled, false},
                {index_pausing_disabled, rebalanceIndexPausingDisabled, false},
                {rebalance_ignore_view_compactions, rebalanceIgnoreViewCompactions, false},
+               {db_compactor_evict_bodies, dbCompactorEvictBodies, false},
                {rebalance_moves_per_node, rebalanceMovesPerNode, 1},
                {rebalance_moves_before_compaction, rebalanceMovesBeforeCompaction, 64},
                {{couchdb, max_parallel_indexers}, maxParallelIndexers, <<>>},
@@ -2547,6 +2548,10 @@ handle_internal_settings_post(Req) ->
                case parse_validate_boolean_field("rebalanceIgnoreViewCompactions", [], Params) of
                    [] -> undefined;
                    [{ok, _, V}] -> MaybeSet(rebalanceIgnoreViewCompactions, rebalance_ignore_view_compactions, V)
+               end,
+               case parse_validate_boolean_field("dbCompactorEvictBodies", [], Params) of
+                   [] -> undefined;
+                   [{ok, _, V}] -> MaybeSet(dbCompactorEvictBodies, db_compactor_evict_bodies, V)
                end,
                case proplists:get_value("rebalanceMovesPerNode", Params) of
                    undefined -> undefined;
