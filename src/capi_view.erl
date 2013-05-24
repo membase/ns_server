@@ -35,11 +35,15 @@
 -define(RETRY_INTERVAL, 5 * 1000).
 -define(RETRY_ATTEMPTS, 20).
 
-design_doc_view(Req, #db{name=BucketName} = Db, DesignName, ViewName, VBuckets) ->
+subset_design_doc_view(Req, #db{name=BucketName} = Db, DesignName, ViewName,
+                       [VBucket]) ->
     DDocId = <<"_design/", DesignName/binary>>,
-    Specs = build_local_simple_specs(BucketName, DDocId, ViewName, VBuckets),
+    [Spec] = build_local_set_specs(BucketName, DDocId, ViewName, [VBucket]),
+    Specs = [Spec#set_view_spec{category = dev}],
     MergeParams = finalize_view_merge_params(Req, Db, DDocId, ViewName, Specs),
+    set_active_partition(DDocId, BucketName, VBucket),
     couch_index_merger:query_index(couch_view_merger, MergeParams, Req).
+
 
 full_design_doc_view(Req, Db, DesignName, ViewName, VBucketsDict) ->
     DDocId = <<"_design/", DesignName/binary>>,
@@ -120,7 +124,7 @@ do_handle_view_req(Req, #db{name=DbName} = Db, DDocName, ViewName) ->
                 full_set ->
                     full_design_doc_view(Req, Db, DDocName, ViewName, VBucketsDict);
                 VBucket ->
-                    design_doc_view(Req, Db, DDocName, ViewName, [VBucket])
+                    subset_design_doc_view(Req, Db, DDocName, ViewName, [VBucket])
             end
     end.
 
@@ -292,3 +296,15 @@ build_remote_simple_specs(Node, BucketName, FullViewName, VBuckets) ->
                {[{vbucket_db_name(BucketName, VBId), FullViewName} || VBId <- VBuckets]}}
              ]},
     #merged_index_spec{url = MergeURL, ejson_spec = Props}.
+
+
+-spec set_active_partition(binary(), binary(), non_neg_integer()) -> ok.
+set_active_partition(DDocId, BucketName, VBucket) ->
+    try
+        couch_set_view_dev:set_active_partition(
+            mapreduce_view, BucketName, DDocId, VBucket)
+    catch
+        throw:{error, view_undefined} ->
+            couch_set_view_dev:define_group(
+                mapreduce_view, BucketName, DDocId, VBucket)
+    end.
