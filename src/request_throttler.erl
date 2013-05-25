@@ -52,7 +52,7 @@ do_request(Type, Body, ThrottlerPid) ->
 note_request(Type) ->
     case memory_usage() < memory_limit() of
         true ->
-            gen_server:call(?MODULE, {note_request, self(), Type});
+            gen_server:call(?MODULE, {note_request, self(), Type}, infinity);
         false ->
             {reject, memory_limit_exceeded}
     end.
