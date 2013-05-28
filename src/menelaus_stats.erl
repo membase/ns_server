@@ -225,31 +225,31 @@ build_raw_stat_extractor(StatBinary) ->
 
 build_stat_extractor(BucketName, StatName) ->
     ExtraStats = computed_stats_lazy_proplist(BucketName),
-
-    Stat = try
-               {ok, list_to_existing_atom(StatName)}
-           catch
-               error:badarg ->
-                   error
-           end,
     StatBinary = list_to_binary(StatName),
 
-    case Stat of
-        {ok, StatAtom} ->
-            case lists:keyfind(StatAtom, 1, ExtraStats) of
-                {_K, {F, Meta}} ->
-                    fun (#stat_entry{timestamp = TS, values = VS}) ->
-                            Args = [dict_safe_fetch(Name, VS, undefined) || Name <- Meta],
-                            case lists:member(undefined, Args) of
-                                true -> {TS, undefined};
-                                _ -> {TS, erlang:apply(F, Args)}
-                            end
-                    end;
-                false ->
-                    build_simple_stat_extractor(StatAtom, StatBinary)
+    case lists:keyfind(StatBinary, 1, ExtraStats) of
+        {_K, {F, Meta}} ->
+            fun (#stat_entry{timestamp = TS, values = VS}) ->
+                    Args = [dict_safe_fetch(Name, VS, undefined) || Name <- Meta],
+                    case lists:member(undefined, Args) of
+                        true -> {TS, undefined};
+                        _ -> {TS, erlang:apply(F, Args)}
+                    end
             end;
-        error ->
-            build_raw_stat_extractor(StatBinary)
+        false ->
+            Stat = try
+                       {ok, list_to_existing_atom(StatName)}
+                   catch
+                       error:badarg ->
+                           error
+                   end,
+
+            case Stat of
+                {ok, StatAtom} ->
+                    build_simple_stat_extractor(StatAtom, StatBinary);
+                error ->
+                    build_raw_stat_extractor(StatBinary)
+            end
     end.
 
 dict_safe_fetch(K, Dict, Default) ->
@@ -593,22 +593,22 @@ computed_stats_lazy_proplist(BucketName) ->
                       end,
                       Reps),
 
-    [{couch_total_disk_size, TotalDisk},
-     {couch_docs_fragmentation, DocsFragmentation},
-     {couch_views_fragmentation, ViewsFragmentation},
-     {hit_ratio, HitRatio},
-     {ep_cache_miss_rate, EPCacheMissRatio},
-     {ep_resident_items_rate, ResidentItemsRatio},
-     {vb_avg_active_queue_age, AvgActiveQueueAge},
-     {vb_avg_replica_queue_age, AvgReplicaQueueAge},
-     {vb_avg_pending_queue_age, AvgPendingQueueAge},
-     {vb_avg_total_queue_age, AvgTotalQueueAge},
-     {vb_active_resident_items_ratio, ActiveResRate},
-     {vb_replica_resident_items_ratio, ReplicaResRate},
-     {vb_pending_resident_items_ratio, PendingResRate},
-     {avg_disk_update_time, AverageDiskUpdateTime},
-     {avg_disk_commit_time, AverageCommitTime},
-     {avg_bg_wait_time, AverageBgWait}] ++ XDCAllRepStats.
+    [{<<"couch_total_disk_size">>, TotalDisk},
+     {<<"couch_docs_fragmentation">>, DocsFragmentation},
+     {<<"couch_views_fragmentation">>, ViewsFragmentation},
+     {<<"hit_ratio">>, HitRatio},
+     {<<"ep_cache_miss_rate">>, EPCacheMissRatio},
+     {<<"ep_resident_items_rate">>, ResidentItemsRatio},
+     {<<"vb_avg_active_queue_age">>, AvgActiveQueueAge},
+     {<<"vb_avg_replica_queue_age">>, AvgReplicaQueueAge},
+     {<<"vb_avg_pending_queue_age">>, AvgPendingQueueAge},
+     {<<"vb_avg_total_queue_age">>, AvgTotalQueueAge},
+     {<<"vb_active_resident_items_ratio">>, ActiveResRate},
+     {<<"vb_replica_resident_items_ratio">>, ReplicaResRate},
+     {<<"vb_pending_resident_items_ratio">>, PendingResRate},
+     {<<"avg_disk_update_time">>, AverageDiskUpdateTime},
+     {<<"avg_disk_commit_time">>, AverageCommitTime},
+     {<<"avg_bg_wait_time">>, AverageBgWait}] ++ XDCAllRepStats.
 
 %% converts list of samples to proplist of stat values.
 %%
