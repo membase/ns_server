@@ -356,6 +356,17 @@ _.extend(ViewHelpers, {
     }
     return [String(count), ' ', text].join('');
   },
+  ellipsisiseOnLeft: function (text, length) {
+    if (length <= 3) {
+      // asking for stupidly short length will cause this to do
+      // nothing
+      return text;
+    }
+    if (text.length > length) {
+      return "..." + text.slice(3-length);
+    }
+    return text;
+  },
   renderHealthClass: function (status) {
     if (status == "healthy") {
       return "up";
