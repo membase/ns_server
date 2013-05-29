@@ -230,7 +230,7 @@ def make_os_tasks():
         WindowsTask("Network configuration", "ipconfig /all", interval=10,
                     num_samples=1),
         UnixTask("Network status", "netstat -an"),
-        WindowsTask("Network status", "netstat -an"),
+        WindowsTask("Network status", "netstat -ano"),
         AllOsTask("Network routing table", "netstat -rn"),
         UnixTask("Arp cache", "arp -na"),
         WindowsTask("Arp cache", "arp -a"),
