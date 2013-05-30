@@ -814,7 +814,7 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
     Candidates = case BucketType of
                      memcached ->
                          [{ok, bucketType, memcached}
-                          | Candidates3];
+                          | Candidates1];
                      membase ->
                          [{ok, bucketType, membase},
                           case IsNew of
