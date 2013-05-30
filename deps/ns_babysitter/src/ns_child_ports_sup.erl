@@ -98,7 +98,7 @@ create_ns_server_supervisor_spec() ->
 create_child_spec({Name, Cmd, Args, Opts}) ->
     {{Name, Cmd, Args, Opts},
      {supervisor_cushion, start_link,
-      [Name, 5000, 1000000, ns_port_server, start_link, [Name, Cmd, Args, Opts]]},
+      [Name, 5000, infinity, ns_port_server, start_link, [Name, Cmd, Args, Opts]]},
      permanent, 86400000, worker,
      [ns_port_server]}.
 
