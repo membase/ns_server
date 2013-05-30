@@ -577,7 +577,6 @@ var SetupWizard = {
           dialog.find('.ram-max-size').text(ramMaxMegs);
 
           var firstResource = data.storage.hdd[0];
-          var diskTotalGigs = Math.floor((storageTotals.hdd.total - storageTotals.hdd.used) / Math.Gi);
 
           var dbPath;
           var dbTotal;
@@ -591,25 +590,33 @@ var SetupWizard = {
           dbTotal = dialog.find('.total-db-size');
           ixTotal = dialog.find('.total-index-size');
 
-          function updateTotal(node, total) {
-            node.text(escapeHTML(total) + ' GB');
-          }
-
-          dbPath.val(escapeHTML(firstResource.path));
-          ixPath.val(escapeHTML(firstResource.path));
-
-          updateTotal(dbTotal, diskTotalGigs);
-          updateTotal(ixTotal, diskTotalGigs);
+          dbPath.val(firstResource.path);
+          ixPath.val(firstResource.index_path);
 
           var hddResources = data.availableStorage.hdd;
           var mountPoints = new MountPoints(data, _.pluck(hddResources, 'path'));
 
-          var prevPathValues = [];
+          var prevPathValues = {};
+
+          maybeUpdateTotal(dbPath, dbTotal);
+          maybeUpdateTotal(ixPath, ixTotal);
+
+          resourcesObserver = dialog.observePotentialChanges(
+            function () {
+              maybeUpdateTotal(dbPath, dbTotal);
+              maybeUpdateTotal(ixPath, ixTotal);
+            });
+
+          return;
+
+          function updateTotal(node, total) {
+            node.text(escapeHTML(total) + ' GB');
+          }
 
           function maybeUpdateTotal(pathNode, totalNode) {
             var pathValue = pathNode.val();
 
-            if (pathValue == prevPathValues[pathNode]) {
+            if (pathValue == prevPathValues[pathNode.selector]) {
               return;
             }
 
@@ -631,12 +638,6 @@ var SetupWizard = {
                          (100 - pathResource.usagePercent) / 100 / Math.Mi);
             updateTotal(totalNode, totalGigs);
           }
-
-          resourcesObserver = dialog.observePotentialChanges(
-            function () {
-              maybeUpdateTotal(dbPath, dbTotal);
-              maybeUpdateTotal(ixPath, ixTotal);
-            });
         }
       }
 
