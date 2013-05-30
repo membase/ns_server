@@ -1757,6 +1757,14 @@
       <label style="padding-left: 20px;"><input type="checkbox" name="replicaIndex" value="1" style="margin-right:5px;"/>Index replicas</label>
     </fieldset> <!-- .persistent-only -->
 
+    <fieldset class="persistent-only disk_concurrency_settings">
+      <legend>Disk Read-Write Concurrency</legend>
+
+      <label class="for-threads-number">
+        <span>Provision number of reader/writer workers:</span><input name="threadsNumber" class="focusme" size="1" maxlength="1"/><span style="margin-left: 0.5em;">(Min = 2, Max = 8)</span><br><i class="error-container err-threadsNumber"></i>
+      </label>
+    </fieldset> <!-- .persistent-only -->
+
     <fieldset class="auto_compaction persistent-only">
       <legend>Auto-Compaction</legend>
       <p>The Auto-Compaction daemon compacts databases and their respective
@@ -1885,6 +1893,20 @@
     </div>
     <div class="save_cancel clearfix">
       <button onClick="BucketsSection.flushCurrentBucket();" type="button" class="flush_button float_right">Flush</button>
+      <a class="close">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<div class="dialog" id="threads_number_change_dialog" title="Warning">
+  <form>
+    <div class="clearfix">
+      <div class="err">
+        <p>Changing number of reader/writer workers will recreate a bucket. <br/>Are you sure that you want to continue?</p>
+      </div>
+    </div>
+    <div class="save_cancel clearfix">
+      <button type="button" class="save_button float_right">Continue</button>
       <a class="close">Cancel</a>
     </div>
   </form>
@@ -2541,6 +2563,14 @@
         </label>
         <input type="hidden" name="replicaIndex" value="0"/>
         <label style="padding-left: 20px; clear:both;"><input type="checkbox" name="replicaIndex" value="1" style="margin-right:5px;"/>Index replicas</label>
+      </div><!-- .persistent-only -->
+
+      <div class="persistent-only disk_concurrency_settings">
+        <h2>Disk Read-Write Concurrency</h2>
+
+        <label class="for-threads-number">
+          <span>Provision number of reader/writer workers:</span><input name="threadsNumber" class="focusme" size="1" maxlength="1"/><span style="margin-left: 0.5em;">(Min = 2, Max = 8)</span><br><i class="error-container err-threadsNumber"></i>
+        </label>
       </div><!-- .persistent-only -->
 
       <h2>Flush</h2>

@@ -700,21 +700,24 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
     Deleting = NoBucket orelse NodeDying,
 
     if
-        Reason == normal; Reason == shutdown ->
+        Reason == normal; Reason == shutdown; Reason =:= {shutdown, reconfig} ->
+            Reconfig = (Reason =:= {shutdown, reconfig}),
+
             ?user_log(2, "Shutting down bucket ~p on ~p for ~s",
-                      [Bucket, node(), case Deleting of
-                                           true -> "deletion";
-                                           false -> "server shutdown"
+                      [Bucket, node(), if
+                                           Reconfig -> "reconfiguration";
+                                           Deleting -> "deletion";
+                                           true -> "server shutdown"
                                        end]),
             try
-                case Deleting of
+                case Deleting orelse Reconfig of
                     false ->
                         %% if this is system shutdown bucket engine
                         %% now can reliably delete all buckets as part of shutdown.
                         %% if this is supervisor crash, we're fine too
-                        ?log_info("This bucket shutdown is not due to bucket deletion. Doing nothing");
+                        ?log_info("This bucket shutdown is not due to bucket deletion or reconfiguration. Doing nothing");
                     true ->
-                        ok = mc_client_binary:delete_bucket(Sock, Bucket, [{force, true}])
+                        ok = mc_client_binary:delete_bucket(Sock, Bucket, [{force, not(Reconfig)}])
                 end
             catch E2:R2 ->
                     ?log_error("Failed to delete bucket ~p: ~p",
@@ -1180,35 +1183,49 @@ ensure_bucket(Sock, Bucket) ->
 -spec ensure_bucket_config(port(), bucket_name(), bucket_type(),
                            {pos_integer(), nonempty_string()}) ->
                                   ok | no_return().
-ensure_bucket_config(Sock, Bucket, membase, {MaxSize, DBDir}) ->
+ensure_bucket_config(Sock, Bucket, membase, {MaxSize, DBDir, NumThreads}) ->
     MaxSizeBin = list_to_binary(integer_to_list(MaxSize)),
     DBDirBin = list_to_binary(DBDir),
+    NumThreadsBin = list_to_binary(integer_to_list(NumThreads)),
     {ok, {ActualMaxSizeBin,
-          ActualDBDirBin}} = mc_binary:quick_stats(
-                               Sock, <<>>,
-                               fun (<<"ep_max_data_size">>, V, {_, Path}) ->
-                                       {V, Path};
-                                   (<<"ep_dbname">>, V, {S, _}) ->
-                                       {S, V};
-                                   (_, _, CD) ->
-                                       CD
-                               end, {missing_max_size, missing_path}),
-    case ActualMaxSizeBin of
-        MaxSizeBin ->
-            ok;
-        X1 when is_binary(X1) ->
-            ?log_info("Changing max_size of ~p from ~s to ~s", [Bucket, X1,
-                                                                MaxSizeBin]),
-            ok = mc_client_binary:set_flush_param(Sock, <<"max_size">>, MaxSizeBin)
-    end,
-    case ActualDBDirBin of
-        DBDirBin ->
-            ok;
-        X2 when is_binary(X2) ->
-            ?log_info("Changing dbname of ~p from ~s to ~s", [Bucket, X2,
-                                                              DBDirBin]),
-            %% Just exit; this will delete and recreate the bucket
-            exit(normal)
+          ActualDBDirBin,
+          ActualNumThreads}} = mc_binary:quick_stats(
+                                 Sock, <<>>,
+                                 fun (<<"ep_max_data_size">>, V, {_, Path, T}) ->
+                                         {V, Path, T};
+                                     (<<"ep_dbname">>, V, {S, _, T}) ->
+                                         {S, V, T};
+                                     (<<"ep_max_num_shards">>, V, {S, Path, _}) ->
+                                         {S, Path, V};
+                                     (_, _, CD) ->
+                                         CD
+                                 end, {missing_max_size, missing_path, missing_num_threads}),
+
+    NeedRestart = (NumThreadsBin =/= ActualNumThreads),
+    case NeedRestart of
+        true ->
+            ale:info(?USER_LOGGER, "Bucket ~p needs to be recreated since "
+                     "number of readers/writers changed from ~s to ~s",
+                     [Bucket, ActualNumThreads, NumThreadsBin]),
+            exit({shutdown, reconfig});
+        false ->
+            case ActualMaxSizeBin of
+                MaxSizeBin ->
+                    ok;
+                X1 when is_binary(X1) ->
+                    ?log_info("Changing max_size of ~p from ~s to ~s", [Bucket, X1,
+                                                                        MaxSizeBin]),
+                    ok = mc_client_binary:set_flush_param(Sock, <<"max_size">>, MaxSizeBin)
+            end,
+            case ActualDBDirBin of
+                DBDirBin ->
+                    ok;
+                X2 when is_binary(X2) ->
+                    ?log_info("Changing dbname of ~p from ~s to ~s", [Bucket, X2,
+                                                                      DBDirBin]),
+                    %% Just exit; this will delete and recreate the bucket
+                    exit(normal)
+            end
     end;
 ensure_bucket_config(Sock, _Bucket, memcached, _MaxSize) ->
     %% TODO: change max size of memcached bucket also
