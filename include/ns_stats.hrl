@@ -141,6 +141,8 @@
         ep_num_ops_del_meta,
         ep_num_ops_get_meta,
         ep_num_ops_set_meta,
+        ep_num_ops_set_ret_meta,
+        ep_num_ops_del_ret_meta,
 
         %% this is memcached protocol hits & misses for get requests
         get_hits,
