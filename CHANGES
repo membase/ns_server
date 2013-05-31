@@ -485,7 +485,7 @@ Between versions 1.8.0 and 1.8.1
   after being failed over.
 
 * couchbase server now performs rebalance more safely. It builds new
-  replicas before switching to them. It's not completely safe to stop
+  replicas before switching to them. It's now completely safe to stop
   rebalance at any point without risking data loss
 
 * due to safer rebalance we're now deleting old vbuckets as soon as
