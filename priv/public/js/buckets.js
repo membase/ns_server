@@ -364,6 +364,21 @@ var BucketDetailsDialog = mkClass({
     };
   },
 
+  startSubmit: function () {
+    if (!this.isNew &&
+        (this.dialog.find('[name=threadsNumber]').val() !=
+         this.initValues.threadsNumber)) {
+      var self = this;
+      showDialogHijackingSave(
+        'threads_number_change_dialog', ".save_button",
+        function () {
+          self.submit();
+        });
+    } else {
+      this.submit();
+    }
+  },
+
   submit: function () {
     var self = this,
         closeCleanup = self.bindWithCleanup(self.dialog.find('.close'),
@@ -445,7 +460,7 @@ var BucketDetailsDialog = mkClass({
 
     self.cleanups.push(self.bindWithCleanup(form, 'submit', function (e) {
       e.preventDefault();
-      self.submit();
+      self.startSubmit();
     }));
   },
   startDialog: function () {
@@ -540,7 +555,7 @@ var BucketDetailsDialog = mkClass({
         ramGauge = self.dialog.find(".size-gauge.for-ram"),
         memcachedSummaryJQ = self.dialog.find('.memcached-summary'),
         memcachedSummaryVisible = ramSummary && ramSummary.perNodeMegs,
-        knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold[percentage] viewFragmentationThreshold[percentage] databaseFragmentationThreshold[size] viewFragmentationThreshold[size] allowedTimePeriod').split(' '),
+        knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold[percentage] viewFragmentationThreshold[percentage] databaseFragmentationThreshold[size] viewFragmentationThreshold[size] allowedTimePeriod threadsNumber').split(' '),
         errors = result.errors || {};
 
     _.each(('to from').split(' '), function (p1) {
@@ -931,7 +946,8 @@ var BucketsSection = {
                           authType: 'sasl',
                           quota: {rawRAM: Math.floor((totals.ram.quotaTotal - totals.ram.quotaUsed) / poolDetails.nodes.length)},
                           replicaIndex: false,
-                          replicaNumber: 1},
+                          replicaNumber: 1,
+                          threadsNumber: 2},
 
         dialog = new BucketDetailsDialog(initValues, true);
 

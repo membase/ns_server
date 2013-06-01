@@ -171,5 +171,5 @@ create_sample_bucket(Name) ->
                                         {replica_index, true},
                                         {auth_type, sasl},
                                         {sasl_password, []},
-                                        {ram_quota, 100 * 1024 * 1024}]).
-
+                                        {ram_quota, 100 * 1024 * 1024},
+                                        {num_threads, 2}]).

@@ -1280,3 +1280,13 @@ input[type=number].size {width:4em;}
 .list .list_errors span {display:block;overflow:hidden;}
 
 #view_details .results_block .list {table-layout:fixed;}
+
+.disk_concurrency_settings {line-height: 24px; white-space: nowrap;}
+.disk_concurrency_settings .for-threads-number span,
+.disk_concurrency_settings .for-threads-number label {float:none; display: -moz-inline-stack; display: inline-block; zoom: 1; *display: inline;}
+.disk_concurrency_settings .for-threads-number {min-height: 25px;}
+.disk_concurrency_settings .for-threads-number input {width: 16px;}
+.disk_concurrency_settings .for-threads-number {padding-left:20px;}
+.dialog.bucket_details .disk_concurrency_settings p {margin-left: 10px;}
+.disk_concurrency_settings .error-container {float:none; font-size: 9px; display: none; width: auto; padding: 0; font-style: normal;}
+.disk_concurrency_settings .error-container.active {display: -moz-inline-stack; display: inline-block; zoom: 1; *display: inline;}

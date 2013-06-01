@@ -191,6 +191,7 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
                  stable -> BucketCaps;
                  normal ->
                      [{replicaNumber, ns_bucket:num_replicas(BucketConfig)},
+                      {threadsNumber, proplists:get_value(num_threads, BucketConfig, 2)},
                       {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
                                         {rawRAM, ns_bucket:raw_ram_quota(BucketConfig)}]}},
                       {basicStats, {struct, menelaus_stats:basic_stats(Id)}}
@@ -364,7 +365,7 @@ extract_bucket_props(BucketId, Props) ->
     ImportantProps = [X || X <- [lists:keyfind(Y, 1, Props) || Y <- [num_replicas, replica_index, ram_quota, auth_type,
                                                                      sasl_password, moxi_port,
                                                                      autocompaction, fast_warmup,
-                                                                     flush_enabled]],
+                                                                     flush_enabled, num_threads]],
                            X =/= false],
     case BucketId of
         "default" -> lists:keyreplace(auth_type, 1,
@@ -814,7 +815,7 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
     Candidates = case BucketType of
                      memcached ->
                          [{ok, bucketType, memcached}
-                          | Candidates3];
+                          | Candidates1];
                      membase ->
                          [{ok, bucketType, membase},
                           case IsNew of
@@ -826,7 +827,8 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                                   parse_validate_replica_index(proplists:get_value("replicaIndex", Params, "1"));
                               false ->
                                   undefined
-                          end
+                          end,
+                          parse_validate_threads_number(proplists:get_value("threadsNumber", Params))
                           | Candidates3];
                      _ ->
                          [{error, bucketType, <<"invalid bucket type">>}
@@ -915,6 +917,23 @@ parse_validate_replica_index(_ReplicaValue) -> {error, replicaIndex, <<"replicaI
 parse_validate_flush_enabled("0") -> {ok, flush_enabled, false};
 parse_validate_flush_enabled("1") -> {ok, flush_enabled, true};
 parse_validate_flush_enabled(_ReplicaValue) -> {error, flushEnabled, <<"flushEnabled can only be 1 or 0">>}.
+
+parse_validate_threads_number(undefined) ->
+    {ok, num_threads, 2};
+parse_validate_threads_number(NumThreads) ->
+    case menelaus_util:parse_validate_number(NumThreads, 2, 8) of
+        invalid ->
+            {error, threadsNumber,
+             <<"The number of threads must be an integer between 2 and 8">>};
+        too_small ->
+            {error, threadsNumber,
+             <<"The number of threads can't be less than 2">>};
+        too_large ->
+            {error, threadsNumber,
+             <<"The number of threads can't be greater than 8">>};
+        {ok, X} ->
+            {ok, num_threads, X}
+    end.
 
 parse_validate_ram_quota(undefined, BucketConfig) when BucketConfig =/= false ->
     ns_bucket:raw_ram_quota(BucketConfig);
