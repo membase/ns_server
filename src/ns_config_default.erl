@@ -267,8 +267,7 @@ default() ->
      %% everything is unlimited by default
      {{request_limit, rest}, undefined},
      {{request_limit, capi}, undefined},
-     {drop_request_memory_threshold_mib, undefined},
-     {db_compactor_evict_bodies, undefined}
+     {drop_request_memory_threshold_mib, undefined}
     ].
 
 %% Recursively replace all strings in a hierarchy that start
