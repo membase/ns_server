@@ -729,12 +729,6 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
                           [dropdeletes];
                       _ ->
                           []
-                  end ++
-                  case ns_config_ets_dup:unreliable_read_key(db_compactor_evict_bodies, undefined) of
-                      true ->
-                          [evict_bodies];
-                      _ ->
-                          []
                   end,
 
               Compactors =
