@@ -641,9 +641,9 @@ handle_engage_cluster2(Req) ->
             %% to send back engage_cluster reply with
             %% clusterCompatibility of cluster compat mode. Otherwise
             %% cluster would refuse this node as it runs in higher
-            %% compat mode. That could much much higher future compat
-            %% mode. So only joinee knows if it can work in backwards
-            %% compatible mode or not. Thus sending back of
+            %% compat mode. That could be much much higher future
+            %% compat mode. So only joinee knows if it can work in
+            %% backwards compatible mode or not. Thus sending back of
             %% 'corrected' clusterCompatibility in engage_cluster
             %% response is our only option.
             %%
@@ -663,8 +663,19 @@ handle_engage_cluster2(Req) ->
             %% cluster's compatibility (there's no need), lying about
             %% our cluster compat mode would not allow cluster to
             %% check we're compatible with it.
-            LocalAddr = menelaus_util:local_addr(Req),
-            {struct, Result} = build_full_node_info(node(), LocalAddr),
+            %%
+            %% 127.0.0.1 below is a bit subtle. See MB-8404. In
+            %% CBSE-385 we saw how mis-configured node that was forced
+            %% into 127.0.0.1 address was successfully added to
+            %% cluster. And my thinking is "rename node in
+            %% node-details output if node is 127.0.0.1" behavior
+            %% that's needed for correct client's operation is to
+            %% blame here. But given engage cluster is strictly
+            %% intra-cluster thing we can return 127.0.0.1 back as
+            %% 127.0.0.1 and thus join attempt in CBSE-385 would be
+            %% prevented at completeJoin step which would be sent to
+            %% 127.0.0.1 (joiner) and bounced.
+            {struct, Result} = build_full_node_info(node(), "127.0.0.1"),
             {_, _} = CompatTuple = lists:keyfind(<<"clusterCompatibility">>, 1, NodeKVList),
             Result2 = case CompatTuple of
                           {_, 1} ->

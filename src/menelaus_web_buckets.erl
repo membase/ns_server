@@ -921,13 +921,13 @@ parse_validate_flush_enabled(_ReplicaValue) -> {error, flushEnabled, <<"flushEna
 parse_validate_threads_number(undefined) ->
     {ok, num_threads, 2};
 parse_validate_threads_number(NumThreads) ->
-    case menelaus_util:parse_validate_number(NumThreads, 2, 8) of
+    case menelaus_util:parse_validate_number(NumThreads, 1, 8) of
         invalid ->
             {error, threadsNumber,
-             <<"The number of threads must be an integer between 2 and 8">>};
+             <<"The number of threads must be an integer between 1 and 8">>};
         too_small ->
             {error, threadsNumber,
-             <<"The number of threads can't be less than 2">>};
+             <<"The number of threads can't be less than 1">>};
         too_large ->
             {error, threadsNumber,
              <<"The number of threads can't be greater than 8">>};
