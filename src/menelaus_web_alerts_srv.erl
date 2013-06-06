@@ -143,7 +143,7 @@ handle_call({add_alert, Key, Val}, _, #state{queue=Msgs, history=Hist, change_co
             MsgTuple = {Key, Val, misc:now_int()},
             maybe_send_out_email_alert(Key, Val),
             {reply, ok, State#state{history=[MsgTuple | Hist],
-                                    queue=[MsgTuple | Msgs],
+                                    queue=[MsgTuple | lists:keydelete(Key, 1, Msgs)],
                                     change_counter=Counter+1}};
         _ ->
             {reply, ignored, State}
@@ -277,7 +277,7 @@ check(overhead, Opaque, _History, Stats) ->
          {true, X} ->
              {_Sname, Host} = misc:node_name_host(node()),
              Err = fmt_to_bin(errors(overhead), [erlang:trunc(X), Bucket, Host]),
-             global_alert(overhead, Err);
+             global_alert({overhead, Bucket}, Err);
          false  ->
              ok
      end || Bucket <- ns_memcached:active_buckets()],
@@ -330,7 +330,7 @@ check_stat_increased(Stats, StatName, Opaque) ->
                     ok;
                 Buckets ->
                     {_Sname, Host} = misc:node_name_host(node()),
-                    [global_alert(StatName, fmt_to_bin(errors(StatName), [Bucket, Host]))
+                    [global_alert({StatName, Bucket}, fmt_to_bin(errors(StatName), [Bucket, Host]))
                      || Bucket <- Buckets]
             end,
             dict:store(StatName, New, Opaque)
