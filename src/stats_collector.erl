@@ -328,9 +328,11 @@ parse_plain_stats(TS, PlainStats, LastTS, LastPlainCounters) ->
                                                        ep_num_ops_del_ret_meta])},
                        {xdc_ops, sum_stat_values(Values0, [ep_num_ops_del_meta,
                                                            ep_num_ops_get_meta,
-                                                           ep_num_ops_set_meta,
-                                                           ep_num_ops_set_ret_meta,
-                                                           ep_num_ops_del_ret_meta])},
+                                                           ep_num_ops_set_meta])},
+                       {cmd_set, sum_stat_values(Values0, [cmd_set,
+                                                           ep_num_ops_set_ret_meta])},
+                       {delete_hits, sum_stat_values(Values0, [delete_hits,
+                                                               ep_num_ops_del_ret_meta])},
                        {misses, sum_stat_values(Values0, [get_misses, delete_misses,
                                                           incr_misses, decr_misses,
                                                           cas_misses])},
@@ -345,7 +347,9 @@ parse_plain_stats(TS, PlainStats, LastTS, LastPlainCounters) ->
                                                                       vb_replica_queue_age,
                                                                       vb_pending_queue_age])}
                       ],
-    Values = orddict:merge(fun (_K, _V1, _V2) -> erlang:error(cannot_happen) end,
+    Values = orddict:merge(fun (_K, _V1, V2) ->
+                                   V2           % prefer aggregated value
+                           end,
                            Values0,
                            lists:sort(AggregateValues)),
     {Values, Counters}.
