@@ -1195,7 +1195,7 @@ ensure_bucket_config(Sock, Bucket, membase, {MaxSize, DBDir, NumThreads}) ->
                                          {V, Path, T};
                                      (<<"ep_dbname">>, V, {S, _, T}) ->
                                          {S, V, T};
-                                     (<<"ep_max_num_shards">>, V, {S, Path, _}) ->
+                                     (<<"ep_max_num_workers">>, V, {S, Path, _}) ->
                                          {S, Path, V};
                                      (_, _, CD) ->
                                          CD
