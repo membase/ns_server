@@ -99,7 +99,7 @@ config_string(BucketName) ->
                 CouchPort = ns_config:search_node_prop(Config, memcached, mccouch_port, 11213),
                 AccessLog = filename:join(DBSubDir, "access.log"),
                 NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
-                NumThreads = proplists:get_value(num_threads, BucketConfig, 2),
+                NumThreads = proplists:get_value(num_threads, BucketConfig, 3),
                 %% MemQuota is our per-node bucket memory limit
                 CFG =
                     io_lib:format(
