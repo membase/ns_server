@@ -24,6 +24,7 @@
 -export([split_dbname/1]).
 -export([get_master_db/1, get_checkpoint_log_id/2]).
 -export([get_opt_replication_threshold/0]).
+-export([update_options/1]).
 
 -include("xdc_replicator.hrl").
 
@@ -319,3 +320,81 @@ get_opt_replication_threshold() ->
         _ ->
             Threshold
     end.
+
+
+%% get xdc replication options, log them if changed
+-spec update_options(list()) -> list().
+update_options(Options) ->
+    Threshold = get_opt_replication_threshold(),
+    case length(Options) > 0 andalso Threshold =/= get_value(opt_rep_threshold, Options) of
+        true ->
+            ?xdcr_debug("XDC parameter changed, opt_rep_threshold is updated from ~p to ~p",
+                       [get_value(opt_rep_threshold, Options) , Threshold]);
+        _ ->
+            ok
+    end,
+
+    {value, DefaultWorkerBatchSize} = ns_config:search(xdcr_worker_batch_size),
+    DefBatchSize = misc:getenv_int("XDCR_WORKER_BATCH_SIZE", DefaultWorkerBatchSize),
+    case length(Options) > 0 andalso DefBatchSize =/= get_value(worker_batch_size, Options) of
+        true ->
+            ?xdcr_debug("XDC parameter changed, worker_batch_size is updated from ~p to ~p",
+                       [get_value(worker_batch_size, Options) , DefBatchSize]);
+        _ ->
+            ok
+    end,
+
+    {value, DefaultConnTimeout} = ns_config:search(xdcr_connection_timeout),
+    DefTimeoutSecs = misc:getenv_int("XDCR_CONNECTION_TIMEOUT", DefaultConnTimeout),
+    %% convert to ms
+    DefTimeout = 1000*DefTimeoutSecs,
+    case length(Options) > 0 andalso DefTimeout =/= get_value(connection_timeout, Options) of
+        true ->
+            ?xdcr_debug("XDC parameter changed, connection_timeout is updated from ~p to ~p",
+                       [get_value(connection_timeout, Options) , DefTimeout]);
+        _ ->
+            ok
+    end,
+
+    {value, DefaultWorkers} = ns_config:search(xdcr_num_worker_process),
+    DefWorkers = misc:getenv_int("XDCR_NUM_WORKER_PROCESS", DefaultWorkers),
+    case length(Options) > 0 andalso DefWorkers =/= get_value(worker_processes, Options) of
+        true ->
+            ?xdcr_debug("XDC parameter changed, num_worker_process is updated from ~p to ~p",
+                       [get_value(worker_processes, Options) , DefWorkers]);
+        _ ->
+            ok
+    end,
+
+    {value, DefaultConns} = ns_config:search(xdcr_num_http_connections),
+    DefConns = misc:getenv_int("XDCR_NUM_HTTP_CONNECTIONS", DefaultConns),
+    case length(Options) > 0 andalso DefConns =/= get_value(http_connections, Options) of
+        true ->
+            ?xdcr_debug("XDC parameter changed, http_connections is updated from ~p to ~p",
+                       [get_value(http_connections, Options) , DefConns]);
+        _ ->
+            ok
+    end,
+
+
+    {value, DefaultRetries} = ns_config:search(xdcr_num_retries_per_request),
+    DefRetries = misc:getenv_int("XDCR_NUM_RETRIES_PER_REQUEST", DefaultRetries),
+    case length(Options) > 0 andalso DefRetries =/= get_value(retries, Options) of
+        true ->
+            ?xdcr_debug("XDC parameter changed, num_retries_per_request is updated from ~p to ~p",
+                       [get_value(retries, Options) , DefRetries]);
+        _ ->
+            ok
+    end,
+
+    %% update option list
+    lists:ukeymerge(1, lists:keysort(1, [
+                      {connection_timeout, DefTimeout},
+                      {retries, DefRetries},
+                      {http_connections, DefConns},
+                      {worker_batch_size, DefBatchSize},
+                      {worker_processes, DefWorkers},
+                      {opt_rep_threshold, Threshold}]), Options).
+
+
+

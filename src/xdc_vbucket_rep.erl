@@ -514,10 +514,13 @@ start_replication(#rep_state{
                      target_name = TargetName,
                      current_through_seq = StartSeq,
                      last_checkpoint_time = LastCkptTime,
-                     rep_details = #rep{id = Id, options = Options}
+                     rep_details = #rep{id = Id, options = Opt}
                     } = State) ->
 
     WorkStart = now(),
+
+    %% get updated options from parameters
+    Options = xdc_rep_utils:update_options(Opt),
     NumWorkers = get_value(worker_processes, Options),
     BatchSize = get_value(worker_batch_size, Options),
     {ok, Source} = couch_api_wrap:db_open(SourceName, []),
