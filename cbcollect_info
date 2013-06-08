@@ -335,9 +335,9 @@ def make_product_task(guts, initargs_path):
                     "cd " + winquote_path(read_guts(guts, "memcached_logs_path")) + " && " +
                     "for /f %a IN ('dir /od /b memcached.log.*') do type %a",
                     log_file="memcached.log", reformat=True),
-        LinuxTask("Memcached logs",
-                  ["sh", "-c", 'cd "$1"; for file in $(ls -tr memcached.log.*); do cat \"$file\"; done', "--", read_guts(guts, "memcached_logs_path")],
-                  log_file="memcached.log"),
+        UnixTask("Memcached logs",
+                 ["sh", "-c", 'cd "$1"; for file in $(ls -tr memcached.log.*); do cat \"$file\"; done', "--", read_guts(guts, "memcached_logs_path")],
+                 log_file="memcached.log"),
         [WindowsTask("Ini files (%s)" % p,
                      "type " + winquote_path(p),
                      log_file="ini.log", reformat=True)

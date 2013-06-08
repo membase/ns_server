@@ -191,7 +191,7 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
                  stable -> BucketCaps;
                  normal ->
                      [{replicaNumber, ns_bucket:num_replicas(BucketConfig)},
-                      {threadsNumber, proplists:get_value(num_threads, BucketConfig, 2)},
+                      {threadsNumber, proplists:get_value(num_threads, BucketConfig, 3)},
                       {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
                                         {rawRAM, ns_bucket:raw_ram_quota(BucketConfig)}]}},
                       {basicStats, {struct, menelaus_stats:basic_stats(Id)}}
@@ -919,15 +919,15 @@ parse_validate_flush_enabled("1") -> {ok, flush_enabled, true};
 parse_validate_flush_enabled(_ReplicaValue) -> {error, flushEnabled, <<"flushEnabled can only be 1 or 0">>}.
 
 parse_validate_threads_number(undefined) ->
-    {ok, num_threads, 2};
+    {ok, num_threads, 3};
 parse_validate_threads_number(NumThreads) ->
-    case menelaus_util:parse_validate_number(NumThreads, 1, 8) of
+    case menelaus_util:parse_validate_number(NumThreads, 2, 8) of
         invalid ->
             {error, threadsNumber,
-             <<"The number of threads must be an integer between 1 and 8">>};
+             <<"The number of threads must be an integer between 2 and 8">>};
         too_small ->
             {error, threadsNumber,
-             <<"The number of threads can't be less than 1">>};
+             <<"The number of threads can't be less than 2">>};
         too_large ->
             {error, threadsNumber,
              <<"The number of threads can't be greater than 8">>};

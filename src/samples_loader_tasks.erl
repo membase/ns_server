@@ -172,4 +172,4 @@ create_sample_bucket(Name) ->
                                         {auth_type, sasl},
                                         {sasl_password, []},
                                         {ram_quota, 100 * 1024 * 1024},
-                                        {num_threads, 2}]).
+                                        {num_threads, 3}]).
