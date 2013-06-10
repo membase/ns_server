@@ -947,7 +947,7 @@ var BucketsSection = {
                           quota: {rawRAM: Math.floor((totals.ram.quotaTotal - totals.ram.quotaUsed) / poolDetails.nodes.length)},
                           replicaIndex: false,
                           replicaNumber: 1,
-                          threadsNumber: 2},
+                          threadsNumber: 3},
 
         dialog = new BucketDetailsDialog(initValues, true);
 
