@@ -136,6 +136,7 @@
           rep = #rep{},                    % the basic replication settings
           vbucket_sup,                     % the supervisor for vb replicators
           vbs = [],                        % list of vb we should be replicating
+          num_tokens = 0,                  % number of available tokens used by throttles
           init_throttle,                   % limits # of concurrent vb replicators initializing
           work_throttle,                   % limits # of concurrent vb replicators working
           num_active = 0,                  % number of active replicators
@@ -208,8 +209,10 @@
 -record(concurrency_throttle_state, {
           %% parent process creating the throttle server
           parent,
-          %% token counter
-          count,
+          %% total number of tokens
+          total_tokens,
+          %% number of available tokens
+          avail_tokens,
           %% table of waiting requests to be scheduled
           %% (key = Pid, value = {Signal, LoadKey})
           waiting_pool,
