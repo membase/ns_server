@@ -1485,7 +1485,7 @@ letrec(Args, F) ->
 is_good_address(Address) ->
     case string:tokens(Address, ".") of
         [_] ->
-            {address_not_allowed, "short names are not allowed. Erlang requires at least one dot in a name"};
+            {address_not_allowed, "short names are not allowed. Couchbase Server requires at least one dot in a name"};
         _ ->
             is_good_address_when_allowed(Address)
     end.
