@@ -43,7 +43,7 @@
 
         %% Extra memory used by rep queues, etc..
         ep_overhead,
-        ep_max_data_size,
+        ep_max_size,
         %% number of oom errors since boot. _not_ used by GUI, but
         %% used for oom alerts
         ep_oom_errors,

@@ -473,7 +473,7 @@ parse_stats_test() ->
          {<<"ep_total_cache_size">>,<<"0">>},
          {<<"ep_mem_high_wat">>,<<"2394685440">>},
          {<<"ep_mem_low_wat">>,<<"1915748352">>},
-         {<<"ep_max_data_size">>,<<"3192913920">>},
+         {<<"ep_max_size">>,<<"3192913920">>},
          {<<"ep_overhead">>,<<"25937168">>},
          {<<"ep_kv_size">>,<<"0">>},
          {<<"mem_used">>,<<"25937168">>},

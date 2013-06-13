@@ -273,7 +273,7 @@ check(disk, Opaque, _History, _Stats) ->
 %% @doc check how much overhead there is compared to data
 check(overhead, Opaque, _History, Stats) ->
     [case over_threshold(fetch_bucket_stat(Stats, Bucket, ep_meta_data_memory),
-                         fetch_bucket_stat(Stats, Bucket, ep_max_data_size)) of
+                         fetch_bucket_stat(Stats, Bucket, ep_max_size)) of
          {true, X} ->
              {_Sname, Host} = misc:node_name_host(node()),
              Err = fmt_to_bin(errors(overhead), [erlang:trunc(X), Bucket, Host]),

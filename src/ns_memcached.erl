@@ -1191,7 +1191,7 @@ ensure_bucket_config(Sock, Bucket, membase, {MaxSize, DBDir, NumThreads}) ->
           ActualDBDirBin,
           ActualNumThreads}} = mc_binary:quick_stats(
                                  Sock, <<>>,
-                                 fun (<<"ep_max_data_size">>, V, {_, Path, T}) ->
+                                 fun (<<"ep_max_size">>, V, {_, Path, T}) ->
                                          {V, Path, T};
                                      (<<"ep_dbname">>, V, {S, _, T}) ->
                                          {S, V, T};
