@@ -346,6 +346,12 @@ def make_product_task(guts, initargs_path):
                  ["sh", "-c", 'for i in "$@"; do echo "file: $i"; cat "$i"; done', "--"] + read_guts(guts, "couch_inis").split(";"),
                  log_file="ini.log"),
 
+        AllOsTask("couchbase diags",
+                  ["curl", "-sS",
+                   "-u", '%s:%s' % (read_guts(guts, "rest_user"), read_guts(guts, "rest_pass")),
+                   "http://127.0.0.1:%s/diag?noLogs=1" % read_guts(guts, "rest_port")],
+                  log_file="diag.log"),
+
         [AllOsTask("couchbase logs (%s)" % name, "cbbrowse_logs %s" % name,
                    addenv = [("REPORT_DIR", read_guts(guts, "log_path"))],
                    log_file="ns_server.%s.log" % name)
@@ -363,12 +369,6 @@ def make_product_task(guts, initargs_path):
                       ["raw", "memory"], ["raw", "allocator"],
                       "prev-vbucket", "vbucket", "vbucket-details",
                       "warmup"]],
-
-        AllOsTask("couchbase diags",
-                  ["curl", "-sS",
-                   "-u", '%s:%s' % (read_guts(guts, "rest_user"), read_guts(guts, "rest_pass")),
-                   "http://127.0.0.1:%s/diag?noLogs=1" % read_guts(guts, "rest_port")],
-                  log_file="diag.log"),
 
         [AllOsTask("ddocs for %s (%s)" % (bucket, path),
                    ["couch_dbdump", path],
