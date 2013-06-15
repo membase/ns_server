@@ -141,6 +141,8 @@ handle_cast(Req, _State) ->
     ?log_error("Got unknown cast: ~p", [Req]),
     erlang:error({unknown_cast, Req}).
 
+initiate_bucket_rebalance(BucketName, OldState) when OldState#state.bucket =:= BucketName ->
+    OldState;
 initiate_bucket_rebalance(BucketName, OldState) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketName),
     Map = proplists:get_value(map, BucketConfig),
