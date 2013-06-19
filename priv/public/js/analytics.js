@@ -366,7 +366,7 @@ var StatsModel = {};
 
   var zoomLevel;
   (function () {
-    var slider = $("#date_slider").slider({
+    var slider = $("#js_date_slider").slider({
       orientation: "vertical",
       range: "min",
       min: 1,
@@ -374,8 +374,8 @@ var StatsModel = {};
       value: 6,
       step: 1,
       slide: function(event, ui) {
-        $("#date_slider_container ul li:nth-child(" + (7 - ui.value) + ") a")
-          .trigger('click');
+        var dateSwitchers = $("#js_date_slider_container .js_click");
+        dateSwitchers.eq(dateSwitchers.length - ui.value).trigger('click');
       }
     });
 
@@ -384,16 +384,14 @@ var StatsModel = {};
     })).name("zoomLevel");
 
     _.each('minute hour day week month year'.split(' '), function (name) {
-      zoomLevel.addItem('zoom_' + name, name)
+      zoomLevel.addItem('js_zoom_' + name, name);
     });
 
     zoomLevel.finalizeBuilding();
 
     zoomLevel.subscribeValue(function (zoomLevel) {
-      var z = $('#zoom_' + zoomLevel);
-      z.css('font-weight', 'bold');
-      z.parent().siblings().find('a').css('font-weight', 'normal');
-      slider.slider('value', 6 - z.parent().index());
+      var z = $('#js_zoom_' + zoomLevel);
+      slider.slider('value', 6 - z.index());
       self.statsOptionsCell.update({
         zoom: zoomLevel
       });
@@ -693,7 +691,7 @@ var maybeReloadAppDueToLeak = (function () {
 
     var maxString = isNaN(lastY) ? '?' : ViewHelpers.formatQuantity(lastY, '', 1000);
     queuedUpdates.push(function () {
-      jq.find('.small_graph_label > .value').text(maxString);
+      jq.find('#js_small_graph_value').text(maxString);
     });
     if (queuedUpdates.length == 1) {
       setTimeout(flushQueuedUpdate, 0);
@@ -706,7 +704,7 @@ var maybeReloadAppDueToLeak = (function () {
     if (options.maxY)
       yaxis.max = options.maxY;
 
-    $.plot(jq.find('.small_graph_block'),
+    $.plot(jq.find('#js_small_graph_block'),
            _.map(plotSeries, function (plotData) {
              return {color: color,
                      shadowSize: shadowSize,
@@ -755,7 +753,7 @@ var GraphsWidget = mkClass({
     this.spinners = [
       overlayWithSpinner(this.largeGraphJQ)
     ];
-    this.smallGraphsContainerJQ.find('.small_graph_label .value').text('?')
+    this.smallGraphsContainerJQ.find('#js_small_graph_value').text('?')
   },
   renderStatsBlock: function (descValue) {
     if (!descValue) {
@@ -764,7 +762,7 @@ var GraphsWidget = mkClass({
       return;
     }
     this.unrenderNothing();
-    renderTemplate('new_stats_block', descValue, this.smallGraphsContainerJQ[0]);
+    renderTemplate('js_new_stats_block', descValue, this.smallGraphsContainerJQ[0]);
     $(this).trigger('menelaus.graphs-widget.rendered-stats-block');
   },
   zoomToSeconds: {
@@ -827,7 +825,7 @@ var GraphsWidget = mkClass({
 
     try {
       var visibleBlockIDs = {};
-      _.each($(_.map(configuration.infos.blockIDs, $i)).filter(":has(.stats:visible)"), function (e) {
+      _.each($(_.map(configuration.infos.blockIDs, $i)).filter(":has(.js_stats:visible)"), function (e) {
         visibleBlockIDs[e.id] = e;
       });
     } catch (e) {
@@ -864,30 +862,29 @@ var GraphsWidget = mkClass({
 
 var AnalyticsSection = {
   onKeyStats: function (hotKeys) {
-    $('#top_keys_block').need(1).toggle(hotKeys !== null);
+    $('#js_top_keys_block').toggle(hotKeys !== null);
     if (hotKeys == null) {
       return;
     }
-    renderTemplate('top_keys', _.map(hotKeys, function (e) {
+    renderTemplate('js_top_keys', _.map(hotKeys, function (e) {
       return $.extend({}, e, {total: 0 + e.gets + e.misses});
     }));
-    $('#top_keys_container table tr:has(td):odd').addClass('even');
   },
   init: function () {
     var self = this;
 
     StatsModel.hotKeysCell.subscribeValue($m(self, 'onKeyStats'));
-    prepareTemplateForCell('top_keys', StatsModel.hotKeysCell);
+    prepareTemplateForCell('js_top_keys', StatsModel.hotKeysCell);
 
-    $('#js_analytics .block-expander').live('click', function () {
+    $('#js_analytics .js_block-expander').live('click', function () {
       // this forces configuration refresh and graphs redraw
       self.widget.forceNextRendering();
       StatsModel.configurationExtra.setValue({});
     });
 
     IOCenter.staleness.subscribeValue(function (stale) {
-      $('.stats-period-container')[stale ? 'hide' : 'show']();
-      $('#js_analytics .staleness-notice')[stale ? 'show' : 'hide']();
+      $('#js_stats-period-container')[stale ? 'hide' : 'show']();
+      $('#js_analytics .js_staleness-notice')[stale ? 'show' : 'hide']();
     });
 
     (function () {
@@ -902,7 +899,7 @@ var AnalyticsSection = {
         return {list: _.map(allBuckets, function (info) {return [info.uri, info.name]}),
                 selected: selectedBucket.uri};
       });
-      $('#analytics_buckets_select').bindListCell(cell, {
+      $('#js_analytics_buckets_select').bindListCell(cell, {
         onChange: function (e, newValue) {
           StatsModel.statsBucketURL.setValue(newValue);
         }
@@ -937,29 +934,29 @@ var AnalyticsSection = {
         return {list: list,
                 selected: selectedNode && selectedNode.hostname};
       });
-      $('#analytics_servers_select').bindListCell(cell, {
+      $('#js_analytics_servers_select').bindListCell(cell, {
         onChange: function (e, newValue) {
           StatsModel.statsHostname.setValue(newValue || undefined);
         }
       });
     })();
 
-    self.widget = new GraphsWidget($('#analytics_main_graph'), $('#stats_container'), StatsModel.statsDescInfoCell, StatsModel.graphsConfigurationCell);
+    self.widget = new GraphsWidget($('#js_analytics_main_graph'), $('#js_stats_container'), StatsModel.statsDescInfoCell, StatsModel.graphsConfigurationCell);
 
     Cell.needing(StatsModel.graphsConfigurationCell).compute(function (v, configuration) {
       return configuration.timestamp.length == 0;
     }).subscribeValue(function (missingSamples) {
-      $('.stats-period-container').toggleClass('missing-samples', !!missingSamples);
+      $('#js_stats-period-container').toggleClass('dynamic_missing-samples', !!missingSamples);
     });
     Cell.needing(StatsModel.graphsConfigurationCell).compute(function (v, configuration) {
       var zoomMillis = GraphsWidget.prototype.zoomToSeconds[configuration.zoomLevel] * 1000;
       return Math.ceil(Math.min(zoomMillis, configuration.serverDate - configuration.timestamp[0]) / 1000);
     }).subscribeValue(function (visibleSeconds) {
-      $('.stats_visible_period').text(isNaN(visibleSeconds) ? '?' : formatUptime(visibleSeconds));
+      $('#js_stats_visible_period').text(isNaN(visibleSeconds) ? '?' : formatUptime(visibleSeconds));
     });
 
     StatsModel.serverResourcesVisible.subscribeValue(function (visible) {
-      $('#js_analytics')[visible ? 'addClass' : 'removeClass']('with_server_resources');
+      $('#js_analytics')[visible ? 'addClass' : 'removeClass']('dynamic_with_server_resources');
     });
 
     (function () {
@@ -968,9 +965,9 @@ var AnalyticsSection = {
         selectionCell = cell;
       });
 
-      $(".analytics-small-graph").live("click", function (e) {
+      $(".js_analytics-small-graph").live("click", function (e) {
         // don't intercept right arrow clicks
-        if ($(e.target).is(".right-arrow, .right-arrow *")) {
+        if ($(e.target).is(".js_right-arrow, .js_right-arrow *")) {
           return;
         }
         e.preventDefault();
@@ -991,13 +988,13 @@ var AnalyticsSection = {
       function handler() {
         var val = effectiveSelected.value;
         val = val && val.name;
-        $('.analytics-small-graph.selected').removeClass('selected');
+        $('.js_analytics-small-graph.dynamic_selected').removeClass('dynamic_selected');
         if (!val) {
           return;
         }
-        $(_.filter($('.analytics-small-graph[data-graph]'), function (el) {
+        $(_.filter($('.js_analytics-small-graph[data-graph]'), function (el) {
           return String(el.getAttribute('data-graph')) === val;
-        })).addClass('selected');
+        })).addClass('dynamic_selected');
       }
       var effectiveSelected = Cell.compute(function (v) {return v.need(StatsModel.graphsConfigurationCell).selected});
       effectiveSelected.subscribeValue(handler);
@@ -1006,20 +1003,20 @@ var AnalyticsSection = {
 
     $(self.widget).bind('menelaus.graphs-widget.rendered-graphs', function () {
       var graph = StatsModel.graphsConfigurationCell.value.selected;
-      $('#js_analytics .current-graph-name').text(graph.title);
-      $('#js_analytics .current-graph-desc').text(graph.desc);
+      $('#js_analytics .js_current-graph-name').text(graph.title);
+      $('#js_analytics .js_current-graph-desc').text(graph.desc);
     });
 
     $(self.widget).bind('menelaus.graphs-widget.rendered-stats-block', function () {
-      $('#stats_container').hide();
-      _.each($('.analytics-small-graph:not(.dim)'), function (e) {
+      $('#js_stats_container').hide();
+      _.each($('.js_analytics-small-graph:not(.dynamic_dim)'), function (e) {
         e = $(e);
         var graphParam = e.attr('data-graph');
         if (!graphParam) {
           debugger
           throw new Error("shouldn't happen");
         }
-        var ul = e.find('.right-arrow ul').need(1);
+        var ul = e.find('.js_right-arrow .js_inner').need(1);
 
         var params = {sec: 'analytics', statsBucket: StatsModel.statsBucketDetails.value.uri};
         var aInner;
@@ -1032,19 +1029,16 @@ var AnalyticsSection = {
           params.statsHostname = graphParam;
           aInner = "show this server";
         }
-        var a = $('<a>' + aInner + '</a>')[0];
-        a.setAttribute('href', '#' + $.param(params));
-        var li = document.createElement('LI');
-        li.appendChild(a);
-        ul[0].appendChild(li);
+
+        ul[0].appendChild(jst.analyticsRightArrow(aInner, params));
       });
-      $('#stats_container').show();
+      $('#js_stats_container').show();
     });
 
     StatsModel.displayingSpecificStatsCell.subscribeValue(function (displayingSpecificStats) {
       displayingSpecificStats = !!displayingSpecificStats;
-      $('#js_analytics .when-normal-stats').toggle(!displayingSpecificStats);
-      $('#js_analytics .when-specific-stats').toggle(displayingSpecificStats);
+      $('#js_analytics .js_when-normal-stats').toggle(!displayingSpecificStats);
+      $('#js_analytics .js_when-specific-stats').toggle(displayingSpecificStats);
     });
 
     Cell.subscribeMultipleValues(function (specificStatsNamesSet, statsStatName) {
@@ -1057,7 +1051,7 @@ var AnalyticsSection = {
           debugger
         }
       }
-      $('.specific-stat-description').text(text);
+      $('.js_specific-stat-description').text(text);
     }, StatsModel.specificStatsNamesSetCell, StatsModel.effectiveSpecificStatName);
   },
   onLeave: function () {
