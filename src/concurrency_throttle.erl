@@ -104,13 +104,7 @@ handle_call({send_signal, {TargetNode, Signal}}, {Pid, _Tag}, State) ->
     NewMonDict = dict:store(Pid, MonRef, MonDict),
     NewActivePool = dict:store(Pid, TargetNode, ActivePool),
     %% update target_load
-    NewTargetLoad = case dict:is_key(TargetNode, TargetLoad) of
-                        false ->
-                            dict:store(TargetNode, 1, TargetLoad);
-                        _ ->
-                            NewLoad = dict:fetch(TargetNode, TargetLoad) + 1,
-                            dict:store(TargetNode, NewLoad, TargetLoad)
-                    end,
+    NewTargetLoad = dict:update_counter(TargetNode, 1, TargetLoad),
     NewCount = Count - 1,
     %% signal vb replicator
     Pid ! Signal,
@@ -199,13 +193,7 @@ signal_waiting(#concurrency_throttle_state{} = State, NumJobsToSchedule) ->
             MonRef = erlang:monitor(process, WaitingPid),
             NewWaitingPool = dict:erase(WaitingPid, WaitingPool),
             NewActivePool = dict:store(WaitingPid, TargetNode, ActivePool),
-            NewTargetLoad = case dict:is_key(TargetNode, TargetLoad) of
-                                false ->
-                                    dict:store(TargetNode, 1, TargetLoad);
-                                _ ->
-                                    NewLoad = dict:fetch(TargetNode, TargetLoad) + 1,
-                                    dict:store(TargetNode, NewLoad, TargetLoad)
-                            end,
+            NewTargetLoad = dict:update_counter(TargetNode, 1, TargetLoad),
 
             ?xdcr_debug("schedule a waiting rep (pid: ~p, target node: ~p) to be active "
                         "(active reps: ~p, waiting reps: ~p)",
