@@ -57,7 +57,43 @@ deps_mlockall:
 deps_ns_babysitter: deps_ale
 	(cd deps/ns_babysitter; $(MAKE))
 
-deps_all: deps_smtp deps_erlwsh deps_ale deps_mlockall deps_ns_babysitter
+prebuild_vbmap:
+	cd deps/vbmap && GOOS=linux GOARCH=386 go build -o ../../priv/i386-linux-vbmap
+	cd deps/vbmap && GOOS=darwin GOARCH=386 go build -o ../../priv/i386-darwin-vbmap
+	cd deps/vbmap && GOOS=windows GOARCH=386 go build -o ../../priv/i386-win32-vbmap.exe
+
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+
+ifeq (Linux,$(UNAME_S))
+ifneq ($(or $(findstring x86_64,$(UNAME_M)),$(findstring i686,$(UNAME_M))),)
+VBMAP_BINARY := priv/i386-linux-vbmap
+endif
+endif
+
+ifeq (Darwin,$(UNAME_S))
+VBMAP_BINARY := priv/i386-darwin-vbmap
+endif
+
+ifneq ($(or $(findstring CYGWIN,$(UNAME_S)),$(findstring WOW64,$(UNAME_S))),)
+VBMAP_BINARY := priv/i386-win32-vbmap.exe
+VBMAP_EXEEXT := .exe
+endif
+
+ifdef VBMAP_BINARY
+
+deps_vbmap:
+	@echo "Using precompiled vbmap tool at $(VBMAP_BINARY)"
+
+else
+
+VBMAP_BINARY := deps/vbmap/vbmap
+deps_vbmap:
+	cd deps/vbmap && (go build -x || gccgo -Os -g *.go -o vbmap)
+
+endif
+
+deps_all: deps_smtp deps_erlwsh deps_ale deps_mlockall deps_ns_babysitter deps_vbmap
 
 docs:
 	priv/erldocs $(DOC_DIR)
@@ -113,6 +149,7 @@ do-install:
 	mkdir -p $(MLOCKALL_LIBDIR)
 	cp -r deps/mlockall/ebin $(MLOCKALL_LIBDIR)/
 	[ ! -d deps/mlockall/priv ] || cp -r deps/mlockall/priv $(MLOCKALL_LIBDIR)/
+	cp -r $(VBMAP_BINARY) $(DESTDIR)$(PREFIX)/bin/vbmap$(VBMAP_EXEEXT)
 	mkdir -p $(DESTDIR)$(PREFIX)/etc/couchbase
 	sed -e 's|@DATA_PREFIX@|$(PREFIX_FOR_CONFIG)|g' -e 's|@BIN_PREFIX@|$(PREFIX_FOR_CONFIG)|g' \
 		 <etc/static_config.in >$(DESTDIR)$(PREFIX)/etc/couchbase/static_config
@@ -148,6 +185,7 @@ clean clean_all:
 	rm -rf test/log
 	rm -rf ebin
 	rm -rf docs
+	rm -f deps/vbmap/vbmap
 
 dataclean:
 	rm -rf $(TMP_DIR) data coverage couch logs tmp
