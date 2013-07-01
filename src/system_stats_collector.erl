@@ -200,7 +200,7 @@ unpack_data_v1(Bin, PrevSample) ->
                                                       {minor_faults, MinorFaultsDiff},
                                                       {major_faults, MajorFaultsDiff},
                                                       {page_faults, PageFaultsDiff}]),
-                          [{mem_free, MemTotal - MemUsed},
+                          [{mem_free, MemActualFree},
                            {cpu_utilization_rate, try 100 * (LocalDiff - IdleDiff) / LocalDiff
                                                   catch error:badarith -> 0 end}
                            | RV1]

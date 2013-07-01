@@ -86,6 +86,7 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
             Vbs = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
             RepState0 = #replication{rep = Rep,
                                      vbs = Vbs,
+                                     num_tokens = MaxConcurrentReps,
                                      init_throttle = InitThrottle,
                                      work_throttle = WorkThrottle,
                                      vbucket_sup = Sup},
@@ -94,6 +95,7 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
             ?xdcr_error("fail to fetch a valid bucket config and no vb replicator "
                         "would be created (error: ~p)", [Error]),
             RepState = #replication{rep = Rep,
+                                    num_tokens = MaxConcurrentReps,
                                     init_throttle = InitThrottle,
                                     work_throttle = WorkThrottle,
                                     vbucket_sup = Sup}
@@ -329,6 +331,27 @@ handle_info({set_throttle_status, {NumActiveReps, NumWaitingReps}},
             State) ->
     {noreply, State#replication{num_active = NumActiveReps,
                                 num_waiting = NumWaitingReps}};
+
+handle_info(check_tokens, #replication{work_throttle = WorkThrottle} = State) ->
+
+    {value, DefaultMaxConcurrentReps} = ns_config:search(xdcr_max_concurrent_reps),
+    NewTokens = erlang:max(1, misc:getenv_int("MAX_CONCURRENT_REPS_PER_DOC",
+                                              DefaultMaxConcurrentReps)),
+
+    case NewTokens ==  State#replication.num_tokens of
+        false ->
+            ?xdcr_debug("total number of tokens has been changed from ~p to ~p "
+                        "(ns_config param: ~p), adjust work throttle (pid: ~p) accordingly",
+                       [State#replication.num_tokens, NewTokens,
+                        DefaultMaxConcurrentReps, WorkThrottle]),
+            concurrency_throttle:change_tokens(WorkThrottle, NewTokens);
+        _->
+            ok
+    end,
+    %% avoid overchecking ns_server and env parameters
+    misc:flush(check_tokens),
+    {noreply, State#replication{num_tokens = NewTokens}};
+
 
 handle_info({buckets, Buckets0},
             #replication{rep = #rep{source = SrcBucket},

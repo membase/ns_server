@@ -125,6 +125,7 @@ handle_call({report_seq_done, #worker_stat{seq = Seq,
             #rep_state{seqs_in_progress = SeqsInProgress,
                        highest_seq_done = HighestDone,
                        current_through_seq = ThroughSeq,
+                       parent = Parent,
                        status = #rep_vb_status{num_changes_left = ChangesLeft,
                                                docs_checked = TotalChecked,
                                                docs_written = TotalWritten,
@@ -197,16 +198,23 @@ handle_call({report_seq_done, #worker_stat{seq = Seq,
                                                  docs_latency_aggr = VbDocsLatencyAggr,
                                                  docs_latency_wt = VbDocsLatencyWtAggr}
                 },
+
+    %% finally ask parent to check any token change.
+    Parent ! check_tokens,
+
     {noreply, update_status_to_parent(NewState)};
 
 handle_call({worker_done, Pid}, _From,
-            #rep_state{workers = Workers, status = VbStatus} = State) ->
+            #rep_state{workers = Workers, status = VbStatus, parent = Parent} = State) ->
     case Workers -- [Pid] of
         Workers ->
             {stop, {unknown_worker_done, Pid}, ok, State};
         [] ->
             %% all workers completed. Now shutdown everything and prepare for
             %% more changes from src
+
+            %% before return my token to throttle, check if user has changed number of tokens
+            Parent ! check_tokens,
 
             %% allow another replicator to go
             State2 = replication_turn_is_done(State),
