@@ -27,7 +27,7 @@
          terminate/2, code_change/3]).
 
 -export([adjust_my_address/2, read_address_config/0, save_address_config/2,
-         ip_config_path/0, using_user_supplied_address/0]).
+         ip_config_path/0, using_user_supplied_address/0, reset_address/0]).
 
 -record(state, {self_started,
                 user_supplied,
@@ -47,6 +47,9 @@ ip_start_config_path() ->
 
 using_user_supplied_address() ->
     gen_server:call(?MODULE, using_user_supplied_address).
+
+reset_address() ->
+    gen_server:call(?MODULE, reset_address).
 
 strip_full(String) ->
     String2 = string:strip(String),
@@ -281,6 +284,8 @@ handle_call({adjust_my_address, _, _}, _From,
 handle_call(using_user_supplied_address, _From,
             #state{user_supplied = UserSupplied} = State) ->
     {reply, UserSupplied, State};
+handle_call(reset_address, _From, State) ->
+    do_adjust_address("127.0.0.1", false, State);
 handle_call(_Request, _From, State) ->
     {reply, unhandled, State}.
 
