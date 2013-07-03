@@ -48,6 +48,7 @@
          maybe_get_bucket/2,
          moxi_port/1,
          name_conflict/1,
+         name_conflict/2,
          names_conflict/2,
          node_locator/1,
          num_replicas/1,
@@ -731,11 +732,15 @@ is_persistent(BucketName) ->
 names_conflict(BucketNameA, BucketNameB) ->
     string:to_lower(BucketNameA) =:= string:to_lower(BucketNameB).
 
-%% @doc Check if a bucket exists. Case insensitive.
-name_conflict(BucketName) ->
+%% @doc Check if a bucket name exists in the list. Case insensitive.
+name_conflict(BucketName, ListOfBuckets) ->
     BucketNameLower = string:to_lower(BucketName),
     lists:any(fun ({Name, _}) -> BucketNameLower == string:to_lower(Name) end,
-              get_buckets()).
+              ListOfBuckets).
+
+%% @doc Check if a bucket exists. Case insensitive.
+name_conflict(BucketName) ->
+    name_conflict(BucketName, get_buckets()).
 
 node_bucket_names(Node, BucketsConfigs) ->
     [B || {B, C} <- BucketsConfigs,
