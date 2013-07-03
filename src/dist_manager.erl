@@ -27,7 +27,7 @@
          terminate/2, code_change/3]).
 
 -export([adjust_my_address/2, read_address_config/0, save_address_config/2,
-         ip_config_path/0, using_user_supplied_address/0]).
+         ip_config_path/0, using_user_supplied_address/0, reset_address/0]).
 
 -record(state, {self_started,
                 user_supplied,
@@ -47,6 +47,9 @@ ip_start_config_path() ->
 
 using_user_supplied_address() ->
     gen_server:call(?MODULE, using_user_supplied_address).
+
+reset_address() ->
+    gen_server:call(?MODULE, reset_address).
 
 strip_full(String) ->
     String2 = string:strip(String),
@@ -240,32 +243,40 @@ bringup(MyIP, UserSupplied) ->
 teardown() ->
     ok = net_kernel:stop().
 
+do_adjust_address(MyIP, UserSupplied, State) ->
+    Cookie = erlang:get_cookie(),
+    teardown(),
+    ?log_info("Adjusted IP to ~p", [MyIP]),
+    NewState = bringup(MyIP, UserSupplied),
+    if
+        NewState#state.self_started ->
+            ?log_info("Re-setting cookie ~p", [{Cookie, node()}]),
+            erlang:set_cookie(node(), Cookie);
+        true -> ok
+    end,
+
+    case save_address_config(NewState, UserSupplied) of
+        ok ->
+            ?log_info("Persisted the address successfully"),
+            {reply, net_restarted, NewState};
+        {error, Error} ->
+            ?log_warning("Failed to persist the address: ~p", [Error]),
+            {stop,
+             {address_save_failed, Error},
+             {address_save_failed, Error},
+             State}
+    end.
+
+
+handle_call({adjust_my_address, _MyIP, false = _UserSupplied}, _From,
+            #state{self_started = true, my_ip = _MyOldIP, user_supplied = true} = State) ->
+    {reply, nothing, State};
 handle_call({adjust_my_address, MyIP, UserSupplied}, _From,
             #state{self_started = true, my_ip = MyOldIP} = State) ->
     case MyIP =:= MyOldIP of
         true -> {reply, nothing, State};
-        false -> Cookie = erlang:get_cookie(),
-                 teardown(),
-                 ?log_info("Adjusted IP to ~p", [MyIP]),
-                 NewState = bringup(MyIP, UserSupplied),
-                 if
-                     NewState#state.self_started ->
-                         ?log_info("Re-setting cookie ~p", [{Cookie, node()}]),
-                         erlang:set_cookie(node(), Cookie);
-                     true -> ok
-                 end,
-
-                 case save_address_config(NewState, UserSupplied) of
-                     ok ->
-                         ?log_info("Persisted the address successfully"),
-                         {reply, net_restarted, NewState};
-                     {error, Error} ->
-                         ?log_warning("Failed to persist the address: ~p", [Error]),
-                         {stop,
-                          {address_save_failed, Error},
-                          {address_save_failed, Error},
-                          State}
-                 end
+        false ->
+            do_adjust_address(MyIP, UserSupplied, State)
     end;
 handle_call({adjust_my_address, _, _}, _From,
             #state{self_started = false} = State) ->
@@ -273,6 +284,8 @@ handle_call({adjust_my_address, _, _}, _From,
 handle_call(using_user_supplied_address, _From,
             #state{user_supplied = UserSupplied} = State) ->
     {reply, UserSupplied, State};
+handle_call(reset_address, _From, State) ->
+    do_adjust_address("127.0.0.1", false, State);
 handle_call(_Request, _From, State) ->
     {reply, unhandled, State}.
 

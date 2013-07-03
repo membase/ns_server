@@ -162,17 +162,53 @@ handle_call({change_address, Address}, _From, State) ->
 
 handle_cast(leave, State) ->
     ?cluster_log(0001, "Node ~p is leaving cluster.", [node()]),
+
+    %% first thing we do is stopping nearly everything
     ok = ns_server_cluster_sup:stop_cluster(),
+
     stats_archiver:wipe(),
+
+    %% in order to disconnect from rest of nodes we need new cookie
+    %% and explicit disconnect_node calls
     NewCookie = ns_cookie_manager:cookie_gen(),
     erlang:set_cookie(node(), NewCookie),
     lists:foreach(fun erlang:disconnect_node/1, nodes()),
-    Config = ns_config:get(),
 
+    %% we will preserve rest settings, so we get them before resetting
+    %% config
+    Config = ns_config:get(),
     RestConf = ns_config:search(Config, {node, node(), rest}),
     GlobalRestConf = ns_config:search(Config, rest),
 
+    %% The ordering here is quite subtle. So be careful.
+    %%
+    %% At the time of this writing ns_config:clear([directory]) below
+    %% behaves weirdly, but correctly.
+    %%
+    %% It will wipe dynamic config, then save it, then reload
+    %% config. And as part of reloading config it will reload static
+    %% config and re-generate default config. And it will even
+    %% re-trigger config upgrade.
+    %%
+    %% And also as part of loading config it will do our usual merging
+    %% of all configs into dynamic config.
+    %%
+    %% This means that if we intend to reset our node name, we have to
+    %% do it _before_ clearing config. So that when it's generating
+    %% default config (with tons of per-node keys that are really
+    %% important) it must already have correct node().
+    %%
+    %% clear() itself does not depend on per-node keys and all
+    %% services are stopped at this point
+    %%
+    %% So reset_address() below drops node's manually assigned
+    %% hostname if any and assigns 127.0.0.1 marking it as automatic.
+    dist_manager:reset_address(),
+    %% and then we clear config. In fact better name would be 'reset',
+    %% because as seen above we actually re-initialize default config
     ns_config:clear([directory]),
+
+    %% we restore our rest settings
     case GlobalRestConf of
         false -> false;
         {value, GlobalRestConf1} -> ns_config:set(rest, GlobalRestConf1)
@@ -181,6 +217,11 @@ handle_cast(leave, State) ->
         false -> false;
         {value, RestConf1} -> ns_config:set({node, node(), rest}, RestConf1)
     end,
+
+    %% set_initial here clears vclock on nodes_wanted. Thus making
+    %% sure that whatever nodes_wanted we will get through initial
+    %% config replication (right after joining cluster next time) will
+    %% not conflict with this value.
     ns_config:set_initial(nodes_wanted, [node()]),
     ns_cookie_manager:cookie_sync(),
 

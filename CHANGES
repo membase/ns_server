@@ -2,7 +2,32 @@ This file documents user-visible changes in Couchbase clustering & UI.
 ======================================================================
 
 -----------------------------------------
-Between versions 2.0.1 and 2.0.2
+Between versions 2.1.0 and 2.2.0
+-----------------------------------------
+
+* (MB-7398 (revision)) (see MB-7398 below as part of 2.1.0 changes) As
+  part of fixing MB-8545 below we found that there's no way to switch
+  any node back from manually assigned name to automatically managed
+  name. We now reset node's name back to 127.0.0.1 and automatic name
+  management when it's leaving cluster. I.e. previously node always
+  kept it's name even after it was rebalanced out.
+
+* (MB-8465)(windows only) quite embarrasing and quite intensive memory
+  leak in one of our child processes was found. It is now fixed.
+
+* (MB-8545) we've found that hostname management (see MB-7398 below)
+  is not really effective if hostname is assigned before joining 2.0.1
+  cluster. That was because if node was joined via 2.0.1 node it would
+  always revert to automatically assigned address.
+
+  Proposed workaround is to join 2.1.0 nodes via 2.1.0. Clearly,
+  during rebalance upgrade first 2.1.0 node has to be joined via 2.0.1
+  node. In which case see jira ticket for further workaround.
+
+  This is now fixed.
+
+-----------------------------------------
+Between versions 2.0.1 and 2.1.0
 -----------------------------------------
 
 * (MB-8046) We don't allow data and config directories to be

@@ -680,10 +680,10 @@ basic_bucket_params_screening(IsNew, BucketName, Params, AllBuckets) ->
         {_, _, {crap, Crap}} ->
             {[], [{authType, Crap}]};
         _ -> basic_bucket_params_screening_tail(IsNew, BucketName, Params,
-                                                BucketConfig, AuthType)
+                                                BucketConfig, AuthType, AllBuckets)
     end.
 
-basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, AuthType) ->
+basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, AuthType, AllBuckets) ->
     Candidates0 = [{ok, name, BucketName},
                    {ok, auth_type, AuthType},
                    parse_validate_flush_enabled(proplists:get_value("flushEnabled", Params, "0")),
@@ -696,7 +696,14 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                                        false ->
                                            {error, name, <<"Bucket name can only contain characters in range A-Z, a-z, 0-9 as well as underscore, period, dash & percent. Consult the documentation.">>};
                                        _ ->
-                                           undefined
+                                           %% we have to check for conflict here because we were looking for BucketConfig using case sensetive search (in basic_bucket_params_screening/4)
+                                           %% but we do not allow buckets with the same names in a different register
+                                           case BucketName =/= undefined andalso ns_bucket:name_conflict(BucketName, AllBuckets) of
+                                               false ->
+                                                  undefined;
+                                               _ ->
+                                                  {error, name, <<"Bucket with given name already exists">>}
+                                           end
                                    end;
                                _ ->
                                    {error, name, <<"Bucket with given name already exists">>}
@@ -1071,6 +1078,14 @@ basic_bucket_params_screening_test() ->
                                                 {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
                                                AllBuckets),
     ?assertEqual([{name, <<"Bucket with given name doesn't exist">>}], E9),
+
+    %% it is not possible to create bucket with duplicate name in different register
+    {_OK10, E10} = basic_bucket_params_screening(true, "Mcd",
+                                              [{"bucketType", "membase"},
+                                               {"authType", "sasl"}, {"saslPassword", ""},
+                                               {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
+                                              AllBuckets),
+    ?assertEqual([{name, <<"Bucket with given name already exists">>}], E10),
 
     ok.
 
