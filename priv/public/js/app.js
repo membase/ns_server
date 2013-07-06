@@ -383,54 +383,104 @@ var SetupWizard = {
     });
   },
   pages: {
-    bucket_dialog: function () {
+    bucket_dialog: function (node, pagePrefix, opt) {
       var spinner;
       var timeout = setTimeout(function () {
-        spinner = overlayWithSpinner('#init_bucket_dialog');
+        spinner = overlayWithSpinner(opt.previousPage);
       }, 50);
-      $.ajax({url: '/pools/default/buckets/default',
-              success: continuation,
-              error: continuation,
-              dataType: 'json'});
-      function continuation(data, status) {
-        if (status != 'success') {
-          $.ajax({type:'GET', url:'/nodes/self', dataType: 'json',
-                  error: function () {
-                    SetupWizard.panicAndReload();
-                  },
-                  success: function (nodeData) {
-                    data = {uri: '/pools/default/buckets',
-                            bucketType: 'membase',
-                            authType: 'sasl',
-                            quota: {
-                              rawRAM: nodeData.storageTotals.ram.quotaTotal -
-                                nodeData.storageTotals.ram.quotaUsed},
-                            replicaNumber: 1,
-                            replicaIndex: false,
-                            threadsNumber: 3};
-                    continuation(data, 'success');
-                  }});
-          return;
-        }
-        if (spinner)
-          spinner.remove();
-        clearTimeout(timeout);
-        var initValue = _.extend(data, {
-          uri: '/controller/setupDefaultBucket'
+
+      var sampleBucketsRAMQuota = _.reduce(opt.sampleBuckets, function (memo, num) {
+        return memo + num;
+      }, 0);
+
+      // postpone showing the dialog till the data for the gauge is loaded
+      return function (callback) {
+        prepareInitialData(function (data) {
+          createBucketDialog(data, callback);
         });
-        var dialog = new BucketDetailsDialog(initValue, true,
-                                             {id: 'init_bucket_dialog',
-                                              refreshBuckets: function (b) {b()},
-                                              onSuccess: function () {
-                                                dialog.cleanup();
-                                                SetupWizard.show('update_notifications');
-                                              }});
-        var cleanupBack = dialog.bindWithCleanup($('#step-init-bucket-back'),
-                                                 'click',
-                                                 function () {
-                                                   dialog.cleanup();
-                                                   SetupWizard.show('sample_buckets');
-                                                 });
+      }
+
+      function prepareInitialData(callback) {
+        var data = _.extend({
+          uri: '/pools/default/buckets',
+          validateURL: '/pools/default/buckets?just_validate=1&ignore_warnings=1',
+          toBeAllocatedForOtherBuckets: sampleBucketsRAMQuota,
+          bucketType: 'membase',
+          authType: 'sasl',
+          replicaNumber: 1,
+          replicaIndex: false,
+          threadsNumber: 3
+        }, $.deparam(opt.defaultBucketData ? opt.defaultBucketData : ''));
+
+        if (data.ramQuotaMB) {
+          data.quota = {
+            rawRAM: MBtoBytes(data.ramQuotaMB) + sampleBucketsRAMQuota
+          };
+          callback(data);
+        } else {
+          $.ajax({
+            type:'GET',
+            url:'/nodes/self',
+            dataType: 'json',
+            error: function () {
+              SetupWizard.panicAndReload();
+            },
+            success: function (nodeData) {
+              data = _.extend({
+                quota: {
+                  rawRAM: nodeData.storageTotals.ram.quotaTotal - nodeData.storageTotals.ram.quotaUsed
+                }
+              }, data);
+              callback(data);
+            }
+          });
+        }
+      };
+
+      function getFormValuesForValidation(form) {
+        var paramStr = serializeForm(form, {
+          'ramQuotaMB': function (quota) {
+             // need to adjust the value of Per Node RAM Quota before the validation
+             // so the validation will fail if the requested default bucket size is more
+             // than total available RAM minus the size of sample buckets
+             return parseInt(quota) + BytestoMB(sampleBucketsRAMQuota);
+           }
+         });
+         return paramStr + "&name=default&authType=sasl&saslPassword=";
+      }
+
+      function createBucketDialog(initValue, callback) {
+        var dialogVisible = false;
+        var dialog = new BucketDetailsDialog(initValue, true, {
+          id: 'init_bucket_dialog',
+          refreshBuckets: function (b) {
+            b();
+          },
+          doCreateBucket: function (uri, form, callback) {
+            opt.defaultBucketData = dialog.getFormData();
+            jsonPostWithErrors(initValue.validateURL, getFormValuesForValidation(form), callback);
+          },
+          onSuccess: function () {
+            dialog.cleanup();
+            SetupWizard.show('update_notifications', opt);
+          },
+          formValidationCallback: function () {
+            if (!dialogVisible) {
+              dialogVisible = true;
+              if (spinner)
+                spinner.remove();
+              clearTimeout(timeout);
+              callback();
+            }
+          },
+          getFormValues: getFormValuesForValidation
+         });
+
+        var cleanupBack = dialog.bindWithCleanup($('#step-init-bucket-back'), 'click', function () {
+          opt.defaultBucketData = dialog.getFormData();
+          dialog.cleanup();
+          SetupWizard.show('sample_buckets', opt);
+        });
         dialog.cleanups.push(cleanupBack);
         dialog.startForm();
       }
@@ -444,7 +494,7 @@ var SetupWizard = {
       });
       $(parentName + ' div.config-bottom button#step-5-back').unbind('click').click(function (e) {
         e.preventDefault();
-        SetupWizard.show("update_notifications");
+        SetupWizard.show("update_notifications", opt);
       });
 
       var form = $(parentName + ' form').unbind('submit');
@@ -490,20 +540,77 @@ var SetupWizard = {
           return;
         }
 
-        SettingsSection.processSave(this, function (dialog) {
-          DAL.performLogin(user, pw, function () {
-            SetupWizard.show('done');
+        var createSampleBuckets = function (sampleBuckets, onSuccess, onError) {
+          var buckets = _.keys(sampleBuckets);
 
-            if (user != null && user != "") {
-              $('.sign-out-link').show();
+          if (buckets.length === 0) {
+            onSuccess();
+            return;
+          }
+          var json = JSON.stringify(buckets);
+
+          jsonPostWithErrors('/sampleBuckets/install', json, function (simpleErrors, status, errorObject)  {
+            if (status === 'success') {
+              onSuccess();
+            } else {
+              onError(simpleErrors, errorObject);
             }
+          }, {
+            timeout: 140000
+          });
+        };
 
-            dialog.close();
+        var createDefaultBucket = function (bucketData, onSuccess, onError) {
+          jsonPostWithErrors('/pools/default/buckets', bucketData + "&name=default&authType=sasl&saslPassword=",
+          function (simpleErrors, status, errorObject) {
+            if (status === 'success') {
+              onSuccess();
+            } else {
+              onError(simpleErrors, null);
+            }
+          });
+        };
+
+        var createBuckets = function (sampleBuckets, defaultBucket, onSuccess, onError) {
+          createDefaultBucket(defaultBucket, function () {
+            createSampleBuckets(sampleBuckets, onSuccess, onError);
+          }, onError);
+        }
+
+        var self = this;
+        var spinner = overlayWithSpinner('#init_secure_form', false);
+        SettingsSection.processSave(self, function (dialog) {
+          dialog.close();
+
+          DAL.performLogin(user, pw, function () {
+            createBuckets(opt.sampleBuckets, opt.defaultBucketData,
+              // success
+              function () {
+                spinner.remove();
+
+                SetupWizard.show('done');
+
+                if (user != null && user != "") {
+                  $('.sign-out-link').show();
+                }
+              },
+              // error
+              function (simpleErrors, errorObject) {
+                spinner.remove();
+
+                var errReason = errorObject && errorObject.reason || simpleErrors.join(' and ');
+                genericDialog({
+                  buttons: {ok: true},
+                  header: "Failed To Create Bucket",
+                  textHTML: errReason
+                });
+              }
+            );
           });
         });
       });
     },
-    welcome: function(node, pagePrefix, opt) {
+    welcome: function (node, pagePrefix, opt) {
       $('#init_welcome_dialog input.next').click(function (e) {
         e.preventDefault();
         SetupWizard.show("cluster");
@@ -764,7 +871,7 @@ var SetupWizard = {
       dialog.find('button.back').unbind('click').click(function (e) {
         e.preventDefault();
         onLeave();
-        SetupWizard.show("bucket_dialog");
+        SetupWizard.show("bucket_dialog", _.extend(opt, {previousPage: '#init_update_notifications_dialog'}));
       });
 
       dialog.find('button.next').unbind('click').click(onNext);
@@ -883,7 +990,7 @@ var SetupWizard = {
             spinner.remove();
             sending = false;
             onLeave();
-            SetupWizard.show("secure");
+            SetupWizard.show("secure", opt);
           }
         );
       }
@@ -906,6 +1013,8 @@ var SetupWizard = {
       var dialog = $('#init_sample_buckets_dialog');
       var back = dialog.find('button.back');
       var next = dialog.find('button.next');
+
+      var sampleBucketsQuota = {};
 
       _.defer(function () {
         try {next[0].focus();} catch (e) {}
@@ -931,55 +1040,29 @@ var SetupWizard = {
         e.preventDefault();
         dialog.add(next).add(back).css('cursor', 'wait').attr('disabled', true);
 
-        var complete = function() {
-          enableForm();
-          SetupWizard.show("bucket_dialog");
-        };
-
         var buckets = checkedBuckets();
-        var json = JSON.stringify(buckets);
 
-        if (buckets.length === 0) {
-          complete();
-          return;
-        }
-
-        var loading = genericDialog({
-          buttons: {ok: false, cancel: false},
-          header: 'Please wait while the sample buckets are loaded.',
-          textHTML: '',
-          showCloseButton: false
+        opt.sampleBuckets = {};
+        _.each(buckets, function (name) {
+          opt.sampleBuckets[name] = sampleBucketsQuota[name];
         });
-        overlayWithSpinner(loading.dialog);
 
-        jsonPostWithErrors('/sampleBuckets/install', json, function (simpleErrors, status, errorObject) {
-          if (status === 'success') {
-            loading.close();
-            complete();
-          } else {
-            var errReason = errorObject && errorObject.reason || simpleErrors.join(' and ');
-            loading.close();
-            enableForm();
-            genericDialog({
-              buttons: {ok: true},
-              header: 'Error',
-              textHTML: errReason
-            });
-          }
-        }, {
-          timeout: 140000
-        });
+        enableForm();
+        SetupWizard.show("bucket_dialog", _.extend(opt, {previousPage: '#init_sample_buckets_dialog'}));
       });
 
-      $.get('/sampleBuckets', function(buckets) {
-        var tmp, htmlName, installed = [], available = [];
-        _.each(buckets, function(bucket) {
+      $.get('/sampleBuckets', function (buckets) {
+        var tmp, htmlName, available = [];
+        _.each(buckets, function (bucket) {
           htmlName = escapeHTML(bucket.name);
-          if (bucket.installed) {
-            installed.push('<li>' + htmlName + '</li>');
-          } else {
+          if (!bucket.installed) {
+            sampleBucketsQuota[bucket.name] = bucket.quotaNeeded;
+            var checkedAttr = "";
+            if (opt != undefined && opt.sampleBuckets != undefined && (bucket.name in opt.sampleBuckets)) {
+               checkedAttr = " checked='checked'";
+            }
             tmp = '<li><input type="checkbox" value="' + htmlName +
-              '" id="setup-sample-' + htmlName + '" />&nbsp; ' +
+              '" id="setup-sample-' + htmlName + '"' + checkedAttr + ' />&nbsp; ' +
               '<label for="setup-sample-' + htmlName + '">' +
               htmlName + '</label></li>';
             available.push(tmp);
@@ -990,11 +1073,6 @@ var SetupWizard = {
           '<li>There are no samples available to install.</li>' :
           available.join('');
 
-        installed = (installed.length === 0) ?
-          '<li>There are no installed samples.</li>' :
-          installed.join('');
-
-        $('#setup_installed_samples').html(installed);
         $('#setup_available_samples').html(available);
 
         enableForm();

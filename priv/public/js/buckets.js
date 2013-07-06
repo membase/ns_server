@@ -175,19 +175,33 @@ function setAutoCompactionSettingsFields(form, initValues) {
 
 var BucketDetailsDialog = mkClass({
   initialize: function (initValues, isNew, options) {
+    var self = this;
+
     this.isNew = isNew;
     this.initValues = initValues;
-    initValues.ramQuotaMB = Math.floor(initValues.quota.rawRAM / 1048576);
+
+    initValues.toBeAllocatedForOtherBuckets = initValues.toBeAllocatedForOtherBuckets || 0;
+
+    initValues.ramQuotaMB = BytestoMB(initValues.quota.rawRAM - initValues.toBeAllocatedForOtherBuckets);
 
     options = options || {};
 
     this.dialogID = options.id || 'bucket_details_dialog';
 
+    this.refreshBuckets = options.refreshBuckets || $m(BucketsSection, 'refreshBuckets');
+
+    this.formValidationCallback = options.formValidationCallback || function () {};
+
+    this.getFormValues = options.getFormValues || AutoCompactionSection.serializeCompactionForm;
+
     this.onSuccess = options.onSuccess || function () {
       hideDialog(this.dialogID);
     };
 
-    this.refreshBuckets = options.refreshBuckets || $m(BucketsSection, 'refreshBuckets');
+    this.doCreateBucket = options.doCreateBucket || function (uri, form, callback) {
+       var data = self.getFormValues(form);
+       jsonPostWithErrors(uri, data, callback);
+    }
 
     var dialog = this.dialog = $('#' + this.dialogID);
 
@@ -219,15 +233,16 @@ var BucketDetailsDialog = mkClass({
         if (newType == oldBucketType) {
           return;
         }
-        oldBucketType = newType;
         var isPersistent = (newType == 'membase');
-        dialog.find('.persistent-only')[isPersistent ? 'slideDown' : 'slideUp']('fast');
+        if (oldBucketType === undefined) {
+          dialog.find('.persistent-only')[isPersistent ? 'show' : 'hide']();
+        }
+        else {
+          dialog.find('.persistent-only')[isPersistent ? 'slideDown' : 'slideUp']('fast');
+        }
         dialog[isPersistent ? 'removeClass' : 'addClass']('bucket-is-non-persistent');
         dialog[isPersistent ? 'addClass' : 'removeClass']('bucket-is-persistent');
-
-        if (errorsCell.value && errorsCell.value.summaries) {
-          errorsCell.setValueAttr(null, 'summaries', 'ramSummary');
-        }
+        oldBucketType = newType;
       });
     }).call(this);
 
@@ -302,20 +317,27 @@ var BucketDetailsDialog = mkClass({
 
     this.setupDefaultNameReaction(dialog);
 
-    var errorsCell = this.errorsCell = new Cell();
+    var form = dialog.find('form');
+    var validateURL = this.initValues.validateURL;
+    if (validateURL === undefined) {
+      validateURL = this.initValues.uri;
+      validateURL += (this.initValues.uri.match(/\?/)) ? '&': '?';
+      validateURL += 'just_validate=1';
+    }
+
+    var errorsCell = new Cell();
     var errorsCellSubscription = errorsCell.subscribeValue($m(this, 'onValidationResult'));
     this.cleanups.push($m(errorsCellSubscription, 'cancel'));
 
-    var form = dialog.find('form');
-    var validateURL = this.initValues.uri;
-    validateURL += (validateURL.match(/\?/)) ? '&': '?';
-    validateURL += 'just_validate=1';
-    this.formValidator = setupFormValidation(form, validateURL, function (status, errors) {
-      console.log("setting errors: ", errors);
-      errorsCell.setValue(errors);
-    }, function() {
-      return AutoCompactionSection.serializeCompactionForm(form);
-    });
+    this.formValidator = setupFormValidation(form, validateURL,
+      function (status, errors) {
+        console.log("setting errors: ", errors);
+        errorsCell.setValue(errors);
+        self.formValidationCallback();
+      }, function () {
+        return self.getFormValues(form);
+      }
+    );
 
     this.cleanups.push($m(this.formValidator, 'abort'));
   },
@@ -399,8 +421,7 @@ var BucketDetailsDialog = mkClass({
 
     self.formValidator.pause();
 
-    var data = AutoCompactionSection.serializeCompactionForm(self.dialog.find("form"));
-    jsonPostWithErrors(self.initValues.uri, data, function (data, status, errorObject) {
+    self.doCreateBucket(self.initValues.uri, self.dialog.find("form"), function (data, status, errorObject) {
       if (status == 'success') {
         self.refreshBuckets(function () {
           self.needBucketsRefresh = false;
@@ -413,7 +434,7 @@ var BucketDetailsDialog = mkClass({
       enableForm();
 
       var simpleErrors = data;
-      self.errorsCell.setValue(errorObject);
+      errorsCell.setValue(errorObject);
       if (simpleErrors && simpleErrors.length) {
         genericDialog({buttons: {ok: true, cancel: false},
                        header: self.isNew ? "Failed To Create Bucket" : "Failed to Update Bucket",
@@ -453,7 +474,7 @@ var BucketDetailsDialog = mkClass({
     setFormValues(form, self.initValues);
 
     form.find('[name=bucketType]').boolAttr('disabled', !self.isNew);
-    form.find('.for-enable-replicas input').prop('checked', self.initValues.replicaNumber !== 0);
+    form.find('.for-enable-replicas input').prop('checked', self.initValues.replicaNumber != 0);
 
     var compactionCleanup = setAutoCompactionSettingsFields(form, self.initValues);
     self.cleanups.push(compactionCleanup);
@@ -543,12 +564,17 @@ var BucketDetailsDialog = mkClass({
     this.dialog.find('[name="' + field + '"]')[error ? 'addClass' : 'removeClass']('invalid');
   },
 
+  getFormData: function () {
+    var form = this.dialog.find('form');
+    return serializeForm(form, {});
+  },
+
   // this updates our gauges and errors
   // we don't use it to set input values, 'cause for the later we need to do it once
   onValidationResult: function (result) {
-    result = result || {};
-    // if (!result)                // TODO: handle it
-    //   return;
+    if (!result)
+      return;
+
     var self = this,
         summaries = result.summaries || {},
         ramSummary = summaries.ramSummary,
@@ -567,16 +593,16 @@ var BucketDetailsDialog = mkClass({
     if (ramSummary) {
       self.renderGauge(ramGauge,
                        ramSummary.total,
-                       ramSummary.thisAlloc,
-                       ramSummary.otherBuckets);
+                       ramSummary.thisAlloc - self.initValues.toBeAllocatedForOtherBuckets,
+                       ramSummary.otherBuckets + self.initValues.toBeAllocatedForOtherBuckets);
     }
     ramGauge.css('visibility', ramSummary ? 'visible' : 'hidden');
 
     if (memcachedSummaryVisible) {
       memcachedSummaryJQ.text('Total bucket size = '
-                              + Math.floor(ramSummary.thisAlloc / 1048576)
+                              + BytestoMB(ramSummary.thisAlloc - self.initValues.toBeAllocatedForOtherBuckets * ramSummary.nodesCount)
                               + ' MB ('
-                              + ramSummary.perNodeMegs
+                              + (ramSummary.perNodeMegs - BytestoMB(self.initValues.toBeAllocatedForOtherBuckets)).toString()
                               + ' MB x ' + ViewHelpers.count(ramSummary.nodesCount, 'node') +')');
     }
     memcachedSummaryJQ.css('display', memcachedSummaryVisible ? 'block' : 'none');
