@@ -390,19 +390,10 @@ update_replication_post_move(VBucket, OldChain, NewChain) ->
                             {Dst, replica, undefined, Src}
                     end,
     %% destroy remnants of old replication chain
-    AddChanges = [ChangeReplica(D, undefined)
-                  || {S, D} <- pairs(OldChain),
-                     S =/= undefined,
-                     D =/= undefined,
-                     not lists:member(D, NewChain)],
+    DelChanges = [ChangeReplica(D, undefined) || {_, D} <- pairs(OldChain),
+                                                 not lists:member(D, NewChain)],
     %% just start new chain of replications. Old chain is dead now
-    DelChanges = [ChangeReplica(D, S)
-                  || {S, D} <- pairs(NewChain),
-                     true = if S =:= undefined -> D =:= undefined;
-                               true -> true
-                            end,
-                     S =/= undefined,
-                     D =/= undefined],
+    AddChanges = [ChangeReplica(D, S) || {S, D} <- pairs(NewChain)],
     ok = janitor_agent:bulk_set_vbucket_state(BucketName, self(), VBucket, AddChanges ++ DelChanges).
 
 assert_master_mover() ->
