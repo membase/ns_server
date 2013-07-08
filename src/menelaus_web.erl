@@ -342,6 +342,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun handle_reset_alerts/1};
                          ["controller", "setFastWarmup"] ->
                              {auth, fun handle_set_fast_warmup/1};
+                         ["controller", "setReplicationTopology"] ->
+                             {auth, fun handle_set_replication_topology/1};
                          ["pools", PoolId, "buckets", Id] ->
                              {auth_check_bucket_uuid, fun menelaus_web_buckets:handle_bucket_update/3,
                               [PoolId, Id]};
@@ -2391,6 +2393,26 @@ handle_set_fast_warmup(Req) ->
         {false, {ok, FWSettings}} ->
             ns_config:set(fast_warmup, FWSettings),
             reply_json(Req, [], 200)
+    end.
+
+handle_set_replication_topology(Req) ->
+    Params = Req:parse_post(),
+    TopologyString = proplists:get_value("topology", Params),
+    case lists:member(TopologyString, ["star", "chain"]) of
+        true ->
+            Topology = list_to_atom(TopologyString),
+            RV = ns_orchestrator:set_replication_topology(Topology),
+            case RV of
+                ok ->
+                    Req:respond({200, add_header(), []});
+                rebalance_running ->
+                    Req:respond({503, add_header(), "Rebalance running."});
+                in_recovery ->
+                    Req:respond({503, add_header(), "Cluster is in recovery mode."})
+            end;
+        false ->
+            Req:respond({400, add_header(),
+                         "topology must be either \"star\" or \"chain\""})
     end.
 
 handle_cancel_xdcr(XID, Req) ->

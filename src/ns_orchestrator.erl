@@ -55,7 +55,8 @@
          commit_vbucket/3,
          recovery_status/0,
          recovery_map/2,
-         is_recovery_running/0]).
+         is_recovery_running/0,
+         set_replication_topology/1]).
 
 -define(SERVER, {global, ?MODULE}).
 
@@ -265,6 +266,13 @@ is_recovery_running() ->
         _ ->
             false
     end.
+
+-spec set_replication_topology(chain | star) ->
+                                      ok | rebalance_running | in_recovery.
+set_replication_topology(Topology) ->
+    wait_for_orchestrator(),
+    gen_fsm:sync_send_event(?SERVER,
+                            {set_replication_topology, Topology}, infinity).
 
 %%
 %% gen_fsm callbacks
@@ -714,8 +722,20 @@ idle({start_recovery, Bucket}, _From, State) ->
     catch
         throw:E ->
             {reply, E, idle, State}
-    end.
-
+    end;
+idle({set_replication_topology, Topology}, _From, State) ->
+    CurrentTopology = cluster_compat_mode:get_replication_topology(),
+    case CurrentTopology =:= Topology of
+        true ->
+            ok;
+        false ->
+            ale:info(?USER_LOGGER, "Switching replication topology from ~s to ~s",
+                     [CurrentTopology, Topology]),
+            ns_config:set(replication_topology, Topology),
+            ns_config:sync_announcements(),
+            lists:foreach(fun request_janitor_run/1, ns_bucket:get_bucket_names())
+    end,
+    {reply, ok, idle, State}.
 
 janitor_running(rebalance_progress, _From, State) ->
     {reply, not_running, janitor_running, State};
