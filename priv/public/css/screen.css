@@ -243,10 +243,10 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .darker_block ul.col_headers li{width:25%;display:block;float:left;text-align:center;text-transform:uppercase}
 .darker_block ul.col_headers li:last-child{color:#808080}
 
-.darker_block.closed {padding:0;border-bottom:5px solid #eeeeef;*border:none;}
-.darker_block.closed > div, .darker_block.closed ul.col_headers {display:none !important;}
-.darker_block.closed h3 ins, .expander.closed {margin:-3px 1.2em 0 4px;border-width:10px 0 10px 10px;border-color:transparent transparent transparent #01b0ff;}
-.darker_block.closed h3:hover ins, .expander.closed:hover {border-left-color:#339ACA;}
+.darker_block.dynamic_closed {padding:0;border-bottom:5px solid #eeeeef;*border:none;}
+.darker_block.dynamic_closed > div, .darker_block.dynamic_closed ul.col_headers {display:none !important;}
+.darker_block.dynamic_closed h3 ins, .expander.closed {margin:-3px 1.2em 0 4px;border-width:10px 0 10px 10px;border-color:transparent transparent transparent #01b0ff;}
+.darker_block.dynamic_closed h3:hover ins, .expander.closed:hover {border-left-color:#339ACA;}
 .darker_block .analytics-small-graph {overflow:visible;width:174px !important;height:60px !important; margin:4px 7px 5px 12px;z-index:1;}
 .darker_block .analytics-small-graph:hover {background-position:0 -122px;z-index:90;}
 .darker_block .analytics-small-graph.selected {background-position:0 -61px;}
@@ -314,7 +314,7 @@ div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph 
 #view_results_container {margin:0;border:1px solid #ccc;box-shadow:none;}
 .list td.langv {text-align:left}
 .views .buttons, .replications .buttons {float:right;margin:2px 0px 0 0;text-transform:none;font-weight:normal}
-.views .darker_block.closed h3 ins, .replications .darker_block.closed h3 ins {top:17px}
+.views .darker_block.dynamic_closed h3 ins, .replications .darker_block.dynamic_closed h3 ins {top:17px}
 .views .darker_block h3 ins, .replications .darker_block h3 ins {position:absolute;top:16px;left:10px}
 .views .darker_block h3, .replications .views .darker_block h3 {position:relative;min-height:2.5em}
 .view_head {float:left;padding:12px 0 0 31px}

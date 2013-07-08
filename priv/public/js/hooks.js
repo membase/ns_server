@@ -590,7 +590,7 @@ var MockedRequest = mkClass({
               {"specificStatsURL":"/pools/default/buckets/default/stats/curr_items","title":"items","name":"curr_items","desc":"Number of unique items in this bucket - only active items, not replica (measured from curr_items)"},
               {"specificStatsURL":"/pools/default/buckets/default/stats/disk_write_queue","title":"disk write queue","name":"disk_write_queue","desc":"Number of items waiting to be written to disk in this bucket (measured from ep_queue_size+ep_flusher_todo)"}
             ]},
-          {"blockName":"vBucket Resources","extraCSSClasses":"withtotal closed",
+          {"blockName":"vBucket Resources","extraCSSClasses":"withtotal dynamic_closed",
             "columns":["Active","Replica","Pending","Total"],
             "stats":[
               {"specificStatsURL":"/pools/default/buckets/default/stats/vb_active_num","title":"vBuckets","name":"vb_active_num","desc":"Number of vBuckets in the \"active\" state for this bucket (measured from vb_active_num)"},
@@ -622,7 +622,7 @@ var MockedRequest = mkClass({
               {"specificStatsURL":"/pools/default/buckets/default/stats/vb_pending_meta_data_memory","title":"metadata in RAM","name":"vb_pending_meta_data_memory","desc":"Amount of pending item metadata consuming RAM in this bucket and should be transient during rebalancing (measured from vb_pending_meta_memory)"},
               {"specificStatsURL":"/pools/default/buckets/default/stats/ep_meta_data_memory","title":"metadata in RAM","name":"ep_meta_data_memory","desc":"Total amount of item  metadata consuming RAM in this bucket (measured from ep_meta_data_memory)"}
             ]},
-          {"blockName":"Disk Queues","extraCSSClasses":"withtotal closed",
+          {"blockName":"Disk Queues","extraCSSClasses":"withtotal dynamic_closed",
             "columns":["Active","Replica","Pending","Total"],
             "stats":[
               {"specificStatsURL":"/pools/default/buckets/default/stats/vb_active_queue_size","title":"items","name":"vb_active_queue_size","desc":"Number of active items waiting to be written to disk in this bucket (measured from vb_active_queue_size)"},
@@ -642,7 +642,7 @@ var MockedRequest = mkClass({
               {"specificStatsURL":"/pools/default/buckets/default/stats/vb_avg_pending_queue_age","title":"average age","name":"vb_avg_pending_queue_age","desc":"Average age in seconds of pending items in the pending item queue for this bucket and should be transient during rebalancing (measured from vb_avg_pending_queue_age)"},
               {"specificStatsURL":"/pools/default/buckets/default/stats/vb_avg_total_queue_age","title":"average age","name":"vb_avg_total_queue_age","desc":"Average age in seconds of all items in the disk write queue for this bucket (measured from vb_avg_total_queue_age)"}
             ]},
-          {"blockName":"Tap Queues","extraCSSClasses":"withtotal closed",
+          {"blockName":"Tap Queues","extraCSSClasses":"withtotal dynamic_closed",
             "columns":["Replication","Rebalance","Clients","Total"],
             "stats":[
               {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_replica_count","title":"TAP senders","name":"ep_tap_replica_count","desc":"Number of internal replication TAP queues in this bucket (measured from ep_tap_replica_count)"},

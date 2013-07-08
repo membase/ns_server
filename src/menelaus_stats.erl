@@ -768,7 +768,7 @@ couchbase_replication_stats_descriptions(BucketId) ->
                                                 "on remote cluster ~p",[RemoteBucket, RemoteClusterName]),
 
                       {struct,[{blockName, iolist_to_binary(BlockName)},
-                               {extraCSSClasses,<<"closed">>},
+                               {extraCSSClasses,<<"dynamic_closed">>},
                                {stats,
                                 [%% first row
                                  {struct,[{title,<<"outbound XDCR mutations">>},
@@ -847,7 +847,7 @@ couchbase_view_stats_descriptions(BucketId) ->
                                       [[?SPACE_CHAR | Id]
                                        || Id <- tl(DDocIds)]]),
               MyStats = {struct,[{blockName,<<"View Stats: ",Ids/binary>>},
-                                 {extraCSSClasses,<<"closed">>},
+                                 {extraCSSClasses,<<"dynamic_closed">>},
                                  {columns,
                                   [<<"Data">>,<<"Disk">>,<<"Read Ops">>]},
                                  {stats,
@@ -962,7 +962,7 @@ membase_stats_description(BucketId) ->
                          {desc,<<"Number of mutations to be replicated to other clusters">>}]}
              ]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
-              {extraCSSClasses,<<"withtotal closed">>},
+              {extraCSSClasses,<<"withtotal dynamic_closed">>},
               {columns,
                [<<"Active">>,<<"Replica">>,<<"Pending">>,<<"Total">>]},
               {stats,
@@ -1055,7 +1055,7 @@ membase_stats_description(BucketId) ->
                          {name,<<"ep_meta_data_memory">>},
                          {desc,<<"Total amount of item  metadata consuming RAM in this bucket (measured from ep_meta_data_memory)">>}]}]}]},
      {struct,[{blockName,<<"Disk Queues">>},
-              {extraCSSClasses,<<"withtotal closed">>},
+              {extraCSSClasses,<<"withtotal dynamic_closed">>},
               {columns,
                [<<"Active">>,<<"Replica">>,<<"Pending">>,<<"Total">>]},
               {stats,
@@ -1108,7 +1108,7 @@ membase_stats_description(BucketId) ->
                          {name,<<"vb_avg_total_queue_age">>},
                          {desc,<<"Average age in seconds of all items in the disk write queue for this bucket (measured from vb_avg_total_queue_age)">>}]}]}]},
      {struct,[{blockName,<<"Tap Queues">>},
-              {extraCSSClasses,<<"withtotal closed">>},
+              {extraCSSClasses,<<"withtotal dynamic_closed">>},
               {columns,
                [<<"Replication">>,<<"Rebalance">>,<<"Clients">>,<<"Total">>]},
               {stats,
@@ -1187,7 +1187,7 @@ membase_stats_description(BucketId) ->
         ++ couchbase_view_stats_descriptions(BucketId)
         ++ couchbase_replication_stats_descriptions(BucketId)
         ++ [{struct,[{blockName,<<"Incoming XDCR Operations">>},
-                     {extraCSSClasses,<<"closed">>},
+                     {extraCSSClasses,<<"dynamic_closed">>},
                      {stats,
                       [{struct,[{title,<<"metadata reads per sec.">>},
                                 {name,<<"ep_num_ops_get_meta">>},
