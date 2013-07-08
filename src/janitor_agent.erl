@@ -271,7 +271,8 @@ apply_new_bucket_config_old_style(Bucket, _Servers, [] = _Zombies, NewBucketConf
      || {Node, VBucket, State} <- StatesToSet,
         Node =/= undefined],
 
-    Replicas = ns_bucket:map_to_replicas(NewMap),
+    Replicas = ns_bucket:map_to_replicas(NewMap,
+                                         cluster_compat_mode:get_replication_topology()),
     ns_vbm_sup:set_src_dst_vbucket_replicas(Bucket, Replicas),
 
     [begin
@@ -286,7 +287,7 @@ apply_new_bucket_config_old_style(Bucket, _Servers, [] = _Zombies, NewBucketConf
     ok.
 
 process_apply_config_rv(Bucket, {Replies, BadNodes}, Call) ->
-    BadReplies = [R || {_, RV} = R<- Replies,
+    BadReplies = [R || {_, RV} = R <- Replies,
                        RV =/= ok],
     case BadReplies =/= [] orelse BadNodes =/= [] of
         true ->
@@ -300,6 +301,16 @@ process_apply_config_rv(Bucket, {Replies, BadNodes}, Call) ->
 apply_new_bucket_config_new_style(Bucket, Servers, [] = Zombies, NewBucketConfig, IgnoredVBuckets) ->
     true = new_style_enabled(),
 
+    case cluster_compat_mode:get_replication_topology() of
+        star ->
+            apply_new_bucket_config_new_style_star(Bucket, Servers, Zombies,
+                                                   NewBucketConfig, IgnoredVBuckets);
+        chain ->
+            apply_new_bucket_config_new_style_chain(Bucket, Servers, Zombies,
+                                                    NewBucketConfig, IgnoredVBuckets)
+    end.
+
+apply_new_bucket_config_new_style_chain(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets) ->
     RV1 = gen_server:multi_call(Servers -- Zombies, server_name(Bucket),
                                 {apply_new_config, NewBucketConfig, IgnoredVBuckets},
                                 ?APPLY_NEW_CONFIG_TIMEOUT),
@@ -309,6 +320,82 @@ apply_new_bucket_config_new_style(Bucket, Servers, [] = Zombies, NewBucketConfig
                                         {apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
                                         ?APPLY_NEW_CONFIG_TIMEOUT),
             process_apply_config_rv(Bucket, RV2, apply_new_config_replicas_phase);
+        Other ->
+            Other
+    end.
+
+apply_new_bucket_config_new_style_star(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets) ->
+    Map = proplists:get_value(map, NewBucketConfig),
+    true = (Map =/= undefined),
+    NumVBuckets = proplists:get_value(num_vbuckets, NewBucketConfig),
+    true = is_integer(NumVBuckets),
+
+    %% Since apply_new_config and apply_new_config_replica_phase calls expect
+    %% vbucket maps and not the actual changes that has to be applied, we need
+    %% to involve some trickery here. For every node we build something that
+    %% looks like vbucket map. Map chain for a vbucket on master node looks
+    %% like this [node]. This ensures that apply_new_config sets this vbucket
+    %% to active on the node. Map chain for a replica vbucket looks like
+    %% [master_node, replica_node] for every replica node. This ensures that
+    %% apply_new_config sets the vbucket to replica state on replica_node and
+    %% that apply_new_config_replica_phase sets up the replication correctly.
+    AliveServers = Servers -- Zombies,
+    NodeMaps0 = dict:from_list(
+                  [{N, array:new([{size, NumVBuckets},
+                                  {default, [undefined]}])} || N <- AliveServers]),
+
+    NodeMaps1 =
+        lists:foldl(
+          fun ({VBucket, [Master | _]}, Acc) ->
+                  case lists:member(Master, AliveServers) of
+                      true ->
+                          NodeMap0 = dict:fetch(Master, Acc),
+                          NodeMap1 = array:set(VBucket, [Master], NodeMap0),
+                          dict:store(Master, NodeMap1, Acc);
+                      false ->
+                          Acc
+                  end
+          end, NodeMaps0, misc:enumerate(Map, 0)),
+
+    Replicas = ns_bucket:map_to_replicas_star(Map),
+    NodeMaps2 =
+        lists:foldl(
+          fun ({Src, Dst, VBucket}, Acc) ->
+                  case lists:member(Dst, AliveServers) of
+                      true ->
+                          NodeMap0 = dict:fetch(Dst, Acc),
+                          NodeMap1 = array:set(VBucket, [Src, Dst], NodeMap0),
+                          dict:store(Dst, NodeMap1, Acc);
+                      false ->
+                          Acc
+                  end
+          end, NodeMaps1, Replicas),
+
+    NodeMaps = dict:map(
+                 fun (_, NodeMapArr) ->
+                         lists:keystore(map, 1, NewBucketConfig, {map, array:to_list(NodeMapArr)})
+                 end, NodeMaps2),
+
+    RV1 = misc:parallel_map(
+            fun (Node) ->
+                    {Node, catch gen_server:call({server_name(Bucket), Node},
+                                                 {apply_new_config,
+                                                  dict:fetch(Node, NodeMaps),
+                                                  IgnoredVBuckets},
+                                                 ?APPLY_NEW_CONFIG_TIMEOUT)}
+            end, AliveServers, infinity),
+    case process_apply_config_rv(Bucket, {RV1, []}, apply_new_config) of
+        ok ->
+            RV2 = misc:parallel_map(
+                    fun (Node) ->
+                            {Node,
+                             catch gen_server:call({server_name(Bucket), Node},
+                                                   {apply_new_config_replicas_phase,
+                                                    dict:fetch(Node, NodeMaps),
+                                                    IgnoredVBuckets},
+                                                   ?APPLY_NEW_CONFIG_TIMEOUT)}
+                    end, AliveServers, infinity),
+            process_apply_config_rv(Bucket, {RV2, []}, apply_new_config_replicas_phase);
         Other ->
             Other
     end.
@@ -639,7 +726,7 @@ handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, _From, #state{
 
     %% before changing vbucket states (i.e. activating or killing
     %% vbuckets) we must stop replications into those vbuckets
-    WantedReplicas = [{Src, VBucket} || {Src, Dst, VBucket} <- ns_bucket:map_to_replicas(Map),
+    WantedReplicas = [{Src, VBucket} || {Src, Dst, VBucket} <- ns_bucket:map_to_replicas_chain(Map),
                                         Dst =:= node()],
     WantedReplications = [{Src, [VB || {_, VB} <- Pairs]}
                           || {Src, Pairs} <- misc:keygroup(1, lists:sort(WantedReplicas))],
@@ -665,7 +752,7 @@ handle_call({apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
     true = (Map =/= undefined),
     %% TODO: unignore ignored vbuckets
     [] = IgnoredVBuckets,
-    WantedReplicas = [{Src, VBucket} || {Src, Dst, VBucket} <- ns_bucket:map_to_replicas(Map),
+    WantedReplicas = [{Src, VBucket} || {Src, Dst, VBucket} <- ns_bucket:map_to_replicas_chain(Map),
                                         Dst =:= node()],
     WantedReplications = [{Src, [VB || {_, VB} <- Pairs]}
                           || {Src, Pairs} <- misc:keygroup(1, lists:sort(WantedReplicas))],

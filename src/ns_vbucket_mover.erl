@@ -379,8 +379,21 @@ spawn_workers(#state{bucket=Bucket, moves_scheduler_state = SubState} = State) -
 %% @private
 %% @doc {Src, Dst} pairs from a chain with unmapped nodes filtered out.
 pairs(Chain) ->
+    case cluster_compat_mode:get_replication_topology() of
+        star ->
+            pairs_star(Chain);
+        chain ->
+            pairs_chain(Chain)
+    end.
+
+pairs_chain(Chain) ->
     [Pair || {Src, Dst} = Pair <- misc:pairs(Chain), Src /= undefined,
              Dst /= undefined].
+
+pairs_star([undefined | _]) ->
+    [];
+pairs_star([Master | Replicas]) ->
+    [{Master, R} || R <- Replicas, R =/= undefined].
 
 %% @private
 %% @doc Perform post-move replication fixup.

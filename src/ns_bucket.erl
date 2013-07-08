@@ -43,8 +43,10 @@
          is_valid_bucket_name/1,
          json_map_from_config/2,
          live_bucket_nodes/1,
-         map_to_replicas/1,
-         replicated_vbuckets/3,
+         map_to_replicas/2,
+         map_to_replicas_chain/1,
+         map_to_replicas_star/1,
+         replicated_vbuckets/4,
          maybe_get_bucket/2,
          moxi_port/1,
          name_conflict/1,
@@ -271,7 +273,7 @@ raw_ram_quota(Bucket) ->
 -define(FS_SOFT_REBALANCE_NEEDED, 1).
 -define(FS_OK, 0).
 
-bucket_failover_safety(BucketConfig, LiveNodes) ->
+bucket_failover_safety(BucketConfig, LiveNodes, Topology) ->
     ReplicaNum = ns_bucket:num_replicas(BucketConfig),
     case ReplicaNum of
         %% if replica count for bucket is 0 we cannot failover at all
@@ -305,7 +307,8 @@ bucket_failover_safety(BucketConfig, LiveNodes) ->
                         end;
                     true ->
                         case ns_rebalancer:unbalanced(proplists:get_value(map, BucketConfig),
-                                                      proplists:get_value(servers, BucketConfig)) of
+                                                      proplists:get_value(servers, BucketConfig),
+                                                      Topology) of
                             true ->
                                 ?FS_SOFT_REBALANCE_NEEDED;
                             _ ->
@@ -323,10 +326,10 @@ bucket_failover_safety(BucketConfig, LiveNodes) ->
             {BaseSafety, ExtraSafety}
     end.
 
-failover_safety_rec(?FS_HARD_NODES_NEEDED, _ExtraSafety, _, _LiveNodes) -> {?FS_HARD_NODES_NEEDED, ok};
-failover_safety_rec(BaseSafety, ExtraSafety, [], _LiveNodes) -> {BaseSafety, ExtraSafety};
-failover_safety_rec(BaseSafety, ExtraSafety, [BucketConfig | RestConfigs], LiveNodes) ->
-    {ThisBaseSafety, ThisExtraSafety} = bucket_failover_safety(BucketConfig, LiveNodes),
+failover_safety_rec(?FS_HARD_NODES_NEEDED, _ExtraSafety, _, _LiveNodes, _Topology) -> {?FS_HARD_NODES_NEEDED, ok};
+failover_safety_rec(BaseSafety, ExtraSafety, [], _LiveNodes, _Topology) -> {BaseSafety, ExtraSafety};
+failover_safety_rec(BaseSafety, ExtraSafety, [BucketConfig | RestConfigs], LiveNodes, Topology) ->
+    {ThisBaseSafety, ThisExtraSafety} = bucket_failover_safety(BucketConfig, LiveNodes, Topology),
     NewBaseSafety = case BaseSafety < ThisBaseSafety of
                         true -> ThisBaseSafety;
                         _ -> BaseSafety
@@ -338,7 +341,7 @@ failover_safety_rec(BaseSafety, ExtraSafety, [BucketConfig | RestConfigs], LiveN
                              ok
                      end,
     failover_safety_rec(NewBaseSafety, NewExtraSafety,
-                        RestConfigs, LiveNodes).
+                        RestConfigs, LiveNodes, Topology).
 
 -spec failover_warnings() -> [failoverNeeded | rebalanceNeeded | hardNodesNeeded | softNodesNeeded].
 failover_warnings() ->
@@ -347,7 +350,8 @@ failover_warnings() ->
         = failover_safety_rec(?FS_OK, ok,
                               [C || {_, C} <- get_buckets(),
                                     membase =:= bucket_type(C)],
-                              LiveNodes),
+                              LiveNodes,
+                              cluster_compat_mode:get_replication_topology()),
     BaseSafety = case BaseSafety0 of
                      ?FS_HARD_NODES_NEEDED -> hardNodesNeeded;
                      ?FS_FAILOVER_NEEDED -> failoverNeeded;
@@ -357,36 +361,42 @@ failover_warnings() ->
                  end,
     [S || S <- [BaseSafety, ExtraSafety], S =/= ok].
 
+map_to_replicas(Map, ReplicationTopology) ->
+    case ReplicationTopology of
+        chain ->
+            map_to_replicas_chain(Map);
+        star ->
+            map_to_replicas_star(Map)
+    end.
 
-map_to_replicas(Map) ->
-    map_to_replicas(Map, 0, []).
+map_to_replicas_chain(Map) ->
+    map_to_replicas_chain(Map, 0, []).
 
-map_to_replicas([], _, Replicas) ->
+map_to_replicas_chain([], _, Replicas) ->
     lists:append(Replicas);
-map_to_replicas([Chain|Rest], V, Replicas) ->
-    Pairs = [{Src, Dst, V}||{Src, Dst} <- misc:pairs(Chain),
+map_to_replicas_chain([Chain|Rest], V, Replicas) ->
+    Pairs = [{Src, Dst, V} || {Src, Dst} <- misc:pairs(Chain),
                             Src /= undefined andalso Dst /= undefined],
-    map_to_replicas(Rest, V+1, [Pairs|Replicas]).
+    map_to_replicas_chain(Rest, V+1, [Pairs|Replicas]).
+
+map_to_replicas_star(Map) ->
+    lists:foldr(
+      fun ({VBucket, [Master | Replicas]}, Acc) ->
+              case Master of
+                  undefined ->
+                      Acc;
+                  _ ->
+                      [{Master, R, VBucket} || R <- Replicas, R =/= undefined] ++
+                          Acc
+              end
+      end, [], misc:enumerate(Map, 0)).
 
 %% returns _sorted_ list of vbuckets that are replicated from SrcNode
 %% to DstNode according to given Map.
-replicated_vbuckets(Map, SrcNode, DstNode) ->
-    replicated_vbuckets_rec(Map, SrcNode, DstNode, 0).
-
-replicated_vbuckets_rec([], _SrcNode, _DstNode, _Idx) -> [];
-replicated_vbuckets_rec([Chain | RestChains], SrcNode, DstNode, Idx) ->
-    RestResult = replicated_vbuckets_rec(RestChains, SrcNode, DstNode, Idx+1),
-    case replicated_in_chain(Chain, SrcNode, DstNode) of
-        true -> [Idx | RestResult];
-        false -> RestResult
-    end.
-
-replicated_in_chain([SrcNode, DstNode | _], SrcNode, DstNode) ->
-    true;
-replicated_in_chain([_ | Rest], SrcNode, DstNode) ->
-    replicated_in_chain(Rest, SrcNode, DstNode);
-replicated_in_chain([], _SrcNode, _DstNode) ->
-    false.
+replicated_vbuckets(Map, SrcNode, DstNode, Topology) ->
+    VBuckets = [V || {S, D, V} <- map_to_replicas(Map, Topology),
+                     S =:= SrcNode, DstNode =:= D],
+    lists:sort(VBuckets).
 
 %% @doc Return the minimum number of live copies for all vbuckets.
 -spec min_live_copies([node()], list()) -> non_neg_integer() | undefined.
@@ -788,7 +798,16 @@ update_vbucket_map_history(Map, Options) ->
 
 past_vbucket_maps() ->
     case ns_config:search(vbucket_map_history) of
-        {value, V} -> V;
+        {value, V} ->
+            lists:map(
+              fun ({Map, Options} = MapOptions) ->
+                      case proplists:get_value(replication_topology, Options) of
+                          undefined ->
+                              {Map, [{replication_topology, chain} | Options]};
+                          _ ->
+                              MapOptions
+                      end
+              end, V);
         false -> []
     end.
 

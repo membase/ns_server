@@ -29,7 +29,7 @@
          generate_initial_map/1,
          rebalance/3,
          run_mover/7,
-         unbalanced/2,
+         unbalanced/3,
          eject_nodes/1,
          buckets_replication_statuses/0,
          maybe_cleanup_old_buckets/1]).
@@ -142,7 +142,9 @@ failover(Bucket, Node) ->
     end.
 
 generate_vbucket_map(CurrentMap, KeepNodes, BucketConfig) ->
-    Opts = [{maps_history, ns_bucket:past_vbucket_maps()} | ns_bucket:config_to_map_options(BucketConfig)],
+    ReplicationTopology = cluster_compat_mode:get_replication_topology(),
+    Opts0 = [{maps_history, ns_bucket:past_vbucket_maps()} | ns_bucket:config_to_map_options(BucketConfig)],
+    Opts = misc:update_proplist(Opts0, [{replication_topology, ReplicationTopology}]),
     {mb_map:generate_map(CurrentMap, KeepNodes, Opts), Opts}.
 
 generate_initial_map(BucketConfig) ->
@@ -151,8 +153,7 @@ generate_initial_map(BucketConfig) ->
     Map1 = lists:duplicate(proplists:get_value(num_vbuckets, BucketConfig),
                           Chain),
     Servers = proplists:get_value(servers, BucketConfig),
-    {MapRV, _} = generate_vbucket_map(Map1, Servers, BucketConfig),
-    MapRV.
+    generate_vbucket_map(Map1, Servers, BucketConfig).
 
 local_buckets_shutdown_loop(Ref, CanWait) ->
     ExcessiveBuckets = ns_memcached:active_buckets() -- ns_bucket:node_bucket_names(node()),
@@ -367,28 +368,51 @@ run_mover(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets, Map, FastForw
     end.
 
 
+unbalanced(Map, Servers, Topology) ->
+    NumServers = length(Servers),
+
+    R = lists:any(
+          fun (Chain) ->
+                  lists:member(
+                    undefined,
+                    %% Don't warn about missing replicas when you have
+                    %% fewer servers than your copy count!
+                    lists:sublist(Chain, NumServers))
+          end, Map),
+
+    R orelse case Topology of
+                 chain ->
+                     unbalanced_chain(Map, Servers);
+                 star ->
+                     unbalanced_star(Map, Servers)
+             end.
+
 %% @doc Determine if a particular bucket is unbalanced. Returns true
 %% iff the max vbucket count in any class on any server is >2 more
 %% than the min.
--spec unbalanced(map(), [atom()]) -> boolean().
-unbalanced(Map, Servers) ->
-    NumServers = length(Servers),
+-spec unbalanced_chain(map(), [atom()]) -> boolean().
+unbalanced_chain(Map, Servers) ->
+    lists:any(fun (Histogram) ->
+                      case [N || {_, N} <- Histogram] of
+                          [] -> false;
+                          Counts -> lists:max(Counts) - lists:min(Counts) > 2
+                      end
+              end, histograms(Map, Servers)).
+
+unbalanced_star(Map, Servers) ->
+    {Masters, Replicas} =
+        lists:foldl(
+          fun ([M | R], {AccM, AccR}) ->
+                  {[M | AccM], R ++ AccR}
+          end, {[], []}, Map),
+    MastersCounts = misc:uniqc([M || M <- Masters, lists:member(M, Servers)]),
+    ReplicasCounts = misc:uniqc([R || R <- Replicas, lists:member(R, Servers)]),
 
     lists:any(
-      fun (Chain) ->
-              lists:member(
-                undefined,
-                %% Don't warn about missing replicas when you have
-                %% fewer servers than your copy count!
-                lists:sublist(Chain, NumServers))
-      end, Map) orelse
-        lists:any(fun (Histogram) ->
-                          case [N || {_, N} <- Histogram] of
-                              [] -> false;
-                              Counts -> lists:max(Counts) - lists:min(Counts) > 2
-                          end
-                  end, histograms(Map, Servers)).
-
+      fun (Counts0) ->
+              Counts = [C || {_, C} <- Counts0],
+              Counts =/= [] andalso lists:max(Counts) - lists:min(Counts) > 1
+      end, [MastersCounts, ReplicasCounts]).
 
 %%
 %% Internal functions
@@ -433,12 +457,9 @@ histograms(Map, Servers) ->
 
 
 verify_replication(Bucket, Nodes, Map) ->
-    ExpectedReplicators =
-        lists:sort(
-          lists:flatmap(
-            fun ({V, Chain}) ->
-                    [{Src, Dst, V} || {Src, Dst} <- misc:pairs(Chain), Src =/= undefined, Dst =/= undefined]
-            end, misc:enumerate(Map, 0))),
+    ExpectedReplicators0 = ns_bucket:map_to_replicas(Map, cluster_compat_mode:get_replication_topology()),
+    ExpectedReplicators = lists:sort(ExpectedReplicators0),
+
     {ActualReplicators, BadNodes} = janitor_agent:get_src_dst_vbucket_replications(Bucket, Nodes),
     case BadNodes of
         [] -> ok;

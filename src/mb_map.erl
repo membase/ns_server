@@ -98,6 +98,9 @@ vbucket_movements_rec(AccMasters, AccReplicas, AccRest, [[MasterSrc|_] = SrcChai
 vbucket_movements(Src, Dst) ->
     vbucket_movements_rec(0, 0, 0, Src, Dst).
 
+vbucket_movements_star(Src, Dst) ->
+    {Takeovers, _, ReplicaChanges} = vbucket_movements(Src, Dst),
+    {Takeovers, ReplicaChanges}.
 
 map_nodes_set(Map) ->
     lists:foldl(
@@ -120,13 +123,13 @@ matching_renamings(KeepNodesSet, CurrentMap, CandidateMap) ->
         _ ->
             case length(hd(CandidateMap)) =:= length(hd(CurrentMap)) of
                 true ->
-                    matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentMap, CandidateMap);
+                    matching_renamings_same_vbuckets_count(KeepNodesSet, CandidateMap);
                 false ->
                     []
             end
     end.
 
-matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentMap, CandidateMap) ->
+matching_renamings_same_vbuckets_count(KeepNodesSet, CandidateMap) ->
     CandidateNodesSet = map_nodes_set(CandidateMap),
     case sets:size(CandidateNodesSet) =:= sets:size(KeepNodesSet) of
         false ->
@@ -135,13 +138,12 @@ matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentMap, CandidateMap) -
             CurrentNotCommon = sets:subtract(KeepNodesSet, CandidateNodesSet),
             case sets:size(CurrentNotCommon) of
                 0 ->
-                    Moves = vbucket_movements(CurrentMap, CandidateMap),
-                    [{CandidateMap, Moves}];
+                    [CandidateMap];
                 1 ->
                     [NewNode] = sets:to_list(CurrentNotCommon),
                     [OldNode] = sets:to_list(sets:subtract(CandidateNodesSet, KeepNodesSet)),
                     NewMap = misc:rewrite_value(OldNode, NewNode, CandidateMap),
-                    [{NewMap, vbucket_movements(CurrentMap, NewMap)}];
+                    [NewMap];
                 2 ->
                     [NewNodeA, NewNodeB] = sets:to_list(CurrentNotCommon),
                     [OldNodeA, OldNodeB] = sets:to_list(sets:subtract(CandidateNodesSet, KeepNodesSet)),
@@ -149,8 +151,7 @@ matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentMap, CandidateMap) -
                                                  misc:rewrite_value(OldNodeA, NewNodeA, CandidateMap)),
                     NewMapB = misc:rewrite_value(OldNodeA, NewNodeB,
                                                  misc:rewrite_value(OldNodeB, NewNodeA, CandidateMap)),
-                    [{NewMapA, vbucket_movements(CurrentMap, NewMapA)},
-                     {NewMapB, vbucket_movements(CurrentMap, NewMapB)}];
+                    [NewMapA, NewMapB];
                 _ ->
                     %% just try some random mapping just in case. It
                     %% will work nicely if NewNode-s are all being
@@ -164,7 +165,7 @@ matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentMap, CandidateMap) -
                                        misc:rewrite_value(CandidateNode, CurrentNode, MapAcc)
                                end,
                                CandidateMap, lists:zip(sets:to_list(CurrentNotCommon), NewNotCommon)),
-                    [{NewMap, vbucket_movements(CurrentMap, NewMap)}]
+                    [NewMap]
             end
     end.
 
@@ -172,10 +173,67 @@ matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentMap, CandidateMap) -
 %% API
 %%
 
+generate_map(Map, Nodes, Options) ->
+    case proplists:get_value(replication_topology, Options, chain) of
+        chain ->
+            generate_map_chain(Map, Nodes, Options);
+        star ->
+            generate_map_star(Map, Nodes, Options)
+    end.
+
+generate_map_star(Map, Nodes, Options) ->
+    KeepNodes = lists:sort(Nodes),
+    MapsHistory = proplists:get_value(maps_history, Options, []),
+    NonHistoryOptionsNow = lists:sort(lists:keydelete(maps_history, 1, Options)),
+
+    NodesSet = sets:from_list(Nodes),
+    MapsFromPast = lists:flatmap(fun ({PastMap, NonHistoryOptions}) ->
+                                         case lists:sort(NonHistoryOptions) =:= NonHistoryOptionsNow of
+                                             true ->
+                                                 [{M, vbucket_movements_star(Map, M)} ||
+                                                      M <- matching_renamings(NodesSet, Map, PastMap)];
+                                             false ->
+                                                 []
+                                         end
+                                 end, MapsHistory),
+    ?log_debug("Scores for past maps:~n~p", [[S || {_, S} <- MapsFromPast]]),
+
+    NumVBuckets = length(Map),
+    NumSlaves = proplists:get_value(max_slaves, Options, 10),
+    NumReplicas = length(hd(Map)) - 1,
+
+    GeneratedMaps0 =
+        lists:append(
+          %% vbmap itself randomizes some things internally so let's give it a
+          %% chance
+          [[invoke_vbmap(ShuffledNodes, NumVBuckets, NumSlaves, NumReplicas) ||
+               _ <- lists:seq(1, 3)] ||
+              ShuffledNodes <- [misc:shuffle(KeepNodes) || _ <- lists:seq(1, 3)]]),
+
+    GeneratedMaps = [{M, vbucket_movements_star(Map, M)} || M <- GeneratedMaps0],
+    ?log_debug("Scores for generated maps:~n~p", [[S || {_, S} <- GeneratedMaps]]),
+
+    AllMaps = sets:to_list(sets:from_list(GeneratedMaps ++ MapsFromPast)),
+
+    ?log_debug("Considering ~p maps:~n~p",
+               [length(AllMaps), [S || {_, S} <- AllMaps]]),
+    BestMapScore = lists:foldl(fun ({_, CandidateScore} = Candidate, {_, BestScore} = Best) ->
+                                  case CandidateScore < BestScore of
+                                      true ->
+                                          Candidate;
+                                      false ->
+                                          Best
+                                  end
+                          end, hd(AllMaps), tl(AllMaps)),
+    BestMap = element(1, BestMapScore),
+    ?log_debug("Best map score: ~p (~p)",
+               [element(2, BestMapScore), lists:keymember(BestMap, 1, GeneratedMaps)]),
+    BestMap.
+
 map_scores_less(ScoreA, ScoreB) ->
     {element(1, ScoreA) + element(2, ScoreA), element(3, ScoreA)} < {element(1, ScoreB) + element(2, ScoreB), element(3, ScoreB)}.
 
-generate_map(Map, Nodes, Options) ->
+generate_map_chain(Map, Nodes, Options) ->
     KeepNodes = lists:sort(Nodes),
     MapsHistory = proplists:get_value(maps_history, Options, []),
     NonHistoryOptionsNow = lists:sort(lists:keydelete(maps_history, 1, Options)),
@@ -196,7 +254,8 @@ generate_map(Map, Nodes, Options) ->
     MapsFromPast = lists:flatmap(fun ({PastMap, NonHistoryOptions}) ->
                                          case lists:sort(NonHistoryOptions) =:= NonHistoryOptionsNow of
                                              true ->
-                                                 matching_renamings(NodesSet, Map, PastMap);
+                                                 [{M, vbucket_movements(Map, M)} ||
+                                                      M <- matching_renamings(NodesSet, Map, PastMap)];
                                              false ->
                                                  []
                                          end
@@ -556,6 +615,94 @@ slaves([], _, _, Set) ->
 testnodes(NumNodes) ->
     [list_to_atom([$n | tl(integer_to_list(1000+N))]) || N <- lists:seq(1, NumNodes)].
 
+invoke_vbmap(Nodes, NumVBuckets, NumSlaves, NumReplicas) ->
+    VbmapName =
+        case erlang:system_info(system_architecture) of
+            "win32" ->
+                "vbmap.exe";
+            _ ->
+                "vbmap"
+        end,
+
+    VbmapPath = path_config:component_path(bin, VbmapName),
+    DiagPath = path_config:tempfile("vbmap_diag", ""),
+
+    try
+        misc:executing_on_new_process(
+          fun () ->
+                  do_invoke_vbmap(VbmapPath, DiagPath,
+                                  Nodes, NumVBuckets, NumSlaves, NumReplicas)
+          end)
+    after
+        file:delete(DiagPath)
+    end.
+
+do_invoke_vbmap(VbmapPath, DiagPath, Nodes,
+                NumVBuckets, NumSlaves, NumReplicas) ->
+    NumNodes = length(Nodes),
+
+    Port = erlang:open_port(
+             {spawn_executable, VbmapPath},
+             [stderr_to_stdout, binary,
+              stream, exit_status, hide,
+              {args, ["--engine", "dummy",
+                      "--diag", DiagPath,
+                      "--output-format", "json",
+                      "--num-vbuckets", integer_to_list(NumVBuckets),
+                      "--num-nodes", integer_to_list(NumNodes),
+                      "--num-slaves", integer_to_list(NumSlaves),
+                      "--num-replicas", integer_to_list(NumReplicas)]}]),
+
+    PortResult = collect_port_output(Port),
+
+    case file:read_file(DiagPath) of
+        {ok, Diag} ->
+            ?log_debug("vbmap diag output:~n~s", [Diag]);
+        Error ->
+            ?log_warning("Couldn't read vbmap diag output: ~p", [Error])
+    end,
+
+    case PortResult of
+        {ok, Output} ->
+            NodesMapping = dict:from_list(misc:enumerate(Nodes, 0)),
+
+            try
+                Decoded = ejson:decode(Output),
+                lists:map(
+                  fun (Chain) ->
+                          Length = length(Chain),
+                          [dict:fetch(N, NodesMapping) || N <- Chain] ++
+                              lists:duplicate(NumReplicas - Length + 1, undefined)
+                  end, Decoded)
+            catch
+                E:T ->
+                    ?log_error("seems that vbmap produced invalid json (error ~p):~n~s",
+                               [{E, T}, Output]),
+                    erlang:raise(E, T, erlang:get_stacktrace())
+            end;
+        {error, Output} ->
+            ?log_error("Could not generate vbucket map: ~s", [Output]),
+            exit({vbmap_error, iolist_to_binary(Output)})
+    end.
+
+collect_port_output(Port) ->
+    do_collect_port_output(Port, []).
+
+do_collect_port_output(Port, Output) ->
+    receive
+        {Port, {data, Data}} ->
+            do_collect_port_output(Port, [Output | Data]);
+        {Port, {exit_status, Status}} ->
+            case Status of
+                0 ->
+                    {ok, Output};
+                _ ->
+                    {error, Output}
+            end;
+        Msg ->
+            ?log_error("Got unexpected message"),
+            exit({unexpected_message, Msg})
+    end.
 
 %%
 %% Tests

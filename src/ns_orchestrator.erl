@@ -168,7 +168,10 @@ needs_rebalance() ->
 
 -spec needs_rebalance([atom(), ...]) -> boolean().
 needs_rebalance(Nodes) ->
-    lists:any(fun ({_, BucketConfig}) -> needs_rebalance(Nodes, BucketConfig) end,
+    Topology = cluster_compat_mode:get_replication_topology(),
+    lists:any(fun ({_, BucketConfig}) ->
+                      needs_rebalance(Nodes, BucketConfig, Topology)
+              end,
               ns_bucket:get_buckets()).
 
 -spec rebalance_progress_full() -> {running, [{atom(), float()}]} | not_running.
@@ -837,7 +840,7 @@ recovery(_Event, _From, State) ->
 %% Internal functions
 %%
 
-needs_rebalance(Nodes, BucketConfig) ->
+needs_rebalance(Nodes, BucketConfig, Topology) ->
     Servers = proplists:get_value(servers, BucketConfig, []),
     case proplists:get_value(type, BucketConfig) of
         membase ->
@@ -847,7 +850,7 @@ needs_rebalance(Nodes, BucketConfig) ->
                     Map = proplists:get_value(map, BucketConfig),
                     Map =:= undefined orelse
                         lists:sort(Nodes) /= lists:sort(Servers) orelse
-                        ns_rebalancer:unbalanced(Map, Servers)
+                        ns_rebalancer:unbalanced(Map, Servers, Topology)
             end;
         memcached ->
             lists:sort(Nodes) /= lists:sort(Servers)

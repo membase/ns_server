@@ -24,7 +24,8 @@
          is_index_aware_rebalance_on/0,
          is_index_pausing_on/0,
          rebalance_ignore_view_compactions/0,
-         check_is_progress_tracking_supported/0]).
+         check_is_progress_tracking_supported/0,
+         get_replication_topology/0]).
 
 %% NOTE: this is rpc:call-ed by mb_master
 -export([supported_compat_version/0, mb_master_advertised_version/0]).
@@ -76,6 +77,9 @@ is_index_aware_rebalance_on() ->
 is_index_pausing_on() ->
     is_index_aware_rebalance_on() andalso
         (not ns_config_ets_dup:unreliable_read_key(index_pausing_disabled, false)).
+
+get_replication_topology() ->
+    ns_config_ets_dup:unreliable_read_key(replication_topology, star).
 
 rebalance_ignore_view_compactions() ->
     ns_config_ets_dup:unreliable_read_key(rebalance_ignore_view_compactions, false).

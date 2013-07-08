@@ -59,7 +59,9 @@ graphviz(Bucket) ->
     SubGraphs = [io_lib:format("subgraph cluster_n~B {~ncolor=~s;~nlabel=\"~s\";~n~s}~n",
                               [I, Color, Node, node_vbuckets(I, Node, States, Map)]) ||
                     {I, {Node, Color}} <- misc:enumerate(NodeColors)],
-    Replicants = lists:sort(ns_bucket:map_to_replicas(Map)),
+
+    Replicants0 = ns_bucket:map_to_replicas(Map, cluster_compat_mode:get_replication_topology()),
+    Replicants = lists:sort(Replicants0),
     {Replicators, FailedNodes} = janitor_agent:get_src_dst_vbucket_replications(Bucket, Nodes),
     case FailedNodes of
         [] -> ok;

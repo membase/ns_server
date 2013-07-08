@@ -60,17 +60,24 @@ cleanup_with_membase_bucket_check_map(Bucket, Options, BucketConfig) ->
                 [] ->
                     NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
                     NumReplicas = ns_bucket:num_replicas(BucketConfig),
-                    NewMap = case ns_janitor_map_recoverer:read_existing_map(Bucket, Servers, NumVBuckets, NumReplicas) of
-                                 {ok, M} ->
-                                     M;
-                                 {error, no_map} ->
-                                     ?log_info("janitor decided to generate initial vbucket map"),
-                                     ns_rebalancer:generate_initial_map(BucketConfig)
-                             end,
+                    {NewMap, Opts} =
+                        case ns_janitor_map_recoverer:read_existing_map(Bucket, Servers, NumVBuckets, NumReplicas) of
+                            {ok, M} ->
+                                Opts0 = ns_bucket:config_to_map_options(BucketConfig),
+                                %% assume that replication topology coincides
+                                %% with the one set globally
+                                Opts1 = [{replication_topology,
+                                          cluster_compat_mode:get_replication_topology()} | Opts0],
+                                {M, Opts1};
+                            {error, no_map} ->
+                                ?log_info("janitor decided to generate initial vbucket map"),
+                                ns_rebalancer:generate_initial_map(BucketConfig)
+                        end,
 
-                    case ns_rebalancer:unbalanced(NewMap, Servers) of
+                    Topology = proplists:get_value(replication_topology, Opts),
+                    case ns_rebalancer:unbalanced(NewMap, Servers, Topology) of
                         false ->
-                            ns_bucket:update_vbucket_map_history(NewMap, ns_bucket:config_to_map_options(BucketConfig));
+                            ns_bucket:update_vbucket_map_history(NewMap, Opts);
                         true ->
                             ok
                     end,
