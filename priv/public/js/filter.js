@@ -119,7 +119,7 @@ Filter.prototype = {
     });
 
     self.filtersBtn.click(function () {
-      if (!self.filtersCont.hasClass('disabled')) {
+      if (!self.filtersCont.hasClass('dynamic_disabled')) {
         if (!self.filtersCont.hasClass('open')) {
           self.openFilter();
         } else {

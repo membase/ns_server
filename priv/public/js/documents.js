@@ -298,15 +298,15 @@ var DocumentsSection = {
 
     _.each([prevBtn, nextBtn, docsLookupBtn, docDeleteBtn, docSaveAsBtn, docSaveBtn, docCreateBtn], function (btn) {
       btn.click(function (e) {
-        if ($(this).hasClass('disabled')) {
+        if ($(this).hasClass('dynamic_disabled')) {
           e.stopImmediatePropagation();
         }
       })
     });
 
     function showDocumentListState(page) {
-      prevBtn.toggleClass('disabled', page.pageNumber === 0);
-      nextBtn.toggleClass('disabled', isLastPage(page));
+      prevBtn.toggleClass('dynamic_disabled', page.pageNumber === 0);
+      nextBtn.toggleClass('dynamic_disabled', isLastPage(page));
 
       docsCrntPgCont.text(page.pageNumber + 1);
 
@@ -399,28 +399,28 @@ var DocumentsSection = {
     }
 
     function enableSaveBtn(enable) {
-      docSaveBtn[enable ? 'removeClass' : 'addClass']('disabled');
+      docSaveBtn[enable ? 'removeClass' : 'addClass']('dynamic_disabled');
     }
 
     function enableSaveAsBtn(enable) {
-      docSaveAsBtn[enable ? 'removeClass' : 'addClass']('disabled');
+      docSaveAsBtn[enable ? 'removeClass' : 'addClass']('dynamic_disabled');
     }
 
     function enableLookup(enable) {
       docsLookup.attr({disabled: !enable});
-      docsLookupBtn[enable ? 'removeClass' : 'addClass']('disabled');
+      docsLookupBtn[enable ? 'removeClass' : 'addClass']('dynamic_disabled');
     }
 
     function enableDocCreateBtn(enable) {
-      docCreateBtn[enable ? 'removeClass' : 'addClass']('disabled');
+      docCreateBtn[enable ? 'removeClass' : 'addClass']('dynamic_disabled');
     }
 
     function enableFilterBtn(enable) {
-      filterBtn[enable ? 'removeClass' : 'addClass']('disabled');
+      filterBtn[enable ? 'removeClass' : 'addClass']('dynamic_disabled');
     }
 
     function enableDeleteBtn(enable) {
-      docDeleteBtn[enable ? 'removeClass' : 'addClass']('disabled');
+      docDeleteBtn[enable ? 'removeClass' : 'addClass']('dynamic_disabled');
     }
 
     function showPrevNextCont(show) {
@@ -492,7 +492,7 @@ var DocumentsSection = {
         } else {
           renderTemplate('documents_list', {loading: true});
           // we don't know total rows. that's why we can't allow user to quick clicks on next button
-          nextBtn.toggleClass('disabled', true);
+          nextBtn.toggleClass('dynamic_disabled', true);
         }
       },
         self.currentPageDocsCell, self.currentDocumentsPageNumberCell, self.selectedBucketCell,

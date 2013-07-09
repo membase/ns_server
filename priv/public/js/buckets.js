@@ -834,12 +834,12 @@ var BucketsSection = {
     });
 
     $('.compact_btn').live('click', function (e) {
-      if (!$(this).hasClass('disabled')) {
+      if (!$(this).hasClass('dynamic_disabled')) {
         BucketsSection.compactBucket($(this).attr('data-uri'));
       }
     });
     $('.cancel_compact_btn').live('click', function (e) {
-      if (!$(this).hasClass('disabled')) {
+      if (!$(this).hasClass('dynamic_disabled')) {
         BucketsSection.cancelCompactBucket($(this).attr('data-uri'));
       }
     });

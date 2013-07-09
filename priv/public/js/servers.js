@@ -65,7 +65,7 @@ var ServersSection = {
       mayRebalance = false;
 
     var rebalanceButton = this.serversQ.find('.rebalance_button').toggle(!!details);
-    rebalanceButton.toggleClass('disabled', !mayRebalance);
+    rebalanceButton.toggleClass('dynamic_disabled', !mayRebalance);
 
     if (details && !rebalancing) {
       $('#rebalance_tab .badge span').text(pending.length);
@@ -98,21 +98,21 @@ var ServersSection = {
     if (IOCenter.staleness.value) {
       $('#js_servers .staleness-notice').show();
       $('#js_servers').find('.add_button, .rebalance_button').hide();
-      $('#active_server_list_container, #pending_server_list_container').find('.re_add_button, .eject_server, .failover_server, .remove_from_list').addClass('disabled');
+      $('#active_server_list_container, #pending_server_list_container').find('.re_add_button, .eject_server, .failover_server, .remove_from_list').addClass('dynamic_disabled');
     } else {
       $('#js_servers .staleness-notice').hide();
       $('#js_servers').find('.rebalance_button').show();
       $('#js_servers .add_button')[rebalancing ? 'hide' : 'show']();
     }
 
-    $('#active_server_list_container .last-active').find('.eject_server').addClass('disabled').end()
-      .find('.failover_server').addClass('disabled');
+    $('#active_server_list_container .last-active').find('.eject_server').addClass('dynamic_disabled').end()
+      .find('.failover_server').addClass('dynamic_disabled');
 
-    $('#active_server_list_container .server_down .eject_server').addClass('disabled');
+    $('#active_server_list_container .server_down .eject_server').addClass('dynamic_disabled');
     $('.failed_over .eject_server, .failed_over .failover_server').hide();
 
     if (inRecovery) {
-      $('#active_server_list_container, #pending_server_list_container').find('.re_add_button, .eject_server, .failover_server, .remove_from_list').addClass('disabled');
+      $('#active_server_list_container, #pending_server_list_container').find('.re_add_button, .eject_server, .failover_server, .remove_from_list').addClass('dynamic_disabled');
     }
   },
   renderServerDetails: function (item) {
@@ -344,7 +344,7 @@ var ServersSection = {
   },
   accountForDisabled: function (handler) {
     return function (e) {
-      if ($(e.currentTarget).hasClass('disabled')) {
+      if ($(e.currentTarget).hasClass('dynamic_disabled')) {
         e.preventDefault();
         return;
       }

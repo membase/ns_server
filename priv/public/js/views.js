@@ -900,7 +900,7 @@ var ViewsSection = {
         && !v.need(self.ddocsAreInFactMissingCell);
     }).name("canCreateDDocCell");
     self.canCreateDDocCell.subscribeValue(function (val) {
-      btnCreate[val ? 'removeClass' : 'addClass']('disabled');
+      btnCreate[val ? 'removeClass' : 'addClass']('dynamic_disabled');
     });
 
     Cell.subscribeMultipleValues(function (sec, tabsVal, spatialVal, viewsVal, subset, intPageFull, intPage, builder) {
@@ -1058,7 +1058,7 @@ var ViewsSection = {
       self.reduceEditor.setOption('onChange', onMapReduceChange);
       self.spatialEditor.setOption('onChange', onMapReduceChange);
       unchangedCell.subscribeValue(function (unchanged) {
-        runBtn.toggleClass('disabled', !unchanged);
+        runBtn.toggleClass('dynamic_disabled', !unchanged);
       });
 
     })();
@@ -1171,15 +1171,15 @@ var ViewsSection = {
             return;
           }
           icPrevNext.show();
-          prevBtn.toggleClass('disabled', intPage == 1);
-          nextBtn.toggleClass('disabled', (viewResults.rows.length < ViewsSection.PAGE_LIMIT) || intPage == 10);
+          prevBtn.toggleClass('dynamic_disabled', intPage == 1);
+          nextBtn.toggleClass('dynamic_disabled', (viewResults.rows.length < ViewsSection.PAGE_LIMIT) || intPage == 10);
         }).apply(this, args);
       });
 
       function pageBtnClicker(btn, body) {
         btn.click(function (ev) {
           ev.preventDefault();
-          if (btn.hasClass('disabled')) {
+          if (btn.hasClass('dynamic_disabled')) {
             return;
           }
           var cells = [self.intPageCell, self.pageNumberCell];
@@ -1257,7 +1257,7 @@ var ViewsSection = {
         }, container);
 
         $('#development_views_list_container .list_button').click(function (e) {
-          if ($(this).hasClass('disabled')) {
+          if ($(this).hasClass('dynamic_disabled')) {
             e.stopImmediatePropagation();
             e.preventDefault();
           }
@@ -1289,21 +1289,21 @@ var ViewsSection = {
     });
 
     viewRunButton.bind('click', function (e) {
-      if ($(this).hasClass('disabled')) {
+      if ($(this).hasClass('dynamic_disabled')) {
         return;
       }
       e.preventDefault();
       self.runCurrentView();
     });
     spatialRunButton.bind('click', function (e) {
-      if ($(this).hasClass('disabled')) {
+      if ($(this).hasClass('dynamic_disabled')) {
         return;
       }
       e.preventDefault();
       self.runCurrentSpatial();
     });
     editDocument.bind('click', function (e) {
-      if ($(this).hasClass('disabled')) {
+      if ($(this).hasClass('dynamic_disabled')) {
         e.preventDefault();
         return;
       }
@@ -1322,7 +1322,7 @@ var ViewsSection = {
     });
 
     self.sampleDocCell.subscribeValue(function (doc) {
-      editDocument.removeClass('disabled');
+      editDocument.removeClass('dynamic_disabled');
       if (doc) {
         sampleDocsCont.show();
         noSampleDocsCont.hide();
@@ -1339,7 +1339,7 @@ var ViewsSection = {
         renderTemplate('sample_documents', param);
         editDocument.attr('href', '#sec=documents&bucketName=' + encodeURIComponent(selectedBucket) + '&docId=' + encodeURIComponent(doc.meta.id));
       } else {
-        editDocument.addClass('disabled');
+        editDocument.addClass('dynamic_disabled');
         if (doc === null) {
           sampleDocsCont.hide();
           noSampleDocsCont.show();
@@ -1468,18 +1468,18 @@ var ViewsSection = {
   },
   compactDDoc: function (id, button) {
     var btn = $(button);
-    if (btn.is('.disabled')) {
+    if (btn.is('.dynamic_disabled')) {
       return;
     }
     this.withDDoc(id, function (ddocURL, ddoc, dbURL) {
       var compactURI = ddoc.compactURI;
-      btn.addClass('disabled');
+      btn.addClass('dynamic_disabled');
       RecentlyCompacted.instance().registerAsTriggered(compactURI, function () {
         if (!btn.closest('body').length) {
           // btn is removed already
           return;
         }
-        btn.removeClass('disabled');
+        btn.removeClass('dynamic_disabled');
       });
       $.ajax({
         url: compactURI,

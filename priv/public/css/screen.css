@@ -76,8 +76,8 @@ label.invalid{color:red !important}
 .bolder {font-weight:bolder;}
 .info_text {font-size:13px !important;}
 #get_started .info_text {font-weight:bolder;}
-.disabled {opacity:0.5; cursor:default !important; filter:progid:DXImageTransform.Microsoft.Alpha(opacity=50);}
-a.disabled{text-decoration:none;cursor:default;}
+.dynamic_disabled {opacity:0.5; cursor:default !important; filter:progid:DXImageTransform.Microsoft.Alpha(opacity=50);}
+a.dynamic_disabled{text-decoration:none;cursor:default;}
 .warn {font-size:14px; color:#ec5223;}
 .warn ul {list-style-type:disc; margin:0 0 0 15px;}
 .ovf {overflow:hidden;}
@@ -528,14 +528,6 @@ body.auth #cluster_state_id, body.init_welcome #cluster_state_id {font-style:ita
 #join_cluster_dialog label {width:150px !important;}
 #join_cluster_dialog_errors_container {padding-left: 40px;}
 
-.secure_enabled, .secure_disabled {display:block; float:left; width:223px; margin:0 10px !important;}
-.secure_enabled .button_big {margin:0;}
-.secure_enabled .disabled {display:none;}
-.secure_disabled .button_big {display:none;}
-.secure_disabled .disabled {display:block !important; margin:0px;}
-.secure_disabled .disabled:hover,
-.secure_disabled .disabled:active {background:url(../images/large_buttons_bg.gif) repeat-x 0 0 !important; color:#444245 !important;}
-
 .active_tooltip {z-index: 2;}
 .active_tooltip span.tooltip_msg {display:block;}
 .tooltip {position:relative; display:inline-block; text-decoration:none !important; padding-bottom:4px}
@@ -653,22 +645,22 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 .servers .list_button.failover_server.threat_red {color:#f00 !important;font-weight:bold;border: 1px solid #f00;border-radius:5px;-moz-box-shadow: 0 0 3px #f00;-webkit-box-shadow: 0 0 3px #f00;box-shadow:0 0 3px #f00}
 .servers .list_button.failover_server.threat_yellow {color:#E5A800 !important;font-weight:bold;border: 1px solid #fac344;border-radius:5px;-moz-box-shadow: 0 0 3px #fac344;-webkit-box-shadow: 0 0 3px #fac344;box-shadow:0 0 3px #fac344}
 .list_button span {display:block; text-align:center; height:31px; line-height:31px; padding:0 6px 0 10px; background:url(../images/btn_2_bg.png) 0 0 no-repeat;}
-.list_button.disabled {background-position:100% -93px; color:#cacbce !important; opacity:0.75 !important;}
-.list_button.disabled span {background-position:0 -62px; color:#9E9FA3 !important;}
+.list_button.dynamic_disabled {background-position:100% -93px; color:#cacbce !important; opacity:0.75 !important;}
+.list_button.dynamic_disabled span {background-position:0 -62px; color:#9E9FA3 !important;}
 .servers .add_button {width:124px;}
 .servers .rebalance_button {width:115px;}
 
 /* currently unused but keeping for later use
 .btn_edit {background: url(../images/buttons.png) no-repeat -39px top;text-indent:-9000px;width:32px;height:31px;}
-.btn_edit.disabled {opacity:0.75;background-position:-39px -31px}
+.btn_edit.dynamic_disabled {opacity:0.75;background-position:-39px -31px}
 .btn_views {background: url(../images/buttons.png) no-repeat left top;text-indent:-9000px;width:32px;height:31px;}
-.btn_views.disabled {opacity:0.75;background-position:left -31px}
+.btn_views.dynamic_disabled {opacity:0.75;background-position:left -31px}
 .btn_documents {background: url(../images/buttons.png) no-repeat -78px top;text-indent:-9000px;width:32px;height:31px;}
-.btn_documents.disabled {opacity:0.75;background-position:-78px -31px}
+.btn_documents.dynamic_disabled {opacity:0.75;background-position:-78px -31px}
 .btn_analytics {width:32px;height:31px;margin:10px 0 0;background: url(../images/buttons.png) no-repeat right top;text-indent:-9000px;}
-.btn_analytics.disabled {opacity:0.75;background-position:right -31px}
+.btn_analytics.dynamic_disabled {opacity:0.75;background-position:right -31px}
 .btn_info {background: url(../images/buttons.png) no-repeat -117px top;text-indent:-9000px;width:32px;height:31px;}
-.btn_info.disabled {opacity:0.75;background-position:-117px -31px}
+.btn_info.dynamic_disabled {opacity:0.75;background-position:-117px -31px}
 */
 .btn_x {margin: 4px 0 0;width:25px;height:24px;background:url(../images/btn_x.png) no-repeat}
 
@@ -824,7 +816,7 @@ ul.tabs .badge_display .badge {display:block;}
 .buckets_tab .settings-placeholder .edit_btn {display:block; width:65px; height:21px; background:url(../images/edit-button.png) 0 0 no-repeat; float:right;}
 
 .edit_btn {display:block; width:65px; height:21px; background:url(../images/edit-button.png) 0 0 no-repeat; float:right; text-align:center; font-size:13px; color:#000; line-height:20px; text-decoration:none !important; cursor:pointer;}
-.edit_btn.disabled {opacity:1 !important; background-position:0 -21px !important; color:#9E9FA3 !important; cursor:default;}
+.edit_btn.dynamic_disabled {opacity:1 !important; background-position:0 -21px !important; color:#9E9FA3 !important; cursor:default;}
 .list .ovf {padding:10px 0;}
 
 .list .highlight td {background-color:#eee !important;}
@@ -1118,10 +1110,10 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 .ic_prev_next a {float:left;width:21px;height:21px;background:url(../images/ic_prev_next_arr.png) no-repeat}
 .ic_prev_next .arr_next {background-position:-4px -1px}
 .ic_prev_next .arr_next:hover {background-position:-4px -27px}
-.ic_prev_next .arr_next.disabled {cursor:default;background-position:-4px -52px !important}
+.ic_prev_next .arr_next.dynamic_disabled {cursor:default;background-position:-4px -52px !important}
 .ic_prev_next .arr_prev {margin:0 5px 0 0;background-position:-33px -1px}
 .ic_prev_next .arr_prev:hover {background-position:-33px -27px}
-.ic_prev_next .arr_prev.disabled {cursor:default;background-position:-33px -52px !important}
+.ic_prev_next .arr_prev.dynamic_disabled {cursor:default;background-position:-33px -52px !important}
 /*prev next arr*/
 .view_query_string{color: #BBBBBB;padding-left: 3em;vertical-align: middle;font-size:70%}
 .view_query_string em{font-style:normal;font-weight:bold}

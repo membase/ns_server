@@ -306,7 +306,7 @@
           <script id="server_details_template" type="text/html">
           <div class="first gong_rb">
             <div class="pad">
-              <a class="edit_btn float_right disabled">Edit</a>
+              <a class="edit_btn float_right dynamic_disabled">Edit</a>
               <table class="properties_table">
                 <tr>
                     <td>Server Name: <span>{%= h(hostname) %}</span></td>
@@ -617,9 +617,9 @@
                 <div class="last">
                   <a class="inner_btn" href="#editBucket={%= h(encodeURIComponent(uri)) %}">Edit</a>
                   {% if (!showCancel && !noCompaction) { %}
-                    <button class="inner_btn compact_btn {%= disableCompact ? 'disabled' : ''%}" data-uri="{%= h(controllers.compactAll) %}"><span>Compact</span></button>
+                    <button class="inner_btn compact_btn {%= disableCompact ? 'dynamic_disabled' : ''%}" data-uri="{%= h(controllers.compactAll) %}"><span>Compact</span></button>
                   {% } else if (!noCompaction) { %}
-                    <button class="inner_btn cancel_compact_btn {%= disableCancel ? 'disabled' : ''%}" data-uri="{%= h(thisBucketCompactionTask.cancelURI) %}"><span>Cancel</span></button>
+                    <button class="inner_btn cancel_compact_btn {%= disableCancel ? 'dynamic_disabled' : ''%}" data-uri="{%= h(thisBucketCompactionTask.cancelURI) %}"><span>Cancel</span></button>
                   {% } %}
                 </div>
               </div>
@@ -1095,11 +1095,11 @@
                 </td>
                 <td colspan="3">
                   <a class="list_button when-in-prod" href="#copyDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Copy to Dev</span></a>
-                  <a class="list_button when-in-dev {%= ddoc.isEmpty ? 'disabled' : ''%}" href="#publishDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Publish</span></a>
+                  <a class="list_button when-in-dev {%= ddoc.isEmpty ? 'dynamic_disabled' : ''%}" href="#publishDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Publish</span></a>
                   <a class="list_button when-in-dev" href="#addView={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add View</span></a>
                   <a class="list_button when-in-dev" href="#addSpatial={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add Spatial View</span></a>
                   <a class="list_button" href="#deleteDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Delete</span></a>
-                  <button class="list_button {%= ViewsSection.maybeDisabledCompactButtonAttr(ddoc)%} {%= ddoc.isEmpty ? 'disabled' : ''%}" onclick="ViewsSection.compactDDoc({%= h(JSON.stringify(ddoc.meta.id)) %}, this);"><span>Compact</span></button>
+                  <button class="list_button {%= ViewsSection.maybeDisabledCompactButtonAttr(ddoc)%} {%= ddoc.isEmpty ? 'dynamic_disabled' : ''%}" onclick="ViewsSection.compactDDoc({%= h(JSON.stringify(ddoc.meta.id)) %}, this);"><span>Compact</span></button>
                 </td>
               </tr>
               <!-- {% if (_.size(ddoc.json.viewInfos) < 1 && _.size(ddoc.json.spatialInfos) < 1) { %} -->
@@ -1541,8 +1541,8 @@
                   </select>
               </div>
               <div class="ic_prev_next">
-                <a class="arr_prev disabled"></a>
-                <a class="arr_next disabled"></a>
+                <a class="arr_prev dynamic_disabled"></a>
+                <a class="arr_next dynamic_disabled"></a>
               </div>
               <div class="docs_info">
                 Current page: <span class="docs_crnt_pg">1</span>
@@ -1553,9 +1553,9 @@
               <div class="header_2 servers_header">
                 <div class="docs_title"></div>
                 <div class="editing_ctrls">
-                  <a class="btn_1 disabled" id="doc_delete"><span>Delete</span></a>
-                  <a class="btn_1 disabled" id="doc_saveas"><span>Save As...</span></a>
-                  <a class="btn_1 btn_save disabled" id="doc_save"><span>Save</span></a>
+                  <a class="btn_1 dynamic_disabled" id="doc_delete"><span>Delete</span></a>
+                  <a class="btn_1 dynamic_disabled" id="doc_saveas"><span>Save As...</span></a>
+                  <a class="btn_1 btn_save dynamic_disabled" id="doc_save"><span>Save</span></a>
                   <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
                 </div>
                 <div class="ellipsis documents_notice"></div>
@@ -1570,11 +1570,11 @@
                   <form id="search_doc" action="#">
                     <input type="text" id="docs_lookup_doc_by_id"
                            placeholder="Document ID" disabled >
-                    <button type="submit" class="btn_1 disabled" id="docs_lookup_doc_by_id_btn">
+                    <button type="submit" class="btn_1 dynamic_disabled" id="docs_lookup_doc_by_id_btn">
                       <span>Lookup Id</span>
                     </button>
                   </form>
-                  <a class="btn_1 btn_create disabled"><span>Create Document</span></a>
+                  <a class="btn_1 btn_create dynamic_disabled"><span>Create Document</span></a>
                   <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
                 </div>
                 <div class="ellipsis documents_notice"></div>
@@ -1582,8 +1582,8 @@
 
               <div id="documents_list_container">Documents</div>
               <div class="ic_prev_next bottom">
-                <a class="arr_prev disabled"></a>
-                <a class="arr_next disabled"></a>
+                <a class="arr_prev dynamic_disabled"></a>
+                <a class="arr_next dynamic_disabled"></a>
               </div>
               <script id="documents_list_template" type="text/html">
                 <table class="list" style="width:100%">
