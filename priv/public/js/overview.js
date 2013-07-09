@@ -16,7 +16,7 @@
 var OverviewSection = {
   initLater: function () {
     var self = this;
-    var overview = $('#overview');
+    var overview = $('#js_overview');
     DAL.cells.bucketsListCell.subscribeValue(function (buckets) {
       overview.find('.buckets-number').text(buckets ? ViewHelpers.count(buckets.length, 'bucket') : '??');
       if (buckets && buckets.length === 0) {

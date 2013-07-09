@@ -668,7 +668,7 @@ var BucketsSection = {
     self.settingsWidget = new MultiDrawersWidget({
       hashFragmentParam: "buckets",
       template: "bucket_settings",
-      placeholderCSS: '#buckets .settings-placeholder',
+      placeholderCSS: '#js_buckets .settings-placeholder',
       elementKey: 'name',
       actionLink: 'visitBucket',
       actionLinkCallback: function () {
@@ -811,7 +811,7 @@ var BucketsSection = {
       if (staleness === undefined) {
         return;
       }
-      var notice = $('#buckets .staleness-notice');
+      var notice = $('#js_buckets .staleness-notice');
       notice[staleness ? 'show' : 'hide']();
       $('#manage_buckets_top_bar .create-bucket-button')[staleness ? 'hide' : 'show']();
     });

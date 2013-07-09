@@ -219,7 +219,7 @@ var DocumentsSection = {
     self.lookupIdCell = new StringHashFragmentCell("lookupId");
     self.pageLimitCell = new StringHashFragmentCell("documentsPageLimit");
 
-    var documents = $('#documents');
+    var documents = $('#js_documents');
     var allDocsCont = $('#documents_list', documents);
     var allDocsTitle = $('.docs_title', allDocsCont);
 
@@ -613,7 +613,7 @@ var DocumentsSection = {
           self.lookupIdCell.setValue(docsLookupVal);
           var start = JSON.stringify(docsLookupVal);
           var end = JSON.stringify(docsLookupVal + String.fromCharCode(0xffff));
-          if (currentFilterParams.descending && currentFilterParams.descending === 'true') {  
+          if (currentFilterParams.descending && currentFilterParams.descending === 'true') {
             currentFilterParams.startkey = end;
             currentFilterParams.endkey = start;
           } else {
@@ -694,7 +694,7 @@ var DocumentsSection = {
             var val = $.trim(createDocInput.val());
             if (val) {
               startSpinner(createDocDialog);
-              var preDefinedDoc = {"click":"to edit", 
+              var preDefinedDoc = {"click":"to edit",
                 "new in 2.0":"there are no reserved field names"};
               checkOnExistence(val, preDefinedDoc);
             } else {

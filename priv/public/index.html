@@ -59,7 +59,7 @@
     <div id="mainContainer" class="main_holder">
       <div id="mainPanel" class="mainPanel">
 
-        <div id="overview" style="display:none">
+        <div id="js_overview" class="overview" style="display:none">
           <h1>Cluster Overview</h1>
           <div id="notice_container"></div>
           <div class="shadow_box">
@@ -148,7 +148,7 @@
           </div>
         </div>
 
-        <div id="servers" style="display:none">
+        <div id="js_servers" class="servers" style="display:none">
           <h1>Servers</h1>
           <div class="warning_message failover_warning">
             Fail Over Warning: <span class="warning-text"></span>
@@ -400,7 +400,7 @@
           </script>
         </div>
 
-        <div id="analytics" style="display:none">
+        <div id="js_analytics" class="analytics" style="display:none">
           <span class="block nav float_right configure_view"></span>
           <h1>
             <span class="when-normal-stats">DATA BUCKETS: </span><span class="when-specific-stats"><em class="specific-stat-description"></em> for bucket: </span>
@@ -510,7 +510,7 @@
           </div> <!-- END shadow box -->
         </div>
 
-        <div id="buckets" style="display:none">
+        <div id="js_buckets" class="buckets" style="display:none">
           <h1>Data Buckets</h1>
           <div class="shadow_box" id="couchbase_buckets">
             <div id="manage_buckets_top_bar" class="header_2">
@@ -662,7 +662,7 @@
           </script>
         </div>
 
-        <div id="logs" style="display:none">
+        <div id="js_logs" class="logs" style="display:none">
           <!-- Shadow box -->
           <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
           <span class="block nav float_right configure_view">
@@ -698,7 +698,7 @@
           </div>
         </div>
 
-        <div id="settings" style="display:none">
+        <div id="js_settings" class="settings" style="display:none">
           <h1>Settings</h1>
           <div class="shadow_box">
             <div class="section">
@@ -1006,7 +1006,7 @@
           </script>
         </div>
 
-        <div id="views" style="display:none">
+        <div id="js_views" class="views" style="display:none">
           <h1 style="clear:both;overflow:hidden">
             <span style="float:left"><select id="views_bucket_select"></select> &gt; <a href="#visitSec=views">Views</a>
               <span class="when-inside-view">
@@ -1437,7 +1437,7 @@
           </div>
         </div>
 
-        <div id="replications" style="display:none">
+        <div id="js_replications" class="replications" style="display:none">
           <h1>Replications</h1>
           <!-- Clusters -->
           <div id="cluster_references" class="shadow_box">
@@ -1526,7 +1526,7 @@
           </div>
         </div>
 
-          <div id="documents" style="display:none">
+          <div id="js_documents" class="documents" style="display:none">
             <div class="doc_header">
               <div class="wrap">
                 <select id="docs_buckets_select"></select> &gt; <a id="bread_crump_doc">Documents</a>
@@ -1629,7 +1629,7 @@
             </div>
           </div>
 
-        <div id="coming" style="display:none">
+        <div id="js_coming" class="coming" style="display:none">
           <h1>UI error encountered. This content does not exist yet.</h1>
         </div>
       </div>

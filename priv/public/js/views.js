@@ -826,7 +826,7 @@ var ViewsSection = {
   },
   init: function () {
     var self = this;
-    var views = $('#views');
+    var views = $('#js_views');
 
     // you can get to local cells through this for debugging
     self.initEval = function (arg) {
@@ -834,8 +834,8 @@ var ViewsSection = {
     }
 
     self.modeTabs = new TabsCell("vtab",
-                                 "#views .tabs.switcher",
-                                 "#views .panes > div",
+                                 "#js_views .tabs.switcher",
+                                 "#js_views .panes > div",
                                  ["development", "production"]);
     self.modeTabs.subscribeValue(function (tab) {
       views[tab == 'development' ? 'addClass' : 'removeClass']('in-development');

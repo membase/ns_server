@@ -143,7 +143,7 @@ var LogsSection = {
       if (massagedLogs === undefined)
         return;
       var stale = massagedLogs.stale;
-      $('#logs .staleness-notice')[stale ? 'show' : 'hide']();
+      $('#js_logs .staleness-notice')[stale ? 'show' : 'hide']();
     });
   },
   onEnter: function () {
@@ -230,7 +230,7 @@ var ThePage = {
       }
 
       $('#mainPanel > div:not(.notice)').css('display', 'none');
-      $('#'+secId).css('display','block');
+      $('#js_' + secId).css('display','block');
 
       _.defer(function () {
         if (oldSection && oldSection.onLeave)

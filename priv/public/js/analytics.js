@@ -879,7 +879,7 @@ var AnalyticsSection = {
     StatsModel.hotKeysCell.subscribeValue($m(self, 'onKeyStats'));
     prepareTemplateForCell('top_keys', StatsModel.hotKeysCell);
 
-    $('#analytics .block-expander').live('click', function () {
+    $('#js_analytics .block-expander').live('click', function () {
       // this forces configuration refresh and graphs redraw
       self.widget.forceNextRendering();
       StatsModel.configurationExtra.setValue({});
@@ -887,7 +887,7 @@ var AnalyticsSection = {
 
     IOCenter.staleness.subscribeValue(function (stale) {
       $('.stats-period-container')[stale ? 'hide' : 'show']();
-      $('#analytics .staleness-notice')[stale ? 'show' : 'hide']();
+      $('#js_analytics .staleness-notice')[stale ? 'show' : 'hide']();
     });
 
     (function () {
@@ -959,7 +959,7 @@ var AnalyticsSection = {
     });
 
     StatsModel.serverResourcesVisible.subscribeValue(function (visible) {
-      $('#analytics')[visible ? 'addClass' : 'removeClass']('with_server_resources');
+      $('#js_analytics')[visible ? 'addClass' : 'removeClass']('with_server_resources');
     });
 
     (function () {
@@ -1006,8 +1006,8 @@ var AnalyticsSection = {
 
     $(self.widget).bind('menelaus.graphs-widget.rendered-graphs', function () {
       var graph = StatsModel.graphsConfigurationCell.value.selected;
-      $('#analytics .current-graph-name').text(graph.title);
-      $('#analytics .current-graph-desc').text(graph.desc);
+      $('#js_analytics .current-graph-name').text(graph.title);
+      $('#js_analytics .current-graph-desc').text(graph.desc);
     });
 
     $(self.widget).bind('menelaus.graphs-widget.rendered-stats-block', function () {
@@ -1043,8 +1043,8 @@ var AnalyticsSection = {
 
     StatsModel.displayingSpecificStatsCell.subscribeValue(function (displayingSpecificStats) {
       displayingSpecificStats = !!displayingSpecificStats;
-      $('#analytics .when-normal-stats').toggle(!displayingSpecificStats);
-      $('#analytics .when-specific-stats').toggle(displayingSpecificStats);
+      $('#js_analytics .when-normal-stats').toggle(!displayingSpecificStats);
+      $('#js_analytics .when-specific-stats').toggle(displayingSpecificStats);
     });
 
     Cell.subscribeMultipleValues(function (specificStatsNamesSet, statsStatName) {
