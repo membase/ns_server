@@ -384,11 +384,14 @@ var SampleBucketSection = {
     var form = $("#sample_buckets_form");
     var button = $("#sample_buckets_settings_btn");
     var quotaWarning = $("#sample_buckets_quota_warning");
+    var maximumWarning = $("#sample_buckets_maximum_warning");
     var rebalanceWarning = $("#sample_buckets_rebalance_warning");
 
     var hasBuckets = false;
     var quotaAvailable = false;
     var numServers = false;
+    var numExistingBuckets = false;
+    var maxNumBuckets = false;
 
     var checkedBuckets = function() {
       return _.map($("#sample_buckets_form").find(':checked'), function(obj) {
@@ -398,11 +401,13 @@ var SampleBucketSection = {
 
     var maybeEnableCreateButton = function() {
 
-      if (processing || numServers === false || quotaAvailable === false) {
+      if (processing || numServers === false || quotaAvailable === false ||
+         numExistingBuckets === false || maxNumBuckets === false) {
         return;
       }
 
-      var storageNeeded = _.reduce(checkedBuckets(), function(acc, obj) {
+      var checkedBucketsArray = checkedBuckets();
+      var storageNeeded = _.reduce(checkedBucketsArray, function(acc, obj) {
         return acc + parseInt($(obj).data('quotaneeded'), 10);
       }, 0) * numServers;
       var isStorageAvailable = storageNeeded <= quotaAvailable;
@@ -415,6 +420,14 @@ var SampleBucketSection = {
         quotaWarning.hide();
       }
 
+      var maximumBucketsReached = numExistingBuckets + checkedBucketsArray.length > maxNumBuckets;
+      if (maximumBucketsReached) {
+        $('#maxBucketCount').text(maxNumBuckets);
+        maximumWarning.show();
+      } else {
+        maximumWarning.hide();
+      }
+
       var rebalanceTasks;
       DAL.cells.tasksProgressCell.getValue(function (tasks) {
         rebalanceTasks = _.filter(tasks, function (task) {
@@ -424,7 +437,7 @@ var SampleBucketSection = {
       rebalanceTasks = rebalanceTasks || [];
       rebalanceWarning[rebalanceTasks.length ? "show" : "hide"]();
 
-      if (hasBuckets && isStorageAvailable && !rebalanceTasks.length) {
+      if (hasBuckets && isStorageAvailable && !rebalanceTasks.length && !maximumBucketsReached) {
         button.removeAttr('disabled');
       } else {
         button.attr('disabled', true);
@@ -446,9 +459,14 @@ var SampleBucketSection = {
     DAL.cells.currentPoolDetailsCell.subscribe(function(pool) {
       var storage = pool.value.storageTotals;
       quotaAvailable = storage.ram.quotaTotal - storage.ram.quotaUsed;
+      maxNumBuckets = pool.value.maxBucketCount;
       maybeEnableCreateButton();
     });
 
+    DAL.cells.bucketsListCell.subscribe(function(buckets) {
+      numExistingBuckets = buckets.value.length;
+      maybeEnableCreateButton();
+    });
 
     form.bind('submit', function(e) {
 
@@ -464,12 +482,17 @@ var SampleBucketSection = {
         if (status === 'success') {
           button.text('Create');
           hasBuckets = processing = false;
+
+          DAL.cells.currentPoolDetailsCell.invalidate();
+          DAL.cells.bucketsListCell.invalidate();
+
           SampleBucketSection.refresh();
         } else {
           var errReason = errorObject && errorObject.reason || simpleErrors.join(' and ');
           button.text('Create');
           hasBuckets = processing = false;
-          maybeEnableCreateButton();
+
+          SampleBucketSection.refresh();
           genericDialog({
             buttons: {ok: true},
             header: 'Error',

@@ -9,12 +9,12 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--export([start_loading_sample/1, get_tasks/1]).
+-export([start_loading_sample/2, get_tasks/1]).
 
--export([perform_loading_task/1]).
+-export([perform_loading_task/2]).
 
-start_loading_sample(Name) ->
-    gen_server:call(?MODULE, {start_loading_sample, Name}, infinity).
+start_loading_sample(Name, Quota) ->
+    gen_server:call(?MODULE, {start_loading_sample, Name, Quota}, infinity).
 
 get_tasks(Timeout) ->
     gen_server:call(?MODULE, get_tasks, Timeout).
@@ -31,10 +31,10 @@ init([]) ->
     erlang:process_flag(trap_exit, true),
     {ok, #state{}}.
 
-handle_call({start_loading_sample, Name}, _From, #state{tasks = Tasks} = State) ->
+handle_call({start_loading_sample, Name, Quota}, _From, #state{tasks = Tasks} = State) ->
     case lists:keyfind(Name, 1, Tasks) of
         false ->
-            Pid = start_new_loading_task(Name),
+            Pid = start_new_loading_task(Name, Quota),
             ns_heart:force_beat(),
             NewState = State#state{tasks = [{Name, Pid} | Tasks]},
             {reply, ok, maybe_pass_token(NewState)};
@@ -91,8 +91,6 @@ maybe_pass_token(#state{token_pid = undefined,
 maybe_pass_token(State) ->
     State.
 
--define(SAMPLE_BUCKET_QUOTA, 1024 * 1024 * 100).
-
 wait_for_exit(Port, Name) ->
     receive
         {Port, {exit_status, Status}} ->
@@ -105,11 +103,10 @@ wait_for_exit(Port, Name) ->
             exit({unexpected_message, Unknown})
     end.
 
-start_new_loading_task(Name) ->
-    create_sample_bucket(Name),
-    proc_lib:spawn_link(?MODULE, perform_loading_task, [Name]).
+start_new_loading_task(Name, Quota) ->
+    proc_lib:spawn_link(?MODULE, perform_loading_task, [Name, Quota]).
 
-perform_loading_task(Name) ->
+perform_loading_task(Name, Quota) ->
     receive
         allowed_to_go -> ok
     end,
@@ -146,11 +143,10 @@ perform_loading_task(Name) ->
                     {"REST_PASSWORD", Password}]
     end,
 
-    Ram = misc:ceiling(?SAMPLE_BUCKET_QUOTA / 1024 / 1024),
     Cmd = BinDir ++ "/tools/cbdocloader",
     Args = ["-n", Host ++ ":" ++ integer_to_list(Port),
             "-b", Name,
-            "-s", integer_to_list(Ram),
+            "-s", integer_to_list(Quota),
             filename:join([BinDir, "..", "samples", Name ++ ".zip"])],
 
     EPort = open_port({spawn_executable, Cmd},
@@ -164,12 +160,3 @@ perform_loading_task(Name) ->
         Status ->
             exit({failed_to_load_samples_with_status, Status})
     end.
-
-create_sample_bucket(Name) ->
-    ok = ns_orchestrator:create_bucket(membase, Name,
-                                       [{num_replicas, 1},
-                                        {replica_index, true},
-                                        {auth_type, sasl},
-                                        {sasl_password, []},
-                                        {ram_quota, 100 * 1024 * 1024},
-                                        {num_threads, 3}]).
