@@ -35,12 +35,12 @@
 -define(RETRY_INTERVAL, 5 * 1000).
 -define(RETRY_ATTEMPTS, 20).
 
-subset_design_doc_view(Req, #db{name=BucketName} = Db, DesignName, ViewName,
+subset_design_doc_view(Req, #db{name=BucketName}, DesignName, ViewName,
                        [VBucket]) ->
     DDocId = <<"_design/", DesignName/binary>>,
     [Spec] = build_local_set_specs(BucketName, DDocId, ViewName, [VBucket]),
     Specs = [Spec#set_view_spec{category = dev}],
-    MergeParams = finalize_view_merge_params(Req, Db, DDocId, ViewName, Specs),
+    MergeParams = finalize_view_merge_params(Req, Specs),
     set_active_partition(DDocId, BucketName, VBucket),
     couch_index_merger:query_index(couch_view_merger, MergeParams, Req).
 
@@ -193,7 +193,7 @@ view_merge_params(Req, #db{name=BucketName} = Db, DDocId, ViewName) ->
     view_merge_params(Req, Db, DDocId, ViewName, Dict).
 
 %% we're handling only the special views (_all_docs) in the old way
-view_merge_params(Req, #db{name = BucketName} = Db,
+view_merge_params(Req, #db{name = BucketName},
                   DDocId, ViewName, NodeToVBuckets) when DDocId =:= nil ->
     ViewSpecs = dict:fold(
                   fun(Node, VBuckets, Acc) when Node =:= node() ->
@@ -203,9 +203,9 @@ view_merge_params(Req, #db{name = BucketName} = Db,
                           [build_remote_simple_specs(Node, BucketName,
                                                      ViewName, VBuckets) | Acc]
                   end, [], NodeToVBuckets),
-    finalize_view_merge_params(Req, Db, DDocId, ViewName, ViewSpecs);
+    finalize_view_merge_params(Req, ViewSpecs);
 
-view_merge_params(Req, #db{name = BucketName} = Db, DDocId, ViewName, NodeToVBuckets) ->
+view_merge_params(Req, #db{name = BucketName}, DDocId, ViewName, NodeToVBuckets) ->
     ViewSpecs = dict:fold(
                   fun(Node, VBuckets, Acc) when Node =:= node() ->
                           build_local_set_specs(BucketName,
@@ -214,9 +214,9 @@ view_merge_params(Req, #db{name = BucketName} = Db, DDocId, ViewName, NodeToVBuc
                           [build_remote_set_specs(Node, BucketName,
                                                   DDocId, ViewName, VBuckets) | Acc]
                   end, [], NodeToVBuckets),
-    finalize_view_merge_params(Req, Db, DDocId, ViewName, ViewSpecs).
+    finalize_view_merge_params(Req, ViewSpecs).
 
-finalize_view_merge_params(Req, _Db, _DDocId, _ViewName, ViewSpecs) ->
+finalize_view_merge_params(Req, ViewSpecs) ->
     case Req#httpd.method of
         'GET' ->
             Body = [],
