@@ -179,30 +179,28 @@ all_docs_db_req(Req, Db) ->
     couch_httpd_db:db_req(Req, Db).
 
 do_capi_all_docs_db_req(Req, #db{filepath = undefined,
-                                 name = DbName} = Db) ->
+                                 name = DbName}) ->
     when_has_active_vbuckets(
       Req, DbName,
       fun () ->
-            MergeParams = view_merge_params(Req, DbName, nil, <<"_all_docs">>),
+            MergeParams = all_docs_merge_params(Req, DbName),
             couch_index_merger:query_index(couch_view_merger, MergeParams, Req)
       end).
 
-view_merge_params(Req, BucketName, DDocId, ViewName) ->
-    Dict = vbucket_map_mirror:node_vbuckets_dict(binary_to_list(BucketName)),
-    view_merge_params(Req, BucketName, DDocId, ViewName, Dict).
-
 %% we're handling only the special views (_all_docs) in the old way
-view_merge_params(Req, BucketName,
-                  DDocId, ViewName, NodeToVBuckets) when DDocId =:= nil ->
+all_docs_merge_params(Req, BucketName) ->
+    NodeToVBuckets = vbucket_map_mirror:node_vbuckets_dict(
+                       binary_to_list(BucketName)),
+    ViewName = <<"_all_docs">>,
     ViewSpecs = dict:fold(
                   fun(Node, VBuckets, Acc) when Node =:= node() ->
-                          build_local_simple_specs(BucketName, DDocId,
+                          build_local_simple_specs(BucketName, nil,
                                                    ViewName, VBuckets) ++ Acc;
                      (Node, VBuckets, Acc) ->
                           [build_remote_simple_specs(Node, BucketName,
                                                      ViewName, VBuckets) | Acc]
                   end, [], NodeToVBuckets),
-    finalize_view_merge_params(Req, ViewSpecs);
+    finalize_view_merge_params(Req, ViewSpecs).
 
 view_merge_params(Req, BucketName, DDocId, ViewName, NodeToVBuckets) ->
     ViewSpecs = dict:fold(
