@@ -35,8 +35,7 @@
 -define(RETRY_INTERVAL, 5 * 1000).
 -define(RETRY_ATTEMPTS, 20).
 
-subset_design_doc_view(Req, #db{name=BucketName}, DesignName, ViewName,
-                       [VBucket]) ->
+subset_design_doc_view(Req, BucketName, DesignName, ViewName, [VBucket]) ->
     DDocId = <<"_design/", DesignName/binary>>,
     [Spec] = build_local_set_specs(BucketName, DDocId, ViewName, [VBucket]),
     Specs = [Spec#set_view_spec{category = dev}],
@@ -45,22 +44,22 @@ subset_design_doc_view(Req, #db{name=BucketName}, DesignName, ViewName,
     couch_index_merger:query_index(couch_view_merger, MergeParams, Req).
 
 
-full_design_doc_view(Req, Db, DesignName, ViewName, VBucketsDict) ->
+full_design_doc_view(Req, DbName, DesignName, ViewName, VBucketsDict) ->
     DDocId = <<"_design/", DesignName/binary>>,
-    design_doc_view_loop(Req, Db, DDocId, ViewName, VBucketsDict, ?RETRY_ATTEMPTS).
+    design_doc_view_loop(Req, DbName, DDocId, ViewName, VBucketsDict, ?RETRY_ATTEMPTS).
 
-design_doc_view_loop(_Req, _Db, _DDocId, _ViewName, _, 0) ->
+design_doc_view_loop(_Req, _DbName, _DDocId, _ViewName, _, 0) ->
     throw({error, inconsistent_state});
-design_doc_view_loop(Req, Db, DDocId, ViewName, VBucketsDict, Attempt) ->
-    MergeParams = view_merge_params(Req, Db, DDocId, ViewName, VBucketsDict),
+design_doc_view_loop(Req, DbName, DDocId, ViewName, VBucketsDict, Attempt) ->
+    MergeParams = view_merge_params(Req, DbName, DDocId, ViewName, VBucketsDict),
     try
         couch_index_merger:query_index(couch_view_merger, MergeParams, Req)
     catch
         throw:{error, set_view_outdated} ->
             ?views_debug("Got `set_view_outdated` error. Retrying."),
             timer:sleep(?RETRY_INTERVAL),
-            NewVBucketsDict = vbucket_map_mirror:node_vbuckets_dict(?b2l(Db#db.name)),
-            design_doc_view_loop(Req, Db, DDocId, ViewName, NewVBucketsDict, Attempt - 1)
+            NewVBucketsDict = vbucket_map_mirror:node_vbuckets_dict(?b2l(DbName)),
+            design_doc_view_loop(Req, DbName, DDocId, ViewName, NewVBucketsDict, Attempt - 1)
     end.
 
 %% @doc Returns a vBucket if it is run on a subset (single vBucket) only, else
@@ -103,18 +102,18 @@ handle_view_req(Req, Db, DDoc) when Db#db.filepath =/= undefined ->
 handle_view_req(#httpd{method='GET',
                        path_parts=[_, _, DName, _, ViewName]}=Req,
                 Db, _DDoc) ->
-    do_handle_view_req(Req, Db, DName, ViewName);
+    do_handle_view_req(Req, Db#db.name, DName, ViewName);
 
 handle_view_req(#httpd{method='POST',
                        path_parts=[_, _, DName, _, ViewName]}=Req,
                 Db, _DDoc) ->
     couch_httpd:validate_ctype(Req, "application/json"),
-    do_handle_view_req(Req, Db, DName, ViewName);
+    do_handle_view_req(Req, Db#db.name, DName, ViewName);
 
 handle_view_req(Req, _Db, _DDoc) ->
     couch_httpd:send_method_not_allowed(Req, "GET,POST,HEAD").
 
-do_handle_view_req(Req, #db{name=DbName} = Db, DDocName, ViewName) ->
+do_handle_view_req(Req, DbName, DDocName, ViewName) ->
     VBucketsDict = vbucket_map_mirror:node_vbuckets_dict(binary_to_list(DbName)),
     case dict:find(node(), VBucketsDict) of
         error ->
@@ -122,9 +121,9 @@ do_handle_view_req(Req, #db{name=DbName} = Db, DDocName, ViewName) ->
         _ ->
             case run_on_subset(Req, DbName) of
                 full_set ->
-                    full_design_doc_view(Req, Db, DDocName, ViewName, VBucketsDict);
+                    full_design_doc_view(Req, DbName, DDocName, ViewName, VBucketsDict);
                 VBucket ->
-                    subset_design_doc_view(Req, Db, DDocName, ViewName, [VBucket])
+                    subset_design_doc_view(Req, DbName, DDocName, ViewName, [VBucket])
             end
     end.
 
@@ -184,16 +183,16 @@ do_capi_all_docs_db_req(Req, #db{filepath = undefined,
     when_has_active_vbuckets(
       Req, DbName,
       fun () ->
-            MergeParams = view_merge_params(Req, Db, nil, <<"_all_docs">>),
+            MergeParams = view_merge_params(Req, DbName, nil, <<"_all_docs">>),
             couch_index_merger:query_index(couch_view_merger, MergeParams, Req)
       end).
 
-view_merge_params(Req, #db{name=BucketName} = Db, DDocId, ViewName) ->
+view_merge_params(Req, BucketName, DDocId, ViewName) ->
     Dict = vbucket_map_mirror:node_vbuckets_dict(binary_to_list(BucketName)),
-    view_merge_params(Req, Db, DDocId, ViewName, Dict).
+    view_merge_params(Req, BucketName, DDocId, ViewName, Dict).
 
 %% we're handling only the special views (_all_docs) in the old way
-view_merge_params(Req, #db{name = BucketName},
+view_merge_params(Req, BucketName,
                   DDocId, ViewName, NodeToVBuckets) when DDocId =:= nil ->
     ViewSpecs = dict:fold(
                   fun(Node, VBuckets, Acc) when Node =:= node() ->
@@ -205,7 +204,7 @@ view_merge_params(Req, #db{name = BucketName},
                   end, [], NodeToVBuckets),
     finalize_view_merge_params(Req, ViewSpecs);
 
-view_merge_params(Req, #db{name = BucketName}, DDocId, ViewName, NodeToVBuckets) ->
+view_merge_params(Req, BucketName, DDocId, ViewName, NodeToVBuckets) ->
     ViewSpecs = dict:fold(
                   fun(Node, VBuckets, Acc) when Node =:= node() ->
                           build_local_set_specs(BucketName,
