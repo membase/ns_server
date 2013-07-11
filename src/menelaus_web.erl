@@ -118,7 +118,6 @@ webconfig() ->
     webconfig(ns_config:get()).
 
 loop(Req, AppRoot, DocRoot) ->
-    timer:sleep(200),
     random:seed(os:timestamp()),
 
     try
