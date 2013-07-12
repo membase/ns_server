@@ -967,18 +967,22 @@ var BucketsSection = {
           return;
         }
 
-        var initValues = {uri: '/pools/default/buckets',
-                          bucketType: 'membase',
-                          authType: 'sasl',
-                          quota: {rawRAM: Math.floor((totals.ram.quotaTotal - totals.ram.quotaUsed) / poolDetails.nodes.length)},
-                          replicaIndex: false,
-                          replicaNumber: 1,
-                          threadsNumber: 3},
+        var activeServersLength = DAL.cells.serversCell.value.active.length;
+        var rawRAM = Math.floor((totals.ram.quotaTotal - totals.ram.quotaUsed) / activeServersLength);
 
-        dialog = new BucketDetailsDialog(initValues, true);
+        (new BucketDetailsDialog({
+          uri: '/pools/default/buckets',
+          bucketType: 'membase',
+          authType: 'sasl',
+          quota: {
+            rawRAM: rawRAM
+          },
+          replicaIndex: false,
+          replicaNumber: 1,
+          threadsNumber: 3
+        }, true)).startDialog();
 
-        dialog.startDialog();
-      })
+      });
     });
   },
   startRemovingBucket: function () {
