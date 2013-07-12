@@ -588,6 +588,7 @@ body.init_welcome #init_welcome_dialog .welcome-footer {color:#9aa3a8; font:11px
 body.init_welcome #init_welcome_dialog .welcome-footer a {margin-left:15px;}
 
 /* config */
+.pad .config-top i {font-style: normal;}
 .config-top {background:url(../images/config-top.png) repeat-x; height:60px; line-height:60px; margin:0px 0px 0px -8px;}
 .config-top h1, div.config-top h2 {background:none;border:none;font-family:Verdana, Helvetica, Sans-Serif; text-shadow: 0px 1px 2px #fff;}
 div.config-top h1 {color:#444245; float:left; font-size:16pt; margin:-15px 0 0 20px; padding:0;}
