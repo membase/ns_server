@@ -39,7 +39,6 @@
          handle_bucket_update/3,
          handle_bucket_create/2,
          handle_bucket_flush/3,
-         handle_setup_default_bucket_post/1,
          parse_bucket_params/5,
          handle_compact_bucket/3,
          handle_purge_compact_bucket/3,
@@ -441,21 +440,23 @@ handle_bucket_create(PoolId, Req) ->
     Params = Req:parse_post(),
     Name = proplists:get_value("name", Params),
     ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
+    IgnoreWarnings = (proplists:get_value("ignore_warnings", Req:parse_qs()) =:= "1"),
     MaxBuckets = ns_config_ets_dup:unreliable_read_key(max_bucket_count, 10),
     case length(ns_bucket:get_buckets()) >= MaxBuckets of
         true ->
             reply_json(Req, {struct, [{'_', iolist_to_binary(io_lib:format("Cannot create more than ~w buckets", [MaxBuckets]))}]}, 400);
         false ->
-            case {ValidateOnly,
+            case {ValidateOnly, IgnoreWarnings,
                   parse_bucket_params(true,
                                       Name,
                                       Params,
                                       ns_bucket:get_buckets(),
-                                      extended_cluster_storage_info())} of
-                {_, {errors, Errors, JSONSummaries}} ->
+                                      extended_cluster_storage_info(),
+                                      IgnoreWarnings)} of
+                {_, _, {errors, Errors, JSONSummaries}} ->
                     reply_json(Req, {struct, [{errors, {struct, Errors}},
                                               {summaries, {struct, JSONSummaries}}]}, 400);
-                {false, {ok, ParsedProps, _}} ->
+                {false, _, {ok, ParsedProps, _}} ->
                     case do_bucket_create(Name, ParsedProps) of
                         ok ->
                             respond_bucket_created(Req, PoolId, Name);
@@ -464,7 +465,10 @@ handle_bucket_create(PoolId, Req) ->
                         {errors_500, Errors} ->
                             reply_json(Req, {struct, Errors}, 503)
                     end;
-                {true, {ok, ParsedProps, JSONSummaries}} ->
+                {true, true, {ok, _, JSONSummaries}} ->
+                    reply_json(Req, {struct, [{errors, {struct, []}},
+                                              {summaries, {struct, JSONSummaries}}]}, 200);
+                {true, false, {ok, ParsedProps, JSONSummaries}} ->
                     FinalErrors = perform_warnings_validation(ParsedProps, []),
                     reply_json(Req, {struct, [{errors, {struct, FinalErrors}},
                                               {summaries, {struct, JSONSummaries}}]},
@@ -519,29 +523,6 @@ do_handle_bucket_flush(Id, Req) ->
             Req:respond({503, server_header(), Msg})
     end.
 
-handle_setup_default_bucket_post(Req) ->
-    Params = Req:parse_post(),
-    ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
-    case {ValidateOnly,
-          parse_bucket_params_for_setup_default_bucket(Params,
-                                                       extended_cluster_storage_info())} of
-        {_, {errors, Errors, JSONSummaries}} ->
-            reply_json(Req, {struct, [{errors, {struct, Errors}},
-                                      {summaries, {struct, JSONSummaries}}]}, 400);
-        {false, {ok, ParsedProps, _}} ->
-            ns_orchestrator:delete_bucket("default"),
-            case do_bucket_create("default", ParsedProps) of
-                ok ->
-                    respond_bucket_created(Req, "default", "default");
-                {errors, Errors} ->
-                    reply_json(Req, {struct, Errors}, 400);
-                {errors_500, Errors} ->
-                    reply_json(Req, {struct, Errors}, 503)
-            end;
-        {true, {ok, _, JSONSummaries}} ->
-            reply_json(Req, {struct, [{errors, {struct, []}},
-                                      {summaries, {struct, JSONSummaries}}]}, 200)
-    end.
 
 -record(ram_summary, {
           total,                                % total cluster quota
@@ -562,44 +543,17 @@ handle_setup_default_bucket_post(Req) ->
                                                 % So it's kind of: Amount of cluster disk space available of allocation,
                                                 % but with a number of 'but's.
 
-parse_bucket_params_for_setup_default_bucket(Params, ClusterStorageTotals) ->
-    UsageGetter = fun (_, _) ->
-                          0
-                  end,
-    NodeCount = proplists:get_value(nodesCount, ClusterStorageTotals),
-    RamTotals = proplists:get_value(ram, ClusterStorageTotals),
-    OldQuotaUsed = proplists:get_value(quotaUsed, RamTotals),
-    NewQuotaUsed = OldQuotaUsed - (default_node_ram_quota() * NodeCount),
-    NewRamTotals = lists:keyreplace(quotaUsed, 1, RamTotals,
-                                    {quotaUsed, NewQuotaUsed}),
-    NewClusterTotals = lists:keyreplace(ram, 1, ClusterStorageTotals,
-                                        {ram, NewRamTotals}),
-
-    RV = parse_bucket_params_without_warnings(true, "default",
-                                              [{"authType", "sasl"}, {"saslPassword", ""} | Params],
-                                              [],
-                                              NewClusterTotals,
-                                              UsageGetter),
-    case RV of
-        {ok, _, _} = X -> X;
-        {errors, Errors, Summaries, _} -> {errors, Errors, Summaries}
-    end.
-
-default_node_ram_quota() ->
-    Buckets = ns_bucket:get_buckets(ns_config:get()),
-    case lists:keyfind("default", 1, Buckets) of
-        {"default", Props} ->
-            proplists:get_value(ram_quota, Props);
-        _ ->
-            0
-    end.
-
 parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals) ->
+    parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals, false).
+
+parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals, IgnoreWarnings) ->
     RV = parse_bucket_params_without_warnings(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals),
-    case RV of
-        {ok, _, _} = X -> X;
-        {errors, Errors, Summaries, OKs} ->
-            {errors, perform_warnings_validation(OKs, Errors), Summaries}
+    case {IgnoreWarnings, RV} of
+        {_, {ok, _, _} = X} -> X;
+        {false, {errors, Errors, Summaries, OKs}} ->
+            {errors, perform_warnings_validation(OKs, Errors), Summaries};
+	{true, {errors, Errors, Summaries, _}} ->
+            {errors, Errors, Summaries}
     end.
 
 parse_bucket_params_without_warnings(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals) ->

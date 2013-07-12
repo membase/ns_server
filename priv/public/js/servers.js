@@ -65,7 +65,7 @@ var ServersSection = {
       mayRebalance = false;
 
     var rebalanceButton = this.serversQ.find('.rebalance_button').toggle(!!details);
-    rebalanceButton.toggleClass('disabled', !mayRebalance);
+    rebalanceButton.toggleClass('dynamic_disabled', !mayRebalance);
 
     if (details && !rebalancing) {
       $('#rebalance_tab .badge span').text(pending.length);
@@ -91,28 +91,28 @@ var ServersSection = {
     }
 
     if (rebalancing) {
-      $('#servers .add_button').hide();
+      $('#js_servers .add_button').hide();
       this.renderRebalance(details);
     }
 
     if (IOCenter.staleness.value) {
-      $('#servers .staleness-notice').show();
-      $('#servers').find('.add_button, .rebalance_button').hide();
-      $('#active_server_list_container, #pending_server_list_container').find('.re_add_button, .eject_server, .failover_server, .remove_from_list').addClass('disabled');
+      $('#js_servers .staleness-notice').show();
+      $('#js_servers').find('.add_button, .rebalance_button').hide();
+      $('#active_server_list_container, #pending_server_list_container').find('.re_add_button, .eject_server, .failover_server, .remove_from_list').addClass('dynamic_disabled');
     } else {
-      $('#servers .staleness-notice').hide();
-      $('#servers').find('.rebalance_button').show();
-      $('#servers .add_button')[rebalancing ? 'hide' : 'show']();
+      $('#js_servers .staleness-notice').hide();
+      $('#js_servers').find('.rebalance_button').show();
+      $('#js_servers .add_button')[rebalancing ? 'hide' : 'show']();
     }
 
-    $('#active_server_list_container .last-active').find('.eject_server').addClass('disabled').end()
-      .find('.failover_server').addClass('disabled');
+    $('#active_server_list_container .last-active').find('.eject_server').addClass('dynamic_disabled').end()
+      .find('.failover_server').addClass('dynamic_disabled');
 
-    $('#active_server_list_container .server_down .eject_server').addClass('disabled');
+    $('#active_server_list_container .server_down .eject_server').addClass('dynamic_disabled');
     $('.failed_over .eject_server, .failed_over .failover_server').hide();
 
     if (inRecovery) {
-      $('#active_server_list_container, #pending_server_list_container').find('.re_add_button, .eject_server, .failover_server, .remove_from_list').addClass('disabled');
+      $('#active_server_list_container, #pending_server_list_container').find('.re_add_button, .eject_server, .failover_server, .remove_from_list').addClass('dynamic_disabled');
     }
   },
   renderServerDetails: function (item) {
@@ -173,15 +173,15 @@ var ServersSection = {
     });
 
     self.tabs = new TabsCell("serversTab",
-                             "#servers .tabs",
-                             "#servers .panes > div",
+                             "#js_servers .tabs",
+                             "#js_servers .panes > div",
                              ["active", "pending"]);
 
     var detailsWidget = self.detailsWidget = new MultiDrawersWidget({
       hashFragmentParam: 'openedServers',
       template: 'server_details',
       elementKey: 'otpNode',
-      placeholderCSS: '#servers .settings-placeholder',
+      placeholderCSS: '#js_servers .settings-placeholder',
       actionLink: 'openServer',
       actionLinkCallback: function () {
         ThePage.ensureSection('servers');
@@ -262,8 +262,8 @@ var ServersSection = {
     self.serversCell = DAL.cells.serversCell;
 
     self.poolDetails.subscribeValue(function (poolDetails) {
-      $($.makeArray($('#servers .failover_warning')).slice(1)).remove();
-      var warning = $('#servers .failover_warning');
+      $($.makeArray($('#js_servers .failover_warning')).slice(1)).remove();
+      var warning = $('#js_servers .failover_warning');
 
       if (!poolDetails || poolDetails.rebalanceStatus != 'none') {
         return;
@@ -301,7 +301,7 @@ var ServersSection = {
     prepareTemplateForCell('active_server_list', self.serversCell);
     prepareTemplateForCell('pending_server_list', self.serversCell);
 
-    var serversQ = self.serversQ = $('#servers');
+    var serversQ = self.serversQ = $('#js_servers');
 
     serversQ.find('.rebalance_button').live('click', self.accountForDisabled($m(self, 'onRebalance')));
     serversQ.find('.add_button').live('click', $m(self, 'onAdd'));
@@ -344,7 +344,7 @@ var ServersSection = {
   },
   accountForDisabled: function (handler) {
     return function (e) {
-      if ($(e.currentTarget).hasClass('disabled')) {
+      if ($(e.currentTarget).hasClass('dynamic_disabled')) {
         e.preventDefault();
         return;
       }

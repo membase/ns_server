@@ -59,7 +59,7 @@
     <div id="mainContainer" class="main_holder">
       <div id="mainPanel" class="mainPanel">
 
-        <div id="overview" style="display:none">
+        <div id="js_overview" class="overview" style="display:none">
           <h1>Cluster Overview</h1>
           <div id="notice_container"></div>
           <div class="shadow_box">
@@ -148,7 +148,7 @@
           </div>
         </div>
 
-        <div id="servers" style="display:none">
+        <div id="js_servers" class="servers" style="display:none">
           <h1>Servers</h1>
           <div class="warning_message failover_warning">
             Fail Over Warning: <span class="warning-text"></span>
@@ -306,7 +306,7 @@
           <script id="server_details_template" type="text/html">
           <div class="first gong_rb">
             <div class="pad">
-              <a class="edit_btn float_right disabled">Edit</a>
+              <a class="edit_btn float_right dynamic_disabled">Edit</a>
               <table class="properties_table">
                 <tr>
                     <td>Server Name: <span>{%= h(hostname) %}</span></td>
@@ -400,39 +400,39 @@
           </script>
         </div>
 
-        <div id="analytics" style="display:none">
+        <div id="js_analytics" class="analytics" style="display:none">
           <span class="block nav float_right configure_view"></span>
           <h1>
-            <span class="when-normal-stats">DATA BUCKETS: </span><span class="when-specific-stats"><em class="specific-stat-description"></em> for bucket: </span>
-            <select id="analytics_buckets_select"></select>
-            <span class="when-normal-stats"> on <select id="analytics_servers_select"></select></span>
+            <span class="js_when-normal-stats">DATA BUCKETS: </span><span class="js_when-specific-stats"><em class="js_specific-stat-description"></em> for bucket: </span>
+            <select id="js_analytics_buckets_select"></select>
+            <span class="js_when-normal-stats"> on <select id="js_analytics_servers_select"></select></span>
           </h1>
-          <div id="date_slider_container">
-            <div id="date_slider"></div>
-            <ul>
-              <li><a id="zoom_minute">Minute</a></li>
-              <li><a id="zoom_hour">Hour</a></li>
-              <li><a id="zoom_day">Day</a></li>
-              <li><a id="zoom_week">Week</a></li>
-              <li><a id="zoom_month">Month</a></li>
-              <li><a id="zoom_year">Year</a></li>
-            </ul>
+          <div id="js_date_slider_container" class="date_slider_container">
+            <div id="js_date_slider" class="date_slider"></div>
+            <div class="time_mode_wrap">
+              <a id="js_zoom_minute" class="js_click">Minute</a>
+              <a id="js_zoom_hour" class="js_click">Hour</a>
+              <a id="js_zoom_day" class="js_click">Day</a>
+              <a id="js_zoom_week" class="js_click">Week</a>
+              <a id="js_zoom_month" class="js_click">Month</a>
+              <a id="js_zoom_year" class="js_click">Year</a>
+            </div>
           </div>
           <div id="current_stat_info">
             <h3>
               <span class="i">i</span>
-              <span class="current-graph-name"><!-- stat name --></span>
+              <span class="current-graph-name js_current-graph-name"><!-- stat name --></span>
             </h3>
-            <p class="current-graph-desc"><!-- stat description --></p>
+            <p class="js_current-graph-desc"><!-- stat description --></p>
           </div>
           <div class="shadow_box" style="width:780px;">
             <div class="section">
               <div class="header_2">
                 <span class="block nav float_right">
-                  <span class="stats-period-container">
-                    <span class="with_samples current">Last <b class="stats_visible_period">?</b></span><span class="without_samples current">No samples, yet</span>
+                  <span id="js_stats-period-container" class="stats-period-container">
+                    <span class="with_samples current">Last <b id="js_stats_visible_period">?</b></span><span class="without_samples current">No samples, yet</span>
                   </span>
-                  <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+                  <span class="js_staleness-notice staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
                 </span>
                 General Bucket Analytics
                 <!--<ul class="tabs">
@@ -442,17 +442,17 @@
                 </ul>-->
               </div>
               <div class="analytics_graph_main">
-                <h2 class="current-graph-name"></h2>
+                <h2 class="current-graph-name js_current-graph-name"></h2>
                 <span class="graph_info_label block right active_node_count"><!-- 3 active nodes --></span>
                 <div id="analytics_main_graph_grid">
-                  <div id="analytics_main_graph"></div>
+                  <div id="js_analytics_main_graph" class="analytics_main_graph"></div>
                 </div>
               </div>
-              <script id="new_stats_block_template" type="text/html">
+              <script id="js_new_stats_block_template" type="text/html">
                       {% _.each(blocks, function (blockInfo) { %}
-                      <div id="{%= h(blockInfo.id) %}" class="darker_block {%= blockInfo.extraCSSClasses %}">
-                        {% if (!blockInfo.hideThis) { %}<h3 class="block-expander"><ins></ins>{%= h(blockInfo.blockName) %}</h3>{% } %}
-                        <div class="stats">
+                      <div id="{%= h(blockInfo.id) %}" class="darker_block js_darker_block {%= blockInfo.extraCSSClasses %}">
+                        {% if (!blockInfo.hideThis) { %}<h3 class="block-expander js_block-expander"><ins></ins>{%= h(blockInfo.blockName) %}</h3>{% } %}
+                        <div class="stats js_stats">
                         {% if (blockInfo.columns) { %}
                           <ul class="col_headers">
                           {% _.each(blockInfo.columns, function (columnName) { %}
@@ -461,14 +461,14 @@
                           </ul>
                         {% } %}
                         {% _.each(blockInfo.stats, function (statInfo) {var name = statInfo.name; var title = statInfo.title; if (statInfo.hidden) {return;} %}
-                          <div id="{%= h(statInfo.id) %}" class="analytics-small-graph {%= (statInfo.missing ? 'dim' : '') %}" data-graph="{%=h(name)%}">
-                            <div class="small_graph_block" style="width: 168px; height: 36px;"></div>
+                          <div id="{%= h(statInfo.id) %}" class="js_analytics-small-graph analytics-small-graph {%= (statInfo.missing ? 'dynamic_dim' : '') %}" data-graph="{%=h(name)%}">
+                            <div class="small_graph_block" id="js_small_graph_block" style="width: 168px; height: 36px;"></div>
                             <span class="small_graph_label">
-                              <span class="value">0</span><span class="label-text"> {%= h(title) %}</span>
+                              <span class="value" id="js_small_graph_value">0</span><span class="label-text"> {%= h(title) %}</span>
                             </span>
                             <!-- <input type="checkbox" > -->
-                            <ins class="right-arrow">
-                              <ul>
+                            <ins class="right-arrow js_right-arrow">
+                              <ul class="js_inner">
                               </ul>
                             </ins>
                             {% if (statInfo.desc) { %}<div class="graph_tooltip"><span>{%= h(statInfo.desc) %}</span></div>{% } %}
@@ -479,16 +479,16 @@
                       </div>
                       {% }); %}
               </script>
-              <div id="stats_container"></div>
+              <div id="js_stats_container"></div>
             </div>
           </div><!-- shadow_box -->
           <div class="shadow_box" style="width:780px;">
-            <div class="section" id="top_keys_block">
+            <div class="section" id="js_top_keys_block">
               <h2 class="header_2">
                 TOP KEYS
               </h2>
-              <p id="top_keys_container"></p>
-              <script id="top_keys_template" type="text/html">
+              <p id="js_top_keys_container" class="top_keys_container"></p>
+              <script id="js_top_keys_template" type="text/html">
                       <table class="lined_tab">
                         <thead>
                           <tr>
@@ -510,7 +510,7 @@
           </div> <!-- END shadow box -->
         </div>
 
-        <div id="buckets" style="display:none">
+        <div id="js_buckets" class="buckets" style="display:none">
           <h1>Data Buckets</h1>
           <div class="shadow_box" id="couchbase_buckets">
             <div id="manage_buckets_top_bar" class="header_2">
@@ -617,9 +617,9 @@
                 <div class="last">
                   <a class="inner_btn" href="#editBucket={%= h(encodeURIComponent(uri)) %}">Edit</a>
                   {% if (!showCancel && !noCompaction) { %}
-                    <button class="inner_btn compact_btn {%= disableCompact ? 'disabled' : ''%}" data-uri="{%= h(controllers.compactAll) %}"><span>Compact</span></button>
+                    <button class="inner_btn compact_btn {%= disableCompact ? 'dynamic_disabled' : ''%}" data-uri="{%= h(controllers.compactAll) %}"><span>Compact</span></button>
                   {% } else if (!noCompaction) { %}
-                    <button class="inner_btn cancel_compact_btn {%= disableCancel ? 'disabled' : ''%}" data-uri="{%= h(thisBucketCompactionTask.cancelURI) %}"><span>Cancel</span></button>
+                    <button class="inner_btn cancel_compact_btn {%= disableCancel ? 'dynamic_disabled' : ''%}" data-uri="{%= h(thisBucketCompactionTask.cancelURI) %}"><span>Cancel</span></button>
                   {% } %}
                 </div>
               </div>
@@ -662,7 +662,7 @@
           </script>
         </div>
 
-        <div id="logs" style="display:none">
+        <div id="js_logs" class="logs" style="display:none">
           <!-- Shadow box -->
           <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
           <span class="block nav float_right configure_view">
@@ -698,7 +698,7 @@
           </div>
         </div>
 
-        <div id="settings" style="display:none">
+        <div id="js_settings" class="settings" style="display:none">
           <h1>Settings</h1>
           <div class="shadow_box">
             <div class="section">
@@ -1006,7 +1006,7 @@
           </script>
         </div>
 
-        <div id="views" style="display:none">
+        <div id="js_views" class="views" style="display:none">
           <h1 style="clear:both;overflow:hidden">
             <span style="float:left"><select id="views_bucket_select"></select> &gt; <a href="#visitSec=views">Views</a>
               <span class="when-inside-view">
@@ -1095,11 +1095,11 @@
                 </td>
                 <td colspan="3">
                   <a class="list_button when-in-prod" href="#copyDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Copy to Dev</span></a>
-                  <a class="list_button when-in-dev {%= ddoc.isEmpty ? 'disabled' : ''%}" href="#publishDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Publish</span></a>
+                  <a class="list_button when-in-dev {%= ddoc.isEmpty ? 'dynamic_disabled' : ''%}" href="#publishDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Publish</span></a>
                   <a class="list_button when-in-dev" href="#addView={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add View</span></a>
                   <a class="list_button when-in-dev" href="#addSpatial={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add Spatial View</span></a>
                   <a class="list_button" href="#deleteDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Delete</span></a>
-                  <button class="list_button {%= ViewsSection.maybeDisabledCompactButtonAttr(ddoc)%} {%= ddoc.isEmpty ? 'disabled' : ''%}" onclick="ViewsSection.compactDDoc({%= h(JSON.stringify(ddoc.meta.id)) %}, this);"><span>Compact</span></button>
+                  <button class="list_button {%= ViewsSection.maybeDisabledCompactButtonAttr(ddoc)%} {%= ddoc.isEmpty ? 'dynamic_disabled' : ''%}" onclick="ViewsSection.compactDDoc({%= h(JSON.stringify(ddoc.meta.id)) %}, this);"><span>Compact</span></button>
                 </td>
               </tr>
               <!-- {% if (_.size(ddoc.json.viewInfos) < 1 && _.size(ddoc.json.spatialInfos) < 1) { %} -->
@@ -1137,10 +1137,10 @@
 
           <div id="view_details" style="display:none;">
             <div id="no_sample_docs" class="shadow_box" style="display:none">
-              <h3 class="block-expander" style="padding:15px">Bucket is currently empty.</h3>
+              <h3 class="block-expander js_block-expander" style="padding:15px">Bucket is currently empty.</h3>
             </div>
-            <div id="sample_docs" class="shadow_box darker_block">
-               <h3 class="block-expander"><ins></ins><span class="view_head docs_title" style="text-transform:none;">SAMPLE DOCUMENT</span>
+            <div id="sample_docs" class="shadow_box darker_block js_darker_block">
+               <h3 class="block-expander js_block-expander"><ins></ins><span class="view_head docs_title" style="text-transform:none;">SAMPLE DOCUMENT</span>
                 <span class="buttons">
                   <a class="btn_1" id="preview_random_doc">
                     <span>Preview a Random Document</span>
@@ -1168,8 +1168,8 @@
             </script>
 
             <div class="shadow_box viewcode" id="viewcode" style="display:none;">
-              <div class="darker_block">
-                <h3 class="block-expander"><ins></ins><span class="view_head">View Code</span>
+              <div class="darker_block js_darker_block">
+                <h3 class="js_block-expander block-expander"><ins></ins><span class="view_head">View Code</span>
                   <span class="buttons">
                     <a id="save_view_as" class="btn_1"><span>Save As...</span></a>
                     <a id="just_save_view" class="btn_1"><span>Save</span></a>
@@ -1193,8 +1193,8 @@
             </div>
 
             <div class="shadow_box viewcode" id="spatialcode" style="display:none;">
-              <div class="darker_block">
-                <h3 class="block-expander"><ins></ins><span class="view_head">Spatial Code</span>
+              <div class="darker_block js_darker_block">
+                <h3 class="js_block-expander block-expander"><ins></ins><span class="view_head">Spatial Code</span>
                   <span class="buttons">
                     <a id="save_spatial_as" class="btn_1"><span>Save As...</span></a>
                     <a id="just_save_spatial" class="btn_1"><span>Save</span></a>
@@ -1437,12 +1437,12 @@
           </div>
         </div>
 
-        <div id="replications" style="display:none">
+        <div id="js_replications" class="replications" style="display:none">
           <h1>Replications</h1>
           <!-- Clusters -->
           <div id="cluster_references" class="shadow_box">
-            <div class="darker_block bucket_details">
-              <h3 class="block-expander">
+            <div class="darker_block bucket_details js_darker_block">
+              <h3 class="js_block-expander block-expander">
                 <ins></ins><span class="view_head">Remote Clusters</span>
                 <span class="buttons">
                   <a class="btn_1" id="create_cluster_reference">
@@ -1526,7 +1526,7 @@
           </div>
         </div>
 
-          <div id="documents" style="display:none">
+          <div id="js_documents" class="documents" style="display:none">
             <div class="doc_header">
               <div class="wrap">
                 <select id="docs_buckets_select"></select> &gt; <a id="bread_crump_doc">Documents</a>
@@ -1541,8 +1541,8 @@
                   </select>
               </div>
               <div class="ic_prev_next">
-                <a class="arr_prev disabled"></a>
-                <a class="arr_next disabled"></a>
+                <a class="arr_prev dynamic_disabled"></a>
+                <a class="arr_next dynamic_disabled"></a>
               </div>
               <div class="docs_info">
                 Current page: <span class="docs_crnt_pg">1</span>
@@ -1553,9 +1553,9 @@
               <div class="header_2 servers_header">
                 <div class="docs_title"></div>
                 <div class="editing_ctrls">
-                  <a class="btn_1 disabled" id="doc_delete"><span>Delete</span></a>
-                  <a class="btn_1 disabled" id="doc_saveas"><span>Save As...</span></a>
-                  <a class="btn_1 btn_save disabled" id="doc_save"><span>Save</span></a>
+                  <a class="btn_1 dynamic_disabled" id="doc_delete"><span>Delete</span></a>
+                  <a class="btn_1 dynamic_disabled" id="doc_saveas"><span>Save As...</span></a>
+                  <a class="btn_1 btn_save dynamic_disabled" id="doc_save"><span>Save</span></a>
                   <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
                 </div>
                 <div class="ellipsis documents_notice"></div>
@@ -1570,11 +1570,11 @@
                   <form id="search_doc" action="#">
                     <input type="text" id="docs_lookup_doc_by_id"
                            placeholder="Document ID" disabled >
-                    <button type="submit" class="btn_1 disabled" id="docs_lookup_doc_by_id_btn">
+                    <button type="submit" class="btn_1 dynamic_disabled" id="docs_lookup_doc_by_id_btn">
                       <span>Lookup Id</span>
                     </button>
                   </form>
-                  <a class="btn_1 btn_create disabled"><span>Create Document</span></a>
+                  <a class="btn_1 btn_create dynamic_disabled"><span>Create Document</span></a>
                   <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
                 </div>
                 <div class="ellipsis documents_notice"></div>
@@ -1582,8 +1582,8 @@
 
               <div id="documents_list_container">Documents</div>
               <div class="ic_prev_next bottom">
-                <a class="arr_prev disabled"></a>
-                <a class="arr_next disabled"></a>
+                <a class="arr_prev dynamic_disabled"></a>
+                <a class="arr_next dynamic_disabled"></a>
               </div>
               <script id="documents_list_template" type="text/html">
                 <table class="list" style="width:100%">
@@ -1629,7 +1629,7 @@
             </div>
           </div>
 
-        <div id="coming" style="display:none">
+        <div id="js_coming" class="coming" style="display:none">
           <h1>UI error encountered. This content does not exist yet.</h1>
         </div>
       </div>
@@ -2516,7 +2516,7 @@
   <div class="pad bucket_details really" id="init_bucket_dialog">
     <div class="config-top">
       <h1>Create Default Bucket</h1>
-      <h2>Step <span class="current-step">3</span> of 5</h2>
+      <h2>Step <i class="current-step">3</i> of 5</h2>
     </div>
     <form><div class="clearfix">
       <h2>Bucket Settings</h2>
@@ -2667,8 +2667,6 @@
       Sample buckets are available to demonstrate the power of Couchbase Server.
       These samples contain data and sample MapReduce queries.
     </p>
-    <h3>Installed Samples</h3>
-    <ul id="setup_installed_samples"></ul>
     <h3>Available Samples</h3>
     <ul id="setup_available_samples"></ul>
     <div class="config-bottom">
@@ -2770,6 +2768,7 @@ $(window).bind('template:rendered', function () {
 <script src="js/codemirror/javascript.js"></script>
 <script src="js/misc.js"></script>
 <script src="js/base64.js"></script>
+<script src="js/jst.js"></script>
 <script src="js/cells.js"></script>
 <script src="js/app-ui-misc.js"></script>
 <script src="js/app-misc.js"></script>

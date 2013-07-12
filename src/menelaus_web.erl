@@ -321,8 +321,6 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun handle_cancel_xdcr/2, [XID]};
                          ["controller", "cancelXCDR", XID] ->
                              {auth, fun handle_cancel_xdcr/2, [XID]};
-                         ["controller", "setupDefaultBucket"] ->
-                             {auth, fun menelaus_web_buckets:handle_setup_default_bucket_post/1};
                          ["controller", "ejectNode"] ->
                              {auth, fun handle_eject_post/1};
                          ["controller", "addNode"] ->

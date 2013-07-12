@@ -1126,5 +1126,9 @@ function buildURL(base /*, ...args */) {
 var HTML5_EMAIL_RE = /^[a-zA-Z0-9~#$%&'*+\-\/\=\?\^_`\{\|\}\~\.]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*$/;
 
 function MBtoBytes(MB) {
-  return MB * 1024 * 1024;
+  return MB * Math.Mi;
+}
+
+function BytestoMB(bytes) {
+  return Math.floor(bytes / Math.Mi);
 }

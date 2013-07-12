@@ -208,9 +208,6 @@ var DAL = {
     DAL.cells.poolList.setValue(rows);
     DAL.setAuthCookie(DAL.login, DAL.password);
 
-    $('#secure_server_buttons').attr('class', DAL.login ? 'secure_disabled' : 'secure_enabled');
-
-
     // If the cluster appears to be configured, then don't let user go
     // back through init dialog.
     SetupWizard.show(provisioned ? 'done' : '');

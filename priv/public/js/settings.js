@@ -55,8 +55,8 @@ var SettingsSection = {
   },
   init: function () {
     this.tabs = new TabsCell('settingsTabs',
-                             '#settings .tabs',
-                             '#settings .panes > div',
+                             '#js_settings .tabs',
+                             '#js_settings .panes > div',
                              ['update_notifications', 'auto_failover',
                               'email_alerts', 'settings_compaction']);
 

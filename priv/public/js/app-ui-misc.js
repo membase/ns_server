@@ -340,10 +340,10 @@
     }
   });
 
-  $('.block-expander').live('click', function () {
-    $(this).closest('.darker_block').toggleClass('closed');
+  $('.js_block-expander').live('click', function () {
+    $(this).closest('.js_darker_block').toggleClass('dynamic_closed');
   });
-  $('.block-expander .buttons a').live('click', function(ev) {
+  $('.js_block-expander .buttons a').live('click', function(ev) {
     ev.stopPropagation();
   });
 })(jQuery);
