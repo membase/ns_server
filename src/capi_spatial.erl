@@ -96,10 +96,10 @@ handle_spatial(Req, _Db, _DDoc) ->
     couch_httpd:send_method_not_allowed(Req, "GET,POST,HEAD").
 
 do_handle_spatial_req(Req, #db{name=DbName} = Db, DDocName, SpatialName) ->
-    capi_view:when_has_active_vbuckets(
+    capi_indexer:when_has_active_vbuckets(
       Req, DbName,
       fun () ->
-            case capi_view:run_on_subset(Req, DbName) of
+            case capi_indexer:run_on_subset(Req, DbName) of
                 full_set ->
                     design_doc_spatial(Req, Db, DDocName, SpatialName);
                 VBucket ->
@@ -153,7 +153,7 @@ build_remote_specs(Node, BucketName, FullViewName, VBuckets) ->
                                        <<"127.0.0.1">>),
     Props = {[
               {<<"spatial">>,
-               {[{capi_view:vbucket_db_name(BucketName, VBId), FullViewName} ||
+               {[{capi_indexer:vbucket_db_name(BucketName, VBId), FullViewName} ||
                     VBId <- VBuckets]}}
              ]},
     #merged_index_spec{url = MergeURL, ejson_spec = Props}.
@@ -248,7 +248,7 @@ spatial_local_compact(BucketName, DesignId) ->
     VBuckets = get_local_vbuckets(BucketName),
     MasterDbName = <<BucketName/binary, "/master">>,
     lists:foreach(fun(VBucket) ->
-        DbName = capi_view:vbucket_db_name(BucketName, VBucket),
+        DbName = capi_indexer:vbucket_db_name(BucketName, VBucket),
         couch_spatial_compactor:start_compact({DbName, MasterDbName}, DesignId)
     end, VBuckets),
     ok.
@@ -289,7 +289,7 @@ spatial_local_info(BucketName, DesignId) ->
     VBuckets = get_local_vbuckets(BucketName),
     Infos = lists:map(
               fun(VBucket) ->
-                  DbName = capi_view:vbucket_db_name(BucketName, VBucket),
+                  DbName = capi_indexer:vbucket_db_name(BucketName, VBucket),
                   {ok, GroupInfoList} = couch_spatial:get_group_info(
                                           {DbName, MasterDbName},
                                           DesignId),
