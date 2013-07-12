@@ -49,6 +49,15 @@
 %%
 %%    Construct remote bucket reference that can be used by
 %%    get_remote_bucket_by_ref functions.
+%%
+%%  - get_memcached_vbucket_info_by_ref/4
+%%
+%%    -> {ok, {Host :: binary(), MemcachedPort :: integer()}, #remote_bucket{}}
+%%       | {error, _} | {error, _, _} % see get_remote_bucket_by_ref for errors
+%%
+%%    returns information about accessing given vbucket of given
+%%    bucket via memcached protocol
+
 
 %% The service maintains protected ets table that is used to cache obtained
 %% information. It's structure is as follows.
@@ -76,7 +85,8 @@
          get_remote_bucket_by_ref/2, get_remote_bucket_by_ref/3,
          remote_bucket_reference/2, parse_remote_bucket_reference/1,
          invalidate_remote_bucket/2, invalidate_remote_bucket_by_ref/1,
-         find_cluster_by_uuid/1]).
+         find_cluster_by_uuid/1,
+         get_memcached_vbucket_info_by_ref/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -241,9 +251,28 @@ invalidate_remote_bucket(ClusterName, Bucket) ->
                             {invalidate_remote_bucket, Cluster, Bucket}, infinity)
     end.
 
+get_memcached_vbucket_info_by_ref(Reference, ForceRefresh, VBucket, Timeout) ->
+    case get_remote_bucket_by_ref(Reference, ForceRefresh, Timeout) of
+        {ok, RemoteBucket} ->
+            #remote_bucket{raw_vbucket_map = Map,
+                           server_list = ServerList} = RemoteBucket,
+            Idx = case dict:find(VBucket, Map) of
+                      {ok, Row} -> hd(Row);
+                      error -> -1
+                  end,
+            case Idx < 0 of
+                true ->
+                    {error, missing_vbucket};
+                _ ->
+                    {ok, lists:nth(Idx + 1, ServerList), RemoteBucket}
+            end;
+        Error ->
+            Error
+    end.
+
 %% gen_server callbacks
 init([]) ->
-    CachePath = path_config:component_path(data, "remote_clusters_cache"),
+    CachePath = path_config:component_path(data, "remote_clusters_cache_v2"),
     ok = read_or_create_table(?CACHE, CachePath),
     ets:insert_new(?CACHE, {clusters, []}),
 
@@ -978,17 +1007,26 @@ remote_bucket_with_bucket(BucketObject, UUID,
               expect_nested_object(
                 <<"vBucketServerMap">>, BucketObject, <<"bucket details">>,
                 fun (VBucketServerMap) ->
-                        remote_bucket_with_server_map(VBucketServerMap, BucketUUID,
-                                                      RemoteCluster, McdToCouchDict)
+                        expect_nested_string(
+                          <<"saslPassword">>, BucketObject, <<"bucket password">>,
+                          fun (Password) ->
+                                  remote_bucket_with_server_map(VBucketServerMap, BucketUUID,
+                                                                RemoteCluster, McdToCouchDict,
+                                                                Password)
+                          end)
                 end)
       end).
 
-remote_bucket_with_server_map(ServerMap, BucketUUID, RemoteCluster, McdToCouchDict) ->
+remote_bucket_with_server_map(ServerMap, BucketUUID, RemoteCluster, McdToCouchDict, Password) ->
     with_server_list(
       ServerMap,
       fun (ServerList) ->
               IxToCouchDict = build_ix_to_couch_uri_dict(ServerList,
                                                          McdToCouchDict),
+              BucketNodes = [case host_and_port(Hostname) of
+                                 {Host, Port} ->
+                                     {list_to_binary(Host), Port}
+                             end || Hostname <- ServerList],
               expect_nested_array(
                 <<"vBucketMap">>, ServerMap, <<"vbucket server map">>,
                 fun (VBucketMap) ->
@@ -999,7 +1037,10 @@ remote_bucket_with_server_map(ServerMap, BucketUUID, RemoteCluster, McdToCouchDi
                         #remote_cluster{uuid=ClusterUUID} = RemoteCluster,
                         RemoteBucket =
                             #remote_bucket{uuid=BucketUUID,
+                                           password=Password,
                                            cluster_uuid=ClusterUUID,
+                                           server_list=BucketNodes,
+                                           raw_vbucket_map=dict:from_list(misc:enumerate(VBucketMap, 0)),
                                            capi_vbucket_map=CAPIVBucketMapDict},
 
                         {ok, {RemoteCluster, RemoteBucket}}
