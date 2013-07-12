@@ -6,4 +6,4 @@
 
 -record(remote_bucket, {uuid :: binary(),
                         cluster_uuid :: binary(),
-                        vbucket_map :: dict()}).
+                        capi_vbucket_map :: dict()}).

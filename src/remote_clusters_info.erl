@@ -992,7 +992,7 @@ remote_bucket_with_server_map(ServerMap, BucketUUID, RemoteCluster, McdToCouchDi
               expect_nested_array(
                 <<"vBucketMap">>, ServerMap, <<"vbucket server map">>,
                 fun (VBucketMap) ->
-                        VBucketMapDict =
+                        CAPIVBucketMapDict =
                             build_vbmap(VBucketMap,
                                         BucketUUID, IxToCouchDict),
 
@@ -1000,7 +1000,7 @@ remote_bucket_with_server_map(ServerMap, BucketUUID, RemoteCluster, McdToCouchDi
                         RemoteBucket =
                             #remote_bucket{uuid=BucketUUID,
                                            cluster_uuid=ClusterUUID,
-                                           vbucket_map=VBucketMapDict},
+                                           capi_vbucket_map=CAPIVBucketMapDict},
 
                         {ok, {RemoteCluster, RemoteBucket}}
                 end)
