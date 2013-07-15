@@ -72,8 +72,11 @@ def main():
 
     o.open("http://127.0.0.1:{0}/pools/default".format(base_port),
            "memoryQuota=" + str(memsize)).read()
-    o.open("http://127.0.0.1:{0}/controller/setupDefaultBucket".format(base_port),
-           "bucketType=" + buckettype +
+    o.open("http://127.0.0.1:{0}/pools/default/buckets".format(base_port),
+           "name=default" +
+           "&authType=sasl" +
+           "&saslPassword=" +
+           "&bucketType=" + buckettype +
            "&ramQuotaMB=" + str(memsize) +
            "&replicaNumber=" + str(replicas) +
            "&replicaIndex=" + bool_request_value(replica_index)).read()
