@@ -314,10 +314,11 @@ var DocumentsSection = {
       self.filter.filterParamsCell.getValue(function (value) {
         searchCriteria = !$.isEmptyObject(value);
       });
-      var firstRow = page.docs.rows[0];
-      if (firstRow && firstRow.key instanceof Object) {
-        var error = new Error(firstRow.key.error);
-        error.explanatoryMessage = '(' + firstRow.key.reason + ')';
+
+      var errors = page.docs.errors && page.docs.errors[0];
+      if (errors) {
+        var error = new Error(errors.explain);
+        error.explanatoryMessage = '(' + errors.reason + ')';
         showDocumetsListErrorState(error);
         renderTemplate('documents_list', {
           loading: false,
