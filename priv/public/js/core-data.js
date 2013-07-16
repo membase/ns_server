@@ -655,6 +655,14 @@ var DAL = {
         Cell.computeEager(function (v) {
           return !!v.need(tasksRecoveryCell);
         }).name("inRecoveryModeCell");
+
+  var isLoadingSamplesCell = DAL.cells.isLoadingSamplesCell =
+        Cell.computeEager(function (v) {
+          var tasks = v.need(tasksProgressCell);
+          return !!_.detect(tasks, function (taskInfo) {
+            return taskInfo.type === "loadingSampleBucket" && taskInfo.status === "running";
+          });
+        }).name("isLoadingSamplesCell");
 })();
 
 var RecentlyCompacted = mkClass.turnIntoLazySingleton(mkClass({
