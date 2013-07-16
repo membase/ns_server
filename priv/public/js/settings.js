@@ -721,7 +721,7 @@ var EmailAlertsSection = {
           value: 'ep_oom_errors'
         },{
           label: 'Writing data to disk for a specific bucket has failed',
-          enabled: $.inArray('ep_oom_errors', val.alerts)!==-1,
+          enabled: $.inArray('ep_item_commit_failed', val.alerts)!==-1,
           value: 'ep_item_commit_failed'
         }];
 
