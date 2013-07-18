@@ -189,7 +189,7 @@ parse_settings_alerts_param("recipients", Rcpts) ->
 parse_settings_alerts_param("sender", Sender) ->
     [{sender, misc:trim(Sender)}];
 parse_settings_alerts_param(_Key, _Value) ->
-    [].
+    [{error, "Unsupported paramater " ++ _Key ++ " was specified"}].
 
 %% @doc Return either the updated record, or in case of an error the
 %% error message
@@ -239,7 +239,8 @@ validate_settings_alerts_query(sender, Sender, Args) ->
         true -> Args#alerts_query_args{sender=Sender};
         false -> <<"sender must be a valid email address.">>
     end;
-% Additional values are simply ignored
+validate_settings_alerts_query(error, Value, _Args) ->
+    list_to_binary(Value);
 validate_settings_alerts_query(_Key, _Value, Args) ->
     Args.
 

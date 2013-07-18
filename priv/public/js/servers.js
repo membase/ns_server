@@ -42,6 +42,7 @@ var ServersSection = {
     var rebalancing = details && details.rebalanceStatus != 'none';
 
     var inRecovery = this.inRecoveryModeCell.value;
+    var loadingSamples = this.isLoadingSamplesCell.value;
 
     var pending = this.pending;
     var active = this.active;
@@ -50,9 +51,9 @@ var ServersSection = {
     this.serversQ.find('.stop_rebalance_button').toggle(!!rebalancing);
     this.serversQ.find('.stop_recovery_button').toggle(!!inRecovery);
 
-    var mayRebalance = !rebalancing && !inRecovery && pending.length !=0;
+    var mayRebalance = !rebalancing && !inRecovery && !loadingSamples && pending.length !=0;
 
-    if (details && !rebalancing && !inRecovery && !details.balanced)
+    if (details && !rebalancing && !inRecovery && !loadingSamples && !details.balanced)
       mayRebalance = true;
 
     var unhealthyActive = _.detect(active, function (n) {
@@ -171,6 +172,8 @@ var ServersSection = {
     self.stopRecoveryURI = Cell.computeEager(function (v) {
       return v.need(DAL.cells.tasksRecoveryCell).stopURI;
     });
+
+    self.isLoadingSamplesCell = DAL.cells.isLoadingSamplesCell;
 
     self.tabs = new TabsCell("serversTab",
                              "#js_servers .tabs",
@@ -297,6 +300,8 @@ var ServersSection = {
 
     self.serversCell.subscribeAny($m(self, "refreshEverything"));
     self.inRecoveryModeCell.subscribeAny($m(self, "refreshEverything"));
+
+    self.isLoadingSamplesCell.subscribeAny($m(self, "refreshEverything"));
 
     prepareTemplateForCell('active_server_list', self.serversCell);
     prepareTemplateForCell('pending_server_list', self.serversCell);

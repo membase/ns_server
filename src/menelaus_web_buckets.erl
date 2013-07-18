@@ -38,6 +38,7 @@
          handle_bucket_delete/3,
          handle_bucket_update/3,
          handle_bucket_create/2,
+         do_bucket_create/4,
          handle_bucket_flush/3,
          parse_bucket_params/5,
          handle_compact_bucket/3,
@@ -436,15 +437,11 @@ do_bucket_create(Name, ParsedProps) ->
             {errors_500, [{'_', <<"Cannot create buckets when cluster is in recovery mode">>}]}
     end.
 
-handle_bucket_create(PoolId, Req) ->
-    Params = Req:parse_post(),
-    Name = proplists:get_value("name", Params),
-    ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
-    IgnoreWarnings = (proplists:get_value("ignore_warnings", Req:parse_qs()) =:= "1"),
+do_bucket_create(Name, Params, ValidateOnly, IgnoreWarnings) ->
     MaxBuckets = ns_config_ets_dup:unreliable_read_key(max_bucket_count, 10),
     case length(ns_bucket:get_buckets()) >= MaxBuckets of
         true ->
-            reply_json(Req, {struct, [{'_', iolist_to_binary(io_lib:format("Cannot create more than ~w buckets", [MaxBuckets]))}]}, 400);
+            {{struct, [{'_', iolist_to_binary(io_lib:format("Cannot create more than ~w buckets", [MaxBuckets]))}]}, 400};
         false ->
             case {ValidateOnly, IgnoreWarnings,
                   parse_bucket_params(true,
@@ -454,29 +451,41 @@ handle_bucket_create(PoolId, Req) ->
                                       extended_cluster_storage_info(),
                                       IgnoreWarnings)} of
                 {_, _, {errors, Errors, JSONSummaries}} ->
-                    reply_json(Req, {struct, [{errors, {struct, Errors}},
-                                              {summaries, {struct, JSONSummaries}}]}, 400);
+                    {{struct, [{errors, {struct, Errors}},
+                               {summaries, {struct, JSONSummaries}}]}, 400};
                 {false, _, {ok, ParsedProps, _}} ->
                     case do_bucket_create(Name, ParsedProps) of
-                        ok ->
-                            respond_bucket_created(Req, PoolId, Name);
+                        ok -> ok;
                         {errors, Errors} ->
-                            reply_json(Req, {struct, Errors}, 400);
+                            {{struct, Errors}, 400};
                         {errors_500, Errors} ->
-                            reply_json(Req, {struct, Errors}, 503)
+                            {{struct, Errors}, 503}
                     end;
                 {true, true, {ok, _, JSONSummaries}} ->
-                    reply_json(Req, {struct, [{errors, {struct, []}},
-                                              {summaries, {struct, JSONSummaries}}]}, 200);
+                    {{struct, [{errors, {struct, []}},
+                               {summaries, {struct, JSONSummaries}}]}, 200};
                 {true, false, {ok, ParsedProps, JSONSummaries}} ->
                     FinalErrors = perform_warnings_validation(ParsedProps, []),
-                    reply_json(Req, {struct, [{errors, {struct, FinalErrors}},
-                                              {summaries, {struct, JSONSummaries}}]},
+                    {{struct, [{errors, {struct, FinalErrors}},
+                               {summaries, {struct, JSONSummaries}}]},
                                case FinalErrors of
                                    [] -> 200;
                                    _ -> 400
-                               end)
+                               end}
             end
+    end.
+
+handle_bucket_create(PoolId, Req) ->
+    Params = Req:parse_post(),
+    Name = proplists:get_value("name", Params),
+    ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
+    IgnoreWarnings = (proplists:get_value("ignore_warnings", Req:parse_qs()) =:= "1"),
+
+    case do_bucket_create(Name, Params, ValidateOnly, IgnoreWarnings) of
+        ok ->
+           respond_bucket_created(Req, PoolId, Name);
+        {Struct, Code} ->
+           reply_json(Req, Struct, Code)
     end.
 
 perform_warnings_validation(ParsedProps, Errors) ->

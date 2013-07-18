@@ -514,7 +514,8 @@ check_bucket_uuid(F, [PoolId, Bucket | _] = Args, Req) ->
 
 %% Internal API
 -define(SAMPLES_LOADING_TIMEOUT, 120000).
--define(SAMPLE_BUCKET_QUOTA, 1024 * 1024 * 100).
+-define(SAMPLE_BUCKET_QUOTA_MB, 100).
+-define(SAMPLE_BUCKET_QUOTA, 1024 * 1024 * ?SAMPLE_BUCKET_QUOTA_MB).
 
 handle_sample_buckets(Req) ->
 
@@ -530,17 +531,62 @@ handle_sample_buckets(Req) ->
 
     reply_json(Req, Map).
 
-
 handle_post_sample_buckets(Req) ->
     Samples = mochijson2:decode(Req:recv_body()),
 
-    ok = check_valid_samples(Samples),
-    ok = check_quota(Samples),
+    Errors = case validate_post_sample_buckets(Samples) of
+                 ok ->
+                     start_loading_samples(Samples);
+                 X1 ->
+                     X1
+             end,
 
-    [samples_loader_tasks:start_loading_sample(binary_to_list(File))
-     || File <- Samples],
 
-    reply_json(Req, [], 202).
+    case Errors of
+        ok ->
+            reply_json(Req, [], 202);
+        X2 ->
+            reply_json(Req, [Msg || {error, Msg} <- X2], 400)
+    end.
+
+start_loading_samples(Samples) ->
+    Errors = [start_loading_sample(binary_to_list(Sample))
+              || Sample <- Samples],
+    case [X || X <- Errors, X =/= ok] of
+        [] ->
+            ok;
+        X ->
+            lists:flatten(X)
+    end.
+
+start_loading_sample(Name) ->
+    Params = [{"threadsNumber", "3"},
+              {"replicaIndex", "0"},
+              {"replicaNumber", "1"},
+              {"saslPassword", ""},
+              {"authType", "sasl"},
+              {"ramQuotaMB", integer_to_list(?SAMPLE_BUCKET_QUOTA_MB) },
+              {"bucketType", "membase"},
+              {"name", Name}],
+    case menelaus_web_buckets:do_bucket_create(Name, Params, false, false) of
+        ok ->
+            start_loading_sample_task(Name);
+        {_, Code} when Code < 300 ->
+            start_loading_sample_task(Name);
+        {{struct, [{errors, {struct, Errors}}, _]}, _} ->
+            ?log_debug("Failed to create sample bucket: ~p", [Errors]),
+            [{error, <<"Failed to create bucket!">>} | [{error, Msg} || {_, Msg} <- Errors]];
+        {{struct, [{'_', Error}]}, _} ->
+            ?log_debug("Failed to create sample bucket: ~p", [Error]),
+            [{error, Error}];
+        X ->
+            ?log_debug("Failed to create sample bucket: ~p", [X]),
+            X
+    end.
+
+start_loading_sample_task(Name) ->
+    samples_loader_tasks:start_loading_sample(Name, ?SAMPLE_BUCKET_QUOTA_MB),
+    ok.
 
 list_sample_files() ->
     BinDir = path_config:component_path(bin),
@@ -551,6 +597,13 @@ sample_exists(Name) ->
     BinDir = path_config:component_path(bin),
     filelib:is_file(filename:join([BinDir, "..", "samples", binary_to_list(Name) ++ ".zip"])).
 
+validate_post_sample_buckets(Samples) ->
+    case check_valid_samples(Samples) of
+        ok ->
+            check_quota(Samples);
+        X ->
+            X
+    end.
 
 check_quota(Samples) ->
 
@@ -565,27 +618,33 @@ check_quota(Samples) ->
         true ->
             Err = ["Not enough Quota, you need to allocate ", format_MB(Required),
                    " to install sample buckets"],
-            exit({error, not_enough_quota, list_to_binary(Err)});
-        false -> ok
+            [{error, list_to_binary(Err)}];
+        false ->
+            ok
     end.
 
 
 check_valid_samples(Samples) ->
-    [begin
-         case ns_bucket:name_conflict(binary_to_list(Name)) of
-             true ->
-                 Err1 = ["Sample bucket ", Name, " is already loaded"],
-                 exit({error, bucket_exists, list_to_binary(Err1)});
-             _ -> ok
-         end,
-         case sample_exists(Name) of
-             false ->
-                 Err2 = ["Sample ", Name, " is not a valid sample"],
-                 exit({error, invalid_sample, list_to_binary(Err2)});
-             _ -> ok
-         end
-     end || Name <- Samples],
-    ok.
+    Errors = [begin
+                  case ns_bucket:name_conflict(binary_to_list(Name)) of
+                      true ->
+                          Err1 = ["Sample bucket ", Name, " is already loaded."],
+                          {error, list_to_binary(Err1)};
+                      _ ->
+                          case sample_exists(Name) of
+                              false ->
+                                  Err2 = ["Sample ", Name, " is not a valid sample."],
+                                  {error, list_to_binary(Err2)};
+                              _ -> ok
+                          end
+                  end
+              end || Name <- Samples],
+    case [X || X <- Errors, X =/= ok] of
+        [] ->
+            ok;
+        X ->
+            X
+    end.
 
 
 format_MB(X) ->
