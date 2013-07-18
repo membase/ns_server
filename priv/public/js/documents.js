@@ -216,7 +216,6 @@ var DocumentsSection = {
     self.bucketNameCell = new StringHashFragmentCell("bucketName");
     self.documentsPageNumberCell = new StringHashFragmentCell("documentsPageNumber");
     self.documentIdCell = new StringHashFragmentCell("docId");
-    self.lookupIdCell = new StringHashFragmentCell("lookupId");
     self.pageLimitCell = new StringHashFragmentCell("documentsPageLimit");
 
     var documents = $('#js_documents');
@@ -226,12 +225,7 @@ var DocumentsSection = {
     self.filter = new Filter({
       prefix: 'documents',
       hashName: 'documentsFilter',
-      appendTo: allDocsTitle,
-      onClose: function (param) {
-        if (param.startkey || param.endkey) {
-          self.lookupIdCell.setValue(undefined);
-        }
-      }
+      appendTo: allDocsTitle
     }, {
       title: 'Documents Filter',
       prefix: 'documents',
@@ -523,10 +517,6 @@ var DocumentsSection = {
       docsCrntPgCont.text(value + 1);
     });
 
-    self.lookupIdCell.subscribeValue(function (searchedDoc) {
-      docsLookup.val(searchedDoc ? searchedDoc : '');
-    });
-
     self.currentDocumentIdCell.subscribeValue(function (docId) {
       showDocumentState(!!docId);
       if (docId) {
@@ -565,7 +555,6 @@ var DocumentsSection = {
     breadCrumpDoc.click(function (e) {
       e.preventDefault();
       self.documentIdCell.setValue(undefined);
-      self.lookupIdCell.setValue(undefined);
       self.filter.rawFilterParamsCell.setValue(undefined);
     });
 
@@ -590,41 +579,6 @@ var DocumentsSection = {
         }
       }
     });
-
-    (function(){
-      var latestSearch;
-      var currentFilterParams;
-
-      Cell.subscribeMultipleValues(function (term, filterParams) {
-        latestSearch = term;
-        currentFilterParams = filterParams;
-      }, self.lookupIdCell, self.filter.filterParamsCell);
-
-      docsLookup.keyup(function (e) {
-        var docsLookupVal = $.trim($(this).val());
-        if (latestSearch === docsLookupVal) {
-          return true;
-        }
-        if (!docsLookupVal) {
-          delete currentFilterParams.startkey;
-          delete currentFilterParams.endkey;
-          self.lookupIdCell.setValue(undefined);
-        } else {
-          self.lookupIdCell.setValue(docsLookupVal);
-          var start = JSON.stringify(docsLookupVal);
-          var end = JSON.stringify(docsLookupVal + String.fromCharCode(0xffff));
-          if (currentFilterParams.descending && currentFilterParams.descending === 'true') {
-            currentFilterParams.startkey = end;
-            currentFilterParams.endkey = start;
-          } else {
-            currentFilterParams.startkey = start;
-            currentFilterParams.endkey = end;
-          }
-        }
-        self.filter.rawFilterParamsCell.setValue($.isEmptyObject(currentFilterParams) ? undefined : $.param(currentFilterParams, true));
-        self.documentsPageNumberCell.setValue(0);
-      });
-    })();
 
     //CRUD
     (function () {
@@ -786,7 +740,6 @@ var DocumentsSection = {
   onLeave: function () {
     var self = this;
     self.documentsPageNumberCell.setValue(undefined);
-    self.lookupIdCell.setValue(undefined);
   },
   onEnter: function () {
   },
