@@ -162,6 +162,14 @@ function createDocumentsCells(ns, modeCell, capiBaseCell, bucketsListCell) {
     param.include_docs = true;
     param.limit = String(limit + 1);
 
+    if (param.startkey) {
+      param.startkey = JSON.stringify(param.startkey);
+    }
+
+    if (param.endkey) {
+      param.endkey = JSON.stringify(param.endkey);
+    }
+
     return buildURL(url, "_all_docs", param);
   }).name("currentPageDocsURLCell");
 
