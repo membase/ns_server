@@ -5,6 +5,11 @@ This file documents user-visible changes in Couchbase clustering & UI.
 Between versions 2.1.0 and 2.2.0
 -----------------------------------------
 
+* (MB-8569) live filtration of list of documents in UI was
+  removed. This code is using un-optimized implementation of searching
+  list of documents and that caused non-trivial use of memory which
+  could lead to server crash.
+
 * (MB-7398 (revision)) (see MB-7398 below as part of 2.1.0 changes) As
   part of fixing MB-8545 below we found that there's no way to switch
   any node back from manually assigned name to automatically managed
