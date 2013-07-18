@@ -24,7 +24,8 @@
   alreadyExists: 'Document with given ID already exists',
   bucketNotExist: 'Bucket does not exist',
   bucketListEmpty: 'Buckets list empty',
-  documentLimitError: "Editing of document with size more than 2.5kb is not allowed"
+  documentLimitError: "Editing of document with size more than 2.5kb is not allowed",
+  documentIsBase64: "Editing of binary document is not allowed"
  }
 
 function createDocumentsCells(ns, modeCell, capiBaseCell, bucketsListCell) {
@@ -449,6 +450,11 @@ var DocumentsSection = {
 
     function tryShowJson(obj) {
       var isError = obj instanceof Error;
+
+      if (!isError && obj.meta.type === "base64") {
+        tryShowJson(generateWarning(documentErrors.documentIsBase64));
+        return;
+      }
 
       if (!isError && isJsonOverLimited(JSON.stringify(obj.json))) {
         tryShowJson(generateWarning(documentErrors.documentLimitError));
