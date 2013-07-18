@@ -325,7 +325,7 @@ var BucketDetailsDialog = mkClass({
       validateURL += 'just_validate=1';
     }
 
-    var errorsCell = new Cell();
+    var errorsCell = this.errorsCell = new Cell();
     var errorsCellSubscription = errorsCell.subscribeValue($m(this, 'onValidationResult'));
     this.cleanups.push($m(errorsCellSubscription, 'cancel'));
 
@@ -434,7 +434,7 @@ var BucketDetailsDialog = mkClass({
       enableForm();
 
       var simpleErrors = data;
-      errorsCell.setValue(errorObject);
+      self.errorsCell.setValue(errorObject);
       if (simpleErrors && simpleErrors.length) {
         genericDialog({buttons: {ok: true, cancel: false},
                        header: self.isNew ? "Failed To Create Bucket" : "Failed to Update Bucket",
