@@ -1146,14 +1146,45 @@ $(function () {
     $(window).trigger('hashchange');
   });
 
-  try {
-    if (DAL.tryNoAuthLogin()) {
-      hideAuthForm();
-    }
-  } finally {
+  function removeAuthDialogSpinner() {
     try {
       $('#auth_dialog .spinner').remove();
-    } catch (__ignore) {}
+    }
+    catch (__ignore) {}
+  }
+
+  function initCellValuesBeforeRendering(callback) {
+    DAL.cells.poolList.getValue(function (poolList) {
+      if (poolList.length == 0) {
+        /* if the cluster is not provisioned the cell values
+        are not going to be calculated */
+        callback();
+        return;
+      }
+
+      /*
+      this cell has to be loaded before rendering of the screen
+      to make sure that elements with classes 'only-when-20' and 'only-when-below-20'
+      are properly shown/hidden which prevents higly visible blinking of the tabs
+      during reload
+      */
+      DAL.cells.runningInCompatMode.getValue(function (_value) {
+        callback();
+      });
+    });
+  }
+
+  try {
+    if (DAL.tryNoAuthLogin()) {
+      initCellValuesBeforeRendering(function () {
+        hideAuthForm();
+        removeAuthDialogSpinner();
+      });
+    } else {
+      removeAuthDialogSpinner();
+    }
+  } catch (_ignore) {
+    removeAuthDialogSpinner();
   }
 
   if (!DAL.login && $('#login_form:visible').length) {
