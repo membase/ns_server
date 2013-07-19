@@ -55,6 +55,7 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
+    erlang:process_flag(priority, high),
     self() ! acquire_initial_status,
     ns_pubsub:subscribe_link(ns_config_events,
                              fun handle_config_event/2, undefined),
