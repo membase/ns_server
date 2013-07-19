@@ -118,7 +118,7 @@ check_auth_bucket(UserPassword) ->
 
 %% checks if given credentials are admin credentials
 check_auth(UserPassword) ->
-    case ns_config:search_prop(ns_config:get(), rest_creds, creds, empty) of
+    case ns_config:search_prop('latest-config-marker', rest_creds, creds, empty) of
         []    -> true; % An empty list means no login/password auth check.
         empty -> true; % An empty list means no login/password auth check.
         Creds -> check_auth(UserPassword, Creds)
