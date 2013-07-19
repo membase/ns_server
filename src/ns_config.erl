@@ -340,7 +340,7 @@ search(Config, Key) ->
     end.
 
 search(Config, Key, Default) ->
-    case ns_config:search(Config, Key) of
+    case search(Config, Key) of
         {value, V} ->
             V;
         false ->
