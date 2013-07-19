@@ -95,7 +95,7 @@
 %% API
 
 eval(Fun) ->
-    gen_server:call(?MODULE, {eval, Fun}).
+    gen_server:call(?MODULE, {eval, Fun}, ?DEFAULT_TIMEOUT).
 
 start_link(Full) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, Full, []).
@@ -310,7 +310,7 @@ clear(Keep) -> gen_server:call(?MODULE, {clear, Keep}).
 
 get()              -> diag_handler:diagnosing_timeouts(
                         fun () ->
-                                gen_server:call(?MODULE, get)
+                                gen_server:call(?MODULE, get, ?DEFAULT_TIMEOUT)
                         end).
 get(Node)          -> ?MODULE:get(Node, ?DEFAULT_TIMEOUT).
 get(Node, Timeout) -> gen_server:call({?MODULE, Node}, get, Timeout).
