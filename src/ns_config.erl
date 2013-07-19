@@ -549,6 +549,7 @@ do_init(Config) ->
 init({with_state, LoadedConfig} = Init) ->
     do_init(LoadedConfig#config{init = Init});
 init({full, ConfigPath, DirPath, PolicyMod} = Init) ->
+    erlang:process_flag(priority, high),
     case load_config(ConfigPath, DirPath, PolicyMod) of
         {ok, Config} ->
             do_init(Config#config{init = Init,
