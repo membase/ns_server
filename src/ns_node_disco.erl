@@ -89,7 +89,7 @@ nodes_actual_other() ->
     lists:subtract(nodes_actual_proper(), [node()]).
 
 nodes_wanted() ->
-    gen_server:call(?MODULE, nodes_wanted).
+    do_nodes_wanted().
 
 % API's used as callbacks that are invoked when ns_config
 % keys have changed.
@@ -148,9 +148,6 @@ handle_call({register_node_renaming_txn, Pid}, _From, State) ->
 handle_call(nodes_actual_proper, _From, State) ->
     {reply, do_nodes_actual_proper(), State};
 
-handle_call(nodes_wanted, _From, State) ->
-    {reply, do_nodes_wanted(), State};
-
 handle_call(Msg, _From, State) ->
     ?log_warning("Unhandled ~p call: ~p", [?MODULE, Msg]),
     {reply, error, State}.
@@ -189,7 +186,7 @@ handle_info(Msg, State) ->
 % Read from ns_config nodes_wanted.
 
 do_nodes_wanted() ->
-    case ns_config:search(ns_config:get(), nodes_wanted) of
+    case ns_config:search(nodes_wanted) of
         {value, L} -> lists:usort(L);
         false      -> []
     end.
