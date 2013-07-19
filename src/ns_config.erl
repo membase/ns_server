@@ -331,6 +331,8 @@ search(Key) ->
 
 search_node(Key) -> search_node(?MODULE:get(), Key).
 
+search('latest-config-marker', Key) ->
+    search(Key);
 search(Config, Key) ->
     case search_raw(Config, Key) of
         {value, X} -> {value, strip_metadata(X)};
