@@ -5,6 +5,17 @@ This file documents user-visible changes in Couchbase clustering & UI.
 Between versions 2.1.0 and 2.2.0
 -----------------------------------------
 
+* (MB-8656) we've allowed adding vm flags of child vm via env variable
+
+  By setting environment variable COUCHBASE_NS_SERVER_VM_EXTRA_ARGS it
+  is now possible to add erlang vm flags of child vm. It is interpreted
+  as erlang term which must represent list of strings.
+
+  E.g. in order to pass +swt low you can do the following:
+
+    COUCHBASE_NS_SERVER_VM_EXTRA_ARGS='["+swt", "low"]' ./cluster_run
+
+
 * (MB-8569) live filtration of list of documents in UI was
   removed. This code is using un-optimized implementation of searching
   list of documents and that caused non-trivial use of memory which
