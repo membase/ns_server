@@ -806,8 +806,8 @@ handle_pool_info(Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
     LocalAddr = menelaus_util:local_addr(Req),
     Query = Req:parse_qs(),
-    {WaitChangeS, PassedETag} = {proplists:get_value("waitChange", Query),
-                                  proplists:get_value("etag", Query)},
+    WaitChangeS = proplists:get_value("waitChange", Query),
+    PassedETag = proplists:get_value("etag", Query),
     case WaitChangeS of
         undefined -> reply_json(Req, build_pool_info(Id, UserPassword, normal, LocalAddr));
         _ ->
@@ -852,7 +852,7 @@ handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag) ->
     %% consume all notifications
     consume_notifications(),
     %% and reply
-    {struct, PList} = build_pool_info(Id, UserPassword, normal, LocalAddr),
+    {struct, PList} = build_pool_info(Id, UserPassword, for_ui, LocalAddr),
     Info = {struct, [{etag, list_to_binary(ETag)} | PList]},
     reply_json(Req, Info),
     %% this will cause some extra latency on ui perhaps,
@@ -922,8 +922,6 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                   {struct, [{uri, <<"/pools/default/remoteClusters?uuid=", UUID/binary>>},
                             {validateURI, <<"/pools/default/remoteClusters?just_validate=1">>}]}},
                  {controllers, Controllers},
-                 {balanced, ns_cluster_membership:is_balanced()},
-                 {failoverWarnings, ns_bucket:failover_warnings()},
                  {rebalanceStatus, RebalanceStatus},
                  {rebalanceProgressUri, bin_concat_path(["pools", Id, "rebalanceProgress"])},
                  {stopRebalanceUri, <<"/controller/stopRebalance?uuid=", UUID/binary>>},
@@ -942,11 +940,17 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                                               build_fast_warmup_settings(FWSettings)
                                       end},
                  {tasks, {struct, [{uri, TasksURI}]}},
-                 {counters, {struct, ns_cluster:counters()}},
-                 {stopRebalanceIsSafe,
-                  ns_cluster_membership:is_stop_rebalance_safe()}],
+                 {counters, {struct, ns_cluster:counters()}}],
     PropList =
         case InfoLevel of
+            for_ui ->
+                StorageTotals = [ {Key, {struct, StoragePList}}
+                                  || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
+                [{storageTotals, {struct, StorageTotals}},
+                 {stopRebalanceIsSafe, ns_cluster_membership:is_stop_rebalance_safe()},
+                 {balanced, ns_cluster_membership:is_balanced()},
+                 {failoverWarnings, ns_bucket:failover_warnings()}
+                 | PropList0];
             normal ->
                 StorageTotals = [ {Key, {struct, StoragePList}}
                   || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
@@ -1084,9 +1088,9 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
                   end,
             KV4 = case InfoLevel of
                       stable -> KV3;
-                      normal -> build_extra_node_info(Config, WantENode,
-                                                      InfoNode, BucketsAll,
-                                                      KV3)
+                      _ -> build_extra_node_info(Config, WantENode,
+                                                 InfoNode, BucketsAll,
+                                                 KV3)
                   end,
             {struct, KV4}
     end.
