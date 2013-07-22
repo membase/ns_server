@@ -70,6 +70,7 @@
          parse_validate_number/3]).
 
 -define(AUTO_FAILLOVER_MIN_TIMEOUT, 30).
+-define(AUTO_FAILLOVER_MAX_TIMEOUT, 3600).
 
 %% External API
 
@@ -1582,8 +1583,9 @@ validate_settings_auto_failover(Enabled, Timeout, MaxNodes) ->
     end,
     case Enabled2 of
         true ->
-            Errors = [is_valid_positive_integer_bigger_or_equal(Timeout, ?AUTO_FAILLOVER_MIN_TIMEOUT) orelse
-                      {timeout, <<"The value of \"timeout\" must be a positive integer bigger or equal to 30">>},
+            Errors = [is_valid_positive_integer_in_range(Timeout, ?AUTO_FAILLOVER_MIN_TIMEOUT, ?AUTO_FAILLOVER_MAX_TIMEOUT) orelse
+                      {timeout, erlang:list_to_binary(io_lib:format("The value of \"timeout\" must be a positive integer in a range from ~p to ~p",
+                                                                                [?AUTO_FAILLOVER_MIN_TIMEOUT, ?AUTO_FAILLOVER_MAX_TIMEOUT]))},
                       is_valid_positive_integer(MaxNodes) orelse
                       {maxNodes, <<"The value of \"maxNodes\" must be a positive integer">>}],
             case lists:filter(fun (E) -> E =/= true end, Errors) of
@@ -1603,9 +1605,9 @@ is_valid_positive_integer(String) ->
     Int = (catch list_to_integer(String)),
     (is_integer(Int) andalso (Int > 0)).
 
-is_valid_positive_integer_bigger_or_equal(String, Min) ->
+is_valid_positive_integer_in_range(String, Min, Max) ->
     Int = (catch list_to_integer(String)),
-    (is_integer(Int) andalso (Int >= Min)).
+    (is_integer(Int) andalso (Int >= Min) andalso (Int =< Max)).
 
 %% @doc Resets the number of nodes that were automatically failovered to zero
 handle_settings_auto_failover_reset_count(Req) ->
