@@ -130,6 +130,11 @@ is_interesting_stat({couch_docs_actual_disk_size, _}) -> true;
 is_interesting_stat({couch_views_actual_disk_size, _}) -> true;
 is_interesting_stat({couch_docs_data_size, _}) -> true;
 is_interesting_stat({couch_views_data_size, _}) -> true;
+is_interesting_stat({couch_views_ops, _}) -> true;
+is_interesting_stat({cmd_get, _}) -> true;
+is_interesting_stat({get_hits, _}) -> true;
+is_interesting_stat({ep_bg_fetched, _}) -> true;
+is_interesting_stat({ops, _}) -> true;
 is_interesting_stat(_) -> false.
 
 current_status() ->
@@ -143,25 +148,30 @@ current_status() ->
 
     BucketNames = ns_bucket:node_bucket_names(node()),
 
-    InterestingStats =
+    PerBucketInterestingStats =
         lists:foldl(fun (BucketName, Acc) ->
                             case catch stats_reader:latest(minute, node(), BucketName) of
                                 {ok, #stat_entry{values = Values}} ->
                                     InterestingValues = lists:filter(fun is_interesting_stat/1, Values),
-                                    orddict:merge(fun (K, V1, V2) ->
-                                                          try
-                                                              V1 + V2
-                                                          catch error:badarith ->
-                                                                  ?log_debug("Ignoring badarith when agregating interesting stats:~n~p~n",
-                                                                             [{BucketName, K, V1, V2}]),
-                                                                  V1
-                                                          end
-                                                  end, Acc, InterestingValues);
+                                    [{BucketName, InterestingValues} | Acc];
                                 Crap ->
                                     ?log_debug("Ignoring failure to get stats for bucket: ~p:~n~p~n", [BucketName, Crap]),
                                     Acc
                             end
                     end, [], BucketNames),
+
+    InterestingStats =
+        lists:foldl(fun ({BucketName, InterestingValues}, Acc) ->
+                            orddict:merge(fun (K, V1, V2) ->
+                                                  try
+                                                      V1 + V2
+                                                  catch error:badarith ->
+                                                          ?log_debug("Ignoring badarith when agregating interesting stats:~n~p~n",
+                                                                     [{BucketName, K, V1, V2}]),
+                                                          V1
+                                                  end
+                                          end, Acc, InterestingValues)
+                    end, [], PerBucketInterestingStats),
 
     Tasks = lists:filter(
         fun (Task) ->
@@ -207,6 +217,7 @@ current_status() ->
          {system_stats, [{N, proplists:get_value(N, SystemStats, 0)}
                          || N <- [cpu_utilization_rate, swap_total, swap_used]]},
          {interesting_stats, InterestingStats},
+         {per_bucket_interesting_stats, PerBucketInterestingStats},
          {processes_stats, ProcessesStats},
          {cluster_compatibility_version, ClusterCompatVersion}
          | element(2, ns_info:basic_info())] ++ MaybeMeminfo.

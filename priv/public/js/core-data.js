@@ -456,7 +456,7 @@ var DAL = {
   });
 
   var rawDetailedBuckets = Cell.compute(function (v) {
-    return future.get({url: v.need(bucketsURI)});
+    return future.get({url: v.need(bucketsURI) + "&basic_stats=true"});
   });
   rawDetailedBuckets.keepValueDuringAsync = true;
 
@@ -491,24 +491,14 @@ var DAL = {
     });
   })();
 
-  var nonNullMassagedDetails = Cell.compute(function (v) {
-    var rv = v(massagedUsedPoolDetails);
-    if (rv == null)
-      return;
-    return rv;
-  });
-
   cells.bucketsListCell = Cell.compute(function (v) {
-    var values = v.need(rawDetailedBuckets);
-    var massagedDetails = v.need(nonNullMassagedDetails);
-
-    values = _.clone(values);
+    var values = _.clone(v.need(rawDetailedBuckets));
     // adding a child object for storing bucket by their type
     values.byType = {"membase":[], "memcached":[]};
 
-    var storageTotals = massagedDetails.storageTotals;
-
     _.each(values, function (bucket) {
+      var storageTotals = bucket.basicStats.storageTotals;
+
       if (bucket.bucketType == 'memcached') {
         bucket.bucketTypeName = 'Memcached';
       } else if (bucket.bucketType == 'membase') {

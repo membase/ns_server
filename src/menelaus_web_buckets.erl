@@ -111,12 +111,20 @@ handle_bucket_list(Id, Req) ->
     BucketNames = lists:sort(fun (A,B) -> A =< B end,
                              all_accessible_bucket_names(fakepool, Req)),
     LocalAddr = menelaus_util:local_addr(Req),
-    BucketsInfo = [build_bucket_info(Id, Name, undefined, LocalAddr)
+    InfoLevel = case proplists:get_value("basic_stats", Req:parse_qs()) of
+                    undefined -> normal;
+                    _ -> for_ui
+                end,
+    BucketsInfo = [build_bucket_info(Id, Name, undefined, InfoLevel, LocalAddr)
                    || Name <- BucketNames],
     reply_json(Req, BucketsInfo).
 
 handle_bucket_info(PoolId, Id, Req, _Pool, Bucket) ->
-    reply_json(Req, build_bucket_info(PoolId, Id, Bucket,
+    InfoLevel = case proplists:get_value("basic_stats", Req:parse_qs()) of
+                    undefined -> normal;
+                    _ -> for_ui
+                end,
+    reply_json(Req, build_bucket_info(PoolId, Id, Bucket, InfoLevel,
                                       menelaus_util:local_addr(Req))).
 
 build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr) ->
@@ -163,9 +171,6 @@ maybe_add_couch_api_base(BucketName, KV, Node, LocalAddr) ->
             KV
     end.
 
-build_bucket_info(PoolId, Id, Bucket, LocalAddr) ->
-    build_bucket_info(PoolId, Id, Bucket, normal, LocalAddr).
-
 build_bucket_info(PoolId, Id, undefined, InfoLevel, LocalAddr) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Id),
     build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr);
@@ -191,13 +196,17 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
 
     Suffix = case InfoLevel of
                  stable -> BucketCaps;
-                 normal ->
-                     [{replicaNumber, ns_bucket:num_replicas(BucketConfig)},
-                      {threadsNumber, proplists:get_value(num_threads, BucketConfig, 3)},
-                      {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
-                                        {rawRAM, ns_bucket:raw_ram_quota(BucketConfig)}]}},
-                      {basicStats, {struct, menelaus_stats:basic_stats(Id)}}
-                     | BucketCaps]
+                 _ ->
+                      NormalInfo = [{replicaNumber, ns_bucket:num_replicas(BucketConfig)},
+                                    {threadsNumber, proplists:get_value(num_threads, BucketConfig, 3)},
+                                    {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
+                                                      {rawRAM, ns_bucket:raw_ram_quota(BucketConfig)}]}}
+                                    | BucketCaps],
+
+                      case InfoLevel of
+                          for_ui -> [{basicStats, {struct, menelaus_stats:basic_stats(Id)}} | NormalInfo];
+                          _ -> NormalInfo
+                      end
              end,
     BucketType = ns_bucket:bucket_type(BucketConfig),
     %% Only list nodes this bucket is mapped to

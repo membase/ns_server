@@ -29,7 +29,6 @@
          handle_specific_stat_for_buckets_group_per_node/4,
          handle_overview_stats/2,
          basic_stats/1,
-         basic_stats/2, basic_stats/3,
          bucket_disk_usage/1,
          bucket_ram_usage/1,
          serve_stats_directory/3]).
@@ -37,13 +36,13 @@
 %% External API
 bucket_disk_usage(BucketName) ->
     {_, _, _, _, DiskUsed, _, _}
-        = last_membase_sample(BucketName, ns_bucket:live_bucket_nodes(BucketName)),
+        = last_membase_sample(BucketName, get_active_nodes_info()),
     DiskUsed.
 
 bucket_ram_usage(BucketName) ->
     %% NOTE: we're getting last membase sample, but first stat name is
     %% same in memcached buckets, so it works for them too.
-    element(1, last_membase_sample(BucketName, ns_bucket:live_bucket_nodes(BucketName))).
+    element(1, last_membase_sample(BucketName, get_active_nodes_info())).
 
 extract_stat(StatName, Sample) ->
     case orddict:find(StatName, Sample#stat_entry.values) of
@@ -51,64 +50,86 @@ extract_stat(StatName, Sample) ->
         {ok, V} -> V
     end.
 
-last_membase_sample(BucketName, Nodes) ->
-    lists:foldl(fun ({_Node, []}, Acc) -> Acc;
-                    ({_Node, [Sample|_]}, {AccMem, AccItems, AccOps, AccFetches, AccDisk, AccData, AccViewsOps}) ->
-                        {extract_stat(mem_used, Sample) + AccMem,
-                         extract_stat(curr_items, Sample) + AccItems,
-                         extract_stat(ops, Sample) + AccOps,
-                         extract_stat(ep_bg_fetched, Sample) + AccFetches,
-                         extract_stat(couch_docs_actual_disk_size, Sample) +
-                           extract_stat(couch_views_actual_disk_size, Sample) + AccDisk,
-                         extract_stat(couch_docs_data_size, Sample) + AccData,
-                         extract_stat(couch_views_ops, Sample) + AccViewsOps}
-                end, {0, 0, 0, 0, 0, 0, 0}, invoke_archiver(BucketName, Nodes, {1, minute, 1})).
+get_active_nodes_info() ->
+    NodeNames = ns_cluster_membership:active_nodes(),
+    NodesDict = ns_doctor:get_nodes(),
+    lists:foldl(fun (N, A) ->
+                         case dict:find(N, NodesDict) of
+                             {ok, V} -> [{N, V} | A];
+                             _ -> A
+                         end
+                 end, [], NodeNames).
 
-last_memcached_sample(BucketName, Nodes) ->
-    {MemUsed,
-     CurrItems,
-     Ops,
-     CmdGet,
-     GetHits} = lists:foldl(fun ({_Node, []}, Acc) -> Acc;
-                                ({_Node, [Sample|_]}, {AccMem, AccItems, AccOps, AccGet, AccGetHits}) ->
-                                    {extract_stat(mem_used, Sample) + AccMem,
-                                     extract_stat(curr_items, Sample) + AccItems,
-                                     extract_stat(ops, Sample) + AccOps,
-                                     extract_stat(cmd_get, Sample) + AccGet,
-                                     extract_stat(get_hits, Sample) + AccGetHits}
-                            end, {0, 0, 0, 0, 0}, invoke_archiver(BucketName, Nodes, {1, minute, 1})),
-    {MemUsed,
-     CurrItems,
-     Ops,
+extract_interesting_stat(Key, Stats) ->
+    case lists:keyfind(Key, 1, Stats) of
+        false -> 0;
+        {_, Stat} -> Stat
+    end.
+
+extract_interesting_buckets(InterestingBucketName, NodeInfos) ->
+    InterestingStats = lists:append([
+        proplists:get_value(per_bucket_interesting_stats, NodeInfo, []) || {_, NodeInfo} <- NodeInfos]),
+    [{BucketName, Stats} || {BucketName, Stats}
+        <- InterestingStats, BucketName =:= InterestingBucketName].
+
+
+last_membase_sample(InterestingBucketName, NodeInfos) ->
+    lists:foldl(
+        fun ({_, Stats},
+             {AccMem, AccItems, AccOps, AccFetches, AccDisk, AccData, AccViewsOps}) ->
+                    {extract_interesting_stat(mem_used, Stats) + AccMem,
+                     extract_interesting_stat(curr_items, Stats) + AccItems,
+                     extract_interesting_stat(ops, Stats) + AccOps,
+                     extract_interesting_stat(ep_bg_fetched, Stats) + AccFetches,
+                     extract_interesting_stat(couch_docs_actual_disk_size, Stats) +
+                       extract_interesting_stat(couch_views_actual_disk_size, Stats) + AccDisk,
+                     extract_interesting_stat(couch_docs_data_size, Stats) + AccData,
+                     extract_interesting_stat(couch_views_ops, Stats) + AccViewsOps}
+        end, {0, 0, 0, 0, 0, 0, 0}, extract_interesting_buckets(InterestingBucketName, NodeInfos)).
+
+
+last_memcached_sample(InterestingBucketName, NodeInfos) ->
+    {MemUsed, CurrItems, Ops, CmdGet, GetHits}
+            = lists:foldl(
+                    fun ({_, Stats},
+                         {AccMem, AccItems, AccOps, AccGet, AccGetHits}) ->
+                                {extract_interesting_stat(mem_used, Stats) + AccMem,
+                                 extract_interesting_stat(curr_items, Stats) + AccItems,
+                                 extract_interesting_stat(ops, Stats) + AccOps,
+                                 extract_interesting_stat(cmd_get, Stats) + AccGet,
+                                 extract_interesting_stat(get_hits, Stats) + AccGetHits}
+                    end, {0, 0, 0, 0, 0}, extract_interesting_buckets(InterestingBucketName, NodeInfos)),
+
+    {MemUsed, CurrItems, Ops,
      case CmdGet == 0 of
          true -> 0;
          _ -> GetHits / CmdGet
      end}.
 
-last_bucket_stats(membase, BucketName, Nodes) ->
+last_bucket_stats(membase, BucketName, NodesInfos) ->
     {MemUsed, ItemsCount, Ops, Fetches, Disk, Data, ViewOps}
-        = last_membase_sample(BucketName, Nodes),
+        = last_membase_sample(BucketName, NodesInfos),
     [{opsPerSec, Ops},
      {viewOps, ViewOps},
      {diskFetches, Fetches},
      {itemCount, ItemsCount},
      {diskUsed, Disk},
      {dataUsed, Data},
-     {memUsed, MemUsed}];
-last_bucket_stats(memcached, BucketName, Nodes) ->
-    {MemUsed, ItemsCount, Ops, HitRatio} = last_memcached_sample(BucketName, Nodes),
+     {memUsed, MemUsed},
+     {storageTotals, ns_storage_conf:cluster_storage_info(NodesInfos)}];
+last_bucket_stats(memcached, BucketName, NodesInfos) ->
+    {MemUsed, ItemsCount, Ops, HitRatio} = last_memcached_sample(BucketName, NodesInfos),
     [{opsPerSec, Ops},
      {hitRatio, HitRatio},
      {itemCount, ItemsCount},
-     {memUsed, MemUsed}].
+     {memUsed, MemUsed},
+     {storageTotals, ns_storage_conf:cluster_storage_info(NodesInfos)}].
 
-basic_stats(BucketName, Nodes) ->
-    basic_stats(BucketName, Nodes, undefined).
-
-basic_stats(BucketName, Nodes, MaybeBucketConfig) ->
-    {ok, BucketConfig} = ns_bucket:maybe_get_bucket(BucketName, MaybeBucketConfig),
+basic_stats(BucketName) ->
+    {ok, BucketConfig} = ns_bucket:maybe_get_bucket(BucketName, undefined),
+    NodesInfos = get_active_nodes_info(),
     QuotaBytes = ns_bucket:ram_quota(BucketConfig),
-    Stats = last_bucket_stats(ns_bucket:bucket_type(BucketConfig), BucketName, Nodes),
+    Stats = last_bucket_stats(ns_bucket:bucket_type(BucketConfig), BucketName, NodesInfos),
     MemUsed = proplists:get_value(memUsed, Stats),
     QuotaPercent = try (MemUsed * 100.0 / QuotaBytes) of
                        X -> X
@@ -117,9 +138,6 @@ basic_stats(BucketName, Nodes, MaybeBucketConfig) ->
                    end,
     [{quotaPercentUsed, lists:min([QuotaPercent, 100])}
      | Stats].
-
-basic_stats(BucketName) ->
-    basic_stats(BucketName, ns_bucket:live_bucket_nodes(BucketName)).
 
 handle_overview_stats(PoolId, Req) ->
     Names = lists:sort(menelaus_web_buckets:all_accessible_bucket_names(PoolId, Req)),
