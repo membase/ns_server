@@ -6,6 +6,33 @@
          child_start/1,
          open_port_args/0]).
 
+get_ns_server_vm_extra_args() ->
+    case os:getenv("COUCHBASE_NS_SERVER_VM_EXTRA_ARGS") of
+        false ->
+            [];
+        Value ->
+            PV = case erl_scan:string(Value ++ ".") of
+                     {ok, Ts, _} ->
+                         case erl_parse:parse_term(Ts) of
+                             {ok, Term0} when is_list(Term0) ->
+                                 {ok, Term0};
+                             Err0 ->
+                                 {parse_error, Err0}
+                         end;
+                     Err0 ->
+                         {scan_error, Err0}
+                 end,
+            case PV of
+                {ok, Term} ->
+                    true = is_list(Term),
+                    Term;
+                Err ->
+                    ?log_warning("Got something in COUCHBASE_NS_SERVER_VM_EXTRA_ARGS environment variable (~s) but it's not a list term: ~p",
+                                 [Value, Err]),
+                    []
+            end
+    end.
+
 open_port_args() ->
     AppArgs = arguments_to_args(init:get_arguments()),
     ErlangArgs = ["+A" , "16",
@@ -23,7 +50,8 @@ open_port_args() ->
                   "error_logger", "false",
                   "-sasl", "sasl_error_logger", "false",
                   "-nouser",
-                  "-run", "child_erlang", "child_start", "ns_bootstrap", "--"],
+                  "-run", "child_erlang", "child_start", "ns_bootstrap"]
+        ++ get_ns_server_vm_extra_args() ++ ["--"],
     AllArgs = ErlangArgs ++ AppArgs,
     ErlPath = filename:join([hd(proplists:get_value(root, init:get_arguments())),
                              "bin", "erl"]),

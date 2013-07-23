@@ -70,6 +70,7 @@
          parse_validate_number/3]).
 
 -define(AUTO_FAILLOVER_MIN_TIMEOUT, 30).
+-define(AUTO_FAILLOVER_MAX_TIMEOUT, 3600).
 
 %% External API
 
@@ -805,8 +806,8 @@ handle_pool_info(Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
     LocalAddr = menelaus_util:local_addr(Req),
     Query = Req:parse_qs(),
-    {WaitChangeS, PassedETag} = {proplists:get_value("waitChange", Query),
-                                  proplists:get_value("etag", Query)},
+    WaitChangeS = proplists:get_value("waitChange", Query),
+    PassedETag = proplists:get_value("etag", Query),
     case WaitChangeS of
         undefined -> reply_json(Req, build_pool_info(Id, UserPassword, normal, LocalAddr));
         _ ->
@@ -851,7 +852,7 @@ handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag) ->
     %% consume all notifications
     consume_notifications(),
     %% and reply
-    {struct, PList} = build_pool_info(Id, UserPassword, normal, LocalAddr),
+    {struct, PList} = build_pool_info(Id, UserPassword, for_ui, LocalAddr),
     Info = {struct, [{etag, list_to_binary(ETag)} | PList]},
     reply_json(Req, Info),
     %% this will cause some extra latency on ui perhaps,
@@ -921,8 +922,6 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                   {struct, [{uri, <<"/pools/default/remoteClusters?uuid=", UUID/binary>>},
                             {validateURI, <<"/pools/default/remoteClusters?just_validate=1">>}]}},
                  {controllers, Controllers},
-                 {balanced, ns_cluster_membership:is_balanced()},
-                 {failoverWarnings, ns_bucket:failover_warnings()},
                  {rebalanceStatus, RebalanceStatus},
                  {rebalanceProgressUri, bin_concat_path(["pools", Id, "rebalanceProgress"])},
                  {stopRebalanceUri, <<"/controller/stopRebalance?uuid=", UUID/binary>>},
@@ -941,11 +940,17 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                                               build_fast_warmup_settings(FWSettings)
                                       end},
                  {tasks, {struct, [{uri, TasksURI}]}},
-                 {counters, {struct, ns_cluster:counters()}},
-                 {stopRebalanceIsSafe,
-                  ns_cluster_membership:is_stop_rebalance_safe()}],
+                 {counters, {struct, ns_cluster:counters()}}],
     PropList =
         case InfoLevel of
+            for_ui ->
+                StorageTotals = [ {Key, {struct, StoragePList}}
+                                  || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
+                [{storageTotals, {struct, StorageTotals}},
+                 {stopRebalanceIsSafe, ns_cluster_membership:is_stop_rebalance_safe()},
+                 {balanced, ns_cluster_membership:is_balanced()},
+                 {failoverWarnings, ns_bucket:failover_warnings()}
+                 | PropList0];
             normal ->
                 StorageTotals = [ {Key, {struct, StoragePList}}
                   || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
@@ -1083,9 +1088,9 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
                   end,
             KV4 = case InfoLevel of
                       stable -> KV3;
-                      normal -> build_extra_node_info(Config, WantENode,
-                                                      InfoNode, BucketsAll,
-                                                      KV3)
+                      _ -> build_extra_node_info(Config, WantENode,
+                                                 InfoNode, BucketsAll,
+                                                 KV3)
                   end,
             {struct, KV4}
     end.
@@ -1582,8 +1587,9 @@ validate_settings_auto_failover(Enabled, Timeout, MaxNodes) ->
     end,
     case Enabled2 of
         true ->
-            Errors = [is_valid_positive_integer_bigger_or_equal(Timeout, ?AUTO_FAILLOVER_MIN_TIMEOUT) orelse
-                      {timeout, <<"The value of \"timeout\" must be a positive integer bigger or equal to 30">>},
+            Errors = [is_valid_positive_integer_in_range(Timeout, ?AUTO_FAILLOVER_MIN_TIMEOUT, ?AUTO_FAILLOVER_MAX_TIMEOUT) orelse
+                      {timeout, erlang:list_to_binary(io_lib:format("The value of \"timeout\" must be a positive integer in a range from ~p to ~p",
+                                                                                [?AUTO_FAILLOVER_MIN_TIMEOUT, ?AUTO_FAILLOVER_MAX_TIMEOUT]))},
                       is_valid_positive_integer(MaxNodes) orelse
                       {maxNodes, <<"The value of \"maxNodes\" must be a positive integer">>}],
             case lists:filter(fun (E) -> E =/= true end, Errors) of
@@ -1603,9 +1609,9 @@ is_valid_positive_integer(String) ->
     Int = (catch list_to_integer(String)),
     (is_integer(Int) andalso (Int > 0)).
 
-is_valid_positive_integer_bigger_or_equal(String, Min) ->
+is_valid_positive_integer_in_range(String, Min, Max) ->
     Int = (catch list_to_integer(String)),
-    (is_integer(Int) andalso (Int >= Min)).
+    (is_integer(Int) andalso (Int >= Min) andalso (Int =< Max)).
 
 %% @doc Resets the number of nodes that were automatically failovered to zero
 handle_settings_auto_failover_reset_count(Req) ->

@@ -95,7 +95,7 @@
 %% API
 
 eval(Fun) ->
-    gen_server:call(?MODULE, {eval, Fun}).
+    gen_server:call(?MODULE, {eval, Fun}, ?DEFAULT_TIMEOUT).
 
 start_link(Full) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, Full, []).
@@ -310,7 +310,7 @@ clear(Keep) -> gen_server:call(?MODULE, {clear, Keep}).
 
 get()              -> diag_handler:diagnosing_timeouts(
                         fun () ->
-                                gen_server:call(?MODULE, get)
+                                gen_server:call(?MODULE, get, ?DEFAULT_TIMEOUT)
                         end).
 get(Node)          -> ?MODULE:get(Node, ?DEFAULT_TIMEOUT).
 get(Node, Timeout) -> gen_server:call({?MODULE, Node}, get, Timeout).
@@ -331,6 +331,8 @@ search(Key) ->
 
 search_node(Key) -> search_node(?MODULE:get(), Key).
 
+search('latest-config-marker', Key) ->
+    search(Key);
 search(Config, Key) ->
     case search_raw(Config, Key) of
         {value, X} -> {value, strip_metadata(X)};
@@ -338,7 +340,7 @@ search(Config, Key) ->
     end.
 
 search(Config, Key, Default) ->
-    case ns_config:search(Config, Key) of
+    case search(Config, Key) of
         {value, V} ->
             V;
         false ->
@@ -547,6 +549,7 @@ do_init(Config) ->
 init({with_state, LoadedConfig} = Init) ->
     do_init(LoadedConfig#config{init = Init});
 init({full, ConfigPath, DirPath, PolicyMod} = Init) ->
+    erlang:process_flag(priority, high),
     case load_config(ConfigPath, DirPath, PolicyMod) of
         {ok, Config} ->
             do_init(Config#config{init = Init,
