@@ -577,11 +577,32 @@ var SetupWizard = {
           }, onError);
         }
 
+        var saveAuthData = function (onSuccess, onError) {
+          var form = $(self);
+
+          var postData = serializeForm(form);
+
+          form.find('.warn li').remove();
+
+          jsonPostWithErrors(form.attr('action'), postData, function (data, status) {
+            if (status != 'success') {
+              var ul = form.find('.warn ul');
+              _.each(data, function (error) {
+                var li = $('<li></li>');
+                li.text(error);
+                ul.prepend(li);
+              });
+              $('html, body').animate({scrollTop: ul.offset().top-100}, 250);
+              onError();
+            } else {
+              onSuccess();
+            }
+          });
+        }
+
         var self = this;
         var spinner = overlayWithSpinner('#init_secure_form', false);
-        SettingsSection.processSave(self, function (dialog) {
-          dialog.close();
-
+        saveAuthData(function () {
           DAL.performLogin(user, pw, function () {
             createBuckets(opt.sampleBuckets, opt.defaultBucketData,
               // success
@@ -607,6 +628,9 @@ var SetupWizard = {
               }
             );
           });
+        },
+        function () {
+          spinner.remove();
         });
       });
     },
