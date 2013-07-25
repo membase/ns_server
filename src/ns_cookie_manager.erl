@@ -28,7 +28,7 @@
 %% API
 -export([start_link/0,
          cookie_init/0, cookie_gen/0,
-         cookie_get/0, cookie_set/1, cookie_sync/0]).
+         cookie_set/1, cookie_sync/0]).
 
 -export([ns_log_cat/1, ns_log_code_string/1]).
 
@@ -48,9 +48,6 @@ cookie_init() ->
 
 cookie_gen() ->
     gen_server:call(?SERVER, cookie_gen).
-
-cookie_get() ->
-    gen_server:call(?SERVER, cookie_get).
 
 cookie_set(Cookie) ->
     gen_server:call(?SERVER, {cookie_set, Cookie}).
@@ -77,8 +74,6 @@ handle_call(cookie_init, _From, State) ->
     {reply, do_cookie_init(), State};
 handle_call(cookie_gen, _From, State) ->
     {reply, do_cookie_gen(), State};
-handle_call(cookie_get, _From, State) ->
-    {reply, do_cookie_get(), State};
 handle_call({cookie_set, Cookie}, _From, State) ->
     {reply, do_cookie_set(Cookie), State};
 handle_call(cookie_sync, _From, State) ->
@@ -104,7 +99,7 @@ do_cookie_gen() ->
     end.
 
 do_cookie_get() ->
-    ns_config:search_prop(ns_config:get(), otp, cookie).
+    ns_config:search_prop('latest-config-marker', otp, cookie).
 
 do_cookie_set(Cookie) ->
     X = ns_config:set(otp, [{cookie, Cookie}]),

@@ -42,7 +42,7 @@ log_diagnostics(Err) ->
         undefined -> ok;
         _ ->
             try erlang:process_info(Pid, message_queue_len) of
-                {_, V} when V < 1 -> gen_server:call(?MODULE, {diag, Err});
+                {_, V} when V < 1 -> gen_server:cast(?MODULE, {diag, Err});
                 _ -> nothing
             catch _:_ -> nothing
             end
@@ -90,7 +90,10 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({diag, Err}, _From, #state{last_tstamp = TStamp} = State) ->
+handle_call(_, _From, _State) ->
+    erlang:error(unsupported).
+
+do_diag(Err, #state{last_tstamp = TStamp} = State) ->
     self() ! busy_marker,
     Now = misc:time_to_epoch_ms_int(now()),
     NewState =
@@ -106,7 +109,7 @@ handle_call({diag, Err}, _From, #state{last_tstamp = TStamp} = State) ->
                 State#state{last_tstamp = misc:time_to_epoch_ms_int(now())};
             _ -> State
         end,
-    {reply, ok, NewState}.
+    NewState.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -118,6 +121,8 @@ handle_call({diag, Err}, _From, #state{last_tstamp = TStamp} = State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({diag, Err}, State) ->
+    {noreply, do_diag(Err, State)};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 

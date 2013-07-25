@@ -85,6 +85,7 @@ config_string(BucketName) ->
     BucketType =  proplists:get_value(type, BucketConfig),
     EngineConfig = proplists:get_value(BucketType, Engines),
     Engine = proplists:get_value(engine, EngineConfig),
+    BucketUUID = proplists:get_value(uuid, BucketConfig),
     StaticConfigString =
         proplists:get_value(
           static_config_string, BucketConfig,
@@ -110,7 +111,8 @@ config_string(BucketName) ->
                       "tap_keepalive=~B;dbname=~s;"
                       "allow_data_loss_during_shutdown=true;"
                       "backend=couchdb;couch_bucket=~s;couch_port=~B;max_vbuckets=~B;"
-                      "alog_path=~s;data_traffic_enabled=false;max_num_workers=~B",
+                      "alog_path=~s;data_traffic_enabled=false;max_num_workers=~B;"
+                      "uuid=~s",
                       [proplists:get_value(
                          ht_size, BucketConfig,
                          misc:getenv_int("MEMBASE_HT_SIZE", 3079)),
@@ -134,10 +136,11 @@ config_string(BucketName) ->
                        CouchPort,
                        NumVBuckets,
                        AccessLog,
-                       NumThreads]),
+                       NumThreads,
+                       BucketUUID]),
                 {CFG, {MemQuota, DBSubDir, NumThreads}, DBSubDir};
             memcached ->
-                {io_lib:format("cache_size=~B", [MemQuota]),
+                {io_lib:format("cache_size=~B;uuid=~s", [MemQuota, BucketUUID]),
                  MemQuota, undefined}
         end,
     ConfigString = lists:flatten([DynamicConfigString, $;, StaticConfigString,
