@@ -56,7 +56,11 @@
          disable_traffic/1,
          wait_for_checkpoint_persistence/3,
          get_tap_docs_estimate/3,
-         get_mass_tap_docs_estimate/2
+         map_status/1,
+         process_error_response/1,
+         get_mass_tap_docs_estimate/2,
+         ext/2,
+         rev_to_mcd_ext/1
         ]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.

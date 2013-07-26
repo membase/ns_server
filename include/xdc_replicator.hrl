@@ -10,6 +10,9 @@
 %% License for the specific language governing permissions and limitations under
 %% the License.
 
+-ifndef(_XDC_COMMON__HRL_).
+-define(_XDC_COMMON__HRL_,).
+
 %% couchdb headers
 -include("couch_db.hrl").
 -include("couch_js_functions.hrl").
@@ -26,16 +29,29 @@
                      to_binary/1
                     ]).
 
-%% constants used by XDCR
+%% ------------------------------------%%
+%%  constants and macros used by XDCR  %%
+%% ------------------------------------%%
 -define(REP_ID_VERSION, 2).
 %% capture the last 10 entries of checkpoint history per bucket replicator
 -define(XDCR_CHECKPOINT_HISTORY, 10).
 %% capture the last 10 entries of error history per bucket replicator
 -define(XDCR_ERROR_HISTORY, 10).
-%% interval (secs) to compute rate stats
--define(XDCR_RATE_STAT_INTERVAL, 1).
+%% interval (millisecs) to compute rate stats
+-define(XDCR_RATE_STAT_INTERVAL_MS, 1000).
+%% constants used by XMEM
+-define(XDCR_XMEM_CONNECTION_ATTEMPTS, 16).
+-define(XDCR_XMEM_CONNECTION_TIMEOUT, 120000).  %% timeout in ms
+%% builder of error/warning/debug msgs
+-define(format_msg(Msg, Args), lists:flatten(io_lib:format(Msg, Args))).
 
-%% data structures
+%% number of memcached errors before stop replicator
+-define(XDCR_XMEM_MEMCACHED_ERRORS, 10).
+
+
+%% -------------------------%%
+%%   XDCR data structures   %%
+%% -------------------------%%
 
 %% replication settings used by bucket level and vbucket level replicators
 -record(rep, {
@@ -100,9 +116,6 @@
           total_docs_written = 0,
           total_data_replicated = 0,
 
-          %% rate of replication
-          ratestat = #ratestat{},
-
           %% latency stats
           meta_latency_aggr = 0,
           meta_latency_wt = 0,
@@ -134,6 +147,7 @@
 %% bucket level replication state used by module xdc_replication
 -record(replication, {
           rep = #rep{},                    % the basic replication settings
+          mode,                            % replication mode
           vbucket_sup,                     % the supervisor for vb replicators
           vbs = [],                        % list of vb we should be replicating
           num_tokens = 0,                  % number of available tokens used by throttles
@@ -143,6 +157,8 @@
           num_waiting = 0,                 % number of waiting replicators
           vb_rep_dict = dict:new(),        % contains state and stats for each replicator
 
+          %% rate of replication
+          ratestat = #ratestat{},
           %% history of last N errors
           error_reports = ringbuffer:new(?XDCR_ERROR_HISTORY),
           %% history of last N checkpoints
@@ -156,6 +172,12 @@
           status = #rep_vb_status{},
           %% time the vb replicator intialized
           rep_start_time,
+
+          %% xmem server process
+          xmem_srv,
+          %% remote node
+          xmem_remote,
+
           throttle,
           parent,
           source_name,
@@ -238,6 +260,7 @@
           target = #httpdb{},      %% target db
           changes_manager,         %% process to queue changes from storage
           max_conns,               %% max connections
+          xmem_server,             %% XMem server process
           opt_rep_threshold        %% optimistic replication threshold
          }).
 
@@ -250,3 +273,56 @@
           worker_item_checked = 0,
           worker_item_replicated = 0
          }).
+
+%%-----------------------------------------%%
+%%            XDCR-MEMCACHED               %%
+%%-----------------------------------------%%
+% statistics
+-record(xdc_vb_rep_xmem_statistics, {
+          item_replicated = 0,
+          data_replicated = 0,
+          ckpt_issued = 0,
+          ckpt_failed = 0
+          }).
+
+%% information needed talk to remote memcached
+-record(xdc_rep_xmem_remote, {
+          ip, %% inet:ip_address(),
+          port, %% inet:port_number(),
+          bucket = "default",
+          username = "_admin",
+          password = "_admin",
+          options = []
+         }).
+
+%% xmem server state
+-record(xdc_vb_rep_xmem_srv_state, {
+          vb,
+          parent_vb_rep,
+          num_workers,
+          pid_workers,
+          statistics = #xdc_vb_rep_xmem_statistics{},
+          remote = #xdc_rep_xmem_remote{},
+          seed,
+          enable_pipeline = false,
+          error_reports
+         }).
+
+%% xmem worker state
+-record(xdc_vb_rep_xmem_worker_state, {
+          id,
+          vb,
+          parent_server_pid,
+          status,
+          statistics = #xdc_vb_rep_xmem_statistics{},
+          socket, %% inet:socket(),
+          time_connected,
+          time_init,
+          options,
+          error_reports
+         }).
+
+
+-endif.
+
+%% end of xdc_replicator.hrl

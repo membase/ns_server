@@ -25,6 +25,9 @@
 -export([get_master_db/1, get_checkpoint_log_id/2]).
 -export([get_opt_replication_threshold/0]).
 -export([update_options/1]).
+-export([get_replication_mode/0, get_replication_batch_size/0]).
+-export([is_pipeline_enabled/0, get_trace_dump_invprob/0]).
+-export([get_xmem_worker/0, is_local_conflict_resolution/0]).
 
 -include("xdc_replicator.hrl").
 
@@ -169,10 +172,11 @@ make_options(Props) ->
                 "optimistic replication threshold: ~p bytes, "
                 "worker processes: ~p, "
                 "worker batch size (# of mutations): ~p, "
+                "socket options: ~p "
                 "HTTP connections: ~p, "
                 "connection timeout (ms): ~p,"
                 "num of retries per request: ~p]",
-                [OptRepThreshold, DefWorkers, DefBatchSize, DefConns, DefTimeout, DefRetries]),
+                [OptRepThreshold, DefWorkers, DefBatchSize, DefSocketOptions, DefConns, DefTimeout, DefRetries]),
 
     lists:ukeymerge(1, Options, lists:keysort(1, [
                                                   {connection_timeout, DefTimeout},
@@ -321,7 +325,6 @@ get_opt_replication_threshold() ->
             Threshold
     end.
 
-
 %% get xdc replication options, log them if changed
 -spec update_options(list()) -> list().
 update_options(Options) ->
@@ -396,5 +399,70 @@ update_options(Options) ->
                       {worker_processes, DefWorkers},
                       {opt_rep_threshold, Threshold}]), Options).
 
+-spec get_replication_mode() -> list().
+get_replication_mode() ->
+    EnvVar = case (catch string:to_lower(os:getenv("XDCR_REPLICATION_MODE"))) of
+                 "capi" ->
+                     "capi";
+                 "xmem" ->
+                     "xmem";
+                 _ ->
+                     undefined
+             end,
 
+    %% env var overrides ns_config parameter, use default ns_config parameter
+    %% only when env var is undefined
+    case EnvVar of
+        undefined ->
+            case ns_config:search(xdcr_replication_mode) of
+                {value, DefaultRepMode} ->
+                    DefaultRepMode;
+                false ->
+                    "capi"
+            end;
+        _ ->
+            EnvVar
+    end.
 
+-spec get_replication_batch_size() -> integer().
+get_replication_batch_size() ->
+    %% env parameter can override the ns_config parameter
+    {value, DefaultDocBatchSize} = ns_config:search(xdcr_worker_batch_size),
+    DocBatchSize = misc:getenv_int("XDCR_WORKER_BATCH_SIZE", DefaultDocBatchSize),
+    1024*DocBatchSize.
+
+-spec is_pipeline_enabled() -> boolean().
+is_pipeline_enabled() ->
+    %% env parameter can override the ns_config parameter
+    {value, EnablePipeline} = ns_config:search(xdcr_enable_pipeline_ops),
+    case os:getenv("XDCR_ENABLE_PIPELINE") of
+        "true" ->
+            true;
+        "false" ->
+            false;
+        _ ->
+            EnablePipeline
+    end.
+
+%% inverse probability to dump non-critical datapath trace,
+%% trace will be dumped by probability 1/N
+-spec get_trace_dump_invprob() -> integer().
+get_trace_dump_invprob() ->
+    %% env parameter can override the ns_config parameter
+    {value, DefInvProb} = ns_config:search(xdcr_trace_dump_inverse_prob),
+    misc:getenv_int("XDCR_TRACE_DUMP_INVERSE_PROB", DefInvProb).
+
+-spec get_xmem_worker() -> integer().
+get_xmem_worker() ->
+    %% env parameter can override the ns_config parameter
+    {value, DefNumXMemWorker} = ns_config:search(xdcr_xmem_worker),
+    misc:getenv_int("XDCR_XMEM_WORKER", DefNumXMemWorker).
+
+-spec is_local_conflict_resolution() -> boolean().
+is_local_conflict_resolution() ->
+    case ns_config:search(xdcr_local_conflict_resolution) of
+        {value, LocalConflictRes} ->
+            LocalConflictRes;
+        false ->
+            false
+    end.
