@@ -19,7 +19,15 @@ var SettingsSection = {
                              '#js_settings .tabs',
                              '#js_settings .panes > div',
                              ['update_notifications', 'auto_failover',
-                              'email_alerts', 'settings_compaction']);
+                              'email_alerts', 'settings_compaction',
+                              'settings_sample_buckets']);
+
+    DAL.cells.runningInCompatMode.subscribeValue(function (lastCompatMode) {
+      if (lastCompatMode === undefined) {
+        return;
+      }
+      $("#settings_compaction").parent()[lastCompatMode ? 'addClass' : 'removeClass']('tab_right');
+    });
 
     UpdatesNotificationsSection.init();
     AutoFailoverSection.init();
