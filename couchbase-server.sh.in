@@ -34,7 +34,7 @@ couch_start_arguments=""
 LD_LIBRARY_PATH="@PREFIX@/lib":"@PREFIX@/lib/memcached":$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH
 
-ERL_CRASH_DUMP=erl_crash.dump.$(date +%m-%d-%Y-%H:%M:%S).$$
+ERL_CRASH_DUMP=erl_crash.dump.$(date +%s).$$
 export ERL_CRASH_DUMP
 
 ERL_FULLSWEEP_AFTER=512
@@ -103,11 +103,19 @@ _load_config () {
     fi
 }
 
+_drop_old_crashdumps () {
+    ls -1 erl_crash.dump.* | sort | head -n -10 | xargs -- rm -f
+}
+
+
 _start() {
     _check_nofile
     _prepare_datadir
     _maybe_start_epmd
     _load_config
+
+    # note: we depend on pwd being $datadir from _prepare_datadir
+    _drop_old_crashdumps
 
     # Set an ENV variable to force C++ STL and string classes to not use its
     # default memory pooling allocator.
