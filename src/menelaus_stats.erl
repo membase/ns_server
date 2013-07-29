@@ -259,14 +259,13 @@ dict_safe_fetch(K, Dict, Default) ->
     end.
 
 build_per_node_stats(BucketName, StatName, Params, LocalAddr) ->
-    {MainSamples, Replies, ClientTStamp, {Step, _, Window}}
+    {MainNode, MainSamples, RestSamplesRaw, ClientTStamp, {Step, _, Window}}
         = gather_op_stats(BucketName, all, Params),
 
     StatExtractor = build_stat_extractor(BucketName, StatName),
 
-    RestSamplesRaw = lists:keydelete(node(), 1, Replies),
-    Nodes = [node() | [N || {N, _} <- RestSamplesRaw]],
-    AllNodesSamples = [{node(), lists:reverse(MainSamples)} | RestSamplesRaw],
+    Nodes = [MainNode | [N || {N, _} <- RestSamplesRaw]],
+    AllNodesSamples = [{MainNode, lists:reverse(MainSamples)} | RestSamplesRaw],
 
     NodesSamples = [lists:map(StatExtractor, NodeSamples) || {_, NodeSamples} <- AllNodesSamples],
 
@@ -348,8 +347,8 @@ do_merge_all_samples_normally(ETS, MainSamples, ListOfLists) ->
     [hd(ets:lookup(ETS, T)) || #stat_entry{timestamp = T} <- MainSamples].
 
 grab_aggregate_op_stats(Bucket, Nodes, Params) ->
-    {MainSamples, Replies, ClientTStamp, {Step, _, Window}} = gather_op_stats(Bucket, Nodes, Params),
-    RV = merge_all_samples_normally(MainSamples, [S || {N,S} <- Replies, N =/= node()]),
+    {_MainNode, MainSamples, Replies, ClientTStamp, {Step, _, Window}} = gather_op_stats(Bucket, Nodes, Params),
+    RV = merge_all_samples_normally(MainSamples, [S || {_,S} <- Replies]),
     V = lists:reverse(RV),
     case V =/= [] andalso (hd(V))#stat_entry.timestamp of
         ClientTStamp -> {V, ClientTStamp, Step, Window};
@@ -420,15 +419,34 @@ invoke_archiver(Bucket, NodeS, {Step, Period, Window}) ->
     end.
 
 gather_op_stats_body(Bucket, Nodes, ClientTStamp,
-                   Ref, PeriodParams) ->
+                     Ref, PeriodParams) ->
     FirstNode = case Nodes of
-                    all -> node();
+                    all ->
+                        AvailableNodes = ns_bucket:live_bucket_nodes(Bucket),
+                        case lists:member(node(), AvailableNodes) of
+                            true ->
+                                node();
+                            _ ->
+                                case AvailableNodes of
+                                    [] ->
+                                        none;
+                                    [FN | _] ->
+                                        FN
+                                end
+                        end;
                     [X] -> X
                 end,
-    RV = invoke_archiver(Bucket, FirstNode, PeriodParams),
+
+    RV = case FirstNode of
+             none ->
+                 [];
+             _ ->
+                 invoke_archiver(Bucket, FirstNode, PeriodParams)
+         end,
+
     case RV of
-        [] -> {[], [], ClientTStamp, PeriodParams};
-        [_] -> {[], [], ClientTStamp, PeriodParams};
+        [] -> {FirstNode, [], [], ClientTStamp, PeriodParams};
+        [_] -> {FirstNode, [], [], ClientTStamp, PeriodParams};
         _ ->
             %% we throw out last sample 'cause it might be missing on other nodes yet
             %% previous samples should be ok on all live nodes
@@ -441,7 +459,7 @@ gather_op_stats_body(Bucket, Nodes, ClientTStamp,
                         Ref ->
                             gather_op_stats_body(Bucket, Nodes, ClientTStamp, [], PeriodParams)
                     after 2000 ->
-                            {[], [], ClientTStamp, PeriodParams}
+                            {FirstNode, [], [], ClientTStamp, PeriodParams}
                     end;
                 _ ->
                     %% cut samples up-to and including ClientTStamp
@@ -452,12 +470,20 @@ gather_op_stats_body(Bucket, Nodes, ClientTStamp,
                                       [] -> Samples;
                                       _ -> lists:reverse(CutSamples)
                                   end,
-                    OtherNodes = case Nodes of
-                                     all -> ns_bucket:live_bucket_nodes(Bucket);
-                                     [_] -> []
-                                 end,
-                    Replies = invoke_archiver(Bucket, OtherNodes, PeriodParams),
-                    {MainSamples, Replies, ClientTStamp, PeriodParams}
+                    AllBucketNodes = case Nodes of
+                                         all -> ns_bucket:live_bucket_nodes(Bucket);
+                                         [_] -> []
+                                     end,
+                    OtherNodes = lists:delete(FirstNode, AllBucketNodes),
+
+                    Replies = case OtherNodes of
+                                  [] ->
+                                      [];
+                                  _ ->
+                                      invoke_archiver(Bucket, OtherNodes, PeriodParams)
+                              end,
+
+                    {FirstNode, MainSamples, Replies, ClientTStamp, PeriodParams}
             end
     end.
 
@@ -830,7 +856,12 @@ couchbase_replication_stats_descriptions(BucketId) ->
               end, Reps).
 
 couchbase_view_stats_descriptions(BucketId) ->
-    DesignDocIds = capi_ddoc_replication_srv:fetch_ddoc_ids(BucketId),
+    DesignDocIds = try
+                       capi_ddoc_replication_srv:fetch_ddoc_ids(BucketId)
+                   catch
+                       exit:{noproc, _} ->
+                           []
+                   end,
 
     % fold over design docs and get the signature
     DictBySig = lists:foldl(

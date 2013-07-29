@@ -60,6 +60,8 @@
          bin_concat_path/2,
          reply_json/3]).
 
+-define(MAX_BUCKET_NAME_LEN, 100).
+
 all_accessible_buckets(_PoolId, Req) ->
     BucketsAll = ns_bucket:get_buckets(),
     menelaus_auth:filter_accessible_buckets(BucketsAll, Req).
@@ -659,7 +661,8 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                                        false ->
                                            {error, name, <<"Bucket name can only contain characters in range A-Z, a-z, 0-9 as well as underscore, period, dash & percent. Consult the documentation.">>};
                                        _ ->
-                                           %% we have to check for conflict here because we were looking for BucketConfig using case sensetive search (in basic_bucket_params_screening/4)
+                                           %% we have to check for conflict here because we were looking 
+                                           %% for BucketConfig using case sensetive search (in basic_bucket_params_screening/4)
                                            %% but we do not allow buckets with the same names in a different register
                                            case BucketName =/= undefined andalso ns_bucket:name_conflict(BucketName, AllBuckets) of
                                                false ->
@@ -680,7 +683,13 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                            {error, name, <<"Bucket name cannot be empty">>};
                        undefined ->
                            {error, name, <<"Bucket name needs to be specified">>};
-                       _ -> undefined
+                       _ ->
+                           case string:len(BucketName) > ?MAX_BUCKET_NAME_LEN of
+                               true ->
+                                   {error, name, ?l2b(io_lib:format("Bucket name cannot exceed ~p characters",
+                                                                    [?MAX_BUCKET_NAME_LEN]))};
+                               _ -> undefined
+                           end
                    end,
                    case AuthType of
                        none ->
@@ -1049,6 +1058,15 @@ basic_bucket_params_screening_test() ->
                                                {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
                                               AllBuckets),
     ?assertEqual([{name, <<"Bucket with given name already exists">>}], E10),
+
+    %% it is not possible to create bucket with name longer than 100 characters
+    {_OK11, E11} = basic_bucket_params_screening(true, "12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901",
+                                              [{"bucketType", "membase"},
+                                               {"authType", "sasl"}, {"saslPassword", ""},
+                                               {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
+                                              AllBuckets),
+    ?assertEqual([{name, ?l2b(io_lib:format("Bucket name cannot exceed ~p characters",
+                                            [?MAX_BUCKET_NAME_LEN]))}], E11),
 
     ok.
 

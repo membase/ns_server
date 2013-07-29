@@ -263,7 +263,7 @@ unpack_data_v2(Bin, PrevSample) ->
                                                     [{cpu_local_ms, LocalDiff},
                                                      {cpu_idle_ms, IdleDiff}]),
 
-                         [{mem_free, MemTotal - MemUsed},
+                         [{mem_free, MemActualFree},
                           {cpu_utilization_rate, try 100 * (LocalDiff - IdleDiff) / LocalDiff
                                                  catch error:badarith -> 0 end},
                           {major_faults, MajorFaults},
