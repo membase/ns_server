@@ -362,11 +362,6 @@ var SetupWizard = {
       return;
     }
 
-    var arr = data.hostname.split(':');
-    data.clusterMemberHostIp = arr[0];
-    data.clusterMemberPort = arr[1] ? arr[1] : '8091';
-    delete data.hostname;
-
     var overlay = overlayWithSpinner($('#init_cluster_dialog'), '#EEE');
     jsonPostWithErrors('/node/controller/doJoinCluster', $.param(data), function (errors, status) {
       if (status != 'success') {
