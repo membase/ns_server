@@ -460,37 +460,6 @@ var DAL = {
   });
   rawDetailedBuckets.keepValueDuringAsync = true;
 
-  // we use few attrs of pool details for massaging buckets list,
-  // extract them so that we don't re-massage buckets list when
-  // irrelevant poolDetails attributes change value.
-  //
-  // 'null' indicates invalid pool details
-  var massagedUsedPoolDetails = Cell.compute(function (v) {
-    var poolDetails = v.need(currentPoolDetailsCell);
-    var storageTotals = poolDetails.storageTotals;
-    if (!storageTotals || !storageTotals.ram) {
-      // this might happen if ns_doctor is down, which often happens
-      // after failover
-      return null;
-    }
-    return {storageTotals: storageTotals,
-            serversCount: poolDetails.nodes.length};
-  });
-  massagedUsedPoolDetails.equality = _.isEqual;
-
-  // force refetch of pool details if there is still no storageTotals for 2 seconds
-  (function () {
-    var timeoutId;
-    massagedUsedPoolDetails.subscribeValue(function (val) {
-      if (val === null && timeoutId === undefined) {
-        timeoutId = setTimeout(function () {
-          timeoutId = undefined;
-          currentPoolDetailsCell.recalculate();
-        }, 2000);
-      }
-    });
-  })();
-
   cells.bucketsListCell = Cell.compute(function (v) {
     var values = _.clone(v.need(rawDetailedBuckets));
     // adding a child object for storing bucket by their type
