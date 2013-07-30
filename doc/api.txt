@@ -241,7 +241,6 @@ GET /pools/default/buckets/default =>
     "basicStats": { // private, going to become deprecated
         "quotaPercentUsed": 0.17310694644325658,
         "opsPerSec": 0.0,
-        "viewOps": 0,
         "diskFetches": 0.0,
         "itemCount": 0,
         "diskUsed": 14808580,

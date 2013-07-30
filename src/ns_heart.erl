@@ -130,7 +130,6 @@ is_interesting_stat({couch_docs_actual_disk_size, _}) -> true;
 is_interesting_stat({couch_views_actual_disk_size, _}) -> true;
 is_interesting_stat({couch_docs_data_size, _}) -> true;
 is_interesting_stat({couch_views_data_size, _}) -> true;
-is_interesting_stat({couch_views_ops, _}) -> true;
 is_interesting_stat({cmd_get, _}) -> true;
 is_interesting_stat({get_hits, _}) -> true;
 is_interesting_stat({ep_bg_fetched, _}) -> true;
