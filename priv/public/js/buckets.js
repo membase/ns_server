@@ -387,18 +387,43 @@ var BucketDetailsDialog = mkClass({
   },
 
   startSubmit: function () {
-    if (!this.isNew &&
-        (this.dialog.find('[name=threadsNumber]').val() !=
-         this.initValues.threadsNumber)) {
-      var self = this;
-      showDialogHijackingSave(
-        'threads_number_change_dialog', ".save_button",
-        function () {
-          self.submit();
-        });
-    } else {
-      this.submit();
+    var warnings = [];
+    var self = this;
+
+    if (!self.isNew &&
+        (self.dialog.find('[name=threadsNumber]').val() !=
+         self.initValues.threadsNumber)) {
+      warnings.push("Changing number of reader/writer workers will restart the bucket. This will lead to closing all open connections and some downtime.\nAre you sure that you want to continue?");
     }
+
+    (function checkPurgeIntervalWarning() {
+      if (self.isNew) {
+        return;
+      }
+      var checkbox = self.dialog.find('input[type=checkbox][name=autoCompactionDefined]');
+      if (!checkbox.length) {
+        return;
+      }
+      if (!checkbox.attr('checked')) {
+        return;
+      }
+      var newPurgeInterval = self.dialog.find('[name=purgeInterval]').val();
+      if (newPurgeInterval != self.initValues.purgeInterval) {
+        warnings.push(AutoCompactionSection.METADATA_PURGE_INTERVAL_WARNING);
+      }
+    })();
+
+    if (!warnings.length) {
+      return self.submit();
+    }
+
+    $('#bucket_change_warning_dialog .js-text').html(BRifyText(warnings.join("\n\n")));
+
+    showDialogHijackingSave(
+      'bucket_change_warning_dialog', ".save_button",
+      function () {
+        self.submit();
+      });
   },
 
   submit: function () {
@@ -581,7 +606,7 @@ var BucketDetailsDialog = mkClass({
         ramGauge = self.dialog.find(".size-gauge.for-ram"),
         memcachedSummaryJQ = self.dialog.find('.memcached-summary'),
         memcachedSummaryVisible = ramSummary && ramSummary.perNodeMegs,
-        knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold[percentage] viewFragmentationThreshold[percentage] databaseFragmentationThreshold[size] viewFragmentationThreshold[size] allowedTimePeriod threadsNumber').split(' '),
+        knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold[percentage] viewFragmentationThreshold[percentage] databaseFragmentationThreshold[size] viewFragmentationThreshold[size] allowedTimePeriod threadsNumber purgeInterval').split(' '),
         errors = result.errors || {};
 
     _.each(('to from').split(' '), function (p1) {
@@ -890,27 +915,59 @@ var BucketsSection = {
       if (!bucketDetails) {
         return;
       }
+      var modalSpinner = (function () {
+        var timeoutId = setTimeout(function () {
+          var d = genericDialog({
+            buttons: {},
+            closeOnEscape: false,
+            width: 320,
+            showCloseButton: false
+          });
+          d.spinner = overlayWithSpinner(d.dialog);
+          instance.close = function () {
+            d.spinner.remove();
+            d.close();
+          }
+        }, 100);
+        var instance = {
+          close: function () {
+            clearTimeout(timeoutId);
+          }
+        };
+        return instance;
+      })();
+
       BucketsSection.settingsWidget.detailsMap.getValue(function (mapValue) {
-        var fullDetails = mapValue.get(bucketDetails);
-        if (!fullDetails) {
+        var fullDetailsCell = mapValue.get(bucketDetails);
+        if (!fullDetailsCell) {
           return;
         }
-        fullDetails.setValue(undefined);
+
+        var autoCompactionSettingsCell = Cell.compute(function (v) {
+          return AutoCompactionSection.getSettingsFuture();
+        });
+
+        var fullerDetailsCell = Cell.compute(function (v) {
+          var rv = _.extend({}, bucketDetails, v.need(fullDetailsCell));
+          var autoCompactionSettings = rv.autoCompactionSettings;
+          rv.autoCompactionDefined = ((autoCompactionSettings || false) !== false);
+          if (!autoCompactionSettings) {
+            var globalSettings = v.need(autoCompactionSettingsCell);
+            _.extend(rv, globalSettings);
+          }
+          return rv;
+        });
+
+        fullDetailsCell.setValue(undefined);
         BucketsSection.settingsWidget.openElement(bucketDetails.name);
-        fullDetails.invalidate(withFullDetails);
+        fullerDetailsCell.changedSlot.subscribeOnce(withDetails);
+        fullDetailsCell.invalidate();
+
         return;
 
-        function withFullDetails () {
-          var fullDetailsValue = fullDetails.value;
-          var initValues = _.extend({}, bucketDetails, fullDetailsValue);
-          initValues.autoCompactionDefined = ((fullDetailsValue.autoCompactionSettings || false) !== false);
-          var autoCompactionSettings = fullDetailsValue.autoCompactionSettings;
-          if (!autoCompactionSettings) {
-            if (!DAL.cells.currentPoolDetailsCell.value) {
-              DAL.cells.currentPoolDetailsCell.getValue(withFullDetails);
-            }
-            autoCompactionSettings = DAL.cells.currentPoolDetailsCell.value.autoCompactionSettings || {};
-          }
+        function withDetails() {
+          var initValues = _.clone(fullerDetailsCell.value);
+          var autoCompactionSettings = initValues.autoCompactionSettings;
           _.each(autoCompactionSettings, function (value, k) {
             if (value instanceof Object) {
               _.each(value, function (subVal, subK) {
@@ -920,6 +977,9 @@ var BucketsSection = {
               initValues[k] = value;
             }
           });
+
+          modalSpinner.close();
+
           var dialog = new BucketDetailsDialog(initValues, false);
 
           BucketsSection.currentlyShownBucket = bucketDetails;
