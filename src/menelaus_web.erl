@@ -240,6 +240,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun handle_settings_max_parallel_indexers/1};
                          ["settings", "viewUpdateDaemon"] ->
                              {auth, fun handle_settings_view_update_daemon/1};
+                         ["settings", "autoCompaction"] ->
+                             {auth, fun handle_settings_auto_compaction/1};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings/1};
                          ["nodes", NodeId] ->
@@ -2372,10 +2374,21 @@ handle_set_autocompaction(Req) ->
     case {ValidateOnly, SettingsRV} of
         {_, {errors, Errors}} ->
             reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400);
-        {true, {ok, _ACSettings}} ->
+        {true, {ok, _ACSettings, _}} ->
             reply_json(Req, {struct, [{errors, {struct, []}}]}, 200);
-        {false, {ok, ACSettings}} ->
+        {false, {ok, ACSettings, MaybePurgeInterval}} ->
             ns_config:set(autocompaction, ACSettings),
+            case MaybePurgeInterval of
+                [{purge_interval, PurgeInterval}] ->
+                    case compaction_daemon:get_purge_interval(global) =:= PurgeInterval of
+                        true ->
+                            ok;
+                        false ->
+                            compaction_daemon:set_global_purge_interval(PurgeInterval)
+                    end;
+                [] ->
+                    ok
+            end,
             reply_json(Req, [], 200)
     end.
 
@@ -2483,7 +2496,11 @@ parse_validate_auto_compaction_settings(Params) ->
                             PeriodTimeFieldsCount -> PeriodTimeResults0;
                             _ -> [{error, <<"allowedTimePeriod">>, <<"allowedTimePeriod is invalid">>}]
                         end,
-    Errors0 = [{iolist_to_binary(Field), Msg} || {error, Field, Msg} <- PercResults ++ ParallelResult ++ PeriodTimeResults ++ SizeResults],
+    PurgeIntervalResults = (mk_integer_field_validator(1, 60, Params))({"purgeInterval", purge_interval, "metadata purge interval"}),
+
+    Errors0 = [{iolist_to_binary(Field), Msg} || {error, Field, Msg} <- PercResults ++ ParallelResult ++ PeriodTimeResults
+                                                     ++ SizeResults
+                                                     ++ PurgeIntervalResults],
     BadFields = lists:sort(["databaseFragmentationThreshold",
                             "viewFragmentationThreshold"]),
     Errors = case ordsets:intersection(lists:sort(proplists:get_keys(Params)),
@@ -2514,7 +2531,7 @@ parse_validate_auto_compaction_settings(Params) ->
                     _ -> [{allowed_time_period, [{F, V} || {ok, F, V} <- PeriodTimeResults]}
                           | MainFields]
                 end,
-            {ok, AllFields};
+            {ok, AllFields, [{F, V} || {ok, F, V} <- PurgeIntervalResults]};
         _ -> {errors, Errors}
     end.
 
@@ -2583,6 +2600,16 @@ parse_validate_bucket_fast_warmup_settings(Params) ->
         [{ok, _, true}] ->
             parse_validate_fast_warmup_settings(Params)
     end.
+
+handle_settings_auto_compaction(Req) ->
+    JSON = [{autoCompactionSettings, case ns_config:search(autocompaction) of
+                                         false ->
+                                             build_auto_compaction_settings([]);
+                                         {value, ACSettings} ->
+                                             build_auto_compaction_settings(ACSettings)
+                                     end},
+            {purgeInterval, compaction_daemon:get_purge_interval(global)}],
+    reply_json(Req, {struct, JSON}, 200).
 
 build_internal_settings_kvs() ->
     Triples = [{index_aware_rebalance_disabled, indexAwareRebalanceDisabled, false},
@@ -2787,14 +2814,14 @@ handle_node_rename(Req) ->
 -ifdef(EUNIT).
 
 basic_parse_validate_auto_compaction_settings_test() ->
-    {ok, Stuff0} = parse_validate_auto_compaction_settings([{"databaseFragmentationThreshold[percentage]", "10"},
-                                                            {"viewFragmentationThreshold[percentage]", "20"},
-                                                            {"parallelDBAndViewCompaction", "false"},
-                                                            {"allowedTimePeriod[fromHour]", "0"},
-                                                            {"allowedTimePeriod[fromMinute]", "1"},
-                                                            {"allowedTimePeriod[toHour]", "2"},
-                                                            {"allowedTimePeriod[toMinute]", "3"},
-                                                            {"allowedTimePeriod[abortOutside]", "false"}]),
+    {ok, Stuff0, []} = parse_validate_auto_compaction_settings([{"databaseFragmentationThreshold[percentage]", "10"},
+                                                                {"viewFragmentationThreshold[percentage]", "20"},
+                                                                {"parallelDBAndViewCompaction", "false"},
+                                                                {"allowedTimePeriod[fromHour]", "0"},
+                                                                {"allowedTimePeriod[fromMinute]", "1"},
+                                                                {"allowedTimePeriod[toHour]", "2"},
+                                                                {"allowedTimePeriod[toMinute]", "3"},
+                                                                {"allowedTimePeriod[abortOutside]", "false"}]),
     Stuff1 = lists:sort(Stuff0),
     ?assertEqual([{allowed_time_period, [{from_hour, 0},
                                          {to_hour, 2},
@@ -2828,15 +2855,15 @@ basic_parse_validate_bucket_auto_compaction_settings_test() ->
                                                              {"allowedTimePeriod[toMinute]", "3"},
                                                              {"allowedTimePeriod[abortOutside]", "false"}]),
     ?assertMatch(false, Value1),
-    {ok, Stuff0} = parse_validate_bucket_auto_compaction_settings([{"autoCompactionDefined", "true"},
-                                                                   {"databaseFragmentationThreshold[percentage]", "10"},
-                                                                   {"viewFragmentationThreshold[percentage]", "20"},
-                                                                   {"parallelDBAndViewCompaction", "false"},
-                                                                   {"allowedTimePeriod[fromHour]", "0"},
-                                                                   {"allowedTimePeriod[fromMinute]", "1"},
-                                                                   {"allowedTimePeriod[toHour]", "2"},
-                                                                   {"allowedTimePeriod[toMinute]", "3"},
-                                                                   {"allowedTimePeriod[abortOutside]", "false"}]),
+    {ok, Stuff0, []} = parse_validate_bucket_auto_compaction_settings([{"autoCompactionDefined", "true"},
+                                                                       {"databaseFragmentationThreshold[percentage]", "10"},
+                                                                       {"viewFragmentationThreshold[percentage]", "20"},
+                                                                       {"parallelDBAndViewCompaction", "false"},
+                                                                       {"allowedTimePeriod[fromHour]", "0"},
+                                                                       {"allowedTimePeriod[fromMinute]", "1"},
+                                                                       {"allowedTimePeriod[toHour]", "2"},
+                                                                       {"allowedTimePeriod[toMinute]", "3"},
+                                                                       {"allowedTimePeriod[abortOutside]", "false"}]),
     Stuff1 = lists:sort(Stuff0),
     ?assertEqual([{allowed_time_period, [{from_hour, 0},
                                          {to_hour, 2},

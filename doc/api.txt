@@ -301,6 +301,23 @@ GET /pools/default/remoteClusters =>
     })*
 ]
 
+GET /settings/autoCompaction
+{
+    "autoCompactionSettings": <compactionSettings> = { // cluster-wide auto-compaction settings
+        "parallelDBAndViewCompaction": false,
+        "databaseFragmentationThreshold": {
+            "percentage": 30,
+            "size": "undefined"
+        },
+        "viewFragmentationThreshold": {
+            "percentage": 30,
+            "size": "undefined"
+        }
+    },
+    "purgeInterval": 7 // deletions purge interval in days
+}
+
+
 GET /internalSettings =>
 
 {
