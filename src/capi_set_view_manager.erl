@@ -58,16 +58,16 @@ reset_master_vbucket(Bucket) ->
         %% hack to not introduce any variables in the caller environment
         ((fun () ->
                   %% we may want to downgrade it to ?views_debug at some point
-                  ?views_debug("~nCalling couch_set_view:~p(~p)", [Call, Args]),
+                  ?views_debug("~nCalling couch_set_view:~p(~w)", [Call, Args]),
                   try
                       {__Time, __Result} = timer:tc(couch_set_view, Call, Args),
 
-                      ?views_debug("~ncouch_set_view:~p(~p) returned ~p in ~bms",
+                      ?views_debug("~ncouch_set_view:~p(~w) returned ~p in ~bms",
                                    [Call, Args, __Result, __Time div 1000]),
                       __Result
                   catch
                       __T:__E ->
-                          ?views_debug("~ncouch_set_view:~p(~p) raised ~p:~p",
+                          ?views_debug("~ncouch_set_view:~p(~w) raised ~p:~p",
                                        [Call, Args, __T, __E]),
 
                           %% rethrowing the exception
