@@ -29,7 +29,8 @@
 -author('Andy Gross <andy@basho.com>').
 
 -export([fresh/0,descends/2,merge/1,get_counter/2,get_timestamp/2,
-         increment/2,all_nodes/1, likely_newer/2, timestamp/0]).
+         increment/2,all_nodes/1, likely_newer/2, timestamp/0,
+         get_latest_timestamp/1]).
 -export([example_test/0]).
 
 % @type vclock() = [vc_entry].
@@ -158,6 +159,17 @@ get_timestamp(Node, VClock) ->
     case proplists:get_value(Node, VClock) of
         {_Ctr, TS} -> TS;
         undefined -> undefined
+    end.
+
+get_latest_timestamp([]) ->
+    0;
+get_latest_timestamp([{_Node, {_Ctr, TS}} | Rest]) ->
+    RestTS = get_latest_timestamp(Rest),
+    case TS < RestTS of
+        true ->
+            RestTS;
+        _ ->
+            TS
     end.
 
 % @doc Increment VClock at Node.
