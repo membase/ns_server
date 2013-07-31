@@ -1095,7 +1095,6 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
             {struct, KV4}
     end.
 
-
 build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
 
     {UpSecs, {MemoryTotal, MemoryAlloced, _}} =
@@ -1109,6 +1108,7 @@ build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
                                  X when is_integer(X) -> X;
                                  undefined -> (MemoryTotal * 4) div (5 * 1048576)
                              end,
+
     NodesBucketMemoryAllocated = NodesBucketMemoryTotal,
     [{systemStats, {struct, proplists:get_value(system_stats, InfoNode, [])}},
      {interestingStats, {struct, proplists:get_value(interesting_stats, InfoNode, [])}},

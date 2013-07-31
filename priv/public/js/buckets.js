@@ -615,11 +615,11 @@ var BucketDetailsDialog = mkClass({
 
 var BucketsSection = {
   renderRAMDetailsGauge: function (e, details) {
-    var poolDetails = DAL.cells.currentPoolDetailsCell.value;
+    var ram = details.basicStats.storageTotals.ram;
     BucketDetailsDialog.prototype.renderGauge($(e).find('.for-ram'),
-                                              poolDetails.storageTotals.ram.quotaTotal,
+                                              ram.quotaTotal,
                                               details.quota.ram,
-                                              poolDetails.storageTotals.ram.quotaUsed - details.quota.ram);
+                                              ram.quotaUsed - details.quota.ram);
   },
 
   renderDiskGauge: function (jq, total, thisBucket, otherBuckets, otherData) {
@@ -653,8 +653,7 @@ var BucketsSection = {
 
   renderHDDDetailsGauge: function (e, details) {
     var jq = $(e).parent().find('.size-gauge.for-hdd'),
-        poolDetails = DAL.cells.currentPoolDetailsCell.value,
-        hdd = poolDetails.storageTotals.hdd;
+        hdd = details.basicStats.storageTotals.hdd;
     BucketsSection.renderDiskGauge(jq,
                                    hdd.total,
                                    details.basicStats.diskUsed,
@@ -702,7 +701,7 @@ var BucketsSection = {
           return allRecentPosts[task.cancelURI] || false;
         });
         var rawBucketDetails = Cell.compute(function (v) {
-          return future.get({url: bucketInfo.uri});
+          return future.get({url: bucketInfo.uri + "&basic_stats=true"});
         });
         var rv = Cell.compute(function (v) {
           var thisBucketCompactionTask = v.need(maybeBucketCompactionTaskCell);

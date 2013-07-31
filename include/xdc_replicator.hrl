@@ -186,7 +186,11 @@
           workers,
           changes_queue,
           session_id,
-          source_seq = nil
+          source_seq = nil,
+
+          %% a boolean variable indicating that the rep has already
+          %% behind db purger, at least one deletion has been lost.
+          behind_purger
          }).
 
 %% vbucket replicator worker process state used by xdc_vbucket_rep_worker

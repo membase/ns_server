@@ -1132,3 +1132,18 @@ function MBtoBytes(MB) {
 function BytestoMB(bytes) {
   return Math.floor(bytes / Math.Mi);
 }
+
+function getStringBytes(countMe) {
+  if (!_.isString(countMe)) {
+    return 0;
+  }
+  var escapedStr = encodeURI(countMe);
+  var escapedStrLength = escapedStr.length;
+
+  if (escapedStr.indexOf("%") != -1) {
+    var count = escapedStr.split("%").length - 1 || 1;
+    return count + (escapedStrLength - (count * 3));
+  } else {
+    return escapedStrLength;
+  }
+}

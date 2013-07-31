@@ -146,13 +146,34 @@ handle_call({report_seq_done, #worker_stat{seq = Seq,
                         _ ->
                             NewThroughSeq0
                     end,
+
+    %% check possible inconsistency, and dump warning msgs if purger is ahead of replication
+    SourceDB = State#rep_state.source,
+    PurgeSeq = couch_db:get_purge_seq(SourceDB),
+    BehindPurger =
+        case (PurgeSeq >= NewHighestDone) and (State#rep_state.behind_purger == false) of
+            true ->
+                ?xdcr_error("WARNING! Database delete purger current sequence is ahead of "
+                            "replicator sequence for (source: ~p, target: ~p "
+                            "that means one or more deletion is lost "
+                            "(vb: ~p, purger seq: ~p, repl current seq: ~p).",
+                            [(State#rep_state.rep_details)#rep.source,
+                             (State#rep_state.rep_details)#rep.target,
+                             Vb, PurgeSeq, NewHighestDone]),
+                true;
+            _ ->
+                %% keep old value if repl is not outpaced, or warning msg has been dumped
+                State#rep_state.behind_purger
+        end,
+
     ?xdcr_debug("Replicator of vbucket ~p: worker reported seq ~p, through seq was ~p, "
-                "new through seq is ~p, highest seq done was ~p, "
-                "new highest seq done is ~p~n"
+                "new through seq is ~p, highest seq done was ~p, new highest seq done is ~p "
+                "(db purger seq: ~p, repl outpaced by purger during this run? ~p)~n"
                 "Seqs in progress were: ~p~nSeqs in progress are now: ~p"
                 "(total docs checked: ~p, total docs written: ~p)",
                 [Vb, Seq, ThroughSeq, NewThroughSeq, HighestDone,
-                 NewHighestDone, SeqsInProgress, NewSeqsInProgress,
+                 NewHighestDone, PurgeSeq, BehindPurger,
+                 SeqsInProgress, NewSeqsInProgress,
                  TotalChecked, TotalWritten]),
     SourceCurSeq = xdc_vbucket_rep_ckpt:source_cur_seq(State),
 
@@ -179,13 +200,12 @@ handle_call({report_seq_done, #worker_stat{seq = Seq,
                                                  end,
                                                  [0, 0], NewWorkersStat),
 
-
-
     NewState = State#rep_state{
                  current_through_seq = NewThroughSeq,
                  seqs_in_progress = NewSeqsInProgress,
                  highest_seq_done = NewHighestDone,
                  source_seq = SourceCurSeq,
+                 behind_purger = BehindPurger,
                  status = VbStatus#rep_vb_status{num_changes_left = ChangesLeft - NumChecked,
                                                  docs_changes_queue = ChangesQueueDocs,
                                                  size_changes_queue = ChangesQueueSize,
@@ -463,6 +483,22 @@ init_replication_state(#init_state{rep = Rep,
                 [StartSeq0, TotalDocsChecked, TotalDocsWritten, TotalDataReplicated]),
     StartSeq = get_value(since_seq, Options, StartSeq0),
     #doc{body={CheckpointHistory}} = SourceLog,
+
+    %% check if we are already behind purger
+    PurgeSeq = couch_db:get_purge_seq(Source),
+    BehindPurger  =
+        case (PurgeSeq > 0) and (PurgeSeq >= StartSeq) of
+            true ->
+                ?xdcr_error("WARNING! Database delete purger current sequence is ahead "
+                            "of replicator starting sequence for (source:~p, target:~p) "
+                            "that means one or more deletion is lost "
+                            "(vb: ~p, purger seq: ~p, repl start seq: ~p).",
+                            [Src, Tgt, Vb, PurgeSeq, StartSeq]),
+                true;
+            _ ->
+                false
+        end,
+
     couch_db:close(Source),
     couch_db:close(SrcMasterDb),
     couch_api_wrap:db_close(TgtMasterDb),
@@ -494,6 +530,7 @@ init_replication_state(#init_state{rep = Rep,
       %% initialize the work start time in start_replication()
       work_start_time = 0,
       session_id = couch_uuids:random(),
+      behind_purger = BehindPurger,
       status = #rep_vb_status{vb = Vb,
                               pid = self(),
                               %% init per vb replication stats from checkpoint doc

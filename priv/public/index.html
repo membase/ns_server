@@ -1617,7 +1617,7 @@
                           <td class="key ellipsis" colspan="2">
                             <a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}">{%= h(r.key) %}</a>
                           </td>
-                          <td class="ellipsis" colspan="5">{%= $.futon.formatJSON(r.doc.json, {html:true}) %}</td>
+                          <td class="ellipsis" colspan="5">{%= $.futon.formatJSON(r.doc.json || r.doc.base64, {html:true}) %}</td>
                           <td colspan="3">
                             <button class="list_button delete_btn" data-id="{%= h(r.id) %}"><span>Delete</span></button>
                             <a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}" class="list_button btn_edit"><span>Edit Document</span></a></td>

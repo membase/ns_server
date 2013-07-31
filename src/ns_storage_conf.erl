@@ -31,7 +31,7 @@
          delete_databases_and_files/1, delete_unused_buckets_db_files/0,
          bucket_databases/1]).
 
--export([node_storage_info/1, cluster_storage_info/0, nodes_storage_info/1]).
+-export([node_storage_info/1, cluster_storage_info/0, cluster_storage_info/1, nodes_storage_info/1]).
 
 -export([allowed_node_quota_range/1, allowed_node_quota_range/0,
          default_memory_quota/1,
@@ -314,9 +314,22 @@ nodes_storage_info(NodeNames) ->
 cluster_storage_info() ->
     nodes_storage_info(ns_cluster_membership:active_nodes()).
 
+cluster_storage_info(NodesInfos) ->
+    do_cluster_storage_info(NodesInfos).
+
 extract_subprop(NodeInfos, Key, SubKey) ->
     [proplists:get_value(SubKey, proplists:get_value(Key, NodeInfo, [])) ||
      NodeInfo <- NodeInfos].
+
+interesting_stats_total_rec([], _Key, Acc) ->
+    Acc;
+interesting_stats_total_rec([ThisStats | RestStats], Key, Acc) ->
+    case lists:keyfind(Key, 1, ThisStats) of
+        false ->
+            interesting_stats_total_rec(RestStats, Key, Acc);
+        {_, V} ->
+            interesting_stats_total_rec(RestStats, Key, Acc + V)
+    end.
 
 do_cluster_storage_info([]) -> [];
 do_cluster_storage_info(NodeInfos) ->
@@ -333,42 +346,11 @@ do_cluster_storage_info(NodeInfos) ->
     HddTotals = extract_subprop(StorageInfos, hdd, total),
     HddUsed = extract_subprop(StorageInfos, hdd, used),
 
+    AllInterestingStats = [proplists:get_value(interesting_stats, PList, []) || {_N, PList} <- NodeInfos],
 
-    BucketsRAMUsage = lists:foldl(
-                        fun ({_, Info}, RAMUsage) ->
-                                case lists:keyfind(interesting_stats, 1, Info) of
-                                    false ->
-                                        RAMUsage;
-                                    {_, InterestingStats} ->
-                                        case lists:keyfind(mem_used, 1, InterestingStats) of
-                                            false ->
-                                                RAMUsage;
-                                            {_, V} ->
-                                                RAMUsage + V
-                                        end
-                                end
-                        end, 0, NodeInfos),
-
-    BucketsDiskUsage = lists:foldl(
-                         fun ({_, Info}, DiskUsage) ->
-                                 case lists:keyfind(interesting_stats, 1, Info) of
-                                     false ->
-                                         DiskUsage;
-                                     {_, InterestingStats} ->
-                                         V2 = case lists:keyfind(couch_docs_actual_disk_size, 1, InterestingStats) of
-                                                  false ->
-                                                      DiskUsage;
-                                                  {_, X} ->
-                                                      DiskUsage + X
-                                              end,
-                                         case lists:keyfind(couch_views_actual_disk_size, 1, InterestingStats) of
-                                             false ->
-                                                 V2;
-                                             {_, V} ->
-                                                 V2 + V
-                                         end
-                                 end
-                         end, 0, NodeInfos),
+    BucketsRAMUsage = interesting_stats_total_rec(AllInterestingStats, mem_used, 0),
+    BucketsDiskUsage = interesting_stats_total_rec(AllInterestingStats, couch_docs_actual_disk_size, 0)
+        + interesting_stats_total_rec(AllInterestingStats, couch_views_actual_disk_size, 0),
 
     RAMUsed = erlang:max(lists:sum(extract_subprop(StorageInfos, ram, used)),
                          BucketsRAMUsage),
