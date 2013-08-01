@@ -390,7 +390,7 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_remote_clusters:handle_remote_clusters_post/1};
                          ["pools", "default", "remoteClusters", Id] ->
                              {auth, fun menelaus_web_remote_clusters:handle_remote_cluster_update/2, [Id]};
-                         ["logClientError"] -> {auth_any_bucket,
+                         ["logClientError"] -> {auth,
                                                 fun (R) ->
                                                         User = menelaus_auth:extract_auth(username, R),
                                                         ?MENELAUS_WEB_LOG(?UI_SIDE_ERROR_REPORT,
