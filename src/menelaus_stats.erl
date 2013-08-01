@@ -113,15 +113,13 @@ last_bucket_stats(membase, BucketName, NodesInfos) ->
      {itemCount, ItemsCount},
      {diskUsed, Disk},
      {dataUsed, Data},
-     {memUsed, MemUsed},
-     {storageTotals, ns_storage_conf:cluster_storage_info(NodesInfos)}];
+     {memUsed, MemUsed}];
 last_bucket_stats(memcached, BucketName, NodesInfos) ->
     {MemUsed, ItemsCount, Ops, HitRatio} = last_memcached_sample(BucketName, NodesInfos),
     [{opsPerSec, Ops},
      {hitRatio, HitRatio},
      {itemCount, ItemsCount},
-     {memUsed, MemUsed},
-     {storageTotals, ns_storage_conf:cluster_storage_info(NodesInfos)}].
+     {memUsed, MemUsed}].
 
 basic_stats(BucketName) ->
     {ok, BucketConfig} = ns_bucket:maybe_get_bucket(BucketName, undefined),
