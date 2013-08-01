@@ -1279,9 +1279,9 @@ do_config_to_record([{parallel_db_and_view_compaction, V} | Rest], Acc) ->
     do_config_to_record(Rest, Acc#config{parallel_view_compact=V});
 do_config_to_record([{allowed_time_period, V} | Rest], Acc) ->
     do_config_to_record(Rest, Acc#config{allowed_period=allowed_period_record(V)});
-do_config_to_record([{OtherKey, _V} | _], _Acc) ->
-    %% should not happen
-    exit({invalid_config_key_bug, OtherKey}).
+do_config_to_record([{_OtherKey, _V} | Rest], Acc) ->
+    %% NOTE !!!: releases before 2.2.0 raised error here
+    do_config_to_record(Rest, Acc).
 
 normalize_fragmentation({Percentage, Size}) ->
     NormPercencentage =
