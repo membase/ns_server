@@ -35,7 +35,7 @@
 
 %% External API
 bucket_disk_usage(BucketName) ->
-    {_, _, _, _, DiskUsed, _, _}
+    {_, _, _, _, DiskUsed, _}
         = last_membase_sample(BucketName, get_active_nodes_info()),
     DiskUsed.
 
@@ -76,16 +76,15 @@ extract_interesting_buckets(InterestingBucketName, NodeInfos) ->
 last_membase_sample(InterestingBucketName, NodeInfos) ->
     lists:foldl(
         fun ({_, Stats},
-             {AccMem, AccItems, AccOps, AccFetches, AccDisk, AccData, AccViewsOps}) ->
+             {AccMem, AccItems, AccOps, AccFetches, AccDisk, AccData}) ->
                     {extract_interesting_stat(mem_used, Stats) + AccMem,
                      extract_interesting_stat(curr_items, Stats) + AccItems,
                      extract_interesting_stat(ops, Stats) + AccOps,
                      extract_interesting_stat(ep_bg_fetched, Stats) + AccFetches,
                      extract_interesting_stat(couch_docs_actual_disk_size, Stats) +
                        extract_interesting_stat(couch_views_actual_disk_size, Stats) + AccDisk,
-                     extract_interesting_stat(couch_docs_data_size, Stats) + AccData,
-                     extract_interesting_stat(couch_views_ops, Stats) + AccViewsOps}
-        end, {0, 0, 0, 0, 0, 0, 0}, extract_interesting_buckets(InterestingBucketName, NodeInfos)).
+                     extract_interesting_stat(couch_docs_data_size, Stats) + AccData}
+        end, {0, 0, 0, 0, 0, 0}, extract_interesting_buckets(InterestingBucketName, NodeInfos)).
 
 
 last_memcached_sample(InterestingBucketName, NodeInfos) ->
@@ -107,23 +106,20 @@ last_memcached_sample(InterestingBucketName, NodeInfos) ->
      end}.
 
 last_bucket_stats(membase, BucketName, NodesInfos) ->
-    {MemUsed, ItemsCount, Ops, Fetches, Disk, Data, ViewOps}
+    {MemUsed, ItemsCount, Ops, Fetches, Disk, Data}
         = last_membase_sample(BucketName, NodesInfos),
     [{opsPerSec, Ops},
-     {viewOps, ViewOps},
      {diskFetches, Fetches},
      {itemCount, ItemsCount},
      {diskUsed, Disk},
      {dataUsed, Data},
-     {memUsed, MemUsed},
-     {storageTotals, ns_storage_conf:cluster_storage_info(NodesInfos)}];
+     {memUsed, MemUsed}];
 last_bucket_stats(memcached, BucketName, NodesInfos) ->
     {MemUsed, ItemsCount, Ops, HitRatio} = last_memcached_sample(BucketName, NodesInfos),
     [{opsPerSec, Ops},
      {hitRatio, HitRatio},
      {itemCount, ItemsCount},
-     {memUsed, MemUsed},
-     {storageTotals, ns_storage_conf:cluster_storage_info(NodesInfos)}].
+     {memUsed, MemUsed}].
 
 basic_stats(BucketName) ->
     {ok, BucketConfig} = ns_bucket:maybe_get_bucket(BucketName, undefined),

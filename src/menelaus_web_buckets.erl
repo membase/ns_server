@@ -197,16 +197,19 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
     Suffix = case InfoLevel of
                  stable -> BucketCaps;
                  _ ->
-                      NormalInfo = [{replicaNumber, ns_bucket:num_replicas(BucketConfig)},
-                                    {threadsNumber, proplists:get_value(num_threads, BucketConfig, 3)},
-                                    {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
-                                                      {rawRAM, ns_bucket:raw_ram_quota(BucketConfig)}]}}
-                                    | BucketCaps],
+                     BasicStats0 = menelaus_stats:basic_stats(Id),
 
-                      case InfoLevel of
-                          for_ui -> [{basicStats, {struct, menelaus_stats:basic_stats(Id)}} | NormalInfo];
-                          _ -> NormalInfo
-                      end
+                     BasicStats = case InfoLevel of
+                                      for_ui -> [{storageTotals, ns_storage_conf:cluster_storage_info()} | BasicStats0];
+                                      _ -> BasicStats0
+                                  end,
+
+                     [{replicaNumber, ns_bucket:num_replicas(BucketConfig)},
+                      {threadsNumber, proplists:get_value(num_threads, BucketConfig, 3)},
+                      {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
+                                        {rawRAM, ns_bucket:raw_ram_quota(BucketConfig)}]}},
+                      {basicStats, {struct, BasicStats}}
+                      | BucketCaps]
              end,
     BucketType = ns_bucket:bucket_type(BucketConfig),
     %% Only list nodes this bucket is mapped to
@@ -406,7 +409,7 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
         {false, {ok, ParsedProps, _}} ->
             BucketType = proplists:get_value(bucketType, ParsedProps),
             UpdatedProps = extract_bucket_props(BucketId, ParsedProps),
-            case ns_bucket:update_bucket_props(BucketType, BucketId, UpdatedProps) of
+            case ns_orchestrator:update_bucket(BucketType, BucketId, UpdatedProps) of
                 ok ->
                     ale:info(?USER_LOGGER, "Updated bucket ~s (of type ~s) properties:~n~p",
                              [BucketId, BucketType, lists:keydelete(sasl_password, 1, UpdatedProps)]),

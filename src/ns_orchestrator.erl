@@ -35,6 +35,7 @@
 
 %% API
 -export([create_bucket/3,
+         update_bucket/3,
          delete_bucket/1,
          flush_bucket/1,
          failover/1,
@@ -106,6 +107,13 @@ create_bucket(BucketType, BucketName, NewConfig) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {create_bucket, BucketType, BucketName,
                                       NewConfig}, infinity).
+
+-spec update_bucket(memcached|membase, nonempty_string(), list()) ->
+                           ok | {exit, {not_found, nonempty_string()}, []}.
+update_bucket(BucketType, BucketName, UpdatedProps) ->
+    wait_for_orchestrator(),
+    gen_fsm:sync_send_all_state_event(?SERVER, {update_bucket, BucketType, BucketName,
+                                                UpdatedProps}, infinity).
 
 %% Deletes bucket. Makes sure that once it returns it's already dead.
 %% In implementation we make sure config deletion is propagated to
@@ -284,6 +292,10 @@ init([]) ->
 handle_event(Event, StateName, State) ->
     {stop, {unhandled, Event, StateName}, State}.
 
+
+handle_sync_event({update_bucket, BucketType, BucketName, UpdatedProps}, _From, StateName, State) ->
+    Reply = ns_bucket:update_bucket_props(BucketType, BucketName, UpdatedProps),
+    {reply, Reply, StateName, State};
 
 handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes},
                   From, StateName, State) ->
