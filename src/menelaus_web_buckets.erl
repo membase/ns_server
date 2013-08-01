@@ -231,6 +231,24 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
                       [{uuid, MaybeBucketUUID} | Suffix1]
               end,
 
+    ACSettings = case proplists:get_value(autocompaction, BucketConfig) of
+                     undefined -> false;
+                     false -> false;
+                     ACSettingsX -> ACSettingsX
+                 end,
+
+    Suffix3 = case ACSettings of
+                  false ->
+                      [{autoCompactionSettings, false} | Suffix2];
+                  _ ->
+                      [{autoCompactionSettings, menelaus_web:build_auto_compaction_settings(ACSettings)},
+                       {purgeInterval, case proplists:get_value(purge_interval, BucketConfig) of
+                                           undefined -> compaction_daemon:get_purge_interval(global);
+                                           PurgeInterval -> PurgeInterval
+                                       end}
+                       | Suffix2]
+              end,
+
     FlushEnabled = proplists:get_value(flush_enabled, BucketConfig, false),
     MaybeFlushController =
         case FlushEnabled of
@@ -267,11 +285,6 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
                                 {nodeStatsListURI, NodeStatsListURI}]}},
               {ddocs, {struct, [{uri, DDocsURI}]}},
               {nodeLocator, ns_bucket:node_locator(BucketConfig)},
-              {autoCompactionSettings, case proplists:get_value(autocompaction, BucketConfig) of
-                                           undefined -> false;
-                                           false -> false;
-                                           ACSettings -> menelaus_web:build_auto_compaction_settings(ACSettings)
-                                       end},
               {fastWarmupSettings,
                case proplists:get_value(fast_warmup, BucketConfig) of
                    undefined ->
@@ -281,7 +294,7 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
                    FWSettings ->
                        menelaus_web:build_fast_warmup_settings(FWSettings)
                end}
-              | Suffix2]}.
+              | Suffix3]}.
 
 build_bucket_capabilities(BucketConfig) ->
     Caps =
@@ -378,7 +391,7 @@ respond_bucket_created(Req, PoolId, BucketId) ->
 extract_bucket_props(BucketId, Props) ->
     ImportantProps = [X || X <- [lists:keyfind(Y, 1, Props) || Y <- [num_replicas, replica_index, ram_quota, auth_type,
                                                                      sasl_password, moxi_port,
-                                                                     autocompaction, fast_warmup,
+                                                                     autocompaction, purge_interval, fast_warmup,
                                                                      flush_enabled, num_threads]],
                            X =/= false],
     case BucketId of
@@ -786,11 +799,17 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
     Candidates1 = [QuotaSizeError | Candidates0],
     Candidates2 = case menelaus_web:parse_validate_bucket_auto_compaction_settings(Params) of
                       nothing -> Candidates1;
-                      false -> [{ok, autocompaction, false} | Candidates1];
+                      false -> [{ok, autocompaction, false},
+                                {ok, purge_interval, undefined} | Candidates1];
                       {errors, Errors} ->
                           [{error, F, M} || {F, M} <- Errors] ++ Candidates1;
-                      {ok, ACSettings} ->
-                          [{ok, autocompaction, ACSettings} | Candidates1]
+                      {ok, ACSettings, MaybePurgeInterval} ->
+                          case MaybePurgeInterval of
+                              [{purge_interval, PurgeInterval}] ->
+                                  [{ok, purge_interval, PurgeInterval}];
+                              [] ->
+                                  []
+                          end ++ [{ok, autocompaction, ACSettings} | Candidates1]
                   end,
     Candidates3 =
         case menelaus_web:parse_validate_bucket_fast_warmup_settings(Params) of

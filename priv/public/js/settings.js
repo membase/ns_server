@@ -834,13 +834,25 @@ var EmailAlertsSection = {
 };
 
 var AutoCompactionSection = {
+  getSettingsFuture: function () {
+    return future.get({url: '/settings/autoCompaction'});
+  },
   init: function () {
     var self = this;
 
-    var settingsCell = Cell.needing(DAL.cells.currentPoolDetailsCell).computeEager(function (v, poolDetails) {
-      return poolDetails.autoCompactionSettings;
+    var allSettingsCell = Cell.compute(function (v) {
+      if (v.need(SettingsSection.tabs) != 'settings_compaction') {
+        return;
+      }
+      return self.getSettingsFuture();
+    });
+    var settingsCell = Cell.needing(allSettingsCell).computeEager(function (v, allSettings) {
+      var rv = _.extend({}, allSettings.autoCompactionSettings);
+      rv.purgeInterval = allSettings.purgeInterval;
+      return rv;
     });
     settingsCell.equality = _.isEqual;
+    settingsCell.delegateInvalidationMethods(allSettingsCell);
     self.settingsCell = settingsCell;
     var errorsCell = self.errorsCell = new Cell();
     self.errorsCell.subscribeValue($m(self, 'onValidationResult'));
@@ -876,14 +888,23 @@ var AutoCompactionSection = {
     });
 
     (function () {
-      var spinner;
-      settingsCell.subscribeValue(function (val) {
-        if (spinner) {
-          spinner.remove();
-          spinner = null;
+      var needSpinnerCell = Cell.compute(function (v) {
+        if (v.need(SettingsSection.tabs) != 'settings_compaction') {
+          return false;
         }
-        if (val === undefined) {
-          spinner = overlayWithSpinner(container);
+        return !v(settingsCell);
+      });
+      var spinner;
+      needSpinnerCell.subscribeValue(function (val) {
+        if (!val) {
+          if (spinner) {
+            spinner.remove();
+            spinner = null;
+          }
+        } else {
+          if (!spinner) {
+            spinner = overlayWithSpinner(container);
+          }
         }
       });
 
@@ -975,22 +996,49 @@ var AutoCompactionSection = {
       }
     });
   },
+  METADATA_PURGE_INTERVAL_WARNING: "The Metadata purge interval should always be set to a value that is greater than the indexing or XDCR lag. Are you sure you want to change the metadata purge interval?",
+  displayMetadataPurgeIntervalWarning: function (onOk) {
+    genericDialog({
+      buttons: {ok: true, cancel: true},
+      text: AutoCompactionSection.METADATA_PURGE_INTERVAL_WARNING,
+      callback: function (e, name, instance) {
+        instance.close();
+        if (name == 'ok') {
+          onOk();
+        }
+      }});
+  },
   submit: function () {
     var self = this;
-    var dialog = genericDialog({buttons: {},
-                                header: "Saving...",
-                                text: "Saving autocompaction settings. Please, wait..."});
+    var dialog;
 
-    self.urisCell.getValue(function (uris) {
-      var data = AutoCompactionSection.serializeCompactionForm(self.container.find("form"));
-      jsonPostWithErrors(uris.uri, data, onSubmitResult);
-      DAL.cells.currentPoolDetailsCell.setValue(undefined);
-      self.formValidationEnabled.setValue(false);
-    });
+    var oldPurgeInterval = String(self.settingsCell.value.purgeInterval);
+
+    var data = AutoCompactionSection.serializeCompactionForm(self.container.find("form"));
+
+    var newPurgeInterval = self.container.find("form [name=purgeInterval]").val();
+    if (newPurgeInterval != oldPurgeInterval) {
+      self.displayMetadataPurgeIntervalWarning(continueSaving);
+    } else {
+      continueSaving();
+    }
+
     return;
 
+    function continueSaving() {
+      dialog = genericDialog({buttons: {},
+                              header: "Saving...",
+                              text: "Saving autocompaction settings. Please, wait..."});
+
+      self.urisCell.getValue(function (uris) {
+        jsonPostWithErrors(uris.uri, data, onSubmitResult);
+        self.formValidationEnabled.setValue(false);
+      });
+    }
+
     function onSubmitResult(simpleErrors, status, errorObject) {
-      DAL.cells.currentPoolDetailsCell.invalidate();
+      self.settingsCell.setValue(undefined);
+      self.settingsCell.invalidate();
       dialog.close();
 
       if (status == "success") {
@@ -1013,7 +1061,7 @@ var AutoCompactionSection = {
     this.container.find('[name="' + field + '"]')[error ? 'addClass' : 'removeClass']('invalid');
   },
   onValidationResult: (function () {
-    var knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold[percentage] viewFragmentationThreshold[percentage] viewFragmentationThreshold[size] databaseFragmentationThreshold[size] allowedTimePeriod').split(' ');
+    var knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold[percentage] viewFragmentationThreshold[percentage] viewFragmentationThreshold[size] databaseFragmentationThreshold[size] allowedTimePeriod purgeInterval').split(' ');
     _.each(('to from').split(' '), function (p1) {
       _.each(('Hour Minute').split(' '), function (p2) {
         knownFields.push('allowedTimePeriod[' + p1 + p2 + ']');

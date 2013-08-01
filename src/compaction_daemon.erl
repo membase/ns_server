@@ -11,7 +11,9 @@
          force_compact_bucket/1, force_compact_db_files/1, force_compact_view/2,
          force_purge_compact_bucket/1,
          cancel_forced_bucket_compaction/1, cancel_forced_db_compaction/1,
-         cancel_forced_view_compaction/2]).
+         cancel_forced_view_compaction/2,
+         set_global_purge_interval/1,
+         get_purge_interval/1]).
 
 %% gen_fsm callbacks
 -export([init/1, handle_event/3, handle_sync_event/4, handle_info/3,
@@ -77,6 +79,52 @@
 %% API
 start_link() ->
     gen_fsm:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+-define(DEFAULT_DELETIONS_PURGE_INTERVAL, 7).
+
+-spec get_purge_interval(global | binary()) -> integer().
+get_purge_interval(BucketName) ->
+    BucketConfig =
+        case BucketName of
+            global ->
+                [];
+            _ ->
+                case ns_bucket:get_bucket(binary_to_list(BucketName)) of
+                    not_present ->
+                        [];
+                    {ok, X} -> X
+                end
+        end,
+    RawPurgeInterval = proplists:get_value(purge_interval, BucketConfig),
+    UseGlobal = RawPurgeInterval =:= undefined
+        orelse case proplists:get_value(autocompaction, BucketConfig) of
+                   false -> true;
+                   undefined -> true;
+                   _ -> false
+               end,
+
+    %% in case bucket does have purge_interval and does not have own
+    %% autocompaction settings we should match UI and return global
+    %% settings
+    case UseGlobal of
+        true ->
+            ns_config:search('latest-config-marker', global_purge_interval,
+                             ?DEFAULT_DELETIONS_PURGE_INTERVAL);
+        false ->
+            RawPurgeInterval
+    end.
+
+-spec set_global_purge_interval(integer()) -> ok.
+set_global_purge_interval(Value) ->
+    ns_config:set(global_purge_interval, Value).
+
+get_last_rebalance_or_failover_timestamp() ->
+    case ns_config:search_raw(ns_config:get(), counters) of
+        {value, [{'_vclock', VClock} | _]} ->
+            GregorianSecondsTS = vclock:get_latest_timestamp(VClock),
+            GregorianSecondsTS - calendar:datetime_to_gregorian_seconds({{1970, 1, 1}, {0, 0, 0}});
+        _ -> 0
+    end.
 
 
 %% While Pid is alive prevents autocompaction of views for given
@@ -728,7 +776,23 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
                       true ->
                           [dropdeletes];
                       _ ->
-                          []
+                          {NowMegaSec, NowSec, _} = os:timestamp(),
+                          NowEpoch = NowMegaSec * 1000000 + NowSec,
+
+                          Interval = get_purge_interval(BucketName) * 3600 * 24,
+
+                          PurgeTS0 = NowEpoch - Interval,
+
+                          RebTS = get_last_rebalance_or_failover_timestamp(),
+
+                          PurgeTS = case RebTS > PurgeTS0 of
+                                        true ->
+                                            RebTS - Interval;
+                                        false ->
+                                            PurgeTS0
+                                    end,
+
+                          [{purge_before, PurgeTS}]
                   end,
 
               Compactors =
@@ -1218,9 +1282,9 @@ do_config_to_record([{parallel_db_and_view_compaction, V} | Rest], Acc) ->
     do_config_to_record(Rest, Acc#config{parallel_view_compact=V});
 do_config_to_record([{allowed_time_period, V} | Rest], Acc) ->
     do_config_to_record(Rest, Acc#config{allowed_period=allowed_period_record(V)});
-do_config_to_record([{OtherKey, _V} | _], _Acc) ->
-    %% should not happen
-    exit({invalid_config_key_bug, OtherKey}).
+do_config_to_record([{_OtherKey, _V} | Rest], Acc) ->
+    %% NOTE !!!: releases before 2.2.0 raised error here
+    do_config_to_record(Rest, Acc).
 
 normalize_fragmentation({Percentage, Size}) ->
     NormPercencentage =

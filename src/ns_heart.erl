@@ -214,7 +214,8 @@ current_status() ->
          {node_storage_conf, StorageConf},
          {statistics, erlang_stats()},
          {system_stats, [{N, proplists:get_value(N, SystemStats, 0)}
-                         || N <- [cpu_utilization_rate, swap_total, swap_used]]},
+                         || N <- [cpu_utilization_rate, swap_total, swap_used,
+                                  mem_total, mem_free]]},
          {interesting_stats, InterestingStats},
          {per_bucket_interesting_stats, PerBucketInterestingStats},
          {processes_stats, ProcessesStats},
