@@ -1099,10 +1099,22 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
 
 build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
 
-    {UpSecs, {MemoryTotal, MemoryAlloced, _}} =
+    {UpSecs, {MemoryTotalErlang, MemoryAllocedErlang, _}} =
         {proplists:get_value(wall_clock, InfoNode, 0),
          proplists:get_value(memory_data, InfoNode,
                              {0, 0, undefined})},
+
+    SystemStats = proplists:get_value(system_stats, InfoNode, []),
+    SigarMemTotal = proplists:get_value(mem_total, SystemStats),
+    SigarMemFree = proplists:get_value(mem_free, SystemStats),
+    {MemoryTotal, MemoryFree} =
+        case SigarMemTotal =:= undefined orelse SigarMemFree =:= undefined of
+            true ->
+                {MemoryTotalErlang, MemoryTotalErlang - MemoryAllocedErlang};
+            _ ->
+                {SigarMemTotal, SigarMemFree}
+        end,
+
     NodesBucketMemoryTotal = case ns_config:search_node_prop(Node,
                                                              Config,
                                                              memcached,
@@ -1120,7 +1132,7 @@ build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
      %% TODO: deprecate this in API
      {memoryTotal, erlang:trunc(MemoryTotal)},
      %% TODO: deprecate this in API
-     {memoryFree, erlang:trunc(MemoryTotal - MemoryAlloced)},
+     {memoryFree, erlang:trunc(MemoryFree)},
      %% TODO: deprecate this in API
      {mcdMemoryReserved, erlang:trunc(NodesBucketMemoryTotal)},
      %% TODO: deprecate this in API
