@@ -406,7 +406,7 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
         {false, {ok, ParsedProps, _}} ->
             BucketType = proplists:get_value(bucketType, ParsedProps),
             UpdatedProps = extract_bucket_props(BucketId, ParsedProps),
-            case ns_bucket:update_bucket_props(BucketType, BucketId, UpdatedProps) of
+            case ns_orchestrator:update_bucket(BucketType, BucketId, UpdatedProps) of
                 ok ->
                     ale:info(?USER_LOGGER, "Updated bucket ~s (of type ~s) properties:~n~p",
                              [BucketId, BucketType, lists:keydelete(sasl_password, 1, UpdatedProps)]),
