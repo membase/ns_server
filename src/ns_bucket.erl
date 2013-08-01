@@ -498,12 +498,23 @@ set_bucket_config(Bucket, NewConfig) ->
 %% Now we also disallow bucket names starting with '.'. It's because couchdb
 %% creates (at least now) auxiliary directories which start with dot. We don't
 %% want to conflict with them
-is_valid_bucket_name([]) -> false;
-is_valid_bucket_name(".") -> false;
-is_valid_bucket_name("..") -> false;
-is_valid_bucket_name([$. | _]) -> false;
+is_valid_bucket_name([]) -> {error, empty};
+is_valid_bucket_name([$. | _]) -> {error, starts_with_dot};
 is_valid_bucket_name(BucketName) ->
-    is_valid_bucket_name_inner(BucketName).
+    case is_valid_bucket_name_inner(BucketName) of
+        {error, _} = X ->
+            X;
+        true ->
+            Reserved =
+                string:str(string:to_lower(BucketName), "_users.couch.") =:= 1 orelse
+                string:str(string:to_lower(BucketName), "_replicator.couch.") =:= 1,
+            case Reserved of
+                true ->
+                    {error, reserved};
+                false ->
+                    true
+            end
+    end.
 
 is_valid_bucket_name_inner([Char | Rest]) ->
     case ($A =< Char andalso Char =< $Z)
@@ -516,7 +527,7 @@ is_valid_bucket_name_inner([Char | Rest]) ->
                 [] -> true;
                 _ -> is_valid_bucket_name_inner(Rest)
             end;
-        _ -> false
+        _ -> {error, invalid}
     end.
 
 is_open_proxy_port(BucketName, Port) ->
@@ -550,7 +561,7 @@ validate_bucket_config(BucketName, NewConfig) ->
                 true ->
                     ok
             end;
-        false ->
+        {error, _} ->
             {error, {invalid_bucket_name, BucketName}}
     end.
 

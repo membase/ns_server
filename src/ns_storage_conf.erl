@@ -417,10 +417,14 @@ bucket_names_from_disk() ->
     lists:foldl(
       fun (MaybeBucket, Acc) ->
               Path = filename:join(DbDir, MaybeBucket),
-              case filelib:is_dir(Path) andalso
-                  ns_bucket:is_valid_bucket_name(MaybeBucket) of
+              case filelib:is_dir(Path) of
                   true ->
-                      [MaybeBucket | Acc];
+                      case ns_bucket:is_valid_bucket_name(MaybeBucket) of
+                          true ->
+                              [MaybeBucket | Acc];
+                          {error, _} ->
+                              Acc
+                      end;
                   false ->
                       Acc
               end

@@ -683,8 +683,16 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                                false ->
                                    %% we'll give error on missing bucket name later
                                    case BucketName =:= undefined orelse ns_bucket:is_valid_bucket_name(BucketName) of
-                                       false ->
-                                           {error, name, <<"Bucket name can only contain characters in range A-Z, a-z, 0-9 as well as underscore, period, dash & percent. Consult the documentation.">>};
+                                       {error, invalid} ->
+                                           {error, name,
+                                            <<"Bucket name can only contain characters in range A-Z, a-z, 0-9 as well as underscore, period, dash & percent. Consult the documentation.">>};
+                                       {error, reserved} ->
+                                           {error, name, <<"This name is reserved for the internal use.">>};
+                                       {error, starts_with_dot} ->
+                                           {error, name, <<"Bucket name cannot start with dot.">>};
+                                       {error, empty} ->
+                                           %% we'll give error on empty bucket name later
+                                           undefined;
                                        _ ->
                                            %% we have to check for conflict here because we were looking 
                                            %% for BucketConfig using case sensetive search (in basic_bucket_params_screening/4)
