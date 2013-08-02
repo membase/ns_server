@@ -58,7 +58,7 @@ deps_ns_babysitter: deps_ale
 	(cd deps/ns_babysitter; $(MAKE))
 
 prebuild_vbmap:
-	cd deps/vbmap && GOOS=linux GOARCH=386 go build -o ../../priv/i386-linux-vbmap
+	cd deps/vbmap && GOOS=linux GOARCH=386 go build -ldflags "-B 0x$$(sed -e 's/-//g' /proc/sys/kernel/random/uuid)" -o ../../priv/i386-linux-vbmap
 	cd deps/vbmap && GOOS=darwin GOARCH=386 go build -o ../../priv/i386-darwin-vbmap
 	cd deps/vbmap && GOOS=windows GOARCH=386 go build -o ../../priv/i386-win32-vbmap.exe
 
