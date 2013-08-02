@@ -1246,36 +1246,35 @@ handle_join(Req) ->
     %%                    user=admin&password=admin123
     %%
     Params = Req:parse_post(),
-    ParsedOtherPort = (catch list_to_integer(proplists:get_value("clusterMemberPort", Params))),
-    % the erlang http client crashes if the port number is invalid, so we validate for ourselves here
-    NzV = if
-              is_integer(ParsedOtherPort) ->
-                  if
-                      ParsedOtherPort =< 0 -> <<"The port number must be greater than zero.">>;
-                      ParsedOtherPort >65535 -> <<"The port number cannot be larger than 65535.">>;
-                      true -> undefined
-                  end;
-              true -> <<"The port number must be a number.">>
-          end,
-    OtherPort = if
-                     NzV =:= undefined -> ParsedOtherPort;
-                     true -> 0
-                 end,
-    OtherHost = proplists:get_value("clusterMemberHostIp", Params),
+
+    Hostname = case proplists:get_value("hostname", Params) of
+                   undefined ->
+                       %%  this is for backward compatibility
+                       ClusterMemberPort = proplists:get_value("clusterMemberPort", Params),
+                       ClusterMemberHostIp = proplists:get_value("clusterMemberHostIp", Params),
+                       case lists:member(undefined,
+                                         [ClusterMemberPort, ClusterMemberHostIp]) of
+                           true ->
+                               undefined;
+                           _ ->
+                               lists:concat([ClusterMemberHostIp, ":", ClusterMemberPort])
+                       end;
+                   X ->
+                       X
+               end,
+
     OtherUser = proplists:get_value("user", Params),
     OtherPswd = proplists:get_value("password", Params),
     case lists:member(undefined,
-                      [OtherHost, OtherPort, OtherUser, OtherPswd]) of
+                      [Hostname, OtherUser, OtherPswd]) of
         true  -> ?MENELAUS_WEB_LOG(0013, "Received request to join cluster missing a parameter.", []),
                  Req:respond({400, add_header(), "Attempt to join node to cluster received with missing parameters.\n"});
         false ->
-            PossMsg = [NzV],
-            Msgs = lists:filter(fun (X) -> X =/= undefined end,
-                   PossMsg),
-            case Msgs of
-                [] ->
-                    handle_join_tail(Req, OtherHost, OtherPort, OtherUser, OtherPswd);
-                _ -> reply_json(Req, Msgs, 400)
+            case (catch parse_hostname(Hostname)) of
+                {error, Msgs} ->
+                    reply_json(Req, Msgs, 400);
+                {OtherHost, OtherPort} ->
+                    handle_join_tail(Req, OtherHost, OtherPort, OtherUser, OtherPswd)
             end
     end.
 
@@ -2020,15 +2019,10 @@ handle_node_settings_post(Node, Req) ->
         Errs -> reply_json(Req, Errs, 400)
     end.
 
-validate_add_node_params(Hostname, Port, User, Password) ->
-    Candidates = case lists:member(undefined, [Hostname, Port, User, Password]) of
+validate_add_node_params(User, Password) ->
+    Candidates = case lists:member(undefined, [User, Password]) of
                      true -> [<<"Missing required parameter.">>];
-                     _ -> [is_valid_port_number(Port) orelse <<"Invalid rest port specified.">>,
-                           case Hostname of
-                               [] -> <<"Hostname is required.">>;
-                               _ -> true
-                           end,
-                           case {User, Password} of
+                     _ -> [case {User, Password} of
                                {[], []} -> true;
                                {[_Head | _], [_PasswordHead | _]} -> true;
                                {[], [_PasswordHead | _]} -> <<"If a username is not specified, a password must not be supplied.">>;
@@ -2037,22 +2031,62 @@ validate_add_node_params(Hostname, Port, User, Password) ->
                  end,
     lists:filter(fun (E) -> E =/= true end, Candidates).
 
+%% erlang R15B03 has http_uri:parse/2 that does the job
+%% reimplement after support of R14B04 will be dropped
+parse_hostname([_ | _] = Hostname) ->
+    WithoutScheme = case string:str(Hostname, "://") of
+                        0 ->
+                            Hostname;
+                        X ->
+                            Scheme = string:sub_string(Hostname, 1, X - 1),
+                            case string:to_lower(Scheme) =:= "http" of
+                                false ->
+                                    throw({error, [list_to_binary("Unsupported protocol " ++ Scheme)]});
+                                true ->
+                                    string:sub_string(Hostname, X + 3)
+                            end
+                    end,
+
+    {Host, StringPort} = case string:tokens(WithoutScheme, ":") of
+                             [H | [P | []]] ->
+                                 {H, P};
+                             [H | []] ->
+                                 {H, "8091"};
+                             _ ->
+                                 throw({error, [<<"The hostname is malformed.">>]})
+                         end,
+
+    Port = (catch list_to_integer(StringPort)),
+
+    case is_integer(Port) of
+        true when Port > 0 andalso Port =< 65535 ->
+            {Host, Port};
+        true ->
+            throw({error, [<<"The port number must be greater than zero and less than 65536.">>]});
+        false ->
+            throw({error, [<<"Port must be a number.">>]})
+    end;
+parse_hostname([]) ->
+    throw({error, [<<"Hostname is required.">>]}).
+
 handle_add_node(Req) ->
     %% parameter example: hostname=epsilon.local, user=Administrator, password=asd!23
     Params = Req:parse_post(),
-    {Hostname, StringPort} = case proplists:get_value("hostname", Params, "") of
-                                 [_ | _] = V ->
-                                     case string:tokens(string:strip(V), ":") of
-                                         [N] -> {N, "8091"};
-                                         [N, P] -> {N, P}
-                                     end;
-                                 _ -> {"", ""}
-                             end,
+
+    HostAndPort = (catch parse_hostname(proplists:get_value("hostname", Params, ""))),
+
+    Errors = case HostAndPort of
+                 {error, L} ->
+                     L;
+                 _ -> []
+             end,
+
     User = proplists:get_value("user", Params, ""),
     Password = proplists:get_value("password", Params, ""),
-    case validate_add_node_params(Hostname, StringPort, User, Password) of
+
+    case validate_add_node_params(User, Password) ++ Errors of
         [] ->
-            Port = list_to_integer(StringPort),
+            {Hostname, Port} = HostAndPort,
             case ns_cluster:add_node(Hostname, Port, {User, Password}) of
                 {ok, OtpNode} ->
                     reply_json(Req, {struct, [{otpNode, OtpNode}]}, 200);
@@ -2892,6 +2926,34 @@ extra_field_parse_validate_auto_compaction_settings_test() ->
                                                                 {"allowedTimePeriod[abortOutside]", "false"}]),
     ?assertEqual([{<<"_">>, <<"Got unsupported fields: databaseFragmentationThreshold">>}],
                  Stuff1),
+    ok.
+
+hostname_parsing_test() ->
+    Urls = ["http://host:100",
+            "http://host:0",
+            "http://host:100000",
+            "hTTp://host:800",
+            "ftp://host:600",
+            "http://host",
+            "127.0.0.1:600",
+            "host:port",
+            "aaa:bb:cc",
+            ""],
+
+    ExpectedResults = [{"host",100},
+                       {error, [<<"The port number must be greater than zero and less than 65536.">>]},
+                       {error, [<<"The port number must be greater than zero and less than 65536.">>]},
+                       {"host", 800},
+                       {error, [<<"Unsupported protocol ftp">>]},
+                       {"host", 8091},
+                       {"127.0.0.1", 600},
+                       {error, [<<"Port must be a number.">>]},
+                       {error, [<<"The hostname is malformed.">>]},
+                       {error, [<<"Hostname is required.">>]}],
+
+    Results = [(catch parse_hostname(X)) || X <- Urls],
+
+    ?assertEqual(ExpectedResults, Results),
     ok.
 
 -endif.
