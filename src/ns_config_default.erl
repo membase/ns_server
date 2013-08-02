@@ -19,7 +19,13 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([default/0, mergable/1, upgrade_config/1]).
+-export([default/0, mergable/1, upgrade_config/1, get_current_version/0]).
+
+-define(ISASL_PW, "isasl.pw").
+-define(NS_LOG, "ns_log").
+
+get_current_version() ->
+    {2,2,0}.
 
 % Allow all keys to be mergable.
 
@@ -31,15 +37,22 @@ keys(KVLists) ->
                           [K || {K,_} <- KVList]
                   end, KVLists).
 
+ensure_data_dir() ->
+    RawDir = path_config:component_path(data),
+    filelib:ensure_dir(RawDir),
+    file:make_dir(RawDir),
+    RawDir.
+
+get_data_dir() ->
+    RawDir = path_config:component_path(data),
+    case misc:realpath(RawDir, "/") of
+        {ok, X} -> X;
+        _ -> RawDir
+    end.
+
 default() ->
-    RawDbDir = path_config:component_path(data),
-    filelib:ensure_dir(RawDbDir),
-    file:make_dir(RawDbDir),
-    DbDir0 = case misc:realpath(RawDbDir, "/") of
-                 {ok, X} -> X;
-                 _ -> RawDbDir
-             end,
-    DbDir = filename:join(DbDir0, "data"),
+    ensure_data_dir(),
+    DataDir = get_data_dir(),
     InitQuota = case memsup:get_memory_data() of
                     {_, _, _} = MemData ->
                         ns_storage_conf:default_memory_quota(MemData);
@@ -132,7 +145,7 @@ default() ->
                                                 % This is also a parameter to memcached ports below.
      {remote_clusters, []},
      {{node, node(), isasl}, [InstanceVClock,
-                              {path, filename:join(DbDir, "isasl.pw")}]},
+                              {path, filename:join(DataDir, ?ISASL_PW)}]},
 
                                                 % Memcached config
      {{node, node(), memcached},
@@ -236,7 +249,7 @@ default() ->
      },
 
      {{node, node(), ns_log}, [InstanceVClock,
-                               {filename, filename:join(DbDir, "ns_log")}]},
+                               {filename, filename:join(DataDir, ?NS_LOG)}]},
 
                                                 % Modifiers: menelaus
                                                 % Listeners: ? possibly ns_log
@@ -292,7 +305,10 @@ prefix_replace(_Prefix, _ReplacementPrefix, X) -> X.
 %% to handle vclock updates
 -spec upgrade_config([[{term(), term()}]]) -> [{set, term(), term()}].
 upgrade_config(Config) ->
+    CurrentVersion = get_current_version(),
     case ns_config:search_node(node(), Config, config_version) of
+        {value, CurrentVersion} ->
+            [];
         false ->
             [{set, {node, node(), config_version}, {1,7,1}} |
              upgrade_config_from_1_7_to_1_7_1()];
@@ -309,7 +325,8 @@ upgrade_config(Config) ->
             [{set, {node, node(), config_version}, {2,0}} |
              upgrade_config_from_1_8_1_to_2_0(Config)];
         {value, {2,0}} ->
-            []
+            [{set, {node, node(), config_version}, {2,2,0}} |
+             upgrade_config_from_2_0_to_2_2_0(Config)]
     end.
 
 upgrade_config_from_1_7_to_1_7_1() ->
@@ -512,6 +529,94 @@ maybe_upgrade_engines_add_mccouch_port_log_params(Config, DefaultConfig) ->
     [{set, McdKey, NewOrUpdatedParams ++ StrippedMcdConfig},
      {set, PortServersKey, DefaultPortServers}].
 
+upgrade_config_from_2_0_to_2_2_0(Config) ->
+    ?log_info("Upgrading config from 2.0 to 2.2.0", []),
+    DefaultConfig = default(),
+    DataDir = get_data_dir(),
+    do_upgrade_files_from_2_0_to_2_2_0(DataDir),
+    do_upgrade_config_from_2_0_to_2_2_0(Config, DefaultConfig, DataDir).
+
+search_sub_key(Config, Key, Subkey) ->
+    case ns_config:search(Config, Key) of
+        false ->
+            false;
+        {value, List} ->
+            case lists:keyfind(Subkey, 1, List) of
+                false ->
+                    false;
+                {Subkey, X} ->
+                    X
+            end
+    end.
+
+upgrade_if_equals(Config, DefaultConfig, Key, Subkey, Value) ->
+    Upgrade = case search_sub_key(Config, Key, Subkey) of
+                  false ->
+                      true;
+                  X ->
+                      X =:= Value
+              end,
+    case Upgrade of
+        true ->
+            {_, UpgradeValue} = lists:keyfind(Key, 1, DefaultConfig),
+            [{set, Key, UpgradeValue}];
+        false ->
+            []
+    end.
+
+do_upgrade_config_from_2_0_to_2_2_0(Config, DefaultConfig, DataDir) ->
+    OldDataDir = filename:join(DataDir, "data"),
+
+    OldVersionPwFile = filename:join(OldDataDir, ?ISASL_PW),
+    OldVersionNsLog = filename:join(OldDataDir, ?NS_LOG),
+
+    MayBePwFile = upgrade_if_equals(Config, DefaultConfig, {node, node(), isasl}, path,
+                                    OldVersionPwFile),
+    MayBeNsLog = upgrade_if_equals(Config, DefaultConfig, {node, node(), ns_log}, filename,
+                                   OldVersionNsLog),
+
+    MayBePwFile ++ MayBeNsLog.
+
+delete_file(Filename) ->
+    case file:delete(Filename) of
+        {error,enoent} ->
+            ok;
+        ok ->
+            ok;
+        Err ->
+            ?log_error("Cannot delete file ~p. Error: ~p", [Filename, Err]),
+            Err
+    end.
+
+rename_file(Source, Dest) ->
+    case file:rename(Source, Dest) of
+        {error,enoent} ->
+            ok;
+        ok ->
+            ok;
+        Err ->
+            ?log_error("Cannot rename file from ~p to ~p. Error: ~p", [Source, Dest, Err]),
+            Err
+    end.
+
+do_upgrade_files_from_2_0_to_2_2_0(DataDir) ->
+    OldDataDir = filename:join(DataDir, "data"),
+
+    %% this file will be regenerated, so just delete it
+    %% from the old location if it is there
+    OldVersionPwFile = filename:join(OldDataDir, ?ISASL_PW),
+    delete_file(OldVersionPwFile),
+
+    OldVersionNsLog = filename:join(OldDataDir, ?NS_LOG),
+    NsLog = filename:join(DataDir, ?NS_LOG),
+
+    case filelib:is_file(NsLog) of
+        true ->
+            delete_file(OldVersionNsLog);
+        false ->
+            rename_file(OldVersionNsLog, NsLog)
+    end.
+
 upgrade_1_7_1_to_1_7_2_test() ->
     DefaultCfg = [{rest, [{port, 8091}]},
                   {{node, node(), rest},
@@ -708,8 +813,28 @@ upgrade_1_8_1_to_2_0_test() ->
                   {set, {node, node(), port_servers}, new_port_servers}],
                  Result2).
 
-no_upgrade_on_2_0_test() ->
-    ?assertEqual([], upgrade_config([[{{node, node(), config_version}, {2, 0}}]])).
+upgrade_2_0_to_2_2_0_test() ->
+    DataDir = "/data/n_0",
+    OldDataDir = filename:join(DataDir, "data"),
+    DefaultCfg = [{{node, node(), ns_log}, default_ns_log},
+                  {{node, node(), isasl}, default_isasl}],
+    Cfg1 = [[{{node, node(), ns_log}, [{filename, filename:join("/somewhere/else", ?NS_LOG)}]},
+             {{node, node(), isasl}, [{path, filename:join("/somewhere/else", ?ISASL_PW)}]}
+            ]],
+    Result1 = do_upgrade_config_from_2_0_to_2_2_0(Cfg1, DefaultCfg, DataDir),
+    ?assertEqual([], Result1),
+
+    Cfg2 = [[{{node, node(), ns_log}, [{filename, filename:join(OldDataDir, ?NS_LOG)}]},
+             {{node, node(), isasl}, [{path, filename:join(OldDataDir, ?ISASL_PW)}]}
+            ]],
+    Result2 = do_upgrade_config_from_2_0_to_2_2_0(Cfg2, DefaultCfg, DataDir),
+    ?assertEqual([
+                  {set, {node, node(), isasl}, default_isasl},
+                  {set, {node, node(), ns_log}, default_ns_log}
+                 ], Result2).
+
+no_upgrade_on_current_version_test() ->
+    ?assertEqual([], upgrade_config([[{{node, node(), config_version}, get_current_version()}]])).
 
 prefix_replace_test() ->
     ?assertEqual("", prefix_replace("/foo", "/bar", "")),
