@@ -1246,36 +1246,36 @@ handle_join(Req) ->
     %%                    user=admin&password=admin123
     %%
     Params = Req:parse_post(),
-
-    Hostname = case proplists:get_value("hostname", Params) of
-                   undefined ->
-                       %%  this is for backward compatibility
-                       ClusterMemberPort = proplists:get_value("clusterMemberPort", Params),
-                       ClusterMemberHostIp = proplists:get_value("clusterMemberHostIp", Params),
-                       case lists:member(undefined,
-                                         [ClusterMemberPort, ClusterMemberHostIp]) of
-                           true ->
-                               undefined;
-                           _ ->
-                               lists:concat([ClusterMemberHostIp, ":", ClusterMemberPort])
-                       end;
-                   X ->
-                       X
-               end,
-
+    ParsedOtherPort = (catch list_to_integer(proplists:get_value("clusterMemberPort", Params))),
+    % the erlang http client crashes if the port number is invalid, so we validate for ourselves here
+    NzV = if
+              is_integer(ParsedOtherPort) ->
+                  if
+                      ParsedOtherPort =< 0 -> <<"The port number must be greater than zero.">>;
+                      ParsedOtherPort >65535 -> <<"The port number cannot be larger than 65535.">>;
+                      true -> undefined
+                  end;
+              true -> <<"The port number must be a number.">>
+          end,
+    OtherPort = if
+                     NzV =:= undefined -> ParsedOtherPort;
+                     true -> 0
+                 end,
+    OtherHost = proplists:get_value("clusterMemberHostIp", Params),
     OtherUser = proplists:get_value("user", Params),
     OtherPswd = proplists:get_value("password", Params),
-
     case lists:member(undefined,
-                      [Hostname, OtherUser, OtherPswd]) of
+                      [OtherHost, OtherPort, OtherUser, OtherPswd]) of
         true  -> ?MENELAUS_WEB_LOG(0013, "Received request to join cluster missing a parameter.", []),
                  Req:respond({400, add_header(), "Attempt to join node to cluster received with missing parameters.\n"});
         false ->
-            case parse_hostname(Hostname) of
-                {error, Msgs} ->
-                    reply_json(Req, Msgs, 400);
-                {OtherHost, OtherPort} ->
-                    handle_join_tail(Req, OtherHost, OtherPort, OtherUser, OtherPswd)
+            PossMsg = [NzV],
+            Msgs = lists:filter(fun (X) -> X =/= undefined end,
+                   PossMsg),
+            case Msgs of
+                [] ->
+                    handle_join_tail(Req, OtherHost, OtherPort, OtherUser, OtherPswd);
+                _ -> reply_json(Req, Msgs, 400)
             end
     end.
 
@@ -2020,10 +2020,15 @@ handle_node_settings_post(Node, Req) ->
         Errs -> reply_json(Req, Errs, 400)
     end.
 
-validate_add_node_params(User, Password) ->
-    Candidates = case lists:member(undefined, [User, Password]) of
+validate_add_node_params(Hostname, Port, User, Password) ->
+    Candidates = case lists:member(undefined, [Hostname, Port, User, Password]) of
                      true -> [<<"Missing required parameter.">>];
-                     _ -> [case {User, Password} of
+                     _ -> [is_valid_port_number(Port) orelse <<"Invalid rest port specified.">>,
+                           case Hostname of
+                               [] -> <<"Hostname is required.">>;
+                               _ -> true
+                           end,
+                           case {User, Password} of
                                {[], []} -> true;
                                {[_Head | _], [_PasswordHead | _]} -> true;
                                {[], [_PasswordHead | _]} -> <<"If a username is not specified, a password must not be supplied.">>;
@@ -2032,45 +2037,22 @@ validate_add_node_params(User, Password) ->
                  end,
     lists:filter(fun (E) -> E =/= true end, Candidates).
 
-parse_hostname([_ | _] = Hostname) ->
-    Options = [{scheme_defaults, [{http,8091}]}],
-
-    HostnameWithScheme = case string:str(Hostname, "://") of
-                             0 ->
-                                 string:concat("http://", Hostname);
-                             _ ->
-                                 Hostname
-                         end,
-
-    case http_uri:parse(HostnameWithScheme, Options) of
-        {ok, {http, [], Host, Port, "/", []}} when Port > 0 andalso Port =< 65535 ->
-            {Host, Port};
-        {ok, {http, [], _Host, _Port, "/", []}} ->
-            {error, [<<"The port number must be greater than zero and less than 65536.">>]};
-        _ ->
-            {error, [<<"The hostname is malformed.">>]}
-    end;
-parse_hostname([]) ->
-    {error, [<<"Hostname is required.">>]}.
-
 handle_add_node(Req) ->
     %% parameter example: hostname=epsilon.local, user=Administrator, password=asd!23
     Params = Req:parse_post(),
-
-    HostAndPort = parse_hostname(proplists:get_value("hostname", Params, "")),
-
-    Errors = case HostAndPort of
-                 {error, L} ->
-                     L;
-                 _ -> []
-             end,
-
+    {Hostname, StringPort} = case proplists:get_value("hostname", Params, "") of
+                                 [_ | _] = V ->
+                                     case string:tokens(string:strip(V), ":") of
+                                         [N] -> {N, "8091"};
+                                         [N, P] -> {N, P}
+                                     end;
+                                 _ -> {"", ""}
+                             end,
     User = proplists:get_value("user", Params, ""),
     Password = proplists:get_value("password", Params, ""),
-
-    case validate_add_node_params(User, Password) ++ Errors of
+    case validate_add_node_params(Hostname, StringPort, User, Password) of
         [] ->
-            {Hostname, Port} = HostAndPort,
+            Port = list_to_integer(StringPort),
             case ns_cluster:add_node(Hostname, Port, {User, Password}) of
                 {ok, OtpNode} ->
                     reply_json(Req, {struct, [{otpNode, OtpNode}]}, 200);
