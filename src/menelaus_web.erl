@@ -326,10 +326,6 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["pools", PoolId] ->
                              {auth, fun handle_pool_settings/2,
                               [PoolId]};
-                         ["controller", "cancelXDCR", XID] ->
-                             {auth, fun handle_cancel_xdcr/2, [XID]};
-                         ["controller", "cancelXCDR", XID] ->
-                             {auth, fun handle_cancel_xdcr/2, [XID]};
                          ["controller", "ejectNode"] ->
                              {auth, fun handle_eject_post/1};
                          ["controller", "addNode"] ->
@@ -345,7 +341,11 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["controller", "setAutoCompaction"] ->
                              {auth, fun handle_set_autocompaction/1};
                          ["controller", "createReplication"] ->
-                             {auth, fun menelaus_web_create_replication:handle_create_replication/1};
+                             {auth, fun menelaus_web_xdc_replications:handle_create_replication/1};
+                         ["controller", "cancelXDCR", XID] ->
+                             {auth, fun menelaus_web_xdc_replications:handle_cancel_xdcr/2, [XID]};
+                         ["controller", "cancelXCDR", XID] ->
+                             {auth, fun menelaus_web_xdc_replications:handle_cancel_xdcr/2, [XID]};
                          ["controller", "resetAlerts"] ->
                              {auth, fun handle_reset_alerts/1};
                          ["controller", "setFastWarmup"] ->
@@ -421,9 +421,9 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["pools", "default", "remoteClusters", Id] ->
                              {auth, fun menelaus_web_remote_clusters:handle_remote_cluster_delete/2, [Id]};
                          ["controller", "cancelXCDR", XID] ->
-                             {auth, fun handle_cancel_xdcr/2, [XID]};
+                             {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
                          ["controller", "cancelXDCR", XID] ->
-                             {auth, fun handle_cancel_xdcr/2, [XID]};
+                             {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
                          ["settings", "readOnlyUser"] ->
                              {auth, fun handle_settings_read_only_user_delete/1};
                          ["nodes", Node, "resources", LocationPath] ->
@@ -2533,35 +2533,6 @@ handle_set_fast_warmup(Req) ->
         {false, {ok, FWSettings}} ->
             ns_config:set(fast_warmup, FWSettings),
             reply_json(Req, [], 200)
-    end.
-
-handle_cancel_xdcr(XID, Req) ->
-    case xdc_rdoc_replication_srv:delete_replicator_doc(XID) of
-        {ok, OldDoc} ->
-            Source = misc:expect_prop_value(source, OldDoc),
-            Target = misc:expect_prop_value(target, OldDoc),
-
-            {ok, {UUID, BucketName}} = remote_clusters_info:parse_remote_bucket_reference(Target),
-            ClusterName =
-                case remote_clusters_info:find_cluster_by_uuid(UUID) of
-                    not_found ->
-                        "\"unknown\"";
-                    Cluster ->
-                        case proplists:get_value(deleted, Cluster, false) of
-                            false ->
-                                io_lib:format("\"~s\"", [misc:expect_prop_value(name, Cluster)]);
-                            true ->
-                                io_lib:format("at ~s", [misc:expect_prop_value(hostname, Cluster)])
-                        end
-                end,
-
-            ale:info(?USER_LOGGER,
-                     "Replication from bucket \"~s\" to bucket \"~s\" on cluster ~s removed.",
-                     [Source, BucketName, ClusterName]),
-
-            reply_json(Req, [], 200);
-        not_found ->
-            menelaus_util:reply_404(Req)
     end.
 
 mk_integer_field_validator_error_maker(JSONName, Msg, Args) ->

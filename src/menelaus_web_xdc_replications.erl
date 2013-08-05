@@ -14,7 +14,7 @@
 %% limitations under the License.
 %%
 %% @doc REST API for creating/verifying replication
--module(menelaus_web_create_replication).
+-module(menelaus_web_xdc_replications).
 
 -author('Couchbase <info@couchbase.com>').
 
@@ -23,7 +23,7 @@
 -include("couch_db.hrl").
 -include("remote_clusters_info.hrl").
 
--export([handle_create_replication/1]).
+-export([handle_create_replication/1, handle_cancel_replication/2]).
 
 -type replication_type() :: 'one-time' | continuous.
 
@@ -59,6 +59,36 @@ handle_create_replication(Req) ->
                                                {id, ReplicationDoc#doc.id}]})
     end.
 
+handle_cancel_replication(XID, Req) ->
+    case xdc_rdoc_replication_srv:delete_replicator_doc(XID) of
+        {ok, OldDoc} ->
+            Source = misc:expect_prop_value(source, OldDoc),
+            Target = misc:expect_prop_value(target, OldDoc),
+
+            {ok, {UUID, BucketName}} = remote_clusters_info:parse_remote_bucket_reference(Target),
+            ClusterName =
+                case remote_clusters_info:find_cluster_by_uuid(UUID) of
+                    not_found ->
+                        "\"unknown\"";
+                    Cluster ->
+                        case proplists:get_value(deleted, Cluster, false) of
+                            false ->
+                                io_lib:format("\"~s\"", [misc:expect_prop_value(name, Cluster)]);
+                            true ->
+                                io_lib:format("at ~s", [misc:expect_prop_value(hostname, Cluster)])
+                        end
+                end,
+
+            ale:info(?USER_LOGGER,
+                     "Replication from bucket \"~s\" to bucket \"~s\" on cluster ~s removed.",
+                     [Source, BucketName, ClusterName]),
+
+            menelaus_util:reply_json(Req, [], 200);
+        not_found ->
+            menelaus_util:reply_json(Req, [], 404)
+    end.
+
+%% internal functions
 get_parameter(Name, Params, HumanName) ->
     RawValue = proplists:get_value(Name, Params),
     Ok = case RawValue of
