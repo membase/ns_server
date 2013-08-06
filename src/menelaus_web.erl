@@ -1045,7 +1045,7 @@ build_node_status(Node, Bucket, InfoNode, BucketsAll) ->
             <<"unhealthy">>
     end.
 
-build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
+build_nodes_info_fun(IsAdmin, InfoLevel, LocalAddr) ->
     OtpCookie = list_to_binary(atom_to_list(erlang:get_cookie())),
     NodeStatuses = ns_doctor:get_nodes(),
     Config = ns_config:get(),
@@ -1063,7 +1063,8 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
                    {status, Status},
                    {otpNode, list_to_binary(atom_to_list(WantENode))}
                    | KV],
-            KV2 = case IncludeOtp of
+            %% NOTE: the following avoids exposing otpCookie to UI
+            KV2 = case IsAdmin andalso InfoLevel =:= normal of
                       true ->
                           [{otpCookie, OtpCookie} | KV1];
                       false -> KV1
