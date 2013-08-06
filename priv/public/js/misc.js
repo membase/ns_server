@@ -747,7 +747,6 @@ function serializeForm(f, modifiers) {
   var array = f.serializeArray();
   var seenKeys = {};
   array = _.filter(array.reverse(), function (pair) {
-    pair.value = $.trim(pair.value);
     if (seenKeys[pair.name]) {
       return false;
     }

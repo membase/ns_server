@@ -315,6 +315,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun handle_settings_max_parallel_indexers_post/1};
                          ["settings", "viewUpdateDaemon"] ->
                              {auth, fun handle_settings_view_update_daemon_post/1};
+                         ["settings", "readOnlyUser"] ->
+                             {auth, fun handle_settings_read_only_user_post/1};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings_post/1};
                          ["pools", PoolId] ->
@@ -418,6 +420,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun handle_cancel_xdcr/2, [XID]};
                          ["controller", "cancelXDCR", XID] ->
                              {auth, fun handle_cancel_xdcr/2, [XID]};
+                         ["settings", "readOnlyUser"] ->
+                             {auth, fun handle_settings_read_only_user_delete/1};
                          ["nodes", Node, "resources", LocationPath] ->
                              {auth, fun handle_resource_delete/3, [Node, LocationPath]};
                          ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
@@ -669,8 +673,11 @@ handle_pools(Req) ->
             true -> Pools;
             _ -> []
         end,
+    Auth = menelaus_auth:extract_auth(Req),
     reply_json(Req,{struct, [{pools, EffectivePools},
-                             {isAdminCreds, menelaus_auth:is_under_admin(Req)},
+                             {isAdminCreds, menelaus_auth:check_auth(Auth)},
+                             {isROAdminCreds, menelaus_auth:is_read_only_auth(Auth)},
+                             {isROAdminExist, menelaus_auth:is_read_only_admin_exist()},
                              {settings,
                               {struct,
                                [{<<"maxParallelIndexers">>,
@@ -1466,6 +1473,45 @@ handle_settings_view_update_daemon_post(Req) ->
             reply_json(Req, {struct, Errors}, 400)
     end.
 
+validate_cred(undefined, _) -> <<"Field must be given">>;
+validate_cred(P, password) when length(P) < 6 -> <<"At least 6 characters is required">>;
+validate_cred([], _) -> <<"Empty Field">>;
+validate_cred(_, _) -> true.
+
+maybe_invalid(Name, Value) ->
+    UserErrors = validate_cred(Value, Name),
+    {Name, case UserErrors of
+                true -> do_validate_cred(Value, Name);
+                _ -> UserErrors
+           end}.
+
+handle_settings_read_only_user_post(Req) ->
+    PostArgs = Req:parse_post(),
+    ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
+    U = proplists:get_value("username", PostArgs),
+    P = proplists:get_value("password", PostArgs),
+    Errors = [{K, V} || {K, V} <- [maybe_invalid(username, U),
+                                   maybe_invalid(password, P)], V =/= true],
+    case Errors of
+        [] ->
+            case ValidateOnly of
+                false -> ns_config:set(read_only_user_creds, {U, P});
+                true -> true
+            end,
+            reply_json(Req, [], 200);
+        _ ->
+            reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400)
+    end.
+
+handle_settings_read_only_user_delete(Req) ->
+    case menelaus_auth:is_read_only_admin_exist() of
+        false ->
+            reply_json(Req, <<"Read-Only admin does not exist">>, 404);
+        true ->
+            ns_config:set(read_only_user_creds, null),
+            reply_json(Req, [], 200)
+    end.
+
 handle_pool_settings(_PoolId, Req) ->
     Params = Req:parse_post(),
     Node = node(),
@@ -1655,7 +1701,7 @@ is_valid_port_number(String) ->
     PortNumber = (catch list_to_integer(String)),
     (is_integer(PortNumber) andalso (PortNumber > 0) andalso (PortNumber =< 65535)).
 
-validate_username(Username) ->
+do_validate_cred(Username, username) ->
     V = lists:all(
           fun (C) ->
                   C > 32 andalso C =/= 127 andalso
@@ -1663,9 +1709,9 @@ validate_username(Username) ->
           end, Username),
 
     V orelse
-        <<"The username must not contain spaces, control or any of ()<>@,;:\\\"/[]?={} characters">>.
+        <<"The username must not contain spaces, control or any of ()<>@,;:\\\"/[]?={} characters">>;
 
-validate_password(Password) ->
+do_validate_cred(Password, password) ->
     V = lists:all(
           fun (C) ->
                   C > 31 andalso c =/= 127
@@ -1681,13 +1727,13 @@ validate_settings(Port, U, P) ->
                            case {U, P} of
                                {[], _} -> <<"Username and password are required.">>;
                                {[_Head | _], P} ->
-                                   case validate_username(U) of
+                                   case do_validate_cred(U, username) of
                                        true ->
                                            case length(P) =< 5 of
                                                true ->
                                                    <<"The password must be at least six characters.">>;
                                                false ->
-                                                   validate_password(P)
+                                                   do_validate_cred(P, password)
                                            end;
                                        Msg ->
                                            Msg

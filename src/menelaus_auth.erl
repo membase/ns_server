@@ -30,7 +30,9 @@
          check_auth_bucket/1,
          bucket_auth_fun/1,
          parse_user_password/1,
-         is_under_admin/1]).
+         is_under_admin/1,
+         is_read_only_admin_exist/0,
+         is_read_only_auth/1]).
 
 %% External API
 
@@ -121,7 +123,17 @@ check_auth(UserPassword) ->
     case ns_config:search_prop('latest-config-marker', rest_creds, creds, empty) of
         []    -> true; % An empty list means no login/password auth check.
         empty -> true; % An empty list means no login/password auth check.
-        Creds -> check_auth(UserPassword, Creds)
+        Creds -> check_auth(UserPassword, Creds) orelse is_read_only_auth(UserPassword)
+    end.
+
+is_read_only_auth(UserPassword) ->
+    ns_config:search(read_only_user_creds) =:= {value, UserPassword}.
+
+is_read_only_admin_exist() ->
+    case ns_config:search(read_only_user_creds) of
+        {value, null} -> false;
+        {value, _P} -> true;
+        false -> false
     end.
 
 check_auth(_UserPassword, []) ->

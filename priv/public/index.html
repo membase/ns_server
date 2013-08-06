@@ -19,7 +19,7 @@
       <div class="cnt_holder main_holder">
         <div class="topper_nav">
           <span class="only-when-below-20" style="display:none;">NOTE: need all 2.0 nodes to enable 2.0-only features<b>&bull;</b></span>
-          <span id="edit-internal-settings-link" style="display:none;"><a onclick="runInternalSettingsDialog();">Edit internal settings</a> <b>&bull;</b></span>
+          <span id="edit-internal-settings-link when-roadmin-avoid-me" style="display:none;"><a onclick="runInternalSettingsDialog();">Edit internal settings</a> <b>&bull;</b></span>
           <a id="switch_support_docs" href="http://docs.couchbase.org/couchbase-manual-2.0/couchbase-getting-started.html" target="cbdocs">Documentation</a>
           <b>&bull;</b> <a id="switch_support_forums" href="http://www.couchbase.org/forums/couchbase/couchbase-server-20-developer-preview" target="cbforums">Support Forums</a>
           <b>&bull;</b> <a href="javascript:showAbout();">About</a>
@@ -155,17 +155,17 @@
           </div>
           <div id="auto_failover_count_container" class="warning_message" style="display:none;">
             A server was automatically failed over
-            <a class="auto_failover_count_reset edit_btn">
+            <a class="auto_failover_count_reset edit_btn when-roadmin-hide-me">
               <span>Reset Quota</span>
             </a>
           </div>
           <div class="shadow_box">
             <div class="header_2">
               <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
-              <a class="add_button btn_1"><span>Add Server</span></a>
-              <a class="rebalance_button btn_1"><span>Rebalance</span></a>
-              <a class="stop_rebalance_button btn_1"><span>Stop Rebalance</span></a>
-              <a class="stop_recovery_button btn_1"><span>Stop Recovery</span></a>
+              <a class="add_button btn_1 when-roadmin-hide-me"><span>Add Server</span></a>
+              <a class="rebalance_button btn_1 when-roadmin-hide-me"><span>Rebalance</span></a>
+              <a class="stop_rebalance_button btn_1 when-roadmin-hide-me"><span>Stop Rebalance</span></a>
+              <a class="stop_recovery_button btn_1 when-roadmin-hide-me"><span>Stop Recovery</span></a>
               <ul class="tabs">
                 <li class="tab_left"><a>Active Servers</a></li>
                 <li class="tab_right" id="rebalance_tab">
@@ -278,18 +278,18 @@
 
                 <!-- {% if (s.clusterMembership == 'inactiveAdded') { %} -->
                 <td colspan="2">
-                  <a href="#" class="list_button btn_cancel eject_server"><span>Cancel</span></a>
+                  <a href="#" class="list_button btn_cancel eject_server when-roadmin-avoid-me"><span>Cancel</span></a>
                   <span class="pending_add_message">Pending Add</span>
                 </td>
                 <!-- {% } else if (s.pendingEject) { %} -->
                 <td class="actions" colspan="2">
-                  <a href="#" class="list_button btn_cancel remove_from_list"><span>Cancel</span></a>
+                  <a href="#" class="list_button btn_cancel remove_from_list when-roadmin-avoid-me"><span>Cancel</span></a>
                   <span class="pending_add_message">Pending Removal</span>
                 </td>
                 <!-- {% } else { %} -->
                 <td class="actions" colspan="2">
-                  <a class="list_button eject_server"><span>Remove</span></a>
-                  <a class="list_button failover_server"><span>Fail Over</span></a>
+                  <a class="list_button eject_server when-roadmin-avoid-me"><span>Remove</span></a>
+                  <a class="list_button failover_server when-roadmin-avoid-me"><span>Fail Over</span></a>
                   <span class="failed_over_message">Failed Over: Pending Removal</span>
                 </td>
                 <!-- {% } %} -->
@@ -306,7 +306,7 @@
           <script id="server_details_template" type="text/html">
           <div class="first gong_rb">
             <div class="pad">
-              <a class="edit_btn float_right dynamic_disabled">Edit</a>
+              <a class="edit_btn float_right dynamic_disabled when-roadmin-hide-me">Edit</a>
               <table class="properties_table">
                 <tr>
                     <td>Server Name: <span>{%= h(hostname) %}</span></td>
@@ -516,7 +516,7 @@
             <div id="manage_buckets_top_bar" class="header_2">
               <h4 style="float:left;line-height:34px;">Couchbase Buckets</h4>
               <div class="right" style="overflow:hidden;">
-                <button class="button_200 create-bucket-button" style="float:right;">Create New Data Bucket</button>
+                <button class="button_200 create-bucket-button when-roadmin-hide-me" style="float:right;">Create New Data Bucket</button>
                 <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
               </div>
             </div>
@@ -614,7 +614,7 @@
                     </span>
                   </div>
                 {% } %}
-                <div class="last">
+                <div class="last when-roadmin-hide-me">
                   <a class="inner_btn" href="#editBucket={%= h(encodeURIComponent(uri)) %}">Edit</a>
                   {% if (!showCancel && !noCompaction) { %}
                     <button class="inner_btn compact_btn {%= disableCompact ? 'dynamic_disabled' : ''%}" data-uri="{%= h(controllers.compactAll) %}"><span>Compact</span></button>
@@ -708,7 +708,8 @@
                   <li><a id="settings_auto_failover">Auto-Failover</a></li>
                   <li><a id="settings_alerts">Alerts</a></li>
                   <li><a id="settings_compaction">Auto-Compaction</a></li>
-                  <li class="tab_right only-when-20"><a id="settings_sample_buckets">Sample Buckets</a></li>
+                  <li class="only-when-20"><a id="settings_sample_buckets">Sample Buckets</a></li>
+                  <li class="when-roadmin-avoid-me"><a id="account_management">Account Management</a></li>
                 </ul>
               </div>
               <div class="panes clearfix">
@@ -815,7 +816,7 @@
                       </li>
                     </ul>
                   </fieldset> <!-- .auto_compaction -->
-                  <div class="save_cancel">
+                  <div class="save_cancel when-roadmin-hide-me">
                     <button class="save_button float_right" type="submit">
                       Save
                     </button>
@@ -842,13 +843,36 @@
                   <ul id="installed_samples"></ul>
                   <h3>Available Samples</h3>
                   <ul id="available_samples"></ul>
-                    <div class="save_cancel">
+                    <div class="save_cancel when-roadmin-hide-me">
                     <button class="save_button float_right" type="submit"
                             id="sample_buckets_settings_btn">
                       Create
                     </button>
                    </div>
                 </form></div>
+                <div class="account_management_container when-roadmin-avoid-me">
+                  <form id="js_account_management_form">
+                    <fieldset>
+                      <label>
+                        <span>Username:</span><input type="text" name="username" maxlength="24">
+                        <i class="errors js_error_username"></i>
+                      </label>
+                      <label>
+                        <span>Password:</span><input type="password" name="password" maxlength="24">
+                        <i class="errors js_error_password"></i>
+                      </label>
+                      <label>
+                        <span>Verify Password:</span><input type="password" name="verifyPassword" maxlength="24">
+                        <i class="errors js_error_verifyPassword"></i>
+                      </label>
+                      <button type="submit" class="list_button"><span>Create</span></button>
+                    </fieldset>
+                  </form>
+                  <div id="js_account_delete">
+                    <p>There is already Read-Only User created</p>
+                    <p>Do you want to delete the Read-Only User <span class="list_button" id="js_delete_acc_btn"><span>Delete</span></span></p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -893,7 +917,7 @@
               update check is anonymous and does not include any stored
               key-value data.
             </p>
-            <div class="save_cancel">
+            <div class="save_cancel when-roadmin-hide-me">
               <button class="save_button float_right" type="button"
                       disabled="disabled">
                 Save
@@ -920,12 +944,12 @@
             {% if (count > 0) { %}
             <div class="count_reset">
               A server was automatically failed over
-              <a class="auto_failover_count_reset edit_btn">
+              <a class="auto_failover_count_reset edit_btn when-roadmin-hide-me">
                 <span>Reset Quota</span>
               </a>
             </div>
             {% } %}
-            <div class="save_cancel">
+            <div class="save_cancel when-roadmin-hide-me">
               <button class="save_button float_right" type="button"
                       disabled="disabled">
                 Save
@@ -988,7 +1012,7 @@
               <textarea id="email_alerts_recipients" disabled="disabled">{%= h(recipients) %}</textarea>
               <span style="vertical-align:top;margin:0 5px;line-height:24px">separate addresses with comma "," or semicolon ";" or spaces " "</span></div>
               <div class="error-container err-recipients"></div>
-              <div><button class="edit_btn" id="test_email">Test Mail</button> <span>using the settings above</span></div>
+              <div class="when-roadmin-avoid-me"><button class="edit_btn" id="test_email">Test Mail</button> <span>using the settings above</span></div>
             </fieldset>
             <fieldset id="email_alerts_alerts">
               <legend>Available Alerts</legend>
@@ -1007,7 +1031,7 @@
                 {% } %}
               </div>
             </fieldset>
-            <div class="save_cancel">
+            <div class="save_cancel when-roadmin-hide-me">
               <button class="save_button float_right" type="button"
                       disabled="disabled">
                 Save
@@ -1036,7 +1060,7 @@
                 </li>
               </ul>
               <div class="create_view">
-                <a class="button_200 btn_create when-in-dev"><span>Create Development View</span></a>
+                <a class="button_200 btn_create when-in-dev when-roadmin-hide-me"><span>Create Development View</span></a>
                 <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
               </div>
             </div>
@@ -1103,7 +1127,7 @@
                   </div>
                   <!-- {% } %} -->
                 </td>
-                <td colspan="3">
+                <td colspan="3" class="when-roadmin-hide-me">
                   <a class="list_button when-in-prod" href="#copyDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Copy to Dev</span></a>
                   <a class="list_button when-in-dev {%= ddoc.isEmpty ? 'dynamic_disabled' : ''%}" href="#publishDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Publish</span></a>
                   <a class="list_button when-in-dev" href="#addView={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add View</span></a>
@@ -1121,7 +1145,7 @@
                   <a style="display:block;line-height:33px;" href="{%=h(viewInfo.viewLink)%}">{%= h(viewInfo.name) %}</a>
                 </td>
                 <td>
-                  <a class="list_button btn_remove" href="{%=h(viewInfo.removeLink)%}"><span>Delete</span></a>
+                  <a class="list_button btn_remove when-roadmin-avoid-me" href="{%=h(viewInfo.removeLink)%}"><span>Delete</span></a>
                   <a class="list_button btn_edit" href="{%=h(viewInfo.viewLink)%}"><span>{%= ddoc.isDevModeDoc ? 'Edit' : 'Show' %}</span></a>
                 </td>
               </tr>
@@ -1133,7 +1157,7 @@
                   <a href="{%=h(spatialInfo.viewLink)%}">[Spatial] {%= h(spatialInfo.name) %}</a>
                 </td>
                 <td>
-                  <a class="list_button btn_remove" href="{%=h(spatialInfo.removeLink)%}"><span>Delete</span></a>
+                  <a class="list_button btn_remove when-roadmin-avoid-me" href="{%=h(spatialInfo.removeLink)%}"><span>Delete</span></a>
                 </td>
               </tr>
               <!-- {% }); %} -->
@@ -1180,7 +1204,7 @@
             <div class="shadow_box viewcode" id="viewcode" style="display:none;">
               <div class="darker_block js_darker_block">
                 <h3 class="js_block-expander block-expander"><ins></ins><span class="view_head">View Code</span>
-                  <span class="buttons">
+                  <span class="buttons when-roadmin-hide-me">
                     <a id="save_view_as" class="btn_1"><span>Save As...</span></a>
                     <a id="just_save_view" class="btn_1"><span>Save</span></a>
                   </span>
@@ -1455,7 +1479,7 @@
               <h3 class="js_block-expander block-expander">
                 <ins></ins><span class="view_head">Remote Clusters</span>
                 <span class="buttons">
-                  <a class="btn_1" id="create_cluster_reference">
+                  <a class="btn_1 when-roadmin-hide-me" id="create_cluster_reference">
                     <span>Create Cluster Reference</span>
                   </a>
                 </span>
@@ -1476,8 +1500,8 @@
                   <td>{%= h(r.name) %}</td>
                   <td><a href="{%= window.location.protocol +'//'+ h(r.hostname) + '/index.html#sec=analytics&amp;statsHostname=' + h(encodeURIComponent(r.hostname)) %}" target="blank">{%= h(r.hostname) %}</a></td>
                   <td>
-                    <a class="list_button edit-button"><span>Edit</span></a>
-                    <a class="list_button delete-button"><span>Delete</span></a>
+                    <a class="list_button edit-button when-roadmin-avoid-me"><span>Edit</span></a>
+                    <a class="list_button delete-button when-roadmin-avoid-me"><span>Delete</span></a>
                   </td>
                 </tr>
                 <!-- {% }); %} -->
@@ -1495,7 +1519,7 @@
               <h3>
                 <span class="view_head" style="padding-left: 0">Ongoing Replications</span>
                 <span class="buttons">
-                  <a class="btn_1" id="create_replication">
+                  <a class="btn_1 when-roadmin-hide-me" id="create_replication">
                     <span>Create Replication</span>
                   </a>
                 </span>
@@ -1522,7 +1546,7 @@
                   <td>{%= V.formatReplicationStatus(r) %}</td>
                   <td>{%= h(r.when) %}</td>
                   <td>
-                    <a class="list_button" href="#deleteReplication={%=h(encodeURIComponent(r.cancelURI))%}"><span>Delete</span></a>
+                    <a class="list_button when-roadmin-avoid-me" href="#deleteReplication={%=h(encodeURIComponent(r.cancelURI))%}"><span>Delete</span></a>
                   </td>
                 </tr>
                 <!-- {% }); %} -->
@@ -1562,7 +1586,7 @@
             <div id="documents_details" style="display:none;" class="shadow_box">
               <div class="header_2 servers_header">
                 <div class="docs_title"></div>
-                <div class="editing_ctrls">
+                <div class="editing_ctrls when-roadmin-hide-me">
                   <a class="btn_1 dynamic_disabled" id="doc_delete"><span>Delete</span></a>
                   <a class="btn_1 dynamic_disabled" id="doc_saveas"><span>Save As...</span></a>
                   <a class="btn_1 btn_save dynamic_disabled" id="doc_save"><span>Save</span></a>
@@ -1584,7 +1608,7 @@
                       <span>Lookup Id</span>
                     </button>
                   </form>
-                  <a class="btn_1 btn_create dynamic_disabled"><span>Create Document</span></a>
+                  <a class="btn_1 btn_create dynamic_disabled when-roadmin-avoid-me"><span>Create Document</span></a>
                   <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
                 </div>
                 <div class="ellipsis documents_notice"></div>
@@ -1624,7 +1648,7 @@
                           </td>
                           <td class="ellipsis" colspan="5">{%= $.futon.formatJSON(r.doc.json || r.doc.base64, {html:true}) %}</td>
                           <td colspan="3">
-                            <button class="list_button delete_btn" data-id="{%= h(r.id) %}"><span>Delete</span></button>
+                            <button class="list_button delete_btn when-roadmin-avoid-me" data-id="{%= h(r.id) %}"><span>Delete</span></button>
                             <a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}" class="list_button btn_edit"><span>Edit Document</span></a></td>
                       </tr>
                   <!-- {% }); %} -->
@@ -1887,7 +1911,7 @@
     </fieldset>
 
     <div class="save_cancel">
-      <span class="when-editing">
+      <span class="when-editing when-roadmin-hide-me">
         <button class="save_button float_right" type="submit">Save</button>
         <button class="delete_button">Delete</button>
         <button class="flush_button">Flush</button>
@@ -1935,6 +1959,20 @@
     </div>
     <div class="save_cancel clearfix">
       <button onClick="BucketsSection.removeCurrentBucket();" type="button" class="delete_button float_right">Delete</button>
+      <a class="close">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<div class="dialog" id="js_roadmin_remove_dialog" title="Removing">
+  <form>
+    <div class="clearfix">
+      <div class="err">
+        <p>Are you sure you want to remove it?</p>
+      </div>
+    </div>
+    <div class="save_cancel clearfix">
+      <button type="button" class="delete_button float_right js_delete_button">Delete</button>
       <a class="close">Cancel</a>
     </div>
   </form>

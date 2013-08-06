@@ -1262,3 +1262,20 @@ input[type=number].size {width:4em;}
 .dialog.bucket_details .disk_concurrency_settings p {margin-left: 10px;}
 .disk_concurrency_settings .error-container {float:none; font-size: 9px; display: none; width: auto; padding: 0; font-style: normal;}
 .disk_concurrency_settings .error-container.active {display: -moz-inline-stack; display: inline-block; zoom: 1; *display: inline;}
+
+.dynamic_when-roadmin .when-roadmin-hide-me {visibility: hidden!important;}
+.dynamic_when-roadmin .when-roadmin-avoid-me {display: none!important;}
+
+.account_management_container {font-size: 14px; padding: 30px 20px;}
+.account_management_container fieldset {overflow: hidden;}
+.account_management_container label {display: block; padding: 5px 0;}
+.account_management_container label span,
+.account_management_container label input,
+.account_management_container span.list_button {display: -moz-inline-stack; display: inline-block; zoom: 1; *display: inline; vertical-align: middle;}
+.account_management_container label span {width: 120px; text-align: right; margin-right: 5px;}
+.account_management_container label input {width: 200px; height: 20px;}
+.account_management_container button {margin-top: 20px; float: none; margin-left: 355px;}
+.account_management_container span.list_button {float: none; margin-left: 40px;}
+.account_management_container p {margin: 20px 10px;}
+.account_management_container .error {border: 1px solid red;}
+.account_management_container .errors {color: red;}
