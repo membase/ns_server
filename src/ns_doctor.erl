@@ -531,8 +531,12 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
                              _ ->
                                  [{status, notRunning}, {type, xdcr} | Doc2]
                          end,
+
                      CancelURI = menelaus_util:bin_concat_path(["controller", "cancelXDCR", Id]),
-                     [{cancelURI, CancelURI} | Doc3]
+                     SettingsURI = menelaus_util:bin_concat_path(["settings", "replications", Id]),
+
+                     [{cancelURI, CancelURI},
+                      {settingsURI, SettingsURI} | Doc3]
                  end || Doc0 <- AllRepDocs],
 
     SampleBucketTasks0 = lists:filter(fun (RawTask) ->

@@ -23,7 +23,8 @@
 -include("couch_db.hrl").
 -include("remote_clusters_info.hrl").
 
--export([handle_create_replication/1, handle_cancel_replication/2]).
+-export([handle_create_replication/1, handle_cancel_replication/2,
+         handle_replication_settings/2, handle_replication_settings_post/2]).
 
 -type replication_type() :: 'one-time' | continuous.
 
@@ -87,6 +88,60 @@ handle_cancel_replication(XID, Req) ->
         not_found ->
             menelaus_util:reply_json(Req, [], 404)
     end.
+
+handle_replication_settings(XID, Req) ->
+    with_replicator_doc(
+      Req, XID,
+      fun (RepDoc) ->
+              handle_replication_settings_body(RepDoc, Req)
+      end).
+
+handle_replication_settings_body(RepDoc, Req) ->
+    SettingsRaw = xdc_settings:extract_per_replication_settings(RepDoc),
+    Settings = [{key_to_request_key(K), V} || {K, V} <- SettingsRaw],
+    Json = {struct, Settings},
+    menelaus_util:reply_json(Req, Json, 200).
+
+handle_replication_settings_post(XID, Req) ->
+    with_replicator_doc(
+      Req, XID,
+      fun (#doc{body={Props}} = RepDoc) ->
+              Params = Req:parse_post(),
+
+              Specs = per_replication_settings_specs(),
+              {Settings, Remove, Errors} =
+                  lists:foldl(
+                    fun ({Key, ReqKey, Type},
+                         {AccSettings, AccRemove, AccErrors} = Acc) ->
+                            case proplists:get_value(ReqKey, Params) of
+                                undefined ->
+                                    Acc;
+                                "" ->
+                                    {AccSettings, [Key | AccRemove], AccErrors};
+                                Str ->
+                                    case parse_validate_by_type(Type, Str) of
+                                        {ok, V} ->
+                                            {[{Key, V} | AccSettings],
+                                             AccRemove, AccErrors};
+                                        Error ->
+                                            {AccSettings, AccRemove,
+                                             [{ReqKey, Error} | AccErrors]}
+                                    end
+                            end
+                    end, {[], [], []}, Specs),
+
+              case Errors of
+                  [] ->
+                      Props1 = [{K, V} || {K, V} <- Props,
+                                          not(lists:member(K, Remove))],
+                      Props2 = misc:update_proplist(Props1, Settings),
+                      RepDoc1 = RepDoc#doc{body={Props2}},
+                      ok = xdc_rdoc_replication_srv:update_doc(RepDoc1),
+                      handle_replication_settings_body(RepDoc1, Req);
+                  _ ->
+                      menelaus_util:reply_json(Req, {struct, Errors}, 400)
+              end
+      end).
 
 %% internal functions
 get_parameter(Name, Params, HumanName) ->
@@ -252,3 +307,47 @@ build_replication_doc(Type, FromBucket, ClusterUUID, ToBucket, ReplicationType) 
 
 replication_id(ClusterUUID, FromBucket, ToBucket) ->
     iolist_to_binary([ClusterUUID, $/, FromBucket, $/, ToBucket]).
+
+with_replicator_doc(Req, XID, Body) ->
+    case xdc_rdoc_replication_srv:get_full_replicator_doc(XID) of
+        not_found ->
+            menelaus_util:reply_404(Req);
+        {ok, Doc} ->
+            Body(Doc)
+    end.
+
+per_replication_settings_specs() ->
+    [{couch_util:to_binary(Key), key_to_request_key(Key), Type} ||
+        {Key, Type} <- xdc_settings:per_replication_settings_specs()].
+
+parse_validate_by_type({int, Min, Max}, Str) ->
+    case menelaus_util:parse_validate_number(Str, Min, Max) of
+        {ok, Parsed} ->
+            {ok, Parsed};
+        _Error ->
+            Msg = io_lib:format("The value must be an integer between ~b and ~b",
+                                [Min, Max]),
+            iolist_to_binary(Msg)
+    end;
+parse_validate_by_type(bool, Str) ->
+    case Str of
+        "true" ->
+            {ok, true};
+        "false" ->
+            {ok, false};
+        _ ->
+            <<"The value must be a boolean">>
+    end;
+parse_validate_by_type(term, Str) ->
+    case catch(couch_util:parse_term(Str)) of
+        {ok, Term} ->
+            {ok, Term};
+        _ ->
+            <<"The value must be an erlang term">>
+    end.
+
+key_to_request_key(Key) ->
+    KeyList = couch_util:to_list(Key),
+    [First | Rest] = string:tokens(KeyList, "_"),
+    RestCapitalized = [[string:to_upper(C) | TokenRest] || [C | TokenRest] <- Rest],
+    lists:concat([First | RestCapitalized]).
