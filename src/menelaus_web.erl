@@ -494,13 +494,13 @@ check_uuid(F, Args, Req) ->
 auth_check_bucket_uuid(Req, F, Args) ->
     menelaus_auth:apply_auth(Req, fun check_bucket_uuid/3, [F, Args]).
 
-check_bucket_uuid(F, [PoolId, Bucket | _] = Args, Req) ->
+check_bucket_uuid(F, [_PoolId, Bucket | _] = Args, Req) ->
     case ns_bucket:get_bucket(Bucket) of
         not_present ->
             menelaus_util:reply_404(Req);
         {ok, BucketConfig} ->
             menelaus_web_buckets:checking_bucket_uuid(
-              PoolId, Req, BucketConfig,
+              Req, BucketConfig,
               fun () ->
                       erlang:apply(F, Args ++ [Req])
               end)

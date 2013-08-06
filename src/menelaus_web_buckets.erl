@@ -28,7 +28,7 @@
 
 -export([all_accessible_bucket_names/2,
          checking_bucket_access/4,
-         checking_bucket_uuid/4,
+         checking_bucket_uuid/3,
          handle_bucket_list/2,
          handle_bucket_info/3,
          build_bucket_node_infos/4,
@@ -89,7 +89,7 @@ checking_bucket_access(_PoolId, Id, Req, Body) ->
             Req:respond({404, server_header(), "Requested resource not found.\r\n"})
     end.
 
-checking_bucket_uuid(_PoolId, Req, BucketConfig, Body) ->
+checking_bucket_uuid(Req, BucketConfig, Body) ->
     ReqUUID0 = proplists:get_value("bucket_uuid", Req:parse_qs()),
     case ReqUUID0 =/= undefined of
         true ->
