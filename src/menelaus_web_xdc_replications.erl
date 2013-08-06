@@ -104,10 +104,21 @@ get_parameter(Name, Params, HumanName) ->
     end.
 
 -spec screen_extract_new_replication_params([{string(), string()}]) ->
-    {ok, FromBucket :: string(), ToBucket :: string(), ReplicationType :: replication_type(), ToCluster :: string()} |
+    {ok, Type :: binary(), FromBucket :: string(), ToBucket :: string(),
+     ReplicationType :: replication_type(), ToCluster :: string()} |
     {error, [{FieldName::binary(), FieldMsg::binary()}]}.
 screen_extract_new_replication_params(Params) ->
-    Fields = [get_parameter("fromBucket", Params, <<"source bucket">>),
+    Fields = [case proplists:get_value("type", Params) of
+                  undefined ->
+                      {ok, <<"xdc-xmem">>};
+                  "capi" ->
+                      {ok, <<"xdc">>};
+                  "xmem" ->
+                      {ok, <<"xdc-xmem">>};
+                  _ ->
+                      {error, <<"type">>, <<"type is invalid">>}
+              end,
+              get_parameter("fromBucket", Params, <<"source bucket">>),
               get_parameter("toBucket", Params, <<"target bucket">>),
               case get_parameter("replicationType", Params, <<"replication type">>) of
                   {ok, "one-time"} -> {ok, 'one-time'};
@@ -126,10 +137,9 @@ screen_extract_new_replication_params(Params) ->
 
 parse_validate_new_replication_params(Params, Buckets) ->
     case screen_extract_new_replication_params(Params) of
-        {ok, FromBucket, ToBucket, ReplicationType, ToCluster} ->
-            case validate_new_replication_params_check_from_bucket(FromBucket, ToCluster,
-                                                                   ToBucket, ReplicationType,
-                                                                   Buckets) of
+        {ok, Type, FromBucket, ToBucket, ReplicationType, ToCluster} ->
+            case validate_new_replication_params_check_from_bucket(
+                   Type, FromBucket, ToCluster, ToBucket, ReplicationType, Buckets) of
                 {ok, ReplicationDoc} ->
                     ParsedParams = [{from_bucket, FromBucket},
                                     {to_bucket, ToBucket},
@@ -185,7 +195,7 @@ check_no_duplicated_replication(ClusterUUID, FromBucket, ToBucket) ->
         couch_db:close(Db)
     end.
 
-validate_new_replication_params_check_from_bucket(FromBucket, ToCluster, ToBucket,
+validate_new_replication_params_check_from_bucket(Type, FromBucket, ToCluster, ToBucket,
                                                   ReplicationType, Buckets) ->
     MaybeBucketError = check_from_bucket(FromBucket, Buckets),
     case MaybeBucketError of
@@ -198,7 +208,7 @@ validate_new_replication_params_check_from_bucket(FromBucket, ToCluster, ToBucke
                             case check_no_duplicated_replication(ClusterUUID,
                                                                  FromBucket, ToBucket) of
                                 ok ->
-                                    {ok, build_replication_doc(FromBucket,
+                                    {ok, build_replication_doc(Type, FromBucket,
                                                                ClusterUUID,
                                                                ToBucket,
                                                                ReplicationType)};
@@ -208,8 +218,8 @@ validate_new_replication_params_check_from_bucket(FromBucket, ToCluster, ToBucke
                         Errors ->
                             {error, Errors}
                     end;
-                {error, Type, Msg} when Type =:= not_present;
-                                        Type =:= not_capable ->
+                {error, ErrorType, Msg} when ErrorType =:= not_present;
+                                             ErrorType =:= not_capable ->
                     {error, [{<<"toBucket">>, Msg}]};
                 {error, cluster_not_found, Msg} ->
                     {error, [{<<"toCluster">>, Msg}]};
@@ -226,11 +236,11 @@ validate_new_replication_params_check_from_bucket(FromBucket, ToCluster, ToBucke
             {error, Errors}
     end.
 
-build_replication_doc(FromBucket, ClusterUUID, ToBucket, ReplicationType) ->
+build_replication_doc(Type, FromBucket, ClusterUUID, ToBucket, ReplicationType) ->
     Reference = remote_clusters_info:remote_bucket_reference(ClusterUUID, ToBucket),
 
     Body =
-        {[{type, <<"xdc">>},
+        {[{type, Type},
           {source, list_to_binary(FromBucket)},
           {target, Reference},
           {continuous, case ReplicationType of

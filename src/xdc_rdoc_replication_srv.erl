@@ -213,11 +213,11 @@ find_all_replication_docs_body(Doc0) ->
                                   _ when is_atom(K) -> [K];
                                   _ -> []
                               end],
-            case proplists:get_value(type, Props) =:= <<"xdc">> of
-                false ->
-                    undefined;
-                true ->
-                    [{id, Id} | Props]
+            case proplists:get_value(type, Props) of
+                V when V =:= <<"xdc">>; V =:= <<"xdc-xmem">> ->
+                    [{id, Id} | Props];
+                _ ->
+                    undefined
             end;
         _ ->
             undefined
