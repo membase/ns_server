@@ -1051,13 +1051,12 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
                       ns_cluster_membership:get_cluster_membership(
                         WantENode, Config),
                       latin1)},
-                   {status, Status}] ++ KV,
+                   {status, Status},
+                   {otpNode, list_to_binary(atom_to_list(WantENode))}
+                   | KV],
             KV2 = case IncludeOtp of
                       true ->
-                          [{otpNode,
-                            list_to_binary(
-                              atom_to_list(WantENode))},
-                           {otpCookie, OtpCookie}|KV1];
+                          [{otpCookie, OtpCookie} | KV1];
                       false -> KV1
                   end,
             KV3 = case Bucket of
