@@ -779,7 +779,8 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
                           {NowMegaSec, NowSec, _} = os:timestamp(),
                           NowEpoch = NowMegaSec * 1000000 + NowSec,
 
-                          Interval = get_purge_interval(BucketName) * 3600 * 24,
+                          Interval0 = get_purge_interval(BucketName) * 3600 * 24,
+                          Interval = erlang:round(Interval0),
 
                           PurgeTS0 = NowEpoch - Interval,
 
