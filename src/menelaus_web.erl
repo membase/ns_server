@@ -394,7 +394,7 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_remote_clusters:handle_remote_cluster_update/2, [Id]};
                          ["logClientError"] -> {auth,
                                                 fun (R) ->
-                                                        User = menelaus_auth:extract_auth(username, R),
+                                                        User = menelaus_auth:extract_auth_user(R),
                                                         ?MENELAUS_WEB_LOG(?UI_SIDE_ERROR_REPORT,
                                                                           "Client-side error-report for user ~p on node ~p:~nUser-Agent:~s~n~s~n",
                                                                           [User, node(),

@@ -25,7 +25,7 @@
          is_bucket_accessible/2,
          apply_auth_bucket/3,
          extract_auth/1,
-         extract_auth/2,
+         extract_auth_user/1,
          check_auth/1,
          check_auth_bucket/1,
          bucket_auth_fun/1,
@@ -143,7 +143,7 @@ check_auth({User, Password}, [{User, PropList} | _]) ->
 check_auth(UserPassword, [_NotRightUser | Rest]) ->
     check_auth(UserPassword, Rest).
 
-extract_auth(username, Req) ->
+extract_auth_user(Req) ->
     case Req:get_header_value("authorization") of
         "Basic " ++ Value ->
             parse_user(base64:decode_to_string(Value));
