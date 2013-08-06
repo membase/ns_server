@@ -31,7 +31,6 @@
          handle_bucket_list/2,
          handle_bucket_info/3,
          build_bucket_node_infos/4,
-         build_bucket_node_infos/5,
          handle_sasl_buckets_streaming/2,
          handle_bucket_info_streaming/3,
          handle_bucket_delete/3,
@@ -107,11 +106,8 @@ handle_bucket_info(PoolId, Id, Req) ->
                                       menelaus_util:local_addr(Req))).
 
 build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr) ->
-    build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr, false).
-
-build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr, IncludeOtp) ->
     %% Only list nodes this bucket is mapped to
-    F = menelaus_web:build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr),
+    F = menelaus_web:build_nodes_info_fun(false, InfoLevel, LocalAddr),
     misc:randomize(),
     Nodes = proplists:get_value(servers, BucketConfig, []),
     %% NOTE: there's potential inconsistency here between BucketConfig
