@@ -509,8 +509,7 @@ auth_check_bucket_uuid(Req, F, Args) ->
 check_bucket_uuid(F, [PoolId, Bucket | _] = Args, Req) ->
     case ns_bucket:get_bucket(Bucket) of
         not_present ->
-            Req:respond({404, server_header(),
-                         "Requested resource not found.\r\n"});
+            menelaus_util:reply_404(Req);
         {ok, BucketConfig} ->
             menelaus_web_buckets:checking_bucket_uuid(
               PoolId, Req, BucketConfig,
@@ -2506,7 +2505,7 @@ handle_cancel_xdcr(XID, Req) ->
 
             reply_json(Req, [], 200);
         not_found ->
-            reply_json(Req, [], 404)
+            menelaus_util:reply_404(Req)
     end.
 
 mk_integer_field_validator_error_maker(JSONName, Msg, Args) ->
