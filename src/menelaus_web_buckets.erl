@@ -27,7 +27,6 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([all_accessible_bucket_names/2,
-         checking_bucket_access/4,
          checking_bucket_uuid/3,
          handle_bucket_list/2,
          handle_bucket_info/3,
@@ -68,26 +67,6 @@ all_accessible_buckets(_PoolId, Req) ->
 
 all_accessible_bucket_names(PoolId, Req) ->
     [Name || {Name, _Config} <- all_accessible_buckets(PoolId, Req)].
-
-checking_bucket_access(_PoolId, Id, Req, Body) ->
-    E404 = make_ref(),
-    try
-        BucketTuple =
-            case ns_bucket:get_bucket(Id) of
-                not_present ->
-                    exit(E404);
-                {ok, V} ->
-                    {Id, V}
-            end,
-
-        case menelaus_auth:is_bucket_accessible(BucketTuple, Req) of
-            true -> apply(Body, [fakepool, element(2, BucketTuple)]);
-            _ -> menelaus_auth:require_auth(Req)
-        end
-    catch
-        exit:E404 ->
-            Req:respond({404, server_header(), "Requested resource not found.\r\n"})
-    end.
 
 checking_bucket_uuid(Req, BucketConfig, Body) ->
     ReqUUID0 = proplists:get_value("bucket_uuid", Req:parse_qs()),

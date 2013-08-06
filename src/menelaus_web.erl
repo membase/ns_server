@@ -447,24 +447,33 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
         {auth, F} -> auth(Req, F, []);
         {auth_cookie, F, Args} -> menelaus_auth:apply_auth_cookie(Req, F, Args);
         {auth, F, Args} -> auth(Req, F, Args);
-        {auth_bucket, F, [ArgPoolId, ArgBucketId | RestArgs]} ->
-            menelaus_web_buckets:checking_bucket_access(
-              ArgPoolId, ArgBucketId, Req,
-              fun (_, Bucket) ->
-                      menelaus_web_buckets:checking_bucket_uuid(
-                        ArgPoolId, Req, Bucket,
-                        fun () ->
-                                FArgs = [ArgPoolId, ArgBucketId] ++
-                                    RestArgs ++ [Req],
-                                apply(F, FArgs)
-                        end)
-              end);
+        {auth_bucket, F, Args} ->
+            auth_bucket(Req, F, Args);
         {auth_any_bucket, F} ->
             auth_any_bucket(Req, F, []);
         {auth_any_bucket, F, Args} ->
             auth_any_bucket(Req, F, Args);
         {auth_check_bucket_uuid, F, Args} ->
             auth_check_bucket_uuid(Req, F, Args)
+    end.
+
+auth_bucket(Req, F, [ArgPoolId, ArgBucketId | RestArgs]) ->
+    case ns_bucket:get_bucket(ArgBucketId) of
+        {ok, BucketConf} ->
+            case menelaus_auth:is_bucket_accessible(BucketConf, Req) of
+                true ->
+                    menelaus_web_buckets:checking_bucket_uuid(
+                      Req, BucketConf,
+                      fun () ->
+                              FArgs = [ArgPoolId, ArgBucketId] ++
+                                  RestArgs ++ [Req],
+                              apply(F, FArgs)
+                      end);
+                _ ->
+                    menelaus_auth:require_auth(Req)
+            end;
+        not_present ->
+            menelaus_util:reply_404(Req)
     end.
 
 auth(Req, F, Args) ->
