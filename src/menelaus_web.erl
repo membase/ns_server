@@ -57,7 +57,7 @@
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
 -export([handle_streaming_wakeup/4,
-         handle_pool_info_wait_wake/5]).
+         handle_pool_info_wait_wake/4]).
 
 -import(menelaus_util,
         [server_header/0,
@@ -808,39 +808,40 @@ check_and_handle_pool_info(Id, Req) ->
     end.
 
 handle_pool_info(Id, Req) ->
-    UserPassword = menelaus_auth:extract_auth(Req),
     LocalAddr = menelaus_util:local_addr(Req),
     Query = Req:parse_qs(),
     WaitChangeS = proplists:get_value("waitChange", Query),
     PassedETag = proplists:get_value("etag", Query),
     case WaitChangeS of
-        undefined -> reply_json(Req, build_pool_info(Id, UserPassword, normal, LocalAddr));
+        undefined -> reply_json(Req, build_pool_info(Id, menelaus_auth:is_under_admin(Req),
+                                                     normal, LocalAddr));
         _ ->
             WaitChange = list_to_integer(WaitChangeS),
             menelaus_event:register_watcher(self()),
             erlang:send_after(WaitChange, self(), wait_expired),
-            handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, PassedETag)
+            handle_pool_info_wait(Req, Id, LocalAddr, PassedETag)
     end.
 
-handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, PassedETag) ->
-    Info = mochijson2:encode(build_pool_info(Id, UserPassword, stable, LocalAddr)),
+handle_pool_info_wait(Req, Id, LocalAddr, PassedETag) ->
+    Info = mochijson2:encode(build_pool_info(Id, menelaus_auth:is_under_admin(Req),
+                                             stable, LocalAddr)),
     ETag = integer_to_list(erlang:phash2(Info)),
     if
         ETag =:= PassedETag ->
             erlang:hibernate(?MODULE, handle_pool_info_wait_wake,
-                             [Req, Id, UserPassword, LocalAddr, PassedETag]);
+                             [Req, Id, LocalAddr, PassedETag]);
         true ->
-            handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag)
+            handle_pool_info_wait_tail(Req, Id, LocalAddr, ETag)
     end.
 
-handle_pool_info_wait_wake(Req, Id, UserPassword, LocalAddr, PassedETag) ->
+handle_pool_info_wait_wake(Req, Id, LocalAddr, PassedETag) ->
     receive
         wait_expired ->
-            handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, PassedETag);
+            handle_pool_info_wait_tail(Req, Id, LocalAddr, PassedETag);
         {notify_watcher, _} ->
             timer:sleep(200), %% delay a bit to catch more notifications
             consume_notifications(),
-            handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, PassedETag);
+            handle_pool_info_wait(Req, Id, LocalAddr, PassedETag);
         _ ->
             exit(normal)
     end.
@@ -852,12 +853,13 @@ consume_notifications() ->
             done
     end.
 
-handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag) ->
+handle_pool_info_wait_tail(Req, Id, LocalAddr, ETag) ->
     menelaus_event:unregister_watcher(self()),
     %% consume all notifications
     consume_notifications(),
     %% and reply
-    {struct, PList} = build_pool_info(Id, UserPassword, for_ui, LocalAddr),
+    {struct, PList} = build_pool_info(Id, menelaus_auth:is_under_admin(Req),
+                                      for_ui, LocalAddr),
     Info = {struct, [{etag, list_to_binary(ETag)} | PList]},
     reply_json(Req, Info),
     %% this will cause some extra latency on ui perhaps,
@@ -866,10 +868,10 @@ handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag) ->
     exit(normal).
 
 
-build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
+build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
     UUID = get_uuid(),
 
-    F = build_nodes_info_fun(menelaus_auth:check_auth(UserPassword), InfoLevel, LocalAddr),
+    F = build_nodes_info_fun(IsAdmin, InfoLevel, LocalAddr),
     Nodes = [F(N, undefined) || N <- ns_node_disco:nodes_wanted()],
     Config = ns_config:get(),
     BucketsVer = erlang:phash2(ns_bucket:get_bucket_names(Config))
@@ -1172,9 +1174,11 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
     end.
 
 handle_pool_info_streaming(Id, Req) ->
-    UserPassword = menelaus_auth:extract_auth(Req),
     LocalAddr = menelaus_util:local_addr(Req),
-    F = fun(InfoLevel) -> build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) end,
+    F = fun(InfoLevel) ->
+                build_pool_info(Id, menelaus_auth:is_under_admin(Req),
+                                InfoLevel, LocalAddr)
+        end,
     handle_streaming(F, Req, undefined).
 
 handle_streaming(F, Req, LastRes) ->
