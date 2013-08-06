@@ -30,7 +30,7 @@
          checking_bucket_access/4,
          checking_bucket_uuid/4,
          handle_bucket_list/2,
-         handle_bucket_info/5,
+         handle_bucket_info/3,
          build_bucket_node_infos/4,
          build_bucket_node_infos/5,
          handle_sasl_buckets_streaming/2,
@@ -48,7 +48,7 @@
          handle_cancel_databases_compaction/3,
          handle_compact_view/4,
          handle_cancel_view_compaction/4,
-         handle_ddocs_list/5,
+         handle_ddocs_list/3,
          handle_set_ddoc_update_min_changes/4,
          handle_local_random_key/3]).
 
@@ -119,12 +119,12 @@ handle_bucket_list(Id, Req) ->
                    || Name <- BucketNames],
     reply_json(Req, BucketsInfo).
 
-handle_bucket_info(PoolId, Id, Req, _Pool, Bucket) ->
+handle_bucket_info(PoolId, Id, Req) ->
     InfoLevel = case proplists:get_value("basic_stats", Req:parse_qs()) of
                     undefined -> normal;
                     _ -> for_ui
                 end,
-    reply_json(Req, build_bucket_info(PoolId, Id, Bucket, InfoLevel,
+    reply_json(Req, build_bucket_info(PoolId, Id, undefined, InfoLevel,
                                       menelaus_util:local_addr(Req))).
 
 build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr) ->
@@ -1111,7 +1111,8 @@ basic_bucket_params_screening_test() ->
 
 -endif.
 
-handle_ddocs_list(PoolId, BucketName, Req, _, BucketConfig) ->
+handle_ddocs_list(PoolId, BucketName, Req) ->
+    {ok, BucketConfig} = ns_bucket:get_bucket(BucketName),
     FoundBucket = ns_bucket:bucket_type(BucketConfig) =:= membase
         andalso lists:member(node(), ns_bucket:bucket_nodes(BucketConfig)),
     case FoundBucket of

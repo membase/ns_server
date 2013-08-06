@@ -185,13 +185,13 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["pools", PoolId, "saslBucketsStreaming"] ->
                              {auth, fun menelaus_web_buckets:handle_sasl_buckets_streaming/2, [PoolId]};
                          ["pools", PoolId, "buckets", Id] ->
-                             {auth_bucket_with_info, fun menelaus_web_buckets:handle_bucket_info/5,
+                             {auth_bucket, fun menelaus_web_buckets:handle_bucket_info/3,
                               [PoolId, Id]};
                          ["pools", PoolId, "bucketsStreaming", Id] ->
                              {auth_bucket, fun menelaus_web_buckets:handle_bucket_info_streaming/3,
                               [PoolId, Id]};
                          ["pools", PoolId, "buckets", Id, "ddocs"] ->
-                             {auth_bucket_with_info, fun menelaus_web_buckets:handle_ddocs_list/5, [PoolId, Id]};
+                             {auth_bucket, fun menelaus_web_buckets:handle_ddocs_list/3, [PoolId, Id]};
                          ["pools", PoolId, "buckets", Id, "stats"] ->
                              {auth_bucket, fun menelaus_stats:handle_bucket_stats/3,
                               [PoolId, Id]};
@@ -447,18 +447,6 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
         {auth, F} -> auth(Req, F, []);
         {auth_cookie, F, Args} -> menelaus_auth:apply_auth_cookie(Req, F, Args);
         {auth, F, Args} -> auth(Req, F, Args);
-        {auth_bucket_with_info, F, [ArgPoolId, ArgBucketId | RestArgs]} ->
-            menelaus_web_buckets:checking_bucket_access(
-              ArgPoolId, ArgBucketId, Req,
-              fun (Pool, Bucket) ->
-                      menelaus_web_buckets:checking_bucket_uuid(
-                        ArgPoolId, Req, Bucket,
-                        fun () ->
-                                FArgs = [ArgPoolId, ArgBucketId] ++
-                                    RestArgs ++ [Req, Pool, Bucket],
-                                apply(F, FArgs)
-                        end)
-              end);
         {auth_bucket, F, [ArgPoolId, ArgBucketId | RestArgs]} ->
             menelaus_web_buckets:checking_bucket_access(
               ArgPoolId, ArgBucketId, Req,
