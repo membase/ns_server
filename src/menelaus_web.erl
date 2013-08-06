@@ -177,7 +177,7 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["pools", Id] ->
                              {auth_any_bucket, fun check_and_handle_pool_info/2, [Id]};
                          ["pools", Id, "overviewStats"] ->
-                             {auth, fun menelaus_stats:handle_overview_stats/2, [Id]};
+                             {auth_ro, fun menelaus_stats:handle_overview_stats/2, [Id]};
                          ["poolsStreaming", Id] ->
                              {auth_any_bucket, fun handle_pool_info_streaming/2, [Id]};
                          ["pools", PoolId, "buckets"] ->
@@ -221,39 +221,39 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_recovery:handle_recovery_status/3,
                               [PoolId, Id]};
                          ["pools", "default", "remoteClusters"] ->
-                             {auth, fun menelaus_web_remote_clusters:handle_remote_clusters/1};
+                             {auth_ro, fun menelaus_web_remote_clusters:handle_remote_clusters/1};
                          ["nodeStatuses"] ->
-                             {auth, fun handle_node_statuses/1};
+                             {auth_ro, fun handle_node_statuses/1};
                          ["logs"] ->
-                             {auth, fun menelaus_alert:handle_logs/1};
+                             {auth_ro, fun menelaus_alert:handle_logs/1};
                          ["alerts"] ->
-                             {auth, fun menelaus_alert:handle_alerts/1};
+                             {auth_ro, fun menelaus_alert:handle_alerts/1};
                          ["settings", "web"] ->
-                             {auth, fun handle_settings_web/1};
+                             {auth_ro, fun handle_settings_web/1};
                          ["settings", "alerts"] ->
-                             {auth, fun handle_settings_alerts/1};
+                             {auth_ro, fun handle_settings_alerts/1};
                          ["settings", "stats"] ->
-                             {auth, fun handle_settings_stats/1};
+                             {auth_ro, fun handle_settings_stats/1};
                          ["settings", "autoFailover"] ->
-                             {auth, fun handle_settings_auto_failover/1};
+                             {auth_ro, fun handle_settings_auto_failover/1};
                          ["settings", "maxParallelIndexers"] ->
-                             {auth, fun handle_settings_max_parallel_indexers/1};
+                             {auth_ro, fun handle_settings_max_parallel_indexers/1};
                          ["settings", "viewUpdateDaemon"] ->
-                             {auth, fun handle_settings_view_update_daemon/1};
+                             {auth_ro, fun handle_settings_view_update_daemon/1};
                          ["settings", "autoCompaction"] ->
-                             {auth, fun handle_settings_auto_compaction/1};
+                             {auth_ro, fun handle_settings_auto_compaction/1};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings/1};
                          ["nodes", NodeId] ->
-                             {auth, fun handle_node/2, [NodeId]};
+                             {auth_ro, fun handle_node/2, [NodeId]};
                          ["diag"] ->
-                             {auth_cookie, fun diag_handler:handle_diag/1};
+                             {auth_cookie, fun diag_handler:handle_diag/1, []};
                          ["diag", "vbuckets"] -> {auth, fun handle_diag_vbuckets/1};
                          ["diag", "masterEvents"] -> {auth, fun handle_diag_master_events/1};
                          ["pools", PoolId, "rebalanceProgress"] ->
-                             {auth, fun handle_rebalance_progress/2, [PoolId]};
+                             {auth_ro, fun handle_rebalance_progress/2, [PoolId]};
                          ["pools", PoolId, "tasks"] ->
-                             {auth, fun handle_tasks/2, [PoolId]};
+                             {auth_ro, fun handle_tasks/2, [PoolId]};
                          ["index.html"] ->
                              {done, serve_static_file(Req, {AppRoot, Path},
                                                       "text/html; charset=utf8",
@@ -267,16 +267,16 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["dotsvg", Bucket] ->
                              {auth_cookie, fun handle_dotsvg/2, [Bucket]};
                          ["sasl_logs"] ->
-                             {auth_cookie, fun diag_handler:handle_sasl_logs/1};
+                             {auth_cookie, fun diag_handler:handle_sasl_logs/1, []};
                          ["sasl_logs", LogName] ->
                              {auth_cookie, fun diag_handler:handle_sasl_logs/2, [LogName]};
                          ["erlwsh" | _] ->
-                             {auth_cookie, fun (R) -> erlwsh_web:loop(R, erlwsh_deps:local_path(["priv", "www"])) end};
+                             {auth_cookie, fun (R) -> erlwsh_web:loop(R, erlwsh_deps:local_path(["priv", "www"])) end, []};
                          ["images" | _] ->
                              {done, Req:serve_file(Path, AppRoot,
                                                    [{"Cache-Control", "max-age=30000000"}])};
                          ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
-                         ["sampleBuckets"] -> {auth, fun handle_sample_buckets/1};
+                         ["sampleBuckets"] -> {auth_ro, fun handle_sample_buckets/1};
                          _ ->
                              {done, Req:serve_file(Path, AppRoot,
                                                    [{"Cache-Control", "max-age=10"}])}
@@ -353,7 +353,7 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_buckets:handle_bucket_create/2,
                               [PoolId]};
                          ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
-                             {auth_bucket,
+                             {auth_bucket_mutate,
                               fun menelaus_web_buckets:handle_bucket_flush/3, [PoolId, Id]};
                          ["pools", PoolId, "buckets", Id, "controller", "compactBucket"] ->
                              {auth_check_bucket_uuid,
@@ -443,12 +443,15 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
              end,
     case Action of
         {done, RV} -> RV;
-        {auth_cookie, F} -> menelaus_auth:apply_auth_cookie(Req, F, []);
+        {auth_ro, F} -> auth_ro(Req, F, []);
+        {auth_ro, F, Args} -> auth_ro(Req, F, Args);
         {auth, F} -> auth(Req, F, []);
         {auth_cookie, F, Args} -> menelaus_auth:apply_auth_cookie(Req, F, Args);
         {auth, F, Args} -> auth(Req, F, Args);
+        {auth_bucket_mutate, F, Args} ->
+            auth_bucket(Req, F, Args, false);
         {auth_bucket, F, Args} ->
-            auth_bucket(Req, F, Args);
+            auth_bucket(Req, F, Args, true);
         {auth_any_bucket, F} ->
             auth_any_bucket(Req, F, []);
         {auth_any_bucket, F, Args} ->
@@ -457,10 +460,10 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
             auth_check_bucket_uuid(Req, F, Args)
     end.
 
-auth_bucket(Req, F, [ArgPoolId, ArgBucketId | RestArgs]) ->
+auth_bucket(Req, F, [ArgPoolId, ArgBucketId | RestArgs], ReadOnlyOk) ->
     case ns_bucket:get_bucket(ArgBucketId) of
         {ok, BucketConf} ->
-            case menelaus_auth:is_bucket_accessible(BucketConf, Req) of
+            case menelaus_auth:is_bucket_accessible(BucketConf, Req, ReadOnlyOk) of
                 true ->
                     menelaus_web_buckets:checking_bucket_uuid(
                       Req, BucketConf,
@@ -479,8 +482,11 @@ auth_bucket(Req, F, [ArgPoolId, ArgBucketId | RestArgs]) ->
 auth(Req, F, Args) ->
     menelaus_auth:apply_auth(Req, fun check_uuid/3, [F, Args]).
 
+auth_ro(Req, F, Args) ->
+    menelaus_auth:apply_ro_auth(Req, fun check_uuid/3, [F, Args]).
+
 auth_any_bucket(Req, F, Args) ->
-    menelaus_auth:apply_auth_bucket(Req, fun check_uuid/3, [F, Args]).
+    menelaus_auth:apply_auth_any_bucket(Req, fun check_uuid/3, [F, Args]).
 
 check_uuid(F, Args, Req) ->
     ReqUUID0 = proplists:get_value("uuid", Req:parse_qs()),
@@ -670,9 +676,11 @@ handle_pools(Req) ->
             _ -> []
         end,
     Auth = menelaus_auth:extract_auth(Req),
+    ReadOnlyAdmin = menelaus_auth:is_read_only_auth(Auth),
+    Admin = ReadOnlyAdmin orelse menelaus_auth:check_auth(Auth),
     reply_json(Req,{struct, [{pools, EffectivePools},
-                             {isAdminCreds, menelaus_auth:check_auth(Auth)},
-                             {isROAdminCreds, menelaus_auth:is_read_only_auth(Auth)},
+                             {isAdminCreds, Admin},
+                             {isROAdminCreds, ReadOnlyAdmin},
                              {isROAdminExist, menelaus_auth:is_read_only_admin_exist()},
                              {settings,
                               {struct,

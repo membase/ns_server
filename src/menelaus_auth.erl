@@ -19,16 +19,15 @@
 -author('Northscale <info@northscale.com>').
 
 -export([apply_auth/3,
+         apply_ro_auth/3,
          apply_auth_cookie/3,
          require_auth/1,
          filter_accessible_buckets/2,
-         is_bucket_accessible/2,
-         apply_auth_bucket/3,
+         is_bucket_accessible/3,
+         apply_auth_any_bucket/3,
          extract_auth/1,
          extract_auth_user/1,
          check_auth/1,
-         check_auth_bucket/1,
-         bucket_auth_fun/1,
          parse_user_password/1,
          is_under_admin/1,
          is_read_only_admin_exist/0,
@@ -59,23 +58,27 @@ require_auth(Req) ->
 %% credentials
 filter_accessible_buckets(BucketsAll, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
-    F = bucket_auth_fun(UserPassword),
+    F = bucket_auth_fun(UserPassword, true),
     [Bucket || Bucket <- BucketsAll, F(Bucket)].
 
 %% returns true if given bucket is accessible with current
 %% credentials. No auth buckets are always accessible. SASL auth
 %% buckets are accessible only with admin or bucket credentials.
-is_bucket_accessible(Bucket, Req) ->
+is_bucket_accessible(Bucket, Req, ReadOnlyOk) ->
     UserPassword = menelaus_auth:extract_auth(Req),
-    F = bucket_auth_fun(UserPassword),
+    F = bucket_auth_fun(UserPassword, ReadOnlyOk),
     F(Bucket).
 
 apply_auth(Req, F, Args) ->
     UserPassword = extract_auth(Req),
-    apply_auth_with_auth_data(Req, F, Args, UserPassword).
+    apply_auth_with_auth_data(Req, F, Args, UserPassword, fun check_auth/1).
 
-apply_auth_with_auth_data(Req, F, Args, UserPassword) ->
-    case check_auth(UserPassword) of
+apply_ro_auth(Req, F, Args) ->
+    UserPassword = extract_auth(Req),
+    apply_auth_with_auth_data(Req, F, Args, UserPassword, fun check_ro_auth/1).
+
+apply_auth_with_auth_data(Req, F, Args, UserPassword, AuthFun) ->
+    case AuthFun(UserPassword) of
         true -> apply(F, Args ++ [Req]);
         _ -> require_auth(Req)
     end.
@@ -94,15 +97,15 @@ apply_auth_cookie(Req, F, Args) ->
                            end;
                        X -> X
                    end,
-    apply_auth_with_auth_data(Req, F, Args, UserPassword).
+    apply_auth_with_auth_data(Req, F, Args, UserPassword, fun check_auth/1).
 
 %% applies given function F if current credentials allow access to at
 %% least single SASL-auth bucket. So admin credentials and bucket
 %% credentials works. Other credentials do not allow access. Empty
 %% credentials are not allowed too.
-apply_auth_bucket(Req, F, Args) ->
+apply_auth_any_bucket(Req, F, Args) ->
     UserPassword = extract_auth(Req),
-    case check_auth_bucket(UserPassword) of
+    case check_auth_any_bucket(UserPassword) of
         true -> apply(F, Args ++ [Req]);
         _    -> apply_auth(Req, F, Args)
     end.
@@ -113,9 +116,9 @@ apply_auth_bucket(Req, F, Args) ->
 
 %% Checks if given credentials allow access to any SASL-auth
 %% bucket.
-check_auth_bucket(UserPassword) ->
+check_auth_any_bucket(UserPassword) ->
     Buckets = ns_bucket:get_buckets(),
-    lists:any(bucket_auth_fun(UserPassword),
+    lists:any(bucket_auth_fun(UserPassword, true),
               Buckets).
 
 %% checks if given credentials are admin credentials
@@ -123,8 +126,11 @@ check_auth(UserPassword) ->
     case ns_config:search_prop('latest-config-marker', rest_creds, creds, empty) of
         []    -> true; % An empty list means no login/password auth check.
         empty -> true; % An empty list means no login/password auth check.
-        Creds -> check_auth(UserPassword, Creds) orelse is_read_only_auth(UserPassword)
+        Creds -> check_auth(UserPassword, Creds)
     end.
+
+check_ro_auth(UserPassword) ->
+    is_read_only_auth(UserPassword) orelse check_auth(UserPassword).
 
 is_read_only_auth(UserPassword) ->
     ns_config:search(read_only_user_creds) =:= {value, UserPassword}.
@@ -183,8 +189,12 @@ parse_user(UserPasswordStr) ->
 %%
 %% NOTE: that no-auth buckets are always accessible even without
 %% password at all
-bucket_auth_fun(UserPassword) ->
-    case check_auth(UserPassword) of
+bucket_auth_fun(UserPassword, ReadOnlyOk) ->
+    IsAdmin = case ReadOnlyOk of
+                  true -> check_ro_auth(UserPassword);
+                  _ -> check_auth(UserPassword)
+              end,
+    case IsAdmin of
         true ->
             fun (_) -> true end;
         false ->
