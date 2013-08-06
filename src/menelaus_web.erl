@@ -46,7 +46,7 @@
          handle_streaming/3,
          is_system_provisioned/0,
          maybe_cleanup_old_buckets/0,
-         checking_bucket_hostname_access/5,
+         find_bucket_hostname/3,
          build_auto_compaction_settings/1,
          parse_validate_auto_compaction_settings/1,
          parse_validate_bucket_auto_compaction_settings/1,
@@ -2232,40 +2232,34 @@ handle_reset_alerts(Req) ->
 %%
 %% Provides a list of nodes for a specific bucket (generally all nodes) with
 %% links to stats for that bucket
-handle_bucket_node_list(PoolId, BucketName, Req) ->
-    menelaus_web_buckets:checking_bucket_access(
-      PoolId, BucketName, Req,
-      fun (_Pool, BucketPList) ->
-              Nodes = menelaus_web_buckets:build_bucket_node_infos(BucketName, BucketPList,
-                                                                   stable, menelaus_util:local_addr(Req)),
-              Servers =
-                  [begin
-                       Hostname = proplists:get_value(hostname, N),
-                       {struct,
-                        [{hostname, Hostname},
-                         {uri, bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", Hostname])},
-                         {stats, {struct, [{uri,
-                                            bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", Hostname, "stats"])}]}}]}
-                   end || {struct, N} <- Nodes],
-              reply_json(Req, {struct, [{servers, Servers}]})
-      end).
+handle_bucket_node_list(_PoolId, BucketName, Req) ->
+    {ok, BucketPList} = ns_bucket:get_bucket(BucketName),
+    Nodes = menelaus_web_buckets:build_bucket_node_infos(BucketName, BucketPList,
+                                                         stable, menelaus_util:local_addr(Req)),
+    Servers =
+        [begin
+             Hostname = proplists:get_value(hostname, N),
+             {struct,
+              [{hostname, Hostname},
+               {uri, bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", Hostname])},
+               {stats, {struct, [{uri,
+                                  bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", Hostname, "stats"])}]}}]}
+         end || {struct, N} <- Nodes],
+    reply_json(Req, {struct, [{servers, Servers}]}).
 
-checking_bucket_hostname_access(PoolId, BucketName, Hostname, Req, Body) ->
-    menelaus_web_buckets:checking_bucket_access(
-      PoolId, BucketName, Req,
-      fun (_Pool, BucketPList) ->
-              Nodes = menelaus_web_buckets:build_bucket_node_infos(BucketName, BucketPList,
-                                                                   stable, menelaus_util:local_addr(Req), true),
-              BinHostname = list_to_binary(Hostname),
-              case lists:filter(fun ({struct, PList}) ->
-                                        proplists:get_value(hostname, PList) =:= BinHostname
-                                end, Nodes) of
-                  [{struct, NodeInfo}] ->
-                      Body(Req, BucketPList, NodeInfo);
-                  [] ->
-                      Req:respond({404, server_header(), "Requested resource not found.\r\n"})
-              end
-      end).
+find_bucket_hostname(BucketName, Hostname, Req) ->
+    Config = ns_config:get(),
+    {ok, BucketPList} = ns_bucket:get_bucket(BucketName, Config),
+    Nodes = ns_bucket:bucket_nodes(BucketPList),
+    LocalAddr = menelaus_util:local_addr(Req),
+    BucketHostnames = [{N, build_node_hostname(Config, N, LocalAddr)} || N <- Nodes],
+    case [N || {N, CandidateHostname} <- BucketHostnames,
+               CandidateHostname =:= Hostname] of
+        [] ->
+            false;
+        [Node] ->
+            {ok, Node}
+    end.
 
 %% Per-Node Stats URL information
 %% GET /pools/{PoolID}/buckets/{Id}/nodes/{NodeId}
@@ -2274,17 +2268,18 @@ checking_bucket_hostname_access(PoolId, BucketName, Hostname, Req, Body) ->
 %% stats for the default bucket
 %%
 %% TODO: consider what else might be of value here
-handle_bucket_node_info(PoolId, BucketName, Hostname, Req) ->
-    checking_bucket_hostname_access(
-      PoolId, BucketName, Hostname, Req,
-      fun (_Req, _BucketPList, _NodeInfo) ->
-              BucketURI = bin_concat_path(["pools", "default", "buckets", BucketName]),
-              NodeStatsURI = bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", Hostname, "stats"]),
-              reply_json(Req,
-                         {struct, [{hostname, list_to_binary(Hostname)},
-                                   {bucket, {struct, [{uri, BucketURI}]}},
-                                   {stats, {struct, [{uri, NodeStatsURI}]}}]})
-      end).
+handle_bucket_node_info(_PoolId, BucketName, Hostname, Req) ->
+    case find_bucket_hostname(BucketName, Hostname, Req) of
+        false ->
+            menelaus_util:reply_404(Req);
+        _ ->
+            BucketURI = bin_concat_path(["pools", "default", "buckets", BucketName]),
+            NodeStatsURI = bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", Hostname, "stats"]),
+            reply_json(Req,
+                       {struct, [{hostname, list_to_binary(Hostname)},
+                                 {bucket, {struct, [{uri, BucketURI}]}},
+                                 {stats, {struct, [{uri, NodeStatsURI}]}}]})
+    end.
 
 %% this serves fresh nodes replication and health status
 handle_node_statuses(Req) ->

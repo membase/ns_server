@@ -165,29 +165,29 @@ handle_bucket_stats(PoolId, Id, Req) ->
 %% Per-node stats match bucket stats with the addition of a 'hostname' key,
 %% stats specific to the node (obviously), and removal of any cross-node stats
 handle_bucket_node_stats(PoolId, BucketName, HostName, Req) ->
-    menelaus_web:checking_bucket_hostname_access(
-      PoolId, BucketName, HostName, Req,
-      fun (_Req, _BucketInfo, HostInfo) ->
-              Node = binary_to_atom(proplists:get_value(otpNode, HostInfo), latin1),
-              Params = Req:parse_qs(),
-              {struct, [{op, {struct, OpsPropList}}]} = build_bucket_stats_ops_response(PoolId, [Node], BucketName, Params),
+    case menelaus_web:find_bucket_hostname(BucketName, HostName, Req) of
+        false ->
+            menelaus_util:reply_404(Req);
+        {ok, Node} ->
+            Params = Req:parse_qs(),
+            {struct, [{op, {struct, OpsPropList}}]} = build_bucket_stats_ops_response(PoolId, [Node], BucketName, Params),
 
-              SystemStatsSamples =
-                  case grab_aggregate_op_stats("@system", [Node], Params) of
-                      {SystemRawSamples, _, _, _} ->
-                          samples_to_proplists(SystemRawSamples, BucketName)
-                  end,
-              {samples, {struct, OpsSamples}} = lists:keyfind(samples, 1, OpsPropList),
+            SystemStatsSamples =
+                case grab_aggregate_op_stats("@system", [Node], Params) of
+                    {SystemRawSamples, _, _, _} ->
+                        samples_to_proplists(SystemRawSamples, BucketName)
+                end,
+            {samples, {struct, OpsSamples}} = lists:keyfind(samples, 1, OpsPropList),
 
-              ModifiedOpsPropList = lists:keyreplace(samples, 1, OpsPropList, {samples, {struct, SystemStatsSamples ++ OpsSamples}}),
-              Ops = [{op, {struct, ModifiedOpsPropList}}],
+            ModifiedOpsPropList = lists:keyreplace(samples, 1, OpsPropList, {samples, {struct, SystemStatsSamples ++ OpsSamples}}),
+            Ops = [{op, {struct, ModifiedOpsPropList}}],
 
-              {struct, HKS} = jsonify_hks(hot_keys_keeper:bucket_hot_keys(BucketName, Node)),
-              menelaus_util:reply_json(
-                Req,
-                {struct, [{hostname, list_to_binary(HostName)}
-                          | HKS ++ Ops]})
-      end).
+            {struct, HKS} = jsonify_hks(hot_keys_keeper:bucket_hot_keys(BucketName, Node)),
+            menelaus_util:reply_json(
+              Req,
+              {struct, [{hostname, list_to_binary(HostName)}
+                        | HKS ++ Ops]})
+      end.
 
 %% Specific Stat URL for all buckets
 %% GET /pools/{PoolID}/buckets/{Id}/stats/{StatName}
@@ -210,15 +210,11 @@ handle_specific_stat_for_buckets(PoolId, Id, StatName, Req) ->
 %%     \"nodeStats\": [{\"127.0.0.1:9000\": [1,2,3,4,5]},
 %%                     {\"127.0.0.1:9001\": [1,2,3,4,5]}]
 %%   }">>}).
-handle_specific_stat_for_buckets_group_per_node(PoolId, BucketName, StatName, Req) ->
-    menelaus_web_buckets:checking_bucket_access(
-      PoolId, BucketName, Req,
-      fun (_Pool, _BucketConfig) ->
-              Params = Req:parse_qs(),
-              menelaus_util:reply_json(
-                Req,
-                build_per_node_stats(BucketName, StatName, Params, menelaus_util:local_addr(Req)))
-      end).
+handle_specific_stat_for_buckets_group_per_node(_PoolId, BucketName, StatName, Req) ->
+    Params = Req:parse_qs(),
+    menelaus_util:reply_json(
+      Req,
+      build_per_node_stats(BucketName, StatName, Params, menelaus_util:local_addr(Req))).
 
 build_simple_stat_extractor(StatAtom, StatBinary) ->
     fun (#stat_entry{timestamp = TS, values = VS}) ->
