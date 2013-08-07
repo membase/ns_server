@@ -301,8 +301,10 @@ main_main(Flags, []) ->
                                   erlang:setelement(Field, Acc, Value)
                           end, #config{}, Flags),
     Config = massage_config(Config0),
+
     erlang:put(config, Config),
     StaticPath = Config#config.static_config,
+
     case StaticPath of
         undefined ->
             case Config of
@@ -518,6 +520,8 @@ dig_rest_port(KV) ->
     search_config(KV, port, "").
 
 main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
+    Cookie = search_config(search_config(NSConfig, otp, []),
+                           cookie, []),
     DBDir = proplists:get_value({"couchdb", "database_dir"}, CouchInisPList, ""),
     IdxDir = proplists:get_value({"couchdb", "view_index_dir"}, CouchInisPList, ""),
     {RestUser, RestPass} = extract_rest_creds(NSConfig),
@@ -539,6 +543,7 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
              {static_config, iolist_to_binary(io_lib:format("~p", [StaticTerms]))},
              {couch_inis, confget(#config.couch_inis)},
              {node, Node},
+             {cookie, Cookie},
              {db_dir, DBDir},
              {idx_dir, IdxDir},
              {rest_user, RestUser},

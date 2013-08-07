@@ -121,7 +121,9 @@ do-install:
 	sed -e 's|@PREFIX@|$(PREFIX)|g' <couchbase-server.sh.in >$(DESTDIR)$(PREFIX)/bin/couchbase-server
 	cp cbbrowse_logs $(DESTDIR)$(PREFIX)/bin/cbbrowse_logs
 	cp cbcollect_info $(DESTDIR)$(PREFIX)/bin/cbcollect_info
+	cp cbreset_password $(DESTDIR)$(PREFIX)/bin/cbreset_password
 	chmod +x $(DESTDIR)$(PREFIX)/bin/couchbase-server $(DESTDIR)$(PREFIX)/bin/cbbrowse_logs $(DESTDIR)$(PREFIX)/bin/cbcollect_info
+	chmod +x $(DESTDIR)$(PREFIX)/bin/cbreset_password
 	mkdir -p -m 0770 $(DESTDIR)$(PREFIX)/var/lib/couchbase
 	mkdir -p -m 0770 $(DESTDIR)$(PREFIX)/var/lib/couchbase/logs
 	cp ebucketmigrator $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
