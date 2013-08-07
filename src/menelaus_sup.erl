@@ -78,6 +78,10 @@ upgrade() ->
 %% @spec init([]) -> SupervisorTree
 %% @doc supervisor callback.
 init([]) ->
+    UIAuth = {menelaus_ui_auth,
+              {menelaus_ui_auth, start_link, []},
+              permanent, 5000, worker, dynamic},
+
     Web = {menelaus_web,
            {menelaus_web, start_link, []},
            permanent, 5000, worker, dynamic},
@@ -94,7 +98,7 @@ init([]) ->
                      {hot_keys_keeper, start_link, []},
                      permanent, 5000, worker, dynamic},
 
-    Processes = [Web, WebEvent, HotKeysKeeper, Alerts],
+    Processes = [UIAuth, Web, WebEvent, HotKeysKeeper, Alerts],
     {ok, {{one_for_one, 10, 10}, Processes}}.
 
 ns_log_cat(?START_OK) ->

@@ -21,23 +21,21 @@ function performSignOut() {
 
   $(window).trigger('hashchange'); // this will close all dialogs
 
-  DAL.setAuthCookie(null);
-  DAL.cells.mode.setValue(undefined);
-  DAL.cells.currentPoolDetailsCell.setValue(undefined);
-  DAL.cells.poolList.setValue(undefined);
-  DAL.ready = false;
-
   $(document.body).addClass('auth');
-
+  var spinner = overlayWithSpinner('#login_form', false);
   $('.sign-out-link').hide();
-  DAL.onReady(function () {
-    if (DAL.login)
-      $('.sign-out-link').show();
-  });
 
-  _.defer(function () {
-    var e = $('#auth_dialog [name=password]').get(0);
-    try {e.focus();} catch (ex) {}
+  DAL.initiateLogout(function () {
+    spinner.remove();
+    DAL.onReady(function () {
+      if (DAL.login)
+        $('.sign-out-link').show();
+    });
+
+    _.defer(function () {
+      var e = $('#auth_dialog [name=password]').get(0);
+      try {e.focus();} catch (ex) {}
+    });
   });
 }
 
@@ -380,10 +378,14 @@ var SetupWizard = {
         return;
       }
 
-      DAL.setAuthCookie(data.user, data.password);
-      DAL.tryNoAuthLogin();
-      overlay.remove();
-      displayNotice('This server has been associated with the cluster and will join on the next rebalance operation.');
+      DAL.performLogin(data.user, data.password, function (status) {
+        overlay.remove();
+        if (status == "success") {
+          displayNotice('This server has been associated with the cluster and will join on the next rebalance operation.');
+        } else {
+          reloadApp();
+        }
+      });
     });
   },
   pages: {

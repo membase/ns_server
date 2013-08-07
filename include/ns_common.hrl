@@ -148,4 +148,6 @@
 
 -define(i2l(V), integer_to_list(V)).
 
+-define(UI_AUTH_EXPIRATION_SECONDS, 600).
+
 -endif.

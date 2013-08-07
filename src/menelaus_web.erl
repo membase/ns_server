@@ -247,7 +247,7 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["nodes", NodeId] ->
                              {auth_ro, fun handle_node/2, [NodeId]};
                          ["diag"] ->
-                             {auth_cookie, fun diag_handler:handle_diag/1, []};
+                             {auth, fun diag_handler:handle_diag/1, []};
                          ["diag", "vbuckets"] -> {auth, fun handle_diag_vbuckets/1};
                          ["diag", "masterEvents"] -> {auth, fun handle_diag_master_events/1};
                          ["pools", PoolId, "rebalanceProgress"] ->
@@ -263,15 +263,15 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              DocFile = string:sub_string(Path, 6),
                              {done, Req:serve_file(DocFile, DocRoot)};
                          ["dot", Bucket] ->
-                             {auth_cookie, fun handle_dot/2, [Bucket]};
+                             {auth, fun handle_dot/2, [Bucket]};
                          ["dotsvg", Bucket] ->
-                             {auth_cookie, fun handle_dotsvg/2, [Bucket]};
+                             {auth, fun handle_dotsvg/2, [Bucket]};
                          ["sasl_logs"] ->
-                             {auth_cookie, fun diag_handler:handle_sasl_logs/1, []};
+                             {auth, fun diag_handler:handle_sasl_logs/1, []};
                          ["sasl_logs", LogName] ->
-                             {auth_cookie, fun diag_handler:handle_sasl_logs/2, [LogName]};
+                             {auth, fun diag_handler:handle_sasl_logs/2, [LogName]};
                          ["erlwsh" | _] ->
-                             {auth_cookie, fun (R) -> erlwsh_web:loop(R, erlwsh_deps:local_path(["priv", "www"])) end, []};
+                             {auth, fun (R) -> erlwsh_web:loop(R, erlwsh_deps:local_path(["priv", "www"])) end, []};
                          ["images" | _] ->
                              {done, Req:serve_file(Path, AppRoot,
                                                    [{"Cache-Control", "max-age=30000000"}])};
@@ -283,6 +283,10 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                      end;
                  'POST' ->
                      case PathTokens of
+                         ["uilogin"] ->
+                             {done, handle_uilogin(Req)};
+                         ["uilogout"] ->
+                             {done, handle_uilogout(Req)};
                          ["sampleBuckets", "install"] ->
                              {auth, fun handle_post_sample_buckets/1};
                          ["engageCluster2"] ->
@@ -446,7 +450,6 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
         {auth_ro, F} -> auth_ro(Req, F, []);
         {auth_ro, F, Args} -> auth_ro(Req, F, Args);
         {auth, F} -> auth(Req, F, []);
-        {auth_cookie, F, Args} -> menelaus_auth:apply_auth_cookie(Req, F, Args);
         {auth, F, Args} -> auth(Req, F, Args);
         {auth_bucket_mutate, F, Args} ->
             auth_bucket(Req, F, Args, false);
@@ -459,6 +462,31 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
         {auth_check_bucket_uuid, F, Args} ->
             auth_check_bucket_uuid(Req, F, Args)
     end.
+
+handle_uilogin(Req) ->
+    Params = Req:parse_post(),
+    User = proplists:get_value("user", Params),
+    Password = proplists:get_value("password", Params),
+    case menelaus_auth:check_auth({User, Password}) of
+        true ->
+            menelaus_auth:complete_uilogin(Req, admin);
+        _ ->
+            case menelaus_auth:is_read_only_auth({User, Password}) of
+                true ->
+                    menelaus_auth:complete_uilogin(Req, ro_admin);
+                _ ->
+                    Req:respond({400, server_header(), ""})
+            end
+    end.
+
+handle_uilogout(Req) ->
+    case menelaus_auth:extract_ui_auth_token(Req) of
+        undefined ->
+            ok;
+        Token ->
+            menelaus_ui_auth:logout(Token)
+    end,
+    Req:respond({200, [], []}).
 
 auth_bucket(Req, F, [ArgPoolId, ArgBucketId | RestArgs], ReadOnlyOk) ->
     case ns_bucket:get_bucket(ArgBucketId) of
@@ -869,7 +897,8 @@ handle_pool_info_wait_tail(Req, Id, LocalAddr, ETag) ->
     {struct, PList} = build_pool_info(Id, menelaus_auth:is_under_admin(Req),
                                       for_ui, LocalAddr),
     Info = {struct, [{etag, list_to_binary(ETag)} | PList]},
-    reply_json(Req, Info),
+    Headers = menelaus_auth:maybe_refresh_token(Req) ++ server_header(),
+    Req:ok({"application/json", Headers, mochijson2:encode(Info)}),
     %% this will cause some extra latency on ui perhaps,
     %% because browsers commonly assume we'll keepalive, but
     %% keeping memory usage low is imho more important
@@ -1773,7 +1802,10 @@ handle_settings_web_post(Req) ->
                     ns_config:set(rest, [{port, PortInt}]),
                     ns_config:set(rest_creds,
                                   [{creds,
-                                    [{U, [{password, P}]}]}])
+                                    [{U, [{password, P}]}]}]),
+
+                    menelaus_ui_auth:reset()
+
                     %% No need to restart right here, as our ns_config
                     %% event watcher will do it later if necessary.
             end,
