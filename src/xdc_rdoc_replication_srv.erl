@@ -22,7 +22,8 @@
 -export([start_link/0,
          update_doc/1,
          find_all_replication_docs/0,
-         delete_replicator_doc/1]).
+         delete_replicator_doc/1,
+         get_full_replicator_doc/1]).
 
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
@@ -87,7 +88,16 @@ handle_call({interactive_update, #doc{id=Id}=Doc}, _From, State) ->
     end;
 handle_call({foreach_doc, Fun}, _From, #state{local_docs = Docs} = State) ->
     Res = [{Id, (catch Fun(Doc))} || #doc{id = Id} = Doc <- Docs],
-    {reply, Res, State}.
+    {reply, Res, State};
+handle_call({get_full_replicator_doc, Id}, _From, #state{local_docs = Docs} = State) ->
+    R = case lists:keyfind(Id, #doc.id, Docs) of
+            false ->
+                not_found;
+            Doc0 ->
+                Doc = couch_doc:with_ejson_body(Doc0),
+                {ok, Doc}
+        end,
+    {reply, R, State}.
 
 replicate_change(#state{remote_nodes=Nodes}, Doc) ->
     [replicate_change_to_node(Node, Doc) || Node <- Nodes],
@@ -238,4 +248,18 @@ delete_replicator_doc(IdList) ->
                           {[{<<"id">>, Id}, {<<"deleted">>, true}]}}]}),
             ok = update_doc(NewDoc),
             {ok, Doc}
+    end.
+
+-spec get_full_replicator_doc(string() | binary()) -> {ok, #doc{}} | not_found.
+get_full_replicator_doc(Id) when is_list(Id) ->
+    get_full_replicator_doc(list_to_binary(Id));
+get_full_replicator_doc(Id) when is_binary(Id) ->
+    R = gen_server:call(?MODULE, {get_full_replicator_doc, Id}, infinity),
+
+    case R of
+        not_found ->
+            not_found;
+        {ok, #doc{body={Props0}} = Doc} ->
+            Props = [{couch_util:to_binary(K), V} || {K, V} <- Props0],
+            {ok, Doc#doc{body={Props}}}
     end.
