@@ -771,10 +771,10 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
                       {total_vbuckets, Total},
                       {progress, 0}]),
 
-              Options =
+              {Options, SafeViewSeqs} =
                   case Config#config.do_purge of
                       true ->
-                          [dropdeletes];
+                          {[dropdeletes], []};
                       _ ->
                           {NowMegaSec, NowSec, _} = os:timestamp(),
                           NowEpoch = NowMegaSec * 1000000 + NowSec,
@@ -793,15 +793,20 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
                                             PurgeTS0
                                     end,
 
-                          [{purge_before, PurgeTS}]
+                          Options0 = [{purge_before, PurgeTS}],
+
+                          {Options0, capi_set_view_manager:get_safe_purge_seqs(BucketName)}
                   end,
+
+
 
               Compactors =
                   [ [{type, vbucket},
                      {name, element(2, VBucketAndDbName)},
                      {important, false},
                      {fa, {fun spawn_vbucket_compactor/5,
-                           [BucketName, VBucketAndDbName, Config, Force, Options]}},
+                           [BucketName, VBucketAndDbName, Config, Force,
+                            make_per_vbucket_compaction_options(Options, VBucketAndDbName, SafeViewSeqs)]}},
                      {on_success,
                       {fun update_bucket_compaction_progress/2, [Ix, Total]}}] ||
                       {Ix, VBucketAndDbName} <- misc:enumerate(VBucketDbs) ],
@@ -812,6 +817,14 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
               ?log_info("Finished compaction of databases for bucket ~s",
                         [BucketName])
       end).
+
+make_per_vbucket_compaction_options(GeneralOption, {Vb, _}, SafeViewSeqs) ->
+    case lists:keyfind(Vb, 1, SafeViewSeqs) of
+        false ->
+            GeneralOption;
+        {_, Seq} ->
+            [{purge_only_upto_seq, Seq} | GeneralOption]
+    end.
 
 update_bucket_compaction_progress(Ix, Total) ->
     Progress = (Ix * 100) div Total,

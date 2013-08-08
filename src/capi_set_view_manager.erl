@@ -25,7 +25,8 @@
 
 %% API
 -export([set_vbucket_states/3, server/1,
-         wait_index_updated/2, initiate_indexing/1, reset_master_vbucket/1]).
+         wait_index_updated/2, initiate_indexing/1, reset_master_vbucket/1,
+         get_safe_purge_seqs/1]).
 
 -include("couch_db.hrl").
 -include_lib("couch_set_view/include/couch_set_view.hrl").
@@ -627,3 +628,27 @@ do_wait_index_updated({Pid, _} = From, VBucket,
      || Ref <- Refs],
     ?log_debug("All refs fired"),
     gen_server:reply(From, ok).
+
+-spec get_safe_purge_seqs(BucketName :: binary()) -> [{non_neg_integer(), non_neg_integer()}].
+get_safe_purge_seqs(BucketName) ->
+    lists:foldl(
+      fun (<<"_design/dev_",_>>, SafeSeqs) ->
+              %% we ignore dev design docs
+              SafeSeqs;
+          (DDocId, SafeSeqs) ->
+              case (catch couch_set_view:get_indexed_seqs(BucketName, DDocId)) of
+                  {ok, IndexSeqs} ->
+                      misc:ukeymergewith(
+                        fun ({Vb, SeqA}, {_, SeqB}) ->
+                                {Vb, case SeqA < SeqB of
+                                         true -> SeqA;
+                                         _ -> SeqB
+                                     end}
+                        end, 1, SafeSeqs, IndexSeqs);
+                  {not_found, missing} ->
+                      SafeSeqs;
+                  Error ->
+                      ?log_error("ignoring unexpected get_indexed_seqs(~s, ~s) failure: ~p", [BucketName, DDocId, Error]),
+                      SafeSeqs
+              end
+      end, [], capi_ddoc_replication_srv:fetch_ddoc_ids(BucketName)).
