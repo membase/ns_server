@@ -472,7 +472,7 @@ var ServersSection = {
 
       var errorsOrData = self.validateJoinClusterParams(form);
       if (errorsOrData.length) {
-        renderTemplate('join_cluster_dialog_errors', errors);
+        renderTemplate('join_cluster_dialog_errors', errorsOrData);
         return;
       }
 

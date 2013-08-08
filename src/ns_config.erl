@@ -1119,7 +1119,7 @@ setup_with_saver() ->
     proc_lib:start(
       erlang, apply,
       [fun () ->
-               Cfg = #config{dynamic = [[{config_version, {2,0}},
+               Cfg = #config{dynamic = [[{config_version, ns_config_default:get_current_version()},
                                          {a, [{b, 1}, {c, 2}]},
                                          {d, 3}]],
                              policy_mod = ns_config_default,
