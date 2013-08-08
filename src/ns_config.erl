@@ -67,7 +67,8 @@
          proplist_get_value/3,
          merge_kv_pairs/2,
          sync_announcements/0, get_kv_list/0, get_kv_list/1,
-         upgrade_config_explicitly/1]).
+         upgrade_config_explicitly/1,
+         fold/3]).
 
 -export([save_config_sync/1]).
 
@@ -440,6 +441,23 @@ search_raw(#config{dynamic = DL, static = SL}, Key) ->
 
 upgrade_config_explicitly(Upgrader) ->
     gen_server:call(?MODULE, {upgrade_config_explicitly, Upgrader}).
+
+fold(_Fun, Acc, undefined) ->
+    Acc;
+fold(_Fun, Acc, []) ->
+    Acc;
+fold(Fun, Acc0, [KVList | Rest]) ->
+    Acc = lists:foldl(
+            fun ({Key, Value}, Acc1) ->
+                    Fun(Key, strip_metadata(Value), Acc1)
+            end, Acc0, KVList),
+    fold(Fun, Acc, Rest);
+fold(Fun, Acc, {config, _Init, SL, DL, _PolicyMod}) ->
+    fold(Fun, fold(Fun, Acc, DL), SL);
+fold(Fun, Acc, #config{dynamic = DL, static = SL}) ->
+    fold(Fun, fold(Fun, Acc, DL), SL);
+fold(Fun, Acc, 'latest-config-marker') ->
+    fold(Fun, Acc, ns_config:get()).
 
 %% Implementation
 
