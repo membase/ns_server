@@ -128,11 +128,23 @@ handle_call({select_bucket, #xdc_rep_xmem_remote{} = Remote}, {_Pid, _Tag},
     case select_bucket_internal(Remote, Socket) of
         ok ->
             ok;
-        _ ->
-            ?xdcr_error("[xmem_worker ~p for vb ~p]: unable to select remote bucket ~p at node ~p",
+        {memcached_error, not_supported, Msg} ->
+            ?xdcr_debug("[xmem_worker ~p for vb ~p]: cmd select_bucket no longer supported  (bucket: ~p, username: ~p) at node ~p, "
+                        "error msg: ~p",
                         [Id, Vb,
                          Remote#xdc_rep_xmem_remote.bucket,
-                         Remote#xdc_rep_xmem_remote.ip])
+                         Remote#xdc_rep_xmem_remote.username,
+                         Remote#xdc_rep_xmem_remote.ip,
+                         Msg]),
+            ok;
+        Error ->
+            ?xdcr_error("[xmem_worker ~p for vb ~p]: unable to select remote bucket ~p (username: ~p) at node ~p, "
+                        "error msg: ~p",
+                        [Id, Vb,
+                         Remote#xdc_rep_xmem_remote.bucket,
+                         Remote#xdc_rep_xmem_remote.username,
+                         Remote#xdc_rep_xmem_remote.ip,
+                         Error])
     end,
     {reply, ok, State#xdc_vb_rep_xmem_worker_state{status = bucket_selected}};
 

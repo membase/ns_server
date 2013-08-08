@@ -508,7 +508,7 @@ init_replication_state(#init_state{rep = Rep,
                          {ok, {_ClusterUUID, BucketName}} = remote_clusters_info:parse_remote_bucket_reference(Tgt),
                          Password = binary_to_list(RemoteBucket#remote_bucket.password),
                          #xdc_rep_xmem_remote{ip = binary_to_list(Ip), port = Port,
-                                              username = BucketName, password = Password, options = []};
+                                              bucket = BucketName, username = BucketName, password = Password, options = []};
                      _ ->
                          nil
                  end,
@@ -607,8 +607,8 @@ init_replication_state(#init_state{rep = Rep,
                              },
       source_seq = get_value(<<"update_seq">>, SourceInfo, ?LOWEST_SEQ)
      },
-    ?xdcr_debug("vb ~p replication state initialized: (local db: ~p, remote db: ~p, mode: ~p)",
-                [Vb, RepState#rep_state.source_name, RepState#rep_state.target_name, RepMode]),
+    ?xdcr_debug("vb ~p replication state initialized: (local db: ~p, remote db: ~p, mode: ~p, xmem remote: ~p))",
+                [Vb, RepState#rep_state.source_name, RepState#rep_state.target_name, RepMode, XMemRemote]),
     RepState.
 
 start_replication(#rep_state{
@@ -685,16 +685,18 @@ start_replication(#rep_state{
                                         end,
                                         Pid
                                 end,
-                   ok = xdc_vbucket_rep_xmem_srv:connect(XMemSrvPid),
+                   ok = xdc_vbucket_rep_xmem_srv:connect(XMemSrvPid, Remote),
                    ok = xdc_vbucket_rep_xmem_srv:select_bucket(XMemSrvPid),
                    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
                        1 ->
                            ?xdcr_debug("xmem remote node connected and bucket selected "
-                                       "(remote bucket: ~p, vb: ~b, remote ip: ~p, port: ~p, xmem srv pid: ~p)",
+                                       "(remote bucket: ~p, vb: ~b, remote ip: ~p, port: ~p, "
+                                       "remote bucket: ~p, xmem srv pid: ~p)",
                                        [Remote#xdc_rep_xmem_remote.bucket,
                                         Vb,
                                         Remote#xdc_rep_xmem_remote.ip,
                                         Remote#xdc_rep_xmem_remote.port,
+                                        Remote#xdc_rep_xmem_remote.bucket,
                                         XMemSrvPid]);
                        _ ->
                            ok

@@ -25,7 +25,7 @@
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 
--export([connect/1, disconnect/1, select_bucket/1, stop/1]).
+-export([connect/2, disconnect/1, select_bucket/1, stop/1]).
 -export([find_missing/2, flush_docs/2, ensure_full_commit/1]).
 
 -include("xdc_replicator.hrl").
@@ -70,8 +70,8 @@ init({Vb, RemoteXMem, ParentVbRep, NumWorkers}) ->
 
     {ok, InitState}.
 
-connect(Server) ->
-    gen_server:call(Server, connect, infinity).
+connect(Server, XMemRemote) ->
+    gen_server:call(Server, {connect, XMemRemote}, infinity).
 
 disconnect(Server) ->
     gen_server:call(Server, disconnect, infinity).
@@ -100,9 +100,8 @@ handle_info({'EXIT',_Pid, normal}, St) ->
 handle_info({'EXIT',_Pid, Reason}, St) ->
     {stop, Reason, St}.
 
-handle_call(connect, {_Pid, _Tag},
+handle_call({connect, Remote}, {_Pid, _Tag},
             #xdc_vb_rep_xmem_srv_state{
-                       remote = Remote,
                        pid_workers = Workers,
                        vb = Vb} = State) ->
 
@@ -123,7 +122,7 @@ handle_call(connect, {_Pid, _Tag},
              end,
              dict:new(),
              dict:to_list(Workers)),
-    NewState = State#xdc_vb_rep_xmem_srv_state{pid_workers = ConnectWorkers},
+    NewState = State#xdc_vb_rep_xmem_srv_state{pid_workers = ConnectWorkers, remote = Remote},
     {reply, ok, NewState};
 
 handle_call(disconnect, {_Pid, _Tag},
