@@ -300,7 +300,7 @@ var UpdatesNotificationsSection = {
                    $i('nav_settings_container'));
     renderTemplate('notifications',
                    $.extend(data, {enabled: sendStats,
-                                   version: DAL.prettyVersion(DAL.version)}),
+                                   version: DAL.version ? DAL.prettyVersion(DAL.version) : ""}),
                    $i('notifications_container'));
 
     SettingsSection.maybeDisableSectionControls("#notifications_container");
