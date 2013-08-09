@@ -19,7 +19,7 @@
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
 
--export([tap_name/3, kill_tap_names/4, spawn_replica_builder/4]).
+-export([tap_name/3, kill_tap_names/4, spawn_replica_builder/5]).
 
 tap_name(VBucket, _SrcNode, DstNode) ->
     lists:flatten(io_lib:format("building_~p_~p", [VBucket, DstNode])).
@@ -71,14 +71,15 @@ kill_tap_names(Bucket, VBucket, SrcNode, DstNodes) ->
     kill_a_bunch_of_tap_names(Bucket, SrcNode,
                               [iolist_to_binary([<<"replication_">>, tap_name(VBucket, SrcNode, DNode)]) || DNode <- DstNodes]).
 
-spawn_replica_builder(Bucket, VBucket, SrcNode, DstNode) ->
+spawn_replica_builder(Bucket, VBucket, SrcNode, DstNode, SetPendingState) ->
     {User, Pass} = ns_bucket:credentials(Bucket),
     Opts = [{vbuckets, [VBucket]},
             {takeover, false},
             {suffix, tap_name(VBucket, SrcNode, DstNode)},
             {note_tap_stats, {replica_building, Bucket, VBucket, SrcNode, DstNode}},
             {username, User},
-            {password, Pass}],
+            {password, Pass},
+            {set_to_pending_state, SetPendingState}],
     case ebucketmigrator_srv:start_link(DstNode,
                                         ns_memcached:host_port(SrcNode),
                                         ns_memcached:host_port(DstNode),
