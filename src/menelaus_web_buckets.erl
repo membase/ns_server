@@ -27,12 +27,10 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([all_accessible_bucket_names/2,
-         checking_bucket_access/4,
-         checking_bucket_uuid/4,
+         checking_bucket_uuid/3,
          handle_bucket_list/2,
-         handle_bucket_info/5,
+         handle_bucket_info/3,
          build_bucket_node_infos/4,
-         build_bucket_node_infos/5,
          handle_sasl_buckets_streaming/2,
          handle_bucket_info_streaming/3,
          handle_bucket_delete/3,
@@ -48,7 +46,7 @@
          handle_cancel_databases_compaction/3,
          handle_compact_view/4,
          handle_cancel_view_compaction/4,
-         handle_ddocs_list/5,
+         handle_ddocs_list/3,
          handle_set_ddoc_update_min_changes/4,
          handle_local_random_key/3]).
 
@@ -69,27 +67,7 @@ all_accessible_buckets(_PoolId, Req) ->
 all_accessible_bucket_names(PoolId, Req) ->
     [Name || {Name, _Config} <- all_accessible_buckets(PoolId, Req)].
 
-checking_bucket_access(_PoolId, Id, Req, Body) ->
-    E404 = make_ref(),
-    try
-        BucketTuple =
-            case ns_bucket:get_bucket(Id) of
-                not_present ->
-                    exit(E404);
-                {ok, V} ->
-                    {Id, V}
-            end,
-
-        case menelaus_auth:is_bucket_accessible(BucketTuple, Req) of
-            true -> apply(Body, [fakepool, element(2, BucketTuple)]);
-            _ -> menelaus_auth:require_auth(Req)
-        end
-    catch
-        exit:E404 ->
-            Req:respond({404, server_header(), "Requested resource not found.\r\n"})
-    end.
-
-checking_bucket_uuid(_PoolId, Req, BucketConfig, Body) ->
+checking_bucket_uuid(Req, BucketConfig, Body) ->
     ReqUUID0 = proplists:get_value("bucket_uuid", Req:parse_qs()),
     case ReqUUID0 =/= undefined of
         true ->
@@ -119,20 +97,17 @@ handle_bucket_list(Id, Req) ->
                    || Name <- BucketNames],
     reply_json(Req, BucketsInfo).
 
-handle_bucket_info(PoolId, Id, Req, _Pool, Bucket) ->
+handle_bucket_info(PoolId, Id, Req) ->
     InfoLevel = case proplists:get_value("basic_stats", Req:parse_qs()) of
                     undefined -> normal;
                     _ -> for_ui
                 end,
-    reply_json(Req, build_bucket_info(PoolId, Id, Bucket, InfoLevel,
+    reply_json(Req, build_bucket_info(PoolId, Id, undefined, InfoLevel,
                                       menelaus_util:local_addr(Req))).
 
 build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr) ->
-    build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr, false).
-
-build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr, IncludeOtp) ->
     %% Only list nodes this bucket is mapped to
-    F = menelaus_web:build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr),
+    F = menelaus_web:build_nodes_info_fun(false, InfoLevel, LocalAddr),
     misc:randomize(),
     Nodes = proplists:get_value(servers, BucketConfig, []),
     %% NOTE: there's potential inconsistency here between BucketConfig
@@ -1111,7 +1086,8 @@ basic_bucket_params_screening_test() ->
 
 -endif.
 
-handle_ddocs_list(PoolId, BucketName, Req, _, BucketConfig) ->
+handle_ddocs_list(PoolId, BucketName, Req) ->
+    {ok, BucketConfig} = ns_bucket:get_bucket(BucketName),
     FoundBucket = ns_bucket:bucket_type(BucketConfig) =:= membase
         andalso lists:member(node(), ns_bucket:bucket_nodes(BucketConfig)),
     case FoundBucket of

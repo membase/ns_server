@@ -368,6 +368,7 @@ var DocumentsSection = {
     }
 
     function showCodeEditor(show) {
+      var show = !DAL.cells.isROAdminCell.value && show;
       self.jsonCodeEditor.setOption('readOnly', show ? false : 'nocursor');
       self.jsonCodeEditor.setOption('matchBrackets', show ? true : false);
       $(self.jsonCodeEditor.getWrapperElement())[show ? 'removeClass' : 'addClass']('read_only');

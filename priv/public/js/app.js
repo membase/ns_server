@@ -208,6 +208,15 @@ var ThePage = {
 
     initAlertsSubscriber();
 
+    DAL.cells.isROAdminCell.subscribeValue(function (isROAdmin) {
+      $("body")[isROAdmin ? "addClass" : "removeClass"]('dynamic_when-roadmin');
+    });
+
+    DAL.cells.isROAdminExistCell.subscribeValue(function (isCreated) {
+      $("#js_account_delete")[isCreated ? "show" : "hide"]();
+      $("#js_account_management_form")[isCreated ? "hide" : "show"]();
+    });
+
     DAL.cells.mode.subscribeValue(function (sec) {
       $('.currentNav').removeClass('currentNav');
       $('#switch_' + sec).parent('li').addClass('currentNav');

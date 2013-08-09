@@ -33,7 +33,12 @@ start_timer(State) ->
     %% start a new timer
     case timer:apply_after(After, gen_server, cast, [self(), checkpoint]) of
         {ok, Ref} ->
-            ?xdcr_debug("schedule next checkpoint in ~p seconds (ref: ~p)", [AfterSecs, Ref]),
+            case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
+                1 ->
+                    ?xdcr_debug("schedule next checkpoint in ~p seconds (ref: ~p)", [AfterSecs, Ref]);
+                _ ->
+                    ok
+            end,
             Ref;
         Error ->
             ?xdcr_error("Replicator, error scheduling checkpoint:  ~p", [Error]),
@@ -41,11 +46,15 @@ start_timer(State) ->
     end.
 
 cancel_timer(#rep_state{timer = nil} = State) ->
-    ?xdcr_debug("no checkpoint timer to cancel"),
     State;
 cancel_timer(#rep_state{timer = Timer} = State) ->
     {ok, cancel} = timer:cancel(Timer),
-    ?xdcr_debug("checkpoint timer has been cancelled (ref: ~p)", [Timer]),
+    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
+        1 ->
+            ?xdcr_debug("checkpoint timer has been cancelled (ref: ~p)", [Timer]);
+        _ ->
+            ok
+    end,
     State#rep_state{timer = nil}.
 
 -spec do_checkpoint(#rep_state{}) -> {ok, binary(), #rep_state{}} |
@@ -71,7 +80,8 @@ do_checkpoint(State) ->
                src_starttime = SrcInstanceStartTime,
                tgt_starttime = TgtInstanceStartTime,
                session_id = SessionId,
-               status = Status
+               status = Status,
+               xmem_srv = XMemSrvPid
               } = State,
 
     #rep_vb_status{docs_checked = Checked,
@@ -83,7 +93,15 @@ do_checkpoint(State) ->
                    num_checkpoints = NumCkpts,
                    num_failedckpts = NumFailedCkpts} = Status,
 
-    CheckpointResult = case commit_to_both(Source, Target) of
+
+    CommitResult = case XMemSrvPid of
+                       nil ->
+                           commit_to_both_remote_capi(Source, Target);
+                       _ ->
+                           commit_to_both_remote_xmem(Source, XMemSrvPid)
+                   end,
+
+    CheckpointResult = case CommitResult of
                            {source_error, Reason} ->
                                {checkpoint_commit_failure,
                                 <<"Failure on source commit: ", (to_binary(Reason))/binary>>};
@@ -202,7 +220,12 @@ update_checkpoint(Db, #doc{id = LogId, body = LogBody, rev = Rev} = Doc) ->
             end
     end.
 
-commit_to_both(Source, Target) ->
+
+%% do remote checkpoint via CAPI protocol
+-spec commit_to_both_remote_capi(#db{}, #httpdb{}) -> {ok, _} |
+                                          {source_error, _} |
+                                          {target_error, _}.
+commit_to_both_remote_capi(Source, Target) ->
     %% commit the src async
     ParentPid = self(),
     SrcCommitPid = spawn_link(
@@ -234,6 +257,40 @@ commit_to_both(Source, Target) ->
             {target_error, TargetError}
     end.
 
+%% do remote checkpoint via memcached protocol
+-spec commit_to_both_remote_xmem(#db{}, pid()) -> {ok, _} |
+                                      {source_error, _} |
+                                      {target_error, _}.
+commit_to_both_remote_xmem(Source, XMemSrv) ->
+    %% commit the src async
+    ParentPid = self(),
+    SrcCommitPid = spawn_link(
+                     fun() ->
+                             Result = (catch couch_api_wrap:ensure_full_commit(Source)),
+                             ParentPid ! {self(), Result}
+                     end),
+
+    %% commit tgt sync
+    TargetResult =  xdc_vbucket_rep_xmem_srv:ensure_full_commit(XMemSrv),
+    SourceResult = receive
+                       {SrcCommitPid, Result} ->
+                           unlink(SrcCommitPid),
+                           receive {'EXIT', SrcCommitPid, _} -> ok after 0 -> ok end,
+                           Result;
+                       {'EXIT', SrcCommitPid, Reason} ->
+                           {error, Reason}
+                   end,
+    case TargetResult of
+        {ok, TargetStartTime} ->
+            case SourceResult of
+                {ok, SourceStartTime} ->
+                    {SourceStartTime, TargetStartTime};
+                SourceError ->
+                    {source_error, SourceError}
+            end;
+        TargetError ->
+            {target_error, TargetError}
+    end.
 
 source_cur_seq(#rep_state{source = #db{} = Db, source_seq = Seq}) ->
     {ok, Info} = couch_api_wrap:get_db_info(Db),

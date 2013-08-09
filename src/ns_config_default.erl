@@ -89,6 +89,20 @@ default() ->
      %% when doc body size is no greater than the threshold
      {xdcr_optimistic_replication_threshold, 256},
 
+     %% xdcr replication mode:
+     %% "capi": replicating to remote ns_server:capi_replication layer
+     %% "xmem": replicating to remote memcached directly
+     {xdcr_replication_mode, "xmem"},
+     %% # of worker processes per vb rep xmem server
+     {xdcr_xmem_worker, 1},
+     %% enable pipelined memcached operations
+     {xdcr_enable_pipeline_ops, true},
+     %% inverse probability to sample non-critical datapath trace
+     {xdcr_trace_dump_inverse_prob, 1000},
+     %% by default we reply on remote memcached to do conflict resolution,
+     %% leave a switch for local conflict resolution in case it is necessary
+     {xdcr_local_conflict_resolution, false},
+
      {directory, path_config:component_path(data, "config")},
      {index_aware_rebalance_disabled, false},
      {max_bucket_count, 10},

@@ -46,7 +46,7 @@
          handle_streaming/3,
          is_system_provisioned/0,
          maybe_cleanup_old_buckets/0,
-         checking_bucket_hostname_access/5,
+         find_bucket_hostname/3,
          build_auto_compaction_settings/1,
          parse_validate_auto_compaction_settings/1,
          parse_validate_bucket_auto_compaction_settings/1,
@@ -57,7 +57,7 @@
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
 -export([handle_streaming_wakeup/4,
-         handle_pool_info_wait_wake/5]).
+         handle_pool_info_wait_wake/4]).
 
 -import(menelaus_util,
         [server_header/0,
@@ -177,7 +177,7 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["pools", Id] ->
                              {auth_any_bucket, fun check_and_handle_pool_info/2, [Id]};
                          ["pools", Id, "overviewStats"] ->
-                             {auth, fun menelaus_stats:handle_overview_stats/2, [Id]};
+                             {auth_ro, fun menelaus_stats:handle_overview_stats/2, [Id]};
                          ["poolsStreaming", Id] ->
                              {auth_any_bucket, fun handle_pool_info_streaming/2, [Id]};
                          ["pools", PoolId, "buckets"] ->
@@ -185,13 +185,13 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["pools", PoolId, "saslBucketsStreaming"] ->
                              {auth, fun menelaus_web_buckets:handle_sasl_buckets_streaming/2, [PoolId]};
                          ["pools", PoolId, "buckets", Id] ->
-                             {auth_bucket_with_info, fun menelaus_web_buckets:handle_bucket_info/5,
+                             {auth_bucket, fun menelaus_web_buckets:handle_bucket_info/3,
                               [PoolId, Id]};
                          ["pools", PoolId, "bucketsStreaming", Id] ->
                              {auth_bucket, fun menelaus_web_buckets:handle_bucket_info_streaming/3,
                               [PoolId, Id]};
                          ["pools", PoolId, "buckets", Id, "ddocs"] ->
-                             {auth_bucket_with_info, fun menelaus_web_buckets:handle_ddocs_list/5, [PoolId, Id]};
+                             {auth_bucket, fun menelaus_web_buckets:handle_ddocs_list/3, [PoolId, Id]};
                          ["pools", PoolId, "buckets", Id, "stats"] ->
                              {auth_bucket, fun menelaus_stats:handle_bucket_stats/3,
                               [PoolId, Id]};
@@ -221,39 +221,39 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_recovery:handle_recovery_status/3,
                               [PoolId, Id]};
                          ["pools", "default", "remoteClusters"] ->
-                             {auth, fun menelaus_web_remote_clusters:handle_remote_clusters/1};
+                             {auth_ro, fun menelaus_web_remote_clusters:handle_remote_clusters/1};
                          ["nodeStatuses"] ->
-                             {auth, fun handle_node_statuses/1};
+                             {auth_ro, fun handle_node_statuses/1};
                          ["logs"] ->
-                             {auth, fun menelaus_alert:handle_logs/1};
+                             {auth_ro, fun menelaus_alert:handle_logs/1};
                          ["alerts"] ->
-                             {auth, fun menelaus_alert:handle_alerts/1};
+                             {auth_ro, fun menelaus_alert:handle_alerts/1};
                          ["settings", "web"] ->
-                             {auth, fun handle_settings_web/1};
+                             {auth_ro, fun handle_settings_web/1};
                          ["settings", "alerts"] ->
-                             {auth, fun handle_settings_alerts/1};
+                             {auth_ro, fun handle_settings_alerts/1};
                          ["settings", "stats"] ->
-                             {auth, fun handle_settings_stats/1};
+                             {auth_ro, fun handle_settings_stats/1};
                          ["settings", "autoFailover"] ->
-                             {auth, fun handle_settings_auto_failover/1};
+                             {auth_ro, fun handle_settings_auto_failover/1};
                          ["settings", "maxParallelIndexers"] ->
-                             {auth, fun handle_settings_max_parallel_indexers/1};
+                             {auth_ro, fun handle_settings_max_parallel_indexers/1};
                          ["settings", "viewUpdateDaemon"] ->
-                             {auth, fun handle_settings_view_update_daemon/1};
+                             {auth_ro, fun handle_settings_view_update_daemon/1};
                          ["settings", "autoCompaction"] ->
-                             {auth, fun handle_settings_auto_compaction/1};
+                             {auth_ro, fun handle_settings_auto_compaction/1};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings/1};
                          ["nodes", NodeId] ->
-                             {auth, fun handle_node/2, [NodeId]};
+                             {auth_ro, fun handle_node/2, [NodeId]};
                          ["diag"] ->
-                             {auth_cookie, fun diag_handler:handle_diag/1};
+                             {auth_cookie, fun diag_handler:handle_diag/1, []};
                          ["diag", "vbuckets"] -> {auth, fun handle_diag_vbuckets/1};
                          ["diag", "masterEvents"] -> {auth, fun handle_diag_master_events/1};
                          ["pools", PoolId, "rebalanceProgress"] ->
-                             {auth, fun handle_rebalance_progress/2, [PoolId]};
+                             {auth_ro, fun handle_rebalance_progress/2, [PoolId]};
                          ["pools", PoolId, "tasks"] ->
-                             {auth, fun handle_tasks/2, [PoolId]};
+                             {auth_ro, fun handle_tasks/2, [PoolId]};
                          ["index.html"] ->
                              {done, serve_static_file(Req, {AppRoot, Path},
                                                       "text/html; charset=utf8",
@@ -267,16 +267,16 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["dotsvg", Bucket] ->
                              {auth_cookie, fun handle_dotsvg/2, [Bucket]};
                          ["sasl_logs"] ->
-                             {auth_cookie, fun diag_handler:handle_sasl_logs/1};
+                             {auth_cookie, fun diag_handler:handle_sasl_logs/1, []};
                          ["sasl_logs", LogName] ->
                              {auth_cookie, fun diag_handler:handle_sasl_logs/2, [LogName]};
                          ["erlwsh" | _] ->
-                             {auth_cookie, fun (R) -> erlwsh_web:loop(R, erlwsh_deps:local_path(["priv", "www"])) end};
+                             {auth_cookie, fun (R) -> erlwsh_web:loop(R, erlwsh_deps:local_path(["priv", "www"])) end, []};
                          ["images" | _] ->
                              {done, Req:serve_file(Path, AppRoot,
                                                    [{"Cache-Control", "max-age=30000000"}])};
                          ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
-                         ["sampleBuckets"] -> {auth, fun handle_sample_buckets/1};
+                         ["sampleBuckets"] -> {auth_ro, fun handle_sample_buckets/1};
                          _ ->
                              {done, Req:serve_file(Path, AppRoot,
                                                    [{"Cache-Control", "max-age=10"}])}
@@ -315,6 +315,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun handle_settings_max_parallel_indexers_post/1};
                          ["settings", "viewUpdateDaemon"] ->
                              {auth, fun handle_settings_view_update_daemon_post/1};
+                         ["settings", "readOnlyUser"] ->
+                             {auth, fun handle_settings_read_only_user_post/1};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings_post/1};
                          ["pools", PoolId] ->
@@ -353,7 +355,7 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_buckets:handle_bucket_create/2,
                               [PoolId]};
                          ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
-                             {auth_bucket,
+                             {auth_bucket_mutate,
                               fun menelaus_web_buckets:handle_bucket_flush/3, [PoolId, Id]};
                          ["pools", PoolId, "buckets", Id, "controller", "compactBucket"] ->
                              {auth_check_bucket_uuid,
@@ -394,7 +396,7 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_remote_clusters:handle_remote_cluster_update/2, [Id]};
                          ["logClientError"] -> {auth,
                                                 fun (R) ->
-                                                        User = menelaus_auth:extract_auth(username, R),
+                                                        User = menelaus_auth:extract_auth_user(R),
                                                         ?MENELAUS_WEB_LOG(?UI_SIDE_ERROR_REPORT,
                                                                           "Client-side error-report for user ~p on node ~p:~nUser-Agent:~s~n~s~n",
                                                                           [User, node(),
@@ -420,6 +422,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun handle_cancel_xdcr/2, [XID]};
                          ["controller", "cancelXDCR", XID] ->
                              {auth, fun handle_cancel_xdcr/2, [XID]};
+                         ["settings", "readOnlyUser"] ->
+                             {auth, fun handle_settings_read_only_user_delete/1};
                          ["nodes", Node, "resources", LocationPath] ->
                              {auth, fun handle_resource_delete/3, [Node, LocationPath]};
                          ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
@@ -441,34 +445,15 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
              end,
     case Action of
         {done, RV} -> RV;
-        {auth_cookie, F} -> menelaus_auth:apply_auth_cookie(Req, F, []);
+        {auth_ro, F} -> auth_ro(Req, F, []);
+        {auth_ro, F, Args} -> auth_ro(Req, F, Args);
         {auth, F} -> auth(Req, F, []);
         {auth_cookie, F, Args} -> menelaus_auth:apply_auth_cookie(Req, F, Args);
         {auth, F, Args} -> auth(Req, F, Args);
-        {auth_bucket_with_info, F, [ArgPoolId, ArgBucketId | RestArgs]} ->
-            menelaus_web_buckets:checking_bucket_access(
-              ArgPoolId, ArgBucketId, Req,
-              fun (Pool, Bucket) ->
-                      menelaus_web_buckets:checking_bucket_uuid(
-                        ArgPoolId, Req, Bucket,
-                        fun () ->
-                                FArgs = [ArgPoolId, ArgBucketId] ++
-                                    RestArgs ++ [Req, Pool, Bucket],
-                                apply(F, FArgs)
-                        end)
-              end);
-        {auth_bucket, F, [ArgPoolId, ArgBucketId | RestArgs]} ->
-            menelaus_web_buckets:checking_bucket_access(
-              ArgPoolId, ArgBucketId, Req,
-              fun (_, Bucket) ->
-                      menelaus_web_buckets:checking_bucket_uuid(
-                        ArgPoolId, Req, Bucket,
-                        fun () ->
-                                FArgs = [ArgPoolId, ArgBucketId] ++
-                                    RestArgs ++ [Req],
-                                apply(F, FArgs)
-                        end)
-              end);
+        {auth_bucket_mutate, F, Args} ->
+            auth_bucket(Req, F, Args, false);
+        {auth_bucket, F, Args} ->
+            auth_bucket(Req, F, Args, true);
         {auth_any_bucket, F} ->
             auth_any_bucket(Req, F, []);
         {auth_any_bucket, F, Args} ->
@@ -477,11 +462,33 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
             auth_check_bucket_uuid(Req, F, Args)
     end.
 
+auth_bucket(Req, F, [ArgPoolId, ArgBucketId | RestArgs], ReadOnlyOk) ->
+    case ns_bucket:get_bucket(ArgBucketId) of
+        {ok, BucketConf} ->
+            case menelaus_auth:is_bucket_accessible(BucketConf, Req, ReadOnlyOk) of
+                true ->
+                    menelaus_web_buckets:checking_bucket_uuid(
+                      Req, BucketConf,
+                      fun () ->
+                              FArgs = [ArgPoolId, ArgBucketId] ++
+                                  RestArgs ++ [Req],
+                              apply(F, FArgs)
+                      end);
+                _ ->
+                    menelaus_auth:require_auth(Req)
+            end;
+        not_present ->
+            menelaus_util:reply_404(Req)
+    end.
+
 auth(Req, F, Args) ->
     menelaus_auth:apply_auth(Req, fun check_uuid/3, [F, Args]).
 
+auth_ro(Req, F, Args) ->
+    menelaus_auth:apply_ro_auth(Req, fun check_uuid/3, [F, Args]).
+
 auth_any_bucket(Req, F, Args) ->
-    menelaus_auth:apply_auth_bucket(Req, fun check_uuid/3, [F, Args]).
+    menelaus_auth:apply_auth_any_bucket(Req, fun check_uuid/3, [F, Args]).
 
 check_uuid(F, Args, Req) ->
     ReqUUID0 = proplists:get_value("uuid", Req:parse_qs()),
@@ -504,14 +511,13 @@ check_uuid(F, Args, Req) ->
 auth_check_bucket_uuid(Req, F, Args) ->
     menelaus_auth:apply_auth(Req, fun check_bucket_uuid/3, [F, Args]).
 
-check_bucket_uuid(F, [PoolId, Bucket | _] = Args, Req) ->
+check_bucket_uuid(F, [_PoolId, Bucket | _] = Args, Req) ->
     case ns_bucket:get_bucket(Bucket) of
         not_present ->
-            Req:respond({404, server_header(),
-                         "Requested resource not found.\r\n"});
+            menelaus_util:reply_404(Req);
         {ok, BucketConfig} ->
             menelaus_web_buckets:checking_bucket_uuid(
-              PoolId, Req, BucketConfig,
+              Req, BucketConfig,
               fun () ->
                       erlang:apply(F, Args ++ [Req])
               end)
@@ -671,8 +677,13 @@ handle_pools(Req) ->
             true -> Pools;
             _ -> []
         end,
+    Auth = menelaus_auth:extract_auth(Req),
+    ReadOnlyAdmin = menelaus_auth:is_read_only_auth(Auth),
+    Admin = ReadOnlyAdmin orelse menelaus_auth:check_auth(Auth),
     reply_json(Req,{struct, [{pools, EffectivePools},
-                             {isAdminCreds, menelaus_auth:is_under_admin(Req)},
+                             {isAdminCreds, Admin},
+                             {isROAdminCreds, ReadOnlyAdmin},
+                             {isROAdminExist, menelaus_auth:is_read_only_admin_exist()},
                              {settings,
                               {struct,
                                [{<<"maxParallelIndexers">>,
@@ -807,39 +818,40 @@ check_and_handle_pool_info(Id, Req) ->
     end.
 
 handle_pool_info(Id, Req) ->
-    UserPassword = menelaus_auth:extract_auth(Req),
     LocalAddr = menelaus_util:local_addr(Req),
     Query = Req:parse_qs(),
     WaitChangeS = proplists:get_value("waitChange", Query),
     PassedETag = proplists:get_value("etag", Query),
     case WaitChangeS of
-        undefined -> reply_json(Req, build_pool_info(Id, UserPassword, normal, LocalAddr));
+        undefined -> reply_json(Req, build_pool_info(Id, menelaus_auth:is_under_admin(Req),
+                                                     normal, LocalAddr));
         _ ->
             WaitChange = list_to_integer(WaitChangeS),
             menelaus_event:register_watcher(self()),
             erlang:send_after(WaitChange, self(), wait_expired),
-            handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, PassedETag)
+            handle_pool_info_wait(Req, Id, LocalAddr, PassedETag)
     end.
 
-handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, PassedETag) ->
-    Info = mochijson2:encode(build_pool_info(Id, UserPassword, stable, LocalAddr)),
+handle_pool_info_wait(Req, Id, LocalAddr, PassedETag) ->
+    Info = mochijson2:encode(build_pool_info(Id, menelaus_auth:is_under_admin(Req),
+                                             stable, LocalAddr)),
     ETag = integer_to_list(erlang:phash2(Info)),
     if
         ETag =:= PassedETag ->
             erlang:hibernate(?MODULE, handle_pool_info_wait_wake,
-                             [Req, Id, UserPassword, LocalAddr, PassedETag]);
+                             [Req, Id, LocalAddr, PassedETag]);
         true ->
-            handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag)
+            handle_pool_info_wait_tail(Req, Id, LocalAddr, ETag)
     end.
 
-handle_pool_info_wait_wake(Req, Id, UserPassword, LocalAddr, PassedETag) ->
+handle_pool_info_wait_wake(Req, Id, LocalAddr, PassedETag) ->
     receive
         wait_expired ->
-            handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, PassedETag);
+            handle_pool_info_wait_tail(Req, Id, LocalAddr, PassedETag);
         {notify_watcher, _} ->
             timer:sleep(200), %% delay a bit to catch more notifications
             consume_notifications(),
-            handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, PassedETag);
+            handle_pool_info_wait(Req, Id, LocalAddr, PassedETag);
         _ ->
             exit(normal)
     end.
@@ -851,12 +863,13 @@ consume_notifications() ->
             done
     end.
 
-handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag) ->
+handle_pool_info_wait_tail(Req, Id, LocalAddr, ETag) ->
     menelaus_event:unregister_watcher(self()),
     %% consume all notifications
     consume_notifications(),
     %% and reply
-    {struct, PList} = build_pool_info(Id, UserPassword, for_ui, LocalAddr),
+    {struct, PList} = build_pool_info(Id, menelaus_auth:is_under_admin(Req),
+                                      for_ui, LocalAddr),
     Info = {struct, [{etag, list_to_binary(ETag)} | PList]},
     reply_json(Req, Info),
     %% this will cause some extra latency on ui perhaps,
@@ -865,10 +878,10 @@ handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag) ->
     exit(normal).
 
 
-build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
+build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
     UUID = get_uuid(),
 
-    F = build_nodes_info_fun(menelaus_auth:check_auth(UserPassword), InfoLevel, LocalAddr),
+    F = build_nodes_info_fun(IsAdmin, InfoLevel, LocalAddr),
     Nodes = [F(N, undefined) || N <- ns_node_disco:nodes_wanted()],
     Config = ns_config:get(),
     BucketsVer = erlang:phash2(ns_bucket:get_bucket_names(Config))
@@ -1044,7 +1057,7 @@ build_node_status(Node, Bucket, InfoNode, BucketsAll) ->
             <<"unhealthy">>
     end.
 
-build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
+build_nodes_info_fun(IsAdmin, InfoLevel, LocalAddr) ->
     OtpCookie = list_to_binary(atom_to_list(erlang:get_cookie())),
     NodeStatuses = ns_doctor:get_nodes(),
     Config = ns_config:get(),
@@ -1059,13 +1072,13 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
                       ns_cluster_membership:get_cluster_membership(
                         WantENode, Config),
                       latin1)},
-                   {status, Status}] ++ KV,
-            KV2 = case IncludeOtp of
+                   {status, Status},
+                   {otpNode, list_to_binary(atom_to_list(WantENode))}
+                   | KV],
+            %% NOTE: the following avoids exposing otpCookie to UI
+            KV2 = case IsAdmin andalso InfoLevel =:= normal of
                       true ->
-                          [{otpNode,
-                            list_to_binary(
-                              atom_to_list(WantENode))},
-                           {otpCookie, OtpCookie}|KV1];
+                          [{otpCookie, OtpCookie} | KV1];
                       false -> KV1
                   end,
             KV3 = case Bucket of
@@ -1171,9 +1184,11 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
     end.
 
 handle_pool_info_streaming(Id, Req) ->
-    UserPassword = menelaus_auth:extract_auth(Req),
     LocalAddr = menelaus_util:local_addr(Req),
-    F = fun(InfoLevel) -> build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) end,
+    F = fun(InfoLevel) ->
+                build_pool_info(Id, menelaus_auth:is_under_admin(Req),
+                                InfoLevel, LocalAddr)
+        end,
     handle_streaming(F, Req, undefined).
 
 handle_streaming(F, Req, LastRes) ->
@@ -1468,6 +1483,45 @@ handle_settings_view_update_daemon_post(Req) ->
             reply_json(Req, {struct, Errors}, 400)
     end.
 
+validate_cred(undefined, _) -> <<"Field must be given">>;
+validate_cred(P, password) when length(P) < 6 -> <<"At least 6 characters is required">>;
+validate_cred([], _) -> <<"Empty Field">>;
+validate_cred(_, _) -> true.
+
+maybe_invalid(Name, Value) ->
+    UserErrors = validate_cred(Value, Name),
+    {Name, case UserErrors of
+                true -> do_validate_cred(Value, Name);
+                _ -> UserErrors
+           end}.
+
+handle_settings_read_only_user_post(Req) ->
+    PostArgs = Req:parse_post(),
+    ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
+    U = proplists:get_value("username", PostArgs),
+    P = proplists:get_value("password", PostArgs),
+    Errors = [{K, V} || {K, V} <- [maybe_invalid(username, U),
+                                   maybe_invalid(password, P)], V =/= true],
+    case Errors of
+        [] ->
+            case ValidateOnly of
+                false -> ns_config:set(read_only_user_creds, {U, P});
+                true -> true
+            end,
+            reply_json(Req, [], 200);
+        _ ->
+            reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400)
+    end.
+
+handle_settings_read_only_user_delete(Req) ->
+    case menelaus_auth:is_read_only_admin_exist() of
+        false ->
+            reply_json(Req, <<"Read-Only admin does not exist">>, 404);
+        true ->
+            ns_config:set(read_only_user_creds, null),
+            reply_json(Req, [], 200)
+    end.
+
 handle_pool_settings(_PoolId, Req) ->
     Params = Req:parse_post(),
     Node = node(),
@@ -1657,7 +1711,7 @@ is_valid_port_number(String) ->
     PortNumber = (catch list_to_integer(String)),
     (is_integer(PortNumber) andalso (PortNumber > 0) andalso (PortNumber =< 65535)).
 
-validate_username(Username) ->
+do_validate_cred(Username, username) ->
     V = lists:all(
           fun (C) ->
                   C > 32 andalso C =/= 127 andalso
@@ -1665,9 +1719,9 @@ validate_username(Username) ->
           end, Username),
 
     V orelse
-        <<"The username must not contain spaces, control or any of ()<>@,;:\\\"/[]?={} characters">>.
+        <<"The username must not contain spaces, control or any of ()<>@,;:\\\"/[]?={} characters">>;
 
-validate_password(Password) ->
+do_validate_cred(Password, password) ->
     V = lists:all(
           fun (C) ->
                   C > 31 andalso c =/= 127
@@ -1683,13 +1737,13 @@ validate_settings(Port, U, P) ->
                            case {U, P} of
                                {[], _} -> <<"Username and password are required.">>;
                                {[_Head | _], P} ->
-                                   case validate_username(U) of
+                                   case do_validate_cred(U, username) of
                                        true ->
                                            case length(P) =< 5 of
                                                true ->
                                                    <<"The password must be at least six characters.">>;
                                                false ->
-                                                   validate_password(P)
+                                                   do_validate_cred(P, password)
                                            end;
                                        Msg ->
                                            Msg
@@ -2202,40 +2256,34 @@ handle_reset_alerts(Req) ->
 %%
 %% Provides a list of nodes for a specific bucket (generally all nodes) with
 %% links to stats for that bucket
-handle_bucket_node_list(PoolId, BucketName, Req) ->
-    menelaus_web_buckets:checking_bucket_access(
-      PoolId, BucketName, Req,
-      fun (_Pool, BucketPList) ->
-              Nodes = menelaus_web_buckets:build_bucket_node_infos(BucketName, BucketPList,
-                                                                   stable, menelaus_util:local_addr(Req)),
-              Servers =
-                  [begin
-                       Hostname = proplists:get_value(hostname, N),
-                       {struct,
-                        [{hostname, Hostname},
-                         {uri, bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", Hostname])},
-                         {stats, {struct, [{uri,
-                                            bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", Hostname, "stats"])}]}}]}
-                   end || {struct, N} <- Nodes],
-              reply_json(Req, {struct, [{servers, Servers}]})
-      end).
+handle_bucket_node_list(_PoolId, BucketName, Req) ->
+    {ok, BucketPList} = ns_bucket:get_bucket(BucketName),
+    Nodes = menelaus_web_buckets:build_bucket_node_infos(BucketName, BucketPList,
+                                                         stable, menelaus_util:local_addr(Req)),
+    Servers =
+        [begin
+             Hostname = proplists:get_value(hostname, N),
+             {struct,
+              [{hostname, Hostname},
+               {uri, bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", Hostname])},
+               {stats, {struct, [{uri,
+                                  bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", Hostname, "stats"])}]}}]}
+         end || {struct, N} <- Nodes],
+    reply_json(Req, {struct, [{servers, Servers}]}).
 
-checking_bucket_hostname_access(PoolId, BucketName, Hostname, Req, Body) ->
-    menelaus_web_buckets:checking_bucket_access(
-      PoolId, BucketName, Req,
-      fun (_Pool, BucketPList) ->
-              Nodes = menelaus_web_buckets:build_bucket_node_infos(BucketName, BucketPList,
-                                                                   stable, menelaus_util:local_addr(Req), true),
-              BinHostname = list_to_binary(Hostname),
-              case lists:filter(fun ({struct, PList}) ->
-                                        proplists:get_value(hostname, PList) =:= BinHostname
-                                end, Nodes) of
-                  [{struct, NodeInfo}] ->
-                      Body(Req, BucketPList, NodeInfo);
-                  [] ->
-                      Req:respond({404, server_header(), "Requested resource not found.\r\n"})
-              end
-      end).
+find_bucket_hostname(BucketName, Hostname, Req) ->
+    Config = ns_config:get(),
+    {ok, BucketPList} = ns_bucket:get_bucket(BucketName, Config),
+    Nodes = ns_bucket:bucket_nodes(BucketPList),
+    LocalAddr = menelaus_util:local_addr(Req),
+    BucketHostnames = [{N, build_node_hostname(Config, N, LocalAddr)} || N <- Nodes],
+    case [N || {N, CandidateHostname} <- BucketHostnames,
+               CandidateHostname =:= Hostname] of
+        [] ->
+            false;
+        [Node] ->
+            {ok, Node}
+    end.
 
 %% Per-Node Stats URL information
 %% GET /pools/{PoolID}/buckets/{Id}/nodes/{NodeId}
@@ -2244,17 +2292,18 @@ checking_bucket_hostname_access(PoolId, BucketName, Hostname, Req, Body) ->
 %% stats for the default bucket
 %%
 %% TODO: consider what else might be of value here
-handle_bucket_node_info(PoolId, BucketName, Hostname, Req) ->
-    checking_bucket_hostname_access(
-      PoolId, BucketName, Hostname, Req,
-      fun (_Req, _BucketPList, _NodeInfo) ->
-              BucketURI = bin_concat_path(["pools", "default", "buckets", BucketName]),
-              NodeStatsURI = bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", Hostname, "stats"]),
-              reply_json(Req,
-                         {struct, [{hostname, list_to_binary(Hostname)},
-                                   {bucket, {struct, [{uri, BucketURI}]}},
-                                   {stats, {struct, [{uri, NodeStatsURI}]}}]})
-      end).
+handle_bucket_node_info(_PoolId, BucketName, Hostname, Req) ->
+    case find_bucket_hostname(BucketName, Hostname, Req) of
+        false ->
+            menelaus_util:reply_404(Req);
+        _ ->
+            BucketURI = bin_concat_path(["pools", "default", "buckets", BucketName]),
+            NodeStatsURI = bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", Hostname, "stats"]),
+            reply_json(Req,
+                       {struct, [{hostname, list_to_binary(Hostname)},
+                                 {bucket, {struct, [{uri, BucketURI}]}},
+                                 {stats, {struct, [{uri, NodeStatsURI}]}}]})
+    end.
 
 %% this serves fresh nodes replication and health status
 handle_node_statuses(Req) ->
@@ -2482,7 +2531,7 @@ handle_cancel_xdcr(XID, Req) ->
 
             reply_json(Req, [], 200);
         not_found ->
-            reply_json(Req, [], 404)
+            menelaus_util:reply_404(Req)
     end.
 
 mk_integer_field_validator_error_maker(JSONName, Msg, Args) ->

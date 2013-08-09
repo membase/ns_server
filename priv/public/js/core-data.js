@@ -192,6 +192,9 @@ var DAL = {
       }
     }
 
+    DAL.cells.isROAdminCell.setValue(data.isROAdminCreds);
+    DAL.cells.isROAdminExistCell.setValue(data.isROAdminExist);
+
     var provisioned = !!rows.length;
     var authenticated = data.isAdminCreds;
     if (provisioned && !authenticated) {
@@ -285,6 +288,10 @@ var DAL = {
   }
 };
 
+(function (cells) {
+  cells.isROAdminCell = new Cell();
+  cells.isROAdminExistCell = new Cell();
+})(DAL.cells);
 
 (function () {
   this.mode = new Cell();

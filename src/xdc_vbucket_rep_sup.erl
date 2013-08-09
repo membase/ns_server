@@ -12,7 +12,7 @@
 
 -module(xdc_vbucket_rep_sup).
 -behaviour(supervisor2).
--export([start_link/1, shutdown/1, start_vbucket_rep/6, stop_vbucket_rep/2]).
+-export([start_link/1, shutdown/1, start_vbucket_rep/7, stop_vbucket_rep/2]).
 -export([vbucket_reps/1]).
 
 -export([init/1]).
@@ -24,14 +24,15 @@ start_link(ChildSpecs) ->
     ?xdcr_debug("xdc vbucket replicator supervisor started: ~p", [Sup]),
     {ok, Sup}.
 
-start_vbucket_rep(Sup, Rep, Vb, InitThrottle, WorkThrottle, Parent) ->
+start_vbucket_rep(Sup, Rep, Vb, InitThrottle, WorkThrottle, Parent, RepMode) ->
     {value, DefaultRestartWaitTime} = ns_config:search(xdcr_failure_restart_interval),
     RestartWaitTime = misc:getenv_int("XDCR_FAILURE_RESTART_INTERVAL", DefaultRestartWaitTime),
-    ?xdcr_debug("start xdc vbucket replicator (vb: ~p, restart wait time: ~p, parent pid: ~p)",
-                [Vb, RestartWaitTime, Parent]),
+    ?xdcr_debug("start xdc vbucket replicator (vb: ~p, restart wait time: ~p, "
+                "parent pid: ~p, mode: ~p)",
+                [Vb, RestartWaitTime, Parent, RepMode]),
 
     Spec = {Vb,
-            {xdc_vbucket_rep, start_link, [Rep, Vb, InitThrottle, WorkThrottle, Parent]},
+            {xdc_vbucket_rep, start_link, [Rep, Vb, InitThrottle, WorkThrottle, Parent, RepMode]},
             {permanent, RestartWaitTime},
             100,
             worker,

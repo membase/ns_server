@@ -73,7 +73,7 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
                    (_Evt) ->
                         ok
                 end,
-
+    RepMode = xdc_rep_utils:get_replication_mode(),
     {ok, _} = couch_db_update_notifier:start_link(NotifyFun),
     ?xdcr_debug("couch_db update notifier started", []),
     {ok, InitThrottle} = concurrency_throttle:start_link(MaxConcurrentReps, self()),
@@ -85,6 +85,7 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
         {ok, SrcBucketConfig} ->
             Vbs = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
             RepState0 = #replication{rep = Rep,
+                                     mode = RepMode,
                                      vbs = Vbs,
                                      num_tokens = MaxConcurrentReps,
                                      init_throttle = InitThrottle,
@@ -95,6 +96,7 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
             ?xdcr_error("fail to fetch a valid bucket config and no vb replicator "
                         "would be created (error: ~p)", [Error]),
             RepState = #replication{rep = Rep,
+                                    mode = RepMode,
                                     num_tokens = MaxConcurrentReps,
                                     init_throttle = InitThrottle,
                                     work_throttle = WorkThrottle,
@@ -118,7 +120,6 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                                        docs_checked = Checked,
                                        docs_written = Written,
                                        data_replicated = DataRepd,
-                                       ratestat = RateStat,
                                        work_time = WorkTime,
                                        commit_time = CommitTime,
                                        meta_latency_aggr = MetaLatency,
@@ -129,16 +130,17 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                          CheckedAcc,
                          WrittenAcc,
                          DataRepdAcc,
+
                          WorkTimeAcc,
                          CommitTimeAcc,
                          DocsQueueAcc,
                          SizeQueueAcc,
-                         RepRateItemAcc,
-                         RepRateDataAcc,
+
                          MetaLatencyAcc,
                          MetaLatencyWtAcc,
                          DocsLatencyAcc,
                          DocsLatencyWtAcc,
+
                          VbReplicatingAcc}) ->
 
                             %% only count replicating vb reps when computing latency stats and replication rates
@@ -152,18 +154,6 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                                                      {DocsLatency, DocsLatencyWt};
                                                  _ -> {0, 0}
                                              end,
-                            RepRateItem = case Status of
-                                              replicating ->
-                                                  RateStat#ratestat.curr_rate_item;
-                                              _ ->
-                                                  0
-                                          end,
-                            RepRateData = case Status of
-                                              replicating ->
-                                                  RateStat#ratestat.curr_rate_data;
-                                              _ ->
-                                                  0
-                                          end,
 
                             {WorkLeftAcc + Left,
                              CheckedAcc + Checked,
@@ -175,11 +165,8 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                              DocsQueueAcc + DocsQueue,
                              SizeQueueAcc + SizeQueue,
 
-                             RepRateItemAcc + RepRateItem,
-                             RepRateDataAcc + RepRateData,
                              MetaLatencyAcc + MetaL,
                              MetaLatencyWtAcc + MetaLWt,
-
                              DocsLatencyAcc + DocsL,
                              DocsLatencyWtAcc + DocsLWt,
 
@@ -191,14 +178,14 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                     end, {0, 0, 0, 0,
                           0, 0, 0, 0,
                           0, 0, 0, 0,
-                          0, 0, []}, Dict),
+                          []}, Dict),
     {Left1, Checked1, Written1, DataRepd1,
-     WorkTime1, CommitTime1,
-     DocsChangesQueue1, SizeChangesQueue1,
-     RepRateItem1, RepRateData1,
+     WorkTime1, CommitTime1, DocsChangesQueue1, SizeChangesQueue1,
      MetaLatency1, MetaLatencyWt1, DocsLatency1, DocsLatencyWt1, VbsReplicating1} = Stats,
     %% get checkpoint stats
     {NumCheckpoints1, NumFailedCkpts1} = checkpoint_status(CkptHistory),
+
+    NewRateStat = compute_rate_stat(Written1, DataRepd1, State#replication.ratestat),
 
     Props = [{changes_left, Left1},
              {docs_checked, Checked1},
@@ -213,13 +200,13 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
              {docs_rep_queue, DocsChangesQueue1},
              {size_rep_queue, SizeChangesQueue1},
              {vbs_replicating, VbsReplicating1},
-             {rate_replication, round(RepRateItem1)},
-             {bandwidth_usage, round(RepRateData1)},
+             {rate_replication, round(NewRateStat#ratestat.curr_rate_item)},
+             {bandwidth_usage, round(NewRateStat#ratestat.curr_rate_data)},
              {meta_latency_aggr, round(MetaLatency1)},
              {meta_latency_wt, MetaLatencyWt1},
              {docs_latency_aggr, round(DocsLatency1)},
              {docs_latency_wt, DocsLatencyWt1}],
-    {reply, {ok, Props}, State};
+    {reply, {ok, Props}, State#replication{ratestat = NewRateStat}};
 
 handle_call(target, _From, State) ->
     {reply, {ok, (State#replication.rep)#rep.target}, State};
@@ -263,14 +250,8 @@ handle_info({set_vb_rep_status, #rep_vb_status{vb = Vb} = NewStat},
             #replication{vb_rep_dict = Dict} = State) ->
     Stat = case dict:is_key(Vb, Dict) of
                false ->
-                   %% first time the vb rep post the stat
-
-                   %% update rate stats when vb report its progress to bucket replicator
-                   NewRateStat = compute_rate_status(NewStat#rep_vb_status.docs_written,
-                                                     NewStat#rep_vb_status.data_replicated,
-                                                     NewStat#rep_vb_status.ratestat),
-
-                   NewStat#rep_vb_status{ratestat = NewRateStat};
+                   %% first time the vb rep post the stats
+                   NewStat;
                 _ ->
                    %% already exists an entry in stat table
                    %% compute accumulated stats
@@ -292,11 +273,6 @@ handle_info({set_vb_rep_status, #rep_vb_status{vb = Vb} = NewStat},
                    AccuNumCkpts = OldNumCkpts + NewStat#rep_vb_status.num_checkpoints,
                    AccuNumFailedCkpts = OldNumFailedCkpts + NewStat#rep_vb_status.num_failedckpts,
 
-                   %% update rate stats when vb report its progress to bucket replicator
-                   NewRateStat = compute_rate_status(AccuDocsWritten,
-                                                     AccuDataRepd,
-                                                     OldStat#rep_vb_status.ratestat),
-
                    %% update with the accumulated stats
                    NewStat#rep_vb_status{
                      docs_checked = AccuDocsChecked,
@@ -305,8 +281,7 @@ handle_info({set_vb_rep_status, #rep_vb_status{vb = Vb} = NewStat},
                      work_time = AccuWorkTime,
                      commit_time = AccuCkptTime,
                      num_checkpoints = AccuNumCkpts,
-                     num_failedckpts = AccuNumFailedCkpts,
-                     ratestat = NewRateStat}
+                     num_failedckpts = AccuNumFailedCkpts}
            end,
 
     Dict2 = dict:store(Vb, Stat, Dict),
@@ -384,6 +359,7 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 start_vb_replicators(#replication{rep = Rep,
+                                  mode = RepMode,
                                   vbucket_sup = Sup,
                                   init_throttle = InitThrottle,
                                   work_throttle = WorkThrottle,
@@ -408,7 +384,8 @@ start_vb_replicators(#replication{rep = Rep,
                                                                            Vb,
                                                                            InitThrottle,
                                                                            WorkThrottle,
-                                                                           self())
+                                                                           self(),
+                                                                           RepMode)
                 end, misc:shuffle(NewVbs)),
     Replication#replication{vb_rep_dict = Dict2}.
 
@@ -434,18 +411,17 @@ checkpoint_status(CheckpointHistory) ->
 
 
 %% compute the replicaiton rate, and return the new rate stat
--spec compute_rate_status(integer(), integer(), #ratestat{}) -> #ratestat{}.
-compute_rate_status(Written1, DataRepd1, RateStat) ->
+-spec compute_rate_stat(integer(), integer(), #ratestat{}) -> #ratestat{}.
+compute_rate_stat(Written1, DataRepd1, RateStat) ->
     T2 = now(),
     T1 = RateStat#ratestat.timestamp,
     %% compute elapsed time in microsecond
     Delta = timer:now_diff(T2, T1),
     %% convert from us to secs
-    DeltaSecs = Delta / 1000000,
+    DeltaMilliSecs = Delta / 1000,
     %% to smooth the stats, only compute rate when interval is big enough
-    Interval = misc:getenv_int("XDCR_RATE_STAT_INTERVAL", ?XDCR_RATE_STAT_INTERVAL),
-
-    NewRateStat = case DeltaSecs < Interval of
+    Interval = misc:getenv_int("XDCR_RATE_STAT_INTERVAL_MS", ?XDCR_RATE_STAT_INTERVAL_MS),
+    NewRateStat = case DeltaMilliSecs < Interval of
                       true ->
                           %% sampling interval is too small,
                           %% just return the last results
@@ -453,9 +429,9 @@ compute_rate_status(Written1, DataRepd1, RateStat) ->
                       _ ->
                           %% compute vb replicator rate stat
                           %% replication rate in terms of # items per second
-                          RateItem1 = (Written1 - RateStat#ratestat.item_replicated) / DeltaSecs,
+                          RateItem1 = (1000*(Written1 - RateStat#ratestat.item_replicated)) / DeltaMilliSecs,
                           %% replicaiton rate in terms of bytes per second
-                          RateData1 = (DataRepd1 - RateStat#ratestat.data_replicated) / DeltaSecs,
+                          RateData1 = (1000*(DataRepd1 - RateStat#ratestat.data_replicated)) / DeltaMilliSecs,
                           %% update rate stat
                           RateStat#ratestat{timestamp = T2,
                                             item_replicated = Written1,
@@ -464,4 +440,5 @@ compute_rate_status(Written1, DataRepd1, RateStat) ->
                                             curr_rate_data = RateData1
                                            }
                   end,
+
     NewRateStat.

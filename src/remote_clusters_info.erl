@@ -50,7 +50,7 @@
 %%    Construct remote bucket reference that can be used by
 %%    get_remote_bucket_by_ref functions.
 %%
-%%  - get_memcached_vbucket_info_by_ref/4
+%%  - get_memcached_vbucket_info_by_ref/{3, 4}
 %%
 %%    -> {ok, {Host :: binary(), MemcachedPort :: integer()}, #remote_bucket{}}
 %%       | {error, _} | {error, _, _} % see get_remote_bucket_by_ref for errors
@@ -86,6 +86,7 @@
          remote_bucket_reference/2, parse_remote_bucket_reference/1,
          invalidate_remote_bucket/2, invalidate_remote_bucket_by_ref/1,
          find_cluster_by_uuid/1,
+         get_memcached_vbucket_info_by_ref/3,
          get_memcached_vbucket_info_by_ref/4]).
 
 %% gen_server callbacks
@@ -250,6 +251,9 @@ invalidate_remote_bucket(ClusterName, Bucket) ->
             gen_server:call(?MODULE,
                             {invalidate_remote_bucket, Cluster, Bucket}, infinity)
     end.
+
+get_memcached_vbucket_info_by_ref(Reference, ForceRefresh, VBucket) ->
+    get_memcached_vbucket_info_by_ref(Reference, ForceRefresh, VBucket, ?GET_BUCKET_TIMEOUT).
 
 get_memcached_vbucket_info_by_ref(Reference, ForceRefresh, VBucket, Timeout) ->
     case get_remote_bucket_by_ref(Reference, ForceRefresh, Timeout) of

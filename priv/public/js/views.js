@@ -1078,11 +1078,11 @@ var ViewsSection = {
     }
 
     self.editingDevView.subscribeValue(function (devView) {
-
+      var isROAdmin = DAL.cells.isROAdminCell.value;
       justSaveView[devView ? "show" : "hide"]();
       saveViewAs[devView ? "show" : "hide"]();
 
-      if (!devView) {
+      if (isROAdmin || !devView) {
         disableEditor(self.mapEditor);
         disableEditor(self.reduceEditor);
       } else {

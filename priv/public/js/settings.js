@@ -20,20 +20,26 @@ var SettingsSection = {
                              '#js_settings .panes > div',
                              ['update_notifications', 'auto_failover',
                               'email_alerts', 'settings_compaction',
-                              'settings_sample_buckets']);
+                              'settings_sample_buckets', 'account_management']);
 
-    DAL.cells.runningInCompatMode.subscribeValue(function (lastCompatMode) {
-      if (lastCompatMode === undefined) {
+    Cell.subscribeMultipleValues(function (isROAdmin, lastCompatMode) {
+      if (lastCompatMode === undefined || isROAdmin == undefined) {
         return;
       }
-      $("#settings_compaction").parent()[lastCompatMode ? 'addClass' : 'removeClass']('tab_right');
-    });
+
+      var rightTab = !isROAdmin ? "account_management" : !lastCompatMode ? "settings_sample_buckets" : "settings_compaction";
+
+      $('#js_settings .tabs > *').removeClass("tab_right");
+      $("#" + rightTab).parent().addClass("tab_right");
+
+    }, DAL.cells.isROAdminCell, DAL.cells.runningInCompatMode);
 
     UpdatesNotificationsSection.init();
     AutoFailoverSection.init();
     EmailAlertsSection.init();
     AutoCompactionSection.init();
     SampleBucketSection.init();
+    AccountManagementSection.init();
   },
   onEnter: function () {
     SampleBucketSection.refresh();
@@ -44,6 +50,9 @@ var SettingsSection = {
   navClick: function () {
     this.onLeave();
     this.onEnter();
+  },
+  maybeDisableSectionControls: function (section) {
+    DAL.cells.isROAdminCell.value && $(section + " :input").prop("disabled", true);
   },
   onLeave: function () {
   },
@@ -293,6 +302,8 @@ var UpdatesNotificationsSection = {
                    $.extend(data, {enabled: sendStats,
                                    version: DAL.prettyVersion(DAL.version)}),
                    $i('notifications_container'));
+
+    SettingsSection.maybeDisableSectionControls("#notifications_container");
   },
   remote: {
     stats: 'http://ph.couchbase.net/v2',
@@ -343,6 +354,7 @@ var SampleBucketSection = {
 
         $('#installed_samples').html(installed);
         $('#available_samples').html(available);
+        SettingsSection.maybeDisableSectionControls("#sample_buckets_container");
       }
     });
   },
@@ -501,6 +513,7 @@ var AutoFailoverSection = {
         $('#auto_failover_enabled').change(function() {
           self.toggle($(this).is(':checked'));
         });
+        SettingsSection.maybeDisableSectionControls("#auto_failover_container");
       }
     });
 
@@ -696,6 +709,7 @@ var EmailAlertsSection = {
 
         renderTemplate('email_alerts', val, $i('email_alerts_container'));
         self.toggle(val.enabled);
+        SettingsSection.maybeDisableSectionControls("#email_alerts_container");
 
         $('#email_alerts_enabled').change(function() {
           self.toggle($(this).is(':checked'));
@@ -833,6 +847,118 @@ var EmailAlertsSection = {
   }
 };
 
+var AccountManagementSection = {
+  init: function () {
+    var self = AccountManagementSection;
+    var form = $("#js_account_management_form");
+    var deleteBtn = $("#js_delete_acc_btn");
+    var fields = {username: false, password: false, verifyPassword: false};
+    var credentialsCell = new Cell();
+    var errorsCell = new Cell();
+
+    function showHideErrors(maybeErrors) {
+      var key;
+      for (key in maybeErrors) {
+        $("[name=" + key + "]", form).toggleClass("error", !!maybeErrors[key]);
+        $(".js_error_" + key, form).text(maybeErrors[key] || "");
+      }
+    }
+
+    function validateFields(cred, validate) {
+      var spinner = overlayWithSpinner(form);
+
+      return $.ajax({
+        type: "POST",
+        url: "/settings/readOnlyUser" + (validate || ""),
+        data: {username: cred.username, password: cred.password},
+        success: function (errors) {
+          validate ? errorsCell.setValue(undefined) : DAL.cells.isROAdminExistCell.setValue(true);
+        },
+        error: function (errors) {
+          errorsCell.setValue(errors);
+        },
+        complete: function () {
+          spinner.remove();
+        }
+      });
+    }
+
+    SettingsSection.tabs.subscribeValue(function (tab) {
+      if (tab != "account_management") {
+        return;
+      }
+      $("[name='username']", form).focus();
+    });
+
+
+    Cell.subscribeMultipleValues(function (errors, cred) {
+      if (!cred) {
+        return;
+      }
+      errors = errors ? JSON.parse(errors.responseText).errors : {};
+      var i;
+      for (i in cred) {
+        if (!cred[i] && !errors[i]) {
+          errors[i] = "Empty Field";
+        }
+      }
+      if (cred.password !== cred.verifyPassword) {
+        errors.verifyPassword = "Password don't match";
+      }
+
+      var isValid = $.isEmptyObject(errors);
+      showHideErrors(isValid ? fields : _.extend(_.clone(fields), errors));
+
+      if (isValid) {
+        validateFields(cred);
+      }
+    }, errorsCell, credentialsCell);
+
+    credentialsCell.subscribeValue(function (cred) {
+      if (!cred) {
+        return;
+      }
+      validateFields(cred, "?just_validate=1");
+    });
+
+    form.submit(function (e) {
+      e.preventDefault();
+      credentialsCell.setValue($.deparam(serializeForm($(this))));
+    });
+
+    var dialog = $("#js_roadmin_remove_dialog");
+
+    deleteBtn.click(function () {
+      showDialog(dialog, {
+        eventBindings: [['.js_delete_button', 'click', function (e) {
+          e.preventDefault();
+          var spinner = overlayWithSpinner(dialog);
+          $.ajax({
+            type: "DELETE",
+            url: "/settings/readOnlyUser",
+            success: function (errors) {
+              hideDialog(dialog);
+              DAL.cells.isROAdminExistCell.setValue(false);
+            },
+            error: function (errors, status) {
+              if (errors.status == 404) {
+                hideDialog(dialog);
+              } else {
+                reloadApp();
+              }
+            },
+            complete: function () {
+              spinner.remove();
+            }
+          });
+        }]],
+        closeOnEscape: true
+      });
+    });
+
+  }
+};
+
 var AutoCompactionSection = {
   getSettingsFuture: function () {
     return future.get({url: '/settings/autoCompaction'});
@@ -918,16 +1044,35 @@ var AutoCompactionSection = {
       });
     })();
 
-    SettingsSection.tabs.subscribeValue(function (val) {
-      if (val !== 'settings_compaction') {
-        self.formValidationEnabled.setValue(false);
-        return;
+    (function () {
+      var tempDisabledInputs;
+      var roadminCell = DAL.cells.isROAdminCell;
+
+      function resetAutoCompaction(isROAdmin) {
+        self.errorsCell.setValue({});
+        self.fillSettingsForm(function () {
+          self.formValidationEnabled.setValue(!isROAdmin);
+          if (!isROAdmin && tempDisabledInputs) {
+            tempDisabledInputs.prop("disabled", false);
+            tempDisabledInputs = undefined;
+            return;
+          }
+          if (isROAdmin) {
+            tempDisabledInputs = $("#compaction_container :input").filter(":enabled");
+            SettingsSection.maybeDisableSectionControls("#compaction_container");
+          }
+        });
       }
-      self.errorsCell.setValue({});
-      self.fillSettingsForm(function () {
-        self.formValidationEnabled.setValue(true);
+
+      SettingsSection.tabs.subscribeValue(function (val) {
+        if (val !== 'settings_compaction') {
+          self.formValidationEnabled.setValue(false);
+          return;
+        }
+        resetAutoCompaction(roadminCell.value);
       });
-    });
+      roadminCell.subscribeValue(resetAutoCompaction);
+    })();
   },
   serializeCompactionForm: function(form) {
     return serializeForm(form, {

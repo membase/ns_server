@@ -32,6 +32,7 @@
          reply_json/2,
          reply_json/3,
          parse_json/1,
+         reply_404/1,
          parse_boolean/1,
          expect_config/1,
          get_option/2,
@@ -86,6 +87,9 @@ redirect_permanently(Path, Req, ExtraHeaders) ->
                  [{"Location", Location},
                   {"Content-Type", "text/html"} | ExtraHeaders],
                  Body}).
+
+reply_404(Req) ->
+    Req:respond({404, server_header(), "Requested resource not found.\r\n"}).
 
 reply_json(Req, Body) ->
     Req:ok({"application/json",

@@ -39,6 +39,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -include("ns_common.hrl").
+-include("couch_db.hrl").
 
 -define(DEFAULT_TIMEOUT, 15000).
 -define(TERMINATE_SAVE_TIMEOUT, 10000).
@@ -70,6 +71,8 @@
          upgrade_config_explicitly/1]).
 
 -export([save_config_sync/1]).
+
+-export([reset_admin_password/0]).
 
 % Exported for tests only
 -export([save_file/3, load_config/3,
@@ -890,6 +893,40 @@ sync_announcements() ->
     after 0 ->
             ok
     end.
+
+gen_password(Length) ->
+    Letters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*?",
+    random:seed(os:timestamp()),
+    get_random_string(Length, Letters).
+
+get_random_string(Length, AllowedChars) ->
+    lists:foldl(fun(_, Acc) ->
+                        [lists:nth(random:uniform(length(AllowedChars)),
+                                   AllowedChars)]
+                            ++ Acc
+                end, [], lists:seq(1, Length)).
+
+%% reset admin password to the generated value
+%% this function is called from cli by rpc call
+reset_admin_password() ->
+    User = case ns_config:search_prop(ns_config:get(), rest_creds, creds, []) of
+               [] ->
+                   {error, <<"Failed to reset administrative password. Node is not initialized.">>};
+               [{U, _}|_] ->
+                   U
+           end,
+
+    case User of
+        {error, _} = Err ->
+            Err;
+        _ ->
+            Password = gen_password(8),
+            ok = ns_config:set(rest_creds, [{creds,
+                                             [{User, [{password, Password}]}]}]),
+
+            {ok, ?l2b(io_lib:format("New password for user ~s is ~s", [User, Password]))}
+    end.
+
 
 -ifdef(EUNIT).
 
