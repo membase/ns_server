@@ -465,7 +465,7 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
 auth_bucket(Req, F, [ArgPoolId, ArgBucketId | RestArgs], ReadOnlyOk) ->
     case ns_bucket:get_bucket(ArgBucketId) of
         {ok, BucketConf} ->
-            case menelaus_auth:is_bucket_accessible(BucketConf, Req, ReadOnlyOk) of
+            case menelaus_auth:is_bucket_accessible({ArgBucketId, BucketConf}, Req, ReadOnlyOk) of
                 true ->
                     menelaus_web_buckets:checking_bucket_uuid(
                       Req, BucketConf,
