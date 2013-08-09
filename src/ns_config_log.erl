@@ -21,7 +21,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+         terminate/2, code_change/3, sanitize/1]).
 
 -include("ns_common.hrl").
 
@@ -105,9 +105,12 @@ compute_buckets_diff(NewBuckets, OldBuckets) ->
 
     misc:update_proplist(NewBuckets, [{configs, Diffed}]).
 
+sanitize(Config) ->
+    misc:rewrite_key_value_tuples([{password, "*****"}, {sasl_password, "*****"}], Config).
+
 log_common(K, V) ->
     %% These can get pretty big, so pre-format them for the logger.
-    VB = list_to_binary(io_lib:print(V, 0, 80, 100)),
+    VB = list_to_binary(io_lib:print(sanitize(V), 0, 80, 100)),
     ?log_debug("config change:~n~p ->~n~s", [K, VB]).
 
 sort_buckets(Buckets) ->

@@ -399,7 +399,8 @@ rename_node_in_config(Old, New) ->
                              if
                                  NewK =/= K orelse NewV =/= V ->
                                      ?cluster_debug("renaming node conf ~p -> ~p:~n  ~p ->~n  ~p",
-                                                    [K, NewK, V, NewV]),
+                                                    [K, NewK, ns_config_log:sanitize(V),
+                                                     ns_config_log:sanitize(NewV)]),
                                      {NewK, NewV};
                                  true ->
                                      Pair
