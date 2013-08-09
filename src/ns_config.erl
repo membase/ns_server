@@ -897,7 +897,7 @@ sync_announcements() ->
 gen_password(Length) ->
     Letters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*?",
     random:seed(os:timestamp()),
-    get_random_string(8, Letters).
+    get_random_string(Length, Letters).
 
 get_random_string(Length, AllowedChars) ->
     lists:foldl(fun(_, Acc) ->
@@ -921,14 +921,10 @@ reset_admin_password() ->
             Err;
         _ ->
             Password = gen_password(8),
-            case ns_config:set(rest_creds, [{creds,
-                                             [{User, [{password, Password}]}]}]) of
-                ok ->
-                    {ok, ?l2b(io_lib:format("New password for user ~s is ~s", [User, Password]))};
-                Err1 ->
-                    {error, ?l2b(io_lib:format("Failed to reset administrative password. Error: ~p",
-                                          [Err1]))}
-            end
+            ok = ns_config:set(rest_creds, [{creds,
+                                             [{User, [{password, Password}]}]}]),
+
+            {ok, ?l2b(io_lib:format("New password for user ~s is ~s", [User, Password]))}
     end.
 
 
