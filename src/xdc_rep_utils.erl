@@ -231,23 +231,6 @@ ssl_verify_options(false, _OTPVersion) ->
 
 convert_options([])->
     [];
-convert_options([{<<"cancel">>, V} | R]) ->
-    [{cancel, V} | convert_options(R)];
-convert_options([{IdOpt, V} | R]) when IdOpt =:= <<"_local_id">>;
-                                       IdOpt =:= <<"replication_id">>; IdOpt =:= <<"id">> ->
-    Id = lists:splitwith(fun(X) -> X =/= $+ end, ?b2l(V)),
-    [{id, Id} | convert_options(R)];
-convert_options([{<<"create_target">>, V} | R]) ->
-    [{create_target, V} | convert_options(R)];
-convert_options([{<<"continuous">>, V} | R]) ->
-    [{continuous, V} | convert_options(R)];
-convert_options([{<<"query_params">>, V} | R]) ->
-    [{query_params, V} | convert_options(R)];
-convert_options([{<<"doc_ids">>, V} | R]) ->
-    %% Ensure same behaviour as old replicator: accept a list of percent
-    %% encoded doc IDs.
-    DocIds = [?l2b(couch_httpd:unquote(Id)) || Id <- V],
-    [{doc_ids, DocIds} | convert_options(R)];
 convert_options([{<<"worker_processes">>, V} | R]) ->
     [{worker_processes, couch_util:to_integer(V)} | convert_options(R)];
 convert_options([{<<"worker_batch_size">>, V} | R]) ->
@@ -261,8 +244,6 @@ convert_options([{<<"retries_per_request">>, V} | R]) ->
 convert_options([{<<"socket_options">>, V} | R]) ->
     {ok, SocketOptions} = couch_util:parse_term(V),
     [{socket_options, SocketOptions} | convert_options(R)];
-convert_options([{<<"since_seq">>, V} | R]) ->
-    [{since_seq, V} | convert_options(R)];
 convert_options([_ | R]) -> %% skip unknown option
     convert_options(R).
 

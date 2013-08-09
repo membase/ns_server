@@ -517,15 +517,14 @@ init_replication_state(#init_state{rep = Rep,
                                [{Source, SrcMasterDb}, {Target, TgtMasterDb}],
                                Rep),
 
-    {StartSeq0,
+    {StartSeq,
      TotalDocsChecked,
      TotalDocsWritten,
      TotalDataReplicated,
      History} = compare_replication_logs(SourceLog, TargetLog),
     ?xdcr_trace("history log at src and dest: startseq: ~p, docs checked: ~p,"
                 "docs_written: ~p, data replicated: ~p",
-                [StartSeq0, TotalDocsChecked, TotalDocsWritten, TotalDataReplicated]),
-    StartSeq = get_value(since_seq, Options, StartSeq0),
+                [StartSeq, TotalDocsChecked, TotalDocsWritten, TotalDataReplicated]),
     #doc{body={CheckpointHistory}} = SourceLog,
 
     %% check if we are already behind purger
