@@ -513,17 +513,26 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
     XDCRTasks = [begin
                      {_, Id} = lists:keyfind(id, 1, Doc0),
                      Sig = {xdcr, Id},
+                     {type, Type0} = lists:keyfind(type, 1, Doc0),
+                     Type = case Type0 of
+                                <<"xdc">> ->
+                                    capi;
+                                <<"xdc-xmem">> ->
+                                    xmem
+                            end,
+
                      Doc1 = lists:keydelete(type, 1, Doc0),
-                     Doc2 =
+                     Doc2 = [{replicationType, Type} | Doc1],
+                     Doc3 =
                          case dict:find(Sig, TasksDict) of
                              {ok, Value} ->
                                  PList = finalize_xcdr_plist(Value),
-                                 [{status, running} | Doc1] ++ PList;
+                                 [{status, running} | Doc2] ++ PList;
                              _ ->
-                                 [{status, notRunning}, {type, xdcr} | Doc1]
+                                 [{status, notRunning}, {type, xdcr} | Doc2]
                          end,
                      CancelURI = menelaus_util:bin_concat_path(["controller", "cancelXDCR", Id]),
-                     [{cancelURI, CancelURI} | Doc2]
+                     [{cancelURI, CancelURI} | Doc3]
                  end || Doc0 <- AllRepDocs],
 
     SampleBucketTasks0 = lists:filter(fun (RawTask) ->
