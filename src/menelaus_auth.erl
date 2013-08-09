@@ -64,10 +64,11 @@ filter_accessible_buckets(BucketsAll, Req) ->
 %% returns true if given bucket is accessible with current
 %% credentials. No auth buckets are always accessible. SASL auth
 %% buckets are accessible only with admin or bucket credentials.
-is_bucket_accessible(Bucket, Req, ReadOnlyOk) ->
+-spec is_bucket_accessible({string(), list()}, any(), boolean()) -> boolean().
+is_bucket_accessible(BucketTuple, Req, ReadOnlyOk) ->
     UserPassword = menelaus_auth:extract_auth(Req),
     F = bucket_auth_fun(UserPassword, ReadOnlyOk),
-    F(Bucket).
+    F(BucketTuple).
 
 apply_auth(Req, F, Args) ->
     UserPassword = extract_auth(Req),
