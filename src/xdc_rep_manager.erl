@@ -249,7 +249,7 @@ ensure_rep_db_exists() ->
         {ok, Db} ->
             Db;
         _Error ->
-            ?xdcr_debug("rep doc did not exist, create a new one"),
+            ?xdcr_debug("rep db did not exist, create a new one"),
             {ok, Db} = couch_db:create(DbName, [sys_db, {user_ctx, UserCtx}])
     end,
     {ok, Db}.
