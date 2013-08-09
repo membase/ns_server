@@ -1527,8 +1527,21 @@ handle_settings_read_only_user_post(Req) ->
     ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
     U = proplists:get_value("username", PostArgs),
     P = proplists:get_value("password", PostArgs),
-    Errors = [{K, V} || {K, V} <- [maybe_invalid(username, U),
-                                   maybe_invalid(password, P)], V =/= true],
+    Errors0 = [{K, V} || {K, V} <- [maybe_invalid(username, U),
+                                    maybe_invalid(password, P)], V =/= true],
+    RestCreds = ns_config:search('latest-config-marker', rest_creds, []),
+    Errors = Errors0 ++
+        case proplists:get_value(creds, RestCreds, []) of
+            [{AdminUser, _} | _] ->
+                case AdminUser =:= U of
+                    true ->
+                        [{username, <<"Read-only user cannot be same user as administrator">>}];
+                    _ ->
+                        []
+                end;
+            _ ->
+                []
+        end,
     case Errors of
         [] ->
             case ValidateOnly of
@@ -1540,12 +1553,15 @@ handle_settings_read_only_user_post(Req) ->
             reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400)
     end.
 
+reset_read_only_user_creds() ->
+    ns_config:set(read_only_user_creds, null).
+
 handle_settings_read_only_user_delete(Req) ->
     case menelaus_auth:is_read_only_admin_exist() of
         false ->
             reply_json(Req, <<"Read-Only admin does not exist">>, 404);
         true ->
-            ns_config:set(read_only_user_creds, null),
+            reset_read_only_user_creds(),
             reply_json(Req, [], 200)
     end.
 
@@ -1803,6 +1819,10 @@ handle_settings_web_post(Req) ->
                     ns_config:set(rest_creds,
                                   [{creds,
                                     [{U, [{password, P}]}]}]),
+
+                    %% NOTE: this to avoid admin user name to be equal
+                    %% to read only user name
+                    reset_read_only_user_creds(),
 
                     menelaus_ui_auth:reset()
 
