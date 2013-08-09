@@ -25,7 +25,6 @@
 -export([get_master_db/1, get_checkpoint_log_id/2]).
 -export([get_opt_replication_threshold/0]).
 -export([update_options/1, get_checkpoint_mode/0]).
--export([get_replication_batch_size/0]).
 -export([is_pipeline_enabled/0, get_trace_dump_invprob/0]).
 -export([get_xmem_worker/0, is_local_conflict_resolution/0]).
 -export([sanitize_status/3]).
@@ -156,6 +155,9 @@ make_options(Props) ->
     {value, DefaultRetries} = ns_config:search(xdcr_retries_per_request),
     DefRetries = misc:getenv_int("XDCR_RETRIES_PER_REQUEST", DefaultRetries),
 
+    {value, DefaultDocBatchSizeKB} = ns_config:search(xdcr_doc_batch_size_kb),
+    DocBatchSizeKB = misc:getenv_int("XDCR_DOC_BATCH_SIZE_KB", DefaultDocBatchSizeKB),
+
     {ok, DefSocketOptions} = couch_util:parse_term(
                                couch_config:get("replicator", "socket_options",
                                                 "[{keepalive, true}, {nodelay, false}]")),
@@ -178,6 +180,7 @@ make_options(Props) ->
                                                   {http_connections, DefConns},
                                                   {socket_options, DefSocketOptions},
                                                   {worker_batch_size, DefBatchSize},
+                                                  {doc_batch_size_kb, DocBatchSizeKB},
                                                   {worker_processes, DefWorkers},
                                                   {opt_rep_threshold, OptRepThreshold}
                                                  ])).
@@ -321,6 +324,16 @@ update_options(Options) ->
             ok
     end,
 
+    {value, DefaultDocBatchSizeKB} = ns_config:search(xdcr_doc_batch_size_kb),
+    DefBatchSizeKB = misc:getenv_int("XDCR_DOC_BATCH_SIZE_KB", DefaultDocBatchSizeKB),
+    case length(Options) > 0 andalso DefBatchSizeKB =/= get_value(doc_batch_size_kb, Options) of
+        true ->
+            ?xdcr_debug("XDC parameter changed, doc_batch_size_kb is updated from ~p to ~p",
+                       [get_value(doc_batch_size_kb, Options) , DefBatchSizeKB]);
+        _ ->
+            ok
+    end,
+
     {value, DefaultConnTimeout} = ns_config:search(xdcr_connection_timeout),
     DefTimeoutSecs = misc:getenv_int("XDCR_CONNECTION_TIMEOUT", DefaultConnTimeout),
     %% convert to ms
@@ -370,15 +383,11 @@ update_options(Options) ->
                       {retries, DefRetries},
                       {http_connections, DefConns},
                       {worker_batch_size, DefBatchSize},
+                      {doc_batch_size_kb, DefBatchSizeKB},
                       {worker_processes, DefWorkers},
-                      {opt_rep_threshold, Threshold}]), Options).
-
--spec get_replication_batch_size() -> integer().
-get_replication_batch_size() ->
-    %% env parameter can override the ns_config parameter
-    {value, DefaultDocBatchSizeKB} = ns_config:search(xdcr_doc_batch_size_kb),
-    DocBatchSizeKB = misc:getenv_int("XDCR_DOC_BATCH_SIZE_KB", DefaultDocBatchSizeKB),
-    1024*DocBatchSizeKB.
+                      {opt_rep_threshold, Threshold},
+                      {local_conflict_resolution, is_local_conflict_resolution()}]),
+                    Options).
 
 -spec is_pipeline_enabled() -> boolean().
 is_pipeline_enabled() ->

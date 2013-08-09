@@ -36,11 +36,11 @@
 %% -------------------------------------------------------------------------- %%
 %% ---                         public functions                           --- %%
 %% -------------------------------------------------------------------------- %%
-start_link(Vb, Id, Parent, Options) ->
-    gen_server:start_link(?MODULE, {Vb, Id, Parent, Options}, []).
+start_link(Vb, Id, Parent, LocalConflictResolution) ->
+    gen_server:start_link(?MODULE, {Vb, Id, Parent, LocalConflictResolution}, []).
 
 %% gen_server behavior callback functions
-init({Vb, Id, Parent, Options}) ->
+init({Vb, Id, Parent, LocalConflictResolution}) ->
     process_flag(trap_exit, true),
 
     Errs = ringbuffer:new(?XDCR_ERROR_HISTORY),
@@ -48,13 +48,13 @@ init({Vb, Id, Parent, Options}) ->
       id = Id,
       vb = Vb,
       parent_server_pid = Parent,
-      options = Options,
       status  = init,
       statistics = #xdc_vb_rep_xmem_statistics{},
       socket = undefined,
       time_init = calendar:now_to_local_time(erlang:now()),
       time_connected = 0,
-      error_reports = Errs},
+      error_reports = Errs,
+      local_conflict_resolution=LocalConflictResolution},
 
     {ok, InitState}.
 
@@ -231,13 +231,14 @@ handle_call({find_missing_pipeline, IdRevs}, _From,
 
 handle_call({flush_docs, DocsList}, _From,
             #xdc_vb_rep_xmem_worker_state{id = Id, vb = VBucket,
-                                          socket = Socket} =  State) ->
+                                          socket = Socket,
+                                          local_conflict_resolution = LocalConflictResolution} =  State) ->
     TimeStart = now(),
     %% enumerate all docs and update them
     {NumDocsRepd, NumDocsRejected, Errors} =
         lists:foldr(
           fun (#doc{id = Key, rev = Rev} = Doc, {AccRepd, AccRejd, ErrorAcc}) ->
-                  case flush_single_doc(Key, Socket, VBucket, Doc, 2) of
+                  case flush_single_doc(Key, Socket, VBucket, LocalConflictResolution, Doc, 2) of
                       {ok, flushed} ->
                           {(AccRepd + 1), AccRejd, ErrorAcc};
                       {ok, rejected} ->
@@ -534,20 +535,21 @@ get_remote_meta(Socket, VBucket, Key) ->
             end,
     Reply.
 
--spec flush_single_doc(integer(), inet:socket(), integer(), #doc{}, integer()) -> {ok, flushed}  |
-                                                                                  {ok, rejected} |
-                                                                                  {error, {term(), term()}}.
-flush_single_doc(Id, _Socket, VBucket, #doc{id = DocId} = _Doc, 0) ->
+-spec flush_single_doc(integer(), inet:socket(), integer(), boolean(), #doc{}, integer()) -> {ok, flushed}  |
+                                                                                             {ok, rejected} |
+                                                                                             {error, {term(), term()}}.
+flush_single_doc(Id, _Socket, VBucket, _LocalConflictResolution,
+                 #doc{id = DocId} = _Doc, 0) ->
     ?xdcr_error("[xmem_worker ~p for vb ~p]: Error, unable to flush doc (key: ~p) "
                 "to destination, maximum retry reached.",
                 [Id, VBucket, DocId]),
     {error, {bad_request, max_retry}};
 
-flush_single_doc(Id, Socket, VBucket,
+flush_single_doc(Id, Socket, VBucket, LocalConflictResolution,
                  #doc{id = DocId, rev = DocRev, body = DocValue,
                       deleted = DocDeleted} = Doc, Retry) ->
     {SrcSeqNo, SrcRevId} = DocRev,
-    ConflictRes = case xdc_rep_utils:is_local_conflict_resolution() of
+    ConflictRes = case LocalConflictResolution of
              false ->
                  {key_enoent, "no local conflict resolution, send it optimistically", 0};
              _ ->
@@ -574,7 +576,7 @@ flush_single_doc(Id, Socket, VBucket,
 
     case RV of
         retry ->
-            flush_single_doc(Id, Socket, VBucket, Doc, Retry-1);
+            flush_single_doc(Id, Socket, VBucket, LocalConflictResolution, Doc, Retry-1);
         ok ->
             {ok, flushed};
         {ok, key_eexists} ->

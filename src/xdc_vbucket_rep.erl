@@ -658,7 +658,7 @@ start_replication(#rep_state{
                _XMemRemote  ->
                    XMemSrvPid = case State#rep_state.xmem_srv of
                                     nil ->
-                                        {ok, XMemSrv} = xdc_vbucket_rep_xmem_srv:start_link(Vb, Remote, self()),
+                                        {ok, XMemSrv} = xdc_vbucket_rep_xmem_srv:start_link(Vb, Remote, self(), Options),
                                         XMemSrv;
                                     Pid ->
                                         ?xdcr_trace("xmem remote server already started (vb: ~p, pid: ~p)",
@@ -679,11 +679,14 @@ start_replication(#rep_state{
                    XMemSrvPid
                  end,
 
+    BatchSizeKB = get_value(doc_batch_size_kb, Options),
+
     %% build start option for worker process
     WorkerOption = #rep_worker_option{
       cp = self(), source = Source, target = Target,
       changes_manager = ChangesManager, max_conns = MaxConns,
-      opt_rep_threshold = OptRepThreshold, xmem_server = XPid},
+      opt_rep_threshold = OptRepThreshold, xmem_server = XPid,
+      batch_size = BatchSizeKB * 1024},
 
     Workers = lists:map(
                 fun(_) ->

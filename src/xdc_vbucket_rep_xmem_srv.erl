@@ -21,7 +21,7 @@
 -behaviour(gen_server).
 
 %% public functions
--export([start_link/3]).
+-export([start_link/4]).
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 
@@ -37,29 +37,33 @@
 %% -------------------------------------------------------------------------- %%
 %% ---                         public functions                           --- %%
 %% -------------------------------------------------------------------------- %%
-start_link(Vb, RemoteXMem, ParentVbRep) ->
+start_link(Vb, RemoteXMem, ParentVbRep, Options) ->
     %% prepare parameters to start xmem server process
-    DefaultWorkers = xdc_rep_utils:get_xmem_worker(),
-    Options = {Vb, RemoteXMem, ParentVbRep, DefaultWorkers},
-    {ok, Pid} = gen_server:start_link(?MODULE, Options, []),
+    NumWorkers = xdc_rep_utils:get_xmem_worker(),
+    PipelineEnabled = xdc_rep_utils:is_pipeline_enabled(),
+    LocalConflictResolution = proplists:get_value(local_conflict_resolution, Options),
+
+    Args = {Vb, RemoteXMem, ParentVbRep,
+            NumWorkers, PipelineEnabled, LocalConflictResolution},
+    {ok, Pid} = gen_server:start_link(?MODULE, Args, []),
     {ok, Pid}.
 
 %% gen_server behavior callback functions
-init({Vb, RemoteXMem, ParentVbRep, NumWorkers}) ->
+init({Vb, RemoteXMem, ParentVbRep,
+      NumWorkers, PipelineEnabled, LocalConflictResolution}) ->
     process_flag(trap_exit, true),
     %% signal to self to initialize
-    {ok, AllWorkers} = start_worker_process(Vb, NumWorkers),
+    {ok, AllWorkers} = start_worker_process(Vb, NumWorkers, LocalConflictResolution),
     {T1, T2, T3} = now(),
     random:seed(T1, T2, T3),
     Errs = ringbuffer:new(?XDCR_ERROR_HISTORY),
-    Pipeline = xdc_rep_utils:is_pipeline_enabled(),
     InitState = #xdc_vb_rep_xmem_srv_state{vb = Vb,
                                            parent_vb_rep = ParentVbRep,
                                            remote = RemoteXMem,
                                            statistics = #xdc_vb_rep_xmem_statistics{},
                                            pid_workers = AllWorkers,
                                            num_workers = NumWorkers,
-                                           enable_pipeline = Pipeline,
+                                           enable_pipeline = PipelineEnabled,
                                            seed = {T1, T2, T3},
                                            error_reports = Errs},
 
@@ -307,12 +311,12 @@ report_error(Err, Vb, Parent) ->
     gen_server:cast(Parent, {report_error, {RawTime, String}}).
 
 
--spec start_worker_process(integer(), integer()) -> {ok, dict()}.
-start_worker_process(Vb, NumWorkers) ->
+-spec start_worker_process(integer(), integer(), boolean()) -> {ok, dict()}.
+start_worker_process(Vb, NumWorkers, LocalConflictResolution) ->
     WorkerDict = dict:new(),
     AllWorkers = lists:foldl(
                    fun(Id, Acc) ->
-                           {ok, Pid} = xdc_vbucket_rep_xmem_worker:start_link(Vb, Id, self(), []),
+                           {ok, Pid} = xdc_vbucket_rep_xmem_worker:start_link(Vb, Id, self(), LocalConflictResolution),
                            dict:store(Id, {Pid, idle}, Acc)
                    end,
                    WorkerDict,
