@@ -70,7 +70,6 @@ init(_) ->
     <<"_replicator">> = ?l2b(couch_config:get("replicator", "db",
                                               "_replicator")),
 
-    maybe_create_replication_info_ddoc(),
     %% dump default XDCR parameters
     dump_parameters(),
 
@@ -81,20 +80,6 @@ init(_) ->
        changes_feed_loop = Loop,
        rep_db_name = RepDbName
       }}.
-
-maybe_create_replication_info_ddoc() ->
-    UserCtx = #user_ctx{roles = [<<"_admin">>, <<"_replicator">>]},
-    DB = case couch_db:open_int(<<"_replicator">>,
-                                [sys_db, {user_ctx, UserCtx}]) of
-             {ok, XDb} ->
-                 XDb;
-             _Error ->
-                 {ok, XDb} = couch_db:create(<<"_replicator">>,
-                                             [sys_db, {user_ctx, UserCtx}]),
-                 ?xdcr_info("replication document created: ~n~p", [XDb]),
-                 XDb
-         end,
-    couch_db:close(DB).
 
 handle_call(get_errors, _, State) ->
     Reps = try xdc_replication_sup:get_replications()
