@@ -20,7 +20,7 @@
 -export([parse_rep_doc/2]).
 -export([local_couch_uri_for_vbucket/2]).
 -export([remote_couch_uri_for_vbucket/3, my_active_vbuckets/1]).
--export([parse_rep_db/1,parse_rep_db/3]).
+-export([parse_rep_db/3]).
 -export([split_dbname/1]).
 -export([get_master_db/1, get_checkpoint_log_id/2]).
 -export([get_opt_replication_threshold/0]).
@@ -72,10 +72,6 @@ parse_proxy_params([]) ->
     [];
 parse_proxy_params(ProxyUrl) ->
     [{proxy, ProxyUrl}].
-
-parse_rep_db(Db) ->
-    Options = make_options([]),
-    parse_rep_db(Db, [], Options).
 
 parse_rep_db({Props}, ProxyParams, Options) ->
     Url = maybe_add_trailing_slash(get_value(<<"url">>, Props)),
