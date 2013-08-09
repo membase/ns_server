@@ -114,8 +114,11 @@ handle_call({connect, Remote}, {_Pid, _Tag},
                                     dict:store(Id, {Worker, connected}, Acc);
                                 _ ->
                                     ?xdcr_error("Error! Worker ~p (pid: ~p, vb: ~p) "
-                                                "failed to connect remote ~p",
-                                                [Id, Worker, Vb, Remote]),
+                                                "failed to connect remote (ip: ~p, port: ~p, bucket: ~p)",
+                                                [Id, Worker, Vb,
+                                                 Remote#xdc_rep_xmem_remote.ip,
+                                                 Remote#xdc_rep_xmem_remote.port,
+                                                 Remote#xdc_rep_xmem_remote.bucket]),
                                     Acc
                             end,
                      Acc1
@@ -150,8 +153,11 @@ handle_call(select_bucket, {_Pid, _Tag},
                                     dict:store(Id, {Worker, bucket_selected}, Acc);
                                 _ ->
                                     ?xdcr_error("Error! worker ~p (pid: ~p, vb: ~p) "
-                                                "failed to select target bucekt at remote ~p",
-                                                [Id, Worker, Vb, Remote]),
+                                                "failed to select target bucket at remote (ip: ~p, port: ~p, bucket: ~p)",
+                                                [Id, Worker, Vb,
+                                                 Remote#xdc_rep_xmem_remote.ip,
+                                                 Remote#xdc_rep_xmem_remote.port,
+                                                 Remote#xdc_rep_xmem_remote.bucket]),
                                     Acc
                             end,
                      Acc1

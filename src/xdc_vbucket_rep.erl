@@ -386,7 +386,7 @@ terminate(Reason, #rep_state{
             parent = P
            } = State) ->
     ?xdcr_error("Replication `~s` (`~s` -> `~s`) failed: ~s",
-                [Id, Source, Target, to_binary(Reason)]),
+                [Id, Source, misc:sanitize_url(Target), to_binary(Reason)]),
     update_status_to_parent(State#rep_state{status =
                                                 Status#rep_vb_status{status = idle,
                                                                      num_changes_left = 0,
@@ -607,8 +607,9 @@ init_replication_state(#init_state{rep = Rep,
                              },
       source_seq = get_value(<<"update_seq">>, SourceInfo, ?LOWEST_SEQ)
      },
-    ?xdcr_debug("vb ~p replication state initialized: (local db: ~p, remote db: ~p, mode: ~p, xmem remote: ~p))",
-                [Vb, RepState#rep_state.source_name, RepState#rep_state.target_name, RepMode, XMemRemote]),
+    ?xdcr_debug("vb ~p replication state initialized: (local db: ~p, remote db: ~p, mode: ~p, xmem remote: ~w))",
+                [Vb, RepState#rep_state.source_name,
+                 misc:sanitize_url(RepState#rep_state.target_name), RepMode, XMemRemote]),
     RepState.
 
 start_replication(#rep_state{
@@ -804,7 +805,7 @@ start_replication(#rep_state{
 
     %% finally the vb replicator has been started
     Src = ResultState#rep_state.source_name,
-    Tgt = ResultState#rep_state.target_name,
+    Tgt = misc:sanitize_url(ResultState#rep_state.target_name),
     case Remote of
         nil ->
             ?xdcr_info("replicator of vb ~p for replication from src ~p to target ~p has been "
