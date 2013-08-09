@@ -80,7 +80,7 @@
 start_link() ->
     gen_fsm:start_link({local, ?MODULE}, ?MODULE, [], []).
 
--define(DEFAULT_DELETIONS_PURGE_INTERVAL, 7).
+-define(DEFAULT_DELETIONS_PURGE_INTERVAL, 3).
 
 -spec get_purge_interval(global | binary()) -> integer().
 get_purge_interval(BucketName) ->
