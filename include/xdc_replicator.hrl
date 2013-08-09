@@ -66,6 +66,7 @@
           id,
           source,
           target,
+          replication_mode,
           options
          }).
 

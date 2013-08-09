@@ -41,7 +41,7 @@ target(Pid) ->
 latest_errors(Pid) ->
     gen_server:call(Pid, get_errors).
 
-init([#rep{source = SrcBucketBinary} = Rep]) ->
+init([#rep{source = SrcBucketBinary, replication_mode = RepMode} = Rep]) ->
     %% Subscribe to bucket map changes due to rebalance and failover operations
     %% at the source
     Server = self(),
@@ -73,7 +73,6 @@ init([#rep{source = SrcBucketBinary} = Rep]) ->
                    (_Evt) ->
                         ok
                 end,
-    RepMode = xdc_rep_utils:get_replication_mode(),
     {ok, _} = couch_db_update_notifier:start_link(NotifyFun),
     ?xdcr_debug("couch_db update notifier started", []),
     {ok, InitThrottle} = concurrency_throttle:start_link(MaxConcurrentReps, self()),

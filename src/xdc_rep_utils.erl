@@ -25,7 +25,7 @@
 -export([get_master_db/1, get_checkpoint_log_id/2]).
 -export([get_opt_replication_threshold/0]).
 -export([update_options/1, get_checkpoint_mode/0]).
--export([get_replication_mode/0, get_replication_batch_size/0]).
+-export([get_replication_batch_size/0]).
 -export([is_pipeline_enabled/0, get_trace_dump_invprob/0]).
 -export([get_xmem_worker/0, is_local_conflict_resolution/0]).
 -export([sanitize_status/3]).
@@ -61,9 +61,16 @@ parse_rep_doc(DocId, {Props}) ->
     Options = make_options(Props),
     Source = parse_rep_db(get_value(<<"source">>, Props), ProxyParams, Options),
     Target = parse_rep_db(get_value(<<"target">>, Props), ProxyParams, Options),
+    RepMode = case get_value(<<"type">>, Props) of
+                  <<"xdc">> ->
+                      "capi";
+                  <<"xdc-xmem">> ->
+                      "xmem"
+              end,
     #rep{id = DocId,
          source = Source,
          target = Target,
+         replication_mode = RepMode,
          options = Options}.
 
 parse_proxy_params(ProxyUrl) when is_binary(ProxyUrl) ->
@@ -365,31 +372,6 @@ update_options(Options) ->
                       {worker_batch_size, DefBatchSize},
                       {worker_processes, DefWorkers},
                       {opt_rep_threshold, Threshold}]), Options).
-
--spec get_replication_mode() -> list().
-get_replication_mode() ->
-    EnvVar = case (catch string:to_lower(os:getenv("XDCR_REPLICATION_MODE"))) of
-                 "capi" ->
-                     "capi";
-                 "xmem" ->
-                     "xmem";
-                 _ ->
-                     undefined
-             end,
-
-    %% env var overrides ns_config parameter, use default ns_config parameter
-    %% only when env var is undefined
-    case EnvVar of
-        undefined ->
-            case ns_config:search(xdcr_replication_mode) of
-                {value, DefaultRepMode} ->
-                    DefaultRepMode;
-                false ->
-                    "capi"
-            end;
-        _ ->
-            EnvVar
-    end.
 
 -spec get_replication_batch_size() -> integer().
 get_replication_batch_size() ->
