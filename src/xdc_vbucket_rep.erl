@@ -715,8 +715,7 @@ start_replication(#rep_state{
                         io_lib:format("~n~csource start sequence ~p", [$\t, StartSeq])
                 end]),
 
-    {value, DefaultIntervalSecs} = ns_config:search(xdcr_checkpoint_interval),
-    IntervalSecs =  misc:getenv_int("XDCR_CHECKPOINT_INTERVAL", DefaultIntervalSecs),
+    IntervalSecs = get_value(checkpoint_interval, Options),
     TimeSinceLastCkpt = timer:now_diff(now(), LastCkptTime) div 1000000,
 
     ?xdcr_trace("Worker pids are: ~p, last checkpt time: ~p"

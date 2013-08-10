@@ -17,7 +17,7 @@
 -behaviour(gen_server).
 
 %% public functions
--export([start_link/4]).
+-export([start_link/5]).
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 -export([find_missing/2, flush_docs/2, ensure_full_commit/2]).
@@ -36,11 +36,12 @@
 %% -------------------------------------------------------------------------- %%
 %% ---                         public functions                           --- %%
 %% -------------------------------------------------------------------------- %%
-start_link(Vb, Id, Parent, LocalConflictResolution) ->
-    gen_server:start_link(?MODULE, {Vb, Id, Parent, LocalConflictResolution}, []).
+start_link(Vb, Id, Parent, LocalConflictResolution, ConnectionTimeout) ->
+    gen_server:start_link(?MODULE, {Vb, Id, Parent,
+                                    LocalConflictResolution, ConnectionTimeout}, []).
 
 %% gen_server behavior callback functions
-init({Vb, Id, Parent, LocalConflictResolution}) ->
+init({Vb, Id, Parent, LocalConflictResolution, ConnectionTimeout}) ->
     process_flag(trap_exit, true),
 
     Errs = ringbuffer:new(?XDCR_ERROR_HISTORY),
@@ -54,7 +55,8 @@ init({Vb, Id, Parent, LocalConflictResolution}) ->
       time_init = calendar:now_to_local_time(erlang:now()),
       time_connected = 0,
       error_reports = Errs,
-      local_conflict_resolution=LocalConflictResolution},
+      local_conflict_resolution=LocalConflictResolution,
+      connection_timeout=ConnectionTimeout},
 
     {ok, InitState}.
 
@@ -232,7 +234,8 @@ handle_call({find_missing_pipeline, IdRevs}, _From,
 handle_call({flush_docs, DocsList}, _From,
             #xdc_vb_rep_xmem_worker_state{id = Id, vb = VBucket,
                                           socket = Socket,
-                                          local_conflict_resolution = LocalConflictResolution} =  State) ->
+                                          local_conflict_resolution = LocalConflictResolution,
+                                          connection_timeout = ConnectionTimeout} =  State) ->
     TimeStart = now(),
     %% enumerate all docs and update them
     {NumDocsRepd, NumDocsRejected, Errors} =
@@ -256,14 +259,12 @@ handle_call({flush_docs, DocsList}, _From,
     _AvgLatency = TimeSpent div length(DocsList),
 
     %% dump error msg if timeout
-    {value, DefaultConnTimeout} = ns_config:search(xdcr_connection_timeout),
-    DefTimeoutSecs = misc:getenv_int("XDCR_CONNECTION_TIMEOUT", DefaultConnTimeout),
     TimeSpentSecs = TimeSpent div 1000,
-    case TimeSpentSecs > DefTimeoutSecs of
+    case TimeSpentSecs > ConnectionTimeout of
         true ->
             ?xdcr_error("[xmem_worker ~p for vb ~p]: update ~p docs takes too long to finish!"
                         "(total time spent: ~p secs, default connection time out: ~p secs)",
-                        [Id, VBucket, length(DocsList), TimeSpentSecs, DefTimeoutSecs]);
+                        [Id, VBucket, length(DocsList), TimeSpentSecs, ConnectionTimeout]);
         _ ->
             ok
     end,
@@ -286,7 +287,8 @@ handle_call({flush_docs, DocsList}, _From,
 %% ----------- Pipelined Memached Ops --------------%%
 handle_call({flush_docs_pipeline, DocsList}, _From,
             #xdc_vb_rep_xmem_worker_state{id = Id, vb = VBucket,
-                                          socket = Sock} =  State) ->
+                                          socket = Sock,
+                                          connection_timeout = ConnectionTimeout} =  State) ->
     TimeStart = now(),
 
     %% send out all docs
@@ -351,14 +353,12 @@ handle_call({flush_docs_pipeline, DocsList}, _From,
     _AvgLatency = TimeSpent div length(DocsList),
 
     %% dump error msg if timeout
-    {value, DefaultConnTimeout} = ns_config:search(xdcr_connection_timeout),
-    DefTimeoutSecs = misc:getenv_int("XDCR_CONNECTION_TIMEOUT", DefaultConnTimeout),
     TimeSpentSecs = TimeSpent div 1000,
-    case TimeSpentSecs > DefTimeoutSecs of
+    case TimeSpentSecs > ConnectionTimeout of
         true ->
             ?xdcr_error("[xmem_worker ~p for vb ~p]: update ~p docs takes too long to finish!"
                           "(total time spent: ~p secs, default connection time out: ~p secs)",
-                          [Id, VBucket, length(DocsList), TimeSpentSecs, DefTimeoutSecs]);
+                          [Id, VBucket, length(DocsList), TimeSpentSecs, ConnectionTimeout]);
         _ ->
             ok
     end,

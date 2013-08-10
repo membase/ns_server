@@ -182,7 +182,20 @@ make_options(Props) ->
                                                   {worker_batch_size, DefBatchSize},
                                                   {doc_batch_size_kb, DocBatchSizeKB},
                                                   {worker_processes, DefWorkers},
-                                                  {opt_rep_threshold, OptRepThreshold}
+                                                  {opt_rep_threshold, OptRepThreshold},
+
+
+                                                  %% temporarily set these to
+                                                  %% default values to make
+                                                  %% everything work; will be
+                                                  %% removed in subsequent
+                                                  %% commits
+                                                  {max_concurrent_reps, 32},
+                                                  {checkpoint_interval, 1800},
+                                                  {failure_restart_interval, 30},
+                                                  {xmem_worker, 1},
+                                                  {enable_pipeline_ops, true},
+                                                  {local_conflict_resolution, false}
                                                  ])).
 
 
@@ -386,8 +399,9 @@ update_options(Options) ->
                       {doc_batch_size_kb, DefBatchSizeKB},
                       {worker_processes, DefWorkers},
                       {opt_rep_threshold, Threshold},
-                      {local_conflict_resolution, is_local_conflict_resolution()}]),
-                    Options).
+                      {local_conflict_resolution, is_local_conflict_resolution()},
+                      {enable_pipeline_ops, is_pipeline_enabled()},
+                      {xmem_worker, get_xmem_worker()}]), Options).
 
 -spec is_pipeline_enabled() -> boolean().
 is_pipeline_enabled() ->

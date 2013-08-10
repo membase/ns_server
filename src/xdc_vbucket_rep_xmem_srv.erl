@@ -39,21 +39,24 @@
 %% -------------------------------------------------------------------------- %%
 start_link(Vb, RemoteXMem, ParentVbRep, Options) ->
     %% prepare parameters to start xmem server process
-    NumWorkers = xdc_rep_utils:get_xmem_worker(),
-    PipelineEnabled = xdc_rep_utils:is_pipeline_enabled(),
+    NumWorkers = proplists:get_value(xmem_worker, Options),
+    PipelineEnabled = proplists:get_value(enable_pipeline_ops, Options),
     LocalConflictResolution = proplists:get_value(local_conflict_resolution, Options),
+    ConnectionTimeout = proplists:get_value(connection_timeout, Options),
 
     Args = {Vb, RemoteXMem, ParentVbRep,
-            NumWorkers, PipelineEnabled, LocalConflictResolution},
+            NumWorkers, PipelineEnabled,
+            LocalConflictResolution, ConnectionTimeout},
     {ok, Pid} = gen_server:start_link(?MODULE, Args, []),
     {ok, Pid}.
 
 %% gen_server behavior callback functions
 init({Vb, RemoteXMem, ParentVbRep,
-      NumWorkers, PipelineEnabled, LocalConflictResolution}) ->
+      NumWorkers, PipelineEnabled, LocalConflictResolution, ConnectionTimeout}) ->
     process_flag(trap_exit, true),
     %% signal to self to initialize
-    {ok, AllWorkers} = start_worker_process(Vb, NumWorkers, LocalConflictResolution),
+    {ok, AllWorkers} = start_worker_process(Vb, NumWorkers,
+                                            LocalConflictResolution, ConnectionTimeout),
     {T1, T2, T3} = now(),
     random:seed(T1, T2, T3),
     Errs = ringbuffer:new(?XDCR_ERROR_HISTORY),
@@ -311,12 +314,14 @@ report_error(Err, Vb, Parent) ->
     gen_server:cast(Parent, {report_error, {RawTime, String}}).
 
 
--spec start_worker_process(integer(), integer(), boolean()) -> {ok, dict()}.
-start_worker_process(Vb, NumWorkers, LocalConflictResolution) ->
+-spec start_worker_process(integer(), integer(), boolean(), integer()) -> {ok, dict()}.
+start_worker_process(Vb, NumWorkers, LocalConflictResolution, ConnectionTimeout) ->
     WorkerDict = dict:new(),
     AllWorkers = lists:foldl(
                    fun(Id, Acc) ->
-                           {ok, Pid} = xdc_vbucket_rep_xmem_worker:start_link(Vb, Id, self(), LocalConflictResolution),
+                           {ok, Pid} = xdc_vbucket_rep_xmem_worker:start_link(Vb, Id, self(),
+                                                                              LocalConflictResolution,
+                                                                              ConnectionTimeout),
                            dict:store(Id, {Pid, idle}, Acc)
                    end,
                    WorkerDict,
