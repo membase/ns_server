@@ -81,9 +81,9 @@ default() ->
      {xdcr_failure_restart_interval, 30}, % in secs
      {xdcr_worker_batch_size, 500}, % in # of mutations
      {xdcr_connection_timeout, 180}, % in secs
-     {xdcr_num_worker_process, 4}, % # of worker process
-     {xdcr_num_http_connections, 20}, % max # of http conns
-     {xdcr_num_retries_per_request, 2}, % # of retries
+     {xdcr_worker_processes, 4}, % # of worker process
+     {xdcr_http_connections, 20}, % max # of http conns
+     {xdcr_retries_per_request, 2}, % # of retries
 
      %% document body size threshold (bytes) to trigger optimistic replication
      %% when doc body size is no greater than the threshold

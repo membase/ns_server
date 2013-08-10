@@ -140,14 +140,14 @@ make_options(Props) ->
     %% convert to ms
     DefTimeout = 1000*DefTimeoutSecs,
 
-    {value, DefaultWorkers} = ns_config:search(xdcr_num_worker_process),
-    DefWorkers = misc:getenv_int("XDCR_NUM_WORKER_PROCESS", DefaultWorkers),
+    {value, DefaultWorkers} = ns_config:search(xdcr_worker_processes),
+    DefWorkers = misc:getenv_int("XDCR_WORKER_PROCESSES", DefaultWorkers),
 
-    {value, DefaultConns} = ns_config:search(xdcr_num_http_connections),
-    DefConns = misc:getenv_int("XDCR_NUM_HTTP_CONNECTIONS", DefaultConns),
+    {value, DefaultConns} = ns_config:search(xdcr_http_connections),
+    DefConns = misc:getenv_int("XDCR_HTTP_CONNECTIONS", DefaultConns),
 
-    {value, DefaultRetries} = ns_config:search(xdcr_num_retries_per_request),
-    DefRetries = misc:getenv_int("XDCR_NUM_RETRIES_PER_REQUEST", DefaultRetries),
+    {value, DefaultRetries} = ns_config:search(xdcr_retries_per_request),
+    DefRetries = misc:getenv_int("XDCR_RETRIES_PER_REQUEST", DefaultRetries),
 
     {ok, DefSocketOptions} = couch_util:parse_term(
                                couch_config:get("replicator", "socket_options",
@@ -326,18 +326,18 @@ update_options(Options) ->
             ok
     end,
 
-    {value, DefaultWorkers} = ns_config:search(xdcr_num_worker_process),
-    DefWorkers = misc:getenv_int("XDCR_NUM_WORKER_PROCESS", DefaultWorkers),
+    {value, DefaultWorkers} = ns_config:search(xdcr_worker_processes),
+    DefWorkers = misc:getenv_int("XDCR_WORKER_PROCESSES", DefaultWorkers),
     case length(Options) > 0 andalso DefWorkers =/= get_value(worker_processes, Options) of
         true ->
-            ?xdcr_debug("XDC parameter changed, num_worker_process is updated from ~p to ~p",
+            ?xdcr_debug("XDC parameter changed, worker_processes is updated from ~p to ~p",
                        [get_value(worker_processes, Options) , DefWorkers]);
         _ ->
             ok
     end,
 
-    {value, DefaultConns} = ns_config:search(xdcr_num_http_connections),
-    DefConns = misc:getenv_int("XDCR_NUM_HTTP_CONNECTIONS", DefaultConns),
+    {value, DefaultConns} = ns_config:search(xdcr_http_connections),
+    DefConns = misc:getenv_int("XDCR_HTTP_CONNECTIONS", DefaultConns),
     case length(Options) > 0 andalso DefConns =/= get_value(http_connections, Options) of
         true ->
             ?xdcr_debug("XDC parameter changed, http_connections is updated from ~p to ~p",
@@ -347,11 +347,11 @@ update_options(Options) ->
     end,
 
 
-    {value, DefaultRetries} = ns_config:search(xdcr_num_retries_per_request),
-    DefRetries = misc:getenv_int("XDCR_NUM_RETRIES_PER_REQUEST", DefaultRetries),
+    {value, DefaultRetries} = ns_config:search(xdcr_retries_per_request),
+    DefRetries = misc:getenv_int("XDCR_RETRIES_PER_REQUEST", DefaultRetries),
     case length(Options) > 0 andalso DefRetries =/= get_value(retries, Options) of
         true ->
-            ?xdcr_debug("XDC parameter changed, num_retries_per_request is updated from ~p to ~p",
+            ?xdcr_debug("XDC parameter changed, retries_per_request is updated from ~p to ~p",
                        [get_value(retries, Options) , DefRetries]);
         _ ->
             ok
