@@ -67,9 +67,6 @@ latest_errors() ->
 
 
 init(_) ->
-    <<"_replicator">> = ?l2b(couch_config:get("replicator", "db",
-                                              "_replicator")),
-
     %% dump default XDCR parameters
     dump_parameters(),
 
@@ -228,7 +225,7 @@ changes_feed_loop() ->
 
 %% make sure the replication db exists in couchdb
 ensure_rep_db_exists() ->
-    DbName = ?l2b(couch_config:get("replicator", "db", "_replicator")),
+    DbName = <<"_replicator">>,
     UserCtx = #user_ctx{roles = [<<"_admin">>, <<"_replicator">>]},
     case couch_db:open_int(DbName, [sys_db, {user_ctx, UserCtx}]) of
         {ok, Db} ->

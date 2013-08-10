@@ -149,16 +149,6 @@ make_options(Props) ->
     {value, DefaultRetries} = ns_config:search(xdcr_num_retries_per_request),
     DefRetries = misc:getenv_int("XDCR_NUM_RETRIES_PER_REQUEST", DefaultRetries),
 
-    %% todo: XDCR parameters should be consistently from ns_config instead of
-    %% couch_config
-    DefRepModeStr = couch_config:get("replicator", "continuous", "false"),
-    DefRepMode = case DefRepModeStr of
-                     "true" ->
-                         true;
-                     _ ->
-                         false
-                 end,
-
     {ok, DefSocketOptions} = couch_util:parse_term(
                                couch_config:get("replicator", "socket_options",
                                                 "[{keepalive, true}, {nodelay, false}]")),
@@ -178,7 +168,6 @@ make_options(Props) ->
     lists:ukeymerge(1, Options, lists:keysort(1, [
                                                   {connection_timeout, DefTimeout},
                                                   {retries, DefRetries},
-                                                  {continuous, DefRepMode},
                                                   {http_connections, DefConns},
                                                   {socket_options, DefSocketOptions},
                                                   {worker_batch_size, DefBatchSize},
