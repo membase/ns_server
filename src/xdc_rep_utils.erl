@@ -428,9 +428,9 @@ get_replication_mode() ->
 -spec get_replication_batch_size() -> integer().
 get_replication_batch_size() ->
     %% env parameter can override the ns_config parameter
-    {value, DefaultDocBatchSize} = ns_config:search(xdcr_worker_batch_size),
-    DocBatchSize = misc:getenv_int("XDCR_WORKER_BATCH_SIZE", DefaultDocBatchSize),
-    1024*DocBatchSize.
+    {value, DefaultDocBatchSizeKB} = ns_config:search(xdcr_doc_batch_size_kb),
+    DocBatchSizeKB = misc:getenv_int("XDCR_DOC_BATCH_SIZE_KB", DefaultDocBatchSizeKB),
+    1024*DocBatchSizeKB.
 
 -spec is_pipeline_enabled() -> boolean().
 is_pipeline_enabled() ->
