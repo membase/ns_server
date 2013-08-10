@@ -641,7 +641,7 @@ start_replication(#rep_state{
     %% a batch of _changes rows to process -> check which revs are missing in the
     %% target, and for the missing ones, it copies them from the source to the target.
     MaxConns = get_value(http_connections, Options),
-    OptRepThreshold = get_value(opt_rep_threshold, Options),
+    OptRepThreshold = get_value(optimistic_replication_threshold, Options),
 
     ?xdcr_trace("changes reader process (PID: ~p) and manager process (PID: ~p) "
                 "created, now starting worker processes...",
@@ -706,7 +706,7 @@ start_replication(#rep_state{
                "~csocket options are: ~s~s",
                [Id, $\t, NumWorkers, $\t, BatchSizeItems, $\t, BatchSizeKB, $\t,
                 MaxConns, $\t, get_value(connection_timeout, Options),
-                $\t, get_value(retries, Options),
+                $\t, get_value(retries_per_request, Options),
                 $\t, io_lib:format("~p", [get_value(socket_options, Options)]),
                 case StartSeq of
                     ?LOWEST_SEQ ->

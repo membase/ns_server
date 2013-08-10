@@ -126,7 +126,7 @@ parse_rep_db({Props}, ProxyParams, Options) ->
              lhttpc_options = LhttpcOpts,
              timeout = Timeout,
              http_connections = get_value(http_connections, Options),
-             retries = get_value(retries, Options)
+             retries = get_value(retries_per_request, Options)
            };
 parse_rep_db(<<"http://", _/binary>> = Url, ProxyParams, Options) ->
     parse_rep_db({[{<<"url">>, Url}]}, ProxyParams, Options);
@@ -182,8 +182,7 @@ make_options(Props) ->
                                                   {worker_batch_size, DefBatchSize},
                                                   {doc_batch_size_kb, DocBatchSizeKB},
                                                   {worker_processes, DefWorkers},
-                                                  {opt_rep_threshold, OptRepThreshold},
-
+                                                  {optimistic_replication_threshold, OptRepThreshold},
 
                                                   %% temporarily set these to
                                                   %% default values to make
@@ -252,7 +251,7 @@ convert_options([{<<"http_connections">>, V} | R]) ->
 convert_options([{<<"connection_timeout">>, V} | R]) ->
     [{connection_timeout, couch_util:to_integer(V)} | convert_options(R)];
 convert_options([{<<"retries_per_request">>, V} | R]) ->
-    [{retries, couch_util:to_integer(V)} | convert_options(R)];
+    [{retries_per_request, couch_util:to_integer(V)} | convert_options(R)];
 convert_options([{<<"socket_options">>, V} | R]) ->
     {ok, SocketOptions} = couch_util:parse_term(V),
     [{socket_options, SocketOptions} | convert_options(R)];
@@ -319,10 +318,10 @@ get_opt_replication_threshold() ->
 -spec update_options(list()) -> list().
 update_options(Options) ->
     Threshold = get_opt_replication_threshold(),
-    case length(Options) > 0 andalso Threshold =/= get_value(opt_rep_threshold, Options) of
+    case length(Options) > 0 andalso Threshold =/= get_value(optimistic_replication_threshold, Options) of
         true ->
-            ?xdcr_debug("XDC parameter changed, opt_rep_threshold is updated from ~p to ~p",
-                       [get_value(opt_rep_threshold, Options) , Threshold]);
+            ?xdcr_debug("XDC parameter changed, optimistic_replication_threshold is updated from ~p to ~p",
+                       [get_value(optimistic_replication_threshold, Options) , Threshold]);
         _ ->
             ok
     end,
@@ -382,10 +381,10 @@ update_options(Options) ->
 
     {value, DefaultRetries} = ns_config:search(xdcr_retries_per_request),
     DefRetries = misc:getenv_int("XDCR_RETRIES_PER_REQUEST", DefaultRetries),
-    case length(Options) > 0 andalso DefRetries =/= get_value(retries, Options) of
+    case length(Options) > 0 andalso DefRetries =/= get_value(retries_per_request, Options) of
         true ->
             ?xdcr_debug("XDC parameter changed, retries_per_request is updated from ~p to ~p",
-                       [get_value(retries, Options) , DefRetries]);
+                       [get_value(retries_per_request, Options) , DefRetries]);
         _ ->
             ok
     end,
@@ -393,12 +392,12 @@ update_options(Options) ->
     %% update option list
     lists:ukeymerge(1, lists:keysort(1, [
                       {connection_timeout, DefTimeout},
-                      {retries, DefRetries},
+                      {retries_per_request, DefRetries},
                       {http_connections, DefConns},
                       {worker_batch_size, DefBatchSize},
                       {doc_batch_size_kb, DefBatchSizeKB},
                       {worker_processes, DefWorkers},
-                      {opt_rep_threshold, Threshold},
+                      {optimistic_replication_threshold, Threshold},
                       {local_conflict_resolution, is_local_conflict_resolution()},
                       {enable_pipeline_ops, is_pipeline_enabled()},
                       {xmem_worker, get_xmem_worker()}]), Options).
