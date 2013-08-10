@@ -94,11 +94,11 @@ do_checkpoint(State) ->
                    num_failedckpts = NumFailedCkpts} = Status,
 
 
-    CommitResult = case XMemSrvPid of
-                       nil ->
-                           commit_to_both_remote_capi(Source, Target);
+    CommitResult = case xdc_rep_utils:get_checkpoint_mode() of
+                       "xmem" ->
+                           commit_to_both_remote_xmem(Source, XMemSrvPid);
                        _ ->
-                           commit_to_both_remote_xmem(Source, XMemSrvPid)
+                           commit_to_both_remote_capi(Source, Target)
                    end,
 
     CheckpointResult = case CommitResult of

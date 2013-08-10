@@ -24,7 +24,7 @@
 -export([split_dbname/1]).
 -export([get_master_db/1, get_checkpoint_log_id/2]).
 -export([get_opt_replication_threshold/0]).
--export([update_options/1]).
+-export([update_options/1, get_checkpoint_mode/0]).
 -export([get_replication_mode/0, get_replication_batch_size/0]).
 -export([is_pipeline_enabled/0, get_trace_dump_invprob/0]).
 -export([get_xmem_worker/0, is_local_conflict_resolution/0]).
@@ -466,3 +466,16 @@ is_local_conflict_resolution() ->
         false ->
             false
     end.
+
+-spec get_checkpoint_mode() -> list().
+get_checkpoint_mode() ->
+    %% always checkpoint to remote capi unless specified by env parameter
+    case (catch string:to_lower(os:getenv("XDCR_CHECKPOINT_MODE"))) of
+        "xmem" ->
+            ?xdcr_debug("Warning! Different from default CAPI checkpoint, "
+                        "we checkpoint to memcached", []),
+            "xmem";
+        _ ->
+            "capi"
+    end.
+
