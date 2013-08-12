@@ -70,9 +70,9 @@ build_replicas_main(Bucket, VBucket, SrcNode, ReplicateIntoNodes, JustBackfillNo
         _ -> ok
     end,
 
-    StopEarlyReplicators = [ns_replicas_builder_utils:spawn_replica_builder(Bucket, VBucket, SrcNode, DNode)
+    StopEarlyReplicators = [ns_replicas_builder_utils:spawn_replica_builder(Bucket, VBucket, SrcNode, DNode, false)
                             || DNode <- JustBackfillNodes],
-    ContinuousReplicators = [ns_replicas_builder_utils:spawn_replica_builder(Bucket, VBucket, SrcNode, DNode)
+    ContinuousReplicators = [ns_replicas_builder_utils:spawn_replica_builder(Bucket, VBucket, SrcNode, DNode, false)
                              || DNode <- ReplicateIntoNodes],
     Replicators = StopEarlyReplicators ++ ContinuousReplicators,
 

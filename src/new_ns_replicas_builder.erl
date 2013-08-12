@@ -23,7 +23,7 @@
 
 -include("ns_common.hrl").
 
--export([spawn_link/4,
+-export([spawn_link/5,
          shutdown_replicator/2,
          get_replicators/1]).
 
@@ -39,9 +39,10 @@
 %% @doc spawns replicas builder for given bucket, vbucket, source and
 %% destination node(s).
 -spec spawn_link(Bucket::bucket_name(), VBucket::vbucket_id(), SrcNode::node(),
-                 DstNodes::[node()])-> pid().
-spawn_link(Bucket, VBucket, SrcNode, DstNodes) ->
-    {ok, Pid} = gen_server:start_link(?MODULE, {Bucket, VBucket, SrcNode, DstNodes}, []),
+                 JustBackfillNodes::[node()],
+                 ReplicaNodes::[node()])-> pid().
+spawn_link(Bucket, VBucket, SrcNode, JustBackfillNodes, ReplicaNodes) ->
+    {ok, Pid} = gen_server:start_link(?MODULE, {Bucket, VBucket, SrcNode, JustBackfillNodes, ReplicaNodes}, []),
     Pid.
 
 shutdown_replicator(Pid, DstNode) ->
@@ -50,11 +51,13 @@ shutdown_replicator(Pid, DstNode) ->
 get_replicators(Pid) ->
     gen_server:call(Pid, get_replicators, infinity).
 
-init({Bucket, VBucket, SrcNode, DstNodes}) ->
+init({Bucket, VBucket, SrcNode, JustBackfillNodes, ReplicaNodes}) ->
     erlang:process_flag(trap_exit, true),
     Replicators =
-        [{DNode, ns_replicas_builder_utils:spawn_replica_builder(Bucket, VBucket, SrcNode, DNode)}
-         || DNode <- DstNodes],
+        [{DNode, ns_replicas_builder_utils:spawn_replica_builder(Bucket, VBucket, SrcNode, DNode, true)}
+         || DNode <- JustBackfillNodes]
+        ++ [{DNode, ns_replicas_builder_utils:spawn_replica_builder(Bucket, VBucket, SrcNode, DNode, false)}
+            || DNode <- ReplicaNodes],
     {ok, #state{
        bucket = Bucket,
        vbucket = VBucket,

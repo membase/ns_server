@@ -74,17 +74,10 @@ var TestingSupervisor = {
   },
   interceptAjax: function () {
     this.installInterceptor('interceptedAjax', $, 'ajax');
-    this.installInterceptor('interceptedAddBasicAuth', window, 'addBasicAuth');
   },
   interceptedAjax: function (original, options) {
     console.log("intercepted ajax:", options.url, options);
     (new MockedRequest(options)).respond();
-  },
-  interceptedAddBasicAuth: function (original, xhr, login, password) {
-    if (!xhr.fakeAddBasicAuth) {
-      throw new Error("incomplete hook.js installation");
-    }
-    xhr.fakeAddBasicAuth(login, password);
   }
 };
 
@@ -125,10 +118,6 @@ var MockedRequest = mkClass({
         case 'date':
           return dateToFakeRFC1123(new Date())
         }
-      },
-      fakeAddBasicAuth: function (login, password) {
-        this.login = login;
-        this.password = password;
       }
     }
 
@@ -417,6 +406,20 @@ var MockedRequest = mkClass({
               samples: samples
             }};
   },
+  handleLogin: function () {
+    var params = this.deserialize();
+    if (params["user"] == "Administrator"
+        && params["password"] == "asdasd") {
+      TestingSupervisor.login = true;
+      return "";
+    } else {
+      this.errorResponse([]);
+    }
+  },
+  handleLogout: function () {
+    TestingSupervisor.login = false;
+    return "";
+  },
   __defineRouting: function () {
     var x = {}
     function mkHTTPMethod(method) {
@@ -488,6 +491,8 @@ var MockedRequest = mkClass({
     }
 
     var rv = [
+      [post("uilogin"), expectParams(method("handleLogin"), "user", "password")],
+      [post("uilogout"), method("handleLogout")],
       [get("internalSettings"), {
         "indexAwareRebalanceDisabled": true,
         "rebalanceIndexWaitingDisabled": false,
@@ -1257,7 +1262,7 @@ var ServerStateMock = {
           "streamingUri": "/poolsStreaming/default"
         }
       ],
-      "isAdminCreds": !!req.fakeXHR.login,
+      "isAdminCreds": !!TestingSupervisor.login,
       "uuid": "6f0abb80-6aa8-4001-15e8-97aa00000226",
       "implementationVersion": "1.7.0_207_gcddb6e2",
       "componentsVersion": {

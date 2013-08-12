@@ -490,25 +490,35 @@ init({Src, Dst, Opts}=InitArgs) ->
         end,
 
     %% Set all vbuckets to the replica state on the destination node.
-    VBucketsToSetToReplica =
-        if
-            OldState =/= undefined orelse length(VBuckets) > 8 ->
-                {ok, AllReplicaVBuckets} =
-                    mc_binary:quick_stats(
-                      DownstreamAux, <<"vbucket">>,
-                      fun (<<"vb_", K/binary>>, <<"replica">>, Acc) ->
-                              [list_to_integer(binary_to_list(K)) | Acc];
-                          (_, _, Acc) -> Acc
-                      end, []),
-                VBuckets -- AllReplicaVBuckets;
+    VBucketsToChangeState =
+        case proplists:get_bool(set_to_pending_state, Opts) of
             true ->
-                VBuckets
+                VBuckets;
+            _ ->
+                if
+                    OldState =/= undefined orelse length(VBuckets) > 8 ->
+                        {ok, AllReplicaVBuckets} =
+                            mc_binary:quick_stats(
+                              DownstreamAux, <<"vbucket">>,
+                              fun (<<"vb_", K/binary>>, <<"replica">>, Acc) ->
+                                      [list_to_integer(binary_to_list(K)) | Acc];
+                                  (_, _, Acc) -> Acc
+                              end, []),
+                        VBuckets -- AllReplicaVBuckets;
+                    true ->
+                        VBuckets
+                end
         end,
+
+    VBucketStateToSet = case proplists:get_bool(set_to_pending_state, Opts) of
+                            true -> pending;
+                            _ -> replica
+                        end,
 
     [begin
          ?log_info("Setting ~p vbucket ~p to state replica", [Dst, VBucket]),
-         ok = mc_client_binary:set_vbucket(DownstreamAux, VBucket, replica)
-     end || VBucket <- VBucketsToSetToReplica],
+         ok = mc_client_binary:set_vbucket(DownstreamAux, VBucket, VBucketStateToSet)
+     end || VBucket <- VBucketsToChangeState],
 
     NotReadyVBuckets = mc_client_binary:get_zero_open_checkpoint_vbuckets(UpstreamAux, VBuckets),
     ReadyVBuckets = VBuckets -- NotReadyVBuckets,
@@ -794,6 +804,7 @@ build_args(Bucket, SrcNode, DstNode, VBuckets, TakeOver) ->
      [{username, User},
       {password, Pass},
       {vbuckets, VBuckets},
+      {set_to_pending_state, TakeOver},
       {takeover, TakeOver},
       {suffix, Suffix}]].
 

@@ -18,9 +18,10 @@
 -module(menelaus_auth).
 -author('Northscale <info@northscale.com>').
 
+-include("ns_common.hrl").
+
 -export([apply_auth/3,
          apply_ro_auth/3,
-         apply_auth_cookie/3,
          require_auth/1,
          filter_accessible_buckets/2,
          is_bucket_accessible/3,
@@ -31,7 +32,10 @@
          parse_user_password/1,
          is_under_admin/1,
          is_read_only_admin_exist/0,
-         is_read_only_auth/1]).
+         is_read_only_auth/1,
+         extract_ui_auth_token/1,
+         complete_uilogin/2,
+         maybe_refresh_token/1]).
 
 %% External API
 
@@ -84,21 +88,55 @@ apply_auth_with_auth_data(Req, F, Args, UserPassword, AuthFun) ->
         _ -> require_auth(Req)
     end.
 
-apply_auth_cookie(Req, F, Args) ->
-    UserPassword = case extract_auth(Req) of
-                       undefined ->
-                           case Req:get_header_value("Cookie") of
-                               undefined -> undefined;
-                               RawCookies ->
-                                   ParsedCookies = mochiweb_cookies:parse_cookie(RawCookies),
-                                   case proplists:get_value("auth", ParsedCookies) of
-                                       undefined -> undefined;
-                                       V -> parse_user_password(base64:decode_to_string(mochiweb_util:unquote(V)))
-                                   end
-                           end;
-                       X -> X
-                   end,
-    apply_auth_with_auth_data(Req, F, Args, UserPassword, fun check_auth/1).
+
+get_cookies(Req) ->
+    case Req:get_header_value("Cookie") of
+        undefined -> [];
+        RawCookies ->
+            RV = mochiweb_cookies:parse_cookie(RawCookies),
+            RV
+    end.
+
+lookup_cookie(Req, Cookie) ->
+    proplists:get_value(Cookie, get_cookies(Req)).
+
+ui_auth_cookie_name(Req) ->
+    %% NOTE: cookies are _not_ per-port and in general quite
+    %% unexpectedly a stupid piece of mess. In order to have working
+    %% dev mode clusters where different nodes are at different ports
+    %% we use different cookie names for different host:port
+    %% combination.
+    case Req:get_header_value("host") of
+        undefined ->
+            "ui-auth";
+        Host ->
+            "ui-auth-" ++ mochiweb_util:quote_plus(Host)
+    end.
+
+extract_ui_auth_token(Req) ->
+    lookup_cookie(Req, ui_auth_cookie_name(Req)).
+
+generate_auth_cookie(Req, Token) ->
+    Options = [{path, "/"}, {http_only, true}, {max_age, ?UI_AUTH_EXPIRATION_SECONDS}],
+    mochiweb_cookies:cookie(ui_auth_cookie_name(Req), Token, Options).
+
+complete_uilogin(Req, Role) ->
+    Token = menelaus_ui_auth:generate_token(Role),
+    CookieHeader = generate_auth_cookie(Req, Token),
+    Req:respond({200, [CookieHeader | add_header()], ""}).
+
+maybe_refresh_token(Req) ->
+    case menelaus_auth:extract_auth(Req) of
+        {token, Token} ->
+            case menelaus_ui_auth:maybe_refresh(Token) of
+                nothing ->
+                    [];
+                {new_token, NewToken} ->
+                    [generate_auth_cookie(Req, NewToken)]
+            end;
+        _ ->
+            []
+    end.
 
 %% applies given function F if current credentials allow access to at
 %% least single SASL-auth bucket. So admin credentials and bucket
@@ -127,12 +165,28 @@ check_auth(UserPassword) ->
     case ns_config:search_prop('latest-config-marker', rest_creds, creds, empty) of
         []    -> true; % An empty list means no login/password auth check.
         empty -> true; % An empty list means no login/password auth check.
-        Creds -> check_auth(UserPassword, Creds)
+        Creds ->
+            case UserPassword of
+                {token, Token} ->
+                    case menelaus_ui_auth:check(Token) of
+                        {ok, admin} -> true;
+                        _ ->
+                            false
+                    end;
+                _ ->
+                    check_auth(UserPassword, Creds)
+            end
     end.
 
 check_ro_auth(UserPassword) ->
     is_read_only_auth(UserPassword) orelse check_auth(UserPassword).
 
+
+is_read_only_auth({token, Token}) ->
+    case menelaus_ui_auth:check(Token) of
+        {ok, ro_admin} -> true;
+        _ -> false
+    end;
 is_read_only_auth(UserPassword) ->
     ns_config:search(read_only_user_creds) =:= {value, UserPassword}.
 
@@ -161,7 +215,11 @@ extract_auth(Req) ->
     case Req:get_header_value("authorization") of
         "Basic " ++ Value ->
             parse_user_password(base64:decode_to_string(Value));
-        _ -> undefined
+        _ ->
+            case extract_ui_auth_token(Req) of
+                undefined -> undefined;
+                Token -> {token, Token}
+            end
     end.
 
 parse_user_password(UserPasswordStr) ->

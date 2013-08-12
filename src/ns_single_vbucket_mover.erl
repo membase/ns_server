@@ -165,7 +165,7 @@ mover_inner(Parent, Node, Bucket, VBucket,
 
     BuilderPid = new_ns_replicas_builder:spawn_link(
                    Bucket, VBucket, Node,
-                   JustBackfillNodes ++ ReplicaNodes),
+                   JustBackfillNodes, ReplicaNodes),
     cleanup_list_add(BuilderPid),
     ?rebalance_debug("child replicas builder for vbucket ~p is ~p", [VBucket, BuilderPid]),
 
@@ -329,7 +329,7 @@ mover_inner_old_style(Parent, Node, Bucket, VBucket,
 run_mover(Bucket, V, N1, N2) ->
     case {ns_memcached:get_vbucket(N1, Bucket, V),
           ns_memcached:get_vbucket(N2, Bucket, V)} of
-        {{ok, active}, {ok, replica}} ->
+        {{ok, active}, {ok, ReplicaState}} when ReplicaState =:= replica orelse ReplicaState =:= pending ->
             {ok, Pid} = spawn_ebucketmigrator_mover(Bucket, V, N1, N2),
             wait_for_mover(Bucket, V, N1, N2, Pid)
     end.

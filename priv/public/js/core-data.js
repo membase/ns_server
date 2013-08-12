@@ -43,7 +43,6 @@ function onUnexpectedXHRError(xhr, xhrStatus, errMsg) {
   } catch (e) {}
 
   if (status === 401) {
-    $.cookie('auth', null);
     return reloadApp();
   }
 
@@ -110,9 +109,6 @@ $.ajaxSetup({
   timeout: 30000,
   cache: false,
   beforeSend: function (xhr, options) {
-    if (DAL.login) {
-      addBasicAuth(xhr, DAL.login, DAL.password);
-    }
     xhr.setRequestHeader('invalid-auth-response', 'on');
     xhr.setRequestHeader('Cache-Control', 'no-cache');
     xhr.setRequestHeader('Pragma', 'no-cache');
@@ -134,14 +130,6 @@ var DAL = {
       thunk.call(null);
     } else {
       $(window).one('dao:ready', function () {thunk();});
-    }
-  },
-  setAuthCookie: function (user, password) {
-    if (user != '') {
-      var auth = Base64.encode([user, ':', password].join(''));
-      $.cookie('auth', auth);
-    } else {
-      $.cookie('auth', null);
     }
   },
   appendedVersion: false,
@@ -201,15 +189,12 @@ var DAL = {
       return false;
     }
 
-    if (provisioned && authenticated && !DAL.login) {
-      alert("WARNING: Your browser has cached administrator Basic HTTP authentication credentials. You need to close and re-open it to clear that cache.");
-    }
+    DAL.login = true;
 
     DAL.ready = true;
     $(window).trigger('dao:ready');
 
     DAL.cells.poolList.setValue(rows);
-    DAL.setAuthCookie(DAL.login, DAL.password);
 
     // If the cluster appears to be configured, then don't let user go
     // back through init dialog.
@@ -246,45 +231,42 @@ var DAL = {
       success: cb,
       error: cb});
 
-    if (!rv && (auth = $.cookie('auth'))) {
-      arr = Base64.decode(auth).split(':');
-      DAL.login = arr[0];
-      DAL.password = arr[1];
-
-      $('#auth_dialog [name=login]').val(arr[0]);
-
-      $.ajax({
-        type: 'GET',
-        url: "/pools",
-        dataType: 'json',
-        async: false,
-        success: cb,
-        error: cb});
-    }
-
     return rv;
   },
   performLogin: function (login, password, callback) {
-    this.login = login;
-    this.password = password;
-
-    function cb(data, status) {
-      if (status === 'success') {
-        if (!DAL.loginSuccess(data)) {
-          status = 'error';
-        }
-      }
-      if (callback) {
-        callback(status);
-      }
-    }
-
     $.ajax({
-      type: 'GET',
-      url: "/pools",
-      dataType: 'json',
-      success: cb,
-      error: cb});
+      type: 'POST',
+      url: "/uilogin",
+      data: $.param({user: login,
+                     password: password}),
+      success:loginCB,
+      error:loginCB});
+
+    return;
+
+    function loginCB(data, status) {
+      if (status != 'success') {
+        return callback(status);
+      }
+      if (!DAL.tryNoAuthLogin()) {
+        // this should be impossible
+        reloadApp();
+        return;
+      }
+      callback(status);
+    }
+  },
+  initiateLogout: function (callback) {
+    DAL.ready = false;
+    DAL.cells.mode.setValue(undefined);
+    DAL.cells.currentPoolDetailsCell.setValue(undefined);
+    DAL.cells.poolList.setValue(undefined);
+    $.ajax({
+      type: 'POST',
+      url: "/uilogout",
+      success: callback,
+      success: callback
+    });
   }
 };
 

@@ -859,6 +859,9 @@ couchbase_replication_stats_descriptions(BucketId) ->
                                           {name,<<Prefix/binary, "wtavg_docs_latency">>},
                                           {desc,<<"Weighted average latency in ms of sending replicated mutations to remote cluster">>}]},
                                  %% fifth row
+                                 {struct,[{title,<<"mutations replicated optimistically">>},
+                                          {name,<<Prefix/binary,"docs_opt_repd">>},
+                                          {desc,<<"Number of mutations optimistically replicated to remote cluster">>}]},
                                  {struct,[{title,<<"percent completed">>},
                                           {name,<<Prefix/binary, "percent_completeness">>},
                                           {desc,<<"Percentage of checked items out of all checked and to-be-replicated items">>}]}]}]}
