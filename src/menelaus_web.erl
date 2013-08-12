@@ -242,6 +242,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth_ro, fun handle_settings_view_update_daemon/1};
                          ["settings", "autoCompaction"] ->
                              {auth_ro, fun handle_settings_auto_compaction/1};
+                         ["settings", "readOnlyAdminName"] ->
+                             {auth_ro, fun handle_settings_read_only_admin_name/1};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings/1};
                          ["nodes", NodeId] ->
@@ -1521,6 +1523,13 @@ maybe_invalid(Name, Value) ->
                 true -> do_validate_cred(Value, Name);
                 _ -> UserErrors
            end}.
+
+handle_settings_read_only_admin_name(Req) ->
+    Name = case ns_config:search(read_only_user_creds) of
+               {value, {U, _}} -> list_to_binary(U);
+               _ -> <<"">>
+           end,
+    reply_json(Req, Name, 200).
 
 handle_settings_read_only_user_post(Req) ->
     PostArgs = Req:parse_post(),

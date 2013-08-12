@@ -273,6 +273,7 @@ var DAL = {
 (function (cells) {
   cells.isROAdminCell = new Cell();
   cells.isROAdminExistCell = new Cell();
+  cells.roAdminNameCell = new Cell();
 })(DAL.cells);
 
 (function () {

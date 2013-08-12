@@ -847,6 +847,16 @@ var EmailAlertsSection = {
   }
 };
 
+function accountManagementSectionCells(ns, roAdminNameCell, isROAdminExistCell) {
+  ns.roAdminNameCell = Cell.compute(function (v) {
+    var isROAdminExist = v.need(isROAdminExistCell);
+    if (!isROAdminExist) {
+      return;
+    }
+    return v(roAdminNameCell) || future.get({url:"/settings/readOnlyAdminName"});;
+  });
+}
+
 var AccountManagementSection = {
   init: function () {
     var self = AccountManagementSection;
@@ -855,6 +865,10 @@ var AccountManagementSection = {
     var fields = {username: false, password: false, verifyPassword: false};
     var credentialsCell = new Cell();
     var errorsCell = new Cell();
+    var roAdminNameCell = DAL.cells.roAdminNameCell;
+    var isROAdminExistCell = DAL.cells.isROAdminExistCell;
+
+    accountManagementSectionCells(self, roAdminNameCell, isROAdminExistCell);
 
     function showHideErrors(maybeErrors) {
       var key;
@@ -872,7 +886,13 @@ var AccountManagementSection = {
         url: "/settings/readOnlyUser" + (validate || ""),
         data: {username: cred.username, password: cred.password},
         success: function (errors) {
-          validate ? errorsCell.setValue(undefined) : DAL.cells.isROAdminExistCell.setValue(true);
+          if (validate) {
+            errorsCell.setValue(undefined);
+          } else {
+            form.trigger("reset");
+            roAdminNameCell.setValue(cred.username);
+            isROAdminExistCell.setValue(true);
+          }
         },
         error: function (errors) {
           errorsCell.setValue(errors);
@@ -890,6 +910,9 @@ var AccountManagementSection = {
       $("[name='username']", form).focus();
     });
 
+    self.roAdminNameCell.subscribeValue(function (value) {
+      $("#js_roadmin_name").text(value || "undefined");
+    });
 
     Cell.subscribeMultipleValues(function (errors, cred) {
       if (!cred) {
@@ -938,7 +961,7 @@ var AccountManagementSection = {
             url: "/settings/readOnlyUser",
             success: function (errors) {
               hideDialog(dialog);
-              DAL.cells.isROAdminExistCell.setValue(false);
+              isROAdminExistCell.setValue(false);
             },
             error: function (errors, status) {
               if (errors.status == 404) {

@@ -193,9 +193,8 @@ is_read_only_auth(UserPassword) ->
 
 is_read_only_admin_exist() ->
     case ns_config:search(read_only_user_creds) of
-        {value, null} -> false;
-        {value, _P} -> true;
-        false -> false
+        {value, {_U, _P}} -> true;
+        _ -> false
     end.
 
 check_auth(_UserPassword, []) ->

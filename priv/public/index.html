@@ -851,12 +851,13 @@
                    </div>
                 </form></div>
                 <div class="account_management_container when-roadmin-avoid-me">
-                  <form id="js_account_management_form">
-                    <fieldset>
-                      <p>This user will have read-only access and
+                  <h2>Read-Only User</h2>
+                  <p>This user will have read-only access and
                       cannot make any changes to the system. The user
                       can only view existing servers, buckets, views
                       and monitor stats.</p>
+                  <form id="js_account_management_form" class="account_management_form">
+                    <fieldset>
                       <label>
                         <span>Username:</span><input type="text" name="username" maxlength="24">
                         <i class="errors js_error_username"></i>
@@ -873,8 +874,7 @@
                     </fieldset>
                   </form>
                   <div id="js_account_delete">
-                    <p>There is already Read-Only User created</p>
-                    <p>Do you want to delete the Read-Only User <span class="list_button" id="js_delete_acc_btn"><span>Delete</span></span></p>
+                    <p>Currently read-only user account already exists: Username - <span id="js_roadmin_name"></span> <span class="list_button" id="js_delete_acc_btn"><span>Delete</span></span></p>
                   </div>
                 </div>
               </div>
