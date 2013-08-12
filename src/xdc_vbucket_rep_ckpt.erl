@@ -94,11 +94,11 @@ do_checkpoint(State) ->
                    num_failedckpts = NumFailedCkpts} = Status,
 
 
-    CommitResult = case XMemSrvPid of
-                       nil ->
-                           commit_to_both_remote_capi(Source, Target);
+    CommitResult = case xdc_rep_utils:get_checkpoint_mode() of
+                       "xmem" ->
+                           commit_to_both_remote_xmem(Source, XMemSrvPid);
                        _ ->
-                           commit_to_both_remote_xmem(Source, XMemSrvPid)
+                           commit_to_both_remote_capi(Source, Target)
                    end,
 
     CheckpointResult = case CommitResult of
@@ -110,7 +110,7 @@ do_checkpoint(State) ->
                                 <<"Failure on target commit: ", (to_binary(Reason))/binary>>};
                            {SrcInstanceStartTime, TgtInstanceStartTime} ->
                                ?xdcr_info("recording a checkpoint for `~s` -> `~s` at source update_seq ~p",
-                                          [SourceName, TargetName, NewSeq]),
+                                          [SourceName, misc:sanitize_url(TargetName), NewSeq]),
                                StartTime = ?l2b(ReplicationStartTime),
                                EndTime = ?l2b(httpd_util:rfc1123_date()),
                                NewHistoryEntry = {[
@@ -297,7 +297,7 @@ source_cur_seq(#rep_state{source = #db{} = Db, source_seq = Seq}) ->
     get_value(<<"update_seq">>, Info, Seq);
 
 source_cur_seq(#rep_state{source_seq = Seq} = State) ->
-    ?xdcr_debug("unknown source in state: ~p", [State]),
+    ?xdcr_debug("unknown source ~p in replicator state", [State#rep_state.source]),
     Seq.
 
 %% update the checkpoint status to parent bucket replicator

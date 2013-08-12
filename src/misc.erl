@@ -37,6 +37,7 @@
 -include("ns_common.hrl").
 -include_lib("kernel/include/file.hrl").
 -include_lib("eunit/include/eunit.hrl").
+-include("couch_db.hrl").
 
 -define(FNV_OFFSET_BASIS, 2166136261).
 -define(FNV_PRIME,        16777619).
@@ -788,13 +789,22 @@ pairs_test() ->
 
 
 
-rewrite_value(Old, New, Old) ->
+rewrite_value(Old, New, Struct) ->
+    rewrite_value_int({value, Old}, New, Struct).
+
+rewrite_key_value_tuple(Key, NewValue, Struct) ->
+    rewrite_value_int({key, Key}, NewValue, Struct).
+
+rewrite_value_int({key, Key}, New, {Key, _}) ->
+    {Key, New};
+rewrite_value_int({value, Old}, New, Old) ->
     New;
-rewrite_value(Old, New, L) when is_list(L) ->
-    lists:map(fun (V) -> rewrite_value(Old, New, V) end, L);
-rewrite_value(Old, New, T) when is_tuple(T) ->
-    list_to_tuple(rewrite_value(Old, New, tuple_to_list(T)));
-rewrite_value(_Old, _New, X) -> X.
+rewrite_value_int(Old, New, L) when is_list(L) ->
+    lists:map(fun (V) -> rewrite_value_int(Old, New, V) end, L);
+rewrite_value_int(Old, New, T) when is_tuple(T) ->
+    list_to_tuple(rewrite_value_int(Old, New, tuple_to_list(T)));
+rewrite_value_int(_Old, _New, X) ->
+    X.
 
 rewrite_value_test() ->
     x = rewrite_value(a, b, x),
@@ -814,6 +824,40 @@ rewrite_value_test() ->
     X = [{"a string", 1, x},
          {"b string", 4, b, {blah, b, b}}].
 
+rewrite_key_value_tuple_test() ->
+    x = rewrite_key_value_tuple(a, b, x),
+    {a, b} = rewrite_key_value_tuple(a, b, {a, c}),
+    {b, x} = rewrite_key_value_tuple(a, b, {b, x}),
+
+    X = rewrite_key_value_tuple(a, b,
+                                [ {"a string", 1, x},
+                                  {"b string", 4, {a, c}, {a, [b, c]}}]),
+    X = [{"a string", 1, x},
+         {"b string", 4, {a, b}, {a, b}}].
+
+sanitize_url(Url) when is_binary(Url) ->
+    ?l2b(sanitize_url(?b2l(Url)));
+sanitize_url(Url) ->
+    HostIndex = string:chr(Url, $@),
+    case HostIndex of
+        0 ->
+            Url;
+        _ ->
+            AfterScheme = string:str(Url, "://"),
+            case AfterScheme of
+                0 ->
+                    "*****" ++ string:substr(Url, HostIndex);
+                _ ->
+                    string:substr(Url, 1, AfterScheme + 2) ++ "*****" ++
+                        string:substr(Url, HostIndex)
+            end
+    end.
+
+sanitize_url_test() ->
+    "blah.com/a/b/c" = sanitize_url("blah.com/a/b/c"),
+    "ftp://blah.com" = sanitize_url("ftp://blah.com"),
+    "http://*****@blah.com" = sanitize_url("http://user:password@blah.com"),
+    "*****@blah.com" = sanitize_url("user:password@blah.com").
 
 ukeymergewith(Fun, N, L1, L2) ->
     ukeymergewith(Fun, N, L1, L2, []).

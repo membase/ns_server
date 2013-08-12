@@ -74,11 +74,14 @@ set_dynamic_children(NCAOs) ->
     PidAfter = erlang:whereis(?MODULE),
     PidBefore = PidAfter.
 
+sanitize(Struct) ->
+    misc:rewrite_key_value_tuple("MOXI_SASL_PLAIN_PWD", "*****", Struct).
 
 launch_port(NCAO) ->
-    ?log_info("supervising port: ~p", [NCAO]),
+    Id = sanitize(NCAO),
+    ?log_info("supervising port: ~p", [Id]),
     {ok, C} = supervisor:start_child(?MODULE,
-                                     create_child_spec(NCAO)),
+                                     create_child_spec(Id, NCAO)),
     {ok, C}.
 
 create_ns_server_supervisor_spec() ->
@@ -93,12 +96,14 @@ create_ns_server_supervisor_spec() ->
               end,
 
     NCAO = {ns_server, ErlCmd, NSServerArgs, Options},
-    create_child_spec(NCAO).
+    create_child_spec(NCAO, NCAO).
 
-create_child_spec({Name, Cmd, Args, Opts}) ->
-    {{Name, Cmd, Args, Opts},
+create_child_spec(Id, {Name, Cmd, Args, Opts}) ->
+    %% wrap parameters into function here to protect passwords
+    %% that could be inside those parameters from being logged
+    {Id,
      {supervisor_cushion, start_link,
-      [Name, 5000, infinity, ns_port_server, start_link, [Name, Cmd, Args, Opts]]},
+      [Name, 5000, infinity, ns_port_server, start_link, [fun() -> {Name, Cmd, Args, Opts} end]]},
      permanent, 86400000, worker,
      [ns_port_server]}.
 

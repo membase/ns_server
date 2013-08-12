@@ -34,7 +34,7 @@ start_link(#rep_worker_option{cp = Cp, source = Source, target = Target,
         1 ->
             ?xdcr_debug("create queue_fetch_loop process (pid: ~p) within replicator (pid: ~p) "
                         "Source: ~p, Target: ~p, ChangesManager: ~p, latency optimized: ~p",
-                        [Pid, Cp, Source#db.name, Target#httpdb.url, ChangesManager, OptRepThreshold]);
+                        [Pid, Cp, Source#db.name, misc:sanitize_url(Target#httpdb.url), ChangesManager, OptRepThreshold]);
         _ ->
             ok
     end,
@@ -46,7 +46,7 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, nil) ->
     case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
         1 ->
             ?xdcr_debug("fetch changes from changes manager at ~p (target: ~p)",
-                        [ChangesManager, Target#httpdb.url]);
+                        [ChangesManager, misc:sanitize_url(Target#httpdb.url)]);
         _ ->
             ok
     end,
@@ -95,7 +95,7 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, XMemSrv) -
     case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
         1 ->
             ?xdcr_debug("fetch changes from changes manager at ~p (target: ~p)",
-                        [ChangesManager, Target#httpdb.url]);
+                        [ChangesManager, misc:sanitize_url(Target#httpdb.url)]);
         _ ->
             ok
     end,
@@ -200,14 +200,14 @@ flush_docs_helper(Target, DocsList, nil) ->
             case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
                 1 ->
                     ?xdcr_debug("replication mode: ~p, worker process replicated ~p docs to target ~p",
-                                [RepMode, length(DocsList), Target#httpdb.url]);
+                                [RepMode, length(DocsList), misc:sanitize_url(Target#httpdb.url)]);
                 _ ->
                     ok
             end,
             ok;
         {failed_write, Error} ->
             ?xdcr_error("replication mode: ~p, unable to replicate ~p docs to target ~p",
-                        [RepMode, length(DocsList), Target#httpdb.url]),
+                        [RepMode, length(DocsList), misc:sanitize_url(Target#httpdb.url)]),
             exit({failed_write, Error})
     end;
 
@@ -219,14 +219,14 @@ flush_docs_helper(Target, DocsList, XMemSrv) ->
             case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
                 1 ->
                     ?xdcr_debug("replication mode: ~p, worker process replicated ~p docs to target ~p",
-                                [RepMode, length(DocsList), Target#httpdb.url]);
+                                [RepMode, length(DocsList), misc:sanitize_url(Target#httpdb.url)]);
                 _ ->
                     ok
             end,
             ok;
         {failed_write, Error} ->
             ?xdcr_error("replication mode: ~p, unable to replicate ~p docs to target ~p",
-                        [RepMode, length(DocsList), Target#httpdb.url]),
+                        [RepMode, length(DocsList), misc:sanitize_url(Target#httpdb.url)]),
             exit({failed_write, Error})
     end.
 
@@ -315,7 +315,7 @@ find_missing(DocInfos, Target, OptRepThreshold, XMemSrv) ->
                         "the number of docs we need to replicate is: ~p; ~n\t "
                         "total # of docs to be replicated is: ~p, total latency: ~p ms",
                         [RepMode, AllRevsCount, DelCount, SmallDocCount, BigDocCount, OptRepThreshold,
-                         Target#httpdb.url, BigDocCount, MissingBigDocCount,
+                         misc:sanitize_url(Target#httpdb.url), BigDocCount, MissingBigDocCount,
                          length(MissingDocInfoList), Latency]);
         _ ->
             ok

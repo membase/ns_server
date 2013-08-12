@@ -23,7 +23,7 @@
 -include("ns_common.hrl").
 
 %% API
--export([start_link/4]).
+-export([start_link/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -56,14 +56,14 @@
                 dropped=0 :: non_neg_integer(),
                 send_eol :: boolean()}).
 
-
 %% API
 
-start_link(Name, Cmd, Args, Opts) ->
+start_link(Fun) ->
     gen_server:start_link(?MODULE,
-                          {Name, Cmd, Args, Opts}, []).
+                          Fun, []).
 
-init({Name, _Cmd, _Args, Opts} = Params) ->
+init(Fun) ->
+    {Name, _Cmd, _Args, Opts} = Params = Fun(),
     process_flag(trap_exit, true), % Make sure terminate gets called
     {SendEOL, Params2} =
         case proplists:get_value(port_server_send_eol, Opts) of
