@@ -87,6 +87,8 @@
           docs_checked = 0,
           %% of docs have been replicated
           docs_written = 0,
+          %% of docs have been replicated optimistically
+          docs_opt_repd = 0,
           %% bytes of data replicated
           data_replicated = 0,
           %% num of checkpoints issued successfully
@@ -114,6 +116,7 @@
           %% for the same vbucket
           total_docs_checked = 0,
           total_docs_written = 0,
+          total_docs_opt_repd = 0,
           total_data_replicated = 0,
 
           %% latency stats
@@ -271,7 +274,8 @@
           worker_docs_latency_aggr = 0,
           worker_data_replicated = 0,
           worker_item_checked = 0,
-          worker_item_replicated = 0
+          worker_item_replicated = 0,
+          worker_item_opt_repd = 0
          }).
 
 %%-----------------------------------------%%

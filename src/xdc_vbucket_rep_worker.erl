@@ -56,7 +56,8 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, nil) ->
             ok = gen_server:call(Cp, {worker_done, self()}, infinity);
         {changes, ChangesManager, Changes, ReportSeq} ->
             %% get docinfo of missing ids
-            {MissingDocInfoList, MetaLatency} = find_missing(Changes, Target, OptRepThreshold, nil),
+            {MissingDocInfoList, MetaLatency, NumDocsOptRepd} =
+                find_missing(Changes, Target, OptRepThreshold, nil),
             NumChecked = length(Changes),
             NumWritten = length(MissingDocInfoList),
             %% use ptr in docinfo to fetch document from storage
@@ -77,6 +78,7 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, nil) ->
                                         worker_meta_latency_aggr = MetaLatency*NumChecked,
                                         worker_docs_latency_aggr = DocLatency*NumWritten,
                                         worker_data_replicated = DataRepd,
+                                        worker_item_opt_repd = NumDocsOptRepd,
                                         worker_item_checked = NumChecked,
                                         worker_item_replicated = NumWritten}}, infinity),
 
@@ -105,7 +107,8 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, XMemSrv) -
             ok = gen_server:call(Cp, {worker_done, self()}, infinity);
         {changes, ChangesManager, Changes, ReportSeq} ->
             %% get docinfo of missing ids
-            {MissingDocInfoList, MetaLatency} = find_missing(Changes, Target, OptRepThreshold, XMemSrv),
+            {MissingDocInfoList, MetaLatency, NumDocsOptRepd} =
+                find_missing(Changes, Target, OptRepThreshold, XMemSrv),
             NumChecked = length(Changes),
             NumWritten = length(MissingDocInfoList),
             %% use ptr in docinfo to fetch document from storage
@@ -129,6 +132,7 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, XMemSrv) -
                                         worker_meta_latency_aggr = MetaLatency*NumChecked,
                                         worker_docs_latency_aggr = DocLatency*NumWritten,
                                         worker_data_replicated = DataRepd,
+                                        worker_item_opt_repd = NumDocsOptRepd,
                                         worker_item_checked = NumChecked,
                                         worker_item_replicated = NumWritten}}, infinity),
 
@@ -231,7 +235,7 @@ flush_docs_helper(Target, DocsList, XMemSrv) ->
     end.
 
 %% return list of Docsinfos of missing keys
--spec find_missing(list(), #httpdb{}, integer(), pid() | nil) -> {list(), integer()}.
+-spec find_missing(list(), #httpdb{}, integer(), pid() | nil) -> {list(), integer(), integer()}.
 find_missing(DocInfos, Target, OptRepThreshold, XMemSrv) ->
     Start = now(),
 
@@ -321,7 +325,7 @@ find_missing(DocInfos, Target, OptRepThreshold, XMemSrv) ->
             ok
     end,
 
-    {MissingDocInfoList, Latency}.
+    {MissingDocInfoList, Latency, length(SmallDocIdRevs)}.
 
 -spec find_missing_helper(#httpdb{}, list(), pid() | nil) -> list().
 find_missing_helper(Target, BigDocIdRevs, XMemSrv) ->
