@@ -160,7 +160,7 @@ init([]) ->
 -spec args(atom(), nonempty_string(), [non_neg_integer(),...], atom(), boolean(), list()) ->
                   [any(), ...].
 args(Node, Bucket, VBuckets, DstNode, false = TakeOver, ExtraOptions) ->
-    {User, Pass} = ns_bucket:credentials(Bucket),
+    {User, Pass} = ebucketmigrator_srv:get_bucket_credentials(Node, Bucket),
     %% We want to reuse names for replication.
     Suffix = atom_to_list(DstNode),
     [ns_memcached:host_port(Node), ns_memcached:host_port(DstNode),
@@ -187,7 +187,7 @@ have_local_change_vbucket_filter() ->
 
 local_change_vbucket_filter(Bucket, SrcNode, #child_id{dest_node=DstNode} = ChildId, NewVBuckets) ->
     NewChildId = #child_id{vbuckets=NewVBuckets, dest_node=DstNode},
-    Args = ebucketmigrator_srv:build_args(Bucket,
+    Args = ebucketmigrator_srv:build_args(node(), Bucket,
                                           SrcNode, DstNode, NewVBuckets, false),
     MFA = {ebucketmigrator_srv, start_old_vbucket_filter_change, []},
 

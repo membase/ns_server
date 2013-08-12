@@ -24,7 +24,8 @@
          is_index_aware_rebalance_on/0,
          is_index_pausing_on/0,
          rebalance_ignore_view_compactions/0,
-         check_is_progress_tracking_supported/0]).
+         check_is_progress_tracking_supported/0,
+         is_node_compatible/2]).
 
 %% NOTE: this is rpc:call-ed by mb_master
 -export([supported_compat_version/0, mb_master_advertised_version/0]).
@@ -76,6 +77,16 @@ is_index_aware_rebalance_on() ->
 is_index_pausing_on() ->
     is_index_aware_rebalance_on() andalso
         (not ns_config_ets_dup:unreliable_read_key(index_pausing_disabled, false)).
+
+is_node_compatible(Node, Version) ->
+    Node =:= node() orelse
+                      (cluster_compat_mode:is_cluster_20() andalso
+                       case rpc:call(Node, cluster_compat_mode, mb_master_advertised_version, [], 30000) of
+                           {badrpc, _} ->
+                               false;
+                           Res ->
+                               Res >= Version
+                       end).
 
 rebalance_ignore_view_compactions() ->
     ns_config_ets_dup:unreliable_read_key(rebalance_ignore_view_compactions, false).

@@ -223,7 +223,7 @@ child_to_supervisor_spec(Bucket, Child) ->
     ns_vbm_new_sup:build_child_spec(Child, Args).
 
 build_replicator_args(Bucket, SrcNode, VBuckets) ->
-    Args = ebucketmigrator_srv:build_args(Bucket,
+    Args = ebucketmigrator_srv:build_args(node(), Bucket,
                                           SrcNode, node(),
                                           VBuckets, false),
     Self = self(),

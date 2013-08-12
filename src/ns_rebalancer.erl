@@ -207,6 +207,8 @@ do_wait_buckets_shutdown(KeepNodes) ->
             exit({buckets_shutdown_wait_failed, Failures})
     end.
 
+sanitize(Config) ->
+    misc:rewrite_key_value_tuple(sasl_password, "*****", Config).
 
 rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
     %% TODO: pull config reliably here as well
@@ -230,7 +232,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
     AllNodes = LiveNodes ++ FailedNodesAll,
     BucketConfigs = ns_bucket:get_buckets(),
     NumBuckets = length(BucketConfigs),
-    ?rebalance_debug("BucketConfigs = ~p", [BucketConfigs]),
+    ?rebalance_debug("BucketConfigs = ~p", [sanitize(BucketConfigs)]),
 
     case maybe_cleanup_old_buckets(KeepNodes) of
         ok ->
@@ -241,7 +243,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
 
     RebalanceObserver = case cluster_compat_mode:check_is_progress_tracking_supported() of
                             true ->
-                                {ok, X} = ns_rebalance_observer:start_link(BucketConfigs),
+                                {ok, X} = ns_rebalance_observer:start_link(length(BucketConfigs)),
                                 X;
                             _ ->
                                 undefined
@@ -252,7 +254,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
     lists:foreach(fun ({I, {BucketName, BucketConfig}}) ->
                           ale:info(?USER_LOGGER, "Started rebalancing bucket ~s", [BucketName]),
                           ?rebalance_info("Rebalancing bucket ~p with config ~p",
-                                          [BucketName, BucketConfig]),
+                                          [BucketName, sanitize(BucketConfig)]),
                           BucketCompletion = I / NumBuckets,
                           ns_orchestrator:update_progress(
                             dict:from_list([{N, BucketCompletion}

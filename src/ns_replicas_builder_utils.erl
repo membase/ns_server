@@ -72,7 +72,7 @@ kill_tap_names(Bucket, VBucket, SrcNode, DstNodes) ->
                               [iolist_to_binary([<<"replication_">>, tap_name(VBucket, SrcNode, DNode)]) || DNode <- DstNodes]).
 
 spawn_replica_builder(Bucket, VBucket, SrcNode, DstNode, SetPendingState) ->
-    {User, Pass} = ns_bucket:credentials(Bucket),
+    {User, Pass} = ebucketmigrator_srv:get_bucket_credentials(DstNode, Bucket),
     Opts = [{vbuckets, [VBucket]},
             {takeover, false},
             {suffix, tap_name(VBucket, SrcNode, DstNode)},

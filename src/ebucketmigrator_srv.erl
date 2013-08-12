@@ -70,13 +70,14 @@
 
 %% external API
 -export([start_link/3, start_link/4,
-         build_args/5, add_args_option/3, get_args_option/2,
+         build_args/6, add_args_option/3, get_args_option/2,
          start_vbucket_filter_change/2,
          start_old_vbucket_filter_change/1,
          set_controlling_process/2,
          had_backfill/2,
          wait_backfill_complete/1,
-         ping_connections/2]).
+         ping_connections/2,
+         get_bucket_credentials/2]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -442,8 +443,13 @@ handle_info(Msg, State) ->
 
 
 init({Src, Dst, Opts}=InitArgs) ->
-    Username = proplists:get_value(username, Opts),
-    Password = proplists:get_value(password, Opts, ""),
+    Bucketname = proplists:get_value(username, Opts),
+    {Username, Password} = case proplists:get_value(password, Opts, "") of
+                               get_from_config ->
+                                   ns_bucket:credentials(Bucketname);
+                               P ->
+                                   {Bucketname, P}
+                           end,
     Bucket = proplists:get_value(bucket, Opts),
     VBuckets = proplists:get_value(vbuckets, Opts, [0]),
     TakeOver = proplists:get_bool(takeover, Opts),
@@ -784,14 +790,15 @@ start_link(Src, Dst, Opts) ->
 start_link(Node, Src, Dst, Opts) ->
     misc:start_link(Node, ?MODULE, init, [{Src, Dst, Opts}]).
 
--spec build_args(Bucket::bucket_name(),
+-spec build_args(ForNode::node(),
+                 Bucket::bucket_name(),
                  SrcNode::node(),
                  DstNode::node(),
                  VBuckets::[vbucket_id(),...],
                  TakeOver::boolean()) ->
                         [any(), ...].
-build_args(Bucket, SrcNode, DstNode, VBuckets, TakeOver) ->
-    {User, Pass} = ns_bucket:credentials(Bucket),
+build_args(ForNode, Bucket, SrcNode, DstNode, VBuckets, TakeOver) ->
+    {User, Pass} = get_bucket_credentials(ForNode, Bucket),
     Suffix = case TakeOver of
                  true ->
                      [VBucket] = VBuckets,
@@ -814,6 +821,14 @@ add_args_option([Src, Dst, Options], OptionName, OptionValue) ->
 
 get_args_option([_Src, _Dst, Options], OptionName) ->
     proplists:get_value(OptionName, Options).
+
+get_bucket_credentials(Node, Bucket) ->
+    case cluster_compat_mode:is_node_compatible(Node, [2, 2, 0]) of
+        false ->
+            ns_bucket:credentials(Bucket);
+        true ->
+            {Bucket, get_from_config}
+    end.
 
 -spec start_vbucket_filter_change(pid(), [{node(), node(), list()}]) ->
                                          {ok, port()} | {failed, any()}.
