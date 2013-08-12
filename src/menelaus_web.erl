@@ -180,8 +180,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth_ro, fun menelaus_stats:handle_overview_stats/2, [Id]};
                          ["poolsStreaming", Id] ->
                              {auth_any_bucket, fun handle_pool_info_streaming/2, [Id]};
-                         ["pools", PoolId, "buckets"] ->
-                             {auth_any_bucket, fun menelaus_web_buckets:handle_bucket_list/2, [PoolId]};
+                         ["pools", _PoolId, "buckets"] ->
+                             {auth_any_bucket, fun menelaus_web_buckets:handle_bucket_list/1, []};
                          ["pools", PoolId, "saslBucketsStreaming"] ->
                              {auth, fun menelaus_web_buckets:handle_sasl_buckets_streaming/2, [PoolId]};
                          ["pools", PoolId, "buckets", Id] ->

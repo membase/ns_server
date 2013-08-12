@@ -35,7 +35,8 @@
          is_read_only_auth/1,
          extract_ui_auth_token/1,
          complete_uilogin/2,
-         maybe_refresh_token/1]).
+         maybe_refresh_token/1,
+         may_expose_bucket_auth/1]).
 
 %% External API
 
@@ -281,3 +282,6 @@ add_header() ->
 
 is_under_admin(Req) ->
     check_auth(extract_auth(Req)).
+
+may_expose_bucket_auth(Req) ->
+    not is_read_only_auth(extract_auth(Req)).
