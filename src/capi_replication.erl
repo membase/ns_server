@@ -22,6 +22,8 @@
 -include("mc_entry.hrl").
 -include("mc_constants.hrl").
 
+-define(SLOW_THRESHOLD_SECONDS, 180).
+
 %% public functions
 get_missing_revs(#db{name = DbName}, JsonDocIdRevs) ->
     {Bucket, VBucket} = capi_utils:split_dbname(DbName),
@@ -50,14 +52,12 @@ get_missing_revs(#db{name = DbName}, JsonDocIdRevs) ->
                  TimeSpent, AvgLatency]),
 
     %% dump error msg if timeout
-    {value, DefaultConnTimeout} = ns_config:search(xdcr_connection_timeout),
-    DefTimeoutSecs = misc:getenv_int("XDCR_CONNECTION_TIMEOUT", DefaultConnTimeout),
     TimeSpentSecs = TimeSpent div 1000,
-    case TimeSpentSecs > DefTimeoutSecs of
+    case TimeSpentSecs > ?SLOW_THRESHOLD_SECONDS of
         true ->
             ?xdcr_error("[Bucket:~p, Vb:~p]: conflict resolution for ~p docs  takes too long to finish!"
-                        "(total time spent: ~p secs, default connection time out: ~p secs)",
-                        [Bucket, VBucket, NumCandidates, TimeSpentSecs, DefTimeoutSecs]);
+                        "(total time spent: ~p secs)",
+                        [Bucket, VBucket, NumCandidates, TimeSpentSecs]);
         _ ->
             ok
     end,
@@ -92,14 +92,12 @@ update_replicated_docs(#db{name = DbName}, Docs, Options) ->
     AvgLatency = TimeSpent div length(Docs),
 
     %% dump error msg if timeout
-    {value, DefaultConnTimeout} = ns_config:search(xdcr_connection_timeout),
-    DefTimeoutSecs = misc:getenv_int("XDCR_CONNECTION_TIMEOUT", DefaultConnTimeout),
     TimeSpentSecs = TimeSpent div 1000,
-    case TimeSpentSecs > DefTimeoutSecs of
+    case TimeSpentSecs > ?SLOW_THRESHOLD_SECONDS of
         true ->
             ?xdcr_error("[Bucket:~p, Vb:~p]: update ~p docs takes too long to finish!"
-                        "(total time spent: ~p secs, default connection time out: ~p secs)",
-                        [Bucket, VBucket, length(Docs), TimeSpentSecs, DefTimeoutSecs]);
+                        "(total time spent: ~p secs)",
+                        [Bucket, VBucket, length(Docs), TimeSpentSecs]);
         _ ->
             ok
     end,
