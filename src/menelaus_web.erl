@@ -2806,12 +2806,12 @@ build_internal_settings_kvs() ->
                {{couchdb, max_parallel_indexers}, maxParallelIndexers, <<>>},
                {{couchdb, max_parallel_replica_indexers}, maxParallelReplicaIndexers, <<>>},
                {max_bucket_count, maxBucketCount, 10},
-               {xdcr_max_concurrent_reps, xdcrMaxConcurrentReps, 32},
-               {xdcr_checkpoint_interval, xdcrCheckpointInterval, 1800},
-               {xdcr_worker_batch_size, xdcrWorkerBatchSize, 500},
-               {xdcr_doc_batch_size_kb, xdcrDocBatchSizeKb, 2048},
-               {xdcr_failure_restart_interval, xdcrFailureRestartInterval, 30},
-               {xdcr_optimistic_replication_threshold, xdcrOptimisticReplicationThreshold, <<>>},
+               {{xdcr, max_concurrent_reps}, xdcrMaxConcurrentReps, 32},
+               {{xdcr, checkpoint_interval}, xdcrCheckpointInterval, 1800},
+               {{xdcr, worker_batch_size}, xdcrWorkerBatchSize, 500},
+               {{xdcr, doc_batch_size_kb}, xdcrDocBatchSizeKb, 2048},
+               {{xdcr, failure_restart_interval}, xdcrFailureRestartInterval, 30},
+               {{xdcr, optimistic_replication_threshold}, xdcrOptimisticReplicationThreshold, <<>>},
                {{request_limit, rest}, restRequestLimit, <<>>},
                {{request_limit, capi}, capiRequestLimit, <<>>},
                {drop_request_memory_threshold_mib, dropRequestMemoryThresholdMiB, <<>>}],
@@ -2886,38 +2886,38 @@ handle_internal_settings_post(Req) ->
                    undefined -> undefined;
                    SV ->
                        {ok, V} = parse_validate_number(SV, 8, 256),
-                       MaybeSet(xdcrMaxConcurrentReps, xdcr_max_concurrent_reps, V)
+                       MaybeSet(xdcrMaxConcurrentReps, {xdcr, max_concurrent_reps}, V)
                end,
                case proplists:get_value("xdcrCheckpointInterval", Params) of
                    undefined -> undefined;
                    SV ->
                        {ok, V} = parse_validate_number(SV, 60, 14400),
-                       MaybeSet(xdcrCheckpointInterval, xdcr_checkpoint_interval, V)
+                       MaybeSet(xdcrCheckpointInterval, {xdcr, checkpoint_interval}, V)
                end,
                case proplists:get_value("xdcrWorkerBatchSize", Params) of
                    undefined -> undefined;
                    SV ->
                        {ok, V} = parse_validate_number(SV, 500, 10000),
-                       MaybeSet(xdcrWorkerBatchSize, xdcr_worker_batch_size, V)
+                       MaybeSet(xdcrWorkerBatchSize, {xdcr, worker_batch_size}, V)
                end,
                case proplists:get_value("xdcrDocBatchSizeKb", Params) of
                    undefined -> undefined;
                    SV ->
                        {ok, V} = parse_validate_number(SV, 10, 100000),
-                       MaybeSet(xdcrDocBatchSizeKb, xdcr_doc_batch_size_kb, V)
+                       MaybeSet(xdcrDocBatchSizeKb, {xdcr, doc_batch_size_kb}, V)
                end,
                case proplists:get_value("xdcrFailureRestartInterval", Params) of
                    undefined -> undefined;
                    SV ->
                        {ok, V} = parse_validate_number(SV, 1, 300),
-                       MaybeSet(xdcrFailureRestartInterval, xdcr_failure_restart_interval, V)
+                       MaybeSet(xdcrFailureRestartInterval, {xdcr, failure_restart_interval}, V)
                end,
                case proplists:get_value("xdcrOptimisticReplicationThreshold", Params) of
                    undefined -> undefined;
                    "" -> undefined;
                    SV ->
                        {ok, V} = parse_validate_number(SV, 0, 20*1024*1024),
-                       MaybeSet(xdcrOptimisticReplicationThreshold, xdcr_optimistic_replication_threshold, V)
+                       MaybeSet(xdcrOptimisticReplicationThreshold, {xdcr, optimistic_replication_threshold}, V)
                end,
                case proplists:get_value("restRequestLimit", Params) of
                    undefined -> undefined;
