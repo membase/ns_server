@@ -861,7 +861,6 @@ var AccountManagementSection = {
   init: function () {
     var self = AccountManagementSection;
     var form = $("#js_account_management_form");
-    var deleteBtn = $("#js_delete_acc_btn");
     var fields = {username: false, password: false, verifyPassword: false};
     var credentialsCell = new Cell();
     var errorsCell = new Cell();
@@ -870,11 +869,11 @@ var AccountManagementSection = {
 
     accountManagementSectionCells(self, roAdminNameCell, isROAdminExistCell);
 
-    function showHideErrors(maybeErrors) {
+    function showHideErrors(maybeErrors, parent) {
       var key;
       for (key in maybeErrors) {
-        $("[name=" + key + "]", form).toggleClass("error", !!maybeErrors[key]);
-        $(".js_error_" + key, form).text(maybeErrors[key] || "");
+        $("[name=" + key + "]", parent).toggleClass("error", !!maybeErrors[key]);
+        $(".js_error_" + key, parent).text(maybeErrors[key] || "");
       }
     }
 
@@ -885,7 +884,7 @@ var AccountManagementSection = {
         type: "POST",
         url: "/settings/readOnlyUser" + (validate || ""),
         data: {username: cred.username, password: cred.password},
-        success: function (errors) {
+        success: function () {
           if (validate) {
             errorsCell.setValue(undefined);
           } else {
@@ -930,7 +929,7 @@ var AccountManagementSection = {
       }
 
       var isValid = $.isEmptyObject(errors);
-      showHideErrors(isValid ? fields : _.extend(_.clone(fields), errors));
+      showHideErrors(isValid ? fields : _.extend(_.clone(fields), errors), form);
 
       if (isValid) {
         validateFields(cred);
@@ -949,23 +948,25 @@ var AccountManagementSection = {
       credentialsCell.setValue($.deparam(serializeForm($(this))));
     });
 
-    var dialog = $("#js_roadmin_remove_dialog");
+
+    var deleteBtn = $("#js_delete_acc_btn");
+    var removeDialog = $("#js_roadmin_remove_dialog");
 
     deleteBtn.click(function () {
-      showDialog(dialog, {
+      showDialog(removeDialog, {
         eventBindings: [['.js_delete_button', 'click', function (e) {
           e.preventDefault();
-          var spinner = overlayWithSpinner(dialog);
+          var spinner = overlayWithSpinner(removeDialog);
           $.ajax({
             type: "DELETE",
             url: "/settings/readOnlyUser",
-            success: function (errors) {
-              hideDialog(dialog);
+            success: function () {
+              hideDialog(removeDialog);
               isROAdminExistCell.setValue(false);
             },
             error: function (errors, status) {
               if (errors.status == 404) {
-                hideDialog(dialog);
+                hideDialog(removeDialog);
               } else {
                 reloadApp();
               }
@@ -976,6 +977,55 @@ var AccountManagementSection = {
           });
         }]],
         closeOnEscape: true
+      });
+    });
+
+    var resetForm = $("#js_reset_roadmin_form");
+    var resetBtn = $("#js_reset_acc_btn");
+    var resetDialog = $("#js_roadmin_reset_dialog");
+
+    function cleanResetForm() {
+      resetForm.trigger("reset");
+      showHideErrors({password: false}, resetForm);
+    }
+
+    function maybeRestFields(resetCred) {
+      var spinner = overlayWithSpinner(resetDialog);
+
+      return $.ajax({
+        type: "PUT",
+        url: "/settings/readOnlyUser",
+        data: {password: resetCred.password},
+        success: function () {
+          cleanResetForm();
+          hideDialog(resetDialog);
+        },
+        error: function (errors) {
+          switch (errors.status) {
+            case 404:
+              showHideErrors({password: JSON.parse(errors.responseText)}, resetForm);
+            break;
+            case 400:
+              showHideErrors(JSON.parse(errors.responseText).errors, resetForm);
+            break;
+            default:
+              reloadApp();
+          }
+        },
+        complete: function () {
+          spinner.remove();
+        }
+      });
+    }
+
+    resetForm.submit(function (e) {
+      e.preventDefault();
+      maybeRestFields($.deparam(serializeForm($(this))));
+    });
+    resetBtn.click(function () {
+      showDialog(resetDialog, {
+        closeOnEscape: true,
+        onHide: cleanResetForm
       });
     });
 

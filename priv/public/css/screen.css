@@ -1270,6 +1270,8 @@ input[type=number].size {width:4em;}
 .account_management_container {font-size: 14px;}
 .account_management_container fieldset {overflow: hidden;}
 .account_management_container label {display: block; padding: 5px 0;}
+.reset_roadmin_form label,
+.reset_roadmin_form input,
 .account_management_container label span,
 .account_management_container label input,
 .account_management_container span.list_button {display: -moz-inline-stack; display: inline-block; zoom: 1; *display: inline; vertical-align: middle;}
@@ -1281,3 +1283,9 @@ input[type=number].size {width:4em;}
 .account_management_container .error {border: 1px solid red;}
 .account_management_container .errors {color: red;}
 .account_management_container h2 {margin: 20px; padding-bottom: 10px; border-bottom: 1px solid #d5dadd;}
+.account_delete {padding-bottom: 28px;}
+
+.reset_roadmin_form {font-size: 14px; width: 320px;}
+.reset_roadmin_form .errors {display: block; color: red; padding-bottom: 10px;}
+.reset_roadmin_form .error {border: 1px solid red;}
+.reset_roadmin_form .inner_wrap {padding: 20px 20px 10px;}

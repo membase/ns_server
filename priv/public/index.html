@@ -873,8 +873,16 @@
                       <button type="submit" class="list_button"><span>Create</span></button>
                     </fieldset>
                   </form>
-                  <div id="js_account_delete">
-                    <p>Currently read-only user account already exists: Username - <span id="js_roadmin_name"></span> <span class="list_button" id="js_delete_acc_btn"><span>Delete</span></span></p>
+                  <div id="js_account_delete" class="account_delete">
+                    <p>Currently read-only user account already exists: Username - <span id="js_roadmin_name"></span></p>
+                    <div>
+                      <span class="list_button" id="js_reset_acc_btn">
+                        <span>Reset Password Read-Only User</span>
+                      </span>
+                      <span class="list_button" id="js_delete_acc_btn">
+                        <span>Delete Read-Only User</span>
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1977,6 +1985,20 @@
     </div>
     <div class="save_cancel clearfix">
       <button type="button" class="delete_button float_right js_delete_button">Delete</button>
+      <a class="close">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<div class="dialog" id="js_roadmin_reset_dialog" title="Reset Password">
+  <form id="js_reset_roadmin_form" class="reset_roadmin_form">
+    <div class="inner_wrap">
+      <i class="errors js_error_password"></i>
+      <label for="new_roa_pass" style="width:auto">New Password:</label>
+      <input type="password" name="password" id="new_roa_pass">
+    </div>
+    <div class="save_cancel clearfix">
+      <button type="submit" class="save_button float_right">Create</button>
       <a class="close">Cancel</a>
     </div>
   </form>

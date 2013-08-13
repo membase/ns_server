@@ -427,7 +427,7 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["controller", "cancelXDCR", XID] ->
                              {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
                          ["settings", "readOnlyUser"] ->
-                             {auth, fun handle_settings_read_only_user_delete/1};
+                             {auth, fun handle_read_only_user_delete/1};
                          ["nodes", Node, "resources", LocationPath] ->
                              {auth, fun handle_resource_delete/3, [Node, LocationPath]};
                          ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
@@ -437,6 +437,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                      end;
                  Method when Method =:= 'PUT'; Method =:= "COPY" ->
                      case PathTokens of
+                         ["settings", "readOnlyUser"] when Method =:= 'PUT' ->
+                             {auth, fun handle_read_only_user_reset/1};
                          ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
                          _ ->
                              ?MENELAUS_WEB_LOG(0003, "Invalid ~p received: ~p", [Method, Req]),
@@ -1524,12 +1526,17 @@ maybe_invalid(Name, Value) ->
                 _ -> UserErrors
            end}.
 
+delete_read_only_user_creds() ->
+    ns_config:set(read_only_user_creds, null).
+
+get_read_only_admin_name() ->
+    case ns_config:search(read_only_user_creds) of
+        {value, {U, _}} -> U;
+        _ -> ""
+    end.
+
 handle_settings_read_only_admin_name(Req) ->
-    Name = case ns_config:search(read_only_user_creds) of
-               {value, {U, _}} -> list_to_binary(U);
-               _ -> <<"">>
-           end,
-    reply_json(Req, Name, 200).
+    reply_json(Req, list_to_binary(get_read_only_admin_name()), 200).
 
 handle_settings_read_only_user_post(Req) ->
     PostArgs = Req:parse_post(),
@@ -1562,16 +1569,29 @@ handle_settings_read_only_user_post(Req) ->
             reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400)
     end.
 
-reset_read_only_user_creds() ->
-    ns_config:set(read_only_user_creds, null).
-
-handle_settings_read_only_user_delete(Req) ->
+handle_read_only_user_delete(Req) ->
     case menelaus_auth:is_read_only_admin_exist() of
         false ->
             reply_json(Req, <<"Read-Only admin does not exist">>, 404);
         true ->
-            reset_read_only_user_creds(),
+            delete_read_only_user_creds(),
             reply_json(Req, [], 200)
+    end.
+
+handle_read_only_user_reset(Req) ->
+    case menelaus_auth:is_read_only_admin_exist() of
+        false ->
+            reply_json(Req, <<"Read-Only admin does not exist">>, 404);
+        true ->
+            ReqArgs = Req:parse_post(),
+            NewROAPass = proplists:get_value("password", ReqArgs),
+            case maybe_invalid(password, NewROAPass) of
+                {password, true} ->
+                    ROAName = get_read_only_admin_name(),
+                    ns_config:set(read_only_user_creds, {ROAName, NewROAPass}),
+                    reply_json(Req, [], 200);
+                Error -> reply_json(Req, {struct, [{errors, {struct, [Error]}}]}, 400)
+            end
     end.
 
 handle_pool_settings(_PoolId, Req) ->
@@ -1831,7 +1851,7 @@ handle_settings_web_post(Req) ->
 
                     %% NOTE: this to avoid admin user name to be equal
                     %% to read only user name
-                    reset_read_only_user_creds(),
+                    delete_read_only_user_creds(),
 
                     menelaus_ui_auth:reset()
 
