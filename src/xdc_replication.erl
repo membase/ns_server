@@ -21,7 +21,7 @@
 -module(xdc_replication).
 -behaviour(gen_server).
 
--export([stats/1, target/1, latest_errors/1]).
+-export([stats/1, target/1, latest_errors/1, update_replication/2]).
 -export([start_link/1, init/1, handle_call/3, handle_info/2, handle_cast/2]).
 -export([code_change/3, terminate/2]).
 
@@ -40,6 +40,9 @@ target(Pid) ->
 
 latest_errors(Pid) ->
     gen_server:call(Pid, get_errors).
+
+update_replication(Pid, RepDoc) ->
+    gen_server:call(Pid, {update_replication, RepDoc}, infinity).
 
 init([#rep{source = SrcBucketBinary, replication_mode = RepMode, options = Options} = Rep]) ->
     %% Subscribe to bucket map changes due to rebalance and failover operations
@@ -215,6 +218,37 @@ handle_call(target, _From, State) ->
 handle_call(get_errors, _From, State) ->
     {reply, {ok, ringbuffer:to_list(State#replication.error_reports)}, State};
 
+handle_call({update_replication, NewRep}, _From,
+            #replication{rep = OldRep} = State) ->
+    #rep{id = RepId} = OldRep,
+
+    case NewRep#rep{options=[]} =:= OldRep#rep{options=[]} of
+        true ->
+            #rep{options = NewOptions0} = NewRep,
+            #rep{options = OldOptions0} = OldRep,
+
+            NewOptions = lists:keysort(1, NewOptions0),
+            OldOptions = lists:keysort(1, OldOptions0),
+
+            OldDistinct = OldOptions -- NewOptions,
+            NewDistinct = NewOptions -- OldOptions,
+
+            ?xdcr_debug("Options updated for replication ~s:~n~p ->~n~p",
+                        [RepId, OldDistinct, NewDistinct]),
+
+            %% replication documents differ only in options; no restart is
+            %% needed
+            {reply, ok, State#replication{rep = NewRep}};
+        false ->
+            #rep{source = NewSource, target = NewTarget} = NewRep,
+
+            ?xdcr_debug("replication doc (docId: ~s) modified: source ~s, target ~s;"
+                        "replication will be restarted",
+                        [RepId, NewSource, misc:sanitize_url(NewTarget)]),
+
+            {reply, restart_needed, State}
+    end;
+
 handle_call(Msg, From, State) ->
     ?xdcr_error("replication manager received unexpected call ~p from ~p",
                 [Msg, From]),
@@ -311,18 +345,14 @@ handle_info({set_throttle_status, {NumActiveReps, NumWaitingReps}},
     {noreply, State#replication{num_active = NumActiveReps,
                                 num_waiting = NumWaitingReps}};
 
-handle_info(check_tokens, #replication{work_throttle = WorkThrottle} = State) ->
-
-    {value, DefaultMaxConcurrentReps} = ns_config:search(xdcr_max_concurrent_reps),
-    NewTokens = erlang:max(1, misc:getenv_int("MAX_CONCURRENT_REPS_PER_DOC",
-                                              DefaultMaxConcurrentReps)),
-
+handle_info(check_tokens, #replication{rep = #rep{options = Options},
+                                       work_throttle = WorkThrottle} = State) ->
+    NewTokens = proplists:get_value(max_concurrent_reps, Options),
     case NewTokens ==  State#replication.num_tokens of
         false ->
-            ?xdcr_debug("total number of tokens has been changed from ~p to ~p "
-                        "(ns_config param: ~p), adjust work throttle (pid: ~p) accordingly",
-                       [State#replication.num_tokens, NewTokens,
-                        DefaultMaxConcurrentReps, WorkThrottle]),
+            ?xdcr_debug("total number of tokens has been changed from ~p to ~p, "
+                        "adjust work throttle (pid: ~p) accordingly",
+                       [State#replication.num_tokens, NewTokens, WorkThrottle]),
             concurrency_throttle:change_tokens(WorkThrottle, NewTokens);
         _->
             ok

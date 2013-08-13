@@ -166,15 +166,8 @@ process_update({Change}, State) ->
         false ->
             case get_value(<<"type">>, Props) of
                 V when V =:= <<"xdc">>; V =:= <<"xdc-xmem">> ->
-                    ?xdcr_debug("replication doc (docId: ~p) modified, parse "
-                                "new doc and adjsut replications for change ("
-                                "source ~p, target: ~p)",
-                                [DocId, get_value(<<"source">>, Props),
-                                 get_value(<<"target">>, Props)]),
-
                     XRep = parse_xdc_rep_doc(DocId, {Props}),
-                    xdc_replication_sup:stop_replication(DocId),
-                    {ok, _Pid} = xdc_replication_sup:start_replication(XRep),
+                    xdc_replication_sup:update_replication(DocId, XRep),
                     State;
                 _ ->
                     State
