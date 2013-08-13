@@ -24,7 +24,9 @@
 -include("remote_clusters_info.hrl").
 
 -export([handle_create_replication/1, handle_cancel_replication/2,
-         handle_replication_settings/2, handle_replication_settings_post/2]).
+         handle_replication_settings/2, handle_replication_settings_post/2,
+         handle_global_replication_settings/1,
+         handle_global_replication_settings_post/1]).
 
 -type replication_type() :: 'one-time' | continuous.
 
@@ -142,6 +144,39 @@ handle_replication_settings_post(XID, Req) ->
                       menelaus_util:reply_json(Req, {struct, Errors}, 400)
               end
       end).
+
+handle_global_replication_settings(Req) ->
+    SettingsRaw = xdc_settings:get_all_global_settings(),
+    Settings = [{key_to_request_key(K), V} || {K, V} <- SettingsRaw],
+    menelaus_util:reply_json(Req, {struct, Settings}, 200).
+
+handle_global_replication_settings_post(Req) ->
+    Params = Req:parse_post(),
+    Specs = settings_specs(),
+
+    {Settings, Errors} =
+        lists:foldl(
+          fun ({Key, ReqKey, Type}, {AccSettings, AccErrors} = Acc) ->
+                  case proplists:get_value(ReqKey, Params) of
+                      undefined ->
+                          Acc;
+                      Str ->
+                          case parse_validate_by_type(Type, Str) of
+                              {ok, V} ->
+                                  {[{Key, V} | AccSettings], AccErrors};
+                              Error ->
+                                  {AccSettings, [{ReqKey, Error} | AccErrors]}
+                          end
+                  end
+          end, {[], []}, Specs),
+
+    case Errors of
+        [] ->
+            xdc_settings:update_global_settings(Settings),
+            handle_global_replication_settings(Req);
+        _ ->
+            menelaus_util:reply_json(Req, {struct, Errors}, 400)
+    end.
 
 %% internal functions
 get_parameter(Name, Params, HumanName) ->
@@ -319,6 +354,10 @@ with_replicator_doc(Req, XID, Body) ->
 per_replication_settings_specs() ->
     [{couch_util:to_binary(Key), key_to_request_key(Key), Type} ||
         {Key, Type} <- xdc_settings:per_replication_settings_specs()].
+
+settings_specs() ->
+    [{Key, key_to_request_key(Key), Type} ||
+        {Key, _, Type, _} <- xdc_settings:settings_specs()].
 
 parse_validate_by_type({int, Min, Max}, Str) ->
     case menelaus_util:parse_validate_number(Str, Min, Max) of
