@@ -123,7 +123,10 @@ handle_info(start_replication, #rep_state{throttle = Throttle,
                                           status = #rep_vb_status{vb = Vb, status = waiting_turn} = VbStatus} = St) ->
 
     ?xdcr_debug("get start-replication token for vb ~p from throttle (pid: ~p)", [Vb, Throttle]),
-    {noreply, start_replication(St#rep_state{status = VbStatus#rep_vb_status{status = replicating}})}.
+
+    St1 = St#rep_state{status = VbStatus#rep_vb_status{status = replicating}},
+    St2 = update_rep_options(St1),
+    {noreply, start_replication(St2)}.
 
 handle_call({report_seq_done,
              #worker_stat{seq = Seq,
@@ -603,19 +606,30 @@ init_replication_state(#init_state{rep = Rep,
                  misc:sanitize_url(RepState#rep_state.target_name), RepMode, XMemRemote]),
     RepState.
 
+update_rep_options(#rep_state{rep_details =
+                                  #rep{id = Id,
+                                       options = OldOptions} = Rep} = State) ->
+    NewOptions = xdc_settings:get_all_settings_snapshot_by_doc_id(Id),
+
+    case OldOptions =:= NewOptions of
+        true ->
+            State;
+        false ->
+            NewRep = Rep#rep{options = NewOptions},
+            State#rep_state{rep_details = NewRep}
+    end.
+
 start_replication(#rep_state{
                      source_name = SourceName,
                      target_name = TargetName,
                      current_through_seq = StartSeq,
                      last_checkpoint_time = LastCkptTime,
-                     rep_details = #rep{id = Id, options = Opt},
+                     rep_details = #rep{id = Id, options = Options},
                      xmem_remote = Remote
                     } = State) ->
 
     WorkStart = now(),
 
-    %% get updated options from parameters
-    Options = xdc_rep_utils:update_options(Opt),
     NumWorkers = get_value(worker_processes, Options),
     BatchSizeItems = get_value(worker_batch_size, Options),
     {ok, Source} = couch_api_wrap:db_open(SourceName, []),

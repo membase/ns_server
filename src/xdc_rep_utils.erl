@@ -23,10 +23,8 @@
 -export([parse_rep_db/3]).
 -export([split_dbname/1]).
 -export([get_master_db/1, get_checkpoint_log_id/2]).
--export([get_opt_replication_threshold/0]).
--export([update_options/1, get_checkpoint_mode/0]).
--export([is_pipeline_enabled/0, get_trace_dump_invprob/0]).
--export([get_xmem_worker/0, is_local_conflict_resolution/0]).
+-export([get_checkpoint_mode/0]).
+-export([get_trace_dump_invprob/0]).
 -export([sanitize_status/3]).
 
 -include("xdc_replicator.hrl").
@@ -57,7 +55,7 @@ my_active_vbuckets(BucketConfig) ->
 %% Parse replication document
 parse_rep_doc(DocId, {Props}) ->
     ProxyParams = parse_proxy_params(get_value(<<"proxy">>, Props, <<>>)),
-    Options = make_options(Props),
+    Options = xdc_settings:get_all_settings_snapshot(Props),
     Source = parse_rep_db(get_value(<<"source">>, Props), ProxyParams, Options),
     Target = parse_rep_db(get_value(<<"target">>, Props), ProxyParams, Options),
     RepMode = case get_value(<<"type">>, Props) of
@@ -135,69 +133,6 @@ parse_rep_db(<<"https://", _/binary>> = Url, ProxyParams, Options) ->
 parse_rep_db(<<DbName/binary>>, _ProxyParams, _Options) ->
     DbName.
 
-make_options(Props) ->
-    Options = lists:ukeysort(1, convert_options(Props)),
-
-    {value, DefaultWorkerBatchSize} = ns_config:search(xdcr_worker_batch_size),
-    DefBatchSize = misc:getenv_int("XDCR_WORKER_BATCH_SIZE", DefaultWorkerBatchSize),
-
-    {value, DefaultConnTimeout} = ns_config:search(xdcr_connection_timeout),
-    DefTimeoutSecs = misc:getenv_int("XDCR_CONNECTION_TIMEOUT", DefaultConnTimeout),
-    %% convert to ms
-    DefTimeout = 1000*DefTimeoutSecs,
-
-    {value, DefaultWorkers} = ns_config:search(xdcr_worker_processes),
-    DefWorkers = misc:getenv_int("XDCR_WORKER_PROCESSES", DefaultWorkers),
-
-    {value, DefaultConns} = ns_config:search(xdcr_http_connections),
-    DefConns = misc:getenv_int("XDCR_HTTP_CONNECTIONS", DefaultConns),
-
-    {value, DefaultRetries} = ns_config:search(xdcr_retries_per_request),
-    DefRetries = misc:getenv_int("XDCR_RETRIES_PER_REQUEST", DefaultRetries),
-
-    {value, DefaultDocBatchSizeKB} = ns_config:search(xdcr_doc_batch_size_kb),
-    DocBatchSizeKB = misc:getenv_int("XDCR_DOC_BATCH_SIZE_KB", DefaultDocBatchSizeKB),
-
-    {ok, DefSocketOptions} = couch_util:parse_term(
-                               couch_config:get("replicator", "socket_options",
-                                                "[{keepalive, true}, {nodelay, false}]")),
-
-    OptRepThreshold = get_opt_replication_threshold(),
-
-    ?xdcr_debug("Options for replication:["
-                "optimistic replication threshold: ~p bytes, "
-                "worker processes: ~p, "
-                "worker batch size (# of mutations): ~p, "
-                "socket options: ~p "
-                "HTTP connections: ~p, "
-                "connection timeout (ms): ~p,"
-                "num of retries per request: ~p]",
-                [OptRepThreshold, DefWorkers, DefBatchSize, DefSocketOptions, DefConns, DefTimeout, DefRetries]),
-
-    lists:ukeymerge(1, Options, lists:keysort(1, [
-                                                  {connection_timeout, DefTimeout},
-                                                  {retries, DefRetries},
-                                                  {http_connections, DefConns},
-                                                  {socket_options, DefSocketOptions},
-                                                  {worker_batch_size, DefBatchSize},
-                                                  {doc_batch_size_kb, DocBatchSizeKB},
-                                                  {worker_processes, DefWorkers},
-                                                  {optimistic_replication_threshold, OptRepThreshold},
-
-                                                  %% temporarily set these to
-                                                  %% default values to make
-                                                  %% everything work; will be
-                                                  %% removed in subsequent
-                                                  %% commits
-                                                  {max_concurrent_reps, 32},
-                                                  {checkpoint_interval, 1800},
-                                                  {failure_restart_interval, 30},
-                                                  {xmem_worker, 1},
-                                                  {enable_pipeline_ops, true},
-                                                  {local_conflict_resolution, false}
-                                                 ])).
-
-
 maybe_add_trailing_slash(Url) when is_binary(Url) ->
     maybe_add_trailing_slash(?b2l(Url));
 maybe_add_trailing_slash(Url) ->
@@ -237,27 +172,6 @@ ssl_verify_options(true, _OTPVersion) ->
     [{verify, 2}, {cacertfile, CAFile}];
 ssl_verify_options(false, _OTPVersion) ->
     [{verify, 0}].
-
-
-
-convert_options([])->
-    [];
-convert_options([{<<"worker_processes">>, V} | R]) ->
-    [{worker_processes, couch_util:to_integer(V)} | convert_options(R)];
-convert_options([{<<"worker_batch_size">>, V} | R]) ->
-    [{worker_batch_size, couch_util:to_integer(V)} | convert_options(R)];
-convert_options([{<<"http_connections">>, V} | R]) ->
-    [{http_connections, couch_util:to_integer(V)} | convert_options(R)];
-convert_options([{<<"connection_timeout">>, V} | R]) ->
-    [{connection_timeout, couch_util:to_integer(V)} | convert_options(R)];
-convert_options([{<<"retries_per_request">>, V} | R]) ->
-    [{retries_per_request, couch_util:to_integer(V)} | convert_options(R)];
-convert_options([{<<"socket_options">>, V} | R]) ->
-    {ok, SocketOptions} = couch_util:parse_term(V),
-    [{socket_options, SocketOptions} | convert_options(R)];
-convert_options([_ | R]) -> %% skip unknown option
-    convert_options(R).
-
 
 get_checkpoint_log_id(#db{name = DbName0}, LogId0) ->
     get_checkpoint_log_id(?b2l(DbName0), LogId0);
@@ -302,141 +216,11 @@ unsplit_uuid({DbName, undefined}) ->
 unsplit_uuid({DbName, UUID}) ->
     DbName ++ ";" ++ UUID.
 
--spec get_opt_replication_threshold() -> integer().
-get_opt_replication_threshold() ->
-    {value, DefaultOptRepThreshold} = ns_config:search(xdcr_optimistic_replication_threshold),
-    Threshold = misc:getenv_int("XDCR_OPTIMISTIC_REPLICATION_THRESHOLD", DefaultOptRepThreshold),
-
-    case Threshold of
-        V when V < 0 ->
-            0;
-        _ ->
-            Threshold
-    end.
-
-%% get xdc replication options, log them if changed
--spec update_options(list()) -> list().
-update_options(Options) ->
-    Threshold = get_opt_replication_threshold(),
-    case length(Options) > 0 andalso Threshold =/= get_value(optimistic_replication_threshold, Options) of
-        true ->
-            ?xdcr_debug("XDC parameter changed, optimistic_replication_threshold is updated from ~p to ~p",
-                       [get_value(optimistic_replication_threshold, Options) , Threshold]);
-        _ ->
-            ok
-    end,
-
-    {value, DefaultWorkerBatchSize} = ns_config:search(xdcr_worker_batch_size),
-    DefBatchSize = misc:getenv_int("XDCR_WORKER_BATCH_SIZE", DefaultWorkerBatchSize),
-    case length(Options) > 0 andalso DefBatchSize =/= get_value(worker_batch_size, Options) of
-        true ->
-            ?xdcr_debug("XDC parameter changed, worker_batch_size is updated from ~p to ~p",
-                       [get_value(worker_batch_size, Options) , DefBatchSize]);
-        _ ->
-            ok
-    end,
-
-    {value, DefaultDocBatchSizeKB} = ns_config:search(xdcr_doc_batch_size_kb),
-    DefBatchSizeKB = misc:getenv_int("XDCR_DOC_BATCH_SIZE_KB", DefaultDocBatchSizeKB),
-    case length(Options) > 0 andalso DefBatchSizeKB =/= get_value(doc_batch_size_kb, Options) of
-        true ->
-            ?xdcr_debug("XDC parameter changed, doc_batch_size_kb is updated from ~p to ~p",
-                       [get_value(doc_batch_size_kb, Options) , DefBatchSizeKB]);
-        _ ->
-            ok
-    end,
-
-    {value, DefaultConnTimeout} = ns_config:search(xdcr_connection_timeout),
-    DefTimeoutSecs = misc:getenv_int("XDCR_CONNECTION_TIMEOUT", DefaultConnTimeout),
-    %% convert to ms
-    DefTimeout = 1000*DefTimeoutSecs,
-    case length(Options) > 0 andalso DefTimeout =/= get_value(connection_timeout, Options) of
-        true ->
-            ?xdcr_debug("XDC parameter changed, connection_timeout is updated from ~p to ~p",
-                       [get_value(connection_timeout, Options) , DefTimeout]);
-        _ ->
-            ok
-    end,
-
-    {value, DefaultWorkers} = ns_config:search(xdcr_worker_processes),
-    DefWorkers = misc:getenv_int("XDCR_WORKER_PROCESSES", DefaultWorkers),
-    case length(Options) > 0 andalso DefWorkers =/= get_value(worker_processes, Options) of
-        true ->
-            ?xdcr_debug("XDC parameter changed, worker_processes is updated from ~p to ~p",
-                       [get_value(worker_processes, Options) , DefWorkers]);
-        _ ->
-            ok
-    end,
-
-    {value, DefaultConns} = ns_config:search(xdcr_http_connections),
-    DefConns = misc:getenv_int("XDCR_HTTP_CONNECTIONS", DefaultConns),
-    case length(Options) > 0 andalso DefConns =/= get_value(http_connections, Options) of
-        true ->
-            ?xdcr_debug("XDC parameter changed, http_connections is updated from ~p to ~p",
-                       [get_value(http_connections, Options) , DefConns]);
-        _ ->
-            ok
-    end,
-
-
-    {value, DefaultRetries} = ns_config:search(xdcr_retries_per_request),
-    DefRetries = misc:getenv_int("XDCR_RETRIES_PER_REQUEST", DefaultRetries),
-    case length(Options) > 0 andalso DefRetries =/= get_value(retries_per_request, Options) of
-        true ->
-            ?xdcr_debug("XDC parameter changed, retries_per_request is updated from ~p to ~p",
-                       [get_value(retries_per_request, Options) , DefRetries]);
-        _ ->
-            ok
-    end,
-
-    %% update option list
-    lists:ukeymerge(1, lists:keysort(1, [
-                      {connection_timeout, DefTimeout},
-                      {retries_per_request, DefRetries},
-                      {http_connections, DefConns},
-                      {worker_batch_size, DefBatchSize},
-                      {doc_batch_size_kb, DefBatchSizeKB},
-                      {worker_processes, DefWorkers},
-                      {optimistic_replication_threshold, Threshold},
-                      {local_conflict_resolution, is_local_conflict_resolution()},
-                      {enable_pipeline_ops, is_pipeline_enabled()},
-                      {xmem_worker, get_xmem_worker()}]), Options).
-
--spec is_pipeline_enabled() -> boolean().
-is_pipeline_enabled() ->
-    %% env parameter can override the ns_config parameter
-    {value, EnablePipeline} = ns_config:search(xdcr_enable_pipeline_ops),
-    case os:getenv("XDCR_ENABLE_PIPELINE") of
-        "true" ->
-            true;
-        "false" ->
-            false;
-        _ ->
-            EnablePipeline
-    end.
-
 %% inverse probability to dump non-critical datapath trace,
 %% trace will be dumped by probability 1/N
 -spec get_trace_dump_invprob() -> integer().
 get_trace_dump_invprob() ->
-    %% env parameter can override the ns_config parameter
-    {value, DefInvProb} = ns_config:search(xdcr_trace_dump_inverse_prob),
-    misc:getenv_int("XDCR_TRACE_DUMP_INVERSE_PROB", DefInvProb).
-
--spec get_xmem_worker() -> integer().
-get_xmem_worker() ->
-    %% env parameter can override the ns_config parameter
-    {value, DefNumXMemWorker} = ns_config:search(xdcr_xmem_worker),
-    misc:getenv_int("XDCR_XMEM_WORKER", DefNumXMemWorker).
-
--spec is_local_conflict_resolution() -> boolean().
-is_local_conflict_resolution() ->
-    case ns_config:search(xdcr_local_conflict_resolution) of
-        {value, LocalConflictRes} ->
-            LocalConflictRes;
-        false ->
-            false
-    end.
+    xdc_settings:get_global_setting(trace_dump_invprob).
 
 -spec get_checkpoint_mode() -> list().
 get_checkpoint_mode() ->
