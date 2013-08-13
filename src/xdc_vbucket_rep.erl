@@ -617,7 +617,7 @@ start_replication(#rep_state{
     %% get updated options from parameters
     Options = xdc_rep_utils:update_options(Opt),
     NumWorkers = get_value(worker_processes, Options),
-    BatchSize = get_value(worker_batch_size, Options),
+    BatchSizeItems = get_value(worker_batch_size, Options),
     {ok, Source} = couch_api_wrap:db_open(SourceName, []),
     TgtURI = xdc_rep_utils:parse_rep_db(TargetName, [], Options),
     {ok, Target} = couch_api_wrap:db_open(TgtURI, []),
@@ -628,7 +628,7 @@ start_replication(#rep_state{
                           xdc_rep_utils:get_master_db(Target), []),
 
     {ok, ChangesQueue} = couch_work_queue:new([
-                                               {max_items, BatchSize * NumWorkers * 2},
+                                               {max_items, BatchSizeItems * NumWorkers * 2},
                                                {max_size, 100 * 1024 * NumWorkers}
                                               ]),
     %% This starts the _changes reader process. It adds the changes from
@@ -636,7 +636,7 @@ start_replication(#rep_state{
     ChangesReader = spawn_changes_reader(StartSeq, Source, ChangesQueue),
     %% Changes manager - responsible for dequeing batches from the changes queue
     %% and deliver them to the worker processes.
-    ChangesManager = spawn_changes_manager(self(), ChangesQueue, BatchSize),
+    ChangesManager = spawn_changes_manager(self(), ChangesQueue, BatchSizeItems),
     %% This starts the worker processes. They ask the changes queue manager for a
     %% a batch of _changes rows to process -> check which revs are missing in the
     %% target, and for the missing ones, it copies them from the source to the target.
@@ -686,7 +686,8 @@ start_replication(#rep_state{
       cp = self(), source = Source, target = Target,
       changes_manager = ChangesManager, max_conns = MaxConns,
       opt_rep_threshold = OptRepThreshold, xmem_server = XPid,
-      batch_size = BatchSizeKB * 1024},
+      batch_size = BatchSizeKB * 1024,
+      batch_items = BatchSizeItems},
 
     Workers = lists:map(
                 fun(_) ->
@@ -698,11 +699,12 @@ start_replication(#rep_state{
     ?xdcr_info("Replication `~p` is using:~n"
                "~c~p worker processes~n"
                "~ca worker batch size of ~p~n"
+               "~ca worker batch size (KiB) ~p~n"
                "~c~p HTTP connections~n"
                "~ca connection timeout of ~p milliseconds~n"
                "~c~p retries per request~n"
                "~csocket options are: ~s~s",
-               [Id, $\t, NumWorkers, $\t, BatchSize, $\t,
+               [Id, $\t, NumWorkers, $\t, BatchSizeItems, $\t, BatchSizeKB, $\t,
                 MaxConns, $\t, get_value(connection_timeout, Options),
                 $\t, get_value(retries, Options),
                 $\t, io_lib:format("~p", [get_value(socket_options, Options)]),
