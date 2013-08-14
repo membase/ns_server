@@ -46,8 +46,8 @@
                 pending_moves :: [#move_state{}]
                }).
 
-start_link(BucketConfigs) ->
-    gen_server:start_link({global, ?MODULE}, ?MODULE, BucketConfigs, []).
+start_link(BucketsCount) ->
+    gen_server:start_link({global, ?MODULE}, ?MODULE, BucketsCount, []).
 
 get_detailed_progress() ->
     try
@@ -73,7 +73,7 @@ is_interesting_master_event(_) ->
     undefined.
 
 
-init(BucketConfigs) ->
+init(BucketsCount) ->
     Self = self(),
     ns_pubsub:subscribe_link(master_activity_events,
                              fun (Event, _Ignored) ->
@@ -88,7 +88,7 @@ init(BucketConfigs) ->
     proc_lib:spawn_link(erlang, apply, [fun docs_left_updater_init/1, [Self]]),
 
     {ok, #state{bucket = undefined,
-                buckets_count = length(BucketConfigs),
+                buckets_count = BucketsCount,
                 bucket_number = 0,
                 done_moves  = [],
                 current_moves = [],

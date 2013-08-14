@@ -28,7 +28,7 @@
 
 -export([all_accessible_bucket_names/2,
          checking_bucket_uuid/3,
-         handle_bucket_list/2,
+         handle_bucket_list/1,
          handle_bucket_info/3,
          build_bucket_node_infos/4,
          handle_sasl_buckets_streaming/2,
@@ -85,7 +85,7 @@ checking_bucket_uuid(Req, BucketConfig, Body) ->
             Body()
     end.
 
-handle_bucket_list(Id, Req) ->
+handle_bucket_list(Req) ->
     BucketNames = lists:sort(fun (A,B) -> A =< B end,
                              all_accessible_bucket_names(fakepool, Req)),
     LocalAddr = menelaus_util:local_addr(Req),
@@ -93,17 +93,19 @@ handle_bucket_list(Id, Req) ->
                     undefined -> normal;
                     _ -> for_ui
                 end,
-    BucketsInfo = [build_bucket_info(Id, Name, undefined, InfoLevel, LocalAddr)
+    BucketsInfo = [build_bucket_info(Name, undefined, InfoLevel, LocalAddr,
+                                     menelaus_auth:may_expose_bucket_auth(Req))
                    || Name <- BucketNames],
     reply_json(Req, BucketsInfo).
 
-handle_bucket_info(PoolId, Id, Req) ->
+handle_bucket_info(_PoolId, Id, Req) ->
     InfoLevel = case proplists:get_value("basic_stats", Req:parse_qs()) of
                     undefined -> normal;
                     _ -> for_ui
                 end,
-    reply_json(Req, build_bucket_info(PoolId, Id, undefined, InfoLevel,
-                                      menelaus_util:local_addr(Req))).
+    reply_json(Req, build_bucket_info(Id, undefined, InfoLevel,
+                                      menelaus_util:local_addr(Req),
+                                      menelaus_auth:may_expose_bucket_auth(Req))).
 
 build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr) ->
     %% Only list nodes this bucket is mapped to
@@ -146,15 +148,15 @@ maybe_add_couch_api_base(BucketName, KV, Node, LocalAddr) ->
             KV
     end.
 
-build_bucket_info(PoolId, Id, undefined, InfoLevel, LocalAddr) ->
+build_bucket_info(Id, undefined, InfoLevel, LocalAddr, MayExposeAuth) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Id),
-    build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr);
-build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
+    build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth);
+build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth) ->
     Nodes = build_bucket_node_infos(Id, BucketConfig, InfoLevel, LocalAddr),
-    StatsUri = bin_concat_path(["pools", PoolId, "buckets", Id, "stats"]),
+    StatsUri = bin_concat_path(["pools", "default", "buckets", Id, "stats"]),
     StatsDirectoryUri = iolist_to_binary([StatsUri, <<"Directory">>]),
-    NodeStatsListURI = bin_concat_path(["pools", PoolId, "buckets", Id, "nodes"]),
-    DDocsURI = bin_concat_path(["pools", PoolId, "buckets", Id, "ddocs"]),
+    NodeStatsListURI = bin_concat_path(["pools", "default", "buckets", Id, "nodes"]),
+    DDocsURI = bin_concat_path(["pools", "default", "buckets", Id, "ddocs"]),
     BucketCaps = build_bucket_capabilities(BucketConfig),
 
     MaybeBucketUUID = proplists:get_value(uuid, BucketConfig),
@@ -228,7 +230,7 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
     MaybeFlushController =
         case FlushEnabled of
             true ->
-                [{flush, bin_concat_path(["pools", PoolId,
+                [{flush, bin_concat_path(["pools", "default",
                                           "buckets", Id, "controller", "doFlush"])}];
             false ->
                 []
@@ -237,22 +239,25 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
     {struct, [{name, list_to_binary(Id)},
               {bucketType, BucketType},
               {authType, misc:expect_prop_value(auth_type, BucketConfig)},
-              {saslPassword, list_to_binary(proplists:get_value(sasl_password, BucketConfig, ""))},
+              {saslPassword, case MayExposeAuth of
+                                 true -> list_to_binary(proplists:get_value(sasl_password, BucketConfig, ""));
+                                 _ -> <<"">>
+                             end},
               {proxyPort, proplists:get_value(moxi_port, BucketConfig, 0)},
               {replicaIndex, proplists:get_value(replica_index, BucketConfig, true)},
-              {uri, BuildUUIDURI(["pools", PoolId, "buckets", Id])},
-              {streamingUri, BuildUUIDURI(["pools", PoolId, "bucketsStreaming", Id])},
-              {localRandomKeyUri, bin_concat_path(["pools", PoolId,
+              {uri, BuildUUIDURI(["pools", "default", "buckets", Id])},
+              {streamingUri, BuildUUIDURI(["pools", "default", "bucketsStreaming", Id])},
+              {localRandomKeyUri, bin_concat_path(["pools", "default",
                                                    "buckets", Id, "localRandomKey"])},
               {controllers,
                MaybeFlushController ++
-                   [{compactAll, bin_concat_path(["pools", PoolId,
+                   [{compactAll, bin_concat_path(["pools", "default",
                                                   "buckets", Id, "controller", "compactBucket"])},
-                    {compactDB, bin_concat_path(["pools", PoolId,
-                                                 "buckets", Id, "controller", "compactDatabases"])},
-                    {purgeDeletes, bin_concat_path(["pools", PoolId,
+                    {compactDB, bin_concat_path(["pools", "default",
+                                                 "buckets", "default", "controller", "compactDatabases"])},
+                    {purgeDeletes, bin_concat_path(["pools", "default",
                                                     "buckets", Id, "controller", "unsafePurgeBucket"])},
-                    {startRecovery, bin_concat_path(["pools", PoolId,
+                    {startRecovery, bin_concat_path(["pools", "default",
                                                      "buckets", Id, "controller", "startRecovery"])}]},
               {nodes, Nodes},
               {stats, {struct, [{uri, StatsUri},
@@ -330,12 +335,13 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
         end,
     menelaus_web:handle_streaming(F, Req, undefined).
 
-handle_bucket_info_streaming(PoolId, Id, Req) ->
+handle_bucket_info_streaming(_PoolId, Id, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
     F = fun(_InfoLevel) ->
                 case ns_bucket:get_bucket(Id) of
                     {ok, BucketConfig} ->
-                        build_bucket_info(PoolId, Id, BucketConfig, stable, LocalAddr);
+                        build_bucket_info(Id, BucketConfig, stable, LocalAddr,
+                                          menelaus_auth:may_expose_bucket_auth(Req));
                     not_present ->
                         exit(normal)
                 end

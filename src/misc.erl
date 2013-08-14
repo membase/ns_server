@@ -790,20 +790,35 @@ pairs_test() ->
 
 
 rewrite_value(Old, New, Struct) ->
-    rewrite_value_int({value, Old}, New, Struct).
+    rewrite_value_int({{value, Old}, New}, Struct).
+
+rewrite_key_value_tuples([_|_] = Pattern, Struct) ->
+    rewrite_value_int(Pattern, Struct).
 
 rewrite_key_value_tuple(Key, NewValue, Struct) ->
-    rewrite_value_int({key, Key}, NewValue, Struct).
+    rewrite_value_int({{key, Key}, NewValue}, Struct).
 
-rewrite_value_int({key, Key}, New, {Key, _}) ->
+rewrite_value_int([_ | _] = Patterns, {Key, _} = T) ->
+    case lists:keyfind(Key, 1, Patterns) of
+        {_, New} ->
+            {Key, New};
+        false ->
+            list_to_tuple(rewrite_value_int(Patterns, tuple_to_list(T)))
+    end;
+rewrite_value_int({{key, Key}, New}, {Key, _}) ->
     {Key, New};
-rewrite_value_int({value, Old}, New, Old) ->
+rewrite_value_int({{value, Old}, New}, Old) ->
     New;
-rewrite_value_int(Old, New, L) when is_list(L) ->
-    lists:map(fun (V) -> rewrite_value_int(Old, New, V) end, L);
-rewrite_value_int(Old, New, T) when is_tuple(T) ->
-    list_to_tuple(rewrite_value_int(Old, New, tuple_to_list(T)));
-rewrite_value_int(_Old, _New, X) ->
+rewrite_value_int(_Patterns, []) ->
+    [];
+% cannot use lists:map here because list can be improper
+rewrite_value_int(Patterns, [H|T]) ->
+    [rewrite_value_int(Patterns, H)|rewrite_value_int(Patterns, T)];
+rewrite_value_int(Patterns, L) when is_list(L) ->
+    lists:map(fun (V) -> rewrite_value_int(Patterns, V) end, L);
+rewrite_value_int(Patterns, T) when is_tuple(T) ->
+    list_to_tuple(rewrite_value_int(Patterns, tuple_to_list(T)));
+rewrite_value_int(_Patterns, X) ->
     X.
 
 rewrite_value_test() ->
@@ -822,18 +837,27 @@ rewrite_value_test() ->
                       [ {"a string", 1, x},
                         {"b string", 4, a, {blah, a, b}}]),
     X = [{"a string", 1, x},
-         {"b string", 4, b, {blah, b, b}}].
+         {"b string", 4, b, {blah, b, b}}],
+
+    % handling of improper list
+    [a, [x|c]] = rewrite_value(b, x, [a, [b|c]]),
+    [a, [b|x]] = rewrite_value(c, x, [a, [b|c]]).
 
 rewrite_key_value_tuple_test() ->
     x = rewrite_key_value_tuple(a, b, x),
     {a, b} = rewrite_key_value_tuple(a, b, {a, c}),
     {b, x} = rewrite_key_value_tuple(a, b, {b, x}),
 
-    X = rewrite_key_value_tuple(a, b,
-                                [ {"a string", 1, x},
-                                  {"b string", 4, {a, c}, {a, [b, c]}}]),
-    X = [{"a string", 1, x},
-         {"b string", 4, {a, b}, {a, b}}].
+    Orig = [ {"a string", x},
+             {"b string", 4, {a, x, y}, {a, c}, {a, [b, c]}}],
+    X = rewrite_key_value_tuple(a, b, Orig),
+    X = [{"a string", x},
+         {"b string", 4, {a, x, y}, {a, b}, {a, b}}],
+
+    X1 = rewrite_key_value_tuples([{"a string", xxx}, {a, xxx}], Orig),
+
+    X1 = [{"a string", xxx}, {"b string", 4, {a, x, y}, {a, xxx}, {a, xxx}}].
+
 
 sanitize_url(Url) when is_binary(Url) ->
     ?l2b(sanitize_url(?b2l(Url)));

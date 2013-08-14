@@ -497,7 +497,7 @@ upgrade_config(Config, Upgrader) ->
 
 do_upgrade_config(Config, [], _Upgrader) -> Config;
 do_upgrade_config(Config, Changes, Upgrader) ->
-    ?log_debug("Upgrading config by changes:~n~p~n", [Changes]),
+    ?log_debug("Upgrading config by changes:~n~p~n", [ns_config_log:sanitize(Changes)]),
     ConfigList = config_dynamic(Config),
     NewList =
         lists:foldl(fun ({set, K,V}, Acc) ->
@@ -542,7 +542,7 @@ do_init(Config) ->
     InitialState =
         if
             UpgradedConfig =/= Config ->
-                ?log_debug("Upgraded initial config:~n~p~n", [UpgradedConfig]),
+                ?log_debug("Upgraded initial config:~n~p~n", [ns_config_log:sanitize(UpgradedConfig)]),
                 initiate_save_config(UpgradedConfig);
             true ->
                 UpgradedConfig
@@ -726,7 +726,7 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
                         ?log_info("No dynamic config file found. Assuming we're brand new node"),
                         []
                 end,
-            ?log_debug("Here's full dynamic config we loaded:~n~p", [D]),
+            ?log_debug("Here's full dynamic config we loaded:~n~p", [ns_config_log:sanitize(D)]),
             {_, DynamicPropList} = lists:foldl(fun (Tuple, {Seen, Acc}) ->
                                                        K = element(1, Tuple),
                                                        case sets:is_element(K, Seen) of
@@ -737,7 +737,8 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
                                                end,
                                                {sets:from_list([directory]), []},
                                                lists:append(D ++ [S, DefaultConfig])),
-            ?log_info("Here's full dynamic config we loaded + static & default config:~n~p", [DynamicPropList]),
+            ?log_info("Here's full dynamic config we loaded + static & default config:~n~p",
+                      [ns_config_log:sanitize(DynamicPropList)]),
             {ok, #config{static = [S, DefaultConfig],
                          dynamic = [lists:keysort(1, DynamicPropList)],
                          policy_mod = PolicyMod}};

@@ -35,8 +35,12 @@ end
 
 if ARGV == ["--help"]
   puts <<HERE
+First, don't forget to run --setup. And you'll likely need root.
+
 Example:
-# NS_NODE_NAME='n_11@lh' ./cluster_run -n1 --start-index=11 --dont-rename -i --prepend-extras ./scripts/run_in_ns.rb
+# NS_NODE_NAME='n_11@lh' ./cluster_run -n1 --start-index=11 --prepend-extras ./scripts/run_in_ns.rb
+
+Then UI will be at 127.25.0.13:9011. Observe how both port is 9000+node_number and ip is 172.25.0.2+node_number
 HERE
   exit
 end
@@ -71,7 +75,7 @@ dummy_name, node_name = ARGV.each_cons(2).detect {|(maybe_name, val)| maybe_name
 
 node_name ||= ENV['NS_NODE_NAME']
 
-raise "dont't have node -name" unless node_name =~ /\Ans?_([0-9]+)@/
+raise "dont't have node -name (#{node_name})" unless node_name =~ /\A[a-z_]+([0-9]+)@/
 
 node_number = $1.to_i
 node_host = $'
@@ -107,16 +111,6 @@ sh "ip netns exec #{netns} ifconfig #{tap_if} #{ifaddr}/24 up"
 puts "cleaning up arp entry for child ifaddr (because of different mac address of new tap interface)"
 sh "arp -d #{ifaddr} || true"
 
-# we need to replace hostname in args because original ip is not part
-# of new netns.
-new_args = ARGV.map do |arg|
-  if arg == node_name
-    "n_#{node_number}@#{ifaddr}"
-  else
-    arg
-  end
-end
-
 # erlang would spawn epmd for us normally. But it would daemonize
 # itself. Which we don't need. We want it to receive HUP & TERM
 # signals so that there's nobody running in our netns after we're done
@@ -134,8 +128,8 @@ poll_for_condition do
   end
 end
 
-puts "exec-ing erlang #{new_args.join(' ')}"
+puts "exec-ing erlang #{ARGV.join(' ')}"
 STDOUT.flush
 STDERR.flush
-exec("ip", "netns", "exec", netns, *new_args)
+exec("ip", "netns", "exec", netns, *ARGV)
 raise "cannot happen"

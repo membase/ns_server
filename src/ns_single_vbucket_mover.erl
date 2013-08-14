@@ -362,7 +362,7 @@ wait_for_mover(Bucket, V, N1, N2, Pid) ->
     end.
 
 spawn_ebucketmigrator_mover(Bucket, VBucket, SrcNode, DstNode) ->
-    Args0 = ebucketmigrator_srv:build_args(Bucket,
+    Args0 = ebucketmigrator_srv:build_args(SrcNode, Bucket,
                                            SrcNode, DstNode, [VBucket], true),
     %% start ebucketmigrator on source node
     Args = [SrcNode | Args0],
