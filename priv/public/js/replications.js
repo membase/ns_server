@@ -49,10 +49,31 @@ var ReplicationsModel = {};
 
 var ReplicationForm = mkClass({
   initialize: function () {
-    this.dialog = $('#create_replication_dialog');
-    this.form = this.dialog.find('form');
-    this.onSubmit = $m(this, 'onSubmit');
-    this.form.bind('submit', this.onSubmit);
+    var self = this;
+    self.dialog = $('#create_replication_dialog');
+    self.form = self.dialog.find('form');
+    self.onSubmit = $m(self, 'onSubmit');
+    self.form.bind('submit', self.onSubmit);
+    self.advacedXDCRSettings = $("#js_xdcr_advaced_settings");
+    self.advancedSettingsContainer = $("#js_xdcr_advaced_settings_container");
+
+    var xdcrAdvacedSettingsBtn = $("#js_xdcr_advaced_settings_btn");
+
+    self.advacedXDCRSvalidator = setupFormValidation(self.advacedXDCRSettings, "/settings/replications/?just_validate=1", function (status, errors) {
+      ReplicationsSection.hideXDCRErrors(self.advacedXDCRSettings);
+      if (status == "error") {
+        ReplicationsSection.showXDCRErrors(errors, self.advacedXDCRSettings);
+      }
+    }, function () {
+      return serializeForm(self.advacedXDCRSettings);
+    });
+
+    self.advacedXDCRSvalidator.pause();
+
+    xdcrAdvacedSettingsBtn.click(function (e) {
+      self.advancedSettingsContainer.toggle();
+      self.maybeEnabeXDCRFormValidation();
+    });
 
     DAL.cells.bucketsListCell.subscribeValue(function(buckets) {
       if (!buckets) {
@@ -64,6 +85,12 @@ var ReplicationForm = mkClass({
         rb.append('<option>' + escapeHTML(bucket.name) + '</option>');
       });
     });
+  },
+  maybeEnabeXDCRFormValidation: function () {
+    var self = this;
+    if (self.advancedSettingsContainer.is(":visible")) {
+      self.advacedXDCRSvalidator.unpause();
+    }
   },
   startCreate: function (callback) {
     var self = this;
@@ -77,7 +104,18 @@ var ReplicationForm = mkClass({
         toCluster: '',
         replicationType: 'continuous'
       });
-      showDialog('create_replication_dialog');
+      showDialog('create_replication_dialog', {
+        position: { my: "center top", at: "center bottom", of: $("#headerNav") },
+        onHide: function () {
+          self.advacedXDCRSvalidator.pause();
+          ReplicationsSection.hideXDCRErrors(self.advacedXDCRSettings);
+        }
+      });
+    });
+
+    $.get("/settings/replications/", function (settings) {
+      setFormValues(self.advacedXDCRSettings, settings);
+      self.maybeEnabeXDCRFormValidation();
     });
   },
   close: function () {
@@ -166,64 +204,140 @@ function showXDCRErrors(id) {
   });
 }
 
+function mkReplicationSectionCell(ns, currentXDCRSettingsURI, tasksProgressCell, mode) {
+  ns.maybeXDCRTaskCell = Cell.compute(function (v) {
+    var progresses = v.need(tasksProgressCell);
+    return _.filter(progresses, function (task) {
+      return task.type === 'xdcr';
+    });
+  });
+  ns.maybeXDCRTaskCell.equality = _.isEqual;
+
+  ns.settingsRawCell = Cell.compute(function (v) {
+    var currentXDCRS = v.need(currentXDCRSettingsURI)
+    if (currentXDCRS) {
+      return future.get({url: currentXDCRS});
+    }
+  });
+  ns.globaSettingsRawCell = Cell.compute(function () {
+    return future.get({url: "/settings/replications"});
+  });
+  ns.perReplicationSettingsCell = Cell.compute(function (v) {
+    return _.extend(_.clone(v.need(ns.globaSettingsRawCell)) , _.clone(v.need(ns.settingsRawCell)));
+  });
+  ns.perReplicationSettingsCell.delegateInvalidationMethods(ns.globaSettingsRawCell);
+  ns.perReplicationSettingsCell.delegateInvalidationMethods(ns.settingsRawCell);
+
+  ns.replicationRowsCell = Cell.compute(function (v) {
+    if (v.need(mode) != 'replications') {
+      return;
+    }
+
+    var replications = v.need(ns.maybeXDCRTaskCell);
+    var clusters = v.need(ReplicationsModel.remoteClustersListCell);
+    var rawClusters = v.need(ReplicationsModel.remoteClustersAllListCell);
+
+    return _.map(replications, function (replication) {
+      var clusterUUID = replication.id.split("/")[0];
+      var cluster = _.filter(clusters, function (cluster) {
+        return cluster.uuid === clusterUUID;
+      })[0];
+
+      var name;
+      if (cluster) {
+        name = '"' + cluster.name + '"';
+      } else {
+        cluster = _.filter(rawClusters, function (cluster) {
+          return cluster.uuid === clusterUUID;
+        })[0];
+        if (cluster) {
+          // if we found cluster among rawClusters we assume it was
+          // deleted
+          name = 'at ' + cluster.hostname;
+        } else {
+          name = '"unknown"';
+        }
+      }
+
+      return {
+        id: replication.id,
+        bucket: replication.source,
+        to: 'bucket "' + replication.target.split('buckets/')[1] + '" on cluster ' + name,
+        status: replication.status == 'running' ? 'Replicating' : 'Starting Up',
+        when: replication.continuous ? "on change" : "one time sync",
+        errors: replication.errors,
+        cancelURI: replication.cancelURI,
+        settingsURI: replication.settingsURI
+      }
+    });
+  });
+}
+
 var ReplicationsSection = {
   init: function () {
     renderCellTemplate(ReplicationsModel.remoteClustersListCell, 'cluster_reference_list');
 
-    var maybeXDCRTaskCell = Cell.compute(function (v) {
-      var progresses = v.need(DAL.cells.tasksProgressCell);
-      return _.filter(progresses, function (task) {
-        return task.type === 'xdcr';
+    var self = this;
+    var perSettingsDialog = $("#js_per_xdcr_settings_dialog");
+    var perSettingsForm = $("#js_per_xdcr_settings_dialog form");
+    var currentXDCRSettingsURICell = new Cell();
+    currentXDCRSettingsURICell.equality = function () {return false};
+
+    mkReplicationSectionCell(self, currentXDCRSettingsURICell, DAL.cells.tasksProgressCell, DAL.cells.mode);
+
+    self.perReplicationSettingsCell.changedSlot.subscribeOnce(function () {
+      setupFormValidation(perSettingsDialog, "/settings/replications/?just_validate=1", function (status, errors) {
+        ReplicationsSection.hideXDCRErrors(perSettingsDialog);
+        if (status == "error") {
+          ReplicationsSection.showXDCRErrors(errors, perSettingsDialog);
+        }
+      }, function () {
+        return serializeForm(perSettingsForm);
       });
     });
-    maybeXDCRTaskCell.equality = _.isEqual;
 
-    Cell.compute(function (v) {
-      if (v.need(DAL.cells.mode) != 'replications') {
-        return;
-      }
+    perSettingsForm.submit(function (e) {
+      e.preventDefault();
+      var spinner = overlayWithSpinner(perSettingsDialog);
 
-      var replications = v.need(maybeXDCRTaskCell);
-      var clusters = v.need(ReplicationsModel.remoteClustersListCell);
-      var rawClusters = v.need(ReplicationsModel.remoteClustersAllListCell);
-
-      return _.map(replications, function (replication) {
-        var clusterUUID = replication.id.split("/")[0];
-        var cluster = _.filter(clusters, function (cluster) {
-          return cluster.uuid === clusterUUID;
-        })[0];
-
-        var name;
-        if (cluster) {
-          name = '"' + cluster.name + '"';
-        } else {
-          cluster = _.filter(rawClusters, function (cluster) {
-            return cluster.uuid === clusterUUID;
-          })[0];
-          if (cluster) {
-            // if we found cluster among rawClusters we assume it was
-            // deleted
-            name = 'at ' + cluster.hostname;
-          } else {
-            name = '"unknown"';
-          }
+      $.ajax({
+        type: "POST",
+        url: currentXDCRSettingsURICell.value,
+        data: serializeForm(perSettingsForm),
+        success: function () {
+          hideDialog(perSettingsDialog);
+        },
+        error: function (resp) {
+          ReplicationsSection.showXDCRErrors(JSON.parse(resp.responseText), perSettingsDialog);
+        },
+        complete: function () {
+          spinner.remove();
         }
+      })
+    });
 
-        return {
-          id: replication.id,
-          bucket: replication.source,
-          to: 'bucket "' + replication.target.split('buckets/')[1] + '" on cluster ' + name,
-          status: replication.status == 'running' ? 'Replicating' : 'Starting Up',
-          when: replication.continuous ? "on change" : "one time sync",
-          errors: replication.errors,
-          cancelURI: replication.cancelURI
+    self.perReplicationSettingsCell.subscribeValue(function (settings) {
+      if (!settings) {
+        return
+      }
+      setFormValues(perSettingsDialog, settings);
+      showDialog(perSettingsDialog, {
+        onHide: function () {
+          self.hideXDCRErrors(perSettingsDialog)
         }
       });
-    }).subscribeValue(function (rows) {
+    });
+
+    self.replicationRowsCell.subscribeValue(function (rows) {
       if (!rows) {
         return;
       }
       renderTemplate('ongoing_replications_list', rows);
+      $("#ongoing_replications_list_container .js_per_xdcr_settings").each(function (i) {
+        $(this).click(function () {
+          currentXDCRSettingsURICell.setValue(rows[i].settingsURI);
+        });
+      });
     });
 
     $('#create_cluster_reference').click($m(this, 'startAddRemoteCluster'));
@@ -241,6 +355,17 @@ var ReplicationsSection = {
       ReplicationsSection.startDeleteRemoteCluster(name);
     });
     $('#create_replication').click($m(this, 'startCreateReplication'));
+  },
+  showXDCRErrors: function (errors, perSettingsForm) {
+    var i;
+    for (i in errors) {
+      $("[name=" + i + "]", perSettingsForm).addClass("dynamic_error");
+      $(".js_" + i, perSettingsForm).text(errors[i]);
+    }
+  },
+  hideXDCRErrors: function (perSettingsForm) {
+    $("input", perSettingsForm).removeClass("dynamic_error");
+    $(".js_error", perSettingsForm).text("");
   },
   getRemoteCluster: function (name, body) {
     var self = this;

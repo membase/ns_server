@@ -1564,6 +1564,7 @@
                   <td>{%= h(r.when) %}</td>
                   <td>
                     <a class="list_button when-roadmin-avoid-me" href="#deleteReplication={%=h(encodeURIComponent(r.cancelURI))%}"><span>Delete</span></a>
+                    <span class="list_button when-roadmin-avoid-me js_per_xdcr_settings"><span>Settings</span></span>
                   </td>
                 </tr>
                 <!-- {% }); %} -->
@@ -2009,6 +2010,47 @@
   </form>
 </div>
 
+<div class="xdcr_advaced_settings dialog" id="js_per_xdcr_settings_dialog" title="Advanced settings">
+  <form>
+    <div>
+      <div>
+        <label for="per_max_concurrent_reps">XDCR Max Replications per Bucket</label>
+        <input type="text" id="per_max_concurrent_reps" name="maxConcurrentReps">
+        <i class="error js_error js_maxConcurrentReps"></i>
+      </div>
+      <div>
+        <label for="per_checkpoint_interval">XDCR Checkpoint Interval</label>
+        <input type="text" id="per_checkpoint_interval" name="checkpointInterval">
+        <i class="error js_error js_checkpointInterval"></i>
+      </div>
+      <div>
+        <label for="per_worker_batch_size">XDCR Batch Count</label>
+        <input type="text" id="per_worker_batch_size" name="workerBatchSize">
+        <i class="error js_error js_workerBatchSize"></i>
+      </div>
+      <div>
+        <label for="per_doc_batch_size_kb">XDCR Batch Size (kB)</label>
+        <input type="text" id="per_doc_batch_size_kb" name="docBatchSizeKb">
+        <i class="error js_error js_docBatchSizeKb"></i>
+      </div>
+      <div>
+        <label for="per_failure_restart_interval">XDCR Failure Retry Interval</label>
+        <input type="text" id="per_failure_restart_interval" name="failureRestartInterval">
+        <i class="error js_error js_failureRestartInterval"></i>
+      </div>
+      <div>
+        <label for="per_optimistic_replication_threshold">XDCR Optimistic Replication Threshold</label>
+        <input type="text" id="per_optimistic_replication_threshold" name="optimisticReplicationThreshold">
+        <i class="error js_error js_optimisticReplicationThreshold"></i>
+      </div>
+    </div>
+    <div class="save_cancel clearfix">
+      <button type="submit" class="save_button float_right">Save</button>
+      <a class="close">Cancel</a>
+    </div>
+  </form>
+</div>
+
 <!-- Create Document -->
 <div class="dialog join_cluster" id="create_document_dialog" title="Create Document" style="width:400px">
   <span class="warning pat_10" style="display:none;"></span>
@@ -2363,51 +2405,65 @@
           <li><label for="replication_from_bucket">Bucket:</label>
             <select name="fromBucket" id="replication_from_bucket"></select>
           </li>
-         </ul>
-       </fieldset>
-       <fieldset style="float:left;clear:right">
-         <legend>To:</legend>
-         <ul>
-           <li><label for="replication_to_cluster">Cluster:</label>
-             <select name="toCluster" id="replication_to_cluster">
-               <option>remote cluster list</option>
-             </select>
-           </li>
-           <li><label for="replication_to_bucket">Bucket:</label>
-             <input name="toBucket" id="replication_to_bucket" />
-             <!-- TODO: this needs to become a select box like the one above -->
-           </li>
-         </ul>
-       </fieldset>
-     </fieldset><input type="hidden" name="replicationType" value="continuous" />
-<!--     <fieldset style="margin-left:4em;clear:both">
-     <ul>
-       <li><input name="replicationType" type="radio" value="one-time" id="replication_rate_one_time" /><label for="replication_rate_one_time">One-time</label></li>
-       <li><input name="replicationType" type="radio" id="replication_type_scheduled" />
-         <label for="replication_type_scheduled">Scheduled</label>
-         <ul>
-           <li style="font-size:12px">
-             <label>Begin <input type="radio" name="when" /> now</label> <span style="color:#777">OR</span>
-             <label><input type="radio" name="when" /> at</label>
-             <input type="number" placeholder="HH" name="when_hour" />:<input type="number" placeholder="MM" name="when_minutes" />
-             <select name="timezone">
-               <option>PDT</option>
-             </select>
-           </li>
-           <li style="font-size:12px">and <label>Run
-             <select name="frequency">
-               <option>once</option>
-               <option>every half hour</option>
-               <option>hourly</option>
-               <option>daily</option>
-               <option>weekly</option>
-             </select></label>
-           </li>
-         </ul>
-       </li>
-       <li><input name="replicationType" value="continuous" type="radio" id="replication_rate_continous" /><label for="replication_rate_continous">Continous</label></li>
-     </ul>
-    </fieldset>  -->
+        </ul>
+      </fieldset>
+      <fieldset style="float:left;clear:right">
+        <legend>To:</legend>
+        <ul>
+          <li><label for="replication_to_cluster">Cluster:</label>
+            <select name="toCluster" id="replication_to_cluster">
+              <option>remote cluster list</option>
+            </select>
+          </li>
+          <li><label for="replication_to_bucket">Bucket:</label>
+            <input name="toBucket" id="replication_to_bucket" />
+            <!-- TODO: this needs to become a select box like the one above -->
+          </li>
+        </ul>
+      </fieldset>
+      <fieldset class="xdcr_advaced_settings" id="js_xdcr_advaced_settings">
+        <legend id="js_xdcr_advaced_settings_btn">Advanced settings:</legend>
+        <div id="js_xdcr_advaced_settings_container" class="xdcr_advaced_settings_container">
+          <div>
+            <label for="xdcr_advaced_settings_type">XDCR Protocol</label>
+            <select id="xdcr_advaced_settings_type" name="type">
+              <option value="capi">Version 1</option>
+              <option value="xmem" selected="selected">Version 2</option>
+            </select>
+          </div>
+          <div>
+            <label for="max_concurrent_reps">XDCR Max Replications per Bucket</label>
+            <input type="text" id="max_concurrent_reps" name="maxConcurrentReps">
+            <i class="error js_error js_maxConcurrentReps"></i>
+          </div>
+          <div>
+            <label for="checkpoint_interval">XDCR Checkpoint Interval</label>
+            <input type="text" id="checkpoint_interval" name="checkpointInterval">
+            <i class="error js_error js_checkpointInterval"></i>
+          </div>
+          <div>
+            <label for="worker_batch_size">XDCR Batch Count</label>
+            <input type="text" id="worker_batch_size" name="workerBatchSize">
+            <i class="error js_error js_workerBatchSize"></i>
+          </div>
+          <div>
+            <label for="doc_batch_size_kb">XDCR Batch Size (kB)</label>
+            <input type="text" id="doc_batch_size_kb" name="docBatchSizeKb">
+            <i class="error js_error js_docBatchSizeKb"></i>
+          </div>
+          <div>
+            <label for="failure_restart_interval">XDCR Failure Retry Interval</label>
+            <input type="text" id="failure_restart_interval" name="failureRestartInterval">
+            <i class="error js_error js_failureRestartInterval"></i>
+          </div>
+          <div>
+            <label for="optimistic_replication_threshold">XDCR Optimistic Replication Threshold</label>
+            <input type="text" id="optimistic_replication_threshold" name="optimisticReplicationThreshold">
+            <i class="error js_error js_optimisticReplicationThreshold"></i>
+          </div>
+        </div>
+      </fieldset>
+    </fieldset><input type="hidden" name="replicationType" value="continuous" />
     <div class="save_cancel">
       <button class="save_button float_right replicate-button" type="submit" style="margin-left:12px;">Replicate</button>
       <a class="close">Cancel</a>

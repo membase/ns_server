@@ -1275,6 +1275,8 @@ input[type=number].size {width:4em;}
 .reset_roadmin_form input,
 .account_management_container label span,
 .account_management_container label input,
+.xdcr_advaced_settings.dialog label,
+.xdcr_advaced_settings.dialog input,
 .account_management_container span.list_button {display: -moz-inline-stack; display: inline-block; zoom: 1; *display: inline; vertical-align: middle;}
 .account_management_container label span {width: 120px; text-align: right; margin-right: 5px;}
 .account_management_container label input {width: 200px; height: 20px;}
@@ -1290,3 +1292,12 @@ input[type=number].size {width:4em;}
 .reset_roadmin_form .errors {display: block; color: red; padding-bottom: 10px;}
 .reset_roadmin_form .error {border: 1px solid red;}
 .reset_roadmin_form .inner_wrap {padding: 20px 20px 10px;}
+
+.xdcr_advaced_settings label {width: 246px; font-size: 12px; text-align: left; margin-left: 15px;}
+.xdcr_advaced_settings_container {display: none;}
+.xdcr_advaced_settings {line-height: 33px;}
+.xdcr_advaced_settings input {width: 50px;}
+.xdcr_advaced_settings i {font-size: 12px; color: red; display: block; line-height: 12px; margin-left: 30px;}
+.xdcr_advaced_settings .dynamic_error {border-color: red;}
+.xdcr_advaced_settings.dialog {width: 400px;}
+.xdcr_advaced_settings legend {cursor: pointer; color: #2ea6db;}
