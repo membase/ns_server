@@ -41,7 +41,7 @@ manifest() ->
         _ -> []
     end.
 
--spec sanitize_backtrace(binary()) -> binary().
+-spec sanitize_backtrace(binary()) -> [binary()].
 sanitize_backtrace(Backtrace) ->
     {ok, RE} = re:compile(<<"^Program counter: 0x[0-9a-f]+ |^0x[0-9a-f]+ Return addr 0x[0-9]+">>),
     lists:append([case re:run(X, RE) of
