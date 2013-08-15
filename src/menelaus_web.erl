@@ -713,7 +713,6 @@ handle_pools(Req) ->
     reply_json(Req,{struct, [{pools, EffectivePools},
                              {isAdminCreds, Admin},
                              {isROAdminCreds, ReadOnlyAdmin},
-                             {isROAdminExist, menelaus_auth:is_read_only_admin_exist()},
                              {settings,
                               {struct,
                                [{<<"maxParallelIndexers">>,
@@ -1536,7 +1535,12 @@ get_read_only_admin_name() ->
     end.
 
 handle_settings_read_only_admin_name(Req) ->
-    reply_json(Req, list_to_binary(get_read_only_admin_name()), 200).
+    case get_read_only_admin_name() of
+        "" ->
+            menelaus_util:reply_404(Req);
+        Name ->
+            reply_json(Req, list_to_binary(Name), 200)
+    end.
 
 handle_settings_read_only_user_post(Req) ->
     PostArgs = Req:parse_post(),

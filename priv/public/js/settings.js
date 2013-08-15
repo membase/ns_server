@@ -847,14 +847,28 @@ var EmailAlertsSection = {
   }
 };
 
-function accountManagementSectionCells(ns, roAdminNameCell, isROAdminExistCell) {
-  ns.roAdminNameCell = Cell.compute(function (v) {
-    var isROAdminExist = v.need(isROAdminExistCell);
-    if (!isROAdminExist) {
+function accountManagementSectionCells(ns, tabs) {
+  var noROAdminMarker = {"valueOf": function () {return ""}};
+  var rawROAdminCell = ns.rawROAdminCell = Cell.compute(function (v) {
+    if (v.need(tabs) !== 'account_management') {
       return;
     }
-    return v(roAdminNameCell) || future.get({url:"/settings/readOnlyAdminName"});;
-  });
+    return future.get({url:"/settings/readOnlyAdminName", missingValue: noROAdminMarker});
+  }).name("rawROAdminCell");
+
+  ns.isROAdminExistsCell = Cell.compute(function (v) {
+    return v.need(rawROAdminCell) !== noROAdminMarker;
+  }).name("isROAdminExistsCell");
+
+  ns.roAdminNameCell = Cell.compute(function (v) {
+    var value = v.need(rawROAdminCell);
+    return String(value);
+  }).name("roAdminNameCell");
+  ns.roAdminNameCell.delegateInvalidationMethods(rawROAdminCell);
+
+  ns.needSpinnerCell = Cell.compute(function (v) {
+    return v.need(tabs) === "account_management" && v(rawROAdminCell) === undefined;
+  }).name("needSpinnerCell");
 }
 
 var AccountManagementSection = {
@@ -864,10 +878,64 @@ var AccountManagementSection = {
     var fields = {username: false, password: false, verifyPassword: false};
     var credentialsCell = new Cell();
     var errorsCell = new Cell();
-    var roAdminNameCell = DAL.cells.roAdminNameCell;
-    var isROAdminExistCell = DAL.cells.isROAdminExistCell;
 
-    accountManagementSectionCells(self, roAdminNameCell, isROAdminExistCell);
+    accountManagementSectionCells(self, SettingsSection.tabs);
+
+    self.isROAdminExistsCell.subscribeValue(function (isCreated) {
+      $("#js_account_delete")[isCreated ? "show" : "hide"]();
+      $("#js_account_management_form")[isCreated ? "hide" : "show"]();
+    });
+
+    (function () {
+      var spinner;
+      var oldValue;
+      var timeout;
+
+      var form = $("#js_account_management_form");
+
+      function removeTimeout() {
+        clearTimeout(timeout);
+        timeout = null;
+      }
+
+      function enableSpinner() {
+        // NOTE: if we don't do that "trick" with visible we'll do
+        // overlayWithSpinner when form is not yet
+        // visible. Particularly if page is reloaded when on account
+        // management tab
+        if (form.is(":visible")) {
+          removeTimeout();
+          spinner = overlayWithSpinner(form);
+        } else {
+          if (timeout == null) {
+            timeout = setTimeout(function () {
+              timeout = null;
+              enableSpinner();
+            }, 5);
+          }
+        }
+      }
+
+      function disableSpinner() {
+        if (spinner) {
+          spinner.remove();
+          spinner = null;
+        }
+        removeTimeout();
+      }
+
+      self.needSpinnerCell.subscribeValue(function onNeedSpinner(value) {
+        if (value === undefined || value === oldValue) {
+          return;
+        }
+        if (value) {
+          enableSpinner();
+        } else {
+          disableSpinner();
+        }
+        oldValue = value;
+      });
+    })();
 
     function showHideErrors(maybeErrors, parent) {
       var key;
@@ -889,8 +957,7 @@ var AccountManagementSection = {
             errorsCell.setValue(undefined);
           } else {
             form.trigger("reset");
-            roAdminNameCell.setValue(cred.username);
-            isROAdminExistCell.setValue(true);
+            self.roAdminNameCell.invalidate();
           }
         },
         error: function (errors) {
@@ -962,7 +1029,7 @@ var AccountManagementSection = {
             url: "/settings/readOnlyUser",
             success: function () {
               hideDialog(removeDialog);
-              isROAdminExistCell.setValue(false);
+              self.roAdminNameCell.invalidate();
             },
             error: function (errors, status) {
               if (errors.status == 404) {
