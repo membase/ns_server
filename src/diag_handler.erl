@@ -41,6 +41,18 @@ manifest() ->
         _ -> []
     end.
 
+-spec sanitize_backtrace(binary()) -> binary().
+sanitize_backtrace(Backtrace) ->
+    {ok, RE} = re:compile(<<"^Program counter: 0x[0-9a-f]+ |^0x[0-9a-f]+ Return addr 0x[0-9]+">>),
+    lists:append([case re:run(X, RE) of
+                      nomatch ->
+                          [];
+                      _ when size(X) =< 120 ->
+                          [binary:copy(X)];
+                      _ -> [binary:copy(binary:part(X, 1, 120))]
+                    end || X <- binary:split(Backtrace, <<"\n">>, [global])
+                 ]).
+
 grab_process_info(Pid) ->
     PureInfo = erlang:process_info(Pid,
                                    [registered_name,
@@ -57,11 +69,7 @@ grab_process_info(Pid) ->
                                     reductions,
                                     trap_exit]),
     Backtrace = proplists:get_value(backtrace, PureInfo),
-    NewBacktrace = [case erlang:size(X) of
-                        L when L =< 90 ->
-                            binary:copy(X);
-                        _ -> binary:copy(binary:part(X, 1, 90))
-                    end || X <- binary:split(Backtrace, <<"\n">>, [global])],
+    NewBacktrace = sanitize_backtrace(Backtrace),
     lists:keyreplace(backtrace, 1, PureInfo, {backtrace, NewBacktrace}).
 
 grab_all_tap_and_checkpoint_stats() ->
