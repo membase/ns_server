@@ -665,7 +665,7 @@
         <div id="js_logs" class="logs" style="display:none">
           <!-- Shadow box -->
           <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
-          <span class="block nav float_right configure_view">
+          <span class="block nav float_right configure_view when-roadmin-hide-me">
             <a href="diag" target="_blank">Generate Diagnostic Report</a>
           </span>
           <h1>Log</h1>
@@ -851,12 +851,13 @@
                    </div>
                 </form></div>
                 <div class="account_management_container when-roadmin-avoid-me">
-                  <form id="js_account_management_form">
-                    <fieldset>
-                      <p>This user will have read-only access and
+                  <h2>Read-Only User</h2>
+                  <p>This user will have read-only access and
                       cannot make any changes to the system. The user
                       can only view existing servers, buckets, views
                       and monitor stats.</p>
+                  <form id="js_account_management_form" class="account_management_form">
+                    <fieldset>
                       <label>
                         <span>Username:</span><input type="text" name="username" maxlength="24">
                         <i class="errors js_error_username"></i>
@@ -872,9 +873,16 @@
                       <button type="submit" class="list_button"><span>Create</span></button>
                     </fieldset>
                   </form>
-                  <div id="js_account_delete">
-                    <p>There is already Read-Only User created</p>
-                    <p>Do you want to delete the Read-Only User <span class="list_button" id="js_delete_acc_btn"><span>Delete</span></span></p>
+                  <div id="js_account_delete" class="account_delete">
+                    <p>Currently read-only user account already exists: Username - <span id="js_roadmin_name"></span></p>
+                    <div>
+                      <span class="list_button" id="js_reset_acc_btn">
+                        <span>Reset Password Read-Only User</span>
+                      </span>
+                      <span class="list_button" id="js_delete_acc_btn">
+                        <span>Delete Read-Only User</span>
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1977,6 +1985,20 @@
     </div>
     <div class="save_cancel clearfix">
       <button type="button" class="delete_button float_right js_delete_button">Delete</button>
+      <a class="close">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<div class="dialog" id="js_roadmin_reset_dialog" title="Reset Password">
+  <form id="js_reset_roadmin_form" class="reset_roadmin_form">
+    <div class="inner_wrap">
+      <i class="errors js_error_password"></i>
+      <label for="new_roa_pass" style="width:auto">New Password:</label>
+      <input type="password" name="password" id="new_roa_pass">
+    </div>
+    <div class="save_cancel clearfix">
+      <button type="submit" class="save_button float_right">Create</button>
       <a class="close">Cancel</a>
     </div>
   </form>

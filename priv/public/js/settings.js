@@ -847,20 +847,101 @@ var EmailAlertsSection = {
   }
 };
 
+function accountManagementSectionCells(ns, tabs) {
+  var noROAdminMarker = {"valueOf": function () {return ""}};
+  var rawROAdminCell = ns.rawROAdminCell = Cell.compute(function (v) {
+    if (v.need(tabs) !== 'account_management') {
+      return;
+    }
+    return future.get({url:"/settings/readOnlyAdminName", missingValue: noROAdminMarker});
+  }).name("rawROAdminCell");
+
+  ns.isROAdminExistsCell = Cell.compute(function (v) {
+    return v.need(rawROAdminCell) !== noROAdminMarker;
+  }).name("isROAdminExistsCell");
+
+  ns.roAdminNameCell = Cell.compute(function (v) {
+    var value = v.need(rawROAdminCell);
+    return String(value);
+  }).name("roAdminNameCell");
+  ns.roAdminNameCell.delegateInvalidationMethods(rawROAdminCell);
+
+  ns.needSpinnerCell = Cell.compute(function (v) {
+    return v.need(tabs) === "account_management" && v(rawROAdminCell) === undefined;
+  }).name("needSpinnerCell");
+}
+
 var AccountManagementSection = {
   init: function () {
     var self = AccountManagementSection;
     var form = $("#js_account_management_form");
-    var deleteBtn = $("#js_delete_acc_btn");
     var fields = {username: false, password: false, verifyPassword: false};
     var credentialsCell = new Cell();
     var errorsCell = new Cell();
 
-    function showHideErrors(maybeErrors) {
+    accountManagementSectionCells(self, SettingsSection.tabs);
+
+    self.isROAdminExistsCell.subscribeValue(function (isCreated) {
+      $("#js_account_delete")[isCreated ? "show" : "hide"]();
+      $("#js_account_management_form")[isCreated ? "hide" : "show"]();
+    });
+
+    (function () {
+      var spinner;
+      var oldValue;
+      var timeout;
+
+      var form = $("#js_account_management_form");
+
+      function removeTimeout() {
+        clearTimeout(timeout);
+        timeout = null;
+      }
+
+      function enableSpinner() {
+        // NOTE: if we don't do that "trick" with visible we'll do
+        // overlayWithSpinner when form is not yet
+        // visible. Particularly if page is reloaded when on account
+        // management tab
+        if (form.is(":visible")) {
+          removeTimeout();
+          spinner = overlayWithSpinner(form);
+        } else {
+          if (timeout == null) {
+            timeout = setTimeout(function () {
+              timeout = null;
+              enableSpinner();
+            }, 5);
+          }
+        }
+      }
+
+      function disableSpinner() {
+        if (spinner) {
+          spinner.remove();
+          spinner = null;
+        }
+        removeTimeout();
+      }
+
+      self.needSpinnerCell.subscribeValue(function onNeedSpinner(value) {
+        if (value === undefined || value === oldValue) {
+          return;
+        }
+        if (value) {
+          enableSpinner();
+        } else {
+          disableSpinner();
+        }
+        oldValue = value;
+      });
+    })();
+
+    function showHideErrors(maybeErrors, parent) {
       var key;
       for (key in maybeErrors) {
-        $("[name=" + key + "]", form).toggleClass("error", !!maybeErrors[key]);
-        $(".js_error_" + key, form).text(maybeErrors[key] || "");
+        $("[name=" + key + "]", parent).toggleClass("error", !!maybeErrors[key]);
+        $(".js_error_" + key, parent).text(maybeErrors[key] || "");
       }
     }
 
@@ -871,8 +952,13 @@ var AccountManagementSection = {
         type: "POST",
         url: "/settings/readOnlyUser" + (validate || ""),
         data: {username: cred.username, password: cred.password},
-        success: function (errors) {
-          validate ? errorsCell.setValue(undefined) : DAL.cells.isROAdminExistCell.setValue(true);
+        success: function () {
+          if (validate) {
+            errorsCell.setValue(undefined);
+          } else {
+            form.trigger("reset");
+            self.roAdminNameCell.invalidate();
+          }
         },
         error: function (errors) {
           errorsCell.setValue(errors);
@@ -890,6 +976,9 @@ var AccountManagementSection = {
       $("[name='username']", form).focus();
     });
 
+    self.roAdminNameCell.subscribeValue(function (value) {
+      $("#js_roadmin_name").text(value || "undefined");
+    });
 
     Cell.subscribeMultipleValues(function (errors, cred) {
       if (!cred) {
@@ -907,7 +996,7 @@ var AccountManagementSection = {
       }
 
       var isValid = $.isEmptyObject(errors);
-      showHideErrors(isValid ? fields : _.extend(_.clone(fields), errors));
+      showHideErrors(isValid ? fields : _.extend(_.clone(fields), errors), form);
 
       if (isValid) {
         validateFields(cred);
@@ -926,23 +1015,25 @@ var AccountManagementSection = {
       credentialsCell.setValue($.deparam(serializeForm($(this))));
     });
 
-    var dialog = $("#js_roadmin_remove_dialog");
+
+    var deleteBtn = $("#js_delete_acc_btn");
+    var removeDialog = $("#js_roadmin_remove_dialog");
 
     deleteBtn.click(function () {
-      showDialog(dialog, {
+      showDialog(removeDialog, {
         eventBindings: [['.js_delete_button', 'click', function (e) {
           e.preventDefault();
-          var spinner = overlayWithSpinner(dialog);
+          var spinner = overlayWithSpinner(removeDialog);
           $.ajax({
             type: "DELETE",
             url: "/settings/readOnlyUser",
-            success: function (errors) {
-              hideDialog(dialog);
-              DAL.cells.isROAdminExistCell.setValue(false);
+            success: function () {
+              hideDialog(removeDialog);
+              self.roAdminNameCell.invalidate();
             },
             error: function (errors, status) {
               if (errors.status == 404) {
-                hideDialog(dialog);
+                hideDialog(removeDialog);
               } else {
                 reloadApp();
               }
@@ -953,6 +1044,55 @@ var AccountManagementSection = {
           });
         }]],
         closeOnEscape: true
+      });
+    });
+
+    var resetForm = $("#js_reset_roadmin_form");
+    var resetBtn = $("#js_reset_acc_btn");
+    var resetDialog = $("#js_roadmin_reset_dialog");
+
+    function cleanResetForm() {
+      resetForm.trigger("reset");
+      showHideErrors({password: false}, resetForm);
+    }
+
+    function maybeRestFields(resetCred) {
+      var spinner = overlayWithSpinner(resetDialog);
+
+      return $.ajax({
+        type: "PUT",
+        url: "/settings/readOnlyUser",
+        data: {password: resetCred.password},
+        success: function () {
+          cleanResetForm();
+          hideDialog(resetDialog);
+        },
+        error: function (errors) {
+          switch (errors.status) {
+            case 404:
+              showHideErrors({password: JSON.parse(errors.responseText)}, resetForm);
+            break;
+            case 400:
+              showHideErrors(JSON.parse(errors.responseText).errors, resetForm);
+            break;
+            default:
+              reloadApp();
+          }
+        },
+        complete: function () {
+          spinner.remove();
+        }
+      });
+    }
+
+    resetForm.submit(function (e) {
+      e.preventDefault();
+      maybeRestFields($.deparam(serializeForm($(this))));
+    });
+    resetBtn.click(function () {
+      showDialog(resetDialog, {
+        closeOnEscape: true,
+        onHide: cleanResetForm
       });
     });
 

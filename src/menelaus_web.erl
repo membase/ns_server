@@ -242,6 +242,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth_ro, fun handle_settings_view_update_daemon/1};
                          ["settings", "autoCompaction"] ->
                              {auth_ro, fun handle_settings_auto_compaction/1};
+                         ["settings", "readOnlyAdminName"] ->
+                             {auth_ro, fun handle_settings_read_only_admin_name/1};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings/1};
                          ["nodes", NodeId] ->
@@ -326,10 +328,6 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["pools", PoolId] ->
                              {auth, fun handle_pool_settings/2,
                               [PoolId]};
-                         ["controller", "cancelXDCR", XID] ->
-                             {auth, fun handle_cancel_xdcr/2, [XID]};
-                         ["controller", "cancelXCDR", XID] ->
-                             {auth, fun handle_cancel_xdcr/2, [XID]};
                          ["controller", "ejectNode"] ->
                              {auth, fun handle_eject_post/1};
                          ["controller", "addNode"] ->
@@ -345,7 +343,11 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["controller", "setAutoCompaction"] ->
                              {auth, fun handle_set_autocompaction/1};
                          ["controller", "createReplication"] ->
-                             {auth, fun menelaus_web_create_replication:handle_create_replication/1};
+                             {auth, fun menelaus_web_xdc_replications:handle_create_replication/1};
+                         ["controller", "cancelXDCR", XID] ->
+                             {auth, fun menelaus_web_xdc_replications:handle_cancel_xdcr/2, [XID]};
+                         ["controller", "cancelXCDR", XID] ->
+                             {auth, fun menelaus_web_xdc_replications:handle_cancel_xdcr/2, [XID]};
                          ["controller", "resetAlerts"] ->
                              {auth, fun handle_reset_alerts/1};
                          ["controller", "setFastWarmup"] ->
@@ -423,11 +425,11 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["pools", "default", "remoteClusters", Id] ->
                              {auth, fun menelaus_web_remote_clusters:handle_remote_cluster_delete/2, [Id]};
                          ["controller", "cancelXCDR", XID] ->
-                             {auth, fun handle_cancel_xdcr/2, [XID]};
+                             {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
                          ["controller", "cancelXDCR", XID] ->
-                             {auth, fun handle_cancel_xdcr/2, [XID]};
+                             {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
                          ["settings", "readOnlyUser"] ->
-                             {auth, fun handle_settings_read_only_user_delete/1};
+                             {auth, fun handle_read_only_user_delete/1};
                          ["nodes", Node, "resources", LocationPath] ->
                              {auth, fun handle_resource_delete/3, [Node, LocationPath]};
                          ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
@@ -435,8 +437,10 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              ?MENELAUS_WEB_LOG(0002, "Invalid delete received: ~p as ~p", [Req, PathTokens]),
                              {done, Req:respond({405, add_header(), "Method Not Allowed"})}
                      end;
-                 Method when Method =:= 'PUT'; Method =:= "COPY" ->
+                 'PUT' = Method ->
                      case PathTokens of
+                         ["settings", "readOnlyUser"] ->
+                             {auth, fun handle_read_only_user_reset/1};
                          ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
                          _ ->
                              ?MENELAUS_WEB_LOG(0003, "Invalid ~p received: ~p", [Method, Req]),
@@ -711,7 +715,6 @@ handle_pools(Req) ->
     reply_json(Req,{struct, [{pools, EffectivePools},
                              {isAdminCreds, Admin},
                              {isROAdminCreds, ReadOnlyAdmin},
-                             {isROAdminExist, menelaus_auth:is_read_only_admin_exist()},
                              {settings,
                               {struct,
                                [{<<"maxParallelIndexers">>,
@@ -1524,6 +1527,23 @@ maybe_invalid(Name, Value) ->
                 _ -> UserErrors
            end}.
 
+delete_read_only_user_creds() ->
+    ns_config:set(read_only_user_creds, null).
+
+get_read_only_admin_name() ->
+    case ns_config:search(read_only_user_creds) of
+        {value, {U, _}} -> U;
+        _ -> ""
+    end.
+
+handle_settings_read_only_admin_name(Req) ->
+    case get_read_only_admin_name() of
+        "" ->
+            menelaus_util:reply_404(Req);
+        Name ->
+            reply_json(Req, list_to_binary(Name), 200)
+    end.
+
 handle_settings_read_only_user_post(Req) ->
     PostArgs = Req:parse_post(),
     ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
@@ -1555,16 +1575,29 @@ handle_settings_read_only_user_post(Req) ->
             reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400)
     end.
 
-reset_read_only_user_creds() ->
-    ns_config:set(read_only_user_creds, null).
-
-handle_settings_read_only_user_delete(Req) ->
+handle_read_only_user_delete(Req) ->
     case menelaus_auth:is_read_only_admin_exist() of
         false ->
             reply_json(Req, <<"Read-Only admin does not exist">>, 404);
         true ->
-            reset_read_only_user_creds(),
+            delete_read_only_user_creds(),
             reply_json(Req, [], 200)
+    end.
+
+handle_read_only_user_reset(Req) ->
+    case menelaus_auth:is_read_only_admin_exist() of
+        false ->
+            reply_json(Req, <<"Read-Only admin does not exist">>, 404);
+        true ->
+            ReqArgs = Req:parse_post(),
+            NewROAPass = proplists:get_value("password", ReqArgs),
+            case maybe_invalid(password, NewROAPass) of
+                {password, true} ->
+                    ROAName = get_read_only_admin_name(),
+                    ns_config:set(read_only_user_creds, {ROAName, NewROAPass}),
+                    reply_json(Req, [], 200);
+                Error -> reply_json(Req, {struct, [{errors, {struct, [Error]}}]}, 400)
+            end
     end.
 
 handle_pool_settings(_PoolId, Req) ->
@@ -1824,7 +1857,7 @@ handle_settings_web_post(Req) ->
 
                     %% NOTE: this to avoid admin user name to be equal
                     %% to read only user name
-                    reset_read_only_user_creds(),
+                    delete_read_only_user_creds(),
 
                     menelaus_ui_auth:reset()
 
@@ -2555,35 +2588,6 @@ handle_set_replication_topology(Req) ->
         false ->
             Req:respond({400, add_header(),
                          "topology must be either \"star\" or \"chain\""})
-    end.
-
-handle_cancel_xdcr(XID, Req) ->
-    case xdc_rdoc_replication_srv:delete_replicator_doc(XID) of
-        {ok, OldDoc} ->
-            Source = misc:expect_prop_value(source, OldDoc),
-            Target = misc:expect_prop_value(target, OldDoc),
-
-            {ok, {UUID, BucketName}} = remote_clusters_info:parse_remote_bucket_reference(Target),
-            ClusterName =
-                case remote_clusters_info:find_cluster_by_uuid(UUID) of
-                    not_found ->
-                        "\"unknown\"";
-                    Cluster ->
-                        case proplists:get_value(deleted, Cluster, false) of
-                            false ->
-                                io_lib:format("\"~s\"", [misc:expect_prop_value(name, Cluster)]);
-                            true ->
-                                io_lib:format("at ~s", [misc:expect_prop_value(hostname, Cluster)])
-                        end
-                end,
-
-            ale:info(?USER_LOGGER,
-                     "Replication from bucket \"~s\" to bucket \"~s\" on cluster ~s removed.",
-                     [Source, BucketName, ClusterName]),
-
-            reply_json(Req, [], 200);
-        not_found ->
-            menelaus_util:reply_404(Req)
     end.
 
 mk_integer_field_validator_error_maker(JSONName, Msg, Args) ->

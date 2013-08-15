@@ -33,47 +33,6 @@
          %% rpc-ed to grab babysitter processes
          grab_process_infos/0]).
 
-diag_filter_out_config_password_list([], UnchangedMarker) ->
-    UnchangedMarker;
-diag_filter_out_config_password_list([X | Rest], UnchangedMarker) ->
-    NewX = diag_filter_out_config_password_rec(X, UnchangedMarker),
-    case diag_filter_out_config_password_list(Rest, UnchangedMarker) of
-        UnchangedMarker ->
-            case NewX of
-                UnchangedMarker -> UnchangedMarker;
-                _ -> [NewX | Rest]
-            end;
-        NewRest -> [case NewX of
-                        UnchangedMarker -> X;
-                        _ -> NewX
-                    end | NewRest]
-    end;
-%% this handles improper list end
-diag_filter_out_config_password_list(X, UnchangedMarker) ->
-    diag_filter_out_config_password_list([X], UnchangedMarker).
-
-diag_filter_out_config_password_rec(Config, UnchangedMarker) when is_tuple(Config) ->
-    case Config of
-        {password, _} ->
-            {password, 'filtered-out'};
-        {pass, _} ->
-            {pass, 'filtered-out'};
-        _ -> case diag_filter_out_config_password_rec(tuple_to_list(Config), UnchangedMarker) of
-                 UnchangedMarker -> Config;
-                 List -> list_to_tuple(List)
-             end
-    end;
-diag_filter_out_config_password_rec(Config, UnchangedMarker) when is_list(Config) ->
-    diag_filter_out_config_password_list(Config, UnchangedMarker);
-diag_filter_out_config_password_rec(_Config, UnchangedMarker) -> UnchangedMarker.
-
-diag_filter_out_config_password(Config) ->
-    UnchangedMarker = make_ref(),
-    case diag_filter_out_config_password_rec(Config, UnchangedMarker) of
-        UnchangedMarker -> Config;
-        NewConfig -> NewConfig
-    end.
-
 % Read the manifest.xml file
 manifest() ->
     case file:read_file(filename:join(path_config:component_path(bin, ".."), "manifest.xml")) of
@@ -137,7 +96,7 @@ do_diag_per_node() ->
     ActiveBuckets = ns_memcached:active_buckets(),
     [{version, ns_info:version()},
      {manifest, manifest()},
-     {config, diag_filter_out_config_password(ns_config:get_kv_list())},
+     {config, ns_config_log:sanitize(ns_config:get_kv_list())},
      {basic_info, element(2, ns_info:basic_info())},
      {processes, grab_process_infos()},
      {babysitter_processes, (catch grab_babysitter_process_infos())},
@@ -154,7 +113,7 @@ do_diag_per_node_binary() ->
     ActiveBuckets = ns_memcached:active_buckets(),
     Diag = [{version, ns_info:version()},
             {manifest, manifest()},
-            {config, diag_filter_out_config_password(ns_config:get_kv_list())},
+            {config, ns_config_log:sanitize(ns_config:get_kv_list())},
             {basic_info, element(2, ns_info:basic_info())},
             {processes, grab_process_infos()},
             {babysitter_processes, (catch grab_babysitter_process_infos())},
@@ -261,7 +220,7 @@ handle_just_diag(Req, Extra) ->
                          ns_bucket:get_buckets()),
 
     Infos = [["nodes_info = ~p", menelaus_web:build_nodes_info()],
-             ["buckets = ~p", Buckets],
+             ["buckets = ~p", ns_config_log:sanitize(Buckets)],
              ["logs:~n-------------------------------~n"]],
 
     [begin

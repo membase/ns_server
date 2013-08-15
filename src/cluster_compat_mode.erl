@@ -83,14 +83,14 @@ get_replication_topology() ->
     ns_config_ets_dup:unreliable_read_key(replication_topology, star).
 
 is_node_compatible(Node, Version) ->
-    Node =:= node() orelse
-                      (cluster_compat_mode:is_cluster_20() andalso
-                       case rpc:call(Node, cluster_compat_mode, mb_master_advertised_version, [], 30000) of
-                           {badrpc, _} ->
-                               false;
-                           Res ->
-                               Res >= Version
-                       end).
+    NodeVer = case Node =:= node() of
+                  true ->
+                      mb_master_advertised_version();
+                  false ->
+                      Status = ns_doctor:get_node(Node),
+                      proplists:get_value(advertised_version, Status, [])
+              end,
+    NodeVer >= Version.
 
 rebalance_ignore_view_compactions() ->
     ns_config_ets_dup:unreliable_read_key(rebalance_ignore_view_compactions, false).

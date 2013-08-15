@@ -50,6 +50,7 @@ basic_info() ->
     {erlang:node(),
      [{version, version()},
       {supported_compat_version, cluster_compat_mode:supported_compat_version()},
+      {advertised_version, cluster_compat_mode:mb_master_advertised_version()},
       {system_arch, system_arch()},
       {wall_clock, trunc(WallClockMSecs / 1000)},
       {memory_data, memsup:get_memory_data()},

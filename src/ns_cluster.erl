@@ -705,32 +705,56 @@ do_engage_cluster_inner(NodeKVList) ->
                         {MyIP, false};
                     _ ->
                         TargetHost = binary_to_list(MaybeTargetHost),
-                        case misc:is_good_address(TargetHost) of
-                            ok ->
-                                {TargetHost, true};
-                            Error ->
-                                ?cluster_error("Cannot use address ~s: ~p",
-                                               [TargetHost, Error]),
-                                {MyIP, false}
-                        end
+                        {TargetHost, true}
                 end,
 
-            case do_change_address(Address, UserSupplied) of
-                {address_save_failed, Error1} = Nested ->
-                    Msg = io_lib:format("Could not save address after rename: ~p",
-                                        [Error1]),
-                    {error, rename_failed, iolist_to_binary(Msg), Nested};
-                _ ->
-                    %% we re-init node's cookie to support joining cloned
-                    %% nodes. If we don't do that cluster will be able to
-                    %% connect to this node too soon. And then initial set of
-                    %% nodes_wanted by node thats added to cluster may
-                    %% 'pollute' cluster's version and cause issues. See
-                    %% MB-4476 for details.
-                    ns_cookie_manager:cookie_init(),
-                    check_can_join_to(NodeKVList)
+            case do_engage_cluster_inner_check_address(Address, UserSupplied) of
+                ok ->
+                    do_engage_cluster_inner_tail(NodeKVList, Address, UserSupplied);
+                Error ->
+                    Error
             end;
         X -> X
+    end.
+
+do_engage_cluster_inner_check_address(_Address, false) ->
+    ok;
+do_engage_cluster_inner_check_address(Address, true) ->
+    case misc:is_good_address(Address) of
+        ok ->
+            ok;
+        {ErrorType, _} = Error ->
+            Msg0 = case Error of
+                       {cannot_resolve, Errno} ->
+                           io_lib:format("Address \"~s\" could not be resolved: ~p",
+                                         [Address, Errno]);
+                       {cannot_listen, Errno} ->
+                           io_lib:format("Could not listen on address \"~s\": ~p",
+                                         [Address, Errno]);
+                       {address_not_allowed, ErrorMsg} ->
+                           io_lib:format("Requested address \"~s\" is not allowed: ~s",
+                                         [Address, ErrorMsg])
+                   end,
+
+            Msg = iolist_to_binary(Msg0),
+            {error, ErrorType, Msg, Error}
+    end.
+
+do_engage_cluster_inner_tail(NodeKVList, Address, UserSupplied) ->
+    case do_change_address(Address, UserSupplied) of
+        {address_save_failed, Error1} = Nested ->
+            Msg = io_lib:format("Could not save address after rename: ~p",
+                                [Error1]),
+            {error, rename_failed, iolist_to_binary(Msg), Nested};
+        _ ->
+            %% we re-init node's cookie to support joining cloned
+            %% nodes. If we don't do that cluster will be able to
+            %% connect to this node too soon. And then initial set of
+            %% nodes_wanted by node thats added to cluster may
+            %% 'pollute' cluster's version and cause issues. See
+            %% MB-4476 for details.
+            ns_cookie_manager:cookie_init(),
+            check_can_join_to(NodeKVList)
     end.
 
 check_memory_size(NodeKVList) ->
