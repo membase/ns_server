@@ -188,8 +188,11 @@ is_read_only_auth({token, Token}) ->
         {ok, ro_admin} -> true;
         _ -> false
     end;
-is_read_only_auth(UserPassword) ->
-    ns_config:search(read_only_user_creds) =:= {value, UserPassword}.
+is_read_only_auth({User, Password}) ->
+    ns_config:search(read_only_user_creds) =:= {value, {User, {password, Password}}};
+is_read_only_auth(undefined) ->
+    false.
+
 
 is_read_only_admin_exist() ->
     case ns_config:search(read_only_user_creds) of
@@ -211,6 +214,8 @@ extract_auth_user(Req) ->
         _ -> undefined
     end.
 
+-spec extract_auth(any()) -> {User :: string(), Password :: string()}
+                                 | {token, string()} | undefined.
 extract_auth(Req) ->
     case Req:get_header_value("authorization") of
         "Basic " ++ Value ->
