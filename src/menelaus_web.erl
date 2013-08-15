@@ -435,9 +435,9 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              ?MENELAUS_WEB_LOG(0002, "Invalid delete received: ~p as ~p", [Req, PathTokens]),
                              {done, Req:respond({405, add_header(), "Method Not Allowed"})}
                      end;
-                 Method when Method =:= 'PUT'; Method =:= "COPY" ->
+                 'PUT' = Method ->
                      case PathTokens of
-                         ["settings", "readOnlyUser"] when Method =:= 'PUT' ->
+                         ["settings", "readOnlyUser"] ->
                              {auth, fun handle_read_only_user_reset/1};
                          ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
                          _ ->
