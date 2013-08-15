@@ -27,6 +27,7 @@
 -include("menelaus_web.hrl").
 -include("ns_common.hrl").
 -include("ns_stats.hrl").
+-include("couch_db.hrl").
 
 -ifdef(EUNIT).
 -export([test/0]).
@@ -58,6 +59,8 @@
 
 -export([handle_streaming_wakeup/4,
          handle_pool_info_wait_wake/4]).
+
+-export([reset_admin_password/1]).
 
 -import(menelaus_util,
         [server_header/0,
@@ -1513,17 +1516,6 @@ handle_settings_view_update_daemon_post(Req) ->
             reply_json(Req, {struct, Errors}, 400)
     end.
 
-validate_cred(undefined, _) -> <<"Field must be given">>;
-validate_cred(P, password) when length(P) < 6 -> <<"At least 6 characters is required">>;
-validate_cred([], _) -> <<"Empty Field">>;
-validate_cred(_, _) -> true.
-
-maybe_invalid(Name, Value) ->
-    UserErrors = validate_cred(Value, Name),
-    {Name, case UserErrors of
-                true -> do_validate_cred(Value, Name);
-                _ -> UserErrors
-           end}.
 
 delete_read_only_user_creds() ->
     ns_config:set(read_only_user_creds, null).
@@ -1547,8 +1539,8 @@ handle_settings_read_only_user_post(Req) ->
     ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
     U = proplists:get_value("username", PostArgs),
     P = proplists:get_value("password", PostArgs),
-    Errors0 = [{K, V} || {K, V} <- [maybe_invalid(username, U),
-                                    maybe_invalid(password, P)], V =/= true],
+    Errors0 = [{K, V} || {K, V} <- [{username, validate_cred(U, username)},
+                                    {password, validate_cred(P, password)}], V =/= true],
     RestCreds = ns_config:search('latest-config-marker', rest_creds, []),
     Errors = Errors0 ++
         case proplists:get_value(creds, RestCreds, []) of
@@ -1589,12 +1581,12 @@ handle_read_only_user_reset(Req) ->
         true ->
             ReqArgs = Req:parse_post(),
             NewROAPass = proplists:get_value("password", ReqArgs),
-            case maybe_invalid(password, NewROAPass) of
-                {password, true} ->
+            case validate_cred(NewROAPass, password) of
+                true ->
                     ROAName = get_read_only_admin_name(),
                     ns_config:set(read_only_user_creds, {ROAName, {password, NewROAPass}}),
                     reply_json(Req, [], 200);
-                Error -> reply_json(Req, {struct, [{errors, {struct, [Error]}}]}, 400)
+                Error -> reply_json(Req, {struct, [{errors, {struct, [{password, Error}]}}]}, 400)
             end
     end.
 
@@ -1787,7 +1779,17 @@ is_valid_port_number(String) ->
     PortNumber = (catch list_to_integer(String)),
     (is_integer(PortNumber) andalso (PortNumber > 0) andalso (PortNumber =< 65535)).
 
-do_validate_cred(Username, username) ->
+validate_cred(undefined, _) -> <<"Field must be given">>;
+validate_cred(P, password) when length(P) < 6 -> <<"The password must be at least six characters.">>;
+validate_cred(P, password) ->
+    V = lists:all(
+          fun (C) ->
+                  C > 31 andalso c =/= 127
+          end, P),
+    V orelse <<"The password must not contain control characters">>;
+validate_cred([], username) ->
+    <<"Username must not be empty">>;
+validate_cred(Username, username) ->
     V = lists:all(
           fun (C) ->
                   C > 32 andalso C =/= 127 andalso
@@ -1795,15 +1797,7 @@ do_validate_cred(Username, username) ->
           end, Username),
 
     V orelse
-        <<"The username must not contain spaces, control or any of ()<>@,;:\\\"/[]?={} characters">>;
-
-do_validate_cred(Password, password) ->
-    V = lists:all(
-          fun (C) ->
-                  C > 31 andalso c =/= 127
-          end, Password),
-
-    V orelse <<"The password must not contain control characters">>.
+        <<"The username must not contain spaces, control or any of ()<>@,;:\\\"/[]?={} characters">>.
 
 validate_settings(Port, U, P) ->
     case lists:all(fun erlang:is_list/1, [Port, U, P]) of
@@ -1813,14 +1807,9 @@ validate_settings(Port, U, P) ->
                            case {U, P} of
                                {[], _} -> <<"Username and password are required.">>;
                                {[_Head | _], P} ->
-                                   case do_validate_cred(U, username) of
+                                   case validate_cred(U, username) of
                                        true ->
-                                           case length(P) =< 5 of
-                                               true ->
-                                                   <<"The password must be at least six characters.">>;
-                                               false ->
-                                                   do_validate_cred(P, password)
-                                           end;
+                                           validate_cred(P, password);
                                        Msg ->
                                            Msg
                                    end
@@ -1906,6 +1895,59 @@ handle_settings_alerts_send_test_email(Req) ->
         _ ->
             Req:respond({200, add_header(), []})
     end.
+
+gen_password(Length) ->
+    Letters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*?",
+    random:seed(os:timestamp()),
+    get_random_string(Length, Letters).
+
+get_random_string(Length, AllowedChars) ->
+    lists:foldl(fun(_, Acc) ->
+                        [lists:nth(random:uniform(length(AllowedChars)),
+                                   AllowedChars)]
+                            ++ Acc
+                end, [], lists:seq(1, Length)).
+
+%% reset admin password to the generated or user specified value
+%% this function is called from cli by rpc call
+reset_admin_password(generated) ->
+    Password = gen_password(8),
+    case reset_admin_password(Password) of
+        {ok, Message} ->
+            {ok, ?l2b(io_lib:format("~s New password is ~s", [?b2l(Message), Password]))};
+        Err ->
+            Err
+    end;
+reset_admin_password(Password) ->
+    User = case ns_config:search_prop(ns_config:get(), rest_creds, creds, []) of
+               [] ->
+                   {error, <<"Failed to reset administrative password. Node is not initialized.">>};
+               [{U, _}|_] ->
+                   U
+           end,
+
+    Error = case User of
+                {error, _} = E ->
+                    E;
+                _ ->
+                    case validate_cred(Password, password) of
+                        true ->
+                            false;
+                        ErrStr ->
+                            {error, ErrStr}
+                    end
+            end,
+
+    case Error of
+        {error, _} = Err ->
+            Err;
+        _ ->
+            ok = ns_config:set(rest_creds, [{creds,
+                                             [{User, [{password, Password}]}]}]),
+
+            {ok, ?l2b(io_lib:format("Password for user ~s was succesfully replaced.", [User]))}
+    end.
+
 
 -ifdef(EUNIT).
 
