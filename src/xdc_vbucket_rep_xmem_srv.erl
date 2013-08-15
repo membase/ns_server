@@ -267,9 +267,9 @@ terminate(Reason, State) when Reason == normal orelse Reason == shutdown ->
 
 terminate(Reason, #xdc_vb_rep_xmem_srv_state{vb = Vb, parent_vb_rep = Par} = State) ->
 
-    ?xdcr_error("[xmem_srv for vb ~p]: shutdown xmem server for reason: ~p",
-                [Vb, Reason]),
     report_error(Reason, Vb, Par),
+    ?xdcr_error("[xmem_srv for vb ~p]: shutdown xmem server, error reported to parent ~p",
+                [Vb, Par]),
     terminate_cleanup(State),
     ok.
 
@@ -306,11 +306,21 @@ terminate_cleanup(#xdc_vb_rep_xmem_srv_state{vb = Vb, pid_workers = Workers} = _
 report_error(Err, _Vb, _Parent) when Err == normal orelse Err == shutdown ->
     ok;
 report_error(Err, Vb, Parent) ->
-     %% return raw erlang time to make it sortable
+    %% return raw erlang time to make it sortable
     RawTime = erlang:localtime(),
     Time = misc:iso_8601_fmt(RawTime),
-    String = iolist_to_binary(io_lib:format("~s XMem error replicating vbucket ~p: ~p",
-                                            [Time, Vb, Err])),
+    ErrorMsg = case Err of
+                   {{error, {ErrorStat, _ErrorKeys}}, _State} ->
+                       ?format_msg("parent vb replicator: ~p, "
+                                   "xmem stats: ~p. Please see logs "
+                                   "for state dump and complete list of error keys.",
+                                   [Parent, ErrorStat]);
+                   OtherErr ->
+                       OtherErr
+               end,
+
+    String = iolist_to_binary(?format_msg("~s [XMem Srv] Error replicating vbucket ~p: ~p",
+                                          [Time, Vb, ErrorMsg])),
     gen_server:cast(Parent, {report_error, {RawTime, String}}).
 
 

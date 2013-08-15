@@ -373,17 +373,16 @@ handle_call({flush_docs_pipeline, DocsList}, _From,
                 %% we're logging everything else here
                 ?xdcr_error("out of ~p docs, succ to send ~p docs, fail to send others "
                             "(by error type, enoent: ~p, not-my-vb: ~p, einval: ~p, other errors"
-                            "(including timeout): ~p~n"
-                            "list of keys with errors: ~p",
-                            [DocsListSize, (Flushed + Eexist), Enoent, NotMyVb, Einval, OtherErr,
-                             ErrorKeys]),
+                            "(including timeout): ~p",
+                            [DocsListSize, (Flushed + Eexist), Enoent, NotMyVb, Einval, OtherErr]),
 
                 %% stop replicator if too many memacched errors
                  case (Flushed + Eexist + ?XDCR_XMEM_MEMCACHED_ERRORS) > DocsListSize of
                     true ->
                          {reply, {ok, Flushed, Eexist}, State};
                      _ ->
-                         {stop, {error, {Flushed, Eexist, Enoent, NotMyVb, Einval, OtherErr}}, State}
+                         ErrorStat = [Flushed, Eexist, Enoent, NotMyVb, Einval, OtherErr],
+                         {stop, {error, {ErrorStat, ErrorKeys}}, State}
                  end
         end,
     RV;
@@ -432,7 +431,6 @@ handle_cast(Msg, #xdc_vb_rep_xmem_worker_state{id = Id, vb = Vb} = State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-
 terminate(Reason, State) when Reason == normal orelse Reason == shutdown ->
     terminate_cleanup(State);
 
@@ -440,8 +438,8 @@ terminate(Reason, #xdc_vb_rep_xmem_worker_state{vb = Vb,
                                                 id = Id,
                                                 parent_server_pid = Par} = State) ->
     report_error(Reason, Vb, Par),
-    ?xdcr_error("[xmem_worker ~p for vb ~p]: Shutting xmem worker for reason: ~p",
-                [Id, Vb, Reason]),
+    ?xdcr_error("[xmem_worker ~p for vb ~p]: shutdown xmem worker, error reported to "
+                "parent xmem srv: ~p", [Id, Vb, Par]),
     terminate_cleanup(State),
     ok.
 
@@ -459,7 +457,8 @@ report_error(Err, Vb, Parent) ->
      %% return raw erlang time to make it sortable
     RawTime = erlang:localtime(),
     Time = misc:iso_8601_fmt(RawTime),
-    String = iolist_to_binary(io_lib:format("~s - Error replicating vbucket ~p: ~p",
+    String = iolist_to_binary(io_lib:format("~s - [XMEM worker] Error replicating "
+                                            "vbucket ~p: ~p",
                                             [Time, Vb, Err])),
     gen_server:cast(Parent, {report_error, {RawTime, String}}).
 

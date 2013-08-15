@@ -378,12 +378,29 @@ terminate(Reason, State) when Reason == normal orelse Reason == shutdown ->
 terminate(Reason, #rep_state{
             source_name = Source,
             target_name = Target,
+            xmem_srv = XMemSrv,
             rep_details = #rep{id = Id, target = TargetRef},
             status = #rep_vb_status{vb = Vb} = Status,
             parent = P
            } = State) ->
-    ?xdcr_error("Replication `~s` (`~s` -> `~s`) failed: ~s",
-                [Id, Source, misc:sanitize_url(Target), to_binary(Reason)]),
+
+    case XMemSrv of
+        nil ->
+            ?xdcr_error("Replication (CAPI mode) `~s` (`~s` -> `~s`) failed: ~s",
+                        [Id, Source, misc:sanitize_url(Target), to_binary(Reason)]);
+        _ ->
+            case Reason of
+                {{error, {ErrorStat, _ErrKeys}}, _State} ->
+                    ?xdcr_error("Replication (XMem mode) `~s` (`~s` -> `~s`) failed."
+                                "Error msg from xmem server: ~p."
+                                "Please see ns_server debug log for complete state dump.",
+                                [Id, Source, misc:sanitize_url(Target), ErrorStat]);
+                _ ->
+                    ?xdcr_error("Replication (XMem mode) `~s` (`~s` -> `~s`) failed."
+                                "Please see ns_server debug log for complete state dump",
+                                [Id, Source, misc:sanitize_url(Target)])
+            end
+    end,
     update_status_to_parent(State#rep_state{status =
                                                 Status#rep_vb_status{status = idle,
                                                                      num_changes_left = 0,
@@ -417,12 +434,14 @@ terminate_cleanup(#rep_state{xmem_srv = XMemSrv} = State0) ->
 
 report_error(Err, _Vb, _Parent) when Err == normal orelse Err == shutdown ->
     ok;
-report_error(Err, Vb, Parent) ->
+report_error(_Err, Vb, Parent) ->
     %% return raw erlang time to make it sortable
     RawTime = erlang:localtime(),
     Time = misc:iso_8601_fmt(RawTime),
-    String = iolist_to_binary(io_lib:format("~s - Error replicating vbucket ~p: ~p",
-                                            [Time, Vb, Err])),
+
+    String = iolist_to_binary(io_lib:format("~s [Vb Rep] Error replicating vbucket ~p. "
+                                            "Please see logs for details.",
+                                            [Time, Vb])),
     gen_server:cast(Parent, {report_error, {RawTime, String}}).
 
 replication_turn_is_done(#rep_state{throttle = T} = State) ->
