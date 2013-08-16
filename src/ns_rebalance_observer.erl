@@ -114,22 +114,38 @@ handle_cast({update_stats, VBucket, NodeToDocsLeft}, State) ->
                         NewStats =
                             [case lists:keyfind(Stat#replica_building_stats.node, 1, NodeToDocsLeft) of
                                  {_, NewLeft} ->
-                                     #replica_building_stats{docs_total = Total} = Stat,
+                                     #replica_building_stats{docs_total = Total,
+                                                             docs_left = Left} = Stat,
 
-                                     %% it's possible to get stats update
-                                     %% before before we get refined
-                                     %% docs_total from ebucketmigrator_srv;
-                                     %% so we can end up in a situation where
-                                     %% docs_left is greater than docs_total;
-                                     %% I've really seen this happen but not
-                                     %% sure if it was because of the
-                                     %% described or because of something else.
-                                     case NewLeft =< Total of
+                                     case NewLeft >= Left of
                                          true ->
-                                             Stat#replica_building_stats{docs_left = NewLeft};
-                                         false ->
+                                             %% it's possible to get stats
+                                             %% update before before we get
+                                             %% refined docs_total from
+                                             %% ebucketmigrator_srv; so we can
+                                             %% end up in a situation where
+                                             %% new docs_left is greater than
+                                             %% docs_total;
+                                             %%
+                                             %% another possibility is that
+                                             %% there're new mutations coming;
+                                             %% in such case if we didn't
+                                             %% adjust docs_total it would
+                                             %% seem to the user that number
+                                             %% of transfered items went down
+                                             %% which is probably not desireable;
+                                             %%
+                                             %% obviously, this adjustment may
+                                             %% loose some mutations (meaning
+                                             %% that final doc_total wouldn't
+                                             %% be precise) but user
+                                             %% experience-wise it seems to be
+                                             %% better.
+                                             Increase = NewLeft - Left,
                                              Stat#replica_building_stats{docs_left = NewLeft,
-                                                                         docs_total = NewLeft}
+                                                                         docs_total = Total + Increase};
+                                         false ->
+                                             Stat#replica_building_stats{docs_left = NewLeft}
                                      end;
                                  false ->
                                      Stat

@@ -1567,7 +1567,7 @@ handle_settings_read_only_user_post(Req) ->
     case Errors of
         [] ->
             case ValidateOnly of
-                false -> ns_config:set(read_only_user_creds, {U, P});
+                false -> ns_config:set(read_only_user_creds, {U, {password, P}});
                 true -> true
             end,
             reply_json(Req, [], 200);
@@ -1594,7 +1594,7 @@ handle_read_only_user_reset(Req) ->
             case maybe_invalid(password, NewROAPass) of
                 {password, true} ->
                     ROAName = get_read_only_admin_name(),
-                    ns_config:set(read_only_user_creds, {ROAName, NewROAPass}),
+                    ns_config:set(read_only_user_creds, {ROAName, {password, NewROAPass}}),
                     reply_json(Req, [], 200);
                 Error -> reply_json(Req, {struct, [{errors, {struct, [Error]}}]}, 400)
             end
