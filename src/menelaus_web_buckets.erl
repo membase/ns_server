@@ -733,15 +733,7 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                            end;
                        sasl ->
                            SaslPassword = proplists:get_value("saslPassword", Params, ""),
-                           case SaslPassword of
-                               undefined when BucketConfig =/= false ->
-                                   case ns_bucket:auth_type(BucketConfig) of
-                                       AuthType -> nothing;
-                                       _ -> {error, saslPassword, <<"sasl password is missing">>}
-                                   end;
-                               _ ->
-                                   {ok, sasl_password, SaslPassword}
-                           end
+                           {ok, sasl_password, SaslPassword}
                    end,
                    parse_validate_ram_quota(proplists:get_value("ramQuotaMB", Params),
                                             BucketConfig)],
