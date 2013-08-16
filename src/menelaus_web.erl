@@ -1784,9 +1784,10 @@ validate_cred(P, password) when length(P) < 6 -> <<"The password must be at leas
 validate_cred(P, password) ->
     V = lists:all(
           fun (C) ->
-                  C > 31 andalso c =/= 127
-          end, P),
-    V orelse <<"The password must not contain control characters">>;
+                  C > 31 andalso C =/= 127
+          end, P)
+        andalso couch_util:validate_utf8(P),
+    V orelse <<"The password must not contain control characters and be valid utf8">>;
 validate_cred([], username) ->
     <<"Username must not be empty">>;
 validate_cred(Username, username) ->
@@ -1794,10 +1795,11 @@ validate_cred(Username, username) ->
           fun (C) ->
                   C > 32 andalso C =/= 127 andalso
                       not lists:member(C, "()<>@,;:\\\"/[]?={}")
-          end, Username),
+          end, Username)
+        andalso couch_util:validate_utf8(Username),
 
     V orelse
-        <<"The username must not contain spaces, control or any of ()<>@,;:\\\"/[]?={} characters">>.
+        <<"The username must not contain spaces, control or any of ()<>@,;:\\\"/[]?={} characters and must be valid utf8">>.
 
 validate_settings(Port, U, P) ->
     case lists:all(fun erlang:is_list/1, [Port, U, P]) of

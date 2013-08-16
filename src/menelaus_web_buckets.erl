@@ -733,7 +733,12 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                            end;
                        sasl ->
                            SaslPassword = proplists:get_value("saslPassword", Params, ""),
-                           {ok, sasl_password, SaslPassword}
+                           case couch_util:validate_utf8(SaslPassword) of
+                               true ->
+                                   {ok, sasl_password, SaslPassword};
+                               _ ->
+                                   {error, saslPassword, <<"bucket password has to be valid utf8">>}
+                           end
                    end,
                    parse_validate_ram_quota(proplists:get_value("ramQuotaMB", Params),
                                             BucketConfig)],
