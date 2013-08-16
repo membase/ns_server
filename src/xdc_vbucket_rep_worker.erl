@@ -30,26 +30,16 @@ start_link(#rep_worker_option{cp = Cp, source = Source, target = Target,
                      end),
 
 
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("create queue_fetch_loop process (pid: ~p) within replicator (pid: ~p) "
-                        "Source: ~p, Target: ~p, ChangesManager: ~p, latency optimized: ~p",
-                        [Pid, Cp, Source#db.name, misc:sanitize_url(Target#httpdb.url), ChangesManager, OptRepThreshold]);
-        _ ->
-            ok
-    end,
+    ?xdcr_trace("create queue_fetch_loop process (pid: ~p) within replicator (pid: ~p) "
+                "Source: ~p, Target: ~p, ChangesManager: ~p, latency optimized: ~p",
+                [Pid, Cp, Source#db.name, misc:sanitize_url(Target#httpdb.url), ChangesManager, OptRepThreshold]),
 
     {ok, Pid}.
 
 -spec queue_fetch_loop(#db{}, #httpdb{}, pid(), pid(), integer(), pid() | nil) -> ok.
 queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, nil) ->
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("fetch changes from changes manager at ~p (target: ~p)",
-                        [ChangesManager, misc:sanitize_url(Target#httpdb.url)]);
-        _ ->
-            ok
-    end,
+    ?xdcr_trace("fetch changes from changes manager at ~p (target: ~p)",
+                [ChangesManager, misc:sanitize_url(Target#httpdb.url)]),
     ChangesManager ! {get_changes, self()},
     receive
         {'DOWN', _, _, _, _} ->
@@ -82,25 +72,15 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, nil) ->
                                         worker_item_checked = NumChecked,
                                         worker_item_replicated = NumWritten}}, infinity),
 
-            case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-                1 ->
-                    ?xdcr_debug("Worker reported completion of seq ~p, num docs written: ~p "
-                                "data replicated: ~p bytes, latency: ~p ms.",
-                                [ReportSeq, NumWritten, DataRepd, DocLatency]);
-                _ ->
-                    ok
-            end,
+            ?xdcr_trace("Worker reported completion of seq ~p, num docs written: ~p "
+                        "data replicated: ~p bytes, latency: ~p ms.",
+                        [ReportSeq, NumWritten, DataRepd, DocLatency]),
             queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, nil)
     end;
 
 queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, XMemSrv) ->
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("fetch changes from changes manager at ~p (target: ~p)",
-                        [ChangesManager, misc:sanitize_url(Target#httpdb.url)]);
-        _ ->
-            ok
-    end,
+    ?xdcr_trace("fetch changes from changes manager at ~p (target: ~p)",
+                [ChangesManager, misc:sanitize_url(Target#httpdb.url)]),
     ChangesManager ! {get_changes, self()},
     receive
         {'DOWN', _, _, _, _} ->
@@ -136,14 +116,9 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, XMemSrv) -
                                         worker_item_checked = NumChecked,
                                         worker_item_replicated = NumWritten}}, infinity),
 
-            case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-                1 ->
-                    ?xdcr_debug("Worker reported completion of seq ~p, num docs written: ~p "
-                                "data replicated: ~p bytes, latency: ~p ms.",
-                                [ReportSeq, NumWritten, DataRepd, DocLatency]);
-                _ ->
-                    ok
-            end,
+            ?xdcr_trace("Worker reported completion of seq ~p, num docs written: ~p "
+                        "data replicated: ~p bytes, latency: ~p ms.",
+                        [ReportSeq, NumWritten, DataRepd, DocLatency]),
             queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, XMemSrv)
     end.
 
@@ -152,13 +127,8 @@ local_process_batch([], _Cp, _Src, _Tgt, #batch{docs = []}, _XMemSrv) ->
     {ok, 0};
 local_process_batch([], Cp, #db{} = Source, #httpdb{} = Target,
                     #batch{docs = Docs, size = Size}, XMemSrv) ->
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("worker process flushing a batch docs of total size ~p bytes",
-                        [Size]);
-        _ ->
-            ok
-    end,
+    ?xdcr_trace("worker process flushing a batch docs of total size ~p bytes",
+                [Size]),
     ok = flush_docs_helper(Target, Docs, XMemSrv),
     {ok, DataRepd1} = local_process_batch([], Cp, Source, Target, #batch{}, XMemSrv),
     {ok, DataRepd1 + Size};
@@ -201,13 +171,8 @@ flush_docs_helper(Target, DocsList, nil) ->
 
     case RV of
         ok ->
-            case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-                1 ->
-                    ?xdcr_debug("replication mode: ~p, worker process replicated ~p docs to target ~p",
-                                [RepMode, length(DocsList), misc:sanitize_url(Target#httpdb.url)]);
-                _ ->
-                    ok
-            end,
+            ?xdcr_trace("replication mode: ~p, worker process replicated ~p docs to target ~p",
+                        [RepMode, length(DocsList), misc:sanitize_url(Target#httpdb.url)]),
             ok;
         {failed_write, Error} ->
             ?xdcr_error("replication mode: ~p, unable to replicate ~p docs to target ~p",
@@ -220,13 +185,8 @@ flush_docs_helper(Target, DocsList, XMemSrv) ->
 
     case RV of
         ok ->
-            case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-                1 ->
-                    ?xdcr_debug("replication mode: ~p, worker process replicated ~p docs to target ~p",
-                                [RepMode, length(DocsList), misc:sanitize_url(Target#httpdb.url)]);
-                _ ->
-                    ok
-            end,
+            ?xdcr_trace("replication mode: ~p, worker process replicated ~p docs to target ~p",
+                        [RepMode, length(DocsList), misc:sanitize_url(Target#httpdb.url)]),
             ok;
         {failed_write, Error} ->
             ?xdcr_error("replication mode: ~p, unable to replicate ~p docs to target ~p",
@@ -305,25 +265,20 @@ find_missing(DocInfos, Target, OptRepThreshold, XMemSrv) ->
               end,
 
 
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            RepMode = case is_pid(XMemSrv) of
-                          true ->
-                              "xmem";
-                          _ ->
-                              "capi"
-                      end,
-            ?xdcr_debug("[replication mode: ~p] out of all ~p docs, number of small docs (including dels: ~p) is ~p, "
-                        "number of big docs is ~p, threshold is ~p bytes, ~n\t"
-                        "after conflict resolution at target (~p), out of all big ~p docs "
-                        "the number of docs we need to replicate is: ~p; ~n\t "
-                        "total # of docs to be replicated is: ~p, total latency: ~p ms",
-                        [RepMode, AllRevsCount, DelCount, SmallDocCount, BigDocCount, OptRepThreshold,
-                         misc:sanitize_url(Target#httpdb.url), BigDocCount, MissingBigDocCount,
-                         length(MissingDocInfoList), Latency]);
-        _ ->
-            ok
-    end,
+    RepMode = case is_pid(XMemSrv) of
+                  true ->
+                      "xmem";
+                  _ ->
+                      "capi"
+              end,
+    ?xdcr_trace("[replication mode: ~p] out of all ~p docs, number of small docs (including dels: ~p) is ~p, "
+                "number of big docs is ~p, threshold is ~p bytes, ~n\t"
+                "after conflict resolution at target (~p), out of all big ~p docs "
+                "the number of docs we need to replicate is: ~p; ~n\t "
+                "total # of docs to be replicated is: ~p, total latency: ~p ms",
+                [RepMode, AllRevsCount, DelCount, SmallDocCount, BigDocCount, OptRepThreshold,
+                 misc:sanitize_url(Target#httpdb.url), BigDocCount, MissingBigDocCount,
+                 length(MissingDocInfoList), Latency]),
 
     {MissingDocInfoList, Latency, length(SmallDocIdRevs)}.
 
@@ -350,13 +305,8 @@ maybe_flush_docs_capi(#httpdb{} = Target, Batch, Doc, DataFlushed) ->
     DocBatchSizeByte = xdc_rep_utils:get_replication_batch_size(),
     case SizeAcc + iolist_size(JsonDoc) of
         SizeAcc2 when SizeAcc2 > DocBatchSizeByte ->
-            case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-                1 ->
-                    ?xdcr_debug("Worker flushing doc batch of size ~p bytes "
-                                "(batch limit: ~p)", [SizeAcc2, DocBatchSizeByte]);
-                _ ->
-                    ok
-            end,
+            ?xdcr_trace("Worker flushing doc batch of size ~p bytes "
+                        "(batch limit: ~p)", [SizeAcc2, DocBatchSizeByte]),
             flush_docs_capi(Target, [JsonDoc | DocAcc]),
             %% data flushed, return empty batch and size of data flushed
             {#batch{}, SizeAcc2 + DataFlushed};
@@ -414,12 +364,7 @@ maybe_flush_docs_xmem(XMemSrv, Batch, Doc0, DocsFlushed) ->
     %% if reach the limit in terms of docs, flush them
     case SizeAcc + DocSize >= DocBatchSizeByte of
         true ->
-            case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-                1 ->
-                    ?xdcr_debug("Worker flushing doc batch of ~p bytes ", [SizeAcc + DocSize]);
-                _ ->
-                    ok
-            end,
+            ?xdcr_trace("Worker flushing doc batch of ~p bytes ", [SizeAcc + DocSize]),
             DocsList = [Doc| DocAcc],
             ok = flush_docs_xmem(XMemSrv, DocsList),
             %% data flushed, return empty batch and size of # of docs flushed

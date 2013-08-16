@@ -188,14 +188,9 @@ handle_call({find_missing, IdRevs}, _From,
     NumIdRevs = length(IdRevs),
     AvgLatency = TimeSpent div NumIdRevs,
 
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("[xmem_srv for vb ~p]: out of ~p keys, we need to send ~p "
-                        "(worker: ~p, avg latency: ~p ms).",
-                        [Vb, NumIdRevs, length(MissingIdRevs), WorkerPid, AvgLatency]);
-        _ ->
-            ok
-    end,
+    ?xdcr_trace("[xmem_srv for vb ~p]: out of ~p keys, we need to send ~p "
+                "(worker: ~p, avg latency: ~p ms).",
+                [Vb, NumIdRevs, length(MissingIdRevs), WorkerPid, AvgLatency]),
 
     {reply, {ok, MissingIdRevs}, State};
 
@@ -215,19 +210,14 @@ handle_call({flush_docs, DocsList}, _From,
     TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
     AvgLatency = TimeSpent div length(DocsList),
 
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("[xmem_srv for vb ~p]: out of total ~p docs, "
-                        "# of docs accepted by remote: ~p "
-                        "# of docs rejected by remote: ~p"
-                        "(worker: ~p,"
-                        "time spent in ms: ~p, avg latency per doc in ms: ~p)",
-                        [Vb, length(DocsList),
-                         NumDocRepd, NumDocRejected,
-                         WorkerPid, TimeSpent, AvgLatency]);
-        _ ->
-            ok
-    end,
+    ?xdcr_trace("[xmem_srv for vb ~p]: out of total ~p docs, "
+                "# of docs accepted by remote: ~p "
+                "# of docs rejected by remote: ~p"
+                "(worker: ~p,"
+                "time spent in ms: ~p, avg latency per doc in ms: ~p)",
+                [Vb, length(DocsList),
+                 NumDocRepd, NumDocRejected,
+                 WorkerPid, TimeSpent, AvgLatency]),
 
     {reply, ok, State};
 
@@ -337,11 +327,6 @@ load_balancer(Vb, Workers) ->
     NumWorkers = dict:size(Workers),
     Index = random:uniform(NumWorkers),
     {Id, {WorkerPid, bucket_selected}} = lists:nth(Index, dict:to_list(Workers)),
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("[xmem_srv for vb ~p]: pick up worker process (id: ~p, pid: ~p)", [Vb, Id, WorkerPid]);
-        _ ->
-            ok
-    end,
+    ?xdcr_trace("[xmem_srv for vb ~p]: pick up worker process (id: ~p, pid: ~p)", [Vb, Id, WorkerPid]),
     WorkerPid.
 
