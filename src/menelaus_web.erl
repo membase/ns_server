@@ -2885,7 +2885,7 @@ handle_internal_settings_post(Req) ->
                case proplists:get_value("xdcrMaxConcurrentReps", Params) of
                    undefined -> undefined;
                    SV ->
-                       {ok, V} = parse_validate_number(SV, 8, 256),
+                       {ok, V} = parse_validate_number(SV, 1, 256),
                        MaybeSet(xdcrMaxConcurrentReps, {xdcr, max_concurrent_reps}, V)
                end,
                case proplists:get_value("xdcrCheckpointInterval", Params) of
