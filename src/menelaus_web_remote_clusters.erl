@@ -304,6 +304,9 @@ validate_remote_cluster(Cluster, OtherClusters) ->
         {error, rest_error, Msg, _} ->
             Errors = [{<<"_">>, Msg}],
             {errors, 400, Errors};
+        {error, not_capable, Msg} ->
+            Errors = [{<<"_">>, Msg}],
+            {errors, 400, Errors};
         _ ->
             Errors = [{<<"_">>, <<"Unexpected error occurred. See logs for details.">>}],
             {errors, 500, Errors}

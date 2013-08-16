@@ -134,6 +134,7 @@ start_link() ->
                                       {error, client_error, Msg} |
                                       {error, bad_value, Msg} |
                                       {error, {bad_value, Field}, Msg} |
+                                      {error, not_capable, Msg} |
                                       {error, {missing_field, Field}, Msg}
   when Details :: {error, term()} | {bad_status, integer(), string()},
        Msg :: binary(),
@@ -148,6 +149,7 @@ fetch_remote_cluster(Cluster) ->
                                   {error, client_error, Msg} |
                                   {error, bad_value, Msg} |
                                   {error, {bad_value, Field}, Msg} |
+                                  {error, not_capable, Msg} |
                                   {error, {missing_field, Field}, Msg}
   when Details :: {error, term()} | {bad_status, integer(), string()},
        Msg :: binary(),
@@ -753,7 +755,9 @@ with_default_pool_details(Pools, JsonGet, K) ->
                                               <<"default pool details">>, K)
                                     end)
                           end)
-                end)
+                end);
+          ([]) ->
+              {error, not_capable, <<"Remote node is not initialized.">>}
       end).
 
 with_buckets(PoolDetails, JsonGet, K) ->
