@@ -28,6 +28,8 @@
 -export([connect/2, disconnect/1, select_bucket/1, stop/1]).
 -export([find_missing/2, flush_docs/2, ensure_full_commit/1]).
 
+-export([format_status/2]).
+
 -include("xdc_replicator.hrl").
 -include("remote_clusters_info.hrl").
 
@@ -69,6 +71,9 @@ init({Vb, RemoteXMem, ParentVbRep, NumWorkers}) ->
                  dict:size(AllWorkers)]),
 
     {ok, InitState}.
+
+format_status(Opt, [PDict, State]) ->
+    xdc_rep_utils:sanitize_status(Opt, PDict, State).
 
 connect(Server, XMemRemote) ->
     gen_server:call(Server, {connect, XMemRemote}, infinity).

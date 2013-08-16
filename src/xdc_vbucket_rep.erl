@@ -41,6 +41,8 @@
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 
+-export([format_status/2]).
+
 -include("xdc_replicator.hrl").
 -include("remote_clusters_info.hrl").
 
@@ -68,6 +70,9 @@ init(#init_state{init_throttle = InitThrottle} = InitState) ->
     %% signal to self to initialize
     ok = concurrency_throttle:send_back_when_can_go(InitThrottle, init),
     {ok, InitState}.
+
+format_status(Opt, [PDict, State]) ->
+    xdc_rep_utils:sanitize_status(Opt, PDict, State).
 
 handle_info({'EXIT',_Pid, normal}, St) ->
     {noreply, St};

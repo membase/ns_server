@@ -28,6 +28,7 @@
 -export([get_replication_mode/0, get_replication_batch_size/0]).
 -export([is_pipeline_enabled/0, get_trace_dump_invprob/0]).
 -export([get_xmem_worker/0, is_local_conflict_resolution/0]).
+-export([sanitize_status/3]).
 
 -include("xdc_replicator.hrl").
 
@@ -478,4 +479,36 @@ get_checkpoint_mode() ->
         _ ->
             "capi"
     end.
+
+sanitize_url(Url) when is_binary(Url) ->
+    ?l2b(sanitize_url(?b2l(Url)));
+sanitize_url(Url) when is_list(Url) ->
+    I = string:rchr(Url, $@),
+    case I of
+        0 ->
+            Url;
+        _ ->
+            "*****" ++ string:sub_string(Url, I)
+    end;
+sanitize_url(Url) ->
+    Url.
+
+sanitize_state(State) ->
+    misc:rewrite_tuples(fun (T) ->
+                                case T of
+                                    #xdc_rep_xmem_remote{} = Remote ->
+                                        {stop, Remote#xdc_rep_xmem_remote{password = "*****"}};
+                                    #rep_state{} = RepState ->
+                                        {continue,
+                                         RepState#rep_state{target_name = sanitize_url(RepState#rep_state.target_name)}};
+                                    #httpdb{} = HttpDb ->
+                                        {stop,
+                                         HttpDb#httpdb{url = sanitize_url(HttpDb#httpdb.url)}};
+                                    _ ->
+                                        {continue, T}
+                                end
+                        end, State).
+
+sanitize_status(_Opt, _PDict, State) ->
+    [{data, [{"State", sanitize_state(State)}]}].
 

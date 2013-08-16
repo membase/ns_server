@@ -798,6 +798,16 @@ rewrite_key_value_tuples([_|_] = Pattern, Struct) ->
 rewrite_key_value_tuple(Key, NewValue, Struct) ->
     rewrite_value_int({{key, Key}, NewValue}, Struct).
 
+rewrite_tuples(Fun, Struct) ->
+    rewrite_value_int({function, Fun}, Struct).
+
+rewrite_value_int({function, Fun}, Tuple) when is_tuple(Tuple) ->
+    case Fun(Tuple) of
+        {continue, T} ->
+            list_to_tuple(rewrite_value_int({function, Fun}, tuple_to_list(T)));
+        {stop, T} ->
+            T
+    end;
 rewrite_value_int([_ | _] = Patterns, {Key, _} = T) ->
     case lists:keyfind(Key, 1, Patterns) of
         {_, New} ->

@@ -25,6 +25,8 @@
 
 -export([find_missing_pipeline/2, flush_docs_pipeline/2]).
 
+-export([format_status/2]).
+
 -include("xdc_replicator.hrl").
 -include("remote_clusters_info.hrl").
 -include("mc_constants.hrl").
@@ -55,6 +57,9 @@ init({Vb, Id, Parent, Options}) ->
       error_reports = Errs},
 
     {ok, InitState}.
+
+format_status(Opt, [PDict, State]) ->
+    xdc_rep_utils:sanitize_status(Opt, PDict, State).
 
 -spec select_bucket(pid(), #xdc_rep_xmem_remote{}) -> ok |
                                                       {memcached_error, term(), term()}.
