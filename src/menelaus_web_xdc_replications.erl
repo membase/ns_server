@@ -107,40 +107,13 @@ handle_replication_settings_body(RepDoc, Req) ->
 handle_replication_settings_post(XID, Req) ->
     with_replicator_doc(
       Req, XID,
-      fun (#doc{body={Props}} = RepDoc) ->
+      fun (RepDoc) ->
               Params = Req:parse_post(),
-
-              Specs = per_replication_settings_specs(),
-              {Settings, Remove, Errors} =
-                  lists:foldl(
-                    fun ({Key, ReqKey, Type},
-                         {AccSettings, AccRemove, AccErrors} = Acc) ->
-                            case proplists:get_value(ReqKey, Params) of
-                                undefined ->
-                                    Acc;
-                                "" ->
-                                    {AccSettings, [Key | AccRemove], AccErrors};
-                                Str ->
-                                    case parse_validate_by_type(Type, Str) of
-                                        {ok, V} ->
-                                            {[{Key, V} | AccSettings],
-                                             AccRemove, AccErrors};
-                                        Error ->
-                                            {AccSettings, AccRemove,
-                                             [{ReqKey, Error} | AccErrors]}
-                                    end
-                            end
-                    end, {[], [], []}, Specs),
-
-              case Errors of
-                  [] ->
-                      Props1 = [{K, V} || {K, V} <- Props,
-                                          not(lists:member(K, Remove))],
-                      Props2 = misc:update_proplist(Props1, Settings),
-                      RepDoc1 = RepDoc#doc{body={Props2}},
+              case update_rdoc_replication_settings(RepDoc, Params) of
+                  {ok, RepDoc1} ->
                       ok = xdc_rdoc_replication_srv:update_doc(RepDoc1),
                       handle_replication_settings_body(RepDoc1, Req);
-                  _ ->
+                  {error, Errors} ->
                       menelaus_util:reply_json(Req, {struct, Errors}, 400)
               end
       end).
@@ -231,11 +204,16 @@ parse_validate_new_replication_params(Params, Buckets) ->
             case validate_new_replication_params_check_from_bucket(
                    Type, FromBucket, ToCluster, ToBucket, ReplicationType, Buckets) of
                 {ok, ReplicationDoc} ->
-                    ParsedParams = [{from_bucket, FromBucket},
-                                    {to_bucket, ToBucket},
-                                    {replication_type, ReplicationType},
-                                    {to_cluster, ToCluster}],
-                    {ok, ReplicationDoc, ParsedParams};
+                    case update_rdoc_replication_settings(ReplicationDoc, Params) of
+                        {ok, ReplicationDoc1} ->
+                            ParsedParams = [{from_bucket, FromBucket},
+                                            {to_bucket, ToBucket},
+                                            {replication_type, ReplicationType},
+                                            {to_cluster, ToCluster}],
+                            {ok, ReplicationDoc1, ParsedParams};
+                        Error ->
+                            Error
+                    end;
                 Other ->
                     Other
             end;
@@ -390,3 +368,38 @@ key_to_request_key(Key) ->
     [First | Rest] = string:tokens(KeyList, "_"),
     RestCapitalized = [[string:to_upper(C) | TokenRest] || [C | TokenRest] <- Rest],
     lists:concat([First | RestCapitalized]).
+
+update_rdoc_replication_settings(#doc{body={Props}} = RepDoc, Params) ->
+    Specs = per_replication_settings_specs(),
+
+    {Settings, Remove, Errors} =
+        lists:foldl(
+          fun ({Key, ReqKey, Type},
+               {AccSettings, AccRemove, AccErrors} = Acc) ->
+                  case proplists:get_value(ReqKey, Params) of
+                      undefined ->
+                          Acc;
+                      "" ->
+                          {AccSettings, [Key | AccRemove], AccErrors};
+                      Str ->
+                          case parse_validate_by_type(Type, Str) of
+                              {ok, V} ->
+                                  {[{Key, V} | AccSettings],
+                                   AccRemove, AccErrors};
+                              Error ->
+                                  {AccSettings, AccRemove,
+                                   [{ReqKey, Error} | AccErrors]}
+                          end
+                  end
+          end, {[], [], []}, Specs),
+
+    case Errors of
+        [] ->
+            Props1 = [{K, V} || {K, V} <- Props,
+                                not(lists:member(K, Remove))],
+            Props2 = misc:update_proplist(Props1, Settings),
+            RepDoc1 = RepDoc#doc{body={Props2}},
+            {ok, RepDoc1};
+        _ ->
+            {error, Errors}
+    end.
