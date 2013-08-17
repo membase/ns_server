@@ -106,7 +106,16 @@ compute_buckets_diff(NewBuckets, OldBuckets) ->
     misc:update_proplist(NewBuckets, [{configs, Diffed}]).
 
 sanitize(Config) ->
-    misc:rewrite_key_value_tuples([{password, "*****"}, {sasl_password, "*****"}], Config).
+    misc:rewrite_tuples(fun (T) ->
+                                case T of
+                                    {password, _} ->
+                                        {stop, {password, "*****"}};
+                                    {sasl_password, _} ->
+                                        {stop, {sasl_password, "*****"}};
+                                    _ ->
+                                        {continue, T}
+                                end
+                        end, Config).
 
 log_common(K, V) ->
     %% These can get pretty big, so pre-format them for the logger.

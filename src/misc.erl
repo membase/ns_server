@@ -787,13 +787,8 @@ pairs_test() ->
     [] = pairs([1]),
     [{1,2}] = pairs([1,2]).
 
-
-
 rewrite_value(Old, New, Struct) ->
     rewrite_value_int({{value, Old}, New}, Struct).
-
-rewrite_key_value_tuples([_|_] = Pattern, Struct) ->
-    rewrite_value_int(Pattern, Struct).
 
 rewrite_key_value_tuple(Key, NewValue, Struct) ->
     rewrite_value_int({{key, Key}, NewValue}, Struct).
@@ -807,13 +802,6 @@ rewrite_value_int({function, Fun}, Tuple) when is_tuple(Tuple) ->
             list_to_tuple(rewrite_value_int({function, Fun}, tuple_to_list(T)));
         {stop, T} ->
             T
-    end;
-rewrite_value_int([_ | _] = Patterns, {Key, _} = T) ->
-    case lists:keyfind(Key, 1, Patterns) of
-        {_, New} ->
-            {Key, New};
-        false ->
-            list_to_tuple(rewrite_value_int(Patterns, tuple_to_list(T)))
     end;
 rewrite_value_int({{key, Key}, New}, {Key, _}) ->
     {Key, New};
@@ -864,10 +852,18 @@ rewrite_key_value_tuple_test() ->
     X = [{"a string", x},
          {"b string", 4, {a, x, y}, {a, b}, {a, b}}],
 
-    X1 = rewrite_key_value_tuples([{"a string", xxx}, {a, xxx}], Orig),
+    X1 = rewrite_tuples(fun (T) ->
+                                case T of
+                                    {"a string", _} ->
+                                        {stop, {a_string, xxx}};
+                                    {a, _} ->
+                                        {stop, {a, xxx}};
+                                    _ ->
+                                        {continue, T}
+                                end
+                        end, Orig),
 
-    X1 = [{"a string", xxx}, {"b string", 4, {a, x, y}, {a, xxx}, {a, xxx}}].
-
+    X1 = [{a_string, xxx}, {"b string", 4, {a, x, y}, {a, xxx}, {a, xxx}}].
 
 sanitize_url(Url) when is_binary(Url) ->
     ?l2b(sanitize_url(?b2l(Url)));
