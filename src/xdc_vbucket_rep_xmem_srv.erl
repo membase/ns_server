@@ -21,12 +21,14 @@
 -behaviour(gen_server).
 
 %% public functions
--export([start_link/3]).
+-export([start_link/4]).
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 
 -export([connect/2, disconnect/1, select_bucket/1, stop/1]).
 -export([find_missing/2, flush_docs/2, ensure_full_commit/1]).
+
+-export([format_status/2]).
 
 -include("xdc_replicator.hrl").
 -include("remote_clusters_info.hrl").
@@ -35,29 +37,36 @@
 %% -------------------------------------------------------------------------- %%
 %% ---                         public functions                           --- %%
 %% -------------------------------------------------------------------------- %%
-start_link(Vb, RemoteXMem, ParentVbRep) ->
+start_link(Vb, RemoteXMem, ParentVbRep, Options) ->
     %% prepare parameters to start xmem server process
-    DefaultWorkers = xdc_rep_utils:get_xmem_worker(),
-    Options = {Vb, RemoteXMem, ParentVbRep, DefaultWorkers},
-    {ok, Pid} = gen_server:start_link(?MODULE, Options, []),
+    NumWorkers = proplists:get_value(xmem_worker, Options),
+    PipelineEnabled = proplists:get_value(enable_pipeline_ops, Options),
+    LocalConflictResolution = proplists:get_value(local_conflict_resolution, Options),
+    ConnectionTimeout = proplists:get_value(connection_timeout, Options),
+
+    Args = {Vb, RemoteXMem, ParentVbRep,
+            NumWorkers, PipelineEnabled,
+            LocalConflictResolution, ConnectionTimeout},
+    {ok, Pid} = gen_server:start_link(?MODULE, Args, []),
     {ok, Pid}.
 
 %% gen_server behavior callback functions
-init({Vb, RemoteXMem, ParentVbRep, NumWorkers}) ->
+init({Vb, RemoteXMem, ParentVbRep,
+      NumWorkers, PipelineEnabled, LocalConflictResolution, ConnectionTimeout}) ->
     process_flag(trap_exit, true),
     %% signal to self to initialize
-    {ok, AllWorkers} = start_worker_process(Vb, NumWorkers),
+    {ok, AllWorkers} = start_worker_process(Vb, NumWorkers,
+                                            LocalConflictResolution, ConnectionTimeout),
     {T1, T2, T3} = now(),
     random:seed(T1, T2, T3),
     Errs = ringbuffer:new(?XDCR_ERROR_HISTORY),
-    Pipeline = xdc_rep_utils:is_pipeline_enabled(),
     InitState = #xdc_vb_rep_xmem_srv_state{vb = Vb,
                                            parent_vb_rep = ParentVbRep,
                                            remote = RemoteXMem,
                                            statistics = #xdc_vb_rep_xmem_statistics{},
                                            pid_workers = AllWorkers,
                                            num_workers = NumWorkers,
-                                           enable_pipeline = Pipeline,
+                                           enable_pipeline = PipelineEnabled,
                                            seed = {T1, T2, T3},
                                            error_reports = Errs},
 
@@ -69,6 +78,9 @@ init({Vb, RemoteXMem, ParentVbRep, NumWorkers}) ->
                  dict:size(AllWorkers)]),
 
     {ok, InitState}.
+
+format_status(Opt, [PDict, State]) ->
+    xdc_rep_utils:sanitize_status(Opt, PDict, State).
 
 connect(Server, XMemRemote) ->
     gen_server:call(Server, {connect, XMemRemote}, infinity).
@@ -183,14 +195,9 @@ handle_call({find_missing, IdRevs}, _From,
     NumIdRevs = length(IdRevs),
     AvgLatency = TimeSpent div NumIdRevs,
 
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("[xmem_srv for vb ~p]: out of ~p keys, we need to send ~p "
-                        "(worker: ~p, avg latency: ~p ms).",
-                        [Vb, NumIdRevs, length(MissingIdRevs), WorkerPid, AvgLatency]);
-        _ ->
-            ok
-    end,
+    ?xdcr_trace("[xmem_srv for vb ~p]: out of ~p keys, we need to send ~p "
+                "(worker: ~p, avg latency: ~p ms).",
+                [Vb, NumIdRevs, length(MissingIdRevs), WorkerPid, AvgLatency]),
 
     {reply, {ok, MissingIdRevs}, State};
 
@@ -210,19 +217,14 @@ handle_call({flush_docs, DocsList}, _From,
     TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
     AvgLatency = TimeSpent div length(DocsList),
 
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("[xmem_srv for vb ~p]: out of total ~p docs, "
-                        "# of docs accepted by remote: ~p "
-                        "# of docs rejected by remote: ~p"
-                        "(worker: ~p,"
-                        "time spent in ms: ~p, avg latency per doc in ms: ~p)",
-                        [Vb, length(DocsList),
-                         NumDocRepd, NumDocRejected,
-                         WorkerPid, TimeSpent, AvgLatency]);
-        _ ->
-            ok
-    end,
+    ?xdcr_trace("[xmem_srv for vb ~p]: out of total ~p docs, "
+                "# of docs accepted by remote: ~p "
+                "# of docs rejected by remote: ~p"
+                "(worker: ~p,"
+                "time spent in ms: ~p, avg latency per doc in ms: ~p)",
+                [Vb, length(DocsList),
+                 NumDocRepd, NumDocRejected,
+                 WorkerPid, TimeSpent, AvgLatency]),
 
     {reply, ok, State};
 
@@ -312,12 +314,14 @@ report_error(Err, Vb, Parent) ->
     gen_server:cast(Parent, {report_error, {RawTime, String}}).
 
 
--spec start_worker_process(integer(), integer()) -> {ok, dict()}.
-start_worker_process(Vb, NumWorkers) ->
+-spec start_worker_process(integer(), integer(), boolean(), integer()) -> {ok, dict()}.
+start_worker_process(Vb, NumWorkers, LocalConflictResolution, ConnectionTimeout) ->
     WorkerDict = dict:new(),
     AllWorkers = lists:foldl(
                    fun(Id, Acc) ->
-                           {ok, Pid} = xdc_vbucket_rep_xmem_worker:start_link(Vb, Id, self(), []),
+                           {ok, Pid} = xdc_vbucket_rep_xmem_worker:start_link(Vb, Id, self(),
+                                                                              LocalConflictResolution,
+                                                                              ConnectionTimeout),
                            dict:store(Id, {Pid, idle}, Acc)
                    end,
                    WorkerDict,
@@ -332,11 +336,6 @@ load_balancer(Vb, Workers) ->
     NumWorkers = dict:size(Workers),
     Index = random:uniform(NumWorkers),
     {Id, {WorkerPid, bucket_selected}} = lists:nth(Index, dict:to_list(Workers)),
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("[xmem_srv for vb ~p]: pick up worker process (id: ~p, pid: ~p)", [Vb, Id, WorkerPid]);
-        _ ->
-            ok
-    end,
+    ?xdcr_trace("[xmem_srv for vb ~p]: pick up worker process (id: ~p, pid: ~p)", [Vb, Id, WorkerPid]),
     WorkerPid.
 

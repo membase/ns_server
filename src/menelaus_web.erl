@@ -27,6 +27,7 @@
 -include("menelaus_web.hrl").
 -include("ns_common.hrl").
 -include("ns_stats.hrl").
+-include("couch_db.hrl").
 
 -ifdef(EUNIT).
 -export([test/0]).
@@ -58,6 +59,8 @@
 
 -export([handle_streaming_wakeup/4,
          handle_pool_info_wait_wake/4]).
+
+-export([reset_admin_password/1]).
 
 -import(menelaus_util,
         [server_header/0,
@@ -244,6 +247,10 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth_ro, fun handle_settings_auto_compaction/1};
                          ["settings", "readOnlyAdminName"] ->
                              {auth_ro, fun handle_settings_read_only_admin_name/1};
+                         ["settings", "replications"] ->
+                             {auth_ro, fun menelaus_web_xdc_replications:handle_global_replication_settings/1};
+                         ["settings", "replications", XID] ->
+                             {auth_ro, fun menelaus_web_xdc_replications:handle_replication_settings/2, [XID]};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings/1};
                          ["nodes", NodeId] ->
@@ -323,6 +330,10 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun handle_settings_view_update_daemon_post/1};
                          ["settings", "readOnlyUser"] ->
                              {auth, fun handle_settings_read_only_user_post/1};
+                         ["settings", "replications"] ->
+                             {auth, fun menelaus_web_xdc_replications:handle_global_replication_settings_post/1};
+                         ["settings", "replications", XID] ->
+                             {auth, fun menelaus_web_xdc_replications:handle_replication_settings_post/2, [XID]};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings_post/1};
                          ["pools", PoolId] ->
@@ -1515,17 +1526,6 @@ handle_settings_view_update_daemon_post(Req) ->
             reply_json(Req, {struct, Errors}, 400)
     end.
 
-validate_cred(undefined, _) -> <<"Field must be given">>;
-validate_cred(P, password) when length(P) < 6 -> <<"At least 6 characters is required">>;
-validate_cred([], _) -> <<"Empty Field">>;
-validate_cred(_, _) -> true.
-
-maybe_invalid(Name, Value) ->
-    UserErrors = validate_cred(Value, Name),
-    {Name, case UserErrors of
-                true -> do_validate_cred(Value, Name);
-                _ -> UserErrors
-           end}.
 
 delete_read_only_user_creds() ->
     ns_config:set(read_only_user_creds, null).
@@ -1549,8 +1549,8 @@ handle_settings_read_only_user_post(Req) ->
     ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
     U = proplists:get_value("username", PostArgs),
     P = proplists:get_value("password", PostArgs),
-    Errors0 = [{K, V} || {K, V} <- [maybe_invalid(username, U),
-                                    maybe_invalid(password, P)], V =/= true],
+    Errors0 = [{K, V} || {K, V} <- [{username, validate_cred(U, username)},
+                                    {password, validate_cred(P, password)}], V =/= true],
     RestCreds = ns_config:search('latest-config-marker', rest_creds, []),
     Errors = Errors0 ++
         case proplists:get_value(creds, RestCreds, []) of
@@ -1591,12 +1591,12 @@ handle_read_only_user_reset(Req) ->
         true ->
             ReqArgs = Req:parse_post(),
             NewROAPass = proplists:get_value("password", ReqArgs),
-            case maybe_invalid(password, NewROAPass) of
-                {password, true} ->
+            case validate_cred(NewROAPass, password) of
+                true ->
                     ROAName = get_read_only_admin_name(),
                     ns_config:set(read_only_user_creds, {ROAName, {password, NewROAPass}}),
                     reply_json(Req, [], 200);
-                Error -> reply_json(Req, {struct, [{errors, {struct, [Error]}}]}, 400)
+                Error -> reply_json(Req, {struct, [{errors, {struct, [{password, Error}]}}]}, 400)
             end
     end.
 
@@ -1789,23 +1789,27 @@ is_valid_port_number(String) ->
     PortNumber = (catch list_to_integer(String)),
     (is_integer(PortNumber) andalso (PortNumber > 0) andalso (PortNumber =< 65535)).
 
-do_validate_cred(Username, username) ->
+validate_cred(undefined, _) -> <<"Field must be given">>;
+validate_cred(P, password) when length(P) < 6 -> <<"The password must be at least six characters.">>;
+validate_cred(P, password) ->
+    V = lists:all(
+          fun (C) ->
+                  C > 31 andalso C =/= 127
+          end, P)
+        andalso couch_util:validate_utf8(P),
+    V orelse <<"The password must not contain control characters and be valid utf8">>;
+validate_cred([], username) ->
+    <<"Username must not be empty">>;
+validate_cred(Username, username) ->
     V = lists:all(
           fun (C) ->
                   C > 32 andalso C =/= 127 andalso
                       not lists:member(C, "()<>@,;:\\\"/[]?={}")
-          end, Username),
+          end, Username)
+        andalso couch_util:validate_utf8(Username),
 
     V orelse
-        <<"The username must not contain spaces, control or any of ()<>@,;:\\\"/[]?={} characters">>;
-
-do_validate_cred(Password, password) ->
-    V = lists:all(
-          fun (C) ->
-                  C > 31 andalso c =/= 127
-          end, Password),
-
-    V orelse <<"The password must not contain control characters">>.
+        <<"The username must not contain spaces, control or any of ()<>@,;:\\\"/[]?={} characters and must be valid utf8">>.
 
 validate_settings(Port, U, P) ->
     case lists:all(fun erlang:is_list/1, [Port, U, P]) of
@@ -1815,14 +1819,9 @@ validate_settings(Port, U, P) ->
                            case {U, P} of
                                {[], _} -> <<"Username and password are required.">>;
                                {[_Head | _], P} ->
-                                   case do_validate_cred(U, username) of
+                                   case validate_cred(U, username) of
                                        true ->
-                                           case length(P) =< 5 of
-                                               true ->
-                                                   <<"The password must be at least six characters.">>;
-                                               false ->
-                                                   do_validate_cred(P, password)
-                                           end;
+                                           validate_cred(P, password);
                                        Msg ->
                                            Msg
                                    end
@@ -1908,6 +1907,59 @@ handle_settings_alerts_send_test_email(Req) ->
         _ ->
             Req:respond({200, add_header(), []})
     end.
+
+gen_password(Length) ->
+    Letters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*?",
+    random:seed(os:timestamp()),
+    get_random_string(Length, Letters).
+
+get_random_string(Length, AllowedChars) ->
+    lists:foldl(fun(_, Acc) ->
+                        [lists:nth(random:uniform(length(AllowedChars)),
+                                   AllowedChars)]
+                            ++ Acc
+                end, [], lists:seq(1, Length)).
+
+%% reset admin password to the generated or user specified value
+%% this function is called from cli by rpc call
+reset_admin_password(generated) ->
+    Password = gen_password(8),
+    case reset_admin_password(Password) of
+        {ok, Message} ->
+            {ok, ?l2b(io_lib:format("~s New password is ~s", [?b2l(Message), Password]))};
+        Err ->
+            Err
+    end;
+reset_admin_password(Password) ->
+    User = case ns_config:search_prop(ns_config:get(), rest_creds, creds, []) of
+               [] ->
+                   {error, <<"Failed to reset administrative password. Node is not initialized.">>};
+               [{U, _}|_] ->
+                   U
+           end,
+
+    Error = case User of
+                {error, _} = E ->
+                    E;
+                _ ->
+                    case validate_cred(Password, password) of
+                        true ->
+                            false;
+                        ErrStr ->
+                            {error, ErrStr}
+                    end
+            end,
+
+    case Error of
+        {error, _} = Err ->
+            Err;
+        _ ->
+            ok = ns_config:set(rest_creds, [{creds,
+                                             [{User, [{password, Password}]}]}]),
+
+            {ok, ?l2b(io_lib:format("Password for user ~s was succesfully replaced.", [User]))}
+    end.
+
 
 -ifdef(EUNIT).
 
@@ -2776,12 +2828,12 @@ build_internal_settings_kvs() ->
                {{couchdb, max_parallel_indexers}, maxParallelIndexers, <<>>},
                {{couchdb, max_parallel_replica_indexers}, maxParallelReplicaIndexers, <<>>},
                {max_bucket_count, maxBucketCount, 10},
-               {xdcr_max_concurrent_reps, xdcrMaxConcurrentReps, 32},
-               {xdcr_checkpoint_interval, xdcrCheckpointInterval, 1800},
-               {xdcr_worker_batch_size, xdcrWorkerBatchSize, 500},
-               {xdcr_doc_batch_size_kb, xdcrDocBatchSizeKb, 2048},
-               {xdcr_failure_restart_interval, xdcrFailureRestartInterval, 30},
-               {xdcr_optimistic_replication_threshold, xdcrOptimisticReplicationThreshold, <<>>},
+               {{xdcr, max_concurrent_reps}, xdcrMaxConcurrentReps, 32},
+               {{xdcr, checkpoint_interval}, xdcrCheckpointInterval, 1800},
+               {{xdcr, worker_batch_size}, xdcrWorkerBatchSize, 500},
+               {{xdcr, doc_batch_size_kb}, xdcrDocBatchSizeKb, 2048},
+               {{xdcr, failure_restart_interval}, xdcrFailureRestartInterval, 30},
+               {{xdcr, optimistic_replication_threshold}, xdcrOptimisticReplicationThreshold, <<>>},
                {{request_limit, rest}, restRequestLimit, <<>>},
                {{request_limit, capi}, capiRequestLimit, <<>>},
                {drop_request_memory_threshold_mib, dropRequestMemoryThresholdMiB, <<>>}],
@@ -2855,39 +2907,39 @@ handle_internal_settings_post(Req) ->
                case proplists:get_value("xdcrMaxConcurrentReps", Params) of
                    undefined -> undefined;
                    SV ->
-                       {ok, V} = parse_validate_number(SV, 8, 256),
-                       MaybeSet(xdcrMaxConcurrentReps, xdcr_max_concurrent_reps, V)
+                       {ok, V} = parse_validate_number(SV, 1, 256),
+                       MaybeSet(xdcrMaxConcurrentReps, {xdcr, max_concurrent_reps}, V)
                end,
                case proplists:get_value("xdcrCheckpointInterval", Params) of
                    undefined -> undefined;
                    SV ->
                        {ok, V} = parse_validate_number(SV, 60, 14400),
-                       MaybeSet(xdcrCheckpointInterval, xdcr_checkpoint_interval, V)
+                       MaybeSet(xdcrCheckpointInterval, {xdcr, checkpoint_interval}, V)
                end,
                case proplists:get_value("xdcrWorkerBatchSize", Params) of
                    undefined -> undefined;
                    SV ->
                        {ok, V} = parse_validate_number(SV, 500, 10000),
-                       MaybeSet(xdcrWorkerBatchSize, xdcr_worker_batch_size, V)
+                       MaybeSet(xdcrWorkerBatchSize, {xdcr, worker_batch_size}, V)
                end,
                case proplists:get_value("xdcrDocBatchSizeKb", Params) of
                    undefined -> undefined;
                    SV ->
                        {ok, V} = parse_validate_number(SV, 10, 100000),
-                       MaybeSet(xdcrDocBatchSizeKb, xdcr_doc_batch_size_kb, V)
+                       MaybeSet(xdcrDocBatchSizeKb, {xdcr, doc_batch_size_kb}, V)
                end,
                case proplists:get_value("xdcrFailureRestartInterval", Params) of
                    undefined -> undefined;
                    SV ->
                        {ok, V} = parse_validate_number(SV, 1, 300),
-                       MaybeSet(xdcrFailureRestartInterval, xdcr_failure_restart_interval, V)
+                       MaybeSet(xdcrFailureRestartInterval, {xdcr, failure_restart_interval}, V)
                end,
                case proplists:get_value("xdcrOptimisticReplicationThreshold", Params) of
                    undefined -> undefined;
                    "" -> undefined;
                    SV ->
                        {ok, V} = parse_validate_number(SV, 0, 20*1024*1024),
-                       MaybeSet(xdcrOptimisticReplicationThreshold, xdcr_optimistic_replication_threshold, V)
+                       MaybeSet(xdcrOptimisticReplicationThreshold, {xdcr, optimistic_replication_threshold}, V)
                end,
                case proplists:get_value("restRequestLimit", Params) of
                    undefined -> undefined;

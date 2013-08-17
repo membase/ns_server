@@ -13,7 +13,8 @@
 -module(xdc_replication_sup).
 -behaviour(supervisor).
 
--export([start_replication/1, stop_replication/1, shutdown/0,
+-export([start_replication/1, stop_replication/1, update_replication/2,
+         shutdown/0,
          get_replications/0, get_replications/1,
          all_local_replication_infos/0]).
 
@@ -75,6 +76,21 @@ stop_replication(Id) ->
     ?xdcr_debug("all replications for DocId ~p have been stopped", [Id]),
     ok.
 
+update_replication(RepId, RepDoc) ->
+    case [Child || {_, Id, _} = Child <- get_replications(), Id =:= RepId] of
+        [] ->
+            start_replication(RepDoc);
+        [{_, _, Pid} = Child] ->
+            R = xdc_replication:update_replication(Pid, RepDoc),
+            case R of
+                restart_needed ->
+                    supervisor:terminate_child(?MODULE, Child),
+                    supervisor:delete_child(?MODULE, Child),
+                    start_replication(RepDoc);
+                ok ->
+                    {ok, Pid}
+            end
+    end.
 
 shutdown() ->
     case whereis(?MODULE) of

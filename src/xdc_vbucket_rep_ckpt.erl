@@ -23,9 +23,8 @@
 
 -include("xdc_replicator.hrl").
 
-start_timer(State) ->
-    {value, DefaultAfterSecs} = ns_config:search(xdcr_checkpoint_interval),
-    AfterSecs = misc:getenv_int("XDCR_CHECKPOINT_INTERVAL", DefaultAfterSecs),
+start_timer(#rep_state{rep_details=#rep{options=Options}} = State) ->
+    AfterSecs = proplists:get_value(checkpoint_interval, Options),
     %% convert to milliseconds
     After = AfterSecs*1000,
     %% cancel old timer if exists
@@ -33,12 +32,7 @@ start_timer(State) ->
     %% start a new timer
     case timer:apply_after(After, gen_server, cast, [self(), checkpoint]) of
         {ok, Ref} ->
-            case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-                1 ->
-                    ?xdcr_debug("schedule next checkpoint in ~p seconds (ref: ~p)", [AfterSecs, Ref]);
-                _ ->
-                    ok
-            end,
+            ?xdcr_trace("schedule next checkpoint in ~p seconds (ref: ~p)", [AfterSecs, Ref]),
             Ref;
         Error ->
             ?xdcr_error("Replicator, error scheduling checkpoint:  ~p", [Error]),
@@ -49,12 +43,7 @@ cancel_timer(#rep_state{timer = nil} = State) ->
     State;
 cancel_timer(#rep_state{timer = Timer} = State) ->
     {ok, cancel} = timer:cancel(Timer),
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("checkpoint timer has been cancelled (ref: ~p)", [Timer]);
-        _ ->
-            ok
-    end,
+    ?xdcr_trace("checkpoint timer has been cancelled (ref: ~p)", [Timer]),
     State#rep_state{timer = nil}.
 
 -spec do_checkpoint(#rep_state{}) -> {ok, binary(), #rep_state{}} |

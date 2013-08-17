@@ -67,13 +67,6 @@ latest_errors() ->
 
 
 init(_) ->
-    <<"_replicator">> = ?l2b(couch_config:get("replicator", "db",
-                                              "_replicator")),
-
-    maybe_create_replication_info_ddoc(),
-    %% dump default XDCR parameters
-    dump_parameters(),
-
     %% monitor replication doc change
     {Loop, <<"_replicator">> = RepDbName} = changes_feed_loop(),
 
@@ -81,20 +74,6 @@ init(_) ->
        changes_feed_loop = Loop,
        rep_db_name = RepDbName
       }}.
-
-maybe_create_replication_info_ddoc() ->
-    UserCtx = #user_ctx{roles = [<<"_admin">>, <<"_replicator">>]},
-    DB = case couch_db:open_int(<<"_replicator">>,
-                                [sys_db, {user_ctx, UserCtx}]) of
-             {ok, XDb} ->
-                 XDb;
-             _Error ->
-                 {ok, XDb} = couch_db:create(<<"_replicator">>,
-                                             [sys_db, {user_ctx, UserCtx}]),
-                 ?xdcr_info("replication document created: ~n~p", [XDb]),
-                 XDb
-         end,
-    couch_db:close(DB).
 
 handle_call(get_errors, _, State) ->
     Reps = try xdc_replication_sup:get_replications()
@@ -186,16 +165,9 @@ process_update({Change}, State) ->
             State;
         false ->
             case get_value(<<"type">>, Props) of
-                <<"xdc">> ->
-                    ?xdcr_debug("replication doc (docId: ~p) modified, parse "
-                                "new doc and adjsut replications for change ("
-                                "source ~p, target: ~p)",
-                                [DocId, get_value(<<"source">>, Props),
-                                 get_value(<<"target">>, Props)]),
-
+                V when V =:= <<"xdc">>; V =:= <<"xdc-xmem">> ->
                     XRep = parse_xdc_rep_doc(DocId, {Props}),
-                    xdc_replication_sup:stop_replication(DocId),
-                    {ok, _Pid} = xdc_replication_sup:start_replication(XRep),
+                    xdc_replication_sup:update_replication(DocId, XRep),
                     State;
                 _ ->
                     State
@@ -243,7 +215,7 @@ changes_feed_loop() ->
 
 %% make sure the replication db exists in couchdb
 ensure_rep_db_exists() ->
-    DbName = ?l2b(couch_config:get("replicator", "db", "_replicator")),
+    DbName = <<"_replicator">>,
     UserCtx = #user_ctx{roles = [<<"_admin">>, <<"_replicator">>]},
     case couch_db:open_int(DbName, [sys_db, {user_ctx, UserCtx}]) of
         {ok, Db} ->
@@ -273,75 +245,3 @@ parse_xdc_rep_doc(RepDocId, RepDoc) ->
         Tag:Err ->
             throw({bad_rep_doc, to_binary({Tag, Err})})
     end.
-
-dump_parameters() ->
-    {value, DefaultMaxConcurrentReps} = ns_config:search(xdcr_max_concurrent_reps),
-    MaxConcurrentReps = misc:getenv_int("MAX_CONCURRENT_REPS_PER_DOC",
-                                        DefaultMaxConcurrentReps),
-
-    {value, DefaultIntervalSecs} = ns_config:search(xdcr_checkpoint_interval),
-    IntervalSecs =  misc:getenv_int("XDCR_CHECKPOINT_INTERVAL", DefaultIntervalSecs),
-
-    {value, DefaultConnTimeout} = ns_config:search(xdcr_connection_timeout),
-    DefTimeoutSecs = misc:getenv_int("XDCR_CONNECTION_TIMEOUT", DefaultConnTimeout),
-
-    {value, DefaultWorkers} = ns_config:search(xdcr_num_worker_process),
-    DefWorkers = misc:getenv_int("XDCR_NUM_WORKER_PROCESS", DefaultWorkers),
-
-    {value, DefaultConns} = ns_config:search(xdcr_num_http_connections),
-    DefConns = misc:getenv_int("XDCR_NUM_HTTP_CONNECTIONS", DefaultConns),
-
-    {value, DefaultRetries} = ns_config:search(xdcr_num_retries_per_request),
-    DefRetries = misc:getenv_int("XDCR_NUM_RETRIES_PER_REQUEST", DefaultRetries),
-
-    {value, DefaultRestartWaitTime} = ns_config:search(xdcr_failure_restart_interval),
-    RestartWaitTime = misc:getenv_int("XDCR_FAILURE_RESTART_INTERVAL", DefaultRestartWaitTime),
-
-    RepMode  = xdc_rep_utils:get_replication_mode(),
-    OptRepThreshold = xdc_rep_utils:get_opt_replication_threshold(),
-
-    {NumXMemWorker, Pipeline, DefBatchSize, DocBatchSizeKB}
-        = case RepMode of
-              "xmem" ->
-                  DefNumXMemWorker = xdc_rep_utils:get_xmem_worker(),
-                  EnablePipeline = xdc_rep_utils:is_pipeline_enabled(),
-                  {DefNumXMemWorker, EnablePipeline, undefined, undefined};
-              "capi" ->
-                  {value, DefaultWorkerBatchSize} = ns_config:search(xdcr_worker_batch_size),
-                  BatchSize = misc:getenv_int("XDCR_WORKER_BATCH_SIZE",
-                                              DefaultWorkerBatchSize),
-                  {value, DefaultDocBatchSize} = ns_config:search(xdcr_doc_batch_size_kb),
-                  BatchSizeKB = misc:getenv_int("XDCR_DOC_BATCH_SIZE_KB",
-                                                DefaultDocBatchSize),
-                  {undefined, undefined, BatchSize, BatchSizeKB};
-              _ ->
-                  {undefined, undefined, undefined, undefined}
-          end,
-
-    ?xdcr_debug("default XDCR parameters:~n \t"
-                "replication mode: ~p (pipleline: ~p, "
-                "num xmem worker per vb replicator: ~p);~n \t"
-                "optimistic replication threshold: ~p bytes;~n \t"
-                "number of max concurrent reps per bucket: ~p;~n \t"
-                "checkpoint interval in secs: ~p;~n \t"
-                "limit of replication batch size (docs: ~p, kilobytes: ~p);~n \t"
-                "connection timeout: ~p secs;~n \t"
-                "number of worker process per vb replicator: ~p;~n \t"
-                "max number HTTP connections per vb replicator: ~p;~n \t"
-                "max number retries per connection: ~p;~n \t"
-                "vb replicator waiting time before restart: ~p ",
-               [RepMode,
-                Pipeline,
-                NumXMemWorker,
-                OptRepThreshold,
-                MaxConcurrentReps,
-                IntervalSecs,
-                DefBatchSize, DocBatchSizeKB,
-                DefTimeoutSecs,
-                DefWorkers,
-                DefConns,
-                DefRetries,
-                RestartWaitTime
-                ]),
-    ok.
-

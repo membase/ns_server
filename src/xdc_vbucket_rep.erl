@@ -41,6 +41,8 @@
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 
+-export([format_status/2]).
+
 -include("xdc_replicator.hrl").
 -include("remote_clusters_info.hrl").
 
@@ -68,6 +70,9 @@ init(#init_state{init_throttle = InitThrottle} = InitState) ->
     %% signal to self to initialize
     ok = concurrency_throttle:send_back_when_can_go(InitThrottle, init),
     {ok, InitState}.
+
+format_status(Opt, [PDict, State]) ->
+    xdc_rep_utils:sanitize_status(Opt, PDict, State).
 
 handle_info({'EXIT',_Pid, normal}, St) ->
     {noreply, St};
@@ -118,7 +123,10 @@ handle_info(start_replication, #rep_state{throttle = Throttle,
                                           status = #rep_vb_status{vb = Vb, status = waiting_turn} = VbStatus} = St) ->
 
     ?xdcr_debug("get start-replication token for vb ~p from throttle (pid: ~p)", [Vb, Throttle]),
-    {noreply, start_replication(St#rep_state{status = VbStatus#rep_vb_status{status = replicating}})}.
+
+    St1 = St#rep_state{status = VbStatus#rep_vb_status{status = replicating}},
+    St2 = update_rep_options(St1),
+    {noreply, start_replication(St2)}.
 
 handle_call({report_seq_done,
              #worker_stat{seq = Seq,
@@ -171,20 +179,15 @@ handle_call({report_seq_done,
                 State#rep_state.behind_purger
         end,
 
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("Replicator of vbucket ~p: worker reported seq ~p, through seq was ~p, "
-                        "new through seq is ~p, highest seq done was ~p, new highest seq done is ~p "
-                        "(db purger seq: ~p, repl outpaced by purger during this run? ~p)~n"
-                        "Seqs in progress were: ~p~nSeqs in progress are now: ~p"
-                        "(total docs checked: ~p, total docs written: ~p)",
-                        [Vb, Seq, ThroughSeq, NewThroughSeq, HighestDone,
-                         NewHighestDone, PurgeSeq, BehindPurger,
-                         SeqsInProgress, NewSeqsInProgress,
-                         TotalChecked, TotalWritten]);
-        _ ->
-            ok
-    end,
+    ?xdcr_trace("Replicator of vbucket ~p: worker reported seq ~p, through seq was ~p, "
+                "new through seq is ~p, highest seq done was ~p, new highest seq done is ~p "
+                "(db purger seq: ~p, repl outpaced by purger during this run? ~p)~n"
+                "Seqs in progress were: ~p~nSeqs in progress are now: ~p"
+                "(total docs checked: ~p, total docs written: ~p)",
+                [Vb, Seq, ThroughSeq, NewThroughSeq, HighestDone,
+                 NewHighestDone, PurgeSeq, BehindPurger,
+                 SeqsInProgress, NewSeqsInProgress,
+                 TotalChecked, TotalWritten]),
 
     SourceCurSeq = xdc_vbucket_rep_ckpt:source_cur_seq(State),
 
@@ -279,21 +282,16 @@ handle_call({worker_done, Pid}, _From,
             LastCkptTime = State2#rep_state.last_checkpoint_time,
             StartRepTime = State2#rep_state.rep_start_time,
 
-            case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-                1 ->
-                    ?xdcr_debug("Replicator of vbucket ~p done, return token to throttle: ~p~n"
-                                "(highest seq done is ~p, number of changes left: ~p~n"
-                                "total docs checked: ~p, total docs written: ~p (total data repd: ~p)~n"
-                                "total number of succ ckpts: ~p (failed ckpts: ~p)~n"
-                                "last succ ckpt time: ~p, replicator start time: ~p.",
-                                [Vb, Throttle, HighestDone, ChangesLeft, TotalChecked, TotalWritten, TotalDataRepd,
-                                 NumCkpts, NumFailedCkpts,
-                                 calendar:now_to_local_time(LastCkptTime),
-                                 calendar:now_to_local_time(StartRepTime)
-                                ]);
-                _ ->
-                    ok
-            end,
+            ?xdcr_trace("Replicator of vbucket ~p done, return token to throttle: ~p~n"
+                        "(highest seq done is ~p, number of changes left: ~p~n"
+                        "total docs checked: ~p, total docs written: ~p (total data repd: ~p)~n"
+                        "total number of succ ckpts: ~p (failed ckpts: ~p)~n"
+                        "last succ ckpt time: ~p, replicator start time: ~p.",
+                        [Vb, Throttle, HighestDone, ChangesLeft, TotalChecked, TotalWritten, TotalDataRepd,
+                         NumCkpts, NumFailedCkpts,
+                         calendar:now_to_local_time(LastCkptTime),
+                         calendar:now_to_local_time(StartRepTime)
+                        ]),
             VbStatus3 = VbStatus2#rep_vb_status{status = idle},
 
             %% finally report stats to bucket replicator and tell it that I am idle
@@ -326,13 +324,8 @@ handle_cast(checkpoint, #rep_state{status = VbStatus} = State) ->
                              NewState2 = NewState#rep_state{timer = xdc_vbucket_rep_ckpt:start_timer(State),
                                                             status = VbStatus2},
                              Vb = (NewState2#rep_state.status)#rep_vb_status.vb,
-                             case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-                                 1 ->
-                                     ?xdcr_debug("checkpoint issued during replication for vb ~p, "
-                                                 "commit time: ~p", [Vb, CommitTime]);
-                                 _ ->
-                                     ok
-                             end,
+                             ?xdcr_trace("checkpoint issued during replication for vb ~p, "
+                                         "commit time: ~p", [Vb, CommitTime]),
                              {ok, NewState2};
                          {checkpoint_commit_failure, ErrorMsg, NewState} ->
                              %% update the failed ckpt stats to bucket replicator
@@ -495,7 +488,7 @@ init_replication_state(#init_state{rep = Rep,
     {ok, RemoteBucket} = remote_clusters_info:get_remote_bucket_by_ref(Tgt,
                                                                        false),
     TgtURI = hd(dict:fetch(Vb, RemoteBucket#remote_bucket.capi_vbucket_map)),
-    TgtDb = xdc_rep_utils:parse_rep_db(TgtURI),
+    TgtDb = xdc_rep_utils:parse_rep_db(TgtURI, [], Options),
     {ok, Source} = couch_api_wrap:db_open(SrcVbDb, []),
     {ok, Target} = couch_api_wrap:db_open(TgtDb, []),
     {ok, SourceInfo} = couch_api_wrap:get_db_info(Source),
@@ -527,20 +520,14 @@ init_replication_state(#init_state{rep = Rep,
                                [{Source, SrcMasterDb}, {Target, TgtMasterDb}],
                                Rep),
 
-    {StartSeq0,
+    {StartSeq,
      TotalDocsChecked,
      TotalDocsWritten,
      TotalDataReplicated,
      History} = compare_replication_logs(SourceLog, TargetLog),
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("history log at src and dest: startseq: ~p, docs checked: ~p,"
-                        "docs_written: ~p, data replicated: ~p",
-                        [StartSeq0, TotalDocsChecked, TotalDocsWritten, TotalDataReplicated]);
-        _ ->
-            ok
-    end,
-    StartSeq = get_value(since_seq, Options, StartSeq0),
+    ?xdcr_trace("history log at src and dest: startseq: ~p, docs checked: ~p,"
+                "docs_written: ~p, data replicated: ~p",
+                [StartSeq, TotalDocsChecked, TotalDocsWritten, TotalDataReplicated]),
     #doc{body={CheckpointHistory}} = SourceLog,
 
     %% check if we are already behind purger
@@ -619,21 +606,32 @@ init_replication_state(#init_state{rep = Rep,
                  misc:sanitize_url(RepState#rep_state.target_name), RepMode, XMemRemote]),
     RepState.
 
+update_rep_options(#rep_state{rep_details =
+                                  #rep{id = Id,
+                                       options = OldOptions} = Rep} = State) ->
+    NewOptions = xdc_settings:get_all_settings_snapshot_by_doc_id(Id),
+
+    case OldOptions =:= NewOptions of
+        true ->
+            State;
+        false ->
+            NewRep = Rep#rep{options = NewOptions},
+            State#rep_state{rep_details = NewRep}
+    end.
+
 start_replication(#rep_state{
                      source_name = SourceName,
                      target_name = TargetName,
                      current_through_seq = StartSeq,
                      last_checkpoint_time = LastCkptTime,
-                     rep_details = #rep{id = Id, options = Opt},
+                     rep_details = #rep{id = Id, options = Options},
                      xmem_remote = Remote
                     } = State) ->
 
     WorkStart = now(),
 
-    %% get updated options from parameters
-    Options = xdc_rep_utils:update_options(Opt),
     NumWorkers = get_value(worker_processes, Options),
-    BatchSize = get_value(worker_batch_size, Options),
+    BatchSizeItems = get_value(worker_batch_size, Options),
     {ok, Source} = couch_api_wrap:db_open(SourceName, []),
     TgtURI = xdc_rep_utils:parse_rep_db(TargetName, [], Options),
     {ok, Target} = couch_api_wrap:db_open(TgtURI, []),
@@ -644,7 +642,7 @@ start_replication(#rep_state{
                           xdc_rep_utils:get_master_db(Target), []),
 
     {ok, ChangesQueue} = couch_work_queue:new([
-                                               {max_items, BatchSize * NumWorkers * 2},
+                                               {max_items, BatchSizeItems * NumWorkers * 2},
                                                {max_size, 100 * 1024 * NumWorkers}
                                               ]),
     %% This starts the _changes reader process. It adds the changes from
@@ -652,22 +650,16 @@ start_replication(#rep_state{
     ChangesReader = spawn_changes_reader(StartSeq, Source, ChangesQueue),
     %% Changes manager - responsible for dequeing batches from the changes queue
     %% and deliver them to the worker processes.
-    ChangesManager = spawn_changes_manager(self(), ChangesQueue, BatchSize),
+    ChangesManager = spawn_changes_manager(self(), ChangesQueue, BatchSizeItems),
     %% This starts the worker processes. They ask the changes queue manager for a
     %% a batch of _changes rows to process -> check which revs are missing in the
     %% target, and for the missing ones, it copies them from the source to the target.
     MaxConns = get_value(http_connections, Options),
-    OptRepThreshold = get_value(opt_rep_threshold, Options),
+    OptRepThreshold = get_value(optimistic_replication_threshold, Options),
 
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("changes reader process (PID: ~p) and manager process (PID: ~p) "
-                       "created, now starting worker processes...",
-                       [ChangesReader, ChangesManager]),
-            ok;
-        _ ->
-            ok
-    end,
+    ?xdcr_trace("changes reader process (PID: ~p) and manager process (PID: ~p) "
+                "created, now starting worker processes...",
+                [ChangesReader, ChangesManager]),
     Changes = couch_db:count_changes_since(Source, StartSeq),
 
 
@@ -680,43 +672,36 @@ start_replication(#rep_state{
                _XMemRemote  ->
                    XMemSrvPid = case State#rep_state.xmem_srv of
                                     nil ->
-                                        {ok, XMemSrv} = xdc_vbucket_rep_xmem_srv:start_link(Vb, Remote, self()),
+                                        {ok, XMemSrv} = xdc_vbucket_rep_xmem_srv:start_link(Vb, Remote, self(), Options),
                                         XMemSrv;
                                     Pid ->
-                                        case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-                                            1 ->
-                                                ?xdcr_debug("xmem remote server already started (vb: ~p, pid: ~p)",
-                                                            [Vb, Pid]),
-                                                ok;
-                                            _ ->
-                                                ok
-                                        end,
+                                        ?xdcr_trace("xmem remote server already started (vb: ~p, pid: ~p)",
+                                                    [Vb, Pid]),
                                         Pid
                                 end,
                    ok = xdc_vbucket_rep_xmem_srv:connect(XMemSrvPid, Remote),
                    ok = xdc_vbucket_rep_xmem_srv:select_bucket(XMemSrvPid),
-                   case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-                       1 ->
-                           ?xdcr_debug("xmem remote node connected and bucket selected "
-                                       "(remote bucket: ~p, vb: ~b, remote ip: ~p, port: ~p, "
-                                       "remote bucket: ~p, xmem srv pid: ~p)",
-                                       [Remote#xdc_rep_xmem_remote.bucket,
-                                        Vb,
-                                        Remote#xdc_rep_xmem_remote.ip,
-                                        Remote#xdc_rep_xmem_remote.port,
-                                        Remote#xdc_rep_xmem_remote.bucket,
-                                        XMemSrvPid]);
-                       _ ->
-                           ok
-                   end,
+                   ?xdcr_trace("xmem remote node connected and bucket selected "
+                               "(remote bucket: ~p, vb: ~b, remote ip: ~p, port: ~p, "
+                               "remote bucket: ~p, xmem srv pid: ~p)",
+                               [Remote#xdc_rep_xmem_remote.bucket,
+                                Vb,
+                                Remote#xdc_rep_xmem_remote.ip,
+                                Remote#xdc_rep_xmem_remote.port,
+                                Remote#xdc_rep_xmem_remote.bucket,
+                                XMemSrvPid]),
                    XMemSrvPid
                  end,
+
+    BatchSizeKB = get_value(doc_batch_size_kb, Options),
 
     %% build start option for worker process
     WorkerOption = #rep_worker_option{
       cp = self(), source = Source, target = Target,
       changes_manager = ChangesManager, max_conns = MaxConns,
-      opt_rep_threshold = OptRepThreshold, xmem_server = XPid},
+      opt_rep_threshold = OptRepThreshold, xmem_server = XPid,
+      batch_size = BatchSizeKB * 1024,
+      batch_items = BatchSizeItems},
 
     Workers = lists:map(
                 fun(_) ->
@@ -728,13 +713,14 @@ start_replication(#rep_state{
     ?xdcr_info("Replication `~p` is using:~n"
                "~c~p worker processes~n"
                "~ca worker batch size of ~p~n"
+               "~ca worker batch size (KiB) ~p~n"
                "~c~p HTTP connections~n"
                "~ca connection timeout of ~p milliseconds~n"
                "~c~p retries per request~n"
                "~csocket options are: ~s~s",
-               [Id, $\t, NumWorkers, $\t, BatchSize, $\t,
+               [Id, $\t, NumWorkers, $\t, BatchSizeItems, $\t, BatchSizeKB, $\t,
                 MaxConns, $\t, get_value(connection_timeout, Options),
-                $\t, get_value(retries, Options),
+                $\t, get_value(retries_per_request, Options),
                 $\t, io_lib:format("~p", [get_value(socket_options, Options)]),
                 case StartSeq of
                     ?LOWEST_SEQ ->
@@ -743,20 +729,13 @@ start_replication(#rep_state{
                         io_lib:format("~n~csource start sequence ~p", [$\t, StartSeq])
                 end]),
 
-    {value, DefaultIntervalSecs} = ns_config:search(xdcr_checkpoint_interval),
-    IntervalSecs =  misc:getenv_int("XDCR_CHECKPOINT_INTERVAL", DefaultIntervalSecs),
+    IntervalSecs = get_value(checkpoint_interval, Options),
     TimeSinceLastCkpt = timer:now_diff(now(), LastCkptTime) div 1000000,
 
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("Worker pids are: ~p, last checkpt time: ~p"
-                        "secs since last ckpt: ~p, ckpt interval: ~p)",
-                        [Workers, calendar:now_to_local_time(LastCkptTime),
-                         TimeSinceLastCkpt, IntervalSecs]),
-            ok;
-        _ ->
-            ok
-    end,
+    ?xdcr_trace("Worker pids are: ~p, last checkpt time: ~p"
+                "secs since last ckpt: ~p, ckpt interval: ~p)",
+                [Workers, calendar:now_to_local_time(LastCkptTime),
+                 TimeSinceLastCkpt, IntervalSecs]),
 
     %% check if we need do checkpointing, replicator will crash if checkpoint failure
     State1 = State#rep_state{
@@ -795,13 +774,8 @@ start_replication(#rep_state{
     %% finally crash myself if fail to commit, after posting status to parent
     case Succ of
         ok ->
-            case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-                1 ->
-                    ?xdcr_debug("checkpoint at start of replication for vb ~p "
-                                "commit time: ~p ms, msg: ~p", [Vb, CommitTime, ErrorMsg]);
-                _ ->
-                    ok
-            end,
+            ?xdcr_trace("checkpoint at start of replication for vb ~p "
+                        "commit time: ~p ms, msg: ~p", [Vb, CommitTime, ErrorMsg]),
             ok;
         checkpoint_commit_failure ->
             ?xdcr_error("checkpoint commit failure at start of replication for vb ~p, "

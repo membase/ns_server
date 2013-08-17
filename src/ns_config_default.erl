@@ -75,35 +75,7 @@ default() ->
     InstanceUuid = couch_uuids:random(),
     InstanceVClock = {'_vclock', [{InstanceUuid, {1, vclock:timestamp()}}]},
 
-    [{xdcr_max_concurrent_reps, 32},  % num of concurrent reps per bucket
-     {xdcr_checkpoint_interval, 1800},  % in secs
-     {xdcr_doc_batch_size_kb, 2048},  % in kilobytes
-     {xdcr_failure_restart_interval, 30}, % in secs
-     {xdcr_worker_batch_size, 500}, % in # of mutations
-     {xdcr_connection_timeout, 180}, % in secs
-     {xdcr_num_worker_process, 4}, % # of worker process
-     {xdcr_num_http_connections, 20}, % max # of http conns
-     {xdcr_num_retries_per_request, 2}, % # of retries
-
-     %% document body size threshold (bytes) to trigger optimistic replication
-     %% when doc body size is no greater than the threshold
-     {xdcr_optimistic_replication_threshold, 256},
-
-     %% xdcr replication mode:
-     %% "capi": replicating to remote ns_server:capi_replication layer
-     %% "xmem": replicating to remote memcached directly
-     {xdcr_replication_mode, "xmem"},
-     %% # of worker processes per vb rep xmem server
-     {xdcr_xmem_worker, 1},
-     %% enable pipelined memcached operations
-     {xdcr_enable_pipeline_ops, true},
-     %% inverse probability to sample non-critical datapath trace
-     {xdcr_trace_dump_inverse_prob, 1000},
-     %% by default we reply on remote memcached to do conflict resolution,
-     %% leave a switch for local conflict resolution in case it is necessary
-     {xdcr_local_conflict_resolution, false},
-
-     {directory, path_config:component_path(data, "config")},
+    [{directory, path_config:component_path(data, "config")},
      {index_aware_rebalance_disabled, false},
      {max_bucket_count, 10},
      {autocompaction, [{database_fragmentation_threshold, {30, undefined}},

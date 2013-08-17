@@ -45,6 +45,14 @@
 %% builder of error/warning/debug msgs
 -define(format_msg(Msg, Args), lists:flatten(io_lib:format(Msg, Args))).
 
+-define(xdcr_trace(Format, Args),
+        case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
+            1 ->
+                ?xdcr_debug(Format, Args);
+            _ ->
+                ok
+        end).
+
 %% number of memcached errors before stop replicator
 -define(XDCR_XMEM_MEMCACHED_ERRORS, 10).
 
@@ -58,6 +66,7 @@
           id,
           source,
           target,
+          replication_mode,
           options
          }).
 
@@ -144,7 +153,8 @@
 %% batch of documents usd by vb replicator worker process
 -record(batch, {
           docs = [],
-          size = 0
+          size = 0,
+          items = 0
          }).
 
 %% bucket level replication state used by module xdc_replication
@@ -264,7 +274,9 @@
           changes_manager,         %% process to queue changes from storage
           max_conns,               %% max connections
           xmem_server,             %% XMem server process
-          opt_rep_threshold        %% optimistic replication threshold
+          opt_rep_threshold,       %% optimistic replication threshold
+          batch_size,              %% batch size (in bytes)
+          batch_items              %% batch items
          }).
 
 %% statistics reported from worker process to its parent vbucket replicator
@@ -322,8 +334,9 @@
           socket, %% inet:socket(),
           time_connected,
           time_init,
-          options,
-          error_reports
+          error_reports,
+          local_conflict_resolution,
+          connection_timeout
          }).
 
 

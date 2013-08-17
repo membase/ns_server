@@ -586,7 +586,7 @@
                 <td colspan="4" class="last">
                   {% if (this.bucketType == 'membase') { %}
                     <a class="list_button disable-if-stale only-when-20" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>
-                    <a class="list_button only-when-20" href="#sec=documents&bucketName={%= encodeURIComponent(this.name) %}&documentsPageNumber=0"><span>Documents</span></a>{% } %}
+                    <a class="list_button only-when-20 when-roadmin-hide-me" href="#sec=documents&bucketName={%= encodeURIComponent(this.name) %}&documentsPageNumber=0"><span>Documents</span></a>{% } %}
                 </td>
               </tr>
               <tr>
@@ -1182,10 +1182,10 @@
           </script>
 
           <div id="view_details" style="display:none;">
-            <div id="no_sample_docs" class="shadow_box" style="display:none">
+            <div id="no_sample_docs" class="shadow_box when-roadmin-avoid-me" style="display:none">
               <h3 class="block-expander js_block-expander" style="padding:15px">Bucket is currently empty.</h3>
             </div>
-            <div id="sample_docs" class="shadow_box darker_block js_darker_block">
+            <div id="sample_docs" class="shadow_box darker_block js_darker_block when-roadmin-avoid-me">
                <h3 class="block-expander js_block-expander"><ins></ins><span class="view_head docs_title" style="text-transform:none;">SAMPLE DOCUMENT</span>
                 <span class="buttons">
                   <a class="btn_1" id="preview_random_doc">

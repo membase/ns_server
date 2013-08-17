@@ -23,33 +23,29 @@
 start_link(#rep_worker_option{cp = Cp, source = Source, target = Target,
                               changes_manager = ChangesManager,
                               opt_rep_threshold = OptRepThreshold,
-                              xmem_server = XMemSrv} = _WorkerOption) ->
+                              xmem_server = XMemSrv,
+                              batch_size = BatchSize,
+                              batch_items = BatchItems} = _WorkerOption) ->
     Pid = spawn_link(fun() ->
                              erlang:monitor(process, ChangesManager),
-                             queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, XMemSrv)
+                             queue_fetch_loop(Source, Target, Cp,
+                                              ChangesManager, OptRepThreshold,
+                                              BatchSize, BatchItems, XMemSrv)
                      end),
 
 
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("create queue_fetch_loop process (pid: ~p) within replicator (pid: ~p) "
-                        "Source: ~p, Target: ~p, ChangesManager: ~p, latency optimized: ~p",
-                        [Pid, Cp, Source#db.name, misc:sanitize_url(Target#httpdb.url), ChangesManager, OptRepThreshold]);
-        _ ->
-            ok
-    end,
+    ?xdcr_trace("create queue_fetch_loop process (pid: ~p) within replicator (pid: ~p) "
+                "Source: ~p, Target: ~p, ChangesManager: ~p, latency optimized: ~p",
+                [Pid, Cp, Source#db.name, misc:sanitize_url(Target#httpdb.url), ChangesManager, OptRepThreshold]),
 
     {ok, Pid}.
 
--spec queue_fetch_loop(#db{}, #httpdb{}, pid(), pid(), integer(), pid() | nil) -> ok.
-queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, nil) ->
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("fetch changes from changes manager at ~p (target: ~p)",
-                        [ChangesManager, misc:sanitize_url(Target#httpdb.url)]);
-        _ ->
-            ok
-    end,
+-spec queue_fetch_loop(#db{}, #httpdb{}, pid(), pid(),
+                       integer(), integer(), integer(), pid() | nil) -> ok.
+queue_fetch_loop(Source, Target, Cp, ChangesManager,
+                 OptRepThreshold, BatchSize, BatchItems, nil) ->
+    ?xdcr_trace("fetch changes from changes manager at ~p (target: ~p)",
+                [ChangesManager, misc:sanitize_url(Target#httpdb.url)]),
     ChangesManager ! {get_changes, self()},
     receive
         {'DOWN', _, _, _, _} ->
@@ -63,7 +59,8 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, nil) ->
             %% use ptr in docinfo to fetch document from storage
             Start = now(),
             {ok, DataRepd} = local_process_batch(
-                               MissingDocInfoList, Cp, Source, Target, #batch{}, nil),
+                               MissingDocInfoList, Cp, Source, Target,
+                               #batch{}, BatchSize, BatchItems, nil),
 
             %% the latency returned should be coupled with batch size, for example,
             %% if we send N docs in a batch, the latency returned to stats should be the latency
@@ -82,25 +79,17 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, nil) ->
                                         worker_item_checked = NumChecked,
                                         worker_item_replicated = NumWritten}}, infinity),
 
-            case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-                1 ->
-                    ?xdcr_debug("Worker reported completion of seq ~p, num docs written: ~p "
-                                "data replicated: ~p bytes, latency: ~p ms.",
-                                [ReportSeq, NumWritten, DataRepd, DocLatency]);
-                _ ->
-                    ok
-            end,
-            queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, nil)
+            ?xdcr_trace("Worker reported completion of seq ~p, num docs written: ~p "
+                        "data replicated: ~p bytes, latency: ~p ms.",
+                        [ReportSeq, NumWritten, DataRepd, DocLatency]),
+            queue_fetch_loop(Source, Target, Cp, ChangesManager,
+                             OptRepThreshold, BatchSize, BatchItems, nil)
     end;
 
-queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, XMemSrv) ->
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("fetch changes from changes manager at ~p (target: ~p)",
-                        [ChangesManager, misc:sanitize_url(Target#httpdb.url)]);
-        _ ->
-            ok
-    end,
+queue_fetch_loop(Source, Target, Cp, ChangesManager,
+                 OptRepThreshold, BatchSize, BatchItems, XMemSrv) ->
+    ?xdcr_trace("fetch changes from changes manager at ~p (target: ~p)",
+                [ChangesManager, misc:sanitize_url(Target#httpdb.url)]),
     ChangesManager ! {get_changes, self()},
     receive
         {'DOWN', _, _, _, _} ->
@@ -114,7 +103,8 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, XMemSrv) -
             %% use ptr in docinfo to fetch document from storage
             Start = now(),
             {ok, DataRepd} = local_process_batch(
-                               MissingDocInfoList, Cp, Source, Target, #batch{}, XMemSrv),
+                               MissingDocInfoList, Cp, Source, Target,
+                               #batch{}, BatchSize, BatchItems, XMemSrv),
 
             %% the latency returned should be coupled with batch size, for example,
             %% if we send N docs in a batch, the latency returned to stats should be the latency
@@ -136,44 +126,35 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, XMemSrv) -
                                         worker_item_checked = NumChecked,
                                         worker_item_replicated = NumWritten}}, infinity),
 
-            case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-                1 ->
-                    ?xdcr_debug("Worker reported completion of seq ~p, num docs written: ~p "
-                                "data replicated: ~p bytes, latency: ~p ms.",
-                                [ReportSeq, NumWritten, DataRepd, DocLatency]);
-                _ ->
-                    ok
-            end,
-            queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold, XMemSrv)
+            ?xdcr_trace("Worker reported completion of seq ~p, num docs written: ~p "
+                        "data replicated: ~p bytes, latency: ~p ms.",
+                        [ReportSeq, NumWritten, DataRepd, DocLatency]),
+            queue_fetch_loop(Source, Target, Cp, ChangesManager,
+                             OptRepThreshold, BatchSize, BatchItems, XMemSrv)
     end.
 
 
-local_process_batch([], _Cp, _Src, _Tgt, #batch{docs = []}, _XMemSrv) ->
+local_process_batch([], _Cp, _Src, _Tgt, #batch{docs = []}, _BatchSize, _BatchItems, _XMemSrv) ->
     {ok, 0};
 local_process_batch([], Cp, #db{} = Source, #httpdb{} = Target,
-                    #batch{docs = Docs, size = Size}, XMemSrv) ->
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            ?xdcr_debug("worker process flushing a batch docs of total size ~p bytes",
-                        [Size]);
-        _ ->
-            ok
-    end,
+                    #batch{docs = Docs, size = Size}, BatchSize, BatchItems, XMemSrv) ->
+    ?xdcr_trace("worker process flushing a batch docs of total size ~p bytes",
+                [Size]),
     ok = flush_docs_helper(Target, Docs, XMemSrv),
-    {ok, DataRepd1} = local_process_batch([], Cp, Source, Target, #batch{}, XMemSrv),
+    {ok, DataRepd1} = local_process_batch([], Cp, Source, Target, #batch{}, BatchSize, BatchItems, XMemSrv),
     {ok, DataRepd1 + Size};
 
 local_process_batch([DocInfo | Rest], Cp, #db{} = Source,
-                    #httpdb{} = Target, Batch, XMemSrv) ->
+                    #httpdb{} = Target, Batch, BatchSize, BatchItems, XMemSrv) ->
     {ok, {_, DocsList, _}} = fetch_doc(
                                       Source, DocInfo, fun local_doc_handler/2,
                                       {Target, [], Cp}),
     {Batch2, DataFlushed} = lists:foldl(
                          fun(Doc, {Batch0, DataFlushed1}) ->
-                                 maybe_flush_docs(Target, Batch0, Doc, DataFlushed1, XMemSrv)
+                                 maybe_flush_docs(Target, Batch0, Doc, DataFlushed1, BatchSize, BatchItems, XMemSrv)
                          end,
                          {Batch, 0}, DocsList),
-    {ok, DataFlushed2} = local_process_batch(Rest, Cp, Source, Target, Batch2, XMemSrv),
+    {ok, DataFlushed2} = local_process_batch(Rest, Cp, Source, Target, Batch2, BatchSize, BatchItems, XMemSrv),
     %% return total data flushed
     {ok, DataFlushed + DataFlushed2}.
 
@@ -187,13 +168,13 @@ local_doc_handler({ok, Doc}, {Target, DocsList, Cp}) ->
 local_doc_handler(_, Acc) ->
     {ok, Acc}.
 
--spec maybe_flush_docs(#httpdb{}, #batch{}, #doc{}, integer(), pid() | nil) ->
+-spec maybe_flush_docs(#httpdb{}, #batch{}, #doc{}, integer(), integer(), integer(), pid() | nil) ->
                               {#batch{}, integer()}.
-maybe_flush_docs(#httpdb{} = Target, Batch, Doc, DataFlushed, nil) ->
-    maybe_flush_docs_capi(Target, Batch, Doc, DataFlushed);
+maybe_flush_docs(#httpdb{} = Target, Batch, Doc, DataFlushed, BatchSize, BatchItems, nil) ->
+    maybe_flush_docs_capi(Target, Batch, Doc, DataFlushed, BatchSize, BatchItems);
 
-maybe_flush_docs(#httpdb{} = _Target, Batch, Doc, DataFlushed, XMemSrv) ->
-    maybe_flush_docs_xmem(XMemSrv, Batch, Doc, DataFlushed).
+maybe_flush_docs(#httpdb{} = _Target, Batch, Doc, DataFlushed, BatchSize, BatchItems, XMemSrv) ->
+    maybe_flush_docs_xmem(XMemSrv, Batch, Doc, DataFlushed, BatchSize, BatchItems).
 
 -spec flush_docs_helper(any(), list(), pid() | nil) -> ok.
 flush_docs_helper(Target, DocsList, nil) ->
@@ -201,13 +182,8 @@ flush_docs_helper(Target, DocsList, nil) ->
 
     case RV of
         ok ->
-            case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-                1 ->
-                    ?xdcr_debug("replication mode: ~p, worker process replicated ~p docs to target ~p",
-                                [RepMode, length(DocsList), misc:sanitize_url(Target#httpdb.url)]);
-                _ ->
-                    ok
-            end,
+            ?xdcr_trace("replication mode: ~p, worker process replicated ~p docs to target ~p",
+                        [RepMode, length(DocsList), misc:sanitize_url(Target#httpdb.url)]),
             ok;
         {failed_write, Error} ->
             ?xdcr_error("replication mode: ~p, unable to replicate ~p docs to target ~p",
@@ -220,13 +196,8 @@ flush_docs_helper(Target, DocsList, XMemSrv) ->
 
     case RV of
         ok ->
-            case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-                1 ->
-                    ?xdcr_debug("replication mode: ~p, worker process replicated ~p docs to target ~p",
-                                [RepMode, length(DocsList), misc:sanitize_url(Target#httpdb.url)]);
-                _ ->
-                    ok
-            end,
+            ?xdcr_trace("replication mode: ~p, worker process replicated ~p docs to target ~p",
+                        [RepMode, length(DocsList), misc:sanitize_url(Target#httpdb.url)]),
             ok;
         {failed_write, Error} ->
             ?xdcr_error("replication mode: ~p, unable to replicate ~p docs to target ~p",
@@ -305,25 +276,20 @@ find_missing(DocInfos, Target, OptRepThreshold, XMemSrv) ->
               end,
 
 
-    case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-        1 ->
-            RepMode = case is_pid(XMemSrv) of
-                          true ->
-                              "xmem";
-                          _ ->
-                              "capi"
-                      end,
-            ?xdcr_debug("[replication mode: ~p] out of all ~p docs, number of small docs (including dels: ~p) is ~p, "
-                        "number of big docs is ~p, threshold is ~p bytes, ~n\t"
-                        "after conflict resolution at target (~p), out of all big ~p docs "
-                        "the number of docs we need to replicate is: ~p; ~n\t "
-                        "total # of docs to be replicated is: ~p, total latency: ~p ms",
-                        [RepMode, AllRevsCount, DelCount, SmallDocCount, BigDocCount, OptRepThreshold,
-                         misc:sanitize_url(Target#httpdb.url), BigDocCount, MissingBigDocCount,
-                         length(MissingDocInfoList), Latency]);
-        _ ->
-            ok
-    end,
+    RepMode = case is_pid(XMemSrv) of
+                  true ->
+                      "xmem";
+                  _ ->
+                      "capi"
+              end,
+    ?xdcr_trace("[replication mode: ~p] out of all ~p docs, number of small docs (including dels: ~p) is ~p, "
+                "number of big docs is ~p, threshold is ~p bytes, ~n\t"
+                "after conflict resolution at target (~p), out of all big ~p docs "
+                "the number of docs we need to replicate is: ~p; ~n\t "
+                "total # of docs to be replicated is: ~p, total latency: ~p ms",
+                [RepMode, AllRevsCount, DelCount, SmallDocCount, BigDocCount, OptRepThreshold,
+                 misc:sanitize_url(Target#httpdb.url), BigDocCount, MissingBigDocCount,
+                 length(MissingDocInfoList), Latency]),
 
     {MissingDocInfoList, Latency, length(SmallDocIdRevs)}.
 
@@ -342,26 +308,24 @@ find_missing_helper(Target, BigDocIdRevs, XMemSrv) ->
 %% ================================================= %%
 %% ========= FLUSHING DOCS USING CAPI ============== %%
 %% ================================================= %%
--spec maybe_flush_docs_capi(#httpdb{}, #batch{}, #doc{}, integer()) -> {#batch{}, integer()}.
-maybe_flush_docs_capi(#httpdb{} = Target, Batch, Doc, DataFlushed) ->
-    #batch{docs = DocAcc, size = SizeAcc} = Batch,
+-spec maybe_flush_docs_capi(#httpdb{}, #batch{}, #doc{},
+                            integer(), integer(), integer()) -> {#batch{}, integer()}.
+maybe_flush_docs_capi(#httpdb{} = Target, Batch, Doc, DataFlushed, BatchSize, BatchItems) ->
+    #batch{docs = DocAcc, size = SizeAcc, items = ItemsAcc} = Batch,
     JsonDoc = couch_doc:to_json_base64(Doc),
 
-    DocBatchSizeByte = xdc_rep_utils:get_replication_batch_size(),
-    case SizeAcc + iolist_size(JsonDoc) of
-        SizeAcc2 when SizeAcc2 > DocBatchSizeByte ->
-            case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-                1 ->
-                    ?xdcr_debug("Worker flushing doc batch of size ~p bytes "
-                                "(batch limit: ~p)", [SizeAcc2, DocBatchSizeByte]);
-                _ ->
-                    ok
-            end,
+    SizeAcc2 = SizeAcc + iolist_size(JsonDoc),
+    ItemsAcc2 = ItemsAcc + 1,
+    case ItemsAcc2 >= BatchItems orelse SizeAcc2 > BatchSize of
+        true ->
+            ?xdcr_trace("Worker flushing ~b docs, batch of size ~b bytes "
+                        "(batch size ~b, batch items ~b)",
+                        [ItemsAcc2, SizeAcc2, BatchSize, BatchItems]),
             flush_docs_capi(Target, [JsonDoc | DocAcc]),
             %% data flushed, return empty batch and size of data flushed
             {#batch{}, SizeAcc2 + DataFlushed};
-        SizeAcc2 ->            %% no data flushed in this turn, return the new batch
-            {#batch{docs = [JsonDoc | DocAcc], size = SizeAcc2}, DataFlushed}
+        false ->            %% no data flushed in this turn, return the new batch
+            {#batch{docs = [JsonDoc | DocAcc], size = SizeAcc2, items = ItemsAcc2}, DataFlushed}
     end.
 
 -spec flush_docs_capi(#httpdb{}, list()) -> ok | {failed_write, term()}.
@@ -397,11 +361,11 @@ flush_docs_xmem(XMemSrv, DocsList) ->
             {failed_write, Msg}
     end.
 
--spec maybe_flush_docs_xmem(pid(), #batch{}, #doc{}, integer()) -> {#batch{}, integer()}.
-maybe_flush_docs_xmem(XMemSrv, Batch, Doc0, DocsFlushed) ->
-    #batch{docs = DocAcc, size = SizeAcc} = Batch,
+-spec maybe_flush_docs_xmem(pid(), #batch{}, #doc{},
+                            integer(), integer(), integer()) -> {#batch{}, integer()}.
+maybe_flush_docs_xmem(XMemSrv, Batch, Doc0, DocsFlushed, BatchSize, BatchItems) ->
+    #batch{docs = DocAcc, size = SizeAcc, items = ItemsAcc} = Batch,
 
-    DocBatchSizeByte = xdc_rep_utils:get_replication_batch_size(),
     %% uncompress it if necessary
     Doc =  couch_doc:with_uncompressed_body(Doc0),
     DocSize = case Doc#doc.deleted of
@@ -411,19 +375,19 @@ maybe_flush_docs_xmem(XMemSrv, Batch, Doc0, DocsFlushed) ->
                       iolist_size(Doc#doc.body)
               end,
 
+    SizeAcc2 = SizeAcc + DocSize,
+    ItemsAcc2 = ItemsAcc + 1,
+
     %% if reach the limit in terms of docs, flush them
-    case SizeAcc + DocSize >= DocBatchSizeByte of
+    case ItemsAcc2 >= BatchItems orelse SizeAcc2 >= BatchSize of
         true ->
-            case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-                1 ->
-                    ?xdcr_debug("Worker flushing doc batch of ~p bytes ", [SizeAcc + DocSize]);
-                _ ->
-                    ok
-            end,
+            ?xdcr_trace("Worker flushing ~b docs, batch of ~p bytes "
+                        "(batch size ~b, batch items ~b)",
+                        [ItemsAcc2, SizeAcc2, BatchSize, BatchItems]),
             DocsList = [Doc| DocAcc],
             ok = flush_docs_xmem(XMemSrv, DocsList),
             %% data flushed, return empty batch and size of # of docs flushed
-            {#batch{}, DocsFlushed + SizeAcc + DocSize};
+            {#batch{}, DocsFlushed + SizeAcc2};
         _ ->            %% no data flushed in this turn, return the new batch
-            {#batch{docs = [Doc | DocAcc], size = SizeAcc + DocSize}, DocsFlushed}
+            {#batch{docs = [Doc | DocAcc], size = SizeAcc2, items = ItemsAcc2}, DocsFlushed}
     end.

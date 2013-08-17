@@ -17,13 +17,15 @@
 -behaviour(gen_server).
 
 %% public functions
--export([start_link/4]).
+-export([start_link/5]).
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 -export([find_missing/2, flush_docs/2, ensure_full_commit/2]).
 -export([connect/2, select_bucket/2, disconnect/1, stop/1]).
 
 -export([find_missing_pipeline/2, flush_docs_pipeline/2]).
+
+-export([format_status/2]).
 
 -include("xdc_replicator.hrl").
 -include("remote_clusters_info.hrl").
@@ -34,11 +36,12 @@
 %% -------------------------------------------------------------------------- %%
 %% ---                         public functions                           --- %%
 %% -------------------------------------------------------------------------- %%
-start_link(Vb, Id, Parent, Options) ->
-    gen_server:start_link(?MODULE, {Vb, Id, Parent, Options}, []).
+start_link(Vb, Id, Parent, LocalConflictResolution, ConnectionTimeout) ->
+    gen_server:start_link(?MODULE, {Vb, Id, Parent,
+                                    LocalConflictResolution, ConnectionTimeout}, []).
 
 %% gen_server behavior callback functions
-init({Vb, Id, Parent, Options}) ->
+init({Vb, Id, Parent, LocalConflictResolution, ConnectionTimeout}) ->
     process_flag(trap_exit, true),
 
     Errs = ringbuffer:new(?XDCR_ERROR_HISTORY),
@@ -46,15 +49,19 @@ init({Vb, Id, Parent, Options}) ->
       id = Id,
       vb = Vb,
       parent_server_pid = Parent,
-      options = Options,
       status  = init,
       statistics = #xdc_vb_rep_xmem_statistics{},
       socket = undefined,
       time_init = calendar:now_to_local_time(erlang:now()),
       time_connected = 0,
-      error_reports = Errs},
+      error_reports = Errs,
+      local_conflict_resolution=LocalConflictResolution,
+      connection_timeout=ConnectionTimeout},
 
     {ok, InitState}.
+
+format_status(Opt, [PDict, State]) ->
+    xdc_rep_utils:sanitize_status(Opt, PDict, State).
 
 -spec select_bucket(pid(), #xdc_rep_xmem_remote{}) -> ok |
                                                       {memcached_error, term(), term()}.
@@ -226,13 +233,15 @@ handle_call({find_missing_pipeline, IdRevs}, _From,
 
 handle_call({flush_docs, DocsList}, _From,
             #xdc_vb_rep_xmem_worker_state{id = Id, vb = VBucket,
-                                          socket = Socket} =  State) ->
+                                          socket = Socket,
+                                          local_conflict_resolution = LocalConflictResolution,
+                                          connection_timeout = ConnectionTimeout} =  State) ->
     TimeStart = now(),
     %% enumerate all docs and update them
     {NumDocsRepd, NumDocsRejected, Errors} =
         lists:foldr(
           fun (#doc{id = Key, rev = Rev} = Doc, {AccRepd, AccRejd, ErrorAcc}) ->
-                  case flush_single_doc(Key, Socket, VBucket, Doc, 2) of
+                  case flush_single_doc(Key, Socket, VBucket, LocalConflictResolution, Doc, 2) of
                       {ok, flushed} ->
                           {(AccRepd + 1), AccRejd, ErrorAcc};
                       {ok, rejected} ->
@@ -250,14 +259,12 @@ handle_call({flush_docs, DocsList}, _From,
     _AvgLatency = TimeSpent div length(DocsList),
 
     %% dump error msg if timeout
-    {value, DefaultConnTimeout} = ns_config:search(xdcr_connection_timeout),
-    DefTimeoutSecs = misc:getenv_int("XDCR_CONNECTION_TIMEOUT", DefaultConnTimeout),
     TimeSpentSecs = TimeSpent div 1000,
-    case TimeSpentSecs > DefTimeoutSecs of
+    case TimeSpentSecs > ConnectionTimeout of
         true ->
             ?xdcr_error("[xmem_worker ~p for vb ~p]: update ~p docs takes too long to finish!"
                         "(total time spent: ~p secs, default connection time out: ~p secs)",
-                        [Id, VBucket, length(DocsList), TimeSpentSecs, DefTimeoutSecs]);
+                        [Id, VBucket, length(DocsList), TimeSpentSecs, ConnectionTimeout]);
         _ ->
             ok
     end,
@@ -280,7 +287,8 @@ handle_call({flush_docs, DocsList}, _From,
 %% ----------- Pipelined Memached Ops --------------%%
 handle_call({flush_docs_pipeline, DocsList}, _From,
             #xdc_vb_rep_xmem_worker_state{id = Id, vb = VBucket,
-                                          socket = Sock} =  State) ->
+                                          socket = Sock,
+                                          connection_timeout = ConnectionTimeout} =  State) ->
     TimeStart = now(),
 
     %% send out all docs
@@ -345,14 +353,12 @@ handle_call({flush_docs_pipeline, DocsList}, _From,
     _AvgLatency = TimeSpent div length(DocsList),
 
     %% dump error msg if timeout
-    {value, DefaultConnTimeout} = ns_config:search(xdcr_connection_timeout),
-    DefTimeoutSecs = misc:getenv_int("XDCR_CONNECTION_TIMEOUT", DefaultConnTimeout),
     TimeSpentSecs = TimeSpent div 1000,
-    case TimeSpentSecs > DefTimeoutSecs of
+    case TimeSpentSecs > ConnectionTimeout of
         true ->
             ?xdcr_error("[xmem_worker ~p for vb ~p]: update ~p docs takes too long to finish!"
                           "(total time spent: ~p secs, default connection time out: ~p secs)",
-                          [Id, VBucket, length(DocsList), TimeSpentSecs, DefTimeoutSecs]);
+                          [Id, VBucket, length(DocsList), TimeSpentSecs, ConnectionTimeout]);
         _ ->
             ok
     end,
@@ -529,20 +535,21 @@ get_remote_meta(Socket, VBucket, Key) ->
             end,
     Reply.
 
--spec flush_single_doc(integer(), inet:socket(), integer(), #doc{}, integer()) -> {ok, flushed}  |
-                                                                                  {ok, rejected} |
-                                                                                  {error, {term(), term()}}.
-flush_single_doc(Id, _Socket, VBucket, #doc{id = DocId} = _Doc, 0) ->
+-spec flush_single_doc(integer(), inet:socket(), integer(), boolean(), #doc{}, integer()) -> {ok, flushed}  |
+                                                                                             {ok, rejected} |
+                                                                                             {error, {term(), term()}}.
+flush_single_doc(Id, _Socket, VBucket, _LocalConflictResolution,
+                 #doc{id = DocId} = _Doc, 0) ->
     ?xdcr_error("[xmem_worker ~p for vb ~p]: Error, unable to flush doc (key: ~p) "
                 "to destination, maximum retry reached.",
                 [Id, VBucket, DocId]),
     {error, {bad_request, max_retry}};
 
-flush_single_doc(Id, Socket, VBucket,
+flush_single_doc(Id, Socket, VBucket, LocalConflictResolution,
                  #doc{id = DocId, rev = DocRev, body = DocValue,
                       deleted = DocDeleted} = Doc, Retry) ->
     {SrcSeqNo, SrcRevId} = DocRev,
-    ConflictRes = case xdc_rep_utils:is_local_conflict_resolution() of
+    ConflictRes = case LocalConflictResolution of
              false ->
                  {key_enoent, "no local conflict resolution, send it optimistically", 0};
              _ ->
@@ -569,7 +576,7 @@ flush_single_doc(Id, Socket, VBucket,
 
     case RV of
         retry ->
-            flush_single_doc(Id, Socket, VBucket, Doc, Retry-1);
+            flush_single_doc(Id, Socket, VBucket, LocalConflictResolution, Doc, Retry-1);
         ok ->
             {ok, flushed};
         {ok, key_eexists} ->

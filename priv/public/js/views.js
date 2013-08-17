@@ -667,7 +667,7 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
 
 
 
-function createRandomDocCells(ns, modeCell) {
+function createRandomDocCells(ns, modeCell, rawDDocIdCell, isROAdminCell) {
   function fetchRandomId(randomKeyURL, dbURL, dataCallback) {
     couchReq('GET', randomKeyURL, null,
              randomKeySuccess, randomKeyError);
@@ -726,7 +726,9 @@ function createRandomDocCells(ns, modeCell) {
 
   // null value of this cells means no docs exist
   ns.randomDocIdCell = Cell.computeEager(function (v) {
-    if (v.need(modeCell) != 'views') {
+    // we only need random doc id if we're on views, if we're on
+    // particular view and if we're not read-only admin
+    if (v.need(isROAdminCell) || v.need(modeCell) != 'views' || !v(rawDDocIdCell)) {
       return;
     }
     var randomIdURL = v.need(ns.viewsBucketInfoCell).localRandomKeyUri;
@@ -862,7 +864,7 @@ var ViewsSection = {
     self.sampleDocumentIdCell = new Cell();
 
     createViewsCells(self, DAL.cells.bucketsListCell, DAL.cells.capiBase, DAL.cells.mode, DAL.cells.tasksProgressCell, DAL.cells.currentPoolDetailsCell);
-    createRandomDocCells(self, DAL.cells.mode);
+    createRandomDocCells(self, DAL.cells.mode, self.rawDDocIdCell, DAL.cells.isROAdminCell);
 
     var viewcodeReduce = $('#viewcode_reduce');
     var viewcodeMap = $('#viewcode_map');
@@ -996,8 +998,12 @@ var ViewsSection = {
         viewsList[(value && !value.length) ? 'show' : 'hide']();
         viewDetails[(value && value.length) ? 'show' : 'hide']();
       }
-      viewCode[(value && value.length) ? 'show' : 'hide']();
-      viewResultsBlock[(value && value.length) ? 'show' : 'hide']();
+      var haveView = value && value.length;
+      // NOTE: normally we'll depend on it through cells magic. But
+      // given it's immutable it should be fine
+      var underROAdmin = DAL.cells.isROAdminCell.value;
+      viewCode[haveView ? 'show' : 'hide']();
+      viewResultsBlock[(haveView && !underROAdmin) ? 'show' : 'hide']();
       if (value && value.length) {
         previewRandomDoc.trigger('click', true);
         self.mapEditor.refresh();

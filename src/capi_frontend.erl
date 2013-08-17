@@ -64,8 +64,7 @@ continue_do_db_req(#httpd{mochi_req=MochiReq, user_ctx=UserCtx,
                            throw({not_found, missing});
                        {ok, X} -> X
                    end,
-    ReadOnlyOk = (Req#httpd.method =:= 'GET'),
-    case menelaus_auth:is_bucket_accessible({ListBucketName, BucketConfig}, MochiReq, ReadOnlyOk) of
+    case menelaus_auth:is_bucket_accessible({ListBucketName, BucketConfig}, MochiReq, false) of
         true ->
             case AfterSlash of
                 [] ->

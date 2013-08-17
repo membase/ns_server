@@ -20,14 +20,12 @@
 -export([parse_rep_doc/2]).
 -export([local_couch_uri_for_vbucket/2]).
 -export([remote_couch_uri_for_vbucket/3, my_active_vbuckets/1]).
--export([parse_rep_db/1,parse_rep_db/3]).
+-export([parse_rep_db/3]).
 -export([split_dbname/1]).
 -export([get_master_db/1, get_checkpoint_log_id/2]).
--export([get_opt_replication_threshold/0]).
--export([update_options/1, get_checkpoint_mode/0]).
--export([get_replication_mode/0, get_replication_batch_size/0]).
--export([is_pipeline_enabled/0, get_trace_dump_invprob/0]).
--export([get_xmem_worker/0, is_local_conflict_resolution/0]).
+-export([get_checkpoint_mode/0]).
+-export([get_trace_dump_invprob/0]).
+-export([sanitize_status/3]).
 
 -include("xdc_replicator.hrl").
 
@@ -57,12 +55,19 @@ my_active_vbuckets(BucketConfig) ->
 %% Parse replication document
 parse_rep_doc(DocId, {Props}) ->
     ProxyParams = parse_proxy_params(get_value(<<"proxy">>, Props, <<>>)),
-    Options = make_options(Props),
+    Options = xdc_settings:get_all_settings_snapshot(Props),
     Source = parse_rep_db(get_value(<<"source">>, Props), ProxyParams, Options),
     Target = parse_rep_db(get_value(<<"target">>, Props), ProxyParams, Options),
+    RepMode = case get_value(<<"type">>, Props) of
+                  <<"xdc">> ->
+                      "capi";
+                  <<"xdc-xmem">> ->
+                      "xmem"
+              end,
     #rep{id = DocId,
          source = Source,
          target = Target,
+         replication_mode = RepMode,
          options = Options}.
 
 parse_proxy_params(ProxyUrl) when is_binary(ProxyUrl) ->
@@ -71,10 +76,6 @@ parse_proxy_params([]) ->
     [];
 parse_proxy_params(ProxyUrl) ->
     [{proxy, ProxyUrl}].
-
-parse_rep_db(Db) ->
-    Options = make_options([]),
-    parse_rep_db(Db, [], Options).
 
 parse_rep_db({Props}, ProxyParams, Options) ->
     Url = maybe_add_trailing_slash(get_value(<<"url">>, Props)),
@@ -123,7 +124,7 @@ parse_rep_db({Props}, ProxyParams, Options) ->
              lhttpc_options = LhttpcOpts,
              timeout = Timeout,
              http_connections = get_value(http_connections, Options),
-             retries = get_value(retries, Options)
+             retries = get_value(retries_per_request, Options)
            };
 parse_rep_db(<<"http://", _/binary>> = Url, ProxyParams, Options) ->
     parse_rep_db({[{<<"url">>, Url}]}, ProxyParams, Options);
@@ -131,64 +132,6 @@ parse_rep_db(<<"https://", _/binary>> = Url, ProxyParams, Options) ->
     parse_rep_db({[{<<"url">>, Url}]}, ProxyParams, Options);
 parse_rep_db(<<DbName/binary>>, _ProxyParams, _Options) ->
     DbName.
-
-make_options(Props) ->
-    Options = lists:ukeysort(1, convert_options(Props)),
-
-    {value, DefaultWorkerBatchSize} = ns_config:search(xdcr_worker_batch_size),
-    DefBatchSize = misc:getenv_int("XDCR_WORKER_BATCH_SIZE", DefaultWorkerBatchSize),
-
-    {value, DefaultConnTimeout} = ns_config:search(xdcr_connection_timeout),
-    DefTimeoutSecs = misc:getenv_int("XDCR_CONNECTION_TIMEOUT", DefaultConnTimeout),
-    %% convert to ms
-    DefTimeout = 1000*DefTimeoutSecs,
-
-    {value, DefaultWorkers} = ns_config:search(xdcr_num_worker_process),
-    DefWorkers = misc:getenv_int("XDCR_NUM_WORKER_PROCESS", DefaultWorkers),
-
-    {value, DefaultConns} = ns_config:search(xdcr_num_http_connections),
-    DefConns = misc:getenv_int("XDCR_NUM_HTTP_CONNECTIONS", DefaultConns),
-
-    {value, DefaultRetries} = ns_config:search(xdcr_num_retries_per_request),
-    DefRetries = misc:getenv_int("XDCR_NUM_RETRIES_PER_REQUEST", DefaultRetries),
-
-    %% todo: XDCR parameters should be consistently from ns_config instead of
-    %% couch_config
-    DefRepModeStr = couch_config:get("replicator", "continuous", "false"),
-    DefRepMode = case DefRepModeStr of
-                     "true" ->
-                         true;
-                     _ ->
-                         false
-                 end,
-
-    {ok, DefSocketOptions} = couch_util:parse_term(
-                               couch_config:get("replicator", "socket_options",
-                                                "[{keepalive, true}, {nodelay, false}]")),
-
-    OptRepThreshold = get_opt_replication_threshold(),
-
-    ?xdcr_debug("Options for replication:["
-                "optimistic replication threshold: ~p bytes, "
-                "worker processes: ~p, "
-                "worker batch size (# of mutations): ~p, "
-                "socket options: ~p "
-                "HTTP connections: ~p, "
-                "connection timeout (ms): ~p,"
-                "num of retries per request: ~p]",
-                [OptRepThreshold, DefWorkers, DefBatchSize, DefSocketOptions, DefConns, DefTimeout, DefRetries]),
-
-    lists:ukeymerge(1, Options, lists:keysort(1, [
-                                                  {connection_timeout, DefTimeout},
-                                                  {retries, DefRetries},
-                                                  {continuous, DefRepMode},
-                                                  {http_connections, DefConns},
-                                                  {socket_options, DefSocketOptions},
-                                                  {worker_batch_size, DefBatchSize},
-                                                  {worker_processes, DefWorkers},
-                                                  {opt_rep_threshold, OptRepThreshold}
-                                                 ])).
-
 
 maybe_add_trailing_slash(Url) when is_binary(Url) ->
     maybe_add_trailing_slash(?b2l(Url));
@@ -229,46 +172,6 @@ ssl_verify_options(true, _OTPVersion) ->
     [{verify, 2}, {cacertfile, CAFile}];
 ssl_verify_options(false, _OTPVersion) ->
     [{verify, 0}].
-
-
-
-convert_options([])->
-    [];
-convert_options([{<<"cancel">>, V} | R]) ->
-    [{cancel, V} | convert_options(R)];
-convert_options([{IdOpt, V} | R]) when IdOpt =:= <<"_local_id">>;
-                                       IdOpt =:= <<"replication_id">>; IdOpt =:= <<"id">> ->
-    Id = lists:splitwith(fun(X) -> X =/= $+ end, ?b2l(V)),
-    [{id, Id} | convert_options(R)];
-convert_options([{<<"create_target">>, V} | R]) ->
-    [{create_target, V} | convert_options(R)];
-convert_options([{<<"continuous">>, V} | R]) ->
-    [{continuous, V} | convert_options(R)];
-convert_options([{<<"query_params">>, V} | R]) ->
-    [{query_params, V} | convert_options(R)];
-convert_options([{<<"doc_ids">>, V} | R]) ->
-    %% Ensure same behaviour as old replicator: accept a list of percent
-    %% encoded doc IDs.
-    DocIds = [?l2b(couch_httpd:unquote(Id)) || Id <- V],
-    [{doc_ids, DocIds} | convert_options(R)];
-convert_options([{<<"worker_processes">>, V} | R]) ->
-    [{worker_processes, couch_util:to_integer(V)} | convert_options(R)];
-convert_options([{<<"worker_batch_size">>, V} | R]) ->
-    [{worker_batch_size, couch_util:to_integer(V)} | convert_options(R)];
-convert_options([{<<"http_connections">>, V} | R]) ->
-    [{http_connections, couch_util:to_integer(V)} | convert_options(R)];
-convert_options([{<<"connection_timeout">>, V} | R]) ->
-    [{connection_timeout, couch_util:to_integer(V)} | convert_options(R)];
-convert_options([{<<"retries_per_request">>, V} | R]) ->
-    [{retries, couch_util:to_integer(V)} | convert_options(R)];
-convert_options([{<<"socket_options">>, V} | R]) ->
-    {ok, SocketOptions} = couch_util:parse_term(V),
-    [{socket_options, SocketOptions} | convert_options(R)];
-convert_options([{<<"since_seq">>, V} | R]) ->
-    [{since_seq, V} | convert_options(R)];
-convert_options([_ | R]) -> %% skip unknown option
-    convert_options(R).
-
 
 get_checkpoint_log_id(#db{name = DbName0}, LogId0) ->
     get_checkpoint_log_id(?b2l(DbName0), LogId0);
@@ -313,159 +216,11 @@ unsplit_uuid({DbName, undefined}) ->
 unsplit_uuid({DbName, UUID}) ->
     DbName ++ ";" ++ UUID.
 
--spec get_opt_replication_threshold() -> integer().
-get_opt_replication_threshold() ->
-    {value, DefaultOptRepThreshold} = ns_config:search(xdcr_optimistic_replication_threshold),
-    Threshold = misc:getenv_int("XDCR_OPTIMISTIC_REPLICATION_THRESHOLD", DefaultOptRepThreshold),
-
-    case Threshold of
-        V when V < 0 ->
-            0;
-        _ ->
-            Threshold
-    end.
-
-%% get xdc replication options, log them if changed
--spec update_options(list()) -> list().
-update_options(Options) ->
-    Threshold = get_opt_replication_threshold(),
-    case length(Options) > 0 andalso Threshold =/= get_value(opt_rep_threshold, Options) of
-        true ->
-            ?xdcr_debug("XDC parameter changed, opt_rep_threshold is updated from ~p to ~p",
-                       [get_value(opt_rep_threshold, Options) , Threshold]);
-        _ ->
-            ok
-    end,
-
-    {value, DefaultWorkerBatchSize} = ns_config:search(xdcr_worker_batch_size),
-    DefBatchSize = misc:getenv_int("XDCR_WORKER_BATCH_SIZE", DefaultWorkerBatchSize),
-    case length(Options) > 0 andalso DefBatchSize =/= get_value(worker_batch_size, Options) of
-        true ->
-            ?xdcr_debug("XDC parameter changed, worker_batch_size is updated from ~p to ~p",
-                       [get_value(worker_batch_size, Options) , DefBatchSize]);
-        _ ->
-            ok
-    end,
-
-    {value, DefaultConnTimeout} = ns_config:search(xdcr_connection_timeout),
-    DefTimeoutSecs = misc:getenv_int("XDCR_CONNECTION_TIMEOUT", DefaultConnTimeout),
-    %% convert to ms
-    DefTimeout = 1000*DefTimeoutSecs,
-    case length(Options) > 0 andalso DefTimeout =/= get_value(connection_timeout, Options) of
-        true ->
-            ?xdcr_debug("XDC parameter changed, connection_timeout is updated from ~p to ~p",
-                       [get_value(connection_timeout, Options) , DefTimeout]);
-        _ ->
-            ok
-    end,
-
-    {value, DefaultWorkers} = ns_config:search(xdcr_num_worker_process),
-    DefWorkers = misc:getenv_int("XDCR_NUM_WORKER_PROCESS", DefaultWorkers),
-    case length(Options) > 0 andalso DefWorkers =/= get_value(worker_processes, Options) of
-        true ->
-            ?xdcr_debug("XDC parameter changed, num_worker_process is updated from ~p to ~p",
-                       [get_value(worker_processes, Options) , DefWorkers]);
-        _ ->
-            ok
-    end,
-
-    {value, DefaultConns} = ns_config:search(xdcr_num_http_connections),
-    DefConns = misc:getenv_int("XDCR_NUM_HTTP_CONNECTIONS", DefaultConns),
-    case length(Options) > 0 andalso DefConns =/= get_value(http_connections, Options) of
-        true ->
-            ?xdcr_debug("XDC parameter changed, http_connections is updated from ~p to ~p",
-                       [get_value(http_connections, Options) , DefConns]);
-        _ ->
-            ok
-    end,
-
-
-    {value, DefaultRetries} = ns_config:search(xdcr_num_retries_per_request),
-    DefRetries = misc:getenv_int("XDCR_NUM_RETRIES_PER_REQUEST", DefaultRetries),
-    case length(Options) > 0 andalso DefRetries =/= get_value(retries, Options) of
-        true ->
-            ?xdcr_debug("XDC parameter changed, num_retries_per_request is updated from ~p to ~p",
-                       [get_value(retries, Options) , DefRetries]);
-        _ ->
-            ok
-    end,
-
-    %% update option list
-    lists:ukeymerge(1, lists:keysort(1, [
-                      {connection_timeout, DefTimeout},
-                      {retries, DefRetries},
-                      {http_connections, DefConns},
-                      {worker_batch_size, DefBatchSize},
-                      {worker_processes, DefWorkers},
-                      {opt_rep_threshold, Threshold}]), Options).
-
--spec get_replication_mode() -> list().
-get_replication_mode() ->
-    EnvVar = case (catch string:to_lower(os:getenv("XDCR_REPLICATION_MODE"))) of
-                 "capi" ->
-                     "capi";
-                 "xmem" ->
-                     "xmem";
-                 _ ->
-                     undefined
-             end,
-
-    %% env var overrides ns_config parameter, use default ns_config parameter
-    %% only when env var is undefined
-    case EnvVar of
-        undefined ->
-            case ns_config:search(xdcr_replication_mode) of
-                {value, DefaultRepMode} ->
-                    DefaultRepMode;
-                false ->
-                    "capi"
-            end;
-        _ ->
-            EnvVar
-    end.
-
--spec get_replication_batch_size() -> integer().
-get_replication_batch_size() ->
-    %% env parameter can override the ns_config parameter
-    {value, DefaultDocBatchSize} = ns_config:search(xdcr_worker_batch_size),
-    DocBatchSize = misc:getenv_int("XDCR_WORKER_BATCH_SIZE", DefaultDocBatchSize),
-    1024*DocBatchSize.
-
--spec is_pipeline_enabled() -> boolean().
-is_pipeline_enabled() ->
-    %% env parameter can override the ns_config parameter
-    {value, EnablePipeline} = ns_config:search(xdcr_enable_pipeline_ops),
-    case os:getenv("XDCR_ENABLE_PIPELINE") of
-        "true" ->
-            true;
-        "false" ->
-            false;
-        _ ->
-            EnablePipeline
-    end.
-
 %% inverse probability to dump non-critical datapath trace,
 %% trace will be dumped by probability 1/N
 -spec get_trace_dump_invprob() -> integer().
 get_trace_dump_invprob() ->
-    %% env parameter can override the ns_config parameter
-    {value, DefInvProb} = ns_config:search(xdcr_trace_dump_inverse_prob),
-    misc:getenv_int("XDCR_TRACE_DUMP_INVERSE_PROB", DefInvProb).
-
--spec get_xmem_worker() -> integer().
-get_xmem_worker() ->
-    %% env parameter can override the ns_config parameter
-    {value, DefNumXMemWorker} = ns_config:search(xdcr_xmem_worker),
-    misc:getenv_int("XDCR_XMEM_WORKER", DefNumXMemWorker).
-
--spec is_local_conflict_resolution() -> boolean().
-is_local_conflict_resolution() ->
-    case ns_config:search(xdcr_local_conflict_resolution) of
-        {value, LocalConflictRes} ->
-            LocalConflictRes;
-        false ->
-            false
-    end.
+    xdc_settings:get_global_setting(trace_dump_invprob).
 
 -spec get_checkpoint_mode() -> list().
 get_checkpoint_mode() ->
@@ -478,4 +233,36 @@ get_checkpoint_mode() ->
         _ ->
             "capi"
     end.
+
+sanitize_url(Url) when is_binary(Url) ->
+    ?l2b(sanitize_url(?b2l(Url)));
+sanitize_url(Url) when is_list(Url) ->
+    I = string:rchr(Url, $@),
+    case I of
+        0 ->
+            Url;
+        _ ->
+            "*****" ++ string:sub_string(Url, I)
+    end;
+sanitize_url(Url) ->
+    Url.
+
+sanitize_state(State) ->
+    misc:rewrite_tuples(fun (T) ->
+                                case T of
+                                    #xdc_rep_xmem_remote{} = Remote ->
+                                        {stop, Remote#xdc_rep_xmem_remote{password = "*****"}};
+                                    #rep_state{} = RepState ->
+                                        {continue,
+                                         RepState#rep_state{target_name = sanitize_url(RepState#rep_state.target_name)}};
+                                    #httpdb{} = HttpDb ->
+                                        {stop,
+                                         HttpDb#httpdb{url = sanitize_url(HttpDb#httpdb.url)}};
+                                    _ ->
+                                        {continue, T}
+                                end
+                        end, State).
+
+sanitize_status(_Opt, _PDict, State) ->
+    [{data, [{"State", sanitize_state(State)}]}].
 
