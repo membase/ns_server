@@ -115,7 +115,15 @@ handle_replication_settings_post(XID, Req) ->
                           true ->
                               menelaus_util:reply_json(Req, [], 200);
                           false ->
-                              ok = xdc_rdoc_replication_srv:update_doc(RepDoc1),
+                              #doc{body={OldProps}} = RepDoc,
+                              #doc{body={NewProps}} = RepDoc1,
+
+                              case lists:keysort(1, OldProps) =:= lists:keysort(1, NewProps) of
+                                  true ->
+                                      ok;
+                                  false ->
+                                      ok = xdc_rdoc_replication_srv:update_doc(RepDoc1)
+                              end,
                               handle_replication_settings_body(RepDoc1, Req)
                       end;
                   {error, Errors} ->
