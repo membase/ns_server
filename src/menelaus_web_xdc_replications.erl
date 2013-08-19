@@ -158,8 +158,13 @@ handle_global_replication_settings_post(Req) ->
 
     case Errors of
         [] ->
-            xdc_settings:update_global_settings(Settings),
-            handle_global_replication_settings(Req);
+            case proplists:get_value("just_validate", Req:parse_qs()) =:= "1" of
+                true ->
+                    menelaus_util:reply_json(Req, [], 200);
+                false ->
+                    xdc_settings:update_global_settings(Settings),
+                    handle_global_replication_settings(Req)
+            end;
         _ ->
             menelaus_util:reply_json(Req, {struct, Errors}, 400)
     end.
