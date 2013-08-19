@@ -111,7 +111,7 @@ parse_rep_db({Props}, ProxyParams, Options) ->
                            ProxyParams
                    end,
     ConnectOpts = get_value(socket_options, Options) ++ ProxyParams2 ++ SslParams,
-    Timeout = get_value(connection_timeout, Options),
+    Timeout = get_value(connection_timeout, Options) * 1000,
     LhttpcOpts = lists:keysort(1, [
                                    {connect_options, ConnectOpts},
                                    {connect_timeout, Timeout},

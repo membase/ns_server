@@ -715,7 +715,7 @@ start_replication(#rep_state{
                "~ca worker batch size of ~p~n"
                "~ca worker batch size (KiB) ~p~n"
                "~c~p HTTP connections~n"
-               "~ca connection timeout of ~p milliseconds~n"
+               "~ca connection timeout of ~p seconds~n"
                "~c~p retries per request~n"
                "~csocket options are: ~s~s",
                [Id, $\t, NumWorkers, $\t, BatchSizeItems, $\t, BatchSizeKB, $\t,
