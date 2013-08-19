@@ -276,6 +276,7 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
         var doc = _.clone(r.doc);
         doc.compactURI = r.controllers.compact;
         doc.isDevModeDoc = isDevModeDoc(doc);
+        doc.canEditDoc = !v.need(DAL.cells.isROAdminCell) && doc.isDevModeDoc;
         return doc;
       });
     } else {

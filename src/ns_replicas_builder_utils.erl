@@ -41,7 +41,7 @@ kill_a_bunch_of_tap_names(Bucket, Node, TapNames) ->
                                                        #mc_entry{key = <<"PLAIN">>,
                                                                  data = <<UserBin/binary, 0:8,
                                                                           UserBin/binary, 0:8,
-                                                                          PassBin/binary, 0:8>>}),
+                                                                          PassBin/binary>>}),
                                    ok = mc_binary:send(Sock, req, #mc_header{opcode = ?CMD_SELECT_BUCKET},
                                                        #mc_entry{key = iolist_to_binary(Bucket)}),
                                    [ok = mc_binary:send(Sock, req, #mc_header{opcode = ?CMD_DEREGISTER_TAP_CLIENT}, #mc_entry{key = TapName})
