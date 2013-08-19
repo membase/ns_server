@@ -111,8 +111,13 @@ handle_replication_settings_post(XID, Req) ->
               Params = Req:parse_post(),
               case update_rdoc_replication_settings(RepDoc, Params) of
                   {ok, RepDoc1} ->
-                      ok = xdc_rdoc_replication_srv:update_doc(RepDoc1),
-                      handle_replication_settings_body(RepDoc1, Req);
+                      case proplists:get_value("just_validate", Req:parse_qs()) =:= "1" of
+                          true ->
+                              menelaus_util:reply_json(Req, [], 200);
+                          false ->
+                              ok = xdc_rdoc_replication_srv:update_doc(RepDoc1),
+                              handle_replication_settings_body(RepDoc1, Req)
+                      end;
                   {error, Errors} ->
                       menelaus_util:reply_json(Req, {struct, Errors}, 400)
               end
