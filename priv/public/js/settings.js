@@ -992,7 +992,7 @@ var AccountManagementSection = {
         }
       }
       if (cred.password !== cred.verifyPassword) {
-        errors.verifyPassword = "Password don't match";
+        errors.verifyPassword = "Password doesn't match";
       }
 
       var isValid = $.isEmptyObject(errors);
