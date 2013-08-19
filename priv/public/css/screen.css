@@ -437,7 +437,8 @@ button#test_email + span {line-height:2.25em;margin-left:0.5em}
 #compaction_container {margin-top:24px}
 #compaction_container fieldset, #sample_buckets_container fieldset{padding:0;margin:0 20px}
 #compaction_container legend, #sample_buckets_container legend{padding-bottom:1em}
-
+#compaction_container .tooltip_msg {line-height: 11px; width: 300px;}
+#compaction_container .tooltip {line-height: 12px; margin-left: 10px;}
 #compaction_container .database, #compaction_container .view { margin-left: 20px; }
 
 #sample_buckets_form p { margin: 10px 0 10px 10px; }
