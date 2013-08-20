@@ -35,6 +35,16 @@
                 admin_pass,
                 write_pending}).
 
+%% state sanitization
+-export([format_status/2]).
+
+format_status(_Opt, [_PDict, State]) ->
+    Buckets = lists:map(fun ({U, _P}) ->
+                                {U, "*****"}
+                        end,
+                        State#state.buckets),
+    State#state{buckets=Buckets, admin_pass="*****"}.
+
 sync() ->
     ns_config:sync_announcements(),
     gen_server:call(?MODULE, sync, infinity).

@@ -18,7 +18,6 @@
 -export([get_global_setting/1, update_global_settings/1,
          get_all_global_settings/0, extract_per_replication_settings/1,
          get_all_settings_snapshot/1, get_all_settings_snapshot_by_doc_id/1,
-         subscribe_to_global_settings_changes/1,
          settings_specs/0, per_replication_settings_specs/0]).
 
 -include("couch_db.hrl").
@@ -66,21 +65,6 @@ get_all_settings_snapshot(Props) ->
 get_all_settings_snapshot_by_doc_id(DocId) when is_binary(DocId) ->
     {ok, #doc{body={Props}}} = xdc_rdoc_replication_srv:get_full_replicator_doc(DocId),
     get_all_settings_snapshot(Props).
-
-subscribe_to_global_settings_changes(InterestedSettings) ->
-    Caller = self(),
-    ns_pubsub:subscribe_link(
-      ns_config_events,
-      fun ({{xdcr, Key}, Value}) ->
-              case lists:member(Key, InterestedSettings) of
-                  true ->
-                      Caller ! {Key, Value};
-                  false ->
-                      ok
-              end;
-          (_) ->
-              ok
-      end).
 
 settings_specs() ->
     [{max_concurrent_reps,              per_replication, {int, 2, 256},              32},

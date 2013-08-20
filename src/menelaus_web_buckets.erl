@@ -120,20 +120,25 @@ build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr) ->
                no_map -> dict:new();
                DV -> DV
            end,
-    add_couch_api_base_loop(Nodes, BucketName, LocalAddr, F, Dict, [], []).
+    add_couch_api_base_loop(Nodes, InfoLevel, BucketName, LocalAddr, F, Dict, [], []).
 
 
-add_couch_api_base_loop([], _BucketName, _LocalAddr, _F, _Dict, CAPINodes, NonCAPINodes) ->
-    misc:shuffle(CAPINodes) ++ NonCAPINodes;
-add_couch_api_base_loop([Node | RestNodes], BucketName, LocalAddr, F, Dict, CAPINodes, NonCAPINodes) ->
+add_couch_api_base_loop([], InfoLevel, _BucketName, _LocalAddr, _F, _Dict, CAPINodes, NonCAPINodes) ->
+    case InfoLevel of
+        stable ->
+            NonCAPINodes ++ CAPINodes;
+        _ ->
+            misc:shuffle(CAPINodes) ++ NonCAPINodes
+    end;
+add_couch_api_base_loop([Node | RestNodes], InfoLevel, BucketName, LocalAddr, F, Dict, CAPINodes, NonCAPINodes) ->
     {struct, KV} = F(Node, BucketName),
     case dict:find(Node, Dict) of
         {ok, V} when V =/= [] ->
             S = {struct, maybe_add_couch_api_base(BucketName, KV, Node, LocalAddr)},
-            add_couch_api_base_loop(RestNodes, BucketName, LocalAddr, F, Dict, [S | CAPINodes], NonCAPINodes);
+            add_couch_api_base_loop(RestNodes, InfoLevel, BucketName, LocalAddr, F, Dict, [S | CAPINodes], NonCAPINodes);
         _ ->
             S = {struct, KV},
-            add_couch_api_base_loop(RestNodes, BucketName, LocalAddr, F, Dict, CAPINodes, [S | NonCAPINodes])
+            add_couch_api_base_loop(RestNodes, InfoLevel, BucketName, LocalAddr, F, Dict, CAPINodes, [S | NonCAPINodes])
     end.
 
 maybe_add_couch_api_base(BucketName, KV, Node, LocalAddr) ->
