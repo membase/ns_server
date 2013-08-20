@@ -809,62 +809,80 @@ couchbase_replication_stats_descriptions(BucketId) ->
                                 [%% first row
                                  {struct,[{title,<<"outbound XDCR mutations">>},
                                           {name,<<Prefix/binary,"changes_left">>},
-                                          {desc,<<"Number of mutations to be replicated to other clusters">>}]},
+                                          {desc,<<"Number of mutations to be replicated to other clusters "
+                                                  "(measured from per-replication stat changes_left)">>}]},
                                  {struct,[{title,<<"mutations checked">>},
                                           {name,<<Prefix/binary,"docs_checked">>},
-                                          {desc,<<"Document mutations checked for XDC replication">>}]},
+                                          {desc,<<"Document mutations checked for XDC replication "
+                                                  "(measured from per-replication stat docs_checked)">>}]},
                                  {struct,[{title,<<"mutations replicated">>},
                                           {name,<<Prefix/binary,"docs_written">>},
-                                          {desc,<<"Document mutations replicated to remote cluster">>}]},
+                                          {desc,<<"Document mutations replicated to remote cluster "
+                                                  "(measured from per-replication stat docs_written)">>}]},
                                  {struct,[{title,<<"data replicated">>},
                                           {name,<<Prefix/binary,"data_replicated">>},
-                                          {desc,<<"Data in bytes replicated to remote cluster">>}]},
+                                          {desc,<<"Data in bytes replicated to remote cluster "
+                                                  "(measured from per-replication stat data_replicated)">>}]},
                                  %% second row
                                  {struct,[{title,<<"active vb reps">>},
                                           {name,<<Prefix/binary,"active_vbreps">>},
-                                          {desc,<<"Number of active vbucket replications">>}]},
+                                          {desc,<<"Number of active vbucket replications "
+                                                  "(measured from per-replication stat active_vbreps)">>}]},
                                  {struct,[{title,<<"waiting vb reps">>},
                                           {name,<<Prefix/binary,"waiting_vbreps">>},
-                                          {desc,<<"Number of waiting vbucket replications">>}]},
+                                          {desc,<<"Number of waiting vbucket replications "
+                                                  "(measured from per-replication stat waiting_vbreps)">>}]},
                                  {struct,[{title,<<"secs in replicating">>},
                                           {name,<<Prefix/binary,"time_working">>},
-                                          {desc,<<"Total time in secs all vb replicators spent checking and writing">>}]},
+                                          {desc,<<"Total time in secs all vb replicators spent checking and writing "
+                                                  "(measured from per-replication stat time_working)">>}]},
                                  {struct,[{title,<<"secs in checkpointing">>},
                                           {name,<<Prefix/binary,"time_committing">>},
-                                          {desc,<<"Total time all vb replicators spent waiting for commit and checkpoint">>}]},
+                                          {desc,<<"Total time all vb replicators spent waiting for commit and checkpoint "
+                                                  "(measured from per-replication stat time_committing)">>}]},
                                  %% third row
                                  {struct,[{title,<<"checkpoints issued">>},
                                           {name,<<Prefix/binary,"num_checkpoints">>},
-                                          {desc,<<"Number of successful checkpoints out of the last 10 issued on each node in current replication">>}]},
+                                          {desc,<<"Number of successful checkpoints out of the last 10 issued on each node in current replication"
+                                                  "(measured from per-replication stat num_checkpoints)">>}]},
                                  {struct,[{title,<<"checkpoints failed">>},
                                           {name,<<Prefix/binary,"num_failedckpts">>},
-                                          {desc,<<"Number of failed checkpoints out of the last 10 issued on each node in current replication">>}]},
+                                          {desc,<<"Number of failed checkpoints out of the last 10 issued on each node in current replication"
+                                                  "(measured from per-replication stat num_failedckpts)">>}]},
                                  {struct,[{title,<<"mutations in queue">>},
                                           {name,<<Prefix/binary,"docs_rep_queue">>},
-                                          {desc,<<"Number of document mutations in XDC replication queue">>}]},
+                                          {desc,<<"Number of document mutations in XDC replication queue "
+                                                  "(measured from per-replication stat docs_rep_queue)">>}]},
                                  {struct,[{title,<<"XDCR queue size">>},
                                           {name,<<Prefix/binary,"size_rep_queue">>},
-                                          {desc,<<"Size in bytes of XDC replication queue">>}]},
+                                          {desc,<<"Size in bytes of XDC replication queue "
+                                                  "(measured from per-replication stat size_rep_queue)">>}]},
                                  %% fourth row
                                  {struct,[{title,<<"mutation replication rate">>},
                                           {name,<<Prefix/binary,"rate_replication">>},
-                                          {desc,<<"Rate of replication in terms of number of replicated mutations per second">>}]},
+                                          {desc,<<"Rate of replication in terms of number of replicated mutations per second "
+                                                  "(measured from per-replication stat rate_replication)">>}]},
                                  {struct,[{title,<<"data replication rate">>},
                                           {name,<<Prefix/binary,"bandwidth_usage">>},
-                                          {desc,<<"Rate of replication in terms of bytes replicated per second">>}]},
+                                          {desc,<<"Rate of replication in terms of bytes replicated per second "
+                                                  "(measured from per-replication stat bandwidth_usage)">>}]},
                                  {struct,[{title,<<"ms meta ops latency">>},
                                           {name,<<Prefix/binary, "wtavg_meta_latency">>},
-                                          {desc,<<"Weighted average latency in ms of sending getMeta and waiting for conflict solution result from remote cluster">>}]},
+                                          {desc,<<"Weighted average latency in ms of sending getMeta and waiting for conflict solution result from remote cluster "
+                                                  "(measured from per-replication stat wtavg_meta_latency)">>}]},
                                  {struct,[{title,<<"ms doc ops latency">>},
                                           {name,<<Prefix/binary, "wtavg_docs_latency">>},
-                                          {desc,<<"Weighted average latency in ms of sending replicated mutations to remote cluster">>}]},
+                                          {desc,<<"Weighted average latency in ms of sending replicated mutations to remote cluster "
+                                                  "(measured from per-replication stat wtavg_docs_latency)">>}]},
                                  %% fifth row
                                  {struct,[{title,<<"mutations replicated optimistically">>},
                                           {name,<<Prefix/binary,"docs_opt_repd">>},
-                                          {desc,<<"Number of mutations optimistically replicated to remote cluster">>}]},
+                                          {desc,<<"Number of mutations optimistically replicated to remote cluster "
+                                                  "(measured from per-replication stat docs_opt_repd)">>}]},
                                  {struct,[{title,<<"percent completed">>},
                                           {name,<<Prefix/binary, "percent_completeness">>},
-                                          {desc,<<"Percentage of checked items out of all checked and to-be-replicated items">>}]}]}]}
+                                          {desc,<<"Percentage of checked items out of all checked and to-be-replicated items "
+                                                  "(measured from per-replication stat percent_completeness)">>}]}]}]}
 
               end, Reps).
 
@@ -964,46 +982,59 @@ membase_stats_description(BucketId) ->
                          {desc,<<"Number of items waiting to be written to disk in this bucket (measured from ep_queue_size+ep_flusher_todo)">>}]},
                 {struct,[{name,<<"couch_docs_data_size">>},
                          {title,<<"docs data size">>},
-                         {desc,<<"The size of active data in this bucket">>}]},
+                         {desc,<<"The size of active data in this bucket "
+                                 "(measured from couch_docs_data_size)">>}]},
                 {struct,[{name,<<"couch_docs_actual_disk_size">>},
                          {title,<<"docs total disk size">>},
-                         {desc,<<"The size of all data files for this bucket, including the data itself, meta data and temporary files.">>}]},
+                         {desc,<<"The size of all data files for this bucket, including the data itself, meta data and temporary files "
+                                 "(measured from couch_docs_actual_disk_size).">>}]},
                 {struct,[{name,<<"couch_docs_fragmentation">>},
                          {title,<<"docs fragmentation %">>},
-                         {desc,<<"How much fragmented data there is to be compacted compared to real data for the data files in this bucket">>}]},
+                         {desc,<<"How much fragmented data there is to be compacted compared to real data for the data files in this bucket "
+                                  "(measured from couch_docs_fragmentation).">>}]},
                 {struct,[{name,<<"couch_total_disk_size">>},
                          {title,<<"total disk size">>},
-                         {desc,<<"The total size on disk of all data and view files for this bucket.)">>}]},
+                         {desc,<<"The total size on disk of all data and view files for this bucket."
+                                 "(measured from couch_total_disk_size).">>}]},
                 {struct,[{name,<<"couch_views_data_size">>},
                          {title,<<"views data size">>},
-                         {desc,<<"The size of active data on for all the indexes in this bucket">>}]},
+                         {desc,<<"The size of active data on for all the indexes in this bucket"
+                                 "(measured from couch_views_data_size).">>}]},
                 {struct,[{name,<<"couch_views_actual_disk_size">>},
                          {title,<<"views total disk size">>},
-                         {desc,<<"The size of all active items in all the indexes for this bucket on disk">>}]},
+                         {desc,<<"The size of all active items in all the indexes for this bucket on disk"
+                                 "(measured from couch_views_actual_disk_size).">>}]},
                 {struct,[{name,<<"couch_views_fragmentation">>},
                          {title,<<"views fragmentation %">>},
-                         {desc,<<"How much fragmented data there is to be compacted compared to real data for the view index files in this bucket">>}]},
+                         {desc,<<"How much fragmented data there is to be compacted compared to real data for the view index files in this bucket"
+                                 "(measured from couch_views_fragmentation).">>}]},
                 {struct,[{name,<<"couch_views_ops">>},
                          {title,<<"view reads per sec.">>},
-                         {desc,<<"All the view reads for all design documents including scatter gather.">>}]},
+                         {desc,<<"All the view reads for all design documents including scatter gather."
+                                 "(measured from couch_views_ops).">>}]},
                 {struct, [{title, <<"disk update time">>},
                           {name, <<"avg_disk_update_time">>},
                           {hidden, true},
-                          {desc, <<"Average disk update time in microseconds as from disk_update histogram of timings">>}]},
+                          {desc, <<"Average disk update time in microseconds as from disk_update histogram of timings"
+                                   "(measured from avg_disk_update_time).">>}]},
                 {struct, [{title, <<"disk commit time">>},
                           {name, <<"avg_disk_commit_time">>},
                           {hidden, true},
-                          {desc, <<"Average disk commit time in seconds as from disk_update histogram of timings">>}]},
+                          {desc, <<"Average disk commit time in seconds as from disk_update histogram of timings"
+                                   "(measured from avg_disk_commit_time).">>}]},
                 {struct, [{title, <<"bg wait time">>},
                           {hidden, true},
                           {name, <<"avg_bg_wait_time">>},
-                          {desc, <<"Alrighty">>}]},
+                          {desc, <<"Average background fetch time in seconds"
+                                   "(measured from avg_bg_wait_time).">>}]},
                 {struct,[{title,<<"incoming XDCR ops/sec.">>},
                          {name,<<"xdc_ops">>},
-                         {desc,<<"Incoming XDCR operations per second for this bucket.">>}]},
+                         {desc,<<"Incoming XDCR operations per second for this bucket "
+                                 "(measured from xdc_ops).">>}]},
                 {struct,[{title,<<"outbound XDCR mutations">>},
                          {name,<<"replication_changes_left">>},
-                         {desc,<<"Number of mutations to be replicated to other clusters">>}]}
+                         {desc,<<"Number of mutations to be replicated to other clusters"
+                                 "(measured from replication_changes_left).">>}]}
              ]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"dynamic_withtotal dynamic_closed">>},
@@ -1235,16 +1266,20 @@ membase_stats_description(BucketId) ->
                      {stats,
                       [{struct,[{title,<<"metadata reads per sec.">>},
                                 {name,<<"ep_num_ops_get_meta">>},
-                                {desc,<<"Number of metadata read operations per second for this bucket as the target for XDCR">>}]},
+                                {desc,<<"Number of metadata read operations per second for this bucket as the target for XDCR "
+                                        "(measured from ep_num_ops_get_meta)">>}]},
                        {struct,[{title,<<"sets per sec.">>},
                                 {name,<<"ep_num_ops_set_meta">>},
-                                {desc,<<"Number of set operations per second for this bucket as the target for XDCR">>}]},
+                                {desc,<<"Number of set operations per second for this bucket as the target for XDCR"
+                                        "(measured from ep_num_ops_set_meta)">>}]},
                        {struct,[{title,<<"deletes per sec.">>},
                                 {name,<<"ep_num_ops_del_meta">>},
-                                {desc,<<"Number of delete operations per second for this bucket as the target for XDCR">>}]},
+                                {desc,<<"Number of delete operations per second for this bucket as the target for XDCR "
+                                        "(measured from ep_num_ops_del_meta)">>}]},
                        {struct,[{title,<<"total ops per sec.">>},
                                 {name,<<"xdc_ops">>},
-                                {desc,<<"Total XDCR operations per second for this bucket.">>}]}]}]}].
+                                {desc,<<"Total XDCR operations per second for this bucket "
+                                        "(measured from xdc_ops).">>}]}]}]}].
 
 
 memcached_stats_description() ->
