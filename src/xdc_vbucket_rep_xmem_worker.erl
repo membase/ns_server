@@ -539,10 +539,10 @@ get_remote_meta(Socket, VBucket, Key) ->
                                                                                              {ok, rejected} |
                                                                                              {error, {term(), term()}}.
 flush_single_doc(Id, _Socket, VBucket, _LocalConflictResolution,
-                 #doc{id = DocId} = _Doc, 0) ->
-    ?xdcr_error("[xmem_worker ~p for vb ~p]: Error, unable to flush doc (key: ~p) "
+                 #doc{id = DocId, deleted = Deleted} = _Doc, 0) ->
+    ?xdcr_error("[xmem_worker ~p for vb ~p]: Error, unable to flush doc (key: ~p, deleted: ~p) "
                 "to destination, maximum retry reached.",
-                [Id, VBucket, DocId]),
+                [Id, VBucket, DocId, Deleted]),
     {error, {bad_request, max_retry}};
 
 flush_single_doc(Id, Socket, VBucket, LocalConflictResolution,
@@ -557,22 +557,39 @@ flush_single_doc(Id, Socket, VBucket, LocalConflictResolution,
          end,
 
     RV = case ConflictRes of
-            {key_enoent, _ErrorMsg, DstCAS} ->
-                flush_single_doc_remote(Socket, VBucket, DocId, DocValue, DocRev, DocDeleted, DstCAS);
-            {not_my_vbucket, _} ->
-                {error, {bad_request, not_my_vbucket}};
-            {ok, {DstSeqNo, DstRevId}, DstCAS} ->
-                DstFullMeta = {DstSeqNo, DstRevId},
-                SrcFullMeta = {SrcSeqNo, SrcRevId},
-                case max(SrcFullMeta, DstFullMeta) of
-                    DstFullMeta ->
-                        ok;
-                    %% replicate src doc to destination, using
-                    %% the same CAS returned from the get_remote_meta() above.
-                    SrcFullMeta ->
-                        flush_single_doc_remote(Socket, VBucket, DocId, DocValue, DocRev, DocDeleted, DstCAS)
-                end
-        end,
+             {key_enoent, _ErrorMsg, DstCAS} ->
+                 flush_single_doc_remote(Socket, VBucket, DocId, DocValue, DocRev, DocDeleted, DstCAS);
+             {not_my_vbucket, _} ->
+                 {error, {bad_request, not_my_vbucket}};
+             {ok, {DstSeqNo, DstRevId}, DstCAS} ->
+                 case DocDeleted of
+                     false ->
+                         %% for non-del mutation, compare full metadata
+                         DstFullMeta = {DstSeqNo, DstRevId},
+                         SrcFullMeta = {SrcSeqNo, SrcRevId},
+                         case max(SrcFullMeta, DstFullMeta) of
+                             DstFullMeta ->
+                                 ok;
+                             %% replicate src doc to destination, using
+                             %% the same CAS returned from the get_remote_meta() above.
+                             SrcFullMeta ->
+                                 flush_single_doc_remote(Socket, VBucket, DocId, DocValue, DocRev, false, DstCAS)
+                         end;
+                     _ ->
+                         %% for deletion, just compare seqno and CAS to match
+                         %% the resolution algorithm in ep_engine:deleteWithMeta
+                         <<SrcCAS:64, _SrcExp:32, _SrcFlg:32>> = SrcRevId,
+                         <<DstCAS:64, _DstExp:32, _DstFlg:32>> = DstRevId,
+                         SrcDelMeta = {SrcSeqNo, SrcCAS},
+                         DstDelMeta = {DstSeqNo, DstCAS},
+                         case max(SrcDelMeta, DstDelMeta) of
+                             DstDelMeta ->
+                                 ok;
+                             _ ->
+                                 flush_single_doc_remote(Socket, VBucket, DocId, DocValue, DocRev, true, DstCAS)
+                         end
+                 end
+         end,
 
     case RV of
         retry ->
