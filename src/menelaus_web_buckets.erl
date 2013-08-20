@@ -123,7 +123,7 @@ build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr) ->
     add_couch_api_base_loop(Nodes, InfoLevel, BucketName, LocalAddr, F, Dict, [], []).
 
 
-add_couch_api_base_loop([], _BucketName, InfoLevel, _LocalAddr, _F, _Dict, CAPINodes, NonCAPINodes) ->
+add_couch_api_base_loop([], InfoLevel, _BucketName, _LocalAddr, _F, _Dict, CAPINodes, NonCAPINodes) ->
     case InfoLevel of
         stable ->
             NonCAPINodes ++ CAPINodes;
