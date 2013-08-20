@@ -93,6 +93,12 @@
 
 -export([stop/0, resave/0, reannounce/0, replace/1]).
 
+%% state sanitization
+-export([format_status/2]).
+
+format_status(_Opt, [_PDict, State]) ->
+    ns_config_log:sanitize(State).
+
 %% API
 
 eval(Fun) ->

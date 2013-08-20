@@ -812,8 +812,6 @@ rewrite_value_int(_Patterns, []) ->
 % cannot use lists:map here because list can be improper
 rewrite_value_int(Patterns, [H|T]) ->
     [rewrite_value_int(Patterns, H)|rewrite_value_int(Patterns, T)];
-rewrite_value_int(Patterns, L) when is_list(L) ->
-    lists:map(fun (V) -> rewrite_value_int(Patterns, V) end, L);
 rewrite_value_int(Patterns, T) when is_tuple(T) ->
     list_to_tuple(rewrite_value_int(Patterns, tuple_to_list(T)));
 rewrite_value_int(_Patterns, X) ->

@@ -27,6 +27,12 @@
 
 -record(state, {buckets=[]}).
 
+%% state sanitization
+-export([format_status/2]).
+
+format_status(_Opt, [_PDict, State]) ->
+    sanitize(State).
+
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
@@ -112,6 +118,8 @@ sanitize(Config) ->
                                         {stop, {password, "*****"}};
                                     {sasl_password, _} ->
                                         {stop, {sasl_password, "*****"}};
+                                    {admin_pass, _} ->
+                                        {stop, {admin_pass, "*****"}};
                                     _ ->
                                         {continue, T}
                                 end
