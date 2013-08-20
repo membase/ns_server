@@ -1895,7 +1895,9 @@ handle_settings_alerts_send_test_email(Req) ->
     PostArgs = Req:parse_post(),
     Subject = proplists:get_value("subject", PostArgs),
     Body = proplists:get_value("body", PostArgs),
-    {ok, Config} = menelaus_alert:parse_settings_alerts_post(PostArgs),
+    PostArgs1 = [{K, V} || {K, V} <- PostArgs,
+                           not lists:member(K, ["subject", "body"])],
+    {ok, Config} = menelaus_alert:parse_settings_alerts_post(PostArgs1),
 
     case ns_mail:send(Subject, Body, Config) of
         {error, _, {_, _, {error, Reason}}} ->
