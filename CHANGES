@@ -5,6 +5,14 @@ This file documents user-visible changes in Couchbase clustering & UI.
 Between versions 2.1.0 and 2.2.0
 -----------------------------------------
 
+* (MB-8801) we introduced the script for resetting administrative
+  password either to automatically generated or to user specified
+  value
+
+  USAGE: make sure that the server is started and then run
+  cbreset_password from the bin directory. the script will
+  guide you through password resetting process
+
 * (MB-8656) we've allowed adding vm flags of child vm via env variable
 
   By setting environment variable COUCHBASE_NS_SERVER_VM_EXTRA_ARGS it
