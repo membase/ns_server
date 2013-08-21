@@ -307,8 +307,15 @@ def correct_split(string, splitchar):
     return rv
 
 def sanitize(text):
-    text = re.sub(r'{sasl_password\s*,(.*)\}', "{sasl_password,\"*****\"}", text)
-    return re.sub(r'{password\s*,(.*)\}', "{password,\"*****\"}", text)
+    patterns = [(r'{sasl_password\s*,(.*)\}', "{sasl_password,\"*****\"}"),
+                (r'{password\s*,(.*)\}', "{password,\"*****\"}"),
+                (r'{pass\s*,(.*)\}', "{pass,\"*****\"}"),
+                (r'{admin_pass\s*,(.*)\}', "{admin_pass,\"*****\"}")]
+
+    for regexp, subst in patterns:
+        text = re.sub(regexp, subst, text)
+
+    return text
 
 def make_product_task(guts, initargs_path):
     root = os.path.abspath(os.path.join(initargs_path, "..", "..", "..", ".."))
