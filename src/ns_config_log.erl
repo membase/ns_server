@@ -120,6 +120,8 @@ sanitize(Config) ->
                                         {stop, {sasl_password, "*****"}};
                                     {admin_pass, _} ->
                                         {stop, {admin_pass, "*****"}};
+                                    {pass, _} ->
+                                        {stop, {pass, "*****"}};
                                     _ ->
                                         {continue, T}
                                 end
