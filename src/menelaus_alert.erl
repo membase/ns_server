@@ -188,8 +188,8 @@ parse_settings_alerts_param("recipients", Rcpts) ->
     [{recipients, [misc:trim(R) || R <- string:tokens(Rcpts, ",")]}];
 parse_settings_alerts_param("sender", Sender) ->
     [{sender, misc:trim(Sender)}];
-parse_settings_alerts_param(_Key, _Value) ->
-    [{error, "Unsupported paramater " ++ _Key ++ " was specified"}].
+parse_settings_alerts_param(Key, _Value) ->
+    [{error, "Unsupported paramater " ++ Key ++ " was specified"}].
 
 %% @doc Return either the updated record, or in case of an error the
 %% error message
