@@ -151,17 +151,27 @@ do_update_replicated_doc_loop(Bucket, VBucket, Doc0) ->
             {memcached_error, not_my_vbucket, _} ->
                 {error, {bad_request, not_my_vbucket}};
             {ok, {OurSeqNo, OurRevId}, LocalCAS} ->
-                RemoteFullMeta = {DocSeqNo, DocRevId},
-                LocalFullMeta = {OurSeqNo, OurRevId},
-                case max(LocalFullMeta, RemoteFullMeta) of
+                {RemoteMeta, LocalMeta} =
+                    case DocDeleted of
+                        false ->
+                            %% for non-del mutation, compare full metadata
+                            {{DocSeqNo, DocRevId}, {OurSeqNo, OurRevId}};
+                        _ ->
+                            %% for deletion, just compare seqno and CAS to match
+                            %% the resolution algorithm in ep_engine:deleteWithMeta
+                            <<DocCAS:64, _DocExp:32, _DocFlg:32>> = DocRevId,
+                            <<OurCAS:64, _OurExp:32, _OurFlg:32>> = OurRevId,
+                            {{DocSeqNo, DocCAS}, {OurSeqNo, OurCAS}}
+                    end,
+                case max(LocalMeta, RemoteMeta) of
                     %% if equal, prefer LocalMeta since in this case, no need
                     %% to replicate the remote item, hence put LocalMeta before
                     %% RemoteMeta.
-                    LocalFullMeta ->
+                    LocalMeta ->
                         ok;
                     %% if remoteMeta wins, need to persist the remote item, using
                     %% the same CAS returned from the get_meta() above.
-                    RemoteFullMeta ->
+                    RemoteMeta ->
                         update_locally(Bucket, DocId, VBucket, DocValue, DocRev, DocDeleted, LocalCAS)
                 end
         end,
