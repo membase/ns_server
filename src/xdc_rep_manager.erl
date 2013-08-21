@@ -178,7 +178,7 @@ process_update({Change}, State) ->
 %% monitor replication doc change. msg rep_db_udpate will be sent to
 %% XDCR manager if rep doc is changed.
 changes_feed_loop() ->
-    {ok, RepDb} = ensure_rep_db_exists(),
+    {ok, RepDb} = open_or_create_replicator_db(),
     RepDbName = couch_db:name(RepDb),
     couch_db:close(RepDb),
     Server = self(),
@@ -213,9 +213,39 @@ changes_feed_loop() ->
            ),
     {Pid, RepDbName}.
 
+maybe_cleanup_replicator_db(DbName) ->
+    case couch_db:open_int(DbName, []) of
+        {ok, Db} ->
+            {ok, Info} = couch_db:get_db_info(Db),
+            couch_db:close(Db),
+
+            case couch_util:get_value(doc_count, Info) > 0 of
+                true ->
+                    ?xdcr_debug("Replicator db is a leftover from the previous installation. Delete."),
+                    couch_server:delete(DbName, []);
+                false ->
+                    ok
+            end;
+        _ ->
+            ok
+    end.
+
 %% make sure the replication db exists in couchdb
-ensure_rep_db_exists() ->
+%% and it is not a leftover from the previous installation
+open_or_create_replicator_db() ->
     DbName = <<"_replicator">>,
+
+    case menelaus_web:is_system_provisioned() of
+        true ->
+            ok;
+        false ->
+            ok = maybe_cleanup_replicator_db(DbName)
+    end,
+
+    %% it's unclear why all this UserCtx magic is needed especially
+    %% considering that similar code in xdc_rdoc_replication_srv doesn't have it
+    %% but since we are planning to get rid of _replicator db altogether
+    %% I'll leave it intact for now
     UserCtx = #user_ctx{roles = [<<"_admin">>, <<"_replicator">>]},
     case couch_db:open_int(DbName, [sys_db, {user_ctx, UserCtx}]) of
         {ok, Db} ->
@@ -225,7 +255,6 @@ ensure_rep_db_exists() ->
             {ok, Db} = couch_db:create(DbName, [sys_db, {user_ctx, UserCtx}])
     end,
     {ok, Db}.
-
 
 has_valid_rep_id({Change}) ->
     has_valid_rep_id(get_value(<<"id">>, Change));
