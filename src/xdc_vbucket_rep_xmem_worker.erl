@@ -209,10 +209,10 @@ handle_call({find_missing_pipeline, IdRevs}, _From,
                                                   _ ->
                                                       false
                                               end;
-                                          {error, Error, Msg} ->
-                                              ?xdcr_error("Error! err ~p (error msg: ~p) found in replication, "
-                                                          "abort the worker thread", [Error, Msg]),
-                                              throw({bad_request, Error, Msg})
+                                          {error, Msg} ->
+                                              ?xdcr_error("Error! (memcached error msg: ~p) found in replication, "
+                                                          "abort the worker thread", [Msg]),
+                                              throw({bad_request, memcached_error, Msg})
                                       end,
                             case Missing of
                                 true ->
@@ -319,27 +319,27 @@ handle_call({flush_docs_pipeline, DocsList}, _From,
             end),
 
     %% receive all responses
-    {Flushed, Enoent, Eexist, NotMyVb, Einval, Timeout, ErrorKeys} =
+    {Flushed, Enoent, Eexist, NotMyVb, Einval, OtherErr, ErrorKeys} =
         lists:foldr(fun(#doc{id = Key} = _Doc,
-                        {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc, TimeoutAcc, KeysAcc}) ->
+                        {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc, OtherErrAcc, KeysAcc}) ->
                             case get_flush_response_pipeline(Sock, VBucket) of
                                 {ok, _, _} ->
-                                    {FlushedAcc + 1, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc, TimeoutAcc,
+                                    {FlushedAcc + 1, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc, OtherErrAcc,
                                      KeysAcc};
                                 {memcached_error, key_enoent, _} ->
-                                    {FlushedAcc, EnoentAcc + 1, EexistsAcc, NotMyVbAcc, EinvalAcc, TimeoutAcc,
+                                    {FlushedAcc, EnoentAcc + 1, EexistsAcc, NotMyVbAcc, EinvalAcc, OtherErrAcc,
                                     lists:append(KeysAcc, [Key])};
                                 {memcached_error, key_eexists, _} ->
-                                    {FlushedAcc, EnoentAcc, EexistsAcc + 1, NotMyVbAcc, EinvalAcc, TimeoutAcc,
+                                    {FlushedAcc, EnoentAcc, EexistsAcc + 1, NotMyVbAcc, EinvalAcc, OtherErrAcc,
                                      lists:append(KeysAcc, [Key])};
                                 {memcached_error, not_my_vbucket, _} ->
-                                    {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc + 1, EinvalAcc, TimeoutAcc,
+                                    {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc + 1, EinvalAcc, OtherErrAcc,
                                      lists:append(KeysAcc, [Key])};
                                 {memcached_error, einval, _} ->
-                                    {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc + 1, TimeoutAcc,
+                                    {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc + 1, OtherErrAcc,
                                      lists:append(KeysAcc, [Key])};
-                                {memcached_error, timeout, _} ->
-                                    {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc, TimeoutAcc + 1,
+                                {memcached_error, error, _} ->
+                                    {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc, OtherErrAcc + 1,
                                      lists:append(KeysAcc, [Key])}
                             end
                     end,
@@ -371,18 +371,18 @@ handle_call({flush_docs_pipeline, DocsList}, _From,
             _ ->
                 %% for some reason we can only return one error. Thus
                 %% we're logging everything else here
-                ?xdcr_error("out of ~p docs, succ to flush ~p docs, fail to flush others "
-                            "(by error type, enoent: ~p, not-my-vb: ~p, einval: ~p, timeout: ~p~n"
-                            "list of keys with errors: ~p",
-                            [DocsListSize, (Flushed + Eexist), Enoent, NotMyVb, Einval, Timeout,
-                             ErrorKeys]),
+                ?xdcr_error("out of ~p docs, succ to send ~p docs, fail to send others "
+                            "(by error type, enoent: ~p, not-my-vb: ~p, einval: ~p, other errors"
+                            "(including timeout): ~p",
+                            [DocsListSize, (Flushed + Eexist), Enoent, NotMyVb, Einval, OtherErr]),
 
-                %% stop replicator if two many memacched errors
+                %% stop replicator if too many memacched errors
                  case (Flushed + Eexist + ?XDCR_XMEM_MEMCACHED_ERRORS) > DocsListSize of
                     true ->
                          {reply, {ok, Flushed, Eexist}, State};
                      _ ->
-                         {stop, {error, {Flushed, Eexist, Enoent, NotMyVb, Einval, Timeout}}, State}
+                         ErrorStat = [Flushed, Eexist, Enoent, NotMyVb, Einval, OtherErr],
+                         {stop, {error, {ErrorStat, ErrorKeys}}, State}
                  end
         end,
     RV;
@@ -431,7 +431,6 @@ handle_cast(Msg, #xdc_vb_rep_xmem_worker_state{id = Id, vb = Vb} = State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-
 terminate(Reason, State) when Reason == normal orelse Reason == shutdown ->
     terminate_cleanup(State);
 
@@ -439,8 +438,8 @@ terminate(Reason, #xdc_vb_rep_xmem_worker_state{vb = Vb,
                                                 id = Id,
                                                 parent_server_pid = Par} = State) ->
     report_error(Reason, Vb, Par),
-    ?xdcr_error("[xmem_worker ~p for vb ~p]: Shutting xmem worker for reason: ~p",
-                [Id, Vb, Reason]),
+    ?xdcr_error("[xmem_worker ~p for vb ~p]: shutdown xmem worker, error reported to "
+                "parent xmem srv: ~p", [Id, Vb, Par]),
     terminate_cleanup(State),
     ok.
 
@@ -458,7 +457,8 @@ report_error(Err, Vb, Parent) ->
      %% return raw erlang time to make it sortable
     RawTime = erlang:localtime(),
     Time = misc:iso_8601_fmt(RawTime),
-    String = iolist_to_binary(io_lib:format("~s - Error replicating vbucket ~p: ~p",
+    String = iolist_to_binary(io_lib:format("~s - [XMEM worker] Error replicating "
+                                            "vbucket ~p: ~p",
                                             [Time, Vb, Err])),
     gen_server:cast(Parent, {report_error, {RawTime, String}}).
 
@@ -663,7 +663,7 @@ wait_priority_checkpoint_persisted(Socket, Bucket, VBucket, CheckpointId) ->
 -spec receive_remote_meta_pipeline(inet:socket(), integer()) ->
                                           {ok, term(), term()} |
                                           {key_enoent, list(), term()} |
-                                          {error, term(), term()}.
+                                          {error, list()}.
 receive_remote_meta_pipeline(Sock, VBucket) ->
     Response = mc_binary:recv(Sock, res, ?XDCR_XMEM_CONNECTION_TIMEOUT),
     Raw = case Response of
@@ -674,18 +674,22 @@ receive_remote_meta_pipeline(Sock, VBucket) ->
                   RevId = <<CAS:64/big, Expiration:32/big, ItemFlags:32/big>>,
                   RemoteRev = {SeqNo, RevId},
                   {ok, RemoteRev, CAS, MetaFlags};
+
               %% key not found, which is Ok if replicating new items
               {ok, #mc_header{status=?KEY_ENOENT}, #mc_entry{cas=CAS}} ->
                   {ok, key_enoent, CAS};
-              %% if timeout
+
+              %% unexpected response returned by remote memcached, treat it as error
+              {ok, #mc_header{status=OtherResponse}, #mc_entry{cas=_CAS}} ->
+                  {memcached_error,
+                   ?format_msg("unexpected response from remote memcached "
+                               "(vb: ~p, status code: ~p, error: ~p)",
+                               [VBucket, OtherResponse, mc_client_binary:map_status(OtherResponse)])};
+
+              %% if timeout, treat it as error
               {error, timeout} ->
-                  {memcached_error, timeout, ?format_msg("remote memcached timeout at sock: ~p, vb: ~p",
-                                                         [Sock, VBucket])};
-              %% other errors
-              Response ->
-                  ?xdcr_error("unrecognized response from memcached: ~p (sock: ~p, vb: ~p),",
-                              [Response, Sock, VBucket]),
-                  mc_client_binary:process_error_response(Response)
+                  {memcached_error, ?format_msg("remote memcached timeout at sock: ~p, vb: ~p",
+                                                [Sock, VBucket])}
           end,
 
     Reply = case Raw of
@@ -693,13 +697,8 @@ receive_remote_meta_pipeline(Sock, VBucket) ->
                     {ok, RemoteFullMeta, RemoteCAS};
                 {ok, key_enoent, RemoteCAS} ->
                     {key_enoent, "key does not exist at remote", RemoteCAS};
-                {memcached_error, not_my_vbucket, _} ->
-                    ErrorMsg = ?format_msg("remote_memcached_error: not my vbucket (vb: ~p)", [VBucket]),
-                    {error, not_my_vbucket, ErrorMsg};
-                {memcached_error, Status, Msg} ->
-                    ErrorMsg = ?format_msg("remote_memcached_error: status ~p, msg: ~p (vb: ~p)",
-                                           [Status, Msg, VBucket]),
-                    {error, memcached_error, ErrorMsg}
+                {memcached_error, ErrorMsg} ->
+                    {error, ErrorMsg}
             end,
     Reply.
 
@@ -725,13 +724,15 @@ get_flush_response_pipeline(Sock, VBucket) ->
                     {memcached_error, not_my_vbucket, CAS};
                 {ok, #mc_header{status=?EINVAL}, #mc_entry{cas = CAS} = _McBody} ->
                     {memcached_error, einval, CAS};
+                %% unexpected response returned by remote memcached, treat it as error
+                {ok, #mc_header{status=OtherResponse}, #mc_entry{cas=_CAS}} ->
+                    {memcached_error, error,
+                     ?format_msg("unexpected response from remote memcached (vb: ~p, status code: ~p, error: ~p)",
+                                 [VBucket, OtherResponse, mc_client_binary:map_status(OtherResponse)])};
+
                 {error, timeout} ->
-                    {memcached_error, timeout, ?format_msg("remote memcached timeout at sock ~p, vb: ~p",
-                                                           [Sock, VBucket])};
-                Response ->
-                    ?xdcr_error("unrecognized response from memcached: ~p (sock: ~p, vb: ~p),",
-                                [Response, Sock, VBucket]),
-                    mc_client_binary:process_error_response(Response)
+                    {memcached_error, error, ?format_msg("remote memcached timeout at sock ~p, vb: ~p",
+                                                           [Sock, VBucket])}
             end,
     Reply.
 
