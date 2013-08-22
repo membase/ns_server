@@ -2813,7 +2813,7 @@ build_internal_settings_kvs() ->
                {{xdcr, worker_batch_size}, xdcrWorkerBatchSize, 500},
                {{xdcr, doc_batch_size_kb}, xdcrDocBatchSizeKb, 2048},
                {{xdcr, failure_restart_interval}, xdcrFailureRestartInterval, 30},
-               {{xdcr, optimistic_replication_threshold}, xdcrOptimisticReplicationThreshold, <<>>},
+               {{xdcr, optimistic_replication_threshold}, xdcrOptimisticReplicationThreshold, 256},
                {{request_limit, rest}, restRequestLimit, <<>>},
                {{request_limit, capi}, capiRequestLimit, <<>>},
                {drop_request_memory_threshold_mib, dropRequestMemoryThresholdMiB, <<>>}],
