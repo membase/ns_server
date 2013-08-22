@@ -191,13 +191,7 @@ load_local_docs(Db) ->
     {ok, Docs}.
 
 open_local_db() ->
-    case couch_db:open(<<"_replicator">>, []) of
-        {ok, Db} ->
-            {ok, Db};
-        {not_found, _} ->
-            couch_db:create(<<"_replicator">>, [])
-    end.
-
+    couch_db:open_int(<<"_replicator">>, []).
 
 -spec find_all_replication_docs() -> [Doc :: [{Key :: atom(), Value :: _}]].
 find_all_replication_docs() ->

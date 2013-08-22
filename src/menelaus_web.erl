@@ -1959,7 +1959,7 @@ reset_admin_password(Password) ->
             ok = ns_config:set(rest_creds, [{creds,
                                              [{User, [{password, Password}]}]}]),
 
-            {ok, ?l2b(io_lib:format("Password for user ~s was succesfully replaced.", [User]))}
+            {ok, ?l2b(io_lib:format("Password for user ~s was successfully replaced.", [User]))}
     end.
 
 
