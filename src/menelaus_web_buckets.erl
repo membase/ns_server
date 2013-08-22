@@ -738,11 +738,11 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                            end;
                        sasl ->
                            SaslPassword = proplists:get_value("saslPassword", Params, ""),
-                           case couch_util:validate_utf8(SaslPassword) of
-                               true ->
+                           case validate_bucket_password(SaslPassword) of
+                               ok ->
                                    {ok, sasl_password, SaslPassword};
-                               _ ->
-                                   {error, saslPassword, <<"bucket password has to be valid utf8">>}
+                               {error, Error} ->
+                                   {error, saslPassword, Error}
                            end
                    end,
                    parse_validate_ram_quota(proplists:get_value("ramQuotaMB", Params),
@@ -837,6 +837,18 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                  end,
     {[{K,V} || {ok, K, V} <- Candidates],
      [{K,V} || {error, K, V} <- Candidates]}.
+
+validate_bucket_password(Password) ->
+    case lists:all(
+           fun (C) ->
+                   C > 32 andalso C =/= 127
+           end, Password) andalso couch_util:validate_utf8(Password) of
+        true ->
+            ok;
+        false ->
+            {error, <<"Bucket password must not contain control characters, "
+                      "spaces and has to be a valid utf8">>}
+    end.
 
 -define(PRAM(K, KO), {KO, V#ram_summary.K}).
 ram_summary_to_proplist(V) ->
