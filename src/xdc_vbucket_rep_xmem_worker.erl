@@ -209,10 +209,14 @@ handle_call({find_missing_pipeline, IdRevs}, _From,
                                                   _ ->
                                                       false
                                               end;
-                                          {error, Msg} ->
-                                              ?xdcr_error("Error! (memcached error msg: ~p) found in replication, "
-                                                          "abort the worker thread", [Msg]),
-                                              throw({bad_request, memcached_error, Msg})
+                                          {timeout, ErrorMsg} ->
+                                              ?xdcr_trace("Warning! timeout when fetching metadata from remote for key: ~p, "
+                                                          "just send the doc (msg: ~p)", [Key, ErrorMsg]),
+                                              true;
+                                          {error, ErrorMsg} ->
+                                              ?xdcr_error("Error! memcached error when fetching metadata for key: ~p, "
+                                                          "just send the doc (msg: ~p)", [Key, ErrorMsg]),
+                                              true
                                       end,
                             case Missing of
                                 true ->
@@ -319,31 +323,34 @@ handle_call({flush_docs_pipeline, DocsList}, _From,
             end),
 
     %% receive all responses
-    {Flushed, Enoent, Eexist, NotMyVb, Einval, OtherErr, ErrorKeys} =
+    {Flushed, Enoent, Eexist, NotMyVb, Einval, Timeout, OtherErr, ErrorKeys} =
         lists:foldr(fun(#doc{id = Key} = _Doc,
-                        {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc, OtherErrAcc, KeysAcc}) ->
+                        {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc, TimeoutAcc, OtherErrAcc, KeysAcc}) ->
                             case get_flush_response_pipeline(Sock, VBucket) of
                                 {ok, _, _} ->
-                                    {FlushedAcc + 1, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc, OtherErrAcc,
+                                    {FlushedAcc + 1, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc, TimeoutAcc, OtherErrAcc,
                                      KeysAcc};
                                 {memcached_error, key_enoent, _} ->
-                                    {FlushedAcc, EnoentAcc + 1, EexistsAcc, NotMyVbAcc, EinvalAcc, OtherErrAcc,
-                                    lists:append(KeysAcc, [Key])};
+                                    {FlushedAcc, EnoentAcc + 1, EexistsAcc, NotMyVbAcc, EinvalAcc, TimeoutAcc, OtherErrAcc,
+                                     [Key | KeysAcc]};
                                 {memcached_error, key_eexists, _} ->
-                                    {FlushedAcc, EnoentAcc, EexistsAcc + 1, NotMyVbAcc, EinvalAcc, OtherErrAcc,
-                                     lists:append(KeysAcc, [Key])};
+                                    {FlushedAcc, EnoentAcc, EexistsAcc + 1, NotMyVbAcc, EinvalAcc, TimeoutAcc, OtherErrAcc,
+                                     [Key | KeysAcc]};
                                 {memcached_error, not_my_vbucket, _} ->
-                                    {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc + 1, EinvalAcc, OtherErrAcc,
-                                     lists:append(KeysAcc, [Key])};
+                                    {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc + 1, EinvalAcc, TimeoutAcc, OtherErrAcc,
+                                     [Key | KeysAcc]};
                                 {memcached_error, einval, _} ->
-                                    {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc + 1, OtherErrAcc,
-                                     lists:append(KeysAcc, [Key])};
+                                    {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc + 1, TimeoutAcc, OtherErrAcc,
+                                     [Key | KeysAcc]};
+                                {memcached_error, timeout, _} ->
+                                    {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc, TimeoutAcc + 1, OtherErrAcc,
+                                     [Key | KeysAcc]};
                                 {memcached_error, error, _} ->
-                                    {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc, OtherErrAcc + 1,
-                                     lists:append(KeysAcc, [Key])}
+                                    {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc, TimeoutAcc, OtherErrAcc + 1,
+                                     [Key | KeysAcc]}
                             end
                     end,
-                    {0, 0, 0, 0, 0, 0, []}, DocsList),
+                    {0, 0, 0, 0, 0, 0, 0, []}, DocsList),
 
     erlang:unlink(Pid),
     erlang:exit(Pid, kill),
@@ -372,18 +379,18 @@ handle_call({flush_docs_pipeline, DocsList}, _From,
                 %% for some reason we can only return one error. Thus
                 %% we're logging everything else here
                 ?xdcr_error("out of ~p docs, succ to send ~p docs, fail to send others "
-                            "(by error type, enoent: ~p, not-my-vb: ~p, einval: ~p, other errors"
-                            "(including timeout): ~p",
-                            [DocsListSize, (Flushed + Eexist), Enoent, NotMyVb, Einval, OtherErr]),
+                            "(by error type, enoent: ~p, not-my-vb: ~p, einval: ~p, timeout: ~p "
+                            "other errors: ~p",
+                            [DocsListSize, (Flushed + Eexist), Enoent, NotMyVb, Einval, Timeout, OtherErr]),
 
                 %% stop replicator if too many memacched errors
-                 case (Flushed + Eexist + ?XDCR_XMEM_MEMCACHED_ERRORS) > DocsListSize of
+                case (Flushed + Eexist + ?XDCR_XMEM_MEMCACHED_ERRORS) > DocsListSize of
                     true ->
-                         {reply, {ok, Flushed, Eexist}, State};
-                     _ ->
-                         ErrorStat = [Flushed, Eexist, Enoent, NotMyVb, Einval, OtherErr],
-                         {stop, {error, {ErrorStat, ErrorKeys}}, State}
-                 end
+                        {reply, {ok, Flushed, Eexist}, State};
+                    _ ->
+                        ErrorStat = [Flushed, Eexist, Enoent, NotMyVb, Einval, Timeout, OtherErr],
+                        {stop, {error, {ErrorStat, ErrorKeys}}, State}
+                end
         end,
     RV;
 
@@ -703,9 +710,9 @@ receive_remote_meta_pipeline(Sock, VBucket) ->
                                "(vb: ~p, status code: ~p, error: ~p)",
                                [VBucket, OtherResponse, mc_client_binary:map_status(OtherResponse)])};
 
-              %% if timeout, treat it as error
+              %% if timeout when fetching remote metadata, treat it as local wins and just send the doc
               {error, timeout} ->
-                  {memcached_error, ?format_msg("remote memcached timeout at sock: ~p, vb: ~p",
+                  {timeout, ?format_msg("remote memcached timeout when retrieving metadata at sock: ~p, vb: ~p",
                                                 [Sock, VBucket])}
           end,
 
@@ -714,6 +721,9 @@ receive_remote_meta_pipeline(Sock, VBucket) ->
                     {ok, RemoteFullMeta, RemoteCAS};
                 {ok, key_enoent, RemoteCAS} ->
                     {key_enoent, "key does not exist at remote", RemoteCAS};
+                %% if timeout in retreiving metadata, we just send the doc optimistically
+                {timeout, ErrorMsg} ->
+                    {timeout, ErrorMsg};
                 {memcached_error, ErrorMsg} ->
                     {error, ErrorMsg}
             end,
@@ -748,7 +758,7 @@ get_flush_response_pipeline(Sock, VBucket) ->
                                  [VBucket, OtherResponse, mc_client_binary:map_status(OtherResponse)])};
 
                 {error, timeout} ->
-                    {memcached_error, error, ?format_msg("remote memcached timeout at sock ~p, vb: ~p",
+                    {memcached_error, timeout, ?format_msg("remote memcached timeout when flushing data at sock ~p, vb: ~p",
                                                            [Sock, VBucket])}
             end,
     Reply.
