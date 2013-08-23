@@ -1811,11 +1811,18 @@ validate_cred(Username, username) ->
     V orelse
         <<"The username must not contain spaces, control or any of ()<>@,;:\\\"/[]?={} characters and must be valid utf8">>.
 
+is_port_free("SAME") ->
+    true;
+is_port_free(Port) ->
+    ns_bucket:is_port_free(list_to_integer(Port)).
+
 validate_settings(Port, U, P) ->
     case lists:all(fun erlang:is_list/1, [Port, U, P]) of
         false -> [<<"All parameters must be given">>];
         _ -> Candidates = [is_valid_port_number(Port)
                            orelse <<"Port must be a positive integer less than 65536">>,
+                           is_port_free(Port)
+                           orelse <<"Port is already in use">>,
                            case {U, P} of
                                {[], _} -> <<"Username and password are required.">>;
                                {[_Head | _], P} ->
@@ -2835,7 +2842,7 @@ build_internal_settings_kvs() ->
                {{xdcr, worker_batch_size}, xdcrWorkerBatchSize, 500},
                {{xdcr, doc_batch_size_kb}, xdcrDocBatchSizeKb, 2048},
                {{xdcr, failure_restart_interval}, xdcrFailureRestartInterval, 30},
-               {{xdcr, optimistic_replication_threshold}, xdcrOptimisticReplicationThreshold, <<>>},
+               {{xdcr, optimistic_replication_threshold}, xdcrOptimisticReplicationThreshold, 256},
                {{request_limit, rest}, restRequestLimit, <<>>},
                {{request_limit, capi}, capiRequestLimit, <<>>},
                {drop_request_memory_threshold_mib, dropRequestMemoryThresholdMiB, <<>>}],

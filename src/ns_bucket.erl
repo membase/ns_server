@@ -37,8 +37,8 @@
          couchbase_bucket_exists/1,
          get_buckets/0,
          get_buckets/1,
-         is_open_proxy_port/2,
          is_persistent/1,
+         is_port_free/1,
          is_port_free/2,
          is_valid_bucket_name/1,
          json_map_from_config/2,
@@ -540,7 +540,7 @@ is_valid_bucket_name_inner([Char | Rest]) ->
         _ -> {error, invalid}
     end.
 
-is_open_proxy_port(BucketName, Port) ->
+is_not_a_bucket_port(BucketName, Port) ->
     UsedPorts = lists:filter(fun (undefined) -> false;
                                  (_) -> true
                              end,
@@ -549,17 +549,44 @@ is_open_proxy_port(BucketName, Port) ->
                                  Name /= BucketName]),
     not lists:member(Port, UsedPorts).
 
+is_not_a_kernel_port(Port) ->
+    Env = application:get_all_env(kernel),
+    MinPort = case lists:keyfind(inet_dist_listen_min, 1, Env) of
+                  false ->
+                      1000000;
+                  {_, P} ->
+                      P
+              end,
+    MaxPort = case lists:keyfind(inet_dist_listen_max, 1, Env) of
+                  false ->
+                      0;
+                  {_, P1} ->
+                      P1
+              end,
+    Port < MinPort orelse Port > MaxPort.
+
+is_port_free(Port) ->
+    is_port_free([], Port).
+
 is_port_free(BucketName, Port) ->
     is_port_free(BucketName, Port, ns_config:get()).
 
 is_port_free(BucketName, Port, Config) ->
+    TakenWebPort = case BucketName of
+                       [] ->
+                           0;
+                       _ ->
+                           proplists:get_value(port, menelaus_web:webconfig(Config))
+                   end,
     Port =/= ns_config:search_node_prop(Config, memcached, port)
         andalso Port =/= ns_config:search_node_prop(Config, memcached, dedicated_port)
         andalso Port =/= ns_config:search_node_prop(Config, moxi, port)
         andalso Port =/= ns_config:search_node_prop(Config, memcached, mccouch_port, 11213)
         andalso Port =/= capi_utils:get_capi_port(node(), Config)
-        andalso Port =/= proplists:get_value(port, menelaus_web:webconfig(Config))
-        andalso is_open_proxy_port(BucketName, Port).
+        andalso Port =/= TakenWebPort
+        andalso Port =/= 4369 %% default epmd port
+        andalso is_not_a_bucket_port(BucketName, Port)
+        andalso is_not_a_kernel_port(Port).
 
 validate_bucket_config(BucketName, NewConfig) ->
     case is_valid_bucket_name(BucketName) of
