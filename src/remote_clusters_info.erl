@@ -760,6 +760,15 @@ with_default_pool_details(Pools, JsonGet, K) ->
               {error, not_capable, <<"Remote node is not initialized.">>}
       end).
 
+massage_buckets_list_uri(URI) ->
+    SepChar = case binary:match(URI, <<"?">>) of
+                  nomatch ->
+                      $?;
+                  _ ->
+                      $&
+              end,
+    binary_to_list(iolist_to_binary([URI, SepChar, <<"forXDCR=1">>])).
+
 with_buckets(PoolDetails, JsonGet, K) ->
     expect_nested_object(
       <<"buckets">>, PoolDetails, <<"default pool details">>,
@@ -769,7 +778,7 @@ with_buckets(PoolDetails, JsonGet, K) ->
                 <<"buckets object in default pool details">>,
                 fun (URI) ->
                         JsonGet(
-                          binary_to_list(URI),
+                          massage_buckets_list_uri(URI),
                           fun (Buckets) ->
                                   expect_array(
                                     Buckets,
