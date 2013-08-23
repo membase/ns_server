@@ -687,6 +687,7 @@ wait_priority_checkpoint_persisted(Socket, Bucket, VBucket, CheckpointId) ->
 -spec receive_remote_meta_pipeline(inet:socket(), integer()) ->
                                           {ok, term(), term()} |
                                           {key_enoent, list(), term()} |
+                                          {timeout, list()} |
                                           {error, list()}.
 receive_remote_meta_pipeline(Sock, VBucket) ->
     Response = mc_binary:recv(Sock, res, ?XDCR_XMEM_CONNECTION_TIMEOUT),
