@@ -43,6 +43,7 @@
          is_valid_bucket_name/1,
          json_map_from_config/2,
          live_bucket_nodes/1,
+         live_bucket_nodes_from_config/1,
          map_to_replicas/1,
          replicated_vbuckets/3,
          maybe_get_bucket/2,
@@ -242,6 +243,9 @@ get_buckets(Config) ->
 
 live_bucket_nodes(Bucket) ->
     {ok, BucketConfig} = get_bucket(Bucket),
+    live_bucket_nodes_from_config(BucketConfig).
+
+live_bucket_nodes_from_config(BucketConfig) ->
     Servers = proplists:get_value(servers, BucketConfig),
     LiveNodes = [node()|nodes()],
     [Node || Node <- Servers, lists:member(Node, LiveNodes) ].
