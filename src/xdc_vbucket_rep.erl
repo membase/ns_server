@@ -620,9 +620,18 @@ init_replication_state(#init_state{rep = Rep,
                              },
       source_seq = get_value(<<"update_seq">>, SourceInfo, ?LOWEST_SEQ)
      },
-    ?xdcr_debug("vb ~p replication state initialized: (local db: ~p, remote db: ~p, mode: ~p, xmem remote: ~w))",
+    XMemRemoteStr = case XMemRemote of
+                        nil ->
+                            "none";
+                        _ ->
+                            ?format_msg("(target node: ~s:~p, target bucket: ~s)",
+                                        [XMemRemote#xdc_rep_xmem_remote.ip,
+                                         XMemRemote#xdc_rep_xmem_remote.port,
+                                         XMemRemote#xdc_rep_xmem_remote.bucket])
+                    end,
+    ?xdcr_debug("vb ~p replication state initialized: (local db: ~p, remote db: ~p, mode: ~p, xmem remote: ~s)",
                 [Vb, RepState#rep_state.source_name,
-                 misc:sanitize_url(RepState#rep_state.target_name), RepMode, XMemRemote]),
+                 misc:sanitize_url(RepState#rep_state.target_name), RepMode, XMemRemoteStr]),
     RepState.
 
 update_rep_options(#rep_state{rep_details =
