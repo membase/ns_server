@@ -5,6 +5,179 @@ This file documents user-visible changes in Couchbase clustering & UI.
 Between versions 2.1.0 and 2.2.0
 -----------------------------------------
 
+* (MB-8663) per xdc-replication settings were implemented
+
+  Now we provide two REST endpoints for changing XDCR settings:
+
+    - /settings/replications/ — for global settings
+    - /settings/replications/<replication id> — for per-replication
+      settings
+
+  Additionally to that, internalSettings/ can also still be used for
+  updating some of the global XDCR settings.
+
+
+  Per replication settings (/settings/replications/<replication id>)
+  ==================================================================
+
+    Supported parameters:
+
+    +--------------------------------+---------------------+--------------------------------------+
+    |              Name              |        Type         |            Default value             |
+    |                                |                     |                                      |
+    +--------------------------------+---------------------+--------------------------------------+
+    |       maxConcurrentReps        |   int ∈ [2, 256]    |                                    32|
+    +--------------------------------+---------------------+--------------------------------------+
+    |       checkpointInterval       |  int ∈ [60, 14400]  |                                  1800|
+    +--------------------------------+---------------------+--------------------------------------+
+    |         docBatchSizeKb         |  int ∈ [10, 10000]  |                                  2048|
+    +--------------------------------+---------------------+--------------------------------------+
+    |     failureRestartInterval     |   int ∈ [1, 300]    |                                    30|
+    +--------------------------------+---------------------+--------------------------------------+
+    |        workerBatchSize         | int ∈ [500, 10000]  |                                   500|
+    +--------------------------------+---------------------+--------------------------------------+
+    |       connectionTimeout        |  int ∈ [10, 10000]  |                                   180|
+    +--------------------------------+---------------------+--------------------------------------+
+    |        workerProcesses         |    int ∈ [1, 32]    |                                     4|
+    +--------------------------------+---------------------+--------------------------------------+
+    |        httpConnections         |   int ∈ [1, 100]    |                                    20|
+    +--------------------------------+---------------------+--------------------------------------+
+    |       retriesPerRequest        |   int ∈ [1, 100]    |                                     2|
+    +--------------------------------+---------------------+--------------------------------------+
+    | optimisticReplicationThreshold | int ∈ [0, 20971520] |                                   256|
+    +--------------------------------+---------------------+--------------------------------------+
+    |           xmemWorker           |    int ∈ [1, 32]    |                                     1|
+    +--------------------------------+---------------------+--------------------------------------+
+    |       enablePipelineOps        |        bool         |                                  true|
+    +--------------------------------+---------------------+--------------------------------------+
+    |    localConflictResolution     |        bool         |                                 false|
+    +--------------------------------+---------------------+--------------------------------------+
+    |         socketOptions          |        term         | [{keepalive, true}, {nodelay, false}]|
+    +--------------------------------+---------------------+--------------------------------------+
+
+    Any subset of parameters can be overridden on per-replication
+    basis. To make replication use global value for certain parameter
+    pass empty value. In case of success, server responds with 200
+    status and a JSON object representing resulting per-replication
+    settings. In case of error, server responds with 400 status and
+    returns a JSON object describing the errors.
+
+    Examples:
+
+    $ curl -X GET -u Administrator:asdasd \
+           http://127.0.0.1:9000/settings/replications/c2a76ddac3bafe1cbc0e7ac2a48d6ff9%2fdefault%2ftest
+    {
+      "docBatchSizeKb": 2048,
+      "failureRestartInterval": 30,
+      "workerBatchSize": 500,
+      "optimisticReplicationThreshold": 256,
+      "maxConcurrentReps": 64,
+      "checkpointInterval": 600
+    }
+
+
+    $ curl -X POST -u Administrator:asdasd \
+           http://127.0.0.1:9000/settings/replications/c2a76ddac3bafe1cbc0e7ac2a48d6ff9%2fdefault%2ftest \
+           -d maxConcurrentReps=32 -d checkpointInterval=1800
+    {
+      "docBatchSizeKb": 2048,
+      "failureRestartInterval": 30,
+      "workerBatchSize": 500,
+      "optimisticReplicationThreshold": 256,
+      "maxConcurrentReps": 32,
+      "checkpointInterval": 1800
+    }
+
+
+    $ curl -X POST -u Administrator:asdasd \
+           http://127.0.0.1:9000/settings/replications/c2a76ddac3bafe1cbc0e7ac2a48d6ff9%2fdefault%2ftest \
+           -d maxConcurrentReps=
+    {
+      "docBatchSizeKb": 2048,
+      "failureRestartInterval": 30,
+      "workerBatchSize": 500,
+      "optimisticReplicationThreshold": 256,
+      "checkpointInterval": 1800
+    }
+
+    $ curl -X POST -u Administrator:asdasd \
+           http://127.0.0.1:9000/settings/replications/c2a76ddac3bafe1cbc0e7ac2a48d6ff9%2fdefault%2ftest \
+           -d maxConcurrentReps=1024
+    {
+      "maxConcurrentReps": "The value must be an integer between 2 and 256"
+    }
+
+  Global settings (/settings/replications/)
+  =========================================
+
+    The endpoint for global settings is very similar. The supported
+    parameters are all the same as for per-replications endpoint plus
+    the following:
+
+    +------------------+--------------+---------------+
+    |       Name       |     Type     | Default value |
+    |                  |              |               |
+    +------------------+--------------+---------------+
+    | traceDumpInvprob | int ∈ [1, ∞) |           1000|
+    +------------------+--------------+---------------+
+
+    The only difference in behavior is that it's not possible to unset
+    certain parameter.
+
+    Examples:
+
+    $ curl -X GET -u Administrator:asdasd http://127.0.0.1:9000/settings/replications/
+    {
+      "traceDumpInvprob": 1000,
+      "socketOptions": {
+        "nodelay": false,
+        "keepalive": true
+      },
+      "localConflictResolution": false,
+      "enablePipelineOps": true,
+      "xmemWorker": 1,
+      "optimisticReplicationThreshold": 256,
+      "retriesPerRequest": 2,
+      "maxConcurrentReps": 32,
+      "checkpointInterval": 1800,
+      "docBatchSizeKb": 2048,
+      "failureRestartInterval": 30,
+      "workerBatchSize": 500,
+      "connectionTimeout": 180,
+      "workerProcesses": 4,
+      "httpConnections": 20
+    }
+
+    $ curl -X POST -u Administrator:asdasd \
+           http://127.0.0.1:9000/settings/replications/ -d traceDumpInvprob=1
+    {
+      "traceDumpInvprob": 1,
+      "socketOptions": {
+        "nodelay": false,
+        "keepalive": true
+      },
+      "localConflictResolution": false,
+      "enablePipelineOps": true,
+      "xmemWorker": 1,
+      "optimisticReplicationThreshold": 256,
+      "retriesPerRequest": 2,
+      "maxConcurrentReps": 32,
+      "checkpointInterval": 1800,
+      "docBatchSizeKb": 2048,
+      "failureRestartInterval": 30,
+      "workerBatchSize": 500,
+      "connectionTimeout": 180,
+      "workerProcesses": 4,
+      "httpConnections": 20
+    }
+
+    $ curl -X POST -u Administrator:asdasd \
+           http://127.0.0.1:9000/settings/replications/ -d traceDumpInvprob=0
+    {
+      "traceDumpInvprob": "The value must be an integer between 1 and infinity"
+    }
+
+
 * (MB-8801) we introduced the script for resetting administrative
   password either to automatically generated or to user specified
   value
