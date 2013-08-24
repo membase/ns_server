@@ -606,7 +606,7 @@ var BucketDetailsDialog = mkClass({
         ramGauge = self.dialog.find(".size-gauge.for-ram"),
         memcachedSummaryJQ = self.dialog.find('.memcached-summary'),
         memcachedSummaryVisible = ramSummary && ramSummary.perNodeMegs,
-        knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold[percentage] viewFragmentationThreshold[percentage] databaseFragmentationThreshold[size] viewFragmentationThreshold[size] allowedTimePeriod threadsNumber purgeInterval').split(' '),
+        knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold[percentage] viewFragmentationThreshold[percentage] databaseFragmentationThreshold[size] viewFragmentationThreshold[size] allowedTimePeriod threadsNumber purgeInterval saslPassword').split(' '),
         errors = result.errors || {};
 
     _.each(('to from').split(' '), function (p1) {

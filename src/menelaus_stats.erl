@@ -36,13 +36,13 @@
 %% External API
 bucket_disk_usage(BucketName) ->
     {_, _, _, _, DiskUsed, _}
-        = last_membase_sample(BucketName, get_active_nodes_info()),
+        = last_membase_sample(BucketName, ns_bucket:live_bucket_nodes(BucketName)),
     DiskUsed.
 
 bucket_ram_usage(BucketName) ->
     %% NOTE: we're getting last membase sample, but first stat name is
     %% same in memcached buckets, so it works for them too.
-    element(1, last_membase_sample(BucketName, get_active_nodes_info())).
+    element(1, last_membase_sample(BucketName, ns_bucket:live_bucket_nodes(BucketName))).
 
 extract_stat(StatName, Sample) ->
     case orddict:find(StatName, Sample#stat_entry.values) of
@@ -50,8 +50,7 @@ extract_stat(StatName, Sample) ->
         {ok, V} -> V
     end.
 
-get_active_nodes_info() ->
-    NodeNames = ns_cluster_membership:active_nodes(),
+get_node_infos(NodeNames) ->
     NodesDict = ns_doctor:get_nodes(),
     lists:foldl(fun (N, A) ->
                          case dict:find(N, NodesDict) of
@@ -60,20 +59,41 @@ get_active_nodes_info() ->
                          end
                  end, [], NodeNames).
 
+grab_latest_bucket_stats(BucketName, Nodes) ->
+    NodeInfos = get_node_infos(Nodes),
+    Stats = extract_interesting_buckets(BucketName, NodeInfos),
+    {FoundNodes, _} = lists:unzip(Stats),
+    RestNodes = Nodes -- FoundNodes,
+    RestStats = [{N, S} || {N, [#stat_entry{values=S} | _]} <-
+                               invoke_archiver(BucketName, RestNodes, {1, minute, 1})],
+    Stats ++ RestStats.
+
 extract_interesting_stat(Key, Stats) ->
     case lists:keyfind(Key, 1, Stats) of
         false -> 0;
         {_, Stat} -> Stat
     end.
 
-extract_interesting_buckets(InterestingBucketName, NodeInfos) ->
-    InterestingStats = lists:append([
-        proplists:get_value(per_bucket_interesting_stats, NodeInfo, []) || {_, NodeInfo} <- NodeInfos]),
-    [{BucketName, Stats} || {BucketName, Stats}
-        <- InterestingStats, BucketName =:= InterestingBucketName].
+extract_interesting_buckets(BucketName, NodeInfos) ->
+    Stats0 =
+        lists:map(
+          fun ({Node, NodeInfo}) ->
+                  case proplists:get_value(per_bucket_interesting_stats, NodeInfo) of
+                      undefined ->
+                          [];
+                      NodeStats ->
+                          case [S || {B, S} <- NodeStats, B =:= BucketName] of
+                              [BucketStats] ->
+                                  [{Node, BucketStats}];
+                              _ ->
+                                  []
+                          end
+                  end
+          end, NodeInfos),
 
+    lists:append(Stats0).
 
-last_membase_sample(InterestingBucketName, NodeInfos) ->
+last_membase_sample(BucketName, Nodes) ->
     lists:foldl(
         fun ({_, Stats},
              {AccMem, AccItems, AccOps, AccFetches, AccDisk, AccData}) ->
@@ -84,10 +104,11 @@ last_membase_sample(InterestingBucketName, NodeInfos) ->
                      extract_interesting_stat(couch_docs_actual_disk_size, Stats) +
                        extract_interesting_stat(couch_views_actual_disk_size, Stats) + AccDisk,
                      extract_interesting_stat(couch_docs_data_size, Stats) + AccData}
-        end, {0, 0, 0, 0, 0, 0}, extract_interesting_buckets(InterestingBucketName, NodeInfos)).
+        end, {0, 0, 0, 0, 0, 0}, grab_latest_bucket_stats(BucketName, Nodes)).
 
 
-last_memcached_sample(InterestingBucketName, NodeInfos) ->
+
+last_memcached_sample(BucketName, Nodes) ->
     {MemUsed, CurrItems, Ops, CmdGet, GetHits}
             = lists:foldl(
                     fun ({_, Stats},
@@ -97,7 +118,7 @@ last_memcached_sample(InterestingBucketName, NodeInfos) ->
                                  extract_interesting_stat(ops, Stats) + AccOps,
                                  extract_interesting_stat(cmd_get, Stats) + AccGet,
                                  extract_interesting_stat(get_hits, Stats) + AccGetHits}
-                    end, {0, 0, 0, 0, 0}, extract_interesting_buckets(InterestingBucketName, NodeInfos)),
+                    end, {0, 0, 0, 0, 0}, grab_latest_bucket_stats(BucketName, Nodes)),
 
     {MemUsed, CurrItems, Ops,
      case CmdGet == 0 of
@@ -105,17 +126,17 @@ last_memcached_sample(InterestingBucketName, NodeInfos) ->
          _ -> GetHits / CmdGet
      end}.
 
-last_bucket_stats(membase, BucketName, NodesInfos) ->
+last_bucket_stats(membase, BucketName, Nodes) ->
     {MemUsed, ItemsCount, Ops, Fetches, Disk, Data}
-        = last_membase_sample(BucketName, NodesInfos),
+        = last_membase_sample(BucketName, Nodes),
     [{opsPerSec, Ops},
      {diskFetches, Fetches},
      {itemCount, ItemsCount},
      {diskUsed, Disk},
      {dataUsed, Data},
      {memUsed, MemUsed}];
-last_bucket_stats(memcached, BucketName, NodesInfos) ->
-    {MemUsed, ItemsCount, Ops, HitRatio} = last_memcached_sample(BucketName, NodesInfos),
+last_bucket_stats(memcached, BucketName, Nodes) ->
+    {MemUsed, ItemsCount, Ops, HitRatio} = last_memcached_sample(BucketName, Nodes),
     [{opsPerSec, Ops},
      {hitRatio, HitRatio},
      {itemCount, ItemsCount},
@@ -123,9 +144,10 @@ last_bucket_stats(memcached, BucketName, NodesInfos) ->
 
 basic_stats(BucketName) ->
     {ok, BucketConfig} = ns_bucket:maybe_get_bucket(BucketName, undefined),
-    NodesInfos = get_active_nodes_info(),
     QuotaBytes = ns_bucket:ram_quota(BucketConfig),
-    Stats = last_bucket_stats(ns_bucket:bucket_type(BucketConfig), BucketName, NodesInfos),
+    BucketType = ns_bucket:bucket_type(BucketConfig),
+    BucketNodes = ns_bucket:live_bucket_nodes_from_config(BucketConfig),
+    Stats = last_bucket_stats(BucketType, BucketName, BucketNodes),
     MemUsed = proplists:get_value(memUsed, Stats),
     QuotaPercent = try (MemUsed * 100.0 / QuotaBytes) of
                        X -> X
