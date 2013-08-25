@@ -85,9 +85,15 @@ format_status(Opt, [PDict, State]) ->
 connect(Server, XMemRemote) ->
     gen_server:call(Server, {connect, XMemRemote}, infinity).
 
+-spec disconnect(nil | pid()) -> ok.
+disconnect(nil) ->
+    ok;
 disconnect(Server) ->
     gen_server:call(Server, disconnect, infinity).
 
+-spec stop(nil | pid()) -> normal.
+stop(nil) ->
+    normal;
 stop(Server) ->
     gen_server:cast(Server, stop).
 
