@@ -8,6 +8,17 @@ require 'pp'
 
 $DOCROOT = File.expand_path(File.join(File.dirname(__FILE__), '../priv/public'))
 
+def build_all_images_js!
+  all_images_names = Dir.chdir($DOCROOT) do
+    Dir.glob("images/**/*").reject {|n| File.directory? n}
+  end
+  File.open($DOCROOT + "/js/all-images.js", "wt") do |file|
+    file << "var AllImages = " << all_images_names.to_json << ";\n"
+  end
+end
+
+build_all_images_js!
+
 def sh(cmd)
   puts "# #{cmd}"
   ok = system cmd
