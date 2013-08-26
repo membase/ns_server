@@ -388,8 +388,12 @@ handle_call({flush_docs_pipeline, DocsList}, _From,
                     true ->
                         {reply, {ok, Flushed, Eexist}, State};
                     _ ->
-                        ErrorStat = [Flushed, Eexist, Enoent, NotMyVb, Einval, Timeout, OtherErr],
-                        {stop, {error, {ErrorStat, ErrorKeys}}, State}
+                        ErrorStr = ?format_msg("in batch of ~p docs: flushed: ~p, rejected (eexists): ~p; "
+                                               "remote memcached errors: enoent: ~p, not-my-vb: ~p, invalid: ~p, "
+                                               "timeout: ~p, others: ~p",
+                                               [DocsListSize, Flushed, Eexist, Enoent, NotMyVb,
+                                                Einval, Timeout, OtherErr]),
+                        {stop, {error, {ErrorStr, ErrorKeys}}, State}
                 end
         end,
     RV;

@@ -318,7 +318,7 @@ report_error(Err, Vb, Parent) ->
     ErrorMsg = case Err of
                    {{error, {ErrorStat, _ErrorKeys}}, _State} ->
                        ?format_msg("parent vb replicator: ~p, "
-                                   "xmem stats: ~p. Please see logs "
+                                   "xmem stats: ~s. Please see logs "
                                    "for state dump and complete list of error keys.",
                                    [Parent, ErrorStat]);
                    OtherErr ->
