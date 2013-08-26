@@ -16,6 +16,9 @@ Between versions 2.1.0 and 2.2.0
   Additionally to that, internalSettings/ can also still be used for
   updating some of the global XDCR settings.
 
+  Replication id can be found in corresponding XDCR task returned by
+  /pools/default/tasks REST endpoint (also see examples below).
+
 
   Per replication settings (/settings/replications/<replication id>)
   ==================================================================
@@ -63,6 +66,31 @@ Between versions 2.1.0 and 2.2.0
     returns a JSON object describing the errors.
 
     Examples:
+
+    $ curl -s -X GET -u Administrator:asdasd http://127.0.0.1:9000/pools/default/tasks
+
+    [
+      {
+        "status": "notRunning",
+        "type": "rebalance"
+      },
+      {
+        "errors": [],
+        "docsWritten": 0,
+        "docsChecked": 0,
+        "changesLeft": 0,
+        "recommendedRefreshPeriod": 10,
+        "type": "xdcr",
+        "cancelURI": "/controller/cancelXDCR/c2a76ddac3bafe1cbc0e7ac2a48d6ff9%2Fdefault%2Ftest",
+        "settingsURI": "/settings/replications/c2a76ddac3bafe1cbc0e7ac2a48d6ff92Fdefault%2Ftest",
+        "status": "running",
+        "replicationType": "xmem",
+        "id": "c2a76ddac3bafe1cbc0e7ac2a48d6ff9/default/test",
+        "source": "default",
+        "target": "/remoteClusters/c2a76ddac3bafe1cbc0e7ac2a48d6ff9/buckets/test",
+        "continuous": true
+      }
+    ]
 
     $ curl -X GET -u Administrator:asdasd \
            http://127.0.0.1:9000/settings/replications/c2a76ddac3bafe1cbc0e7ac2a48d6ff9%2fdefault%2ftest
