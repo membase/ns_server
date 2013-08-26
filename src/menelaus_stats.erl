@@ -759,6 +759,49 @@ jsonify_hks(BucketsTopKeys) ->
                               end, BucketsTopKeys),
     {struct, [{hot_keys, HotKeyStructs}]}.
 
+%% by default we aggregate stats between nodes using SUM
+%% but in some cases other methods should be used
+%% for example for couch_views_ops since view hits all the nodes
+%% we use max to prevent the number of ops to be multiplied to the number of nodes
+get_aggregate_method(Key) ->
+    case Key of
+        couch_views_ops ->
+            max;
+        <<"views/", S/binary>> ->
+            case binary:match(S, <<"/accesses">>) of
+                nomatch ->
+                    sum;
+                _ ->
+                    max
+            end;
+        _ ->
+            sum
+    end.
+
+aggregate_values(Key, AV, BV) ->
+    case get_aggregate_method(Key) of
+        sum ->
+            try AV+BV
+            catch error:badarith ->
+                    case ([X || X <- [AV,BV],
+                                X =/= undefined]) of
+                        [] -> undefined;
+                        [X|_] -> X
+                    end
+            end;
+        max ->
+            case {AV, BV} of
+                {undefined, undefined} ->
+                    undefined;
+                {undefined, _} ->
+                    BV;
+                {_, undefined} ->
+                    AV;
+                _ ->
+                    max(AV, BV)
+            end
+    end.
+
 aggregate_stat_kv_pairs([], _BValues, Acc) ->
     lists:reverse(Acc);
 aggregate_stat_kv_pairs(APairs, [], Acc) ->
@@ -768,15 +811,7 @@ aggregate_stat_kv_pairs([{AK, AV} = APair | ARest] = A,
                         Acc) ->
     case AK of
         BK ->
-            NewAcc = [{AK,
-                       try AV+BV
-                       catch error:badarith ->
-                               case ([X || X <- [AV,BV],
-                                           X =/= undefined]) of
-                                   [] -> 0;
-                                   [X|_] -> X
-                               end
-                       end} | Acc],
+            NewAcc = [{AK, aggregate_values(AK, AV, BV)} | Acc],
             aggregate_stat_kv_pairs(ARest, BRest, NewAcc);
         _ when AK < BK ->
             case AV of
@@ -790,19 +825,28 @@ aggregate_stat_kv_pairs([{AK, AV} = APair | ARest] = A,
     end.
 
 aggregate_stat_kv_pairs_test() ->
-    ?assertEqual([{a, 3}, {b, 0}, {c, 1}, {d,1}],
+    ?assertEqual([{a, 3}, {b, undefined}, {c, 1}, {d,1}],
                  aggregate_stat_kv_pairs([{a, 1}, {b, undefined}, {c,1}, {d, 1}],
                                          [{a, 2}, {b, undefined}, {d, undefined}, {e,1}],
                                          [])),
-    ?assertEqual([{a, 3}, {b, 0}, {c, 1}, {d,1}],
+    ?assertEqual([{a, 3}, {b, undefined}, {c, 1}, {d,1}],
                  aggregate_stat_kv_pairs([{a, 1}, {b, undefined}, {c,1}, {d, 1}],
                                          [{a, 2}, {b, undefined}, {ba, 123}],
                                          [])),
     ?assertEqual([{a, 3}, {b, 0}, {c, 1}, {d,1}],
                  aggregate_stat_kv_pairs([{a, 1}, {b, undefined}, {c,1}, {d, 1}],
                                          [{a, 2}, {c,0}, {d, undefined}, {e,1}],
+                                         [])),
+    ?assertEqual([{couch_views_ops, 3},
+                  {<<"views/A1/accesses">>, 4},
+                  {<<"views/A1/blah">>, 3}],
+                 aggregate_stat_kv_pairs([{couch_views_ops, 1},
+                                          {<<"views/A1/accesses">>, 4},
+                                          {<<"views/A1/blah">>, 1}],
+                                         [{couch_views_ops, 3},
+                                          {<<"views/A1/accesses">>, 2},
+                                          {<<"views/A1/blah">>, 2}],
                                          [])).
-
 
 aggregate_stat_entries(A, B) ->
     true = (B#stat_entry.timestamp =:= A#stat_entry.timestamp),
