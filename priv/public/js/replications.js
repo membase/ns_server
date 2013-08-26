@@ -213,20 +213,44 @@ function mkReplicationSectionCell(ns, currentXDCRSettingsURI, tasksProgressCell,
   });
   ns.maybeXDCRTaskCell.equality = _.isEqual;
 
-  ns.settingsRawCell = Cell.compute(function (v) {
-    var currentXDCRS = v.need(currentXDCRSettingsURI)
-    if (currentXDCRS) {
-      return future.get({url: currentXDCRS});
+  // NOTE: code below is a bit complex. That's because we need to
+  // fetch both global settings and per-replication settings every
+  // time we need combined settings. There is other ways to do it but
+  // cell holding cell seems simplest.
+  //
+  // Ideally given that we only need per-replication settings for
+  // editing it in modal dialog, we'd not do it via cells, but that's
+  // how this code is done already. And this code is already scheduled
+  // for rewrite.
+  //
+  // Cell-of-cell trick ensures that every recalculation of this cell
+  // will re-fetch both endpoints (because "inner cells" will be
+  // totally new instances)
+  ns.settingsCellCell = Cell.compute(function (v) {
+    var uri = v.need(currentXDCRSettingsURI)
+    if (!uri) {
+      return
     }
+    var globalSettingsCell = Cell.compute(function (v) {
+      return future.get({url: "/settings/replications"});
+    });
+    var thisSettingsRawCell = Cell.compute(function () {
+      return future.get({url: uri});
+    });
+    return Cell.compute(function (v) {
+      var globalSettings = v(globalSettingsCell);
+      var thisSettings = v(thisSettingsRawCell);
+      if (!globalSettings || !thisSettings) {
+        return;
+      }
+      return _.extend({}, globalSettings, thisSettings);
+    });
   });
-  ns.globaSettingsRawCell = Cell.compute(function () {
-    return future.get({url: "/settings/replications"});
-  });
+
   ns.perReplicationSettingsCell = Cell.compute(function (v) {
-    return _.extend(_.clone(v.need(ns.globaSettingsRawCell)) , _.clone(v.need(ns.settingsRawCell)));
+    return v.need(v.need(ns.settingsCellCell));
   });
-  ns.perReplicationSettingsCell.delegateInvalidationMethods(ns.globaSettingsRawCell);
-  ns.perReplicationSettingsCell.delegateInvalidationMethods(ns.settingsRawCell);
+  ns.perReplicationSettingsCell.delegateInvalidationMethods(ns.settingsCellCell);
 
   ns.replicationRowsCell = Cell.compute(function (v) {
     if (v.need(mode) != 'replications') {
