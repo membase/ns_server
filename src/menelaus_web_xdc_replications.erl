@@ -360,7 +360,7 @@ parse_validate_by_type({int, Min, Max}, Str) ->
         {ok, Parsed} ->
             {ok, Parsed};
         _Error ->
-            Msg = io_lib:format("The value must be an integer between ~b and ~b",
+            Msg = io_lib:format("The value must be an integer between ~p and ~p",
                                 [Min, Max]),
             iolist_to_binary(Msg)
     end;

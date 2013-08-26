@@ -1787,7 +1787,7 @@
         <label class="for-sasl-password"><input id="bucket_details_sasl_selected" type="radio" name="authType" value="sasl" checked>
           <span><em class="when-default">Standard port (TCP port 11211. ASCII protocol or Binary auth-less)</em><em class="when-not-default">Standard port (TCP port 11211. Needs SASL auth.)</em></span>
         </label>
-        <label class="for-sasl-password-input"><span>Enter password: </span><input type="password" name="saslPassword" disabled value=""><span class="error-container err-saslPassword" style="padding-left:0; width: 600px; text-align: left; float: none;"></span></label>
+        <label class="for-sasl-password-input"><span>Enter password: </span><input type="password" name="saslPassword" disabled value=""><div class="error-container err-saslPassword"></div></label>
         <label class="for-ascii"><input type="radio" name="authType" value="none"><span>Dedicated port (supports ASCII protocol and is auth-less)</span></label>
         <label class="for-proxy-port"><span>Protocol Port:</span><input name="proxyPort"><span class="error-container err-proxyPort"></span></label>
       </div>

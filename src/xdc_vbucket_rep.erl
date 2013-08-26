@@ -240,7 +240,7 @@ handle_call({report_seq_done,
     {noreply, update_status_to_parent(NewState)};
 
 handle_call({worker_done, Pid}, _From,
-            #rep_state{workers = Workers, status = VbStatus, xmem_srv = XMemSrv, parent = Parent} = State) ->
+            #rep_state{rep_details = Rep, workers = Workers, status = VbStatus, xmem_srv = XMemSrv, parent = Parent} = State) ->
     case Workers -- [Pid] of
         Workers ->
             {stop, {unknown_worker_done, Pid}, ok, State};
@@ -250,11 +250,11 @@ handle_call({worker_done, Pid}, _From,
             %% before return my token to throttle, check if user has changed number of tokens
             Parent ! check_tokens,
             %% disconnect all xmem workers
-            case XMemSrv of
-                nil ->
-                    ok;
+            case Rep#rep.replication_mode of
+                "xmem" ->
+                    xdc_vbucket_rep_xmem_srv:disconnect(XMemSrv);
                 _ ->
-                    xdc_vbucket_rep_xmem_srv:disconnect(XMemSrv)
+                    ok
             end,
             %% allow another replicator to go
             State2 = replication_turn_is_done(State),
@@ -378,14 +378,13 @@ terminate(Reason, State) when Reason == normal orelse Reason == shutdown ->
 terminate(Reason, #rep_state{
             source_name = Source,
             target_name = Target,
-            xmem_srv = XMemSrv,
-            rep_details = #rep{id = Id, target = TargetRef},
+            rep_details = #rep{id = Id, replication_mode = RepMode, target = TargetRef},
             status = #rep_vb_status{vb = Vb} = Status,
             parent = P
            } = State) ->
 
-    case XMemSrv of
-        nil ->
+    case RepMode of
+        "capi" ->
             ?xdcr_error("Replication (CAPI mode) `~s` (`~s` -> `~s`) failed: ~s",
                         [Id, Source, misc:sanitize_url(Target), to_binary(Reason)]);
         _ ->
@@ -413,13 +412,13 @@ terminate(Reason, #rep_state{
     terminate_cleanup(State).
 
 
-terminate_cleanup(#rep_state{xmem_srv = XMemSrv} = State0) ->
+terminate_cleanup(#rep_state{rep_details = Rep, xmem_srv = XMemSrv} = State0) ->
     %% shutdown xmem server
-    ok = case XMemSrv of
-             nil ->
-                 ok;
+    ok = case Rep#rep.replication_mode of
+             "xmem" ->
+                 xdc_vbucket_rep_xmem_srv:stop(XMemSrv);
              _ ->
-                 xdc_vbucket_rep_xmem_srv:stop(XMemSrv)
+                 ok
          end,
 
     State = xdc_vbucket_rep_ckpt:cancel_timer(State0),
