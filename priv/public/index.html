@@ -218,7 +218,7 @@
                   <a href="#openServer={%= h(s.otpNode) %}"><ins class="expander closed"></ins></a>
                   {%= V.stripPortHTML(s.hostname, rows) %}
               <!-- {% } else { %} -->
-                  <!-- {% if (s.nodeClass == 'server_down' || !expandingAllowed) { %} -->
+                  <!-- {% if (s.nodeClass.indexOf('server_down') != -1 || !expandingAllowed) { %} -->
                   {%= h(s.hostname) %}
                   <!-- {% } else { %} -->
                   <a href="#openServer={%= h(s.otpNode) %}" title="Show Server Node info"><ins class="expander closed"></ins></a>

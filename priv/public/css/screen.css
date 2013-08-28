@@ -668,7 +668,7 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 
 .server_up, .server_down, .failed_over, .server_warmup, .pending_add {width:65px;padding: 0 !important;}
 .server_up {background:transparent url(../images/server_status_icons_solid_bg.png) center 19px no-repeat !important;}
-.server_down {background:transparent url(../images/server_status_icons_solid_bg.png) center -160px no-repeat !important;}
+.server_down , .server_down.failed_over {background:transparent url(../images/server_status_icons_solid_bg.png) center -160px no-repeat !important;}
 .failed_over , .server_warmup, .pending_add {background:transparent url(../images/server_status_icons_solid_bg.png) center -310px no-repeat !important;}
 
 .servers h2 { height: 25px;}
