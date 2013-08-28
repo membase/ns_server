@@ -147,7 +147,7 @@ apply_auth_any_bucket(Req, F, Args) ->
     UserPassword = extract_auth(Req),
     case check_auth_any_bucket(UserPassword) of
         true -> apply(F, Args ++ [Req]);
-        _    -> apply_auth(Req, F, Args)
+        _    -> apply_ro_auth(Req, F, Args)
     end.
 
 % {rest_creds, [{creds, [{"user", [{password, "password"}]},

@@ -52,8 +52,8 @@ logout(Token) ->
 -define(MAX_TOKENS, 1024).
 
 init([]) ->
-    _ = ets:new(ui_auth_by_token, [private, named_table, set]),
-    _ = ets:new(ui_auth_by_expiration, [private, named_table, ordered_set]),
+    _ = ets:new(ui_auth_by_token, [protected, named_table, set]),
+    _ = ets:new(ui_auth_by_expiration, [protected, named_table, ordered_set]),
     {ok, []}.
 
 maybe_expire() ->
