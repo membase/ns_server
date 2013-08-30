@@ -503,9 +503,9 @@ init_replication_state(#init_state{rep = Rep,
           options = Options
         } = Rep,
     SrcVbDb = xdc_rep_utils:local_couch_uri_for_vbucket(Src, Vb),
-    {ok, RemoteBucket} = remote_clusters_info:get_remote_bucket_by_ref(Tgt,
+    {ok, CurrRemoteBucket} = remote_clusters_info:get_remote_bucket_by_ref(Tgt,
                                                                        false),
-    TgtURI = hd(dict:fetch(Vb, RemoteBucket#remote_bucket.capi_vbucket_map)),
+    TgtURI = hd(dict:fetch(Vb, CurrRemoteBucket#remote_bucket.capi_vbucket_map)),
     TgtDb = xdc_rep_utils:parse_rep_db(TgtURI, [], Options),
     {ok, Source} = couch_api_wrap:db_open(SrcVbDb, []),
     {ok, Target} = couch_api_wrap:db_open(TgtDb, []),
@@ -521,10 +521,10 @@ init_replication_state(#init_state{rep = Rep,
 
     XMemRemote = case RepMode of
                      "xmem" ->
-                         {ok, {Ip, Port}, RemoteBucket} =
+                         {ok, {Ip, Port}, LatestRemoteBucket} =
                              remote_clusters_info:get_memcached_vbucket_info_by_ref(Tgt, false, Vb),
                          {ok, {_ClusterUUID, BucketName}} = remote_clusters_info:parse_remote_bucket_reference(Tgt),
-                         Password = binary_to_list(RemoteBucket#remote_bucket.password),
+                         Password = binary_to_list(LatestRemoteBucket#remote_bucket.password),
                          #xdc_rep_xmem_remote{ip = binary_to_list(Ip), port = Port,
                                               bucket = BucketName, username = BucketName, password = Password, options = []};
                      _ ->
