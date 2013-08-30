@@ -1370,3 +1370,5 @@ input[type=number].size {width:4em;}
 .xdcr_advaced_settings .dynamic_error {border-color: red;}
 .xdcr_advaced_settings.dialog {width: 400px;}
 .xdcr_advaced_settings legend {cursor: pointer; color: #2ea6db;}
+
+.warmup_table td {text-align: left; padding: 0px 20px 0px 20px; line-height: 25px; font-size:12px;}

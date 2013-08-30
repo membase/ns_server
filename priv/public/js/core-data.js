@@ -751,3 +751,34 @@ var RecentlyCompacted = mkClass.turnIntoLazySingleton(mkClass({
     this.gcThings();
   }
 }));
+
+function formatWarmupMessages(warmupTasks, keyComparator, keyName) {
+  warmupTasks = _.clone(warmupTasks);
+  warmupTasks.sort(keyComparator);
+  var originLength = warmupTasks.length;
+  if (warmupTasks.length > 3) {
+    warmupTasks.length = 3;
+  }
+
+  var rv = _.map(warmupTasks, function (task) {
+    var message = task.stats.ep_warmup_state;
+
+    switch (message) {
+      case "loading keys":
+        message += " (" + task.stats.ep_warmup_key_count +
+          " / " + task.stats.ep_warmup_estimated_key_count + ")";
+      break;
+      case "loading data":
+        message += " (" + task.stats.ep_warmup_value_count +
+          " / " + task.stats.ep_warmup_estimated_value_count + ")";
+      break;
+    }
+    return {key: task[keyName], status: message};
+  });
+
+  if (warmupTasks.length === 3 && originLength > 3) {
+    rv.push({key: "more ...", status: ""});
+  }
+
+  return rv;
+}

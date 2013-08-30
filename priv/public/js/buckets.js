@@ -635,6 +635,8 @@ var BucketDetailsDialog = mkClass({
 });
 
 var BucketsSection = {
+  warmupKeyComparator: mkComparatorByProp('hostname', naturalSort),
+
   renderRAMDetailsGauge: function (e, details) {
     var ram = details.basicStats.storageTotals.ram;
     BucketDetailsDialog.prototype.renderGauge($(e).find('.for-ram'),
@@ -707,6 +709,20 @@ var BucketsSection = {
             return task.type === 'bucket_compaction' && task.bucket === bucketName;
           }) || null;
         });
+        var thisBucketWarmupTaskCell = Cell.compute(function (v) {
+          var progresses = v.need(DAL.cells.tasksProgressCell);
+          var details = v.need(DAL.cells.currentPoolDetailsCell);
+
+          return _.filter(progresses, function (task) {
+            var isNeeded = task.type === 'warming_up' && task.status === 'running' && task.bucket === bucketName;
+            if (isNeeded) {
+              task.hostname = _.find(details.nodes, function (n) {
+                return n.otpNode === task.node;
+              }).hostname;
+            }
+            return isNeeded;
+          });
+        });
         maybeBucketCompactionTaskCell.equality = _.isEqual;
         var compactionWasStartedCell = Cell.compute(function (v) {
           var compactURL = bucketInfo.controllers.compactAll;
@@ -728,6 +744,13 @@ var BucketsSection = {
           var thisBucketCompactionTask = v.need(maybeBucketCompactionTaskCell);
           var recentlyCompacted = v.need(compactionWasStartedCell);
           var data = _.clone(v.need(rawBucketDetails));
+          var warmupTasks = v.need(thisBucketWarmupTaskCell);
+
+          if (warmupTasks.length) {
+            data.thisBucketWarmupTasks = formatWarmupMessages(warmupTasks, BucketsSection.warmupKeyComparator, "hostname");
+          } else {
+            data.thisBucketWarmupTasks = false;
+          }
 
           data.thisBucketCompactionTask = thisBucketCompactionTask;
           data.recentlyCompacted = recentlyCompacted;
@@ -744,6 +767,7 @@ var BucketsSection = {
           if (data.bucketType !== 'membase') {
             data.noCompaction = true;
           }
+
           return data;
         });
         rv.delegateInvalidationMethods(rawBucketDetails);

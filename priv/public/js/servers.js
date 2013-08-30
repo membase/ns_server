@@ -15,6 +15,7 @@
  **/
 var ServersSection = {
   hostnameComparator: mkComparatorByProp('hostname', naturalSort),
+  warmupKeyComparator: mkComparatorByProp('bucket', naturalSort),
   pendingEject: [], // nodes to eject on next rebalance
   pending: [], // nodes for pending tab
   active: [], // nodes for active tab
@@ -200,6 +201,13 @@ var ServersSection = {
           }) || undefined;
         });
 
+        var thisNodeWarmupTaskCell = Cell.compute(function (v) {
+          var progresses = v.need(DAL.cells.tasksProgressCell);
+          return _.filter(progresses, function (task) {
+            return task.type === 'warming_up' && task.status === 'running' && task.node === nodeInfo.otpNode;
+          });
+        });
+
         var rawNodeDetails = Cell.compute(function (v) {
           return future.get({url:  "/nodes/" + encodeURIComponent(nodeInfo.otpNode)});
         });
@@ -208,6 +216,13 @@ var ServersSection = {
         var rv = Cell.compute(function (v) {
           var data = _.clone(v.need(rawNodeDetails));
           var rebalanceTask = v(rebalanceTaskCell);
+          var warmupTasks = v.need(thisNodeWarmupTaskCell);
+
+          if (warmupTasks.length) {
+            data.thisNodeWarmupTasks = formatWarmupMessages(warmupTasks, ServersSection.warmupKeyComparator, "bucket");
+          } else {
+            data.thisNodeWarmupTasks = false;
+          }
 
           if (rebalanceTask &&
               rebalanceTask.detailedProgress &&

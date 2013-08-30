@@ -282,7 +282,8 @@ current_status_slow() ->
                 is_view_task(Task) orelse is_bucket_compaction_task(Task)
         end , couch_task_status:all())
         ++ grab_local_xdcr_replications()
-        ++ grab_samples_loading_tasks(),
+        ++ grab_samples_loading_tasks()
+        ++ grab_warmup_tasks(),
 
     MaybeMeminfo =
         case misc:raw_read_file("/proc/meminfo") of
@@ -431,3 +432,28 @@ grab_samples_loading_tasks() ->
             ?log_error("Failed to grab samples loader tasks: ~p", [{T,E,erlang:get_stacktrace()}]),
             []
     end.
+
+grab_warmup_task(Bucket) ->
+    Stats = try ns_memcached:warmup_stats(Bucket)
+            catch exit:{noproc, _} ->
+                    % it is possible that heartbeat happens before ns_memcached is started
+                    [{<<"ep_warmup_state">>,
+                      <<"starting ep-engine">>}]
+            end,
+
+    case Stats of
+        [] ->
+            [];
+        _ ->
+            [[{type, warming_up},
+              {bucket, list_to_binary(Bucket)},
+              {node, node()},
+              {recommendedRefreshPeriod, 2.0},
+              {stats, {struct, Stats}}]]
+    end.
+
+grab_warmup_tasks() ->
+    BucketNames = ns_bucket:node_bucket_names(node()),
+    lists:foldl(fun (Bucket, Acc) ->
+                        Acc ++ grab_warmup_task(Bucket)
+                end, [], BucketNames).

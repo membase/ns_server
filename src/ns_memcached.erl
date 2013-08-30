@@ -69,7 +69,8 @@
           bucket::nonempty_string(),
           sock = still_connecting :: port() | still_connecting,
           timer::any(),
-          work_requests = []
+          work_requests = [],
+          warmup_stats = [] :: [{binary(), binary()}]
          }).
 
 %% external API
@@ -99,6 +100,7 @@
          set_vbucket/3, set_vbucket/4,
          server/1,
          stats/1, stats/2, stats/3,
+         warmup_stats/1,
          topkeys/1,
          raw_stats/5,
          sync_bucket_config/1,
@@ -268,6 +270,8 @@ handle_call(sync_bucket_config = Msg, _From, State) ->
     StartTS = os:timestamp(),
     handle_info(check_config, State),
     verify_report_long_call(StartTS, StartTS, State, Msg, {reply, ok, State});
+handle_call(warmup_stats, _From, State) ->
+    {reply, State#state.warmup_stats, State};
 handle_call(Msg, From, State) ->
     StartTS = os:timestamp(),
     NewState = queue_call(Msg, From, StartTS, State),
@@ -669,14 +673,15 @@ handle_cast(start_completed, #state{start_time=Start,
                     _ ->
                         connected
                 end,
-    {noreply, State#state{status=NewStatus}}.
+    {noreply, State#state{status=NewStatus, warmup_stats=[]}}.
 
 
 handle_info(check_started, #state{status=Status} = State)
   when Status =:= connected orelse Status =:= warmed ->
     {noreply, State};
 handle_info(check_started, #state{timer=Timer, sock=Sock} = State) ->
-    case has_started(Sock) of
+    Stats = retrieve_warmup_stats(Sock),
+    case has_started(Stats) of
         true ->
             {ok, cancel} = timer2:cancel(Timer),
             misc:flush(check_started),
@@ -694,7 +699,8 @@ handle_info(check_started, #state{timer=Timer, sock=Sock} = State) ->
               end),
             {noreply, State};
         false ->
-            {noreply, State}
+            {ok, S} = Stats,
+            {noreply, State#state{warmup_stats = S}}
     end;
 handle_info(check_config, State) ->
     misc:flush(check_config),
@@ -1101,6 +1107,10 @@ stats(Bucket, Key) ->
 stats(Node, Bucket, Key) ->
     do_call({server(Bucket), Node}, {stats, Key}, ?TIMEOUT).
 
+-spec warmup_stats(bucket_name()) -> [{binary(), binary()}].
+warmup_stats(Bucket) ->
+    do_call(server(Bucket), warmup_stats, ?TIMEOUT).
+
 sync_bucket_config(Bucket) ->
     do_call(server(Bucket), sync_bucket_config, infinity).
 
@@ -1290,18 +1300,17 @@ ensure_bucket_config(Sock, _Bucket, memcached, _MaxSize) ->
 server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
 
-has_started(Sock) ->
-    Fun = fun (<<"ep_warmup_thread">>, V, _) -> V;
-              (_, _, CD) -> CD
-          end,
-    case mc_client_binary:stats(Sock, <<"warmup">>, Fun, missing_stat) of
-        {ok, <<"complete">>} ->
+retrieve_warmup_stats(Sock) ->
+    mc_client_binary:stats(Sock, <<"warmup">>, fun (K, V, Acc) -> [{K, V}|Acc] end, []).
+
+has_started({memcached_error, key_enoent, _}) ->
+    %% this is memcached bucket, warmup is done :)
+    true;
+has_started({ok, WarmupStats}) ->
+    case lists:keyfind(<<"ep_warmup_thread">>, 1, WarmupStats) of
+        {_, <<"complete">>} ->
             true;
-        %% this is memcached bucket, warmup is done :)
-        {memcached_error, key_enoent, _} ->
-            true;
-        {ok, V} ->
-            true = is_binary(V),
+        {_, V} when is_binary(V) ->
             false
     end.
 

@@ -426,6 +426,8 @@
 
               </div>
             <!-- {% } %}-->
+            {%= tmpl("js_warm_up_tmpl")({thisWarmupTasks: thisNodeWarmupTasks}) %}
+
             <h3>Memory Cache</h3>
             <div class="info_block">
               <span class="dynamic_ram">Dynamic RAM:</span>
@@ -641,6 +643,20 @@
             </table>
           </script>
 
+
+          <script id="js_warm_up_tmpl" type="text/html">
+            {% if (thisWarmupTasks) { %}
+              <h3>Warmup Progress</h3>
+              <table class="warmup_table">
+                <tbody>
+                  {% _.each(thisWarmupTasks, function (task) { %}
+                    <tr><td>{%= task.key %}</td><td>{%= task.status %}</td></tr>
+                  {% }) %}
+                </tbody>
+              </table>
+            {% } %}
+          </script>
+
           <script id="bucket_settings_template" type="text/html">
             <div class="gong_rb">
               <div class="pad">
@@ -673,6 +689,8 @@
             </div>
 
             <div class="additional_server_info bucket_details">
+              {%= tmpl("js_warm_up_tmpl")({thisWarmupTasks: thisBucketWarmupTasks}) %}
+
               <h2>Cache Size</h2>
               <div class="size-gauge for-ram"></div>
             {%= V.thisElement(function (e) {BucketsSection.renderRAMDetailsGauge(e, obj);}) %}

@@ -275,23 +275,31 @@ maybe_refresh_tasks_version(State) ->
                             case proplists:get_value(type, Task) of
                                 indexer ->
                                     sets:add_element(erlang:phash2(
-                                                       {lists:keyfind(design_documents, 1, Task),
+                                                       {indexer,
+                                                        lists:keyfind(design_documents, 1, Task),
                                                         lists:keyfind(set, 1, Task)}),
                                                      Set0);
                                 view_compaction ->
                                     sets:add_element(erlang:phash2(
-                                                       {lists:keyfind(design_documents, 1, Task),
+                                                       {view_compaction,
+                                                        lists:keyfind(design_documents, 1, Task),
                                                         lists:keyfind(set, 1, Task)}),
                                                      Set0);
                                 bucket_compaction ->
                                     sets:add_element(
-                                      erlang:phash2(lists:keyfind(bucket, 1, Task)),
+                                      erlang:phash2({bucket_compaction,
+                                                     lists:keyfind(bucket, 1, Task)}),
                                       Set0);
                                 loadingSampleBucket ->
                                     sets:add_element(erlang:phash2(Task), Set0);
                                 xdcr ->
                                     sets:add_element(
                                       erlang:phash2(lists:keyfind(id, 1, Task)),
+                                      Set0);
+                                warming_up ->
+                                    sets:add_element(
+                                      erlang:phash2({warming_up,
+                                                     lists:keyfind(bucket, 1, Task)}),
                                       Set0);
                                 _ ->
                                     Set0
@@ -548,7 +556,16 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
     SampleBucketTasks = [[{status, running} | KV]
                          || KV <- SampleBucketTasks0],
 
-    PreRebalanceTasks1 = SampleBucketTasks ++ XDCRTasks ++ PreRebalanceTasks0,
+    WarmupTasks0 = lists:filter(fun (RawTask) ->
+                                        case lists:keyfind(type, 1, RawTask) of
+                                            {_, warming_up} -> true;
+                                            _ -> false
+                                        end
+                                end, AllRawTasks),
+    WarmupTasks = [[{status, running} | KV]
+                   || KV <- WarmupTasks0],
+
+    PreRebalanceTasks1 = SampleBucketTasks ++ WarmupTasks ++ XDCRTasks ++ PreRebalanceTasks0,
 
     PreRebalanceTasks2 =
         lists:sort(

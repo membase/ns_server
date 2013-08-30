@@ -1649,11 +1649,35 @@ var ServerStateMock = {
   },
   tasks: (function () {
     var currentTasks = {
-      rebalanceNotRunning: true
+      rebalanceNotRunning: true,
+      warmup1: true,
+      warmup2: true,
+      warmup3: true,
+      warmup4: true,
+      warmup5: true,
+      warmup6: true,
+      warmup7: true
     };
 
     var setTask = function (task) {
       currentTasks[task] = !currentTasks[task];
+    };
+
+    var warmupTask = function (bucket, node, state) {
+      return {
+        "bucket": bucket,
+        "node": node,
+        "recommendedRefreshPeriod": 2,
+        "stats": {
+          "ep_warmup_estimated_key_count": "1048382",
+          "ep_warmup_estimated_value_count": "1048382",
+          "ep_warmup_key_count": "12345",
+          "ep_warmup_state": state,
+          "ep_warmup_value_count": "17097"
+        },
+        "status": "running",
+        "type": "warming_up"
+      };
     };
 
     var knownTasks = {
@@ -1724,7 +1748,14 @@ var ServerStateMock = {
         "changesLeft": 0,
         "docsChecked": 1,
         "docsWritten": 1
-      }
+      },
+      warmup1: warmupTask("default", "n_4@127.0.0.1", "loading keys"),
+      warmup2: warmupTask("default", "n_1@127.0.0.1", "loading data"),
+      warmup3: warmupTask("default", "n_2@127.0.0.1", "some other status"),
+      warmup4: warmupTask("default", "n_3@127.0.0.1", "whatever"),
+      warmup5: warmupTask("default1", "n_1@127.0.0.1", "loading keys"),
+      warmup6: warmupTask("default2", "n_1@127.0.0.1", "loading data"),
+      warmup7: warmupTask("default3", "n_1@127.0.0.1", "loading data")
     };
 
     return {
