@@ -233,8 +233,13 @@ start_recovery(Bucket) ->
                   {recovery_map, RecoveryMap}],
        RecoveryMap :: dict().
 recovery_status() ->
-    wait_for_orchestrator(),
-    gen_fsm:sync_send_all_state_event(?SERVER, recovery_status).
+    case is_recovery_running() of
+        false ->
+            not_in_recovery;
+        _ ->
+            wait_for_orchestrator(),
+            gen_fsm:sync_send_all_state_event(?SERVER, recovery_status)
+    end.
 
 -spec recovery_map(bucket_name(), UUID) -> bad_recovery | {ok, RecoveryMap}
   when RecoveryMap :: dict(),
@@ -638,7 +643,7 @@ idle(stop_rebalance, _From, State) ->
               none
       end),
     {reply, not_rebalancing, idle, State};
-idle({start_recovery, Bucket}, _From, State) ->
+idle({start_recovery, Bucket}, {FromPid, _} = _From, State) ->
     try
 
         case cluster_compat_mode:is_cluster_20() of
@@ -667,7 +672,9 @@ idle({start_recovery, Bucket}, _From, State) ->
         BucketConfig = misc:update_proplist(BucketConfig0, [{servers, Servers}]),
         ns_cluster_membership:activate(Servers),
         ns_config:sync_announcements(),
-        case ns_config_rep:synchronize_remote(Servers) of
+        FromPidNode = erlang:node(FromPid),
+        SyncServers = Servers -- [FromPidNode] ++ [FromPidNode],
+        case ns_config_rep:synchronize_remote(SyncServers) of
             ok ->
                 ok;
             {error, BadNodes} ->
