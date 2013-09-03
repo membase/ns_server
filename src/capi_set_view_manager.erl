@@ -170,6 +170,16 @@ start_link(Bucket) ->
                                   {Bucket, UseReplicaIndex, VBucketsCount}, [])
     end.
 
+nodeup_monitoring_loop(Parent) ->
+    receive
+        {nodeup, _} ->
+            ?log_debug("got nodeup event. Considering ddocs replication"),
+            Parent ! replicate_newnodes_docs;
+        _ ->
+            ok
+    end,
+    nodeup_monitoring_loop(Parent).
+
 init({Bucket, UseReplicaIndex, NumVBuckets}) ->
     process_flag(trap_exit, true),
     Self = self(),
@@ -191,12 +201,11 @@ init({Bucket, UseReplicaIndex, NumVBuckets}) ->
                ok = couch_db:close(Db)
            end,
     %% anytime we disconnect or reconnect, force a replicate event.
-    ns_pubsub:subscribe_link(
-      ns_node_disco_events,
-      fun ({ns_node_disco_events, _Old, _New}, _) ->
-              Self ! replicate_newnodes_docs
-      end,
-      empty),
+    erlang:spawn_link(
+      fun () ->
+              ok = net_kernel:monitor_nodes(true),
+              nodeup_monitoring_loop(Self)
+      end),
     Self ! replicate_newnodes_docs,
 
     %% Explicitly ask all available nodes to send their documents to us

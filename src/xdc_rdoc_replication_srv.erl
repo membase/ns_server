@@ -39,6 +39,16 @@ start_link() ->
 force_update(Srv) ->
     Srv ! replicate_newnodes_docs.
 
+nodeup_monitoring_loop(Parent) ->
+    receive
+        {nodeup, _} ->
+            ?log_debug("got nodeup event. Considering rdocs replication"),
+            force_update(Parent);
+        _ ->
+            ok
+    end,
+    nodeup_monitoring_loop(Parent).
+
 %% Callbacks
 
 init([]) ->
@@ -51,12 +61,11 @@ init([]) ->
                ok = couch_db:close(Db)
            end,
     %% anytime we disconnect or reconnect, force a replicate event.
-    ns_pubsub:subscribe_link(
-      ns_node_disco_events,
-      fun ({ns_node_disco_events, _Old, _New}, _) ->
-              force_update(Self)
-      end,
-      empty),
+    erlang:spawn_link(
+      fun () ->
+              ok = net_kernel:monitor_nodes(true),
+              nodeup_monitoring_loop(Self)
+      end),
     Self ! replicate_newnodes_docs,
 
     %% Explicitly ask all available nodes to send their documents to us
