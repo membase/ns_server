@@ -445,7 +445,11 @@ update_with_rev(Sock, VBucket, Key, Value, Rev, Deleted, CAS) ->
 rev_to_mcd_ext({SeqNo, <<CASPart:64, Exp:32, Flg:32>>}) ->
     %% pack the meta data in consistent order with EP_Engine protocol
     %% 32-bit flag, 32-bit exp time, 64-bit seqno and CAS
-    <<Flg:32, Exp:32, SeqNo:64, CASPart:64>>.
+    %%
+    %% Final 4 bytes is options. Currently supported options is
+    %% SKIP_CONFLICT_RESOLUTION_FLAG but because we don't want to
+    %% disable it we pass 0.
+    <<Flg:32, Exp:32, SeqNo:64, CASPart:64, 0:32>>.
 
 
 do_update_with_rev(Sock, VBucket, Key, Value, Rev, CAS, OpCode) ->
