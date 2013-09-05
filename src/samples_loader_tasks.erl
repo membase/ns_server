@@ -111,24 +111,12 @@ perform_loading_task(Name, Quota) ->
         allowed_to_go -> ok
     end,
 
-    Ready = misc:poll_for_condition(
-              fun () ->
-                      case ns_bucket:get_bucket(Name) of
-                          {ok, Config} ->
-                              proplists:get_value(map, Config, []) =/= [];
-                          _ -> false
-                      end
-              end, 30000, 100),
-
-    case Ready =:= timeout of
-        true ->
-            exit(failed_waiting_bucket);
+    case ns_orchestrator:ensure_janitor_run(Name) of
+        ok ->
+            ok;
         _ ->
-            ok
+            exit(failed_waiting_bucket)
     end,
-
-    %% TODO: find out why we need this crap
-    timer:sleep(5000),
 
     {_Name, Host} = misc:node_name_host(node()),
     Port = misc:node_rest_port(ns_config:get(), node()),

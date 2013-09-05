@@ -128,7 +128,7 @@ failover(Bucket, Node) ->
             try ns_janitor:cleanup(Bucket, []) of
                 ok ->
                     ok;
-                {error, wait_for_memcached_failed, BadNodes} ->
+                {error, _, BadNodes} ->
                     ?rebalance_error("Skipped vbucket activations and replication topology changes because not all remaining node were found to have healthy bucket ~p: ~p", [Bucket, BadNodes]),
                     janitor_failed
             catch
@@ -293,7 +293,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
                                   end,
                                   case ns_janitor:cleanup(BucketName, [{timeout, 10}]) of
                                       ok -> ok;
-                                      {error, wait_for_memcached_failed, BadNodes} ->
+                                      {error, _, BadNodes} ->
                                           exit({pre_rebalance_janitor_run_failed, BadNodes})
                                   end,
                                   {ok, NewConf} =

@@ -24,8 +24,11 @@
 
 %% Constants and definitions
 
--record(idle_state, {remaining_buckets=[]}).
--record(janitor_state, {remaining_buckets, pid}).
+-type reply_to() :: [{pid(), any()}].
+-type bucket_request() :: [{bucket_name(), reply_to()}].
+-record(idle_state, {remaining_buckets = [] :: bucket_request()}).
+-record(janitor_state, {remaining_buckets :: bucket_request(),
+                        pid}).
 -record(rebalancing_state, {rebalancer, progress,
                             keep_nodes, eject_nodes, failed_nodes}).
 -record(recovery_state, {uuid :: binary(),
@@ -56,7 +59,9 @@
          recovery_status/0,
          recovery_map/2,
          is_recovery_running/0,
-         set_replication_topology/1]).
+         set_replication_topology/1,
+         run_cleanup/1,
+         ensure_janitor_run/1]).
 
 -define(SERVER, {global, ?MODULE}).
 
@@ -191,6 +196,26 @@ rebalance_progress() ->
 
 request_janitor_run(BucketName) ->
     gen_fsm:send_event(?SERVER, {request_janitor_run, BucketName}).
+
+-spec ensure_janitor_run(bucket_name()) ->
+                                ok |
+                                in_recovery |
+                                rebalance_running |
+                                janitor_failed |
+                                bucket_deleted.
+ensure_janitor_run(BucketName) ->
+    wait_for_orchestrator(),
+    misc:poll_for_condition(
+      fun () ->
+              case gen_fsm:sync_send_event(?SERVER, {ensure_janitor_run, BucketName}, infinity) of
+                  warming_up ->
+                      false;
+                  shutdown ->
+                      false;
+                  Ret ->
+                      Ret
+              end
+      end, infinity, 1000).
 
 -spec start_rebalance_old_style([node()], [node()], [node()]) ->
                                        ok | in_progress | already_balanced.
@@ -385,38 +410,44 @@ handle_info(janitor, idle, #idle_state{remaining_buckets=[]} = State) ->
             {next_state, idle, State#idle_state{remaining_buckets=[]}};
         Buckets ->
             handle_info(janitor, idle,
-                        State#idle_state{remaining_buckets=Buckets})
+                        State#idle_state{remaining_buckets=[{Bucket, []}|| Bucket <- Buckets]})
     end;
-handle_info(janitor, idle, #idle_state{remaining_buckets=Buckets}) ->
+handle_info(janitor, idle, #idle_state{remaining_buckets=BucketRequests}) ->
     misc:verify_name(?MODULE), % MB-3180: Make sure we're still registered
     maybe_drop_recovery_status(),
-    Bucket = hd(Buckets),
-    Pid = proc_lib:spawn_link(ns_janitor, cleanup, [Bucket, [consider_stopping_rebalance_status]]),
+    {Bucket, _} = hd(BucketRequests),
+    Pid = proc_lib:spawn_link(?MODULE, run_cleanup, [Bucket]),
     %% NOTE: Bucket will be popped from Buckets when janitor run will
     %% complete successfully
-    {next_state, janitor_running, #janitor_state{remaining_buckets=Buckets,
+    {next_state, janitor_running, #janitor_state{remaining_buckets=BucketRequests,
                                                  pid = Pid}};
 handle_info(janitor, StateName, StateData) ->
     ?log_info("Skipping janitor in state ~p", [StateName]),
     {next_state, StateName, StateData};
 handle_info({'EXIT', Pid, Reason}, janitor_running,
             #janitor_state{pid = Pid,
-                           remaining_buckets = [Bucket|Buckets]}) ->
-    case Reason of
-        normal ->
-            ok;
-        _ ->
-            ?log_warning("Janitor run exited for bucket ~p with reason ~p~n",
-                         [Bucket, Reason])
-    end,
-    case Buckets of
+                           remaining_buckets = [{Bucket, _ReplyTo} = BucketRequest|BucketRequests]}) ->
+    Ret = case Reason of
+              shutdown ->
+                  shutdown;
+              normal ->
+                  ok;
+              {shutdown, {error, wait_for_memcached_failed, _}} ->
+                  warming_up;
+              _ ->
+                  ?log_warning("Janitor run exited for bucket ~p with reason ~p~n",
+                               [Bucket, Reason]),
+                  janitor_failed
+          end,
+    notify_janitor_finished(BucketRequest, Ret),
+    case BucketRequests of
         [] ->
             ok;
         _ ->
             self() ! janitor
     end,
     consider_switching_compat_mode(),
-    {next_state, idle, #idle_state{remaining_buckets = Buckets}};
+    {next_state, idle, #idle_state{remaining_buckets = BucketRequests}};
 handle_info({'EXIT', Pid, Reason}, rebalancing,
             #rebalancing_state{rebalancer=Pid,
                                keep_nodes=KeepNodes,
@@ -472,27 +503,13 @@ terminate(_Reason, _StateName, _StateData) ->
 
 %% Asynchronous idle events
 idle({request_janitor_run, BucketName}, State) ->
-    RemainingBuckets =State#idle_state.remaining_buckets,
-    case lists:member(BucketName, RemainingBuckets) of
-        false ->
-            self() ! janitor,
-            {next_state, idle, State#idle_state{remaining_buckets = [BucketName|RemainingBuckets]}};
-        _ ->
-            consider_switching_compat_mode(),
-            {next_state, idle, State}
-    end;
+    do_request_janitor_run({BucketName, []}, idle, State);
 idle(_Event, State) ->
     %% This will catch stray progress messages
     {next_state, idle, State}.
 
 janitor_running({request_janitor_run, BucketName}, State) ->
-    RemainingBuckets =State#janitor_state.remaining_buckets,
-    case lists:member(BucketName, RemainingBuckets) of
-        false ->
-            {next_state, janitor_running, State#janitor_state{remaining_buckets = [BucketName|RemainingBuckets]}};
-        _ ->
-            {next_state, janitor_running, State}
-    end;
+    do_request_janitor_run({BucketName, []}, janitor_running, State);
 janitor_running(_Event, State) ->
     {next_state, janitor_running, State}.
 
@@ -534,15 +551,8 @@ idle({delete_bucket, BucketName}, _From,
             {ok, _} ->
                 master_activity_events:note_bucket_deletion(BucketName),
                 ns_config:sync_announcements(),
-                NewRemainingBuckets = RemainingBuckets -- [BucketName],
-                case RemainingBuckets =:= NewRemainingBuckets of
-                    true ->
-                        ok;
-                    false ->
-                        ?log_debug("Deleted bucket ~p from remaining_buckets",
-                                   [BucketName])
-                end,
-                State#idle_state{remaining_buckets=NewRemainingBuckets};
+                State#idle_state{remaining_buckets=
+                                     delete_bucket_request(BucketName, RemainingBuckets)};
             _ ->
                 State
         end,
@@ -605,10 +615,11 @@ idle(rebalance_progress, _From, State) ->
     {reply, not_running, idle, State};
 %% NOTE: this is being remotely called by 1.8.x nodes and used by maybe_start_rebalance
 idle({start_rebalance, KeepNodes, EjectNodes, FailedNodes}, _From,
-            _State) ->
+            #idle_state{remaining_buckets = RemainingBuckets}) ->
     ?user_log(?REBALANCE_STARTED,
               "Starting rebalance, KeepNodes = ~p, EjectNodes = ~p~n",
               [KeepNodes, EjectNodes]),
+    notify_janitor_finished(RemainingBuckets, rebalance_running),
     ns_cluster:counter_inc(rebalance_start),
     Pid = spawn_link(
             fun () ->
@@ -623,7 +634,8 @@ idle({start_rebalance, KeepNodes, EjectNodes, FailedNodes}, _From,
                         keep_nodes=KeepNodes,
                         eject_nodes=EjectNodes,
                         failed_nodes=FailedNodes}};
-idle({move_vbuckets, Bucket, Moves}, _From, _State) ->
+idle({move_vbuckets, Bucket, Moves}, _From, #idle_state{remaining_buckets = RemainingBuckets}) ->
+    notify_janitor_finished(RemainingBuckets, rebalance_running),
     Pid = spawn_link(
             fun () ->
                     {ok, Config} = ns_bucket:get_bucket(Bucket),
@@ -649,7 +661,8 @@ idle(stop_rebalance, _From, State) ->
               none
       end),
     {reply, not_rebalancing, idle, State};
-idle({start_recovery, Bucket}, {FromPid, _} = _From, State) ->
+idle({start_recovery, Bucket}, {FromPid, _} = _From,
+     #idle_state{remaining_buckets = RemainingBuckets} = State) ->
     try
 
         case cluster_compat_mode:is_cluster_20() of
@@ -700,7 +713,7 @@ idle({start_recovery, Bucket}, {FromPid, _} = _From, State) ->
         case ns_janitor:cleanup(Bucket, [{timeout, 10}]) of
             ok ->
                 ok;
-            {error, wait_for_memcached_failed, FailedNodes1} ->
+            {error, _, FailedNodes1} ->
                 error({error, {failed_nodes, FailedNodes1}})
         end,
 
@@ -727,6 +740,7 @@ idle({start_recovery, Bucket}, {FromPid, _} = _From, State) ->
 
                 ale:info(?USER_LOGGER, "Put bucket `~s` into recovery mode", [Bucket]),
 
+                notify_janitor_finished(RemainingBuckets, in_recovery),
                 {reply, {ok, RecoveryUUID, RecoveryMap}, recovery, NewState};
             Error2 ->
                 throw(Error2)
@@ -748,7 +762,9 @@ idle({set_replication_topology, Topology}, _From, State) ->
             ns_config:sync_announcements(),
             lists:foreach(fun request_janitor_run/1, ns_bucket:get_bucket_names())
     end,
-    {reply, ok, idle, State}.
+    {reply, ok, idle, State};
+idle({ensure_janitor_run, BucketName}, From, State) ->
+    do_request_janitor_run({BucketName, [From]}, idle, State).
 
 janitor_running(rebalance_progress, _From, State) ->
     {reply, not_running, janitor_running, State};
@@ -762,7 +778,9 @@ janitor_running(Msg, From, #janitor_state{pid=Pid} = State) ->
                   handle_info(DeathMsg, janitor_running, State)
           end,
     %% and than handle original call in idle state
-    idle(Msg, From, NextState).
+    idle(Msg, From, NextState);
+janitor_running({ensure_janitor_run, BucketName}, From, State) ->
+    do_request_janitor_run({BucketName, [From]}, janitor_running, State).
 
 %% Asynchronous rebalancing events
 rebalancing({update_progress, Progress},
@@ -872,6 +890,65 @@ recovery(_Event, _From, State) ->
 %%
 %% Internal functions
 %%
+
+run_cleanup(Bucket) ->
+    RV = ns_janitor:cleanup(Bucket, [consider_stopping_rebalance_status]),
+    case RV of
+        ok ->
+            ok;
+        Error ->
+            exit({shutdown, Error})
+    end.
+
+add_bucket_request(BucketRequest, BucketRequests) ->
+    add_bucket_request(BucketRequest, BucketRequests, []).
+
+add_bucket_request(BucketRequest, [], Acc) ->
+    {added, lists:reverse([BucketRequest|Acc])};
+add_bucket_request({Bucket, NewReplyTo}, [{Bucket, ReplyTo} | T], Acc) ->
+    {found, lists:reverse(Acc, [{Bucket, lists:umerge(ReplyTo, NewReplyTo)} | T])};
+add_bucket_request({NewBucket, NewReplyTo}, [{Bucket, ReplyTo} | T], Acc) ->
+    add_bucket_request({NewBucket, NewReplyTo}, T, [{Bucket, ReplyTo} | Acc]).
+
+delete_bucket_request(BucketName, BucketRequests) ->
+    case lists:keytake(BucketName, 1, BucketRequests) of
+        false ->
+            BucketRequests;
+        {value, BucketRequest, NewBucketRequests} ->
+            notify_janitor_finished(BucketRequest, bucket_deleted),
+            ?log_debug("Deleted bucket ~p from remaining_buckets", [BucketName]),
+            NewBucketRequests
+    end.
+
+notify_janitor_finished({_Bucket, ReplyTo}, Reason) ->
+    lists:foreach(fun (To) ->
+                          gen_fsm:reply(To, Reason)
+                  end, ReplyTo);
+notify_janitor_finished(BucketRequests, Reason) ->
+    lists:foreach(fun (BucketRequest) ->
+                          notify_janitor_finished(BucketRequest, Reason)
+                  end, BucketRequests).
+
+do_request_janitor_run(BucketRequest, FsmState, State) ->
+    BucketRequests = case FsmState of
+                         idle ->
+                             State#idle_state.remaining_buckets;
+                         janitor_running ->
+                             State#janitor_state.remaining_buckets
+                     end,
+    {Oper, NewBucketRequests} = add_bucket_request(BucketRequest, BucketRequests),
+    case FsmState of
+        idle ->
+            case Oper of
+                added ->
+                    self() ! janitor;
+                found ->
+                    consider_switching_compat_mode()
+            end,
+            {next_state, FsmState, State#idle_state{remaining_buckets = NewBucketRequests}};
+        janitor_running ->
+            {next_state, FsmState, State#janitor_state{remaining_buckets = NewBucketRequests}}
+    end.
 
 needs_rebalance(Nodes, BucketConfig, Topology) ->
     Servers = proplists:get_value(servers, BucketConfig, []),

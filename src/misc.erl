@@ -601,22 +601,34 @@ sync_wait(Pid) ->
 poll_for_condition_rec(Condition, _Sleep, 0) ->
     case Condition() of
         false -> timeout;
-        _ -> ok
+        Ret -> Ret
+    end;
+poll_for_condition_rec(Condition, Sleep, infinity) ->
+    case Condition() of
+        false ->
+            timer:sleep(Sleep),
+            poll_for_condition_rec(Condition, Sleep, infinity);
+        Ret -> Ret
     end;
 poll_for_condition_rec(Condition, Sleep, Counter) ->
     case Condition() of
         false ->
             timer:sleep(Sleep),
             poll_for_condition_rec(Condition, Sleep, Counter-1);
-        _ -> ok
+        Ret -> Ret
     end.
 
 poll_for_condition(Condition, Timeout, Sleep) ->
-    Times = (Timeout + Sleep - 1) div Sleep,
+    Times = case Timeout of
+                infinity ->
+                    infinity;
+                _ ->
+                    (Timeout + Sleep - 1) div Sleep
+            end,
     poll_for_condition_rec(Condition, Sleep, Times).
 
 poll_for_condition_test() ->
-    ok = poll_for_condition(fun () -> true end, 0, 10),
+    true = poll_for_condition(fun () -> true end, 0, 10),
     timeout = poll_for_condition(fun () -> false end, 100, 10),
     Ref = make_ref(),
     self() ! {Ref, 0},
@@ -630,7 +642,7 @@ poll_for_condition_test() ->
                              end,
                    Counter > 5
            end,
-    ok = poll_for_condition(Fun, 300, 10),
+    true = poll_for_condition(Fun, 300, 10),
     receive
         {Ref, _} -> ok
     after 0 ->

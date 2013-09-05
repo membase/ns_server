@@ -224,6 +224,7 @@ query_states_new_style(Bucket, Nodes, ReadynessWaitTimeout) ->
             {ok, [], BadNodes}
     end.
 
+-spec mark_bucket_warmed(Bucket::bucket_name(), [node()]) -> ok | {error, [node()], list()}.
 mark_bucket_warmed(Bucket, Nodes) ->
     {Replies, BadNodes} = ns_memcached:mark_warmed(Nodes, Bucket),
     BadReplies = [{N, R} || {N, R} <- Replies,

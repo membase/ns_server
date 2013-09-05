@@ -24,7 +24,10 @@
 -export([cleanup/2, stop_rebalance_status/1]).
 
 
--spec cleanup(Bucket::bucket_name(), Options::list()) -> ok | {error, wait_for_memcached_failed, [node()]}.
+-spec cleanup(Bucket::bucket_name(), Options::list()) ->
+                     ok |
+                     {error, wait_for_memcached_failed, [node()]} |
+                     {error, marking_as_warmed_failed, [node()]}.
 cleanup(Bucket, Options) ->
     FullConfig = ns_config:get(),
     case ns_bucket:get_bucket(Bucket, FullConfig) of
@@ -116,8 +119,12 @@ cleanup_with_states(Bucket, Options, BucketConfig, Servers, States, [] = Zombies
         _ -> ok
     end,
 
-    janitor_agent:mark_bucket_warmed(Bucket, Servers),
-    ok.
+    case janitor_agent:mark_bucket_warmed(Bucket, Servers) of
+        ok ->
+            ok;
+        {error, BadNodes, _BadReplies} ->
+            {error, marking_as_warmed_failed, BadNodes}
+    end.
 
 stop_rebalance_status(Fn) ->
     Sentinel = make_ref(),
