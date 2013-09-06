@@ -94,6 +94,10 @@ var ReplicationForm = mkClass({
   },
   startCreate: function (callback) {
     var self = this;
+
+    self.advancedSettingsContainer.hide();
+    self.advacedXDCRSettings.find("select option[value=xmem]").boolAttr('selected', true);
+
     self.closeCallback = callback;
     ReplicationsModel.remoteClustersListCell.getValue(function (remoteClusters) {
       self.fillClustersSelect(remoteClusters);
