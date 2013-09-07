@@ -177,8 +177,10 @@ compute_servers_list_cleanup(BucketConfig, FullConfig) ->
     end.
 
 compute_vbucket_map_fixup(Bucket, BucketConfig, States, [] = Zombies) ->
-    Map = proplists:get_value(map, BucketConfig, []),
-    true = ([] =/= Map),
+    OrigMap = proplists:get_value(map, BucketConfig, []),
+    true = ([] =/= OrigMap),
+    Map = maybe_adjust_chain_size(OrigMap, BucketConfig),
+
     FFMap = case proplists:get_value(fastForwardMap, BucketConfig) of
                 undefined -> [];
                 FFMap0 ->
@@ -207,7 +209,7 @@ compute_vbucket_map_fixup(Bucket, BucketConfig, States, [] = Zombies) ->
                   ignore -> OldChain;
                   _ -> NewChain
               end || {NewChain, OldChain} <- lists:zip(MapUpdates, Map)],
-    NewBucketConfig = case NewMap =:= Map of
+    NewBucketConfig = case NewMap =:= OrigMap of
                           true ->
                               BucketConfig;
                           false ->
@@ -215,6 +217,15 @@ compute_vbucket_map_fixup(Bucket, BucketConfig, States, [] = Zombies) ->
                               lists:keyreplace(map, 1, BucketConfig, {map, NewMap})
                       end,
     {NewBucketConfig, IgnoredVBuckets}.
+
+maybe_adjust_chain_size(Map, BucketConfig) ->
+    NumReplicas = ns_bucket:num_replicas(BucketConfig),
+    case length(hd(Map)) =:= NumReplicas + 1 of
+        true ->
+            Map;
+        false ->
+            ns_janitor_map_recoverer:align_replicas(Map, NumReplicas)
+    end.
 
 sanify_chain(Bucket, States, Chain, FutureChain, VBucket, Zombies) ->
     NewChain = do_sanify_chain(Bucket, States, Chain, FutureChain, VBucket, Zombies),

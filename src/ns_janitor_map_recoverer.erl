@@ -22,7 +22,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([read_existing_map/4]).
+-export([read_existing_map/4,
+         align_replicas/2]).
 
 -define(CLEAN_VBUCKET_MAP_RECOVER, 0).
 -define(UNCLEAN_VBUCKET_MAP_RECOVER, 1).

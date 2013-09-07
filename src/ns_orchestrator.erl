@@ -311,6 +311,12 @@ handle_event(Event, StateName, State) ->
 
 handle_sync_event({update_bucket, BucketType, BucketName, UpdatedProps}, _From, StateName, State) ->
     Reply = ns_bucket:update_bucket_props(BucketType, BucketName, UpdatedProps),
+    case Reply of
+        ok ->
+            %% request janitor run to fix map if the replica # has changed
+            request_janitor_run(BucketName);
+        _ -> ok
+    end,
     {reply, Reply, StateName, State};
 
 handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes},

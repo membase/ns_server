@@ -622,7 +622,7 @@ start_loading_sample(Name) ->
               {"ramQuotaMB", integer_to_list(?SAMPLE_BUCKET_QUOTA_MB) },
               {"bucketType", "membase"},
               {"name", Name}],
-    case menelaus_web_buckets:do_bucket_create(Name, Params, false, false) of
+    case menelaus_web_buckets:create_bucket(Name, Params) of
         ok ->
             start_loading_sample_task(Name);
         {_, Code} when Code < 300 ->

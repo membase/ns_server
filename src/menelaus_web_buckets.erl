@@ -36,9 +36,8 @@
          handle_bucket_delete/3,
          handle_bucket_update/3,
          handle_bucket_create/2,
-         do_bucket_create/4,
+         create_bucket/2,
          handle_bucket_flush/3,
-         parse_bucket_params/5,
          handle_compact_bucket/3,
          handle_purge_compact_bucket/3,
          handle_cancel_bucket_compaction/3,
@@ -387,6 +386,44 @@ extract_bucket_props(BucketId, Props) ->
         _ -> ImportantProps
     end.
 
+-record(bv_ctx, {
+          validate_only,
+          ignore_warnings,
+          new,
+          bucket_name,
+          bucket_config,
+          all_buckets,
+          cluster_storage_totals}).
+
+init_bucket_validation_context(IsNew, BucketName, Req) ->
+    ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
+    IgnoreWarnings = case IsNew of
+                         true ->
+                             (proplists:get_value("ignore_warnings", Req:parse_qs()) =:= "1");
+                         false ->
+                             false
+                     end,
+    init_bucket_validation_context(IsNew, BucketName, ValidateOnly, IgnoreWarnings).
+
+init_bucket_validation_context(IsNew, BucketName, ValidateOnly, IgnoreWarnings) ->
+    init_bucket_validation_context(IsNew, BucketName,
+                                   ns_bucket:get_buckets(), extended_cluster_storage_info(),
+                                   ValidateOnly, IgnoreWarnings).
+
+init_bucket_validation_context(IsNew, BucketName, AllBuckets, ClusterStorageTotals, ValidateOnly, IgnoreWarnings) ->
+    #bv_ctx{
+       validate_only = ValidateOnly,
+       ignore_warnings = IgnoreWarnings,
+       new = IsNew,
+       bucket_name = BucketName,
+       all_buckets = AllBuckets,
+       bucket_config = case lists:keyfind(BucketName, 1, AllBuckets) of
+                           false -> false;
+                           {_, V} -> V
+                       end,
+       cluster_storage_totals = ClusterStorageTotals
+      }.
+
 handle_bucket_update(_PoolId, BucketId, Req) ->
     Params = Req:parse_post(),
     handle_bucket_update_inner(BucketId, Req, Params, 32).
@@ -394,13 +431,8 @@ handle_bucket_update(_PoolId, BucketId, Req) ->
 handle_bucket_update_inner(_BucketId, _Req, _Params, 0) ->
     exit(bucket_update_loop);
 handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
-    ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
-    case {ValidateOnly,
-          parse_bucket_params(false,
-                              BucketId,
-                              Params,
-                              ns_bucket:get_buckets(),
-                              extended_cluster_storage_info())} of
+    Ctx = init_bucket_validation_context(false, BucketId, Req),
+    case {Ctx#bv_ctx.validate_only, parse_bucket_params(Ctx, Params)} of
         {_, {errors, Errors, JSONSummaries}} ->
             RV = {struct, [{errors, {struct, Errors}},
                            {summaries, {struct, JSONSummaries}}]},
@@ -418,7 +450,7 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
                     handle_bucket_update_inner(BucketId, Req, Params, Limit-1)
             end;
         {true, {ok, ParsedProps, JSONSummaries}} ->
-            FinalErrors = perform_warnings_validation(ParsedProps, []),
+            FinalErrors = perform_warnings_validation(Ctx, ParsedProps, []),
             reply_json(Req, {struct, [{errors, {struct, FinalErrors}},
                                       {summaries, {struct, JSONSummaries}}]},
                        case FinalErrors of
@@ -426,6 +458,10 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
                            _ -> 400
                        end)
     end.
+
+create_bucket(Name, Params) ->
+    Ctx = init_bucket_validation_context(true, Name, false, false),
+    do_bucket_create(Name, Params, Ctx).
 
 do_bucket_create(Name, ParsedProps) ->
     BucketType = proplists:get_value(bucketType, ParsedProps),
@@ -450,19 +486,14 @@ do_bucket_create(Name, ParsedProps) ->
             {errors_500, [{'_', <<"Cannot create buckets when cluster is in recovery mode">>}]}
     end.
 
-do_bucket_create(Name, Params, ValidateOnly, IgnoreWarnings) ->
+do_bucket_create(Name, Params, Ctx) ->
     MaxBuckets = ns_config_ets_dup:unreliable_read_key(max_bucket_count, 10),
-    case length(ns_bucket:get_buckets()) >= MaxBuckets of
+    case length(Ctx#bv_ctx.all_buckets) >= MaxBuckets of
         true ->
             {{struct, [{'_', iolist_to_binary(io_lib:format("Cannot create more than ~w buckets", [MaxBuckets]))}]}, 400};
         false ->
-            case {ValidateOnly, IgnoreWarnings,
-                  parse_bucket_params(true,
-                                      Name,
-                                      Params,
-                                      ns_bucket:get_buckets(),
-                                      extended_cluster_storage_info(),
-                                      IgnoreWarnings)} of
+            case {Ctx#bv_ctx.validate_only, Ctx#bv_ctx.ignore_warnings,
+                  parse_bucket_params(Ctx, Params)} of
                 {_, _, {errors, Errors, JSONSummaries}} ->
                     {{struct, [{errors, {struct, Errors}},
                                {summaries, {struct, JSONSummaries}}]}, 400};
@@ -478,7 +509,7 @@ do_bucket_create(Name, Params, ValidateOnly, IgnoreWarnings) ->
                     {{struct, [{errors, {struct, []}},
                                {summaries, {struct, JSONSummaries}}]}, 200};
                 {true, false, {ok, ParsedProps, JSONSummaries}} ->
-                    FinalErrors = perform_warnings_validation(ParsedProps, []),
+                    FinalErrors = perform_warnings_validation(Ctx, ParsedProps, []),
                     {{struct, [{errors, {struct, FinalErrors}},
                                {summaries, {struct, JSONSummaries}}]},
                                case FinalErrors of
@@ -491,30 +522,58 @@ do_bucket_create(Name, Params, ValidateOnly, IgnoreWarnings) ->
 handle_bucket_create(PoolId, Req) ->
     Params = Req:parse_post(),
     Name = proplists:get_value("name", Params),
-    ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
-    IgnoreWarnings = (proplists:get_value("ignore_warnings", Req:parse_qs()) =:= "1"),
+    Ctx = init_bucket_validation_context(true, Name, Req),
 
-    case do_bucket_create(Name, Params, ValidateOnly, IgnoreWarnings) of
+    case do_bucket_create(Name, Params, Ctx) of
         ok ->
            respond_bucket_created(Req, PoolId, Name);
         {Struct, Code} ->
            reply_json(Req, Struct, Code)
     end.
 
-perform_warnings_validation(ParsedProps, Errors) ->
-    Errors ++ case proplists:get_value(num_replicas, ParsedProps) of
-        undefined ->
+perform_warnings_validation(Ctx, ParsedProps, Errors) ->
+    Errors ++
+        num_replicas_warnings_validation(Ctx, proplists:get_value(num_replicas, ParsedProps)).
+
+num_replicas_warnings_validation(_Ctx, undefined) ->
+    [];
+num_replicas_warnings_validation(Ctx, NReplicas) ->
+    ActiveCount = length(ns_cluster_membership:active_nodes()),
+    Warnings =
+        if
+            ActiveCount =< NReplicas ->
+                ["you do not have enough servers to support this number of replicas"];
+            true ->
+                []
+        end ++
+        case {Ctx#bv_ctx.new, Ctx#bv_ctx.bucket_config} of
+            {true, _} ->
+                [];
+            {_, false} ->
+                [];
+            {false, BucketConfig} ->
+                case ns_bucket:num_replicas(BucketConfig) of
+                    NReplicas ->
+                        [];
+                    _ ->
+                        ["changing replica number may require rebalance"]
+                end
+        end,
+    Msg = case Warnings of
+              [] ->
+                  [];
+              [A] ->
+                  A;
+              [B, C] ->
+                  B ++ " and " ++ C
+          end,
+    case Msg of
+        [] ->
             [];
-        X ->
-            ActiveCount = length(ns_cluster_membership:active_nodes()),
-            if
-                ActiveCount =< X ->
-                    Msg = <<"Warning, you do not have enough servers to support this number of replicas.">>,
-                    [{replicaNumber, Msg}];
-                true ->
-                    []
-            end
+        _ ->
+            [{replicaNumber, ?l2b("Warning: " ++ Msg ++ ".")}]
     end.
+
 
 handle_bucket_flush(_PoolId, Id, Req) ->
     XDCRDocs = xdc_rdoc_replication_srv:find_all_replication_docs(),
@@ -565,34 +624,32 @@ do_handle_bucket_flush(Id, Req) ->
                                                 % So it's kind of: Amount of cluster disk space available of allocation,
                                                 % but with a number of 'but's.
 
-parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals) ->
-    parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals, false).
-
-parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals, IgnoreWarnings) ->
-    RV = parse_bucket_params_without_warnings(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals),
-    case {IgnoreWarnings, RV} of
+parse_bucket_params(Ctx, Params) ->
+    RV = parse_bucket_params_without_warnings(Ctx, Params),
+    case {Ctx#bv_ctx.ignore_warnings, RV} of
         {_, {ok, _, _} = X} -> X;
         {false, {errors, Errors, Summaries, OKs}} ->
-            {errors, perform_warnings_validation(OKs, Errors), Summaries};
+            {errors, perform_warnings_validation(Ctx, OKs, Errors), Summaries};
 	{true, {errors, Errors, Summaries, _}} ->
             {errors, Errors, Summaries}
     end.
 
-parse_bucket_params_without_warnings(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals) ->
+parse_bucket_params_without_warnings(Ctx, Params) ->
     UsageGetter = fun (ram, Name) ->
                           menelaus_stats:bucket_ram_usage(Name);
                       (hdd, all) ->
-                          {hdd, HDDStats} = lists:keyfind(hdd, 1, ClusterStorageTotals),
+                          {hdd, HDDStats} = lists:keyfind(hdd, 1, Ctx#bv_ctx.cluster_storage_totals),
                           {usedByData, V} = lists:keyfind(usedByData, 1, HDDStats),
                           V;
                       (hdd, Name) ->
                           menelaus_stats:bucket_disk_usage(Name)
                   end,
-    parse_bucket_params_without_warnings(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals, UsageGetter).
+    parse_bucket_params_without_warnings(Ctx, Params, UsageGetter).
 
-parse_bucket_params_without_warnings(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals, UsageGetter) ->
-    {OKs, Errors} = basic_bucket_params_screening(IsNew, BucketName,
-                                                  Params, AllBuckets),
+parse_bucket_params_without_warnings(Ctx, Params, UsageGetter) ->
+    {OKs, Errors} = basic_bucket_params_screening(Ctx ,Params),
+    ClusterStorageTotals = Ctx#bv_ctx.cluster_storage_totals,
+    IsNew = Ctx#bv_ctx.new,
     CurrentBucket = proplists:get_value(currentBucket, OKs),
     HasRAMQuota = lists:keyfind(ram_quota, 1, OKs) =/= false,
     RAMSummary = if
@@ -638,11 +695,8 @@ parse_bucket_params_without_warnings(IsNew, BucketName, Params, AllBuckets, Clus
             {errors, TotalErrors, JSONSummaries, OKs}
     end.
 
-basic_bucket_params_screening(IsNew, BucketName, Params, AllBuckets) ->
-    BucketConfig = case lists:keyfind(BucketName, 1, AllBuckets) of
-                       false -> false;
-                       {_, V} -> V
-                   end,
+basic_bucket_params_screening(Ctx, Params) ->
+    BucketConfig = Ctx#bv_ctx.bucket_config,
     AuthType = case proplists:get_value("authType", Params) of
                    "none" -> none;
                    "sasl" -> sasl;
@@ -650,16 +704,20 @@ basic_bucket_params_screening(IsNew, BucketName, Params, AllBuckets) ->
                        ns_bucket:auth_type(BucketConfig);
                    _ -> {crap, <<"invalid authType">>} % this is not for end users
                end,
-    case {IsNew, BucketConfig, AuthType} of
+    case {Ctx#bv_ctx.new, BucketConfig, AuthType} of
         {false, false, _} ->
             {[], [{name, <<"Bucket with given name doesn't exist">>}]};
         {_, _, {crap, Crap}} ->
             {[], [{authType, Crap}]};
-        _ -> basic_bucket_params_screening_tail(IsNew, BucketName, Params,
-                                                BucketConfig, AuthType, AllBuckets)
+        _ -> basic_bucket_params_screening_tail(Ctx, Params, AuthType)
     end.
 
-basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, AuthType, AllBuckets) ->
+basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
+    BucketName = Ctx#bv_ctx.bucket_name,
+    BucketConfig = Ctx#bv_ctx.bucket_config,
+    IsNew = Ctx#bv_ctx.new,
+    AllBuckets = Ctx#bv_ctx.all_buckets,
+
     Candidates0 = [{ok, name, BucketName},
                    {ok, auth_type, AuthType},
                    parse_validate_flush_enabled(proplists:get_value("flushEnabled", Params, "0")),
@@ -819,10 +877,7 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                           | Candidates1];
                      membase ->
                          [{ok, bucketType, membase},
-                          case IsNew of
-                              true -> parse_validate_replicas_number(proplists:get_value("replicaNumber", Params));
-                              _ -> undefined
-                          end,
+                          parse_validate_replicas_number(proplists:get_value("replicaNumber", Params), IsNew),
                           case IsNew of
                               true ->
                                   parse_validate_replica_index(proplists:get_value("replicaIndex", Params, "1"));
@@ -912,7 +967,10 @@ interpret_hdd_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGette
                  this_used = ThisUsed,
                  free = Total - OtherData - OtherBuckets}.
 
-parse_validate_replicas_number(NumReplicas) ->
+parse_validate_replicas_number(undefined, false) ->
+    % for backward compatibility we should not require replicas number for update
+    {ok, undefined};
+parse_validate_replicas_number(NumReplicas, _IsNew) ->
     case menelaus_util:parse_validate_number(NumReplicas, 0, 3) of
         invalid ->
             {error, replicaNumber, <<"The replica number must be specified and must be a non-negative integer.">>};
@@ -991,6 +1049,11 @@ handle_compact_view(_PoolId, Bucket, DDocId, Req) ->
 handle_cancel_view_compaction(_PoolId, Bucket, DDocId, Req) ->
     ok = compaction_daemon:cancel_forced_view_compaction(Bucket, DDocId),
     Req:respond({200, server_header(), []}).
+
+% for test
+basic_bucket_params_screening(IsNew, Name, Params, AllBuckets) ->
+    Ctx = init_bucket_validation_context(IsNew, Name, AllBuckets, undefined, false, false),
+    basic_bucket_params_screening(Ctx, Params).
 
 -ifdef(EUNIT).
 basic_bucket_params_screening_test() ->

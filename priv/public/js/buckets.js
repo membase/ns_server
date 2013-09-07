@@ -210,9 +210,7 @@ var BucketDetailsDialog = mkClass({
 
     dialog.find('[name=name]').boolAttr('disabled', !isNew);
 
-    dialog.find('[name=replicaNumber]').boolAttr('disabled', !isNew);
     dialog.find('[name=replicaIndex]').boolAttr('disabled', !isNew);
-    dialog.find('.for-enable-replicas input').boolAttr('disabled', !isNew);
 
     dialog.find('[name=ramQuotaMB][type=text]')
       .boolAttr('disabled', !isNew && (initValues.bucketType == 'memcached'));
@@ -256,9 +254,7 @@ var BucketDetailsDialog = mkClass({
         oldReplicationEnabled = replicationEnabled;
         dialog.find('.for-replica-number')[replicationEnabled ? 'show' : 'hide']();
         dialog.find('.hidden-replica-number').need(1).boolAttr('disabled', replicationEnabled);
-        if (isNew) {
-          dialog.find('.for-replica-number select').need(1).boolAttr('disabled', !replicationEnabled);
-        }
+        dialog.find('.for-replica-number select').need(1).boolAttr('disabled', !replicationEnabled);
       });
     }).call(this);
 
