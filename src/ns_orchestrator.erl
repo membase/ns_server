@@ -551,7 +551,7 @@ idle({delete_bucket, BucketName}, _From,
         case DeleteRV of
             {ok, BucketConfig} ->
                 Nodes = ns_bucket:bucket_nodes(BucketConfig),
-                Pred = fun (Active, _Connected) ->
+                Pred = fun (Active) ->
                                not lists:member(BucketName, Active)
                        end,
                 LeftoverNodes =
@@ -905,12 +905,12 @@ wait_for_nodes_loop(Timeout, Nodes) ->
             {timeout, Nodes}
     end.
 
-%% Wait till active and connected buckets satisfy certain predicate on all
-%% nodes. After `Timeout' milliseconds of idleness (i.e. when bucket lists has
-%% not been updated on any of the nodes for more than `Timeout' milliseconds)
-%% we give up and return the list of leftover nodes.
+%% Wait till active buckets satisfy certain predicate on all nodes. After
+%% `Timeout' milliseconds of idleness (i.e. when bucket lists has not been
+%% updated on any of the nodes for more than `Timeout' milliseconds) we give
+%% up and return the list of leftover nodes.
 -spec wait_for_nodes([node()],
-                     fun(([string()], [string()]) -> boolean()),
+                     fun(([string()]) -> boolean()),
                      timeout()) -> ok | {timeout, [node()]}.
 wait_for_nodes(Nodes, Pred, Timeout) ->
     Parent = self(),
@@ -924,10 +924,8 @@ wait_for_nodes(Nodes, Pred, Timeout) ->
                           Status = ns_doctor:get_node(Node),
                           Active = proplists:get_value(active_buckets,
                                                        Status, []),
-                          Connected = proplists:get_value(ready_buckets,
-                                                          Status, []),
 
-                          case Pred(Active, Connected) of
+                          case Pred(Active) of
                               false ->
                                   PendingNodes;
                               true ->
