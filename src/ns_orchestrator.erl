@@ -922,9 +922,7 @@ wait_for_nodes_check_pred(Status, Pred) ->
                      fun(([string()]) -> boolean()),
                      timeout()) -> ok | {timeout, [node()]}.
 wait_for_nodes(Nodes, Pred, Timeout) ->
-    Parent = self(),
-    Ref = make_ref(),
-    Fn =
+    misc:executing_on_new_process(
         fun () ->
                 Self = self(),
                 ns_pubsub:subscribe_link(
@@ -950,21 +948,8 @@ wait_for_nodes(Nodes, Pred, Timeout) ->
                   Nodes
                  ),
 
-                Result = wait_for_nodes_loop(Timeout, Nodes),
-                Parent ! {Ref, Result}
-        end,
-
-    Pid = spawn_link(Fn),
-
-    Result1 =
-        receive
-            {Ref, Result0} -> Result0
-        end,
-
-    receive
-        {'EXIT', Pid, normal} ->
-            Result1
-    end.
+                wait_for_nodes_loop(Timeout, Nodes)
+        end).
 
 %% quickly and _without_ communication to potentially remote
 %% ns_orchestrator find out if rebalance is running.
