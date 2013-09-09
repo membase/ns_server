@@ -328,37 +328,11 @@ open_doc(Db, DocId, Options) ->
     couch_db:open_doc(Db, DocId, Options).
 
 
-make_attachment_fold(_Att, ReqAcceptsAttEnc) ->
-    case ReqAcceptsAttEnc of
-        false -> fun couch_doc:att_foldl_decode/3;
-        _ -> fun couch_doc:att_foldl/3
-    end.
-
--spec all_databases() -> {ok, [binary()]}.
-all_databases() ->
-    {ok, DBs} = couch_server:all_databases(),
-    {ok, DBs ++ [?l2b(Name) || Name <- ns_bucket:get_bucket_names(membase)]}.
-
 task_status_all() ->
     couch_db_frontend:task_status_all().
 
 restart_core_server() ->
     exit(not_implemented(restart_core_server, [])).
-
-config_all() ->
-    couch_config:all().
-
-config_get(Section) ->
-    couch_config:get(Section).
-
-config_get(Section, Key, Default) ->
-    couch_config:get(Section, Key, Default).
-
-config_set(Section, Key, Value, Persist) ->
-    couch_config:set(Section, Key, Value, Persist).
-
-config_delete(Section, Key, Persist) ->
-    couch_config:delete(Section, Key, Persist).
 
 increment_update_seq(Db) ->
     exit(not_implemented(increment_update_seq, [Db])).
