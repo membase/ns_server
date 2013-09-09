@@ -897,10 +897,14 @@ update_progress(Progress) ->
 
 wait_for_nodes_loop(Timeout, Nodes) ->
     receive
-        {updated, NewNodes} ->
-            wait_for_nodes_loop(Timeout, NewNodes);
-        done ->
-            ok
+        {done, Node} ->
+            NewNodes = Nodes -- [Node],
+            case NewNodes of
+                [] ->
+                    ok;
+                _ ->
+                    wait_for_nodes_loop(Timeout, NewNodes)
+            end
     after Timeout ->
             {timeout, Nodes}
     end.
@@ -925,30 +929,31 @@ wait_for_nodes(Nodes, Pred, Timeout) ->
     misc:executing_on_new_process(
         fun () ->
                 Self = self(),
+
                 ns_pubsub:subscribe_link(
                   buckets_events,
-                  fun ({significant_buckets_change, Node}, PendingNodes) ->
+                  fun ({significant_buckets_change, Node}) ->
                           Status = ns_doctor:get_node(Node),
 
                           case wait_for_nodes_check_pred(Status, Pred) of
                               false ->
-                                  PendingNodes;
+                                  ok;
                               true ->
-                                  NewPendingNodes = PendingNodes -- [Node],
-                                  Msg = case NewPendingNodes of
-                                            [] -> done;
-                                            _Other -> {updated, NewPendingNodes}
-                                        end,
-                                  Self ! Msg,
-                                  NewPendingNodes
+                                  Self ! {done, Node}
                           end;
-                      (_, PendingNodes) ->
-                          PendingNodes
-                  end,
-                  Nodes
-                 ),
+                      (_) ->
+                          ok
+                  end),
 
-                wait_for_nodes_loop(Timeout, Nodes)
+                Statuses = ns_doctor:get_nodes(),
+                Nodes1 =
+                    lists:filter(
+                      fun (N) ->
+                              Status = ns_doctor:get_node(N, Statuses),
+                              not wait_for_nodes_check_pred(Status, Pred)
+                      end, Nodes),
+
+                wait_for_nodes_loop(Timeout, Nodes1)
         end).
 
 %% quickly and _without_ communication to potentially remote
