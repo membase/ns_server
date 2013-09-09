@@ -905,6 +905,15 @@ wait_for_nodes_loop(Timeout, Nodes) ->
             {timeout, Nodes}
     end.
 
+wait_for_nodes_check_pred(Status, Pred) ->
+    Active = proplists:get_value(active_buckets, Status),
+    case Active of
+        undefined ->
+            false;
+        _ ->
+            Pred(Active)
+    end.
+
 %% Wait till active buckets satisfy certain predicate on all nodes. After
 %% `Timeout' milliseconds of idleness (i.e. when bucket lists has not been
 %% updated on any of the nodes for more than `Timeout' milliseconds) we give
@@ -922,10 +931,8 @@ wait_for_nodes(Nodes, Pred, Timeout) ->
                   buckets_events,
                   fun ({significant_buckets_change, Node}, PendingNodes) ->
                           Status = ns_doctor:get_node(Node),
-                          Active = proplists:get_value(active_buckets,
-                                                       Status, []),
 
-                          case Pred(Active) of
+                          case wait_for_nodes_check_pred(Status, Pred) of
                               false ->
                                   PendingNodes;
                               true ->
