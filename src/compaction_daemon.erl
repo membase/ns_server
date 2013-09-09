@@ -527,7 +527,7 @@ handle_info({'EXIT', Pid, Reason}, StateName,
                     case Type of
                         bucket_purge ->
                             ale:info(?USER_LOGGER,
-                                     "Purge delection compaction of bucket `~s` failed: ~p. "
+                                     "Purge deletion compaction of bucket `~s` failed: ~p. "
                                      "See logs for detailed reason.",
                                      [Name, Reason]);
                         _ ->
