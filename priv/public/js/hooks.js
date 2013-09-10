@@ -1833,7 +1833,6 @@ var ServerStateMock = {
         "free": 220406564701
       }
     },
-    "stopRebalanceIsSafe": true,
     "balanced": true,
     "failoverWarnings": ["hardNodesNeeded"],
     "name": "default",

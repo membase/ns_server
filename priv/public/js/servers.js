@@ -342,10 +342,6 @@ var ServersSection = {
     }).name("rebalanceProgress");
     self.rebalanceProgress.equality = _.isEqual;
     self.rebalanceProgress.subscribe($m(self, 'onRebalanceProgress'));
-
-    this.stopRebalanceIsSafe = new Cell(function (poolDetails) {
-      return poolDetails.stopRebalanceIsSafe;
-    }, {poolDetails: self.poolDetails});
   },
   accountForDisabled: function (handler) {
     return function (e) {
@@ -405,18 +401,51 @@ var ServersSection = {
     });
   },
   onStopRebalance: function () {
-    if (!this.poolDetails.value) {
+    var self = this;
+
+    if (!self.poolDetails.value) {
       return;
     }
 
-    if (this.stopRebalanceIsSafe.value) {
-      this.postAndReload(this.poolDetails.value.stopRebalanceUri, "");
-    } else {
-      var self = this;
+    var uri = self.poolDetails.value.stopRebalanceUri;
+    var modal;
+    sendStop(uri + "&onlyIfSafe=1");
+    return;
+
+    function sendStop(url) {
+      modal = new ModalAction();
+      self.poolDetails.setValue(undefined);
+      $.ajax({url: url,
+              type: 'POST',
+              success: afterSend,
+              error: afterSend});
+    }
+
+    function afterSend(data, textStatus) {
+      self.poolDetails.invalidate();
+      modal.finish();
+
+      if (textStatus == "success") {
+        // done
+        return;
+      }
+
+      var status = 0;
+      try {
+        status = data.status;
+      } catch (e) {}
+
+      if (status != 400) {
+        displayNotice("Request failed. Check logs.", true);
+        return;
+      }
+
+      // for 400 we assume "stop rebalance is not safe" answer
+
       showDialogHijackingSave(
         "stop_rebalance_confirmation_dialog", ".save_button",
         function () {
-          self.postAndReload(self.poolDetails.value.stopRebalanceUri, "");
+          sendStop(uri);
         });
     }
   },

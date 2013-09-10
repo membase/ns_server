@@ -29,6 +29,7 @@
          system_joinable/0,
          start_rebalance/2,
          stop_rebalance/0,
+         stop_rebalance_if_safe/0,
          is_stop_rebalance_safe/0,
          get_rebalance_status/0,
          is_balanced/0
@@ -113,6 +114,16 @@ is_stop_rebalance_safe() ->
 
 stop_rebalance() ->
     ns_orchestrator:stop_rebalance().
+
+stop_rebalance_if_safe() ->
+    %% NOTE: this is inherently raceful. But race is tiny and largely
+    %% harmless. So we KISS instead.
+    case is_stop_rebalance_safe() of
+        false ->
+            unsafe;
+        _ ->
+            stop_rebalance()
+    end.
 
 is_balanced() ->
     not ns_orchestrator:needs_rebalance().

@@ -149,8 +149,7 @@ GET /pools/default =>
     "counters": { // private
         "rebalance_success": 1,
         "rebalance_start": 1
-    },
-    "stopRebalanceIsSafe": <:bool> // private. normally true, meaning if rebalance is running we're sure process doing that is indeed alive
+    }
 }
 
 <nodeInfo> =>

@@ -1007,7 +1007,6 @@ build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
                 StorageTotals = [ {Key, {struct, StoragePList}}
                                   || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
                 [{storageTotals, {struct, StorageTotals}},
-                 {stopRebalanceIsSafe, ns_cluster_membership:is_stop_rebalance_safe()},
                  {balanced, ns_cluster_membership:is_balanced()},
                  {failoverWarnings, ns_bucket:failover_warnings()}
                  | PropList0];
@@ -2375,8 +2374,19 @@ handle_rebalance_progress(_PoolId, Req) ->
     reply_json(Req, {struct, Status}, 200).
 
 handle_stop_rebalance(Req) ->
-    ns_cluster_membership:stop_rebalance(),
-    Req:respond({200, [], []}).
+    Params = Req:parse_qs(),
+    case proplists:get_value("onlyIfSafe", Params) =:= "1" of
+        true ->
+            case ns_cluster_membership:stop_rebalance_if_safe() of
+                unsafe ->
+                    Req:respond({400, [], []});
+                _ -> %% ok | not_rebalancing
+                    Req:respond({200, [], []})
+            end;
+        _ ->
+            ns_cluster_membership:stop_rebalance(),
+            Req:respond({200, [], []})
+    end.
 
 handle_re_add_node(Req) ->
     Params = Req:parse_post(),
