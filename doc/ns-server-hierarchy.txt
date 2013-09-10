@@ -79,9 +79,6 @@
                         (gen-event 'ns_tick_event
                                    "local tick event. Singleton ns_tick on master node will fire tick events
                                    on all nodes")
-                        (gen-event 'mb_master_events
-                                   "used (incorrecly!) for waking up of pool details sleepers when master node
-                                   is changed")
                         (gen-event 'buckets_events
                                    "fired when bucket is started/warmed-up/shutdown. Also fired by ns_doctor
                                    when remote bucket startup/warmup/shutdown discovered")
@@ -127,8 +124,7 @@
                                     (gen-server 'menelaus_web_alerts_srv)
                                     (event-handler 'menelaus_event
                                                    :to ns_config_events
-                                                   :to ns_node_disco_events
-                                                   :to mb_master_events))
+                                                   :to ns_node_disco_events))
                         (supervisor 'mc_sup :mode :rest_for_one :since "2.0"
                                     "remains of mccouch"
                                     (gen-event 'mc_couch_events

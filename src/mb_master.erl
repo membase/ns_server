@@ -524,7 +524,6 @@ shutdown_master_sup(State) ->
                     ok
             end
     end,
-    gen_event:notify(mb_master_events, lost_mastership),
     State#state{child = undefined}.
 
 

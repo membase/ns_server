@@ -85,9 +85,6 @@ child_specs() ->
      {ns_tick_event, {gen_event, start_link, [{local, ns_tick_event}]},
       permanent, 1000, worker, dynamic},
 
-     {mb_master_events, {gen_event, start_link, [{local, mb_master_events}]},
-      permanent, 1000, worker, dynamic},
-
      {buckets_events, {gen_event, start_link, [{local, buckets_events}]},
       permanent, 1000, worker, dynamic},
 

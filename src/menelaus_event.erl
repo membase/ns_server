@@ -48,9 +48,6 @@ start_link() ->
                                                             simple_events_handler),
                                   gen_event:add_sup_handler(buckets_events,
                                                             {?MODULE, buckets_events},
-                                                            simple_events_handler),
-                                  gen_event:add_sup_handler(mb_master_events,
-                                                            {?MODULE, mb_master_events},
                                                             simple_events_handler)
                           end).
 
@@ -63,9 +60,6 @@ register_watcher(Pid) ->
                    {register_watcher, Pid}),
     gen_event:call(buckets_events,
                    {?MODULE, buckets_events},
-                   {register_watcher, Pid}),
-    gen_event:call(mb_master_events,
-                   {?MODULE, mb_master_events},
                    {register_watcher, Pid}).
 
 unregister_watcher(Pid) ->
@@ -77,10 +71,7 @@ unregister_watcher(Pid) ->
                    {unregister_watcher, Pid}),
     gen_event:call(buckets_events,
                    {?MODULE, buckets_events},
-                   {unregister_watcher, Pid}),
-    gen_event:call(mb_master_events,
-                   {?MODULE, mb_master_events},
-                   {register_watcher, Pid}).
+                   {unregister_watcher, Pid}).
 
 %% Implementation
 
@@ -136,14 +127,6 @@ handle_event({ns_node_disco_events, _NodesBefore, _NodesAfter}, State) ->
 
 handle_event({autocompaction, _}, State) ->
     ok = notify_watchers(autocompaction, State),
-    {ok, State};
-
-handle_event(took_over_mastership, State) ->
-    ok = notify_watchers(mb_master_events, State),
-    {ok, State};
-
-handle_event(lost_mastership, State) ->
-    ok = notify_watchers(mb_master_events, State),
     {ok, State};
 
 handle_event(_, State) ->

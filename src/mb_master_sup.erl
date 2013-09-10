@@ -26,7 +26,6 @@
 
 start_link() ->
     master_activity_events:note_became_master(),
-    gen_event:notify(mb_master_events, took_over_mastership),
     supervisor:start_link({local, mb_master_sup}, ?MODULE, []).
 
 
