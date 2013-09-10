@@ -895,7 +895,7 @@ update_progress(Progress) ->
     gen_fsm:send_event(?SERVER, {update_progress, Progress}).
 
 
-wait_for_nodes_loop(Timeout, Nodes) ->
+wait_for_nodes_loop(Nodes) ->
     receive
         {done, Node} ->
             NewNodes = Nodes -- [Node],
@@ -903,9 +903,9 @@ wait_for_nodes_loop(Timeout, Nodes) ->
                 [] ->
                     ok;
                 _ ->
-                    wait_for_nodes_loop(Timeout, NewNodes)
-            end
-    after Timeout ->
+                    wait_for_nodes_loop(NewNodes)
+            end;
+        timeout ->
             {timeout, Nodes}
     end.
 
@@ -919,9 +919,7 @@ wait_for_nodes_check_pred(Status, Pred) ->
     end.
 
 %% Wait till active buckets satisfy certain predicate on all nodes. After
-%% `Timeout' milliseconds of idleness (i.e. when bucket lists has not been
-%% updated on any of the nodes for more than `Timeout' milliseconds) we give
-%% up and return the list of leftover nodes.
+%% `Timeout' milliseconds, we give up and return the list of leftover nodes.
 -spec wait_for_nodes([node()],
                      fun(([string()]) -> boolean()),
                      timeout()) -> ok | {timeout, [node()]}.
@@ -953,7 +951,8 @@ wait_for_nodes(Nodes, Pred, Timeout) ->
                               not wait_for_nodes_check_pred(Status, Pred)
                       end, Nodes),
 
-                wait_for_nodes_loop(Timeout, Nodes1)
+                erlang:send_after(Timeout, Self, timeout),
+                wait_for_nodes_loop(Nodes1)
         end).
 
 %% quickly and _without_ communication to potentially remote
