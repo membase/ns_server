@@ -57,12 +57,9 @@
 %% External API
 
 server_header() ->
-    Versions = ns_info:version(),
-    ServerHeader = lists:concat([
-                       "Couchbase Server ", proplists:get_value(ns_server, Versions)]),
-    [{"Pragma", "no-cache"},
-     {"Cache-Control", "no-cache"},
-     {"Server", ServerHeader}].
+    [{<<"Pragma">>, <<"no-cache">>},
+     {<<"Cache-Control">>, <<"no-cache">>},
+     {<<"Server">>, <<"Couchbase Server">>}].
 
 redirect_permanently(Path, Req) -> redirect_permanently(Path, Req, []).
 
