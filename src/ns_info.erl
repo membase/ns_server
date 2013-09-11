@@ -32,7 +32,7 @@ runtime() ->
      {system_arch_raw, erlang:system_info(system_architecture)},
      {system_arch, system_arch()},
      {localtime, erlang:localtime()},
-     {memory, erlang:memory()},
+     {memory, misc:memory()},
      {loaded, erlang:loaded()},
      {applications, application:loaded_applications()},
      {pre_loaded, erlang:pre_loaded()},

@@ -209,7 +209,7 @@ current_status() ->
         [{active_buckets, ns_memcached:active_buckets()},
          {ready_buckets, ns_memcached:warmed_buckets()},
          {local_tasks, Tasks},
-         {memory, erlang:memory()},
+         {memory, misc:memory()},
          {system_memory_data, memsup:get_system_memory_data()},
          {node_storage_conf, StorageConf},
          {statistics, erlang_stats()},

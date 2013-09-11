@@ -125,8 +125,13 @@ memory_limit() ->
     end.
 
 memory_usage() ->
-    Usage = erlang:memory(total),
-    Usage bsr 20.
+    try
+        Usage = erlang:memory(total),
+        Usage bsr 20
+    catch
+        error:notsup ->
+            0
+    end.
 
 request_limit(Type) ->
     Limit = ns_config_ets_dup:unreliable_read_key({request_limit, Type},

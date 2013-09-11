@@ -1570,3 +1570,13 @@ delaying_crash(DelayBy, Body) ->
             timer:sleep(DelayBy),
             erlang:raise(T, E, ST)
     end.
+
+%% Like erlang:memory but returns 'notsup' if it's impossible to get this
+%% information.
+memory() ->
+    try
+        erlang:memory()
+    catch
+        error:notsup ->
+            notsup
+    end.
