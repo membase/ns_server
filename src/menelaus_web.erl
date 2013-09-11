@@ -1766,11 +1766,8 @@ handle_settings_auto_failover_reset_count(Req) ->
 
 %% true iff system is correctly provisioned
 is_system_provisioned() ->
-    {struct, PList} = build_settings_web(),
-    Username = proplists:get_value(username, PList),
-    Password = proplists:get_value(password, PList),
-    case {binary_to_list(Username), binary_to_list(Password)} of
-        {[_|_], [_|_]} -> true;
+    case ns_config:search(rest_creds) of
+        {value, [{creds, [{[_|_] = _Username, [_|_] = _Password}|_]}]} -> true;
         _ -> false
     end.
 
