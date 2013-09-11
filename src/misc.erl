@@ -147,20 +147,6 @@ parallel_map_gather_loop(Ref, Acc, RepliesLeft) ->
             exit(harakiri)
     end.
 
-sys_info_collect_loop(FilePath) ->
-    {ok, IO} = file:open(FilePath, [write]),
-    sys_info(IO),
-    file:close(IO),
-    receive
-        stop -> ok
-    after 5000 -> sys_info_collect_loop(FilePath)
-    end.
-
-sys_info(IO) ->
-    ok = io:format(IO, "count ~p~n", [erlang:system_info(process_count)]),
-    ok = io:format(IO, "memory ~p~n", [erlang:memory()]),
-    ok = file:write(IO, erlang:system_info(procs)).
-
 rm_rf(Name) when is_list(Name) ->
   case rm_rf_is_dir(Name) of
       {ok, false} ->
