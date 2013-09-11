@@ -25,6 +25,8 @@
 
 -include("ns_stats.hrl").
 
+-define(MAIN_BEAM_NAME, <<"(main)beam.smp">>).
+
 %% API
 -export([start_link/0]).
 
@@ -275,11 +277,12 @@ unpack_data_v2(Bin, PrevSample) ->
     {NowSamples, {RawStatsGlobal, PrevSampleProcs1}}.
 
 unpack_processes_v2(Bin, PrevSamples) ->
-    do_unpack_processes_v2(Bin, {[], PrevSamples}).
+    BeamPid = list_to_integer(os:getpid()),
+    do_unpack_processes_v2(Bin, BeamPid, {[], PrevSamples}).
 
-do_unpack_processes_v2(Bin, Acc) when size(Bin) =:= 0 ->
+do_unpack_processes_v2(Bin, _, Acc) when size(Bin) =:= 0 ->
     Acc;
-do_unpack_processes_v2(Bin, {NewSampleAcc, PrevSampleAcc} = Acc) ->
+do_unpack_processes_v2(Bin, BeamPid, {NewSampleAcc, PrevSampleAcc} = Acc) ->
     <<Name0:12/binary,
       CpuUtilization:32/native,
       Pid:64/native,
@@ -291,11 +294,18 @@ do_unpack_processes_v2(Bin, {NewSampleAcc, PrevSampleAcc} = Acc) ->
       PageFaults:64/native,
       Rest/binary>> = Bin,
 
-    Name = extract_string(Name0),
-    case Name of
+    RawName = extract_string(Name0),
+    case RawName of
         <<>> ->
             Acc;
         _ ->
+            Name = case Pid =:= BeamPid of
+                       true ->
+                           ?MAIN_BEAM_NAME;
+                       false ->
+                           RawName
+                   end,
+
             NewSample0 =
                 [{proc_stat_name(Name, mem_size), MemSize},
                  {proc_stat_name(Name, mem_resident), MemResident},
@@ -337,7 +347,7 @@ do_unpack_processes_v2(Bin, {NewSampleAcc, PrevSampleAcc} = Acc) ->
                                                 {proc_stat_name(Name, page_faults), PageFaults}]),
 
             Acc1 = {NewSample1 ++ NewSampleAcc, PrevSample1},
-            do_unpack_processes_v2(Rest, Acc1)
+            do_unpack_processes_v2(Rest, BeamPid, Acc1)
     end.
 
 extract_string(Bin) ->
@@ -354,17 +364,7 @@ do_extract_string(Bin, Pos) ->
     end.
 
 beam_stat(Stat, Sample, Default) ->
-    case proc_stat(<<"beam.smp">>, Stat, Sample) of
-        undefined ->
-            case proc_stat(<<"erl">>, Stat, Sample) of
-                undefined ->
-                    proc_stat(<<"beam">>, Stat, Sample, Default);
-                V ->
-                    V
-            end;
-        V ->
-            V
-    end.
+    proc_stat(?MAIN_BEAM_NAME, Stat, Sample, Default).
 
 proc_stat(Name, Stat, Sample) ->
     proc_stat(Name, Stat, Sample, undefined).
