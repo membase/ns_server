@@ -181,7 +181,11 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth) ->
                      BasicStats0 = menelaus_stats:basic_stats(Id),
 
                      BasicStats = case InfoLevel of
-                                      for_ui -> [{storageTotals, ns_storage_conf:cluster_storage_info()} | BasicStats0];
+                                      for_ui ->
+                                          StorageTotals = [{Key, {struct, StoragePList}}
+                                                           || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
+
+                                          [{storageTotals, {struct, StorageTotals}} | BasicStats0];
                                       _ -> BasicStats0
                                   end,
 
@@ -254,15 +258,16 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth) ->
               {localRandomKeyUri, bin_concat_path(["pools", "default",
                                                    "buckets", Id, "localRandomKey"])},
               {controllers,
-               MaybeFlushController ++
-                   [{compactAll, bin_concat_path(["pools", "default",
-                                                  "buckets", Id, "controller", "compactBucket"])},
-                    {compactDB, bin_concat_path(["pools", "default",
-                                                 "buckets", "default", "controller", "compactDatabases"])},
-                    {purgeDeletes, bin_concat_path(["pools", "default",
-                                                    "buckets", Id, "controller", "unsafePurgeBucket"])},
-                    {startRecovery, bin_concat_path(["pools", "default",
-                                                     "buckets", Id, "controller", "startRecovery"])}]},
+               {struct,
+                MaybeFlushController ++
+                    [{compactAll, bin_concat_path(["pools", "default",
+                                                   "buckets", Id, "controller", "compactBucket"])},
+                     {compactDB, bin_concat_path(["pools", "default",
+                                                  "buckets", "default", "controller", "compactDatabases"])},
+                     {purgeDeletes, bin_concat_path(["pools", "default",
+                                                     "buckets", Id, "controller", "unsafePurgeBucket"])},
+                     {startRecovery, bin_concat_path(["pools", "default",
+                                                      "buckets", Id, "controller", "startRecovery"])}]}},
               {nodes, Nodes},
               {stats, {struct, [{uri, StatsUri},
                                 {directoryURI, StatsDirectoryUri},
