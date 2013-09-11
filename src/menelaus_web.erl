@@ -866,8 +866,8 @@ handle_pool_info(Id, Req) ->
     end.
 
 handle_pool_info_wait(Req, Id, LocalAddr, PassedETag) ->
-    Info = mochijson2:encode(build_pool_info(Id, menelaus_auth:is_under_admin(Req),
-                                             stable, LocalAddr)),
+    Info = build_pool_info(Id, menelaus_auth:is_under_admin(Req),
+                           stable, LocalAddr),
     ETag = integer_to_list(erlang:phash2(Info)),
     if
         ETag =:= PassedETag ->
@@ -905,7 +905,7 @@ handle_pool_info_wait_tail(Req, Id, LocalAddr, ETag) ->
                                       for_ui, LocalAddr),
     Info = {struct, [{etag, list_to_binary(ETag)} | PList]},
     Headers = menelaus_auth:maybe_refresh_token(Req) ++ server_header(),
-    Req:ok({"application/json", Headers, mochijson2:encode(Info)}),
+    Req:ok({"application/json", Headers, menelaus_util:encode_json(Info)}),
     %% this will cause some extra latency on ui perhaps,
     %% because browsers commonly assume we'll keepalive, but
     %% keeping memory usage low is imho more important
@@ -1244,7 +1244,7 @@ streaming_inner(F, HTTPRes, LastRes) ->
                             {just_write, Stuff} -> Stuff;
                             _ -> F(normal)
                         end,
-            HTTPRes:write_chunk(mochijson2:encode(ResNormal)),
+            HTTPRes:write_chunk(menelaus_util:encode_json(ResNormal)),
             HTTPRes:write_chunk("\n\n\n\n")
     end,
     Res.

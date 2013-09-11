@@ -44,7 +44,8 @@
          bin_concat_path/2,
          parse_validate_number/3,
          validate_email_address/1,
-         insecure_pipe_through_command/2]).
+         insecure_pipe_through_command/2,
+         encode_json/1]).
 
 -export([java_date/0,
          string_hash/1,
@@ -91,13 +92,13 @@ reply_404(Req) ->
 reply_json(Req, Body) ->
     Req:ok({"application/json",
             server_header(),
-            mochijson2:encode(Body)}).
+            encode_json(Body)}).
 
 reply_json(Req, Body, Status) ->
     Req:respond({Status,
                  [{"Content-Type", "application/json"}
                   | server_header()],
-                 mochijson2:encode(Body)}).
+                 encode_json(Body)}).
 
 expect_config(Key) ->
     {value, RV} = ns_config:search_node(Key),
@@ -276,3 +277,24 @@ insecure_pipe_through_command(Command, IOList) ->
     RV = pipe_through_command_rec(Port, []),
     file:delete(TmpFile),
     RV.
+
+strip_json_struct({struct, Pairs}) -> {strip_json_struct(Pairs)};
+strip_json_struct(List) when is_list(List) -> [strip_json_struct(E) || E <- List];
+strip_json_struct({Key, Value}) -> {Key, strip_json_struct(Value)};
+strip_json_struct(Other) -> Other.
+
+encode_json(JSON) ->
+    Stripped = try strip_json_struct(JSON)
+               catch T1:E1 ->
+                       ?log_debug("errored while stripping:~n~p", [JSON]),
+                       Stack1 = erlang:get_stacktrace(),
+                       erlang:raise(T1, E1, Stack1)
+               end,
+
+    try
+        ejson:encode(Stripped)
+    catch T:E ->
+            ?log_debug("errored while sending:~n~p~n->~n~p", [JSON, Stripped]),
+            Stack = erlang:get_stacktrace(),
+            erlang:raise(T, E, Stack)
+    end.
