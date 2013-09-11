@@ -82,6 +82,10 @@ init([]) ->
               {menelaus_ui_auth, start_link, []},
               permanent, 5000, worker, dynamic},
 
+    Cache = {menelaus_web_cache,
+             {menelaus_web_cache, start_link, []},
+             permanent, 5000, worker, dynamic},
+
     Web = {menelaus_web,
            {menelaus_web, start_link, []},
            permanent, 5000, worker, dynamic},
@@ -98,7 +102,7 @@ init([]) ->
                      {hot_keys_keeper, start_link, []},
                      permanent, 5000, worker, dynamic},
 
-    Processes = [UIAuth, Web, WebEvent, HotKeysKeeper, Alerts],
+    Processes = [UIAuth, Cache, Web, WebEvent, HotKeysKeeper, Alerts],
     {ok, {{one_for_one, 10, 10}, Processes}}.
 
 ns_log_cat(?START_OK) ->

@@ -705,9 +705,6 @@ format_MB(X) ->
     integer_to_list(misc:ceiling(X / 1024 / 1024)) ++ "MB".
 
 
-implementation_version() ->
-    list_to_binary(proplists:get_value(ns_server, ns_info:version(), "unknown")).
-
 handle_pools(Req) ->
     UUID = get_uuid(),
 
@@ -733,7 +730,8 @@ handle_pools(Req) ->
                                 {<<"viewUpdateDaemon">>,
                                  <<"/settings/viewUpdateDaemon?uuid=", UUID/binary>>}]}},
                              {uuid, UUID}
-                             | build_versions()]}).
+                             | menelaus_web_cache:versions_response()]}).
+
 handle_engage_cluster2(Req) ->
     Body = Req:recv_body(),
     {struct, NodeKVList} = mochijson2:decode(Body),
@@ -829,16 +827,9 @@ get_uuid() ->
             Uuid2
     end.
 
-build_versions() ->
-    [{implementationVersion, implementation_version()},
-     {componentsVersion, {struct,
-                          lists:map(fun ({K,V}) ->
-                                            {K, list_to_binary(V)}
-                                    end,
-                                    ns_info:version())}}].
 
 handle_versions(Req) ->
-    reply_json(Req, {struct, build_versions()}).
+    reply_json(Req, {struct, menelaus_web_cache:versions_response()}).
 
 % {"default", [
 %   {port, 11211},
