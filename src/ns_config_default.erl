@@ -25,7 +25,7 @@
 -define(NS_LOG, "ns_log").
 
 get_current_version() ->
-    {2,2,0}.
+    {3,0,0}.
 
 % Allow all keys to be mergable.
 
@@ -140,7 +140,11 @@ default() ->
        {mccouch_port, misc:get_env_default(mccouch_port, 11213)},
        {dedicated_port, misc:get_env_default(memcached_dedicated_port, 11209)},
        {admin_user, "_admin"},
-       {admin_pass, "_admin"},
+       %% Note that this is not actually the password that is being used; as
+       %% part of upgrading config from 2.2 to 3.0 version this password is
+       %% replaced by unique per-node password. I didn't put it here because
+       %% default() supposed to be a pure function.
+       {admin_pass, ""},
        {bucket_engine, path_config:component_path(lib, "memcached/bucket_engine.so")},
        {engines,
         [{membase,
@@ -313,7 +317,10 @@ upgrade_config(Config) ->
              upgrade_config_from_1_8_1_to_2_0(Config)];
         {value, {2,0}} ->
             [{set, {node, node(), config_version}, {2,2,0}} |
-             upgrade_config_from_2_0_to_2_2_0(Config)]
+             upgrade_config_from_2_0_to_2_2_0(Config)];
+        {value, {2,2,0}} ->
+            [{set, {node, node(), config_version}, {3,0,0}} |
+             upgrade_config_from_2_2_0_to_3_0(Config)]
     end.
 
 upgrade_config_from_1_7_to_1_7_1() ->
@@ -523,6 +530,9 @@ upgrade_config_from_2_0_to_2_2_0(Config) ->
     do_upgrade_files_from_2_0_to_2_2_0(DataDir),
     do_upgrade_config_from_2_0_to_2_2_0(Config, DefaultConfig, DataDir).
 
+upgrade_config_from_2_2_0_to_3_0(Config) ->
+    do_add_random_memcached_password(Config).
+
 search_sub_key(Config, Key, Subkey) ->
     case ns_config:search(Config, Key) of
         false ->
@@ -603,6 +613,15 @@ do_upgrade_files_from_2_0_to_2_2_0(DataDir) ->
         false ->
             rename_file(OldVersionNsLog, NsLog)
     end.
+
+do_add_random_memcached_password(Config) ->
+    {value, MemcachedConfig} = ns_config:search(Config, {node, node(), memcached}),
+
+    Password = binary_to_list(couch_uuids:random()),
+    MemcachedConfig1 = lists:keystore(admin_pass, 1, MemcachedConfig,
+                                      {admin_pass, Password}),
+
+    [{set, {node, node(), memcached}, MemcachedConfig1}].
 
 upgrade_1_7_1_to_1_7_2_test() ->
     DefaultCfg = [{rest, [{port, 8091}]},
