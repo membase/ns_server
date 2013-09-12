@@ -349,8 +349,9 @@ handle_bucket_info_streaming(_PoolId, Id, Req) ->
     F = fun(_InfoLevel) ->
                 case ns_bucket:get_bucket(Id) of
                     {ok, BucketConfig} ->
-                        build_bucket_info(Id, BucketConfig, stable, LocalAddr,
-                                          menelaus_auth:may_expose_bucket_auth(Req));
+                        Info = build_bucket_info(Id, BucketConfig, stable, LocalAddr,
+                                                 menelaus_auth:may_expose_bucket_auth(Req)),
+                        {just_write, Info};
                     not_present ->
                         exit(normal)
                 end
