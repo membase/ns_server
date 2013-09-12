@@ -912,7 +912,26 @@ handle_pool_info_wait_tail(Req, Id, LocalAddr, ETag) ->
     exit(normal).
 
 
+build_pool_info(Id, IsAdmin, normal, LocalAddr) ->
+    %% NOTE: we limit our caching here for "normal" info
+    %% level. Explicitly excluding UI (which InfoLevel = for_ui). This
+    %% is because caching doesn't take into account "buckets version"
+    %% which is important to deliver asap to UI (i.e. without any
+    %% caching "staleness"). Same situation is with tasks version
+    menelaus_web_cache:lookup_or_compute_with_expiration(
+      {pool_details, IsAdmin, LocalAddr},
+      fun () ->
+              %% NOTE: token needs to be taken before building pool info
+              Token = ns_config:config_version_token(),
+              {do_build_pool_info(Id, IsAdmin, normal, LocalAddr), 1000, Token}
+      end,
+      fun (_Key, _Value, ConfigVersionToken) ->
+              ConfigVersionToken =/= ns_config:config_version_token()
+      end);
 build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
+    do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr).
+
+do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
     UUID = get_uuid(),
 
     F = build_nodes_info_fun(IsAdmin, InfoLevel, LocalAddr),

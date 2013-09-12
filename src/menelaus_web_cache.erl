@@ -19,7 +19,7 @@
 -module(menelaus_web_cache).
 -include("ns_common.hrl").
 
--export([start_link/0, versions_response/0]).
+-export([start_link/0, versions_response/0, lookup_or_compute_with_expiration/3]).
 
 start_link() ->
     work_queue:start_link(menelaus_web_cache, fun cache_init/0).
@@ -44,3 +44,49 @@ build_versions() ->
 versions_response() ->
     [{_, Value}] = ets:lookup(menelaus_web_cache, versions),
     Value.
+
+lookup_value_with_expiration(Key, Nothing, InvalidPred) ->
+    Now = misc:time_to_epoch_ms_int(erlang:now()),
+    case ets:lookup(menelaus_web_cache, Key) of
+        [] ->
+            {Nothing, Now};
+        [{_, Value, Expiration, InvalidationState}] ->
+            case Now =< Expiration of
+                true ->
+                    case InvalidPred(Key, Value, InvalidationState) of
+                        true ->
+                            {Nothing, Now};
+                        _ ->
+                            Value
+                    end;
+                _ ->
+                    {Nothing, Now}
+            end
+    end.
+
+lookup_or_compute_with_expiration(Key, ComputeBody, InvalidPred) ->
+    case lookup_value_with_expiration(Key, undefined, InvalidPred) of
+        {undefined, _} ->
+            compute_with_expiration(Key, ComputeBody, InvalidPred);
+        Value ->
+            system_stats_collector:increment_counter({web_cache_hits, Key}, 1),
+            Value
+    end.
+
+compute_with_expiration(Key, ComputeBody, InvalidPred) ->
+    ?log_debug("doing compute_with_expiration for ~p", [Key]),
+    work_queue:submit_sync_work(
+      menelaus_web_cache,
+      fun () ->
+              case lookup_value_with_expiration(Key, undefined, InvalidPred) of
+                  {undefined, Now} ->
+                      {Value, Age, InvalidationState} = ComputeBody(),
+                      Expiration = Now + Age,
+                      system_stats_collector:increment_counter({web_cache_updates, Key}, 1),
+                      ets:insert(menelaus_web_cache, {Key, Value, Expiration, InvalidationState}),
+                      Value;
+                  Value ->
+                      system_stats_collector:increment_counter({web_inner_cache_hits, Key}, 1),
+                      Value
+              end
+      end).
