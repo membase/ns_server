@@ -67,7 +67,7 @@
          proplist_get_value/3,
          merge_kv_pairs/2,
          sync_announcements/0, get_kv_list/0, get_kv_list/1,
-         upgrade_config_explicitly/1,
+         upgrade_config_explicitly/1, config_version_token/0,
          fold/3]).
 
 -export([save_config_sync/1]).
@@ -448,6 +448,9 @@ search_raw(#config{dynamic = DL, static = SL}, Key) ->
 upgrade_config_explicitly(Upgrader) ->
     gen_server:call(?MODULE, {upgrade_config_explicitly, Upgrader}).
 
+config_version_token() ->
+    {ets:lookup(ns_config_announces_counter, changes_counter), erlang:whereis(?MODULE)}.
+
 fold(_Fun, Acc, undefined) ->
     Acc;
 fold(_Fun, Acc, []) ->
@@ -559,6 +562,10 @@ do_upgrade_config(Config, Changes, Upgrader) ->
 
 do_init(Config) ->
     erlang:process_flag(trap_exit, true),
+    %% NOTE: init may be called more than once via
+    %% handle_call(reload,...) path
+    (catch ets:new(ns_config_announces_counter, [set, named_table])),
+    ets:insert_new(ns_config_announces_counter, {changes_counter, 0}),
     UpgradedConfig = upgrade_config(Config),
     InitialState =
         if
@@ -797,6 +804,7 @@ announce_locally_made_changes(KVList) ->
 
 announce_changes([]) -> ok;
 announce_changes(KVList) ->
+    ets:update_counter(ns_config_announces_counter, changes_counter, 1),
     % Fire a event per changed key.
     lists:foreach(fun ({Key, Value}) ->
                           gen_event:notify(ns_config_events,
@@ -1026,6 +1034,10 @@ do_test_cas_config(Self) ->
                               fun (Msg) ->
                                       Self ! Msg, ok
                               end),
+
+    ets:new(ns_config_announces_counter, [set, named_table]),
+    ets:insert_new(ns_config_announces_counter, {changes_counter, 0}),
+
     ns_config:cas_config(new, old),
     receive
         {cas_config, new, old} ->
