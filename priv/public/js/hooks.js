@@ -773,7 +773,6 @@ var MockedRequest = mkClass({
         "blocks": [{
           "blockName": "Server Resources",
           "serverResources": true,
-          "extraCSSClasses": "dynamic_server_resources",
           "stats": [{
             "specificStatsURL": "/pools/default/buckets/default/stats/swap_used",
             "name": "swap_used",

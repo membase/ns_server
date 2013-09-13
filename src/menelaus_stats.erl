@@ -192,18 +192,7 @@ handle_bucket_node_stats(PoolId, BucketName, HostName, Req) ->
             menelaus_util:reply_404(Req);
         {ok, Node} ->
             Params = Req:parse_qs(),
-            {struct, [{op, {struct, OpsPropList}}]} = build_bucket_stats_ops_response(PoolId, [Node], BucketName, Params),
-
-            SystemStatsSamples =
-                case grab_aggregate_op_stats("@system", [Node], Params) of
-                    {SystemRawSamples, _, _, _} ->
-                        samples_to_proplists(SystemRawSamples, BucketName)
-                end,
-            {samples, {struct, OpsSamples}} = lists:keyfind(samples, 1, OpsPropList),
-
-            ModifiedOpsPropList = lists:keyreplace(samples, 1, OpsPropList, {samples, {struct, SystemStatsSamples ++ OpsSamples}}),
-            Ops = [{op, {struct, ModifiedOpsPropList}}],
-
+            {struct, Ops} = build_bucket_stats_ops_response(PoolId, [Node], BucketName, Params),
             {struct, HKS} = jsonify_hks(hot_keys_keeper:bucket_hot_keys(BucketName, Node)),
             menelaus_util:reply_json(
               Req,
@@ -290,16 +279,40 @@ dict_safe_fetch(K, Dict, Default) ->
         _ -> Default
     end.
 
-build_per_node_stats(BucketName, StatName, Params, LocalAddr) ->
-    {MainNode, MainSamples, RestSamplesRaw, ClientTStamp, {Step, _, Window}}
-        = gather_op_stats(BucketName, all, Params),
+are_samples_undefined(Samples) ->
+    lists:all(fun (List) ->
+                      lists:all(fun ({_, undefined}) ->
+                                        true;
+                                    ({_, _}) ->
+                                        false
+                                end, List)
+              end, Samples).
 
+get_samples_for_stat(BucketName, StatName, ForNodes, Params) ->
     StatExtractor = build_stat_extractor(BucketName, StatName),
+
+    {MainNode, MainSamples, RestSamplesRaw, ClientTStamp, {Step, _, Window}}
+        = gather_op_stats(BucketName, ForNodes, Params),
 
     Nodes = [MainNode | [N || {N, _} <- RestSamplesRaw]],
     AllNodesSamples = [{MainNode, lists:reverse(MainSamples)} | RestSamplesRaw],
 
-    NodesSamples = [lists:map(StatExtractor, NodeSamples) || {_, NodeSamples} <- AllNodesSamples],
+    {[lists:map(StatExtractor, NodeSamples) || {_, NodeSamples} <- AllNodesSamples],
+     Nodes, ClientTStamp, Step, Window}.
+
+get_samples_for_system_or_bucket_stat(BucketName, StatName, Params) ->
+    ForNodes = ns_bucket:live_bucket_nodes(BucketName),
+    RV = {Samples, _, _, _, _} = get_samples_for_stat("@system", StatName, ForNodes, Params),
+    case are_samples_undefined(Samples) of
+        true ->
+            get_samples_for_stat(BucketName, StatName, ForNodes, Params);
+        false ->
+            RV
+    end.
+
+build_per_node_stats(BucketName, StatName, Params, LocalAddr) ->
+    {NodesSamples, Nodes, ClientTStamp, Step, Window} =
+        get_samples_for_system_or_bucket_stat(BucketName, StatName, Params),
 
     Config = ns_config:get(),
     Hostnames = [list_to_binary(menelaus_web:build_node_hostname(Config, N, LocalAddr)) || N <- Nodes],
@@ -378,6 +391,13 @@ do_merge_all_samples_normally(ETS, MainSamples, ListOfLists) ->
       end, ListOfLists),
     [hd(ets:lookup(ETS, T)) || #stat_entry{timestamp = T} <- MainSamples].
 
+grab_system_aggregate_op_stats(Bucket, all, Params) ->
+    grab_aggregate_op_stats("@system", ns_bucket:live_bucket_nodes(Bucket), Params);
+grab_system_aggregate_op_stats(_Bucket, [Node], Params) ->
+    grab_aggregate_op_stats("@system", [Node], Params).
+
+grab_aggregate_op_stats(Bucket, all, Params) ->
+    grab_aggregate_op_stats(Bucket, ns_bucket:live_bucket_nodes(Bucket), Params);
 grab_aggregate_op_stats(Bucket, Nodes, Params) ->
     {_MainNode, MainSamples, Replies, ClientTStamp, {Step, _, Window}} = gather_op_stats(Bucket, Nodes, Params),
     RV = merge_all_samples_normally(MainSamples, [S || {_,S} <- Replies]),
@@ -453,20 +473,17 @@ invoke_archiver(Bucket, NodeS, {Step, Period, Window}) ->
 gather_op_stats_body(Bucket, Nodes, ClientTStamp,
                      Ref, PeriodParams) ->
     FirstNode = case Nodes of
-                    all ->
-                        AvailableNodes = ns_bucket:live_bucket_nodes(Bucket),
-                        case lists:member(node(), AvailableNodes) of
+                    [] ->
+                        none;
+                    [X] ->
+                        X;
+                    [FN | _] ->
+                        case lists:member(node(), Nodes) of
                             true ->
                                 node();
                             _ ->
-                                case AvailableNodes of
-                                    [] ->
-                                        none;
-                                    [FN | _] ->
-                                        FN
-                                end
-                        end;
-                    [X] -> X
+                                FN
+                        end
                 end,
 
     RV = case FirstNode of
@@ -502,11 +519,8 @@ gather_op_stats_body(Bucket, Nodes, ClientTStamp,
                                       [] -> Samples;
                                       _ -> lists:reverse(CutSamples)
                                   end,
-                    AllBucketNodes = case Nodes of
-                                         all -> ns_bucket:live_bucket_nodes(Bucket);
-                                         [_] -> []
-                                     end,
-                    OtherNodes = lists:delete(FirstNode, AllBucketNodes),
+
+                    OtherNodes = lists:delete(FirstNode, Nodes),
 
                     Replies = case OtherNodes of
                                   [] ->
@@ -519,6 +533,8 @@ gather_op_stats_body(Bucket, Nodes, ClientTStamp,
             end
     end.
 
+computed_stats_lazy_proplist("@system") ->
+    [];
 computed_stats_lazy_proplist(BucketName) ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
                  {Combiner, [StatNameA, StatNameB]}
@@ -718,10 +734,12 @@ samples_to_proplists(Samples, BucketName) ->
 
 build_bucket_stats_ops_response(_PoolId, Nodes, BucketName, Params) ->
     {Samples, ClientTStamp, Step, TotalNumber} = grab_aggregate_op_stats(BucketName, Nodes, Params),
-
-
     PropList2 = samples_to_proplists(Samples, BucketName),
-    OpPropList0 = [{samples, {struct, PropList2}},
+
+    {SystemRawSamples, _, _, _} = grab_system_aggregate_op_stats(BucketName, Nodes, Params),
+    SystemStatsSamples = samples_to_proplists(SystemRawSamples, "@system"),
+
+    OpPropList0 = [{samples, {struct, SystemStatsSamples ++ PropList2}},
                    {samplesCount, TotalNumber},
                    {isPersistent, ns_bucket:is_persistent(BucketName)},
                    {lastTStamp, case proplists:get_value(timestamp, PropList2) of
@@ -766,6 +784,8 @@ jsonify_hks(BucketsTopKeys) ->
 get_aggregate_method(Key) ->
     case Key of
         couch_views_ops ->
+            max;
+        cpu_utilization_rate ->
             max;
         <<"views/", S/binary>> ->
             case binary:match(S, <<"/accesses">>) of
@@ -1419,7 +1439,6 @@ memcached_stats_description() ->
 server_resources_stats_description() ->
     [{blockName,<<"Server Resources">>},
      {serverResources, true},
-     {extraCSSClasses,<<"dynamic_server_resources">>},
      {stats,
       [{struct,[{name,<<"swap_used">>},
                 {title,<<"swap usage">>},

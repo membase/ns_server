@@ -503,12 +503,6 @@ var StatsModel = {};
     return infos.statDesc;
   }).name("statsDescInfoCell");
 
-  self.serverResourcesVisible = Cell.compute(function (v) {
-    // server resources are visible iff infos cell is not undefined
-    // and statsHostname is not blank
-    return !!v(self.infosCell) && !!v(self.statsHostname);
-  }).name("serverResourcesVisible");
-
   self.selectedGraphNameCell = (new StringHashFragmentCell("graph")).name("selectedGraphNameCell");
 
   self.configurationExtra = (new Cell()).name("configurationExtra");
@@ -953,10 +947,6 @@ var AnalyticsSection = {
       return Math.ceil(Math.min(zoomMillis, configuration.serverDate - configuration.timestamp[0]) / 1000);
     }).subscribeValue(function (visibleSeconds) {
       $('#js_stats_visible_period').text(isNaN(visibleSeconds) ? '?' : formatUptime(visibleSeconds));
-    });
-
-    StatsModel.serverResourcesVisible.subscribeValue(function (visible) {
-      $('#js_analytics')[visible ? 'addClass' : 'removeClass']('dynamic_with_server_resources');
     });
 
     (function () {
