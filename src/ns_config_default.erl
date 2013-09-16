@@ -25,7 +25,7 @@
 -define(NS_LOG, "ns_log").
 
 get_current_version() ->
-    {2,2,0}.
+    {3,0,0}.
 
 % Allow all keys to be mergable.
 
@@ -155,10 +155,10 @@ default() ->
        %% Prefix of the log files within the log path that should be rotated.
        {log_prefix, "memcached.log"},
        %% Number of recent log files to retain.
-       {log_generations, 10},
+       {log_generations, 20},
        %% how big log file needs to grow before memcached starts using
        %% next file
-       {log_cyclesize, 1024*1024*100},
+       {log_cyclesize, 1024*1024*10},
        %% flush interval of memcached's logger in seconds
        {log_sleeptime, 19},
        %% Milliseconds between log rotation runs.
@@ -313,7 +313,10 @@ upgrade_config(Config) ->
              upgrade_config_from_1_8_1_to_2_0(Config)];
         {value, {2,0}} ->
             [{set, {node, node(), config_version}, {2,2,0}} |
-             upgrade_config_from_2_0_to_2_2_0(Config)]
+             upgrade_config_from_2_0_to_2_2_0(Config)];
+        {value, {2,2,0}} ->
+            [{set, {node, node(), config_version}, {3,0,0}} |
+             upgrade_config_from_2_2_0_to_3_0(Config)]
     end.
 
 upgrade_config_from_1_7_to_1_7_1() ->
@@ -522,6 +525,16 @@ upgrade_config_from_2_0_to_2_2_0(Config) ->
     DataDir = get_data_dir(),
     do_upgrade_files_from_2_0_to_2_2_0(DataDir),
     do_upgrade_config_from_2_0_to_2_2_0(Config, DefaultConfig, DataDir).
+
+upgrade_config_from_2_2_0_to_3_0(Config) ->
+    ?log_info("Upgrading config from 2.2.0 to 3.0"),
+    {value, MemcachedConfig} = ns_config:search(Config, {node, node(), memcached}),
+    MemcachedConfig1 = lists:keystore(log_generations, 1, MemcachedConfig,
+                                      {log_generations, 20}),
+    MemcachedConfig2 = lists:keystore(log_cyclesize, 1, MemcachedConfig1,
+                                      {log_cyclesize, 1024*1024*10}),
+
+    [{set, {node, node(), memcached}, MemcachedConfig2}].
 
 search_sub_key(Config, Key, Subkey) ->
     case ns_config:search(Config, Key) of
@@ -819,6 +832,16 @@ upgrade_2_0_to_2_2_0_test() ->
                   {set, {node, node(), isasl}, default_isasl},
                   {set, {node, node(), ns_log}, default_ns_log}
                  ], Result2).
+
+upgrade_2_2_0_to_3_0_test() ->
+    Cfg = [[{{node, node(), memcached},
+           [{log_generations, 10},
+            {log_cyclesize, 1024*1024*100}]}]],
+    UpgradedCfg = upgrade_config_from_2_2_0_to_3_0(Cfg),
+    ?assertEqual([
+                  {set, {node, node(), memcached},
+                   [{log_generations, 20},
+                    {log_cyclesize, 1024*1024*10}]}], UpgradedCfg).
 
 no_upgrade_on_current_version_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, get_current_version()}]])).
