@@ -2,9 +2,10 @@
 
 require 'rubygems'
 gem 'sinatra', '>= 1.3.2' # for :public_folder
-require 'sinatra'
+require 'sinatra/base'
 require 'active_support/core_ext'
 require 'pp'
+require 'optparse'
 
 $DOCROOT = File.expand_path(File.join(File.dirname(__FILE__), '../priv/public'))
 
@@ -19,28 +20,9 @@ end
 
 build_all_images_js!
 
-def sh(cmd)
-  puts "# #{cmd}"
-  ok = system cmd
-  unless ok
-    str = "FAILED! #{$?.inspect}"
-    puts str
-    raise str
-  end
-end
-
 class Middleware
   def initialize(app)
     @app = app
-  end
-
-  $JS_ESCAPE_MAP = { '\\' => '\\\\', '</' => '<\/', "\r\n" => '\n', "\n" => '\n', "\r" => '\n', '"' => '\\"', "'" => "\\'" }
-  def escape_javascript(javascript)
-    if javascript
-      javascript.gsub(/(\\|<\/|\r\n|[\n\r"'])/) { $JS_ESCAPE_MAP[$1] }
-    else
-      ''
-    end
   end
 
   def call(env)
@@ -59,36 +41,53 @@ class Middleware
   end
 end
 
-helpers do
-  def auth_credentials
-    @auth ||=  Rack::Auth::Basic::Request.new(request.env)
-    if @auth.provided?
-      @auth.credentials
+class NSServer < Sinatra::Base
+  use Middleware
+
+  set :public_folder, $DOCROOT
+
+  get "/" do
+    redirect "/index.html"
+  end
+end
+
+
+OptionParser.new do |opts|
+  script_name = File.basename($0)
+  opts.banner = "Usage: #{script_name} [options]"
+
+  NSServer.set :port, 8080
+
+  opts.on('-x', 'Turn on the mutex lock (default is off)') do
+    NSServer.set :lock, true
+  end
+  opts.on('-e env', 'Set the environment (default is development)') do |opt|
+    NSServer.set :environment, opt.to_sym
+  end
+  opts.on('-s server', 'Specify rack server/handler (default is thin)') do |opt|
+    NSServer.set :server, opt
+  end
+  opts.on('-p port', 'Set the port (default is 8080)') do |opt|
+    NSServer.set :port, opt.to_i
+  end
+  opts.on('-o addr', 'Set the host (default is localhost)') do |opt|
+    NSServer.set :bind, opt
+  end
+  opts.on('-t', '--shots', 'Make application screenshots') do |opt|
+    $do_screenshots = true
+  end
+  opts.on_tail('-h', '--help', 'Show this message') do
+    puts opts.help
+    exit
+  end
+
+end.parse!
+
+NSServer.run! do
+  if $do_screenshots
+    phantomjs_pid = fork do
+       system "casperjs test tests/ --base-url=http://#{NSServer.settings.bind}:#{NSServer.settings.port.to_s}/index.html --screenshots-output-path=tests/screenshots-output/ "
     end
+    Process.detach(phantomjs_pid)
   end
-end
-
-use Middleware
-
-set :public_folder, $DOCROOT
-
-get "/" do
-  redirect "/index.html"
-end
-
-get "/test_auth" do
-  user, pwd = *auth_credentials
-  if user != 'admin' || pwd != 'admin'
-#    response['WWW-Authenticate'] = 'Basic realm="api"'
-    response['Cache-Control'] = 'no-cache must-revalidate'
-    throw(:halt, 401)
-  end
-  "OK"
-end
-
-if ARGV.size == 0
-  name = "ruby #{$0} -p 8080"
-  puts name
-  system name
-  exit 0
 end

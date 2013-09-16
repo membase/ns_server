@@ -163,14 +163,14 @@
           <div class="shadow_box">
             <div class="header_2">
               <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
-              <a class="add_button btn_1 when-roadmin-hide-me"><span>Add Server</span></a>
+              <a class="add_button btn_1 when-roadmin-hide-me casper_server_add"><span>Add Server</span></a>
               <a class="rebalance_button btn_1 when-roadmin-hide-me"><span>Rebalance</span></a>
               <a class="stop_rebalance_button btn_1 when-roadmin-hide-me"><span>Stop Rebalance</span></a>
               <a class="stop_recovery_button btn_1 when-roadmin-hide-me"><span>Stop Recovery</span></a>
               <ul class="tabs">
                 <li class="tab_left"><a>Active Servers</a></li>
                 <li class="tab_right" id="rebalance_tab">
-                  <a>Pending Rebalance</a>
+                  <a class="casper_pending_rebalance_tab">Pending Rebalance</a>
                   <span class="badge"><span>1</span></span>
                 </li>
               </ul>
@@ -179,7 +179,7 @@
               <div>
                 <div id="active_server_list_container" class="servers_list"></div>
               </div><div>
-                <div id="pending_server_list_container" class="servers_list"></div>
+                <div id="pending_server_list_container" class="servers_list casper_pending_server_list"></div>
               </div>
             </div>
           </div>
@@ -216,7 +216,7 @@
 
                 <td class="node_name ellipsis" colspan="2">{%= V.setData('server', s) %}
               <!-- {% if (s.reAddPossible) { %} -->
-                  <a href="#openServer={%= h(s.otpNode) %}"><ins class="expander closed"></ins></a>
+                  <a href="#openServer={%= h(s.otpNode) %}" class="casper_open_cluster_{%= makeSafeForCSS(s.otpNode) %}"><ins class="expander closed"></ins></a>
                   {%= V.stripPortHTML(s.hostname, rows) %}
               <!-- {% } else { %} -->
                   <!-- {% if (s.nodeClass.indexOf('server_down') != -1 || !expandingAllowed) { %} -->
@@ -289,8 +289,8 @@
                 </td>
                 <!-- {% } else { %} -->
                 <td class="actions" colspan="2">
-                  <a class="list_button eject_server when-roadmin-avoid-me"><span>Remove</span></a>
-                  <a class="list_button failover_server when-roadmin-avoid-me"><span>Fail Over</span></a>
+                  <a class="list_button eject_server when-roadmin-avoid-me casper_eject_server_remove"><span>Remove</span></a>
+                  <a class="list_button failover_server when-roadmin-avoid-me casper_failover_server_remove"><span>Fail Over</span></a>
                   <span class="failed_over_message">Failed Over: Pending Removal</span>
                 </td>
                 <!-- {% } %} -->
@@ -324,7 +324,7 @@
             <div class="side side_3"></div>
             <div class="side side_4"></div>
           </div>
-          <div class="additional_server_info">
+          <div class="additional_server_info casper_additional_server_info_open">
             <!-- {% if (detailedProgress) { %}-->
               <h3>Rebalance Progress</h3>
               <div class="rebalance_progress">
@@ -517,7 +517,7 @@
             <div id="manage_buckets_top_bar" class="header_2">
               <h4 style="float:left;line-height:34px;">Couchbase Buckets</h4>
               <div class="right" style="overflow:hidden;">
-                <button class="button_200 create-bucket-button when-roadmin-hide-me" style="float:right;">Create New Data Bucket</button>
+                <button class="button_200 create-bucket-button when-roadmin-hide-me casper_create_bucket_button" style="float:right;">Create New Data Bucket</button>
                 <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
               </div>
             </div>
@@ -559,7 +559,7 @@
               <!-- {% $.each(rows, function () { %} -->
               <tr class="{%= this.bucketTypeName.toLowerCase() %}">
                 <td class="bucket_name ellipsis" colspan="4">
-                  <a class="disable-if-stale" href="#visitBucket={%= h(encodeURIComponent(this.name)) %}" title="Show Bucket info"><span class="expander closed"></span></a>
+                  <a class="disable-if-stale bucket casper_open_bucket_details" href="#visitBucket={%= h(encodeURIComponent(this.name)) %}" title="Show Bucket info"><span class="expander closed"></span></a>
                   <a class="disable-if-stale" title="View Analytics for {%= h(this.name) %}" href="#sec=analytics&statsBucket={%= h(encodeURIComponent(this.uri)) %}">{%= h(this.name) %}</a>
                 </td>
                 <td>
@@ -616,7 +616,7 @@
                   </div>
                 {% } %}
                 <div class="last when-roadmin-hide-me">
-                  <a class="inner_btn" href="#editBucket={%= h(encodeURIComponent(uri)) %}">Edit</a>
+                  <a class="inner_btn casper_edit_bucket_popup" href="#editBucket={%= h(encodeURIComponent(uri)) %}">Edit</a>
                   {% if (!showCancel && !noCompaction) { %}
                     <button class="inner_btn compact_btn {%= disableCompact ? 'dynamic_disabled' : ''%}" data-uri="{%= h(controllers.compactAll) %}"><span>Compact</span></button>
                   {% } else if (!noCompaction) { %}
@@ -630,7 +630,7 @@
               <div class="side side_4"></div>
             </div>
 
-            <div class="additional_server_info bucket_details">
+            <div class="additional_server_info casper_additional_bucket_info_open bucket_details">
               <h2>Cache Size</h2>
               <div class="size-gauge for-ram"></div>
             {%= V.thisElement(function (e) {BucketsSection.renderRAMDetailsGauge(e, obj);}) %}
@@ -674,7 +674,7 @@
             <div class="panes">
               <div id="logs_container"></div>
               <script id="logs_template" type="text/html">
-                <table class="lined_tab">
+                <table class="lined_tab casper_logs_container_visible">
                   <thead>
                     <tr>
                       <th>Event</th>
@@ -1506,7 +1506,7 @@
               <div class="stats" id="cluster_reference_list_container">
               </div>
               <script id="cluster_reference_list_template" type="text/html">
-              <table class="list" style="width:100%">
+              <table class="list casper_remout_cluster_container" style="width:100%">
                 <tr>
                   <th>Name</th>
                   <th>IP/hostname</th>
@@ -1733,7 +1733,7 @@
   </form>
 </div>
 
-<div class="dialog bucket_details really" id="bucket_details_dialog">
+<div class="dialog bucket_details really casper_bucket_details_dialog" id="bucket_details_dialog">
   <h1><span class="when-editing">Configure Bucket</span><span class="when-creating">Create Bucket</span></h1>
   <form>
     <fieldset class="bucket_settings">
@@ -2090,7 +2090,7 @@
 </div>
 <!-- END Save Document as -->
 
-<div class="dialog join_cluster" id="join_cluster_dialog" title="Add Server">
+<div class="dialog join_cluster casper_join_cluster_dialog" id="join_cluster_dialog" title="Add Server">
   <!-- Join cluster -->
   <p class="warning pat_10" id="join_cluster_dialog_errors_container"></p>
   <script id="join_cluster_dialog_errors_template" type="text/html">
@@ -2131,13 +2131,13 @@
     </fieldset>
     <div class="save_cancel clearfix">
       <button type="submit" class="save_button float_right">Add Server</button>
-      <a class="close">Cancel</a>
+      <a class="casper_close_join_cluster_dialog close">Cancel</a>
     </div>
   </form>
   <!-- END join cluster -->
 </div>
 <!--  eject confirmation dialog -->
-<div class="dialog" id="eject_confirmation_dialog" title="Confirm Server Removal">
+<div class="dialog casper_eject_confirmation_dialog" id="eject_confirmation_dialog" title="Confirm Server Removal">
   <div class="lbox">
     <div class="content">
       <div class="pas_20">
@@ -2147,7 +2147,7 @@
       </div>
       <div class="right save_cancel pas_20 footer_bg">
         <button type="submit" class="save_button float_right">Remove</button>
-        <a class="close float_right">Cancel</a>
+        <a class="close casper_close_eject_confirmation_dialog float_right">Cancel</a>
       </div>
     </div>
   </div>
@@ -2169,7 +2169,7 @@
 </div>
 <!-- END add confirmation dialog -->
 <!-- failover confirmation dialog -->
-<div class="dialog" id="failover_confirmation_dialog" title="Confirm Node Fail Over">
+<div class="dialog casper_failover_confirmation_dialog" id="failover_confirmation_dialog" title="Confirm Node Fail Over">
   <div class="lbox">
     <div class="content">
       <div class="pas_20">
@@ -2205,7 +2205,7 @@
       </div>
       <div class="right save_cancel">
         <button type="submit" class="save_button float_right">Fail Over</button>
-          <a class="close cancel_button float_right">Cancel</a>
+          <a class="close casper_close_failover_confirmation_dialog cancel_button float_right">Cancel</a>
       </div>
     </div>
   </div>

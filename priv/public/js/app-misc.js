@@ -13,6 +13,15 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  **/
+function makeSafeForCSS(name) {
+  return name.replace(/[^a-z0-9]/g, function(s) {
+    var c = s.charCodeAt(0);
+    if (c == 32) return '-';
+    if (c >= 65 && c <= 90) return '_' + s.toLowerCase();
+    return '__' + ('000' + c.toString(16)).slice(-4);
+  });
+}
+
 function normalizeNaN(possNaN) {
   return possNaN << 0;
 }
