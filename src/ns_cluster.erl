@@ -231,6 +231,7 @@ handle_cast(leave, State) ->
     ?cluster_debug("Leaving cluster", []),
     timer:sleep(1000),
     {ok, _} = ns_server_cluster_sup:start_cluster(),
+    ns_ports_setup:restart_memcached(),
     {noreply, State}.
 
 

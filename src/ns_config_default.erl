@@ -140,7 +140,11 @@ default() ->
        {mccouch_port, misc:get_env_default(mccouch_port, 11213)},
        {dedicated_port, misc:get_env_default(memcached_dedicated_port, 11209)},
        {admin_user, "_admin"},
-       {admin_pass, "_admin"},
+       %% Note that this is not actually the password that is being used; as
+       %% part of upgrading config from 2.2 to 3.0 version it's replaced by
+       %% unique per-node password. I didn't put it here because default()
+       %% supposed to be a pure function.
+       {admin_pass, ""},
        {bucket_engine, path_config:component_path(lib, "memcached/bucket_engine.so")},
        {engines,
         [{membase,
@@ -533,7 +537,11 @@ upgrade_config_from_2_2_0_to_3_0(Config) ->
     MemcachedConfig2 = lists:keystore(log_cyclesize, 1, MemcachedConfig1,
                                       {log_cyclesize, 1024*1024*10}),
 
-    [{set, {node, node(), memcached}, MemcachedConfig2}].
+    UUID = binary_to_list(couch_uuids:random()),
+    MemcachedConfig3 = lists:keystore(admin_pass, 1, MemcachedConfig2,
+                                      {admin_pass, UUID}),
+
+    [{set, {node, node(), memcached}, MemcachedConfig3}].
 
 search_sub_key(Config, Key, Subkey) ->
     case ns_config:search(Config, Key) of
@@ -833,14 +841,16 @@ upgrade_2_0_to_2_2_0_test() ->
                  ], Result2).
 
 upgrade_2_2_0_to_3_0_test() ->
-    Cfg = [[{{node, node(), memcached},
+    Key = {node, node(), memcached},
+    Cfg = [[{Key,
            [{log_generations, 10},
             {log_cyclesize, 1024*1024*100}]}]],
     UpgradedCfg = upgrade_config_from_2_2_0_to_3_0(Cfg),
-    ?assertEqual([
-                  {set, {node, node(), memcached},
+    ?assertMatch([
+                  {set, Key,
                    [{log_generations, 20},
-                    {log_cyclesize, 1024*1024*10}]}], UpgradedCfg).
+                    {log_cyclesize, 1024*1024*10},
+                    {admin_pass, _}]}], UpgradedCfg).
 
 no_upgrade_on_current_version_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, get_current_version()}]])).
