@@ -91,7 +91,6 @@ handle_info(refresh_stats, #state{bucket = Bucket,
     ets:insert(server(Bucket), {stuff, ProcessedSamples}),
     {noreply, State#state{last_view_stats = NewLastViewStats,
                           last_ts = TS}};
-
 handle_info(_Msg, State) ->
     {noreply, State}.
 
@@ -122,8 +121,8 @@ get_db_info_quick(VBucket) ->
                 Error ->
                     get_db_info_slow_with_error(VBucket, Error)
             end;
-        Error ->
-            get_db_info_slow_with_error(VBucket, Error)
+        [] ->
+            not_yet
     end.
 
 get_db_info_slow_with_error(VBucket, Error) ->
@@ -151,6 +150,8 @@ vbuckets_aggregation_loop(Bucket, DiskSize, DataSize, [VBucketBin | RestVBucketB
             NewDiskSize = DiskSize + couch_util:get_value(disk_size, Info),
             NewDataSize = DataSize + couch_util:get_value(data_size, Info),
             vbuckets_aggregation_loop(Bucket, NewDiskSize, NewDataSize, RestVBucketBinaries);
+        not_yet ->
+            vbuckets_aggregation_loop(Bucket, DiskSize, DataSize, RestVBucketBinaries);
         Why ->
             ?log_debug("Failed to open vbucket: ~s (~p). Ignoring", [VBucketBin, Why]),
             vbuckets_aggregation_loop(Bucket, DiskSize, DataSize, RestVBucketBinaries)
