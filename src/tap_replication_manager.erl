@@ -194,7 +194,7 @@ kill_child(#state{bucket_name = Bucket,
     _ = supervisor:terminate_child(Sup, Child).
 
 change_vbucket_filter(#state{bucket_name = Bucket,
-                             not_readys_per_node_ets = T},
+                             not_readys_per_node_ets = T} = State,
                       SrcNode, OldVBuckets, NewVBuckets) ->
     %% TODO: potential slowness here. Consider ordsets
     ?log_info("Going to change replication from ~p to have~n~p (~p, ~p)", [SrcNode, NewVBuckets, NewVBuckets--OldVBuckets, OldVBuckets--NewVBuckets]),
@@ -205,12 +205,18 @@ change_vbucket_filter(#state{bucket_name = Bucket,
     MFA = {ebucketmigrator_srv, start_vbucket_filter_change, [NewVBuckets]},
 
     cancel_replicator_reset(T, SrcNode),
-    {ok, ns_vbm_new_sup:perform_vbucket_filter_change(Bucket,
-                                                      OldChildId,
-                                                      NewChildId,
-                                                      Args,
-                                                      MFA,
-                                                      ns_vbm_new_sup:server_name(Bucket))}.
+    try ns_vbm_new_sup:perform_vbucket_filter_change(Bucket,
+                                                     OldChildId,
+                                                     NewChildId,
+                                                     Args,
+                                                     MFA,
+                                                     ns_vbm_new_sup:server_name(Bucket)) of
+        RV -> {ok, RV}
+    catch error:upstream_conn_is_down ->
+            ?log_debug("Detected upstream_conn_is_down and going to simply start fresh ebucketmigrator"),
+            start_child(State, SrcNode, NewVBuckets),
+            {ok, ok}
+    end.
 
 childs_node_and_vbuckets(Child) ->
     {Node, _} = ns_vbm_new_sup:replicator_nodes(node(), Child),

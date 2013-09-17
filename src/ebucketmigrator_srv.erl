@@ -76,7 +76,6 @@
          set_controlling_process/2,
          had_backfill/2,
          wait_backfill_complete/1,
-         ping_connections/2,
          get_bucket_credentials/2]).
 
 -include("mc_constants.hrl").
@@ -239,11 +238,6 @@ process_last_messages(State) ->
               end
       end).
 
-handle_call(ping_connections, _From, #state{upstream_aux = UpstreamAux,
-                                            downstream_aux = DownstreamAux} = State) ->
-    _ = mc_client_binary:get_vbucket(UpstreamAux, 0),
-    _ = mc_client_binary:get_vbucket(DownstreamAux, 0),
-    {reply, ok, State};
 handle_call(start_old_vbucket_filter_change, {Pid, _} = _From,
             #state{vb_filter_change_state=VBFilterChangeState} = State)
   when VBFilterChangeState =/= not_started ->
@@ -280,8 +274,12 @@ handle_call({start_vbucket_filter_change, VBuckets}, From,
                          vb_filter_change_owner=From},
 
     NotReady =
-        mc_client_binary:get_zero_open_checkpoint_vbuckets(UpstreamAux,
-                                                           NewVBuckets),
+        try mc_client_binary:get_zero_open_checkpoint_vbuckets(UpstreamAux,
+                                                               NewVBuckets)
+        catch error:{badmatch, {error, closed}} ->
+                ?log_warning("Detected dead upstream connection"),
+                erlang:exit(upstream_conn_is_down)
+        end,
 
     if
         State#state.no_ready_vbuckets ->
@@ -838,9 +836,6 @@ start_vbucket_filter_change(Pid, Args) ->
 -spec start_old_vbucket_filter_change(pid()) -> {ok, port()} | {failed, any()}.
 start_old_vbucket_filter_change(Pid) ->
     gen_server:call(Pid, start_old_vbucket_filter_change, ?START_VBUCKET_FILTER_CHANGE_TIMEOUT).
-
-ping_connections(Pid, Timeout) ->
-    gen_server:call(Pid, ping_connections, Timeout).
 
 -spec set_controlling_process(#state{}, pid()) -> ok.
 set_controlling_process(#state{upstream=Upstream,

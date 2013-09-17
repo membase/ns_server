@@ -731,7 +731,6 @@ handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, _From, #state{
                                         Dst =:= node()],
     WantedReplications = [{Src, [VB || {_, VB} <- Pairs]}
                           || {Src, Pairs} <- misc:keygroup(1, lists:sort(WantedReplicas))],
-    ns_vbm_new_sup:ping_all_replicators(BucketName),
     ok = tap_replication_manager:remove_undesired_replications(BucketName, WantedReplications),
 
     %% then we're ok to change vbucket states
@@ -757,7 +756,6 @@ handle_call({apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
                                         Dst =:= node()],
     WantedReplications = [{Src, [VB || {_, VB} <- Pairs]}
                           || {Src, Pairs} <- misc:keygroup(1, lists:sort(WantedReplicas))],
-    ns_vbm_new_sup:ping_all_replicators(BucketName),
     ok = tap_replication_manager:set_incoming_replication_map(BucketName, WantedReplications),
     {reply, ok, State};
 handle_call({delete_vbucket, VBucket}, _From, #state{bucket_name = BucketName} = State) ->
@@ -980,7 +978,6 @@ perform_flush(#state{bucket_name = BucketName} = State, BucketConfig, ConfigFlus
     pass_vbucket_states_to_set_view_manager(NewState),
     ok = capi_set_view_manager:reset_master_vbucket(BucketName),
     ?log_info("Shutting down incoming replications"),
-    ns_vbm_new_sup:ping_all_replicators(BucketName),
     ok = tap_replication_manager:set_incoming_replication_map(BucketName, []),
     %% kill all vbuckets
     [ok = ns_memcached:sync_delete_vbucket(BucketName, VB)

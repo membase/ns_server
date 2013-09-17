@@ -31,7 +31,7 @@
 %% Callbacks
 -export([server_name/1, supervisor_node/2,
          make_replicator/2, replicator_nodes/2, replicator_vbuckets/1,
-         ping_all_replicators/1, build_child_spec/2]).
+         build_child_spec/2]).
 
 -export([perform_vbucket_filter_change/6]).
 
@@ -96,6 +96,24 @@ perform_vbucket_filter_change(Bucket,
                               InitialArgs,
                               StartVBFilterChangeMFA,
                               Server) ->
+    try
+        do_perform_vbucket_filter_change(Bucket,
+                                         OldChildId, NewChildId,
+                                         InitialArgs,
+                                         StartVBFilterChangeMFA,
+                                         Server)
+    catch error:{unexpected_reason, upstream_conn_is_down} ->
+            %% I don't want {unexpected_reason, _} which is
+            %% implementation detail of misc:executing_on_new_process
+            %% to leak out of this code
+            erlang:error(upstream_conn_is_down)
+    end.
+
+do_perform_vbucket_filter_change(Bucket,
+                                 OldChildId, NewChildId,
+                                 InitialArgs,
+                                 StartVBFilterChangeMFA,
+                                 Server) ->
     RegistryId = {Bucket, NewChildId, erlang:make_ref()},
     Args = ebucketmigrator_srv:add_args_option(InitialArgs,
                                                old_state_retriever,
@@ -170,21 +188,6 @@ perform_vbucket_filter_change_loop(ThePid, OldState, SentAlready) ->
                     gen_server:reply(From, refused)
             end,
             perform_vbucket_filter_change_loop(ThePid, OldState, true)
-    end.
-
-%% make sure all migrators have up-to-date connections
-ping_all_replicators(Bucket) ->
-    Childs = try supervisor:which_children(server_name(Bucket))
-             catch exit:{noproc, _} ->
-                     []
-             end,
-    [ping_some_replicator(Pid) || {_Id, Pid, _, _} <- Childs],
-    ok.
-
-ping_some_replicator(Pid) ->
-    try ebucketmigrator_srv:ping_connections(Pid, infinity)
-    catch T:E ->
-            ?log_error("Pinging migrator ~p failed:~n~p", [Pid, {T,E}])
     end.
 
 build_child_spec(ChildId, Args) ->
