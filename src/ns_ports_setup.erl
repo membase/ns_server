@@ -2,7 +2,8 @@
 
 -include("ns_common.hrl").
 
--export([start/0, start_memcached_force_killer/0, setup_body_tramp/0, restart_moxi/0]).
+-export([start/0, start_memcached_force_killer/0, setup_body_tramp/0,
+         restart_port_by_name/1, restart_moxi/0, restart_memcached/0]).
 
 start() ->
     {ok, proc_lib:spawn_link(?MODULE, setup_body_tramp, [])}.
@@ -36,8 +37,15 @@ setup_body() ->
 
 %% rpc:called (2.0.2+) after any bucket is deleted
 restart_moxi() ->
-    {ok, _} = rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, restart_port_by_name, [moxi]),
+    {ok, _} = restart_port_by_name(moxi),
     ok.
+
+restart_memcached() ->
+    {ok, _} = restart_port_by_name(memcached),
+    ok.
+
+restart_port_by_name(Name) ->
+    rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, restart_port_by_name, [Name]).
 
 set_childs_and_loop(Childs) ->
     Pid = rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, set_dynamic_children, [Childs]),
