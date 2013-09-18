@@ -29,9 +29,6 @@
                                     "proxy for ns_config. Why? Because we've found that replying to remote
                                     ns_config:get() calls may suspend replying process. Thus we have that
                                     proxy for 'spoonfeeding' of remote callers")
-                        (gen-server 'ns_config_isasl_sync
-                                    "saves bucket passwords to isasl.pw"
-                                    (pubsub-link nil :to 'ns_config_events))
                         (gen-server 'ns_config_log
                                     "logs config changes"
                                     (pubsub-link nil :to 'ns_config_events))
@@ -53,6 +50,9 @@
                                        "This guy merely maintains public ets table with copy of ns_config. For real
                                         quick but not necessarily reliable access. This is used to get timeout values in
                                         few places.")
+                        (gen-server 'ns_config_isasl_sync
+                                    "saves bucket passwords to isasl.pw"
+                                    (pubsub-link nil :to 'ns_config_events))
                         (gen-event 'ns_log_events
                                    "ns_log logged events are broadcasted here. ns_mail_log uses it")
                         (supervisor 'ns_node_disco_sup :mode :rest_for_one

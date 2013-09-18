@@ -50,11 +50,6 @@ init([]) ->
             {ns_config_replica, start_link, [{local, ns_config_remote}]},
             permanent, 1000, worker, [ns_config, ns_config_replica]},
 
-           %% Track bucket configs and ensure isasl is sync'd up
-           {ns_config_isasl_sync,
-            {ns_config_isasl_sync, start_link, []},
-            permanent, 1000, worker, []},
-
            %% logs config changes for debugging.
            {ns_config_log,
             {ns_config_log, start_link, []},

@@ -71,6 +71,10 @@ child_specs() ->
      {ns_config_ets_dup, {ns_config_ets_dup, start_link, []},
       permanent, brutal_kill, worker, [ns_config, ns_config_ets_dup]},
 
+     %% Track bucket configs and ensure isasl is sync'd up
+     {ns_config_isasl_sync, {ns_config_isasl_sync, start_link, []},
+      permanent, 1000, worker, []},
+
      {ns_log_events, {gen_event, start_link, [{local, ns_log_events}]},
       permanent, 1000, worker, dynamic},
 
