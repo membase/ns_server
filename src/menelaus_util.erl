@@ -43,6 +43,7 @@
          bin_concat_path/1,
          bin_concat_path/2,
          parse_validate_number/3,
+         parse_validate_port_number/1,
          validate_email_address/1,
          insecure_pipe_through_command/2,
          encode_json/1]).
@@ -230,6 +231,16 @@ parse_validate_number(String, Min, Max) ->
                 true -> {ok, Parsed}
             end;
        true -> invalid
+    end.
+
+parse_validate_port_number(StringPort) ->
+    case parse_validate_number(StringPort, 1024, 65535) of
+        {ok, Port} ->
+            Port;
+        invalid ->
+            throw({error, [<<"Port must be a number.">>]});
+        _ ->
+            throw({error, [<<"The port number must be greater than 1023 and less than 65536.">>]})
     end.
 
 %% does a simple email address validation

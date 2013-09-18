@@ -1790,10 +1790,14 @@ maybe_cleanup_old_buckets() ->
             ns_storage_conf:delete_unused_buckets_db_files()
     end.
 
-is_valid_port_number("SAME") -> true;
-is_valid_port_number(String) ->
-    PortNumber = (catch list_to_integer(String)),
-    (is_integer(PortNumber) andalso (PortNumber > 0) andalso (PortNumber =< 65535)).
+is_valid_port_number_or_error("SAME") -> true;
+is_valid_port_number_or_error(StringPort) ->
+    case (catch menelaus_util:parse_validate_port_number(StringPort)) of
+        {error, [Error]} ->
+            Error;
+        _ ->
+            true
+    end.
 
 validate_cred(undefined, _) -> <<"Field must be given">>;
 validate_cred(P, password) when length(P) < 6 -> <<"The password must be at least six characters.">>;
@@ -1825,8 +1829,7 @@ is_port_free(Port) ->
 validate_settings(Port, U, P) ->
     case lists:all(fun erlang:is_list/1, [Port, U, P]) of
         false -> [<<"All parameters must be given">>];
-        _ -> Candidates = [is_valid_port_number(Port)
-                           orelse <<"Port must be a positive integer less than 65536">>,
+        _ -> Candidates = [is_valid_port_number_or_error(Port),
                            is_port_free(Port)
                            orelse <<"Port is already in use">>,
                            case {U, P} of
@@ -2264,16 +2267,8 @@ parse_hostname([_ | _] = Hostname) ->
                                  throw({error, [<<"The hostname is malformed.">>]})
                          end,
 
-    Port = (catch list_to_integer(StringPort)),
+    {Host, menelaus_util:parse_validate_port_number(StringPort)};
 
-    case is_integer(Port) of
-        true when Port > 0 andalso Port =< 65535 ->
-            {Host, Port};
-        true ->
-            throw({error, [<<"The port number must be greater than zero and less than 65536.">>]});
-        false ->
-            throw({error, [<<"Port must be a number.">>]})
-    end;
 parse_hostname([]) ->
     throw({error, [<<"Hostname is required.">>]}).
 
@@ -3134,24 +3129,24 @@ extra_field_parse_validate_auto_compaction_settings_test() ->
     ok.
 
 hostname_parsing_test() ->
-    Urls = ["http://host:100",
-            "http://host:0",
+    Urls = ["http://host:1025",
+            "http://host:100",
             "http://host:100000",
-            "hTTp://host:800",
+            "hTTp://host:8000",
             "ftp://host:600",
             "http://host",
-            "127.0.0.1:600",
+            "127.0.0.1:6000",
             "host:port",
             "aaa:bb:cc",
             ""],
 
-    ExpectedResults = [{"host",100},
-                       {error, [<<"The port number must be greater than zero and less than 65536.">>]},
-                       {error, [<<"The port number must be greater than zero and less than 65536.">>]},
-                       {"host", 800},
+    ExpectedResults = [{"host",1025},
+                       {error, [<<"The port number must be greater than 1023 and less than 65536.">>]},
+                       {error, [<<"The port number must be greater than 1023 and less than 65536.">>]},
+                       {"host", 8000},
                        {error, [<<"Unsupported protocol ftp">>]},
                        {"host", 8091},
-                       {"127.0.0.1", 600},
+                       {"127.0.0.1", 6000},
                        {error, [<<"Port must be a number.">>]},
                        {error, [<<"The hostname is malformed.">>]},
                        {error, [<<"Hostname is required.">>]}],

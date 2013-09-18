@@ -786,18 +786,17 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
                                             <<"port is missing">>}
                                    end;
                                _ ->
-                                   case menelaus_util:parse_validate_number(ProxyPort,
-                                                                            1025, 65535) of
-                                       {ok, PP} ->
+                                   case (catch menelaus_util:parse_validate_port_number(ProxyPort)) of
+                                       {error, [Error]} ->
+                                           {error, proxyPort, Error};
+                                       PP ->
                                            case ns_bucket:is_port_free(BucketName, PP) of
                                                true ->
                                                    {ok, moxi_port, PP};
                                                false ->
                                                    {error, proxyPort,
                                                     <<"port is already in use">>}
-                                           end;
-                                       _ -> {error, proxyPort,
-                                             <<"port is invalid">>}
+                                           end
                                    end
                            end;
                        sasl ->
