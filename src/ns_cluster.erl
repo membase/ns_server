@@ -845,10 +845,12 @@ perform_actual_join(RemoteNode, NewCookie) ->
         {ok, ok}
     catch
         Type:Error ->
-            ?cluster_error("Error during join: ~p",
-                           [{Type, Error, erlang:get_stacktrace()}]),
+            Stack = erlang:get_stacktrace(),
+
+            ?cluster_error("Error during join: ~p", [{Type, Error, Stack}]),
             {ok, _} = ns_server_cluster_sup:start_cluster(),
-            erlang:Type(Error)
+
+            erlang:raise(Type, Error, Stack)
     end,
     ?cluster_debug("Join status: ~p, starting ns_server_cluster back~n",
                    [Status]),
