@@ -32,7 +32,7 @@ component_path(NameAtom) ->
             erlang:error({empty_for, NameAtom})
     catch error:badarg ->
             {ok, RV} = application:get_env(ns_server, component_path_key(NameAtom)),
-            ok = filelib:ensure_dir(RV),
+            ok = misc:ensure_dir(RV),
             RV
     end.
 
