@@ -114,7 +114,7 @@ setup_disk_storage_conf(DbPath, IxPath) ->
     case NewDbDir =/= CurrentDbDir orelse NewIxDir =/= CurrentIxDir of
         true ->
             ale:info(?USER_LOGGER, "Setting database directory path to ~s and index directory path to ~s", [NewDbDir, NewIxDir]),
-            case misc:ensure_dirs([NewDbDir, NewIxDir]) of
+            case misc:ensure_writable_dirs([NewDbDir, NewIxDir]) of
                 ok ->
                     RV =
                         case NewDbDir =:= CurrentDbDir of

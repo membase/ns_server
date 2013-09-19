@@ -1593,11 +1593,10 @@ memory() ->
             notsup
     end.
 
-ensure_dir(Path) ->
+ensure_writable_dir(Path) ->
     filelib:ensure_dir(Path),
-    case file:make_dir(Path) of
-        ok -> ok;
-        {error, eexist} ->
+    case filelib:is_dir(Path) of
+        true ->
             TouchPath = filename:join(Path, ".touch"),
             case file:write_file(TouchPath, <<"">>) of
                 ok ->
@@ -1605,14 +1604,19 @@ ensure_dir(Path) ->
                     ok;
                 _ -> error
             end;
-        _ -> error
+        _ ->
+            case file:make_dir(Path) of
+                ok -> ok;
+                _ ->
+                    error
+            end
     end.
 
-ensure_dirs([]) ->
+ensure_writable_dirs([]) ->
     ok;
-ensure_dirs([Path | Rest]) ->
-    case ensure_dir(Path) of
+ensure_writable_dirs([Path | Rest]) ->
+    case ensure_writable_dir(Path) of
         ok ->
-            ensure_dirs(Rest);
+            ensure_writable_dirs(Rest);
         X -> X
     end.
