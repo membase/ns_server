@@ -1592,3 +1592,27 @@ memory() ->
         error:notsup ->
             notsup
     end.
+
+ensure_dir(Path) ->
+    filelib:ensure_dir(Path),
+    case file:make_dir(Path) of
+        ok -> ok;
+        {error, eexist} ->
+            TouchPath = filename:join(Path, ".touch"),
+            case file:write_file(TouchPath, <<"">>) of
+                ok ->
+                    file:delete(TouchPath),
+                    ok;
+                _ -> error
+            end;
+        _ -> error
+    end.
+
+ensure_dirs([]) ->
+    ok;
+ensure_dirs([Path | Rest]) ->
+    case ensure_dir(Path) of
+        ok ->
+            ensure_dirs(Rest);
+        X -> X
+    end.

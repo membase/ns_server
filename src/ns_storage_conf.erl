@@ -100,30 +100,6 @@ read_path_from_conf(Config, Node, Key, SubKey) ->
 change_memory_quota(_Node, NewMemQuotaMB) when is_integer(NewMemQuotaMB) ->
     ns_config:set(memory_quota, NewMemQuotaMB).
 
-ensure_dir(Path) ->
-    filelib:ensure_dir(Path),
-    case file:make_dir(Path) of
-        ok -> ok;
-        {error, eexist} ->
-            TouchPath = filename:join(Path, ".touch"),
-            case file:write_file(TouchPath, <<"">>) of
-                ok ->
-                    file:delete(TouchPath),
-                    ok;
-                _ -> error
-            end;
-        _ -> error
-    end.
-
-ensure_dirs([]) ->
-    ok;
-ensure_dirs([Path | Rest]) ->
-    case ensure_dir(Path) of
-        ok ->
-            ensure_dirs(Rest);
-        X -> X
-    end.
-
 %% @doc sets db and index path of this node.
 %%
 %% NOTE: ns_server restart is required to make this fully effective.
@@ -138,7 +114,7 @@ setup_disk_storage_conf(DbPath, IxPath) ->
     case NewDbDir =/= CurrentDbDir orelse NewIxDir =/= CurrentIxDir of
         true ->
             ale:info(?USER_LOGGER, "Setting database directory path to ~s and index directory path to ~s", [NewDbDir, NewIxDir]),
-            case ensure_dirs([NewDbDir, NewIxDir]) of
+            case misc:ensure_dirs([NewDbDir, NewIxDir]) of
                 ok ->
                     RV =
                         case NewDbDir =:= CurrentDbDir of
