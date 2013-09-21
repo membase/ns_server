@@ -83,11 +83,18 @@ OptionParser.new do |opts|
 
 end.parse!
 
+Dir.chdir(File.dirname(__FILE__))
+
 NSServer.run! do
   if $do_screenshots
-    phantomjs_pid = fork do
-       system "casperjs test tests/ --base-url=http://#{NSServer.settings.bind}:#{NSServer.settings.port.to_s}/index.html --screenshots-output-path=tests/screenshots-output/ "
+    Thread.new do
+      cmd = "casperjs test tests/ --base-url=http://#{NSServer.settings.bind || "127.0.0.1"}:#{NSServer.settings.port.to_s}/index.html --screenshots-output-path=tests/screenshots-output/ "
+      puts "cmd: #{cmd}"
+      ok = system(cmd)
+      unless ok
+        puts("casperjs command failed")
+      end
+      Process.exit!(ok ? 0 : 1)
     end
-    Process.detach(phantomjs_pid)
   end
 end
