@@ -98,7 +98,7 @@
                 </div>
                 <div class="graph_main">
                   <span class="graph_info_label">Disk fetches per second</span>
-                  <div id="overview_reads_graph" class="graph"></div>
+                  <div id="overview_reads_graph" class="graph casper_overview_reads_graph"></div>
                 </div>
                 <div class="no_stats_marker">
                   <span class="with_buckets">Waiting for samples...</span>
@@ -706,18 +706,18 @@
               <div class="header_2">
                 <ul class="tabs">
                   <li class="tab_left"><a id="settings_update_notifications">Update Notifications</a></li>
-                  <li><a id="settings_auto_failover">Auto-Failover</a></li>
-                  <li><a id="settings_alerts">Alerts</a></li>
-                  <li><a id="settings_compaction">Auto-Compaction</a></li>
-                  <li class="only-when-20"><a id="settings_sample_buckets">Sample Buckets</a></li>
-                  <li class="when-roadmin-avoid-me"><a id="account_management">Account Management</a></li>
+                  <li><a id="settings_auto_failover" class="casper_settings_auto_failover">Auto-Failover</a></li>
+                  <li><a id="settings_alerts" class="casper_settings_alerts">Alerts</a></li>
+                  <li><a id="settings_compaction" class="casper_settings_compaction">Auto-Compaction</a></li>
+                  <li class="only-when-20"><a id="settings_sample_buckets" class="casper_settings_sample_buckets">Sample Buckets</a></li>
+                  <li class="when-roadmin-avoid-me"><a id="account_management" class="casper_account_management">Account Management</a></li>
                 </ul>
               </div>
               <div class="panes clearfix">
                 <div id="notifications_container" class="notifications-updates"><div class='spinner' style="height:350px;line-height:350px;width:100%"><span>Loading...</span></div></div>
-                <div id="auto_failover_container" class="auto_failover"><div class='spinner' style="height:350px;line-height:350px;width:100%"><span>Loading...</span></div></div>
-                <div id="email_alerts_container" class="email_alerts"><div class='spinner' style="height:350px;line-height:350px;width:100%"><span>Loading...</span></div></div>
-                <div id="compaction_container"><form>
+                <div id="auto_failover_container" class="auto_failover casper_auto_failover_container"><div class='spinner' style="height:350px;line-height:350px;width:100%"><span>Loading...</span></div></div>
+                <div id="email_alerts_container" class="email_alerts casper_email_alerts_container"><div class='spinner' style="height:350px;line-height:350px;width:100%"><span>Loading...</span></div></div>
+                <div id="compaction_container" class="casper_auto_compaction_wait_spinner"><form>
                   <fieldset class="auto_compaction persistent-only">
                     <legend>Auto-Compaction</legend>
                     <p>The Auto-Compaction daemon compacts databases and their respective
@@ -828,7 +828,7 @@
                     </button>
                   </div>
                 </form></div>
-                <div id="sample_buckets_container"><form id="sample_buckets_form">
+                <div id="sample_buckets_container" class="casper_sample_buckets_container"><form id="sample_buckets_form">
                   <p id="sample_buckets_quota_warning" class="warning_message">
                     Your cluster does not have enough RAM quota available to create
                     the selected sample data buckets. Please free at least
@@ -848,7 +848,7 @@
                   <h3>Installed Samples</h3>
                   <ul id="installed_samples"></ul>
                   <h3>Available Samples</h3>
-                  <ul id="available_samples"></ul>
+                  <ul id="available_samples"  class="casper_samples_warnign_start"></ul>
                     <div class="save_cancel when-roadmin-hide-me">
                     <button class="save_button float_right" type="submit"
                             id="sample_buckets_settings_btn">
@@ -862,7 +862,7 @@
                       cannot make any changes to the system. The user
                       can only view existing servers, buckets, views
                       and monitor stats.</p>
-                  <form id="js_account_management_form" class="account_management_form">
+                  <form id="js_account_management_form" class="account_management_form casper_roadmin_wait_spinner">
                     <fieldset>
                       <label>
                         <span>Username:</span><input type="text" name="username" maxlength="24">
@@ -874,18 +874,18 @@
                       </label>
                       <label>
                         <span>Verify Password:</span><input type="password" name="verifyPassword" maxlength="24">
-                        <i class="errors js_error_verifyPassword"></i>
+                        <i class="errors js_error_verifyPassword casper_create_roadmin_with_errors"></i>
                       </label>
-                      <button type="submit" class="list_button"><span>Create</span></button>
+                      <button type="submit" class="list_button casper_do_create_roadmin"><span>Create</span></button>
                     </fieldset>
                   </form>
-                  <div id="js_account_delete" class="account_delete">
+                  <div id="js_account_delete" class="account_delete casper_ro_user_exist">
                     <p>Currently read-only user account already exists: Username - <span id="js_roadmin_name"></span></p>
                     <div>
-                      <span class="list_button" id="js_reset_acc_btn">
+                      <span class="list_button casper_reset_acc_btn" id="js_reset_acc_btn">
                         <span>Reset Read-Only user Password</span>
                       </span>
-                      <span class="list_button" id="js_delete_acc_btn">
+                      <span class="list_button casper_delete_acc_btn" id="js_delete_acc_btn">
                         <span>Delete Read-Only User</span>
                       </span>
                     </div>
@@ -926,9 +926,9 @@
               <input type="checkbox" id="notification-updates">
               {% } %}
               <span>Enable software update notifications.</span>
-              <a href="#" class="more_info">What's this?</a>
+              <a href="#" class="more_info casper_software_update_button">What's this?</a>
             </label>
-            <p class="more_info">
+            <p class="more_info casper_software_update_info">
               Enabling software update notifications allows notification in
               the Couchbase web console when a new version of Couchbase Server
               is available. Configuration information transferred in the
@@ -943,7 +943,7 @@
             </div>
           </script>
           <script id="auto_failover_template" type="text/html">
-            <label class="for-enable-replicas"
+            <label class="for-enable-replicas casper_for_enable_replicas"
                    for="auto_failover_enabled">
               <input type="checkbox" id="auto_failover_enabled">
               <span>Enable auto-failover</span>
@@ -953,12 +953,12 @@
             </label>
             <input type="text" id="auto_failover_timeout"
                    value="{%= timeout %}" disabled="disabled" />
-            <a class="text_11 tooltip"><span>What's this?</span>
+            <a class="text_11 tooltip castep_auto_fail_tooltip_button"><span>What's this?</span>
               <span class="tooltip_msg"><span>
                   How long (in seconds) a node must be considered down before it gets auto-failed-over.
               </span></span>
             </a>
-            <div class="error-container err-timeout"></div>
+            <div class="error-container err-timeout casper_err_timeout"></div>
             {% if (count > 0) { %}
             <div class="count_reset">
               A server was automatically failed over
@@ -977,7 +977,7 @@
           <script id="email_alerts_template" type="text/html">
             <label class="for-enable-replicas"
                    for="email_alerts_enabled">
-              <input type="checkbox" id="email_alerts_enabled" />
+              <input type="checkbox" id="email_alerts_enabled" class="casper_alerts_errors_start">
               <span>Enable email alerts</span>
             </label>
             <fieldset>
@@ -1023,7 +1023,7 @@
               </label>
               <input type="text" id="email_alerts_sender"
                      value="{%= h(sender) %}" disabled="disabled" />
-              <div class="error-container err-sender"></div>
+              <div class="error-container err-sender casper_alerts_errors_end"></div>
               <label for="email_alerts_sender">
                 <span>Recipients:</span>
               </label>
@@ -1925,7 +1925,7 @@
         <li>
           <label for="c80016fb-f7dc-4035-a45e-ac692ae2a790">Metadata Purge Interval (days): </label>
           <input id="c80016fb-f7dc-4035-a45e-ac692ae2a790" name="purgeInterval" style="width:2.5em;">
-          <div class="error-container err-purgeInterval" style="display: inline; padding-left: 0; float: none;"></div>
+          <div class="error-container err-purgeInterval casper_auto_comp_errors_end" style="display: inline; padding-left: 0; float: none;"></div>
         </li>
       </ul>
     </fieldset> <!-- .auto_compaction -->
@@ -1992,7 +1992,7 @@
   </form>
 </div>
 
-<div class="dialog" id="js_roadmin_remove_dialog" title="Removing">
+<div class="dialog casper_roadmin_remove_dialog" id="js_roadmin_remove_dialog" title="Removing">
   <form>
     <div class="clearfix">
       <div class="err">
@@ -2000,13 +2000,13 @@
       </div>
     </div>
     <div class="save_cancel clearfix">
-      <button type="button" class="delete_button float_right js_delete_button">Delete</button>
+      <button type="button" class="delete_button float_right js_delete_button casper_roadmin_remove_dialog_delete">Delete</button>
       <a class="close">Cancel</a>
     </div>
   </form>
 </div>
 
-<div class="dialog" id="js_roadmin_reset_dialog" title="Reset Password">
+<div class="dialog casper_roadmin_reset_dialog" id="js_roadmin_reset_dialog" title="Reset Password">
   <form id="js_reset_roadmin_form" class="reset_roadmin_form">
     <div class="inner_wrap">
       <i class="errors js_error_password"></i>
@@ -2015,7 +2015,7 @@
     </div>
     <div class="save_cancel clearfix">
       <button type="submit" class="save_button float_right">Create</button>
-      <a class="close">Cancel</a>
+      <a class="close casper_roadmin_reset_dialog_cancel">Cancel</a>
     </div>
   </form>
 </div>

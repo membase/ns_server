@@ -147,8 +147,9 @@ var MockedRequest = mkClass({
     }
     console.log("responded with: ", data);
     this.responded = true;
-    if (this.options.success)
-      this.options.success(data, 'success', this.fakeXHR);
+
+    this.options.success && this.options.success(data, 'success', this.fakeXHR);
+    this.options.complete && this.options.complete(data, 'success', this.fakeXHR);
   },
   authError: (function () {
     try {
@@ -233,10 +234,18 @@ var MockedRequest = mkClass({
 
         this.fakeXHR.status = 401;
         // auth error
+
+        if (this.options.complete) {
+          this.options.complete(this.fakeXHR, 'error');
+        } else {
+          $.ajaxSettings.complete(this.fakeXHR, 'error');
+        }
+
         if (this.options.error) {
           this.options.error(this.fakeXHR, 'error');
-        } else
+        } else {
           $.ajaxSettings.error(this.fakeXHR, 'error');
+        }
       }
     });
   },
@@ -259,7 +268,8 @@ var MockedRequest = mkClass({
       responseText: JSON.stringify(resp)
     }, xhrParams);
     _.defer(function () {
-      self.options.error(fakeXHR, 'error');
+      self.options.complete && self.options.complete(fakeXHR, 'error');
+      self.options.error && self.options.error(fakeXHR, 'error');
     });
   },
 
@@ -520,6 +530,13 @@ var MockedRequest = mkClass({
         name: "gamesim-sample",
         quotaNeeded: 104857600
       }]],
+      [post("settings", "readOnlyUser"), function () {
+        return this.errorResponse({"errors":{"username":"Username must not be empty","password":"The password must be at least six characters."}});
+      }],
+      [del("settings", "readOnlyUser"), function () {
+        ServerStateMock.readOnlyAdminName = null;
+        return {};
+      }],
       [get("settings", "autoCompaction"), {
         "autoCompactionSettings": {
           "parallelDBAndViewCompaction": false,
@@ -534,7 +551,11 @@ var MockedRequest = mkClass({
         },
         "purgeInterval": 3
       }],
-      [get("settings", "readOnlyAdminName"), "readonly"],
+      [get("settings", "readOnlyAdminName"), function () {
+        return ServerStateMock.readOnlyAdminName || this.errorResponse("Requested resource not found.", {
+          status: 404
+        });
+      }],
       [get("settings", "replications"), {}],
       [post("uilogin"), expectParams(method("handleLogin"), "user", "password")],
       [post("uilogout"), method("handleLogout")],
@@ -637,10 +658,20 @@ var MockedRequest = mkClass({
       [get("settings", "stats"), {
         sendStats: false
       }],
+      [post("settings", "autoFailover"), {
+        "responseText": JSON.stringify({"errors": {"timeout": "The value of \"timeout\" must be a positive integer in a range from 30 to 3600"}})
+      }],
       [get("settings", "autoFailover"), {
         "enabled": false,
         "timeout": 30,
         "count": 0
+      }],
+      [post("settings", "alerts"), {
+        "responseText": JSON.stringify({
+          "errors": {
+            "email_port":"emailPort must be a positive integer less than 65536.","sender":"sender must be a valid email address."
+          }
+        })
       }],
       [get("settings", "alerts"), {
         "recipients": ["root@localhost"],
@@ -1488,7 +1519,9 @@ var MockedRequest = mkClass({
           return ServerStateMock.handleCreateReplication(this)
         }
       ],
-      [post("controller", "setAutoCompaction"), {}],
+      [post("controller", "setAutoCompaction"), function () {
+        this.errorResponse({"errors":{"databaseFragmentationThreshold[percentage]":"database fragmentation must be an integer","allowedTimePeriod[fromHour]":"from hour must be an integer","allowedTimePeriod[toHour]":"to hour must be an integer","allowedTimePeriod[fromMinute]":"from minute must be an integer","allowedTimePeriod[toMinute]":"to minute must be an integer","databaseFragmentationThreshold[size]":"database fragmentation size is too small. Allowed range is 1 - infinity","viewFragmentationThreshold[size]":"view fragmentation size is too small. Allowed range is 1 - infinity","purgeInterval":"metadata purge interval is too small. Allowed range is 1 - 60"}});
+      }],
       [post("controller", "ejectNode"), expectParams(method('doNothingPOST'),
         "otpNode")],
 
@@ -1611,6 +1644,7 @@ MockedRequest.prototype.globalData = MockedRequest.globalData = {
 })();
 
 var ServerStateMock = {
+  readOnlyAdminName: "read_only_admin_name",
   allNodes: [{
     "systemStats": {
       "cpu_utilization_rate": 42.5,
@@ -1760,46 +1794,6 @@ var ServerStateMock = {
     "mcdMemoryReserved": 4723,
     "mcdMemoryAllocated": 4723,
     "couchApiBase": "/couchBase/",
-    "clusterMembership": "active",
-    "status": "unhealthy",
-    "otpNode": "n_3@127.0.0.1",
-    "thisNode": true,
-    "hostname": "127.0.0.1:9003",
-    "clusterCompatibility": 131072,
-    "version": "only-web.rb",
-    "os": "x86_64-pc-linux-gnu",
-    "ports": {
-      "proxy": 12001,
-      "direct": 12000
-    }
-  },{
-    "systemStats": {
-      "cpu_utilization_rate": 14.136125654450261,
-      "swap_total": 6291451904,
-      "swap_used": 0,
-      "mem_total": 6191321088,
-      "mem_free": 3639218176
-    },
-    "interestingStats": {
-      "cmd_get": 0.0,
-      "couch_docs_actual_disk_size": 8449574,
-      "couch_docs_data_size": 8435712,
-      "couch_views_actual_disk_size": 0,
-      "couch_views_data_size": 0,
-      "curr_items": 0,
-      "curr_items_tot": 0,
-      "ep_bg_fetched": 0.0,
-      "get_hits": 0.0,
-      "mem_used": 27347928,
-      "ops": 0.0,
-      "vb_replica_curr_items": 0
-    },
-    "uptime": "810",
-    "memoryTotal": 6191321088,
-    "memoryFree": 3639218176,
-    "mcdMemoryReserved": 4723,
-    "mcdMemoryAllocated": 4723,
-    "couchApiBase": "/couchBase/",
     "clusterMembership": "inactiveFailed",
     "status": "unhealthy",
     "otpNode": "n_4@127.0.0.1",
@@ -1831,7 +1825,7 @@ var ServerStateMock = {
         "free": 220406564701
       }
     },
-    "balanced": true,
+    "balanced": false,
     "failoverWarnings": ["hardNodesNeeded"],
     "name": "default",
     "alerts": [],
@@ -2224,13 +2218,17 @@ var ServerStateMock = {
     return rv;
   },
   nodeStatuses: function () {
-    return _.map(this.allNodes, function (ninfo) {
-      return {
-        status: ninfo.status,
-        otpNode: ninfo.otpNode,
-        replication: 1
-      };
+    var rv = {}
+
+    _.each(this.allNodes, function (nodes) {
+      rv[nodes.hostname] = {
+        otpNode: nodes.otpNode,
+        replication: 1,
+        status: nodes.status
+      }
     });
+
+    return rv;
   },
   bucketsList: function () {
     var self = this;
