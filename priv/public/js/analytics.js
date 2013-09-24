@@ -176,12 +176,19 @@ var StatsModel = {};
         return lastValue;
       }
 
-      if (!op.tstampParam) {
+      if (lastValue === undefined) {
         return rawStats;
       }
 
       var newSamples = {};
       var prevSamples = lastValue.op.samples;
+
+      if (prevSamples.timestamp === undefined ||
+          prevSamples.timestamp.length === 0 ||
+          prevSamples.timestamp[prevSamples.timestamp.length - 1] != samples.timestamp[0]) {
+        return rawStats;
+      }
+
       for (var keyName in samples) {
         newSamples[keyName] = prevSamples[keyName].concat(samples[keyName].slice(1)).slice(-keepCount);
       }
@@ -217,7 +224,10 @@ var StatsModel = {};
         return lastValue;
       }
 
-      if (!rawStats.tstampParam) {
+      if (lastValue === undefined ||
+          lastValue.timestamp === undefined ||
+          lastValue.timestamp.length === 0 ||
+          lastValue.timestamp[lastValue.timestamp.length - 1] != rawStats.timestamp[0]) {
         return rawStats;
       }
 
@@ -225,6 +235,7 @@ var StatsModel = {};
 
       var newSamples = {};
       var prevSamples = lastValue.nodeStats;
+
       for (var keyName in samples) {
         newSamples[keyName] = prevSamples[keyName].concat(samples[keyName].slice(1)).slice(-keepCount);
       }

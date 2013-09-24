@@ -161,7 +161,7 @@ handle_overview_stats(PoolId, Req) ->
     Names = lists:sort(menelaus_web_buckets:all_accessible_bucket_names(PoolId, Req)),
     {ClientTStamp, Window} = parse_stats_params([{"zoom", "hour"}]),
     AllSamples = lists:map(fun (Name) ->
-                                   element(1, grab_aggregate_op_stats(Name, all, ClientTStamp, Window))
+                                   grab_aggregate_op_stats(Name, all, ClientTStamp, Window)
                            end, Names),
     MergedSamples = case AllSamples of
                         [FirstBucketSamples | RestSamples] ->
@@ -329,24 +329,18 @@ build_response_for_specific_stat(BucketName, StatName, Params, LocalAddr) ->
                             Dict = orddict:from_list(Samples),
                             [dict_safe_fetch(T, Dict, 0) || T <- Timestamps]
                     end, tl(NodesSamples)),
-    OpPropList0 = [{samplesCount, Count},
-                   {isPersistent, ns_bucket:is_persistent(BucketName)},
-                   {lastTStamp, case Timestamps of
-                                    [] -> 0;
-                                    L -> lists:last(L)
-                                end},
-                   {interval, Step * 1000},
-                   {timestamp, Timestamps},
-                   {nodeStats, {struct, lists:zipwith(fun (H, VS) ->
-                                                              {H, VS}
-                                                      end,
-                                                      Hostnames, [MainValues | AllignedRestValues])}}],
-    OpPropList = case ClientTStamp of
-                     undefined -> OpPropList0;
-                     _ -> [{tstampParam, ClientTStamp}
-                           | OpPropList0]
-                 end,
-    {struct, OpPropList}.
+    {struct, [{samplesCount, Count},
+              {isPersistent, ns_bucket:is_persistent(BucketName)},
+              {lastTStamp, case Timestamps of
+                               [] -> 0;
+                               L -> lists:last(L)
+                           end},
+              {interval, Step * 1000},
+              {timestamp, Timestamps},
+              {nodeStats, {struct, lists:zipwith(fun (H, VS) ->
+                                                         {H, VS}
+                                                 end,
+                                                 Hostnames, [MainValues | AllignedRestValues])}}]}.
 
 %% ops SUM(cmd_get, cmd_set,
 %%         incr_misses, incr_hits,
@@ -405,13 +399,7 @@ grab_aggregate_op_stats(Bucket, Nodes, ClientTStamp, Window) ->
     {_MainNode, MainSamples, Replies} =
         gather_op_stats(Bucket, Nodes, ClientTStamp, Window),
     RV = merge_all_samples_normally(MainSamples, [S || {_,S} <- Replies]),
-    V = lists:reverse(RV),
-    case V =/= [] andalso (hd(V))#stat_entry.timestamp of
-        ClientTStamp ->
-            {V, ClientTStamp};
-        _ ->
-            {V, undefined}
-    end.
+    lists:reverse(RV).
 
 parse_stats_params(Params) ->
     ClientTStamp = case proplists:get_value("haveTStamp", Params) of
@@ -742,33 +730,25 @@ samples_to_proplists(Samples, BucketName) ->
 
 build_bucket_stats_ops_response(Nodes, BucketName, Params) ->
     {ClientTStamp, Window} = parse_stats_params(Params),
-    {Samples, TStampParam} = grab_aggregate_op_stats(BucketName, Nodes, ClientTStamp, Window),
+    Samples = grab_aggregate_op_stats(BucketName, Nodes, ClientTStamp, Window),
     StatsPropList = samples_to_proplists(Samples, BucketName),
 
-    {SystemRawSamples, _} = grab_system_aggregate_op_stats(BucketName, Nodes, ClientTStamp, Window),
+    SystemRawSamples = grab_system_aggregate_op_stats(BucketName, Nodes, ClientTStamp, Window),
     SystemStatsSamples = samples_to_proplists(SystemRawSamples, "@system"),
     SystemStatsPropList = lists:keydelete(timestamp, 1, SystemStatsSamples),
 
-    OpPropList = build_ops_props_list(BucketName, SystemStatsPropList ++ StatsPropList,
-                                       TStampParam, Window),
-
+    OpPropList = build_ops_props_list(BucketName, SystemStatsPropList ++ StatsPropList, Window),
     [{op, {struct, OpPropList}}].
 
-build_ops_props_list(BucketName, Samples, TStampParam, {Step, _, Count}) ->
-    OpPropList = [{samples, {struct, Samples}},
-                  {samplesCount, Count},
-                  {isPersistent, ns_bucket:is_persistent(BucketName)},
-                  {lastTStamp, case proplists:get_value(timestamp, Samples) of
-                                   [] -> 0;
-                                   L -> lists:last(L)
-                               end},
-                  {interval, Step * 1000}],
-    case TStampParam of
-        undefined ->
-            OpPropList;
-        _ ->
-            [{tstampParam, TStampParam} | OpPropList]
-    end.
+build_ops_props_list(BucketName, Samples, {Step, _, Count}) ->
+    [{samples, {struct, Samples}},
+     {samplesCount, Count},
+     {isPersistent, ns_bucket:is_persistent(BucketName)},
+     {lastTStamp, case proplists:get_value(timestamp, Samples) of
+                      [] -> 0;
+                      L -> lists:last(L)
+                  end},
+     {interval, Step * 1000}].
 
 is_safe_key_name(Name) ->
     lists:all(fun (C) ->

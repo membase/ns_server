@@ -417,7 +417,6 @@ var MockedRequest = mkClass({
       op: {
         isPersistent: true,
         lastTStamp: samples.timestamp.slice(-1)[0],
-        tstampParam: lastSampleT,
         interval: samplesInterval,
         samplesCount: 60,
         samples: samples
