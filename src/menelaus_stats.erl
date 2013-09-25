@@ -65,7 +65,8 @@ grab_latest_bucket_stats(BucketName, Nodes) ->
     {FoundNodes, _} = lists:unzip(Stats),
     RestNodes = Nodes -- FoundNodes,
     RestStats = [{N, S} || {N, [#stat_entry{values=S} | _]} <-
-                               invoke_archiver(BucketName, RestNodes, {1, minute, 1})],
+                               menelaus_stats_gatherer:invoke_archiver(BucketName, RestNodes,
+                                                                       {1, minute, 1})],
     Stats ++ RestStats.
 
 extract_interesting_stat(Key, Stats) ->
@@ -293,7 +294,7 @@ get_samples_for_stat(BucketName, StatName, ForNodes, ClientTStamp, Window) ->
     StatExtractor = build_stat_extractor(BucketName, StatName),
 
     {MainNode, MainSamples, RestSamplesRaw}
-        = gather_op_stats(BucketName, ForNodes, ClientTStamp, Window),
+        = menelaus_stats_gatherer:gather_stats(BucketName, ForNodes, ClientTStamp, Window),
 
     Nodes = [MainNode | [N || {N, _} <- RestSamplesRaw]],
     AllNodesSamples = [{MainNode, lists:reverse(MainSamples)} | RestSamplesRaw],
@@ -397,7 +398,7 @@ grab_aggregate_op_stats(Bucket, all, ClientTStamp, Window) ->
     grab_aggregate_op_stats(Bucket, ns_bucket:live_bucket_nodes(Bucket), ClientTStamp, Window);
 grab_aggregate_op_stats(Bucket, Nodes, ClientTStamp, Window) ->
     {_MainNode, MainSamples, Replies} =
-        gather_op_stats(Bucket, Nodes, ClientTStamp, Window),
+        menelaus_stats_gatherer:gather_stats(Bucket, Nodes, ClientTStamp, Window),
     RV = merge_all_samples_normally(MainSamples, [S || {_,S} <- Replies]),
     lists:reverse(RV).
 
@@ -425,109 +426,6 @@ parse_stats_params(Params) ->
                     end,
     {ClientTStamp, {Step, Period, Count}}.
 
-gather_op_stats(Bucket, Nodes, ClientTStamp, {_, Period, _} = Window) ->
-    Self = self(),
-    Ref = make_ref(),
-    Subscription = ns_pubsub:subscribe_link(
-                     ns_stats_event,
-                     fun (_, done) -> done;
-                         ({sample_archived, Name, _}, _)
-                           when Name =:= Bucket ->
-                             Self ! Ref,
-                             done;
-                         (_, X) -> X
-                     end, []),
-    %% don't wait next sample for anything other than real-time stats
-    RefToPass = case Period of
-                    minute -> Ref;
-                    _ -> []
-                end,
-    try gather_op_stats_body(Bucket, Nodes, ClientTStamp, RefToPass, Window) of
-        Something -> Something
-    after
-        ns_pubsub:unsubscribe(Subscription),
-
-        misc:flush(Ref)
-    end.
-
-invoke_archiver(Bucket, NodeS, {Step, Period, Count}) ->
-    RV = case Step of
-             1 ->
-                 catch stats_reader:latest(Period, NodeS, Bucket, Count);
-             _ ->
-                 catch stats_reader:latest(Period, NodeS, Bucket, Step, Count)
-         end,
-    case is_list(NodeS) of
-        true -> [{K, V} || {K, {ok, V}} <- RV];
-        _ ->
-            case RV of
-                {ok, List} -> List;
-                _ -> []
-            end
-    end.
-
-gather_op_stats_body(Bucket, Nodes, ClientTStamp,
-                     Ref, Window) ->
-    FirstNode = case Nodes of
-                    [] ->
-                        none;
-                    [X] ->
-                        X;
-                    [FN | _] ->
-                        case lists:member(node(), Nodes) of
-                            true ->
-                                node();
-                            _ ->
-                                FN
-                        end
-                end,
-
-    RV = case FirstNode of
-             none ->
-                 [];
-             _ ->
-                 invoke_archiver(Bucket, FirstNode, Window)
-         end,
-
-    case RV of
-        [] -> {FirstNode, [], []};
-        [_] -> {FirstNode, [], []};
-        _ ->
-            %% we throw out last sample 'cause it might be missing on other nodes yet
-            %% previous samples should be ok on all live nodes
-            Samples = tl(lists:reverse(RV)),
-            LastTStamp = (hd(Samples))#stat_entry.timestamp,
-            case LastTStamp of
-                %% wait if we don't yet have fresh sample
-                ClientTStamp when Ref =/= [] ->
-                    receive
-                        Ref ->
-                            gather_op_stats_body(Bucket, Nodes, ClientTStamp, [], Window)
-                    after 2000 ->
-                            {FirstNode, [], []}
-                    end;
-                _ ->
-                    %% cut samples up-to and including ClientTStamp
-                    CutSamples = lists:dropwhile(fun (Sample) ->
-                                                         Sample#stat_entry.timestamp =/= ClientTStamp
-                                                 end, lists:reverse(Samples)),
-                    MainSamples = case CutSamples of
-                                      [] -> Samples;
-                                      _ -> lists:reverse(CutSamples)
-                                  end,
-
-                    OtherNodes = lists:delete(FirstNode, Nodes),
-
-                    Replies = case OtherNodes of
-                                  [] ->
-                                      [];
-                                  _ ->
-                                      invoke_archiver(Bucket, OtherNodes, Window)
-                              end,
-
-                    {FirstNode, MainSamples, Replies}
-            end
-    end.
 
 computed_stats_lazy_proplist("@system") ->
     [];
