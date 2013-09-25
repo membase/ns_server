@@ -240,6 +240,13 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 #cluster_reference_list_container, #ongoing_replications_list_container, #past_replications_list_container{padding:0;border:none}
 #cluster_reference_list_container .list td, #ongoing_replications_list_container .list td, #past_replications_list_container .list td{text-align:left}
 
+.ongoing_replications_list .bucket {width: 70px;}
+.ongoing_replications_list .from {width: 100px;}
+.ongoing_replications_list .to {width: 284px;}
+.ongoing_replications_list .status {width: 200px;}
+.ongoing_replications_list .when {width: 95px;}
+.ongoing_replications_list td {-ms-word-break:break-all;word-break:break-all;word-break:break-word;-webkit-hyphens:auto;-moz-hyphens:auto;hyphens:auto;}
+
 .darker_block ul.col_headers {overflow:hidden;margin-right:5px;color:#999;font-weight:bold;padding-top:3px}
 .darker_block ul.col_headers li{width:25%;display:block;float:left;text-align:center;text-transform:uppercase}
 .darker_block ul.col_headers li:last-child{color:#808080}
