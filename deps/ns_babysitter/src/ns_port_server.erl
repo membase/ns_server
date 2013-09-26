@@ -135,11 +135,12 @@ wait_for_child_death_process_info(Msg, State) ->
         {stop, _, State2} -> State2
     end.
 
-terminate(shutdown, #state{send_eol = true, port = Port} = State) ->
+terminate(shutdown, #state{send_eol = true, port = Port, name = Name} = State) ->
     ShutdownCmd = misc:get_env_default(ns_babysitter, port_shutdown_command, "shutdown"),
-    ?log_debug("Sending ~s to port", [ShutdownCmd]),
+    ?log_debug("Sending ~s to port ~p", [ShutdownCmd, Name]),
     port_command(Port, [ShutdownCmd, 10]),
     State2 = wait_for_child_death(State),
+    ?log_debug("~p has exited", [Name]),
     log(State2); % Log any remaining messages
 terminate(_Reason, State) ->
     log(State). % Log any remaining messages
