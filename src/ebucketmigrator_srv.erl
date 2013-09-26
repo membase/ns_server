@@ -770,8 +770,12 @@ confirm_sent_messages(State) ->
     proc_lib:spawn_link(
       fun () ->
               ?log_debug("Sending opaque message to confirm downstream reception"),
-              ok = gen_tcp:send(Sock, Msg),
-              ?log_debug("Sent fine"),
+              case gen_tcp:send(Sock, Msg) of
+                  {error, Error} ->
+                      ?log_info("Failed to send opaque message. Socket closed with error: ~p", [Error]);
+                  ok ->
+                      ?log_debug("Opaque message was succesfully sent")
+              end,
               erlang:unlink(Parent)
       end),
     ?log_debug("Going to wait for reception of opaque message ack"),
