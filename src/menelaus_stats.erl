@@ -626,27 +626,80 @@ samples_to_proplists(Samples, BucketName) ->
                  end, ExtraStats)
         ++ orddict:to_list(Dict).
 
+join_samples(A, B) ->
+    lists:reverse(join_samples(A, B, [])).
+
+join_samples([A | _] = ASamples, [B | TailB], Acc) when A#stat_entry.timestamp > B#stat_entry.timestamp ->
+    join_samples(ASamples, TailB, Acc);
+join_samples([A | TailA], [B | _] = BSamples, Acc) when A#stat_entry.timestamp < B#stat_entry.timestamp ->
+    join_samples(TailA, BSamples, Acc);
+join_samples([A | TailA], [B | TailB], Acc) ->
+    NewAcc = [A#stat_entry{values = A#stat_entry.values ++ B#stat_entry.values} | Acc],
+    join_samples(TailA, TailB, NewAcc);
+join_samples(_, _, Acc) ->
+    Acc.
+
+join_samples_test() ->
+    A = [
+         {stat_entry, 1, [{key1, 1},
+                          {key2, 2}]},
+         {stat_entry, 2, [{key1, 3},
+                          {key2, 4}]},
+         {stat_entry, 3, [{key1, 5},
+                          {key2, 6}]}],
+    B = [
+         {stat_entry, 2, [{key3, 1},
+                          {key4, 2}]},
+         {stat_entry, 3, [{key3, 3},
+                          {key4, 4}]},
+         {stat_entry, 4, [{key3, 5},
+                          {key4, 6}]}],
+
+    R1 = [
+          {stat_entry, 2, [{key1, 3},
+                           {key2, 4},
+                           {key3, 1},
+                           {key4, 2}]},
+          {stat_entry, 3, [{key1, 5},
+                           {key2, 6},
+                           {key3, 3},
+                           {key4, 4}]}],
+
+    R2 = [
+          {stat_entry, 2, [{key3, 1},
+                           {key4, 2},
+                           {key1, 3},
+                           {key2, 4}]},
+          {stat_entry, 3, [{key3, 3},
+                           {key4, 4},
+                           {key1, 5},
+                           {key2, 6}]}],
+
+    ?assertEqual(R1, join_samples(A, B)),
+    ?assertEqual(R2, join_samples(B, A)).
+
+
 build_bucket_stats_ops_response(Nodes, BucketName, Params) ->
-    {ClientTStamp, Window} = parse_stats_params(Params),
-    Samples = grab_aggregate_op_stats(BucketName, Nodes, ClientTStamp, Window),
+    {ClientTStamp, {Step, _, Count} = Window} = parse_stats_params(Params),
+
+    BucketRawSamples = grab_aggregate_op_stats(BucketName, Nodes, ClientTStamp, Window),
+    SystemRawSamples = grab_system_aggregate_op_stats(BucketName, Nodes, ClientTStamp, Window),
+
+    % this will throw out all samples with timestamps that are not present
+    % in both BucketRawSamples and SystemRawSamples
+    Samples = join_samples(BucketRawSamples, SystemRawSamples),
+
     StatsPropList = samples_to_proplists(Samples, BucketName),
 
-    SystemRawSamples = grab_system_aggregate_op_stats(BucketName, Nodes, ClientTStamp, Window),
-    SystemStatsSamples = samples_to_proplists(SystemRawSamples, "@system"),
-    SystemStatsPropList = lists:keydelete(timestamp, 1, SystemStatsSamples),
-
-    OpPropList = build_ops_props_list(BucketName, SystemStatsPropList ++ StatsPropList, Window),
-    [{op, {struct, OpPropList}}].
-
-build_ops_props_list(BucketName, Samples, {Step, _, Count}) ->
-    [{samples, {struct, Samples}},
-     {samplesCount, Count},
-     {isPersistent, ns_bucket:is_persistent(BucketName)},
-     {lastTStamp, case proplists:get_value(timestamp, Samples) of
-                      [] -> 0;
-                      L -> lists:last(L)
-                  end},
-     {interval, Step * 1000}].
+    [{op, {struct,
+           [{samples, {struct, StatsPropList}},
+            {samplesCount, Count},
+            {isPersistent, ns_bucket:is_persistent(BucketName)},
+            {lastTStamp, case proplists:get_value(timestamp, StatsPropList) of
+                             [] -> 0;
+                             L -> lists:last(L)
+                         end},
+            {interval, Step * 1000}]}}].
 
 is_safe_key_name(Name) ->
     lists:all(fun (C) ->
