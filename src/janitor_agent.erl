@@ -502,8 +502,7 @@ handle_call({prepare_rebalance, _Pid}, _From,
             #state{last_applied_vbucket_states = undefined} = State) ->
     {reply, no_vbucket_states_set, State};
 handle_call({prepare_rebalance, Pid}, _From,
-            #state{bucket_name = BucketName} = State) ->
-    ns_vbm_sup:kill_all_local_children(BucketName),
+            State) ->
     State1 = State#state{rebalance_only_vbucket_states = [undefined || _ <- State#state.rebalance_only_vbucket_states]},
     {reply, ok, set_rebalance_mref(Pid, State1)};
 handle_call({if_rebalance, RebalancerPid, Subcall},
@@ -528,7 +527,6 @@ handle_call({update_vbucket_state, VBucket, NormalState, RebalanceState, Replica
     ok = tap_replication_manager:change_vbucket_replication(BucketName, VBucket, ReplicateFrom),
     {reply, ok, pass_vbucket_states_to_set_view_manager(NewState)};
 handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, _From, #state{bucket_name = BucketName} = State) ->
-    ns_vbm_sup:kill_all_local_children(BucketName),
     %% ?log_debug("handling apply_new_config:~n~p", [NewBucketConfig]),
     {ok, CurrentVBucketsList} = ns_memcached:list_vbuckets(BucketName),
     CurrentVBuckets = dict:from_list(CurrentVBucketsList),

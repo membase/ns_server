@@ -46,8 +46,6 @@ child_specs(BucketName) ->
       permanent, 1000, worker, []},
      {{ns_vbm_new_sup, BucketName}, {ns_vbm_new_sup, start_link, [BucketName]},
       permanent, infinity, supervisor, [ns_vbm_new_sup]},
-     {{ns_vbm_sup, BucketName}, {ns_vbm_sup, start_link, [BucketName]},
-      permanent, 1000, supervisor, []},
      {{janitor_agent, BucketName}, {janitor_agent, start_link, [BucketName]},
       permanent, brutal_kill, worker, []},
      {{couch_stats_reader, BucketName},
