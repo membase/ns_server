@@ -520,6 +520,10 @@ var MockedRequest = mkClass({
       }
     }
 
+    tsToISO = function(ts) {
+      return JSON.parse(JSON.stringify(new Date(ts)));
+    }
+
     var rv = [
       [get("sampleBuckets"), [{
         installed: false,
@@ -573,28 +577,32 @@ var MockedRequest = mkClass({
           module: "ns_config_log",
           tstamp: 1265358398000,
           shortText: "message",
-          text: "config changed"
+          text: "config changed",
+          serverTime: tsToISO(1265358398000)
         }, {
           type: "info",
           code: 1,
           module: "ns_node_disco",
           tstamp: 1265358398000,
           shortText: "message",
-          text: "otp cookie generated: bloeahcdnsddpotx"
+          text: "otp cookie generated: bloeahcdnsddpotx",
+          serverTime: tsToISO(1265358398000)
         }, {
           type: "info",
           code: 1,
           module: "ns_config_log",
           tstamp: 1265358398000,
           shortText: "message",
-          text: "config changed"
+          text: "config changed",
+          serverTime: tsToISO(1265358398000)
         }, {
           type: "info",
           code: 1,
           module: "ns_config_log",
           tstamp: 1265358399000,
           shortText: "message",
-          text: "config changed"
+          text: "config changed",
+          serverTime: tsToISO(1265358399000)
         }]
       }],
       [get("alerts"), {
@@ -607,19 +615,22 @@ var MockedRequest = mkClass({
           type: "info",
           tstamp: 1259836260000,
           shortText: "Above Average Operations per Second",
-          text: "Licensing, capacity, Couchbase issues, etc."
+          text: "Licensing, capacity, Couchbase issues, etc.",
+          serverTime: tsToISO(1259836260000)
         }, {
           number: 2,
           type: "attention",
           tstamp: 1259836260000,
           shortText: "New Node Joined Pool",
-          text: "A new node is now online"
+          text: "A new node is now online",
+          serverTime: tsToISO(1259836260000)
         }, {
           number: 1,
           type: "warning",
           tstamp: 1259836260000,
           shortText: "Server Node Down",
-          text: "Server node is no longer available"
+          text: "Server node is no longer available",
+          serverTime: tsToISO(1259836260000)
         }]
       }],
       [get("settings", "web"), {

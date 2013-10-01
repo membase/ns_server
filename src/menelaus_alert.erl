@@ -249,6 +249,10 @@ build_logs(Params) ->
     {MinTStamp, Limit} = common_params(Params),
     build_log_structs(ns_log:recent(), MinTStamp, Limit).
 
+format_server_time({{YYYY, MM, DD}, {Hour, Min, Sec}}, MicroSecs) ->
+    io_lib:format("~4.4.0w-~2.2.0w-~2.2.0wT~2.2.0w:~2.2.0w:~2.2.0w.~3.3.0wZ",
+                  [YYYY, MM, DD, Hour, Min, Sec, MicroSecs div 1000]).
+
 build_log_structs(LogEntriesIn, MinTStamp, Limit) ->
     LogEntries = lists:filter(fun(#log_entry{tstamp = TStamp}) ->
                                       misc:time_to_epoch_ms_int(TStamp) > MinTStamp
@@ -264,7 +268,8 @@ build_log_structs(LogEntriesIn, MinTStamp, Limit) ->
                          msg = Msg,
                          args = Args,
                          cat = Cat,
-                         tstamp = TStamp}, Acc) ->
+                         tstamp = TStamp = {_, _, MicroSecs},
+                         server_time = ServerTime}, Acc) ->
                   case catch(io_lib:format(Msg, Args)) of
                       S when is_list(S) ->
                           CodeString = ns_log:code_string(Module, Code),
@@ -274,7 +279,10 @@ build_log_structs(LogEntriesIn, MinTStamp, Limit) ->
                                      {module, list_to_binary(atom_to_list(Module))},
                                      {tstamp, misc:time_to_epoch_ms_int(TStamp)},
                                      {shortText, list_to_binary(CodeString)},
-                                     {text, list_to_binary(S)}]} | Acc];
+                                     {text, list_to_binary(S)},
+                                     {serverTime, list_to_binary(
+                                                    format_server_time(ServerTime, MicroSecs))}
+                                    ]} | Acc];
                       _ -> Acc
                   end
           end,

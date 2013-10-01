@@ -26,7 +26,8 @@
          rebalance_ignore_view_compactions/0,
          check_is_progress_tracking_supported/0,
          get_replication_topology/0,
-         is_node_compatible/2]).
+         is_node_compatible/2,
+         split_live_nodes_by_version/1]).
 
 %% NOTE: this is rpc:call-ed by mb_master
 -export([supported_compat_version/0, mb_master_advertised_version/0]).
@@ -91,6 +92,13 @@ is_node_compatible(Node, Version) ->
                       proplists:get_value(advertised_version, Status, [])
               end,
     NodeVer >= Version.
+
+split_live_nodes_by_version(Version) ->
+    Nodes = nodes(),
+    {NewNodes, OldNodes} = lists:partition(fun (Node) ->
+                                                   is_node_compatible(Node, Version)
+                                           end, Nodes),
+    {[node() | NewNodes], OldNodes}.
 
 rebalance_ignore_view_compactions() ->
     ns_config_ets_dup:unreliable_read_key(rebalance_ignore_view_compactions, false).

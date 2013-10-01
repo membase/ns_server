@@ -71,15 +71,52 @@ crash_consumption_loop() ->
 log_filename() ->
     ns_config:search_node_prop(ns_config:get(), ns_log, filename).
 
+maybe_upgrade_entry(#log_entry{} = X) ->
+    X;
+maybe_upgrade_entry({log_entry, _, _, _, _, _, _, _} = EntryV2_2_0) ->
+    erlang:append_element(EntryV2_2_0, calendar:now_to_local_time(element(2, EntryV2_2_0))).
+
+% will be added in R16
+delete_element(Index, Tuple) ->
+    L = tuple_to_list(Tuple),
+    {F,[_|B]} = lists:split(Index - 1, L),
+    list_to_tuple(F ++ B).
+
+downgrade_entry(Entry) ->
+    delete_element(#log_entry.server_time, Entry).
+
+downgrade_entries(Entries) ->
+    lists:map(fun downgrade_entry/1, Entries).
+
+upgrade_entries(Entries) ->
+    lists:map(fun maybe_upgrade_entry/1, Entries).
+
+upgrade_entries_test() ->
+    Now = now(),
+    ServerTime = calendar:now_to_local_time(Now),
+    Entries = [#log_entry{tstamp=Now, node=n1},
+               {log_entry, Now, n2, a, a, a, a, a}],
+    [A | [B | []]] = upgrade_entries(Entries),
+    #log_entry{tstamp=Now, node=n1} = A,
+    #log_entry{tstamp=Now, node=n2, server_time=ServerTime} = B,
+
+    ok = try upgrade_entries([{log_entry, Now, n2, a, a, a}]) of
+             X ->
+                 X
+         catch error:_ ->
+                 ok
+         end.
+
 read_logs(Filename) ->
     case file:read_file(Filename) of
         {ok, <<>>} -> [];
         {ok, B} ->
-            try zlib:uncompress(B) of
+            try upgrade_entries(binary_to_term(zlib:uncompress(B))) of
                 B2 ->
-                    binary_to_term(B2)
-            catch error:data_error ->
-                    ?log_error("Couldn't load logs from ~p. Apparently ns_logs file is corrupted", [Filename]),
+                    B2
+            catch error:Error ->
+                    ?log_error("Couldn't load logs from ~p. Apparently ns_logs file is corrupted: ~p",
+                               [Filename, Error]),
                     []
             end;
         E ->
@@ -109,11 +146,15 @@ tail_of_length(List, N) ->
             List
     end.
 
+order_entries(A = #log_entry{}, B = #log_entry{}) ->
+    A#log_entry{server_time = undefined} =< B#log_entry{server_time = undefined}.
+
 flush_pending(#state{pending_recent = []} = State) ->
     State;
 flush_pending(#state{unique_recent = Recent,
                      pending_recent = Pending} = State) ->
-    NewRecent = tail_of_length(lists:umerge(lists:sort(Pending), Recent), ?RB_SIZE),
+    NewRecent = tail_of_length(lists:umerge(fun order_entries/2, lists:sort(fun order_entries/2, Pending),
+                                            Recent), ?RB_SIZE),
     State#state{unique_recent = NewRecent,
                 pending_recent = [],
                 pending_length = 0}.
@@ -167,7 +208,7 @@ handle_cast({log, Module, Node, Time, Code, Category, Fmt, Args},
             {noreply, State#state{dedup=Dedup2}, hibernate}
     end;
 handle_cast({do_log, Entry}, State) ->
-    {noreply, schedule_save(add_pending(State, Entry)), hibernate};
+    {noreply, schedule_save(add_pending(State, maybe_upgrade_entry(Entry))), hibernate};
 handle_cast({sync, SrcNode, Compressed}, StateBefore) ->
     State = flush_pending(StateBefore),
     Recent = State#state.unique_recent,
@@ -176,9 +217,10 @@ handle_cast({sync, SrcNode, Compressed}, StateBefore) ->
             {noreply, State, hibernate};
         Logs ->
             State1 = schedule_save(State),
-            NewRecent = tail_of_length(lists:umerge(Recent, Logs),
+            UpgradedLogs = upgrade_entries(Logs),
+            NewRecent = tail_of_length(lists:umerge(fun order_entries/2, Recent, UpgradedLogs),
                                        ?RB_SIZE),
-            case NewRecent =/= Logs of
+            case NewRecent =/= UpgradedLogs of
                 %% send back sync with fake src node. To avoid
                 %% infinite sync exchange just in case.
                 true -> send_sync_to(NewRecent, SrcNode, SrcNode);
@@ -193,7 +235,13 @@ send_sync_to(Recent, Node) ->
     send_sync_to(Recent, Node, node()).
 
 send_sync_to(Recent, Node, Src) ->
-    gen_server:cast({?MODULE, Node}, {sync, Src, zlib:compress(term_to_binary(Recent))}).
+    Entries = case cluster_compat_mode:is_node_compatible(Node, [3,0,0]) of
+                  true ->
+                      Recent;
+                  false ->
+                      downgrade_entries(Recent)
+              end,
+    gen_server:cast({?MODULE, Node}, {sync, Src, zlib:compress(term_to_binary(Entries))}).
 
 %% Not handling any other state.
 
@@ -278,9 +326,19 @@ do_log(#log_entry{code=undefined} = Entry) ->
     %% in the cluster can be of the older version (thus this case won't be
     %% handled there).
     do_log(Entry#log_entry{code=0});
-do_log(#log_entry{code=Code} = Entry) when is_integer(Code) ->
-    gen_server:abcast(?MODULE, {do_log, Entry}).
+do_log(#log_entry{code=Code, tstamp=TStamp} = Entry) when is_integer(Code) ->
+    EntryNew = Entry#log_entry{server_time=calendar:now_to_local_time(TStamp)},
 
+    {NewNodes, OldNodes} = cluster_compat_mode:split_live_nodes_by_version([3, 0, 0]),
+    gen_server:abcast(NewNodes, ?MODULE, {do_log, EntryNew}),
+
+    case OldNodes of
+        [] ->
+            ok;
+        _ ->
+            EntryOld = downgrade_entry(EntryNew),
+            gen_server:abcast(OldNodes, ?MODULE, {do_log, EntryOld})
+    end.
 
 %% API
 

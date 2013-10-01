@@ -63,19 +63,19 @@ function performSignOut() {
     return rv.join('');
   }
 
-  window.formatLogTStamp = function formatLogTStamp(mseconds) {
-    var date = new Date(mseconds);
+  window.formatLogTStamp = function formatLogTStamp(jsonDate) {
+    var date = new Date(jsonDate);
     var rv = [
       "<strong>",
-      _2digits(date.getHours()), ':', _2digits(date.getMinutes()), ':', _2digits(date.getSeconds()),
+      _2digits(date.getUTCHours()), ':', _2digits(date.getUTCMinutes()), ':', _2digits(date.getUTCSeconds()),
       "</strong> - ",
-      weekDays[date.getDay()],
+      weekDays[date.getUTCDay()],
       ' ',
-      monthNames[date.getMonth()],
+      monthNames[date.getUTCMonth()],
       ' ',
-      date.getDate(),
+      date.getUTCDate(),
       ', ',
-      date.getFullYear()];
+      date.getUTCFullYear()];
 
     return rv.join('');
   };

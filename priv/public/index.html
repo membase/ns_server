@@ -689,7 +689,7 @@
                       <td>{%= h(logRow.text).replace(/\n/g, "<br />") %}</td>
                       <td>{%= h(logRow.module) + (new String(1000 + parseInt(logRow.code))).slice(-3)%}</td>
                       <td>{%= h(logRow.node) %}</td>
-                      <td class="text_11 nobr">{%=V.formatLogTStamp(logRow.tstamp)%}
+                      <td class="text_11 nobr">{%=V.formatLogTStamp(logRow.serverTime)%}
                     </tr>
                     <!-- {% }); %} -->
                   </tbody>
