@@ -26,7 +26,8 @@
          check_is_progress_tracking_supported/0,
          get_replication_topology/0,
          is_node_compatible/2,
-         split_live_nodes_by_version/1]).
+         split_live_nodes_by_version/1,
+         is_cluster_30/0]).
 
 %% NOTE: this is rpc:call-ed by mb_master
 -export([supported_compat_version/0, mb_master_advertised_version/0]).
@@ -39,7 +40,7 @@ get_compat_version() ->
 
 %% NOTE: this is rpc:call-ed by mb_master of 2.0.0
 supported_compat_version() ->
-    [2, 0].
+    [3, 0].
 
 %% NOTE: this is rpc:call-ed by mb_master of 2.0.1+
 %%
@@ -48,15 +49,17 @@ supported_compat_version() ->
 mb_master_advertised_version() ->
     [3, 0, 0].
 
-%% TODO: in 3.0 reimplement as compat_version 3.0 to make things
-%% simpler.
 check_is_progress_tracking_supported() ->
-    case rpc:multicall(ns_node_disco:nodes_wanted(), cluster_compat_mode, mb_master_advertised_version, [], 30000) of
-        {Replies, []} ->
-            [R || R <- Replies,
-                  R < [2, 0, 2]] =:= [];
+    case is_cluster_30() of
+        true -> true;
         _ ->
-            false
+            case rpc:multicall(ns_node_disco:nodes_wanted(), cluster_compat_mode, mb_master_advertised_version, [], 30000) of
+                {Replies, []} ->
+                    [R || R <- Replies,
+                          R < [2, 0, 2]] =:= [];
+                _ ->
+                    false
+            end
     end.
 
 is_enabled_at(undefined = _ClusterVersion, _FeatureVersion) ->
@@ -66,6 +69,9 @@ is_enabled_at(ClusterVersion, FeatureVersion) ->
 
 is_enabled(FeatureVersion) ->
     is_enabled_at(get_compat_version(), FeatureVersion).
+
+is_cluster_30() ->
+    is_enabled([3, 0]).
 
 is_index_aware_rebalance_on() ->
     Disabled = ns_config_ets_dup:unreliable_read_key(index_aware_rebalance_disabled, false),
