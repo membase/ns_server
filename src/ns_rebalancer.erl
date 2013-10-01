@@ -31,7 +31,6 @@
          run_mover/7,
          unbalanced/3,
          eject_nodes/1,
-         buckets_replication_statuses/0,
          maybe_cleanup_old_buckets/1]).
 
 -export([wait_local_buckets_shutdown_complete/0]). % used via rpc:multicall
@@ -506,14 +505,6 @@ wait_for_mover_tail(Pid, Ref) ->
                     exit({mover_crashed, Reason})
             end
     end.
-
-%% NOTE: this is rpc:multicall-ed by 1.8 nodes.
-%%
-%% Returns estimation of up-to-dateness of replications _from_ this
-%% node
-buckets_replication_statuses() ->
-    Buckets = ns_bucket:get_bucket_names(),
-    [{Bucket, 0} || Bucket <- Buckets].
 
 multicall_ignoring_undefined(Nodes, M, F, A) ->
     {Results, DownNodes} = rpc:multicall(Nodes, M, F, A),

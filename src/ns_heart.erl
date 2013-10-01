@@ -239,43 +239,19 @@ grab_fresh_failover_safeness_infos(BucketsAll) ->
 do_grab_fresh_failover_safeness_infos(BucketsAll, Timeout) ->
     Nodes = ns_node_disco:nodes_actual_proper(),
     BucketNames = proplists:get_keys(BucketsAll),
-    {NewNodeResp, NewErrors} =
+    {NodeResp, NewErrors} =
         misc:multicall_result_to_plist(
           Nodes,
           rpc:multicall(Nodes,
                         failover_safeness_level, build_local_safeness_info,
                         [BucketNames], Timeout)),
 
-    NodeResp =
-        case NewErrors of
-            [] ->
-                NewNodeResp;
-            _ ->
-                FailedNodes = proplists:get_keys(NewErrors),
-
-                {RawCompatNodeResp, CompatErrors} =
-                    misc:multicall_result_to_plist(
-                      FailedNodes,
-                      rpc:multicall(FailedNodes,
-                                    ns_rebalancer, buckets_replication_statuses,
-                                    [], Timeout)),
-
-                case CompatErrors of
-                    [] ->
-                        ok;
-                    _ ->
-                        ?log_warning("Some nodes didn't return their failover "
-                                     "safeness infos: ~n~p", [CompatErrors])
-                end,
-
-                CompatNodeResp =
-                    lists:keymap(
-                      fun (Status) ->
-                              [{replication, Status}]
-                      end, 2, RawCompatNodeResp),
-
-                NewNodeResp ++ CompatNodeResp
-        end,
+    case NewErrors of
+        [] -> ok;
+        _ ->
+            ?log_warning("Some nodes didn't return their failover "
+                         "safeness infos: ~n~p", [NewErrors])
+    end,
 
     dict:from_list(NodeResp).
 

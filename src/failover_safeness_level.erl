@@ -200,10 +200,6 @@ build_local_safeness_info(BucketNames) ->
     [{outgoing_replications_safeness_level, ReplicationsSafeness},
      {incoming_replications_conf_hashes, IncomingReplicationConfs}].
 
-extract_replication_uptodateness(Bucket, BucketConfig, Node, NodeStatuses) ->
-            extract_replication_uptodateness_new(Bucket, BucketConfig,
-                                                 Node, NodeStatuses).
-
 %% Returns indication of whether it's safe to fail over given node
 %% w.r.t. given bucket. Implementation uses information from
 %% build_local_safeness_info/1 from all replica nodes.
@@ -214,7 +210,7 @@ extract_replication_uptodateness(Bucket, BucketConfig, Node, NodeStatuses) ->
 %% date (see discussion of green/yellow levels at top of this
 %% file). So we actually use node statuses of all nodes (well, only
 %% replicas of given node in fact).
-extract_replication_uptodateness_new(BucketName, BucketConfig, Node, NodeStatuses) ->
+extract_replication_uptodateness(BucketName, BucketConfig, Node, NodeStatuses) ->
     Map = proplists:get_value(map, BucketConfig, []),
     case outgoing_replications_started(BucketName, Map, Node, NodeStatuses) of
         false ->
