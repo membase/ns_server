@@ -18,7 +18,6 @@
 -include("ns_common.hrl").
 
 -export([get_compat_version/0, is_enabled/1, is_enabled_at/2,
-         is_cluster_20/0,
          force_compat_version/1, un_force_compat_version/0,
          consider_switching_compat_mode/0,
          is_index_aware_rebalance_on/0,
@@ -49,17 +48,16 @@ supported_compat_version() ->
 mb_master_advertised_version() ->
     [3, 0, 0].
 
-%% TODO: in 2.1 reimplement as compat_version 2.1 to make things
-%% simpler. For 2.0.2 I don't want to prevent rolling downgrades yet.
+%% TODO: in 3.0 reimplement as compat_version 3.0 to make things
+%% simpler.
 check_is_progress_tracking_supported() ->
-    is_cluster_20() andalso
-        case rpc:multicall(ns_node_disco:nodes_wanted(), cluster_compat_mode, mb_master_advertised_version, [], 30000) of
-            {Replies, []} ->
-                [R || R <- Replies,
-                      R < [2, 0, 2]] =:= [];
-            _ ->
-                false
-        end.
+    case rpc:multicall(ns_node_disco:nodes_wanted(), cluster_compat_mode, mb_master_advertised_version, [], 30000) of
+        {Replies, []} ->
+            [R || R <- Replies,
+                  R < [2, 0, 2]] =:= [];
+        _ ->
+            false
+    end.
 
 is_enabled_at(undefined = _ClusterVersion, _FeatureVersion) ->
     false;
@@ -68,9 +66,6 @@ is_enabled_at(ClusterVersion, FeatureVersion) ->
 
 is_enabled(FeatureVersion) ->
     is_enabled_at(get_compat_version(), FeatureVersion).
-
-is_cluster_20() ->
-    is_enabled([2, 0]).
 
 is_index_aware_rebalance_on() ->
     Disabled = ns_config_ets_dup:unreliable_read_key(index_aware_rebalance_disabled, false),

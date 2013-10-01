@@ -665,13 +665,6 @@ idle({start_recovery, Bucket}, {FromPid, _} = _From,
      #idle_state{remaining_buckets = RemainingBuckets} = State) ->
     try
 
-        case cluster_compat_mode:is_cluster_20() of
-            true ->
-                ok;
-            false ->
-                throw(unsupported)
-        end,
-
         BucketConfig0 = case ns_bucket:get_bucket(Bucket) of
                             {ok, V} ->
                                 V;
@@ -1072,24 +1065,19 @@ perform_bucket_flushing_with_config(BucketName, State, BucketConfig) ->
         true ->
             {reply, do_flush_old_style(BucketName, BucketConfig), idle, State};
         _ ->
-            case cluster_compat_mode:is_cluster_20() of
-                true ->
-                    RV = do_flush_bucket(BucketName, BucketConfig),
-                    case RV of
-                        ok ->
-                            ?log_info("Requesting janitor run to actually revive bucket ~p after flush", [BucketName]),
-                            JanitorRV = ns_janitor:cleanup(BucketName, [{timeout, 1}]),
-                            case JanitorRV of
-                                ok -> ok;
-                                _ ->
-                                    ?log_error("Flusher's janitor run failed: ~p", [JanitorRV])
-                            end,
-                            {reply, RV, idle, State};
+            RV = do_flush_bucket(BucketName, BucketConfig),
+            case RV of
+                ok ->
+                    ?log_info("Requesting janitor run to actually revive bucket ~p after flush", [BucketName]),
+                    JanitorRV = ns_janitor:cleanup(BucketName, [{timeout, 1}]),
+                    case JanitorRV of
+                        ok -> ok;
                         _ ->
-                            {reply, RV, idle, State}
-                    end;
+                            ?log_error("Flusher's janitor run failed: ~p", [JanitorRV])
+                    end,
+                    {reply, RV, idle, State};
                 _ ->
-                    {reply, not_supported, idle, State}
+                    {reply, RV, idle, State}
             end
     end.
 
@@ -1150,7 +1138,7 @@ apply_recoverer_bucket_config(Bucket, BucketConfig, Servers) ->
     {ok, _, Zombies} = janitor_agent:query_states(Bucket, Servers, 1),
     case Zombies of
         [] ->
-            janitor_agent:apply_new_bucket_config_new_style(
+            janitor_agent:apply_new_bucket_config(
               Bucket, Servers, [], BucketConfig, []);
         _ ->
             ?log_error("Failed to query states from some of the nodes: ~p", [Zombies]),

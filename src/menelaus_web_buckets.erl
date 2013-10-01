@@ -133,23 +133,19 @@ add_couch_api_base_loop([Node | RestNodes], InfoLevel, BucketName, LocalAddr, F,
     {struct, KV} = F(Node, BucketName),
     case dict:find(Node, Dict) of
         {ok, V} when V =/= [] ->
-            S = {struct, maybe_add_couch_api_base(BucketName, KV, Node, LocalAddr)},
+            %% note this is generally always expected, but let's play safe just in case
+            S = {struct, add_couch_api_base(BucketName, KV, Node, LocalAddr)},
             add_couch_api_base_loop(RestNodes, InfoLevel, BucketName, LocalAddr, F, Dict, [S | CAPINodes], NonCAPINodes);
         _ ->
             S = {struct, KV},
             add_couch_api_base_loop(RestNodes, InfoLevel, BucketName, LocalAddr, F, Dict, CAPINodes, [S | NonCAPINodes])
     end.
 
-maybe_add_couch_api_base(BucketName, KV, Node, LocalAddr) ->
-    case cluster_compat_mode:is_cluster_20() of
-        true ->
-            case capi_utils:capi_bucket_url_bin(Node, BucketName, LocalAddr) of
-                undefined -> KV;
-                CapiBucketUrl ->
-                    [{couchApiBase, CapiBucketUrl} | KV]
-            end;
-        false ->
-            KV
+add_couch_api_base(BucketName, KV, Node, LocalAddr) ->
+    case capi_utils:capi_bucket_url_bin(Node, BucketName, LocalAddr) of
+        undefined -> KV;
+        CapiBucketUrl ->
+            [{couchApiBase, CapiBucketUrl} | KV]
     end.
 
 build_bucket_info(Id, undefined, InfoLevel, LocalAddr, MayExposeAuth) ->
@@ -289,12 +285,7 @@ build_bucket_capabilities(BucketConfig) ->
     Caps =
         case ns_bucket:bucket_type(BucketConfig) of
             membase ->
-                case cluster_compat_mode:is_cluster_20() of
-                    true ->
-                        [touch, couchapi];
-                    false ->
-                        []
-                end;
+                [touch, couchapi];
             memcached ->
                 []
         end,

@@ -1135,16 +1135,11 @@ build_nodes_info_fun(IsAdmin, InfoLevel, LocalAddr) ->
                   end,
             KV3 = case Bucket of
                       undefined ->
-                          case cluster_compat_mode:is_cluster_20() of
-                              true ->
-                                  case capi_utils:capi_url_bin(WantENode, <<"/">>, LocalAddr) of
-                                      undefined -> KV2;
-                                      CapiURL ->
-                                          [{couchApiBase, CapiURL}
-                                           | KV2]
-                                  end;
-                              _ ->
-                                  KV2
+                          case capi_utils:capi_url_bin(WantENode, <<"/">>, LocalAddr) of
+                              undefined -> KV2;
+                              CapiURL ->
+                                  [{couchApiBase, CapiURL}
+                                   | KV2]
                           end;
                       _ ->
                           Replication = case ns_bucket:get_bucket(Bucket, Config) of

@@ -41,8 +41,7 @@
                 flushseq}).
 
 -export([wait_for_bucket_creation/2, query_states/3,
-         apply_new_bucket_config/6,
-         apply_new_bucket_config_new_style/5,
+         apply_new_bucket_config/5,
          mark_bucket_warmed/2,
          delete_vbucket_copies/4,
          prepare_nodes_for_rebalance/3,
@@ -68,42 +67,15 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
-new_style_enabled() ->
-    cluster_compat_mode:is_cluster_20().
-
 wait_for_bucket_creation(Bucket, Nodes) ->
-    case new_style_enabled() of
-        true ->
-            NodeRVs = wait_for_memcached_new_style(Nodes, Bucket, up, ?WAIT_FOR_MEMCACHED_SECONDS),
-            BadNodes = [N || {N, R} <- NodeRVs,
-                             case R of
-                                 warming_up -> false;
-                                 {ok, _} -> false;
-                                 _ -> true
-                             end],
-            BadNodes;
-        false ->
-            wait_for_memcached_old_style(Nodes, Bucket, up, ?WAIT_FOR_MEMCACHED_SECONDS)
-    end.
-
--spec wait_for_memcached_old_style([node()], bucket_name(), up | connected, non_neg_integer()) -> [node()].
-wait_for_memcached_old_style(Nodes, Bucket, Type, SecondsToWait) when SecondsToWait > 0 ->
-    ReadyNodes = ns_memcached:ready_nodes(Nodes, Bucket, Type, default),
-    DownNodes = ordsets:subtract(ordsets:from_list(Nodes),
-                                 ordsets:from_list(ReadyNodes)),
-    case DownNodes of
-        [] ->
-            [];
-        _ ->
-            case SecondsToWait - 1 of
-                0 ->
-                    DownNodes;
-                X ->
-                    ?log_info("Waiting for ~p on ~p", [Bucket, DownNodes]),
-                    timer:sleep(1000),
-                    wait_for_memcached_old_style(Nodes, Bucket, Type, X)
-            end
-    end.
+    NodeRVs = wait_for_memcached_new_style(Nodes, Bucket, up, ?WAIT_FOR_MEMCACHED_SECONDS),
+    BadNodes = [N || {N, R} <- NodeRVs,
+                     case R of
+                         warming_up -> false;
+                         {ok, _} -> false;
+                         _ -> true
+                     end],
+    BadNodes.
 
 new_style_query_vbucket_states_loop(Node, Bucket, Type) ->
     case (catch gen_server:call(server_name(Bucket, Node), query_vbucket_states, infinity)) of
@@ -171,7 +143,6 @@ wait_for_memcached_new_style(Nodes, Bucket, Type, SecondsToWait) ->
 
 
 complete_flush(Bucket, Nodes, Timeout) ->
-    true = new_style_enabled(),
     {Replies, BadNodes} = gen_server:multi_call(Nodes, server_name(Bucket), complete_flush, Timeout),
     {GoodReplies, BadReplies} = lists:partition(fun ({_N, R}) -> R =:= ok end, Replies),
     GoodNodes = [N || {N, _R} <- GoodReplies],
@@ -183,28 +154,7 @@ query_states(Bucket, Nodes, ReadynessWaitTimeout0) ->
                                undefined -> ?WAIT_FOR_MEMCACHED_SECONDS;
                                _ -> ReadynessWaitTimeout0
                            end,
-    case new_style_enabled() of
-        true ->
-            query_states_new_style(Bucket, Nodes, ReadynessWaitTimeout);
-        false ->
-            query_states_old_style(Bucket, Nodes, ReadynessWaitTimeout)
-    end.
-
-query_states_old_style(Bucket, Nodes, ReadynessWaitTimeout) ->
-    BadNodes = wait_for_memcached_old_style(Nodes, Bucket, connected, ReadynessWaitTimeout),
-    case BadNodes of
-        [] ->
-            {Replies, DownNodes} = ns_memcached:list_vbuckets_multi(Nodes, Bucket),
-            {GoodReplies, BadReplies} = lists:partition(fun ({_, {ok, _}}) -> true;
-                                                            (_) -> false
-                                                        end, Replies),
-            ErrorNodes = [Node || {Node, _} <- BadReplies],
-            States = [{Node, VBucket, State} || {Node, {ok, Reply}} <- GoodReplies,
-                                                {VBucket, State} <- Reply],
-            {ok, States, ErrorNodes ++ DownNodes};
-        _ ->
-            {ok, [], BadNodes}
-     end.
+    query_states_new_style(Bucket, Nodes, ReadynessWaitTimeout).
 
 %% TODO: consider supporting partial janitoring
 query_states_new_style(Bucket, Nodes, ReadynessWaitTimeout) ->
@@ -241,52 +191,6 @@ mark_bucket_warmed(Bucket, Nodes) ->
             {error, BadNodes, BadReplies}
     end.
 
-apply_new_bucket_config(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets, CurrentStates) ->
-    case new_style_enabled() of
-        true ->
-            apply_new_bucket_config_new_style(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets),
-            ok;
-        false ->
-            apply_new_bucket_config_old_style(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets, CurrentStates)
-    end.
-
-apply_new_bucket_config_old_style(Bucket, _Servers, [] = _Zombies, NewBucketConfig, IgnoredVBuckets, CurrentStates) ->
-    {map, NewMap} = lists:keyfind(map, 1, NewBucketConfig),
-    IgnoredSet = sets:from_list(IgnoredVBuckets),
-    NeededStates0 = [[{Master, VBucket, active} | [{Replica, VBucket, replica}
-                                                   || Replica <- Replicas,
-                                                      Replica =/= undefined]]
-                     || {VBucket, [Master | Replicas]} <- misc:enumerate(NewMap, 0),
-                        not sets:is_element(VBucket, IgnoredSet)],
-    NeededStates = lists:sort(lists:append(NeededStates0)),
-    FilteredCurrent = lists:sort([Triple
-                                  || {_N, VBucket, _State} = Triple <- CurrentStates,
-                                     not sets:is_element(VBucket, IgnoredSet)]),
-    StatesToSet = ordsets:subtract(NeededStates, FilteredCurrent),
-    UsedVBuckets = sets:from_list([{Node, VBucket} || {Node, VBucket, _} <- NeededStates]),
-    StatesToDelete = [Triple
-                      || {Node, VBucket, _State} = Triple <- FilteredCurrent,
-                         not sets:is_element({Node, VBucket}, UsedVBuckets)],
-
-    [ns_memcached:set_vbucket(Node, Bucket, VBucket, State)
-     || {Node, VBucket, State} <- StatesToSet,
-        Node =/= undefined],
-
-    Replicas = ns_bucket:map_to_replicas(NewMap,
-                                         cluster_compat_mode:get_replication_topology()),
-    ns_vbm_sup:set_src_dst_vbucket_replicas(Bucket, Replicas),
-
-    [begin
-         case VBucketCurrentState of
-             dead ->
-                 ok;
-             _ ->
-                 ns_memcached:set_vbucket(Node, Bucket, VBucket, dead)
-         end,
-         ns_memcached:delete_vbucket(Node, Bucket, VBucket)
-     end || {Node, VBucket, VBucketCurrentState} <- StatesToDelete],
-    ok.
-
 process_apply_config_rv(Bucket, {Replies, BadNodes}, Call) ->
     BadReplies = [R || {_, RV} = R <- Replies,
                        RV =/= ok],
@@ -299,19 +203,17 @@ process_apply_config_rv(Bucket, {Replies, BadNodes}, Call) ->
             ok
     end.
 
-apply_new_bucket_config_new_style(Bucket, Servers, [] = Zombies, NewBucketConfig, IgnoredVBuckets) ->
-    true = new_style_enabled(),
-
+apply_new_bucket_config(Bucket, Servers, [] = Zombies, NewBucketConfig, IgnoredVBuckets) ->
     case cluster_compat_mode:get_replication_topology() of
         star ->
-            apply_new_bucket_config_new_style_star(Bucket, Servers, Zombies,
+            apply_new_bucket_config_star(Bucket, Servers, Zombies,
                                                    NewBucketConfig, IgnoredVBuckets);
         chain ->
-            apply_new_bucket_config_new_style_chain(Bucket, Servers, Zombies,
+            apply_new_bucket_config_chain(Bucket, Servers, Zombies,
                                                     NewBucketConfig, IgnoredVBuckets)
     end.
 
-apply_new_bucket_config_new_style_chain(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets) ->
+apply_new_bucket_config_chain(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets) ->
     RV1 = gen_server:multi_call(Servers -- Zombies, server_name(Bucket),
                                 {apply_new_config, NewBucketConfig, IgnoredVBuckets},
                                 ?APPLY_NEW_CONFIG_TIMEOUT),
@@ -325,7 +227,7 @@ apply_new_bucket_config_new_style_chain(Bucket, Servers, Zombies, NewBucketConfi
             Other
     end.
 
-apply_new_bucket_config_new_style_star(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets) ->
+apply_new_bucket_config_star(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets) ->
     Map = proplists:get_value(map, NewBucketConfig),
     true = (Map =/= undefined),
     NumVBuckets = proplists:get_value(num_vbuckets, NewBucketConfig),
@@ -401,17 +303,9 @@ apply_new_bucket_config_new_style_star(Bucket, Servers, Zombies, NewBucketConfig
             Other
     end.
 
--spec do_delete_vbucket_new_style(bucket_name(), pid(), [node()], vbucket_id()) ->
-                                         ok | {errors, [{node(), term()}]}.
+-spec delete_vbucket_copies(bucket_name(), pid(), [node()], vbucket_id()) ->
+                                   ok | {errors, [{node(), term()}]}.
 delete_vbucket_copies(Bucket, RebalancerPid, Nodes, VBucket) ->
-    case new_style_enabled() of
-        true ->
-            do_delete_vbucket_new_style(Bucket, RebalancerPid, Nodes, VBucket);
-        false ->
-            do_delete_vbucket_old_style(Bucket, Nodes, VBucket)
-    end.
-
-do_delete_vbucket_new_style(Bucket, RebalancerPid, Nodes, VBucket) ->
     {Replies, BadNodes} = gen_server:multi_call(Nodes, server_name(Bucket),
                                                 {if_rebalance, RebalancerPid,
                                                  {delete_vbucket, VBucket}},
@@ -425,28 +319,7 @@ do_delete_vbucket_new_style(Bucket, RebalancerPid, Nodes, VBucket) ->
             ok
     end.
 
-do_delete_vbucket_old_style(Bucket, Nodes, VBucket) ->
-    DeleteRVs = misc:parallel_map(
-                  fun (CopyNode) ->
-                          {CopyNode, (catch ns_memcached:delete_vbucket(CopyNode, Bucket, VBucket))}
-                  end, Nodes, infinity),
-    BadDeletes = [P || {_, RV} = P <- DeleteRVs, RV =/= ok],
-    case BadDeletes of
-        [] ->
-            ok;
-        _ ->
-            {errors, BadDeletes}
-    end.
-
 prepare_nodes_for_rebalance(Bucket, Nodes, RebalancerPid) ->
-    case new_style_enabled() of
-        true ->
-            do_prepare_nodes_for_rebalance(Bucket, Nodes, RebalancerPid);
-        false ->
-            ok
-    end.
-
-do_prepare_nodes_for_rebalance(Bucket, Nodes, RebalancerPid) ->
     {RVs, BadNodes} = gen_server:multi_call(Nodes, server_name(Bucket),
                                             {prepare_rebalance, RebalancerPid},
                                             ?PREPARE_REBALANCE_TIMEOUT),
@@ -461,20 +334,16 @@ do_prepare_nodes_for_rebalance(Bucket, Nodes, RebalancerPid) ->
     end.
 
 %% this is only called by
-%% failover_safeness_level:build_local_safeness_info_new. Thus old
-%% style doesn't have to be supported here.
+%% failover_safeness_level:build_local_safeness_info_new.
 %%
 %% It's also ok to do 'dirty' reads, i.e. outside of janitor agent,
 %% because stale data is ok.
 this_node_replicator_triples(Bucket) ->
-    case new_style_enabled() of
-        true -> case tap_replication_manager:get_incoming_replication_map(Bucket) of
-                    not_running ->
-                        [];
-                    List ->
-                        [{SrcNode, node(), VBs} || {SrcNode, VBs} <- List]
-                end;
-        false -> []
+    case tap_replication_manager:get_incoming_replication_map(Bucket) of
+        not_running ->
+            [];
+        List ->
+            [{SrcNode, node(), VBs} || {SrcNode, VBs} <- List]
     end.
 
 -spec bulk_set_vbucket_state(bucket_name(),
@@ -484,68 +353,40 @@ this_node_replicator_triples(Bucket) ->
                             -> ok.
 bulk_set_vbucket_state(Bucket, RebalancerPid, VBucket, NodeVBucketStateRebalanceStateReplicateFromS) ->
     ?rebalance_info("Doing bulk vbucket ~p state change~n~p", [VBucket, NodeVBucketStateRebalanceStateReplicateFromS]),
-    case new_style_enabled() of
-        true ->
-            RVs = misc:parallel_map(
-                    fun ({Node, VBucketState, VBucketRebalanceState, ReplicateFrom}) ->
-                            {Node, (catch set_vbucket_state(Bucket, Node, RebalancerPid, VBucket, VBucketState, VBucketRebalanceState, ReplicateFrom))}
-                    end, NodeVBucketStateRebalanceStateReplicateFromS, infinity),
-            NonOks = [Pair || {_Node, R} = Pair <- RVs,
-                              R =/= ok],
-            case NonOks of
-                [] -> ok;
-                _ ->
-                    ?rebalance_debug("bulk vbucket state change failed for:~n~p", [NonOks]),
-                    erlang:error({bulk_set_vbucket_state_failed, NonOks})
-            end;
-        false ->
-            ns_vbucket_mover:run_code(RebalancerPid,
-                                      fun () ->
-                                              do_bulk_set_vbucket_state_old_style(RebalancerPid,
-                                                                                  Bucket,
-                                                                                  VBucket,
-                                                                                  NodeVBucketStateRebalanceStateReplicateFromS)
-                                      end)
+    RVs = misc:parallel_map(
+            fun ({Node, VBucketState, VBucketRebalanceState, ReplicateFrom}) ->
+                    {Node, (catch set_vbucket_state(Bucket, Node, RebalancerPid, VBucket, VBucketState, VBucketRebalanceState, ReplicateFrom))}
+            end, NodeVBucketStateRebalanceStateReplicateFromS, infinity),
+    NonOks = [Pair || {_Node, R} = Pair <- RVs,
+                      R =/= ok],
+    case NonOks of
+        [] -> ok;
+        _ ->
+            ?rebalance_debug("bulk vbucket state change failed for:~n~p", [NonOks]),
+            erlang:error({bulk_set_vbucket_state_failed, NonOks})
     end.
-
-do_bulk_set_vbucket_state_old_style(RebalancerPid, Bucket, VBucket, NodeVBucketStateRebalanceStateReplicateFromS) ->
-    [ns_memcached:set_vbucket(Node, Bucket, VBucket, VBState)
-     || {Node, VBState, _, _ReplicateFrom} <- NodeVBucketStateRebalanceStateReplicateFromS],
-    DstSrcPairs = [{Node, ReplicateFrom}
-                   || {Node, _VBState, _, ReplicateFrom} <- NodeVBucketStateRebalanceStateReplicateFromS],
-    ok = ns_vbm_sup:set_vbucket_replications(RebalancerPid, Bucket, VBucket, DstSrcPairs).
 
 set_vbucket_state(Bucket, Node, RebalancerPid, VBucket, VBucketState, VBucketRebalanceState, ReplicateFrom) ->
     ?rebalance_info("Doing vbucket ~p state change: ~p", [VBucket, {Node, VBucketState, VBucketRebalanceState, ReplicateFrom}]),
-    case new_style_enabled() of
-        true ->
-            ok = gen_server:call(server_name(Bucket, Node),
-                                 {if_rebalance, RebalancerPid,
-                                  {update_vbucket_state,
-                                   VBucket, VBucketState, VBucketRebalanceState, ReplicateFrom}},
-                                ?SET_VBUCKET_STATE_TIMEOUT);
-        false ->
-            bulk_set_vbucket_state(Bucket, RebalancerPid, VBucket, [{Node, VBucketState, VBucketRebalanceState, ReplicateFrom}])
-    end.
+    ok = gen_server:call(server_name(Bucket, Node),
+                         {if_rebalance, RebalancerPid,
+                          {update_vbucket_state,
+                           VBucket, VBucketState, VBucketRebalanceState, ReplicateFrom}},
+                         ?SET_VBUCKET_STATE_TIMEOUT).
 
 get_src_dst_vbucket_replications(Bucket, Nodes) ->
     get_src_dst_vbucket_replications(Bucket, Nodes, ?GET_SRC_DST_REPLICATIONS_TIMEOUT).
 
 get_src_dst_vbucket_replications(Bucket, Nodes, Timeout) ->
-    case new_style_enabled() of
-        true ->
-            {OkResults, FailedNodes} =
-                gen_server:multi_call(Nodes, server_name(Bucket),
-                                      get_incoming_replication_map,
-                                      Timeout),
-            Replications = [{Src, Dst, VB}
-                            || {Dst, Pairs} <- OkResults,
-                               {Src, VBs} <- Pairs,
-                               VB <- VBs],
-            {lists:sort(Replications), FailedNodes};
-        false ->
-            {lists:sort(ns_vbm_sup:replicators(Nodes, Bucket)), []}
-    end.
+    {OkResults, FailedNodes} =
+        gen_server:multi_call(Nodes, server_name(Bucket),
+                              get_incoming_replication_map,
+                              Timeout),
+    Replications = [{Src, Dst, VB}
+                    || {Dst, Pairs} <- OkResults,
+                       {Src, VBs} <- Pairs,
+                       VB <- VBs],
+    {lists:sort(Replications), FailedNodes}.
 
 initiate_indexing(_Bucket, _Rebalancer, [] = _MaybeMaster, _ReplicaNodes, _VBucket) ->
     ok;

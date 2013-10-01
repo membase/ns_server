@@ -37,9 +37,6 @@ do_db_req(#httpd{path_parts=[<<"_replicator">>|_]}=Req, Fun) ->
     %% TODO: AUTH!!!!
     couch_db_frontend:do_db_req(Req, Fun);
 do_db_req(Req, Fun) ->
-    %% it'll just crash if somebody wants to access CAPI in older
-    %% compat mode
-    true = cluster_compat_mode:is_cluster_20(),
 
     request_throttler:request(
       capi,
