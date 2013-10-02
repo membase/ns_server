@@ -312,11 +312,6 @@ terminate(_Reason, _StateName, StateData) ->
 %% States
 %%
 
-candidate({heartbeat, Node, Type, _H}, State) when is_atom(Node) ->
-    ?log_warning("Candidate got old-style ~p heartbeat from node ~p. Ignoring.",
-                 [Type, Node]),
-    {next_state, candidate, State};
-
 candidate({heartbeat, NodeInfo, master, _H}, #state{peers=Peers} = State) ->
     Node = node_info_to_node(NodeInfo),
 
@@ -393,11 +388,6 @@ candidate(Event, State) ->
     {next_state, candidate, State}.
 
 
-master({heartbeat, Node, Type, _H}, State) when is_atom(Node) ->
-    ?log_warning("Master got old-style ~p heartbeat from node ~p. Ignoring.",
-                 [Type, Node]),
-    {next_state, master, State};
-
 master({heartbeat, NodeInfo, master, _H}, #state{peers=Peers} = State) ->
     Node = node_info_to_node(NodeInfo),
 
@@ -436,11 +426,6 @@ master(Event, State) ->
                  [Event, State]),
     {next_state, master, State}.
 
-
-worker({heartbeat, Node, Type, _H}, State) when is_atom(Node) ->
-    ?log_warning("Worker got old-style ~p heartbeat from node ~p. Ignoring.",
-                 [Type, Node]),
-    {next_state, worker, State};
 
 worker({heartbeat, NodeInfo, master, _H}, State) ->
     Node = node_info_to_node(NodeInfo),
