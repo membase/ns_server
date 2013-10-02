@@ -48,7 +48,6 @@
          rebalance_progress/0,
          rebalance_progress_full/0,
          start_link/0,
-         start_rebalance_old_style/3,
          start_rebalance/2,
          stop_rebalance/0,
          update_progress/1,
@@ -216,14 +215,6 @@ ensure_janitor_run(BucketName) ->
                       Ret
               end
       end, infinity, 1000).
-
--spec start_rebalance_old_style([node()], [node()], [node()]) ->
-                                       ok | in_progress | already_balanced.
-start_rebalance_old_style(KeepNodes, EjectedNodes, FailedNodes) ->
-    wait_for_orchestrator(),
-    gen_fsm:sync_send_event(?SERVER, {start_rebalance, KeepNodes,
-                                      EjectedNodes, FailedNodes}).
-
 
 -spec start_rebalance([node()], [node()]) ->
                              ok | in_progress | already_balanced |
@@ -610,7 +601,7 @@ idle({try_autofailover, Node}, From, State) ->
     end;
 idle(rebalance_progress, _From, State) ->
     {reply, not_running, idle, State};
-%% NOTE: this is being remotely called by 1.8.x nodes and used by maybe_start_rebalance
+%% NOTE: this is not remotely called but is used by maybe_start_rebalance
 idle({start_rebalance, KeepNodes, EjectNodes, FailedNodes}, _From,
             #idle_state{remaining_buckets = RemainingBuckets}) ->
     ?user_log(?REBALANCE_STARTED,
