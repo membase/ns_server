@@ -72,7 +72,6 @@
 -export([start_link/3, start_link/4,
          build_args/6, add_args_option/3, get_args_option/2,
          start_vbucket_filter_change/2,
-         start_old_vbucket_filter_change/1,
          set_controlling_process/2,
          had_backfill/2,
          wait_backfill_complete/1,
@@ -238,26 +237,12 @@ process_last_messages(State) ->
               end
       end).
 
-handle_call(start_old_vbucket_filter_change, {Pid, _} = _From,
-            #state{vb_filter_change_state=VBFilterChangeState} = State)
-  when VBFilterChangeState =/= not_started ->
-    ?log_error("Got start_old_vbucket_filter_change request "
-               "from ~p in state `~p`. Refusing.", [Pid, VBFilterChangeState]),
-    {reply, refused, State};
 handle_call({start_vbucket_filter_change, _}, {Pid, _} = _From,
             #state{vb_filter_change_state=VBFilterChangeState} = State)
   when VBFilterChangeState =/= not_started ->
     ?log_error("Got start_vbucket_filter_change request "
                "from ~p in state `~p`. Refusing.", [Pid, VBFilterChangeState]),
     {reply, refused, State};
-handle_call(start_old_vbucket_filter_change, From,
-            #state{tap_name=TapName} = State) ->
-    ?log_info("Starting old-style vbucket "
-              "filter change on stream `~s`", [TapName]),
-
-    State1 = State#state{vb_filter_change_state=started,
-                         vb_filter_change_owner=From},
-    complete_old_vb_filter_change(State1);
 handle_call({start_vbucket_filter_change, VBuckets}, From,
             #state{upstream_aux=UpstreamAux,
                    downstream_aux=DownstreamAux,
@@ -836,10 +821,6 @@ get_bucket_credentials(Node, Bucket) ->
                                          {ok, port()} | {failed, any()}.
 start_vbucket_filter_change(Pid, Args) ->
     gen_server:call(Pid, {start_vbucket_filter_change, Args}, ?START_VBUCKET_FILTER_CHANGE_TIMEOUT).
-
--spec start_old_vbucket_filter_change(pid()) -> {ok, port()} | {failed, any()}.
-start_old_vbucket_filter_change(Pid) ->
-    gen_server:call(Pid, start_old_vbucket_filter_change, ?START_VBUCKET_FILTER_CHANGE_TIMEOUT).
 
 -spec set_controlling_process(#state{}, pid()) -> ok.
 set_controlling_process(#state{upstream=Upstream,
