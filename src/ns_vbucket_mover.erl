@@ -27,7 +27,7 @@
 -define(TAP_STATS_LOGGING_INTERVAL, 10*60*1000).
 
 %% API
--export([start_link/4, run_code/2]).
+-export([start_link/4]).
 
 %% gen_server callbacks
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -52,40 +52,6 @@
 start_link(Bucket, OldMap, NewMap, ProgressCallback) ->
     gen_server:start_link(?MODULE, {Bucket, OldMap, NewMap, ProgressCallback},
                           []).
-
-run_code(MainMoverPid, Fun) ->
-    true = (node() =:= node(MainMoverPid)),
-    case MainMoverPid =:= self() of
-        true ->
-            Fun();
-        false ->
-            %% You might be wondering why this trickery is employed
-            %% here. The reason is this code is called by childs of
-            %% main mover, which may send them shutdown request. Thus
-            %% simple direct gen_server:call would cause deadlock. And
-            %% in fact it was easily happening in initial version of
-            %% this code.
-            DoneRef = erlang:make_ref(),
-            {_, MRef} = erlang:spawn_monitor(
-                          fun () ->
-                                  RV = gen_server:call(MainMoverPid, {run_code, Fun}, infinity),
-                                  exit({DoneRef, RV})
-                          end),
-            receive
-                {'EXIT', MainMoverPid, Reason} ->
-                    ?log_debug("Got parent exit:~p", [Reason]),
-                    erlang:demonitor(MRef, [flush]),
-                    exit(Reason);
-                {'DOWN', MRef, _, _, Reason} ->
-                    case Reason of
-                        {DoneRef, RV} ->
-                            RV;
-                        _ ->
-                            ?log_debug("Worker process crashed: ~p", [Reason]),
-                            error({run_code_worker_crashed, Reason})
-                    end
-            end
-    end.
 
 %%
 %% gen_server callbacks
@@ -178,8 +144,6 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
                 all_nodes_set=AllNodesSet}}.
 
 
-handle_call({run_code, Fun}, _From, State) ->
-    {reply, Fun(), State};
 handle_call(_, _From, _State) ->
     exit(not_supported).
 
