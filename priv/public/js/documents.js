@@ -746,6 +746,7 @@ var DocumentsSection = {
             });
           }, function (error, num, unexpected) {
             showDocumentPendingState(false);
+            enableSaveBtn(true);
             if (error.reason) {
               editingNotice.text(error.reason).show();
             } else {
