@@ -100,9 +100,12 @@ handle_replication_settings(XID, Req) ->
 
 handle_replication_settings_body(RepDoc, Req) ->
     SettingsRaw = xdc_settings:extract_per_replication_settings(RepDoc),
-    Settings = [{key_to_request_key(K), V} || {K, V} <- SettingsRaw],
+    Settings = [{key_to_request_key(K), format_setting_value(K, V)} || {K, V} <- SettingsRaw],
     Json = {struct, Settings},
     menelaus_util:reply_json(Req, Json, 200).
+
+format_setting_value(socket_options, V) -> {V};
+format_setting_value(_K, V) -> V.
 
 handle_replication_settings_post(XID, Req) ->
     with_replicator_doc(
@@ -133,7 +136,7 @@ handle_replication_settings_post(XID, Req) ->
 
 handle_global_replication_settings(Req) ->
     SettingsRaw = xdc_settings:get_all_global_settings(),
-    Settings = [{key_to_request_key(K), V} || {K, V} <- SettingsRaw],
+    Settings = [{key_to_request_key(K), format_setting_value(K, V)} || {K, V} <- SettingsRaw],
     menelaus_util:reply_json(Req, {struct, Settings}, 200).
 
 handle_global_replication_settings_post(Req) ->
