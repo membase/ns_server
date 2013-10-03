@@ -23,7 +23,8 @@
 
 -export([start_link/0, status_all/0,
          force_beat/0, grab_fresh_failover_safeness_infos/1,
-         effective_cluster_compat_version/0]).
+         effective_cluster_compat_version/0,
+         effective_cluster_compat_version_for/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 
@@ -222,11 +223,15 @@ current_status() ->
          {cluster_compatibility_version, ClusterCompatVersion}
          | element(2, ns_info:basic_info())] ++ MaybeMeminfo.
 
+%% undefined is "used" shortly after node is initialized and when
+%% there's no compat mode yet
+effective_cluster_compat_version_for(undefined) ->
+    1;
+effective_cluster_compat_version_for([VersionMaj, VersionMin] = _CompatVersion) ->
+    VersionMaj * 16#10000 + VersionMin.
+
 effective_cluster_compat_version() ->
-    case cluster_compat_mode:get_compat_version() of
-        undefined -> 1;
-        [VersionMaj, VersionMin] -> VersionMaj * 16#10000 + VersionMin
-    end.
+    effective_cluster_compat_version_for(cluster_compat_mode:get_compat_version()).
 
 
 %% returns dict as if returned by ns_doctor:get_nodes/0 but containing only

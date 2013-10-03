@@ -790,9 +790,10 @@ handle_engage_cluster2(Req) ->
             %% 127.0.0.1 (joiner) and bounced.
             {struct, Result} = build_full_node_info(node(), "127.0.0.1"),
             {_, _} = CompatTuple = lists:keyfind(<<"clusterCompatibility">>, 1, NodeKVList),
+            TwoXCompat = ns_heart:effective_cluster_compat_version_for([2, 0]),
             Result2 = case CompatTuple of
-                          {_, 1} ->
-                              ?log_info("Lowering our advertised clusterCompatibility to 1 in order to enable joining 1.8.x cluster"),
+                          {_, TwoXCompat} ->
+                              ?log_info("Lowering our advertised clusterCompatibility in order to enable joining 2.x cluster"),
                               Result3 = lists:keyreplace(<<"clusterCompatibility">>, 1, Result, CompatTuple),
                               lists:keyreplace(clusterCompatibility, 1, Result3, CompatTuple);
                           _ ->
