@@ -25,7 +25,10 @@
   bucketNotExist: 'Bucket does not exist',
   bucketListEmpty: 'Buckets list empty',
   documentLimitError: "Editing of document with size more than 2.5kb is not allowed",
-  documentIsBase64: "Editing of binary document is not allowed"
+  documentIsBase64: "Editing of binary document is not allowed",
+  shouldNotBeNull: "JSON object cannot be null",
+  shouldBeAnObject: "JSON should represent an object",
+  shouldNotBeAnArray: "JSON should not be an array"
  }
 
 function createDocumentsCells(ns, modeCell, capiBaseCell, bucketsListCell) {
@@ -473,13 +476,27 @@ var DocumentsSection = {
       self.jsonCodeEditor.setValue(isError ? '' : JSON.stringify(obj.json, null, "  "));
     }
 
+    function parseJSON(json) {
+      var parsedJSON = JSON.parse(json);
+      if (parsedJSON == null) {
+        throw generateWarning(documentErrors.shouldNotBeNull);
+      }
+      if (!_.isObject(parsedJSON)) {
+        throw generateWarning(documentErrors.shouldBeAnObject);
+      }
+      if (_.isArray(parsedJSON)) {
+        throw generateWarning(documentErrors.shouldNotBeAnArray);
+      }
+      return parsedJSON;
+    }
+
     function onDocValueUpdate(json) {
       editingNotice.text('');
       try {
         if (isJsonOverLimited(json)) {
           throw generateWarning(documentErrors.documentLimitError);
         }
-        var parsedJSON = JSON.parse(json);
+        var parsedJSON = parseJSON(json);
       } catch (error) {
         enableSaveBtn(false);
         enableSaveAsBtn(false);
