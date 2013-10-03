@@ -575,13 +575,9 @@ check_can_add_node(NodeKVList) ->
     MyCompatVersion = misc:expect_prop_value(cluster_compatibility_version, dict:fetch(node(), ns_doctor:get_nodes())),
     case JoineeClusterCompatVersion =:= MyCompatVersion of
         true -> case expect_json_property_binary(<<"version">>, NodeKVList) of
-                    <<"1.6.", _/binary>> ->
+                    <<"1.",_/binary>> = Version ->
                         {error, incompatible_cluster_version,
-                         <<"Joining 1.6.x node to this cluster does not work">>,
-                         incompatible_cluster_version};
-                    <<"1.7.",_/binary>> = Version ->
-                        {error, incompatible_cluster_version,
-                         iolist_to_binary(io_lib:format("Joining ~s node to this cluster does not work", [Version])),
+                         iolist_to_binary(io_lib:format("Joining ~s node to this cluster is not supported", [Version])),
                          incompatible_cluster_version};
                     _ ->
                         ok
@@ -674,15 +670,9 @@ do_engage_cluster(NodeKVList) ->
 do_engage_cluster_check_compatibility(NodeKVList) ->
     Version = expect_json_property_binary(<<"version">>, NodeKVList),
     MaybeError = case Version of
-                     <<"1.6.", _/binary>> ->
+                     <<"1.",_/binary>> = Version ->
                          {error, incompatible_cluster_version,
-                          <<"Joining 1.6 cluster does not work">>,
-                          incompatible_cluster_version};
-                     <<"1.7.2",_/binary>> ->
-                         ok;
-                     <<"1.7.",_/binary>> = Version ->
-                         {error, incompatible_cluster_version,
-                          iolist_to_binary(io_lib:format("Joining ~s cluster does not work", [Version])),
+                          iolist_to_binary(io_lib:format("Joining ~s cluster is not supported", [Version])),
                           incompatible_cluster_version};
                      _ ->
                          ok
