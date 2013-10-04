@@ -190,13 +190,18 @@ var Cell = mkClass({
       this.setSources(sources);
     else if (this.formula)
       this.recalculate();
-    this.createdAt = (function () {
-      try {
-        throw new Error();
-      } catch (e) {
-        return e;
-      }
-    })();
+    // NOTE: it's a useful debugging trick but under certain
+    // interesting situations it may cause severe memory leak. Given
+    // that at least Chrome will keep closures of all functions on
+    // captured stack trace
+
+    // this.createdAt = (function () {
+    //   try {
+    //     throw new Error();
+    //   } catch (e) {
+    //     return e;
+    //   }
+    // })();
   },
   equality: function (a, b) {
     return a == b;
