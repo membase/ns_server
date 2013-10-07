@@ -756,7 +756,7 @@ var GraphsWidget = mkClass({
       return;
     }
     this.spinners = [
-      overlayWithSpinner(this.largeGraphJQ)
+      overlayWithSpinner(this.largeGraphJQ, undefined, undefined, 1)
     ];
     this.smallGraphsContainerJQ.find('#js_small_graph_value').text('?')
   },

@@ -264,7 +264,7 @@ function getRealBackgroundColor(jq) {
   }
 }
 
-function overlayWithSpinner(jq, backgroundColor, text) {
+function overlayWithSpinner(jq, backgroundColor, text, zIndex) {
   if (_.isString(jq))
     jq = $(jq);
   var height = jq.height();
@@ -291,7 +291,7 @@ function overlayWithSpinner(jq, backgroundColor, text) {
     'border-width-left': jq.css('border-width-left'),
     'border-width-right': jq.css('border-width-right'),
     position: 'absolute',
-    'z-index': '9999',
+    'z-index': zIndex || '9999',
     top: pos.top + 'px',
     left: pos.left + 'px'
   }
