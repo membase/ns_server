@@ -1694,6 +1694,7 @@ handle_read_only_user_reset(Req) ->
 handle_pool_settings(_PoolId, Req) ->
     Params = Req:parse_post(),
     Node = node(),
+    ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
     Results = [case proplists:get_value("memoryQuota", Params) of
                    undefined -> ok;
                    X ->
@@ -1706,26 +1707,29 @@ handle_pool_settings(_PoolId, Req) ->
                                             %% TODO: that should
                                             %% really be a cluster setting
                                     end};
-                           invalid -> <<"The RAM Quota value must be a number.">>;
+                           invalid -> {memoryQuota, <<"The RAM Quota value must be a number.">>};
                            too_small ->
-                               list_to_binary("The RAM Quota value is too small." ++ QuotaErrorDetailsFun());
+                               {memoryQuota,
+                                list_to_binary("The RAM Quota value is too small." ++ QuotaErrorDetailsFun())};
                            too_large ->
-                               list_to_binary("The RAM Quota value is too large." ++ QuotaErrorDetailsFun())
+                               {memoryQuota,
+                                list_to_binary("The RAM Quota value is too large." ++ QuotaErrorDetailsFun())}
                        end
                end],
-    case lists:filter(fun(ok) -> false;
-                         ({ok, _}) -> false;
-                         (_) -> true
-                      end, Results) of
-        [] ->
-            lists:foreach(fun ({ok, CommitF}) ->
-                                  CommitF();
+    case {ValidateOnly, lists:filter(fun(ok) -> false;
+                                        ({ok, _}) -> false;
+                                        (_) -> true
+                                     end, Results)} of
+        {false, []} ->
+            lists:foreach(fun ({ok, CommitF}) -> CommitF();
                               (_) -> ok
                           end, Results),
             Req:respond({200, add_header(), []});
-        Errs -> reply_json(Req, Errs, 400)
+        {true, []} ->
+            reply_json(Req, {struct, [{errors, null}]}, 200);
+        {_, Errs} ->
+            reply_json(Req, {struct, [{errors, {struct, Errs}}]}, 400)
     end.
-
 
 handle_settings_web(Req) ->
     reply_json(Req, build_settings_web()).

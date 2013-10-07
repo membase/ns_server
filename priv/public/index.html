@@ -744,7 +744,8 @@
             <div class="section">
               <div class="header_2">
                 <ul class="tabs">
-                  <li class="tab_left"><a id="settings_update_notifications">Update Notifications</a></li>
+                  <li class="tab_left"><a id="settings_cluster">Cluster</a></li>
+                  <li><a id="settings_update_notifications">Update Notifications</a></li>
                   <li><a id="settings_auto_failover" class="casper_settings_auto_failover">Auto-Failover</a></li>
                   <li><a id="settings_alerts" class="casper_settings_alerts">Alerts</a></li>
                   <li><a id="settings_compaction" class="casper_settings_compaction">Auto-Compaction</a></li>
@@ -753,6 +754,22 @@
                 </ul>
               </div>
               <div class="panes clearfix">
+                <div id="cluster_settings_container" class="cluster_settings_container">
+                  <form>
+                    <div class="row">
+                      <label>RAM Available:</label>
+                      <span id="cluster_settings_total_ram"></span> MB
+                    </div>
+                    <div class="row">
+                      <label for="cluster_settings_ram_quota">Per Server RAM Quota:</label>
+                      <input type="text" class="focusme" id="cluster_settings_ram_quota" name="memoryQuota"> MB
+                      <div class="error-container err-memoryQuota"></div>
+                    </div>
+                    <div class="save_cancel when-roadmin-hide-me">
+                      <button class="save_button float_right" type="submit" disabled="disabled">Save</button>
+                    </div>
+                  </form>
+                </div>
                 <div id="notifications_container" class="notifications-updates"><div class='spinner' style="height:350px;line-height:350px;width:100%"><span>Loading...</span></div></div>
                 <div id="auto_failover_container" class="auto_failover"><div class='spinner' style="height:350px;line-height:350px;width:100%"><span>Loading...</span></div></div>
                 <div id="email_alerts_container" class="email_alerts"><div class='spinner' style="height:350px;line-height:350px;width:100%"><span>Loading...</span></div></div>

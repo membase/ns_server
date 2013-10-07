@@ -18,7 +18,7 @@ var SettingsSection = {
     this.tabs = new TabsCell('settingsTabs',
                              '#js_settings .tabs',
                              '#js_settings .panes > div',
-                             ['update_notifications', 'auto_failover',
+                             ['cluster','update_notifications', 'auto_failover',
                               'email_alerts', 'settings_compaction',
                               'settings_sample_buckets', 'account_management']);
 
@@ -34,6 +34,7 @@ var SettingsSection = {
 
     }, DAL.cells.isROAdminCell, DAL.cells.runningInCompatMode);
 
+    ClusterSection.init();
     UpdatesNotificationsSection.init();
     AutoFailoverSection.init();
     EmailAlertsSection.init();
@@ -72,6 +73,107 @@ var SettingsSection = {
         rootNode.find('.save_button').attr('disabled', 'disabled');
       }
     }
+  }
+};
+
+function makeClusterSectionCells(ns, sectionCell, currentPoolListCell, poolDetailsCell, settingTabCell) {
+  ns.isClusterTabCell = Cell.compute(function (v) {
+    return v.need(settingTabCell) === "cluster" && v.need(sectionCell) === "settings";
+  }).name("isClusterTabCell");
+  ns.isClusterTabCell.isEqual = _.isEqual;
+
+  ns.currentPoolUriCell = Cell.compute(function (v) {
+    var poolsList = v.need(currentPoolListCell)[0];
+    return poolsList ? poolsList.uri : null;
+  }).name("currentPoolUriCell");
+  ns.currentPoolUriCell.equality = _.isEqual;
+
+  ns.ramQuotaCell = Cell.compute(function (v) {
+    var currentPool = v.need(poolDetailsCell);
+    var ram = currentPool.storageTotals.ram;
+    return {
+      totalRam: Math.floor(ram.total/(Math.Mi * currentPool.nodes.length)),
+      dynamicRamQuota: Math.floor(ram.quotaTotal/(Math.Mi * currentPool.nodes.length))
+    }
+  }).name("ramQuotaCell");
+  ns.ramQuotaCell.equality = _.isEqual;
+}
+
+var ClusterSection = {
+  init: function () {
+    var self = this;
+    var poolDetailsCell = DAL.cells.currentPoolDetailsCell;
+    var isROAdminCell = DAL.cells.isROAdminCell;
+
+    makeClusterSectionCells(self, DAL.cells.mode, DAL.cells.poolList, poolDetailsCell, SettingsSection.tabs);
+
+    var container = $("#cluster_settings_container");
+    var totalRamCont = $("#cluster_settings_total_ram");
+    var ramSettingsInput = $("#cluster_settings_ram_quota");
+    var clusterSettingsForm = $("form", container);
+    var formValidation;
+
+    function enableDisableValidation(enable) {
+      if (formValidation) {
+        formValidation[enable ? 'unpause' : 'pause']();
+      }
+    }
+
+    isROAdminCell.subscribeValue(function (isROAdmin) {
+      $("input", clusterSettingsForm).prop("disabled", isROAdmin);
+    });
+
+    Cell.subscribeMultipleValues(function (isClusterTab, ramQuota) {
+      if (isClusterTab && ramQuota) {
+        totalRamCont.text(ramQuota.totalRam);
+        ramSettingsInput.val(ramQuota.dynamicRamQuota);
+      }
+    }, self.isClusterTabCell, self.ramQuotaCell);
+
+    Cell.subscribeMultipleValues(function (ramQuota, isClusterTab, isROAdmin) {
+      if (isClusterTab) {
+        if (ramQuota) {
+          enableDisableValidation(!isROAdmin);
+        }
+      } else {
+        enableDisableValidation(false);
+      }
+    }, self.ramQuotaCell, self.isClusterTabCell, isROAdminCell);
+
+    self.currentPoolUriCell.subscribeValue(function (uri) {
+      if (!uri) {
+        return;
+      }
+      formValidation = setupFormValidation(clusterSettingsForm, uri + "&just_validate=1", function (_status, errors) {
+        SettingsSection.renderErrors(errors, container);
+      }, function () {
+        return serializeForm(clusterSettingsForm);
+      });
+      enableDisableValidation(false);
+    });
+
+    clusterSettingsForm.submit(function (e) {
+      e.preventDefault();
+      var spinner = overlayWithSpinner(clusterSettingsForm);
+
+      $.ajax({
+        url: self.currentPoolUriCell.value,
+        type: 'POST',
+        data: $.deparam(serializeForm(clusterSettingsForm)),
+        success: function () {
+          poolDetailsCell.invalidate();
+        },
+        error: function (jqXhr) {
+          var val = JSON.parse(jqXhr.responseText);
+          SettingsSection.renderErrors(val, container);
+        },
+        complete: function () {
+          spinner.remove();
+        }
+      });
+
+      return false;
+    });
   }
 };
 

@@ -35,7 +35,7 @@
 
 -export([allowed_node_quota_range/1, allowed_node_quota_range/0,
          default_memory_quota/1,
-         allowed_node_quota_range_for_joined_nodes/0,
+         allowed_node_quota_max_for_joined_nodes/0,
          this_node_memory_data/0]).
 
 -export([extract_disk_stats_for_path/2]).
@@ -307,16 +307,19 @@ interesting_stats_total_rec([ThisStats | RestStats], Key, Acc) ->
             interesting_stats_total_rec(RestStats, Key, Acc + V)
     end.
 
+get_total_buckets_ram_quota(Config) ->
+    AllBuckets = ns_bucket:get_buckets(Config),
+    lists:foldl(fun ({_, BucketConfig}, RAMQuota) ->
+                                       ns_bucket:raw_ram_quota(BucketConfig) + RAMQuota
+                               end, 0, AllBuckets).
+
 do_cluster_storage_info([]) -> [];
 do_cluster_storage_info(NodeInfos) ->
     Config = ns_config:get(),
-    AllBuckets = ns_bucket:get_buckets(Config),
     AllNodes = ordsets:intersection(lists:sort(ns_node_disco:nodes_actual_proper()),
                                     lists:sort(proplists:get_keys(NodeInfos))),
     AllNodesSize = length(AllNodes),
-    RAMQuotaUsed = lists:foldl(fun ({_, BucketConfig}, RAMQuota) ->
-                                       ns_bucket:raw_ram_quota(BucketConfig) * AllNodesSize + RAMQuota
-                               end, 0, AllBuckets),
+    RAMQuotaUsed = get_total_buckets_ram_quota(Config) * AllNodesSize,
     StorageInfos = [extract_node_storage_info(NodeInfo, Node, Config)
                     || {Node, NodeInfo} <- NodeInfos],
     HddTotals = extract_subprop(StorageInfos, hdd, total),
@@ -526,36 +529,46 @@ this_node_memory_data() ->
 
 allowed_node_quota_range() ->
     MemoryData = this_node_memory_data(),
-    allowed_node_quota_range(MemoryData, 1024).
+    allowed_node_quota_range(ns_config:get(), MemoryData, 1024).
 
 allowed_node_quota_range(MemoryData) ->
-    allowed_node_quota_range(MemoryData, 1024).
+    allowed_node_quota_range(ns_config:get(), MemoryData, 1024).
 
 %% when validating memory size versus cluster quota we use less strict
 %% rules so that clusters upgraded from 1.6.0 are able to join
 %% homogeneous nodes. See MB-2762
-allowed_node_quota_range_for_joined_nodes() ->
+allowed_node_quota_max_for_joined_nodes() ->
     MemoryData = this_node_memory_data(),
-    allowed_node_quota_range(MemoryData, 512).
+    {_, MaxMemoryMB, _} = allowed_node_quota_range(undefined, MemoryData, 512),
+    MaxMemoryMB.
 
-allowed_node_quota_range(MemSupData, MinusMegs) ->
+allowed_node_quota_range(Config, MemSupData, MinusMegs) ->
     {MaxMemoryBytes0, _, _} = MemSupData,
-    MinMemoryMB = 256,
+    MinMemoryMB = case Config of
+                      undefined ->
+                          256;
+                      _ ->
+                          erlang:max(256, get_total_buckets_ram_quota(Config) div ?MIB)
+                  end,
+
     MaxMemoryMBPercent = (MaxMemoryBytes0 * 4) div (5 * ?MIB),
     MaxMemoryMB = lists:max([(MaxMemoryBytes0 div ?MIB) - MinusMegs,
                              MaxMemoryMBPercent]),
-    QuotaErrorDetailsFun = fun () ->
-                                   case MaxMemoryMB of
-                                       MaxMemoryMBPercent ->
-                                           io_lib:format(" Quota must be between 256 MB and ~w MB (80% of memory size).", [MaxMemoryMB]);
-                                       _ ->
-                                           io_lib:format(" Quota must be between 256 MB and ~w MB (memory size minus ~w MB).", [MaxMemoryMB, MinusMegs])
-                                   end
-                           end,
+    QuotaErrorDetailsFun =
+        fun () ->
+                case MaxMemoryMB of
+                    MaxMemoryMBPercent ->
+                        io_lib:format(" Quota must be between ~w MB and ~w MB (80% of memory size).",
+                                      [MinMemoryMB, MaxMemoryMB]);
+                    _ ->
+                        io_lib:format(" Quota must be between ~w MB and ~w MB (memory size minus ~w MB).",
+                                      [MinMemoryMB, MaxMemoryMB, MinusMegs])
+                end
+        end,
     {MinMemoryMB, MaxMemoryMB, QuotaErrorDetailsFun}.
 
 default_memory_quota(MemSupData) ->
-    {Min, Max, _} = allowed_node_quota_range(MemSupData),
+    {Min, Max, _} = allowed_node_quota_range(undefined, MemSupData, 1024),
     {MaxMemoryBytes0, _, _} = MemSupData,
     Value = (MaxMemoryBytes0 * 3) div (5 * ?MIB),
     if Value > Max ->

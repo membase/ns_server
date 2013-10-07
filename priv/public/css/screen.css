@@ -393,6 +393,13 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 
 .settings legend {font-size:14px;font-weight:bold;margin-left:16px}
 
+/* cluster settings styles */
+.cluster_settings_container label,
+.cluster_settings_container input {-moz-inline-stack; display: inline-block; zoom: 1; *display: inline; vertical-align: middle;}
+.cluster_settings_container label {width: 150px;}
+.cluster_settings_container .error-container {margin-left: 150px;}
+.cluster_settings_container .row {margin: 10px; line-height: 24px;}
+
 /* update notification styles */
 #notifications_container .item {padding:13px;}
 #notifications_container .save_button {float:right;}
