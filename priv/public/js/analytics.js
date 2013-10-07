@@ -926,8 +926,6 @@ var AnalyticsSection = {
           selectedNode = v.need(StatsModel.targetCell);
         }
 
-        var allNames = _.pluck(allNodes.servers, 'hostname');
-
         var list = _.map(allNodes.servers, function (srv) {
           var name = ViewHelpers.maybeStripPort(srv.hostname, allNodes.servers);
           return [srv.hostname, name];
