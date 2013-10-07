@@ -934,7 +934,7 @@ var AnalyticsSection = {
         });
         // natural sort by full hostname (which includes port number)
         list.sort(mkComparatorByProp(0, naturalSort));
-        list.unshift(['', 'All Server Nodes']);
+        list.unshift(['', 'All Server Nodes (' + allNodes.servers.length + ')' ]);
 
         return {list: list,
                 selected: selectedNode && selectedNode.hostname};
