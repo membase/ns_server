@@ -173,8 +173,8 @@ start_child(#state{bucket_name = Bucket,
     [] = _MaybeSameSrcNode = [Child || Child <- get_children(Bucket),
                                        {SrcNodeC, _} <- [childs_node_and_vbuckets(Child)],
                                        SrcNodeC =:= SrcNode],
-    Sup = ns_vbm_new_sup:server_name(Bucket),
-    Child = ns_vbm_new_sup:make_replicator(SrcNode, VBuckets),
+    Sup = ns_vbm_sup:server_name(Bucket),
+    Child = ns_vbm_sup:make_replicator(SrcNode, VBuckets),
     ChildSpec = child_to_supervisor_spec(Bucket, Child),
     cancel_replicator_reset(T, SrcNode),
     case supervisor:start_child(Sup, ChildSpec) of
@@ -186,8 +186,8 @@ kill_child(#state{bucket_name = Bucket,
                   not_readys_per_node_ets = T},
            SrcNode, VBuckets) ->
     ?log_info("Going to stop replication from ~p", [SrcNode]),
-    Sup = ns_vbm_new_sup:server_name(Bucket),
-    Child = ns_vbm_new_sup:make_replicator(SrcNode, VBuckets),
+    Sup = ns_vbm_sup:server_name(Bucket),
+    Child = ns_vbm_sup:make_replicator(SrcNode, VBuckets),
     cancel_replicator_reset(T, SrcNode),
     %% we're ok if child is already dead. There's not much we can or
     %% should do about that
@@ -198,19 +198,19 @@ change_vbucket_filter(#state{bucket_name = Bucket,
                       SrcNode, OldVBuckets, NewVBuckets) ->
     %% TODO: potential slowness here. Consider ordsets
     ?log_info("Going to change replication from ~p to have~n~p (~p, ~p)", [SrcNode, NewVBuckets, NewVBuckets--OldVBuckets, OldVBuckets--NewVBuckets]),
-    OldChildId = ns_vbm_new_sup:make_replicator(SrcNode, OldVBuckets),
-    NewChildId = ns_vbm_new_sup:make_replicator(SrcNode, NewVBuckets),
+    OldChildId = ns_vbm_sup:make_replicator(SrcNode, OldVBuckets),
+    NewChildId = ns_vbm_sup:make_replicator(SrcNode, NewVBuckets),
     Args = build_replicator_args(Bucket, SrcNode, NewVBuckets),
 
     MFA = {ebucketmigrator_srv, start_vbucket_filter_change, [NewVBuckets]},
 
     cancel_replicator_reset(T, SrcNode),
-    try ns_vbm_new_sup:perform_vbucket_filter_change(Bucket,
+    try ns_vbm_sup:perform_vbucket_filter_change(Bucket,
                                                      OldChildId,
                                                      NewChildId,
                                                      Args,
                                                      MFA,
-                                                     ns_vbm_new_sup:server_name(Bucket)) of
+                                                     ns_vbm_sup:server_name(Bucket)) of
         RV -> {ok, RV}
     catch error:upstream_conn_is_down ->
             ?log_debug("Detected upstream_conn_is_down and going to simply start fresh ebucketmigrator"),
@@ -219,14 +219,14 @@ change_vbucket_filter(#state{bucket_name = Bucket,
     end.
 
 childs_node_and_vbuckets(Child) ->
-    {Node, _} = ns_vbm_new_sup:replicator_nodes(node(), Child),
-    VBs = ns_vbm_new_sup:replicator_vbuckets(Child),
+    {Node, _} = ns_vbm_sup:replicator_nodes(node(), Child),
+    VBs = ns_vbm_sup:replicator_vbuckets(Child),
     {Node, VBs}.
 
 child_to_supervisor_spec(Bucket, Child) ->
     {SrcNode, VBuckets} = childs_node_and_vbuckets(Child),
     Args = build_replicator_args(Bucket, SrcNode, VBuckets),
-    ns_vbm_new_sup:build_child_spec(Child, Args).
+    ns_vbm_sup:build_child_spec(Child, Args).
 
 build_replicator_args(Bucket, SrcNode, VBuckets) ->
     Args = ebucketmigrator_srv:build_args(node(), Bucket,
@@ -242,7 +242,7 @@ handle_not_ready_vbuckets_from(RepManagerPid, SrcNode) ->
 
 -spec get_children(bucket_name()) -> list() | not_running.
 get_children(Bucket) ->
-    try supervisor:which_children(ns_vbm_new_sup:server_name(Bucket)) of
+    try supervisor:which_children(ns_vbm_sup:server_name(Bucket)) of
         RawKids ->
             [Id || {Id, _Child, _Type, _Mods} <- RawKids]
     catch exit:{noproc, _} ->

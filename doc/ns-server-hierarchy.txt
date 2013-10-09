@@ -188,7 +188,7 @@
                                                                     "keeps track of desired replications. Serializes
                                                                     replication changes w.r.t. not-ready-vbuckets
                                                                     restarts.")
-                                                        (supervisor '(ns_vbm_new_sup "default") :name 'ns_vbm_new_sup-default :since "2.0"
+                                                        (supervisor '(ns_vbm_sup "default") :name 'ns_vbm_sup-default :since "2.0"
                                                                     "hosts replication ebucketmigrators for 2.0
                                                                      \"replicators on destination\"")
                                                         (gen-server '(janitor_agent "default") :name 'janitor_agent-default :since "2.0"
