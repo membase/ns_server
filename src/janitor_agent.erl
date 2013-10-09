@@ -61,14 +61,14 @@
          get_tap_docs_estimate_many_taps/4,
          get_mass_tap_docs_estimate/3]).
 
--export([start_link/1, wait_for_memcached_new_style/4]).
+-export([start_link/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
 wait_for_bucket_creation(Bucket, Nodes) ->
-    NodeRVs = wait_for_memcached_new_style(Nodes, Bucket, up, ?WAIT_FOR_MEMCACHED_SECONDS),
+    NodeRVs = wait_for_memcached(Nodes, Bucket, up, ?WAIT_FOR_MEMCACHED_SECONDS),
     BadNodes = [N || {N, R} <- NodeRVs,
                      case R of
                          warming_up -> false;
@@ -77,7 +77,7 @@ wait_for_bucket_creation(Bucket, Nodes) ->
                      end],
     BadNodes.
 
-new_style_query_vbucket_states_loop(Node, Bucket, Type) ->
+query_vbucket_states_loop(Node, Bucket, Type) ->
     case (catch gen_server:call(server_name(Bucket, Node), query_vbucket_states, infinity)) of
         {ok, _} = Msg ->
             Msg;
@@ -86,20 +86,20 @@ new_style_query_vbucket_states_loop(Node, Bucket, Type) ->
                 up ->
                     warming_up;
                 connected ->
-                    new_style_query_vbucket_states_loop_next_step(Node, Bucket, Type)
+                    query_vbucket_states_loop_next_step(Node, Bucket, Type)
             end;
         Exc ->
             ?log_debug("Exception from query_vbucket_states of ~p:~p~n~p", [Bucket, Node, Exc]),
-            new_style_query_vbucket_states_loop_next_step(Node, Bucket, Type)
+            query_vbucket_states_loop_next_step(Node, Bucket, Type)
     end.
 
-new_style_query_vbucket_states_loop_next_step(Node, Bucket, Type) ->
+query_vbucket_states_loop_next_step(Node, Bucket, Type) ->
     ?log_debug("Waiting for ~p on ~p", [Bucket, Node]),
     timer:sleep(1000),
-    new_style_query_vbucket_states_loop(Node, Bucket, Type).
+    query_vbucket_states_loop(Node, Bucket, Type).
 
--spec wait_for_memcached_new_style([node()], bucket_name(), up | connected, non_neg_integer()) -> [{node(), warming_up | {ok, list()} | any()}].
-wait_for_memcached_new_style(Nodes, Bucket, Type, SecondsToWait) ->
+-spec wait_for_memcached([node()], bucket_name(), up | connected, non_neg_integer()) -> [{node(), warming_up | {ok, list()} | any()}].
+wait_for_memcached(Nodes, Bucket, Type, SecondsToWait) ->
     Parent = self(),
     misc:executing_on_new_process(
       fun () ->
@@ -109,7 +109,7 @@ wait_for_memcached_new_style(Nodes, Bucket, Type, SecondsToWait) ->
               NodePids = [{Node, proc_lib:spawn_link(
                                    fun () ->
                                            {ok, TRef} = timer2:kill_after(SecondsToWait * 1000),
-                                           RV = new_style_query_vbucket_states_loop(Node, Bucket, Type),
+                                           RV = query_vbucket_states_loop(Node, Bucket, Type),
                                            Me ! {'EXIT', self(), {Ref, RV}},
                                            %% doing cancel is quite
                                            %% important. kill_after is
@@ -148,17 +148,12 @@ complete_flush(Bucket, Nodes, Timeout) ->
     GoodNodes = [N || {N, _R} <- GoodReplies],
     {GoodNodes, BadReplies, BadNodes}.
 
--spec query_states(bucket_name(), [node()], undefined | pos_integer()) -> {ok, [{node(), vbucket_id(), vbucket_state()}], [node()]}.
-query_states(Bucket, Nodes, ReadynessWaitTimeout0) ->
-    ReadynessWaitTimeout = case ReadynessWaitTimeout0 of
-                               undefined -> ?WAIT_FOR_MEMCACHED_SECONDS;
-                               _ -> ReadynessWaitTimeout0
-                           end,
-    query_states_new_style(Bucket, Nodes, ReadynessWaitTimeout).
-
 %% TODO: consider supporting partial janitoring
-query_states_new_style(Bucket, Nodes, ReadynessWaitTimeout) ->
-    NodeRVs = wait_for_memcached_new_style(Nodes, Bucket, connected, ReadynessWaitTimeout),
+-spec query_states(bucket_name(), [node()], undefined | pos_integer()) -> {ok, [{node(), vbucket_id(), vbucket_state()}], [node()]}.
+query_states(Bucket, Nodes, undefined) ->
+    query_states(Bucket, Nodes, ?WAIT_FOR_MEMCACHED_SECONDS);
+query_states(Bucket, Nodes, ReadynessWaitTimeout) ->
+    NodeRVs = wait_for_memcached(Nodes, Bucket, connected, ReadynessWaitTimeout),
     BadNodes = [N || {N, R} <- NodeRVs,
                      case R of
                          {ok, _} -> false;
