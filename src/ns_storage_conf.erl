@@ -228,7 +228,7 @@ extract_node_storage_info(NodeInfo, Node, Config) ->
         MemQuotaMB when is_integer(MemQuotaMB) ->
             {DiskTotal, DiskUsed} = extract_disk_totals(DiskPaths, DiskStats),
             [{ram, [{total, RAMTotal},
-                    {quotaTotal, MemQuotaMB * 1048576},
+                    {quotaTotal, MemQuotaMB * ?MIB},
                     {used, RAMUsed},
                     {free, 0} % not used
                    ]},
@@ -520,7 +520,7 @@ this_node_memory_data() ->
     case os:getenv("MEMBASE_RAM_MEGS") of
         false -> memsup:get_memory_data();
         X ->
-            RAMBytes = list_to_integer(X) * 1048576,
+            RAMBytes = list_to_integer(X) * ?MIB,
             {RAMBytes, 0, 0}
     end.
 
@@ -540,10 +540,9 @@ allowed_node_quota_range_for_joined_nodes() ->
 
 allowed_node_quota_range(MemSupData, MinusMegs) ->
     {MaxMemoryBytes0, _, _} = MemSupData,
-    MiB = 1048576,
     MinMemoryMB = 256,
-    MaxMemoryMBPercent = (MaxMemoryBytes0 * 4) div (5 * MiB),
-    MaxMemoryMB = lists:max([(MaxMemoryBytes0 div MiB) - MinusMegs,
+    MaxMemoryMBPercent = (MaxMemoryBytes0 * 4) div (5 * ?MIB),
+    MaxMemoryMB = lists:max([(MaxMemoryBytes0 div ?MIB) - MinusMegs,
                              MaxMemoryMBPercent]),
     QuotaErrorDetailsFun = fun () ->
                                    case MaxMemoryMB of
@@ -558,8 +557,7 @@ allowed_node_quota_range(MemSupData, MinusMegs) ->
 default_memory_quota(MemSupData) ->
     {Min, Max, _} = allowed_node_quota_range(MemSupData),
     {MaxMemoryBytes0, _, _} = MemSupData,
-    MiB = 1048576,
-    Value = (MaxMemoryBytes0 * 3) div (5 * MiB),
+    Value = (MaxMemoryBytes0 * 3) div (5 * ?MIB),
     if Value > Max ->
             Max;
        Value < Min ->

@@ -769,7 +769,7 @@ check_memory_size(NodeKVList) ->
         Quota =< MaxMemoryMB + MemoryFuzzyness ->
             ok;
         true ->
-            ThisMegs = element(1, ns_storage_conf:this_node_memory_data()) div 1048576,
+            ThisMegs = element(1, ns_storage_conf:this_node_memory_data()) div ?MIB,
             Error = {error, bad_memory_size, [{this, ThisMegs},
                                               {quota, Quota}]},
             {error, bad_memory_size,
