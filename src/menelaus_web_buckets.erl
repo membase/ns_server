@@ -828,7 +828,7 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
                                        _ -> {0, <<"">>}
                                    end,
                              if
-                                 RAMQuotaMB < MinQuota * 1048576 ->
+                                 RAMQuotaMB < MinQuota * ?MIB ->
                                      {error, ramQuotaMB, Msg};
                                  IsNew =/= true andalso BucketConfig =/= false andalso BucketType =:= memcached ->
                                      case ns_bucket:raw_ram_quota(BucketConfig) of
@@ -915,7 +915,7 @@ interpret_ram_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGette
     RAMQuota = proplists:get_value(ram_quota, ParsedProps),
     NodesCount = proplists:get_value(nodesCount, ClusterStorageTotals),
     ParsedQuota = RAMQuota * NodesCount,
-    PerNode = RAMQuota div 1048576,
+    PerNode = RAMQuota div ?MIB,
     ClusterTotals = proplists:get_value(ram, ClusterStorageTotals),
     OtherBuckets = proplists:get_value(quotaUsed, ClusterTotals)
         - case CurrentBucket of
@@ -1010,7 +1010,7 @@ parse_validate_ram_quota(Value, _BucketConfig) ->
             {error, ramQuotaMB, <<"The RAM Quota must be specified and must be a positive integer.">>};
         too_small ->
             {error, ramQuotaMB, <<"The RAM Quota cannot be negative.">>};
-        {ok, X} -> {ok, ram_quota, X * 1048576}
+        {ok, X} -> {ok, ram_quota, X * ?MIB}
     end.
 
 extended_cluster_storage_info() ->
@@ -1057,21 +1057,21 @@ basic_bucket_params_screening_test() ->
                    [{type, memcached},
                     {num_vbuckets, 16},
                     {num_replicas, 1},
-                    {ram_quota, 76 * 1048576},
+                    {ram_quota, 76 * ?MIB},
                     {auth_type, none},
                     {moxi_port, 33333}]},
                   {"default",
                    [{type, membase},
                     {num_vbuckets, 16},
                     {num_replicas, 1},
-                    {ram_quota, 512 * 1048576},
+                    {ram_quota, 512 * ?MIB},
                     {auth_type, sasl},
                     {sasl_password, ""}]},
                   {"third",
                    [{type, membase},
                     {num_vbuckets, 16},
                     {num_replicas, 1},
-                    {ram_quota, 768 * 1048576},
+                    {ram_quota, 768 * ?MIB},
                     {auth_type, sasl},
                     {sasl_password, "asdasd"}]}],
     %% it is possible to create bucket with ok params

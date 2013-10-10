@@ -1183,7 +1183,7 @@ build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
                                                              memcached,
                                                              max_size) of
                                  X when is_integer(X) -> X;
-                                 undefined -> (MemoryTotal * 4) div (5 * 1048576)
+                                 undefined -> (MemoryTotal * 4) div (5 * ?MIB)
                              end,
 
     NodesBucketMemoryAllocated = NodesBucketMemoryTotal,
