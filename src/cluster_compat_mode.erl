@@ -50,17 +50,7 @@ mb_master_advertised_version() ->
     [3, 0, 0].
 
 check_is_progress_tracking_supported() ->
-    case is_cluster_30() of
-        true -> true;
-        _ ->
-            case rpc:multicall(ns_node_disco:nodes_wanted(), cluster_compat_mode, mb_master_advertised_version, [], 30000) of
-                {Replies, []} ->
-                    [R || R <- Replies,
-                          R < [2, 0, 2]] =:= [];
-                _ ->
-                    false
-            end
-    end.
+    are_all_nodes_compatible([2,0,2]).
 
 is_enabled_at(undefined = _ClusterVersion, _FeatureVersion) ->
     false;
@@ -99,12 +89,21 @@ is_node_compatible(Node, Version) ->
             NodeVer >= Version
     end.
 
+are_all_nodes_compatible(Version) ->
+    case is_enabled_at(get_compat_version() ++ [0], Version) of
+        true ->
+            true;
+        _ ->
+            lists:all(fun (N) ->
+                              is_node_compatible(N, Version)
+                      end, ns_node_disco:nodes_wanted())
+    end.
+
 split_live_nodes_by_version(Version) ->
-    Nodes = nodes(),
-    {NewNodes, OldNodes} = lists:partition(fun (Node) ->
-                                                   is_node_compatible(Node, Version)
-                                           end, Nodes),
-    {[node() | NewNodes], OldNodes}.
+    Nodes = ns_node_disco:nodes_actual_proper(),
+    lists:partition(fun (Node) ->
+                            is_node_compatible(Node, Version)
+                    end, Nodes).
 
 rebalance_ignore_view_compactions() ->
     ns_config_ets_dup:unreliable_read_key(rebalance_ignore_view_compactions, false).
