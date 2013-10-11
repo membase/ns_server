@@ -27,7 +27,10 @@ casper.test.begin('servers section', 0, () ->
     @click ".casper_close_eject_confirmation_dialog"
     @click "#{rootSelector} .casper_failover_server_remove"
 
-  ).waitUntilVisible(".casper_failover_confirmation_dialog", () ->
+  ).waitUntilVisible(".casper_failover_confirmation_dialog_spinner", () ->
+    @capture "#{screenshotsOutputPath}servers-failover_confirmation_dialog_loading.png"
+
+  ).waitWhileVisible(".casper_failover_confirmation_dialog_spinner + .spinner", () ->
     @capture "#{screenshotsOutputPath}servers-failover_confirmation_dialog.png"
     @click ".casper_close_failover_confirmation_dialog"
     @click "#{rootSelector} .casper_pending_rebalance_tab"

@@ -1779,6 +1779,47 @@ var ServerStateMock = {
     }
   },{
     "systemStats": {
+      "cpu_utilization_rate": 20,
+      "swap_total": 2521247232,
+      "swap_used": 1296329669,
+      "mem_total": 6191321088,
+      "mem_free": 3639218176
+    },
+    "interestingStats": {
+      "cmd_get": 0.0,
+      "couch_docs_actual_disk_size": 8449574,
+      "couch_docs_data_size": 8435712,
+      "couch_views_actual_disk_size": 0,
+      "couch_views_data_size": 0,
+      "curr_items": 0,
+      "curr_items_tot": 0,
+      "ep_bg_fetched": 0.0,
+      "get_hits": 0.0,
+      "mem_used": 27347928,
+      "ops": 0.0,
+      "vb_replica_curr_items": 0
+    },
+    "uptime": "810",
+    "memoryTotal": 2032574464,
+    "memoryFree": 89864960,
+    "mcdMemoryReserved": 4723,
+    "mcdMemoryAllocated": 4723,
+    "couchApiBase": "/couchBase/",
+    "clusterMembership": "active",
+    "group": "Group 2",
+    "status": "healthy",
+    "otpNode": "n_3@127.0.0.1",
+    "thisNode": true,
+    "hostname": "127.0.0.1:9003",
+    "clusterCompatibility": 131072,
+    "version": "only-web.rb",
+    "os": "x86_64-pc-linux-gnu",
+    "ports": {
+      "proxy": 12001,
+      "direct": 12000
+    }
+  },{
+    "systemStats": {
       "cpu_utilization_rate": 14.136125654450261,
       "swap_total": 6291451904,
       "swap_used": 0,
