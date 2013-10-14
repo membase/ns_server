@@ -652,7 +652,7 @@ get_safe_purge_seqs(BucketName) ->
               %% we ignore dev design docs
               SafeSeqs;
           (DDocId, SafeSeqs) ->
-              case (catch couch_set_view:get_indexed_seqs(mapreduce_view, BucketName, DDocId, prod)) of
+              case (catch couch_set_view:get_indexed_seqs(BucketName, DDocId)) of
                   {ok, IndexSeqs} ->
                       misc:ukeymergewith(
                         fun ({Vb, SeqA}, {_, SeqB}) ->
