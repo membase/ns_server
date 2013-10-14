@@ -22,7 +22,7 @@
 -include("ns_stats.hrl").                       % used for run_on_subset_according_to_stats/1
 
 -export([handle_view_req/3]).
--export([all_docs_db_req/2]).
+-export([all_docs_db_req/2, view_merge_params/4, run_on_subset_according_to_stats/1]).
 %% For capi_spatial
 -export([build_local_simple_specs/4, run_on_subset/2,
          vbucket_db_name/2, when_has_active_vbuckets/3]).
