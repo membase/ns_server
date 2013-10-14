@@ -158,8 +158,7 @@ vbuckets_aggregation_loop(Bucket, DiskSize, DataSize, [VBucketBin | RestVBucketB
     end.
 
 views_collection_loop_iteration(BinBucket, NameToStatsETS,  DDocId, MinFileSize) ->
-    case (catch couch_set_view:get_group_data_size(
-                  mapreduce_view, BinBucket, DDocId)) of
+    case (catch couch_set_view:get_group_data_size(BinBucket, DDocId)) of
         {ok, PList} ->
             {_, Signature} = lists:keyfind(signature, 1, PList),
             case ets:lookup(NameToStatsETS, Signature) of

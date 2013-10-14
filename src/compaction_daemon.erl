@@ -650,7 +650,7 @@ try_to_cleanup_indexes(BucketName) ->
     ?log_info("Cleaning up indexes for bucket `~s`", [BucketName]),
 
     try
-        couch_set_view:cleanup_index_files(mapreduce_view, BucketName)
+        couch_set_view:cleanup_index_files(BucketName)
     catch SetViewT:SetViewE ->
             ?log_error("Error while doing cleanup of old "
                        "index files for bucket `~s`: ~p~n~p",
@@ -1002,9 +1002,8 @@ do_spawn_view_index_compactor(Parent, BucketName, DDocId, Type, InitialStatus) -
             ?log_debug("Got exit signal from parent: ~p", [Exit]),
 
             erlang:demonitor(CompactorRef),
-            ok = couch_set_view_compactor:cancel_compact(mapreduce_view,
-                                                         BucketName, DDocId,
-                                                         Type),
+            ok = couch_set_view_compactor:cancel_compact(
+                   BucketName, DDocId, Type),
             exit(Reason);
         {'DOWN', CompactorRef, process, Compactor, normal} ->
             ok;
@@ -1023,8 +1022,8 @@ do_spawn_view_index_compactor(Parent, BucketName, DDocId, Type, InitialStatus) -
     end.
 
 start_view_index_compactor(BucketName, DDocId, Type, InitialStatus) ->
-    case couch_set_view_compactor:start_compact(mapreduce_view, BucketName,
-                                                DDocId, Type, InitialStatus) of
+    case couch_set_view_compactor:start_compact(BucketName, DDocId,
+                                                Type, InitialStatus) of
         {ok, Pid} ->
             Pid;
         {error, initial_build} ->
@@ -1233,8 +1232,7 @@ ensure_can_view_compact(BucketName, DDocId, Type) ->
     end.
 
 get_group_data_info(BucketName, DDocId, main) ->
-    {ok, Info} = couch_set_view:get_group_data_size(mapreduce_view,
-                                                    BucketName, DDocId),
+    {ok, Info} = couch_set_view:get_group_data_size(BucketName, DDocId),
     Info;
 get_group_data_info(BucketName, DDocId, replica) ->
     MainInfo = get_group_data_info(BucketName, DDocId, main),
