@@ -235,7 +235,7 @@ send_sync_to(Recent, Node) ->
     send_sync_to(Recent, Node, node()).
 
 send_sync_to(Recent, Node, Src) ->
-    Entries = case cluster_compat_mode:is_node_compatible(Node, [2, 3, 0]) of
+    Entries = case cluster_compat_mode:is_node_compatible(Node, [3,0,0]) of
                   true ->
                       Recent;
                   false ->
@@ -329,7 +329,7 @@ do_log(#log_entry{code=undefined} = Entry) ->
 do_log(#log_entry{code=Code, tstamp=TStamp} = Entry) when is_integer(Code) ->
     EntryNew = Entry#log_entry{server_time=calendar:now_to_local_time(TStamp)},
 
-    {NewNodes, OldNodes} = cluster_compat_mode:split_live_nodes_by_version([2, 3, 0]),
+    {NewNodes, OldNodes} = cluster_compat_mode:split_live_nodes_by_version([3, 0, 0]),
     gen_server:abcast(NewNodes, ?MODULE, {do_log, EntryNew}),
 
     case OldNodes of
