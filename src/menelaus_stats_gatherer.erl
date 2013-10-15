@@ -44,7 +44,7 @@ gather_stats(Bucket, Nodes, ClientTStamp, Window) ->
                                 FN
                         end
                 end,
-    case cluster_compat_mode:is_node_compatible(FirstNode, [3, 0, 0]) of
+    case cluster_compat_mode:is_node_compatible(FirstNode, [2, 3, 0]) of
         true ->
             gen_server:call({?MODULE, FirstNode},
                             {gather_stats, Bucket, Nodes, ClientTStamp, Window}, infinity);

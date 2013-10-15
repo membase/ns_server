@@ -25,7 +25,7 @@
 -define(NS_LOG, "ns_log").
 
 get_current_version() ->
-    {3,0,0}.
+    {2,3,0}.
 
 % Allow all keys to be mergable.
 
@@ -141,7 +141,7 @@ default() ->
        {dedicated_port, misc:get_env_default(memcached_dedicated_port, 11209)},
        {admin_user, "_admin"},
        %% Note that this is not actually the password that is being used; as
-       %% part of upgrading config from 2.2 to 3.0 version it's replaced by
+       %% part of upgrading config from 2.2 to 2.3 version it's replaced by
        %% unique per-node password. I didn't put it here because default()
        %% supposed to be a pure function.
        {admin_pass, ""},
@@ -318,8 +318,8 @@ upgrade_config(Config) ->
             [{set, {node, node(), config_version}, {2,2,0}} |
              upgrade_config_from_2_0_to_2_2_0(Config)];
         {value, {2,2,0}} ->
-            [{set, {node, node(), config_version}, {3,0,0}} |
-             upgrade_config_from_2_2_0_to_3_0(Config)]
+            [{set, {node, node(), config_version}, {2,3,0}} |
+             upgrade_config_from_2_2_0_to_2_3_0(Config)]
     end.
 
 upgrade_config_from_1_7_to_1_7_1() ->
@@ -529,8 +529,8 @@ upgrade_config_from_2_0_to_2_2_0(Config) ->
     do_upgrade_files_from_2_0_to_2_2_0(DataDir),
     do_upgrade_config_from_2_0_to_2_2_0(Config, DefaultConfig, DataDir).
 
-upgrade_config_from_2_2_0_to_3_0(Config) ->
-    ?log_info("Upgrading config from 2.2.0 to 3.0"),
+upgrade_config_from_2_2_0_to_2_3_0(Config) ->
+    ?log_info("Upgrading config from 2.2.0 to 2.3.0"),
     {value, MemcachedConfig} = ns_config:search(Config, {node, node(), memcached}),
     MemcachedConfig1 = lists:keystore(log_generations, 1, MemcachedConfig,
                                       {log_generations, 20}),
@@ -840,12 +840,12 @@ upgrade_2_0_to_2_2_0_test() ->
                   {set, {node, node(), ns_log}, default_ns_log}
                  ], Result2).
 
-upgrade_2_2_0_to_3_0_test() ->
+upgrade_2_2_0_to_2_3_0_test() ->
     Key = {node, node(), memcached},
     Cfg = [[{Key,
            [{log_generations, 10},
             {log_cyclesize, 1024*1024*100}]}]],
-    UpgradedCfg = upgrade_config_from_2_2_0_to_3_0(Cfg),
+    UpgradedCfg = upgrade_config_from_2_2_0_to_2_3_0(Cfg),
     ?assertMatch([
                   {set, Key,
                    [{log_generations, 20},

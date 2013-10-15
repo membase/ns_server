@@ -47,7 +47,7 @@ supported_compat_version() ->
 %% I.e. we want later version to be able to take over mastership even
 %% without requiring compat mode upgrade
 mb_master_advertised_version() ->
-    [3, 0, 0].
+    [2, 3, 0].
 
 check_is_progress_tracking_supported() ->
     case is_cluster_30() of
