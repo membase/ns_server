@@ -9,6 +9,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"time"
@@ -20,9 +21,15 @@ type Engine struct {
 }
 type OutputFormat string
 
+const (
+	noSolutionExitCode   = 1
+	generalErrorExitCode = 2
+)
+
 var availableGenerators []RIGenerator = []RIGenerator{
-	GlpkRIGenerator{},
-	DummyRIGenerator{},
+	makeGlpkRIGenerator(),
+	makeDummyRIGenerator(),
+	makeMaxFlowRIGenerator(),
 }
 
 var diag *log.Logger
@@ -33,9 +40,12 @@ var (
 	params       VbmapParams = VbmapParams{
 		Tags: nil,
 	}
-	engine       Engine       = Engine{availableGenerators[0]}
+	engine       Engine = Engine{availableGenerators[0]}
+	engineParams string = ""
+
 	outputFormat OutputFormat = "text"
 	diagTo       string       = "stderr"
+	profTo       string       = ""
 )
 
 func (tags *TagMap) Set(s string) error {
@@ -117,12 +127,19 @@ func normalizeParams(params *VbmapParams) {
 		params.NumReplicas = params.NumNodes - 1
 	}
 
-	if params.NumSlaves >= params.NumNodes {
-		params.NumSlaves = params.NumNodes - 1
+	for _, tagNodes := range params.Tags.TagsNodesMap() {
+		tagMaxSlaves := params.NumNodes - len(tagNodes)
+		if tagMaxSlaves < params.NumSlaves {
+			params.NumSlaves = tagMaxSlaves
+		}
 	}
 
 	if params.NumSlaves < params.NumReplicas {
 		params.NumReplicas = params.NumSlaves
+	}
+
+	if params.NumReplicas == 0 {
+		params.NumSlaves = 0
 	}
 }
 
@@ -139,8 +156,6 @@ func checkInput() {
 		fatal("Options --tags and --tag-histogram are exclusive")
 	}
 
-	normalizeParams(&params)
-
 	if params.Tags == nil && tagHistogram == nil {
 		diag.Printf("Tags are not specified. Assuming every node on a separate tag.")
 		tagHistogram = make(TagHist, params.NumNodes)
@@ -150,11 +165,13 @@ func checkInput() {
 		}
 	}
 
+	nodes := params.Nodes()
+
 	if tagHistogram != nil {
 		tag := 0
 		params.Tags = make(TagMap)
 
-		for i := 0; i < params.NumNodes; i++ {
+		for _, node := range nodes {
 			for tag < len(tagHistogram) && tagHistogram[tag] == 0 {
 				tag += 1
 			}
@@ -163,7 +180,7 @@ func checkInput() {
 			}
 
 			tagHistogram[tag] -= 1
-			params.Tags[Node(i)] = Tag(tag)
+			params.Tags[node] = Tag(tag)
 		}
 
 		if tag != len(tagHistogram)-1 || tagHistogram[tag] != 0 {
@@ -172,17 +189,47 @@ func checkInput() {
 	}
 
 	// each node should have a tag assigned
-	for i := 0; i < params.NumNodes; i++ {
-		_, present := params.Tags[Node(i)]
+	for _, node := range nodes {
+		_, present := params.Tags[node]
 		if !present {
-			fatal("Tag for node %v not specified", i)
+			fatal("Tag for node %v not specified", node)
 		}
 	}
+
+	normalizeParams(&params)
+}
+
+func fatalExitCode(code int, format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, format+"\n", args...)
+	os.Exit(code)
 }
 
 func fatal(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, format+"\n", args...)
-	os.Exit(1)
+	fatalExitCode(generalErrorExitCode, format, args...)
+}
+
+func parseEngineParams(str string) (params map[string]string) {
+	params = make(map[string]string)
+
+	for _, kv := range strings.Split(str, ";") {
+		var k, v string
+
+		switch split := strings.SplitN(kv, "=", 2); len(split) {
+		case 1:
+			k = split[0]
+		case 2:
+			k = split[0]
+			v = split[1]
+		default:
+			fatal("should not happen")
+		}
+
+		if k != "" {
+			params[k] = v
+		}
+	}
+
+	return
 }
 
 func main() {
@@ -194,8 +241,10 @@ func main() {
 	flag.Var(&params.Tags, "tags", "tags")
 	flag.Var(&tagHistogram, "tag-histogram", "tag histogram")
 	flag.Var(&engine, "engine", "engine used to generate the topology")
+	flag.StringVar(&engineParams, "engine-params", "", "engine specific params")
 	flag.Var(&outputFormat, "output-format", "output format")
 	flag.StringVar(&diagTo, "diag", "stderr", "where to send diagnostics")
+	flag.StringVar(&profTo, "cpuprofile", "", "write cpuprofile to path")
 
 	flag.Int64Var(&seed, "seed", time.Now().UTC().UnixNano(), "random seed")
 
@@ -210,12 +259,24 @@ func main() {
 	default:
 		diagFile, err := os.Create(diagTo)
 		if err != nil {
-			fatal("Couldn't create diagnostics file: %s", err.Error())
+			fatal("Couldn't create diagnostics file %s: %s",
+				diagTo, err.Error())
 		}
-		defer func() {
-			diagFile.Close()
-		}()
+		defer diagFile.Close()
+
 		diagSink = diagFile
+	}
+
+	if profTo != "" {
+		profFile, err := os.Create(profTo)
+		if err != nil {
+			fatal("Couldn't create profile file %s: %s",
+				profTo, err.Error())
+		}
+		defer profFile.Close()
+
+		pprof.StartCPUProfile(profFile)
+		defer pprof.StopCPUProfile()
 	}
 
 	diag = log.New(diagSink, "", 0)
@@ -226,6 +287,11 @@ func main() {
 
 	checkInput()
 
+	engineParamsMap := parseEngineParams(engineParams)
+	if err := engine.generator.SetParams(engineParamsMap); err != nil {
+		fatal("Couldn't set engine params: %s", err.Error())
+	}
+
 	diag.Printf("Finalized parameters")
 	diag.Printf("  Number of nodes: %d", params.NumNodes)
 	diag.Printf("  Number of slaves: %d", params.NumSlaves)
@@ -233,15 +299,20 @@ func main() {
 	diag.Printf("  Number of replicas: %d", params.NumReplicas)
 	diag.Printf("  Tags assignments:")
 
-	for i := 0; i < params.NumNodes; i++ {
-		diag.Printf("    %d -> %v", i, params.Tags[Node(i)])
+	for _, node := range params.Nodes() {
+		diag.Printf("    %v -> %v", node, params.Tags[node])
 	}
 
 	start := time.Now()
 
 	solution, err := VbmapGenerate(params, engine.generator)
 	if err != nil {
-		fatal("ERROR: %s", err.Error())
+		switch err {
+		case ErrorNoSolution:
+			fatalExitCode(noSolutionExitCode, "%s", err.Error())
+		default:
+			fatal("%s", err.Error())
+		}
 	}
 
 	duration := time.Since(start)

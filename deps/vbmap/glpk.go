@@ -11,7 +11,13 @@ import (
 )
 
 // RI generator that uses GLPK to find satisfying matrix RI.
-type GlpkRIGenerator struct{}
+type GlpkRIGenerator struct {
+	DontAcceptRIGeneratorParams
+}
+
+func makeGlpkRIGenerator() *GlpkRIGenerator {
+	return &GlpkRIGenerator{}
+}
 
 func (_ GlpkRIGenerator) String() string {
 	return "glpk"
@@ -62,19 +68,6 @@ end;
 
 type GlpkResult uint
 
-const (
-	GLPK_NO_SOLUTION = GlpkResult(iota)
-)
-
-func (e GlpkResult) Error() string {
-	switch e {
-	case GLPK_NO_SOLUTION:
-		return "The problem has no solution"
-	default:
-		panic(fmt.Sprintf("Got unknown GLPK result code: %d", e))
-	}
-}
-
 func genDataFile(file io.Writer, params VbmapParams) error {
 	tmpl := template.Must(template.New("data").Parse(dataTemplate))
 	return tmpl.Execute(file, params)
@@ -92,7 +85,7 @@ func readSolution(params VbmapParams, outPath string) (RI, error) {
 	for i := range values {
 		_, err := fmt.Fscan(output, &values[i])
 		if err == io.EOF && i == 0 {
-			return nil, GLPK_NO_SOLUTION
+			return nil, ErrorNoSolution
 		}
 
 		if err != nil {
@@ -100,9 +93,12 @@ func readSolution(params VbmapParams, outPath string) (RI, error) {
 		}
 	}
 
-	result := make([][]int, params.NumNodes)
+	result := make([][]bool, params.NumNodes)
 	for i := range result {
-		result[i] = values[i*params.NumNodes : (i+1)*params.NumNodes]
+		for _, v := range values[i*params.NumNodes : (i+1)*params.NumNodes] {
+			value := (v != 0)
+			result[i] = append(result[i], value)
+		}
 	}
 
 	return result, nil
@@ -128,18 +124,14 @@ func (_ GlpkRIGenerator) Generate(params VbmapParams) (RI, error) {
 		return nil, fmt.Errorf("Couldn't create output file: %s", err.Error())
 	}
 	outputFile.Close()
-	defer func() {
-		os.Remove(outputFile.Name())
-	}()
+	defer os.Remove(outputFile.Name())
 
 	modelFile, err := ioutil.TempFile("", "vbmap_glpk_model")
 	if err != nil {
 		return nil, fmt.Errorf("Couldn't create model file: %s", err.Error())
 	}
 	modelFile.Close()
-	defer func() {
-		os.Remove(modelFile.Name())
-	}()
+	defer os.Remove(modelFile.Name())
 
 	err = ioutil.WriteFile(modelFile.Name(), []byte(model), os.FileMode(0644))
 	if err != nil {
@@ -147,7 +139,6 @@ func (_ GlpkRIGenerator) Generate(params VbmapParams) (RI, error) {
 			modelFile.Name(), err.Error())
 	}
 
-	// TODO: params
 	cmd := exec.Command("glpsol",
 		"--model", modelFile.Name(),
 		"--tmlim", "10",

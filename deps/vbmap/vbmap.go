@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"container/heap"
+	"errors"
 	"fmt"
 	"math/rand"
 	"sort"
@@ -11,6 +12,10 @@ import (
 type Node int
 type Tag uint
 type TagMap map[Node]Tag
+
+var (
+	ErrorNoSolution = errors.New("The problem has no solution")
+)
 
 type VbmapParams struct {
 	Tags TagMap
@@ -21,25 +26,71 @@ type VbmapParams struct {
 	NumReplicas int
 }
 
+func (params VbmapParams) Nodes() (nodes []Node) {
+	for n := 0; n < params.NumNodes; n++ {
+		nodes = append(nodes, Node(n))
+	}
+
+	return
+}
+
+func (params VbmapParams) String() string {
+	return fmt.Sprintf("VbmapParams{Tags: %s, NumNodes: %d, "+
+		"NumSlaves: %d, NumVBuckets: %d, NumReplicas: %d",
+		params.Tags, params.NumNodes, params.NumSlaves,
+		params.NumVBuckets, params.NumReplicas)
+}
+
 func (tags TagMap) String() string {
 	return fmt.Sprintf("%v", map[Node]Tag(tags))
 }
 
-func (tags TagMap) TagsCount() int {
+func (tags TagMap) TagsList() (result []Tag) {
 	seen := make(map[Tag]bool)
 
 	for _, t := range tags {
-		seen[t] = true
+		if _, present := seen[t]; !present {
+			result = append(result, t)
+			seen[t] = true
+		}
 	}
 
-	return len(seen)
+	return
 }
 
-type RI [][]int
+func (tags TagMap) TagsCount() int {
+	return len(tags.TagsList())
+}
+
+func (tags TagMap) TagsNodesMap() (m map[Tag][]Node) {
+	m = make(map[Tag][]Node)
+	for _, tag := range tags.TagsList() {
+		m[tag] = nil
+	}
+
+	for node, tag := range tags {
+		m[tag] = append(m[tag], node)
+	}
+
+	return
+}
+
+type RI [][]bool
 
 type RIGenerator interface {
+	SetParams(params map[string]string) error
 	Generate(params VbmapParams) (RI, error)
 	fmt.Stringer
+}
+
+type DontAcceptRIGeneratorParams struct{}
+
+func (_ DontAcceptRIGeneratorParams) SetParams(params map[string]string) error {
+	for k, _ := range params {
+		return fmt.Errorf("unsupported parameter '%s'", k)
+	}
+
+	return nil
 }
 
 func (RI RI) String() string {
@@ -47,7 +98,7 @@ func (RI RI) String() string {
 
 	for _, row := range RI {
 		for _, elem := range row {
-			fmt.Fprintf(buffer, "%2d ", elem)
+			fmt.Fprintf(buffer, "%2d ", b2i(elem))
 		}
 		fmt.Fprintf(buffer, "\n")
 	}
@@ -77,14 +128,16 @@ type RCandidate struct {
 func (cand RCandidate) String() string {
 	buffer := &bytes.Buffer{}
 
+	nodes := cand.params.Nodes()
+
 	fmt.Fprintf(buffer, "    |")
-	for i := 0; i < cand.params.NumNodes; i++ {
-		fmt.Fprintf(buffer, "%3d ", cand.params.Tags[Node(i)])
+	for _, node := range nodes {
+		fmt.Fprintf(buffer, "%3d ", cand.params.Tags[node])
 	}
 	fmt.Fprintf(buffer, "|\n")
 
 	fmt.Fprintf(buffer, "----|")
-	for i := 0; i < cand.params.NumNodes; i++ {
+	for _ = range nodes {
 		fmt.Fprintf(buffer, "----")
 	}
 	fmt.Fprintf(buffer, "|\n")
@@ -98,13 +151,13 @@ func (cand RCandidate) String() string {
 	}
 
 	fmt.Fprintf(buffer, "____|")
-	for i := 0; i < cand.params.NumNodes; i++ {
+	for _ = range nodes {
 		fmt.Fprintf(buffer, "____")
 	}
 	fmt.Fprintf(buffer, "|\n")
 
 	fmt.Fprintf(buffer, "    |")
-	for i := 0; i < cand.params.NumNodes; i++ {
+	for i := range nodes {
 		fmt.Fprintf(buffer, "%3d ", cand.colSums[i])
 	}
 	fmt.Fprintf(buffer, "|\n")
@@ -117,7 +170,7 @@ func (cand RCandidate) String() string {
 //
 // It just spreads active vbuckets uniformly between the nodes. And then for
 // each node spreads replica vbuckets among the slaves of this node.
-func buildInitialR(params VbmapParams, RI [][]int) (R [][]int) {
+func buildInitialR(params VbmapParams, RI RI) (R [][]int) {
 	activeVbsPerNode := SpreadSum(params.NumVBuckets, params.NumNodes)
 
 	R = make([][]int, len(RI))
@@ -133,7 +186,7 @@ func buildInitialR(params VbmapParams, RI [][]int) (R [][]int) {
 
 		slave := 0
 		for j, elem := range row {
-			if elem != 0 {
+			if elem {
 				R[i][j] = slaveVbs[slave]
 				slave += 1
 			}
@@ -146,7 +199,7 @@ func buildInitialR(params VbmapParams, RI [][]int) (R [][]int) {
 // Construct initial matrix R from RI.
 //
 // Uses buildInitialR to construct RCandidate.
-func makeRCandidate(params VbmapParams, RI [][]int) (result RCandidate) {
+func makeRCandidate(params VbmapParams, RI RI) (result RCandidate) {
 	result.params = params
 	result.matrix = buildInitialR(params, RI)
 	result.colSums = make([]int, params.NumNodes)
@@ -378,7 +431,7 @@ func (tabu Tabu) expire(time int) {
 // evaluation for quite a long time, then the search is stopped. It might be
 // retried by buildR(). This will start everything over with new initial
 // matrix R.
-func doBuildR(params VbmapParams, RI [][]int) (best RCandidate) {
+func doBuildR(params VbmapParams, RI RI) (best RCandidate) {
 	cand := makeRCandidate(params, RI)
 	best = cand.copy()
 
@@ -510,7 +563,7 @@ func doBuildR(params VbmapParams, RI [][]int) (best RCandidate) {
 // randomized initial R. If this doesn't lead to a matrix with zero evaluation
 // after fixed number of iterations, then the matrix which had the best
 // evaluation is returned.
-func buildR(params VbmapParams, RI [][]int) (best RCandidate) {
+func buildR(params VbmapParams, RI RI) (best RCandidate) {
 	bestEvaluation := (1 << 31) - 1
 
 	for i := 0; i < 10; i++ {

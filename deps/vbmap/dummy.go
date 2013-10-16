@@ -6,7 +6,13 @@ import (
 
 // RI generator that ignores tags. It just spreads 1s in the matrix so that
 // row and column sums equal to number of slaves.
-type DummyRIGenerator struct{}
+type DummyRIGenerator struct {
+	DontAcceptRIGeneratorParams
+}
+
+func makeDummyRIGenerator() *DummyRIGenerator {
+	return &DummyRIGenerator{}
+}
 
 func (_ DummyRIGenerator) String() string {
 	return "dummy"
@@ -19,16 +25,16 @@ func (_ DummyRIGenerator) Generate(params VbmapParams) (RI RI, err error) {
 		return
 	}
 
-	RI = make([][]int, params.NumNodes)
+	RI = make([][]bool, params.NumNodes)
 	for i := range RI {
-		RI[i] = make([]int, params.NumNodes)
+		RI[i] = make([]bool, params.NumNodes)
 	}
 
 	for i, row := range RI {
 		for j := range row {
 			k := (j - i + params.NumNodes - 1) % params.NumNodes
 			if k < params.NumSlaves {
-				RI[i][j] = 1
+				RI[i][j] = true
 			}
 		}
 	}
