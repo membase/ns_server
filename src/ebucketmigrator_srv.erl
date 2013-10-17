@@ -20,7 +20,6 @@
 -include("ns_common.hrl").
 
 -define(SERVER, ?MODULE).
--define(CONNECT_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_connect, 180000)).
 -define(START_VBUCKET_FILTER_CHANGE_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_start_vbucket_filter_change, 120000)).
 % Microseconds because we use timer:now_diff
 -define(UPSTREAM_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_upstream_us, 600000000)).
@@ -471,8 +470,8 @@ init({Src, Dst, Opts}=InitArgs) ->
     {UpstreamAux, DownstreamAux} =
         case OldState of
             undefined ->
-                {connect(Src, Username, Password, Bucket),
-                 connect(Dst, Username, Password, Bucket)};
+                {mc_replication:connect(Src, Username, Password, Bucket),
+                 mc_replication:connect(Dst, Username, Password, Bucket)};
             _ ->
                 {OldState#state.upstream_aux,
                  OldState#state.downstream_aux}
@@ -545,7 +544,7 @@ init({Src, Dst, Opts}=InitArgs) ->
         case OldState =:= undefined orelse
             OldState#state.upstream =:= undefined of
             true ->
-                Upstream0 = connect(Src, Username, Password, Bucket),
+                Upstream0 = mc_replication:connect(Src, Username, Password, Bucket),
                 %% TCP_NODELAY on upstream socket seems
                 %% beneficial. Only ack/nack is getting sent here.
                 ok = inet:setopts(Upstream0, [{nodelay, true}]),
@@ -589,7 +588,7 @@ init({Src, Dst, Opts}=InitArgs) ->
     Downstream =
         case OldState of
             undefined ->
-                connect(Dst, Username, Password, Bucket);
+                mc_replication:connect(Dst, Username, Password, Bucket);
             _ ->
                 OldState#state.downstream
         end,
@@ -851,72 +850,19 @@ wait_backfill_complete(Pid) ->
 %% Internal functions
 %%
 
-connect({Host, Port}, Username, Password, Bucket) ->
-    {ok, Sock} = gen_tcp:connect(Host, Port,
-                                 [binary, {packet, raw}, {active, false},
-                                  {nodelay, true}, {delay_send, true},
-                                  {keepalive, true},
-                                  {recbuf, 10*1024*1024},
-                                  {sndbuf, 10*1024*1024}],
-                                 ?CONNECT_TIMEOUT),
-    case Username of
-        undefined ->
-            ok;
-        "default" ->
-            ok;
-        _ ->
-            ok = mc_client_binary:auth(Sock, {<<"PLAIN">>,
-                                              {list_to_binary(Username),
-                                               list_to_binary(Password)}})
-    end,
-    case Bucket of
-        undefined ->
-            ok;
-        _ ->
-            ok = mc_client_binary:select_bucket(Sock, Bucket)
-    end,
-    Sock.
-
-
-%% @doc Chop up a buffer into packets, calling the callback with each packet.
--spec process_data(binary(), fun((binary(), #state{}) -> {binary(), #state{}}),
-                                #state{}) -> {binary(), #state{}}.
-process_data(<<_Magic:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
-               _VBucket:16, BodyLen:32, _Opaque:32, _CAS:64, _Rest/binary>>
-                 = Buffer, CB, State)
-  when byte_size(Buffer) >= BodyLen + ?HEADER_LEN ->
-    %% We have a complete command
-    {Packet, NewBuffer} = split_binary(Buffer, BodyLen + ?HEADER_LEN),
-    Result =
-        case Opcode of
-            ?NOOP ->
-                %% These aren't normal TAP packets; eating them here
-                %% makes everything else easier.
-                {ok, State};
-            _ ->
-                CB(Packet, State)
-        end,
-
-    case Result of
-        {ok, State1} ->
-            process_data(NewBuffer, CB, State1);
-        {stop, State1} ->
-            {NewBuffer, State1}
-    end;
-process_data(Buffer, _CB, State) ->
-    %% Incomplete
-    {Buffer, State}.
-
-
 %% @doc Append Data to the appropriate buffer, calling the given
 %% callback for each packet.
 -spec process_data(binary(), non_neg_integer(),
                    fun((binary(), #state{}) -> #state{}), #state{}) -> #state{}.
 process_data(Data, Elem, CB, State) ->
-    Buffer = element(Elem, State),
-    {NewBuf, NewState} = process_data(<<Buffer/binary, Data/binary>>, CB, State),
-    setelement(Elem, NewState, NewBuf).
-
+    mc_replication:process_data(Data, Elem,
+                                fun (<<_Magic:8, ?NOOP:8, _Rest/binary>>, StateCB) ->
+                                        %% These aren't normal TAP packets; eating them here
+                                        %% makes everything else easier.
+                                        {ok, StateCB};
+                                    (Packet, StateCB) ->
+                                        CB(Packet, StateCB)
+                                end, State).
 
 %% @doc Process a packet from the downstream server.
 -spec process_downstream(<<_:8,_:_*8>>, #state{}) ->
