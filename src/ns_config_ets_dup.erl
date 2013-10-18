@@ -21,12 +21,18 @@
 -export([start_link/0, unreliable_read_key/2, get_timeout/2]).
 
 start_link() ->
-    misc:start_event_link(
-      fun () ->
-              ets:new(ns_config_ets_dup, [public, set, named_table]),
-              ns_pubsub:subscribe_link(ns_config_events, fun event_loop/1),
-              ns_config:reannounce()
-      end).
+    Pid = self(),
+    Res = misc:start_event_link(
+            fun () ->
+                    ets:new(ns_config_ets_dup, [public, set, named_table]),
+                    ns_pubsub:subscribe_link(ns_config_events, fun event_loop/1),
+                    ns_config:reannounce(),
+                    Pid ! process_loaded
+            end),
+    receive
+        process_loaded -> ok
+    end,
+    Res.
 
 event_loop({_K, _V} = Pair) ->
     ets:insert(ns_config_ets_dup, Pair);

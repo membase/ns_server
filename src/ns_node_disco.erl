@@ -64,8 +64,17 @@ start_link() ->
 nodes_actual() ->
     lists:sort(nodes([this, visible])).
 
+% Returns a subset of the nodes_wanted() that we see.  This is not the
+% same as nodes([this, visible]) because this function may return a
+% subset of nodes([this, visible]).  eg, many nodes might be visible
+% at the OTP level.  But the caller only cares about the subset
+% of nodes that are on the nodes_wanted() list.
+
 nodes_actual_proper() ->
-    gen_server:call(?MODULE, nodes_actual_proper).
+    Curr = nodes_actual(),
+    Want = do_nodes_wanted(),
+    Diff = lists:subtract(Curr, Want),
+    lists:usort(lists:subtract(Curr, Diff)).
 
 register_node_renaming_txn(Pid) ->
     gen_server:call(?MODULE, {register_node_renaming_txn, Pid}).
@@ -145,8 +154,6 @@ handle_call({register_node_renaming_txn, Pid}, _From, State) ->
         _ ->
             {reply, already_doing_renaming, State}
     end;
-handle_call(nodes_actual_proper, _From, State) ->
-    {reply, do_nodes_actual_proper(), State};
 
 handle_call(Msg, _From, State) ->
     ?log_warning("Unhandled ~p call: ~p", [?MODULE, Msg]),
@@ -216,22 +223,10 @@ do_nodes_wanted_updated_fun(NodeListIn) ->
 do_nodes_wanted_updated(NodeListIn) ->
     spawn(fun() -> do_nodes_wanted_updated_fun(NodeListIn) end).
 
-% Returns a subset of the nodes_wanted() that we see.  This is not the
-% same as nodes([this, visible]) because this function may return a
-% subset of nodes([this, visible]).  eg, many nodes might be visible
-% at the OTP level.  But the caller only cares about the subset
-% of nodes that are on the nodes_wanted() list.
-
-do_nodes_actual_proper() ->
-    Curr = nodes_actual(),
-    Want = do_nodes_wanted(),
-    Diff = lists:subtract(Curr, Want),
-    lists:usort(lists:subtract(Curr, Diff)).
-
 do_notify(#state{node_renaming_txn_mref = MRef} = State) when MRef =/= undefined ->
     State;
 do_notify(#state{nodes = NodesOld} = State) ->
-    NodesNew = do_nodes_actual_proper(),
+    NodesNew = nodes_actual_proper(),
     case NodesNew =:= NodesOld of
         true  -> State;
         false -> gen_event:notify(ns_node_disco_events,

@@ -60,6 +60,9 @@ child_specs() ->
      {request_throttler, {request_throttler, start_link, []},
       permanent, 1000, worker, [request_throttler]},
 
+     {ns_config_ets_dup, {ns_config_ets_dup, start_link, []},
+      permanent, brutal_kill, worker, [ns_config, ns_config_ets_dup]},
+
      %% ns_log starts after ns_config because it needs the config to
      %% find where to persist the logs
      {ns_log, {ns_log, start_link, []},
@@ -67,9 +70,6 @@ child_specs() ->
 
      {ns_crash_log_consumer, {ns_log, start_link_crash_consumer, []},
       {permanent, 4}, 1000, worker, []},
-
-     {ns_config_ets_dup, {ns_config_ets_dup, start_link, []},
-      permanent, brutal_kill, worker, [ns_config, ns_config_ets_dup]},
 
      %% Track bucket configs and ensure isasl is sync'd up
      {ns_config_isasl_sync, {ns_config_isasl_sync, start_link, []},
