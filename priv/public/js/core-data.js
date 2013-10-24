@@ -170,7 +170,7 @@ var DAL = {
       DAL.componentsVersion = data.componentsVersion;
       DAL.uuid = data.uuid;
       var parsedVersion = DAL.parseVersion(implementationVersion);
-      DAL.isEnterprise = (parsedVersion[3] === 'enterprise');
+      DAL.cells.isEnterpriseCell.setValue((parsedVersion[3] === 'enterprise'));
       if (!DAL.appendedVersion) {
         document.title = document.title +
           " (" + parsedVersion[0] + ")";
@@ -269,10 +269,6 @@ var DAL = {
   }
 };
 
-(function (cells) {
-  cells.isROAdminCell = new Cell();
-})(DAL.cells);
-
 (function () {
   this.mode = new Cell();
   this.poolList = new Cell();
@@ -326,22 +322,67 @@ var DAL = {
 
 }).call(DAL.cells);
 
-(function () {
+(function (cells) {
+  cells.isEnterpriseCell = new Cell();
+  cells.isEnterpriseCell.isEqual = _.isEqual;
+
+  cells.isROAdminCell = new Cell();
+
+  cells.serverGroupsUriRevisoryCell = Cell.compute(function (v) {
+    return v.need(cells.currentPoolDetailsCell).serverGroupsUri
+  }).name("serverGroupsUriRevisoryCell");
+
+  cells.groupsUpdatedByRevisionCell = Cell.compute(function (v) {
+    return future.get({url: v.need(cells.serverGroupsUriRevisoryCell)});
+  }).name("groupsUpdatedByRevisionCell");
+
   var hostnameComparator = mkComparatorByProp('hostname', naturalSort);
+  var groupnameComparator = mkComparatorByProp('group', naturalSort);
+
+  cells.nodesRawCell = Cell.compute(function (v) {
+    if (v.need(cells.isEnterpriseCell)) {
+      var groups = v.need(cells.groupsUpdatedByRevisionCell).groups;
+      _.each(groups, function (group, groupIndex) {
+        group.nodes.sort(hostnameComparator);
+        _.each(group.nodes, function (node, nodeIndex) {
+          node.group = group.name;
+        });
+      });
+      var nodes = _.reduce(groups, function (memo, group) {
+        return memo.concat(group.nodes);
+      }, []);
+      nodes.sort(groupnameComparator);
+      return nodes;
+    } else {
+      var nodes = v.need(DAL.cells.currentPoolDetailsCell).nodes;
+      nodes.sort(hostnameComparator);
+      return nodes
+    }
+  }).name("nodesRawCell");
+  cells.nodesRawCell.delegateInvalidationMethods(cells.groupsUpdatedByRevisionCell);
+
+  cells.currentPoolDetailsCell.subscribeValue(function () {
+    cells.nodesRawCell.invalidate();
+  });
+
+})(DAL.cells);
+
+(function () {
   var pendingEject = []; // nodes to eject on next rebalance
   var pending = []; // nodes for pending tab
   var active = []; // nodes for active tab
   var allNodes = []; // all known nodes
   var cell;
 
-  function formula(details, detailsAreStale) {
+  function formula(v) {
     var self = this;
-
     var pending = [];
     var active = [];
     allNodes = [];
 
-    var nodes = details.nodes;
+    var isEnterprise = v.need(DAL.cells.isEnterpriseCell);
+    var nodes = v.need(DAL.cells.nodesRawCell);
+
     var nodeNames = _.pluck(nodes, 'hostname');
     _.each(nodes, function (n) {
       var mship = n.clusterMembership;
@@ -354,6 +395,8 @@ var DAL = {
         active.push(n);
       }
     });
+
+    var detailsAreStale = v.need(IOCenter.staleness);
 
     var stillActualEject = [];
     _.each(pendingEject, function (node) {
@@ -370,8 +413,6 @@ var DAL = {
     pendingEject = stillActualEject;
 
     pending = pending = pending.concat(pendingEject);
-    pending.sort(hostnameComparator);
-    active.sort(hostnameComparator);
 
     allNodes = _.uniq(active.concat(pending));
 
@@ -419,11 +460,7 @@ var DAL = {
     };
   }
 
-  cell = DAL.cells.serversCell = new Cell(formula, {
-    details: DAL.cells.currentPoolDetailsCell,
-    detailsAreStale: IOCenter.staleness
-  });
-
+  cell = DAL.cells.serversCell = Cell.compute(formula);
   cell.cancelPendingEject = function (node) {
     node.pendingEject = false;
     pendingEject = _.without(pendingEject, node);

@@ -149,6 +149,42 @@
           </div>
         </div>
 
+        <div id="js_groups" class="groups when-roadmin-avoid-me when-enterprise" style="display:none">
+          <div class="groups_header">
+            <h1>Server Groups</h1>
+            <a id="js_create_group"><span>Create Group</span></a>
+            <a id="js_save_groups_changes"><span>Apply Changes</span></a>
+            <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+            <div class="clear"></div>
+            <div class="ellipsis warning_message" id="js_group_notice"></div>
+          </div>
+          <div class="groups_container" id="js_server_group_container"></div>
+          <script id="js_server_group_template" type="text/html">
+            {% if (loading) { %}
+              <div class='spinner' style="height:{%= height %}px;line-height:{%= height %}px;width:100%"><span>Loading...</span></div></div>
+            {% } else { %}
+            {% _.each(groups, function (group, groupIndex) { %}
+              <div class="shadow_box group_wrapper js_group_wrapper" id="js_group_{%= makeSafeForCSS(group.name) %}_wrapper">
+                  <div class="hdr" id="js_group_{%= makeSafeForCSS(group.name) %}">
+                    <a class="btn_1 js_edit_group"><span>Edit group</span></a>
+                    <div><h4 class="ellipsis">{%= h(group.name) %}</h4></div>
+                  </div>
+                  <div class="group_servers js_group_servers">
+                   {% _.each(group.nodes, function (server) { %}
+                      <div class="js_draggable draggable">
+                        <span><span>:::</span>{%= V.stripPortHTML(server.hostname, allNodes) %}</span>
+                      </div>
+                    {% }) %}
+                    <div class="group_is_empty">
+                      <span>This group is empty, <a class="js_delete_group">click to delete</a>.</span>
+                    </div>
+                  </div>
+              </div>
+            {% }); %}
+            {% } %}
+          </script>
+        </div>
+
         <div id="js_servers" class="servers" style="display:none">
           <h1>Servers</h1>
           <div class="warning_message failover_warning">
@@ -163,6 +199,7 @@
           <div class="shadow_box">
             <div class="header_2">
               <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+              <a class="btn_1 when-enterprise when-roadmin-avoid-me" href="#visitSec=groups" id="js_server_groups_tab"><span>Server Groups</span></a>
               <a class="add_button btn_1 when-roadmin-hide-me casper_server_add"><span>Add Server</span></a>
               <a class="rebalance_button btn_1 when-roadmin-hide-me"><span>Rebalance</span></a>
               <a class="stop_rebalance_button btn_1 when-roadmin-hide-me"><span>Stop Rebalance</span></a>
@@ -189,6 +226,7 @@
               <tr>
                 <th class="node_name" colspan="2" style="text-align:left;">Server Node Name</th>
                 <th></th>
+                <th style='{%= isGroupRaw ? "text-align: center!important;" : "width: 0px;" %}'>{%= isGroupRaw ? "Group" : " " %}</th>
                 <th>RAM Usage</th>
                 <th>Swap Usage</th>
                 <th>CPU Usage</th>
@@ -198,14 +236,14 @@
               </tr>
             <!-- {% if (!rows.length) { %} -->
               <tr class="server_row rebalance_empty">
-                <td colspan="10">There are no servers pending rebalance.</td>
+                <td colspan="11">There are no servers pending rebalance.</td>
               </tr>
             <!-- {% } %} -->
             <!-- {% _.each(rows, function (s) { %} -->
 
             <!-- {% if (s.reAddPossible) { %} -->
               <tr class="add_back_row">
-                <td colspan="10">{%= V.setData('server', s) %}
+                <td colspan="11">{%= V.setData('server', s) %}
                   <a href="#" class="add_back_btn re_add_button"></a>
                   <span class="add_b_message">This server is now reachable. Do you want to add it back to the cluster on the next rebalance?</span>
                 </td>
@@ -229,6 +267,7 @@
                 </td>
 
                 <td class="{%= s.nodeClass %}"></td>
+                <td><div class="ellipsis" title="{%= s.group %}">{%= s.group %}</div></td>
 
                 <td class="ram">
                   <!-- {% if ((s.memoryTotal > 0) && isFinite(s.memoryFree)) { %} -->
@@ -297,7 +336,7 @@
 
               </tr>
             <!-- {% if (expandingAllowed) { %} -->
-              <tr><td colspan="10" class="settings-placeholder" style="display:none;">{%= ServersSection.renderServerDetails(s) %}</td></tr>
+              <tr><td colspan="11" class="settings-placeholder" style="display:none;">{%= ServersSection.renderServerDetails(s) %}</td></tr>
             <!-- {% } %} -->
           <!-- {% }); %} -->
             </tbody>
@@ -2099,6 +2138,49 @@
 </div>
 <!-- END Save Document as -->
 
+<div class="dialog" id="js_add_group_dialog" style="width: 331px;" title="Add Group">
+  <form id="js_add_group_form" class="add_group_form">
+    <div class="inner_wrap">
+      <i class="warning js_error_group"></i>
+      <label for="js_new_group_filed" style="width:auto">Group Name:</label>
+      <input type="text" name="group" id="js_new_group_filed">
+    </div>
+    <div class="save_cancel clearfix">
+      <button type="submit" class="save_button float_right">Create</button>
+      <a class="close casper_roadmin_reset_dialog_cancel">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<div class="dialog" id="js_remove_group_dialog" title="Removing">
+  <form>
+    <div class="clearfix">
+      <div class="err">
+        <p>Are you sure you want to remove it?</p>
+      </div>
+    </div>
+    <div class="save_cancel clearfix">
+      <button type="button" class="delete_button float_right js_delete_button">Delete</button>
+      <a class="close">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<div class="dialog" id="js_edit_group_dialog" style="width: 331px;" title="Edit Group">
+  <form id="js_edit_group_form" class="add_group_form">
+    <div class="inner_wrap">
+      <i class="warning js_error_group"></i>
+      <label for="js_edit_group_filed" style="width:auto">Group Name:</label>
+      <input type="text" name="group" id="js_edit_group_filed">
+    </div>
+    <div class="save_cancel clearfix">
+      <button type="submit" class="save_button float_right">Save</button>
+      <a class="close casper_roadmin_reset_dialog_cancel">Cancel</a>
+    </div>
+  </form>
+</div>
+
+
 <div class="dialog join_cluster casper_join_cluster_dialog" id="join_cluster_dialog" title="Add Server">
   <!-- Join cluster -->
   <p class="warning pat_10" id="join_cluster_dialog_errors_container"></p>
@@ -2118,6 +2200,10 @@
               This is the hostname or IP address of a server node that you wish to add.
             </span></span>
           </a>
+        </li>
+        <li class="when-enterprise">
+          <label class="label" for="js_servers_group_select">Server Group:</label>
+          <select id="js_servers_group_select" class="server_group_select" style="width:157px;" name="group"></select>
         </li>
       </ul>
     </fieldset>
@@ -2924,6 +3010,7 @@ $(window).bind('template:rendered', function () {
 <script src="js/app-misc.js"></script>
 <script src="js/core-data.js"></script>
 <script src="js/analytics.js"></script>
+<script src="js/groups.js"></script>
 <script src="js/servers.js"></script>
 <script src="js/settings.js"></script>
 <script src="js/buckets.js"></script>

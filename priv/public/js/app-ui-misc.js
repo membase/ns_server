@@ -14,6 +14,18 @@
    limitations under the License.
  **/
 ;(function($){
+  $.fn.fullOffset = function () {
+    var offset = this.offset();
+    offset.bottom = offset.top + this.outerHeight();
+    offset.right = offset.left + this.outerWidth();
+    return offset;
+  };
+  $.fn.insertAt = function (elements, index) {
+    var array = $.makeArray(this.children());
+    array.splice(index, 0, elements);
+    this.append(array);
+    return this;
+  };
   $.fn.observePotentialChanges = (function () {
     var intervalId;
     var period = 20;

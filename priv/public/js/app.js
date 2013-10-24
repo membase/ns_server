@@ -158,6 +158,7 @@ var LogsSection = {
 var ThePage = {
   sections: {overview: OverviewSection,
              servers: ServersSection,
+             groups: ServerGroupsSection,
              analytics: AnalyticsSection,
              buckets: BucketsSection,
              views: ViewsSection,
@@ -672,7 +673,7 @@ var SetupWizard = {
             return SetupWizard.panicAndReload();
           }
 
-          $('#init_cluster_dialog .when-enterprise').toggle(!!DAL.isEnterprise);
+          $('#init_cluster_dialog .when-enterprise').toggle(!!DAL.cells.isEnterpriseCell.value);
 
           // we have node data and can finally display our wizard page
           // and pre-fill the form
@@ -905,8 +906,8 @@ var SetupWizard = {
         dialog.find('button.next').trigger('click');
       });
 
-      dialog.find('.when-enterprise').toggle(!!DAL.isEnterprise);
-      dialog.find('.when-community').toggle(!DAL.isEnterprise);
+      dialog.find('.when-enterprise').toggle(!!DAL.cells.isEnterpriseCell.value);
+      dialog.find('.when-community').toggle(!DAL.cells.isEnterpriseCell.value);
 
       setTimeout(function () {
         try {
@@ -971,7 +972,7 @@ var SetupWizard = {
           errors.push("Email appears to be invalid");
         }
 
-        if (DAL.isEnterprise) {
+        if (DAL.cells.isEnterpriseCell.value) {
           var termsChecked = !!$('#init-join-terms').attr('checked');
           if (!termsChecked) {
             errors.push("Terms and conditions need to be accepted in order to continue");
