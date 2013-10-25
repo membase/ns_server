@@ -216,7 +216,9 @@ handle_info(tick, State0) ->
     State = State0#state{count=AutoFailoverCount},
 
     NonPendingNodes = lists:sort(ns_cluster_membership:active_nodes(Config)),
-    CurrentlyDown = actual_down_nodes(NonPendingNodes, Config),
+
+    NodeStatuses = ns_doctor:get_nodes(),
+    CurrentlyDown = actual_down_nodes(NodeStatuses, NonPendingNodes, Config),
     {Actions, LogicState} =
         auto_failover_logic:process_frame(NonPendingNodes,
                                           CurrentlyDown,
@@ -252,7 +254,7 @@ handle_info(tick, State0) ->
                       ok ->
                           ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
                                     "Node (~p) was automatically failovered.~n~p",
-                                    [Node, ns_doctor:get_node(Node)]),
+                                    [Node, ns_doctor:get_node(Node, NodeStatuses)]),
                           init_reported(S#state{count = S#state.count+1});
                       {autofailover_unsafe, UnsafeBuckets} ->
                           case should_report(#state.reported_autofailover_unsafe, S) of
@@ -311,11 +313,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%
 
 %% @doc Returns a list of nodes that should be active, but are not running.
--spec actual_down_nodes([atom()], [{atom(), term()}]) -> [atom()].
-actual_down_nodes(NonPendingNodes, Config) ->
+-spec actual_down_nodes(dict(), [atom()], [{atom(), term()}]) -> [atom()].
+actual_down_nodes(NodesDict, NonPendingNodes, Config) ->
     % Get all buckets
     BucketConfigs = ns_bucket:get_buckets(Config),
-    NodesDict = ns_doctor:get_nodes(),
     actual_down_nodes_inner(NonPendingNodes, BucketConfigs, NodesDict, erlang:now()).
 
 actual_down_nodes_inner(NonPendingNodes, BucketConfigs, NodesDict, Now) ->
