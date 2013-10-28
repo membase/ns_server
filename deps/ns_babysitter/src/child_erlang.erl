@@ -4,8 +4,7 @@
 
 -export([arguments_to_args/1,
          child_start/1,
-         open_port_args/0,
-         alloc_params/0]).
+         open_port_args/0]).
 
 get_ns_server_vm_extra_args() ->
     case os:getenv("COUCHBASE_NS_SERVER_VM_EXTRA_ARGS") of
@@ -34,19 +33,18 @@ get_ns_server_vm_extra_args() ->
             end
     end.
 
-alloc_params() ->
-    ["+Mummc", "0",
-     "+Mummmbc", "0",
-     "+Mummsbc", "0"].
-
 open_port_args() ->
     AppArgs = arguments_to_args(init:get_arguments()),
     ErlangArgs = ["+A" , "16",
                   "-smp", "enable",
                   "+sbt",  "u",
                   "+P", "327680",
-                  "+K", "true"
-                  ] ++ alloc_params() ++ [
+                  "+K", "true",
+                  "+MMmcs", case os:getenv("COUCHBASE_MSEG_CACHE_SIZE") of
+                                false -> "30";
+                                MCS ->
+                                    MCS
+                            end,
                   "-setcookie", "nocookie",
                   "-kernel", "inet_dist_listen_min", "21100", "inet_dist_listen_max", "21299",
                   "error_logger", "false",
@@ -59,8 +57,7 @@ open_port_args() ->
                              "bin", "erl"]),
     [{spawn_executable, ErlPath},
      [{args, AllArgs},
-      {env, [{"NS_SERVER_BABYSITTER_COOKIE", atom_to_list(erlang:get_cookie())},
-             {"MALLOC_MMAP_MAX_", "0"}]},
+      {env, [{"NS_SERVER_BABYSITTER_COOKIE", atom_to_list(erlang:get_cookie())}]},
       exit_status, use_stdio, stream, eof]].
 
 child_start(Arg) ->
