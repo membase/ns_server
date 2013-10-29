@@ -63,6 +63,7 @@
          search_prop/3, search_prop/4,
          search_prop_tuple/3, search_prop_tuple/4,
          search_raw/2,
+         run_txn/1,
          clear/0, clear/1,
          proplist_get_value/3,
          merge_kv_pairs/2,
@@ -164,6 +165,32 @@ set(Key, Value) ->
                                      NewList = update_config_key(Key, Value, Config),
                                      {[hd(NewList)], NewList}
                              end).
+
+%% gets current config. Runs Body on it to get new config, then tries
+%% to cas new config returning retry_needed if it fails
+-spec run_txn(fun((ConfigKVList :: [[term()]],
+                   UpdateFn :: fun((Key :: term(), Value :: term(), Cfg :: [term()]) -> NewConfig :: [[term()]]))
+                  -> {commit, ConfigKVList :: [[term()]]} | {abort, any()})) ->
+                     {commit, [term()]} | {abort, any()} | retry_needed.
+run_txn(Body) ->
+    run_txn_loop(Body, 10).
+
+run_txn_loop(_Body, 0) ->
+    retry_needed;
+run_txn_loop(Body, RetriesLeft) ->
+    Cfg = [get_kv_list()],
+    case Body(Cfg, fun run_txn_set/3) of
+        {commit, [NewCfg]} ->
+            case cas_config(NewCfg, hd(Cfg)) of
+                true -> {commit, NewCfg};
+                false -> run_txn_loop(Body, RetriesLeft - 1)
+            end;
+        {abort, _} = AbortRV ->
+            AbortRV
+    end.
+
+run_txn_set(Key, Value, [KVList]) ->
+    [update_config_key(Key, Value, KVList)].
 
 %% Updates Config with list of {Key, Value} pairs. Places new pairs at
 %% the beginning of new list and removes old occurences of that keys.
