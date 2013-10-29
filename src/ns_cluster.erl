@@ -49,7 +49,9 @@
          shun/1,
          start_link/0]).
 
--export([add_node/3, engage_cluster/1, complete_join/1,
+-export([add_node/3,
+         add_node_to_group/4,
+         engage_cluster/1, complete_join/1,
          check_host_connectivity/1, change_address/1]).
 
 %% debugging & diagnostic export
@@ -70,6 +72,16 @@ start_link() ->
 
 add_node(RemoteAddr, RestPort, Auth) ->
     RV = gen_server:call(?MODULE, {add_node, RemoteAddr, RestPort, Auth}, ?ADD_NODE_TIMEOUT),
+    case RV of
+        {error, _What, Message, _Nested} ->
+            ?cluster_log(?NODE_JOIN_FAILED, "Failed to add node ~s:~w to cluster. ~s",
+                         [RemoteAddr, RestPort, Message]);
+        _ -> ok
+    end,
+    RV.
+
+add_node_to_group(RemoteAddr, RestPort, Auth, GroupUUID) ->
+    RV = gen_server:call(?MODULE, {add_node_to_group, RemoteAddr, RestPort, Auth, GroupUUID}, ?ADD_NODE_TIMEOUT),
     case RV of
         {error, _What, Message, _Nested} ->
             ?cluster_log(?NODE_JOIN_FAILED, "Failed to add node ~s:~w to cluster. ~s",
@@ -133,8 +145,14 @@ code_change(_OldVsn, State, _Extra) ->
 
 handle_call({add_node, RemoteAddr, RestPort, Auth}, _From, State) ->
     ?cluster_debug("handling add_node(~p, ~p, ..)~n", [RemoteAddr, RestPort]),
-    RV = do_add_node(RemoteAddr, RestPort, Auth),
+    RV = do_add_node(RemoteAddr, RestPort, Auth, undefined),
     ?cluster_debug("add_node(~p, ~p, ..) -> ~p~n", [RemoteAddr, RestPort, RV]),
+    {reply, RV, State};
+
+handle_call({add_node_to_group, RemoteAddr, RestPort, Auth, GroupUUID}, _From, State) ->
+    ?cluster_debug("handling add_node(~p, ~p, ~p, ..)~n", [RemoteAddr, RestPort, GroupUUID]),
+    RV = do_add_node(RemoteAddr, RestPort, Auth, GroupUUID),
+    ?cluster_debug("add_node(~p, ~p, ~p, ..) -> ~p~n", [RemoteAddr, RestPort, GroupUUID, RV]),
     {reply, RV, State};
 
 handle_call({engage_cluster, NodeKVList}, _From, State) ->
@@ -302,10 +320,19 @@ shun(RemoteNode) ->
     case RemoteNode == node() of
         false ->
             ?cluster_debug("Shunning ~p", [RemoteNode]),
-            ns_config:update_key(nodes_wanted,
-                                 fun (X) ->
-                                         X -- [RemoteNode]
-                                 end),
+            ok = ns_config:update(
+                   fun ({nodes_wanted, V}) ->
+                           {nodes_wanted, V -- [RemoteNode]};
+                       ({server_groups, Groups}) ->
+                           G2 = [case proplists:get_value(nodes, G) of
+                                     Nodes ->
+                                         NewNodes = Nodes -- [RemoteNode],
+                                         lists:keystore(nodes, 1, G, {nodes, NewNodes})
+                                 end || G <- Groups],
+                           {server_groups, G2};
+                       (Other) ->
+                           Other
+                   end, erlang:make_ref()),
             ns_config_rep:push();
         true ->
             ?cluster_debug("Asked to shun myself. Leaving cluster.", []),
@@ -421,9 +448,9 @@ check_add_possible(Body) ->
             Body()
     end.
 
-do_add_node(RemoteAddr, RestPort, Auth) ->
+do_add_node(RemoteAddr, RestPort, Auth, GroupUUID) ->
     check_add_possible(fun () ->
-                               do_add_node_allowed(RemoteAddr, RestPort, Auth)
+                               do_add_node_allowed(RemoteAddr, RestPort, Auth, GroupUUID)
                        end).
 
 should_change_address() ->
@@ -431,7 +458,7 @@ should_change_address() ->
     ns_node_disco:nodes_wanted() =:= [node()] andalso
         not dist_manager:using_user_supplied_address().
 
-do_add_node_allowed(RemoteAddr, RestPort, Auth) ->
+do_add_node_allowed(RemoteAddr, RestPort, Auth, GroupUUID) ->
     case check_host_connectivity(RemoteAddr) of
         {ok, MyIP} ->
             R = case should_change_address() of
@@ -447,7 +474,7 @@ do_add_node_allowed(RemoteAddr, RestPort, Auth) ->
                 end,
             case R of
                 ok ->
-                    do_add_node_with_connectivity(RemoteAddr, RestPort, Auth);
+                    do_add_node_with_connectivity(RemoteAddr, RestPort, Auth, GroupUUID);
                 {address_save_failed, Error} = Nested ->
                     Msg = io_lib:format("Could not save address after rename: ~p",
                                         [Error]),
@@ -456,7 +483,7 @@ do_add_node_allowed(RemoteAddr, RestPort, Auth) ->
         X -> X
     end.
 
-do_add_node_with_connectivity(RemoteAddr, RestPort, Auth) ->
+do_add_node_with_connectivity(RemoteAddr, RestPort, Auth, GroupUUID) ->
     {struct, NodeInfo} = menelaus_web:build_full_node_info(node(), "127.0.0.1"),
     Struct = {struct, [{<<"requestedTargetNodeHostname">>, list_to_binary(RemoteAddr)}
                        | NodeInfo]},
@@ -483,7 +510,7 @@ do_add_node_with_connectivity(RemoteAddr, RestPort, Auth) ->
     case ExtendedRV of
         {ok, {struct, NodeKVList}} ->
             try
-                do_add_node_engaged(NodeKVList, Auth)
+                do_add_node_engaged(NodeKVList, Auth, GroupUUID)
             catch
                 exit:{unexpected_json, _Where, _Field} = Exc ->
                     JsonMsg = ns_error_messages:engage_cluster_json_error(Exc),
@@ -554,14 +581,14 @@ verify_otp_connectivity(OtpNode) ->
             end
     end.
 
-do_add_node_engaged(NodeKVList, Auth) ->
+do_add_node_engaged(NodeKVList, Auth, GroupUUID) ->
     OtpNode = expect_json_property_atom(<<"otpNode">>, NodeKVList),
     RV = verify_otp_connectivity(OtpNode),
     case RV of
         ok ->
             case check_can_add_node(NodeKVList) of
                 ok ->
-                    node_add_transaction(OtpNode,
+                    node_add_transaction(OtpNode, GroupUUID,
                                          fun () ->
                                                  do_add_node_engaged_inner(NodeKVList, OtpNode, Auth)
                                          end);
@@ -631,14 +658,60 @@ do_add_node_engaged_inner(NodeKVList, OtpNode, Auth) ->
             {error, complete_join, M, E}
     end.
 
-node_add_transaction(Node, Body) ->
-    Fun = fun(X) ->
-                  lists:usort([Node | X])
-          end,
-    ns_config:update_key(nodes_wanted, Fun),
-    ns_config:set({node, Node, membership}, inactiveAdded),
-    ?cluster_info("Started node add transaction by adding node ~p to nodes_wanted~n",
-                  [Node]),
+node_add_transaction(Node, GroupUUID, Body) ->
+    TXNRV = ns_config:run_txn(
+              fun (Cfg, SetFn) ->
+                      {value, NWanted} = ns_config:search(Cfg, nodes_wanted),
+                      NewNWanted = lists:usort([Node | NWanted]),
+                      Cfg1 = SetFn(nodes_wanted, NewNWanted, Cfg),
+                      Cfg2 = SetFn({node, Node, membership}, inactiveAdded, Cfg1),
+                      case ns_config:search(Cfg, cluster_compat_version, undefined) of
+                          [_A, _B] = CompatVersion when CompatVersion >= [2, 5] ->
+                              {value, Groups} = ns_config:search(Cfg, server_groups),
+                              MaybeGroup0 = [G || G <- Groups,
+                                                  proplists:get_value(uuid, G) =:= GroupUUID],
+                              MaybeGroup = case MaybeGroup0 of
+                                               [] ->
+                                                   case GroupUUID of
+                                                       undefined ->
+                                                           [hd(Groups)];
+                                                       _ ->
+                                                           []
+                                                   end;
+                                               _ ->
+                                                   true = (undefined =/= GroupUUID),
+                                                   MaybeGroup0
+                                           end,
+                              case MaybeGroup of
+                                  [] ->
+                                      {abort, notfound};
+                                  [TheGroup] ->
+                                      GroupNodes = proplists:get_value(nodes, TheGroup),
+                                      true = (is_list(GroupNodes)),
+                                      NewGroupNodes = lists:usort([Node | GroupNodes]),
+                                      NewGroup = lists:keystore(nodes, 1, TheGroup, {nodes, NewGroupNodes}),
+                                      NewGroups = lists:usort([NewGroup | (Groups -- MaybeGroup)]),
+                                      Cfg3 = SetFn(server_groups, NewGroups, Cfg2),
+                                      {commit, Cfg3}
+                              end;
+                          _ ->
+                              %% we're pre 2.5 compat mode. Not touching server groups
+                              {commit, Cfg2}
+                      end
+              end),
+    case TXNRV of
+        {commit, _} ->
+            node_add_transaction_finish(Node, GroupUUID, Body);
+        {abort, notfound} ->
+            M = iolist_to_binary([<<"Could not find group with uuid: ">>, GroupUUID]),
+            {error, unknown_group, M, {unknown_group, GroupUUID}};
+        retry_needed ->
+            erlang:error(exceeded_retries)
+    end.
+
+node_add_transaction_finish(Node, GroupUUID, Body) ->
+    ?cluster_info("Started node add transaction by adding node ~p to nodes_wanted (group: ~s)~n",
+                  [Node, GroupUUID]),
     try Body() of
         {ok, _} = X -> X;
         Crap ->
