@@ -58,10 +58,7 @@ do_upgrade_config(Config, FinalVersion) ->
             [{set, dynamic_config_version, [2, 0]} |
              upgrade_config_from_pre_2_0_to_2_0(Config)];
         {value, FinalVersion} ->
-            [];
-        {value, [2, 0]} ->
-            [{set, dynamic_config_version, [2, 2]} |
-             upgrade_config_from_2_0_to_2_2(Config)]
+            []
     end.
 
 upgrade_config_on_join_from_pre_2_0_to_2_0(Config) ->
@@ -72,9 +69,6 @@ upgrade_config_from_pre_2_0_to_2_0(Config) ->
     ?log_info("Performing online config upgrade to 2.0 version"),
     maybe_add_buckets_uuids(Config).
 
-upgrade_config_from_2_0_to_2_2(Config) ->
-    ?log_info("Performing online config upgrade to 2.2 version"),
-    upgrade_xdcr_settings(Config).
 
 maybe_add_vbucket_map_history(Config) ->
     maybe_add_vbucket_map_history(Config, ?VBMAP_HISTORY_SIZE).
@@ -129,19 +123,6 @@ maybe_add_bucket_uuid({BucketName, BucketConfig} = Bucket) ->
             Bucket
     end.
 
-upgrade_xdcr_settings(Config) ->
-    Mapping0 = [{list_to_atom("xdcr_" ++ atom_to_list(Key)), {xdcr, Key}}
-                || {Key, _, _, _} <- xdc_settings:settings_specs()],
-    Mapping = dict:from_list(Mapping0),
-    ns_config:fold(
-      fun (Key, Value, Acc) ->
-              case dict:find(Key, Mapping) of
-                  {ok, NewKey} ->
-                      [{set, NewKey, Value} | Acc];
-                  error ->
-                      Acc
-              end
-      end, [], Config).
 
 -ifdef(EUNIT).
 
@@ -259,29 +240,5 @@ add_buckets_uuids_test() ->
                  maybe_add_buckets_uuids(OldCfg6)),
 
     ok.
-
-upgrade_xdcr_settings_test() ->
-    Cfg = [[{xdcr_max_concurrent_reps, 32},
-            {xdcr_checkpoint_interval, 1800},
-            {xdcr_doc_batch_size_kb, 2048},
-            {xdcr_failure_restart_interval, 30},
-            {xdcr_worker_batch_size, 500},
-            {xdcr_connection_timeout, 180},
-            {xdcr_worker_processes, 4},
-            {xdcr_http_connections, 20},
-            {xdcr_retries_per_request, 2},
-            {xdcr_optimistic_replication_threshold, 256}]],
-
-    ?assertEqual([{set, {xdcr, max_concurrent_reps}, 32},
-                  {set, {xdcr, checkpoint_interval}, 1800},
-                  {set, {xdcr, doc_batch_size_kb}, 2048},
-                  {set, {xdcr, failure_restart_interval}, 30},
-                  {set, {xdcr, worker_batch_size}, 500},
-                  {set, {xdcr, connection_timeout}, 180},
-                  {set, {xdcr, worker_processes}, 4},
-                  {set, {xdcr, http_connections}, 20},
-                  {set, {xdcr, retries_per_request}, 2},
-                  {set, {xdcr, optimistic_replication_threshold}, 256}],
-                 lists:reverse(upgrade_xdcr_settings(Cfg))).
 
 -endif.
