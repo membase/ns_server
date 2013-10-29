@@ -121,6 +121,10 @@ handle_event({nodes_wanted, _}, State) ->
     ok = notify_watchers(nodes_wanted, State),
     {ok, State};
 
+handle_event({server_groups, _}, State) ->
+    ok = notify_watchers(server_groups, State),
+    {ok, State};
+
 handle_event({ns_node_disco_events, _NodesBefore, _NodesAfter}, State) ->
     ok = notify_watchers(ns_node_disco_events, State),
     {ok, State};
