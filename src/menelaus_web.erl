@@ -225,6 +225,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                               [PoolId, Id]};
                          ["pools", "default", "remoteClusters"] ->
                              {auth_ro, fun menelaus_web_remote_clusters:handle_remote_clusters/1};
+                         ["pools", "default", "serverGroups"] ->
+                             {auth_ro, fun menelaus_web_groups:handle_server_groups/1};
                          ["nodeStatuses"] ->
                              {auth_ro, fun handle_node_statuses/1};
                          ["logs"] ->
@@ -343,6 +345,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun handle_eject_post/1};
                          ["controller", "addNode"] ->
                              {auth, fun handle_add_node/1};
+                         ["pools", "default", "serverGroups", UUID, "addNode"] ->
+                             {auth, fun handle_add_node_to_group/2, [UUID]};
                          ["controller", "failOver"] ->
                              {auth, fun handle_failover/1};
                          ["controller", "rebalance"] ->
@@ -411,6 +415,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_remote_clusters:handle_remote_clusters_post/1};
                          ["pools", "default", "remoteClusters", Id] ->
                              {auth, fun menelaus_web_remote_clusters:handle_remote_cluster_update/2, [Id]};
+                         ["pools", "default", "serverGroups"] ->
+                             {auth, fun menelaus_web_groups:handle_server_groups_post/1};
                          ["logClientError"] -> {auth,
                                                 fun (R) ->
                                                         User = menelaus_auth:extract_auth_user(R),
@@ -443,6 +449,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun handle_read_only_user_delete/1};
                          ["nodes", Node, "resources", LocationPath] ->
                              {auth, fun handle_resource_delete/3, [Node, LocationPath]};
+                         ["pools", "default", "serverGroups", GroupUUID] ->
+                             {auth, fun menelaus_web_groups:handle_server_group_delete/2, [GroupUUID]};
                          ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
                          _ ->
                              ?MENELAUS_WEB_LOG(0002, "Invalid delete received: ~p as ~p", [Req, PathTokens]),
@@ -452,6 +460,10 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                      case PathTokens of
                          ["settings", "readOnlyUser"] ->
                              {auth, fun handle_read_only_user_reset/1};
+                         ["pools", "default", "serverGroups"] ->
+                             {auth, fun menelaus_web_groups:handle_server_groups_put/1};
+                         ["pools", "default", "serverGroups", GroupUUID] ->
+                             {auth, fun menelaus_web_groups:handle_server_group_update/2, [GroupUUID]};
                          ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
                          _ ->
                              ?MENELAUS_WEB_LOG(0003, "Invalid ~p received: ~p", [Method, Req]),
@@ -1011,6 +1023,15 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
                                       end},
                  {tasks, {struct, [{uri, TasksURI}]}},
                  {counters, {struct, ns_cluster:counters()}}],
+
+    PropList1 = case cluster_compat_mode:is_cluster_25() of
+                    true ->
+                        GroupsV = erlang:phash2(ns_config:search(Config, server_groups)),
+                        [{serverGroupsUri, <<"/pools/default/serverGroups?v=", (list_to_binary(integer_to_list(GroupsV)))/binary>>}
+                         | PropList0];
+                    _ ->
+                        PropList0
+                end,
     PropList =
         case InfoLevel of
             for_ui ->
@@ -1019,12 +1040,12 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
                 [{storageTotals, {struct, StorageTotals}},
                  {balanced, ns_cluster_membership:is_balanced()},
                  {failoverWarnings, ns_bucket:failover_warnings()}
-                 | PropList0];
+                 | PropList1];
             normal ->
                 StorageTotals = [ {Key, {struct, StoragePList}}
                   || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
-                [{storageTotals, {struct, StorageTotals}} | PropList0];
-            _ -> PropList0
+                [{storageTotals, {struct, StorageTotals}} | PropList1];
+            _ -> PropList1
         end,
 
     {struct, PropList}.
@@ -2273,6 +2294,12 @@ parse_hostname([]) ->
     throw({error, [<<"Hostname is required.">>]}).
 
 handle_add_node(Req) ->
+    do_handle_add_node(Req, undefined).
+
+handle_add_node_to_group(GroupUUIDString, Req) ->
+    do_handle_add_node(Req, list_to_binary(GroupUUIDString)).
+
+do_handle_add_node(Req, GroupUUID) ->
     %% parameter example: hostname=epsilon.local, user=Administrator, password=asd!23
     Params = Req:parse_post(),
 
@@ -2290,9 +2317,13 @@ handle_add_node(Req) ->
     case validate_add_node_params(User, Password) ++ Errors of
         [] ->
             {Hostname, Port} = HostAndPort,
-            case ns_cluster:add_node(Hostname, Port, {User, Password}) of
+            case ns_cluster:add_node_to_group(
+                   Hostname, Port,
+                   {User, Password}, GroupUUID) of
                 {ok, OtpNode} ->
                     reply_json(Req, {struct, [{otpNode, OtpNode}]}, 200);
+                {error, unknown_group, Message, _} ->
+                    reply_json(Req, [Message], 404);
                 {error, _What, Message, _Nested} ->
                     reply_json(Req, [Message], 400)
             end;
