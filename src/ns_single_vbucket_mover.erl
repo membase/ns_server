@@ -102,6 +102,40 @@ wait_backfill_determination(Replicators) ->
                                     not is_boolean(RV)]
       end).
 
+wait_backfill_complete(Replicators) ->
+    Self = self(),
+
+    spawn_and_wait(
+      fun () ->
+              RVs = misc:parallel_map(
+                      fun ({N, Pid}) ->
+                              {N, (catch ebucketmigrator_srv:wait_backfill_complete(Pid))}
+                      end, Replicators, infinity),
+              misc:letrec(
+                [RVs, [], false],
+                fun (Rec, [RV | RestRVs], BadRetvals, HadUnhandled) ->
+                        case RV of
+                            {_, ok} ->
+                                Rec(Rec, RestRVs, BadRetvals, HadUnhandled);
+                            {_, not_backfilling} ->
+                                Rec(Rec, RestRVs, BadRetvals, HadUnhandled);
+                            {_, unhandled} ->
+                                Rec(Rec, RestRVs, BadRetvals, true);
+                            _ ->
+                                Rec(Rec, RestRVs, [RV | BadRetvals], HadUnhandled)
+                        end;
+                    (_Rec, [], [], HadUnhandled) ->
+                        Self ! {had_unhandled, HadUnhandled};
+                    (_Rec, [], BadRVs, _) ->
+                        erlang:error({wait_backfill_complete_failed_for, BadRVs})
+                end)
+      end),
+    receive
+        {had_unhandled, HadUnhandledVal} ->
+            HadUnhandledVal
+    end.
+
+
 wait_checkpoint_persisted_many(Bucket, Parent, FewNodes, VBucket, WaitedCheckpointId) ->
     spawn_and_wait(
       fun () ->
@@ -118,10 +152,20 @@ wait_checkpoint_persisted_many(Bucket, Parent, FewNodes, VBucket, WaitedCheckpoi
               end
       end).
 
-mover_inner(Parent, Node, Bucket, VBucket,
-            OldChain, [NewNode|_] = NewChain) ->
-    process_flag(trap_exit, true),
+wait_index_updated(Bucket, Parent, NewNode, ReplicaNodes, VBucket) ->
+    case ns_config_ets_dup:unreliable_read_key(rebalance_index_waiting_disabled, false) of
+        false ->
+            master_activity_events:note_wait_index_updated_started(Bucket, NewNode, VBucket),
+            spawn_and_wait(
+              fun () ->
+                      ok = janitor_agent:wait_index_updated(Bucket, Parent, NewNode, ReplicaNodes, VBucket)
+              end),
+            master_activity_events:note_wait_index_updated_ended(Bucket, NewNode, VBucket);
+        _ ->
+            ok
+    end.
 
+inhibit_view_compaction(Parent, Node, Bucket, NewNode) ->
     case cluster_compat_mode:rebalance_ignore_view_compactions() of
         false ->
             spawn_and_wait(
@@ -144,24 +188,21 @@ mover_inner(Parent, Node, Bucket, VBucket,
               end);
         _ ->
             ok
-    end,
+    end.
 
-    %% first build new chain as replicas of existing master
-    Node = hd(OldChain),
-    ReplicaNodes = [N || N <- NewChain,
-                         N =/= Node,
-                         N =/= undefined,
-                         N =/= NewNode],
-    JustBackfillNodes = [N || N <- [NewNode],
-                              N =/= Node],
+mover_inner(Parent, Node, Bucket, VBucket,
+            [Node|_] = OldChain, [NewNode|_] = NewChain) ->
+    process_flag(trap_exit, true),
+
+    inhibit_view_compaction(Parent, Node, Bucket, NewNode),
+
+    % build new chain as replicas of existing master
+    {ReplicaNodes, JustBackfillNodes} =
+        get_replica_and_backfill_nodes(Node, NewChain),
+
+    set_initial_vbucket_state(Bucket, Parent, VBucket, ReplicaNodes, JustBackfillNodes),
+
     AllBuiltNodes = JustBackfillNodes ++ ReplicaNodes,
-    true = (JustBackfillNodes =/= [undefined]),
-
-    Changes = [{Replica, replica, undefined, undefined}
-               || Replica <- ReplicaNodes]
-        ++ [{FutureMaster, replica, passive, undefined}
-            || FutureMaster <- JustBackfillNodes],
-    janitor_agent:bulk_set_vbucket_state(Bucket, Parent, VBucket, Changes),
 
     BuilderPid = new_ns_replicas_builder:spawn_link(
                    Bucket, VBucket, Node,
@@ -183,38 +224,9 @@ mover_inner(Parent, Node, Bucket, VBucket,
     WaitedCheckpointId = janitor_agent:get_replication_persistence_checkpoint_id(Bucket, Parent, Node, VBucket),
     ?rebalance_info("Will wait for checkpoint ~p on replicas", [WaitedCheckpointId]),
 
-    Self = self(),
-
-    spawn_and_wait(
-      fun () ->
-              RVs = misc:parallel_map(
-                      fun ({N, Pid}) ->
-                              {N, (catch ebucketmigrator_srv:wait_backfill_complete(Pid))}
-                      end, BuilderReplicators, infinity),
-              misc:letrec(
-                [RVs, [], false],
-                fun (Rec, [RV | RestRVs], BadRetvals, HadUnhandled) ->
-                        case RV of
-                            {_, ok} ->
-                                Rec(Rec, RestRVs, BadRetvals, HadUnhandled);
-                            {_, not_backfilling} ->
-                                Rec(Rec, RestRVs, BadRetvals, HadUnhandled);
-                            {_, unhandled} ->
-                                Rec(Rec, RestRVs, BadRetvals, true);
-                            _ ->
-                                Rec(Rec, RestRVs, [RV | BadRetvals], HadUnhandled)
-                        end;
-                    (_Rec, [], [], HadUnhandled) ->
-                        Self ! {had_unhandled, HadUnhandled};
-                    (_Rec, [], BadRVs, _) ->
-                        erlang:error({wait_backfill_complete_failed_for, BadRVs})
-                end)
-      end),
+    HadUnhandled = wait_backfill_complete(BuilderReplicators),
     master_activity_events:note_backfill_phase_ended(Bucket, VBucket),
-    HadUnhandled = receive
-                       {had_unhandled, HadUnhandledVal} ->
-                           HadUnhandledVal
-                   end,
+
     case HadUnhandled of
         false ->
             %% we could handle wait_backfill_complete for all nodes,
@@ -231,6 +243,7 @@ mover_inner(Parent, Node, Bucket, VBucket,
     ok = wait_checkpoint_persisted_many(Bucket, Parent, AllBuiltNodes, VBucket, WaitedCheckpointId),
     master_activity_events:note_checkpoint_waiting_ended(Bucket, VBucket, WaitedCheckpointId, AllBuiltNodes),
 
+    %% report backfill as done if it was not reported before
     case HadUnhandled of
         true ->
             Parent ! {backfill_done, {Node, VBucket, OldChain, NewChain}};
@@ -255,41 +268,41 @@ mover_inner(Parent, Node, Bucket, VBucket,
                 false ->
                     ok
             end,
-            case ns_config_ets_dup:unreliable_read_key(rebalance_index_waiting_disabled, false) of
-                false ->
-                    master_activity_events:note_wait_index_updated_started(Bucket, NewNode, VBucket),
-                    spawn_and_wait(
-                      fun () ->
-                              ok = janitor_agent:wait_index_updated(Bucket, Parent, NewNode, ReplicaNodes, VBucket)
-                      end),
-                    master_activity_events:note_wait_index_updated_ended(Bucket, NewNode, VBucket);
-                _ ->
-                    ok
-            end,
+
+            wait_index_updated(Bucket, Parent, NewNode, ReplicaNodes, VBucket),
+
             new_ns_replicas_builder:shutdown_replicator(BuilderPid, NewNode),
             ok = run_mover(Bucket, VBucket, Node, NewNode),
             ok = janitor_agent:set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined)
     end.
 
-
-mover_inner_old_style(Parent, Node, Bucket, VBucket,
-                      OldChain, [NewNode|_] = NewChain) ->
-    process_flag(trap_exit, true),
-    %% first build new chain as replicas of existing master
-    Node = hd(OldChain),
+get_replica_and_backfill_nodes(MasterNode, [NewMasterNode|_] = NewChain) ->
     ReplicaNodes = [N || N <- NewChain,
-                         N =/= Node,
+                         N =/= MasterNode,
                          N =/= undefined,
-                         N =/= NewNode],
-    JustBackfillNodes = [N || N <- [NewNode],
-                              N =/= Node],
+                         N =/= NewMasterNode],
+    JustBackfillNodes = [N || N <- [NewMasterNode],
+                              N =/= MasterNode],
     true = (JustBackfillNodes =/= [undefined]),
-    Self = self(),
+    {ReplicaNodes, JustBackfillNodes}.
+
+set_initial_vbucket_state(Bucket, Parent, VBucket, ReplicaNodes, JustBackfillNodes) ->
     Changes = [{Replica, replica, undefined, undefined}
                || Replica <- ReplicaNodes]
         ++ [{FutureMaster, replica, passive, undefined}
             || FutureMaster <- JustBackfillNodes],
-    janitor_agent:bulk_set_vbucket_state(Bucket, Parent, VBucket, Changes),
+    janitor_agent:bulk_set_vbucket_state(Bucket, Parent, VBucket, Changes).
+
+mover_inner_old_style(Parent, Node, Bucket, VBucket,
+                      [Node|_], [NewNode|_] = NewChain) ->
+    process_flag(trap_exit, true),
+    % build new chain as replicas of existing master
+    {ReplicaNodes, JustBackfillNodes} =
+        get_replica_and_backfill_nodes(Node, NewChain),
+
+    set_initial_vbucket_state(Bucket, Parent, VBucket, ReplicaNodes, JustBackfillNodes),
+
+    Self = self(),
     ReplicasBuilderPid = ns_replicas_builder:spawn_link(
                            Bucket, VBucket, Node,
                            ReplicaNodes, JustBackfillNodes,
