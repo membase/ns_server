@@ -718,39 +718,11 @@ var MockedRequest = mkClass({
       [get("nodeStatuses"), function () {
         return ServerStateMock.nodeStatuses();
       }],
-      [get("pools", "default", "tasks"), [{
-        "type": "rebalance",
-        "status": "notRunning"
-      }, {
-        "cancelURI": "/controller/cancelXDCR/5a863c7488c147d2f08c1209b9f1650f%2Fdefault%2Fdefault",
-        "settingsURI": "/settings/replications/5a863c7488c147d2f08c1209b9f1650f%2Fdefault%2Fdefault",
-        "status": "running",
-        "replicationType": "xmem",
-        "id": "5a863c7488c147d2f08c1209b9f1650f/default/default",
-        "source": "default",
-        "target": "/remoteClusters/5a863c7488c147d2f08c1209b9f1650f/buckets/default",
-        "continuous": true,
-        "type": "xdcr",
-        "recommendedRefreshPeriod": 10.0,
-        "changesLeft": 0,
-        "docsChecked": 1,
-        "docsWritten": 1,
-        "errors": ["2013-09-06 12:27:27 [Vb Rep] Error replicating vbucket 84. Please see logs for details.", "2013-09-06 12:27:27 [Vb Rep] Error replicating vbucket 280. Please see logs for details.", "2013-09-06 12:27:27 [Vb Rep] Error replicating vbucket 26. Please see logs for details.", "2013-09-06 12:27:27 [Vb Rep] Error replicating vbucket 26. Please see logs for details.", "2013-09-06 12:27:27 [Vb Rep] Error replicating vbucket 256. Please see logs for details.", "2013-09-06 12:27:27 [Vb Rep] Error replicating vbucket 234. Please see logs for details.", "2013-09-06 12:27:27 [Vb Rep] Error replicating vbucket 234. Please see logs for details.", "2013-09-06 12:27:27 [Vb Rep] Error replicating vbucket 2. Please see logs for details.", "2013-09-06 12:27:27 [Vb Rep] Error replicating vbucket 182. Please see logs for details.", "2013-09-06 12:27:26 [Vb Rep] Error replicating vbucket 94. Please see logs for details."]
-      }, {
-        "cancelURI": "/controller/cancelXDCR/5a863c7488c147d2f08c1209b9f1650f%2Fdefault%2Fdefault",
-        "settingsURI": "/settings/replications/5a863c7488c147d2f08c1209b9f1650f%2Fdefault%2Fdefault",
-        "status": "running",
-        "replicationType": "xmem",
-        "id": "5a863c7488c147d2f08c1209b9f1650f/default/default",
-        "source": "default",
-        "target": "/remoteClusters/5a863c7488c147d2f08c1209b9f1650f/buckets/default",
-        "continuous": true,
-        "type": "xdcr",
-        "recommendedRefreshPeriod": 10.0,
-        "changesLeft": 0,
-        "docsChecked": 1,
-        "docsWritten": 1
-      }]],
+      [get("pools", "default", "tasks"), function () {
+        return _.map(ServerStateMock.tasks.tasks(), function (task) {
+          return _.clone(task);
+        })
+      }],
       [get("pools", "default", "buckets"), function () {
         return ServerStateMock.bucketsList();
       }],
@@ -1544,50 +1516,27 @@ var MockedRequest = mkClass({
           });
         }
 
-        var percent = 0;
-
-        MockedRequest.globalData.rebalanceProgress = function () {
-          return percent;
-        }
+        var percent = 0.001;
+        var rebalanceRunning = ServerStateMock.tasks.getTask("rebalanceRunning");
 
         var intervalID = setInterval(function () {
-          percent += 0.001;
+          rebalanceRunning.progress += percent;
+          rebalanceRunning.perNode["n_1@127.0.0.1"].progress += percent;
+          rebalanceRunning.perNode["n_2@127.0.0.1"].progress += percent;
         }, 50);
 
         MockedRequest.globalData.setRebalanceStatus('running');
+        ServerStateMock.tasks.toggle(["rebalanceNotRunning", "rebalanceRunning"]);
+
         _.delay(function () {
           console.log("rebalance delay hit!");
 
-          MockedRequest.globalData.rebalanceProgress = null;
           clearInterval(intervalID);
 
           MockedRequest.globalData.setRebalanceStatus('none');
+          ServerStateMock.tasks.toggle(["rebalanceNotRunning", "rebalanceRunning"]);
         }, 80000);
       }, "knownNodes", "ejectedNodes")],
-      [get("pools", "default", "rebalanceProgress"),
-        function () {
-          var pools = this.findResponseFor("GET", ["pools", "default"]);
-          if (pools.rebalanceStatus == 'none') {
-            return {
-              status: 'none'
-            };
-          }
-          var nodes = _.pluck(pools.nodes, 'otpNode');
-          var rv = {
-            status: pools.rebalanceStatus
-          };
-          var percent = 0.5;
-          if (MockedRequest.globalData.rebalanceProgress) {
-            percent = MockedRequest.globalData.rebalanceProgress();
-          }
-          _.each(nodes, function (name) {
-            rv[name] = {
-              progress: percent
-            };
-          });
-          return rv;
-        }
-      ],
       [post("controller", "stopRebalance"), method("doNothingPOST")],
 
       [post("controller", "addNode"), expectParams(method("doNothingPOST"), "hostname", "user", "password")],
@@ -1643,8 +1592,7 @@ MockedRequest.prototype.globalData = MockedRequest.globalData = {
     return MockedRequest.prototype.findResponseFor(method, path);
   },
   setRebalanceStatus: function (status) {
-    var pools = this.findResponseFor("GET", ["pools", "default"]);
-    pools.rebalanceStatus = status;
+    ServerStateMock.basePoolDetails.rebalanceStatus = status;
   }
 };
 
@@ -1655,6 +1603,112 @@ MockedRequest.prototype.globalData = MockedRequest.globalData = {
 })();
 
 var ServerStateMock = {
+  tasks: (function () {
+    var currentTasks = {
+      rebalanceNotRunning: true
+    };
+
+    var setTask = function (task) {
+      currentTasks[task] = !currentTasks[task];
+    };
+
+    var knownTasks = {
+      rebalanceNotRunning: {
+        "type": "rebalance",
+        "status": "notRunning"
+      },
+      rebalanceRunning: {
+        "type": "rebalance",
+        "recommendedRefreshPeriod": 0.25,
+        "status": "running",
+        "progress": 3.776041666666669,
+        "perNode": {
+          "n_1@127.0.0.1": {
+            "progress": 5.6640625
+          },
+          "n_2@127.0.0.1": {
+            "progress": 1.888020833333337
+          }
+        },
+        "detailedProgress": {
+          "bucket": "default",
+          "bucketNumber": 1,
+          "bucketsCount": 1,
+          "perNode": {
+            "n_1@127.0.0.1": {
+              "ingoing": {
+                "docsTotal": 1024,
+                "docsTransferred": 64,
+                "activeVBucketsLeft": 483,
+                "replicaVBucketsLeft": 512
+              },
+              "outgoing": {
+                "docsTotal": 0,
+                "docsTransferred": 0,
+                "activeVBucketsLeft": 0,
+                "replicaVBucketsLeft": 0
+              }
+            },
+            "n_2@127.0.0.1": {
+              "ingoing": {
+                "docsTotal": 0,
+                "docsTransferred": 0,
+                "activeVBucketsLeft": 0,
+                "replicaVBucketsLeft": 483
+              },
+              "outgoing": {
+                "docsTotal": 1024,
+                "docsTransferred": 64,
+                "activeVBucketsLeft": 483,
+                "replicaVBucketsLeft": 0
+              }
+            }
+          }
+        }
+      },
+      replicationRunning: {
+        "cancelURI": "/controller/cancelXDCR/5a863c7488c147d2f08c1209b9f1650f%2Fdefault%2Fdefault",
+        "settingsURI": "/settings/replications/5a863c7488c147d2f08c1209b9f1650f%2Fdefault%2Fdefault",
+        "status": "running",
+        "replicationType": "xmem",
+        "id": "5a863c7488c147d2f08c1209b9f1650f/default/default",
+        "source": "default",
+        "target": "/remoteClusters/5a863c7488c147d2f08c1209b9f1650f/buckets/default",
+        "continuous": true,
+        "type": "xdcr",
+        "recommendedRefreshPeriod": 10.0,
+        "changesLeft": 0,
+        "docsChecked": 1,
+        "docsWritten": 1
+      }
+    };
+
+    return {
+      toggle: function (task) {
+        if (_.isArray(task) && task.length) {
+          _.each(task, setTask);
+        }
+        if (_.isString(task)) {
+          setTask(task)
+        }
+      },
+      tasks: function () {
+        var rv = [];
+        var i;
+
+        for (i in currentTasks) {
+          if (currentTasks[i]) {
+            rv.push(knownTasks[i]);
+          }
+        }
+
+        return rv;
+      },
+      getTask: function (task) {
+        return knownTasks[task];
+      }
+    }
+  })(),
   readOnlyAdminName: "read_only_admin_name",
   allNodes: [{
     "systemStats": {
@@ -1770,6 +1824,47 @@ var ServerStateMock = {
     "otpNode": "n_2@127.0.0.1",
     "thisNode": true,
     "hostname": "127.0.0.1:9002",
+    "clusterCompatibility": 131072,
+    "version": "only-web.rb",
+    "os": "x86_64-pc-linux-gnu",
+    "ports": {
+      "proxy": 12001,
+      "direct": 12000
+    }
+  },{
+    "systemStats": {
+      "cpu_utilization_rate": 20,
+      "swap_total": 2521247232,
+      "swap_used": 1296329669,
+      "mem_total": 6191321088,
+      "mem_free": 3639218176
+    },
+    "interestingStats": {
+      "cmd_get": 0.0,
+      "couch_docs_actual_disk_size": 8449574,
+      "couch_docs_data_size": 8435712,
+      "couch_views_actual_disk_size": 0,
+      "couch_views_data_size": 0,
+      "curr_items": 0,
+      "curr_items_tot": 0,
+      "ep_bg_fetched": 0.0,
+      "get_hits": 0.0,
+      "mem_used": 27347928,
+      "ops": 0.0,
+      "vb_replica_curr_items": 0
+    },
+    "uptime": "810",
+    "memoryTotal": 2032574464,
+    "memoryFree": 89864960,
+    "mcdMemoryReserved": 4723,
+    "mcdMemoryAllocated": 4723,
+    "couchApiBase": "/couchBase/",
+    "clusterMembership": "active",
+    "group": "Group 2",
+    "status": "healthy",
+    "otpNode": "n_3@127.0.0.1",
+    "thisNode": true,
+    "hostname": "127.0.0.1:9003",
     "clusterCompatibility": 131072,
     "version": "only-web.rb",
     "os": "x86_64-pc-linux-gnu",
