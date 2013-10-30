@@ -802,9 +802,10 @@ handle_engage_cluster2(Req) ->
             %% 127.0.0.1 (joiner) and bounced.
             {struct, Result} = build_full_node_info(node(), "127.0.0.1"),
             {_, _} = CompatTuple = lists:keyfind(<<"clusterCompatibility">>, 1, NodeKVList),
+            TwoXCompat = 2 * 16#10000,
             Result2 = case CompatTuple of
-                          {_, 1} ->
-                              ?log_info("Lowering our advertised clusterCompatibility to 1 in order to enable joining 1.8.x cluster"),
+                          {_, CompatVersion} when CompatVersion =:= 1 orelse CompatVersion =:= TwoXCompat ->
+                              ?log_info("Lowering our advertised clusterCompatibility to ~b in order to enable joining older compat mode cluster", [CompatVersion]),
                               Result3 = lists:keyreplace(<<"clusterCompatibility">>, 1, Result, CompatTuple),
                               lists:keyreplace(clusterCompatibility, 1, Result3, CompatTuple);
                           _ ->
