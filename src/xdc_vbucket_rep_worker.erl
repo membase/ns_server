@@ -20,19 +20,19 @@
 %% in XDCR the Source should always from local with record #db{}, while
 %% the target should always from remote with record #httpdb{}. There is
 %% no intra-cluster XDCR
-start_link(#rep_worker_option{cp = Cp, source = Source, target = Target,
+start_link(#rep_worker_option{cp = Cp, source = Source, target = Target, worker_id  = WorkerID,
               changes_manager = ChangesManager, opt_rep_threshold = OptRepThreshold} = _WorkerOption) ->
     Pid = spawn_link(fun() ->
                              erlang:monitor(process, ChangesManager),
-                             queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold)
+                             queue_fetch_loop(WorkerID, Source, Target, Cp, ChangesManager, OptRepThreshold)
                      end),
-    ?xdcr_debug("create queue_fetch_loop process (pid: ~p) within replicator (pid: ~p) "
+    ?xdcr_debug("create queue_fetch_loop process (worker_id: ~p, pid: ~p) within replicator (pid: ~p) "
                 "Source: ~p, Target: ~p, ChangesManager: ~p, latency optimized: ~p",
-                [Pid, Cp, Source#db.name, Target#httpdb.url, ChangesManager, OptRepThreshold]),
+                [WorkerID, Pid, Cp, Source#db.name, Target#httpdb.url, ChangesManager, OptRepThreshold]),
 
     {ok, Pid}.
 
-queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold) ->
+queue_fetch_loop(WorkerID, Source, Target, Cp, ChangesManager, OptRepThreshold) ->
     ?xdcr_debug("fetch changes from changes manager at ~p (target: ~p)",
                [ChangesManager, Target#httpdb.url]),
     ChangesManager ! {get_changes, self()},
@@ -54,6 +54,7 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold) ->
             %% report seq done and stats to vb replicator
             ok = gen_server:call(Cp, {report_seq_done,
                                       #worker_stat{
+                                        worker_id = WorkerID,
                                         seq = ReportSeq,
                                         worker_meta_latency_aggr = MetaLatency*NumChecked,
                                         worker_docs_latency_aggr = DocLatency*NumWritten,
@@ -61,7 +62,7 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold) ->
                                         worker_item_checked = NumChecked,
                                         worker_item_replicated = NumWritten}}, infinity),
             ?xdcr_debug("Worker reported completion of seq ~p", [ReportSeq]),
-            queue_fetch_loop(Source, Target, Cp, ChangesManager, OptRepThreshold)
+            queue_fetch_loop(WorkerID, Source, Target, Cp, ChangesManager, OptRepThreshold)
     end.
 
 local_process_batch([], _Cp, _Src, _Tgt, #batch{docs = []}) ->

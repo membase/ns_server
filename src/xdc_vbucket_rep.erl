@@ -118,7 +118,10 @@ handle_info(start_replication, #rep_state{throttle = Throttle,
     ?xdcr_debug("get start-replication token for vb ~p from throttle (pid: ~p)", [Vb, Throttle]),
     {noreply, start_replication(St#rep_state{status = VbStatus#rep_vb_status{status = replicating}})}.
 
-handle_call({report_seq_done, #worker_stat{seq = Seq,
+handle_call({report_seq_done,
+             #worker_stat{
+               worker_id = WorkerID,
+               seq = Seq,
                worker_item_checked = NumChecked,
                worker_item_replicated = NumWritten,
                worker_data_replicated = WorkerDataReplicated} = WorkerStat}, From,
@@ -158,8 +161,8 @@ handle_call({report_seq_done, #worker_stat{seq = Seq,
     %% get stats
     {ChangesQueueSize, ChangesQueueDocs} = get_changes_queue_stats(State),
 
-    %% update latency stats
-    NewWorkersStat = dict:store(From, WorkerStat, AllWorkersStat),
+    %% update latency stats, using worker id as key
+    NewWorkersStat = dict:store(WorkerID, WorkerStat, AllWorkersStat),
 
     %% aggregate weighted latency as well as its weight from each worker
     [VbMetaLatencyAggr, VbMetaLatencyWtAggr] = dict:fold(
@@ -557,9 +560,10 @@ start_replication(#rep_state{
       opt_rep_threshold = OptRepThreshold},
 
     Workers = lists:map(
-                fun(_) ->
-                        {ok, Pid} = xdc_vbucket_rep_worker:start_link(WorkerOption),
-                        Pid
+                fun(WorkerID) ->
+                        WorkerOption2 = WorkerOption#rep_worker_option{worker_id = WorkerID},
+                        {ok, WorkerPid} = xdc_vbucket_rep_worker:start_link(WorkerOption2),
+                        WorkerPid
                 end,
                 lists:seq(1, NumWorkers)),
 
