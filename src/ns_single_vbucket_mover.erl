@@ -16,16 +16,16 @@
 
 -module(ns_single_vbucket_mover).
 
--export([spawn_mover/5, mover/6]).
+-export([spawn_mover/4, mover/5]).
 
 -include("ns_common.hrl").
 
-spawn_mover(Node, Bucket, VBucket,
+spawn_mover(Bucket, VBucket,
             OldChain, NewChain) ->
     Parent = self(),
     Pid = proc_lib:spawn_link(ns_single_vbucket_mover, mover,
-                              [Parent, Node, Bucket, VBucket, OldChain, NewChain]),
-    ?rebalance_debug("Spawned single vbucket mover: ~p (~p)", [[Parent, Node, Bucket, VBucket, OldChain, NewChain], Pid]),
+                              [Parent, Bucket, VBucket, OldChain, NewChain]),
+    ?rebalance_debug("Spawned single vbucket mover: ~p (~p)", [[Parent, Bucket, VBucket, OldChain, NewChain], Pid]),
     Pid.
 
 get_cleanup_list() ->
@@ -47,20 +47,20 @@ cleanup_list_del(Pid) ->
 
 %% We do a no-op here rather than filtering these out so that the
 %% replication update will still work properly.
-mover(Parent, undefined = Node, Bucket, VBucket, OldChain, [NewNode | _NewChainRest] = NewChain) ->
+mover(Parent, Bucket, VBucket, [undefined | _] = OldChain, [NewNode | _] = NewChain) ->
     ok = janitor_agent:set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined),
-    Parent ! {move_done, {Node, VBucket, OldChain, NewChain}};
+    Parent ! {move_done, {VBucket, OldChain, NewChain}};
 
-mover(Parent, Node, Bucket, VBucket, OldChain, NewChain) ->
-    master_activity_events:note_vbucket_mover(self(), Bucket, Node, VBucket, OldChain, NewChain),
+mover(Parent, Bucket, VBucket, OldChain, NewChain) ->
+    master_activity_events:note_vbucket_mover(self(), Bucket, hd(OldChain), VBucket, OldChain, NewChain),
     IndexAware = cluster_compat_mode:is_index_aware_rebalance_on(),
     misc:try_with_maybe_ignorant_after(
       fun () ->
               case IndexAware of
                   true ->
-                      mover_inner(Parent, Node, Bucket, VBucket, OldChain, NewChain);
+                      mover_inner(Parent, Bucket, VBucket, OldChain, NewChain);
                   false ->
-                      mover_inner_old_style(Parent, Node, Bucket, VBucket, OldChain, NewChain)
+                      mover_inner_old_style(Parent, Bucket, VBucket, OldChain, NewChain)
               end
       end,
       fun () ->
@@ -68,9 +68,9 @@ mover(Parent, Node, Bucket, VBucket, OldChain, NewChain) ->
       end),
     case IndexAware of
         false ->
-            Parent ! {move_done, {Node, VBucket, OldChain, NewChain}};
+            Parent ! {move_done, {VBucket, OldChain, NewChain}};
         true ->
-            Parent ! {move_done_new_style, {Node, VBucket, OldChain, NewChain}}
+            Parent ! {move_done_new_style, {VBucket, OldChain, NewChain}}
     end.
 
 spawn_and_wait(Body) ->
@@ -190,7 +190,7 @@ inhibit_view_compaction(Parent, Node, Bucket, NewNode) ->
             ok
     end.
 
-mover_inner(Parent, Node, Bucket, VBucket,
+mover_inner(Parent, Bucket, VBucket,
             [Node|_] = OldChain, [NewNode|_] = NewChain) ->
     process_flag(trap_exit, true),
 
@@ -231,7 +231,7 @@ mover_inner(Parent, Node, Bucket, VBucket,
         false ->
             %% we could handle wait_backfill_complete for all nodes,
             %% so we can report backfill as done
-            Parent ! {backfill_done, {Node, VBucket, OldChain, NewChain}};
+            Parent ! {backfill_done, {VBucket, OldChain, NewChain}};
         true ->
             %% could not handle it. Must be 2.0.0 node(s). We'll
             %% report backfill as done after checkpoint persisted
@@ -246,7 +246,7 @@ mover_inner(Parent, Node, Bucket, VBucket,
     %% report backfill as done if it was not reported before
     case HadUnhandled of
         true ->
-            Parent ! {backfill_done, {Node, VBucket, OldChain, NewChain}};
+            Parent ! {backfill_done, {VBucket, OldChain, NewChain}};
         _ ->
             ok
     end,
@@ -293,7 +293,7 @@ set_initial_vbucket_state(Bucket, Parent, VBucket, ReplicaNodes, JustBackfillNod
             || FutureMaster <- JustBackfillNodes],
     janitor_agent:bulk_set_vbucket_state(Bucket, Parent, VBucket, Changes).
 
-mover_inner_old_style(Parent, Node, Bucket, VBucket,
+mover_inner_old_style(Parent, Bucket, VBucket,
                       [Node|_], [NewNode|_] = NewChain) ->
     process_flag(trap_exit, true),
     % build new chain as replicas of existing master
