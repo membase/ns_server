@@ -855,7 +855,7 @@ check_can_join_to(NodeKVList) ->
         Error -> Error
     end.
 
--spec do_complete_join([{binary(), term()}]) -> ok | {error, atom(), binary(), term()}.
+-spec do_complete_join([{binary(), term()}]) -> {ok, ok} | {error, atom(), binary(), term()}.
 do_complete_join(NodeKVList) ->
     try
         OtpNode = expect_json_property_atom(<<"otpNode">>, NodeKVList),
