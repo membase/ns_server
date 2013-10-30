@@ -268,6 +268,7 @@
 
 %% options to start xdc replication worker process
 -record(rep_worker_option, {
+          worker_id,               %% unique id of worker process starting from 1
           cp,                      %% parent vb replicator process
           source = #db{},          %% source db
           target = #httpdb{},      %% target db
@@ -281,6 +282,7 @@
 
 %% statistics reported from worker process to its parent vbucket replicator
 -record(worker_stat, {
+          worker_id,
           seq = 0,
           worker_meta_latency_aggr = 0,
           worker_docs_latency_aggr = 0,
