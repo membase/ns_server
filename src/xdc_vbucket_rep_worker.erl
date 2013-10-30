@@ -21,6 +21,7 @@
 %% the target should always from remote with record #httpdb{}. There is
 %% no intra-cluster XDCR
 start_link(#rep_worker_option{cp = Cp, source = Source, target = Target,
+                              worker_id  = WorkerID,
                               changes_manager = ChangesManager,
                               opt_rep_threshold = OptRepThreshold,
                               xmem_server = XMemSrv,
@@ -28,21 +29,21 @@ start_link(#rep_worker_option{cp = Cp, source = Source, target = Target,
                               batch_items = BatchItems} = _WorkerOption) ->
     Pid = spawn_link(fun() ->
                              erlang:monitor(process, ChangesManager),
-                             queue_fetch_loop(Source, Target, Cp,
+                             queue_fetch_loop(WorkerID, Source, Target, Cp,
                                               ChangesManager, OptRepThreshold,
                                               BatchSize, BatchItems, XMemSrv)
                      end),
 
 
-    ?xdcr_trace("create queue_fetch_loop process (pid: ~p) within replicator (pid: ~p) "
+    ?xdcr_trace("create queue_fetch_loop process (worker_id: ~p, pid: ~p) within replicator (pid: ~p) "
                 "Source: ~p, Target: ~p, ChangesManager: ~p, latency optimized: ~p",
-                [Pid, Cp, Source#db.name, misc:sanitize_url(Target#httpdb.url), ChangesManager, OptRepThreshold]),
+                [WorkerID, Pid, Cp, Source#db.name, misc:sanitize_url(Target#httpdb.url), ChangesManager, OptRepThreshold]),
 
     {ok, Pid}.
 
--spec queue_fetch_loop(#db{}, #httpdb{}, pid(), pid(),
+-spec queue_fetch_loop(integer(), #db{}, #httpdb{}, pid(), pid(),
                        integer(), integer(), integer(), pid() | nil) -> ok.
-queue_fetch_loop(Source, Target, Cp, ChangesManager,
+queue_fetch_loop(WorkerID, Source, Target, Cp, ChangesManager,
                  OptRepThreshold, BatchSize, BatchItems, nil) ->
     ?xdcr_trace("fetch changes from changes manager at ~p (target: ~p)",
                 [ChangesManager, misc:sanitize_url(Target#httpdb.url)]),
@@ -71,6 +72,7 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager,
             %% report seq done and stats to vb replicator
             ok = gen_server:call(Cp, {report_seq_done,
                                       #worker_stat{
+                                        worker_id = WorkerID,
                                         seq = ReportSeq,
                                         worker_meta_latency_aggr = MetaLatency*NumChecked,
                                         worker_docs_latency_aggr = DocLatency*NumWritten,
@@ -82,11 +84,11 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager,
             ?xdcr_trace("Worker reported completion of seq ~p, num docs written: ~p "
                         "data replicated: ~p bytes, latency: ~p ms.",
                         [ReportSeq, NumWritten, DataRepd, DocLatency]),
-            queue_fetch_loop(Source, Target, Cp, ChangesManager,
+            queue_fetch_loop(WorkerID, Source, Target, Cp, ChangesManager,
                              OptRepThreshold, BatchSize, BatchItems, nil)
     end;
 
-queue_fetch_loop(Source, Target, Cp, ChangesManager,
+queue_fetch_loop(WorkerID, Source, Target, Cp, ChangesManager,
                  OptRepThreshold, BatchSize, BatchItems, XMemSrv) ->
     ?xdcr_trace("fetch changes from changes manager at ~p (target: ~p)",
                 [ChangesManager, misc:sanitize_url(Target#httpdb.url)]),
@@ -118,6 +120,7 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager,
             %% report seq done and stats to vb replicator
             ok = gen_server:call(Cp, {report_seq_done,
                                       #worker_stat{
+                                        worker_id  = WorkerID,
                                         seq = ReportSeq,
                                         worker_meta_latency_aggr = MetaLatency*NumChecked,
                                         worker_docs_latency_aggr = DocLatency*NumWritten,
@@ -129,7 +132,7 @@ queue_fetch_loop(Source, Target, Cp, ChangesManager,
             ?xdcr_trace("Worker reported completion of seq ~p, num docs written: ~p "
                         "data replicated: ~p bytes, latency: ~p ms.",
                         [ReportSeq, NumWritten, DataRepd, DocLatency]),
-            queue_fetch_loop(Source, Target, Cp, ChangesManager,
+            queue_fetch_loop(WorkerID, Source, Target, Cp, ChangesManager,
                              OptRepThreshold, BatchSize, BatchItems, XMemSrv)
     end.
 

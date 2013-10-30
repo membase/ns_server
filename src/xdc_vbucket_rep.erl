@@ -129,11 +129,13 @@ handle_info(start_replication, #rep_state{throttle = Throttle,
     {noreply, start_replication(St2)}.
 
 handle_call({report_seq_done,
-             #worker_stat{seq = Seq,
-                          worker_item_opt_repd = NumDocsOptRepd,
-                          worker_item_checked = NumChecked,
-                          worker_item_replicated = NumWritten,
-                          worker_data_replicated = WorkerDataReplicated} = WorkerStat}, From,
+             #worker_stat{
+               worker_id = WorkerID,
+               seq = Seq,
+               worker_item_opt_repd = NumDocsOptRepd,
+               worker_item_checked = NumChecked,
+               worker_item_replicated = NumWritten,
+               worker_data_replicated = WorkerDataReplicated} = WorkerStat}, From,
             #rep_state{seqs_in_progress = SeqsInProgress,
                        highest_seq_done = HighestDone,
                        current_through_seq = ThroughSeq,
@@ -194,8 +196,8 @@ handle_call({report_seq_done,
     %% get stats
     {ChangesQueueSize, ChangesQueueDocs} = get_changes_queue_stats(State),
 
-    %% update latency stats
-    NewWorkersStat = dict:store(From, WorkerStat, AllWorkersStat),
+    %% update latency stats, using worker id as key
+    NewWorkersStat = dict:store(WorkerID, WorkerStat, AllWorkersStat),
 
     %% aggregate weighted latency as well as its weight from each worker
     [VbMetaLatencyAggr, VbMetaLatencyWtAggr] = dict:fold(
@@ -731,8 +733,9 @@ start_replication(#rep_state{
       batch_items = BatchSizeItems},
 
     Workers = lists:map(
-                fun(_) ->
-                        {ok, WorkerPid} = xdc_vbucket_rep_worker:start_link(WorkerOption),
+                fun(WorkerID) ->
+                        WorkerOption2 = WorkerOption#rep_worker_option{worker_id = WorkerID},
+                        {ok, WorkerPid} = xdc_vbucket_rep_worker:start_link(WorkerOption2),
                         WorkerPid
                 end,
                 lists:seq(1, NumWorkers)),
