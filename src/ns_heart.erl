@@ -92,7 +92,13 @@ handle_info({'EXIT', EventHandler, _} = ExitMsg,
     {stop, normal, State};
 handle_info(beat, State) ->
     NewState = disarm_forced_beat_timer(State),
-    misc:flush(beat),
+    Dropped = misc:flush(beat),
+    case Dropped of
+        0 ->
+            ok;
+        _ ->
+            ?log_warning("Dropped ~p hearbeats", [Dropped])
+    end,
     heartbeat(current_status()),
     {noreply, NewState};
 handle_info(force_beat, State) ->

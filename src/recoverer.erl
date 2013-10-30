@@ -16,6 +16,7 @@
 -module(recoverer).
 
 -include("ns_common.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -export([start_recovery/1,
          get_recovery_map/1, commit_vbucket/2, note_commit_vbucket_done/2,
@@ -49,16 +50,7 @@ start_recovery(BucketConfig) ->
     Servers = proplists:get_value(servers, BucketConfig),
     true = (Servers =/= undefined),
 
-    MissingVBuckets =
-        lists:foldr(
-          fun ({V, Chain}, Acc) ->
-                  case Chain of
-                      [undefined | _] ->
-                          [V | Acc];
-                      _ ->
-                          Acc
-                  end
-          end, [], misc:enumerate(OldMap, 0)),
+    MissingVBuckets = compute_missing_vbuckets(OldMap),
 
     case MissingVBuckets of
         [] ->
@@ -176,24 +168,10 @@ compute_recovery_map(OldMap, Servers, NumVBuckets, MissingVBuckets) ->
 
     NodesCount = length(Servers),
 
-    {OverloadedNodesVBucketsCount, UnderloadedNodeToVBucketCounts} =
-        lists:foldr(
-          fun ({_Node, VBucketsCount} = Pair, {AccCount, Acc}) ->
-                  case NodesCount * VBucketsCount >= NumVBuckets of
-                      true ->
-                          {AccCount + VBucketsCount, Acc};
-                      false ->
-                          {AccCount, [Pair | Acc]}
-                  end
-          end, {0, []}, NodeToVBucketCounts),
+    Q = NumVBuckets div NodesCount,
+    R = NumVBuckets rem NodesCount,
 
-    UnderloadedNodesVBucketsCount = NumVBuckets - OverloadedNodesVBucketsCount,
-    UnderloadedNodesCount = length(UnderloadedNodeToVBucketCounts),
-
-    Q = UnderloadedNodesVBucketsCount div UnderloadedNodesCount,
-    R = UnderloadedNodesVBucketsCount - UnderloadedNodesCount * Q,
-
-    do_compute_recovery_map(UnderloadedNodeToVBucketCounts, MissingVBuckets, Q, R).
+    do_compute_recovery_map(NodeToVBucketCounts, MissingVBuckets, Q, R).
 
 do_compute_recovery_map([], _, _, _) ->
     [];
@@ -208,5 +186,66 @@ do_compute_recovery_map([{Node, Count} | Rest], MissingVBuckets, Q, R) ->
                         end,
 
     true = (TargetCount > Count),
-    {NodeVBuckets, MissingVBuckets1} = lists:split(TargetCount - Count, MissingVBuckets),
+    {NodeVBuckets, MissingVBuckets1} =
+        misc:safe_split(TargetCount - Count, MissingVBuckets),
     [{Node, NodeVBuckets} | do_compute_recovery_map(Rest, MissingVBuckets1, Q, R1)].
+
+compute_missing_vbuckets(Map) ->
+    lists:foldr(
+      fun ({V, Chain}, Acc) ->
+              case Chain of
+                  [undefined | _] ->
+                      [V | Acc];
+                  _ ->
+                      Acc
+              end
+      end, [], misc:enumerate(Map, 0)).
+
+-ifdef(EUNIT).
+
+-define(NUM_TEST_ATTEMPTS, 500).
+-define(MAX_NUM_SERVERS, 50).
+
+compute_recovery_map_test_() ->
+    random:seed(now()),
+
+    {timeout, 100,
+     {inparallel,
+      [begin
+           NumServers = random:uniform(?MAX_NUM_SERVERS - 1) + 1,
+           NumCopies = random:uniform(4),
+
+           Title = lists:flatten(
+                     io_lib:format("NumServers=~p, NumCopies=~p",
+                                   [NumServers, NumCopies])),
+
+           Fun = fun () ->
+                         compute_recovery_map_test__(NumServers, NumCopies)
+                 end,
+           {timeout, 100, {Title, Fun}}
+       end || _ <- lists:seq(1, ?NUM_TEST_ATTEMPTS)]}}.
+
+compute_recovery_map_test__(NumServers, NumCopies) ->
+    Servers = lists:seq(1, NumServers),
+    EmptyMap = lists:duplicate(1024,
+                               lists:duplicate(NumCopies, undefined)),
+    Map = mb_map:generate_map(EmptyMap, Servers, []),
+
+    FailoverServers = misc:shuffle(tl(Servers)),
+    lists:foldl(
+      fun (Server, AccMap) ->
+              AccMap1 = mb_map:promote_replicas(AccMap, [Server]),
+              MissingVBuckets = compute_missing_vbuckets(AccMap1),
+
+              RecoveryMap = compute_recovery_map(AccMap1, Servers,
+                                                 1024, MissingVBuckets),
+              RecoveryMapVBuckets =
+                  lists:flatten([Vs || {_, Vs} <- RecoveryMap]),
+
+              ?assertEqual(lists:sort(MissingVBuckets),
+                           lists:sort(RecoveryMapVBuckets)),
+
+              AccMap1
+      end, Map, FailoverServers).
+
+-endif.
