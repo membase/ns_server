@@ -23,7 +23,7 @@
 
 upgrade_config(OldVersion, NewVersion) ->
     true = (OldVersion =/= NewVersion),
-    true = (NewVersion =< [2, 5]),
+    true = (NewVersion =< [3, 0]),
 
     ns_config:set(dynamic_config_version, OldVersion),
     ok = ns_config:upgrade_config_explicitly(
