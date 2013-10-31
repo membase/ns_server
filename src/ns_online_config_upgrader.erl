@@ -34,8 +34,7 @@ upgrade_config(OldVersion, NewVersion) ->
 do_upgrade_config(Config, FinalVersion) ->
     case ns_config:search(Config, dynamic_config_version) of
         {value, undefined} ->
-            [{set, dynamic_config_version, [2, 0]} |
-             upgrade_config_from_pre_2_0_to_2_0(Config)];
+            [{set, dynamic_config_version, [2, 0]}];
         {value, FinalVersion} ->
             [];
         {value, [2, 0]} ->
@@ -45,43 +44,12 @@ do_upgrade_config(Config, FinalVersion) ->
             [{set, dynamic_config_version, [3, 0]}]
     end.
 
-upgrade_config_from_pre_2_0_to_2_0(Config) ->
-    ?log_info("Performing online config upgrade to 2.0 version"),
-    maybe_add_buckets_uuids(Config).
-
 upgrade_config_from_2_0_to_2_5(Config) ->
     ?log_info("Performing online config upgrade to 2.5 version"),
     create_server_groups(Config).
-
-maybe_add_buckets_uuids(Config) ->
-    case ns_config:search(Config, buckets) of
-        {value, Buckets} ->
-            Configs = proplists:get_value(configs, Buckets, []),
-            NewConfigs = lists:map(fun maybe_add_bucket_uuid/1, Configs),
-
-            case NewConfigs =:= Configs of
-                true ->
-                    [];
-                false ->
-                    NewBuckets = misc:update_proplist(Buckets,
-                                                      [{configs, NewConfigs}]),
-                    [{set, buckets, NewBuckets}]
-            end;
-        false ->
-            []
-    end.
-
-maybe_add_bucket_uuid({BucketName, BucketConfig} = Bucket) ->
-    case proplists:get_value(uuid, BucketConfig) of
-        undefined ->
-            {BucketName, [{uuid, couch_uuids:random()} | BucketConfig]};
-        _UUID ->
-            Bucket
-    end.
 
 create_server_groups(Config) ->
     {value, Nodes} = ns_config:search(Config, nodes_wanted),
     [{set, server_groups, [[{uuid, <<"0">>},
                             {name, <<"Group 1">>},
                             {nodes, Nodes}]]}].
-
