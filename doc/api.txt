@@ -76,6 +76,7 @@ GET /pools/default =>
       (<message:string>)* // list of alerts to show to user
     ],
     "alertsSilenceURL": "/controller/resetAlerts?"<:string>, // POST here in order to confirm alerts above are seen by user
+    "serverGroupsUri": "/pools/default/serverGroups?v="<:integer>, // GET returns server groups as described below.
     "nodes": [
         (<nodeInfo>)+ // contains info on all nodes of this cluster
     ],
@@ -344,6 +345,21 @@ NOTE: we'll add/remove some fields over time here. All internal
 settings are by definition somewhat implementation-details and may
 change from release to release.
 
+<groupInfo> => // element of groups array of server groups response. See below
+{
+    // every group has unique uri (and uuid)
+    "uri": "/pools/default/serverGroups/"<:uuid-string>, // PUT here updates as described below, DELETE - deletes
+    "name": <:string>,
+    "nodes": [(<nodeInfo>+)]  // array of nodes is same as nods in pool details
+}
+
+GET /pools/default/serverGroups =>
+
+{
+    "uri": "/pools/default/serverGroups?rev="<:integer>, // PUT here is used to re-shuffle group membership as descibed below
+    "groups": [(<groupInfo>)+]
+}
+
 
 ======
 POST
@@ -368,6 +384,9 @@ subset of settings can be posted. Even single setting may be changed
 by POST. So unknown/ignored fields may be easily omitted and kept on
 default values.
 
+// creates server group with given name
+POST /pools/default/serverGroups
+name=<group name>
 
 ====
 PUT
@@ -377,9 +396,48 @@ PUT
 PUT /pools/default/remoteClusters/<name>
 name=<name>&hostname=<hostname>&username=<username>&password=<password>
 
+// renames server group
+PUT /pools/default/serverGroups/<:uuid>
+name=<group name>
+
+// update server's group memberships (all at once). NOTE: input payload is json
+PUT /pools/default/serverGroups?rev=<:number>
+{"groups": [( { ("name": <groupName:string>,)? // group name is optional, if given _must_ match current group name
+                 "uri": "/pools/default/serverGroups/"<:uuid>,  // uri is used to identify group
+                 "nodes": [ ({"otpNode": <node's otp name:string>})* ]
+              } )+]
+}
+// NOTE: this request only allows moving nodes between groups. It does
+// not allow renaming of groups or removal of groups.
+//
+// _All_ nodes must be mentioned. And _all_ groups must be mentioned.
+//
+// Format is compatible to output of corresponding GET. You can PUT exactly what you GET.
+//
+// Expected usage is GET, move nodes between groups, then PUT back. I.e. (ruby):
+//
+//     server_groups = getj! "/pools/default/serverGroups"
+//     group_2 = server_groups["groups"].detect {|g| g["name"] == "group 2"}
+//     group_1 = server_groups["groups"].detect {|g| g["name"] == "Group 1"}
+//
+//     # add group 1 nodes to group 2
+//     group_2["nodes"].concat(group_1["nodes"])
+//     group_1["nodes"] = []
+//
+//     put! server_groups["uri"], server_groups.to_json
+//
+// NOTE: this request is transactional. It either succeeds completely or fails without any effect.
+//
+// NOTE: it's error reporting is pretty basic. If you don't pass all
+// nodes or all groups, or screw up in some other way, you'll get back generic "Bad input" error.
+
+
 ===
 DELETE
 ===
 
 // deletes remote cluster info
 DELETE /pools/default/remoteClusters/<name>
+
+// deletes server group (must be empty)
+DELETE /pools/default/serverGroups/<:uuid>

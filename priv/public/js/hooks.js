@@ -458,6 +458,7 @@ var MockedRequest = mkClass({
     var get = mkHTTPMethod("GET");
     var post = mkHTTPMethod("POST");
     var del = mkHTTPMethod("DELETE");
+    var put = mkHTTPMethod("PUT");
 
     function method(name) {
       return function () {
@@ -539,6 +540,30 @@ var MockedRequest = mkClass({
       }],
       [del("settings", "readOnlyUser"), function () {
         ServerStateMock.readOnlyAdminName = null;
+        return {};
+      }],
+      [get("pools", "default", "serverGroups"), function () {
+        var groups = [{name: "Group 1 (default)", uri: "/pools/default/serverGroups/123", nodes: []},
+                      {name: "Group 2", uri: "/pools/default/serverGroups/232", nodes: []},
+                      {name: "Group 3", uri: "/pools/default/serverGroups/343", nodes: []}];
+        var nodes = _.clone(this.allNodes);
+        _.each(nodes, function (node) {
+          var groupName = node.group;
+          var group = _.detect(groups, function (g) {return g.name == groupName});
+          group.nodes.push(node);
+        });
+        return {groups: groups, uri: "/pools/default/serverGroups?rev=something"};
+      }],
+      [put("pools", "default", "serverGroups"), function () {
+        return {};
+      }],
+      [post("pools", "default", "serverGroups"), function () {
+        return this.errorResponse({"name": "Name already exist"}, {status: 400});
+      }],
+      [put("pools", "default", "serverGroups", x), function () {
+        return this.errorResponse({"name": "Name already exist"}, {status: 400});
+      }],
+      [del("pools", "default", "serverGroups", x), function () {
         return {};
       }],
       [get("settings", "autoCompaction"), {
@@ -1540,6 +1565,7 @@ var MockedRequest = mkClass({
       [post("controller", "stopRebalance"), method("doNothingPOST")],
 
       [post("controller", "addNode"), expectParams(method("doNothingPOST"), "hostname", "user", "password")],
+      [post("poosl", "default", "serverGroups", x, "addNode"), expectParams(method("doNothingPOST"), "hostname", "user", "password")],
       [post("controller", "failOver"), expectParams(method("doNothingPOST"), "otpNode")],
       [post("controller", "reAddNode"), expectParams(method("doNothingPOST"), "otpNode")],
       [post("settings", "web"), expectParams(method("doNothingPOST"), "port", "username", "password")],
@@ -1936,6 +1962,7 @@ var ServerStateMock = {
     "name": "default",
     "alerts": [],
     "alertsSilenceURL": "/controller/resetAlerts?token=0",
+    "serverGroupsUri": "/pools/default/serverGroups?v=a",
     "nodes": [{
       "systemStats": {
         "cpu_utilization_rate": 9.137055837563452,
