@@ -18,6 +18,7 @@
 -include("ns_common.hrl").
 
 -export([get_compat_version/0, is_enabled/1, is_enabled_at/2,
+         is_cluster_25/0,
          force_compat_version/1, un_force_compat_version/0,
          consider_switching_compat_mode/0,
          is_index_aware_rebalance_on/0,
@@ -62,6 +63,9 @@ is_enabled(FeatureVersion) ->
 
 is_cluster_30() ->
     is_enabled([3, 0]).
+
+is_cluster_25() ->
+    is_enabled([2, 5]).
 
 is_index_aware_rebalance_on() ->
     Disabled = ns_config_ets_dup:unreliable_read_key(index_aware_rebalance_disabled, false),

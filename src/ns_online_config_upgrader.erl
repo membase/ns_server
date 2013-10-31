@@ -23,7 +23,7 @@
 
 upgrade_config(OldVersion, NewVersion) ->
     true = (OldVersion =/= NewVersion),
-    true = (NewVersion =< [2, 0]),
+    true = (NewVersion =< [2, 5]),
 
     ns_config:set(dynamic_config_version, OldVersion),
     ok = ns_config:upgrade_config_explicitly(
@@ -39,12 +39,19 @@ do_upgrade_config(Config, FinalVersion) ->
         {value, FinalVersion} ->
             [];
         {value, [2, 0]} ->
+            [{set, dynamic_config_version, [2, 5]} |
+             upgrade_config_from_2_0_to_2_5(Config)];
+        {value, [2, 5]} ->
             [{set, dynamic_config_version, [3, 0]}]
     end.
 
 upgrade_config_from_pre_2_0_to_2_0(Config) ->
     ?log_info("Performing online config upgrade to 2.0 version"),
     maybe_add_buckets_uuids(Config).
+
+upgrade_config_from_2_0_to_2_5(Config) ->
+    ?log_info("Performing online config upgrade to 2.5 version"),
+    create_server_groups(Config).
 
 maybe_add_buckets_uuids(Config) ->
     case ns_config:search(Config, buckets) of
@@ -71,3 +78,10 @@ maybe_add_bucket_uuid({BucketName, BucketConfig} = Bucket) ->
         _UUID ->
             Bucket
     end.
+
+create_server_groups(Config) ->
+    {value, Nodes} = ns_config:search(Config, nodes_wanted),
+    [{set, server_groups, [[{uuid, <<"0">>},
+                            {name, <<"Group 1">>},
+                            {nodes, Nodes}]]}].
+
