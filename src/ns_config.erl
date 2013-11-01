@@ -76,7 +76,8 @@
 
 % Exported for tests only
 -export([save_file/3, load_config/3,
-         load_file/2, save_config_sync/2, send_config/2]).
+         load_file/2, save_config_sync/2, send_config/2,
+         strip_metadata/1]).
 
 % A static config file is often hand edited.
 % potentially with in-line manual comments.
@@ -886,19 +887,14 @@ merge_kv_pairs(RemoteKVList, LocalKVList) ->
     LocalKVList1 = lists:sort(LocalKVList),
     Merger = fun (_, {directory, _} = LP) ->
                      LP;
-                 ({_, RV} = RP, {_, LV} = LP) ->
-                     if
-                         is_list(RV) orelse is_list(LV) ->
-                             merge_list_values(RP, LP);
-                         true ->
-                             RP
-                     end
+                 (RP, LP) ->
+                     merge_values(RP, LP)
              end,
     misc:ukeymergewith(Merger, 1, RemoteKVList1, LocalKVList1).
 
--spec merge_list_values({term(), term()}, {term(), term()}) -> {term(), term()}.
-merge_list_values({_K, RV} = RP, {_, LV} = _LP) when RV =:= LV -> RP;
-merge_list_values({K, RV} = RP, {_, LV} = LP) ->
+-spec merge_values({term(), term()}, {term(), term()}) -> {term(), term()}.
+merge_values({_K, RV} = RP, {_, LV} = _LP) when RV =:= LV -> RP;
+merge_values({K, RV} = RP, {_, LV} = LP) ->
     RClock = extract_vclock(RV),
     LClock = extract_vclock(LV),
     case {vclock:descends(RClock, LClock),
