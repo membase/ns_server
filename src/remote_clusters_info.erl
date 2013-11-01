@@ -392,7 +392,7 @@ handle_info({remote_bucket_request_result, TargetNode, {UUID, Bucket} = Id, R},
                     0 ->
                         %% no more ongoing request so we just return an error to
                         %% the caller
-                        Msg = io_lib:format("Failed to grab remote bucket `~s`"
+                        Msg = io_lib:format("Failed to grab remote bucket `~s` "
                                             "from any of known nodes", [Bucket]),
 
                         {State, {error, all_nodes_failed, iolist_to_binary(Msg)}};
