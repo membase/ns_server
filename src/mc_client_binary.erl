@@ -59,7 +59,8 @@
          map_status/1,
          get_mass_tap_docs_estimate/2,
          ext/2,
-         rev_to_mcd_ext/1
+         rev_to_mcd_ext/1,
+         set_cluster_config/2
         ]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
@@ -867,3 +868,14 @@ get_mass_tap_docs_estimate(Sock, VBuckets) ->
     {ok, [case get_tap_docs_estimate(Sock, VB, <<>>) of
               {ok, V} -> V
           end || VB <- VBuckets]}.
+
+set_cluster_config(Sock, Blob) ->
+    RV = cmd(?CMD_SET_CLUSTER_CONFIG, Sock, undefined, undefined,
+             {#mc_header{}, #mc_entry{key = <<"">>, data = Blob}},
+             infinity),
+    case RV of
+        {ok, #mc_header{status=?SUCCESS}, _, _} ->
+            ok;
+        Other ->
+            process_error_response(Other)
+    end.

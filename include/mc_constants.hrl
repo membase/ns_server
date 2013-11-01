@@ -73,6 +73,8 @@
 
 -define(CMD_CHECKPOINT_PERSISTENCE, 16#b1).
 
+-define(CMD_SET_CLUSTER_CONFIG, 16#b4).
+
 -define(CMD_ISASL_REFRESH, 16#f1).
 
 -define(RGET,        16#30).
