@@ -920,16 +920,16 @@ merge_list_values({K, RV} = RP, {_, LV} = LP) ->
                                           "Conflicting configuration changes to field "
                                           "~p:~n~p and~n~p, choosing the former, which looks newer.~n",
                                           [K,
-                                           {LClock, ns_config_log:sanitize(LV)},
-                                           {RClock, ns_config_log:sanitize(RV)}]),
+                                           ns_config_log:sanitize(LV),
+                                           ns_config_log:sanitize(RV)]),
                                 LV;
                             false ->
                                 ?user_log(?CONFIG_CONFLICT,
                                           "Conflicting configuration changes to field "
                                           "~p:~n~p and~n~p, choosing the former.~n",
                                           [K,
-                                           {RClock, ns_config_log:sanitize(RV)},
-                                           {LClock, ns_config_log:sanitize(LV)}]),
+                                           ns_config_log:sanitize(RV),
+                                           ns_config_log:sanitize(LV)]),
                                 RV
                         end,
                     %% Increment the merged vclock so we don't pingpong
