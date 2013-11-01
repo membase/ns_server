@@ -142,8 +142,37 @@ failover(Bucket, Node) ->
 
 generate_vbucket_map(CurrentMap, KeepNodes, BucketConfig) ->
     ReplicationTopology = cluster_compat_mode:get_replication_topology(),
+
+    {value, ServerGroups} = ns_config:search(server_groups),
+    Tags = case ServerGroups of
+               [_] ->
+                   undefined;
+               _ ->
+                   Tags0 = [case proplists:get_value(uuid, G) of
+                                T ->
+                                    [{N, T} || N <- proplists:get_value(nodes, G),
+                                               lists:member(N, KeepNodes)]
+                            end || G <- ServerGroups],
+
+                   TagsRV = lists:append(Tags0),
+
+                   case KeepNodes -- [N || {N, _T} <- TagsRV] of
+                       [] -> ok;
+                       _ ->
+                           %% there's tiny race between start of rebalance and
+                           %% somebody changing server_groups. We largely ignore it,
+                           %% but in case where it can clearly cause problem we raise
+                           %% exception
+                           erlang:error(server_groups_race_detected)
+                   end,
+
+                   TagsRV
+           end,
+
     Opts0 = [{maps_history, ns_bucket:past_vbucket_maps()} | ns_bucket:config_to_map_options(BucketConfig)],
-    Opts = misc:update_proplist(Opts0, [{replication_topology, ReplicationTopology}]),
+    Opts = misc:update_proplist(Opts0, [{replication_topology, ReplicationTopology},
+                                        {tags, Tags}]),
+
     {mb_map:generate_map(CurrentMap, KeepNodes, Opts), Opts}.
 
 generate_initial_map(BucketConfig) ->

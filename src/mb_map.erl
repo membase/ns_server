@@ -201,12 +201,13 @@ generate_map_star(Map, Nodes, Options) ->
     NumVBuckets = length(Map),
     NumSlaves = proplists:get_value(max_slaves, Options, 10),
     NumReplicas = length(hd(Map)) - 1,
+    Tags = proplists:get_value(tags, Options),
 
     GeneratedMaps0 =
         lists:append(
           %% vbmap itself randomizes some things internally so let's give it a
           %% chance
-          [[invoke_vbmap(ShuffledNodes, NumVBuckets, NumSlaves, NumReplicas) ||
+          [[invoke_vbmap(ShuffledNodes, NumVBuckets, NumSlaves, NumReplicas, Tags) ||
                _ <- lists:seq(1, 3)] ||
               ShuffledNodes <- [misc:shuffle(KeepNodes) || _ <- lists:seq(1, 3)]]),
 
@@ -615,7 +616,7 @@ slaves([], _, _, Set) ->
 testnodes(NumNodes) ->
     [list_to_atom([$n | tl(integer_to_list(1000+N))]) || N <- lists:seq(1, NumNodes)].
 
-invoke_vbmap(Nodes, NumVBuckets, NumSlaves, NumReplicas) ->
+invoke_vbmap(Nodes, NumVBuckets, NumSlaves, NumReplicas, Tags) ->
     VbmapName =
         case erlang:system_info(system_architecture) of
             "win32" ->
@@ -628,32 +629,49 @@ invoke_vbmap(Nodes, NumVBuckets, NumSlaves, NumReplicas) ->
     DiagPath = path_config:tempfile("vbmap_diag", ""),
 
     try
-        misc:executing_on_new_process(
-          fun () ->
-                  do_invoke_vbmap(VbmapPath, DiagPath,
-                                  Nodes, NumVBuckets, NumSlaves, NumReplicas)
-          end)
+        R = do_invoke_vbmap(VbmapPath, maxflow, DiagPath, Nodes,
+                            NumVBuckets, NumSlaves, NumReplicas, Tags),
+        case R of
+            {ok, Map} ->
+                Map;
+            no_solution ->
+                ale:info(?USER_LOGGER,
+                         "Couldn't generate rack-aware vbucket map. "
+                         "Falling back to rack-unaware one."),
+                {ok, Map} = do_invoke_vbmap(VbmapPath, dummy, DiagPath, Nodes,
+                                            NumVBuckets, NumSlaves, NumReplicas, Tags),
+                Map
+        end
     after
         file:delete(DiagPath)
     end.
 
-do_invoke_vbmap(VbmapPath, DiagPath, Nodes,
-                NumVBuckets, NumSlaves, NumReplicas) ->
+do_invoke_vbmap(VbmapPath, Backend, DiagPath, Nodes,
+                NumVBuckets, NumSlaves, NumReplicas, Tags) ->
+    misc:executing_on_new_process(
+      fun () ->
+              do_invoke_vbmap_body(VbmapPath, Backend, DiagPath, Nodes,
+                                   NumVBuckets, NumSlaves, NumReplicas, Tags)
+      end).
+
+do_invoke_vbmap_body(VbmapPath, Backend, DiagPath, Nodes,
+                     NumVBuckets, NumSlaves, NumReplicas, Tags) ->
     NumNodes = length(Nodes),
 
-    Port = erlang:open_port(
-             {spawn_executable, VbmapPath},
-             [stderr_to_stdout, binary,
-              stream, exit_status, hide,
-              {args, ["--engine", "dummy",
-                      "--diag", DiagPath,
-                      "--output-format", "json",
-                      "--num-vbuckets", integer_to_list(NumVBuckets),
-                      "--num-nodes", integer_to_list(NumNodes),
-                      "--num-slaves", integer_to_list(NumSlaves),
-                      "--num-replicas", integer_to_list(NumReplicas)]}]),
+    Args0 = ["--diag", DiagPath,
+             "--output-format", "json",
+             "--num-vbuckets", integer_to_list(NumVBuckets),
+             "--num-nodes", integer_to_list(NumNodes),
+             "--num-slaves", integer_to_list(NumSlaves),
+             "--num-replicas", integer_to_list(NumReplicas)],
+    Args = vbmap_backend_args(Backend, Nodes, Tags) ++ Args0,
 
-    PortResult = collect_port_output(Port),
+    Port = erlang:open_port({spawn_executable, VbmapPath},
+                            [stderr_to_stdout, binary,
+                             stream, exit_status, hide,
+                             {args, Args}]),
+
+    PortResult = collect_vbmap_output(Port),
 
     case file:read_file(DiagPath) of
         {ok, Diag} ->
@@ -668,41 +686,81 @@ do_invoke_vbmap(VbmapPath, DiagPath, Nodes,
 
             try
                 Decoded = ejson:decode(Output),
-                lists:map(
-                  fun (Chain) ->
-                          Length = length(Chain),
-                          [dict:fetch(N, NodesMapping) || N <- Chain] ++
-                              lists:duplicate(NumReplicas - Length + 1, undefined)
-                  end, Decoded)
+                Map = lists:map(
+                        fun (Chain) ->
+                                Length = length(Chain),
+                                [dict:fetch(N, NodesMapping) || N <- Chain] ++
+                                    lists:duplicate(NumReplicas - Length + 1, undefined)
+                        end, Decoded),
+                {ok, Map}
             catch
                 E:T ->
                     ?log_error("seems that vbmap produced invalid json (error ~p):~n~s",
                                [{E, T}, Output]),
                     erlang:raise(E, T, erlang:get_stacktrace())
             end;
+        {no_solution, _} ->
+            no_solution;
         {error, Output} ->
             ?log_error("Could not generate vbucket map: ~s", [Output]),
             exit({vbmap_error, iolist_to_binary(Output)})
     end.
 
-collect_port_output(Port) ->
-    do_collect_port_output(Port, []).
+map_tags(Nodes, RawTags) ->
+    {_, NodeIxMap} =
+        lists:foldl(
+          fun (Node, {Ix, Acc}) ->
+                  Acc1 = dict:store(Node, Ix, Acc),
+                  {Ix + 1, Acc1}
+          end, {0, dict:new()}, Nodes),
 
-do_collect_port_output(Port, Output) ->
+    {_, TagIxMap} =
+        lists:foldl(
+          fun (Tag, {Ix, Acc}) ->
+                  case dict:find(Tag, Acc) of
+                      {ok, _} ->
+                          {Ix, Acc};
+                      error ->
+                          Acc1 = dict:store(Tag, Ix, Acc),
+                          {Ix + 1, Acc1}
+                  end
+          end, {0, dict:new()}, [T || {_, T} <- RawTags]),
+
+    [{dict:fetch(N, NodeIxMap), dict:fetch(T, TagIxMap)} || {N, T} <- RawTags].
+
+vbmap_backend_args(dummy, _Nodes, _RawTags) ->
+    ["--engine", "dummy"];
+vbmap_backend_args(maxflow, Nodes, RawTags) ->
+    Extra =
+        case RawTags of
+            undefined ->
+                [];
+            _ ->
+                Tags = map_tags(Nodes, RawTags),
+                TagsStrings = [?i2l(N) ++ ":" ++ ?i2l(T) || {N, T} <- Tags],
+                TagsString = string:join(TagsStrings, ","),
+                ["--tags", TagsString]
+        end,
+
+    ["--engine", "maxflow"] ++ Extra.
+
+collect_vbmap_output(Port) ->
+    do_collect_vbmap_output(Port, []).
+
+do_collect_vbmap_output(Port, Output) ->
     receive
         {Port, {data, Data}} ->
-            do_collect_port_output(Port, [Output | Data]);
+            do_collect_vbmap_output(Port, [Output | Data]);
         {Port, {exit_status, Status}} ->
-            case Status of
-                0 ->
-                    {ok, Output};
-                _ ->
-                    {error, Output}
-            end;
+            {decode_vbmap_status(Status), Output};
         Msg ->
             ?log_error("Got unexpected message"),
             exit({unexpected_message, Msg})
     end.
+
+decode_vbmap_status(0) -> ok;
+decode_vbmap_status(1) -> no_solution;
+decode_vbmap_status(_) -> error.
 
 %%
 %% Tests
