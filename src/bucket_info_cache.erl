@@ -32,6 +32,7 @@ start_link() ->
     work_queue:start_link(bucket_info_cache, fun cache_init/0).
 
 cache_init() ->
+    {ok, _} = gen_event:start_link({local, bucket_info_cache_invalidations}),
     ets:new(bucket_info_cache, [set, named_table]),
     Self = self(),
     ns_pubsub:subscribe_link(ns_config_events, fun cleaner_loop/2, {Self, []}),
@@ -60,6 +61,7 @@ submit_buckets_reset(Pid, BucketNames) ->
       Pid,
       fun () ->
               [ets:delete(bucket_info_cache, Name) || Name <- BucketNames],
+              [gen_event:notify(bucket_info_cache_invalidations, Name) || Name <- BucketNames],
               ok
       end).
 
@@ -67,7 +69,8 @@ submit_full_reset() ->
     work_queue:submit_work(
       bucket_info_cache,
       fun () ->
-              ets:delete_all_objects(bucket_info_cache)
+              ets:delete_all_objects(bucket_info_cache),
+              gen_event:notify(bucket_info_cache_invalidations, '*')
       end).
 
 do_compute_bucket_info(Bucket, Config) ->

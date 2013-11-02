@@ -61,7 +61,10 @@ child_specs(BucketName) ->
       permanent, 1000, worker, [stats_reader]},
      {{failover_safeness_level, BucketName},
       {failover_safeness_level, start_link, [BucketName]},
-      permanent, 1000, worker, [failover_safeness_level]}].
+      permanent, 1000, worker, [failover_safeness_level]},
+     {{terse_bucket_info_uploader, BucketName},
+      {terse_bucket_info_uploader, start_link, [BucketName]},
+      permanent, 1000, worker, []}].
 
 init([BucketName]) ->
     {ok, {{one_for_one,
