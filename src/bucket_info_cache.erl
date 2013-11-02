@@ -74,7 +74,8 @@ submit_full_reset() ->
       end).
 
 do_compute_bucket_info(Bucket, Config) ->
-    {ok, BucketConfig} = ns_bucket:get_bucket(Bucket, Config),
+    {value, [{configs, AllBuckets}], BucketVC} = ns_config:search_with_vclock(Config, buckets),
+    {_, BucketConfig} = lists:keyfind(Bucket, 1, AllBuckets),
     {_, Servers} = lists:keyfind(servers, 1, BucketConfig),
 
     NIs = [{[{couchApiBase, capi_utils:capi_bucket_url_bin(Node, Bucket, ?LOCALHOST_MARKER_STRING)},
@@ -82,6 +83,7 @@ do_compute_bucket_info(Bucket, Config) ->
              {ports, {[{proxy, ns_config:search_node_prop(Node, Config, moxi, port)},
                        {direct, ns_config:search_node_prop(Node, Config, memcached, port)}]}}]}
            || Node <- Servers],
+
     {_, UUID} = lists:keyfind(uuid, 1, BucketConfig),
 
     BucketBin = list_to_binary(Bucket),
@@ -96,7 +98,8 @@ do_compute_bucket_info(Bucket, Config) ->
                           {vBucketServerMap, {VBMap}}]
                  end,
 
-    J = {[{name, BucketBin},
+    J = {[{rev, vclock:count_changes(BucketVC)},
+          {name, BucketBin},
           {nodes, NIs},
           {nodeLocator, ns_bucket:node_locator(BucketConfig)},
           {uuid, UUID},
