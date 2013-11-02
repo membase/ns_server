@@ -204,6 +204,12 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["pools", PoolId, "buckets", Id, "statsDirectory"] ->
                              {auth_bucket, fun menelaus_stats:serve_stats_directory/3,
                               [PoolId, Id]};
+                         ["pools", PoolId, "b", BucketName] ->
+                             {auth_bucket, fun serve_short_bucket_info/3,
+                              [PoolId, BucketName]};
+                         ["pools", PoolId, "bs", BucketName] ->
+                             {auth_bucket, fun serve_streaming_short_bucket_info/3,
+                              [PoolId, BucketName]};
                          %% GET /pools/{PoolId}/buckets/{Id}/nodes
                          ["pools", PoolId, "buckets", Id, "nodes"] ->
                              {auth_bucket, fun handle_bucket_node_list/3,
@@ -955,7 +961,9 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
                              proplists:get_value(status, KV)} || {struct, KV} <- Nodes]),
     BucketsInfo = {struct, [{uri, bin_concat_path(["pools", Id, "buckets"],
                                                   [{"v", BucketsVer},
-                                                   {"uuid", UUID}])}]},
+                                                   {"uuid", UUID}])},
+                            {terseBucketsBase, <<"/pools/default/b/">>},
+                            {terseStreamingBucketsBase, <<"/pools/default/bs/">>}]},
     RebalanceStatus = case ns_orchestrator:is_rebalance_running() of
                           true -> <<"running">>;
                           _ -> <<"none">>
@@ -1285,7 +1293,11 @@ streaming_inner(F, HTTPRes, LastRes) ->
                             {just_write, Stuff} -> Stuff;
                             _ -> F(normal)
                         end,
-            HTTPRes:write_chunk(menelaus_util:encode_json(ResNormal)),
+            Encoded = case ResNormal of
+                          {write, Bin} -> Bin;
+                          _ -> menelaus_util:encode_json(ResNormal)
+                      end,
+            HTTPRes:write_chunk(Encoded),
             HTTPRes:write_chunk("\n\n\n\n")
     end,
     Res.
@@ -3070,6 +3082,27 @@ handle_node_rename(Req) ->
         {error, Error, Status} ->
             reply_json(Req, [Error], Status)
     end.
+
+build_terse_bucket_info(BucketName) ->
+    case bucket_info_cache:terse_bucket_info(BucketName) of
+        {ok, V} -> V;
+        %% NOTE: {auth_bucket for this route handles 404 for us albeit
+        %% harmlessly racefully
+        {T, E, Stack} ->
+            erlang:raise(T, E, Stack)
+    end.
+
+serve_short_bucket_info(_PoolId, BucketName, Req) ->
+    V = build_terse_bucket_info(BucketName),
+    Req:ok({"application/json", server_header(), V}).
+
+serve_streaming_short_bucket_info(_PoolId, BucketName, Req) ->
+    handle_streaming(
+      fun (_) ->
+              ?log_debug("building stuff for ~s", [BucketName]),
+              V = build_terse_bucket_info(BucketName),
+              {just_write, {write, V}}
+      end, Req, undefined).
 
 -ifdef(EUNIT).
 
