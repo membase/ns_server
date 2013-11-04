@@ -285,31 +285,17 @@ balance(Map, KeepNodes, Options) ->
     NumVBuckets = length(Map),
     OrigCopies = length(hd(Map)),
     NumCopies = erlang:min(NumNodes, OrigCopies),
-    %% Strip nodes we're removing along with extra copies
-    Map1 = map_strip(Map, NumCopies, KeepNodes),
     %% We always use the slave assignment machinery.
     MaxSlaves = proplists:get_value(max_slaves, Options, NumNodes - 1),
     Slaves = slaves(KeepNodes, MaxSlaves),
     Chains = chains(KeepNodes, NumVBuckets, NumCopies, Slaves),
-    %% Turn the map into a list of {VBucket, Chain} pairs.
-    NumberedMap = lists:zip(lists:seq(0, length(Map) - 1), Map1),
-    %% Sort the candidate chains.
-    SortedChains = lists:sort(Chains),
-    {Pairs, [], []} =
-        lists:foldl(fun (Shift, {R, M, C}) ->
-                            {R1, M1, C1} = balance1(M, C, Shift),
-                            {R1 ++ R, M1, C1}
-                    end, {[], NumberedMap, SortedChains},
-                    lists:seq(0, NumCopies)),
-    %% We can simply sort the pairs because the first element of the
-    %% first tuple is the vbucket number.
-    Map2 = [Chain || {_, Chain} <- lists:sort(Pairs)],
+    Map1 = simple_minimize_moves(Map, Chains, NumCopies, KeepNodes),
     if NumCopies < OrigCopies ->
             %% Extend the map back out the original number of copies
             Extension = lists:duplicate(OrigCopies - NumCopies, undefined),
-            [Chain ++ Extension || Chain <- Map2];
+            [Chain ++ Extension || Chain <- Map1];
        true ->
-            Map2
+            Map1
     end.
 
 
@@ -431,7 +417,28 @@ random_map(NumVBuckets, NumCopies, Nodes) when is_list(Nodes) ->
 %% Internal functions
 %%
 
-balance1(NumberedMap, SortedChains, Shift) ->
+simple_minimize_moves(Map, Chains, NumCopies, KeepNodes) ->
+    %% Strip nodes we're removing along with extra copies
+    Map1 = map_strip(Map, NumCopies, KeepNodes),
+
+    %% Turn the map into a list of {VBucket, Chain} pairs.
+    NumberedMap = lists:zip(lists:seq(0, length(Map1) - 1), Map1),
+
+    %% Sort the candidate chains.
+    SortedChains = lists:sort(Chains),
+
+    {Pairs, [], []} =
+        lists:foldl(fun (Shift, {R, M, C}) ->
+                            {R1, M1, C1} = do_simple_minimize_moves(M, C, Shift),
+                            {R1 ++ R, M1, C1}
+                    end, {[], NumberedMap, SortedChains},
+                    lists:seq(0, NumCopies)),
+
+    %% We can simply sort the pairs because the first element of the
+    %% first tuple is the vbucket number.
+    [Chain || {_, Chain} <- lists:sort(Pairs)].
+
+do_simple_minimize_moves(NumberedMap, SortedChains, Shift) ->
     Fun = fun ({_, A}, {_, B}) ->
                   lists:nthtail(Shift, A) =< lists:nthtail(Shift, B)
           end,
