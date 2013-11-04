@@ -201,6 +201,10 @@ var ServerGroupsSection = {
       });
     }, groupsCell, DAL.cells.isEnterpriseCell);
 
+    DAL.cells.isEnterpriseCell.subscribeValue(function (value) {
+      $("#js_groups").toggle(value);
+    });
+
     function errorsHandler(resp, errorHolder) {
       errorHolder.empty();
       var error = JSON.parse(resp.responseText);

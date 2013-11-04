@@ -544,16 +544,10 @@ var MockedRequest = mkClass({
       }],
       [get("pools", "default", "serverGroups"), function () {
         var allNodes =  $.extend(true, [], ServerStateMock.allNodes);
-        var groups = [{name: "Group 1 (default)", uri: "/pools/default/serverGroups/0", nodes: []},
-                      {name: "Group 2", uri: "/pools/default/serverGroups/232", nodes: []},
-                      {name: "Group 3", uri: "/pools/default/serverGroups/343", nodes: []},
+        var groups = [{name: "Group 1 (default)", uri: "/pools/default/serverGroups/0", nodes: [allNodes[0], allNodes[1]]},
+                      {name: "Group 2", uri: "/pools/default/serverGroups/232", nodes: [allNodes[3], allNodes[2]]},
+                      {name: "Group 3", uri: "/pools/default/serverGroups/343", nodes: [allNodes[4]]},
                       {name: "Group 4", uri: "/pools/default/serverGroups/443", nodes: []}];
-
-        _.each(allNodes, function (node) {
-          randomGroup = groups[Math.floor(Math.random() * groups.length)];
-          node.group = randomGroup.name;
-          randomGroup.nodes.push(node);
-        });
 
         return {groups: groups, uri: "/pools/default/serverGroups?rev=3"};
       }],

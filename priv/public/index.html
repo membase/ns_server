@@ -150,13 +150,13 @@
         </div>
 
         <div id="js_groups" class="groups when-roadmin-avoid-me when-enterprise" style="display:none">
-          <div class="groups_header">
+          <div class="groups_header casper_draggable_server_to">
             <h1>Server Groups</h1>
-            <a id="js_create_group"><span>Create Group</span></a>
-            <a id="js_save_groups_changes"><span>Apply Changes</span></a>
+            <a id="js_create_group" class="casper_create_group_start"><span>Create Group</span></a>
+            <a id="js_save_groups_changes" class="casper_group_apply_start"><span>Apply Changes</span></a>
             <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
             <div class="clear"></div>
-            <div class="ellipsis warning_message" id="js_group_notice"></div>
+            <div class="ellipsis warning_message casper_groups_warning_message" id="js_group_notice"></div>
           </div>
           <div class="groups_container" id="js_server_group_container"></div>
           <script id="js_server_group_template" type="text/html">
@@ -166,17 +166,17 @@
             {% _.each(groups, function (group, groupIndex) { %}
               <div class="shadow_box group_wrapper js_group_wrapper" id="js_group_{%= makeSafeForCSS(group.name) %}_wrapper">
                   <div class="hdr" id="js_group_{%= makeSafeForCSS(group.name) %}">
-                    <a class="btn_1 js_edit_group"><span>Edit group</span></a>
+                    <a class="btn_1 js_edit_group casper_edit_group_start"><span>Edit group</span></a>
                     <div><h4 class="ellipsis">{%= h(group.name) %}</h4></div>
                   </div>
                   <div class="group_servers js_group_servers">
                    {% _.each(group.nodes, function (server) { %}
-                      <div class="js_draggable draggable">
+                      <div class="js_draggable draggable casper_draggable_server_from_{%= makeSafeForCSS(group.name) %}">
                         <span><span>:::</span>{%= V.stripPortHTML(server.hostname, allNodes) %}</span>
                       </div>
                     {% }) %}
                     <div class="group_is_empty">
-                      <span>This group is empty, <a class="js_delete_group">click to delete</a>.</span>
+                      <span>This group is empty, <a class="js_delete_group casper_remove_group_start">click to delete</a>.</span>
                     </div>
                   </div>
               </div>
@@ -2138,7 +2138,7 @@
 </div>
 <!-- END Save Document as -->
 
-<div class="dialog" id="js_add_group_dialog" style="width: 331px;" title="Add Group">
+<div class="dialog casper_add_group_dialog" id="js_add_group_dialog" style="width: 331px;" title="Add Group">
   <form id="js_add_group_form" class="add_group_form">
     <div class="inner_wrap">
       <i class="warning js_error_group"></i>
@@ -2147,12 +2147,12 @@
     </div>
     <div class="save_cancel clearfix">
       <button type="submit" class="save_button float_right">Create</button>
-      <a class="close casper_roadmin_reset_dialog_cancel">Cancel</a>
+      <a class="close casper_close_add_group_dialog">Cancel</a>
     </div>
   </form>
 </div>
 
-<div class="dialog" id="js_remove_group_dialog" title="Removing">
+<div class="dialog casper_remove_group_dialog" id="js_remove_group_dialog" title="Removing">
   <form>
     <div class="clearfix">
       <div class="err">
@@ -2161,12 +2161,12 @@
     </div>
     <div class="save_cancel clearfix">
       <button type="button" class="delete_button float_right js_delete_button">Delete</button>
-      <a class="close">Cancel</a>
+      <a class="close casper_close_remove_group_dialog">Cancel</a>
     </div>
   </form>
 </div>
 
-<div class="dialog" id="js_edit_group_dialog" style="width: 331px;" title="Edit Group">
+<div class="dialog casper_edit_group_dialog" id="js_edit_group_dialog" style="width: 331px;" title="Edit Group">
   <form id="js_edit_group_form" class="add_group_form">
     <div class="inner_wrap">
       <i class="warning js_error_group"></i>
@@ -2175,7 +2175,7 @@
     </div>
     <div class="save_cancel clearfix">
       <button type="submit" class="save_button float_right">Save</button>
-      <a class="close casper_roadmin_reset_dialog_cancel">Cancel</a>
+      <a class="close casper_close_edit_group_dialog">Cancel</a>
     </div>
   </form>
 </div>
