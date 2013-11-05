@@ -157,7 +157,7 @@ var DAL = {
     var implementationVersion = data.implementationVersion;
 
     (function () {
-      var match = /(\?|&)forceVersion=([^&]+)/.exec(document.location.href);
+      var match = /(\?|&)forceVersion=([^&#]+)/.exec(document.location.href);
       if (!match) {
         return;
       }
