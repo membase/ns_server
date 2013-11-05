@@ -3099,7 +3099,6 @@ serve_short_bucket_info(_PoolId, BucketName, Req) ->
 serve_streaming_short_bucket_info(_PoolId, BucketName, Req) ->
     handle_streaming(
       fun (_) ->
-              ?log_debug("building stuff for ~s", [BucketName]),
               V = build_terse_bucket_info(BucketName),
               {just_write, {write, V}}
       end, Req, undefined).
