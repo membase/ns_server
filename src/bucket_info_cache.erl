@@ -26,7 +26,7 @@
 -export([submit_buckets_reset/2,
          submit_full_reset/0]).
 
--define(LOCALHOST_MARKER_STRING, "@@").
+-define(LOCALHOST_MARKER_STRING, "$HOST").
 
 start_link() ->
     work_queue:start_link(bucket_info_cache, fun cache_init/0).
