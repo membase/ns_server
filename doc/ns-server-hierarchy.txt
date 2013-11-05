@@ -194,13 +194,25 @@
                                                                      connection to memcached. Main process is passing
                                                                      requests to workers in pool trying to be smart
                                                                      about queuing.")
-                                                        (gen_server '(tap_replication_manager "default") :name 'tap_replication_manager-default
-                                                                    "keeps track of desired replications. Serializes
-                                                                    replication changes w.r.t. not-ready-vbuckets
-                                                                    restarts.")
+                                                        (gen_server '(replication_manager "default") :name 'replication_manager-default :since "3.0"
+                                                                    "keeps track of desired replications. Routes
+                                                                    replication work between tap and upr depending
+                                                                    on bucket replication type.")
+                                                                    (gen_server '(tap_replication_manager "default") :name 'tap_replication_manager-default
+                                                                                "implements tap portion of replication manager.
+                                                                                 Serializes replication changes w.r.t. not-ready-vbuckets
+                                                                                 restarts.")
                                                         (supervisor '(ns_vbm_sup "default") :name 'ns_vbm_sup-default :since "2.0"
                                                                     "hosts replication ebucketmigrators for 2.0
                                                                      \"replicators on destination\"")
+                                                        (supervisor '(upr_sup "default") :name 'upr_sup-default :since "3.0"
+                                                                    "hosts and manages upr replicators")
+                                                                    (gen-server '(upr_replicator "default" "node") :name 'upr_replicator-default-node :since "3.0"
+                                                                                "implements frontend for upr replication proxy")
+                                                                                (gen-server '(upr_consumer_conn "default" "node") :name 'upr_consumer_conn-default-node :since "3.0"
+                                                                                            "implements consumer side of upr replication proxy")
+                                                                                (gen-server '(upr_producer_conn) :since "3.0"
+                                                                                            "implements producer side of upr replication proxy")
                                                         (gen-server '(janitor_agent "default") :name 'janitor_agent-default :since "2.0"
                                                                     "applies replication and vbucket state changes
                                                                      decided by janitor and vbuckets mover")

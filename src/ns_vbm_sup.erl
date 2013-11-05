@@ -31,7 +31,7 @@
 %% Callbacks
 -export([server_name/1, supervisor_node/2,
          make_replicator/2, replicator_nodes/2, replicator_vbuckets/1,
-         build_child_spec/2]).
+         build_child_spec/2, get_children/1]).
 
 -export([perform_vbucket_filter_change/6]).
 
@@ -187,3 +187,12 @@ build_child_spec(ChildId, Args) ->
     {ChildId,
      {ebucketmigrator_srv, start_link, Args},
      temporary, 60000, worker, [ebucketmigrator_srv]}.
+
+-spec get_children(bucket_name()) -> list() | not_running.
+get_children(Bucket) ->
+    try supervisor:which_children(server_name(Bucket)) of
+        RawKids ->
+            [Id || {Id, _Child, _Type, _Mods} <- RawKids]
+    catch exit:{noproc, _} ->
+            not_running
+    end.

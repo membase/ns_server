@@ -17,15 +17,13 @@
 
 -behavior(gen_server).
 
--export([start_link/1,
-         server_name/1,
-         get_incoming_replication_map/1,
-         set_incoming_replication_map/2,
-         change_vbucket_replication/3,
-         remove_undesired_replications/2]).
+-export([start_link/1]).
 
 -export([init/1, handle_call/3, handle_info/2, terminate/2, code_change/3]).
 -export([handle_cast/2]).
+
+-export([get_actual_replications/1,
+         start_replication/3, kill_replication/3, modify_replication/4]).
 
 
 -include("ns_common.hrl").
@@ -33,61 +31,63 @@
 
 -record(state, {bucket_name :: bucket_name(),
                 not_readys_per_node_ets :: ets:tid(),
-                desired_replications :: [{node(), [vbucket_id()]}]}).
+                desired_replications :: [{node(), [vbucket_id()]}]
+               }).
 
+
+start_link(Bucket) ->
+    proc_lib:start_link(?MODULE, init, [Bucket]).
 
 server_name(Bucket) ->
     list_to_atom("tap_replication_manager-" ++ Bucket).
 
-start_link(Bucket) ->
-    gen_server:start_link({local, server_name(Bucket)}, ?MODULE, [Bucket], []).
-
--spec set_incoming_replication_map(bucket_name(),
-                                   [{node(), [vbucket_id(),...]}]) -> ok.
-set_incoming_replication_map(Bucket, DesiredReps) ->
-    gen_server:call(server_name(Bucket), {set_desired_replications, DesiredReps}, infinity).
-
--spec change_vbucket_replication(bucket_name(), vbucket_id(), node() | undefined) -> ok.
-change_vbucket_replication(Bucket, VBucket, ReplicateFrom) ->
-    gen_server:call(server_name(Bucket), {change_vbucket_replication, VBucket, ReplicateFrom}, infinity).
-
--spec remove_undesired_replications(bucket_name(), [{node(), [vbucket_id(),...]}]) -> ok.
-remove_undesired_replications(Bucket, DesiredReps) ->
-    gen_server:call(server_name(Bucket), {remove_undesired_replications, DesiredReps}, infinity).
-
-init([Bucket]) ->
+init(Bucket) ->
     T = ets:new(a, [set, private]),
-    {ok, #state{bucket_name = Bucket,
-                not_readys_per_node_ets = T,
-                desired_replications = []}}.
+
+    erlang:register(server_name(Bucket), self()),
+    proc_lib:init_ack({ok, self()}),
+
+    gen_server:enter_loop(?MODULE, [],
+                          #state{bucket_name = Bucket,
+                                 not_readys_per_node_ets = T,
+                                 desired_replications = []}).
+
+start_replication(Bucket, SrcNode, VBuckets) ->
+    gen_server:call(server_name(Bucket), {start_child, SrcNode, VBuckets}, infinity).
+
+kill_replication(Bucket, SrcNode, VBuckets) ->
+    gen_server:call(server_name(Bucket), {kill_child, SrcNode, VBuckets}, infinity).
+
+modify_replication(Bucket, SrcNode, OldVBuckets, NewVBuckets) ->
+    gen_server:call(server_name(Bucket),
+                    {change_vbucket_filter, SrcNode, OldVBuckets, NewVBuckets}, infinity).
+
+-spec get_actual_replications(Bucket::bucket_name()) ->
+                                     not_running |
+                                     [{Node::node(), [non_neg_integer()]}].
+get_actual_replications(Bucket) ->
+    case ns_vbm_sup:get_children(Bucket) of
+        not_running -> not_running;
+        Kids ->
+            lists:sort([{_Node, _VBuckets} = childs_node_and_vbuckets(Child) || Child <- Kids])
+    end.
 
 handle_cast(Msg, State) ->
     {stop, {unexpected_cast, Msg}, State}.
 
-handle_call({remove_undesired_replications, FutureReps}, From, #state{desired_replications = CurrentReps} = State) ->
-    Diff = replications_difference(FutureReps, CurrentReps),
-    CleanedReps0 = [{N, ordsets:intersection(FutureVBs, CurrentVBs)} || {N, FutureVBs, CurrentVBs} <- Diff],
-    CleanedReps = [{N, VBs} || {N, [_|_] = VBs} <- CleanedReps0],
-    handle_call({set_desired_replications, CleanedReps}, From, State);
-handle_call({set_desired_replications, DesiredReps}, _From, #state{} = State) ->
-    ok = do_set_incoming_replication_map(State, DesiredReps),
-    {reply, ok, State#state{desired_replications = DesiredReps}};
-handle_call({change_vbucket_replication, VBucket, NewSrc}, _From, #state{bucket_name = Bucket} = State) ->
-    CurrentReps = get_incoming_replication_map_as_list(Bucket),
-    CurrentReps0 = [{Node, ordsets:del_element(VBucket, VBuckets)}
-                    || {Node, VBuckets} <- CurrentReps],
-    %% TODO: consider making it faster
-    DesiredReps = case NewSrc of
-                      undefined ->
-                          CurrentReps0;
-                      _ ->
-                          misc:ukeymergewith(fun ({Node, VBucketsA}, {_, VBucketsB}) ->
-                                                     {Node, ordsets:union(VBucketsA, VBucketsB)}
-                                             end, 1,
-                                             CurrentReps0, [{NewSrc, [VBucket]}])
-                  end,
-    handle_call({set_desired_replications, DesiredReps}, [], State).
-
+handle_call({start_child, SrcNode, VBuckets}, _From,
+            #state{desired_replications = Repl} = State) ->
+    NewRepl = lists:keystore(SrcNode, 1, Repl, {SrcNode, VBuckets}),
+    {reply, do_start_child(State, SrcNode, VBuckets), State#state{desired_replications = NewRepl}};
+handle_call({kill_child, SrcNode, VBuckets}, _From,
+           #state{desired_replications = Repl} = State) ->
+    NewRepl = lists:keydelete(SrcNode, 1, Repl),
+    {reply, do_kill_child(State, SrcNode, VBuckets), State#state{desired_replications = NewRepl}};
+handle_call({change_vbucket_filter, SrcNode, OldVBuckets, NewVBuckets}, _From,
+            #state{desired_replications = Repl} = State) ->
+    NewRepl = lists:keystore(SrcNode, 1, Repl, {SrcNode, NewVBuckets}),
+    {reply, do_change_vbucket_filter(State, SrcNode, OldVBuckets, NewVBuckets),
+     State#state{desired_replications = NewRepl}}.
 
 handle_info({have_not_ready_vbuckets, Node}, #state{not_readys_per_node_ets = T} = State) ->
     {ok, TRef} = timer2:send_after(30000, {restart_replicator, Node}),
@@ -97,63 +97,14 @@ handle_info({restart_replicator, Node}, State) ->
     {Node, VBuckets} = lists:keyfind(Node, 1, State#state.desired_replications),
     ?log_info("Restarting replicator that had not_ready_vbuckets: ~p", [{Node, VBuckets}]),
     ets:delete(State#state.not_readys_per_node_ets, Node),
-    kill_child(State, Node, VBuckets),
-    start_child(State, Node, VBuckets),
+    do_kill_child(State, Node, VBuckets),
+    do_start_child(State, Node, VBuckets),
     {noreply, State}.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 terminate(_Reason, _State) ->
-    ok.
-
--spec get_incoming_replication_map(Bucket::bucket_name()) ->
-                                          not_running |
-                                          [{Node::node(), [non_neg_integer()]}].
-get_incoming_replication_map(Bucket) ->
-    case get_children(Bucket) of
-        not_running -> not_running;
-        Kids ->
-            lists:sort([{_Node, _VBuckets} = childs_node_and_vbuckets(Child) || Child <- Kids])
-    end.
-
-get_incoming_replication_map_as_list(Bucket) ->
-    case get_incoming_replication_map(Bucket) of
-        not_running -> [];
-        RV -> RV
-    end.
-
-do_set_incoming_replication_map(#state{bucket_name = Bucket} = State, DesiredReps) ->
-    CurrentReps = get_incoming_replication_map_as_list(Bucket),
-    do_set_incoming_replication_map(State, DesiredReps, CurrentReps).
-
-replications_difference(RepsA, RepsB) ->
-    L = [{N, VBs, []} || {N, VBs} <- RepsA],
-    R = [{N, [], VBs} || {N, VBs} <- RepsB],
-    MergeFn = fun ({N, VBsL, []}, {N, [], VBsR}) ->
-                      {N, VBsL, VBsR}
-              end,
-    misc:ukeymergewith(MergeFn, 1, L, R).
-
-categorize_replications([] = _Diff, AccToKill, AccToStart, AccToChange) ->
-    {AccToKill, AccToStart, AccToChange};
-categorize_replications([{N, NewVBs, OldVBs} = T | Rest], AccToKill, AccToStart, AccToChange) ->
-    if
-        NewVBs =:= [] -> categorize_replications(Rest, [{N, OldVBs} | AccToKill], AccToStart, AccToChange);
-        OldVBs =:= [] -> categorize_replications(Rest, AccToKill, [{N, NewVBs} | AccToStart], AccToChange);
-        NewVBs =:= OldVBs -> categorize_replications(Rest, AccToKill, AccToStart, AccToChange);
-        true -> categorize_replications(Rest, AccToKill, AccToStart, [T | AccToChange])
-    end.
-
-do_set_incoming_replication_map(State, DesiredReps, CurrentReps) ->
-    Diff = replications_difference(DesiredReps, CurrentReps),
-    {NodesToKill, NodesToStart, NodesToChange} = categorize_replications(Diff, [], [], []),
-    [kill_child(State, SrcNode, VBuckets)
-     || {SrcNode, VBuckets} <- NodesToKill],
-    [start_child(State, SrcNode, VBuckets)
-     || {SrcNode, VBuckets} <- NodesToStart],
-    [change_vbucket_filter(State, SrcNode, OldVBs, NewVBs)
-     || {SrcNode, NewVBs, OldVBs} <- NodesToChange],
     ok.
 
 cancel_replicator_reset(T, SrcNode) ->
@@ -166,11 +117,11 @@ cancel_replicator_reset(T, SrcNode) ->
     end.
 
 
-start_child(#state{bucket_name = Bucket,
-                   not_readys_per_node_ets = T},
-            SrcNode, VBuckets) ->
+do_start_child(#state{bucket_name = Bucket,
+                      not_readys_per_node_ets = T},
+               SrcNode, VBuckets) ->
     ?log_info("Starting replication from ~p for~n~p", [SrcNode, VBuckets]),
-    [] = _MaybeSameSrcNode = [Child || Child <- get_children(Bucket),
+    [] = _MaybeSameSrcNode = [Child || Child <- ns_vbm_sup:get_children(Bucket),
                                        {SrcNodeC, _} <- [childs_node_and_vbuckets(Child)],
                                        SrcNodeC =:= SrcNode],
     Sup = ns_vbm_sup:server_name(Bucket),
@@ -182,9 +133,9 @@ start_child(#state{bucket_name = Bucket,
         {ok, _, _} = R -> R
     end.
 
-kill_child(#state{bucket_name = Bucket,
-                  not_readys_per_node_ets = T},
-           SrcNode, VBuckets) ->
+do_kill_child(#state{bucket_name = Bucket,
+                     not_readys_per_node_ets = T},
+              SrcNode, VBuckets) ->
     ?log_info("Going to stop replication from ~p", [SrcNode]),
     Sup = ns_vbm_sup:server_name(Bucket),
     Child = ns_vbm_sup:make_replicator(SrcNode, VBuckets),
@@ -193,11 +144,12 @@ kill_child(#state{bucket_name = Bucket,
     %% should do about that
     _ = supervisor:terminate_child(Sup, Child).
 
-change_vbucket_filter(#state{bucket_name = Bucket,
-                             not_readys_per_node_ets = T} = State,
-                      SrcNode, OldVBuckets, NewVBuckets) ->
+do_change_vbucket_filter(#state{bucket_name = Bucket,
+                                not_readys_per_node_ets = T} = State,
+                         SrcNode, OldVBuckets, NewVBuckets) ->
     %% TODO: potential slowness here. Consider ordsets
-    ?log_info("Going to change replication from ~p to have~n~p (~p, ~p)", [SrcNode, NewVBuckets, NewVBuckets--OldVBuckets, OldVBuckets--NewVBuckets]),
+    ?log_info("Going to change replication from ~p to have~n~p (~p, ~p)",
+              [SrcNode, NewVBuckets, NewVBuckets--OldVBuckets, OldVBuckets--NewVBuckets]),
     OldChildId = ns_vbm_sup:make_replicator(SrcNode, OldVBuckets),
     NewChildId = ns_vbm_sup:make_replicator(SrcNode, NewVBuckets),
     Args = build_replicator_args(Bucket, SrcNode, NewVBuckets),
@@ -214,7 +166,7 @@ change_vbucket_filter(#state{bucket_name = Bucket,
         RV -> {ok, RV}
     catch error:upstream_conn_is_down ->
             ?log_debug("Detected upstream_conn_is_down and going to simply start fresh ebucketmigrator"),
-            start_child(State, SrcNode, NewVBuckets),
+            do_start_child(State, SrcNode, NewVBuckets),
             {ok, ok}
     end.
 
@@ -238,13 +190,3 @@ build_replicator_args(Bucket, SrcNode, VBuckets) ->
 
 handle_not_ready_vbuckets_from(RepManagerPid, SrcNode) ->
     RepManagerPid ! {have_not_ready_vbuckets, SrcNode}.
-
-
--spec get_children(bucket_name()) -> list() | not_running.
-get_children(Bucket) ->
-    try supervisor:which_children(ns_vbm_sup:server_name(Bucket)) of
-        RawKids ->
-            [Id || {Id, _Child, _Type, _Mods} <- RawKids]
-    catch exit:{noproc, _} ->
-            not_running
-    end.
