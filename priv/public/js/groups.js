@@ -1,13 +1,27 @@
-function makeServerGroupsCells(ns, serverGroupsUriRevisoryCell) {
-  ns.groupsUriCell = Cell.compute(function (v) {
-    return v.need(serverGroupsUriRevisoryCell).split("?")[0];
-  }).name("groupsUriCell");
-
-  ns.groupsUriCell.isEqual = _.isEqual;
-
+function makeServerGroupsCells(ns) {
   ns.groupsCell = Cell.compute(function (v) {
-    return future.get({url: v.need(ns.groupsUriCell)});
+    if (v.need(DAL.cells.mode) != "groups") {
+      return;
+    }
+    // note: we capture _snapshot_ of groups cell, thus no dependency
+    // and we do future thing to actually make sure we capture it when
+    // it's ready and not just grab whatever current value is
+    return future(function (callback) {
+      DAL.cells.groupsUpdatedByRevisionCell.getValue(function (val) {
+        callback(val);
+      });
+    });
   }).name("groupsCell");
+
+  (function (origInvalidate) {
+    ns.groupsCell.invalidate = function () {
+      // we invalidate groupsUpdatedByRevisionCell first because
+      // otherwise we would simply replace "snapshot" and that would
+      // be old value
+      DAL.cells.groupsUpdatedByRevisionCell.invalidate();
+      origInvalidate.call(ns.groupsCell);
+    }
+  })(ns.groupsCell.invalidate);
 }
 
 var sortableServerGroups = {
@@ -119,7 +133,7 @@ var ServerGroupsSection = {
     var editGroupField = $("#js_edit_group_filed");
     var removeGroupsDialog = $("#js_remove_group_dialog");
 
-    makeServerGroupsCells(self, DAL.cells.serverGroupsUriRevisoryCell)
+    makeServerGroupsCells(self);
     var groupsCell = self.groupsCell;
 
     noticeContainer.hide();
@@ -298,7 +312,10 @@ var ServerGroupsSection = {
         url: sortableServerGroups.groups.uri,
         data: JSON.stringify({"groups": sortableServerGroups.groups.groups}),
         success: function () {
-          groupsCell.invalidate();
+          DAL.cells.currentPoolDetailsCell.invalidate();
+          DAL.cells.currentPoolDetailsCell.getValue(function () {
+            groupsCell.invalidate();
+          });
         },
         error: function (resp) {
           if (!revisionMismatch(resp)) {

@@ -336,34 +336,16 @@ var DAL = {
     return future.get({url: v.need(cells.serverGroupsUriRevisoryCell)});
   }).name("groupsUpdatedByRevisionCell");
 
-  var hostnameComparator = mkComparatorByProp('hostname', naturalSort);
-  var groupnameComparator = mkComparatorByProp('group', naturalSort);
-
-  cells.nodesRawCell = Cell.compute(function (v) {
-    if (v.need(cells.isEnterpriseCell)) {
-      var groups = v.need(cells.groupsUpdatedByRevisionCell).groups;
-      _.each(groups, function (group, groupIndex) {
-        group.nodes.sort(hostnameComparator);
-        _.each(group.nodes, function (node, nodeIndex) {
-          node.group = group.name;
-        });
+  cells.hostnameToGroupCell = Cell.compute(function (v) {
+    var groups = v.need(cells.groupsUpdatedByRevisionCell).groups;
+    var rv = {};
+    _.each(groups, function (group) {
+      _.each(group.nodes, function (node) {
+        rv[node.hostname] = group;
       });
-      var nodes = _.reduce(groups, function (memo, group) {
-        return memo.concat(group.nodes);
-      }, []);
-      nodes.sort(groupnameComparator);
-      return nodes;
-    } else {
-      var nodes = v.need(DAL.cells.currentPoolDetailsCell).nodes;
-      nodes.sort(hostnameComparator);
-      return nodes
-    }
-  }).name("nodesRawCell");
-  cells.nodesRawCell.delegateInvalidationMethods(cells.groupsUpdatedByRevisionCell);
-
-  cells.currentPoolDetailsCell.subscribeValue(function () {
-    cells.nodesRawCell.invalidate();
-  });
+    });
+    return rv;
+  }).name("hostnameToGroupCell");
 
 })(DAL.cells);
 
@@ -381,7 +363,22 @@ var DAL = {
     allNodes = [];
 
     var isEnterprise = v.need(DAL.cells.isEnterpriseCell);
-    var nodes = v.need(DAL.cells.nodesRawCell);
+    var poolDetails = v.need(DAL.cells.currentPoolDetailsCell);
+    var hostnameToGroup = v.need(DAL.cells.hostnameToGroupCell);
+    var detailsAreStale = v.need(IOCenter.staleness);
+
+    var nodes = _.map(poolDetails.nodes, function (n) {
+      n = _.clone(n);
+      var group = hostnameToGroup[n.hostname];
+      if (group) { // it's possible hostnameToGroupCell is still in
+                   // the process of being invalidated. So group might
+                   // actually be not yet updated. That's fine. All
+                   // external observers will only see that cell after
+                   // it's fully "stable".
+        n.group = group.name;
+      }
+      return n;
+    });
 
     var nodeNames = _.pluck(nodes, 'hostname');
     _.each(nodes, function (n) {
@@ -395,8 +392,6 @@ var DAL = {
         active.push(n);
       }
     });
-
-    var detailsAreStale = v.need(IOCenter.staleness);
 
     var stillActualEject = [];
     _.each(pendingEject, function (node) {
@@ -413,6 +408,17 @@ var DAL = {
     pendingEject = stillActualEject;
 
     pending = pending = pending.concat(pendingEject);
+
+    function hostnameComparator(a, b) {
+      // note: String() is in order to deal with possible undefined
+      var rv = naturalSort(String(a.group), String(b.group));
+      if (rv != 0) {
+        return rv;
+      }
+      return naturalSort(a.hostname, b.hostname);
+    }
+    pending.sort(hostnameComparator);
+    active.sort(hostnameComparator);
 
     allNodes = _.uniq(active.concat(pending));
 
