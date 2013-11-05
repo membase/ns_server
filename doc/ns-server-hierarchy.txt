@@ -76,6 +76,10 @@
                         (work_queue 'vbucket_map_mirror :since "2.0"
                                     "maintains ets cache of vbucket map for faster view merger params generation. Also
                                     caches capi_url(Node)")
+                        (work_queue 'bucket_info_cache :since "2.5"
+                                    "maintains ets cache of terse bucket details"
+                                    (gen-event 'bucket_info_cache_invalidations :since "2.5"
+                                               "fired when any bucket info is invalidated"))
                         (gen-event 'ns_tick_event
                                    "local tick event. Singleton ns_tick on master node will fire tick events
                                    on all nodes")
@@ -209,7 +213,11 @@
                                                                     "used to read stats archive")
                                                         (event-handler '(failover_safeness_level "default") :to 'ns_stats_event
                                                                        "estimates bucket's replication up-to-date-ness
-                                                                        'from this node' based on stats it sees"))))
+                                                                        'from this node' based on stats it sees")
+                                                        (work_queue '(terse_bucket_info_uploader "default")
+                                                                    "observes invalidations of bucket info cache and uploads"
+                                                                    "fresh test bucket details to ep-engine"
+                                                                    (pubsub-link nil :to 'bucket_info_cache_invalidations))))
                         (gen-server 'system_stats_collector)
                         (gen-server '(stats_archiver "@system"))
                         (gen-server '(stats_reader "@system"))

@@ -102,7 +102,7 @@ var MockedRequest = mkClass({
       options.type = 'GET';
     }
     options.type = options.type.toUpperCase();
-    if (options.type != 'GET' && options.type != 'POST' && options.type != 'DELETE') {
+    if (options.type != 'GET' && options.type != 'POST' && options.type != 'DELETE' && options.type != 'PUT') {
       throw new Error("unknown method: " + options.type);
     }
 
@@ -543,19 +543,16 @@ var MockedRequest = mkClass({
         return {};
       }],
       [get("pools", "default", "serverGroups"), function () {
-        var groups = [{name: "Group 1 (default)", uri: "/pools/default/serverGroups/123", nodes: []},
-                      {name: "Group 2", uri: "/pools/default/serverGroups/232", nodes: []},
-                      {name: "Group 3", uri: "/pools/default/serverGroups/343", nodes: []}];
-        var nodes = _.clone(this.allNodes);
-        _.each(nodes, function (node) {
-          var groupName = node.group;
-          var group = _.detect(groups, function (g) {return g.name == groupName});
-          group.nodes.push(node);
-        });
-        return {groups: groups, uri: "/pools/default/serverGroups?rev=something"};
+        var allNodes =  $.extend(true, [], ServerStateMock.allNodes);
+        var groups = [{name: "Group 1 (default)", uri: "/pools/default/serverGroups/0", nodes: [allNodes[0], allNodes[1]]},
+                      {name: "Group 2", uri: "/pools/default/serverGroups/232", nodes: [allNodes[3], allNodes[2]]},
+                      {name: "Group 3", uri: "/pools/default/serverGroups/343", nodes: [allNodes[4]]},
+                      {name: "Group 4", uri: "/pools/default/serverGroups/443", nodes: []}];
+
+        return {groups: groups, uri: "/pools/default/serverGroups?rev=3"};
       }],
       [put("pools", "default", "serverGroups"), function () {
-        return {};
+        return this.errorResponse({"error": "revision mismatch"}, {status: 409});
       }],
       [post("pools", "default", "serverGroups"), function () {
         return this.errorResponse({"name": "Name already exist"}, {status: 400});
@@ -1500,6 +1497,7 @@ var MockedRequest = mkClass({
         "couchApiBase": "http://127.0.0.1:9500/",
         "otpCookie": "owqsknzuatijcqxe",
         "clusterMembership": "active",
+        "group": "Group 3",
         "status": "healthy",
         "otpNode": "n_0@127.0.0.1",
         "thisNode": true,
@@ -1886,7 +1884,6 @@ var ServerStateMock = {
     "mcdMemoryAllocated": 4723,
     "couchApiBase": "/couchBase/",
     "clusterMembership": "active",
-    "group": "Group 2",
     "status": "healthy",
     "otpNode": "n_3@127.0.0.1",
     "thisNode": true,
@@ -2040,6 +2037,7 @@ var ServerStateMock = {
         "validateURI": "/controller/setFastWarmup?just_validate=1"
       }
     },
+    "serverGroupsUri": "/pools/default/serverGroups",
     "rebalanceStatus": "none",
     "rebalanceProgressUri": "/pools/default/rebalanceProgress",
     "stopRebalanceUri": "/controller/stopRebalance",
@@ -2113,6 +2111,7 @@ var ServerStateMock = {
       "mcdMemoryAllocated": 4723,
       "replication": 0.0,
       "clusterMembership": "active",
+      "group": "Group 3",
       "status": "healthy",
       "otpNode": "n_0@127.0.0.1",
       "thisNode": true,
@@ -2243,6 +2242,7 @@ var ServerStateMock = {
       "mcdMemoryAllocated": 4723,
       "replication": 1.0,
       "clusterMembership": "active",
+      "group": "Group 3",
       "status": "healthy",
       "otpNode": "n_0@127.0.0.1",
       "thisNode": true,

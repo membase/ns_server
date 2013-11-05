@@ -63,6 +63,7 @@
          search_prop/3, search_prop/4,
          search_prop_tuple/3, search_prop_tuple/4,
          search_raw/2,
+         search_with_vclock/2,
          run_txn/1,
          clear/0, clear/1,
          proplist_get_value/3,
@@ -380,6 +381,24 @@ search(Config, Key, Default) ->
         false ->
             Default
     end.
+
+search_with_vclock_kvlist([], _Key) -> false;
+search_with_vclock_kvlist([KVList | Rest], Key) ->
+    case lists:keyfind(Key, 1, KVList) of
+        {_, [{'_vclock', Clock} | Value]} ->
+            {value, Value, Clock};
+        {_, Value} ->
+            {value, Value, undefined};
+        false ->
+            search_with_vclock_kvlist(Rest, Key)
+    end.
+
+get_static_and_dynamic({config, _Init, SL, DL, _PolicyMod}) -> [hd(DL) | SL];
+get_static_and_dynamic(#config{dynamic = DL, static = SL}) -> [hd(DL) | SL].
+
+search_with_vclock(Config, Key) ->
+    LL = get_static_and_dynamic(Config),
+    search_with_vclock_kvlist(LL, Key).
 
 search_node(Config, Key) ->
     search_node(node(), Config, Key).
@@ -900,13 +919,17 @@ merge_list_values({K, RV} = RP, {_, LV} = LP) ->
                                 ?user_log(?CONFIG_CONFLICT,
                                           "Conflicting configuration changes to field "
                                           "~p:~n~p and~n~p, choosing the former, which looks newer.~n",
-                                          [K, {LClock, LV}, {RClock, RV}]),
+                                          [K,
+                                           {LClock, ns_config_log:sanitize(LV)},
+                                           {RClock, ns_config_log:sanitize(RV)}]),
                                 LV;
                             false ->
                                 ?user_log(?CONFIG_CONFLICT,
                                           "Conflicting configuration changes to field "
                                           "~p:~n~p and~n~p, choosing the former.~n",
-                                          [K, {RClock, RV}, {LClock, LV}]),
+                                          [K,
+                                           {RClock, ns_config_log:sanitize(RV)},
+                                           {LClock, ns_config_log:sanitize(LV)}]),
                                 RV
                         end,
                     %% Increment the merged vclock so we don't pingpong

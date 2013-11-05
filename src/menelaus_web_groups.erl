@@ -271,11 +271,19 @@ parse_groups_post(Params) ->
     MaybeName = case proplists:get_value("name", Params) of
                     undefined ->
                         {error, <<"is missing">>};
-                    "" ->
-                        {error, <<"cannot be empty">>};
                     Name ->
-                        {ok, list_to_binary(Name)}
-                end,
+                        case misc:trim(Name) of
+                            "" ->
+                                {error, <<"cannot be empty">>};
+                            Trimmed ->
+                                case length(Name) > 64 of
+                                    true ->
+                                        {error, <<"cannot be longer than 64 bytes">>};
+                                    _ ->
+                                        {ok, list_to_binary(Trimmed)}
+                                end
+                        end
+                 end,
     ExtraParams = [K || {K, _} <- Params,
                         K =/= "name"],
     MaybeExtra = case ExtraParams of

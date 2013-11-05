@@ -115,7 +115,8 @@
          eval/2,
          wait_for_checkpoint_persistence/3,
          get_tap_docs_estimate/3,
-         get_mass_tap_docs_estimate/2]).
+         get_mass_tap_docs_estimate/2,
+         set_cluster_config/2]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -528,6 +529,8 @@ do_handle_call({get_tap_docs_estimate, VBucketId, TapName}, _From, State) ->
     {reply, mc_client_binary:get_tap_docs_estimate(State#state.sock, VBucketId, TapName), State};
 do_handle_call({get_mass_tap_docs_estimate, VBuckets}, _From, State) ->
     {reply, mc_client_binary:get_mass_tap_docs_estimate(State#state.sock, VBuckets), State};
+do_handle_call({set_cluster_config, Blob}, _From, State) ->
+    {reply, mc_client_binary:set_cluster_config(State#state.sock, Blob), State};
 do_handle_call(topkeys, _From, State) ->
     Reply = mc_binary:quick_stats(
               State#state.sock, <<"topkeys">>,
@@ -1316,3 +1319,7 @@ get_tap_docs_estimate(Bucket, VBucketId, TapName) ->
 
 get_mass_tap_docs_estimate(Bucket, VBuckets) ->
     do_call(server(Bucket), {get_mass_tap_docs_estimate, VBuckets}, ?TIMEOUT_VERY_HEAVY).
+
+-spec set_cluster_config(bucket_name(), binary()) -> ok | mc_error().
+set_cluster_config(Bucket, Blob) ->
+    do_call(server(Bucket), {set_cluster_config, Blob}, ?TIMEOUT).

@@ -1110,7 +1110,7 @@ membase_stats_description(BucketId) ->
                          {maxY,100}]},
                 {struct,[{title,<<"resident %">>},
                          {name,<<"vb_pending_resident_items_ratio">>},
-                         {desc,<<"Percentage of replica items cached in RAM in this bucket (measured from vb_replica_resident_items_ratio)">>},
+                         {desc,<<"Percentage of items in pending state vbuckets cached in RAM in this bucket (measured from vb_pending_resident_items_ratio)">>},
                          {maxY,100}]},
                 {struct,[{title,<<"resident %">>},
                          {name,<<"ep_resident_items_rate">>},

@@ -83,11 +83,14 @@ var ServersSection = {
     if (active.length) {
       renderTemplate('manage_server_list', {
         rows: active,
-        expandingAllowed: !IOCenter.staleness.value
+        expandingAllowed: !IOCenter.staleness.value,
+        isGroupRaw: !!active[0].group
       }, $i('active_server_list_container'));
+
       renderTemplate('manage_server_list', {
         rows: pending,
-        expandingAllowed: true
+        expandingAllowed: true,
+        isGroupRaw: !!active[0].group
       }, $i('pending_server_list_container'));
     }
 
@@ -98,7 +101,7 @@ var ServersSection = {
 
     if (IOCenter.staleness.value) {
       $('#js_servers .staleness-notice').show();
-      $('#js_servers').find('.add_button, .rebalance_button').hide();
+      $('#js_servers').find('.add_button, .rebalance_button, #js_server_groups_tab').hide();
       $('#active_server_list_container, #pending_server_list_container').find('.re_add_button, .eject_server, .failover_server, .remove_from_list').addClass('dynamic_disabled');
     } else {
       $('#js_servers .staleness-notice').hide();
@@ -263,6 +266,18 @@ var ServersSection = {
     });
 
     self.serversCell = DAL.cells.serversCell;
+
+    var groupsSelector = $("#js_servers_group_select");
+    Cell.subscribeMultipleValues(function (groups, isEnterprise) {
+      $("#js_servers .when-enterprise").toggle(isEnterprise);
+      if (!isEnterprise || !groups) {
+        return;
+      }
+      groupsSelector.empty();
+      _.each(groups.groups, function (group, index) {
+         groupsSelector.append($("<option></option>").attr("value", group.addNodeURI).text(group.name));
+      });
+    }, DAL.cells.groupsUpdatedByRevisionCell, DAL.cells.isEnterpriseCell);
 
     self.poolDetails.subscribeValue(function (poolDetails) {
       $($.makeArray($('#js_servers .failover_warning')).slice(1)).remove();
@@ -483,14 +498,13 @@ var ServersSection = {
       return;
     }
 
-    var uri = self.poolDetails.value.controllers.addNode.uri;
-
     var dialog = $('#join_cluster_dialog');
     var form = dialog.find('form');
     $('#join_cluster_dialog_errors_container').empty();
     $('#join_cluster_dialog form').get(0).reset();
     dialog.find("input:not([type]), input[type=text], input[type=password]").val('');
     dialog.find('[name=user]').val('Administrator');
+    dialog.find(".when-enterprise").toggle(!!DAL.cells.isEnterpriseCell.value);
 
     showDialog('join_cluster_dialog', {
       onHide: function () {
@@ -518,6 +532,7 @@ var ServersSection = {
 
           $('#join_cluster_dialog_errors_container').empty();
           var overlay = overlayWithSpinner($($i('join_cluster_dialog')));
+          var uri = $("#js_servers_group_select").val() || self.poolDetails.value.controllers.addNode.uri;
 
           self.poolDetails.setValue(undefined);
 

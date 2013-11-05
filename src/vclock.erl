@@ -30,7 +30,7 @@
 
 -export([fresh/0,descends/2,merge/1,get_counter/2,get_timestamp/2,
          increment/2,all_nodes/1, likely_newer/2, timestamp/0,
-         get_latest_timestamp/1]).
+         get_latest_timestamp/1, count_changes/1]).
 -export([example_test/0]).
 
 % @type vclock() = [vc_entry].
@@ -190,3 +190,10 @@ all_nodes(VClock) ->
 
 timestamp() ->
     calendar:datetime_to_gregorian_seconds(erlang:universaltime()).
+
+count_changes_rec([], Acc) -> Acc;
+count_changes_rec([{_Node, {Counter, _}} | RestVClock], Acc) ->
+    count_changes_rec(RestVClock, Acc + Counter).
+
+count_changes(VClock) ->
+    count_changes_rec(VClock, 0).

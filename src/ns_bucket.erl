@@ -42,6 +42,7 @@
          is_port_free/2,
          is_valid_bucket_name/1,
          json_map_from_config/2,
+         json_map_with_full_config/3,
          live_bucket_nodes/1,
          live_bucket_nodes_from_config/1,
          map_to_replicas/2,
@@ -169,19 +170,22 @@ couchbase_bucket_exists(Bucket) ->
             false
     end.
 
+get_bucket_with_config_record(Bucket, #config{dynamic=[PList]}) ->
+    {_, V} = lists:keyfind(buckets, 1, PList),
+    BucketsPList = case V of
+                       [{'_vclock', _}, {configs, X}] -> X;
+                       [{configs, X}] -> X
+                   end,
+    case lists:keyfind(Bucket, 1, BucketsPList) of
+        false -> not_present;
+        {_, BucketConfig} ->
+            {ok, BucketConfig}
+    end.
+
 get_bucket(Bucket) ->
     RV = ns_config:eval(
-           fun (#config{dynamic=[PList]}) ->
-                   {_, V} = lists:keyfind(buckets, 1, PList),
-                   BucketsPList = case V of
-                                      [{'_vclock', _}, {configs, X}] -> X;
-                                      [{configs, X}] -> X
-                                  end,
-                   case lists:keyfind(Bucket, 1, BucketsPList) of
-                       false -> not_present;
-                       {_, BucketConfig} ->
-                           {ok, BucketConfig}
-                   end
+           fun (Cfg) ->
+                   get_bucket_with_config_record(Bucket, Cfg)
            end),
     case RV of
         not_present ->
@@ -453,9 +457,11 @@ bucket_nodes(Bucket) ->
     proplists:get_value(servers, Bucket).
 
 json_map_from_config(LocalAddr, BucketConfig) ->
-    NumReplicas = num_replicas(BucketConfig),
     Config = ns_config:get(),
-    NumReplicas = proplists:get_value(num_replicas, BucketConfig),
+    json_map_with_full_config(LocalAddr, BucketConfig, Config).
+
+json_map_with_full_config(LocalAddr, BucketConfig, Config) ->
+    NumReplicas = num_replicas(BucketConfig),
     EMap = proplists:get_value(map, BucketConfig, []),
     BucketNodes = proplists:get_value(servers, BucketConfig, []),
     ENodes0 = lists:delete(undefined, lists:usort(lists:append([BucketNodes |
