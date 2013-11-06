@@ -143,11 +143,12 @@ failover(Bucket, Node) ->
 generate_vbucket_map(CurrentMap, KeepNodes, BucketConfig) ->
     ReplicationTopology = cluster_compat_mode:get_replication_topology(),
 
-    {value, ServerGroups} = ns_config:search(server_groups),
-    Tags = case ServerGroups of
-               [_] ->
+    Tags = case ns_config:search(server_groups) of
+               {value, [_]} ->
                    undefined;
-               _ ->
+               false ->
+                   undefined;
+               {value, ServerGroups} ->
                    Tags0 = [case proplists:get_value(uuid, G) of
                                 T ->
                                     [{N, T} || N <- proplists:get_value(nodes, G),

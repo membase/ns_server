@@ -1003,7 +1003,7 @@ parse_validate_threads_number(NumThreads) ->
     end.
 
 parse_validate_ram_quota(undefined, BucketConfig) when BucketConfig =/= false ->
-    ns_bucket:raw_ram_quota(BucketConfig);
+    {ok, ram_quota, ns_bucket:raw_ram_quota(BucketConfig)};
 parse_validate_ram_quota(Value, _BucketConfig) ->
     case menelaus_util:parse_validate_number(Value, 0, undefined) of
         invalid ->
