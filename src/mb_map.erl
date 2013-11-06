@@ -207,7 +207,8 @@ generate_map_star(Map, Nodes, Options) ->
         lists:append(
           %% vbmap itself randomizes some things internally so let's give it a
           %% chance
-          [[invoke_vbmap(ShuffledNodes, NumVBuckets, NumSlaves, NumReplicas, Tags) ||
+          [[invoke_vbmap(Map, ShuffledNodes, NumVBuckets,
+                         NumSlaves, NumReplicas, Tags) ||
                _ <- lists:seq(1, 3)] ||
               ShuffledNodes <- [misc:shuffle(KeepNodes) || _ <- lists:seq(1, 3)]]),
 
@@ -285,31 +286,17 @@ balance(Map, KeepNodes, Options) ->
     NumVBuckets = length(Map),
     OrigCopies = length(hd(Map)),
     NumCopies = erlang:min(NumNodes, OrigCopies),
-    %% Strip nodes we're removing along with extra copies
-    Map1 = map_strip(Map, NumCopies, KeepNodes),
     %% We always use the slave assignment machinery.
     MaxSlaves = proplists:get_value(max_slaves, Options, NumNodes - 1),
     Slaves = slaves(KeepNodes, MaxSlaves),
     Chains = chains(KeepNodes, NumVBuckets, NumCopies, Slaves),
-    %% Turn the map into a list of {VBucket, Chain} pairs.
-    NumberedMap = lists:zip(lists:seq(0, length(Map) - 1), Map1),
-    %% Sort the candidate chains.
-    SortedChains = lists:sort(Chains),
-    {Pairs, [], []} =
-        lists:foldl(fun (Shift, {R, M, C}) ->
-                            {R1, M1, C1} = balance1(M, C, Shift),
-                            {R1 ++ R, M1, C1}
-                    end, {[], NumberedMap, SortedChains},
-                    lists:seq(0, NumCopies)),
-    %% We can simply sort the pairs because the first element of the
-    %% first tuple is the vbucket number.
-    Map2 = [Chain || {_, Chain} <- lists:sort(Pairs)],
+    Map1 = simple_minimize_moves(Map, Chains, NumCopies, KeepNodes),
     if NumCopies < OrigCopies ->
             %% Extend the map back out the original number of copies
             Extension = lists:duplicate(OrigCopies - NumCopies, undefined),
-            [Chain ++ Extension || Chain <- Map2];
+            [Chain ++ Extension || Chain <- Map1];
        true ->
-            Map2
+            Map1
     end.
 
 
@@ -431,7 +418,28 @@ random_map(NumVBuckets, NumCopies, Nodes) when is_list(Nodes) ->
 %% Internal functions
 %%
 
-balance1(NumberedMap, SortedChains, Shift) ->
+simple_minimize_moves(Map, Chains, NumCopies, KeepNodes) ->
+    %% Strip nodes we're removing along with extra copies
+    Map1 = map_strip(Map, NumCopies, KeepNodes),
+
+    %% Turn the map into a list of {VBucket, Chain} pairs.
+    NumberedMap = lists:zip(lists:seq(0, length(Map1) - 1), Map1),
+
+    %% Sort the candidate chains.
+    SortedChains = lists:sort(Chains),
+
+    {Pairs, [], []} =
+        lists:foldl(fun (Shift, {R, M, C}) ->
+                            {R1, M1, C1} = do_simple_minimize_moves(M, C, Shift),
+                            {R1 ++ R, M1, C1}
+                    end, {[], NumberedMap, SortedChains},
+                    lists:seq(0, NumCopies)),
+
+    %% We can simply sort the pairs because the first element of the
+    %% first tuple is the vbucket number.
+    [Chain || {_, Chain} <- lists:sort(Pairs)].
+
+do_simple_minimize_moves(NumberedMap, SortedChains, Shift) ->
     Fun = fun ({_, A}, {_, B}) ->
                   lists:nthtail(Shift, A) =< lists:nthtail(Shift, B)
           end,
@@ -616,7 +624,7 @@ slaves([], _, _, Set) ->
 testnodes(NumNodes) ->
     [list_to_atom([$n | tl(integer_to_list(1000+N))]) || N <- lists:seq(1, NumNodes)].
 
-invoke_vbmap(Nodes, NumVBuckets, NumSlaves, NumReplicas, Tags) ->
+invoke_vbmap(CurrentMap, Nodes, NumVBuckets, NumSlaves, NumReplicas, Tags) ->
     VbmapName =
         case erlang:system_info(system_architecture) of
             "win32" ->
@@ -629,7 +637,7 @@ invoke_vbmap(Nodes, NumVBuckets, NumSlaves, NumReplicas, Tags) ->
     DiagPath = path_config:tempfile("vbmap_diag", ""),
 
     try
-        R = do_invoke_vbmap(VbmapPath, maxflow, DiagPath, Nodes,
+        R = do_invoke_vbmap(VbmapPath, maxflow, DiagPath, CurrentMap, Nodes,
                             NumVBuckets, NumSlaves, NumReplicas, Tags),
         case R of
             {ok, Map} ->
@@ -638,23 +646,24 @@ invoke_vbmap(Nodes, NumVBuckets, NumSlaves, NumReplicas, Tags) ->
                 ale:info(?USER_LOGGER,
                          "Couldn't generate rack-aware vbucket map. "
                          "Falling back to rack-unaware one."),
-                {ok, Map} = do_invoke_vbmap(VbmapPath, dummy, DiagPath, Nodes,
-                                            NumVBuckets, NumSlaves, NumReplicas, Tags),
+                {ok, Map} = do_invoke_vbmap(VbmapPath, dummy, DiagPath,
+                                            CurrentMap, Nodes, NumVBuckets,
+                                            NumSlaves, NumReplicas, Tags),
                 Map
         end
     after
         file:delete(DiagPath)
     end.
 
-do_invoke_vbmap(VbmapPath, Backend, DiagPath, Nodes,
-                NumVBuckets, NumSlaves, NumReplicas, Tags) ->
+do_invoke_vbmap(VbmapPath, Backend, DiagPath,
+                CurrentMap, Nodes, NumVBuckets, NumSlaves, NumReplicas, Tags) ->
     misc:executing_on_new_process(
       fun () ->
-              do_invoke_vbmap_body(VbmapPath, Backend, DiagPath, Nodes,
+              do_invoke_vbmap_body(VbmapPath, Backend, DiagPath, CurrentMap, Nodes,
                                    NumVBuckets, NumSlaves, NumReplicas, Tags)
       end).
 
-do_invoke_vbmap_body(VbmapPath, Backend, DiagPath, Nodes,
+do_invoke_vbmap_body(VbmapPath, Backend, DiagPath, CurrentMap, Nodes,
                      NumVBuckets, NumSlaves, NumReplicas, Tags) ->
     NumNodes = length(Nodes),
 
@@ -685,13 +694,27 @@ do_invoke_vbmap_body(VbmapPath, Backend, DiagPath, Nodes,
             NodesMapping = dict:from_list(misc:enumerate(Nodes, 0)),
 
             try
-                Decoded = ejson:decode(Output),
-                Map = lists:map(
-                        fun (Chain) ->
-                                Length = length(Chain),
-                                [dict:fetch(N, NodesMapping) || N <- Chain] ++
-                                    lists:duplicate(NumReplicas - Length + 1, undefined)
-                        end, Decoded),
+                Chains0 = ejson:decode(Output),
+                Chains = lists:map(
+                           fun (Chain) ->
+                                 [dict:fetch(N, NodesMapping) || N <- Chain]
+                           end, Chains0),
+
+                EffectiveNumCopies = length(hd(Chains)),
+
+                Map0 = simple_minimize_moves(CurrentMap, Chains,
+                                             EffectiveNumCopies, Nodes),
+
+                Map =
+                    case EffectiveNumCopies < NumReplicas + 1 of
+                        true ->
+                            N = NumReplicas + 1 - EffectiveNumCopies,
+                            Extension = lists:duplicate(N, undefined),
+                            [Chain ++ Extension || Chain <- Map0];
+                        false ->
+                            Map0
+                    end,
+
                 {ok, Map}
             catch
                 E:T ->

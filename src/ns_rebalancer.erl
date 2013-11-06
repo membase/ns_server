@@ -435,8 +435,11 @@ unbalanced_star(Map, Servers) ->
           fun ([M | R], {AccM, AccR}) ->
                   {[M | AccM], R ++ AccR}
           end, {[], []}, Map),
-    MastersCounts = misc:uniqc([M || M <- Masters, lists:member(M, Servers)]),
-    ReplicasCounts = misc:uniqc([R || R <- Replicas, lists:member(R, Servers)]),
+    Masters1 = lists:sort([M || M <- Masters, lists:member(M, Servers)]),
+    Replicas1 = lists:sort([R || R <- Replicas, lists:member(R, Servers)]),
+
+    MastersCounts = misc:uniqc(Masters1),
+    ReplicasCounts = misc:uniqc(Replicas1),
 
     lists:any(
       fun (Counts0) ->

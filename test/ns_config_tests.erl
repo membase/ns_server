@@ -196,10 +196,13 @@ merge_kv_pairs_dynamic_test() ->
                  ns_config:merge_kv_pairs(
                    [{y,1}],
                    [])),
-    ?assertEqual(lists:sort([{y, 1},{a,a},{b,b}]),
-                 lists:sort(ns_config:merge_kv_pairs(
-                              [{y,1},{a,a}],
-                              [{y,2}, {b,b}]))).
+
+    Strip = fun (L) -> [{K, ns_config:strip_metadata(V)} || {K, V} <- L] end,
+
+    ?assertEqual(lists:sort([{y,1},{a,a},{b,b}]),
+                 Strip(lists:sort(ns_config:merge_kv_pairs(
+                                    [{y,1}, {a,a}],
+                                    [{y,2}, {b,b}])))).
 
 merge_kv_pairs_vclock_test() ->
     VClock = vclock:fresh(),

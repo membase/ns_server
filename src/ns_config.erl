@@ -76,7 +76,8 @@
 
 % Exported for tests only
 -export([save_file/3, load_config/3,
-         load_file/2, save_config_sync/2, send_config/2]).
+         load_file/2, save_config_sync/2, send_config/2,
+         strip_metadata/1]).
 
 % A static config file is often hand edited.
 % potentially with in-line manual comments.
@@ -534,8 +535,11 @@ extract_vclock(_Value) -> [].
 
 %% Increment the vclock in V2 and replace the one in V1
 increment_vclock(NewValue, OldValue) ->
+    increment_vclock(NewValue, OldValue, node()).
+
+increment_vclock(NewValue, OldValue, Node) ->
     OldVClock = extract_vclock(OldValue),
-    NewVClock = lists:sort(vclock:increment(node(), OldVClock)),
+    NewVClock = lists:sort(vclock:increment(Node, OldVClock)),
     [{?METADATA_VCLOCK, NewVClock} | strip_metadata(NewValue)].
 
 %% Set the vclock in NewValue to one that descends from both
@@ -886,19 +890,17 @@ merge_kv_pairs(RemoteKVList, LocalKVList) ->
     LocalKVList1 = lists:sort(LocalKVList),
     Merger = fun (_, {directory, _} = LP) ->
                      LP;
-                 ({_, RV} = RP, {_, LV} = LP) ->
-                     if
-                         is_list(RV) orelse is_list(LV) ->
-                             merge_list_values(RP, LP);
-                         true ->
-                             RP
-                     end
+                 (RP, LP) ->
+                     merge_values(RP, LP)
              end,
     misc:ukeymergewith(Merger, 1, RemoteKVList1, LocalKVList1).
 
--spec merge_list_values({term(), term()}, {term(), term()}) -> {term(), term()}.
-merge_list_values({_K, RV} = RP, {_, LV} = _LP) when RV =:= LV -> RP;
-merge_list_values({K, RV} = RP, {_, LV} = LP) ->
+-spec merge_values({term(), term()}, {term(), term()}) -> {term(), term()}.
+merge_values(RP, LP) ->
+    do_merge_values(RP, LP, node()).
+
+do_merge_values({_K, RV} = RP, {_, LV} = _LP, _Node) when RV =:= LV -> RP;
+do_merge_values({K, RV} = RP, {_, LV} = LP, Node) ->
     RClock = extract_vclock(RV),
     LClock = extract_vclock(LV),
     case {vclock:descends(RClock, LClock),
@@ -908,32 +910,42 @@ merge_list_values({K, RV} = RP, {_, LV} = LP) ->
                 true ->
                     lists:max([LP, RP]);
                 false ->
-                    ChooseLeft = case RClock =:= LClock of
-                                     true ->
-                                         LV < RV;
-                                     false ->
-                                         vclock:likely_newer(LClock, RClock)
-                                 end,
-                    V = case ChooseLeft of
-                            true ->
-                                ?user_log(?CONFIG_CONFLICT,
-                                          "Conflicting configuration changes to field "
-                                          "~p:~n~p and~n~p, choosing the former, which looks newer.~n",
-                                          [K,
-                                           {LClock, ns_config_log:sanitize(LV)},
-                                           {RClock, ns_config_log:sanitize(RV)}]),
-                                LV;
-                            false ->
+                    V = case {vclock:likely_newer(LClock, RClock),
+                              vclock:likely_newer(RClock, LClock)} of
+                            {X1, X1} ->
+                                [Winner, Loser] = lists:sort([LV, RV]),
+
                                 ?user_log(?CONFIG_CONFLICT,
                                           "Conflicting configuration changes to field "
                                           "~p:~n~p and~n~p, choosing the former.~n",
                                           [K,
-                                           {RClock, ns_config_log:sanitize(RV)},
-                                           {LClock, ns_config_log:sanitize(LV)}]),
-                                RV
+                                           ns_config_log:sanitize(Winner),
+                                           ns_config_log:sanitize(Loser)]),
+
+                                Winner;
+                            {LocalNewer, RemoteNewer} ->
+                                true = LocalNewer xor RemoteNewer,
+
+                                [Winner, Loser] =
+                                    case LocalNewer of
+                                        true ->
+                                            [LV, RV];
+                                        false ->
+                                            [RV, LV]
+                                    end,
+
+                                ?user_log(?CONFIG_CONFLICT,
+                                          "Conflicting configuration changes to field "
+                                          "~p:~n~p and~n~p, choosing the former, which looks newer.~n",
+                                          [K,
+                                           ns_config_log:sanitize(Winner),
+                                           ns_config_log:sanitize(Loser)]),
+
+                                Winner
                         end,
+
                     %% Increment the merged vclock so we don't pingpong
-                    {K, increment_vclock(V, merge_vclocks(RV, LV))}
+                    {K, increment_vclock(V, merge_vclocks(RV, LV), Node)}
             end;
         {true, false} -> RP;
         {false, true} -> LP
@@ -1516,5 +1528,82 @@ test_upgrade_config_with_many_upgrades() ->
     after 0 ->
             ok
     end.
+
+merge_values_test_() ->
+    {timeout, 100, fun merge_values_test__/0}.
+
+merge_values_test__() ->
+    lists:foreach(
+      fun (_I) ->
+              merge_values_test_iter()
+      end, lists:seq(1, 250)).
+
+mock_timestamp(Body) ->
+    {ok, Pid} = mock:mock(calendar),
+
+    try
+        ok = mock:expects(calendar, datetime_to_gregorian_seconds,
+                          fun (_) -> true end,
+                          fun (_, Count) -> Count end, 16#ffffffff),
+        ok = mock:expects(calendar, local_time,
+                          fun (_) -> true end,
+                          fun (_, _) -> erlang:localtime() end, 16#ffffffff),
+        ok = mock:expects(calendar, now_to_local_time,
+                          fun (_) -> true end,
+                          fun (_, _) -> erlang:localtime() end, 16#ffffffff),
+
+        Body()
+    after
+        unlink(Pid),
+        exit(Pid, kill),
+        misc:wait_for_process(Pid, infinity),
+
+        code:purge(calendar),
+        true = code:delete(calendar)
+    end.
+
+mutate(Value, Nodes) ->
+    mock_timestamp(
+      fun () ->
+              N = length(Nodes),
+              ManyNodes = lists:concat(lists:duplicate(N, Nodes)),
+              Mutations = lists:sublist(misc:shuffle(ManyNodes), N),
+
+              lists:foldl(
+                fun (Node, V) ->
+                        increment_vclock(V, V, Node)
+                end, Value, Mutations)
+      end).
+
+merge_values_helper(RP, LP, Node) ->
+    mock_timestamp(
+      fun () ->
+              {_, V} = do_merge_values({key, RP}, {key, LP}, Node),
+              V
+      end).
+
+merge_values_test_iter() ->
+    Nodes = [a,b,c,d,e],
+
+    LocalValue = mutate(random:uniform(10), Nodes),
+    RemoteValue = mutate(random:uniform(10), Nodes),
+
+    [N0, N1] = lists:sublist(misc:shuffle(Nodes), 2),
+
+    R0 = merge_values_helper(RemoteValue, LocalValue, N0),
+    R1 = merge_values_helper(LocalValue, RemoteValue, N0),
+    ?assertEqual(strip_metadata(R0), strip_metadata(R1)),
+
+    R2 = merge_values_helper(RemoteValue, LocalValue, N1),
+    R3 = merge_values_helper(LocalValue, RemoteValue, N1),
+    ?assertEqual(strip_metadata(R2), strip_metadata(R3)),
+
+    ?assertEqual(strip_metadata(R0), strip_metadata(R2)),
+
+    Final0 = merge_values_helper(R0, R2, N0),
+    Final1 = merge_values_helper(R2, R0, N1),
+
+    %% both sides reconcile on the same value on second step
+    ?assertEqual(Final0, Final1).
 
 -endif.
