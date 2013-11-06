@@ -67,7 +67,7 @@
                                                    "passes config changes to ns_config_rep for replication")
                                     (worker 'ns_config_rep_merger
                                             "worker process that does actual config merging and updates config via
-                                            ns_config:cas_config/2. See ns_config_rep.erl")
+                                            ns_config:cas_remote_config/2. See ns_config_rep.erl")
                                     (gen-server 'ns_config_rep
                                                 "replicates entire & parts of config to/from other nodes"
                                                 (event-handler 'ns_node_disco_rep_events :to 'ns_node_disco_events

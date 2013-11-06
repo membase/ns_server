@@ -353,7 +353,7 @@ do_merge(RemoteKVList) ->
         true ->
             ok;
         _ ->
-            case ns_config:cas_config(NewKVList, LocalKVList) of
+            case ns_config:cas_remote_config(NewKVList, LocalKVList) of
                 true ->
                     ok;
                 _ ->

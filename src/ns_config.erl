@@ -53,7 +53,7 @@
          start_link/2, start_link/1,
          merge/1,
          get/2, get/1, get/0, set/2, set/1,
-         cas_config/2,
+         cas_remote_config/2,
          set_initial/2, update/2, update_key/2, update_key/3,
          update_sub_key/3, set_sub/2, set_sub/3,
          search_node/3, search_node/2, search_node/1,
@@ -159,8 +159,8 @@ update_config_key(Key, Value, KVList) ->
 
 %% Replaces config key-value pairs by NewConfig if they're still equal
 %% to OldConfig. Returns true on success.
-cas_config(NewConfig, OldConfig) ->
-    gen_server:call(?MODULE, {cas_config, NewConfig, OldConfig}).
+cas_remote_config(NewConfig, OldConfig) ->
+    gen_server:call(?MODULE, {cas_config, NewConfig, OldConfig, remote}).
 
 set(Key, Value) ->
     ok = update_with_changes(fun (Config) ->
@@ -183,7 +183,7 @@ run_txn_loop(Body, RetriesLeft) ->
     Cfg = [get_kv_list()],
     case Body(Cfg, fun run_txn_set/3) of
         {commit, [NewCfg]} ->
-            case cas_config(NewCfg, hd(Cfg)) of
+            case cas_remote_config(NewCfg, hd(Cfg)) of
                 true -> {commit, NewCfg};
                 false -> run_txn_loop(Body, RetriesLeft - 1)
             end;
@@ -747,7 +747,7 @@ handle_call({clear, Keep}, From, State) ->
     ?log_debug("Full result of clear:~n~p", [RV]),
     RV;
 
-handle_call({cas_config, NewKVList, OldKVList}, _From, State) ->
+handle_call({cas_config, NewKVList, OldKVList, _}, _From, State) ->
     case OldKVList =:= hd(State#config.dynamic) of
         true ->
             NewState = State#config{dynamic = [NewKVList]},
@@ -1100,9 +1100,9 @@ do_test_cas_config(Self) ->
     ets:new(ns_config_announces_counter, [set, named_table]),
     ets:insert_new(ns_config_announces_counter, {changes_counter, 0}),
 
-    ns_config:cas_config(new, old),
+    ns_config:cas_remote_config(new, old),
     receive
-        {cas_config, new, old} ->
+        {cas_config, new, old, _} ->
             ok
     after 0 ->
             exit(missing_cas_config_msg)
@@ -1115,11 +1115,11 @@ do_test_cas_config(Self) ->
     ?assertEqual([{a,1},{b,1}], config_dynamic(Config)),
 
 
-    {reply, true, NewConfig} = handle_call({cas_config, [{a,2}], config_dynamic(Config)}, [], Config),
+    {reply, true, NewConfig} = handle_call({cas_config, [{a,2}], config_dynamic(Config), remote}, [], Config),
     ?assertEqual(NewConfig, Config#config{dynamic=[config_dynamic(NewConfig)]}),
     ?assertEqual([{a,2}], config_dynamic(NewConfig)),
 
-    {reply, false, NewConfig} = handle_call({cas_config, [{a,3}], config_dynamic(Config)}, [], NewConfig).
+    {reply, false, NewConfig} = handle_call({cas_config, [{a,3}], config_dynamic(Config), remote}, [], NewConfig).
 
 
 test_update_config() ->
