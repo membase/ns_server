@@ -314,7 +314,7 @@ extract_kvs([K | Ks] = AllKs, [{CK,_} = KV | KVs], Acc) ->
     end.
 
 do_push_keys(Keys, AllKVs) ->
-    ?log_debug("Replicating some config keys (~p..)", [lists:sublist(Keys, 6)]),
+    ?log_debug("Replicating some config keys (~p..)", [lists:sublist(Keys, 64)]),
     KVsToPush = extract_kvs(Keys, lists:sort(AllKVs), []),
     do_push(KVsToPush).
 
