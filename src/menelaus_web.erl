@@ -2707,22 +2707,29 @@ handle_set_replication_topology(Req) ->
                          "topology must be either \"star\" or \"chain\""})
     end.
 
-mk_integer_field_validator_error_maker(JSONName, Msg, Args) ->
+mk_number_field_validator_error_maker(JSONName, Msg, Args) ->
     [{error, JSONName, iolist_to_binary(io_lib:format(Msg, Args))}].
 
-mk_integer_field_validator(Min, Max, Params) ->
+mk_number_field_validator(Min, Max, Params) ->
+    mk_number_field_validator(Min, Max, Params, list_to_integer).
+
+mk_number_field_validator(Min, Max, Params, ParseFn) ->
     fun ({JSONName, CfgName, HumanName}) ->
             case proplists:get_value(JSONName, Params) of
                 undefined -> [];
                 V ->
-                    case menelaus_util:parse_validate_number(V, Min, Max) of
+                    case menelaus_util:parse_validate_number(V, Min, Max, ParseFn) of
                         {ok, IntV} -> [{ok, CfgName, IntV}];
                         invalid ->
-                            mk_integer_field_validator_error_maker(JSONName, "~s must be an integer", [HumanName]);
+                            Msg = case ParseFn of
+                                      list_to_integer -> "~s must be an integer";
+                                      _ -> "~s must be a number"
+                                  end,
+                            mk_number_field_validator_error_maker(JSONName, Msg, [HumanName]);
                         too_small ->
-                            mk_integer_field_validator_error_maker(JSONName, "~s is too small. Allowed range is ~p - ~p", [HumanName, Min, Max]);
+                            mk_number_field_validator_error_maker(JSONName, "~s is too small. Allowed range is ~p - ~p", [HumanName, Min, Max]);
                         too_large ->
-                            mk_integer_field_validator_error_maker(JSONName, "~s is too large. Allowed range is ~p - ~p", [HumanName, Min, Max])
+                            mk_number_field_validator_error_maker(JSONName, "~s is too large. Allowed range is ~p - ~p", [HumanName, Min, Max])
                     end
             end
     end.
@@ -2736,14 +2743,14 @@ parse_validate_boolean_field(JSONName, CfgName, Params) ->
     end.
 
 parse_validate_auto_compaction_settings(Params) ->
-    PercResults = lists:flatmap(mk_integer_field_validator(2, 100, Params),
+    PercResults = lists:flatmap(mk_number_field_validator(2, 100, Params),
                                 [{"databaseFragmentationThreshold[percentage]",
                                   db_fragmentation_percentage,
                                   "database fragmentation"},
                                  {"viewFragmentationThreshold[percentage]",
                                   view_fragmentation_percentage,
                                   "view fragmentation"}]),
-    SizeResults = lists:flatmap(mk_integer_field_validator(1, infinity, Params),
+    SizeResults = lists:flatmap(mk_number_field_validator(1, infinity, Params),
                                 [{"databaseFragmentationThreshold[size]",
                                   db_fragmentation_size,
                                   "database fragmentation size"},
@@ -2760,15 +2767,15 @@ parse_validate_auto_compaction_settings(Params) ->
     PeriodTimeMinutes = [{"allowedTimePeriod[fromMinute]", from_minute, "from minute"},
                          {"allowedTimePeriod[toMinute]", to_minute, "to minute"}],
     PeriodTimeFieldsCount = length(PeriodTimeHours) + length(PeriodTimeMinutes) + 1,
-    PeriodTimeResults0 = lists:flatmap(mk_integer_field_validator(0, 23, Params), PeriodTimeHours)
-        ++ lists:flatmap(mk_integer_field_validator(0, 59, Params), PeriodTimeMinutes)
+    PeriodTimeResults0 = lists:flatmap(mk_number_field_validator(0, 23, Params), PeriodTimeHours)
+        ++ lists:flatmap(mk_number_field_validator(0, 59, Params), PeriodTimeMinutes)
         ++ parse_validate_boolean_field("allowedTimePeriod[abortOutside]", abort_outside, Params),
     PeriodTimeResults = case length(PeriodTimeResults0) of
                             0 -> PeriodTimeResults0;
                             PeriodTimeFieldsCount -> PeriodTimeResults0;
                             _ -> [{error, <<"allowedTimePeriod">>, <<"allowedTimePeriod is invalid">>}]
                         end,
-    PurgeIntervalResults = (mk_integer_field_validator(1, 60, Params))({"purgeInterval", purge_interval, "metadata purge interval"}),
+    PurgeIntervalResults = (mk_number_field_validator(1, 60, Params))({"purgeInterval", purge_interval, "metadata purge interval"}),
 
     Errors0 = [{iolist_to_binary(Field), Msg} || {error, Field, Msg} <- PercResults ++ ParallelResult ++ PeriodTimeResults
                                                      ++ SizeResults
@@ -2836,7 +2843,7 @@ parse_validate_fast_warmup_settings(Params) ->
     end.
 
 do_parse_validate_fast_warmup_settings(Params) ->
-    Results = lists:flatmap(mk_integer_field_validator(0, 100, Params),
+    Results = lists:flatmap(mk_number_field_validator(0, 100, Params),
                             [{"minMemoryThreshold", min_memory_threshold,
                               "minimum memory theshold"},
                              {"minItemsThreshold", min_items_threshold,
