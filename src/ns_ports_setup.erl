@@ -126,11 +126,12 @@ dynamic_children() ->
 expand_args({Name, Cmd, ArgsIn, OptsIn}) ->
     Config = ns_config:get(),
     %% Expand arguments
-    Args = lists:map(fun ({Format, Keys}) ->
-                             format(Config, Name, Format, Keys);
-                           (X) -> X
+    Args0 = lists:map(fun ({Format, Keys}) ->
+                              format(Config, Name, Format, Keys);
+                          (X) -> X
                       end,
                       ArgsIn),
+    Args = Args0 ++ ns_config:search(Config, {node, node(), {Name, extra_args}}, []),
     %% Expand environment variables within OptsIn
     Opts = lists:map(
              fun ({env, Env}) ->
