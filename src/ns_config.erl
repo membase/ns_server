@@ -53,7 +53,7 @@
          start_link/2, start_link/1,
          merge/1,
          get/2, get/1, get/0, set/2, set/1,
-         cas_remote_config/2,
+         cas_remote_config/2, cas_local_config/2,
          set_initial/2, update/2, update_key/2, update_key/3,
          update_sub_key/3, set_sub/2, set_sub/3,
          search_node/3, search_node/2, search_node/1,
@@ -162,6 +162,9 @@ update_config_key(Key, Value, KVList) ->
 cas_remote_config(NewConfig, OldConfig) ->
     gen_server:call(?MODULE, {cas_config, NewConfig, OldConfig, remote}).
 
+cas_local_config(NewConfig, OldConfig) ->
+    gen_server:call(?MODULE, {cas_config, NewConfig, OldConfig, local}).
+
 set(Key, Value) ->
     ok = update_with_changes(fun (Config) ->
                                      NewList = update_config_key(Key, Value, Config),
@@ -183,7 +186,7 @@ run_txn_loop(Body, RetriesLeft) ->
     Cfg = [get_kv_list()],
     case Body(Cfg, fun run_txn_set/3) of
         {commit, [NewCfg]} ->
-            case cas_remote_config(NewCfg, hd(Cfg)) of
+            case cas_local_config(NewCfg, hd(Cfg)) of
                 true -> {commit, NewCfg};
                 false -> run_txn_loop(Body, RetriesLeft - 1)
             end;
@@ -747,11 +750,17 @@ handle_call({clear, Keep}, From, State) ->
     ?log_debug("Full result of clear:~n~p", [RV]),
     RV;
 
-handle_call({cas_config, NewKVList, OldKVList, _}, _From, State) ->
+handle_call({cas_config, NewKVList, OldKVList, RemoteOrLocal}, _From, State) ->
     case OldKVList =:= hd(State#config.dynamic) of
         true ->
             NewState = State#config{dynamic = [NewKVList]},
-            announce_changes(NewKVList -- OldKVList),
+            Diff = NewKVList -- OldKVList,
+            case RemoteOrLocal of
+                remote ->
+                    announce_changes(Diff);
+                local ->
+                    announce_locally_made_changes(Diff)
+            end,
             {reply, true, initiate_save_config(NewState)};
         _ ->
             {reply, false, State}
