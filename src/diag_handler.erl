@@ -21,6 +21,8 @@
 -include("ns_log.hrl").
 -include_lib("kernel/include/file.hrl").
 
+-include_lib("eunit/include/eunit.hrl").
+
 -export([do_diag_per_node/0, do_diag_per_node_binary/0,
          handle_diag/1,
          handle_sasl_logs/1, handle_sasl_logs/2,
@@ -43,7 +45,7 @@ manifest() ->
 
 -spec sanitize_backtrace(binary()) -> [binary()].
 sanitize_backtrace(Backtrace) ->
-    {ok, RE} = re:compile(<<"^Program counter: 0x[0-9a-f]+ |^0x[0-9a-f]+ Return addr 0x[0-9]+">>),
+    {ok, RE} = re:compile(<<"^Program counter: 0x[0-9a-f]+ |^0x[0-9a-f]+ Return addr 0x[0-9a-f]+">>),
     lists:append([case re:run(X, RE) of
                       nomatch ->
                           [];
@@ -500,3 +502,27 @@ diagnosing_timeouts(Body) ->
             timeout_diag_logger:log_diagnostics(X),
             exit(X)
     end.
+
+-ifdef(EUNIT).
+
+backtrace_sanitize_test() ->
+    B = [<<"Program counter: 0xb5f9c0f0 (gen:do_call/4 + 304)">>,
+         <<"CP: 0x00000000 (invalid)">>,<<"arity = 0">>,<<>>,
+         <<"0xa6c2bb1c Return addr 0xb206c0b4 (net_adm:ping/1 + 116)">>,
+         <<"y(0)     #Ref<0.0.173.77407>">>,
+         <<"y(1)     'ns_1@10.3.4.111'">>,<<"y(2)     []">>,
+         <<"y(3)     infinity">>,
+         <<"y(4)     {is_auth,'ns_1@10.3.4.113'}">>,
+         <<"y(5)     '$gen_call'">>,
+         <<"y(6)     {net_kernel,'ns_1@10.3.4.111'}">>,<<>>,
+         <<"0xa6c2bb3c Return addr 0xb5fdef5c (lists:foreach/2 + 60)">>,
+         <<"y(0)     'ns_1@10.3.4.111'">>,
+         <<"y(1)     Catch 0xb206c0b4 (net_adm:ping/1 + 116)">>,<<>>,
+         <<"0xa6c2bb48 Return addr 0x082404f4 (<terminate process normally>)">>,
+         <<"y(0)     #Fun<net_adm.ping.1>">>,
+         <<"y(1)     ['ns_1@10.3.4.113','ns_1@10.3.4.114']">>,<<>>],
+    SB = sanitize_backtrace(iolist_to_binary([[L, "\n"] || L <- B])),
+    ?log_debug("SB:~n~s", [iolist_to_binary([[L, "\n"] || L <- SB])]),
+    ?assertEqual(4, length(SB)).
+
+-endif.
