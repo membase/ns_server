@@ -23,12 +23,15 @@
 -export([start_link/0]).
 -export([request/3]).
 
+-export([hibernate/3, unhibernate_trampoline/3]).
+
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 
 -record(state, {}).
 
 -define(TABLE, ?MODULE).
+-define(HIBERNATE_TABLE, request_throttler_hibernations).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -41,6 +44,14 @@ request(Type, Body, RejectBody) ->
             system_stats_collector:increment_counter({Type, Error}, 1),
             RejectBody(Error, describe_error(Error))
     end.
+
+hibernate(M, F, A) ->
+    gen_server:cast(?MODULE, {note_hibernate, self()}),
+    erlang:hibernate(?MODULE, unhibernate_trampoline, [M, F, A]).
+
+unhibernate_trampoline(M, F, A) ->
+    gen_server:cast(?MODULE, {note_unhibernate, self()}),
+    erlang:apply(M, F, A).
 
 do_request(Type, Body, ThrottlerPid) ->
     try
@@ -64,6 +75,7 @@ note_request_done(Type, ThrottlerPid) ->
 %% gen_server callbacks
 init([]) ->
     ?TABLE = ets:new(?TABLE, [named_table, set, protected]),
+    ?HIBERNATE_TABLE = ets:new(?HIBERNATE_TABLE, [named_table, set, protected]),
     {ok, #state{}}.
 
 handle_call({note_request, Pid, Type}, _From, State) ->
@@ -84,6 +96,14 @@ handle_call(Request, _From, State) ->
     ?log_error("Got unknown request ~p", [Request]),
     {reply, unhandled, State}.
 
+handle_cast({note_hibernate, Pid}, State) ->
+    system_stats_collector:increment_counter({request_enters, hibernate}, 1),
+    true = ets:insert_new(?HIBERNATE_TABLE, {Pid, true}),
+    {noreply, State};
+handle_cast({note_unhibernate, Pid}, State) ->
+    system_stats_collector:increment_counter({request_leaves, hibernate}, 1),
+    true = ets:delete(?HIBERNATE_TABLE, Pid),
+    {noreply, State};
 handle_cast({note_request_done, Pid, Type}, State) ->
     system_stats_collector:increment_counter({request_leaves, Type}, 1),
     Count = ets:update_counter(?TABLE, Type, -1),
@@ -100,6 +120,13 @@ handle_cast(Cast, State) ->
 handle_info({'DOWN', MRef, process, Pid, _Reason}, State) ->
     [{_, Type, MRef}] = ets:lookup(?TABLE, Pid),
     true = ets:delete(?TABLE, Pid),
+    case ets:lookup(?HIBERNATE_TABLE, Pid) of
+        [] ->
+            ok;
+        _ ->
+            ets:delete(?HIBERNATE_TABLE, Pid),
+            system_stats_collector:increment_counter({request_leaves, hibernate}, 1)
+    end,
 
     system_stats_collector:increment_counter({request_leaves, Type}, 1),
     Count = ets:update_counter(?TABLE, Type, -1),

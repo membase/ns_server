@@ -47,7 +47,10 @@ start_link() ->
 init([]) ->
     ets:new(ns_server_system_stats, [public, named_table, set]),
     increment_counter({request_leaves, rest}, 0),
+    increment_counter({request_enters, hibernate}, 0),
+    increment_counter({request_leaves, hibernate}, 0),
     increment_counter(prev_request_leaves_rest, 0),
+    increment_counter(prev_request_leaves_hibernate, 0),
     increment_counter(log_counter, 0),
     Path = path_config:component_path(bin, "sigar_port"),
     Port =
@@ -385,6 +388,23 @@ proc_stat(Name, Stat, Sample, Default) ->
 proc_stat_name(Name, Stat) ->
     <<"proc/", Name/binary, $/, (atom_to_binary(Stat, latin1))/binary>>.
 
+add_ets_stats(Stats) ->
+    [{_, NowRestLeaves}] = ets:lookup(ns_server_system_stats, {request_leaves, rest}),
+    [{_, PrevRestLeaves}] = ets:lookup(ns_server_system_stats, prev_request_leaves_rest),
+    ets:insert(ns_server_system_stats, {prev_request_leaves_rest, NowRestLeaves}),
+
+    [{_, NowHibernateLeaves}] = ets:lookup(ns_server_system_stats, {request_leaves, hibernate}),
+    [{_, PrevHibernateLeaves}] = ets:lookup(ns_server_system_stats, prev_request_leaves_hibernate),
+    [{_, NowHibernateEnters}] = ets:lookup(ns_server_system_stats, {request_enters, hibernate}),
+    ets:insert(ns_server_system_stats, {prev_request_leaves_hibernate, NowHibernateLeaves}),
+
+    RestRate = NowRestLeaves - PrevRestLeaves,
+    WakeupRate = NowHibernateLeaves - PrevHibernateLeaves,
+    HibernatedCounter = NowHibernateEnters - NowHibernateLeaves,
+    lists:umerge(Stats, lists:sort([{rest_requests, RestRate},
+                                    {hibernated_requests, HibernatedCounter},
+                                    {hibernated_waked, WakeupRate}])).
+
 handle_info({tick, TS}, #state{port = Port, prev_sample = PrevSample}) ->
     case flush_ticks(0) of
         0 -> ok;
@@ -397,10 +417,7 @@ handle_info({tick, TS}, #state{port = Port, prev_sample = PrevSample}) ->
         undefined -> ok;
         _ ->
             Stats = lists:sort(Stats0),
-            [{_, NowCounter}] = ets:lookup(ns_server_system_stats, {request_leaves, rest}),
-            [{_, PrevCounter}] = ets:lookup(ns_server_system_stats, prev_request_leaves_rest),
-            ets:insert(ns_server_system_stats, {prev_request_leaves_rest, NowCounter}),
-            Stats2 = orddict:store(rest_requests, NowCounter - PrevCounter, Stats),
+            Stats2 = add_ets_stats(Stats),
             case ets:update_counter(ns_server_system_stats, log_counter, {2, 1, ?ETS_LOG_INTVL, 0}) of
                 0 ->
                     stats_collector:log_stats(TS, "@system", ets:tab2list(ns_server_system_stats));

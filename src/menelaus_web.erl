@@ -1317,7 +1317,7 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
                 HTTPRes:write_chunk(""),
                 exit(normal)
         end,
-    erlang:hibernate(?MODULE, handle_streaming_wakeup, [F, Req, HTTPRes, Res]).
+    request_throttler:hibernate(?MODULE, handle_streaming_wakeup, [F, Req, HTTPRes, Res]).
 
 handle_streaming_wakeup(F, Req, HTTPRes, Res) ->
     receive

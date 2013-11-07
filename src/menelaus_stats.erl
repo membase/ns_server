@@ -1412,7 +1412,13 @@ server_resources_stats_description() ->
                         "(measured from curr_connections)">>}]},
        {struct,[{name,<<"rest_requests">>},
                 {title,<<"port 8091 reqs/sec">>},
-                {desc,<<"Rate of http requests on port 8091">>}]}]}].
+                {desc,<<"Rate of http requests on port 8091">>}]},
+       {struct,[{name,<<"hibernated_requests">>},
+                {title,<<"idle streaming requests">>},
+                {desc,<<"Number of streaming requests on port 8091 now idle">>}]},
+       {struct,[{name,<<"hibernated_waked">>},
+                {title,<<"streaming wakeups/sec">>},
+                {desc,<<"Rate of streaming requests wakeups on port 8091">>}]}]}].
 
 serve_stats_directory(_PoolId, BucketId, Req) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),
