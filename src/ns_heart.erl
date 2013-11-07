@@ -27,9 +27,15 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 
+%% for hibernate
+-export([slow_updater_loop/1]).
+
 -record(state, {
           forced_beat_timer :: reference() | undefined,
-          event_handler :: pid()
+          event_handler :: pid(),
+          slow_status = [] :: term(),
+          slow_status_ts = {0, 0, 0} :: erlang:timestamp(),
+          slow_status_updater :: pid()
          }).
 
 
@@ -59,7 +65,9 @@ init([]) ->
                       _ -> ok
                   end
           end, []),
-    {ok, #state{event_handler=EventHandler}}.
+    SlowUpdaterPid = erlang:spawn_link(erlang, apply, [fun slow_updater_start/1, [Self]]),
+    {ok, #state{event_handler=EventHandler,
+                slow_status_updater = SlowUpdaterPid}}.
 
 force_beat() ->
     ?MODULE ! force_beat.
@@ -78,7 +86,8 @@ disarm_forced_beat_timer(#state{forced_beat_timer = TRef} = State) ->
 
 
 handle_call(status, _From, State) ->
-    {reply, current_status(), State};
+    {Status, NewState} = update_current_status(State),
+    {reply, Status, NewState};
 handle_call(Request, _From, State) ->
     {reply, {unhandled, ?MODULE, Request}, State}.
 
@@ -89,6 +98,8 @@ handle_info({'EXIT', EventHandler, _} = ExitMsg,
     ?log_debug("Dying because our event subscription was cancelled~n~p~n",
                [ExitMsg]),
     {stop, normal, State};
+handle_info({slow_update, NewStatus, ReqTS}, State) ->
+    {noreply, State#state{slow_status = NewStatus, slow_status_ts = ReqTS}};
 handle_info(beat, State) ->
     NewState = disarm_forced_beat_timer(State),
     Dropped = misc:flush(beat),
@@ -98,8 +109,9 @@ handle_info(beat, State) ->
         _ ->
             ?log_warning("Dropped ~p hearbeats", [Dropped])
     end,
-    heartbeat(current_status()),
-    {noreply, NewState};
+    {Status, NewState2} = update_current_status(NewState),
+    heartbeat(Status),
+    {noreply, NewState2};
 handle_info(force_beat, State) ->
     {noreply, arm_forced_beat_timer(State)};
 handle_info(_, State) ->
@@ -142,7 +154,80 @@ is_interesting_stat({ep_bg_fetched, _}) -> true;
 is_interesting_stat({ops, _}) -> true;
 is_interesting_stat(_) -> false.
 
-current_status() ->
+
+eat_earlier_slow_updates(TS) ->
+    receive
+        {slow_update, _, ResTS} when ResTS < TS ->
+            eat_earlier_slow_updates(TS)
+    after 0 ->
+            ok
+    end.
+
+update_current_status(State) ->
+    TS = erlang:now(),
+    State#state.slow_status_updater ! {req, TS},
+    QuickStatus = current_status_quick(TS),
+    receive
+        %% NOTE: TS is bound already
+        {slow_update, _, TS} = Msg ->
+            eat_earlier_slow_updates(TS),
+            {noreply, NewState} = handle_info(Msg, State),
+            update_current_status_tail(NewState, QuickStatus)
+    after ?HEART_BEAT_PERIOD ->
+            update_current_status_no_reply(State, QuickStatus)
+    end.
+
+update_current_status_no_reply(State, QuickStatus) ->
+    receive
+        %% if we haven't see our reply yet, refresh status at
+        %% least as much as there are replies seen
+        {slow_update, _, _} = Msg ->
+            {noreply, NewState} = handle_info(Msg, State),
+            update_current_status_no_reply(NewState, QuickStatus)
+    after 0 ->
+            QuickStatus2 = [{stale_slow_status, State#state.slow_status_ts} | QuickStatus],
+            update_current_status_tail(State, QuickStatus2)
+    end.
+
+update_current_status_tail(State, QuickStatus) ->
+    Status = QuickStatus ++ State#state.slow_status,
+    {Status, State}.
+
+current_status_quick(TS) ->
+    [{now, TS},
+     {active_buckets, ns_memcached:active_buckets()},
+     {ready_buckets, ns_memcached:warmed_buckets()}].
+
+slow_updater_start(Parent) ->
+    erlang:register(ns_heart_slow_status_updater, self()),
+    slow_updater_loop(Parent).
+
+eat_all_reqs(TS, Count) ->
+    receive
+        {req, AnotherTS} ->
+            true = (AnotherTS > TS),
+            eat_all_reqs(AnotherTS, Count + 1)
+    after 0 ->
+            {TS, Count}
+    end.
+
+slow_updater_loop(Parent) ->
+    receive
+        {req, TS0} ->
+            {TS, Eaten} = eat_all_reqs(TS0, 0),
+            case Eaten > 0 of
+                true -> ?log_warning("Dropped %b heartbeat requests", [Eaten]);
+                _ -> ok
+            end,
+            Status0 = current_status_slow(),
+            Diff = timer:now_diff(erlang:now(), TS),
+            system_stats_collector:add_histo(status_latency, Diff),
+            Status = [{status_latency, Diff} | Status0],
+            Parent ! {slow_update, Status, TS},
+            erlang:hibernate(?MODULE, slow_updater_loop, [Parent])
+    end.
+
+current_status_slow() ->
     SystemStats =
         case catch stats_reader:latest("minute", node(), "@system") of
             {ok, StatsRec} -> StatsRec#stat_entry.values;
@@ -212,9 +297,7 @@ current_status() ->
           end, SystemStats),
 
     failover_safeness_level:build_local_safeness_info(BucketNames) ++
-        [{active_buckets, ns_memcached:active_buckets()},
-         {ready_buckets, ns_memcached:warmed_buckets()},
-         {local_tasks, Tasks},
+        [{local_tasks, Tasks},
          {memory, misc:memory()},
          {system_memory_data, memsup:get_system_memory_data()},
          {node_storage_conf, StorageConf},
