@@ -149,6 +149,8 @@ loop(Req, AppRoot, DocRoot) ->
         exit:normal ->
             %% this happens when the client closed the connection
             exit(normal);
+        throw:{web_exception, StatusCode, Message, ExtraHeaders} ->
+            Req:respond({StatusCode, ExtraHeaders ++ server_header(), Message});
         Type:What ->
             Report = ["web request failed",
                       {path, Req:get(path)},
