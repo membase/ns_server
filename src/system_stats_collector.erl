@@ -36,7 +36,9 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--export([increment_counter/2, get_ns_server_stats/0, set_counter/2]).
+-export([increment_counter/2, get_ns_server_stats/0, set_counter/2,
+         add_histo/2,
+         cleanup_stale_epoch_histos/0, log_system_stats/1]).
 
 -record(state, {port, prev_sample}).
 
@@ -45,6 +47,7 @@ start_link() ->
 
 
 init([]) ->
+    _ = spawn_link(fun stale_histo_epoch_cleaner/0),
     ets:new(ns_server_system_stats, [public, named_table, set]),
     increment_counter({request_leaves, rest}, 0),
     increment_counter({request_enters, hibernate}, 0),
@@ -405,6 +408,9 @@ add_ets_stats(Stats) ->
                                     {hibernated_requests, HibernatedCounter},
                                     {hibernated_waked, WakeupRate}])).
 
+log_system_stats(TS) ->
+    stats_collector:log_stats(TS, "@system", lists:sort(ets:tab2list(ns_server_system_stats))).
+
 handle_info({tick, TS}, #state{port = Port, prev_sample = PrevSample}) ->
     case flush_ticks(0) of
         0 -> ok;
@@ -420,7 +426,7 @@ handle_info({tick, TS}, #state{port = Port, prev_sample = PrevSample}) ->
             Stats2 = add_ets_stats(Stats),
             case ets:update_counter(ns_server_system_stats, log_counter, {2, 1, ?ETS_LOG_INTVL, 0}) of
                 0 ->
-                    stats_collector:log_stats(TS, "@system", ets:tab2list(ns_server_system_stats));
+                    log_system_stats(TS);
                 _ ->
                     ok
             end,
@@ -559,3 +565,42 @@ sample_ns_memcached_queues() ->
          just_avg_counter({S, e2e_calls}, {S, e2e_calls_rate})
      end || S <- ["unknown" | ActualServices]],
     ok.
+
+get_histo_bin(Value) when Value =< 0 -> 0;
+get_histo_bin(Value) when Value > 1000000 -> 2000000;
+get_histo_bin(Value) ->
+    Step = if
+               Value < 1000 -> 100;
+               Value < 10000 -> 1000;
+               Value =< 1000000 -> 10000
+           end,
+    ((Value + Step - 1) div Step) * Step.
+
+
+-define(EPOCH_DURATION, 30).
+-define(EPOCH_PRESERVE_COUNT, 5).
+
+add_histo(Type, Value) ->
+    BinV = get_histo_bin(Value),
+    Epoch = misc:now_int() div ?EPOCH_DURATION,
+    K = {h, Type, Epoch, BinV},
+    increment_counter(K, 1),
+    increment_counter({hg, Type, BinV}, 1).
+
+cleanup_stale_epoch_histos() ->
+    NowEpoch = misc:now_int() div ?EPOCH_DURATION,
+    FirstStaleEpoch = NowEpoch - ?EPOCH_PRESERVE_COUNT,
+    RV = ets:select_delete(ns_server_system_stats,
+                           [{{{h, '_', '$1', '_'}, '_'},
+                             [{'=<', '$1', {const, FirstStaleEpoch}}],
+                             [true]}]),
+    RV.
+
+stale_histo_epoch_cleaner() ->
+    erlang:register(system_stats_collector_stale_epoch_cleaner, self()),
+    stale_histo_epoch_cleaner_loop().
+
+stale_histo_epoch_cleaner_loop() ->
+    cleanup_stale_epoch_histos(),
+    timer:sleep(?EPOCH_DURATION * ?EPOCH_PRESERVE_COUNT * 1100),
+    stale_histo_epoch_cleaner_loop().
