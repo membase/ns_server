@@ -1409,7 +1409,10 @@ server_resources_stats_description() ->
                 {desc,<<"Number of connections to this server "
                         "including connections from external drivers, proxies, "
                         "TAP requests and internal statistic gathering "
-                        "(measured from curr_connections)">>}]}]}].
+                        "(measured from curr_connections)">>}]},
+       {struct,[{name,<<"rest_requests">>},
+                {title,<<"port 8091 reqs/sec">>},
+                {desc,<<"Rate of http requests on port 8091">>}]}]}].
 
 serve_stats_directory(_PoolId, BucketId, Req) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),

@@ -44,6 +44,7 @@ request(Type, Body, RejectBody) ->
 
 do_request(Type, Body, ThrottlerPid) ->
     try
+        system_stats_collector:increment_counter({request_enters, Type}, 1),
         Body()
     after
         note_request_done(Type, ThrottlerPid)
@@ -84,6 +85,7 @@ handle_call(Request, _From, State) ->
     {reply, unhandled, State}.
 
 handle_cast({note_request_done, Pid, Type}, State) ->
+    system_stats_collector:increment_counter({request_leaves, Type}, 1),
     Count = ets:update_counter(?TABLE, Type, -1),
     true = (Count >= 0),
 
@@ -99,6 +101,7 @@ handle_info({'DOWN', MRef, process, Pid, _Reason}, State) ->
     [{_, Type, MRef}] = ets:lookup(?TABLE, Pid),
     true = ets:delete(?TABLE, Pid),
 
+    system_stats_collector:increment_counter({request_leaves, Type}, 1),
     Count = ets:update_counter(?TABLE, Type, -1),
     true = (Count >= 0),
 

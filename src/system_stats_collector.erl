@@ -44,6 +44,8 @@ start_link() ->
 
 init([]) ->
     ets:new(ns_server_system_stats, [public, named_table, set]),
+    increment_counter({request_leaves, rest}, 0),
+    increment_counter(prev_request_leaves_rest, 0),
     Path = path_config:component_path(bin, "sigar_port"),
     Port =
         try open_port({spawn_executable, Path},
@@ -392,9 +394,13 @@ handle_info({tick, TS}, #state{port = Port, prev_sample = PrevSample}) ->
         undefined -> ok;
         _ ->
             Stats = lists:sort(Stats0),
+            [{_, NowCounter}] = ets:lookup(ns_server_system_stats, {request_leaves, rest}),
+            [{_, PrevCounter}] = ets:lookup(ns_server_system_stats, prev_request_leaves_rest),
+            ets:insert(ns_server_system_stats, {prev_request_leaves_rest, NowCounter}),
+            Stats2 = orddict:store(rest_requests, NowCounter - PrevCounter, Stats),
             gen_event:notify(ns_stats_event,
                              {stats, "@system", #stat_entry{timestamp = TS,
-                                                            values = Stats}})
+                                                            values = Stats2}})
     end,
     update_merger_rates(),
     sample_ns_memcached_queues(),
