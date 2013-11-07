@@ -27,6 +27,8 @@
 
 -define(MAIN_BEAM_NAME, <<"(main)beam.smp">>).
 
+-define(ETS_LOG_INTVL, 180).
+
 %% API
 -export([start_link/0]).
 
@@ -46,6 +48,7 @@ init([]) ->
     ets:new(ns_server_system_stats, [public, named_table, set]),
     increment_counter({request_leaves, rest}, 0),
     increment_counter(prev_request_leaves_rest, 0),
+    increment_counter(log_counter, 0),
     Path = path_config:component_path(bin, "sigar_port"),
     Port =
         try open_port({spawn_executable, Path},
@@ -398,6 +401,12 @@ handle_info({tick, TS}, #state{port = Port, prev_sample = PrevSample}) ->
             [{_, PrevCounter}] = ets:lookup(ns_server_system_stats, prev_request_leaves_rest),
             ets:insert(ns_server_system_stats, {prev_request_leaves_rest, NowCounter}),
             Stats2 = orddict:store(rest_requests, NowCounter - PrevCounter, Stats),
+            case ets:update_counter(ns_server_system_stats, log_counter, {2, 1, ?ETS_LOG_INTVL, 0}) of
+                0 ->
+                    stats_collector:log_stats(TS, "@system", ets:tab2list(ns_server_system_stats));
+                _ ->
+                    ok
+            end,
             gen_event:notify(ns_stats_event,
                              {stats, "@system", #stat_entry{timestamp = TS,
                                                             values = Stats2}})
