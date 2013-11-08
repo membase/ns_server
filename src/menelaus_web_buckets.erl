@@ -122,13 +122,7 @@ build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr) ->
 
 
 add_couch_api_base_loop([], _BucketName, _LocalAddr, _F, _Dict, CAPINodes, NonCAPINodes) ->
-    case NonCAPINodes of
-        [] ->
-            %% This most expected case should avoid extra copying
-            CAPINodes;
-        _ ->
-            CAPINodes ++ NonCAPINodes
-    end;
+    CAPINodes ++ NonCAPINodes;
 add_couch_api_base_loop([Node | RestNodes], BucketName, LocalAddr, F, Dict, CAPINodes, NonCAPINodes) ->
     {struct, KV} = F(Node, BucketName),
     case dict:find(Node, Dict) of
