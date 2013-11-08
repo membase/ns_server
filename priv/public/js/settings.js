@@ -957,6 +957,8 @@ var AccountManagementSection = {
             errorsCell.setValue(undefined);
           } else {
             form.trigger("reset");
+            $("#js_user_created").show();
+            $("#js_user_exists").hide();
             self.roAdminNameCell.invalidate();
           }
         },
@@ -973,6 +975,8 @@ var AccountManagementSection = {
       if (tab != "account_management") {
         return;
       }
+      $("#js_user_created").hide();
+      $("#js_user_exists").show();
       $("[name='username']", form).focus();
     });
 
