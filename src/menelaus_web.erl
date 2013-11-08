@@ -53,7 +53,9 @@
          parse_validate_bucket_auto_compaction_settings/1,
          build_fast_warmup_settings/1,
          parse_validate_fast_warmup_settings/1,
-         parse_validate_bucket_fast_warmup_settings/1]).
+         parse_validate_bucket_fast_warmup_settings/1,
+         is_enterprise/0,
+         assert_is_enterprise/0]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
@@ -149,6 +151,8 @@ loop(Req, AppRoot, DocRoot) ->
         exit:normal ->
             %% this happens when the client closed the connection
             exit(normal);
+        throw:{web_exception, StatusCode, Message, ExtraHeaders} ->
+            Req:respond({StatusCode, ExtraHeaders ++ server_header(), Message});
         Type:What ->
             Report = ["web request failed",
                       {path, Req:get(path)},
@@ -849,6 +853,50 @@ get_uuid() ->
 
 handle_versions(Req) ->
     reply_json(Req, {struct, menelaus_web_cache:versions_response()}).
+
+detect_enterprise_version(NsServerVersion) ->
+    case re:run(NsServerVersion, <<"-enterprise$">>) of
+        nomatch ->
+            false;
+        _ ->
+            true
+    end.
+
+%% dialyzer proves that statically and complains about impossible code
+%% path if I use ?assert... Sucker
+detect_enterprise_version_test() ->
+    true = detect_enterprise_version(<<"1.8.0r-9-ga083a1e-enterprise">>),
+    true = not detect_enterprise_version(<<"1.8.0r-9-ga083a1e-comm">>).
+
+is_enterprise() ->
+    menelaus_web_cache:lookup_or_compute_with_expiration(
+      is_enterprise,
+      fun () ->
+              IsForced = ns_config_ets_dup:unreliable_read_key(this_is_enterprise, undefined),
+              Val = case IsForced of
+                        undefined ->
+                            Versions = ns_info:version(),
+                            NsServerVersion = list_to_binary(proplists:get_value(ns_server, Versions, "unknown")),
+                            detect_enterprise_version(NsServerVersion);
+                        _ ->
+                            IsForced
+                    end,
+              {Val, 1000000, IsForced}
+      end,
+      fun (_Key, _Value, IsForced) ->
+              IsForced =/= ns_config_ets_dup:unreliable_read_key(this_is_enterprise, undefined)
+      end).
+
+assert_is_enterprise() ->
+    case is_enterprise() of
+        true ->
+            ok;
+        _ ->
+            erlang:throw({web_exception,
+                          400,
+                          "This http API endpoint requires enterprise edition",
+                          [{"X-enterprise-edition-needed", 1}]})
+    end.
 
 % {"default", [
 %   {port, 11211},
