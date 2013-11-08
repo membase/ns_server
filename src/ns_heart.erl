@@ -134,9 +134,16 @@ status_all() ->
     Replies.
 
 erlang_stats() ->
-    Stats = [wall_clock, context_switches, garbage_collection, io, reductions,
-             run_queue, runtime],
-    [{Stat, statistics(Stat)} || Stat <- Stats].
+    try
+        Stats = [wall_clock, context_switches, garbage_collection, io, reductions,
+                 run_queue, runtime, run_queues],
+        [{Stat, statistics(Stat)} || Stat <- Stats]
+    catch _:_ ->
+            %% NOTE: dialyzer doesn't like run_queues stat
+            %% above. Given that this is useful but not a must, it
+            %% makes sense to simply cover any exception
+            []
+    end.
 
 %% Internal fuctions
 
