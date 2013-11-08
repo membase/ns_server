@@ -73,7 +73,7 @@ get_disk_data() ->
     case os:type() of
         {unix, darwin} ->
             case os:version() of
-                {12, _Minor, _Rel} ->
+                {Major, _Minor, _Rel} when Major >= 12 ->
                     Result = os:cmd("/bin/df -i -k -t ufs,hfs"),
                     osx_get_disk_data(string:tokens(Result,"\n"));
                 _DefaultV ->

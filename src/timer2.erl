@@ -361,6 +361,7 @@ timer_timeout(SysTime) ->
 		[{{Time, Ref}, Repeat = {repeat, Interv, To}, MFA} = TimerEntry] ->
 		    ets:delete(?TIMER_TAB,Key),
 		    NewTime0 = Time + Interv,
+                    system_stats_collector:add_histo(timer_lag, (SysTime - NewTime0) * 1000),
                     NewTime =
                         case NewTime0 < SysTime of
                             true ->

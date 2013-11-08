@@ -27,7 +27,7 @@
 %% API
 -export([start_link/1]).
 
--export([format_stats/1]).
+-export([format_stats/1, log_stats/3]).
 
 -record(state, {bucket,
                 last_plain_counters,
@@ -119,21 +119,24 @@ maybe_log_stats(TS, State, RawStats) ->
         true ->
             case misc:get_env_default(dont_log_stats, false) of
                 false ->
-                    %% TS is epoch _milli_seconds
-                    TSMicros = (TS rem 1000) * 1000,
-                    TSSec0 = TS div 1000,
-                    TSMega = TSSec0 div 1000000,
-                    TSSec = TSSec0 rem 1000000,
-                    ?stats_debug("(at ~p (~p)) Stats for bucket ~p:~n~s",
-                                 [calendar:now_to_local_time({TSMega, TSSec, TSMicros}),
-                                  TS,
-                                  State#state.bucket, format_stats(RawStats)]);
+                    log_stats(TS, State#state.bucket, RawStats);
                 _ -> ok
             end,
             State#state{count = 1};
         false ->
             State#state{count = OldCount + 1}
     end.
+
+log_stats(TS, Bucket, RawStats) ->
+    %% TS is epoch _milli_seconds
+    TSMicros = (TS rem 1000) * 1000,
+    TSSec0 = TS div 1000,
+    TSMega = TSSec0 div 1000000,
+    TSSec = TSSec0 rem 1000000,
+    ?stats_debug("(at ~p (~p)) Stats for bucket ~p:~n~s",
+                 [calendar:now_to_local_time({TSMega, TSSec, TSMicros}),
+                  TS,
+                  Bucket, format_stats(RawStats)]).
 
 process_grabbed_stats(TS,
                       {PlainStats, TapStats, Timings, CouchStats, XDCStats},
@@ -225,8 +228,10 @@ transform_xdc_stats(XDCStats) ->
 
 format_stats(Stats) ->
     erlang:list_to_binary(
-      [[K, lists:duplicate(erlang:max(1, ?WIDTH - byte_size(K)), $\s), V, $\n]
-       || {K, V} <- lists:sort(Stats)]).
+      [case couch_util:to_binary(K0) of
+           K -> [K, lists:duplicate(erlang:max(1, ?WIDTH - byte_size(K)), $\s),
+                 couch_util:to_binary(V), $\n]
+       end || {K0, V} <- lists:sort(Stats)]).
 
 latest_tick(TS) ->
     latest_tick(TS, 0).

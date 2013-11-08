@@ -43,10 +43,14 @@
          bin_concat_path/1,
          bin_concat_path/2,
          parse_validate_number/3,
+         parse_validate_number/4,
          parse_validate_port_number/1,
          validate_email_address/1,
          insecure_pipe_through_command/2,
          encode_json/1]).
+
+%% used by parse_validate_number
+-export([list_to_integer/1, list_to_float/1]).
 
 -export([java_date/0,
          string_hash/1,
@@ -221,9 +225,22 @@ bin_concat_path(Segments, Props) ->
 -spec parse_validate_number(string(), (integer() | undefined), (integer() | undefined)) ->
                                    invalid | too_small | too_large | {ok, integer()}.
 parse_validate_number(String, Min, Max) ->
-    Parsed = (catch list_to_integer(string:strip(String))),
+    parse_validate_number(String, Min, Max, list_to_integer).
+
+list_to_integer(A) -> erlang:list_to_integer(A).
+
+list_to_float(A) -> try erlang:list_to_integer(A)
+                    catch _:_ ->
+                            erlang:list_to_float(A)
+                    end.
+
+-spec parse_validate_number(string(), (number() | undefined), (number() | undefined),
+                            list_to_integer | list_to_float) ->
+                                   invalid | too_small | too_large | {ok, integer()}.
+parse_validate_number(String, Min, Max, Fun) ->
+    Parsed = (catch menelaus_util:Fun(string:strip(String))),
     if
-        is_integer(Parsed) ->
+        is_number(Parsed) ->
             if
                 Min =/= undefined andalso Parsed < Min -> too_small;
                 Max =/= undefined andalso Max =/= infinity andalso

@@ -840,9 +840,11 @@ warmed_buckets() ->
     warmed_buckets(?WARMED_TIMEOUT).
 
 warmed_buckets(Timeout) ->
-    lists:filter(fun (N) ->
-                         warmed(node(), N, Timeout)
-                 end, active_buckets()).
+    RVs = misc:parallel_map(
+            fun (Bucket) ->
+                    {Bucket, warmed(node(), Bucket, Timeout)}
+            end, active_buckets(), infinity),
+    [Bucket || {Bucket, true} <- RVs].
 
 %% @doc Send flush command to specified bucket
 -spec flush(bucket_name()) -> ok.

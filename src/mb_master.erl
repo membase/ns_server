@@ -13,9 +13,6 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% Monitor and maintain the vbucket layout of each bucket.
-%% There is one of these per bucket.
-%%
 -module(mb_master).
 
 -behaviour(gen_fsm).
