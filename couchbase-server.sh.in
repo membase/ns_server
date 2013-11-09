@@ -104,7 +104,7 @@ _load_config () {
 }
 
 _drop_old_crashdumps () {
-    ls -1 erl_crash.dump.* | sort | head -n -10 | xargs -- rm -f
+    ls -1 erl_crash.dump.* 2>/dev/null | sort | head -n -10 | xargs -- rm -f
 }
 
 
