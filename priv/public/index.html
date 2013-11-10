@@ -312,8 +312,8 @@
                 </td>
 
                 <td class="rep">
-                  {%= V.formatQuantity(s.interestingStats.curr_items || 0, '', 1000, ' ') %}/<br>
-                  {%= V.formatQuantity(s.interestingStats.vb_replica_curr_items || 0, '', 1000, ' ') %}
+                  {%= V.formatQuantity(s.interestingStats.curr_items || 0, 1000, ' ') %}/<br>
+                  {%= V.formatQuantity(s.interestingStats.vb_replica_curr_items || 0, 1000, ' ') %}
                 </td>
 
                 <!-- {% if (s.clusterMembership == 'inactiveAdded') { %} -->

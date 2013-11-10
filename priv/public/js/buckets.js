@@ -533,7 +533,7 @@ var BucketDetailsDialog = mkClass({
 
   renderGauge: function (jq, total, thisBucket, otherBuckets) {
     var thisValue = thisBucket,
-        formattedBucket = ViewHelpers.formatQuantity(thisBucket, null, null, ' ');
+        formattedBucket = ViewHelpers.formatMemSize(thisBucket);
 
     if (_.isString(thisValue)) {
       formattedBucket = thisValue;
@@ -644,7 +644,7 @@ var BucketsSection = {
   },
 
   renderDiskGauge: function (jq, total, thisBucket, otherBuckets, otherData) {
-    var formattedBucket = ViewHelpers.formatQuantity(thisBucket, null, null, ' '),
+    var formattedBucket = ViewHelpers.formatMemSize(thisBucket),
         free = total - otherData - thisBucket - otherBuckets,
         options = {
                     topAttrs: {'class': 'size-gauge for-hdd'},

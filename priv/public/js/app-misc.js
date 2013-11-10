@@ -240,13 +240,13 @@ function jsonPostWithErrors(url, data, callback, ajaxOptions) {
 
 // make sure around 3 digits of value is visible. Less for for too
 // small numbers
-function truncateTo3Digits(value, leastScale) {
+function truncateTo3Digits(value, leastScale, roundMethod) {
   var scale = _.detect([100, 10, 1, 0.1, 0.01, 0.001], function (v) {return value >= v;}) || 0.0001;
   if (leastScale != undefined && leastScale > scale) {
     scale = leastScale;
   }
   scale = 100 / scale;
-  return Math.round(value*scale)/scale;
+  return Math[roundMethod || "round"](value*scale)/scale;
 }
 
 function prepareTemplateForCell(templateName, cell) {
@@ -415,27 +415,35 @@ _.extend(ViewHelpers, {
   },
   prepareQuantity: function (value, K) {
     K = K || 1024;
+
     var M = K*K;
     var G = M*K;
     var T = G*K;
 
-    var t = _.detect([[T,'T'],[G,'G'],[M,'M'],[K,'K']], function (t) {return value > 1.1*t[0];});
-    t = t || [1, ''];
+    if (K !== 1024 && K !== 1000) {
+      throw new Error("Unknown number system");
+    }
+
+    var t = _.detect([[T,'T'],[G,'G'],[M,'M'],[K,'K']], function (t) {
+      return value >= t[0];
+    }) || [1, ''];
+
+    if (K === 1024) {
+      t[1] += 'B';
+    }
+
     return t;
   },
-  formatQuantity: function (value, kind, K, spacing) {
+  formatQuantity: function (value, numberSystem, spacing) {
     if (spacing == null) {
       spacing = '';
     }
-    if (kind == null) {
-      kind = 'B'; //bytes is default
-    }
 
-    var t = ViewHelpers.prepareQuantity(value, K);
-    return [truncateTo3Digits(value/t[0]), spacing, t[1], kind].join('');
+    var t = ViewHelpers.prepareQuantity(value, numberSystem);
+    return [truncateTo3Digits(value/t[0], undefined, "floor"), spacing, t[1]].join('');
   },
   formatMemSize: function (value) {
-    return this.formatQuantity(value, 'B', 1024, ' ');
+    return this.formatQuantity(value, null, ' ');
   },
 
   renderPendingStatus: function (node) {
@@ -841,7 +849,7 @@ function memorySizesGaugeHTML(options) {
       continue;
     }
     newOptions.items[i] = item = _.clone(item);
-    item.renderedValue = ViewHelpers.formatQuantity(item.value, null, null, ' ');
+    item.renderedValue = ViewHelpers.formatMemSize(item.value);
   }
   return usageGaugeHTML(newOptions);
 }

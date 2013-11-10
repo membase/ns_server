@@ -693,8 +693,7 @@ var maybeReloadAppDueToLeak = (function () {
                                      reqOpt('timeOffset')).plotSeries;
 
     var lastY = data[data.length-1];
-
-    var maxString = isNaN(lastY) ? '?' : ViewHelpers.formatQuantity(lastY, '', 1000);
+    var maxString = isNaN(lastY) ? '?' : ViewHelpers.formatQuantity(lastY, options.isBytes ? 1024 : 1000);
     queuedUpdates.push(function () {
       jq.find('#js_small_graph_value').text(maxString);
     });
@@ -855,7 +854,8 @@ var GraphsWidget = mkClass({
         zoomMillis: zoomMillis,
         isSelected: selected.name == statName,
         timestamp: configuration.timestamp,
-        maxY: configuration.infos.byName[statName].maxY
+        maxY: configuration.infos.byName[statName].maxY,
+        isBytes: statInfo.isBytes
       });
     });
 
