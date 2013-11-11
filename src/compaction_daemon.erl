@@ -774,7 +774,7 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
               {Options, SafeViewSeqs} =
                   case Config#config.do_purge of
                       true ->
-                          {[dropdeletes], []};
+                          {{0, 0, true}, []};
                       _ ->
                           {NowMegaSec, NowSec, _} = os:timestamp(),
                           NowEpoch = NowMegaSec * 1000000 + NowSec,
@@ -793,9 +793,7 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
                                             PurgeTS0
                                     end,
 
-                          Options0 = [{purge_before, PurgeTS}],
-
-                          {Options0, capi_set_view_manager:get_safe_purge_seqs(BucketName)}
+                          {{PurgeTS, 0, false}, capi_set_view_manager:get_safe_purge_seqs(BucketName)}
                   end,
 
 
@@ -818,12 +816,12 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
                         [BucketName])
       end).
 
-make_per_vbucket_compaction_options(GeneralOption, {Vb, _}, SafeViewSeqs) ->
+make_per_vbucket_compaction_options({TS, 0, DD} = GeneralOption, {Vb, _}, SafeViewSeqs) ->
     case lists:keyfind(Vb, 1, SafeViewSeqs) of
         false ->
             GeneralOption;
         {_, Seq} ->
-            [{purge_only_upto_seq, Seq} | GeneralOption]
+            {TS, Seq, DD}
     end.
 
 update_bucket_compaction_progress(Ix, Total) ->
@@ -881,51 +879,72 @@ vbucket_needs_compaction({DataSize, FileSize}, Config) ->
 
     file_needs_compaction(DataSize, FileSize, FragThreshold, MinFileSize).
 
-spawn_vbucket_compactor(BucketName, {_, DbName} = VBucketAndDb,
-                        Config, Force, Options) ->
-    Parent = self(),
+maybe_compact_vbucket(BucketName, {VBucket, DbName} = VBucketAndDb,
+                      Config, Force, Options) ->
+    Db = open_db_or_fail(BucketName, VBucketAndDb),
 
+    SizeInfo = try
+                   {ok, DbInfo} = couch_db:get_db_info(Db),
+                   db_size_info(DbInfo)
+               after
+                   couch_db:close(Db)
+               end,
+
+    case Force orelse vbucket_needs_compaction(SizeInfo, Config) of
+        true ->
+            ok;
+        false ->
+            exit(normal)
+    end,
+
+    %% effectful
+    ensure_can_db_compact(Db#db.name, SizeInfo),
+
+    ?log_info("Compacting ~p", [DbName]),
+    Ret = case VBucket of
+              master ->
+                  compact_master_vbucket(BucketName, DbName);
+              _ ->
+                  ns_memcached:compact_vbucket(binary_to_list(BucketName), VBucket, Options)
+          end,
+    ?log_info("Compaction of ~p has finished with ~p", [DbName, Ret]),
+    Ret.
+
+spawn_vbucket_compactor(BucketName, VBucketAndDb, Config, Force, Options) ->
     proc_lib:spawn_link(
       fun () ->
-              Db = open_db_or_fail(BucketName, VBucketAndDb),
-              {ok, DbInfo} = couch_db:get_db_info(Db),
-              SizeInfo = db_size_info(DbInfo),
-
-              case Force orelse vbucket_needs_compaction(SizeInfo, Config) of
-                  true ->
+              case maybe_compact_vbucket(BucketName, VBucketAndDb, Config, Force, Options) of
+                  ok ->
                       ok;
-                  false ->
-                      exit(normal)
-              end,
-
-              %% effectful
-              ensure_can_db_compact(Db, SizeInfo),
-
-              ?log_info("Compacting ~p", [DbName]),
-
-              process_flag(trap_exit, true),
-
-              {ok, Compactor} = couch_db:start_compact(Db, Options),
-
-              CompactorRef = erlang:monitor(process, Compactor),
-
-              receive
-                  {'EXIT', Parent, Reason} = Exit ->
-                      ?log_debug("Got exit signal from parent: ~p", [Exit]),
-
-                      erlang:demonitor(CompactorRef),
-                      ok = couch_db:cancel_compact(Db),
-                      exit(Reason);
-                  {'DOWN', CompactorRef, process, Compactor, normal} ->
-                      ok;
-                  {'DOWN', CompactorRef, process, Compactor, noproc} ->
-                      %% compactor died before we managed to monitor it;
-                      %% we will treat this as an error
-                      exit({db_compactor_died_too_soon, DbName});
-                  {'DOWN', CompactorRef, process, Compactor, Reason} ->
-                      exit(Reason)
+                  Result ->
+                      exit(Result)
               end
       end).
+
+compact_master_vbucket(BucketName, DbName) ->
+    Db = open_db_or_fail(BucketName, {master, DbName}),
+    process_flag(trap_exit, true),
+
+    {ok, Compactor} = couch_db:start_compact(Db, [dropdeletes]),
+
+    CompactorRef = erlang:monitor(process, Compactor),
+
+    receive
+        {'EXIT', _Parent, Reason} = Exit ->
+            ?log_debug("Got exit signal from parent: ~p", [Exit]),
+
+            erlang:demonitor(CompactorRef),
+            ok = couch_db:cancel_compact(Db),
+            Reason;
+        {'DOWN', CompactorRef, process, Compactor, normal} ->
+            ok;
+        {'DOWN', CompactorRef, process, Compactor, noproc} ->
+            %% compactor died before we managed to monitor it;
+            %% we will treat this as an error
+            {db_compactor_died_too_soon, DbName};
+        {'DOWN', CompactorRef, process, Compactor, Reason} ->
+            Reason
+    end.
 
 spawn_view_compactor(BucketName, DDocId, Config, Force, OriginalTarget) ->
     Parent = self(),
@@ -1151,7 +1170,7 @@ check_fragmentation({FragLimit, FragSizeLimit}, Frag, FragSize) ->
 
     (Frag >= FragLimit) orelse (FragSize >= FragSizeLimit).
 
-ensure_can_db_compact(Db, {DataSize, _}) ->
+ensure_can_db_compact(DbName, {DataSize, _}) ->
     SpaceRequired = space_required(DataSize),
 
     {ok, DbDir} = ns_storage_conf:this_node_dbdir(),
@@ -1165,8 +1184,8 @@ ensure_can_db_compact(Db, {DataSize, _}) ->
                       "Cannot compact database `~s`: "
                       "the estimated necessary disk space is about ~p bytes "
                       "but the currently available disk space is ~p bytes.",
-                      [Db#db.name, SpaceRequired, Free]),
-            exit({not_enough_space, Db#db.name, SpaceRequired, Free})
+                      [DbName, SpaceRequired, Free]),
+            exit({not_enough_space, DbName, SpaceRequired, Free})
     end.
 
 space_required(DataSize) ->

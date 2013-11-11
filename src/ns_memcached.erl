@@ -121,7 +121,8 @@
          get_tap_docs_estimate/3,
          get_mass_tap_docs_estimate/2,
          set_cluster_config/2,
-         get_random_key/1]).
+         get_random_key/1,
+         compact_vbucket/3]).
 
 %% for ns_memcached_sockets_pool only
 -export([connect/0]).
@@ -1367,6 +1368,17 @@ wait_for_checkpoint_persistence(Bucket, VBucketId, CheckpointId) ->
       fun (Sock) ->
               {reply, mc_client_binary:wait_for_checkpoint_persistence(Sock, VBucketId, CheckpointId)}
       end, Bucket).
+
+-spec compact_vbucket(bucket_name(), vbucket_id(),
+                      {integer(), integer(), boolean()}) ->
+                             ok | mc_error().
+compact_vbucket(Bucket, VBucket, {PurgeBeforeTS, PurgeBeforeSeqNo, DropDeletes}) ->
+    perform_very_long_call(
+      fun (Sock) ->
+              {reply, mc_client_binary:compact_vbucket(Sock, VBucket,
+                                                       PurgeBeforeTS, PurgeBeforeSeqNo, DropDeletes)}
+      end, Bucket).
+
 
 -spec get_tap_docs_estimate(bucket_name(), vbucket_id(), binary()) ->
                                    {ok, {non_neg_integer(), non_neg_integer(), binary()}}.

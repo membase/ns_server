@@ -61,7 +61,8 @@
          ext/2,
          rev_to_mcd_ext/1,
          set_cluster_config/2,
-         get_random_key/1
+         get_random_key/1,
+         compact_vbucket/5
         ]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
@@ -84,7 +85,8 @@
                      ?RGET | ?RSET | ?RSETQ | ?RAPPEND | ?RAPPENDQ | ?RPREPEND |
                      ?RPREPENDQ | ?RDELETE | ?RDELETEQ | ?RINCR | ?RINCRQ |
                      ?RDECR | ?RDECRQ | ?SYNC | ?CMD_CHECKPOINT_PERSISTENCE |
-                     ?CMD_GET_RANDOM_KEY.
+                     ?CMD_GET_RANDOM_KEY |
+                     ?CMD_COMPACT_DB.
 
 %% A memcached client that speaks binary protocol.
 -spec cmd(mc_opcode(), port(), recv_callback(), any(),
@@ -337,6 +339,21 @@ set_vbucket(Sock, VBucket, VBucketState) ->
              {#mc_header{vbucket = VBucket},
               #mc_entry{data = <<State:32>>}}) of
         {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
+            ok;
+        Response -> process_error_response(Response)
+    end.
+
+compact_vbucket(Sock, VBucket, PurgeBeforeTS, PurgeBeforeSeqNo, DropDeletes) ->
+    DD = case DropDeletes of
+             true ->
+                 1;
+             false ->
+                 0
+         end,
+    Ext = <<PurgeBeforeTS:64, PurgeBeforeSeqNo:64, DD:8, 0:8, 0:16, 0:32>>,
+    case cmd(?CMD_COMPACT_DB, Sock, undefined, undefined,
+             {#mc_header{vbucket = VBucket}, #mc_entry{ext = Ext}}) of
+        {ok, #mc_header{status=?SUCCESS}, _, _} ->
             ok;
         Response -> process_error_response(Response)
     end.

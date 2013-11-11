@@ -65,6 +65,66 @@ do_notify_vbucket_update(BucketName, VBucket, Body) ->
       VBStateUpdated:32,
       VBState:32,
       VBCheckpoint:64>> = Body,
+
+    case VBStateUpdated of
+        ?MCCOUCH_VB_COMPACTION_DONE ->
+            case adjust_couch_db_version(BucketName, VBucket, FileVersion, NewPos) of
+                ?SUCCESS ->
+                    ?SUCCESS;
+                Ret ->
+                    Ret
+            end;
+        ?MCCOUCH_VB_COMPACT_OPENDB_ERROR ->
+            ?SUCCESS;
+        ?MCCOUCH_VB_COMPACT_RENAME_ERROR ->
+            ?SUCCESS;
+        _ ->
+            do_notify_vbucket_update(BucketName, VBucket, FileVersion, NewPos, VBStateUpdated,
+                                     VBState, VBCheckpoint)
+    end.
+
+adjust_couch_db_version(BucketName, VBucket, FileVersion, NewPos) ->
+    DbName = capi_utils:build_dbname(BucketName, VBucket),
+    ?log_info("Compaction of ~p is done. New Version : ~p, New Pos: ~p",
+              [DbName, FileVersion, NewPos]),
+    case couch_db:open_int(DbName, []) of
+        {ok, Db} ->
+            try
+                case couch_db:jump_to_another_version(Db, FileVersion, NewPos) of
+                    ok ->
+                        ?SUCCESS;
+                    update_behind_couchdb ->
+                        ?log_error("~s vbucket ~p behind couchdb version on update.~n",
+                                   [BucketName, VBucket]),
+                        ?EINVAL;
+                    version_didnt_change ->
+                        ?log_error("Version ~p was not changed for ~s vbucket ~p by the ep-engine compactor.~n",
+                                   [FileVersion, BucketName, VBucket]),
+                        ?EINVAL;
+                    compacting ->
+                        ?log_error("~s vbucket ~p is being compacted by the couchdb compactor.~n",
+                                   [BucketName, VBucket]),
+                        ?EINVAL;
+                    waiting_delayed_commit ->
+                        ?log_error("~s vbucket ~p has uncommited changes.~n",
+                                   [BucketName, VBucket]),
+                        ?EINVAL;
+                    was_updated ->
+                        ?log_error("~s vbucket ~p was updated by couchdb during compaction.~n",
+                                   [BucketName, VBucket]),
+                        ?EINVAL
+                end
+            after
+                couch_db:close(Db)
+            end;
+        {not_found,no_db_file} ->
+            ?log_error("~s vbucket ~p file deleted or missing.~n",
+                       [BucketName, VBucket]),
+            ?EINVAL
+    end.
+
+do_notify_vbucket_update(BucketName, VBucket, FileVersion, NewPos, VBStateUpdated,
+                         VBState, VBCheckpoint) ->
     DbName = capi_utils:build_dbname(BucketName, VBucket),
     ResponseStatus =
         case couch_db:open_int(DbName, []) of
