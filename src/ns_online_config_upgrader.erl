@@ -91,7 +91,7 @@ maybe_add_vbucket_map_history(Config, HistorySize) ->
                                 case proplists:get_value(map, BucketConfig, []) of
                                     [] -> [];
                                     Map ->
-                                        case ns_rebalancer:unbalanced(Map, proplists:get_value(servers, BucketConfig, []), chain) of
+                                        case ns_rebalancer:unbalanced_with_config(Map, chain, BucketConfig, Config) of
                                             true ->
                                                 [];
                                             false ->

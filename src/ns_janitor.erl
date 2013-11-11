@@ -78,7 +78,7 @@ cleanup_with_membase_bucket_check_map(Bucket, Options, BucketConfig) ->
                         end,
 
                     Topology = proplists:get_value(replication_topology, Opts),
-                    case ns_rebalancer:unbalanced(NewMap, Servers, Topology) of
+                    case ns_rebalancer:unbalanced(NewMap, Topology, BucketConfig) of
                         false ->
                             ns_bucket:update_vbucket_map_history(NewMap, Opts);
                         true ->
@@ -86,6 +86,7 @@ cleanup_with_membase_bucket_check_map(Bucket, Options, BucketConfig) ->
                     end,
 
                     ns_bucket:set_map(Bucket, NewMap),
+                    ns_bucket:set_map_opts(Bucket, Opts),
                     cleanup(Bucket, Options)
             end;
         _ ->
