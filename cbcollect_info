@@ -273,6 +273,7 @@ def make_os_tasks():
         LinuxTask("Transparent Huge Pages data", "cat /sys/kernel/mm/transparent_hugepage/defrag"),
         LinuxTask("Transparent Huge Pages data", "cat /sys/kernel/mm/redhat_transparent_hugepage/enabled"),
         LinuxTask("Transparent Huge Pages data", "cat /sys/kernel/mm/redhat_transparent_hugepage/defrag"),
+        LinuxTask("Full raw netstat", "cat /proc/net/netstat"),
         ]
 
     return _tasks
