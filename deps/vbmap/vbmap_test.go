@@ -41,19 +41,18 @@ func trivialTags(nodes int) (tags map[Node]Tag) {
 }
 
 func TestRReplicaBalance(t *testing.T) {
-	seed = time.Now().UTC().UnixNano()
-	t.Logf("Using seed %d", seed)
-	rand.Seed(seed)
-
 	setup(t)
 
 	for nodes := 1; nodes <= 50; nodes++ {
 		tags := trivialTags(nodes)
 
 		for replicas := 1; replicas <= 3; replicas++ {
+			seed = time.Now().UTC().UnixNano()
+			rand.Seed(seed)
+
 			t.Log("=======================================")
-			t.Logf("Generating R for %d node, %d replicas",
-				nodes, replicas)
+			t.Logf("Generating R for %d node, %d replicas (seed %d)",
+				nodes, replicas, seed)
 
 			params = VbmapParams{
 				Tags:        tags,
@@ -71,9 +70,9 @@ func TestRReplicaBalance(t *testing.T) {
 					t.Errorf("Couldn't generate RI: %s", err.Error())
 				}
 
-				R := buildR(params, RI)
-				if R.evaluation() != 0 {
-					t.Error("Generated map R has non-zero evaluation")
+				R := BuildR(params, RI)
+				if R.evaluation() > 10 {
+					t.Error("Generated map R has too large evaluation")
 				}
 			}
 		}
@@ -142,7 +141,7 @@ func TestRIProperties(t *testing.T) {
 			return checkRIProperties(gen, params)
 		}
 
-		err := quick.Check(check, &quick.Config{MaxCount: 100})
+		err := quick.Check(check, &quick.Config{MaxCount: 250})
 		if err != nil {
 			t.Error(err)
 		}
@@ -157,10 +156,10 @@ func checkRProperties(gen RIGenerator, params VbmapParams, seed int64) bool {
 		return false
 	}
 
-	R := buildR(params, RI)
+	R := BuildR(params, RI)
 	if params.NumReplicas == 0 {
 		// no replicas? R should obviously be empty
-		for _, row := range R.matrix {
+		for _, row := range R.Matrix {
 			for _, elem := range row {
 				if elem != 0 {
 					return false
@@ -171,8 +170,8 @@ func checkRProperties(gen RIGenerator, params VbmapParams, seed int64) bool {
 		// check that we follow RI topology
 		for i, row := range RI {
 			for j, elem := range row {
-				if !elem && R.matrix[i][j] != 0 ||
-					elem && R.matrix[i][j] == 0 {
+				if !elem && R.Matrix[i][j] != 0 ||
+					elem && R.Matrix[i][j] == 0 {
 					return false
 				}
 			}
@@ -181,7 +180,7 @@ func checkRProperties(gen RIGenerator, params VbmapParams, seed int64) bool {
 		totalVBuckets := 0
 
 		// check active vbuckets balance
-		for _, sum := range R.rowSums {
+		for _, sum := range R.RowSums {
 			if sum%params.NumReplicas != 0 {
 				return false
 			}
@@ -213,7 +212,7 @@ func TestRProperties(t *testing.T) {
 			return checkRProperties(gen, params, seed)
 		}
 
-		err := quick.Check(check, &quick.Config{MaxCount: 100})
+		err := quick.Check(check, &quick.Config{MaxCount: 250})
 		if err != nil {
 			t.Error(err)
 		}
@@ -232,7 +231,7 @@ func checkVbmapProperties(gen RIGenerator, params VbmapParams, seed int64) bool 
 		return false
 	}
 
-	R := buildR(params, RI)
+	R := BuildR(params, RI)
 	vbmap := buildVbmap(R)
 
 	if len(vbmap) != params.NumVBuckets {
@@ -271,7 +270,7 @@ func checkVbmapProperties(gen RIGenerator, params VbmapParams, seed int64) bool 
 	}
 
 	// number of replications should correspond to one defined by R
-	for i, row := range R.matrix {
+	for i, row := range R.Matrix {
 		for j, elem := range row {
 			if elem != 0 {
 				pair := NodePair{Node(i), Node(j)}
@@ -286,7 +285,7 @@ func checkVbmapProperties(gen RIGenerator, params VbmapParams, seed int64) bool 
 
 	// number of active vbuckets should correspond to one defined
 	// by matrix R
-	for n, sum := range R.rowSums {
+	for n, sum := range R.RowSums {
 		if params.NumReplicas != 0 {
 			// if we have at least one replica then number
 			// of active vbuckets is defined by matrix R
@@ -307,7 +306,7 @@ func checkVbmapProperties(gen RIGenerator, params VbmapParams, seed int64) bool 
 
 	// number of replica vbuckets should correspond to one defined
 	// by R
-	for n, sum := range R.colSums {
+	for n, sum := range R.ColSums {
 		if sum != replicaVBuckets[n] {
 			return false
 		}
@@ -325,7 +324,7 @@ func TestVbmapProperties(t *testing.T) {
 			return checkVbmapProperties(gen, params, seed)
 		}
 
-		err := quick.Check(check, &quick.Config{MaxCount: 100})
+		err := quick.Check(check, &quick.Config{MaxCount: 250})
 		if err != nil {
 			t.Error(err)
 		}
@@ -333,7 +332,7 @@ func TestVbmapProperties(t *testing.T) {
 	}
 }
 
-type EqualTagsVbmapParams struct {
+type EqualTagsR1VbmapParams struct {
 	VbmapParams
 }
 
@@ -363,8 +362,8 @@ func equalTags(numNodes int, numTags int) (tags map[Node]Tag) {
 	return
 }
 
-func (_ EqualTagsVbmapParams) Generate(rand *rand.Rand, size int) reflect.Value {
-	numNodes := rand.Int()%100 + 1
+func (_ EqualTagsR1VbmapParams) Generate(rand *rand.Rand, size int) reflect.Value {
+	numNodes := rand.Int()%100 + 2
 	// number of tags is in range [2, numNodes]
 	numTags := rand.Int()%(numNodes-1) + 2
 
@@ -377,7 +376,7 @@ func (_ EqualTagsVbmapParams) Generate(rand *rand.Rand, size int) reflect.Value 
 	}
 	normalizeParams(&params)
 
-	return reflect.ValueOf(EqualTagsVbmapParams{params})
+	return reflect.ValueOf(EqualTagsR1VbmapParams{params})
 }
 
 func checkRIPropertiesTagAware(gen RIGenerator, params VbmapParams) bool {
@@ -419,11 +418,103 @@ func TestRIPropertiesTagAware(t *testing.T) {
 	setup(t)
 
 	for _, gen := range tagAwareGenerators {
-		check := func(params EqualTagsVbmapParams) bool {
+		check := func(params EqualTagsR1VbmapParams) bool {
 			return checkRIPropertiesTagAware(gen, params.VbmapParams)
 		}
 
-		err := quick.Check(check, &quick.Config{MaxCount: 100})
+		err := quick.Check(check, &quick.Config{MaxCount: 250})
+		if err != nil {
+			t.Error(err)
+		}
+
+	}
+}
+
+type EqualTagsVbmapParams struct {
+	VbmapParams
+}
+
+func (_ EqualTagsVbmapParams) Generate(rand *rand.Rand, size int) reflect.Value {
+	numNodes := rand.Int()%100 + 2
+	numReplicas := rand.Int()%3 + 1
+	// number of tags is in range [numReplicas+1, numNodes]
+	numTags := rand.Int()%(numNodes-numReplicas) + numReplicas + 1
+
+	params = VbmapParams{
+		Tags:        equalTags(numNodes, numTags),
+		NumNodes:    numNodes,
+		NumSlaves:   10,
+		NumVBuckets: 1024,
+		NumReplicas: numReplicas,
+	}
+	normalizeParams(&params)
+
+	return reflect.ValueOf(EqualTagsVbmapParams{params})
+}
+
+func checkVbmapTagAware(gen RIGenerator, params VbmapParams) bool {
+	RI, err := gen.Generate(params)
+	if err != nil {
+		if err == ErrorNoSolution {
+			diag.Printf("Couldn't find a solution for params %s", params)
+			return true
+		}
+
+		return false
+	}
+
+	R := BuildR(params, RI)
+
+	for i, row := range R.Matrix {
+		counts := make(map[Tag]int)
+
+		for j, vbs := range row {
+			if vbs == 0 {
+				continue
+			}
+
+			tag := params.Tags[Node(j)]
+			count, _ := counts[tag]
+			counts[tag] = count + vbs
+		}
+
+		vbuckets := R.RowSums[i] / params.NumReplicas
+
+		for _, count := range counts {
+			if count > vbuckets {
+				diag.Printf("Can't generate fully rack aware "+
+					"vbucket map for params %s", params)
+				return true
+			}
+		}
+	}
+
+	vbmap := buildVbmap(R)
+	for _, chain := range vbmap {
+		tags := make(map[Tag]bool)
+
+		for _, node := range chain {
+			tag := params.Tags[node]
+			tags[tag] = true
+		}
+
+		if len(chain) != len(tags) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func TestVbmapTagAware(t *testing.T) {
+	setup(t)
+
+	for _, gen := range tagAwareGenerators {
+		check := func(params EqualTagsVbmapParams) bool {
+			return checkVbmapTagAware(gen, params.VbmapParams)
+		}
+
+		err := quick.Check(check, &quick.Config{MaxCount: 250})
 		if err != nil {
 			t.Error(err)
 		}
