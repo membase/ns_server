@@ -1,15 +1,14 @@
-screenshotsOutputPath = casper.cli.options["screenshots-output-path"]
-baseURL = casper.cli.options["base-url"]
 rootSelector = "#js_servers"
-casper.options.viewportSize = width: 1000, height: 800
 
 casper.test.begin('servers section', 0, () ->
-  casper.start("#{baseURL}#sec=servers").then(() ->
-    @capture "#{screenshotsOutputPath}servers.png"
+  casper.start("#{casper.baseURL}#sec=servers").then(() ->
+    @tickFarAway()
+    @capture "#{casper.screenshotsOutputPath}servers.png"
     @click "#{rootSelector} .casper_server_add"
 
-  ).waitUntilVisible(".casper_join_cluster_dialog", () ->
-    @capture "#{screenshotsOutputPath}servers-join_cluster_dialog.png"
+    @tickFarAway()
+
+    @capture "#{casper.screenshotsOutputPath}servers-join_cluster_dialog.png"
     @click ".casper_close_join_cluster_dialog"
 
     allActive = casper.evaluate () ->
@@ -18,25 +17,26 @@ casper.test.begin('servers section', 0, () ->
 
     @click "#{rootSelector} .casper_open_cluster_#{allActive[0]}"
 
-  ).waitUntilVisible(".casper_additional_server_info_open", () ->
-    @capture "#{screenshotsOutputPath}servers-additional_server_info.png"
+    @tickFarAway()
+
+    @capture "#{casper.screenshotsOutputPath}servers-additional_server_info.png"
     @click "#{rootSelector} .casper_eject_server_remove"
 
-  ).waitUntilVisible(".casper_eject_confirmation_dialog", () ->
-    @capture "#{screenshotsOutputPath}servers-eject_confirmation_dialog.png"
+    @tickFarAway()
+
+    @capture "#{casper.screenshotsOutputPath}servers-eject_confirmation_dialog.png"
     @click ".casper_close_eject_confirmation_dialog"
     @click "#{rootSelector} .casper_failover_server_remove"
 
-  ).waitUntilVisible(".casper_failover_confirmation_dialog_spinner", () ->
-    @capture "#{screenshotsOutputPath}servers-failover_confirmation_dialog_loading.png"
+    @tickFarAway()
 
-  ).waitWhileVisible(".casper_failover_confirmation_dialog_spinner + .spinner", () ->
-    @capture "#{screenshotsOutputPath}servers-failover_confirmation_dialog.png"
+    @capture "#{casper.screenshotsOutputPath}servers-failover_confirmation_dialog.png"
     @click ".casper_close_failover_confirmation_dialog"
     @click "#{rootSelector} .casper_pending_rebalance_tab"
 
-  ).waitUntilVisible("#{rootSelector} .casper_pending_server_list", () ->
-    @capture "#{screenshotsOutputPath}servers-pending-rebalance-tab.png"
+    @tickFarAway()
+
+    @capture "#{casper.screenshotsOutputPath}servers-pending-rebalance-tab.png"
 
   ).run(() ->
     @test.done()
