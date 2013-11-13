@@ -19,8 +19,10 @@ function mkDateWrapper(prototypeProcessor, methods) {
   }
 
   var cloned = NewDate.prototype;
-
-  _.extend(cloned, methods);
+  var prop;
+  for (prop in methods) {
+    cloned[prop] = methods[prop];
+  }
   cloned.valueOf = methods.valueOf;
   cloned.toString = methods.toString;
 
@@ -34,10 +36,38 @@ function mkDateWrapper(prototypeProcessor, methods) {
   return NewDate;
 }
 
+mkDateWrapper.range = function (start, stop, step) {
+  if (arguments.length <= 1) {
+    stop = start || 0;
+    start = 0;
+  }
+  step = arguments[2] || 1;
+
+  var len = Math.max(Math.ceil((stop - start) / step), 0);
+  var idx = 0;
+  var range = new Array(len);
+
+  while(idx < len) {
+    range[idx++] = start;
+    start += step;
+  }
+
+  return range;
+}
+
+mkDateWrapper.each = function (obj, iterator, context) {
+  for (var i = 0, l = obj.length; i < l; i++) {
+    i in obj && iterator.call(context, obj[i], i, obj);
+  }
+}
+
+
 mkDateWrapper.mkApplyHelper = function(count) {
-  var invokation = _.map(_.range(count), function (i) {
-    return "a[" + i + "]"
-  }).join(", ");
+  var invokation = [];
+  this.each(this.range(count), function (i) {
+    invokation.push("a[" + i + "]")
+  });
+  invokation = invokation.join(", ");
   return Function("c", "a", "return new c(" + invokation + ");")
 }
 
@@ -73,7 +103,7 @@ mkDateWrapper.mkDelegator = function (name) {
                           " toUTCString getTime setTime").split(" ");
   var fields = "FullYear Month Date Day Hours Minutes Seconds Milliseconds".split(" ");
 
-  _.each(fields, function (name) {
+  mkDateWrapper.each(fields, function (name) {
     delegatedMethods.push("get" + name);
     delegatedMethods.push("set" + name);
     delegatedMethods.push("getUTC" + name);
@@ -82,7 +112,7 @@ mkDateWrapper.mkDelegator = function (name) {
 
   mkDateWrapper.delegatedMethods = delegatedMethods;
 
-  _.each(delegatedMethods, function (name) {
+  mkDateWrapper.each(delegatedMethods, function (name) {
     mkDateWrapper.defaultMethods[name] = mkDateWrapper.mkDelegator(name);
   });
 })();
