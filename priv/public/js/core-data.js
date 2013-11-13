@@ -329,12 +329,23 @@ var DAL = {
   cells.isROAdminCell = new Cell();
 
   cells.serverGroupsUriRevisoryCell = Cell.compute(function (v) {
-    return v.need(cells.currentPoolDetailsCell).serverGroupsUri
+    return v.need(cells.currentPoolDetailsCell).serverGroupsUri || null;
   }).name("serverGroupsUriRevisoryCell");
+  cells.serverGroupsUriRevisoryCell.equality = function (a, b) {return a === b};
 
   cells.groupsUpdatedByRevisionCell = Cell.compute(function (v) {
-    return future.get({url: v.need(cells.serverGroupsUriRevisoryCell)});
+    var url = v.need(cells.serverGroupsUriRevisoryCell);
+    if (url === null) {
+      return {groups: []};
+    }
+    return future.get({url: url});
   }).name("groupsUpdatedByRevisionCell");
+
+  cells.groupsAvailableCell = Cell.compute(function (v) {
+    var url = v.need(cells.serverGroupsUriRevisoryCell);
+    var isEnterprise = v.need(cells.isEnterpriseCell);
+    return url !== null && isEnterprise;
+  });
 
   cells.hostnameToGroupCell = Cell.compute(function (v) {
     var groups = v.need(cells.groupsUpdatedByRevisionCell).groups;
@@ -364,17 +375,25 @@ var DAL = {
 
     var isEnterprise = v.need(DAL.cells.isEnterpriseCell);
     var poolDetails = v.need(DAL.cells.currentPoolDetailsCell);
-    var hostnameToGroup = v.need(DAL.cells.hostnameToGroupCell);
+    var hostnameToGroup = {};
     var detailsAreStale = v.need(IOCenter.staleness);
+
+    if (v.need(DAL.cells.groupsAvailableCell)) {
+      hostnameToGroup = v.need(DAL.cells.hostnameToGroupCell);
+    }
 
     var nodes = _.map(poolDetails.nodes, function (n) {
       n = _.clone(n);
       var group = hostnameToGroup[n.hostname];
-      if (group) { // it's possible hostnameToGroupCell is still in
-                   // the process of being invalidated. So group might
-                   // actually be not yet updated. That's fine. All
-                   // external observers will only see that cell after
-                   // it's fully "stable".
+      if (group) {
+        // it's possible hostnameToGroupCell is still in
+        // the process of being invalidated. So group might
+        // actually be not yet updated. That's fine. All
+        // external observers will only see that cell after
+        // it's fully "stable".
+        //
+        // If we're not rack-aware (due to compat or
+        // non-enterprise-ness), we'll skip this path too
         n.group = group.name;
       }
       return n;
