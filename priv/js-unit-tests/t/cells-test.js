@@ -823,7 +823,7 @@ CellsTest.prototype.testWrapWithArgsResolving = function () {
 }
 
 
-CellsTest.prototype.testLazyCellsDetachEffects = function () {
+CellsTest.prototype.testLazyCellsDetachEffectsExpectFail = function () {
   var dataCallback;
   var usedA;
   var usedB;
