@@ -64,7 +64,7 @@
       if (event.recurring) {
         event.at += event.millis;
         this.events.add(event);
-        this.eventsHash[id] = event;
+        this.eventsHash[event.id] = event;
       }
       event = this.findClosestEvent();
     } while (event && event.at == now);
