@@ -225,7 +225,7 @@ dialyzer: all $(COUCHBASE_PLT)
 
 do-dialyzer:
 	dialyzer --plt $(COUCHBASE_PLT) $(DIALYZER_FLAGS) \
-            --apps `ls -1 ebin/*.beam | grep -v couch_log` deps/ale/ebin \
+            --apps `ls -1 ebin/*.beam | grep -v couch_log | grep -v couch_api_wrap` deps/ale/ebin \
             $(COUCH_PATH)/src/couchdb $(COUCH_PATH)/src/couch_set_view $(COUCH_PATH)/src/couch_view_parser \
             $(COUCH_PATH)/src/couch_index_merger/ebin \
             $(realpath $(COUCH_PATH)/src/mapreduce) \
