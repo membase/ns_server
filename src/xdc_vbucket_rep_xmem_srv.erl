@@ -28,7 +28,7 @@
 -export([connect/2, disconnect/1, select_bucket/1, stop/1]).
 -export([find_missing/2, flush_docs/2, ensure_full_commit/1]).
 
--export([format_status/2]).
+-export([format_status/2, get_worker/1]).
 
 -include("xdc_replicator.hrl").
 -include("remote_clusters_info.hrl").
@@ -84,6 +84,10 @@ format_status(Opt, [PDict, State]) ->
 
 connect(Server, XMemRemote) ->
     gen_server:call(Server, {connect, XMemRemote}, infinity).
+
+-spec get_worker(pid()) -> {pid(), boolean()}.
+get_worker(Server) ->
+    gen_server:call(Server, get_worker, infinity).
 
 -spec disconnect(nil | pid()) -> ok.
 disconnect(nil) ->
@@ -150,12 +154,12 @@ handle_call(disconnect, {_Pid, _Tag},
             #xdc_vb_rep_xmem_srv_state{pid_workers = Workers} = State) ->
     %%ask workers to connect remote memcached
     IdleWorkers = lists:foldl(
-                fun({Id, {Worker, _Status}}, Acc) ->
-                        ok = xdc_vbucket_rep_xmem_worker:disconnect(Worker),
-                        dict:store(Id, {Worker, idle}, Acc)
-                end,
-                dict:new(),
-                dict:to_list(Workers)),
+                    fun({Id, {Worker, _Status}}, Acc) ->
+                            ok = xdc_vbucket_rep_xmem_worker:disconnect(Worker),
+                            dict:store(Id, {Worker, idle}, Acc)
+                    end,
+                    dict:new(),
+                    dict:to_list(Workers)),
     {reply, ok, State#xdc_vb_rep_xmem_srv_state{pid_workers = IdleWorkers}, hibernate};
 
 handle_call(select_bucket, {_Pid, _Tag},
@@ -234,6 +238,12 @@ handle_call({flush_docs, DocsList}, _From,
 
     {reply, ok, State};
 
+handle_call(get_worker, _From,
+            #xdc_vb_rep_xmem_srv_state{vb =  Vb,
+                                       enable_pipeline = Pipeline,
+                                       pid_workers = Workers} = State) ->
+    WorkerPid = load_balancer(Vb, Workers),
+    {reply, {WorkerPid, Pipeline}, State};
 
 handle_call(ensure_full_commit, _From,
             #xdc_vb_rep_xmem_srv_state{vb =  Vb, remote = Remote,
@@ -354,4 +364,3 @@ load_balancer(Vb, Workers) ->
     {Id, {WorkerPid, bucket_selected}} = lists:nth(Index, dict:to_list(Workers)),
     ?xdcr_trace("[xmem_srv for vb ~p]: pick up worker process (id: ~p, pid: ~p)", [Vb, Id, WorkerPid]),
     WorkerPid.
-
