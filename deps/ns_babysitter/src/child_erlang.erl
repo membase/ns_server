@@ -40,7 +40,6 @@ open_port_args() ->
                   "+sbt",  "u",
                   "+P", "327680",
                   "+K", "true",
-                  "+swt", "low",
                   "+MMmcs", case os:getenv("COUCHBASE_MSEG_CACHE_SIZE") of
                                 false -> "30";
                                 MCS ->
