@@ -30,6 +30,8 @@
          delete_bucket_returning_config/1,
          failover_warnings/0,
          get_bucket/1,
+         get_bucket_with_vclock/1,
+         get_bucket_with_vclock/2,
          get_bucket_light/1,
          get_bucket/2,
          get_bucket_names/0,
@@ -196,6 +198,30 @@ get_bucket(Bucket) ->
         _ ->
             erlang:error({get_bucket_failed, RV})
     end.
+
+get_bucket_with_vclock(Bucket, Config) ->
+    {value, [{configs, AllBuckets}], BucketVC} = ns_config:search_with_vclock(Config, buckets),
+    case lists:keyfind(Bucket, 1, AllBuckets) of
+        {_, BucketConfig} ->
+            {ok, BucketConfig, BucketVC};
+        false ->
+            not_present
+    end.
+
+get_bucket_with_vclock(Bucket) ->
+    RV = ns_config:eval(
+           fun (Cfg) ->
+                   get_bucket_with_vclock(Bucket, Cfg)
+           end),
+    case RV of
+        not_present ->
+            RV;
+        {ok, _, _} ->
+            RV;
+        _ ->
+            erlang:error({get_bucket_failed, RV})
+    end.
+
 
 get_bucket_light(Bucket) ->
     RV = ns_config:eval(

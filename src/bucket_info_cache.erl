@@ -74,8 +74,7 @@ submit_full_reset() ->
       end).
 
 do_compute_bucket_info(Bucket, Config) ->
-    {value, [{configs, AllBuckets}], BucketVC} = ns_config:search_with_vclock(Config, buckets),
-    {_, BucketConfig} = lists:keyfind(Bucket, 1, AllBuckets),
+    {ok, BucketConfig, BucketVC} = ns_bucket:get_bucket_with_vclock(Bucket, Config),
     {_, Servers} = lists:keyfind(servers, 1, BucketConfig),
 
     NIs = [{[{couchApiBase, capi_utils:capi_bucket_url_bin(Node, Bucket, ?LOCALHOST_MARKER_STRING)},
