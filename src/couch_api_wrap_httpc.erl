@@ -16,6 +16,8 @@
 -include("couch_api_wrap.hrl").
 -include("../lhttpc/lhttpc.hrl").
 
+-include("ns_common.hrl").
+
 -export([setup/1, tear_down/1]).
 -export([send_req/3]).
 -export([full_url/2]).
@@ -37,7 +39,10 @@ setup(#httpdb{httpc_pool = nil} = Db) ->
     #httpdb{timeout = Timeout, http_connections = MaxConns} = Db,
     {ok, Pid} = lhttpc_manager:start_link(
         [{connection_timeout, Timeout}, {pool_size, MaxConns}]),
-    {ok, Db#httpdb{httpc_pool = Pid}}.
+    ?log_debug("NOTE: new httpc connection pool was created"),
+    {ok, Db#httpdb{httpc_pool = Pid}};
+setup(#httpdb{} = Db) ->
+    {ok, Db}.
 
 
 tear_down(#httpdb{httpc_pool = Pool}) ->
