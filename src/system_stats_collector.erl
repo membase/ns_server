@@ -47,7 +47,6 @@ start_link() ->
 
 
 init([]) ->
-    _ = spawn_link(fun stale_histo_epoch_cleaner/0),
     ets:new(ns_server_system_stats, [public, named_table, set]),
     increment_counter({request_leaves, rest}, 0),
     increment_counter({request_enters, hibernate}, 0),
@@ -55,6 +54,7 @@ init([]) ->
     increment_counter(prev_request_leaves_rest, 0),
     increment_counter(prev_request_leaves_hibernate, 0),
     increment_counter(log_counter, 0),
+    _ = spawn_link(fun stale_histo_epoch_cleaner/0),
     Path = path_config:component_path(bin, "sigar_port"),
     Port =
         try open_port({spawn_executable, Path},

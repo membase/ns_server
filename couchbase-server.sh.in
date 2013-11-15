@@ -58,7 +58,9 @@ the following lines to /etc/security/limits.conf:
 couchbase              soft    nofile                  <value>
 couchbase              hard    nofile                  <value>
 
-Where <value> is greater than 10240.
+Where <value> is greater than 10240. The procedure may be totally
+different if you're running so called "non-root/non-sudo install" or
+if you've built Couchbase Serve from source.
 
 EOF
     fi
@@ -104,7 +106,7 @@ _load_config () {
 }
 
 _drop_old_crashdumps () {
-    ls -1 erl_crash.dump.* | sort | head -n -10 | xargs -- rm -f
+    ls -1 erl_crash.dump.* 2>/dev/null | sort | head -n -10 | xargs -- rm -f
 }
 
 

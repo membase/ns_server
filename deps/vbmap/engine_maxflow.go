@@ -35,6 +35,10 @@ func (gen *MaxFlowRIGenerator) SetParams(params map[string]string) error {
 
 func (gen MaxFlowRIGenerator) Generate(params VbmapParams) (RI RI, err error) {
 	g := buildFlowGraph(params)
+
+	diag.Print("Constructed flow graph.\n")
+	diag.Print(g.graphStats)
+
 	g.maximizeFlow()
 
 	if gen.dotPath != "" {
@@ -76,14 +80,15 @@ func buildFlowGraph(params VbmapParams) (g *graph) {
 			}
 
 			tagNodesCount := len(tagsNodes[tag])
-			tagCapacity := min(tagNodesCount, maxReplicationsPerTag)
+			tagCapacity := Min(tagNodesCount, maxReplicationsPerTag)
 
 			tagV := tagVertex(tag)
 			g.addEdge(nodeSrcV, tagV, tagCapacity)
 		}
 	}
 
-	for tag, tagNodes := range tagsNodes {
+	for _, tag := range tags {
+		tagNodes := tagsNodes[tag]
 		tagV := tagVertex(tag)
 		tagNodesCount := len(tagNodes)
 		tagEdgeCapacity := params.NumNodes - tagNodesCount
@@ -173,89 +178,278 @@ func (edge *graphEdge) pushFlow(flow int) {
 	}
 }
 
-type augPath struct {
-	edges []*graphEdge
-	flow  int
+func (edge graphEdge) isSaturated() bool {
+	return edge.residual() == 0
 }
 
-func makePath() (path *augPath) {
-	path = &augPath{edges: nil, flow: 0}
+type augPath []*graphEdge
+
+func (path *augPath) addEdge(edge *graphEdge) {
+	*path = append(*path, edge)
+}
+
+func (path *augPath) removeLastEdge() (edge *graphEdge) {
+	n := len(*path)
+	if n == 0 {
+		panic("Removing edge from empty path")
+	}
+
+	edge = (*path)[n-1]
+	*path = (*path)[0 : n-1]
+
 	return
 }
 
-func (path *augPath) addEdge(edge *graphEdge) {
-	residual := edge.residual()
-
-	if path.edges == nil || path.flow > residual {
-		path.flow = residual
+func (path augPath) capacity() (result int) {
+	if len(path) == 0 {
+		panic("capacity called on empty path")
 	}
 
-	path.edges = append(path.edges, edge)
+	result = path[0].residual()
+	for _, edge := range path {
+		residual := edge.residual()
+		if residual < result {
+			result = residual
+		}
+	}
+
+	return
+}
+
+func (path *augPath) truncate(i int) {
+	if i >= len(*path) {
+		panic("index out of range in truncate")
+	}
+
+	*path = (*path)[0:i]
+}
+
+type graphVertexData struct {
+	allEdges  []*graphEdge
+	firstEdge int
+}
+
+func makeGraphVertexData() *graphVertexData {
+	return &graphVertexData{allEdges: []*graphEdge{}, firstEdge: 0}
+}
+
+func (v graphVertexData) edges() []*graphEdge {
+	return v.allEdges[v.firstEdge:]
+}
+
+func (v *graphVertexData) addEdge(edge *graphEdge) {
+	v.allEdges = append(v.allEdges, edge)
+}
+
+func (v *graphVertexData) forgetFirstEdge() {
+	v.firstEdge += 1
+}
+
+func (v *graphVertexData) reset() {
+	v.firstEdge = 0
+}
+
+type graphStats struct {
+	numVertices int
+	numEdges    int
+}
+
+func (stats graphStats) String() string {
+	return fmt.Sprintf("Graph stats:\n\tVertices: %d\n\tEdges: %d\n",
+		stats.numVertices, stats.numEdges)
+}
+
+func (stats *graphStats) noteVertexAdded() {
+	stats.numVertices += 1
+}
+
+func (stats *graphStats) noteEdgeAdded() {
+	stats.numEdges += 1
+}
+
+type maxflowStats struct {
+	iteration   int
+	numAdvances int
+	numRetreats int
+	numAugments int
+	numEdges    int
+}
+
+func (stats maxflowStats) String() string {
+	return fmt.Sprintf("Max flow stats:\n\tCurrent iteration: %d\n"+
+		"\tNumber of advances: %d\n\tNumber of retreats: %d\n"+
+		"\tNumber of augments: %d\n"+
+		"\tTotal number of edges processed: %d\n",
+		stats.iteration, stats.numAdvances,
+		stats.numRetreats, stats.numAugments, stats.numEdges)
+}
+
+func (stats *maxflowStats) reset() {
+	stats.iteration = 0
+	stats.numAdvances = 0
+	stats.numRetreats = 0
+	stats.numAugments = 0
+	stats.numEdges = 0
+}
+
+func (stats *maxflowStats) nextIteration() {
+	iter := stats.iteration
+	stats.reset()
+	stats.iteration = iter + 1
+}
+
+func (stats *maxflowStats) noteAdvance() {
+	stats.numAdvances += 1
+}
+
+func (stats *maxflowStats) noteRetreat() {
+	stats.numRetreats += 1
+}
+
+func (stats *maxflowStats) noteAugment() {
+	stats.numAugments += 1
+}
+
+func (stats *maxflowStats) noteEdgeProcessed() {
+	stats.numEdges += 1
 }
 
 type graph struct {
-	params   VbmapParams
-	vertices map[graphVertex][]*graphEdge
-	flow     int
+	params    VbmapParams
+	vertices  map[graphVertex]*graphVertexData
+	distances map[graphVertex]int
+	flow      int
+
+	graphStats
+	maxflowStats
 }
 
 func makeGraph(params VbmapParams) (g *graph) {
 	g = &graph{}
-	g.vertices = make(map[graphVertex][]*graphEdge)
+	g.vertices = make(map[graphVertex]*graphVertexData)
+	g.distances = make(map[graphVertex]int)
 	g.params = params
 	return
 }
 
-func (g graph) bfsPath(from graphVertex, to graphVertex) (path *augPath) {
-	queue := []graphVertex{from}
-	parentEdge := make(map[graphVertex]*graphEdge)
+func (g *graph) bfs() bool {
+	queue := []graphVertex{source}
 	seen := make(map[graphVertex]bool)
 
-	seen[from] = true
-	done := false
+	seen[source] = true
+	g.distances[source] = 0
 
-	for len(queue) != 0 && !done {
+	for len(queue) != 0 {
 		v := queue[0]
+		d := g.distances[v]
+
 		queue = queue[1:]
 
-		for _, edge := range g.vertices[v] {
-			_, present := seen[edge.dst]
-			if !present && edge.residual() > 0 {
-				queue = append(queue, edge.dst)
-				seen[edge.dst] = true
-				parentEdge[edge.dst] = edge
+		for _, edge := range g.vertices[v].edges() {
+			if edge.isSaturated() {
+				continue
+			}
 
-				if edge.dst == to {
-					done = true
-					break
-				}
+			_, present := seen[edge.dst]
+			if !present {
+				dst := edge.dst
+
+				queue = append(queue, dst)
+				seen[dst] = true
+				g.distances[dst] = d + 1
 			}
 		}
 	}
 
-	if done {
-		edges := make([]*graphEdge, 0)
-		path = makePath()
+	_, seenSink := seen[sink]
+	return seenSink
+}
 
-		v := to
-		for v != from {
-			edge := parentEdge[v]
-			edges = append(edges, edge)
-			v = edge.src
+func (g *graph) dfsPath(from graphVertex, path *augPath) bool {
+	if from == sink {
+		return true
+	}
+
+	d := g.distances[from]
+
+	fromData := g.vertices[from]
+
+	for _, edge := range fromData.edges() {
+		g.noteEdgeProcessed()
+
+		dst := edge.dst
+
+		if g.distances[dst] == d+1 && !edge.isSaturated() {
+			g.noteAdvance()
+
+			path.addEdge(edge)
+			if g.dfsPath(dst, path) {
+				return true
+			}
+
+			path.removeLastEdge()
 		}
 
-		for i := len(edges) - 1; i >= 0; i-- {
-			path.addEdge(edges[i])
+		fromData.forgetFirstEdge()
+	}
+
+	g.noteRetreat()
+	return false
+}
+
+func (g *graph) augmentFlow() bool {
+	for _, vertexData := range g.vertices {
+		vertexData.reset()
+	}
+
+	if !g.bfs() {
+		return false
+	}
+
+	path := augPath(nil)
+	v := graphVertex(source)
+
+	for {
+		pathFound := g.dfsPath(v, &path)
+		if pathFound {
+			capacity := path.capacity()
+			g.flow += capacity
+			firstSaturatedEdge := -1
+
+			for i, edge := range path {
+				edge.pushFlow(capacity)
+				if firstSaturatedEdge == -1 && edge.isSaturated() {
+					firstSaturatedEdge = i
+				}
+			}
+
+			g.noteAugment()
+
+			if firstSaturatedEdge == -1 {
+				panic("No saturated edge on augmenting path")
+			}
+
+			v = path[firstSaturatedEdge].src
+			path.truncate(firstSaturatedEdge)
+		} else {
+			if v == source {
+				break
+			} else {
+				g.distances[v] = -1
+				edge := path.removeLastEdge()
+				v = edge.src
+			}
 		}
 	}
 
-	return
+	return true
 }
 
 func (g *graph) addVertex(vertex graphVertex) {
 	_, present := g.vertices[vertex]
 	if !present {
-		g.vertices[vertex] = nil
+		g.noteVertexAdded()
+		g.vertices[vertex] = makeGraphVertexData()
 	}
 }
 
@@ -266,7 +460,8 @@ func (g *graph) addSimpleEdge(src graphVertex, dst graphVertex, capacity int) {
 	edge := &graphEdge{src: src, dst: dst,
 		capacity: capacity, flow: 0, reverseEdge: nil}
 
-	g.vertices[src] = append(g.vertices[src], edge)
+	g.noteEdgeAdded()
+	g.vertices[src].addEdge(edge)
 }
 
 func (g *graph) addEdge(src graphVertex, dst graphVertex, capacity int) {
@@ -279,13 +474,16 @@ func (g *graph) addEdge(src graphVertex, dst graphVertex, capacity int) {
 	edge.reverseEdge = redge
 	redge.reverseEdge = edge
 
-	g.vertices[src] = append(g.vertices[src], edge)
-	g.vertices[dst] = append(g.vertices[dst], redge)
+	g.vertices[src].addEdge(edge)
+	g.vertices[dst].addEdge(redge)
+
+	g.noteEdgeAdded()
+	g.noteEdgeAdded()
 }
 
 func (g graph) edges() (result []*graphEdge) {
-	for _, vertexEdges := range g.vertices {
-		for _, edge := range vertexEdges {
+	for _, vertexData := range g.vertices {
+		for _, edge := range vertexData.edges() {
 			result = append(result, edge)
 		}
 	}
@@ -293,22 +491,16 @@ func (g graph) edges() (result []*graphEdge) {
 	return
 }
 
-func (g *graph) pushFlow(path augPath) {
-	g.flow += path.flow
-
-	for _, edge := range path.edges {
-		edge.pushFlow(path.flow)
-	}
-}
-
 func (g *graph) maximizeFlow() {
+	g.maxflowStats.reset()
+
 	for {
-		path := g.bfsPath(source, sink)
-		if path == nil {
+		if augmented := g.augmentFlow(); !augmented {
 			break
 		}
 
-		g.pushFlow(*path)
+		diag.Print(g.maxflowStats.String())
+		g.maxflowStats.nextIteration()
 	}
 }
 
@@ -341,7 +533,7 @@ func (g graph) toRI() (RI RI) {
 		inRepsCounts := make(nodeCountSlice, 0)
 		outRepsCounts := make(nodeCountSlice, 0)
 
-		for _, edge := range g.vertices[tagV] {
+		for _, edge := range g.vertices[tagV].edges() {
 			if !edge.aux {
 				// edge to node sink vertex
 				dstNode := Node(edge.dst.(nodeSinkVertex))

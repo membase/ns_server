@@ -305,7 +305,7 @@ var ServersSection = {
           showWarning('Additional active servers required to provide the desired number of replicas!');
           break;
         case 'softRebalanceNeeded':
-          showWarning('Rebalance recommended, some data does not have the desired number of replicas!');
+          showWarning('Rebalance recommended, some data does not have the desired replicas configuration!');
           break;
         default:
           console.log('Got unknown failover warning: ' + failoverSafety);

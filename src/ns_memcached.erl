@@ -292,7 +292,7 @@ verify_report_long_call(StartTS, ActualStartTS, State, Msg, RV) ->
                          system_stats_collector:increment_counter({ServiceName, long_call_time}, Diff),
                          system_stats_collector:increment_counter({ServiceName, long_calls}, 1)
                      end),
-                ?log_error("call ~p took too long: ~p us", [Msg, Diff]);
+                ?log_debug("call ~p took too long: ~p us", [Msg, Diff]);
             true ->
                 ok
         end
@@ -671,7 +671,7 @@ handle_info(check_config, State) ->
     Diff = timer:now_diff(os:timestamp(), StartTS),
     if
         Diff > ?SLOW_CALL_THRESHOLD_MICROS ->
-            ?log_error("handle_info(ensure_bucket,..) took too long: ~p us", [Diff]);
+            ?log_debug("handle_info(ensure_bucket,..) took too long: ~p us", [Diff]);
         true ->
             ok
     end,

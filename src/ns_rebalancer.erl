@@ -30,6 +30,7 @@
          rebalance/3,
          run_mover/7,
          unbalanced/3,
+         unbalanced_with_config/4,
          eject_nodes/1,
          maybe_cleanup_old_buckets/1]).
 
@@ -140,10 +141,13 @@ failover(Bucket, Node) ->
             ns_bucket:set_servers(Bucket, lists:delete(Node, Servers))
     end.
 
-generate_vbucket_map(CurrentMap, KeepNodes, BucketConfig) ->
+generate_vbucket_map_options(KeepNodes, BucketConfig) ->
+    Config = ns_config:get(),
     ReplicationTopology = cluster_compat_mode:get_replication_topology(),
+    generate_vbucket_map_options(KeepNodes, BucketConfig, ReplicationTopology, Config).
 
-    Tags = case ns_config:search(server_groups) of
+generate_vbucket_map_options(KeepNodes, BucketConfig, ReplicationTopology, Config) ->
+    Tags = case ns_config:search(Config, server_groups) of
                {value, [_]} ->
                    undefined;
                false ->
@@ -170,11 +174,15 @@ generate_vbucket_map(CurrentMap, KeepNodes, BucketConfig) ->
                    TagsRV
            end,
 
-    Opts0 = [{maps_history, ns_bucket:past_vbucket_maps()} | ns_bucket:config_to_map_options(BucketConfig)],
-    Opts = misc:update_proplist(Opts0, [{replication_topology, ReplicationTopology},
-                                        {tags, Tags}]),
+    Opts0 = ns_bucket:config_to_map_options(BucketConfig),
+    misc:update_proplist(Opts0, [{replication_topology, ReplicationTopology},
+                                 {tags, Tags}]).
 
-    {mb_map:generate_map(CurrentMap, KeepNodes, Opts), Opts}.
+generate_vbucket_map(CurrentMap, KeepNodes, BucketConfig) ->
+    Opts = generate_vbucket_map_options(KeepNodes, BucketConfig),
+    EffectiveOpts = [{maps_history, ns_bucket:past_vbucket_maps()} | Opts],
+
+    {mb_map:generate_map(CurrentMap, KeepNodes, EffectiveOpts), Opts}.
 
 generate_initial_map(BucketConfig) ->
     Chain = lists:duplicate(proplists:get_value(num_replicas, BucketConfig) + 1,
@@ -328,10 +336,11 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
                                   {ok, NewConf} =
                                       ns_bucket:get_bucket(BucketName),
                                   master_activity_events:note_bucket_rebalance_started(BucketName),
-                                  NewMap =
+                                  {NewMap, MapOptions} =
                                       rebalance(BucketName, NewConf,
                                                 KeepNodes, BucketCompletion,
                                                 NumBuckets),
+                                  ns_bucket:set_map_opts(BucketName, MapOptions),
                                   master_activity_events:note_bucket_rebalance_ended(BucketName),
                                   verify_replication(BucketName, KeepNodes, NewMap)
                           end
@@ -360,7 +369,9 @@ rebalance(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets) ->
     Map = proplists:get_value(map, Config),
     {FastForwardMap, MapOptions} = generate_vbucket_map(Map, KeepNodes, Config),
     ns_bucket:update_vbucket_map_history(FastForwardMap, MapOptions),
-    run_mover(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets, Map, FastForwardMap).
+    ?rebalance_debug("Target map options: ~p (hash: ~p)", [MapOptions, erlang:phash2(MapOptions)]),
+    {run_mover(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets, Map, FastForwardMap),
+     MapOptions}.
 
 run_mover(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets, Map, FastForwardMap) ->
     ?rebalance_info("Target map (distance: ~p):~n~p", [(catch mb_map:vbucket_movements(Map, FastForwardMap)), FastForwardMap]),
@@ -399,7 +410,11 @@ run_mover(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets, Map, FastForw
     end.
 
 
-unbalanced(Map, Servers, Topology) ->
+unbalanced(Map, Topology, BucketConfig) ->
+    unbalanced_with_config(Map, Topology, BucketConfig, ns_config:get()).
+
+unbalanced_with_config(Map, Topology, BucketConfig, Config) ->
+    Servers = proplists:get_value(servers, BucketConfig, []),
     NumServers = length(Servers),
 
     R = lists:any(
@@ -411,12 +426,22 @@ unbalanced(Map, Servers, Topology) ->
                     lists:sublist(Chain, NumServers))
           end, Map),
 
-    R orelse case Topology of
-                 chain ->
-                     unbalanced_chain(Map, Servers);
-                 star ->
-                     unbalanced_star(Map, Servers)
-             end.
+    Opts = generate_vbucket_map_options(Servers, BucketConfig, Topology, Config),
+    OptsHash = proplists:get_value(map_opts_hash, BucketConfig),
+    OptsDiffer = case OptsHash of
+                     undefined ->
+                         false;
+                     _ ->
+                         erlang:phash2(Opts) =/= OptsHash
+                 end,
+
+    R orelse OptsDiffer
+        orelse case Topology of
+                   chain ->
+                       unbalanced_chain(Map, Servers);
+                   star ->
+                       unbalanced_star(Map, Servers)
+               end.
 
 %% @doc Determine if a particular bucket is unbalanced. Returns true
 %% iff the max vbucket count in any class on any server is >2 more

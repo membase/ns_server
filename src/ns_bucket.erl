@@ -62,6 +62,7 @@
          set_bucket_config/2,
          set_fast_forward_map/2,
          set_map/2,
+         set_map_opts/2,
          set_servers/2,
          filter_ready_buckets/1,
          update_bucket_props/2,
@@ -315,8 +316,7 @@ bucket_failover_safety(BucketConfig, LiveNodes, Topology) ->
                         end;
                     true ->
                         case ns_rebalancer:unbalanced(proplists:get_value(map, BucketConfig),
-                                                      proplists:get_value(servers, BucketConfig),
-                                                      Topology) of
+                                                      Topology, BucketConfig) of
                             true ->
                                 ?FS_SOFT_REBALANCE_NEEDED;
                             _ ->
@@ -766,6 +766,14 @@ set_map(Bucket, Map) ->
               lists:keystore(map, 1, OldConfig, {map, Map})
       end).
 
+set_map_opts(Bucket, Opts) ->
+    OptsHash = erlang:phash2(Opts),
+    update_bucket_config(
+      Bucket,
+      fun (OldConfig) ->
+              lists:keystore(map_opts_hash, 1, OldConfig, {map_opts_hash, OptsHash})
+      end).
+
 set_servers(Bucket, Servers) ->
     update_bucket_config(
       Bucket,
@@ -828,9 +836,8 @@ all_node_vbuckets(BucketConfig) ->
 config_to_map_options(Config) ->
     [{max_slaves, proplists:get_value(max_slaves, Config, 10)}].
 
-update_vbucket_map_history(Map, Options) ->
+update_vbucket_map_history(Map, SanifiedOptions) ->
     History = past_vbucket_maps(),
-    SanifiedOptions = lists:ukeysort(1, lists:keydelete(maps_history, 1, Options)),
     NewEntry = {Map, SanifiedOptions},
     History2 = case lists:member(NewEntry, History) of
                    true ->
