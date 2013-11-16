@@ -229,7 +229,7 @@ slow_updater_loop(Parent) ->
         {req, TS0} ->
             {TS, Eaten} = eat_all_reqs(TS0, 0),
             case Eaten > 0 of
-                true -> ?log_warning("Dropped %b heartbeat requests", [Eaten]);
+                true -> ?log_warning("Dropped ~B heartbeat requests", [Eaten]);
                 _ -> ok
             end,
             Status0 = current_status_slow(),
