@@ -65,7 +65,7 @@ init([]) ->
                       _ -> ok
                   end
           end, []),
-    SlowUpdaterPid = erlang:spawn_link(erlang, apply, [fun slow_updater_start/1, [Self]]),
+    SlowUpdaterPid = proc_lib:spawn_link(erlang, apply, [fun slow_updater_start/1, [Self]]),
     {ok, #state{event_handler=EventHandler,
                 slow_status_updater = SlowUpdaterPid}}.
 
