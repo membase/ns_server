@@ -120,7 +120,11 @@ handle_info(_, State) ->
     {noreply, State}.
 
 
-terminate(_Reason, _State) -> ok.
+terminate(_Reason, #state{slow_status_updater = Pid}) ->
+    erlang:unlink(Pid),
+    erlang:exit(Pid, shutdown),
+    misc:wait_for_process(Pid, infinity),
+    ok.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
