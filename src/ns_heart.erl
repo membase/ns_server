@@ -98,6 +98,8 @@ handle_info({'EXIT', EventHandler, _} = ExitMsg,
     ?log_debug("Dying because our event subscription was cancelled~n~p~n",
                [ExitMsg]),
     {stop, normal, State};
+handle_info({'EXIT', _, _} = ExitMsg, State) ->
+    {stop, {child_died, ExitMsg}, State};
 handle_info({slow_update, NewStatus, ReqTS}, State) ->
     {noreply, State#state{slow_status = NewStatus, slow_status_ts = ReqTS}};
 handle_info(beat, State) ->
