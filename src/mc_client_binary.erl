@@ -60,7 +60,8 @@
          get_mass_tap_docs_estimate/2,
          ext/2,
          rev_to_mcd_ext/1,
-         set_cluster_config/2
+         set_cluster_config/2,
+         get_random_key/1
         ]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
@@ -82,7 +83,8 @@
                      ?CMD_DEL_WITH_META | ?CMD_DELQ_WITH_META |
                      ?RGET | ?RSET | ?RSETQ | ?RAPPEND | ?RAPPENDQ | ?RPREPEND |
                      ?RPREPENDQ | ?RDELETE | ?RDELETEQ | ?RINCR | ?RINCRQ |
-                     ?RDECR | ?RDECRQ | ?SYNC | ?CMD_CHECKPOINT_PERSISTENCE.
+                     ?RDECR | ?RDECRQ | ?SYNC | ?CMD_CHECKPOINT_PERSISTENCE |
+                     ?CMD_GET_RANDOM_KEY.
 
 %% A memcached client that speaks binary protocol.
 -spec cmd(mc_opcode(), port(), recv_callback(), any(),
@@ -876,6 +878,17 @@ set_cluster_config(Sock, Blob) ->
     case RV of
         {ok, #mc_header{status=?SUCCESS}, _, _} ->
             ok;
+        Other ->
+            process_error_response(Other)
+    end.
+
+get_random_key(Sock) ->
+    RV = cmd(?CMD_GET_RANDOM_KEY, Sock, undefined, undefined,
+             {#mc_header{}, #mc_entry{}},
+             infinity),
+    case RV of
+        {ok, #mc_header{status=?SUCCESS}, #mc_entry{key = Key}, _} ->
+            {ok, Key};
         Other ->
             process_error_response(Other)
     end.

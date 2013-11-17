@@ -117,7 +117,8 @@
          wait_for_checkpoint_persistence/3,
          get_tap_docs_estimate/3,
          get_mass_tap_docs_estimate/2,
-         set_cluster_config/2]).
+         set_cluster_config/2,
+         get_random_key/1]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -585,6 +586,8 @@ do_handle_call({get_vbucket_checkpoint_ids, VBucketId}, _From, State) ->
             end,
             {undefined, undefined}),
     {reply, Res, State};
+do_handle_call(get_random_key, _From, State) ->
+    {reply, mc_client_binary:get_random_key(State#state.sock), State};
 do_handle_call(_, _From, State) ->
     {reply, unhandled, State}.
 
@@ -1338,3 +1341,6 @@ get_mass_tap_docs_estimate(Bucket, VBuckets) ->
 -spec set_cluster_config(bucket_name(), binary()) -> ok | mc_error().
 set_cluster_config(Bucket, Blob) ->
     do_call(server(Bucket), {set_cluster_config, Blob}, ?TIMEOUT).
+
+get_random_key(Bucket) ->
+    do_call(server(Bucket), get_random_key, ?TIMEOUT).

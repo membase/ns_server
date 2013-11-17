@@ -1252,61 +1252,20 @@ complete_update_ddoc_options(Req, Bucket, #doc{body={Body0}}= DDoc, Options0) ->
     ok = capi_ddoc_replication_srv:update_doc(Bucket, NewDDoc),
     reply_json(Req, capi_utils:couch_json_to_mochi_json(Options)).
 
--define(RANDOM_KEY_ATTEMPTS, 10).
-
 handle_local_random_key(_PoolId, Bucket, Req) ->
-    NodesVBuckets = vbucket_map_mirror:node_vbuckets_dict(Bucket),
-    case dict:find(node(), NodesVBuckets) of
-        error ->
-            reply_json(Req, {struct, [{error, no_ddocs_service}]}, 400);
-        {ok, OurVBuckets} ->
-            handle_local_random_key_have_vbuckets(Bucket, Req, OurVBuckets)
-    end.
-
-handle_local_random_key_have_vbuckets(Bucket, Req, OurVBuckets) ->
-    NumVBuckets = length(OurVBuckets),
-
-    random:seed(erlang:now()),
-    MaybeKey = random_key(Bucket, OurVBuckets,
-                          NumVBuckets, ?RANDOM_KEY_ATTEMPTS),
-
-    case MaybeKey of
-        empty ->
+    case ns_memcached:get_random_key(Bucket) of
+        {ok, Key} ->
+            reply_json(Req, {struct,
+                             [{ok, true},
+                              {key, Key}]});
+        {memcached_error, key_enoent, _} ->
+            ?log_debug("No keys were found for bucket ~p. Fallback to all docs approach.", [Bucket]),
             reply_json(Req, {struct,
                              [{ok, false},
                               {error, <<"fallback_to_all_docs">>}]}, 404);
-        Key ->
+        {memcached_error, Status, Msg} ->
+            ?log_error("Unable to retrieve random key for bucket ~p. Memcached returned error ~p. ~p",
+                       [Bucket, Status, Msg]),
             reply_json(Req, {struct,
-                             [{ok, true},
-                              {key, Key}]})
-    end.
-
-random_key(_Bucket, _VBuckets, _NumVBuckets, 0) ->
-    empty;
-random_key(Bucket, VBuckets, NumVBuckets, Attempts) ->
-    case do_random_key(Bucket, VBuckets, NumVBuckets) of
-        empty ->
-            random_key(Bucket, VBuckets, NumVBuckets, Attempts - 1);
-        Key ->
-            Key
-    end.
-
-do_random_key(Bucket, VBuckets, NumVBuckets) ->
-    Ix = random:uniform(NumVBuckets),
-    VBucket = lists:nth(Ix, VBuckets),
-
-    try
-        capi_frontend:with_subdb(
-          Bucket, VBucket,
-          fun (Db) ->
-                  case couch_db:random_doc_info(Db) of
-                      {ok, #doc_info{id=Key}} ->
-                          Key;
-                      empty ->
-                          empty
-                  end
-          end)
-    catch
-        exit:{open_db_failed, {not_found, no_db_file}} ->
-            empty
+                             [{ok, false}]}, 404)
     end.
