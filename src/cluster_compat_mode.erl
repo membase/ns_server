@@ -78,8 +78,16 @@ is_index_pausing_on() ->
 get_replication_topology() ->
     ns_config_ets_dup:unreliable_read_key(replication_topology, star).
 
+get_compat_version_three_elements() ->
+    case get_compat_version() of
+        undefined ->
+            undefined;
+        Ver ->
+            Ver ++ [0]
+    end.
+
 is_node_compatible(Node, Version) ->
-    case is_enabled_at(get_compat_version() ++ [0], Version) of
+    case is_enabled_at(get_compat_version_three_elements(), Version) of
         true ->
             true;
         _ ->
@@ -94,7 +102,7 @@ is_node_compatible(Node, Version) ->
     end.
 
 are_all_nodes_compatible(Version) ->
-    case is_enabled_at(get_compat_version() ++ [0], Version) of
+    case is_enabled_at(get_compat_version_three_elements(), Version) of
         true ->
             true;
         _ ->
