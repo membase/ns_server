@@ -544,10 +544,10 @@ var MockedRequest = mkClass({
       }],
       [get("pools", "default", "serverGroups"), function () {
         var allNodes =  $.extend(true, [], ServerStateMock.allNodes);
-        var groups = [{name: "Group 1 (default)", uri: "/pools/default/serverGroups/0", nodes: [allNodes[0], allNodes[1]]},
-                      {name: "Group 2", uri: "/pools/default/serverGroups/232", nodes: [allNodes[3], allNodes[2]]},
-                      {name: "Group 3", uri: "/pools/default/serverGroups/343", nodes: [allNodes[4]]},
-                      {name: "Group 4", uri: "/pools/default/serverGroups/443", nodes: []}];
+        var groups = [{addNodeURI: "pools/default/serverGroups/0/addNode", name: "Group 1 (default)", uri: "/pools/default/serverGroups/0", nodes: [allNodes[0], allNodes[1]]},
+                      {addNodeURI: "pools/default/serverGroups/232/addNode", name: "Group 2", uri: "/pools/default/serverGroups/232", nodes: [allNodes[3], allNodes[2]]},
+                      {addNodeURI: "pools/default/serverGroups/343/addNode", name: "Group 3", uri: "/pools/default/serverGroups/343", nodes: [allNodes[4]]},
+                      {addNodeURI: "pools/default/serverGroups/443/addNode", name: "Group 4", uri: "/pools/default/serverGroups/443", nodes: []}];
 
         return {groups: groups, uri: "/pools/default/serverGroups?rev=3"};
       }],
@@ -2037,7 +2037,6 @@ var ServerStateMock = {
         "validateURI": "/controller/setFastWarmup?just_validate=1"
       }
     },
-    "serverGroupsUri": "/pools/default/serverGroups",
     "rebalanceStatus": "none",
     "rebalanceProgressUri": "/pools/default/rebalanceProgress",
     "stopRebalanceUri": "/controller/stopRebalance",
