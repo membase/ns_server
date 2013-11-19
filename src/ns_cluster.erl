@@ -181,6 +181,8 @@ handle_call({change_address, Address}, _From, State) ->
 handle_cast(leave, State) ->
     ?cluster_log(0001, "Node ~p is leaving cluster.", [node()]),
 
+    ok = file:write_file(leave_marker_path(), <<"">>),
+
     %% first thing we do is stopping nearly everything
     ok = ns_server_cluster_sup:stop_cluster(),
 
@@ -221,7 +223,7 @@ handle_cast(leave, State) ->
     %%
     %% So reset_address() below drops node's manually assigned
     %% hostname if any and assigns 127.0.0.1 marking it as automatic.
-    dist_manager:reset_address(),
+    net_restarted = dist_manager:reset_address(),
     %% and then we clear config. In fact better name would be 'reset',
     %% because as seen above we actually re-initialize default config
     ns_config:clear([directory]),
@@ -248,6 +250,8 @@ handle_cast(leave, State) ->
 
     ?cluster_debug("Leaving cluster", []),
     timer:sleep(1000),
+
+    ok = file:delete(leave_marker_path()),
     {ok, _} = ns_server_cluster_sup:start_cluster(),
     ns_ports_setup:restart_memcached(),
     {noreply, State}.
@@ -260,6 +264,16 @@ handle_info(Msg, State) ->
 
 
 init([]) ->
+    case file:read_file_info(leave_marker_path()) of
+        {ok, _} ->
+            ?log_info("found marker of in-flight cluster leave. Looks like previous leave procedure crashed. Going to complete leave cluster procedure"),
+            %% we have to do it async because otherwise our parent
+            %% supervisor is waiting us to complete init and our call
+            %% to terminate ns_server_sup is going to cause deadlock
+            gen_server:cast(self(), leave);
+        _ ->
+            ok
+    end,
     {ok, #state{}}.
 
 
@@ -945,3 +959,6 @@ perform_actual_join(RemoteNode, NewCookie) ->
                            [Status2]),
             Status2
     end.
+
+leave_marker_path() ->
+    path_config:component_path(data, "leave_marker").
