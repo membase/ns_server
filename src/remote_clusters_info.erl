@@ -1192,7 +1192,8 @@ mk_json_get(Host, Port, Username, Password) ->
                                                    {Host, Port, Path},
                                                    {Username, Password},
                                                    [{connect_timeout, 30000},
-                                                    {timeout, 60000}]),
+                                                    {timeout, 60000},
+                                                    {pool, xdc_lhttpc_pool}]),
 
             case R of
                 {ok, Value} ->
