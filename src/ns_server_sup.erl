@@ -149,6 +149,10 @@ child_specs() ->
      {ns_memcached_log_rotator, {ns_memcached_log_rotator, start_link, []},
       permanent, 1000, worker, [ns_memcached_log_rotator]},
 
+     {xdc_lhttpc_pool, {lhttpc_manager, start_link, [[{name, xdc_lhttpc_pool}, {connection_timeout, 120000}, {pool_size, 200}]]},
+      permanent, 10000, worker, [lhttpc_manager]
+     },
+
      %% per-vbucket replication supervisor, required by XDC manager
      {xdc_replication_sup,
       {xdc_replication_sup, start_link, []},

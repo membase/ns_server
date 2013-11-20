@@ -66,7 +66,7 @@ init([]) ->
                       _ -> ok
                   end
           end, []),
-    SlowUpdaterPid = erlang:spawn_link(erlang, apply, [fun slow_updater_start/1, [Self]]),
+    SlowUpdaterPid = proc_lib:spawn_link(erlang, apply, [fun slow_updater_start/1, [Self]]),
     {ok, #state{event_handler=EventHandler,
                 slow_status_updater = SlowUpdaterPid}}.
 
@@ -99,6 +99,8 @@ handle_info({'EXIT', EventHandler, _} = ExitMsg,
     ?log_debug("Dying because our event subscription was cancelled~n~p~n",
                [ExitMsg]),
     {stop, normal, State};
+handle_info({'EXIT', _, _} = ExitMsg, State) ->
+    {stop, {child_died, ExitMsg}, State};
 handle_info({slow_update, NewStatus, ReqTS}, State) ->
     {noreply, State#state{slow_status = NewStatus, slow_status_ts = ReqTS}};
 handle_info(beat, State) ->
@@ -119,7 +121,11 @@ handle_info(_, State) ->
     {noreply, State}.
 
 
-terminate(_Reason, _State) -> ok.
+terminate(_Reason, #state{slow_status_updater = Pid}) ->
+    erlang:unlink(Pid),
+    erlang:exit(Pid, shutdown),
+    misc:wait_for_process(Pid, infinity),
+    ok.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
@@ -224,7 +230,7 @@ slow_updater_loop(Parent) ->
         {req, TS0} ->
             {TS, Eaten} = eat_all_reqs(TS0, 0),
             case Eaten > 0 of
-                true -> ?log_warning("Dropped %b heartbeat requests", [Eaten]);
+                true -> ?log_warning("Dropped ~B heartbeat requests", [Eaten]);
                 _ -> ok
             end,
             Status0 = current_status_slow(),

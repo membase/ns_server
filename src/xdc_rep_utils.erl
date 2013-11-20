@@ -123,6 +123,7 @@ parse_rep_db({Props}, ProxyParams, Options) ->
              headers = lists:ukeymerge(1, Headers, DefaultHeaders),
              lhttpc_options = LhttpcOpts,
              timeout = Timeout,
+             httpc_pool = xdc_lhttpc_pool,
              http_connections = get_value(http_connections, Options),
              retries = get_value(retries_per_request, Options)
            };
@@ -190,7 +191,7 @@ get_master_db(#httpdb{url=DbUrl0}=Http) ->
     DbName = get_master_db(couch_httpd:unquote(DbName0)),
 
     DbUrl = Scheme ++ "//" ++ Host ++ "/" ++ couch_httpd:quote(DbName) ++ "/",
-    Http#httpdb{url = DbUrl, httpc_pool = nil};
+    Http#httpdb{url = DbUrl};
 get_master_db(DbName0) ->
     {DbName, UUID} = split_uuid(DbName0),
     {Bucket, _} = split_dbname(DbName),

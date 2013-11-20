@@ -88,7 +88,7 @@ Dir.chdir(File.dirname(__FILE__))
 NSServer.run! do
   if $do_screenshots
     Thread.new do
-      cmd = "casperjs test tests/ --base-url=http://#{NSServer.settings.bind || "127.0.0.1"}:#{NSServer.settings.port.to_s}/index.html --screenshots-output-path=tests/screenshots-output/ "
+      cmd = "casperjs test tests/ --base-url=http://#{NSServer.settings.bind || "127.0.0.1"}:#{NSServer.settings.port.to_s}/index.html --pre=casperjs-init.coffee"
       puts "cmd: #{cmd}"
       ok = system(cmd)
       unless ok

@@ -105,7 +105,7 @@ do_handle_remote_clusters_post(Req, Params, JustValidate, TriesLeft) ->
                     menelaus_util:reply_json(Req, Errors, Status)
             end;
         {errors, Errors} ->
-            menelaus_util:reply_json(Req, Errors, 400)
+            menelaus_util:reply_json(Req, {struct, Errors}, 400)
     end.
 
 -spec check_nonempty(string(), binary(), binary()) -> undefined | {binary(), binary()}.

@@ -331,12 +331,20 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
 
 handle_bucket_info_streaming(_PoolId, Id, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
+    NoTerse = (proplists:get_value("noTerse", Req:parse_qs()) =/= undefined),
     F = fun(_InfoLevel) ->
                 case ns_bucket:get_bucket(Id) of
                     {ok, BucketConfig} ->
-                        Info = build_bucket_info(Id, BucketConfig, stable, LocalAddr,
-                                                 menelaus_auth:may_expose_bucket_auth(Req)),
-                        {just_write, Info};
+                        case (NoTerse
+                              orelse ns_config_ets_dup:unreliable_read_key(prevent_terse_streaming_buckets, false)) of
+                            false ->
+                                {ok, Bin} = bucket_info_cache:terse_bucket_info_with_local_addr(Id, LocalAddr),
+                                {just_write, {write, Bin}};
+                            _ ->
+                                Info = build_bucket_info(Id, BucketConfig, stable, LocalAddr,
+                                                         menelaus_auth:may_expose_bucket_auth(Req)),
+                                {just_write, Info}
+                        end;
                     not_present ->
                         exit(normal)
                 end

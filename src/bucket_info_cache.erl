@@ -20,12 +20,16 @@
 -include("ns_common.hrl").
 
 -export([start_link/0,
-         terse_bucket_info/1]).
+         terse_bucket_info/1,
+         terse_bucket_info_with_local_addr/2]).
 
 %% for diagnostics
 -export([submit_buckets_reset/2,
          submit_full_reset/0]).
 
+%% NOTE: we're doing global replace of this string. So it must not
+%% need any JSON escaping and it must not otherwise occur in terse
+%% bucket info
 -define(LOCALHOST_MARKER_STRING, "$HOST").
 
 start_link() ->
@@ -74,8 +78,7 @@ submit_full_reset() ->
       end).
 
 do_compute_bucket_info(Bucket, Config) ->
-    {value, [{configs, AllBuckets}], BucketVC} = ns_config:search_with_vclock(Config, buckets),
-    {_, BucketConfig} = lists:keyfind(Bucket, 1, AllBuckets),
+    {ok, BucketConfig, BucketVC} = ns_bucket:get_bucket_with_vclock(Bucket, Config),
     {_, Servers} = lists:keyfind(servers, 1, BucketConfig),
 
     NIs = [{[{couchApiBase, capi_utils:capi_bucket_url_bin(Node, Bucket, ?LOCALHOST_MARKER_STRING)},
@@ -142,4 +145,12 @@ terse_bucket_info(BucketName) ->
             call_compute_bucket_info(BucketName);
         [{_, V}] ->
             {ok, V}
+    end.
+
+terse_bucket_info_with_local_addr(BucketName, LocalAddr) ->
+    case terse_bucket_info(BucketName) of
+        {ok, Bin} ->
+            {ok, binary:replace(Bin, list_to_binary(?LOCALHOST_MARKER_STRING), list_to_binary(LocalAddr), [global])};
+        Other ->
+            Other
     end.
