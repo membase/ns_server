@@ -31,7 +31,7 @@ make_location(#xdc_rep_xmem_remote{ip = Host,
                  undefined ->
                      memcached_clients_pool:make_loc(Host, Port, Bucket, Password);
                  Cert ->
-                     LocalProxyPort = ns_config_ets_dup:unreliable_read_key({node, node(), ssl_proxy_upstream_port}, undefined),
+                     LocalProxyPort = ns_config:read_key_fast({node, node(), ssl_proxy_upstream_port}, undefined),
                      RemoteProxyPort = proplists:get_value(remote_proxy_port, RemoteOptions),
                      proxied_memcached_clients_pool:make_proxied_loc(Host, Port, Bucket, Password,
                                                                      LocalProxyPort, RemoteProxyPort,

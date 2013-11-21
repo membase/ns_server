@@ -484,7 +484,7 @@ run_mover(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets, Map, FastForw
             HadRebalanceOut = ((proplists:get_value(servers, Config, []) -- KeepNodes) =/= []),
             case HadRebalanceOut of
                 true ->
-                    SecondsToWait = ns_config_ets_dup:unreliable_read_key(rebalance_out_delay_seconds, 10),
+                    SecondsToWait = ns_config:read_key_fast(rebalance_out_delay_seconds, 10),
                     ?rebalance_info("Waiting ~w seconds before completing rebalance out."
                                     " So that clients receive graceful not my vbucket instead of silent closed connection", [SecondsToWait]),
                     receive

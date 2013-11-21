@@ -345,7 +345,7 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
 
 handle_bucket_info_streaming(_PoolId, Id, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
-    SendTerse = ns_config_ets_dup:unreliable_read_key(send_terse_streaming_buckets, false),
+    SendTerse = ns_config:read_key_fast(send_terse_streaming_buckets, false),
     F = fun(_InfoLevel) ->
                 case ns_bucket:get_bucket(Id) of
                     {ok, BucketConfig} ->
@@ -510,7 +510,7 @@ do_bucket_create(Name, ParsedProps) ->
     end.
 
 do_bucket_create(Name, Params, Ctx) ->
-    MaxBuckets = ns_config_ets_dup:unreliable_read_key(max_bucket_count, 10),
+    MaxBuckets = ns_config:read_key_fast(max_bucket_count, 10),
     case length(Ctx#bv_ctx.all_buckets) >= MaxBuckets of
         true ->
             {{struct, [{'_', iolist_to_binary(io_lib:format("Cannot create more than ~w buckets", [MaxBuckets]))}]}, 400};

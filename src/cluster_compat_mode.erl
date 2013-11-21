@@ -37,7 +37,7 @@
 
 
 get_compat_version() ->
-    ns_config_ets_dup:unreliable_read_key(cluster_compat_version, undefined).
+    ns_config:read_key_fast(cluster_compat_version, undefined).
 
 %% NOTE: this is rpc:call-ed by mb_master of 2.0.0
 supported_compat_version() ->
@@ -68,15 +68,15 @@ is_cluster_25() ->
     is_enabled([2, 5]).
 
 is_index_aware_rebalance_on() ->
-    Disabled = ns_config_ets_dup:unreliable_read_key(index_aware_rebalance_disabled, false),
+    Disabled = ns_config:read_key_fast(index_aware_rebalance_disabled, false),
     (not Disabled) andalso is_enabled([2, 0]).
 
 is_index_pausing_on() ->
     is_index_aware_rebalance_on() andalso
-        (not ns_config_ets_dup:unreliable_read_key(index_pausing_disabled, false)).
+        (not ns_config:read_key_fast(index_pausing_disabled, false)).
 
 get_replication_topology() ->
-    ns_config_ets_dup:unreliable_read_key(replication_topology, star).
+    ns_config:read_key_fast(replication_topology, star).
 
 get_compat_version_three_elements() ->
     case get_compat_version() of
@@ -118,7 +118,7 @@ split_live_nodes_by_version(Version) ->
                     end, Nodes).
 
 rebalance_ignore_view_compactions() ->
-    ns_config_ets_dup:unreliable_read_key(rebalance_ignore_view_compactions, false).
+    ns_config:read_key_fast(rebalance_ignore_view_compactions, false).
 
 consider_switching_compat_mode() ->
     Config = ns_config:get(),
@@ -147,8 +147,6 @@ do_consider_switching_compat_mode(Config, CurrentVersion) ->
                 AnotherVersion ->
                     ns_config:set(cluster_compat_version, AnotherVersion),
                     try
-                        %% NOTE: this sync through ns_config_events
-                        %% also ensures that ns_config_ets_dup sees new value
                         ns_config:sync_announcements(),
                         case ns_config_rep:synchronize_remote(NodesWanted) of
                             ok -> ok;

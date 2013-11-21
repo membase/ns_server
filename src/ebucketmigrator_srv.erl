@@ -20,11 +20,11 @@
 -include("ns_common.hrl").
 
 -define(SERVER, ?MODULE).
--define(START_VBUCKET_FILTER_CHANGE_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_start_vbucket_filter_change, 120000)).
+-define(START_VBUCKET_FILTER_CHANGE_TIMEOUT, ns_config:get_timeout_fast(ebucketmigrator_start_vbucket_filter_change, 120000)).
 % Microseconds because we use timer:now_diff
--define(UPSTREAM_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_upstream_us, 600000000)).
+-define(UPSTREAM_TIMEOUT, ns_config:get_timeout_fast(ebucketmigrator_upstream_us, 600000000)).
 -define(TIMEOUT_CHECK_INTERVAL, 15000).
--define(TERMINATE_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_terminate, 110000)).
+-define(TERMINATE_TIMEOUT, ns_config:get_timeout_fast(ebucketmigrator_terminate, 110000)).
 -define(HIBERNATE_TIMEOUT, 10000).
 
 %% gen_server callbacks

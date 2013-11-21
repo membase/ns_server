@@ -24,7 +24,7 @@
 
 get_global_setting(Key) ->
     Ref = make_ref(),
-    case ns_config_ets_dup:unreliable_read_key({xdcr, Key}, Ref) of
+    case ns_config:read_key_fast({xdcr, Key}, Ref) of
         Ref ->
             Specs = settings_specs(),
             {Key, _, _, Default} = lists:keyfind(Key, 1, Specs),
@@ -43,7 +43,7 @@ get_all_global_settings() ->
 
     lists:map(
       fun ({Key, Default}) ->
-              Value = ns_config_ets_dup:unreliable_read_key({xdcr, Key}, Default),
+              Value = ns_config:read_key_fast({xdcr, Key}, Default),
               {Key, Value}
       end, Settings0).
 

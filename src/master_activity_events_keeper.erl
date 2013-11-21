@@ -28,7 +28,7 @@
 
 -define(HIBERNATE_TIMEOUT, 1000).
 
--define(EVENTS_HISTORY_SIZE, ns_config_ets_dup:unreliable_read_key(master_activity_events_history_size, 81920)).
+-define(EVENTS_HISTORY_SIZE, ns_config:read_key_fast(master_activity_events_history_size, 81920)).
 
 -record(state, {ring}).
 

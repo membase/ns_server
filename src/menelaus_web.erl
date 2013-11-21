@@ -1112,7 +1112,7 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
                  {rebalanceProgressUri, bin_concat_path(["pools", Id, "rebalanceProgress"])},
                  {stopRebalanceUri, <<"/controller/stopRebalance?uuid=", UUID/binary>>},
                  {nodeStatusesUri, <<"/nodeStatuses">>},
-                 {maxBucketCount, ns_config_ets_dup:unreliable_read_key(max_bucket_count, 10)},
+                 {maxBucketCount, ns_config:read_key_fast(max_bucket_count, 10)},
                  {autoCompactionSettings, case ns_config:search(Config, autocompaction) of
                                               false ->
                                                   build_auto_compaction_settings([]);
@@ -3142,7 +3142,7 @@ build_internal_settings_kvs() ->
                {{request_limit, rest}, restRequestLimit, <<>>},
                {{request_limit, capi}, capiRequestLimit, <<>>},
                {drop_request_memory_threshold_mib, dropRequestMemoryThresholdMiB, <<>>}],
-    [{JK, case ns_config_ets_dup:unreliable_read_key(CK, DV) of
+    [{JK, case ns_config:read_key_fast(CK, DV) of
               undefined ->
                   DV;
               V ->

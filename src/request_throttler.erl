@@ -145,8 +145,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% internal
 memory_limit() ->
-    Limit = ns_config_ets_dup:unreliable_read_key(drop_request_memory_threshold_mib,
-                                                  undefined),
+    Limit = ns_config:read_key_fast(drop_request_memory_threshold_mib,
+                                    undefined),
     case Limit of
         undefined ->
             1 bsl 64;
@@ -164,8 +164,8 @@ memory_usage() ->
     end.
 
 request_limit(Type) ->
-    Limit = ns_config_ets_dup:unreliable_read_key({request_limit, Type},
-                                                  undefined),
+    Limit = ns_config:read_key_fast({request_limit, Type},
+                                    undefined),
     case Limit of
         undefined ->
             1 bsl 64;

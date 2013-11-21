@@ -39,7 +39,7 @@
          terminate/2]).
 
 -define(BACKUP_INTERVAL,
-        ns_config_ets_dup:get_timeout(stats_archiver_backup_interval, 120000)).
+        ns_config:get_timeout_fast(stats_archiver_backup_interval, 120000)).
 
 
 %%

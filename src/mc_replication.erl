@@ -21,7 +21,7 @@
 
 -export([connect/3, connect/4, process_data/4, process_data/3]).
 
--define(CONNECT_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_connect, 180000)).
+-define(CONNECT_TIMEOUT, ns_config:get_timeout_fast(ebucketmigrator_connect, 180000)).
 
 connect({Host, Port}, Username, Password) ->
     {ok, Sock} = gen_tcp:connect(Host, Port,

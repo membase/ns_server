@@ -166,7 +166,7 @@ wait_checkpoint_persisted_many(Bucket, Parent, FewNodes, VBucket, WaitedCheckpoi
       end).
 
 wait_index_updated(Bucket, Parent, NewNode, ReplicaNodes, VBucket) ->
-    case ns_config_ets_dup:unreliable_read_key(rebalance_index_waiting_disabled, false) of
+    case ns_config:read_key_fast(rebalance_index_waiting_disabled, false) of
         false ->
             master_activity_events:note_wait_index_updated_started(Bucket, NewNode, VBucket),
             spawn_and_wait(

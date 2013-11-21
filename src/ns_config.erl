@@ -70,7 +70,7 @@
          merge_kv_pairs/2,
          sync_announcements/0, get_kv_list/0, get_kv_list/1,
          upgrade_config_explicitly/1, config_version_token/0,
-         fold/3]).
+         fold/3, read_key_fast/2, get_timeout_fast/2]).
 
 -export([save_config_sync/1]).
 
@@ -606,8 +606,11 @@ do_upgrade_config(Config, Changes, Upgrader) ->
 
 do_init(Config) ->
     erlang:process_flag(trap_exit, true),
-    %% NOTE: init may be called more than once via
+
+    %% NOTE: catch is needed because init may be called more than once via
     %% handle_call(reload,...) path
+    (catch ets:new(ns_config_ets_dup, [public, set, named_table])),
+    ets:delete_all_objects(ns_config_ets_dup),
     (catch ets:new(ns_config_announces_counter, [set, named_table])),
     ets:insert_new(ns_config_announces_counter, {changes_counter, 0}),
     UpgradedConfig = upgrade_config(Config),
@@ -619,6 +622,7 @@ do_init(Config) ->
             true ->
                 UpgradedConfig
         end,
+    update_ets_dup(config_dynamic(InitialState)),
     {ok, InitialState}.
 
 init({with_state, LoadedConfig} = Init) ->
@@ -721,6 +725,7 @@ handle_call({update_with_changes, Fun}, From, State) ->
         {[], _} ->
             {reply, ok, State};
         {NewPairs, NewConfig} ->
+            update_ets_dup(NewPairs),
             announce_locally_made_changes(NewPairs),
             handle_call(resave, From, State#config{dynamic=[NewConfig]})
     catch
@@ -746,6 +751,7 @@ handle_call({cas_config, NewKVList, OldKVList, RemoteOrLocal}, _From, State) ->
         true ->
             NewState = State#config{dynamic = [NewKVList]},
             Diff = NewKVList -- OldKVList,
+            update_ets_dup(Diff),
             case RemoteOrLocal of
                 remote ->
                     announce_changes(Diff);
@@ -863,6 +869,24 @@ announce_changes(KVList) ->
                   KVList),
     % Fire a generic event that 'something changed'.
     gen_event:notify(ns_config_events, KVList).
+
+update_ets_dup([]) ->
+    ok;
+update_ets_dup(KVList) ->
+    lists:foreach(fun ({Key, Value}) ->
+                          ets:insert(ns_config_ets_dup, {Key, strip_metadata(Value)})
+                  end,
+                  KVList).
+
+read_key_fast(Key, Default) ->
+    case ets:lookup(ns_config_ets_dup, Key) of
+        [{_, V}] ->
+            V;
+        _ -> Default
+    end.
+
+get_timeout_fast(Operation, Default) ->
+    read_key_fast({node, node(), {timeout, Operation}}, Default).
 
 load_file(txt, ConfigPath) -> read_includes(ConfigPath);
 

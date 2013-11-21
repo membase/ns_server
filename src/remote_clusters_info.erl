@@ -107,18 +107,18 @@
 -define(CACHE, ?MODULE).
 
 -define(GC_INTERVAL,
-        ns_config_ets_dup:unreliable_read_key(
+        ns_config:read_key_fast(
           {node, node(), remote_clusters_info_gc_interval}, 60000)).
 -define(FETCH_CLUSTER_TIMEOUT,
-        ns_config_ets_dup:get_timeout(remote_info_fetch_cluster, 15000)).
+        ns_config:get_timeout_fast(remote_info_fetch_cluster, 15000)).
 -define(GET_BUCKET_TIMEOUT,
-        ns_config_ets_dup:get_timeout(remote_info_get_bucket, 30000)).
+        ns_config:get_timeout_fast(remote_info_get_bucket, 30000)).
 
 -define(CAS_TRIES,
-        ns_config_ets_dup:unreliable_read_key(
+        ns_config:read_key_fast(
           {node, node(), remote_clusters_info_cas_tries}, 10)).
 -define(CONFIG_UPDATE_INTERVAL,
-        ns_config_ets_dup:unreliable_read_key(
+        ns_config:read_key_fast(
           {node, node(), remote_clusters_info_config_update_interval}, 10000)).
 
 -record(state, {cache_path :: string(),
