@@ -202,10 +202,10 @@ handle_call({find_missing_pipeline, IdRevs}, _From,
                                               true;
                                           {ok, DestMeta, _CAS} ->
                                               case max(SrcMeta, DestMeta) of
-                                                  SrcMeta ->
-                                                      true; %% need to replicate to remote
                                                   DestMeta ->
                                                       false; %% no need to replicate
+                                                  SrcMeta ->
+                                                      true; %% need to replicate to remote
                                                   _ ->
                                                       false
                                               end;
@@ -521,10 +521,10 @@ is_missing(Socket, VBucket, {Key, LocalMeta}) ->
             throw({bad_request, not_my_vbucket, Error});
         {ok, RemoteMeta, _CAS} ->
             case max(RemoteMeta, LocalMeta) of
-                LocalMeta ->
-                    true; %% need to replicate to remote
                 RemoteMeta ->
                     false; %% no need to replicate
+                LocalMeta ->
+                    true; %% need to replicate to remote
                 _ ->
                     false
                 end
