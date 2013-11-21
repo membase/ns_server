@@ -20,7 +20,7 @@
 -export([start_link/5]).
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
--export([find_missing/2, flush_docs/2, ensure_full_commit/2]).
+-export([find_missing/2, flush_docs/2]).
 -export([connect/2, select_bucket/2, disconnect/1, stop/1]).
 
 -export([find_missing_pipeline/2, flush_docs_pipeline/2]).
@@ -91,11 +91,6 @@ connect(Server, Remote) ->
 -spec disconnect(pid()) -> ok.
 disconnect(Server) ->
     gen_server:call(Server, disconnect, infinity).
-
--spec ensure_full_commit(pid(), list()) -> {ok, binary()} |
-                                           {error, time_out_polling}.
-ensure_full_commit(Server, RemoteBucket) ->
-    gen_server:call(Server, {ensure_full_commit, RemoteBucket}, infinity).
 
 stop(Server) ->
     gen_server:cast(Server, stop).
@@ -398,25 +393,6 @@ handle_call({flush_docs_pipeline, DocsList}, _From,
         end,
     RV;
 
-handle_call({ensure_full_commit, Bucket}, _From,
-            #xdc_vb_rep_xmem_worker_state{vb = VBucket,
-                                          socket = Socket,
-                                          statistics = OldStat} = State) ->
-    RV = ensure_full_commit_internal(Socket, Bucket, VBucket),
-    CkptIssued = OldStat#xdc_vb_rep_xmem_statistics.ckpt_issued,
-    CkptFailed = OldStat#xdc_vb_rep_xmem_statistics.ckpt_failed,
-
-    Stat = case RV of
-               {ok, _} ->
-                   OldStat#xdc_vb_rep_xmem_statistics{ckpt_issued = CkptIssued + 1};
-               _ ->
-                   ?xdcr_error("failed to issue a ckpt for vb ~p (bucket: ~p), "
-                               "total ckpt issued (succ: ~p, fail: ~p)",
-                               [VBucket, Bucket, CkptIssued, (CkptFailed+1)]),
-                   OldStat#xdc_vb_rep_xmem_statistics{ckpt_failed = CkptFailed + 1}
-           end,
-    {reply, RV, State#xdc_vb_rep_xmem_worker_state{statistics = Stat}};
-
 handle_call(Msg, From, #xdc_vb_rep_xmem_worker_state{vb = Vb,
                                                      id = Id} = State) ->
     ?xdcr_error("[xmem_worker ~p for vb ~p]: received unexpected call ~p from process ~p",
@@ -629,64 +605,6 @@ flush_single_doc_remote(Socket, VBucket, Key, Value, Rev, DocDeleted, CAS) ->
         {memcached_error, einval, _} ->
             {error, {bad_request, einval}}
     end.
-
--spec ensure_full_commit_internal(inet:socket(), list(), integer()) -> {ok, binary()} |
-                                                                       {error, time_out_polling}.
-ensure_full_commit_internal(Socket, Bucket, VBucket) ->
-    %% create a new open checkpoint
-    StartTime = now(),
-    {ok, OpenCheckpointId, PersistedCkptId} = mc_client_binary:create_new_checkpoint(Socket, VBucket),
-
-    Result = case PersistedCkptId >= (OpenCheckpointId - 1) of
-                 true ->
-                     ?xdcr_debug("replication to remote (bucket: ~p, vbucket ~p) issues an empty open ckpt, "
-                                 "no need to wait (open ckpt: ~p, persisted ckpt: ~p)",
-                                 [Bucket, VBucket, OpenCheckpointId, PersistedCkptId]),
-                     ok;
-                 _ ->
-                     %% waiting for persisted ckpt to catch up, time out in milliseconds
-                     ?xdcr_debug("replication to (bucket: ~p, vbucket ~p)  wait for priority chkpt persisted: ~p, "
-                                 "current persisted chkpt: ~p",
-                                 [Bucket, VBucket, (OpenCheckpointId-1), PersistedCkptId]),
-                     wait_priority_checkpoint_persisted(Socket, Bucket, VBucket, (OpenCheckpointId - 1))
-             end,
-
-    RV = case Result of
-             ok ->
-                 {ok, Stats2} = mc_binary:quick_stats(Socket, <<>>,
-                                                      fun (K, V, Acc) ->
-                                                              [{K, V} | Acc]
-                                                      end, []),
-
-                 EpStartupTime = proplists:get_value(<<"ep_startup_time">>, Stats2),
-                 WorkTime = timer:now_diff(now(), StartTime) div 1000,
-                 ?xdcr_debug("persistend open ckpt: ~p for rep (bucket: ~p, vbucket ~p), "
-                             "time spent in millisecs: ~p",
-                             [OpenCheckpointId, Bucket, VBucket, WorkTime]),
-
-                 {ok, EpStartupTime};
-             timeout ->
-                 ?xdcr_error("Alert! timeout when rep (bucket ~p, vb: ~p) waiting for open checkpoint "
-                               "(id: ~p) to be persisted.",
-                               [Bucket, VBucket, OpenCheckpointId]),
-                 {error, time_out_polling}
-         end,
-    RV.
-
--spec wait_priority_checkpoint_persisted(inet:socket(), list(), integer(), integer()) -> ok | timeout.
-wait_priority_checkpoint_persisted(Socket, Bucket, VBucket, CheckpointId) ->
-  case mc_client_binary:wait_for_checkpoint_persistence(Socket, VBucket, CheckpointId) of
-      ok ->
-          ok;
-      {memcached_error, etmpfail, _} ->
-          ?xdcr_error("rep (bucket: ~p, vbucket ~p)  fail to persist priority chkpt: ~p",
-                      [Bucket, VBucket, CheckpointId]),
-          timeout;
-      ErrorMsg ->
-          ?xdcr_error("rep (bucket: ~p, vbucket ~p)  fail to persist priority chkpt: ~p (unrecgnized error: ~p)",
-                      [Bucket, VBucket, CheckpointId, ErrorMsg]),
-          timeout
-  end.
 
 -spec receive_remote_meta_pipeline(inet:socket(), integer()) ->
                                           {ok, term(), term()} |

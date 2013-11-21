@@ -23,7 +23,6 @@
 -export([parse_rep_db/3]).
 -export([split_dbname/1]).
 -export([get_master_db/1, get_checkpoint_log_id/2]).
--export([get_checkpoint_mode/0]).
 -export([get_trace_dump_invprob/0]).
 -export([sanitize_status/3]).
 
@@ -222,18 +221,6 @@ unsplit_uuid({DbName, UUID}) ->
 -spec get_trace_dump_invprob() -> integer().
 get_trace_dump_invprob() ->
     xdc_settings:get_global_setting(trace_dump_invprob).
-
--spec get_checkpoint_mode() -> list().
-get_checkpoint_mode() ->
-    %% always checkpoint to remote capi unless specified by env parameter
-    case (catch string:to_lower(os:getenv("XDCR_CHECKPOINT_MODE"))) of
-        "xmem" ->
-            ?xdcr_debug("Warning! Different from default CAPI checkpoint, "
-                        "we checkpoint to memcached", []),
-            "xmem";
-        _ ->
-            "capi"
-    end.
 
 sanitize_url(Url) when is_binary(Url) ->
     ?l2b(sanitize_url(?b2l(Url)));

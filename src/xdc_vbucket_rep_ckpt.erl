@@ -69,8 +69,7 @@ do_checkpoint(State) ->
                src_starttime = SrcInstanceStartTime,
                tgt_starttime = TgtInstanceStartTime,
                session_id = SessionId,
-               status = Status,
-               xmem_srv = XMemSrvPid
+               status = Status
               } = State,
 
     #rep_vb_status{docs_checked = Checked,
@@ -83,12 +82,7 @@ do_checkpoint(State) ->
                    num_failedckpts = NumFailedCkpts} = Status,
 
 
-    CommitResult = case xdc_rep_utils:get_checkpoint_mode() of
-                       "xmem" ->
-                           commit_to_both_remote_xmem(Source, XMemSrvPid);
-                       _ ->
-                           commit_to_both_remote_capi(Source, Target)
-                   end,
+    CommitResult = commit_to_both_remote_capi(Source, Target),
 
     CheckpointResult = case CommitResult of
                            {source_error, Reason} ->
@@ -226,41 +220,6 @@ commit_to_both_remote_capi(Source, Target) ->
     %% commit tgt sync
     TargetResult = (catch couch_api_wrap:ensure_full_commit(Target)),
 
-    SourceResult = receive
-                       {SrcCommitPid, Result} ->
-                           unlink(SrcCommitPid),
-                           receive {'EXIT', SrcCommitPid, _} -> ok after 0 -> ok end,
-                           Result;
-                       {'EXIT', SrcCommitPid, Reason} ->
-                           {error, Reason}
-                   end,
-    case TargetResult of
-        {ok, TargetStartTime} ->
-            case SourceResult of
-                {ok, SourceStartTime} ->
-                    {SourceStartTime, TargetStartTime};
-                SourceError ->
-                    {source_error, SourceError}
-            end;
-        TargetError ->
-            {target_error, TargetError}
-    end.
-
-%% do remote checkpoint via memcached protocol
--spec commit_to_both_remote_xmem(#db{}, pid()) -> {ok, _} |
-                                      {source_error, _} |
-                                      {target_error, _}.
-commit_to_both_remote_xmem(Source, XMemSrv) ->
-    %% commit the src async
-    ParentPid = self(),
-    SrcCommitPid = spawn_link(
-                     fun() ->
-                             Result = (catch couch_api_wrap:ensure_full_commit(Source)),
-                             ParentPid ! {self(), Result}
-                     end),
-
-    %% commit tgt sync
-    TargetResult =  xdc_vbucket_rep_xmem_srv:ensure_full_commit(XMemSrv),
     SourceResult = receive
                        {SrcCommitPid, Result} ->
                            unlink(SrcCommitPid),

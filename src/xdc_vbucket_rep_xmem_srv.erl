@@ -26,7 +26,7 @@
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 
 -export([connect/2, disconnect/1, select_bucket/1, stop/1]).
--export([find_missing/2, flush_docs/2, ensure_full_commit/1]).
+-export([find_missing/2, flush_docs/2]).
 
 -export([format_status/2, get_worker/1]).
 
@@ -112,9 +112,6 @@ find_missing(Server, IdRevs) ->
 -spec flush_docs(pid(), list()) ->  ok | {error, term()}.
 flush_docs(Server, DocsList) ->
     gen_server:call(Server, {flush_docs, DocsList}, infinity).
-
-ensure_full_commit(Server) ->
-    gen_server:call(Server, ensure_full_commit).
 
 handle_info({'EXIT',_Pid, normal}, St) ->
     {noreply, St};
@@ -244,13 +241,6 @@ handle_call(get_worker, _From,
                                        pid_workers = Workers} = State) ->
     WorkerPid = load_balancer(Vb, Workers),
     {reply, {WorkerPid, Pipeline}, State};
-
-handle_call(ensure_full_commit, _From,
-            #xdc_vb_rep_xmem_srv_state{vb =  Vb, remote = Remote,
-                                       pid_workers = Workers} = State) ->
-    WorkerPid = load_balancer(Vb, Workers),
-    RV =  xdc_vbucket_rep_xmem_worker:ensure_full_commit(WorkerPid, Remote#xdc_rep_xmem_remote.bucket),
-    {reply, RV, State};
 
 handle_call(stats, _From,
             #xdc_vb_rep_xmem_srv_state{} = State) ->
