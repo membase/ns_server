@@ -564,6 +564,8 @@ ext_arith(#mc_entry{ext = Ext, data = Data, expire = Expire} = Entry) ->
             Entry#mc_entry{ext = Ext2, data = undefined}
     end.
 
+map_status(?SUCCESS) ->
+    success;
 map_status(?KEY_ENOENT) ->
     key_enoent;
 map_status(?KEY_EEXISTS) ->
