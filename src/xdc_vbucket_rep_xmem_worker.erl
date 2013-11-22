@@ -101,29 +101,43 @@ handle_info({'EXIT',_Pid, normal}, St) ->
 handle_info({'EXIT',_Pid, Reason}, St) ->
     {stop, Reason, St}.
 
-handle_call({connect, #xdc_rep_xmem_remote{} = Remote}, {_Pid, _Tag},
+handle_call({connect, #xdc_rep_xmem_remote{ip = Host,
+                                           port = Port,
+                                           bucket = Bucket,
+                                           password = Password,
+                                           options = RemoteOptions} = Remote},
+            _From,
             #xdc_vb_rep_xmem_worker_state{id = Id, vb = Vb} =  State) ->
-    %% establish connection to remote memcached
-    Socket = case connect_internal(Remote) of
-                 {ok, S} ->
-                     S;
-                 _ ->
-                     ?xdcr_error("[xmem_worker ~p for vb ~p]: unable to connect remote memcached"
-                                 "(ip: ~p, port: ~p) after ~p attempts",
-                                 [Id, Vb,
-                                  Remote#xdc_rep_xmem_remote.ip,
-                                  Remote#xdc_rep_xmem_remote.port,
-                                  ?XDCR_XMEM_CONNECTION_ATTEMPTS]),
-                     nil
-             end,
-    {reply, ok, State#xdc_vb_rep_xmem_worker_state{socket = Socket,
-                                                   time_connected = calendar:now_to_local_time(erlang:now()),
-                                                   status = connected}};
+    case proplists:get_bool(dont_use_mcd_pool, RemoteOptions) of
+        false ->
+            McdDst = memcached_clients_pool:make_loc(Host, Port, Bucket, Password),
+            {reply, ok, State#xdc_vb_rep_xmem_worker_state{mcd_loc = McdDst}};
+        true ->
+            %% establish connection to remote memcached
+            Socket = case connect_internal(Remote) of
+                         {ok, S} ->
+                             S;
+                         _ ->
+                             ?xdcr_error("[xmem_worker ~p for vb ~p]: unable to connect remote memcached"
+                                         "(ip: ~p, port: ~p) after ~p attempts",
+                                         [Id, Vb,
+                                          Remote#xdc_rep_xmem_remote.ip,
+                                          Remote#xdc_rep_xmem_remote.port,
+                                          ?XDCR_XMEM_CONNECTION_ATTEMPTS]),
+                             nil
+                     end,
+            {reply, ok, State#xdc_vb_rep_xmem_worker_state{socket = Socket,
+                                                           time_connected = calendar:now_to_local_time(erlang:now()),
+                                                           status = connected}}
+    end;
 
 handle_call(disconnect, {_Pid, _Tag}, #xdc_vb_rep_xmem_worker_state{} =  State) ->
     State1 = close_connection(State),
     {reply, ok, State1, hibernate};
 
+handle_call({select_bucket, _Remote}, _From,
+            #xdc_vb_rep_xmem_worker_state{mcd_loc = McdDst} =  State) when McdDst =/= undefined ->
+    {reply, ok, State};
 handle_call({select_bucket, #xdc_rep_xmem_remote{} = Remote}, {_Pid, _Tag},
             #xdc_vb_rep_xmem_worker_state{id = Id, vb = Vb, socket = Socket} =  State) ->
     %% establish connection to remote memcached
@@ -172,6 +186,15 @@ handle_call({find_missing, IdRevs}, _From,
     {reply, {ok, MissingIdRevs}, State};
 
 %% ----------- Pipelined Memached Ops --------------%%
+handle_call({find_missing_pipeline, IdRevs}, _From,
+            #xdc_vb_rep_xmem_worker_state{vb = Vb, mcd_loc = McdDst} =  State) when McdDst =/= undefined ->
+    {ok, MissingRevs, ErrRevs} = pooled_memcached_client:find_missing_revs(McdDst, Vb, IdRevs),
+    [?xdcr_trace("Error! memcached error when fetching metadata from remote for key: ~p, "
+                 "just send the doc (msg: "
+                 "\"unexpected response from remote memcached (vb: ~p, error: ~p)\")",
+                 [Key, Vb, Error])
+     || {Error, {Key, _}} <- ErrRevs],
+    {reply, {ok, ErrRevs ++ MissingRevs}, State};
 handle_call({find_missing_pipeline, IdRevs}, _From,
             #xdc_vb_rep_xmem_worker_state{vb = Vb,
                                           socket = Sock} =  State) ->
@@ -284,6 +307,59 @@ handle_call({flush_docs, DocsList}, _From,
     {reply, {ok, NumDocsRepd, NumDocsRejected}, State};
 
 %% ----------- Pipelined Memached Ops --------------%%
+handle_call({flush_docs_pipeline, DocsList}, _From,
+            #xdc_vb_rep_xmem_worker_state{id = Id, vb = VBucket,
+                                          mcd_loc = McdDst,
+                                          connection_timeout = ConnectionTimeout} =  State)
+  when McdDst =/= undefined ->
+
+    TimeStart = now(),
+
+    {ok, Statuses} = pooled_memcached_client:bulk_set_metas(McdDst, VBucket, DocsList),
+
+    {Flushed, Enoent, Eexist, NotMyVb, Einval, OtherErr, ErrorKeys} = categorise_statuses(Statuses, DocsList),
+
+    TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
+
+    %% dump error msg if timeout
+    TimeSpentSecs = TimeSpent div 1000,
+    case TimeSpentSecs > ConnectionTimeout of
+        true ->
+            ?xdcr_error("[xmem_worker ~p for vb ~p]: update ~p docs takes too long to finish!"
+                        "(total time spent: ~p secs, default connection time out: ~p secs)",
+                        [Id, VBucket, length(DocsList), TimeSpentSecs, ConnectionTimeout]);
+        _ ->
+            ok
+    end,
+
+    DocsListSize = length(DocsList),
+    RV =
+        case (Flushed + Eexist) == DocsListSize of
+            true ->
+                {reply, {ok, Flushed, Eexist}, State};
+            _ ->
+                %% for some reason we can only return one error. Thus
+                %% we're logging everything else here
+                ?xdcr_error("out of ~p docs, succ to send ~p docs, fail to send others "
+                            "(by error type, enoent: ~p, not-my-vb: ~p, einval: ~p, "
+                            "other errors: ~p",
+                            [DocsListSize, (Flushed + Eexist), Enoent, NotMyVb, Einval, OtherErr]),
+
+                %% stop replicator if too many memacched errors
+                case (Flushed + Eexist + ?XDCR_XMEM_MEMCACHED_ERRORS) > DocsListSize of
+                    true ->
+                        {reply, {ok, Flushed, Eexist}, State};
+                    _ ->
+                        ErrorStr = ?format_msg("in batch of ~p docs: flushed: ~p, rejected (eexists): ~p; "
+                                               "remote memcached errors: enoent: ~p, not-my-vb: ~p, invalid: ~p, "
+                                               "others: ~p",
+                                               [DocsListSize, Flushed, Eexist, Enoent, NotMyVb,
+                                                Einval, OtherErr]),
+                        {stop, {error, {ErrorStr, ErrorKeys}}, State}
+                end
+        end,
+    RV;
+
 handle_call({flush_docs_pipeline, DocsList}, _From,
             #xdc_vb_rep_xmem_worker_state{id = Id, vb = VBucket,
                                           socket = Sock,
@@ -456,7 +532,7 @@ close_connection(#xdc_vb_rep_xmem_worker_state{socket = Socket} = State) ->
         _ ->
             ok = gen_tcp:close(Socket)
     end,
-    State#xdc_vb_rep_xmem_worker_state{socket = undefined, status = idle}.
+    State#xdc_vb_rep_xmem_worker_state{socket = undefined, mcd_loc = undefined, status = idle}.
 
 connect_internal(#xdc_rep_xmem_remote{} = Remote) ->
     connect_internal(?XDCR_XMEM_CONNECTION_ATTEMPTS, Remote).
@@ -691,3 +767,25 @@ mc_cmd_pipeline(Opcode, Sock, {Header, Entry}) ->
     ok = mc_binary:send(Sock, req,
                         Header#mc_header{opcode = Opcode}, mc_client_binary:ext(Opcode, Entry)),
     ok.
+
+categorise_statuses(Statuses, DocsList) ->
+    categorise_statuses_loop(Statuses, DocsList, 0, 0, 0, 0, 0, 0, []).
+
+categorise_statuses_loop([], [], Flushed, Enoent, Eexist, NotMyVb, Einval, OtherErr, ErrorKeys) ->
+    {Flushed, Enoent, Eexist, NotMyVb, Einval, OtherErr, lists:reverse(ErrorKeys)};
+categorise_statuses_loop([Status | RestSt], [#doc{id=Key} | RestDocs],
+                         Flushed, Enoent, Eexist, NotMyVb, Einval, OtherErr, ErrorKeys) ->
+    case Status of
+        success ->
+            categorise_statuses_loop(RestSt, RestDocs, Flushed + 1, Enoent, Eexist, NotMyVb, Einval, OtherErr, ErrorKeys);
+        key_enoent ->
+            categorise_statuses_loop(RestSt, RestDocs, Flushed, Enoent + 1, Eexist, NotMyVb, Einval, OtherErr, [Key | ErrorKeys]);
+        key_eexists ->
+            categorise_statuses_loop(RestSt, RestDocs, Flushed, Enoent, Eexist + 1, NotMyVb, Einval, OtherErr, [Key | ErrorKeys]);
+        not_my_vbucket ->
+            categorise_statuses_loop(RestSt, RestDocs, Flushed, Enoent, Eexist, NotMyVb + 1, Einval, OtherErr, [Key | ErrorKeys]);
+        einval ->
+            categorise_statuses_loop(RestSt, RestDocs, Flushed, Enoent, Eexist, NotMyVb, Einval + 1, OtherErr, [Key | ErrorKeys]);
+        _ ->
+            categorise_statuses_loop(RestSt, RestDocs, Flushed, Enoent, Eexist, NotMyVb, Einval, OtherErr + 1, [Key | ErrorKeys])
+    end.
