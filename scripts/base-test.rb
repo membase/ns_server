@@ -49,6 +49,10 @@ module Methods
     req!(:post, path, payload, headers)
   end
 
+  def postj!(path, payload, headers = nil)
+    JSON.parse(req!(:post, path, payload, headers).body)
+  end
+
   def put!(path, payload, headers = nil)
     req!(:put, path, payload, headers)
   end

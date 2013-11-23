@@ -107,6 +107,7 @@
          set/4,
          ready_nodes/4,
          sync/4, add/4, get/3, delete/3, delete/4,
+         get_from_replica/3,
          get_meta/3,
          update_with_rev/7,
          connect_and_send_isasl_refresh/0,
@@ -313,6 +314,7 @@ assign_queue({set_vbucket, _, _}) -> #state.heavy_calls_queue;
 assign_queue({deregister_tap_client, _}) -> #state.heavy_calls_queue;
 assign_queue({add, _Key, _VBucket, _Value}) -> #state.heavy_calls_queue;
 assign_queue({get, _Key, _VBucket}) -> #state.heavy_calls_queue;
+assign_queue({get_from_replica, _Key, _VBucket}) -> #state.heavy_calls_queue;
 assign_queue({get_meta, _Key, _VBucket}) -> #state.heavy_calls_queue;
 assign_queue({delete, _Key, _VBucket, _CAS}) -> #state.heavy_calls_queue;
 assign_queue({set, _Key, _VBucket, _Value}) -> #state.heavy_calls_queue;
@@ -497,6 +499,12 @@ do_handle_call({add, Key, VBucket, Val}, _From, State) ->
 
 do_handle_call({get, Key, VBucket}, _From, State) ->
     Reply = mc_client_binary:cmd(?GET, State#state.sock, undefined, undefined,
+                                 {#mc_header{vbucket = VBucket},
+                                  #mc_entry{key = Key}}),
+    {reply, Reply, State};
+
+do_handle_call({get_from_replica, Key, VBucket}, _From, State) ->
+    Reply = mc_client_binary:cmd(?CMD_GET_REPLICA, State#state.sock, undefined, undefined,
                                  {#mc_header{vbucket = VBucket},
                                   #mc_entry{key = Key}}),
     {reply, Reply, State};
@@ -859,12 +867,17 @@ add(Bucket, Key, VBucket, Value) ->
     do_call({server(Bucket), node()},
             {add, Key, VBucket, Value}, ?TIMEOUT_HEAVY).
 
-%% @doc send an add command to memcached instance
+%% @doc send get command to memcached instance
 -spec get(bucket_name(), binary(), integer()) ->
     {ok, #mc_header{}, #mc_entry{}, any()}.
 get(Bucket, Key, VBucket) ->
     do_call({server(Bucket), node()}, {get, Key, VBucket}, ?TIMEOUT_HEAVY).
 
+%% @doc send get_from_replica command to memcached instance. for testing only
+-spec get_from_replica(bucket_name(), binary(), integer()) ->
+    {ok, #mc_header{}, #mc_entry{}, any()}.
+get_from_replica(Bucket, Key, VBucket) ->
+    do_call({server(Bucket), node()}, {get_from_replica, Key, VBucket}, ?TIMEOUT_HEAVY).
 
 %% @doc send an get metadata command to memcached
 -spec get_meta(bucket_name(), binary(), integer()) ->

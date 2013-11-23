@@ -1,6 +1,8 @@
 -module(ns_server_testrunner_api).
 
 -include("ns_common.hrl").
+-include("mc_constants.hrl").
+-include("mc_entry.hrl").
 
 -compile(export_all).
 
@@ -27,3 +29,38 @@ eval_string(String) ->
 %% different erlang versions
 eval_string_multi(String, Nodes, Timeout) ->
     rpc:call(Nodes, ns_server_testrunner_api, eval_string, String, Timeout).
+
+get_active_vbuckets(Bucket) ->
+    {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
+    VBucketMap = couch_util:get_value(map, BucketConfig, []),
+    Node = node(),
+    {json, [Ordinal-1 ||
+               {Ordinal, VBuckets} <- misc:enumerate(VBucketMap),
+               hd(VBuckets) =:= Node]}.
+
+process_memcached_error_response({ok, #mc_header{status=Status}, #mc_entry{data=Msg},
+                                  _NCB}) ->
+    {struct, [{result, error},
+              {status, mc_client_binary:map_status(Status)},
+              {message, Msg}]};
+process_memcached_error_response({Err, _, _, _}) ->
+    {struct, [{result, error},
+              {status, Err},
+              {message, "Unknown error"}]}.
+
+add_document(Bucket, VBucket, Key, Value) ->
+    {json, case ns_memcached:add(Bucket, Key, VBucket, Value) of
+               {ok, #mc_header{status=?SUCCESS}, _, _} ->
+                   {struct, [{result, ok}]};
+               Error ->
+                   process_memcached_error_response(Error)
+           end}.
+
+get_document_replica(Bucket, VBucket, Key) ->
+    {json, case ns_memcached:get_from_replica(Bucket, Key, VBucket) of
+               {ok, #mc_header{status=?SUCCESS}, #mc_entry{data = Data}, _} ->
+                   {struct, [{result, ok},
+                             {value, Data}]};
+               Error ->
+                   process_memcached_error_response(Error)
+           end}.

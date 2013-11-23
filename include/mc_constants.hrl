@@ -47,6 +47,7 @@
 
 -define(SYNC, 16#96).
 -define(CMD_SET_PARAM,       16#82).            % NOTE: Id is same as old CMD_SET_FLUSH_PARAM
+-define(CMD_GET_REPLICA,     16#83).
 
 -define(CMD_DEREGISTER_TAP_CLIENT, 16#9e).
 -define(CMD_LAST_CLOSED_CHECKPOINT,  16#97).

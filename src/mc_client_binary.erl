@@ -73,7 +73,7 @@
                      ?CMD_SASL_LIST_MECHS | ?CMD_SASL_AUTH | ?CMD_SASL_STEP |
                      ?CMD_CREATE_BUCKET | ?CMD_DELETE_BUCKET |
                      ?CMD_LIST_BUCKETS | ?CMD_EXPAND_BUCKET |
-                     ?CMD_SELECT_BUCKET | ?CMD_SET_PARAM |
+                     ?CMD_SELECT_BUCKET | ?CMD_SET_PARAM | ?CMD_GET_REPLICA |
                      ?CMD_SET_VBUCKET | ?CMD_GET_VBUCKET | ?CMD_DELETE_VBUCKET |
                      ?CMD_LAST_CLOSED_CHECKPOINT | ?CMD_ISASL_REFRESH |
                      ?CMD_GET_META | ?CMD_GETQ_META | ?CMD_CREATE_CHECKPOINT |
