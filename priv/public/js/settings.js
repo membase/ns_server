@@ -144,6 +144,9 @@ var ClusterSection = {
       if (!uri) {
         return;
       }
+      if (formValidation) {
+        formValidation.abort();
+      }
       formValidation = setupFormValidation(clusterSettingsForm, uri + "&just_validate=1", function (_status, errors) {
         SettingsSection.renderErrors(errors, container);
       }, function () {
