@@ -265,6 +265,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth_ro, fun menelaus_web_xdc_replications:handle_replication_settings/2, [XID]};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings/1};
+                         ["internalSettings", "visual"] ->
+                             {auth_ro, fun handle_visual_internal_settings/1};
                          ["nodes", NodeId] ->
                              {auth_ro, fun handle_node/2, [NodeId]};
                          ["diag"] ->
@@ -348,6 +350,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_xdc_replications:handle_replication_settings_post/2, [XID]};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings_post/1};
+                         ["internalSettings", "visual"] ->
+                             {auth, fun handle_visual_internal_settings_post/1};
                          ["pools", PoolId] ->
                              {auth, fun handle_pool_settings/2,
                               [PoolId]};
@@ -1691,31 +1695,80 @@ handle_read_only_user_reset(Req) ->
             end
     end.
 
+is_css_hex(L) ->
+    Int = (catch erlang:list_to_integer(L, 16)),
+    Len = length(L),
+    (Len =:= 6) or (Len =:= 3) andalso is_number(Int).
+
+memory_quota_validation(MemoryQuota) ->
+    Node = node(),
+    case MemoryQuota of
+       undefined -> ok;
+       X ->
+           {MinMemoryMB, MaxMemoryMB, QuotaErrorDetailsFun} =
+               ns_storage_conf:allowed_node_quota_range(),
+           case parse_validate_number(X, MinMemoryMB, MaxMemoryMB) of
+               {ok, Number} ->
+                   {ok, fun () ->
+                                ok = ns_storage_conf:change_memory_quota(Node, Number)
+                                %% TODO: that should
+                                %% really be a cluster setting
+                        end};
+               invalid -> {memoryQuota, <<"The RAM Quota value must be a number.">>};
+               too_small ->
+                   {memoryQuota,
+                    list_to_binary("The RAM Quota value is too small." ++ QuotaErrorDetailsFun())};
+               too_large ->
+                   {memoryQuota,
+                    list_to_binary("The RAM Quota value is too large." ++ QuotaErrorDetailsFun())}
+           end
+   end.
+
+handle_visual_internal_settings(Req) ->
+    Config = ns_config:get(),
+    reply_json(Req, {struct, case ns_config:search(Config, internalVisualSettings) of
+                                 {value, InternalVisualSettings} ->
+                                    InternalVisualSettings;
+                                 _ ->
+                                    [{windowOutlineHex, <<"">>}, {tabName, <<"">>}]
+                              end}).
+
+handle_visual_internal_settings_post(Req) ->
+    Params = Req:parse_post(),
+    ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
+    WindowOutlineHex = proplists:get_value("windowOutlineHex", Params, ""),
+    MemoryQuota = proplists:get_value("memoryQuota", Params),
+    TabName = proplists:get_value("tabName", Params, ""),
+    Results = [case WindowOutlineHex of
+                   [] -> ok;
+                   _ ->
+                        case is_css_hex(WindowOutlineHex) of
+                            false -> {windowOutlineHex, <<"Acceptable format is RRGGBB or RGB">>};
+                            _ -> ok
+                        end
+               end, memory_quota_validation(MemoryQuota)],
+    case {ValidateOnly, lists:filter(fun(ok) -> false;
+                                        ({ok, _}) -> false;
+                                        (_) -> true
+                                     end, Results)} of
+        {false, []} ->
+            ok = ns_config:set(internalVisualSettings, [{tabName, erlang:list_to_binary(TabName)},
+                                                        {windowOutlineHex, erlang:list_to_binary(WindowOutlineHex)}]),
+            lists:foreach(fun ({ok, CommitF}) -> CommitF();
+                              (_) -> ok
+                          end, Results),
+            Req:respond({200, add_header(), []});
+        {true, []} ->
+            reply_json(Req, {struct, [{errors, null}]}, 200);
+        {_, Errs} ->
+            reply_json(Req, {struct, [{errors, {struct, Errs}}]}, 400)
+    end.
+
 handle_pool_settings(_PoolId, Req) ->
     Params = Req:parse_post(),
-    Node = node(),
     ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
-    Results = [case proplists:get_value("memoryQuota", Params) of
-                   undefined -> ok;
-                   X ->
-                       {MinMemoryMB, MaxMemoryMB, QuotaErrorDetailsFun} =
-                           ns_storage_conf:allowed_node_quota_range(),
-                       case parse_validate_number(X, MinMemoryMB, MaxMemoryMB) of
-                           {ok, Number} ->
-                               {ok, fun () ->
-                                            ok = ns_storage_conf:change_memory_quota(Node, Number)
-                                            %% TODO: that should
-                                            %% really be a cluster setting
-                                    end};
-                           invalid -> {memoryQuota, <<"The RAM Quota value must be a number.">>};
-                           too_small ->
-                               {memoryQuota,
-                                list_to_binary("The RAM Quota value is too small." ++ QuotaErrorDetailsFun())};
-                           too_large ->
-                               {memoryQuota,
-                                list_to_binary("The RAM Quota value is too large." ++ QuotaErrorDetailsFun())}
-                       end
-               end],
+    MemoryQuota = proplists:get_value("memoryQuota", Params),
+    Results = [memory_quota_validation(MemoryQuota)],
     case {ValidateOnly, lists:filter(fun(ok) -> false;
                                         ({ok, _}) -> false;
                                         (_) -> true

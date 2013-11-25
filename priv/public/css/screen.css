@@ -393,13 +393,17 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 #get_started {display:none;}
 
 .settings legend {font-size:14px;font-weight:bold;margin-left:16px}
-
+.outline_tag {position: absolute; top: 0; left: 0; bottom: 0; right: 0; border-width: 5px; border-style: dashed; border-color: transparent;}
+.css_hex_symbol {position: absolute; margin-left: -10px;}
 /* cluster settings styles */
+
+.cluster_settings_container h3 {margin: 24px 36px 10px;}
+.cluster_settings_container .list_button {float: none; margin-left: 283px;}
 .cluster_settings_container label,
 .cluster_settings_container input {-moz-inline-stack; display: inline-block; zoom: 1; *display: inline; vertical-align: middle;}
 .cluster_settings_container label {width: 150px;}
 .cluster_settings_container .error-container {margin-left: 150px;}
-.cluster_settings_container .row {margin: 10px; line-height: 24px;}
+.cluster_settings_container .row {margin: 10px 60px; line-height: 24px;}
 
 /* update notification styles */
 #notifications_container .item {padding:13px;}

@@ -16,6 +16,7 @@
   <script>document.body.className = "auth";</script>
   <div class="io-error-notice-wrapper"><span class="io-error-notice" style="display:none;"></span></div>
   <div id="container">
+    <div class="outline_tag" id="js_outline_tag"></div>
     <div class="page-header">
       <div class="cnt_holder main_holder">
         <div class="topper_nav">
@@ -754,19 +755,34 @@
                 </ul>
               </div>
               <div class="panes clearfix">
-                <div id="cluster_settings_container" class="cluster_settings_container">
-                  <form>
+                <div id="js_cluster_settings_container" class="cluster_settings_container">
+                  <h3>RAM Quota</h3>
+                  <form id="js_cluster_public_settings_form" class="cluster_settings_form">
                     <div class="row">
                       <label>RAM Available:</label>
-                      <span id="cluster_settings_total_ram"></span> MB
+                      <span id="js_cluster_settings_total_ram"></span> MB
                     </div>
                     <div class="row">
                       <label for="cluster_settings_ram_quota">Per Server RAM Quota:</label>
                       <input type="text" class="focusme" id="cluster_settings_ram_quota" name="memoryQuota"> MB
                       <div class="error-container err-memoryQuota"></div>
                     </div>
+                    <h3>Tab Settings</h3>
+                    <div class="row">
+                      <label>Browser tab name:</label>
+                      <input name="tabName">
+                      <div class="error-container err-tabName"></div>
+                    </div>
+                    <div class="row">
+                      <label>Window outline color:</label>
+                      <span class="css_hex_symbol">#</span>
+                      <input name="windowOutlineHex">
+                      <div class="error-container err-windowOutlineHex"></div>
+                    </div>
                     <div class="save_cancel when-roadmin-hide-me">
-                      <button class="save_button float_right" type="submit" disabled="disabled">Save</button>
+                      <button class="save_button float_right" type="submit">
+                        Save
+                      </button>
                     </div>
                   </form>
                 </div>
