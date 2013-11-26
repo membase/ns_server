@@ -102,7 +102,7 @@ do_handle_remote_clusters_post(Req, Params, JustValidate, TriesLeft) ->
                             menelaus_util:reply_json(Req, [])
                     end;
                 {errors, Status, Errors} ->
-                    menelaus_util:reply_json(Req, Errors, Status)
+                    menelaus_util:reply_json(Req, {struct, Errors}, Status)
             end;
         {errors, Errors} ->
             menelaus_util:reply_json(Req, {struct, Errors}, 400)
