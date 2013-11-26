@@ -106,7 +106,8 @@ handle_info({'EXIT', From, Reason} = ExitMsg, #state{replicators = Replicators} 
             {stop, Reason, State}
     end.
 
-terminate(_Reason, #state{replicators = Replicators} = State) ->
+terminate(Reason, #state{replicators = Replicators} = State) ->
+    ?rebalance_debug("Dying with reason: ~p", [Reason]),
     kill_replicators(Replicators, State).
 
 code_change(_OldVsn, State, _Extra) ->

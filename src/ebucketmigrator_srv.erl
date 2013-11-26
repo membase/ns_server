@@ -710,7 +710,8 @@ exit_retry_not_ready_vbuckets() ->
     ?rebalance_info("dying to check if some previously not yet ready vbuckets are ready to replicate from"),
     exit(normal).
 
-terminate(_Reason, #state{upstream_sender=UpstreamSender} = State) ->
+terminate(Reason, #state{upstream_sender=UpstreamSender} = State) ->
+    ?rebalance_debug("Dying with reason: ~p", [Reason]),
     timer2:kill_after(?TERMINATE_TIMEOUT),
     gen_tcp:close(State#state.upstream),
     exit(UpstreamSender, kill),

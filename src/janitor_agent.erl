@@ -792,7 +792,9 @@ handle_call({wait_checkpoint_persisted, VBucket, CheckpointId},
                From,
                fun () ->
                        ?rebalance_debug("Going to wait for persistence of checkpoint ~B in vbucket ~B", [CheckpointId, VBucket]),
-                       ok = do_wait_checkpoint_persisted(Bucket, VBucket, CheckpointId)
+                       ok = do_wait_checkpoint_persisted(Bucket, VBucket, CheckpointId),
+                       ?rebalance_debug("Done"),
+                       ok
                end),
     {noreply, State2};
 handle_call({get_replication_persistence_checkpoint_id, VBucket},
@@ -806,7 +808,7 @@ handle_call({get_replication_persistence_checkpoint_id, VBucket},
             {reply, PersistedCheckpointId + 1, State};
         false ->
             {ok, NewOpenCheckpointId, _LastPersistedCkpt} = ns_memcached:create_new_checkpoint(Bucket, VBucket),
-            ?log_debug("After creating new checkpoint here's what we have: ~p", [{PersistedCheckpointId, OpenCheckpointId, NewOpenCheckpointId}]),
+            ?log_debug("After creating new checkpoint here's what we have: ~p (~p)", [{PersistedCheckpointId, OpenCheckpointId, NewOpenCheckpointId}, VBucket]),
             {reply, erlang:min(PersistedCheckpointId + 1, NewOpenCheckpointId - 1), State}
     end;
 handle_call({get_tap_docs_estimate, _VBucketId, _TapName} = Req, From, State) ->
