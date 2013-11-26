@@ -1584,3 +1584,14 @@ delaying_crash(DelayBy, Body) ->
             timer:sleep(DelayBy),
             erlang:raise(T, E, ST)
     end.
+
+%% Like lists:split but does not fail if N > length(List).
+safe_split(N, List) ->
+    do_safe_split(N, List, []).
+
+do_safe_split(_, [], Acc) ->
+    {lists:reverse(Acc), []};
+do_safe_split(0, List, Acc) ->
+    {lists:reverse(Acc), List};
+do_safe_split(N, [H|T], Acc) ->
+    do_safe_split(N - 1, T, [H|Acc]).

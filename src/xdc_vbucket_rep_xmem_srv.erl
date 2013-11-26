@@ -156,7 +156,7 @@ handle_call(disconnect, {_Pid, _Tag},
                 end,
                 dict:new(),
                 dict:to_list(Workers)),
-    {reply, ok, State#xdc_vb_rep_xmem_srv_state{pid_workers = IdleWorkers}};
+    {reply, ok, State#xdc_vb_rep_xmem_srv_state{pid_workers = IdleWorkers}, hibernate};
 
 handle_call(select_bucket, {_Pid, _Tag},
             #xdc_vb_rep_xmem_srv_state{

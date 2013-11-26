@@ -127,7 +127,7 @@ handle_call({connect, #xdc_rep_xmem_remote{} = Remote}, {_Pid, _Tag},
 
 handle_call(disconnect, {_Pid, _Tag}, #xdc_vb_rep_xmem_worker_state{} =  State) ->
     State1 = close_connection(State),
-    {reply, ok, State1};
+    {reply, ok, State1, hibernate};
 
 handle_call({select_bucket, #xdc_rep_xmem_remote{} = Remote}, {_Pid, _Tag},
             #xdc_vb_rep_xmem_worker_state{id = Id, vb = Vb, socket = Socket} =  State) ->
