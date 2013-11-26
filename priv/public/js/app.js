@@ -866,7 +866,7 @@ var SetupWizard = {
           return ok;
         }
 
-        function memPost(data, status) {
+        function memPost(data, status, errObject) {
           var ok = handleDiskStatus.apply(null, diskArguments) &&
                 handleHostnameStatus.apply(null, hostnameArguments);
 
@@ -877,7 +877,7 @@ var SetupWizard = {
               onLeave();
             }
           } else {
-            memoryErrorsContainer.text(data.join(' and '));
+            memoryErrorsContainer.text(errObject.errors.memoryQuota);
             memoryErrorsContainer.show();
           }
         }

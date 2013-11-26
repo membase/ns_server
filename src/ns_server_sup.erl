@@ -149,6 +149,9 @@ child_specs() ->
      {ns_memcached_log_rotator, {ns_memcached_log_rotator, start_link, []},
       permanent, 1000, worker, [ns_memcached_log_rotator]},
 
+     {memcached_clients_pool, {memcached_clients_pool, start_link, []},
+      permanent, 1000, worker, []},
+
      {xdc_lhttpc_pool, {lhttpc_manager, start_link, [[{name, xdc_lhttpc_pool}, {connection_timeout, 120000}, {pool_size, 200}]]},
       permanent, 10000, worker, [lhttpc_manager]
      },

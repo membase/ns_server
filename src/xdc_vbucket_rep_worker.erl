@@ -356,10 +356,29 @@ flush_docs_capi(Target, DocsList) ->
 flush_docs_xmem(_XMemSrv, []) ->
     ok;
 flush_docs_xmem(XMemSrv, DocsList) ->
-    RV = xdc_vbucket_rep_xmem_srv:flush_docs(XMemSrv, DocsList),
+    {WorkerPid, Pipeline} = xdc_vbucket_rep_xmem_srv:get_worker(XMemSrv),
+    TimeStart = now(),
+    RV =
+        case Pipeline of
+            false ->
+                xdc_vbucket_rep_xmem_worker:flush_docs(WorkerPid, DocsList);
+            _ ->
+                xdc_vbucket_rep_xmem_worker:flush_docs_pipeline(WorkerPid, DocsList)
+        end,
+    TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
+    AvgLatency = TimeSpent div length(DocsList),
+
     case RV of
-        ok ->
-            RV;
+        {ok, NumDocRepd, NumDocRejected} ->
+            ?xdcr_trace("out of total ~p docs, "
+                        "# of docs accepted by remote: ~p "
+                        "# of docs rejected by remote: ~p"
+                        "(xmem worker: ~p,"
+                        "time spent in ms: ~p, avg latency per doc in ms: ~p)",
+                        [length(DocsList),
+                         NumDocRepd, NumDocRejected,
+                         WorkerPid, TimeSpent, AvgLatency]),
+            ok;
         {error, Msg} ->
             {failed_write, Msg}
     end.

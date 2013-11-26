@@ -263,6 +263,7 @@ mover_inner(Parent, Bucket, VBucket,
                     janitor_agent:set_vbucket_state(Bucket, Node, Parent, VBucket, active, paused, undefined),
                     SecondWaitedCheckpointId = janitor_agent:get_replication_persistence_checkpoint_id(Bucket, Parent, Node, VBucket),
                     master_activity_events:note_checkpoint_waiting_started(Bucket, VBucket, SecondWaitedCheckpointId, AllBuiltNodes),
+                    ?rebalance_info("Will wait for checkpoint ~p on replicas", [SecondWaitedCheckpointId]),
                     ok = wait_checkpoint_persisted_many(Bucket, Parent, AllBuiltNodes, VBucket, SecondWaitedCheckpointId),
                     master_activity_events:note_checkpoint_waiting_ended(Bucket, VBucket, SecondWaitedCheckpointId, AllBuiltNodes);
                 false ->
@@ -270,8 +271,10 @@ mover_inner(Parent, Bucket, VBucket,
             end,
 
             wait_index_updated(Bucket, Parent, NewNode, ReplicaNodes, VBucket),
+            ?rebalance_info("Done waiting for index updating. Will shutdown replicator into ~p", [NewNode]),
 
             new_ns_replicas_builder:shutdown_replicator(BuilderPid, NewNode),
+            ?rebalance_info("Going to do takeover"),
             ok = run_mover(Bucket, VBucket, Node, NewNode),
             ok = janitor_agent:set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined)
     end.

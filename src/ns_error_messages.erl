@@ -42,16 +42,16 @@ connection_error_message(_, _, _) -> undefined.
                                  {string(), string() | integer(), string(), string(), iolist()}) ->
                                         %% English error message and nested error
                                         {error, rest_error, binary(), {error, term()} | {bad_status, integer(), string()}}.
-decode_json_response_error({ok, {{_HttpVersion, 200 = _StatusCode, _ReasonPhrase} = _StatusLine,
+decode_json_response_error({ok, {{200 = _StatusCode, _} = _StatusLine,
                                _Headers, _Body} = _Result},
                          _Method, _Request) ->
     %% 200 is not error
     erlang:error(bug);
 
-decode_json_response_error({ok, {{_, 401 = StatusCode, _}, _, Body}},
+decode_json_response_error({ok, {{401 = StatusCode, _}, _, Body}},
                          Method,
                          {Host, Port, Path, _MimeType, _Payload}) ->
-    TrimmedBody = string:substr(Body, 1, 48),
+    TrimmedBody = string:substr(erlang:binary_to_list(Body), 1, 48),
     RealPort = if is_integer(Port) -> integer_to_list(Port);
                   true -> Port
                end,
@@ -60,10 +60,10 @@ decode_json_response_error({ok, {{_, 401 = StatusCode, _}, _, Body}},
                                      [StatusCode, Method, Host, RealPort, Path, TrimmedBody])),
     {error, rest_error, M, {bad_status, StatusCode, list_to_binary(TrimmedBody)}};
 
-decode_json_response_error({ok, {{_, StatusCode, _}, _, Body}},
+decode_json_response_error({ok, {{StatusCode, _}, _, Body}},
                          Method,
                          {Host, Port, Path, _MimeType, _Payload}) ->
-    TrimmedBody = string:substr(Body, 1, 48),
+    TrimmedBody = string:substr(erlang:binary_to_list(Body), 1, 48),
     RealPort = if is_integer(Port) -> integer_to_list(Port);
                   true -> Port
                end,

@@ -393,6 +393,13 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 
 .settings legend {font-size:14px;font-weight:bold;margin-left:16px}
 
+/* cluster settings styles */
+.cluster_settings_container label,
+.cluster_settings_container input {-moz-inline-stack; display: inline-block; zoom: 1; *display: inline; vertical-align: middle;}
+.cluster_settings_container label {width: 150px;}
+.cluster_settings_container .error-container {margin-left: 150px;}
+.cluster_settings_container .row {margin: 10px; line-height: 24px;}
+
 /* update notification styles */
 #notifications_container .item {padding:13px;}
 #notifications_container .save_button {float:right;}
@@ -1318,7 +1325,7 @@ input[type=number].size {width:4em;}
 .dynamic_when-roadmin .when-roadmin-avoid-me {display: none!important;}
 
 .account_management_form {padding: 10px 20px 30px;}
-.account_management_container {font-size: 14px;}
+
 .account_management_container fieldset {overflow: hidden;}
 .account_management_container label {display: block; padding: 5px 0;}
 .reset_roadmin_form label,
@@ -1332,10 +1339,10 @@ input[type=number].size {width:4em;}
 .account_management_container label input {width: 200px; height: 20px;}
 .account_management_container button {margin-top: 20px; float: none; margin-left: 282px;}
 .account_management_container span.list_button {float: none; margin-left: 40px;}
-.account_management_container p {padding: 0 30px 20px; line-height: 25px;}
+.account_management_container p {padding: 0 30px 10px; line-height: 25px;}
 .account_management_container .error {border: 1px solid red;}
 .account_management_container .errors {color: red;}
-.account_management_container h2 {margin: 20px; padding-bottom: 10px; border-bottom: 1px solid #d5dadd;}
+.account_management_container h3 {margin: 20px 24px 15px 24px;}
 .account_delete {padding-bottom: 28px;}
 
 .reset_roadmin_form {font-size: 14px; width: 320px;}
