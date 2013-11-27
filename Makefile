@@ -149,12 +149,12 @@ do-install:
 	mkdir -p $(MLOCKALL_LIBDIR)
 	cp -r deps/mlockall/ebin $(MLOCKALL_LIBDIR)/
 	[ ! -d deps/mlockall/priv ] || cp -r deps/mlockall/priv $(MLOCKALL_LIBDIR)/
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	cp -r $(VBMAP_BINARY) $(DESTDIR)$(PREFIX)/bin/vbmap$(VBMAP_EXEEXT)
 	mkdir -p $(DESTDIR)$(PREFIX)/etc/couchbase
 	sed -e 's|@DATA_PREFIX@|$(PREFIX_FOR_CONFIG)|g' -e 's|@BIN_PREFIX@|$(PREFIX_FOR_CONFIG)|g' \
 		 <etc/static_config.in >$(DESTDIR)$(PREFIX)/etc/couchbase/static_config
 	touch $(DESTDIR)$(PREFIX)/etc/couchbase/config
-	mkdir -p $(DESTDIR)$(PREFIX)/bin/
 	sed -e 's|@PREFIX@|$(PREFIX)|g' <couchbase-server.sh.in >$(DESTDIR)$(PREFIX)/bin/couchbase-server
 	cp cbbrowse_logs $(DESTDIR)$(PREFIX)/bin/cbbrowse_logs
 	cp cbcollect_info $(DESTDIR)$(PREFIX)/bin/cbcollect_info
