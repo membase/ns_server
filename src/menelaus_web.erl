@@ -2827,7 +2827,7 @@ parse_validate_auto_compaction_settings(Params) ->
                             PeriodTimeFieldsCount -> PeriodTimeResults0;
                             _ -> [{error, <<"allowedTimePeriod">>, <<"allowedTimePeriod is invalid">>}]
                         end,
-    PurgeIntervalResults = (mk_number_field_validator(0.04, 365, Params, list_to_float))({"purgeInterval", purge_interval, "metadata purge interval"}),
+    PurgeIntervalResults = (mk_number_field_validator(0.04, 60, Params, list_to_float))({"purgeInterval", purge_interval, "metadata purge interval"}),
 
     Errors0 = [{iolist_to_binary(Field), Msg} || {error, Field, Msg} <- PercResults ++ ParallelResult ++ PeriodTimeResults
                                                      ++ SizeResults
