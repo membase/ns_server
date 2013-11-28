@@ -152,13 +152,13 @@
 
         <div id="js_groups" class="groups when-roadmin-avoid-me when-enterprise" style="display:none">
           <h1>Server Groups</h1>
-          <div class="ellipsis warning_message" id="js_group_notice"></div>
+          <div class="ellipsis warning_message casper_draggable_server_to" id="js_group_notice"></div>
           <div class="shadow_box">
             <div class="header_2">
               <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
               <a id="js_create_group" class="btn_1" href="#visitSec=servers"><span>Server Nodes</span></a>
-              <a id="js_create_group" class="btn_1 casper_create_group_start"><span>Create Group</span></a>
-              <a id="js_save_groups_changes" class="btn_1 casper_group_apply_start"><span>Apply Changes</span></a>
+              <a id="js_create_group" class="btn_1 casper_groups_create_popup"><span>Create Group</span></a>
+              <a id="js_save_groups_changes" class="btn_1 casper_groups_error"><span>Apply Changes</span></a>
             </div>
           <div class="groups_container" id="js_server_group_container"></div>
           </div>
@@ -169,7 +169,7 @@
             {% _.each(groups, function (group, groupIndex) { %}
               <div class="group_wrapper js_group_wrapper" id="js_group_{%= makeSafeForCSS(group.name) %}_wrapper">
                   <div class="head" id="js_group_{%= makeSafeForCSS(group.name) %}">
-                    <a class="btn_1 js_edit_group casper_edit_group_start"><span>Rename Group</span></a>
+                    <a class="btn_1 js_edit_group casper_groups_edit_popup"><span>Rename Group</span></a>
                     <div><h4 class="ellipsis">{%= h(group.name) %}</h4></div>
                   </div>
                   <div class="group_servers js_group_servers">
@@ -179,7 +179,7 @@
                       </div>
                     {% }) %}
                     <div class="group_is_empty">
-                      <span>This group is empty, <a class="js_delete_group casper_remove_group_start">click to delete</a>.</span>
+                      <span>This group is empty, <a class="js_delete_group casper_groups_remove_popup">click to delete</a>.</span>
                     </div>
                   </div>
               </div>
@@ -203,14 +203,14 @@
             <div class="header_2">
               <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
               <a class="btn_1 when-enterprise when-roadmin-avoid-me" href="#visitSec=groups" id="js_server_groups_tab"><span>Server Groups</span></a>
-              <a class="add_button btn_1 when-roadmin-hide-me casper_server_add"><span>Add Server</span></a>
+              <a class="add_button btn_1 when-roadmin-hide-me casper_servers_add_popup"><span>Add Server</span></a>
               <a class="rebalance_button btn_1 when-roadmin-hide-me"><span>Rebalance</span></a>
               <a class="stop_rebalance_button btn_1 when-roadmin-hide-me"><span>Stop Rebalance</span></a>
               <a class="stop_recovery_button btn_1 when-roadmin-hide-me"><span>Stop Recovery</span></a>
               <ul class="tabs">
                 <li class="tab_left"><a>Active Servers</a></li>
                 <li class="tab_right" id="rebalance_tab">
-                  <a class="casper_pending_rebalance_tab">Pending Rebalance</a>
+                  <a class="casper_servers_pending_rebalance_tab">Pending Rebalance</a>
                   <span class="badge"><span>1</span></span>
                 </li>
               </ul>
@@ -331,8 +331,8 @@
                 </td>
                 <!-- {% } else { %} -->
                 <td class="actions" colspan="2">
-                  <a class="list_button eject_server when-roadmin-avoid-me casper_eject_server_remove"><span>Remove</span></a>
-                  <a class="list_button failover_server when-roadmin-avoid-me casper_failover_server_remove"><span>Fail Over</span></a>
+                  <a class="list_button eject_server when-roadmin-avoid-me casper_servers_remove_popup"><span>Remove</span></a>
+                  <a class="list_button failover_server when-roadmin-avoid-me casper_servers_failover_popup"><span>Fail Over</span></a>
                   <span class="failed_over_message">Failed Over: Pending Removal</span>
                 </td>
                 <!-- {% } %} -->
@@ -559,7 +559,7 @@
             <div id="manage_buckets_top_bar" class="header_2">
               <h4 style="float:left;line-height:34px;">Couchbase Buckets</h4>
               <div class="right" style="overflow:hidden;">
-                <button class="button_200 create-bucket-button when-roadmin-hide-me casper_create_bucket_button" style="float:right;">Create New Data Bucket</button>
+                <button class="button_200 create-bucket-button when-roadmin-hide-me casper_buckets_new_data_bucket" style="float:right;">Create New Data Bucket</button>
                 <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
               </div>
             </div>
@@ -601,7 +601,7 @@
               <!-- {% $.each(rows, function () { %} -->
               <tr class="{%= this.bucketTypeName.toLowerCase() %}">
                 <td class="bucket_name ellipsis" colspan="4">
-                  <a class="disable-if-stale bucket casper_open_bucket_details" href="#visitBucket={%= h(encodeURIComponent(this.name)) %}" title="Show Bucket info"><span class="expander closed"></span></a>
+                  <a class="disable-if-stale bucket" href="#visitBucket={%= h(encodeURIComponent(this.name)) %}" title="Show Bucket info"><span class="expander closed casper_buckets_bucket_details"></span></a>
                   <a class="disable-if-stale" title="View Analytics for {%= h(this.name) %}" href="#sec=analytics&statsBucket={%= h(encodeURIComponent(this.uri)) %}">{%= h(this.name) %}</a>
                 </td>
                 <td>
@@ -658,7 +658,7 @@
                   </div>
                 {% } %}
                 <div class="last when-roadmin-hide-me">
-                  <a class="inner_btn casper_edit_bucket_popup" href="#editBucket={%= h(encodeURIComponent(uri)) %}">Edit</a>
+                  <a class="inner_btn casper_buckets_edit_bucket_popup" href="#editBucket={%= h(encodeURIComponent(uri)) %}">Edit</a>
                   {% if (!showCancel && !noCompaction) { %}
                     <button class="inner_btn compact_btn {%= disableCompact ? 'dynamic_disabled' : ''%}" data-uri="{%= h(controllers.compactAll) %}"><span>Compact</span></button>
                   {% } else if (!noCompaction) { %}
@@ -748,12 +748,12 @@
               <div class="header_2">
                 <ul class="tabs">
                   <li class="tab_left"><a id="settings_cluster">Cluster</a></li>
-                  <li><a id="settings_update_notifications">Update Notifications</a></li>
+                  <li><a id="settings_update_notifications" class="casper_settings_update_notifications">Update Notifications</a></li>
                   <li><a id="settings_auto_failover" class="casper_settings_auto_failover">Auto-Failover</a></li>
                   <li><a id="settings_alerts" class="casper_settings_alerts">Alerts</a></li>
                   <li><a id="settings_compaction" class="casper_settings_compaction">Auto-Compaction</a></li>
                   <li class="only-when-20"><a id="settings_sample_buckets" class="casper_settings_sample_buckets">Sample Buckets</a></li>
-                  <li class="when-roadmin-avoid-me"><a id="account_management" class="casper_account_management">Account Management</a></li>
+                  <li class="when-roadmin-avoid-me"><a id="account_management" class="casper_settings_account_management">Account Management</a></li>
                 </ul>
               </div>
               <div class="panes clearfix">
@@ -914,7 +914,7 @@
                   <h3>Installed Samples</h3>
                   <ul id="installed_samples"></ul>
                   <h3>Available Samples</h3>
-                  <ul id="available_samples"  class="casper_samples_warnign_start"></ul>
+                  <ul id="available_samples" class="casper_settings_sample_warnign"></ul>
                     <div class="save_cancel when-roadmin-hide-me">
                     <button class="save_button float_right" type="submit"
                             id="sample_buckets_settings_btn">
@@ -942,17 +942,17 @@
                         <span>Verify Password:</span><input type="password" name="verifyPassword" maxlength="24">
                         <i class="errors js_error_verifyPassword casper_create_roadmin_with_errors"></i>
                       </label>
-                      <button type="submit" class="list_button casper_do_create_roadmin"><span>Create</span></button>
+                      <button type="submit" class="list_button casper_settings_create_accaunt"><span>Create</span></button>
                     </fieldset>
                   </form>
                   <div id="js_account_delete" class="account_delete">
                     <p id="js_user_created">User: <span id="js_roadmin_name" style="color:#222;"></span> created successfully.</p>
                     <p id="js_user_exists">User already exists.</p>
                     <div>
-                      <span class="list_button casper_reset_acc_btn" id="js_reset_acc_btn">
+                      <span class="list_button casper_settings_account_reset_popup" id="js_reset_acc_btn">
                         <span>Reset Read-Only user Password</span>
                       </span>
-                      <span class="list_button casper_delete_acc_btn" id="js_delete_acc_btn">
+                      <span class="list_button casper_settings_account_delete_popup" id="js_delete_acc_btn">
                         <span>Delete Read-Only User</span>
                       </span>
                     </div>
@@ -993,7 +993,7 @@
               <input type="checkbox" id="notification-updates">
               {% } %}
               <span>Enable software update notifications.</span>
-              <a href="#" class="more_info casper_software_update_button">What's this?</a>
+              <a href="#" class="more_info casper_settings_software_update_tooltip">What's this?</a>
             </label>
             <p class="more_info">
               Enabling software update notifications allows notification in
@@ -1010,7 +1010,7 @@
             </div>
           </script>
           <script id="auto_failover_template" type="text/html">
-            <label class="for-enable-replicas casper_for_enable_replicas"
+            <label class="for-enable-replicas casper_settings_auto_failover_enabled"
                    for="auto_failover_enabled">
               <input type="checkbox" id="auto_failover_enabled">
               <span>Enable auto-failover</span>
@@ -1020,7 +1020,7 @@
             </label>
             <input type="text" id="auto_failover_timeout"
                    value="{%= timeout %}" disabled="disabled" />
-            <a class="text_11 tooltip castep_auto_fail_tooltip_button"><span>What's this?</span>
+            <a class="text_11 tooltip casper_settings_auto_failover_timeout_tooltip"><span>What's this?</span>
               <span class="tooltip_msg"><span>
                   How long (in seconds) a node must be considered down before it gets auto-failed-over.
               </span></span>
@@ -1044,7 +1044,7 @@
           <script id="email_alerts_template" type="text/html">
             <label class="for-enable-replicas"
                    for="email_alerts_enabled">
-              <input type="checkbox" id="email_alerts_enabled" class="casper_alerts_errors_start">
+              <input type="checkbox" id="email_alerts_enabled" class="casper_settings_alerts_errors">
               <span>Enable email alerts</span>
             </label>
             <fieldset>
@@ -1140,12 +1140,12 @@
                   <a>Development Views</a>
                 </li>
                 <li class="tab_right">
-                  <a>Production Views</a>
+                  <a class="casper_views_prod_tab">Production Views</a>
                   <span class="badge notify"><span id="prod_view_count">??</span></span>
                 </li>
               </ul>
               <div class="create_view">
-                <a class="button_200 btn_create when-in-dev when-roadmin-hide-me"><span>Create Development View</span></a>
+                <a class="button_200 btn_create when-in-dev when-roadmin-hide-me casper_views_create_view_popup"><span>Create Development View</span></a>
                 <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
               </div>
             </div>
@@ -1217,7 +1217,7 @@
                   <a class="list_button when-in-dev {%= ddoc.isEmpty ? 'dynamic_disabled' : ''%}" href="#publishDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Publish</span></a>
                   <a class="list_button when-in-dev" href="#addView={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add View</span></a>
                   <a class="list_button when-in-dev" href="#addSpatial={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add Spatial View</span></a>
-                  <a class="list_button" href="#deleteDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Delete</span></a>
+                  <a class="list_button casper_views_delete_popup" href="#deleteDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Delete</span></a>
                   <button class="list_button {%= ViewsSection.maybeDisabledCompactButtonAttr(ddoc)%} {%= ddoc.isEmpty ? 'dynamic_disabled' : ''%}" onclick="ViewsSection.compactDDoc({%= h(JSON.stringify(ddoc.meta.id)) %}, this);"><span>Compact</span></button>
                 </td>
               </tr>
@@ -1227,7 +1227,7 @@
               <!-- {% _.each(ddoc.json.viewInfos, function (viewInfo) { %} -->
               <tr>
                 <td class="view_name ellipsis" colspan="5">
-                  <a style="display:block;line-height:33px;" href="{%=h(viewInfo.viewLink)%}">{%= h(viewInfo.name) %}</a>
+                  <a class="casper_views_view_tab" style="display:block;line-height:33px;" href="{%=h(viewInfo.viewLink)%}">{%= h(viewInfo.name) %}</a>
                 </td>
                 <td>
                   <a class="list_button btn_remove when-roadmin-avoid-me" href="{%=h(viewInfo.removeLink)%}"><span>Delete</span></a>
@@ -2070,7 +2070,7 @@
       </div>
     </div>
     <div class="save_cancel clearfix">
-      <button type="button" class="delete_button float_right js_delete_button casper_roadmin_remove_dialog_delete">Delete</button>
+      <button type="button" class="delete_button float_right js_delete_button casper_settings_roadmin_remove_click">Delete</button>
       <a class="close">Cancel</a>
     </div>
   </form>
