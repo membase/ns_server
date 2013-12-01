@@ -23,7 +23,8 @@
          update_doc/1,
          find_all_replication_docs/0,
          delete_replicator_doc/1,
-         get_full_replicator_doc/1]).
+         get_full_replicator_doc/1,
+         delete_all_replications/1]).
 
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
@@ -238,8 +239,37 @@ find_all_replication_docs_body(Doc0) ->
             undefined
     end.
 
--spec delete_replicator_doc(string()) -> {ok, list()} | not_found.
-delete_replicator_doc(IdList) ->
+-spec delete_replicator_doc(string()) -> ok | not_found.
+delete_replicator_doc(XID) ->
+    case do_delete_replicator_doc(XID) of
+        {ok, OldDoc} ->
+            Source = misc:expect_prop_value(source, OldDoc),
+            Target = misc:expect_prop_value(target, OldDoc),
+
+            {ok, {UUID, BucketName}} = remote_clusters_info:parse_remote_bucket_reference(Target),
+            ClusterName =
+                case remote_clusters_info:find_cluster_by_uuid(UUID) of
+                    not_found ->
+                        "\"unknown\"";
+                    Cluster ->
+                        case proplists:get_value(deleted, Cluster, false) of
+                            false ->
+                                io_lib:format("\"~s\"", [misc:expect_prop_value(name, Cluster)]);
+                            true ->
+                                io_lib:format("at ~s", [misc:expect_prop_value(hostname, Cluster)])
+                        end
+                end,
+
+            ale:info(?USER_LOGGER,
+                     "Replication from bucket \"~s\" to bucket \"~s\" on cluster ~s removed.",
+                     [Source, BucketName, ClusterName]),
+            ok;
+        not_found ->
+            not_found
+    end.
+
+-spec do_delete_replicator_doc(string()) -> {ok, list()} | not_found.
+do_delete_replicator_doc(IdList) ->
     Id = erlang:list_to_binary(IdList),
     Docs = find_all_replication_docs(),
     MaybeDoc = [Doc || [{id, CandId} | _] = Doc <- Docs,
@@ -268,3 +298,16 @@ get_full_replicator_doc(Id) when is_binary(Id) ->
             Props = [{couch_util:to_binary(K), V} || {K, V} <- Props0],
             {ok, Doc#doc{body={Props}}}
     end.
+
+delete_all_replications(Bucket) ->
+    XDCRDocs = find_all_replication_docs(),
+    lists:foreach(
+      fun (PList) ->
+              case ?b2l(misc:expect_prop_value(source, PList)) of
+                  Bucket ->
+                      Id = misc:expect_prop_value(id, PList),
+                      delete_replicator_doc(?b2l(Id));
+                  _ ->
+                      ok
+              end
+      end, XDCRDocs).
