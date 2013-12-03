@@ -37,8 +37,14 @@ rest_add_auth(Headers, {User, Password}) ->
 rest_add_auth(Headers, undefined) ->
     Headers.
 
-rest_request(Method, URL, Headers, Body, Auth, HTTPOptions) ->
-    NewHeaders = rest_add_auth(Headers, Auth),
+rest_add_mime_type(Headers, undefined) ->
+    Headers;
+rest_add_mime_type(Headers, MimeType) ->
+    [{"Content-Type", MimeType} | Headers].
+
+rest_request(Method, URL, Headers, MimeType, Body, Auth, HTTPOptions) ->
+    NewHeaders0 = rest_add_auth(Headers, Auth),
+    NewHeaders = rest_add_mime_type(NewHeaders0, MimeType),
     Timeout = proplists:get_value(timeout, HTTPOptions, 30000),
     HTTPOptions1 = lists:keydelete(timeout, 1, HTTPOptions),
     lhttpc:request(URL, Method, NewHeaders, Body, Timeout, HTTPOptions1).
@@ -78,14 +84,14 @@ decode_json_response_ext(Response, Method, Request) ->
                                   {client_error, term()} |
                                   %% english error message and nested error
                                   {error, rest_error, binary(), {error, term()} | {bad_status, integer(), string()}}.
-json_request_hilevel(Method, {Host, Port, Path, _MimeType, Payload} = R, Auth, HTTPOptions) ->
+json_request_hilevel(Method, {Host, Port, Path, MimeType, Payload} = R, Auth, HTTPOptions) ->
     RealPayload = binary_to_list(iolist_to_binary(Payload)),
     URL = rest_url(Host, Port, Path),
-    RV = rest_request(Method, URL, [], RealPayload, Auth, HTTPOptions),
+    RV = rest_request(Method, URL, [], MimeType, RealPayload, Auth, HTTPOptions),
     decode_json_response_ext(RV, Method, setelement(5, R, RealPayload));
 json_request_hilevel(Method, {Host, Port, Path}, Auth, HTTPOptions) ->
     URL = rest_url(Host, Port, Path),
-    RV = rest_request(Method, URL, [], [], Auth, HTTPOptions),
+    RV = rest_request(Method, URL, [], undefined, [], Auth, HTTPOptions),
     decode_json_response_ext(RV, Method, {Host, Port, Path, [], []}).
 
 json_request_hilevel(Method, Request, Auth) ->
