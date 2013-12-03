@@ -39,6 +39,8 @@
 -define(XDCR_ERROR_HISTORY, 10).
 %% interval (millisecs) to compute rate stats
 -define(XDCR_RATE_STAT_INTERVAL_MS, 1000).
+%% sleep time in secs before retry
+-define(XDCR_SLEEP_BEFORE_RETRY, 30).
 %% constants used by XMEM
 -define(XDCR_XMEM_CONNECTION_ATTEMPTS, 16).
 -define(XDCR_XMEM_CONNECTION_TIMEOUT, 120000).  %% timeout in ms
