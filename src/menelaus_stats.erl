@@ -1058,7 +1058,7 @@ membase_stats_description(BucketId) ->
                 {struct, [{title, <<"bg wait time">>},
                           {hidden, true},
                           {name, <<"avg_bg_wait_time">>},
-                          {desc, <<"Average background fetch time in seconds"
+                          {desc, <<"Average background fetch time in microseconds"
                                    "(measured from avg_bg_wait_time).">>}]},
                 {struct,[{title,<<"incoming XDCR ops/sec.">>},
                          {name,<<"xdc_ops">>},
