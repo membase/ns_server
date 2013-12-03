@@ -505,8 +505,33 @@ init_replication_state(#init_state{rep = Rep,
           options = Options
         } = Rep,
     SrcVbDb = xdc_rep_utils:local_couch_uri_for_vbucket(Src, Vb),
-    {ok, CurrRemoteBucket} = remote_clusters_info:get_remote_bucket_by_ref(Tgt,
-                                                                       false),
+    {ok, CurrRemoteBucket} =
+        case remote_clusters_info:get_remote_bucket_by_ref(Tgt, false) of
+            {ok, RBucket} ->
+                {ok, RBucket};
+            {error, ErrorMsg} ->
+                ?xdcr_error("Error in fetching remot bucket, error: ~p,"
+                            "sleep for ~p secs before retry.",
+                            [ErrorMsg, (?XDCR_SLEEP_BEFORE_RETRY)]),
+                %% sleep and retry once
+                timer:sleep(1000*?XDCR_SLEEP_BEFORE_RETRY),
+                remote_clusters_info:get_remote_bucket_by_ref(Tgt, false);
+            {error, Error, Msg} ->
+                ?xdcr_error("Error in fetching remot bucket, error: ~p, msg: ~p"
+                            "sleep for ~p secs before retry",
+                            [Error, Msg, (?XDCR_SLEEP_BEFORE_RETRY)]),
+                %% sleep and retry once
+                timer:sleep(1000*?XDCR_SLEEP_BEFORE_RETRY),
+                remote_clusters_info:get_remote_bucket_by_ref(Tgt, false);
+            {error, Error, Msg, Details} ->
+                ?xdcr_error("Error in fetching remot bucket, error: ~p, msg: ~p, details: ~p"
+                            "sleep for ~p secs before retry",
+                            [Error, Msg, Details, (?XDCR_SLEEP_BEFORE_RETRY)]),
+                %% sleep and retry once
+                timer:sleep(1000*?XDCR_SLEEP_BEFORE_RETRY),
+                remote_clusters_info:get_remote_bucket_by_ref(Tgt, false)
+        end,
+
     TgtURI = hd(dict:fetch(Vb, CurrRemoteBucket#remote_bucket.capi_vbucket_map)),
     TgtDb = xdc_rep_utils:parse_rep_db(TgtURI, [], Options),
     {ok, Source} = couch_api_wrap:db_open(SrcVbDb, []),
@@ -524,7 +549,17 @@ init_replication_state(#init_state{rep = Rep,
     XMemRemote = case RepMode of
                      "xmem" ->
                          {ok, {Ip, Port}, LatestRemoteBucket} =
-                             remote_clusters_info:get_memcached_vbucket_info_by_ref(Tgt, false, Vb),
+                             case remote_clusters_info:get_memcached_vbucket_info_by_ref(Tgt, false, Vb) of
+                                 {ok, RemoteNode, TgtBucket} ->
+                                     {ok, RemoteNode, TgtBucket};
+                                 Error2 ->
+                                     ?xdcr_error("Error in fetching remot memcached vbucket info, error: ~p"
+                                                 "sleep for ~p secs before retry",
+                                                 [Error2, (?XDCR_SLEEP_BEFORE_RETRY)]),
+                                     timer:sleep(1000*?XDCR_SLEEP_BEFORE_RETRY),
+                                     remote_clusters_info:get_memcached_vbucket_info_by_ref(Tgt, false, Vb)
+                             end,
+
                          {ok, {_ClusterUUID, BucketName}} = remote_clusters_info:parse_remote_bucket_reference(Tgt),
                          Password = binary_to_list(LatestRemoteBucket#remote_bucket.password),
                          #xdc_rep_xmem_remote{ip = binary_to_list(Ip), port = Port,
