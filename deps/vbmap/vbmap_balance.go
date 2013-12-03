@@ -11,6 +11,7 @@ type R struct {
 	Matrix  [][]int // actual matrix
 	RowSums []int   // row sums for the matrix
 	ColSums []int   // column sums for the matrix
+	Strict  bool
 
 	params           VbmapParams // corresponding vbucket map params
 	expectedColSum   int         // expected column sum
@@ -61,7 +62,7 @@ func (cand R) String() string {
 		fmt.Fprintf(buffer, "%3d ", cand.ColSums[i])
 	}
 	fmt.Fprintf(buffer, "|\n")
-	fmt.Fprintf(buffer, "Evaluation: %d\n", cand.evaluation())
+	fmt.Fprintf(buffer, "Evaluation: %d\n", cand.Evaluation())
 
 	return buffer.String()
 }
@@ -70,24 +71,24 @@ func (cand R) String() string {
 //
 // It just spreads active vbuckets uniformly between the nodes. And then for
 // each node spreads replica vbuckets among the slaves of this node.
-func buildInitialR(params VbmapParams, RI RI) (R [][]int) {
+func buildInitialR(params VbmapParams, ri RI) (r [][]int) {
 	activeVbsPerNode := SpreadSum(params.NumVBuckets, params.NumNodes)
 
-	R = make([][]int, len(RI))
+	r = make([][]int, len(ri.Matrix))
 	if params.NumSlaves == 0 {
 		return
 	}
 
-	for i, row := range RI {
+	for i, row := range ri.Matrix {
 		rowSum := activeVbsPerNode[i] * params.NumReplicas
 		slaveVbs := SpreadSum(rowSum, params.NumSlaves)
 
-		R[i] = make([]int, len(row))
+		r[i] = make([]int, len(row))
 
 		slave := 0
 		for j, elem := range row {
 			if elem {
-				R[i][j] = slaveVbs[slave]
+				r[i][j] = slaveVbs[slave]
 				slave += 1
 			}
 		}
@@ -96,12 +97,90 @@ func buildInitialR(params VbmapParams, RI RI) (R [][]int) {
 	return
 }
 
+func buildRFlowGraph(params VbmapParams, ri RI, activeVbs []int) (g *Graph) {
+	graphName := fmt.Sprintf("Flow graph for R (%s)", params)
+	g = NewGraph(graphName)
+
+	colSum := params.NumVBuckets * params.NumReplicas / params.NumNodes
+
+	for i, row := range ri.Matrix {
+		node := Node(i)
+		nodeSrcV := NodeSourceVertex(node)
+		nodeSinkV := NodeSinkVertex(node)
+
+		rowSum := activeVbs[i] * params.NumReplicas
+
+		g.AddEdge(Source, nodeSrcV, rowSum, rowSum)
+		g.AddEdge(nodeSinkV, Sink, colSum+1, colSum)
+
+		seenTags := make(map[Tag]bool)
+		for j, elem := range row {
+			if !elem {
+				continue
+			}
+
+			dstNode := Node(j)
+			dstNodeTag := params.Tags[dstNode]
+
+			dstNodeSinkV := NodeSinkVertex(dstNode)
+			tagV := TagNodeVertex{dstNodeTag, node}
+
+			if _, seen := seenTags[dstNodeTag]; !seen {
+				maxVbsPerTag := rowSum / params.NumReplicas
+
+				g.AddEdge(nodeSrcV, tagV, maxVbsPerTag, 0)
+				seenTags[dstNodeTag] = true
+			}
+
+			elem := rowSum / params.NumSlaves
+			g.AddEdge(tagV, dstNodeSinkV, elem+1, elem)
+		}
+	}
+
+	return
+}
+
+func relaxMaxVbsPerTag(g *Graph) {
+	for _, vertex := range g.Vertices() {
+		if tagV, ok := vertex.(TagNodeVertex); ok {
+			for _, edge := range g.EdgesToVertex(tagV) {
+				edge.IncreaseCapacity(MaxInt)
+			}
+		}
+	}
+}
+
+func graphToR(g *Graph, params VbmapParams) (r R) {
+	matrix := make([][]int, params.NumNodes)
+
+	for i := range matrix {
+		matrix[i] = make([]int, params.NumNodes)
+	}
+
+	for _, dst := range params.Nodes() {
+		dstVertex := NodeSinkVertex(dst)
+
+		for _, edge := range g.EdgesToVertex(dstVertex) {
+			src := edge.Src.(TagNodeVertex).Node
+
+			matrix[int(src)][int(dst)] = edge.Flow()
+		}
+	}
+
+	return makeRFromMatrix(params, matrix)
+}
+
 // Construct initial matrix R from RI.
 //
 // Uses buildInitialR to construct R.
-func makeR(params VbmapParams, RI RI) (result R) {
+func makeR(params VbmapParams, ri RI) (result R) {
+	matrix := buildInitialR(params, ri)
+	return makeRFromMatrix(params, matrix)
+}
+
+func makeRFromMatrix(params VbmapParams, matrix [][]int) (result R) {
 	result.params = params
-	result.Matrix = buildInitialR(params, RI)
+	result.Matrix = matrix
 	result.ColSums = make([]int, params.NumNodes)
 	result.RowSums = make([]int, params.NumNodes)
 
@@ -145,7 +224,7 @@ func (cand R) computeEvaluation(rawEval int, outliers int) (eval int) {
 }
 
 // Compute adjusted evaluation of matrix R.
-func (cand R) evaluation() int {
+func (cand R) Evaluation() int {
 	return cand.computeEvaluation(cand.rawEvaluation, cand.outliers)
 }
 
@@ -193,7 +272,7 @@ func (cand R) swapRawEvaluationChange(row int, j int, k int) (change int) {
 // Compute a potential change in evaluation after swapping element j and k in
 // certain row.
 func (cand R) swapBenefit(row int, j int, k int) int {
-	eval := cand.evaluation()
+	eval := cand.Evaluation()
 
 	swapOutliers := cand.outliers + cand.swapOutliersChange(row, j, k)
 	swapRawEval := cand.rawEvaluation + cand.swapRawEvaluationChange(row, j, k)
@@ -219,171 +298,66 @@ func (cand *R) swapElems(row int, j int, k int) {
 	cand.Matrix[row][j], cand.Matrix[row][k] = b, a
 }
 
-// Make a copy of R.
-func (cand R) copy() (result R) {
-	result.params = cand.params
-	result.expectedColSum = cand.expectedColSum
-	result.expectedOutliers = cand.expectedOutliers
-	result.outliers = cand.outliers
-	result.rawEvaluation = cand.rawEvaluation
-
-	result.Matrix = make([][]int, cand.params.NumNodes)
-	for i, row := range cand.Matrix {
-		result.Matrix[i] = make([]int, cand.params.NumNodes)
-		copy(result.Matrix[i], row)
+func buildRandomizedR(params VbmapParams, ri RI, activeVbsPerNode []int) (r R) {
+	matrix := make([][]int, len(ri.Matrix))
+	if params.NumSlaves == 0 {
+		return makeRFromMatrix(params, matrix)
 	}
 
-	result.RowSums = make([]int, cand.params.NumNodes)
-	copy(result.RowSums, cand.RowSums)
+	for i, row := range ri.Matrix {
+		rowSum := activeVbsPerNode[i] * params.NumReplicas
+		slaveVbs := SpreadSum(rowSum, params.NumSlaves)
 
-	result.ColSums = make([]int, cand.params.NumNodes)
-	copy(result.ColSums, cand.ColSums)
+		matrix[i] = make([]int, len(row))
+
+		slave := 0
+		for j, elem := range row {
+			if elem {
+				matrix[i][j] = slaveVbs[slave]
+				slave += 1
+			}
+		}
+	}
+
+	r = makeRFromMatrix(params, matrix)
+	greedyMinimizeR(params, &r)
 
 	return
 }
 
-// A pair of elements (j and k) in a row that were swapped recently and so
-// should not be swapped again.
-type TabuPair struct {
-	row, j, k int
-}
-
-// A single element from a TabuPair.
-type TabuElem struct {
-	row, col int
-}
-
-// A store of element pairs that were swapped recently.
-type Tabu struct {
-	tabu map[TabuPair]int // pairs that were swapped recently
-
-	// index from elements to pair they're part of; this is needed to be
-	// able to remove a pair from tabu if one of its elements gets swapped
-	// with some other element;
-	elemIndex map[TabuElem]TabuPair
-
-	// index from iteration number to a pair that was tabu-ed on that
-	// iteration; used to expire pairs that spent too much time in a tabu;
-	expireIndex map[int]TabuPair
-}
-
-func makeTabuPair(row int, j int, k int) TabuPair {
-	if j > k {
-		j, k = k, j
-	}
-	return TabuPair{row, j, k}
-}
-
-func makeTabu() Tabu {
-	return Tabu{make(map[TabuPair]int),
-		make(map[TabuElem]TabuPair),
-		make(map[int]TabuPair)}
-}
-
-// Add a pair to a tabu. And remove any pairs that have elements in common
-// with this pair.
-func (tabu Tabu) add(time int, row int, j int, k int) {
-	oldItem, present := tabu.elemIndex[TabuElem{row, j}]
-	if present {
-		tabu.expire(tabu.tabu[oldItem])
-	}
-
-	oldItem, present = tabu.elemIndex[TabuElem{row, k}]
-	if present {
-		tabu.expire(tabu.tabu[oldItem])
-	}
-
-	item := makeTabuPair(row, j, k)
-	tabu.tabu[item] = time
-	tabu.expireIndex[time] = item
-
-	tabu.elemIndex[TabuElem{row, j}] = item
-	tabu.elemIndex[TabuElem{row, k}] = item
-}
-
-// Check if a pair of elements is tabu-ed.
-func (tabu Tabu) member(row int, j int, k int) bool {
-	_, present := tabu.tabu[makeTabuPair(row, j, k)]
-	return present
-}
-
-// Expire tabu pair that was added at certain iteration.
-func (tabu Tabu) expire(time int) {
-	item := tabu.expireIndex[time]
-	delete(tabu.expireIndex, time)
-	delete(tabu.tabu, item)
-	delete(tabu.elemIndex, TabuElem{item.row, item.j})
-	delete(tabu.elemIndex, TabuElem{item.row, item.k})
-}
-
-// Try to build balanced matrix R base on matrix RI.
-//
-// General approach is as follows. Fixed number of attempts is made to improve
-// matrix evaluation by swapping two elements in some row. Candidates for
-// swapping are selected to improve or at least not make worse the
-// evaluation. But occasionally swaps that make evaluation worse are also
-// allowed. After swapping the elements, corresponding pair is put into a tabu
-// store to ensure that this improvement is not undone too soon. But after
-// sufficient number of iterations, items in a tabu store are expired. If some
-// item stays in the tabu for a long time, it might mean that the search is
-// stuck at some local minimum. So allowing for some improvements to be undone
-// might help to get out of it. Finally, if there's been no improvement in
-// evaluation for quite a long time, then the search is stopped. It might be
-// retried by buildR(). This will start everything over with new initial
-// matrix R.
-func doBuildR(params VbmapParams, RI RI) (best R) {
-	cand := makeR(params, RI)
-	best = cand.copy()
-
+func greedyMinimizeR(params VbmapParams, r *R) {
 	if params.NumSlaves <= 1 || params.NumReplicas == 0 {
 		// nothing to optimize here; just return
 		return
 	}
 
-	attempts := 10 * params.NumNodes * params.NumNodes
-	expire := 10 * params.NumNodes
-	noImprovementLimit := params.NumNodes * params.NumNodes
-
-	highElems := make([]int, params.NumNodes)
-	lowElems := make([]int, params.NumNodes)
-
-	candidateRows := make([]int, params.NumNodes)
-	tabu := makeTabu()
+	attempts := params.NumNodes * params.NumNodes
+	noImprovementLimit := params.NumNodes * params.NumNodes / 4
 
 	noCandidate := 0
-	swapTabued := 0
-	swapDecreased := 0
 	swapIndifferent := 0
-	swapIncreased := 0
+	swapDecreased := 0
 
 	t := 0
 	noImprovementIters := 0
 
 	for t = 0; t < attempts; t++ {
-		if t >= expire {
-			tabu.expire(t - expire)
-		}
-
 		if noImprovementIters >= noImprovementLimit {
 			break
 		}
 
 		noImprovementIters++
 
-		if best.evaluation() == 0 {
-			break
-		}
-
 		// indexes of columns that have sums higher than expected
-		highElems = []int{}
+		highElems := []int{}
 		// indexes of columns that have sums lower or equal to expected
-		lowElems = []int{}
+		lowElems := []int{}
 
-		for i, elem := range cand.ColSums {
+		for i, elem := range r.ColSums {
 			switch {
-			case elem <= cand.expectedColSum:
+			case elem <= r.expectedColSum:
 				lowElems = append(lowElems, i)
-			case elem > cand.expectedColSum:
+			case elem > r.expectedColSum:
 				highElems = append(highElems, i)
 			}
 		}
@@ -394,16 +368,16 @@ func doBuildR(params VbmapParams, RI RI) (best R) {
 
 		// indexes of rows where the elements in lowIx and highIx
 		// columns can be swapped with some benefit
-		candidateRows = []int{}
+		candidateRows := []int{}
 
 		for row := 0; row < params.NumNodes; row++ {
-			lowElem := cand.Matrix[row][lowIx]
-			highElem := cand.Matrix[row][highIx]
+			lowElem := r.Matrix[row][lowIx]
+			highElem := r.Matrix[row][highIx]
 
 			if lowElem != 0 && highElem != 0 && highElem != lowElem {
-				benefit := cand.swapBenefit(row, lowIx, highIx)
+				benefit := r.swapBenefit(row, lowIx, highIx)
 
-				if benefit >= 0 && rand.Intn(20) != 0 {
+				if benefit > 0 {
 					continue
 				}
 
@@ -417,72 +391,80 @@ func doBuildR(params VbmapParams, RI RI) (best R) {
 		}
 
 		row := candidateRows[rand.Intn(len(candidateRows))]
+		old := r.Evaluation()
+		r.swapElems(row, lowIx, highIx)
 
-		if tabu.member(row, lowIx, highIx) {
-			swapTabued++
-			continue
-		}
-
-		old := cand.evaluation()
-
-		cand.swapElems(row, lowIx, highIx)
-		tabu.add(t, row, lowIx, highIx)
-
-		if old == cand.evaluation() {
+		if old == r.Evaluation() {
 			swapIndifferent++
-		} else if old < cand.evaluation() {
-			swapIncreased++
 		} else {
-			swapDecreased++
-		}
-
-		if cand.evaluation() < best.evaluation() {
-			best = cand.copy()
 			noImprovementIters = 0
+			swapDecreased++
 		}
 	}
 
 	diag.Printf("Search stats")
+	diag.Printf("  final evaluation -> %d", r.Evaluation())
 	diag.Printf("  iters -> %d", t)
 	diag.Printf("  no improvement termination? -> %v",
 		noImprovementIters >= noImprovementLimit)
 	diag.Printf("  noCandidate -> %d", noCandidate)
-	diag.Printf("  swapTabued -> %d", swapTabued)
 	diag.Printf("  swapDecreased -> %d", swapDecreased)
 	diag.Printf("  swapIndifferent -> %d", swapIndifferent)
-	diag.Printf("  swapIncreased -> %d", swapIncreased)
 	diag.Printf("")
 
 	return
 }
 
 // Build balanced matrix R from RI.
-//
-// Main job is done in doBuildR(). It can be called several times if resulting
-// matrix evaluation is not zero. Each time doBuildR() starts from new
-// randomized initial R. If this doesn't lead to a matrix with zero evaluation
-// after fixed number of iterations, then the matrix which had the best
-// evaluation is returned.
-func BuildR(params VbmapParams, RI RI) (best R) {
-	bestEvaluation := (1 << 31) - 1
+func BuildR(params VbmapParams, ri RI, searchParams SearchParams) (r R, err error) {
+	var nonstrictGraph *Graph
 
-	for i := 0; i < 10; i++ {
-		R := doBuildR(params, RI)
-		if R.evaluation() < bestEvaluation {
-			best = R
-			bestEvaluation = R.evaluation()
+	bestViolation := MaxInt
+	bestVbsPerNode := []int(nil)
+
+	for i := 0; i < searchParams.NumRRetries; i++ {
+		activeVbsPerNode := SpreadSum(params.NumVBuckets, params.NumNodes)
+
+		g := buildRFlowGraph(params, ri, activeVbsPerNode)
+		feasible, violation := g.FindFeasibleFlow()
+		if feasible {
+			diag.Printf("Found feasible R after %d attempts", i+1)
+			r = graphToR(g, params)
+			r.Strict = true
+			return
 		}
 
-		if bestEvaluation == 0 {
-			diag.Printf("Found balanced map R after %d attempts", i)
-			break
+		if violation < bestViolation {
+			bestViolation = violation
+			bestVbsPerNode = activeVbsPerNode
+		}
+
+		if searchParams.RelaxTagConstraints && nonstrictGraph == nil {
+			relaxMaxVbsPerTag(g)
+			feasible, _ := g.FindFeasibleFlow()
+			if feasible {
+				nonstrictGraph = g
+			}
 		}
 	}
 
-	if bestEvaluation != 0 {
-		diag.Printf("Failed to find balanced map R (best evaluation %d)",
-			bestEvaluation)
+	if nonstrictGraph != nil {
+		diag.Printf("Managed to find only non-strictly rack aware R")
+		r = graphToR(nonstrictGraph, params)
+		r.Strict = false
+		return
 	}
 
+	if searchParams.RelaxBalance {
+		if bestVbsPerNode == nil {
+			panic("cannot happen")
+		}
+
+		r = buildRandomizedR(params, ri, bestVbsPerNode)
+		r.Strict = false
+		return
+	}
+
+	err = ErrorNoSolution
 	return
 }

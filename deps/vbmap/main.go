@@ -27,9 +27,9 @@ const (
 )
 
 var availableGenerators []RIGenerator = []RIGenerator{
+	makeMaxFlowRIGenerator(),
 	makeGlpkRIGenerator(),
 	makeDummyRIGenerator(),
-	makeMaxFlowRIGenerator(),
 }
 
 var diag *log.Logger
@@ -42,6 +42,8 @@ var (
 	}
 	engine       Engine = Engine{availableGenerators[0]}
 	engineParams string = ""
+	searchParams SearchParams
+	relaxAll     bool
 
 	outputFormat OutputFormat = "text"
 	diagTo       string       = "stderr"
@@ -127,15 +129,25 @@ func normalizeParams(params *VbmapParams) {
 		params.NumReplicas = params.NumNodes - 1
 	}
 
-	for _, tagNodes := range params.Tags.TagsNodesMap() {
-		tagMaxSlaves := params.NumNodes - len(tagNodes)
-		if tagMaxSlaves < params.NumSlaves {
-			params.NumSlaves = tagMaxSlaves
-		}
+	if params.NumSlaves >= params.NumNodes {
+		params.NumSlaves = params.NumNodes - 1
 	}
 
 	if params.NumSlaves < params.NumReplicas {
 		params.NumReplicas = params.NumSlaves
+	}
+
+	numSlaves := params.NumSlaves
+	for _, tagNodes := range params.Tags.TagsNodesMap() {
+		tagMaxSlaves := params.NumNodes - len(tagNodes)
+		if tagMaxSlaves < numSlaves {
+			numSlaves = tagMaxSlaves
+		}
+	}
+
+	if numSlaves >= params.NumReplicas {
+		// prefer having replicas over tag awareness
+		params.NumSlaves = numSlaves
 	}
 
 	if params.NumReplicas == 0 {
@@ -211,7 +223,7 @@ func fatal(format string, args ...interface{}) {
 func parseEngineParams(str string) (params map[string]string) {
 	params = make(map[string]string)
 
-	for _, kv := range strings.Split(str, ";") {
+	for _, kv := range strings.Split(str, ",") {
 		var k, v string
 
 		switch split := strings.SplitN(kv, "=", 2); len(split) {
@@ -232,6 +244,12 @@ func parseEngineParams(str string) (params map[string]string) {
 	return
 }
 
+func normalizeSearchParams(params *SearchParams) {
+	if params.RelaxBalance {
+		params.RelaxTagConstraints = true
+	}
+}
+
 func main() {
 	// TODO
 	flag.IntVar(&params.NumNodes, "num-nodes", 25, "number of nodes")
@@ -245,6 +263,21 @@ func main() {
 	flag.Var(&outputFormat, "output-format", "output format")
 	flag.StringVar(&diagTo, "diag", "stderr", "where to send diagnostics")
 	flag.StringVar(&profTo, "cpuprofile", "", "write cpuprofile to path")
+
+	flag.IntVar(&searchParams.NumRIRetries, "num-ri-retries", 5,
+		"number of attempts to generate matrix RI")
+	flag.IntVar(&searchParams.NumRRetries, "num-r-retries", 25,
+		"number of attempts to generate matrix R (for each RI attempt)")
+	flag.BoolVar(&searchParams.RelaxTagConstraints,
+		"relax-tag-constraints", false,
+		"allow relaxing tag constraints")
+	flag.BoolVar(&searchParams.RelaxNumSlaves,
+		"relax-num-slaves", false,
+		"allow relaxing number of slaves")
+	flag.BoolVar(&searchParams.RelaxBalance,
+		"relax-balance", false,
+		"allow relaxing balance")
+	flag.BoolVar(&relaxAll, "relax-all", false, "relax all constraints")
 
 	flag.Int64Var(&seed, "seed", time.Now().UTC().UnixNano(), "random seed")
 
@@ -303,9 +336,16 @@ func main() {
 		diag.Printf("    %v -> %v", node, params.Tags[node])
 	}
 
+	if relaxAll {
+		searchParams.RelaxNumSlaves = true
+		searchParams.RelaxTagConstraints = true
+		searchParams.RelaxBalance = true
+	}
+	normalizeSearchParams(&searchParams)
+
 	start := time.Now()
 
-	solution, err := VbmapGenerate(params, engine.generator)
+	solution, err := VbmapGenerate(params, engine.generator, searchParams)
 	if err != nil {
 		switch err {
 		case ErrorNoSolution:

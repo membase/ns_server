@@ -138,8 +138,8 @@ func (ctx *selectionCtx) getStat(x, y Node, distance int) int {
 }
 
 func (ctx *selectionCtx) getTagStat(x, y Node, distance int) int {
-	xTag := params.Tags[x]
-	yTag := params.Tags[y]
+	xTag := ctx.params.Tags[x]
+	yTag := ctx.params.Tags[y]
 	tagPair := tagPair{xTag, yTag, distance}
 
 	stat, _ := ctx.tagStats[tagPair]
@@ -175,7 +175,7 @@ func (ctx *selectionCtx) notePair(x, y Node, distance int) {
 
 func (ctx *selectionCtx) noteChain(chain []Node) {
 	for i, node := range chain {
-		tag := params.Tags[node]
+		tag := ctx.params.Tags[node]
 
 		nodeCount := ctx.slaveCounts[node]
 		tagCount := ctx.tagCounts[tag]
@@ -420,8 +420,8 @@ func (ctx *selectionCtx) nextBestChain() (result []Node) {
 }
 
 // Construct vbucket map from a matrix R.
-func buildVbmap(R R) (vbmap Vbmap) {
-	params := R.params
+func buildVbmap(r R) (vbmap Vbmap) {
+	params := r.params
 	vbmap = makeVbmap(params)
 
 	// determines how many active vbuckets each node has
@@ -435,7 +435,7 @@ func buildVbmap(R R) (vbmap Vbmap) {
 		// Otherwise matrix R defines the amount of active vbuckets
 		// each node has.
 		nodeVbs = make([]int, params.NumNodes)
-		for i, sum := range R.RowSums {
+		for i, sum := range r.RowSums {
 			vbs := sum / params.NumReplicas
 			if sum%params.NumReplicas != 0 {
 				panic("row sum is not multiple of NumReplicas")
@@ -446,7 +446,7 @@ func buildVbmap(R R) (vbmap Vbmap) {
 	}
 
 	vbucket := 0
-	for i, row := range R.Matrix {
+	for i, row := range r.Matrix {
 		vbs := nodeVbs[i]
 		ctx := makeSelectionCtx(params, Node(i), vbs)
 
@@ -489,18 +489,116 @@ func buildVbmap(R R) (vbmap Vbmap) {
 	return
 }
 
-// Generate vbucket map given a generator for matrix RI and vbucket map
-// parameters.
-func VbmapGenerate(params VbmapParams, gen RIGenerator) (vbmap Vbmap, err error) {
-	RI, err := gen.Generate(params)
-	if err != nil {
-		return
+func tryBuildRI(params *VbmapParams, gen RIGenerator,
+	searchParams SearchParams) (ri RI, err error) {
+
+	numSlaves := params.NumSlaves
+	numReplicas := params.NumReplicas
+
+	numSlavesCandidates := []int{numSlaves}
+	if searchParams.RelaxNumSlaves && numSlaves > 0 {
+		low := (numSlaves / numReplicas) * numReplicas
+		for i := params.NumSlaves - 1; i >= low; i-- {
+			numSlavesCandidates = append(numSlavesCandidates, i)
+		}
 	}
 
-	diag.Printf("Generated topology:\n%s", RI.String())
+	var nonstrictRI RI
+	nonstrictNumSlaves := -1
 
-	R := BuildR(params, RI)
-	diag.Printf("Final map R:\n%s", R.String())
+	for _, numSlaves := range numSlavesCandidates {
+		diag.Printf("Trying to generate RI with NumSlaves=%d", numSlaves)
 
-	return buildVbmap(R), nil
+		params.NumSlaves = numSlaves
+
+		ri, err = gen.Generate(*params, searchParams)
+		if err != nil && err != ErrorNoSolution {
+			return
+		}
+
+		if err == nil {
+			if ri.TagAwarenessRank == StrictlyTagAware {
+				return
+			}
+
+			if nonstrictNumSlaves == -1 ||
+				nonstrictRI.TagAwarenessRank > ri.TagAwarenessRank {
+
+				nonstrictRI = ri
+				nonstrictNumSlaves = numSlaves
+			}
+		}
+	}
+
+	if nonstrictNumSlaves != -1 {
+		params.NumSlaves = nonstrictNumSlaves
+		return nonstrictRI, nil
+	}
+
+	err = ErrorNoSolution
+	return
+}
+
+func tryBuildR(params VbmapParams, gen RIGenerator,
+	searchParams SearchParams) (ri RI, r R, err error) {
+
+	var nonstrictRI RI
+	var nonstrictR R
+	foundNonstrict := false
+
+	for i := 0; i < searchParams.NumRIRetries; i++ {
+		ri, err = tryBuildRI(&params, gen, searchParams)
+		if err != nil {
+			return
+		}
+
+		r, err = BuildR(params, ri, searchParams)
+		if err != nil {
+			if err == ErrorNoSolution {
+				continue
+			}
+
+			return
+		}
+
+		if r.Strict {
+			diag.Printf("Found feasible R after trying %d RI(s)", i+1)
+			return
+		}
+
+		if !foundNonstrict ||
+			nonstrictR.Evaluation() > r.Evaluation() {
+
+			nonstrictRI = ri
+			nonstrictR = r
+			foundNonstrict = true
+
+			if ri.TagAwarenessRank != StrictlyTagAware {
+				break
+			}
+		}
+	}
+
+	if foundNonstrict {
+		return nonstrictRI, nonstrictR, nil
+	}
+
+	err = ErrorNoSolution
+	return
+}
+
+// Generate vbucket map given a generator for matrix RI and vbucket map
+// parameters.
+func VbmapGenerate(params VbmapParams, gen RIGenerator,
+	searchParams SearchParams) (vbmap Vbmap, err error) {
+
+	ri, r, err := tryBuildR(params, gen, searchParams)
+	if err != nil {
+		return nil, err
+	}
+
+	diag.Printf("Generated topology:\n%s", ri.String())
+	diag.Printf("Final map R:\n%s", r.String())
+
+	return buildVbmap(r), nil
 }

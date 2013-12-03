@@ -637,33 +637,22 @@ invoke_vbmap(CurrentMap, Nodes, NumVBuckets, NumSlaves, NumReplicas, Tags) ->
     DiagPath = path_config:tempfile("vbmap_diag", ""),
 
     try
-        R = do_invoke_vbmap(VbmapPath, maxflow, DiagPath, CurrentMap, Nodes,
-                            NumVBuckets, NumSlaves, NumReplicas, Tags),
-        case R of
-            {ok, Map} ->
-                Map;
-            no_solution ->
-                ale:info(?USER_LOGGER,
-                         "Couldn't generate rack-aware vbucket map. "
-                         "Falling back to rack-unaware one."),
-                {ok, Map} = do_invoke_vbmap(VbmapPath, dummy, DiagPath,
-                                            CurrentMap, Nodes, NumVBuckets,
-                                            NumSlaves, NumReplicas, Tags),
-                Map
-        end
+        {ok, Map} = do_invoke_vbmap(VbmapPath, DiagPath, CurrentMap, Nodes,
+                                    NumVBuckets, NumSlaves, NumReplicas, Tags),
+        Map
     after
         file:delete(DiagPath)
     end.
 
-do_invoke_vbmap(VbmapPath, Backend, DiagPath,
+do_invoke_vbmap(VbmapPath, DiagPath,
                 CurrentMap, Nodes, NumVBuckets, NumSlaves, NumReplicas, Tags) ->
     misc:executing_on_new_process(
       fun () ->
-              do_invoke_vbmap_body(VbmapPath, Backend, DiagPath, CurrentMap, Nodes,
+              do_invoke_vbmap_body(VbmapPath, DiagPath, CurrentMap, Nodes,
                                    NumVBuckets, NumSlaves, NumReplicas, Tags)
       end).
 
-do_invoke_vbmap_body(VbmapPath, Backend, DiagPath, CurrentMap, Nodes,
+do_invoke_vbmap_body(VbmapPath, DiagPath, CurrentMap, Nodes,
                      NumVBuckets, NumSlaves, NumReplicas, Tags) ->
     NumNodes = length(Nodes),
 
@@ -672,8 +661,9 @@ do_invoke_vbmap_body(VbmapPath, Backend, DiagPath, CurrentMap, Nodes,
              "--num-vbuckets", integer_to_list(NumVBuckets),
              "--num-nodes", integer_to_list(NumNodes),
              "--num-slaves", integer_to_list(NumSlaves),
-             "--num-replicas", integer_to_list(NumReplicas)],
-    Args = vbmap_backend_args(Backend, Nodes, Tags) ++ Args0,
+             "--num-replicas", integer_to_list(NumReplicas),
+             "--relax-all"],
+    Args = vbmap_tags_args(Nodes, Tags) ++ Args0,
 
     Port = erlang:open_port({spawn_executable, VbmapPath},
                             [stderr_to_stdout, binary,
@@ -751,10 +741,7 @@ map_tags(Nodes, RawTags) ->
 
     [{dict:fetch(N, NodeIxMap), dict:fetch(T, TagIxMap)} || {N, T} <- RawTags].
 
-vbmap_backend_args(dummy, _Nodes, _RawTags) ->
-    ["--engine", "dummy"];
-vbmap_backend_args(maxflow, Nodes, RawTags) ->
-    Extra =
+vbmap_tags_args(Nodes, RawTags) ->
         case RawTags of
             undefined ->
                 [];
@@ -763,9 +750,7 @@ vbmap_backend_args(maxflow, Nodes, RawTags) ->
                 TagsStrings = [?i2l(N) ++ ":" ++ ?i2l(T) || {N, T} <- Tags],
                 TagsString = string:join(TagsStrings, ","),
                 ["--tags", TagsString]
-        end,
-
-    ["--engine", "maxflow"] ++ Extra.
+        end.
 
 collect_vbmap_output(Port) ->
     do_collect_vbmap_output(Port, []).

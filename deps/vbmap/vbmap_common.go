@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ErrorNoSolution = errors.New("The problem has no solution")
+	ErrorNoSolution = errors.New("Couldn't find a solution")
 )
 
 type Node int
@@ -35,6 +35,15 @@ type VbmapParams struct {
 	NumReplicas int
 }
 
+type SearchParams struct {
+	NumRIRetries int
+	NumRRetries  int
+
+	RelaxTagConstraints bool
+	RelaxNumSlaves      bool
+	RelaxBalance        bool
+}
+
 func (params VbmapParams) Nodes() (nodes []Node) {
 	for n := 0; n < params.NumNodes; n++ {
 		nodes = append(nodes, Node(n))
@@ -45,7 +54,7 @@ func (params VbmapParams) Nodes() (nodes []Node) {
 
 func (params VbmapParams) String() string {
 	return fmt.Sprintf("VbmapParams{Tags: %s, NumNodes: %d, "+
-		"NumSlaves: %d, NumVBuckets: %d, NumReplicas: %d",
+		"NumSlaves: %d, NumVBuckets: %d, NumReplicas: %d}",
 		params.Tags, params.NumNodes, params.NumSlaves,
 		params.NumVBuckets, params.NumReplicas)
 }
@@ -87,11 +96,22 @@ func (tags TagMap) TagsNodesMap() (m map[Tag][]Node) {
 	return
 }
 
-type RI [][]bool
+type TagAwarenessRank int
+
+const (
+	StrictlyTagAware TagAwarenessRank = iota
+	WeaklyTagAware
+	NonTagAware
+)
+
+type RI struct {
+	Matrix           [][]bool
+	TagAwarenessRank TagAwarenessRank
+}
 
 type RIGenerator interface {
 	SetParams(params map[string]string) error
-	Generate(params VbmapParams) (RI, error)
+	Generate(params VbmapParams, searchParams SearchParams) (RI, error)
 	fmt.Stringer
 }
 
@@ -105,10 +125,10 @@ func (_ DontAcceptRIGeneratorParams) SetParams(params map[string]string) error {
 	return nil
 }
 
-func (RI RI) String() string {
+func (ri RI) String() string {
 	buffer := &bytes.Buffer{}
 
-	for _, row := range RI {
+	for _, row := range ri.Matrix {
 		for _, elem := range row {
 			fmt.Fprintf(buffer, "%2d ", B2i(elem))
 		}
