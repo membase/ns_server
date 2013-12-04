@@ -57,3 +57,12 @@ func Min(a, b int) int {
 		return b
 	}
 }
+
+func TrivialTags(nodes int) (tags map[Node]Tag) {
+	tags = make(map[Node]Tag)
+	for n := 0; n < nodes; n++ {
+		tags[Node(n)] = Tag(n)
+	}
+
+	return
+}

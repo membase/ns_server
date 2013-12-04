@@ -394,7 +394,11 @@ def make_product_task(guts, initargs_path):
                    ["couch_dbdump", path],
                    log_file = "ddocs.log")
          for bucket in set(correct_split(read_guts(guts, "buckets"), ",")) - set(correct_split(read_guts(guts, "memcached_buckets"), ","))
-         for path in glob.glob(os.path.join(dbdir, bucket, "master.couch*"))]
+         for path in glob.glob(os.path.join(dbdir, bucket, "master.couch*"))],
+        [AllOsTask("replication docs (%s)" % (path),
+                   ["couch_dbdump", path],
+                   log_file = "ddocs.log")
+         for path in glob.glob(os.path.join(dbdir, "_replicator.couch*"))]
         ]
 
     _tasks = flatten(_tasks)

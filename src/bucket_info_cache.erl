@@ -103,6 +103,8 @@ do_compute_bucket_info(Bucket, Config) ->
 
     J = {[{rev, vclock:count_changes(BucketVC)},
           {name, BucketBin},
+          {uri, <<"/pools/default/buckets/", BucketBin/binary, "?bucket_uuid=", UUID/binary>>},
+          {streamingUri, <<"/pools/default/bucketsStreaming/", BucketBin/binary, "?bucket_uuid=", UUID/binary>>},
           {nodes, NIs},
           {nodeLocator, ns_bucket:node_locator(BucketConfig)},
           {uuid, UUID},

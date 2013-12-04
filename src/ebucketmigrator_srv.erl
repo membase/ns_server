@@ -25,7 +25,7 @@
 -define(UPSTREAM_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_upstream_us, 600000000)).
 -define(TIMEOUT_CHECK_INTERVAL, 15000).
 -define(TERMINATE_TIMEOUT, ns_config_ets_dup:get_timeout(ebucketmigrator_terminate, 110000)).
-
+-define(HIBERNATE_TIMEOUT, 10000).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,
@@ -312,12 +312,12 @@ handle_call(had_backfill, From, #state{had_backfill = HadBF} = State) ->
                   backfill_opaque = BFOpaque} = HadBF,
     case Value =/= undefined andalso BFOpaque =:= undefined of
         true ->
-            {reply, Value, State};
+            {reply, Value, State, ?HIBERNATE_TIMEOUT};
         false ->
             OldWaiters = HadBF#had_backfill.waiters,
             NewBF = HadBF#had_backfill{waiters = [From | OldWaiters]},
             ?rebalance_debug("Suspended had_backfill waiter~n~p", [NewBF]),
-            {noreply, State#state{had_backfill = NewBF}}
+            {noreply, State#state{had_backfill = NewBF}, ?HIBERNATE_TIMEOUT}
     end;
 handle_call(wait_backfill_complete, From, #state{had_backfill = HadBF,
                                                  backfill_end_waiter = CurrentWaiter} = State) ->
@@ -325,22 +325,22 @@ handle_call(wait_backfill_complete, From, #state{had_backfill = HadBF,
         true ->
             case CurrentWaiter of
                 completed ->
-                    {reply, ok, State};
+                    {reply, ok, State, ?HIBERNATE_TIMEOUT};
                 undefined ->
                     {noreply, State#state{backfill_end_waiter = From}};
                 _ ->
                     {reply, already_waiting, State}
             end;
         _ ->
-            {reply, not_backfilling, State}
+            {reply, not_backfilling, State, ?HIBERNATE_TIMEOUT}
     end;
 handle_call(_Req, _From, State) ->
-    {reply, unhandled, State}.
+    {reply, unhandled, State, ?HIBERNATE_TIMEOUT}.
 
 
 handle_cast(Msg, State) ->
     ?rebalance_warning("Unhandled cast: ~p", [Msg]),
-    {noreply, State}.
+    {noreply, State, ?HIBERNATE_TIMEOUT}.
 
 
 handle_info(retry_not_ready_vbuckets, _State) ->
@@ -391,7 +391,7 @@ handle_info({tcp, Socket, Data},
 
     {state_is_not_completed, true} = {state_is_not_completed, State1#state.vb_filter_change_state =/= completed},
 
-    {noreply, State1};
+    {noreply, State1, ?HIBERNATE_TIMEOUT};
 handle_info({tcp_closed, Socket}, #state{upstream=Socket} = State) ->
     case State#state.takeover of
         true ->
@@ -414,14 +414,35 @@ handle_info({check_for_timeout, Timeout} = Msg, State) ->
         true ->
             {stop, timeout, State};
         false ->
-            {noreply, State}
+            {noreply, State, ?HIBERNATE_TIMEOUT}
     end;
 handle_info({'EXIT', _Pid, _Reason} = ExitSignal, State) ->
     ?rebalance_error("killing myself due to exit signal: ~p", [ExitSignal]),
     {stop, {got_exit, ExitSignal}, State};
+handle_info(timeout, #state{had_backfill = HadBF,
+                            backfill_end_waiter = CurrentWaiter,
+                            upstream_sender = UpstreamSender} = State) ->
+    Timeout = case HadBF#had_backfill.value of
+                  true ->
+                      case CurrentWaiter of
+                          completed ->
+                              hibernate;
+                          _ ->
+                              ?HIBERNATE_TIMEOUT
+                      end;
+                  _ ->
+                      hibernate
+              end,
+    case Timeout of
+        hibernate ->
+            UpstreamSender ! hibernate;
+        _ ->
+            ok
+    end,
+    {noreply, State, Timeout};
 handle_info(Msg, State) ->
     ?rebalance_warning("Unexpected handle_info(~p, ~p)", [Msg, State]),
-    {noreply, State}.
+    {noreply, State, ?HIBERNATE_TIMEOUT}.
 
 
 init({Src, Dst, Opts}=InitArgs) ->
@@ -649,7 +670,7 @@ init({Src, Dst, Opts}=InitArgs) ->
             do_note_tap_stats(State, NoteTapTag)
     end,
 
-    gen_server:enter_loop(?MODULE, [], State2).
+    gen_server:enter_loop(?MODULE, [], State2, ?HIBERNATE_TIMEOUT).
 
 -define(TAP_STATS_ATTEMPTS, 5).
 do_note_tap_stats(State, NoteTapTag) ->
@@ -682,6 +703,8 @@ do_note_tap_stats(#state{upstream_aux = Aux,
 
 upstream_sender_loop(Upstream) ->
     receive
+        hibernate ->
+            erlang:hibernate(erlang, apply, [fun upstream_sender_loop/1, [Upstream]]);
         {silence_upstream_new_style, Pid} ->
             Pid ! upstream_silenced,
             erlang:hibernate(erlang, exit, [silenced]);
