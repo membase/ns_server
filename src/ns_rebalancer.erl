@@ -431,7 +431,18 @@ unbalanced_with_config(Map, Topology, BucketConfig, Config) ->
     OptsHash = proplists:get_value(map_opts_hash, BucketConfig),
     OptsDiffer = case OptsHash of
                      undefined ->
-                         false;
+                         %% note: false is required for config upgrade
+                         %% from 1.8. Otherwise make test fails
+                         %% ns_online_config_upgrader:maybe_add_vbucket_map_history test
+                         %%
+                         %% and true is required in order to ask for
+                         %% rebalance after offline upgrade
+                         case ns_config:search(Config, cluster_compat_version) of
+                             {value, [_, _ | _] = CompatMode} when CompatMode >= [2, 5] ->
+                                 true;
+                             _ ->
+                                 false
+                         end;
                      _ ->
                          erlang:phash2(Opts) =/= OptsHash
                  end,
