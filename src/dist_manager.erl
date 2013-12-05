@@ -284,8 +284,12 @@ handle_call({adjust_my_address, _, _}, _From,
 handle_call(using_user_supplied_address, _From,
             #state{user_supplied = UserSupplied} = State) ->
     {reply, UserSupplied, State};
-handle_call(reset_address, _From, State) ->
+handle_call(reset_address, _From,
+            #state{self_started = true,
+                   user_supplied = true} = State) ->
     do_adjust_address("127.0.0.1", false, State);
+handle_call(reset_address, _From, State) ->
+    {reply, net_restarted, State};
 handle_call(_Request, _From, State) ->
     {reply, unhandled, State}.
 
