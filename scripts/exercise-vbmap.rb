@@ -43,20 +43,35 @@ notok_count = 0
 def check_output!(output, nodes, tags)
   tag_size = nodes / tags
   vbucket_map = output.split("\n").zip(0...1024).map {|(l, vb)| raise unless l =~ /(\d+):\s+(.*)/; raise "#{$1} #{vb}" unless $1.to_i == vb; $2.split(" ").map(&:to_i)}
-  tags_ri = {}
+
+  strict_violations = 0
+  weak_violations = 0
+
   vbucket_map.each_with_index do |row0, vb|
     row = row0.map {|v| v / tag_size}
+
+    strictly_broken = false
+    weakly_broken = false
+
     row.size.times do |j|
       from = row[j]
       j.times do |k|
         to = row[k]
-        tags_ri[[from,to]] = 1
-        tags_ri[[to,from]] = 1
+
+        weakly_broken ||= (from == to)
+        strictly_broken ||= (j == 0 && from == to)
       end
     end
+
+    if strictly_broken
+      strict_violations += 1
+    elsif weakly_broken
+      weak_violations += 1
+    end
   end
-  tags_ri.keys.each do |(i,j)|
-    puts "note: broken rack-awarness for tag #{i}" if i == j
+
+  if strict_violations + weak_violations != 0
+    puts "\nnote: rack-awareness strictly broken for #{strict_violations} vbucket(s), weakly broken for #{weak_violations} vbucket(s)"
   end
 end
 
