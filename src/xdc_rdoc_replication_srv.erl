@@ -72,6 +72,8 @@ init([]) ->
     [{?MODULE, N} ! replicate_newnodes_docs ||
         N <- get_remote_nodes()],
 
+    ?log_debug("Loaded the following docs:~n~p", [Docs]),
+
     {ok, #state{local_docs=Docs}}.
 
 
