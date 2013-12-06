@@ -453,6 +453,8 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
                     ale:info(?USER_LOGGER, "Updated bucket ~s (of type ~s) properties:~n~p",
                              [BucketId, BucketType, lists:keydelete(sasl_password, 1, UpdatedProps)]),
                     Req:respond({200, server_header(), []});
+                rebalance_running ->
+                    Req:respond({503, server_header(), "\"cannot update bucket while rebalance is running\""});
                 {exit, {not_found, _}, _} ->
                     %% if this happens then our validation raced, so repeat everything
                     handle_bucket_update_inner(BucketId, Req, Params, Limit-1)

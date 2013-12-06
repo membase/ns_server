@@ -334,6 +334,8 @@ handle_event(Event, StateName, State) ->
     {stop, {unhandled, Event, StateName}, State}.
 
 
+handle_sync_event({update_bucket, _BucketType, _BucketName, _UpdatedProps}, _From, rebalancing, State) ->
+    {reply, rebalance_running, rebalancing, State};
 handle_sync_event({update_bucket, BucketType, BucketName, UpdatedProps}, _From, StateName, State) ->
     Reply = ns_bucket:update_bucket_props(BucketType, BucketName, UpdatedProps),
     case Reply of
