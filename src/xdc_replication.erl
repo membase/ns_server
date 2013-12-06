@@ -275,8 +275,9 @@ handle_info({src_db_updated, Vb}, #replication{vb_rep_dict = Dict} = State) ->
             Pid ! src_db_updated;
         error ->
             % no state yet, or already erased
-            ?xdcr_debug("get src_db_udpated from vb ~p, but the vb replicator has not "
-                        "been initialized yet or has been deleted.", [Vb]),
+            RepInfo = xdc_rep_utils:get_rep_info(State#replication.rep),
+            ?xdcr_debug("get src_db_udpated from vb ~p (rep ~s), but the vb replicator has not "
+                        "been initialized yet or has been deleted.", [Vb, RepInfo]),
             ok
     end,
     {noreply, State};
@@ -411,17 +412,20 @@ start_vb_replicators(#replication{rep = Rep,
                 end, Dict, RemovedVbs),
     % now start the new Vbs
     ?xdcr_debug("starting replicators for new vbs :~p", [NewVbs]),
-    lists:foreach(
-                fun(Vb) ->
-                        {ok, _Pid} = xdc_vbucket_rep_sup:start_vbucket_rep(Sup,
-                                                                           Rep,
-                                                                           Vb,
-                                                                           InitThrottle,
-                                                                           WorkThrottle,
-                                                                           self(),
-                                                                           RepMode)
-                end, misc:shuffle(NewVbs)),
-    Replication#replication{vb_rep_dict = Dict2}.
+    Dict3 = lists:foldl(
+              fun(Vb, DictAcc) ->
+                      {ok, Pid} = xdc_vbucket_rep_sup:start_vbucket_rep(Sup,
+                                                                        Rep,
+                                                                        Vb,
+                                                                        InitThrottle,
+                                                                        WorkThrottle,
+                                                                        self(),
+                                                                        RepMode),
+                      VbStatus = #rep_vb_status{pid = Pid},
+                      dict:store(Vb, VbStatus, DictAcc)
+              end, Dict2, misc:shuffle(NewVbs)),
+    ?xdcr_debug("total number of started vb replicator: ~p", [dict:size(Dict3)]),
+    Replication#replication{vb_rep_dict = Dict3}.
 
 %% get the number of succ and failed checkpoints from checkpoint history
 checkpoint_status(CheckpointHistory) ->

@@ -24,7 +24,7 @@
 -export([split_dbname/1]).
 -export([get_master_db/1, get_checkpoint_log_id/2]).
 -export([get_trace_dump_invprob/0]).
--export([sanitize_status/3]).
+-export([sanitize_status/3, get_rep_info/1]).
 
 -include("xdc_replicator.hrl").
 
@@ -253,4 +253,7 @@ sanitize_state(State) ->
 
 sanitize_status(_Opt, _PDict, State) ->
     [{data, [{"State", sanitize_state(State)}]}].
+
+get_rep_info(#rep{source = Src, target = Tgt, replication_mode = Mode}) ->
+    ?format_msg("from ~p to ~p in mode: ~p", [Src, Tgt, Mode]).
 
