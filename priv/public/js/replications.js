@@ -287,8 +287,12 @@ function mkReplicationSectionCell(ns, currentXDCRSettingsURI, tasksProgressCell,
         }
       }
 
+      var protocolVersion = replication.replicationType === "xmem" ? "2" :
+                            replication.replicationType === "capi" ? "1" : BUG();
+
       return {
         id: replication.id,
+        protocol: "Version " + protocolVersion,
         bucket: replication.source,
         to: 'bucket "' + replication.target.split('buckets/')[1] + '" on cluster ' + name,
         status: replication.status == 'running' ? 'Replicating' : 'Starting Up',

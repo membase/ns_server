@@ -259,7 +259,7 @@ default() ->
      {auto_failover_cfg, [{enabled, false},
                           % timeout is the time (in seconds) a node needs to be
                           % down before it is automatically faileovered
-                          {timeout, 30},
+                          {timeout, 120},
                           % max_nodes is the maximum number of nodes that may be
                           % automatically failovered
                           {max_nodes, 1},

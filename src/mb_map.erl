@@ -186,22 +186,38 @@ generate_map_star(Map, Nodes, Options) ->
     MapsHistory = proplists:get_value(maps_history, Options, []),
     NonHistoryOptionsNow = lists:sort(lists:keydelete(maps_history, 1, Options)),
 
-    NodesSet = sets:from_list(Nodes),
-    MapsFromPast = lists:flatmap(fun ({PastMap, NonHistoryOptions}) ->
-                                         case lists:sort(NonHistoryOptions) =:= NonHistoryOptionsNow of
-                                             true ->
-                                                 [{M, vbucket_movements_star(Map, M)} ||
-                                                      M <- matching_renamings(NodesSet, Map, PastMap)];
-                                             false ->
-                                                 []
-                                         end
-                                 end, MapsHistory),
-    ?log_debug("Scores for past maps:~n~p", [[S || {_, S} <- MapsFromPast]]),
-
     NumVBuckets = length(Map),
     NumSlaves = proplists:get_value(max_slaves, Options, 10),
     NumReplicas = length(hd(Map)) - 1,
     Tags = proplists:get_value(tags, Options),
+
+    NodesSet = sets:from_list(Nodes),
+    MapsFromPast =
+        lists:flatmap(fun ({PastMap, NonHistoryOptions0}) ->
+                              NonHistoryOptions = lists:sort(NonHistoryOptions0),
+                              Compatible =
+                                  case NonHistoryOptions =:= NonHistoryOptionsNow of
+                                      true ->
+                                          true;
+                                      false ->
+                                          NonTopologyOptions =
+                                              lists:keydelete(replication_topology, 1, NonHistoryOptions),
+                                          NonTopologyOptionsNow =
+                                              lists:keydelete(replication_topology, 1, NonHistoryOptionsNow),
+
+                                          NonTopologyOptions =:= NonTopologyOptionsNow andalso
+                                              NumReplicas =:= 1
+                                  end,
+
+                              case Compatible of
+                                  true ->
+                                      [{M, vbucket_movements_star(Map, M)} ||
+                                          M <- matching_renamings(NodesSet, Map, PastMap)];
+                                  false ->
+                                      []
+                              end
+                      end, MapsHistory),
+    ?log_debug("Scores for past maps:~n~p", [[S || {_, S} <- MapsFromPast]]),
 
     GeneratedMaps0 =
         lists:append(

@@ -322,6 +322,8 @@ handle_event(Event, StateName, State) ->
     {stop, {unhandled, Event, StateName}, State}.
 
 
+handle_sync_event({update_bucket, _BucketType, _BucketName, _UpdatedProps}, _From, rebalancing, State) ->
+    {reply, rebalance_running, rebalancing, State};
 handle_sync_event({update_bucket, BucketType, BucketName, UpdatedProps}, _From, StateName, State) ->
     Reply = ns_bucket:update_bucket_props(BucketType, BucketName, UpdatedProps),
     case Reply of
@@ -533,6 +535,7 @@ idle({flush_bucket, BucketName}, _From, State) ->
     perform_bucket_flushing(BucketName, State);
 idle({delete_bucket, BucketName}, _From,
      #idle_state{remaining_buckets=RemainingBuckets} = State) ->
+    xdc_rdoc_replication_srv:delete_all_replications(BucketName),
     DeleteRV = ns_bucket:delete_bucket_returning_config(BucketName),
     NewState =
         case DeleteRV of
