@@ -35,8 +35,8 @@
 
 -include("xdc_replicator.hrl").
 
-start_link(MaxConcurrency, Parent) ->
-    {ok, Pid} = gen_server:start_link(?MODULE, {MaxConcurrency, Parent}, []),
+start_link({MaxConcurrency, Type}, Parent) ->
+    {ok, Pid} = gen_server:start_link(?MODULE, {MaxConcurrency, Type, Parent}, []),
     ?xdcr_debug("concurrency throttle started: ~p", [Pid]),
     {ok, Pid}.
 
@@ -52,14 +52,15 @@ is_done(Server) ->
 change_tokens(Server, NewTokens) ->
     gen_server:call(Server, {change_tokens, NewTokens}, infinity).
 
-init({Count, Parent}) ->
-    ?xdcr_debug("init concurrent throttle process, pid: ~p, "
-                "# of available token: ~p", [self(), Count]),
+init({Count, Type, Parent}) ->
+    ?xdcr_debug("init concurrent throttle process, pid: ~p, type: ~p"
+                "# of available token: ~p", [self(), Type, Count]),
     WaitingPool = dict:new(),
     ActivePool = dict:new(),
     TargetLoad = dict:new(),
     MonitorDict = dict:new(),
     {ok, #concurrency_throttle_state{parent = Parent,
+                                     type = Type,
                                      total_tokens = Count,
                                      avail_tokens = Count,
                                      waiting_pool = WaitingPool,

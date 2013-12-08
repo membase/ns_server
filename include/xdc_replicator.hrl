@@ -59,6 +59,10 @@
 -define(XDCR_XMEM_MEMCACHED_ERRORS, 10).
 
 
+%% concurrency throttle type
+-define(XDCR_INIT_CONCUR_THROTTLE, "xdcr-init").
+-define(XDCR_REPL_CONCUR_THROTTLE, "xdcr-repl").
+
 %% -------------------------%%
 %%   XDCR data structures   %%
 %% -------------------------%%
@@ -250,6 +254,8 @@
 -record(concurrency_throttle_state, {
           %% parent process creating the throttle server
           parent,
+          %% type of concurrency throttle
+          type,
           %% total number of tokens
           total_tokens,
           %% number of available tokens
