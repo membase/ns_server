@@ -386,9 +386,17 @@ handle_info({buckets, Buckets0},
             NewState = State#replication{vbucket_sup = Sup2};
         SrcConfig ->
             NewVbs = xdc_rep_utils:my_active_vbuckets(SrcConfig),
-            ?xdcr_debug("vbucket map changed for bucket ~p "
-                        "adjust replicators for new vbs :~p", [?b2l(SrcBucket), NewVbs]),
-            NewState = start_vb_replicators(State#replication{vbs = NewVbs})
+            NewState =
+                case (State#replication.vbs == NewVbs) of
+                true ->
+                    %% no change, skip it
+                    State;
+                _ ->
+                    ?xdcr_debug("vbucket map changed for bucket ~p "
+                                "adjust replicators for new vbs :~p",
+                                [?b2l(SrcBucket), NewVbs]),
+                    start_vb_replicators(State#replication{vbs = NewVbs})
+            end
     end,
     {noreply, NewState}.
 
