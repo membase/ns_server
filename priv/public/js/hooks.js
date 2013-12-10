@@ -706,7 +706,7 @@ var MockedRequest = mkClass({
         return this.errorResponse({
           "errors": {"windowOutlineHex": "Acceptable format is RRGGBB or RGB"}
         });
-      }, opt("tabName"), opt("windowOutlineHex"))],
+      }, opt("tabName"), opt("windowOutlineHex"), opt("memoryQuota"))],
       [post("settings", "autoFailover"), {
         "responseText": JSON.stringify({"errors": {"timeout": "The value of \"timeout\" must be a positive integer in a range from 30 to 3600"}})
       }],
