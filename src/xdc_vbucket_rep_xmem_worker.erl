@@ -317,7 +317,15 @@ handle_call({flush_docs_pipeline, DocsList}, _From,
 
     {ok, Statuses} = pooled_memcached_client:bulk_set_metas(McdDst, VBucket, DocsList),
 
-    {Flushed, Enoent, Eexist, NotMyVb, Einval, OtherErr, ErrorKeys} = categorise_statuses(Statuses, DocsList),
+    {ErrorDict, ErrorKeys} = categorise_statuses_to_dict(Statuses, DocsList),
+    Flushed = lookup_error_dict(success, ErrorDict),
+    Eexist = lookup_error_dict(key_enoent, ErrorDict),
+    Enoent = lookup_error_dict(key_eexists, ErrorDict),
+    NotMyVb = lookup_error_dict(not_my_vbucket, ErrorDict),
+    Einval = lookup_error_dict(einval, ErrorDict),
+    TmpFail = lookup_error_dict(etmpfail, ErrorDict),
+    Enomem = lookup_error_dict(enomem, ErrorDict),
+    OtherErr = (length(Statuses) - Flushed - Eexist - Enoent - NotMyVb - Einval - TmpFail - Enomem),
 
     TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
 
@@ -342,8 +350,9 @@ handle_call({flush_docs_pipeline, DocsList}, _From,
                 %% we're logging everything else here
                 ?xdcr_error("out of ~p docs, succ to send ~p docs, fail to send others "
                             "(by error type, enoent: ~p, not-my-vb: ~p, einval: ~p, "
-                            "other errors: ~p",
-                            [DocsListSize, (Flushed + Eexist), Enoent, NotMyVb, Einval, OtherErr]),
+                            "tmp fail: ~p, enomem: ~p, other errors: ~p",
+                            [DocsListSize, (Flushed + Eexist), Enoent, NotMyVb,
+                             Einval, TmpFail, Enomem, OtherErr]),
 
                 %% stop replicator if too many memacched errors
                 case (Flushed + Eexist + ?XDCR_XMEM_MEMCACHED_ERRORS) > DocsListSize of
@@ -352,9 +361,9 @@ handle_call({flush_docs_pipeline, DocsList}, _From,
                     _ ->
                         ErrorStr = ?format_msg("in batch of ~p docs: flushed: ~p, rejected (eexists): ~p; "
                                                "remote memcached errors: enoent: ~p, not-my-vb: ~p, invalid: ~p, "
-                                               "others: ~p",
+                                               "tmp fail: ~p, enomem: ~p, others: ~p",
                                                [DocsListSize, Flushed, Eexist, Enoent, NotMyVb,
-                                                Einval, OtherErr]),
+                                                Einval, TmpFail, Enomem, OtherErr]),
                         {stop, {error, {ErrorStr, ErrorKeys}}, State}
                 end
         end,
@@ -768,24 +777,32 @@ mc_cmd_pipeline(Opcode, Sock, {Header, Entry}) ->
                         Header#mc_header{opcode = Opcode}, mc_client_binary:ext(Opcode, Entry)),
     ok.
 
-categorise_statuses(Statuses, DocsList) ->
-    categorise_statuses_loop(Statuses, DocsList, 0, 0, 0, 0, 0, 0, []).
+-spec categorise_statuses_to_dict(list(), list()) -> {list(), list()}.
+categorise_statuses_to_dict(Statuses, DocsList) ->
+    {ErrorDict, ErrorKeys, _}
+        = lists:foldl(fun(Status, {DictAcc, ErrorKeyAcc, CountAcc}) ->
+                              CountAcc2 = CountAcc + 1,
+                              Doc = lists:nth(CountAcc2, DocsList),
+                              Key = Doc#doc.id,
+                              {DictAcc2, ErrorKeyAcc2}  =
+                                  case Status of
+                                      success ->
+                                          {dict:update_counter(success, 1, DictAcc), ErrorKeyAcc};
+                                      %% use status as key since # of memcached status is limited
+                                      S ->
+                                          {dict:update_counter(S, 1, DictAcc), [Key | ErrorKeyAcc]}
+                                  end,
+                              {DictAcc2, ErrorKeyAcc2, CountAcc2}
+                      end,
+                      {dict:new(), [], 0},
+                      Statuses),
+    {ErrorDict, lists:reverse(ErrorKeys)}.
 
-categorise_statuses_loop([], [], Flushed, Enoent, Eexist, NotMyVb, Einval, OtherErr, ErrorKeys) ->
-    {Flushed, Enoent, Eexist, NotMyVb, Einval, OtherErr, lists:reverse(ErrorKeys)};
-categorise_statuses_loop([Status | RestSt], [#doc{id=Key} | RestDocs],
-                         Flushed, Enoent, Eexist, NotMyVb, Einval, OtherErr, ErrorKeys) ->
-    case Status of
-        success ->
-            categorise_statuses_loop(RestSt, RestDocs, Flushed + 1, Enoent, Eexist, NotMyVb, Einval, OtherErr, ErrorKeys);
-        key_enoent ->
-            categorise_statuses_loop(RestSt, RestDocs, Flushed, Enoent + 1, Eexist, NotMyVb, Einval, OtherErr, [Key | ErrorKeys]);
-        key_eexists ->
-            categorise_statuses_loop(RestSt, RestDocs, Flushed, Enoent, Eexist + 1, NotMyVb, Einval, OtherErr, [Key | ErrorKeys]);
-        not_my_vbucket ->
-            categorise_statuses_loop(RestSt, RestDocs, Flushed, Enoent, Eexist, NotMyVb + 1, Einval, OtherErr, [Key | ErrorKeys]);
-        einval ->
-            categorise_statuses_loop(RestSt, RestDocs, Flushed, Enoent, Eexist, NotMyVb, Einval + 1, OtherErr, [Key | ErrorKeys]);
-        _ ->
-            categorise_statuses_loop(RestSt, RestDocs, Flushed, Enoent, Eexist, NotMyVb, Einval, OtherErr + 1, [Key | ErrorKeys])
-    end.
+-spec lookup_error_dict(term(), dict()) -> integer().
+lookup_error_dict(Key, ErrorDict)->
+     case dict:find(Key, ErrorDict) of
+         error ->
+             0;
+         {ok, V} ->
+             V
+     end.
