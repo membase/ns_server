@@ -1335,7 +1335,11 @@ var AutoCompactionSection = {
   serializeCompactionForm: function(form) {
     return serializeForm(form, {
       'databaseFragmentationThreshold[size]': MBtoBytes,
-      'viewFragmentationThreshold[size]': MBtoBytes
+      'viewFragmentationThreshold[size]': MBtoBytes,
+      'purgeInterval': function purgeInterval(value) {
+        var rv = Number(value);
+        return rv ? rv : value;
+      }
     });
   },
   preProcessCompactionValues: function(values) {
