@@ -777,7 +777,7 @@ mc_cmd_pipeline(Opcode, Sock, {Header, Entry}) ->
                         Header#mc_header{opcode = Opcode}, mc_client_binary:ext(Opcode, Entry)),
     ok.
 
--spec categorise_statuses_to_dict(list(), list()) -> {list(), list()}.
+-spec categorise_statuses_to_dict(list(), list()) -> {dict(), list()}.
 categorise_statuses_to_dict(Statuses, DocsList) ->
     {ErrorDict, ErrorKeys, _}
         = lists:foldl(fun(Status, {DictAcc, ErrorKeyAcc, CountAcc}) ->
