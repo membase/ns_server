@@ -115,7 +115,8 @@ create_bucket(BucketType, BucketName, NewConfig) ->
                                       NewConfig}, infinity).
 
 -spec update_bucket(memcached|membase, nonempty_string(), list()) ->
-                           ok | {exit, {not_found, nonempty_string()}, []}.
+                           ok | {exit, {not_found, nonempty_string()}, []}
+                               | rebalance_running.
 update_bucket(BucketType, BucketName, UpdatedProps) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_all_state_event(?SERVER, {update_bucket, BucketType, BucketName,
