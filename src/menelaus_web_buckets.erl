@@ -418,17 +418,26 @@ init_bucket_validation_context(IsNew, BucketName, ValidateOnly, IgnoreWarnings) 
                                    ValidateOnly, IgnoreWarnings).
 
 init_bucket_validation_context(IsNew, BucketName, AllBuckets, ClusterStorageTotals, ValidateOnly, IgnoreWarnings) ->
+    {BucketConfig, ExtendedTotals} =
+        case lists:keyfind(BucketName, 1, AllBuckets) of
+            false -> {false, ClusterStorageTotals};
+            {_, V} ->
+                case proplists:get_value(servers, V, []) of
+                    [] ->
+                        {V, ClusterStorageTotals};
+                    Servers ->
+                        ServersCount = length(Servers),
+                        {V, lists:keyreplace(nodesCount, 1, ClusterStorageTotals, {nodesCount, ServersCount})}
+                end
+        end,
     #bv_ctx{
        validate_only = ValidateOnly,
        ignore_warnings = IgnoreWarnings,
        new = IsNew,
        bucket_name = BucketName,
        all_buckets = AllBuckets,
-       bucket_config = case lists:keyfind(BucketName, 1, AllBuckets) of
-                           false -> false;
-                           {_, V} -> V
-                       end,
-       cluster_storage_totals = ClusterStorageTotals
+       bucket_config = BucketConfig,
+       cluster_storage_totals = ExtendedTotals
       }.
 
 handle_bucket_update(_PoolId, BucketId, Req) ->
