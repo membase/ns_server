@@ -117,19 +117,53 @@ map_nodes_set(Map) ->
       end, sets:new(), Map).
 
 matching_renamings(KeepNodesSet, CurrentMap, CandidateMap) ->
+    matching_renamings_with_tags(KeepNodesSet,
+                                 {CurrentMap, undefined}, {CandidateMap, undefined}).
+
+matching_renamings_with_tags(KeepNodesSet,
+                             {CurrentMap, CurrentTags0}, {CandidateMap, CandidateTags0}) ->
+    CurrentTags = case CurrentTags0 of
+                      undefined ->
+                          [];
+                      _ ->
+                          CurrentTags0
+                  end,
+    CandidateTags = case CandidateTags0 of
+                        undefined ->
+                            [];
+                        _ ->
+                            CandidateTags0
+                    end,
+
     case length(CandidateMap) =:= length(CurrentMap) of
         false ->
             [];
         _ ->
             case length(hd(CandidateMap)) =:= length(hd(CurrentMap)) of
                 true ->
-                    matching_renamings_same_vbuckets_count(KeepNodesSet, CandidateMap);
+                    matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentTags,
+                                                           CandidateMap, CandidateTags);
                 false ->
                     []
             end
     end.
 
-matching_renamings_same_vbuckets_count(KeepNodesSet, CandidateMap) ->
+do_rewrite(Term, Pairs) ->
+    lists:foldl(
+      fun ({Old, New}, T) ->
+              misc:rewrite_value(Old, New, T)
+      end, Term, Pairs).
+
+rewrite_map(CandidateMap, CandidateTags, CurrentTags, Pairs) ->
+    case lists:sort(do_rewrite(CandidateTags, Pairs)) =:= lists:sort(CurrentTags) of
+        true ->
+            [do_rewrite(CandidateMap, Pairs)];
+        false ->
+            []
+    end.
+
+matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentTags,
+                                       CandidateMap, CandidateTags) ->
     CandidateNodesSet = map_nodes_set(CandidateMap),
     case sets:size(CandidateNodesSet) =:= sets:size(KeepNodesSet) of
         false ->
@@ -138,20 +172,26 @@ matching_renamings_same_vbuckets_count(KeepNodesSet, CandidateMap) ->
             CurrentNotCommon = sets:subtract(KeepNodesSet, CandidateNodesSet),
             case sets:size(CurrentNotCommon) of
                 0 ->
-                    [CandidateMap];
+                    case lists:sort(CandidateTags) == lists:sort(CurrentTags) of
+                        true ->
+                            [CandidateMap];
+                        false ->
+                            []
+                    end;
                 1 ->
                     [NewNode] = sets:to_list(CurrentNotCommon),
                     [OldNode] = sets:to_list(sets:subtract(CandidateNodesSet, KeepNodesSet)),
-                    NewMap = misc:rewrite_value(OldNode, NewNode, CandidateMap),
-                    [NewMap];
+
+                    rewrite_map(CandidateMap, CandidateTags, CurrentTags,
+                                [{OldNode, NewNode}]);
                 2 ->
                     [NewNodeA, NewNodeB] = sets:to_list(CurrentNotCommon),
                     [OldNodeA, OldNodeB] = sets:to_list(sets:subtract(CandidateNodesSet, KeepNodesSet)),
-                    NewMapA = misc:rewrite_value(OldNodeB, NewNodeB,
-                                                 misc:rewrite_value(OldNodeA, NewNodeA, CandidateMap)),
-                    NewMapB = misc:rewrite_value(OldNodeA, NewNodeB,
-                                                 misc:rewrite_value(OldNodeB, NewNodeA, CandidateMap)),
-                    [NewMapA, NewMapB];
+
+                    rewrite_map(CandidateMap, CandidateTags, CurrentTags,
+                                [{OldNodeA, NewNodeA}, {OldNodeB, NewNodeB}]) ++
+                        rewrite_map(CandidateMap, CandidateTags, CurrentTags,
+                                    [{OldNodeA, NewNodeB}, {OldNodeB, NewNodeA}]);
                 _ ->
                     %% just try some random mapping just in case. It
                     %% will work nicely if NewNode-s are all being
@@ -159,13 +199,10 @@ matching_renamings_same_vbuckets_count(KeepNodesSet, CandidateMap) ->
                     %% removed). Because in such case exact mapping
                     %% doesn't really matter, because we'll backfill
                     %% new nodes and it doesn't matter which.
-                    NewNotCommon = sets:to_list(sets:subtract(CandidateNodesSet, KeepNodesSet)),
-                    NewMap = lists:foldl(
-                               fun ({CurrentNode, CandidateNode}, MapAcc) ->
-                                       misc:rewrite_value(CandidateNode, CurrentNode, MapAcc)
-                               end,
-                               CandidateMap, lists:zip(sets:to_list(CurrentNotCommon), NewNotCommon)),
-                    [NewMap]
+                    CandidateNotCommon = sets:to_list(sets:subtract(CandidateNodesSet, KeepNodesSet)),
+
+                    rewrite_map(CandidateMap, CandidateTags, CurrentTags,
+                                lists:zip(CandidateNotCommon, sets:to_list(CurrentNotCommon)))
             end
     end.
 
@@ -181,7 +218,10 @@ generate_map(Map, Nodes, Options) ->
             generate_map_star(Map, Nodes, Options)
     end.
 
-is_compatible_past_star_map(OptionsPast, OptionsNow, NumReplicas) ->
+is_compatible_past_star_map(OptionsPast0, OptionsNow0, NumReplicas) ->
+    OptionsPast = lists:keydelete(tags, 1, OptionsPast0),
+    OptionsNow = lists:keydelete(tags, 1, OptionsNow0),
+
     case OptionsNow =:= OptionsPast of
         true ->
             true;
@@ -209,6 +249,7 @@ generate_map_star(Map, Nodes, Options) ->
     MapsFromPast =
         lists:flatmap(fun ({PastMap, NonHistoryOptions0}) ->
                               NonHistoryOptions = lists:sort(NonHistoryOptions0),
+                              PastTags = proplists:get_value(tags, NonHistoryOptions),
 
                               Compatible =
                                   is_compatible_past_star_map(NonHistoryOptions,
@@ -216,7 +257,9 @@ generate_map_star(Map, Nodes, Options) ->
                               case Compatible of
                                   true ->
                                       [{M, vbucket_movements_star(Map, M)} ||
-                                          M <- matching_renamings(NodesSet, Map, PastMap)];
+                                          M <- matching_renamings_with_tags(NodesSet,
+                                                                            {Map, Tags},
+                                                                            {PastMap, PastTags})];
                                   false ->
                                       []
                               end
