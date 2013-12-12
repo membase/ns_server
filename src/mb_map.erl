@@ -181,6 +181,20 @@ generate_map(Map, Nodes, Options) ->
             generate_map_star(Map, Nodes, Options)
     end.
 
+is_compatible_past_star_map(OptionsPast, OptionsNow, NumReplicas) ->
+    case OptionsNow =:= OptionsPast of
+        true ->
+            true;
+        false ->
+            NonTopologyOptionsPast =
+                lists:keydelete(replication_topology, 1, OptionsPast),
+            NonTopologyOptionsNow =
+                lists:keydelete(replication_topology, 1, OptionsNow),
+
+            NonTopologyOptionsPast =:= NonTopologyOptionsNow andalso
+                NumReplicas =:= 1
+    end.
+
 generate_map_star(Map, Nodes, Options) ->
     KeepNodes = lists:sort(Nodes),
     MapsHistory = proplists:get_value(maps_history, Options, []),
@@ -195,20 +209,10 @@ generate_map_star(Map, Nodes, Options) ->
     MapsFromPast =
         lists:flatmap(fun ({PastMap, NonHistoryOptions0}) ->
                               NonHistoryOptions = lists:sort(NonHistoryOptions0),
+
                               Compatible =
-                                  case NonHistoryOptions =:= NonHistoryOptionsNow of
-                                      true ->
-                                          true;
-                                      false ->
-                                          NonTopologyOptions =
-                                              lists:keydelete(replication_topology, 1, NonHistoryOptions),
-                                          NonTopologyOptionsNow =
-                                              lists:keydelete(replication_topology, 1, NonHistoryOptionsNow),
-
-                                          NonTopologyOptions =:= NonTopologyOptionsNow andalso
-                                              NumReplicas =:= 1
-                                  end,
-
+                                  is_compatible_past_star_map(NonHistoryOptions,
+                                                              NonHistoryOptionsNow, NumReplicas),
                               case Compatible of
                                   true ->
                                       [{M, vbucket_movements_star(Map, M)} ||
