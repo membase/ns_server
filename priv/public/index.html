@@ -151,23 +151,25 @@
         </div>
 
         <div id="js_groups" class="groups when-roadmin-avoid-me when-enterprise" style="display:none">
-          <div class="groups_header casper_draggable_server_to">
-            <h1>Server Groups</h1>
-            <a id="js_create_group" class="casper_create_group_start"><span>Create Group</span></a>
-            <a id="js_save_groups_changes" class="casper_group_apply_start"><span>Apply Changes</span></a>
-            <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
-            <div class="clear"></div>
-            <div class="ellipsis warning_message" id="js_group_notice"></div>
-          </div>
+          <h1>Server Groups</h1>
+          <div class="ellipsis warning_message" id="js_group_notice"></div>
+          <div class="shadow_box">
+            <div class="header_2">
+              <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+              <a id="js_create_group" class="btn_1" href="#visitSec=servers"><span>Server Nodes</span></a>
+              <a id="js_create_group" class="btn_1 casper_create_group_start"><span>Create Group</span></a>
+              <a id="js_save_groups_changes" class="btn_1 casper_group_apply_start"><span>Apply Changes</span></a>
+            </div>
           <div class="groups_container" id="js_server_group_container"></div>
+          </div>
           <script id="js_server_group_template" type="text/html">
             {% if (loading) { %}
               <div class='spinner' style="height:{%= height %}px;line-height:{%= height %}px;width:100%"><span>Loading...</span></div></div>
             {% } else { %}
             {% _.each(groups, function (group, groupIndex) { %}
-              <div class="shadow_box group_wrapper js_group_wrapper" id="js_group_{%= makeSafeForCSS(group.name) %}_wrapper">
-                  <div class="hdr" id="js_group_{%= makeSafeForCSS(group.name) %}">
-                    <a class="btn_1 js_edit_group casper_edit_group_start"><span>Edit group</span></a>
+              <div class="group_wrapper js_group_wrapper" id="js_group_{%= makeSafeForCSS(group.name) %}_wrapper">
+                  <div class="head" id="js_group_{%= makeSafeForCSS(group.name) %}">
+                    <a class="btn_1 js_edit_group casper_edit_group_start"><span>Rename Group</span></a>
                     <div><h4 class="ellipsis">{%= h(group.name) %}</h4></div>
                   </div>
                   <div class="group_servers js_group_servers">

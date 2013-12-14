@@ -790,7 +790,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list td > table td:first-child+td+td {width:155px;}
 .list td > table td:first-child+td+td+td {width:125px;}
 
-.group_is_empty {line-height: 46px; text-align: center;}
+.group_is_empty {line-height: 57px; text-align: center; border-bottom: 1px solid #ced5d9;}
 
 .groups_header > a {font-size: 14px; display: block; float: right; margin-left: 20px; text-decoration: underline;}
 .groups_header > span {margin-left: 100px;}
@@ -798,15 +798,16 @@ ul.tabs .badge_display .badge {display:block;}
 .groups_header {line-height: 33px; margin: 0 9px 20px;}
 .groups_header .warning_message {margin: 0;}
 .groups_header h1 {float: left; padding: 0;}
-.group_wrapper .hdr {min-height: 45px;}
-.group_wrapper .hdr h4 {font-weight: normal; font-size: 20px; width: 100%;}
-.group_wrapper .hdr div {overflow: hidden;}
-.group_wrapper .hdr .btn_1 {margin-top: 6px; float:right;}
-.group_wrapper .hdr .btn_1 span {overflow: hidden; font-size: 14px;}
+.group_wrapper .head {min-height: 45px; background-color: whitesmoke; line-height: 45px; padding: 0 10px; border-bottom: 1px solid #fff;}
+.group_wrapper .head h4 {font-weight: normal; font-size: 18px; width: 100%; color: #000;}
+.group_wrapper .head div {overflow: hidden;}
+.group_wrapper .head .btn_1 {margin-top: 6px; float:right;}
+.group_wrapper .head .btn_1 span {overflow: hidden; font-size: 14px;}
 .group_wrapper .group_servers {min-height: 45px;background: #eeeeef;}
-.group_wrapper .group_servers .dragged {background-color: #f6f6f7; border: 1px solid #ced5d9; width: 941px;}
-.group_wrapper .group_servers {border-right: 1px solid #d9d9d9; border-left: 1px solid #d9d9d9;}
-.group_wrapper {border-bottom: 1px solid darkgray;}
+.group_wrapper .group_servers .dragged {border: 1px solid #ced5d9; width: 941px;}
+.group_wrapper .group_servers,
+.group_wrapper .head {border-right: 1px solid #d9d9d9; border-left: 1px solid #d9d9d9;}
+
 .groups .btn_1 {float: right; margin: 2px 0 0 5px;}
 .group_notice {font-size: 12px; margin-left: 20px;}
 .groups .header_2 {line-height: 30px;}
@@ -814,12 +815,12 @@ ul.tabs .badge_display .badge {display:block;}
 .shadow_box.group_wrapper {position: static;}
 .group_wrapper.dynamic-closed .group_servers {display: none; min-height: 35px;}
 .group_wrapper.dynamic_over .group_servers {display: block;}
-.group_servers .draggable {cursor: pointer; width: 100%; background-color: #eeeeef; border-bottom: 1px solid #ced5d9; height: 45px;}
-.group_servers .draggable > span {display:block;padding: 17.5px 10px 15.5px 10px;}
-.group_servers .draggable > span > span {margin-right: 10px; text-shadow: -1px -1px #fff;}
-.group_servers .draggable:hover {background-color: #f6f6f7;}
+.group_servers .draggable {cursor: pointer; width: 100%; background-color: #eeeeef; border-bottom: 1px solid #ced5d9; height: 57px; line-height: 57px; font-size: 14px; font-weight: bolder; }
+.group_servers .draggable > span {display:block;padding: 0 10px;}
+.group_servers .draggable > span > span {margin-right: 10px; text-shadow: -1px -1px #fff; font-weight: normal;}
+
 .dragged {position: absolute; z-index: 3;}
-span.drag_placeholder {height: 44px; display: block; border: 1px dashed #999; background-color: #fff;}
+span.drag_placeholder {height: 56px; display: block; border: 1px dashed #999; background-color: #fff;}
 
 .group_wrapper .group_servers div + .group_is_empty,
 .group_wrapper .group_servers span + .group_is_empty,
