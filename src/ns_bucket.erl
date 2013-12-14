@@ -341,8 +341,10 @@ bucket_failover_safety(BucketConfig, LiveNodes, Topology) ->
                                 ?FS_HARD_NODES_NEEDED
                         end;
                     true ->
-                        case ns_rebalancer:unbalanced(proplists:get_value(map, BucketConfig),
-                                                      Topology, BucketConfig) of
+                        Map = proplists:get_value(map, BucketConfig),
+                        case ns_rebalancer:map_options_changed(Topology, BucketConfig)
+                            orelse ns_rebalancer:unbalanced(Map, Topology, BucketConfig) of
+
                             true ->
                                 ?FS_SOFT_REBALANCE_NEEDED;
                             _ ->

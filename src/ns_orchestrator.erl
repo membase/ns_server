@@ -964,6 +964,7 @@ needs_rebalance(Nodes, BucketConfig, Topology) ->
                     Map = proplists:get_value(map, BucketConfig),
                     Map =:= undefined orelse
                         lists:sort(Nodes) /= lists:sort(Servers) orelse
+                        ns_rebalancer:map_options_changed(Topology, BucketConfig) orelse
                         ns_rebalancer:unbalanced(Map, Topology, BucketConfig)
             end;
         memcached ->
