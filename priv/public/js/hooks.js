@@ -691,6 +691,22 @@ var MockedRequest = mkClass({
       [get("settings", "stats"), {
         sendStats: false
       }],
+      [get("internalSettings", "visual"), function () {
+        console.log(ServerStateMock.clusterVisualSettings)
+        return ServerStateMock.clusterVisualSettings;
+      }],
+      [post("internalSettings", "visual"), expectParams(function ($data) {
+        var len = $data.windowOutlineHex.length;
+        if (len === 0 || len === 3 || len === 6) {
+          ServerStateMock.clusterVisualSettings = $data;
+          return {
+            "errors": null
+          };
+        }
+        return this.errorResponse({
+          "errors": {"windowOutlineHex": "Acceptable format is RRGGBB or RGB"}
+        });
+      }, opt("tabName"), opt("windowOutlineHex"), opt("memoryQuota"))],
       [post("settings", "autoFailover"), {
         "responseText": JSON.stringify({"errors": {"timeout": "The value of \"timeout\" must be a positive integer in a range from 30 to 3600"}})
       }],
@@ -1627,6 +1643,10 @@ MockedRequest.prototype.globalData = MockedRequest.globalData = {
 })();
 
 var ServerStateMock = {
+  clusterVisualSettings: {
+    tabName: "",
+    windowOutlineHex: ""
+  },
   tasks: (function () {
     var currentTasks = {
       rebalanceNotRunning: true

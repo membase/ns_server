@@ -287,7 +287,19 @@ handle_call(using_user_supplied_address, _From,
 handle_call(reset_address, _From,
             #state{self_started = true,
                    user_supplied = true} = State) ->
-    do_adjust_address("127.0.0.1", false, State);
+    ?log_info("Going to mark current user-supplied address as non-user-supplied address"),
+    NewState = State#state{user_supplied = false},
+    case save_address_config(NewState, false) of
+        ok ->
+            ?log_info("Persisted the address successfully"),
+            {reply, net_restarted, NewState};
+        {error, Error} ->
+            ?log_warning("Failed to persist the address: ~p", [Error]),
+            {stop,
+             {address_save_failed, Error},
+             {address_save_failed, Error},
+             State}
+    end;
 handle_call(reset_address, _From, State) ->
     {reply, net_restarted, State};
 handle_call(_Request, _From, State) ->

@@ -16,12 +16,13 @@
   <script>document.body.className = "auth";</script>
   <div class="io-error-notice-wrapper"><span class="io-error-notice" style="display:none;"></span></div>
   <div id="container">
+    <div class="outline_tag" id="js_outline_tag"></div>
     <div class="page-header">
       <div class="cnt_holder main_holder">
         <div class="topper_nav">
           <span class="only-when-below-20" style="display:none;">NOTE: need all 2.0 nodes to enable 2.0-only features<b>&bull;</b></span>
           <span id="edit-internal-settings-link" class="when-roadmin-avoid-me" style="display:none;"><a onclick="runInternalSettingsDialog();">Edit internal settings</a> <b>&bull;</b></span>
-          <a id="switch_support_docs" href="http://www.couchbase.com/docs/couchbase-manual-2.1.0/couchbase-getting-started.html" target="cbdocs">Documentation</a>
+          <a id="switch_support_docs" href="http://docs.couchbase.com/couchbase-manual-2.5/" target="cbdocs">Documentation</a>
           <b>&bull;</b> <a id="switch_support_forums" href="http://www.couchbase.com/communities/" target="cbforums">Support Forums</a>
           <b>&bull;</b> <a href="javascript:showAbout();">About</a>
           <i class="sign-out-link"><b>&bull;</b> <a href="javascript:ThePage.signOut();">Sign Out</a></i>
@@ -754,19 +755,34 @@
                 </ul>
               </div>
               <div class="panes clearfix">
-                <div id="cluster_settings_container" class="cluster_settings_container">
-                  <form>
+                <div id="js_cluster_settings_container" class="cluster_settings_container">
+                  <h3>RAM Quota</h3>
+                  <form id="js_cluster_public_settings_form" class="cluster_settings_form">
                     <div class="row">
                       <label>RAM Available:</label>
-                      <span id="cluster_settings_total_ram"></span> MB
+                      <span id="js_cluster_settings_total_ram"></span> MB
                     </div>
                     <div class="row">
                       <label for="cluster_settings_ram_quota">Per Server RAM Quota:</label>
                       <input type="text" class="focusme" id="cluster_settings_ram_quota" name="memoryQuota"> MB
                       <div class="error-container err-memoryQuota"></div>
                     </div>
+                    <h3>Tab Settings</h3>
+                    <div class="row">
+                      <label>Browser tab name:</label>
+                      <input name="tabName">
+                      <div class="error-container err-tabName"></div>
+                    </div>
+                    <div class="row">
+                      <label>Window outline color:</label>
+                      <span class="css_hex_symbol">#</span>
+                      <input name="windowOutlineHex">
+                      <div class="error-container err-windowOutlineHex"></div>
+                    </div>
                     <div class="save_cancel when-roadmin-hide-me">
-                      <button class="save_button float_right" type="submit" disabled="disabled">Save</button>
+                      <button class="save_button float_right" type="submit">
+                        Save
+                      </button>
                     </div>
                   </form>
                 </div>
@@ -867,12 +883,12 @@
                         <div class="error-container err-parallelDBAndViewCompaction"></div>
                       </li>
                       <li>
-                        <label for="fc68aaf1-9519-4eeb-ba28-3daa042aae22">Metadata Purge Interval (days): </label>
+                        <label for="fc68aaf1-9519-4eeb-ba28-3daa042aae22">Metadata Purge Interval (0.04 (1h) - 60days): </label>
                         <input id="fc68aaf1-9519-4eeb-ba28-3daa042aae22" name="purgeInterval" style="width: 2.5em;">
                         <div class="error-container err-purgeInterval" style="display: inline; padding-left: 0;"></div>
                         <a class="text_11 tooltip"><span>What's this?</span>
                           <span class="tooltip_msg"><span>
-                              Metadata Purge Interval. Integer of 1 or greater measured in days. Set how frequently a node will purge metadata on deleted items. If set too high, may significantly delay the node from reclaiming disk space. If set too low, may cause data inconsistencies in XDCR or Views.
+                              Metadata Purge Interval. Allowed range is 0.04 - 60 where 0.04 = 1h, 0.5 = 12h. Set how frequently a node will purge metadata on deleted items. If set too high, may significantly delay the node from reclaiming disk space. If set too low, may cause data inconsistencies in XDCR or Views.
                           </span></span>
                         </a>
                       </li>
@@ -1983,7 +1999,7 @@
           <div class="error-container err-parallelDBAndViewCompaction"></div>
         </li>
         <li>
-          <label for="c80016fb-f7dc-4035-a45e-ac692ae2a790">Metadata Purge Interval (days): </label>
+          <label for="c80016fb-f7dc-4035-a45e-ac692ae2a790">Metadata Purge Interval (0.04 (1h) - 60days): </label>
           <input id="c80016fb-f7dc-4035-a45e-ac692ae2a790" name="purgeInterval" style="width:2.5em;">
           <div class="error-container err-purgeInterval" style="display: inline; padding-left: 0; float: none;"></div>
         </li>

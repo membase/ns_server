@@ -59,9 +59,9 @@ var SettingsSection = {
   },
   renderErrors: function(val, rootNode) {
     if (val!==undefined  && DAL.cells.mode.value==='settings') {
+      rootNode.find('.error-container.active').empty().removeClass('active');
+      rootNode.find('input.invalid').removeClass('invalid');
       if (val.errors===null) {
-        rootNode.find('.error-container.active').empty().removeClass('active');
-        rootNode.find('input.invalid').removeClass('invalid');
         rootNode.find('.save_button').removeAttr('disabled');
       } else {
         // Show error messages on all input fields that contain one
@@ -76,27 +76,33 @@ var SettingsSection = {
   }
 };
 
-function makeClusterSectionCells(ns, sectionCell, currentPoolListCell, poolDetailsCell, settingTabCell) {
+function makeClusterSectionCells(ns, sectionCell, currentPoolListCell, poolDetailsCell, settingTabCell, internalSettingsUrl) {
   ns.isClusterTabCell = Cell.compute(function (v) {
     return v.need(settingTabCell) === "cluster" && v.need(sectionCell) === "settings";
   }).name("isClusterTabCell");
-  ns.isClusterTabCell.isEqual = _.isEqual;
+  ns.isClusterTabCell.equality = _.isEqual;
 
-  ns.currentPoolUriCell = Cell.compute(function (v) {
-    var poolsList = v.need(currentPoolListCell)[0];
-    return poolsList ? poolsList.uri : null;
-  }).name("currentPoolUriCell");
-  ns.currentPoolUriCell.equality = _.isEqual;
+  ns.visualInternalSettingsCell = Cell.compute(function (v) {
+    return future.get({url: internalSettingsUrl});
+  }).name("visualInternalSettingsCell");
+  ns.visualInternalSettingsCell.keepValueDuringAsync = true;
+  ns.visualInternalSettingsCell.equality = _.isEqual;
 
-  ns.ramQuotaCell = Cell.compute(function (v) {
+  ns.allClusterSectionSettingsCell = Cell.compute(function (v) {
     var currentPool = v.need(poolDetailsCell);
+    var visualInternalSettings = v.need(ns.visualInternalSettingsCell);
+    var isCluster = v.need(ns.isClusterTabCell);
     var ram = currentPool.storageTotals.ram;
-    return {
+    var ramQuota = {
       totalRam: Math.floor(ram.total/(Math.Mi * currentPool.nodes.length)),
-      dynamicRamQuota: Math.floor(ram.quotaTotal/(Math.Mi * currentPool.nodes.length))
-    }
-  }).name("ramQuotaCell");
-  ns.ramQuotaCell.equality = _.isEqual;
+      memoryQuota: Math.floor(ram.quotaTotal/(Math.Mi * currentPool.nodes.length))
+    };
+    var merged = _.extend({}, ramQuota, visualInternalSettings);
+
+    return isCluster ? merged  : null;
+  }).name("allClusterSectionSettingsCell");
+  ns.allClusterSectionSettingsCell.equality = _.isEqual;
+  ns.allClusterSectionSettingsCell.delegateInvalidationMethods(ns.visualInternalSettingsCell);
 }
 
 var ClusterSection = {
@@ -104,71 +110,42 @@ var ClusterSection = {
     var self = this;
     var poolDetailsCell = DAL.cells.currentPoolDetailsCell;
     var isROAdminCell = DAL.cells.isROAdminCell;
+    var internalSettingsUrl = "/internalSettings/visual";
 
-    makeClusterSectionCells(self, DAL.cells.mode, DAL.cells.poolList, poolDetailsCell, SettingsSection.tabs);
+    makeClusterSectionCells(self, DAL.cells.mode, DAL.cells.poolList, poolDetailsCell, SettingsSection.tabs, internalSettingsUrl);
 
-    var container = $("#cluster_settings_container");
-    var totalRamCont = $("#cluster_settings_total_ram");
-    var ramSettingsInput = $("#cluster_settings_ram_quota");
-    var clusterSettingsForm = $("form", container);
-    var formValidation;
+    var container = $("#js_cluster_settings_container");
+    var clusterSettingsForm = $("#js_cluster_public_settings_form");
+    var totalRamCont = $("#js_cluster_settings_total_ram");
+    var outlineTag = $("#js_outline_tag");
+    var originalTitle = document.title;
+
+    var clusterSettingsFormValidator = setupFormValidation(clusterSettingsForm, internalSettingsUrl + "?just_validate=1",
+      function (_status, errors) {
+        SettingsSection.renderErrors(errors, clusterSettingsForm);
+    }, function () {
+      return serializeForm(clusterSettingsForm);
+    });
 
     function enableDisableValidation(enable) {
-      if (formValidation) {
-        formValidation[enable ? 'unpause' : 'pause']();
-      }
+      clusterSettingsFormValidator[enable ? 'unpause' : 'pause']();
     }
 
-    isROAdminCell.subscribeValue(function (isROAdmin) {
-      $("input", clusterSettingsForm).prop("disabled", isROAdmin);
-    });
-
-    Cell.subscribeMultipleValues(function (isClusterTab, ramQuota) {
-      if (isClusterTab && ramQuota) {
-        totalRamCont.text(ramQuota.totalRam);
-        ramSettingsInput.val(ramQuota.dynamicRamQuota);
-      }
-    }, self.isClusterTabCell, self.ramQuotaCell);
-
-    Cell.subscribeMultipleValues(function (ramQuota, isClusterTab, isROAdmin) {
-      if (isClusterTab) {
-        if (ramQuota) {
-          enableDisableValidation(!isROAdmin);
-        }
-      } else {
-        enableDisableValidation(false);
-      }
-    }, self.ramQuotaCell, self.isClusterTabCell, isROAdminCell);
-
-    self.currentPoolUriCell.subscribeValue(function (uri) {
-      if (!uri) {
-        return;
-      }
-      if (formValidation) {
-        formValidation.abort();
-      }
-      formValidation = setupFormValidation(clusterSettingsForm, uri + "&just_validate=1", function (_status, errors) {
-        SettingsSection.renderErrors(errors, container);
-      }, function () {
-        return serializeForm(clusterSettingsForm);
-      });
-      enableDisableValidation(false);
-    });
+    enableDisableValidation(false);
 
     clusterSettingsForm.submit(function (e) {
       e.preventDefault();
-      var spinner = overlayWithSpinner(clusterSettingsForm);
-
+      var spinner = overlayWithSpinner(container);
       $.ajax({
-        url: self.currentPoolUriCell.value,
+        url: internalSettingsUrl,
         type: 'POST',
         data: $.deparam(serializeForm(clusterSettingsForm)),
         success: function () {
-          poolDetailsCell.invalidate();
+          poolDetailsCell.recalculate();
+          self.visualInternalSettingsCell.invalidate();
         },
         error: function (jqXhr) {
-          var val = JSON.parse(jqXhr.responseText);
-          SettingsSection.renderErrors(val, container);
+          SettingsSection.renderErrors(JSON.parse(jqXhr.responseText), clusterSettingsForm);
         },
         complete: function () {
           spinner.remove();
@@ -177,6 +154,38 @@ var ClusterSection = {
 
       return false;
     });
+
+    isROAdminCell.subscribeValue(function (isROAdmin) {
+      $("input", container).prop("disabled", isROAdmin);
+    });
+
+    poolDetailsCell.subscribeValue(function () {
+      self.visualInternalSettingsCell.recalculate();
+    });
+
+    self.allClusterSectionSettingsCell.subscribeValue(function (settings) {
+      if (!settings) {
+        return;
+      }
+      setFormValues(clusterSettingsForm, settings);
+      totalRamCont.text(settings.totalRam);
+      enableDisableValidation(!isROAdminCell.value);
+    });
+
+    self.visualInternalSettingsCell.subscribeValue(function (visualInternalSettings) {
+      if (!visualInternalSettings) {
+        return;
+      }
+      var hex = visualInternalSettings.windowOutlineHex;
+      document.title = $.trim(visualInternalSettings.tabName) || originalTitle;
+      outlineTag.css({borderColor: hex ? "#" + hex : "transparent"});
+    });
+
+    Cell.subscribeMultipleValues(function (isClusterTab, isROAdmin) {
+      if (!isClusterTab || isROAdmin) {
+        enableDisableValidation(false);
+      }
+    }, self.isClusterTabCell, isROAdminCell);
   }
 };
 
@@ -1326,7 +1335,11 @@ var AutoCompactionSection = {
   serializeCompactionForm: function(form) {
     return serializeForm(form, {
       'databaseFragmentationThreshold[size]': MBtoBytes,
-      'viewFragmentationThreshold[size]': MBtoBytes
+      'viewFragmentationThreshold[size]': MBtoBytes,
+      'purgeInterval': function purgeInterval(value) {
+        var rv = Number(value);
+        return rv ? rv : value;
+      }
     });
   },
   preProcessCompactionValues: function(values) {

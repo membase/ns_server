@@ -75,8 +75,8 @@ init([#rep{source = SrcBucketBinary, replication_mode = RepMode, options = Optio
                 end,
     {ok, _} = couch_db_update_notifier:start_link(NotifyFun),
     ?xdcr_debug("couch_db update notifier started", []),
-    {ok, InitThrottle} = concurrency_throttle:start_link(MaxConcurrentReps, self()),
-    {ok, WorkThrottle} = concurrency_throttle:start_link(MaxConcurrentReps, self()),
+    {ok, InitThrottle} = concurrency_throttle:start_link({MaxConcurrentReps, ?XDCR_INIT_CONCUR_THROTTLE}, self()),
+    {ok, WorkThrottle} = concurrency_throttle:start_link({MaxConcurrentReps, ?XDCR_REPL_CONCUR_THROTTLE}, self()),
     ?xdcr_debug("throttle process created (init throttle: ~p, work throttle: ~p)",
                 [InitThrottle, WorkThrottle]),
     {ok, Sup} = xdc_vbucket_rep_sup:start_link([]),
@@ -274,10 +274,17 @@ handle_info({src_db_updated, Vb}, #replication{vb_rep_dict = Dict} = State) ->
         {ok, #rep_vb_status{pid = Pid}} ->
             Pid ! src_db_updated;
         error ->
-            % no state yet, or already erased
-            RepInfo = xdc_rep_utils:get_rep_info(State#replication.rep),
-            ?xdcr_debug("get src_db_udpated from vb ~p (rep ~s), but the vb replicator has not "
-                        "been initialized yet or has been deleted.", [Vb, RepInfo]),
+            MyVbs = State#replication.vbs,
+            case lists:member(Vb, MyVbs) of
+                true ->
+                    %% no state yet, or already erased
+                    RepInfo = xdc_rep_utils:get_rep_info(State#replication.rep),
+                    ?xdcr_debug("get src_db_udpated from vb ~p (rep ~s), but the vb replicator has not "
+                                "been initialized yet or has been deleted.", [Vb, RepInfo]);
+                _ ->
+                    %% skip update notifications for replicas
+                    ok
+            end,
             ok
     end,
     {noreply, State};
@@ -379,9 +386,17 @@ handle_info({buckets, Buckets0},
             NewState = State#replication{vbucket_sup = Sup2};
         SrcConfig ->
             NewVbs = xdc_rep_utils:my_active_vbuckets(SrcConfig),
-            ?xdcr_debug("vbucket map changed for bucket ~p "
-                        "adjust replicators for new vbs :~p", [?b2l(SrcBucket), NewVbs]),
-            NewState = start_vb_replicators(State#replication{vbs = NewVbs})
+            NewState =
+                case (State#replication.vbs == NewVbs) of
+                true ->
+                    %% no change, skip it
+                    State;
+                _ ->
+                    ?xdcr_debug("vbucket map changed for bucket ~p "
+                                "adjust replicators for new vbs :~p",
+                                [?b2l(SrcBucket), NewVbs]),
+                    start_vb_replicators(State#replication{vbs = NewVbs})
+            end
     end,
     {noreply, NewState}.
 

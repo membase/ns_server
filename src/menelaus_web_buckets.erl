@@ -331,13 +331,12 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
 
 handle_bucket_info_streaming(_PoolId, Id, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
-    NoTerse = (proplists:get_value("noTerse", Req:parse_qs()) =/= undefined),
+    SendTerse = ns_config_ets_dup:unreliable_read_key(send_terse_streaming_buckets, false),
     F = fun(_InfoLevel) ->
                 case ns_bucket:get_bucket(Id) of
                     {ok, BucketConfig} ->
-                        case (NoTerse
-                              orelse ns_config_ets_dup:unreliable_read_key(prevent_terse_streaming_buckets, false)) of
-                            false ->
+                        case SendTerse of
+                            true ->
                                 {ok, Bin} = bucket_info_cache:terse_bucket_info_with_local_addr(Id, LocalAddr),
                                 {just_write, {write, Bin}};
                             _ ->
@@ -410,17 +409,26 @@ init_bucket_validation_context(IsNew, BucketName, ValidateOnly, IgnoreWarnings) 
                                    ValidateOnly, IgnoreWarnings).
 
 init_bucket_validation_context(IsNew, BucketName, AllBuckets, ClusterStorageTotals, ValidateOnly, IgnoreWarnings) ->
+    {BucketConfig, ExtendedTotals} =
+        case lists:keyfind(BucketName, 1, AllBuckets) of
+            false -> {false, ClusterStorageTotals};
+            {_, V} ->
+                case proplists:get_value(servers, V, []) of
+                    [] ->
+                        {V, ClusterStorageTotals};
+                    Servers ->
+                        ServersCount = length(Servers),
+                        {V, lists:keyreplace(nodesCount, 1, ClusterStorageTotals, {nodesCount, ServersCount})}
+                end
+        end,
     #bv_ctx{
        validate_only = ValidateOnly,
        ignore_warnings = IgnoreWarnings,
        new = IsNew,
        bucket_name = BucketName,
        all_buckets = AllBuckets,
-       bucket_config = case lists:keyfind(BucketName, 1, AllBuckets) of
-                           false -> false;
-                           {_, V} -> V
-                       end,
-       cluster_storage_totals = ClusterStorageTotals
+       bucket_config = BucketConfig,
+       cluster_storage_totals = ExtendedTotals
       }.
 
 handle_bucket_update(_PoolId, BucketId, Req) ->

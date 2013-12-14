@@ -114,7 +114,8 @@ create_bucket(BucketType, BucketName, NewConfig) ->
                                       NewConfig}, infinity).
 
 -spec update_bucket(memcached|membase, nonempty_string(), list()) ->
-                           ok | {exit, {not_found, nonempty_string()}, []}.
+                           ok | {exit, {not_found, nonempty_string()}, []}
+                               | rebalance_running.
 update_bucket(BucketType, BucketName, UpdatedProps) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_all_state_event(?SERVER, {update_bucket, BucketType, BucketName,
@@ -944,6 +945,7 @@ needs_rebalance(Nodes, BucketConfig, Topology) ->
                     Map = proplists:get_value(map, BucketConfig),
                     Map =:= undefined orelse
                         lists:sort(Nodes) /= lists:sort(Servers) orelse
+                        ns_rebalancer:map_options_changed(Topology, BucketConfig) orelse
                         ns_rebalancer:unbalanced(Map, Topology, BucketConfig)
             end;
         memcached ->

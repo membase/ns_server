@@ -30,7 +30,7 @@
          rebalance/3,
          run_mover/7,
          unbalanced/3,
-         unbalanced_with_config/4,
+         map_options_changed/2,
          eject_nodes/1,
          maybe_cleanup_old_buckets/1]).
 
@@ -411,9 +411,6 @@ run_mover(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets, Map, FastForw
 
 
 unbalanced(Map, Topology, BucketConfig) ->
-    unbalanced_with_config(Map, Topology, BucketConfig, ns_config:get()).
-
-unbalanced_with_config(Map, Topology, BucketConfig, Config) ->
     Servers = proplists:get_value(servers, BucketConfig, []),
     NumServers = length(Servers),
 
@@ -426,33 +423,12 @@ unbalanced_with_config(Map, Topology, BucketConfig, Config) ->
                     lists:sublist(Chain, NumServers))
           end, Map),
 
-    Opts = generate_vbucket_map_options(Servers, BucketConfig, Topology, Config),
-    OptsHash = proplists:get_value(map_opts_hash, BucketConfig),
-    OptsDiffer = case OptsHash of
-                     undefined ->
-                         %% note: false is required for config upgrade
-                         %% from 1.8. Otherwise make test fails
-                         %% ns_online_config_upgrader:maybe_add_vbucket_map_history test
-                         %%
-                         %% and true is required in order to ask for
-                         %% rebalance after offline upgrade
-                         case ns_config:search(Config, cluster_compat_version) of
-                             {value, [_, _ | _] = CompatMode} when CompatMode >= [2, 5] ->
-                                 true;
-                             _ ->
-                                 false
-                         end;
-                     _ ->
-                         erlang:phash2(Opts) =/= OptsHash
-                 end,
-
-    R orelse OptsDiffer
-        orelse case Topology of
-                   chain ->
-                       unbalanced_chain(Map, Servers);
-                   star ->
-                       unbalanced_star(Map, Servers)
-               end.
+    R orelse case Topology of
+                 chain ->
+                     unbalanced_chain(Map, Servers);
+                 star ->
+                     unbalanced_star(Map, Servers)
+             end.
 
 %% @doc Determine if a particular bucket is unbalanced. Returns true
 %% iff the max vbucket count in any class on any server is >2 more
@@ -483,6 +459,20 @@ unbalanced_star(Map, Servers) ->
               Counts = [C || {_, C} <- Counts0],
               Counts =/= [] andalso lists:max(Counts) - lists:min(Counts) > 1
       end, [MastersCounts, ReplicasCounts]).
+
+map_options_changed(Topology, BucketConfig) ->
+    Config = ns_config:get(),
+
+    Servers = proplists:get_value(servers, BucketConfig, []),
+
+    Opts = generate_vbucket_map_options(Servers, BucketConfig, Topology, Config),
+    OptsHash = proplists:get_value(map_opts_hash, BucketConfig),
+    case OptsHash of
+        undefined ->
+            true;
+        _ ->
+            erlang:phash2(Opts) =/= OptsHash
+    end.
 
 %%
 %% Internal functions
