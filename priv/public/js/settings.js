@@ -76,33 +76,23 @@ var SettingsSection = {
   }
 };
 
-function makeClusterSectionCells(ns, sectionCell, currentPoolListCell, poolDetailsCell, settingTabCell, internalSettingsUrl) {
+function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCell) {
   ns.isClusterTabCell = Cell.compute(function (v) {
     return v.need(settingTabCell) === "cluster" && v.need(sectionCell) === "settings";
   }).name("isClusterTabCell");
   ns.isClusterTabCell.equality = _.isEqual;
 
-  ns.visualInternalSettingsCell = Cell.compute(function (v) {
-    return future.get({url: internalSettingsUrl});
-  }).name("visualInternalSettingsCell");
-  ns.visualInternalSettingsCell.keepValueDuringAsync = true;
-  ns.visualInternalSettingsCell.equality = _.isEqual;
-
   ns.allClusterSectionSettingsCell = Cell.compute(function (v) {
     var currentPool = v.need(poolDetailsCell);
-    var visualInternalSettings = v.need(ns.visualInternalSettingsCell);
     var isCluster = v.need(ns.isClusterTabCell);
     var ram = currentPool.storageTotals.ram;
-    var ramQuota = {
+
+    return isCluster ? {
       totalRam: Math.floor(ram.total/(Math.Mi * currentPool.nodes.length)),
       memoryQuota: Math.floor(ram.quotaTotal/(Math.Mi * currentPool.nodes.length))
-    };
-    var merged = _.extend({}, ramQuota, visualInternalSettings);
-
-    return isCluster ? merged  : null;
+    } : null;
   }).name("allClusterSectionSettingsCell");
   ns.allClusterSectionSettingsCell.equality = _.isEqual;
-  ns.allClusterSectionSettingsCell.delegateInvalidationMethods(ns.visualInternalSettingsCell);
 }
 
 var ClusterSection = {
@@ -112,7 +102,7 @@ var ClusterSection = {
     var isROAdminCell = DAL.cells.isROAdminCell;
     var internalSettingsUrl = "/internalSettings/visual";
 
-    makeClusterSectionCells(self, DAL.cells.mode, DAL.cells.poolList, poolDetailsCell, SettingsSection.tabs, internalSettingsUrl);
+    makeClusterSectionCells(self, DAL.cells.mode, poolDetailsCell, SettingsSection.tabs);
 
     var container = $("#js_cluster_settings_container");
     var clusterSettingsForm = $("#js_cluster_public_settings_form");
@@ -142,7 +132,6 @@ var ClusterSection = {
         data: $.deparam(serializeForm(clusterSettingsForm)),
         success: function () {
           poolDetailsCell.recalculate();
-          self.visualInternalSettingsCell.invalidate();
         },
         error: function (jqXhr) {
           SettingsSection.renderErrors(JSON.parse(jqXhr.responseText), clusterSettingsForm);
@@ -159,10 +148,6 @@ var ClusterSection = {
       $("input", container).prop("disabled", isROAdmin);
     });
 
-    poolDetailsCell.subscribeValue(function () {
-      self.visualInternalSettingsCell.recalculate();
-    });
-
     self.allClusterSectionSettingsCell.subscribeValue(function (settings) {
       if (!settings) {
         return;
@@ -170,15 +155,6 @@ var ClusterSection = {
       setFormValues(clusterSettingsForm, settings);
       totalRamCont.text(settings.totalRam);
       enableDisableValidation(!isROAdminCell.value);
-    });
-
-    self.visualInternalSettingsCell.subscribeValue(function (visualInternalSettings) {
-      if (!visualInternalSettings) {
-        return;
-      }
-      var hex = visualInternalSettings.windowOutlineHex;
-      document.title = $.trim(visualInternalSettings.tabName) || originalTitle;
-      outlineTag.css({borderColor: hex ? "#" + hex : "transparent"});
     });
 
     Cell.subscribeMultipleValues(function (isClusterTab, isROAdmin) {
