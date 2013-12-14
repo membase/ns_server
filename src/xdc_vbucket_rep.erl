@@ -93,6 +93,10 @@ handle_info(init, #init_state{init_throttle = InitThrottle} = InitState) ->
         concurrency_throttle:is_done(InitThrottle)
     end;
 
+handle_info(src_db_updated, #init_state{} = St) ->
+    %% nothing need to be done, will send ourself a signal to check update after init is over
+    {noreply, St};
+
 handle_info(src_db_updated,
             #rep_state{status = #rep_vb_status{status = idle}} = St) ->
     misc:flush(src_db_updated),
