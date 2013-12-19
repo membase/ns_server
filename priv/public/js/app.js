@@ -411,7 +411,7 @@ var SetupWizard = {
           authType: 'sasl',
           replicaNumber: 1,
           replicaIndex: false,
-          threadsNumber: 3
+          threadsNumber: 8
         }, $.deparam(opt.defaultBucketData ? opt.defaultBucketData : ''));
 
         if (data.ramQuotaMB) {

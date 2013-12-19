@@ -1034,7 +1034,7 @@ var BucketsSection = {
           },
           replicaIndex: false,
           replicaNumber: 1,
-          threadsNumber: 3
+          threadsNumber: 8
         }, true)).startDialog();
 
       });
