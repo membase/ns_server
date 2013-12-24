@@ -263,6 +263,17 @@ check_no_duplicated_replication(ClusterUUID, FromBucket, ToBucket) ->
         couch_db:close(Db)
     end.
 
+check_map_size(BucketConfig, Map) ->
+    NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
+    true = (NumVBuckets =/= undefined),
+    case dict:size(Map) of
+        NumVBuckets ->
+            ok;
+        _ ->
+            [{<<"toBucket">>,
+              <<"Replication to the bucket with different number of vbuckets is disallowed">>}]
+    end.
+
 validate_new_replication_params_check_from_bucket(Type, FromBucket, ToCluster, ToBucket,
                                                   ReplicationType, Buckets) ->
     MaybeBucketError = check_from_bucket(FromBucket, Buckets),
@@ -270,16 +281,22 @@ validate_new_replication_params_check_from_bucket(Type, FromBucket, ToCluster, T
         {ok, BucketConfig} ->
             case remote_clusters_info:get_remote_bucket(ToCluster, ToBucket, true) of
                 {ok, #remote_bucket{uuid=BucketUUID,
-                                    cluster_uuid=ClusterUUID}} ->
+                                    cluster_uuid=ClusterUUID,
+                                    raw_vbucket_map=Map}} ->
                     case check_bucket_uuid(BucketConfig, BucketUUID) of
                         ok ->
                             case check_no_duplicated_replication(ClusterUUID,
                                                                  FromBucket, ToBucket) of
                                 ok ->
-                                    {ok, build_replication_doc(Type, FromBucket,
-                                                               ClusterUUID,
-                                                               ToBucket,
-                                                               ReplicationType)};
+                                    case check_map_size(BucketConfig, Map) of
+                                        ok ->
+                                            {ok, build_replication_doc(Type, FromBucket,
+                                                                       ClusterUUID,
+                                                                       ToBucket,
+                                                                       ReplicationType)};
+                                        Errors ->
+                                            {error, Errors}
+                                    end;
                                 Errors ->
                                     {error, Errors}
                             end;
