@@ -231,7 +231,7 @@ do_handle_remote_cluster_update_found_this(Id, OldCluster, Req, Params, JustVali
                                             ok;
                                         false ->
                                             ale:info(?USER_LOGGER,
-                                                     "Remote cluster reference \"~s\" udpated.~s~s",
+                                                     "Remote cluster reference \"~s\" updated.~s~s",
                                                      [OldName,
                                                       case OldName =:= NewName of
                                                           true ->
