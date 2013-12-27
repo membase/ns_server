@@ -1208,6 +1208,17 @@ $(function () {
 });
 
 function showAbout() {
+  doShowAbout();
+}
+
+function doShowAbout(certAsGiven) {
+  var cert = certAsGiven;
+  if (!cert) {
+    $.get("/pools/default/certificate", function (data) {
+      cert = data.certificate;
+      updateVersion();
+    });
+  }
   function updateVersion() {
     var components = DAL.componentsVersion;
     if (components)
@@ -1218,6 +1229,12 @@ function showAbout() {
         updateVersion();
       }, 'json')
     }
+
+    var certArea = $('#js-about-cert-area');
+    certArea.val(cert);
+    try {
+      certArea.get(0).setSelectionRange(0, cert.length);
+    } catch (e) {}
 
     var poolDetails = DAL.cells.currentPoolDetailsCell.value || {nodes:[]};
     var nodesCount = poolDetails.nodes.length;
@@ -1257,6 +1274,15 @@ function showAbout() {
   updateVersion();
   showDialog('about_server_dialog',
       {title: $('#about_server_dialog .config-top').hide().html()});
+}
+
+function regenerateCertificate() {
+  var overlay = overlayWithSpinner($('#about_server_dialog'));
+  $.post("/controller/regenerateCertificate", function (data) {
+    overlay.remove();
+    hideDialog('about_server_dialog');
+    doShowAbout(data.certificate);
+  });
 }
 
 function displayNotice(text, isError) {

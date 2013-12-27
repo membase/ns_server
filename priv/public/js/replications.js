@@ -459,8 +459,9 @@ var ReplicationsSection = {
   },
   startAddRemoteCluster: function () {
     var form = $('#create_cluster_reference_dialog form');
-    form.find('input[type=text], input[type=number], input[type=password], input:not([type])').val('');
+    form.find('input[type=text], input[type=number], textarea, input[type=password], input:not([type])').val('');
     form.find('input[name=username]').val('Administrator');
+    form.find('[name=demandEncryption]').attr('checked', false);
     $('#create_cluster_reference_dialog_errors_container').html('');
     form.bind('submit', onSubmit);
     showDialog('create_cluster_reference_dialog', {

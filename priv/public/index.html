@@ -2454,10 +2454,14 @@
     </div>
     <div class="center">
       <p class="dialog-text" id="about_versions"></p>
-      <p class="dialog-text">Cluster State ID: <span id="cluster_state_id"></span></p>
+      <p class="dialog-text" style="margin-bottom:25px;">Cluster State ID: <span id="cluster_state_id"></span></p>
+      <p class="dialog-text" style="margin-bottom:14px;">Cluster Certificate (<button onclick="regenerateCertificate();">Regenerate</button>):</p>
+      <p class="dialog-text" style="font-size:10px;"><textarea id="js-about-cert-area" style="width:100%;min-height:25em;" readonly="readonly">
+      </textarea></p>
     </div>
     <div class="config-bottom">
       <button name="close" value="Close" class="submit close direction-button" id="about-close" type="submit">Close</button>
+
     </div>
   </div>
 </div>
@@ -2484,6 +2488,7 @@
              to add.
            </span></span>
          </a>
+        </li>
        </ul>
      </fieldset>
      <fieldset>
@@ -2500,6 +2505,13 @@
        <li><label>Password:</label>
          <input name="password" type="password" /></li>
      </ul>
+     <legend>Encryption</legend>
+     <ul>
+       <li><label for="demand_encryption_flag-2">Demand encryption:</label>
+       <input name="demandEncryption" id="demand_encryption_flag-2" type="checkbox" value="1"></li>
+       <li class="ssh_key_area"><label for="ssh_key_area-2">Certificate:</label>
+       <textarea id="ssh_key_area-2" name="certificate" style="font-size:10px;width:100%;margin:0;padding:0;min-height:20em;"></textarea></li>
+     </ul>
     </fieldset>
     <div class="save_cancel">
       <button class="save_button float_right" type="submit">Save</button>
@@ -2510,7 +2522,7 @@
 <!-- END Create Cluster Reference -->
 
 <!-- Create Replication -->
-<div class="dialog join_cluster" id="create_replication_dialog" title="Create Replication" style="width:600px">
+<div class="dialog join_cluster create_replication_dialog" id="create_replication_dialog" title="Create Replication" style="width:600px">
   <div class="warning pat_10" id="create_replication_dialog_errors_container" style="line-height: 18px;"></div>
   <script id="create_replication_dialog_errors_template" type="text/html">
     <!-- {% _.each(rows, function (e) { %} -->
@@ -2553,6 +2565,10 @@
               <option value="capi">Version 1</option>
               <option value="xmem" selected="selected">Version 2</option>
             </select>
+          </div>
+          <div class="demand_encryption_flag">
+            <label for="demand_encryption_flag">Demand encryption:</label>
+            <input name="demand_encryption" id="demand_encryption_flag" type="checkbox">
           </div>
           <div>
             <label for="max_concurrent_reps">XDCR Max Replications per Bucket:</label>
