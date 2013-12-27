@@ -133,6 +133,11 @@ init([]) ->
     save_cert_pkey(CertPEM, PKeyPEM),
     proc_lib:init_ack({ok, Self}),
 
+    %% it's possible that we crashed somehow and not passed updated
+    %% cert and pkey to xdcr proxy. So we just attempt to restart it
+    %% on every init
+    restart_xdcr_proxy(),
+
     gen_server:enter_loop(?MODULE, [], {CertPEM, PKeyPEM}).
 
 format_status(_Opt, [_PDict, _State]) ->
@@ -186,4 +191,12 @@ restart_ssl_services() ->
     %% to shutdown us.
     %%
     %% We're not trapping exits and that makes this interaction safe.
-    ns_ssl_services_sup:restart_ssl_services().
+    ns_ssl_services_sup:restart_ssl_services(),
+    restart_xdcr_proxy().
+
+restart_xdcr_proxy() ->
+    case (catch ns_ports_setup:restart_xdcr_proxy()) of
+        ok -> ok;
+        Err ->
+            ?log_debug("Xdcr proxy restart failed. But that's usually normal. ~p", [Err])
+    end.

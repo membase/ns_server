@@ -57,6 +57,9 @@ deps_mlockall:
 deps_ns_babysitter: deps_ale
 	(cd deps/ns_babysitter; $(MAKE))
 
+deps_ns_ssl_proxy: deps_ale
+	(cd deps/ns_ssl_proxy; $(MAKE))
+
 prebuild_vbmap:
 	cd deps/vbmap && GOOS=linux GOARCH=386 go build -ldflags "-B 0x$$(sed -e 's/-//g' /proc/sys/kernel/random/uuid)" -o ../../priv/i386-linux-vbmap
 	cd deps/vbmap && GOOS=darwin GOARCH=386 go build -o ../../priv/i386-darwin-vbmap
@@ -108,7 +111,7 @@ deps_generate_cert:
 
 endif
 
-deps_all: deps_smtp deps_erlwsh deps_ale deps_mlockall deps_ns_babysitter deps_vbmap deps_generate_cert
+deps_all: deps_smtp deps_erlwsh deps_ale deps_mlockall deps_ns_babysitter deps_vbmap deps_generate_cert deps_ns_ssl_proxy
 
 docs:
 	priv/erldocs $(DOC_DIR)
@@ -143,6 +146,7 @@ GEN_SMTP_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/gen_smtp
 ALE_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ale
 MLOCKALL_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/mlockall
 NS_BABYSITTER_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ns_babysitter
+NS_SSL_PROXY_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ns_ssl_proxy
 
 do-install:
 	echo $(DESTDIR)$(PREFIX)
@@ -161,6 +165,8 @@ do-install:
 	cp -r deps/ale/ebin $(ALE_LIBDIR)/
 	mkdir -p $(NS_BABYSITTER_LIBDIR)
 	cp -r deps/ns_babysitter/ebin $(NS_BABYSITTER_LIBDIR)/
+	mkdir -p $(NS_SSL_PROXY_LIBDIR)
+	cp -r deps/ns_ssl_proxy/ebin $(NS_SSL_PROXY_LIBDIR)/
 	mkdir -p $(MLOCKALL_LIBDIR)
 	cp -r deps/mlockall/ebin $(MLOCKALL_LIBDIR)/
 	[ ! -d deps/mlockall/priv ] || cp -r deps/mlockall/priv $(MLOCKALL_LIBDIR)/
@@ -192,6 +198,7 @@ clean clean_all:
 	@(cd deps/erlwsh && $(MAKE) clean)
 	@(cd deps/ale && $(MAKE) clean)
 	@(cd deps/mlockall && $(MAKE) clean)
+	@(cd deps/ns_ssl_proxy && $(MAKE) clean)
 	rm -f $(TMP_VER)
 	rm -f $(TMP_DIR)/*.cov.html
 	rm -f cov.html
@@ -245,7 +252,8 @@ do-dialyzer:
             $(COUCH_PATH)/src/couchdb $(COUCH_PATH)/src/couch_set_view $(COUCH_PATH)/src/couch_view_parser \
             $(COUCH_PATH)/src/couch_index_merger/ebin \
             $(realpath $(COUCH_PATH)/src/mapreduce) \
-            deps/ns_babysitter/ebin
+            deps/ns_babysitter/ebin \
+            deps/ns_ssl_proxy/ebin
 
 dialyzer_obsessive: all $(COUCHBASE_PLT)
 	$(MAKE) do-dialyzer DIALYZER_FLAGS="-Wunmatched_returns -Werror_handling -Wrace_conditions -Wbehaviours -Wunderspecs " COUCH_PATH="$(shell . `pwd`/.configuration && echo $$couchdb_src)"

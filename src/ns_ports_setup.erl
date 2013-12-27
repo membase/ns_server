@@ -3,7 +3,8 @@
 -include("ns_common.hrl").
 
 -export([start/0, start_memcached_force_killer/0, setup_body_tramp/0,
-         restart_port_by_name/1, restart_moxi/0, restart_memcached/0]).
+         restart_port_by_name/1, restart_moxi/0, restart_memcached/0,
+         restart_xdcr_proxy/0]).
 
 start() ->
     {ok, proc_lib:spawn_link(?MODULE, setup_body_tramp, [])}.
@@ -44,6 +45,10 @@ restart_memcached() ->
     {ok, _} = restart_port_by_name(memcached),
     ok.
 
+restart_xdcr_proxy() ->
+    {ok, _} = restart_port_by_name(xdcr_proxy),
+    ok.
+
 restart_port_by_name(Name) ->
     rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, restart_port_by_name, [Name]).
 
@@ -78,6 +83,45 @@ childs_loop_continue(Childs) ->
         NewChilds ->
             set_childs_and_loop(NewChilds)
     end.
+
+inspect_term_arg(Value) ->
+    binary_to_list(iolist_to_binary(io_lib:format("~p", [Value]))).
+
+create_ssl_proxy_spec(Config) ->
+    {value, UpstreamPort0} = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}),
+    {value, DownstreamPort0} = ns_config:search(Config, {node, node(), ssl_proxy_downstream_port}),
+    UpstreamPort = erlang:integer_to_list(UpstreamPort0),
+    DownstreamPort = erlang:integer_to_list(DownstreamPort0),
+    Path = inspect_term_arg(ns_ssl_services_setup:ssl_cert_key_path()),
+    PathArgs = ["-pa"] ++ code:get_path(),
+    EnvArgsTail = [[inspect_term_arg(K), inspect_term_arg(V)]
+                   || {K, V} <- application:get_all_env(ns_server),
+                      case atom_to_list(K) of
+                          "error_logger" ++ _ -> true;
+                          "path_config" ++ _ -> true;
+                          _ -> false
+                      end],
+    EnvArgs = ["-ns_ssl_proxy", "upstream_port", UpstreamPort,
+               "downstream_port", DownstreamPort,
+               "cert_file", Path,
+               "private_key_file", Path
+               | (lists:append(EnvArgsTail))],
+
+    AllArgs = ["-smp", "enable",
+               "+P", "327680",
+               "+K", "true",
+               "-kernel", "error_logger", "false",
+               "-sasl", "sasl_error_logger", "false",
+               "-nouser"] ++ EnvArgs ++ PathArgs ++
+        ["-run", "child_erlang", "child_start", "ns_ssl_proxy"],
+
+    ErlPath = filename:join([hd(proplists:get_value(root, init:get_arguments())),
+                             "bin", "erl"]),
+
+    {xdcr_proxy,
+     ErlPath,
+     AllArgs,
+     [use_stdio, stderr_to_stdout]}.
 
 per_bucket_moxi_specs(Config) ->
     BucketConfigs = ns_bucket:get_buckets(Config),
@@ -121,7 +165,7 @@ per_bucket_moxi_specs(Config) ->
 dynamic_children() ->
     Config = ns_config:get(),
     {value, PortServers} = ns_config:search_node(Config, port_servers),
-    [expand_args(NCAO) || NCAO <- PortServers] ++ per_bucket_moxi_specs(Config).
+    [expand_args(NCAO) || NCAO <- PortServers] ++ per_bucket_moxi_specs(Config) ++ [create_ssl_proxy_spec(Config)].
 
 expand_args({Name, Cmd, ArgsIn, OptsIn}) ->
     Config = ns_config:get(),
