@@ -62,21 +62,29 @@ prebuild_vbmap:
 	cd deps/vbmap && GOOS=darwin GOARCH=386 go build -o ../../priv/i386-darwin-vbmap
 	cd deps/vbmap && GOOS=windows GOARCH=386 go build -o ../../priv/i386-win32-vbmap.exe
 
+prebuild_generate_cert:
+	cd deps/generate_cert && GOOS=linux GOARCH=386 go build -ldflags "-B 0x$$(sed -e 's/-//g' /proc/sys/kernel/random/uuid)" -o ../../priv/i386-linux-generate_cert
+	cd deps/generate_cert && GOOS=darwin GOARCH=386 go build -o ../../priv/i386-darwin-generate_cert
+	cd deps/generate_cert && GOOS=windows GOARCH=386 go build -o ../../priv/i386-win32-generate_cert.exe
+
 UNAME_S := $(shell uname -s)
 UNAME_M := $(shell uname -m)
 
 ifeq (Linux,$(UNAME_S))
 ifneq ($(or $(findstring x86_64,$(UNAME_M)),$(findstring i686,$(UNAME_M))),)
 VBMAP_BINARY := priv/i386-linux-vbmap
+GENERATE_CERT_BINARY := priv/i386-linux-generate_cert
 endif
 endif
 
 ifeq (Darwin,$(UNAME_S))
 VBMAP_BINARY := priv/i386-darwin-vbmap
+GENERATE_CERT_BINARY := priv/i386-darwin-generate_cert
 endif
 
 ifneq ($(or $(findstring CYGWIN,$(UNAME_S)),$(findstring WOW64,$(UNAME_S))),)
 VBMAP_BINARY := priv/i386-win32-vbmap.exe
+GENERATE_CERT_BINARY := priv/i386-win32-generate_cert.exe
 VBMAP_EXEEXT := .exe
 endif
 
@@ -85,15 +93,22 @@ ifdef VBMAP_BINARY
 deps_vbmap:
 	@echo "Using precompiled vbmap tool at $(VBMAP_BINARY)"
 
+deps_generate_cert:
+	@echo "Using precompiled generate_cert tool at $(GENERATE_CERT_BINARY)"
+
 else
 
 VBMAP_BINARY := deps/vbmap/vbmap
 deps_vbmap:
 	cd deps/vbmap && (go build -x || gccgo -Os -g *.go -o vbmap)
 
+GENERATE_CERT_BINARY := deps/generate_cert/generate_cert
+deps_generate_cert:
+	cd deps/generate_cert && (go build -x || gccgo -Os -g *.go -o generate_cert)
+
 endif
 
-deps_all: deps_smtp deps_erlwsh deps_ale deps_mlockall deps_ns_babysitter deps_vbmap
+deps_all: deps_smtp deps_erlwsh deps_ale deps_mlockall deps_ns_babysitter deps_vbmap deps_generate_cert
 
 docs:
 	priv/erldocs $(DOC_DIR)
@@ -151,6 +166,7 @@ do-install:
 	[ ! -d deps/mlockall/priv ] || cp -r deps/mlockall/priv $(MLOCKALL_LIBDIR)/
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	cp -r $(VBMAP_BINARY) $(DESTDIR)$(PREFIX)/bin/vbmap$(VBMAP_EXEEXT)
+	cp -r $(GENERATE_CERT_BINARY) $(DESTDIR)$(PREFIX)/bin/generate_cert$(VBMAP_EXEEXT)
 	mkdir -p $(DESTDIR)$(PREFIX)/etc/couchbase
 	sed -e 's|@DATA_PREFIX@|$(PREFIX_FOR_CONFIG)|g' -e 's|@BIN_PREFIX@|$(PREFIX_FOR_CONFIG)|g' \
 		 <etc/static_config.in >$(DESTDIR)$(PREFIX)/etc/couchbase/static_config
