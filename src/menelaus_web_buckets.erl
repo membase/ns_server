@@ -137,10 +137,15 @@ add_couch_api_base_loop([Node | RestNodes], BucketName, LocalAddr, F, Dict, CAPI
 maybe_add_couch_api_base(BucketName, KV, Node, LocalAddr) ->
     case cluster_compat_mode:is_cluster_20() of
         true ->
-            case capi_utils:capi_bucket_url_bin(Node, BucketName, LocalAddr) of
-                undefined -> KV;
-                CapiBucketUrl ->
-                    [{couchApiBase, CapiBucketUrl} | KV]
+            KV1 = case capi_utils:capi_bucket_url_bin(Node, BucketName, LocalAddr) of
+                      undefined -> KV;
+                      CapiBucketUrl ->
+                          [{couchApiBase, CapiBucketUrl} | KV]
+                  end,
+            case capi_utils:capi_bucket_url_bin({ssl, Node}, BucketName, LocalAddr) of
+                undefined -> KV1;
+                CapiSSLBucketUrl ->
+                    [{couchApiBaseHTTPS, CapiSSLBucketUrl} | KV1]
             end;
         false ->
             KV
