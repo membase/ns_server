@@ -43,10 +43,10 @@ put_socket(Socket, {?MODULE, {Host, Port, Bucket, _Auth}}) ->
 
 make_loc_by_remote_cluster_info_ref(TargetRef, Through, VBucket) ->
     case remote_clusters_info:get_memcached_vbucket_info_by_ref(TargetRef, Through, VBucket) of
-        {ok, {Host, Port}, BucketInfo} ->
+        {ok, #remote_node{host = HostString, memcached_port = Port}, BucketInfo} ->
             {ok, {_ClusterUUID, BucketName}} = remote_clusters_info:parse_remote_bucket_reference(TargetRef),
             Password = binary_to_list(BucketInfo#remote_bucket.password),
-            {ok, {?MODULE, {Host, Port, BucketName, Password}}};
+            {ok, {?MODULE, {list_to_binary(HostString), Port, BucketName, Password}}};
         Error ->
             Error
     end.

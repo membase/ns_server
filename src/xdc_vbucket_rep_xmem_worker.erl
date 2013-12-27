@@ -110,7 +110,16 @@ handle_call({connect, #xdc_rep_xmem_remote{ip = Host,
             #xdc_vb_rep_xmem_worker_state{id = Id, vb = Vb} =  State) ->
     case proplists:get_bool(dont_use_mcd_pool, RemoteOptions) of
         false ->
-            McdDst = memcached_clients_pool:make_loc(Host, Port, Bucket, Password),
+            McdDst = case proplists:get_value(cert, RemoteOptions) of
+                         undefined ->
+                             memcached_clients_pool:make_loc(Host, Port, Bucket, Password);
+                         Cert ->
+                             LocalProxyPort = ns_config_ets_dup:unreliable_read_key({node, node(), ssl_proxy_upstream_port}, undefined),
+                             RemoteProxyPort = proplists:get_value(remote_proxy_port, RemoteOptions),
+                             proxied_memcached_clients_pool:make_proxied_loc(Host, Port, Bucket, Password,
+                                                                             LocalProxyPort, RemoteProxyPort,
+                                                                             Cert)
+                     end,
             {reply, ok, State#xdc_vb_rep_xmem_worker_state{mcd_loc = McdDst}};
         true ->
             %% establish connection to remote memcached
