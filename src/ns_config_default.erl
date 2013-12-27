@@ -111,8 +111,12 @@ default() ->
       [{port, misc:get_env_default(rest_port, 8091)}, % Port number of the REST admin API and UI.
        {port_meta, PortMeta}]},
 
+     {{node, node(), ssl_rest_port}, misc:get_env_default(ssl_rest_port, 18091)},
+
      {{node, node(), capi_port},
       CAPIPort},
+
+     {{node, node(), ssl_capi_port}, misc:get_env_default(ssl_capi_port, 18092)},
 
                                                 % In 1.0, only the first entry in the creds list is displayed in the UI
                                                 % and accessible through the UI.
