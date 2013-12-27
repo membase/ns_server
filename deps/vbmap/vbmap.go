@@ -52,10 +52,10 @@ func (self chainCost) cmp(other chainCost) int {
 			return 1
 		case self.rawCost < other.rawCost:
 			return -1
-		default:
-			return 0
 		}
 	}
+
+	return 0
 }
 
 func (self chainCost) less(other chainCost) bool {
