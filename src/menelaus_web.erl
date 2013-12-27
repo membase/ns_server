@@ -88,7 +88,7 @@ start_link(Options) ->
     Loop = fun (Req) ->
                    ?MODULE:loop(Req, AppRoot, DocRoot)
            end,
-    case mochiweb_http:start([{name, ?MODULE}, {nodelay, true}, {loop, Loop} | Options2]) of
+    case mochiweb_http:start([{loop, Loop} | Options2]) of
         {ok, Pid} -> {ok, Pid};
         Other ->
             ?MENELAUS_WEB_LOG(?START_FAIL,
@@ -115,7 +115,9 @@ webconfig(Config) ->
                P -> list_to_integer(P)
            end,
     WebConfig = [{ip, Ip},
+                 {name, ?MODULE},
                  {port, Port},
+                 {nodelay, true},
                  {approot, menelaus_deps:local_path(["priv","public"],
                                                     ?MODULE)}],
     WebConfig.

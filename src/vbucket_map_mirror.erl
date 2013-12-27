@@ -142,13 +142,17 @@ call_compute_node_base_url(Node) ->
                       ets:insert(vbucket_map_mirror, {Node, undefined, false}),
                       undefined;
                   Port ->
-                      case misc:node_name_host(Node) of
+                      {RealNode, Schema} = case Node of
+                                               {ssl, V} -> {V, <<"https://">>};
+                                               _ -> {Node, <<"http://">>}
+                                           end,
+                      case misc:node_name_host(RealNode) of
                           {_, "127.0.0.1" = H} ->
-                              U = iolist_to_binary([<<"http://">>, H, $:, integer_to_list(Port)]),
+                              U = iolist_to_binary([Schema, H, $:, integer_to_list(Port)]),
                               ets:insert(vbucket_map_mirror, {Node, U, Port}),
                               U;
                           {_Name, H} ->
-                              U = iolist_to_binary([<<"http://">>, H, $:, integer_to_list(Port)]),
+                              U = iolist_to_binary([Schema, H, $:, integer_to_list(Port)]),
                               ets:insert(vbucket_map_mirror, {Node, U, false}),
                               U
                       end
@@ -168,7 +172,8 @@ node_to_inner_capi_base_url(Node) ->
             URL
     end.
 
--spec node_to_capi_base_url(node(), iolist() | binary()) -> undefined | binary().
+-spec node_to_capi_base_url(node() | {ssl, node()},
+                            iolist() | binary()) -> undefined | binary().
 node_to_capi_base_url(Node, LocalAddr) ->
     case ets:lookup(vbucket_map_mirror, Node) of
         [] ->
@@ -177,5 +182,11 @@ node_to_capi_base_url(Node, LocalAddr) ->
         [{_, URL, false}] ->
             URL;
         [{_, _URL, Port}] ->
-            iolist_to_binary([<<"http://">>, LocalAddr, $:, integer_to_list(Port)])
+            Schema = case Node of
+                         {ssl, _} ->
+                             <<"https://">>;
+                         _ ->
+                             <<"http://">>
+                     end,
+            iolist_to_binary([Schema, LocalAddr, $:, integer_to_list(Port)])
     end.
