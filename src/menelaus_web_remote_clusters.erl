@@ -257,10 +257,10 @@ do_handle_remote_cluster_update_found_this(Id, OldCluster, Req, Params, JustVali
                             menelaus_util:reply_json(Req, [])
                     end;
                 {errors, Status, Errors} ->
-                    menelaus_util:reply_json(Req, Errors, Status)
+                    menelaus_util:reply_json(Req, {struct, Errors}, Status)
             end;
         {errors, Errors} ->
-            menelaus_util:reply_json(Req, Errors, 400)
+            menelaus_util:reply_json(Req, {struct, Errors}, 400)
     end.
 
 check_remote_cluster_already_exists(RemoteUUID, Clusters) ->
