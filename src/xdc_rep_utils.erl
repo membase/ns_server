@@ -76,7 +76,7 @@ parse_proxy_params([]) ->
 parse_proxy_params(ProxyUrl) ->
     [{proxy, ProxyUrl}].
 
-parse_rep_db({Props}, ProxyParams, Options) ->
+parse_rep_db({Props}, _ProxyParams, Options) ->
     Url = maybe_add_trailing_slash(get_value(<<"url">>, Props)),
     {AuthProps} = get_value(<<"auth">>, Props, {[]}),
     {BinHeaders} = get_value(<<"headers">>, Props, {[]}),
@@ -100,22 +100,24 @@ parse_rep_db({Props}, ProxyParams, Options) ->
                       end
                  }
             end,
-    SslParams = ssl_params(Url),
-    ProxyParams2 = case SslParams of
-                       [] ->
-                           ProxyParams;
-                       _ when ProxyParams =/= [] ->
-                           [{proxy_ssl_options, SslParams} | ProxyParams];
-                       _ ->
-                           ProxyParams
-                   end,
-    ConnectOpts = get_value(socket_options, Options) ++ ProxyParams2 ++ SslParams,
+    SslParams = case Url of
+                    "http://" ++ _ ->
+                        [];
+                    "https://" ++ _ ->
+                        %% we cannot allow https without cert. If cert
+                        %% is missing, requests must not go through
+                        %% (undefined will cause crash in call below)
+                        CertPEM = get_value(xdcr_cert, Options, undefined),
+                        ns_ssl:cert_pem_to_ssl_verify_options(CertPEM)
+                end,
+    ConnectOpts = get_value(socket_options, Options) ++ SslParams,
     Timeout = get_value(connection_timeout, Options) * 1000,
     LhttpcOpts = lists:keysort(1, [
                                    {connect_options, ConnectOpts},
                                    {connect_timeout, Timeout},
                                    {send_retry, 0}
                                   ]),
+
     #httpdb{
              url = Url,
              oauth = OAuth,
@@ -143,35 +145,6 @@ maybe_add_trailing_slash(Url) ->
             Url ++ "/"
     end.
 
-
-
-
-ssl_params(Url) ->
-    case lhttpc_lib:parse_url(Url) of
-        #lhttpc_url{is_ssl = true} ->
-            Depth = list_to_integer(
-                      couch_config:get("replicator", "ssl_certificate_max_depth", "3")
-                     ),
-            VerifyCerts = couch_config:get("replicator", "verify_ssl_certificates"),
-            SslOpts = [{depth, Depth} | ssl_verify_options(VerifyCerts =:= "true")],
-            [{is_ssl, true}, {ssl_options, SslOpts}, {proxy_ssl_options, SslOpts}];
-        _ ->
-            []
-    end.
-
-ssl_verify_options(Value) ->
-    ssl_verify_options(Value, erlang:system_info(otp_release)).
-
-ssl_verify_options(true, OTPVersion) when OTPVersion >= "R14" ->
-    CAFile = couch_config:get("replicator", "ssl_trusted_certificates_file"),
-    [{verify, verify_peer}, {cacertfile, CAFile}];
-ssl_verify_options(false, OTPVersion) when OTPVersion >= "R14" ->
-    [{verify, verify_none}];
-ssl_verify_options(true, _OTPVersion) ->
-    CAFile = couch_config:get("replicator", "ssl_trusted_certificates_file"),
-    [{verify, 2}, {cacertfile, CAFile}];
-ssl_verify_options(false, _OTPVersion) ->
-    [{verify, 0}].
 
 get_checkpoint_log_id(#db{name = DbName0}, LogId0) ->
     get_checkpoint_log_id(?b2l(DbName0), LogId0);
