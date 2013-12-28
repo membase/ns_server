@@ -278,7 +278,7 @@ get_memcached_vbucket_info_by_ref(Reference, ForceRefresh, VBucket, Timeout) ->
 
 %% gen_server callbacks
 init([]) ->
-    CachePath = path_config:component_path(data, "remote_clusters_cache_v2"),
+    CachePath = path_config:component_path(data, "remote_clusters_cache_v3"),
     ok = read_or_create_table(?CACHE, CachePath),
     ets:insert_new(?CACHE, {clusters, []}),
 
