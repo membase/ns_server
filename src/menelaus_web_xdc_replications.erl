@@ -274,6 +274,20 @@ check_map_size(BucketConfig, Map) ->
               <<"Replication to the bucket with different number of vbuckets is disallowed">>}]
     end.
 
+check_xmem_allowed(<<"xdc">>, _) ->
+    ok;
+check_xmem_allowed(<<"xdc-xmem">>, RemoteVersion) when RemoteVersion < [2, 2] ->
+    [{<<"type">>,
+      <<"Version 2 replication is disallowed. Remote cluster has nodes with versions less than 2.2.">>}];
+check_xmem_allowed(<<"xdc-xmem">>, _) ->
+    case cluster_compat_mode:is_cluster_25() of
+        true ->
+            ok;
+        false ->
+            [{<<"type">>,
+              <<"Version 2 replication is disallowed. Cluster has nodes with versions less than 2.5.">>}]
+    end.
+
 validate_new_replication_params_check_from_bucket(Type, FromBucket, ToCluster, ToBucket,
                                                   ReplicationType, Buckets) ->
     MaybeBucketError = check_from_bucket(FromBucket, Buckets),
@@ -282,18 +296,24 @@ validate_new_replication_params_check_from_bucket(Type, FromBucket, ToCluster, T
             case remote_clusters_info:get_remote_bucket(ToCluster, ToBucket, true) of
                 {ok, #remote_bucket{uuid=BucketUUID,
                                     cluster_uuid=ClusterUUID,
-                                    raw_vbucket_map=Map}} ->
-                    case check_bucket_uuid(BucketConfig, BucketUUID) of
+                                    raw_vbucket_map=Map,
+                                    cluster_version=RemoteVersion}} ->
+                    case check_xmem_allowed(Type, RemoteVersion) of
                         ok ->
-                            case check_no_duplicated_replication(ClusterUUID,
-                                                                 FromBucket, ToBucket) of
+                            case check_bucket_uuid(BucketConfig, BucketUUID) of
                                 ok ->
-                                    case check_map_size(BucketConfig, Map) of
+                                    case check_no_duplicated_replication(ClusterUUID,
+                                                                         FromBucket, ToBucket) of
                                         ok ->
-                                            {ok, build_replication_doc(Type, FromBucket,
-                                                                       ClusterUUID,
-                                                                       ToBucket,
-                                                                       ReplicationType)};
+                                            case check_map_size(BucketConfig, Map) of
+                                                ok ->
+                                                    {ok, build_replication_doc(Type, FromBucket,
+                                                                               ClusterUUID,
+                                                                               ToBucket,
+                                                                               ReplicationType)};
+                                                Errors ->
+                                                    {error, Errors}
+                                            end;
                                         Errors ->
                                             {error, Errors}
                                     end;

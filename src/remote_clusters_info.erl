@@ -752,6 +752,17 @@ expect_number(Value, Context, K) ->
 expect_nested_number(Field, Props, Context, K) ->
     expect_nested(Field, Props, Context, fun extract_number/2, K).
 
+extract_version(MaybeVersion, Context) ->
+    case re:run(MaybeVersion, <<"^([0-9]+)\.([0-9]+)\..+$">>,
+                [anchored, {capture, all_but_first, list}]) of
+        {match, [V1, V2]} ->
+            {ok, [list_to_integer(V1), list_to_integer(V2)]};
+        _ ->
+            Msg = io_lib:format("(~s) got invalid node version value:~n~p",
+                                [Context, MaybeVersion]),
+            {bad_value, iolist_to_binary(Msg)}
+    end.
+
 with_pools(JsonGet, K) ->
     Context = <<"/pools response">>,
 
@@ -936,6 +947,17 @@ do_remote_cluster(JsonGet, Cert) ->
                 end)
       end).
 
+get_oldest_node_version(PoolNodeProps) ->
+    lists:foldl(
+      fun(NodeProps, Acc) ->
+              case proplists:get_value(<<"version">>, NodeProps) of
+                  undefined ->
+                      [0, 0];
+                  V ->
+                      min(Acc, V)
+              end
+      end, [999, 0], PoolNodeProps).
+
 with_nodes(Object, Context, Props, K) ->
     expect_nested_array(
       <<"nodes">>, Object, Context,
@@ -1066,7 +1088,8 @@ remote_bucket_with_pool_details(PoolDetails, RemoteCluster, Bucket, Creds, JsonG
     with_nodes(
       PoolDetails, <<"default pool details">>,
       [{<<"hostname">>, fun extract_string/2},
-       {<<"ports">>, fun extract_object/2}],
+       {<<"ports">>, fun extract_object/2},
+       {<<"version">>, fun extract_version/2}],
       fun (PoolNodeProps) ->
               with_buckets(
                 PoolDetails, JsonGet,
@@ -1131,6 +1154,8 @@ remote_bucket_with_bucket(BucketObject, OrigRemoteCluster,
     RemoteNodes = lists:usort(BucketNodes),
     RemoteCluster = OrigRemoteCluster#remote_cluster{nodes=RemoteNodes},
 
+    Version = get_oldest_node_version(PoolNodeProps),
+
     with_mcd_to_couch_uri_dict(
       BucketNodeProps, Creds, RemoteCluster#remote_cluster.cert,
       fun (McdToCouchDict) ->
@@ -1142,12 +1167,12 @@ remote_bucket_with_bucket(BucketObject, OrigRemoteCluster,
                           fun (Password) ->
                                   remote_bucket_with_server_map(VBucketServerMap, BucketUUID,
                                                                 RemoteCluster, RemoteNodes, McdToCouchDict,
-                                                                Password)
+                                                                Password, Version)
                           end)
                 end)
       end).
 
-remote_bucket_with_server_map(ServerMap, BucketUUID, RemoteCluster, RemoteNodes, McdToCouchDict, Password) ->
+remote_bucket_with_server_map(ServerMap, BucketUUID, RemoteCluster, RemoteNodes, McdToCouchDict, Password, Version) ->
     with_remote_nodes_mapped_server_list(
       RemoteNodes, ServerMap,
       fun (ServerList, RemoteServers) ->
@@ -1169,7 +1194,8 @@ remote_bucket_with_server_map(ServerMap, BucketUUID, RemoteCluster, RemoteNodes,
                                            cluster_cert=ClusterCert,
                                            server_list_nodes=RemoteServers,
                                            raw_vbucket_map=dict:from_list(misc:enumerate(VBucketMap, 0)),
-                                           capi_vbucket_map=CAPIVBucketMapDict},
+                                           capi_vbucket_map=CAPIVBucketMapDict,
+                                           cluster_version=Version},
 
                         {ok, {RemoteCluster, RemoteBucket}}
                 end)

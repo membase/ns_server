@@ -19,4 +19,5 @@
                         cluster_cert :: binary() | undefined,
                         server_list_nodes :: [#remote_node{}],
                         raw_vbucket_map :: dict(),
-                        capi_vbucket_map :: dict()}).
+                        capi_vbucket_map :: dict(),
+                        cluster_version :: {integer(), integer()}}).
