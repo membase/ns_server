@@ -503,8 +503,10 @@ button#test_email + span {line-height:2.25em;margin-left:0.5em}
 #add_new_bucket_dialog form {padding:10px 0 0;}
 
 .join_cluster fieldset legend {text-align:left; font-size:14px; font-weight:normal; margin-bottom: 15px; padding:10px 0 7px; border-bottom:1px solid #dbe3e8;width:100%}
+.join_cluster fieldset legend label {font-size:14px;width:auto!important;}
 .join_cluster label {display:inline-block;width:5em;font-size:12px;text-align:right;}
 #create_cluster_reference_dialog label{width:15em}
+#ssh_key_area-2 {display: none;}
 .join_cluster ul li {margin:0.6em 0}
 .join_cluster ul ul label {display:inline;width:auto;text-align:left}
 .join_cluster input {margin:0 4px 0 1px;padding:4px 3px;border:1px solid #ccd2d6;}

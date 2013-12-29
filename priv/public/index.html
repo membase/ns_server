@@ -2456,7 +2456,7 @@
       <p class="dialog-text" id="about_versions"></p>
       <p class="dialog-text" style="margin-bottom:25px;">Cluster State ID: <span id="cluster_state_id"></span></p>
       <p class="dialog-text" style="margin-bottom:14px;">Cluster Certificate (<button onclick="regenerateCertificate();">Regenerate</button>):</p>
-      <p class="dialog-text" style="font-size:10px;"><textarea id="js-about-cert-area" style="width:100%;min-height:25em;" readonly="readonly">
+      <p class="dialog-text" style="font-size:10px;"><textarea id="js-about-cert-area" style="width:100%;height:255px;" readonly="readonly">
       </textarea></p>
     </div>
     <div class="config-bottom">
@@ -2505,11 +2505,12 @@
        <li><label>Password:</label>
          <input name="password" type="password" /></li>
      </ul>
-     <legend>Encryption</legend>
+     <legend>
+       <label for="demand_encryption_flag-2">Encryption</label>
+       <input name="demandEncryption" id="demand_encryption_flag-2" type="checkbox" value="1">
+     </legend>
      <ul>
-       <li><label for="demand_encryption_flag-2">Demand encryption:</label>
-       <input name="demandEncryption" id="demand_encryption_flag-2" type="checkbox" value="1"></li>
-       <li class="ssh_key_area"><label for="ssh_key_area-2">Certificate:</label>
+       <li class="ssh_key_area">
        <textarea id="ssh_key_area-2" name="certificate" style="font-size:10px;width:100%;margin:0;padding:0;min-height:20em;"></textarea></li>
      </ul>
     </fieldset>

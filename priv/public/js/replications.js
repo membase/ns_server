@@ -314,6 +314,9 @@ var ReplicationsSection = {
     var perSettingsForm = $("#js_per_xdcr_settings_dialog form");
     var currentXDCRSettingsURICell = new Cell();
     currentXDCRSettingsURICell.equality = function () {return false};
+    $("#demand_encryption_flag-2").bind("change", function () {
+      $('#ssh_key_area-2')[$(this).prop('checked') ? 'show' : 'hide']();
+    });
 
     mkReplicationSectionCell(self, currentXDCRSettingsURICell, DAL.cells.tasksProgressCell, DAL.cells.mode);
 
@@ -423,7 +426,15 @@ var ReplicationsSection = {
     return;
 
     function editRemoteCluster(remoteCluster) {
+      remoteCluster = _.clone(remoteCluster);
       var form = $('#create_cluster_reference_dialog form');
+      if (!remoteCluster.certificate) {
+        remoteCluster.certificate = 'Insert certificate here';
+        $('#demand_encryption_flag-2').prop('checked', false);
+        $('#ssh_key_area-2').hide();
+      } else {
+        $('#ssh_key_area-2').show();
+      }
       setFormValues(form, remoteCluster);
       $('#create_cluster_reference_dialog_errors_container').html('');
       showDialog('create_cluster_reference_dialog', {
@@ -444,6 +455,9 @@ var ReplicationsSection = {
   submitRemoteCluster: function (uri, form) {
     var spinner = overlayWithSpinner(form);
     var formValues = $.deparam(serializeForm(form));
+    if ($.trim(formValues.certificate) === "Insert certificate here") {
+      formValues.certificate = "";
+    }
     if (formValues.hostname && !formValues.hostname.split(":")[1]) {
       formValues.hostname += ":8091";
     }
@@ -459,12 +473,16 @@ var ReplicationsSection = {
   },
   startAddRemoteCluster: function () {
     var form = $('#create_cluster_reference_dialog form');
-    form.find('input[type=text], input[type=number], textarea, input[type=password], input:not([type])').val('');
+    form.find('input[type=text], input[type=number], input[type=password], input:not([type])').val('');
+    $('#demand_encryption_flag-2').prop('checked', false);
+    $('#ssh_key_area-2').val('Insert certificate here');
+    $('#ssh_key_area-2').hide();
     form.find('input[name=username]').val('Administrator');
     form.find('[name=demandEncryption]').attr('checked', false);
     $('#create_cluster_reference_dialog_errors_container').html('');
     form.bind('submit', onSubmit);
     showDialog('create_cluster_reference_dialog', {
+      position: { my: "center top", at: "center bottom", of: $("#headerNav") },
       onHide: onHide
     });
     return;
