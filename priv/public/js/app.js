@@ -23,13 +23,13 @@ function performSignOut() {
 
   $(document.body).addClass('auth');
   var spinner = overlayWithSpinner('#login_form', false);
-  $('.sign-out-link').hide();
+  $('.sign-out-link, #js_regenerate_btn').hide();
 
   DAL.initiateLogout(function () {
     spinner.remove();
     DAL.onReady(function () {
       if (DAL.login)
-        $('.sign-out-link').show();
+        $('.sign-out-link, #js_regenerate_btn').show();
     });
 
     _.defer(function () {
@@ -245,7 +245,7 @@ var ThePage = {
 
     DAL.onReady(function () {
       if (DAL.login) {
-        $('.sign-out-link').show();
+        $('.sign-out-link, #js_regenerate_btn').show();
       }
     });
 
@@ -614,7 +614,7 @@ var SetupWizard = {
                 SetupWizard.show('done');
 
                 if (user != null && user != "") {
-                  $('.sign-out-link').show();
+                  $('.sign-out-link, #js_regenerate_btn').show();
                 }
               },
               // error
