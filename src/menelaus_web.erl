@@ -882,23 +882,16 @@ detect_enterprise_version_test() ->
     true = not detect_enterprise_version(<<"1.8.0r-9-ga083a1e-comm">>).
 
 is_enterprise() ->
-    menelaus_web_cache:lookup_or_compute_with_expiration(
-      is_enterprise,
-      fun () ->
-              IsForced = ns_config_ets_dup:unreliable_read_key(this_is_enterprise, undefined),
-              Val = case IsForced of
-                        undefined ->
-                            Versions = ns_info:version(),
-                            NsServerVersion = list_to_binary(proplists:get_value(ns_server, Versions, "unknown")),
-                            detect_enterprise_version(NsServerVersion);
-                        _ ->
-                            IsForced
-                    end,
-              {Val, 1000000, IsForced}
-      end,
-      fun (_Key, _Value, IsForced) ->
-              IsForced =/= ns_config_ets_dup:unreliable_read_key(this_is_enterprise, undefined)
-      end).
+    case ns_config_ets_dup:unreliable_read_key(this_is_enterprise, undefined) of
+        undefined ->
+            Versions = ns_info:version(),
+            NsServerVersion = list_to_binary(proplists:get_value(ns_server, Versions, "unknown")),
+            DetectedEnterprise = detect_enterprise_version(NsServerVersion),
+            ns_config:set(this_is_enterprise, DetectedEnterprise),
+            DetectedEnterprise;
+        StoredEnterprise ->
+            StoredEnterprise
+    end.
 
 is_xdcr_over_ssl_allowed() ->
     is_enterprise() andalso cluster_compat_mode:is_cluster_25().
