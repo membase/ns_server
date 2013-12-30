@@ -882,12 +882,28 @@ detect_enterprise_version_test() ->
     true = detect_enterprise_version(<<"1.8.0r-9-ga083a1e-enterprise">>),
     true = not detect_enterprise_version(<<"1.8.0r-9-ga083a1e-comm">>).
 
+is_forced_enterprise() ->
+    case os:getenv("FORCE_ENTERPRISE") of
+        false ->
+            false;
+        "0" ->
+            false;
+        _ ->
+            true
+    end.
+
 is_enterprise() ->
     case ns_config_ets_dup:unreliable_read_key(this_is_enterprise, undefined) of
         undefined ->
-            Versions = ns_info:version(),
-            NsServerVersion = list_to_binary(proplists:get_value(ns_server, Versions, "unknown")),
-            DetectedEnterprise = detect_enterprise_version(NsServerVersion),
+            DetectedEnterprise =
+                case is_forced_enterprise() of
+                    true ->
+                        true;
+                    false ->
+                        Versions = ns_info:version(),
+                        NsServerVersion = list_to_binary(proplists:get_value(ns_server, Versions, "unknown")),
+                        detect_enterprise_version(NsServerVersion)
+                end,
             ns_config:set(this_is_enterprise, DetectedEnterprise),
             DetectedEnterprise;
         StoredEnterprise ->
