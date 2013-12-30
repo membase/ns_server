@@ -165,12 +165,13 @@ var DAL = {
       console.log("forced version: ", implementationVersion);
     })();
 
+    DAL.cells.isEnterpriseCell.setValue(!!data.isEnterprise);
+
     if (implementationVersion) {
       DAL.version = implementationVersion;
       DAL.componentsVersion = data.componentsVersion;
       DAL.uuid = data.uuid;
       var parsedVersion = DAL.parseVersion(implementationVersion);
-      DAL.cells.isEnterpriseCell.setValue((parsedVersion[3] === 'enterprise'));
       if (!DAL.appendedVersion) {
         document.title = document.title +
           " (" + parsedVersion[0] + ")";

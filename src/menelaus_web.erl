@@ -758,6 +758,7 @@ handle_pools(Req) ->
     reply_json(Req,{struct, [{pools, EffectivePools},
                              {isAdminCreds, Admin},
                              {isROAdminCreds, ReadOnlyAdmin},
+                             {isEnterprise, is_enterprise()},
                              {settings,
                               {struct,
                                [{<<"maxParallelIndexers">>,
