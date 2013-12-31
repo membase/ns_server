@@ -2,6 +2,7 @@
 
 -export([cluster_cert_and_pkey_pem/0,
          generate_cert_and_pkey/0,
+         validate_cert/1,
          generate_and_set_cert_and_pkey/0]).
 
 cluster_cert_and_pkey_pem() ->
@@ -46,7 +47,7 @@ validate_cert(CertPemBin) ->
                               Type =/= 'Certificate'],
     case NonCertEntries of
         [] ->
-            ok;
+            {ok, PemEntries};
         _ ->
             {error, non_cert_entries, NonCertEntries}
     end.
@@ -72,7 +73,11 @@ extract_cert_and_pkey(Output) ->
     %% we're anticipating chain of certs and pkey here
     [PKey | CertParts] = lists:reverse(Parts),
     Cert = iolist_to_binary(lists:reverse(CertParts)),
-    Results = [validate_cert(Cert), validate_pkey(PKey)],
+    ValidateCertErr = case validate_cert(Cert) of
+                          {ok, _} -> ok;
+                          Err -> Err
+                      end,
+    Results = [ValidateCertErr, validate_pkey(PKey)],
     BadResults = [Err || Err <- Results,
                          Err =/= ok],
     case BadResults of

@@ -159,7 +159,23 @@ validate_remote_cluster_params(Params, ExistingClusters) ->
                               {<<"certificate">>, <<"certificate must be given if demand encryption is on">>};
                           {_, _} ->
                               menelaus_web:assert_is_enterprise(),
-                              undefined
+                              CertBin = list_to_binary(Cert),
+                              OkCert = case (catch ns_server_cert:validate_cert(CertBin)) of
+                                           {ok, [_]} -> true;
+                                           {ok, _} -> <<"found multiple certificates instead">>;
+                                           {error, non_cert_entries, _} ->
+                                               <<"found non-certificate entries">>;
+                                           _ ->
+                                               <<"failed to parse given certificate">>
+                                       end,
+                              case OkCert of
+                                  true ->
+                                      undefined;
+                                  _ ->
+                                      Err = [<<"certificate must be a single, PEM-encoded x509 certificate and nothing more (">>,
+                                             OkCert, $)],
+                                      {<<"certificate">>, iolist_to_binary(Err)}
+                              end
                       end,
     Errors0 = lists:filter(fun (undefined) -> false;
                                (_) -> true
