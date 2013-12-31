@@ -158,6 +158,7 @@ validate_remote_cluster_params(Params, ExistingClusters) ->
                           {_, ""} ->
                               {<<"certificate">>, <<"certificate must be given if demand encryption is on">>};
                           {_, _} ->
+                              menelaus_web:assert_is_enterprise(),
                               undefined
                       end,
     Errors0 = lists:filter(fun (undefined) -> false;
