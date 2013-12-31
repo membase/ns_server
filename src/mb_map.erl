@@ -211,10 +211,17 @@ matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentTags,
 %%
 
 generate_map(Map, Nodes, Options) ->
-    case proplists:get_value(replication_topology, Options, chain) of
-        chain ->
+    Topology = proplists:get_value(replication_topology, Options, chain),
+    Tags = proplists:get_value(tags, Options),
+    NumReplicas = length(hd(Map)) - 1,
+
+    UseOldCode = Topology =:= chain
+        orelse (Tags =:= undefined andalso NumReplicas =< 1),
+
+    case UseOldCode of
+        true ->
             generate_map_chain(Map, Nodes, Options);
-        star ->
+        false ->
             generate_map_star(Map, Nodes, Options)
     end.
 
