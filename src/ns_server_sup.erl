@@ -140,6 +140,12 @@ child_specs() ->
      {mc_sup, {mc_sup, start_link, []},
       permanent, infinity, supervisor, dynamic},
 
+     %% Note: it sets up cert and private key files. So needs to go
+     %% before ns_ports_setup
+     {ns_ssl_services_sup,
+      {ns_ssl_services_sup, start_link, []},
+      permanent, infinity, supervisor, []},
+
      {ns_ports_setup, {ns_ports_setup, start, []},
       {permanent, 4}, brutal_kill, worker, []},
 
@@ -150,6 +156,9 @@ child_specs() ->
       permanent, 1000, worker, [ns_memcached_log_rotator]},
 
      {memcached_clients_pool, {memcached_clients_pool, start_link, []},
+      permanent, 1000, worker, []},
+
+     {proxied_memcached_clients_pool, {proxied_memcached_clients_pool, start_link, []},
       permanent, 1000, worker, []},
 
      {xdc_lhttpc_pool, {lhttpc_manager, start_link, [[{name, xdc_lhttpc_pool}, {connection_timeout, 120000}, {pool_size, 200}]]},

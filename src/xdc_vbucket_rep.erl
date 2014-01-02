@@ -93,6 +93,10 @@ handle_info(init, #init_state{init_throttle = InitThrottle} = InitState) ->
         concurrency_throttle:is_done(InitThrottle)
     end;
 
+handle_info(src_db_updated, #init_state{} = St) ->
+    %% nothing need to be done, will send ourself a signal to check update after init is over
+    {noreply, St};
+
 handle_info(src_db_updated,
             #rep_state{status = #rep_vb_status{status = idle}} = St) ->
     misc:flush(src_db_updated),
@@ -533,7 +537,8 @@ init_replication_state(#init_state{rep = Rep,
         end,
 
     TgtURI = hd(dict:fetch(Vb, CurrRemoteBucket#remote_bucket.capi_vbucket_map)),
-    TgtDb = xdc_rep_utils:parse_rep_db(TgtURI, [], Options),
+    CertPEM = CurrRemoteBucket#remote_bucket.cluster_cert,
+    TgtDb = xdc_rep_utils:parse_rep_db(TgtURI, [], [{xdcr_cert, CertPEM} | Options]),
     {ok, Source} = couch_api_wrap:db_open(SrcVbDb, []),
     {ok, Target} = couch_api_wrap:db_open(TgtDb, []),
     {ok, SourceInfo} = couch_api_wrap:get_db_info(Source),
@@ -548,7 +553,7 @@ init_replication_state(#init_state{rep = Rep,
 
     XMemRemote = case RepMode of
                      "xmem" ->
-                         {ok, {Ip, Port}, LatestRemoteBucket} =
+                         {ok, #remote_node{host = RemoteHostName, memcached_port = Port} = RN, LatestRemoteBucket} =
                              case remote_clusters_info:get_memcached_vbucket_info_by_ref(Tgt, false, Vb) of
                                  {ok, RemoteNode, TgtBucket} ->
                                      {ok, RemoteNode, TgtBucket};
@@ -562,8 +567,11 @@ init_replication_state(#init_state{rep = Rep,
 
                          {ok, {_ClusterUUID, BucketName}} = remote_clusters_info:parse_remote_bucket_reference(Tgt),
                          Password = binary_to_list(LatestRemoteBucket#remote_bucket.password),
-                         #xdc_rep_xmem_remote{ip = binary_to_list(Ip), port = Port,
-                                              bucket = BucketName, username = BucketName, password = Password, options = []};
+                         #xdc_rep_xmem_remote{ip = RemoteHostName, port = Port,
+                                              bucket = BucketName, username = BucketName, password = Password,
+                                              options = [{remote_node, RN},
+                                                         {remote_proxy_port, RN#remote_node.ssl_proxy_port},
+                                                         {cert, LatestRemoteBucket#remote_bucket.cluster_cert}]};
                      _ ->
                          nil
                  end,
@@ -685,10 +693,11 @@ update_rep_options(#rep_state{rep_details =
 
 start_replication(#rep_state{
                      source_name = SourceName,
-                     target_name = TargetName,
+                     target_name = OrigTgtURI,
                      current_through_seq = StartSeq,
                      last_checkpoint_time = LastCkptTime,
-                     rep_details = #rep{id = Id, options = Options},
+                     status = #rep_vb_status{vb = Vb},
+                     rep_details = #rep{id = Id, options = Options, target = TargetRef},
                      xmem_remote = Remote
                     } = State) ->
 
@@ -697,8 +706,21 @@ start_replication(#rep_state{
     NumWorkers = get_value(worker_processes, Options),
     BatchSizeItems = get_value(worker_batch_size, Options),
     {ok, Source} = couch_api_wrap:db_open(SourceName, []),
-    TgtURI = xdc_rep_utils:parse_rep_db(TargetName, [], Options),
-    {ok, Target} = couch_api_wrap:db_open(TgtURI, []),
+
+    %% we re-fetch bucket details to get fresh remote cluster certificate
+    {TgtDB, TgtURI} =
+        case remote_clusters_info:get_remote_bucket_by_ref(TargetRef, false) of
+            {ok, CurrRemoteBucket} ->
+                TgtURI0 = hd(dict:fetch(Vb, CurrRemoteBucket#remote_bucket.capi_vbucket_map)),
+                CertPEM = CurrRemoteBucket#remote_bucket.cluster_cert,
+                {xdc_rep_utils:parse_rep_db(TgtURI0, [], [{xdcr_cert, CertPEM} | Options]), TgtURI0};
+            Err ->
+                ?xdcr_error("Couldn't re-fetch remote bucket info for ~s (original url: ~s): ~p",
+                            [TargetRef, misc:sanitize_url(OrigTgtURI), Err]),
+                erlang:exit({get_remove_bucket_failed, Err})
+        end,
+    {ok, Target} = couch_api_wrap:db_open(TgtDB, []),
+
     {ok, SrcMasterDb} = couch_api_wrap:db_open(
                           xdc_rep_utils:get_master_db(Source),
                           []),
@@ -828,6 +850,7 @@ start_replication(#rep_state{
                                             workers = Workers,
                                             source = Source,
                                             src_master_db = SrcMasterDb,
+                                            target_name = TgtURI,
                                             target = Target,
                                             tgt_master_db = TgtMasterDb,
                                             status = NewVbStatus#rep_vb_status{num_changes_left = Changes,

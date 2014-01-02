@@ -95,9 +95,9 @@ disconnect(nil) ->
 disconnect(Server) ->
     gen_server:call(Server, disconnect, infinity).
 
--spec stop(nil | pid()) -> normal.
+-spec stop(nil | pid()) -> ok.
 stop(nil) ->
-    normal;
+    ok;
 stop(Server) ->
     gen_server:cast(Server, stop).
 

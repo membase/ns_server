@@ -110,7 +110,16 @@ handle_call({connect, #xdc_rep_xmem_remote{ip = Host,
             #xdc_vb_rep_xmem_worker_state{id = Id, vb = Vb} =  State) ->
     case proplists:get_bool(dont_use_mcd_pool, RemoteOptions) of
         false ->
-            McdDst = memcached_clients_pool:make_loc(Host, Port, Bucket, Password),
+            McdDst = case proplists:get_value(cert, RemoteOptions) of
+                         undefined ->
+                             memcached_clients_pool:make_loc(Host, Port, Bucket, Password);
+                         Cert ->
+                             LocalProxyPort = ns_config_ets_dup:unreliable_read_key({node, node(), ssl_proxy_upstream_port}, undefined),
+                             RemoteProxyPort = proplists:get_value(remote_proxy_port, RemoteOptions),
+                             proxied_memcached_clients_pool:make_proxied_loc(Host, Port, Bucket, Password,
+                                                                             LocalProxyPort, RemoteProxyPort,
+                                                                             Cert)
+                     end,
             {reply, ok, State#xdc_vb_rep_xmem_worker_state{mcd_loc = McdDst}};
         true ->
             %% establish connection to remote memcached
@@ -317,7 +326,7 @@ handle_call({flush_docs_pipeline, DocsList}, _From,
 
     {ok, Statuses} = pooled_memcached_client:bulk_set_metas(McdDst, VBucket, DocsList),
 
-    {ErrorDict, ErrorKeys} = categorise_statuses_to_dict(Statuses, DocsList),
+    {ErrorDict, ErrorKeysDict} = categorise_statuses_to_dict(Statuses, DocsList),
     Flushed = lookup_error_dict(success, ErrorDict),
     Enoent = lookup_error_dict(key_enoent, ErrorDict),
     Eexist = lookup_error_dict(key_eexists, ErrorDict),
@@ -359,12 +368,13 @@ handle_call({flush_docs_pipeline, DocsList}, _From,
                     true ->
                         {reply, {ok, Flushed, Eexist}, State};
                     _ ->
+                        ErrorKeyStr = convert_error_dict_to_string(ErrorKeysDict),
                         ErrorStr = ?format_msg("in batch of ~p docs: flushed: ~p, rejected (eexists): ~p; "
                                                "remote memcached errors: enoent: ~p, not-my-vb: ~p, invalid: ~p, "
                                                "tmp fail: ~p, enomem: ~p, others: ~p",
                                                [DocsListSize, Flushed, Eexist, Enoent, NotMyVb,
                                                 Einval, TmpFail, Enomem, OtherErr]),
-                        {stop, {error, {ErrorStr, ErrorKeys}}, State}
+                        {stop, {error, {ErrorStr, ErrorKeyStr}}, State}
                 end
         end,
     RV;
@@ -777,7 +787,7 @@ mc_cmd_pipeline(Opcode, Sock, {Header, Entry}) ->
                         Header#mc_header{opcode = Opcode}, mc_client_binary:ext(Opcode, Entry)),
     ok.
 
--spec categorise_statuses_to_dict(list(), list()) -> {dict(), list()}.
+-spec categorise_statuses_to_dict(list(), list()) -> {dict(), dict()}.
 categorise_statuses_to_dict(Statuses, DocsList) ->
     {ErrorDict, ErrorKeys, _}
         = lists:foldl(fun(Status, {DictAcc, ErrorKeyAcc, CountAcc}) ->
@@ -790,13 +800,22 @@ categorise_statuses_to_dict(Statuses, DocsList) ->
                                           {dict:update_counter(success, 1, DictAcc), ErrorKeyAcc};
                                       %% use status as key since # of memcached status is limited
                                       S ->
-                                          {dict:update_counter(S, 1, DictAcc), [Key | ErrorKeyAcc]}
+                                          NewDict = dict:update_counter(S, 1, DictAcc),
+                                          CurrKeyList = case dict:find(Status, ErrorKeyAcc) of
+                                                            {ok, V} ->
+                                                                V;
+                                                            _ ->
+                                                                []
+                                                        end,
+                                          NewKeyList = [Key | CurrKeyList],
+                                          NewErrorKey = dict:store(Status, NewKeyList, ErrorKeyAcc),
+                                          {NewDict, NewErrorKey}
                                   end,
                               {DictAcc2, ErrorKeyAcc2, CountAcc2}
                       end,
-                      {dict:new(), [], 0},
-                      Statuses),
-    {ErrorDict, lists:reverse(ErrorKeys)}.
+                      {dict:new(), dict:new(), 0},
+                      lists:reverse(Statuses)),
+    {ErrorDict, ErrorKeys}.
 
 -spec lookup_error_dict(term(), dict()) -> integer().
 lookup_error_dict(Key, ErrorDict)->
@@ -806,3 +825,29 @@ lookup_error_dict(Key, ErrorDict)->
          {ok, V} ->
              V
      end.
+
+
+-spec convert_error_dict_to_string(dict()) -> list().
+convert_error_dict_to_string(ErrorKeyDict) ->
+    StrHead = case dict:size(ErrorKeyDict) > 0 of
+                  true ->
+                      "Error with their keys:";
+                  _ ->
+                      "No error keys."
+              end,
+    ErrorStr =
+        dict:fold(fun(Status, KeyList, ErrorStrIn) ->
+                          L = length(KeyList),
+                          Msg1 = ?format_msg("~p keys with ~p errors", [L, Status]),
+                          Msg2 = case L > 10 of
+                                     true ->
+                                         ?format_msg("(dump first 10 keys: ~p); ",
+                                                     [lists:sublist(KeyList, 10)]);
+                                     _ ->
+                                         ?format_msg("(~p); ", [KeyList])
+                                 end,
+                          ErrorStrIn ++ Msg1 ++ Msg2
+                  end,
+                  [], ErrorKeyDict),
+    StrHead ++ ErrorStr.
+

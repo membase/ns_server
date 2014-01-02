@@ -274,6 +274,7 @@ def make_os_tasks():
         LinuxTask("Transparent Huge Pages data", "cat /sys/kernel/mm/redhat_transparent_hugepage/enabled"),
         LinuxTask("Transparent Huge Pages data", "cat /sys/kernel/mm/redhat_transparent_hugepage/defrag"),
         LinuxTask("Full raw netstat", "cat /proc/net/netstat"),
+        LinuxTask("CPU throttling info", "echo /sys/devices/system/cpu/cpu*/thermal_throttle/* | xargs -n1 -- sh -c 'echo $1; cat $1' --"),
         ]
 
     return _tasks
@@ -311,7 +312,8 @@ def sanitize(text):
     patterns = [(r'{sasl_password\s*,(.*)\}', "{sasl_password,\"*****\"}"),
                 (r'{password\s*,(.*)\}', "{password,\"*****\"}"),
                 (r'{pass\s*,(.*)\}', "{pass,\"*****\"}"),
-                (r'{admin_pass\s*,(.*)\}', "{admin_pass,\"*****\"}")]
+                (r'{admin_pass\s*,(.*)\}', "{admin_pass,\"*****\"}"),
+                (r'.*RSA PRIVATE KEY.*', "(RSA PRIVATE KEY WAS SANITIZED)")]
 
     for regexp, subst in patterns:
         text = re.sub(regexp, subst, text)

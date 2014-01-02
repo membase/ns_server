@@ -261,7 +261,7 @@ get_memcached_vbucket_info_by_ref(Reference, ForceRefresh, VBucket, Timeout) ->
     case get_remote_bucket_by_ref(Reference, ForceRefresh, Timeout) of
         {ok, RemoteBucket} ->
             #remote_bucket{raw_vbucket_map = Map,
-                           server_list = ServerList} = RemoteBucket,
+                           server_list_nodes = ServerListNodes} = RemoteBucket,
             Idx = case dict:find(VBucket, Map) of
                       {ok, Row} -> hd(Row);
                       error -> -1
@@ -270,7 +270,7 @@ get_memcached_vbucket_info_by_ref(Reference, ForceRefresh, VBucket, Timeout) ->
                 true ->
                     {error, missing_vbucket};
                 _ ->
-                    {ok, lists:nth(Idx + 1, ServerList), RemoteBucket}
+                    {ok, lists:nth(Idx + 1, ServerListNodes), RemoteBucket}
             end;
         Error ->
             Error
@@ -278,7 +278,7 @@ get_memcached_vbucket_info_by_ref(Reference, ForceRefresh, VBucket, Timeout) ->
 
 %% gen_server callbacks
 init([]) ->
-    CachePath = path_config:component_path(data, "remote_clusters_cache_v2"),
+    CachePath = path_config:component_path(data, "remote_clusters_cache_v3"),
     ok = read_or_create_table(?CACHE, CachePath),
     ets:insert_new(?CACHE, {clusters, []}),
 
@@ -316,32 +316,66 @@ handle_call({get_remote_bucket, Cluster, Bucket, false, Timeout}, From, State) -
     UUID = proplists:get_value(uuid, Cluster),
     true = (UUID =/= undefined),
 
+    true = is_list(Bucket),
+
     case ets:lookup(?CACHE, {bucket, UUID, Bucket}) of
         [] ->
             handle_call({get_remote_bucket, Cluster, Bucket, true, Timeout},
                         From, State);
         [{_, Cached}] ->
-            {reply, {ok, Cached}, State}
+            case Cached#remote_bucket.cluster_cert =:= proplists:get_value(cert, Cluster) of
+                true ->
+                    {reply, {ok, Cached}, State};
+                false ->
+                    ?log_debug("Found cached bucket info (~s/~s), but cert did not match. Forcing refresh",
+                               [UUID, Bucket]),
+                    handle_call({get_remote_bucket, Cluster, Bucket, true, Timeout},
+                                From, State)
+            end
     end;
 handle_call({get_remote_bucket, Cluster, Bucket, true, Timeout}, From, State) ->
     Username = proplists:get_value(username, Cluster),
     Password = proplists:get_value(password, Cluster),
     UUID = proplists:get_value(uuid, Cluster),
+    Cert = proplists:get_value(cert, Cluster),
 
     true = (Username =/= undefined),
     true = (Password =/= undefined),
     true = (UUID =/= undefined),
 
-    RemoteCluster =
+    RemoteCluster0 =
         case ets:lookup(?CACHE, UUID) of
             [] ->
+                undefined;
+            [{UUID, FoundCluster}] when FoundCluster#remote_cluster.cert =:= Cert ->
+                ?log_debug("FoundCluster: ~p", [FoundCluster]),
+                FoundCluster;
+            [{UUID, _WrongCertCluster}] ->
+                ?log_debug("Found cluster but cert did not match"),
+                undefined
+        end,
+
+    RemoteCluster =
+        case RemoteCluster0 of
+            undefined ->
                 Hostname = proplists:get_value(hostname, Cluster),
                 true = (Hostname =/= undefined),
 
-                Nodes = [hostname_to_remote_node(Hostname)],
-                #remote_cluster{uuid=UUID, nodes=Nodes};
-            [{UUID, FoundCluster}] ->
-                FoundCluster
+                NodeRecord0 = hostname_to_remote_node(Hostname),
+                NodeRecord = case Cert of
+                                 undefined ->
+                                     NodeRecord0;
+                                 _ ->
+                                     %% TODO: either set all to needed or just one
+                                     NodeRecord0#remote_node{ssl_proxy_port = needed_but_unknown,
+                                                             https_port = needed_but_unknown}
+                             end,
+                Nodes = [NodeRecord],
+                RV = #remote_cluster{uuid=UUID, nodes=Nodes, cert=Cert},
+                ?log_debug("Constructed remote_cluster ~p", [RV]),
+                RV;
+            _ ->
+                RemoteCluster0
         end,
 
     State1 = enqueue_waiter({UUID, Bucket}, From, Timeout, State),
@@ -718,6 +752,17 @@ expect_number(Value, Context, K) ->
 expect_nested_number(Field, Props, Context, K) ->
     expect_nested(Field, Props, Context, fun extract_number/2, K).
 
+extract_version(MaybeVersion, Context) ->
+    case re:run(MaybeVersion, <<"^([0-9]+)\.([0-9]+)\..+$">>,
+                [anchored, {capture, all_but_first, list}]) of
+        {match, [V1, V2]} ->
+            {ok, [list_to_integer(V1), list_to_integer(V2)]};
+        _ ->
+            Msg = io_lib:format("(~s) got invalid node version value:~n~p",
+                                [Context, MaybeVersion]),
+            {bad_value, iolist_to_binary(Msg)}
+    end.
+
 with_pools(JsonGet, K) ->
     Context = <<"/pools response">>,
 
@@ -838,10 +883,48 @@ remote_cluster(Cluster) ->
 
     {Host, Port} = host_and_port(Hostname),
 
-    JsonGet = mk_json_get(Host, Port, Username, Password),
-    do_remote_cluster(JsonGet).
+    Cert = proplists:get_value(cert, Cluster),
 
-do_remote_cluster(JsonGet) ->
+    MaybeRN = case Cert of
+                  undefined ->
+                      {ok, hostname_to_remote_node(Hostname)};
+                  _ ->
+                      %% TODO: more error handling here. Handle 404
+                      fetch_remote_node_record(Host, Port)
+              end,
+
+    case MaybeRN of
+        {ok, RN} ->
+            {JsonGet, _, _, _} = mk_json_get_for_node(RN, Cert, Username, Password),
+            do_remote_cluster(JsonGet, Cert);
+        Error ->
+            Error
+    end.
+
+fetch_remote_node_record(Host, Port) ->
+    JG = mk_plain_json_get(Host, Port, "", ""),
+    RN = #remote_node{host = Host, port = Port},
+    JG("/nodes/self/xdcrSSLPorts",
+       fun ({struct, [_|_] = PortsKV}) ->
+               RN2 = add_port_props(RN, PortsKV),
+               #remote_node{ssl_proxy_port = P0,
+                            https_port = P1,
+                            https_capi_port = P2} = RN2,
+               case (P0 =:= undefined
+                     orelse P1 =:= undefined
+                     orelse P2 =:= undefined) of
+                   true ->
+                       %% TODO: error message
+                       {error, failed_to_get_proxy_port};
+                   false ->
+                       {ok, RN2}
+               end;
+           (_Garbage) ->
+               {error, failed_to_get_proxy_port}
+       end).
+
+
+do_remote_cluster(JsonGet, Cert) ->
     with_pools(
       JsonGet,
       fun (Pools, UUID) ->
@@ -850,17 +933,30 @@ do_remote_cluster(JsonGet) ->
                 fun (PoolDetails) ->
                         with_nodes(
                           PoolDetails, <<"default pool details">>,
-                          [{<<"hostname">>, fun extract_string/2}],
+                          [{<<"hostname">>, fun extract_string/2},
+                           {<<"ports">>, fun extract_object/2}],
                           fun (NodeProps) ->
                                   Nodes = lists:map(fun props_to_remote_node/1,
                                                     NodeProps),
                                   SortedNodes = lists:sort(Nodes),
 
                                   {ok, #remote_cluster{uuid=UUID,
-                                                       nodes=SortedNodes}}
+                                                       nodes=SortedNodes,
+                                                       cert=Cert}}
                           end)
                 end)
       end).
+
+get_oldest_node_version(PoolNodeProps) ->
+    lists:foldl(
+      fun(NodeProps, Acc) ->
+              case proplists:get_value(<<"version">>, NodeProps) of
+                  undefined ->
+                      [0, 0];
+                  V ->
+                      min(Acc, V)
+              end
+      end, [999, 0], PoolNodeProps).
 
 with_nodes(Object, Context, Props, K) ->
     expect_nested_array(
@@ -911,7 +1007,16 @@ props_to_remote_node(Props) ->
     Hostname = proplists:get_value(<<"hostname">>, Props),
     true = (Hostname =/= undefined),
 
-    hostname_to_remote_node(binary_to_list(Hostname)).
+    RN = hostname_to_remote_node(binary_to_list(Hostname)),
+
+    add_port_props(RN, proplists:get_value(<<"ports">>, Props)).
+
+add_port_props(RemoteNode, PortProps) ->
+    RemoteNode#remote_node{
+      memcached_port = proplists:get_value(<<"direct">>, PortProps),
+      ssl_proxy_port = proplists:get_value(<<"sslProxy">>, PortProps),
+      https_port = proplists:get_value(<<"httpsMgmt">>, PortProps),
+      https_capi_port = proplists:get_value(<<"httpsCAPI">>, PortProps)}.
 
 hostname_to_remote_node(Hostname) ->
     {Host, Port} = host_and_port(Hostname),
@@ -934,16 +1039,26 @@ host_and_port(Hostname) ->
             end
     end.
 
-remote_cluster_and_bucket(TargetNode, #remote_cluster{uuid=UUID},
+remote_cluster_and_bucket(TargetNode, RemoteCluster,
                           BucketStr, Username, Password) ->
     Bucket = list_to_binary(BucketStr),
-    remote_bucket_from_node(TargetNode, Bucket, Username, Password, UUID).
+    remote_bucket_from_node(TargetNode, Bucket, Username, Password, RemoteCluster).
 
-remote_bucket_from_node(#remote_node{host=Host, port=Port},
-                        Bucket, Username, Password, UUID) ->
+remote_bucket_from_node(#remote_node{host=Host, port=Port, https_port = needed_but_unknown},
+                        Bucket, Username, Password, RemoteCluster) ->
+    true = (RemoteCluster#remote_cluster.cert =/= undefined),
+    case fetch_remote_node_record(Host, Port) of
+        {ok, RemoteNode} ->
+            remote_bucket_from_node(RemoteNode,
+                                    Bucket, Username, Password, RemoteCluster);
+        Err ->
+            Err
+    end;
+remote_bucket_from_node(RemoteNode, Bucket, Username, Password,
+                        #remote_cluster{uuid = UUID, cert = Cert} = RemoteCluster) ->
     Creds = {Username, Password},
 
-    JsonGet = mk_json_get(Host, Port, Username, Password),
+    {JsonGet, Scheme, Host, Port} = mk_json_get_for_node(RemoteNode, Cert, Username, Password),
 
     with_pools(
       JsonGet,
@@ -954,25 +1069,27 @@ remote_bucket_from_node(#remote_node{host=Host, port=Port},
                         Pools, JsonGet,
                         fun (PoolDetails) ->
                                 remote_bucket_with_pool_details(PoolDetails,
-                                                                UUID,
+                                                                RemoteCluster,
                                                                 Bucket,
                                                                 Creds, JsonGet)
 
                         end);
                   false ->
                       ?log_info("Attempted to get vbucket map for bucket `~s` "
-                                "from remote node ~s:~b. But cluster's "
+                                "from remote node ~s://~s:~b. But cluster's "
                                 "uuid (~s) does not match expected one (~s)",
-                                [Bucket, Host, Port, ActualUUID, UUID]),
+                                [Bucket, Scheme, Host, Port, ActualUUID, UUID]),
                       {error, other_cluster,
                        <<"Remote cluster uuid doesn't match expected one.">>}
               end
       end).
 
-remote_bucket_with_pool_details(PoolDetails, UUID, Bucket, Creds, JsonGet) ->
+remote_bucket_with_pool_details(PoolDetails, RemoteCluster, Bucket, Creds, JsonGet) ->
     with_nodes(
       PoolDetails, <<"default pool details">>,
-      [{<<"hostname">>, fun extract_string/2}],
+      [{<<"hostname">>, fun extract_string/2},
+       {<<"ports">>, fun extract_object/2},
+       {<<"version">>, fun extract_version/2}],
       fun (PoolNodeProps) ->
               with_buckets(
                 PoolDetails, JsonGet,
@@ -985,7 +1102,7 @@ remote_bucket_with_pool_details(PoolDetails, UUID, Bucket, Creds, JsonGet) ->
                                     fun maybe_extract_important_buckets_props/2,
                                     fun (BucketNodeProps) ->
                                             remote_bucket_with_bucket(BucketObject,
-                                                                      UUID,
+                                                                      RemoteCluster,
                                                                       BucketUUID,
                                                                       PoolNodeProps,
                                                                       BucketNodeProps,
@@ -1001,25 +1118,46 @@ maybe_extract_important_buckets_props({struct, NodeKV}, Ctx) ->
             ?log_debug("skipping node without couchApiBase: ~p", [NodeKV]),
             [];
         _ ->
-            extract_node_props([{<<"hostname">>, fun extract_string/2},
-                                {<<"couchApiBase">>, fun extract_string/2},
-                                {<<"ports">>, fun extract_object/2}],
-                               Ctx, {struct, NodeKV})
+            RV = extract_node_props([{<<"hostname">>, fun extract_string/2},
+                                     {<<"couchApiBase">>, fun extract_string/2},
+                                     {<<"ports">>, fun extract_object/2}],
+                                    Ctx, {struct, NodeKV}),
+            case RV of
+                [Props] ->
+                    case proplists:get_value(<<"couchApiBaseHTTPS">>, NodeKV) of
+                        undefined ->
+                            RV;
+                        _ ->
+                            case extract_node_props([{<<"couchApiBaseHTTPS">>, fun extract_string/2}],
+                                                    Ctx, {struct, NodeKV}) of
+                                [] ->
+                                    RV;
+                                [Props2] ->
+                                    ?log_debug("extracted couchApiBaseHTTPS"),
+                                    [Props2 ++ Props]
+                            end
+                    end;
+                [] ->
+                    RV
+            end
     end;
 maybe_extract_important_buckets_props(BadNodeStruct, Ctx) ->
     extract_node_props([], Ctx, BadNodeStruct).
 
 
-remote_bucket_with_bucket(BucketObject, UUID,
+remote_bucket_with_bucket(BucketObject, OrigRemoteCluster,
                           BucketUUID, PoolNodeProps, BucketNodeProps, Creds) ->
     PoolNodes = lists:map(fun props_to_remote_node/1, PoolNodeProps),
     BucketNodes = lists:map(fun props_to_remote_node/1, BucketNodeProps),
 
     RemoteNodes = lists:usort(PoolNodes ++ BucketNodes),
-    RemoteCluster = #remote_cluster{uuid=UUID, nodes=RemoteNodes},
+    RemoteNodes = lists:usort(BucketNodes),
+    RemoteCluster = OrigRemoteCluster#remote_cluster{nodes=RemoteNodes},
+
+    Version = get_oldest_node_version(PoolNodeProps),
 
     with_mcd_to_couch_uri_dict(
-      BucketNodeProps, Creds,
+      BucketNodeProps, Creds, RemoteCluster#remote_cluster.cert,
       fun (McdToCouchDict) ->
               expect_nested_object(
                 <<"vBucketServerMap">>, BucketObject, <<"bucket details">>,
@@ -1028,22 +1166,18 @@ remote_bucket_with_bucket(BucketObject, UUID,
                           <<"saslPassword">>, BucketObject, <<"bucket password">>,
                           fun (Password) ->
                                   remote_bucket_with_server_map(VBucketServerMap, BucketUUID,
-                                                                RemoteCluster, McdToCouchDict,
-                                                                Password)
+                                                                RemoteCluster, RemoteNodes, McdToCouchDict,
+                                                                Password, Version)
                           end)
                 end)
       end).
 
-remote_bucket_with_server_map(ServerMap, BucketUUID, RemoteCluster, McdToCouchDict, Password) ->
-    with_server_list(
-      ServerMap,
-      fun (ServerList) ->
+remote_bucket_with_server_map(ServerMap, BucketUUID, RemoteCluster, RemoteNodes, McdToCouchDict, Password, Version) ->
+    with_remote_nodes_mapped_server_list(
+      RemoteNodes, ServerMap,
+      fun (ServerList, RemoteServers) ->
               IxToCouchDict = build_ix_to_couch_uri_dict(ServerList,
                                                          McdToCouchDict),
-              BucketNodes = [case host_and_port(Hostname) of
-                                 {Host, Port} ->
-                                     {list_to_binary(Host), Port}
-                             end || Hostname <- ServerList],
               expect_nested_array(
                 <<"vBucketMap">>, ServerMap, <<"vbucket server map">>,
                 fun (VBucketMap) ->
@@ -1051,17 +1185,39 @@ remote_bucket_with_server_map(ServerMap, BucketUUID, RemoteCluster, McdToCouchDi
                             build_vbmap(VBucketMap,
                                         BucketUUID, IxToCouchDict),
 
-                        #remote_cluster{uuid=ClusterUUID} = RemoteCluster,
+                        #remote_cluster{uuid=ClusterUUID,
+                                        cert=ClusterCert} = RemoteCluster,
                         RemoteBucket =
                             #remote_bucket{uuid=BucketUUID,
                                            password=Password,
                                            cluster_uuid=ClusterUUID,
-                                           server_list=BucketNodes,
+                                           cluster_cert=ClusterCert,
+                                           server_list_nodes=RemoteServers,
                                            raw_vbucket_map=dict:from_list(misc:enumerate(VBucketMap, 0)),
-                                           capi_vbucket_map=CAPIVBucketMapDict},
+                                           capi_vbucket_map=CAPIVBucketMapDict,
+                                           cluster_version=Version},
 
                         {ok, {RemoteCluster, RemoteBucket}}
                 end)
+      end).
+
+with_remote_nodes_mapped_server_list(RemoteNodes, ServerMap, K) ->
+    with_server_list(
+      ServerMap,
+      fun (ServerList) ->
+              RH = [{iolist_to_binary([H, ":", integer_to_list(P)]), R} || #remote_node{host = H, memcached_port = P} = R <- RemoteNodes],
+              Mapped = [case lists:keyfind(Hostname, 1, RH) of
+                            false ->
+                                ?log_debug("Could not find: ~p in ~p", [Hostname, RH]),
+                                error;
+                            {_, R} -> R
+                        end || Hostname <- ServerList],
+              case lists:member(error, Mapped) of
+                  true ->
+                      {error, bad_value, <<"server list doesn't match nodes list">>};
+                  _ ->
+                      K(ServerList, Mapped)
+              end
       end).
 
 build_vbmap(RawVBucketMap, BucketUUID, IxToCouchDict) ->
@@ -1130,14 +1286,21 @@ do_build_ix_to_couch_uri_dict([S | Rest], McdToCouchDict, Ix, D) ->
             do_build_ix_to_couch_uri_dict(Rest, McdToCouchDict, Ix + 1, D1)
     end.
 
-with_mcd_to_couch_uri_dict(NodeProps, Creds, K) ->
-    do_with_mcd_to_couch_uri_dict(NodeProps, dict:new(), Creds, K).
+with_mcd_to_couch_uri_dict(NodeProps, Creds, Cert, K) ->
+    do_with_mcd_to_couch_uri_dict(NodeProps, dict:new(), Creds, Cert, K).
 
-do_with_mcd_to_couch_uri_dict([], Dict, _Creds, K) ->
+do_with_mcd_to_couch_uri_dict([], Dict, _Creds, _Cert, K) ->
     K(Dict);
-do_with_mcd_to_couch_uri_dict([Props | Rest], Dict, Creds, K) ->
+do_with_mcd_to_couch_uri_dict([Props | Rest], Dict, Creds, Cert, K) ->
     Hostname = proplists:get_value(<<"hostname">>, Props),
-    CouchApiBase0 = proplists:get_value(<<"couchApiBase">>, Props),
+    CouchApiBase0 = case Cert of
+                        undefined ->
+                            ?log_debug("Going to pick plain couchApiBase for mcd_to_couch_uri_dict: ~p", [proplists:get_value(<<"couchApiBase">>, Props)]),
+                            proplists:get_value(<<"couchApiBase">>, Props);
+                        _ ->
+                            ?log_debug("Going to pick couchApiBaseHTTPS for mcd_to_couch_uri_dict: ~p", [proplists:get_value(<<"couchApiBaseHTTPS">>, Props)]),
+                            proplists:get_value(<<"couchApiBaseHTTPS">>, Props)
+                    end,
     Ports = proplists:get_value(<<"ports">>, Props),
 
     %% this is ensured by `extract_node_props' function
@@ -1154,7 +1317,7 @@ do_with_mcd_to_couch_uri_dict([Props | Rest], Dict, Creds, K) ->
               McdUri = iolist_to_binary([Host, $:, integer_to_list(DirectPort)]),
               NewDict = dict:store(McdUri, CouchApiBase, Dict),
 
-              do_with_mcd_to_couch_uri_dict(Rest, NewDict, Creds, K)
+              do_with_mcd_to_couch_uri_dict(Rest, NewDict, Creds, Cert, K)
       end).
 
 add_credentials(URLBinary, {Username, Password}) ->
@@ -1186,30 +1349,67 @@ validate_server_list([Server | Rest]) ->
               validate_server_list(Rest)
       end).
 
-mk_json_get(Host, Port, Username, Password) ->
+mk_json_get_for_node(#remote_node{host = Host,
+                                  port = Port,
+                                  https_port = SPort},
+                     Cert, Username, Password) ->
+    case Cert =/= undefined of
+        true ->
+            {mk_ssl_json_get(Host, SPort, Username, Password, Cert), "https", Host, SPort};
+        _ ->
+            %% TODO: this doesn't hold right now
+            %% undefined = SPort,
+            {mk_plain_json_get(Host, Port, Username, Password), "http", Host, Port}
+    end.
+
+mk_ssl_json_get(Host, Port, Username, Password, CertPEM) ->
+    Options0 = [{connect_timeout, 30000},
+                {timeout, 60000},
+                {pool, xdc_lhttpc_pool}],
+    Options =
+        case CertPEM of
+            <<"-">> ->
+                Options0;
+            _ ->
+                ConnectOptions0 = proplists:get_value(connect_options, Options0, []),
+
+                ConnectOptions = ns_ssl:cert_pem_to_ssl_verify_options(CertPEM)
+                    ++ ConnectOptions0,
+                [{connect_options, ConnectOptions}
+                 | lists:keydelete(connect_options, 1, Options0)]
+        end,
+    do_mk_json_get(Host, Port, Options, "https", Username, Password).
+
+mk_plain_json_get(Host, Port, Username, Password) ->
+    Options = [{connect_timeout, 30000},
+                {timeout, 60000},
+                {pool, xdc_lhttpc_pool}],
+    do_mk_json_get(Host, Port, Options, "http", Username, Password).
+
+do_mk_json_get(Host, Port, Options, Scheme, Username, Password) ->
     fun (Path, K) ->
+            URL = menelaus_rest:rest_url(Host, Port, Path, Scheme),
+            ?log_debug("Doing get of ~s", [URL]),
             R = menelaus_rest:json_request_hilevel(get,
-                                                   {Host, Port, Path},
+                                                   {URL, {Host, Port, Path}},
                                                    {Username, Password},
-                                                   [{connect_timeout, 30000},
-                                                    {timeout, 60000},
-                                                    {pool, xdc_lhttpc_pool}]),
+                                                   Options),
 
             case R of
                 {ok, Value} ->
                     K(Value);
                 {client_error, Body} ->
-                    ?log_error("Request to http://~s:****@~s:~b~s returned "
+                    ?log_error("Request to ~s://~s:****@~s:~b~s returned "
                                "400 status code:~n~p",
-                               [mochiweb_util:quote_plus(Username),
+                               [Scheme, mochiweb_util:quote_plus(Username),
                                 Host, Port, Path, Body]),
 
                     %% convert it to the same form as all other errors
                     {error, client_error,
                      <<"Remote cluster returned 400 status code unexpectedly">>};
                 Error ->
-                    ?log_error("Request to http://~s:****@~s:~b~s failed:~n~p",
-                               [mochiweb_util:quote_plus(Username),
+                    ?log_error("Request to ~s://~s:****@~s:~b~s failed:~n~p",
+                               [Scheme, mochiweb_util:quote_plus(Username),
                                 Host, Port, Path, Error]),
                     Error
             end
@@ -1450,9 +1650,7 @@ is_cluster_config_update_required(#remote_cluster{uuid=RemoteUUID,
         Cluster ->
             Hostname = proplists:get_value(hostname, Cluster),
             true = (Hostname =/= undefined),
-            Node = hostname_to_remote_node(Hostname),
-
-            not(lists:member(Node, Nodes))
+            not(lists:member(Hostname, [remote_node_to_hostname(RN) || RN <- Nodes]))
     end.
 
 try_update_cluster_config(UUID, LastAttempt) ->
@@ -1481,7 +1679,7 @@ try_update_cluster_config(UUID, LastAttempt) ->
                         ok ->
                             ale:info(?USER_LOGGER,
                                      "Updated remote cluster `~s` hostname "
-                                     "to ~s because old one (~s) is not part of "
+                                     "to ~p because old one (~p) is not part of "
                                      "the cluster anymore",
                                      [ClusterName, NewNodeHostname, Hostname]),
                             true;

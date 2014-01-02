@@ -122,6 +122,8 @@ sanitize(Config) ->
                                         {stop, {admin_pass, "*****"}};
                                     {pass, _} ->
                                         {stop, {pass, "*****"}};
+                                    {cert_and_pkey, {Cert, _PKey}} ->
+                                        {stop, {cert_and_pkey, {Cert, <<"*****">>}}};
                                     _ ->
                                         {continue, T}
                                 end
@@ -129,7 +131,8 @@ sanitize(Config) ->
 
 log_common(K, V) ->
     %% These can get pretty big, so pre-format them for the logger.
-    VB = list_to_binary(io_lib:print(sanitize(V), 0, 80, 100)),
+    {_, VS} = sanitize({K, V}),
+    VB = list_to_binary(io_lib:print(VS, 0, 80, 100)),
     ?log_debug("config change:~n~p ->~n~s", [K, VB]).
 
 sort_buckets(Buckets) ->

@@ -71,11 +71,16 @@ redirect_permanently(Path, Req) -> redirect_permanently(Path, Req, []).
 
 %% mostly extracted from mochiweb_request:maybe_redirect/3
 redirect_permanently(Path, Req, ExtraHeaders) ->
-    %% TODO: support https transparently
+    Scheme = case Req:get(socket) of
+                 {ssl, _} ->
+                     "https://";
+                 _ ->
+                     "http://"
+             end,
     Location =
         case Req:get_header_value("host") of
             undefined -> Path;
-            X -> "http://" ++ X ++ Path
+            X -> Scheme ++ X ++ Path
         end,
     LocationBin = list_to_binary(Location),
     Top = <<"<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">"
@@ -271,7 +276,15 @@ validate_email_address(Address) ->
 
 %% Extract the local address of the socket used for the request
 local_addr(Req) ->
-    {ok, {Address, _Port}} = inet:sockname(Req:get(socket)),
+    Socket = Req:get(socket),
+    Address = case Socket of
+                  {ssl, SSLSock} ->
+                      {ok, {AV, _Port}} = ssl:sockname(SSLSock),
+                      AV;
+                  _ ->
+                      {ok, {AV, _Port}} = inet:sockname(Socket),
+                      AV
+              end,
     string:join(lists:map(fun integer_to_list/1, tuple_to_list(Address)), ".").
 
 remote_addr_and_port(Req) ->

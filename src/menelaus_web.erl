@@ -55,6 +55,7 @@
          parse_validate_fast_warmup_settings/1,
          parse_validate_bucket_fast_warmup_settings/1,
          is_enterprise/0,
+         is_xdcr_over_ssl_allowed/0,
          assert_is_enterprise/0]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
@@ -88,7 +89,7 @@ start_link(Options) ->
     Loop = fun (Req) ->
                    ?MODULE:loop(Req, AppRoot, DocRoot)
            end,
-    case mochiweb_http:start([{name, ?MODULE}, {nodelay, true}, {loop, Loop} | Options2]) of
+    case mochiweb_http:start([{loop, Loop} | Options2]) of
         {ok, Pid} -> {ok, Pid};
         Other ->
             ?MENELAUS_WEB_LOG(?START_FAIL,
@@ -115,7 +116,9 @@ webconfig(Config) ->
                P -> list_to_integer(P)
            end,
     WebConfig = [{ip, Ip},
+                 {name, ?MODULE},
                  {port, Port},
+                 {nodelay, true},
                  {approot, menelaus_deps:local_path(["priv","public"],
                                                     ?MODULE)}],
     WebConfig.
@@ -237,6 +240,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth_ro, fun menelaus_web_remote_clusters:handle_remote_clusters/1};
                          ["pools", "default", "serverGroups"] ->
                              {auth_ro, fun menelaus_web_groups:handle_server_groups/1};
+                         ["pools", "default", "certificate"] ->
+                             {done, handle_cluster_certificate(Req)};
                          ["nodeStatuses"] ->
                              {auth_ro, fun handle_node_statuses/1};
                          ["logs"] ->
@@ -269,6 +274,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth_ro, fun handle_visual_internal_settings/1};
                          ["nodes", NodeId] ->
                              {auth_ro, fun handle_node/2, [NodeId]};
+                         ["nodes", "self", "xdcrSSLPorts"] ->
+                             {done, handle_node_self_xdcr_ssl_ports(Req)};
                          ["diag"] ->
                              {auth, fun diag_handler:handle_diag/1, []};
                          ["diag", "vbuckets"] -> {auth, fun handle_diag_vbuckets/1};
@@ -383,6 +390,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun handle_set_fast_warmup/1};
                          ["controller", "setReplicationTopology"] ->
                              {auth, fun handle_set_replication_topology/1};
+                         ["controller", "regenerateCertificate"] ->
+                             {auth, fun handle_regenerate_certificate/1};
                          ["pools", PoolId, "buckets", Id] ->
                              {auth_check_bucket_uuid, fun menelaus_web_buckets:handle_bucket_update/3,
                               [PoolId, Id]};
@@ -749,6 +758,7 @@ handle_pools(Req) ->
     reply_json(Req,{struct, [{pools, EffectivePools},
                              {isAdminCreds, Admin},
                              {isROAdminCreds, ReadOnlyAdmin},
+                             {isEnterprise, is_enterprise()},
                              {settings,
                               {struct,
                                [{<<"maxParallelIndexers">>,
@@ -872,24 +882,36 @@ detect_enterprise_version_test() ->
     true = detect_enterprise_version(<<"1.8.0r-9-ga083a1e-enterprise">>),
     true = not detect_enterprise_version(<<"1.8.0r-9-ga083a1e-comm">>).
 
+is_forced_enterprise() ->
+    case os:getenv("FORCE_ENTERPRISE") of
+        false ->
+            false;
+        "0" ->
+            false;
+        _ ->
+            true
+    end.
+
 is_enterprise() ->
-    menelaus_web_cache:lookup_or_compute_with_expiration(
-      is_enterprise,
-      fun () ->
-              IsForced = ns_config_ets_dup:unreliable_read_key(this_is_enterprise, undefined),
-              Val = case IsForced of
-                        undefined ->
-                            Versions = ns_info:version(),
-                            NsServerVersion = list_to_binary(proplists:get_value(ns_server, Versions, "unknown")),
-                            detect_enterprise_version(NsServerVersion);
-                        _ ->
-                            IsForced
-                    end,
-              {Val, 1000000, IsForced}
-      end,
-      fun (_Key, _Value, IsForced) ->
-              IsForced =/= ns_config_ets_dup:unreliable_read_key(this_is_enterprise, undefined)
-      end).
+    case ns_config_ets_dup:unreliable_read_key(this_is_enterprise, undefined) of
+        undefined ->
+            DetectedEnterprise =
+                case is_forced_enterprise() of
+                    true ->
+                        true;
+                    false ->
+                        Versions = ns_info:version(),
+                        NsServerVersion = list_to_binary(proplists:get_value(ns_server, Versions, "unknown")),
+                        detect_enterprise_version(NsServerVersion)
+                end,
+            ns_config:set(this_is_enterprise, DetectedEnterprise),
+            DetectedEnterprise;
+        StoredEnterprise ->
+            StoredEnterprise
+    end.
+
+is_xdcr_over_ssl_allowed() ->
+    is_enterprise() andalso cluster_compat_mode:is_cluster_25().
 
 assert_is_enterprise() ->
     case is_enterprise() of
@@ -1299,12 +1321,29 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
     OS = proplists:get_value(system_arch, InfoNode, "unknown"),
     HostName = build_node_hostname(Config, WantENode, LocalAddr),
 
+    PortsKV0 = [{proxy, ProxyPort},
+                {direct, DirectPort}],
+
+    PortsKV = case is_xdcr_over_ssl_allowed() of
+                  true ->
+                      lists:foldl(
+                        fun ({ConfigKey, JKey}, Acc) ->
+                                case ns_config:search_node(WantENode, Config, ConfigKey) of
+                                    {value, Value} -> [{JKey, Value} | Acc];
+                                    false -> Acc
+                                end
+                        end, PortsKV0, [{ssl_proxy_downstream_port, sslProxy},
+                                        {ssl_capi_port, httpsCAPI},
+                                        {ssl_rest_port, httpsMgmt}]);
+                  false ->
+                      PortsKV0
+              end,
+
     RV = [{hostname, list_to_binary(HostName)},
           {clusterCompatibility, ns_heart:effective_cluster_compat_version()},
           {version, list_to_binary(Version)},
           {os, list_to_binary(OS)},
-          {ports, {struct, [{proxy, ProxyPort},
-                            {direct, DirectPort}]}}
+          {ports, {struct, PortsKV}}
          ],
     case WantENode =:= node() of
         true ->
@@ -2257,6 +2296,29 @@ location_prop_to_json({index_path, L}) -> {index_path, list_to_binary(L)};
 location_prop_to_json({quotaMb, none}) -> {quotaMb, none};
 location_prop_to_json({state, ok}) -> {state, ok};
 location_prop_to_json(KV) -> KV.
+
+handle_node_self_xdcr_ssl_ports(Req) ->
+    case is_xdcr_over_ssl_allowed() of
+        false ->
+            reply_json(Req, [], 403);
+        true ->
+            {value, ProxyPort} = ns_config:search_node(ssl_proxy_downstream_port),
+            {value, RESTSSL} = ns_config:search_node(ssl_rest_port),
+            {value, CapiSSL} = ns_config:search_node(ssl_capi_port),
+            reply_json(Req, {struct, [{sslProxy, ProxyPort},
+                                      {httpsMgmt, RESTSSL},
+                                      {httpsCAPI, CapiSSL}]})
+    end.
+
+handle_cluster_certificate(Req) ->
+    {Cert, _} = ns_server_cert:cluster_cert_and_pkey_pem(),
+    reply_json(Req, {struct, [{certificate, Cert}]}).
+
+handle_regenerate_certificate(Req) ->
+    ns_server_cert:generate_and_set_cert_and_pkey(),
+    ns_ssl_services_setup:sync_local_cert_and_pkey_change(),
+    ?log_info("Completed certificate regeneration"),
+    handle_cluster_certificate(Req).
 
 handle_node_resources_post("self", Req)            -> handle_node_resources_post(node(), Req);
 handle_node_resources_post(S, Req) when is_list(S) -> handle_node_resources_post(list_to_atom(S), Req);

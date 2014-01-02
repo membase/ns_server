@@ -21,14 +21,18 @@
 %% API
 
 -export([rest_url/3,
+         rest_url/4,
          json_request_hilevel/3,
          json_request_hilevel/4]).
 
--spec rest_url(string(), string() | integer(), string()) -> string().
-rest_url(Host, Port, Path) when is_integer(Port) ->
-    rest_url(Host, integer_to_list(Port), Path);
+-spec rest_url(string(), string() | integer(), string(), string()) -> string().
+rest_url(Host, Port, Path, Scheme) when is_integer(Port) ->
+    rest_url(Host, integer_to_list(Port), Path, Scheme);
+rest_url(Host, Port, Path, Scheme) ->
+    Scheme ++ "://" ++ Host ++ ":" ++ Port ++ Path.
+
 rest_url(Host, Port, Path) ->
-    "http://" ++ Host ++ ":" ++ Port ++ Path.
+    rest_url(Host, Port, Path, "http").
 
 rest_add_auth(Headers, {User, Password}) ->
     UserPassword = base64:encode_to_string(User ++ ":" ++ Password),
@@ -75,7 +79,9 @@ decode_json_response_ext(Response, Method, Request) ->
 
 -spec json_request_hilevel(atom(),
                            {string(), string() | integer(), string(), string(), iolist()}
-                           | {string(), string() | integer(), string()},
+                           | {string(), string() | integer(), string()}
+                           | {string(), {string(), string() | integer(), string()}}
+                           | string(),
                            undefined | {string(), string()},
                            [any()]) ->
                                   %% json response payload
@@ -91,6 +97,9 @@ json_request_hilevel(Method, {Host, Port, Path, MimeType, Payload} = R, Auth, HT
     decode_json_response_ext(RV, Method, setelement(5, R, RealPayload));
 json_request_hilevel(Method, {Host, Port, Path}, Auth, HTTPOptions) ->
     URL = rest_url(Host, Port, Path),
+    RV = rest_request(Method, URL, [], undefined, [], Auth, HTTPOptions),
+    decode_json_response_ext(RV, Method, {Host, Port, Path, [], []});
+json_request_hilevel(Method, {URL, {Host, Port, Path}}, Auth, HTTPOptions) ->
     RV = rest_request(Method, URL, [], undefined, [], Auth, HTTPOptions),
     decode_json_response_ext(RV, Method, {Host, Port, Path, [], []}).
 

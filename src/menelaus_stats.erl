@@ -1026,7 +1026,8 @@ membase_stats_description(BucketId) ->
                          {title,<<"docs data size">>},
                          {desc,<<"The size of active data in this bucket "
                                  "(measured from couch_docs_data_size)">>}]},
-                {struct,[{name,<<"couch_docs_actual_disk_size">>},
+                {struct,[{isBytes, true},
+                         {name,<<"couch_docs_actual_disk_size">>},
                          {title,<<"docs total disk size">>},
                          {desc,<<"The size of all data files for this bucket, including the data itself, meta data and temporary files "
                                  "(measured from couch_docs_actual_disk_size).">>}]},

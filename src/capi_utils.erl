@@ -25,19 +25,11 @@
 -include("ns_config.hrl").
 
 %% returns capi port for given node or undefined if node doesn't have CAPI
+compute_capi_port({ssl, Node}) ->
+    ns_config:search('latest-config-marker', {node, Node, ssl_capi_port}, undefined);
+
 compute_capi_port(Node) ->
-    ns_config:eval(
-      fun (#config{dynamic=[PList]}) ->
-              case lists:keyfind({node, Node, capi_port}, 1, PList) of
-                  {_, V} ->
-                      case V of
-                          [{'_vclock', _} | V2] -> V2;
-                          _ -> V
-                      end;
-                  false ->
-                      undefined
-              end
-      end).
+    ns_config:search('latest-config-marker', {node, Node, capi_port}, undefined).
 
 get_capi_port(Node, Config) ->
     case ns_config:search(Config, {node, Node, capi_port}) of
@@ -46,7 +38,7 @@ get_capi_port(Node, Config) ->
     end.
 
 %% returns http url to capi on given node with given path
--spec capi_url_bin(node(), iolist() | binary(), iolist() | binary()) -> undefined | binary().
+-spec capi_url_bin(node() | {ssl, node()}, iolist() | binary(), iolist() | binary()) -> undefined | binary().
 capi_url_bin(Node, Path, LocalAddr) ->
     case vbucket_map_mirror:node_to_capi_base_url(Node, LocalAddr) of
         undefined -> undefined;

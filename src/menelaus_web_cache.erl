@@ -74,7 +74,6 @@ lookup_or_compute_with_expiration(Key, ComputeBody, InvalidPred) ->
     end.
 
 compute_with_expiration(Key, ComputeBody, InvalidPred) ->
-    ?log_debug("doing compute_with_expiration for ~p", [Key]),
     work_queue:submit_sync_work(
       menelaus_web_cache,
       fun () ->

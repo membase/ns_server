@@ -85,8 +85,8 @@ is_swap_rebalance(MapTriples, OldMap, NewMap) ->
                                      To =/= undefined],
                   lists:foldl(
                     fun ({From, To}, Dict) ->
-                            ordsets:is_element(From, RemovedNodes) orelse erlang:throw(not_swap),
-                            ordsets:is_element(To, AddedNodes) orelse erlang:throw(not_swap),
+                            RemovedNodes =:= [] orelse ordsets:is_element(From, RemovedNodes) orelse erlang:throw(not_swap),
+                            AddedNodes =:= [] orelse ordsets:is_element(To, AddedNodes) orelse erlang:throw(not_swap),
                             Dict2 = assert_dict_mapping(Dict, From, To),
                             Dict2 =/= false orelse erlang:throw(not_swap),
                             Dict3 = assert_dict_mapping(Dict2, To, From),

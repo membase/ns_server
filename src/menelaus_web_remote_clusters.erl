@@ -53,13 +53,18 @@ build_remote_cluster_info(KV) ->
     Name = misc:expect_prop_value(name, KV),
     Deleted = proplists:get_value(deleted, KV, false),
     URI = menelaus_util:bin_concat_path(["pools", "default", "remoteClusters", Name]),
+    MaybeCert = case proplists:get_value(cert, KV) of
+                    undefined -> [];
+                    Cert -> [{demandEncryption, true},
+                             {certificate, Cert}]
+                end,
     {struct, [{name, list_to_binary(Name)},
               {uri, URI},
               {validateURI, iolist_to_binary([URI, <<"?just_validate=1">>])},
               {hostname, list_to_binary(misc:expect_prop_value(hostname, KV))},
               {username, list_to_binary(misc:expect_prop_value(username, KV))},
               {uuid, misc:expect_prop_value(uuid, KV)},
-              {deleted, Deleted}]}.
+              {deleted, Deleted}] ++ MaybeCert}.
 
 handle_remote_clusters(Req) ->
     RemoteClusters = get_remote_clusters(),
@@ -121,6 +126,8 @@ validate_remote_cluster_params(Params, ExistingClusters) ->
     Hostname = proplists:get_value("hostname", Params),
     Username = proplists:get_value("username", Params),
     Password = proplists:get_value("password", Params),
+    DemandEncryption = proplists:get_value("demandEncryption", Params, "0"),
+    Cert = proplists:get_value("certificate", Params, ""),
     NameError = case check_nonempty(Name, <<"name">>, <<"cluster name">>) of
                     X when is_tuple(X) -> X;
                     _ ->
@@ -143,9 +150,36 @@ validate_remote_cluster_params(Params, ExistingClusters) ->
                     end,
     UsernameError = check_nonempty(Username, <<"username">>, <<"username">>),
     PasswordError = check_nonempty(Password, <<"password">>, <<"password">>),
+    EncryptionError = case {DemandEncryption, Cert} of
+                          {"0", ""} ->
+                              undefined;
+                          {"0", _} ->
+                              {<<"certificate">>, <<"certificate must not be given if demand encryption is off">>};
+                          {_, ""} ->
+                              {<<"certificate">>, <<"certificate must be given if demand encryption is on">>};
+                          {_, _} ->
+                              menelaus_web:assert_is_enterprise(),
+                              CertBin = list_to_binary(Cert),
+                              OkCert = case (catch ns_server_cert:validate_cert(CertBin)) of
+                                           {ok, [_]} -> true;
+                                           {ok, _} -> <<"found multiple certificates instead">>;
+                                           {error, non_cert_entries, _} ->
+                                               <<"found non-certificate entries">>;
+                                           _ ->
+                                               <<"failed to parse given certificate">>
+                                       end,
+                              case OkCert of
+                                  true ->
+                                      undefined;
+                                  _ ->
+                                      Err = [<<"certificate must be a single, PEM-encoded x509 certificate and nothing more (">>,
+                                             OkCert, $)],
+                                      {<<"certificate">>, iolist_to_binary(Err)}
+                              end
+                      end,
     Errors0 = lists:filter(fun (undefined) -> false;
-                              (_) -> true
-                          end, [NameError, HostnameError, UsernameError, PasswordError]),
+                               (_) -> true
+                           end, [NameError, HostnameError, UsernameError, PasswordError, EncryptionError]),
     Errors = case lists:any(fun (KV) ->
                                     lists:keyfind(name, 1, KV) =:= {name, Name} andalso
                                         proplists:get_value(deleted, KV, false) =:= false
@@ -158,10 +192,17 @@ validate_remote_cluster_params(Params, ExistingClusters) ->
              end,
     case Errors of
         [] ->
-            {ok, [{name, Name},
-                  {hostname, Hostname},
-                  {username, Username},
-                  {password, Password}]};
+            BaseKVList = [{name, Name},
+                          {hostname, Hostname},
+                          {username, Username},
+                          {password, Password}],
+            KVList = case DemandEncryption of
+                         "0" ->
+                             BaseKVList;
+                         _ ->
+                             [{cert, list_to_binary(Cert)} | BaseKVList]
+                     end,
+            {ok, KVList};
         _ ->
             {errors, Errors}
     end.
@@ -231,7 +272,7 @@ do_handle_remote_cluster_update_found_this(Id, OldCluster, Req, Params, JustVali
                                             ok;
                                         false ->
                                             ale:info(?USER_LOGGER,
-                                                     "Remote cluster reference \"~s\" udpated.~s~s",
+                                                     "Remote cluster reference \"~s\" updated.~s~s",
                                                      [OldName,
                                                       case OldName =:= NewName of
                                                           true ->
@@ -257,10 +298,10 @@ do_handle_remote_cluster_update_found_this(Id, OldCluster, Req, Params, JustVali
                             menelaus_util:reply_json(Req, [])
                     end;
                 {errors, Status, Errors} ->
-                    menelaus_util:reply_json(Req, Errors, Status)
+                    menelaus_util:reply_json(Req, {struct, Errors}, Status)
             end;
         {errors, Errors} ->
-            menelaus_util:reply_json(Req, Errors, 400)
+            menelaus_util:reply_json(Req, {struct, Errors}, 400)
     end.
 
 check_remote_cluster_already_exists(RemoteUUID, Clusters) ->

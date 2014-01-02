@@ -57,10 +57,18 @@ deps_mlockall:
 deps_ns_babysitter: deps_ale
 	(cd deps/ns_babysitter; $(MAKE))
 
+deps_ns_ssl_proxy: deps_ale
+	(cd deps/ns_ssl_proxy; $(MAKE))
+
 prebuild_vbmap:
 	cd deps/vbmap && GOOS=linux GOARCH=386 go build -ldflags "-B 0x$$(sed -e 's/-//g' /proc/sys/kernel/random/uuid)" -o ../../priv/i386-linux-vbmap
 	cd deps/vbmap && GOOS=darwin GOARCH=386 go build -o ../../priv/i386-darwin-vbmap
 	cd deps/vbmap && GOOS=windows GOARCH=386 go build -o ../../priv/i386-win32-vbmap.exe
+
+prebuild_generate_cert:
+	cd deps/generate_cert && GOOS=linux GOARCH=386 go build -ldflags "-B 0x$$(sed -e 's/-//g' /proc/sys/kernel/random/uuid)" -o ../../priv/i386-linux-generate_cert
+	cd deps/generate_cert && GOOS=darwin GOARCH=386 go build -o ../../priv/i386-darwin-generate_cert
+	cd deps/generate_cert && GOOS=windows GOARCH=386 go build -o ../../priv/i386-win32-generate_cert.exe
 
 UNAME_S := $(shell uname -s)
 UNAME_M := $(shell uname -m)
@@ -68,15 +76,18 @@ UNAME_M := $(shell uname -m)
 ifeq (Linux,$(UNAME_S))
 ifneq ($(or $(findstring x86_64,$(UNAME_M)),$(findstring i686,$(UNAME_M))),)
 VBMAP_BINARY := priv/i386-linux-vbmap
+GENERATE_CERT_BINARY := priv/i386-linux-generate_cert
 endif
 endif
 
 ifeq (Darwin,$(UNAME_S))
 VBMAP_BINARY := priv/i386-darwin-vbmap
+GENERATE_CERT_BINARY := priv/i386-darwin-generate_cert
 endif
 
 ifneq ($(or $(findstring CYGWIN,$(UNAME_S)),$(findstring WOW64,$(UNAME_S))),)
 VBMAP_BINARY := priv/i386-win32-vbmap.exe
+GENERATE_CERT_BINARY := priv/i386-win32-generate_cert.exe
 VBMAP_EXEEXT := .exe
 endif
 
@@ -85,15 +96,22 @@ ifdef VBMAP_BINARY
 deps_vbmap:
 	@echo "Using precompiled vbmap tool at $(VBMAP_BINARY)"
 
+deps_generate_cert:
+	@echo "Using precompiled generate_cert tool at $(GENERATE_CERT_BINARY)"
+
 else
 
 VBMAP_BINARY := deps/vbmap/vbmap
 deps_vbmap:
 	cd deps/vbmap && (go build -x || gccgo -Os -g *.go -o vbmap)
 
+GENERATE_CERT_BINARY := deps/generate_cert/generate_cert
+deps_generate_cert:
+	cd deps/generate_cert && (go build -x || gccgo -Os -g *.go -o generate_cert)
+
 endif
 
-deps_all: deps_smtp deps_erlwsh deps_ale deps_mlockall deps_ns_babysitter deps_vbmap
+deps_all: deps_smtp deps_erlwsh deps_ale deps_mlockall deps_ns_babysitter deps_vbmap deps_generate_cert deps_ns_ssl_proxy
 
 docs:
 	priv/erldocs $(DOC_DIR)
@@ -128,6 +146,7 @@ GEN_SMTP_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/gen_smtp
 ALE_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ale
 MLOCKALL_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/mlockall
 NS_BABYSITTER_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ns_babysitter
+NS_SSL_PROXY_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ns_ssl_proxy
 
 do-install:
 	echo $(DESTDIR)$(PREFIX)
@@ -146,11 +165,14 @@ do-install:
 	cp -r deps/ale/ebin $(ALE_LIBDIR)/
 	mkdir -p $(NS_BABYSITTER_LIBDIR)
 	cp -r deps/ns_babysitter/ebin $(NS_BABYSITTER_LIBDIR)/
+	mkdir -p $(NS_SSL_PROXY_LIBDIR)
+	cp -r deps/ns_ssl_proxy/ebin $(NS_SSL_PROXY_LIBDIR)/
 	mkdir -p $(MLOCKALL_LIBDIR)
 	cp -r deps/mlockall/ebin $(MLOCKALL_LIBDIR)/
 	[ ! -d deps/mlockall/priv ] || cp -r deps/mlockall/priv $(MLOCKALL_LIBDIR)/
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	cp -r $(VBMAP_BINARY) $(DESTDIR)$(PREFIX)/bin/vbmap$(VBMAP_EXEEXT)
+	cp -r $(GENERATE_CERT_BINARY) $(DESTDIR)$(PREFIX)/bin/generate_cert$(VBMAP_EXEEXT)
 	mkdir -p $(DESTDIR)$(PREFIX)/etc/couchbase
 	sed -e 's|@DATA_PREFIX@|$(PREFIX_FOR_CONFIG)|g' -e 's|@BIN_PREFIX@|$(PREFIX_FOR_CONFIG)|g' \
 		 <etc/static_config.in >$(DESTDIR)$(PREFIX)/etc/couchbase/static_config
@@ -176,6 +198,7 @@ clean clean_all:
 	@(cd deps/erlwsh && $(MAKE) clean)
 	@(cd deps/ale && $(MAKE) clean)
 	@(cd deps/mlockall && $(MAKE) clean)
+	@(cd deps/ns_ssl_proxy && $(MAKE) clean)
 	rm -f $(TMP_VER)
 	rm -f $(TMP_DIR)/*.cov.html
 	rm -f cov.html
@@ -229,7 +252,8 @@ do-dialyzer:
             $(COUCH_PATH)/src/couchdb $(COUCH_PATH)/src/couch_set_view $(COUCH_PATH)/src/couch_view_parser \
             $(COUCH_PATH)/src/couch_index_merger/ebin \
             $(realpath $(COUCH_PATH)/src/mapreduce) \
-            deps/ns_babysitter/ebin
+            deps/ns_babysitter/ebin \
+            deps/ns_ssl_proxy/ebin
 
 dialyzer_obsessive: all $(COUCHBASE_PLT)
 	$(MAKE) do-dialyzer DIALYZER_FLAGS="-Wunmatched_returns -Werror_handling -Wrace_conditions -Wbehaviours -Wunderspecs " COUCH_PATH="$(shell . `pwd`/.configuration && echo $$couchdb_src)"

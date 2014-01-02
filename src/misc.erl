@@ -785,35 +785,66 @@ pairs_test() ->
     [] = pairs([1]),
     [{1,2}] = pairs([1,2]).
 
+rewrite(Fun, Term) ->
+    case Fun(Term) of
+        continue ->
+            do_rewrite(Fun, Term);
+        {stop, NewTerm} ->
+            NewTerm
+    end.
+
+do_rewrite(Fun, [H|T]) ->
+    [rewrite(Fun, H) | rewrite(Fun, T)];
+do_rewrite(_Fun, []) ->
+    [];
+do_rewrite(Fun, Tuple) when is_tuple(Tuple) ->
+    list_to_tuple(do_rewrite(Fun, tuple_to_list(Tuple)));
+do_rewrite(_Fun, Term) ->
+    Term.
+
 rewrite_value(Old, New, Struct) ->
-    rewrite_value_int({{value, Old}, New}, Struct).
+    rewrite(
+      fun (Term) ->
+              case Term =:= Old of
+                  true ->
+                      {stop, New};
+                  false ->
+                      continue
+              end
+      end,
+      Struct).
 
 rewrite_key_value_tuple(Key, NewValue, Struct) ->
-    rewrite_value_int({{key, Key}, NewValue}, Struct).
+    rewrite(
+      fun (Term) ->
+              case Term of
+                  {Key, _} ->
+                      {stop, {Key, NewValue}};
+                  _ ->
+                      continue
+              end
+      end,
+      Struct).
 
 rewrite_tuples(Fun, Struct) ->
-    rewrite_value_int({function, Fun}, Struct).
-
-rewrite_value_int({function, Fun}, Tuple) when is_tuple(Tuple) ->
-    case Fun(Tuple) of
-        {continue, T} ->
-            list_to_tuple(rewrite_value_int({function, Fun}, tuple_to_list(T)));
-        {stop, T} ->
-            T
-    end;
-rewrite_value_int({{key, Key}, New}, {Key, _}) ->
-    {Key, New};
-rewrite_value_int({{value, Old}, New}, Old) ->
-    New;
-rewrite_value_int(_Patterns, []) ->
-    [];
-% cannot use lists:map here because list can be improper
-rewrite_value_int(Patterns, [H|T]) ->
-    [rewrite_value_int(Patterns, H)|rewrite_value_int(Patterns, T)];
-rewrite_value_int(Patterns, T) when is_tuple(T) ->
-    list_to_tuple(rewrite_value_int(Patterns, tuple_to_list(T)));
-rewrite_value_int(_Patterns, X) ->
-    X.
+    rewrite(
+      fun (Term) ->
+              case is_tuple(Term) of
+                  true ->
+                      case Fun(Term) of
+                          {continue, NewTerm} ->
+                              NewTerm1 =
+                                  list_to_tuple(
+                                    rewrite_tuples(Fun, tuple_to_list(NewTerm))),
+                              {stop, NewTerm1};
+                          {stop, NewTerm} ->
+                              {stop, NewTerm}
+                      end;
+                  false ->
+                      continue
+              end
+      end,
+      Struct).
 
 rewrite_value_test() ->
     x = rewrite_value(a, b, x),
@@ -1631,3 +1662,25 @@ do_safe_split(0, List, Acc) ->
     {lists:reverse(Acc), List};
 do_safe_split(N, [H|T], Acc) ->
     do_safe_split(N - 1, T, [H|Acc]).
+
+-spec run_external_tool(string(), [string()]) -> {non_neg_integer(), binary()}.
+run_external_tool(Path, Args) ->
+    executing_on_new_process(
+      fun () ->
+              Port = erlang:open_port({spawn_executable, Path},
+                                      [stderr_to_stdout, binary,
+                                       stream, exit_status, hide,
+                                       {args, Args}]),
+              collect_external_tool_output(Port, [])
+      end).
+
+collect_external_tool_output(Port, Acc) ->
+    receive
+        {Port, {data, Data}} ->
+            collect_external_tool_output(Port, [Data | Acc]);
+        {Port, {exit_status, Status}} ->
+            {Status, iolist_to_binary(lists:reverse(Acc))};
+        Msg ->
+            ?log_error("Got unexpected message"),
+            exit({unexpected_message, Msg})
+    end.

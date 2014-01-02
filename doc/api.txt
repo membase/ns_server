@@ -172,6 +172,7 @@ GET /pools/default =>
             "mcdMemoryReserved": 25724, // private, deprecated
             "mcdMemoryAllocated": 25724, // private, deprecated
             "couchApiBase": "http://10.17.20.233:9501/", // base URL used to communicate to CAPI. I.e. views.
+            "couchApiBaseHTTPS": "https://10.17.20.233:19501/", // (INTERNAL and PRIVATE) base URL used to communicate to CAPI. I.e. views.
             "clusterMembership": ("active" // this node is active part of cluster
                                   | "inactiveFailed" // node was failed over
                                   | "inactiveAdded"), // node is just added. Next rebalance is going to make it active and move data into it
@@ -184,9 +185,18 @@ GET /pools/default =>
             "os": "i486-pc-linux-gnu",
             "ports": {
                 "proxy": 12003, // moxi port of this node
-                "direct": 12002 // memcached port of this node
+                "direct": 12002, // memcached port of this node,
+                "sslProxy": 11998, // private and internal: ssl end of ssl proxy
+                "httpsCAPI": 19501, // private and internal: https port of CAPI
+                "httpsMgmt": 19001 // private and internal: https port of management REST API
             }
         }
+
+
+GET /pools/default/certificate
+{
+    "certificate": <pem-form-of-certificate>
+}
 
 
 GET /pools/default/buckets/default =>
@@ -297,7 +307,9 @@ GET /pools/default/remoteClusters =>
         "hostname": "10.17.20.233:9000", // one of nodes of remote cluster we know
         "username": "Administrator",
         "uuid": "14c408ed8df50823715f47b900bd1b4f", // uuid of remote cluster
-        "deleted": <:bool> // just skip deleted remoteClusters
+        "deleted": <:bool>, // just skip deleted remoteClusters
+        "demandEncryption": <bool>, // whether this cluster reference is ssl reference
+        "certificate": <certificate> // pem-encoded certificate of remote cluster. Will be present if demandEncryption is true
     })*
 ]
 
@@ -369,6 +381,11 @@ POST
 POST /pools/default/remoteClusters
 name=<name>&hostname=<hostname>&username=<username>&password=<password>
 
+// creates remote cluster with given parameters. Same as above. Note
+// demandEncryption and certificate parameters used to define SSL cluster reference
+POST /pools/default/remoteClusters
+name=<name>&hostname=<hostname>&username=<username>&password=<password>&demandEncryption=1&certificate=<cert>
+
 
 POST /controller/createReplication
 fromBucket=<local-bucket-name>&toBucket=<remote-bucket-name>&replicationType=continuous&toCluster=<remote cluster name>
@@ -387,6 +404,11 @@ default values.
 // creates server group with given name
 POST /pools/default/serverGroups
 name=<group name>
+
+// empty post causes certificat regeneration
+POST /controller/regenerateCertificate
+=>
+(see GET /pools/default/serverGroups for output format)
 
 ====
 PUT

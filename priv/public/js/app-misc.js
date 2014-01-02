@@ -61,7 +61,7 @@ function normalizeNaN(possNaN) {
  */
 function setFormValues(form, values) {
   // TODO: loop through all input's and set values conditionally based on type
-  form.find('input[type=text], input[type=number], input[type=password], input:not([type])').each(function () {
+  form.find('input[type=text], textarea[name], input[type=number], input[type=password], input:not([type])').each(function () {
     var text = $(this);
     var name = text.attr('name');
     var value = values[name];

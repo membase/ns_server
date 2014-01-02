@@ -149,18 +149,101 @@ matching_renamings_with_tags(KeepNodesSet,
     end.
 
 do_rewrite(Term, Pairs) ->
-    lists:foldl(
-      fun ({Old, New}, T) ->
-              misc:rewrite_value(Old, New, T)
-      end, Term, Pairs).
+    misc:rewrite(
+      fun (T) ->
+              case lists:keyfind(T, 1, Pairs) of
+                  false ->
+                      continue;
+                  {_, NewT} ->
+                      {stop, NewT}
+              end
+      end, Term).
 
 rewrite_map(CandidateMap, CandidateTags, CurrentTags, Pairs) ->
-    case lists:sort(do_rewrite(CandidateTags, Pairs)) =:= lists:sort(CurrentTags) of
+    CandidateMap1 = do_rewrite(CandidateMap, Pairs),
+    CandidateTags1 = lists:sort(do_rewrite(CandidateTags, Pairs)),
+    CurrentTags1 = lists:sort(CurrentTags),
+    case CandidateTags1 =:= CurrentTags1 of
         true ->
-            [do_rewrite(CandidateMap, Pairs)];
+            [CandidateMap1];
+        false ->
+            matching_tag_renaming(CandidateMap1, CandidateTags1, CurrentTags1)
+    end.
+
+matching_tag_renaming(CandidateMap, CandidateTags, CurrentTags) ->
+    [CandidateHist, CurrentHist] =
+        lists:map(
+          fun (Tags) ->
+                  Hist = lists:foldl(
+                           fun ({Node, Tag}, D) ->
+                                   dict:update(
+                                     Tag,
+                                     fun ({C, S}) ->
+                                             {C + 1, sets:add_element(Node, S)}
+                                     end, {1, sets:from_list([Node])}, D)
+                           end, dict:new(), Tags),
+
+                  lists:sort(
+                    fun ({_, {CountA, _}}, {_, {CountB, _}}) ->
+                            CountA =< CountB
+                    end, dict:to_list(Hist))
+          end, [CandidateTags, CurrentTags]),
+
+    case [C || {_, {C, _}} <- CandidateHist] =:= [C || {_, {C, _}} <- CurrentHist] of
+        true ->
+            matching_tag_renaming_with_hists(CandidateMap, CandidateHist, CurrentHist);
         false ->
             []
     end.
+
+matching_tag_renaming_with_hists(CandidateMap, CandidateHist, CurrentHist) ->
+    TagRenaming = build_tag_renaming(lists:zip(CandidateHist, CurrentHist)),
+    MapRenaming =
+        lists:foldl(
+          fun ({{_, CandidateNodes}, {_, CurrentNodes}}, Acc) ->
+                  OldNodes = sets:to_list(sets:subtract(CandidateNodes, CurrentNodes)),
+                  NewNodes = sets:to_list(sets:subtract(CurrentNodes, CandidateNodes)),
+
+                  lists:zip(OldNodes, NewNodes) ++ Acc
+          end, [], TagRenaming),
+
+    [do_rewrite(CandidateMap, MapRenaming)].
+
+build_tag_renaming([]) ->
+    [];
+build_tag_renaming([{{_, {Count, _}}, _} | _] = Hists) ->
+    {EqualTags, Rest} =
+        lists:splitwith(
+          fun ({{_, {C, _}}, {_, {C, _}}}) ->
+                  C == Count
+          end, Hists),
+
+    {CandidateTags, CurrentTags} = lists:unzip(EqualTags),
+
+    {[], TagRenaming} =
+        lists:foldl(
+          fun ({CandidateTag, {_, CandidateNodes}}, {AccCurrentTags, AccRenaming}) ->
+                  {{BestTag, {_, BestNodes}} = Best, _} =
+                      lists:foldl(
+                        fun ({_CurrentTag, {_, CurrentNodes}} = Current, AccBest) ->
+                                CommonNodes = sets:intersection(CurrentNodes, CandidateNodes),
+                                CommonSize = sets:size(CommonNodes),
+
+                                case AccBest of
+                                    undefined ->
+                                        {Current, CommonSize};
+                                    {_Other, OtherSize} when OtherSize < CommonSize ->
+                                        {Current, CommonSize};
+                                    _ ->
+                                        AccBest
+                                end
+                        end, undefined, AccCurrentTags),
+                  AccCurrentTags1 = AccCurrentTags -- [Best],
+                  Renaming = {{CandidateTag, CandidateNodes}, {BestTag, BestNodes}},
+                  {AccCurrentTags1, [Renaming | AccRenaming]}
+          end, {CurrentTags, []}, CandidateTags),
+
+    TagRenaming ++ build_tag_renaming(Rest).
 
 matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentTags,
                                        CandidateMap, CandidateTags) ->
@@ -176,7 +259,8 @@ matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentTags,
                         true ->
                             [CandidateMap];
                         false ->
-                            []
+                            matching_tag_renaming(CandidateMap,
+                                                  CandidateTags, CurrentTags)
                     end;
                 1 ->
                     [NewNode] = sets:to_list(CurrentNotCommon),
@@ -211,10 +295,17 @@ matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentTags,
 %%
 
 generate_map(Map, Nodes, Options) ->
-    case proplists:get_value(replication_topology, Options, chain) of
-        chain ->
+    Topology = proplists:get_value(replication_topology, Options, chain),
+    Tags = proplists:get_value(tags, Options),
+    NumReplicas = length(hd(Map)) - 1,
+
+    UseOldCode = Topology =:= chain
+        orelse (Tags =:= undefined andalso NumReplicas =< 1),
+
+    case UseOldCode of
+        true ->
             generate_map_chain(Map, Nodes, Options);
-        star ->
+        false ->
             generate_map_star(Map, Nodes, Options)
     end.
 

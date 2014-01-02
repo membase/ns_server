@@ -136,10 +136,15 @@ add_couch_api_base_loop([Node | RestNodes], BucketName, LocalAddr, F, Dict, CAPI
     end.
 
 add_couch_api_base(BucketName, KV, Node, LocalAddr) ->
-    case capi_utils:capi_bucket_url_bin(Node, BucketName, LocalAddr) of
-        undefined -> KV;
-        CapiBucketUrl ->
-            [{couchApiBase, CapiBucketUrl} | KV]
+    KV1 = case capi_utils:capi_bucket_url_bin(Node, BucketName, LocalAddr) of
+              undefined -> KV;
+              CapiBucketUrl ->
+                  [{couchApiBase, CapiBucketUrl} | KV]
+          end,
+    case capi_utils:capi_bucket_url_bin({ssl, Node}, BucketName, LocalAddr) of
+        undefined -> KV1;
+        CapiSSLBucketUrl ->
+            [{couchApiBaseHTTPS, CapiSSLBucketUrl} | KV1]
     end.
 
 build_bucket_info(Id, undefined, InfoLevel, LocalAddr, MayExposeAuth) ->
