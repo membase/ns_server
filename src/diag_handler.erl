@@ -149,6 +149,13 @@ do_diag_per_node() ->
      {stats, (catch grab_all_buckets_stats())}].
 
 do_diag_per_node_binary() ->
+    work_queue:submit_sync_work(
+      diag_handler_worker,
+      fun () ->
+              (catch do_actual_diag_per_node_binary())
+      end).
+
+do_actual_diag_per_node_binary() ->
     ActiveBuckets = ns_memcached:active_buckets(),
     Diag = [{version, ns_info:version()},
             {manifest, manifest()},

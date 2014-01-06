@@ -54,6 +54,9 @@ child_specs() ->
       {ns_server, setup_babysitter_node, []},
       transient, brutal_kill, worker, []},
 
+     {diag_handler_worker, {work_queue, start_link, [diag_handler_worker]},
+      permanent, 1000, worker, []},
+
      {dir_size, {dir_size, start_link, []},
       permanent, 1000, worker, [dir_size]},
 
