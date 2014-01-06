@@ -35,7 +35,7 @@ submit_work(Name, Fun) ->
     gen_server:cast(Name, Fun).
 
 submit_sync_work(Name, Fun) ->
-    gen_server:call(Name, Fun).
+    gen_server:call(Name, Fun, infinity).
 
 sync_work(Name) ->
     gen_server:call(Name, fun nothing/0).
