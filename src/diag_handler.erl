@@ -43,17 +43,46 @@ manifest() ->
         _ -> []
     end.
 
+%% works like lists:foldl(Fun, Acc, binary:split(Binary, Separator, [global]))
+%%
+%% But without problems of binary:split. See MB-9534
+split_fold_incremental(Binary, Separator, Fun, Acc) ->
+    CP = binary:compile_pattern(Separator),
+    Len = erlang:size(Binary),
+    split_fold_incremental_loop(Binary, CP, Len, Fun, Acc, 0).
+
+split_fold_incremental_loop(_Binary, _CP, Len, _Fun, Acc, Start) when Start > Len ->
+    Acc;
+split_fold_incremental_loop(Binary, CP, Len, Fun, Acc, Start) ->
+    {MatchPos, MatchLen} =
+        case binary:match(Binary, CP, [{scope, {Start, Len - Start}}]) of
+            nomatch ->
+                %% NOTE: 1 here will move Start _past_ Len on next
+                %% loop iteration
+                {Len, 1};
+            MatchPair ->
+                MatchPair
+        end,
+    NewPiece = binary:part(Binary, Start, MatchPos - Start),
+    NewAcc = Fun(NewPiece, Acc),
+    split_fold_incremental_loop(Binary, CP, Len, Fun, NewAcc, MatchPos + MatchLen).
+
 -spec sanitize_backtrace(binary()) -> [binary()].
 sanitize_backtrace(Backtrace) ->
     {ok, RE} = re:compile(<<"^Program counter: 0x[0-9a-f]+ |^0x[0-9a-f]+ Return addr 0x[0-9a-f]+">>),
-    lists:append([case re:run(X, RE) of
+    R = split_fold_incremental(
+          Backtrace, <<"\n">>,
+          fun (X, Acc) ->
+                  case re:run(X, RE) of
                       nomatch ->
-                          [];
+                          Acc;
                       _ when size(X) =< 120 ->
-                          [binary:copy(X)];
-                      _ -> [binary:copy(binary:part(X, 1, 120))]
-                    end || X <- binary:split(Backtrace, <<"\n">>, [global])
-                 ]).
+                          [binary:copy(X) | Acc];
+                      _ ->
+                          [binary:copy(binary:part(X, 1, 120)) | Acc]
+                  end
+          end, []),
+    lists:reverse(R).
 
 grab_process_info(Pid) ->
     PureInfo = erlang:process_info(Pid,
@@ -522,7 +551,26 @@ backtrace_sanitize_test() ->
          <<"y(0)     #Fun<net_adm.ping.1>">>,
          <<"y(1)     ['ns_1@10.3.4.113','ns_1@10.3.4.114']">>,<<>>],
     SB = sanitize_backtrace(iolist_to_binary([[L, "\n"] || L <- B])),
-    ?log_debug("SB:~n~s", [iolist_to_binary([[L, "\n"] || L <- SB])]),
+    ?debugFmt("SB:~n~s", [iolist_to_binary([[L, "\n"] || L <- SB])]),
     ?assertEqual(4, length(SB)).
+
+
+split_incremental(Binary, Separator) ->
+    R = split_fold_incremental(Binary, Separator,
+                               fun (Part, Acc) ->
+                                       [Part | Acc]
+                               end, []),
+    lists:reverse(R).
+
+split_incremental_test() ->
+    String1 = <<"abc\n\ntext">>,
+    String2 = <<"abc\n\ntext\n">>,
+    String3 = <<"\nabc\n\ntext\n">>,
+    Split1a = binary:split(String1, <<"\n">>, [global]),
+    Split2a = binary:split(String2, <<"\n">>, [global]),
+    Split3a = binary:split(String3, <<"\n">>, [global]),
+    ?assertEqual(Split1a, split_incremental(String1, <<"\n">>)),
+    ?assertEqual(Split2a, split_incremental(String2, <<"\n">>)),
+    ?assertEqual(Split3a, split_incremental(String3, <<"\n">>)).
 
 -endif.
