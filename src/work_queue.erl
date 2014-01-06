@@ -51,11 +51,11 @@ init(InitFun) ->
 
 handle_call(Fun, _From, State) ->
     RV = Fun(),
-    {reply, RV, State}.
+    {reply, RV, State, hibernate}.
 
 handle_cast(Fun, State) ->
     Fun(),
-    {noreply, State}.
+    {noreply, State, hibernate}.
 
 handle_info(_Info, State) ->
     {noreply, State}.
