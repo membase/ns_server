@@ -334,22 +334,27 @@ do_handle_per_node_just_diag(Resp, Node, PerNodeDiag) ->
     MasterEvents = proplists:get_value(master_events, PerNodeDiag, []),
     DiagNoMasterEvents = lists:keydelete(master_events, 1, PerNodeDiag),
 
-    write_chunk_format(Resp, "master_events(~p) =~n", [Node]),
-    lists:foreach(
-      fun (Event0) ->
-              Event = case is_binary(Event0) of
-                          true ->
-                              binary_to_term(Event0);
-                          false ->
-                              Event0
-                      end,
-
+    misc:executing_on_new_process(
+      fun () ->
+              write_chunk_format(Resp, "master_events(~p) =~n", [Node]),
               lists:foreach(
-                fun (JSON) ->
-                        write_chunk_format(Resp, "     ~p~n", [JSON])
-                end, master_activity_events:event_to_jsons(Event))
-      end, MasterEvents),
-    Resp:write_chunk(<<"\n\n">>),
+                fun (Event0) ->
+                        Event = case is_binary(Event0) of
+                                    true ->
+                                        binary_to_term(Event0);
+                                    false ->
+                                        Event0
+                                end,
+                        misc:executing_on_new_process(
+                          fun () ->
+                                  lists:foreach(
+                                    fun (JSON) ->
+                                            write_chunk_format(Resp, "     ~p~n", [JSON])
+                                    end, master_activity_events:event_to_jsons(Event))
+                          end)
+                end, MasterEvents),
+              Resp:write_chunk(<<"\n\n">>)
+      end),
 
     do_handle_per_node_processes(Resp, Node, DiagNoMasterEvents).
 
@@ -371,19 +376,25 @@ do_handle_per_node_processes(Resp, Node, PerNodeDiag) ->
     DiagNoProcesses = lists:keydelete(processes, 1,
                                        lists:keydelete(babysitter_processes, 1, PerNodeDiag)),
 
-    write_chunk_format(Resp, "per_node_processes(~p) =~n", [Node]),
-    lists:foreach(
-      fun (Process) ->
-              write_chunk_format(Resp, "     ~p~n", [Process])
-      end, Processes),
-    Resp:write_chunk(<<"\n\n">>),
+    misc:executing_on_new_process(
+      fun () ->
+              write_chunk_format(Resp, "per_node_processes(~p) =~n", [Node]),
+              lists:foreach(
+                fun (Process) ->
+                        write_chunk_format(Resp, "     ~p~n", [Process])
+                end, Processes),
+              Resp:write_chunk(<<"\n\n">>)
+      end),
 
-    write_chunk_format(Resp, "per_node_babysitter_processes(~p) =~n", [Node]),
-    lists:foreach(
-      fun (Process) ->
-              write_chunk_format(Resp, "     ~p~n", [Process])
-      end, BabysitterProcesses),
-    Resp:write_chunk(<<"\n\n">>),
+    misc:executing_on_new_process(
+      fun () ->
+              write_chunk_format(Resp, "per_node_babysitter_processes(~p) =~n", [Node]),
+              lists:foreach(
+                fun (Process) ->
+                        write_chunk_format(Resp, "     ~p~n", [Process])
+                end, BabysitterProcesses),
+              Resp:write_chunk(<<"\n\n">>)
+      end),
 
     do_handle_per_node_stats(Resp, Node, DiagNoProcesses).
 
@@ -396,20 +407,23 @@ do_handle_per_node_stats(Resp, Node, PerNodeDiag)->
                     [{"_", [{'_', [Stats0]}]}]
             end,
 
-    lists:foreach(
-      fun ({Bucket, BucketStats}) ->
+    misc:executing_on_new_process(
+      fun () ->
               lists:foreach(
-                fun ({Period, Samples}) ->
-                        write_chunk_format(Resp, "per_node_stats(~p, ~p, ~p) =~n",
-                                           [Node, Bucket, Period]),
-
+                fun ({Bucket, BucketStats}) ->
                         lists:foreach(
-                          fun (Sample) ->
-                                  write_chunk_format(Resp, "     ~p~n", [Sample])
-                          end, Samples)
-                end, BucketStats)
-      end, Stats),
-    Resp:write_chunk(<<"\n\n">>),
+                          fun ({Period, Samples}) ->
+                                  write_chunk_format(Resp, "per_node_stats(~p, ~p, ~p) =~n",
+                                                     [Node, Bucket, Period]),
+
+                                  lists:foreach(
+                                    fun (Sample) ->
+                                            write_chunk_format(Resp, "     ~p~n", [Sample])
+                                    end, Samples)
+                          end, BucketStats)
+                end, Stats),
+              Resp:write_chunk(<<"\n\n">>)
+      end),
 
     DiagNoStats = lists:keydelete(stats, 1, PerNodeDiag),
     do_continue_handling_per_node_just_diag(Resp, Node, DiagNoStats).
@@ -417,8 +431,12 @@ do_handle_per_node_stats(Resp, Node, PerNodeDiag)->
 do_continue_handling_per_node_just_diag(Resp, Node, Diag) ->
     erlang:garbage_collect(),
 
-    write_chunk_format(Resp, "per_node_diag(~p) =~n", [Node]),
-    write_chunk_format(Resp, "     ~p~n", [Diag]),
+    misc:executing_on_new_process(
+      fun () ->
+              write_chunk_format(Resp, "per_node_diag(~p) =~n", [Node]),
+              write_chunk_format(Resp, "     ~p~n", [Diag])
+      end),
+
     Resp:write_chunk(<<"\n\n">>).
 
 do_handle_diag(Req, Extra) ->
