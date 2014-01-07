@@ -8,9 +8,6 @@
          generate_and_set_cert_and_pkey/0]).
 
 cluster_cert_and_pkey_pem() ->
-    ensure_cert_and_pkey().
-
-ensure_cert_and_pkey() ->
     RV = ns_config:run_txn(
            fun (Config, SetFn) ->
                    case ns_config:search(Config, cert_and_pkey) of
