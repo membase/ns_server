@@ -1,5 +1,7 @@
 -module(ns_server_cert).
 
+-include("ns_common.hrl").
+
 -export([cluster_cert_and_pkey_pem/0,
          generate_cert_and_pkey/0,
          validate_cert/1,
@@ -32,6 +34,16 @@ generate_and_set_cert_and_pkey() ->
     ns_config:set(cert_and_pkey, Pair).
 
 generate_cert_and_pkey() ->
+    StartTS = os:timestamp(),
+    RV = do_generate_cert_and_pkey(),
+    EndTS = os:timestamp(),
+
+    Diff = timer:now_diff(EndTS, StartTS),
+    ?log_debug("Generated certificate and private key in ~p us", [Diff]),
+
+    RV.
+
+do_generate_cert_and_pkey() ->
     {Status, Output} = misc:run_external_tool(path_config:component_path(bin, "generate_cert"), []),
     case Status of
         0 ->
