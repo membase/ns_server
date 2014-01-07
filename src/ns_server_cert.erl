@@ -8,22 +8,27 @@
          generate_and_set_cert_and_pkey/0]).
 
 cluster_cert_and_pkey_pem() ->
-    RV = ns_config:run_txn(
-           fun (Config, SetFn) ->
-                   case ns_config:search(Config, cert_and_pkey) of
-                       {value, Pair} ->
-                           {abort, Pair};
-                       false ->
-                           CP = generate_cert_and_pkey(),
-                           {commit, SetFn(cert_and_pkey, CP, Config)}
-                   end
-           end),
-    case RV of
-        {abort, Pair} ->
+    case ns_config:search(cert_and_pkey) of
+        {value, Pair} ->
             Pair;
-        _ ->
-            {value, Pair} = ns_config:search(cert_and_pkey),
-            Pair
+        false ->
+            Pair = generate_cert_and_pkey(),
+            RV = ns_config:run_txn(
+                   fun (Config, SetFn) ->
+                           case ns_config:search(Config, cert_and_pkey) of
+                               {value, OtherPair} ->
+                                   {abort, OtherPair};
+                               false ->
+                                   {commit, SetFn(cert_and_pkey, Pair, Config)}
+                           end
+                   end),
+
+            case RV of
+                {abort, OtherPair} ->
+                    OtherPair;
+                _ ->
+                    Pair
+            end
     end.
 
 generate_and_set_cert_and_pkey() ->
