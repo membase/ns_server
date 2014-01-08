@@ -143,12 +143,8 @@ child_specs() ->
      {mc_sup, {mc_sup, start_link, []},
       permanent, infinity, supervisor, dynamic},
 
-     %% Note: it sets up cert and private key files. So needs to go
-     %% before ns_ports_setup
-     {ns_ssl_services_sup,
-      {ns_ssl_services_sup, start_link, []},
-      permanent, infinity, supervisor, []},
-
+     %% Note: cert and private key files are set up as part of
+     %% menelaus_sup. So ns_ports_setup needs to go after it.
      {ns_ports_setup, {ns_ports_setup, start, []},
       {permanent, 4}, brutal_kill, worker, []},
 
