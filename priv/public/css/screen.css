@@ -405,6 +405,8 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .cluster_settings_container .error-container {margin-left: 150px;}
 .cluster_settings_container .row {margin: 10px 60px; line-height: 24px;}
 
+.certificate_section textarea {height: 187px; margin-left: 60px; width: 400px; font-size: 10px;}
+
 /* update notification styles */
 #notifications_container .item {padding:13px;}
 #notifications_container .save_button {float:right;}

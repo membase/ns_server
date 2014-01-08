@@ -108,6 +108,7 @@ var ClusterSection = {
     var clusterSettingsForm = $("#js_cluster_public_settings_form");
     var totalRamCont = $("#js_cluster_settings_total_ram");
     var outlineTag = $("#js_outline_tag");
+    var certArea = $("#js-about-cert-area");
     var originalTitle = document.title;
 
     var clusterSettingsFormValidator = setupFormValidation(clusterSettingsForm, internalSettingsUrl + "?just_validate=1",
@@ -121,6 +122,25 @@ var ClusterSection = {
       clusterSettingsFormValidator[enable ? 'unpause' : 'pause']();
     }
 
+    function setCertificate(certificate) {
+      certArea.val(certificate);
+    }
+
+    function getCertificate() {
+      $.get("/pools/default/certificate", function (data) {
+        setCertificate(data.certificate);
+      });
+    }
+
+    window.regenerateCertificate = function regenerateCertificate() {
+      var overlay = overlayWithSpinner(container);
+      $.post("/controller/regenerateCertificate", function (data) {
+        overlay.remove();
+        setCertificate(data.certificate);
+      });
+    }
+
+    getCertificate();
     enableDisableValidation(false);
 
     clusterSettingsForm.submit(function (e) {
