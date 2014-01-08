@@ -790,6 +790,7 @@ with_pools(JsonGet, K) ->
     JsonGet(
       "/pools",
       fun (PoolsRaw) ->
+              ?log_debug("Have PoolsRaw: ~p", [PoolsRaw]),
               expect_object(
                 PoolsRaw, Context,
                 fun (Pools) ->
@@ -902,6 +903,8 @@ remote_cluster(Cluster) ->
     true = (Password =/= undefined),
     true = (Hostname =/= undefined),
 
+    ?log_debug("Doing remote cluster"),
+
     {Host, Port} = host_and_port(Hostname),
 
     Cert = proplists:get_value(cert, Cluster),
@@ -918,8 +921,7 @@ remote_cluster(Cluster) ->
         {ok, RN} ->
             {JsonGet, _, _, _} = mk_json_get_for_node(RN, Cert,
                                                       Username, Password,
-                                                      [{pool, ns_null_connection_pool},
-                                                       {connect_options, [{reuse_sessions, false}]}]),
+                                                      true),
             do_remote_cluster(JsonGet, Cert);
         Error ->
             Error
@@ -1085,14 +1087,9 @@ remote_bucket_from_node(RemoteNode, Bucket, Username, Password,
                         ForceNewConnection) ->
     Creds = {Username, Password},
 
-    GetOptions = case ForceNewConnection of
-                     false -> [];
-                     true -> [{pool, ns_null_connection_pool},
-                              {connect_options, [{reuse_sessions, false}]}]
-                 end,
     {JsonGet, Scheme, Host, Port} = mk_json_get_for_node(RemoteNode, Cert,
                                                          Username, Password,
-                                                         GetOptions),
+                                                         ForceNewConnection),
 
     with_pools(
       JsonGet,
@@ -1386,15 +1383,28 @@ validate_server_list([Server | Rest]) ->
 mk_json_get_for_node(#remote_node{host = Host,
                                   port = Port,
                                   https_port = SPort},
-                     Cert, Username, Password, HttpOptionsOverride) ->
+                     Cert, Username, Password, ForceNewConnection) ->
     case Cert =/= undefined of
         true ->
-            {mk_ssl_json_get(Host, SPort, Username, Password, Cert, HttpOptionsOverride),
+            OptionsOverride = case ForceNewConnection of
+                                  true ->
+                                      [{pool, ns_null_connection_pool},
+                                       {connect_options, [{reuse_sessions, false}]}];
+                                  false ->
+                                      []
+                              end,
+            {mk_ssl_json_get(Host, SPort, Username, Password, Cert, OptionsOverride),
              "https", Host, SPort};
         _ ->
+            OptionsOverride = case ForceNewConnection of
+                                  true ->
+                                      [{pool, ns_null_connection_pool}];
+                                  false ->
+                                      []
+                              end,
             %% TODO: this doesn't hold right now
             %% undefined = SPort,
-            {mk_plain_json_get(Host, Port, Username, Password, HttpOptionsOverride), "http", Host, Port}
+            {mk_plain_json_get(Host, Port, Username, Password, OptionsOverride), "http", Host, Port}
     end.
 
 mk_ssl_json_get(Host, Port, Username, Password, CertPEM, HttpOptionsOverride) ->
@@ -1425,10 +1435,16 @@ do_mk_json_get(Host, Port, Options, Scheme, Username, Password) ->
     fun (Path, K) ->
             URL = menelaus_rest:rest_url(Host, Port, Path, Scheme),
             ?log_debug("Doing get of ~s", [URL]),
+            ?log_debug("args: ~p", [{get,
+                                     {URL, {Host, Port, Path}},
+                                     {Username, Password},
+                                     Options}]),
             R = menelaus_rest:json_request_hilevel(get,
                                                    {URL, {Host, Port, Path}},
                                                    {Username, Password},
                                                    Options),
+
+            ?log_debug("R: ~p", [R]),
 
             case R of
                 {ok, Value} ->
