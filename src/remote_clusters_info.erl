@@ -796,7 +796,6 @@ with_pools(JsonGet, K) ->
     JsonGet(
       "/pools",
       fun (PoolsRaw) ->
-              ?log_debug("Have PoolsRaw: ~p", [PoolsRaw]),
               expect_object(
                 PoolsRaw, Context,
                 fun (Pools) ->
@@ -908,8 +907,6 @@ remote_cluster(Cluster) ->
     true = (Username =/= undefined),
     true = (Password =/= undefined),
     true = (Hostname =/= undefined),
-
-    ?log_debug("Doing remote cluster"),
 
     {Host, Port} = host_and_port(Hostname),
 
@@ -1441,16 +1438,10 @@ do_mk_json_get(Host, Port, Options, Scheme, Username, Password) ->
     fun (Path, K) ->
             URL = menelaus_rest:rest_url(Host, Port, Path, Scheme),
             ?log_debug("Doing get of ~s", [URL]),
-            ?log_debug("args: ~p", [{get,
-                                     {URL, {Host, Port, Path}},
-                                     {Username, Password},
-                                     Options}]),
             R = menelaus_rest:json_request_hilevel(get,
                                                    {URL, {Host, Port, Path}},
                                                    {Username, Password},
                                                    Options),
-
-            ?log_debug("R: ~p", [R]),
 
             case R of
                 {ok, Value} ->
