@@ -165,8 +165,10 @@ child_specs() ->
       permanent, 1000, worker, []},
 
      {xdc_lhttpc_pool, {lhttpc_manager, start_link, [[{name, xdc_lhttpc_pool}, {connection_timeout, 120000}, {pool_size, 200}]]},
-      permanent, 10000, worker, [lhttpc_manager]
-     },
+      permanent, 10000, worker, [lhttpc_manager]},
+
+     {ns_null_connection_pool, {ns_null_connection_pool, start_link, [ns_null_connection_pool]},
+      permanent, 1000, worker, []},
 
      %% per-vbucket replication supervisor, required by XDC manager
      {xdc_replication_sup,
