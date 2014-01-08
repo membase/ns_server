@@ -630,8 +630,14 @@ request_remote_bucket_on_new_conn(#remote_cluster{nodes=[Node]} = RemoteCluster,
                                   Bucket, Username, Password, From) ->
     proc_lib:spawn_link(
       fun () ->
-              R = remote_cluster_and_bucket(Node, RemoteCluster, Bucket,
-                                            Username, Password, true),
+              R0 = remote_cluster_and_bucket(Node, RemoteCluster, Bucket,
+                                             Username, Password, true),
+              R = case R0 of
+                      {ok, {_, RemoteBucket}} ->
+                          {ok, RemoteBucket};
+                      _ ->
+                          R0
+                  end,
               gen_server:reply(From, R)
       end).
 
