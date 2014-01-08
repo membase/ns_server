@@ -2504,20 +2504,10 @@
          <input name="username" /></li>
        <li><label>Password:</label>
          <input name="password" type="password" /></li>
+       <li class="when-enterprise"><label for="demand_encryption_flag-2">Enable Encryption</label>
+        <input name="demandEncryption" id="demand_encryption_flag-2" type="checkbox" style="vertical-align: middle;"></li>
      </ul>
-     <legend class="when-enterprise">
-       <label for="demand_encryption_flag-2">Encryption</label>
-       <input name="demandEncryption" id="demand_encryption_flag-2" type="checkbox" value="1" style="vertical-align: middle;">
-       <a class="text_11 tooltip"><span>What's this?</span>
-         <span class="tooltip_msg" style="width: 190px;"><span>
-           If checked XDCR will be working over ssl. You can find certificate generator by clicking on the reference "About" in the page header of remote cluster.
-         </span></span>
-       </a>
-     </legend>
-     <ul>
-       <li class="ssh_key_area">
-       <textarea id="ssh_key_area-2" name="certificate" style="font-size:10px;width:100%;margin:0;padding:0;min-height:20em;"></textarea></li>
-     </ul>
+     <textarea id="ssh_key_area-2" name="certificate" style="font-size:10px;width:100%;margin:0;padding:0;min-height:20em;"></textarea>
     </fieldset>
     <div class="save_cancel">
       <button class="save_button float_right" type="submit">Save</button>

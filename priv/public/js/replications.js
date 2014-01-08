@@ -306,6 +306,7 @@ function mkReplicationSectionCell(ns, currentXDCRSettingsURI, tasksProgressCell,
 }
 
 var ReplicationsSection = {
+  encriptionTextAreaDefaultValue: "Copy paste the Certificate information from Remote Cluster here. You can find the certificate information on Couchbase Admin UI under Settings -> Cluster tab.",
   init: function () {
     renderCellTemplate(ReplicationsModel.remoteClustersListCell, 'cluster_reference_list');
 
@@ -436,7 +437,7 @@ var ReplicationsSection = {
       remoteCluster = _.clone(remoteCluster);
       var form = $('#create_cluster_reference_dialog form');
       if (!remoteCluster.certificate) {
-        remoteCluster.certificate = 'Insert certificate here';
+        remoteCluster.certificate = ReplicationsSection.encriptionTextAreaDefaultValue;
         $('#demand_encryption_flag-2').prop('checked', false);
         $('#ssh_key_area-2').hide();
       } else {
@@ -462,7 +463,7 @@ var ReplicationsSection = {
   submitRemoteCluster: function (uri, form) {
     var spinner = overlayWithSpinner(form);
     var formValues = $.deparam(serializeForm(form));
-    if ($.trim(formValues.certificate) === "Insert certificate here") {
+    if ($.trim(formValues.certificate) === ReplicationsSection.encriptionTextAreaDefaultValue) {
       formValues.certificate = "";
     }
     if (formValues.hostname && !formValues.hostname.split(":")[1]) {
@@ -482,7 +483,7 @@ var ReplicationsSection = {
     var form = $('#create_cluster_reference_dialog form');
     form.find('input[type=text], input[type=number], input[type=password], input:not([type])').val('');
     $('#demand_encryption_flag-2').prop('checked', false);
-    $('#ssh_key_area-2').val('Insert certificate here');
+    $('#ssh_key_area-2').val(ReplicationsSection.encriptionTextAreaDefaultValue);
     $('#ssh_key_area-2').hide();
     form.find('input[name=username]').val('Administrator');
     form.find('[name=demandEncryption]').attr('checked', false);
