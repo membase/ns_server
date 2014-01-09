@@ -405,6 +405,8 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .cluster_settings_container .error-container {margin-left: 150px;}
 .cluster_settings_container .row {margin: 10px 60px; line-height: 24px;}
 
+.certificate_section textarea {height: 187px; margin-left: 60px; width: 400px; font-size: 10px;}
+
 /* update notification styles */
 #notifications_container .item {padding:13px;}
 #notifications_container .save_button {float:right;}
@@ -512,8 +514,6 @@ button#test_email + span {line-height:2.25em;margin-left:0.5em}
 .join_cluster input {margin:0 4px 0 1px;padding:4px 3px;border:1px solid #ccd2d6;}
 
 .demand_encryption_flag label, .demand_encryption_flag input {vertical-align: middle;}
-.ssh_key_area label, .ssh_key_area textarea {vertical-align: top;}
-.ssh_key_area textarea {width: 149px; margin-left: 1px;}
 .create_replication_dialog label {width: 66px;}
 
 /* auth */

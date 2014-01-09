@@ -35,7 +35,7 @@ submit_work(Name, Fun) ->
     gen_server:cast(Name, Fun).
 
 submit_sync_work(Name, Fun) ->
-    gen_server:call(Name, Fun).
+    gen_server:call(Name, Fun, infinity).
 
 sync_work(Name) ->
     gen_server:call(Name, fun nothing/0).
@@ -51,11 +51,11 @@ init(InitFun) ->
 
 handle_call(Fun, _From, State) ->
     RV = Fun(),
-    {reply, RV, State}.
+    {reply, RV, State, hibernate}.
 
 handle_cast(Fun, State) ->
     Fun(),
-    {noreply, State}.
+    {noreply, State, hibernate}.
 
 handle_info(_Info, State) ->
     {noreply, State}.

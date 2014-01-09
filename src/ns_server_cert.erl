@@ -1,30 +1,34 @@
 -module(ns_server_cert).
 
+-include("ns_common.hrl").
+
 -export([cluster_cert_and_pkey_pem/0,
          generate_cert_and_pkey/0,
          validate_cert/1,
          generate_and_set_cert_and_pkey/0]).
 
 cluster_cert_and_pkey_pem() ->
-    ensure_cert_and_pkey().
-
-ensure_cert_and_pkey() ->
-    RV = ns_config:run_txn(
-           fun (Config, SetFn) ->
-                   case ns_config:search(Config, cert_and_pkey) of
-                       {value, Pair} ->
-                           {abort, Pair};
-                       false ->
-                           CP = generate_cert_and_pkey(),
-                           {commit, SetFn(cert_and_pkey, CP, Config)}
-                   end
-           end),
-    case RV of
-        {abort, Pair} ->
+    case ns_config:search(cert_and_pkey) of
+        {value, Pair} ->
             Pair;
-        _ ->
-            {value, Pair} = ns_config:search(cert_and_pkey),
-            Pair
+        false ->
+            Pair = generate_cert_and_pkey(),
+            RV = ns_config:run_txn(
+                   fun (Config, SetFn) ->
+                           case ns_config:search(Config, cert_and_pkey) of
+                               {value, OtherPair} ->
+                                   {abort, OtherPair};
+                               false ->
+                                   {commit, SetFn(cert_and_pkey, Pair, Config)}
+                           end
+                   end),
+
+            case RV of
+                {abort, OtherPair} ->
+                    OtherPair;
+                _ ->
+                    Pair
+            end
     end.
 
 generate_and_set_cert_and_pkey() ->
@@ -32,6 +36,16 @@ generate_and_set_cert_and_pkey() ->
     ns_config:set(cert_and_pkey, Pair).
 
 generate_cert_and_pkey() ->
+    StartTS = os:timestamp(),
+    RV = do_generate_cert_and_pkey(),
+    EndTS = os:timestamp(),
+
+    Diff = timer:now_diff(EndTS, StartTS),
+    ?log_debug("Generated certificate and private key in ~p us", [Diff]),
+
+    RV.
+
+do_generate_cert_and_pkey() ->
     {Status, Output} = misc:run_external_tool(path_config:component_path(bin, "generate_cert"), []),
     case Status of
         0 ->

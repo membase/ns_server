@@ -77,6 +77,8 @@
 
 -behaviour(gen_server).
 
+-type cache_through_mode() :: boolean() | true_using_new_connection.
+
 %% API
 -export([start_link/0]).
 
@@ -203,7 +205,7 @@ invalidate_remote_bucket_by_ref(Reference) ->
     {ok, {ClusterUUID, BucketName}} = parse_remote_bucket_reference(Reference),
     invalidate_remote_bucket(ClusterUUID, BucketName).
 
--spec get_remote_bucket(string(), bucket_name(), boolean()) ->
+-spec get_remote_bucket(string(), bucket_name(), cache_through_mode()) ->
                                {ok, #remote_bucket{}} |
                                {error, cluster_not_found, Msg} |
                                {error, timeout} |
@@ -222,7 +224,7 @@ invalidate_remote_bucket_by_ref(Reference) ->
 get_remote_bucket(ClusterName, Bucket, Through) ->
     get_remote_bucket(ClusterName, Bucket, Through, ?GET_BUCKET_TIMEOUT).
 
--spec get_remote_bucket(string(), bucket_name(), boolean(), integer()) ->
+-spec get_remote_bucket(string(), bucket_name(), cache_through_mode(), integer()) ->
                                {ok, #remote_bucket{}} |
                                {error, cluster_not_found, Msg} |
                                {error, timeout} |
@@ -333,7 +335,7 @@ handle_call({get_remote_bucket, Cluster, Bucket, false, Timeout}, From, State) -
                                 From, State)
             end
     end;
-handle_call({get_remote_bucket, Cluster, Bucket, true, Timeout}, From, State) ->
+handle_call({get_remote_bucket, Cluster, Bucket, ForceMode, Timeout}, From, State) ->
     Username = proplists:get_value(username, Cluster),
     Password = proplists:get_value(password, Cluster),
     UUID = proplists:get_value(uuid, Cluster),
@@ -344,13 +346,15 @@ handle_call({get_remote_bucket, Cluster, Bucket, true, Timeout}, From, State) ->
     true = (UUID =/= undefined),
 
     RemoteCluster0 =
-        case ets:lookup(?CACHE, UUID) of
-            [] ->
+        case {ForceMode, ets:lookup(?CACHE, UUID)} of
+            {true_using_new_connection, _} ->
                 undefined;
-            [{UUID, FoundCluster}] when FoundCluster#remote_cluster.cert =:= Cert ->
+            {_, []} ->
+                undefined;
+            {_, [{UUID, FoundCluster}]} when FoundCluster#remote_cluster.cert =:= Cert ->
                 ?log_debug("FoundCluster: ~p", [FoundCluster]),
                 FoundCluster;
-            [{UUID, _WrongCertCluster}] ->
+            {_, [{UUID, _WrongCertCluster}]} ->
                 ?log_debug("Found cluster but cert did not match"),
                 undefined
         end,
@@ -378,11 +382,18 @@ handle_call({get_remote_bucket, Cluster, Bucket, true, Timeout}, From, State) ->
                 RemoteCluster0
         end,
 
-    State1 = enqueue_waiter({UUID, Bucket}, From, Timeout, State),
-    State2 = request_remote_bucket(RemoteCluster, Bucket,
-                                   Username, Password, State1),
+    case ForceMode of
+        true ->
+            State1 = enqueue_waiter({UUID, Bucket}, From, Timeout, State),
+            State2 = request_remote_bucket(RemoteCluster, Bucket,
+                                           Username, Password, State1),
 
-    {noreply, State2};
+            {noreply, State2};
+        true_using_new_connection ->
+            request_remote_bucket_on_new_conn(RemoteCluster, Bucket,
+                                              Username, Password, From),
+            {noreply, State}
+    end;
 handle_call(Request, From, State) ->
     ?log_warning("Got unexpected call request: ~p", [{Request, From}]),
     {reply, unhandled, State}.
@@ -615,6 +626,22 @@ enqueue_waiter(Id, From, Timeout,
     State#state{remote_bucket_waiters=Waiters1,
                 remote_bucket_waiters_trefs=TRefs1}.
 
+request_remote_bucket_on_new_conn(#remote_cluster{nodes=[Node]} = RemoteCluster,
+                                  Bucket, Username, Password, From) ->
+    proc_lib:spawn_link(
+      fun () ->
+              R0 = remote_cluster_and_bucket(Node, RemoteCluster, Bucket,
+                                             Username, Password, true),
+              R = case R0 of
+                      {ok, {_, RemoteBucket}} ->
+                          {ok, RemoteBucket};
+                      _ ->
+                          R0
+                  end,
+              gen_server:reply(From, R)
+      end).
+
+
 request_remote_bucket(#remote_cluster{nodes=Nodes, uuid=UUID} = RemoteCluster,
                       Bucket, Username, Password,
                       #state{remote_bucket_requests=Requests} = State) ->
@@ -661,7 +688,7 @@ spawn_request_remote_bucket(TargetNode,
     proc_lib:spawn_link(
       fun () ->
               R = remote_cluster_and_bucket(TargetNode, RemoteCluster, Bucket,
-                                            Username, Password),
+                                            Username, Password, false),
               Self ! {remote_bucket_request_result,
                       TargetNode, {UUID, Bucket}, R}
       end).
@@ -895,14 +922,16 @@ remote_cluster(Cluster) ->
 
     case MaybeRN of
         {ok, RN} ->
-            {JsonGet, _, _, _} = mk_json_get_for_node(RN, Cert, Username, Password),
+            {JsonGet, _, _, _} = mk_json_get_for_node(RN, Cert,
+                                                      Username, Password,
+                                                      true),
             do_remote_cluster(JsonGet, Cert);
         Error ->
             Error
     end.
 
 fetch_remote_node_record(Host, Port) ->
-    JG = mk_plain_json_get(Host, Port, "", ""),
+    JG = mk_plain_json_get(Host, Port, "", "", []),
     RN = #remote_node{host = Host, port = Port},
     JG("/nodes/self/xdcrSSLPorts",
        fun ({struct, [_|_] = PortsKV}) ->
@@ -1040,25 +1069,30 @@ host_and_port(Hostname) ->
     end.
 
 remote_cluster_and_bucket(TargetNode, RemoteCluster,
-                          BucketStr, Username, Password) ->
+                          BucketStr, Username, Password, ForceNewConnection) ->
     Bucket = list_to_binary(BucketStr),
-    remote_bucket_from_node(TargetNode, Bucket, Username, Password, RemoteCluster).
+    remote_bucket_from_node(TargetNode, Bucket, Username, Password,
+                            RemoteCluster, ForceNewConnection).
 
 remote_bucket_from_node(#remote_node{host=Host, port=Port, https_port = needed_but_unknown},
-                        Bucket, Username, Password, RemoteCluster) ->
+                        Bucket, Username, Password, RemoteCluster, ForceNewConnection) ->
     true = (RemoteCluster#remote_cluster.cert =/= undefined),
     case fetch_remote_node_record(Host, Port) of
         {ok, RemoteNode} ->
             remote_bucket_from_node(RemoteNode,
-                                    Bucket, Username, Password, RemoteCluster);
+                                    Bucket, Username, Password,
+                                    RemoteCluster, ForceNewConnection);
         Err ->
             Err
     end;
 remote_bucket_from_node(RemoteNode, Bucket, Username, Password,
-                        #remote_cluster{uuid = UUID, cert = Cert} = RemoteCluster) ->
+                        #remote_cluster{uuid = UUID, cert = Cert} = RemoteCluster,
+                        ForceNewConnection) ->
     Creds = {Username, Password},
 
-    {JsonGet, Scheme, Host, Port} = mk_json_get_for_node(RemoteNode, Cert, Username, Password),
+    {JsonGet, Scheme, Host, Port} = mk_json_get_for_node(RemoteNode, Cert,
+                                                         Username, Password,
+                                                         ForceNewConnection),
 
     with_pools(
       JsonGet,
@@ -1352,20 +1386,34 @@ validate_server_list([Server | Rest]) ->
 mk_json_get_for_node(#remote_node{host = Host,
                                   port = Port,
                                   https_port = SPort},
-                     Cert, Username, Password) ->
+                     Cert, Username, Password, ForceNewConnection) ->
     case Cert =/= undefined of
         true ->
-            {mk_ssl_json_get(Host, SPort, Username, Password, Cert), "https", Host, SPort};
+            OptionsOverride = case ForceNewConnection of
+                                  true ->
+                                      [{pool, ns_null_connection_pool},
+                                       {connect_options, [{reuse_sessions, false}]}];
+                                  false ->
+                                      []
+                              end,
+            {mk_ssl_json_get(Host, SPort, Username, Password, Cert, OptionsOverride),
+             "https", Host, SPort};
         _ ->
+            OptionsOverride = case ForceNewConnection of
+                                  true ->
+                                      [{pool, ns_null_connection_pool}];
+                                  false ->
+                                      []
+                              end,
             %% TODO: this doesn't hold right now
             %% undefined = SPort,
-            {mk_plain_json_get(Host, Port, Username, Password), "http", Host, Port}
+            {mk_plain_json_get(Host, Port, Username, Password, OptionsOverride), "http", Host, Port}
     end.
 
-mk_ssl_json_get(Host, Port, Username, Password, CertPEM) ->
-    Options0 = [{connect_timeout, 30000},
-                {timeout, 60000},
-                {pool, xdc_lhttpc_pool}],
+mk_ssl_json_get(Host, Port, Username, Password, CertPEM, HttpOptionsOverride) ->
+    Options0 = HttpOptionsOverride ++ [{connect_timeout, 30000},
+                                       {timeout, 60000},
+                                       {pool, xdc_lhttpc_pool}],
     Options =
         case CertPEM of
             <<"-">> ->
@@ -1380,10 +1428,10 @@ mk_ssl_json_get(Host, Port, Username, Password, CertPEM) ->
         end,
     do_mk_json_get(Host, Port, Options, "https", Username, Password).
 
-mk_plain_json_get(Host, Port, Username, Password) ->
-    Options = [{connect_timeout, 30000},
-                {timeout, 60000},
-                {pool, xdc_lhttpc_pool}],
+mk_plain_json_get(Host, Port, Username, Password, HttpOptionsOverride) ->
+    Options = HttpOptionsOverride ++ [{connect_timeout, 30000},
+                                      {timeout, 60000},
+                                      {pool, xdc_lhttpc_pool}],
     do_mk_json_get(Host, Port, Options, "http", Username, Password).
 
 do_mk_json_get(Host, Port, Options, Scheme, Username, Password) ->

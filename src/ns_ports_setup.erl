@@ -88,31 +88,29 @@ inspect_term_arg(Value) ->
     binary_to_list(iolist_to_binary(io_lib:format("~p", [Value]))).
 
 create_ssl_proxy_spec(Config) ->
-    {value, UpstreamPort0} = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}),
-    {value, DownstreamPort0} = ns_config:search(Config, {node, node(), ssl_proxy_downstream_port}),
-    UpstreamPort = erlang:integer_to_list(UpstreamPort0),
-    DownstreamPort = erlang:integer_to_list(DownstreamPort0),
-    Path = inspect_term_arg(ns_ssl_services_setup:ssl_cert_key_path()),
+    {value, UpstreamPort} = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}),
+    {value, DownstreamPort} = ns_config:search(Config, {node, node(), ssl_proxy_downstream_port}),
+    Path = ns_ssl_services_setup:ssl_cert_key_path(),
     PathArgs = ["-pa"] ++ code:get_path(),
-    EnvArgsTail = [[inspect_term_arg(K), inspect_term_arg(V)]
+    EnvArgsTail = [{K, V}
                    || {K, V} <- application:get_all_env(ns_server),
                       case atom_to_list(K) of
                           "error_logger" ++ _ -> true;
                           "path_config" ++ _ -> true;
                           _ -> false
                       end],
-    EnvArgs = ["-ns_ssl_proxy", "upstream_port", UpstreamPort,
-               "downstream_port", DownstreamPort,
-               "cert_file", Path,
-               "private_key_file", Path
-               | (lists:append(EnvArgsTail))],
+    EnvArgs = [{upstream_port, UpstreamPort},
+               {downstream_port, DownstreamPort},
+               {cert_file, Path},
+               {private_key_file, Path}
+               | EnvArgsTail],
 
     AllArgs = ["-smp", "enable",
                "+P", "327680",
                "+K", "true",
                "-kernel", "error_logger", "false",
                "-sasl", "sasl_error_logger", "false",
-               "-nouser"] ++ EnvArgs ++ PathArgs ++
+               "-nouser"] ++ PathArgs ++
         ["-run", "child_erlang", "child_start", "ns_ssl_proxy"],
 
     ErlPath = filename:join([hd(proplists:get_value(root, init:get_arguments())),
@@ -121,7 +119,8 @@ create_ssl_proxy_spec(Config) ->
     {xdcr_proxy,
      ErlPath,
      AllArgs,
-     [use_stdio, stderr_to_stdout]}.
+     [use_stdio, stderr_to_stdout,
+      {env, [{"NS_SSL_PROXY_ENV_ARGS", inspect_term_arg(EnvArgs)}]}]}.
 
 per_bucket_moxi_specs(Config) ->
     BucketConfigs = ns_bucket:get_buckets(Config),

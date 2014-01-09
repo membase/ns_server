@@ -293,7 +293,7 @@ validate_new_replication_params_check_from_bucket(Type, FromBucket, ToCluster, T
     MaybeBucketError = check_from_bucket(FromBucket, Buckets),
     case MaybeBucketError of
         {ok, BucketConfig} ->
-            case remote_clusters_info:get_remote_bucket(ToCluster, ToBucket, true) of
+            case remote_clusters_info:get_remote_bucket(ToCluster, ToBucket, true_using_new_connection) of
                 {ok, #remote_bucket{uuid=BucketUUID,
                                     cluster_uuid=ClusterUUID,
                                     raw_vbucket_map=Map,

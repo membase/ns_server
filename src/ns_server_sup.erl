@@ -54,6 +54,9 @@ child_specs() ->
       {ns_server, setup_babysitter_node, []},
       transient, brutal_kill, worker, []},
 
+     {diag_handler_worker, {work_queue, start_link, [diag_handler_worker]},
+      permanent, 1000, worker, []},
+
      {dir_size, {dir_size, start_link, []},
       permanent, 1000, worker, [dir_size]},
 
@@ -140,12 +143,8 @@ child_specs() ->
      {mc_sup, {mc_sup, start_link, []},
       permanent, infinity, supervisor, dynamic},
 
-     %% Note: it sets up cert and private key files. So needs to go
-     %% before ns_ports_setup
-     {ns_ssl_services_sup,
-      {ns_ssl_services_sup, start_link, []},
-      permanent, infinity, supervisor, []},
-
+     %% Note: cert and private key files are set up as part of
+     %% menelaus_sup. So ns_ports_setup needs to go after it.
      {ns_ports_setup, {ns_ports_setup, start, []},
       {permanent, 4}, brutal_kill, worker, []},
 
@@ -162,8 +161,10 @@ child_specs() ->
       permanent, 1000, worker, []},
 
      {xdc_lhttpc_pool, {lhttpc_manager, start_link, [[{name, xdc_lhttpc_pool}, {connection_timeout, 120000}, {pool_size, 200}]]},
-      permanent, 10000, worker, [lhttpc_manager]
-     },
+      permanent, 10000, worker, [lhttpc_manager]},
+
+     {ns_null_connection_pool, {ns_null_connection_pool, start_link, [ns_null_connection_pool]},
+      permanent, 1000, worker, []},
 
      %% per-vbucket replication supervisor, required by XDC manager
      {xdc_replication_sup,

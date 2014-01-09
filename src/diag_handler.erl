@@ -43,17 +43,46 @@ manifest() ->
         _ -> []
     end.
 
+%% works like lists:foldl(Fun, Acc, binary:split(Binary, Separator, [global]))
+%%
+%% But without problems of binary:split. See MB-9534
+split_fold_incremental(Binary, Separator, Fun, Acc) ->
+    CP = binary:compile_pattern(Separator),
+    Len = erlang:size(Binary),
+    split_fold_incremental_loop(Binary, CP, Len, Fun, Acc, 0).
+
+split_fold_incremental_loop(_Binary, _CP, Len, _Fun, Acc, Start) when Start > Len ->
+    Acc;
+split_fold_incremental_loop(Binary, CP, Len, Fun, Acc, Start) ->
+    {MatchPos, MatchLen} =
+        case binary:match(Binary, CP, [{scope, {Start, Len - Start}}]) of
+            nomatch ->
+                %% NOTE: 1 here will move Start _past_ Len on next
+                %% loop iteration
+                {Len, 1};
+            MatchPair ->
+                MatchPair
+        end,
+    NewPiece = binary:part(Binary, Start, MatchPos - Start),
+    NewAcc = Fun(NewPiece, Acc),
+    split_fold_incremental_loop(Binary, CP, Len, Fun, NewAcc, MatchPos + MatchLen).
+
 -spec sanitize_backtrace(binary()) -> [binary()].
 sanitize_backtrace(Backtrace) ->
     {ok, RE} = re:compile(<<"^Program counter: 0x[0-9a-f]+ |^0x[0-9a-f]+ Return addr 0x[0-9a-f]+">>),
-    lists:append([case re:run(X, RE) of
+    R = split_fold_incremental(
+          Backtrace, <<"\n">>,
+          fun (X, Acc) ->
+                  case re:run(X, RE) of
                       nomatch ->
-                          [];
+                          Acc;
                       _ when size(X) =< 120 ->
-                          [binary:copy(X)];
-                      _ -> [binary:copy(binary:part(X, 1, 120))]
-                    end || X <- binary:split(Backtrace, <<"\n">>, [global])
-                 ]).
+                          [binary:copy(X) | Acc];
+                      _ ->
+                          [binary:copy(binary:part(X, 1, 120)) | Acc]
+                  end
+          end, []),
+    lists:reverse(R).
 
 grab_process_info(Pid) ->
     PureInfo = erlang:process_info(Pid,
@@ -120,6 +149,13 @@ do_diag_per_node() ->
      {stats, (catch grab_all_buckets_stats())}].
 
 do_diag_per_node_binary() ->
+    work_queue:submit_sync_work(
+      diag_handler_worker,
+      fun () ->
+              (catch do_actual_diag_per_node_binary())
+      end).
+
+do_actual_diag_per_node_binary() ->
     ActiveBuckets = ns_memcached:active_buckets(),
     Diag = [{version, ns_info:version()},
             {manifest, manifest()},
@@ -298,22 +334,27 @@ do_handle_per_node_just_diag(Resp, Node, PerNodeDiag) ->
     MasterEvents = proplists:get_value(master_events, PerNodeDiag, []),
     DiagNoMasterEvents = lists:keydelete(master_events, 1, PerNodeDiag),
 
-    write_chunk_format(Resp, "master_events(~p) =~n", [Node]),
-    lists:foreach(
-      fun (Event0) ->
-              Event = case is_binary(Event0) of
-                          true ->
-                              binary_to_term(Event0);
-                          false ->
-                              Event0
-                      end,
-
+    misc:executing_on_new_process(
+      fun () ->
+              write_chunk_format(Resp, "master_events(~p) =~n", [Node]),
               lists:foreach(
-                fun (JSON) ->
-                        write_chunk_format(Resp, "     ~p~n", [JSON])
-                end, master_activity_events:event_to_jsons(Event))
-      end, MasterEvents),
-    Resp:write_chunk(<<"\n\n">>),
+                fun (Event0) ->
+                        Event = case is_binary(Event0) of
+                                    true ->
+                                        binary_to_term(Event0);
+                                    false ->
+                                        Event0
+                                end,
+                        misc:executing_on_new_process(
+                          fun () ->
+                                  lists:foreach(
+                                    fun (JSON) ->
+                                            write_chunk_format(Resp, "     ~p~n", [JSON])
+                                    end, master_activity_events:event_to_jsons(Event))
+                          end)
+                end, MasterEvents),
+              Resp:write_chunk(<<"\n\n">>)
+      end),
 
     do_handle_per_node_processes(Resp, Node, DiagNoMasterEvents).
 
@@ -335,19 +376,25 @@ do_handle_per_node_processes(Resp, Node, PerNodeDiag) ->
     DiagNoProcesses = lists:keydelete(processes, 1,
                                        lists:keydelete(babysitter_processes, 1, PerNodeDiag)),
 
-    write_chunk_format(Resp, "per_node_processes(~p) =~n", [Node]),
-    lists:foreach(
-      fun (Process) ->
-              write_chunk_format(Resp, "     ~p~n", [Process])
-      end, Processes),
-    Resp:write_chunk(<<"\n\n">>),
+    misc:executing_on_new_process(
+      fun () ->
+              write_chunk_format(Resp, "per_node_processes(~p) =~n", [Node]),
+              lists:foreach(
+                fun (Process) ->
+                        write_chunk_format(Resp, "     ~p~n", [Process])
+                end, Processes),
+              Resp:write_chunk(<<"\n\n">>)
+      end),
 
-    write_chunk_format(Resp, "per_node_babysitter_processes(~p) =~n", [Node]),
-    lists:foreach(
-      fun (Process) ->
-              write_chunk_format(Resp, "     ~p~n", [Process])
-      end, BabysitterProcesses),
-    Resp:write_chunk(<<"\n\n">>),
+    misc:executing_on_new_process(
+      fun () ->
+              write_chunk_format(Resp, "per_node_babysitter_processes(~p) =~n", [Node]),
+              lists:foreach(
+                fun (Process) ->
+                        write_chunk_format(Resp, "     ~p~n", [Process])
+                end, BabysitterProcesses),
+              Resp:write_chunk(<<"\n\n">>)
+      end),
 
     do_handle_per_node_stats(Resp, Node, DiagNoProcesses).
 
@@ -360,20 +407,23 @@ do_handle_per_node_stats(Resp, Node, PerNodeDiag)->
                     [{"_", [{'_', [Stats0]}]}]
             end,
 
-    lists:foreach(
-      fun ({Bucket, BucketStats}) ->
+    misc:executing_on_new_process(
+      fun () ->
               lists:foreach(
-                fun ({Period, Samples}) ->
-                        write_chunk_format(Resp, "per_node_stats(~p, ~p, ~p) =~n",
-                                           [Node, Bucket, Period]),
-
+                fun ({Bucket, BucketStats}) ->
                         lists:foreach(
-                          fun (Sample) ->
-                                  write_chunk_format(Resp, "     ~p~n", [Sample])
-                          end, Samples)
-                end, BucketStats)
-      end, Stats),
-    Resp:write_chunk(<<"\n\n">>),
+                          fun ({Period, Samples}) ->
+                                  write_chunk_format(Resp, "per_node_stats(~p, ~p, ~p) =~n",
+                                                     [Node, Bucket, Period]),
+
+                                  lists:foreach(
+                                    fun (Sample) ->
+                                            write_chunk_format(Resp, "     ~p~n", [Sample])
+                                    end, Samples)
+                          end, BucketStats)
+                end, Stats),
+              Resp:write_chunk(<<"\n\n">>)
+      end),
 
     DiagNoStats = lists:keydelete(stats, 1, PerNodeDiag),
     do_continue_handling_per_node_just_diag(Resp, Node, DiagNoStats).
@@ -381,8 +431,12 @@ do_handle_per_node_stats(Resp, Node, PerNodeDiag)->
 do_continue_handling_per_node_just_diag(Resp, Node, Diag) ->
     erlang:garbage_collect(),
 
-    write_chunk_format(Resp, "per_node_diag(~p) =~n", [Node]),
-    write_chunk_format(Resp, "     ~p~n", [Diag]),
+    misc:executing_on_new_process(
+      fun () ->
+              write_chunk_format(Resp, "per_node_diag(~p) =~n", [Node]),
+              write_chunk_format(Resp, "     ~p~n", [Diag])
+      end),
+
     Resp:write_chunk(<<"\n\n">>).
 
 do_handle_diag(Req, Extra) ->
@@ -522,7 +576,26 @@ backtrace_sanitize_test() ->
          <<"y(0)     #Fun<net_adm.ping.1>">>,
          <<"y(1)     ['ns_1@10.3.4.113','ns_1@10.3.4.114']">>,<<>>],
     SB = sanitize_backtrace(iolist_to_binary([[L, "\n"] || L <- B])),
-    ?log_debug("SB:~n~s", [iolist_to_binary([[L, "\n"] || L <- SB])]),
+    ?debugFmt("SB:~n~s", [iolist_to_binary([[L, "\n"] || L <- SB])]),
     ?assertEqual(4, length(SB)).
+
+
+split_incremental(Binary, Separator) ->
+    R = split_fold_incremental(Binary, Separator,
+                               fun (Part, Acc) ->
+                                       [Part | Acc]
+                               end, []),
+    lists:reverse(R).
+
+split_incremental_test() ->
+    String1 = <<"abc\n\ntext">>,
+    String2 = <<"abc\n\ntext\n">>,
+    String3 = <<"\nabc\n\ntext\n">>,
+    Split1a = binary:split(String1, <<"\n">>, [global]),
+    Split2a = binary:split(String2, <<"\n">>, [global]),
+    Split3a = binary:split(String3, <<"\n">>, [global]),
+    ?assertEqual(Split1a, split_incremental(String1, <<"\n">>)),
+    ?assertEqual(Split2a, split_incremental(String2, <<"\n">>)),
+    ?assertEqual(Split3a, split_incremental(String3, <<"\n">>)).
 
 -endif.

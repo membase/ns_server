@@ -78,6 +78,10 @@ upgrade() ->
 %% @spec init([]) -> SupervisorTree
 %% @doc supervisor callback.
 init([]) ->
+    SSL = {ns_ssl_services_sup,
+           {ns_ssl_services_sup, start_link, []},
+           permanent, infinity, supervisor, []},
+
     UIAuth = {menelaus_ui_auth,
               {menelaus_ui_auth, start_link, []},
               permanent, 5000, worker, dynamic},
@@ -106,7 +110,7 @@ init([]) ->
                      {hot_keys_keeper, start_link, []},
                      permanent, 5000, worker, dynamic},
 
-    Processes = [UIAuth, Cache, StatsGatherer, Web, WebEvent, HotKeysKeeper, Alerts],
+    Processes = [SSL, UIAuth, Cache, StatsGatherer, Web, WebEvent, HotKeysKeeper, Alerts],
     {ok, {{one_for_one, 10, 10}, Processes}}.
 
 ns_log_cat(?START_OK) ->
