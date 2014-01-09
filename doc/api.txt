@@ -193,11 +193,9 @@ GET /pools/default =>
         }
 
 
-GET /pools/default/certificate
-{
-    "certificate": <pem-form-of-certificate>
-}
-
+GET /pools/default/certificate =>
+---- BEGIN CERTIFICATE ---.....
+<rest of certificate>
 
 GET /pools/default/buckets/default =>
 
@@ -408,7 +406,7 @@ name=<group name>
 // empty post causes certificat regeneration
 POST /controller/regenerateCertificate
 =>
-(see GET /pools/default/serverGroups for output format)
+(see GET /pools/default/certificate for output format)
 
 ====
 PUT

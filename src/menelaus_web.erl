@@ -2317,7 +2317,7 @@ handle_node_self_xdcr_ssl_ports(Req) ->
 
 handle_cluster_certificate(Req) ->
     {Cert, _} = ns_server_cert:cluster_cert_and_pkey_pem(),
-    reply_json(Req, {struct, [{certificate, Cert}]}).
+    Req:ok({"text/plain", server_header(), Cert}).
 
 handle_regenerate_certificate(Req) ->
     ns_server_cert:generate_and_set_cert_and_pkey(),

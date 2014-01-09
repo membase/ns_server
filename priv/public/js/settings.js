@@ -134,7 +134,7 @@ var ClusterSection = {
       var overlay = overlayWithSpinner(certArea);
       $.get("/pools/default/certificate", function (data) {
         overlay.remove();
-        setCertificate(data.certificate);
+        setCertificate(data);
       });
     }
 
@@ -142,7 +142,7 @@ var ClusterSection = {
       var overlay = overlayWithSpinner(certArea);
       $.post("/controller/regenerateCertificate", function (data) {
         overlay.remove();
-        setCertificate(data.certificate);
+        setCertificate(data);
       });
     }
 
