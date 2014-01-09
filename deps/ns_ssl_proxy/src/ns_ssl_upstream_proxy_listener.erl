@@ -33,6 +33,7 @@ init() ->
                          inet,
                          binary,
                          {packet, raw},
+                         {nodelay, true},
                          {active, false},
                          {ip, {127, 0, 0, 1}}]) of
         {ok, Sock} ->

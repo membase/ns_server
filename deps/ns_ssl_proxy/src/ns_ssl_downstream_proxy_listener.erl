@@ -36,6 +36,7 @@ init() ->
                      binary,
                      {packet, raw},
                      {active, false},
+                     {nodelay, true},
                      {certfile, CertFile},
                      {keyfile, PrivateKeyFile}]) of
         {ok, Sock} ->
