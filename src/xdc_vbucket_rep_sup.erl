@@ -64,7 +64,7 @@ init(ChildSpecs) ->
     % we fast retry 2 times in one second, after that we use the restart
     % setting environment var XDCR_FAILURE_RESTART_INTERVAL that is added to
     % the child spec
-    {ok, {{one_for_one, 2, 1}, ChildSpecs}}.
+    {ok, {{one_for_one, 25, 5}, ChildSpecs}}.
 
 %%=============================================================================
 %% internal functions
