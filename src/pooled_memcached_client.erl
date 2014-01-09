@@ -131,7 +131,7 @@ execute_on_socket(DestRef, Body, Args) ->
 execute_with_socket(S, Body, Args, DestRef) ->
     RV = erlang:apply(Body, [S | Args]),
     case RV of
-        {ok, _} ->
+        _ when is_tuple(RV) andalso element(1, RV) =:= ok ->
             DestRef:put_socket(S),
             RV;
         Error ->
