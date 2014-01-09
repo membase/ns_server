@@ -34,11 +34,22 @@ start(_StartType, _StartArgs) ->
     application:start(ale),
     application:start(inet),
     ssl:start(permanent),
+    setup_env(),
     init_logging(),
     ns_ssl_proxy_sup:start_link().
 
 stop(_State) ->
     ok.
+
+setup_env() ->
+    EnvArgsStr = os:getenv("NS_SSL_PROXY_ENV_ARGS"),
+    true = is_list(EnvArgsStr),
+
+    {ok, EnvArgs} = couch_util:parse_term(EnvArgsStr),
+    lists:foreach(
+      fun ({Key, Value}) ->
+              application:set_env(ns_ssl_proxy, Key, Value)
+      end, EnvArgs).
 
 init_logging() ->
     {ok, Dir} = application:get_env(ns_ssl_proxy, error_logger_mf_dir),
