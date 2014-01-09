@@ -1735,7 +1735,6 @@ is_css_hex(L) ->
     (Len =:= 6) or (Len =:= 3) andalso is_number(Int).
 
 memory_quota_validation(MemoryQuota) ->
-    Node = node(),
     case MemoryQuota of
        undefined -> ok;
        X ->
@@ -1744,7 +1743,7 @@ memory_quota_validation(MemoryQuota) ->
            case parse_validate_number(X, MinMemoryMB, MaxMemoryMB) of
                {ok, Number} ->
                    {ok, fun () ->
-                                ok = ns_storage_conf:change_memory_quota(Node, Number)
+                                ok = ns_storage_conf:change_memory_quota(Number)
                                 %% TODO: that should
                                 %% really be a cluster setting
                         end};
@@ -2259,7 +2258,7 @@ handle_node(_PoolId, Node, Req) ->
 
 build_full_node_info(Node, LocalAddr) ->
     {struct, KV} = (build_nodes_info_fun(true, normal, LocalAddr))(Node, undefined),
-    MemQuota = case ns_storage_conf:memory_quota(Node) of
+    MemQuota = case ns_storage_conf:memory_quota() of
                    undefined -> <<"">>;
                    Y    -> Y
                end,

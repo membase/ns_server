@@ -22,7 +22,7 @@
 
 -include("ns_common.hrl").
 
--export([memory_quota/1, change_memory_quota/2,
+-export([memory_quota/0, change_memory_quota/1,
          setup_disk_storage_conf/2,
          storage_conf/1, storage_conf_from_node_status/1, add_storage/4, remove_storage/2,
          local_bucket_disk_usage/1,
@@ -41,10 +41,10 @@
 -export([extract_disk_stats_for_path/2]).
 
 
-memory_quota(Node) ->
-    memory_quota(Node, ns_config:get()).
+memory_quota() ->
+    memory_quota(ns_config:get()).
 
-memory_quota(_Node, Config) ->
+memory_quota(Config) ->
     {value, RV} = ns_config:search(Config, memory_quota),
     RV.
 
@@ -97,7 +97,7 @@ read_path_from_conf(Config, Node, Key, SubKey) ->
     end.
 
 
-change_memory_quota(_Node, NewMemQuotaMB) when is_integer(NewMemQuotaMB) ->
+change_memory_quota(NewMemQuotaMB) when is_integer(NewMemQuotaMB) ->
     ns_config:set(memory_quota, NewMemQuotaMB).
 
 %% @doc sets db and index path of this node.
@@ -211,20 +211,20 @@ remove_storage(_Node, _Path) ->
 node_storage_info(Node) ->
     case dict:find(Node, ns_doctor:get_nodes()) of
         {ok, NodeInfo} ->
-            extract_node_storage_info(NodeInfo, Node);
+            extract_node_storage_info(NodeInfo);
         _ -> []
     end.
 
-extract_node_storage_info(NodeInfo, Node) ->
-    extract_node_storage_info(NodeInfo, Node, ns_config:get()).
+extract_node_storage_info(NodeInfo) ->
+    extract_node_storage_info(NodeInfo, ns_config:get()).
 
-extract_node_storage_info(NodeInfo, Node, Config) ->
+extract_node_storage_info(NodeInfo, Config) ->
     {RAMTotal, RAMUsed, _} = proplists:get_value(memory_data, NodeInfo),
     DiskStats = proplists:get_value(disk_data, NodeInfo),
     StorageConf = proplists:get_value(node_storage_conf, NodeInfo, []),
     DiskPaths = [X || {PropName, X} <- StorageConf,
                       PropName =:= db_path orelse PropName =:= index_path],
-    case memory_quota(Node, Config) of
+    case memory_quota(Config) of
         MemQuotaMB when is_integer(MemQuotaMB) ->
             {DiskTotal, DiskUsed} = extract_disk_totals(DiskPaths, DiskStats),
             [{ram, [{total, RAMTotal},
@@ -320,8 +320,8 @@ do_cluster_storage_info(NodeInfos) ->
                                     lists:sort(proplists:get_keys(NodeInfos))),
     AllNodesSize = length(AllNodes),
     RAMQuotaUsed = get_total_buckets_ram_quota(Config) * AllNodesSize,
-    StorageInfos = [extract_node_storage_info(NodeInfo, Node, Config)
-                    || {Node, NodeInfo} <- NodeInfos],
+    StorageInfos = [extract_node_storage_info(NodeInfo, Config)
+                    || {_Node, NodeInfo} <- NodeInfos],
     HddTotals = extract_subprop(StorageInfos, hdd, total),
     HddUsed = extract_subprop(StorageInfos, hdd, used),
 
