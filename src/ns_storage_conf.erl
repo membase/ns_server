@@ -31,7 +31,7 @@
          delete_databases_and_files/1, delete_unused_buckets_db_files/0,
          bucket_databases/1]).
 
--export([node_storage_info/1, cluster_storage_info/0, cluster_storage_info/1, nodes_storage_info/1]).
+-export([cluster_storage_info/0, cluster_storage_info/1, nodes_storage_info/1]).
 
 -export([allowed_node_quota_range/1, allowed_node_quota_range/0,
          default_memory_quota/1,
@@ -207,16 +207,6 @@ add_storage(_Node, _Path, _Kind, _Quota) ->
 remove_storage(_Node, _Path) ->
     % TODO.
     {error, todo}.
-
-node_storage_info(Node) ->
-    case dict:find(Node, ns_doctor:get_nodes()) of
-        {ok, NodeInfo} ->
-            extract_node_storage_info(NodeInfo);
-        _ -> []
-    end.
-
-extract_node_storage_info(NodeInfo) ->
-    extract_node_storage_info(NodeInfo, ns_config:get()).
 
 extract_node_storage_info(NodeInfo, Config) ->
     {RAMTotal, RAMUsed, _} = proplists:get_value(memory_data, NodeInfo),
