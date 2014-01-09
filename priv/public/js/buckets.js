@@ -639,10 +639,13 @@ var BucketsSection = {
 
   renderRAMDetailsGauge: function (e, details) {
     var ram = details.basicStats.storageTotals.ram;
+
+    // not using ram.quotaUsed and ram.quotaTotel because they represents the sum of quotas
+    // on alive nodes only
     BucketDetailsDialog.prototype.renderGauge($(e).find('.for-ram'),
-                                              ram.quotaTotal,
+                                              ram.quotaTotalPerNode * details.nodes.length,
                                               details.quota.ram,
-                                              ram.quotaUsed - details.quota.ram);
+                                              ram.quotaUsedPerNode * details.nodes.length - details.quota.ram);
   },
 
   renderDiskGauge: function (jq, total, thisBucket, otherBuckets, otherData) {

@@ -208,27 +208,21 @@ remove_storage(_Node, _Path) ->
     % TODO.
     {error, todo}.
 
-extract_node_storage_info(NodeInfo, Config) ->
+extract_node_storage_info(NodeInfo) ->
     {RAMTotal, RAMUsed, _} = proplists:get_value(memory_data, NodeInfo),
     DiskStats = proplists:get_value(disk_data, NodeInfo),
     StorageConf = proplists:get_value(node_storage_conf, NodeInfo, []),
     DiskPaths = [X || {PropName, X} <- StorageConf,
                       PropName =:= db_path orelse PropName =:= index_path],
-    case memory_quota(Config) of
-        MemQuotaMB when is_integer(MemQuotaMB) ->
-            {DiskTotal, DiskUsed} = extract_disk_totals(DiskPaths, DiskStats),
-            [{ram, [{total, RAMTotal},
-                    {quotaTotal, MemQuotaMB * ?MIB},
-                    {used, RAMUsed},
-                    {free, 0} % not used
-                   ]},
-             {hdd, [{total, DiskTotal},
-                    {quotaTotal, DiskTotal},
-                    {used, DiskUsed},
-                    {free, DiskTotal - DiskUsed}
-                   ]}];
-        _ -> []
-    end.
+    {DiskTotal, DiskUsed} = extract_disk_totals(DiskPaths, DiskStats),
+    [{ram, [{total, RAMTotal},
+            {used, RAMUsed}
+           ]},
+     {hdd, [{total, DiskTotal},
+            {quotaTotal, DiskTotal},
+            {used, DiskUsed},
+            {free, DiskTotal - DiskUsed}
+           ]}].
 
 -spec extract_disk_totals(list(), list()) -> {integer(), integer()}.
 extract_disk_totals(DiskPaths, DiskStats) ->
@@ -309,8 +303,18 @@ do_cluster_storage_info(NodeInfos) ->
     AllNodes = ordsets:intersection(lists:sort(ns_node_disco:nodes_actual_proper()),
                                     lists:sort(proplists:get_keys(NodeInfos))),
     AllNodesSize = length(AllNodes),
-    RAMQuotaUsed = get_total_buckets_ram_quota(Config) * AllNodesSize,
-    StorageInfos = [extract_node_storage_info(NodeInfo, Config)
+    RAMQuotaUsedPerNode = get_total_buckets_ram_quota(Config),
+    RAMQuotaUsed = RAMQuotaUsedPerNode * AllNodesSize,
+
+    RAMQuotaTotalPerNode =
+        case memory_quota(Config) of
+            MemQuotaMB when is_integer(MemQuotaMB) ->
+                MemQuotaMB * ?MIB;
+            _ ->
+                0
+        end,
+
+    StorageInfos = [extract_node_storage_info(NodeInfo)
                     || {_Node, NodeInfo} <- NodeInfos],
     HddTotals = extract_subprop(StorageInfos, hdd, total),
     HddUsed = extract_subprop(StorageInfos, hdd, used),
@@ -327,11 +331,12 @@ do_cluster_storage_info(NodeInfos) ->
                          BucketsDiskUsage),
 
     [{ram, [{total, lists:sum(extract_subprop(StorageInfos, ram, total))},
-            {quotaTotal, lists:sum(extract_subprop(StorageInfos, ram,
-                                                   quotaTotal))},
+            {quotaTotal, RAMQuotaTotalPerNode * AllNodesSize},
             {quotaUsed, RAMQuotaUsed},
             {used, RAMUsed},
-            {usedByData, BucketsRAMUsage}
+            {usedByData, BucketsRAMUsage},
+            {quotaUsedPerNode, RAMQuotaUsedPerNode},
+            {quotaTotalPerNode, RAMQuotaTotalPerNode}
            ]},
      {hdd, [{total, lists:sum(HddTotals)},
             {quotaTotal, lists:sum(HddTotals)},

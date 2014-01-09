@@ -1477,6 +1477,8 @@ var MockedRequest = mkClass({
             "total": 6191316992,
             "quotaTotal": 3714056192,
             "quotaUsed": 0,
+            "quotaTotalPerNode": 3714056192 / 5,
+            "quotaUsedPerNode": 0,
             "used": 3929251840,
             "usedByData": 0
           },
@@ -1994,6 +1996,8 @@ var ServerStateMock = {
         "total": 6191321088,
         "quotaTotal": 314572800,
         "quotaUsed": 214572800,
+        "quotaTotalPerNode": 314572800 / 5,
+        "quotaUsedPerNode": 214572800 / 5,
         "used": 4421844992,
         "usedByData": 27347928
       },
@@ -2226,6 +2230,8 @@ var ServerStateMock = {
           "total": 6191321088,
           "quotaTotal": 314572800,
           "quotaUsed": 314572800,
+          "quotaTotalPerNode": 314572800 / 5,
+          "quotaUsedPerNode": 314572800 / 5,
           "used": 3304505344,
           "usedByData": 27347928
         },
@@ -2329,6 +2335,8 @@ var ServerStateMock = {
           "total": 6191321088,
           "quotaTotal": 314572800,
           "quotaUsed": 314572800,
+          "quotaTotalPerNode": 314572800 / 5,
+          "quotaUsedPerNode": 314572800 / 5,
           "used": 3304505344,
           "usedByData": 27347928
         },

@@ -934,7 +934,8 @@ interpret_ram_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGette
     ParsedQuota = RAMQuota * NodesCount,
     PerNode = RAMQuota div ?MIB,
     ClusterTotals = proplists:get_value(ram, ClusterStorageTotals),
-    OtherBuckets = proplists:get_value(quotaUsed, ClusterTotals)
+
+    OtherBuckets = proplists:get_value(quotaUsedPerNode, ClusterTotals) * NodesCount
         - case CurrentBucket of
               [_|_] ->
                   ns_bucket:ram_quota(CurrentBucket);
@@ -946,7 +947,7 @@ interpret_ram_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGette
                        UsageGetter(ram, proplists:get_value(name, ParsedProps));
                    _ -> 0
                end,
-    Total = proplists:get_value(quotaTotal, ClusterTotals),
+    Total = proplists:get_value(quotaTotalPerNode, ClusterTotals) * NodesCount,
     #ram_summary{total = Total,
                  other_buckets = OtherBuckets,
                  nodes_count = NodesCount,
