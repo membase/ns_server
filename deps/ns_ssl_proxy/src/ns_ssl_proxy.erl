@@ -28,7 +28,7 @@
 %% ===================================================================
 
 start() ->
-    application:start(ns_ssl_proxy).
+    application:start(ns_ssl_proxy, permanent).
 
 start(_StartType, _StartArgs) ->
     application:start(ale),
