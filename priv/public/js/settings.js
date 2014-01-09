@@ -131,21 +131,28 @@ var ClusterSection = {
     }
 
     function getCertificate() {
+      var overlay = overlayWithSpinner(certArea);
       $.get("/pools/default/certificate", function (data) {
+        overlay.remove();
         setCertificate(data.certificate);
       });
     }
 
     window.regenerateCertificate = function regenerateCertificate() {
-      var overlay = overlayWithSpinner(container);
+      var overlay = overlayWithSpinner(certArea);
       $.post("/controller/regenerateCertificate", function (data) {
         overlay.remove();
         setCertificate(data.certificate);
       });
     }
 
-    getCertificate();
     enableDisableValidation(false);
+
+    self.isClusterTabCell.subscribeValue(function (isClusterTab) {
+      if (isClusterTab) {
+        getCertificate();
+      }
+    });
 
     clusterSettingsForm.submit(function (e) {
       e.preventDefault();
