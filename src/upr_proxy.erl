@@ -112,7 +112,14 @@ handle_packet(Type, Msg, Packet,
 
 process_packet(<<?REQ_MAGIC:8, Opcode:8, _Rest/binary>> = Packet, State) ->
     handle_packet(request, Opcode, Packet, State);
-process_packet(<<?RES_MAGIC:8, Opcode:8, _Rest/binary>> = Packet, State) ->
+process_packet(<<?RES_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8,
+                 _DataType:8, Status:16, _Rest/binary>> = Packet, State) ->
+    case Status of
+        ?SUCCESS ->
+            ok;
+        _ ->
+            ?rebalance_warning("Received error response: ~p", [format_packet_nicely(Packet)])
+    end,
     handle_packet(response, Opcode, Packet, State).
 
 connect(Type, ConnName, Node, Bucket) ->
@@ -150,3 +157,70 @@ upr_open(Sock, ConnName, Type) ->
       mc_client_binary:cmd_vocal(?UPR_OPEN, Sock,
                                  {#mc_header{},
                                   #mc_entry{key = ConnName,ext = Extra}})).
+
+upr_command_2_atom(?UPR_OPEN) ->
+    upr_open;
+upr_command_2_atom(?UPR_ADD_STREAM) ->
+    upr_add_stream;
+upr_command_2_atom(?UPR_CLOSE_STREAM) ->
+    upr_close_stream;
+upr_command_2_atom(?UPR_STREAM_REQ) ->
+    upr_stream_req;
+upr_command_2_atom(?UPR_GET_FAILOVER_LOG) ->
+    upr_get_failover_log;
+upr_command_2_atom(?UPR_STREAM_END) ->
+    upr_stream_end;
+upr_command_2_atom(?UPR_SNAPSHOT_MARKER) ->
+    upr_snapshot_marker;
+upr_command_2_atom(?UPR_MUTATION) ->
+    upr_mutation;
+upr_command_2_atom(?UPR_DELETION) ->
+    upr_deletion;
+upr_command_2_atom(?UPR_EXPIRATION) ->
+    upr_expiration;
+upr_command_2_atom(?UPR_FLUSH) ->
+    upr_flush;
+upr_command_2_atom(?UPR_SET_VBUCKET_STATE) ->
+    upr_set_vbucket_state;
+upr_command_2_atom(_) ->
+    not_upr.
+
+format_packet_nicely(<<?REQ_MAGIC:8, _Rest/binary>> = Packet) ->
+    {Header, _Body} = mc_binary:decode_packet(Packet),
+    format_packet_nicely("REQUEST", "", Header, Packet);
+format_packet_nicely(<<?RES_MAGIC:8, _Opcode:8, _KeyLen:16, _ExtLen:8,
+                       _DataType:8, Status:16, _Rest/binary>> = Packet) ->
+    {Header, _Body} = mc_binary:decode_packet(Packet),
+    format_packet_nicely("RESPONSE",
+                         io_lib:format(" status = ~.16X (~w)",
+                                       [Status, "0x", mc_client_binary:map_status(Status)]),
+                         Header, Packet).
+
+format_packet_nicely(Type, Status, Header, Packet) ->
+    lists:flatten(
+      io_lib:format("~s: ~.16X (~w) vbucket = ~w opaque = ~.16X~s~n~s",
+                    [Type,
+                     Header#mc_header.opcode, "0x",
+                     upr_command_2_atom(Header#mc_header.opcode),
+                     Header#mc_header.vbucket,
+                     Header#mc_header.opaque, "0x",
+                     Status,
+                     format_hex_strings(hexlify(Packet))])).
+
+hexlify(<<>>, Acc) ->
+    Acc;
+hexlify(<<Byte:8, Rest/binary>>, Acc) ->
+    hexlify(Rest, [lists:flatten(io_lib:format("~2.16.0B", [Byte])) | Acc]).
+
+hexlify(Binary) ->
+    lists:reverse(hexlify(Binary, [])).
+
+format_hex_strings([], _, Acc) ->
+    Acc;
+format_hex_strings([String | Rest], 3, Acc) ->
+    format_hex_strings(Rest, 0, Acc ++ String ++ "\n");
+format_hex_strings([String | Rest], Count, Acc) ->
+    format_hex_strings(Rest, Count + 1, Acc ++ String ++ " ").
+
+format_hex_strings(Strings) ->
+    format_hex_strings(Strings, 0, "").
