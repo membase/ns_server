@@ -1412,3 +1412,12 @@ var dragDropWidget = {
     this.draggedObject = null;
   }
 };
+
+// counterpart of ns_heart:effective_cluster_compat_version/0
+function encodeCompatVersion(major, minor) {
+  if (major < 2) {
+    return 1;
+  }
+
+  return major * 0x10000 + minor;
+};

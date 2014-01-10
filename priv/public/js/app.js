@@ -1552,23 +1552,27 @@ $(function () {
 });
 
 (function () {
-  var lastCompatMode;
+  var lastCompatVersion;
 
-  DAL.cells.runningInCompatMode.subscribeValue(function (value) {
+  DAL.cells.compatVersion.subscribeValue(function (value) {
     if (value === undefined) {
       return;
     }
-    lastCompatMode = value;
+    lastCompatVersion = value;
     updateVisibleStuff();
   });
 
   function updateVisibleStuff() {
-    $('.only-when-20')[lastCompatMode ? 'hide' : 'show']();
-    $('.only-when-below-20')[lastCompatMode ? 'show' : 'hide']();
+    var version20 = encodeCompatVersion(2, 0);
+    var version25 = encodeCompatVersion(2, 5);
+
+    $('.only-when-below-20')[lastCompatVersion < version20 ? 'show' : 'hide']();
+    $('.only-when-20')[lastCompatVersion >= version20 ? 'show' : 'hide']();
+    $('.only-when-25')[lastCompatVersion >= version25 ? 'show' : 'hide']();
   }
 
   $(window).bind('template:rendered', function () {
-    if (lastCompatMode !== undefined) {
+    if (lastCompatVersion !== undefined) {
       updateVisibleStuff();
     }
   });
