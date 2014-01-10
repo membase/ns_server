@@ -150,15 +150,19 @@ validate_remote_cluster_params(Params, ExistingClusters) ->
                     end,
     UsernameError = check_nonempty(Username, <<"username">>, <<"username">>),
     PasswordError = check_nonempty(Password, <<"password">>, <<"password">>),
+    EncryptionAllowed = menelaus_web:is_xdcr_over_ssl_allowed(),
     EncryptionError = case {DemandEncryption, Cert} of
                           {"0", ""} ->
                               undefined;
                           {"0", _} ->
                               {<<"certificate">>, <<"certificate must not be given if demand encryption is off">>};
+                          {_, _} when not EncryptionAllowed ->
+                              {<<"demandEncryption">>, <<"encryption can only be used in enterprise edition "
+                                                         "when the entire cluster is running at least 2.5 version "
+                                                         "of Couchbase Server">>};
                           {_, ""} ->
                               {<<"certificate">>, <<"certificate must be given if demand encryption is on">>};
                           {_, _} ->
-                              menelaus_web:assert_is_enterprise(),
                               CertBin = list_to_binary(Cert),
                               OkCert = case (catch ns_server_cert:validate_cert(CertBin)) of
                                            {ok, [_]} -> true;
