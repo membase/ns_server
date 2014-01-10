@@ -893,22 +893,22 @@ is_forced_enterprise() ->
     end.
 
 is_enterprise() ->
-    case ns_config_ets_dup:unreliable_read_key(this_is_enterprise, undefined) of
-        undefined ->
-            DetectedEnterprise =
-                case is_forced_enterprise() of
-                    true ->
-                        true;
-                    false ->
-                        Versions = ns_info:version(),
-                        NsServerVersion = list_to_binary(proplists:get_value(ns_server, Versions, "unknown")),
-                        detect_enterprise_version(NsServerVersion)
-                end,
-            ns_config:set(this_is_enterprise, DetectedEnterprise),
-            DetectedEnterprise;
-        StoredEnterprise ->
-            StoredEnterprise
-    end.
+    menelaus_web_cache:lookup_or_compute_with_expiration(
+      is_enterprise,
+      fun () ->
+              Val = case is_forced_enterprise() of
+                        false ->
+                            Versions = ns_info:version(),
+                            NsServerVersion = list_to_binary(proplists:get_value(ns_server, Versions, "unknown")),
+                            detect_enterprise_version(NsServerVersion);
+                        true ->
+                            true
+                    end,
+              {Val, 1000000, unused}
+      end,
+      fun (_Key, _Value, _) ->
+              false
+      end).
 
 is_xdcr_over_ssl_allowed() ->
     is_enterprise() andalso cluster_compat_mode:is_cluster_25().
