@@ -25,7 +25,7 @@ take_socket({?MODULE, {Host, Port, Bucket, Auth, LP, RP, Cert}}) ->
 
 establish_connection(Host, Port, Bucket, Password, LP, RP, Cert) ->
     ?log_debug("Host, Port, Bucket, LP, RP: ~p", [{Host, Port, Bucket, LP, RP}]),
-    case gen_tcp:connect("127.0.0.1", LP, [binary, {packet, 0}, {active, false}]) of
+    case gen_tcp:connect("127.0.0.1", LP, [binary, {packet, 0}, {nodelay, true}, {active, false}]) of
         {ok, S} ->
             case (catch ns_ssl:establish_ssl_proxy_connection(S, Host, Port, RP, Cert)) of
                 ok ->
