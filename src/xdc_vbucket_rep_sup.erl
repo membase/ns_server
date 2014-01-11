@@ -19,8 +19,8 @@
 
 -include("xdc_replicator.hrl").
 
-start_link(ChildSpecs) ->
-    {ok, Sup} = supervisor2:start_link(?MODULE, ChildSpecs),
+start_link(Specs) ->
+    {ok, Sup} = supervisor2:start_link(?MODULE, Specs),
     ?xdcr_debug("xdc vbucket replicator supervisor started: ~p", [Sup]),
     {ok, Sup}.
 
@@ -60,11 +60,8 @@ shutdown(Sup) ->
 %% supervisor callbacks
 %%=============================================================================
 
-init(ChildSpecs) ->
-    % we fast retry 2 times in one second, after that we use the restart
-    % setting environment var XDCR_FAILURE_RESTART_INTERVAL that is added to
-    % the child spec
-    {ok, {{one_for_one, 25, 5}, ChildSpecs}}.
+init(Specs) ->
+    {ok, Specs}.
 
 %%=============================================================================
 %% internal functions

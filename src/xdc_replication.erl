@@ -44,6 +44,12 @@ latest_errors(Pid) ->
 update_replication(Pid, RepDoc) ->
     gen_server:call(Pid, {update_replication, RepDoc}, infinity).
 
+start_vbucket_rep_sup(#rep{options = Options}) ->
+    MaxR = proplists:get_value(supervisor_max_r, Options),
+    MaxT = proplists:get_value(supervisor_max_t, Options),
+    {ok, Sup} = xdc_vbucket_rep_sup:start_link({{one_for_one, MaxR, MaxT}, []}),
+    Sup.
+
 init([#rep{source = SrcBucketBinary, replication_mode = RepMode, options = Options} = Rep]) ->
     %% Subscribe to bucket map changes due to rebalance and failover operations
     %% at the source
@@ -79,7 +85,7 @@ init([#rep{source = SrcBucketBinary, replication_mode = RepMode, options = Optio
     {ok, WorkThrottle} = concurrency_throttle:start_link({MaxConcurrentReps, ?XDCR_REPL_CONCUR_THROTTLE}, self()),
     ?xdcr_debug("throttle process created (init throttle: ~p, work throttle: ~p)",
                 [InitThrottle, WorkThrottle]),
-    {ok, Sup} = xdc_vbucket_rep_sup:start_link([]),
+    Sup = start_vbucket_rep_sup(Rep),
     case ns_bucket:get_bucket(?b2l(SrcBucketBinary)) of
         {ok, SrcBucketConfig} ->
             Vbs = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
@@ -371,7 +377,7 @@ handle_info(check_tokens, #replication{rep = #rep{options = Options},
 
 
 handle_info({buckets, Buckets0},
-            #replication{rep = #rep{source = SrcBucket},
+            #replication{rep = #rep{source = SrcBucket} = Rep,
                          vbucket_sup = Sup} = State) ->
     %% The source vbucket map may have changed
     Buckets = consume_all_buckets_changes(Buckets0),
@@ -380,7 +386,7 @@ handle_info({buckets, Buckets0},
         undefined ->
             % our bucket went away or never existed
             xdc_vbucket_rep_sup:shutdown(Sup),
-            {ok, Sup2} = xdc_vbucket_rep_sup:start_link([]),
+            Sup2 = start_vbucket_rep_sup(Rep),
             ?xdcr_debug("bucket gone or never existed, shut down current vb rep "
                         "supervisor: ~p and create a new one :~p", [Sup, Sup2]),
             NewState = State#replication{vbucket_sup = Sup2};
