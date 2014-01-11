@@ -74,18 +74,47 @@ lookup_or_compute_with_expiration(Key, ComputeBody, InvalidPred) ->
     end.
 
 compute_with_expiration(Key, ComputeBody, InvalidPred) ->
-    work_queue:submit_sync_work(
-      menelaus_web_cache,
-      fun () ->
-              case lookup_value_with_expiration(Key, undefined, InvalidPred) of
-                  {undefined, Now} ->
-                      {Value, Age, InvalidationState} = ComputeBody(),
-                      Expiration = Now + Age,
-                      system_stats_collector:increment_counter({web_cache_updates, Key}, 1),
-                      ets:insert(menelaus_web_cache, {Key, Value, Expiration, InvalidationState}),
-                      Value;
-                  Value ->
-                      system_stats_collector:increment_counter({web_inner_cache_hits, Key}, 1),
-                      Value
-              end
-      end).
+    CachePid = whereis(menelaus_web_cache),
+    case CachePid =:= self() of
+        true ->
+            SeenKeys = get_default(seen_keys_stack, []),
+            case lists:member(Key, SeenKeys) of
+                true ->
+                    erlang:error({loop_detected, Key, SeenKeys});
+                false ->
+                    do_compute_with_expiration(Key, ComputeBody, InvalidPred)
+            end;
+        false ->
+            work_queue:submit_sync_work(
+              CachePid,
+              fun () ->
+                      do_compute_with_expiration(Key, ComputeBody, InvalidPred)
+              end)
+    end.
+
+do_compute_with_expiration(Key, ComputeBody, InvalidPred) ->
+    case lookup_value_with_expiration(Key, undefined, InvalidPred) of
+        {undefined, Now} ->
+            SeenKeys = get_default(seen_keys_stack, []),
+            erlang:put(seen_keys_stack, [Key | SeenKeys]),
+            try
+                {Value, Age, InvalidationState} = ComputeBody(),
+                Expiration = Now + Age,
+                system_stats_collector:increment_counter({web_cache_updates, Key}, 1),
+                ets:insert(menelaus_web_cache, {Key, Value, Expiration, InvalidationState}),
+                Value
+            after
+                erlang:put(seen_keys_stack, SeenKeys)
+            end;
+        Value ->
+            system_stats_collector:increment_counter({web_inner_cache_hits, Key}, 1),
+            Value
+    end.
+
+get_default(Key, Default) ->
+    case erlang:get(Key) of
+        undefined ->
+            Default;
+        V ->
+            V
+    end.
