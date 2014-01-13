@@ -158,9 +158,9 @@ handle_call(_, _From, State) ->
 handle_cast(_, State) ->
     {noreply, State}.
 
-handle_info(cert_and_pkey_changed, {CertPEM, PKeyPEM} = OldPair) ->
+handle_info(cert_and_pkey_changed, OldPair) ->
     misc:flush(cert_and_pkey_changed),
-    NewPair = ns_server_cert:cluster_cert_and_pkey_pem(),
+    {CertPEM, PKeyPEM} = NewPair = ns_server_cert:cluster_cert_and_pkey_pem(),
     case OldPair =:= NewPair of
         true ->
             {noreply, OldPair};

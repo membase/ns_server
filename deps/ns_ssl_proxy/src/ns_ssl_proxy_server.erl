@@ -48,6 +48,7 @@ start_upstream(Socket) ->
                                         [binary,
                                          inet,
                                          {packet, raw},
+                                         {nodelay, true},
                                          {active, false}], ?PROXY_RESPONSE_TIMEOUT),
     ?log_debug("Got tcp connection"),
     %% there's no need for slow 256 bit
@@ -113,6 +114,7 @@ start_downstream(SSLSocket) ->
                                     {reuseaddr, true},
                                     inet,
                                     {packet, raw},
+                                    {nodelay, true},
                                     {active, false}], infinity),
 
     ?log_debug("Connected to final destination"),

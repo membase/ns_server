@@ -17,12 +17,14 @@ find_missing_revs(DestRef, Vb, IdRevs) ->
 find_missing_revs_inner(S, Vb, IdRevs) ->
     SenderPid = spawn_link(
                   fun () ->
+                          inet:setopts(S, [{delay_send, true}]),
                           [begin
                                H = #mc_header{vbucket = Vb,
                                               opcode = ?CMD_GET_META},
                                E = #mc_entry{key = Key},
                                ok = mc_binary:send(S, req, H, E)
                            end || {Key, _Rev} <- IdRevs],
+                          inet:setopts(S, [{delay_send, false}]),
                           ok
                   end),
     RV = fetch_missing_revs_loop(S, IdRevs, [], []),
@@ -68,7 +70,9 @@ bulk_set_metas(DestRef, Vb, DocsList) ->
 
 bulk_set_metas_inner(S, Vb, DocsList) ->
     RecverPid = erlang:spawn_link(erlang, apply, [fun bulk_set_metas_recv_replies/3, [S, self(), length(DocsList)]]),
+    inet:setopts(S, [{delay_send, true}]),
     [ok = send_single_set_meta(S, Vb, Doc) || Doc <- DocsList],
+    inet:setopts(S, [{delay_send, false}]),
     receive
         {RecverPid, RV} ->
             {ok, RV}

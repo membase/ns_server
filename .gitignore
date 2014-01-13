@@ -6,7 +6,7 @@
 .eunit
 .project
 .settings
-/scripts/tests/screenshots-output
+/priv/ui_tests/screenshots_output
 /TAGS
 /common_tests/*.beam
 /core*

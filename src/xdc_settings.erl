@@ -81,6 +81,8 @@ settings_specs() ->
      {enable_pipeline_ops,              per_replication, bool,                       true},
      {local_conflict_resolution,        per_replication, bool,                       false},
      {socket_options,                   per_replication, term,                       [{keepalive, true}, {nodelay, false}]},
+     {supervisor_max_r,                 per_replication, {int, 1, 1000},             25},
+     {supervisor_max_t,                 per_replication, {int, 1, 1000},             5},
      {trace_dump_invprob,               global,          {int, 1, infinity},         1000}].
 
 per_replication_settings_specs() ->

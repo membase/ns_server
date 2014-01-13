@@ -516,8 +516,69 @@ extract_rest_port(NSConfig, Node) ->
             end
     end.
 
+%% those are copied from misc.erl. We cannot use misc.erl directly
+%% because we're standalone escript
 dig_rest_port(KV) ->
     search_config(KV, port, "").
+
+rewrite(Fun, Term) ->
+    case Fun(Term) of
+        continue ->
+            do_rewrite(Fun, Term);
+        {stop, NewTerm} ->
+            NewTerm
+    end.
+
+do_rewrite(Fun, [H|T]) ->
+    [rewrite(Fun, H) | rewrite(Fun, T)];
+do_rewrite(_Fun, []) ->
+    [];
+do_rewrite(Fun, Tuple) when is_tuple(Tuple) ->
+    list_to_tuple(do_rewrite(Fun, tuple_to_list(Tuple)));
+do_rewrite(_Fun, Term) ->
+    Term.
+
+rewrite_tuples(Fun, Struct) ->
+    rewrite(
+      fun (Term) ->
+              case is_tuple(Term) of
+                  true ->
+                      case Fun(Term) of
+                          {continue, NewTerm} ->
+                              NewTerm1 =
+                                  list_to_tuple(
+                                    rewrite_tuples(Fun, tuple_to_list(NewTerm))),
+                              {stop, NewTerm1};
+                          {stop, NewTerm} ->
+                              {stop, NewTerm}
+                      end;
+                  false ->
+                      continue
+              end
+      end,
+      Struct).
+
+%% this one is taken from ns_config_log
+sanitize_config(Config) ->
+    rewrite_tuples(fun (T) ->
+                           case T of
+                               {password, _} ->
+                                   {stop, {password, "*****"}};
+                               {sasl_password, _} ->
+                                   {stop, {sasl_password, "*****"}};
+                               {admin_pass, _} ->
+                                   {stop, {admin_pass, "*****"}};
+                               {pass, _} ->
+                                   {stop, {pass, "*****"}};
+                               {cert_and_pkey, [VClock|{Cert, _PKey}]} ->
+                                   {stop, {cert_and_pkey, [VClock|{Cert, <<"*****">>}]}};
+                               {cert_and_pkey, {Cert, _PKey}} ->
+                                   {stop, {cert_and_pkey, {Cert, <<"*****">>}}};
+                               _ ->
+                                   {continue, T}
+                           end
+                   end, Config).
+
 
 main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
     Cookie = search_config(search_config(NSConfig, otp, []),
@@ -539,7 +600,7 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
     NSLogPath = search_config(search_config_for_node(NSConfig, Node, ns_log, []),
                               filename,
                               ""),
-    Pairs = [{ns_config, iolist_to_binary(io_lib:format("~p", [NSConfig]))},
+    Pairs = [{ns_config, iolist_to_binary(io_lib:format("~p", [sanitize_config(NSConfig)]))},
              {static_config, iolist_to_binary(io_lib:format("~p", [StaticTerms]))},
              {couch_inis, confget(#config.couch_inis)},
              {node, Node},

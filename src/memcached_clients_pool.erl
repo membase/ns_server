@@ -24,7 +24,7 @@ take_socket({?MODULE, {Host, Port, Bucket, Auth}}) ->
     end.
 
 establish_connection(Host, Port, Bucket, Password) ->
-    case gen_tcp:connect(Host, Port, [binary, {packet, 0}, {active, false}]) of
+    case gen_tcp:connect(Host, Port, [binary, {packet, 0}, {nodelay, true}, {active, false}]) of
         {ok, S} ->
             case mc_client_binary:auth(S, {<<"PLAIN">>,
                                            {list_to_binary(Bucket),

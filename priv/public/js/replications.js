@@ -463,7 +463,7 @@ var ReplicationsSection = {
   submitRemoteCluster: function (uri, form) {
     var spinner = overlayWithSpinner(form);
     var formValues = $.deparam(serializeForm(form));
-    if ($.trim(formValues.certificate) === ReplicationsSection.encriptionTextAreaDefaultValue) {
+    if ($.trim(formValues.certificate) === ReplicationsSection.encriptionTextAreaDefaultValue || !formValues.demandEncryption) {
       formValues.certificate = "";
     }
     if (formValues.hostname && !formValues.hostname.split(":")[1]) {

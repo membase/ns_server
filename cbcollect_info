@@ -308,18 +308,6 @@ def correct_split(string, splitchar):
         rv = []
     return rv
 
-def sanitize(text):
-    patterns = [(r'{sasl_password\s*,(.*)\}', "{sasl_password,\"*****\"}"),
-                (r'{password\s*,(.*)\}', "{password,\"*****\"}"),
-                (r'{pass\s*,(.*)\}', "{pass,\"*****\"}"),
-                (r'{admin_pass\s*,(.*)\}', "{admin_pass,\"*****\"}"),
-                (r'.*RSA PRIVATE KEY.*', "(RSA PRIVATE KEY WAS SANITIZED)")]
-
-    for regexp, subst in patterns:
-        text = re.sub(regexp, subst, text)
-
-    return text
-
 def make_product_task(guts, initargs_path):
     root = os.path.abspath(os.path.join(initargs_path, "..", "..", "..", ".."))
     dbdir = read_guts(guts, "db_dir")
@@ -350,7 +338,7 @@ def make_product_task(guts, initargs_path):
         LinuxTask("Version file", "cat '%s/VERSION.txt'" % root),
         LinuxTask("Manifest file", "cat '%s/manifest.txt'" % root),
         LinuxTask("Manifest file", "cat '%s/manifest.xml'" % root),
-        AllOsTask("Couchbase config", "", literal = sanitize(read_guts(guts, "ns_config"))),
+        AllOsTask("Couchbase config", "", literal = read_guts(guts, "ns_config")),
         # TODO: just gather those in python
         WindowsTask("Memcached logs",
                     "cd " + winquote_path(read_guts(guts, "memcached_logs_path")) + " && " +

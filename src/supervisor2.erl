@@ -703,9 +703,31 @@ do_restart_delay({RestartType, Delay}, Reason, Child, State) ->
         {ok, NState} ->
             {ok, NState};
         {terminate, NState} ->
-            _TRef = erlang:send_after(trunc(Delay*1000), self(),
+            Wait = case Delay of
+                       0 ->
+                           %% Delay of 0 indicates to wait as little
+                           %% as possible. That's until next restart
+                           %% "expires"
+                           [EarliestTS | _] = lists:reverse(State#state.restarts),
+                           {EarliestMegaS, EarliestS, _} = EarliestTS,
+                           %% NOTE: difference() in restart1 ignores
+                           %% micros, so earliest time when oldest
+                           %% restart expires can be constructed as
+                           %% follows
+                           ExpireTS = {EarliestMegaS, EarliestS + State#state.period + 1, 0},
+                           %% and in case it's already "expired", we
+                           %% shouldn't allow wait to be negative
+                           erlang:max(0, (timer:now_diff(ExpireTS, erlang:now()) + 999) div 1000);
+                       _ ->
+                           trunc(Delay * 1000)
+                   end,
+            %% when we've already waited enough, there's no need to
+            %% wait another full Delay. Just enough to be able to
+            %% "fit" extra restart into our window. So if our next
+            %% restart attempt fails we'll use delay of 0
+            _TRef = erlang:send_after(Wait, self(),
                                       {delayed_restart,
-                                       {{RestartType, Delay}, Reason, Child}}),
+                                       {{RestartType, 0}, Reason, Child}}),
             {ok, state_del_child(Child, NState)}
     end.
 

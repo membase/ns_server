@@ -27,6 +27,8 @@
 
 %% NOTE: this is not exactly cheap, but far cheaper than rest of ssl
 %% handshake in my measurements
+cert_pem_to_ssl_verify_options(<<"_">>) ->
+    [];
 cert_pem_to_ssl_verify_options(CertPEM) ->
     [{'Certificate', CertDer, _}] = public_key:pem_decode(CertPEM),
     CertObj = public_key:pkix_decode_cert(CertDer, otp),

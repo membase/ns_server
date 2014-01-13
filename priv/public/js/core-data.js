@@ -571,7 +571,7 @@ var DAL = {
 })(DAL.cells);
 
 (function () {
-  var capiBaseCell = DAL.cells.capiBase = Cell.computeEager(function (v) {
+  var thisNodeCell = Cell.computeEager(function (v) {
     var details = v(DAL.cells.currentPoolDetailsCell);
     if (!details) {
       // if we already have value, but pool details are undefined
@@ -586,16 +586,35 @@ var DAL = {
       return this.self.value;
     }
 
+    return thisNode;
+  });
+
+  var capiBaseCell = DAL.cells.capiBase = Cell.computeEager(function (v) {
+    var thisNode = v(thisNodeCell);
+    if (!thisNode) {
+      return this.self.value;
+    }
+
     return thisNode.couchApiBase;
   }).name("capiBaseCell");
 
+  var compatVersionCell = DAL.cells.compatVersion = Cell.computeEager(function (v) {
+    var thisNode = v(thisNodeCell);
+    if (!thisNode) {
+      return this.self.value;
+    }
+
+    return thisNode.clusterCompatibility;
+  }).name("compatVersion");
+
   DAL.cells.runningInCompatMode = Cell.computeEager(function (v) {
-    var details = v(DAL.cells.currentPoolDetailsCell);
-    if (!details) {
+    var compatVersion = v(compatVersionCell);
+    if (!compatVersion) {
       // when our dependent cells is unknown we keep our old value
       return this.self.value;
     }
-    return !v(capiBaseCell);
+
+    return compatVersion == encodeCompatVersion(1, 8);
   });
 
   $.ajaxPrefilter(function (options, originalOptions, jqXHR) {

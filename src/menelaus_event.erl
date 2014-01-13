@@ -133,6 +133,10 @@ handle_event({autocompaction, _}, State) ->
     ok = notify_watchers(autocompaction, State),
     {ok, State};
 
+handle_event({cluster_compat_version, _}, State) ->
+    ok = notify_watchers(cluster_compat_version, State),
+    {ok, State};
+
 handle_event(_, State) ->
     {ok, State}.
 

@@ -256,7 +256,7 @@ handle_just_diag(Req, Extra) ->
                         | menelaus_util:server_header()],
                    chunked}),
 
-    Nodes = ns_node_disco:nodes_actual_proper(),
+    Nodes = ns_node_disco:nodes_actual(),
     {Results, OldNodes} = grab_per_node_diag(Nodes),
 
     handle_per_node_just_diag(Resp, Results),

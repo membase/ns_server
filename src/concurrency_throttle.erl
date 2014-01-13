@@ -277,10 +277,10 @@ clean_concurr_throttle_state(Pid, Reason, #concurrency_throttle_state{
                         [Pid, TargetNode,
                          TotalTokens, (AvailTokens + 1),
                          dict:size(NewActivePool), dict:size(WaitingPool)]);
-        {Type, Info} ->
-            ?xdcr_debug("rep ~p to node ~p crashed (type: ~p, info: ~p), total tokens: ~p, available tokens: ~p, "
+        {Type, _Info} ->
+            ?xdcr_debug("rep ~p to node ~p crashed (type: ~p), total tokens: ~p, available tokens: ~p, "
                         "(active reps: ~p, waiting reps: ~p)",
-                        [Pid, TargetNode, Type, Info,
+                        [Pid, TargetNode, Type,
                          TotalTokens, (AvailTokens + 1),
                          dict:size(NewActivePool), dict:size(WaitingPool)])
     end,

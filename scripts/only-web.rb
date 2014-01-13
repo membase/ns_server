@@ -7,7 +7,8 @@ require 'active_support/core_ext'
 require 'pp'
 require 'optparse'
 
-$DOCROOT = File.expand_path(File.join(File.dirname(__FILE__), '../priv/public'))
+$PRIVROOT = File.expand_path(File.join(File.dirname(__FILE__), '../priv'))
+$DOCROOT = $PRIVROOT + "/public"
 
 def build_all_images_js!
   all_images_names = Dir.chdir($DOCROOT) do
@@ -73,8 +74,8 @@ OptionParser.new do |opts|
   opts.on('-o addr', 'Set the host (default is localhost)') do |opt|
     NSServer.set :bind, opt
   end
-  opts.on('-t', '--shots', 'Make application screenshots') do |opt|
-    $do_screenshots = true
+  opts.on('-t', '--tests', 'Run ns_server UI tests') do |opt|
+    $run_tests = true
   end
   opts.on_tail('-h', '--help', 'Show this message') do
     puts opts.help
@@ -86,13 +87,14 @@ end.parse!
 Dir.chdir(File.dirname(__FILE__))
 
 NSServer.run! do
-  if $do_screenshots
+  if $run_tests
     Thread.new do
-      cmd = "casperjs test tests/ --base-url=http://#{NSServer.settings.bind || "127.0.0.1"}:#{NSServer.settings.port.to_s}/index.html --pre=casperjs-init.coffee"
+      cmd = "phantomjs #{$PRIVROOT}/ui_tests/deps/casperjs/bootstrap.js --casper-path=#{$PRIVROOT}/ui_tests/deps/casperjs --cli #{$PRIVROOT}/ui_tests/casperjs-testrunner.coffee #{$PRIVROOT}/ui_tests/suite/ " +
+            "--base-url=http://#{NSServer.settings.bind || "127.0.0.1"}:#{NSServer.settings.port.to_s}/index.html"
       puts "cmd: #{cmd}"
       ok = system(cmd)
       unless ok
-        puts("casperjs command failed")
+        puts("phantomjs command failed")
       end
       Process.exit!(ok ? 0 : 1)
     end
