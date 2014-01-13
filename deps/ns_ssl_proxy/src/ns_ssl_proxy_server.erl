@@ -69,9 +69,15 @@ start_upstream(Socket) ->
     %% b) it's only useful if attacker
     %% can ask victim to send something
     %% predictable
-    SSLOpts = [{ciphers, [Triple || {_E, Ci, _H} = Triple <- ssl:cipher_suites(),
-                                    Ci =:= rc4_128 orelse Ci =:= aes_128_cbc]}
-               | VerifyOpts],
+    SSLOpts = case os:getenv("COUCHBASE_WANT_ARCFOUR") of
+                  false -> [{ciphers, [Triple || {_E, Ci, _H} = Triple <- ssl:cipher_suites(),
+                                                 Ci =:= rc4_128 orelse Ci =:= aes_128_cbc]}
+                            | VerifyOpts];
+                  _ ->
+                      [{ciphers, [Triple || {_E, Ci, _H} = Triple <- ssl:cipher_suites(),
+                                            Ci =:= rc4_128]}
+                       | VerifyOpts]
+              end,
     {ok, SSLSocket} = ssl:connect(PlainSocket, SSLOpts),
 
     ?log_debug("Got ssl connection"),
