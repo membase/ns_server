@@ -759,8 +759,9 @@
               <div class="panes clearfix">
                 <div id="js_cluster_settings_container" class="cluster_settings_container">
                   <div class="certificate_section when-enterprise">
-                    <h3>Cluster Certificate <span class="when-roadmin-avoid-me">(<button onclick="regenerateCertificate();">Regenerate</button>)</span></h3>
+                    <h3>SSL Certificate</h3>
                     <textarea id="js-about-cert-area" readonly="readonly"></textarea>
+                    <button onclick="regenerateCertificate();" class="edit_btn when-roadmin-avoid-me" style="border:none;float:none;margin:3px 0pt 3px 65px;font-size:0.85em;">Regenerate</button>
                   </div>
                   <h3>RAM Quota</h3>
                   <form id="js_cluster_public_settings_form" class="cluster_settings_form">
