@@ -35,24 +35,6 @@
          is_balanced/0
         ]).
 
--export([ns_log_cat/1,
-         ns_log_code_string/1]).
-
-%% category critical
--define(UNUSED_MISSING_COOKIE, 0).
--define(UNUSED_MISSING_OTP_NODE, 1).
--define(UNUSED_CONNREFUSED, 2).
--define(UNUSED_NXDOMAIN, 3).
--define(UNUSED_TIMEDOUT, 4).
--define(UNUSED_REST_ERROR, 5).
--define(UNUSED_OTHER_ERROR, 6).
--define(UNUSED_REST_FAILED, 7).
-%% category warn
--define(UNUSED_PREPARE_JOIN_FAILED, 32).
--define(UNUSED_AUTH_FAILED, 33).
-%% categeory info. Starts from 256 - 32
--define(UNUSED_JOINED_CLUSTER, 224).
-
 active_nodes() ->
     active_nodes(ns_config:get()).
 
@@ -133,13 +115,3 @@ failover(Node) ->
 
 re_add_node(Node) ->
     ns_config:set({node, Node, membership}, inactiveAdded).
-
-ns_log_cat(Number) ->
-    case (Number rem 256) div 32 of
-        0 -> crit;
-        1 -> warn;
-        _ -> info
-    end.
-
-ns_log_code_string(_) ->
-    "message".
