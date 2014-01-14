@@ -401,9 +401,9 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .cluster_settings_container .list_button {float: none; margin-left: 283px;}
 .cluster_settings_container label,
 .cluster_settings_container input {-moz-inline-stack; display: inline-block; zoom: 1; *display: inline; vertical-align: middle;}
-.cluster_settings_container label {width: 150px;}
-.cluster_settings_container .error-container {margin-left: 150px;}
-.cluster_settings_container .row {margin: 10px 60px; line-height: 24px;}
+.cluster_settings_container label {padding-right: 5px;}
+.cluster_settings_container .error-container {margin-top: 5px;}
+.cluster_settings_container .row {margin: 5px 60px; line-height: 24px;}
 
 .certificate_section textarea {height: 187px; margin-left: 60px; width: 400px; font-size: 10px;}
 

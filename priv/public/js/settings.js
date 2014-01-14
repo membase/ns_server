@@ -89,7 +89,8 @@ function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCel
 
     return isCluster ? {
       totalRam: Math.floor(ram.total/(Math.Mi * currentPool.nodes.length)),
-      memoryQuota: Math.floor(ram.quotaTotal/(Math.Mi * currentPool.nodes.length))
+      memoryQuota: Math.floor(ram.quotaTotal/(Math.Mi * currentPool.nodes.length)),
+      maxRamMegs: Math.max(Math.floor(ram.total/Math.Mi) - 1024, Math.floor(ram.total * 4 / (5 * Math.Mi)))
     } : null;
   }).name("allClusterSectionSettingsCell");
   ns.allClusterSectionSettingsCell.equality = _.isEqual;
@@ -107,6 +108,7 @@ var ClusterSection = {
     var container = $("#js_cluster_settings_container");
     var clusterSettingsForm = $("#js_cluster_public_settings_form");
     var totalRamCont = $("#js_cluster_settings_total_ram");
+    var maxRamCont = $("#js_ram-max-size");
     var outlineTag = $("#js_outline_tag");
     var certArea = $("#js-about-cert-area");
     var originalTitle = document.title;
@@ -183,6 +185,7 @@ var ClusterSection = {
       if (!settings) {
         return;
       }
+      maxRamCont.text(settings.maxRamMegs);
       setFormValues(clusterSettingsForm, settings);
       totalRamCont.text(settings.totalRam);
       enableDisableValidation(!isROAdminCell.value);
