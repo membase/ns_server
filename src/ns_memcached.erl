@@ -633,8 +633,8 @@ handle_cast({connect_done, WorkersCount, RV}, #state{bucket = Bucket,
 
 handle_cast(start_completed, #state{start_time=Start,
                                     bucket=Bucket} = State) ->
-    ?user_log(1, "Bucket ~p loaded on node ~p in ~p seconds.",
-              [Bucket, node(), timer:now_diff(os:timestamp(), Start) div 1000000]),
+    ale:info(?USER_LOGGER, "Bucket ~p loaded on node ~p in ~p seconds.",
+             [Bucket, node(), timer:now_diff(os:timestamp(), Start) div 1000000]),
     gen_event:notify(buckets_events, {loaded, Bucket}),
     timer2:send_interval(?CHECK_INTERVAL, check_config),
     BucketConfig = case ns_bucket:get_bucket(State#state.bucket) of
@@ -717,12 +717,12 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
         Reason == normal; Reason == shutdown; Reason =:= {shutdown, reconfig} ->
             Reconfig = (Reason =:= {shutdown, reconfig}),
 
-            ?user_log(2, "Shutting down bucket ~p on ~p for ~s",
-                      [Bucket, node(), if
-                                           Reconfig -> "reconfiguration";
-                                           Deleting -> "deletion";
-                                           true -> "server shutdown"
-                                       end]),
+            ale:info(?USER_LOGGER, "Shutting down bucket ~p on ~p for ~s",
+                     [Bucket, node(), if
+                                          Reconfig -> "reconfiguration";
+                                          Deleting -> "deletion";
+                                          true -> "server shutdown"
+                                      end]),
             try
                 case Deleting orelse Reconfig of
                     false ->
@@ -749,9 +749,9 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                 end
             end;
         true ->
-            ?user_log(4,
-                      "Control connection to memcached on ~p disconnected: ~p",
-                      [node(), Reason])
+            ale:info(?USER_LOGGER,
+                     "Control connection to memcached on ~p disconnected: ~p",
+                     [node(), Reason])
     end,
     gen_event:notify(buckets_events, {stopped, Bucket, Deleting, Reason}),
     ok = gen_tcp:close(Sock),

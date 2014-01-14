@@ -84,7 +84,7 @@ start_link() ->
 %% @doc Send alert to all connected nodes
 -spec global_alert(any(), binary() | string()) -> ok.
 global_alert(Type, Msg) ->
-    ?user_log(1, to_str(Msg)),
+    ale:info(?USER_LOGGER, to_str(Msg)),
     [rpc:cast(Node, ?MODULE, local_alert, [{Type, node()}, Msg])
      || Node <- [node() | nodes()]],
     ok.
