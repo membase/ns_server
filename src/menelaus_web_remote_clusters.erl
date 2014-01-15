@@ -352,7 +352,8 @@ validate_remote_cluster(Cluster, OtherClusters) ->
         {error, not_capable, Msg} ->
             Errors = [{<<"_">>, Msg}],
             {errors, 400, Errors};
-        _ ->
+        OtherError ->
+            ?log_error("Got unexpected error while fetching remote cluster info: ~p", [OtherError]),
             Errors = [{<<"_">>, <<"Unexpected error occurred. See logs for details.">>}],
             {errors, 500, Errors}
     end.
