@@ -333,6 +333,8 @@ validate_new_replication_params_check_from_bucket(Type, FromBucket, ToCluster, T
                 {error, timeout} ->
                     Msg = <<"Timeout exceeded when trying to reach remote cluster">>,
                     {error, [{<<"_">>, Msg}]};
+                {error, rest_error, Msg, _} when is_binary(Msg) ->
+                    {error, [{<<"_">>, Msg}]};
                 OtherError ->
                     ?log_error("got unclassified error while trying to validate remote bucket details: ~p", [OtherError]),
                     Errors = [{<<"_">>, <<"Unexpected error occurred. See logs for details.">>}],

@@ -35,6 +35,9 @@ connection_error_message(timeout, Host, Port) ->
     list_to_binary(io_lib:format("Timeout connecting to ~p on port ~p.  "
                                  "This could be due to an incorrect host/port combination or a "
                                  "firewall in place between the servers.", [Host, Port]));
+connection_error_message({"bad certificate", _}, Host, Port) ->
+    list_to_binary(io_lib:format("Got certificate mismatch while trying to send https request to ~s:~w",
+                                 [Host, Port]));
 connection_error_message(_, _, _) -> undefined.
 
 -spec decode_json_response_error({ok, term()} | {error, term()},
