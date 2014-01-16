@@ -163,3 +163,17 @@
 
 %% Flags passed back in get_meta call
 -define(GET_META_ITEM_DELETED_FLAG, 16#01).
+
+%% UPR commands
+-define(UPR_OPEN,                  16#50).
+-define(UPR_ADD_STREAM,            16#51).
+-define(UPR_CLOSE_STREAM,          16#52).
+-define(UPR_STREAM_REQ,            16#53).
+-define(UPR_GET_FAILOVER_LOG,      16#54).
+-define(UPR_STREAM_END,            16#55).
+-define(UPR_SNAPSHOT_MARKER,       16#56).
+-define(UPR_MUTATION,              16#57).
+-define(UPR_DELETION,              16#58).
+-define(UPR_EXPIRATION,            16#59).
+-define(UPR_FLUSH,                 16#5a).
+-define(UPR_SET_VBUCKET_STATE,     16#5b).
