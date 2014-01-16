@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 #
 # Copyright (c) 2010-2011, Couchbase, Inc.
 # All rights reserved
@@ -106,7 +106,12 @@ _load_config () {
 }
 
 _drop_old_crashdumps () {
-    ls -1 erl_crash.dump.* 2>/dev/null | sort | head -n -10 | xargs -- rm -f
+    KEEP="`ls -1 erl_crash.dump.* 2>/dev/null | sort | tail -n 10`"
+    for file in erl_crash.dump.*; do
+        if [[ "$KEEP" != *$file* ]]; then
+            rm -f $file
+        fi
+    done
 }
 
 
