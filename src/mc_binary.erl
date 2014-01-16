@@ -23,7 +23,8 @@
 
 -export([bin/1, recv/2, recv/3, send/4, encode/3, quick_stats/4,
          quick_stats/5, quick_stats_append/3,
-         mass_get_last_closed_checkpoint/3]).
+         mass_get_last_closed_checkpoint/3,
+         decode_packet/1]).
 
 -define(RECV_TIMEOUT, ns_config_ets_dup:get_timeout(memcached_recv, 120000)).
 -define(QUICK_STATS_RECV_TIMEOUT, ns_config_ets_dup:get_timeout(memcached_stats_recv, 180000)).
@@ -214,6 +215,11 @@ encode(Magic,
        VBucket:16, BodyLen:32, Opaque:32, CAS:64>>,
      bin(Ext), bin(Key), bin(Data)].
 
+decode_header(<<?REQ_MAGIC:8, _Rest/binary>> = Header) ->
+    decode_header(req, Header);
+decode_header(<<?RES_MAGIC:8, _Rest/binary>> = Header) ->
+    decode_header(res, Header).
+
 decode_header(req, <<?REQ_MAGIC:8, Opcode:8, KeyLen:16, ExtLen:8,
                      DataType:8, Reserved:16, BodyLen:32,
                      Opaque:32, CAS:64>>) ->
@@ -227,6 +233,12 @@ decode_header(res, <<?RES_MAGIC:8, Opcode:8, KeyLen:16, ExtLen:8,
     {#mc_header{opcode = Opcode, status = Status, opaque = Opaque,
                 keylen = KeyLen, extlen = ExtLen, bodylen = BodyLen},
      #mc_entry{datatype = DataType, cas = CAS}}.
+
+decode_packet(<<HeaderBin:?HEADER_LEN/binary, Body/binary>>) ->
+    {#mc_header{extlen = ExtLen, keylen = KeyLen} = Header, Entry} =
+        decode_header(HeaderBin),
+    <<Ext:ExtLen/binary, Key:KeyLen/binary, Data/binary>> = Body,
+    {Header, Entry#mc_entry{ext = Ext, key = Key, data = Data}}.
 
 bin(undefined) -> <<>>;
 bin(X)         -> iolist_to_binary(X).
