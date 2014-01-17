@@ -62,7 +62,8 @@
          get_mass_tap_docs_estimate/3,
          wait_upr_data_move/5,
          wait_seqno_persisted/5,
-         get_vbucket_high_seqno/4]).
+         get_vbucket_high_seqno/4,
+         upr_takeover/5]).
 
 -export([start_link/1]).
 
@@ -405,6 +406,11 @@ wait_upr_data_move(Bucket, Rebalancer, MasterNode, ReplicaNodes, VBucket) ->
                     {if_rebalance, Rebalancer,
                      {wait_upr_data_move, ReplicaNodes, VBucket}}, infinity).
 
+upr_takeover(Bucket, Rebalancer, OldMasterNode, NewMasterNode, VBucket) ->
+    gen_server:call(server_name(Bucket, NewMasterNode),
+                    {if_rebalance, Rebalancer,
+                     {upr_takeover, OldMasterNode, VBucket}}, infinity).
+
 %% returns checkpoint id which 100% contains all currently persisted
 %% docs. Normally it's persisted_checkpoint_id + 1 (assuming
 %% checkpoint after persisted one has some stuff persisted already)
@@ -629,6 +635,14 @@ handle_call({wait_upr_data_move, ReplicaNodes, VBucket}, From, #state{bucket_nam
                From,
                fun () ->
                        upr_replicator:wait_for_data_move(ReplicaNodes, Bucket, VBucket)
+               end),
+    {noreply, State2};
+handle_call({upr_takeover, OldMasterNode, VBucket}, From, #state{bucket_name = Bucket} = State) ->
+    State2 = spawn_rebalance_subprocess(
+               State,
+               From,
+               fun () ->
+                       upr_replicator:takeover(OldMasterNode, Bucket, VBucket)
                end),
     {noreply, State2};
 handle_call(initiate_indexing, From, #state{bucket_name = Bucket} = State) ->

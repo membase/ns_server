@@ -25,7 +25,11 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--export([start_link/2, get_partitions/2, setup_replication/3, wait_for_data_move/3]).
+-export([start_link/2,
+         get_partitions/2,
+         setup_replication/3,
+         takeover/3,
+         wait_for_data_move/3]).
 
 -record(state, {producer_conn :: pid(),
                 consumer_conn :: pid(),
@@ -37,7 +41,7 @@
 init({ProducerNode, Bucket}) ->
     ConnName = get_connection_name(node(), ProducerNode, Bucket),
     {ok, ConsumerConn} = upr_consumer_conn:start_link(ConnName, Bucket),
-    {ok, ProducerConn} = upr_producer_conn:start_link(ConnName, ProducerNode, Bucket, ConsumerConn),
+    {ok, ProducerConn} = upr_producer_conn:start_link(ConnName, ProducerNode, Bucket),
 
     erlang:register(consumer_server_name(ProducerNode, Bucket), ConsumerConn),
 
@@ -76,6 +80,10 @@ handle_info(Msg, State) ->
 handle_call({setup_replication, Partitions}, _From, #state{consumer_conn = Pid} = State) ->
     {reply, upr_consumer_conn:setup_streams(Pid, Partitions), State};
 
+handle_call({takeover, Partition}, _From, #state{consumer_conn = Pid} = State) ->
+    upr_consumer_conn:maybe_close_stream(Pid, Partition),
+    {reply, upr_consumer_conn:takeover(Pid, Partition), State};
+
 handle_call(Command, _From, State) ->
     ?rebalance_warning("Unexpected handle_call(~p, ~p)", [Command, State]),
     {reply, refused, State}.
@@ -91,6 +99,10 @@ get_partitions(ProducerNode, Bucket) ->
 setup_replication(ProducerNode, Bucket, Partitions) ->
     gen_server:call(server_name(ProducerNode, Bucket),
                     {setup_replication, Partitions}).
+
+takeover(ProducerNode, Bucket, Partition) ->
+    gen_server:call(server_name(ProducerNode, Bucket),
+                    {takeover, Partition}).
 
 wait_for_data_move([], _, _) ->
     ok;

@@ -21,21 +21,26 @@
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
 
--export([start_link/4, init/1, handle_packet/4, handle_call/4, handle_cast/2]).
+-export([start_link/3, init/1, handle_packet/5, handle_call/4, handle_cast/3]).
 
-start_link(ConnName, ProducerNode, Bucket, ConsumerConn) ->
-    upr_proxy:start_link(producer, ConnName, ProducerNode, Bucket, ?MODULE, ConsumerConn).
+start_link(ConnName, ProducerNode, Bucket) ->
+    upr_proxy:start_link(producer, ConnName, ProducerNode, Bucket, ?MODULE, []).
 
-init(ConsumerConn) ->
-    ConsumerConn.
+init([]) ->
+    [].
 
-handle_packet(_, _, _, State) ->
+handle_packet(request, ?UPR_SET_VBUCKET_STATE, Packet, State, ParentState) ->
+    Consumer = upr_proxy:get_partner(ParentState),
+    gen_server:cast(Consumer, {set_vbucket_state, Packet}),
+    {proxy, State};
+
+handle_packet(_, _, _, State, _ParentState) ->
     {proxy, State}.
 
-handle_call(Command, _From, _Sock, State) ->
+handle_call(Command, _From, State, _ParentState) ->
     ?rebalance_warning("Unexpected handle_call(~p, ~p)", [Command, State]),
     {reply, refused, State}.
 
-handle_cast(Msg, State) ->
+handle_cast(Msg, State, _ParentState) ->
     ?rebalance_warning("Unhandled cast: ~p", [Msg]),
     {noreply, State}.

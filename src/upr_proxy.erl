@@ -29,11 +29,14 @@
 
 -export([start_link/6, connect_proxies/2, nuke_connection/4, process_upr_response/1]).
 
+-export([get_socket/1, get_partner/1]).
+
 -record(state, {sock :: port(),
                 buf = <<>> :: binary(),
                 ext_module,
                 ext_state,
-                proxy_to
+                proxy_to = undefined,
+                partner = undefined :: pid() | undefined
                }).
 
 -define(HIBERNATE_TIMEOUT, 10000).
@@ -53,16 +56,22 @@ init([Type, ConnName, Node, Bucket, ExtModule, InitArgs]) ->
 start_link(Type, ConnName, Node, Bucket, ExtModule, InitArgs) ->
     gen_server:start_link(?MODULE, [Type, ConnName, Node, Bucket, ExtModule, InitArgs], []).
 
+get_socket(State) ->
+    State#state.sock.
+
+get_partner(State) ->
+    State#state.partner.
+
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-handle_cast({setup_proxy, ProxyTo}, #state{sock = Socket} = State) ->
+handle_cast({setup_proxy, Partner, ProxyTo}, #state{sock = Socket} = State) ->
     % setup socket to receive the first message
     ok = inet:setopts(Socket, [{active, once}]),
 
-    {noreply, State#state{proxy_to = ProxyTo}, ?HIBERNATE_TIMEOUT};
+    {noreply, State#state{proxy_to = ProxyTo, partner = Partner}, ?HIBERNATE_TIMEOUT};
 handle_cast(Msg, State = #state{ext_module = ExtModule, ext_state = ExtState}) ->
-    {noreply, NewExtState} = ExtModule:handle_cast(Msg, ExtState),
+    {noreply, NewExtState} = ExtModule:handle_cast(Msg, ExtState, State),
     {noreply, State#state{ext_state = NewExtState}, ?HIBERNATE_TIMEOUT}.
 
 terminate(_Reason, State) ->
@@ -91,8 +100,8 @@ handle_info(Msg, State) ->
 
 handle_call(get_socket, _From, State = #state{sock = Sock}) ->
     {reply, Sock, State, ?HIBERNATE_TIMEOUT};
-handle_call(Command, From, State = #state{sock = Sock, ext_module = ExtModule, ext_state = ExtState}) ->
-    case ExtModule:handle_call(Command, From, Sock, ExtState) of
+handle_call(Command, From, State = #state{ext_module = ExtModule, ext_state = ExtState}) ->
+    case ExtModule:handle_call(Command, From, ExtState, State) of
         {ReplyType, Reply, NewExtState} ->
             {ReplyType, Reply, State#state{ext_state = NewExtState}, ?HIBERNATE_TIMEOUT};
         {ReplyType, NewExtState} ->
@@ -101,7 +110,7 @@ handle_call(Command, From, State = #state{sock = Sock, ext_module = ExtModule, e
 
 handle_packet(Type, Msg, Packet,
               State = #state{ext_module = ExtModule, ext_state = ExtState, proxy_to = ProxyTo}) ->
-    {Action, NewExtState} = ExtModule:handle_packet(Type, Msg, Packet, ExtState),
+    {Action, NewExtState} = ExtModule:handle_packet(Type, Msg, Packet, ExtState, State),
     case Action of
         proxy ->
             ok = gen_tcp:send(ProxyTo, Packet);
@@ -143,8 +152,8 @@ nuke_connection(Type, ConnName, Node, Bucket) ->
     disconnect(connect(Type, ConnName, Node, Bucket)).
 
 connect_proxies(Pid1, Pid2) ->
-    gen_server:cast(Pid1, {setup_proxy, gen_server:call(Pid2, get_socket, infinity)}),
-    gen_server:cast(Pid2, {setup_proxy, gen_server:call(Pid1, get_socket, infinity)}).
+    gen_server:cast(Pid1, {setup_proxy, Pid2, gen_server:call(Pid2, get_socket, infinity)}),
+    gen_server:cast(Pid2, {setup_proxy, Pid1, gen_server:call(Pid1, get_socket, infinity)}).
 
 process_upr_response({ok, #mc_header{status=?SUCCESS}, #mc_entry{}}) ->
     ok;

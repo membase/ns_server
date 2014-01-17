@@ -65,7 +65,8 @@
          set_cluster_config/2,
          get_random_key/1,
          compact_vbucket/5,
-         wait_for_seqno_persistence/3
+         wait_for_seqno_persistence/3,
+         vbucket_state_to_atom/1
         ]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
@@ -253,6 +254,18 @@ decode_vb_state(<<?VB_STATE_ACTIVE:32>>)  -> active;
 decode_vb_state(<<?VB_STATE_REPLICA:32>>) -> replica;
 decode_vb_state(<<?VB_STATE_PENDING:32>>) -> pending;
 decode_vb_state(<<?VB_STATE_DEAD:32>>)    -> dead.
+
+-spec vbucket_state_to_atom(int_vb_state()) -> atom().
+vbucket_state_to_atom(?VB_STATE_ACTIVE) ->
+    active;
+vbucket_state_to_atom(?VB_STATE_REPLICA) ->
+    replica;
+vbucket_state_to_atom(?VB_STATE_PENDING) ->
+    pending;
+vbucket_state_to_atom(?VB_STATE_DEAD) ->
+    dead;
+vbucket_state_to_atom(_) ->
+    unknown.
 
 get_vbucket(Sock, VBucket) ->
     case cmd(?CMD_GET_VBUCKET, Sock, undefined, undefined,

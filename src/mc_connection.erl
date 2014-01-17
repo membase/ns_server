@@ -162,7 +162,7 @@ do_notify_vbucket_update(BucketName, VBucket, FileVersion, NewPos, VBStateUpdate
         end,
     if
         (VBStateUpdated band 1) =:= 1 ->
-            VBStateAtom = vbucket_state_to_atom(VBState),
+            VBStateAtom = mc_client_binary:vbucket_state_to_atom(VBState),
             Event = {set_vbucket,
                      binary_to_list(BucketName),
                      VBucket,
@@ -175,16 +175,6 @@ do_notify_vbucket_update(BucketName, VBucket, FileVersion, NewPos, VBStateUpdate
     end,
 
     ResponseStatus.
-
--spec vbucket_state_to_atom(int_vb_state()) -> atom().
-vbucket_state_to_atom(?VB_STATE_ACTIVE) ->
-    active;
-vbucket_state_to_atom(?VB_STATE_REPLICA) ->
-    replica;
-vbucket_state_to_atom(?VB_STATE_PENDING) ->
-    pending;
-vbucket_state_to_atom(?VB_STATE_DEAD) ->
-    dead.
 
 do_delete_vbucket(BucketName, VBucket) ->
     ?log_debug("Notifying mc_couch_events of vbucket deletion: ~s/~p", [BucketName, VBucket]),
