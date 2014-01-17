@@ -16,16 +16,17 @@
 
 -module(ns_single_vbucket_mover).
 
--export([spawn_mover/4, mover/5]).
+-export([spawn_mover/5, mover/6]).
 
 -include("ns_common.hrl").
 
 spawn_mover(Bucket, VBucket,
-            OldChain, NewChain) ->
+            OldChain, NewChain, ReplType) ->
     Parent = self(),
     Pid = proc_lib:spawn_link(ns_single_vbucket_mover, mover,
-                              [Parent, Bucket, VBucket, OldChain, NewChain]),
-    ?rebalance_debug("Spawned single vbucket mover: ~p (~p)", [[Parent, Bucket, VBucket, OldChain, NewChain], Pid]),
+                              [Parent, Bucket, VBucket, OldChain, NewChain, ReplType]),
+    ?rebalance_debug("Spawned single vbucket mover: ~p (~p)",
+                     [[Parent, Bucket, VBucket, OldChain, NewChain, ReplType], Pid]),
     Pid.
 
 get_cleanup_list() ->
@@ -44,22 +45,34 @@ cleanup_list_del(Pid) ->
     List2 = ordsets:del_element(Pid, List),
     erlang:put(cleanup_list, List2).
 
+get_vbucket_repl_type(VBucket, {upr, [Partitions]}) ->
+    case lists:member(VBucket, Partitions) of
+        true ->
+            tap;
+        false ->
+            upr
+    end;
+get_vbucket_repl_type(_, ReplType) ->
+    ReplType.
 
 %% We do a no-op here rather than filtering these out so that the
 %% replication update will still work properly.
-mover(Parent, Bucket, VBucket, [undefined | _] = OldChain, [NewNode | _] = NewChain) ->
+mover(Parent, Bucket, VBucket, [undefined | _] = OldChain, [NewNode | _] = NewChain, _) ->
     ok = janitor_agent:set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined),
     Parent ! {move_done, {VBucket, OldChain, NewChain}};
 
-mover(Parent, Bucket, VBucket, OldChain, NewChain) ->
+mover(Parent, Bucket, VBucket, OldChain, NewChain, ReplType) ->
     master_activity_events:note_vbucket_mover(self(), Bucket, hd(OldChain), VBucket, OldChain, NewChain),
     IndexAware = cluster_compat_mode:is_index_aware_rebalance_on(),
+    VBucketReplType = get_vbucket_repl_type(VBucket, ReplType),
     misc:try_with_maybe_ignorant_after(
       fun () ->
-              case IndexAware of
-                  true ->
+              case {IndexAware, VBucketReplType} of
+                  {_, upr} ->
+                      mover_inner_upr(Parent, Bucket, VBucket, OldChain, NewChain);
+                  {true, tap} ->
                       mover_inner(Parent, Bucket, VBucket, OldChain, NewChain);
-                  false ->
+                  {false, tap} ->
                       mover_inner_old_style(Parent, Bucket, VBucket, OldChain, NewChain)
               end
       end,
@@ -190,6 +203,106 @@ inhibit_view_compaction(Parent, Node, Bucket, NewNode) ->
             ok
     end.
 
+mover_inner_upr(Parent, Bucket, VBucket,
+                [OldMaster|_] = OldChain, [NewMaster|_] = NewChain) ->
+    process_flag(trap_exit, true),
+
+    inhibit_view_compaction(Parent, OldMaster, Bucket, NewMaster),
+
+    %% build new chain as replicas of existing master
+    {ReplicaNodes, JustBackfillNodes} =
+        get_replica_and_backfill_nodes(OldMaster, NewChain),
+
+    %% setup replication streams to replicas from the existing master
+    set_initial_vbucket_state(Bucket, Parent, VBucket, OldMaster, ReplicaNodes, JustBackfillNodes),
+
+    %% initiate indexing on new master (replicas are ignored for now)
+    %% at this moment since the stream to new master is created (if there is a new master)
+    %% ep-engine guarantees that it can support indexing
+    ok = janitor_agent:initiate_indexing(Bucket, Parent, JustBackfillNodes, ReplicaNodes, VBucket),
+    master_activity_events:note_indexing_initiated(Bucket, JustBackfillNodes, VBucket),
+
+    %% wait for backfill on all the opened streams
+    ?rebalance_debug("Will wait for backfill on all opened streams"),
+    AllBuiltNodes = JustBackfillNodes ++ ReplicaNodes,
+    wait_upr_data_move(Bucket, Parent, OldMaster, AllBuiltNodes, VBucket),
+    master_activity_events:note_backfill_phase_ended(Bucket, VBucket),
+
+    %% notify parent that the backfill is done, so it can start rebalancing
+    %% next vbucket
+    Parent ! {backfill_done, {VBucket, OldChain, NewChain}},
+
+    %% grab the seqno from the old master and wait till this seqno is
+    %% persisted on all the replicas
+    wait_master_seqno_persisted_on_replicas(Bucket, VBucket, Parent, OldMaster, AllBuiltNodes),
+
+    case OldMaster =:= NewMaster of
+        true ->
+            %% if there's nothing to move, we're done
+            ok;
+        false ->
+            %% pause index on old master node
+            case cluster_compat_mode:is_index_pausing_on() of
+                true ->
+                    system_stats_collector:increment_counter(index_pausing_runs, 1),
+                    janitor_agent:set_vbucket_state(Bucket, OldMaster, Parent, VBucket, active,
+                                                    paused, undefined),
+                    wait_master_seqno_persisted_on_replicas(Bucket, VBucket, Parent, OldMaster,
+                                                            AllBuiltNodes);
+                false ->
+                    ok
+            end,
+
+            wait_index_updated(Bucket, Parent, NewMaster, ReplicaNodes, VBucket),
+
+            ?rebalance_debug("Index is updated on new master."),
+
+            master_activity_events:note_takeover_started(Bucket, VBucket, OldMaster, NewMaster),
+            ok = janitor_agent:upr_takeover(Bucket, Parent, OldMaster, NewMaster, VBucket),
+            master_activity_events:note_takeover_ended(Bucket, VBucket, OldMaster, NewMaster)
+    end,
+
+    %% set new master to active state
+    ok = janitor_agent:set_vbucket_state(Bucket, NewMaster, Parent, VBucket, active,
+                                         undefined, undefined).
+
+wait_upr_data_move(Bucket, Parent, SrcNode, DstNodes, VBucket) ->
+    spawn_and_wait(
+      fun () ->
+              case janitor_agent:wait_upr_data_move(Bucket, Parent, SrcNode, DstNodes, VBucket) of
+                  ok ->
+                      ?rebalance_debug(
+                         "Upr data is up to date for bucket = ~p partition ~p src node = ~p dest nodes = ~p",
+                         [Bucket, VBucket, SrcNode, DstNodes]),
+                      ok;
+                  Error ->
+                      erlang:error({upr_wait_for_data_move_failed,
+                                    Bucket, VBucket, SrcNode, DstNodes, Error})
+              end
+      end).
+
+wait_master_seqno_persisted_on_replicas(Bucket, VBucket, Parent, MasterNode, ReplicaNodes) ->
+    SeqNo = janitor_agent:get_vbucket_high_seqno(Bucket, Parent, MasterNode, VBucket),
+    master_activity_events:note_seqno_waiting_started(Bucket, VBucket, SeqNo, ReplicaNodes),
+    wait_seqno_persisted_many(Bucket, Parent, ReplicaNodes, VBucket, SeqNo),
+    master_activity_events:note_seqno_waiting_ended(Bucket, VBucket, SeqNo, ReplicaNodes).
+
+wait_seqno_persisted_many(Bucket, Parent, Nodes, VBucket, SeqNo) ->
+    spawn_and_wait(
+      fun () ->
+              RVs = misc:parallel_map(
+                      fun (Node) ->
+                              {Node, (catch janitor_agent:wait_seqno_persisted(Bucket, Parent, Node, VBucket, SeqNo))}
+                      end, Nodes, infinity),
+              NonOks = [P || {_N, V} = P <- RVs,
+                             V =/= ok],
+              case NonOks =:= [] of
+                  true -> ok;
+                  false ->
+                      erlang:error({wait_seqno_persisted_failed, Bucket, VBucket, SeqNo, NonOks})
+              end
+      end).
+
 mover_inner(Parent, Bucket, VBucket,
             [Node|_] = OldChain, [NewNode|_] = NewChain) ->
     process_flag(trap_exit, true),
@@ -289,12 +402,15 @@ get_replica_and_backfill_nodes(MasterNode, [NewMasterNode|_] = NewChain) ->
     true = (JustBackfillNodes =/= [undefined]),
     {ReplicaNodes, JustBackfillNodes}.
 
-set_initial_vbucket_state(Bucket, Parent, VBucket, ReplicaNodes, JustBackfillNodes) ->
-    Changes = [{Replica, replica, undefined, undefined}
+set_initial_vbucket_state(Bucket, Parent, VBucket, SrcNode, ReplicaNodes, JustBackfillNodes) ->
+    Changes = [{Replica, replica, undefined, SrcNode}
                || Replica <- ReplicaNodes]
-        ++ [{FutureMaster, replica, passive, undefined}
+        ++ [{FutureMaster, replica, passive, SrcNode}
             || FutureMaster <- JustBackfillNodes],
     janitor_agent:bulk_set_vbucket_state(Bucket, Parent, VBucket, Changes).
+
+set_initial_vbucket_state(Bucket, Parent, VBucket, ReplicaNodes, JustBackfillNodes) ->
+    set_initial_vbucket_state(Bucket, Parent, VBucket, undefined, ReplicaNodes, JustBackfillNodes).
 
 mover_inner_old_style(Parent, Bucket, VBucket,
                       [Node|_], [NewNode|_] = NewChain) ->

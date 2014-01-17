@@ -485,8 +485,19 @@ moxi_port(Bucket) ->
 bucket_nodes(Bucket) ->
     proplists:get_value(servers, Bucket).
 
+-ifdef(DEBUG_UPR).
+
+-spec replication_type([{_,_}]) -> bucket_replication_type().
+replication_type(Bucket) ->
+    proplists:get_value(repl_type, Bucket, upr).
+
+-else.
+
+-spec replication_type([{_,_}]) -> bucket_replication_type().
 replication_type(Bucket) ->
     proplists:get_value(repl_type, Bucket, tap).
+
+-endif.
 
 json_map_from_config(LocalAddr, BucketConfig) ->
     Config = ns_config:get(),

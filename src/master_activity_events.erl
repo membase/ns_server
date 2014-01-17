@@ -43,6 +43,10 @@
          note_indexing_initiated/3,
          note_checkpoint_waiting_started/4,
          note_checkpoint_waiting_ended/4,
+         note_seqno_waiting_started/4,
+         note_seqno_waiting_ended/4,
+         note_takeover_started/4,
+         note_takeover_ended/4,
          note_backfill_phase_ended/2,
          note_wait_index_updated_started/3,
          note_wait_index_updated_ended/3,
@@ -150,6 +154,18 @@ note_checkpoint_waiting_started(BucketName, VBucket, WaitedCheckpointId, Nodes) 
 
 note_checkpoint_waiting_ended(BucketName, VBucket, WaitedCheckpointId, Nodes) ->
     submit_cast({checkpoint_waiting_ended, BucketName, VBucket, WaitedCheckpointId, Nodes}).
+
+note_seqno_waiting_started(BucketName, VBucket, SeqNo, Nodes) ->
+    submit_cast({seqno_waiting_started, BucketName, VBucket, SeqNo, Nodes}).
+
+note_seqno_waiting_ended(BucketName, VBucket, SeqNo, Nodes) ->
+    submit_cast({seqno_waiting_ended, BucketName, VBucket, SeqNo, Nodes}).
+
+note_takeover_started(BucketName, VBucket, OldMaster, NewMaster) ->
+    submit_cast({takeover_started, BucketName, VBucket, OldMaster, NewMaster}).
+
+note_takeover_ended(BucketName, VBucket, OldMaster, NewMaster) ->
+    submit_cast({takeover_ended, BucketName, VBucket, OldMaster, NewMaster}).
 
 note_backfill_phase_ended(BucketName, VBucket) ->
     submit_cast({backfill_phase_ended, BucketName, VBucket}).
@@ -603,6 +619,42 @@ event_to_jsons({TS, tap_estimate, {Type, BucketName, VBucket, SrcNode, DstNode},
                                   {estimate, Estimate},
                                   {pid, Pid},
                                   {node, maybe_get_pids_node(Pid)}])];
+
+event_to_jsons({TS, seqno_waiting_started, BucketName, VBucket, SeqNo, Nodes}) ->
+    Config = ns_config:get(),
+    [format_simple_plist_as_json([{type, seqnoWaitingStarted},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
+                                  {vbucket, VBucket},
+                                  {seqno, SeqNo},
+                                  {node, node_to_host(N, Config)}])
+     || N <- Nodes];
+
+event_to_jsons({TS, seqno_waiting_ended, BucketName, VBucket, SeqNo, Nodes}) ->
+    Config = ns_config:get(),
+    [format_simple_plist_as_json([{type, seqnoWaitingEnded},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
+                                  {vbucket, VBucket},
+                                  {seqno, SeqNo},
+                                  {node, node_to_host(N, Config)}])
+     || N <- Nodes];
+
+event_to_jsons({TS, takeover_started, BucketName, VBucket, OldMaster, NewMaster}) ->
+    [format_simple_plist_as_json([{type, takeoverStarted},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
+                                  {vbucket, VBucket},
+                                  {oldMaster, node_to_host(OldMaster, ns_config:get())},
+                                  {node, node_to_host(NewMaster, ns_config:get())}])];
+
+event_to_jsons({TS, takeover_ended, BucketName, VBucket, OldMaster, NewMaster}) ->
+    [format_simple_plist_as_json([{type, takeoverEnded},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
+                                  {vbucket, VBucket},
+                                  {oldMaster, node_to_host(OldMaster, ns_config:get())},
+                                  {node, node_to_host(NewMaster, ns_config:get())}])];
 
 event_to_jsons(Event) ->
     ?log_warning("Got unknown kind of event: ~p", [Event]),

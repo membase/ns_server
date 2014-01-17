@@ -44,6 +44,8 @@
 
 -type checkpoint_id() :: non_neg_integer().
 
+-type bucket_replication_type() :: tap | upr | {upr, [vbucket_id()]}.
+
 -define(MULTICALL_DEFAULT_TIMEOUT, 30000).
 
 -define(MIB, 1048576).
