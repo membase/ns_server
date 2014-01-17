@@ -123,7 +123,9 @@
          set_cluster_config/2,
          get_random_key/1,
          compact_vbucket/3,
-         get_upr_backfill_remaining_items/3]).
+         get_upr_backfill_remaining_items/3,
+         get_vbucket_high_seqno/2,
+         wait_for_seqno_persistence/3]).
 
 %% for ns_memcached_sockets_pool only
 -export([connect/0]).
@@ -625,6 +627,20 @@ do_handle_call({get_upr_backfill_remaining_items, ConnName, VBucket}, _From, Sta
                                             (_, _, Acc) -> Acc
                                         end, undefined),
     {reply, Reply, State};
+do_handle_call({get_vbucket_high_seqno, VBucketId}, _From, State) ->
+    StatName = <<"vb_", (iolist_to_binary(integer_to_list(VBucketId)))/binary, "_high_seqno">>,
+    Res = mc_binary:quick_stats(
+            State#state.sock, iolist_to_binary([<<"vbucket-seqno ">>, integer_to_list(VBucketId)]),
+            fun (K, V, Acc) ->
+                    case K of
+                        StatName ->
+                            list_to_integer(binary_to_list(V));
+                        _ ->
+                            Acc
+                    end
+            end,
+            undefined),
+    {reply, Res, State};
 
 do_handle_call(_, _From, State) ->
     {reply, unhandled, State}.
@@ -1185,6 +1201,12 @@ get_vbucket_checkpoint_ids(Bucket, VBucketId) ->
 get_upr_backfill_remaining_items(Bucket, ConnName, VBucket) ->
     do_call(server(Bucket), {get_upr_backfill_remaining_items, ConnName, VBucket}, ?TIMEOUT).
 
+-spec get_vbucket_high_seqno(bucket_name(), vbucket_id()) ->
+                                        {ok, {undefined | seq_no()}}.
+get_vbucket_high_seqno(Bucket, VBucketId) ->
+    do_call(server(Bucket), {get_vbucket_high_seqno, VBucketId}, ?TIMEOUT).
+
+
 connect_and_send_isasl_refresh() ->
     case connect(1) of
         {ok, Sock}  ->
@@ -1384,6 +1406,13 @@ wait_for_checkpoint_persistence(Bucket, VBucketId, CheckpointId) ->
     perform_very_long_call(
       fun (Sock) ->
               {reply, mc_client_binary:wait_for_checkpoint_persistence(Sock, VBucketId, CheckpointId)}
+      end, Bucket).
+
+-spec wait_for_seqno_persistence(bucket_name(), vbucket_id(), seq_no()) -> ok | mc_error().
+wait_for_seqno_persistence(Bucket, VBucketId, SeqNo) ->
+    perform_very_long_call(
+      fun (Sock) ->
+              {reply, mc_client_binary:wait_for_seqno_persistence(Sock, VBucketId, SeqNo)}
       end, Bucket).
 
 -spec compact_vbucket(bucket_name(), vbucket_id(),

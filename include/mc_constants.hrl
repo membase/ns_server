@@ -80,6 +80,8 @@
 
 -define(CMD_GET_RANDOM_KEY, 16#b6).
 
+-define(CMD_SEQNO_PERSISTENCE, 16#b7).
+
 -define(CMD_ISASL_REFRESH, 16#f1).
 
 -define(RGET,        16#30).

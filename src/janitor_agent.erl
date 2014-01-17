@@ -60,7 +60,9 @@
          get_tap_docs_estimate/4,
          get_tap_docs_estimate_many_taps/4,
          get_mass_tap_docs_estimate/3,
-         wait_upr_data_move/5]).
+         wait_upr_data_move/5,
+         wait_seqno_persisted/5,
+         get_vbucket_high_seqno/4]).
 
 -export([start_link/1]).
 
@@ -414,6 +416,15 @@ get_replication_persistence_checkpoint_id(Bucket, Rebalancer, MasterNode, VBucke
     true = is_integer(RV),
     RV.
 
+get_vbucket_high_seqno(Bucket, Rebalancer, MasterNode, VBucket) ->
+    ?rebalance_info("~s: Doing get_vbucket_high_seqno call for vbucket ~p on ~s",
+                    [Bucket, VBucket, MasterNode]),
+    RV = gen_server:call(server_name(Bucket, MasterNode),
+                         {if_rebalance, Rebalancer, {get_vbucket_high_seqno, VBucket}},
+                         infinity),
+    true = is_integer(RV),
+    RV.
+
 -spec create_new_checkpoint(bucket_name(), pid(), node(), vbucket_id()) -> {checkpoint_id(), checkpoint_id()}.
 create_new_checkpoint(Bucket, Rebalancer, MasterNode, VBucket) ->
     ?rebalance_info("~s: Doing create_new_checkpoint call for vbucket ~p on ~s", [Bucket, VBucket, MasterNode]),
@@ -426,6 +437,12 @@ create_new_checkpoint(Bucket, Rebalancer, MasterNode, VBucket) ->
 wait_checkpoint_persisted(Bucket, Rebalancer, Node, VBucket, WaitedCheckpointId) ->
     ok = gen_server:call({server_name(Bucket), Node},
                          {if_rebalance, Rebalancer, {wait_checkpoint_persisted, VBucket, WaitedCheckpointId}},
+                         infinity).
+
+-spec wait_seqno_persisted(bucket_name(), pid(), node(), vbucket_id(), seq_no()) -> ok.
+wait_seqno_persisted(Bucket, Rebalancer, Node, VBucket, SeqNo) ->
+    ok = gen_server:call({server_name(Bucket), Node},
+                         {if_rebalance, Rebalancer, {wait_seqno_persisted, VBucket, SeqNo}},
                          infinity).
 
 initiate_servant_call(Server, Request) ->
@@ -637,9 +654,26 @@ handle_call({wait_checkpoint_persisted, VBucket, CheckpointId},
                State,
                From,
                fun () ->
-                       ?rebalance_debug("Going to wait for persistence of checkpoint ~B in vbucket ~B", [CheckpointId, VBucket]),
+                       ?rebalance_debug("Going to wait for persistence of checkpoint ~B in vbucket ~B",
+                                        [CheckpointId, VBucket]),
                        ok = do_wait_checkpoint_persisted(Bucket, VBucket, CheckpointId),
-                       ?rebalance_debug("Done"),
+                       ?rebalance_debug("Done waiting for persistence of checkpoint ~B in vbucket ~B",
+                                       [CheckpointId, VBucket]),
+                       ok
+               end),
+    {noreply, State2};
+handle_call({wait_seqno_persisted, VBucket, SeqNo},
+           From,
+           #state{bucket_name = Bucket} = State) ->
+    State2 = spawn_rebalance_subprocess(
+               State,
+               From,
+               fun () ->
+                       ?rebalance_debug("Going to wait for persistence of seqno ~B in vbucket ~B",
+                                        [SeqNo, VBucket]),
+                       ok = do_wait_seqno_persisted(Bucket, VBucket, SeqNo),
+                       ?rebalance_debug("Done waiting for persistence of seqno ~B in vbucket ~B",
+                                        [SeqNo, VBucket]),
                        ok
                end),
     {noreply, State2};
@@ -657,6 +691,13 @@ handle_call({get_replication_persistence_checkpoint_id, VBucket},
             ?log_debug("After creating new checkpoint here's what we have: ~p (~p)", [{PersistedCheckpointId, OpenCheckpointId, NewOpenCheckpointId}, VBucket]),
             {reply, erlang:min(PersistedCheckpointId + 1, NewOpenCheckpointId - 1), State}
     end;
+handle_call({get_vbucket_high_seqno, VBucket},
+            _From,
+            #state{bucket_name = Bucket} = State) ->
+    %% NOTE: this happens on current master of vbucket thus undefined
+    %% persisted seq no should not be possible here
+    {ok, SeqNo} = ns_memcached:get_vbucket_high_seqno(Bucket, VBucket),
+    {reply, SeqNo, State};
 handle_call({get_tap_docs_estimate, _VBucketId, _TapName} = Req, From, State) ->
     handle_call_via_servant(
       From, State, Req,
@@ -845,4 +886,12 @@ do_wait_checkpoint_persisted(Bucket, VBucket, CheckpointId) ->
       {memcached_error, etmpfail, _} ->
           ?rebalance_debug("Got etmpfail waiting for checkpoint persistence. Will try again"),
           do_wait_checkpoint_persisted(Bucket, VBucket, CheckpointId)
+  end.
+
+do_wait_seqno_persisted(Bucket, VBucket, SeqNo) ->
+  case ns_memcached:wait_for_seqno_persistence(Bucket, VBucket, SeqNo) of
+      ok -> ok;
+      {memcached_error, etmpfail, _} ->
+          ?rebalance_debug("Got etmpfail waiting for seq no persistence. Will try again"),
+          do_wait_seqno_persisted(Bucket, VBucket, SeqNo)
   end.
