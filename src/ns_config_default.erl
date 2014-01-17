@@ -25,7 +25,7 @@
 -define(NS_LOG, "ns_log").
 
 get_current_version() ->
-    {2,3,0}.
+    {3,0}.
 
 % Allow all keys to be mergable.
 
@@ -280,7 +280,8 @@ default() ->
      {{request_limit, rest}, undefined},
      {{request_limit, capi}, undefined},
      {drop_request_memory_threshold_mib, undefined},
-     {replication_topology, star}
+     {replication_topology, star},
+     {{node, node(), uuid}, [InstanceVClock | InstanceUuid]}
     ].
 
 %% Recursively replace all strings in a hierarchy that start
@@ -329,7 +330,10 @@ upgrade_config(Config) ->
              upgrade_config_from_2_0_to_2_2_0(Config)];
         {value, {2,2,0}} ->
             [{set, {node, node(), config_version}, {2,3,0}} |
-             upgrade_config_from_2_2_0_to_2_3_0(Config)]
+             upgrade_config_from_2_2_0_to_2_3_0(Config)];
+        {value, {2,3,0}} ->
+            [{set, {node, node(), config_version}, {3,0}} |
+             upgrade_config_from_2_3_0_to_3_0(Config)]
     end.
 
 upgrade_config_from_1_7_to_1_7_1() ->
@@ -552,6 +556,21 @@ upgrade_config_from_2_2_0_to_2_3_0(Config) ->
                                       {admin_pass, UUID}),
 
     [{set, {node, node(), memcached}, MemcachedConfig3}].
+
+upgrade_config_from_2_3_0_to_3_0(Config) ->
+    ?log_info("Upgrading config from 2.3.0 to 3.0"),
+    DefaultConfig = default(),
+    do_upgrade_config_from_2_3_0_to_3_0(Config, DefaultConfig).
+
+do_upgrade_config_from_2_3_0_to_3_0(Config, DefaultConfig) ->
+    Key = {node, node(), uuid},
+    case ns_config:search(Config, Key) of
+        false ->
+            {Key, NodeUUID} = lists:keyfind(Key, 1, DefaultConfig),
+            [{set, Key, NodeUUID}];
+        _ ->
+            []
+    end.
 
 search_sub_key(Config, Key, Subkey) ->
     case ns_config:search(Config, Key) of
@@ -861,6 +880,19 @@ upgrade_2_2_0_to_2_3_0_test() ->
                    [{log_generations, 20},
                     {log_cyclesize, 1024*1024*10},
                     {admin_pass, _}]}], UpgradedCfg).
+
+upgrade_2_3_0_to_3_0_test() ->
+    Key = {node, node(), uuid},
+    CfgWithoutUUID = [[{some_key, some_value}]],
+    CfgWithUUID = [[{Key, <<"uuid">>},
+                    {some_key, some_value}]],
+    Default = [{Key, <<"default uuid">>}],
+
+    ?assertEqual([],
+                 do_upgrade_config_from_2_3_0_to_3_0(CfgWithUUID, Default)),
+
+    ?assertEqual([{set, Key, <<"default uuid">>}],
+                 do_upgrade_config_from_2_3_0_to_3_0(CfgWithoutUUID, Default)).
 
 no_upgrade_on_current_version_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, get_current_version()}]])).
