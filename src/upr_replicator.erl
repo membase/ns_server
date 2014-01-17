@@ -25,7 +25,7 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--export([start_link/2, get_partitions/2, setup_replication/3]).
+-export([start_link/2, get_partitions/2, setup_replication/3, wait_for_data_move/3]).
 
 -record(state, {producer_conn :: pid(),
                 consumer_conn :: pid(),
@@ -35,7 +35,7 @@
 -define(VBUCKET_POLL_INTERVAL, 100).
 
 init({ProducerNode, Bucket}) ->
-    ConnName = gen_connection_name(node(), ProducerNode, Bucket),
+    ConnName = get_connection_name(node(), ProducerNode, Bucket),
     {ok, ConsumerConn} = upr_consumer_conn:start_link(ConnName, Bucket),
     {ok, ProducerConn} = upr_producer_conn:start_link(ConnName, ProducerNode, Bucket, ConsumerConn),
 
@@ -92,5 +92,29 @@ setup_replication(ProducerNode, Bucket, Partitions) ->
     gen_server:call(server_name(ProducerNode, Bucket),
                     {setup_replication, Partitions}).
 
-gen_connection_name(ConsumerNode, ProducerNode, Bucket) ->
+wait_for_data_move([], _, _) ->
+    ok;
+wait_for_data_move([Node | Rest], Bucket, Partition) ->
+    Connection = get_connection_name(Node, node(), Bucket),
+    case wait_for_data_move_on_one_node(Connection, Bucket, Partition) of
+        undefined ->
+            ?log_error("No upr backfill stats for bucket ~p, partition ~p, connection ~p",
+                       [Bucket, Partition, Connection]),
+            {error, no_stats_for_this_vbucket};
+        _ ->
+            wait_for_data_move(Rest, Bucket, Partition)
+    end.
+
+wait_for_data_move_on_one_node(Connection, Bucket, Partition) ->
+    case ns_memcached:get_upr_backfill_remaining_items(Bucket, Connection, Partition) of
+        undefined ->
+            undefined;
+        N when N < 1000 ->
+            ok;
+        _ ->
+            timer:sleep(?VBUCKET_POLL_INTERVAL),
+            wait_for_data_move_on_one_node(Bucket, Connection, Partition)
+    end.
+
+get_connection_name(ConsumerNode, ProducerNode, Bucket) ->
     atom_to_list(ProducerNode) ++ "->" ++ atom_to_list(ConsumerNode) ++ ":" ++ Bucket.

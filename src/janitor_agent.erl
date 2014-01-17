@@ -59,7 +59,8 @@
          wait_checkpoint_persisted/5,
          get_tap_docs_estimate/4,
          get_tap_docs_estimate_many_taps/4,
-         get_mass_tap_docs_estimate/3]).
+         get_mass_tap_docs_estimate/3,
+         wait_upr_data_move/5]).
 
 -export([start_link/1]).
 
@@ -397,6 +398,10 @@ wait_index_updated(Bucket, Rebalancer, NewMasterNode, _ReplicaNodes, VBucket) ->
                           {wait_index_updated, VBucket}},
                          infinity).
 
+wait_upr_data_move(Bucket, Rebalancer, MasterNode, ReplicaNodes, VBucket) ->
+    gen_server:call(server_name(Bucket, MasterNode),
+                    {if_rebalance, Rebalancer,
+                     {wait_upr_data_move, ReplicaNodes, VBucket}}, infinity).
 
 %% returns checkpoint id which 100% contains all currently persisted
 %% docs. Normally it's persisted_checkpoint_id + 1 (assuming
@@ -599,6 +604,14 @@ handle_call({wait_index_updated, VBucket}, From, #state{bucket_name = Bucket} = 
                From,
                fun () ->
                        capi_set_view_manager:wait_index_updated(Bucket, VBucket)
+               end),
+    {noreply, State2};
+handle_call({wait_upr_data_move, ReplicaNodes, VBucket}, From, #state{bucket_name = Bucket} = State) ->
+    State2 = spawn_rebalance_subprocess(
+               State,
+               From,
+               fun () ->
+                       upr_replicator:wait_for_data_move(ReplicaNodes, Bucket, VBucket)
                end),
     {noreply, State2};
 handle_call(initiate_indexing, From, #state{bucket_name = Bucket} = State) ->

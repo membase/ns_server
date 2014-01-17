@@ -122,7 +122,8 @@
          get_mass_tap_docs_estimate/2,
          set_cluster_config/2,
          get_random_key/1,
-         compact_vbucket/3]).
+         compact_vbucket/3,
+         get_upr_backfill_remaining_items/3]).
 
 %% for ns_memcached_sockets_pool only
 -export([connect/0]).
@@ -614,6 +615,17 @@ do_handle_call({get_vbucket_checkpoint_ids, VBucketId}, _From, State) ->
     {reply, Res, State};
 do_handle_call(get_random_key, _From, State) ->
     {reply, mc_client_binary:get_random_key(State#state.sock), State};
+do_handle_call({get_upr_backfill_remaining_items, ConnName, VBucket}, _From, State) ->
+    Key = list_to_binary("upr-vbtakeover " ++ integer_to_list(VBucket) ++ " " ++ ConnName),
+
+    {ok, Reply} = mc_binary:quick_stats(State#state.sock,
+                                        Key,
+                                        fun (<<"backfillRemaining">>, <<V/binary>>, _Acc) ->
+                                                list_to_integer(binary_to_list(V));
+                                            (_, _, Acc) -> Acc
+                                        end, undefined),
+    {reply, Reply, State};
+
 do_handle_call(_, _From, State) ->
     {reply, unhandled, State}.
 
@@ -1167,6 +1179,11 @@ get_vbucket_open_checkpoint(Nodes, Bucket, VBucketId) ->
                                         {ok, {undefined | checkpoint_id(), undefined | checkpoint_id()}}.
 get_vbucket_checkpoint_ids(Bucket, VBucketId) ->
     do_call(server(Bucket), {get_vbucket_checkpoint_ids, VBucketId}, ?TIMEOUT).
+
+-spec get_upr_backfill_remaining_items(bucket_name(), string(), vbucket_id()) ->
+                                        undefined | integer().
+get_upr_backfill_remaining_items(Bucket, ConnName, VBucket) ->
+    do_call(server(Bucket), {get_upr_backfill_remaining_items, ConnName, VBucket}, ?TIMEOUT).
 
 connect_and_send_isasl_refresh() ->
     case connect(1) of
