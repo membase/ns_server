@@ -219,19 +219,31 @@ handle_info(tick, State0) ->
 
     NodeStatuses = ns_doctor:get_nodes(),
     CurrentlyDown = actual_down_nodes(NodeStatuses, NonPendingNodes, Config),
+
+    NodeUUIDs =
+        ns_config:fold(
+          fun (Key, Value, Acc) ->
+                  case Key of
+                      {node, Node, uuid} ->
+                          dict:store(Node, Value, Acc);
+                      _ ->
+                          Acc
+                  end
+          end, dict:new(), Config),
+
     {Actions, LogicState} =
-        auto_failover_logic:process_frame(NonPendingNodes,
-                                          CurrentlyDown,
+        auto_failover_logic:process_frame(attach_node_uuids(NonPendingNodes, NodeUUIDs),
+                                          attach_node_uuids(CurrentlyDown, NodeUUIDs),
                                           State#state.auto_failover_logic_state),
     NewState =
         lists:foldl(
-          fun ({mail_too_small, Node}, S) ->
+          fun ({mail_too_small, {Node, _UUID}}, S) ->
                   ?user_log(?EVENT_CLUSTER_TOO_SMALL,
                             "Could not auto-failover node (~p). "
                             "Cluster was too small, you need at least 2 other nodes.~n",
                             [Node]),
                   S;
-              ({_, Node}, #state{count=1} = S) ->
+              ({_, {Node, _UUID}}, #state{count=1} = S) ->
                   case should_report(#state.reported_max_reached, S) of
                       true ->
                           ?user_log(?EVENT_MAX_REACHED,
@@ -243,13 +255,13 @@ handle_info(tick, State0) ->
                       false ->
                           S
                   end;
-              ({mail_down_warning, Node}, S) ->
+              ({mail_down_warning, {Node, _UUID}}, S) ->
                   ?user_log(?EVENT_OTHER_NODES_DOWN,
                             "Could not auto-failover node (~p). "
                             "There was at least another node down.~n",
                             [Node]),
                   S;
-              ({failover, Node}, S) ->
+              ({failover, {Node, _UUID}}, S) ->
                   case ns_orchestrator:try_autofailover(Node) of
                       ok ->
                           ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
@@ -374,6 +386,16 @@ update_reported_flags_by_actions(Actions, State) ->
             State
     end.
 
+attach_node_uuids(Nodes, UUIDDict) ->
+    lists:map(
+      fun (Node) ->
+              case dict:find(Node, UUIDDict) of
+                  {ok, UUID} ->
+                      {Node, UUID};
+                  error ->
+                      {Node, undefined}
+              end
+      end, Nodes).
 
 -ifdef(EUNIT).
 

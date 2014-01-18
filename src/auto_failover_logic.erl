@@ -27,7 +27,7 @@
 -define(DOWN_GRACE_PERIOD, 2).
 
 -record(node_state, {
-          name :: atom(),
+          name :: term(),
           down_counter = 0 :: non_neg_integer(),
           state :: removed|new|half_down|nearly_down|failover|up,
           % Whether are down_warning for this node was already
