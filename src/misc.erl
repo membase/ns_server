@@ -1236,44 +1236,6 @@ split_binary_at_char(Binary, Chr) ->
 is_binary_ends_with(Binary, Suffix) ->
     binary:longest_common_suffix([Binary, Suffix]) =:= size(Suffix).
 
-%% Quick function to build the ebucketmigrator escript, partially copied from
-%% https://bitbucket.org/basho/rebar/src/d4fcc10abc0b/src/rebar_escripter.erl
-build_ebucketmigrator() ->
-
-    Filename = "ebucketmigrator",
-    Modules = [ebucketmigrator, ebucketmigrator_srv,
-               mc_client_binary, mc_binary, misc, ns_config_ets_dup, mc_replication],
-    Files = [read_beam(Mod, "ebin") || Mod <- Modules],
-
-    AleDir = filename:join(["deps", "ale", "ebin"]),
-    AleModules = [ale, ale_sup, ale_dynamic_sup, ale_stderr_sink,
-                  ale_default_formatter, ale_utils, ale_codegen,
-                  ale_error_logger_handler, dynamic_compile],
-    AleFiles = [read_beam(Mod, AleDir) || Mod <- AleModules],
-
-    Files1 = Files ++ AleFiles,
-
-    case zip:create("mem", Files1, [memory]) of
-        {ok, {"mem", ZipBin}} ->
-            Script = <<"#!/usr/bin/env escript\n", ZipBin/binary>>,
-            case file:write_file(Filename, Script) of
-                ok ->
-                    ok;
-                {error, WriteError} ->
-                    throw({write_failed, WriteError})
-            end;
-        {error, ZipError} ->
-            throw({build_script_files, ZipError})
-    end,
-
-    {ok, #file_info{mode = Mode}} = file:read_file_info(Filename),
-    ok = file:change_mode(Filename, Mode bor 8#00100),
-    ok.
-
-read_beam(Module, Dir) ->
-    Filename = atom_to_list(Module) ++ ".beam",
-    {Filename, file_contents(filename:join(Dir, Filename))}.
-
 file_contents(Filename) ->
     {ok, Bin} = file:read_file(Filename),
     Bin.

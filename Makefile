@@ -132,7 +132,7 @@ $(TMP_VER):
 REST_PREFIX := $(DESTDIR)$(PREFIX)
 NS_SERVER := $(DESTDIR)$(PREFIX)/ns_server
 
-install: all ebucketmigrator $(TMP_VER) fail-unless-configured
+install: all $(TMP_VER) fail-unless-configured
 	$(MAKE) do-install "PREFIX=$(strip $(shell . `pwd`/.configuration && echo $$prefix))"
 
 NS_SERVER_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ns_server
@@ -185,8 +185,6 @@ do-install:
 	chmod +x $(DESTDIR)$(PREFIX)/bin/cbreset_password
 	mkdir -p -m 0770 $(DESTDIR)$(PREFIX)/var/lib/couchbase
 	mkdir -p -m 0770 $(DESTDIR)$(PREFIX)/var/lib/couchbase/logs
-	cp ebucketmigrator $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
-	chmod +x $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
 	cp scripts/cbdump-config $(DESTDIR)$(PREFIX)/bin/
 	cp scripts/dump-guts $(DESTDIR)$(PREFIX)/bin/
 	mkdir -p $(DESTDIR)$(PREFIX)/etc/couchdb/default.d
@@ -202,7 +200,6 @@ clean clean_all:
 	rm -f $(TMP_VER)
 	rm -f $(TMP_DIR)/*.cov.html
 	rm -f cov.html
-	rm -f ebucketmigrator
 	rm -f erl_crash.dump
 	rm -f ns_server_*.tar.gz
 	rm -f src/ns_server.app
@@ -262,6 +259,3 @@ Features/Makefile:
 	(cd features && ../test/parallellize_features.rb) >features/Makefile
 
 .PHONY : features/Makefile
-
-ebucketmigrator: ebins deps_all
-	erl -noshell -noinput -pa ebin -s misc build_ebucketmigrator -s init stop
