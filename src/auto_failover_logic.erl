@@ -30,7 +30,7 @@
           name :: atom(),
           down_counter = 0 :: non_neg_integer(),
           state :: removed|new|half_down|nearly_down|failover|up,
-          % Whether are down_warning for this node was alrady
+          % Whether are down_warning for this node was already
           % mailed or not
           mailed_down_warning = false :: boolean()
          }).
