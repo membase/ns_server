@@ -37,13 +37,13 @@
 
 -record(state, {
           nodes_states :: [#node_state{}],
-          mailed_too_small_cluster :: integer(),
+          mailed_too_small_cluster :: list(),
           down_threshold :: pos_integer()
          }).
 
 init_state(DownThreshold) ->
     #state{nodes_states = [],
-           mailed_too_small_cluster = 0,
+           mailed_too_small_cluster = [],
            down_threshold = DownThreshold - 1 - ?DOWN_GRACE_PERIOD}.
 
 fold_matching_nodes([], NodeStates, Fun, Acc) ->
@@ -75,8 +75,8 @@ fold_matching_nodes([Node | RestNodes] = AllNodes,
             end
     end.
 
-increment_down_state(NodeState, DownNodes, BigState, SizeChanged) ->
-    case {NodeState#node_state.state, SizeChanged} of
+increment_down_state(NodeState, DownNodes, BigState, NodesChanged) ->
+    case {NodeState#node_state.state, NodesChanged} of
         {new, _} -> NodeState#node_state{state = half_down};
         {up, _} -> NodeState#node_state{state = half_down};
         {_, true} ->
@@ -110,7 +110,10 @@ increment_down_state(NodeState, DownNodes, BigState, SizeChanged) ->
 process_frame(Nodes, DownNodes, State) ->
     SortedNodes = ordsets:from_list(Nodes),
     SortedDownNodes = ordsets:from_list(DownNodes),
-    SizeChanged = (length(Nodes) =/= length(State#state.nodes_states)),
+
+    PrevNodes = [NS#node_state.name || NS <- State#state.nodes_states],
+    NodesChanged = (SortedNodes =/= ordsets:from_list(PrevNodes)),
+
     UpNodes = ordsets:subtract(SortedNodes, SortedDownNodes),
     UpFun =
         fun (#node_state{state = removed}, Acc) -> Acc;
@@ -130,7 +133,7 @@ process_frame(Nodes, DownNodes, State) ->
     DownFun =
         fun (#node_state{state = removed}, Acc) -> Acc;
             (NodeState, Acc) ->
-                NewState = increment_down_state(NodeState, DownNodes, State, SizeChanged),
+                NewState = increment_down_state(NodeState, DownNodes, State, NodesChanged),
                 ?log_debug("Incremented down state:~n~p~n->~p", [NodeState, NewState]),
                 [NewState | Acc]
         end,
@@ -149,7 +152,7 @@ process_frame(Nodes, DownNodes, State) ->
                         %% doing failover
                         {[{failover, Node}], DownStates};
                     false ->
-                        case State#state.mailed_too_small_cluster =:= ClusterSize of
+                        case State#state.mailed_too_small_cluster =:= SortedNodes of
                             true ->
                                 {[], DownStates};
                             false ->
@@ -181,7 +184,7 @@ process_frame(Nodes, DownNodes, State) ->
     NewState = State#state{
                  nodes_states = lists:umerge(UpStates, DownStates2),
                  mailed_too_small_cluster = case Actions of
-                                                [{mail_too_small, _}] -> length(Nodes);
+                                                [{mail_too_small, _}] -> SortedNodes;
                                                 _ -> State#state.mailed_too_small_cluster
                                             end
                 },
