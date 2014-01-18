@@ -33,9 +33,6 @@
 not_implemented(Arg, Rest) ->
     {not_implemented, Arg, Rest}.
 
-do_db_req(#httpd{path_parts=[<<"_replicator">>|_]}=Req, Fun) ->
-    %% TODO: AUTH!!!!
-    couch_db_frontend:do_db_req(Req, Fun);
 do_db_req(Req, Fun) ->
 
     request_throttler:request(
