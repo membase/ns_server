@@ -51,12 +51,12 @@ fold_matching_nodes([], NodeStates, Fun, Acc) ->
                         Fun(S#node_state{state = removed}, A)
                 end, Acc, NodeStates);
 fold_matching_nodes([Node | RestNodes], [], Fun, Acc) ->
-    NewAcc = Fun(#node_state{name=Node,
+    NewAcc = Fun(#node_state{name = Node,
                              state = new},
                  Acc),
     fold_matching_nodes(RestNodes, [], Fun, NewAcc);
 fold_matching_nodes([Node | RestNodes] = AllNodes,
-                    [#node_state{name=Name} = NodeState | RestStates] = States,
+                    [#node_state{name = Name} = NodeState | RestStates] = States,
                     Fun, Acc) ->
     case Node < Name of
         true ->
@@ -163,11 +163,12 @@ process_frame(Nodes, DownNodes, State) ->
                         % Return separate events for all nodes that are down,
                         % which haven't been sent already.
                         {Actions2, DownStates3} = lists:foldl(
-                          fun (#node_state{state=nearly_down,name=Node,
-                                           mailed_down_warning=false}=S,
+                          fun (#node_state{state = nearly_down,
+                                           name = Node,
+                                           mailed_down_warning = false}=S,
                                {Warnings, DS}) ->
                                   {[{mail_down_warning, Node}|Warnings],
-                                   [S#node_state{mailed_down_warning=true}|DS]};
+                                   [S#node_state{mailed_down_warning = true}|DS]};
                               %% Warning was already sent
                               (S, {Warnings, DS}) ->
                                   {Warnings, [S|DS]}
