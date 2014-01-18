@@ -17,15 +17,13 @@ find_missing_revs(DestRef, Vb, IdRevs) ->
 find_missing_revs_inner(S, Vb, IdRevs) ->
     SenderPid = spawn_link(
                   fun () ->
-                          inet:setopts(S, [{delay_send, true}]),
-                          [begin
-                               H = #mc_header{vbucket = Vb,
-                                              opcode = ?CMD_GET_META},
-                               E = #mc_entry{key = Key},
-                               ok = mc_binary:send(S, req, H, E)
-                           end || {Key, _Rev} <- IdRevs],
-                          inet:setopts(S, [{delay_send, false}]),
-                          ok
+                          Data = [begin
+                                      H = #mc_header{vbucket = Vb,
+                                                     opcode = ?CMD_GET_META},
+                                      E = #mc_entry{key = Key},
+                                      mc_binary:encode(req, H, E)
+                                  end || {Key, _Rev} <- IdRevs],
+                          ok = prim_inet:send(S, Data)
                   end),
     RV = fetch_missing_revs_loop(S, IdRevs, [], []),
     erlang:unlink(SenderPid),
@@ -70,17 +68,16 @@ bulk_set_metas(DestRef, Vb, DocsList) ->
 
 bulk_set_metas_inner(S, Vb, DocsList) ->
     RecverPid = erlang:spawn_link(erlang, apply, [fun bulk_set_metas_recv_replies/3, [S, self(), length(DocsList)]]),
-    inet:setopts(S, [{delay_send, true}]),
-    [ok = send_single_set_meta(S, Vb, Doc) || Doc <- DocsList],
-    inet:setopts(S, [{delay_send, false}]),
+    Data = [encode_single_set_meta(Vb, Doc) || Doc <- DocsList],
+    ok = prim_inet:send(S, Data),
     receive
         {RecverPid, RV} ->
             {ok, RV}
     end.
 
-send_single_set_meta(S, Vb,
-                     #doc{id = Key, rev = Rev, deleted = Deleted,
-                          body = DocValue}) ->
+encode_single_set_meta(Vb,
+                       #doc{id = Key, rev = Rev, deleted = Deleted,
+                            body = DocValue}) ->
     {OpCode, Data} = case Deleted of
                          true ->
                              {?CMD_DEL_WITH_META, <<>>};
@@ -93,7 +90,7 @@ send_single_set_meta(S, Vb,
     %% to do getMeta internally before doing setWithMeta or delWithMeta
     CAS  = 0,
     McBody = #mc_entry{key = Key, data = Data, ext = Ext, cas = CAS},
-    mc_binary:send(S, req, McHeader, McBody).
+    mc_binary:encode(req, McHeader, McBody).
 
 bulk_set_metas_recv_replies(S, Parent, Count) ->
     RVs = bulk_set_metas_replies_loop(S, Count, []),
