@@ -623,7 +623,7 @@ func (g *Graph) Dot(path string, verbose bool) (err error) {
 		}
 
 		fmt.Fprintf(buffer,
-			"%s -> %s [label=\"%d (%d..%s)\", decorate,"+
+			"%s -> %s [label=\"%d (%d..%s)\", decorate=true,"+
 				" style=%s, color=%s, fontcolor=%s];\n",
 			edge.Src, edge.Dst, edge.Flow(),
 			edge.Demand, capacityString, style, color, labelcolor)

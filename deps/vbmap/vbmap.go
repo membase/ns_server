@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math/rand"
+	"time"
 )
 
 type Vbmap [][]Node
@@ -102,6 +103,44 @@ type tagPair struct {
 	distance int
 }
 
+type pairStats struct {
+	slaveStats map[slavePair]int
+	tagStats   map[tagPair]int
+}
+
+func makePairStats() (stats *pairStats) {
+	stats = new(pairStats)
+	stats.slaveStats = make(map[slavePair]int)
+	stats.tagStats = make(map[tagPair]int)
+
+	return
+}
+
+func (s *pairStats) getSlaveStat(x, y Node, distance int) int {
+	pair := slavePair{x, y, distance}
+	stat, _ := s.slaveStats[pair]
+
+	return stat
+}
+
+func (s *pairStats) getTagStat(x, y Tag, distance int) int {
+	tagPair := tagPair{x, y, distance}
+	stat, _ := s.tagStats[tagPair]
+
+	return stat
+}
+
+func (s *pairStats) notePair(x, y Node, xTag, yTag Tag, distance int) {
+	pair := slavePair{x, y, distance}
+
+	count, _ := s.slaveStats[pair]
+	s.slaveStats[pair] = count + 1
+
+	tagPair := tagPair{xTag, yTag, distance}
+	tagCount, _ := s.tagStats[tagPair]
+	s.tagStats[tagPair] = tagCount + 1
+}
+
 type selectionCtx struct {
 	params VbmapParams
 
@@ -112,38 +151,33 @@ type selectionCtx struct {
 	slaveCounts map[Node]int
 	tagCounts   map[Tag]int
 
-	stats    map[slavePair]int
-	tagStats map[tagPair]int
+	stats *pairStats
 }
 
-func makeSelectionCtx(params VbmapParams, master Node, vbuckets int) (ctx *selectionCtx) {
+func makeSelectionCtx(params VbmapParams, master Node,
+	vbuckets int, stats *pairStats) (ctx *selectionCtx) {
+
 	ctx = &selectionCtx{}
 
 	ctx.params = params
 	ctx.slaveCounts = make(map[Node]int)
 	ctx.tagCounts = make(map[Tag]int)
-	ctx.stats = make(map[slavePair]int)
-	ctx.tagStats = make(map[tagPair]int)
 	ctx.master = master
 	ctx.vbuckets = vbuckets
+	ctx.stats = stats
 
 	return
 }
 
-func (ctx *selectionCtx) getStat(x, y Node, distance int) int {
-	pair := slavePair{x, y, distance}
-	stat, _ := ctx.stats[pair]
-
-	return stat
+func (ctx *selectionCtx) getSlaveStat(x, y Node, distance int) int {
+	return ctx.stats.getSlaveStat(x, y, distance)
 }
 
 func (ctx *selectionCtx) getTagStat(x, y Node, distance int) int {
 	xTag := ctx.params.Tags[x]
 	yTag := ctx.params.Tags[y]
-	tagPair := tagPair{xTag, yTag, distance}
 
-	stat, _ := ctx.tagStats[tagPair]
-	return stat
+	return ctx.stats.getTagStat(xTag, yTag, distance)
 }
 
 func (ctx *selectionCtx) addSlave(node Node, count int) {
@@ -160,17 +194,10 @@ func (ctx *selectionCtx) addSlave(node Node, count int) {
 }
 
 func (ctx *selectionCtx) notePair(x, y Node, distance int) {
-	pair := slavePair{x, y, distance}
-
-	count, _ := ctx.stats[pair]
-	ctx.stats[pair] = count + 1
-
 	xTag := ctx.params.Tags[x]
 	yTag := ctx.params.Tags[y]
 
-	tagPair := tagPair{xTag, yTag, distance}
-	tagCount, _ := ctx.tagStats[tagPair]
-	ctx.tagStats[tagPair] = tagCount + 1
+	ctx.stats.notePair(x, y, xTag, yTag, distance)
 }
 
 func (ctx *selectionCtx) noteChain(chain []Node) {
@@ -202,7 +229,7 @@ func (ctx *selectionCtx) hasSlaves() bool {
 }
 
 func (ctx *selectionCtx) pairCost(x, y Node, distance int) chainCost {
-	stat := ctx.getStat(x, y, distance)
+	stat := ctx.getSlaveStat(x, y, distance)
 	tagStat := ctx.getTagStat(x, y, distance)
 
 	xTag := ctx.params.Tags[x]
@@ -212,13 +239,6 @@ func (ctx *selectionCtx) pairCost(x, y Node, distance int) chainCost {
 	raw := stat*100 + tagStat*30
 
 	return chainCost{raw, viol}
-}
-
-func (ctx *selectionCtx) tripleCost(x, y, z Node) chainCost {
-	xzCost := ctx.pairCost(x, z, 1)
-	yzCost := ctx.pairCost(y, z, 0)
-
-	return yzCost.plus(xzCost.div(2))
 }
 
 func (ctx *selectionCtx) requiredTags() (result []Tag) {
@@ -256,14 +276,14 @@ func (ctx *selectionCtx) availableSlaves() (result []Node) {
 	return
 }
 
-func (_ *selectionCtx) restoreChain(parent [][][]int,
-	nodes []Node, t, i, j int) (chain []Node) {
+func (_ *selectionCtx) restoreChain(parent [][]int,
+	nodes []Node, t, i int) (chain []Node) {
 
 	chain = make([]Node, t+1)
 
 	for t >= 0 {
-		chain[t] = nodes[j]
-		i, j = parent[t][i][j], i
+		chain[t] = nodes[i]
+		i = parent[t][i]
 		t--
 	}
 
@@ -334,88 +354,82 @@ func (ctx *selectionCtx) nextBestChain() (result []Node) {
 	candidates = append(candidates, ctx.master)
 	numCandidates := len(candidates)
 
-	cost := make([][][]chainCost, ctx.params.NumReplicas)
-	parent := make([][][]int, ctx.params.NumReplicas)
+	cost := make([][]chainCost, ctx.params.NumReplicas)
+	parent := make([][]int, ctx.params.NumReplicas)
 
 	for i := range cost {
-		cost[i] = make([][]chainCost, numCandidates)
-		parent[i] = make([][]int, numCandidates)
-
-		for j := range cost[i] {
-			cost[i][j] = make([]chainCost, numCandidates)
-			parent[i][j] = make([]int, numCandidates)
-		}
+		cost[i] = make([]chainCost, numCandidates)
+		parent[i] = make([]int, numCandidates)
 	}
 
 	for i, node := range candidates {
-		for j, otherNode := range candidates {
-			if node == ctx.master && otherNode != ctx.master {
-				cost[0][i][j] = ctx.pairCost(ctx.master, otherNode, 0)
-			} else {
-				cost[0][i][j] = inf
-			}
-		}
+		cost[0][i] = ctx.pairCost(ctx.master, node, 0)
 	}
 
-	isFeasible := func(t, i, j, k int) bool {
-		chain := ctx.restoreChain(parent, candidates, t-1, k, i)
-		chain = append(chain, candidates[j])
-
+	isFeasible := func(chain []Node) bool {
 		return ctx.isFeasibleChain(requiredTags, requiredNodes, chain)
 	}
 
 	for t := 1; t < ctx.params.NumReplicas; t++ {
-		for i, iNode := range candidates {
-			for j, jNode := range candidates {
-				min := inf
-				var minCount int
+		for i, node := range candidates {
+			min := inf
+			var minCount int
 
-				for k, kNode := range candidates {
-					if cost[t-1][k][i] == inf || !isFeasible(t, i, j, k) {
-						continue
-					}
+			for j, _ := range candidates {
+				c := cost[t-1][j]
 
-					c := cost[t-1][k][i]
-					c = c.plus(ctx.tripleCost(kNode, iNode, jNode))
-
-					if c.less(min) {
-						min = c
-						minCount = 1
-
-						parent[t][i][j] = k
-					} else if c == min {
-						minCount++
-
-						if rand.Intn(minCount) == 0 {
-							parent[t][i][j] = k
-						}
-					}
+				if c == inf {
+					continue
 				}
 
-				cost[t][i][j] = min
+				chain := ctx.restoreChain(parent, candidates, t-1, j)
+				chain = append(chain, candidates[i])
+				if !isFeasible(chain) {
+					continue
+				}
+
+				for d := 0; d < t; d++ {
+					other := chain[t-d-1]
+					c = c.plus(ctx.pairCost(other, node, d))
+				}
+				c = c.plus(ctx.pairCost(ctx.master, node, t))
+
+				if c.less(min) {
+					min = c
+					minCount = 1
+
+					parent[t][i] = j
+				} else if c == min {
+					minCount++
+
+					if rand.Intn(minCount) == 0 {
+						parent[t][i] = j
+					}
+				}
 			}
+
+			cost[t][i] = min
 		}
 	}
 
 	t := ctx.params.NumReplicas - 1
 	min := inf
-	iMin, jMin := -1, -1
+	iMin := -1
 
 	for i := range candidates {
-		for j := range candidates {
-			c := cost[t][i][j]
-			if c.less(min) {
-				min = c
-				iMin, jMin = i, j
-			}
+		c := cost[t][i]
+		if c.less(min) {
+			min = c
+			iMin = i
 		}
 	}
 
-	if iMin == -1 || jMin == -1 {
+	if iMin == -1 {
 		panic("cannot happen")
 	}
 
-	result = ctx.restoreChain(parent, candidates, t, iMin, jMin)
+	result = ctx.restoreChain(parent, candidates, t, iMin)
+
 	return
 }
 
@@ -445,10 +459,12 @@ func buildVbmap(r R) (vbmap Vbmap) {
 		}
 	}
 
+	stats := makePairStats()
+
 	vbucket := 0
 	for i, row := range r.Matrix {
 		vbs := nodeVbs[i]
-		ctx := makeSelectionCtx(params, Node(i), vbs)
+		ctx := makeSelectionCtx(params, Node(i), vbs, stats)
 
 		for s, count := range row {
 			if count != 0 {
@@ -592,13 +608,28 @@ func tryBuildR(params VbmapParams, gen RIGenerator,
 func VbmapGenerate(params VbmapParams, gen RIGenerator,
 	searchParams SearchParams) (vbmap Vbmap, err error) {
 
+	start := time.Now()
+
 	ri, r, err := tryBuildR(params, gen, searchParams)
 	if err != nil {
 		return nil, err
 	}
 
+	dt := time.Since(start)
+	diag.Printf("Generated matrix R in %s (wall clock)", dt)
+
 	diag.Printf("Generated topology:\n%s", ri.String())
 	diag.Printf("Final map R:\n%s", r.String())
 
-	return buildVbmap(r), nil
+	vbmap_start := time.Now()
+
+	vbmap = buildVbmap(r)
+
+	dt = time.Since(vbmap_start)
+	diag.Printf("Built vbucket map from R in %s (wall clock)", dt)
+
+	dt = time.Since(start)
+	diag.Printf("Spent %s overall on vbucket map generation (wall clock)", dt)
+
+	return
 }
