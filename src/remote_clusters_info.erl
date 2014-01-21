@@ -1187,7 +1187,6 @@ remote_bucket_with_bucket(BucketObject, OrigRemoteCluster,
     BucketNodes = lists:map(fun props_to_remote_node/1, BucketNodeProps),
 
     RemoteNodes = lists:usort(PoolNodes ++ BucketNodes),
-    RemoteNodes = lists:usort(BucketNodes),
     RemoteCluster = OrigRemoteCluster#remote_cluster{nodes=RemoteNodes},
 
     Version = get_oldest_node_version(PoolNodeProps),
