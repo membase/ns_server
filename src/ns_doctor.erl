@@ -663,12 +663,12 @@ build_recovery_task(PoolId) ->
                   ["pools", PoolId, "buckets", Bucket, "recoveryStatus"],
                   [{recovery_uuid, RecoveryUUID}]),
 
-            [[{type, recovery},
-              {bucket, list_to_binary(Bucket)},
-              {uuid, RecoveryUUID},
-              {recommendedRefreshPeriod, 10.0},
+            [{struct, [{type, recovery},
+                       {bucket, list_to_binary(Bucket)},
+                       {uuid, RecoveryUUID},
+                       {recommendedRefreshPeriod, 10.0},
 
-              {stopURI, StopURI},
-              {commitVBucketURI, CommitURI},
-              {recoveryStatusURI, RecoveryStatusURI}]]
+                       {stopURI, StopURI},
+                       {commitVBucketURI, CommitURI},
+                       {recoveryStatusURI, RecoveryStatusURI}]}]
     end.
