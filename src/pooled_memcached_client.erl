@@ -14,6 +14,22 @@
 find_missing_revs(DestRef, Vb, IdRevs) ->
     execute(DestRef, fun find_missing_revs_inner/3, [Vb, IdRevs]).
 
+send_batch({batch_socket, Socket}, Data) ->
+    BatchBytes = iolist_size(Data),
+    BatchReqs = length(Data),
+    system_stats_collector:add_histo(xdcr_batch_bytes, BatchBytes),
+    system_stats_collector:add_histo(xdcr_batch_reqs, BatchReqs),
+    Data1 = [<<BatchBytes:32/big, BatchReqs:32/big>> | Data],
+    ok = prim_inet:send(Socket, Data1);
+send_batch(Socket, Data) ->
+    ok = prim_inet:send(Socket, Data).
+
+extract_recv_socket({batch_socket, S}) ->
+    S;
+extract_recv_socket(S) ->
+    S.
+
+
 find_missing_revs_inner(S, Vb, IdRevs) ->
     SenderPid = spawn_link(
                   fun () ->
@@ -23,9 +39,9 @@ find_missing_revs_inner(S, Vb, IdRevs) ->
                                       E = #mc_entry{key = Key},
                                       mc_binary:encode(req, H, E)
                                   end || {Key, _Rev} <- IdRevs],
-                          ok = prim_inet:send(S, Data)
+                          send_batch(S, Data)
                   end),
-    RV = fetch_missing_revs_loop(S, IdRevs, [], []),
+    RV = fetch_missing_revs_loop(extract_recv_socket(S), IdRevs, [], []),
     erlang:unlink(SenderPid),
     erlang:exit(SenderPid, kill),
     misc:wait_for_process(SenderPid, infinity),
@@ -69,7 +85,7 @@ bulk_set_metas(DestRef, Vb, DocsList) ->
 bulk_set_metas_inner(S, Vb, DocsList) ->
     RecverPid = erlang:spawn_link(erlang, apply, [fun bulk_set_metas_recv_replies/3, [S, self(), length(DocsList)]]),
     Data = [encode_single_set_meta(Vb, Doc) || Doc <- DocsList],
-    ok = prim_inet:send(S, Data),
+    send_batch(S, Data),
     receive
         {RecverPid, RV} ->
             {ok, RV}
@@ -93,7 +109,7 @@ encode_single_set_meta(Vb,
     mc_binary:encode(req, McHeader, McBody).
 
 bulk_set_metas_recv_replies(S, Parent, Count) ->
-    RVs = bulk_set_metas_replies_loop(S, Count, []),
+    RVs = bulk_set_metas_replies_loop(extract_recv_socket(S), Count, []),
     Parent ! {self(), RVs}.
 
 bulk_set_metas_replies_loop(_S, 0, Acc) ->
