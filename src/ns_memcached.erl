@@ -120,6 +120,9 @@
          set_cluster_config/2,
          get_random_key/1]).
 
+%% for ns_memcached_sockets_pool only
+-export([connect/0]).
+
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
 
@@ -264,14 +267,28 @@ handle_call(sync_bucket_config = Msg, _From, State) ->
     StartTS = os:timestamp(),
     handle_info(check_config, State),
     verify_report_long_call(StartTS, StartTS, State, Msg, {reply, ok, State});
-handle_call({wait_for_checkpoint_persistence, VBucket, CheckpointId}, From, State) ->
-    proc_lib:spawn_link(erlang, apply, [fun perform_wait_for_checkpoint_persistence/5,
-                                        [self(), VBucket, CheckpointId, From, State]]),
-    {noreply, State};
 handle_call(Msg, From, State) ->
     StartTS = os:timestamp(),
     NewState = queue_call(Msg, From, StartTS, State),
     {noreply, NewState}.
+
+perform_very_long_call(Fun, Bucket) ->
+    misc:executing_on_new_process(
+      fun () ->
+              case ns_memcached_sockets_pool:take_socket(Bucket) of
+                  {ok, Sock} ->
+                      case Fun(Sock) of
+                          {reply, R} ->
+                              ns_memcached_sockets_pool:put_socket(Sock),
+                              R;
+                          {compromised_reply, R} ->
+                              ?log_warning("Call compromised our connection. Abandon pool entry."),
+                              R
+                      end;
+                  Error ->
+                      Error
+              end
+      end).
 
 verify_report_long_call(StartTS, ActualStartTS, State, Msg, RV) ->
     try
@@ -299,13 +316,6 @@ verify_report_long_call(StartTS, ActualStartTS, State, Msg, RV) ->
                 ok
         end
     end.
-
-%% for wait_for_checkpoint_persistence we just always establish new connection
-perform_wait_for_checkpoint_persistence(Parent, VBucket, CheckpointId, From, State0) ->
-    #state{sock = Sock} = do_worker_init(State0),
-    RV = mc_client_binary:wait_for_checkpoint_persistence(Sock, VBucket, CheckpointId),
-    erlang:unlink(Parent),
-    gen_server:reply(From, RV).
 
 %% anything effectful is likely to be heavy
 assign_queue({delete_vbucket, _}) -> #state.very_heavy_calls_queue;
@@ -1328,7 +1338,10 @@ disable_traffic(Bucket, Timeout) ->
 
 -spec wait_for_checkpoint_persistence(bucket_name(), vbucket_id(), checkpoint_id()) -> ok | mc_error().
 wait_for_checkpoint_persistence(Bucket, VBucketId, CheckpointId) ->
-    gen_server:call(server(Bucket), {wait_for_checkpoint_persistence, VBucketId, CheckpointId}, infinity).
+    perform_very_long_call(
+      fun (Sock) ->
+              {reply, mc_client_binary:wait_for_checkpoint_persistence(Sock, VBucketId, CheckpointId)}
+      end, Bucket).
 
 -spec get_tap_docs_estimate(bucket_name(), vbucket_id(), binary()) ->
                                    {ok, {non_neg_integer(), non_neg_integer(), binary()}}.

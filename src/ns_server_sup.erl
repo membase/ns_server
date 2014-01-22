@@ -179,6 +179,9 @@ child_specs() ->
       {xdc_rep_manager, start_link, []},
       permanent, 30000, worker, []},
 
+     {ns_memcached_sockets_pool, {ns_memcached_sockets_pool, start_link, []},
+      permanent, 1000, worker, []},
+
      {ns_bucket_worker_sup, {ns_bucket_worker_sup, start_link, []},
       permanent, infinity, supervisor, [ns_bucket_worker_sup]},
 
