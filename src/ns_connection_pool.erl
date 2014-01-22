@@ -98,14 +98,11 @@ connection_count(PidOrName) ->
 %% @spec (PoolPidOrName, Destination) -> Count
 %%    PoolPidOrName = pid() | atom()
 %%    Destination = term()
-%%    Host = string()
-%%    Port = integer()
-%%    Ssl = boolean()
 %%    Count = integer()
 %% @doc Returns the number of active connections to the specific
 %% `Destination' maintained by the httpc manager.
 %% @end
--spec connection_count(pid() | atom(), {string(), pos_integer(), boolean()}) ->
+-spec connection_count(pid() | atom(), term()) ->
     non_neg_integer().
 connection_count(PidOrName, Destination) ->
     gen_server:call(PidOrName, {connection_count, Destination}).
@@ -311,7 +308,7 @@ cancel_timer(Timer, Socket) ->
         _     -> ok
     end.
 
-add_to_queue({_Host, _Port, _Ssl} = Dest, From, Queues) ->
+add_to_queue(Dest, From, Queues) ->
     case dict:find(Dest, Queues) of
         error ->
             dict:store(Dest, queue:in(From, queue:new()), Queues);
@@ -319,7 +316,7 @@ add_to_queue({_Host, _Port, _Ssl} = Dest, From, Queues) ->
             dict:store(Dest, queue:in(From, Q), Queues)
     end.
 
-queue_out({_Host, _Port, _Ssl} = Dest, Queues) ->
+queue_out(Dest, Queues) ->
     case dict:find(Dest, Queues) of
         error ->
             empty;
