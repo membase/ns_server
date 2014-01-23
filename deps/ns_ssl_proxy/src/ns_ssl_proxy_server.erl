@@ -23,6 +23,8 @@
 -define(PROXY_RESPONSE_TIMEOUT, 60000).
 
 -include("ns_common.hrl").
+-include("mc_entry.hrl").
+-include("mc_constants.hrl").
 
 start_link(Socket, downstream) ->
     Pid = proc_lib:spawn_link(?MODULE, start_downstream, [Socket]),
@@ -37,7 +39,6 @@ start_upstream(Socket) ->
 
     ?log_debug("Got payload: ~p", [KV]),
 
-    Port = proplists:get_value(<<"port">>, KV),
     ProxyHost = proplists:get_value(<<"proxyHost">>, KV),
     ProxyPort = proplists:get_value(<<"proxyPort">>, KV),
 
@@ -69,14 +70,20 @@ start_upstream(Socket) ->
     %% b) it's only useful if attacker
     %% can ask victim to send something
     %% predictable
-    SSLOpts = [{ciphers, [Triple || {_E, Ci, _H} = Triple <- ssl:cipher_suites(),
-                                    Ci =:= rc4_128 orelse Ci =:= aes_128_cbc]}
-               | VerifyOpts],
+    SSLOpts = case os:getenv("COUCHBASE_WANT_ARCFOUR") of
+                  false -> [{ciphers, [Triple || {_E, Ci, _H} = Triple <- ssl:cipher_suites(),
+                                                 Ci =:= rc4_128 orelse Ci =:= aes_128_cbc]}
+                            | VerifyOpts];
+                  _ ->
+                      [{ciphers, [Triple || {_E, Ci, _H} = Triple <- ssl:cipher_suites(),
+                                            Ci =:= rc4_128]}
+                       | VerifyOpts]
+              end,
     {ok, SSLSocket} = ssl:connect(PlainSocket, SSLOpts),
 
     ?log_debug("Got ssl connection"),
 
-    send_initial_req(SSLSocket, Port),
+    send_initial_req(SSLSocket, KV),
 
     ?log_debug("send payload and reading reply"),
 
@@ -123,13 +130,127 @@ start_downstream(SSLSocket) ->
 
     ?log_debug("Replied back ok"),
 
-    erlang:process_flag(trap_exit, true),
-    proc_lib:spawn_link(?MODULE, loop_plain_to_ssl, [Socket, SSLSocket, self()]),
-    proc_lib:spawn_link(?MODULE, loop_ssl_to_plain, [Socket, SSLSocket, self()]),
-    wait_and_close_sockets(Socket, SSLSocket).
 
-send_initial_req(Socket, Port) ->
-    ns_ssl:send_json(Socket, {[{port, Port}]}).
+    case {proplists:get_value(<<"bucket">>, KV),
+          proplists:get_value(<<"password">>, KV)} of
+        {undefined, _} ->
+            erlang:process_flag(trap_exit, true),
+            proc_lib:spawn_link(?MODULE, loop_plain_to_ssl, [Socket, SSLSocket, self()]),
+            proc_lib:spawn_link(?MODULE, loop_ssl_to_plain, [Socket, SSLSocket, self()]),
+            wait_and_close_sockets(Socket, SSLSocket);
+        {Bucket, Password} ->
+            ?log_debug("Got bucket and password"),
+            do_auth(Socket, Bucket, Password),
+            inet:setopts(Socket, [{active, true}]),
+            requests_loop(Socket, SSLSocket)
+    end.
+
+do_auth(Socket, Bucket, Password) ->
+    AuthEntry = #mc_entry{key = <<"PLAIN">>,
+                          data = <<""/binary, 0:8,
+                                   Bucket/binary, 0:8,
+                                   Password/binary>>},
+    ok = mc_binary:send(Socket, req,
+                        #mc_header{opcode = ?CMD_SASL_AUTH}, AuthEntry),
+    {ok, #mc_header{status=?SUCCESS}, _} = mc_binary:recv(Socket, res, infinity),
+    ok.
+
+
+ssl_passive_recv(SSLSocket) ->
+    ssl:setopts(SSLSocket, [{active, once}]),
+    receive
+        {ssl, SSLSocket, Data} ->
+            Data;
+        {ssl_closed, SSLSocket} ->
+            closed;
+        {ssl_error, Socket, Reason} ->
+            ?log_debug("ssl socket (~p) error: ~p", [Socket, Reason]),
+            closed
+    end.
+
+requests_loop(Socket, SSLSocket) ->
+    case ssl_passive_recv(SSLSocket) of
+        closed ->
+            %% it'll automagically close memcached socket
+            erlang:exit(normal);
+        Data ->
+            ok = requests_loop_with_data(Socket, SSLSocket, Data),
+            requests_loop(Socket, SSLSocket)
+    end.
+
+requests_loop_with_data(Socket, SSLSocket, Data) ->
+    case Data of
+        <<BatchBytes:32/big, BatchReqs:32/big, RestData0/binary>> ->
+            case RestData0 of
+                <<>> -> ok;
+                _ ->
+                    %% we're sending stuff to memcached as soon as
+                    %% possible to make it start handling batch as soon
+                    %% as possible
+                    ok = prim_inet:send(Socket, RestData0)
+            end,
+            %% do we have enough stuff ?
+            case BatchBytes - erlang:size(RestData0) of
+                0 ->
+                    RestData0,
+                    requests_loop_pipe_replies(Socket, SSLSocket, BatchReqs, [], <<>>);
+                MoreSize when MoreSize > 0 ->
+                    {ok, MoreData} = ssl:recv(SSLSocket, MoreSize),
+                    ok = prim_inet:send(Socket, MoreData),
+                    requests_loop_pipe_replies(Socket, SSLSocket, BatchReqs, [], <<>>);
+                _ ->
+                    %% somebody got multiple batches outstanding on
+                    %% the wire. We don't expect it and therefore
+                    %% handle it in simplest possible way
+                    <<FirstBatchData:(BatchBytes)/binary, RestBatchData/binary>> = RestData0,
+                    ok = prim_inet:send(Socket, FirstBatchData),
+                    requests_loop_pipe_replies(Socket, SSLSocket, BatchReqs, [], <<>>),
+                    requests_loop_with_data(Socket, SSLSocket, RestBatchData)
+            end;
+        _ ->
+            %% we don't even have a header.
+            case ssl_passive_recv(SSLSocket) of
+                closed ->
+                    ?log_warning("Got downstream ssl close before having full batch"),
+                    erlang:exit(normal);
+                MoreData ->
+                    requests_loop_with_data(Socket, SSLSocket, <<Data/binary,MoreData/binary>>)
+            end
+    end.
+
+recv_with_data(Sock, Len, Data) ->
+    DataSize = erlang:size(Data),
+    case DataSize >= Len of
+        true ->
+            RV = binary_part(Data, 0, Len),
+            Rest = binary_part(Data, Len, DataSize-Len),
+            {ok, RV, Rest};
+        false ->
+            receive
+                {tcp, Sock, NewData} ->
+                    recv_with_data(Sock, Len, <<Data/binary, NewData/binary>>);
+                {tcp_closed, Sock} ->
+                    {error, closed}
+            end
+    end.
+
+
+requests_loop_pipe_replies(_Socket, SSLSocket, 0 = _BatchReqs, Replies, Data) ->
+    {empty_data, <<>>} = {empty_data, Data},
+    ok = ssl:send(SSLSocket, lists:reverse(Replies));
+requests_loop_pipe_replies(Socket, SSLSocket, BatchReqs, Replies, Data) ->
+    {ok, Hdr, Rest} = recv_with_data(Socket, ?HEADER_LEN, Data),
+    <<?RES_MAGIC:8, _Opcode:8, KeyLen:16, ExtLen:8,
+      _DataType:8, _Status:16, BodyLen:32,
+      _Opaque:32, _CAS:64>> = Hdr,
+    CmdLen = erlang:max(ExtLen + KeyLen, BodyLen),
+    {ok, Body, BodyRest} = recv_with_data(Socket, CmdLen, Rest),
+    NewReplies = [[Hdr | Body] | Replies],
+    requests_loop_pipe_replies(Socket, SSLSocket,
+                               BatchReqs - 1, NewReplies, BodyRest).
+
+send_initial_req(Socket, KV) ->
+    ns_ssl:send_json(Socket, {KV}).
 
 send_reply(Socket, Type) ->
     ns_ssl:send_json(Socket, {[{type, Type}]}).

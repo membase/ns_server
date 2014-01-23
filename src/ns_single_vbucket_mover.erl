@@ -94,7 +94,7 @@ wait_backfill_determination(Replicators) ->
       fun () ->
               RVs = misc:parallel_map(
                       fun ({_DNode, Pid}) ->
-                              ebucketmigrator_srv:had_backfill(Pid, 30000)
+                              ebucketmigrator_srv:had_backfill(Pid, infinity)
                       end, Replicators, infinity),
               ?log_debug("Had backfill rvs: ~p(~p)", [RVs, Replicators]),
               %% TODO: nicer error here instead of badmatch

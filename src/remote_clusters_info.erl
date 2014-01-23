@@ -916,7 +916,6 @@ remote_cluster(Cluster) ->
                   undefined ->
                       {ok, hostname_to_remote_node(Hostname)};
                   _ ->
-                      %% TODO: more error handling here. Handle 404
                       fetch_remote_node_record(Host, Port)
               end,
 
@@ -926,6 +925,9 @@ remote_cluster(Cluster) ->
                                                       Username, Password,
                                                       true),
             do_remote_cluster(JsonGet, Cert);
+        {error, rest_error, _Msg, {bad_status, FourX, _Body} = Status} when FourX =:= 404; FourX =:= 403 ->
+            Msg = <<"Remote cluster does not support xdcr over ssl. Entire remote cluster needs to be 2.5+ enterprise edition">>,
+            {error, rest_error, Msg, Status};
         Error ->
             Error
     end.
@@ -1185,7 +1187,6 @@ remote_bucket_with_bucket(BucketObject, OrigRemoteCluster,
     BucketNodes = lists:map(fun props_to_remote_node/1, BucketNodeProps),
 
     RemoteNodes = lists:usort(PoolNodes ++ BucketNodes),
-    RemoteNodes = lists:usort(BucketNodes),
     RemoteCluster = OrigRemoteCluster#remote_cluster{nodes=RemoteNodes},
 
     Version = get_oldest_node_version(PoolNodeProps),

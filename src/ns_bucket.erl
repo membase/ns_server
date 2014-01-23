@@ -616,6 +616,12 @@ is_port_free(BucketName, Port, Config) ->
                        _ ->
                            proplists:get_value(port, menelaus_web:webconfig(Config))
                    end,
+    {value, UpstreamProxyPort} = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}),
+    {value, DownstreamProxyPort} = ns_config:search(Config, {node, node(), ssl_proxy_downstream_port}),
+
+    {value, SSLCapiPort} = ns_config:search(Config, {node, node(), ssl_capi_port}),
+    {value, SSLRestPort} = ns_config:search(Config, {node, node(), ssl_rest_port}),
+
     Port =/= ns_config:search_node_prop(Config, memcached, port)
         andalso Port =/= ns_config:search_node_prop(Config, memcached, dedicated_port)
         andalso Port =/= ns_config:search_node_prop(Config, moxi, port)
@@ -624,7 +630,11 @@ is_port_free(BucketName, Port, Config) ->
         andalso Port =/= TakenWebPort
         andalso Port =/= 4369 %% default epmd port
         andalso is_not_a_bucket_port(BucketName, Port)
-        andalso is_not_a_kernel_port(Port).
+        andalso is_not_a_kernel_port(Port)
+        andalso Port =/= SSLCapiPort
+        andalso Port =/= SSLRestPort
+        andalso Port =/= UpstreamProxyPort
+        andalso Port =/= DownstreamProxyPort.
 
 validate_bucket_config(BucketName, NewConfig) ->
     case is_valid_bucket_name(BucketName) of

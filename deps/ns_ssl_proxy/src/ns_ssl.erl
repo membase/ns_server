@@ -15,7 +15,7 @@
 
 -module(ns_ssl).
 
--export([establish_ssl_proxy_connection/5]).
+-export([establish_ssl_proxy_connection/7]).
 
 -export([receive_json/2, receive_binary_payload/2, send_json/2,
          cert_pem_to_ssl_verify_options/1]).
@@ -67,10 +67,19 @@ verify_fun(Cert, Event, Etalon) ->
             Resp
     end.
 
-establish_ssl_proxy_connection(Socket, Host, Port, ProxyPort, CertPEM) ->
-    send_json(Socket, {[{proxyHost, list_to_binary(Host)},
-                        {proxyPort, ProxyPort},
-                        {port, Port}]}),
+establish_ssl_proxy_connection(Socket, Host, Port, ProxyPort, CertPEM, Bucket, Password) ->
+    Payload0 = [{proxyHost, list_to_binary(Host)},
+                {proxyPort, ProxyPort},
+                {port, Port}],
+    Payload = case Bucket of
+                  undefined ->
+                      Payload0;
+                  _ ->
+                      [{bucket, list_to_binary(Bucket)},
+                       {password, list_to_binary(Password)}
+                       | Payload0]
+              end,
+    send_json(Socket, {Payload}),
     send_cert(Socket, CertPEM),
     Reply = receive_json(Socket, infinity),
     <<"ok">> = proplists:get_value(<<"type">>, Reply),

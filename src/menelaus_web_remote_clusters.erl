@@ -166,7 +166,7 @@ validate_remote_cluster_params(Params, ExistingClusters) ->
                               CertBin = list_to_binary(Cert),
                               OkCert = case (catch ns_server_cert:validate_cert(CertBin)) of
                                            {ok, [_]} -> true;
-                                           {ok, _} -> <<"found multiple certificates instead">>;
+                                           {ok, [_|_]} -> <<"found multiple certificates instead">>;
                                            {error, non_cert_entries, _} ->
                                                <<"found non-certificate entries">>;
                                            _ ->
@@ -352,7 +352,8 @@ validate_remote_cluster(Cluster, OtherClusters) ->
         {error, not_capable, Msg} ->
             Errors = [{<<"_">>, Msg}],
             {errors, 400, Errors};
-        _ ->
+        OtherError ->
+            ?log_error("Got unexpected error while fetching remote cluster info: ~p", [OtherError]),
             Errors = [{<<"_">>, <<"Unexpected error occurred. See logs for details.">>}],
             {errors, 500, Errors}
     end.

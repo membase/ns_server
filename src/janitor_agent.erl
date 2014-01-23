@@ -244,35 +244,34 @@ apply_new_bucket_config_star(Bucket, Servers, Zombies, NewBucketConfig, IgnoredV
 
     NodeMaps1 =
         lists:foldl(
-          fun ({VBucket, [Master | _]}, Acc) ->
-                  case lists:member(Master, AliveServers) of
-                      true ->
-                          NodeMap0 = dict:fetch(Master, Acc),
-                          NodeMap1 = array:set(VBucket, [Master], NodeMap0),
-                          dict:store(Master, NodeMap1, Acc);
-                      false ->
-                          Acc
-                  end
-          end, NodeMaps0, misc:enumerate(Map, 0)),
+          fun ({VBucket, [Master | Replicas]}, Acc) ->
+                  Acc1 = case lists:member(Master, AliveServers) of
+                             true ->
+                                 NodeMap0 = dict:fetch(Master, Acc),
+                                 NodeMap1 = array:set(VBucket, [Master], NodeMap0),
+                                 dict:store(Master, NodeMap1, Acc);
+                             false ->
+                                 Acc
+                         end,
 
-    Replicas = ns_bucket:map_to_replicas_star(Map),
-    NodeMaps2 =
-        lists:foldl(
-          fun ({Src, Dst, VBucket}, Acc) ->
-                  case lists:member(Dst, AliveServers) of
-                      true ->
-                          NodeMap0 = dict:fetch(Dst, Acc),
-                          NodeMap1 = array:set(VBucket, [Src, Dst], NodeMap0),
-                          dict:store(Dst, NodeMap1, Acc);
-                      false ->
-                          Acc
-                  end
-          end, NodeMaps1, Replicas),
+                  lists:foldl(
+                    fun (Dst, Acc2) ->
+                            case lists:member(Dst, AliveServers) of
+                                true ->
+                                    NodeMap2 = dict:fetch(Dst, Acc2),
+                                    %% note that master may be undefined here;
+                                    NodeMap3 = array:set(VBucket, [Master, Dst], NodeMap2),
+                                    dict:store(Dst, NodeMap3, Acc2);
+                                false ->
+                                    Acc2
+                            end
+                    end, Acc1, Replicas)
+          end, NodeMaps0, misc:enumerate(Map, 0)),
 
     NodeMaps = dict:map(
                  fun (_, NodeMapArr) ->
                          lists:keystore(map, 1, NewBucketConfig, {map, array:to_list(NodeMapArr)})
-                 end, NodeMaps2),
+                 end, NodeMaps1),
 
     RV1 = misc:parallel_map(
             fun (Node) ->

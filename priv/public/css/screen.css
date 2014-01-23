@@ -401,9 +401,9 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .cluster_settings_container .list_button {float: none; margin-left: 283px;}
 .cluster_settings_container label,
 .cluster_settings_container input {-moz-inline-stack; display: inline-block; zoom: 1; *display: inline; vertical-align: middle;}
-.cluster_settings_container label {width: 150px;}
-.cluster_settings_container .error-container {margin-left: 150px;}
-.cluster_settings_container .row {margin: 10px 60px; line-height: 24px;}
+.cluster_settings_container label {padding-right: 5px;}
+.cluster_settings_container .error-container {margin-top: 5px;}
+.cluster_settings_container .row {margin: 5px 60px; line-height: 24px;}
 
 .certificate_section textarea {height: 187px; margin-left: 60px; width: 400px; font-size: 10px;}
 
@@ -1338,8 +1338,6 @@ input[type=number].size {width:4em;}
 .dynamic_when-roadmin .when-roadmin-hide-me {visibility: hidden!important;}
 .dynamic_when-roadmin .when-roadmin-avoid-me {display: none!important;}
 
-.account_management_form {padding: 10px 20px 30px;}
-
 .account_management_container fieldset {overflow: hidden;}
 .account_management_container label {display: block; padding: 5px 0;}
 .reset_roadmin_form label,
@@ -1351,7 +1349,6 @@ input[type=number].size {width:4em;}
 .account_management_container span.list_button {display: -moz-inline-stack; display: inline-block; zoom: 1; *display: inline; vertical-align: middle;}
 .account_management_container label span {width: 120px; text-align: right; margin-right: 5px;}
 .account_management_container label input {width: 200px; height: 20px;}
-.account_management_container button {margin-top: 20px; float: none; margin-left: 282px;}
 .account_management_container span.list_button {float: none; margin-left: 40px;}
 .account_management_container p {padding: 0 30px 10px; line-height: 25px;}
 .account_management_container .error {border: 1px solid red;}

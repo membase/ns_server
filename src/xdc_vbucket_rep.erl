@@ -713,11 +713,21 @@ start_replication(#rep_state{
             {ok, CurrRemoteBucket} ->
                 TgtURI0 = hd(dict:fetch(Vb, CurrRemoteBucket#remote_bucket.capi_vbucket_map)),
                 CertPEM = CurrRemoteBucket#remote_bucket.cluster_cert,
+                case Remote of
+                    #xdc_rep_xmem_remote{options = XMemRemoteOptions} ->
+                        case get_value(cert, XMemRemoteOptions) =:= CertPEM of
+                            true -> ok;
+                            false ->
+                                erlang:exit({cert_mismatch_restart, Id, Vb})
+                        end;
+                    _ ->
+                        ok
+                end,
                 {xdc_rep_utils:parse_rep_db(TgtURI0, [], [{xdcr_cert, CertPEM} | Options]), TgtURI0};
             Err ->
                 ?xdcr_error("Couldn't re-fetch remote bucket info for ~s (original url: ~s): ~p",
                             [TargetRef, misc:sanitize_url(OrigTgtURI), Err]),
-                erlang:exit({get_remove_bucket_failed, Err})
+                erlang:exit({get_remote_bucket_failed, Err})
         end,
     {ok, Target} = couch_api_wrap:db_open(TgtDB, []),
 

@@ -197,12 +197,15 @@ handle_call({find_missing, IdRevs}, _From,
 %% ----------- Pipelined Memached Ops --------------%%
 handle_call({find_missing_pipeline, IdRevs}, _From,
             #xdc_vb_rep_xmem_worker_state{vb = Vb, mcd_loc = McdDst} =  State) when McdDst =/= undefined ->
-    {ok, MissingRevs, ErrRevs} = pooled_memcached_client:find_missing_revs(McdDst, Vb, IdRevs),
-    [?xdcr_trace("Error! memcached error when fetching metadata from remote for key: ~p, "
-                 "just send the doc (msg: "
-                 "\"unexpected response from remote memcached (vb: ~p, error: ~p)\")",
-                 [Key, Vb, Error])
-     || {Error, {Key, _}} <- ErrRevs],
+    {ok, MissingRevs, Errors} = pooled_memcached_client:find_missing_revs(McdDst, Vb, IdRevs),
+    ErrRevs =
+        [begin
+             ?xdcr_trace("Error! memcached error when fetching metadata from remote for key: ~p, "
+                         "just send the doc (msg: "
+                         "\"unexpected response from remote memcached (vb: ~p, error: ~p)\")",
+                         [Key, Vb, Error]),
+             Pair
+         end || {Error, {Key, _} = Pair} <- Errors],
     {reply, {ok, ErrRevs ++ MissingRevs}, State};
 handle_call({find_missing_pipeline, IdRevs}, _From,
             #xdc_vb_rep_xmem_worker_state{vb = Vb,
