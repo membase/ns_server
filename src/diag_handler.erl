@@ -256,24 +256,7 @@ handle_just_diag(Req, Extra) ->
                         | menelaus_util:server_header()],
                    chunked}),
 
-    Nodes = ns_node_disco:nodes_actual(),
-    {Results, OldNodes} = grab_per_node_diag(Nodes),
-
-    handle_per_node_just_diag(Resp, Results),
-    handle_per_node_just_diag_old_nodes(Resp, OldNodes),
-
-    Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
-                         ns_bucket:get_buckets()),
-
-    Infos = [["nodes_info = ~p", menelaus_web:build_nodes_info()],
-             ["buckets = ~p", ns_config_log:sanitize(Buckets)],
-             ["logs:~n-------------------------------~n"]],
-
-    [begin
-         Text = io_lib:format(Fmt ++ "~n~n", Args),
-         Resp:write_chunk(list_to_binary(Text))
-     end || [Fmt | Args] <- Infos],
-
+    Resp:write_chunk(<<"logs:\n-------------------------------\n">>),
     lists:foreach(fun (#log_entry{node = Node,
                                   module = Module,
                                   code = Code,
@@ -290,6 +273,25 @@ handle_just_diag(Req, Extra) ->
                           catch _:_ -> ok
                           end
                   end, lists:keysort(#log_entry.tstamp, ns_log:recent())),
+    Resp:write_chunk(<<"-------------------------------\n\n\n">>),
+
+    Nodes = ns_node_disco:nodes_actual(),
+    {Results, OldNodes} = grab_per_node_diag(Nodes),
+
+    handle_per_node_just_diag(Resp, Results),
+    handle_per_node_just_diag_old_nodes(Resp, OldNodes),
+
+    Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
+                         ns_bucket:get_buckets()),
+
+    Infos = [["nodes_info = ~p", menelaus_web:build_nodes_info()],
+             ["buckets = ~p", ns_config_log:sanitize(Buckets)]],
+
+    [begin
+         Text = io_lib:format(Fmt ++ "~n~n", Args),
+         Resp:write_chunk(list_to_binary(Text))
+     end || [Fmt | Args] <- Infos],
+
     Resp.
 
 write_chunk_format(Resp, Fmt, Args) ->
