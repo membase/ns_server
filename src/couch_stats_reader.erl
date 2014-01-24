@@ -33,8 +33,6 @@
 
 -record(ns_server_couch_stats, {couch_docs_actual_disk_size,
                                 couch_views_actual_disk_size,
-                                couch_docs_disk_size,
-                                couch_docs_data_size,
                                 couch_views_disk_size,
                                 couch_views_data_size,
                                 per_ddoc_stats :: [per_ddoc_stats()]}).
@@ -85,7 +83,7 @@ handle_info(refresh_stats, #state{bucket = Bucket,
     MinFileSize = ns_config:search_node_prop(Config,
                                              compaction_daemon, min_file_size, 131072),
 
-    NewStats = grab_couch_stats(Bucket, Config, MinFileSize),
+    NewStats = grab_couch_stats(Bucket, MinFileSize),
     {ProcessedSamples, NewLastViewStats} = parse_couch_stats(TS, NewStats, LastTS,
                                                              LastViewStats, MinFileSize),
     ets:insert(server(Bucket), {stuff, ProcessedSamples}),
@@ -106,56 +104,6 @@ server(Bucket) ->
 fetch_stats(Bucket) ->
     [{_, CouchStats}] = ets:lookup(server(Bucket), stuff),
     {ok, CouchStats}.
-
-get_db_info_quick(VBucket) ->
-    case ets:lookup(couch_dbs_by_name, VBucket) of
-        [{_, MainPid}] ->
-            case (catch gen_server:call(MainPid, get_db)) of
-                {ok, Db} ->
-                    case (catch couch_db:get_db_info(Db)) of
-                        {ok, _} = RV ->
-                            RV;
-                        Error ->
-                            get_db_info_slow_with_error(VBucket, Error)
-                    end;
-                Error ->
-                    get_db_info_slow_with_error(VBucket, Error)
-            end;
-        [] ->
-            not_yet
-    end.
-
-get_db_info_slow_with_error(VBucket, Error) ->
-    ?log_debug("Quick db info failed for ~s: ~p", [VBucket, Error]),
-    get_db_info_slow(VBucket).
-
-get_db_info_slow(VBucket) ->
-    case couch_db:open_int(VBucket, []) of
-        {ok, Db} ->
-            try
-                couch_db:get_db_info(Db)
-            after
-                ok = couch_db:close(Db)
-            end;
-        Error ->
-            Error
-    end.
-
-vbuckets_aggregation_loop(_Bucket, DiskSize, DataSize, _VBucketBinaries = []) ->
-    {DiskSize, DataSize};
-vbuckets_aggregation_loop(Bucket, DiskSize, DataSize, [VBucketBin | RestVBucketBinaries]) ->
-    VBucket = iolist_to_binary([Bucket, <<"/">>, VBucketBin]),
-    case get_db_info_quick(VBucket) of
-        {ok, Info} ->
-            NewDiskSize = DiskSize + couch_util:get_value(disk_size, Info),
-            NewDataSize = DataSize + couch_util:get_value(data_size, Info),
-            vbuckets_aggregation_loop(Bucket, NewDiskSize, NewDataSize, RestVBucketBinaries);
-        not_yet ->
-            vbuckets_aggregation_loop(Bucket, DiskSize, DataSize, RestVBucketBinaries);
-        Why ->
-            ?log_debug("Failed to open vbucket: ~s (~p). Ignoring", [VBucketBin, Why]),
-            vbuckets_aggregation_loop(Bucket, DiskSize, DataSize, RestVBucketBinaries)
-    end.
 
 views_collection_loop_iteration(BinBucket, NameToStatsETS,  DDocId, MinFileSize) ->
     case (catch couch_set_view:get_group_data_size(
@@ -203,15 +151,9 @@ maybe_adjust_data_size(DataSize, DiskSize, MinFileSize) ->
             DataSize
     end.
 
--spec grab_couch_stats(bucket_name(), #config{}, integer()) -> #ns_server_couch_stats{}.
-grab_couch_stats(Bucket, Config, MinFileSize) ->
+-spec grab_couch_stats(bucket_name(), integer()) -> #ns_server_couch_stats{}.
+grab_couch_stats(Bucket, MinFileSize) ->
     BinBucket = ?l2b(Bucket),
-    {ok, BucketConfig} = ns_bucket:get_bucket(Bucket, Config),
-    VBucketIds = ns_bucket:all_node_vbuckets(BucketConfig),
-    {VBucketsDiskSize, VBucketsDataSize0} = vbuckets_aggregation_loop(BinBucket, 0, 0, [list_to_binary(integer_to_list(I)) || I <- VBucketIds]),
-
-    VBucketsDataSize = maybe_adjust_data_size(VBucketsDataSize0, VBucketsDiskSize,
-                                              MinFileSize * length(VBucketIds)),
 
     DDocIdList = capi_ddoc_replication_srv:fetch_ddoc_ids(BinBucket),
     ViewStats = collect_view_stats(BinBucket, DDocIdList, MinFileSize),
@@ -225,8 +167,6 @@ grab_couch_stats(Bucket, Config, MinFileSize) ->
 
     #ns_server_couch_stats{couch_docs_actual_disk_size = DocsActualDiskSize,
                            couch_views_actual_disk_size = ViewsActualDiskSize,
-                           couch_docs_disk_size = VBucketsDiskSize,
-                           couch_docs_data_size = VBucketsDataSize,
                            couch_views_disk_size = ViewsDiskSize,
                            couch_views_data_size = ViewsDataSize,
                            per_ddoc_stats = lists:sort(ViewStats)}.
@@ -260,14 +200,10 @@ diff_view_accesses_loop(_TSDelta, _LastVS, [] = _ViewStats) ->
 build_basic_couch_stats(CouchStats) ->
     #ns_server_couch_stats{couch_docs_actual_disk_size = DocsActualDiskSize,
                            couch_views_actual_disk_size = ViewsActualDiskSize,
-                           couch_docs_disk_size = VBucketsDiskSize,
-                           couch_docs_data_size = VBucketsDataSize,
                            couch_views_disk_size = ViewsDiskSize,
                            couch_views_data_size = ViewsDataSize} = CouchStats,
     [{couch_docs_actual_disk_size, DocsActualDiskSize},
      {couch_views_actual_disk_size, ViewsActualDiskSize},
-     {couch_docs_disk_size, VBucketsDiskSize},
-     {couch_docs_data_size, VBucketsDataSize},
      {couch_views_disk_size, ViewsDiskSize},
      {couch_views_data_size, ViewsDataSize}].
 
@@ -308,16 +244,12 @@ parse_couch_stats(TS, CouchStats, LastTS, LastViewsStats0, MinFileSize) ->
 basic_parse_couch_stats_test() ->
     CouchStatsRecord = #ns_server_couch_stats{couch_docs_actual_disk_size = 1,
                                               couch_views_actual_disk_size = 2,
-                                              couch_docs_disk_size = 3,
-                                              couch_docs_data_size = 4,
                                               couch_views_disk_size = 5,
                                               couch_views_data_size = 6,
                                               per_ddoc_stats = [{<<"a">>, 8, 9, 10},
                                                                 {<<"b">>, 11, 12, 13}]},
     ExpectedOut1Pre = [{couch_docs_actual_disk_size, 1},
                        {couch_views_actual_disk_size, 2},
-                       {couch_docs_disk_size, 3},
-                       {couch_docs_data_size, 4},
                        {couch_views_disk_size, 5},
                        {couch_views_data_size, 6},
                        {couch_views_ops, 0.0}]

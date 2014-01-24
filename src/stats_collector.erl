@@ -34,7 +34,8 @@
                 last_tap_counters,
                 last_timings_counters,
                 count = ?LOG_FREQ,
-                last_ts}).
+                last_ts,
+                min_files_size = undefined}).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,
@@ -48,6 +49,18 @@ start_link(Bucket) ->
 
 init(Bucket) ->
     ns_pubsub:subscribe_link(ns_tick_event),
+
+    Self = self(),
+    ns_pubsub:subscribe_link(
+      ns_config_events,
+      fun ({{node, Node, compaction_daemon}, _}) when node() =:= Node ->
+              Self ! config_changed;
+          ({buckets, _}) ->
+              Self ! config_changed;
+          (_) ->
+              ok
+      end),
+
     {ok, #state{bucket=Bucket}}.
 
 handle_call(Request, _From, State) ->
@@ -110,6 +123,8 @@ handle_info({tick, TS}, #state{bucket=Bucket} = State) ->
         false ->
             {noreply, State#state{count = State#state.count + 1}}
     end;
+handle_info(config_changed, State) ->
+    {noreply, State#state{min_files_size = undefined}};
 handle_info(_Msg, State) -> % Don't crash on delayed responses to calls
     {noreply, State}.
 
@@ -138,15 +153,31 @@ log_stats(TS, Bucket, RawStats) ->
                   TS,
                   Bucket, format_stats(RawStats)]).
 
+get_min_files_size(Bucket) ->
+    Config = ns_config:get(),
+    MinFileSize = ns_config:search_node_prop(Config,
+                                             compaction_daemon, min_file_size, 131072),
+    {ok, BucketConfig} = ns_bucket:get_bucket(Bucket, Config),
+
+    MinFileSize * length(ns_bucket:all_node_vbuckets(BucketConfig)).
+
 process_grabbed_stats(TS,
                       {PlainStats, TapStats, Timings, CouchStats, XDCStats},
                       #state{bucket = Bucket,
                              last_plain_counters = LastPlainCounters,
                              last_tap_counters = LastTapCounters,
                              last_timings_counters = LastTimingsCounters,
-                             last_ts = LastTS} = State) ->
+                             last_ts = LastTS,
+                             min_files_size = MinFilesSize0} = State) ->
+    MinFilesSize = case MinFilesSize0 of
+                       undefined ->
+                           get_min_files_size(Bucket);
+                       _ ->
+                           MinFilesSize0
+                   end,
     XDCValues = transform_xdc_stats(XDCStats),
-    {PlainValues, PlainCounters} = parse_plain_stats(TS, PlainStats, LastTS, LastPlainCounters),
+    {PlainValues, PlainCounters} = parse_plain_stats(TS, PlainStats, LastTS,
+                                                     LastPlainCounters, MinFilesSize),
     {TapValues, TapCounters} = parse_tapagg_stats(TS, TapStats, LastTS, LastTapCounters),
     {TimingValues, TimingsCounters} = parse_timings(TS, Timings, LastTS, LastTimingsCounters),
     %% Don't send event with undefined values
@@ -162,7 +193,8 @@ process_grabbed_stats(TS,
     State#state{last_plain_counters = PlainCounters,
                 last_tap_counters = TapCounters,
                 last_timings_counters = TimingsCounters,
-                last_ts = TS}.
+                last_ts = TS,
+                min_files_size = MinFilesSize}.
 
 terminate(_Reason, _State) ->
     ok.
@@ -267,12 +299,17 @@ extract_agg_tap_stats(KVs) ->
     lists:foldl(fun ({K, V}, Acc) -> extract_agg_stat(K, V, Acc) end,
                 #tap_stream_stats{}, KVs).
 
-mk_stats_dict_get(Dict) ->
-    fun (K) ->
-            case lists:keyfind(K, 1, Dict) of
-                {_, V} -> list_to_integer(binary_to_list(V));
-                false -> 0
-            end
+stats_dict_get(Stat, Stats) ->
+    case lists:keyfind(Stat, 1, Stats) of
+        false ->
+            0;
+        {Stat, V} ->
+            list_to_integer(binary_to_list(V))
+    end.
+
+mk_stats_dict_get(Stats) ->
+    fun (Stat) ->
+            stats_dict_get(Stat, Stats)
     end.
 
 parse_stats_raw(TS, Stats, LastCounters, LastTS, KnownGauges, KnownCounters) ->
@@ -318,10 +355,18 @@ parse_aggregate_tap_stats(AggTap) ->
                   tap_stream_stats_to_kvlist(<<"ep_tap_user_">>, UserStats),
                   tap_stream_stats_to_kvlist(<<"ep_tap_total_">>, TotalStats)]).
 
+maybe_adjust_data_size(DataSize, DiskSize, MinFileSize) ->
+    case DiskSize < MinFileSize of
+        true ->
+            DiskSize;
+        false ->
+            DataSize
+    end.
 
-parse_plain_stats(TS, PlainStats, LastTS, LastPlainCounters) ->
+parse_plain_stats(TS, PlainStats, LastTS, LastPlainCounters, MinFilesSize) ->
     {Values0, Counters} = parse_stats_raw(TS, PlainStats, LastPlainCounters, LastTS,
                                           [?STAT_GAUGES], [?STAT_COUNTERS]),
+    DiskSize = stats_dict_get(<<"ep_db_file_size">>, PlainStats),
     AggregateValues = [{ops, sum_stat_values(Values0, [cmd_get, cmd_set,
                                                        incr_misses, incr_hits,
                                                        decr_misses, decr_hits,
@@ -350,7 +395,12 @@ parse_plain_stats(TS, PlainStats, LastTS, LastPlainCounters) ->
                                                                  vb_pending_ops_update])},
                        {vb_total_queue_age, sum_stat_values(Values0, [vb_active_queue_age,
                                                                       vb_replica_queue_age,
-                                                                      vb_pending_queue_age])}
+                                                                      vb_pending_queue_age])},
+                       {couch_docs_disk_size, DiskSize},
+                       {couch_docs_data_size, maybe_adjust_data_size(
+                                                stats_dict_get(<<"ep_db_data_size">>,
+                                                               PlainStats),
+                                                DiskSize, MinFilesSize)}
                       ],
     Values = orddict:merge(fun (_K, _V1, V2) ->
                                    V2           % prefer aggregated value
