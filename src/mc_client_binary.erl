@@ -626,8 +626,13 @@ map_status(?ETMPFAIL) ->
 map_status(?MC_AUTH_ERROR) ->
     auth_error;
 map_status(?MC_AUTH_CONTINUE) ->
-    auth_continue.
-
+    auth_continue;
+map_status(?ERANGE) ->
+    erange;
+map_status(?ROLLBACK) ->
+    rollback;
+map_status(_) ->
+    unknown.
 
 -spec process_error_response(any()) ->
                                     mc_error().

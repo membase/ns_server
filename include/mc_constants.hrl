@@ -115,6 +115,8 @@
 -define(NOT_MY_VBUCKET,   16#07).
 -define(MC_AUTH_ERROR,    16#20).
 -define(MC_AUTH_CONTINUE, 16#21).
+-define(ERANGE,           16#22).
+-define(ROLLBACK,         16#23).
 -define(UNKNOWN_COMMAND,  16#81).
 -define(ENOMEM,           16#82).
 -define(NOT_SUPPORTED,    16#83).
