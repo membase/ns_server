@@ -88,6 +88,7 @@
          delete_vbucket/2, delete_vbucket/3,
          sync_delete_vbucket/2,
          get_vbucket/3,
+         get_vbucket_details_stats/2,
          host_port/1,
          host_port/2,
          host_port_str/1,
@@ -449,6 +450,21 @@ do_handle_call({sync_delete_vbucket, VBucket}, _From, #state{sock=Sock} = State)
     {reply, Reply, State};
 do_handle_call({get_vbucket, VBucket}, _From, State) ->
     Reply = mc_client_binary:get_vbucket(State#state.sock, VBucket),
+    {reply, Reply, State};
+do_handle_call({get_vbucket_details_stats, VBucket}, _From, State) ->
+    VBucketStr = integer_to_list(VBucket),
+    Prefix = list_to_binary(VBucketStr),
+    Reply = mc_binary:quick_stats(
+              State#state.sock,
+              iolist_to_binary([<<"vbucket-details ">>, VBucketStr]),
+              fun (<<"vb_", K/binary>>, V, Acc) ->
+                      case binary:split(K, [<<":">>]) of
+                          [Prefix, Key] ->
+                              [{binary_to_list(Key), binary_to_list(V)} | Acc];
+                          _ ->
+                              Acc
+                      end
+              end, []),
     {reply, Reply, State};
 do_handle_call(list_buckets, _From, State) ->
     Reply = mc_client_binary:list_buckets(State#state.sock),
@@ -990,6 +1006,11 @@ sync_delete_vbucket(Bucket, VBucket) ->
                          {ok, vbucket_state()} | mc_error().
 get_vbucket(Node, Bucket, VBucket) ->
     do_call({server(Bucket), Node}, {get_vbucket, VBucket}, ?TIMEOUT).
+
+-spec get_vbucket_details_stats(bucket_name(), vbucket_id()) ->
+                                       {ok, [{nonempty_string(),nonempty_string()}]} | mc_error().
+get_vbucket_details_stats(Bucket, VBucket) ->
+    do_call(server(Bucket), {get_vbucket_details_stats, VBucket}, ?TIMEOUT).
 
 
 -spec host_port(node(), any()) ->
