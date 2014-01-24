@@ -277,14 +277,9 @@ perform_very_long_call(Fun, Bucket) ->
       fun () ->
               case ns_memcached_sockets_pool:take_socket(Bucket) of
                   {ok, Sock} ->
-                      case Fun(Sock) of
-                          {reply, R} ->
-                              ns_memcached_sockets_pool:put_socket(Sock),
-                              R;
-                          {compromised_reply, R} ->
-                              ?log_warning("Call compromised our connection. Abandon pool entry."),
-                              R
-                      end;
+                      {reply, R} = Fun(Sock),
+                      ns_memcached_sockets_pool:put_socket(Sock),
+                      R;
                   Error ->
                       Error
               end
