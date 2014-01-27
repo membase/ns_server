@@ -33,7 +33,7 @@
          code_change/3,
          terminate/2]).
 
--define(NUM_MESSAGES, 100). % Number of the most recent messages to log on crash
+-define(NUM_MESSAGES, 5). % Number of the most recent messages to log on crash
 %% we're passing port stdout/stderr messages to log after delay of
 %% INTERVAL milliseconds. Dropping messages once MAX_MESSAGES is
 %% reached. Thus we're limiting rate of messages to
