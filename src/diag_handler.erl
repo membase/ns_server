@@ -146,7 +146,7 @@ do_diag_per_node() ->
      {ns_server_stats, (catch system_stats_collector:get_ns_server_stats())},
      {active_buckets, ActiveBuckets},
      {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))},
-     {stats, (catch grab_all_buckets_stats())}].
+     {ets_tables, (catch grab_all_ets_tables())}].
 
 do_diag_per_node_binary() ->
     work_queue:submit_sync_work(
@@ -157,6 +157,7 @@ do_diag_per_node_binary() ->
 
 do_actual_diag_per_node_binary() ->
     ActiveBuckets = ns_memcached:active_buckets(),
+
     Diag = [{version, ns_info:version()},
             {manifest, manifest()},
             {config, ns_config_log:sanitize(ns_config:get_kv_list())},
@@ -172,7 +173,7 @@ do_actual_diag_per_node_binary() ->
             {replication_docs, (catch xdc_rdoc_replication_srv:find_all_replication_docs())},
             {design_docs, [{Bucket, (catch capi_ddoc_replication_srv:full_live_ddocs(Bucket))} || Bucket <- ActiveBuckets]},
             {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))},
-            {stats, (catch grab_all_buckets_stats())}],
+            {ets_tables, (catch grab_all_ets_tables())}],
     term_to_binary(Diag).
 
 grab_babysitter_process_infos() ->
@@ -187,9 +188,23 @@ grab_process_infos_loop([P | RestPids], Acc) ->
     NewAcc = [{P, (catch grab_process_info(P))} | Acc],
     grab_process_infos_loop(RestPids, NewAcc).
 
-grab_all_buckets_stats() ->
-    Buckets = ["@system" | ns_bucket:get_bucket_names(node())],
-    [{Bucket, stats_archiver:dump_samples(Bucket)} || Bucket <- Buckets].
+grab_all_ets_tables() ->
+    lists:flatmap(
+      fun (T) ->
+              Contents =
+                  try
+                      ets:tab2list(T)
+                  catch
+                      _:_ -> failed
+                  end,
+
+              case Contents of
+                  failed ->
+                      [];
+                  _ ->
+                      [{T, ns_config_log:sanitize(Contents)}]
+              end
+      end, ets:all()).
 
 diag_format_timestamp(EpochMilliseconds) ->
     SecondsRaw = trunc(EpochMilliseconds/1000),
@@ -398,37 +413,35 @@ do_handle_per_node_processes(Resp, Node, PerNodeDiag) ->
               Resp:write_chunk(<<"\n\n">>)
       end),
 
-    do_handle_per_node_stats(Resp, Node, DiagNoProcesses).
+    do_handle_per_node_ets_tables(Resp, Node, DiagNoProcesses).
 
-do_handle_per_node_stats(Resp, Node, PerNodeDiag)->
-    Stats0 = proplists:get_value(stats, PerNodeDiag, []),
-    Stats = case is_list(Stats0) of
-                true ->
-                    Stats0;
-                false ->
-                    [{"_", [{'_', [Stats0]}]}]
-            end,
+do_handle_per_node_ets_tables(Resp, Node, PerNodeDiag) ->
+    EtsTables0 = proplists:get_value(ets_tables, PerNodeDiag, []),
+    EtsTables = case is_list(EtsTables0) of
+                    true ->
+                        EtsTables0;
+                    false ->
+                        [{'_', [EtsTables0]}]
+                end,
 
     misc:executing_on_new_process(
       fun () ->
               lists:foreach(
-                fun ({Bucket, BucketStats}) ->
-                        lists:foreach(
-                          fun ({Period, Samples}) ->
-                                  write_chunk_format(Resp, "per_node_stats(~p, ~p, ~p) =~n",
-                                                     [Node, Bucket, Period]),
+                fun ({Table, Values}) ->
+                        write_chunk_format(Resp, "per_node_ets_tables(~p, ~p) =~n",
+                                           [Node, Table]),
 
-                                  lists:foreach(
-                                    fun (Sample) ->
-                                            write_chunk_format(Resp, "     ~p~n", [Sample])
-                                    end, Samples)
-                          end, BucketStats)
-                end, Stats),
-              Resp:write_chunk(<<"\n\n">>)
+                        lists:foreach(
+                          fun (Value) ->
+                                  write_chunk_format(Resp, "     ~p~n", [Value])
+                          end, Values),
+
+                        Resp:write_chunk(<<"\n">>)
+                end, EtsTables)
       end),
 
-    DiagNoStats = lists:keydelete(stats, 1, PerNodeDiag),
-    do_continue_handling_per_node_just_diag(Resp, Node, DiagNoStats).
+    DiagNoEtsTables = lists:keydelete(ets_tables, 1, PerNodeDiag),
+    do_continue_handling_per_node_just_diag(Resp, Node, DiagNoEtsTables).
 
 do_continue_handling_per_node_just_diag(Resp, Node, Diag) ->
     erlang:garbage_collect(),
