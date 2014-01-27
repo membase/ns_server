@@ -248,16 +248,7 @@ grab_per_node_diag(Nodes) ->
           lists:zip(lists:subtract(Nodes, BadNodes), Results0)),
 
     OldNodes = [N || {N, _} <- OldNodeResults],
-    {Results2, BadResults} =
-        lists:partition(
-          fun ({_, {badrpc, _}}) ->
-                  false;
-              (_) ->
-                  true
-          end, Results1),
-
-    Results = [{N, diag_failed} || N <- BadNodes] ++
-        [{N, diag_failed} || {N, _} <- BadResults] ++ Results2,
+    Results = [{N, diag_failed} || N <- BadNodes] ++ Results1,
 
     {Results, OldNodes}.
 
@@ -323,7 +314,7 @@ handle_per_node_just_diag(Resp, [{Node, DiagBinary} | Results]) ->
                        error:badarg ->
                            ?log_error("Could not convert "
                                       "binary diag to term (node ~p)", [Node]),
-                           diag_failed
+                           {diag_failed, binary_to_term_failed}
                    end;
                false ->
                    DiagBinary
@@ -340,10 +331,8 @@ handle_per_node_just_diag_old_nodes(Resp, [Node | Nodes]) ->
     do_handle_per_node_just_diag(Resp, Node, PerNodeDiag),
     handle_per_node_just_diag_old_nodes(Resp, Nodes).
 
-do_handle_per_node_just_diag(Resp, Node, {badrpc, _}) ->
-    do_handle_per_node_just_diag(Resp, Node, diag_failed);
-do_handle_per_node_just_diag(Resp, Node, diag_failed) ->
-    write_chunk_format(Resp, "per_node_diag(~p) = diag_failed~n~n~n", [Node]);
+do_handle_per_node_just_diag(Resp, Node, Failed) when not is_list(Failed) ->
+    write_chunk_format(Resp, "per_node_diag(~p) = ~p~n~n~n", [Node, Failed]);
 do_handle_per_node_just_diag(Resp, Node, PerNodeDiag) ->
     MasterEvents = proplists:get_value(master_events, PerNodeDiag, []),
     DiagNoMasterEvents = lists:keydelete(master_events, 1, PerNodeDiag),
