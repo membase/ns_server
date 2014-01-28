@@ -127,58 +127,22 @@ init_logging() ->
     StdLoggers = [?ERROR_LOGGER],
     AllLoggers = StdLoggers ++ ?LOGGERS,
 
-    {ok, Dir} = application:get_env(error_logger_mf_dir),
-    {ok, MaxB} = application:get_env(error_logger_mf_maxbytes),
-    {ok, MaxF} = application:get_env(error_logger_mf_maxfiles),
-
-    DefaultLogPath = filename:join(Dir, ?DEFAULT_LOG_FILENAME),
-    ErrorLogPath = filename:join(Dir, ?ERRORS_LOG_FILENAME),
-    ViewsLogPath = filename:join(Dir, ?VIEWS_LOG_FILENAME),
-    MapreduceErrorsLogPath = filename:join(Dir,
-                                           ?MAPREDUCE_ERRORS_LOG_FILENAME),
-    CouchLogPath = filename:join(Dir, ?COUCHDB_LOG_FILENAME),
-    DebugLogPath = filename:join(Dir, ?DEBUG_LOG_FILENAME),
-    XdcrLogPath = filename:join(Dir, ?XDCR_LOG_FILENAME),
-    XdcrErrorsLogPath = filename:join(Dir, ?XDCR_ERRORS_LOG_FILENAME),
-    StatsLogPath = filename:join(Dir, ?STATS_LOG_FILENAME),
-
-    DiskSinkParams = [{size, {MaxB, MaxF}}],
-
-    ale:stop_sink(disk_default),
-    ale:stop_sink(disk_error),
-    ale:stop_sink(disk_views),
-    ale:stop_sink(disk_mapreduce_errors),
-    ale:stop_sink(disk_couchdb),
-    ale:stop_sink(disk_xdcr),
-    ale:stop_sink(disk_xdcr_errors),
-    ale:stop_sink(disk_stats),
-    ale:stop_sink(ns_log),
-
     lists:foreach(
       fun (Logger) ->
               ale:stop_logger(Logger)
       end, ?LOGGERS),
 
-    ok = ale:start_sink(disk_default,
-                        ale_disk_sink, [DefaultLogPath, DiskSinkParams]),
-    ok = ale:start_sink(disk_error,
-                        ale_disk_sink, [ErrorLogPath, DiskSinkParams]),
-    ok = ale:start_sink(disk_views,
-                        ale_disk_sink, [ViewsLogPath, DiskSinkParams]),
-    ok = ale:start_sink(disk_mapreduce_errors,
-                        ale_disk_sink,
-                        [MapreduceErrorsLogPath, DiskSinkParams]),
-    ok = ale:start_sink(disk_couchdb,
-                        ale_disk_sink, [CouchLogPath, DiskSinkParams]),
-    ok = ale:start_sink(disk_debug,
-                        ale_disk_sink, [DebugLogPath, DiskSinkParams]),
-    ok = ale:start_sink(disk_xdcr,
-                        ale_disk_sink, [XdcrLogPath, DiskSinkParams]),
-    ok = ale:start_sink(disk_xdcr_errors,
-                        ale_disk_sink, [XdcrErrorsLogPath, DiskSinkParams]),
-    ok = ale:start_sink(disk_stats,
-                        ale_disk_sink, [StatsLogPath, DiskSinkParams]),
-    ok = ale:start_sink(ns_log, raw, ns_log_sink, []),
+    ok = start_disk_sink(disk_default, ?DEFAULT_LOG_FILENAME),
+    ok = start_disk_sink(disk_error, ?ERRORS_LOG_FILENAME),
+    ok = start_disk_sink(disk_views, ?VIEWS_LOG_FILENAME),
+    ok = start_disk_sink(disk_mapreduce_errors, ?MAPREDUCE_ERRORS_LOG_FILENAME),
+    ok = start_disk_sink(disk_couchdb, ?COUCHDB_LOG_FILENAME),
+    ok = start_disk_sink(disk_debug, ?DEBUG_LOG_FILENAME),
+    ok = start_disk_sink(disk_xdcr, ?XDCR_LOG_FILENAME),
+    ok = start_disk_sink(disk_xdcr_errors, ?XDCR_ERRORS_LOG_FILENAME),
+    ok = start_disk_sink(disk_stats, ?STATS_LOG_FILENAME),
+
+    ok = start_sink(ns_log, raw, ns_log_sink, []),
 
     lists:foreach(
       fun (Logger) ->
@@ -232,9 +196,7 @@ init_logging() ->
 
     case misc:get_env_default(dont_suppress_stderr_logger, false) of
         true ->
-            ale:stop_sink(stderr),
-            ok = ale:start_sink(stderr, ale_stderr_sink, []),
-
+            ok = start_sink(stderr, ale_stderr_sink, []),
             StderrLogLevel = get_loglevel(stderr),
 
             lists:foreach(
@@ -248,6 +210,23 @@ init_logging() ->
     end,
     ale:sync_changes(infinity),
     ale:info(?NS_SERVER_LOGGER, "Started & configured logging").
+
+start_sink(Name, Module, Args) ->
+    start_sink(Name, preformatted, Module, Args).
+
+start_sink(Name, Type, Module, Args) ->
+    ale:stop_sink(Name),
+    ale:start_sink(Name, Type, Module, Args).
+
+start_disk_sink(Name, FileName) ->
+    {ok, Dir} = application:get_env(error_logger_mf_dir),
+    {ok, MaxB} = application:get_env(error_logger_mf_maxbytes),
+    {ok, MaxF} = application:get_env(error_logger_mf_maxfiles),
+
+    Path = filename:join(Dir, FileName),
+    DiskSinkParams = [{size, {MaxB, MaxF}}],
+
+    start_sink(Name, ale_disk_sink, [Path, DiskSinkParams]).
 
 stop(_State) ->
     ok.
