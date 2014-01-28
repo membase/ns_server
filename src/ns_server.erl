@@ -194,7 +194,7 @@ init_logging() ->
     OverrideLoglevels = [{?STATS_LOGGER, warn},
                          {?NS_DOCTOR_LOGGER, warn}],
 
-    MainFilesLoggers = AllLoggers -- [?XDCR_LOGGER, ?COUCHDB_LOGGER],
+    MainFilesLoggers = AllLoggers -- [?XDCR_LOGGER, ?COUCHDB_LOGGER, ?ERROR_LOGGER],
 
     lists:foreach(
       fun (Logger) ->
@@ -211,6 +211,8 @@ init_logging() ->
               %% already the least restrictive loglevel
               ok = ale:add_sink(Logger, disk_debug, LogLevel)
       end, MainFilesLoggers),
+
+    ok = ale:add_sink(?ERROR_LOGGER, disk_debug, get_loglevel(?ERROR_LOGGER)),
 
     ok = ale:add_sink(?USER_LOGGER, ns_log, info),
     ok = ale:add_sink(?MENELAUS_LOGGER, ns_log, info),
