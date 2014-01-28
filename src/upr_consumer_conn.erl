@@ -49,13 +49,13 @@ handle_packet(response, ?UPR_ADD_STREAM, Packet,
               #state{state = #stream_state{to_add = ToAdd, errors = Errors} = StreamState} = State) ->
     {NewToAdd, NewErrors} = process_add_close_stream_response(Packet, ToAdd, Errors),
     NewStreamState = StreamState#stream_state{to_add = NewToAdd, errors = NewErrors},
-    {block, State#state{state = maybe_reply_setup_streams(NewStreamState)}};
+    {block, maybe_reply_setup_streams(State#state{state = NewStreamState})};
 
 handle_packet(response, ?UPR_CLOSE_STREAM, Packet,
               #state{state = #stream_state{to_close = ToClose, errors = Errors} = StreamState} = State) ->
     {NewToClose, NewErrors} = process_add_close_stream_response(Packet, ToClose, Errors),
     NewStreamState = StreamState#stream_state{to_close = NewToClose, errors = NewErrors},
-    {block, State#state{state = maybe_reply_setup_streams(NewStreamState)}};
+    {block, maybe_reply_setup_streams(State#state{state = NewStreamState})};
 
 handle_packet(_, _, _, State) ->
     {proxy, State}.
@@ -121,21 +121,23 @@ process_add_close_stream_response(Packet, PendingPartitions, Errors) ->
             {PendingPartitions, Errors}
     end.
 
-maybe_reply_setup_streams(StreamState) ->
+maybe_reply_setup_streams(#state{state = StreamState, partitions = Partitions} = State) ->
     case {StreamState#stream_state.to_add, StreamState#stream_state.to_close} of
         {[], []} ->
-            Reply = case StreamState#stream_state.errors of
-                        [] ->
-                            ok;
-                        Errors ->
-                            {errors, Errors}
-                    end,
+            {Reply, NewPartitions} =
+                case StreamState#stream_state.errors of
+                    [] ->
+                        {ok, Partitions};
+                    Errors ->
+                        ToRemove = [P || {_, P} <- Errors],
+                        {{errors, Errors}, ordsets:subtract(Partitions, ordsets:from_list(ToRemove))}
+                end,
             gen_server:reply(StreamState#stream_state.owner, Reply),
 
             ?log_info("Setup stream request completed with ~p.", [Reply]),
-            idle;
+            State#state{state = idle, partitions = NewPartitions};
         _ ->
-            StreamState
+            State
     end.
 
 setup_streams(Pid, Partitions) ->
