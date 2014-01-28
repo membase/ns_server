@@ -650,7 +650,7 @@
               <table class="warmup_table">
                 <tbody>
                   {% _.each(thisWarmupTasks, function (task) { %}
-                    <tr><td>{%= task.key %}</td><td>{%= task.status %}</td></tr>
+                    <tr><td>{%= h(task.key) %}</td><td>{%= h(task.status) %}</td></tr>
                   {% }) %}
                 </tbody>
               </table>
