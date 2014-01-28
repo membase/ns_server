@@ -494,6 +494,9 @@ update_status_to_parent(#rep_state{parent = Parent,
     State#rep_state{status = NewVbStat,
                     work_start_time = now()}.
 
+http_db_open(DB, _Options) ->
+    {ok, DB#httpdb{httpc_pool = lhttpc_manager}}.
+
 init_replication_state(#init_state{rep = Rep,
                                    vb = Vb,
                                    mode = RepMode,
@@ -535,14 +538,14 @@ init_replication_state(#init_state{rep = Rep,
     TgtURI = hd(dict:fetch(Vb, CurrRemoteBucket#remote_bucket.capi_vbucket_map)),
     TgtDb = xdc_rep_utils:parse_rep_db(TgtURI, [], Options),
     {ok, Source} = couch_api_wrap:db_open(SrcVbDb, []),
-    {ok, Target} = couch_api_wrap:db_open(TgtDb, []),
+    {ok, Target} = http_db_open(TgtDb, []),
     {ok, SourceInfo} = couch_api_wrap:get_db_info(Source),
     {ok, TargetInfo} = couch_api_wrap:get_db_info(Target),
 
     {ok, SrcMasterDb} = couch_api_wrap:db_open(
                           xdc_rep_utils:get_master_db(Source),
                           []),
-    {ok, TgtMasterDb} = couch_api_wrap:db_open(
+    {ok, TgtMasterDb} = http_db_open(
                           xdc_rep_utils:get_master_db(Target),
                           []),
 
@@ -698,11 +701,11 @@ start_replication(#rep_state{
     BatchSizeItems = get_value(worker_batch_size, Options),
     {ok, Source} = couch_api_wrap:db_open(SourceName, []),
     TgtURI = xdc_rep_utils:parse_rep_db(TargetName, [], Options),
-    {ok, Target} = couch_api_wrap:db_open(TgtURI, []),
+    {ok, Target} = http_db_open(TgtURI, []),
     {ok, SrcMasterDb} = couch_api_wrap:db_open(
                           xdc_rep_utils:get_master_db(Source),
                           []),
-    {ok, TgtMasterDb} = couch_api_wrap:db_open(
+    {ok, TgtMasterDb} = http_db_open(
                           xdc_rep_utils:get_master_db(Target), []),
 
     {ok, ChangesQueue} = couch_work_queue:new([
