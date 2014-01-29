@@ -33,7 +33,7 @@
 -include("ns_heart.hrl").
 
 %% API
--export([start_link/0, enable/2, disable/0, reset_count/0]).
+-export([start_link/0, enable/2, disable/0, reset_count/0, reset_count_async/0]).
 %% For email alert notificatons
 -export([alert_key/1, alert_keys/0]).
 
@@ -106,9 +106,17 @@ disable() ->
 reset_count() ->
     call(reset_auto_failover_count).
 
+-spec reset_count_async() -> ok.
+reset_count_async() ->
+    cast(reset_auto_failover_count).
+
 call(Call) ->
     misc:wait_for_global_name(?MODULE, 20000),
     gen_server:call({global, ?MODULE}, Call).
+
+cast(Call) ->
+    misc:wait_for_global_name(?MODULE, 20000),
+    gen_server:cast({global, ?MODULE}, Call).
 
 -spec alert_key(Code::integer()) -> atom().
 alert_key(?EVENT_NODE_AUTO_FAILOVERED) -> auto_failover_node;
@@ -182,17 +190,20 @@ handle_call(disable_auto_failover, _From, #state{tick_ref=Ref}=State) ->
     State2 = State#state{tick_ref=nil, auto_failover_logic_state = undefined},
     make_state_persistent(State2),
     {reply, ok, State2};
-
 handle_call(reset_auto_failover_count, _From, State) ->
+    {noreply, NewState} = handle_cast(reset_auto_failover_count, State),
+    {reply, ok, NewState};
+
+handle_call(_Request, _From, State) ->
+    {reply, ok, State}.
+
+handle_cast(reset_auto_failover_count, State) ->
     ?log_debug("reset auto_failover count: ~p", [State]),
     State2 = State#state{count=0,
                          auto_failover_logic_state = init_logic_state(State#state.timeout)},
     State3 = init_reported(State2),
     make_state_persistent(State3),
-    {reply, ok, State3};
-
-handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+    {noreply, State3};
 
 handle_cast(_Msg, State) ->
     {noreply, State}.

@@ -449,6 +449,7 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
                      ?user_log(?REBALANCE_SUCCESSFUL,
                                "Rebalance completed successfully.~n"),
                      ns_cluster:counter_inc(rebalance_success),
+                     auto_failover:reset_count_async(),
                      none;
                  stopped ->
                      ?user_log(?REBALANCE_STOPPED,
