@@ -141,6 +141,7 @@ init_logging() ->
     ok = start_disk_sink(disk_xdcr, ?XDCR_LOG_FILENAME),
     ok = start_disk_sink(disk_xdcr_errors, ?XDCR_ERRORS_LOG_FILENAME),
     ok = start_disk_sink(disk_stats, ?STATS_LOG_FILENAME),
+    ok = start_disk_sink(disk_reports, ?REPORTS_LOG_FILENAME),
 
     ok = start_sink(ns_log, raw, ns_log_sink, []),
 
@@ -177,6 +178,7 @@ init_logging() ->
       end, MainFilesLoggers),
 
     ok = ale:add_sink(?ERROR_LOGGER, disk_debug, get_loglevel(?ERROR_LOGGER)),
+    ok = ale:add_sink(?ERROR_LOGGER, disk_reports, get_loglevel(?ERROR_LOGGER)),
 
     ok = ale:add_sink(?USER_LOGGER, ns_log, info),
     ok = ale:add_sink(?MENELAUS_LOGGER, ns_log, info),
