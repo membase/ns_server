@@ -167,14 +167,14 @@ do_actual_diag_per_node_binary() ->
             {master_events, (catch master_activity_events_keeper:get_history_raw())},
             {ns_server_stats, (catch system_stats_collector:get_ns_server_stats())},
             {active_buckets, ActiveBuckets},
-            {replication_docs, (catch xdc_rdoc_replication_srv:find_all_replication_docs())},
-            {design_docs, [{Bucket, (catch capi_ddoc_replication_srv:full_live_ddocs(Bucket))} || Bucket <- ActiveBuckets]},
+            {replication_docs, (catch xdc_rdoc_replication_srv:find_all_replication_docs(5000))},
+            {design_docs, [{Bucket, (catch capi_ddoc_replication_srv:full_live_ddocs(Bucket, 2000))} || Bucket <- ActiveBuckets]},
             {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))},
             {ets_tables, (catch grab_all_ets_tables())}],
     term_to_binary(Diag).
 
 grab_babysitter_process_infos() ->
-    rpc:call(ns_server:get_babysitter_node(), ?MODULE, grab_process_infos, []).
+    rpc:call(ns_server:get_babysitter_node(), ?MODULE, grab_process_infos, [], 5000).
 
 grab_process_infos() ->
     grab_process_infos_loop(erlang:processes(), []).

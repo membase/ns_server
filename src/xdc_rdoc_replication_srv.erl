@@ -21,7 +21,7 @@
 
 -export([start_link/0,
          update_doc/1,
-         find_all_replication_docs/0,
+         find_all_replication_docs/0, find_all_replication_docs/1,
          delete_replicator_doc/1,
          get_full_replicator_doc/1,
          delete_all_replications/1]).
@@ -207,7 +207,12 @@ open_local_db() ->
 
 -spec find_all_replication_docs() -> [Doc :: [{Key :: atom(), Value :: _}]].
 find_all_replication_docs() ->
-    RVs = gen_server:call(?MODULE, {foreach_doc, fun find_all_replication_docs_body/1}, infinity),
+    find_all_replication_docs(infinity).
+
+-spec find_all_replication_docs(non_neg_integer() | infinity) ->
+                                       [Doc :: [{Key :: atom(), Value :: _}]].
+find_all_replication_docs(Timeout) ->
+    RVs = gen_server:call(?MODULE, {foreach_doc, fun find_all_replication_docs_body/1}, Timeout),
     [Doc || {_, Doc} <- RVs,
             Doc =/= undefined].
 

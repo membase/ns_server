@@ -24,7 +24,7 @@
 -export([start_link/1, update_doc/2,
          proxy_server_name/1,
          foreach_doc/2, fetch_ddoc_ids/1,
-         full_live_ddocs/1,
+         full_live_ddocs/1, full_live_ddocs/2,
          sorted_full_live_ddocs/1,
          foreach_live_ddoc_id/2]).
 
@@ -55,6 +55,9 @@ foreach_live_ddoc_id(Bucket, Fun) ->
              V =/= Ref].
 
 full_live_ddocs(Bucket) ->
+    full_live_ddocs(Bucket, infinity).
+
+full_live_ddocs(Bucket, Timeout) ->
     Ref = make_ref(),
     RVs = foreach_doc(
             Bucket,
@@ -65,7 +68,7 @@ full_live_ddocs(Bucket) ->
                         _ ->
                             Doc
                     end
-            end),
+            end, Timeout),
     [V || {_Id, V} <- RVs,
           V =/= Ref].
 
@@ -98,5 +101,10 @@ proxy_server_name(Bucket) ->
 -spec foreach_doc(bucket_name() | binary(),
                    fun ((#doc{}) -> any())) -> [{binary(), any()}].
 foreach_doc(Bucket, Fun) ->
-    gen_server:call(capi_set_view_manager:server(Bucket), {foreach_doc, Fun}, infinity).
+    foreach_doc(Bucket, Fun, infinity).
 
+-spec foreach_doc(bucket_name() | binary(),
+                  fun ((#doc{}) -> any()),
+                  non_neg_integer() | infinity) -> [{binary(), any()}].
+foreach_doc(Bucket, Fun, Timeout) ->
+    gen_server:call(capi_set_view_manager:server(Bucket), {foreach_doc, Fun}, Timeout).
