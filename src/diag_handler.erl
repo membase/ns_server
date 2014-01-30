@@ -149,29 +149,96 @@ do_diag_per_node_binary() ->
     work_queue:submit_sync_work(
       diag_handler_worker,
       fun () ->
-              (catch do_actual_diag_per_node_binary())
+              (catch collect_diag_per_node_binary(40000))
       end).
 
-do_actual_diag_per_node_binary() ->
+collect_diag_per_node_binary(Timeout) ->
+    ReplyRef = make_ref(),
+    Parent = self(),
+    {ChildPid, ChildRef} =
+        spawn_monitor(
+          fun () ->
+                  Reply = fun (Key, Value) ->
+                                  Parent ! {ReplyRef, {Key, Value}}
+                          end,
+
+                  ChildPid = self(),
+                  proc_lib:spawn_link(
+                    fun () ->
+                            erlang:monitor(process, Parent),
+                            erlang:monitor(process, ChildPid),
+
+                            receive
+                                {'DOWN', _, _, _, Reason} ->
+                                    exit(ChildPid, Reason)
+                            end
+                    end),
+
+                  try
+                      collect_diag_per_node_binary_body(Reply)
+                  catch
+                      T:E ->
+                          Reply(partial_results_reason,
+                                {process_died, {T, E, erlang:get_stacktrace()}})
+                  end
+          end),
+
+    TRef = erlang:send_after(Timeout, self(), timeout),
+
+    try
+        RV = collect_diag_per_node_binary_loop(ReplyRef, ChildRef, []),
+        term_to_binary(RV)
+    after
+        erlang:cancel_timer(TRef),
+        receive
+            timeout -> ok
+        after
+            0 -> ok
+        end,
+
+        erlang:demonitor(ChildRef, [flush]),
+        exit(ChildPid, kill),
+
+        flush_leftover_replies(ReplyRef)
+    end.
+
+flush_leftover_replies(ReplyRef) ->
+    receive
+        {ReplyRef, _} ->
+            flush_leftover_replies(ReplyRef)
+    after
+        0 -> ok
+    end.
+
+collect_diag_per_node_binary_loop(ReplyRef, ChildRef, Results) ->
+    receive
+        {ReplyRef, Item} ->
+            collect_diag_per_node_binary_loop(ReplyRef, ChildRef, [Item | Results]);
+        timeout ->
+            [{partial_results_reason, timeout} | Results];
+        {'DOWN', ChildRef, process, _, _} ->
+            Results
+    end.
+
+collect_diag_per_node_binary_body(Reply) ->
     ActiveBuckets = ns_memcached:active_buckets(),
 
-    Diag = [{version, ns_info:version()},
-            {manifest, manifest()},
-            {config, ns_config_log:sanitize(ns_config:get_kv_list())},
-            {basic_info, element(2, ns_info:basic_info())},
-            {processes, grab_process_infos()},
-            {babysitter_processes, (catch grab_babysitter_process_infos())},
-            {memory, memsup:get_memory_data()},
-            {disk, ns_info:get_disk_data()},
-            {active_tasks, capi_frontend:task_status_all()},
-            {master_events, (catch master_activity_events_keeper:get_history_raw())},
-            {ns_server_stats, (catch system_stats_collector:get_ns_server_stats())},
-            {active_buckets, ActiveBuckets},
-            {replication_docs, (catch xdc_rdoc_replication_srv:find_all_replication_docs(5000))},
-            {design_docs, [{Bucket, (catch capi_ddoc_replication_srv:full_live_ddocs(Bucket, 2000))} || Bucket <- ActiveBuckets]},
-            {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))},
-            {ets_tables, (catch grab_all_ets_tables())}],
-    term_to_binary(Diag).
+    Reply(processes, grab_process_infos()),
+    Reply(babysitter_processes, (catch grab_babysitter_process_infos())),
+    Reply(version, ns_info:version()),
+    Reply(manifest, manifest()),
+    Reply(config, ns_config_log:sanitize(ns_config:get_kv_list())),
+    Reply(basic_info, element(2, ns_info:basic_info())),
+    Reply(memory, memsup:get_memory_data()),
+    Reply(disk, ns_info:get_disk_data()),
+    Reply(active_tasks, capi_frontend:task_status_all()),
+    Reply(master_events, (catch master_activity_events_keeper:get_history_raw())),
+    Reply(ns_server_stats, (catch system_stats_collector:get_ns_server_stats())),
+    Reply(active_buckets, ActiveBuckets),
+    Reply(replication_docs, (catch xdc_rdoc_replication_srv:find_all_replication_docs(5000))),
+    Reply(design_docs, [{Bucket, (catch capi_ddoc_replication_srv:full_live_ddocs(Bucket, 2000))} || Bucket <- ActiveBuckets]),
+    Reply(tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))),
+    Reply(ets_tables, (catch grab_all_ets_tables())).
 
 grab_babysitter_process_infos() ->
     rpc:call(ns_server:get_babysitter_node(), ?MODULE, grab_process_infos, [], 5000).
