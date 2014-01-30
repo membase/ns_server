@@ -739,6 +739,7 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
     proc_lib:spawn_link(
       fun () ->
               VBucketDbs = all_bucket_dbs(BucketName),
+              Total = length(VBucketDbs),
 
               DoCompact =
                   case Force of
@@ -747,14 +748,13 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
                                     [BucketName]),
                           true;
                       false ->
-                          bucket_needs_compaction(BucketName, VBucketDbs, Config)
+                          bucket_needs_compaction(BucketName, Total - 1, Config)
                   end,
 
               DoCompact orelse exit(normal),
 
               ?log_info("Compacting databases for bucket ~s", [BucketName]),
 
-              Total = length(VBucketDbs),
               TriggerType = case Force of
                                 true ->
                                     manual;
@@ -879,15 +879,33 @@ vbucket_needs_compaction({DataSize, FileSize}, Config) ->
 
     file_needs_compaction(DataSize, FileSize, FragThreshold, MinFileSize).
 
-maybe_compact_vbucket(BucketName, {VBucket, DbName} = VBucketAndDb,
-                      Config, Force, Options) ->
+get_master_db_size_info(BucketName, VBucketAndDb) ->
     Db = open_db_or_fail(BucketName, VBucketAndDb),
 
-    SizeInfo = try
-                   {ok, DbInfo} = couch_db:get_db_info(Db),
-                   db_size_info(DbInfo)
-               after
-                   couch_db:close(Db)
+    try
+        {ok, DbInfo} = couch_db:get_db_info(Db),
+
+        {proplists:get_value(data_size, DbInfo, 0),
+         proplists:get_value(disk_size, DbInfo)}
+    after
+        couch_db:close(Db)
+    end.
+
+get_db_size_info(Bucket, VBucket) ->
+    {ok, Props} = ns_memcached:get_vbucket_details_stats(Bucket, VBucket),
+
+    {list_to_integer(proplists:get_value("db_data_size", Props)),
+     list_to_integer(proplists:get_value("db_file_size", Props))}.
+
+maybe_compact_vbucket(BucketName, {VBucket, DbName} = VBucketAndDb,
+                      Config, Force, Options) ->
+    Bucket = binary_to_list(BucketName),
+
+    SizeInfo = case VBucket of
+                   master ->
+                       get_master_db_size_info(BucketName, VBucketAndDb);
+                   _ ->
+                       get_db_size_info(Bucket, VBucket)
                end,
 
     case Force orelse vbucket_needs_compaction(SizeInfo, Config) of
@@ -898,14 +916,14 @@ maybe_compact_vbucket(BucketName, {VBucket, DbName} = VBucketAndDb,
     end,
 
     %% effectful
-    ensure_can_db_compact(Db#db.name, SizeInfo),
+    ensure_can_db_compact(DbName, SizeInfo),
 
     ?log_info("Compacting ~p", [DbName]),
     Ret = case VBucket of
               master ->
                   compact_master_vbucket(BucketName, DbName);
               _ ->
-                  ns_memcached:compact_vbucket(binary_to_list(BucketName), VBucket, Options)
+                  ns_memcached:compact_vbucket(Bucket, VBucket, Options)
           end,
     ?log_info("Compaction of ~p has finished with ~p", [DbName, Ret]),
     Ret.
@@ -1051,68 +1069,16 @@ start_view_index_compactor(BucketName, DDocId, Type, InitialStatus) ->
             exit(normal)
     end.
 
-bucket_needs_compaction(BucketName, VBucketDbs,
+bucket_needs_compaction(BucketName, NumVBuckets,
                         #config{daemon=#daemon_config{min_file_size=MinFileSize},
                                 db_fragmentation=FragThreshold}) ->
-    NumVBuckets = length(VBucketDbs),
-    SampleVBucketIds = unique_random_ints(NumVBuckets, ?NUM_SAMPLE_VBUCKETS),
-    SampleVBucketDbs = select_samples(VBucketDbs, SampleVBucketIds),
-
-    {DataSize, FileSize} = aggregated_size_info(SampleVBucketDbs, NumVBuckets),
+    {DataSize, FileSize} = aggregated_size_info(binary_to_list(BucketName)),
 
     ?log_debug("`~s` data size is ~p, disk size is ~p",
                [BucketName, DataSize, FileSize]),
 
     file_needs_compaction(DataSize, FileSize,
                           FragThreshold, MinFileSize * NumVBuckets).
-
-select_samples(VBucketDbs, SampleIxs) ->
-    select_samples(VBucketDbs, SampleIxs, 1, []).
-
-select_samples(_, [], _, Acc) ->
-    Acc;
-select_samples([], _, _, Acc) ->
-    Acc;
-select_samples([V | VRest], [S | SRest] = Samples, Ix, Acc) ->
-    case Ix =:= S of
-        true ->
-            select_samples(VRest, SRest, Ix + 1, [V | Acc]);
-        false ->
-            select_samples(VRest, Samples, Ix + 1, Acc)
-    end.
-
-unique_random_ints(Range, NumSamples) ->
-    case Range > NumSamples * 2 of
-        true ->
-            unique_random_ints(Range, NumSamples, ordsets:new());
-        false ->
-            case NumSamples >= Range of
-                true ->
-                    lists:seq(1, Range);
-                false ->
-                    %% if Range is reasonably close to NumSamples, do simpler
-                    %% one-pass pick-with-NumSamples/Range probability
-                    %% selection. It'll have on average NumSamples samples, and
-                    %% I'm ok with that.
-                    [I || I <- lists:seq(1, Range),
-                          begin
-                              {Dice, _} = random:uniform_s(Range, now()),
-                              Dice =< NumSamples
-                          end]
-            end
-    end.
-
-unique_random_ints(_, 0, Seen) ->
-    Seen;
-unique_random_ints(Range, NumSamples, Seen) ->
-    {I, _} = random:uniform_s(Range, now()),
-    case ordsets:is_element(I, Seen) of
-        true ->
-            unique_random_ints(Range, NumSamples, Seen);
-        false ->
-            unique_random_ints(Range, NumSamples - 1,
-                               ordsets:add_element(I, Seen))
-    end.
 
 file_needs_compaction(DataSize, FileSize, FragThreshold, MinFileSize) ->
     case FileSize < MinFileSize of
@@ -1125,44 +1091,18 @@ file_needs_compaction(DataSize, FileSize, FragThreshold, MinFileSize) ->
             check_fragmentation(FragThreshold, Frag, FragSize)
     end.
 
-aggregated_size_info(SampleVBucketDbs, NumVBuckets) ->
-    NumSamples = length(SampleVBucketDbs),
-
-    {DataSize, FileSize} =
-        lists:foldl(
-          fun ({_VBucket, DbName}, {AccDataSize, AccFileSize}) ->
-                  {ok, Db} = couch_db:open_int(DbName, []),
-
-                  %% unfortunately I can't just bind this inside try block
-                  %% because compiler (seemingly mistakenly) thinks that this
-                  %% is unsafe
-                  DbInfo =
-                      try
-                          {ok, Info} = couch_db:get_db_info(Db),
-                          Info
-                      after
-                          couch_db:close(Db)
-                      end,
-
-                  {VDataSize, VFileSize} = db_size_info(DbInfo),
-                  {AccDataSize + VDataSize, AccFileSize + VFileSize}
-          end, {0, 0}, SampleVBucketDbs),
-
-    %% rarely our sample selection routine can return zero samples;
-    %% we need to handle it
-    case NumSamples of
-        0 ->
-            {0, 0};
-        _ ->
-            {round(DataSize * (NumVBuckets / NumSamples)),
-             round(FileSize * (NumVBuckets / NumSamples))}
-    end.
-
-db_size_info(DbInfo) ->
-    FileSize = proplists:get_value(disk_size, DbInfo),
-    DataSize = proplists:get_value(data_size, DbInfo, 0),
-
-    {DataSize, FileSize}.
+aggregated_size_info(Bucket) ->
+    {ok, {DS, FS}} =
+        ns_memcached:raw_stats(node(), Bucket, <<"diskinfo">>,
+                               fun (<<"ep_db_file_size">>, V, {DataSize, _}) ->
+                                       {DataSize, V};
+                                   (<<"ep_db_data_size">>, V, {_, FileSize}) ->
+                                       {V, FileSize};
+                                   (_, _, Tuple) ->
+                                       Tuple
+                               end, {<<"0">>, <<"0">>}),
+    {list_to_integer(binary_to_list(DS)),
+     list_to_integer(binary_to_list(FS))}.
 
 check_fragmentation({FragLimit, FragSizeLimit}, Frag, FragSize) ->
     true = is_integer(FragLimit),
