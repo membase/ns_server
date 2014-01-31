@@ -61,16 +61,16 @@ crash_consumption_loop_tramp() ->
 
 crash_consumption_loop() ->
     {Name, Node, Status, Messages} = ns_crash_log:consume_oldest_message_from_inside_ns_server(),
-    Logger = case Status of
+    LogLevel = case Status of
                  0 ->
-                     ?NS_SERVER_LOGGER;
+                     debug;
                  _ ->
-                     ?USER_LOGGER
+                     info
              end,
-    ale:info(Logger,
-             "Port server ~p on node ~p exited with status ~p. Restarting. "
-             "Messages: ~s",
-             [Name, Node, Status, Messages]),
+    ale:log(?USER_LOGGER, LogLevel,
+            "Port server ~p on node ~p exited with status ~p. Restarting. "
+            "Messages: ~s",
+            [Name, Node, Status, Messages]),
     crash_consumption_loop().
 
 
