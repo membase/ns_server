@@ -122,6 +122,8 @@ sanitize(Config) ->
                                         {stop, {admin_pass, "*****"}};
                                     {pass, _} ->
                                         {stop, {pass, "*****"}};
+                                    {cert_and_pkey, [VClock|{Cert, _PKey}]} ->
+                                        {stop, {cert_and_pkey, [VClock|{Cert, <<"*****">>}]}};
                                     {cert_and_pkey, {Cert, _PKey}} ->
                                         {stop, {cert_and_pkey, {Cert, <<"*****">>}}};
                                     _ ->
