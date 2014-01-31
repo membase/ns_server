@@ -660,27 +660,6 @@ diagnosing_timeouts(Body) ->
 
 -ifdef(EUNIT).
 
-backtrace_sanitize_test() ->
-    B = [<<"Program counter: 0xb5f9c0f0 (gen:do_call/4 + 304)">>,
-         <<"CP: 0x00000000 (invalid)">>,<<"arity = 0">>,<<>>,
-         <<"0xa6c2bb1c Return addr 0xb206c0b4 (net_adm:ping/1 + 116)">>,
-         <<"y(0)     #Ref<0.0.173.77407>">>,
-         <<"y(1)     'ns_1@10.3.4.111'">>,<<"y(2)     []">>,
-         <<"y(3)     infinity">>,
-         <<"y(4)     {is_auth,'ns_1@10.3.4.113'}">>,
-         <<"y(5)     '$gen_call'">>,
-         <<"y(6)     {net_kernel,'ns_1@10.3.4.111'}">>,<<>>,
-         <<"0xa6c2bb3c Return addr 0xb5fdef5c (lists:foreach/2 + 60)">>,
-         <<"y(0)     'ns_1@10.3.4.111'">>,
-         <<"y(1)     Catch 0xb206c0b4 (net_adm:ping/1 + 116)">>,<<>>,
-         <<"0xa6c2bb48 Return addr 0x082404f4 (<terminate process normally>)">>,
-         <<"y(0)     #Fun<net_adm.ping.1>">>,
-         <<"y(1)     ['ns_1@10.3.4.113','ns_1@10.3.4.114']">>,<<>>],
-    SB = sanitize_backtrace(iolist_to_binary([[L, "\n"] || L <- B])),
-    ?debugFmt("SB:~n~s", [iolist_to_binary([[L, "\n"] || L <- SB])]),
-    ?assertEqual(4, length(SB)).
-
-
 split_incremental(Binary, Separator) ->
     R = split_fold_incremental(Binary, Separator,
                                fun (Part, Acc) ->
