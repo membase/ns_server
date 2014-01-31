@@ -142,8 +142,7 @@ do_diag_per_node() ->
      {master_events, (catch master_activity_events_keeper:get_history())},
      {ns_server_stats, (catch system_stats_collector:get_ns_server_stats())},
      {active_buckets, ActiveBuckets},
-     {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))},
-     {ets_tables, (catch grab_all_ets_tables())}].
+     {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))}].
 
 do_diag_per_node_binary() ->
     work_queue:submit_sync_work(
