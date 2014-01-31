@@ -649,7 +649,7 @@ init([ConfigPath, PolicyMod]) ->
 wait_saver(State, Timeout) ->
     case State#config.saver_pid of
         undefined ->
-            ?log_debug("Waited for saver done. State=~n~p", [State]),
+            ?log_debug("Done waiting for saver."),
             {ok, State};
         Pid ->
             ?log_debug("Waiting for running saver"),
