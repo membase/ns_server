@@ -466,7 +466,41 @@ do_handle_per_node_processes(Resp, Node, PerNodeDiag) ->
               Resp:write_chunk(<<"\n\n">>)
       end),
 
-    do_handle_per_node_ets_tables(Resp, Node, DiagNoProcesses).
+    do_handle_per_node_stats(Resp, Node, DiagNoProcesses).
+
+do_handle_per_node_stats(Resp, Node, PerNodeDiag)->
+    %% pre 3.0 versions return stats as part of per node diagnostics; since
+    %% number of samples may be quite substantial to cause memory issues while
+    %% pretty-printing all of them in a bulk, to play safe we have this code
+    %% to print samples one by one
+    Stats0 = proplists:get_value(stats, PerNodeDiag, []),
+    Stats = case is_list(Stats0) of
+                true ->
+                    Stats0;
+                false ->
+                    [{"_", [{'_', [Stats0]}]}]
+            end,
+
+    misc:executing_on_new_process(
+      fun () ->
+              lists:foreach(
+                fun ({Bucket, BucketStats}) ->
+                        lists:foreach(
+                          fun ({Period, Samples}) ->
+                                  write_chunk_format(Resp, "per_node_stats(~p, ~p, ~p) =~n",
+                                                     [Node, Bucket, Period]),
+
+                                  lists:foreach(
+                                    fun (Sample) ->
+                                            write_chunk_format(Resp, "     ~p~n", [Sample])
+                                    end, Samples)
+                          end, BucketStats)
+                end, Stats),
+              Resp:write_chunk(<<"\n\n">>)
+      end),
+
+    DiagNoStats = lists:keydelete(stats, 1, PerNodeDiag),
+    do_handle_per_node_ets_tables(Resp, Node, DiagNoStats).
 
 do_handle_per_node_ets_tables(Resp, Node, PerNodeDiag) ->
     EtsTables0 = proplists:get_value(ets_tables, PerNodeDiag, []),
