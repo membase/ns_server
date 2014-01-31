@@ -69,16 +69,13 @@ split_fold_incremental_loop(Binary, CP, Len, Fun, Acc, Start) ->
 
 -spec sanitize_backtrace(binary()) -> [binary()].
 sanitize_backtrace(Backtrace) ->
-    {ok, RE} = re:compile(<<"^Program counter: 0x[0-9a-f]+ |^0x[0-9a-f]+ Return addr 0x[0-9a-f]+">>),
     R = split_fold_incremental(
           Backtrace, <<"\n">>,
           fun (X, Acc) ->
-                  case re:run(X, RE) of
-                      nomatch ->
-                          Acc;
-                      _ when size(X) =< 120 ->
+                  if
+                      size(X) =< 120 ->
                           [binary:copy(X) | Acc];
-                      _ ->
+                      true ->
                           [binary:copy(binary:part(X, 1, 120)) | Acc]
                   end
           end, []),
