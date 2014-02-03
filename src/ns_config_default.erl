@@ -230,8 +230,6 @@ default() ->
          "-l", {"0.0.0.0:~B,0.0.0.0:~B:1000", [port, dedicated_port]},
          "-p", {"~B", [port]},
          "-E", path_config:component_path(lib, "memcached/bucket_engine.so"),
-         "-B", "binary",
-         "-r",
          "-c", "10000",
          "-e", {"admin=~s;default_bucket_name=default;auto_create=false",
                 [admin_user]},
@@ -564,13 +562,18 @@ upgrade_config_from_2_3_0_to_3_0(Config) ->
 
 do_upgrade_config_from_2_3_0_to_3_0(Config, DefaultConfig) ->
     Key = {node, node(), uuid},
-    case ns_config:search(Config, Key) of
-        false ->
-            {Key, NodeUUID} = lists:keyfind(Key, 1, DefaultConfig),
-            [{set, Key, NodeUUID}];
-        _ ->
-            []
-    end.
+    MaybeUUIDUpdate =
+        case ns_config:search(Config, Key) of
+            false ->
+                {Key, NodeUUID} = lists:keyfind(Key, 1, DefaultConfig),
+                [{set, Key, NodeUUID}];
+            _ ->
+                []
+        end,
+    PortServersKey = {node, node(), port_servers},
+    {value, DefaultPortServers} = ns_config:search([DefaultConfig], PortServersKey),
+    [{set, PortServersKey, DefaultPortServers} | MaybeUUIDUpdate].
+
 
 search_sub_key(Config, Key, Subkey) ->
     case ns_config:search(Config, Key) of
@@ -875,8 +878,7 @@ upgrade_2_2_0_to_2_3_0_test() ->
            [{log_generations, 10},
             {log_cyclesize, 1024*1024*100}]}]],
     UpgradedCfg = upgrade_config_from_2_2_0_to_2_3_0(Cfg),
-    ?assertMatch([
-                  {set, Key,
+    ?assertMatch([{set, Key,
                    [{log_generations, 20},
                     {log_cyclesize, 1024*1024*10},
                     {admin_pass, _}]}], UpgradedCfg).
@@ -886,12 +888,13 @@ upgrade_2_3_0_to_3_0_test() ->
     CfgWithoutUUID = [[{some_key, some_value}]],
     CfgWithUUID = [[{Key, <<"uuid">>},
                     {some_key, some_value}]],
-    Default = [{Key, <<"default uuid">>}],
+    Default = [{Key, <<"default uuid">>},
+               {{node, node(), port_servers}, port_servers_cfg}],
 
-    ?assertEqual([],
+    ?assertMatch([{set, {node, _, port_servers}, _}],
                  do_upgrade_config_from_2_3_0_to_3_0(CfgWithUUID, Default)),
 
-    ?assertEqual([{set, Key, <<"default uuid">>}],
+    ?assertMatch([{set, {node, _, port_servers}, _}, {set, Key, <<"default uuid">>}],
                  do_upgrade_config_from_2_3_0_to_3_0(CfgWithoutUUID, Default)).
 
 no_upgrade_on_current_version_test() ->
