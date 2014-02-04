@@ -228,6 +228,11 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
     return v.need(ns.viewsBucketCell);
   }).name("selectedBucket");
 
+  ns.selectedBucketCRUDBaseCell = Cell.compute(function (v) {
+    var currentBucket = v.need(ns.selectedBucketCell);
+    return buildURL("/pools/default/buckets/", currentBucket, "docs");
+  });
+
   ns.dbURLCell = Cell.computeEager(function (v) {
     var base = v.need(capiBaseCell);
     var bucketName = v.need(ns.selectedBucketCell);
@@ -669,7 +674,7 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
 
 
 function createRandomDocCells(ns, modeCell, rawDDocIdCell, isROAdminCell) {
-  function fetchRandomId(randomKeyURL, dbURL, dataCallback) {
+  function fetchRandomId(randomKeyURL, docsURL, dataCallback) {
     couchReq('GET', randomKeyURL, null,
              randomKeySuccess, randomKeyError);
     return;
@@ -694,7 +699,7 @@ function createRandomDocCells(ns, modeCell, rawDDocIdCell, isROAdminCell) {
     };
 
     function randomIdFromAllDocs() {
-      var allDocsURL = buildURL(dbURL, "_all_docs", {
+      var allDocsURL = buildURL(docsURL, {
         // precaution not to try to grab really huge number of docs because
         // of some error
         limit: 4096
@@ -733,9 +738,9 @@ function createRandomDocCells(ns, modeCell, rawDDocIdCell, isROAdminCell) {
       return;
     }
     var randomIdURL = v.need(ns.viewsBucketInfoCell).localRandomKeyUri;
-    var dbURL = v.need(ns.dbURLCell);
+    var docsURL = v.need(ns.selectedBucketCRUDBaseCell);
     return future(function (dataCallback) {
-      fetchRandomId(randomIdURL, dbURL, dataCallback);
+      fetchRandomId(randomIdURL, docsURL, dataCallback);
     });
   });
   ns.randomDocIdCell.equality = function (a, b) {return a === b};
@@ -753,19 +758,11 @@ function createRandomDocCells(ns, modeCell, rawDDocIdCell, isROAdminCell) {
 
     var futureWrap = future.wrap(function (dataCallback, initateXHR) {
       function myCallback(body, status, xhr) {
-        if (!body) {
-          return dataCallback(body);
-        }
-        var meta = xhr.getResponseHeader("X-Couchbase-Meta");
-        var trueBody = {
-          json: body,
-          meta: JSON.parse(meta)
-        }
-        dataCallback(trueBody)
+        dataCallback(body);
       }
       initateXHR(myCallback);
     });
-    var url = buildURL(v.need(ns.dbURLCell), randomId);
+    var url = buildURL(v.need(ns.selectedBucketCRUDBaseCell) + "/", randomId);
     return future.get({url: url,
                        missingValue: null
                       }, undefined, undefined, futureWrap)
