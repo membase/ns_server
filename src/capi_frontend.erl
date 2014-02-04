@@ -24,12 +24,6 @@
 -include("mc_entry.hrl").
 -include("mc_constants.hrl").
 
--record(collect_acc, {
-          row_count = undefined,
-          rows = []
-         }).
-
-
 not_implemented(Arg, Rest) ->
     {not_implemented, Arg, Rest}.
 
@@ -106,14 +100,13 @@ continue_do_db_req(#httpd{mochi_req=MochiReq, user_ctx=UserCtx,
             throw({unauthorized, <<"password required">>})
     end.
 
-get_db_info(#db{filepath = undefined, name = Name}) ->
-    Info = [{db_name, Name},
-            {instance_start_time, <<>>}],
-    {ok, Info};
-get_db_info(#db{name = <<"_replicator">>} = Db) ->
-    couch_db:get_db_info(Db);
+%% This is used by 2.x xdcr checkpointing. It's only supposed to work
+%% against vbucket
 get_db_info(#db{name = DbName}) ->
-    [Bucket, _Master] = string:tokens(binary_to_list(DbName), [$/]),
+    Bucket = case string:tokens(binary_to_list(DbName), [$/]) of
+                 [BucketV, _Vb] -> BucketV;
+                 _ -> throw(not_found)
+             end,
     {ok, Stats0} = ns_memcached:stats(Bucket, <<"">>),
     EpStartupTime =  proplists:get_value(<<"ep_startup_time">>, Stats0),
     Info = [{db_name, DbName},
@@ -138,23 +131,9 @@ update_doc(#db{filepath = undefined, name=Name},
         {invalid_design_doc, _Reason} = Error ->
             throw(Error)
     end;
+update_doc(_Db, _Doc, _Options) ->
+    throw(not_found).
 
-update_doc(#db{name = <<"_replicator">>}, Doc, _Options) ->
-    xdc_rdoc_replication_srv:update_doc(Doc);
-
-update_doc(#db{filepath = undefined, name=Name} = Db,
-           #doc{id=DocId} = Doc, Options) ->
-    R = attempt(Name, DocId,
-                capi_crud, update_doc, [Db, Doc, Options]),
-    case R of
-        ok ->
-            ok;
-        unsupported ->
-            not_implemented(update_doc, [Db, Doc, Options]);
-        Error ->
-            %% rpc transforms exceptions into values; need to rethrow them
-            throw(Error)
-    end.
 
 update_docs(Db,
             [#doc{id = <<?LOCAL_DOC_PREFIX, _Rest/binary>>} = Doc],
@@ -254,8 +233,9 @@ start_db_compact(Db) ->
     couch_db:start_compact(Db).
 
 cleanup_view_index_files(Db) ->
-    couch_view:cleanup_index_files(Db).
+    exit(not_implemented(cleanup_view_index_files, [Db])).
 
+%% TODO: check if it's useful
 get_group_info(#db{filepath = undefined} = Db, DesignId) ->
     with_subdb(Db, <<"master">>,
                fun (RealDb) ->
@@ -271,7 +251,6 @@ delete_db(DbName, UserCtx) ->
     exit(not_implemented(delete_db, [DbName, UserCtx])).
 
 purge_docs(Db, IdsRevs) ->
-    %% couch_db:purge_docs(Db, IdsRevs).
     exit(not_implemented(purge_docs, [Db, IdsRevs])).
 
 get_missing_revs(Db, JsonDocIdRevs) ->
@@ -285,39 +264,13 @@ get_missing_revs(Db, JsonDocIdRevs) ->
 
     Result.
 
-set_security(Db, SecurityObj) ->
-    exit(not_implemented(set_security, [Db, SecurityObj])).
-    %% couch_db:set_security(Db, SecurityObj).
-
-get_security(Db) ->
-    exit(not_implemented(get_security, [Db])).
-    %% couch_db:get_security(Db).
-
-set_revs_limit(Db, Limit) ->
-    exit(not_implemented(set_revs_limit, [Db, Limit])).
-    %% couch_db:set_revs_limit(Db, Limit).
-
-get_revs_limit(Db) ->
-    exit(not_implemented(get_revs_limit, [Db])).
-    %% couch_db:get_revs_limit(Db).
-
 open_doc(#db{filepath = undefined} = Db, <<"_design/",_/binary>> = DocId, Options) ->
     with_subdb(Db, <<"master">>,
                fun (RealDb) ->
                        couch_db:open_doc(RealDb, DocId, Options)
                end);
-
-open_doc(#db{filepath = undefined, name = Name} = Db, DocId, Options) ->
-    case catch attempt(Name, DocId, capi_crud, open_doc, [Db, DocId, Options]) of
-        {badrpc, nodedown} ->
-            throw({502, <<"node_down">>, <<"The node is currently down.">>});
-        {badrpc, {'EXIT',{noproc, _}}} ->
-            throw({503, <<"node_warmup">>, <<"Data is not yet loaded.">>});
-        max_vbucket_retry ->
-            throw({503, <<"node_warmup">>, <<"Data is not yet loaded.">>});
-        Response ->
-            Response
-    end;
+%% 2.x xdcr checkpointing seemingly uses for it's checkpoints in
+%% _local/ docs
 open_doc(Db, DocId, Options) ->
     couch_db:open_doc(Db, DocId, Options).
 
@@ -370,57 +323,6 @@ has_active_vbuckets(Bucket) ->
     {ok, Config} = ns_bucket:get_bucket(?b2l(Bucket)),
     Map = proplists:get_value(map, Config, []),
     first_vbucket(node(), Map, 0) =/= {error, no_vbucket_found}.
-
-%% Keep the last previous non design doc id found so if the random item
-%% picked was a design doc, return last document, or not_found
--spec fold_docs(#doc_info{}, any(), tuple()) -> {ok, any()} | {stop, any()}.
-fold_docs(#doc_info{id = <<"_design", _/binary>>}, _, {0, undefined}) ->
-    {stop, {error, not_found}};
-fold_docs(#doc_info{id = <<"_design", _/binary>>}, _, {0, Id}) ->
-    {stop, Id};
-fold_docs(#doc_info{id = Id}, _, {0, _Id}) ->
-    {stop, Id};
-fold_docs(#doc_info{deleted=true}, _, Acc) ->
-    {ok, Acc};
-fold_docs(_, _, {N, Id}) ->
-    {ok, {N - 1, Id}}.
-
-
-%% Return 404 when no documents are found
--spec no_random_docs(#httpd{}) -> any().
-no_random_docs(Req) ->
-    couch_httpd:send_error(Req, 404, <<"no_docs">>, <<"No documents in database">>).
-
-
--spec setup_sender(#index_merge{}) -> #index_merge{}.
-setup_sender(MergeParams) ->
-    MergeParams#index_merge{
-      user_acc = #collect_acc{},
-      callback = fun collect_ids/2,
-      extra = #view_merge{
-        make_row_fun = fun({{DocId, DocId}, _Value}) -> DocId end
-       }
-     }.
-
-
-%% Colled Id's in the callback of the view merge, ignore design documents
--spec collect_ids(any(), #collect_acc{}) -> any().
-collect_ids(stop, Acc) ->
-    {ok, Acc};
-collect_ids({start, X}, Acc) ->
-    {ok, Acc#collect_acc{row_count=X}};
-collect_ids({row, Id}, #collect_acc{rows=Rows} = Acc) ->
-    case is_design_doc(Id) of
-        true -> {ok, Acc};
-        false -> {ok, Acc#collect_acc{rows=[Id|Rows]}}
-    end.
-
-
--spec is_design_doc(binary()) -> true | false.
-is_design_doc(<<"_design/", _Rest/binary>>) ->
-    true;
-is_design_doc(_) ->
-    false.
 
 -spec get_version() -> string().
 get_version() ->
