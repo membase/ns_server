@@ -72,9 +72,9 @@ handle_list(BucketId, Req) ->
 do_get(BucketId, DocId) ->
     BinaryBucketId = list_to_binary(BucketId),
     BinaryDocId = list_to_binary(DocId),
-    capi_frontend:attempt(BinaryBucketId,
-                          BinaryDocId,
-                          capi_crud, get, [BinaryBucketId, BinaryDocId, [ejson_body]]).
+    attempt(BinaryBucketId,
+            BinaryDocId,
+            capi_crud, get, [BinaryBucketId, BinaryDocId, [ejson_body]]).
 
 handle_get(BucketId, DocId, Req) ->
     case do_get(BucketId, DocId) of
@@ -89,13 +89,13 @@ do_mutate(BucketId, DocId, BodyOrUndefined) ->
     BinaryDocId = list_to_binary(DocId),
     case BodyOrUndefined of
         undefined ->
-            capi_frontend:attempt(BinaryBucketId,
-                                  BinaryDocId,
-                                  capi_crud, delete, [BinaryBucketId, BinaryDocId]);
+            attempt(BinaryBucketId,
+                    BinaryDocId,
+                    capi_crud, delete, [BinaryBucketId, BinaryDocId]);
         _ ->
-            capi_frontend:attempt(BinaryBucketId,
-                                  BinaryDocId,
-                                  capi_crud, set, [BinaryBucketId, BinaryDocId, BodyOrUndefined])
+            attempt(BinaryBucketId,
+                    BinaryDocId,
+                    capi_crud, set, [BinaryBucketId, BinaryDocId, BodyOrUndefined])
     end.
 
 handle_post(BucketId, DocId, Req) ->
@@ -105,3 +105,54 @@ handle_post(BucketId, DocId, Req) ->
 handle_delete(BucketId, DocId, Req) ->
     ok = do_mutate(BucketId, DocId, undefined),
     menelaus_util:reply_json(Req, []).
+
+
+%% Attempt to forward the request to the correct server, first try normal
+%% map, then vbucket map, then try all nodes
+-spec attempt(binary(), binary(), atom(), atom(), list()) -> any().
+attempt(DbName, DocId, Mod, Fun, Args) ->
+    attempt(DbName, DocId, Mod, Fun, Args, plain_map).
+
+-spec attempt(binary(), binary(), atom(),
+              atom(), list(), list() | plain_map | fast_forward) -> any().
+attempt(_DbName, _DocId, _Mod, _Fun, _Args, []) ->
+    throw(max_vbucket_retry);
+
+attempt(DbName, DocId, Mod, Fun, Args, [Node | Rest]) ->
+    case rpc:call(Node, Mod, Fun, Args) of
+        not_my_vbucket ->
+            attempt(DbName, DocId, Mod, Fun, Args, Rest);
+        Else ->
+            Else
+    end;
+
+attempt(DbName, DocId, Mod, Fun, Args, plain_map) ->
+    {_, Node} = cb_util:vbucket_from_id(?b2l(DbName), DocId),
+    case rpc:call(Node, Mod, Fun, Args) of
+        not_my_vbucket ->
+            attempt(DbName, DocId, Mod, Fun, Args, fast_forward);
+        Else ->
+            Else
+    end;
+
+attempt(DbName, DocId, Mod, Fun, Args, fast_forward) ->
+    R =
+        case cb_util:vbucket_from_id_fastforward(?b2l(DbName), DocId) of
+            ffmap_not_found ->
+                next_attempt;
+            {_, Node} ->
+                case rpc:call(Node, Mod, Fun, Args) of
+                    not_my_vbucket ->
+                        next_attempt;
+                    Else ->
+                        {ok, Else}
+                end
+        end,
+
+    case R of
+        next_attempt ->
+            Nodes = ns_cluster_membership:active_nodes(),
+            attempt(DbName, DocId, Mod, Fun, Args, Nodes);
+        {ok, R1} ->
+            R1
+    end.
