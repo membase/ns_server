@@ -461,3 +461,29 @@ DELETE /pools/default/remoteClusters/<name>
 
 // deletes server group (must be empty)
 DELETE /pools/default/serverGroups/<:uuid>
+
+
+
+==== document editing (private and internal!) ====
+
+GET /pools/default/buckets/<bucket-name>/docs =>
+{"total_rows":7,"rows":[
+{"id":"asdasd","key":"asdasd","value":{"rev":"2-00007aa32d9e74ce0000000000000000"},"doc":{"meta":{"id":"asdasd","rev":"2-00007aa32d9e74ce0000000000000000","expiration":0,"flags":0},"json":{"click":"to edit","new in 2.0":"there are no reserved field names"}}},
+{"id":"asdasds1","key":"asdasds1","value":{"rev":"1-00007aa853de14b40000000000000000"},"doc":{"meta":{"id":"asdasds1","rev":"1-00007aa853de14b40000000000000000","expiration":0,"flags":0},"json":{"click":"to edit","new in 2.0":"there are no reserved field names"}}},
+{"id":"asdasds12","key":"asdasds12","value":{"rev":"1-00007aa8c183e1050000000000000000"},"doc":{"meta":{"id":"asdasds12","rev":"1-00007aa8c183e1050000000000000000","expiration":0,"flags":0},"json":{"click":"to edit","new in 2.0":"there are no reserved field names"}}},
+{"id":"asdasds12345","key":"asdasds12345","value":{"rev":"1-00007aaa16c423ee0000000000000000"},"doc":{"meta":{"id":"asdasds12345","rev":"1-00007aaa16c423ee0000000000000000","expiration":0,"flags":0},"json":{"click":"to edit","new in 2.0":"there are no reserved field names"}}},
+{"id":"asdasds123456","key":"asdasds123456","value":{"rev":"1-00007aaa7468da390000000000000000"},"doc":{"meta":{"id":"asdasds123456","rev":"1-00007aaa7468da390000000000000000","expiration":0,"flags":0},"json":{"click":"to edit","new in 2.0":"there are no reserved field names"}}},
+{"id":"asdasds1234567","key":"asdasds1234567","value":{"rev":"1-00007aaadf34a2220000000000000000"},"doc":{"meta":{"id":"asdasds1234567","rev":"1-00007aaadf34a2220000000000000000","expiration":0,"flags":0},"json":{"click":"to edit","new in 2.0":"there are no reserved field names"}}}
+]
+}
+
+GET /pools/default/buckets/<bucket-name>/docs/<doc-id> =>
+{json: <document's-json>, meta: {id: <doc-id>, expiration: _, flags: _, rev: _}}
+
+DELETE /pools/default/buckets/<bucket-name>/docs/<doc-id> =>
+[]
+
+POST /pools/default/buckets/<bucket-name>/docs/<doc-id>
+<document's-json> =>
+[]
+(NOTE: no meta in update payload)

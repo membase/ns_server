@@ -1601,7 +1601,7 @@ var MockedRequest = mkClass({
           optimisticReplicationThreshold: 256,
           workerBatchSize: 500
       }],
-      [get("couchBase", x, "_all_docs"), function () {
+      [get("pools", "default", "buckets", x, "docs"), function () {
         return ServerStateMock.handleAllDocs(this);
       }],
       // [get("couchBase", x, "_design", x, "_view", x), function () {return ServerStateMock.handleAllDocs(this);}],
@@ -1609,18 +1609,11 @@ var MockedRequest = mkClass({
         this.fakeXHR.setResponseHeader("X-Couchbase-Meta", JSON.stringify({"id":"3","rev":"1-000003dd0d54cfa20000000000000000","expiration":0,"flags":0,"type":"json"}))
         return ServerStateMock.handleAnyDoc(this);
       }],
-      [get("couchBase", x, 3), function () {
-        this.fakeXHR.setResponseHeader("X-Couchbase-Meta", JSON.stringify({"id":"3","rev":"1-000003dd0d54cfa20000000000000000","expiration":0,"flags":0,"type":"json"}))
-        return ServerStateMock.handleAnyDoc(this);
-      }],
-      [get("couchBase", x, "c"), function () {
-        this.fakeXHR.setResponseHeader("X-Couchbase-Meta", JSON.stringify({"id":"3","rev":"1-000003dd0d54cfa20000000000000000","expiration":0,"flags":0,"type":"json"}))
-        return ServerStateMock.handleAnyDoc(this);
-      }],
-      [get("couchBase", x, "ojojo"), function () {
-        this.fakeXHR.setResponseHeader("X-Couchbase-Meta", JSON.stringify({"id":"3","rev":"1-000003dd0d54cfa20000000000000000","expiration":0,"flags":0,"type":"json"}))
-        return ServerStateMock.handleAnyDoc(this);
-      }],
+      [get("pools", "default", "buckets", x, "docs", x), function () {
+        var meta = {"id":"3","rev":"1-000003dd0d54cfa20000000000000000","expiration":0,"flags":0,"type":"json"};
+        var body = ServerStateMock.handleAnyDoc(this);
+        return {meta: meta, json: body};
+      }]
     ];
 
     rv.x = x;

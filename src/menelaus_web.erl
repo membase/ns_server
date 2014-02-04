@@ -171,6 +171,9 @@ is_throttled_request(["diag" | _]) ->
     false;
 is_throttled_request(["couchBase" | _]) ->      % this get's throttled as capi request
     false;
+%% this gets throttled via capi too
+is_throttled_request(["pools", _, "buckets", _BucketId, "docs"]) ->
+    false;
 is_throttled_request(_) ->
     true.
 
@@ -202,6 +205,10 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                               [PoolId, Id]};
                          ["pools", PoolId, "buckets", Id, "ddocs"] ->
                              {auth_bucket, fun menelaus_web_buckets:handle_ddocs_list/3, [PoolId, Id]};
+                         ["pools", _PoolId, "buckets", Id, "docs"] ->
+                             {auth, fun menelaus_web_crud:handle_list/2, [Id]};
+                         ["pools", _PoolId, "buckets", Id, "docs", DocId] ->
+                             {auth, fun menelaus_web_crud:handle_get/3, [Id, DocId]};
                          ["pools", PoolId, "buckets", Id, "stats"] ->
                              {auth_bucket, fun menelaus_stats:handle_bucket_stats/3,
                               [PoolId, Id]};
@@ -398,6 +405,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["pools", PoolId, "buckets"] ->
                              {auth, fun menelaus_web_buckets:handle_bucket_create/2,
                               [PoolId]};
+                         ["pools", _PoolId, "buckets", Id, "docs", DocId] ->
+                             {auth, fun menelaus_web_crud:handle_post/3, [Id, DocId]};
                          ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
                              {auth_bucket_mutate,
                               fun menelaus_web_buckets:handle_bucket_flush/3, [PoolId, Id]};
@@ -464,6 +473,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                               fun menelaus_web_buckets:handle_bucket_delete/3, [PoolId, Id]};
                          ["pools", "default", "remoteClusters", Id] ->
                              {auth, fun menelaus_web_remote_clusters:handle_remote_cluster_delete/2, [Id]};
+                         ["pools", _PoolId, "buckets", Id, "docs", DocId] ->
+                             {auth, fun menelaus_web_crud:handle_delete/3, [Id, DocId]};
                          ["controller", "cancelXCDR", XID] ->
                              {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
                          ["controller", "cancelXDCR", XID] ->

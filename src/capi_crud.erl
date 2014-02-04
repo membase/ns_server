@@ -23,6 +23,8 @@
 
 -export([open_doc/3, update_doc/3]).
 
+-export([get/3, set/3, delete/2]).
+
 -spec open_doc(#db{}, binary(), list()) -> any().
 open_doc(#db{name = Name}, DocId, Options) ->
     get(Name, DocId, Options).
