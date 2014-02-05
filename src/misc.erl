@@ -1627,12 +1627,17 @@ do_safe_split(N, [H|T], Acc) ->
 
 -spec run_external_tool(string(), [string()]) -> {non_neg_integer(), binary()}.
 run_external_tool(Path, Args) ->
+    run_external_tool(Path, Args, []).
+
+-spec run_external_tool(string(), [string()], [{string(), string()}]) -> {non_neg_integer(), binary()}.
+run_external_tool(Path, Args, Env) ->
     executing_on_new_process(
       fun () ->
               Port = erlang:open_port({spawn_executable, Path},
                                       [stderr_to_stdout, binary,
                                        stream, exit_status, hide,
-                                       {args, Args}]),
+                                       {args, Args},
+                                       {env, Env}]),
               collect_external_tool_output(Port, [])
       end).
 
