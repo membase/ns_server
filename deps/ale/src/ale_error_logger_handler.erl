@@ -22,10 +22,15 @@
 
 -compile({parse_transform, ale_transform}).
 
--record(state, {logger :: atom()}).
+-define(MAILBOX_LIMIT, 5000).
+-define(MAILBOX_RECOVER_LIMIT, 500).
+
+-record(state, {logger :: atom(),
+                logging_state :: log | drop}).
 
 init([Logger]) ->
-    State = #state{logger=Logger},
+    State = #state{logger=Logger,
+                   logging_state=log},
     {ok, State}.
 
 handle_event({_Type, GLeader, _Msg}, State) when node(GLeader) =/= node() ->
@@ -35,15 +40,25 @@ handle_event({Type, _GLeader, Report},
              #state{logger=Logger} = State) when Type =:= info_report;
                                                  Type =:= warning_report;
                                                  Type =:= error_report ->
-    log_report(Type, Logger, Report),
-    {ok, State};
+    case action(State) of
+        {log, NewState} ->
+            log_report(Type, Logger, Report),
+            {ok, NewState};
+        {drop, NewState} ->
+            {ok, NewState}
+    end;
 
 handle_event({Type, _GLeader, Msg},
              #state{logger=Logger} = State) when Type =:= info_msg;
                                                  Type =:= warning_msg;
                                                  Type =:= error ->
-    log_msg(Type, Logger, Msg),
-    {ok, State};
+    case action(State) of
+        {log, NewState} ->
+            log_msg(Type, Logger, Msg),
+            {ok, NewState};
+        {drop, NewState} ->
+            {ok, NewState}
+    end;
 
 handle_event(_Event, State) ->
     {ok, State}.
@@ -59,6 +74,34 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+action(#state{logging_state=LoggingState,
+              logger=Logger} = State) ->
+    {message_queue_len, MailBoxSize} = process_info(self(), message_queue_len),
+    case LoggingState of
+        log ->
+            case MailBoxSize >= ?MAILBOX_LIMIT of
+                true ->
+                    ale:log(Logger, warn,
+                            "Mailbox size (~p) exceeded the limit of ~p. "
+                            "Starting to drop messages on the floor.",
+                            [MailBoxSize, ?MAILBOX_LIMIT]),
+                    {drop, State#state{logging_state=drop}};
+                false ->
+                    {log, State}
+            end;
+        drop ->
+            case MailBoxSize =< ?MAILBOX_RECOVER_LIMIT of
+                true ->
+                    ale:log(Logger, warn,
+                            "Starting to log again after mailbox size (~p) "
+                            "went below recovery limit of ~p.",
+                            [MailBoxSize, ?MAILBOX_RECOVER_LIMIT]),
+                    {log, State#state{logging_state=log}};
+                false ->
+                    {drop, State}
+            end
+    end.
 
 log_report(Type, Logger, {_Pid, ReportType, Report}) ->
     LogLevel = type_to_loglevel(Type),
