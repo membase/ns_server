@@ -6,6 +6,7 @@
          start_link_capi_service/0,
          start_link_rest_service/0,
          ssl_cert_key_path/0,
+         ssl_cacert_key_path/0,
          sync_local_cert_and_pkey_change/0]).
 
 %% gen_server callbacks
@@ -21,17 +22,20 @@
 
 -behavior(gen_server).
 
+-record(state, {cert,
+                pkey,
+                compat_30,
+                node}).
+
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 start_link_capi_service() ->
-    CertPath = ssl_cert_key_path(),
     {value, SSLPort} = ns_config:search_node(ssl_capi_port),
 
     Options = [{port, SSLPort},
                {ssl, true},
-               {ssl_opts, [{certfile, CertPath},
-                           {keyfile, CertPath}]}],
+               {ssl_opts, ssl_server_opts()}],
 
     %% the following is copied almost verbatim from couch_httpd.  The
     %% difference is that we don't touch "ssl" key of couch config and
@@ -103,6 +107,11 @@ start_link_capi_service() ->
                          throw({error, Reason})
                  end.
 
+ssl_server_opts() ->
+    Path = ssl_cert_key_path(),
+    [{keyfile, Path},
+     {certfile, Path},
+     {cacertfile, ssl_cacert_key_path()}].
 
 start_link_rest_service() ->
     Config0 = menelaus_web:webconfig(),
@@ -111,8 +120,7 @@ start_link_rest_service() ->
     {value, SSLPort} = ns_config:search_node(ssl_rest_port),
     Config3 = [{ssl, true},
                {name, menelaus_web_ssl},
-               {ssl_opts, [{keyfile, ssl_cert_key_path()},
-                           {certfile, ssl_cert_key_path()}]},
+               {ssl_opts, ssl_server_opts()},
                {port, SSLPort}
                | Config2],
     menelaus_web:start_link(Config3).
@@ -121,16 +129,60 @@ ssl_cert_key_path() ->
     filename:join(path_config:component_path(data, "config"), "ssl-cert-key.pem").
 
 
+raw_ssl_cacert_key_path() ->
+    ssl_cert_key_path() ++ "-ca".
+
+ssl_cacert_key_path() ->
+    Path = raw_ssl_cacert_key_path(),
+    case filelib:is_file(Path) of
+        true ->
+            Path;
+        false ->
+            undefined
+    end.
+
+local_cert_path_prefix() ->
+    filename:join(path_config:component_path(data, "config"), "local-ssl-").
+
+check_local_cert_and_pkey(ClusterCertPEM, Node) ->
+    true = is_binary(ClusterCertPEM),
+    try
+        do_check_local_cert_and_pkey(ClusterCertPEM, Node)
+    catch T:E ->
+            {T, E}
+    end.
+
+do_check_local_cert_and_pkey(ClusterCertPEM, Node) ->
+    {ok, MetaBin} = file:read_file(local_cert_path_prefix() ++ "meta"),
+    Meta = erlang:binary_to_term(MetaBin),
+    {ok, LocalCert} = file:read_file(local_cert_path_prefix() ++ "cert.pem"),
+    {ok, LocalPKey} = file:read_file(local_cert_path_prefix() ++ "pkey.pem"),
+    Digest = erlang:md5(term_to_binary({Node, ClusterCertPEM, LocalCert, LocalPKey})),
+    {proplists:get_value(digest, Meta) =:= Digest, LocalCert, LocalPKey}.
+
 sync_local_cert_and_pkey_change() ->
     ns_config:sync_announcements(),
     ok = gen_server:call(?MODULE, ping, infinity).
+
+build_state(CertPEM, PKeyPEM, Compat30, Node) ->
+    BaseState = #state{cert = CertPEM,
+                       pkey = PKeyPEM,
+                       compat_30 = Compat30},
+    case Compat30 of
+        true ->
+            BaseState#state{node = Node};
+        false ->
+            BaseState
+    end.
 
 init([]) ->
     Self = self(),
     ns_pubsub:subscribe_link(ns_config_events, fun config_change_detector_loop/2, Self),
 
     {CertPEM, PKeyPEM} = ns_server_cert:cluster_cert_and_pkey_pem(),
-    save_cert_pkey(CertPEM, PKeyPEM),
+    Compat30 = cluster_compat_mode:is_cluster_30(),
+    Node = node(),
+    save_cert_pkey(CertPEM, PKeyPEM, Compat30, Node),
     proc_lib:init_ack({ok, Self}),
 
     %% it's possible that we crashed somehow and not passed updated
@@ -138,12 +190,20 @@ init([]) ->
     %% on every init
     restart_xdcr_proxy(),
 
-    gen_server:enter_loop(?MODULE, [], {CertPEM, PKeyPEM}).
+    gen_server:enter_loop(?MODULE, [],
+                          build_state(CertPEM, PKeyPEM, Compat30, Node)).
 
 format_status(_Opt, [_PDict, _State]) ->
     {}.
 
 config_change_detector_loop({cert_and_pkey, _}, Parent) ->
+    Parent ! cert_and_pkey_changed,
+    Parent;
+config_change_detector_loop({cluster_compat_version, _Version}, Parent) ->
+    Parent ! cert_and_pkey_changed,
+    Parent;
+%% we're using this key to detect change of node() name
+config_change_detector_loop({node, _Node, capi_port}, Parent) ->
     Parent ! cert_and_pkey_changed,
     Parent;
 config_change_detector_loop(_OtherEvent, Parent) ->
@@ -158,19 +218,22 @@ handle_call(_, _From, State) ->
 handle_cast(_, State) ->
     {noreply, State}.
 
-handle_info(cert_and_pkey_changed, OldPair) ->
+handle_info(cert_and_pkey_changed, OldState) ->
     misc:flush(cert_and_pkey_changed),
-    {CertPEM, PKeyPEM} = NewPair = ns_server_cert:cluster_cert_and_pkey_pem(),
-    case OldPair =:= NewPair of
+    {CertPEM, PKeyPEM} = ns_server_cert:cluster_cert_and_pkey_pem(),
+    Compat30 = cluster_compat_mode:is_cluster_30(),
+    Node = node(),
+    NewState = build_state(CertPEM, PKeyPEM, Compat30, Node),
+    case OldState =:= NewState of
         true ->
-            {noreply, OldPair};
+            {noreply, OldState};
         false ->
             ?log_info("Got certificate and pkey change"),
-            save_cert_pkey(CertPEM, PKeyPEM),
+            save_cert_pkey(CertPEM, PKeyPEM, Compat30, Node),
             ?log_info("Wrote new pem file"),
             restart_ssl_services(),
             ?log_info("Restarted all ssl services"),
-            {noreply, NewPair}
+            {noreply, NewState}
     end;
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -181,9 +244,44 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-save_cert_pkey(CertPEM, PKeyPEM) ->
+do_generate_local_cert(CertPEM, PKeyPEM, Node) ->
+    {_, Host} = misc:node_name_host(node()),
+    Args = ["--generate-leaf",
+            "--common-name=" ++ Host],
+    Env = [{"CACERT", binary_to_list(CertPEM)},
+           {"CAPKEY", binary_to_list(PKeyPEM)}],
+    {LocalCert, LocalPKey} = ns_server_cert:do_generate_cert_and_pkey(Args, Env),
+    ok = misc:atomic_write_file(local_cert_path_prefix() ++ "pkey.pem", LocalPKey),
+    ok = misc:atomic_write_file(local_cert_path_prefix() ++ "cert.pem", LocalCert),
+    Meta = [{digest, erlang:md5(term_to_binary({Node, CertPEM, LocalCert, LocalPKey}))}],
+    ok = misc:atomic_write_file(local_cert_path_prefix() ++ "meta", term_to_binary(Meta)),
+    ?log_info("Saved local cert for node ~p", [Node]),
+    {true, LocalCert, LocalPKey} = check_local_cert_and_pkey(CertPEM, Node),
+    {LocalCert, LocalPKey}.
+
+maybe_generate_local_cert(CertPEM, PKeyPEM, Node) ->
+    case check_local_cert_and_pkey(CertPEM, Node) of
+        {true, LocalCert, LocalPKey} ->
+            {LocalCert, LocalPKey};
+        {false, _, _} ->
+            ?log_info("Detected existing node certificate that did not match cluster certificate. Will re-generate"),
+            do_generate_local_cert(CertPEM, PKeyPEM, Node);
+        Error ->
+            ?log_info("Failed to read node certificate. Perhaps it wasn't created yet. Error: ~p", [Error]),
+            do_generate_local_cert(CertPEM, PKeyPEM, Node)
+    end.
+
+save_cert_pkey(CertPEM, PKeyPEM, Compat30, Node) ->
     Path = ssl_cert_key_path(),
-    ok = misc:atomic_write_file(Path, [CertPEM, PKeyPEM]).
+    case Compat30 of
+        true ->
+            {LocalCert, LocalPKey} = maybe_generate_local_cert(CertPEM, PKeyPEM, Node),
+            ok = misc:atomic_write_file(Path, [LocalCert, LocalPKey]),
+            ok = misc:atomic_write_file(raw_ssl_cacert_key_path(), CertPEM);
+        false ->
+            _ = file:delete(raw_ssl_cacert_key_path()),
+            ok = misc:atomic_write_file(Path, [CertPEM, PKeyPEM])
+    end.
 
 restart_ssl_services() ->
     %% NOTE: We're going to talk to our supervisor so if we do it

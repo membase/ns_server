@@ -91,6 +91,7 @@ create_ssl_proxy_spec(Config) ->
     {value, UpstreamPort} = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}),
     {value, DownstreamPort} = ns_config:search(Config, {node, node(), ssl_proxy_downstream_port}),
     Path = ns_ssl_services_setup:ssl_cert_key_path(),
+    CACertPath = ns_ssl_services_setup:ssl_cacert_key_path(),
     PathArgs = ["-pa"] ++ code:get_path(),
     EnvArgsTail = [{K, V}
                    || {K, V} <- application:get_all_env(ns_server),
@@ -102,7 +103,8 @@ create_ssl_proxy_spec(Config) ->
     EnvArgs = [{upstream_port, UpstreamPort},
                {downstream_port, DownstreamPort},
                {cert_file, Path},
-               {private_key_file, Path}
+               {private_key_file, Path},
+               {cacert_file, CACertPath}
                | EnvArgsTail],
 
     AllArgs = ["-smp", "enable",

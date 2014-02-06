@@ -187,8 +187,8 @@ GET /pools/default =>
                 "proxy": 12003, // moxi port of this node
                 "direct": 12002, // memcached port of this node,
                 "sslProxy": 11998, // private and internal: ssl end of ssl proxy
-                "httpsCAPI": 19501, // private and internal: https port of CAPI
-                "httpsMgmt": 19001 // private and internal: https port of management REST API
+                "httpsCAPI": 19501,
+                "httpsMgmt": 19001
             }
         }
 

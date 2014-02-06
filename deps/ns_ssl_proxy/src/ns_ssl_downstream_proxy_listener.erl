@@ -29,6 +29,7 @@ init() ->
     {ok, Port} = application:get_env(ns_ssl_proxy, downstream_port),
     {ok, CertFile} = application:get_env(ns_ssl_proxy, cert_file),
     {ok, PrivateKeyFile} = application:get_env(ns_ssl_proxy, private_key_file),
+    {ok, CACertFile} = application:get_env(ns_ssl_proxy, cacert_file),
 
     case ssl:listen(Port,
                     [{reuseaddr, true},
@@ -38,7 +39,8 @@ init() ->
                      {active, false},
                      {nodelay, true},
                      {certfile, CertFile},
-                     {keyfile, PrivateKeyFile}]) of
+                     {keyfile, PrivateKeyFile},
+                     {cacertfile, CACertFile}]) of
         {ok, Sock} ->
             proc_lib:init_ack({ok, self()}),
             accept_loop(Sock);

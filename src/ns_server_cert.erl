@@ -4,6 +4,7 @@
 
 -export([cluster_cert_and_pkey_pem/0,
          generate_cert_and_pkey/0,
+         do_generate_cert_and_pkey/2,
          validate_cert/1,
          generate_and_set_cert_and_pkey/0]).
 
@@ -37,7 +38,7 @@ generate_and_set_cert_and_pkey() ->
 
 generate_cert_and_pkey() ->
     StartTS = os:timestamp(),
-    RV = do_generate_cert_and_pkey(),
+    RV = do_generate_cert_and_pkey([], []),
     EndTS = os:timestamp(),
 
     Diff = timer:now_diff(EndTS, StartTS),
@@ -45,8 +46,8 @@ generate_cert_and_pkey() ->
 
     RV.
 
-do_generate_cert_and_pkey() ->
-    {Status, Output} = misc:run_external_tool(path_config:component_path(bin, "generate_cert"), []),
+do_generate_cert_and_pkey(Args, Env) ->
+    {Status, Output} = misc:run_external_tool(path_config:component_path(bin, "generate_cert"), Args, Env),
     case Status of
         0 ->
             extract_cert_and_pkey(Output);
