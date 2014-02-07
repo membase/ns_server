@@ -69,7 +69,7 @@ mover(Parent, Bucket, VBucket, OldChain, NewChain, ReplType) ->
       fun () ->
               case {IndexAware, VBucketReplType} of
                   {_, upr} ->
-                      mover_inner_upr(Parent, Bucket, VBucket, OldChain, NewChain);
+                      mover_inner_upr(Parent, Bucket, VBucket, OldChain, NewChain, IndexAware);
                   {true, tap} ->
                       mover_inner(Parent, Bucket, VBucket, OldChain, NewChain);
                   {false, tap} ->
@@ -178,6 +178,11 @@ wait_index_updated(Bucket, Parent, NewNode, ReplicaNodes, VBucket) ->
             ok
     end.
 
+maybe_inhibit_view_compaction(_Parent, _Node, _Bucket, _NewNode, false) ->
+    ok;
+maybe_inhibit_view_compaction(Parent, Node, Bucket, NewNode, true) ->
+    inhibit_view_compaction(Parent, Node, Bucket, NewNode).
+
 inhibit_view_compaction(Parent, Node, Bucket, NewNode) ->
     case cluster_compat_mode:rebalance_ignore_view_compactions() of
         false ->
@@ -203,11 +208,17 @@ inhibit_view_compaction(Parent, Node, Bucket, NewNode) ->
             ok
     end.
 
+maybe_initiate_indexing(_Bucket, _Parent, _JustBackfillNodes, _ReplicaNodes, _VBucket, false) ->
+    ok;
+maybe_initiate_indexing(Bucket, Parent, JustBackfillNodes, ReplicaNodes, VBucket, true) ->
+    ok = janitor_agent:initiate_indexing(Bucket, Parent, JustBackfillNodes, ReplicaNodes, VBucket),
+    master_activity_events:note_indexing_initiated(Bucket, JustBackfillNodes, VBucket).
+
 mover_inner_upr(Parent, Bucket, VBucket,
-                [OldMaster|_] = OldChain, [NewMaster|_] = NewChain) ->
+                [OldMaster|_] = OldChain, [NewMaster|_] = NewChain, IndexAware) ->
     process_flag(trap_exit, true),
 
-    inhibit_view_compaction(Parent, OldMaster, Bucket, NewMaster),
+    maybe_inhibit_view_compaction(Parent, OldMaster, Bucket, NewMaster, IndexAware),
 
     %% build new chain as replicas of existing master
     {ReplicaNodes, JustBackfillNodes} =
@@ -219,8 +230,7 @@ mover_inner_upr(Parent, Bucket, VBucket,
     %% initiate indexing on new master (replicas are ignored for now)
     %% at this moment since the stream to new master is created (if there is a new master)
     %% ep-engine guarantees that it can support indexing
-    ok = janitor_agent:initiate_indexing(Bucket, Parent, JustBackfillNodes, ReplicaNodes, VBucket),
-    master_activity_events:note_indexing_initiated(Bucket, JustBackfillNodes, VBucket),
+    maybe_initiate_indexing(Bucket, Parent, JustBackfillNodes, ReplicaNodes, VBucket, IndexAware),
 
     %% wait for backfill on all the opened streams
     ?rebalance_debug("Will wait for backfill on all opened streams"),
@@ -241,21 +251,26 @@ mover_inner_upr(Parent, Bucket, VBucket,
             %% if there's nothing to move, we're done
             ok;
         false ->
-            %% pause index on old master node
-            case cluster_compat_mode:is_index_pausing_on() of
+            case IndexAware of
                 true ->
-                    system_stats_collector:increment_counter(index_pausing_runs, 1),
-                    janitor_agent:set_vbucket_state(Bucket, OldMaster, Parent, VBucket, active,
-                                                    paused, undefined),
-                    wait_master_seqno_persisted_on_replicas(Bucket, VBucket, Parent, OldMaster,
-                                                            AllBuiltNodes);
+                    %% pause index on old master node
+                    case cluster_compat_mode:is_index_pausing_on() of
+                        true ->
+                            system_stats_collector:increment_counter(index_pausing_runs, 1),
+                            janitor_agent:set_vbucket_state(Bucket, OldMaster, Parent, VBucket, active,
+                                                            paused, undefined),
+                            wait_master_seqno_persisted_on_replicas(Bucket, VBucket, Parent, OldMaster,
+                                                                    AllBuiltNodes);
+                        false ->
+                            ok
+                    end,
+
+                    wait_index_updated(Bucket, Parent, NewMaster, ReplicaNodes, VBucket),
+
+                    ?rebalance_debug("Index is updated on new master.");
                 false ->
                     ok
             end,
-
-            wait_index_updated(Bucket, Parent, NewMaster, ReplicaNodes, VBucket),
-
-            ?rebalance_debug("Index is updated on new master."),
 
             master_activity_events:note_takeover_started(Bucket, VBucket, OldMaster, NewMaster),
             ok = janitor_agent:upr_takeover(Bucket, Parent, OldMaster, NewMaster, VBucket),
