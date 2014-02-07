@@ -356,15 +356,9 @@ flush_docs_capi(Target, DocsList) ->
 flush_docs_xmem(_XMemSrv, []) ->
     ok;
 flush_docs_xmem(XMemSrv, DocsList) ->
-    {WorkerPid, Pipeline} = xdc_vbucket_rep_xmem_srv:get_worker(XMemSrv),
+    WorkerPid = xdc_vbucket_rep_xmem_srv:get_worker(XMemSrv),
     TimeStart = now(),
-    RV =
-        case Pipeline of
-            false ->
-                xdc_vbucket_rep_xmem_worker:flush_docs(WorkerPid, DocsList);
-            _ ->
-                xdc_vbucket_rep_xmem_worker:flush_docs_pipeline(WorkerPid, DocsList)
-        end,
+    RV = xdc_vbucket_rep_xmem_worker:flush_docs_pipeline(WorkerPid, DocsList),
     TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
     AvgLatency = TimeSpent div length(DocsList),
 

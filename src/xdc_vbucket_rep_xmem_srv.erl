@@ -40,19 +40,17 @@
 start_link(Vb, RemoteXMem, ParentVbRep, Options) ->
     %% prepare parameters to start xmem server process
     NumWorkers = proplists:get_value(xmem_worker, Options),
-    PipelineEnabled = proplists:get_value(enable_pipeline_ops, Options),
     LocalConflictResolution = proplists:get_value(local_conflict_resolution, Options),
     ConnectionTimeout = proplists:get_value(connection_timeout, Options),
 
     Args = {Vb, RemoteXMem, ParentVbRep,
-            NumWorkers, PipelineEnabled,
-            LocalConflictResolution, ConnectionTimeout},
+            NumWorkers, LocalConflictResolution, ConnectionTimeout},
     {ok, Pid} = gen_server:start_link(?MODULE, Args, []),
     {ok, Pid}.
 
 %% gen_server behavior callback functions
 init({Vb, RemoteXMem, ParentVbRep,
-      NumWorkers, PipelineEnabled, LocalConflictResolution, ConnectionTimeout}) ->
+      NumWorkers, LocalConflictResolution, ConnectionTimeout}) ->
     process_flag(trap_exit, true),
     %% signal to self to initialize
     {ok, AllWorkers} = start_worker_process(Vb, NumWorkers,
@@ -66,7 +64,6 @@ init({Vb, RemoteXMem, ParentVbRep,
                                            statistics = #xdc_vb_rep_xmem_statistics{},
                                            pid_workers = AllWorkers,
                                            num_workers = NumWorkers,
-                                           enable_pipeline = PipelineEnabled,
                                            seed = {T1, T2, T3},
                                            error_reports = Errs},
 
@@ -187,17 +184,12 @@ handle_call(select_bucket, {_Pid, _Tag},
     {reply, ok, NewState};
 
 handle_call({find_missing, IdRevs}, _From,
-            #xdc_vb_rep_xmem_srv_state{vb = Vb, pid_workers = Workers, enable_pipeline = Pipeline} =  State) ->
+            #xdc_vb_rep_xmem_srv_state{vb = Vb, pid_workers = Workers} =  State) ->
 
     WorkerPid = load_balancer(Vb, Workers),
     TimeStart = now(),
     {ok, MissingIdRevs} =
-        case Pipeline of
-            false ->
-                xdc_vbucket_rep_xmem_worker:find_missing(WorkerPid, IdRevs);
-            _ ->
-                xdc_vbucket_rep_xmem_worker:find_missing_pipeline(WorkerPid, IdRevs)
-        end,
+        xdc_vbucket_rep_xmem_worker:find_missing_pipeline(WorkerPid, IdRevs),
     TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
     NumIdRevs = length(IdRevs),
     AvgLatency = TimeSpent div NumIdRevs,
@@ -209,18 +201,12 @@ handle_call({find_missing, IdRevs}, _From,
     {reply, {ok, MissingIdRevs}, State};
 
 handle_call({flush_docs, DocsList}, _From,
-            #xdc_vb_rep_xmem_srv_state{vb = Vb, pid_workers = Workers,
-                                      enable_pipeline = Pipeline} = State) ->
+            #xdc_vb_rep_xmem_srv_state{vb = Vb, pid_workers = Workers} = State) ->
 
     WorkerPid = load_balancer(Vb, Workers),
     TimeStart = now(),
     {ok, NumDocRepd, NumDocRejected} =
-        case Pipeline of
-            false ->
-                xdc_vbucket_rep_xmem_worker:flush_docs(WorkerPid, DocsList);
-            _ ->
-                xdc_vbucket_rep_xmem_worker:flush_docs_pipeline(WorkerPid, DocsList)
-        end,
+        xdc_vbucket_rep_xmem_worker:flush_docs_pipeline(WorkerPid, DocsList),
     TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
     AvgLatency = TimeSpent div length(DocsList),
 
@@ -237,10 +223,8 @@ handle_call({flush_docs, DocsList}, _From,
 
 handle_call(get_worker, _From,
             #xdc_vb_rep_xmem_srv_state{vb =  Vb,
-                                       enable_pipeline = Pipeline,
                                        pid_workers = Workers} = State) ->
-    WorkerPid = load_balancer(Vb, Workers),
-    {reply, {WorkerPid, Pipeline}, State};
+    {reply, load_balancer(Vb, Workers), State};
 
 handle_call(stats, _From,
             #xdc_vb_rep_xmem_srv_state{} = State) ->

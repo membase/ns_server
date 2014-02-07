@@ -20,7 +20,6 @@
 -export([start_link/5]).
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
--export([find_missing/2, flush_docs/2]).
 -export([connect/2, select_bucket/2, disconnect/1, stop/1]).
 
 -export([find_missing_pipeline/2, flush_docs_pipeline/2]).
@@ -68,17 +67,9 @@ format_status(Opt, [PDict, State]) ->
 select_bucket(Server, Remote) ->
     gen_server:call(Server, {select_bucket, Remote}, infinity).
 
--spec find_missing(pid(), list()) -> {ok, list()} | {error, term()}.
-find_missing(Server, IdRevs) ->
-    gen_server:call(Server, {find_missing, IdRevs}, infinity).
-
 -spec find_missing_pipeline(pid(), list()) -> {ok, list()} | {error, term()}.
 find_missing_pipeline(Server, IdRevs) ->
     gen_server:call(Server, {find_missing_pipeline, IdRevs}, infinity).
-
--spec flush_docs(pid(), list()) -> {ok, integer(), integer()} | {error, term()}.
-flush_docs(Server, DocsList) ->
-    gen_server:call(Server, {flush_docs, DocsList}, infinity).
 
 -spec flush_docs_pipeline(pid(), list()) -> {ok, integer(), integer()} | {error, term()}.
 flush_docs_pipeline(Server, DocsList) ->
@@ -173,27 +164,6 @@ handle_call({select_bucket, #xdc_rep_xmem_remote{} = Remote}, {_Pid, _Tag},
     end,
     {reply, ok, State#xdc_vb_rep_xmem_worker_state{status = bucket_selected}};
 
-handle_call({find_missing, IdRevs}, _From,
-            #xdc_vb_rep_xmem_worker_state{vb = Vb,
-                                          socket = Socket} =  State) ->
-    TimeStart = now(),
-    MissingIdRevs =
-        lists:foldr(fun({Key, Rev}, Acc) ->
-                            Missing =  is_missing(Socket, Vb, {Key, Rev}),
-                            Acc1 = case Missing of
-                                       true ->
-                                           [{Key, Rev} | Acc];
-                                       _ ->
-                                           Acc
-                                   end,
-                            Acc1
-                    end,
-                    [], IdRevs),
-
-    TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
-    _AvgLatency = TimeSpent div length(IdRevs),
-    {reply, {ok, MissingIdRevs}, State};
-
 %% ----------- Pipelined Memached Ops --------------%%
 handle_call({find_missing_pipeline, IdRevs}, _From,
             #xdc_vb_rep_xmem_worker_state{vb = Vb, mcd_loc = McdDst} =  State) when McdDst =/= undefined ->
@@ -264,59 +234,6 @@ handle_call({find_missing_pipeline, IdRevs}, _From,
     TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
     _AvgLatency = TimeSpent div length(IdRevs),
     {reply, {ok, MissingIdRevs}, State};
-
-handle_call({flush_docs, DocsList}, _From,
-            #xdc_vb_rep_xmem_worker_state{id = Id, vb = VBucket,
-                                          socket = Socket,
-                                          local_conflict_resolution = LocalConflictResolution,
-                                          connection_timeout = ConnectionTimeout} =  State) ->
-    TimeStart = now(),
-    %% enumerate all docs and update them
-    {NumDocsRepd, NumDocsRejected, Errors} =
-        lists:foldr(
-          fun (#doc{id = Key, rev = Rev} = Doc, {AccRepd, AccRejd, ErrorAcc}) ->
-                  case flush_single_doc(Key, Socket, VBucket, LocalConflictResolution, Doc, 2) of
-                      {ok, flushed} ->
-                          {(AccRepd + 1), AccRejd, ErrorAcc};
-                      {ok, rejected} ->
-                          {AccRepd, (AccRejd + 1), ErrorAcc};
-                      {error, Error} ->
-                          ?xdcr_error("Error! unable to flush doc (key: ~p, rev: ~p) due to error ~p",
-                                      [Key, Rev, Error]),
-                          ErrorsAcc1 = [{{Key, Rev}, Error} | ErrorAcc],
-                          {AccRepd, AccRejd, ErrorsAcc1}
-                  end
-          end,
-          {0, 0, []}, DocsList),
-
-    TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
-    _AvgLatency = TimeSpent div length(DocsList),
-
-    %% dump error msg if timeout
-    TimeSpentSecs = TimeSpent div 1000,
-    case TimeSpentSecs > ConnectionTimeout of
-        true ->
-            ?xdcr_error("[xmem_worker ~p for vb ~p]: update ~p docs takes too long to finish!"
-                        "(total time spent: ~p secs, default connection time out: ~p secs)",
-                        [Id, VBucket, length(DocsList), TimeSpentSecs, ConnectionTimeout]);
-        _ ->
-            ok
-    end,
-
-    case Errors of
-        [] ->
-            ok;
-        _ ->
-            %% for some reason we can only return one error. Thus
-            %% we're logging everything else here
-            ?xdcr_error("[xmem_worker ~p for vb ~p]: Error, could not "
-                        "update docs. Time spent in ms: ~p, "
-                        "# of docs trying to update: ~p, error msg: ~n~p",
-                        [Id, VBucket, TimeSpent, length(DocsList), Errors]),
-            ok
-    end,
-
-    {reply, {ok, NumDocsRepd, NumDocsRejected}, State};
 
 %% ----------- Pipelined Memached Ops --------------%%
 handle_call({flush_docs_pipeline, DocsList}, _From,
@@ -579,124 +496,6 @@ connect_internal(Tries, #xdc_rep_xmem_remote{} = Remote) ->
                                                                        {memcached_error, term(), term()}.
 select_bucket_internal(#xdc_rep_xmem_remote{bucket = Bucket} = _Remote, Socket) ->
     mc_client_binary:select_bucket(Socket, Bucket).
-
--spec is_missing(inet:socket(), integer(), {integer(), term()}) -> boolean().
-is_missing(Socket, VBucket, {Key, LocalMeta}) ->
-    case get_remote_meta(Socket, VBucket, Key) of
-        {key_enoent, _Error, _CAS} ->
-            true;
-        {not_my_vbucket, Error} ->
-            throw({bad_request, not_my_vbucket, Error});
-        {ok, RemoteMeta, _CAS} ->
-            case max(RemoteMeta, LocalMeta) of
-                RemoteMeta ->
-                    false; %% no need to replicate
-                LocalMeta ->
-                    true; %% need to replicate to remote
-                _ ->
-                    false
-                end
-    end.
-
--spec get_remote_meta(inet:socket(), integer(), term()) -> {ok, term(), integer()} |
-                                                           {key_enoent, list(), integer()} |
-                                                           {not_my_vbucket, list()}.
-get_remote_meta(Socket, VBucket, Key) ->
-    %% issue get_meta to remote memcached
-    Reply = case mc_client_binary:get_meta(Socket, Key, VBucket) of
-                {memcached_error, key_enoent, RemoteCAS} ->
-                    {key_enoent, "remote_memcached_error: key does not exist", RemoteCAS};
-                {memcached_error, not_my_vbucket, _} ->
-                    ErrorMsg = ?format_msg("remote_memcached_error: not my vbucket (vb: ~p)", [VBucket]),
-                    {not_my_vbucket, ErrorMsg};
-                {ok, RemoteFullMeta, RemoteCAS, _Flags} ->
-                    {ok, RemoteFullMeta, RemoteCAS}
-            end,
-    Reply.
-
--spec flush_single_doc(integer(), inet:socket(), integer(), boolean(), #doc{}, integer()) -> {ok, flushed}  |
-                                                                                             {ok, rejected} |
-                                                                                             {error, {term(), term()}}.
-flush_single_doc(Id, _Socket, VBucket, _LocalConflictResolution,
-                 #doc{id = DocId, deleted = Deleted} = _Doc, 0) ->
-    ?xdcr_error("[xmem_worker ~p for vb ~p]: Error, unable to flush doc (key: ~p, deleted: ~p) "
-                "to destination, maximum retry reached.",
-                [Id, VBucket, DocId, Deleted]),
-    {error, {bad_request, max_retry}};
-
-flush_single_doc(Id, Socket, VBucket, LocalConflictResolution,
-                 #doc{id = DocId, rev = DocRev, body = DocValue,
-                      deleted = DocDeleted} = Doc, Retry) ->
-    {SrcSeqNo, SrcRevId} = DocRev,
-    ConflictRes = case LocalConflictResolution of
-             false ->
-                 {key_enoent, "no local conflict resolution, send it optimistically", 0};
-             _ ->
-                  get_remote_meta(Socket, VBucket, DocId)
-         end,
-
-    RV = case ConflictRes of
-             {key_enoent, _ErrorMsg, DstCAS} ->
-                 flush_single_doc_remote(Socket, VBucket, DocId, DocValue, DocRev, DocDeleted, DstCAS);
-             {not_my_vbucket, _} ->
-                 {error, {bad_request, not_my_vbucket}};
-             {ok, {DstSeqNo, DstRevId}, DstCAS} ->
-                 case DocDeleted of
-                     false ->
-                         %% for non-del mutation, compare full metadata
-                         DstFullMeta = {DstSeqNo, DstRevId},
-                         SrcFullMeta = {SrcSeqNo, SrcRevId},
-                         case max(SrcFullMeta, DstFullMeta) of
-                             DstFullMeta ->
-                                 ok;
-                             %% replicate src doc to destination, using
-                             %% the same CAS returned from the get_remote_meta() above.
-                             SrcFullMeta ->
-                                 flush_single_doc_remote(Socket, VBucket, DocId, DocValue, DocRev, false, DstCAS)
-                         end;
-                     _ ->
-                         %% for deletion, just compare seqno and CAS to match
-                         %% the resolution algorithm in ep_engine:deleteWithMeta
-                         <<SrcCAS:64, _SrcExp:32, _SrcFlg:32>> = SrcRevId,
-                         <<DstCAS:64, _DstExp:32, _DstFlg:32>> = DstRevId,
-                         SrcDelMeta = {SrcSeqNo, SrcCAS},
-                         DstDelMeta = {DstSeqNo, DstCAS},
-                         case max(SrcDelMeta, DstDelMeta) of
-                             DstDelMeta ->
-                                 ok;
-                             _ ->
-                                 flush_single_doc_remote(Socket, VBucket, DocId, DocValue, DocRev, true, DstCAS)
-                         end
-                 end
-         end,
-
-    case RV of
-        retry ->
-            flush_single_doc(Id, Socket, VBucket, LocalConflictResolution, Doc, Retry-1);
-        ok ->
-            {ok, flushed};
-        {ok, key_eexists} ->
-            {ok, rejected};
-        _Other ->
-            RV
-    end.
-
-
-flush_single_doc_remote(Socket, VBucket, Key, Value, Rev, DocDeleted, CAS) ->
-    case mc_client_binary:update_with_rev(Socket, VBucket, Key, Value, Rev, DocDeleted, CAS) of
-        {ok, _, _} ->
-            ok;
-        {memcached_error, key_eexists, _} ->
-            {ok, key_eexists};
-        %% not supposed to see key_enoent, give another try
-        {memcached_error, key_enoent, _} ->
-            retry;
-        %% more serious error, no retry
-        {memcached_error, not_my_vbucket, _} ->
-            {error, {bad_request, not_my_vbucket}};
-        {memcached_error, einval, _} ->
-            {error, {bad_request, einval}}
-    end.
 
 -spec receive_remote_meta_pipeline(inet:socket(), integer()) ->
                                           {ok, term(), term()} |

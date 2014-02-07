@@ -326,7 +326,6 @@
           statistics = #xdc_vb_rep_xmem_statistics{},
           remote = #xdc_rep_xmem_remote{},
           seed,
-          enable_pipeline = false,
           error_reports
          }).
 
