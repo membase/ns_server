@@ -25,7 +25,7 @@
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 
--export([connect/2, disconnect/1, select_bucket/1, stop/1]).
+-export([connect/2, stop/1]).
 -export([find_missing/2, flush_docs/2]).
 
 -export([format_status/2, get_worker/1]).
@@ -40,21 +40,17 @@
 start_link(Vb, RemoteXMem, ParentVbRep, Options) ->
     %% prepare parameters to start xmem server process
     NumWorkers = proplists:get_value(xmem_worker, Options),
-    LocalConflictResolution = proplists:get_value(local_conflict_resolution, Options),
     ConnectionTimeout = proplists:get_value(connection_timeout, Options),
 
-    Args = {Vb, RemoteXMem, ParentVbRep,
-            NumWorkers, LocalConflictResolution, ConnectionTimeout},
+    Args = {Vb, RemoteXMem, ParentVbRep, NumWorkers, ConnectionTimeout},
     {ok, Pid} = gen_server:start_link(?MODULE, Args, []),
     {ok, Pid}.
 
 %% gen_server behavior callback functions
-init({Vb, RemoteXMem, ParentVbRep,
-      NumWorkers, LocalConflictResolution, ConnectionTimeout}) ->
+init({Vb, RemoteXMem, ParentVbRep, NumWorkers, ConnectionTimeout}) ->
     process_flag(trap_exit, true),
     %% signal to self to initialize
-    {ok, AllWorkers} = start_worker_process(Vb, NumWorkers,
-                                            LocalConflictResolution, ConnectionTimeout),
+    {ok, AllWorkers} = start_worker_process(Vb, NumWorkers, ConnectionTimeout),
     {T1, T2, T3} = now(),
     random:seed(T1, T2, T3),
     Errs = ringbuffer:new(?XDCR_ERROR_HISTORY),
@@ -86,20 +82,11 @@ connect(Server, XMemRemote) ->
 get_worker(Server) ->
     gen_server:call(Server, get_worker, infinity).
 
--spec disconnect(nil | pid()) -> ok.
-disconnect(nil) ->
-    ok;
-disconnect(Server) ->
-    gen_server:call(Server, disconnect, infinity).
-
 -spec stop(nil | pid()) -> ok.
 stop(nil) ->
     ok;
 stop(Server) ->
     gen_server:cast(Server, stop).
-
-select_bucket(Server) ->
-    gen_server:call(Server, select_bucket, infinity).
 
 -spec find_missing(pid(), list()) -> {ok, list()} |
                                      {error, term()}.
@@ -118,69 +105,13 @@ handle_info({'EXIT',_Pid, Reason}, St) ->
 
 handle_call({connect, Remote}, {_Pid, _Tag},
             #xdc_vb_rep_xmem_srv_state{
-                       pid_workers = Workers,
-                       vb = Vb} = State) ->
+                       pid_workers = Workers} = State) ->
+    lists:foreach(
+      fun ({_Id, Worker}) ->
+              ok = xdc_vbucket_rep_xmem_worker:connect(Worker, Remote)
+      end, dict:to_list(Workers)),
 
-    %%ask workers to connect remote memcached
-    ConnectWorkers = lists:foldl(
-             fun({Id, {Worker, idle}}, Acc) ->
-                     RV = xdc_vbucket_rep_xmem_worker:connect(Worker, Remote),
-                     Acc1 = case RV  of
-                                ok ->
-                                    dict:store(Id, {Worker, connected}, Acc);
-                                _ ->
-                                    ?xdcr_error("Error! Worker ~p (pid: ~p, vb: ~p) "
-                                                "failed to connect remote (ip: ~p, port: ~p, bucket: ~p)",
-                                                [Id, Worker, Vb,
-                                                 Remote#xdc_rep_xmem_remote.ip,
-                                                 Remote#xdc_rep_xmem_remote.port,
-                                                 Remote#xdc_rep_xmem_remote.bucket]),
-                                    Acc
-                            end,
-                     Acc1
-             end,
-             dict:new(),
-             dict:to_list(Workers)),
-    NewState = State#xdc_vb_rep_xmem_srv_state{pid_workers = ConnectWorkers, remote = Remote},
-    {reply, ok, NewState};
-
-handle_call(disconnect, {_Pid, _Tag},
-            #xdc_vb_rep_xmem_srv_state{pid_workers = Workers} = State) ->
-    %%ask workers to connect remote memcached
-    IdleWorkers = lists:foldl(
-                    fun({Id, {Worker, _Status}}, Acc) ->
-                            ok = xdc_vbucket_rep_xmem_worker:disconnect(Worker),
-                            dict:store(Id, {Worker, idle}, Acc)
-                    end,
-                    dict:new(),
-                    dict:to_list(Workers)),
-    {reply, ok, State#xdc_vb_rep_xmem_srv_state{pid_workers = IdleWorkers}, hibernate};
-
-handle_call(select_bucket, {_Pid, _Tag},
-            #xdc_vb_rep_xmem_srv_state{
-                       remote = Remote,
-                       pid_workers = Workers,
-                       vb = Vb} = State) ->
-    ConnectWorkers = lists:foldl(
-             fun({Id, {Worker, connected}}, Acc) ->
-                     RV = xdc_vbucket_rep_xmem_worker:select_bucket(Worker, Remote),
-                     Acc1 = case RV  of
-                                ok ->
-                                    dict:store(Id, {Worker, bucket_selected}, Acc);
-                                _ ->
-                                    ?xdcr_error("Error! worker ~p (pid: ~p, vb: ~p) "
-                                                "failed to select target bucket at remote (ip: ~p, port: ~p, bucket: ~p)",
-                                                [Id, Worker, Vb,
-                                                 Remote#xdc_rep_xmem_remote.ip,
-                                                 Remote#xdc_rep_xmem_remote.port,
-                                                 Remote#xdc_rep_xmem_remote.bucket]),
-                                    Acc
-                            end,
-                     Acc1
-             end,
-             dict:new(),
-             dict:to_list(Workers)),
-    NewState = State#xdc_vb_rep_xmem_srv_state{pid_workers = ConnectWorkers},
+    NewState = State#xdc_vb_rep_xmem_srv_state{remote = Remote},
     {reply, ok, NewState};
 
 handle_call({find_missing, IdRevs}, _From,
@@ -267,7 +198,7 @@ terminate_cleanup(#xdc_vb_rep_xmem_srv_state{vb = Vb, pid_workers = Workers} = _
     %% close sock and shutdown each worker process
     {Gone, Shutdown} =
         lists:foldl(
-          fun({_Id, {WorkerPid, _Status}}, {WorkersGone, WorkersShutdown}) ->
+          fun({_Id, WorkerPid}, {WorkersGone, WorkersShutdown}) ->
                   case process_info(WorkerPid) of
                       undefined ->
                           %% already gone
@@ -275,7 +206,6 @@ terminate_cleanup(#xdc_vb_rep_xmem_srv_state{vb = Vb, pid_workers = Workers} = _
                           WorkersGone1 = lists:flatten([WorkerPid | WorkersGone]),
                           {WorkersGone1, WorkersShutdown};
                       _ ->
-                          ok = xdc_vbucket_rep_xmem_worker:disconnect(WorkerPid),
                           ok = xdc_vbucket_rep_xmem_worker:stop(WorkerPid),
                           WorkersShutdown1 = lists:flatten([WorkerPid | WorkersShutdown]),
                           {WorkersGone, WorkersShutdown1}
@@ -314,15 +244,14 @@ report_error(Err, Vb, Parent) ->
     gen_server:cast(Parent, {report_error, {RawTime, String}}).
 
 
--spec start_worker_process(integer(), integer(), boolean(), integer()) -> {ok, dict()}.
-start_worker_process(Vb, NumWorkers, LocalConflictResolution, ConnectionTimeout) ->
+-spec start_worker_process(integer(), integer(), integer()) -> {ok, dict()}.
+start_worker_process(Vb, NumWorkers, ConnectionTimeout) ->
     WorkerDict = dict:new(),
     AllWorkers = lists:foldl(
                    fun(Id, Acc) ->
                            {ok, Pid} = xdc_vbucket_rep_xmem_worker:start_link(Vb, Id, self(),
-                                                                              LocalConflictResolution,
                                                                               ConnectionTimeout),
-                           dict:store(Id, {Pid, idle}, Acc)
+                           dict:store(Id, Pid, Acc)
                    end,
                    WorkerDict,
                    lists:seq(1, NumWorkers)),
@@ -335,6 +264,6 @@ start_worker_process(Vb, NumWorkers, LocalConflictResolution, ConnectionTimeout)
 load_balancer(Vb, Workers) ->
     NumWorkers = dict:size(Workers),
     Index = random:uniform(NumWorkers),
-    {Id, {WorkerPid, bucket_selected}} = lists:nth(Index, dict:to_list(Workers)),
+    {Id, WorkerPid} = lists:nth(Index, dict:to_list(Workers)),
     ?xdcr_trace("[xmem_srv for vb ~p]: pick up worker process (id: ~p, pid: ~p)", [Vb, Id, WorkerPid]),
     WorkerPid.

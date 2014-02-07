@@ -78,7 +78,6 @@ settings_specs() ->
      {retries_per_request,              per_replication, {int, 1, 100},              2},
      {optimistic_replication_threshold, per_replication, {int, 0, 20 * 1024 * 1024}, 256},
      {xmem_worker,                      per_replication, {int, 1, 32},               1},
-     {local_conflict_resolution,        per_replication, bool,                       false},
      {socket_options,                   per_replication, term,                       [{keepalive, true}, {nodelay, false}]},
      {supervisor_max_r,                 per_replication, {int, 1, 1000},             25},
      {supervisor_max_t,                 per_replication, {int, 1, 1000},             5},

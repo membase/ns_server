@@ -336,11 +336,9 @@
           parent_server_pid,
           status,
           statistics = #xdc_vb_rep_xmem_statistics{},
-          socket, %% inet:socket(),
           time_connected,
           time_init,
           error_reports,
-          local_conflict_resolution,
           connection_timeout,
           mcd_loc
          }).

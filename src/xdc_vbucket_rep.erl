@@ -246,7 +246,7 @@ handle_call({report_seq_done,
     {noreply, update_status_to_parent(NewState)};
 
 handle_call({worker_done, Pid}, _From,
-            #rep_state{rep_details = Rep, workers = Workers, status = VbStatus, xmem_srv = XMemSrv, parent = Parent} = State) ->
+            #rep_state{workers = Workers, status = VbStatus, parent = Parent} = State) ->
     case Workers -- [Pid] of
         Workers ->
             {stop, {unknown_worker_done, Pid}, ok, State};
@@ -255,13 +255,7 @@ handle_call({worker_done, Pid}, _From,
             %% more changes from src
             %% before return my token to throttle, check if user has changed number of tokens
             Parent ! check_tokens,
-            %% disconnect all xmem workers
-            case Rep#rep.replication_mode of
-                "xmem" ->
-                    xdc_vbucket_rep_xmem_srv:disconnect(XMemSrv);
-                _ ->
-                    ok
-            end,
+
             %% allow another replicator to go
             State2 = replication_turn_is_done(State),
             couch_api_wrap:db_close(State2#rep_state.source),
@@ -776,7 +770,6 @@ start_replication(#rep_state{
                                         Pid
                                 end,
                    ok = xdc_vbucket_rep_xmem_srv:connect(XMemSrvPid, Remote),
-                   ok = xdc_vbucket_rep_xmem_srv:select_bucket(XMemSrvPid),
                    ?xdcr_trace("xmem remote node connected and bucket selected "
                                "(remote bucket: ~p, vb: ~b, remote ip: ~p, port: ~p, "
                                "remote bucket: ~p, xmem srv pid: ~p)",

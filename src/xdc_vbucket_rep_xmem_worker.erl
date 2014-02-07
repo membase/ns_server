@@ -17,10 +17,10 @@
 -behaviour(gen_server).
 
 %% public functions
--export([start_link/5]).
+-export([start_link/4]).
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
--export([connect/2, select_bucket/2, disconnect/1, stop/1]).
+-export([connect/2, stop/1]).
 
 -export([find_missing_pipeline/2, flush_docs_pipeline/2]).
 
@@ -35,14 +35,11 @@
 %% -------------------------------------------------------------------------- %%
 %% ---                         public functions                           --- %%
 %% -------------------------------------------------------------------------- %%
-start_link(Vb, Id, Parent, LocalConflictResolution, ConnectionTimeout) ->
-    gen_server:start_link(?MODULE, {Vb, Id, Parent,
-                                    LocalConflictResolution, ConnectionTimeout}, []).
+start_link(Vb, Id, Parent, ConnectionTimeout) ->
+    gen_server:start_link(?MODULE, {Vb, Id, Parent, ConnectionTimeout}, []).
 
 %% gen_server behavior callback functions
-init({Vb, Id, Parent, LocalConflictResolution, ConnectionTimeout}) ->
-    process_flag(trap_exit, true),
-
+init({Vb, Id, Parent, ConnectionTimeout}) ->
     Errs = ringbuffer:new(?XDCR_ERROR_HISTORY),
     InitState = #xdc_vb_rep_xmem_worker_state{
       id = Id,
@@ -50,22 +47,15 @@ init({Vb, Id, Parent, LocalConflictResolution, ConnectionTimeout}) ->
       parent_server_pid = Parent,
       status  = init,
       statistics = #xdc_vb_rep_xmem_statistics{},
-      socket = undefined,
       time_init = calendar:now_to_local_time(erlang:now()),
       time_connected = 0,
       error_reports = Errs,
-      local_conflict_resolution=LocalConflictResolution,
       connection_timeout=ConnectionTimeout},
 
     {ok, InitState}.
 
 format_status(Opt, [PDict, State]) ->
     xdc_rep_utils:sanitize_status(Opt, PDict, State).
-
--spec select_bucket(pid(), #xdc_rep_xmem_remote{}) -> ok |
-                                                      {memcached_error, term(), term()}.
-select_bucket(Server, Remote) ->
-    gen_server:call(Server, {select_bucket, Remote}, infinity).
 
 -spec find_missing_pipeline(pid(), list()) -> {ok, list()} | {error, term()}.
 find_missing_pipeline(Server, IdRevs) ->
@@ -78,10 +68,6 @@ flush_docs_pipeline(Server, DocsList) ->
 -spec connect(pid(), #xdc_rep_xmem_remote{}) -> ok | {error, term()}.
 connect(Server, Remote) ->
     gen_server:call(Server, {connect, Remote}, infinity).
-
--spec disconnect(pid()) -> ok.
-disconnect(Server) ->
-    gen_server:call(Server, disconnect, infinity).
 
 stop(Server) ->
     gen_server:cast(Server, stop).
@@ -96,77 +82,23 @@ handle_call({connect, #xdc_rep_xmem_remote{ip = Host,
                                            port = Port,
                                            bucket = Bucket,
                                            password = Password,
-                                           options = RemoteOptions} = Remote},
-            _From,
-            #xdc_vb_rep_xmem_worker_state{id = Id, vb = Vb} =  State) ->
-    case proplists:get_bool(dont_use_mcd_pool, RemoteOptions) of
-        false ->
-            McdDst = case proplists:get_value(cert, RemoteOptions) of
-                         undefined ->
-                             memcached_clients_pool:make_loc(Host, Port, Bucket, Password);
-                         Cert ->
-                             LocalProxyPort = ns_config_ets_dup:unreliable_read_key({node, node(), ssl_proxy_upstream_port}, undefined),
-                             RemoteProxyPort = proplists:get_value(remote_proxy_port, RemoteOptions),
-                             proxied_memcached_clients_pool:make_proxied_loc(Host, Port, Bucket, Password,
-                                                                             LocalProxyPort, RemoteProxyPort,
-                                                                             Cert)
-                     end,
-            {reply, ok, State#xdc_vb_rep_xmem_worker_state{mcd_loc = McdDst}};
-        true ->
-            %% establish connection to remote memcached
-            Socket = case connect_internal(Remote) of
-                         {ok, S} ->
-                             S;
-                         _ ->
-                             ?xdcr_error("[xmem_worker ~p for vb ~p]: unable to connect remote memcached"
-                                         "(ip: ~p, port: ~p) after ~p attempts",
-                                         [Id, Vb,
-                                          Remote#xdc_rep_xmem_remote.ip,
-                                          Remote#xdc_rep_xmem_remote.port,
-                                          ?XDCR_XMEM_CONNECTION_ATTEMPTS]),
-                             nil
-                     end,
-            {reply, ok, State#xdc_vb_rep_xmem_worker_state{socket = Socket,
-                                                           time_connected = calendar:now_to_local_time(erlang:now()),
-                                                           status = connected}}
-    end;
-
-handle_call(disconnect, {_Pid, _Tag}, #xdc_vb_rep_xmem_worker_state{} =  State) ->
-    State1 = close_connection(State),
-    {reply, ok, State1, hibernate};
-
-handle_call({select_bucket, _Remote}, _From,
-            #xdc_vb_rep_xmem_worker_state{mcd_loc = McdDst} =  State) when McdDst =/= undefined ->
-    {reply, ok, State};
-handle_call({select_bucket, #xdc_rep_xmem_remote{} = Remote}, {_Pid, _Tag},
-            #xdc_vb_rep_xmem_worker_state{id = Id, vb = Vb, socket = Socket} =  State) ->
-    %% establish connection to remote memcached
-    case select_bucket_internal(Remote, Socket) of
-        ok ->
-            ok;
-        {memcached_error, not_supported, Msg} ->
-            ?xdcr_debug("[xmem_worker ~p for vb ~p]: cmd select_bucket no longer supported  (bucket: ~p, username: ~p) at node ~p, "
-                        "error msg: ~p",
-                        [Id, Vb,
-                         Remote#xdc_rep_xmem_remote.bucket,
-                         Remote#xdc_rep_xmem_remote.username,
-                         Remote#xdc_rep_xmem_remote.ip,
-                         Msg]),
-            ok;
-        Error ->
-            ?xdcr_error("[xmem_worker ~p for vb ~p]: unable to select remote bucket ~p (username: ~p) at node ~p, "
-                        "error msg: ~p",
-                        [Id, Vb,
-                         Remote#xdc_rep_xmem_remote.bucket,
-                         Remote#xdc_rep_xmem_remote.username,
-                         Remote#xdc_rep_xmem_remote.ip,
-                         Error])
-    end,
-    {reply, ok, State#xdc_vb_rep_xmem_worker_state{status = bucket_selected}};
+                                           options = RemoteOptions}},
+            _From, State) ->
+    McdDst = case proplists:get_value(cert, RemoteOptions) of
+                 undefined ->
+                     memcached_clients_pool:make_loc(Host, Port, Bucket, Password);
+                 Cert ->
+                     LocalProxyPort = ns_config_ets_dup:unreliable_read_key({node, node(), ssl_proxy_upstream_port}, undefined),
+                     RemoteProxyPort = proplists:get_value(remote_proxy_port, RemoteOptions),
+                     proxied_memcached_clients_pool:make_proxied_loc(Host, Port, Bucket, Password,
+                                                                     LocalProxyPort, RemoteProxyPort,
+                                                                     Cert)
+             end,
+    {reply, ok, State#xdc_vb_rep_xmem_worker_state{mcd_loc = McdDst}};
 
 %% ----------- Pipelined Memached Ops --------------%%
 handle_call({find_missing_pipeline, IdRevs}, _From,
-            #xdc_vb_rep_xmem_worker_state{vb = Vb, mcd_loc = McdDst} =  State) when McdDst =/= undefined ->
+            #xdc_vb_rep_xmem_worker_state{vb = Vb, mcd_loc = McdDst} =  State) ->
     {ok, MissingRevs, Errors} = pooled_memcached_client:find_missing_revs(McdDst, Vb, IdRevs),
     ErrRevs =
         [begin
@@ -177,71 +109,12 @@ handle_call({find_missing_pipeline, IdRevs}, _From,
              Pair
          end || {Error, {Key, _} = Pair} <- Errors],
     {reply, {ok, ErrRevs ++ MissingRevs}, State};
-handle_call({find_missing_pipeline, IdRevs}, _From,
-            #xdc_vb_rep_xmem_worker_state{vb = Vb,
-                                          socket = Sock} =  State) ->
-    TimeStart = now(),
-    McHeader = #mc_header{vbucket = Vb},
-    %% send out all keys
-    Pid = spawn_link(fun () ->
-                             _NumKeysSent =
-                                 lists:foldr(fun({Key, _Rev}, Acc) ->
-                                                     Entry = #mc_entry{key = Key},
-                                                     ok = mc_cmd_pipeline(?CMD_GET_META, Sock,
-                                                                          {McHeader, Entry}),
-                                                     Acc + 1
-                                             end,
-                                             0, IdRevs)
-                     end),
-
-    %% receive all response
-    MissingIdRevs =
-        lists:foldr(fun({Key, SrcMeta}, Acc) ->
-                            Missing = case receive_remote_meta_pipeline(Sock, Vb) of
-                                          {key_enoent, _Error, _CAS} ->
-                                              true;
-                                          {ok, DestMeta, _CAS} ->
-                                              case max(SrcMeta, DestMeta) of
-                                                  DestMeta ->
-                                                      false; %% no need to replicate
-                                                  SrcMeta ->
-                                                      true; %% need to replicate to remote
-                                                  _ ->
-                                                      false
-                                              end;
-                                          {timeout, ErrorMsg} ->
-                                              ?xdcr_trace("Warning! timeout when fetching metadata from remote for key: ~p, "
-                                                          "just send the doc (msg: ~p)", [Key, ErrorMsg]),
-                                              true;
-                                          {error, ErrorMsg} ->
-                                              ?xdcr_error("Error! memcached error when fetching metadata for key: ~p, "
-                                                          "just send the doc (msg: ~p)", [Key, ErrorMsg]),
-                                              true
-                                      end,
-                            case Missing of
-                                true ->
-                                    [{Key, SrcMeta} | Acc];
-                                _ ->
-                                    Acc
-                            end
-                    end,
-                    [], IdRevs),
-
-    erlang:unlink(Pid),
-    erlang:exit(Pid, kill),
-    misc:wait_for_process(Pid, infinity),
-
-    TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
-    _AvgLatency = TimeSpent div length(IdRevs),
-    {reply, {ok, MissingIdRevs}, State};
 
 %% ----------- Pipelined Memached Ops --------------%%
 handle_call({flush_docs_pipeline, DocsList}, _From,
             #xdc_vb_rep_xmem_worker_state{id = Id, vb = VBucket,
                                           mcd_loc = McdDst,
-                                          connection_timeout = ConnectionTimeout} =  State)
-  when McdDst =/= undefined ->
-
+                                          connection_timeout = ConnectionTimeout} =  State) ->
     TimeStart = now(),
 
     {ok, Statuses} = pooled_memcached_client:bulk_set_metas(McdDst, VBucket, DocsList),
@@ -293,115 +166,6 @@ handle_call({flush_docs_pipeline, DocsList}, _From,
         end,
     RV;
 
-handle_call({flush_docs_pipeline, DocsList}, _From,
-            #xdc_vb_rep_xmem_worker_state{id = Id, vb = VBucket,
-                                          socket = Sock,
-                                          connection_timeout = ConnectionTimeout} =  State) ->
-    TimeStart = now(),
-
-    %% send out all docs
-    Pid = spawn_link(
-            fun () ->
-                    _NumDocsSent =
-                        lists:foldr(
-                          fun (#doc{id = Key, rev = Rev, deleted = Deleted,
-                                    body = DocValue} = _Doc, Acc) ->
-                                  {OpCode, Data} = case Deleted of
-                                                       true ->
-                                                           {?CMD_DEL_WITH_META, <<>>};
-                                                       _ ->
-                                                           {?CMD_SET_WITH_META, DocValue}
-                                                   end,
-                                  McHeader = #mc_header{vbucket = VBucket, opcode = OpCode},
-                                  Ext = mc_client_binary:rev_to_mcd_ext(Rev),
-                                  %% CAS does not matter since remote ep_engine has capability
-                                  %% to do getMeta internally before doing setWithMeta or delWithMeta
-                                  CAS  = 0,
-                                  McBody = #mc_entry{key = Key, data = Data, ext = Ext, cas = CAS},
-
-                                  ok = mc_cmd_pipeline(OpCode, Sock, {McHeader, McBody}),
-                                  Acc + 1
-                          end,
-                          0,
-                          DocsList)
-            end),
-
-    %% receive all responses
-    {Flushed, Enoent, Eexist, NotMyVb, Einval, Timeout, OtherErr, ErrorKeys} =
-        lists:foldr(fun(#doc{id = Key} = _Doc,
-                        {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc, TimeoutAcc, OtherErrAcc, KeysAcc}) ->
-                            case get_flush_response_pipeline(Sock, VBucket) of
-                                {ok, _, _} ->
-                                    {FlushedAcc + 1, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc, TimeoutAcc, OtherErrAcc,
-                                     KeysAcc};
-                                {memcached_error, key_enoent, _} ->
-                                    {FlushedAcc, EnoentAcc + 1, EexistsAcc, NotMyVbAcc, EinvalAcc, TimeoutAcc, OtherErrAcc,
-                                     [Key | KeysAcc]};
-                                {memcached_error, key_eexists, _} ->
-                                    {FlushedAcc, EnoentAcc, EexistsAcc + 1, NotMyVbAcc, EinvalAcc, TimeoutAcc, OtherErrAcc,
-                                     [Key | KeysAcc]};
-                                {memcached_error, not_my_vbucket, _} ->
-                                    {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc + 1, EinvalAcc, TimeoutAcc, OtherErrAcc,
-                                     [Key | KeysAcc]};
-                                {memcached_error, einval, _} ->
-                                    {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc + 1, TimeoutAcc, OtherErrAcc,
-                                     [Key | KeysAcc]};
-                                {memcached_error, timeout, _} ->
-                                    {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc, TimeoutAcc + 1, OtherErrAcc,
-                                     [Key | KeysAcc]};
-                                {memcached_error, error, _} ->
-                                    {FlushedAcc, EnoentAcc, EexistsAcc, NotMyVbAcc, EinvalAcc, TimeoutAcc, OtherErrAcc + 1,
-                                     [Key | KeysAcc]}
-                            end
-                    end,
-                    {0, 0, 0, 0, 0, 0, 0, []}, DocsList),
-
-    erlang:unlink(Pid),
-    erlang:exit(Pid, kill),
-    misc:wait_for_process(Pid, infinity),
-
-    TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
-    _AvgLatency = TimeSpent div length(DocsList),
-
-    %% dump error msg if timeout
-    TimeSpentSecs = TimeSpent div 1000,
-    case TimeSpentSecs > ConnectionTimeout of
-        true ->
-            ?xdcr_error("[xmem_worker ~p for vb ~p]: update ~p docs takes too long to finish!"
-                          "(total time spent: ~p secs, default connection time out: ~p secs)",
-                          [Id, VBucket, length(DocsList), TimeSpentSecs, ConnectionTimeout]);
-        _ ->
-            ok
-    end,
-
-    DocsListSize = length(DocsList),
-    RV =
-        case (Flushed + Eexist) == DocsListSize of
-            true ->
-                {reply, {ok, Flushed, Eexist}, State};
-            _ ->
-                %% for some reason we can only return one error. Thus
-                %% we're logging everything else here
-                ?xdcr_error("out of ~p docs, succ to send ~p docs, fail to send others "
-                            "(by error type, enoent: ~p, not-my-vb: ~p, einval: ~p, timeout: ~p "
-                            "other errors: ~p",
-                            [DocsListSize, (Flushed + Eexist), Enoent, NotMyVb, Einval, Timeout, OtherErr]),
-
-                %% stop replicator if too many memacched errors
-                case (Flushed + Eexist + ?XDCR_XMEM_MEMCACHED_ERRORS) > DocsListSize of
-                    true ->
-                        {reply, {ok, Flushed, Eexist}, State};
-                    _ ->
-                        ErrorStr = ?format_msg("in batch of ~p docs: flushed: ~p, rejected (eexists): ~p; "
-                                               "remote memcached errors: enoent: ~p, not-my-vb: ~p, invalid: ~p, "
-                                               "timeout: ~p, others: ~p",
-                                               [DocsListSize, Flushed, Eexist, Enoent, NotMyVb,
-                                                Einval, Timeout, OtherErr]),
-                        {stop, {error, {ErrorStr, ErrorKeys}}, State}
-                end
-        end,
-    RV;
-
 handle_call(Msg, From, #xdc_vb_rep_xmem_worker_state{vb = Vb,
                                                      id = Id} = State) ->
     ?xdcr_error("[xmem_worker ~p for vb ~p]: received unexpected call ~p from process ~p",
@@ -427,20 +191,15 @@ handle_cast(Msg, #xdc_vb_rep_xmem_worker_state{id = Id, vb = Vb} = State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-terminate(Reason, State) when Reason == normal orelse Reason == shutdown ->
-    terminate_cleanup(State);
+terminate(Reason, _State) when Reason == normal orelse Reason == shutdown ->
+    ok;
 
 terminate(Reason, #xdc_vb_rep_xmem_worker_state{vb = Vb,
                                                 id = Id,
-                                                parent_server_pid = Par} = State) ->
+                                                parent_server_pid = Par}) ->
     report_error(Reason, Vb, Par),
     ?xdcr_error("[xmem_worker ~p for vb ~p]: shutdown xmem worker, error reported to "
                 "parent xmem srv: ~p", [Id, Vb, Par]),
-    terminate_cleanup(State),
-    ok.
-
-terminate_cleanup(#xdc_vb_rep_xmem_worker_state{} = State) ->
-    close_connection(State),
     ok.
 
 %% -------------------------------------------------------------------------- %%
@@ -457,131 +216,6 @@ report_error(Err, Vb, Parent) ->
                                             "vbucket ~p: ~p",
                                             [Time, Vb, Err])),
     gen_server:cast(Parent, {report_error, {RawTime, String}}).
-
-close_connection(#xdc_vb_rep_xmem_worker_state{socket = Socket} = State) ->
-    case Socket of
-        undefined ->
-            ok;
-        _ ->
-            ok = gen_tcp:close(Socket)
-    end,
-    State#xdc_vb_rep_xmem_worker_state{socket = undefined, mcd_loc = undefined, status = idle}.
-
-connect_internal(#xdc_rep_xmem_remote{} = Remote) ->
-    connect_internal(?XDCR_XMEM_CONNECTION_ATTEMPTS, Remote).
-connect_internal(0, _) ->
-    {error, couldnt_connect_to_remote_memcached};
-connect_internal(Tries, #xdc_rep_xmem_remote{} = Remote) ->
-
-    Ip = Remote#xdc_rep_xmem_remote.ip,
-    Port = Remote#xdc_rep_xmem_remote.port,
-    User = Remote#xdc_rep_xmem_remote.username,
-    Pass = Remote#xdc_rep_xmem_remote.password,
-    try
-        {ok, S} = gen_tcp:connect(Ip, Port, [binary, {packet, 0}, {active, false}]),
-        ok = mc_client_binary:auth(S, {<<"PLAIN">>,
-                                       {list_to_binary(User),
-                                        list_to_binary(Pass)}}),
-        S of
-        Sock -> {ok, Sock}
-    catch
-        E:R ->
-            ?xdcr_debug("Unable to connect: ~p, retrying.", [{E, R}]),
-            timer:sleep(1000), % Avoid reconnecting too fast.
-            NewTries = Tries - 1,
-            connect_internal(NewTries, Remote)
-    end.
-
--spec select_bucket_internal(#xdc_rep_xmem_remote{}, inet:socket()) -> ok |
-                                                                       {memcached_error, term(), term()}.
-select_bucket_internal(#xdc_rep_xmem_remote{bucket = Bucket} = _Remote, Socket) ->
-    mc_client_binary:select_bucket(Socket, Bucket).
-
--spec receive_remote_meta_pipeline(inet:socket(), integer()) ->
-                                          {ok, term(), term()} |
-                                          {key_enoent, list(), term()} |
-                                          {timeout, list()} |
-                                          {error, list()}.
-receive_remote_meta_pipeline(Sock, VBucket) ->
-    Response = mc_binary:recv(Sock, res, ?XDCR_XMEM_CONNECTION_TIMEOUT),
-    Raw = case Response of
-              %% get meta of key succefully
-              {ok, #mc_header{status=?SUCCESS}, #mc_entry{ext = Ext, cas = CAS}} ->
-                  <<MetaFlags:32/big, ItemFlags:32/big,
-                    Expiration:32/big, SeqNo:64/big>> = Ext,
-                  RevId = <<CAS:64/big, Expiration:32/big, ItemFlags:32/big>>,
-                  RemoteRev = {SeqNo, RevId},
-                  {ok, RemoteRev, CAS, MetaFlags};
-
-              %% key not found, which is Ok if replicating new items
-              {ok, #mc_header{status=?KEY_ENOENT}, #mc_entry{cas=CAS}} ->
-                  {ok, key_enoent, CAS};
-
-              %% unexpected response returned by remote memcached, treat it as error
-              {ok, #mc_header{status=OtherResponse}, #mc_entry{cas=_CAS}} ->
-                  {memcached_error,
-                   ?format_msg("unexpected response from remote memcached "
-                               "(vb: ~p, status code: ~p, error: ~p)",
-                               [VBucket, OtherResponse, mc_client_binary:map_status(OtherResponse)])};
-
-              %% if timeout when fetching remote metadata, treat it as local wins and just send the doc
-              {error, timeout} ->
-                  {timeout, ?format_msg("remote memcached timeout when retrieving metadata at sock: ~p, vb: ~p",
-                                                [Sock, VBucket])}
-          end,
-
-    Reply = case Raw of
-                {ok, RemoteFullMeta, RemoteCAS, _Flags} ->
-                    {ok, RemoteFullMeta, RemoteCAS};
-                {ok, key_enoent, RemoteCAS} ->
-                    {key_enoent, "key does not exist at remote", RemoteCAS};
-                %% if timeout in retreiving metadata, we just send the doc optimistically
-                {timeout, ErrorMsg} ->
-                    {timeout, ErrorMsg};
-                {memcached_error, ErrorMsg} ->
-                    {error, ErrorMsg}
-            end,
-    Reply.
-
--spec get_flush_response_pipeline(inet:socket(), integer()) ->
-                                         {ok, #mc_header{}, #mc_entry{}} |
-                                         {memcached_error, key_enoent, integer()} |
-                                         {memcached_error, key_eesxists, integer()} |
-                                         {memcached_error, not_my_vbucket, integer()} |
-                                         {memcached_error, einval, integer()} |
-                                         {memcached_error, timeout, list()} |
-                                         {memcached_error, term(), term()}.
-
-get_flush_response_pipeline(Sock, VBucket) ->
-    Response = mc_binary:recv(Sock, res, ?XDCR_XMEM_CONNECTION_TIMEOUT),
-    Reply = case Response of
-                {ok, #mc_header{status=?SUCCESS} = McHdr,  #mc_entry{} = McBody} ->
-                    {ok, McHdr, McBody};
-                {ok, #mc_header{status=?KEY_ENOENT}, #mc_entry{cas = CAS} = _McBody} ->
-                    {memcached_error, key_enoent, CAS};
-                {ok, #mc_header{status=?KEY_EEXISTS}, #mc_entry{cas = CAS} = _McBody} ->
-                    {memcached_error, key_eexists, CAS};
-                {ok, #mc_header{status=?NOT_MY_VBUCKET}, #mc_entry{cas = CAS} = _McBody} ->
-                    {memcached_error, not_my_vbucket, CAS};
-                {ok, #mc_header{status=?EINVAL}, #mc_entry{cas = CAS} = _McBody} ->
-                    {memcached_error, einval, CAS};
-                %% unexpected response returned by remote memcached, treat it as error
-                {ok, #mc_header{status=OtherResponse}, #mc_entry{cas=_CAS}} ->
-                    {memcached_error, error,
-                     ?format_msg("unexpected response from remote memcached (vb: ~p, status code: ~p, error: ~p)",
-                                 [VBucket, OtherResponse, mc_client_binary:map_status(OtherResponse)])};
-
-                {error, timeout} ->
-                    {memcached_error, timeout, ?format_msg("remote memcached timeout when flushing data at sock ~p, vb: ~p",
-                                                           [Sock, VBucket])}
-            end,
-    Reply.
-
--spec mc_cmd_pipeline(integer(), inet:socket(), {#mc_header{}, #mc_entry{}}) -> ok.
-mc_cmd_pipeline(Opcode, Sock, {Header, Entry}) ->
-    ok = mc_binary:send(Sock, req,
-                        Header#mc_header{opcode = Opcode}, mc_client_binary:ext(Opcode, Entry)),
-    ok.
 
 -spec categorise_statuses_to_dict(list(), list()) -> {dict(), dict()}.
 categorise_statuses_to_dict(Statuses, DocsList) ->
@@ -646,4 +280,3 @@ convert_error_dict_to_string(ErrorKeyDict) ->
                   end,
                   [], ErrorKeyDict),
     StrHead ++ ErrorStr.
-
