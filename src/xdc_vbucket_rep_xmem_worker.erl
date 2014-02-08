@@ -40,16 +40,10 @@ start_link(Vb, Id, Parent, ConnectionTimeout) ->
 
 %% gen_server behavior callback functions
 init({Vb, Id, Parent, ConnectionTimeout}) ->
-    Errs = ringbuffer:new(?XDCR_ERROR_HISTORY),
     InitState = #xdc_vb_rep_xmem_worker_state{
       id = Id,
       vb = Vb,
       parent_server_pid = Parent,
-      status  = init,
-      statistics = #xdc_vb_rep_xmem_statistics{},
-      time_init = calendar:now_to_local_time(erlang:now()),
-      time_connected = 0,
-      error_reports = Errs,
       connection_timeout=ConnectionTimeout},
 
     {ok, InitState}.
@@ -177,9 +171,6 @@ handle_call(Msg, From, #xdc_vb_rep_xmem_worker_state{vb = Vb,
 handle_cast(stop, #xdc_vb_rep_xmem_worker_state{} = State) ->
     %% let terminate() do the cleanup
     {stop, normal, State};
-
-handle_cast({report_error, Err}, #xdc_vb_rep_xmem_worker_state{error_reports = Errs} = State) ->
-    {noreply, State#xdc_vb_rep_xmem_worker_state{error_reports = ringbuffer:add(Err, Errs)}};
 
 handle_cast(Msg, #xdc_vb_rep_xmem_worker_state{id = Id, vb = Vb} = State) ->
     ?xdcr_error("[xmem_worker ~p for vb ~p]: received unexpected cast ~p",

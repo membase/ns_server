@@ -334,11 +334,6 @@
           id,
           vb,
           parent_server_pid,
-          status,
-          statistics = #xdc_vb_rep_xmem_statistics{},
-          time_connected,
-          time_init,
-          error_reports,
           connection_timeout,
           mcd_loc
          }).
