@@ -1159,7 +1159,7 @@ topkeys(Bucket) ->
 -spec raw_stats(node(), bucket_name(), binary(), fun(), any()) -> {ok, any()} | {exception, any()} | {error, any()}.
 raw_stats(Node, Bucket, SubStats, Fn, FnState) ->
     do_call({ns_memcached:server(Bucket), Node},
-            {raw_stats, SubStats, Fn, FnState}).
+            {raw_stats, SubStats, Fn, FnState}, ?TIMEOUT).
 
 
 -spec get_vbucket_open_checkpoint(Nodes::[node()],
