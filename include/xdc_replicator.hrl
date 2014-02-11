@@ -188,10 +188,9 @@
           %% time the vb replicator intialized
           rep_start_time,
 
-          %% xmem server process
-          xmem_srv,
           %% remote node
           xmem_remote,
+          xmem_location,
 
           throttle,
           parent,
@@ -278,7 +277,7 @@
           target = #httpdb{},      %% target db
           changes_manager,         %% process to queue changes from storage
           max_conns,               %% max connections
-          xmem_server,             %% XMem server process
+          xmem_location,           %% XMem location
           opt_rep_threshold,       %% optimistic replication threshold
           batch_size,              %% batch size (in bytes)
           batch_items              %% batch items
@@ -312,6 +311,7 @@
           ip, %% inet:ip_address(),
           port, %% inet:port_number(),
           bucket = "default",
+          vb,
           username = "_admin",
           password = "_admin",
           options = []
@@ -330,10 +330,8 @@
          }).
 
 %% xmem worker state
--record(xdc_vb_rep_xmem_worker_state, {
-          id,
+-record(xdc_xmem_location, {
           vb,
-          parent_server_pid,
           connection_timeout,
           mcd_loc
          }).

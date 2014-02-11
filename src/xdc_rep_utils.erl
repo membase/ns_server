@@ -219,6 +219,9 @@ sanitize_state(State) ->
                                     #httpdb{} = HttpDb ->
                                         {stop,
                                          HttpDb#httpdb{url = sanitize_url(HttpDb#httpdb.url)}};
+                                    #xdc_xmem_location{} = Location ->
+                                        {stop,
+                                         Location#xdc_xmem_location{mcd_loc = "*****"}};
                                     _ ->
                                         {continue, T}
                                 end

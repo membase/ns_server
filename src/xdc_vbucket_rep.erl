@@ -412,15 +412,7 @@ terminate(Reason, #rep_state{
     terminate_cleanup(State).
 
 
-terminate_cleanup(#rep_state{rep_details = Rep, xmem_srv = XMemSrv} = State0) ->
-    %% shutdown xmem server
-    ok = case Rep#rep.replication_mode of
-             "xmem" ->
-                 xdc_vbucket_rep_xmem_srv:stop(XMemSrv);
-             _ ->
-                 ok
-         end,
-
+terminate_cleanup(State0) ->
     State = xdc_vbucket_rep_ckpt:cancel_timer(State0),
     Dbs = [State#rep_state.source,
            State#rep_state.target,
@@ -562,7 +554,8 @@ init_replication_state(#init_state{rep = Rep,
                          {ok, {_ClusterUUID, BucketName}} = remote_clusters_info:parse_remote_bucket_reference(Tgt),
                          Password = binary_to_list(LatestRemoteBucket#remote_bucket.password),
                          #xdc_rep_xmem_remote{ip = RemoteHostName, port = Port,
-                                              bucket = BucketName, username = BucketName, password = Password,
+                                              bucket = BucketName, vb = Vb,
+                                              username = BucketName, password = Password,
                                               options = [{remote_node, RN},
                                                          {remote_proxy_port, RN#remote_node.ssl_proxy_port},
                                                          {cert, LatestRemoteBucket#remote_bucket.cluster_cert}]};
@@ -636,7 +629,7 @@ init_replication_state(#init_state{rep = Rep,
       session_id = couch_uuids:random(),
       behind_purger = BehindPurger,
       %% XMem not started
-      xmem_srv = nil,
+      xmem_location = nil,
       xmem_remote = XMemRemote,
       status = #rep_vb_status{vb = Vb,
                               pid = self(),
@@ -755,32 +748,14 @@ start_replication(#rep_state{
 
     %% start xmem server if it has not started
     Vb = (State#rep_state.status)#rep_vb_status.vb,
-    XPid = case Remote of
-               nil ->
-                   nil;
-               %% xmem replication mode
-               _XMemRemote  ->
-                   XMemSrvPid = case State#rep_state.xmem_srv of
-                                    nil ->
-                                        {ok, XMemSrv} = xdc_vbucket_rep_xmem_srv:start_link(Vb, Remote, self(), Options),
-                                        XMemSrv;
-                                    Pid ->
-                                        ?xdcr_trace("xmem remote server already started (vb: ~p, pid: ~p)",
-                                                    [Vb, Pid]),
-                                        Pid
-                                end,
-                   ok = xdc_vbucket_rep_xmem_srv:connect(XMemSrvPid, Remote),
-                   ?xdcr_trace("xmem remote node connected and bucket selected "
-                               "(remote bucket: ~p, vb: ~b, remote ip: ~p, port: ~p, "
-                               "remote bucket: ~p, xmem srv pid: ~p)",
-                               [Remote#xdc_rep_xmem_remote.bucket,
-                                Vb,
-                                Remote#xdc_rep_xmem_remote.ip,
-                                Remote#xdc_rep_xmem_remote.port,
-                                Remote#xdc_rep_xmem_remote.bucket,
-                                XMemSrvPid]),
-                   XMemSrvPid
-                 end,
+    XMemLoc = case Remote of
+                  nil ->
+                      nil;
+                  %% xmem replication mode
+                  _XMemRemote  ->
+                      ConnectionTimeout = get_value(connection_timeout, Options),
+                      xdc_vbucket_rep_xmem:make_location(Remote, ConnectionTimeout)
+              end,
 
     BatchSizeKB = get_value(doc_batch_size_kb, Options),
 
@@ -788,7 +763,7 @@ start_replication(#rep_state{
     WorkerOption = #rep_worker_option{
       cp = self(), source = Source, target = Target,
       changes_manager = ChangesManager, max_conns = MaxConns,
-      opt_rep_threshold = OptRepThreshold, xmem_server = XPid,
+      opt_rep_threshold = OptRepThreshold, xmem_location = XMemLoc,
       batch_size = BatchSizeKB * 1024,
       batch_items = BatchSizeItems},
 
@@ -829,7 +804,7 @@ start_replication(#rep_state{
 
     %% check if we need do checkpointing, replicator will crash if checkpoint failure
     State1 = State#rep_state{
-               xmem_srv = XPid,
+               xmem_location = XMemLoc,
                source = Source,
                target = Target,
                src_master_db = SrcMasterDb,
@@ -886,10 +861,9 @@ start_replication(#rep_state{
             ok;
         _ ->
             ?xdcr_info("replicator of vb ~p for replication from src ~p to target ~p has been "
-                       "started (xmem remote (ip: ~p, port: ~p, bucket: ~p), xmem srv: ~p).",
+                       "started (xmem remote (ip: ~p, port: ~p, bucket: ~p)).",
                        [Vb, Src, Tgt, Remote#xdc_rep_xmem_remote.ip,
-                        Remote#xdc_rep_xmem_remote.port, Remote#xdc_rep_xmem_remote.bucket,
-                        XPid]),
+                        Remote#xdc_rep_xmem_remote.port, Remote#xdc_rep_xmem_remote.bucket]),
             ok
     end,
     ResultState.
