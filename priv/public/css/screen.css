@@ -1373,3 +1373,10 @@ input[type=number].size {width:4em;}
 .xdcr_advaced_settings legend {cursor: pointer; color: #2ea6db;}
 
 .warmup_table td {text-align: left; padding: 0px 20px 0px 20px; line-height: 25px; font-size:12px;}
+
+.cache_metadata_block {overflow: hidden;}
+.cache_metadata_block > label {float: left; margin: 0 6px 0 0;}
+.cache_metadata_block > div {float: left; padding-bottom: 14px;}
+.cache_metadata_block > div label {display: inline;}
+.cache_metadata_block > a {float: right; line-height: 24px;}
+.cache_metadata_block > p {display: none; padding: 0 0 14px 134px; width: 410px; clear: both; font-size:10pt; font-weight:lighter; line-height:20px;}

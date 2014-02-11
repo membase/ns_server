@@ -205,6 +205,11 @@ var BucketDetailsDialog = mkClass({
 
     var dialog = this.dialog = $('#' + this.dialogID);
 
+    dialog.find('#js_cache_metadata_block a.more_info').unbind('click').click(function(e) {
+      e.preventDefault();
+      dialog.find('#js_cache_metadata_block p.more_info').slideToggle();
+    });
+
     dialog.removeClass('editing').removeClass('creating');
     dialog.addClass(isNew ? 'creating' : 'editing');
 

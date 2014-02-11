@@ -1854,6 +1854,20 @@
 
     <fieldset style="margin-top:0">
       <legend>Memory Size</legend>
+      <div class="cache_metadata_block persistent-only" id="js_cache_metadata_block">
+        <label>Cache Metadata:</label>
+        <div>
+          <input type="radio" name="caheMetadata" value="retain" id="cache_metadata_retain_new" checked="checked">
+          <label for="cache_metadata_retain_new">Retain metadata in memory even for non-resident items</label>
+          <br>
+          <input type="radio" name="caheMetadata" value="non_retain" id="cache_metadata_non_retain_new">
+          <label for="cache_metadata_non_retain_new">Don’t retain metadata in memory for non-resident items</label>
+        </div>
+        <a href="#" class="more_info">What's this?</a>
+        <p class="more_info">
+          Retaining metadata needs more system memory, but can provide best performance. Not retaining metadata can reduce memory overhead requirement.
+        </p>
+      </div>
       <div class="size-gauge for-ram">
         <div class="t">Cluster quota (<span class="total">192 Gb</span>)</div>
         <div class="gauge">
@@ -2823,6 +2837,20 @@
        <label><input type="radio" name="bucketType" value="memcached"> Memcached</label>
       </div>
       <h2>Memory Size</h2>
+      <div class="cache_metadata_block persistent-only" id="js_cache_metadata_block">
+        <label>Cache Metadata:</label>
+        <div>
+          <input type="radio" name="caheMetadata" value="retain" id="cache_metadata_retain" checked="checked">
+          <label for="cache_metadata_retain">Retain metadata in memory even for non-resident items</label>
+          <br>
+          <input type="radio" name="caheMetadata" value="non_retain" id="cache_metadata_non_retain">
+          <label for="cache_metadata_non_retain">Don’t retain metadata in memory for non-resident items</label>
+        </div>
+        <a href="#" class="more_info">What's this?</a>
+        <p class="more_info">
+          Retaining metadata needs more system memory, but can provide best performance. Not retaining metadata can reduce memory overhead requirement.
+        </p>
+      </div>
       <div class="size-gauge for-ram">
         <div class="t">Cluster quota (<span class="total">192 Gb</span>)</div>
         <div class="gauge">
