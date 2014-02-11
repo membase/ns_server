@@ -165,7 +165,9 @@ handle_call({setup_streams, Partitions}, From,
                                             end, StreamsToStart),
 
             StopStreamRequests = lists:map(fun (Partition) ->
-                                                   upr_close_stream(Sock, Partition),
+                                                   Producer = upr_proxy:get_partner(ParentState),
+                                                   upr_proxy:upr_close_stream(Sock, Partition),
+                                                   gen_server:cast(Producer, {close_stream, Partition}),
                                                    {Partition}
                                            end, StreamsToStop),
 
@@ -176,6 +178,7 @@ handle_call({setup_streams, Partitions}, From,
                                              owner = From,
                                              to_add = StartStreamRequests,
                                              to_close = StopStreamRequests,
+                                             to_close_on_producer = StopStreamRequests,
                                              errors = []
                                             }
                                  }}
@@ -220,6 +223,25 @@ handle_cast({set_vbucket_state, Packet},
             {noreply, State}
     end;
 
+handle_cast({producer_stream_closed, Packet},
+            #state{state = #stream_state{to_close_on_producer = ToClose,
+                                         errors = Errors} = StreamState} = State,
+            _ParentState) ->
+    {Header, _Body} = mc_binary:decode_packet(Packet),
+
+    {Partition, NewToClose, NewErrors} = process_add_close_stream_response(Header, ToClose, Errors),
+    NewStreamState = StreamState#stream_state{to_close_on_producer = NewToClose,
+                                              errors = NewErrors},
+
+    NewState =
+        case Partition of
+            error ->
+                State;
+            _ ->
+                del_partition(Partition, State)
+        end,
+    {noreply, maybe_reply_setup_streams(NewState#state{state = NewStreamState})};
+
 handle_cast(Msg, State, _ParentState) ->
     ?rebalance_warning("Unhandled cast: ~p", [Msg]),
     {noreply, State}.
@@ -240,8 +262,9 @@ process_add_close_stream_response(Header, PendingPartitions, Errors) ->
     end.
 
 maybe_reply_setup_streams(#state{state = StreamState} = State) ->
-    case {StreamState#stream_state.to_add, StreamState#stream_state.to_close} of
-        {[], []} ->
+    case {StreamState#stream_state.to_add, StreamState#stream_state.to_close,
+          StreamState#stream_state.to_close_on_producer} of
+        {[], [], []} ->
             Reply =
                 case StreamState#stream_state.errors of
                     [] ->
@@ -280,13 +303,6 @@ upr_add_stream(Sock, Partition, Type) ->
                                              {#mc_header{opaque = Partition,
                                                          vbucket = Partition},
                                               #mc_entry{ext = <<Ext:32>>}}).
-
-upr_close_stream(Sock, Partition) ->
-    ?rebalance_debug("Close stream for partition ~p", [Partition]),
-    {ok, quiet} = mc_client_binary:cmd_quiet(?UPR_CLOSE_STREAM, Sock,
-                                             {#mc_header{opaque = Partition,
-                                                         vbucket = Partition},
-                                              #mc_entry{}}).
 
 get_ext_as_int(Header, Body) ->
     Len = Header#mc_header.extlen * 8,

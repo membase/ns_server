@@ -29,7 +29,7 @@
 
 -export([start_link/6, connect_proxies/2, nuke_connection/4, process_upr_response/1]).
 
--export([get_socket/1, get_partner/1]).
+-export([get_socket/1, get_partner/1, upr_close_stream/2]).
 
 -record(state, {sock :: port(),
                 buf = <<>> :: binary(),
@@ -173,6 +173,13 @@ upr_open(Sock, ConnName, Type) ->
       mc_client_binary:cmd_vocal(?UPR_OPEN, Sock,
                                  {#mc_header{},
                                   #mc_entry{key = ConnName,ext = Extra}})).
+
+upr_close_stream(Sock, Partition) ->
+    ?rebalance_debug("Close stream for partition ~p", [Partition]),
+    {ok, quiet} = mc_client_binary:cmd_quiet(?UPR_CLOSE_STREAM, Sock,
+                                             {#mc_header{opaque = Partition,
+                                                         vbucket = Partition},
+                                              #mc_entry{}}).
 
 upr_command_2_atom(?UPR_OPEN) ->
     upr_open;

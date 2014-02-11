@@ -34,12 +34,21 @@ handle_packet(request, ?UPR_SET_VBUCKET_STATE, Packet, State, ParentState) ->
     gen_server:cast(Consumer, {set_vbucket_state, Packet}),
     {proxy, State};
 
+handle_packet(response, ?UPR_CLOSE_STREAM, Packet, State, ParentState) ->
+    Consumer = upr_proxy:get_partner(ParentState),
+    gen_server:cast(Consumer, {producer_stream_closed, Packet}),
+    {block, State};
+
 handle_packet(_, _, _, State, _ParentState) ->
     {proxy, State}.
 
 handle_call(Command, _From, State, _ParentState) ->
     ?rebalance_warning("Unexpected handle_call(~p, ~p)", [Command, State]),
     {reply, refused, State}.
+
+handle_cast({close_stream, Partition}, State, ParentState) ->
+    upr_proxy:upr_close_stream(upr_proxy:get_socket(ParentState), Partition),
+    {noreply, State};
 
 handle_cast(Msg, State, _ParentState) ->
     ?rebalance_warning("Unhandled cast: ~p", [Msg]),
