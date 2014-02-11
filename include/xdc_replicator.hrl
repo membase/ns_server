@@ -55,10 +55,6 @@
                 ok
         end).
 
-%% number of memcached errors before stop replicator
--define(XDCR_XMEM_MEMCACHED_ERRORS, 1).
-
-
 %% concurrency throttle type
 -define(XDCR_INIT_CONCUR_THROTTLE, "xdcr-init").
 -define(XDCR_REPL_CONCUR_THROTTLE, "xdcr-repl").

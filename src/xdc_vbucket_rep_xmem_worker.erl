@@ -366,19 +366,13 @@ handle_call({flush_docs_pipeline, DocsList}, _From,
                             [DocsListSize, (Flushed + Eexist), Enoent, NotMyVb,
                              Einval, TmpFail, Enomem, OtherErr]),
 
-                %% stop replicator if too many memacched errors
-                case (Flushed + Eexist + ?XDCR_XMEM_MEMCACHED_ERRORS) > DocsListSize of
-                    true ->
-                        {reply, {ok, Flushed, Eexist}, State};
-                    _ ->
-                        ErrorKeyStr = convert_error_dict_to_string(ErrorKeysDict),
-                        ErrorStr = ?format_msg("in batch of ~p docs: flushed: ~p, rejected (eexists): ~p; "
-                                               "remote memcached errors: enoent: ~p, not-my-vb: ~p, invalid: ~p, "
-                                               "tmp fail: ~p, enomem: ~p, others: ~p",
-                                               [DocsListSize, Flushed, Eexist, Enoent, NotMyVb,
-                                                Einval, TmpFail, Enomem, OtherErr]),
-                        {stop, {error, {ErrorStr, ErrorKeyStr}}, State}
-                end
+                ErrorKeyStr = convert_error_dict_to_string(ErrorKeysDict),
+                ErrorStr = ?format_msg("in batch of ~p docs: flushed: ~p, rejected (eexists): ~p; "
+                                       "remote memcached errors: enoent: ~p, not-my-vb: ~p, invalid: ~p, "
+                                       "tmp fail: ~p, enomem: ~p, others: ~p",
+                                       [DocsListSize, Flushed, Eexist, Enoent, NotMyVb,
+                                        Einval, TmpFail, Enomem, OtherErr]),
+                {stop, {error, {ErrorStr, ErrorKeyStr}}, State}
         end,
     RV;
 
