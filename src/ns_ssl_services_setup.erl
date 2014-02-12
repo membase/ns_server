@@ -7,6 +7,8 @@
          start_link_rest_service/0,
          ssl_cert_key_path/0,
          ssl_cacert_key_path/0,
+         memcached_cert_path/0,
+         memcached_key_path/0,
          sync_local_cert_and_pkey_change/0]).
 
 %% gen_server callbacks
@@ -144,6 +146,12 @@ ssl_cacert_key_path() ->
 local_cert_path_prefix() ->
     filename:join(path_config:component_path(data, "config"), "local-ssl-").
 
+memcached_cert_path() ->
+    filename:join(path_config:component_path(data, "config"), "memcached-cert.pem").
+
+memcached_key_path() ->
+    filename:join(path_config:component_path(data, "config"), "memcached-key.pem").
+
 check_local_cert_and_pkey(ClusterCertPEM, Node) ->
     true = is_binary(ClusterCertPEM),
     try
@@ -277,10 +285,14 @@ save_cert_pkey(CertPEM, PKeyPEM, Compat30, Node) ->
         true ->
             {LocalCert, LocalPKey} = maybe_generate_local_cert(CertPEM, PKeyPEM, Node),
             ok = misc:atomic_write_file(Path, [LocalCert, LocalPKey]),
-            ok = misc:atomic_write_file(raw_ssl_cacert_key_path(), CertPEM);
+            ok = misc:atomic_write_file(raw_ssl_cacert_key_path(), CertPEM),
+            ok = misc:atomic_write_file(memcached_cert_path(), [LocalCert, CertPEM]),
+            ok = misc:atomic_write_file(memcached_key_path(), LocalPKey);
         false ->
             _ = file:delete(raw_ssl_cacert_key_path()),
-            ok = misc:atomic_write_file(Path, [CertPEM, PKeyPEM])
+            ok = misc:atomic_write_file(Path, [CertPEM, PKeyPEM]),
+            ok = misc:atomic_write_file(memcached_cert_path(), CertPEM),
+            ok = misc:atomic_write_file(memcached_key_path(), PKeyPEM)
     end.
 
 restart_ssl_services() ->
