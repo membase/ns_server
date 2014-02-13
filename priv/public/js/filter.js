@@ -66,7 +66,8 @@ Filter.prototype = {
       prefix: '',
       template: 'filter',
       hashName: '',
-      onClose: function () {}
+      onClose: function () {},
+      onOpen: function () {}
     }
 
     var defaultForTemplate = {
@@ -99,6 +100,7 @@ Filter.prototype = {
     self.form = $('form', self.filtersCont);
     self.stale = $('#' + self.prefix + '_filter_stale', self.container);
     self.selectBoxes = $('.selectBox', self.container);
+    self.filterPopUp = $('.filters_popup', self.container);
 
     self.filtersCont.bind('clickoutside', function () {
       self.closeFilter();
@@ -155,6 +157,7 @@ Filter.prototype = {
     self.filterParamsCell.getValue(function (params) {
       self.filtersCont.addClass("open");
       self.fillInputs(params);
+      self.onOpen();
     });
     self.selectBoxes.selectBox();
   },
@@ -176,8 +179,8 @@ Filter.prototype = {
     var oldFilterParams = this.rawFilterParamsCell.value;
     if (oldFilterParams !== packedParams) {
       this.rawFilterParamsCell.setValue(packedParams ? packedParams : undefined);
-      this.onClose(params);
     }
+    this.onClose(oldFilterParams, packedParams);
   },
   iterateInputs: function (body) {
     this.filters.each(function () {
