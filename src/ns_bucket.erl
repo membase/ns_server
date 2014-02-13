@@ -487,19 +487,9 @@ moxi_port(Bucket) ->
 bucket_nodes(Bucket) ->
     proplists:get_value(servers, Bucket).
 
--ifdef(DEBUG_UPR).
-
--spec replication_type([{_,_}]) -> bucket_replication_type().
-replication_type(Bucket) ->
-    proplists:get_value(repl_type, Bucket, upr).
-
--else.
-
 -spec replication_type([{_,_}]) -> bucket_replication_type().
 replication_type(Bucket) ->
     proplists:get_value(repl_type, Bucket, tap).
-
--endif.
 
 json_map_from_config(LocalAddr, BucketConfig) ->
     Config = ns_config:get(),
@@ -691,6 +681,14 @@ cleanup_bucket_props(Props) ->
         none -> lists:keydelete(sasl_password, 1, Props)
     end.
 
+get_default_repl_type() ->
+    case {cluster_compat_mode:is_cluster_30(), misc:get_env_default(enable_upr, false)} of
+        {true, true} ->
+            upr;
+        _ ->
+            tap
+    end.
+
 create_bucket(BucketType, BucketName, NewConfig) ->
     case validate_bucket_config(BucketName, NewConfig) of
         ok ->
@@ -699,7 +697,8 @@ create_bucket(BucketType, BucketName, NewConfig) ->
                                      NewConfig),
             MergedConfig1 = cleanup_bucket_props(MergedConfig0),
             BucketUUID = couch_uuids:random(),
-            MergedConfig = [{uuid, BucketUUID} | MergedConfig1],
+            MergedConfig = [{repl_type, get_default_repl_type()} |
+                            [{uuid, BucketUUID} | MergedConfig1]],
             ns_config:update_sub_key(
               buckets, configs,
               fun (List) ->
