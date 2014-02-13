@@ -2268,9 +2268,22 @@ var ViewsFilter = Filter({
   prefix: 'views',
   hashName: 'viewsFilter',
   container: $('#view_filter_container'),
-  onClose: function () {
-    ViewsSection.pageNumberCell.setValue(undefined);
-    ViewsSection.fullSubsetPageNumberCell.setValue(undefined);
+  onClose: function (oldFilterParams, packedParams) {
+    if (oldFilterParams !== packedParams) {
+      ViewsSection.pageNumberCell.setValue(undefined);
+      ViewsSection.fullSubsetPageNumberCell.setValue(undefined);
+    }
+    $("#view_details").removeClass('fiter_opened');
+  },
+  onOpen: function () {
+    var self = this;
+    _.defer(function () {
+      var popUpOffset = $(self.filterPopUp).fullOffset();
+      var windowHeight = $("#container").outerHeight();
+      if (popUpOffset.bottom > windowHeight) {
+        $("#view_details").addClass('fiter_opened');
+      }
+    });
   }
 }, {
   prefix: 'views',

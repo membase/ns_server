@@ -81,6 +81,7 @@ a.dynamic_disabled{text-decoration:none;cursor:default;}
 .warn {font-size:14px; color:#ec5223;}
 .warn ul {list-style-type:disc; margin:0 0 0 15px;}
 .ovf {overflow:hidden;}
+.fiter_opened {padding-bottom: 200px;}
 
 
 #container {background-color:#fff;position:absolute;width:100%;min-width:960px;min-height:100%;overflow: hidden;}
