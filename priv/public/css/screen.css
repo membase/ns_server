@@ -699,14 +699,14 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 .server_row .server_down,
 .server_row .failed_over,
 .server_row .server_warmup,
-.server_row .pending_add {width: 65px; padding: 0 !important; background-image: url("../images/server_status_icons_solid_bg.png"); background-repeat: no-repeat;}
+.server_row .pending_add {width: 65px; padding: 0 !important; background-image: url("../images/server_status_icons_solid_bg-v2.png"); background-repeat: no-repeat;}
 .server_row .server_up {background-position: 50% 19px;}
 .server_row .server_down,
 .server_row .server_down.failed_over {background-position: 50% -160px;}
 .server_row .failed_over,
 .server_row .server_warmup,
 .server_row .pending_add {background-position: center -310px;}
-.server_row.failed_over .failed_over {background-position: center -303px;}
+.server_row.failed_over .failed_over {background-position: center -518px;}
 .server_row.failed_over .server_down.failed_over {background-position: center -154px;}
 
 .servers h2 { height: 25px;}
