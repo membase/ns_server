@@ -290,60 +290,8 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
     %% Eject failed nodes first so they don't cause trouble
     eject_nodes(FailedNodes),
     lists:foreach(fun ({I, {BucketName, BucketConfig}}) ->
-                          ale:info(?USER_LOGGER, "Started rebalancing bucket ~s", [BucketName]),
-                          ?rebalance_info("Rebalancing bucket ~p with config ~p",
-                                          [BucketName, sanitize(BucketConfig)]),
-                          BucketCompletion = I / NumBuckets,
-                          ns_orchestrator:update_progress(
-                            dict:from_list([{N, BucketCompletion}
-                                            || N <- AllNodes])),
-                          case proplists:get_value(type, BucketConfig) of
-                              memcached ->
-                                  master_activity_events:note_bucket_rebalance_started(BucketName),
-                                  ns_bucket:set_servers(BucketName, KeepNodes),
-                                  master_activity_events:note_bucket_rebalance_ended(BucketName);
-                              membase ->
-                                  %% Only start one bucket at a time to avoid
-                                  %% overloading things
-                                  ThisEjected = ordsets:intersection(lists:sort(proplists:get_value(servers, BucketConfig, [])),
-                                                                     lists:sort(EjectNodesAll)),
-                                  ThisLiveNodes = KeepNodes ++ ThisEjected,
-                                  ns_bucket:set_servers(BucketName, ThisLiveNodes),
-                                  Pid = erlang:spawn_link(
-                                          fun () ->
-                                                  ?rebalance_info("Waiting for bucket ~p to be ready on ~p", [BucketName, ThisLiveNodes]),
-                                                  {ok, _States, Zombies} = janitor_agent:query_states(BucketName, ThisLiveNodes, ?REBALANCER_READINESS_WAIT_SECONDS),
-                                                  case Zombies of
-                                                      [] ->
-                                                          ?rebalance_info("Bucket is ready on all nodes"),
-                                                          ok;
-                                                      _ ->
-                                                          exit({not_all_nodes_are_ready_yet, Zombies})
-                                                  end
-                                          end),
-                                  MRef = erlang:monitor(process, Pid),
-                                  receive
-                                      stop ->
-                                          exit(stop);
-                                      {'DOWN', MRef, _, _, _} ->
-                                          ok
-                                  end,
-                                  case ns_janitor:cleanup(BucketName, [{timeout, 10}]) of
-                                      ok -> ok;
-                                      {error, _, BadNodes} ->
-                                          exit({pre_rebalance_janitor_run_failed, BadNodes})
-                                  end,
-                                  {ok, NewConf} =
-                                      ns_bucket:get_bucket(BucketName),
-                                  master_activity_events:note_bucket_rebalance_started(BucketName),
-                                  {NewMap, MapOptions} =
-                                      rebalance(BucketName, NewConf,
-                                                KeepNodes, BucketCompletion,
-                                                NumBuckets),
-                                  ns_bucket:set_map_opts(BucketName, MapOptions),
-                                  master_activity_events:note_bucket_rebalance_ended(BucketName),
-                                  verify_replication(BucketName, KeepNodes, NewMap)
-                          end
+                          rebalance_one_bucket(I, BucketName, BucketConfig, NumBuckets,
+                                               AllNodes, KeepNodes, EjectNodes)
                   end, misc:enumerate(BucketConfigs, 0)),
 
     case RebalanceObserver of
@@ -360,12 +308,70 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
     ok = ns_config_rep:synchronize_remote(KeepNodes),
     eject_nodes(EjectNodes).
 
-
+rebalance_one_bucket(I, BucketName, BucketConfig, NumBuckets, AllNodes, KeepNodes, EjectNodes) ->
+    ale:info(?USER_LOGGER, "Started rebalancing bucket ~s", [BucketName]),
+    ?rebalance_info("Rebalancing bucket ~p with config ~p",
+                    [BucketName, sanitize(BucketConfig)]),
+    BucketCompletion = I / NumBuckets,
+    ns_orchestrator:update_progress(
+      dict:from_list([{N, BucketCompletion}
+                      || N <- AllNodes])),
+    case proplists:get_value(type, BucketConfig) of
+        memcached ->
+            master_activity_events:note_bucket_rebalance_started(BucketName),
+            ns_bucket:set_servers(BucketName, KeepNodes),
+            master_activity_events:note_bucket_rebalance_ended(BucketName);
+        membase ->
+            %% Only start one bucket at a time to avoid
+            %% overloading things
+            ThisEjected = ordsets:intersection(lists:sort(proplists:get_value(servers, BucketConfig, [])),
+                                               lists:sort(EjectNodes)),
+            ThisLiveNodes = KeepNodes ++ ThisEjected,
+            ns_bucket:set_servers(BucketName, ThisLiveNodes),
+            Pid = erlang:spawn_link(
+                    fun () ->
+                            ?rebalance_info("Waiting for bucket ~p to be ready on ~p",
+                                            [BucketName, ThisLiveNodes]),
+                            {ok, _States, Zombies} =
+                                janitor_agent:query_states(BucketName,
+                                                           ThisLiveNodes,
+                                                           ?REBALANCER_READINESS_WAIT_SECONDS),
+                            case Zombies of
+                                [] ->
+                                    ?rebalance_info("Bucket is ready on all nodes"),
+                                    ok;
+                                _ ->
+                                    exit({not_all_nodes_are_ready_yet, Zombies})
+                            end
+                    end),
+            MRef = erlang:monitor(process, Pid),
+            receive
+                stop ->
+                    exit(stop);
+                {'DOWN', MRef, _, _, _} ->
+                    ok
+            end,
+            case ns_janitor:cleanup(BucketName, [{timeout, 10}]) of
+                ok -> ok;
+                {error, _, BadNodes} ->
+                    exit({pre_rebalance_janitor_run_failed, BadNodes})
+            end,
+            {ok, NewConf} =
+                ns_bucket:get_bucket(BucketName),
+            master_activity_events:note_bucket_rebalance_started(BucketName),
+            {NewMap, MapOptions} =
+                rebalance_one_bucket(BucketName, NewConf,
+                                     KeepNodes, BucketCompletion,
+                                     NumBuckets),
+            ns_bucket:set_map_opts(BucketName, MapOptions),
+            master_activity_events:note_bucket_rebalance_ended(BucketName),
+            verify_replication(BucketName, KeepNodes, NewMap)
+    end.
 
 %% @doc Rebalance the cluster. Operates on a single bucket. Will
 %% either return ok or exit with reason 'stopped' or whatever reason
 %% was given by whatever failed.
-rebalance(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets) ->
+rebalance_one_bucket(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets) ->
     Map = proplists:get_value(map, Config),
     {FastForwardMap, MapOptions} = generate_vbucket_map(Map, KeepNodes, Config),
     ns_bucket:update_vbucket_map_history(FastForwardMap, MapOptions),
