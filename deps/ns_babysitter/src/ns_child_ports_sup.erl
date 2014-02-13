@@ -44,9 +44,9 @@ send_command(PortName, Command) ->
 
 find_port(PortName) ->
     Childs = supervisor:which_children(?MODULE),
-    [Pid] = [Pid || {{Name, _, _, _}, Pid, _, _} <- Childs,
+    [Pid] = [Pid || {Id, Pid, _, _} <- Childs,
                     Pid =/= undefined,
-                    Name =:= PortName],
+                    element(1, Id) =:= PortName],
     Pid.
 
 do_send_command(PortName, Command) ->
@@ -79,9 +79,22 @@ sanitize(Struct) ->
 
 launch_port(NCAO) ->
     Id = sanitize(NCAO),
+
+    NCAO1 = case NCAO of
+                {Name, Cmd, Args, Opts, Files} ->
+                    lists:foreach(
+                      fun ({Path, Contents}) ->
+                              ok = misc:atomic_write_file(Path, Contents)
+                      end, Files),
+
+                    {Name, Cmd, Args, Opts};
+                _ ->
+                    NCAO
+            end,
+
     ?log_info("supervising port: ~p", [Id]),
     {ok, C} = supervisor:start_child(?MODULE,
-                                     create_child_spec(Id, NCAO)),
+                                     create_child_spec(Id, NCAO1)),
     {ok, C}.
 
 create_ns_server_supervisor_spec() ->

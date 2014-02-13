@@ -306,7 +306,8 @@ restart_ssl_services() ->
     ok = application:start(ssl),
     ok = ns_ssl_services_sup:start_ssl_services(),
 
-    restart_xdcr_proxy().
+    restart_xdcr_proxy(),
+    ok = ns_memcached:connect_and_send_isasl_refresh().
 
 restart_xdcr_proxy() ->
     case (catch ns_ports_setup:restart_xdcr_proxy()) of

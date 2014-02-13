@@ -149,6 +149,7 @@ default() ->
        {port, misc:get_env_default(memcached_port, 11210)},
        {mccouch_port, misc:get_env_default(mccouch_port, 11213)},
        {dedicated_port, misc:get_env_default(memcached_dedicated_port, 11209)},
+       {ssl_port, misc:get_env_default(memcached_ssl_port, 11207)},
        {admin_user, "_admin"},
        %% Note that this is not actually the password that is being used; as
        %% part of upgrading config from 2.2 to 2.3 version it's replaced by
@@ -177,7 +178,48 @@ default() ->
        {log_sleeptime, 19},
        %% Milliseconds between log rotation runs.
        {log_rotation_period, 39003},
-       {verbosity, ""}]},
+       {verbosity, 0}]},
+
+     {{node, node(), memcached_config},
+      {[
+        {interfaces,
+         [
+          {[{host, <<"*">>},
+            {port, port},
+            {maxconn, 10000}]},
+
+          {[{host, <<"*">>},
+            {port, dedicated_port},
+            {maxconn, 1000}]},
+
+          {[{host, <<"*">>},
+            {port, ssl_port},
+            {maxconn, 10000},
+            {ssl, {[{key, list_to_binary(ns_ssl_services_setup:memcached_key_path())},
+                    {cert, list_to_binary(ns_ssl_services_setup:memcached_cert_path())}]}}]}
+         ]},
+
+        {extensions,
+         [
+          {[{module, list_to_binary(
+                       path_config:component_path(lib,
+                                                  "memcached/stdin_term_handler.so"))},
+            {config, <<"">>}]},
+
+          {[{module, list_to_binary(
+                       path_config:component_path(lib, "memcached/file_logger.so"))},
+            {config, {"cyclesize=~B;sleeptime=~B;filename=~s/~s",
+                      [log_cyclesize, log_sleeptime, log_path, log_prefix]}}]}
+         ]},
+
+        {engine,
+         {[{module, list_to_binary(
+                      path_config:component_path(lib, "memcached/bucket_engine.so"))},
+           {config, {"admin=~s;default_bucket_name=default;auto_create=false",
+                     [admin_user]}}]}},
+
+        {verbosity, verbosity}
+       ]}},
 
      {memory_quota, InitQuota},
 
@@ -222,19 +264,7 @@ default() ->
          stream]
        },
        {memcached, path_config:component_path(bin, "memcached"),
-        ["-X", path_config:component_path(lib, "memcached/stdin_term_handler.so"),
-         "-X", {path_config:component_path(lib,
-                                           "memcached/file_logger.so" ++
-                                               ",cyclesize=~B;sleeptime=~B;filename=~s/~s"),
-                [log_cyclesize, log_sleeptime, log_path, log_prefix]},
-         "-l", {"0.0.0.0:~B,0.0.0.0:~B:1000", [port, dedicated_port]},
-         "-p", {"~B", [port]},
-         "-E", path_config:component_path(lib, "memcached/bucket_engine.so"),
-         "-c", "10000",
-         "-e", {"admin=~s;default_bucket_name=default;auto_create=false",
-                [admin_user]},
-         {"~s", [verbosity]}
-        ],
+        ["-C", ns_ports_setup:memcached_config_path()],
         [{env, [{"EVENT_NOSELECT", "1"},
                 {"MEMCACHED_TOP_KEYS", "100"},
                 {"ISASL_PWFILE", {"~s", [{isasl, path}]}}]},
@@ -572,8 +602,33 @@ do_upgrade_config_from_2_3_0_to_3_0(Config, DefaultConfig) ->
         end,
     PortServersKey = {node, node(), port_servers},
     {value, DefaultPortServers} = ns_config:search([DefaultConfig], PortServersKey),
-    [{set, PortServersKey, DefaultPortServers} | MaybeUUIDUpdate].
 
+    McdConfigKey = {node, node(), memcached_config},
+    {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdConfigKey),
+
+    upgrade_memcached_ssl_port_and_verbosity(Config, DefaultConfig) ++
+        [{set, PortServersKey, DefaultPortServers},
+         {set, McdConfigKey, DefaultMcdConfig} | MaybeUUIDUpdate].
+
+upgrade_memcached_ssl_port_and_verbosity(Config, DefaultConfig) ->
+    McdKey = {node, node(), memcached},
+
+    {value, McdConfig} = ns_config:search(Config, McdKey),
+    {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdKey),
+
+    NewOrUpdatedParams =
+        lists:filter(
+          fun ({Key, _Value}) ->
+                  lists:member(Key, [ssl_port, verbosity])
+          end, DefaultMcdConfig),
+
+    StrippedMcdConfig =
+        lists:filter(
+          fun ({Key, _Value}) ->
+                  not lists:keymember(Key, 1, NewOrUpdatedParams)
+          end, McdConfig),
+
+    [{set, McdKey, NewOrUpdatedParams ++ StrippedMcdConfig}].
 
 search_sub_key(Config, Key, Subkey) ->
     case ns_config:search(Config, Key) of
@@ -885,16 +940,26 @@ upgrade_2_2_0_to_2_3_0_test() ->
 
 upgrade_2_3_0_to_3_0_test() ->
     Key = {node, node(), uuid},
-    CfgWithoutUUID = [[{some_key, some_value}]],
+    CfgWithoutUUID = [[{some_key, some_value},
+                       {{node, node(), memcached}, []}]],
     CfgWithUUID = [[{Key, <<"uuid">>},
-                    {some_key, some_value}]],
+                    {some_key, some_value},
+                    {{node, node(), memcached}, [{ssl_port, 1}, {verbosity, 2}]},
+                    {{node, node(), memcached_config}, memcached_config}]],
     Default = [{Key, <<"default uuid">>},
-               {{node, node(), port_servers}, port_servers_cfg}],
+               {{node, node(), port_servers}, port_servers_cfg},
+               {{node, node(), memcached}, [{ssl_port, 1}, {verbosity, 2}]},
+               {{node, node(), memcached_config}, memcached_config}],
 
-    ?assertMatch([{set, {node, _, port_servers}, _}],
+    ?assertMatch([{set, {node, _, memcached}, [{ssl_port, 1}, {verbosity, 2}]},
+                  {set, {node, _, port_servers}, _},
+                  {set, {node, _, memcached_config}, _}],
                  do_upgrade_config_from_2_3_0_to_3_0(CfgWithUUID, Default)),
 
-    ?assertMatch([{set, {node, _, port_servers}, _}, {set, Key, <<"default uuid">>}],
+    ?assertMatch([{set, {node, _, memcached}, [{ssl_port, 1}, {verbosity, 2}]},
+                  {set, {node, _, port_servers}, _},
+                  {set, {node, _, memcached_config}, _},
+                  {set, Key, <<"default uuid">>}],
                  do_upgrade_config_from_2_3_0_to_3_0(CfgWithoutUUID, Default)).
 
 no_upgrade_on_current_version_test() ->

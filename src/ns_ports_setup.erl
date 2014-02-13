@@ -4,7 +4,8 @@
 
 -export([start/0, start_memcached_force_killer/0, setup_body_tramp/0,
          restart_port_by_name/1, restart_moxi/0, restart_memcached/0,
-         restart_xdcr_proxy/0]).
+         restart_xdcr_proxy/0,
+         memcached_config_path/0]).
 
 start() ->
     {ok, proc_lib:spawn_link(?MODULE, setup_body_tramp, [])}.
@@ -165,8 +166,19 @@ per_bucket_moxi_specs(Config) ->
 
 dynamic_children() ->
     Config = ns_config:get(),
+
     {value, PortServers} = ns_config:search_node(Config, port_servers),
-    [expand_args(NCAO) || NCAO <- PortServers] ++ per_bucket_moxi_specs(Config) ++ [create_ssl_proxy_spec(Config)].
+    [begin
+         Expanded = expand_args(NCAO),
+         case Expanded of
+             {memcached, Cmd, Args, Opts} ->
+                 {memcached, Cmd, Args, Opts,
+                  [{memcached_config_path(), memcached_config(Config)}]};
+             _ ->
+                 Expanded
+         end
+     end || NCAO <- PortServers] ++
+        per_bucket_moxi_specs(Config) ++ [create_ssl_proxy_spec(Config)].
 
 expand_args({Name, Cmd, ArgsIn, OptsIn}) ->
     Config = ns_config:get(),
@@ -216,3 +228,30 @@ memcached_force_killer_fn({{node, Node, membership}, NewMembership}, PrevMembers
 
 memcached_force_killer_fn(_, State) ->
     State.
+
+memcached_config_path() ->
+    filename:join(path_config:component_path(data, "config"), "memcached.json").
+
+memcached_config(Config) ->
+    {value, McdParams} = ns_config:search(Config, {node, node(), memcached}),
+    {value, McdConf} = ns_config:search(Config, {node, node(), memcached_config}),
+
+    {Props} = expand_memcached_config(McdConf, McdParams),
+    ExtraProps = ns_config:search(Config,
+                                  {node, node(), memcached_config_extra}, []),
+    ejson:encode({Props ++ ExtraProps}).
+
+expand_memcached_config({Props}, Params) when is_list(Props) ->
+    {[{Key, expand_memcached_config(Value, Params)} || {Key, Value} <- Props]};
+expand_memcached_config(Array, Params) when is_list(Array) ->
+    [expand_memcached_config(Elem, Params) || Elem <- Array];
+expand_memcached_config({M, F, A}, _Params) ->
+    M:F(A);
+expand_memcached_config({Fmt, Args}, Params) ->
+    Args1 = [expand_memcached_config(A, Params) || A <- Args],
+    iolist_to_binary(io_lib:format(Fmt, Args1));
+expand_memcached_config(Param, Params) when is_atom(Param) ->
+    {Param, Value} = lists:keyfind(Param, 1, Params),
+    Value;
+expand_memcached_config(Verbatim, _Params) ->
+    Verbatim.
