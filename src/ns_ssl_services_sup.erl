@@ -4,7 +4,8 @@
 
 -include("ns_common.hrl").
 
--export([init/1, start_link/0, restart_ssl_services/0]).
+-export([init/1, start_link/0,
+         stop_ssl_services/0, start_ssl_services/0]).
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
@@ -15,13 +16,17 @@ init([]) ->
            misc:get_env_default(max_t, 10)},
           child_specs()}}.
 
-restart_ssl_services() ->
+stop_ssl_services() ->
     [begin
-         ok = supervisor2:terminate_child(?MODULE, Child),
-         {ok, _} = supervisor2:restart_child(?MODULE, Child)
+         ok = supervisor2:terminate_child(?MODULE, Child)
      end || Child <- [ns_rest_ssl_service, ns_capi_ssl_service]],
     ok.
 
+start_ssl_services() ->
+    [begin
+         {ok, _} = supervisor2:restart_child(?MODULE, Child)
+     end || Child <- [ns_rest_ssl_service, ns_capi_ssl_service]],
+    ok.
 
 child_specs() ->
     [{ns_ssl_services_setup,
@@ -35,4 +40,3 @@ child_specs() ->
      {ns_capi_ssl_service,
       {ns_ssl_services_setup, start_link_capi_service, []},
       permanent, 1000, worker, []}].
-

@@ -289,7 +289,11 @@ restart_ssl_services() ->
     %% to shutdown us.
     %%
     %% We're not trapping exits and that makes this interaction safe.
-    ns_ssl_services_sup:restart_ssl_services(),
+    ok = ns_ssl_services_sup:stop_ssl_services(),
+    ok = application:stop(ssl),
+    ok = application:start(ssl),
+    ok = ns_ssl_services_sup:start_ssl_services(),
+
     restart_xdcr_proxy().
 
 restart_xdcr_proxy() ->
