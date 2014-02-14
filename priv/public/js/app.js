@@ -275,7 +275,7 @@ function loginFormSubmit() {
     if (status == 'success') {
       hideAuthForm();
       // don't keep credentials in DOM tree
-      $('#login_form [name=password]').val('');
+      $('#login_form')[0].reset();
       return;
     }
 
@@ -493,6 +493,7 @@ var SetupWizard = {
       $(parentName + ' div.config-bottom button#step-5-finish').unbind('click').click(function (e) {
         e.preventDefault();
         $('#init_secure_form').submit();
+        $('#init_secure_form')[0].reset();
       });
       $(parentName + ' div.config-bottom button#step-5-back').unbind('click').click(function (e) {
         e.preventDefault();
