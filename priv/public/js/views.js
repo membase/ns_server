@@ -1835,6 +1835,7 @@ var ViewsSection = {
             return continueSaving();
           }
           return genericDialog({text: "Please, confirm overwriting exiting view.",
+                                closeOnEscape: false,
                                 callback: function (e, name, instance) {
                                   if (name == 'ok') {
                                     return continueSaving();
@@ -2085,6 +2086,7 @@ var ViewsSection = {
 
     function confirmOverwrite(dbURL, ddocId, spatialName, spatial) {
       genericDialog({text: "Please, confirm overwriting exiting Spatial Function.",
+                     closeOnEscape: false,
                      callback: function (e, name, instance) {
                        if (name == 'ok') {
                          return doSaveSpatial(dbURL, ddocId, spatialName, spatial, true);

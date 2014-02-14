@@ -516,7 +516,6 @@ function genericDialog(options) {
   options = _.extend({buttons: {ok: true,
                                 cancel: true},
                       modal: true,
-                      closeOnEscape: false,
                       width: 711,
                       showCloseButton: true,
                       callback: function () {

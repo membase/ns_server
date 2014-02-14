@@ -202,7 +202,6 @@ function showXDCRErrors(id) {
   }
   elements = JSON.parse(text);
   genericDialog({
-    closeOnEscape: true,
     buttons: {ok: true},
     header: "XDCR errors",
     textHTML: "<ul>" + _.map(elements, function (anError) {return "<li>" + escapeHTML(anError) + "</li>"}).join('') + "</ul>"

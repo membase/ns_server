@@ -1170,8 +1170,7 @@ var AccountManagementSection = {
               spinner.remove();
             }
           });
-        }]],
-        closeOnEscape: true
+        }]]
       });
     });
 
@@ -1444,6 +1443,7 @@ var AutoCompactionSection = {
 
     function continueSaving() {
       dialog = genericDialog({buttons: {},
+                              closeOnEscape: false,
                               header: "Saving...",
                               text: "Saving autocompaction settings. Please, wait..."});
 

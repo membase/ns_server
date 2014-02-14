@@ -582,6 +582,10 @@ function showDialog(idOrJQ, options) {
   options = _.extend({modal: true, close: onHide, resizable: false,
     draggable: false}, options);
 
+  if (options.closeOnEscape !== false) {
+    options.closeOnEscape = true;
+  }
+
   jq.dialog(options);
 
   if (options.showCloseButton === false) {

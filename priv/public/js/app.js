@@ -1354,7 +1354,6 @@ function runInternalSettingsDialog() {
   var dialog = $('#internal_settings_dialog');
   var form = dialog.find("form");
   showDialog(dialog, {
-    closeOnEscape: true,
     title: 'Tweak internal settings',
     onHide: onHide
   });
