@@ -67,7 +67,8 @@ Filter.prototype = {
       template: 'filter',
       hashName: '',
       onClose: function () {},
-      onOpen: function () {}
+      onOpen: function () {},
+      onParamsChanged: function () {}
     }
 
     var defaultForTemplate = {
@@ -172,6 +173,7 @@ Filter.prototype = {
     self.selectBoxes.selectBox("destroy");
     // jquery is broken. this is workaround, because $%#$%
     self.selectBoxes.removeData('selectBoxControl').removeData('selectBoxSettings');
+    self.onClose();
   },
   inputs2filterParams: function () {
     var params = this.parseInputs();
@@ -179,8 +181,8 @@ Filter.prototype = {
     var oldFilterParams = this.rawFilterParamsCell.value;
     if (oldFilterParams !== packedParams) {
       this.rawFilterParamsCell.setValue(packedParams ? packedParams : undefined);
+      this.onParamsChanged();
     }
-    this.onClose(oldFilterParams, packedParams);
   },
   iterateInputs: function (body) {
     this.filters.each(function () {

@@ -2270,11 +2270,11 @@ var ViewsFilter = Filter({
   prefix: 'views',
   hashName: 'viewsFilter',
   container: $('#view_filter_container'),
-  onClose: function (oldFilterParams, packedParams) {
-    if (oldFilterParams !== packedParams) {
-      ViewsSection.pageNumberCell.setValue(undefined);
-      ViewsSection.fullSubsetPageNumberCell.setValue(undefined);
-    }
+  onParamsChanged: function () {
+    ViewsSection.pageNumberCell.setValue(undefined);
+    ViewsSection.fullSubsetPageNumberCell.setValue(undefined);
+  },
+  onClose: function () {
     $("#view_details").removeClass('fiter_opened');
   },
   onOpen: function () {
@@ -2299,7 +2299,7 @@ var SpatialFilter = Filter({
   prefix: 'spatial',
   hashName: 'spatialFilter',
   container: $('#spatial_filter_container'),
-  onClose: function () {
+  onParamsChanged: function () {
     ViewsSection.pageNumberCell.setValue(undefined);
     ViewsSection.fullSubsetPageNumberCell.setValue(undefined);
   }
