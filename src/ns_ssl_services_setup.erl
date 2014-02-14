@@ -203,7 +203,7 @@ config_change_detector_loop({cluster_compat_version, _Version}, Parent) ->
     Parent ! cert_and_pkey_changed,
     Parent;
 %% we're using this key to detect change of node() name
-config_change_detector_loop({node, _Node, capi_port}, Parent) ->
+config_change_detector_loop({{node, _Node, capi_port}, _}, Parent) ->
     Parent ! cert_and_pkey_changed,
     Parent;
 config_change_detector_loop(_OtherEvent, Parent) ->
