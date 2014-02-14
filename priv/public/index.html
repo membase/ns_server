@@ -631,7 +631,7 @@
                 <td colspan="4" class="last">
                   {% if (this.bucketType == 'membase') { %}
                     <a class="list_button disable-if-stale only-when-20" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>
-                    <a class="list_button only-when-20 when-roadmin-hide-me" href="#sec=documents&bucketName={%= encodeURIComponent(this.name) %}&documentsPageNumber=0"><span>Documents</span></a>{% } %}
+                    <a class="list_button only-when-20 when-roadmin-hide-me" href="#sec=documents&viewsBucket={%= encodeURIComponent(this.name) %}&documentsPageNumber=0"><span>Documents</span></a>{% } %}
                 </td>
               </tr>
               <tr>
@@ -1761,12 +1761,12 @@
                   <!-- {% _.each(rows, function (r) { %} -->
                       <tr class="align_text">
                           <td class="key ellipsis" colspan="2">
-                            <a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}">{%= h(r.key) %}</a>
+                            <a href="#sec=documents&viewsBucket={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}">{%= h(r.key) %}</a>
                           </td>
                           <td class="ellipsis" colspan="5">{%= $.futon.formatJSON(r.doc.json || r.doc.base64, {html:true}) %}</td>
                           <td colspan="3">
                             <button class="list_button delete_btn when-roadmin-avoid-me" data-id="{%= h(r.id) %}"><span>Delete</span></button>
-                            <a href="#sec=documents&bucketName={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}" class="list_button btn_edit"><span>Edit Document</span></a></td>
+                            <a href="#sec=documents&viewsBucket={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}" class="list_button btn_edit"><span>Edit Document</span></a></td>
                       </tr>
                   <!-- {% }); %} -->
                 <!-- {% } else { %} -->

@@ -183,8 +183,11 @@ var codeMirrorOpts = {
 //   * rawViewNameCell
 //   * pageNumberCell
 function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProgressCell, poolDetailsCell) {
-
   ns.viewsBucketInfoCell = Cell.compute(function (v) {
+    var mode = v.need(modeCell);
+    if (mode != 'views') {
+      return;
+    }
     var selected = v(ns.rawViewsBucketCell);
     var buckets = v.need(bucketsListCell).byType.membase;
     var bucketInfo = _.detect(buckets, function (info) {return info.name === selected});

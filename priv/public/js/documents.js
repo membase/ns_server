@@ -210,7 +210,7 @@ var DocumentsSection = {
   init: function () {
     var self = this;
 
-    self.bucketNameCell = new StringHashFragmentCell("bucketName");
+    self.bucketNameCell = new StringHashFragmentCell("viewsBucket");
     self.documentsPageNumberCell = new StringHashFragmentCell("documentsPageNumber");
     self.documentIdCell = new StringHashFragmentCell("docId");
     self.pageLimitCell = new StringHashFragmentCell("documentsPageLimit");
