@@ -23,7 +23,7 @@
 
 -export([start_link/1, init/1]).
 
--export([get_actual_replications/1, setup_replication/3]).
+-export([get_actual_replications/1, set_desired_replications/2]).
 
 start_link(Bucket) ->
     supervisor:start_link({local, server_name(Bucket)}, ?MODULE, []).
@@ -45,6 +45,10 @@ get_actual_replications(Bucket) ->
         Nodes ->
             lists:sort([{Node, upr_replicator:get_partitions(Node, Bucket)} || Node <- Nodes])
     end.
+
+set_desired_replications(Bucket, DesiredReps) ->
+    [setup_replication(Bucket, SrcNode, Partitions)
+     || {SrcNode, Partitions} <- DesiredReps].
 
 setup_replication(Bucket, ProducerNode, Partitions) ->
     case Partitions of

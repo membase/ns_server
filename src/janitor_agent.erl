@@ -38,13 +38,16 @@
                 rebalance_subprocesses = [] :: [{From :: term(), Worker :: pid()}],
                 last_applied_vbucket_states :: undefined | list(),
                 rebalance_only_vbucket_states :: list(),
-                flushseq}).
+                flushseq,
+                rebalancer_type :: undefined | rebalancer | upgrader}).
 
 -export([wait_for_bucket_creation/2, query_states/3,
          apply_new_bucket_config/5,
+         apply_new_bucket_config/6,
          mark_bucket_warmed/2,
          delete_vbucket_copies/4,
          prepare_nodes_for_rebalance/3,
+         prepare_nodes_for_upr_upgrade/3,
          this_node_replicator_triples/1,
          bulk_set_vbucket_state/4,
          set_vbucket_state/7,
@@ -202,19 +205,29 @@ process_apply_config_rv(Bucket, {Replies, BadNodes}, Call) ->
             ok
     end.
 
+get_apply_new_config_call(undefined, NewBucketConfig, IgnoredVBuckets) ->
+    {apply_new_config, NewBucketConfig, IgnoredVBuckets};
+get_apply_new_config_call(Rebalancer, NewBucketConfig, IgnoredVBuckets) ->
+    true = cluster_compat_mode:is_cluster_30(),
+    {if_rebalance, Rebalancer,
+     {apply_new_config, Rebalancer, NewBucketConfig, IgnoredVBuckets}}.
+
 apply_new_bucket_config(Bucket, Servers, [] = Zombies, NewBucketConfig, IgnoredVBuckets) ->
+    apply_new_bucket_config(Bucket, undefined, Servers, Zombies, NewBucketConfig, IgnoredVBuckets).
+
+apply_new_bucket_config(Bucket, Rebalancer, Servers, [] = Zombies, NewBucketConfig, IgnoredVBuckets) ->
     case cluster_compat_mode:get_replication_topology() of
         star ->
-            apply_new_bucket_config_star(Bucket, Servers, Zombies,
-                                                   NewBucketConfig, IgnoredVBuckets);
+            apply_new_bucket_config_star(Bucket, Rebalancer, Servers, Zombies,
+                                         NewBucketConfig, IgnoredVBuckets);
         chain ->
-            apply_new_bucket_config_chain(Bucket, Servers, Zombies,
-                                                    NewBucketConfig, IgnoredVBuckets)
+            apply_new_bucket_config_chain(Bucket, Rebalancer, Servers, Zombies,
+                                          NewBucketConfig, IgnoredVBuckets)
     end.
 
-apply_new_bucket_config_chain(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets) ->
+apply_new_bucket_config_chain(Bucket, Rebalancer, Servers, Zombies, NewBucketConfig, IgnoredVBuckets) ->
     RV1 = gen_server:multi_call(Servers -- Zombies, server_name(Bucket),
-                                {apply_new_config, NewBucketConfig, IgnoredVBuckets},
+                                get_apply_new_config_call(Rebalancer, NewBucketConfig, IgnoredVBuckets),
                                 ?APPLY_NEW_CONFIG_TIMEOUT),
     case process_apply_config_rv(Bucket, RV1, apply_new_config) of
         ok ->
@@ -226,7 +239,7 @@ apply_new_bucket_config_chain(Bucket, Servers, Zombies, NewBucketConfig, Ignored
             Other
     end.
 
-apply_new_bucket_config_star(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets) ->
+apply_new_bucket_config_star(Bucket, Rebalancer, Servers, Zombies, NewBucketConfig, IgnoredVBuckets) ->
     Map = proplists:get_value(map, NewBucketConfig),
     true = (Map =/= undefined),
     NumVBuckets = proplists:get_value(num_vbuckets, NewBucketConfig),
@@ -280,9 +293,9 @@ apply_new_bucket_config_star(Bucket, Servers, Zombies, NewBucketConfig, IgnoredV
     RV1 = misc:parallel_map(
             fun (Node) ->
                     {Node, catch gen_server:call({server_name(Bucket), Node},
-                                                 {apply_new_config,
-                                                  dict:fetch(Node, NodeMaps),
-                                                  IgnoredVBuckets},
+                                                 get_apply_new_config_call(Rebalancer,
+                                                                           dict:fetch(Node, NodeMaps),
+                                                                           IgnoredVBuckets),
                                                  ?APPLY_NEW_CONFIG_TIMEOUT)}
             end, AliveServers, infinity),
     case process_apply_config_rv(Bucket, {RV1, []}, apply_new_config) of
@@ -318,8 +331,14 @@ delete_vbucket_copies(Bucket, RebalancerPid, Nodes, VBucket) ->
     end.
 
 prepare_nodes_for_rebalance(Bucket, Nodes, RebalancerPid) ->
+    prepare_nodes_for_rebalance_or_upr_upgrade(Bucket, Nodes, RebalancerPid, prepare_rebalance).
+
+prepare_nodes_for_upr_upgrade(Bucket, Nodes, RebalancerPid) ->
+    prepare_nodes_for_rebalance_or_upr_upgrade(Bucket, Nodes, RebalancerPid, prepare_upr_upgrade).
+
+prepare_nodes_for_rebalance_or_upr_upgrade(Bucket, Nodes, RebalancerPid, Request) ->
     {RVs, BadNodes} = gen_server:multi_call(Nodes, server_name(Bucket),
-                                            {prepare_rebalance, RebalancerPid},
+                                            {Request, RebalancerPid},
                                             ?PREPARE_REBALANCE_TIMEOUT),
     BadReplies = [{N, no_reply} || N <- BadNodes]
         ++ [Pair || {_N, Reply} = Pair <- RVs,
@@ -525,8 +544,16 @@ handle_call({prepare_rebalance, _Pid}, _From,
     {reply, no_vbucket_states_set, State};
 handle_call({prepare_rebalance, Pid}, _From,
             State) ->
-    State1 = State#state{rebalance_only_vbucket_states = [undefined || _ <- State#state.rebalance_only_vbucket_states]},
+    State1 = State#state{rebalance_only_vbucket_states =
+                             [undefined || _ <- State#state.rebalance_only_vbucket_states],
+                         rebalancer_type = rebalancer},
     {reply, ok, set_rebalance_mref(Pid, State1)};
+
+handle_call({prepare_upr_upgrade, Pid}, _From, #state{rebalance_pid = undefined} = State) ->
+    {reply, ok, set_rebalance_mref(Pid, State#state{rebalancer_type = upgrader})};
+handle_call({prepare_upr_upgrade, _Pid}, _From, State) ->
+    {reply, unable_to_start_upgrade, State};
+
 handle_call({if_rebalance, RebalancerPid, Subcall},
             From,
             #state{rebalance_pid = RealRebalancerPid} = State) ->
@@ -534,6 +561,8 @@ handle_call({if_rebalance, RebalancerPid, Subcall},
         true ->
             handle_call(Subcall, From, State);
         false ->
+            ?log_error("Rebalance call failed due to the wrong rebalancer pid ~p. Should be ~p.",
+                       [RebalancerPid, RealRebalancerPid]),
             {reply, wrong_rebalancer_pid, State}
     end;
 handle_call({update_vbucket_state, VBucket, NormalState, RebalanceState, ReplicateFrom}, _From,
@@ -548,7 +577,11 @@ handle_call({update_vbucket_state, VBucket, NormalState, RebalanceState, Replica
     ok = ns_memcached:set_vbucket(BucketName, VBucket, NormalState),
     ok = replication_manager:change_vbucket_replication(BucketName, VBucket, ReplicateFrom),
     {reply, ok, pass_vbucket_states_to_set_view_manager(NewState)};
-handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, _From, #state{bucket_name = BucketName} = State) ->
+handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, From, State) ->
+    handle_call({apply_new_config, undefined, NewBucketConfig, IgnoredVBuckets}, From, State);
+handle_call({apply_new_config, Caller, NewBucketConfig, IgnoredVBuckets}, _From,
+            #state{bucket_name = BucketName,
+                   rebalance_pid = Rebalancer} = State) ->
     %% ?log_debug("handling apply_new_config:~n~p", [NewBucketConfig]),
     {ok, CurrentVBucketsList} = ns_memcached:list_vbuckets(BucketName),
     CurrentVBuckets = dict:from_list(CurrentVBucketsList),
@@ -586,6 +619,16 @@ handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, _From, #state{
                     end
             end, {0, [], [], []}, Map),
 
+    %% make the replicator aware of the latest bucket replication type
+    %% this might shutdown some replications which will be restored later
+    case cluster_compat_mode:is_cluster_30() of
+        true ->
+            ok = replication_manager:set_replication_type(BucketName,
+                                                          ns_bucket:replication_type(NewBucketConfig));
+        false ->
+            ok
+    end,
+
     %% before changing vbucket states (i.e. activating or killing
     %% vbuckets) we must stop replications into those vbuckets
     WantedReplicas = [{Src, VBucket} || {Src, Dst, VBucket} <- ns_bucket:map_to_replicas_chain(Map),
@@ -605,7 +648,12 @@ handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, _From, #state{
     NewRebalance = [undefined || _ <- NewWantedRev],
     State2 = State#state{last_applied_vbucket_states = NewWanted,
                          rebalance_only_vbucket_states = NewRebalance},
-    State3 = set_rebalance_mref(undefined, State2),
+    State3 = case Caller of
+                 Rebalancer ->
+                     State2;
+                 undefined ->
+                     set_rebalance_mref(undefined, State2)
+             end,
     {reply, ok, pass_vbucket_states_to_set_view_manager(State3)};
 handle_call({apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
             _From, #state{bucket_name = BucketName} = State) ->
@@ -744,6 +792,8 @@ handle_call_via_servant({FromPid, _Tag}, State, Req, Body) ->
 handle_cast(_, _State) ->
     erlang:error(cannot_do).
 
+handle_info({'DOWN', _MRef, _, _, _}, #state{rebalancer_type = upgrader} = State) ->
+    {noreply, set_rebalance_mref(undefined, State)};
 handle_info({'DOWN', MRef, _, _, _}, #state{rebalance_mref = RMRef,
                                             last_applied_vbucket_states = WantedVBuckets} = State)
   when MRef =:= RMRef ->

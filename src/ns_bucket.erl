@@ -77,7 +77,8 @@
          update_vbucket_map_history/2,
          past_vbucket_maps/0,
          past_vbucket_maps/1,
-         config_to_map_options/1]).
+         config_to_map_options/1,
+         needs_upgrade_to_upr/1]).
 
 
 %%%===================================================================
@@ -491,6 +492,18 @@ bucket_nodes(Bucket) ->
 -spec replication_type([{_,_}]) -> bucket_replication_type().
 replication_type(Bucket) ->
     proplists:get_value(repl_type, Bucket, tap).
+
+-spec needs_upgrade_to_upr([{_,_}]) -> boolean().
+needs_upgrade_to_upr(Bucket) ->
+    DefaultReplType = get_default_repl_type(),
+    case replication_type(Bucket) of
+        upr ->
+            false;
+        DefaultReplType ->
+            false;
+        _ ->
+            true
+    end.
 
 json_map_from_config(LocalAddr, BucketConfig) ->
     Config = ns_config:get(),

@@ -56,7 +56,10 @@
          note_tap_stats/4,
          event_to_jsons/1,
          event_to_formatted_iolist/1,
-         format_some_history/1]).
+         format_some_history/1,
+         note_vbucket_upgraded_to_upr/2,
+         note_bucket_upgraded_to_upr/1
+        ]).
 
 -export([stream_events/2]).
 
@@ -187,6 +190,12 @@ note_forced_inhibited_view_compaction(BucketName) ->
 
 note_tap_stats(NoteTag, Estimate, Pid, TapName) ->
     submit_cast({tap_estimate, NoteTag, Estimate, Pid, TapName}).
+
+note_vbucket_upgraded_to_upr(Bucket, VBucket) ->
+    submit_cast({note_vbucket_upgraded_to_upr, Bucket, VBucket}).
+
+note_bucket_upgraded_to_upr(Bucket) ->
+    submit_cast({note_bucket_upgraded_to_upr, Bucket}).
 
 start_link_timestamper() ->
     {ok, ns_pubsub:subscribe_link(master_activity_events_ingress, fun timestamper_body/2, [])}.
@@ -656,6 +665,17 @@ event_to_jsons({TS, takeover_ended, BucketName, VBucket, OldMaster, NewMaster}) 
                                   {vbucket, VBucket},
                                   {oldMaster, node_to_host(OldMaster, ns_config:get())},
                                   {node, node_to_host(NewMaster, ns_config:get())}])];
+
+event_to_jsons({TS, note_vbucket_upgraded_to_upr, BucketName, VBucket}) ->
+    [format_simple_plist_as_json([{type, vbucketUpgradedToUPR},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
+                                  {vbucket, VBucket}])];
+
+event_to_jsons({TS, note_bucket_upgraded_to_upr, BucketName}) ->
+    [format_simple_plist_as_json([{type, bucketUpgradedToUPR},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName}])];
 
 event_to_jsons(Event) ->
     ?log_warning("Got unknown kind of event: ~p", [Event]),

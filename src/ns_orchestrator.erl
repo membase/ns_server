@@ -34,6 +34,7 @@
 -record(recovery_state, {uuid :: binary(),
                          bucket :: bucket_name(),
                          recoverer_state :: any()}).
+-record(upr_upgrade_state, {upgrader, progress, restart}).
 
 
 %% API
@@ -88,7 +89,8 @@
 -export([idle/2, idle/3,
          janitor_running/2, janitor_running/3,
          rebalancing/2, rebalancing/3,
-         recovery/2, recovery/3]).
+         recovery/2, recovery/3,
+         upgrading_to_upr/2, upgrading_to_upr/3]).
 
 
 %%
@@ -486,8 +488,45 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
         false ->
             ok
     end,
-    consider_switching_compat_mode(),
-    {next_state, idle, #idle_state{}};
+
+    Restart =
+        try
+            consider_switching_compat_mode(),
+            false
+        catch exit:normal ->
+                true
+        end,
+
+    maybe_start_upgrade_to_upr(Restart);
+
+handle_info({'EXIT', Pid, Reason}, upgrading_to_upr,
+            #upr_upgrade_state{upgrader = Pid,
+                               restart = Restart}) ->
+    Status = case Reason of
+                 normal ->
+                     ?user_log(?REBALANCE_SUCCESSFUL,
+                               "UPR upgrade completed successfully.~n"),
+                     none;
+                 stopped ->
+                     ?user_log(?REBALANCE_STOPPED,
+                               "UPR upgrade stopped by user.~n"),
+                     none;
+                 _ ->
+                     ?user_log(?REBALANCE_FAILED,
+                               "UPR upgrade exited with reason ~p~n", [Reason]),
+                     {none, <<"UPR upgrade failed. See logs for detailed reason.">>}
+             end,
+
+    ns_config:set([{rebalance_status, Status},
+                   {rebalancer_pid, undefined}]),
+
+    case Restart of
+        true ->
+            exit(normal);
+        false ->
+            {next_state, idle, #idle_state{}}
+    end;
+
 handle_info(Msg, StateName, StateData) ->
     ?log_warning("Got unexpected message ~p in state ~p with data ~p",
                  [Msg, StateName, StateData]),
@@ -805,6 +844,30 @@ rebalancing(Event, _From, State) ->
     ?log_warning("Got event ~p while rebalancing.", [Event]),
     {reply, rebalance_running, rebalancing, State}.
 
+%% Asynchronous upgrading_to_upr events
+upgrading_to_upr({update_progress, Progress},
+                 #upr_upgrade_state{progress=Old} = State) ->
+    NewProgress = dict:merge(fun (_, _, New) -> New end, Old, Progress),
+    {next_state, upgrading_to_upr,
+     State#upr_upgrade_state{progress=NewProgress}}.
+
+%% Synchronous upgrading_to_upr events
+upgrading_to_upr({start_rebalance, _KeepNodes, _EjectNodes, _FailedNodes},
+                 _From, State) ->
+    ?user_log(?REBALANCE_NOT_STARTED,
+              "Not rebalancing because rebalance is already in progress.~n"),
+    {reply, in_progress, upgrading_to_upr, State};
+upgrading_to_upr(stop_rebalance, _From,
+                 #upr_upgrade_state{upgrader=Pid} = State) ->
+    Pid ! stop,
+    {reply, ok, upgrading_to_upr, State};
+upgrading_to_upr(rebalance_progress, _From,
+                 #upr_upgrade_state{progress = Progress} = State) ->
+    {reply, {running, dict:to_list(Progress)}, upgrading_to_upr, State};
+upgrading_to_upr(Event, _From, State) ->
+    ?log_warning("Got event ~p while upgrading to UPR.", [Event]),
+    {reply, upr_upgrade_running, upgrading_to_upr, State}.
+
 recovery(Event, State) ->
     ?log_warning("Got unexpected event: ~p", [Event]),
     {next_state, recovery_running, State}.
@@ -958,6 +1021,7 @@ needs_rebalance(Nodes, BucketConfig, Topology) ->
                 _ ->
                     Map = proplists:get_value(map, BucketConfig),
                     Map =:= undefined orelse
+                        ns_bucket:needs_upgrade_to_upr(BucketConfig) orelse
                         lists:sort(Nodes) /= lists:sort(Servers) orelse
                         ns_rebalancer:map_options_changed(Topology, BucketConfig) orelse
                         ns_rebalancer:unbalanced(Map, Topology, BucketConfig)
@@ -1183,4 +1247,31 @@ multicall_moxi_restart(Nodes, Timeout) ->
             ok;
         _ ->
             FailedNodes ++ BadResults
+    end.
+
+maybe_start_upgrade_to_upr(Restart) ->
+    maybe_start_upgrade_to_upr(Restart, trivial).
+
+maybe_start_upgrade_to_upr(Restart, Type) ->
+    case {upr_upgrade:get_buckets_to_upgrade(), Type} of
+        {[], _} ->
+            case Restart of
+                true ->
+                    exit(normal);
+                false ->
+                    {next_state, idle, #idle_state{}}
+            end;
+        {Buckets, trivial} ->
+            upr_upgrade:consider_trivial_upgrade(Buckets),
+            maybe_start_upgrade_to_upr(Restart, nontrivial);
+        {Buckets, nontrivial} ->
+            {ok, Pid} = upr_upgrade:start_link(Buckets),
+
+            ns_config:set([{rebalance_status, running},
+                           {rebalancer_pid, Pid}]),
+
+            {next_state, upgrading_to_upr,
+             #upr_upgrade_state{upgrader = Pid,
+                                progress = dict:new(),
+                                restart = Restart}}
     end.
