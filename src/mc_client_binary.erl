@@ -40,6 +40,7 @@
          get_last_closed_checkpoint/2,
          create_new_checkpoint/2,
          refresh_isasl/1,
+         refresh_ssl_certs/1,
          noop/1,
          select_bucket/2,
          set_flush_param/3,
@@ -312,6 +313,15 @@ refresh_isasl(Sock) ->
         {ok, #mc_header{status=?SUCCESS}, _, _} ->
             ok;
         Response -> process_error_response(Response)
+    end.
+
+refresh_ssl_certs(Sock) ->
+    case cmd(?CMD_SSL_CERTS_REFRESH, Sock, undefined, undefined,
+             {#mc_header{}, #mc_entry{}}) of
+        {ok, #mc_header{status=?SUCCESS}, _, _} ->
+            ok;
+        Response ->
+            process_error_response(Response)
     end.
 
 noop(Sock) ->
