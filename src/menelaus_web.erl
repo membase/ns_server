@@ -1335,6 +1335,14 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
     PortsKV0 = [{proxy, ProxyPort},
                 {direct, DirectPort}],
 
+    PortsKV1 =
+        case ns_config:search_node_prop(WantENode, Config, memcached, ssl_port) of
+            undefined ->
+                PortsKV0;
+            SslPort ->
+                [{sslDirect, SslPort} | PortsKV0]
+        end,
+
     PortsKV = case is_xdcr_over_ssl_allowed() of
                   true ->
                       lists:foldl(
@@ -1343,11 +1351,11 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
                                     {value, Value} -> [{JKey, Value} | Acc];
                                     false -> Acc
                                 end
-                        end, PortsKV0, [{ssl_proxy_downstream_port, sslProxy},
+                        end, PortsKV1, [{ssl_proxy_downstream_port, sslProxy},
                                         {ssl_capi_port, httpsCAPI},
                                         {ssl_rest_port, httpsMgmt}]);
                   false ->
-                      PortsKV0
+                      PortsKV1
               end,
 
     RV = [{hostname, list_to_binary(HostName)},
