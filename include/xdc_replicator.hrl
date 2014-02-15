@@ -55,10 +55,6 @@
                 ok
         end).
 
-%% number of memcached errors before stop replicator
--define(XDCR_XMEM_MEMCACHED_ERRORS, 1).
-
-
 %% concurrency throttle type
 -define(XDCR_INIT_CONCUR_THROTTLE, "xdcr-init").
 -define(XDCR_REPL_CONCUR_THROTTLE, "xdcr-repl").
@@ -192,10 +188,9 @@
           %% time the vb replicator intialized
           rep_start_time,
 
-          %% xmem server process
-          xmem_srv,
           %% remote node
           xmem_remote,
+          xmem_location,
 
           throttle,
           parent,
@@ -282,7 +277,7 @@
           target = #httpdb{},      %% target db
           changes_manager,         %% process to queue changes from storage
           max_conns,               %% max connections
-          xmem_server,             %% XMem server process
+          xmem_location,           %% XMem location
           opt_rep_threshold,       %% optimistic replication threshold
           batch_size,              %% batch size (in bytes)
           batch_items              %% batch items
@@ -316,6 +311,7 @@
           ip, %% inet:ip_address(),
           port, %% inet:port_number(),
           bucket = "default",
+          vb,
           username = "_admin",
           password = "_admin",
           options = []
@@ -330,22 +326,12 @@
           statistics = #xdc_vb_rep_xmem_statistics{},
           remote = #xdc_rep_xmem_remote{},
           seed,
-          enable_pipeline = false,
           error_reports
          }).
 
 %% xmem worker state
--record(xdc_vb_rep_xmem_worker_state, {
-          id,
+-record(xdc_xmem_location, {
           vb,
-          parent_server_pid,
-          status,
-          statistics = #xdc_vb_rep_xmem_statistics{},
-          socket, %% inet:socket(),
-          time_connected,
-          time_init,
-          error_reports,
-          local_conflict_resolution,
           connection_timeout,
           mcd_loc
          }).

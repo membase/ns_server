@@ -24,14 +24,14 @@ start_link(#rep_worker_option{cp = Cp, source = Source, target = Target,
                               worker_id  = WorkerID,
                               changes_manager = ChangesManager,
                               opt_rep_threshold = OptRepThreshold,
-                              xmem_server = XMemSrv,
+                              xmem_location = XMemLoc,
                               batch_size = BatchSize,
                               batch_items = BatchItems} = _WorkerOption) ->
     Pid = spawn_link(fun() ->
                              erlang:monitor(process, ChangesManager),
                              queue_fetch_loop(WorkerID, Source, Target, Cp,
                                               ChangesManager, OptRepThreshold,
-                                              BatchSize, BatchItems, XMemSrv)
+                                              BatchSize, BatchItems, XMemLoc)
                      end),
 
 
@@ -42,7 +42,7 @@ start_link(#rep_worker_option{cp = Cp, source = Source, target = Target,
     {ok, Pid}.
 
 -spec queue_fetch_loop(integer(), #db{}, #httpdb{}, pid(), pid(),
-                       integer(), integer(), integer(), pid() | nil) -> ok.
+                       integer(), integer(), integer(), any()) -> ok.
 queue_fetch_loop(WorkerID, Source, Target, Cp, ChangesManager,
                  OptRepThreshold, BatchSize, BatchItems, nil) ->
     ?xdcr_trace("fetch changes from changes manager at ~p (target: ~p)",
@@ -89,7 +89,7 @@ queue_fetch_loop(WorkerID, Source, Target, Cp, ChangesManager,
     end;
 
 queue_fetch_loop(WorkerID, Source, Target, Cp, ChangesManager,
-                 OptRepThreshold, BatchSize, BatchItems, XMemSrv) ->
+                 OptRepThreshold, BatchSize, BatchItems, XMemLoc) ->
     ?xdcr_trace("fetch changes from changes manager at ~p (target: ~p)",
                 [ChangesManager, misc:sanitize_url(Target#httpdb.url)]),
     ChangesManager ! {get_changes, self()},
@@ -99,14 +99,14 @@ queue_fetch_loop(WorkerID, Source, Target, Cp, ChangesManager,
         {changes, ChangesManager, Changes, ReportSeq} ->
             %% get docinfo of missing ids
             {MissingDocInfoList, MetaLatency, NumDocsOptRepd} =
-                find_missing(Changes, Target, OptRepThreshold, XMemSrv),
+                find_missing(Changes, Target, OptRepThreshold, XMemLoc),
             NumChecked = length(Changes),
             NumWritten = length(MissingDocInfoList),
             %% use ptr in docinfo to fetch document from storage
             Start = now(),
             {ok, DataRepd} = local_process_batch(
                                MissingDocInfoList, Cp, Source, Target,
-                               #batch{}, BatchSize, BatchItems, XMemSrv),
+                               #batch{}, BatchSize, BatchItems, XMemLoc),
 
             %% the latency returned should be coupled with batch size, for example,
             %% if we send N docs in a batch, the latency returned to stats should be the latency
@@ -133,7 +133,7 @@ queue_fetch_loop(WorkerID, Source, Target, Cp, ChangesManager,
                         "data replicated: ~p bytes, latency: ~p ms.",
                         [ReportSeq, NumWritten, DataRepd, DocLatency]),
             queue_fetch_loop(WorkerID, Source, Target, Cp, ChangesManager,
-                             OptRepThreshold, BatchSize, BatchItems, XMemSrv)
+                             OptRepThreshold, BatchSize, BatchItems, XMemLoc)
     end.
 
 
@@ -179,7 +179,7 @@ maybe_flush_docs(#httpdb{} = Target, Batch, Doc, DataFlushed, BatchSize, BatchIt
 maybe_flush_docs(#httpdb{} = _Target, Batch, Doc, DataFlushed, BatchSize, BatchItems, XMemSrv) ->
     maybe_flush_docs_xmem(XMemSrv, Batch, Doc, DataFlushed, BatchSize, BatchItems).
 
--spec flush_docs_helper(any(), list(), pid() | nil) -> ok.
+-spec flush_docs_helper(any(), list(), term()) -> ok.
 flush_docs_helper(Target, DocsList, nil) ->
     {RepMode,RV} = {"capi", flush_docs_capi(Target, DocsList)},
 
@@ -194,8 +194,8 @@ flush_docs_helper(Target, DocsList, nil) ->
             exit({failed_write, Error})
     end;
 
-flush_docs_helper(Target, DocsList, XMemSrv) ->
-    {RepMode,RV} = {"xmem", flush_docs_xmem(XMemSrv, DocsList)},
+flush_docs_helper(Target, DocsList, XMemLoc) ->
+    {RepMode,RV} = {"xmem", flush_docs_xmem(XMemLoc, DocsList)},
 
     case RV of
         ok ->
@@ -296,14 +296,14 @@ find_missing(DocInfos, Target, OptRepThreshold, XMemSrv) ->
 
     {MissingDocInfoList, Latency, length(SmallDocIdRevs)}.
 
--spec find_missing_helper(#httpdb{}, list(), pid() | nil) -> list().
-find_missing_helper(Target, BigDocIdRevs, XMemSrv) ->
-    MissingIdRevs = case XMemSrv of
+-spec find_missing_helper(#httpdb{}, list(), term()) -> list().
+find_missing_helper(Target, BigDocIdRevs, XMemLoc) ->
+    MissingIdRevs = case XMemLoc of
                         nil ->
                             {ok, IdRevs} = couch_api_wrap:get_missing_revs(Target, BigDocIdRevs),
                             IdRevs;
-                        Pid when is_pid(Pid) ->
-                            {ok, IdRevs} = xdc_vbucket_rep_xmem_srv:find_missing(XMemSrv, BigDocIdRevs),
+                        _ ->
+                            {ok, IdRevs} = xdc_vbucket_rep_xmem:find_missing(XMemLoc, BigDocIdRevs),
                             IdRevs
                     end,
     MissingIdRevs.
@@ -352,19 +352,12 @@ flush_docs_capi(Target, DocsList) ->
 %% ================================================= %%
 %% ========= FLUSHING DOCS USING XMEM ============== %%
 %% ================================================= %%
--spec flush_docs_xmem(pid(), list()) -> ok | {failed_write, term()}.
-flush_docs_xmem(_XMemSrv, []) ->
+-spec flush_docs_xmem(term(), list()) -> ok | {failed_write, term()}.
+flush_docs_xmem(_XMemLoc, []) ->
     ok;
-flush_docs_xmem(XMemSrv, DocsList) ->
-    {WorkerPid, Pipeline} = xdc_vbucket_rep_xmem_srv:get_worker(XMemSrv),
+flush_docs_xmem(XMemLoc, DocsList) ->
     TimeStart = now(),
-    RV =
-        case Pipeline of
-            false ->
-                xdc_vbucket_rep_xmem_worker:flush_docs(WorkerPid, DocsList);
-            _ ->
-                xdc_vbucket_rep_xmem_worker:flush_docs_pipeline(WorkerPid, DocsList)
-        end,
+    RV = xdc_vbucket_rep_xmem:flush_docs(XMemLoc, DocsList),
     TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
     AvgLatency = TimeSpent div length(DocsList),
 
@@ -373,19 +366,18 @@ flush_docs_xmem(XMemSrv, DocsList) ->
             ?xdcr_trace("out of total ~p docs, "
                         "# of docs accepted by remote: ~p "
                         "# of docs rejected by remote: ~p"
-                        "(xmem worker: ~p,"
-                        "time spent in ms: ~p, avg latency per doc in ms: ~p)",
+                        "(time spent in ms: ~p, avg latency per doc in ms: ~p)",
                         [length(DocsList),
                          NumDocRepd, NumDocRejected,
-                         WorkerPid, TimeSpent, AvgLatency]),
+                         TimeSpent, AvgLatency]),
             ok;
         {error, Msg} ->
             {failed_write, Msg}
     end.
 
--spec maybe_flush_docs_xmem(pid(), #batch{}, #doc{},
+-spec maybe_flush_docs_xmem(any(), #batch{}, #doc{},
                             integer(), integer(), integer()) -> {#batch{}, integer()}.
-maybe_flush_docs_xmem(XMemSrv, Batch, Doc0, DocsFlushed, BatchSize, BatchItems) ->
+maybe_flush_docs_xmem(XMemLoc, Batch, Doc0, DocsFlushed, BatchSize, BatchItems) ->
     #batch{docs = DocAcc, size = SizeAcc, items = ItemsAcc} = Batch,
 
     %% uncompress it if necessary
@@ -407,7 +399,7 @@ maybe_flush_docs_xmem(XMemSrv, Batch, Doc0, DocsFlushed, BatchSize, BatchItems) 
                         "(batch size ~b, batch items ~b)",
                         [ItemsAcc2, SizeAcc2, BatchSize, BatchItems]),
             DocsList = [Doc| DocAcc],
-            ok = flush_docs_xmem(XMemSrv, DocsList),
+            ok = flush_docs_xmem(XMemLoc, DocsList),
             %% data flushed, return empty batch and size of # of docs flushed
             {#batch{}, DocsFlushed + SizeAcc2};
         _ ->            %% no data flushed in this turn, return the new batch
