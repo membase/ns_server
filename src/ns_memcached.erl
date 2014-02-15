@@ -1293,30 +1293,57 @@ ensure_bucket(Sock, Bucket) ->
 -spec ensure_bucket_config(port(), bucket_name(), bucket_type(),
                            {pos_integer(), nonempty_string()}) ->
                                   ok | no_return().
-ensure_bucket_config(Sock, Bucket, membase, {MaxSize, DBDir, NumThreads}) ->
+ensure_bucket_config(Sock, Bucket, membase,
+                     {MaxSize, DBDir, NumThreads, EvictionPolicy}) ->
     MaxSizeBin = list_to_binary(integer_to_list(MaxSize)),
     DBDirBin = list_to_binary(DBDir),
     NumThreadsBin = list_to_binary(integer_to_list(NumThreads)),
+    EvictionPolicyBin = atom_to_binary(EvictionPolicy, latin1),
     {ok, {ActualMaxSizeBin,
           ActualDBDirBin,
-          ActualNumThreads}} = mc_binary:quick_stats(
-                                 Sock, <<>>,
-                                 fun (<<"ep_max_size">>, V, {_, Path, T}) ->
-                                         {V, Path, T};
-                                     (<<"ep_dbname">>, V, {S, _, T}) ->
-                                         {S, V, T};
-                                     (<<"ep_max_num_workers">>, V, {S, Path, _}) ->
-                                         {S, Path, V};
-                                     (_, _, CD) ->
-                                         CD
-                                 end, {missing_max_size, missing_path, missing_num_threads}),
+          ActualNumThreads,
+          ActualEvictionPolicy}} =
+        mc_binary:quick_stats(
+          Sock, <<>>,
+          fun (<<"ep_max_size">>, V, {_, Path, T, E}) ->
+                  {V, Path, T, E};
+              (<<"ep_dbname">>, V, {S, _, T, E}) ->
+                  {S, V, T, E};
+              (<<"ep_max_num_workers">>, V, {S, Path, _, E}) ->
+                  {S, Path, V, E};
+              (<<"ep_item_eviction_policy">>, V, {S, Path, T, _}) ->
+                  {S, Path, T, V};
+              (_, _, CD) ->
+                  CD
+          end, {missing_max_size, missing_path,
+                missing_num_threads, missing_eviction_policy}),
 
-    NeedRestart = (NumThreadsBin =/= ActualNumThreads),
-    case NeedRestart of
+    NumThreadsChanged = (NumThreadsBin =/= ActualNumThreads),
+    EvictionPolicyChanged = (EvictionPolicyBin =/= ActualEvictionPolicy),
+
+    case NumThreadsChanged of
         true ->
-            ale:info(?USER_LOGGER, "Bucket ~p needs to be recreated since "
-                     "number of readers/writers changed from ~s to ~s",
-                     [Bucket, ActualNumThreads, NumThreadsBin]),
+            ale:info(?USER_LOGGER,
+                     "Number of readers/writers changed from ~s to ~s for bucket ~p",
+                     [ActualNumThreads, NumThreadsBin, Bucket]);
+        false ->
+            ok
+    end,
+
+    case EvictionPolicyChanged of
+        true ->
+            ale:info(?USER_LOGGER,
+                     "Eviction policy changed form '~s' to '~s' for bucket ~p",
+                     [ActualEvictionPolicy, EvictionPolicyBin, Bucket]);
+        false ->
+            ok
+    end,
+
+    case NumThreadsChanged orelse EvictionPolicyChanged of
+        true ->
+            ale:info(?USER_LOGGER,
+                     "Restarting bucket ~p due to configuration change",
+                     [Bucket]),
             exit({shutdown, reconfig});
         false ->
             case ActualMaxSizeBin of

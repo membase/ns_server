@@ -170,6 +170,14 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth) ->
                            bin_concat_path(Segments, QSProps)
                    end,
 
+    EvictionPolicy =
+        case proplists:get_value(eviction_policy, BucketConfig, value_only) of
+            value_only ->
+                <<"valueOnly">>;
+            full_eviction ->
+                <<"fullEviction">>
+        end,
+
     Suffix = case InfoLevel of
                  stable -> BucketCaps;
                  _ ->
@@ -188,7 +196,8 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth) ->
                       {threadsNumber, proplists:get_value(num_threads, BucketConfig, 3)},
                       {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
                                         {rawRAM, ns_bucket:raw_ram_quota(BucketConfig)}]}},
-                      {basicStats, {struct, BasicStats}}
+                      {basicStats, {struct, BasicStats}},
+                      {evictionPolicy, EvictionPolicy}
                       | BucketCaps]
              end,
     BucketType = ns_bucket:bucket_type(BucketConfig),
@@ -380,7 +389,7 @@ extract_bucket_props(BucketId, Props) ->
     ImportantProps = [X || X <- [lists:keyfind(Y, 1, Props) || Y <- [num_replicas, replica_index, ram_quota, auth_type,
                                                                      sasl_password, moxi_port,
                                                                      autocompaction, purge_interval, fast_warmup,
-                                                                     flush_enabled, num_threads]],
+                                                                     flush_enabled, num_threads, eviction_policy]],
                            X =/= false],
     case BucketId of
         "default" -> lists:keyreplace(auth_type, 1,
@@ -897,7 +906,8 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
                               false ->
                                   undefined
                           end,
-                          parse_validate_threads_number(proplists:get_value("threadsNumber", Params))
+                          parse_validate_threads_number(proplists:get_value("threadsNumber", Params)),
+                          parse_validate_eviction_policy(proplists:get_value("evictionPolicy", Params))
                           | Candidates3];
                      _ ->
                          [{error, bucketType, <<"invalid bucket type">>}
@@ -1019,6 +1029,16 @@ parse_validate_threads_number(NumThreads) ->
         {ok, X} ->
             {ok, num_threads, X}
     end.
+
+parse_validate_eviction_policy(undefined) ->
+    {ok, eviction_policy, value_only};
+parse_validate_eviction_policy("valueOnly") ->
+    {ok, eviction_policy, value_only};
+parse_validate_eviction_policy("fullEviction") ->
+    {ok, eviction_policy, full_eviction};
+parse_validate_eviction_policy(_Other) ->
+    {error, evictionPolicy,
+     <<"Eviction policy must be either 'valueOnly' or 'fullEviction'">>}.
 
 parse_validate_ram_quota(undefined, BucketConfig) when BucketConfig =/= false ->
     {ok, ram_quota, ns_bucket:raw_ram_quota(BucketConfig)};

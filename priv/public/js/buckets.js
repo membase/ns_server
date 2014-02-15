@@ -392,9 +392,11 @@ var BucketDetailsDialog = mkClass({
     var self = this;
 
     if (!self.isNew &&
-        (self.dialog.find('[name=threadsNumber]').val() !=
-         self.initValues.threadsNumber)) {
-      warnings.push("Changing number of reader/writer workers will restart the bucket. This will lead to closing all open connections and some downtime.\nAre you sure that you want to continue?");
+        ((self.dialog.find('[name=threadsNumber]').val() !=
+          self.initValues.threadsNumber) ||
+         (self.dialog.find('[name=evictionPolicy]:checked').val() !=
+          self.initValues.evictionPolicy))) {
+      warnings.push("Changing number of reader/writer workers or eviction policy will restart the bucket. This will lead to closing all open connections and some downtime.\nAre you sure that you want to continue?");
     }
 
     (function checkPurgeIntervalWarning() {
@@ -607,7 +609,7 @@ var BucketDetailsDialog = mkClass({
         ramGauge = self.dialog.find(".size-gauge.for-ram"),
         memcachedSummaryJQ = self.dialog.find('.memcached-summary'),
         memcachedSummaryVisible = ramSummary && ramSummary.perNodeMegs,
-        knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold[percentage] viewFragmentationThreshold[percentage] databaseFragmentationThreshold[size] viewFragmentationThreshold[size] allowedTimePeriod threadsNumber purgeInterval saslPassword').split(' '),
+        knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold[percentage] viewFragmentationThreshold[percentage] databaseFragmentationThreshold[size] viewFragmentationThreshold[size] allowedTimePeriod threadsNumber purgeInterval saslPassword evictionPolicy').split(' '),
         errors = result.errors || {};
 
     _.each(('to from').split(' '), function (p1) {

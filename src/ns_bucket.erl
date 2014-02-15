@@ -110,6 +110,7 @@ config_string(BucketName) ->
                 AccessLog = filename:join(DBSubDir, "access.log"),
                 NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
                 NumThreads = proplists:get_value(num_threads, BucketConfig, 3),
+                EvictionPolicy = proplists:get_value(eviction_policy, BucketConfig, value_only),
                 %% MemQuota is our per-node bucket memory limit
                 CFG =
                     io_lib:format(
@@ -120,7 +121,7 @@ config_string(BucketName) ->
                       "allow_data_loss_during_shutdown=true;"
                       "backend=couchdb;couch_bucket=~s;couch_port=~B;max_vbuckets=~B;"
                       "alog_path=~s;data_traffic_enabled=false;max_num_workers=~B;"
-                      "uuid=~s",
+                      "uuid=~s;item_eviction_policy=~s",
                       [proplists:get_value(
                          ht_size, BucketConfig,
                          misc:getenv_int("MEMBASE_HT_SIZE", 3079)),
@@ -145,8 +146,9 @@ config_string(BucketName) ->
                        NumVBuckets,
                        AccessLog,
                        NumThreads,
-                       BucketUUID]),
-                {CFG, {MemQuota, DBSubDir, NumThreads}, DBSubDir};
+                       BucketUUID,
+                       EvictionPolicy]),
+                {CFG, {MemQuota, DBSubDir, NumThreads, EvictionPolicy}, DBSubDir};
             memcached ->
                 {io_lib:format("cache_size=~B;uuid=~s", [MemQuota, BucketUUID]),
                  MemQuota, undefined}
