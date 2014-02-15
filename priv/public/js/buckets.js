@@ -396,7 +396,7 @@ var BucketDetailsDialog = mkClass({
           self.initValues.threadsNumber) ||
          (self.dialog.find('[name=evictionPolicy]:checked').val() !=
           self.initValues.evictionPolicy))) {
-      warnings.push("Changing number of reader/writer workers or eviction policy will restart the bucket. This will lead to closing all open connections and some downtime.\nAre you sure that you want to continue?");
+      warnings.push("Changing bucket priority or eviction policy will restart the bucket. This will lead to closing all open connections and some downtime.\nAre you sure that you want to continue?");
     }
 
     (function checkPurgeIntervalWarning() {

@@ -1324,7 +1324,7 @@ ensure_bucket_config(Sock, Bucket, membase,
     case NumThreadsChanged of
         true ->
             ale:info(?USER_LOGGER,
-                     "Number of readers/writers changed from ~s to ~s for bucket ~p",
+                     "Bucket priority changed from ~s to ~s for bucket ~p",
                      [ActualNumThreads, NumThreadsBin, Bucket]);
         false ->
             ok
