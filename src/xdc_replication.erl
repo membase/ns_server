@@ -62,7 +62,7 @@ init([#rep{source = SrcBucketBinary, replication_mode = RepMode, options = Optio
     ns_pubsub:subscribe_link(ns_config_events, NsConfigEventsHandler, []),
     ?xdcr_debug("ns config event handler subscribed", []),
 
-    MaxConcurrentReps = proplists:get_value(max_concurrent_reps, Options),
+    MaxConcurrentReps = options_to_num_tokens(Options),
     SrcSize = size(SrcBucketBinary),
     NotifyFun = fun({updated, {<<Src:SrcSize/binary, $/, VbStr/binary>>, _}})
                             when Src == SrcBucketBinary->
@@ -225,7 +225,9 @@ handle_call(get_errors, _From, State) ->
     {reply, {ok, ringbuffer:to_list(State#replication.error_reports)}, State};
 
 handle_call({update_replication, NewRep}, _From,
-            #replication{rep = OldRep} = State) ->
+            #replication{rep = OldRep,
+                         init_throttle = InitThrottle,
+                         work_throttle = WorkThrottle} = State) ->
     #rep{id = RepId} = OldRep,
 
     case NewRep#rep{options=[]} =:= OldRep#rep{options=[]} of
@@ -242,12 +244,24 @@ handle_call({update_replication, NewRep}, _From,
             ?xdcr_debug("Options updated for replication ~s:~n~p ->~n~p",
                         [RepId, OldDistinct, NewDistinct]),
 
+            NewTokens = options_to_num_tokens(NewOptions),
+
+            case NewTokens =/= State#replication.num_tokens of
+                true ->
+                    ?xdcr_debug("total number of tokens has been changed from ~p to ~p, "
+                                "adjust work throttle (pid: ~p) accordingly",
+                                [State#replication.num_tokens, NewTokens, WorkThrottle]),
+                    concurrency_throttle:change_tokens(InitThrottle, NewTokens),
+                    concurrency_throttle:change_tokens(WorkThrottle, NewTokens);
+                _->
+                    ok
+            end,
+
             %% replication documents differ only in options; no restart is
             %% needed
-            {reply, ok, State#replication{rep = NewRep}};
+            {reply, ok, State#replication{rep = NewRep, num_tokens = NewTokens}};
         false ->
             #rep{source = NewSource, target = NewTarget} = NewRep,
-
             ?xdcr_debug("replication doc (docId: ~s) modified: source ~s, target ~s;"
                         "replication will be restarted",
                         [RepId, NewSource, misc:sanitize_url(NewTarget)]),
@@ -358,23 +372,6 @@ handle_info({set_throttle_status, {NumActiveReps, NumWaitingReps}},
             State) ->
     {noreply, State#replication{num_active = NumActiveReps,
                                 num_waiting = NumWaitingReps}};
-
-handle_info(check_tokens, #replication{rep = #rep{options = Options},
-                                       work_throttle = WorkThrottle} = State) ->
-    NewTokens = proplists:get_value(max_concurrent_reps, Options),
-    case NewTokens ==  State#replication.num_tokens of
-        false ->
-            ?xdcr_debug("total number of tokens has been changed from ~p to ~p, "
-                        "adjust work throttle (pid: ~p) accordingly",
-                       [State#replication.num_tokens, NewTokens, WorkThrottle]),
-            concurrency_throttle:change_tokens(WorkThrottle, NewTokens);
-        _->
-            ok
-    end,
-    %% avoid overchecking ns_server and env parameters
-    misc:flush(check_tokens),
-    {noreply, State#replication{num_tokens = NewTokens}};
-
 
 handle_info({buckets, Buckets0},
             #replication{rep = #rep{source = SrcBucket} = Rep,
@@ -501,3 +498,6 @@ compute_rate_stat(Written1, DataRepd1, RateStat) ->
                   end,
 
     NewRateStat.
+
+options_to_num_tokens(Options) ->
+    proplists:get_value(max_concurrent_reps, Options).
