@@ -1153,12 +1153,12 @@ build_auto_compaction_settings(Settings) ->
                 end] ++ DBAndView}.
 
 build_auto_compaction_allowed_time_period(AllowedTimePeriod) ->
-    [{JSONName, proplists:get_value(CfgName, AllowedTimePeriod)}
-     || {JSONName, CfgName} <- [{fromHour, from_hour},
-                                {toHour, to_hour},
-                                {fromMinute, from_minute},
-                                {toMinute, to_minute},
-                                {abortOutside, abort_outside}]].
+    {struct, [{JSONName, proplists:get_value(CfgName, AllowedTimePeriod)}
+              || {JSONName, CfgName} <- [{fromHour, from_hour},
+                                         {toHour, to_hour},
+                                         {fromMinute, from_minute},
+                                         {toMinute, to_minute},
+                                         {abortOutside, abort_outside}]]}.
 
 build_fast_warmup_settings(Settings) ->
     Mappings = [{fast_warmup_enabled, fastWarmupEnabled},
