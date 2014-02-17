@@ -137,27 +137,27 @@ queue_fetch_loop(WorkerID, Source, Target, Cp, ChangesManager,
     end.
 
 
-local_process_batch([], _Cp, _Src, _Tgt, #batch{docs = []}, _BatchSize, _BatchItems, _XMemSrv) ->
+local_process_batch([], _Cp, _Src, _Tgt, #batch{docs = []}, _BatchSize, _BatchItems, _XMemLoc) ->
     {ok, 0};
 local_process_batch([], Cp, #db{} = Source, #httpdb{} = Target,
-                    #batch{docs = Docs, size = Size}, BatchSize, BatchItems, XMemSrv) ->
+                    #batch{docs = Docs, size = Size}, BatchSize, BatchItems, XMemLoc) ->
     ?xdcr_trace("worker process flushing a batch docs of total size ~p bytes",
                 [Size]),
-    ok = flush_docs_helper(Target, Docs, XMemSrv),
-    {ok, DataRepd1} = local_process_batch([], Cp, Source, Target, #batch{}, BatchSize, BatchItems, XMemSrv),
+    ok = flush_docs_helper(Target, Docs, XMemLoc),
+    {ok, DataRepd1} = local_process_batch([], Cp, Source, Target, #batch{}, BatchSize, BatchItems, XMemLoc),
     {ok, DataRepd1 + Size};
 
 local_process_batch([DocInfo | Rest], Cp, #db{} = Source,
-                    #httpdb{} = Target, Batch, BatchSize, BatchItems, XMemSrv) ->
+                    #httpdb{} = Target, Batch, BatchSize, BatchItems, XMemLoc) ->
     {ok, {_, DocsList, _}} = fetch_doc(
                                       Source, DocInfo, fun local_doc_handler/2,
                                       {Target, [], Cp}),
     {Batch2, DataFlushed} = lists:foldl(
                          fun(Doc, {Batch0, DataFlushed1}) ->
-                                 maybe_flush_docs(Target, Batch0, Doc, DataFlushed1, BatchSize, BatchItems, XMemSrv)
+                                 maybe_flush_docs(Target, Batch0, Doc, DataFlushed1, BatchSize, BatchItems, XMemLoc)
                          end,
                          {Batch, 0}, DocsList),
-    {ok, DataFlushed2} = local_process_batch(Rest, Cp, Source, Target, Batch2, BatchSize, BatchItems, XMemSrv),
+    {ok, DataFlushed2} = local_process_batch(Rest, Cp, Source, Target, Batch2, BatchSize, BatchItems, XMemLoc),
     %% return total data flushed
     {ok, DataFlushed + DataFlushed2}.
 
@@ -171,13 +171,13 @@ local_doc_handler({ok, Doc}, {Target, DocsList, Cp}) ->
 local_doc_handler(_, Acc) ->
     {ok, Acc}.
 
--spec maybe_flush_docs(#httpdb{}, #batch{}, #doc{}, integer(), integer(), integer(), pid() | nil) ->
+-spec maybe_flush_docs(#httpdb{}, #batch{}, #doc{}, integer(), integer(), integer(), term()) ->
                               {#batch{}, integer()}.
 maybe_flush_docs(#httpdb{} = Target, Batch, Doc, DataFlushed, BatchSize, BatchItems, nil) ->
     maybe_flush_docs_capi(Target, Batch, Doc, DataFlushed, BatchSize, BatchItems);
 
-maybe_flush_docs(#httpdb{} = _Target, Batch, Doc, DataFlushed, BatchSize, BatchItems, XMemSrv) ->
-    maybe_flush_docs_xmem(XMemSrv, Batch, Doc, DataFlushed, BatchSize, BatchItems).
+maybe_flush_docs(#httpdb{} = _Target, Batch, Doc, DataFlushed, BatchSize, BatchItems, XMemLoc) ->
+    maybe_flush_docs_xmem(XMemLoc, Batch, Doc, DataFlushed, BatchSize, BatchItems).
 
 -spec flush_docs_helper(any(), list(), term()) -> ok.
 flush_docs_helper(Target, DocsList, nil) ->
@@ -209,8 +209,8 @@ flush_docs_helper(Target, DocsList, XMemLoc) ->
     end.
 
 %% return list of Docsinfos of missing keys
--spec find_missing(list(), #httpdb{}, integer(), pid() | nil) -> {list(), integer(), integer()}.
-find_missing(DocInfos, Target, OptRepThreshold, XMemSrv) ->
+-spec find_missing(list(), #httpdb{}, integer(), term()) -> {list(), integer(), integer()}.
+find_missing(DocInfos, Target, OptRepThreshold, XMemLoc) ->
     Start = now(),
 
     %% depending on doc body size, we separate all keys into two groups:
@@ -245,7 +245,7 @@ find_missing(DocInfos, Target, OptRepThreshold, XMemSrv) ->
     {Missing, MissingBigDocCount} =
         case length(BigDocIdRevs) of
             V when V > 0 ->
-                MissingBigIdRevs = find_missing_helper(Target, BigDocIdRevs, XMemSrv),
+                MissingBigIdRevs = find_missing_helper(Target, BigDocIdRevs, XMemLoc),
                 {lists:flatten([SmallDocIdRevs | MissingBigIdRevs]), length(MissingBigIdRevs)};
             _ ->
                 {SmallDocIdRevs, 0}
@@ -266,24 +266,24 @@ find_missing(DocInfos, Target, OptRepThreshold, XMemSrv) ->
 
     %% latency in millisecond
     TotalLatency = round(timer:now_diff(now(), Start) div 1000),
-    Latency = case is_pid(XMemSrv) of
-                  true ->
+    Latency = case XMemLoc of
+                  nil ->
+                      TotalLatency;
+                  _ ->
                       %% xmem is single doc based
                       try (TotalLatency div BigDocCount) of
                           X -> X
                       catch
                           error:badarith -> 0
-                      end;
-                  _ ->
-                      TotalLatency
+                      end
               end,
 
 
-    RepMode = case is_pid(XMemSrv) of
-                  true ->
-                      "xmem";
+    RepMode = case XMemLoc of
+                  nil ->
+                      "capi";
                   _ ->
-                      "capi"
+                      "xmem"
               end,
     ?xdcr_trace("[replication mode: ~p] out of all ~p docs, number of small docs (including dels: ~p) is ~p, "
                 "number of big docs is ~p, threshold is ~p bytes, ~n\t"
