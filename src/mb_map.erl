@@ -393,6 +393,9 @@ generate_map_chain(Map, Nodes, Options) ->
     KeepNodes = lists:sort(Nodes),
     MapsHistory = proplists:get_value(maps_history, Options, []),
     NonHistoryOptionsNow = lists:sort(lists:keydelete(maps_history, 1, Options)),
+    NonHistoryOptionsNowForcedChain =
+        lists:sort(lists:keystore(replication_topology, 1, NonHistoryOptionsNow,
+                                  {replication_topology, chain})),
 
     NaturalMap = balance(Map, KeepNodes, Options),
     NaturalMapScore = {NaturalMap, vbucket_movements(Map, NaturalMap)},
@@ -407,8 +410,10 @@ generate_map_chain(Map, Nodes, Options) ->
     ?log_debug("Rnd maps scores: ~p, ~p", [S || {_, S} <- AllRndMapScores]),
 
     NodesSet = sets:from_list(Nodes),
-    MapsFromPast = lists:flatmap(fun ({PastMap, NonHistoryOptions}) ->
-                                         case lists:sort(NonHistoryOptions) =:= NonHistoryOptionsNow of
+    MapsFromPast = lists:flatmap(fun ({PastMap, NonHistoryOptions0}) ->
+                                         NonHistoryOptions = lists:sort(NonHistoryOptions0),
+                                         case NonHistoryOptions =:= NonHistoryOptionsNow
+                                             orelse NonHistoryOptions =:= NonHistoryOptionsNowForcedChain of
                                              true ->
                                                  [{M, vbucket_movements(Map, M)} ||
                                                       M <- matching_renamings(NodesSet, Map, PastMap)];
