@@ -7,7 +7,7 @@ var isDomObject = function (obj) {
 }
 
 function createFilterCells(ns) {
-  ns.filterParamsCell = Cell.compute(function (v) {
+  ns.filterParamsCell = Cell.computeEager(function (v) {
     var filterParams = v(ns.rawFilterParamsCell);
     if (filterParams) {
       return $.deparam(filterParams);
@@ -194,14 +194,15 @@ Filter.prototype = {
     });
   },
   clearForm: function () {
-    this.iterateInputs(function (name, type, val, el) {
-      if (type == 'bool') {
-        el.prop('checked', false);
-      } else {
-        el.val('');
-      }
-      el.change();
-    });
+    var self = this;
+    self.selectBoxes.selectBox('destroy');
+    self.form[0].reset();
+    if (self.initialParams) {
+      self.fillInputs($.deparam(self.initialParams));
+    }
+    self.selectBoxes.removeData('selectBoxControl').removeData('selectBoxSettings');
+    self.selectBoxes.selectBox();
+    self.filters.trigger("change");
   },
   fillInputs: function (params) {
     this.iterateInputs(function (name, type, val, el) {

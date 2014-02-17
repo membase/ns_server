@@ -914,15 +914,17 @@ var ViewsSection = {
       if (!tabsVal) {
         return;
       }
+      var defaultParams = "connection_timeout=60000";
+      var spatialfilterParams = "&bbox=-180,-90,180,90";
+      var staleParam = tabsVal === 'production' ? "&stale=update_after" : "&stale=false";
+      SpatialFilter.initialParams = defaultParams + spatialfilterParams + staleParam;
+      ViewsFilter.initialParams = defaultParams + staleParam;
 
       if (!spatialVal) {
-        var filterParams = "bbox=-180,-90,180,90";
-        filterParams += tabsVal === 'production' ? "&stale=update_after&connection_timeout=60000" : "&connection_timeout=60000";
-        SpatialFilter.rawFilterParamsCell.setValue(filterParams);
+        SpatialFilter.rawFilterParamsCell.setValue(SpatialFilter.initialParams);
       }
-
       if (!viewsVal) {
-        ViewsFilter.rawFilterParamsCell.setValue(tabsVal === 'production' ? "stale=update_after&connection_timeout=60000" : "connection_timeout=60000");
+        ViewsFilter.rawFilterParamsCell.setValue(ViewsFilter.initialParams);
       }
 
       var intPageVal = subset === 'prod' ? intPageFull : intPage;
