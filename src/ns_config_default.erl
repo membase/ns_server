@@ -91,16 +91,16 @@ default() ->
                                           {min_file_size, 131072}]},
      {nodes_wanted, [node()]},
      {{node, node(), membership}, active},
-                                                % In general, the value in these key-value pairs are property lists,
-                                                % like [{prop_atom1, value1}, {prop_atom2, value2}].
-                                                %
-                                                % See the proplists erlang module.
-                                                %
-                                                % A change to any of these rest properties probably means a restart of
-                                                % mochiweb is needed.
-                                                %
-                                                % Modifiers: menelaus REST API
-                                                % Listeners: some menelaus module that configures/reconfigures mochiweb
+     %% In general, the value in these key-value pairs are property lists,
+     %% like [{prop_atom1, value1}, {prop_atom2, value2}].
+     %%
+     %% See the proplists erlang module.
+     %%
+     %% A change to any of these rest properties probably means a restart of
+     %% mochiweb is needed.
+     %%
+     %% Modifiers: menelaus REST API
+     %% Listeners: some menelaus module that configures/reconfigures mochiweb
      {rest,
       [{port, 8091}]},
 
