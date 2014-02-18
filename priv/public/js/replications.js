@@ -177,7 +177,7 @@ var ReplicationForm = mkClass({
 mkClass.turnIntoLazySingleton(ReplicationForm);
 
 ViewHelpers.formatReplicationStatus = function (info) {
-  var rawStatus = escapeHTML(info.status);
+  var rawStatus = escapeHTML(info.humanStatus);
   var errors = (info.errors || []);
   if (errors.length === 0) {
     return rawStatus;
@@ -288,18 +288,34 @@ function mkReplicationSectionCell(ns, currentXDCRSettingsURI, tasksProgressCell,
       }
 
       var protocolVersion = replication.replicationType === "xmem" ? "2" :
-                            replication.replicationType === "capi" ? "1" : BUG();
+                            replication.replicationType === "capi" ? "1" : "unknown";
+
+      var status = replication.status;
+      var humanStatus = 'Starting Up';
+      var pauseRequested = replication["pauseRequested"]
+      if (status == 'running') {
+        humanStatus = 'Replicating';
+      } else if (status == 'paused') {
+        humanStatus = 'Paused';
+      }
+      if (pauseRequested && status != 'paused') {
+        status = 'spinner';
+        humanStatus = 'Paused';
+      }
 
       return {
         id: replication.id,
         protocol: "Version " + protocolVersion,
         bucket: replication.source,
         to: 'bucket "' + replication.target.split('buckets/')[1] + '" on cluster ' + name,
-        status: replication.status == 'running' ? 'Replicating' : 'Starting Up',
+        status: status,
+        humanStatus: humanStatus,
         when: replication.continuous ? "on change" : "one time sync",
         errors: replication.errors,
         cancelURI: replication.cancelURI,
-        settingsURI: replication.settingsURI
+        settingsURI: replication.settingsURI,
+        isPaused: replication.isPaused,
+        pauseUnpauseURI: replication.pauseUnpauseURI
       }
     });
   });
@@ -307,6 +323,19 @@ function mkReplicationSectionCell(ns, currentXDCRSettingsURI, tasksProgressCell,
 
 var ReplicationsSection = {
   encriptionTextAreaDefaultValue: "Copy paste the Certificate information from Remote Cluster here. You can find the certificate information on Couchbase Admin UI under Settings -> Cluster tab.",
+  doPausingPOST: function (repInfo, pause) {
+    $.ajax({
+      type: 'POST',
+      url: repInfo.settingsURI,
+      dataType: 'text',
+      data: {"pauseRequested": pause},
+      complete: onResult});
+    return;
+
+    function onResult() {
+      DAL.cells.tasksProgressCell.invalidate();
+    }
+  },
   init: function () {
     renderCellTemplate(ReplicationsModel.remoteClustersListCell, 'cluster_reference_list');
 
@@ -376,11 +405,27 @@ var ReplicationsSection = {
         return;
       }
       renderTemplate('ongoing_replications_list', rows);
-      $("#ongoing_replications_list_container .js_per_xdcr_settings").each(function (i) {
-        $(this).click(function () {
+      $("#ongoing_replications_list_container .row").each(function (i, item) {
+        $('.js_per_xdcr_settings', $(item)).click(function () {
           currentXDCRSettingsURICell.setValue(rows[i].settingsURI);
         });
+        $('.js_replication_control', $(item)).click(function (e) {
+          var button = $(this);
+
+          if (button.is(".dynamic_spinner")) {
+            return;
+          }
+
+          var paused = button.is(".dynamic_paused");
+
+          button.removeClass("dynamic_paused").removeClass("dynamic_running").addClass("dynamic_spinner");
+
+          var row = rows[i];
+
+          ReplicationsSection.doPausingPOST(row, !paused);
+        });
       });
+
     });
 
     $('#create_cluster_reference').click($m(this, 'startAddRemoteCluster'));

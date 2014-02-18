@@ -1380,3 +1380,8 @@ input[type=number].size {width:4em;}
 .cache_metadata_block > div label {display: inline;}
 .cache_metadata_block > a {float: right; line-height: 24px;}
 .cache_metadata_block > p {display: none; padding: 0 0 14px 134px; width: 410px; clear: both; font-size:10pt; font-weight:lighter; line-height:20px;}
+
+.replication_control {display: inline-block; margin-right: 6px;cursor: pointer; vertical-align: middle;}
+.replication_control.dynamic_paused {border-width: 10px 0 10px 16px; border-style: solid; border-color: transparent transparent transparent #01b0ff; width: 0px; height: 0px; }
+.replication_control.dynamic_running {border-width: 0px 5px; border-style: solid; border-color: transparent #01b0ff; width: 4px; height: 16px;}
+.replication_control.dynamic_spinner {background: url('../images/spinner/spinner_gr_nav.gif') no-repeat 50% 50%; border: 0; width: 16px; height: 16px;}
