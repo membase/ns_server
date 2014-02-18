@@ -78,6 +78,7 @@ settings_specs() ->
      {retries_per_request,              per_replication, {int, 1, 100},              2},
      {optimistic_replication_threshold, per_replication, {int, 0, 20 * 1024 * 1024}, 256},
      {socket_options,                   per_replication, term,                       [{keepalive, true}, {nodelay, false}]},
+     {pause_requested,                  per_replication, bool,                       false},
      {supervisor_max_r,                 per_replication, {int, 1, 1000},             25},
      {supervisor_max_t,                 per_replication, {int, 1, 1000},             5},
      {trace_dump_invprob,               global,          {int, 1, infinity},         1000}].

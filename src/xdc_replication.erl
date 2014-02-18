@@ -500,4 +500,9 @@ compute_rate_stat(Written1, DataRepd1, RateStat) ->
     NewRateStat.
 
 options_to_num_tokens(Options) ->
-    proplists:get_value(max_concurrent_reps, Options).
+    case proplists:get_bool(pause_requested, Options) of
+        true ->
+            0;
+        _ ->
+            proplists:get_value(max_concurrent_reps, Options)
+    end.
