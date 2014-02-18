@@ -23,7 +23,6 @@
 
 -export([
     db_open/2,
-    db_open/3,
     db_close/1,
     get_db_info/1,
     update_doc/3,
@@ -60,35 +59,10 @@ db_uri(DbName) ->
     ?b2l(DbName).
 
 
-db_open(Db, Options) ->
-    db_open(Db, Options, false).
-
-db_open(#httpdb{} = Db1, _Options, Create) ->
-    {ok, Db} = couch_api_wrap_httpc:setup(Db1),
-    case Create of
-    false ->
-        ok;
-    true ->
-        send_req(Db, [{method, "PUT"}], fun(_, _, _) -> ok end)
-    end,
-    send_req(Db, [{method, "HEAD"}],
-        fun(200, _, _) ->
-            {ok, Db};
-        (401, _, _) ->
-            throw({unauthorized, ?l2b(db_uri(Db))});
-        (_, _, _) ->
-            throw({db_not_found, ?l2b(db_uri(Db))})
-        end);
-db_open(DbName, Options, Create) ->
+db_open(#httpdb{} = Db1, _Options) ->
+    {ok, _} = couch_api_wrap_httpc:setup(Db1);
+db_open(DbName, Options) ->
     try
-        case Create of
-        false ->
-            ok;
-        true ->
-            ok = couch_httpd:verify_is_server_admin(
-                get_value(user_ctx, Options)),
-            couch_db:create(DbName, Options)
-        end,
         case couch_db:open(DbName, Options) of
         {not_found, _Reason} ->
             throw({db_not_found, DbName});
