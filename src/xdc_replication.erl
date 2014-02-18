@@ -110,6 +110,7 @@ init([#rep{source = SrcBucketBinary, replication_mode = RepMode, options = Optio
     {ok, RepState}.
 
 handle_call(stats, _From, #replication{vb_rep_dict = Dict,
+                                       rep = Rep,
                                        num_active  = ActiveVbReps,
                                        num_waiting = WaitingVbReps,
                                        checkpoint_history = CkptHistory} = State) ->
@@ -196,12 +197,15 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
 
     NewRateStat = compute_rate_stat(Written1, DataRepd1, State#replication.ratestat),
 
+    RequestedReps = options_to_num_tokens(Rep#rep.options),
+
     Props = [{changes_left, Left1},
              {docs_checked, Checked1},
              {docs_written, Written1},
              {docs_opt_repd, DocsOptRepd1},
              {data_replicated, DataRepd1},
              {active_vbreps, ActiveVbReps},
+             {max_vbreps, RequestedReps},
              {waiting_vbreps, WaitingVbReps},
              {time_working, WorkTime1 div 1000},
              {time_committing, CommitTime1 div 1000},

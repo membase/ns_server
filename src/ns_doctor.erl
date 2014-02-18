@@ -355,9 +355,16 @@ task_operation(extract, XDCR, RawTask)
     {_, ChangesLeft} = lists:keyfind(changes_left, 1, RawTask),
     {_, DocsChecked} = lists:keyfind(docs_checked, 1, RawTask),
     {_, DocsWritten} = lists:keyfind(docs_written, 1, RawTask),
+    MaxVBReps = case lists:keyfind(max_vbreps, 1, RawTask) of
+                    false ->
+                        %% heartbeat from older node;
+                        null;
+                    {_, X} ->
+                        X
+                end,
     Errors = proplists:get_value(errors, RawTask, []),
     {_, Id} = lists:keyfind(id, 1, RawTask),
-    [{{XDCR, Id}, {ChangesLeft, DocsChecked, DocsWritten, Errors}}];
+    [{{XDCR, Id}, {ChangesLeft, DocsChecked, DocsWritten, Errors, MaxVBReps}}];
 task_operation(extract, _, _) ->
     ignore;
 
@@ -380,7 +387,7 @@ task_operation(finalize, {BucketCompaction, BucketName, _, _}, {ChangesDone, Tot
      {progress, Progress}].
 
 
-finalize_xcdr_plist({ChangesLeft, DocsChecked, DocsWritten, Errors}) ->
+finalize_xcdr_plist({ChangesLeft, DocsChecked, DocsWritten, Errors, MaxVBReps}) ->
     FlattenedErrors = lists:flatten(Errors),
     SortedErrors = lists:reverse(lists:sort(FlattenedErrors)),
     Len = length(SortedErrors),
@@ -396,6 +403,7 @@ finalize_xcdr_plist({ChangesLeft, DocsChecked, DocsWritten, Errors}) ->
      {changesLeft, ChangesLeft},
      {docsChecked, DocsChecked},
      {docsWritten, DocsWritten},
+     {maxVBReps, MaxVBReps},
      {errors, OutputErrors}].
 
 
@@ -428,12 +436,17 @@ task_operation(fold, {bucket_compaction, _, _, _},
                {ChangesDone2, TotalChanges2}) ->
     {ChangesDone1 + ChangesDone2, TotalChanges1 + TotalChanges2};
 task_operation(fold, {xdcr, _},
-              {ChangesLeft1, DocsChecked1, DocsWritten1, Errors1},
-              {ChangesLeft2, DocsChecked2, DocsWritten2, Errors2}) ->
+              {ChangesLeft1, DocsChecked1, DocsWritten1, Errors1, MaxVBReps1},
+              {ChangesLeft2, DocsChecked2, DocsWritten2, Errors2, MaxVBReps2}) ->
+    NewMaxVBReps = case MaxVBReps1 =:= null orelse MaxVBReps2 =:= null of
+                       true -> null;
+                       _ -> MaxVBReps1 + MaxVBReps2
+                   end,
     {ChangesLeft1 + ChangesLeft2,
      DocsChecked1 + DocsChecked2,
      DocsWritten1 + DocsWritten2,
-     [Errors1 | Errors2]}.
+     [Errors1 | Errors2],
+     NewMaxVBReps}.
 
 
 task_maybe_add_cancel_uri({bucket_compaction, BucketName, {OriginalTarget}, manual},
@@ -535,7 +548,15 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
                          case dict:find(Sig, TasksDict) of
                              {ok, Value} ->
                                  PList = finalize_xcdr_plist(Value),
-                                 [{status, running} | Doc2] ++ PList;
+                                 Status =
+                                     case (proplists:get_bool(pauseRequested, Doc2)
+                                           andalso proplists:get_value(maxVBReps, PList) =:= 0) of
+                                         true ->
+                                             paused;
+                                         _ ->
+                                             running
+                                     end,
+                                 [{status, Status} | Doc2] ++ PList;
                              _ ->
                                  [{status, notRunning}, {type, xdcr} | Doc2]
                          end,

@@ -231,6 +231,7 @@ find_all_replication_docs_body(Doc0) ->
                                   <<"source">> -> [source];
                                   <<"target">> -> [target];
                                   <<"continuous">> -> [continuous];
+                                  <<"pause_requested">> -> [pauseRequested];
                                   _ when is_atom(K) -> [K];
                                   _ -> []
                               end],
