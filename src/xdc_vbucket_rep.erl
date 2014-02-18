@@ -130,7 +130,24 @@ handle_info(start_replication, #rep_state{throttle = Throttle,
 
     St1 = St#rep_state{status = VbStatus#rep_vb_status{status = replicating}},
     St2 = update_rep_options(St1),
-    {noreply, start_replication(St2)}.
+    {noreply, start_replication(St2)};
+
+handle_info(return_token_please, State) ->
+    case State of
+        #rep_state{status = RepVBStatus,
+                   changes_queue = ChangesQueue} when RepVBStatus#rep_vb_status.status =:= replicating ->
+            ?xdcr_debug("changes queue for vb ~p closed due to pause request, "
+                        "rep will stop after flushing remaining ~p items in queue",
+                        [RepVBStatus#rep_vb_status.vb,
+                         couch_work_queue:item_count(ChangesQueue)]),
+            ChangesReader = erlang:get(changes_reader),
+            {true, is_pid} = {is_pid(ChangesReader), is_pid},
+            ChangesReader ! please_stop;
+        _ ->
+            ok
+    end,
+    {noreply, State}.
+
 
 handle_call({report_seq_done,
              #worker_stat{
@@ -256,7 +273,20 @@ handle_call({worker_done, Pid}, _From,
             couch_api_wrap:db_close(State2#rep_state.src_master_db),
             couch_api_wrap:db_close(State2#rep_state.target),
             couch_api_wrap:db_close(State2#rep_state.tgt_master_db),
+
             %% force check for changes since we last snapshop
+            %%
+            %% NOTE: this is required for correct handling of
+            %% pause/resume as of now. I.e. because we can actually
+            %% reach this state without completing replication of
+            %% snapshot we had
+            %%
+            %% This is also required because of message drop in
+            %% handling of src_db_updated message in replicating
+            %% state. I.e. we discard src_db_updated messages while
+            %% replicating snapshot, so we have to assume that some
+            %% more mutations were made after we're done with
+            %% snapshot.
             self() ! src_db_updated,
             misc:flush(checkpoint),
 
@@ -725,6 +755,7 @@ start_replication(#rep_state{
     %% This starts the _changes reader process. It adds the changes from
     %% the source db to the ChangesQueue.
     ChangesReader = spawn_changes_reader(StartSeq, Source, ChangesQueue),
+    erlang:put(changes_reader, ChangesReader),
     %% Changes manager - responsible for dequeing batches from the changes queue
     %% and deliver them to the worker processes.
     ChangesManager = spawn_changes_manager(self(), ChangesQueue, BatchSizeItems),
@@ -887,12 +918,18 @@ spawn_changes_reader(StartSeq, Db, ChangesQueue) ->
                end).
 
 read_changes(StartSeq, Db, ChangesQueue) ->
-    couch_db:changes_since(Db, StartSeq,
-                           fun(#doc_info{local_seq = Seq} = DocInfo, ok) ->
-                                   ok = couch_work_queue:queue(ChangesQueue, DocInfo),
-                                   put(last_seq, Seq),
-                                   {ok, ok}
-                           end, [], ok),
+    couch_db:changes_since(
+      Db, StartSeq,
+      fun(DocInfo, _) ->
+              ok = couch_work_queue:queue(ChangesQueue, DocInfo),
+              receive
+                  please_stop ->
+                      ?xdcr_debug("Handling please_stop in changes reader"),
+                      {stop, ok}
+              after 0 ->
+                      {ok, []}
+              end
+      end, [], []),
     couch_work_queue:close(ChangesQueue).
 
 spawn_changes_manager(Parent, ChangesQueue, BatchSize) ->

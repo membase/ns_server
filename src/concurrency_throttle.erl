@@ -145,10 +145,15 @@ handle_call({change_tokens, NewTokens}, {Pid, _Tag}, State) ->
                        [TotalTokens, NewTokens, AvailTokens, NewAvailTokens,Pid]),
 
             %% schedule more jobs if we have more available tokens
-            NewState = case NewAvailTokens > 0 of
-                           true ->
+            NewState = if
+                           NewAvailTokens > 0 ->
+                               ?xdcr_debug("Will signal ~p process to proceed", [NewAvailTokens]),
                                signal_waiting(State1, NewAvailTokens);
-                           _  ->
+                           NewAvailTokens < 0 ->
+                               ?xdcr_debug("Will ask ~p processes to return token back", [-NewAvailTokens]),
+                               ask_to_return_token(dict:to_list(ActivePool), -NewAvailTokens),
+                               State1;
+                           NewAvailTokens =:= 0 ->
                                State1
                        end,
             {reply, ok, update_status_to_parent(NewState)}
@@ -306,3 +311,9 @@ schedule_waiting_jobs(#concurrency_throttle_state{avail_tokens = AvailTokens} = 
                         "to schedule jobs", [AvailTokens]),
             State
     end.
+
+ask_to_return_token(_, _TokensToReturn = 0) -> ok;
+ask_to_return_token([{Pid , _Node} | Rest], TokensToReturn) ->
+    Pid ! return_token_please,
+    ask_to_return_token(Rest, TokensToReturn - 1);
+ask_to_return_token([], _TokensToReturn) -> ok.
