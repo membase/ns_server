@@ -1565,10 +1565,12 @@ $(function () {
   function updateVisibleStuff() {
     var version20 = encodeCompatVersion(2, 0);
     var version25 = encodeCompatVersion(2, 5);
+    var version30 = encodeCompatVersion(3, 0);
 
     $('.only-when-below-20')[lastCompatVersion < version20 ? 'show' : 'hide']();
     $('.only-when-20')[lastCompatVersion >= version20 ? 'show' : 'hide']();
     $('.only-when-25')[lastCompatVersion >= version25 ? 'show' : 'hide']();
+    $('.only-when-30')[lastCompatVersion >= version30 ? 'show' : 'hide']();
   }
 
   $(window).bind('template:rendered', function () {
