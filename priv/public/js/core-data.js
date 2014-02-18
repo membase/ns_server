@@ -707,7 +707,7 @@ var RecentlyCompacted = mkClass.turnIntoLazySingleton(mkClass({
     });
     this.startedCompactionsCell.setValue(obj);
   },
-  registerAsTriggered: function (url, undoBody, element) {
+  registerAsTriggered: function (url, undoBody) {
     if (this.triggeredCompactions[url]) {
       this.gcThings();
       if (this.triggeredCompactions[url]) {
