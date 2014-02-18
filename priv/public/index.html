@@ -20,7 +20,6 @@
     <div class="page-header">
       <div class="cnt_holder main_holder">
         <div class="topper_nav">
-          <span class="only-when-below-20" style="display:none;">NOTE: need all 2.0 nodes to enable 2.0-only features<b>&bull;</b></span>
           <span id="edit-internal-settings-link" class="when-roadmin-avoid-me" style="display:none;"><a onclick="runInternalSettingsDialog();">Edit internal settings</a> <b>&bull;</b></span>
           <a id="switch_support_docs" href="http://docs.couchbase.com/couchbase-manual-2.5/" target="cbdocs">Documentation</a>
           <b>&bull;</b> <a id="switch_support_forums" href="http://www.couchbase.com/communities/" target="cbforums">Support Forums</a>
@@ -44,8 +43,8 @@
           <li class="line"><a id="switch_overview" href="#visitSec=overview">Cluster Overview</a></li>
           <li class="line"><a id="switch_servers" href="#visitSec=servers">Server Nodes</a></li>
           <li class="line"><a id="switch_buckets" href="#visitSec=buckets">Data Buckets</a></li>
-          <li class="line only-when-20"><a id="switch_views" href="#visitSec=views">Views</a></li>
-          <li class="line only-when-20"><a id="switch_replications" href="#visitSec=replications">XDCR</a></li>
+          <li class="line"><a id="switch_views" href="#visitSec=views">Views</a></li>
+          <li class="line"><a id="switch_replications" href="#visitSec=replications">XDCR</a></li>
           <li class="line"><a id="switch_log" href="#visitSec=log">Log</a></li>
           <li class="line" id="nav_settings_container"><a href="#visitSec=settings" id="switch_settings">Settings</a></li>
         </ul>
@@ -630,8 +629,8 @@
                 </td>
                 <td colspan="4" class="last">
                   {% if (this.bucketType == 'membase') { %}
-                    <a class="list_button disable-if-stale only-when-20" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>
-                    <a class="list_button only-when-20 when-roadmin-hide-me" href="#sec=documents&viewsBucket={%= encodeURIComponent(this.name) %}&documentsPageNumber=0"><span>Documents</span></a>{% } %}
+                    <a class="list_button disable-if-stale" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>
+                    <a class="list_button when-roadmin-hide-me" href="#sec=documents&viewsBucket={%= encodeURIComponent(this.name) %}&documentsPageNumber=0"><span>Documents</span></a>{% } %}
                 </td>
               </tr>
               <tr>
@@ -770,7 +769,7 @@
                   <li><a id="settings_auto_failover" class="casper_settings_auto_failover">Auto-Failover</a></li>
                   <li><a id="settings_alerts" class="casper_settings_alerts">Alerts</a></li>
                   <li><a id="settings_compaction" class="casper_settings_compaction">Auto-Compaction</a></li>
-                  <li class="only-when-20"><a id="settings_sample_buckets" class="casper_settings_sample_buckets">Sample Buckets</a></li>
+                  <li><a id="settings_sample_buckets" class="casper_settings_sample_buckets">Sample Buckets</a></li>
                   <li class="when-roadmin-avoid-me"><a id="account_management" class="casper_settings_account_management">Account Management</a></li>
                 </ul>
               </div>
