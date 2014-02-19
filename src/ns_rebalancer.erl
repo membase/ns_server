@@ -51,19 +51,12 @@
 %% @doc Fail a node. Doesn't eject the node from the cluster. Takes
 %% effect immediately.
 failover(Node) ->
-    RVs = lists:map(fun (Bucket) ->
-                            master_activity_events:note_bucket_failover_started(Bucket, Node),
-                            failover(Bucket, Node),
-                            master_activity_events:note_bucket_failover_ended(Bucket, Node)
-                    end,
-                    ns_bucket:get_bucket_names()),
-    case lists:member(janitor_failed, RVs) of
-        true ->
-            ?log_info("Sleeping a bit because janitor run failed. See http://www.couchbase.com/issues/browse/MB-5247"),
-            timer:sleep(5000);
-        false ->
-            ok
-    end.
+    lists:foreach(fun (Bucket) ->
+                          master_activity_events:note_bucket_failover_started(Bucket, Node),
+                          failover(Bucket, Node),
+                          master_activity_events:note_bucket_failover_ended(Bucket, Node)
+                  end,
+                  ns_bucket:get_bucket_names()).
 
 validate_autofailover(Node) ->
     BucketPairs = ns_bucket:get_buckets(),
