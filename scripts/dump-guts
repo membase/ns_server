@@ -496,8 +496,6 @@ search_config_for_node(NSConfig, Node, Key, Default) ->
     case search_config(NSConfig, {node, Node, Key}, None) of
         None ->
             search_config(NSConfig, Key, Default);
-        '_use_global_value' ->
-            search_config(NSConfig, Key, Default);
         Value ->
             Value
     end.
