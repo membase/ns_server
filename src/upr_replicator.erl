@@ -102,7 +102,8 @@ setup_replication(ProducerNode, Bucket, Partitions) ->
 
 takeover(ProducerNode, Bucket, Partition) ->
     gen_server:call(server_name(ProducerNode, Bucket),
-                    {takeover, Partition}).
+                    {takeover, Partition},
+                    infinity).
 
 wait_for_data_move([], _, _) ->
     ok;
