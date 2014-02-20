@@ -313,9 +313,7 @@ function mkReplicationSectionCell(ns, currentXDCRSettingsURI, tasksProgressCell,
         when: replication.continuous ? "on change" : "one time sync",
         errors: replication.errors,
         cancelURI: replication.cancelURI,
-        settingsURI: replication.settingsURI,
-        isPaused: replication.isPaused,
-        pauseUnpauseURI: replication.pauseUnpauseURI
+        settingsURI: replication.settingsURI
       }
     });
   });

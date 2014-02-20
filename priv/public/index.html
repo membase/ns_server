@@ -1657,10 +1657,10 @@
                   <td>{%= h(r.protocol) %}</td>
                   <td style="color:#777">this cluster</td>
                   <td>{%= h(r.to) %}</td>
-                  <td>
+                  <td class="replication_status_cell">
                     <span class="only-when-30 js_replication_control replication_control dynamic_{%=r.status%}"></span>
-
-                    {%= V.formatReplicationStatus(r) %}</td>
+                    <span>{%= V.formatReplicationStatus(r) %}</span>
+                  </td>
                   <td>{%= h(r.when) %}</td>
                   <td>
                     <a class="list_button when-roadmin-avoid-me" href="#deleteReplication={%=h(encodeURIComponent(r.cancelURI))%}"><span>Delete</span></a>
