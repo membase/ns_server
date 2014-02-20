@@ -388,7 +388,8 @@ compact_vbucket(Sock, VBucket, PurgeBeforeTS, PurgeBeforeSeqNo, DropDeletes) ->
          end,
     Ext = <<PurgeBeforeTS:64, PurgeBeforeSeqNo:64, DD:8, 0:8, 0:16, 0:32>>,
     case cmd(?CMD_COMPACT_DB, Sock, undefined, undefined,
-             {#mc_header{vbucket = VBucket}, #mc_entry{ext = Ext}}) of
+             {#mc_header{vbucket = VBucket}, #mc_entry{ext = Ext}},
+             infinity) of
         {ok, #mc_header{status=?SUCCESS}, _, _} ->
             ok;
         Response -> process_error_response(Response)
