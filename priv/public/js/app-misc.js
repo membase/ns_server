@@ -1008,7 +1008,7 @@ function plotStatGraph(graphJQ, data, tstamps, options) {
     graphMax = yTicks[yTicks.length-1] * options.verticalMargin;
   }
 
-  var preparedQ = ViewHelpers.prepareQuantity(yTicks[yTicks.length-1], 1000);
+  var preparedQ = ViewHelpers.prepareQuantity(yTicks[yTicks.length-1], options.isBytes ? 1024 : 1000);
 
   function xTickFormatter(val, axis) {
     var unit = axis.tickSize[1];

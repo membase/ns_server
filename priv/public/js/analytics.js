@@ -824,7 +824,8 @@ var GraphsWidget = mkClass({
       timeOffset: timeOffset,
       lastSampleTime: now,
       breakInterval: configuration.interval * 2.5,
-      maxY: configuration.infos.byName[selected.name].maxY
+      maxY: configuration.infos.byName[selected.name].maxY,
+      isBytes: configuration.selected.isBytes
     });
 
     try {
