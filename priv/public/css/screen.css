@@ -1045,6 +1045,7 @@ input.view_name{width:20em;padding:5px}
 .bucket_details.bucket-is-persistent .when-non-persistent,
 .bucket_details.bucket-is-non-persistent .when-persistent {display:none;}
 
+.bucket_details .for-ram-quota {margin-top: 0;}
 .bucket_details .for-ram-quota em,
 .bucket_details .for-sasl-password em {font-style:normal;}
 .bucket_details.bucket-is-default em.when-default {display:inline;}
