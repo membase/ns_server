@@ -220,7 +220,9 @@ read_full_message(Socket, Continuation) ->
 
 handle_select_bucket(Socket, ?CMD_SELECT_BUCKET,
                       _VBucket, <<>> = _Extra, BucketName, <<>> = _Body, Opaque, 0 = _CAS) ->
+    ?log_debug("Got select bucket ~s", [BucketName]),
     respond(Socket, ?CMD_SELECT_BUCKET, Opaque, #mc_response{}),
+    ?log_debug("Sent reply on select bucket"),
     BucketName;
 handle_select_bucket(_Socket, OpCode, VBucket, Extra, Key, Body, Opaque, CAS) ->
     ?log_error("Extected select bucket as first command but got: ~p",
