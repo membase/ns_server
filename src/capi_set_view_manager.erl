@@ -55,21 +55,21 @@ initiate_indexing(Bucket) ->
 reset_master_vbucket(Bucket) ->
     gen_server:call(server(Bucket), reset_master_vbucket, infinity).
 
--define(csv_call(Call, Args),
+-define(csv_call(Call, Kind, Bucket, DDocId, RestArgs),
         %% hack to not introduce any variables in the caller environment
         ((fun () ->
                   %% we may want to downgrade it to ?views_debug at some point
-                  ?views_debug("~nCalling couch_set_view:~p(~w)", [Call, Args]),
+                  ?views_debug("~nCalling couch_set_view:~p(~s, <<\"~s\">>, <<\"~s\">>, ~w)", [Call, Kind, Bucket, DDocId, RestArgs]),
                   try
-                      {__Time, __Result} = timer:tc(couch_set_view, Call, Args),
+                      {__Time, __Result} = timer:tc(couch_set_view, Call, [Kind, Bucket, DDocId | RestArgs]),
 
-                      ?views_debug("~ncouch_set_view:~p(~w) returned ~p in ~bms",
-                                   [Call, Args, __Result, __Time div 1000]),
+                      ?views_debug("~ncouch_set_view:~p(~s, <<\"~s\">>, <<\"~s\">>, ~w) returned ~p in ~bms",
+                                   [Call, Kind, Bucket, DDocId, RestArgs, __Result, __Time div 1000]),
                       __Result
                   catch
                       __T:__E ->
-                          ?views_debug("~ncouch_set_view:~p(~w) raised ~p:~p",
-                                       [Call, Args, __T, __E]),
+                          ?views_debug("~ncouch_set_view:~p(~s, <<\"~s\">>, <<\"~s\">>, ~w) raised~n~p:~p",
+                                       [Call, Kind, Bucket, DDocId, RestArgs, __T, __E]),
 
                           %% rethrowing the exception
                           __Stack = erlang:get_stacktrace(),
@@ -426,7 +426,7 @@ maybe_define_group(DDocId,
                               use_replica_index=UseReplicaIndex},
 
     try
-        ok = ?csv_call(define_group, [mapreduce_view, SetName, DDocId, Params])
+        ok = ?csv_call(define_group, mapreduce_view, SetName, DDocId, [Params])
     catch
         throw:{not_found, deleted} ->
             %% The document has been deleted but we still think it's
@@ -473,23 +473,24 @@ apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
                 ok;
             true ->
                 ok = ?csv_call(mark_partitions_indexable,
-                               [mapreduce_view, SetName, DDocId,
-                                UnpauseVBuckets])
+                               mapreduce_view, SetName, DDocId,
+                                [UnpauseVBuckets])
         end,
 
         %% this should go first because some of the replica vbuckets might
         %% need to be cleaned up from main index
         ok = ?csv_call(set_partition_states,
-                       [mapreduce_view, SetName, DDocId, Active, Passive,
-                        Cleanup]),
+                       mapreduce_view, SetName, DDocId,
+                       [Active, Passive, Cleanup]),
 
         case UseReplicaIndex of
             true ->
                 ok = ?csv_call(add_replica_partitions,
-                               [mapreduce_view, SetName, DDocId, Replica]),
+                               mapreduce_view, SetName, DDocId,
+                               [Replica]),
                 ok = ?csv_call(remove_replica_partitions,
-                               [mapreduce_view, SetName, DDocId,
-                                ReplicaCleanup]);
+                               mapreduce_view, SetName, DDocId,
+                               [ReplicaCleanup]);
             false ->
                 ok
         end,
@@ -499,8 +500,8 @@ apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
                 ok;
             true ->
                 ok = ?csv_call(mark_partitions_unindexable,
-                               [mapreduce_view, SetName, DDocId,
-                                PauseVBuckets])
+                               mapreduce_view, SetName, DDocId,
+                               [PauseVBuckets])
         end
 
     catch
