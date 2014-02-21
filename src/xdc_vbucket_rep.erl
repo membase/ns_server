@@ -261,7 +261,6 @@ handle_call({worker_done, Pid}, _From,
             couch_api_wrap:db_close(State2#rep_state.tgt_master_db),
             %% force check for changes since we last snapshop
             self() ! src_db_updated,
-            misc:flush(checkpoint),
 
             %% changes may or may not be closed
             VbStatus2 = VbStatus#rep_vb_status{size_changes_queue = 0,
@@ -337,8 +336,6 @@ handle_cast(checkpoint, #rep_state{status = VbStatus} = State) ->
                      NewState = xdc_vbucket_rep_ckpt:cancel_timer(State),
                      {ok, NewState}
              end,
-    %% flush all checkpoint msgs, waiting for the next one
-    misc:flush(checkpoint),
 
     case Result of
         {ok, NewState3} ->
@@ -809,7 +806,6 @@ start_replication(#rep_state{
     Start = now(),
     {Succ, ErrorMsg, NewState} = case TimeSinceLastCkpt > IntervalSecs of
                                      true ->
-                                         misc:flush(checkpoint),
                                          xdc_vbucket_rep_ckpt:do_checkpoint(State1);
                                      _ ->
                                          {ok, <<"no checkpoint">>, State1}
