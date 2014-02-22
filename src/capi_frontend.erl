@@ -54,10 +54,7 @@ do_db_req(Req, Fun) ->
                                       {<<"reason">>, couch_util:to_binary(Reason)}]})
       end).
 
-continue_do_db_req(#httpd{mochi_req=MochiReq, user_ctx=UserCtx,
-                          path_parts=[DbName | RestPathParts]} = Req, Fun) ->
-    %% check auth here
-    [BucketName | AfterSlash] = binary:split(DbName, <<"/">>),
+verify_bucket_auth(#httpd{mochi_req=MochiReq}, BucketName) ->
     ListBucketName = ?b2l(BucketName),
     BucketConfig = case ns_bucket:get_bucket_light(ListBucketName) of
                        not_present ->
@@ -66,50 +63,57 @@ continue_do_db_req(#httpd{mochi_req=MochiReq, user_ctx=UserCtx,
                    end,
     case menelaus_auth:is_bucket_accessible({ListBucketName, BucketConfig}, MochiReq, false) of
         true ->
-            case AfterSlash of
-                [] ->
-                    case couch_util:get_value(type, BucketConfig) =:= membase of
-                        true ->
-                            %% undefined #db fields indicate bucket database
-                            Db = #db{user_ctx = UserCtx, name = DbName},
-                            Fun(Req, Db);
-                        _ ->
-                            erlang:throw({not_found, no_couchbase_bucket_exists})
-                    end;
-                [AfterSlash1] ->
-                    %% xdcr replicates here; to prevent a replication to
-                    %% recreated bucket (without refetching vbucket map) or
-                    %% even to new cluster we encode a bucket uuid in the url
-                    %% and check it here;
-                    {VBucket, MaybeUUID} =
-                        case binary:split(AfterSlash1, <<";">>) of
-                            [AfterSlash2, UUID] ->
-                                {AfterSlash2, UUID};
-                            _ ->
-                                {AfterSlash1, undefined}
-                        end,
-
-                    BucketUUID = proplists:get_value(uuid, BucketConfig),
-                    true = (BucketUUID =/= undefined),
-                    case MaybeUUID =:= undefined orelse
-                        BucketUUID =:= MaybeUUID of
-                        true ->
-                            ok;
-                        false ->
-                            erlang:throw({not_found, uuids_dont_match})
-                    end,
-
-                    RealDbName = <<BucketName/binary, $/, VBucket/binary>>,
-                    PathParts = [RealDbName | RestPathParts],
-
-                    %% note that we don't fake mochi_req here; but it seems
-                    %% that couchdb doesn't use it in our code path
-                    Req1 = Req#httpd{path_parts=PathParts},
-
-                    couch_db_frontend:do_db_req(Req1, Fun)
+            case couch_util:get_value(type, BucketConfig) =:= membase of
+                true ->
+                    BucketConfig;
+                _ ->
+                    erlang:throw({not_found, no_couchbase_bucket_exists})
             end;
-        _Else ->
+        _ ->
             throw({unauthorized, <<"password required">>})
+    end.
+
+continue_do_db_req(#httpd{user_ctx=UserCtx,
+                          path_parts=[DbName | RestPathParts]} = Req, Fun) ->
+    %% check auth here
+    [BucketName | AfterSlash] = binary:split(DbName, <<"/">>),
+    BucketConfig = verify_bucket_auth(Req, BucketName),
+    case AfterSlash of
+        [] ->
+            %% undefined #db fields indicate bucket database
+            Db = #db{user_ctx = UserCtx, name = DbName},
+            Fun(Req, Db);
+        [AfterSlash1] ->
+            %% xdcr replicates here; to prevent a replication to
+            %% recreated bucket (without refetching vbucket map) or
+            %% even to new cluster we encode a bucket uuid in the url
+            %% and check it here;
+            {VBucket, MaybeUUID} =
+                case binary:split(AfterSlash1, <<";">>) of
+                    [AfterSlash2, UUID] ->
+                        {AfterSlash2, UUID};
+                    _ ->
+                        {AfterSlash1, undefined}
+                end,
+
+            BucketUUID = proplists:get_value(uuid, BucketConfig),
+            true = (BucketUUID =/= undefined),
+            case MaybeUUID =:= undefined orelse
+                BucketUUID =:= MaybeUUID of
+                true ->
+                    ok;
+                false ->
+                    erlang:throw({not_found, uuids_dont_match})
+            end,
+
+            RealDbName = <<BucketName/binary, $/, VBucket/binary>>,
+            PathParts = [RealDbName | RestPathParts],
+
+            %% note that we don't fake mochi_req here; but it seems
+            %% that couchdb doesn't use it in our code path
+            Req1 = Req#httpd{path_parts=PathParts},
+
+            couch_db_frontend:do_db_req(Req1, Fun)
     end.
 
 get_db_info(#db{filepath = undefined, name = Name}) ->
