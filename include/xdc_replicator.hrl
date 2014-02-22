@@ -222,7 +222,6 @@
           workers,
           changes_queue,
           session_id,
-          source_seq = nil,
 
           %% a boolean variable indicating that the rep has already
           %% behind db purger, at least one deletion has been lost.

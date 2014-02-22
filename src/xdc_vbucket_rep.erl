@@ -195,8 +195,6 @@ handle_call({report_seq_done,
                  SeqsInProgress, NewSeqsInProgress,
                  TotalChecked, TotalWritten]),
 
-    SourceCurSeq = xdc_vbucket_rep_ckpt:source_cur_seq(State),
-
     %% get stats
     {ChangesQueueSize, ChangesQueueDocs} = get_changes_queue_stats(State),
 
@@ -224,7 +222,6 @@ handle_call({report_seq_done,
                  current_through_seq = NewThroughSeq,
                  seqs_in_progress = NewSeqsInProgress,
                  highest_seq_done = NewHighestDone,
-                 source_seq = SourceCurSeq,
                  behind_purger = BehindPurger,
                  status = VbStatus#rep_vb_status{num_changes_left = ChangesLeft - NumChecked,
                                                  docs_changes_queue = ChangesQueueDocs,
@@ -648,8 +645,7 @@ init_replication_state(#init_state{rep = Rep,
                               data_replicated = 0,
                               num_checkpoints = 0,
                               num_failedckpts = 0
-                             },
-      source_seq = get_value(<<"update_seq">>, SourceInfo, ?LOWEST_SEQ)
+                             }
      },
     XMemRemoteStr = case XMemRemote of
                         nil ->

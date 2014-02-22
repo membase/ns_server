@@ -19,7 +19,6 @@
 %% public functions
 -export([start_timer/1, cancel_timer/1]).
 -export([do_checkpoint/1]).
--export([source_cur_seq/1]).
 
 -include("xdc_replicator.hrl").
 
@@ -49,9 +48,7 @@ cancel_timer(#rep_state{timer = Timer} = State) ->
 -spec do_checkpoint(#rep_state{}) -> {ok, binary(), #rep_state{}} |
                                      {checkpoint_commit_failure, binary(), #rep_state{}}.
 do_checkpoint(#rep_state{current_through_seq=Seq, committed_seq=Seq} = State) ->
-    SourceCurSeq = source_cur_seq(State),
-    NewState = State#rep_state{source_seq = SourceCurSeq},
-    {ok, <<"no checkpoint">>, NewState};
+    {ok, <<"no checkpoint">>, State};
 do_checkpoint(State) ->
     #rep_state{
                source_name=SourceName,
@@ -129,9 +126,7 @@ do_checkpoint(State) ->
                                               SrcMasterDb, SourceLog#doc{body = NewRepHistory, rev={1, RandBin}}, source),
                                    TgtRev = update_checkpoint(
                                               TgtMasterDb, TargetLog#doc{body = NewRepHistory, rev={1, RandBin}}, target),
-                                   SourceCurSeq = source_cur_seq(State),
                                    NewState = State#rep_state{
-                                                source_seq = SourceCurSeq,
                                                 checkpoint_history = NewRepHistory,
                                                 committed_seq = NewSeq,
                                                 last_checkpoint_time = now(),
@@ -239,14 +234,6 @@ commit_to_both_remote_capi(Source, Target) ->
         TargetError ->
             {target_error, TargetError}
     end.
-
-source_cur_seq(#rep_state{source = #db{} = Db, source_seq = Seq}) ->
-    {ok, Info} = couch_api_wrap:get_db_info(Db),
-    get_value(<<"update_seq">>, Info, Seq);
-
-source_cur_seq(#rep_state{source_seq = Seq} = State) ->
-    ?xdcr_debug("unknown source ~p in replicator state", [State#rep_state.source]),
-    Seq.
 
 %% update the checkpoint status to parent bucket replicator
 update_checkpoint_status_to_parent(#rep_state{
