@@ -113,3 +113,18 @@ couch_doc_to_mochi_json(Doc) ->
 
 extract_doc_id(Doc) ->
     Doc#doc.id.
+
+capture_local_master_docs(Bucket, Timeout) ->
+    misc:executing_on_new_process(
+      fun () ->
+              case Timeout of
+                  infinity -> ok;
+                  _ -> timer2:kill_after(Timeout)
+              end,
+              DB = must_open_vbucket(Bucket, <<"master">>),
+              {ok, _, LocalDocs} = couch_btree:fold(DB#db.local_docs_btree,
+                                                    fun (Doc, _, Acc) ->
+                                                            {ok, [Doc | Acc]}
+                                                    end, [], []),
+              LocalDocs
+      end).

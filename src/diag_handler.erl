@@ -170,6 +170,7 @@ do_actual_diag_per_node_binary() ->
             {ns_server_stats, (catch system_stats_collector:get_ns_server_stats())},
             {active_buckets, ActiveBuckets},
             {replication_docs, (catch xdc_rdoc_replication_srv:find_all_replication_docs())},
+            {master_local_docs, [{Bucket, (catch capi_utils:capture_local_master_docs(Bucket, 10000))} || Bucket <- ActiveBuckets]},
             {design_docs, [{Bucket, (catch capi_ddoc_replication_srv:full_live_ddocs(Bucket))} || Bucket <- ActiveBuckets]},
             {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))},
             {stats, (catch grab_all_buckets_stats())}],
