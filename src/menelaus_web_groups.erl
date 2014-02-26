@@ -95,17 +95,25 @@ build_replacement_groups(Groups, ParsedGroups) ->
 finish_handle_server_groups_put(Req, ReplacementGroups, RawGroups) ->
     TXNRV = ns_config:run_txn(
               fun (Cfg, SetFn) ->
-                      {value, NowRawGroups} = ns_config:search(Cfg, server_groups),
-                      case NowRawGroups =:= RawGroups of
-                          true ->
-                              {commit, SetFn(server_groups, ReplacementGroups, Cfg)};
+                      RebalancerPid = ns_config:search(Cfg, rebalancer_pid, undefined),
+                      case RebalancerPid of
+                          undefined ->
+                              {value, NowRawGroups} = ns_config:search(Cfg, server_groups),
+                              case NowRawGroups =:= RawGroups of
+                                  true ->
+                                      {commit, SetFn(server_groups, ReplacementGroups, Cfg)};
+                                  _ ->
+                                      {abort, retry}
+                              end;
                           _ ->
-                              {abort, retry}
+                              {abort, {error, rebalance_running}}
                       end
               end),
     case TXNRV of
         {commit, _} ->
             reply_json(Req, [], 200);
+        {abort, {error, rebalance_running}} ->
+            reply_json(Req, <<"Cannot update server group while rebalance is running">>, 503);
         _ ->
             reply_json(Req, [], 409)
     end.
