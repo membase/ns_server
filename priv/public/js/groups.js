@@ -143,14 +143,35 @@ var ServerGroupsSection = {
       section === "groups" && groupsCell.invalidate();
     });
 
+    var disableAddGroupBtnCell = new Cell();
+    disableAddGroupBtnCell.setValue(false);
+
+    var disableSaveChangesBtnCell = new Cell();
+    disableSaveChangesBtnCell.setValue(true);
+
+    var disableHonoringRebalance = function (rebalanceRunning, disable) {
+      if (rebalanceRunning) {
+        this.addClass("dynamic_disabled");
+        return;
+      }
+
+      this.toggleClass("dynamic_disabled", disable);
+    };
+
+    Cell.subscribeMultipleValues(_.bind(disableHonoringRebalance, addGroupBtn),
+                                 DAL.cells.inRebalanceCell, disableAddGroupBtnCell);
+
+    Cell.subscribeMultipleValues(_.bind(disableHonoringRebalance, saveChngesBtn),
+                                 DAL.cells.inRebalanceCell, disableSaveChangesBtnCell);
+
     Cell.subscribeMultipleValues(function (groups, isEnterprise) {
       if (!isEnterprise) {
         return;
       }
 
       noticeContainer.hide();
-      saveChngesBtn.addClass("dynamic_disabled");
-      addGroupBtn.removeClass("dynamic_disabled");
+      disableSaveChangesBtnCell.setValue(true);
+      disableAddGroupBtnCell.setValue(false);
 
       if (!groups) {
         return renderTemplate("js_server_group", {
@@ -185,8 +206,8 @@ var ServerGroupsSection = {
 
       sortableServerGroups.initialize({
         onChange: function () {
-          saveChngesBtn.toggleClass("dynamic_disabled", _.isEqual(groups.groups, sortableServerGroups.groups.groups));
-          addGroupBtn.removeClass("dynamic_disabled");
+          disableSaveChangesBtnCell.setValue(_.isEqual(groups.groups, sortableServerGroups.groups.groups));
+          disableAddGroupBtnCell.setValue(false);
           noticeContainer.hide();
         },
         groups: groups,
@@ -225,8 +246,8 @@ var ServerGroupsSection = {
       }
 
       noticeContainer.show();
-      addGroupBtn.addClass("dynamic_disabled");
-      saveChngesBtn.addClass("dynamic_disabled");
+      disableAddGroupBtnCell.setValue(true);
+      disableSaveChangesBtnCell.setValue(true);
       var reloadlink = $("<a />").text("Press to sync").click(function () {
         groupsCell.invalidate();
       });
@@ -356,7 +377,7 @@ var ServerGroupsSection = {
         $('html, body').animate({scrollTop: 0}, 250);
         noticeContainer.text("Error: Changes must be saved before deleting the group.");
         noticeContainer.show();
-        saveChngesBtn.removeClass("dynamic_disabled");
+        disableSaveChangesBtnCell.setValue(false);
       }
     }
   }

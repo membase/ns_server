@@ -679,6 +679,16 @@ var DAL = {
           });
         }).name("tasksRecoveryCell");
 
+  var inRebalanceCell = DAL.cells.inRebalanceCell =
+        Cell.computeEager(function (v) {
+          var tasks = v.need(tasksProgressCell);
+          return !!_.detect(tasks,
+                            function (taskInfo) {
+                              return taskInfo.type === "rebalance" &&
+                                taskInfo.status === "running";
+                            });
+        }).name("inRebalanceCell");
+
   var inRecoveryModeCell = DAL.cells.inRecoveryModeCell =
         Cell.computeEager(function (v) {
           return !!v.need(tasksRecoveryCell);
