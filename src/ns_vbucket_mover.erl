@@ -205,10 +205,7 @@ handle_info(Info, State) ->
 
 terminate(Reason, _State) ->
     AllChildsEver = erlang:get(child_processes),
-    [(catch erlang:exit(P, Reason)) || P <- AllChildsEver],
-    [misc:wait_for_process(P, infinity) || P <- AllChildsEver],
-    ok.
-
+    misc:terminate_and_wait(Reason, AllChildsEver).
 
 %%
 %% Internal functions

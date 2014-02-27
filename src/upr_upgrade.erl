@@ -160,9 +160,7 @@ handle_info(Info, State) ->
     {noreply, State}.
 
 terminate(Reason, #state{workers = Workers}) ->
-    [(catch erlang:exit(P, Reason)) || P <- Workers],
-    [misc:wait_for_process(P, infinity) || P <- Workers],
-    ok.
+    misc:terminate_and_wait(Reason, Workers).
 
 apply_replication_status(Pid, Partition, Replicas) ->
     gen_server:call(Pid,

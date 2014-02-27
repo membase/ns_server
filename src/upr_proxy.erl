@@ -75,6 +75,7 @@ handle_cast(Msg, State = #state{ext_module = ExtModule, ext_state = ExtState}) -
     {noreply, State#state{ext_state = NewExtState}, ?HIBERNATE_TIMEOUT}.
 
 terminate(_Reason, State) ->
+    ?rebalance_info("Terminating. Disconnecting from socket ~p", [State#state.sock]),
     disconnect(State#state.sock).
 
 handle_info({tcp, Socket, Data}, #state{sock = Socket} = State) ->

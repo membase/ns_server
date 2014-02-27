@@ -528,6 +528,12 @@ wait_for_process_test() ->
     ok = wait_for_process(Pid, 100),
     ok = wait_for_process(Pid, 100).
 
+-spec terminate_and_wait(Reason :: term(), Processes :: [pid()]) -> ok.
+terminate_and_wait(Reason, Processes) ->
+    [(catch erlang:exit(P, Reason)) || P <- Processes],
+    [misc:wait_for_process(P, infinity) || P <- Processes],
+    ok.
+
 -define(WAIT_FOR_GLOBAL_NAME_SLEEP, 200).
 
 %% waits until given name is globally registered. I.e. until calling

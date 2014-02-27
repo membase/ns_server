@@ -44,6 +44,7 @@ start_link(Bucket) ->
     gen_server:start_link({local, server_name(Bucket)}, ?MODULE, Bucket, []).
 
 init(Bucket) ->
+    process_flag(trap_exit, true),
     {ok, #state{
             bucket_name = Bucket,
             repl_type = tap,
@@ -83,10 +84,21 @@ code_change(_OldVsn, State, _Extra) ->
 handle_cast(Msg, State) ->
     {stop, {unexpected_cast, Msg}, State}.
 
-terminate(Reason, State) ->
+terminate(Reason, #state{tap_replication_manager = TapReplicationManager} = State) ->
+    case TapReplicationManager of
+        undefined ->
+            ok;
+        _ ->
+            misc:terminate_and_wait(Reason, [TapReplicationManager])
+    end,
     ?log_info("Replication manager died ~p", [{Reason, State}]),
     ok.
 
+handle_info({'EXIT', TapReplicationManager, shutdown},
+            #state{tap_replication_manager = TapReplicationManager} = State) ->
+    {noreply, State};
+handle_info({'EXIT', _Pid, Reason}, State) ->
+    {stop, Reason, State};
 handle_info(_Msg, State) ->
     {noreply, State}.
 

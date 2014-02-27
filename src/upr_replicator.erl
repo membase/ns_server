@@ -39,6 +39,8 @@
 -define(VBUCKET_POLL_INTERVAL, 100).
 
 init({ProducerNode, Bucket}) ->
+    process_flag(trap_exit, true),
+
     ConnName = get_connection_name(node(), ProducerNode, Bucket),
     {ok, ConsumerConn} = upr_consumer_conn:start_link(ConnName, Bucket),
     {ok, ProducerConn} = upr_producer_conn:start_link(ConnName, ProducerNode, Bucket),
@@ -70,9 +72,12 @@ handle_cast(Msg, State) ->
     ?rebalance_warning("Unhandled cast: ~p" , [Msg]),
     {noreply, State}.
 
-terminate(_Reason, _State) ->
-    ok.
+terminate(Reason, #state{producer_conn = Producer,
+                         consumer_conn = Consumer}) ->
+    misc:terminate_and_wait(Reason, [Producer, Consumer]).
 
+handle_info({'EXIT', _Pid, Reason}, State) ->
+    {stop, Reason, State};
 handle_info(Msg, State) ->
     ?rebalance_warning("Unexpected handle_info(~p, ~p)", [Msg, State]),
     {noreply, State}.
