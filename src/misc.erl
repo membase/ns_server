@@ -1651,3 +1651,14 @@ collect_external_tool_output(Port, Acc) ->
             ?log_error("Got unexpected message"),
             exit({unexpected_message, Msg})
     end.
+
+min_by(Less, Items) ->
+    lists:foldl(
+      fun (Elem, Acc) ->
+              case Less(Elem, Acc) of
+                  true ->
+                      Elem;
+                  false ->
+                      Acc
+              end
+      end, hd(Items), tl(Items)).
