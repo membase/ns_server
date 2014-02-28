@@ -342,11 +342,10 @@ handle_info({set_vb_rep_status, #rep_vb_status{vb = Vb} = NewStat},
 handle_info({set_checkpoint_status, #rep_checkpoint_status{vb = VBucket,
                                                            ts = TimeStamp,
                                                            time = TimeString,
-                                                           succ = Succ,
-                                                           error = Error}},
+                                                           succ = Succ}},
             #replication{checkpoint_history = CkptHistory, rep = Rep} = State) ->
 
-    Entry = {TimeStamp, TimeString, VBucket, Succ, Error},
+    Entry = {TimeStamp, TimeString, VBucket, Succ},
     NewCkptHistory = ringbuffer:add(Entry, CkptHistory),
 
     ?xdcr_debug("add a ckpt entry (~p) to ckpt history of replication (src: ~p, target: ~p)",
@@ -455,7 +454,7 @@ checkpoint_status(CheckpointHistory) ->
 
     %% count # of successful ckpts and failed ckpts
     {NumSuccCkpts, NumFailedCkpts} = lists:foldl(
-                                       fun ({_TimeStamp, _TimeString, _Vb, Succ, _Error}, {SuccAcc, FailedAcc}) ->
+                                       fun ({_TimeStamp, _TimeString, _Vb, Succ}, {SuccAcc, FailedAcc}) ->
                                                case Succ of
                                                    true ->
                                                        {SuccAcc + 1, FailedAcc};
