@@ -116,7 +116,9 @@
          wait_for_checkpoint_persistence/3,
          get_tap_docs_estimate/3,
          get_mass_tap_docs_estimate/2,
-         set_cluster_config/2]).
+         set_cluster_config/2,
+         get_ep_startup_time_for_xdcr/1,
+         perform_checkpoint_commit_for_xdcr/3]).
 
 %% for ns_memcached_sockets_pool only
 -export([connect/0]).
@@ -1333,3 +1335,38 @@ get_mass_tap_docs_estimate(Bucket, VBuckets) ->
 -spec set_cluster_config(bucket_name(), binary()) -> ok | mc_error().
 set_cluster_config(Bucket, Blob) ->
     do_call(server(Bucket), {set_cluster_config, Blob}, ?TIMEOUT).
+
+get_ep_startup_time_for_xdcr(Bucket) ->
+    perform_very_long_call(
+      fun (Sock) ->
+              {ok, StartupTime} =
+                  mc_binary:quick_stats(
+                    Sock, <<>>,
+                    fun (K, V, Acc) ->
+                            case K =:= <<"ep_startup_time">> of
+                                true -> V;
+                                _ -> Acc
+                            end
+                    end, <<>>),
+              {reply, StartupTime}
+      end, Bucket).
+
+perform_checkpoint_commit_for_xdcr(Bucket, VBucketId, Timeout) ->
+    perform_very_long_call(fun (Sock) -> do_perform_checkpoint_commit_for_xdcr(Sock, VBucketId, Timeout) end, Bucket).
+
+do_perform_checkpoint_commit_for_xdcr(Sock, VBucketId, Timeout) ->
+    case Timeout of
+        infinity -> ok;
+        _ -> timer2:kill_after(Timeout)
+    end,
+    {ok, NewCheckpoint, _PersistedCkpt} = mc_client_binary:create_new_checkpoint(Sock, VBucketId),
+    do_perform_checkpoint_commit_for_xdcr_loop(Sock, VBucketId, NewCheckpoint-1).
+
+do_perform_checkpoint_commit_for_xdcr_loop(Sock, VBucketId, WaitedCheckpointId) ->
+    case mc_client_binary:wait_for_checkpoint_persistence(Sock,
+                                                          VBucketId,
+                                                          WaitedCheckpointId) of
+        ok -> {reply, ok};
+        {memcached_error, etmpfail, _} ->
+            do_perform_checkpoint_commit_for_xdcr_loop(Sock, VBucketId, WaitedCheckpointId)
+    end.
