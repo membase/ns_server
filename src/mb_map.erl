@@ -29,7 +29,8 @@
          is_valid/1,
          random_map/3,
          vbucket_movements/2,
-         run_rebalance_counts_experiment/0]).
+         run_rebalance_counts_experiment/0,
+         find_matching_past_maps/4, score_maps/3, best_map/2]).
 
 
 -export([counts/1]). % for testing
@@ -329,32 +330,14 @@ is_compatible_past_star_map(OptionsPast0, OptionsNow0, NumReplicas) ->
 generate_map_star(Map, Nodes, Options) ->
     KeepNodes = lists:sort(Nodes),
     MapsHistory = proplists:get_value(maps_history, Options, []),
-    NonHistoryOptionsNow = lists:sort(lists:keydelete(maps_history, 1, Options)),
 
     NumVBuckets = length(Map),
     NumSlaves = proplists:get_value(max_slaves, Options, 10),
     NumReplicas = length(hd(Map)) - 1,
     Tags = proplists:get_value(tags, Options),
 
-    NodesSet = sets:from_list(Nodes),
-    MapsFromPast =
-        lists:flatmap(fun ({PastMap, NonHistoryOptions0}) ->
-                              NonHistoryOptions = lists:sort(NonHistoryOptions0),
-                              PastTags = proplists:get_value(tags, NonHistoryOptions),
-
-                              Compatible =
-                                  is_compatible_past_star_map(NonHistoryOptions,
-                                                              NonHistoryOptionsNow, NumReplicas),
-                              case Compatible of
-                                  true ->
-                                      [{M, vbucket_movements_star(Map, M)} ||
-                                          M <- matching_renamings_with_tags(NodesSet,
-                                                                            {Map, Tags},
-                                                                            {PastMap, PastTags})];
-                                  false ->
-                                      []
-                              end
-                      end, MapsHistory),
+    MapsFromPast0 = find_matching_past_maps(Nodes, Map, Options, MapsHistory),
+    MapsFromPast = score_maps(Map, Options, MapsFromPast0),
     ?log_debug("Scores for past maps:~n~p", [[S || {_, S} <- MapsFromPast]]),
 
     GeneratedMaps0 =
@@ -366,74 +349,47 @@ generate_map_star(Map, Nodes, Options) ->
                _ <- lists:seq(1, 3)] ||
               ShuffledNodes <- [misc:shuffle(KeepNodes) || _ <- lists:seq(1, 3)]]),
 
-    GeneratedMaps = [{M, vbucket_movements_star(Map, M)} || M <- GeneratedMaps0],
+    GeneratedMaps = score_maps(Map, Options, GeneratedMaps0),
     ?log_debug("Scores for generated maps:~n~p", [[S || {_, S} <- GeneratedMaps]]),
 
     AllMaps = sets:to_list(sets:from_list(GeneratedMaps ++ MapsFromPast)),
 
     ?log_debug("Considering ~p maps:~n~p",
                [length(AllMaps), [S || {_, S} <- AllMaps]]),
-    BestMapScore = lists:foldl(fun ({_, CandidateScore} = Candidate, {_, BestScore} = Best) ->
-                                  case CandidateScore < BestScore of
-                                      true ->
-                                          Candidate;
-                                      false ->
-                                          Best
-                                  end
-                          end, hd(AllMaps), tl(AllMaps)),
+    BestMapScore = best_map(Options, AllMaps),
     BestMap = element(1, BestMapScore),
     ?log_debug("Best map score: ~p (~p)",
-               [element(2, BestMapScore), lists:keymember(BestMap, 1, GeneratedMaps)]),
+               [element(2, BestMapScore),
+                lists:keymember(BestMap, 1, GeneratedMaps)]),
     BestMap.
 
-map_scores_less(ScoreA, ScoreB) ->
+map_scores_less({_, ScoreA}, {_, ScoreB}) ->
     {element(1, ScoreA) + element(2, ScoreA), element(3, ScoreA)} < {element(1, ScoreB) + element(2, ScoreB), element(3, ScoreB)}.
 
 generate_map_chain(Map, Nodes, Options) ->
     KeepNodes = lists:sort(Nodes),
     MapsHistory = proplists:get_value(maps_history, Options, []),
-    NonHistoryOptionsNow = lists:sort(lists:keydelete(maps_history, 1, Options)),
-    NonHistoryOptionsNowForcedChain =
-        lists:sort(lists:keystore(replication_topology, 1, NonHistoryOptionsNow,
-                                  {replication_topology, chain})),
 
     NaturalMap = balance(Map, KeepNodes, Options),
-    NaturalMapScore = {NaturalMap, vbucket_movements(Map, NaturalMap)},
+    [NaturalMapScore] = score_maps(Map, Options, [NaturalMap]),
 
     ?log_debug("Natural map score: ~p", [element(2, NaturalMapScore)]),
 
     RndMap1 = balance(Map, misc:shuffle(Nodes), Options),
     RndMap2 = balance(Map, misc:shuffle(Nodes), Options),
 
-    AllRndMapScores = [RndMap1Score, RndMap2Score] = [{M, vbucket_movements(Map, M)} || M <- [RndMap1, RndMap2]],
+    AllRndMapScores = [RndMap1Score, RndMap2Score] = score_maps(Map, Options, [RndMap1, RndMap2]),
 
     ?log_debug("Rnd maps scores: ~p, ~p", [S || {_, S} <- AllRndMapScores]),
 
-    NodesSet = sets:from_list(Nodes),
-    MapsFromPast = lists:flatmap(fun ({PastMap, NonHistoryOptions0}) ->
-                                         NonHistoryOptions = lists:sort(NonHistoryOptions0),
-                                         case NonHistoryOptions =:= NonHistoryOptionsNow
-                                             orelse NonHistoryOptions =:= NonHistoryOptionsNowForcedChain of
-                                             true ->
-                                                 [{M, vbucket_movements(Map, M)} ||
-                                                      M <- matching_renamings(NodesSet, Map, PastMap)];
-                                             false ->
-                                                 []
-                                         end
-                                 end, MapsHistory),
+    MapsFromPast0 = find_matching_past_maps(Nodes, Map, Options, MapsHistory),
+    MapsFromPast = score_maps(Map, Options, MapsFromPast0),
 
     AllMaps = sets:to_list(sets:from_list([NaturalMapScore, RndMap1Score, RndMap2Score | MapsFromPast])),
 
     ?log_debug("Considering ~p maps:~n~p", [length(AllMaps), [S || {_, S} <- AllMaps]]),
 
-    BestMapScore = lists:foldl(fun ({_, CandidateScore} = Candidate, {_, BestScore} = Best) ->
-                                  case map_scores_less(CandidateScore, BestScore) of
-                                      true ->
-                                          Candidate;
-                                      false ->
-                                          Best
-                                  end
-                          end, hd(AllMaps), tl(AllMaps)),
+    BestMapScore = best_map(Options, AllMaps),
 
     BestMap = element(1, BestMapScore),
     ?log_debug("Best map score: ~p (~p,~p,~p)", [element(2, BestMapScore), (BestMap =:= NaturalMap), (BestMap =:= RndMap1), (BestMap =:= RndMap2)]),
@@ -571,6 +527,59 @@ random_map(NumVBuckets, NumCopies, NumNodes) when is_integer(NumNodes) ->
 random_map(NumVBuckets, NumCopies, Nodes) when is_list(Nodes) ->
     [random_chain(NumCopies, Nodes) | random_map(NumVBuckets-1, NumCopies,
                                                  Nodes)].
+
+find_matching_past_maps(Nodes, Map, Options, History) ->
+    Topology = proplists:get_value(replication_topology, Options, chain),
+    Options1 = lists:sort(lists:keydelete(maps_history, 1, Options)),
+    NodesSet = sets:from_list(Nodes),
+    find_matching_past_maps(Topology, NodesSet, Map, Options1, History).
+
+find_matching_past_maps(chain, NodesSet, Map, Options, History) ->
+    lists:flatmap(fun ({PastMap, NonHistoryOptions0}) ->
+                          NonHistoryOptions = lists:sort(NonHistoryOptions0),
+                          case NonHistoryOptions =:= Options of
+                              true ->
+                                  matching_renamings(NodesSet, Map, PastMap);
+                              false ->
+                                  []
+                          end
+                  end, History);
+find_matching_past_maps(star, NodesSet, Map, Options, History) ->
+    NumReplicas = length(hd(Map)) - 1,
+    Tags = proplists:get_value(tags, Options),
+
+    lists:flatmap(fun ({PastMap, NonHistoryOptions0}) ->
+                          NonHistoryOptions = lists:sort(NonHistoryOptions0),
+                          PastTags = proplists:get_value(tags, NonHistoryOptions),
+
+                          Compatible =
+                              is_compatible_past_star_map(NonHistoryOptions, Options, NumReplicas),
+                          case Compatible of
+                              true ->
+                                  matching_renamings_with_tags(NodesSet, {Map, Tags},
+                                                               {PastMap, PastTags});
+                              false ->
+                                  []
+                          end
+                  end, History).
+
+score_maps(CurrentMap, Options, Maps) ->
+    Topology = proplists:get_value(replication_topology, Options, chain),
+    do_score_maps(Topology, CurrentMap, Maps).
+
+do_score_maps(chain, CurrentMap, Maps) ->
+    [{M, vbucket_movements(CurrentMap, M)} || M <- Maps];
+do_score_maps(star, CurrentMap, Maps) ->
+    [{M, vbucket_movements_star(CurrentMap, M)} || M <- Maps].
+
+best_map(Options, Maps) ->
+    Topology = proplists:get_value(replication_topology, Options, chain),
+    do_best_map(Topology, Maps).
+
+do_best_map(chain, Maps) ->
+    misc:min_by(fun map_scores_less/2, Maps);
+do_best_map(star, Maps) ->
+    misc:keymin(2, Maps).
 
 
 %%
