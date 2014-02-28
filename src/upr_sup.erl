@@ -23,7 +23,7 @@
 
 -export([start_link/1, init/1]).
 
--export([get_actual_replications/1, set_desired_replications/2]).
+-export([get_actual_replications/1, set_desired_replications/2, nuke/1]).
 
 start_link(Bucket) ->
     supervisor:start_link({local, server_name(Bucket)}, ?MODULE, []).
@@ -92,3 +92,11 @@ kill_replicator(Bucket, ProducerNode) ->
     ?log_info("Going to stop UPR replication from ~p for bucket ~p", [ProducerNode, Bucket]),
     _ = supervisor:terminate_child(server_name(Bucket), ProducerNode),
     ok.
+
+nuke(Bucket) ->
+    try supervisor:which_children(server_name(Bucket)) of
+        RawKids ->
+            misc:terminate_and_wait(nuke, [Child || {_, Child, _, _} <- RawKids])
+    catch exit:{noproc, _} ->
+            not_running
+    end.

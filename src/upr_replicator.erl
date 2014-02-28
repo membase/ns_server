@@ -33,8 +33,9 @@
 
 -record(state, {producer_conn :: pid(),
                 consumer_conn :: pid(),
-                connection_name,
-                bucket}).
+                connection_name :: nonempty_string(),
+                producer_node :: node(),
+                bucket :: bucket_name()}).
 
 -define(VBUCKET_POLL_INTERVAL, 100).
 
@@ -52,6 +53,7 @@ init({ProducerNode, Bucket}) ->
             producer_conn = ProducerConn,
             consumer_conn = ConsumerConn,
             connection_name = ConnName,
+            producer_node = ProducerNode,
             bucket = Bucket
            }}.
 
@@ -73,8 +75,30 @@ handle_cast(Msg, State) ->
     {noreply, State}.
 
 terminate(Reason, #state{producer_conn = Producer,
-                         consumer_conn = Consumer}) ->
-    misc:terminate_and_wait(Reason, [Producer, Consumer]).
+                         consumer_conn = Consumer,
+                         connection_name = ConnName,
+                         producer_node = ProdNode,
+                         bucket = Bucket}) ->
+    misc:terminate_and_wait(Reason, [Producer, Consumer]),
+    case Reason of
+        normal ->
+            ok;
+        shutdown ->
+            ok;
+        _ ->
+            RV =
+                (catch
+                     misc:parallel_map(
+                       fun ({Type, Node}) ->
+                               upr_proxy:nuke_connection(Type, ConnName, Node, Bucket)
+                       end,
+                       [{consumer, node()}, {producer, ProdNode}],
+                       5000)),
+
+            ?log_info("Terminating with reason ~p. Nuked connetion ~p with result ~p.",
+                      [Reason, ConnName, RV])
+    end,
+    ok.
 
 handle_info({'EXIT', _Pid, Reason}, State) ->
     {stop, Reason, State};

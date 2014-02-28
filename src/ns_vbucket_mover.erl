@@ -301,8 +301,10 @@ spawn_compaction_uninhibitor(Bucket, Node, MRef) ->
 
 %% @doc Spawn workers up to the per-node maximum.
 -spec spawn_workers(#state{}) -> {noreply, #state{}} | {stop, normal, #state{}}.
-spawn_workers(#state{bucket=Bucket, moves_scheduler_state = SubState,
-                     replication_type = ReplType} = State) ->
+spawn_workers(#state{bucket=Bucket,
+                     moves_scheduler_state = SubState,
+                     replication_type = ReplType,
+                     all_nodes_set = AllNodesSet} = State) ->
     {Actions, NewSubState} = vbucket_move_scheduler:choose_action(SubState),
     ?log_debug("Got actions: ~p", [Actions]),
     [case A of
@@ -336,6 +338,12 @@ spawn_workers(#state{bucket=Bucket, moves_scheduler_state = SubState,
                                   end,
     case Done of
         true ->
+            case cluster_compat_mode:is_cluster_30() of
+                true ->
+                    janitor_agent:finish_rebalance(Bucket, sets:to_list(AllNodesSet), self());
+                false ->
+                    ok
+            end,
             {stop, normal, NextState};
         _ ->
             {noreply, NextState}

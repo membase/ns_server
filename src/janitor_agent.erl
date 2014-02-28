@@ -39,7 +39,8 @@
                 last_applied_vbucket_states :: undefined | list(),
                 rebalance_only_vbucket_states :: list(),
                 flushseq,
-                rebalancer_type :: undefined | rebalancer | upgrader}).
+                rebalancer_type :: undefined | rebalancer | upgrader,
+                rebalance_status = finished :: in_process | finished}).
 
 -export([wait_for_bucket_creation/2, query_states/3,
          apply_new_bucket_config/5,
@@ -48,6 +49,7 @@
          delete_vbucket_copies/4,
          prepare_nodes_for_rebalance/3,
          prepare_nodes_for_upr_upgrade/3,
+         finish_rebalance/3,
          this_node_replicator_triples/1,
          bulk_set_vbucket_state/4,
          set_vbucket_state/7,
@@ -314,13 +316,7 @@ apply_new_bucket_config_star(Bucket, Rebalancer, Servers, Zombies, NewBucketConf
             Other
     end.
 
--spec delete_vbucket_copies(bucket_name(), pid(), [node()], vbucket_id()) ->
-                                   ok | {errors, [{node(), term()}]}.
-delete_vbucket_copies(Bucket, RebalancerPid, Nodes, VBucket) ->
-    {Replies, BadNodes} = gen_server:multi_call(Nodes, server_name(Bucket),
-                                                {if_rebalance, RebalancerPid,
-                                                 {delete_vbucket, VBucket}},
-                                                ?DELETE_VBUCKET_TIMEOUT),
+process_multicall_rv({Replies, BadNodes}) ->
     BadReplies = [R || {_, RV} = R <- Replies,
                        RV =/= ok],
     case BadReplies =/= [] orelse BadNodes =/= [] of
@@ -330,25 +326,28 @@ delete_vbucket_copies(Bucket, RebalancerPid, Nodes, VBucket) ->
             ok
     end.
 
+-spec delete_vbucket_copies(bucket_name(), pid(), [node()], vbucket_id()) ->
+                                   ok | {errors, [{node(), term()}]}.
+delete_vbucket_copies(Bucket, RebalancerPid, Nodes, VBucket) ->
+    process_multicall_rv(gen_server:multi_call(Nodes, server_name(Bucket),
+                                               {if_rebalance, RebalancerPid,
+                                                {delete_vbucket, VBucket}},
+                                               ?DELETE_VBUCKET_TIMEOUT)).
+
 prepare_nodes_for_rebalance(Bucket, Nodes, RebalancerPid) ->
-    prepare_nodes_for_rebalance_or_upr_upgrade(Bucket, Nodes, RebalancerPid, prepare_rebalance).
+    process_multicall_rv(gen_server:multi_call(Nodes, server_name(Bucket),
+                                               {prepare_rebalance, RebalancerPid},
+                                               ?PREPARE_REBALANCE_TIMEOUT)).
 
 prepare_nodes_for_upr_upgrade(Bucket, Nodes, RebalancerPid) ->
-    prepare_nodes_for_rebalance_or_upr_upgrade(Bucket, Nodes, RebalancerPid, prepare_upr_upgrade).
+    process_multicall_rv(gen_server:multi_call(Nodes, server_name(Bucket),
+                                               {prepare_upr_upgrade, RebalancerPid},
+                                               ?PREPARE_REBALANCE_TIMEOUT)).
 
-prepare_nodes_for_rebalance_or_upr_upgrade(Bucket, Nodes, RebalancerPid, Request) ->
-    {RVs, BadNodes} = gen_server:multi_call(Nodes, server_name(Bucket),
-                                            {Request, RebalancerPid},
-                                            ?PREPARE_REBALANCE_TIMEOUT),
-    BadReplies = [{N, no_reply} || N <- BadNodes]
-        ++ [Pair || {_N, Reply} = Pair <- RVs,
-                    Reply =/= ok],
-    case BadReplies of
-        [] ->
-            ok;
-        _ ->
-            {failed, BadReplies}
-    end.
+finish_rebalance(Bucket, Nodes, RebalancerPid) ->
+    process_multicall_rv(gen_server:multi_call(Nodes, server_name(Bucket),
+                                               {if_rebalance, RebalancerPid, finish_rebalance},
+                                               ?PREPARE_REBALANCE_TIMEOUT)).
 
 %% this is only called by
 %% failover_safeness_level:build_local_safeness_info_new.
@@ -553,6 +552,9 @@ handle_call({prepare_upr_upgrade, Pid}, _From, #state{rebalance_pid = undefined}
     {reply, ok, set_rebalance_mref(Pid, State#state{rebalancer_type = upgrader})};
 handle_call({prepare_upr_upgrade, _Pid}, _From, State) ->
     {reply, unable_to_start_upgrade, State};
+
+handle_call(finish_rebalance, _From, State) ->
+    {reply, ok, State#state{rebalance_status = finished}};
 
 handle_call({if_rebalance, RebalancerPid, Subcall},
             From,
@@ -815,7 +817,11 @@ handle_info(Info, State) ->
     ?log_debug("Ignoring unexpected message: ~p", [Info]),
     {noreply, State}.
 
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{rebalance_mref = undefined}) ->
+    ok;
+terminate(_Reason, #state{bucket_name = Bucket}) ->
+    ?log_info("Janitor agent crashed during rebalance. Nuke all UPR connections"),
+    upr_sup:nuke(Bucket),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -837,6 +843,15 @@ set_rebalance_mref(Pid, State0) ->
         undefined ->
             ok;
         OldMRef ->
+            case cluster_compat_mode:is_cluster_30() andalso
+                State0#state.rebalance_status =:= in_process andalso
+                State0#state.rebalancer_type =:= rebalancer of
+                true ->
+                    %% something went wrong. nuke replicator just in case
+                    (catch upr_sup:nuke(State0#state.bucket_name));
+                false ->
+                    ok
+            end,
             erlang:demonitor(OldMRef, [flush])
     end,
     [begin
@@ -850,9 +865,11 @@ set_rebalance_mref(Pid, State0) ->
                          rebalance_subprocesses = []},
     case Pid of
         undefined ->
-            State#state{rebalance_mref = undefined};
+            State#state{rebalance_mref = undefined,
+                        rebalance_status = finished};
         _ ->
-            State#state{rebalance_mref = erlang:monitor(process, Pid)}
+            State#state{rebalance_mref = erlang:monitor(process, Pid),
+                        rebalance_status = in_process}
     end.
 
 update_list_nth(Index, List, Value) ->
