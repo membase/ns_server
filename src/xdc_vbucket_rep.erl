@@ -323,12 +323,11 @@ handle_cast(checkpoint, #rep_state{status = VbStatus} = State) ->
                              ?xdcr_trace("checkpoint issued during replication for vb ~p, "
                                          "commit time: ~p", [Vb, CommitTime]),
                              {ok, NewState2};
-                         {checkpoint_commit_failure, ErrorMsg, NewState} ->
+                         {checkpoint_commit_failure, Reason, NewState} ->
                              %% update the failed ckpt stats to bucket replicator
                              Vb = (NewState#rep_state.status)#rep_vb_status.vb,
-                             ?xdcr_error("checkpoint commit failure during replication for vb ~p, "
-                                         "error: ~p", [Vb, ErrorMsg]),
-                             {stop, ErrorMsg, update_status_to_parent(NewState)}
+                             ?xdcr_error("checkpoint commit failure during replication for vb ~p", [Vb]),
+                             {stop, {failed_to_checkpoint, Reason}, update_status_to_parent(NewState)}
                      end;
                  _ ->
                      %% if get checkpoint when not in replicating state, continue to wait until we
@@ -789,12 +788,13 @@ start_replication(#rep_state{
                tgt_master_db = TgtMasterDb},
 
     Start = now(),
-    {Succ, ErrorMsg, NewState} = case TimeSinceLastCkpt > IntervalSecs of
-                                     true ->
-                                         xdc_vbucket_rep_ckpt:do_checkpoint(State1);
-                                     _ ->
-                                         {ok, <<"no checkpoint">>, State1}
-                                 end,
+    {Succ, CkptErrReason, NewState} =
+        case TimeSinceLastCkpt > IntervalSecs of
+            true ->
+                xdc_vbucket_rep_ckpt:do_checkpoint(State1);
+            _ ->
+                {not_needed, [], State1}
+        end,
 
     CommitTime = timer:now_diff(now(), Start) div 1000,
     TotalCommitTime = CommitTime + NewState#rep_state.status#rep_vb_status.commit_time,
@@ -816,14 +816,15 @@ start_replication(#rep_state{
 
     %% finally crash myself if fail to commit, after posting status to parent
     case Succ of
+        not_needed ->
+            ok;
         ok ->
             ?xdcr_trace("checkpoint at start of replication for vb ~p "
-                        "commit time: ~p ms, msg: ~p", [Vb, CommitTime, ErrorMsg]),
+                        "commit time: ~p ms", [Vb, CommitTime]),
             ok;
         checkpoint_commit_failure ->
-            ?xdcr_error("checkpoint commit failure at start of replication for vb ~p, "
-                        "error: ~p", [Vb, ErrorMsg]),
-            exit(ErrorMsg)
+            ?xdcr_error("checkpoint commit failure at start of replication for vb ~p", [Vb]),
+            exit({failed_to_commit_checkpoint, CkptErrReason})
     end,
 
 

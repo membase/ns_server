@@ -105,7 +105,7 @@ do_checkpoint(State) ->
             NewState = State#rep_state{committed_seq = NewSeq,
                                        last_checkpoint_time = erlang:now()},
             update_checkpoint_status_to_parent(NewState, true),
-            {ok, <<"">>, bump_status_counter(OldStatus, NewState, #rep_vb_status.num_checkpoints)};
+            {ok, [], bump_status_counter(OldStatus, NewState, #rep_vb_status.num_checkpoints)};
         Other ->
             case Other of
                 {mismatch, _} ->
@@ -114,9 +114,8 @@ do_checkpoint(State) ->
                     ?xdcr_error("Checkpointing failed unexpectedly (or could be network problem): ~p", [Other])
             end,
             update_checkpoint_status_to_parent(State, false),
-            %% TODO: see if we really need that error message here
             NewState = bump_status_counter(OldStatus, State, #rep_vb_status.num_failedckpts),
-            {checkpoint_commit_failure, <<"error">>, NewState}
+            {checkpoint_commit_failure, Other, NewState}
     end.
 
 %% update the checkpoint status to parent bucket replicator
