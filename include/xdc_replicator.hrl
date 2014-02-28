@@ -32,7 +32,6 @@
 %% ------------------------------------%%
 %%  constants and macros used by XDCR  %%
 %% ------------------------------------%%
--define(REP_ID_VERSION, 2).
 %% capture the last 10 entries of checkpoint history per bucket replicator
 -define(XDCR_CHECKPOINT_HISTORY, 10).
 %% capture the last 10 entries of error history per bucket replicator
@@ -200,19 +199,15 @@
           target,
           src_master_db,
           tgt_master_db,
-          history,
-          checkpoint_history,
+          local_vbuuid :: binary(),
+          remote_vbopaque :: term(),
           start_seq,
           committed_seq,
           current_through_seq,
           source_cur_seq,
           seqs_in_progress = [],
           highest_seq_done = ?LOWEST_SEQ,
-          source_log,
-          target_log,
           rep_starttime,
-          src_starttime,
-          tgt_starttime,
           timer = nil, %% checkpoint timer
 
           %% timer to account the working time, reset every time we publish stats to
@@ -221,7 +216,6 @@
           last_checkpoint_time,
           workers,
           changes_queue,
-          session_id,
 
           %% a boolean variable indicating that the rep has already
           %% behind db purger, at least one deletion has been lost.
