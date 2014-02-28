@@ -104,7 +104,7 @@ do_checkpoint(State) ->
             end,
             NewState = State#rep_state{committed_seq = NewSeq,
                                        last_checkpoint_time = erlang:now()},
-            update_checkpoint_status_to_parent(NewState, true, "ok"),
+            update_checkpoint_status_to_parent(NewState, true),
             {ok, <<"">>, bump_status_counter(OldStatus, NewState, #rep_vb_status.num_checkpoints)};
         Other ->
             case Other of
@@ -113,8 +113,7 @@ do_checkpoint(State) ->
                 _ ->
                     ?xdcr_error("Checkpointing failed unexpectedly (or could be network problem): ~p", [Other])
             end,
-            %% TODO: see if we need more elaborate error reporting. Or if we can drop error message here
-            update_checkpoint_status_to_parent(State, false, "not ok"),
+            update_checkpoint_status_to_parent(State, false),
             %% TODO: see if we really need that error message here
             NewState = bump_status_counter(OldStatus, State, #rep_vb_status.num_failedckpts),
             {checkpoint_commit_failure, <<"error">>, NewState}
@@ -124,22 +123,21 @@ do_checkpoint(State) ->
 update_checkpoint_status_to_parent(#rep_state{
                                       rep_details = RepDetails,
                                       parent = Parent,
-                                      status = RepStatus}, Succ, Error) ->
+                                      status = RepStatus}, Succ) ->
 
     VBucket = RepStatus#rep_vb_status.vb,
     RawTime = now(),
     LocalTime = calendar:now_to_local_time(RawTime),
 
     ?xdcr_debug("replicator (vb: ~p, source: ~p, dest: ~p) reports checkpoint "
-                "status: {succ: ~p, msg: ~p} to parent: ~p",
-                [VBucket, RepDetails#rep.source, RepDetails#rep.target, Succ, Error, Parent]),
+                "status: {succ: ~p} to parent: ~p",
+                [VBucket, RepDetails#rep.source, RepDetails#rep.target, Succ, Parent]),
 
     %% post to parent bucket replicator
     Parent ! {set_checkpoint_status, #rep_checkpoint_status{ts = RawTime,
                                                             time = LocalTime,
                                                             vb = VBucket,
-                                                            succ = Succ,
-                                                            error = Error}}.
+                                                            succ = Succ}}.
 
 send_post(Method, RemoteVBOpaque, RemoteCommitOpaque, HttpDB) ->
     {BaseURL, RemoteBucketName, _, VBStr} = xdc_rep_utils:split_bucket_name_out_of_target_url(HttpDB#httpdb.url),

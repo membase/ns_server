@@ -147,8 +147,7 @@
           ts,
           time,   % human readable local time
           vb,     % vbucket id
-          succ,   % true if a succesful checkpoint, false otherwise
-          error   % error msg
+          succ    % true if a succesful checkpoint, false otherwise
  }).
 
 %% batch of documents usd by vb replicator worker process
