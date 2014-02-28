@@ -100,6 +100,20 @@ do_notify_vbucket_update(BucketName, VBucket, Body) ->
                 %% Somehow the file we updated can't be found. What?
                 ?EINVAL
         end,
+
+    FinalResponseStatus =
+        case ResponseStatus =:= ?SUCCESS andalso (VBStateUpdated band 1) =:= 1 of
+            true ->
+                case xdc_vbucket_rep_ckpt:maybe_create_local_vbuuid(DbName) of
+                    already -> ResponseStatus;
+                    created ->
+                        ?log_debug("Added _local/vbuuid document into vb: ~B. Nacking mccouch update.", [VBucket]),
+                        ?ETMPFAIL
+                end;
+            _ ->
+                ResponseStatus
+        end,
+
     if
         (VBStateUpdated band 1) =:= 1 ->
             VBStateAtom = vbucket_state_to_atom(VBState),
@@ -114,7 +128,7 @@ do_notify_vbucket_update(BucketName, VBucket, Body) ->
             ok
     end,
 
-    ResponseStatus.
+    FinalResponseStatus.
 
 -spec vbucket_state_to_atom(int_vb_state()) -> atom().
 vbucket_state_to_atom(?VB_STATE_ACTIVE) ->

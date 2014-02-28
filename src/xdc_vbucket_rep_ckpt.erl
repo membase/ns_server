@@ -19,6 +19,8 @@
 %% public functions
 -export([start_timer/1, cancel_timer/1]).
 -export([do_checkpoint/1]).
+-export([maybe_create_local_vbuuid/1]).
+-export([get_local_vbuuid/2]).
 
 -include("xdc_replicator.hrl").
 
@@ -255,3 +257,42 @@ update_checkpoint_status_to_parent(#rep_state{
                                                             vb = VBucket,
                                                             succ = Succ,
                                                             error = Error}}.
+
+maybe_create_local_vbuuid(DBName) ->
+    {ok, DB} = couch_db:open_int(DBName, []),
+    try
+        DocId = <<"_local/vbuuid">>,
+        case couch_db:open_doc_int(DB, DocId, []) of
+            {ok, _} -> already;
+            {not_found, missing} ->
+                ok = misc:executing_on_new_process(
+                       fun () ->
+                               create_local_vbuuid(DBName, DB#db.filepath, DocId)
+                       end),
+                created
+        end
+    after
+        couch_db:close(DB)
+    end.
+
+get_local_vbuuid(BucketName, Vb) ->
+    misc:executing_on_new_process(
+      fun () ->
+              DB = capi_utils:must_open_vbucket(BucketName, Vb),
+              {ok, Doc} = couch_db:open_doc_int(DB, <<"_local/vbuuid">>, []),
+              Doc#doc.body
+      end).
+
+create_local_vbuuid(DBName, Filepath0, DocId) ->
+    Filepath = strip_file_num(Filepath0),
+    {ok, DBPid} = couch_db:start_link(DBName, Filepath, []),
+    {ok, DB} = couch_db:open_ref_counted(DBPid, self()),
+    ok = couch_db:update_doc(DB, #doc{id = DocId,
+                                      body = couch_uuids:random()},
+                             [full_commit]),
+    couch_util:shutdown_sync(DBPid),
+    ok.
+
+strip_file_num(FilePath) ->
+    Tokens = string:tokens(FilePath, "."),
+    string:join(lists:sublist(Tokens, length(Tokens) - 1), ".").
