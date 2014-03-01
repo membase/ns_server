@@ -23,6 +23,12 @@
 -export([maybe_create_local_vbuuid/1]).
 -export([get_local_vbuuid/2]).
 
+%% exported for diagnostics and testing. It's only safe to use this
+%% when ep-engine is either fully calm or has paused persistence. Also
+%% compaction must not be running. Also ep-engine must be first to
+%% update vbucket and not compaction.
+-export([maybe_create_local_vbuuid_ext/2]).
+
 -include("xdc_replicator.hrl").
 
 start_timer(#rep_state{rep_details=#rep{options=Options}} = State) ->
@@ -294,10 +300,17 @@ do_parse_validate_checkpoint_doc(Rep, Vb, Body0, TargetHttpDB) ->
     end.
 
 maybe_create_local_vbuuid(DBName) ->
+    maybe_create_local_vbuuid_ext(DBName, false).
+
+maybe_create_local_vbuuid_ext(DBName, Force) ->
     {ok, DB} = couch_db:open_int(DBName, []),
     try
         DocId = <<"_local/vbuuid">>,
-        case couch_db:open_doc_int(DB, DocId, []) of
+        RV = case Force of
+                 true -> {not_found, missing};
+                 _ -> couch_db:open_doc_int(DB, DocId, [])
+             end,
+        case RV of
             {ok, _} -> already;
             {not_found, missing} ->
                 ok = misc:executing_on_new_process(
