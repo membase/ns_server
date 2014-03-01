@@ -27,3 +27,6 @@ eval_string(String) ->
 %% different erlang versions
 eval_string_multi(String, Nodes, Timeout) ->
     rpc:call(Nodes, ns_server_testrunner_api, eval_string, String, Timeout).
+
+grab_all_xdcr_checkpoints(BucketName, Timeout) ->
+    {json, {struct, capi_utils:capture_local_master_docs(BucketName, Timeout)}}.
