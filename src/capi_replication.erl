@@ -223,12 +223,22 @@ extract_ck_params(Req) ->
     {Obj} = couch_httpd:json_body_obj(Req),
     Bucket = proplists:get_value(<<"bucket">>, Obj),
     VB = proplists:get_value(<<"vb">>, Obj),
-    case Bucket =:= undefined orelse VB =:= undefined of
+    BucketUUID = proplists:get_value(<<"bucketUUID">>, Obj),
+    case (Bucket =:= undefined
+          orelse VB =:= undefined
+          orelse BucketUUID =:= undefined) of
         true ->
             erlang:throw(not_found);
         _ -> true
     end,
-    _ = capi_frontend:verify_bucket_auth(Req, Bucket),
+    BucketConfig = capi_frontend:verify_bucket_auth(Req, Bucket),
+
+    case proplists:get_value(uuid, BucketConfig) =:= BucketUUID of
+        true ->
+            ok;
+        false ->
+            erlang:throw({not_found, uuid_mismatch})
+    end,
 
     case couch_db:open_int(capi_utils:build_dbname(Bucket, VB), []) of
         {ok, DB} -> couch_db:close(DB);

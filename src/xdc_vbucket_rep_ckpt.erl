@@ -145,11 +145,12 @@ update_checkpoint_status_to_parent(#rep_state{
                                                             succ = Succ}}.
 
 send_post(Method, RemoteVBOpaque, RemoteCommitOpaque, HttpDB) ->
-    {BaseURL, RemoteBucketName, _, VBStr} = xdc_rep_utils:split_bucket_name_out_of_target_url(HttpDB#httpdb.url),
+    {BaseURL, RemoteBucketName, BucketUUID, VBStr} = xdc_rep_utils:split_bucket_name_out_of_target_url(HttpDB#httpdb.url),
     URL = BaseURL ++ Method,
     Headers = [{"Content-Type", "application/json"}],
     BodyBase = [{<<"vb">>, list_to_integer(VBStr)},
-                {<<"bucket">>, list_to_binary(RemoteBucketName)}],
+                {<<"bucket">>, list_to_binary(RemoteBucketName)},
+                {<<"bucketUUID">>, list_to_binary(BucketUUID)}],
     BodyAdd1 = case RemoteVBOpaque of
                    undefined -> [];
                    _ ->
