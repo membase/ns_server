@@ -998,7 +998,7 @@ membase_stats_description(BucketId) ->
                          {desc,<<"Number of unique items in this bucket - only active items, not replica (measured from curr_items)">>}]},
                 {struct,[{title,<<"temp OOM per sec.">>},
                          {name,<<"ep_tmp_oom_errors">>},
-                         {desc,<<"Number of back-offs sent per second to drivers due to \"out of memory\" situations from this bucket (measured from ep_tmp_oom_errors)">>}]},
+                         {desc,<<"Number of back-offs sent per second to client SDKs due to \"out of memory\" situations from this bucket (measured from ep_tmp_oom_errors)">>}]},
                 {struct, [{isBytes,true},
                           {title, <<"low water mark">>},
                           {name, <<"ep_mem_low_wat">>},
@@ -1423,7 +1423,7 @@ server_resources_stats_description() ->
                 {maxY,100}]},
        {struct,[{name,<<"minor_faults">>},
                 {title,<<"Minor page faults">>},
-                {desc,<<"Number of minor page faults experienced by the server (may not be availalbe on all platforms)">>}]},
+                {desc,<<"Number of minor page faults experienced by the server (may not be available on all platforms)">>}]},
        {struct,[{name,<<"major_faults">>},
                 {title,<<"Major page faults">>},
                 {desc,<<"Number of major page faults experienced by the server (may not be available on all platforms)">>}]},
@@ -1432,8 +1432,8 @@ server_resources_stats_description() ->
                 {desc,<<"Total number of page faults experienced by the server">>}]},
        {struct,[{name,<<"curr_connections">>},
                 {title,<<"connections">>},
-                {desc,<<"Number of connections to this server "
-                        "including connections from external drivers, proxies, "
+                {desc,<<"Number of connections to this server including"
+                        "connections from external client SDKs, proxies, "
                         "TAP requests and internal statistic gathering "
                         "(measured from curr_connections)">>}]},
        {struct,[{name,<<"rest_requests">>},
@@ -1444,7 +1444,7 @@ server_resources_stats_description() ->
                 {desc,<<"Number of streaming requests on port 8091 now idle">>}]},
        {struct,[{name,<<"hibernated_waked">>},
                 {title,<<"streaming wakeups/sec">>},
-                {desc,<<"Rate of streaming requests wakeups on port 8091">>}]}]}].
+                {desc,<<"Rate of streaming request wakeups on port 8091">>}]}]}].
 
 serve_stats_directory(_PoolId, BucketId, Req) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),
