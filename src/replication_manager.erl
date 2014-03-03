@@ -33,7 +33,8 @@
          set_incoming_replication_map/2,
          change_vbucket_replication/3,
          remove_undesired_replications/2,
-         set_replication_type/2]).
+         set_replication_type/2,
+         upr_takeover/3]).
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
@@ -77,6 +78,9 @@ remove_undesired_replications(Bucket, DesiredReps) ->
 -spec change_vbucket_replication(bucket_name(), vbucket_id(), node() | undefined) -> ok.
 change_vbucket_replication(Bucket, VBucket, ReplicateFrom) ->
     gen_server:call(server_name(Bucket), {change_vbucket_replication, VBucket, ReplicateFrom}, infinity).
+
+upr_takeover(Bucket, OldMasterNode, VBucket) ->
+    gen_server:call(server_name(Bucket), {upr_takeover, OldMasterNode, VBucket}, infinity).
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
@@ -150,8 +154,20 @@ handle_call({set_replication_type, ReplType}, _From, State) ->
                 {both, P}
         end,
 
-    do_set_replication_type(Type, TapPartitions, State).
-
+    do_set_replication_type(Type, TapPartitions, State);
+handle_call({upr_takeover, OldMasterNode, VBucket}, _From,
+            #state{bucket_name = Bucket,
+                   desired_replications = CurrentReps} = State) ->
+    DesiredReps = lists:map(fun ({Node, VBuckets}) ->
+                                    case Node of
+                                        OldMasterNode ->
+                                            {Node, ordsets:del_element(VBucket, VBuckets)};
+                                        _ ->
+                                            {Node, VBuckets}
+                                    end
+                            end, CurrentReps),
+    {reply, upr_replicator:takeover(OldMasterNode, Bucket, VBucket),
+     State#state{desired_replications = DesiredReps}}.
 
 do_set_replication_type(Type, TapPartitions,
                         #state{repl_type = Type, remaining_tap_partitions = TapPartitions}

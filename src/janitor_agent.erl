@@ -690,7 +690,7 @@ handle_call({upr_takeover, OldMasterNode, VBucket}, From, #state{bucket_name = B
                State,
                From,
                fun () ->
-                       upr_replicator:takeover(OldMasterNode, Bucket, VBucket)
+                       replication_manager:upr_takeover(Bucket, OldMasterNode, VBucket)
                end),
     {noreply, State2};
 handle_call(initiate_indexing, From, #state{bucket_name = Bucket} = State) ->
