@@ -310,13 +310,13 @@ get_ext_as_int(Header, Body) ->
     Ext.
 
 add_partition(Partition, #state{partitions = CurrentPartitions} = State) ->
-    State#state{partitions = [Partition | CurrentPartitions]}.
+    State#state{partitions = ordsets:add_element(Partition, CurrentPartitions)}.
 
 del_partition(Partition, #state{partitions = CurrentPartitions} = State) ->
-    State#state{partitions = lists:delete(Partition, CurrentPartitions)}.
+    State#state{partitions = ordsets:del_element(Partition, CurrentPartitions)}.
 
 get_partitions(#state{partitions = CurrentPartitions}) ->
     CurrentPartitions.
 
 has_partition(Partition, #state{partitions = CurrentPartitions}) ->
-    lists:member(Partition, CurrentPartitions).
+    ordsets:is_element(Partition, CurrentPartitions).
