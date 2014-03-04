@@ -61,8 +61,6 @@ start_link(Rep, Vb, InitThrottle, WorkThrottle, Parent, RepMode) ->
                             init_throttle = InitThrottle,
                             work_throttle = WorkThrottle,
                             parent = Parent},
-    ?xdcr_debug("start vb replicator process (vb: ~p, mode: ~p, parent: ~p)",
-                [Vb, RepMode, Parent]);
     gen_server:start_link(?MODULE, InitState, []).
 
 
