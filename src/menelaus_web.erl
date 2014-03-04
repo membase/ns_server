@@ -1343,20 +1343,21 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
                 [{sslDirect, SslPort} | PortsKV0]
         end,
 
-    PortsKV = case is_xdcr_over_ssl_allowed() of
-                  true ->
-                      lists:foldl(
-                        fun ({ConfigKey, JKey}, Acc) ->
-                                case ns_config:search_node(WantENode, Config, ConfigKey) of
-                                    {value, Value} -> [{JKey, Value} | Acc];
-                                    false -> Acc
-                                end
-                        end, PortsKV1, [{ssl_proxy_downstream_port, sslProxy},
-                                        {ssl_capi_port, httpsCAPI},
-                                        {ssl_rest_port, httpsMgmt}]);
-                  false ->
-                      PortsKV1
-              end,
+    PortKeys = [{ssl_capi_port, httpsCAPI},
+                {ssl_rest_port, httpsMgmt}]
+        ++ case is_xdcr_over_ssl_allowed() of
+               true ->
+                   [{ssl_proxy_downstream_port, sslProxy}];
+               _ -> []
+           end,
+
+    PortsKV = lists:foldl(
+                fun ({ConfigKey, JKey}, Acc) ->
+                        case ns_config:search_node(WantENode, Config, ConfigKey) of
+                            {value, Value} -> [{JKey, Value} | Acc];
+                            false -> Acc
+                        end
+                end, PortsKV1, PortKeys),
 
     RV = [{hostname, list_to_binary(HostName)},
           {clusterCompatibility, ns_heart:effective_cluster_compat_version()},
