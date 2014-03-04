@@ -65,6 +65,23 @@ bump_status_counter(OldStatus, State, Element) ->
 do_checkpoint(#rep_state{current_through_seq=Seq, committed_seq=Seq} = State) ->
     ?xdcr_debug("not checkpoint needed for vb: ~p", [State#rep_state.status#rep_vb_status.vb]),
     {ok, <<"no checkpoint">>, State};
+do_checkpoint(#rep_state{remote_vbopaque = {old_node_marker, RemoteStartTime},
+                         target = TargetDB} = State) ->
+    ?xdcr_debug("Faking checkpoint into old node"),
+    %% note: we're not bumping any counters or reporting anything to
+    %% parent. I believe that's fine.
+    %%
+    %% We're faking actual checkpoint, but we must check remote
+    %% instance_start_time to detect possible remote crash
+    {ok, Props} = couch_api_wrap:get_db_info(TargetDB),
+    NowStartTime = proplists:get_value(<<"instance_start_time">>, Props),
+    case NowStartTime =/= undefined andalso NowStartTime =:= RemoteStartTime of
+        true ->
+            {ok, [], State};
+        _ ->
+            ?xdcr_debug("Detected remote ep-engine instance restart: ~s vs ~s", [RemoteStartTime, NowStartTime]),
+            {checkpoint_commit_failure, {start_time_mismatch, RemoteStartTime, NowStartTime}, State}
+    end;
 do_checkpoint(State) ->
     ?xdcr_info("checkpointing for vb: ~p at ~p", [State#rep_state.status#rep_vb_status.vb, State#rep_state.current_through_seq]),
     #rep_vb_status{vb = Vb,
@@ -219,7 +236,15 @@ perform_pre_replicate(RemoteCommitOpaque, HttpDB) ->
             {mismatch, extract_vbopaque(JSON)};
         {error, 404, _, _} ->
             ?xdcr_debug("_pre_replicate returned 404. Assuming older node"),
-            {mismatch, 0};
+            case couch_api_wrap:get_db_info(HttpDB) of
+                {ok, Props} ->
+                    {mismatch, {old_node_marker, proplists:get_value(<<"instance_start_time">>, Props)}};
+                Error ->
+                    ?xdcr_error("Failed to get dbinfo of remote node (~s): ~p",
+                                [misc:sanitize_url(HttpDB#httpdb.url),
+                                 Error]),
+                    erlang:error({pre_replicate_failed, {get_db_info_failed, Error}})
+            end;
         {error, StatusCode, _, Body} ->
             ?xdcr_error("_pre_replicate failed with unexpected status: ~B: ~s", [StatusCode, Body]),
             erlang:error({pre_replicate_failed, StatusCode})
