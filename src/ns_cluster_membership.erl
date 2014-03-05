@@ -33,7 +33,8 @@
          is_stop_rebalance_safe/0,
          get_rebalance_status/0,
          is_balanced/0,
-         get_recovery_type/2
+         get_recovery_type/2,
+         update_recovery_type/2
         ]).
 
 active_nodes() ->
@@ -115,7 +116,50 @@ failover(Node) ->
     ns_orchestrator:failover(Node).
 
 re_add_node(Node) ->
-    ns_config:set({node, Node, membership}, inactiveAdded).
+    KVList0 = [{{node, Node, membership}, inactiveAdded}],
+
+    KVList = case cluster_compat_mode:is_cluster_30() of
+                 true ->
+                     [{{node, Node, recovery_type}, full} | KVList0];
+                 false ->
+                     KVList0
+             end,
+
+    ns_config:set(KVList).
 
 get_recovery_type(Config, Node) ->
     ns_config:search(Config, {node, Node, recovery_type}, none).
+
+-spec update_recovery_type(node(), delta | full) -> ok | bad_node | conflict.
+update_recovery_type(Node, NewType) ->
+    RV = ns_config:run_txn(
+           fun (Config, Set) ->
+                   Membership = ns_config:search(Config, {node, Node, membership}),
+                   CurrentType = get_recovery_type(Config, Node),
+
+                   case Membership =:= {value, inactiveAdded} andalso
+                       CurrentType =/= none of
+
+                       true ->
+                           case CurrentType =:= NewType of
+                               true ->
+                                   {abort, not_needed};
+                               false ->
+                                   {commit,
+                                    Set({node, Node, recovery_type}, NewType, Config)}
+                           end;
+                       false ->
+                           {abort, {error, bad_node}}
+                   end
+           end),
+
+    case RV of
+        {commit, _} ->
+            ok;
+        {abort, not_needed} ->
+            ok;
+        {abort, {error, Error}} ->
+            Error;
+        retry_needed ->
+            conflict
+    end.

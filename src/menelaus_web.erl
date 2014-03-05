@@ -383,6 +383,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun handle_re_add_node/1};
                          ["controller", "stopRebalance"] ->
                              {auth, fun handle_stop_rebalance/1};
+                         ["controller", "setRecoveryType"] ->
+                             {auth, fun handle_set_recovery_type/1};
                          ["controller", "setAutoCompaction"] ->
                              {auth, fun handle_set_autocompaction/1};
                          ["controller", "createReplication"] ->
@@ -1066,6 +1068,7 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
       {failOver, {struct, [{uri, <<"/controller/failOver?uuid=", UUID/binary>>}]}},
       {reAddNode, {struct, [{uri, <<"/controller/reAddNode?uuid=", UUID/binary>>}]}},
       {ejectNode, {struct, [{uri, <<"/controller/ejectNode?uuid=", UUID/binary>>}]}},
+      {setRecoveryType, {struct, [{uri, <<"/controller/setRecoveryType?uuid=", UUID/binary>>}]}},
       {setAutoCompaction, {struct, [
         {uri, <<"/controller/setAutoCompaction?uuid=", UUID/binary>>},
         {validateURI, <<"/controller/setAutoCompaction?just_validate=1">>}
@@ -3298,6 +3301,64 @@ serve_streaming_short_bucket_info(_PoolId, BucketName, Req) ->
               V = build_terse_bucket_info(BucketName),
               {just_write, {write, V}}
       end, Req, undefined).
+
+handle_set_recovery_type(Req) ->
+    case cluster_compat_mode:is_cluster_30() of
+        true ->
+            do_handle_set_recovery_type(Req);
+        false ->
+            menelaus_util:reply_404(Req)
+    end.
+
+decode_recovery_type("delta") ->
+    delta;
+decode_recovery_type("full") ->
+    full;
+decode_recovery_type(_) ->
+    undefined.
+
+do_handle_set_recovery_type(Req) ->
+    Params = Req:parse_post(),
+    NodeStr = proplists:get_value("otpNode", Params),
+
+    Type = decode_recovery_type(proplists:get_value("recoveryType", Params)),
+    Node = try
+               list_to_existing_atom(NodeStr)
+           catch
+               error:badarg ->
+                   undefined
+           end,
+
+    OtpNodeErrorMsg = <<"invalid node name or node can't be used for delta recovery">>,
+
+    Errors = lists:flatten(
+               [case Type of
+                    undefined ->
+                        [{recoveryType, <<"recovery type must be either 'delta' or 'full'">>}];
+                    _ ->
+                        []
+                end,
+
+                case Node of
+                    undefined ->
+                        [{otpNode, OtpNodeErrorMsg}];
+                    _ ->
+                        []
+                end]),
+
+    case Errors of
+        [] ->
+            case ns_cluster_membership:update_recovery_type(Node, Type) of
+                ok ->
+                    reply_json(Req, [], 200);
+                bad_node ->
+                    reply_json(Req, {struct, [{otpNode, OtpNodeErrorMsg}]}, 400);
+                conflict ->
+                    reply_json(Req, [], 409)
+            end;
+        _ ->
+            reply_json(Req, {struct, Errors}, 400)
+    end.
 
 -ifdef(EUNIT).
 
