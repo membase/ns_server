@@ -1058,7 +1058,11 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
 
     Controllers = {struct, [
       {addNode, {struct, [{uri, <<"/controller/addNode?uuid=", UUID/binary>>}]}},
-      {rebalance, {struct, [{uri, <<"/controller/rebalance?uuid=", UUID/binary>>}]}},
+      {rebalance, {struct, [{uri, <<"/controller/rebalance?uuid=", UUID/binary>>},
+                            {requireDeltaRecoveryURI,
+                             bin_concat_path(<<"/controller/rebalance">>,
+                                             [{"uuid", UUID},
+                                              {"requireDeltaRecovery", "true"}])}]}},
       {failOver, {struct, [{uri, <<"/controller/failOver?uuid=", UUID/binary>>}]}},
       {reAddNode, {struct, [{uri, <<"/controller/reAddNode?uuid=", UUID/binary>>}]}},
       {ejectNode, {struct, [{uri, <<"/controller/ejectNode?uuid=", UUID/binary>>}]}},
@@ -2555,7 +2559,9 @@ handle_rebalance(Req) ->
                                 catch error:badarg -> true end],
             case UnknownNodes of
                 [] ->
-                    do_handle_rebalance(Req, KnownNodesS, EjectedNodesS);
+                    RequireDeltaRecovery =
+                        proplists:get_value("requireDeltaRecovery", Req:parse_qs()) =:= "true",
+                    do_handle_rebalance(Req, KnownNodesS, EjectedNodesS, RequireDeltaRecovery);
                 _ ->
                     reply_json(Req,
                                {struct, [{unknownNodes, lists:map(fun list_to_binary/1,
@@ -2564,18 +2570,20 @@ handle_rebalance(Req) ->
             end
     end.
 
--spec do_handle_rebalance(any(), [string()], [string()]) -> any().
-do_handle_rebalance(Req, KnownNodesS, EjectedNodesS) ->
+-spec do_handle_rebalance(any(), [string()], [string()], boolean()) -> any().
+do_handle_rebalance(Req, KnownNodesS, EjectedNodesS, RequireDeltaRecovery) ->
     EjectedNodes = [list_to_existing_atom(N) || N <- EjectedNodesS],
     KnownNodes = [list_to_existing_atom(N) || N <- KnownNodesS],
     case ns_cluster_membership:start_rebalance(KnownNodes,
-                                               EjectedNodes) of
+                                               EjectedNodes, RequireDeltaRecovery) of
         already_balanced ->
             Req:respond({200, [], []});
         in_progress ->
             Req:respond({200, [], []});
         nodes_mismatch ->
             reply_json(Req, {struct, [{mismatch, 1}]}, 400);
+        delta_recovery_not_possible ->
+            reply_json(Req, {struct, [{deltaRecoveryNotPossible, 1}]}, 400);
         no_active_nodes_left ->
             Req:respond({400, [], []});
         in_recovery ->

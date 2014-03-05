@@ -206,9 +206,13 @@ parse_boolean(Value) ->
         0 -> false
     end.
 
+url_path_iolist(Path, Props) when is_binary(Path) ->
+    do_url_path_iolist(Path, Props);
 url_path_iolist(Segments, Props) ->
     Path = [[$/, mochiweb_util:quote_plus(S)] || S <- Segments],
+    do_url_path_iolist(Path, Props).
 
+do_url_path_iolist(Path, Props) ->
     case Props of
         [] ->
             Path;

@@ -27,7 +27,7 @@
 -export([failover/1,
          validate_autofailover/1,
          generate_initial_map/1,
-         start_link_rebalance/4,
+         start_link_rebalance/5,
          run_mover/7,
          unbalanced/3,
          map_options_changed/2,
@@ -286,21 +286,32 @@ do_wait_buckets_shutdown(KeepNodes) ->
 sanitize(Config) ->
     misc:rewrite_key_value_tuple(sasl_password, "*****", Config).
 
-start_link_rebalance(KeepNodes, EjectNodes, FailedNodes, DeltaNodes) ->
-    proc_lib:spawn_link(
-      fun () ->
-              master_activity_events:note_rebalance_start(
-                self(), KeepNodes, EjectNodes, FailedNodes, DeltaNodes),
-
+start_link_rebalance(KeepNodes, EjectNodes,
+                     FailedNodes, DeltaNodes, RequireDeltaRecovery) ->
+    proc_lib:start_link(
+      erlang, apply,
+      [fun () ->
               BucketConfigs = ns_bucket:get_buckets(),
               DeltaRecoveryBuckets =
                   build_delta_recovery_buckets(KeepNodes, DeltaNodes, BucketConfigs),
-              ok = apply_delta_recovery_buckets(DeltaRecoveryBuckets, DeltaNodes),
-              ns_cluster_membership:activate(KeepNodes),
 
-              rebalance(KeepNodes, EjectNodes, FailedNodes,
-                        BucketConfigs, DeltaRecoveryBuckets)
-      end).
+              case RequireDeltaRecovery =:= true andalso
+                  DeltaNodes =/= [] andalso DeltaRecoveryBuckets =:= [] of
+                  true ->
+                      proc_lib:init_ack({error, delta_recovery_not_possible});
+                  false ->
+                      proc_lib:init_ack({ok, self()}),
+
+                      master_activity_events:note_rebalance_start(
+                        self(), KeepNodes, EjectNodes, FailedNodes, DeltaNodes),
+
+                      ok = apply_delta_recovery_buckets(DeltaRecoveryBuckets, DeltaNodes),
+                      ns_cluster_membership:activate(KeepNodes),
+
+                      rebalance(KeepNodes, EjectNodes, FailedNodes,
+                                BucketConfigs, DeltaRecoveryBuckets)
+              end
+      end, []]).
 
 rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
           BucketConfigs, DeltaRecoveryBuckets) ->

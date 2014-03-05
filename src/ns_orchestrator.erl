@@ -48,7 +48,7 @@
          rebalance_progress/0,
          rebalance_progress_full/0,
          start_link/0,
-         start_rebalance/2,
+         start_rebalance/3,
          stop_rebalance/0,
          update_progress/1,
          is_rebalance_running/0,
@@ -217,12 +217,14 @@ ensure_janitor_run(BucketName) ->
               end
       end, infinity, 1000).
 
--spec start_rebalance([node()], [node()]) ->
+-spec start_rebalance([node()], [node()], boolean()) ->
                              ok | in_progress | already_balanced |
-                             nodes_mismatch | no_active_nodes_left | in_recovery.
-start_rebalance(KnownNodes, EjectNodes) ->
+                             nodes_mismatch | no_active_nodes_left |
+                             in_recovery | delta_recovery_not_possible.
+start_rebalance(KnownNodes, EjectNodes, RequireDeltaRecovery) ->
     wait_for_orchestrator(),
-    gen_fsm:sync_send_all_state_event(?SERVER, {maybe_start_rebalance, KnownNodes, EjectNodes}).
+    gen_fsm:sync_send_all_state_event(
+      ?SERVER, {maybe_start_rebalance, KnownNodes, EjectNodes, RequireDeltaRecovery}).
 
 
 -spec stop_rebalance() -> ok | not_rebalancing.
@@ -335,7 +337,13 @@ handle_sync_event({update_bucket, BucketType, BucketName, UpdatedProps}, _From, 
     end,
     {reply, Reply, StateName, State};
 
+%% this message is sent by pre-3.0 nodes
 handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes},
+                  From, StateName, State) ->
+    handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes, false},
+                      From, StateName, State);
+%% this one is sent by post-3.0 nodes
+handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes, RequireDeltaRecovery},
                   From, StateName, State) ->
     case {EjectedNodes -- KnownNodes,
           lists:sort(ns_node_disco:nodes_wanted()),
@@ -356,7 +364,7 @@ handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes},
                     StartEvent = {start_rebalance,
                                   KeepNodes,
                                   EjectedNodes -- FailedNodes,
-                                  FailedNodes, DeltaNodes},
+                                  FailedNodes, DeltaNodes, RequireDeltaRecovery},
                     ?MODULE:StateName(StartEvent, From, State)
             end;
         _ ->
@@ -608,23 +616,29 @@ idle({try_autofailover, Node}, From, State) ->
 idle(rebalance_progress, _From, State) ->
     {reply, not_running, idle, State};
 %% NOTE: this is not remotely called but is used by maybe_start_rebalance
-idle({start_rebalance, KeepNodes, EjectNodes, FailedNodes, DeltaNodes}, _From,
-     #idle_state{remaining_buckets = RemainingBuckets}) ->
+idle({start_rebalance, KeepNodes, EjectNodes,
+      FailedNodes, DeltaNodes, RequireDeltaRecovery}, _From,
+     #idle_state{remaining_buckets = RemainingBuckets} = State) ->
     ?user_log(?REBALANCE_STARTED,
               "Starting rebalance, KeepNodes = ~p, EjectNodes = ~p~n",
               [KeepNodes, EjectNodes]),
-    notify_janitor_finished(RemainingBuckets, rebalance_running),
-    ns_cluster:counter_inc(rebalance_start),
-    Pid = ns_rebalancer:start_link_rebalance(KeepNodes, EjectNodes,
-                                             FailedNodes, DeltaNodes),
-    ns_config:set([{rebalance_status, running},
-                   {rebalancer_pid, Pid}]),
-    {reply, ok, rebalancing,
-     #rebalancing_state{rebalancer=Pid,
-                        progress=dict:new(),
-                        keep_nodes=KeepNodes,
-                        eject_nodes=EjectNodes,
-                        failed_nodes=FailedNodes}};
+    case ns_rebalancer:start_link_rebalance(KeepNodes, EjectNodes,
+                                            FailedNodes, DeltaNodes, RequireDeltaRecovery) of
+        {ok, Pid} ->
+            notify_janitor_finished(RemainingBuckets, rebalance_running),
+            ns_cluster:counter_inc(rebalance_start),
+            ns_config:set([{rebalance_status, running},
+                           {rebalancer_pid, Pid}]),
+
+            {reply, ok, rebalancing,
+             #rebalancing_state{rebalancer=Pid,
+                                progress=dict:new(),
+                                keep_nodes=KeepNodes,
+                                eject_nodes=EjectNodes,
+                                failed_nodes=FailedNodes}};
+        {error, delta_recovery_not_possible} ->
+            {reply, delta_recovery_not_possible, idle, State}
+    end;
 idle({move_vbuckets, Bucket, Moves}, _From, #idle_state{remaining_buckets = RemainingBuckets}) ->
     notify_janitor_finished(RemainingBuckets, rebalance_running),
     Pid = spawn_link(
@@ -774,7 +788,8 @@ rebalancing({update_progress, Progress},
      State#rebalancing_state{progress=NewProgress}}.
 
 %% Synchronous rebalancing events
-rebalancing({start_rebalance, _KeepNodes, _EjectNodes, _FailedNodes, _DeltaNodes},
+rebalancing({start_rebalance, _KeepNodes, _EjectNodes,
+             _FailedNodes, _DeltaNodes, _RequireDeltaRecovery},
             _From, State) ->
     ?user_log(?REBALANCE_NOT_STARTED,
               "Not rebalancing because rebalance is already in progress.~n"),

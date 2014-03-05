@@ -27,7 +27,7 @@
          failover/1,
          re_add_node/1,
          system_joinable/0,
-         start_rebalance/2,
+         start_rebalance/3,
          stop_rebalance/0,
          stop_rebalance_if_safe/0,
          is_stop_rebalance_safe/0,
@@ -72,8 +72,8 @@ system_joinable() ->
 get_rebalance_status() ->
     ns_orchestrator:rebalance_progress().
 
-start_rebalance(KnownNodes, EjectedNodes) ->
-    ns_orchestrator:start_rebalance(KnownNodes, EjectedNodes).
+start_rebalance(KnownNodes, EjectedNodes, RequireDeltaRecovery) ->
+    ns_orchestrator:start_rebalance(KnownNodes, EjectedNodes, RequireDeltaRecovery).
 
 activate(Nodes) ->
     ns_config:set([{{node, Node, membership}, active} ||
