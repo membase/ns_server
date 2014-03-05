@@ -103,7 +103,7 @@ get_partitions(ProducerNode, Bucket) ->
 
 setup_replication(ProducerNode, Bucket, Partitions) ->
     gen_server:call(server_name(ProducerNode, Bucket),
-                    {setup_replication, Partitions}).
+                    {setup_replication, Partitions}, infinity).
 
 takeover(ProducerNode, Bucket, Partition) ->
     gen_server:call(server_name(ProducerNode, Bucket),
