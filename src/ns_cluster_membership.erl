@@ -32,7 +32,8 @@
          stop_rebalance_if_safe/0,
          is_stop_rebalance_safe/0,
          get_rebalance_status/0,
-         is_balanced/0
+         is_balanced/0,
+         get_recovery_type/2
         ]).
 
 active_nodes() ->
@@ -115,3 +116,6 @@ failover(Node) ->
 
 re_add_node(Node) ->
     ns_config:set({node, Node, membership}, inactiveAdded).
+
+get_recovery_type(Config, Node) ->
+    ns_config:search(Config, {node, Node, recovery_type}, none).

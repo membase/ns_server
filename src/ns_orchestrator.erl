@@ -341,21 +341,22 @@ handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes},
           lists:sort(ns_node_disco:nodes_wanted()),
           lists:sort(KnownNodes)} of
         {[], X, X} ->
+            Config = ns_config:get(),
+
             MaybeKeepNodes = KnownNodes -- EjectedNodes,
             FailedNodes =
-                [N || {N, MShip} <-
-                          ns_cluster_membership:get_nodes_cluster_membership(KnownNodes),
-                      MShip == inactiveFailed],
+                [N || N <- KnownNodes,
+                      ns_cluster_membership:get_cluster_membership(N, Config) =:= inactiveFailed],
             KeepNodes = MaybeKeepNodes -- FailedNodes,
+            DeltaNodes = ns_rebalancer:get_delta_recovery_nodes(Config, KeepNodes),
             case KeepNodes of
                 [] ->
                     {reply, no_active_nodes_left, StateName, State};
                 _ ->
-                    ns_cluster_membership:activate(KeepNodes),
                     StartEvent = {start_rebalance,
                                   KeepNodes,
                                   EjectedNodes -- FailedNodes,
-                                  FailedNodes},
+                                  FailedNodes, DeltaNodes},
                     ?MODULE:StateName(StartEvent, From, State)
             end;
         _ ->
@@ -607,18 +608,15 @@ idle({try_autofailover, Node}, From, State) ->
 idle(rebalance_progress, _From, State) ->
     {reply, not_running, idle, State};
 %% NOTE: this is not remotely called but is used by maybe_start_rebalance
-idle({start_rebalance, KeepNodes, EjectNodes, FailedNodes}, _From,
-            #idle_state{remaining_buckets = RemainingBuckets}) ->
+idle({start_rebalance, KeepNodes, EjectNodes, FailedNodes, DeltaNodes}, _From,
+     #idle_state{remaining_buckets = RemainingBuckets}) ->
     ?user_log(?REBALANCE_STARTED,
               "Starting rebalance, KeepNodes = ~p, EjectNodes = ~p~n",
               [KeepNodes, EjectNodes]),
     notify_janitor_finished(RemainingBuckets, rebalance_running),
     ns_cluster:counter_inc(rebalance_start),
-    Pid = spawn_link(
-            fun () ->
-                    master_activity_events:note_rebalance_start(self(), KeepNodes, EjectNodes, FailedNodes),
-                    ns_rebalancer:rebalance(KeepNodes, EjectNodes, FailedNodes)
-            end),
+    Pid = ns_rebalancer:start_link_rebalance(KeepNodes, EjectNodes,
+                                             FailedNodes, DeltaNodes),
     ns_config:set([{rebalance_status, running},
                    {rebalancer_pid, Pid}]),
     {reply, ok, rebalancing,
@@ -776,7 +774,7 @@ rebalancing({update_progress, Progress},
      State#rebalancing_state{progress=NewProgress}}.
 
 %% Synchronous rebalancing events
-rebalancing({start_rebalance, _KeepNodes, _EjectNodes, _FailedNodes},
+rebalancing({start_rebalance, _KeepNodes, _EjectNodes, _FailedNodes, _DeltaNodes},
             _From, State) ->
     ?user_log(?REBALANCE_NOT_STARTED,
               "Not rebalancing because rebalance is already in progress.~n"),

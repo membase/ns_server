@@ -344,6 +344,12 @@ shun(RemoteNode) ->
                                          lists:keystore(nodes, 1, G, {nodes, NewNodes})
                                  end || G <- Groups],
                            {server_groups, G2};
+                       ({{node, Node, recovery_type}, _State})
+                         when Node =:= RemoteNode ->
+                           {{node, Node, recovery_type}, none};
+                       ({{node, Node, failover_vbuckets}, _State})
+                         when Node =:= RemoteNode ->
+                           {{node, Node, failover_vbuckets}, []};
                        (Other) ->
                            Other
                    end, erlang:make_ref()),

@@ -76,6 +76,7 @@
          all_node_vbuckets/1,
          update_vbucket_map_history/2,
          past_vbucket_maps/0,
+         past_vbucket_maps/1,
          config_to_map_options/1]).
 
 
@@ -907,7 +908,10 @@ update_vbucket_map_history(Map, SanifiedOptions) ->
     ns_config:set(vbucket_map_history, History2).
 
 past_vbucket_maps() ->
-    case ns_config:search(vbucket_map_history) of
+    past_vbucket_maps('latest-config-marker').
+
+past_vbucket_maps(Config) ->
+    case ns_config:search(Config, vbucket_map_history) of
         {value, V} ->
             lists:map(
               fun ({Map, Options} = MapOptions) ->

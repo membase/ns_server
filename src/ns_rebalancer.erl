@@ -27,12 +27,13 @@
 -export([failover/1,
          validate_autofailover/1,
          generate_initial_map/1,
-         rebalance/3,
+         start_link_rebalance/4,
          run_mover/7,
          unbalanced/3,
          map_options_changed/2,
          eject_nodes/1,
-         maybe_cleanup_old_buckets/1]).
+         maybe_cleanup_old_buckets/1,
+         get_delta_recovery_nodes/2]).
 
 -export([wait_local_buckets_shutdown_complete/0]). % used via rpc:multicall
 
@@ -51,12 +52,33 @@
 %% @doc Fail a node. Doesn't eject the node from the cluster. Takes
 %% effect immediately.
 failover(Node) ->
-    lists:foreach(fun (Bucket) ->
-                          master_activity_events:note_bucket_failover_started(Bucket, Node),
-                          failover(Bucket, Node),
-                          master_activity_events:note_bucket_failover_ended(Bucket, Node)
-                  end,
-                  ns_bucket:get_bucket_names()).
+    FailoverVBuckets =
+        lists:foldl(
+          fun (Bucket, Acc) ->
+                  master_activity_events:note_bucket_failover_started(Bucket, Node),
+
+                  {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
+                  failover(Bucket, BucketConfig, Node),
+
+                  {map, Map} = lists:keyfind(map, 1, BucketConfig),
+                  VBuckets = node_vbuckets(Map, Node),
+
+                  master_activity_events:note_bucket_failover_ended(Bucket, Node),
+
+                  [{Bucket, VBuckets} | Acc]
+          end, [], ns_bucket:get_bucket_names()),
+
+    case cluster_compat_mode:is_cluster_30() of
+        true ->
+            ns_config:set({node, Node, failover_vbuckets}, FailoverVBuckets);
+        false ->
+            ok
+    end,
+
+    ok.
+
+get_failover_vbuckets(Config, Node) ->
+    ns_config:search(Config, {node, Node, failover_vbuckets}, []).
 
 validate_autofailover(Node) ->
     BucketPairs = ns_bucket:get_buckets(),
@@ -88,9 +110,8 @@ validate_autofailover_bucket(BucketConfig, Node) ->
             true
     end.
 
--spec failover(string(), atom()) -> ok | janitor_failed.
-failover(Bucket, Node) ->
-    {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
+-spec failover(string(), list(), atom()) -> ok | janitor_failed.
+failover(Bucket, BucketConfig, Node) ->
     Servers = proplists:get_value(servers, BucketConfig),
     case proplists:get_value(type, BucketConfig) of
         membase ->
@@ -241,7 +262,24 @@ do_wait_buckets_shutdown(KeepNodes) ->
 sanitize(Config) ->
     misc:rewrite_key_value_tuple(sasl_password, "*****", Config).
 
-rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
+start_link_rebalance(KeepNodes, EjectNodes, FailedNodes, DeltaNodes) ->
+    proc_lib:spawn_link(
+      fun () ->
+              master_activity_events:note_rebalance_start(
+                self(), KeepNodes, EjectNodes, FailedNodes, DeltaNodes),
+
+              BucketConfigs = ns_bucket:get_buckets(),
+              DeltaRecoveryBuckets =
+                  build_delta_recovery_buckets(KeepNodes, DeltaNodes, BucketConfigs),
+              ok = apply_delta_recovery_buckets(DeltaRecoveryBuckets, DeltaNodes),
+              ns_cluster_membership:activate(KeepNodes),
+
+              rebalance(KeepNodes, EjectNodes, FailedNodes,
+                        BucketConfigs, DeltaRecoveryBuckets)
+      end).
+
+rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
+          BucketConfigs, DeltaRecoveryBuckets) ->
     %% TODO: pull config reliably here as well
     ns_config:sync_announcements(),
     case ns_config_rep:synchronize_remote(KeepNodes) of
@@ -261,7 +299,6 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
 
     LiveNodes = KeepNodes ++ EjectNodesAll,
     AllNodes = LiveNodes ++ FailedNodesAll,
-    BucketConfigs = ns_bucket:get_buckets(),
     NumBuckets = length(BucketConfigs),
     ?rebalance_debug("BucketConfigs = ~p", [sanitize(BucketConfigs)]),
 
@@ -332,7 +369,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
                                   {NewMap, MapOptions} =
                                       rebalance(BucketName, NewConf,
                                                 KeepNodes, BucketCompletion,
-                                                NumBuckets),
+                                                NumBuckets, DeltaRecoveryBuckets),
                                   ns_bucket:set_map_opts(BucketName, MapOptions),
                                   master_activity_events:note_bucket_rebalance_ended(BucketName),
                                   verify_replication(BucketName, KeepNodes, NewMap)
@@ -358,9 +395,16 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll) ->
 %% @doc Rebalance the cluster. Operates on a single bucket. Will
 %% either return ok or exit with reason 'stopped' or whatever reason
 %% was given by whatever failed.
-rebalance(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets) ->
+rebalance(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets, DeltaRecoveryBuckets) ->
     Map = proplists:get_value(map, Config),
-    {FastForwardMap, MapOptions} = generate_vbucket_map(Map, KeepNodes, Config),
+    {FastForwardMap, MapOptions} =
+        case lists:keyfind(Bucket, 1, DeltaRecoveryBuckets) of
+            false ->
+                generate_vbucket_map(Map, KeepNodes, Config);
+            {_, _, V} ->
+                V
+        end,
+
     ns_bucket:update_vbucket_map_history(FastForwardMap, MapOptions),
     ?rebalance_debug("Target map options: ~p (hash: ~p)", [MapOptions, erlang:phash2(MapOptions)]),
     {run_mover(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets, Map, FastForwardMap),
@@ -615,3 +659,162 @@ maybe_cleanup_old_buckets(KeepNodes) ->
                     {buckets_cleanup_failed, AllFailedNodes}
             end
     end.
+
+node_vbuckets(Map, Node) ->
+    lists:reverse(
+      lists:foldl(
+        fun ({V, Chain}, Acc) ->
+                case lists:member(Node, Chain) of
+                    true ->
+                        [V | Acc];
+                    false ->
+                        Acc
+                end
+        end, [], misc:enumerate(Map, 0))).
+
+find_delta_recovery_map(Config, AllNodes, DeltaNodes, Bucket, BucketConfig) ->
+    {map, CurrentMap} = lists:keyfind(map, 1, BucketConfig),
+    CurrentOptions = generate_vbucket_map_options(AllNodes, BucketConfig),
+
+    History = ns_bucket:past_vbucket_maps(Config),
+    MatchingMaps = mb_map:find_matching_past_maps(AllNodes, CurrentMap,
+                                                  CurrentOptions, History),
+
+    find_delta_recovery_map_loop(MatchingMaps,
+                                 Config, Bucket, CurrentOptions, DeltaNodes).
+
+find_delta_recovery_map_loop([], _Config, _Bucket, _Options, _DeltaNodes) ->
+    false;
+find_delta_recovery_map_loop([TargetMap | Rest], Config, Bucket, Options, DeltaNodes) ->
+    TargetMapArray = array:from_list(TargetMap),
+
+    Usable =
+        lists:all(
+          fun (Node) ->
+                  AllFailoverVBuckets = get_failover_vbuckets(Config, Node),
+                  VBuckets = proplists:get_value(Bucket, AllFailoverVBuckets),
+
+                  VBuckets =/= undefined andalso
+                      lists:all(
+                        fun (V) ->
+                                Chain = array:get(V, TargetMapArray),
+                                lists:member(Node, Chain)
+                        end, VBuckets)
+          end, DeltaNodes),
+
+    case Usable of
+        true ->
+            {TargetMap, Options};
+        false ->
+            find_delta_recovery_map_loop(Rest, Config, Bucket, Options, DeltaNodes)
+    end.
+
+build_delta_recovery_buckets(AllNodes, DeltaNodes, AllBucketConfigs) ->
+    MembaseBucketConfigs = [{Bucket, Conf} || {Bucket, Conf} <- AllBucketConfigs,
+                                 proplists:get_value(type, Conf) =:= membase],
+
+    do_build_delta_recovery_buckets(AllNodes, DeltaNodes, MembaseBucketConfigs).
+
+do_build_delta_recovery_buckets(_AllNodes, [], _BucketConfigs) ->
+    [];
+do_build_delta_recovery_buckets(AllNodes, DeltaNodes, BucketConfigs) ->
+    Config = ns_config:get(),
+
+    Buckets =
+        lists:foldl(
+          fun ({Bucket, BucketConfig}, Acc) ->
+                  case find_delta_recovery_map(Config, AllNodes, DeltaNodes,
+                                               Bucket, BucketConfig) of
+                      {Map, Opts} ->
+                          ?rebalance_debug("Found delta recovery map for bucket ~s: ~p",
+                                           [Bucket, {Map, Opts}]),
+                          NewBucketConfig =
+                              build_transitional_bucket_config(BucketConfig,
+                                                               Map, DeltaNodes),
+
+                          [{Bucket, NewBucketConfig, {Map, Opts}} | Acc];
+                      false ->
+                          ?rebalance_debug("Couldn't delta recover bucket ~s", [Bucket]),
+                          Acc
+                  end
+          end, [], BucketConfigs),
+
+    Buckets.
+
+apply_delta_recovery_buckets([], _DeltaNodes) ->
+    ok;
+apply_delta_recovery_buckets(DeltaRecoveryBuckets, DeltaNodes) ->
+    lists:foreach(
+      fun ({Bucket, BucketConfig, _}) ->
+              ns_bucket:set_bucket_config(Bucket, BucketConfig)
+      end, DeltaRecoveryBuckets),
+
+    ns_config:sync_announcements(),
+    case ns_config_rep:synchronize_remote(DeltaNodes) of
+        ok ->
+            cool;
+        {error, SyncFailedNodes} ->
+            exit({delta_recovery_config_synchronization_failed, SyncFailedNodes})
+    end,
+
+    lists:foreach(
+      fun ({Bucket, _, _}) ->
+              ok = wait_for_bucket(Bucket, DeltaNodes)
+      end, DeltaRecoveryBuckets),
+
+    ns_config:set([{{node, N, recovery_type}, none} || N <- DeltaNodes] ++
+                      [{{node, N, failover_vbuckets}, undefined} || N <- DeltaNodes]).
+
+
+wait_for_bucket(Bucket, Nodes) ->
+    ?log_debug("Waiting until bucket ~p gets ready on nodes ~p", [Bucket, Nodes]),
+    do_wait_for_bucket(Bucket, Nodes).
+
+do_wait_for_bucket(Bucket, Nodes) ->
+    {ok, _States, Zombies} = janitor_agent:query_states(Bucket, Nodes, 60000),
+    case Zombies of
+        [] ->
+            ?log_debug("Bucket ~p became ready on nodes ~p", [Bucket, Nodes]),
+            ok;
+        _ ->
+            ?log_debug("Bucket ~p still not ready on nodes ~p", [Bucket, Zombies]),
+            do_wait_for_bucket(Bucket, Zombies)
+    end.
+
+build_transitional_bucket_config(BucketConfig, TargetMap, DeltaNodes) ->
+    {num_replicas, NumReplicas} = lists:keyfind(num_replicas, 1, BucketConfig),
+    {map, CurrentMap} = lists:keyfind(map, 1, BucketConfig),
+    {servers, Servers} = lists:keyfind(servers, 1, BucketConfig),
+    TransitionalMap =
+        lists:map(
+          fun ({CurrentChain, TargetChain}) ->
+                  case CurrentChain of
+                      [undefined | _] ->
+                          CurrentChain;
+                      _ ->
+                          ChainDeltaNodes = [N || N <- TargetChain,
+                                                  lists:member(N, DeltaNodes)],
+                          PreservedNodes = lists:takewhile(
+                                             fun (N) ->
+                                                     N =/= undefined andalso
+                                                         not lists:member(N, DeltaNodes)
+                                             end, CurrentChain),
+
+                          TransitionalChain0 = PreservedNodes ++ ChainDeltaNodes,
+                          N = length(TransitionalChain0),
+                          true = N =< NumReplicas + 1,
+
+                          TransitionalChain0 ++
+                              lists:duplicate(NumReplicas - N + 1, undefined)
+                  end
+          end, lists:zip(CurrentMap, TargetMap)),
+
+    NewServers = DeltaNodes ++ Servers,
+
+    misc:update_proplist(BucketConfig, [{map, TransitionalMap},
+                                        {servers, NewServers}]).
+
+get_delta_recovery_nodes(Config, Nodes) ->
+    [N || N <- Nodes,
+          ns_cluster_membership:get_cluster_membership(N, Config) =:= inactiveAdded
+              andalso ns_cluster_membership:get_recovery_type(Config, N) =:= delta].

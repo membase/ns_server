@@ -24,7 +24,7 @@
          note_vbucket_state_change/4,
          note_bucket_creation/3,
          note_bucket_deletion/1,
-         note_rebalance_start/4,
+         note_rebalance_start/5,
          note_set_ff_map/3,
          note_set_map/3,
          note_vbucket_mover/6,
@@ -82,8 +82,8 @@ note_bucket_creation(BucketName, BucketType, NewConfig) ->
 note_bucket_deletion(BucketName) ->
     submit_cast({delete_bucket, BucketName}).
 
-note_rebalance_start(Pid, KeepNodes, EjectNodes, FailedNodes) ->
-    submit_cast({rebalance_start, Pid, KeepNodes, EjectNodes, FailedNodes}),
+note_rebalance_start(Pid, KeepNodes, EjectNodes, FailedNodes, DeltaNodes) ->
+    submit_cast({rebalance_start, Pid, KeepNodes, EjectNodes, FailedNodes, DeltaNodes}),
     master_activity_events_pids_watcher:observe_fate_of(Pid, {rebalance_end}).
 
 note_vbucket_mover(Pid, BucketName, Node, VBucketId, OldChain, NewChain) ->
@@ -420,14 +420,15 @@ event_to_jsons({TS, SetMap, BucketName, Diff}) when SetMap =:= set_map orelse Se
                  {chainAfter, [node_to_host(N, Config) || N <- NewChain]}]
      end || {I, OldChain, NewChain} <- Diff];
 
-event_to_jsons({TS, rebalance_start, Pid, KeepNodes, EjectNodes, FailedNodes}) ->
+event_to_jsons({TS, rebalance_start, Pid, KeepNodes, EjectNodes, FailedNodes, DeltaNodes}) ->
     Config = ns_config:get(),
     [format_simple_plist_as_json([{type, rebalanceStart},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {pid, Pid}])
      ++ [{keepNodes, [node_to_host(N, Config) || N <- KeepNodes]},
          {ejectNodes, [node_to_host(N, Config) || N <- EjectNodes]},
-         {failedNodes, [node_to_host(N, Config) || N <- FailedNodes]}]];
+         {failedNodes, [node_to_host(N, Config) || N <- FailedNodes]},
+         {deltaNodes, [node_to_host(N, Config) || N <- DeltaNodes]}]];
 event_to_jsons({TS, rebalance_end, Pid, Reason}) ->
     [format_simple_plist_as_json([{type, rebalanceEnd},
                                   {ts, misc:time_to_epoch_float(TS)},
