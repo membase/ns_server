@@ -893,13 +893,20 @@ past_vbucket_maps() ->
     case ns_config:search(vbucket_map_history) of
         {value, V} ->
             lists:map(
-              fun ({Map, Options} = MapOptions) ->
-                      case proplists:get_value(replication_topology, Options) of
-                          undefined ->
-                              {Map, [{replication_topology, chain} | Options]};
-                          _ ->
-                              MapOptions
-                      end
+              fun ({Map, Options}) ->
+                      Options1 =
+                          lists:foldl(
+                            fun ({Key, Default}, Acc) ->
+                                    case lists:keyfind(Key, 1, Acc) of
+                                        false ->
+                                            [{Key, Default} | Acc];
+                                        _ ->
+                                            Acc
+                                    end
+                            end, Options, [{replication_topology, chain},
+                                           {tags, undefined}]),
+
+                      {Map, Options1}
               end, V);
         false -> []
     end.
