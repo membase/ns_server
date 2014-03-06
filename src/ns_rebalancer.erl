@@ -194,9 +194,33 @@ generate_vbucket_map_options(KeepNodes, BucketConfig, ReplicationTopology, Confi
 
 generate_vbucket_map(CurrentMap, KeepNodes, BucketConfig) ->
     Opts = generate_vbucket_map_options(KeepNodes, BucketConfig),
-    EffectiveOpts = [{maps_history, ns_bucket:past_vbucket_maps()} | Opts],
 
-    {mb_map:generate_map(CurrentMap, KeepNodes, EffectiveOpts), Opts}.
+    Map0 =
+        case lists:keyfind(deltaRecoveryMap, 1, BucketConfig) of
+            {deltaRecoveryMap, DRMapAndOpts} when DRMapAndOpts =/= undefined ->
+                {DRMap, _} = DRMapAndOpts,
+                MatchingMaps =
+                    mb_map:find_matching_past_maps(KeepNodes, CurrentMap, Opts,
+                                                   [DRMapAndOpts]),
+                case lists:member(DRMap, MatchingMaps) of
+                    true ->
+                        DRMap;
+                    false ->
+                        undefined
+                end;
+            _ ->
+                undefined
+        end,
+
+    Map = case Map0 of
+              undefined ->
+                  EffectiveOpts = [{maps_history, ns_bucket:past_vbucket_maps()} | Opts],
+                  mb_map:generate_map(CurrentMap, KeepNodes, EffectiveOpts);
+              _ ->
+                  Map0
+          end,
+
+    {Map, Opts}.
 
 generate_initial_map(BucketConfig) ->
     Chain = lists:duplicate(proplists:get_value(num_replicas, BucketConfig) + 1,
@@ -371,6 +395,8 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
                                                 KeepNodes, BucketCompletion,
                                                 NumBuckets, DeltaRecoveryBuckets),
                                   ns_bucket:set_map_opts(BucketName, MapOptions),
+                                  ns_bucket:update_bucket_props(BucketName,
+                                                                [{deltaRecoveryMap, undefined}]),
                                   master_activity_events:note_bucket_rebalance_ended(BucketName),
                                   verify_replication(BucketName, KeepNodes, NewMap)
                           end
@@ -730,7 +756,7 @@ do_build_delta_recovery_buckets(AllNodes, DeltaNodes, BucketConfigs) ->
                                            [Bucket, {Map, Opts}]),
                           NewBucketConfig =
                               build_transitional_bucket_config(BucketConfig,
-                                                               Map, DeltaNodes),
+                                                               Map, Opts, DeltaNodes),
 
                           [{Bucket, NewBucketConfig, {Map, Opts}} | Acc];
                       false ->
@@ -781,7 +807,7 @@ do_wait_for_bucket(Bucket, Nodes) ->
             do_wait_for_bucket(Bucket, Zombies)
     end.
 
-build_transitional_bucket_config(BucketConfig, TargetMap, DeltaNodes) ->
+build_transitional_bucket_config(BucketConfig, TargetMap, Options, DeltaNodes) ->
     {num_replicas, NumReplicas} = lists:keyfind(num_replicas, 1, BucketConfig),
     {map, CurrentMap} = lists:keyfind(map, 1, BucketConfig),
     {servers, Servers} = lists:keyfind(servers, 1, BucketConfig),
@@ -812,7 +838,8 @@ build_transitional_bucket_config(BucketConfig, TargetMap, DeltaNodes) ->
     NewServers = DeltaNodes ++ Servers,
 
     misc:update_proplist(BucketConfig, [{map, TransitionalMap},
-                                        {servers, NewServers}]).
+                                        {servers, NewServers},
+                                        {deltaRecoveryMap, {TargetMap, Options}}]).
 
 get_delta_recovery_nodes(Config, Nodes) ->
     [N || N <- Nodes,
