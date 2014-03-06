@@ -1246,6 +1246,8 @@ build_nodes_info_fun(IsAdmin, InfoLevel, LocalAddr) ->
                       ns_cluster_membership:get_cluster_membership(
                         WantENode, Config),
                       latin1)},
+                   {recoveryType,
+                    ns_cluster_membership:get_recovery_type(Config, WantENode)},
                    {status, Status},
                    {otpNode, list_to_binary(atom_to_list(WantENode))}
                    | KV],
