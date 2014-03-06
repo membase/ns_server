@@ -277,8 +277,9 @@ merge_replications(TapReps, UprReps, State) ->
     end.
 
 merge_partitions(TapP, UprP, #state{remaining_tap_partitions = TapPartitions}) ->
-    lists:sort(ordsets:intersection(TapP, TapPartitions) ++
-                   ordsets:subtract(UprP, TapPartitions)).
+    [] = ordsets:intersection(UprP, TapPartitions) ++
+        ordsets:subtract(TapP, TapPartitions),
+    lists:sort(TapP ++ UprP).
 
 call_replicators(TapFun, TapArgs, UprFun, UprArgs, State) ->
     call_replicators(TapFun, TapArgs, UprFun, UprArgs,
