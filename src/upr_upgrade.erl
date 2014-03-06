@@ -140,11 +140,14 @@ handle_info(upgrade_next_bucket, #state{buckets = [{BucketName, BucketConfig} | 
                                   workers = CleanedWorkers}}
     end;
 
-handle_info({'EXIT', Pid, Reason}, #state{workers = Workers} = State) ->
+handle_info({'EXIT', Pid, Reason}, #state{workers = Workers,
+                                          bucket = BucketName,
+                                          bucket_config = BucketConfig} = State) ->
     NewWorkers = lists:delete(Pid, Workers),
     NewState = State#state{workers = NewWorkers},
     case {Reason, NewWorkers} of
         {normal, []} ->
+            verify_upgrade(BucketName, BucketConfig),
             self() ! upgrade_next_bucket,
             {noreply, NewState};
         {normal, _} ->
@@ -204,6 +207,11 @@ upgrade_partition(Parent, Bucket, Partition, Master, Replicas, NumPartitions) ->
             ok = janitor_agent:wait_upr_data_move(Bucket, Parent, Master, Replicas, Partition)
     end,
     ok = update_replication_status(Parent, Partition, Master, NumPartitions).
+
+verify_upgrade(Bucket, BucketConfig) ->
+    Map = proplists:get_value(map, BucketConfig),
+    Nodes = ns_bucket:bucket_nodes(BucketConfig),
+    ns_rebalancer:verify_replication(Bucket, Nodes, Map).
 
 apply_bucket_config(Bucket, BucketConfig, Servers) ->
     {ok, _, Zombies} = janitor_agent:query_states(Bucket, Servers, 1),

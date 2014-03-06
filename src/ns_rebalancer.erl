@@ -33,7 +33,8 @@
          map_options_changed/2,
          eject_nodes/1,
          maybe_cleanup_old_buckets/1,
-         get_delta_recovery_nodes/2]).
+         get_delta_recovery_nodes/2,
+         verify_replication/3]).
 
 -export([wait_local_buckets_shutdown_complete/0]). % used via rpc:multicall
 
