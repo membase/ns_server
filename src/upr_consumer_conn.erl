@@ -80,7 +80,7 @@ handle_packet(response, ?UPR_ADD_STREAM, Packet,
 
     {Header, Body} = mc_binary:decode_packet(Packet),
     Opaque = Header#mc_header.opaque,
-    case upr_proxy:process_upr_response({ok, Header, Body}) of
+    case upr_commands:process_response({ok, Header, Body}) of
         ok ->
             NewOpaque = get_ext_as_int(Header, Body),
             NewTakeoverState = TakeoverState#takeover_state{state = replied, opaque = NewOpaque},
@@ -160,13 +160,14 @@ handle_call({setup_streams, Partitions}, From,
             {reply, ok, State};
         _ ->
             StartStreamRequests = lists:map(fun (Partition) ->
-                                                    upr_add_stream(Sock, Partition, add),
+                                                    upr_commands:add_stream(Sock, Partition,
+                                                                            Partition, add),
                                                     {Partition}
                                             end, StreamsToStart),
 
             StopStreamRequests = lists:map(fun (Partition) ->
                                                    Producer = upr_proxy:get_partner(ParentState),
-                                                   upr_proxy:upr_close_stream(Sock, Partition),
+                                                   upr_commands:close_stream(Sock, Partition, Partition),
                                                    gen_server:cast(Producer, {close_stream, Partition}),
                                                    {Partition}
                                            end, StreamsToStop),
@@ -190,7 +191,7 @@ handle_call({takeover, Partition}, From, #state{state=idle} = State, ParentState
         true ->
             {reply, {error, takeover_on_open_stream_is_not_allowed}, State};
         false ->
-            upr_add_stream(Sock, Partition, takeover),
+            upr_commands:add_stream(Sock, Partition, Partition, takeover),
             {noreply, State#state{state = #takeover_state{
                                              owner = From,
                                              state = requested,
@@ -288,21 +289,6 @@ maybe_close_stream(Pid, Partition) ->
 
 takeover(Pid, Partition) ->
     gen_server:call(Pid, {takeover, Partition}, infinity).
-
-%% UPR commands
-upr_add_stream(Sock, Partition, Type) ->
-    ?rebalance_debug("Add stream for partition ~p, type = ~p", [Partition, Type]),
-    Ext = case Type of
-              add ->
-                  0;
-              takeover ->
-                  1
-          end,
-
-    {ok, quiet} = mc_client_binary:cmd_quiet(?UPR_ADD_STREAM, Sock,
-                                             {#mc_header{opaque = Partition,
-                                                         vbucket = Partition},
-                                              #mc_entry{ext = <<Ext:32>>}}).
 
 get_ext_as_int(Header, Body) ->
     Len = Header#mc_header.extlen * 8,

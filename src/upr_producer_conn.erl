@@ -47,7 +47,7 @@ handle_call(Command, _From, State, _ParentState) ->
     {reply, refused, State}.
 
 handle_cast({close_stream, Partition}, State, ParentState) ->
-    upr_proxy:upr_close_stream(upr_proxy:get_socket(ParentState), Partition),
+    upr_commands:close_stream(upr_proxy:get_socket(ParentState), Partition, Partition),
     {noreply, State};
 
 handle_cast(Msg, State, _ParentState) ->
