@@ -2568,10 +2568,7 @@ handle_rebalance(Req) ->
                         proplists:get_value("requireDeltaRecovery", Req:parse_qs()) =:= "true",
                     do_handle_rebalance(Req, KnownNodesS, EjectedNodesS, RequireDeltaRecovery);
                 _ ->
-                    reply_json(Req,
-                               {struct, [{unknownNodes, lists:map(fun list_to_binary/1,
-                                                                  UnknownNodes)}]},
-                               400)
+                    reply_json(Req, {struct, [{mismatch, 1}]}, 400)
             end
     end.
 
