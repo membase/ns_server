@@ -77,14 +77,29 @@ submit_full_reset() ->
               gen_event:notify(bucket_info_cache_invalidations, '*')
       end).
 
+build_ports(Node, Config) ->
+    CapiPorts = lists:append([case ns_config:search_node(Node, Config, ConfigKey) of
+                                  {value, Value} -> [{JKey, Value}];
+                                  false -> []
+                              end || {ConfigKey, JKey} <- [{ssl_capi_port, httpsCAPI},
+                                                           {ssl_rest_port, httpsMgmt}]]),
+    PortsD = case ns_config:search_node_prop(Node, Config, memcached, ssl_port) of
+                 undefined ->
+                     CapiPorts;
+                 SslPort ->
+                     [{sslDirect, SslPort} | CapiPorts]
+             end,
+    [{proxy, ns_config:search_node_prop(Node, Config, moxi, port)},
+     {direct, ns_config:search_node_prop(Node, Config, memcached, port)}
+     | PortsD].
+
 do_compute_bucket_info(Bucket, Config) ->
     {ok, BucketConfig, BucketVC} = ns_bucket:get_bucket_with_vclock(Bucket, Config),
     {_, Servers} = lists:keyfind(servers, 1, BucketConfig),
 
     NIs = [{[{couchApiBase, capi_utils:capi_bucket_url_bin(Node, Bucket, ?LOCALHOST_MARKER_STRING)},
              {hostname, list_to_binary(menelaus_web:build_node_hostname(Config, Node, ?LOCALHOST_MARKER_STRING))},
-             {ports, {[{proxy, ns_config:search_node_prop(Node, Config, moxi, port)},
-                       {direct, ns_config:search_node_prop(Node, Config, memcached, port)}]}}]}
+             {ports, {build_ports(Node, Config)}}]}
            || Node <- Servers],
 
     {_, UUID} = lists:keyfind(uuid, 1, BucketConfig),
