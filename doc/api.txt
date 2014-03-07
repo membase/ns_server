@@ -403,7 +403,7 @@ default values.
 POST /pools/default/serverGroups
 name=<group name>
 
-// empty post causes certificat regeneration
+// empty post causes certificate regeneration
 POST /controller/regenerateCertificate
 =>
 (see GET /pools/default/certificate for output format)
