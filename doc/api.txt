@@ -408,6 +408,22 @@ POST /controller/regenerateCertificate
 =>
 (see GET /pools/default/certificate for output format)
 
+// Rebalance the cluster. knownNodes must match the set of nodes that are
+// currently part of the cluster. ejectedNodes specifies the nodes that are to
+// be ejected from the cluster.
+POST /controller/rebalance
+
+knownNodes=<comma separated list of nodes>&ejectedNodes=<comma separated list of nodes> =>
+
+   200 "" // rebalance started successfully
+ | 400 {"empty_known_nodes": 1} // knownNodes was either omitted or empty
+ | 400 {"mismatch": 1} // either knownNodes didn't match the set of nodes
+                       // known to the cluster or ejectedNodes listed an
+                       // unknown node
+ | 400 "No active nodes left" // all nodes were requested to be ejected
+ | 503 "Cluster is in recovery mode" // cluster is in recovery mode and cannot be
+                                     // rebalanced
+
 ====
 PUT
 ===
