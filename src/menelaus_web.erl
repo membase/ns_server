@@ -2587,7 +2587,7 @@ do_handle_rebalance(Req, KnownNodesS, EjectedNodesS, RequireDeltaRecovery) ->
         delta_recovery_not_possible ->
             reply_json(Req, {struct, [{deltaRecoveryNotPossible, 1}]}, 400);
         no_active_nodes_left ->
-            Req:respond({400, [], []});
+            Req:respond({400, [], "No active nodes left"});
         in_recovery ->
             Req:respond({503, [], "Cluster is in recovery mode."});
         ok ->
