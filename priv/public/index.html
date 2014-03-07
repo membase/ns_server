@@ -320,8 +320,13 @@
 
                 <!-- {% if (s.clusterMembership == 'inactiveAdded') { %} -->
                 <td colspan="2">
+                  <!-- {% if (s.recoveryType != 'none') { %} -->
+                  <a href="#" class="list_button btn_cancel eject_server when-roadmin-avoid-me"><span>Cancel</span></a>
+                  <a href="#" class="list_button js_recovery_mode_btn when-roadmin-avoid-me" data-hostname="{%= h(s.hostname) %}"><span>Recovery</span></a>
+                  <!-- {% } else { %} -->
                   <a href="#" class="list_button btn_cancel eject_server when-roadmin-avoid-me"><span>Cancel</span></a>
                   <span class="pending_add_message">Pending Add</span>
+                  <!-- {% } %} -->
                 </td>
                 <!-- {% } else if (s.pendingEject) { %} -->
                 <td class="actions" colspan="2">
@@ -2331,6 +2336,27 @@
   </div>
 </div>
 <!-- END add confirmation dialog -->
+
+<div class="dialog" id="failover_repair_dialog" title="Recovery Mode">
+  <div class="lbox">
+    <div class="content">
+      <form>
+        <div class="pas_20 add_back_failed_over_node">
+          <input id="label_rebalance_delta" type="radio" value="delta" name="recoveryType">
+          <label for="label_rebalance_delta">Delta Rebalance (Existing data on the node will be used to catch where it left off)</label>
+          <br>
+          <input id="label_rebalance_full" type="radio" value="full" name="recoveryType">
+          <label for="label_rebalance_full">Full Rebalance (Existing data will be removed)</label>
+        </div>
+        <div class="right save_cancel">
+          <button type="submit" class="save_button float_right">Save</button>
+            <a class="close casper_close_failover_confirmation_dialog cancel_button float_right">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- failover confirmation dialog -->
 <div class="dialog" id="failover_confirmation_dialog" title="Confirm Node Fail Over">
   <div class="lbox">

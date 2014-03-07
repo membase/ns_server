@@ -750,6 +750,10 @@ ul.tabs .badge_display .badge {display:block;}
 .failed_over_message {float:right; color:#9c9e9e; display:none;padding:1em}
 .failed_over .failed_over_message {display:block;}
 
+.add_back_failed_over_node {font-size: 12px; line-height: 32px; padding: 10px 0;}
+.add_back_failed_over_node label,
+.add_back_failed_over_node input {vertical-align: middle;}
+
 .servers_list .serverName {display:inline-block; height:60px; padding:0 0 0 45px; background:url(../images/server_icon.png) 0 10px no-repeat; font-size:12px; font-weight:bolder; float:left;}
 .servers_list .serverName { color: #0095D6; }
 .servers_list .server_down .serverName {color:#26BBFF;}

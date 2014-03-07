@@ -361,6 +361,11 @@ var ServersSection = {
     serversQ.find('.eject_server').live('click', mkServerAction($m(self, 'ejectNode')));
     serversQ.find('.failover_server').live('click', mkServerAction($m(self, 'failoverNode')));
     serversQ.find('.remove_from_list').live('click', mkServerAction($m(self, 'removeFromList')));
+    serversQ.find('.js_recovery_mode_btn').live('click', function (e) {
+      e.preventDefault();
+      var hostname = $(this).closest(".js_recovery_mode_btn").data()["hostname"];
+      self.changeRecoveryMode(hostname);
+    })
 
     self.rebalanceProgress = Cell.needing(DAL.cells.tasksProgressCell).computeEager(function (v, tasks) {
       for (var i = tasks.length; --i >= 0;) {
@@ -422,7 +427,7 @@ var ServersSection = {
       return;
     }
 
-    self.postAndReload(self.poolDetails.value.controllers.rebalance.uri,
+    self.postAndReload(self.poolDetails.value.controllers.rebalance.requireDeltaRecoveryURI,
                        {knownNodes: _.pluck(self.allNodes, 'otpNode').join(','),
                         ejectedNodes: _.pluck(self.pendingEject, 'otpNode').join(',')});
     self.poolDetails.getValue(function () {
@@ -654,6 +659,27 @@ var ServersSection = {
       }
     });
   },
+  changeRecoveryMode: function (hostname) {
+    var self = this;
+    if (!self.poolDetails.value) {
+      return;
+    }
+
+    var node = self.mustFindNode(hostname);
+
+    setFormValues($("#failover_repair_dialog form"), {recoveryType: node.recoveryType});
+
+    showDialogHijackingSave("failover_repair_dialog", ".save_button", function () {
+      if (!self.poolDetails.value) {
+        return;
+      }
+
+      var node = self.mustFindNode(hostname);
+      var params = $.deparam(serializeForm($("#failover_repair_dialog form")));
+      params.otpNode = node.otpNode;
+      self.postAndReload("/controller/setRecoveryType", params);
+    });
+  },
   reAddNode: function (hostname) {
     if (!this.poolDetails.value) {
       return;
@@ -684,8 +710,13 @@ var ServersSection = {
       self.poolDetails.invalidate();
       if (status == 'error') {
         if (errorObject && errorObject.mismatch) {
-          self.poolDetails.changedSlot.subscribeOnce(function () {
+          self.serversCell.changedSlot.subscribeOnce(function () {
             var msg = "Could not Rebalance because the cluster configuration was modified by someone else.\nYou may want to verify the latest cluster configuration and, if necessary, please retry a Rebalance."
+            alert(msg);
+          });
+        } if (errorObject && errorObject.deltaRecoveryNotPossible) {
+          self.serversCell.changedSlot.subscribeOnce(function () {
+            var msg = "Could not Rebalance because requested delta recovery is not possible. You probably add more nodes then cluster had before failover or possible remove some nodes.";
             alert(msg);
           });
         } else {
