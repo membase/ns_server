@@ -36,12 +36,6 @@
 %% Amount of time to wait between checkout out of disk (s)
 -define(DISK_USAGE_TIMEOUT, 60 * 60 * 12).
 
-%% Maximum percentage of overhead compared to max bucket size (%)
--define(MAX_OVERHEAD_PERC, 50).
-
-%% Maximum disk usage before warning (%)
--define(MAX_DISK_USED, 90).
-
 -export([start_link/0, stop/0, local_alert/2, global_alert/2,
          fetch_alerts/0, consume_alerts/1]).
 
@@ -252,8 +246,10 @@ check(disk, Opaque, _History, _Stats) ->
                Mnt
          end || File <- UsedFiles],
     UsedMounts = sets:to_list(sets:from_list(UsedMountsTmp)),
+    {value, Config} = ns_config:search(alert_limits),
+    MaxDiskUsed = proplists:get_value(max_disk_used, Config),
     OverDisks = [ {Disk, Used}
-                  || {Disk, _Cap, Used} <- UsedMounts, Used > ?MAX_DISK_USED],
+                  || {Disk, _Cap, Used} <- UsedMounts, Used > MaxDiskUsed],
 
     Fun = fun({Disk, Used}, Acc) ->
                   Key = list_to_atom("disk_check_" ++ Disk),
@@ -309,8 +305,10 @@ hit_rate_limit(Key, Dict) ->
 over_threshold(_Ep, 0) ->
     false;
 over_threshold(EpErrs, Max) ->
+    {value, Config} = ns_config:search(alert_limits),
+    MaxOverheadPerc = proplists:get_value(max_overhead_perc, Config),
     Perc = (EpErrs / Max) * 100,
-    case Perc > ?MAX_OVERHEAD_PERC of
+    case Perc > MaxOverheadPerc of
         true -> {true, Perc};
         false  -> false
     end.

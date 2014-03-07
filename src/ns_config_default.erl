@@ -293,6 +293,12 @@ default() ->
                  auto_failover_other_nodes_down,auto_failover_cluster_too_small,ip,
                  disk,overhead,ep_oom_errors,ep_item_commit_failed]}
       ]},
+     {alert_limits, [
+       %% Maximum percentage of overhead compared to max bucket size (%)
+       {max_overhead_perc, 50},
+       %% Maximum disk usage before warning (%)
+       {max_disk_used, 90}
+      ]},
      {replication, [{enabled, true}]},
      {auto_failover_cfg, [{enabled, false},
                           % timeout is the time (in seconds) a node needs to be
