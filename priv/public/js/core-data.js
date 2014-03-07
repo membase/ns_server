@@ -326,8 +326,22 @@ var DAL = {
 (function (cells) {
   cells.isEnterpriseCell = new Cell();
   cells.isEnterpriseCell.isEqual = _.isEqual;
+  cells.isEnterpriseCell.subscribeValue(function (isEnterprise) {
+    if (isEnterprise) {
+      $("body").addClass('dynamic_enterprise-mode').removeClass('dynamic_community-mode');
+    } else {
+      $("body").addClass('dynamic_community-mode').removeClass('dynamic_enterprise-mode');
+    }
+  });
 
   cells.isROAdminCell = new Cell();
+  DAL.cells.isROAdminCell.subscribeValue(function (isROAdmin) {
+    if (isROAdmin) {
+      $("body").addClass('dynamic_roadmin-mode');
+    } else {
+      $("body").removeClass('dynamic_roadmin-mode');
+    }
+  });
 
   cells.serverGroupsUriRevisoryCell = Cell.compute(function (v) {
     return v.need(cells.currentPoolDetailsCell).serverGroupsUri || null;

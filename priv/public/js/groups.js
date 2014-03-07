@@ -111,7 +111,6 @@ var sortableServerGroups = {
 
 var ServerGroupsSection = {
   onEnter: function () {
-    $("#js_groups").toggle(!!DAL.cells.isEnterpriseCell.value);
   },
   onLeave: function () {
   },
@@ -222,9 +221,6 @@ var ServerGroupsSection = {
       });
     }, groupsCell, DAL.cells.isEnterpriseCell);
 
-    DAL.cells.isEnterpriseCell.subscribeValue(function (value) {
-      $("#js_groups").toggle(value);
-    });
 
     function errorsHandler(resp, errorHolder) {
       errorHolder.empty();

@@ -149,42 +149,44 @@
           </div>
         </div>
 
-        <div id="js_groups" class="groups when-roadmin-avoid-me when-enterprise" style="display:none">
-          <h1>Server Groups</h1>
-          <div class="ellipsis warning_message casper_draggable_server_to" id="js_group_notice"></div>
-          <div class="shadow_box">
-            <div class="header_2">
-              <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
-              <a class="btn_1" href="#visitSec=servers"><span>Server Nodes</span></a>
-              <a id="js_create_group" class="btn_1 casper_groups_create_popup"><span>Create Group</span></a>
-              <a id="js_save_groups_changes" class="btn_1 casper_groups_error"><span>Apply Changes</span></a>
-            </div>
-          <div class="groups_container" id="js_server_group_container"></div>
-          </div>
-          <script id="js_server_group_template" type="text/html">
-            {% if (loading) { %}
-              <div class='spinner' style="height:{%= height %}px;line-height:{%= height %}px;width:100%"><span>Loading...</span></div></div>
-            {% } else { %}
-            {% _.each(groups, function (group, groupIndex) { %}
-              <div class="group_wrapper js_group_wrapper" id="js_group_{%= makeSafeForCSS(group.name) %}_wrapper">
-                  <div class="head" id="js_group_{%= makeSafeForCSS(group.name) %}">
-                    <a class="btn_1 js_edit_group casper_groups_edit_popup"><span>Rename Group</span></a>
-                    <div><h4 class="ellipsis">{%= h(group.name) %}</h4></div>
-                  </div>
-                  <div class="group_servers js_group_servers">
-                   {% _.each(group.nodes, function (server) { %}
-                      <div class="js_draggable draggable casper_draggable_server_from_{%= makeSafeForCSS(group.name) %}">
-                        <span><span>:::</span>{%= V.stripPortHTML(server.hostname, allNodes) %}</span>
-                      </div>
-                    {% }) %}
-                    <div class="group_is_empty">
-                      <span>This group is empty, <a class="js_delete_group casper_groups_remove_popup">click to delete</a>.</span>
-                    </div>
-                  </div>
+        <div id="js_groups" class="groups when-roadmin-avoid-me" style="display:none">
+          <div class="when-enterprise">
+            <h1>Server Groups</h1>
+            <div class="ellipsis warning_message casper_draggable_server_to" id="js_group_notice"></div>
+            <div class="shadow_box">
+              <div class="header_2">
+                <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+                <a class="btn_1" href="#visitSec=servers"><span>Server Nodes</span></a>
+                <a id="js_create_group" class="btn_1 casper_groups_create_popup"><span>Create Group</span></a>
+                <a id="js_save_groups_changes" class="btn_1 casper_groups_error"><span>Apply Changes</span></a>
               </div>
-            {% }); %}
-            {% } %}
-          </script>
+            <div class="groups_container" id="js_server_group_container"></div>
+            </div>
+            <script id="js_server_group_template" type="text/html">
+              {% if (loading) { %}
+                <div class='spinner' style="height:{%= height %}px;line-height:{%= height %}px;width:100%"><span>Loading...</span></div></div>
+              {% } else { %}
+              {% _.each(groups, function (group, groupIndex) { %}
+                <div class="group_wrapper js_group_wrapper" id="js_group_{%= makeSafeForCSS(group.name) %}_wrapper">
+                    <div class="head" id="js_group_{%= makeSafeForCSS(group.name) %}">
+                      <a class="btn_1 js_edit_group casper_groups_edit_popup"><span>Rename Group</span></a>
+                      <div><h4 class="ellipsis">{%= h(group.name) %}</h4></div>
+                    </div>
+                    <div class="group_servers js_group_servers">
+                     {% _.each(group.nodes, function (server) { %}
+                        <div class="js_draggable draggable casper_draggable_server_from_{%= makeSafeForCSS(group.name) %}">
+                          <span><span>:::</span>{%= V.stripPortHTML(server.hostname, allNodes) %}</span>
+                        </div>
+                      {% }) %}
+                      <div class="group_is_empty">
+                        <span>This group is empty, <a class="js_delete_group casper_groups_remove_popup">click to delete</a>.</span>
+                      </div>
+                    </div>
+                </div>
+              {% }); %}
+              {% } %}
+            </script>
+          </div>
         </div>
 
         <div id="js_servers" class="servers" style="display:none">

@@ -1341,9 +1341,6 @@ input[type=number].size {width:4em;}
 .disk_concurrency_settings .error-container {float:none; font-size: 9px; display: none; width: auto; padding: 0; font-style: normal;}
 .disk_concurrency_settings .error-container.active {display: -moz-inline-stack; display: inline-block; zoom: 1; *display: inline;}
 
-.dynamic_when-roadmin .when-roadmin-hide-me {visibility: hidden!important;}
-.dynamic_when-roadmin .when-roadmin-avoid-me {display: none!important;}
-
 .account_management_container fieldset {overflow: hidden;}
 .account_management_container label {display: block; padding: 5px 0;}
 .reset_roadmin_form label,
@@ -1393,3 +1390,11 @@ input[type=number].size {width:4em;}
 .replication_control.dynamic_spinner {background: url('../images/spinner/spinner_gr_nav.gif') no-repeat 50% 50%; border: 0; width: 16px; height: 16px; cursor: default; margin-right: 0;}
 .replication_control.dynamic_paused:hover {border-left-color: #a3b0b6;}
 .replication_control.dynamic_running:hover {border-right-color: #a3b0b6; border-left-color: #a3b0b6;}
+
+
+.dynamic_enterprise-mode .when-community {display: none!important;}
+.dynamic_community-mode .when-enterprise {display: none!important;}
+.dynamic_under-30 .only-when-30 {display: none!important;}
+.dynamic_under-25 .only-when-25 {display: none!important;}
+.dynamic_roadmin-mode .when-roadmin-avoid-me {display: none!important;}
+.dynamic_roadmin-mode .when-roadmin-hide-me {visibility: hidden!important;}

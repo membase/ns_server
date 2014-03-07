@@ -337,13 +337,6 @@ var ReplicationsSection = {
   init: function () {
     renderCellTemplate(ReplicationsModel.remoteClustersListCell, 'cluster_reference_list');
 
-    DAL.cells.isEnterpriseCell.subscribeValue(function (value) {
-      if (value == null) {
-        return;
-      }
-      $("#create_cluster_reference_dialog .when-enterprise").toggle(!!value);
-    });
-
     var self = this;
     var perSettingsDialog = $("#js_per_xdcr_settings_dialog");
     var perSettingsForm = $("#js_per_xdcr_settings_dialog form");

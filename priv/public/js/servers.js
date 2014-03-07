@@ -284,7 +284,6 @@ var ServersSection = {
 
     var groupsSelector = $("#js_servers_group_select");
     Cell.subscribeMultipleValues(function (groups, enabled) {
-      $("#js_servers .when-enterprise").toggle(enabled);
       if (!enabled || !groups) {
         return;
       }

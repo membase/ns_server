@@ -120,10 +120,6 @@ var ClusterSection = {
     var certArea = $("#js-about-cert-area");
     var originalTitle = document.title;
 
-    DAL.cells.isEnterpriseCell.subscribeValue(function (isEnterprise) {
-      $('.when-enterprise', container).toggle(isEnterprise);
-    });
-
     var clusterSettingsFormValidator = setupFormValidation(clusterSettingsForm, internalSettingsUrl + "?just_validate=1",
       function (_status, errors) {
         SettingsSection.renderErrors(errors, clusterSettingsForm);

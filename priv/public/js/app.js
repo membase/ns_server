@@ -207,10 +207,6 @@ var ThePage = {
 
     initAlertsSubscriber();
 
-    DAL.cells.isROAdminCell.subscribeValue(function (isROAdmin) {
-      $("body")[isROAdmin ? "addClass" : "removeClass"]('dynamic_when-roadmin');
-    });
-
     DAL.cells.mode.subscribeValue(function (sec) {
       $('.currentNav').removeClass('currentNav');
       $('#switch_' + sec).parent('li').addClass('currentNav');
@@ -674,7 +670,6 @@ var SetupWizard = {
             return SetupWizard.panicAndReload();
           }
 
-          $('#init_cluster_dialog .when-enterprise').toggle(!!DAL.cells.isEnterpriseCell.value);
 
           // we have node data and can finally display our wizard page
           // and pre-fill the form
@@ -907,8 +902,6 @@ var SetupWizard = {
         dialog.find('button.next').trigger('click');
       });
 
-      dialog.find('.when-enterprise').toggle(!!DAL.cells.isEnterpriseCell.value);
-      dialog.find('.when-community').toggle(!DAL.cells.isEnterpriseCell.value);
 
       setTimeout(function () {
         try {
@@ -1566,9 +1559,10 @@ $(function () {
     var version25 = encodeCompatVersion(2, 5);
     var version30 = encodeCompatVersion(3, 0);
 
-    $('.only-when-25')[lastCompatVersion >= version25 ? 'show' : 'hide']();
-    $('.only-when-30')[lastCompatVersion >= version30 ? 'show' : 'hide']();
+    $('body').toggleClass('dynamic_under-25', !(lastCompatVersion >= version25));
+    $('body').toggleClass('dynamic_under-30', !(lastCompatVersion >= version30));
   }
+
 
   $(window).bind('template:rendered', function () {
     if (lastCompatVersion !== undefined) {
