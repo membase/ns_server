@@ -1520,6 +1520,7 @@ var MockedRequest = mkClass({
         "otpNode": "n_0@127.0.0.1",
         "thisNode": true,
         "hostname": "127.0.0.1:9000",
+        "recoveryType": "none",
         "clusterCompatibility": 131072,
         "version": "2.2.0r_182_gc641960",
         "os": "x86_64-pc-linux-gnu",
@@ -1813,6 +1814,7 @@ var ServerStateMock = {
     "otpNode": "n_0@127.0.0.1",
     "thisNode": true,
     "hostname": "127.0.0.1:9000",
+    "recoveryType": "none",
     "clusterCompatibility": 131072,
     "version": "only-web.rb",
     "os": "x86_64-pc-linux-gnu",
@@ -1854,6 +1856,7 @@ var ServerStateMock = {
     "otpNode": "n_1@127.0.0.1",
     "thisNode": true,
     "hostname": "127.0.0.1:9001",
+    "recoveryType": "none",
     "clusterCompatibility": 131072,
     "version": "only-web.rb",
     "os": "x86_64-pc-linux-gnu",
@@ -1894,6 +1897,7 @@ var ServerStateMock = {
     "otpNode": "n_2@127.0.0.1",
     "thisNode": true,
     "hostname": "127.0.0.1:9002",
+    "recoveryType": "none",
     "clusterCompatibility": 131072,
     "version": "only-web.rb",
     "os": "x86_64-pc-linux-gnu",
@@ -1934,6 +1938,7 @@ var ServerStateMock = {
     "otpNode": "n_3@127.0.0.1",
     "thisNode": true,
     "hostname": "127.0.0.1:9003",
+    "recoveryType": "none",
     "clusterCompatibility": 131072,
     "version": "only-web.rb",
     "os": "x86_64-pc-linux-gnu",
@@ -1974,6 +1979,7 @@ var ServerStateMock = {
     "otpNode": "n_4@127.0.0.1",
     "thisNode": true,
     "hostname": "127.0.0.1:9004",
+    "recoveryType": "none",
     "clusterCompatibility": 131072,
     "version": "only-web.rb",
     "os": "x86_64-pc-linux-gnu",
@@ -2041,6 +2047,7 @@ var ServerStateMock = {
       "otpNode": "n_0@127.0.0.1",
       "thisNode": true,
       "hostname": "127.0.0.1:9000",
+      "recoveryType": "none",
       "clusterCompatibility": 131072,
       "version": "2.2.0r_172_gbe4b1cd",
       "os": "x86_64-pc-linux-gnu",
@@ -2061,7 +2068,8 @@ var ServerStateMock = {
         "uri": "/controller/addNode"
       },
       "rebalance": {
-        "uri": "/controller/rebalance"
+        "uri": "/controller/rebalance",
+        "requireDeltaRecoveryURI": "/controller/rebalance"
       },
       "failOver": {
         "uri": "/controller/failOver"
@@ -2163,6 +2171,7 @@ var ServerStateMock = {
       "otpNode": "n_0@127.0.0.1",
       "thisNode": true,
       "hostname": "127.0.0.1:9000",
+      "recoveryType": "none",
       "clusterCompatibility": 131072,
       "version": "2.2.0r_172_gbe4b1cd",
       "os": "x86_64-pc-linux-gnu",
@@ -2296,6 +2305,7 @@ var ServerStateMock = {
       "otpNode": "n_0@127.0.0.1",
       "thisNode": true,
       "hostname": "127.0.0.1:9000",
+      "recoveryType": "none",
       "clusterCompatibility": 131072,
       "version": "2.2.0r_172_gbe4b1cd",
       "os": "x86_64-pc-linux-gnu",
