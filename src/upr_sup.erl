@@ -93,10 +93,39 @@ kill_replicator(Bucket, ProducerNode) ->
     _ = supervisor:terminate_child(server_name(Bucket), ProducerNode),
     ok.
 
-nuke(Bucket) ->
+get_children(Bucket) ->
     try supervisor:which_children(server_name(Bucket)) of
         RawKids ->
-            misc:terminate_and_wait(nuke, [Child || {_, Child, _, _} <- RawKids])
+            [Child || {_, Child, _, _} <- RawKids]
     catch exit:{noproc, _} ->
-            not_running
+            []
     end.
+
+nuke(Bucket) ->
+    Children = get_children(Bucket),
+    misc:terminate_and_wait(nuke, Children),
+
+    Connections = get_remaining_connections(Bucket),
+    misc:parallel_map(
+      fun (ConnName) ->
+              upr_proxy:nuke_connection(consumer, ConnName, node(), Bucket)
+      end,
+      Connections,
+      infinity),
+    Children =/= [] andalso Connections =/= [].
+
+get_remaining_connections(Bucket) ->
+    {ok, Connections} =
+        ns_memcached:raw_stats(
+          node(), Bucket, <<"upr">>,
+          fun(<<"eq_uprq:ns_server:", K/binary>>, <<"consumer">>, Acc) ->
+                  case binary:longest_common_suffix([K, <<":type">>]) of
+                      5 ->
+                          ["ns_server:" ++ binary_to_list(binary:part(K, {0, byte_size(K) - 5})) | Acc];
+                      _ ->
+                          Acc
+                  end;
+             (_, _, Acc) ->
+                  Acc
+          end, []),
+    Connections.

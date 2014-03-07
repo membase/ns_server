@@ -150,6 +150,7 @@ disconnect(Sock) ->
     gen_tcp:close(Sock).
 
 nuke_connection(Type, ConnName, Node, Bucket) ->
+    ?log_info("Nuke UPR connection ~p type ~p on node ~p", [ConnName, Type, Node]),
     disconnect(connect(Type, ConnName, Node, Bucket)).
 
 connect_proxies(Pid1, Pid2) ->
@@ -170,6 +171,7 @@ upr_open(Sock, ConnName, Type) ->
             end,
     Extra = <<0:32, Flags/binary>>,
 
+    ?log_info("Open ~p connection ~p on socket ~p", [Type, ConnName, Sock]),
     process_upr_response(
       mc_client_binary:cmd_vocal(?UPR_OPEN, Sock,
                                  {#mc_header{},

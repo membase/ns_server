@@ -40,7 +40,8 @@
                 rebalance_only_vbucket_states :: list(),
                 flushseq,
                 rebalancer_type :: undefined | rebalancer | upgrader,
-                rebalance_status = finished :: in_process | finished}).
+                rebalance_status = finished :: in_process | finished,
+                replicators_primed :: boolean()}).
 
 -export([wait_for_bucket_creation/2, query_states/3,
          apply_new_bucket_config/5,
@@ -522,7 +523,8 @@ start_link(Bucket) ->
 
 init(BucketName) ->
     {ok, #state{bucket_name = BucketName,
-                flushseq = read_flush_counter(BucketName)}}.
+                flushseq = read_flush_counter(BucketName),
+                replicators_primed = false}}.
 
 handle_call(prepare_flush, _From, #state{bucket_name = BucketName} = State) ->
     ?log_info("Preparing flush by disabling bucket traffic"),
@@ -533,7 +535,20 @@ handle_call(query_vbucket_states, _From, #state{bucket_name = BucketName} = Stat
     NewState = consider_doing_flush(State),
     %% NOTE: uses 'outer' memcached timeout of 60 seconds
     RV = (catch ns_memcached:local_connected_and_list_vbuckets(BucketName)),
-    {reply, RV, NewState};
+    {RV1, NewState1} =
+        case RV of
+            {ok, _} ->
+                {case maybe_prime_replicators(NewState) of
+                     true ->
+                         (catch ns_memcached:local_connected_and_list_vbuckets(BucketName));
+                     false ->
+                         RV
+                 end, NewState#state{replicators_primed = true}};
+              _ ->
+                {RV, NewState}
+        end,
+
+    {reply, RV1, NewState1};
 handle_call(get_incoming_replication_map, _From, #state{bucket_name = BucketName} = State) ->
     %% NOTE: has infinite timeouts but uses only local communication
     RV = replication_manager:get_incoming_replication_map(BucketName),
@@ -976,3 +991,8 @@ do_wait_seqno_persisted(Bucket, VBucket, SeqNo) ->
           ?rebalance_debug("Got etmpfail waiting for seq no persistence. Will try again"),
           do_wait_seqno_persisted(Bucket, VBucket, SeqNo)
   end.
+
+maybe_prime_replicators(#state{replicators_primed = true}) ->
+    false;
+maybe_prime_replicators(#state{bucket_name = BucketName}) ->
+    upr_sup:nuke(BucketName).

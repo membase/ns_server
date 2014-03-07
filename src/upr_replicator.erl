@@ -159,4 +159,4 @@ wait_for_data_move_on_one_node(Connection, Bucket, Partition) ->
     end.
 
 get_connection_name(ConsumerNode, ProducerNode, Bucket) ->
-    atom_to_list(ProducerNode) ++ "->" ++ atom_to_list(ConsumerNode) ++ ":" ++ Bucket.
+    "ns_server:" ++ atom_to_list(ProducerNode) ++ "->" ++ atom_to_list(ConsumerNode) ++ ":" ++ Bucket.
