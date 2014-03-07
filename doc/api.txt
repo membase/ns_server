@@ -93,6 +93,7 @@ GET /pools/default =>
         },
         "rebalance": {
             "uri": "/controller/rebalance?uuid=14c408ed8df50823715f47b900bd1b4f"
+            "requireDeltaRecoveryURI": "/controller/rebalance?uuid=14c408ed8df50823715f47b900bd1b4f&requireDeltaRecovery=true"
         },
         "failOver": {
             "uri": "/controller/failOver?uuid=14c408ed8df50823715f47b900bd1b4f"
@@ -103,6 +104,9 @@ GET /pools/default =>
         "ejectNode": {
             "uri": "/controller/ejectNode?uuid=14c408ed8df50823715f47b900bd1b4f"
         },
+        "setRecoveryType": {
+            "uri": "/controller/setRecoveryType?uuid=14c408ed8df50823715f47b900bd1b4f"
+        }
         "setAutoCompaction": {
             "uri": "/controller/setAutoCompaction?uuid=14c408ed8df50823715f47b900bd1b4f",
             "validateURI": "/controller/setAutoCompaction?just_validate=1"
@@ -176,6 +180,9 @@ GET /pools/default =>
             "clusterMembership": ("active" // this node is active part of cluster
                                   | "inactiveFailed" // node was failed over
                                   | "inactiveAdded"), // node is just added. Next rebalance is going to make it active and move data into it
+            "recoveryType": ("delta" // delta recovery was requested for the node
+                             | "full" // full recovery was requested for the node (this is what happens by default when node is added back after failover)
+                             | "none"), // the node doesn't require any recovery
             "status": ("healthy" // node is ok
                        | "warmup" // at least one of node's buckets is warming up
                        | "unhealthy"),
@@ -410,8 +417,10 @@ POST /controller/regenerateCertificate
 
 // Rebalance the cluster. knownNodes must match the set of nodes that are
 // currently part of the cluster. ejectedNodes specifies the nodes that are to
-// be ejected from the cluster.
-POST /controller/rebalance
+// be ejected from the cluster. If requireDeltaRecovery is set to "true" and
+// delta recovery was requested for any of the nodes, then rebalance will only
+// proceed if the delta recovery is possible.
+POST /controller/rebalance(?requireDeltaRecovery=<:bool>)?
 
 knownNodes=<comma separated list of nodes>&ejectedNodes=<comma separated list of nodes> =>
 
@@ -420,9 +429,25 @@ knownNodes=<comma separated list of nodes>&ejectedNodes=<comma separated list of
  | 400 {"mismatch": 1} // either knownNodes didn't match the set of nodes
                        // known to the cluster or ejectedNodes listed an
                        // unknown node
+ | 400 {"deltaRecoveryNotPossible": 1} // requireDeltaRecovery was set to
+                                       // "true" but delta recovery cannot be performed
  | 400 "No active nodes left" // all nodes were requested to be ejected
  | 503 "Cluster is in recovery mode" // cluster is in recovery mode and cannot be
                                      // rebalanced
+
+
+// Set the type of recovery that should be performed for a node.
+POST /controller/setRecoveryType
+
+otpNode=<node name>&recoveryType=(full|delta) =>
+
+   200 "" // request succeeded
+ | 400 { ("otpNode": <error description>,)?
+         ("recoveryType": <error description)? } // recoveryType and/or otpNode
+                                                 // could not be understood by
+                                                 // the server
+ | 404 "" // the cluster is running in a pre-3.0 compatibility mode and thus
+          // cannot satisfy the request
 
 ====
 PUT
