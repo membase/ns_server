@@ -377,6 +377,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun handle_add_node_to_group/2, [UUID]};
                          ["controller", "failOver"] ->
                              {auth, fun handle_failover/1};
+                         ["controller", "startGracefulFailover"] ->
+                             {auth, fun handle_start_graceful_failover/1};
                          ["controller", "rebalance"] ->
                              {auth, fun handle_rebalance/1};
                          ["controller", "reAddNode"] ->
@@ -1066,6 +1068,7 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
                                              [{"uuid", UUID},
                                               {"requireDeltaRecovery", "true"}])}]}},
       {failOver, {struct, [{uri, <<"/controller/failOver?uuid=", UUID/binary>>}]}},
+      {startGracefulFailover, {struct, [{uri, <<"/controller/startGracefulFailover?uuid=", UUID/binary>>}]}},
       {reAddNode, {struct, [{uri, <<"/controller/reAddNode?uuid=", UUID/binary>>}]}},
       {ejectNode, {struct, [{uri, <<"/controller/ejectNode?uuid=", UUID/binary>>}]}},
       {setRecoveryType, {struct, [{uri, <<"/controller/setRecoveryType?uuid=", UUID/binary>>}]}},
@@ -2533,13 +2536,25 @@ do_handle_add_node(Req, GroupUUID) ->
         ErrorList -> reply_json(Req, ErrorList, 400)
     end.
 
-handle_failover(Req) ->
+parse_failover_args(Req) ->
     Params = Req:parse_post(),
-    Node = list_to_atom(proplists:get_value("otpNode", Params, "undefined")),
+    NodeArg = proplists:get_value("otpNode", Params, "undefined"),
+    Node = (catch list_to_existing_atom(NodeArg)),
     case Node of
         undefined ->
-            Req:respond({400, add_header(), "No server specified."});
+            Req:respond({400, add_header(), "No server specified."}),
+            error;
+        _ when not is_atom(Node) ->
+            Req:respond({400, add_header(), "Unknown server given."}),
+            error;
         _ ->
+            {ok, Node}
+    end.
+
+
+handle_failover(Req) ->
+    case parse_failover_args(Req) of
+        {ok, Node} ->
             case ns_cluster_membership:failover(Node) of
                 ok ->
                     Req:respond({200, [], []});
@@ -2548,6 +2563,31 @@ handle_failover(Req) ->
                 in_recovery ->
                     Req:respond({503, add_header(),
                                  "Cluster is in recovery mode."})
+            end;
+        error ->
+            ok
+    end.
+
+handle_start_graceful_failover(Req) ->
+    case parse_failover_args(Req) of
+        {ok, Node} ->
+            Msg = case ns_orchestrator:start_graceful_failover(Node) of
+                      ok ->
+                          [];
+                      in_progress ->
+                          {503, "Rebalance running."};
+                      in_recovery ->
+                          {503, "Cluster is in recovery mode."};
+                      not_graceful ->
+                          {400, "Failover cannot be done gracefully (would lose vbuckets)."};
+                      unknown_node ->
+                          {400, "Unknown node passed"}
+                  end,
+            case Msg of
+                [] ->
+                    Req:respond({200, add_header(), []});
+                {Code, Text} ->
+                    Req:respond({Code, add_header(), Text})
             end
     end.
 
@@ -2719,6 +2759,8 @@ handle_node_statuses(Req) ->
                                         {replication, average_failover_safenesses(N, OldStatuses, BucketsAll)}]};
                           false ->
                               {struct, [{status, healthy},
+                                        {gracefulFailoverPossible,
+                                         ns_rebalancer:check_graceful_failover_possible(N, BucketsAll)},
                                         {otpNode, N},
                                         {replication, average_failover_safenesses(N, FreshStatuses, BucketsAll)}]}
                       end,

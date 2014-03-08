@@ -25,6 +25,8 @@
 -include("ns_stats.hrl").
 
 -export([failover/1,
+         orchestrate_failover/1,
+         check_graceful_failover_possible/2,
          validate_autofailover/1,
          generate_initial_map/1,
          start_link_rebalance/5,
@@ -34,7 +36,8 @@
          eject_nodes/1,
          maybe_cleanup_old_buckets/1,
          get_delta_recovery_nodes/2,
-         verify_replication/3]).
+         verify_replication/3,
+         start_link_graceful_failover/1]).
 
 -export([wait_local_buckets_shutdown_complete/0]). % used via rpc:multicall
 
@@ -49,6 +52,16 @@
 %%
 %% API
 %%
+
+orchestrate_failover(Node) ->
+    ale:info(?USER_LOGGER, "Starting failing over ~p", [Node]),
+    master_activity_events:note_failover(Node),
+    failover(Node),
+    ale:info(?USER_LOGGER, "Failed over ~p: ok", [Node]),
+    ns_cluster:counter_inc(failover_node),
+    ns_config:set({node, Node, membership}, inactiveFailed),
+    ok.
+
 
 %% @doc Fail a node. Doesn't eject the node from the cluster. Takes
 %% effect immediately.
@@ -287,6 +300,19 @@ do_wait_buckets_shutdown(KeepNodes) ->
 sanitize(Config) ->
     misc:rewrite_key_value_tuple(sasl_password, "*****", Config).
 
+do_pre_rebalance_config_sync(KeepNodes) ->
+    %% TODO: pull config reliably here as well.
+    %%
+    %% And after we have that, make sure recovery, rebalance and
+    %% graceful failover, all start with latest config reliably
+    ns_config:sync_announcements(),
+    case ns_config_rep:synchronize_remote(KeepNodes) of
+        ok ->
+            cool;
+        {error, SyncFailedNodes} ->
+            exit({pre_rebalance_config_synchronization_failed, SyncFailedNodes})
+    end.
+
 start_link_rebalance(KeepNodes, EjectNodes,
                      FailedNodes, DeltaNodes, RequireDeltaRecovery) ->
     proc_lib:start_link(
@@ -316,14 +342,7 @@ start_link_rebalance(KeepNodes, EjectNodes,
 
 rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
           BucketConfigs, DeltaRecoveryBuckets) ->
-    %% TODO: pull config reliably here as well
-    ns_config:sync_announcements(),
-    case ns_config_rep:synchronize_remote(KeepNodes) of
-        ok ->
-            cool;
-        {error, SyncFailedNodes} ->
-            exit({pre_rebalance_config_synchronization_failed, SyncFailedNodes})
-    end,
+    do_pre_rebalance_config_sync(KeepNodes),
 
     %% now wait when all bucket shutdowns are done on nodes we're
     %% adding (or maybe adding)
@@ -857,3 +876,61 @@ get_delta_recovery_nodes(Config, Nodes) ->
     [N || N <- Nodes,
           ns_cluster_membership:get_cluster_membership(N, Config) =:= inactiveAdded
               andalso ns_cluster_membership:get_recovery_type(Config, N) =:= delta].
+
+start_link_graceful_failover(Node) ->
+    proc_lib:start_link(erlang, apply, [fun run_graceful_failover/1, [Node]]).
+
+run_graceful_failover(Node) ->
+    Nodes = ns_node_disco:nodes_wanted(),
+    case (not lists:member(Node, Nodes)
+          orelse ns_cluster_membership:get_cluster_membership(Node) =:= inactiveAdded) of
+        true -> erlang:exit(unknown_node);
+        _ -> ok
+    end,
+    case check_graceful_failover_possible(Node, ns_bucket:get_buckets()) of
+        true -> ok;
+        false ->
+            erlang:exit(not_graceful)
+    end,
+    proc_lib:init_ack({ok, self()}),
+
+    ale:info(?USER_LOGGER, "Starting vbucket moves for graceful failover of ~p", [Node]),
+    do_pre_rebalance_config_sync(ns_node_disco:nodes_wanted()),
+    AllBucketConfigs = ns_bucket:get_buckets(),
+
+    %% yes we're doing it second time after config sync. In case
+    %% synced config is different
+    case check_graceful_failover_possible(Node, AllBucketConfigs) of
+        true -> ok;
+        false ->
+            erlang:exit(not_graceful)
+    end,
+
+    MembaseBuckets = [BC || BC = {_, Conf} <- AllBucketConfigs,
+                            proplists:get_value(type, Conf) =:= membase],
+    N = length(MembaseBuckets),
+    lists:foldl(
+      fun ({BucketName, BucketConfig}, I) ->
+              do_run_graceful_failover_moves(Node, BucketName, BucketConfig, I / N, N),
+              I+1
+      end, 0, MembaseBuckets),
+    orchestrate_failover(Node),
+    erlang:exit(graceful_failover_done).
+
+do_run_graceful_failover_moves(Node, BucketName, BucketConfig, I, N) ->
+    Map = proplists:get_value(map, BucketConfig, []),
+    Map1 = mb_map:promote_replicas_for_graceful_failover(Map, Node),
+    run_mover(BucketName, BucketConfig, proplists:get_value(servers, BucketConfig),
+              I, N, Map, Map1).
+
+check_graceful_failover_possible(_Node, []) ->
+    true;
+check_graceful_failover_possible(Node, [{_BucketName, BucketConfig} | RestBucketConfigs]) ->
+    Map = proplists:get_value(map, BucketConfig, []),
+    Map1 = mb_map:promote_replicas_for_graceful_failover(Map, Node),
+    case lists:any(fun (Chain) -> hd(Chain) =:= Node end, Map1) of
+        true ->
+            false;
+        false ->
+            check_graceful_failover_possible(Node, RestBucketConfigs)
+    end.

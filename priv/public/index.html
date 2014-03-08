@@ -2370,12 +2370,14 @@
           recommended to select "Remove Server" and rebalance to
           safely remove the node without any data loss.
           <label><input type="checkbox" name="confirmation"> Please confirm Failover.</label>
+          <label><input type="checkbox" name="graceful"> Or pick graceful failover.</label>
         </div>
         <div class="warning pat_20 warning_up_no_backfill">
           <strong>Warning</strong> – Failing over the node will remove it from the cluster and activate a replica.
           Operations currently in flight and not yet replicated, will be lost. Rebalancing will be required
           to add the node back into the cluster. Consider using "Remove from Cluster" and rebalancing instead of Failover,
           to avoid any loss of data. Please confirm Failover.
+          <label><input type="checkbox" name="graceful"> Do graceful failover.</label>
         </div>
         <div class="warning pat_20 warning_down_backfill">
           <strong>Attention</strong> – There are not replica (backup) copies of all data

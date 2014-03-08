@@ -1122,8 +1122,8 @@ span.staleness-notice, .staleness-notice { font-size: 12px!important; display: n
 .logs .staleness-notice {float: right; padding-top: 5px; padding-right: 10px;}
 
 .warning_down_backfill, .warning_up_backfill, .warning_down_no_backfill, .warning_down_backfill { display: none; }
-.warning_down_backfill label, .warning_up_backfill label { display: block; margin-top: 15px; }
-.warning_down_backfill label input, .warning_up_backfill label input { float: left;margin: 3px 3px 0 0;}
+#failover_confirmation_dialog label { display: block; margin-top: 15px; }
+#failover_confirmation_dialog label input { float: left;margin: 3px 3px 0 0;}
 
 .darker_block.dynamic_server_resources { display: none; }
 .dynamic_with_server_resources .darker_block.dynamic_server_resources { display: block; }

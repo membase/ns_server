@@ -612,14 +612,20 @@ var ServersSection = {
   failoverNode: function (hostname) {
     var self = this;
     var node;
+    var graceful;
     showDialogHijackingSave("failover_confirmation_dialog", ".save_button", function () {
       if (!node)
         throw new Error("must not happen!");
       if (!self.poolDetails.value) {
         return;
       }
-      self.postAndReload(self.poolDetails.value.controllers.failOver.uri,
-                         {otpNode: node.otpNode}, undefined, {timeout: 120000});
+      var doGraceful = false;
+      if (graceful && graceful.attr("checked")) {
+        doGraceful = true;
+      }
+      var c = doGraceful ? "startGracefulFailover" : "failOver";
+      var url = self.poolDetails.value.controllers[c].uri;
+      self.postAndReload(url, {otpNode: node.otpNode}, undefined, {timeout: 120000});
     });
     var dialog = $('#failover_confirmation_dialog');
     var overlay = overlayWithSpinner(dialog.find('.content').need(1));
@@ -640,18 +646,23 @@ var ServersSection = {
       var down = node.status != 'healthy';
       var visibleWarning = dialog.find(['.warning', down ? 'down' : 'up', backfill ? 'backfill' : 'no_backfill'].join('_')).show();
       dialog.find('.backfill_percent').text(truncateTo3Digits(node.replication * 100));
-      var confirmation = visibleWarning.find('[name=confirmation]')
+      var confirmation = visibleWarning.find('[name=confirmation]');
+      graceful = visibleWarning.find('[name=graceful]');
+      graceful.boolAttr("checked", false);
+      graceful.toggle(node.gracefulFailoverPossible);
       if (confirmation.length) {
         confirmation.boolAttr('checked', false);
         function onChange() {
           var checked = !!confirmation.attr('checked');
-          dialog.find('.save_button').boolAttr('disabled', !checked);
+          dialog.find('.save_button').boolAttr('disabled', !checked && !graceful.attr("checked"));
         }
         function onHide() {
           confirmation.unbind('change', onChange);
+          graceful.unbind('change', onChange);
           dialog.unbind('dialog:hide', onHide);
         }
         confirmation.bind('change', onChange);
+        graceful.bind('change', onChange);
         dialog.bind('dialog:hide', onHide);
         onChange();
       } else {

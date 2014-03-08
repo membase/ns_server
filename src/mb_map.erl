@@ -24,6 +24,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([promote_replicas/2,
+         promote_replicas_for_graceful_failover/2,
          generate_map/3,
          is_balanced/3,
          is_valid/1,
@@ -55,6 +56,19 @@ promote_replica(Chain, RemapNodes) ->
                                              (_) -> false
                                          end, Chain1),
     Rest ++ Undefineds.
+
+promote_replicas_for_graceful_failover(Map, RemoveNode) ->
+    [promote_replicas_for_graceful_failover_for_chain(Chain, RemoveNode) || Chain <- Map].
+
+promote_replicas_for_graceful_failover_for_chain(Chain, RemoveNode) ->
+    {RealChain, Undefineds} = lists:partition(fun (N) -> N =/= undefined end, Chain),
+    ChangedChain = case RealChain of
+                       [RemoveNode | Rest = [_|_]] ->
+                           Rest ++ [RemoveNode];
+                       _ ->
+                           RealChain
+                   end,
+    ChangedChain ++ Undefineds.
 
 vbucket_movements_rec(AccMasters, AccReplicas, AccRest, [], []) ->
     {AccMasters, AccReplicas, AccRest};
@@ -1154,3 +1168,20 @@ is_balanced_sort_of_strongly(Map, Nodes, Options) ->
                     end
             end
     end.
+
+promote_replicas_for_graceful_failover_test() ->
+    M = [[a, b, c],
+         [a, b, undefined],
+         [b, c, a],
+         [c, a, b],
+         [b, c, undefined]],
+    M2 = promote_replicas_for_graceful_failover(M, a),
+    ?assertEqual([[b, c, a],
+                  [b, a, undefined],
+                  [b, c, a],
+                  [c, a, b],
+                  [b, c, undefined]],
+                 M2),
+
+    ?assertEqual([[a]], promote_replicas_for_graceful_failover([[a]], a)),
+    ?assertEqual([[a, undefined]], promote_replicas_for_graceful_failover([[a, undefined]], a)).

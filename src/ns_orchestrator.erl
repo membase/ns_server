@@ -61,7 +61,8 @@
          is_recovery_running/0,
          set_replication_topology/1,
          run_cleanup/1,
-         ensure_janitor_run/1]).
+         ensure_janitor_run/1,
+         start_graceful_failover/1]).
 
 -define(SERVER, {global, ?MODULE}).
 
@@ -70,7 +71,6 @@
 -define(REBALANCE_NOT_STARTED, 3).
 -define(REBALANCE_STARTED, 4).
 -define(REBALANCE_PROGRESS, 5).
--define(FAILOVER_NODE, 6).
 -define(REBALANCE_STOPPED, 7).
 
 -define(DELETE_BUCKET_TIMEOUT, 30000).
@@ -227,6 +227,13 @@ start_rebalance(KnownNodes, EjectNodes, RequireDeltaRecovery) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_all_state_event(
       ?SERVER, {maybe_start_rebalance, KnownNodes, EjectNodes, RequireDeltaRecovery}).
+
+-spec start_graceful_failover(node()) ->
+                                     ok | in_progress | in_recovery |
+                                     not_graceful | unknown_node.
+start_graceful_failover(Node) ->
+    wait_for_orchestrator(),
+    gen_fsm:sync_send_event(?SERVER, {start_graceful_failover, Node}).
 
 
 -spec stop_rebalance() -> ok | not_rebalancing.
@@ -456,6 +463,8 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
                                eject_nodes=EjectNodes,
                                failed_nodes=FailedNodes}) ->
     Status = case Reason of
+                 graceful_failover_done ->
+                     none;
                  normal ->
                      ?user_log(?REBALANCE_SUCCESSFUL,
                                "Rebalance completed successfully.~n"),
@@ -638,12 +647,7 @@ idle({delete_bucket, BucketName}, _From,
 
     {reply, Reply, idle, NewState};
 idle({failover, Node}, _From, State) ->
-    ale:info(?USER_LOGGER, "Starting failing over ~p", [Node]),
-    master_activity_events:note_failover(Node),
-    Result = ns_rebalancer:failover(Node),
-    ?user_log(?FAILOVER_NODE, "Failed over ~p: ~p", [Node, Result]),
-    ns_cluster:counter_inc(failover_node),
-    ns_config:set({node, Node, membership}, inactiveFailed),
+    Result = ns_rebalancer:orchestrate_failover(Node),
     {reply, Result, idle, State};
 idle({try_autofailover, Node}, From, State) ->
     case ns_rebalancer:validate_autofailover(Node) of
@@ -651,6 +655,22 @@ idle({try_autofailover, Node}, From, State) ->
             {reply, {autofailover_unsafe, UnsafeBuckets}, idle, State};
         ok ->
             idle({failover, Node}, From, State)
+    end;
+idle({start_graceful_failover, Node}, _From,
+     #idle_state{remaining_buckets = RemainingBuckets} = State) ->
+    case ns_rebalancer:start_link_graceful_failover(Node) of
+        {ok, Pid} ->
+            notify_janitor_finished(RemainingBuckets, rebalance_running),
+            ns_config:set([{rebalance_status, running},
+                           {rebalancer_pid, Pid}]),
+            {reply, ok, rebalancing,
+             #rebalancing_state{rebalancer=Pid,
+                                eject_nodes = [],
+                                keep_nodes = [],
+                                failed_nodes = [],
+                                progress=dict:new()}};
+        {error, RV} ->
+            {reply, RV, idle, State}
     end;
 idle(rebalance_progress, _From, State) ->
     {reply, not_running, idle, State};
@@ -832,6 +852,8 @@ rebalancing({start_rebalance, _KeepNodes, _EjectNodes,
             _From, State) ->
     ?user_log(?REBALANCE_NOT_STARTED,
               "Not rebalancing because rebalance is already in progress.~n"),
+    {reply, in_progress, rebalancing, State};
+rebalancing({start_graceful_failover, _}, _From, State) ->
     {reply, in_progress, rebalancing, State};
 rebalancing(stop_rebalance, _From,
             #rebalancing_state{rebalancer=Pid} = State) ->
