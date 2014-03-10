@@ -161,5 +161,5 @@ update_recovery_type(Node, NewType) ->
         {abort, {error, Error}} ->
             Error;
         retry_needed ->
-            conflict
+            erlang:error(exceeded_retries)
     end.

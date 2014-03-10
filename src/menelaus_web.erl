@@ -3351,9 +3351,7 @@ do_handle_set_recovery_type(Req) ->
                 ok ->
                     reply_json(Req, [], 200);
                 bad_node ->
-                    reply_json(Req, {struct, [{otpNode, OtpNodeErrorMsg}]}, 400);
-                conflict ->
-                    reply_json(Req, [], 409)
+                    reply_json(Req, {struct, [{otpNode, OtpNodeErrorMsg}]}, 400)
             end;
         _ ->
             reply_json(Req, {struct, Errors}, 400)

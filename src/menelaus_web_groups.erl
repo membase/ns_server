@@ -114,6 +114,8 @@ finish_handle_server_groups_put(Req, ReplacementGroups, RawGroups) ->
             reply_json(Req, [], 200);
         {abort, {error, rebalance_running}} ->
             reply_json(Req, <<"Cannot update server group while rebalance is running">>, 503);
+        retry_needed ->
+            erlang:error(exceeded_retries);
         _ ->
             reply_json(Req, [], 409)
     end.
