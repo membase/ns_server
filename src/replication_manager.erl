@@ -95,7 +95,7 @@ terminate(Reason, #state{tap_replication_manager = TapReplicationManager} = Stat
         _ ->
             misc:terminate_and_wait(Reason, [TapReplicationManager])
     end,
-    ?log_info("Replication manager died ~p", [{Reason, State}]),
+    ?log_debug("Replication manager died ~p", [{Reason, State}]),
     ok.
 
 handle_info({'EXIT', TapReplicationManager, shutdown},
@@ -204,13 +204,13 @@ manage_tap_replication_manager(Bucket, Type, TapReplManager) ->
         {upr, undefined} ->
             undefined;
         {upr, Pid} ->
-            ?log_info("Shutdown tap_replication_manager"),
+            ?log_debug("Shutdown tap_replication_manager"),
             erlang:unlink(Pid),
             exit(Pid, shutdown),
             misc:wait_for_process(Pid, infinity),
             undefined;
         {_, undefined} ->
-            ?log_info("Start tap_replication_manager"),
+            ?log_debug("Start tap_replication_manager"),
             {ok, Pid} = tap_replication_manager:start_link(Bucket),
             Pid;
         {_, Pid} ->

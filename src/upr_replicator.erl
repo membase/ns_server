@@ -95,8 +95,8 @@ terminate(Reason, #state{producer_conn = Producer,
                        [{consumer, node()}, {producer, ProdNode}],
                        5000)),
 
-            ?log_info("Terminating with reason ~p. Nuked connetion ~p with result ~p.",
-                      [Reason, ConnName, RV])
+            ?log_debug("Terminating with reason ~p. Nuked connetion ~p with result ~p.",
+                       [Reason, ConnName, RV])
     end,
     ok.
 

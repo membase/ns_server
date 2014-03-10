@@ -77,7 +77,7 @@ build_child_spec(ProducerNode, Bucket) ->
 maybe_start_replicator(Bucket, ProducerNode) ->
     case lists:member(ProducerNode, get_producer_nodes(Bucket)) of
         false ->
-            ?log_info("Starting UPR replication from ~p for bucket ~p", [ProducerNode, Bucket]),
+            ?log_debug("Starting UPR replication from ~p for bucket ~p", [ProducerNode, Bucket]),
 
             case supervisor:start_child(server_name(Bucket),
                                         build_child_spec(ProducerNode, Bucket)) of
@@ -89,7 +89,7 @@ maybe_start_replicator(Bucket, ProducerNode) ->
     end.
 
 kill_replicator(Bucket, ProducerNode) ->
-    ?log_info("Going to stop UPR replication from ~p for bucket ~p", [ProducerNode, Bucket]),
+    ?log_debug("Going to stop UPR replication from ~p for bucket ~p", [ProducerNode, Bucket]),
     _ = supervisor:terminate_child(server_name(Bucket), ProducerNode),
     ok.
 

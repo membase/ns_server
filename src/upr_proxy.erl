@@ -75,7 +75,7 @@ handle_cast(Msg, State = #state{ext_module = ExtModule, ext_state = ExtState}) -
     {noreply, State#state{ext_state = NewExtState}, ?HIBERNATE_TIMEOUT}.
 
 terminate(_Reason, State) ->
-    ?rebalance_info("Terminating. Disconnecting from socket ~p", [State#state.sock]),
+    ?rebalance_debug("Terminating. Disconnecting from socket ~p", [State#state.sock]),
     disconnect(State#state.sock).
 
 handle_info({tcp, Socket, Data}, #state{sock = Socket} = State) ->
@@ -85,7 +85,7 @@ handle_info({tcp, Socket, Data}, #state{sock = Socket} = State) ->
                                           fun process_packet/2, State), ?HIBERNATE_TIMEOUT};
 
 handle_info({tcp_closed, Socket}, State) ->
-    ?rebalance_info("Socket ~p was closed. Closing myself. State = ~p", [Socket, State]),
+    ?rebalance_debug("Socket ~p was closed. Closing myself. State = ~p", [Socket, State]),
     {stop, normal, State};
 
 handle_info({'EXIT', _Pid, _Reason} = ExitSignal, State) ->
@@ -121,8 +121,8 @@ handle_packet(Type, Msg, Packet,
     {ok, State#state{ext_state = NewExtState}}.
 
 -ifdef(DEBUG_UPR).
--define(print_proxied_packet(X), ?rebalance_info("Proxy packet: ~s",
-                                                 [upr_commands:format_packet_nicely(Packet)])).
+-define(print_proxied_packet(X), ?rebalance_debug("Proxy packet: ~s",
+                                                  [upr_commands:format_packet_nicely(Packet)])).
 -else.
 -define(print_proxied_packet(X), ok).
 -endif.
@@ -152,7 +152,7 @@ disconnect(Sock) ->
     gen_tcp:close(Sock).
 
 nuke_connection(Type, ConnName, Node, Bucket) ->
-    ?log_info("Nuke UPR connection ~p type ~p on node ~p", [ConnName, Type, Node]),
+    ?log_debug("Nuke UPR connection ~p type ~p on node ~p", [ConnName, Type, Node]),
     disconnect(connect(Type, ConnName, Node, Bucket)).
 
 connect_proxies(Pid1, Pid2) ->

@@ -40,7 +40,7 @@ open_connection(Sock, ConnName, Type) ->
             end,
     Extra = <<0:32, Flags/binary>>,
 
-    ?log_info("Open ~p connection ~p on socket ~p", [Type, ConnName, Sock]),
+    ?log_debug("Open ~p connection ~p on socket ~p", [Type, ConnName, Sock]),
     process_response(
       mc_client_binary:cmd_vocal(?UPR_OPEN, Sock,
                                  {#mc_header{},

@@ -172,7 +172,7 @@ handle_call({setup_streams, Partitions}, From,
                                                    {Partition}
                                            end, StreamsToStop),
 
-            ?log_info("Setup UPR streams:~nCurrent ~w~nStreams to open ~w~nStreams to close ~w~n",
+            ?log_debug("Setup UPR streams:~nCurrent ~w~nStreams to open ~w~nStreams to close ~w~n",
                        [CurrentPartitions, StreamsToStart, StreamsToStop]),
 
             {noreply, State#state{state = #stream_state{
@@ -275,7 +275,7 @@ maybe_reply_setup_streams(#state{state = StreamState} = State) ->
                 end,
             gen_server:reply(StreamState#stream_state.owner, Reply),
 
-            ?log_info("Setup stream request completed with ~p.", [Reply]),
+            ?log_debug("Setup stream request completed with ~p.", [Reply]),
             State#state{state = idle};
         _ ->
             State

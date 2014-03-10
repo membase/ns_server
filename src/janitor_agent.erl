@@ -835,7 +835,7 @@ handle_info(Info, State) ->
 terminate(_Reason, #state{rebalance_mref = undefined}) ->
     ok;
 terminate(_Reason, #state{bucket_name = Bucket}) ->
-    ?log_info("Janitor agent crashed during rebalance. Nuke all UPR connections"),
+    ?log_debug("Janitor agent crashed during rebalance. Nuke all UPR connections"),
     upr_sup:nuke(Bucket),
     ok.
 

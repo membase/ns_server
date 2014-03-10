@@ -195,7 +195,7 @@ upgrade_partitions_for_one_node(Parent, Bucket, PartitionsToUpgrade) ->
                   end, PartitionsToUpgrade).
 
 upgrade_partition(Parent, Bucket, Partition, Master, Replicas, NumPartitions) ->
-    ?rebalance_info("Upgrade partition ~p of bucket ~p to UPR", [Partition, Bucket]),
+    ?rebalance_debug("Upgrade partition ~p of bucket ~p to UPR", [Partition, Bucket]),
 
     case {Master, Replicas} of
         {_, []} ->
@@ -274,7 +274,7 @@ consider_trivial_upgrade(BucketName, BucketConfig) ->
     end.
 
 upgrade_bucket_trivial(Bucket, BucketConfig) ->
-    ?log_info("Performing trivial UPR upgrade for bucket ~p", [{Bucket, BucketConfig}]),
+    ?log_debug("Performing trivial UPR upgrade for bucket ~p", [{Bucket, BucketConfig}]),
     NewConfig = lists:keystore(repl_type, 1, BucketConfig,
                                {repl_type, upr}),
     ok = ns_bucket:set_bucket_config(Bucket, NewConfig),
