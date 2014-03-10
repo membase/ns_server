@@ -218,25 +218,22 @@ manage_tap_replication_manager(Bucket, Type, TapReplManager) ->
     end.
 
 split_partitions(Partitions,
-                 #state{repl_type = ReplType, remaining_tap_partitions = TapPartitions}) ->
-    case ReplType of
-        tap ->
-            {Partitions, undefined};
-        upr ->
-            {undefined, Partitions};
-        both ->
-            {ordsets:intersection(Partitions, TapPartitions),
-             ordsets:subtract(Partitions, TapPartitions)}
-    end.
+                 #state{repl_type = both, remaining_tap_partitions = TapPartitions}) ->
+    {ordsets:intersection(Partitions, TapPartitions),
+     ordsets:subtract(Partitions, TapPartitions)}.
 
+split_replications(Replications, #state{repl_type = tap}) ->
+    {Replications, []};
+split_replications(Replications, #state{repl_type = upr}) ->
+    {[], Replications};
 split_replications(Replications, State) ->
-    split_replications(Replications, State, {[], []}).
+    split_replications(Replications, State, [], []).
 
-split_replications([], _, Acc) ->
-    Acc;
-split_replications([{SrcNode, Partitions} | Rest], State, {Tap, Upr}) ->
+split_replications([], _, Tap, Upr) ->
+    {lists:reverse(Tap), lists:reverse(Upr)};
+split_replications([{SrcNode, Partitions} | Rest], State, Tap, Upr) ->
     {TapP, UprP} = split_partitions(Partitions, State),
-    split_replications(Rest, State, {[{SrcNode, TapP} | Tap], [{SrcNode, UprP} | Upr]}).
+    split_replications(Rest, State, [{SrcNode, TapP} | Tap], [{SrcNode, UprP} | Upr]).
 
 replication_type(Partition, ReplType, TapPartitions) ->
     case {ReplType, TapPartitions} of
