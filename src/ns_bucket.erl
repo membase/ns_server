@@ -117,7 +117,7 @@ config_string(BucketName) ->
                 CFG =
                     io_lib:format(
                       "ht_size=~B;ht_locks=~B;"
-                      "tap_noop_interval=~B;max_txn_size=~B;"
+                      "tap_noop_interval=~B;"
                       "max_size=~B;"
                       "tap_keepalive=~B;dbname=~s;"
                       "allow_data_loss_during_shutdown=true;"
@@ -133,9 +133,6 @@ config_string(BucketName) ->
                        proplists:get_value(
                          tap_noop_interval, BucketConfig,
                          misc:getenv_int("MEMBASE_TAP_NOOP_INTERVAL", 20)),
-                       proplists:get_value(
-                         max_txn_size, BucketConfig,
-                         misc:getenv_int("MEMBASE_MAX_TXN_SIZE", 10000)),
                        MemQuota,
                        %% Five minutes, should be enough time for
                        %% ebucketmigrator to restart.

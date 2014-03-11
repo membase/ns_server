@@ -558,7 +558,6 @@ parse_stats_test() ->
          {<<"ep_too_young">>,<<"0">>},
          {<<"ep_data_age_highwat">>,<<"0">>},
          {<<"ep_data_age">>,<<"0">>},
-         {<<"ep_max_txn_size">>,<<"50000">>},
          {<<"ep_queue_age_cap">>,<<"900">>},
          {<<"ep_min_data_age">>,<<"0">>},
          {<<"ep_storage_age_highwat">>,<<"0">>},
