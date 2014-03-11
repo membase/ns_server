@@ -694,11 +694,18 @@ cleanup_bucket_props(Props) ->
     end.
 
 get_default_repl_type() ->
-    case {cluster_compat_mode:is_cluster_30(), misc:get_env_default(enable_upr, false)} of
-        {true, true} ->
-            upr;
+    case cluster_compat_mode:is_cluster_30() of
+        false ->
+            tap;
         _ ->
-            tap
+            case os:getenv("COUCHBASE_REPL_TYPE") of
+                "tap" ->
+                    tap;
+                "upr" ->
+                    upr;
+                _ ->
+                    tap
+            end
     end.
 
 create_bucket(BucketType, BucketName, NewConfig) ->
