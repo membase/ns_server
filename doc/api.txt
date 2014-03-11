@@ -98,6 +98,9 @@ GET /pools/default =>
         "failOver": {
             "uri": "/controller/failOver?uuid=14c408ed8df50823715f47b900bd1b4f"
         },
+        "startGracefulFailover": {
+            "uri": "/controller/startGracefulFailover?uuid=14c408ed8df50823715f47b900bd1b4f"
+        },
         "reAddNode": {
             "uri": "/controller/reAddNode?uuid=14c408ed8df50823715f47b900bd1b4f"
         },
@@ -448,6 +451,13 @@ otpNode=<node name>&recoveryType=(full|delta) =>
                                                  // the server
  | 404 "" // the cluster is running in a pre-3.0 compatibility mode and thus
           // cannot satisfy the request
+
+POST /controller/startGracefulFailover
+
+otpNode=<node name>
+
+Initiates graceful failover. It's progress can be tracked just like
+any rebalance. At the end node is put into failed over state.
 
 ====
 PUT
