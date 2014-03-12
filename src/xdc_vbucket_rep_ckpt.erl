@@ -19,6 +19,7 @@
 %% public functions
 -export([start_timer/1, cancel_timer/1]).
 -export([do_checkpoint/1]).
+-export([get_local_vbuuid/2]).
 
 -include("xdc_replicator.hrl").
 
@@ -255,3 +256,8 @@ update_checkpoint_status_to_parent(#rep_state{
                                                             vb = VBucket,
                                                             succ = Succ,
                                                             error = Error}}.
+
+get_local_vbuuid(BucketName, Vb) ->
+    {ok, KV} = ns_memcached:stats(couch_util:to_list(BucketName), io_lib:format("vbucket-seqno ~B", [Vb])),
+    Key = iolist_to_binary(io_lib:format("vb_~B_uuid", [Vb])),
+    misc:expect_prop_value(Key, KV).
