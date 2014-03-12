@@ -48,7 +48,7 @@
 
 -type upr_error() :: {upr_error, mc_error_atom(), binary()}.
 -type upr_conn_name() :: nonempty_string().
--type upr_conn_type() :: consumer | producer.
+-type upr_conn_type() :: consumer | producer | notifier.
 
 -define(MULTICALL_DEFAULT_TIMEOUT, 30000).
 

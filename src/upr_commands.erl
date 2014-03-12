@@ -21,14 +21,21 @@
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
 
--export([open_connection/3, add_stream/4, close_stream/3, process_response/1,
-         format_packet_nicely/1]).
+-export([open_connection/3, add_stream/4, close_stream/3, stream_request/7,
+         process_response/2, format_packet_nicely/1]).
 
--spec process_response({ok, #mc_header{}, #mc_entry{}}) -> ok | upr_error().
-process_response({ok, #mc_header{status=?SUCCESS}, #mc_entry{}}) ->
+-spec process_response(#mc_header{}, #mc_entry{}) -> any().
+process_response(#mc_header{opcode = ?UPR_ADD_STREAM, status = ?SUCCESS} = Header, Body) ->
+    {ok, get_opaque(Header, Body)};
+process_response(#mc_header{opcode = ?UPR_STREAM_REQ, status = ?ROLLBACK} = Header, Body) ->
+    {rollback, get_body_as_int(Header, Body)};
+process_response(#mc_header{status=?SUCCESS}, #mc_entry{}) ->
     ok;
-process_response({ok, #mc_header{status=Status}, #mc_entry{data=Msg}}) ->
+process_response(#mc_header{status=Status}, #mc_entry{data=Msg}) ->
     {upr_error, mc_client_binary:map_status(Status), Msg}.
+
+process_response({ok, Header, Body}) ->
+    process_response(Header, Body).
 
 -spec open_connection(port(), upr_conn_name(), upr_conn_type()) -> ok | upr_error().
 open_connection(Sock, ConnName, Type) ->
@@ -36,7 +43,9 @@ open_connection(Sock, ConnName, Type) ->
                 consumer ->
                     <<0:32/big>>;
                 producer ->
-                    <<1:32/big>>
+                    <<1:32/big>>;
+                notifier ->
+                    <<2:32/big>>
             end,
     Extra = <<0:32, Flags/binary>>,
 
@@ -69,6 +78,15 @@ close_stream(Sock, Partition, Opaque) ->
                                              {#mc_header{opaque = Opaque,
                                                          vbucket = Partition},
                                               #mc_entry{}}).
+
+-spec stream_request(port(), vbucket_id(), integer(), seq_no(), seq_no(), integer(), seq_no()) ->
+                            {ok, quiet}.
+stream_request(Sock, Partition, Opaque, StartSeqNo, EndSeqNo, PartitionUUID, HighSeqNo) ->
+    Extra = <<0:64, StartSeqNo:64, EndSeqNo:64, PartitionUUID:64, HighSeqNo:64>>,
+    {ok, quiet} = mc_client_binary:cmd_quiet(?UPR_STREAM_REQ, Sock,
+                                             {#mc_header{opaque = Opaque,
+                                                         vbucket = Partition},
+                                              #mc_entry{ext = Extra}}).
 
 -spec command_2_atom(integer()) -> atom().
 command_2_atom(?UPR_OPEN) ->
@@ -138,3 +156,13 @@ format_hex_strings([String | Rest], Count, Acc) ->
 
 format_hex_strings(Strings) ->
     format_hex_strings(Strings, 0, "").
+
+get_body_as_int(Header, Body) ->
+    Len = Header#mc_header.bodylen * 8,
+    <<Ext:Len/big>> = Body#mc_entry.data,
+    Ext.
+
+get_opaque(Header, Body) ->
+    Len = Header#mc_header.extlen * 8,
+    <<Ext:Len/little>> = Body#mc_entry.ext,
+    Ext.

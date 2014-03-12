@@ -67,7 +67,7 @@ handle_packet(response, ?UPR_ADD_STREAM, Packet,
             error ->
                 State;
             _ ->
-                Opaque = get_ext_as_int(Header, Body),
+                {ok, Opaque} = upr_commands:process_response(Header, Body),
                 ?rebalance_debug("Stream has been added for partition ~p, stream opaque = ~.16X",
                                  [Partition, Opaque, "0x"]),
                 add_partition(Partition, State)
@@ -80,9 +80,8 @@ handle_packet(response, ?UPR_ADD_STREAM, Packet,
 
     {Header, Body} = mc_binary:decode_packet(Packet),
     Opaque = Header#mc_header.opaque,
-    case upr_commands:process_response({ok, Header, Body}) of
-        ok ->
-            NewOpaque = get_ext_as_int(Header, Body),
+    case upr_commands:process_response(Header, Body) of
+        {ok, NewOpaque} ->
             NewTakeoverState = TakeoverState#takeover_state{state = replied, opaque = NewOpaque},
             {block, State#state{state = NewTakeoverState}};
         Error ->
@@ -212,7 +211,7 @@ handle_cast({set_vbucket_state, Packet},
                                            requested_partition_state = none} = TakeoverState}
             = State, _ParentState) ->
     {Header, Body} = mc_binary:decode_packet(Packet),
-    VbState = get_ext_as_int(Header, Body),
+    <<VbState:8>> = Body#mc_entry.ext,
 
     case Header#mc_header.opaque of
         Opaque ->
@@ -289,11 +288,6 @@ maybe_close_stream(Pid, Partition) ->
 
 takeover(Pid, Partition) ->
     gen_server:call(Pid, {takeover, Partition}, infinity).
-
-get_ext_as_int(Header, Body) ->
-    Len = Header#mc_header.extlen * 8,
-    <<Ext:Len/little>> = Body#mc_entry.ext,
-    Ext.
 
 add_partition(Partition, #state{partitions = CurrentPartitions} = State) ->
     State#state{partitions = ordsets:add_element(Partition, CurrentPartitions)}.
