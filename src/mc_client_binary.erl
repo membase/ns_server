@@ -30,6 +30,7 @@
          cmd/5,
          cmd_quiet/3,
          cmd_vocal/3,
+         respond/3,
          create_bucket/4,
          delete_bucket/3,
          delete_vbucket/2,
@@ -116,6 +117,14 @@ cmd(Opcode, Sock, RecvCallback, CBData, HE, Timeout) ->
 cmd_quiet(Opcode, Sock, {Header, Entry}) ->
     ok = mc_binary:send(Sock, req,
               Header#mc_header{opcode = Opcode}, ext(Opcode, Entry)),
+    {ok, quiet}.
+
+-spec respond(integer(), port(),
+              {#mc_header{}, #mc_entry{}}) ->
+                     {ok, quiet}.
+respond(Opcode, Sock, {Header, Entry}) ->
+    ok = mc_binary:send(Sock, res,
+                        Header#mc_header{opcode = Opcode}, Entry),
     {ok, quiet}.
 
 -spec cmd_vocal(integer(), port(),
