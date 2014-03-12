@@ -42,10 +42,50 @@ do_db_req(Req, Fun) ->
                                       {<<"reason">>, couch_util:to_binary(Reason)}]})
       end).
 
-continue_do_db_req(#httpd{mochi_req=MochiReq, user_ctx=UserCtx,
+continue_do_db_req(#httpd{user_ctx=UserCtx,
                           path_parts=[DbName | RestPathParts]} = Req, Fun) ->
     %% check auth here
     [BucketName | AfterSlash] = binary:split(DbName, <<"/">>),
+    BucketConfig = verify_bucket_auth(Req, BucketName),
+    case AfterSlash of
+        [] ->
+            %% undefined #db fields indicate bucket database
+            Db = #db{user_ctx = UserCtx, name = DbName},
+            Fun(Req, Db);
+        [AfterSlash1] ->
+            %% xdcr replicates here; to prevent a replication to
+            %% recreated bucket (without refetching vbucket map) or
+            %% even to new cluster we encode a bucket uuid in the url
+            %% and check it here;
+            {VBucket, MaybeUUID} =
+                case binary:split(AfterSlash1, <<";">>) of
+                    [AfterSlash2, UUID] ->
+                        {AfterSlash2, UUID};
+                    _ ->
+                        {AfterSlash1, undefined}
+                end,
+
+            BucketUUID = proplists:get_value(uuid, BucketConfig),
+            true = (BucketUUID =/= undefined),
+            case MaybeUUID =:= undefined orelse
+                BucketUUID =:= MaybeUUID of
+                true ->
+                    ok;
+                false ->
+                    erlang:throw({not_found, uuids_dont_match})
+            end,
+
+            RealDbName = <<BucketName/binary, $/, VBucket/binary>>,
+            PathParts = [RealDbName | RestPathParts],
+
+            %% note that we don't fake mochi_req here; but it seems
+            %% that couchdb doesn't use it in our code path
+            Req1 = Req#httpd{path_parts=PathParts},
+
+            couch_db_frontend:do_db_req(Req1, Fun)
+    end.
+
+verify_bucket_auth(#httpd{mochi_req=MochiReq}, BucketName) ->
     ListBucketName = ?b2l(BucketName),
     BucketConfig = case ns_bucket:get_bucket_light(ListBucketName) of
                        not_present ->
@@ -54,49 +94,13 @@ continue_do_db_req(#httpd{mochi_req=MochiReq, user_ctx=UserCtx,
                    end,
     case menelaus_auth:is_bucket_accessible({ListBucketName, BucketConfig}, MochiReq, false) of
         true ->
-            case AfterSlash of
-                [] ->
-                    case couch_util:get_value(type, BucketConfig) =:= membase of
-                        true ->
-                            %% undefined #db fields indicate bucket database
-                            Db = #db{user_ctx = UserCtx, name = DbName},
-                            Fun(Req, Db);
-                        _ ->
-                            erlang:throw({not_found, no_couchbase_bucket_exists})
-                    end;
-                [AfterSlash1] ->
-                    %% xdcr replicates here; to prevent a replication to
-                    %% recreated bucket (without refetching vbucket map) or
-                    %% even to new cluster we encode a bucket uuid in the url
-                    %% and check it here;
-                    {VBucket, MaybeUUID} =
-                        case binary:split(AfterSlash1, <<";">>) of
-                            [AfterSlash2, UUID] ->
-                                {AfterSlash2, UUID};
-                            _ ->
-                                {AfterSlash1, undefined}
-                        end,
-
-                    BucketUUID = proplists:get_value(uuid, BucketConfig),
-                    true = (BucketUUID =/= undefined),
-                    case MaybeUUID =:= undefined orelse
-                        BucketUUID =:= MaybeUUID of
-                        true ->
-                            ok;
-                        false ->
-                            erlang:throw({not_found, uuids_dont_match})
-                    end,
-
-                    RealDbName = <<BucketName/binary, $/, VBucket/binary>>,
-                    PathParts = [RealDbName | RestPathParts],
-
-                    %% note that we don't fake mochi_req here; but it seems
-                    %% that couchdb doesn't use it in our code path
-                    Req1 = Req#httpd{path_parts=PathParts},
-
-                    couch_db_frontend:do_db_req(Req1, Fun)
+            case couch_util:get_value(type, BucketConfig) =:= membase of
+                true ->
+                    BucketConfig;
+                _ ->
+                    erlang:throw({not_found, no_couchbase_bucket_exists})
             end;
-        _Else ->
+        _ ->
             throw({unauthorized, <<"password required">>})
     end.
 
@@ -135,10 +139,13 @@ update_doc(_Db, _Doc, _Options) ->
     throw(not_found).
 
 
-update_docs(Db,
-            [#doc{id = <<?LOCAL_DOC_PREFIX, _Rest/binary>>} = Doc],
-            Options) ->
-    ok = couch_db:update_doc(Db, Doc, Options);
+update_docs(_Db,
+            [#doc{id = <<?LOCAL_DOC_PREFIX, _Rest/binary>>}],
+            _Options) ->
+    %% NOTE: We assume it's remote checkpoint update request. We
+    %% pretend that it works but avoid actual db update. See comment
+    %% before ensure_full_commit below.
+    ok;
 
 update_docs(#db{filepath = undefined, name = Name}, Docs, _Options) ->
     lists:foreach(fun(#doc{id = <<"_design/",_/binary>>} = Doc) ->
@@ -162,59 +169,16 @@ update_docs(Db, Docs, Options, replicated_changes) ->
     Result.
 
 
-%% new ensure_full_commit uses CMD_CHECKPOINT_PERSISTENCE to issue
-%% priority checkpoint
+%% NOTE: I'd fail this. But it'll break pre-2.5.1 xdcr
+%% checkpointing. So we instead pretend that it worked. And because we
+%% don't really want such fake checkpoint to work, we'll intercept
+%% checkpoint doc updates and drop them on the floor.
 -spec ensure_full_commit(any(), integer()) -> {ok, binary()}.
-ensure_full_commit(#db{filepath = undefined} = _Db, _RequiredSeq) ->
-    {ok, <<>>};
-
-ensure_full_commit(#db{name = DbName} = _Db, _RequiredSeq) ->
-    [Bucket, VBucket] = string:tokens(binary_to_list(DbName), [$/]),
-
-    %% create a new open checkpoint
-    StartTime = now(),
-    {ok, OpenCheckpointId, PersistedCkptId} = ns_memcached:create_new_checkpoint(Bucket, list_to_integer(VBucket)),
-
-    Result = case PersistedCkptId >= (OpenCheckpointId - 1) of
-                 true ->
-                     ?xdcr_debug("rep (bucket: ~p, vbucket ~p) issues an empty open ckpt, no need to wait (open ckpt: ~p, persisted ckpt: ~p)",
-                                 [Bucket, VBucket, OpenCheckpointId, PersistedCkptId]),
-                     ok;
-                 _ ->
-                     %% waiting for persisted ckpt to catch up, time out in milliseconds
-                     ?xdcr_debug("rep (bucket: ~p, vbucket ~p)  wait for priority chkpt persisted: ~p",
-                                 [Bucket, VBucket, (OpenCheckpointId-1)]),
-                     wait_priority_checkpoint_persisted(Bucket, list_to_integer(VBucket), (OpenCheckpointId - 1))
-             end,
-
-    case Result of
-        ok ->
-            {ok, Stats2} = ns_memcached:stats(Bucket, <<"">>),
-            EpStartupTime = proplists:get_value(<<"ep_startup_time">>, Stats2),
-            WorkTime = timer:now_diff(now(), StartTime) div 1000,
-            ?xdcr_debug("persistend open ckpt: ~p for rep (bucket: ~p, vbucket ~p), "
-                        "time spent in millisecs: ~p",
-                        [OpenCheckpointId, Bucket, VBucket, WorkTime]),
-
-            {ok, EpStartupTime};
-        timeout ->
-            ?xdcr_warning("Timed out when rep (bucket ~p, vb: ~p) waiting for open checkpoint "
-                         "(id: ~p) to be persisted.",
-                         [Bucket, VBucket, OpenCheckpointId]),
-            {error, time_out_polling}
-    end.
-
-wait_priority_checkpoint_persisted(Bucket, VBucket, CheckpointId) ->
-  case ns_memcached:wait_for_checkpoint_persistence(Bucket, VBucket, CheckpointId) of
-      ok ->
-          ?xdcr_debug("rep (bucket: ~p, vbucket ~p)  priority chkpt persisted successfully: ~p",
-                      [Bucket, VBucket, CheckpointId]),
-          ok;
-      {memcached_error, etmpfail, _} ->
-          ?xdcr_debug("rep (bucket: ~p, vbucket ~p)  fail to persist priority chkpt: ~p",
-                      [Bucket, VBucket, CheckpointId]),
-          timeout
-  end.
+ensure_full_commit(#db{name = DbName}, _RequiredSeq) ->
+    [Bucket, _VBucket] = string:tokens(binary_to_list(DbName), [$/]),
+    {ok, Stats} = ns_memcached:stats(Bucket, <<"">>),
+    EpStartupTime = proplists:get_value(<<"ep_startup_time">>, Stats),
+    {ok, EpStartupTime}.
 
 check_is_admin(_Db) ->
     ok.
