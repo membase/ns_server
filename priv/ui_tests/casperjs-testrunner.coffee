@@ -6,6 +6,8 @@ usage = ->
   console.log "    ...ns_server/scripts/only-web.rb -t (run ns_server with tests)"
   console.log ""
   console.log "options:"
+  console.log "    --version                        forvce current UI version (default is current)"
+  console.log "    --roadmin                        run tests as read only admin (default is admin)"
   console.log "    --mock-the-clock-root            path to mockTheClock (default is ...ns_server/priv/js-unit-tests)"
   console.log "    --resemble-js-root               path to ResembleJS (default is ...ns_server/priv/ui_tests/deps/resemblejs)"
   console.log "    --screenshots-output-path        path to screenshots (default is ...ns_server/scripts/tests/screenshots_output)"
@@ -152,6 +154,14 @@ casper.on "load.finished", ->
     @page.injectJs script
   @evaluate ->
     Clock.hijack()
+  if opts["roadmin"]
+    @evaluate ->
+      DAL.cells.isROAdminCell.setValue true
+  if opts["version"]
+    @evaluate ->
+      majorMinor = opts["version"].split '.';
+      version = encodeCompatVersion Number majorMinor[0], Number majorMinor[1]
+      DAL.cells.compatVersion.setValue version
 
 ns.tester.on "tests.complete", ->
   ns.renderResults.call @, !compareScreenShots

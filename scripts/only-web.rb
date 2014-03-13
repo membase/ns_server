@@ -77,10 +77,17 @@ OptionParser.new do |opts|
   opts.on('-t', '--tests', 'Run ns_server UI tests') do |opt|
     $run_tests = true
   end
+  opts.on('-r', '--roadmin', 'Run ns_server UI tests as read only admin') do |opt|
+    $run_tests_as_roa = true
+  end
+  opts.on('-u version', '--version', 'Force current UI version') do |opt|
+    $version = opt
+  end
   opts.on_tail('-h', '--help', 'Show this message') do
     puts opts.help
     exit
   end
+
 
 end.parse!
 
@@ -91,6 +98,12 @@ NSServer.run! do
     Thread.new do
       cmd = "phantomjs #{$PRIVROOT}/ui_tests/deps/casperjs/bootstrap.js --casper-path=#{$PRIVROOT}/ui_tests/deps/casperjs --cli #{$PRIVROOT}/ui_tests/casperjs-testrunner.coffee #{$PRIVROOT}/ui_tests/suite/ " +
             "--base-url=http://#{NSServer.settings.bind || "127.0.0.1"}:#{NSServer.settings.port.to_s}/index.html"
+      if $run_tests_as_roa
+        cmd += " --roadmin"
+      end
+      if $version
+        cmd += " --version=#{$version}"
+      end
       puts "cmd: #{cmd}"
       ok = system(cmd)
       unless ok
