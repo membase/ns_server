@@ -64,3 +64,6 @@ get_document_replica(Bucket, VBucket, Key) ->
                Error ->
                    process_memcached_error_response(Error)
            end}.
+
+grab_all_xdcr_checkpoints(BucketName, Timeout) ->
+    {json, {struct, capi_utils:capture_local_master_docs(BucketName, Timeout)}}.

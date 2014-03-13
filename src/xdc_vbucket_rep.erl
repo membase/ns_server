@@ -347,12 +347,11 @@ handle_cast(checkpoint, #rep_state{status = VbStatus} = State) ->
                              ?xdcr_trace("checkpoint issued during replication for vb ~p, "
                                          "commit time: ~p", [Vb, CommitTime]),
                              {ok, NewState2};
-                         {checkpoint_commit_failure, ErrorMsg, NewState} ->
+                         {checkpoint_commit_failure, Reason, NewState} ->
                              %% update the failed ckpt stats to bucket replicator
                              Vb = (NewState#rep_state.status)#rep_vb_status.vb,
-                             ?xdcr_error("checkpoint commit failure during replication for vb ~p, "
-                                         "error: ~p", [Vb, ErrorMsg]),
-                             {stop, ErrorMsg, update_status_to_parent(NewState)}
+                             ?xdcr_error("checkpoint commit failure during replication for vb ~p", [Vb]),
+                             {stop, {failed_to_checkpoint, Reason}, update_status_to_parent(NewState)}
                      end;
                  _ ->
                      %% if get checkpoint when not in replicating state, continue to wait until we
@@ -545,8 +544,6 @@ init_replication_state(#init_state{rep = Rep,
     TgtDb = xdc_rep_utils:parse_rep_db(TgtURI, [], [{xdcr_cert, CertPEM} | Options]),
     {ok, Source} = couch_api_wrap:db_open(SrcVbDb, []),
     {ok, Target} = couch_api_wrap:db_open(TgtDb, []),
-    {ok, SourceInfo} = couch_api_wrap:get_db_info(Source),
-    {ok, TargetInfo} = couch_api_wrap:get_db_info(Target),
 
     {ok, SrcMasterDb} = couch_api_wrap:db_open(
                           xdc_rep_utils:get_master_db(Source),
@@ -581,22 +578,14 @@ init_replication_state(#init_state{rep = Rep,
                          nil
                  end,
 
-    %% We have to pass the vbucket database along with the master database
-    %% because the replication log id needs to be prefixed with the vbucket id
-    %% at both the source and the destination.
-    [SourceLog, TargetLog] = find_replication_logs(
-                               [{Source, SrcMasterDb}, {Target, TgtMasterDb}],
-                               Rep),
 
     {StartSeq,
      TotalDocsChecked,
      TotalDocsWritten,
      TotalDataReplicated,
-     History} = compare_replication_logs(SourceLog, TargetLog),
-    ?xdcr_trace("history log at src and dest: startseq: ~p, docs checked: ~p,"
-                "docs_written: ~p, data replicated: ~p",
-                [StartSeq, TotalDocsChecked, TotalDocsWritten, TotalDataReplicated]),
-    #doc{body={CheckpointHistory}} = SourceLog,
+     RemoteVBOpaque} = xdc_vbucket_rep_ckpt:read_validate_checkpoint(Rep, Vb, Target),
+
+    LocalVBUUID = xdc_vbucket_rep_ckpt:get_local_vbuuid(Rep#rep.source, Vb),
 
     %% check if we are already behind purger
     PurgeSeq = couch_db:get_purge_seq(Source),
@@ -629,22 +618,17 @@ init_replication_state(#init_state{rep = Rep,
       target = Target,
       src_master_db = SrcMasterDb,
       tgt_master_db = TgtMasterDb,
-      history = History,
-      checkpoint_history = {[{<<"no_changes">>, true}| CheckpointHistory]},
+      local_vbuuid = LocalVBUUID,
+      remote_vbopaque = RemoteVBOpaque,
       start_seq = StartSeq,
       current_through_seq = StartSeq,
       source_cur_seq = StartSeq,
-      source_log = SourceLog,
-      target_log = TargetLog,
       rep_starttime = httpd_util:rfc1123_date(),
-      src_starttime = get_value(<<"instance_start_time">>, SourceInfo),
-      tgt_starttime = get_value(<<"instance_start_time">>, TargetInfo),
       last_checkpoint_time = now(),
       rep_start_time = now(),
       %% temporarily initialized to 0, when vb rep gets the token it will
       %% initialize the work start time in start_replication()
       work_start_time = 0,
-      session_id = couch_uuids:random(),
       behind_purger = BehindPurger,
       %% XMem not started
       xmem_location = nil,
@@ -829,12 +813,13 @@ start_replication(#rep_state{
                tgt_master_db = TgtMasterDb},
 
     Start = now(),
-    {Succ, ErrorMsg, NewState} = case TimeSinceLastCkpt > IntervalSecs of
-                                     true ->
-                                         xdc_vbucket_rep_ckpt:do_checkpoint(State1);
-                                     _ ->
-                                         {ok, <<"no checkpoint">>, State1}
-                                 end,
+    {Succ, CkptErrReason, NewState} =
+        case TimeSinceLastCkpt > IntervalSecs of
+            true ->
+                xdc_vbucket_rep_ckpt:do_checkpoint(State1);
+            _ ->
+                {not_needed, [], State1}
+        end,
 
     CommitTime = timer:now_diff(now(), Start) div 1000,
     TotalCommitTime = CommitTime + NewState#rep_state.status#rep_vb_status.commit_time,
@@ -856,14 +841,15 @@ start_replication(#rep_state{
 
     %% finally crash myself if fail to commit, after posting status to parent
     case Succ of
+        not_needed ->
+            ok;
         ok ->
             ?xdcr_trace("checkpoint at start of replication for vb ~p "
-                        "commit time: ~p ms, msg: ~p", [Vb, CommitTime, ErrorMsg]),
+                        "commit time: ~p ms", [Vb, CommitTime]),
             ok;
         checkpoint_commit_failure ->
-            ?xdcr_error("checkpoint commit failure at start of replication for vb ~p, "
-                        "error: ~p", [Vb, ErrorMsg]),
-            exit(ErrorMsg)
+            ?xdcr_error("checkpoint commit failure at start of replication for vb ~p", [Vb]),
+            exit({failed_to_commit_checkpoint, CkptErrReason})
     end,
 
 
@@ -942,103 +928,6 @@ changes_manager_loop_open(Parent, ChangesQueue, BatchSize) ->
                     From ! {changes, self(), Changes, ReportSeq},
                     changes_manager_loop_open(Parent, ChangesQueue, BatchSize)
             end
-    end.
-
-find_replication_logs(DbList, #rep{id = Id} = Rep) ->
-    fold_replication_logs(DbList, ?REP_ID_VERSION, Id, Id, Rep, []).
-
-
-fold_replication_logs([], _Vsn, _LogId, _NewId, _Rep, Acc) ->
-    lists:reverse(Acc);
-
-fold_replication_logs([{Db, MasterDb} | Rest] = Dbs, Vsn, LogId0, NewId0, Rep, Acc) ->
-    LogId = xdc_rep_utils:get_checkpoint_log_id(Db, LogId0),
-    NewId = xdc_rep_utils:get_checkpoint_log_id(Db, NewId0),
-    case couch_api_wrap:open_doc(MasterDb, LogId, [ejson_body]) of
-        {error, <<"not_found">>} when Vsn > 1 ->
-            OldRepId = Rep#rep.id,
-            fold_replication_logs(Dbs, Vsn - 1,
-                                  OldRepId, NewId0, Rep, Acc);
-        {error, <<"not_found">>} ->
-            fold_replication_logs(
-              Rest, ?REP_ID_VERSION, NewId0, NewId0, Rep, [#doc{id = NewId, body = {[]}} | Acc]);
-        {ok, Doc} when LogId =:= NewId ->
-            fold_replication_logs(
-              Rest, ?REP_ID_VERSION, NewId0, NewId0, Rep, [Doc | Acc]);
-        {ok, Doc} ->
-            MigratedLog = #doc{id = NewId, body = Doc#doc.body},
-            fold_replication_logs(
-              Rest, ?REP_ID_VERSION, NewId0, NewId0, Rep, [MigratedLog | Acc])
-    end.
-
-compare_replication_logs(SrcDoc, TgtDoc) ->
-    #doc{body={RepRecProps}} = SrcDoc,
-    #doc{body={RepRecPropsTgt}} = TgtDoc,
-    case get_value(<<"session_id">>, RepRecProps) ==
-        get_value(<<"session_id">>, RepRecPropsTgt) of
-        true ->
-            %% if the records have the same session id,
-            %% then we have a valid replication history
-            OldSeqNum = get_value(<<"source_last_seq">>, RepRecProps, ?LOWEST_SEQ),
-            OldHistory = get_value(<<"history">>, RepRecProps, []),
-            ?xdcr_info("Records on source and target the same session id, "
-                       "a valid history: ~p", [OldHistory]),
-            {OldSeqNum,
-             get_value(<<"docs_checked">>, RepRecProps, 0),
-             get_value(<<"docs_written">>, RepRecProps, 0),
-             get_value(<<"data_replicated">>, RepRecProps, 0),
-             OldHistory};
-        false ->
-            SourceHistory = get_value(<<"history">>, RepRecProps, []),
-            TargetHistory = get_value(<<"history">>, RepRecPropsTgt, []),
-            ?xdcr_info("Replication records differ. "
-                       "Scanning histories to find a common ancestor.", []),
-            ?xdcr_debug("Record on source:~p~nRecord on target:~p~n",
-                        [RepRecProps, RepRecPropsTgt]),
-            compare_rep_history(SourceHistory, TargetHistory)
-    end.
-
-compare_rep_history(S, T) when S =:= [] orelse T =:= [] ->
-    ?xdcr_info("no common ancestry -- performing full replication", []),
-    {?LOWEST_SEQ, 0, 0, 0, []};
-
-compare_rep_history([{S} | SourceRest], [{T} | TargetRest] = Target) ->
-    SourceId = get_value(<<"session_id">>, S),
-    case has_session_id(SourceId, Target) of
-        true ->
-            RecordSeqNum = get_value(<<"recorded_seq">>, S, ?LOWEST_SEQ),
-            ?xdcr_info("found a common replication record with source_seq ~p",
-                       [RecordSeqNum]),
-            {RecordSeqNum,
-             get_value(<<"docs_checked">>, S, 0),
-             get_value(<<"docs_written">>, S, 0),
-             get_value(<<"data_replicated">>, S, 0),
-             SourceRest};
-        false ->
-            TargetId = get_value(<<"session_id">>, T),
-            case has_session_id(TargetId, SourceRest) of
-                true ->
-                    RecordSeqNum = get_value(<<"recorded_seq">>, T, ?LOWEST_SEQ),
-                    ?xdcr_info("found a common replication record with source_seq ~p",
-                               [RecordSeqNum]),
-                    {RecordSeqNum,
-                     get_value(<<"docs_checked">>, T, 0),
-                     get_value(<<"docs_written">>, T, 0),
-                     get_value(<<"data_replicated">>, T, 0),
-                     TargetRest};
-                false ->
-                    compare_rep_history(SourceRest, TargetRest)
-            end
-    end.
-
-has_session_id(_SessionId, []) ->
-    false;
-has_session_id(SessionId, [{Props} | Rest]) ->
-    case get_value(<<"session_id">>, Props, nil) of
-        SessionId ->
-            true;
-        _Else ->
-            has_session_id(SessionId, Rest)
     end.
 
 target_uri_to_node(TgtURI) ->

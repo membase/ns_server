@@ -18,11 +18,18 @@
 
 -export([get_missing_revs/2, update_replicated_docs/3]).
 
+%% those are referenced from capi.ini
+-export([handle_pre_replicate/1, handle_commit_for_checkpoint/1]).
+
 -include("xdc_replicator.hrl").
 -include("mc_entry.hrl").
 -include("mc_constants.hrl").
 
 -define(SLOW_THRESHOLD_SECONDS, 180).
+
+%% note that usual REST call timeout is 60 seconds. So no point making it any longer
+-define(XDCR_CHECKPOINT_TIMEOUT, ns_config_ets_dup:get_timeout(xdcr_checkpoint_timeout, 60000)).
+
 
 %% public functions
 get_missing_revs(#db{name = DbName}, JsonDocIdRevs) ->
@@ -204,4 +211,88 @@ get_meta(Bucket, VBucket, DocId) ->
             {ok, Rev, CAS};
         Other ->
             Other
+    end.
+
+generate_local_vbopaque(Bucket, VBucket) ->
+    StartupTime = ns_memcached:get_ep_startup_time_for_xdcr(Bucket),
+    VBUUID = xdc_vbucket_rep_ckpt:get_local_vbuuid(Bucket, VBucket),
+    [VBUUID, StartupTime].
+
+extract_ck_params(Req) ->
+    couch_httpd:validate_ctype(Req, "application/json"),
+    {Obj} = couch_httpd:json_body_obj(Req),
+    Bucket = proplists:get_value(<<"bucket">>, Obj),
+    VB = proplists:get_value(<<"vb">>, Obj),
+    BucketUUID = proplists:get_value(<<"bucketUUID">>, Obj),
+    case (Bucket =:= undefined
+          orelse VB =:= undefined
+          orelse BucketUUID =:= undefined) of
+        true ->
+            erlang:throw(not_found);
+        _ -> true
+    end,
+    BucketConfig = capi_frontend:verify_bucket_auth(Req, Bucket),
+
+    case proplists:get_value(uuid, BucketConfig) =:= BucketUUID of
+        true ->
+            ok;
+        false ->
+            erlang:throw({not_found, uuid_mismatch})
+    end,
+
+    case couch_db:open_int(capi_utils:build_dbname(Bucket, VB), []) of
+        {ok, DB} -> couch_db:close(DB);
+        Error ->
+            Err = case Error of
+                      {not_found, ErrorAtom} -> ErrorAtom;
+                      _ -> error_opening_vbucket
+                  end,
+            erlang:throw({not_found, Err})
+    end,
+
+    VBOpaque = proplists:get_value(<<"vbopaque">>, Obj),
+
+    CommitOpaque = proplists:get_value(<<"commitopaque">>, Obj),
+
+    {Bucket, VB, VBOpaque, CommitOpaque}.
+
+handle_pre_replicate(#httpd{method='POST'}=Req) ->
+    {Bucket, VB, VBOpaque, CommitOpaque} = extract_ck_params(Req),
+
+    [LocalCommitOpaque, _] = LocalVBOpaque = generate_local_vbopaque(Bucket, VB),
+
+    VBMatches = VBOpaque =:= undefined orelse VBOpaque =:= LocalVBOpaque,
+
+    CommitOk = CommitOpaque =:= undefined orelse CommitOpaque =:= LocalCommitOpaque,
+
+    Code = case VBMatches andalso CommitOk of
+               true -> 200;
+               false -> 400
+           end,
+
+    couch_httpd:send_json(Req, Code, {[{<<"vbopaque">>, LocalVBOpaque}]}).
+
+handle_commit_for_checkpoint(#httpd{method='POST'}=Req) ->
+    {Bucket, VB, VBOpaque, _} = extract_ck_params(Req),
+
+    TimeBefore = erlang:now(),
+    system_stats_collector:increment_counter(xdcr_checkpoint_commits_enters, 1),
+    try
+        ok = ns_memcached:perform_checkpoint_commit_for_xdcr(Bucket, VB, ?XDCR_CHECKPOINT_TIMEOUT)
+    after
+        system_stats_collector:increment_counter(xdcr_checkpoint_commits_leaves, 1)
+    end,
+
+    TimeAfter = erlang:now(),
+    system_stats_collector:add_histo(xdcr_checkpoint_commit_time, timer:now_diff(TimeAfter, TimeBefore)),
+    [CommitOpaque, _] = LocalVBOpaque = generate_local_vbopaque(Bucket, VB),
+
+    CommitOpaque = hd(LocalVBOpaque),
+    case LocalVBOpaque =:= VBOpaque of
+        true ->
+            system_stats_collector:increment_counter(xdcr_checkpoint_commit_oks, 1),
+            couch_httpd:send_json(Req, 200, {[{<<"commitopaque">>, CommitOpaque}]});
+        _ ->
+            system_stats_collector:increment_counter(xdcr_checkpoint_commit_mismatches, 1),
+            couch_httpd:send_json(Req, 400, {[{<<"vbopaque">>, LocalVBOpaque}]})
     end.

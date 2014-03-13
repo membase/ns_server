@@ -35,6 +35,10 @@ stats_collector =
 check_interval = 30
 min_file_size = 131072
 
+[httpd_global_handlers]
+_pre_replicate = {capi_replication, handle_pre_replicate}
+_commit_for_checkpoint = {capi_replication, handle_commit_for_checkpoint}
+
 ;[compactions]
 ;_default = [{db_fragmentation, {"30%", nil}},
 ;            {view_fragmentation, {"30%", nil}}]
