@@ -1028,6 +1028,14 @@ var BucketsSection = {
     this.settingsWidget.reset();
   },
   startCreate: function () {
+    if (DAL.cells.inRebalanceCell.value) {
+      genericDialog({
+        buttons: {ok: true, cancel: false},
+        header: 'Failed to Create Bucket',
+        text: 'Cannot create buckets while rebalance is running.'
+      });
+      return;
+    }
     var poolDetailsCells = DAL.cells.currentPoolDetailsCell;
     poolDetailsCells.setValue(undefined);
     poolDetailsCells.invalidate();
