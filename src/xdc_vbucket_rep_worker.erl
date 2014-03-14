@@ -47,51 +47,6 @@ start_link(#rep_worker_option{cp = Cp, source = Source, target = Target,
 -spec queue_fetch_loop(integer(), #db{}, #httpdb{}, pid(), pid(),
                        integer(), integer(), integer(), any()) -> ok.
 queue_fetch_loop(WorkerID, Source, Target, Cp, ChangesManager,
-                 OptRepThreshold, BatchSize, BatchItems, nil) ->
-    ?xdcr_trace("fetch changes from changes manager at ~p (target: ~p)",
-                [ChangesManager, misc:sanitize_url(Target#httpdb.url)]),
-    ChangesManager ! {get_changes, self()},
-    receive
-        {'DOWN', _, _, _, _} ->
-            ok = gen_server:call(Cp, {worker_done, self()}, infinity);
-        {changes, ChangesManager, Changes, ReportSeq} ->
-            %% get docinfo of missing ids
-            {MissingDocInfoList, MetaLatency, NumDocsOptRepd} =
-                find_missing(Changes, Target, OptRepThreshold, nil),
-            NumChecked = length(Changes),
-            NumWritten = length(MissingDocInfoList),
-            %% use ptr in docinfo to fetch document from storage
-            Start = now(),
-            {ok, DataRepd} = local_process_batch(
-                               MissingDocInfoList, Cp, Source, Target,
-                               #batch{}, BatchSize, BatchItems, nil),
-
-            %% the latency returned should be coupled with batch size, for example,
-            %% if we send N docs in a batch, the latency returned to stats should be the latency
-            %% for all N docs. XMem mode XDCR is now single doc based, therefore the latency
-            %% should be single doc replication latency latency in millisecond.
-            DocLatency = timer:now_diff(now(), Start) div 1000,
-
-            %% report seq done and stats to vb replicator
-            ok = gen_server:call(Cp, {report_seq_done,
-                                      #worker_stat{
-                                        worker_id = WorkerID,
-                                        seq = ReportSeq,
-                                        worker_meta_latency_aggr = MetaLatency*NumChecked,
-                                        worker_docs_latency_aggr = DocLatency*NumWritten,
-                                        worker_data_replicated = DataRepd,
-                                        worker_item_opt_repd = NumDocsOptRepd,
-                                        worker_item_checked = NumChecked,
-                                        worker_item_replicated = NumWritten}}, infinity),
-
-            ?xdcr_trace("Worker reported completion of seq ~p, num docs written: ~p "
-                        "data replicated: ~p bytes, latency: ~p ms.",
-                        [ReportSeq, NumWritten, DataRepd, DocLatency]),
-            queue_fetch_loop(WorkerID, Source, Target, Cp, ChangesManager,
-                             OptRepThreshold, BatchSize, BatchItems, nil)
-    end;
-
-queue_fetch_loop(WorkerID, Source, Target, Cp, ChangesManager,
                  OptRepThreshold, BatchSize, BatchItems, XMemLoc) ->
     ?xdcr_trace("fetch changes from changes manager at ~p (target: ~p)",
                 [ChangesManager, misc:sanitize_url(Target#httpdb.url)]),
@@ -113,12 +68,8 @@ queue_fetch_loop(WorkerID, Source, Target, Cp, ChangesManager,
 
             %% the latency returned should be coupled with batch size, for example,
             %% if we send N docs in a batch, the latency returned to stats should be the latency
-            %% for all N docs. XMem mode XDCR is now single doc based, therefore the latency
-            %% should be single doc replication latency latency in millisecond.
-            BatchLatency = timer:now_diff(now(), Start) div 1000,
-            DocLatency = try BatchLatency / NumWritten
-                         catch error:badarith -> 0
-                         end,
+            %% for all N docs.
+            DocLatency = timer:now_diff(now(), Start) div 1000,
 
             %% report seq done and stats to vb replicator
             ok = gen_server:call(Cp, {report_seq_done,
