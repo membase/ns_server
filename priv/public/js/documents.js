@@ -227,7 +227,6 @@ var DocumentsSection = {
       title: 'Documents Filter',
       prefix: 'documents',
       items: {
-        descending: true,
         inclusiveEnd: true,
         endkey: true,
         startkey: true
