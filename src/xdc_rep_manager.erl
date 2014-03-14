@@ -38,6 +38,11 @@
 
 -include("xdc_replicator.hrl").
 
+%% imported functions
+-import(couch_util, [get_value/2,
+                     get_value/3,
+                     to_binary/1]).
+
 
 %% Record to store and track changes to the _replicator db
 -record(rep_db_state, {

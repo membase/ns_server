@@ -29,6 +29,10 @@
 
 -include("xdc_replicator.hrl").
 
+%% imported functions
+-import(couch_util, [get_value/2,
+                     get_value/3]).
+
 %% Given a Bucket name and a vbucket id, this function computes the Couch URI to
 %% locally access it.
 local_couch_uri_for_vbucket(BucketName, VbucketId) ->

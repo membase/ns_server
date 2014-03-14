@@ -17,6 +17,9 @@
 
 -include("xdc_replicator.hrl").
 
+%% imported functions
+-import(couch_util, [get_value/3]).
+
 %% in XDCR the Source should always from local with record #db{}, while
 %% the target should always from remote with record #httpdb{}. There is
 %% no intra-cluster XDCR

@@ -46,6 +46,10 @@
 -include("xdc_replicator.hrl").
 -include("remote_clusters_info.hrl").
 
+%% imported functions
+-import(couch_util, [get_value/2,
+                     to_binary/1]).
+
 -record(init_state, {
           rep,
           vb,

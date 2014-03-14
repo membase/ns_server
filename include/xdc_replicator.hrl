@@ -22,13 +22,6 @@
 %% ns_server headers
 -include("ns_common.hrl").
 
-%% imported functions
--import(couch_util, [
-                     get_value/2,
-                     get_value/3,
-                     to_binary/1
-                    ]).
-
 %% ------------------------------------%%
 %%  constants and macros used by XDCR  %%
 %% ------------------------------------%%
