@@ -221,7 +221,8 @@ Filter.prototype = {
     var self = this;
     this.iterateInputs(function (name, type, val, el) {
       var row = el.parent();
-      if (row.get(0).style.display === 'none' ||  val === 'none' || !val) {
+      if (row.get(0).style.display === 'none' || val === 'none' ||
+          (!val && type !== 'bool')) {
         return;
       }
       rv[name] = val;
