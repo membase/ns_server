@@ -17,29 +17,16 @@
 
 -include("ns_common.hrl").
 
--export([rest_creds/0, rest_user/0, rest_pass/0]).
+-export([rest_user/0, rest_pass/0]).
 
 %%
 %% API
 %%
 
 %% used by moxi entry in port_servers config
-rest_creds() ->
-    case ns_config:search_prop(ns_config:get(), rest_creds, creds, []) of
-        [] ->
-            {"", ""};
-        [{User, Creds}|_] ->
-            {User, proplists:get_value(password, Creds, "")}
-    end.
-
-
-%% used by moxi entry in port_servers config
 rest_pass() ->
-    {_, Pass} = rest_creds(),
-    Pass.
-
+    binary_to_list(menelaus_ui_auth:generate_token(moxi)).
 
 %% used by moxi entry in port_servers config
 rest_user() ->
-    {User, _} = rest_creds(),
-    User.
+    ?TEMP_AUTH_TOKEN_USER.

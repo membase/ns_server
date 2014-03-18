@@ -196,7 +196,7 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["pools", _PoolId, "buckets"] ->
                              {auth_any_bucket, fun menelaus_web_buckets:handle_bucket_list/1, []};
                          ["pools", PoolId, "saslBucketsStreaming"] ->
-                             {auth, fun menelaus_web_buckets:handle_sasl_buckets_streaming/2, [PoolId]};
+                             {auth_moxi, fun menelaus_web_buckets:handle_sasl_buckets_streaming/2, [PoolId]};
                          ["pools", PoolId, "buckets", Id] ->
                              {auth_bucket, fun menelaus_web_buckets:handle_bucket_info/3,
                               [PoolId, Id]};
@@ -516,6 +516,7 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
         {done, RV} -> RV;
         {auth_ro, F} -> auth_ro(Req, F, []);
         {auth_ro, F, Args} -> auth_ro(Req, F, Args);
+        {auth_moxi, F, Args} -> auth_moxi(Req, F, Args);
         {auth, F} -> auth(Req, F, []);
         {auth, F, Args} -> auth(Req, F, Args);
         {auth_bucket_mutate, F, Args} ->
@@ -534,15 +535,20 @@ handle_uilogin(Req) ->
     Params = Req:parse_post(),
     User = proplists:get_value("user", Params),
     Password = proplists:get_value("password", Params),
-    case menelaus_auth:check_auth({User, Password}) of
-        true ->
-            menelaus_auth:complete_uilogin(Req, admin);
+    case User of
+        ?TEMP_AUTH_TOKEN_USER ->
+            Req:respond({400, server_header(), ""});
         _ ->
-            case menelaus_auth:is_read_only_auth({User, Password}) of
+            case menelaus_auth:check_auth({User, Password}) of
                 true ->
-                    menelaus_auth:complete_uilogin(Req, ro_admin);
+                    menelaus_auth:complete_uilogin(Req, admin);
                 _ ->
-                    Req:respond({400, server_header(), ""})
+                    case menelaus_auth:is_read_only_auth({User, Password}) of
+                        true ->
+                            menelaus_auth:complete_uilogin(Req, ro_admin);
+                        _ ->
+                            Req:respond({400, server_header(), ""})
+                    end
             end
     end.
 
@@ -579,6 +585,9 @@ auth(Req, F, Args) ->
 
 auth_ro(Req, F, Args) ->
     menelaus_auth:apply_ro_auth(Req, fun check_uuid/3, [F, Args]).
+
+auth_moxi(Req, F, Args) ->
+    menelaus_auth:apply_moxi_auth(Req, fun check_uuid/3, [F, Args]).
 
 auth_any_bucket(Req, F, Args) ->
     menelaus_auth:apply_auth_any_bucket(Req, fun check_uuid/3, [F, Args]).
@@ -2014,6 +2023,8 @@ validate_cred(P, password) ->
     V orelse <<"The password must not contain control characters and be valid utf8">>;
 validate_cred([], username) ->
     <<"Username must not be empty">>;
+validate_cred(?TEMP_AUTH_TOKEN_USER, username) ->
+    <<"This username is reserved for the internal use">>;
 validate_cred(Username, username) ->
     V = lists:all(
           fun (C) ->

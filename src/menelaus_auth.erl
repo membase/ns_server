@@ -22,6 +22,7 @@
 
 -export([apply_auth/3,
          apply_ro_auth/3,
+         apply_moxi_auth/3,
          require_auth/1,
          filter_accessible_buckets/2,
          is_bucket_accessible/3,
@@ -82,6 +83,10 @@ apply_auth(Req, F, Args) ->
 apply_ro_auth(Req, F, Args) ->
     UserPassword = extract_auth(Req),
     apply_auth_with_auth_data(Req, F, Args, UserPassword, fun check_ro_auth/1).
+
+apply_moxi_auth(Req, F, Args) ->
+    UserPassword = extract_auth(Req),
+    apply_auth_with_auth_data(Req, F, Args, UserPassword, fun check_moxi_auth/1).
 
 apply_auth_with_auth_data(Req, F, Args, UserPassword, AuthFun) ->
     case AuthFun(UserPassword) of
@@ -182,6 +187,20 @@ check_auth(UserPassword) ->
 check_ro_auth(UserPassword) ->
     is_read_only_auth(UserPassword) orelse check_auth(UserPassword).
 
+check_moxi_auth({User, Password}) ->
+    case User of
+        token ->
+            case menelaus_ui_auth:check(Password) of
+                {ok, moxi} ->
+                    true;
+                _ ->
+                    false
+            end;
+        _ ->
+            false
+    end orelse check_auth({User, Password});
+check_moxi_auth(undefined) ->
+    false.
 
 is_read_only_auth({token, Token}) ->
     case menelaus_ui_auth:check(Token) of
@@ -219,7 +238,12 @@ extract_auth_user(Req) ->
 extract_auth(Req) ->
     case Req:get_header_value("authorization") of
         "Basic " ++ Value ->
-            parse_user_password(base64:decode_to_string(Value));
+            case parse_user_password(base64:decode_to_string(Value)) of
+                {?TEMP_AUTH_TOKEN_USER, Pwd} ->
+                    {token, Pwd};
+                UP ->
+                    UP
+            end;
         _ ->
             case extract_ui_auth_token(Req) of
                 undefined -> undefined;
