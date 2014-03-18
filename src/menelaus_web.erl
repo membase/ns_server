@@ -1695,18 +1695,9 @@ handle_settings_view_update_daemon_post(Req) ->
     end.
 
 
-delete_read_only_user_creds() ->
-    ns_config:set(read_only_user_creds, null).
-
-get_read_only_admin_name() ->
-    case ns_config:search(read_only_user_creds) of
-        {value, {U, _}} -> U;
-        _ -> ""
-    end.
-
 handle_settings_read_only_admin_name(Req) ->
-    case get_read_only_admin_name() of
-        "" ->
+    case ns_config_auth:get_user(ro_admin) of
+        undefined ->
             menelaus_util:reply_404(Req);
         Name ->
             reply_json(Req, list_to_binary(Name), 200)
@@ -1719,24 +1710,21 @@ handle_settings_read_only_user_post(Req) ->
     P = proplists:get_value("password", PostArgs),
     Errors0 = [{K, V} || {K, V} <- [{username, validate_cred(U, username)},
                                     {password, validate_cred(P, password)}], V =/= true],
-    RestCreds = ns_config:search('latest-config-marker', rest_creds, []),
     Errors = Errors0 ++
-        case proplists:get_value(creds, RestCreds, []) of
-            [{AdminUser, _} | _] ->
-                case AdminUser =:= U of
-                    true ->
-                        [{username, <<"Read-only user cannot be same user as administrator">>}];
-                    _ ->
-                        []
-                end;
+        case ns_config_auth:get_user(admin) of
+            U ->
+                [{username, <<"Read-only user cannot be same user as administrator">>}];
             _ ->
                 []
         end,
+
     case Errors of
         [] ->
             case ValidateOnly of
-                false -> ns_config:set(read_only_user_creds, {U, {password, P}});
-                true -> true
+                false ->
+                    ns_config_auth:set_credentials(ro_admin, U, P);
+                true ->
+                    true
             end,
             reply_json(Req, [], 200);
         _ ->
@@ -1744,25 +1732,24 @@ handle_settings_read_only_user_post(Req) ->
     end.
 
 handle_read_only_user_delete(Req) ->
-    case menelaus_auth:is_read_only_admin_exist() of
-        false ->
+    case ns_config_auth:get_user(ro_admin) of
+        undefined ->
             reply_json(Req, <<"Read-Only admin does not exist">>, 404);
-        true ->
-            delete_read_only_user_creds(),
+        _ ->
+            ns_config_auth:unset_credentials(ro_admin),
             reply_json(Req, [], 200)
     end.
 
 handle_read_only_user_reset(Req) ->
-    case menelaus_auth:is_read_only_admin_exist() of
-        false ->
+    case ns_config_auth:get_user(ro_admin) of
+        undefined ->
             reply_json(Req, <<"Read-Only admin does not exist">>, 404);
-        true ->
+        ROAName ->
             ReqArgs = Req:parse_post(),
             NewROAPass = proplists:get_value("password", ReqArgs),
             case validate_cred(NewROAPass, password) of
                 true ->
-                    ROAName = get_read_only_admin_name(),
-                    ns_config:set(read_only_user_creds, {ROAName, {password, NewROAPass}}),
+                    ns_config_auth:set_credentials(ro_admin, ROAName, NewROAPass),
                     reply_json(Req, [], 200);
                 Error -> reply_json(Req, {struct, [{errors, {struct, [{password, Error}]}}]}, 400)
             end
@@ -1860,20 +1847,15 @@ handle_settings_web(Req) ->
     reply_json(Req, build_settings_web()).
 
 build_settings_web() ->
-    Config = ns_config:get(),
-    {U, P} = case ns_config:search_node_prop(Config, rest_creds, creds) of
-                 [{User, Auth} | _] ->
-                     {User, proplists:get_value(password, Auth, "")};
-                 _NoneFound ->
-                     {"", ""}
-             end,
     Port = proplists:get_value(port, webconfig()),
-    build_settings_web(Port, U, P).
-
-build_settings_web(Port, U, P) ->
+    User = case ns_config_auth:get_user(admin) of
+               undefined ->
+                   "";
+               U ->
+                   U
+           end,
     {struct, [{port, Port},
-              {username, list_to_binary(U)},
-              {password, list_to_binary(P)}]}.
+              {username, list_to_binary(User)}]}.
 
 %% @doc Settings to en-/disable stats sending to some remote server
 handle_settings_stats(Req) ->
@@ -1985,12 +1967,9 @@ handle_settings_auto_failover_reset_count(Req) ->
     auto_failover:reset_count(),
     Req:respond({200, add_header(), []}).
 
-%% true iff system is correctly provisioned
+%% true if system is correctly provisioned
 is_system_provisioned() ->
-    case ns_config:search(rest_creds) of
-        {value, [{creds, [{[_|_] = _Username, [_|_] = _Password}|_]}]} -> true;
-        _ -> false
-    end.
+    ns_config_auth:get_user(admin) =/= undefined.
 
 maybe_cleanup_old_buckets() ->
     case is_system_provisioned() of
@@ -2074,18 +2053,16 @@ handle_settings_web_post(Req) ->
                          "SAME" -> proplists:get_value(port, webconfig());
                          _      -> list_to_integer(Port)
                       end,
-            case build_settings_web() =:= build_settings_web(PortInt, U, P) of
-                true -> ok; % No change.
-                false ->
+            case Port =/= PortInt orelse ns_config_auth:credentials_changed(admin, U, P) of
+                false -> ok; % No change.
+                true ->
                     maybe_cleanup_old_buckets(),
                     ns_config:set(rest, [{port, PortInt}]),
-                    ns_config:set(rest_creds,
-                                  [{creds,
-                                    [{U, [{password, P}]}]}]),
+                    ns_config_auth:set_credentials(admin, U, P),
 
                     %% NOTE: this to avoid admin user name to be equal
                     %% to read only user name
-                    delete_read_only_user_creds(),
+                    ns_config_auth:unset_credentials(ro_admin),
 
                     menelaus_ui_auth:reset()
 
@@ -2162,32 +2139,25 @@ reset_admin_password(generated) ->
             Err
     end;
 reset_admin_password(Password) ->
-    User = case ns_config:search_prop(ns_config:get(), rest_creds, creds, []) of
-               [] ->
-                   {error, <<"Failed to reset administrative password. Node is not initialized.">>};
-               [{U, _}|_] ->
-                   U
-           end,
-
-    Error = case User of
-                {error, _} = E ->
-                    E;
-                _ ->
-                    case validate_cred(Password, password) of
+    {User, Error} =
+        case ns_config_auth:get_user(admin) of
+            undefined ->
+                {undefined,
+                 {error, <<"Failed to reset administrative password. Node is not initialized.">>}};
+            U ->
+                {U, case validate_cred(Password, password) of
                         true ->
-                            false;
+                            undefined;
                         ErrStr ->
                             {error, ErrStr}
-                    end
-            end,
+                    end}
+        end,
 
     case Error of
         {error, _} = Err ->
             Err;
         _ ->
-            ok = ns_config:set(rest_creds, [{creds,
-                                             [{User, [{password, Password}]}]}]),
-
+            ok = ns_config_auth:set_credentials(admin, User, Password),
             {ok, ?l2b(io_lib:format("Password for user ~s was successfully replaced.", [User]))}
     end.
 

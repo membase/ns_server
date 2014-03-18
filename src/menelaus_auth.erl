@@ -32,7 +32,6 @@
          check_auth/1,
          parse_user_password/1,
          is_under_admin/1,
-         is_read_only_admin_exist/0,
          is_read_only_auth/1,
          extract_ui_auth_token/1,
          complete_uilogin/2,
@@ -155,10 +154,6 @@ apply_auth_any_bucket(Req, F, Args) ->
         _    -> apply_ro_auth(Req, F, Args)
     end.
 
-% {rest_creds, [{creds, [{"user", [{password, "password"}]},
-%                        {"admin", [{password, "admin"}]}]}
-%              ]}. % An empty list means no login/password auth check.
-
 %% Checks if given credentials allow access to any SASL-auth
 %% bucket.
 check_auth_any_bucket(UserPassword) ->
@@ -167,22 +162,18 @@ check_auth_any_bucket(UserPassword) ->
               Buckets).
 
 %% checks if given credentials are admin credentials
-check_auth(UserPassword) ->
-    case ns_config:search_prop('latest-config-marker', rest_creds, creds, empty) of
-        []    -> true; % An empty list means no login/password auth check.
-        empty -> true; % An empty list means no login/password auth check.
-        Creds ->
-            case UserPassword of
-                {token, Token} ->
-                    case menelaus_ui_auth:check(Token) of
-                        {ok, admin} -> true;
-                        _ ->
-                            false
-                    end;
-                _ ->
-                    check_auth(UserPassword, Creds)
-            end
-    end.
+check_auth({token, Token}) ->
+    case menelaus_ui_auth:check(Token) of
+        {ok, admin} ->
+            true;
+        _ ->
+            % An undefined user means no login/password auth check.
+            ns_config_auth:get_user(admin) =:= undefined
+    end;
+check_auth({User, Password}) ->
+    ns_config_auth:authenticate(admin, User, Password);
+check_auth(undefined) ->
+    ns_config_auth:get_user(admin) =:= undefined.
 
 check_ro_auth(UserPassword) ->
     is_read_only_auth(UserPassword) orelse check_auth(UserPassword).
@@ -208,23 +199,9 @@ is_read_only_auth({token, Token}) ->
         _ -> false
     end;
 is_read_only_auth({User, Password}) ->
-    ns_config:search(read_only_user_creds) =:= {value, {User, {password, Password}}};
+    ns_config_auth:authenticate(ro_admin, User, Password);
 is_read_only_auth(undefined) ->
     false.
-
-
-is_read_only_admin_exist() ->
-    case ns_config:search(read_only_user_creds) of
-        {value, {_U, _P}} -> true;
-        _ -> false
-    end.
-
-check_auth(_UserPassword, []) ->
-    false;
-check_auth({User, Password}, [{User, PropList} | _]) ->
-    Password =:= proplists:get_value(password, PropList, "");
-check_auth(UserPassword, [_NotRightUser | Rest]) ->
-    check_auth(UserPassword, Rest).
 
 extract_auth_user(Req) ->
     case Req:get_header_value("authorization") of
