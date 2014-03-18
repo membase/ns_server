@@ -47,6 +47,7 @@
         ns_config:get_timeout_fast(ns_memcached_mark_warmed, 5000)).
 %% half-second is definitely 'slow' for any definition of slow
 -define(SLOW_CALL_THRESHOLD_MICROS, 500000).
+-define(GET_KEYS_TIMEOUT, ns_config:get_timeout_fast(memcached_get_keys_timeout, 60000)).
 
 -define(CONNECTION_ATTEMPTS, 5).
 
@@ -128,7 +129,9 @@
          compact_vbucket/3,
          get_upr_backfill_remaining_items/3,
          get_vbucket_high_seqno/2,
-         wait_for_seqno_persistence/3]).
+         wait_for_seqno_persistence/3,
+         get_keys/3
+        ]).
 
 %% for ns_memcached_sockets_pool only
 -export([connect/0]).
@@ -337,6 +340,7 @@ assign_queue({get_meta, _Key, _VBucket}) -> #state.heavy_calls_queue;
 assign_queue({delete, _Key, _VBucket, _CAS}) -> #state.heavy_calls_queue;
 assign_queue({set, _Key, _VBucket, _Value}) -> #state.heavy_calls_queue;
 assign_queue({update_with_rev, _Key, _VBucket, _Value, _Meta, _Deleted, _LocalCAS}) -> #state.heavy_calls_queue;
+assign_queue({get_keys, _VBuckets, _Params}) -> #state.heavy_calls_queue;
 assign_queue({sync, _Key, _VBucket, _CAS}) -> #state.very_heavy_calls_queue;
 assign_queue({get_mass_tap_docs_estimate, _VBuckets}) -> #state.very_heavy_calls_queue;
 assign_queue(_) -> #state.fast_calls_queue.
@@ -644,6 +648,9 @@ do_handle_call({get_vbucket_high_seqno, VBucketId}, _From, State) ->
             end,
             undefined),
     {reply, Res, State};
+do_handle_call({get_keys, VBuckets, Params}, _From, State) ->
+    {reply, mc_binary:get_keys(State#state.sock, VBuckets,
+                               Params, ?GET_KEYS_TIMEOUT), State};
 
 do_handle_call(_, _From, State) ->
     {reply, unhandled, State}.
@@ -1517,3 +1524,18 @@ do_perform_checkpoint_commit_for_xdcr_loop(Sock, VBucketId, WaitedCheckpointId) 
         {memcached_error, etmpfail, _} ->
             do_perform_checkpoint_commit_for_xdcr_loop(Sock, VBucketId, WaitedCheckpointId)
     end.
+
+get_keys(Bucket, NodeVBuckets, Params) ->
+    misc:parallel_map(
+      fun ({Node, VBuckets}) ->
+              try do_call({server(Bucket), Node},
+                           {get_keys, VBuckets, Params}, ?GET_KEYS_TIMEOUT) of
+                  unhandled ->
+                      {Node, {ok, []}};
+                  R ->
+                      {Node, R}
+              catch
+                  T:E ->
+                      {Node, {T, E}}
+              end
+      end, NodeVBuckets, infinity).

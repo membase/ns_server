@@ -22,52 +22,138 @@
          handle_post/3,
          handle_delete/3]).
 
+parse_bool(undefined, Default) -> Default;
+parse_bool("true", _) -> true;
+parse_bool("false", _) -> false;
+parse_bool(_, _) -> throw(bad_request).
+
+parse_int(undefined, Default) -> Default;
+parse_int(List, _) ->
+    try list_to_integer(List)
+    catch error:badarg ->
+            throw(bad_request)
+    end.
+
+parse_key(undefined) -> undefined;
+parse_key(Key) ->
+    try ejson:decode(Key) of
+        Binary when is_binary(Binary) ->
+            Binary;
+        _ ->
+            throw(bad_request)
+    catch
+        throw:{invalid_json, _} ->
+            throw(bad_request)
+    end.
+
+parse_params(Params) ->
+    Limit = parse_int(proplists:get_value("limit", Params), 1000),
+    Skip = parse_int(proplists:get_value("skip", Params), 0),
+
+    {Skip, Limit,
+     [{include_docs, parse_bool(proplists:get_value("include_docs", Params), false)},
+      {inclusive_end, parse_bool(proplists:get_value("inclusive_end", Params), true)},
+      {limit, Skip + Limit},
+      {start_key, parse_key(proplists:get_value("startkey", Params))},
+      {end_key, parse_key(proplists:get_value("endkey", Params))}]}.
 
 handle_list(BucketId, Req) ->
-    {_, QueryString, _} = mochiweb_util:urlsplit_path(Req:get(raw_path)),
-    BasePath = "/" ++ BucketId ++ "/_all_docs",
-    Path = case QueryString of
-               "" ->
-                   BasePath;
-               _ ->
-                   BasePath ++ "?" ++ QueryString
-           end,
+    try parse_params(Req:parse_qs()) of
+        Params ->
+            do_handle_list(Req, BucketId, Params, 20)
+    catch
+        throw:bad_request ->
+            menelaus_util:reply_json(Req,
+                                     {struct, [{error, <<"bad_request">>},
+                                               {reason, <<"bad request">>}]}, 400)
+    end.
 
-    DefaultSpec = "{couch_httpd_db, handle_request}",
-    DefaultFun = couch_httpd:make_arity_1_fun(
-                   couch_config:get("httpd", "default_handler", DefaultSpec)
-                  ),
+do_handle_list(Req, _Bucket, _Params, 0) ->
+    menelaus_util:reply_json(
+      Req,
+      {struct, [{error, <<"max_retry">>},
+                {reason, <<"could not get consistent vbucket map">>}]}, 503);
+do_handle_list(Req, Bucket, {Skip, Limit, Params}, N) ->
+    NodeVBuckets = dict:to_list(vbucket_map_mirror:node_vbuckets_dict(Bucket)),
+    Results = ns_memcached:get_keys(Bucket, NodeVBuckets, Params),
 
-    UrlHandlersList = lists:map(
-                        fun({UrlKey, SpecStr}) ->
-                                {?l2b(UrlKey), couch_httpd:make_arity_1_fun(SpecStr)}
-                        end, couch_config:get("httpd_global_handlers")),
+    try lists:foldl(
+          fun ({_Node, R}, Acc) ->
+                  case R of
+                      {ok, Values} ->
+                          heap_insert(Acc, Values);
+                      Error ->
+                          throw({error, Error})
+                  end
+          end, couch_skew:new(), Results) of
 
-    DbUrlHandlersList = lists:map(
-                          fun({UrlKey, SpecStr}) ->
-                                  {?l2b(UrlKey), couch_httpd:make_arity_2_fun(SpecStr)}
-                          end, couch_config:get("httpd_db_handlers")),
+        Heap ->
+            Heap1 = handle_skip(Heap, Skip),
+            menelaus_util:reply_json(Req,
+                                     {struct, [{rows, handle_limit(Heap1, Limit)}]})
+    catch
+        throw:{error, {memcached_error, not_my_vbucket}} ->
+            timer:sleep(1000),
+            do_handle_list(Req, Bucket, {Skip, Limit, Params}, N - 1);
+        throw:{error, {memcached_error, Type}} ->
+            menelaus_util:reply_json(Req,
+                                     {struct, [{error, memcached_error},
+                                               {reason, Type}]});
+        throw:{error, Error} ->
+            menelaus_util:reply_json(Req,
+                                     {struct, [{error, couch_util:to_binary(Error)},
+                                               {reason, <<"unknown error">>}]})
+    end.
 
-    DesignUrlHandlersList = lists:map(
-                              fun({UrlKey, SpecStr}) ->
-                                      {?l2b(UrlKey), couch_httpd:make_arity_3_fun(SpecStr)}
-                              end, couch_config:get("httpd_design_handlers")),
+heap_less([{A, _} | _], [{B, _} | _]) ->
+    A < B.
 
-    UrlHandlers = dict:from_list(UrlHandlersList),
-    DbUrlHandlers = dict:from_list(DbUrlHandlersList),
-    DesignUrlHandlers = dict:from_list(DesignUrlHandlersList),
+heap_insert(Heap, Item) ->
+    case Item of
+        [] ->
+            Heap;
+        _ ->
+            couch_skew:in(Item, fun heap_less/2, Heap)
+    end.
 
-    DbFrontendModule = list_to_atom(couch_config:get("httpd", "db_frontend", "couch_db_frontend")),
+handle_skip(Heap, 0) ->
+    Heap;
+handle_skip(Heap, Skip) ->
+    case couch_skew:size(Heap) =:= 0 of
+        true ->
+            Heap;
+        false ->
+            {[_ | Rest], Heap1} = couch_skew:out(fun heap_less/2, Heap),
+            handle_skip(heap_insert(Heap1, Rest), Skip - 1)
+    end.
 
-    NewMochiReq = mochiweb_request:new(Req:get(socket),
-                                       Req:get(method),
-                                       Path,
-                                       Req:get(version),
-                                       Req:get(headers)),
+handle_limit(Heap, Limit) ->
+    do_handle_limit(Heap, Limit, []).
 
-    couch_httpd:handle_request(NewMochiReq, DbFrontendModule,
-                               DefaultFun, UrlHandlers,
-                               DbUrlHandlers, DesignUrlHandlers).
+do_handle_limit(_, 0, R) ->
+    lists:reverse(R);
+do_handle_limit(Heap, Limit, R) ->
+    case couch_skew:size(Heap) =:= 0 of
+        true ->
+            lists:reverse(R);
+        false ->
+            {[Min | Rest], Heap1} = couch_skew:out(fun heap_less/2, Heap),
+            do_handle_limit(heap_insert(Heap1, Rest), Limit - 1,
+                            [encode_doc(Min) | R])
+    end.
+
+encode_doc({Key, undefined}) ->
+    {struct, [{id, Key}, {key, Key}]};
+encode_doc({Key, Value}) ->
+    Doc = case Value of
+              {binary, V} ->
+                  couch_doc:from_binary(Key, V, false);
+              {json, V} ->
+                  couch_doc:from_binary(Key, V, true)
+          end,
+    {struct, [{id, Key},
+              {key, Key},
+              {doc, capi_utils:couch_doc_to_mochi_json(Doc)}]}.
 
 do_get(BucketId, DocId) ->
     BinaryBucketId = list_to_binary(BucketId),
