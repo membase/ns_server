@@ -631,7 +631,7 @@ do_handle_call({get_upr_backfill_remaining_items, ConnName, VBucket}, _From, Sta
                                         end, undefined),
     {reply, Reply, State};
 do_handle_call({get_vbucket_high_seqno, VBucketId}, _From, State) ->
-    StatName = <<"vb_", (iolist_to_binary(integer_to_list(VBucketId)))/binary, "_high_seqno">>,
+    StatName = <<"vb_", (iolist_to_binary(integer_to_list(VBucketId)))/binary, ":high_seqno">>,
     Res = mc_binary:quick_stats(
             State#state.sock, iolist_to_binary([<<"vbucket-seqno ">>, integer_to_list(VBucketId)]),
             fun (K, V, Acc) ->
