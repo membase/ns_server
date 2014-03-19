@@ -320,5 +320,5 @@ do_parse_validate_checkpoint_doc(Rep, Vb, Body0, TargetHttpDB) ->
 
 get_local_vbuuid(BucketName, Vb) ->
     {ok, KV} = ns_memcached:stats(couch_util:to_list(BucketName), io_lib:format("vbucket-seqno ~B", [Vb])),
-    Key = iolist_to_binary(io_lib:format("vb_~B_uuid", [Vb])),
+    Key = iolist_to_binary(io_lib:format("vb_~B:uuid", [Vb])),
     misc:expect_prop_value(Key, KV).
