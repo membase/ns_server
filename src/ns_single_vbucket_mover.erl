@@ -58,7 +58,7 @@ get_vbucket_repl_type(_, ReplType) ->
 %% We do a no-op here rather than filtering these out so that the
 %% replication update will still work properly.
 mover(Parent, Bucket, VBucket, [undefined | _] = OldChain, [NewNode | _] = NewChain, _) ->
-    ok = janitor_agent:set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined),
+    set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined),
     Parent ! {move_done, {VBucket, OldChain, NewChain}};
 
 mover(Parent, Bucket, VBucket, OldChain, NewChain, ReplType) ->
@@ -257,8 +257,8 @@ mover_inner_upr(Parent, Bucket, VBucket,
                     case cluster_compat_mode:is_index_pausing_on() of
                         true ->
                             system_stats_collector:increment_counter(index_pausing_runs, 1),
-                            janitor_agent:set_vbucket_state(Bucket, OldMaster, Parent, VBucket, active,
-                                                            paused, undefined),
+                            set_vbucket_state(Bucket, OldMaster, Parent, VBucket, active,
+                                              paused, undefined),
                             wait_master_seqno_persisted_on_replicas(Bucket, VBucket, Parent, OldMaster,
                                                                     AllBuiltNodes);
                         false ->
@@ -273,13 +273,27 @@ mover_inner_upr(Parent, Bucket, VBucket,
             end,
 
             master_activity_events:note_takeover_started(Bucket, VBucket, OldMaster, NewMaster),
-            ok = janitor_agent:upr_takeover(Bucket, Parent, OldMaster, NewMaster, VBucket),
+            upr_takeover(Bucket, Parent, OldMaster, NewMaster, VBucket),
             master_activity_events:note_takeover_ended(Bucket, VBucket, OldMaster, NewMaster)
     end,
 
     %% set new master to active state
-    ok = janitor_agent:set_vbucket_state(Bucket, NewMaster, Parent, VBucket, active,
-                                         undefined, undefined).
+    set_vbucket_state(Bucket, NewMaster, Parent, VBucket, active,
+                      undefined, undefined).
+
+set_vbucket_state(Bucket, Node, RebalancerPid, VBucket,
+                  VBucketState, VBucketRebalanceState, ReplicateFrom) ->
+    spawn_and_wait(
+      fun () ->
+              ok = janitor_agent:set_vbucket_state(Bucket, Node, RebalancerPid, VBucket,
+                                                   VBucketState, VBucketRebalanceState, ReplicateFrom)
+      end).
+
+upr_takeover(Bucket, Parent, OldMaster, NewMaster, VBucket) ->
+    spawn_and_wait(
+      fun () ->
+              ok = janitor_agent:upr_takeover(Bucket, Parent, OldMaster, NewMaster, VBucket)
+      end).
 
 wait_upr_data_move(Bucket, Parent, SrcNode, DstNodes, VBucket) ->
     spawn_and_wait(
@@ -382,13 +396,13 @@ mover_inner(Parent, Bucket, VBucket,
     case Node =:= NewNode of
         true ->
             %% if there's nothing to move, we're done
-            ok = janitor_agent:set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined);
+            set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined);
         false ->
             %% pause index updates on old master node
             case cluster_compat_mode:is_index_pausing_on() of
                 true ->
                     system_stats_collector:increment_counter(index_pausing_runs, 1),
-                    janitor_agent:set_vbucket_state(Bucket, Node, Parent, VBucket, active, paused, undefined),
+                    set_vbucket_state(Bucket, Node, Parent, VBucket, active, paused, undefined),
                     SecondWaitedCheckpointId = janitor_agent:get_replication_persistence_checkpoint_id(Bucket, Parent, Node, VBucket),
                     master_activity_events:note_checkpoint_waiting_started(Bucket, VBucket, SecondWaitedCheckpointId, AllBuiltNodes),
                     ?rebalance_info("Will wait for checkpoint ~p on replicas", [SecondWaitedCheckpointId]),
@@ -404,7 +418,7 @@ mover_inner(Parent, Bucket, VBucket,
             new_ns_replicas_builder:shutdown_replicator(BuilderPid, NewNode),
             ?rebalance_info("Going to do takeover"),
             ok = run_mover(Bucket, VBucket, Node, NewNode),
-            ok = janitor_agent:set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined)
+            set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined)
     end.
 
 get_replica_and_backfill_nodes(MasterNode, [NewMasterNode|_] = NewChain) ->
@@ -422,7 +436,10 @@ set_initial_vbucket_state(Bucket, Parent, VBucket, SrcNode, ReplicaNodes, JustBa
                || Replica <- ReplicaNodes]
         ++ [{FutureMaster, replica, passive, SrcNode}
             || FutureMaster <- JustBackfillNodes],
-    janitor_agent:bulk_set_vbucket_state(Bucket, Parent, VBucket, Changes).
+    spawn_and_wait(
+      fun () ->
+              janitor_agent:bulk_set_vbucket_state(Bucket, Parent, VBucket, Changes)
+      end).
 
 set_initial_vbucket_state(Bucket, Parent, VBucket, ReplicaNodes, JustBackfillNodes) ->
     set_initial_vbucket_state(Bucket, Parent, VBucket, undefined, ReplicaNodes, JustBackfillNodes).
@@ -466,10 +483,10 @@ mover_inner_old_style(Parent, Bucket, VBucket,
     if
         Node =:= NewNode ->
             %% if there's nothing to move, we're done
-            ok = janitor_agent:set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined);
+            set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined);
         true ->
             ok = run_mover(Bucket, VBucket, Node, NewNode),
-            ok = janitor_agent:set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined),
+            set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined),
             ok
     end.
 
