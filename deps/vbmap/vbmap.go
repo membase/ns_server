@@ -354,6 +354,10 @@ func (ctx *selectionCtx) nextBestChain() (result []Node) {
 	candidates = append(candidates, ctx.master)
 	numCandidates := len(candidates)
 
+	isFeasible := func(chain []Node) bool {
+		return ctx.isFeasibleChain(requiredTags, requiredNodes, chain)
+	}
+
 	cost := make([][]chainCost, ctx.params.NumReplicas)
 	parent := make([][]int, ctx.params.NumReplicas)
 
@@ -363,11 +367,11 @@ func (ctx *selectionCtx) nextBestChain() (result []Node) {
 	}
 
 	for i, node := range candidates {
-		cost[0][i] = ctx.pairCost(ctx.master, node, 0)
-	}
-
-	isFeasible := func(chain []Node) bool {
-		return ctx.isFeasibleChain(requiredTags, requiredNodes, chain)
+		if isFeasible([]Node{node}) {
+			cost[0][i] = ctx.pairCost(ctx.master, node, 0)
+		} else {
+			cost[0][i] = inf
+		}
 	}
 
 	for t := 1; t < ctx.params.NumReplicas; t++ {
