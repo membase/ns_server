@@ -1510,23 +1510,21 @@ handle_join(Req) ->
 
 handle_join_tail(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
     process_flag(trap_exit, true),
-    {Username, Password} = case ns_config:search_prop(ns_config:get(), rest_creds, creds, []) of
-                               [] -> {[], []};
-                               [{U, PList} | _] ->
-                                   {U, proplists:get_value(password, PList)}
-                           end,
     RV = case ns_cluster:check_host_connectivity(OtherHost) of
              {ok, MyIP} ->
                  {struct, MyPList} = build_full_node_info(node(), MyIP),
                  Hostname = misc:expect_prop_value(hostname, MyPList),
 
-                 menelaus_rest:json_request_hilevel(post,
-                                                    {OtherHost, OtherPort, "/controller/addNode",
-                                                     "application/x-www-form-urlencoded",
-                                                     mochiweb_util:urlencode([{<<"hostname">>, Hostname},
-                                                                              {<<"user">>, Username},
-                                                                              {<<"password">>, Password}])},
-                                                    {OtherUser, OtherPswd});
+                 menelaus_rest:json_request_hilevel(
+                   post,
+                   {OtherHost, OtherPort, "/controller/addNode",
+                    "application/x-www-form-urlencoded",
+                    mochiweb_util:urlencode([{<<"hostname">>, Hostname},
+                                             {<<"user">>, ?TEMP_AUTH_TOKEN_USER},
+                                             {<<"password">>,
+                                              binary_to_list(menelaus_ui_auth:generate_token(admin))}
+                                            ])},
+                   {OtherUser, OtherPswd});
              X -> X
          end,
 
