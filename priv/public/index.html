@@ -29,6 +29,8 @@
         <div class="log_wrap">
           <a href="/index.html"></a>
         </div>
+        <div class="tab_name ellipsis" id="js_tab_name">
+        </div>
         <div id="global_progress" class="closed disable_toggle">
           <i class="toggle">i</i>
           <ul id="global_progress_container"></ul>
@@ -782,13 +784,17 @@
               </div>
               <div class="panes clearfix">
                 <div id="js_cluster_settings_container" class="cluster_settings_container">
-                  <div class="certificate_section">
-                    <h3>SSL Certificate</h3>
-                    <textarea id="js-about-cert-area" readonly="readonly"></textarea>
-                    <button onclick="regenerateCertificate();" class="edit_btn when-roadmin-avoid-me" style="border:none;float:none;margin:3px 0pt 3px 65px;font-size:0.85em;">Regenerate</button>
-                  </div>
-                  <h3>RAM Quota</h3>
                   <form id="js_cluster_public_settings_form" class="cluster_settings_form">
+                    <h3>
+                      <label>Name:</label>
+                      <input type="text" name="tabName">
+                    </h3>
+                    <div class="certificate_section">
+                      <h3>SSL Certificate</h3>
+                      <textarea id="js-about-cert-area" readonly="readonly"></textarea>
+                      <div onclick="regenerateCertificate();" class="edit_btn when-roadmin-avoid-me" style="border:none;float:none;margin:3px 0pt 3px 65px;font-size:0.85em;line-height:21px;">Regenerate</div>
+                    </div>
+                    <h3>RAM Quota</h3>
                     <div class="row">
                       <label>RAM Available:</label><span style="vertical-align:middle;"><span id="js_cluster_settings_total_ram"></span> MB</span>
                     </div>

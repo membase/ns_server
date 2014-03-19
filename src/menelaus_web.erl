@@ -1755,11 +1755,6 @@ handle_read_only_user_reset(Req) ->
             end
     end.
 
-is_css_hex(L) ->
-    Int = (catch erlang:list_to_integer(L, 16)),
-    Len = length(L),
-    (Len =:= 6) or (Len =:= 3) andalso is_number(Int).
-
 memory_quota_validation(MemoryQuota) ->
     case MemoryQuota of
        undefined -> ok;
@@ -1785,34 +1780,25 @@ memory_quota_validation(MemoryQuota) ->
 
 handle_visual_internal_settings(Req) ->
     Config = ns_config:get(),
-    reply_json(Req, {struct, case ns_config:search(Config, internalVisualSettings) of
+    reply_json(Req, {struct, case ns_config:search(Config, internal_visual_settings) of
                                  {value, InternalVisualSettings} ->
                                     InternalVisualSettings;
                                  _ ->
-                                    [{windowOutlineHex, <<"">>}, {tabName, <<"">>}]
+                                    [{tabName, <<"">>}]
                               end}).
 
 handle_visual_internal_settings_post(Req) ->
     Params = Req:parse_post(),
     ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
-    WindowOutlineHex = proplists:get_value("windowOutlineHex", Params, ""),
     MemoryQuota = proplists:get_value("memoryQuota", Params),
     TabName = proplists:get_value("tabName", Params, ""),
-    Results = [case WindowOutlineHex of
-                   [] -> ok;
-                   _ ->
-                        case is_css_hex(WindowOutlineHex) of
-                            false -> {windowOutlineHex, <<"Acceptable format is RRGGBB or RGB">>};
-                            _ -> ok
-                        end
-               end, memory_quota_validation(MemoryQuota)],
+    Results = [memory_quota_validation(MemoryQuota)],
     case {ValidateOnly, lists:filter(fun(ok) -> false;
                                         ({ok, _}) -> false;
                                         (_) -> true
                                      end, Results)} of
         {false, []} ->
-            ok = ns_config:set(internalVisualSettings, [{tabName, erlang:list_to_binary(TabName)},
-                                                        {windowOutlineHex, erlang:list_to_binary(WindowOutlineHex)}]),
+            ok = ns_config:set(internal_visual_settings, [{tabName, erlang:list_to_binary(TabName)}]),
             lists:foreach(fun ({ok, CommitF}) -> CommitF();
                               (_) -> ok
                           end, Results),

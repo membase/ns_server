@@ -82,10 +82,17 @@ function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCel
   }).name("isClusterTabCell");
   ns.isClusterTabCell.equality = _.isEqual;
 
+  ns.visualInternalSettingsCell = Cell.compute(function (v) {
+    v.need(poolDetailsCell);
+    return future.get({url: "/internalSettings/visual"});
+  }).name("visualInternalSettingsCell");
+  ns.visualInternalSettingsCell.equality = _.isEqual;
+
   ns.allClusterSectionSettingsCell = Cell.compute(function (v) {
     var currentPool = v.need(poolDetailsCell);
     var isCluster = v.need(ns.isClusterTabCell);
     var ram = currentPool.storageTotals.ram;
+    var visualInternalSettings = v.need(ns.visualInternalSettingsCell);
     var nNodes = 0;
     $.each(currentPool.nodes, function(n, node) {
       if (node.clusterMembership === "active") {
@@ -95,6 +102,7 @@ function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCel
     var ramPerNode = Math.floor(ram.total/nNodes);
 
     return isCluster ? {
+      tabName: visualInternalSettings.tabName,
       totalRam: Math.floor(ramPerNode/Math.Mi),
       memoryQuota: Math.floor(ram.quotaTotalPerNode/Math.Mi),
       maxRamMegs: Math.max(Math.floor(ramPerNode/Math.Mi) - 1024, Math.floor(ramPerNode * 4 / (5 * Math.Mi)))
@@ -108,7 +116,6 @@ var ClusterSection = {
     var self = this;
     var poolDetailsCell = DAL.cells.currentPoolDetailsCell;
     var isROAdminCell = DAL.cells.isROAdminCell;
-    var internalSettingsUrl = "/internalSettings/visual";
 
     makeClusterSectionCells(self, DAL.cells.mode, poolDetailsCell, SettingsSection.tabs);
 
@@ -118,9 +125,10 @@ var ClusterSection = {
     var maxRamCont = $("#js_ram-max-size");
     var outlineTag = $("#js_outline_tag");
     var certArea = $("#js-about-cert-area");
+    var clusterNameContainer = $("#js_tab_name");
     var originalTitle = document.title;
 
-    var clusterSettingsFormValidator = setupFormValidation(clusterSettingsForm, internalSettingsUrl + "?just_validate=1",
+    var clusterSettingsFormValidator = setupFormValidation(clusterSettingsForm, "/internalSettings/visual?just_validate=1",
       function (_status, errors) {
         SettingsSection.renderErrors(errors, clusterSettingsForm);
     }, function () {
@@ -159,15 +167,27 @@ var ClusterSection = {
       }
     });
 
+    self.visualInternalSettingsCell.subscribeValue(function (visualInternalSettings) {
+      if (!visualInternalSettings) {
+        return;
+      }
+      var parsedVersion = DAL.parseVersion(DAL.version);
+      var tabName = $.trim(visualInternalSettings.tabName);
+      var reallyOriginalTabName = originalTitle + " (" + parsedVersion[0] + ")";
+      document.title = tabName ? (reallyOriginalTabName + ' - ' + tabName) : reallyOriginalTabName;
+      clusterNameContainer.text(tabName).attr('title', tabName);
+    });
+
     clusterSettingsForm.submit(function (e) {
       e.preventDefault();
       var spinner = overlayWithSpinner(container);
       $.ajax({
-        url: internalSettingsUrl,
+        url: "/internalSettings/visual",
         type: 'POST',
         data: $.deparam(serializeForm(clusterSettingsForm)),
         success: function () {
           poolDetailsCell.recalculate();
+          self.visualInternalSettingsCell.recalculate();
         },
         error: function (jqXhr) {
           SettingsSection.renderErrors(JSON.parse(jqXhr.responseText), clusterSettingsForm);
