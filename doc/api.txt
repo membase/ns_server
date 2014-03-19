@@ -249,6 +249,12 @@ GET /pools/default/buckets/default =>
             "10.17.20.233:12004",
             "10.17.20.233:12006"
         ],
+        "sslServerList": [
+            "10.17.20.233:22000", // same as above but for ssl endpoints
+            "10.17.20.233:22002",
+            "10.17.20.233:22004",
+            "10.17.20.233:22006"
+        ]
         "vBucketMap": <vbucketMap>
     },
     "replicaNumber": 1,

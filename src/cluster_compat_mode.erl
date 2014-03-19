@@ -18,6 +18,7 @@
 -include("ns_common.hrl").
 
 -export([get_compat_version/0, is_enabled/1, is_enabled_at/2,
+         is_enabled_with_config/2,
          is_cluster_25/0,
          force_compat_version/1, un_force_compat_version/0,
          consider_switching_compat_mode/0,
@@ -60,6 +61,10 @@ is_enabled_at(ClusterVersion, FeatureVersion) ->
 
 is_enabled(FeatureVersion) ->
     is_enabled_at(get_compat_version(), FeatureVersion).
+
+is_enabled_with_config(FeatureVersion, Config) ->
+    {value, Version} = ns_config:search(Config, cluster_compat_version),
+    is_enabled_at(Version, FeatureVersion).
 
 is_cluster_30() ->
     is_enabled([3, 0]).
