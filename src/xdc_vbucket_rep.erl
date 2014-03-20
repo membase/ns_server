@@ -273,7 +273,6 @@ handle_call({worker_done, Pid}, _From,
             couch_api_wrap:db_close(State2#rep_state.source),
             couch_api_wrap:db_close(State2#rep_state.src_master_db),
             couch_api_wrap:db_close(State2#rep_state.target),
-            couch_api_wrap:db_close(State2#rep_state.tgt_master_db),
 
             %% force check for changes since we last snapshop
             %%
@@ -324,8 +323,7 @@ handle_call({worker_done, Pid}, _From,
                                                   status = VbStatus3,
                                                   source = undefined,
                                                   src_master_db = undefined,
-                                                  target = undefined,
-                                                  tgt_master_db = undefined}),
+                                                  target = undefined}),
 
             %% cancel the timer since we will start it next time the vb rep waken up
             NewState2 = xdc_vbucket_rep_ckpt:cancel_timer(NewState),
@@ -437,8 +435,7 @@ terminate_cleanup(State0) ->
     State = xdc_vbucket_rep_ckpt:cancel_timer(State0),
     Dbs = [State#rep_state.source,
            State#rep_state.target,
-           State#rep_state.src_master_db,
-           State#rep_state.tgt_master_db],
+           State#rep_state.src_master_db],
     [catch couch_api_wrap:db_close(Db) || Db <- Dbs, Db /= undefined].
 
 
@@ -550,9 +547,6 @@ init_replication_state(#init_state{rep = Rep,
     {ok, Target} = couch_api_wrap:db_open(TgtDb, []),
 
     SrcMasterDb = capi_utils:must_open_vbucket(Src, <<"master">>),
-    {ok, TgtMasterDb} = couch_api_wrap:db_open(
-                          xdc_rep_utils:get_master_db(Target),
-                          []),
 
     XMemRemote = case RepMode of
                      "xmem" ->
@@ -606,9 +600,7 @@ init_replication_state(#init_state{rep = Rep,
 
     couch_db:close(Source),
     couch_db:close(SrcMasterDb),
-    couch_api_wrap:db_close(TgtMasterDb),
     couch_api_wrap:db_close(Target),
-    couch_api_wrap:db_close(TgtMasterDb),
 
     RepState = #rep_state{
       rep_details = Rep,
@@ -619,7 +611,6 @@ init_replication_state(#init_state{rep = Rep,
       source = Source,
       target = Target,
       src_master_db = SrcMasterDb,
-      tgt_master_db = TgtMasterDb,
       local_vbuuid = LocalVBUUID,
       remote_vbopaque = RemoteVBOpaque,
       start_seq = StartSeq,
@@ -722,8 +713,6 @@ start_replication(#rep_state{
     {ok, Target} = couch_api_wrap:db_open(TgtDB, []),
 
     SrcMasterDb = capi_utils:must_open_vbucket(SourceBucket, <<"master">>),
-    {ok, TgtMasterDb} = couch_api_wrap:db_open(
-                          xdc_rep_utils:get_master_db(Target), []),
 
     {ok, ChangesQueue} = couch_work_queue:new([
                                                {max_items, BatchSizeItems * NumWorkers * 2},
@@ -809,8 +798,7 @@ start_replication(#rep_state{
                xmem_location = XMemLoc,
                source = Source,
                target = Target,
-               src_master_db = SrcMasterDb,
-               tgt_master_db = TgtMasterDb},
+               src_master_db = SrcMasterDb},
 
     Start = now(),
     {Succ, CkptErrReason, NewState} =
@@ -832,7 +820,6 @@ start_replication(#rep_state{
                                             src_master_db = SrcMasterDb,
                                             target_name = TgtURI,
                                             target = Target,
-                                            tgt_master_db = TgtMasterDb,
                                             status = NewVbStatus#rep_vb_status{num_changes_left = Changes,
                                                                                commit_time = TotalCommitTime},
                                             timer = xdc_vbucket_rep_ckpt:start_timer(State),

@@ -190,7 +190,6 @@
           source,
           target,
           src_master_db,
-          tgt_master_db,
           local_vbuuid :: binary(),
           remote_vbopaque :: term(),
           start_seq,
