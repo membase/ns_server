@@ -155,7 +155,7 @@ wait_for_data_move_on_one_node(Connection, Bucket, Partition) ->
             ok;
         _ ->
             timer:sleep(?VBUCKET_POLL_INTERVAL),
-            wait_for_data_move_on_one_node(Bucket, Connection, Partition)
+            wait_for_data_move_on_one_node(Connection, Bucket, Partition)
     end.
 
 get_connection_name(ConsumerNode, ProducerNode, Bucket) ->
