@@ -627,6 +627,10 @@ var ServersSection = {
       self.postAndReload(url, {otpNode: node.otpNode}, undefined, {timeout: 120000});
     });
     var dialog = $('#failover_confirmation_dialog');
+    if (!self.failoverDialogInitTitle) {
+      self.failoverDialogInitTitle = dialog.dialog("option", "title");
+    }
+    dialog.dialog("option", "title", self.failoverDialogInitTitle + " for " + hostname);
     var overlay = overlayWithSpinner(dialog.find('.content').need(1));
     var statusesCell = DAL.cells.nodeStatusesCell;
     statusesCell.setValue(undefined);
