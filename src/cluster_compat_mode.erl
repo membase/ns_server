@@ -48,7 +48,7 @@ supported_compat_version() ->
 %% I.e. we want later version to be able to take over mastership even
 %% without requiring compat mode upgrade
 mb_master_advertised_version() ->
-    [2, 5, 0].
+    [2, 5, 1].
 
 %% TODO: in 2.1 reimplement as compat_version 2.1 to make things
 %% simpler. For 2.0.2 I don't want to prevent rolling downgrades yet.
