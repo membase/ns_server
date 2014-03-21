@@ -136,6 +136,9 @@
 %% for ns_memcached_sockets_pool only
 -export([connect/0]).
 
+%% for diagnostics/debugging
+-export([perform_very_long_call/2]).
+
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
 
@@ -1513,16 +1516,31 @@ do_perform_checkpoint_commit_for_xdcr(Sock, VBucketId, Timeout) ->
         infinity -> ok;
         _ -> timer2:kill_after(Timeout)
     end,
-    {ok, NewCheckpoint, _PersistedCkpt} = mc_client_binary:create_new_checkpoint(Sock, VBucketId),
-    do_perform_checkpoint_commit_for_xdcr_loop(Sock, VBucketId, NewCheckpoint-1).
+    StatsKey = iolist_to_binary(io_lib:format("vbucket-seqno ~B", [VBucketId])),
+    SeqnoKey = iolist_to_binary(io_lib:format("vb_~B:high_seqno", [VBucketId])),
+    {ok, Seqno} = mc_binary:quick_stats(Sock, StatsKey,
+                                        fun (K, V, Acc) ->
+                                                case K =:= SeqnoKey of
+                                                    true -> list_to_integer(binary_to_list(V));
+                                                    _ -> Acc
+                                                end
+                                        end, []),
+    case is_integer(Seqno) of
+        true ->
+            do_perform_checkpoint_commit_for_xdcr_loop(Sock, VBucketId, Seqno);
+        _ ->
+            {reply, {memcached_error, not_my_vbucket}}
+    end.
 
-do_perform_checkpoint_commit_for_xdcr_loop(Sock, VBucketId, WaitedCheckpointId) ->
-    case mc_client_binary:wait_for_checkpoint_persistence(Sock,
-                                                          VBucketId,
-                                                          WaitedCheckpointId) of
+do_perform_checkpoint_commit_for_xdcr_loop(Sock, VBucketId, WaitedSeqno) ->
+    case mc_client_binary:wait_for_seqno_persistence(Sock,
+                                                     VBucketId,
+                                                     WaitedSeqno) of
         ok -> {reply, ok};
         {memcached_error, etmpfail, _} ->
-            do_perform_checkpoint_commit_for_xdcr_loop(Sock, VBucketId, WaitedCheckpointId)
+            do_perform_checkpoint_commit_for_xdcr_loop(Sock, VBucketId, WaitedSeqno);
+        {memcached_error, OtherError, _} ->
+            {reply, {memcached_error, OtherError}}
     end.
 
 get_keys(Bucket, NodeVBuckets, Params) ->
