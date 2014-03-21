@@ -1,13 +1,13 @@
-{error_logger_mf_dir, "@DATA_PREFIX@/var/lib/couchbase/logs"}.
+{error_logger_mf_dir, "@PREFIX@/var/lib/couchbase/logs"}.
 {error_logger_mf_maxbytes, 10485760}.
 {error_logger_mf_maxfiles, 20}.
-{path_config_bindir, "@BIN_PREFIX@/bin"}.
-{path_config_etcdir, "@BIN_PREFIX@/etc/couchbase"}.
-{path_config_libdir, "@BIN_PREFIX@/lib"}.
-{path_config_datadir, "@DATA_PREFIX@/var/lib/couchbase"}.
-{path_config_tmpdir, "@DATA_PREFIX@/var/lib/couchbase/tmp"}.
+{path_config_bindir, "@PREFIX@/bin"}.
+{path_config_etcdir, "@PREFIX@/etc/couchbase"}.
+{path_config_libdir, "@PREFIX@/lib"}.
+{path_config_datadir, "@PREFIX@/var/lib/couchbase"}.
+{path_config_tmpdir, "@PREFIX@/var/lib/couchbase/tmp"}.
 
-{nodefile, "@DATA_PREFIX@/var/lib/couchbase/couchbase-server.node"}.
+{nodefile, "@PREFIX@/var/lib/couchbase/couchbase-server.node"}.
 
 {loglevel_default, debug}.
 {loglevel_couchdb, info}.

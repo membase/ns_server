@@ -15,7 +15,7 @@
 %%
 {application, ns_server,
  [{description, "Couchbase server"},
-  {vsn, "0.0.0"},
+  {vsn, "@NS_SERVER_VERSION@"},
   {modules, [misc,
              ns_config,
              ns_config_default,

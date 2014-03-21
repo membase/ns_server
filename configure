@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+# Note: This script is provided as a convenience wrapper to CMake, which
+# is the build tool used for configuring this project. Please do not make
+# any substantive changes only in this script or in the top-level
+# GNUmakefile, as the normal process of building Couchbase server uses
+# only CMake.
+
 usage() {
 cat <<EOF
 \`$0' configures ns_server to adapt to many kinds of systems.
@@ -53,15 +59,18 @@ if test '!' -f "$couchdb_src/src/couchdb/couch_db.hrl"; then
     exit 1
 fi
 
-cat <<EOF >${0%"${0##*/}"}/.configuration
-prefix="$prefix"
-couchdb_src="$couchdb_src"
-EOF
 
-sed -e "s|@couchdb_src_path@|${couchdb_src}/src/couchdb|g" <${0%"${0##*/}"}/rebar.config.in >${0%"${0##*/}"}/rebar.config
+# Patch up relative couchdb_src, since cmake executes in a subdirectory
+couchdb_src=`cmake -D "dir=${couchdb_src}" -P cmake_modules/abspath.cmake`
 
-echo
-echo "ns_server is configured and is ready to be built!"
-echo "PREFIX: ${prefix}"
-echo "couchdb-src: ${couchdb_src}"
-echo
+mkdir -p build
+cd build
+cmake -D "COUCHDB_SRC=${couchdb_src}" -D "CMAKE_INSTALL_PREFIX=${prefix}" ..
+
+if test $? = 0; then
+    echo
+    echo "ns_server is configured and is ready to be built!"
+    echo "PREFIX: ${prefix}"
+    echo "couchdb-src: ${couchdb_src}"
+    echo
+fi

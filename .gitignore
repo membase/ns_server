@@ -6,11 +6,12 @@
 .eunit
 .project
 .settings
-/priv/ui_tests/screenshots_output
 /TAGS
+/build
 /common_tests/*.beam
 /core*
 /couch
+/couchbase.plt
 /coverage
 /data
 /doc/API/_site
@@ -18,6 +19,7 @@
 /logs
 /ns_server.plt
 /priv/public/js/all-images.js
+/priv/ui_tests/screenshots_output
 /rebar.config
 /src/ns_server.app.src
 /tmp/version_num.tmp

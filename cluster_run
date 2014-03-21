@@ -9,7 +9,7 @@ base_mccouch_port = 13000
 LOGLEVELS = ["debug", "info", "warn", "error", "critical"]
 
 def read_configuration():
-    with open(".configuration") as f:
+    with open("build/cluster_run.configuration") as f:
         def fn(line):
             k, v = line.strip().split('=')
             return k, shlex.split(v)[0]

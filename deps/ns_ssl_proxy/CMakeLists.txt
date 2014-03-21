@@ -1,0 +1,2 @@
+REBAR (TARGET ns_ssl_proxy DEPENDS ale)
+INSTALL (DIRECTORY ebin DESTINATION "${INST_LIBDIR}/ns_ssl_proxy")
