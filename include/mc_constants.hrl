@@ -183,3 +183,8 @@
 -define(UPR_EXPIRATION,            16#59).
 -define(UPR_FLUSH,                 16#5a).
 -define(UPR_SET_VBUCKET_STATE,     16#5b).
+-define(UPR_NOP,                   16#5c).
+%% window bump is officially called "buffer acknowledgement"
+-define(UPR_WINDOW_UPDATE,           16#5d).
+%% this is officially called "upr control" command
+-define(UPR_FLOW_CONTROL_SETUP,    16#5e).
