@@ -55,8 +55,8 @@ dispatch_sub_spatial_req(#httpd{
 design_doc_spatial(Req, #db{name=BucketName} = Db, DesignName, SpatialName,
                    VBuckets) ->
     DDocId = <<"_design/", DesignName/binary>>,
-    Specs = capi_view:build_local_simple_specs(BucketName, DDocId, SpatialName,
-                                               VBuckets),
+    Specs = build_local_simple_specs(BucketName, DDocId, SpatialName,
+                                     VBuckets),
     MergeParams = spatial_merge_params(Req, Db, DDocId, SpatialName, Specs),
     couch_index_merger:query_index(couch_spatial_merger, MergeParams, Req).
 
@@ -128,8 +128,8 @@ spatial_merge_params(Req, #db{name = BucketName} = Db, DDocId, SpatialName) ->
                                         couch_httpd:quote(SpatialName)]),
     SpatialSpecs = dict:fold(
                      fun(Node, VBuckets, Acc) when Node =:= node() ->
-                             capi_view:build_local_simple_specs(BucketName, DDocId, SpatialName,
-                                                                VBuckets) ++ Acc;
+                             build_local_simple_specs(BucketName, DDocId, SpatialName,
+                                                      VBuckets) ++ Acc;
                         (Node, VBuckets, Acc) ->
                              [build_remote_specs(
                                 Node, BucketName, FullSpatialName, VBuckets) | Acc]
@@ -359,3 +359,14 @@ merge_number_list(A, B) when is_list(A) and is_list(B) ->
 bucket_nodes(BucketName) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(?b2l(BucketName)),
     ns_bucket:bucket_nodes(BucketConfig).
+
+build_local_simple_specs(BucketName, DDocId, ViewName, VBuckets) ->
+    DDocDbName = iolist_to_binary([BucketName, $/, "master"]),
+    lists:map(
+      fun(VBucket) ->
+              #simple_index_spec{
+                 database = capi_indexer:vbucket_db_name(BucketName, VBucket),
+                 ddoc_database = DDocDbName,
+                 ddoc_id = DDocId,
+                 index_name = ViewName}
+              end, VBuckets).
