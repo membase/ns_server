@@ -315,6 +315,10 @@ default() ->
      {{request_limit, capi}, undefined},
      {drop_request_memory_threshold_mib, undefined},
      {replication_topology, star},
+     {xdcr_use_new_path, case os:getenv("XDCR_USE_NEW_PATH") of
+                             false -> false;
+                             _ -> true
+                         end},
      {{node, node(), uuid}, [InstanceVClock | InstanceUuid]}
     ].
 

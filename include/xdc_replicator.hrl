@@ -187,15 +187,18 @@
           parent,
           source_name,
           target_name,
-          source,
+          source,                               % note: only used by old path
           target,
           src_master_db,
-          local_vbuuid :: binary(),
+          local_vbuuid,                         % note: only used by old path
           remote_vbopaque :: term(),
           start_seq,
           committed_seq,
           current_through_seq,
+          current_through_snapshot_seq,
+          last_stream_end_seq = 0,
           source_cur_seq,
+          upr_failover_id :: {non_neg_integer(), non_neg_integer()},
           seqs_in_progress = [],
           highest_seq_done = ?LOWEST_SEQ,
           rep_starttime,
@@ -257,7 +260,8 @@
 -record(rep_worker_option, {
           worker_id,               %% unique id of worker process starting from 1
           cp,                      %% parent vb replicator process
-          source = #db{},          %% source db
+          source,                  %note: only used by old path
+          source_bucket,
           target = #httpdb{},      %% target db
           changes_manager,         %% process to queue changes from storage
           max_conns,               %% max connections
@@ -271,6 +275,7 @@
 -record(worker_stat, {
           worker_id,
           seq = 0,
+          snapshot_seq = 0,
           worker_meta_latency_aggr = 0,
           worker_docs_latency_aggr = 0,
           worker_data_replicated = 0,

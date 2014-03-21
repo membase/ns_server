@@ -63,24 +63,29 @@ init([#rep{source = SrcBucketBinary, replication_mode = RepMode, options = Optio
     ?xdcr_debug("ns config event handler subscribed", []),
 
     MaxConcurrentReps = options_to_num_tokens(Options),
-    SrcSize = size(SrcBucketBinary),
-    NotifyFun = fun({updated, {<<Src:SrcSize/binary, $/, VbStr/binary>>, _}})
-                            when Src == SrcBucketBinary->
-                        VbName = binary_to_list(VbStr),
-                        %% if with view, we may see "master" db update msg
-                        case VbName =:= "master" of
-                            true ->
-                                ok;
-                            %% if not master db, it should be a vbucket update
-                            _ ->
-                                Vb = list_to_integer(VbName),
-                                Server ! {src_db_updated, Vb}
-                        end;
-                   (_Evt) ->
-                        ok
-                end,
-    {ok, _} = couch_db_update_notifier:start_link(NotifyFun),
-    ?xdcr_debug("couch_db update notifier started", []),
+    case xdc_rep_utils:is_new_xdcr_path() of
+        false ->
+            SrcSize = size(SrcBucketBinary),
+            NotifyFun = fun({updated, {<<Src:SrcSize/binary, $/, VbStr/binary>>, _}})
+                              when Src == SrcBucketBinary->
+                                VbName = binary_to_list(VbStr),
+                                %% if with view, we may see "master" db update msg
+                                case VbName =:= "master" of
+                                    true ->
+                                        ok;
+                                    %% if not master db, it should be a vbucket update
+                                    _ ->
+                                        Vb = list_to_integer(VbName),
+                                        Server ! {src_db_updated, Vb}
+                                end;
+                           (_Evt) ->
+                                ok
+                        end,
+            {ok, _} = couch_db_update_notifier:start_link(NotifyFun),
+            ?xdcr_debug("couch_db update notifier started", []);
+        _ ->
+            ok
+    end,
     {ok, InitThrottle} = concurrency_throttle:start_link({MaxConcurrentReps, ?XDCR_INIT_CONCUR_THROTTLE}, self()),
     {ok, WorkThrottle} = concurrency_throttle:start_link({MaxConcurrentReps, ?XDCR_REPL_CONCUR_THROTTLE}, self()),
     ?xdcr_debug("throttle process created (init throttle: ~p, work throttle: ~p)",
