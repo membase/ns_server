@@ -130,15 +130,16 @@ default() ->
                                                 % Modifiers: menelaus REST API
                                                 % Listeners: some menelaus module that configures/reconfigures mochiweb??
      {rest_creds, [{creds, []}
-                  ]}, % An empty list means no login/password auth check.
+                  ]},
+                      % pre 3.0 format:
+                      % {rest_creds, [{creds, [{"user", [{password, "password"}]},
+                      %                        {"admin", [{password, "admin"}]}]}
+                      % An empty list means no login/password auth check.
 
-                                                % Example rest_cred when a login/password is setup.
-                                                %
-                                                % {rest_creds, [{creds, [{"user", [{password, "password"}]},
-                                                %                        {"admin", [{password, "admin"}]}]}
-                                                %              ]}, % An empty list means no login/password auth check.
-
-                                                % This is also a parameter to memcached ports below.
+                      % for 3.0 clusters:
+                      % {rest_creds, {User, {password, {Salt, Mac}}}}
+                      % {rest_creds, null} means no login/password auth check.
+                      % read_only_user_creds has the same format
      {remote_clusters, []},
      {{node, node(), isasl}, [InstanceVClock,
                               {path, filename:join(DataDir, ?ISASL_PW)}]},

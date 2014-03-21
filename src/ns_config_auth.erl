@@ -17,26 +17,61 @@
 
 -module(ns_config_auth).
 
+-include("ns_common.hrl").
+
 -export([authenticate/3,
          set_credentials/3,
          get_user/1,
          credentials_changed/3,
-         unset_credentials/1]).
+         unset_credentials/1,
+         upgrade/1]).
 
-set_credentials(admin, User, Password) ->
+get_key(admin) ->
+    rest_creds;
+get_key(ro_admin) ->
+    read_only_user_creds.
+
+set_credentials(Role, User, Password) ->
+    case cluster_compat_mode:is_cluster_30() of
+        true ->
+            set_credentials_30(Role, User, Password);
+        false ->
+            set_credentials_old(Role, User, Password)
+    end.
+
+set_credentials_30(Role, User, Password) ->
+    ns_config:set(get_key(Role), {User, {password, hash_password(Password)}}).
+
+set_credentials_old(admin, User, Password) ->
     ns_config:set(rest_creds, [{creds,
                                 [{User, [{password, Password}]}]}]);
-set_credentials(ro_admin, User, Password) ->
+set_credentials_old(ro_admin, User, Password) ->
     ns_config:set(read_only_user_creds, {User, {password, Password}}).
 
-get_user(admin) ->
+get_user(Role) ->
+    case cluster_compat_mode:is_cluster_30() of
+        true ->
+            get_user_30(Role);
+        false ->
+            get_user_old(Role)
+    end.
+
+get_user_30(Role) ->
+    case ns_config:search(get_key(Role)) of
+        {value, {U, _}} ->
+            U;
+        _ ->
+            undefined
+    end.
+
+get_user_old(admin) ->
     case ns_config:search_prop('latest-config-marker', rest_creds, creds, []) of
         [] ->
             undefined;
         [{U, _}|_] ->
             U
     end;
-get_user(ro_admin) ->
+get_user_old(ro_admin) ->
     case ns_config:search(read_only_user_creds) of
         {value, {U, _}} ->
             U;
@@ -44,7 +79,23 @@ get_user(ro_admin) ->
             undefined
     end.
 
-credentials_changed(admin, User, Password) ->
+credentials_changed(Role, User, Password) ->
+    case cluster_compat_mode:is_cluster_30() of
+        true ->
+            credentials_changed_30(Role, User, Password);
+        false ->
+            credentials_changed_old(Role, User, Password)
+    end.
+
+credentials_changed_30(Role, User, Password) ->
+    case ns_config:search(get_key(Role)) of
+        {value, {User, {password, {Salt, Mac}}}} ->
+            hash_password(Salt, Password) =/= Mac;
+        _ ->
+            true
+    end.
+
+credentials_changed_old(admin, User, Password) ->
     case ns_config:search_prop('latest-config-marker', rest_creds, creds, []) of
         [{U, Auth} | _] ->
             P = proplists:get_value(password, Auth, ""),
@@ -53,7 +104,15 @@ credentials_changed(admin, User, Password) ->
             true
     end.
 
-authenticate(admin, User, Password) ->
+authenticate(Role, User, Password) ->
+    case cluster_compat_mode:is_cluster_30() of
+        true ->
+            authenticate_30(Role, User, Password);
+        false ->
+            authenticate_old(Role, User, Password)
+    end.
+
+authenticate_old(admin, User, Password) ->
     case ns_config:search_prop('latest-config-marker', rest_creds, creds, []) of
         [{User, Auth} | _] ->
             Password =:= proplists:get_value(password, Auth, "");
@@ -63,8 +122,47 @@ authenticate(admin, User, Password) ->
         _ ->
             false
     end;
-authenticate(ro_admin, User, Password) ->
+authenticate_old(ro_admin, User, Password) ->
     ns_config:search(read_only_user_creds) =:= {value, {User, {password, Password}}}.
 
-unset_credentials(ro_admin) ->
-    ns_config:set(read_only_user_creds, null).
+authenticate_30(Role, User, Password) ->
+    do_authenticate(Role, ns_config:search(get_key(Role)), User, Password).
+
+do_authenticate(_Role, {value, {User, {password, {Salt, Mac}}}}, User, Password) ->
+    hash_password(Salt, Password) =:= Mac;
+do_authenticate(admin, {value, null}, _User, _Password) ->
+    true;
+do_authenticate(_Role, _Creds, _User, _Password) ->
+    false.
+
+unset_credentials(Role) ->
+    ns_config:set(get_key(Role), null).
+
+upgrade(Config)->
+    case ns_config:search_prop(Config, rest_creds, creds, []) of
+        [{User, Auth} | _] ->
+            Password = proplists:get_value(password, Auth, ""),
+            [{set, rest_creds, {User, {password, hash_password(Password)}}}];
+        _ ->
+            [{set, rest_creds, null}]
+    end ++
+        case ns_config:search(Config, read_only_user_creds) of
+            {value, {ROUser, {password, ROPassword}}} ->
+                [{set, read_only_user_creds, {ROUser, {password, hash_password(ROPassword)}}}];
+            false ->
+                [{set, read_only_user_creds, null}];
+            {value, null} ->
+                []
+        end.
+
+hash_password(Password) ->
+    Salt = crypto:rand_bytes(16),
+    {Salt, hash_password(Salt, Password)}.
+
+hash_password(Salt, Password) ->
+    case erlang:system_info(otp_release) < "R16" of
+        true ->
+            crypto:sha_mac(Salt, list_to_binary(Password));
+        false ->
+            crypto:hmac(sha, Salt, list_to_binary(Password))
+    end.
