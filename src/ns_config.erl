@@ -1124,6 +1124,8 @@ do_test_cas_config(Self) ->
     ets:new(ns_config_announces_counter, [set, named_table]),
     ets:insert_new(ns_config_announces_counter, {changes_counter, 0}),
 
+    ets:new(ns_config_ets_dup, [public, set, named_table]),
+
     ns_config:cas_remote_config(new, old),
     receive
         {cas_config, new, old, _} ->
