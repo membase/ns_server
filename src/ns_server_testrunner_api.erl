@@ -67,3 +67,6 @@ get_document_replica(Bucket, VBucket, Key) ->
 
 grab_all_xdcr_checkpoints(BucketName, Timeout) ->
     {json, {struct, capi_utils:capture_local_master_docs(BucketName, Timeout)}}.
+
+shutdown_nicely() ->
+    ns_babysitter_bootstrap:remote_stop(ns_server:get_babysitter_node()).
