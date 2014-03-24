@@ -1398,7 +1398,7 @@ handle_streaming(F, Req, LastRes) ->
     %% Register to get config state change messages.
     menelaus_event:register_watcher(self()),
     Sock = Req:get(socket),
-    inet:setopts(Sock, [{active, true}]),
+    mochiweb_socket:setopts(Sock, [{active, true}]),
     handle_streaming(F, Req, HTTPRes, LastRes).
 
 streaming_inner(F, HTTPRes, LastRes) ->
