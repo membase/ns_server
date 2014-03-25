@@ -224,8 +224,8 @@ handle_call({set_vbucket_state, Packet}, _From,
             {reply, ok, State}
     end;
 
-handle_call(Command, _From, State, _ParentState) ->
-    ?rebalance_warning("Unexpected handle_call(~p, ~p)", [Command, State]),
+handle_call(Msg, _From, State, _ParentState) ->
+    ?rebalance_warning("Unhandled call: Msg = ~p, State = ~p", [Msg, State]),
     {reply, refused, State}.
 
 
@@ -249,7 +249,7 @@ handle_cast({producer_stream_closed, Packet},
     {noreply, maybe_reply_setup_streams(NewState#state{state = NewStreamState})};
 
 handle_cast(Msg, State, _ParentState) ->
-    ?rebalance_warning("Unhandled cast: ~p", [Msg]),
+    ?rebalance_warning("Unhandled cast: Msg = ~p, State = ~p", [Msg, State]),
     {noreply, State}.
 
 process_add_close_stream_response(Header, PendingPartitions, Errors) ->

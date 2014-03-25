@@ -42,8 +42,8 @@ handle_packet(response, ?UPR_CLOSE_STREAM, Packet, State, ParentState) ->
 handle_packet(_, _, _, State, _ParentState) ->
     {proxy, State}.
 
-handle_call(Command, _From, State, _ParentState) ->
-    ?rebalance_warning("Unexpected handle_call(~p, ~p)", [Command, State]),
+handle_call(Msg, _From, State, _ParentState) ->
+    ?rebalance_warning("Unhandled call: Msg = ~p, State = ~p", [Msg, State]),
     {reply, refused, State}.
 
 handle_cast({close_stream, Partition}, State, ParentState) ->
@@ -51,5 +51,5 @@ handle_cast({close_stream, Partition}, State, ParentState) ->
     {noreply, State};
 
 handle_cast(Msg, State, _ParentState) ->
-    ?rebalance_warning("Unhandled cast: ~p", [Msg]),
+    ?rebalance_warning("Unhandled cast: Msg = ~p, State = ~p", [Msg, State]),
     {noreply, State}.
