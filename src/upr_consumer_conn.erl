@@ -34,7 +34,7 @@
                       }).
 
 -record(takeover_state, {owner :: {pid(), any()},
-                         state :: requested | replied,
+                         state :: requested | opaque_known,
                          opaque :: integer(),
                          partition :: vbucket_id(),
                          requested_partition_state = none :: none | int_vb_state()
@@ -75,19 +75,25 @@ handle_packet(response, ?UPR_ADD_STREAM, Packet,
     {block, maybe_reply_setup_streams(NewState#state{state = NewStreamState})};
 
 handle_packet(response, ?UPR_ADD_STREAM, Packet,
-              #state{state = #takeover_state{state = requested, opaque = Opaque, owner = From}
-                     = TakeoverState} = State, _ParentState) ->
+              #state{state = #takeover_state{owner = From}}
+              = State, _ParentState) ->
 
     {Header, Body} = mc_binary:decode_packet(Packet),
-    Opaque = Header#mc_header.opaque,
     case upr_commands:process_response(Header, Body) of
-        {ok, NewOpaque} ->
-            NewTakeoverState = TakeoverState#takeover_state{state = replied, opaque = NewOpaque},
-            {block, State#state{state = NewTakeoverState}};
+        {ok, _Opaque} ->
+            {block, State};
         Error ->
             gen_server:reply(From, Error),
             {block, State#state{state = idle}}
     end;
+
+handle_packet(request, ?UPR_STREAM_REQ, Packet,
+              #state{state = #takeover_state{state = requested}
+                     = TakeoverState} = State, _ParentState) ->
+    {Header, _Body} = mc_binary:decode_packet(Packet),
+    NewTakeoverState = TakeoverState#takeover_state{state = opaque_known,
+                                                    opaque = Header#mc_header.opaque},
+    {proxy, State#state{state = NewTakeoverState}};
 
 handle_packet(response, ?UPR_CLOSE_STREAM, Packet,
               #state{state = #stream_state{to_close = ToClose, errors = Errors} = StreamState}
@@ -107,7 +113,7 @@ handle_packet(response, ?UPR_CLOSE_STREAM, Packet,
     {block, maybe_reply_setup_streams(NewState#state{state = NewStreamState})};
 
 handle_packet(response, ?UPR_SET_VBUCKET_STATE, Packet,
-              #state{state = #takeover_state{opaque = Opaque, state = replied,
+              #state{state = #takeover_state{opaque = Opaque, state = opaque_known,
                                              partition = Partition,
                                              owner = From,
                                              requested_partition_state = VbState} = TakeoverState}
@@ -200,13 +206,8 @@ handle_call({takeover, Partition}, From, #state{state=idle} = State, ParentState
                                  }}
     end;
 
-handle_call(Command, _From, State, _ParentState) ->
-    ?rebalance_warning("Unexpected handle_call(~p, ~p)", [Command, State]),
-    {reply, refused, State}.
-
-
-handle_cast({set_vbucket_state, Packet},
-            #state{state = #takeover_state{opaque = Opaque, state = replied,
+handle_call({set_vbucket_state, Packet}, _From,
+            #state{state = #takeover_state{opaque = Opaque, state = opaque_known,
                                            partition = Partition,
                                            requested_partition_state = none} = TakeoverState}
             = State, _ParentState) ->
@@ -217,11 +218,16 @@ handle_cast({set_vbucket_state, Packet},
         Opaque ->
             ?rebalance_debug("Partition ~p is about to change status to ~p",
                              [Partition, mc_client_binary:vbucket_state_to_atom(VbState)]),
-            {noreply, State#state{state =
-                                    TakeoverState#takeover_state{requested_partition_state = VbState}}};
+            {reply, ok, State#state{state =
+                                        TakeoverState#takeover_state{requested_partition_state = VbState}}};
         _ ->
-            {noreply, State}
+            {reply, ok, State}
     end;
+
+handle_call(Command, _From, State, _ParentState) ->
+    ?rebalance_warning("Unexpected handle_call(~p, ~p)", [Command, State]),
+    {reply, refused, State}.
+
 
 handle_cast({producer_stream_closed, Packet},
             #state{state = #stream_state{to_close_on_producer = ToClose,
