@@ -88,9 +88,10 @@ handle_packet(response, ?UPR_ADD_STREAM, Packet,
     end;
 
 handle_packet(request, ?UPR_STREAM_REQ, Packet,
-              #state{state = #takeover_state{state = requested}
+              #state{state = #takeover_state{state = requested, partition = Partition}
                      = TakeoverState} = State, _ParentState) ->
     {Header, _Body} = mc_binary:decode_packet(Packet),
+    Partition = Header#mc_header.vbucket,
     NewTakeoverState = TakeoverState#takeover_state{state = opaque_known,
                                                     opaque = Header#mc_header.opaque},
     {proxy, State#state{state = NewTakeoverState}};

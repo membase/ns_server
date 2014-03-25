@@ -226,7 +226,8 @@ decode_header(req, <<?REQ_MAGIC:8, Opcode:8, KeyLen:16, ExtLen:8,
                      DataType:8, Reserved:16, BodyLen:32,
                      Opaque:32, CAS:64>>) ->
     {#mc_header{opcode = Opcode, status = Reserved, opaque = Opaque,
-                keylen = KeyLen, extlen = ExtLen, bodylen = BodyLen},
+                keylen = KeyLen, extlen = ExtLen, bodylen = BodyLen,
+                vbucket = Reserved},
      #mc_entry{datatype = DataType, cas = CAS}};
 
 decode_header(res, <<?RES_MAGIC:8, Opcode:8, KeyLen:16, ExtLen:8,
