@@ -144,6 +144,7 @@ def start_cluster(num_nodes, start_index, host, extra_args, args_prefix):
         if not params['env'].has_key('ERL_FULLSWEEP_AFTER'):
             params['env']['ERL_FULLSWEEP_AFTER'] = '512'
         params['env']['PATH'] = path
+        params['env']['ERL_CRASH_DUMP'] = 'erl_crash.dump.n_%d' % i
 
         params['close_fds'] = True
 
