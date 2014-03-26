@@ -2606,32 +2606,32 @@
   </script>
   <form>
     <fieldset>
-      <fieldset style="float:left;">
+      <fieldset style="float:left;width:230px;">
         <legend>Replicate changes from:</legend>
         <ul>
           <li><label>Cluster:</label>
             <span style="font-size: 0.7em;font-weight: bold;margin-left: 0.2em;">this cluster</span>
           </li>
           <li><label for="replication_from_bucket">Bucket:</label>
-            <select name="fromBucket" id="replication_from_bucket" style="width: 157px;"></select>
+            <select name="fromBucket" id="replication_from_bucket" style="width: 154px;"></select>
           </li>
         </ul>
       </fieldset>
-      <fieldset style="float:left;clear:right">
+      <fieldset style="float:left;width:250px;">
         <legend>To:</legend>
         <ul>
           <li><label for="replication_to_cluster">Cluster:</label>
-            <select name="toCluster" id="replication_to_cluster" style="width: 157px;">
+            <select name="toCluster" id="replication_to_cluster" style="width: 154px;">
               <option>remote cluster list</option>
             </select>
           </li>
           <li><label for="replication_to_bucket">Bucket:</label>
-            <input name="toBucket" id="replication_to_bucket" />
+            <input name="toBucket" id="replication_to_bucket" type="text" />
             <!-- TODO: this needs to become a select box like the one above -->
           </li>
         </ul>
       </fieldset>
-      <fieldset class="xdcr_advaced_settings" id="js_xdcr_advaced_settings">
+      <fieldset class="xdcr_advaced_settings" id="js_xdcr_advaced_settings" style="clear:both;">
         <legend id="js_xdcr_advaced_settings_btn">Advanced settings:</legend>
         <div id="js_xdcr_advaced_settings_container" class="xdcr_advaced_settings_container">
           <div>

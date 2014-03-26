@@ -513,6 +513,7 @@ button#test_email + span {line-height:2.25em;margin-left:0.5em}
 .join_cluster ul li {margin:0.6em 0}
 .join_cluster ul ul label {display:inline;width:auto;text-align:left}
 .join_cluster input {margin:0 4px 0 1px;padding:4px 3px;border:1px solid #ccd2d6;}
+.join_cluster input[type="text"] {width: 145px;}
 
 .demand_encryption_flag label, .demand_encryption_flag input {vertical-align: middle;}
 .create_replication_dialog label {width: 66px;}
