@@ -34,7 +34,9 @@ couch_start_arguments=""
 LD_LIBRARY_PATH="@PREFIX@/lib":"@PREFIX@/lib/memcached":$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH
 
-ERL_CRASH_DUMP=erl_crash.dump.$(date +%s).$$
+ERL_CRASH_DUMP_BASE=erl_crash.dump.$(date +%s).$$
+ERL_CRASH_DUMP=$ERL_CRASH_DUMP_BASE.babysitter
+export ERL_CRASH_DUMP_BASE
 export ERL_CRASH_DUMP
 
 ERL_FULLSWEEP_AFTER=512

@@ -119,11 +119,19 @@ create_ssl_proxy_spec(Config) ->
     ErlPath = filename:join([hd(proplists:get_value(root, init:get_arguments())),
                              "bin", "erl"]),
 
+    Env0 = case os:getenv("ERL_CRASH_DUMP_BASE") of
+               false ->
+                   [];
+               Base ->
+                   [{"ERL_CRASH_DUMP", Base ++ ".xdcr_proxy"}]
+           end,
+    Env = [{"NS_SSL_PROXY_ENV_ARGS", inspect_term_arg(EnvArgs)} | Env0],
+
     {xdcr_proxy,
      ErlPath,
      AllArgs,
      [use_stdio, stderr_to_stdout,
-      {env, [{"NS_SSL_PROXY_ENV_ARGS", inspect_term_arg(EnvArgs)}]}]}.
+      {env, Env}]}.
 
 per_bucket_moxi_specs(Config) ->
     BucketConfigs = ns_bucket:get_buckets(Config),

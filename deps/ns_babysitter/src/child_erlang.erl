@@ -55,9 +55,18 @@ open_port_args() ->
     AllArgs = ErlangArgs ++ AppArgs,
     ErlPath = filename:join([hd(proplists:get_value(root, init:get_arguments())),
                              "bin", "erl"]),
+
+    Env0 = case os:getenv("ERL_CRASH_DUMP_BASE") of
+               false ->
+                   [];
+               Base ->
+                   [{"ERL_CRASH_DUMP", Base ++ ".ns_server"}]
+           end,
+    Env = [{"NS_SERVER_BABYSITTER_COOKIE", atom_to_list(erlang:get_cookie())} | Env0],
+
     [{spawn_executable, ErlPath},
      [{args, AllArgs},
-      {env, [{"NS_SERVER_BABYSITTER_COOKIE", atom_to_list(erlang:get_cookie())}]},
+      {env, Env},
       exit_status, use_stdio, stream, eof]].
 
 child_start(Arg) ->
