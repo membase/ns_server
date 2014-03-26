@@ -207,24 +207,6 @@ handle_call({takeover, Partition}, From, #state{state=idle} = State, ParentState
                                  }}
     end;
 
-handle_call({set_vbucket_state, Packet}, _From,
-            #state{state = #takeover_state{opaque = Opaque, state = opaque_known,
-                                           partition = Partition,
-                                           requested_partition_state = none} = TakeoverState}
-            = State, _ParentState) ->
-    {Header, Body} = mc_binary:decode_packet(Packet),
-    <<VbState:8>> = Body#mc_entry.ext,
-
-    case Header#mc_header.opaque of
-        Opaque ->
-            ?rebalance_debug("Partition ~p is about to change status to ~p",
-                             [Partition, mc_client_binary:vbucket_state_to_atom(VbState)]),
-            {reply, ok, State#state{state =
-                                        TakeoverState#takeover_state{requested_partition_state = VbState}}};
-        _ ->
-            {reply, ok, State}
-    end;
-
 handle_call(Msg, _From, State, _ParentState) ->
     ?rebalance_warning("Unhandled call: Msg = ~p, State = ~p", [Msg, State]),
     {reply, refused, State}.
@@ -248,6 +230,25 @@ handle_cast({producer_stream_closed, Packet},
                 del_partition(Partition, State)
         end,
     {noreply, maybe_reply_setup_streams(NewState#state{state = NewStreamState})};
+
+handle_cast({set_vbucket_state, Packet},
+            #state{state = #takeover_state{opaque = Opaque, state = opaque_known,
+                                           partition = Partition,
+                                           requested_partition_state = none} = TakeoverState}
+            = State, _ParentState) ->
+    {Header, Body} = mc_binary:decode_packet(Packet),
+    <<VbState:8>> = Body#mc_entry.ext,
+
+    case Header#mc_header.opaque of
+        Opaque ->
+            ?rebalance_debug("Partition ~p is about to change status to ~p",
+                             [Partition, mc_client_binary:vbucket_state_to_atom(VbState)]),
+            {noreply, State#state{state =
+                                      TakeoverState#takeover_state{requested_partition_state = VbState}}};
+        _ ->
+            {noreply, State}
+    end;
+
 
 handle_cast(Msg, State, _ParentState) ->
     ?rebalance_warning("Unhandled cast: Msg = ~p, State = ~p", [Msg, State]),

@@ -31,7 +31,7 @@ init([]) ->
 
 handle_packet(request, ?UPR_SET_VBUCKET_STATE, Packet, State, ParentState) ->
     Consumer = upr_proxy:get_partner(ParentState),
-    ok = gen_server:call(Consumer, {set_vbucket_state, Packet}),
+    gen_server:cast(Consumer, {set_vbucket_state, Packet}),
     {proxy, State};
 
 handle_packet(response, ?UPR_CLOSE_STREAM, Packet, State, ParentState) ->
