@@ -176,30 +176,38 @@ generate_vbucket_map_options(KeepNodes, BucketConfig) ->
 
 generate_vbucket_map_options(KeepNodes, BucketConfig, ReplicationTopology, Config) ->
     Tags = case ns_config:search(Config, server_groups) of
-               {value, [_]} ->
-                   undefined;
                false ->
                    undefined;
                {value, ServerGroups} ->
-                   Tags0 = [case proplists:get_value(uuid, G) of
-                                T ->
-                                    [{N, T} || N <- proplists:get_value(nodes, G),
-                                               lists:member(N, KeepNodes)]
-                            end || G <- ServerGroups],
-
-                   TagsRV = lists:append(Tags0),
-
-                   case KeepNodes -- [N || {N, _T} <- TagsRV] of
-                       [] -> ok;
+                   case [G || G <- ServerGroups,
+                              proplists:get_value(nodes, G) =/= []] of
+                       [_] ->
+                           %% note that we don't need to handle this case
+                           %% specially; but unfortunately removing it would
+                           %% make 2.5 nodes always believe that rebalance is
+                           %% required in case there's only one server group
+                           undefined;
                        _ ->
-                           %% there's tiny race between start of rebalance and
-                           %% somebody changing server_groups. We largely ignore it,
-                           %% but in case where it can clearly cause problem we raise
-                           %% exception
-                           erlang:error(server_groups_race_detected)
-                   end,
+                           Tags0 = [case proplists:get_value(uuid, G) of
+                                        T ->
+                                            [{N, T} || N <- proplists:get_value(nodes, G),
+                                                       lists:member(N, KeepNodes)]
+                                    end || G <- ServerGroups],
 
-                   TagsRV
+                           TagsRV = lists:append(Tags0),
+
+                           case KeepNodes -- [N || {N, _T} <- TagsRV] of
+                               [] -> ok;
+                               _ ->
+                                   %% there's tiny race between start of rebalance and
+                                   %% somebody changing server_groups. We largely ignore it,
+                                   %% but in case where it can clearly cause problem we raise
+                                   %% exception
+                                   erlang:error(server_groups_race_detected)
+                           end,
+
+                           TagsRV
+                   end
            end,
 
     Opts0 = ns_bucket:config_to_map_options(BucketConfig),
