@@ -81,13 +81,17 @@ init(#init_state{init_throttle = InitThrottle} = InitState) ->
 format_status(Opt, [PDict, State]) ->
     xdc_rep_utils:sanitize_status(Opt, PDict, State).
 
-handle_info({failover_id, {_, _} = FID, SnapshotSeq, _StartSeq},
-            #rep_state{current_through_snapshot_seq = _CurrentSnapshotSeq} = State) ->
+handle_info({failover_id, {_, _} = FID, SnapshotSeq, StartSeq, HighVbucketSeqno},
+            #rep_state{status = VbStatus} = State) ->
 
-    %% TODO: handle rollback (change of start seq) as part of unbreaking stats work
-    {noreply, State#rep_state{upr_failover_id = FID,
-                              last_stream_end_seq = 0,
-                              current_through_snapshot_seq = SnapshotSeq}};
+    VbStatus2 = VbStatus#rep_vb_status{num_changes_left = HighVbucketSeqno - StartSeq},
+
+    NewState = State#rep_state{upr_failover_id = FID,
+                               status = VbStatus2,
+                               last_stream_end_seq = 0,
+                               current_through_snapshot_seq = SnapshotSeq},
+
+    {noreply, update_status_to_parent(NewState)};
 
 handle_info({stream_end, _LastSnapshotSeqno, LastSeenSeqno}, State) ->
     {noreply, State#rep_state{last_stream_end_seq = LastSeenSeqno}};
@@ -119,12 +123,33 @@ handle_info(init, #init_state{init_throttle = InitThrottle} = InitState) ->
 handle_info(wake_me_up,
             #rep_state{status = VbStatus = #rep_vb_status{status = idle,
                                                           vb = Vb},
+                       rep_details = #rep{source = SourceBucket},
+                       current_through_seq = ThroughSeq,
                        throttle = Throttle,
                        target_name = TgtURI} = St) ->
     TargetNode =  target_uri_to_node(TgtURI),
     ?xdcr_debug("ask for token for rep of vb: ~p to target node: ~p", [Vb, TargetNode]),
     ok = concurrency_throttle:send_back_when_can_go(Throttle, TargetNode, start_replication),
-    {noreply, update_status_to_parent(St#rep_state{status = VbStatus#rep_vb_status{status = waiting_turn}}), hibernate};
+
+    SeqnoKey = iolist_to_binary(io_lib:format("vb_~B:high_seqno", [Vb])),
+    {ok, StatsValue} =
+        ns_memcached:raw_stats(node(), couch_util:to_list(SourceBucket),
+                               iolist_to_binary(io_lib:format("vbucket-seqno ~B", [Vb])),
+                               fun (K, V, Acc) ->
+                                       case K =:= SeqnoKey of
+                                           true ->
+                                               V;
+                                           _ ->
+                                               Acc
+                                       end
+                               end, []),
+
+    VbucketSeq = list_to_integer(binary_to_list(StatsValue)),
+
+    NewVbStatus = VbStatus#rep_vb_status{status = waiting_turn,
+                                         num_changes_left = erlang:max(VbucketSeq - ThroughSeq, 0)},
+
+    {noreply, update_status_to_parent(St#rep_state{status = NewVbStatus}), hibernate};
 
 handle_info(wake_me_up, OtherState) ->
     {noreply, OtherState};
@@ -352,8 +377,16 @@ handle_call({worker_done, Pid}, _From,
             end,
 
             %% changes may or may not be closed
-            VbStatus2 = VbStatus#rep_vb_status{size_changes_queue = 0,
-                                               docs_changes_queue = 0},
+            case xdc_rep_utils:is_new_xdcr_path() of
+                false ->
+                    VbStatus2 = VbStatus#rep_vb_status{size_changes_queue = 0,
+                                                       docs_changes_queue = 0};
+                true ->
+                    VbStatus2 = VbStatus#rep_vb_status{size_changes_queue = 0,
+                                                       docs_changes_queue = 0,
+                                                       num_changes_left = 0}
+            end,
+
             %% dump a bunch of stats
             Vb = VbStatus2#rep_vb_status.vb,
             Throttle = State2#rep_state.throttle,
@@ -853,7 +886,8 @@ start_replication(#rep_state{
                 [ChangesReader, ChangesManager]),
     case xdc_rep_utils:is_new_xdcr_path() of
         true ->
-            Changes = 1;%% couch_db:count_changes_since(Source, StartSeq),
+            %% we'll soon update changes based on failover_id message from changes_reader
+            Changes = 0;
         _ ->
             Changes = couch_db:count_changes_since(Source, StartSeq)
     end,
@@ -1022,7 +1056,7 @@ read_changes(BucketName, Vb, ChangesQueue, StartSeq, SnapshotSeq, {FailoverUUID,
               case Event of
                   please_stop ->
                       {stop, []};
-                  {failover_id, _FID, _, _} = FidMsg ->
+                  {failover_id, _FID, _, _, _} = FidMsg ->
                       Parent ! FidMsg,
                       {ok, []};
                   {stream_end, _LastSnapshotSeqno, _LastSeenSeqno} = Msg->

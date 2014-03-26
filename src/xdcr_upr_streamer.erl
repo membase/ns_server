@@ -181,7 +181,7 @@ do_start(Socket, Vb, FailoverId, FailoverSeqno, RealStartSeqno, HighSeqno, Callb
         #upr_packet{status = ?SUCCESS, body = FailoverLogBin} ->
             FailoverLog = unpack_failover_log(FailoverLogBin),
             ?log_debug("FailoverLog: ~p", [FailoverLog]),
-            Parent ! {failover_id, lists:last(FailoverLog), LastSnapshotSeqno, RealStartSeqno},
+            Parent ! {failover_id, lists:last(FailoverLog), LastSnapshotSeqno, RealStartSeqno, HighSeqno},
             set_sensitive_flag(),
             inet:setopts(Socket, [{active, once}]),
             proc_lib:init_ack({ok, self()}),
@@ -303,7 +303,7 @@ socket_loop(Socket, Callback, Acc, Data, ScannedPos, Consumer, SentToConsumer) -
 
 enter_consumer_loop(Child, Callback, Acc) ->
     receive
-        {failover_id, _FailoverId, LastSnapshotSeqno, _} = Evt ->
+        {failover_id, _FailoverId, LastSnapshotSeqno, _, _} = Evt ->
             {number, true} = {number, is_integer(LastSnapshotSeqno)},
             {ok, Acc2} = Callback(Evt, Acc),
             consumer_loop(Child, Callback, Acc2, 0, LastSnapshotSeqno, undefined)
@@ -503,7 +503,7 @@ test() ->
     Cb = fun (Packet, Acc) ->
                  ?log_debug("packet: ~p", [Packet]),
                  case Packet of
-                     {failover_id, _FID, _, _} ->
+                     {failover_id, _FID, _, _, _} ->
                          {ok, Acc};
                      {stream_end, _, _} = Msg ->
                          ?log_debug("StreamEnd: ~p", [Msg]),
