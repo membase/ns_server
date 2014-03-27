@@ -151,7 +151,7 @@ start(Socket, Vb, FailoverId, FailoverSeqno, LastSnapshotSeqno, StartSeqno, Call
                              case HighSeqno < LastSnapshotSeqno of
                                  true ->
                                      %% Otherwise ep-engine refuses instead of doing rollback
-                                     ?log_debug("LastSnapshotSeqno is less then high seqno. Lowering to ~B", [HighSeqno]),
+                                     ?log_debug("LastSnapshotSeqno is higher then high seqno. Lowering to ~B", [HighSeqno]),
                                      HighSeqno;
                                  _ ->
                                      LastSnapshotSeqno
@@ -159,7 +159,10 @@ start(Socket, Vb, FailoverId, FailoverSeqno, LastSnapshotSeqno, StartSeqno, Call
                          _ ->
                              StartSeqno
                      end,
-    do_start(Socket, Vb, FailoverId, FailoverSeqno, RealStartSeqno, HighSeqno, Callback, Acc, Parent, false, LastSnapshotSeqno).
+    %% note: due to "lowering..." above we will otherwise get last
+    %% snapshot seqno > start seqno which is nonsense
+    UsedLastSnapshotSeqno = erlang:min(LastSnapshotSeqno, RealStartSeqno),
+    do_start(Socket, Vb, FailoverId, FailoverSeqno, RealStartSeqno, HighSeqno, Callback, Acc, Parent, false, UsedLastSnapshotSeqno).
 
 %% right now logs are spammed if some linked process
 %% dies. This prevents spamming. We'll need to find some
