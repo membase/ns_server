@@ -918,8 +918,10 @@ do_merge_values({K, RV} = RP, {_, LV} = LP, Node) ->
                 true ->
                     lists:max([LP, RP]);
                 false ->
-                    V = case {vclock:likely_newer(LClock, RClock),
-                              vclock:likely_newer(RClock, LClock)} of
+                    LocalTS = vclock:get_latest_timestamp(LClock),
+                    RemoteTS = vclock:get_latest_timestamp(RClock),
+
+                    V = case {LocalTS >= RemoteTS, RemoteTS >= LocalTS} of
                             {X1, X1} ->
                                 [Winner, Loser] = lists:sort([LV, RV]),
 
