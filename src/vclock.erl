@@ -28,8 +28,8 @@
 -author('Justin Sheehy <justin@basho.com>').
 -author('Andy Gross <andy@basho.com>').
 
--export([fresh/0,descends/2,merge/1,get_counter/2,get_timestamp/2,
-         increment/2,all_nodes/1, likely_newer/2, timestamp/0,
+-export([fresh/0, descends/2, merge/1, get_counter/2, get_timestamp/2,
+         increment/2, all_nodes/1, likely_newer/2, timestamp/0,
          get_latest_timestamp/1, count_changes/1]).
 -export([example_test/0]).
 
