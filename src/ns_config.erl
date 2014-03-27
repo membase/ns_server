@@ -1559,18 +1559,35 @@ merge_values_test_() ->
     {timeout, 100, fun merge_values_test__/0}.
 
 merge_values_test__() ->
-    lists:foreach(
-      fun (_I) ->
-              merge_values_test_iter()
-      end, lists:seq(1, 250)).
+    mock_timestamp(
+      fun () ->
+              lists:foreach(
+                fun (_I) ->
+                        merge_values_test_iter()
+                end, lists:seq(1, 1000))
+      end).
 
 mock_timestamp(Body) ->
     {ok, Pid} = mock:mock(calendar),
+    Tid = ets:new(none, [public]),
+    true = ets:insert_new(Tid, {counter, 0}),
 
     try
         ok = mock:expects(calendar, datetime_to_gregorian_seconds,
                           fun (_) -> true end,
-                          fun (_, Count) -> Count end, 16#ffffffff),
+                          fun (_, _) ->
+                                  [{counter, Count}] = ets:lookup(Tid, counter),
+                                  NewCount = case random:uniform() < 0.3 of
+                                                 true ->
+                                                     Count + 1;
+                                                 false ->
+                                                     Count
+                                             end,
+
+                                  true = ets:insert(Tid, {counter, NewCount}),
+
+                                  Count
+                          end, 16#ffffffff),
         ok = mock:expects(calendar, local_time,
                           fun (_) -> true end,
                           fun (_, _) -> erlang:localtime() end, 16#ffffffff),
@@ -1580,6 +1597,8 @@ mock_timestamp(Body) ->
 
         Body()
     after
+        ets:delete(Tid),
+
         unlink(Pid),
         exit(Pid, kill),
         misc:wait_for_process(Pid, infinity),
@@ -1589,24 +1608,18 @@ mock_timestamp(Body) ->
     end.
 
 mutate(Value, Nodes) ->
-    mock_timestamp(
-      fun () ->
-              N = length(Nodes),
-              ManyNodes = lists:concat(lists:duplicate(N, Nodes)),
-              Mutations = lists:sublist(misc:shuffle(ManyNodes), N),
+    N = length(Nodes),
+    ManyNodes = lists:concat(lists:duplicate(N, Nodes)),
+    Mutations = lists:sublist(misc:shuffle(ManyNodes), N),
 
-              lists:foldl(
-                fun (Node, V) ->
-                        increment_vclock(V, V, Node)
-                end, Value, Mutations)
-      end).
+    lists:foldl(
+      fun (Node, V) ->
+              increment_vclock(V, V, Node)
+      end, Value, Mutations).
 
 merge_values_helper(RP, LP, Node) ->
-    mock_timestamp(
-      fun () ->
-              {_, V} = do_merge_values({key, RP}, {key, LP}, Node),
-              V
-      end).
+    {_, V} = do_merge_values({key, RP}, {key, LP}, Node),
+    V.
 
 merge_values_test_iter() ->
     Nodes = [a,b,c,d,e],
