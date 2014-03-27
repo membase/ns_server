@@ -86,11 +86,18 @@ function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCel
     var currentPool = v.need(poolDetailsCell);
     var isCluster = v.need(ns.isClusterTabCell);
     var ram = currentPool.storageTotals.ram;
+    var nNodes = 0;
+    $.each(currentPool.nodes, function(n, node) {
+      if (node.clusterMembership === "active") {
+        nNodes++;
+      }
+    });
+    var ramPerNode = Math.floor(ram.total/nNodes);
 
     return isCluster ? {
-      totalRam: Math.floor(ram.total/(Math.Mi * currentPool.nodes.length)),
-      memoryQuota: Math.floor(ram.quotaTotal/(Math.Mi * currentPool.nodes.length)),
-      maxRamMegs: Math.max(Math.floor(ram.total/Math.Mi) - 1024, Math.floor(ram.total * 4 / (5 * Math.Mi)))
+      totalRam: Math.floor(ramPerNode/Math.Mi),
+      memoryQuota: Math.floor(ram.quotaTotalPerNode/Math.Mi),
+      maxRamMegs: Math.max(Math.floor(ramPerNode/Math.Mi) - 1024, Math.floor(ramPerNode * 4 / (5 * Math.Mi)))
     } : null;
   }).name("allClusterSectionSettingsCell");
   ns.allClusterSectionSettingsCell.equality = _.isEqual;
