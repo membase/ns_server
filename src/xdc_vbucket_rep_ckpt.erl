@@ -111,6 +111,7 @@ do_checkpoint_new(State) ->
             CheckpointDocId = build_commit_doc_id(State#rep_state.rep_details, Vb),
             NewSeq = State#rep_state.current_through_seq,
             NewSnapshotSeq = State#rep_state.current_through_snapshot_seq,
+            {seq_vs_snapshot, true} = {seq_vs_snapshot, (NewSnapshotSeq =< NewSeq)},
             CheckpointDoc = {[{<<"commitopaque">>, RemoteCommitOpaque},
                               {<<"start_time">>, ?l2b(State#rep_state.rep_starttime)},
                               {<<"end_time">>, ?l2b(httpd_util:rfc1123_date())},
