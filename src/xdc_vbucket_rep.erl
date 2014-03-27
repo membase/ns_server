@@ -89,6 +89,7 @@ handle_info({failover_id, {_, _} = FID, SnapshotSeq, StartSeq, HighVbucketSeqno}
     NewState = State#rep_state{upr_failover_id = FID,
                                status = VbStatus2,
                                last_stream_end_seq = 0,
+                               current_through_seq = StartSeq,
                                current_through_snapshot_seq = SnapshotSeq},
 
     {noreply, update_status_to_parent(NewState)};
