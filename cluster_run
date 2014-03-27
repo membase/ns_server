@@ -21,8 +21,14 @@ PREFIX = config['prefix']
 
 def setup_path():
     def ebin_search(path):
-        return subprocess.Popen(["find", path, "-name", "ebin", "-type", "d"],
-                                stdout=subprocess.PIPE).communicate()[0].split()
+        dirs = os.walk(path)
+        ebins = []
+
+        for d, _, _ in dirs:
+            if os.path.basename(d) == "ebin":
+                ebins.append(d)
+
+        return ebins
 
     path = ebin_search(".")
     couchpath = ebin_search("{0}/lib/couchdb/erlang/lib".format(PREFIX))
