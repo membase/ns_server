@@ -1046,10 +1046,10 @@ spawn_changes_reader(BucketName, Vb, ChangesQueue, StartSeq, SnapshotSeq, Failov
                end).
 
 read_changes(BucketName, Vb, ChangesQueue, StartSeq, SnapshotSeq, {FailoverUUID, FailoverSeq}, Parent) ->
-    true = is_integer(StartSeq),
-    true = is_integer(SnapshotSeq),
-    true = is_integer(FailoverUUID),
-    true = is_integer(FailoverSeq),
+    {start_seq, true} = {start_seq, is_integer(StartSeq)},
+    {snapshot_seq, true} = {snapshot_seq, is_integer(SnapshotSeq)},
+    {failover_uuid, true} = {failover_uuid, is_integer(FailoverUUID)},
+    {failover_seq, true} = {failover_seq, is_integer(FailoverSeq)},
     xdcr_upr_streamer:stream_vbucket(
       binary_to_list(BucketName), Vb, FailoverUUID, FailoverSeq, SnapshotSeq, StartSeq,
       fun (Event, _) ->
