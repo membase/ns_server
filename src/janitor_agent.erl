@@ -582,7 +582,7 @@ handle_call({if_rebalance, RebalancerPid, Subcall},
                        [RebalancerPid, RealRebalancerPid]),
             {reply, wrong_rebalancer_pid, State}
     end;
-handle_call({update_vbucket_state, VBucket, NormalState, RebalanceState, ReplicateFrom}, _From,
+handle_call({update_vbucket_state, VBucket, NormalState, RebalanceState, ReplicateFrom}, From,
             #state{bucket_name = BucketName,
                    last_applied_vbucket_states = WantedVBuckets,
                    rebalance_only_vbucket_states = RebalanceVBuckets} = State) ->
@@ -592,8 +592,16 @@ handle_call({update_vbucket_state, VBucket, NormalState, RebalanceState, Replica
                            rebalance_only_vbucket_states = NewRebalanceVBuckets},
     %% TODO: consider infinite timeout. It's local memcached after all
     ok = ns_memcached:set_vbucket(BucketName, VBucket, NormalState),
-    ok = replication_manager:change_vbucket_replication(BucketName, VBucket, ReplicateFrom),
-    {reply, ok, pass_vbucket_states_to_set_view_manager(NewState)};
+    NewState1 =
+        spawn_rebalance_subprocess(
+          NewState,
+          From,
+          fun () ->
+                  ok = replication_manager:change_vbucket_replication(BucketName, VBucket, ReplicateFrom),
+                  pass_vbucket_states_to_set_view_manager(NewState),
+                  ok
+          end),
+    {noreply, NewState1};
 handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, From, State) ->
     handle_call({apply_new_config, undefined, NewBucketConfig, IgnoredVBuckets}, From, State);
 handle_call({apply_new_config, Caller, NewBucketConfig, IgnoredVBuckets}, _From,
