@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-import os, subprocess, sys, signal, atexit, socket, getopt, select
-
-PREFIX = subprocess.Popen(". $(pwd)/.configuration && echo $prefix", shell = True, stdout=subprocess.PIPE).communicate()[0].rstrip()
+import os, subprocess, sys, signal, atexit, socket, getopt, select, shlex
 
 base_direct_port = 12000
 base_api_port = 9000
@@ -9,6 +7,17 @@ base_couch_port = 9500
 base_mccouch_port = 13000
 
 LOGLEVELS = ["debug", "info", "warn", "error", "critical"]
+
+def read_configuration():
+    with open(".configuration") as f:
+        def fn(line):
+            k, v = line.strip().split('=')
+            return k, shlex.split(v)[0]
+
+        return dict(fn(line) for line in f.readlines())
+
+config = read_configuration()
+PREFIX = config['prefix']
 
 def setup_path():
     def ebin_search(path):
