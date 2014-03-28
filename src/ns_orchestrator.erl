@@ -1250,7 +1250,7 @@ apply_recoverer_bucket_config(Bucket, BucketConfig, Servers) ->
 
 maybe_drop_recovery_status() ->
     ns_config:update(
-      fun ({recovery_status, Value} = P) ->
+      fun ({recovery_status, Value} = P, _) ->
               case Value of
                   not_running ->
                       P;
@@ -1258,9 +1258,9 @@ maybe_drop_recovery_status() ->
                       ale:info(?USER_LOGGER, "Apparently recovery ns_orchestrator died. Dropped stale recovery status ~p", [P]),
                       {recovery_status, not_running}
               end;
-          (Other) ->
+          (Other, _) ->
               Other
-      end, make_ref()).
+      end).
 
 ensure_recovery_status(Bucket, UUID) ->
     ns_config:set(recovery_status, {running, Bucket, UUID}).

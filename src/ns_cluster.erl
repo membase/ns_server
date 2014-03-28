@@ -335,24 +335,24 @@ shun(RemoteNode) ->
         false ->
             ?cluster_debug("Shunning ~p", [RemoteNode]),
             ok = ns_config:update(
-                   fun ({nodes_wanted, V}) ->
+                   fun ({nodes_wanted, V}, _) ->
                            {nodes_wanted, V -- [RemoteNode]};
-                       ({server_groups, Groups}) ->
+                       ({server_groups, Groups}, _) ->
                            G2 = [case proplists:get_value(nodes, G) of
                                      Nodes ->
                                          NewNodes = Nodes -- [RemoteNode],
                                          lists:keystore(nodes, 1, G, {nodes, NewNodes})
                                  end || G <- Groups],
                            {server_groups, G2};
-                       ({{node, Node, recovery_type}, _State})
+                       ({{node, Node, recovery_type}, _State}, _)
                          when Node =:= RemoteNode ->
                            {{node, Node, recovery_type}, none};
-                       ({{node, Node, failover_vbuckets}, _State})
+                       ({{node, Node, failover_vbuckets}, _State}, _)
                          when Node =:= RemoteNode ->
                            {{node, Node, failover_vbuckets}, []};
-                       (Other) ->
+                       (Other, _) ->
                            Other
-                   end, erlang:make_ref()),
+                   end),
             ns_config_rep:push();
         true ->
             ?cluster_debug("Asked to shun myself. Leaving cluster.", []),
@@ -441,7 +441,7 @@ maybe_rename(NewAddr, UserSupplied) ->
       end).
 
 rename_node_in_config(Old, New) ->
-    ns_config:update(fun ({K, V} = Pair) ->
+    ns_config:update(fun ({K, V} = Pair, _) ->
                              NewK = misc:rewrite_value(Old, New, K),
                              NewV = misc:rewrite_value(Old, New, V),
                              if
@@ -453,7 +453,7 @@ rename_node_in_config(Old, New) ->
                                  true ->
                                      Pair
                              end
-                     end, erlang:make_ref()),
+                     end),
     ns_config:sync_announcements(),
     ns_config_rep:push(),
     ns_config_rep:synchronize_remote(ns_node_disco:nodes_actual_other()).
@@ -909,15 +909,14 @@ perform_actual_join(RemoteNode, NewCookie) ->
                 throw({could_not_delete_replicator_db, RV})
         end,
 
-        BlackSpot = make_ref(),
         MyNode = node(),
-        ns_config:update(fun ({directory,_} = X) -> X;
-                             ({otp, _}) -> {otp, [{cookie, NewCookie}]};
-                             ({nodes_wanted, _} = X) -> X;
-                             ({{node, _, membership}, _}) -> BlackSpot;
-                             ({{node, Node, _}, _} = X) when Node =:= MyNode -> X;
-                             (_) -> BlackSpot
-                         end, BlackSpot),
+        ns_config:update(fun ({directory,_} = X, _) -> X;
+                             ({otp, _}, _) -> {otp, [{cookie, NewCookie}]};
+                             ({nodes_wanted, _} = X, _) -> X;
+                             ({{node, _, membership}, _}, BlackSpot) -> BlackSpot;
+                             ({{node, Node, _}, _} = X, _) when Node =:= MyNode -> X;
+                             (_, BlackSpot) -> BlackSpot
+                         end),
         ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
         ns_config:set_initial(cluster_compat_version, undefined),
         ?cluster_debug("pre-join cleaned config is:~n~p", [ns_config:get()]),

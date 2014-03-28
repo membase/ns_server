@@ -136,8 +136,7 @@ cleanup_with_states(Bucket, Options, BucketConfig, Servers, States, [] = Zombies
     end.
 
 stop_rebalance_status(Fn) ->
-    Sentinel = make_ref(),
-    Fun = fun ({rebalance_status, Value}) ->
+    Fun = fun ({rebalance_status, Value}, _) ->
                   NewValue =
                       case Value of
                           running ->
@@ -146,13 +145,13 @@ stop_rebalance_status(Fn) ->
                               Value
                       end,
                   {rebalance_status, NewValue};
-              ({rebalancer_pid, _}) ->
+              ({rebalancer_pid, _}, _) ->
                   {rebalancer_pid, undefined};
-              (Other) ->
+              (Other, _) ->
                   Other
           end,
 
-    ok = ns_config:update(Fun, Sentinel).
+    ok = ns_config:update(Fun).
 
 maybe_stop_rebalance_status() ->
     Status = try ns_orchestrator:rebalance_progress_full()

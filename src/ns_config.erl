@@ -54,7 +54,7 @@
          merge/1,
          get/2, get/1, get/0, set/2, set/1,
          cas_remote_config/2, cas_local_config/2,
-         set_initial/2, update/2, update_key/2, update_key/3,
+         set_initial/2, update/1, update_key/2, update_key/3,
          update_sub_key/3, set_sub/2, set_sub/3,
          search_node/3, search_node/2, search_node/1,
          search_node_prop/3, search_node_prop/4,
@@ -237,7 +237,7 @@ do_update_rec(Fun, Sentinel, [Pair | Rest], NewConfig, NewPairs) ->
                        {K0, [_|_] = V0} -> {K0, strip_metadata(V0)};
                        _ -> Pair
                    end,
-    case Fun(StrippedPair) of
+    case Fun(StrippedPair, Sentinel) of
         StrippedPair ->
             do_update_rec(Fun, Sentinel, Rest, [Pair | NewConfig], NewPairs);
         Sentinel ->
@@ -248,7 +248,8 @@ do_update_rec(Fun, Sentinel, [Pair | Rest], NewConfig, NewPairs) ->
             do_update_rec(Fun, Sentinel, Rest, [NewPair | NewConfig], [NewPair | NewPairs])
     end.
 
-update(Fun, Sentinel) ->
+update(Fun) ->
+    Sentinel = make_ref(),
     update_with_changes(fun (Config) ->
                                 do_update_rec(Fun, Sentinel, Config, [], [])
                         end).
@@ -1175,12 +1176,11 @@ test_update() ->
                                {a, b}, {c, d}]},
                  {a, 3},
                  {b, 4}],
-    BlackSpot = make_ref(),
-    ns_config:update(fun ({dont_change, _} = P) -> P;
-                         ({erase, _}) -> BlackSpot;
-                         ({list_value, V}) -> {list_value, [V | V]};
-                         ({K, V}) -> {K, -V}
-                     end, BlackSpot),
+    ns_config:update(fun ({dont_change, _} = P, _) -> P;
+                         ({erase, _}, BlackSpot) -> BlackSpot;
+                         ({list_value, V}, _) -> {list_value, [V | V]};
+                         ({K, V}, _) -> {K, -V}
+                     end),
     Updater = RecvUpdater(),
     {Changes, NewConfig} = Updater(OldConfig),
 
