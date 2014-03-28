@@ -913,9 +913,9 @@ perform_actual_join(RemoteNode, NewCookie) ->
         ns_config:update(fun ({directory,_} = X, _) -> X;
                              ({otp, _}, _) -> {otp, [{cookie, NewCookie}]};
                              ({nodes_wanted, _} = X, _) -> X;
-                             ({{node, _, membership}, _}, BlackSpot) -> BlackSpot;
+                             ({{node, _, membership}, _}, {_, BlackSpot}) -> BlackSpot;
                              ({{node, Node, _}, _} = X, _) when Node =:= MyNode -> X;
-                             (_, BlackSpot) -> BlackSpot
+                             (_, {_, BlackSpot}) -> BlackSpot
                          end),
         ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
         ns_config:set_initial(cluster_compat_version, undefined),

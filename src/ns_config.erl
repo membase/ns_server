@@ -229,35 +229,43 @@ replace(KVList) -> gen_server:call(?MODULE, {replace, KVList}).
 update_with_changes(Fun) ->
     gen_server:call(?MODULE, {update_with_changes, Fun}).
 
-%% updates config by applying Fun to every {Key, Value} pair. Fun
-%% should return either new pair or Sentinel. In first case the pair
-%% is replaced with it's new value. In later case the pair is removed
-%% from config.
+%% updates config by applying Fun to every {Key, Value} pair. Fun should
+%% return either new pair or one of deletion markers. In the former case the
+%% pair is replaced with it's new value. In the latter case depending on the
+%% marker the pair is either completely or softly removed from config.
 %%
 %% Function returns a pair {NewPairs, NewConfig} where NewConfig is
 %% new config and NewPairs is list of changed pairs
-do_update_rec(_Fun, _Sentinel, [], NewConfig, NewPairs) ->
+do_update_rec(_Fun, _SoftDelete, _Erase, [], NewConfig, NewPairs) ->
     {NewPairs, lists:reverse(NewConfig)};
-do_update_rec(Fun, Sentinel, [Pair | Rest], NewConfig, NewPairs) ->
+do_update_rec(Fun, SoftDelete, Erase, [Pair | Rest], NewConfig, NewPairs) ->
     StrippedPair = case Pair of
                        {K0, [_|_] = V0} -> {K0, strip_metadata(V0)};
                        _ -> Pair
                    end,
-    case Fun(StrippedPair, Sentinel) of
+    case Fun(StrippedPair, {SoftDelete, Erase}) of
         StrippedPair ->
-            do_update_rec(Fun, Sentinel, Rest, [Pair | NewConfig], NewPairs);
-        Sentinel ->
-            do_update_rec(Fun, Sentinel, Rest, NewConfig, NewPairs);
+            do_update_rec(Fun, SoftDelete, Erase, Rest,
+                          [Pair | NewConfig], NewPairs);
+        SoftDelete ->
+            {K, OldValue} = Pair,
+            NewPair = {K, increment_vclock(?DELETED_MARKER, OldValue)},
+            do_update_rec(Fun, SoftDelete, Erase, Rest,
+                          [NewPair | NewConfig], [NewPair | NewPairs]);
+        Erase ->
+            do_update_rec(Fun, SoftDelete, Erase, Rest, NewConfig, NewPairs);
         {K, Data} ->
             {_, OldValue} = Pair,
             NewPair = {K, increment_vclock(Data, OldValue)},
-            do_update_rec(Fun, Sentinel, Rest, [NewPair | NewConfig], [NewPair | NewPairs])
+            do_update_rec(Fun, SoftDelete, Erase, Rest,
+                          [NewPair | NewConfig], [NewPair | NewPairs])
     end.
 
 update(Fun) ->
-    Sentinel = make_ref(),
+    SoftDelete = make_ref(),
+    Erase = make_ref(),
     update_with_changes(fun (Config) ->
-                                do_update_rec(Fun, Sentinel, Config, [], [])
+                                do_update_rec(Fun, SoftDelete, Erase, Config, [], [])
                         end).
 
 %% Applies given Fun to value of given Key. The Key must exist.
@@ -1200,10 +1208,12 @@ test_update() ->
                  {list_value, [{'_vclock', [{'n@never-really-possible-hostname', {1, 12345}}]},
                                {a, b}, {c, d}]},
                  {a, 3},
-                 {b, 4}],
+                 {b, 4},
+                 {delete, 5}],
     ns_config:update(fun ({dont_change, _} = P, _) -> P;
-                         ({erase, _}, BlackSpot) -> BlackSpot;
+                         ({erase, _}, {_, BlackSpot}) -> BlackSpot;
                          ({list_value, V}, _) -> {list_value, [V | V]};
+                         ({delete, _}, {Delete, _}) -> Delete;
                          ({K, V}, _) -> {K, -V}
                      end),
     Updater = RecvUpdater(),
@@ -1213,7 +1223,7 @@ test_update() ->
                         NewConfig),
     ?assertEqual(lists:keyfind(dont_change, 1, Changes), false),
 
-    ?assertEqual(lists:sort([dont_change, list_value, a, b]), lists:sort(proplists:get_keys(NewConfig))),
+    ?assertEqual(lists:sort([dont_change, list_value, a, b, delete]), lists:sort(proplists:get_keys(NewConfig))),
 
     {list_value, [{'_vclock', Clocks} | ListValues]} = lists:keyfind(list_value, 1, NewConfig),
 
@@ -1229,6 +1239,9 @@ test_update() ->
 
     ?assertMatch([{N, _}] when N =:= node(), extract_vclock(proplists:get_value(a, NewConfig))),
     ?assertMatch([{N, _}] when N =:= node(), extract_vclock(proplists:get_value(b, NewConfig))),
+    ?assertMatch([{N, _}] when N =:= node(), extract_vclock(proplists:get_value(delete, NewConfig))),
+
+    ?assertEqual(false, ns_config:search([NewConfig], delete)),
 
     ns_config:update_key(a, fun (3) -> 10 end),
     Updater2 = RecvUpdater(),
