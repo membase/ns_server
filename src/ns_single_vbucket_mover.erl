@@ -58,7 +58,14 @@ get_vbucket_repl_type(_, ReplType) ->
 %% We do a no-op here rather than filtering these out so that the
 %% replication update will still work properly.
 mover(Parent, Bucket, VBucket, [undefined | _] = OldChain, [NewNode | _] = NewChain, _) ->
-    set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined),
+    misc:try_with_maybe_ignorant_after(
+      fun () ->
+              process_flag(trap_exit, true),
+              set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined)
+      end,
+      fun () ->
+              misc:sync_shutdown_many_i_am_trapping_exits(get_cleanup_list())
+      end),
     Parent ! {move_done, {VBucket, OldChain, NewChain}};
 
 mover(Parent, Bucket, VBucket, OldChain, NewChain, ReplType) ->
