@@ -49,5 +49,8 @@ couch_args() ->
 
 init([]) ->
     {ok, {{one_for_one, 10, 1},
-          [{couch_app, {couch_app, start, couch_args()},
-            permanent, infinity, supervisor, [couch_app]}]}}.
+          [{cb_auth_info, {cb_auth_info, start_link, []},
+            permanent, brutal_kill, worker, []},
+           {couch_app, {couch_app, start, couch_args()},
+            permanent, infinity, supervisor, [couch_app]}
+          ]}}.
