@@ -187,62 +187,62 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {done, handle_versions(Req)};
                          ["pools"] ->
                              {auth_any_bucket, fun handle_pools/1};
-                         ["pools", Id] ->
-                             {auth_any_bucket, fun check_and_handle_pool_info/2, [Id]};
-                         ["pools", Id, "overviewStats"] ->
-                             {auth_ro, fun menelaus_stats:handle_overview_stats/2, [Id]};
-                         ["poolsStreaming", Id] ->
-                             {auth_any_bucket, fun handle_pool_info_streaming/2, [Id]};
-                         ["pools", _PoolId, "buckets"] ->
+                         ["pools", "default"] ->
+                             {auth_any_bucket, fun check_and_handle_pool_info/2, ["default"]};
+                         ["pools", "default", "overviewStats"] ->
+                             {auth_ro, fun menelaus_stats:handle_overview_stats/2, ["default"]};
+                         ["poolsStreaming", "default"] ->
+                             {auth_any_bucket, fun handle_pool_info_streaming/2, ["default"]};
+                         ["pools", "default", "buckets"] ->
                              {auth_any_bucket, fun menelaus_web_buckets:handle_bucket_list/1, []};
-                         ["pools", PoolId, "saslBucketsStreaming"] ->
-                             {auth_moxi, fun menelaus_web_buckets:handle_sasl_buckets_streaming/2, [PoolId]};
-                         ["pools", PoolId, "buckets", Id] ->
+                         ["pools", "default", "saslBucketsStreaming"] ->
+                             {auth_moxi, fun menelaus_web_buckets:handle_sasl_buckets_streaming/2, ["default"]};
+                         ["pools", "default", "buckets", Id] ->
                              {auth_bucket, fun menelaus_web_buckets:handle_bucket_info/3,
-                              [PoolId, Id]};
-                         ["pools", PoolId, "bucketsStreaming", Id] ->
+                              ["default", Id]};
+                         ["pools", "default", "bucketsStreaming", Id] ->
                              {auth_bucket, fun menelaus_web_buckets:handle_bucket_info_streaming/3,
-                              [PoolId, Id]};
-                         ["pools", PoolId, "buckets", Id, "ddocs"] ->
-                             {auth_bucket, fun menelaus_web_buckets:handle_ddocs_list/3, [PoolId, Id]};
-                         ["pools", _PoolId, "buckets", Id, "docs"] ->
+                              ["default", Id]};
+                         ["pools", "default", "buckets", Id, "ddocs"] ->
+                             {auth_bucket, fun menelaus_web_buckets:handle_ddocs_list/3, ["default", Id]};
+                         ["pools", "default", "buckets", Id, "docs"] ->
                              {auth, fun menelaus_web_crud:handle_list/2, [Id]};
-                         ["pools", _PoolId, "buckets", Id, "docs", DocId] ->
+                         ["pools", "default", "buckets", Id, "docs", DocId] ->
                              {auth, fun menelaus_web_crud:handle_get/3, [Id, DocId]};
-                         ["pools", PoolId, "buckets", Id, "stats"] ->
+                         ["pools", "default", "buckets", Id, "stats"] ->
                              {auth_bucket, fun menelaus_stats:handle_bucket_stats/3,
-                              [PoolId, Id]};
-                         ["pools", PoolId, "buckets", Id, "localRandomKey"] ->
+                              ["default", Id]};
+                         ["pools", "default", "buckets", Id, "localRandomKey"] ->
                              {auth_bucket, fun menelaus_web_buckets:handle_local_random_key/3,
-                              [PoolId, Id]};
-                         ["pools", PoolId, "buckets", Id, "statsDirectory"] ->
+                              ["default", Id]};
+                         ["pools", "default", "buckets", Id, "statsDirectory"] ->
                              {auth_bucket, fun menelaus_stats:serve_stats_directory/3,
-                              [PoolId, Id]};
-                         ["pools", PoolId, "b", BucketName] ->
+                              ["default", Id]};
+                         ["pools", "default", "b", BucketName] ->
                              {auth_bucket, fun serve_short_bucket_info/3,
-                              [PoolId, BucketName]};
-                         ["pools", PoolId, "bs", BucketName] ->
+                              ["default", BucketName]};
+                         ["pools", "default", "bs", BucketName] ->
                              {auth_bucket, fun serve_streaming_short_bucket_info/3,
-                              [PoolId, BucketName]};
+                              ["default", BucketName]};
                          %% GET /pools/{PoolId}/buckets/{Id}/nodes
-                         ["pools", PoolId, "buckets", Id, "nodes"] ->
+                         ["pools", "default", "buckets", Id, "nodes"] ->
                              {auth_bucket, fun handle_bucket_node_list/3,
-                              [PoolId, Id]};
+                              ["default", Id]};
                          %% GET /pools/{PoolId}/buckets/{Id}/nodes/{NodeId}
-                         ["pools", PoolId, "buckets", Id, "nodes", NodeId] ->
+                         ["pools", "default", "buckets", Id, "nodes", NodeId] ->
                              {auth_bucket, fun handle_bucket_node_info/4,
-                              [PoolId, Id, NodeId]};
+                              ["default", Id, NodeId]};
                          %% GET /pools/{PoolId}/buckets/{Id}/nodes/{NodeId}/stats
-                         ["pools", PoolId, "buckets", Id, "nodes", NodeId, "stats"] ->
+                         ["pools", "default", "buckets", Id, "nodes", NodeId, "stats"] ->
                              {auth_bucket, fun menelaus_stats:handle_bucket_node_stats/4,
-                              [PoolId, Id, NodeId]};
+                              ["default", Id, NodeId]};
                          %% GET /pools/{PoolId}/buckets/{Id}/stats/{StatName}
-                         ["pools", PoolId, "buckets", Id, "stats", StatName] ->
+                         ["pools", "default", "buckets", Id, "stats", StatName] ->
                              {auth_bucket, fun menelaus_stats:handle_specific_stat_for_buckets/4,
-                              [PoolId, Id, StatName]};
-                         ["pools", PoolId, "buckets", Id, "recoveryStatus"] ->
+                              ["default", Id, StatName]};
+                         ["pools", "default", "buckets", Id, "recoveryStatus"] ->
                              {auth, fun menelaus_web_recovery:handle_recovery_status/3,
-                              [PoolId, Id]};
+                              ["default", Id]};
                          ["pools", "default", "remoteClusters"] ->
                              {auth_ro, fun menelaus_web_remote_clusters:handle_remote_clusters/1};
                          ["pools", "default", "serverGroups"] ->
@@ -287,10 +287,10 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun diag_handler:handle_diag/1, []};
                          ["diag", "vbuckets"] -> {auth, fun handle_diag_vbuckets/1};
                          ["diag", "masterEvents"] -> {auth, fun handle_diag_master_events/1};
-                         ["pools", PoolId, "rebalanceProgress"] ->
-                             {auth_ro, fun handle_rebalance_progress/2, [PoolId]};
-                         ["pools", PoolId, "tasks"] ->
-                             {auth_ro, fun handle_tasks/2, [PoolId]};
+                         ["pools", "default", "rebalanceProgress"] ->
+                             {auth_ro, fun handle_rebalance_progress/2, ["default"]};
+                         ["pools", "default", "tasks"] ->
+                             {auth_ro, fun handle_tasks/2, ["default"]};
                          ["index.html"] ->
                              {done, serve_static_file(Req, {AppRoot, Path},
                                                       "text/html; charset=utf8",
@@ -366,9 +366,9 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun handle_internal_settings_post/1};
                          ["internalSettings", "visual"] ->
                              {auth, fun handle_visual_internal_settings_post/1};
-                         ["pools", PoolId] ->
+                         ["pools", "default"] ->
                              {auth, fun handle_pool_settings/2,
-                              [PoolId]};
+                              ["default"]};
                          ["controller", "ejectNode"] ->
                              {auth, fun handle_eject_post/1};
                          ["controller", "addNode"] ->
@@ -403,50 +403,50 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth, fun handle_set_replication_topology/1};
                          ["controller", "regenerateCertificate"] ->
                              {auth, fun handle_regenerate_certificate/1};
-                         ["pools", PoolId, "buckets", Id] ->
+                         ["pools", "default", "buckets", Id] ->
                              {auth_check_bucket_uuid, fun menelaus_web_buckets:handle_bucket_update/3,
-                              [PoolId, Id]};
-                         ["pools", PoolId, "buckets"] ->
+                              ["default", Id]};
+                         ["pools", "default", "buckets"] ->
                              {auth, fun menelaus_web_buckets:handle_bucket_create/2,
-                              [PoolId]};
-                         ["pools", _PoolId, "buckets", Id, "docs", DocId] ->
+                              ["default"]};
+                         ["pools", "default", "buckets", Id, "docs", DocId] ->
                              {auth, fun menelaus_web_crud:handle_post/3, [Id, DocId]};
-                         ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
+                         ["pools", "default", "buckets", Id, "controller", "doFlush"] ->
                              {auth_bucket_mutate,
-                              fun menelaus_web_buckets:handle_bucket_flush/3, [PoolId, Id]};
-                         ["pools", PoolId, "buckets", Id, "controller", "compactBucket"] ->
+                              fun menelaus_web_buckets:handle_bucket_flush/3, ["default", Id]};
+                         ["pools", "default", "buckets", Id, "controller", "compactBucket"] ->
                              {auth_check_bucket_uuid,
-                              fun menelaus_web_buckets:handle_compact_bucket/3, [PoolId, Id]};
-                         ["pools", PoolId, "buckets", Id, "controller", "unsafePurgeBucket"] ->
+                              fun menelaus_web_buckets:handle_compact_bucket/3, ["default", Id]};
+                         ["pools", "default", "buckets", Id, "controller", "unsafePurgeBucket"] ->
                              {auth_check_bucket_uuid,
-                              fun menelaus_web_buckets:handle_purge_compact_bucket/3, [PoolId, Id]};
-                         ["pools", PoolId, "buckets", Id, "controller", "cancelBucketCompaction"] ->
+                              fun menelaus_web_buckets:handle_purge_compact_bucket/3, ["default", Id]};
+                         ["pools", "default", "buckets", Id, "controller", "cancelBucketCompaction"] ->
                              {auth_check_bucket_uuid,
-                              fun menelaus_web_buckets:handle_cancel_bucket_compaction/3, [PoolId, Id]};
-                         ["pools", PoolId, "buckets", Id, "controller", "compactDatabases"] ->
+                              fun menelaus_web_buckets:handle_cancel_bucket_compaction/3, ["default", Id]};
+                         ["pools", "default", "buckets", Id, "controller", "compactDatabases"] ->
                              {auth_check_bucket_uuid,
-                              fun menelaus_web_buckets:handle_compact_databases/3, [PoolId, Id]};
-                         ["pools", PoolId, "buckets", Id, "controller", "cancelDatabasesCompaction"] ->
+                              fun menelaus_web_buckets:handle_compact_databases/3, ["default", Id]};
+                         ["pools", "default", "buckets", Id, "controller", "cancelDatabasesCompaction"] ->
                              {auth_check_bucket_uuid,
-                              fun menelaus_web_buckets:handle_cancel_databases_compaction/3, [PoolId, Id]};
-                         ["pools", PoolId, "buckets", Id, "controller", "startRecovery"] ->
-                             {auth, fun menelaus_web_recovery:handle_start_recovery/3, [PoolId, Id]};
-                         ["pools", PoolId, "buckets", Id, "controller", "stopRecovery"] ->
-                             {auth, fun menelaus_web_recovery:handle_stop_recovery/3, [PoolId, Id]};
-                         ["pools", PoolId, "buckets", Id, "controller", "commitVBucket"] ->
-                             {auth, fun menelaus_web_recovery:handle_commit_vbucket/3, [PoolId, Id]};
-                         ["pools", PoolId, "buckets", Id,
+                              fun menelaus_web_buckets:handle_cancel_databases_compaction/3, ["default", Id]};
+                         ["pools", "default", "buckets", Id, "controller", "startRecovery"] ->
+                             {auth, fun menelaus_web_recovery:handle_start_recovery/3, ["default", Id]};
+                         ["pools", "default", "buckets", Id, "controller", "stopRecovery"] ->
+                             {auth, fun menelaus_web_recovery:handle_stop_recovery/3, ["default", Id]};
+                         ["pools", "default", "buckets", Id, "controller", "commitVBucket"] ->
+                             {auth, fun menelaus_web_recovery:handle_commit_vbucket/3, ["default", Id]};
+                         ["pools", "default", "buckets", Id,
                           "ddocs", DDocId, "controller", "compactView"] ->
                              {auth_check_bucket_uuid,
-                              fun menelaus_web_buckets:handle_compact_view/4, [PoolId, Id, DDocId]};
-                         ["pools", PoolId, "buckets", Id,
+                              fun menelaus_web_buckets:handle_compact_view/4, ["default", Id, DDocId]};
+                         ["pools", "default", "buckets", Id,
                           "ddocs", DDocId, "controller", "cancelViewCompaction"] ->
                              {auth_check_bucket_uuid,
-                              fun menelaus_web_buckets:handle_cancel_view_compaction/4, [PoolId, Id, DDocId]};
-                         ["pools", PoolId, "buckets", Id,
+                              fun menelaus_web_buckets:handle_cancel_view_compaction/4, ["default", Id, DDocId]};
+                         ["pools", "default", "buckets", Id,
                           "ddocs", DDocId, "controller", "setUpdateMinChanges"] ->
                              {auth_check_bucket_uuid,
-                              fun menelaus_web_buckets:handle_set_ddoc_update_min_changes/4, [PoolId, Id, DDocId]};
+                              fun menelaus_web_buckets:handle_set_ddoc_update_min_changes/4, ["default", Id, DDocId]};
                          ["pools", "default", "remoteClusters"] ->
                              {auth, fun menelaus_web_remote_clusters:handle_remote_clusters_post/1};
                          ["pools", "default", "remoteClusters", Id] ->
@@ -472,12 +472,12 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                      end;
                  'DELETE' ->
                      case PathTokens of
-                         ["pools", PoolId, "buckets", Id] ->
+                         ["pools", "default", "buckets", Id] ->
                              {auth_check_bucket_uuid,
-                              fun menelaus_web_buckets:handle_bucket_delete/3, [PoolId, Id]};
+                              fun menelaus_web_buckets:handle_bucket_delete/3, ["default", Id]};
                          ["pools", "default", "remoteClusters", Id] ->
                              {auth, fun menelaus_web_remote_clusters:handle_remote_cluster_delete/2, [Id]};
-                         ["pools", _PoolId, "buckets", Id, "docs", DocId] ->
+                         ["pools", "default", "buckets", Id, "docs", DocId] ->
                              {auth, fun menelaus_web_crud:handle_delete/3, [Id, DocId]};
                          ["controller", "cancelXCDR", XID] ->
                              {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
