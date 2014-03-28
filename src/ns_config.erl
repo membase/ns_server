@@ -70,7 +70,8 @@
          merge_kv_pairs/2,
          sync_announcements/0, get_kv_list/0, get_kv_list/1,
          upgrade_config_explicitly/1, config_version_token/0,
-         fold/3, read_key_fast/2, get_timeout_fast/2]).
+         fold/3, read_key_fast/2, get_timeout_fast/2,
+         delete/1]).
 
 -export([save_config_sync/1]).
 
@@ -213,6 +214,11 @@ set(KVList) ->
     ok = update_with_changes(fun (Config) ->
                                      set_kvlist(KVList, Config, [])
                              end).
+
+delete(Keys) when is_list(Keys) ->
+    set([{K, ?DELETED_MARKER} || K <- Keys]);
+delete(Key) ->
+    delete([Key]).
 
 replace(KVList) -> gen_server:call(?MODULE, {replace, KVList}).
 
@@ -375,8 +381,14 @@ search('latest-config-marker', Key) ->
     search(Key);
 search(Config, Key) ->
     case search_raw(Config, Key) of
-        {value, X} -> {value, strip_metadata(X)};
-        false      -> false
+        {value, X} ->
+            case strip_metadata(X) of
+                ?DELETED_MARKER ->
+                    false;
+                V ->
+                    {value, V}
+            end;
+        false -> false
     end.
 
 search(Config, Key, Default) ->
@@ -494,7 +506,12 @@ fold(_Fun, Acc, []) ->
 fold(Fun, Acc0, [KVList | Rest]) ->
     Acc = lists:foldl(
             fun ({Key, Value}, Acc1) ->
-                    Fun(Key, strip_metadata(Value), Acc1)
+                    case strip_metadata(Value) of
+                        ?DELETED_MARKER ->
+                            Acc1;
+                        V ->
+                            Fun(Key, V, Acc1)
+                    end
             end, Acc0, KVList),
     fold(Fun, Acc, Rest);
 fold(Fun, Acc, #config{dynamic = DL, static = SL}) ->
@@ -915,45 +932,15 @@ do_merge_values({K, RV} = RP, {_, LV} = LP, Node) ->
     case {vclock:descends(RClock, LClock),
           vclock:descends(LClock, RClock)} of
         {X, X} ->
-            case strip_metadata(RV) =:= strip_metadata(LV) of
-                true ->
+            case {strip_metadata(LV), strip_metadata(RV)} of
+                {X1, X1} ->
                     lists:max([LP, RP]);
-                false ->
-                    LocalTS = vclock:get_latest_timestamp(LClock),
-                    RemoteTS = vclock:get_latest_timestamp(RClock),
-
-                    V = case {LocalTS >= RemoteTS, RemoteTS >= LocalTS} of
-                            {X1, X1} ->
-                                [Winner, Loser] = lists:sort([LV, RV]),
-
-                                ?user_log(?CONFIG_CONFLICT,
-                                          "Conflicting configuration changes to field "
-                                          "~p:~n~p and~n~p, choosing the former.~n",
-                                          [K,
-                                           ns_config_log:sanitize(Winner),
-                                           ns_config_log:sanitize(Loser)]),
-
-                                Winner;
-                            {LocalNewer, RemoteNewer} ->
-                                true = LocalNewer xor RemoteNewer,
-
-                                [Winner, Loser] =
-                                    case LocalNewer of
-                                        true ->
-                                            [LV, RV];
-                                        false ->
-                                            [RV, LV]
-                                    end,
-
-                                ?user_log(?CONFIG_CONFLICT,
-                                          "Conflicting configuration changes to field "
-                                          "~p:~n~p and~n~p, choosing the former, which looks newer.~n",
-                                          [K,
-                                           ns_config_log:sanitize(Winner),
-                                           ns_config_log:sanitize(Loser)]),
-
-                                Winner
-                        end,
+                {?DELETED_MARKER, _} ->
+                    RP;
+                {_, ?DELETED_MARKER} ->
+                    LP;
+                {_, _} ->
+                    V = do_merge_values_using_timestamps(K, LV, LClock, RV, RClock),
 
                     %% Increment the merged vclock so we don't pingpong
                     {K, increment_vclock(V, merge_vclocks(RV, LV), Node)}
@@ -961,6 +948,44 @@ do_merge_values({K, RV} = RP, {_, LV} = LP, Node) ->
         {true, false} -> RP;
         {false, true} -> LP
     end.
+
+do_merge_values_using_timestamps(K, LV, LClock, RV, RClock) ->
+    LocalTS = vclock:get_latest_timestamp(LClock),
+    RemoteTS = vclock:get_latest_timestamp(RClock),
+
+    case {LocalTS >= RemoteTS, RemoteTS >= LocalTS} of
+        {X1, X1} ->
+            [Winner, Loser] = lists:sort([LV, RV]),
+
+            ?user_log(?CONFIG_CONFLICT,
+                      "Conflicting configuration changes to field "
+                      "~p:~n~p and~n~p, choosing the former.~n",
+                      [K,
+                       ns_config_log:sanitize(Winner),
+                       ns_config_log:sanitize(Loser)]),
+
+            Winner;
+        {LocalNewer, RemoteNewer} ->
+            true = LocalNewer xor RemoteNewer,
+
+            [Winner, Loser] =
+                case LocalNewer of
+                    true ->
+                        [LV, RV];
+                    false ->
+                        [RV, LV]
+                end,
+
+            ?user_log(?CONFIG_CONFLICT,
+                      "Conflicting configuration changes to field "
+                      "~p:~n~p and~n~p, choosing the former, which looks newer.~n",
+                      [K,
+                       ns_config_log:sanitize(Winner),
+                       ns_config_log:sanitize(Loser)]),
+
+            Winner
+    end.
+
 
 read_includes(Path) -> read_includes([{include, Path}], []).
 

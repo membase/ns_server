@@ -7,3 +7,4 @@
                  pending_more_save = false
                 }).
 -define(METADATA_VCLOCK, '_vclock').
+-define(DELETED_MARKER, '_deleted').
