@@ -160,12 +160,9 @@ hash_password(Password) ->
     {Salt, hash_password(Salt, Password)}.
 
 hash_password(Salt, Password) ->
-    {F, A} =
-        case erlang:system_info(otp_release) < "R16" of
-            true ->
-                {sha_mac, [Salt, list_to_binary(Password)]};
-            false ->
-                {hmac, [sha, Salt, list_to_binary(Password)]}
-        end,
-
-    erlang:apply(crypto, F, A).
+    case erlang:system_info(otp_release) < "R16" of
+        true ->
+            crypto:sha_mac(Salt, list_to_binary(Password));
+        false ->
+            crypto:hmac(sha, Salt, list_to_binary(Password))
+    end.
