@@ -41,17 +41,12 @@ do_upgrade_config(Config, FinalVersion) ->
             [{set, dynamic_config_version, [2, 5]} |
              upgrade_config_from_2_0_to_2_5(Config)];
         {value, [2, 5]} ->
-            [{set, dynamic_config_version, [3, 0]} |
-            upgrade_config_from_2_5_to_3_0(Config)]
+            [{set, dynamic_config_version, [3, 0]}]
     end.
 
 upgrade_config_from_2_0_to_2_5(Config) ->
     ?log_info("Performing online config upgrade to 2.5 version"),
     create_server_groups(Config).
-
-upgrade_config_from_2_5_to_3_0(Config) ->
-    ?log_info("Performing online config upgrade to 3.0 version"),
-    ns_config_auth:upgrade(Config).
 
 create_server_groups(Config) ->
     {value, Nodes} = ns_config:search(Config, nodes_wanted),
