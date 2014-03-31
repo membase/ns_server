@@ -361,7 +361,6 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
     FailedNodes = FailedNodesAll -- [node()],
 
     LiveNodes = KeepNodes ++ EjectNodesAll,
-    AllNodes = LiveNodes ++ FailedNodesAll,
     NumBuckets = length(BucketConfigs),
     ?rebalance_debug("BucketConfigs = ~p", [sanitize(BucketConfigs)]),
 
@@ -389,7 +388,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
                           BucketCompletion = I / NumBuckets,
                           ns_orchestrator:update_progress(
                             dict:from_list([{N, BucketCompletion}
-                                            || N <- AllNodes])),
+                                            || N <- LiveNodes])),
                           case proplists:get_value(type, BucketConfig) of
                               memcached ->
                                   master_activity_events:note_bucket_rebalance_started(BucketName),
