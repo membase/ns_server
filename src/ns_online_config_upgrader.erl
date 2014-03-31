@@ -41,12 +41,32 @@ do_upgrade_config(Config, FinalVersion) ->
             [{set, dynamic_config_version, [2, 5]} |
              upgrade_config_from_2_0_to_2_5(Config)];
         {value, [2, 5]} ->
-            [{set, dynamic_config_version, [3, 0]}]
+            [{set, dynamic_config_version, [3, 0]} |
+             upgrade_config_from_2_5_to_3_0(Config)]
     end.
 
 upgrade_config_from_2_0_to_2_5(Config) ->
     ?log_info("Performing online config upgrade to 2.5 version"),
     create_server_groups(Config).
+
+upgrade_config_from_2_5_to_3_0(Config) ->
+    delete_unwanted_per_node_keys(Config).
+
+delete_unwanted_per_node_keys(Config) ->
+    NodesWanted = ns_node_disco:nodes_wanted(Config),
+    R = ns_config:fold(
+          fun ({node, Node, _} = K, _, Acc) ->
+                  case lists:member(Node, NodesWanted) of
+                      true ->
+                          Acc;
+                      false ->
+                          sets:add_element({delete, K}, Acc)
+                  end;
+              (_, _, Acc) ->
+                  Acc
+          end, sets:new(), Config),
+
+    sets:to_list(R).
 
 create_server_groups(Config) ->
     {value, Nodes} = ns_config:search(Config, nodes_wanted),
