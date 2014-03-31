@@ -28,7 +28,7 @@
 
 %% API
 -export([start_link/0,
-         nodes_wanted/0,
+         nodes_wanted/0, nodes_wanted/1,
          nodes_wanted_updated/0,
          nodes_actual/0,
          random_node/0,
@@ -72,7 +72,7 @@ nodes_actual() ->
 
 nodes_actual_proper() ->
     Curr = nodes_actual(),
-    Want = do_nodes_wanted(),
+    Want = nodes_wanted(),
     Diff = lists:subtract(Curr, Want),
     lists:usort(lists:subtract(Curr, Diff)).
 
@@ -98,7 +98,10 @@ nodes_actual_other() ->
     lists:subtract(nodes_actual_proper(), [node()]).
 
 nodes_wanted() ->
-    do_nodes_wanted().
+    nodes_wanted('latest-config-marker').
+
+nodes_wanted(Config) ->
+    lists:usort(ns_config:search(Config, nodes_wanted, [])).
 
 % API's used as callbacks that are invoked when ns_config
 % keys have changed.
@@ -112,7 +115,7 @@ init([]) ->
     ?log_debug("Initting ns_node_disco with ~p", [nodes()]),
     %% Proactively run one round of reconfiguration update.
     %% It may take longer than SYNC_TIMEOUT to complete if nodes are down.
-    misc:wait_for_process(do_nodes_wanted_updated(do_nodes_wanted()),
+    misc:wait_for_process(do_nodes_wanted_updated(nodes_wanted()),
                           ?SYNC_TIMEOUT),
     % Register for nodeup/down messages as handle_info callbacks.
     ok = net_kernel:monitor_nodes(true, [nodedown_reason]),
@@ -127,7 +130,7 @@ code_change(_OldVsn, State, _) -> {ok, State}.
 
 handle_cast(nodes_wanted_updated, State) ->
     self() ! notify_clients,
-    do_nodes_wanted_updated(do_nodes_wanted()),
+    do_nodes_wanted_updated(nodes_wanted()),
     {noreply, State};
 
 handle_cast(we_were_shunned, #state{we_were_shunned = true} = State) ->
@@ -190,14 +193,6 @@ handle_info(Msg, State) ->
 
 % -----------------------------------------------------------
 
-% Read from ns_config nodes_wanted.
-
-do_nodes_wanted() ->
-    case ns_config:search(nodes_wanted) of
-        {value, L} -> lists:usort(L);
-        false      -> []
-    end.
-
 %% The core of what happens when nodelists change
 %% only used by do_nodes_wanted_updated
 do_nodes_wanted_updated_fun(NodeListIn) ->
@@ -235,7 +230,7 @@ do_notify(#state{nodes = NodesOld} = State) ->
     end.
 
 ping_all() ->
-    lists:foreach(fun net_adm:ping/1, do_nodes_wanted()).
+    lists:foreach(fun net_adm:ping/1, nodes_wanted()).
 
 % -----------------------------------------------------------
 
