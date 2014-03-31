@@ -50,6 +50,7 @@
 -define(GOT_TERMINATE_SAVE_TIMEOUT, 4).
 
 -export([eval/1,
+         uuid/0, uuid/1,
          start_link/2, start_link/1,
          merge/1,
          get/2, get/1, get/0, set/2, set/1,
@@ -107,6 +108,12 @@ format_status(_Opt, [_PDict, State]) ->
 
 eval(Fun) ->
     gen_server:call(?MODULE, {eval, Fun}, ?DEFAULT_TIMEOUT).
+
+uuid() ->
+    ns_config:eval(fun uuid/1).
+
+uuid(#config{uuid = UUID}) ->
+    UUID.
 
 start_link(Full) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, Full, []).
@@ -761,7 +768,10 @@ handle_call({update_with_changes, Fun}, From, State) ->
 handle_call({clear, Keep}, From, State) ->
     NewList = lists:filter(fun({K,_V}) -> lists:member(K, Keep) end,
                            config_dynamic(State)),
-    {reply, _, NewState} = handle_call(resave, From, State#config{dynamic=[NewList]}),
+    NewUUID = couch_uuids:random(),
+    {reply, _, NewState} = handle_call(resave, From,
+                                       State#config{dynamic=[NewList],
+                                                    uuid=NewUUID}),
     %% we ignore state from saver, 'cause we're going to reload it anyway
     wait_saver(NewState, infinity),
     RV = handle_call(reload, From, State),
@@ -821,13 +831,19 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
             C = dynamic_config_path(DirPath2),
             ok = filelib:ensure_dir(C),
             ?log_info("Loading dynamic config from ~p", [C]),
-            D = case load_file(bin, C) of
-                    {ok, DRead} -> DRead;
+            Dynamic = case load_file(bin, C) of
+                    {ok, {_UUID, _KVs} = DRead} ->
+                        DRead;
+                    {ok, DRead} ->
+                        ?log_debug("Read config without UUID attached. Generating a new one"),
+                        {couch_uuids:random(), DRead};
                     not_found ->
                         ?log_info("No dynamic config file found. Assuming we're brand new node"),
-                        []
+                        {couch_uuids:random(), []}
                 end,
-            ?log_debug("Here's full dynamic config we loaded:~n~p", [ns_config_log:sanitize(D)]),
+            ?log_debug("Here's full dynamic config we loaded:~n~p", [ns_config_log:sanitize(Dynamic)]),
+
+            {UUID, LoadedKVs} = Dynamic,
             {_, DynamicPropList} = lists:foldl(fun (Tuple, {Seen, Acc}) ->
                                                        K = element(1, Tuple),
                                                        case sets:is_element(K, Seen) of
@@ -837,20 +853,21 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
                                                        end
                                                end,
                                                {sets:from_list([directory]), []},
-                                               lists:append(D ++ [S, DefaultConfig])),
+                                               lists:append(LoadedKVs ++ [S, DefaultConfig])),
             ?log_info("Here's full dynamic config we loaded + static & default config:~n~p",
                       [ns_config_log:sanitize(DynamicPropList)]),
             {ok, #config{static = [S, DefaultConfig],
                          dynamic = [lists:keysort(1, DynamicPropList)],
-                         policy_mod = PolicyMod}};
+                         policy_mod = PolicyMod,
+                         uuid = UUID}};
         E ->
             ?log_error("Failed loading static config: ~p", [E]),
             E
     end.
 
-save_config_sync(#config{dynamic = D}, DirPath) ->
+save_config_sync(#config{dynamic = D, uuid = UUID}, DirPath) ->
     C = dynamic_config_path(DirPath),
-    ok = save_file(bin, C, D),
+    ok = save_file(bin, C, {UUID, D}),
     ok.
 
 save_config_sync(Config) ->

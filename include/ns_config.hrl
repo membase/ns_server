@@ -4,7 +4,8 @@
                  policy_mod,
                  saver_mfa,
                  saver_pid,
-                 pending_more_save = false
+                 pending_more_save = false,
+                 uuid
                 }).
 -define(METADATA_VCLOCK, '_vclock').
 -define(DELETED_MARKER, '_deleted').
