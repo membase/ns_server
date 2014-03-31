@@ -586,7 +586,14 @@ do_upgrade_config(Config, Changes, Upgrader) ->
     ?log_debug("Upgrading config by changes:~n~p~n", [ns_config_log:sanitize(Changes)]),
     ConfigList = config_dynamic(Config),
     NewList =
-        lists:foldl(fun ({set, K,V}, Acc) ->
+        lists:foldl(fun (Change, Acc) ->
+                            {K, V} = case Change of
+                                         {set, K0, V0} ->
+                                             {K0, V0};
+                                         {delete, K0} ->
+                                             {K0, ?DELETED_MARKER}
+                                     end,
+
                             case lists:keyfind(K, 1, Acc) of
                                 false ->
                                     [{K, attach_vclock(V)} | Acc];
