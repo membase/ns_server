@@ -402,7 +402,6 @@ var SetupWizard = {
         var data = _.extend({
           uri: '/pools/default/buckets',
           validateURL: '/pools/default/buckets?just_validate=1&ignore_warnings=1',
-          toBeAllocatedForOtherBuckets: sampleBucketsRAMQuota,
           bucketType: 'membase',
           authType: 'sasl',
           replicaNumber: 1,
@@ -410,41 +409,29 @@ var SetupWizard = {
           threadsNumber: 8
         }, $.deparam(opt.defaultBucketData ? opt.defaultBucketData : ''));
 
-        if (data.ramQuotaMB) {
-          data.quota = {
-            rawRAM: MBtoBytes(data.ramQuotaMB) + sampleBucketsRAMQuota
-          };
-          callback(data);
-        } else {
-          $.ajax({
-            type:'GET',
-            url:'/nodes/self',
-            dataType: 'json',
-            error: function () {
-              SetupWizard.panicAndReload();
-            },
-            success: function (nodeData) {
-              data = _.extend({
-                quota: {
-                  rawRAM: nodeData.storageTotals.ram.quotaTotal - nodeData.storageTotals.ram.quotaUsed
-                }
-              }, data);
-              callback(data);
-            }
-          });
-        }
+        $.ajax({
+          type:'GET',
+          url:'/nodes/self',
+          dataType: 'json',
+          error: function () {
+            SetupWizard.panicAndReload();
+          },
+          success: function (nodeData) {
+            data = _.extend({
+              quota: {
+                rawRAM: nodeData.storageTotals.ram.quotaTotal - nodeData.storageTotals.ram.quotaUsed
+                  - sampleBucketsRAMQuota
+              }
+            }, data);
+            callback(data);
+          }
+        });
       };
 
       function getFormValuesForValidation(form) {
-        var paramStr = serializeForm(form, {
-          'ramQuotaMB': function (quota) {
-             // need to adjust the value of Per Node RAM Quota before the validation
-             // so the validation will fail if the requested default bucket size is more
-             // than total available RAM minus the size of sample buckets
-             return parseInt(quota) + BytestoMB(sampleBucketsRAMQuota);
-           }
-         });
-         return paramStr + "&name=default&authType=sasl&saslPassword=";
+        return serializeForm(form)
+          + "&name=default&authType=sasl&saslPassword=&otherBucketsRamQuotaMB="
+          + BytestoMB(sampleBucketsRAMQuota);
       }
 
       function createBucketDialog(initValue, callback) {

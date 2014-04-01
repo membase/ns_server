@@ -826,7 +826,9 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
                            end
                    end,
                    parse_validate_ram_quota(proplists:get_value("ramQuotaMB", Params),
-                                            BucketConfig)],
+                                            BucketConfig),
+                   parse_validate_other_buckets_ram_quota(
+                     proplists:get_value("otherBucketsRamQuotaMB", Params))],
     BucketType = if
                      (not IsNew) andalso BucketConfig =/= false ->
                          ns_bucket:bucket_type(BucketConfig);
@@ -940,6 +942,7 @@ ram_summary_to_proplist(V) ->
 
 interpret_ram_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGetter) ->
     RAMQuota = proplists:get_value(ram_quota, ParsedProps),
+    OtherBucketsRAMQuota = proplists:get_value(other_buckets_ram_quota, ParsedProps),
     NodesCount = proplists:get_value(nodesCount, ClusterStorageTotals),
     ParsedQuota = RAMQuota * NodesCount,
     PerNode = RAMQuota div ?MIB,
@@ -951,7 +954,7 @@ interpret_ram_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGette
                   ns_bucket:ram_quota(CurrentBucket);
               _ ->
                   0
-          end,
+          end + OtherBucketsRAMQuota * NodesCount,
     ThisUsed = case CurrentBucket of
                    [_|_] ->
                        UsageGetter(ram, proplists:get_value(name, ParsedProps));
@@ -1049,6 +1052,16 @@ parse_validate_ram_quota(Value, _BucketConfig) ->
         too_small ->
             {error, ramQuotaMB, <<"The RAM Quota cannot be negative.">>};
         {ok, X} -> {ok, ram_quota, X * ?MIB}
+    end.
+
+parse_validate_other_buckets_ram_quota(undefined) ->
+    {ok, other_buckets_ram_quota, 0};
+parse_validate_other_buckets_ram_quota(Value) ->
+    case menelaus_util:parse_validate_number(Value, 0, undefined) of
+        {ok, X} ->
+            {ok, other_buckets_ram_quota, X * ?MIB};
+        _ ->
+            {error, otherBucketsRamQuotaMB, <<"The other buckets RAM Quota must be a positive integer.">>}
     end.
 
 extended_cluster_storage_info() ->

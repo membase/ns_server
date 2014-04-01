@@ -180,9 +180,7 @@ var BucketDetailsDialog = mkClass({
     this.isNew = isNew;
     this.initValues = initValues;
 
-    initValues.toBeAllocatedForOtherBuckets = initValues.toBeAllocatedForOtherBuckets || 0;
-
-    initValues.ramQuotaMB = BytestoMB(initValues.quota.rawRAM - initValues.toBeAllocatedForOtherBuckets);
+    initValues.ramQuotaMB = BytestoMB(initValues.quota.rawRAM);
 
     options = options || {};
 
@@ -621,16 +619,16 @@ var BucketDetailsDialog = mkClass({
     if (ramSummary) {
       self.renderGauge(ramGauge,
                        ramSummary.total,
-                       ramSummary.thisAlloc - self.initValues.toBeAllocatedForOtherBuckets,
-                       ramSummary.otherBuckets + self.initValues.toBeAllocatedForOtherBuckets);
+                       ramSummary.thisAlloc,
+                       ramSummary.otherBuckets);
     }
     ramGauge.css('visibility', ramSummary ? 'visible' : 'hidden');
 
     if (memcachedSummaryVisible) {
       memcachedSummaryJQ.text('Total bucket size = '
-                              + BytestoMB(ramSummary.thisAlloc - self.initValues.toBeAllocatedForOtherBuckets * ramSummary.nodesCount)
+                              + BytestoMB(ramSummary.thisAlloc)
                               + ' MB ('
-                              + (ramSummary.perNodeMegs - BytestoMB(self.initValues.toBeAllocatedForOtherBuckets)).toString()
+                              + ramSummary.perNodeMegs
                               + ' MB x ' + ViewHelpers.count(ramSummary.nodesCount, 'node') +')');
     }
     memcachedSummaryJQ.css('display', memcachedSummaryVisible ? 'block' : 'none');
