@@ -318,9 +318,7 @@ default() ->
      {xdcr_use_new_path, case os:getenv("XDCR_USE_OLD_PATH") of
                              false -> true;
                              _ -> false
-                         end},
-     {{node, node(), uuid}, [InstanceVClock | InstanceUuid]}
-    ].
+                         end}].
 
 %% Recursively replace all strings in a hierarchy that start
 %% with a given Prefix with a ReplacementPrefix.  For example,
@@ -601,15 +599,6 @@ upgrade_config_from_2_3_0_to_3_0(Config) ->
     do_upgrade_config_from_2_3_0_to_3_0(Config, DefaultConfig).
 
 do_upgrade_config_from_2_3_0_to_3_0(Config, DefaultConfig) ->
-    Key = {node, node(), uuid},
-    MaybeUUIDUpdate =
-        case ns_config:search(Config, Key) of
-            false ->
-                {Key, NodeUUID} = lists:keyfind(Key, 1, DefaultConfig),
-                [{set, Key, NodeUUID}];
-            _ ->
-                []
-        end,
     PortServersKey = {node, node(), port_servers},
     {value, DefaultPortServers} = ns_config:search([DefaultConfig], PortServersKey),
 
@@ -618,7 +607,7 @@ do_upgrade_config_from_2_3_0_to_3_0(Config, DefaultConfig) ->
 
     upgrade_memcached_ssl_port_and_verbosity(Config, DefaultConfig) ++
         [{set, PortServersKey, DefaultPortServers},
-         {set, McdConfigKey, DefaultMcdConfig} | MaybeUUIDUpdate].
+         {set, McdConfigKey, DefaultMcdConfig}].
 
 upgrade_memcached_ssl_port_and_verbosity(Config, DefaultConfig) ->
     McdKey = {node, node(), memcached},
@@ -949,28 +938,19 @@ upgrade_2_2_0_to_2_3_0_test() ->
                     {admin_pass, _}]}], UpgradedCfg).
 
 upgrade_2_3_0_to_3_0_test() ->
-    Key = {node, node(), uuid},
-    CfgWithoutUUID = [[{some_key, some_value},
-                       {{node, node(), memcached}, []}]],
-    CfgWithUUID = [[{Key, <<"uuid">>},
-                    {some_key, some_value},
-                    {{node, node(), memcached}, [{ssl_port, 1}, {verbosity, 2}]},
-                    {{node, node(), memcached_config}, memcached_config}]],
-    Default = [{Key, <<"default uuid">>},
-               {{node, node(), port_servers}, port_servers_cfg},
+    Cfg = [[{some_key, some_value},
+            {{node, node(), memcached},
+             [{ssl_port, 1}, {verbosity, "-v"}, {port, 3}]},
+            {{node, node(), memcached_config}, memcached_config}]],
+    Default = [{{node, node(), port_servers}, port_servers_cfg},
                {{node, node(), memcached}, [{ssl_port, 1}, {verbosity, 2}]},
                {{node, node(), memcached_config}, memcached_config}],
 
-    ?assertMatch([{set, {node, _, memcached}, [{ssl_port, 1}, {verbosity, 2}]},
+    ?assertMatch([{set, {node, _, memcached}, [{ssl_port, 1},
+                                               {verbosity, 2}, {port, 3}]},
                   {set, {node, _, port_servers}, _},
                   {set, {node, _, memcached_config}, _}],
-                 do_upgrade_config_from_2_3_0_to_3_0(CfgWithUUID, Default)),
-
-    ?assertMatch([{set, {node, _, memcached}, [{ssl_port, 1}, {verbosity, 2}]},
-                  {set, {node, _, port_servers}, _},
-                  {set, {node, _, memcached_config}, _},
-                  {set, Key, <<"default uuid">>}],
-                 do_upgrade_config_from_2_3_0_to_3_0(CfgWithoutUUID, Default)).
+                 do_upgrade_config_from_2_3_0_to_3_0(Cfg, Default)).
 
 no_upgrade_on_current_version_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, get_current_version()}]])).
