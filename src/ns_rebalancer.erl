@@ -24,6 +24,8 @@
 -include("ns_common.hrl").
 -include("ns_stats.hrl").
 
+-include_lib("eunit/include/eunit.hrl").
+
 -export([failover/1,
          orchestrate_failover/1,
          check_graceful_failover_possible/2,
@@ -322,16 +324,17 @@ do_pre_rebalance_config_sync(KeepNodes) ->
     end.
 
 start_link_rebalance(KeepNodes, EjectNodes,
-                     FailedNodes, DeltaNodes, RequireDeltaRecovery) ->
+                     FailedNodes, DeltaNodes, DeltaRecoveryBucketNames) ->
     proc_lib:start_link(
       erlang, apply,
       [fun () ->
                BucketConfigs = ns_bucket:get_buckets(),
-               DeltaRecoveryBuckets =
-                   build_delta_recovery_buckets(KeepNodes, DeltaNodes, BucketConfigs),
+               DeltaRecoveryBucketTuples =
+                   build_delta_recovery_buckets(KeepNodes, DeltaNodes, BucketConfigs, DeltaRecoveryBucketNames),
 
-               case RequireDeltaRecovery =:= true andalso
-                   DeltaNodes =/= [] andalso DeltaRecoveryBuckets =:= [] of
+               NotOk = BucketConfigs =/= [] andalso DeltaNodes =/= [] andalso DeltaRecoveryBucketTuples =:= [],
+
+               case NotOk of
                    true ->
                        proc_lib:init_ack({error, delta_recovery_not_possible});
                    false ->
@@ -340,11 +343,11 @@ start_link_rebalance(KeepNodes, EjectNodes,
                        master_activity_events:note_rebalance_start(
                          self(), KeepNodes, EjectNodes, FailedNodes, DeltaNodes),
 
-                       ok = apply_delta_recovery_buckets(DeltaRecoveryBuckets, DeltaNodes),
+                       ok = apply_delta_recovery_buckets(DeltaRecoveryBucketTuples, DeltaNodes),
                        ns_cluster_membership:activate(KeepNodes),
 
                        rebalance(KeepNodes, EjectNodes, FailedNodes,
-                                 BucketConfigs, DeltaRecoveryBuckets)
+                                 BucketConfigs, DeltaRecoveryBucketTuples)
                end
        end, []]).
 
@@ -773,37 +776,72 @@ find_delta_recovery_map_loop([TargetMap | Rest], Config, Bucket, Options, DeltaN
             find_delta_recovery_map_loop(Rest, Config, Bucket, Options, DeltaNodes)
     end.
 
-build_delta_recovery_buckets(AllNodes, DeltaNodes, AllBucketConfigs) ->
-    MembaseBucketConfigs = [{Bucket, Conf} || {Bucket, Conf} <- AllBucketConfigs,
-                                              proplists:get_value(type, Conf) =:= membase],
-
-    do_build_delta_recovery_buckets(AllNodes, DeltaNodes, MembaseBucketConfigs).
-
-do_build_delta_recovery_buckets(_AllNodes, [], _BucketConfigs) ->
+build_delta_recovery_buckets(_AllNodes, [] = _DeltaNodes, _AllBucketConfigs, _DeltaRecoveryBuckets) ->
     [];
-do_build_delta_recovery_buckets(AllNodes, DeltaNodes, BucketConfigs) ->
+build_delta_recovery_buckets(AllNodes, DeltaNodes, AllBucketConfigs, DeltaRecoveryBuckets) ->
     Config = ns_config:get(),
 
-    Buckets =
-        lists:foldl(
-          fun ({Bucket, BucketConfig}, Acc) ->
-                  case find_delta_recovery_map(Config, AllNodes, DeltaNodes,
-                                               Bucket, BucketConfig) of
-                      {Map, Opts} ->
-                          ?rebalance_debug("Found delta recovery map for bucket ~s: ~p",
-                                           [Bucket, {Map, Opts}]),
-                          NewBucketConfig =
-                              build_transitional_bucket_config(BucketConfig,
-                                                               Map, Opts, DeltaNodes),
+    %% such non-lazy computation of recovery map is suboptimal, but
+    %% it's not that big deal suboptimal. I'm doing it for better
+    %% testability of build_delta_recovery_buckets_loop
+    MappedConfigs = [{Bucket,
+                      BucketConfig,
+                      find_delta_recovery_map(Config, AllNodes, DeltaNodes,
+                                              Bucket, BucketConfig)}
+                     || {Bucket, BucketConfig} <- AllBucketConfigs,
+                        proplists:get_value(type, BucketConfig) =:= membase],
 
-                          [{Bucket, NewBucketConfig, {Map, Opts}} | Acc];
-                      false ->
-                          ?rebalance_debug("Couldn't delta recover bucket ~s", [Bucket]),
-                          Acc
-                  end
-          end, [], BucketConfigs),
+    Recovered0 = build_delta_recovery_buckets_loop(MappedConfigs, DeltaRecoveryBuckets, []),
 
-    Buckets.
+    [{Bucket,
+      build_transitional_bucket_config(BucketConfig, Map, Opts, DeltaNodes),
+      {Map, Opts}}
+     || {Bucket, BucketConfig, {Map, Opts}} <- Recovered0].
+
+build_delta_recovery_buckets_loop([] = _MappedConfigs, _DeltaRecoveryBuckets, Acc) ->
+    Acc;
+build_delta_recovery_buckets_loop(MappedConfigs, DeltaRecoveryBuckets, Acc) ->
+    [{Bucket, BucketConfig, RecoverResult0} | RestMapped] = MappedConfigs,
+
+    NeedBucket = case DeltaRecoveryBuckets of
+                     all -> true;
+                     _List -> lists:member(Bucket, DeltaRecoveryBuckets)
+                 end,
+    RecoverResult = case NeedBucket of
+                        true ->
+                            RecoverResult0;
+                        false ->
+                            false
+                    end,
+    case RecoverResult of
+        {Map, Opts} ->
+            ?rebalance_debug("Found delta recovery map for bucket ~s: ~p",
+                             [Bucket, {Map, Opts}]),
+
+            NewAcc = [{Bucket, BucketConfig, {Map, Opts}} | Acc],
+            build_delta_recovery_buckets_loop(RestMapped, DeltaRecoveryBuckets, NewAcc);
+        false ->
+            case NeedBucket of
+                true ->
+                    ?rebalance_debug("Couldn't delta recover bucket ~s when we care about delta recovery of that bucket", [Bucket]),
+                    %% run rest of elements for logging
+                    _ = build_delta_recovery_buckets_loop(RestMapped, DeltaRecoveryBuckets, []),
+                    [];
+                false ->
+                    build_delta_recovery_buckets_loop(RestMapped, DeltaRecoveryBuckets, Acc)
+            end
+    end.
+
+build_delta_recovery_buckets_loop_test() ->
+    MappedConfigs = [{"b1", conf1, {map, opts}},
+                     {"b2", conf2, false}],
+    [] = build_delta_recovery_buckets_loop([], all, []),
+    [] = build_delta_recovery_buckets_loop(MappedConfigs, all, []),
+    [] = build_delta_recovery_buckets_loop(MappedConfigs, ["b2"], []),
+    [] = build_delta_recovery_buckets_loop(MappedConfigs, ["b1", "b2"], []),
+    [] = build_delta_recovery_buckets_loop(MappedConfigs, [], []),
+    ?assertEqual([{"b1", conf1, {map, opts}}], build_delta_recovery_buckets_loop(MappedConfigs, ["b1"], [])),
+    ?assertEqual([{"b1", conf1, {map, opts}}], build_delta_recovery_buckets_loop([hd(MappedConfigs)], all, [])).
 
 apply_delta_recovery_buckets([], _DeltaNodes) ->
     ok;

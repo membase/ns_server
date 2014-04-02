@@ -73,8 +73,8 @@ system_joinable() ->
 get_rebalance_status() ->
     ns_orchestrator:rebalance_progress().
 
-start_rebalance(KnownNodes, EjectedNodes, RequireDeltaRecovery) ->
-    ns_orchestrator:start_rebalance(KnownNodes, EjectedNodes, RequireDeltaRecovery).
+start_rebalance(KnownNodes, EjectedNodes, DeltaRecoveryBuckets) ->
+    ns_orchestrator:start_rebalance(KnownNodes, EjectedNodes, DeltaRecoveryBuckets).
 
 activate(Nodes) ->
     ns_config:set([{{node, Node, membership}, active} ||

@@ -219,14 +219,14 @@ ensure_janitor_run(BucketName) ->
               end
       end, infinity, 1000).
 
--spec start_rebalance([node()], [node()], boolean()) ->
+-spec start_rebalance([node()], [node()], all | [bucket_name()]) ->
                              ok | in_progress | already_balanced |
                              nodes_mismatch | no_active_nodes_left |
                              in_recovery | delta_recovery_not_possible.
-start_rebalance(KnownNodes, EjectNodes, RequireDeltaRecovery) ->
+start_rebalance(KnownNodes, EjectNodes, DeltaRecoveryBuckets) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_all_state_event(
-      ?SERVER, {maybe_start_rebalance, KnownNodes, EjectNodes, RequireDeltaRecovery}).
+      ?SERVER, {maybe_start_rebalance, KnownNodes, EjectNodes, DeltaRecoveryBuckets}).
 
 -spec start_graceful_failover(node()) ->
                                      ok | in_progress | in_recovery |
@@ -352,7 +352,7 @@ handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes},
     handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes, false},
                       From, StateName, State);
 %% this one is sent by post-3.0 nodes
-handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes, RequireDeltaRecovery},
+handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes, DeltaRecoveryBuckets},
                   From, StateName, State) ->
     case {EjectedNodes -- KnownNodes,
           lists:sort(ns_node_disco:nodes_wanted()),
@@ -373,7 +373,7 @@ handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes, RequireDelta
                     StartEvent = {start_rebalance,
                                   KeepNodes,
                                   EjectedNodes -- FailedNodes,
-                                  FailedNodes, DeltaNodes, RequireDeltaRecovery},
+                                  FailedNodes, DeltaNodes, DeltaRecoveryBuckets},
                     ?MODULE:StateName(StartEvent, From, State)
             end;
         _ ->
@@ -676,22 +676,22 @@ idle(rebalance_progress, _From, State) ->
     {reply, not_running, idle, State};
 %% NOTE: this is not remotely called but is used by maybe_start_rebalance
 idle({start_rebalance, KeepNodes, EjectNodes,
-      FailedNodes, DeltaNodes, RequireDeltaRecovery}, _From,
+      FailedNodes, DeltaNodes, DeltaRecoveryBuckets}, _From,
      #idle_state{remaining_buckets = RemainingBuckets} = State) ->
 
     case ns_rebalancer:start_link_rebalance(KeepNodes, EjectNodes,
-                                            FailedNodes, DeltaNodes, RequireDeltaRecovery) of
+                                            FailedNodes, DeltaNodes, DeltaRecoveryBuckets) of
         {ok, Pid} ->
-            case RequireDeltaRecovery =:= false andalso DeltaNodes =/= [] of
+            case DeltaNodes =/= [] of
                 true ->
                     ?user_log(?REBALANCE_STARTED,
-                              "Starting rebalance, KeepNodes = ~p, EjectNodes = ~p, Failed over and being ejected nodes = ~p, Delta recovery nodes = ~p"
-                              " (but delta recovery is not enforced, so for some buckets those nodes may be rebalanced fully)",
-                              [KeepNodes, EjectNodes, FailedNodes, DeltaNodes]);
+                              "Starting rebalance, KeepNodes = ~p, EjectNodes = ~p, Failed over and being ejected nodes = ~p, Delta recovery nodes = ~p, "
+                              " Delta recovery buckets = ~p",
+                              [KeepNodes, EjectNodes, FailedNodes, DeltaNodes, DeltaRecoveryBuckets]);
                 _ ->
                     ?user_log(?REBALANCE_STARTED,
-                              "Starting rebalance, KeepNodes = ~p, EjectNodes = ~p, Failed over and being ejected nodes = ~p, Delta recovery nodes = ~p, RequireDeltaRecovery = ~p ~n",
-                              [KeepNodes, EjectNodes, FailedNodes, DeltaNodes, RequireDeltaRecovery])
+                              "Starting rebalance, KeepNodes = ~p, EjectNodes = ~p, Failed over and being ejected nodes = ~p; no delta recovery nodes~n",
+                              [KeepNodes, EjectNodes, FailedNodes])
             end,
 
             notify_janitor_finished(RemainingBuckets, rebalance_running),
@@ -858,7 +858,7 @@ rebalancing({update_progress, Progress},
 
 %% Synchronous rebalancing events
 rebalancing({start_rebalance, _KeepNodes, _EjectNodes,
-             _FailedNodes, _DeltaNodes, _RequireDeltaRecovery},
+             _FailedNodes, _DeltaNodes, _DeltaRecoveryBuckets},
             _From, State) ->
     ?user_log(?REBALANCE_NOT_STARTED,
               "Not rebalancing because rebalance is already in progress.~n"),

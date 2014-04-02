@@ -93,7 +93,6 @@ GET /pools/default =>
         },
         "rebalance": {
             "uri": "/controller/rebalance?uuid=14c408ed8df50823715f47b900bd1b4f"
-            "requireDeltaRecoveryURI": "/controller/rebalance?uuid=14c408ed8df50823715f47b900bd1b4f&requireDeltaRecovery=true"
         },
         "failOver": {
             "uri": "/controller/failOver?uuid=14c408ed8df50823715f47b900bd1b4f"
@@ -424,14 +423,17 @@ POST /controller/regenerateCertificate
 =>
 (see GET /pools/default/certificate for output format)
 
-// Rebalance the cluster. knownNodes must match the set of nodes that are
-// currently part of the cluster. ejectedNodes specifies the nodes that are to
-// be ejected from the cluster. If requireDeltaRecovery is set to "true" and
-// delta recovery was requested for any of the nodes, then rebalance will only
-// proceed if the delta recovery is possible.
-POST /controller/rebalance(?requireDeltaRecovery=<:bool>)?
+// Rebalance the cluster. knownNodes must match the set of nodes that
+// are currently part of the cluster. ejectedNodes specifies the nodes
+// that are to be ejected from the cluster. If delta recovery was
+// requested for any of the nodes, then rebalance will only proceed if
+// the delta recovery is possible for all buckets. If
+// deltaRecoveryBuckets is passed then it'll only try to
+// recover given buckets (and refuse if any of them are not
+// delta-recoverable)
+POST /controller/rebalance
 
-knownNodes=<comma separated list of nodes>&ejectedNodes=<comma separated list of nodes> =>
+knownNodes=<comma separated list of nodes>&ejectedNodes=<comma separated list of nodes>&requireDeltaRecoveryBuckets=<comma separated list of bucket names> =>
 
    200 "" // rebalance started successfully
  | 400 {"empty_known_nodes": 1} // knownNodes was either omitted or empty

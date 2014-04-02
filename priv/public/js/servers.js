@@ -426,7 +426,7 @@ var ServersSection = {
       return;
     }
 
-    self.postAndReload(self.poolDetails.value.controllers.rebalance.requireDeltaRecoveryURI,
+    self.postAndReload(self.poolDetails.value.controllers.rebalance.uri,
                        {knownNodes: _.pluck(self.allNodes, 'otpNode').join(','),
                         ejectedNodes: _.pluck(self.pendingEject, 'otpNode').join(',')});
     self.poolDetails.getValue(function () {

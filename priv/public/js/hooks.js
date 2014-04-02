@@ -2068,8 +2068,7 @@ var ServerStateMock = {
         "uri": "/controller/addNode"
       },
       "rebalance": {
-        "uri": "/controller/rebalance",
-        "requireDeltaRecoveryURI": "/controller/rebalance"
+        "uri": "/controller/rebalance"
       },
       "failOver": {
         "uri": "/controller/failOver"

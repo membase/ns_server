@@ -1062,11 +1062,7 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
 
     Controllers = {struct, [
       {addNode, {struct, [{uri, <<"/controller/addNode?uuid=", UUID/binary>>}]}},
-      {rebalance, {struct, [{uri, <<"/controller/rebalance?uuid=", UUID/binary>>},
-                            {requireDeltaRecoveryURI,
-                             bin_concat_path(<<"/controller/rebalance">>,
-                                             [{"uuid", UUID},
-                                              {"requireDeltaRecovery", "true"}])}]}},
+      {rebalance, {struct, [{uri, <<"/controller/rebalance?uuid=", UUID/binary>>}]}},
       {failOver, {struct, [{uri, <<"/controller/failOver?uuid=", UUID/binary>>}]}},
       {startGracefulFailover, {struct, [{uri, <<"/controller/startGracefulFailover?uuid=", UUID/binary>>}]}},
       {reAddNode, {struct, [{uri, <<"/controller/reAddNode?uuid=", UUID/binary>>}]}},
@@ -2558,20 +2554,23 @@ handle_rebalance(Req) ->
                                 catch error:badarg -> true end],
             case UnknownNodes of
                 [] ->
-                    RequireDeltaRecovery =
-                        proplists:get_value("requireDeltaRecovery", Req:parse_qs()) =:= "true",
-                    do_handle_rebalance(Req, KnownNodesS, EjectedNodesS, RequireDeltaRecovery);
+                    DeltaRecoveryBuckets = case proplists:get_value("deltaRecoveryBuckets", Params) of
+                                               undefined -> all;
+                                               RawRecoveryBuckets ->
+                                                   [BucketName || BucketName <- string:tokens(RawRecoveryBuckets, ",")]
+                                           end,
+                    do_handle_rebalance(Req, KnownNodesS, EjectedNodesS, DeltaRecoveryBuckets);
                 _ ->
                     reply_json(Req, {struct, [{mismatch, 1}]}, 400)
             end
     end.
 
--spec do_handle_rebalance(any(), [string()], [string()], boolean()) -> any().
-do_handle_rebalance(Req, KnownNodesS, EjectedNodesS, RequireDeltaRecovery) ->
+-spec do_handle_rebalance(any(), [string()], [string()], all | [bucket_name()]) -> any().
+do_handle_rebalance(Req, KnownNodesS, EjectedNodesS, DeltaRecoveryBuckets) ->
     EjectedNodes = [list_to_existing_atom(N) || N <- EjectedNodesS],
     KnownNodes = [list_to_existing_atom(N) || N <- KnownNodesS],
     case ns_cluster_membership:start_rebalance(KnownNodes,
-                                               EjectedNodes, RequireDeltaRecovery) of
+                                               EjectedNodes, DeltaRecoveryBuckets) of
         already_balanced ->
             Req:respond({200, [], []});
         in_progress ->
