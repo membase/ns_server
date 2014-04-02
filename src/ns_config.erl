@@ -844,16 +844,19 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
             ?log_debug("Here's full dynamic config we loaded:~n~p", [ns_config_log:sanitize(Dynamic)]),
 
             {UUID, LoadedKVs} = Dynamic,
-            {_, DynamicPropList} = lists:foldl(fun (Tuple, {Seen, Acc}) ->
-                                                       K = element(1, Tuple),
-                                                       case sets:is_element(K, Seen) of
-                                                           true -> {Seen, Acc};
-                                                           false -> {sets:add_element(K, Seen),
-                                                                     [Tuple | Acc]}
-                                                       end
-                                               end,
-                                               {sets:from_list([directory]), []},
-                                               lists:append(LoadedKVs ++ [S, DefaultConfig])),
+            {_, DynamicPropList0} = lists:foldl(fun (Tuple, {Seen, Acc}) ->
+                                                        K = element(1, Tuple),
+                                                        case sets:is_element(K, Seen) of
+                                                            true -> {Seen, Acc};
+                                                            false -> {sets:add_element(K, Seen),
+                                                                      [Tuple | Acc]}
+                                                        end
+                                                end,
+                                                {sets:from_list([directory,
+                                                                 {node, node(), uuid}]), []},
+                                                lists:append(LoadedKVs ++ [S, DefaultConfig])),
+            DynamicPropList = [{{node, node(), uuid}, attach_vclock(UUID)}
+                               | DynamicPropList0],
             ?log_info("Here's full dynamic config we loaded + static & default config:~n~p",
                       [ns_config_log:sanitize(DynamicPropList)]),
             {ok, #config{static = [S, DefaultConfig],
@@ -948,6 +951,9 @@ merge_kv_pairs(RemoteKVList, LocalKVList) ->
     LocalKVList1 = lists:sort(LocalKVList),
     Merger = fun (_, {directory, _} = LP) ->
                      LP;
+                 ({_, RV}, {{node, Node, uuid}, LV}) when Node =:= node() ->
+                     {{node, node(), uuid},
+                      increment_vclock(LV, merge_vclocks(RV, LV))};
                  (RP, LP) ->
                      merge_values(RP, LP)
              end,

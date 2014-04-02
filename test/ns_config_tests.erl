@@ -272,7 +272,7 @@ test_load_config() ->
     ok = file:close(F),
     R = ns_config:load_config(CP, test_dir(), ?MODULE),
     ?assertMatch({ok, #config{static = [[{x,1}], []],
-                              dynamic = [[{x,1}]],
+                              dynamic = [[{x,1}, {{node, _, uuid}, _}]],
                               policy_mod = ?MODULE,
                               uuid = _}}, R),
     ok.
@@ -284,11 +284,12 @@ test_save_config() ->
     ok = file:close(F),
     R = ns_config:load_config(CP, test_dir(), ?MODULE),
     ?assertMatch({ok, #config{static = [[{x,1}], []],
-                              dynamic = [[{x,1}]],
+                              dynamic = [[{x,1}, {{node, _, uuid}, _}]],
                               policy_mod = ?MODULE,
                               uuid = _}}, R),
-    {ok, E} = R,
-    X = E#config{dynamic = [[{x,2},{y,3}]], policy_mod = ?MODULE},
+    {ok, #config{dynamic = [Dynamic]} = E} = R,
+    X = E#config{dynamic = [misc:update_proplist(Dynamic, [{x,2},{y,3}])],
+                 policy_mod = ?MODULE},
     ?assertEqual(ok, ns_config:save_config_sync(X, test_dir())),
     R2 = ns_config:load_config(CP, test_dir(), ?MODULE),
     ?assertMatch({ok, X}, R2),
@@ -364,8 +365,8 @@ test_include_config() ->
                               policy_mod = ?MODULE}},
                  R),
     {ok, #config{dynamic = [DynamicR]}} = R,
-    ?assertEqual(lists:ukeysort(1, DynamicR),
-                 lists:ukeysort(1, [{x,1}, {z,9}, {y,1}])),
+    ?assertMatch([{x,1}, {y,1}, {z,9}, {{node, _, uuid}, _}],
+                 lists:ukeysort(1, DynamicR)),
     ok.
 
 test_include_missing_config() ->
