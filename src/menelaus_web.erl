@@ -998,7 +998,7 @@ handle_pool_info_wait_wake(Req, Id, LocalAddr, PassedETag) ->
     receive
         wait_expired ->
             handle_pool_info_wait_tail(Req, Id, LocalAddr, PassedETag);
-        {notify_watcher, _} ->
+        notify_watcher ->
             timer:sleep(200), %% delay a bit to catch more notifications
             consume_notifications(),
             handle_pool_info_wait(Req, Id, LocalAddr, PassedETag);
@@ -1008,7 +1008,7 @@ handle_pool_info_wait_wake(Req, Id, LocalAddr, PassedETag) ->
 
 consume_notifications() ->
     receive
-        {notify_watcher, _} -> consume_notifications()
+        notify_watcher -> consume_notifications()
     after 0 ->
             done
     end.
@@ -1431,7 +1431,7 @@ streaming_inner(F, HTTPRes, LastRes) ->
 
 consume_watcher_notifies() ->
     receive
-        {notify_watcher, _} ->
+        notify_watcher ->
             consume_watcher_notifies()
     after 0 ->
             ok
@@ -1448,7 +1448,7 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
 
 handle_streaming_wakeup(F, Req, HTTPRes, Res) ->
     receive
-        {notify_watcher, _} ->
+        notify_watcher ->
             timer:sleep(50),
             consume_watcher_notifies(),
             ok;

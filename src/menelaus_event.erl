@@ -85,6 +85,19 @@ init(_) ->
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
+is_interesting_to_watchers({significant_buckets_change, _}) -> true;
+is_interesting_to_watchers({memcached, _}) -> true;
+is_interesting_to_watchers({{node, _, memcached}, _}) -> true;
+is_interesting_to_watchers({rebalance_status, _}) -> true;
+is_interesting_to_watchers({recovery_status, _}) -> true;
+is_interesting_to_watchers({buckets, _}) -> true;
+is_interesting_to_watchers({nodes_wanted, _}) -> true;
+is_interesting_to_watchers({server_groups, _}) -> true;
+is_interesting_to_watchers({ns_node_disco_events, _NodesBefore, _NodesAfter}) -> true;
+is_interesting_to_watchers({autocompaction, _}) -> true;
+is_interesting_to_watchers({cluster_compat_version, _}) -> true;
+is_interesting_to_watchers(_) -> false.
+
 handle_event({{node, Node, rest}, _}, State) when Node =:= node() ->
     NewState = maybe_restart(State),
     {ok, NewState};
@@ -93,51 +106,13 @@ handle_event({rest, _}, State) ->
     NewState = maybe_restart(State),
     {ok, NewState};
 
-handle_event({significant_buckets_change, _}, State) ->
-    ok = notify_watchers(significant_buckets_change, State),
-    {ok, State};
-
-handle_event({memcached, _}, State) ->
-    ok = notify_watchers(memcached, State),
-    {ok, State};
-
-handle_event({{node, _, memcached}, _}, State) ->
-    ok = notify_watchers(memcached, State),
-    {ok, State};
-
-handle_event({rebalance_status, _}, State) ->
-    ok = notify_watchers(rebalance_status, State),
-    {ok, State};
-
-handle_event({recovery_status, _}, State) ->
-    ok = notify_watchers(recovery_status, State),
-    {ok, State};
-
-handle_event({buckets, _}, State) ->
-    ok = notify_watchers(buckets, State),
-    {ok, State};
-
-handle_event({nodes_wanted, _}, State) ->
-    ok = notify_watchers(nodes_wanted, State),
-    {ok, State};
-
-handle_event({server_groups, _}, State) ->
-    ok = notify_watchers(server_groups, State),
-    {ok, State};
-
-handle_event({ns_node_disco_events, _NodesBefore, _NodesAfter}, State) ->
-    ok = notify_watchers(ns_node_disco_events, State),
-    {ok, State};
-
-handle_event({autocompaction, _}, State) ->
-    ok = notify_watchers(autocompaction, State),
-    {ok, State};
-
-handle_event({cluster_compat_version, _}, State) ->
-    ok = notify_watchers(cluster_compat_version, State),
-    {ok, State};
-
-handle_event(_, State) ->
+handle_event(Event, State) ->
+    case is_interesting_to_watchers(Event) of
+        true ->
+            ok = notify_watchers(State);
+        _ ->
+            ok
+    end,
     {ok, State}.
 
 handle_call({register_watcher, Pid},
@@ -178,9 +153,9 @@ handle_info(_Info, State) ->
 
 % ------------------------------------------------------------
 
-notify_watchers(Msg, #state{watchers = Watchers}) ->
+notify_watchers(#state{watchers = Watchers}) ->
     lists:foreach(fun({Pid, _}) ->
-                          Pid ! {notify_watcher, Msg}
+                          Pid ! notify_watcher
                   end,
                   Watchers),
     ok.
