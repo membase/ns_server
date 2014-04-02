@@ -248,7 +248,7 @@ generate_initial_map(BucketConfig) ->
     Chain = lists:duplicate(proplists:get_value(num_replicas, BucketConfig) + 1,
                             undefined),
     Map1 = lists:duplicate(proplists:get_value(num_vbuckets, BucketConfig),
-                          Chain),
+                           Chain),
     Servers = proplists:get_value(servers, BucketConfig),
     generate_vbucket_map(Map1, Servers, BucketConfig).
 
@@ -326,27 +326,27 @@ start_link_rebalance(KeepNodes, EjectNodes,
     proc_lib:start_link(
       erlang, apply,
       [fun () ->
-              BucketConfigs = ns_bucket:get_buckets(),
-              DeltaRecoveryBuckets =
-                  build_delta_recovery_buckets(KeepNodes, DeltaNodes, BucketConfigs),
+               BucketConfigs = ns_bucket:get_buckets(),
+               DeltaRecoveryBuckets =
+                   build_delta_recovery_buckets(KeepNodes, DeltaNodes, BucketConfigs),
 
-              case RequireDeltaRecovery =:= true andalso
-                  DeltaNodes =/= [] andalso DeltaRecoveryBuckets =:= [] of
-                  true ->
-                      proc_lib:init_ack({error, delta_recovery_not_possible});
-                  false ->
-                      proc_lib:init_ack({ok, self()}),
+               case RequireDeltaRecovery =:= true andalso
+                   DeltaNodes =/= [] andalso DeltaRecoveryBuckets =:= [] of
+                   true ->
+                       proc_lib:init_ack({error, delta_recovery_not_possible});
+                   false ->
+                       proc_lib:init_ack({ok, self()}),
 
-                      master_activity_events:note_rebalance_start(
-                        self(), KeepNodes, EjectNodes, FailedNodes, DeltaNodes),
+                       master_activity_events:note_rebalance_start(
+                         self(), KeepNodes, EjectNodes, FailedNodes, DeltaNodes),
 
-                      ok = apply_delta_recovery_buckets(DeltaRecoveryBuckets, DeltaNodes),
-                      ns_cluster_membership:activate(KeepNodes),
+                       ok = apply_delta_recovery_buckets(DeltaRecoveryBuckets, DeltaNodes),
+                       ns_cluster_membership:activate(KeepNodes),
 
-                      rebalance(KeepNodes, EjectNodes, FailedNodes,
-                                BucketConfigs, DeltaRecoveryBuckets)
-              end
-      end, []]).
+                       rebalance(KeepNodes, EjectNodes, FailedNodes,
+                                 BucketConfigs, DeltaRecoveryBuckets)
+               end
+       end, []]).
 
 rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
           BucketConfigs, DeltaRecoveryBuckets) ->
@@ -775,7 +775,7 @@ find_delta_recovery_map_loop([TargetMap | Rest], Config, Bucket, Options, DeltaN
 
 build_delta_recovery_buckets(AllNodes, DeltaNodes, AllBucketConfigs) ->
     MembaseBucketConfigs = [{Bucket, Conf} || {Bucket, Conf} <- AllBucketConfigs,
-                                 proplists:get_value(type, Conf) =:= membase],
+                                              proplists:get_value(type, Conf) =:= membase],
 
     do_build_delta_recovery_buckets(AllNodes, DeltaNodes, MembaseBucketConfigs).
 
