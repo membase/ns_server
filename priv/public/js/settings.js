@@ -82,9 +82,12 @@ function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCel
   }).name("isClusterTabCell");
   ns.isClusterTabCell.equality = _.isEqual;
 
+  ns.visualInternalSettingsUriCell = Cell.compute(function (v) {
+    return v.need(poolDetailsCell).visualSettingsUri;
+  }).name("visualInternalSettingsUriCell");
+
   ns.visualInternalSettingsCell = Cell.compute(function (v) {
-    v.need(poolDetailsCell);
-    return future.get({url: "/internalSettings/visual"});
+    return future.get({url: v.need(ns.visualInternalSettingsUriCell)});
   }).name("visualInternalSettingsCell");
   ns.visualInternalSettingsCell.equality = _.isEqual;
 

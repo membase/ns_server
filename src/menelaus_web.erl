@@ -1090,6 +1090,8 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
 
     TasksURI = bin_concat_path(["pools", Id, "tasks"],
                                [{"v", ns_doctor:get_tasks_version()}]),
+    VisualSettingsV0 = erlang:phash2(ns_config:search(Config, internal_visual_settings)),
+    VisualSettingsV = list_to_binary(integer_to_list(VisualSettingsV0)),
 
     PropList0 = [{name, list_to_binary(Id)},
                  {alerts, Alerts},
@@ -1121,6 +1123,7 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
                                               build_fast_warmup_settings(FWSettings)
                                       end},
                  {tasks, {struct, [{uri, TasksURI}]}},
+                 {visualSettingsUri, <<"/internalSettings/visual?v=", VisualSettingsV/binary>>},
                  {counters, {struct, ns_cluster:counters()}}],
 
     PropList1 = case cluster_compat_mode:is_cluster_25() of
