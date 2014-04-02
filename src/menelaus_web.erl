@@ -1106,12 +1106,7 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
                   iolist_to_binary([<<"/controller/resetAlerts?token=">>,
                                     AlertsSilenceToken,
                                     $&, <<"uuid=">>, UUID])},
-                 {nodes, case InfoLevel of
-                             stable -> Nodes;
-                             _ ->
-                                 misc:randomize(),
-                                 misc:shuffle(Nodes)
-                         end},
+                 {nodes, Nodes},
                  {buckets, BucketsInfo},
                  {remoteClusters,
                   {struct, [{uri, <<"/pools/default/remoteClusters?uuid=", UUID/binary>>},
