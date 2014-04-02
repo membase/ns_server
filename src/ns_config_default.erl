@@ -72,9 +72,6 @@ default() ->
     filelib:ensure_dir(RawLogDir),
     file:make_dir(RawLogDir),
 
-    InstanceUuid = couch_uuids:random(),
-    InstanceVClock = {'_vclock', [{InstanceUuid, {1, vclock:timestamp()}}]},
-
     [{directory, path_config:component_path(data, "config")},
      {index_aware_rebalance_disabled, false},
      {max_bucket_count, 10},
@@ -140,13 +137,11 @@ default() ->
 
                                                 % This is also a parameter to memcached ports below.
      {remote_clusters, []},
-     {{node, node(), isasl}, [InstanceVClock,
-                              {path, filename:join(DataDir, ?ISASL_PW)}]},
+     {{node, node(), isasl}, [{path, filename:join(DataDir, ?ISASL_PW)}]},
 
                                                 % Memcached config
      {{node, node(), memcached},
-      [InstanceVClock,
-       {port, misc:get_env_default(memcached_port, 11210)},
+      [{port, misc:get_env_default(memcached_port, 11210)},
        {mccouch_port, misc:get_env_default(mccouch_port, 11213)},
        {dedicated_port, misc:get_env_default(memcached_dedicated_port, 11209)},
        {ssl_port, misc:get_env_default(memcached_ssl_port, 11207)},
@@ -275,8 +270,7 @@ default() ->
        }]
      },
 
-     {{node, node(), ns_log}, [InstanceVClock,
-                               {filename, filename:join(DataDir, ?NS_LOG)}]},
+     {{node, node(), ns_log}, [{filename, filename:join(DataDir, ?NS_LOG)}]},
 
                                                 % Modifiers: menelaus
                                                 % Listeners: ? possibly ns_log

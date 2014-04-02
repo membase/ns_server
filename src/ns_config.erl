@@ -848,6 +848,15 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
             ?log_debug("Here's full dynamic config we loaded:~n~p", [ns_config_log:sanitize(Dynamic)]),
 
             {UUID, LoadedKVs} = Dynamic,
+
+            DefaultConfigWithVClocks =
+                lists:map(
+                  fun ({{node, Node, _} = K, V}) when Node =:= node() ->
+                          {K, attach_vclock(V, UUID)};
+                      (Other) ->
+                          Other
+                  end, DefaultConfig),
+
             {_, DynamicPropList0} = lists:foldl(fun (Tuple, {Seen, Acc}) ->
                                                         K = element(1, Tuple),
                                                         case sets:is_element(K, Seen) of
@@ -858,7 +867,7 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
                                                 end,
                                                 {sets:from_list([directory,
                                                                  {node, node(), uuid}]), []},
-                                                lists:append(LoadedKVs ++ [S, DefaultConfig])),
+                                                lists:append(LoadedKVs ++ [S, DefaultConfigWithVClocks])),
             DynamicPropList = [{{node, node(), uuid}, attach_vclock(UUID, UUID)}
                                | DynamicPropList0],
             ?log_info("Here's full dynamic config we loaded + static & default config:~n~p",
