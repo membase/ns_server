@@ -68,7 +68,7 @@
          run_txn/1,
          clear/0, clear/1,
          proplist_get_value/3,
-         merge_kv_pairs/2,
+         merge_kv_pairs/3,
          sync_announcements/0,
          get_kv_list/0, get_kv_list/1, get_kv_list_with_config/1,
          upgrade_config_explicitly/1, config_version_token/0,
@@ -137,32 +137,32 @@ merge(KVList) ->
 
 %% Set a value that will be overridden by any merged config
 set_initial(Key, Value) ->
-    ok = update_with_changes(fun (Config) ->
+    ok = update_with_changes(fun (Config, _) ->
                                      NewPair = {Key, Value},
                                      {[NewPair], [NewPair | lists:keydelete(Key, 1, Config)]}
                              end).
 
-update_config_key_rec(Key, Value, Rest, AccList) ->
+update_config_key_rec(Key, Value, Rest, UUID, AccList) ->
     case Rest of
         [{Key, OldValue} = OldPair | XX] ->
             NewPair = case strip_metadata(OldValue) =:= strip_metadata(Value) of
                           true ->
                               OldPair;
                           _ ->
-                              {Key, increment_vclock(Value, OldValue)}
+                              {Key, increment_vclock(Value, OldValue, UUID)}
                       end,
             [NewPair | lists:reverse(AccList, XX)];
         [Pair | XX2] ->
-            update_config_key_rec(Key, Value, XX2, [Pair | AccList]);
+            update_config_key_rec(Key, Value, XX2, UUID, [Pair | AccList]);
         [] ->
             none
     end.
 
 %% updates KVList with {Key, Value}. Places new tuple at the beginning
 %% of list and removes old version for rest of list
-update_config_key(Key, Value, KVList) ->
-    case update_config_key_rec(Key, Value, KVList, []) of
-        none -> [{Key, increment_vclock(Value, Value)} | KVList];
+update_config_key(Key, Value, KVList, UUID) ->
+    case update_config_key_rec(Key, Value, KVList, UUID, []) of
+        none -> [{Key, attach_vclock(Value, UUID)} | KVList];
         NewList -> NewList
     end.
 
@@ -175,8 +175,8 @@ cas_local_config(NewConfig, OldConfig) ->
     gen_server:call(?MODULE, {cas_config, NewConfig, OldConfig, local}).
 
 set(Key, Value) ->
-    ok = update_with_changes(fun (Config) ->
-                                     NewList = update_config_key(Key, Value, Config),
+    ok = update_with_changes(fun (Config, UUID) ->
+                                     NewList = update_config_key(Key, Value, Config, UUID),
                                      {[hd(NewList)], NewList}
                              end).
 
@@ -192,8 +192,13 @@ run_txn(Body) ->
 run_txn_loop(_Body, 0) ->
     retry_needed;
 run_txn_loop(Body, RetriesLeft) ->
-    Cfg = [get_kv_list()],
-    case Body(Cfg, fun run_txn_set/3) of
+    FullConfig = ns_config:get(),
+    UUID = ns_config:uuid(FullConfig),
+    Cfg = [get_kv_list_with_config(FullConfig)],
+    SetFun = fun (Key, Value, Config) ->
+                     run_txn_set(Key, Value, Config, UUID)
+             end,
+    case Body(Cfg, SetFun) of
         {commit, [NewCfg]} ->
             case cas_local_config(NewCfg, hd(Cfg)) of
                 true -> {commit, NewCfg};
@@ -203,8 +208,8 @@ run_txn_loop(Body, RetriesLeft) ->
             AbortRV
     end.
 
-run_txn_set(Key, Value, [KVList]) ->
-    [update_config_key(Key, Value, KVList)].
+run_txn_set(Key, Value, [KVList], UUID) ->
+    [update_config_key(Key, Value, KVList, UUID)].
 
 %% Updates Config with list of {Key, Value} pairs. Places new pairs at
 %% the beginning of new list and removes old occurences of that keys.
@@ -212,15 +217,15 @@ run_txn_set(Key, Value, [KVList]) ->
 %% updated KV pairs (with updated vclocks, if needed).
 %%
 %% Last parameter is accumulator. It's appended to NewPairs list.
-set_kvlist([], Config, NewPairs) ->
+set_kvlist([], Config, _UUID, NewPairs) ->
     {NewPairs, Config};
-set_kvlist([{Key, Value} | Rest], Config, NewPairs) ->
-    NewList = update_config_key(Key, Value, Config),
-    set_kvlist(Rest, NewList, [hd(NewList) | NewPairs]).
+set_kvlist([{Key, Value} | Rest], Config, UUID, NewPairs) ->
+    NewList = update_config_key(Key, Value, Config, UUID),
+    set_kvlist(Rest, NewList, UUID, [hd(NewList) | NewPairs]).
 
 set(KVList) ->
-    ok = update_with_changes(fun (Config) ->
-                                     set_kvlist(KVList, Config, [])
+    ok = update_with_changes(fun (Config, UUID) ->
+                                     set_kvlist(KVList, Config, UUID, [])
                              end).
 
 delete(Keys) when is_list(Keys) ->
@@ -244,44 +249,45 @@ update_with_changes(Fun) ->
 %%
 %% Function returns a pair {NewPairs, NewConfig} where NewConfig is
 %% new config and NewPairs is list of changed pairs
-do_update_rec(_Fun, _SoftDelete, _Erase, [], NewConfig, NewPairs) ->
+do_update_rec(_Fun, _SoftDelete, _Erase, [], _UUID, NewConfig, NewPairs) ->
     {NewPairs, lists:reverse(NewConfig)};
-do_update_rec(Fun, SoftDelete, Erase, [Pair | Rest], NewConfig, NewPairs) ->
+do_update_rec(Fun, SoftDelete, Erase, [Pair | Rest], UUID, NewConfig, NewPairs) ->
     StrippedPair = case Pair of
                        {K0, [_|_] = V0} -> {K0, strip_metadata(V0)};
                        _ -> Pair
                    end,
     case Fun(StrippedPair, {SoftDelete, Erase}) of
         StrippedPair ->
-            do_update_rec(Fun, SoftDelete, Erase, Rest,
+            do_update_rec(Fun, SoftDelete, Erase, Rest, UUID,
                           [Pair | NewConfig], NewPairs);
         SoftDelete ->
             {K, OldValue} = Pair,
-            NewPair = {K, increment_vclock(?DELETED_MARKER, OldValue)},
-            do_update_rec(Fun, SoftDelete, Erase, Rest,
+            NewPair = {K, increment_vclock(?DELETED_MARKER, OldValue, UUID)},
+            do_update_rec(Fun, SoftDelete, Erase, Rest, UUID,
                           [NewPair | NewConfig], [NewPair | NewPairs]);
         Erase ->
-            do_update_rec(Fun, SoftDelete, Erase, Rest, NewConfig, NewPairs);
+            do_update_rec(Fun, SoftDelete, Erase, Rest, UUID,
+                          NewConfig, NewPairs);
         {K, Data} ->
             {_, OldValue} = Pair,
-            NewPair = {K, increment_vclock(Data, OldValue)},
-            do_update_rec(Fun, SoftDelete, Erase, Rest,
+            NewPair = {K, increment_vclock(Data, OldValue, UUID)},
+            do_update_rec(Fun, SoftDelete, Erase, Rest, UUID,
                           [NewPair | NewConfig], [NewPair | NewPairs])
     end.
 
 update(Fun) ->
     SoftDelete = make_ref(),
     Erase = make_ref(),
-    update_with_changes(fun (Config) ->
-                                do_update_rec(Fun, SoftDelete, Erase, Config, [], [])
+    update_with_changes(fun (Config, UUID) ->
+                                do_update_rec(Fun, SoftDelete, Erase, Config, UUID, [], [])
                         end).
 
 %% Applies given Fun to value of given Key. The Key must exist.
 -spec update_key(term(), fun((term()) -> term())) ->
                         ok | {error | exit | throw, any(), any()}.
 update_key(Key, Fun) ->
-    update_with_changes(fun (Config) ->
-                                case update_key_inner(Config, Key, Fun) of
+    update_with_changes(fun (Config, UUID) ->
+                                case update_key_inner(Config, UUID, Key, Fun) of
                                     false ->
                                         erlang:throw({config_key_not_found, Key});
                                     V ->
@@ -290,17 +296,17 @@ update_key(Key, Fun) ->
                         end).
 
 update_key(Key, Fun, Default) ->
-    update_with_changes(fun (Config) ->
-                                case update_key_inner(Config, Key, Fun) of
+    update_with_changes(fun (Config, UUID) ->
+                                case update_key_inner(Config, UUID, Key, Fun) of
                                     false ->
-                                        NewConfig = update_config_key(Key, Default, Config),
+                                        NewConfig = update_config_key(Key, Default, Config, UUID),
                                         {[hd(NewConfig)], NewConfig};
                                     V ->
                                         V
                                 end
                         end).
 
-update_key_inner(Config, Key, Fun) ->
+update_key_inner(Config, UUID, Key, Fun) ->
     case lists:keyfind(Key, 1, Config) of
         false ->
             false;
@@ -310,7 +316,7 @@ update_key_inner(Config, Key, Fun) ->
                 StrippedValue ->
                     {[], Config};
                 NewValue ->
-                    NewConfig = update_config_key(Key, NewValue, Config),
+                    NewConfig = update_config_key(Key, NewValue, Config, UUID),
                     {[hd(NewConfig)], NewConfig}
             end
     end.
@@ -557,9 +563,6 @@ extract_vclock([{'_vclock', Clock} | _]) -> Clock;
 extract_vclock(_Value) -> [].
 
 %% Increment the vclock in V2 and replace the one in V1
-increment_vclock(NewValue, OldValue) ->
-    increment_vclock(NewValue, OldValue, node()).
-
 increment_vclock(NewValue, OldValue, Node) ->
     OldVClock = extract_vclock(OldValue),
     NewVClock = lists:sort(vclock:increment(Node, OldVClock)),
@@ -577,8 +580,8 @@ merge_vclocks(NewValue, OldValue) ->
             [{?METADATA_VCLOCK, NewVClock} | strip_metadata(NewValue)]
     end.
 
-attach_vclock(Value) ->
-    VClock = lists:sort(vclock:increment(node(), vclock:fresh())),
+attach_vclock(Value, Node) ->
+    VClock = lists:sort(vclock:increment(Node, vclock:fresh())),
     [{?METADATA_VCLOCK, VClock} | strip_metadata(Value)].
 
 %% gen_server callbacks
@@ -593,7 +596,7 @@ upgrade_config(Config, Upgrader) ->
     do_upgrade_config(Config, Upgrader(Config), Upgrader).
 
 do_upgrade_config(Config, [], _Upgrader) -> Config;
-do_upgrade_config(Config, Changes, Upgrader) ->
+do_upgrade_config(#config{uuid = UUID} = Config, Changes, Upgrader) ->
     ?log_debug("Upgrading config by changes:~n~p~n", [ns_config_log:sanitize(Changes)]),
     ConfigList = config_dynamic(Config),
     NewList =
@@ -607,7 +610,7 @@ do_upgrade_config(Config, Changes, Upgrader) ->
 
                             case lists:keyfind(K, 1, Acc) of
                                 false ->
-                                    [{K, attach_vclock(V)} | Acc];
+                                    [{K, attach_vclock(V, UUID)} | Acc];
                                 {K, OldV} ->
                                     NewV =
                                         case is_list(OldV) of
@@ -625,12 +628,12 @@ do_upgrade_config(Config, Changes, Upgrader) ->
                                                         %% actually we're not supposed to update
                                                         %% not per-node values; but we still attach
                                                         %% vclock to them mostly for uniformity;
-                                                        attach_vclock(V);
+                                                        attach_vclock(V, UUID);
                                                     _ ->
-                                                        increment_vclock(V, OldV)
+                                                        increment_vclock(V, OldV, UUID)
                                                 end;
                                             _ ->
-                                                attach_vclock(V)
+                                                attach_vclock(V, UUID)
                                         end,
                                     lists:keyreplace(K, 1, Acc, {K, NewV})
                             end
@@ -752,9 +755,9 @@ handle_call(get, _From, State) ->
 handle_call({replace, KVList}, _From, State) ->
     {reply, ok, State#config{dynamic = [KVList]}};
 
-handle_call({update_with_changes, Fun}, From, State) ->
+handle_call({update_with_changes, Fun}, From, #config{uuid = UUID} = State) ->
     OldList = config_dynamic(State),
-    try Fun(OldList) of
+    try Fun(OldList, UUID) of
         {[], _} ->
             {reply, ok, State};
         {NewPairs, NewConfig} ->
@@ -859,7 +862,7 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
                                                 {sets:from_list([directory,
                                                                  {node, node(), uuid}]), []},
                                                 lists:append(LoadedKVs ++ [S, DefaultConfig])),
-            DynamicPropList = [{{node, node(), uuid}, attach_vclock(UUID)}
+            DynamicPropList = [{{node, node(), uuid}, attach_vclock(UUID, UUID)}
                                | DynamicPropList0],
             ?log_info("Here's full dynamic config we loaded + static & default config:~n~p",
                       [ns_config_log:sanitize(DynamicPropList)]),
@@ -948,27 +951,24 @@ save_file(bin, ConfigPath, X) ->
     ok = file:close(F),
     file:rename(TempFile, ConfigPath).
 
--spec merge_kv_pairs([{term(), term()}], [{term(), term()}]) -> [{term(), term()}].
-merge_kv_pairs(RemoteKVList, LocalKVList) when RemoteKVList =:= LocalKVList -> LocalKVList;
-merge_kv_pairs(RemoteKVList, LocalKVList) ->
+-spec merge_kv_pairs([{term(), term()}], [{term(), term()}], any()) -> [{term(), term()}].
+merge_kv_pairs(RemoteKVList, LocalKVList, _UUID) when RemoteKVList =:= LocalKVList -> LocalKVList;
+merge_kv_pairs(RemoteKVList, LocalKVList, UUID) ->
     RemoteKVList1 = lists:sort(RemoteKVList),
     LocalKVList1 = lists:sort(LocalKVList),
     Merger = fun (_, {directory, _} = LP) ->
                      LP;
                  ({_, RV}, {{node, Node, uuid}, LV}) when Node =:= node() ->
                      {{node, node(), uuid},
-                      increment_vclock(LV, merge_vclocks(RV, LV))};
+                      increment_vclock(LV, merge_vclocks(RV, LV), UUID)};
                  (RP, LP) ->
-                     merge_values(RP, LP)
+                     merge_values(RP, LP, UUID)
              end,
     misc:ukeymergewith(Merger, 1, RemoteKVList1, LocalKVList1).
 
--spec merge_values({term(), term()}, {term(), term()}) -> {term(), term()}.
-merge_values(RP, LP) ->
-    do_merge_values(RP, LP, node()).
-
-do_merge_values({_K, RV} = RP, {_, LV} = _LP, _Node) when RV =:= LV -> RP;
-do_merge_values({K, RV} = RP, {_, LV} = LP, Node) ->
+-spec merge_values({term(), term()}, {term(), term()}, any()) -> {term(), term()}.
+merge_values({_K, RV} = RP, {_, LV} = _LP, _UUID) when RV =:= LV -> RP;
+merge_values({K, RV} = RP, {_, LV} = LP, UUID) ->
     RClock = extract_vclock(RV),
     LClock = extract_vclock(LV),
     case {vclock:descends(RClock, LClock),
@@ -982,16 +982,16 @@ do_merge_values({K, RV} = RP, {_, LV} = LP, Node) ->
                 {_, ?DELETED_MARKER} ->
                     LP;
                 {_, _} ->
-                    V = do_merge_values_using_timestamps(K, LV, LClock, RV, RClock),
+                    V = merge_values_using_timestamps(K, LV, LClock, RV, RClock),
 
                     %% Increment the merged vclock so we don't pingpong
-                    {K, increment_vclock(V, merge_vclocks(RV, LV), Node)}
+                    {K, increment_vclock(V, merge_vclocks(RV, LV), UUID)}
             end;
         {true, false} -> RP;
         {false, true} -> LP
     end.
 
-do_merge_values_using_timestamps(K, LV, LClock, RV, RClock) ->
+merge_values_using_timestamps(K, LV, LClock, RV, RClock) ->
     LocalTS = vclock:get_latest_timestamp(LClock),
     RemoteTS = vclock:get_latest_timestamp(RClock),
 
@@ -1134,15 +1134,15 @@ test_set() ->
     ns_config:set(test, 1),
     Updater0 = (fun () -> receive {update_with_changes, F} -> F end end)(),
 
-    ?assertConfigEquals([{test, 1}], element(2, Updater0([]))),
-    {[{test, [{'_vclock', _} | 1]}], Val2} = Updater0([{foo, 2}]),
+    ?assertConfigEquals([{test, 1}], element(2, Updater0([], <<"uuid">>))),
+    {[{test, [{'_vclock', _} | 1]}], Val2} = Updater0([{foo, 2}], <<"uuid">>),
     ?assertConfigEquals([{test, 1}, {foo, 2}], Val2),
 
     %% and here we're changing value, so expecting vclock
     {[{test, [{'_vclock', [_]} | 1]}], Val3} =
         Updater0([{foo, [{k, 1}, {v, 2}]},
                   {xar, true},
-                  {test, [{a, b}, {c, d}]}]),
+                  {test, [{a, b}, {c, d}]}], <<"uuid">>),
 
     ?assertConfigEquals([{foo, [{k, 1}, {v, 2}]},
                          {xar, true},
@@ -1152,9 +1152,8 @@ test_set() ->
     ns_config:set(test, SetVal1),
     Updater1 = (fun () -> receive {update_with_changes, F} -> F end end)(),
 
-    {[{test, SetVal1Actual1}], Val4} = Updater1([{test, [{suba, false}, {subb, true}]}]),
-    MyNode = node(),
-    ?assertMatch([{'_vclock', [{MyNode, _}]} | SetVal1], SetVal1Actual1),
+    {[{test, SetVal1Actual1}], Val4} = Updater1([{test, [{suba, false}, {subb, true}]}], <<"uuid2">>),
+    ?assertMatch([{'_vclock', [{<<"uuid2">>, _}]} | SetVal1], SetVal1Actual1),
     ?assertEqual(SetVal1, strip_metadata(SetVal1Actual1)),
     ?assertMatch([{test, SetVal1Actual1}], Val4).
 
@@ -1203,13 +1202,15 @@ do_test_cas_config(Self) ->
 
 
 test_update_config() ->
-    ?assertConfigEquals([{test, 1}], update_config_key(test, 1, [])),
+    ?assertConfigEquals([{test, 1}], update_config_key(test, 1, [], <<"uuid">>)),
     ?assertConfigEquals([{test, 1},
                          {foo, [{k, 1}, {v, 2}]},
                          {xar, true}],
-                        update_config_key(test, 1, [{foo, [{k, 1}, {v, 2}]},
-                                                    {xar, true},
-                                                    {test, [{a, b}, {c, d}]}])).
+                        update_config_key(test, 1,
+                                          [{foo, [{k, 1}, {v, 2}]},
+                                           {xar, true},
+                                           {test, [{a, b}, {c, d}]}],
+                                          <<"uuid">>)).
 
 test_set_kvlist() ->
     {NewPairs, [{foo, FooVal},
@@ -1218,10 +1219,10 @@ test_set_kvlist() ->
         set_kvlist([{bar, false},
                     {foo, [{suba, a}, {subb, b}]}],
                    [{baz, [{nothing, false}]},
-                    {foo, [{suba, undefined}, {subb, unlimited}]}], []),
+                    {foo, [{suba, undefined}, {subb, unlimited}]}],
+                   <<"uuid">>, []),
     ?assertConfigEquals(NewPairs, [{foo, FooVal}, {bar, false}]),
-    MyNode = node(),
-    ?assertMatch([{'_vclock', [{MyNode, _}]}, {suba, a}, {subb, b}],
+    ?assertMatch([{'_vclock', [{<<"uuid">>, _}]}, {suba, a}, {subb, b}],
                  FooVal).
 
 test_update() ->
@@ -1251,7 +1252,7 @@ test_update() ->
                          ({K, V}, _) -> {K, -V}
                      end),
     Updater = RecvUpdater(),
-    {Changes, NewConfig} = Updater(OldConfig),
+    {Changes, NewConfig} = Updater(OldConfig, <<"uuid">>),
 
     ?assertConfigEquals(Changes ++ [{dont_change, 1}],
                         NewConfig),
@@ -1263,23 +1264,22 @@ test_update() ->
 
     ?assertEqual({'n@never-really-possible-hostname', {1, 12345}},
                  lists:keyfind('n@never-really-possible-hostname', 1, Clocks)),
-    MyNode = node(),
-    ?assertMatch([{MyNode, _}], lists:keydelete('n@never-really-possible-hostname', 1, Clocks)),
+    ?assertMatch([{<<"uuid">>, _}], lists:keydelete('n@never-really-possible-hostname', 1, Clocks)),
 
     ?assertEqual([[{a, b}, {c, d}], {a, b}, {c, d}], ListValues),
 
     ?assertEqual(-3, strip_metadata(proplists:get_value(a, NewConfig))),
     ?assertEqual(-4, strip_metadata(proplists:get_value(b, NewConfig))),
 
-    ?assertMatch([{N, _}] when N =:= node(), extract_vclock(proplists:get_value(a, NewConfig))),
-    ?assertMatch([{N, _}] when N =:= node(), extract_vclock(proplists:get_value(b, NewConfig))),
-    ?assertMatch([{N, _}] when N =:= node(), extract_vclock(proplists:get_value(delete, NewConfig))),
+    ?assertMatch([{<<"uuid">>, _}], extract_vclock(proplists:get_value(a, NewConfig))),
+    ?assertMatch([{<<"uuid">>, _}], extract_vclock(proplists:get_value(b, NewConfig))),
+    ?assertMatch([{<<"uuid">>, _}], extract_vclock(proplists:get_value(delete, NewConfig))),
 
     ?assertEqual(false, ns_config:search([NewConfig], delete)),
 
     ns_config:update_key(a, fun (3) -> 10 end),
     Updater2 = RecvUpdater(),
-    {[{a, [{'_vclock', [_]} | 10]}], NewConfig2} = Updater2(OldConfig),
+    {[{a, [{'_vclock', [_]} | 10]}], NewConfig2} = Updater2(OldConfig, <<"uuid">>),
 
     ?assertConfigEquals([{a, 10} | lists:keydelete(a, 1, OldConfig)], NewConfig2),
     ok.
@@ -1564,10 +1564,11 @@ upgrade_config_test_() ->
     [upgrade_config_testgen(I, C, E) || {I,C,E} <- T].
 
 upgrade_config_vclocks_test() ->
-    Config = #config{dynamic=[[{{node, node(), a}, 1},
-                               {unchanged, 2},
-                               {b, 2},
-                               {{node, node(), c}, attach_vclock(1)}]]},
+    Config = #config{dynamic = [[{{node, node(), a}, 1},
+                                 {unchanged, 2},
+                                 {b, 2},
+                                 {{node, node(), c}, attach_vclock(1, <<"uuid">>)}]],
+                     uuid = <<"uuid">>},
     Changes = [{set, {node, node(), a}, 2},
                {set, b, 4},
                {set, {node, node(), c}, [3]},
@@ -1580,15 +1581,15 @@ upgrade_config_vclocks_test() ->
                   Value
           end,
 
-    ?assertMatch([{Node, {_, _}}] when Node =:= node(),
+    ?assertMatch([{<<"uuid">>, {_, _}}],
                  extract_vclock(Get(UpgradedConfig, {node, node(), a}))),
     ?assertMatch([],
                  extract_vclock(Get(UpgradedConfig, unchanged))),
-    ?assertMatch([{Node, {_, _}}] when Node =:= node(),
+    ?assertMatch([{<<"uuid">>, {_, _}}],
                  extract_vclock(Get(UpgradedConfig, b))),
-    ?assertMatch([{Node, {_, _}}] when Node =:= node(),
+    ?assertMatch([{<<"uuid">>, {_, _}}],
                  extract_vclock(Get(UpgradedConfig, {node, node(), c}))),
-    ?assertMatch([{Node, {_, _}}] when Node =:= node(),
+    ?assertMatch([{<<"uuid">>, {_, _}}],
                  extract_vclock(Get(UpgradedConfig, d))).
 
 upgrade_config_with_many_upgrades_test_() ->
@@ -1676,7 +1677,7 @@ mutate(Value, Nodes) ->
       end, Value, Mutations).
 
 merge_values_helper(RP, LP, Node) ->
-    {_, V} = do_merge_values({key, RP}, {key, LP}, Node),
+    {_, V} = merge_values({key, RP}, {key, LP}, Node),
     V.
 
 merge_values_test_iter() ->
