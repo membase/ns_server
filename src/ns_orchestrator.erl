@@ -678,12 +678,22 @@ idle(rebalance_progress, _From, State) ->
 idle({start_rebalance, KeepNodes, EjectNodes,
       FailedNodes, DeltaNodes, RequireDeltaRecovery}, _From,
      #idle_state{remaining_buckets = RemainingBuckets} = State) ->
-    ?user_log(?REBALANCE_STARTED,
-              "Starting rebalance, KeepNodes = ~p, EjectNodes = ~p~n",
-              [KeepNodes, EjectNodes]),
+
     case ns_rebalancer:start_link_rebalance(KeepNodes, EjectNodes,
                                             FailedNodes, DeltaNodes, RequireDeltaRecovery) of
         {ok, Pid} ->
+            case RequireDeltaRecovery =:= false andalso DeltaNodes =/= [] of
+                true ->
+                    ?user_log(?REBALANCE_STARTED,
+                              "Starting rebalance, KeepNodes = ~p, EjectNodes = ~p, Failed over and being ejected nodes = ~p, Delta recovery nodes = ~p"
+                              " (but delta recovery is not enforced, so for some buckets those nodes may be rebalanced fully)",
+                              [KeepNodes, EjectNodes, FailedNodes, DeltaNodes]);
+                _ ->
+                    ?user_log(?REBALANCE_STARTED,
+                              "Starting rebalance, KeepNodes = ~p, EjectNodes = ~p, Failed over and being ejected nodes = ~p, Delta recovery nodes = ~p, RequireDeltaRecovery = ~p ~n",
+                              [KeepNodes, EjectNodes, FailedNodes, DeltaNodes, RequireDeltaRecovery])
+            end,
+
             notify_janitor_finished(RemainingBuckets, rebalance_running),
             ns_cluster:counter_inc(rebalance_start),
             ns_config:set([{rebalance_status, running},
