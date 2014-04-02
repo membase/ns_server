@@ -557,38 +557,6 @@ wait_for_global_name_loop(Name, TriesLeft) ->
             wait_for_global_name_loop(Name, TriesLeft-1)
     end.
 
-spawn_link_safe(Fun) ->
-    spawn_link_safe(node(), Fun).
-
-spawn_link_safe(Node, Fun) ->
-    Me = self(),
-    Ref = make_ref(),
-    spawn_link(
-      Node,
-      fun () ->
-              process_flag(trap_exit, true),
-              SubPid = Fun(),
-              Me ! {Ref, pid, SubPid},
-              receive
-                  Msg -> Me ! {Ref, Msg}
-              end
-      end),
-    receive
-        {Ref, pid, SubPid} ->
-            {ok, SubPid, Ref}
-    end.
-
-
-spawn_and_wait(Fun) ->
-    spawn_and_wait(node(), Fun).
-
-spawn_and_wait(Node, Fun) ->
-    {ok, _Pid, Ref} = spawn_link_safe(Node, Fun),
-    receive
-        {Ref, Reason} ->
-            Reason
-    end.
-
 %% Like proc_lib:start_link but allows to specify a node to spawn a process on.
 -spec start_link(node(), module(), atom(), [any()]) -> any() | {error, term()}.
 start_link(Node, M, F, A)
