@@ -625,9 +625,6 @@ do_upgrade_config(#config{uuid = UUID} = Config, Changes, Upgrader) ->
                                                         %% from not yet updated node;
                                                         %% we solve this by attaching vclock to
                                                         %% new value;
-                                                        %% actually we're not supposed to update
-                                                        %% not per-node values; but we still attach
-                                                        %% vclock to them mostly for uniformity;
                                                         attach_vclock(V, UUID);
                                                     _ ->
                                                         increment_vclock(V, OldV, UUID)
