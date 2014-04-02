@@ -69,7 +69,8 @@
          clear/0, clear/1,
          proplist_get_value/3,
          merge_kv_pairs/2,
-         sync_announcements/0, get_kv_list/0, get_kv_list/1,
+         sync_announcements/0,
+         get_kv_list/0, get_kv_list/1, get_kv_list_with_config/1,
          upgrade_config_explicitly/1, config_version_token/0,
          fold/3, read_key_fast/2, get_timeout_fast/2,
          delete/1]).
@@ -380,7 +381,10 @@ get(Node, Timeout) -> gen_server:call({?MODULE, Node}, get, Timeout).
 get_kv_list() -> get_kv_list(?DEFAULT_TIMEOUT).
 
 -spec get_kv_list(timeout()) -> [{term(), term()}].
-get_kv_list(Timeout) -> config_dynamic(ns_config:get(node(), Timeout)).
+get_kv_list(Timeout) -> get_kv_list_with_config(ns_config:get(node(), Timeout)).
+
+get_kv_list_with_config(Config) ->
+    config_dynamic(Config).
 
 % ----------------------------------------
 
