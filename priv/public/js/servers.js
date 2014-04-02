@@ -652,7 +652,8 @@ var ServersSection = {
       var confirmation = visibleWarning.find('[name=confirmation]');
       graceful = visibleWarning.find('[name=graceful]');
       graceful.boolAttr("checked", false);
-      graceful.toggle(node.gracefulFailoverPossible);
+      graceful.boolAttr("disabled", !node.gracefulFailoverPossible);
+      graceful.closest("label").toggle(node.gracefulFailoverPossible);
       if (confirmation.length) {
         confirmation.boolAttr('checked', false);
         function onChange() {
