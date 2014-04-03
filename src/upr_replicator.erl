@@ -107,11 +107,17 @@ handle_info(Msg, State) ->
     {noreply, State}.
 
 handle_call({setup_replication, Partitions}, _From, #state{consumer_conn = Pid} = State) ->
-    {reply, upr_consumer_conn:setup_streams(Pid, Partitions), State};
+    RV = spawn_and_wait(fun () ->
+                                upr_consumer_conn:setup_streams(Pid, Partitions)
+                        end),
+    {reply, RV, State};
 
 handle_call({takeover, Partition}, _From, #state{consumer_conn = Pid} = State) ->
-    upr_consumer_conn:maybe_close_stream(Pid, Partition),
-    {reply, upr_consumer_conn:takeover(Pid, Partition), State};
+    RV = spawn_and_wait(fun () ->
+                                upr_consumer_conn:maybe_close_stream(Pid, Partition),
+                                upr_consumer_conn:takeover(Pid, Partition)
+                        end),
+    {reply, RV, State};
 
 handle_call(Command, _From, State) ->
     ?rebalance_warning("Unexpected handle_call(~p, ~p)", [Command, State]),
@@ -160,3 +166,32 @@ wait_for_data_move_on_one_node(Connection, Bucket, Partition) ->
 
 get_connection_name(ConsumerNode, ProducerNode, Bucket) ->
     "ns_server:" ++ atom_to_list(ProducerNode) ++ "->" ++ atom_to_list(ConsumerNode) ++ ":" ++ Bucket.
+
+spawn_and_wait(Body) ->
+    WorkerPid = spawn_link(
+                  fun () ->
+                          try Body() of
+                              RV ->
+                                  exit({done, RV})
+                          catch T:E ->
+                                  Stack = erlang:get_stacktrace(),
+                                  exit({done, T, E, Stack})
+                          end
+                  end),
+    receive
+        {'EXIT', WorkerPid, Reason} ->
+            case Reason of
+                {done, RV} ->
+                    RV;
+                {done, T, E, Stack} ->
+                    erlang:raise(T, E, Stack);
+                _ ->
+                    ?log_error("Got unexpected reason from ~p: ~p", [WorkerPid, Reason]),
+                    erlang:error({unexpected_reason, Reason})
+            end;
+        {'EXIT', From, Reason} = ExitMsg ->
+            ?log_debug("Received exit with reason ~p from ~p. Killing child process ~p",
+                       [Reason, From, WorkerPid]),
+            misc:sync_shutdown_many_i_am_trapping_exits([WorkerPid]),
+            erlang:error({child_interrupted, ExitMsg})
+    end.
