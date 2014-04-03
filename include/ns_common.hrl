@@ -160,6 +160,4 @@
 
 -define(UI_AUTH_EXPIRATION_SECONDS, 600).
 
--define(TEMP_AUTH_TOKEN_USER, "temp_auth_token").
-
 -endif.

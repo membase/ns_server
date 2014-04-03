@@ -122,8 +122,14 @@ perform_loading_task(Name, Quota) ->
     Port = misc:node_rest_port(ns_config:get(), node()),
     BinDir = path_config:component_path(bin),
 
-    Env = [{"REST_USERNAME", ?TEMP_AUTH_TOKEN_USER},
-           {"REST_PASSWORD", binary_to_list(menelaus_ui_auth:generate_token(admin))}],
+    Env =  case ns_config:search_prop(ns_config:get(), rest_creds, creds, []) of
+               [] ->
+                   [];
+               [{UserName, Attrs}] ->
+                   {password, Password} = lists:keyfind(password, 1, Attrs),
+                   [{"REST_USERNAME", UserName},
+                    {"REST_PASSWORD", Password}]
+    end,
 
     Cmd = BinDir ++ "/tools/cbdocloader",
     Args = ["-n", Host ++ ":" ++ integer_to_list(Port),
