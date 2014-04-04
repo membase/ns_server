@@ -167,6 +167,7 @@ init_logging() ->
     ok = start_disk_sink(disk_xdcr_errors, ?XDCR_ERRORS_LOG_FILENAME),
     ok = start_disk_sink(disk_stats, ?STATS_LOG_FILENAME),
     ok = start_disk_sink(disk_reports, ?REPORTS_LOG_FILENAME),
+    ok = start_disk_sink(xdcr_trace, ?XDCR_TRACE_LOG_FILENAME),
 
     ok = start_sink(ns_log, raw, ns_log_sink, []),
 
@@ -184,7 +185,8 @@ init_logging() ->
     OverrideLoglevels = [{?STATS_LOGGER, warn},
                          {?NS_DOCTOR_LOGGER, warn}],
 
-    MainFilesLoggers = AllLoggers -- [?XDCR_LOGGER, ?COUCHDB_LOGGER, ?ERROR_LOGGER],
+    MainFilesLoggers = AllLoggers -- [?XDCR_LOGGER, ?COUCHDB_LOGGER,
+                                      ?ERROR_LOGGER, ?XDCR_TRACE_LOGGER],
 
     lists:foreach(
       fun (Logger) ->
@@ -221,6 +223,8 @@ init_logging() ->
     ok = ale:add_sink(?STATS_LOGGER, disk_stats, get_loglevel(?STATS_LOGGER)),
     ok = ale:add_sink(?NS_DOCTOR_LOGGER, disk_stats, get_loglevel(?NS_DOCTOR_LOGGER)),
 
+    ok = ale:add_sink(?XDCR_TRACE_LOGGER, xdcr_trace, debug),
+
     case misc:get_env_default(dont_suppress_stderr_logger, false) of
         true ->
             ok = start_sink(stderr, ale_stderr_sink, []),
@@ -231,7 +235,7 @@ init_logging() ->
                       LogLevel = get_loglevel(Logger),
                       ok = ale:add_sink(Logger, stderr,
                                         adjust_loglevel(LogLevel, StderrLogLevel))
-              end, AllLoggers);
+              end, AllLoggers -- [?XDCR_TRACE_LOGGER]);
         false ->
             ok
     end,

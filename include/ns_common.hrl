@@ -69,6 +69,7 @@
 -define(BABYSITTER_LOG_FILENAME, "babysitter").
 -define(SSL_PROXY_LOG_FILENAME, "ssl_proxy").
 -define(REPORTS_LOG_FILENAME, "reports").
+-define(XDCR_TRACE_LOG_FILENAME, "xdcr_trace").
 
 -define(NS_SERVER_LOGGER, ns_server).
 -define(COUCHDB_LOGGER, couchdb).
@@ -83,12 +84,14 @@
 %% if you can't find any calls to it in ns_server
 -define(MAPREDUCE_ERRORS_LOGGER, mapreduce_errors).
 -define(XDCR_LOGGER, xdcr).
+-define(XDCR_TRACE_LOGGER, xdcr_trace).
 
 -define(LOGGERS, [?COUCHDB_LOGGER, ?NS_SERVER_LOGGER,
                   ?USER_LOGGER, ?MENELAUS_LOGGER,
                   ?NS_DOCTOR_LOGGER, ?STATS_LOGGER,
                   ?REBALANCE_LOGGER, ?CLUSTER_LOGGER, ?VIEWS_LOGGER,
-                  ?MAPREDUCE_ERRORS_LOGGER, ?XDCR_LOGGER]).
+                  ?MAPREDUCE_ERRORS_LOGGER, ?XDCR_LOGGER,
+                  ?XDCR_TRACE_LOGGER]).
 
 -define(LOG(Level, Format, Args),
         ale:log(?NS_SERVER_LOGGER, Level, Format, Args)).
@@ -155,6 +158,8 @@
 
 -define(xdcr_error(Format, Args), ale:error(?XDCR_LOGGER, Format, Args)).
 -define(xdcr_error(Msg), ale:error(?XDCR_LOGGER, Msg)).
+
+-define(xdcr_trace(Format, Args), ale:debug(?XDCR_TRACE_LOGGER, Format, Args)).
 
 -define(i2l(V), integer_to_list(V)).
 

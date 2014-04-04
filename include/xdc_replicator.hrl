@@ -39,14 +39,6 @@
 %% builder of error/warning/debug msgs
 -define(format_msg(Msg, Args), lists:flatten(io_lib:format(Msg, Args))).
 
--define(xdcr_trace(Format, Args),
-        case random:uniform(xdc_rep_utils:get_trace_dump_invprob()) of
-            1 ->
-                ?xdcr_debug(Format, Args);
-            _ ->
-                ok
-        end).
-
 %% concurrency throttle type
 -define(XDCR_INIT_CONCUR_THROTTLE, "xdcr-init").
 -define(XDCR_REPL_CONCUR_THROTTLE, "xdcr-repl").

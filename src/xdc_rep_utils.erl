@@ -24,7 +24,6 @@
 -export([parse_rep_db/3]).
 -export([split_dbname/1]).
 -export([get_master_db/1, get_checkpoint_log_id/2]).
--export([get_trace_dump_invprob/0]).
 -export([sanitize_status/3, get_rep_info/1]).
 -export([is_new_xdcr_path/0]).
 
@@ -201,12 +200,6 @@ unsplit_uuid({DbName, undefined}) ->
     DbName;
 unsplit_uuid({DbName, UUID}) ->
     DbName ++ ";" ++ UUID.
-
-%% inverse probability to dump non-critical datapath trace,
-%% trace will be dumped by probability 1/N
--spec get_trace_dump_invprob() -> integer().
-get_trace_dump_invprob() ->
-    xdc_settings:get_global_setting(trace_dump_invprob).
 
 sanitize_url(Url) when is_binary(Url) ->
     ?l2b(sanitize_url(?b2l(Url)));

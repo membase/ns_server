@@ -80,8 +80,7 @@ settings_specs() ->
      {socket_options,                   per_replication, term,                       [{keepalive, true}, {nodelay, false}]},
      {pause_requested,                  per_replication, bool,                       false},
      {supervisor_max_r,                 per_replication, {int, 1, 1000},             25},
-     {supervisor_max_t,                 per_replication, {int, 1, 1000},             5},
-     {trace_dump_invprob,               global,          {int, 1, infinity},         1000}].
+     {supervisor_max_t,                 per_replication, {int, 1, 1000},             5}].
 
 per_replication_settings_specs() ->
     [{Key, Type} || {Key, per_replication, Type, _Default} <- settings_specs()].

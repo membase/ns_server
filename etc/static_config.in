@@ -22,3 +22,4 @@
 {loglevel_views, debug}.
 {loglevel_mapreduce_errors, debug}.
 {loglevel_xdcr, debug}.
+{loglevel_xdcr_trace, error}.
