@@ -707,7 +707,7 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 .server_row .failed_over,
 .server_row .server_warmup,
 .server_row .pending_add {background-position: center -310px;}
-.server_row.failed_over .failed_over {background-position: center -518px;}
+.server_row.failed_over .failed_over {background-position: center -304px;}
 .server_row.failed_over .server_down.failed_over {background-position: center -154px;}
 
 .servers h2 { height: 25px;}
