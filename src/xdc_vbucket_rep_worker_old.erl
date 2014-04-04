@@ -149,6 +149,7 @@ flush_docs_helper(Target, DocsList, nil) ->
     end;
 
 flush_docs_helper(Target, DocsList, XMemLoc) ->
+    ?xdcr_trace("Flushing keys: ~s", [[<<"\"", I/binary, "\",">> || #doc{id = I} <- DocsList]]),
     {RepMode,RV} = {"xmem", flush_docs_xmem(XMemLoc, DocsList)},
 
     case RV of
@@ -252,6 +253,7 @@ find_missing(DocInfos, Target, OptRepThreshold, XMemLoc) ->
 
 -spec find_missing_helper(#httpdb{}, list(), term()) -> list().
 find_missing_helper(Target, BigDocIdRevs, XMemLoc) ->
+    ?xdcr_trace("doing find_missing: ~p", [BigDocIdRevs]),
     MissingIdRevs = case XMemLoc of
                         nil ->
                             {ok, IdRevs} = couch_api_wrap:get_missing_revs(Target, BigDocIdRevs),
