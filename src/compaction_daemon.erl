@@ -1081,7 +1081,10 @@ bucket_needs_compaction(BucketName, NumVBuckets,
                           FragThreshold, MinFileSize * NumVBuckets).
 
 file_needs_compaction(DataSize, FileSize, FragThreshold, MinFileSize) ->
-    case FileSize < MinFileSize of
+    %% NOTE: If there are no vbuckets on this node MinFileSize will be
+    %% 0 so less then or _equals_ is really important to avoid
+    %% division by zero
+    case FileSize =< MinFileSize of
         true ->
             false;
         false ->
