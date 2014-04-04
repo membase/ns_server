@@ -392,9 +392,9 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["controller", "createReplication"] ->
                              {auth, fun menelaus_web_xdc_replications:handle_create_replication/1};
                          ["controller", "cancelXDCR", XID] ->
-                             {auth, fun menelaus_web_xdc_replications:handle_cancel_xdcr/2, [XID]};
+                             {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
                          ["controller", "cancelXCDR", XID] ->
-                             {auth, fun menelaus_web_xdc_replications:handle_cancel_xdcr/2, [XID]};
+                             {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
                          ["controller", "resetAlerts"] ->
                              {auth, fun handle_reset_alerts/1};
                          ["controller", "setFastWarmup"] ->

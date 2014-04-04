@@ -611,7 +611,7 @@ var ReplicationsSection = {
     }
 
     function doDelete(cancelURI) {
-      couchReq('DELETE', cancelURI, {}, function () {
+      couchReq('POST', cancelURI, {}, function () {
         // this is success callback
         ReplicationsModel.refreshReplications();
       }, function (error, status, handleUnexpected) {
