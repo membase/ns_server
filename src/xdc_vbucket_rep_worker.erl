@@ -106,9 +106,17 @@ local_process_batch([Mutation | Rest], Cp,
                   rev = Rev,
                   body = Body,
                   deleted = Deleted} = Mutation,
-    Doc0 = couch_doc:from_binary(Key, Body, true),
-    Doc = Doc0#doc{rev = Rev,
-                   deleted = Deleted},
+    Doc = case XMemLoc of
+              nil ->
+                  Doc0 = couch_doc:from_binary(Key, Body, true),
+                  Doc0#doc{rev = Rev,
+                           deleted = Deleted};
+              _ ->
+                  #doc{id = Key,
+                       rev = Rev,
+                       deleted = Deleted,
+                       body = Body}
+          end,
     {Batch2, DataFlushed} = maybe_flush_docs(Target, Batch, Doc, 0, BatchSize, BatchItems, XMemLoc),
     {ok, DataFlushed2} = local_process_batch(Rest, Cp, Target, Batch2, BatchSize, BatchItems, XMemLoc),
     %% return total data flushed
