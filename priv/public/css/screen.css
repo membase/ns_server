@@ -1384,13 +1384,11 @@ input[type=number].size {width:4em;}
 .cache_metadata_block > a {float: right; line-height: 24px;}
 .cache_metadata_block > p {display: none; padding: 0 0 14px 134px; width: 410px; clear: both; font-size:10pt; font-weight:lighter; line-height:20px;}
 
-.replication_status_cell > span {vertical-align: middle;}
-.replication_control {display: inline-block; margin-right: 2px;cursor: pointer;}
-.replication_control.dynamic_paused {border-width: 8px 0 8px 14px; border-style: solid; border-color: transparent transparent transparent #849aa4; width: 0px; height: 0px; }
-.replication_control.dynamic_running {border-width: 0px 5px; border-style: solid; border-color: transparent #849aa4; width: 4px; height: 16px;}
-.replication_control.dynamic_spinner {background: url('../images/spinner/spinner_gr_nav.gif') no-repeat 50% 50%; border: 0; width: 16px; height: 16px; cursor: default; margin-right: 0;}
-.replication_control.dynamic_paused:hover {border-left-color: #a3b0b6;}
-.replication_control.dynamic_running:hover {border-right-color: #a3b0b6; border-left-color: #a3b0b6;}
+.replication_status_cell * {vertical-align: middle;}
+.replication_control {display: inline-block; text-align: center; vertical-align: middle; margin:0 4px; cursor: pointer; width: 18px; height: 18px; background-image: url('../images/pause_play.png'); background-repeat: no-repeat; }
+.replication_control.dynamic_paused {background-position: 0 0;}
+.replication_control.dynamic_running {background-position: 0 -18px;}
+.replication_control.dynamic_spinner {background: url('../images/spinner/spinner_gr_nav.gif') no-repeat 50% 50% transparent; border: 0; width: 18px; height: 18px; cursor: default;}
 
 
 .dynamic_enterprise-mode .when-community {display: none!important;}

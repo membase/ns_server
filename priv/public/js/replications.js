@@ -177,8 +177,13 @@ var ReplicationForm = mkClass({
 mkClass.turnIntoLazySingleton(ReplicationForm);
 
 ViewHelpers.formatReplicationStatus = function (info) {
-  var rawStatus = escapeHTML(info.humanStatus);
+  var rawStatus = '<span>' + escapeHTML(info.humanStatus) + '</span>';
   var errors = (info.errors || []);
+
+  if (info.status !== 'notRunning') {
+    rawStatus += '<span class="only-when-30 js_replication_control replication_control dynamic_' + info.status + '"></span>';
+  }
+
   if (errors.length === 0) {
     return rawStatus;
   }
