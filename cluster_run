@@ -193,14 +193,6 @@ def usage():
              "[--static-cookie] [--host=H] [--loglevel=L] "
              "[ns_server args]".format(sys.argv[0]))
 
-def maybe_spawn_epmd():
-    try:
-        socket.create_connection(("127.0.0.1", 4369)).close()
-    except socket.error:
-        print("Spawning epmd...\n")
-        subprocess.Popen("erl -noshell -setcookie nocookie -sname init -run init stop 2>&1 > /dev/null",
-                         shell = True).communicate()
-
 def find_primary_addr():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -289,8 +281,6 @@ def main():
         terminal_attrs = termios.tcgetattr(sys.stdin)
     except:
         pass
-
-    maybe_spawn_epmd()
 
     extra_args = []
     if not dont_rename:
