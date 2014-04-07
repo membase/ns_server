@@ -267,7 +267,7 @@ def main():
     def kill_nodes(*args):
         for n in nodes:
             if n.write_side != None:
-                print("Closing %d\n", n.write_side)
+                print("Closing %d\n" % n.write_side)
                 # os.write(n.write_side, "shutdown\n") # this line does graceful shutdown versus quick
                 os.close(n.write_side)
             else:
