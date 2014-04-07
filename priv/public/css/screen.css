@@ -1123,8 +1123,15 @@ span.staleness-notice, .staleness-notice { font-size: 12px!important; display: n
 .logs .staleness-notice {float: right; padding-top: 5px; padding-right: 10px;}
 
 .warning_down_backfill, .warning_up_backfill, .warning_down_no_backfill, .warning_down_backfill { display: none; }
-#failover_confirmation_dialog label { display: block; margin-top: 15px; }
-#failover_confirmation_dialog label input { float: left;margin: 3px 3px 0 0;}
+#failover_confirmation_dialog label {display: block; margin-top: 8px; }
+#failover_confirmation_dialog .warning label {margin-top: 15px;}
+#failover_confirmation_dialog label input {float: left; margin: 3px 5px 0 3px;}
+#failover_confirmation_dialog label span {overflow: hidden; display: block;}
+.failover_warning {font-size: 12px; color: #444;}
+.failover_warning > h2,
+.failover_warning > label {padding-left: 20px;}
+
+.failover_warning > h2 {font-weight: normal; font-size: 18px; margin-bottom: 0; margin-top: 20px;}
 
 .darker_block.dynamic_server_resources { display: none; }
 .dynamic_with_server_resources .darker_block.dynamic_server_resources { display: block; }

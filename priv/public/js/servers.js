@@ -611,22 +611,17 @@ var ServersSection = {
   failoverNode: function (hostname) {
     var self = this;
     var node;
-    var graceful;
+    var dialog = $('#failover_confirmation_dialog');
+    var visibleWarning;
     showDialogHijackingSave("failover_confirmation_dialog", ".save_button", function () {
       if (!node)
         throw new Error("must not happen!");
       if (!self.poolDetails.value) {
         return;
       }
-      var doGraceful = false;
-      if (graceful && graceful.attr("checked")) {
-        doGraceful = true;
-      }
-      var c = doGraceful ? "startGracefulFailover" : "failOver";
-      var url = self.poolDetails.value.controllers[c].uri;
+      var url = self.poolDetails.value.controllers[$("input[name=failOver]:checked", visibleWarning).val()].uri;
       self.postAndReload(url, {otpNode: node.otpNode}, undefined, {timeout: 120000});
     });
-    var dialog = $('#failover_confirmation_dialog');
     if (!self.failoverDialogInitTitle) {
       self.failoverDialogInitTitle = dialog.dialog("option", "title");
     }
@@ -637,7 +632,7 @@ var ServersSection = {
     statusesCell.invalidate();
     statusesCell.changedSlot.subscribeOnce(function () {
       overlay.remove();
-      dialog.find('.warning').hide();
+      dialog.find('.failover_warning').hide();
       var statuses = statusesCell.value;
       node = statuses[hostname];
       if (!node) {
@@ -647,26 +642,24 @@ var ServersSection = {
 
       var backfill = node.replication < 1;
       var down = node.status != 'healthy';
-      var visibleWarning = dialog.find(['.warning', down ? 'down' : 'up', backfill ? 'backfill' : 'no_backfill'].join('_')).show();
+      visibleWarning = dialog.find(['.warning', down ? 'down' : 'up', backfill ? 'backfill' : 'no_backfill'].join('_')).show();
       dialog.find('.backfill_percent').text(truncateTo3Digits(node.replication * 100));
       var confirmation = visibleWarning.find('[name=confirmation]');
-      graceful = visibleWarning.find('[name=graceful]');
-      graceful.boolAttr("checked", false);
-      graceful.boolAttr("disabled", !node.gracefulFailoverPossible);
-      graceful.closest("label").toggle(node.gracefulFailoverPossible);
+
+      $("input[name=failOver][value=startGracefulFailover]", visibleWarning).parent()[node.gracefulFailoverPossible ? 'show' : 'hide']();
+      $("input[name=failOver][value=" + (node.gracefulFailoverPossible ? "startGracefulFailover" : "failOver") + "]", visibleWarning).attr('checked', true);
+
       if (confirmation.length) {
         confirmation.boolAttr('checked', false);
         function onChange() {
           var checked = !!confirmation.attr('checked');
-          dialog.find('.save_button').boolAttr('disabled', !checked && !graceful.attr("checked"));
+          dialog.find('.save_button').boolAttr('disabled', !checked);
         }
         function onHide() {
           confirmation.unbind('change', onChange);
-          graceful.unbind('change', onChange);
           dialog.unbind('dialog:hide', onHide);
         }
         confirmation.bind('change', onChange);
-        graceful.bind('change', onChange);
         dialog.bind('dialog:hide', onHide);
         onChange();
       } else {
