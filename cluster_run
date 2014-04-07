@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os, subprocess, sys, signal, atexit, socket, getopt, select, shlex
+import platform
 
 base_direct_port = 12000
 base_api_port = 9000
@@ -65,8 +66,6 @@ def couch_configs(i):
 
 def os_specific(args, params):
     """Add os-specific junk to the cluster startup."""
-    import platform
-
     if platform.system() == 'Darwin':
         import resource
         ## OS X has a pretty tiny default fd limit.  Let's increase it
@@ -165,6 +164,8 @@ def start_cluster(num_nodes, start_index, host, extra_args, args_prefix):
         params['env']['ERL_CRASH_DUMP'] = crash_dump_base + '.babysitter'
 
         params['close_fds'] = True
+        if platform.system() == "Windows":
+            params['close_fds'] = False
 
         w = None
 
@@ -173,7 +174,7 @@ def start_cluster(num_nodes, start_index, host, extra_args, args_prefix):
 
             params['stdin'] = r
 
-            if 'setpgrp' in os.__dict__:
+            if 'setpgrp' in os.__dict__ and params.get('close_fds'):
                 # this puts child out of our process group. So that
                 # Ctrl-C doesn't deliver SIGINT to it, leaving us
                 # ability to it shutdown carefully or otherwise
