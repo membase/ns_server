@@ -177,11 +177,18 @@ handle_call({connection_count, Destination}, _, State) ->
     {reply, Count, State};
 handle_call({done, Dest, Socket}, {Pid, _} = From, State) ->
     gen_server:reply(From, ok),
-    {Dest, MonRef} = dict:fetch(Pid, State#ns_connection_pool.clients),
-    true = erlang:demonitor(MonRef, [flush]),
-    Clients2 = dict:erase(Pid, State#ns_connection_pool.clients),
-    State2 = deliver_socket(Socket, Dest, State#ns_connection_pool{clients = Clients2}),
-    {noreply, State2};
+    case dict:find(Pid, State#ns_connection_pool.clients) of
+        {ok, {Dest, MonRef}} ->
+            true = erlang:demonitor(MonRef, [flush]),
+            Clients2 = dict:erase(Pid, State#ns_connection_pool.clients),
+            State2 = deliver_socket(Socket, Dest, State#ns_connection_pool{clients = Clients2}),
+            {noreply, State2};
+        error ->
+            %% NOTE: we don't expect that to happen often, but it is
+            %% in fact possible if connection pool died and was
+            %% restarted between taking socket and returning it back.
+            {noreply, State}
+    end;
 handle_call(_, _, State) ->
     {reply, {error, unknown_request}, State}.
 
