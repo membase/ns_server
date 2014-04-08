@@ -286,7 +286,12 @@ socket_loop(Socket, Callback, Acc, Data, ScannedPos, Consumer, SentToConsumer) -
             NewData = <<Data/binary, NewData0/binary>>,
             SplitPos = nops_loop(Socket, NewData, ScannedPos),
             <<ScannedData:SplitPos/binary, UnscannedData/binary>> = NewData,
-            Consumer ! ScannedData,
+            case SplitPos =/= 0 of
+                true ->
+                    Consumer ! ScannedData;
+                _ ->
+                    ok
+            end,
             NewSentToConsumer = SentToConsumer + erlang:size(ScannedData),
             if
                 NewSentToConsumer > (2 * ?BUFFER_SIZE div 3) andalso SentToConsumer =< (2 * ?BUFFER_SIZE div 3) ->
