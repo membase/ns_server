@@ -264,9 +264,9 @@ process_add_close_stream_response(Header, PendingPartitions, Errors) ->
                     {error, N, [{Status, Partition} | Errors]}
             end;
         false ->
-            ?rebalance_warning("Unexpected response. Unrecognised opaque ~p (~p, ~p)",
-                               [Header#mc_header.opaque, Header]),
-            {error, PendingPartitions, Errors}
+            ?rebalance_error("Unexpected response. Unrecognized opaque ~p~nHeader: ~p~nPartitions: ~p~nErrors: ~p",
+                             [Header#mc_header.opaque, Header, PendingPartitions, Errors]),
+            erlang:error({unrecognized_opaque, Header#mc_header.opaque, PendingPartitions})
     end.
 
 maybe_reply_setup_streams(#state{state = StreamState} = State) ->
