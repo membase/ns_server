@@ -2,7 +2,7 @@
 
 -include("ns_common.hrl").
 
--export([arguments_to_args/1,
+-export([handle_arguments/1,
          child_start/1,
          open_port_args/0]).
 
@@ -34,7 +34,7 @@ get_ns_server_vm_extra_args() ->
     end.
 
 open_port_args() ->
-    AppArgs = arguments_to_args(init:get_arguments()),
+    {AppArgs, AppEnvArgs} = handle_arguments(init:get_arguments()),
     ErlangArgs = ["+A" , "16",
                   "-smp", "enable",
                   "+sbt",  "u",
@@ -62,7 +62,8 @@ open_port_args() ->
                Base ->
                    [{"ERL_CRASH_DUMP", Base ++ ".ns_server"}]
            end,
-    Env = [{"NS_SERVER_BABYSITTER_COOKIE", atom_to_list(erlang:get_cookie())} | Env0],
+    Env = [{"NS_SERVER_BABYSITTER_COOKIE", atom_to_list(erlang:get_cookie())},
+           {"CHILD_ERLANG_ENV_ARGS", misc:inspect_term(AppEnvArgs)} | Env0],
 
     [{spawn_executable, ErlPath},
      [{args, AllArgs},
@@ -135,32 +136,30 @@ child_loop(Port, BootModule) ->
             erlang:halt(1)
     end.
 
-arguments_to_args([{Flag, Values} | RestArguments]) ->
-    RestArgs = arguments_to_args(RestArguments),
-    case Flag of
-        root ->
-            RestArgs;
-        home ->
-            RestArgs;
-        progname ->
-            RestArgs;
-        name ->
-            RestArgs;
-        hidden ->
-            RestArgs;
-        setcookie ->
-            RestArgs;
-        detach ->
-            RestArgs;
-        noinput ->
-            RestArgs;
-        noshell ->
-            RestArgs;
-        nouser ->
-            RestArgs;
-        _ ->
-            FlagStr = "-" ++ atom_to_list(Flag),
-            [FlagStr | Values] ++ RestArgs
-    end;
-arguments_to_args([]) ->
-    [].
+handle_arguments(Arguments) ->
+    lists:foldr(
+      fun ({Flag, Values}, {AccArgs, AccEnv} = Acc) ->
+              case Flag of
+                  _ when Flag =:= root;
+                         Flag =:= home;
+                         Flag =:= progname;
+                         Flag =:= name;
+                         Flag =:= hidden;
+                         Flag =:= setcookie;
+                         Flag =:= detach;
+                         Flag =:= noinput;
+                         Flag =:= noshell;
+                         Flag =:= nouser ->
+                      Acc;
+                  _ ->
+                      case application:load(Flag) of
+                          {error, {Error, _}} when Error =/= already_loaded ->
+                              FlagStr = "-" ++ atom_to_list(Flag),
+                              AccArgs1 = [FlagStr | Values] ++ AccArgs,
+                              {AccArgs1, AccEnv};
+                          _ ->
+                              AccEnv1 = [{Flag, application:get_all_env(Flag)} | AccEnv],
+                              {AccArgs, AccEnv1}
+                      end
+              end
+      end, {[], []}, Arguments).

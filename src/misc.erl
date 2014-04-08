@@ -1636,3 +1636,6 @@ min_by(Less, Items) ->
                       Acc
               end
       end, hd(Items), tl(Items)).
+
+inspect_term(Value) ->
+    binary_to_list(iolist_to_binary(io_lib:format("~p", [Value]))).

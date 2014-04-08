@@ -32,6 +32,7 @@ log_pending() ->
     end.
 
 start(_Type, _Args) ->
+    setup_env(),
     setup_static_config(),
     init_logging(),
 
@@ -85,6 +86,21 @@ get_config_path() ->
         {ok, V} -> V;
         _ ->
              erlang:error("config_path parameter for ns_server application is missing!")
+    end.
+
+setup_env() ->
+    case os:getenv("CHILD_ERLANG_ENV_ARGS") of
+        false ->
+            ok;
+        EnvArgsStr ->
+            {ok, EnvArgs} = couch_util:parse_term(EnvArgsStr),
+            lists:foreach(
+              fun ({App, Values}) ->
+                      lists:foreach(
+                        fun ({K, V}) ->
+                                application:set_env(App, K, V)
+                        end, Values)
+              end, EnvArgs)
     end.
 
 setup_static_config() ->

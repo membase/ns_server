@@ -85,9 +85,6 @@ childs_loop_continue(Childs) ->
             set_childs_and_loop(NewChilds)
     end.
 
-inspect_term_arg(Value) ->
-    binary_to_list(iolist_to_binary(io_lib:format("~p", [Value]))).
-
 create_ssl_proxy_spec(Config) ->
     {value, UpstreamPort} = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}),
     {value, DownstreamPort} = ns_config:search(Config, {node, node(), ssl_proxy_downstream_port}),
@@ -125,7 +122,7 @@ create_ssl_proxy_spec(Config) ->
                Base ->
                    [{"ERL_CRASH_DUMP", Base ++ ".xdcr_proxy"}]
            end,
-    Env = [{"NS_SSL_PROXY_ENV_ARGS", inspect_term_arg(EnvArgs)} | Env0],
+    Env = [{"NS_SSL_PROXY_ENV_ARGS", misc:inspect_term(EnvArgs)} | Env0],
 
     {xdcr_proxy,
      ErlPath,
