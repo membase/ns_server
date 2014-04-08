@@ -28,7 +28,7 @@ endif
 .PHONY: test docs
 
 clean clean_all:
-	cd build && $(MAKE) --no-print-directory realclean
+	cd build && $(MAKE) --no-print-directory clean ns_realclean
 
 install:
 	cd build && $(MAKE) --no-print-directory $@

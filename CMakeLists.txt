@@ -60,7 +60,6 @@ FILE (WRITE "${PROJECT_BINARY_DIR}/cluster_run.configuration"
 
 # Various cleaning targets
 ADD_CUSTOM_TARGET (ns_realclean
-  COMMAND "${CMAKE_COMMAND}" --build "${PROJECT_BINARY_DIR}" --target clean
   COMMAND "${CMAKE_COMMAND}" -E remove -f cov.html erl_crash.dump deps/vbmap/vbmap
   COMMAND "${CMAKE_COMMAND}" -E remove_directory test/log
   COMMAND "${CMAKE_COMMAND}" -E remove_directory ebin
@@ -82,12 +81,9 @@ ADD_CUSTOM_TARGET (ns_distclean)
 ADD_DEPENDENCIES (ns_distclean realclean ns_dataclean)
 
 
-# Source compilation (must be after adding "realclean" target so rebar will
-# join the realclean party)
 ADD_SUBDIRECTORY (deps)
 Rebar (TARGET ns_server NOCLEAN
   DEPENDS ale erlwsh mlockall ns_babysitter ns_ssl_proxy gen_smtp)
-
 
 # Test invocation
 ADD_CUSTOM_TARGET (ns_test
