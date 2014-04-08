@@ -516,6 +516,7 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
         {done, RV} -> RV;
         {auth_ro, F} -> auth_ro(Req, F, []);
         {auth_ro, F, Args} -> auth_ro(Req, F, Args);
+        {auth_special, F, Args} -> auth_special(Req, F, Args);
         {auth, F} -> auth(Req, F, []);
         {auth, F, Args} -> auth(Req, F, Args);
         {auth_bucket_mutate, F, Args} ->
@@ -579,6 +580,9 @@ auth(Req, F, Args) ->
 
 auth_ro(Req, F, Args) ->
     menelaus_auth:apply_ro_auth(Req, fun check_uuid/3, [F, Args]).
+
+auth_special(Req, F, Args) ->
+    menelaus_auth:apply_special_auth(Req, fun check_uuid/3, [F, Args]).
 
 auth_any_bucket(Req, F, Args) ->
     menelaus_auth:apply_auth_any_bucket(Req, fun check_uuid/3, [F, Args]).

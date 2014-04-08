@@ -20,6 +20,7 @@
 -export([authenticate/3,
          set_credentials/3,
          get_user/1,
+         get_password/1,
          credentials_changed/3,
          unset_credentials/1]).
 
@@ -42,7 +43,12 @@ get_user(ro_admin) ->
             U;
         _ ->
             undefined
-    end.
+    end;
+get_user(special) ->
+    "@".
+
+get_password(special) ->
+    ns_config:search_node_prop('latest-config-marker', memcached, admin_pass).
 
 credentials_changed(admin, User, Password) ->
     case ns_config:search_prop('latest-config-marker', rest_creds, creds, []) of
@@ -64,7 +70,10 @@ authenticate(admin, User, Password) ->
             false
     end;
 authenticate(ro_admin, User, Password) ->
-    ns_config:search(read_only_user_creds) =:= {value, {User, {password, Password}}}.
+    ns_config:search(read_only_user_creds) =:= {value, {User, {password, Password}}};
+authenticate(special, User, Password) ->
+    User =:= get_user(special) andalso
+        Password =:= ns_config:search_node_prop('latest-config-marker', memcached, admin_pass).
 
 unset_credentials(ro_admin) ->
     ns_config:set(read_only_user_creds, null).

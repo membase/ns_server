@@ -22,6 +22,7 @@
 
 -export([apply_auth/3,
          apply_ro_auth/3,
+         apply_special_auth/3,
          require_auth/1,
          filter_accessible_buckets/2,
          is_bucket_accessible/3,
@@ -81,6 +82,10 @@ apply_auth(Req, F, Args) ->
 apply_ro_auth(Req, F, Args) ->
     UserPassword = extract_auth(Req),
     apply_auth_with_auth_data(Req, F, Args, UserPassword, fun check_ro_auth/1).
+
+apply_special_auth(Req, F, Args) ->
+    UserPassword = extract_auth(Req),
+    apply_auth_with_auth_data(Req, F, Args, UserPassword, fun check_special_auth/1).
 
 apply_auth_with_auth_data(Req, F, Args, UserPassword, AuthFun) ->
     case AuthFun(UserPassword) of
@@ -173,6 +178,11 @@ check_auth(undefined) ->
 check_ro_auth(UserPassword) ->
     is_read_only_auth(UserPassword) orelse check_auth(UserPassword).
 
+check_special_auth({User, Password}) ->
+    ns_config_auth:authenticate(special, User, Password) orelse
+        check_auth({User, Password});
+check_special_auth(undefined) ->
+    false.
 
 is_read_only_auth({token, Token}) ->
     case menelaus_ui_auth:check(Token) of
