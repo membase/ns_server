@@ -196,7 +196,8 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["pools", "default", "buckets"] ->
                              {auth_any_bucket, fun menelaus_web_buckets:handle_bucket_list/1, []};
                          ["pools", "default", "saslBucketsStreaming"] ->
-                             {auth, fun menelaus_web_buckets:handle_sasl_buckets_streaming/2, ["default"]};
+                             {auth_special, fun menelaus_web_buckets:handle_sasl_buckets_streaming/2,
+                              ["default"]};
                          ["pools", "default", "buckets", Id] ->
                              {auth_bucket, fun menelaus_web_buckets:handle_bucket_info/3,
                               ["default", Id]};
