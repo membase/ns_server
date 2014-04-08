@@ -10,13 +10,29 @@ INCLUDE (FindCouchbaseGo)
 # Installation subdir
 SET (INST_LIBDIR "lib/ns_server/erlang/lib")
 
-# Cache "git describe" output
-EXECUTE_PROCESS(COMMAND git describe
-  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-  OUTPUT_VARIABLE _git_describe
-  ERROR_QUIET
-  OUTPUT_STRIP_TRAILING_WHITESPACE)
-SET (NS_SERVER_VERSION "${_git_describe}" CACHE STRING "Output of git describe" FORCE)
+SET (PRODUCT_VERSION "" CACHE STRING "Product version with build number")
+
+# If PRODUCT_VERSION is set externally, derive product version string based on
+# it and BUILD_ENTERPRISE. Otherwise, fallback to output of 'git describe'.
+
+IF ("${PRODUCT_VERSION}" STREQUAL "")
+  # Cache "git describe" output
+  EXECUTE_PROCESS(COMMAND git describe
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    OUTPUT_VARIABLE _ns_version
+    ERROR_QUIET
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+ELSE ("${PRODUCT_VERSION}" STREQUAL "")
+  # BUILD_ENTERPRISE variable is defined in couchbase-cli CMakeLists.txt
+  IF (BUILD_ENTERPRISE)
+    SET (_ns_version "${PRODUCT_VERSION}-enterprise")
+  ELSE (BUILD_ENTERPRISE)
+    SET (_ns_version "${PRODUCT_VERSION}-community")
+  ENDIF (BUILD_ENTERPRISE)
+ENDIF ("${PRODUCT_VERSION}" STREQUAL "")
+
+  SET (NS_SERVER_VERSION "${_ns_version}" CACHE STRING
+  "Couchbase server version" FORCE)
 MARK_AS_ADVANCED (NS_SERVER_VERSION)
 
 # Create rebar.config
