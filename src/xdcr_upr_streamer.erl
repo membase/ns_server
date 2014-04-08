@@ -186,9 +186,8 @@ do_start(Socket, Vb, FailoverId, FailoverSeqno, RealStartSeqno, HighSeqno, Callb
             ?log_debug("FailoverLog: ~p", [FailoverLog]),
             Parent ! {failover_id, lists:last(FailoverLog), LastSnapshotSeqno, RealStartSeqno, HighSeqno},
             set_sensitive_flag(),
-            inet:setopts(Socket, [{active, once}]),
             proc_lib:init_ack({ok, self()}),
-            socket_loop(Socket, Callback, Acc, Data0, 0, Parent, 0);
+            socket_loop_enter(Socket, Callback, Acc, Data0, Parent);
         #upr_packet{status = ?ROLLBACK, body = <<RollbackSeq:64>>} ->
             ?log_debug("handling rollback to ~B", [RollbackSeq]),
             %% in case of xdcr we cannot rewind the destination. So we
@@ -257,6 +256,10 @@ respond_nop(Socket, Opaque) ->
     Packet = #upr_packet{opcode = ?UPR_NOP,
                          opaque = Opaque},
     ok = gen_tcp:send(Socket, encode_res(Packet)).
+
+socket_loop_enter(Socket, Callback, Acc, Data, Consumer) ->
+    self() ! {tcp, Socket, Data},
+    socket_loop(Socket, Callback, Acc, <<>>, 0, Consumer, 0).
 
 socket_loop(Socket, Callback, Acc, Data, ScannedPos, Consumer, SentToConsumer) ->
     %% ?log_debug("socket_loop: ~p", [{ScannedPos, SentToConsumer}]),
