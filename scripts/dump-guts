@@ -349,8 +349,12 @@ read_config(DataDir) ->
     %% complain("Will read config.dat here: ~s~n", [DynamicCfgPath]),
     case file:read_file(DynamicCfgPath) of
         {ok, Data} ->
-            [Config|_] = erlang:binary_to_term(Data),
-            {ok, Config};
+            case erlang:binary_to_term(Data) of
+                [Config|_] ->
+                    {ok, Config};
+                {_UUID, [Config|_]} ->
+                    {ok, Config}
+            end;
         Err ->
             Err
     end.
