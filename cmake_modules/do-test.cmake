@@ -17,16 +17,16 @@ STRING (REGEX REPLACE "//" "/" ebindirs "${ebindirs}")
 # invoked. Yes, this is annoying.
 EXECUTE_PROCESS(COMMAND "${CMAKE_COMMAND}" -E echo
   "${ERL_EXECUTABLE}"
-  -pa ./ebin ${ebindirs} "${COUCHDB_SRC}/src/couchdb"
-  -pa "${COUCHDB_SRC}/src/mochiweb"
+  -pa ./ebin ${ebindirs} "${COUCHDB_BIN_DIR}/src/couchdb"
+  -pa "${COUCHDB_BIN_DIR}/src/mochiweb"
   -noshell -kernel error_logger silent -shutdown_time 10000
   -eval "\"application:start(sasl).\""
   -eval "\"case t:${TEST_TARGET}() of ok -> init:stop(); _ -> init:stop(1) end.\"")
 
 EXECUTE_PROCESS(RESULT_VARIABLE _failure
   COMMAND "${ERL_EXECUTABLE}"
-  -pa ./ebin ${ebindirs} "${COUCHDB_SRC}/src/couchdb"
-  -pa "${COUCHDB_SRC}/src/mochiweb"
+  -pa ./ebin ${ebindirs} "${COUCHDB_BIN_DIR}/src/couchdb"
+  -pa "${COUCHDB_BIN_DIR}/src/mochiweb"
   -noshell -kernel error_logger silent -shutdown_time 10000
   -eval "application:start(sasl)."
   -eval "case t:${TEST_TARGET}() of ok -> init:stop(); _ -> init:stop(1) end.")

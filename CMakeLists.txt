@@ -36,11 +36,13 @@ ENDIF ("${PRODUCT_VERSION}" STREQUAL "")
 MARK_AS_ADVANCED (NS_SERVER_VERSION)
 
 # Create rebar.config
-SET (COUCHDB_SRC "${PROJECT_SOURCE_DIR}/../couchdb" CACHE PATH "Path to couchdb source")
-IF (NOT EXISTS "${COUCHDB_SRC}/src/couchdb/couch_db.hrl")
+SET (COUCHDB_SRC_DIR "${PROJECT_SOURCE_DIR}/../couchdb" CACHE PATH "Path to couchdb source")
+SET (COUCHDB_BIN_DIR "${CMAKE_BINARY_DIR}/couchdb" CACHE PATH "Path to couchdb build directory")
+
+IF (NOT EXISTS "${COUCHDB_SRC_DIR}/src/couchdb/couch_db.hrl")
   MESSAGE (FATAL_ERROR "Could not find couch_db.hrl; please re-run CMake with "
-    "-DCOUCHDB_SRC=<path/to/couchdb source>")
-ENDIF (NOT EXISTS "${COUCHDB_SRC}/src/couchdb/couch_db.hrl")
+    "-DCOUCHDB_SRC_DIR=<path/to/couchdb source>")
+ENDIF (NOT EXISTS "${COUCHDB_SRC_DIR}/src/couchdb/couch_db.hrl")
 CONFIGURE_FILE ("${PROJECT_SOURCE_DIR}/rebar.config.in"
   "${PROJECT_SOURCE_DIR}/rebar.config" @ONLY)
 
@@ -88,7 +90,7 @@ Rebar (TARGET ns_server NOCLEAN
 # Test invocation
 ADD_CUSTOM_TARGET (ns_test
   "${CMAKE_COMMAND}" -D "ERL_EXECUTABLE=${ERL_EXECUTABLE}"
-  -D "COUCHDB_SRC=${COUCHDB_SRC}"
+  -D "COUCHDB_BIN_DIR=${COUCHDB_BIN_DIR}"
   -P "${PROJECT_SOURCE_DIR}/cmake_modules/do-test.cmake"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   VERBATIM)
@@ -123,7 +125,7 @@ IF (OTP_RELEASE MATCHES "^R1[5-9]B.*$$")
   LIST (APPEND dialyzer_args -Wno_undefined_callbacks)
 ENDIF (OTP_RELEASE MATCHES "^R1[5-9]B.*$$")
 ADD_CUSTOM_TARGET (ns_dialyzer
-  COMMAND "${CMAKE_COMMAND}" -D "COUCHDB_SRC=${COUCHDB_SRC}"
+  COMMAND "${CMAKE_COMMAND}" -D "COUCHDB_BIN_DIR=${COUCHDB_BIN_DIR}"
   -D "DIALYZER_FLAGS=${dialyzer_args}"
   -D "COUCHBASE_PLT=${COUCHBASE_PLT}"
   -P "${PROJECT_SOURCE_DIR}/cmake_modules/do-dialyzer.cmake"
@@ -133,7 +135,7 @@ ADD_DEPENDENCIES (ns_dialyzer ns_server)
 SET (obsessive_args -Wunmatched_returns -Werror_handling -Wrace_conditions
   -Wbehaviours -Wunderspecs)
 ADD_CUSTOM_TARGET (ns_dialyzer_obsessive
-  COMMAND "${CMAKE_COMMAND}" -D "COUCHDB_SRC=${COUCHDB_SRC}"
+  COMMAND "${CMAKE_COMMAND}" -D "COUCHDB_BIN_DIR=${COUCHDB_BIN_DIR}"
   -D "DIALYZER_FLAGS=${obsessive_args}"
   -D "COUCHBASE_PLT=${COUCHBASE_PLT}"
   -P "${PROJECT_SOURCE_DIR}/cmake_modules/do-dialyzer.cmake"

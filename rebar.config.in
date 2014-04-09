@@ -1,6 +1,6 @@
 {lib_dirs, ["deps"]}.
 {erl_opts, [{src_dirs, ["test"]},
-            {i, "@COUCHDB_SRC@/src/couchdb"},
-            {i, "@COUCHDB_SRC@/src"},
+            {i, "@COUCHDB_SRC_DIR@/src/couchdb"},
+            {i, "@COUCHDB_SRC_DIR@/src"},
             debug_info, bin_info_opt,
             {parse_transform, ale_transform}]}.
