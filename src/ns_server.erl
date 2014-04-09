@@ -45,7 +45,16 @@ start(_Type, _Args) ->
                     _ ->
                         InitArgs1
                 end,
-    ok = file:write_file(filename:join(DataDir, "initargs"), term_to_binary(InitArgs2)),
+    InitArgs3 =
+        lists:foldl(
+          fun ({App, _, _}, Acc) ->
+                  Env = lists:append([[misc:inspect_term(K),
+                                       misc:inspect_term(V)] ||
+                                         {K, V} <- application:get_all_env(App)]),
+                  dict:append_list(App, Env, Acc)
+          end, dict:from_list(InitArgs2), application:loaded_applications()),
+    ok = file:write_file(filename:join(DataDir, "initargs"),
+                         term_to_binary(dict:to_list(InitArgs3))),
 
     %% To initialize logging static config must be setup thus this weird
     %% machinery is required to log messages from setup_static_config().
