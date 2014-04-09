@@ -34,10 +34,11 @@
                       }).
 
 -record(takeover_state, {owner :: {pid(), any()},
-                         state :: requested | opaque_known,
+                         state :: requested | opaque_known | active,
                          opaque :: integer(),
                          partition :: vbucket_id(),
-                         requested_partition_state = none :: none | int_vb_state()
+                         requested_partition_state = none :: none | int_vb_state(),
+                         open_ack = false :: boolean()
                         }).
 
 -record(state, {state :: idle | #stream_state{} | #takeover_state{},
@@ -75,16 +76,21 @@ handle_packet(response, ?UPR_ADD_STREAM, Packet,
     {block, maybe_reply_setup_streams(NewState#state{state = NewStreamState})};
 
 handle_packet(response, ?UPR_ADD_STREAM, Packet,
-              #state{state = #takeover_state{owner = From}}
-              = State, _ParentState) ->
+              #state{state = #takeover_state{owner = From, partition = Partition, open_ack = false}
+                     = TakeoverState} = State, _ParentState) ->
 
     {Header, Body} = mc_binary:decode_packet(Packet),
-    case upr_commands:process_response(Header, Body) of
-        {ok, _Opaque} ->
-            {block, State};
-        Error ->
+    case {upr_commands:process_response(Header, Body), Header#mc_header.opaque} of
+        {{ok, _}, Partition} ->
+            NewTakeoverState = TakeoverState#takeover_state{open_ack = true},
+            {block, maybe_reply_takeover(From, NewTakeoverState, State)};
+        {Error, Partition} ->
             gen_server:reply(From, Error),
-            {block, State#state{state = idle}}
+            {block, State#state{state = idle}};
+        {_, WrongOpaque} ->
+            ?rebalance_error("Unexpected response. Unrecognized opaque ~p~nHeader: ~p~nPartition: ~p",
+                             [WrongOpaque, Header, Partition]),
+            erlang:error({unrecognized_opaque, WrongOpaque, Partition})
     end;
 
 handle_packet(request, ?UPR_STREAM_REQ, Packet,
@@ -127,8 +133,8 @@ handle_packet(response, ?UPR_SET_VBUCKET_STATE, Packet,
                              [Partition, mc_client_binary:vbucket_state_to_atom(VbState)]),
             case VbState of
                 ?VB_STATE_ACTIVE ->
-                    gen_server:reply(From, ok),
-                    {proxy, State#state{state = idle}};
+                    NewTakeoverState = TakeoverState#takeover_state{state = active},
+                    {proxy, maybe_reply_takeover(From, NewTakeoverState, State)};
                 _ ->
                     {proxy, State#state{state =
                                             TakeoverState#takeover_state{
@@ -287,6 +293,12 @@ maybe_reply_setup_streams(#state{state = StreamState} = State) ->
         _ ->
             State
     end.
+
+maybe_reply_takeover(From, #takeover_state{open_ack = true, state = active}, State) ->
+    gen_server:reply(From, ok),
+    State#state{state = idle};
+maybe_reply_takeover(_From, TakeoverState, State) ->
+    State#state{state = TakeoverState}.
 
 setup_streams(Pid, Partitions) ->
     gen_server:call(Pid, {setup_streams, Partitions}, infinity).
