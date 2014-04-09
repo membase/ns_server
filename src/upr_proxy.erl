@@ -75,28 +75,28 @@ handle_cast(Msg, State = #state{ext_module = ExtModule, ext_state = ExtState}) -
     {noreply, State#state{ext_state = NewExtState}, ?HIBERNATE_TIMEOUT}.
 
 terminate(_Reason, State) ->
-    ?rebalance_debug("Terminating. Disconnecting from socket ~p", [State#state.sock]),
+    ?log_debug("Terminating. Disconnecting from socket ~p", [State#state.sock]),
     disconnect(State#state.sock).
 
 handle_info({tcp, Socket, Data}, #state{sock = Socket} = State) ->
     %% Set up the socket to receive another message
     ok = inet:setopts(Socket, [{active, once}]),
     {noreply, mc_replication:process_data(Data, #state.buf,
-                                          fun process_packet/2, State), ?HIBERNATE_TIMEOUT};
+                                          fun handle_packet/2, State), ?HIBERNATE_TIMEOUT};
 
 handle_info({tcp_closed, Socket}, State) ->
-    ?rebalance_debug("Socket ~p was closed. Closing myself. State = ~p", [Socket, State]),
+    ?log_debug("Socket ~p was closed. Closing myself. State = ~p", [Socket, State]),
     {stop, normal, State};
 
 handle_info({'EXIT', _Pid, _Reason} = ExitSignal, State) ->
-    ?rebalance_error("killing myself due to exit signal: ~p", [ExitSignal]),
+    ?log_error("killing myself due to exit signal: ~p", [ExitSignal]),
     {stop, {got_exit, ExitSignal}, State};
 
 handle_info(timeout, State) ->
     {noreply, State, hibernate};
 
 handle_info(Msg, State) ->
-    ?rebalance_warning("Unexpected handle_info(~p, ~p)", [Msg, State]),
+    ?log_warning("Unexpected handle_info(~p, ~p)", [Msg, State]),
     {noreply, State, ?HIBERNATE_TIMEOUT}.
 
 handle_call(get_socket, _From, State = #state{sock = Sock}) ->
@@ -109,9 +109,22 @@ handle_call(Command, From, State = #state{ext_module = ExtModule, ext_state = Ex
             {ReplyType, State#state{ext_state = NewExtState}, ?HIBERNATE_TIMEOUT}
     end.
 
-handle_packet(Type, Msg, Packet,
+handle_packet(<<Magick:8, Opcode:8, _Rest/binary>> = Packet,
               State = #state{ext_module = ExtModule, ext_state = ExtState, proxy_to = ProxyTo}) ->
-    {Action, NewExtState} = ExtModule:handle_packet(Type, Msg, Packet, ExtState, State),
+    case suppress_logging(Packet) of
+        true ->
+            ok;
+        false ->
+            ?log_debug("Proxy packet: ~s", [upr_commands:format_packet_nicely(Packet)])
+    end,
+
+    Type = case Magick of
+               ?REQ_MAGIC ->
+                   request;
+               ?RES_MAGIC ->
+                   response
+           end,
+    {Action, NewExtState} = ExtModule:handle_packet(Type, Opcode, Packet, ExtState, State),
     case Action of
         proxy ->
             ok = gen_tcp:send(ProxyTo, Packet);
@@ -120,26 +133,23 @@ handle_packet(Type, Msg, Packet,
     end,
     {ok, State#state{ext_state = NewExtState}}.
 
--ifdef(DEBUG_UPR).
--define(print_proxied_packet(X), ?rebalance_debug("Proxy packet: ~s",
-                                                  [upr_commands:format_packet_nicely(Packet)])).
--else.
--define(print_proxied_packet(X), ok).
--endif.
-
-process_packet(<<?REQ_MAGIC:8, Opcode:8, _Rest/binary>> = Packet, State) ->
-    ?print_proxied_packet(X),
-    handle_packet(request, Opcode, Packet, State);
-process_packet(<<?RES_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8,
-                 _DataType:8, Status:16, _Rest/binary>> = Packet, State) ->
-    case Status of
-        ?SUCCESS ->
-            ?print_proxied_packet(X);
-        _ ->
-            ?rebalance_warning("Received error response: ~s",
-                               [upr_commands:format_packet_nicely(Packet)])
-    end,
-    handle_packet(response, Opcode, Packet, State).
+suppress_logging(<<?REQ_MAGIC:8, ?UPR_MUTATION:8, _Rest/binary>>) ->
+    true;
+suppress_logging(<<?REQ_MAGIC:8, ?UPR_DELETION:8, _Rest/binary>>) ->
+    true;
+suppress_logging(<<?REQ_MAGIC:8, ?UPR_SNAPSHOT_MARKER, _Rest/binary>>) ->
+    true;
+suppress_logging(<<?RES_MAGIC:8, ?UPR_MUTATION:8, _KeyLen:16, _ExtLen:8,
+                   _DataType:8, ?SUCCESS:16, _Rest/binary>>) ->
+    true;
+suppress_logging(<<?RES_MAGIC:8, ?UPR_DELETION:8, _KeyLen:16, _ExtLen:8,
+                   _DataType:8, ?SUCCESS:16, _Rest/binary>>) ->
+    true;
+suppress_logging(<<?RES_MAGIC:8, ?UPR_SNAPSHOT_MARKER:8, _KeyLen:16, _ExtLen:8,
+                   _DataType:8, ?SUCCESS:16, _Rest/binary>>) ->
+    true;
+suppress_logging(_) ->
+    false.
 
 connect(Type, ConnName, Node, Bucket) ->
     {Username, Password} = ns_bucket:credentials(Bucket),
