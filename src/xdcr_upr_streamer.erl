@@ -316,7 +316,7 @@ enter_consumer_loop(Child, Callback, Acc) ->
 consumer_loop(Child, Callback, Acc, ConsumedSoFar0, LastSnapshotSeqno, LastSeenSeqno) ->
     %% ?log_debug("consumer: ~p", [{ConsumedSoFar0, LastSnapshotSeqno, LastSeenSeqno}]),
     ConsumedSoFar =
-        case ConsumedSoFar0 > ?BUFFER_SIZE div 3 of
+        case ConsumedSoFar0 >= ?BUFFER_SIZE div 3 of
             true ->
                 Child ! ConsumedSoFar0,
                 0;
