@@ -31,6 +31,9 @@
 % POSSIBILITY OF SUCH DAMAGE.
 %
 % Original Author: Cliff Moon
+%
+% But very very heavily mutated by northscale and couchbase since
+% then. All bugs are couchbase's.
 
 -module(ns_config).
 
