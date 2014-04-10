@@ -1051,6 +1051,7 @@ read_changes(BucketName, Vb, ChangesQueue, StartSeq, SnapshotSeq, {FailoverUUID,
     {snapshot_seq, true} = {snapshot_seq, is_integer(SnapshotSeq)},
     {failover_uuid, true} = {failover_uuid, is_integer(FailoverUUID)},
     {failover_seq, true} = {failover_seq, is_integer(FailoverSeq)},
+    erlang:process_flag(trap_exit, true),
     xdcr_upr_streamer:stream_vbucket(
       binary_to_list(BucketName), Vb, FailoverUUID, FailoverSeq, SnapshotSeq, StartSeq,
       fun (Event, _) ->

@@ -164,14 +164,6 @@ start(Socket, Vb, FailoverId, FailoverSeqno, LastSnapshotSeqno, StartSeqno, Call
     UsedLastSnapshotSeqno = erlang:min(LastSnapshotSeqno, RealStartSeqno),
     do_start(Socket, Vb, FailoverId, FailoverSeqno, RealStartSeqno, HighSeqno, Callback, Acc, Parent, false, UsedLastSnapshotSeqno).
 
-%% right now logs are spammed if some linked process
-%% dies. This prevents spamming. We'll need to find some
-%% better way of doing it eventually.
-%%
-%% Trick below is to fool dialyzer :)
-set_sensitive_flag() ->
-    erlang:process_flag(list_to_atom("sensitive"), true).
-
 do_start(Socket, Vb, FailoverId, FailoverSeqno, RealStartSeqno, HighSeqno, Callback, Acc, Parent, HadRollback, LastSnapshotSeqno) ->
     Opaque = 16#fafafafa,
     SReq = build_stream_request_packet(Vb, Opaque, RealStartSeqno, HighSeqno, FailoverId, FailoverSeqno),
@@ -185,7 +177,6 @@ do_start(Socket, Vb, FailoverId, FailoverSeqno, RealStartSeqno, HighSeqno, Callb
             FailoverLog = unpack_failover_log(FailoverLogBin),
             ?log_debug("FailoverLog: ~p", [FailoverLog]),
             Parent ! {failover_id, lists:last(FailoverLog), LastSnapshotSeqno, RealStartSeqno, HighSeqno},
-            set_sensitive_flag(),
             proc_lib:init_ack({ok, self()}),
             socket_loop_enter(Socket, Callback, Acc, Data0, Parent);
         #upr_packet{status = ?ROLLBACK, body = <<RollbackSeq:64>>} ->
@@ -200,7 +191,6 @@ do_start(Socket, Vb, FailoverId, FailoverSeqno, RealStartSeqno, HighSeqno, Callb
 stream_vbucket(Bucket, Vb, FailoverId, FailoverSeqno, LastSnapshotSeqno, StartSeqno, Callback, Acc) ->
     true = is_list(Bucket),
     Parent = self(),
-    set_sensitive_flag(),
     {ok, Child} =
         proc_lib:start_link(erlang, apply, [fun stream_vbucket_inner/9,
                                             [Bucket, Vb, FailoverId, FailoverSeqno,
@@ -341,6 +331,9 @@ consumer_loop(Child, Callback, Acc, ConsumedSoFar0, LastSnapshotSeqno, LastSeenS
                     consumer_loop(Child, Callback, Acc2, ConsumedMore,
                                   NewLastSnaspshotSeqno, NewLastSeenSeqno)
             end;
+        {'EXIT', _From, Reason} = ExitMsg ->
+            ?log_debug("Got exit signal: ~p", [ExitMsg]),
+            exit(Reason);
         %% this is handling please_stop message for xdc_vbucket_rep
         %% changes reader loop efficiently, i.e. without selective
         %% receive
