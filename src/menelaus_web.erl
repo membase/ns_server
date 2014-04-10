@@ -1465,6 +1465,15 @@ handle_join(Req) ->
     %%                    clusterMemberPort=8091&
     %%                    user=admin&password=admin123
     %%
+    case is_system_provisioned() of
+        true ->
+            Msg = <<"Node is already provisioned. To join use controller/addNode api of the cluster">>,
+            reply_json(Req, [Msg], 400);
+        false ->
+            handle_join_clean_node(Req)
+    end.
+
+handle_join_clean_node(Req) ->
     Params = Req:parse_post(),
 
     Hostname = case proplists:get_value("hostname", Params) of
@@ -1500,11 +1509,6 @@ handle_join(Req) ->
 
 handle_join_tail(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
     process_flag(trap_exit, true),
-    {Username, Password} = case ns_config:search_prop(ns_config:get(), rest_creds, creds, []) of
-                               [] -> {[], []};
-                               [{U, PList} | _] ->
-                                   {U, proplists:get_value(password, PList)}
-                           end,
     RV = case ns_cluster:check_host_connectivity(OtherHost) of
              {ok, MyIP} ->
                  {struct, MyPList} = build_full_node_info(node(), MyIP),
@@ -1514,8 +1518,8 @@ handle_join_tail(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
                                                     {OtherHost, OtherPort, "/controller/addNode",
                                                      "application/x-www-form-urlencoded",
                                                      mochiweb_util:urlencode([{<<"hostname">>, Hostname},
-                                                                              {<<"user">>, Username},
-                                                                              {<<"password">>, Password}])},
+                                                                              {<<"user">>, []},
+                                                                              {<<"password">>, []}])},
                                                     {OtherUser, OtherPswd});
              X -> X
          end,
