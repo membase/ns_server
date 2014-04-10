@@ -285,7 +285,7 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                          ["nodes", "self", "xdcrSSLPorts"] ->
                              {done, handle_node_self_xdcr_ssl_ports(Req)};
                          ["diag"] ->
-                             {auth, fun diag_handler:handle_diag/1, []};
+                             {auth_special, fun diag_handler:handle_diag/1, []};
                          ["diag", "vbuckets"] -> {auth, fun handle_diag_vbuckets/1};
                          ["diag", "masterEvents"] -> {auth, fun handle_diag_master_events/1};
                          ["pools", "default", "rebalanceProgress"] ->

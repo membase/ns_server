@@ -359,7 +359,7 @@ def make_product_task(guts, initargs_path):
 
         AllOsTask("couchbase diags",
                   ["curl", "-sS",
-                   "-u", '%s:%s' % (read_guts(guts, "rest_user"), read_guts(guts, "rest_pass")),
+                   "-u", '%s:%s' % ("@", read_guts(guts, "memcached_pass")),
                    "http://127.0.0.1:%s/diag?noLogs=1" % read_guts(guts, "rest_port")],
                   log_file="diag.log",
                   command_to_print="curl -sS -u %s:***** http://127.0.0.1:%s/diag?noLogs=1" % (read_guts(guts, "rest_user"), read_guts(guts, "rest_port"))),

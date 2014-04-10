@@ -482,19 +482,6 @@ search_config(NSConfig, Key, Default) ->
             strip_config_meta(Value)
     end.
 
-extract_rest_creds(NSConfig) ->
-    CredsTop = search_config(NSConfig, rest_creds, []),
-    Creds = search_config(CredsTop, creds, []),
-    case Creds of
-        [{User, [{password, Pwd}]}] ->
-            {User, Pwd};
-        [] ->
-            {"", ""};
-        _Crap ->
-            complain("Warning: some garbage in creds:~p~n", [Creds]),
-            {"", ""}
-    end.
-
 search_config_for_node(NSConfig, Node, Key, Default) ->
     None = make_ref(),
     case search_config(NSConfig, {node, Node, Key}, None) of
@@ -587,7 +574,6 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
                            cookie, []),
     DBDir = proplists:get_value({"couchdb", "database_dir"}, CouchInisPList, ""),
     IdxDir = proplists:get_value({"couchdb", "view_index_dir"}, CouchInisPList, ""),
-    {RestUser, RestPass} = extract_rest_creds(NSConfig),
     RestPort = extract_rest_port(NSConfig, Node),
     MCDConfig = search_config_for_node(NSConfig, Node, memcached, []),
     MCDPort = search_config(MCDConfig, port, ""),
@@ -609,8 +595,6 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
              {cookie, Cookie},
              {db_dir, DBDir},
              {idx_dir, IdxDir},
-             {rest_user, RestUser},
-             {rest_pass, RestPass},
              {rest_port, RestPort},
              {memcached_port, MCDPort},
              {buckets, string:join(BucketNames, ",")},
