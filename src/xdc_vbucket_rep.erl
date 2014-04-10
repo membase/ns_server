@@ -709,6 +709,12 @@ init_replication_state(#init_state{rep = Rep,
      TotalDataReplicated,
      RemoteVBOpaque} = xdc_vbucket_rep_ckpt:read_validate_checkpoint(Rep, Vb, Target),
 
+    ?log_debug("Inited replication position: ~p", [{StartSeq, SnapshotSeq, FailoverId,
+                                                    TotalDocsChecked,
+                                                    TotalDocsWritten,
+                                                    TotalDataReplicated,
+                                                    RemoteVBOpaque}]),
+
     case xdc_rep_utils:is_new_xdcr_path() of
         true ->
             LocalVBUUID = undefined;

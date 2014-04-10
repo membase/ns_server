@@ -176,11 +176,14 @@ do_start(Socket, Vb, FailoverId, FailoverSeqno, RealStartSeqno, HighSeqno, Callb
         #upr_packet{status = ?SUCCESS, body = FailoverLogBin} ->
             FailoverLog = unpack_failover_log(FailoverLogBin),
             ?log_debug("FailoverLog: ~p", [FailoverLog]),
+            ?log_debug("Request was: ~p", [{Vb, Opaque, RealStartSeqno, HighSeqno, FailoverId, FailoverSeqno}]),
+            ?log_debug("Sockname: ~p", [inet:sockname(Socket)]),
             Parent ! {failover_id, lists:last(FailoverLog), LastSnapshotSeqno, RealStartSeqno, HighSeqno},
             proc_lib:init_ack({ok, self()}),
             socket_loop_enter(Socket, Callback, Acc, Data0, Parent);
         #upr_packet{status = ?ROLLBACK, body = <<RollbackSeq:64>>} ->
             ?log_debug("handling rollback to ~B", [RollbackSeq]),
+            ?log_debug("Request was: ~p", [{Vb, Opaque, RealStartSeqno, HighSeqno, FailoverId, FailoverSeqno}]),
             %% in case of xdcr we cannot rewind the destination. So we
             %% just "formally" rollback our start point to resume
             %% streaming at "better than nothing" position
