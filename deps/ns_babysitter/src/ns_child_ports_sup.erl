@@ -31,7 +31,7 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
-    {ok, {{one_for_one, 3, 10}, []}}.
+    {ok, {{one_for_one, 100, 10}, []}}.
 
 send_command(PortName, Command) ->
     try
