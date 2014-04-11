@@ -693,6 +693,7 @@ handle_call({apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
     ok = replication_manager:set_incoming_replication_map(BucketName, WantedReplications),
     {reply, ok, State};
 handle_call({delete_vbucket, VBucket}, _From, #state{bucket_name = BucketName} = State) ->
+    ok = capi_set_view_manager:delete_vbucket(BucketName, VBucket),
     {reply, ok = ns_memcached:delete_vbucket(BucketName, VBucket), State};
 handle_call({wait_index_updated, VBucket}, From, #state{bucket_name = Bucket} = State) ->
     State2 = spawn_rebalance_subprocess(

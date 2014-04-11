@@ -26,7 +26,7 @@
 %% API
 -export([set_vbucket_states/3, server/1,
          wait_index_updated/2, initiate_indexing/1, reset_master_vbucket/1,
-         get_safe_purge_seqs/1]).
+         get_safe_purge_seqs/1, delete_vbucket/2]).
 
 -include("couch_db.hrl").
 -include_lib("couch_set_view/include/couch_set_view.hrl").
@@ -45,6 +45,9 @@
 
 set_vbucket_states(Bucket, WantedStates, RebalanceStates) ->
     gen_server:call(server(Bucket), {set_vbucket_states, WantedStates, RebalanceStates}, infinity).
+
+delete_vbucket(Bucket, VBucket) ->
+    gen_server:call(server(Bucket), {delete_vbucket, VBucket}, infinity).
 
 wait_index_updated(Bucket, VBucket) ->
     gen_server:call(server(Bucket), {wait_index_updated, VBucket}, infinity).
@@ -544,9 +547,6 @@ handle_mc_couch_event(Self, Bucket,
     ?views_debug("Got set_vbucket event for ~s/~b. Updated state: ~p (~B)",
                  [Bucket, VBucket, State, Checkpoint]),
     Self ! refresh_usable_vbuckets;
-handle_mc_couch_event(Self, Bucket,
-                      {delete_vbucket, Bucket, VBucket}) ->
-    ok = gen_server:call(Self, {delete_vbucket, VBucket}, infinity);
 handle_mc_couch_event(_, _, _) ->
     ok.
 
