@@ -45,13 +45,13 @@ init([Type, ConnName, Node, Bucket, ExtModule, InitArgs]) ->
     erlang:process_flag(trap_exit, true),
     Sock = connect(Type, ConnName, Node, Bucket),
 
-    ExtState = ExtModule:init(InitArgs),
+    {ExtState, State} = ExtModule:init(InitArgs, #state{}),
 
-    {ok, #state{
-            sock = Sock,
-            ext_module = ExtModule,
-            ext_state = ExtState
-           }, ?HIBERNATE_TIMEOUT}.
+    {ok, State#state{
+           sock = Sock,
+           ext_module = ExtModule,
+           ext_state = ExtState
+          }, ?HIBERNATE_TIMEOUT}.
 
 start_link(Type, ConnName, Node, Bucket, ExtModule, InitArgs) ->
     gen_server:start_link(?MODULE, [Type, ConnName, Node, Bucket, ExtModule, InitArgs], []).
@@ -71,8 +71,8 @@ handle_cast({setup_proxy, Partner, ProxyTo}, #state{sock = Socket} = State) ->
 
     {noreply, State#state{proxy_to = ProxyTo, partner = Partner}, ?HIBERNATE_TIMEOUT};
 handle_cast(Msg, State = #state{ext_module = ExtModule, ext_state = ExtState}) ->
-    {noreply, NewExtState} = ExtModule:handle_cast(Msg, ExtState, State),
-    {noreply, State#state{ext_state = NewExtState}, ?HIBERNATE_TIMEOUT}.
+    {noreply, NewExtState, NewState} = ExtModule:handle_cast(Msg, ExtState, State),
+    {noreply, NewState#state{ext_state = NewExtState}, ?HIBERNATE_TIMEOUT}.
 
 terminate(_Reason, State) ->
     ?log_debug("Terminating. Disconnecting from socket ~p", [State#state.sock]),
@@ -103,10 +103,10 @@ handle_call(get_socket, _From, State = #state{sock = Sock}) ->
     {reply, Sock, State, ?HIBERNATE_TIMEOUT};
 handle_call(Command, From, State = #state{ext_module = ExtModule, ext_state = ExtState}) ->
     case ExtModule:handle_call(Command, From, ExtState, State) of
-        {ReplyType, Reply, NewExtState} ->
-            {ReplyType, Reply, State#state{ext_state = NewExtState}, ?HIBERNATE_TIMEOUT};
-        {ReplyType, NewExtState} ->
-            {ReplyType, State#state{ext_state = NewExtState}, ?HIBERNATE_TIMEOUT}
+        {ReplyType, Reply, NewExtState, NewState} ->
+            {ReplyType, Reply, NewState#state{ext_state = NewExtState}, ?HIBERNATE_TIMEOUT};
+        {ReplyType, NewExtState, NewState} ->
+            {ReplyType, NewState#state{ext_state = NewExtState}, ?HIBERNATE_TIMEOUT}
     end.
 
 handle_packet(<<Magick:8, Opcode:8, _Rest/binary>> = Packet,
@@ -124,14 +124,14 @@ handle_packet(<<Magick:8, Opcode:8, _Rest/binary>> = Packet,
                ?RES_MAGIC ->
                    response
            end,
-    {Action, NewExtState} = ExtModule:handle_packet(Type, Opcode, Packet, ExtState, State),
+    {Action, NewExtState, NewState} = ExtModule:handle_packet(Type, Opcode, Packet, ExtState, State),
     case Action of
         proxy ->
             ok = gen_tcp:send(ProxyTo, Packet);
         block ->
             ok
     end,
-    {ok, State#state{ext_state = NewExtState}}.
+    {ok, NewState#state{ext_state = NewExtState}}.
 
 suppress_logging(<<?REQ_MAGIC:8, ?UPR_MUTATION:8, _Rest/binary>>) ->
     true;

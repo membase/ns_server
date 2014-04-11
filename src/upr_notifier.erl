@@ -29,7 +29,7 @@
 
 -export([start_link/1, subscribe/5]).
 
--export([init/1, handle_packet/5, handle_call/4, handle_cast/3]).
+-export([init/2, handle_packet/5, handle_call/4, handle_cast/3]).
 
 start_link(Bucket) ->
     single_bucket_sup:ignore_if_not_couchbase_bucket(
@@ -43,10 +43,10 @@ start_link(Bucket) ->
 subscribe(Bucket, Partition, StartSeqNo, UUID, HighSeqNo) ->
     gen_server:call(server_name(Bucket), {subscribe, Partition, StartSeqNo, UUID, HighSeqNo}, infinity).
 
-init([Bucket]) ->
+init([Bucket], ParentState) ->
     upr_proxy:no_proxy_setup(self()),
     erlang:register(server_name(Bucket), self()),
-    [].
+    {[], ParentState}.
 
 server_name(Bucket) ->
     list_to_atom(?MODULE_STRING "-" ++ Bucket).
@@ -55,27 +55,29 @@ handle_call({subscribe, Partition, StartSeqNo, UUID, HighSeqNo}, From, State, Pa
     PartitionState = get_partition(Partition, State),
     do_subscribe(From, {StartSeqNo, UUID, HighSeqNo}, PartitionState, State, ParentState).
 
-handle_cast(Msg, State, _ParentState) ->
+handle_cast(Msg, State, ParentState) ->
     ?log_warning("Unhandled cast: ~p", [Msg]),
-    {noreply, State}.
+    {noreply, State, ParentState}.
 
 handle_packet(request, ?NOOP, _Packet, State, ParentState) ->
     {ok, quiet} = mc_client_binary:respond(?NOOP, upr_proxy:get_socket(ParentState),
                                            {#mc_header{status = ?SUCCESS},
                                             #mc_entry{}}),
-    {block, State};
+    {block, State, ParentState};
 
 handle_packet(request, Opcode, Packet, State, ParentState) ->
     {Header, Body} = mc_binary:decode_packet(Packet),
     PartitionState = get_partition(Header#mc_header.opaque, State),
     {block,
-     set_partition(handle_request(Opcode, Header, Body, PartitionState, ParentState), State)};
+     set_partition(handle_request(Opcode, Header, Body, PartitionState, ParentState), State),
+     ParentState};
 
 handle_packet(response, Opcode, Packet, State, ParentState) ->
     {Header, Body} = mc_binary:decode_packet(Packet),
     PartitionState = get_partition(Header#mc_header.opaque, State),
     {block,
-     set_partition(handle_response(Opcode, Header, Body, PartitionState, ParentState), State)}.
+     set_partition(handle_response(Opcode, Header, Body, PartitionState, ParentState), State),
+     ParentState}.
 
 handle_response(?UPR_STREAM_REQ, Header, Body,
                 #partition{stream_state = pending,
@@ -144,9 +146,9 @@ add_subscriber(From, #partition{subscribers = Subscribers} = PartitionState) ->
 %%          and return immediately since the data is already available
 do_subscribe(_From, {StartSeqNo, UUID, HighSeqNo},
              #partition{last_known_pos = {LNStartSeqNo, UUID, HighSeqNo},
-                        stream_state = closed} = PartitionState, State, _ParentState)
+                        stream_state = closed} = PartitionState, State, ParentState)
   when StartSeqNo =< LNStartSeqNo ->
-    {reply, ok, set_partition(PartitionState, State)};
+    {reply, ok, set_partition(PartitionState, State), ParentState};
 
 do_subscribe(From, {StartSeqNo, UUID, HighSeqNo} = Pos,
              #partition{partition = Partition,
@@ -157,13 +159,13 @@ do_subscribe(From, {StartSeqNo, UUID, HighSeqNo} = Pos,
 
     PartitionState1 = PartitionState#partition{last_known_pos = Pos,
                                                stream_state = pending},
-    {noreply, set_partition(add_subscriber(From, PartitionState1), State)};
+    {noreply, set_partition(add_subscriber(From, PartitionState1), State), ParentState};
 
 do_subscribe(From, Pos,
              #partition{last_known_pos = Pos} = PartitionState,
-             State, _ParentState) ->
-    {noreply, set_partition(add_subscriber(From, PartitionState), State)};
+             State, ParentState) ->
+    {noreply, set_partition(add_subscriber(From, PartitionState), State), ParentState};
 
 do_subscribe(_From, _Pos,
-             PartitionState, State, _ParentState) ->
-    {reply, ok, set_partition(PartitionState, State)}.
+             PartitionState, State, ParentState) ->
+    {reply, ok, set_partition(PartitionState, State), ParentState}.

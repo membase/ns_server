@@ -24,7 +24,7 @@
 -export([start_link/2,
          setup_streams/2, takeover/2, maybe_close_stream/2]).
 
--export([init/1, handle_packet/5, handle_call/4, handle_cast/3]).
+-export([init/2, handle_packet/5, handle_call/4, handle_cast/3]).
 
 -record(stream_state, {owner :: {pid(), any()},
                        to_add :: [vbucket_id()],
@@ -48,16 +48,16 @@
 start_link(ConnName, Bucket) ->
     upr_proxy:start_link(consumer, ConnName, node(), Bucket, ?MODULE, []).
 
-init([]) ->
-    #state{
-       partitions = [],
-       state = idle
-      }.
+init([], ParentState) ->
+    {#state{
+        partitions = [],
+        state = idle
+       }, ParentState}.
 
 
 handle_packet(response, ?UPR_ADD_STREAM, Packet,
               #state{state = #stream_state{to_add = ToAdd, errors = Errors} = StreamState}
-              = State, _ParentState) ->
+              = State, ParentState) ->
     {Header, Body} = mc_binary:decode_packet(Packet),
 
     {Partition, NewToAdd, NewErrors} = process_add_close_stream_response(Header, ToAdd, Errors),
@@ -73,20 +73,20 @@ handle_packet(response, ?UPR_ADD_STREAM, Packet,
                                  [Partition, Opaque, "0x"]),
                 add_partition(Partition, State)
         end,
-    {block, maybe_reply_setup_streams(NewState#state{state = NewStreamState})};
+    {block, maybe_reply_setup_streams(NewState#state{state = NewStreamState}), ParentState};
 
 handle_packet(response, ?UPR_ADD_STREAM, Packet,
               #state{state = #takeover_state{owner = From, partition = Partition, open_ack = false}
-                     = TakeoverState} = State, _ParentState) ->
+                     = TakeoverState} = State, ParentState) ->
 
     {Header, Body} = mc_binary:decode_packet(Packet),
     case {upr_commands:process_response(Header, Body), Header#mc_header.opaque} of
         {{ok, _}, Partition} ->
             NewTakeoverState = TakeoverState#takeover_state{open_ack = true},
-            {block, maybe_reply_takeover(From, NewTakeoverState, State)};
+            {block, maybe_reply_takeover(From, NewTakeoverState, State), ParentState};
         {Error, Partition} ->
             gen_server:reply(From, Error),
-            {block, State#state{state = idle}};
+            {block, State#state{state = idle}, ParentState};
         {_, WrongOpaque} ->
             ?rebalance_error("Unexpected response. Unrecognized opaque ~p~nHeader: ~p~nPartition: ~p",
                              [WrongOpaque, Header, Partition]),
@@ -95,16 +95,16 @@ handle_packet(response, ?UPR_ADD_STREAM, Packet,
 
 handle_packet(request, ?UPR_STREAM_REQ, Packet,
               #state{state = #takeover_state{state = requested, partition = Partition}
-                     = TakeoverState} = State, _ParentState) ->
+                     = TakeoverState} = State, ParentState) ->
     {Header, _Body} = mc_binary:decode_packet(Packet),
     Partition = Header#mc_header.vbucket,
     NewTakeoverState = TakeoverState#takeover_state{state = opaque_known,
                                                     opaque = Header#mc_header.opaque},
-    {proxy, State#state{state = NewTakeoverState}};
+    {proxy, State#state{state = NewTakeoverState}, ParentState};
 
 handle_packet(response, ?UPR_CLOSE_STREAM, Packet,
               #state{state = #stream_state{to_close = ToClose, errors = Errors} = StreamState}
-              = State, _ParentState) ->
+              = State, ParentState) ->
     {Header, _Body} = mc_binary:decode_packet(Packet),
 
     {Partition, NewToClose, NewErrors} = process_add_close_stream_response(Header, ToClose, Errors),
@@ -117,14 +117,14 @@ handle_packet(response, ?UPR_CLOSE_STREAM, Packet,
             _ ->
                 del_partition(Partition, State)
         end,
-    {block, maybe_reply_setup_streams(NewState#state{state = NewStreamState})};
+    {block, maybe_reply_setup_streams(NewState#state{state = NewStreamState}), ParentState};
 
 handle_packet(response, ?UPR_SET_VBUCKET_STATE, Packet,
               #state{state = #takeover_state{opaque = Opaque, state = opaque_known,
                                              partition = Partition,
                                              owner = From,
                                              requested_partition_state = VbState} = TakeoverState}
-              = State, _ParentState) ->
+              = State, ParentState) ->
     {Header, _Body} = mc_binary:decode_packet(Packet),
 
     case {Header#mc_header.opaque, Header#mc_header.status} of
@@ -134,23 +134,24 @@ handle_packet(response, ?UPR_SET_VBUCKET_STATE, Packet,
             case VbState of
                 ?VB_STATE_ACTIVE ->
                     NewTakeoverState = TakeoverState#takeover_state{state = active},
-                    {proxy, maybe_reply_takeover(From, NewTakeoverState, State)};
+                    {proxy, maybe_reply_takeover(From, NewTakeoverState, State), ParentState};
                 _ ->
                     {proxy, State#state{state =
                                             TakeoverState#takeover_state{
                                               requested_partition_state = none
                                              }
-                                       }}
+                                       },
+                     ParentState}
             end;
         _ ->
-            {proxy, State}
+            {proxy, State, ParentState}
     end;
 
-handle_packet(_, _, _, State, _) ->
-    {proxy, State}.
+handle_packet(_, _, _, State, ParentState) ->
+    {proxy, State, ParentState}.
 
-handle_call(get_partitions, _From, State, _ParentState) ->
-    {reply, get_partitions(State), State};
+handle_call(get_partitions, _From, State, ParentState) ->
+    {reply, get_partitions(State), State, ParentState};
 
 handle_call({maybe_close_stream, Partition}, From,
             #state{state=idle} = State, ParentState) ->
@@ -169,7 +170,7 @@ handle_call({setup_streams, Partitions}, From,
 
     case {StreamsToStart, StreamsToStop} of
         {[], []} ->
-            {reply, ok, State};
+            {reply, ok, State, ParentState};
         _ ->
             StartStreamRequests = lists:map(fun (Partition) ->
                                                     upr_commands:add_stream(Sock, Partition,
@@ -194,14 +195,14 @@ handle_call({setup_streams, Partitions}, From,
                                              to_close_on_producer = StopStreamRequests,
                                              errors = []
                                             }
-                                 }}
+                                 }, ParentState}
     end;
 
 handle_call({takeover, Partition}, From, #state{state=idle} = State, ParentState) ->
     Sock = upr_proxy:get_socket(ParentState),
     case has_partition(Partition, State) of
         true ->
-            {reply, {error, takeover_on_open_stream_is_not_allowed}, State};
+            {reply, {error, takeover_on_open_stream_is_not_allowed}, State, ParentState};
         false ->
             upr_commands:add_stream(Sock, Partition, Partition, takeover),
             {noreply, State#state{state = #takeover_state{
@@ -210,18 +211,19 @@ handle_call({takeover, Partition}, From, #state{state=idle} = State, ParentState
                                              opaque = Partition,
                                              partition = Partition
                                             }
-                                 }}
+                                 },
+             ParentState}
     end;
 
-handle_call(Msg, _From, State, _ParentState) ->
+handle_call(Msg, _From, State, ParentState) ->
     ?rebalance_warning("Unhandled call: Msg = ~p, State = ~p", [Msg, State]),
-    {reply, refused, State}.
+    {reply, refused, State, ParentState}.
 
 
 handle_cast({producer_stream_closed, Packet},
             #state{state = #stream_state{to_close_on_producer = ToClose,
                                          errors = Errors} = StreamState} = State,
-            _ParentState) ->
+            ParentState) ->
     {Header, _Body} = mc_binary:decode_packet(Packet),
 
     {Partition, NewToClose, NewErrors} = process_add_close_stream_response(Header, ToClose, Errors),
@@ -235,13 +237,13 @@ handle_cast({producer_stream_closed, Packet},
             _ ->
                 del_partition(Partition, State)
         end,
-    {noreply, maybe_reply_setup_streams(NewState#state{state = NewStreamState})};
+    {noreply, maybe_reply_setup_streams(NewState#state{state = NewStreamState}), ParentState};
 
 handle_cast({set_vbucket_state, Packet},
             #state{state = #takeover_state{opaque = Opaque, state = opaque_known,
                                            partition = Partition,
                                            requested_partition_state = none} = TakeoverState}
-            = State, _ParentState) ->
+            = State, ParentState) ->
     {Header, Body} = mc_binary:decode_packet(Packet),
     <<VbState:8>> = Body#mc_entry.ext,
 
@@ -250,15 +252,16 @@ handle_cast({set_vbucket_state, Packet},
             ?rebalance_debug("Partition ~p is about to change status to ~p",
                              [Partition, mc_client_binary:vbucket_state_to_atom(VbState)]),
             {noreply, State#state{state =
-                                      TakeoverState#takeover_state{requested_partition_state = VbState}}};
+                                      TakeoverState#takeover_state{requested_partition_state = VbState}},
+             ParentState};
         _ ->
-            {noreply, State}
+            {noreply, State, ParentState}
     end;
 
 
-handle_cast(Msg, State, _ParentState) ->
+handle_cast(Msg, State, ParentState) ->
     ?rebalance_warning("Unhandled cast: Msg = ~p, State = ~p", [Msg, State]),
-    {noreply, State}.
+    {noreply, State, ParentState}.
 
 process_add_close_stream_response(Header, PendingPartitions, Errors) ->
     case lists:keytake(Header#mc_header.opaque, 1, PendingPartitions) of
