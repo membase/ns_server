@@ -31,8 +31,8 @@ state_color(dead) ->
     "color=red".
 
 
--spec node_vbuckets(non_neg_integer(), node(), [{node(), vbucket_id(),
-                                                 vbucket_state()}], map()) ->
+-spec node_vbuckets(non_neg_integer(), node(),
+                    [{node(), vbucket_id(), vbucket_state()}], vbucket_map()) ->
                            iolist().
 node_vbuckets(I, Node, States, Map) ->
     GState = lists:keysort(1,

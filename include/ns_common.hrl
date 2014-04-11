@@ -22,7 +22,7 @@
 -type bucket_name() :: nonempty_string().
 -type bucket_type() :: memcached | membase.
 -type histogram() :: [{atom(), non_neg_integer()}].
--type map() :: [[atom(), ...], ...].
+-type vbucket_map() :: [[atom(), ...], ...].
 -type mc_error_atom() :: key_enoent | key_eexists | e2big | einval |
                          not_stored | delta_badval | not_my_vbucket |
                          unknown_command | enomem | not_supported | internal |

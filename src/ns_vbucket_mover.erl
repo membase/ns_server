@@ -48,7 +48,7 @@
 %%
 
 %% @doc Start the mover.
--spec start_link(string(), map(), map(), progress_callback()) ->
+-spec start_link(string(), vbucket_map(), vbucket_map(), progress_callback()) ->
                         {ok, pid()} | {error, any()}.
 start_link(Bucket, OldMap, NewMap, ProgressCallback) ->
     gen_server:start_link(?MODULE, {Bucket, OldMap, NewMap, ProgressCallback},
@@ -213,16 +213,14 @@ terminate(Reason, _State) ->
 
 %% @private
 %% @doc Convert a map array back to a map list.
--spec array_to_map(array()) ->
-                          map().
+-spec array_to_map(array()) -> vbucket_map().
 array_to_map(Array) ->
     array:to_list(Array).
 
 %% @private
 %% @doc Convert a map, which is normally a list, into an array so that
 %% we can randomly access the replication chains.
--spec map_to_array(map()) ->
-                          array().
+-spec map_to_array(vbucket_map()) -> array().
 map_to_array(Map) ->
     array:fix(array:from_list(Map)).
 

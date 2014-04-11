@@ -537,7 +537,7 @@ unbalanced(Map, Topology, BucketConfig) ->
 %% @doc Determine if a particular bucket is unbalanced. Returns true
 %% iff the max vbucket count in any class on any server is >2 more
 %% than the min.
--spec unbalanced_chain(map(), [atom()]) -> boolean().
+-spec unbalanced_chain(vbucket_map(), [atom()]) -> boolean().
 unbalanced_chain(Map, Servers) ->
     lists:any(fun (Histogram) ->
                       case [N || {_, N} <- Histogram] of
