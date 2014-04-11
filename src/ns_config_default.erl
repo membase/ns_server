@@ -121,22 +121,17 @@ default() ->
      {{node, node(), ssl_proxy_upstream_port},
       misc:get_env_default(ssl_proxy_upstream_port, 11215)},
 
-                                                % In 1.0, only the first entry in the creds list is displayed in the UI
-                                                % and accessible through the UI.
-                                                %
-                                                % Modifiers: menelaus REST API
-                                                % Listeners: some menelaus module that configures/reconfigures mochiweb??
+     %% pre 3.0 format:
+     %% {rest_creds, [{creds, [{"user", [{password, "password"}]},
+     %%                        {"admin", [{password, "admin"}]}]}
+     %% An empty list means no login/password auth check.
+
+     %% for 3.0 clusters:
+     %% {rest_creds, {User, {password, {Salt, Mac}}}}
+     %% {rest_creds, null} means no login/password auth check.
+     %% read_only_user_creds has the same format
      {rest_creds, [{creds, []}
                   ]},
-                      % pre 3.0 format:
-                      % {rest_creds, [{creds, [{"user", [{password, "password"}]},
-                      %                        {"admin", [{password, "admin"}]}]}
-                      % An empty list means no login/password auth check.
-
-                      % for 3.0 clusters:
-                      % {rest_creds, {User, {password, {Salt, Mac}}}}
-                      % {rest_creds, null} means no login/password auth check.
-                      % read_only_user_creds has the same format
      {remote_clusters, []},
      {{node, node(), isasl}, [{path, filename:join(DataDir, ?ISASL_PW)}]},
 
@@ -221,19 +216,19 @@ default() ->
 
      {buckets, [{configs, []}]},
 
-                                                % Moxi config. This is
-                                                % per-node so command
-                                                % line override
-                                                % doesn't propagate
+     %% Moxi config. This is
+     %% per-node so command
+     %% line override
+     %% doesn't propagate
      {{node, node(), moxi}, [{port, misc:get_env_default(moxi_port, 11211)},
                              {verbosity, ""}
                             ]},
 
-                                                % Note that we currently assume the ports are available
-                                                % across all servers in the cluster.
-                                                %
-                                                % This is a classic "should" key, where ns_port_sup needs
-                                                % to try to start child processes.  If it fails, it should ns_log errors.
+     %% Note that we currently assume the ports are available
+     %% across all servers in the cluster.
+     %%
+     %% This is a classic "should" key, where ns_port_sup needs
+     %% to try to start child processes.  If it fails, it should ns_log errors.
      {{node, node(), port_servers},
       [{moxi, path_config:component_path(bin, "moxi"),
         ["-Z", {"port_listen=~B,default_bucket_name=default,downstream_max=1024,downstream_conn_max=4,"
