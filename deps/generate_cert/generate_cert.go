@@ -55,6 +55,14 @@ func derToPKey(octets []byte) (pkey *rsa.PrivateKey) {
 	panic("cannot happen")
 }
 
+var keyLength int = 2048
+
+func init() {
+	if (os.Getenv("COUCHBASE_SMALLER_PKEYS") == "1") {
+		keyLength = 1024
+	}
+}
+
 func main() {
 	var genereateLeaf bool
 	var commonName string
@@ -83,7 +91,7 @@ func main() {
 
 		pkey := derToPKey(pkeyBlock.Bytes)
 
-		leafPKey, err := rsa.GenerateKey(rand.Reader, 2048)
+		leafPKey, err := rsa.GenerateKey(rand.Reader, keyLength)
 		mustNoErr(err)
 
 		leafTemplate := x509.Certificate{
@@ -104,7 +112,7 @@ func main() {
 		pemIfy(certDer, "CERTIFICATE", os.Stdout)
 		pemIfy(x509.MarshalPKCS1PrivateKey(leafPKey), "RSA PRIVATE KEY", os.Stdout)
 	} else {
-		pkey, err := rsa.GenerateKey(rand.Reader, 2048)
+		pkey, err := rsa.GenerateKey(rand.Reader, keyLength)
 		mustNoErr(err)
 
 		commonName = fmt.Sprintf("Couchbase Server %08x", crc32.ChecksumIEEE(pkey.N.Bytes()))
