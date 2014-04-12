@@ -107,7 +107,7 @@
 
 -include("ns_common.hrl").
 
--export([prepare/5,
+-export([prepare/6,
          is_done/1,
          choose_action/1,
          extract_progress/1,
@@ -142,11 +142,12 @@
           in_flight_compactions :: set(),          % set of nodes
 
           initial_move_counts :: dict(),
-          left_move_counts :: dict()
+          left_move_counts :: dict(),
+          inflight_moves_limit :: non_neg_integer()
          }).
 
 %% @doc prepares state (list of moves etc) based on current and target map
-prepare(CurrentMap, TargetMap, BackfillsLimit, MovesBeforeCompaction, InfoLogger) ->
+prepare(CurrentMap, TargetMap, BackfillsLimit, MovesBeforeCompaction, MaxInflightMoves, InfoLogger) ->
     %% Dictionary mapping old node to vbucket and new node
     MapTriples = lists:zip3(lists:seq(0, length(CurrentMap) - 1),
                             CurrentMap,
@@ -213,6 +214,7 @@ prepare(CurrentMap, TargetMap, BackfillsLimit, MovesBeforeCompaction, InfoLogger
 
     State = #state{backfills_limit = BackfillsLimit,
                    moves_before_compaction = MovesBeforeCompaction,
+                   inflight_moves_limit = MaxInflightMoves,
                    total_in_flight = 0,
                    moves_left_count_per_node = MovesPerNode,
                    moves_left = Moves,
@@ -299,15 +301,28 @@ sortby(List, KeyFn, LessEqFn) ->
                              end, KeyedList),
     [E || {_, E} <- KeyedSorted].
 
-move_is_possible(Src, Dst, BackfillsLimit, NowBackfills, CompactionCountdown) ->
+move_is_possible(Src, Dst, BackfillsLimit, NowBackfills, CompactionCountdown,
+                 InFlightMoves, InFlightMovesLimit) ->
     dict:fetch(Src, NowBackfills) < BackfillsLimit
         andalso dict:fetch(Dst, NowBackfills) < BackfillsLimit
         andalso dict:fetch(Src, CompactionCountdown) > 0
-        andalso dict:fetch(Dst, CompactionCountdown) > 0.
+        andalso dict:fetch(Dst, CompactionCountdown) > 0
+        andalso dict:fetch(Dst, InFlightMoves) < InFlightMovesLimit
+        andalso dict:fetch(Src, InFlightMoves) < InFlightMovesLimit.
 
+increment_counter(Node, Node, Dict) ->
+    dict:update_counter(Node, 1, Dict);
+increment_counter(Src, Dst, Dict) ->
+    dict:update_counter(Dst, 1, dict:update_counter(Src, 1, Dict)).
+
+decrement_counter_if_real_move(Node, Node, Dict) ->
+    Dict;
+decrement_counter_if_real_move(Src, Dst, Dict) ->
+    dict:update_counter(Dst, -1, dict:update_counter(Src, -1, Dict)).
 
 choose_action_not_compaction(#state{
                                 backfills_limit = BackfillsLimit,
+                                inflight_moves_limit = MaxInflightMoves,
                                 in_flight_backfills_per_node = NowBackfills,
                                 in_flight_per_node = NowInFlight,
                                 in_flight_compactions = NowCompactions,
@@ -316,7 +331,9 @@ choose_action_not_compaction(#state{
                                 compaction_countdown_per_node = CompactionCountdown} = State) ->
     PossibleMoves =
         lists:flatmap(fun ({_V, [Src|_], [Dst|_]} = Move) ->
-                              Can1 = move_is_possible(Src, Dst, BackfillsLimit, NowBackfills, CompactionCountdown),
+                              Can1 = move_is_possible(Src, Dst, BackfillsLimit, NowBackfills,
+                                                      CompactionCountdown,
+                                                      NowInFlight, MaxInflightMoves),
                               Can2 = Can1 andalso not sets:is_element(Src, NowCompactions),
                               Can3 = Can2 andalso not sets:is_element(Dst, NowCompactions),
                               case Can3 of
@@ -376,61 +393,29 @@ choose_action_not_compaction(#state{
     %% end,
 
     %% NOTE: we know that first move is always allowed
-    {SelectedMoves, NewNowBackfills, NewCompactionCountdown} =
+    {SelectedMoves, NewNowBackfills, NewCompactionCountdown, NewNowInFlight, NewLeftCount} =
         misc:letrec(
-          [SortedMoves, NowBackfills, CompactionCountdown, []],
-          fun (Rec, [{_V, [Src|_], [Dst|_]} = Move | RestMoves], NowBackfills0, CompactionCountdown0, Acc) ->
-                  case move_is_possible(Src, Dst, BackfillsLimit, NowBackfills0, CompactionCountdown0) of
+          [SortedMoves, NowBackfills, CompactionCountdown, NowInFlight, LeftCount, []],
+          fun (Rec, [{_V, [Src|_], [Dst|_]} = Move | RestMoves],
+               NowBackfills0, CompactionCountdown0, NowInFlight0, LeftCount0, Acc) ->
+                  case move_is_possible(Src, Dst, BackfillsLimit, NowBackfills0,
+                                        CompactionCountdown0, NowInFlight0, MaxInflightMoves) of
                       true ->
-                          NowBackfills1 = dict:update_counter(Src, 1, NowBackfills0),
-                          NowBackfills2 = case Src =:= Dst of
-                                              true ->
-                                                  NowBackfills1;
-                                              _ ->
-                                                  dict:update_counter(Dst, 1, NowBackfills1)
-                                          end,
-                          CompactionCountdown1 = case Src =:= Dst of
-                                                     true ->
-                                                         CompactionCountdown0;
-                                                     _ ->
-                                                         D = dict:update_counter(Src, -1, CompactionCountdown0),
-                                                         dict:update_counter(Dst, -1, D)
-                                                 end,
-                          NewAcc = [Move | Acc],
-                          Rec(Rec, RestMoves, NowBackfills2, CompactionCountdown1, NewAcc);
+                          Rec(Rec, RestMoves,
+                              increment_counter(Src, Dst, NowBackfills0),
+                              decrement_counter_if_real_move(Src, Dst, CompactionCountdown0),
+                              increment_counter(Src, Dst, NowInFlight0),
+                              decrement_counter_if_real_move(Src, Dst, LeftCount0),
+                              [Move | Acc]);
                       _ ->
-                          Rec(Rec, RestMoves, NowBackfills0, CompactionCountdown0, Acc)
+                          Rec(Rec, RestMoves, NowBackfills0, CompactionCountdown0, NowInFlight0,
+                              LeftCount0, Acc)
                   end;
-              (_Rec, [], NowBackfills0, MovesBeforeCompaction0, Acc) ->
-                  {Acc, NowBackfills0, MovesBeforeCompaction0}
+              (_Rec, [], NowBackfills0, MovesBeforeCompaction0, NowInFlight0, LeftCount0, Acc) ->
+                  {Acc, NowBackfills0, MovesBeforeCompaction0, NowInFlight0, LeftCount0}
           end),
 
     NewMovesLeft = MovesLeft -- SelectedMoves,
-    {NewLeftCount, NewNowInFlight} =
-        misc:letrec(
-          [SelectedMoves, LeftCount, NowInFlight],
-          fun (Rec, SelectedMoves0, LeftCount0, NowInFlight0) ->
-                  case SelectedMoves0 of
-                      [] ->
-                          {LeftCount0, NowInFlight0};
-                      [{_V, [Src|_], [Dst|_]} | RestMoves] ->
-                          LeftCount1 = case Src =:= Dst of
-                                           true ->
-                                               LeftCount0;
-                                           false ->
-                                               D = dict:update_counter(Src, -1, LeftCount0),
-                                               dict:update_counter(Dst, -1, D)
-                                       end,
-                          NowInFlight1 = dict:update_counter(Src, 1, NowInFlight0),
-                          NowInFlight2 = case Src =:= Dst of
-                                             true ->
-                                                 NowInFlight1;
-                                             _ ->
-                                                 dict:update_counter(Dst, 1, NowInFlight1)
-                                         end,
-                          Rec(Rec, RestMoves, LeftCount1, NowInFlight2)
-                  end
-          end),
 
     NewState = State#state{in_flight_backfills_per_node = NewNowBackfills,
                            in_flight_per_node = NewNowInFlight,

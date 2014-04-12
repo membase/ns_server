@@ -162,9 +162,10 @@ generate_a_map(VBucketsCount, ReplicasCount, Nodes) ->
 simulate_rebalance_log(Msg, Args) ->
     ?log_info(Msg, Args).
 
-simulate_rebalance(CurrentMap, TargetMap, BackfillsLimit, MovesBeforeCompaction) ->
+simulate_rebalance(CurrentMap, TargetMap, BackfillsLimit, MovesBeforeCompaction, MaxInflightMoves) ->
     S = prepare_verifier(vbucket_move_scheduler:prepare(CurrentMap, TargetMap,
                                                         BackfillsLimit, MovesBeforeCompaction,
+                                                        MaxInflightMoves,
                                                         fun simulate_rebalance_log/2),
                          BackfillsLimit, MovesBeforeCompaction),
 
@@ -250,14 +251,18 @@ simulate_rebalance_loop(S, InFlight, R, VirtualTime, Acc) ->
             end
     end.
 
-test_rebalance(Replicas, VBuckets, BackfillsLimit, MovesBeforeCompaction, NodesBefore, NodesAfter) ->
+test_rebalance(Replicas, VBuckets, BackfillsLimit, MovesBeforeCompaction, MaxInflightMoves,
+               NodesBefore, NodesAfter) ->
     InitialMap = generate_a_map(VBuckets, Replicas, NodesBefore),
     TargetMap = mb_map:generate_map(InitialMap, NodesAfter, []),
-    do_test_rebalance(VBuckets, BackfillsLimit, MovesBeforeCompaction, InitialMap, TargetMap).
+    do_test_rebalance(VBuckets, BackfillsLimit, MovesBeforeCompaction, MaxInflightMoves,
+                      InitialMap, TargetMap).
 
-do_test_rebalance(VBuckets, BackfillsLimit, MovesBeforeCompaction, InitialMap, TargetMap) ->
+do_test_rebalance(VBuckets, BackfillsLimit, MovesBeforeCompaction, MaxInflightMoves,
+                  InitialMap, TargetMap) ->
     try
-        {S, _VirtualTime, _} = simulate_rebalance(InitialMap, TargetMap, BackfillsLimit, MovesBeforeCompaction),
+        {S, _VirtualTime, _} = simulate_rebalance(InitialMap, TargetMap, BackfillsLimit,
+                                                  MovesBeforeCompaction, MaxInflightMoves),
         AllMoves = all_performed_moves(S),
         InitialIndexed = lists:zip(lists:seq(0, VBuckets-1), InitialMap),
         FinalIndexed =
@@ -304,7 +309,7 @@ rebalance_4_to_3_test_() ->
             Title = lists:flatten(io_lib:format("4->3: replicas: ~p, vbuckets: ~p, limit: ~p, countdown: ~p, remove: ~p",
                                                 [R, VBs, L, C, Out])),
             Fun = fun () ->
-                          test_rebalance(R, VBs, L, C, Nodes, lists:delete(Out, Nodes))
+                          test_rebalance(R, VBs, L, C, C, Nodes, lists:delete(Out, Nodes))
                   end,
             {timeout, 120, {Title, Fun}}
         end || R <- [1,0,3],
@@ -331,7 +336,7 @@ rebalance_11_to_13_test_() ->
                         [R, VBs, L, C, [In1, In2]])),
             Fun = fun () ->
                           Before = Nodes -- [In1, In2],
-                          test_rebalance(R, VBs, L, C, Before, Nodes)
+                          test_rebalance(R, VBs, L, C, C, Before, Nodes)
                   end,
             {timeout, 120, {Title, Fun}}
         end || R <- [1,0,2],
@@ -343,20 +348,22 @@ rebalance_11_to_13_test_() ->
                In1 =/= In2,
                maybe_filter_out_11_to_13(R, VBs, L, C, In1, In2)])}.
 
-run_rebalance_after_data_loss(Nodes, FailedOverNodes, VBuckets, Replicas, BackfillsLimit, MovesBeforeCompaction) ->
+run_rebalance_after_data_loss(Nodes, FailedOverNodes, VBuckets, Replicas,
+                              BackfillsLimit, MovesBeforeCompaction, MaxInflightMoves) ->
     [] = FailedOverNodes -- Nodes,
     InitialMap = generate_a_map(VBuckets, Replicas, Nodes),
     AfterFailover = lists:foldl(fun (ToRemove, Map0) ->
                                         mb_map:promote_replicas(Map0, [ToRemove])
                                 end, InitialMap, FailedOverNodes),
     TargetMap = mb_map:generate_map(AfterFailover, Nodes, []),
-    do_test_rebalance(VBuckets, BackfillsLimit, MovesBeforeCompaction, AfterFailover, TargetMap).
+    do_test_rebalance(VBuckets, BackfillsLimit, MovesBeforeCompaction, MaxInflightMoves,
+                      AfterFailover, TargetMap).
 
 rebalance_after_data_loss_test() ->
-    run_rebalance_after_data_loss([a, b, c, d, e, f], [a, c], 16, 1, 1, 2).
+    run_rebalance_after_data_loss([a, b, c, d, e, f], [a, c], 16, 1, 1, 2, 2).
 
 rebalance_after_data_loss_no_replicas_test() ->
-    run_rebalance_after_data_loss([a, b, c, d, e, f], [a, c], 16, 0, 1, 2).
+    run_rebalance_after_data_loss([a, b, c, d, e, f], [a, c], 16, 0, 1, 2, 2).
 
 simulate_that_rebalance() ->
     ok = application:start(ale),
@@ -372,7 +379,7 @@ simulate_that_rebalance() ->
 
     Before = generate_a_map(256, 0, [a, b, c, d]),
     After = mb_map:generate_map(Before, [a, b, c], []),
-    {_, _, Events} = simulate_rebalance(Before, After, 1, 16),
+    {_, _, Events} = simulate_rebalance(Before, After, 1, 16, 16),
     {ok, F} = file:open("simulate-results", [write, binary]),
     Rows =
         [begin

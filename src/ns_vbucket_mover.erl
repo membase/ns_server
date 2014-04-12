@@ -23,6 +23,7 @@
 
 -define(MAX_MOVES_PER_NODE, ns_config:read_key_fast(rebalance_moves_per_node, 1)).
 -define(MOVES_BEFORE_COMPACTION, ns_config:read_key_fast(rebalance_moves_before_compaction, 64)).
+-define(MAX_INFLIGHT_MOVES_PER_NODE, ns_config:read_key_fast(rebalance_inflight_moves_per_node, 64)).
 
 -define(TAP_STATS_LOGGING_INTERVAL, 10*60*1000).
 
@@ -142,6 +143,7 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
                 map = map_to_array(OldMap),
                 moves_scheduler_state = vbucket_move_scheduler:prepare(OldMap, NewMap,
                                                                        ?MAX_MOVES_PER_NODE, ?MOVES_BEFORE_COMPACTION,
+                                                                       ?MAX_INFLIGHT_MOVES_PER_NODE,
                                                                        fun (Msg, Args) -> ?log_debug(Msg, Args) end),
                 progress_callback=ProgressCallback,
                 all_nodes_set=AllNodesSet,
