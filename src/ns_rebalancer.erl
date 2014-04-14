@@ -513,7 +513,6 @@ run_mover(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets, Map, FastForw
             exit(stopped)
     end.
 
-
 unbalanced(Map, Topology, BucketConfig) ->
     Servers = proplists:get_value(servers, BucketConfig, []),
     NumServers = length(Servers),

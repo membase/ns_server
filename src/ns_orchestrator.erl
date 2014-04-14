@@ -1056,7 +1056,8 @@ needs_rebalance(Nodes, BucketConfig, Topology) ->
                         ns_bucket:needs_upgrade_to_upr(BucketConfig) orelse
                         lists:sort(Nodes) /= lists:sort(Servers) orelse
                         ns_rebalancer:map_options_changed(Topology, BucketConfig) orelse
-                        ns_rebalancer:unbalanced(Map, Topology, BucketConfig)
+                        (ns_rebalancer:unbalanced(Map, Topology, BucketConfig) andalso
+                         not lists:keymember(Map, 1, ns_bucket:past_vbucket_maps()))
             end;
         memcached ->
             lists:sort(Nodes) /= lists:sort(Servers)

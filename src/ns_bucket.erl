@@ -345,8 +345,8 @@ bucket_failover_safety(BucketConfig, LiveNodes, Topology) ->
                     true ->
                         Map = proplists:get_value(map, BucketConfig),
                         case ns_rebalancer:map_options_changed(Topology, BucketConfig)
-                            orelse ns_rebalancer:unbalanced(Map, Topology, BucketConfig) of
-
+                            orelse (ns_rebalancer:unbalanced(Map, Topology, BucketConfig) andalso
+                                    not lists:keymember(Map, 1, past_vbucket_maps())) of
                             true ->
                                 ?FS_SOFT_REBALANCE_NEEDED;
                             _ ->
