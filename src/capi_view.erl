@@ -19,7 +19,7 @@
 -include_lib("couch_index_merger/include/couch_index_merger.hrl").
 
 %% Public API
--export([handle_view_req/3]).
+-export([handle_view_req/3, all_docs_db_req/2]).
 
 
 handle_view_req(Req, Db, DDoc) when Db#db.filepath =/= undefined ->
@@ -38,3 +38,10 @@ handle_view_req(#httpd{method='POST',
 
 handle_view_req(Req, _Db, _DDoc) ->
     couch_httpd:send_method_not_allowed(Req, "GET,POST,HEAD").
+
+all_docs_db_req(_Req,
+                #db{filepath = undefined}) ->
+    throw({bad_request, "_all_docs is no longer supported"});
+
+all_docs_db_req(Req, Db) ->
+    couch_httpd_db:db_req(Req, Db).
