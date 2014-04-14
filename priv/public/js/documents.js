@@ -14,7 +14,7 @@
    limitations under the License.
  **/
 
- var documentErrors = {
+var documentErrors = {
   '502': '(The node containing that document is currently down)',
   '503': '(The data has not yet loaded, please wait...)',
   idEmpty: 'Document ID cannot be empty',
@@ -29,7 +29,7 @@
   shouldNotBeNull: "JSON object cannot be null",
   shouldBeAnObject: "JSON should represent an object",
   shouldNotBeAnArray: "JSON should not be an array"
- }
+};
 
 function createDocumentsCells(ns, modeCell, capiBaseCell, bucketsListCell) {
   //bucket
@@ -375,12 +375,20 @@ var DocumentsSection = {
       showCodeEditor(!show);
     }
 
+    function showHideEditingNotice(notice) {
+      var text = notice || '';
+      editingNotice.toggle(!!notice);
+      editingNotice.text(text);
+      editingNotice.attr('title', text);
+      currenDocCont.toggleClass('dynamic_notice_on', !!notice);
+    }
+
     var documentSpinner;
 
     function showDocumentPendingState(show) {
       enableDeleteBtn(!show);
       enableSaveAsBtn(!show);
-      editingNotice.text('');
+      showHideEditingNotice(false);
       if (show) {
         if (!documentSpinner) {
           documentSpinner = overlayWithSpinner(codeMirror);
@@ -460,7 +468,7 @@ var DocumentsSection = {
       enableSaveAsBtn(!isError);
       showCodeEditor(!isError);
 
-      editingNotice.text(isError ? buildErrorMessage(obj) : '');
+      showHideEditingNotice(isError && buildErrorMessage(obj));
       self.jsonCodeEditor.setOption("onChange", isError ? function () {} : jsonCodeEditorOnChange);
       self.jsonCodeEditor.setValue(isError ? '' : JSON.stringify(obj.json, null, "  "));
     }
@@ -480,7 +488,7 @@ var DocumentsSection = {
     }
 
     function onDocValueUpdate(json) {
-      editingNotice.text('');
+      showHideEditingNotice(false);
       try {
         if (isJsonOverLimited(json)) {
           throw generateWarning(documentErrors.documentLimitError);
@@ -491,7 +499,7 @@ var DocumentsSection = {
         enableSaveAsBtn(false);
         enableDeleteBtn(true);
         error.explanatoryMessage = documentErrors.invalidDoc;
-        editingNotice.text(buildErrorMessage(error));
+        showHideEditingNotice(buildErrorMessage(error));
         return false;
       }
       return parsedJSON;
@@ -725,7 +733,7 @@ var DocumentsSection = {
 
       docSaveBtn.click(function (e) {
         e.preventDefault();
-        editingNotice.text('');
+        showHideEditingNotice(false);
         var json = onDocValueUpdate(self.jsonCodeEditor.getValue());
         if (json) {
           enableSaveBtn(false);
@@ -737,7 +745,7 @@ var DocumentsSection = {
             showDocumentPendingState(false);
             enableSaveBtn(true);
             if (error.reason) {
-              editingNotice.text(error.reason).show();
+              showHideEditingNotice(error.reason);
             } else {
               unexpected();
             }
