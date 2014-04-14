@@ -40,8 +40,7 @@
                 use_replica_index :: boolean(),
                 master_db_watcher :: pid(),
                 wanted_states :: [missing | active | replica],
-                rebalance_states :: [rebalance_vbucket_state()],
-                usable_vbuckets}).
+                rebalance_states :: [rebalance_vbucket_state()]}).
 
 set_vbucket_states(Bucket, WantedStates, RebalanceStates) ->
     gen_server:call(server(Bucket), {set_vbucket_states, WantedStates, RebalanceStates}, infinity).
@@ -81,29 +80,24 @@ reset_master_vbucket(Bucket) ->
           end)())).
 
 
-compute_index_states(WantedStates, RebalanceStates, ExistingVBuckets) ->
+compute_index_states(WantedStates, RebalanceStates) ->
     AllVBs = lists:seq(0, erlang:length(WantedStates)-1),
     Triples = lists:zip3(AllVBs,
                          WantedStates,
                          RebalanceStates),
-    % Ensure Active, Passive and Replica are ordsets
+                                                % Ensure Active, Passive and Replica are ordsets
     {Active, Passive, Replica} = lists:foldr(
                                    fun ({VBucket, WantedState, TmpState}, {AccActive, AccPassive, AccReplica}) ->
-                                           case sets:is_element(VBucket, ExistingVBuckets) of
-                                               true ->
-                                                   case {WantedState, TmpState} of
-                                                       %% {replica, passive} ->
-                                                       %%     {AccActibe, [VBucket | AccPassive], [VBucket | AccReplica]};
-                                                       {_, passive} ->
-                                                           {AccActive, [VBucket | AccPassive], AccReplica};
-                                                       {active, _} ->
-                                                           {[VBucket | AccActive], AccPassive, AccReplica};
-                                                       {replica, _} ->
-                                                           {AccActive, AccPassive, [VBucket | AccReplica]};
-                                                       _ ->
-                                                           {AccActive, AccPassive, AccReplica}
-                                                   end;
-                                               false ->
+                                           case {WantedState, TmpState} of
+                                               %% {replica, passive} ->
+                                               %%     {AccActibe, [VBucket | AccPassive], [VBucket | AccReplica]};
+                                               {_, passive} ->
+                                                   {AccActive, [VBucket | AccPassive], AccReplica};
+                                               {active, _} ->
+                                                   {[VBucket | AccActive], AccPassive, AccReplica};
+                                               {replica, _} ->
+                                                   {AccActive, AccPassive, [VBucket | AccReplica]};
+                                               _ ->
                                                    {AccActive, AccPassive, AccReplica}
                                            end
                                    end,
@@ -115,21 +109,12 @@ compute_index_states(WantedStates, RebalanceStates, ExistingVBuckets) ->
     PauseVBuckets = [VBucket
                      || {VBucket, WantedState, TmpState} <- Triples,
                         TmpState =:= paused,
-                        sets:is_element(VBucket, ExistingVBuckets),
                         begin
                             active = WantedState,
                             true
                         end],
     UnpauseVBuckets = ordsets:subtract(AllVBs, PauseVBuckets),
     {Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets}.
-
-get_usable_vbuckets_set(Bucket) ->
-    PrefixLen = erlang:length(Bucket) + 1,
-    sets:from_list(
-      [list_to_integer(binary_to_list(VBucketName))
-       || FullName <- ns_storage_conf:bucket_databases(Bucket),
-          <<_:PrefixLen/binary, VBucketName/binary>> <- [FullName],
-          VBucketName =/= <<"master">>]).
 
 do_apply_vbucket_states(SetName, Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, State) ->
     DDocIds = get_live_ddoc_ids(State),
@@ -153,11 +138,10 @@ do_apply_vbucket_states(SetName, Active, Passive, MainCleanup, Replica, ReplicaC
 
 change_vbucket_states(#state{bucket = Bucket,
                              wanted_states = WantedStates,
-                             rebalance_states = RebalanceStates,
-                             usable_vbuckets = UsableVBuckets} = State) ->
+                             rebalance_states = RebalanceStates} = State) ->
     SetName = list_to_binary(Bucket),
     {Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets} =
-        compute_index_states(WantedStates, RebalanceStates, UsableVBuckets),
+        compute_index_states(WantedStates, RebalanceStates),
     do_apply_vbucket_states(SetName, Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, State).
 
 start_link(Bucket) ->
@@ -216,19 +200,13 @@ init({Bucket, UseReplicaIndex, NumVBuckets}) ->
     [{ServerName, N} ! replicate_newnodes_docs ||
         N <- get_remote_nodes(Bucket)],
 
-    ns_pubsub:subscribe_link(mc_couch_events,
-                             mk_mc_couch_event_handler(Bucket), ignored),
-
     State = #state{bucket=Bucket,
                    proxy_server_name = ServerName,
                    local_docs = Docs,
                    num_vbuckets = NumVBuckets,
                    use_replica_index=UseReplicaIndex,
                    wanted_states = [],
-                   rebalance_states = [],
-                   usable_vbuckets = get_usable_vbuckets_set(Bucket)},
-
-    ?log_debug("Usable vbuckets:~n~p", [sets:to_list(State#state.usable_vbuckets)]),
+                   rebalance_states = []},
 
     proc_lib:init_ack({ok, self()}),
 
@@ -289,31 +267,28 @@ handle_call({set_vbucket_states, WantedStates, RebalanceStates}, _From,
 
 handle_call({delete_vbucket, VBucket}, _From, #state{bucket = Bucket,
                                                      wanted_states = [],
-                                                     usable_vbuckets = UsableVBuckets,
                                                      rebalance_states = RebalanceStates} = State) ->
     [] = RebalanceStates,
     ?log_info("Deleting vbucket ~p from all indexes", [VBucket]),
     SetName = list_to_binary(Bucket),
     do_apply_vbucket_states(SetName, [], [], [VBucket], [], [VBucket], [], [], State),
-    {reply, ok, State#state{usable_vbuckets = sets:del_element(VBucket, UsableVBuckets)}};
-handle_call({delete_vbucket, VBucket}, _From, #state{usable_vbuckets = UsableVBuckets,
-                                                     wanted_states = WantedStates,
-                                                     rebalance_states = RebalanceStates} = State) ->
-    NewUsableVBuckets = sets:del_element(VBucket, UsableVBuckets),
-    case NewUsableVBuckets =:= UsableVBuckets of
+    {reply, ok, State};
+handle_call({delete_vbucket, VBucket}, _From,
+            #state{wanted_states = WantedStates,
+                   rebalance_states = RebalanceStates} = State) ->
+    NewWantedStates = misc:nthreplace(VBucket + 1, missing, WantedStates),
+    NewRebalanceStates = misc:nthreplace(VBucket + 1, undefined, RebalanceStates),
+
+    case NewWantedStates =:= WantedStates
+        andalso NewRebalanceStates =:= RebalanceStates of
         true ->
+            %% skipping vbucket changes pass iff it's totally
+            %% uninteresting vbucket
             {reply, ok, State};
-        _ ->
-            NewState = State#state{usable_vbuckets = NewUsableVBuckets},
-            case (lists:nth(VBucket+1, WantedStates) =:= missing
-                  andalso lists:nth(VBucket+1, RebalanceStates) =:= undefined) of
-                true ->
-                    %% skipping vbucket changes pass iff it's totally
-                    %% uninteresting vbucket
-                    ok;
-                false ->
-                    change_vbucket_states(NewState)
-            end,
+        false ->
+            NewState = State#state{wanted_states = NewWantedStates,
+                                   rebalance_states = NewRebalanceStates},
+            change_vbucket_states(NewState),
             {reply, ok, NewState}
     end;
 handle_call(reset_master_vbucket, _From, #state{bucket = Bucket,
@@ -376,21 +351,6 @@ handle_info({update_ddoc, DDocId, Deleted0}, State) ->
             ok
     end,
     {noreply, State};
-
-handle_info(refresh_usable_vbuckets,
-            #state{bucket=Bucket,
-                   usable_vbuckets = OldUsableVBuckets} = State) ->
-    misc:flush(refresh_usable_vbuckets),
-    NewUsableVBuckets = get_usable_vbuckets_set(Bucket),
-    case NewUsableVBuckets =:= OldUsableVBuckets of
-        true ->
-            {noreply, State};
-        false ->
-            State2 = State#state{usable_vbuckets = NewUsableVBuckets},
-            ?log_debug("Usable vbuckets:~n~p", [sets:to_list(State2#state.usable_vbuckets)]),
-            change_vbucket_states(State2),
-            {noreply, State2}
-    end;
 
 handle_info({'EXIT', Pid, Reason}, State) ->
     ?views_error("Linked process ~p died unexpectedly: ~p", [Pid, Reason]),
@@ -534,21 +494,6 @@ apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
                     erlang:raise(T, E, Stack)
             end
     end.
-
-mk_mc_couch_event_handler(Bucket) ->
-    Self = self(),
-
-    fun (Event, _) ->
-            handle_mc_couch_event(Self, Bucket, Event)
-    end.
-
-handle_mc_couch_event(Self, Bucket,
-                      {set_vbucket, Bucket, VBucket, State, Checkpoint}) ->
-    ?views_debug("Got set_vbucket event for ~s/~b. Updated state: ~p (~B)",
-                 [Bucket, VBucket, State, Checkpoint]),
-    Self ! refresh_usable_vbuckets;
-handle_mc_couch_event(_, _, _) ->
-    ok.
 
 replicate_newnodes_docs(State) ->
     #state{bucket=Bucket,
