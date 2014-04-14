@@ -1340,16 +1340,6 @@ input[type=number].size {width:4em;}
 
 #view_details .results_block .list {table-layout:fixed;}
 
-.disk_concurrency_settings {line-height: 24px; white-space: nowrap;}
-.disk_concurrency_settings .for-threads-number span,
-.disk_concurrency_settings .for-threads-number label {float:none; display: -moz-inline-stack; display: inline-block; zoom: 1; *display: inline;}
-.disk_concurrency_settings .for-threads-number {min-height: 25px;}
-.disk_concurrency_settings .for-threads-number input {width: 16px;}
-.disk_concurrency_settings .for-threads-number {padding-left:20px;}
-.dialog.bucket_details .disk_concurrency_settings p {margin-left: 10px;}
-.disk_concurrency_settings .error-container {float:none; font-size: 9px; display: none; width: auto; padding: 0; font-style: normal;}
-.disk_concurrency_settings .error-container.active {display: -moz-inline-stack; display: inline-block; zoom: 1; *display: inline;}
-
 .account_management_container fieldset {overflow: hidden;}
 .account_management_container label {display: block; padding: 5px 0;}
 .reset_roadmin_form label,
@@ -1405,3 +1395,9 @@ input[type=number].size {width:4em;}
 .dynamic_under-25 .only-when-25 {display: none!important;}
 .dynamic_roadmin-mode .when-roadmin-avoid-me {display: none!important;}
 .dynamic_roadmin-mode .when-roadmin-hide-me {visibility: hidden!important;}
+
+.bucket-io-priority label {margin: 0; white-space: nowrap;}
+.bucket-io-priority div {padding-left: 20px; line-height: 24px;}
+.bucket_details .bucket-io-priority div span {display: inline-block; vertical-align: top; float: none; width: auto!important;}
+.bucket-io-priority p {display: none; margin-top: 14px;}
+.bucket-io-priority a {margin-left: 60px;}

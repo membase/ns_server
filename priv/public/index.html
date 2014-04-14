@@ -1935,12 +1935,28 @@
       <label style="padding-left: 20px;"><input type="checkbox" name="replicaIndex" value="1" style="margin-right:5px;"/>Index replicas</label>
     </fieldset> <!-- .persistent-only -->
 
-    <fieldset class="persistent-only disk_concurrency_settings">
-      <legend>Bucket Priority</legend>
+    <fieldset class="persistent-only bucket-io-priority">
+      <legend>Bucket I/O Priority</legend>
 
-      <label class="for-threads-number">
-        <span>Priority of this bucket when compared to other buckets:</span><input name="threadsNumber" class="focusme" size="1" maxlength="1"/><span style="margin-left: 0.5em;">(Min = 2, Max = 8)</span><br><i class="error-container err-threadsNumber"></i>
-      </label>
+      <div>
+        <span>
+          Set the bucket I/O priority:
+        </span>
+        <span>
+          <label>
+            <input type="radio" name="threadsNumber" value="8" checked="true"> High (default)
+          </label>
+          <label>
+            <input type="radio" name="threadsNumber" value="3"> Low
+          </label>
+        </span>
+        <a href="#" class="more_info">
+          What's this?
+        </a>
+        <p class="more_info">
+          This is an advanced setting for IO optimization by setting the bucket I/O priority.
+        </p>
+      </div>
     </fieldset> <!-- .persistent-only -->
 
     <fieldset class="auto_compaction persistent-only">
@@ -2941,13 +2957,29 @@
         <label style="padding-left: 20px; clear:both;"><input type="checkbox" name="replicaIndex" value="1" style="margin-right:5px;"/>Index replicas</label>
       </div><!-- .persistent-only -->
 
-      <div class="persistent-only disk_concurrency_settings">
-        <h2>Bucket Priority</h2>
+      <div class="persistent-only bucket-io-priority">
+        <h2>Bucket I/O Priority</h2>
 
-        <label class="for-threads-number">
-          <span>Priority of this bucket when compared to other buckets:</span><input name="threadsNumber" class="focusme" size="1" maxlength="1"/><span style="margin-left: 0.5em;">(Min = 2, Max = 8)</span><br><i class="error-container err-threadsNumber"></i>
-        </label>
-      </div><!-- .persistent-only -->
+        <div>
+          <span>
+            Set the bucket I/O priority:
+          </span>
+          <span>
+            <label>
+              <input type="radio" name="threadsNumber" value="8"  checked="true"> High (default)
+            </label>
+            <label>
+              <input type="radio" name="threadsNumber" value="3"> Low
+            </label>
+          </span>
+          <a href="#" class="more_info">
+            What's this?
+          </a>
+          <p class="more_info">
+            This is an advanced setting for IO optimization by setting the bucket I/O priority.
+          </p>
+        </div>
+      </div> <!-- .persistent-only -->
 
       <h2>Flush</h2>
       <label class="for-enable-flush">

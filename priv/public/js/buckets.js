@@ -203,9 +203,14 @@ var BucketDetailsDialog = mkClass({
 
     var dialog = this.dialog = $('#' + this.dialogID);
 
-    dialog.find('#js_cache_metadata_block a.more_info').unbind('click').click(function(e) {
-      e.preventDefault();
-      dialog.find('#js_cache_metadata_block p.more_info').slideToggle();
+    var whatThisLinks = dialog.find('a.more_info');
+    var whatThisTexts = dialog.find('p.more_info');
+
+    whatThisLinks.each(function (index) {
+      $(this).unbind('click').click(function (event) {
+        event.preventDefault();
+        whatThisTexts.eq(index).slideToggle();
+      });
     });
 
     dialog.removeClass('editing').removeClass('creating');
