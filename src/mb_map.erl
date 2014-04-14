@@ -588,13 +588,35 @@ do_score_maps(star, CurrentMap, Maps) ->
 
 best_map(Options, Maps) ->
     Topology = proplists:get_value(replication_topology, Options, chain),
-    do_best_map(Topology, Maps).
+    History = proplists:get_value(maps_history, Options, []),
 
-do_best_map(chain, Maps) ->
-    misc:min_by(fun map_scores_less/2, Maps);
-do_best_map(star, Maps) ->
-    misc:keymin(2, Maps).
+    Less0 =
+        case Topology of
+            chain ->
+                fun map_scores_less/2;
+            star ->
+                fun (X, Y) -> X < Y end
+        end,
 
+    Less = fun (X, Y) ->
+                  case {Less0(X, Y), Less0(Y, X)} of
+                      {true, false} -> true;
+                      {false, true} -> false;
+                      {false, false} ->
+                          {MapX, _} = X,
+                          {MapY, _} = Y,
+
+                          case {lists:keymember(MapX, 1, History),
+                                lists:keymember(MapY, 1, History)} of
+                              {true, false} ->
+                                  true;
+                              _ ->
+                                  false
+                          end
+                  end
+          end,
+
+    misc:min_by(Less, Maps).
 
 %%
 %% Internal functions
