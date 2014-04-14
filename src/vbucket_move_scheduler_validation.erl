@@ -3,7 +3,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([prepare_verifier/3, choose_action/1, extract_progress/1,
+-export([prepare_verifier/4, choose_action/1, extract_progress/1,
         note_backfill_done/2,
         note_move_completed/2,
         note_compaction_done/2,
@@ -14,6 +14,7 @@
 
 -record(vs, { %% vs is verifier state
           max_backfills_per_node :: pos_integer(),
+          max_moves_per_node :: pos_integer(),
           moves_before_compaction :: pos_integer(),
           sched_state :: tuple(),
           all_performed_moves :: list(),
@@ -23,8 +24,9 @@
           running_compactions :: list()
          }).
 
-prepare_verifier(SchedState, ConcurrentBackfills, MovesBeforeCompaction) ->
+prepare_verifier(SchedState, ConcurrentBackfills, MovesBeforeCompaction, MaxInflightMoves) ->
     #vs{max_backfills_per_node = ConcurrentBackfills,
+        max_moves_per_node = MaxInflightMoves,
         moves_before_compaction = MovesBeforeCompaction,
         sched_state = SchedState,
         all_performed_moves = [],
@@ -113,21 +115,22 @@ all_performed_moves(#vs{all_performed_moves = M}) ->
 
 extract_move({_Vb, [Src|_], [Dst|_]}) -> {Src, Dst}.
 
-check_concurrent_backfills(-1 = _ConcurrentBackfills, _Node, _RunningB, Acc) ->
+check_concurrent_moves(-1 = _ConcurrentMoves, _Node, _RunningB, Acc) ->
     Acc;
-check_concurrent_backfills(_ConcurrentBackfills, _Node, [] = _RunningB, _Acc) ->
+check_concurrent_moves(_ConcurrentMoves, _Node, [] = _RunningB, _Acc) ->
     true;
-check_concurrent_backfills(ConcurrentBackfills, Node, [M | RestRunningB], Acc) ->
+check_concurrent_moves(ConcurrentMoves, Node, [M | RestRunningB], Acc) ->
     {Src, Dst} = extract_move(M),
     case Src =:= Node orelse Dst =:= Node of
         true ->
-            check_concurrent_backfills(ConcurrentBackfills-1, Node, RestRunningB, [M | Acc]);
+            check_concurrent_moves(ConcurrentMoves-1, Node, RestRunningB, [M | Acc]);
         _ ->
-            check_concurrent_backfills(ConcurrentBackfills, Node, RestRunningB, Acc)
+            check_concurrent_moves(ConcurrentMoves, Node, RestRunningB, Acc)
     end.
 
 verify_starting_move(M, #vs{running_backfills = RunningB,
                             max_backfills_per_node = ConcurrentBackfills,
+                            max_moves_per_node = ConcurrentMoves,
                             running_moves = RunningM,
                             running_compactions = RunningC}) ->
     miniassert(not lists:member(M, RunningM), "not in moves"),
@@ -140,8 +143,14 @@ verify_starting_move(M, #vs{running_backfills = RunningB,
         _ ->
             miniassert(not lists:member(Src, RunningC), "src is not compacted"),
             miniassert(not lists:member(Dst, RunningC), "dst is not compacted"),
-            miniassert(check_concurrent_backfills(ConcurrentBackfills, Src, RunningB, []), "src is not busy"),
-            miniassert(check_concurrent_backfills(ConcurrentBackfills, Dst, RunningB, []), "dst is not busy")
+            miniassert(check_concurrent_moves(ConcurrentBackfills, Src, RunningB, []),
+                       "max number of backfills is not reached on src"),
+            miniassert(check_concurrent_moves(ConcurrentBackfills, Dst, RunningB, []),
+                       "max number of backfills is not reached on dst"),
+            miniassert(check_concurrent_moves(ConcurrentMoves, Src, RunningM, []),
+                       "max number of moves is not reached on src"),
+            miniassert(check_concurrent_moves(ConcurrentMoves, Dst, RunningM, []),
+                       "max number of moves is not reached on dst")
     end.
 
 verify_starting_compaction(N, #vs{running_moves = RunningM,
@@ -167,7 +176,7 @@ simulate_rebalance(CurrentMap, TargetMap, BackfillsLimit, MovesBeforeCompaction,
                                                         BackfillsLimit, MovesBeforeCompaction,
                                                         MaxInflightMoves,
                                                         fun simulate_rebalance_log/2),
-                         BackfillsLimit, MovesBeforeCompaction),
+                         BackfillsLimit, MovesBeforeCompaction, MaxInflightMoves),
 
     R = lists:foldl(fun (_, R0) ->
                             {_, R1} = random:uniform_s(R0),
@@ -306,16 +315,17 @@ rebalance_4_to_3_test_() ->
     {timeout, 120,
      maybe_parallel('4_to_3',
        [begin
-            Title = lists:flatten(io_lib:format("4->3: replicas: ~p, vbuckets: ~p, limit: ~p, countdown: ~p, remove: ~p",
-                                                [R, VBs, L, C, Out])),
+            Title = lists:flatten(io_lib:format("4->3: replicas: ~p, vbuckets: ~p, limit: ~p, countdown: ~p, maxmoves: ~p, remove: ~p",
+                                                [R, VBs, L, C, M, Out])),
             Fun = fun () ->
-                          test_rebalance(R, VBs, L, C, C, Nodes, lists:delete(Out, Nodes))
+                          test_rebalance(R, VBs, L, C, M, Nodes, lists:delete(Out, Nodes))
                   end,
             {timeout, 120, {Title, Fun}}
         end || R <- [1,0,3],
                VBs <- [16, 4, 2, 256],
                L <- [1,2],
                C <- [1,2,3],
+               M <- [1,2,3],
                Out <- Nodes,
                maybe_filter_out_4_to_3(R, VBs, L, C, Out)])}.
 
@@ -332,17 +342,18 @@ rebalance_11_to_13_test_() ->
        [begin
             Title = lists:flatten(
                       io_lib:format(
-                        "11->13: replicas: ~p, vbuckets: ~p, limit: ~p, countdown: ~p, add: ~p",
-                        [R, VBs, L, C, [In1, In2]])),
+                        "11->13: replicas: ~p, vbuckets: ~p, limit: ~p, countdown: ~p, maxmoves: ~p, add: ~p",
+                        [R, VBs, L, C, M, [In1, In2]])),
             Fun = fun () ->
                           Before = Nodes -- [In1, In2],
-                          test_rebalance(R, VBs, L, C, C, Before, Nodes)
+                          test_rebalance(R, VBs, L, C, M, Before, Nodes)
                   end,
             {timeout, 120, {Title, Fun}}
         end || R <- [1,0,2],
                VBs <- [64, 256],
                L <- [1,2],
                C <- [2,3],
+               M <- [2,3],
                In1 <- Nodes,
                In2 <- Nodes,
                In1 =/= In2,
