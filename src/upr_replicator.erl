@@ -49,6 +49,8 @@ init({ProducerNode, Bucket}) ->
     erlang:register(consumer_server_name(ProducerNode, Bucket), ConsumerConn),
 
     upr_proxy:connect_proxies(ConsumerConn, ProducerConn),
+
+    ?log_debug("initiated new upr replication with consumer side: ~p and producer side: ~p", [ConsumerConn, ProducerConn]),
     {ok, #state{
             producer_conn = ProducerConn,
             consumer_conn = ConsumerConn,
