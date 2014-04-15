@@ -53,9 +53,7 @@ get_detailed_progress() ->
     try
         gen_server:call({global, ?MODULE}, get_detailed_progress, 10000)
     catch
-        exit:{noproc, _} ->
-            not_running;
-        exit:{shutdown, _} ->
+        exit:_Reason ->
             not_running
     end.
 
