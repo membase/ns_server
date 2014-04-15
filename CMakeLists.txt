@@ -121,9 +121,9 @@ EXECUTE_PROCESS (COMMAND "${ERL_EXECUTABLE}" -noshell -eval
   OUTPUT_VARIABLE OTP_RELEASE)
 
 SET (dialyzer_args -Wno_return -Wno_improper_lists)
-IF (OTP_RELEASE MATCHES "^R1[5-9]B.*$$")
+IF (OTP_RELEASE MATCHES "^R?1[5-9].*$$")
   LIST (APPEND dialyzer_args -Wno_undefined_callbacks)
-ENDIF (OTP_RELEASE MATCHES "^R1[5-9]B.*$$")
+ENDIF ()
 ADD_CUSTOM_TARGET (ns_dialyzer
   COMMAND "${CMAKE_COMMAND}" -D "COUCHDB_BIN_DIR=${COUCHDB_BIN_DIR}"
   -D "DIALYZER_FLAGS=${dialyzer_args}"
