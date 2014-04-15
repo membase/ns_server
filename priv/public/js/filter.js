@@ -221,9 +221,19 @@ Filter.prototype = {
     var self = this;
     this.iterateInputs(function (name, type, val, el) {
       var row = el.parent();
-      if (row.get(0).style.display === 'none' || val === 'none' ||
-          (!val && type !== 'bool')) {
+      if (row.get(0).style.display === 'none' || val === 'none') {
         return;
+      }
+      if (!val) {
+        if (type != 'bool') {
+          return;
+        }
+        if (el.data('send-false') !== true) {
+          // if we're checkbox we usually not send false values except
+          // if markup actually asks us to send it (which is the case
+          // for inclusive_end option)
+          return;
+        }
       }
       rv[name] = val;
     });
