@@ -26,7 +26,7 @@
 %% API
 -export([set_vbucket_states/3, server/1,
          wait_index_updated/2, initiate_indexing/1, reset_master_vbucket/1,
-         get_safe_purge_seqs/1, delete_vbucket/2]).
+         get_safe_purge_seqs/1]).
 
 -include("couch_db.hrl").
 -include_lib("couch_set_view/include/couch_set_view.hrl").
@@ -44,9 +44,6 @@
 
 set_vbucket_states(Bucket, WantedStates, RebalanceStates) ->
     gen_server:call(server(Bucket), {set_vbucket_states, WantedStates, RebalanceStates}, infinity).
-
-delete_vbucket(Bucket, VBucket) ->
-    gen_server:call(server(Bucket), {delete_vbucket, VBucket}, infinity).
 
 wait_index_updated(Bucket, VBucket) ->
     gen_server:call(server(Bucket), {wait_index_updated, VBucket}, infinity).
@@ -265,32 +262,6 @@ handle_call({set_vbucket_states, WantedStates, RebalanceStates}, _From,
             {reply, ok, State2}
     end;
 
-handle_call({delete_vbucket, VBucket}, _From, #state{bucket = Bucket,
-                                                     wanted_states = [],
-                                                     rebalance_states = RebalanceStates} = State) ->
-    [] = RebalanceStates,
-    ?log_info("Deleting vbucket ~p from all indexes", [VBucket]),
-    SetName = list_to_binary(Bucket),
-    do_apply_vbucket_states(SetName, [], [], [VBucket], [], [VBucket], [], [], State),
-    {reply, ok, State};
-handle_call({delete_vbucket, VBucket}, _From,
-            #state{wanted_states = WantedStates,
-                   rebalance_states = RebalanceStates} = State) ->
-    NewWantedStates = misc:nthreplace(VBucket + 1, missing, WantedStates),
-    NewRebalanceStates = misc:nthreplace(VBucket + 1, undefined, RebalanceStates),
-
-    case NewWantedStates =:= WantedStates
-        andalso NewRebalanceStates =:= RebalanceStates of
-        true ->
-            %% skipping vbucket changes pass iff it's totally
-            %% uninteresting vbucket
-            {reply, ok, State};
-        false ->
-            NewState = State#state{wanted_states = NewWantedStates,
-                                   rebalance_states = NewRebalanceStates},
-            change_vbucket_states(NewState),
-            {reply, ok, NewState}
-    end;
 handle_call(reset_master_vbucket, _From, #state{bucket = Bucket,
                                                 local_docs = LocalDocs} = State) ->
     MasterVBucket = iolist_to_binary([Bucket, <<"/master">>]),

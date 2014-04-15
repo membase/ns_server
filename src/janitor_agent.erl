@@ -582,14 +582,10 @@ handle_call({if_rebalance, RebalancerPid, Subcall},
                        [RebalancerPid, RealRebalancerPid]),
             {reply, wrong_rebalancer_pid, State}
     end;
-handle_call({update_vbucket_state, VBucket, NormalState, RebalanceState, ReplicateFrom}, _From,
-            #state{bucket_name = BucketName,
-                   last_applied_vbucket_states = WantedVBuckets,
-                   rebalance_only_vbucket_states = RebalanceVBuckets} = State) ->
-    NewWantedVBuckets = misc:nthreplace(VBucket + 1, NormalState, WantedVBuckets),
-    NewRebalanceVBuckets = misc:nthreplace(VBucket + 1, RebalanceState, RebalanceVBuckets),
-    NewState = State#state{last_applied_vbucket_states = NewWantedVBuckets,
-                           rebalance_only_vbucket_states = NewRebalanceVBuckets},
+handle_call({update_vbucket_state, VBucket, NormalState, RebalanceState, ReplicateFrom}, _,
+            #state{bucket_name = BucketName} = State) ->
+    NewState = apply_new_vbucket_state(VBucket, NormalState, RebalanceState, State),
+
     %% TODO: consider infinite timeout. It's local memcached after all
     ok = ns_memcached:set_vbucket(BucketName, VBucket, NormalState),
     ok = replication_manager:change_vbucket_replication(BucketName, VBucket, ReplicateFrom),
@@ -684,9 +680,11 @@ handle_call({apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
                           || {Src, Pairs} <- misc:keygroup(1, lists:sort(WantedReplicas))],
     ok = replication_manager:set_incoming_replication_map(BucketName, WantedReplications),
     {reply, ok, State};
-handle_call({delete_vbucket, VBucket}, _From, #state{bucket_name = BucketName} = State) ->
-    ok = capi_set_view_manager:delete_vbucket(BucketName, VBucket),
-    {reply, ok = ns_memcached:delete_vbucket(BucketName, VBucket), State};
+handle_call({delete_vbucket, VBucket}, _From,
+            #state{bucket_name = BucketName} = State) ->
+    NewState = apply_new_vbucket_state(VBucket, missing, undefined, State),
+    pass_vbucket_states_to_set_view_manager(NewState),
+    {reply, ok = ns_memcached:delete_vbucket(BucketName, VBucket), NewState};
 handle_call({wait_index_updated, VBucket}, From, #state{bucket_name = Bucket} = State) ->
     State2 = spawn_rebalance_subprocess(
                State,
@@ -992,3 +990,12 @@ maybe_prime_replicators(#state{replicators_primed = true}) ->
     false;
 maybe_prime_replicators(#state{bucket_name = BucketName}) ->
     upr_sup:nuke(BucketName).
+
+apply_new_vbucket_state(VBucket, NormalState, RebalanceState, State) ->
+    #state{last_applied_vbucket_states = WantedVBuckets,
+           rebalance_only_vbucket_states = RebalanceVBuckets} = State,
+
+    NewWantedVBuckets = misc:nthreplace(VBucket + 1, NormalState, WantedVBuckets),
+    NewRebalanceVBuckets = misc:nthreplace(VBucket + 1, RebalanceState, RebalanceVBuckets),
+    State#state{last_applied_vbucket_states = NewWantedVBuckets,
+                rebalance_only_vbucket_states = NewRebalanceVBuckets}.
