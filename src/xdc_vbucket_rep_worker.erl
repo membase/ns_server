@@ -103,9 +103,11 @@ local_process_batch([], Cp, #httpdb{} = Target,
 local_process_batch([Mutation | Rest], Cp,
                     #httpdb{} = Target, Batch, BatchSize, BatchItems, XMemLoc) ->
     #upr_mutation{id = Key,
-                  rev = Rev,
+                  local_seq = KeySeq,
+                  rev = {RevA, _RevB} = Rev,
                   body = Body,
                   deleted = Deleted} = Mutation,
+    ?xdcr_trace("added mutation ~s@~B (rev = ~B-..) to outgoing batch", [Key, KeySeq, RevA]),
     Doc = case XMemLoc of
               nil ->
                   Doc0 = couch_doc:from_binary(Key, Body, true),
@@ -304,6 +306,9 @@ flush_docs_xmem(XMemLoc, DocsList) ->
 
     case RV of
         {ok, NumDocRepd, NumDocRejected} ->
+            ?xdcr_trace("xmem-flushed the following docs: ~s",
+                        [[<<"\"", I/binary, "\",">> || #doc{id = I} <- DocsList]]),
+
             ?xdcr_trace("out of total ~p docs, "
                         "# of docs accepted by remote: ~p "
                         "# of docs rejected by remote: ~p"
