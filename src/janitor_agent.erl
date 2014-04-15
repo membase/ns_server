@@ -586,8 +586,8 @@ handle_call({update_vbucket_state, VBucket, NormalState, RebalanceState, Replica
             #state{bucket_name = BucketName,
                    last_applied_vbucket_states = WantedVBuckets,
                    rebalance_only_vbucket_states = RebalanceVBuckets} = State) ->
-    NewWantedVBuckets = update_list_nth(VBucket + 1, WantedVBuckets, NormalState),
-    NewRebalanceVBuckets = update_list_nth(VBucket + 1, RebalanceVBuckets, RebalanceState),
+    NewWantedVBuckets = misc:nthreplace(VBucket + 1, NormalState, WantedVBuckets),
+    NewRebalanceVBuckets = misc:nthreplace(VBucket + 1, RebalanceState, RebalanceVBuckets),
     NewState = State#state{last_applied_vbucket_states = NewWantedVBuckets,
                            rebalance_only_vbucket_states = NewRebalanceVBuckets},
     %% TODO: consider infinite timeout. It's local memcached after all
@@ -887,11 +887,6 @@ set_rebalance_mref(Pid, State0) ->
             State#state{rebalance_mref = erlang:monitor(process, Pid),
                         rebalance_status = in_process}
     end.
-
-update_list_nth(Index, List, Value) ->
-    Tuple = list_to_tuple(List),
-    Tuple2 = setelement(Index, Tuple, Value),
-    tuple_to_list(Tuple2).
 
 spawn_rebalance_subprocess(#state{rebalance_subprocesses = Subprocesses} = State, From, Fun) ->
     Parent = self(),
