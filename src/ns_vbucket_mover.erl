@@ -69,7 +69,7 @@ assert_dict_mapping(Dict, E1, E2) ->
         {ok, E2} -> % note: E2 is bound
             Dict;
         {ok, _SomethingElse} ->
-            false
+            erlang:throw(not_swap)
     end.
 
 is_swap_rebalance(MapTriples, OldMap, NewMap) ->
@@ -90,10 +90,7 @@ is_swap_rebalance(MapTriples, OldMap, NewMap) ->
                             RemovedNodes =:= [] orelse ordsets:is_element(From, RemovedNodes) orelse erlang:throw(not_swap),
                             AddedNodes =:= [] orelse ordsets:is_element(To, AddedNodes) orelse erlang:throw(not_swap),
                             Dict2 = assert_dict_mapping(Dict, From, To),
-                            Dict2 =/= false orelse erlang:throw(not_swap),
-                            Dict3 = assert_dict_mapping(Dict2, To, From),
-                            Dict3 =/= false orelse erlang:throw(not_swap),
-                            Dict3
+                            assert_dict_mapping(Dict2, To, From)
                     end, Dict0, Changed)
           end, dict:new(), MapTriples),
         true

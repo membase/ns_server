@@ -94,7 +94,6 @@ start_recovery(BucketConfig) ->
 
 -spec get_recovery_map(#state{}) -> dict().
 get_recovery_map(#state{recovery_map=RecoveryMap}) ->
-    true = (RecoveryMap =/= undefined),
     RecoveryMap.
 
 -spec commit_vbucket(vbucket_id(), #state{}) ->
@@ -148,7 +147,6 @@ note_commit_vbucket_done(VBucket,
 
 -spec is_recovery_complete(#state{}) -> boolean().
 is_recovery_complete(#state{post_recovery_chains=Chains}) ->
-    true = (Chains =/= undefined),
     dict:size(Chains) =:= 0.
 
 
