@@ -25,6 +25,8 @@
 
 -include("xdc_replicator.hrl").
 
+-define(HTTP_RETRIES, 5).
+
 start_timer(#rep_state{rep_details=#rep{options=Options}} = State) ->
     AfterSecs = proplists:get_value(checkpoint_interval, Options),
     %% convert to milliseconds
@@ -263,9 +265,9 @@ send_post(Method, RemoteVBOpaque, RemoteCommitOpaque, HttpDB) ->
                end,
     BodyJSON = {BodyBase ++ BodyAdd1 ++ BodyAdd2},
 
-    RV = lhttpc:request(URL, "POST", Headers, ejson:encode(BodyJSON),
-                        HttpDB#httpdb.timeout,
-                        HttpDB#httpdb.lhttpc_options),
+    RV = send_retriable_http_request(URL, "POST", Headers, ejson:encode(BodyJSON),
+                                     HttpDB#httpdb.timeout,
+                                     HttpDB#httpdb.lhttpc_options),
     case RV of
         {ok, {{StatusCode, _ReasonPhrase}, _RespHeaders, RespBody}} ->
             case StatusCode of
@@ -278,6 +280,25 @@ send_post(Method, RemoteVBOpaque, RemoteCommitOpaque, HttpDB) ->
         {error, Reason} ->
             ?xdcr_error("Checkpointing related POST to ~s failed: ~p", [URL, Reason]),
             erlang:error({checkpoint_post_failed, Method, Reason})
+    end.
+
+send_retriable_http_request(URL, Method, Headers, Body, Timeout, HTTPOptions) ->
+    do_send_retriable_http_request(URL, Method, Headers, Body, Timeout, HTTPOptions, ?HTTP_RETRIES).
+
+do_send_retriable_http_request(URL, Method, Headers, Body, Timeout, HTTPOptions, Retries) ->
+    RV = lhttpc:request(URL, Method, Headers, Body, Timeout, HTTPOptions),
+    case RV of
+        {ok, _} ->
+            RV;
+        {error, Reason} ->
+            NewRetries = Retries - 1,
+            case NewRetries < 0 of
+                true ->
+                    RV;
+                _ ->
+                    ?xdcr_debug("Got http error doing ~s to ~s. Will retry. Error: ~p", [Method, URL, Reason]),
+                    do_send_retriable_http_request(URL, Method, Headers, Body, Timeout, HTTPOptions, NewRetries)
+            end
     end.
 
 build_commit_doc_id(Rep, Vb) ->
