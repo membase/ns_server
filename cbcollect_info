@@ -377,7 +377,7 @@ def make_product_task(guts, initargs_path):
                    log_file="stats.log")
          for kind in ["all", "checkpoint", "config", "dispatcher",
                       "klog", "kvstore", "kvtimings",
-                      "tap", "tapagg", "timings",
+                      "tap", "tapagg", "upr", "upragg", "timings",
                       ["raw", "memory"], ["raw", "allocator"],
                       "prev-vbucket", "vbucket", "vbucket-details",
                       "warmup"]],
