@@ -21,18 +21,12 @@
 -export([start_link/1]).
 
 start_link(BucketName) ->
-    case ns_bucket:get_bucket(BucketName) of
-        not_present ->
-            ignore;
-        {ok, BucketConfig} ->
-            case proplists:get_value(type, BucketConfig) of
-                memcached ->
-                    ignore;
-                _ ->
-                    Name = list_to_atom("terse_bucket_info_uploader-" ++ BucketName),
-                    work_queue:start_link(Name, fun () -> init(BucketName) end)
-            end
-    end.
+    single_bucket_sup:ignore_if_not_couchbase_bucket(
+      BucketName,
+      fun (_) ->
+              Name = list_to_atom("terse_bucket_info_uploader-" ++ BucketName),
+              work_queue:start_link(Name, fun () -> init(BucketName) end)
+      end).
 
 init(BucketName) ->
     Self = self(),

@@ -142,17 +142,15 @@ change_vbucket_states(#state{bucket = Bucket,
     do_apply_vbucket_states(SetName, Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, State).
 
 start_link(Bucket) ->
-    {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
-    case ns_bucket:bucket_type(BucketConfig) of
-        memcached ->
-            ignore;
-        _ ->
-            UseReplicaIndex = (proplists:get_value(replica_index, BucketConfig) =/= false),
-            VBucketsCount = proplists:get_value(num_vbuckets, BucketConfig),
+    single_bucket_sup:ignore_if_not_couchbase_bucket(
+      Bucket,
+      fun (BucketConfig) ->
+              UseReplicaIndex = (proplists:get_value(replica_index, BucketConfig) =/= false),
+              VBucketsCount = proplists:get_value(num_vbuckets, BucketConfig),
 
-            gen_server:start_link({local, server(Bucket)}, ?MODULE,
-                                  {Bucket, UseReplicaIndex, VBucketsCount}, [])
-    end.
+              gen_server:start_link({local, server(Bucket)}, ?MODULE,
+                                    {Bucket, UseReplicaIndex, VBucketsCount}, [])
+      end).
 
 nodeup_monitoring_loop(Parent) ->
     receive
