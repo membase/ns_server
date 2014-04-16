@@ -1116,14 +1116,20 @@ var IOCenter = (function () {
             return;
           }
           if (S.isNotFound(xhr)) {
+            var errorMarker = {};
             var missingValue = options.missingValue;
             if (!missingValue) {
-              missingValue = options.missingValueProducer ? options.missingValueProducer(xhr, options) : undefined;
+              missingValue = undefined;
+              if (options.missingValueProducer) {
+                missingValue = options.missingValueProducer(xhr, options, errorMarker);
+              }
             }
-            options.success.call(this,
-                                 missingValue,
-                                 'notfound', xhr);
-            return;
+            if (missingValue != errorMarker) {
+              options.success.call(this,
+                                   missingValue,
+                                   'notfound', xhr);
+              return;
+            }
           }
 
           // if our caller has it's own error handling strategy let him do it
