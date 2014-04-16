@@ -857,6 +857,8 @@ future.getPush = function (ajaxOptions, valueTransformer, nowValue, waitChange) 
     throw new Error("url is undefined");
   }
 
+  return future(sendRequest, options);
+
   function sendRequest(dataCallback) {
 
     function gotData(data) {
@@ -909,8 +911,6 @@ future.getPush = function (ajaxOptions, valueTransformer, nowValue, waitChange) 
 
     operation = IOCenter.performGet(options);
   }
-
-  return future(sendRequest, options);
 };
 
 // this guy holds queue of failed actions and tries to repeat one of
