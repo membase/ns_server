@@ -122,7 +122,7 @@ extract_ui_auth_token(Req) ->
     lookup_cookie(Req, ui_auth_cookie_name(Req)).
 
 generate_auth_cookie(Req, Token) ->
-    Options = [{path, "/"}, {http_only, true}, {max_age, ?UI_AUTH_EXPIRATION_SECONDS}],
+    Options = [{path, "/"}, {http_only, true}],
     mochiweb_cookies:cookie(ui_auth_cookie_name(Req), Token, Options).
 
 complete_uilogin(Req, Role) ->
