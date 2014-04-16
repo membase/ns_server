@@ -35,6 +35,7 @@
          is_read_only_auth/1,
          extract_ui_auth_token/1,
          complete_uilogin/2,
+         complete_uilogout/1,
          maybe_refresh_token/1,
          may_expose_bucket_auth/1]).
 
@@ -125,9 +126,18 @@ generate_auth_cookie(Req, Token) ->
     Options = [{path, "/"}, {http_only, true}],
     mochiweb_cookies:cookie(ui_auth_cookie_name(Req), Token, Options).
 
+kill_auth_cookie(Req) ->
+    Options = [{path, "/"}, {http_only, true}],
+    {Name, Content} = mochiweb_cookies:cookie(ui_auth_cookie_name(Req), "", Options),
+    {Name, Content ++ "; expires=Thu, 01 Jan 1970 00:00:00 GMT"}.
+
 complete_uilogin(Req, Role) ->
     Token = menelaus_ui_auth:generate_token(Role),
     CookieHeader = generate_auth_cookie(Req, Token),
+    Req:respond({200, [CookieHeader | add_header()], ""}).
+
+complete_uilogout(Req) ->
+    CookieHeader = kill_auth_cookie(Req),
     Req:respond({200, [CookieHeader | add_header()], ""}).
 
 maybe_refresh_token(Req) ->

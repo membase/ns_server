@@ -563,7 +563,7 @@ handle_uilogout(Req) ->
         Token ->
             menelaus_ui_auth:logout(Token)
     end,
-    Req:respond({200, [], []}).
+    menelaus_auth:complete_uilogout(Req).
 
 auth_bucket(Req, F, [ArgPoolId, ArgBucketId | RestArgs], ReadOnlyOk) ->
     case ns_bucket:get_bucket(ArgBucketId) of
