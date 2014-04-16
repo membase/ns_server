@@ -32,7 +32,13 @@
 -export([init/1, handle_packet/5, handle_call/4, handle_cast/3]).
 
 start_link(Bucket) ->
-    upr_proxy:start_link(notifier, get_connection_name(Bucket, node()), node(), Bucket, ?MODULE, [Bucket]).
+    single_bucket_sup:ignore_if_not_couchbase_bucket(
+      Bucket,
+      fun (_) ->
+              upr_proxy:start_link(notifier,
+                                   get_connection_name(Bucket, node()),
+                                   node(), Bucket, ?MODULE, [Bucket])
+      end).
 
 subscribe(Bucket, Partition, StartSeqNo, UUID, HighSeqNo) ->
     gen_server:call(server_name(Bucket), {subscribe, Partition, StartSeqNo, UUID, HighSeqNo}, infinity).
