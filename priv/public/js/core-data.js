@@ -302,11 +302,16 @@ var DAL = {
         return data;
       }
 
+      // NOTE: when this request gets 4xx it means cluster was
+      // re-initialized or auth is expired, so we should reload app
+      // into setup wizard or login form
+      function missingValueProducer(xhr, options, errorMarker) {
+        reloadApp();
+        return errorMarker;
+      }
+
       return future.getPush({url: url,
-                             // NOTE: when this request gets 404 it
-                             // means cluster was re-initialized, so
-                             // we should reload app into setup wizard
-                             missingValueProducer: _.bind(reloadApp, window, undefined)},
+                             missingValueProducer: missingValueProducer},
                             poolDetailsValueTransformer,
                             this.self.value, pushTimeout);
     });
