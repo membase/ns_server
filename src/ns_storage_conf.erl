@@ -24,14 +24,14 @@
 
 -export([memory_quota/1, change_memory_quota/2,
          setup_disk_storage_conf/2,
-         storage_conf/1, storage_conf_from_node_status/1, add_storage/4, remove_storage/2,
+         storage_conf/1, storage_conf_from_node_status/1,
          local_bucket_disk_usage/1,
          this_node_dbdir/0, this_node_ixdir/0, this_node_logdir/0,
          this_node_bucket_dbdir/1,
          delete_databases_and_files/1, delete_unused_buckets_db_files/0,
          bucket_databases/1]).
 
--export([node_storage_info/1, cluster_storage_info/0, cluster_storage_info/1, nodes_storage_info/1]).
+-export([cluster_storage_info/0, cluster_storage_info/1, nodes_storage_info/1]).
 
 -export([allowed_node_quota_range/1, allowed_node_quota_range/0,
          default_memory_quota/1,
@@ -193,30 +193,6 @@ storage_conf_from_node_status(NodeStatus) ->
               end,
     [{ssd, []},
      {hdd, [HDDInfo]}].
-
-% Quota is an integer or atom none.
-% Kind is atom ssd or hdd.
-%
-add_storage(_Node, "", _Kind, _Quota) ->
-    {error, invalid_path};
-
-add_storage(_Node, _Path, _Kind, _Quota) ->
-    % TODO.
-    ok.
-
-remove_storage(_Node, _Path) ->
-    % TODO.
-    {error, todo}.
-
-node_storage_info(Node) ->
-    case dict:find(Node, ns_doctor:get_nodes()) of
-        {ok, NodeInfo} ->
-            extract_node_storage_info(NodeInfo, Node);
-        _ -> []
-    end.
-
-extract_node_storage_info(NodeInfo, Node) ->
-    extract_node_storage_info(NodeInfo, Node, ns_config:get()).
 
 extract_node_storage_info(NodeInfo, Node, Config) ->
     {RAMTotal, RAMUsed, _} = proplists:get_value(memory_data, NodeInfo),
