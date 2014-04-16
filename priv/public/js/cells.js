@@ -867,8 +867,10 @@ future.getPush = function (ajaxOptions, valueTransformer, nowValue, waitChange) 
       etag = data && data.etag;
       // pass our data to cell
       if (dataCallback.continuing(data)) {
-        // and submit new request if we are not cancelled
-        _.defer(_.bind(sendRequest, null, dataCallback));
+        if (etag) {
+          // and submit new request if we are not cancelled
+          _.defer(_.bind(sendRequest, null, dataCallback));
+        }
       }
     }
 
