@@ -41,7 +41,10 @@
                 flushseq,
                 rebalancer_type :: undefined | rebalancer | upgrader,
                 rebalance_status = finished :: in_process | finished,
-                replicators_primed :: boolean()}).
+                replicators_primed :: boolean(),
+
+                apply_vbucket_states_queue :: queue(),
+                apply_vbucket_states_worker :: undefined | pid()}).
 
 -export([wait_for_bucket_creation/2, query_states/3,
          apply_new_bucket_config/5,
@@ -582,19 +585,13 @@ handle_call({if_rebalance, RebalancerPid, Subcall},
                        [RebalancerPid, RealRebalancerPid]),
             {reply, wrong_rebalancer_pid, State}
     end;
-handle_call({update_vbucket_state, VBucket, NormalState, RebalanceState, ReplicateFrom}, _,
-            #state{bucket_name = BucketName} = State) ->
+handle_call({update_vbucket_state, VBucket, NormalState, RebalanceState, _} = Call,
+            From, State) ->
     NewState = apply_new_vbucket_state(VBucket, NormalState, RebalanceState, State),
-
-    %% TODO: consider infinite timeout. It's local memcached after all
-    ok = ns_memcached:set_vbucket(BucketName, VBucket, NormalState),
-    ok = replication_manager:change_vbucket_replication(BucketName, VBucket, ReplicateFrom),
-    {reply, ok, pass_vbucket_states_to_set_view_manager(NewState)};
-handle_call({delete_vbucket, VBucket}, _From,
-            #state{bucket_name = BucketName} = State) ->
+    delegate_apply_vbucket_state(Call, From, NewState);
+handle_call({delete_vbucket, VBucket} = Call, From, State) ->
     NewState = apply_new_vbucket_state(VBucket, missing, undefined, State),
-    pass_vbucket_states_to_set_view_manager(NewState),
-    {reply, ok = ns_memcached:delete_vbucket(BucketName, VBucket), NewState};
+    delegate_apply_vbucket_state(Call, From, NewState);
 handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, From, State) ->
     handle_call({apply_new_config, undefined, NewBucketConfig, IgnoredVBuckets}, From, State);
 handle_call({apply_new_config, Caller, NewBucketConfig, IgnoredVBuckets}, _From,
@@ -804,7 +801,11 @@ handle_call_via_servant({FromPid, _Tag}, State, Req, Body) ->
                          end),
     {reply, {Pid, Tag}, State}.
 
-
+handle_cast({apply_vbucket_state_reply, Reply},
+            #state{apply_vbucket_states_queue = Q} = State) ->
+    {{value, From}, NewQ} = queue:out(Q),
+    gen_server:reply(From, Reply),
+    {noreply, State#state{apply_vbucket_states_queue = NewQ}};
 handle_cast(_, _State) ->
     erlang:error(cannot_do).
 
@@ -875,15 +876,33 @@ set_rebalance_mref(Pid, State0) ->
          misc:wait_for_process(P, infinity),
          gen_server:reply(From, rebalance_aborted)
      end || {From, P} <- State0#state.rebalance_subprocesses],
+
+    case State0#state.apply_vbucket_states_worker of
+        undefined ->
+            ok;
+        P ->
+            ?log_debug("Killing apply_vbucket_states_worker: ~p", [P]),
+            erlang:unlink(P),
+            exit(P, shutdown),
+            misc:wait_for_process(P, infinity),
+            [gen_server:reply(From, rebalance_aborted) ||
+                From <- queue:to_list(State0#state.apply_vbucket_states_queue)]
+    end,
+
     State = State0#state{rebalance_pid = Pid,
-                         rebalance_subprocesses = []},
+                         rebalance_subprocesses = [],
+                         apply_vbucket_states_queue = queue:new(),
+                         apply_vbucket_states_worker = undefined},
     case Pid of
         undefined ->
             State#state{rebalance_mref = undefined,
                         rebalance_status = finished};
         _ ->
+            WorkerPid = proc_lib:spawn_link(fun apply_vbucket_states_worker_loop/0),
+
             State#state{rebalance_mref = erlang:monitor(process, Pid),
-                        rebalance_status = in_process}
+                        rebalance_status = in_process,
+                        apply_vbucket_states_worker = WorkerPid}
     end.
 
 spawn_rebalance_subprocess(#state{rebalance_subprocesses = Subprocesses} = State, From, Fun) ->
@@ -999,3 +1018,32 @@ apply_new_vbucket_state(VBucket, NormalState, RebalanceState, State) ->
     NewRebalanceVBuckets = misc:nthreplace(VBucket + 1, RebalanceState, RebalanceVBuckets),
     State#state{last_applied_vbucket_states = NewWantedVBuckets,
                 rebalance_only_vbucket_states = NewRebalanceVBuckets}.
+
+delegate_apply_vbucket_state(Call, From,
+                             #state{apply_vbucket_states_queue = Q,
+                                    apply_vbucket_states_worker = Pid} = State) ->
+    Pid ! {self(), Call, State},
+    NewState = State#state{apply_vbucket_states_queue = queue:in(From, Q)},
+    {noreply, NewState}.
+
+apply_vbucket_states_worker_loop() ->
+    receive
+        {Parent, Call, State} ->
+            Reply = handle_apply_vbucket_state(Call, State),
+            gen_server:cast(Parent, {apply_vbucket_state_reply, Reply}),
+            apply_vbucket_states_worker_loop()
+    end.
+
+handle_apply_vbucket_state({update_vbucket_state,
+                            VBucket, NormalState, _RebalanceState, ReplicateFrom},
+                            #state{bucket_name = BucketName} = AgentState) ->
+    %% TODO: consider infinite timeout. It's local memcached after all
+    ok = ns_memcached:set_vbucket(BucketName, VBucket, NormalState),
+    ok = replication_manager:change_vbucket_replication(BucketName,
+                                                        VBucket, ReplicateFrom),
+    pass_vbucket_states_to_set_view_manager(AgentState),
+    ok;
+handle_apply_vbucket_state({delete_vbucket, VBucket},
+                            #state{bucket_name = BucketName} = AgentState) ->
+    pass_vbucket_states_to_set_view_manager(AgentState),
+    ok = ns_memcached:delete_vbucket(BucketName, VBucket).
