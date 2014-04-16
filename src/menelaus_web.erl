@@ -189,6 +189,14 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                              {auth_any_bucket, fun handle_pools/1};
                          ["pools", "default"] ->
                              {auth_any_bucket, fun check_and_handle_pool_info/2, ["default"]};
+                         %% NOTE: see MB-10859. Our docs used to
+                         %% recommend doing this which due to old
+                         %% code's leniency worked just like
+                         %% /pools/default. So temporarily we allow
+                         %% /pools/nodes to be alias for
+                         %% /pools/default
+                         ["pools", "nodes"] ->
+                             {auth_any_bucket, fun check_and_handle_pool_info/2, ["default"]};
                          ["pools", "default", "overviewStats"] ->
                              {auth_ro, fun menelaus_stats:handle_overview_stats/2, ["default"]};
                          ["poolsStreaming", "default"] ->
