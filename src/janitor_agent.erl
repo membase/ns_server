@@ -590,6 +590,11 @@ handle_call({update_vbucket_state, VBucket, NormalState, RebalanceState, Replica
     ok = ns_memcached:set_vbucket(BucketName, VBucket, NormalState),
     ok = replication_manager:change_vbucket_replication(BucketName, VBucket, ReplicateFrom),
     {reply, ok, pass_vbucket_states_to_set_view_manager(NewState)};
+handle_call({delete_vbucket, VBucket}, _From,
+            #state{bucket_name = BucketName} = State) ->
+    NewState = apply_new_vbucket_state(VBucket, missing, undefined, State),
+    pass_vbucket_states_to_set_view_manager(NewState),
+    {reply, ok = ns_memcached:delete_vbucket(BucketName, VBucket), NewState};
 handle_call({apply_new_config, NewBucketConfig, IgnoredVBuckets}, From, State) ->
     handle_call({apply_new_config, undefined, NewBucketConfig, IgnoredVBuckets}, From, State);
 handle_call({apply_new_config, Caller, NewBucketConfig, IgnoredVBuckets}, _From,
@@ -680,11 +685,6 @@ handle_call({apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
                           || {Src, Pairs} <- misc:keygroup(1, lists:sort(WantedReplicas))],
     ok = replication_manager:set_incoming_replication_map(BucketName, WantedReplications),
     {reply, ok, State};
-handle_call({delete_vbucket, VBucket}, _From,
-            #state{bucket_name = BucketName} = State) ->
-    NewState = apply_new_vbucket_state(VBucket, missing, undefined, State),
-    pass_vbucket_states_to_set_view_manager(NewState),
-    {reply, ok = ns_memcached:delete_vbucket(BucketName, VBucket), NewState};
 handle_call({wait_index_updated, VBucket}, From, #state{bucket_name = Bucket} = State) ->
     State2 = spawn_rebalance_subprocess(
                State,
