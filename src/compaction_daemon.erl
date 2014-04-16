@@ -595,15 +595,6 @@ spawn_bucket_compactor(BucketName, {Config, ConfigProps}, Force) ->
                       exit(normal)
               end,
 
-              AllBucketDbs = all_bucket_dbs(BucketName),
-
-              %% In certain cases some of the databases might not exists yet
-              %% (or already). Generally it's an intermittent state thus it
-              %% seems to be ok to skip compaction in such cases. This will
-              %% avoid loads of crash reports in the logs with {not_found,
-              %% no_db_file} reason.
-              check_all_dbs_exist(BucketName, AllBucketDbs),
-
               try_to_cleanup_indexes(BucketName),
 
               ?log_info("Compacting bucket ~s with config: ~n~p",
@@ -1563,37 +1554,6 @@ multi_sync_send_all_state_event(Event) ->
       fun ({_Node, Result}) ->
               Result =/= ok
       end, lists:zip(Nodes, Results)).
-
-check_all_dbs_exist(BucketName, RequiredDbs0) ->
-    {_VBuckets, RequiredDbs} = lists:unzip(RequiredDbs0),
-    ExistingDbs = lists:sort(ns_storage_conf:bucket_databases(BucketName)),
-    SortedRequiredDbs = lists:usort(RequiredDbs),
-
-    case do_check_all_dbs_exist(ExistingDbs, SortedRequiredDbs) of
-        ok ->
-            ok;
-        {missing, M} ->
-            ?log_info("Skipping compaction of bucket `~s` since at least "
-                      "database `~s` seems to be missing.", [BucketName, M]),
-            exit(normal)
-    end.
-
-do_check_all_dbs_exist(_, []) ->
-    ok;
-do_check_all_dbs_exist([], [R | _]) ->
-    {missing, R};
-do_check_all_dbs_exist([E | ERest] = _Existing,
-                       [R | RRest] = Required) ->
-    if
-        E < R ->
-            %% some additional database starting with 'BucketName/'; this is
-            %% probably ok
-            do_check_all_dbs_exist(ERest, Required);
-        E =:= R ->
-            do_check_all_dbs_exist(ERest, RRest);
-        true ->
-            {missing, R}
-    end.
 
 bucket_exists(BucketName) ->
     case ns_bucket:get_bucket_light(binary_to_list(BucketName)) of
