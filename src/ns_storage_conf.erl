@@ -28,8 +28,7 @@
          local_bucket_disk_usage/1,
          this_node_dbdir/0, this_node_ixdir/0, this_node_logdir/0,
          this_node_bucket_dbdir/1,
-         delete_databases_and_files/1, delete_unused_buckets_db_files/0,
-         bucket_databases/1]).
+         delete_databases_and_files/1, delete_unused_buckets_db_files/0]).
 
 -export([cluster_storage_info/0, cluster_storage_info/1, nodes_storage_info/1]).
 
