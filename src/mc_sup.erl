@@ -30,14 +30,10 @@ init([PortNum]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    McEvents = {mc_couch_events,
-                {gen_event, start_link, [{local, mc_couch_events}]},
-                permanent, brutal_kill, worker, []},
-
     ConnSup = {mc_conn_sup, {mc_conn_sup, start_link, []},
                permanent, brutal_kill, supervisor, dynamic},
 
     TcpListener = {mc_tcp_listener, {mc_tcp_listener, start_link, [PortNum]},
                    permanent, brutal_kill, worker, [mc_tcp_listener]},
 
-    {ok, {SupFlags, [McEvents, ConnSup, TcpListener]}}.
+    {ok, {SupFlags, [ConnSup, TcpListener]}}.

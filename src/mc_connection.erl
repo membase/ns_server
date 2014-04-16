@@ -63,8 +63,8 @@ do_notify_vbucket_update(BucketName, VBucket, Body) ->
     <<FileVersion:64,
       NewPos:64,
       VBStateUpdated:32,
-      VBState:32,
-      VBCheckpoint:64>> = Body,
+      _VBState:32,
+      _VBCheckpoint:64>> = Body,
 
     case VBStateUpdated of
         ?MCCOUCH_VB_COMPACTION_DONE ->
@@ -79,8 +79,7 @@ do_notify_vbucket_update(BucketName, VBucket, Body) ->
         ?MCCOUCH_VB_COMPACT_RENAME_ERROR ->
             ?SUCCESS;
         _ ->
-            do_notify_vbucket_update(BucketName, VBucket, FileVersion, NewPos, VBStateUpdated,
-                                     VBState, VBCheckpoint)
+            do_notify_vbucket_update(BucketName, VBucket, FileVersion, NewPos)
     end.
 
 adjust_couch_db_version(BucketName, VBucket, FileVersion, NewPos) ->
@@ -123,8 +122,7 @@ adjust_couch_db_version(BucketName, VBucket, FileVersion, NewPos) ->
             ?EINVAL
     end.
 
-do_notify_vbucket_update(BucketName, VBucket, FileVersion, NewPos, VBStateUpdated,
-                         VBState, VBCheckpoint) ->
+do_notify_vbucket_update(BucketName, VBucket, FileVersion, NewPos) ->
     DbName = capi_utils:build_dbname(BucketName, VBucket),
     ResponseStatus =
         case couch_db:open_int(DbName, []) of
@@ -160,27 +158,10 @@ do_notify_vbucket_update(BucketName, VBucket, FileVersion, NewPos, VBStateUpdate
                 %% Somehow the file we updated can't be found. What?
                 ?EINVAL
         end,
-    if
-        (VBStateUpdated band 1) =:= 1 ->
-            VBStateAtom = mc_client_binary:vbucket_state_to_atom(VBState),
-            Event = {set_vbucket,
-                     binary_to_list(BucketName),
-                     VBucket,
-                     VBStateAtom,
-                     VBCheckpoint},
-            gen_event:sync_notify(mc_couch_events, Event),
-            ?log_debug("Signaled mc_couch_event: ~p", [Event]);
-        true ->
-            ok
-    end,
 
     ResponseStatus.
 
 do_delete_vbucket(BucketName, VBucket) ->
-    ?log_debug("Notifying mc_couch_events of vbucket deletion: ~s/~p", [BucketName, VBucket]),
-    gen_event:sync_notify(mc_couch_events,
-                          {delete_vbucket, binary_to_list(BucketName), VBucket}),
-
     DbName = capi_utils:build_dbname(BucketName, VBucket),
     ?log_info("Deleting vbucket: ~s/~p", [BucketName, VBucket]),
     couch_server:delete(DbName, []),

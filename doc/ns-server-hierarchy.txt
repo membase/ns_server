@@ -127,8 +127,6 @@
                                                    :to ns_node_disco_events))
                         (supervisor 'mc_sup :mode :rest_for_one :since "2.0"
                                     "remains of mccouch"
-                                    (gen-event 'mc_couch_events
-                                               "used to signal (synchronously!) vbucket state changes")
                                     (supervisor 'mc_conn_sup
                                                 "individual mccouch connections live here. See mc_connection")
                                     (worker 'mc_tcp_listener
