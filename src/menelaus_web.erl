@@ -342,9 +342,6 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["nodes", NodeId, "controller", "settings"] ->
                              {auth, fun handle_node_settings_post/2,
                               [NodeId]};
-                         ["nodes", NodeId, "controller", "resources"] ->
-                             {auth, fun handle_node_resources_post/2,
-                              [NodeId]};
                          ["settings", "web"] ->
                              {auth, fun handle_settings_web_post/1};
                          ["settings", "alerts"] ->
@@ -490,8 +487,6 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
                          ["settings", "readOnlyUser"] ->
                              {auth, fun handle_read_only_user_delete/1};
-                         ["nodes", Node, "resources", LocationPath] ->
-                             {auth, fun handle_resource_delete/3, [Node, LocationPath]};
                          ["pools", "default", "serverGroups", GroupUUID] ->
                              {auth, fun menelaus_web_groups:handle_server_group_delete/2, [GroupUUID]};
                          ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
@@ -2313,40 +2308,6 @@ handle_regenerate_certificate(Req) ->
     ns_ssl_services_setup:sync_local_cert_and_pkey_change(),
     ?log_info("Completed certificate regeneration"),
     handle_cluster_certificate(Req).
-
-handle_node_resources_post("self", Req)            -> handle_node_resources_post(node(), Req);
-handle_node_resources_post(S, Req) when is_list(S) -> handle_node_resources_post(list_to_atom(S), Req);
-
-handle_node_resources_post(Node, Req) ->
-    Params = Req:parse_post(),
-    Path = proplists:get_value("path", Params),
-    Quota = case proplists:get_value("quota", Params) of
-              undefined -> none;
-              "none" -> none;
-              X      -> list_to_integer(X)
-            end,
-    Kind = case proplists:get_value("kind", Params) of
-              "ssd" -> ssd;
-              "hdd" -> hdd;
-              _     -> hdd
-           end,
-    case lists:member(undefined, [Path, Quota, Kind]) of
-        true -> Req:respond({400, add_header(), "Insufficient parameters to add storage resources to server."});
-        false ->
-            case ns_storage_conf:add_storage(Node, Path, Kind, Quota) of
-                ok -> Req:respond({200, add_header(), "Added storage location to server."});
-                {error, _} -> Req:respond({400, add_header(), "Error while adding storage resource to server."})
-            end
-    end.
-
-handle_resource_delete("self", Path, Req)            -> handle_resource_delete(node(), Path, Req);
-handle_resource_delete(S, Path, Req) when is_list(S) -> handle_resource_delete(list_to_atom(S), Path, Req);
-
-handle_resource_delete(Node, Path, Req) ->
-    case ns_storage_conf:remove_storage(Node, Path) of
-%%        ok -> Req:respond({204, add_header(), []}); % Commented out to avoid dialyzer warning
-        {error, _} -> Req:respond({404, add_header(), "The storage location could not be removed.\r\n"})
-    end.
 
 -spec handle_node_settings_post(string() | atom(), any()) -> no_return().
 handle_node_settings_post("self", Req)            -> handle_node_settings_post(node(), Req);

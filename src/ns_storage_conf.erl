@@ -24,7 +24,7 @@
 
 -export([memory_quota/0, change_memory_quota/1,
          setup_disk_storage_conf/2,
-         storage_conf/1, storage_conf_from_node_status/1, add_storage/4, remove_storage/2,
+         storage_conf/1, storage_conf_from_node_status/1,
          local_bucket_disk_usage/1,
          this_node_dbdir/0, this_node_ixdir/0, this_node_logdir/0,
          this_node_bucket_dbdir/1,
@@ -193,20 +193,6 @@ storage_conf_from_node_status(NodeStatus) ->
               end,
     [{ssd, []},
      {hdd, [HDDInfo]}].
-
-% Quota is an integer or atom none.
-% Kind is atom ssd or hdd.
-%
-add_storage(_Node, "", _Kind, _Quota) ->
-    {error, invalid_path};
-
-add_storage(_Node, _Path, _Kind, _Quota) ->
-    % TODO.
-    ok.
-
-remove_storage(_Node, _Path) ->
-    % TODO.
-    {error, todo}.
 
 extract_node_storage_info(NodeInfo) ->
     {RAMTotal, RAMUsed, _} = proplists:get_value(memory_data, NodeInfo),
