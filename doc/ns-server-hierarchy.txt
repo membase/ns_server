@@ -200,13 +200,17 @@
                                                                     "hosts replication ebucketmigrators for 2.0
                                                                      \"replicators on destination\"")
                                                         (supervisor '(upr_sup "default") :name 'upr_sup-default :since "3.0"
-                                                                    "hosts and manages upr replicators")
+                                                                    "hosts and manages upr replicators"
                                                                     (gen-server '(upr_replicator "default" "node") :name 'upr_replicator-default-node :since "3.0"
-                                                                                "implements frontend for upr replication proxy")
+                                                                                "implements frontend for upr replication proxy"
                                                                                 (gen-server '(upr_consumer_conn "default" "node") :name 'upr_consumer_conn-default-node :since "3.0"
                                                                                             "implements consumer side of upr replication proxy")
                                                                                 (gen-server '(upr_producer_conn) :since "3.0"
-                                                                                            "implements producer side of upr replication proxy")
+                                                                                            "implements producer side of upr replication proxy")))
+                                                        (gen-server '(upr_notifier "default") :name 'upr_notifier-default :since "3.0"
+                                                                    "note: it's part of data path. Allows xdcr-over-xmem"
+                                                                    " to check/wait until vbucket has greater seqno then xdcr consumed"
+                                                                    " Only applies to couchbase buckets")
                                                         (gen-server '(janitor_agent "default") :name 'janitor_agent-default :since "2.0"
                                                                     "applies replication and vbucket state changes
                                                                      decided by janitor and vbuckets mover")
