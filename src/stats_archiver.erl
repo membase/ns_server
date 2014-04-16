@@ -143,10 +143,23 @@ code_change(_OldVsn, State, _Extra) ->
 
 init(Bucket) ->
     ok = ensure_stats_storage(),
-    start_timers(),
+
+    self() ! init,
+
+    Archives = archives(),
+    lists:foreach(
+      fun ({Period, Step, Samples}) ->
+              Interval = 100 * Step * Samples,  % Allow to go over by 10% of the
+                                                % total samples
+              Msg = {truncate, Period, Samples},
+              timer2:send_interval(Interval, Msg),
+              self() ! Msg
+      end, Archives),
+    start_cascade_timers(Archives),
+    timer2:send_interval(?BACKUP_INTERVAL, backup),
+
     ns_pubsub:subscribe_link(ns_stats_event),
     process_flag(trap_exit, true),
-    self() ! init,
     {ok, #state{bucket=Bucket}}.
 
 
@@ -310,18 +323,6 @@ start_cascade_timers([{Prev, _, _} | [{Next, Step, _} | _] = Rest]) ->
 
 start_cascade_timers([_]) ->
     ok.
-
-%% @doc Start timers for various housekeeping tasks.
-start_timers() ->
-    Archives = archives(),
-    lists:foreach(
-      fun ({Period, Step, Samples}) ->
-              Interval = 100 * Step * Samples,  % Allow to go over by 10% of the
-                                                % total samples
-              timer2:send_interval(Interval, {truncate, Period, Samples})
-      end, Archives),
-    start_cascade_timers(Archives),
-    timer2:send_interval(?BACKUP_INTERVAL, backup).
 
 -spec fmt(string(), list()) -> list().
 fmt(Str, Args)  ->
