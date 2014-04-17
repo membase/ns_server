@@ -30,6 +30,7 @@
          extract_auth/1,
          extract_auth_user/1,
          check_auth/1,
+         check_ro_auth/1,
          parse_user_password/1,
          is_under_admin/1,
          is_read_only_auth/1,

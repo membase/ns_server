@@ -966,14 +966,29 @@ assert_is_enterprise() ->
 check_and_handle_pool_info(Id, Req) ->
     case is_system_provisioned() of
         true ->
-            handle_pool_info(Id, Req);
+            handle_pool_info_check_auth(Id, Req);
         _ ->
             reply_json(Req, <<"unknown pool">>, 404)
     end.
 
-handle_pool_info(Id, Req) ->
-    LocalAddr = menelaus_util:local_addr(Req),
+handle_pool_info_check_auth(Id, Req) ->
     Query = Req:parse_qs(),
+    NoBucketAuth = proplists:get_value("noBucketAuth", Query),
+    case NoBucketAuth of
+        "true" ->
+            Auth = menelaus_auth:extract_auth(Req),
+            case menelaus_auth:check_ro_auth(Auth) of
+                false ->
+                    menelaus_auth:require_auth(Req);
+                true ->
+                    handle_pool_info(Id, Req, Query)
+            end;
+        _ ->
+            handle_pool_info(Id, Req, Query)
+    end.
+
+handle_pool_info(Id, Req, Query) ->
+    LocalAddr = menelaus_util:local_addr(Req),
     WaitChangeS = proplists:get_value("waitChange", Query),
     PassedETag = proplists:get_value("etag", Query),
     case WaitChangeS of
