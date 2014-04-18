@@ -17,8 +17,11 @@
 
 -behavior(supervisor).
 
+-include("ns_common.hrl").
+
 %% API
 -export ([start_cluster/0, start_link/0, stop_cluster/0]).
+-export ([start_via_wrapper_process/2, wrapper_process_body/3]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -29,7 +32,8 @@
 
 %% @doc Start child after its been stopped
 start_cluster() ->
-    supervisor:restart_child(?MODULE, ns_server_sup).
+    supervisor:restart_child(?MODULE, ns_server_sup),
+    ok = gen_server:call('ns_server_sup-wrapper', sync, infinity).
 
 
 %% @doc Start the supervisor
@@ -71,6 +75,45 @@ init([]) ->
            {vbucket_filter_changes_registry,
             {ns_process_registry, start_link, [vbucket_filter_changes_registry]},
             permanent, 100, worker, [ns_process_registry]},
-           {ns_server_sup, {ns_server_sup, start_link, []},
+           {ns_server_sup, {?MODULE, start_via_wrapper_process,
+                            [ns_server_sup, {ns_server_sup, start_link, []}]},
             permanent, infinity, supervisor, [ns_server_sup]}
           ]}}.
+
+start_via_wrapper_process(ChildName, MFA) ->
+    Parent = self(),
+    proc_lib:start_link(?MODULE, wrapper_process_body, [Parent, ChildName, MFA]).
+
+wrapper_process_body(Parent, ChildName, {M, F, A}) ->
+    Name = list_to_atom(atom_to_list(ChildName) ++ "-wrapper"),
+    erlang:register(Name, self()),
+    proc_lib:init_ack(Parent, {ok, self()}),
+
+    process_flag(trap_exit, true),
+
+    {ok, Child} = erlang:apply(M, F, A),
+
+    wrapper_process_loop(Parent, Child).
+
+wrapper_process_loop(Parent, Child) ->
+    KillChildAndDie =
+        fun (Reason) ->
+                exit(Child, Reason),
+                misc:wait_for_process(Child, infinity),
+                exit(Reason)
+        end,
+
+    receive
+        {'EXIT', Parent, Reason} = Exit ->
+            ?log_debug("Got exit from parent: ~p", [Exit]),
+            KillChildAndDie(Reason);
+        {'EXIT', Child, Reason} = Exit ->
+            ?log_debug("Got exit from child: ~p", [Exit]),
+            exit(Reason);
+        {'$gen_call', From, sync} ->
+            gen_server:reply(From, ok),
+            wrapper_process_loop(Parent, Child);
+        Other ->
+            ?log_debug("Got unexpected message: ~p", [Other]),
+            KillChildAndDie({unexpected_message, Other})
+    end.
