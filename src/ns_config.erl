@@ -773,9 +773,12 @@ handle_call({update_with_changes, Fun}, From, #config{uuid = UUID} = State) ->
     end;
 
 handle_call({clear, Keep}, From, State) ->
-    NewList = lists:filter(fun({K,_V}) -> lists:member(K, Keep) end,
-                           config_dynamic(State)),
+    false = lists:member({node, node(), uuid}, Keep),
+
+    NewList0 = lists:filter(fun({K,_V}) -> lists:member(K, Keep) end,
+                            config_dynamic(State)),
     NewUUID = couch_uuids:random(),
+    NewList = [{{node, node(), uuid}, attach_vclock(NewUUID, NewUUID)} | NewList0],
     {reply, _, NewState} = handle_call(resave, From,
                                        State#config{dynamic=[NewList],
                                                     uuid=NewUUID}),
@@ -838,19 +841,28 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
             C = dynamic_config_path(DirPath2),
             ok = filelib:ensure_dir(C),
             ?log_info("Loading dynamic config from ~p", [C]),
-            Dynamic = case load_file(bin, C) of
-                    {ok, {_UUID, _KVs} = DRead} ->
-                        DRead;
+            Dynamic0 = case load_file(bin, C) of
                     {ok, DRead} ->
-                        ?log_debug("Read config without UUID attached. Generating a new one"),
-                        {couch_uuids:random(), DRead};
+                        DRead;
                     not_found ->
                         ?log_info("No dynamic config file found. Assuming we're brand new node"),
-                        {couch_uuids:random(), []}
+                        [[]]
                 end,
-            ?log_debug("Here's full dynamic config we loaded:~n~p", [ns_config_log:sanitize(Dynamic)]),
+            ?log_debug("Here's full dynamic config we loaded:~n~p", [ns_config_log:sanitize(Dynamic0)]),
 
-            {UUID, LoadedKVs} = Dynamic,
+            {UUID, Dynamic1} =
+                case search(Dynamic0, {node, node(), uuid}) of
+                    false ->
+                        UUID0 = couch_uuids:random(),
+                        UUIDTuple = {{node, node(), uuid}, attach_vclock(UUID0, UUID0)},
+
+                        [KVs | RestKVs] = Dynamic0,
+                        KVs1 = [UUIDTuple | KVs],
+
+                        {UUID0, [KVs1 | RestKVs]};
+                    {value, UUID0} ->
+                        {UUID0, Dynamic0}
+                end,
 
             DefaultConfigWithVClocks =
                 lists:map(
@@ -860,19 +872,16 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
                           Other
                   end, DefaultConfig),
 
-            {_, DynamicPropList0} = lists:foldl(fun (Tuple, {Seen, Acc}) ->
-                                                        K = element(1, Tuple),
-                                                        case sets:is_element(K, Seen) of
-                                                            true -> {Seen, Acc};
-                                                            false -> {sets:add_element(K, Seen),
-                                                                      [Tuple | Acc]}
-                                                        end
-                                                end,
-                                                {sets:from_list([directory,
-                                                                 {node, node(), uuid}]), []},
-                                                lists:append(LoadedKVs ++ [S, DefaultConfigWithVClocks])),
-            DynamicPropList = [{{node, node(), uuid}, attach_vclock(UUID, UUID)}
-                               | DynamicPropList0],
+            {_, DynamicPropList} = lists:foldl(fun (Tuple, {Seen, Acc}) ->
+                                                       K = element(1, Tuple),
+                                                       case sets:is_element(K, Seen) of
+                                                           true -> {Seen, Acc};
+                                                           false -> {sets:add_element(K, Seen),
+                                                                     [Tuple | Acc]}
+                                                       end
+                                               end,
+                                               {sets:from_list([directory]), []},
+                                               lists:append(Dynamic1 ++ [S, DefaultConfigWithVClocks])),
             ?log_info("Here's full dynamic config we loaded + static & default config:~n~p",
                       [ns_config_log:sanitize(DynamicPropList)]),
             {ok, #config{static = [S, DefaultConfig],
@@ -884,9 +893,9 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
             E
     end.
 
-save_config_sync(#config{dynamic = D, uuid = UUID}, DirPath) ->
+save_config_sync(#config{dynamic = D}, DirPath) ->
     C = dynamic_config_path(DirPath),
-    ok = save_file(bin, C, {UUID, D}),
+    ok = save_file(bin, C, D),
     ok.
 
 save_config_sync(Config) ->
@@ -1483,7 +1492,7 @@ test_clear() ->
     receive
         {saving, Ref2, NewConfig2, Pid2} ->
             Pid2 ! {Ref2, ok},
-            ?assertEqual([], config_dynamic(NewConfig2))
+            ?assertMatch([{{node, _, uuid}, _}], config_dynamic(NewConfig2))
     end,
 
     receive
@@ -1534,7 +1543,7 @@ test_clear_with_concurrent_save() ->
     receive
         {saving, Ref2, NewConfig2, Pid2} ->
             Pid2 ! {Ref2, ok},
-            ?assertEqual([], config_dynamic(NewConfig2))
+            ?assertMatch([{{node, _, uuid}, _}], config_dynamic(NewConfig2))
     end,
 
     receive
