@@ -44,7 +44,6 @@ subscribe(Bucket, Partition, StartSeqNo, UUID, HighSeqNo) ->
     gen_server:call(server_name(Bucket), {subscribe, Partition, StartSeqNo, UUID, HighSeqNo}, infinity).
 
 init([Bucket], ParentState) ->
-    upr_proxy:no_proxy_setup(self()),
     erlang:register(server_name(Bucket), self()),
     {[], ParentState}.
 
@@ -52,8 +51,9 @@ server_name(Bucket) ->
     list_to_atom(?MODULE_STRING "-" ++ Bucket).
 
 handle_call({subscribe, Partition, StartSeqNo, UUID, HighSeqNo}, From, State, ParentState) ->
+    NewParentState = upr_proxy:maybe_connect(ParentState),
     PartitionState = get_partition(Partition, State),
-    do_subscribe(From, {StartSeqNo, UUID, HighSeqNo}, PartitionState, State, ParentState).
+    do_subscribe(From, {StartSeqNo, UUID, HighSeqNo}, PartitionState, State, NewParentState).
 
 handle_cast(Msg, State, ParentState) ->
     ?log_warning("Unhandled cast: ~p", [Msg]),

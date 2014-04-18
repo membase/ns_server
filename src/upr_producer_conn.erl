@@ -27,7 +27,7 @@ start_link(ConnName, ProducerNode, Bucket) ->
     upr_proxy:start_link(producer, ConnName, ProducerNode, Bucket, ?MODULE, []).
 
 init([], ParentState) ->
-    {[], ParentState}.
+    {[], upr_proxy:maybe_connect(ParentState)}.
 
 handle_packet(request, ?UPR_SET_VBUCKET_STATE, Packet, State, ParentState) ->
     Consumer = upr_proxy:get_partner(ParentState),

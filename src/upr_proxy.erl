@@ -27,11 +27,12 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--export([start_link/6, connect_proxies/2, nuke_connection/4, no_proxy_setup/1]).
+-export([start_link/6, maybe_connect/1, connect_proxies/2, nuke_connection/4]).
 
 -export([get_socket/1, get_partner/1]).
 
--record(state, {sock :: port(),
+-record(state, {sock = undefined :: port() | undefined,
+                connect_info,
                 buf = <<>> :: binary(),
                 ext_module,
                 ext_state,
@@ -43,13 +44,13 @@
 
 init([Type, ConnName, Node, Bucket, ExtModule, InitArgs]) ->
     erlang:process_flag(trap_exit, true),
-    Sock = connect(Type, ConnName, Node, Bucket),
 
-    {ExtState, State} = ExtModule:init(InitArgs, #state{}),
+    {ExtState, State} = ExtModule:init(
+                          InitArgs,
+                          #state{connect_info = {Type, ConnName, Node, Bucket},
+                                 ext_module = ExtModule}),
 
     {ok, State#state{
-           sock = Sock,
-           ext_module = ExtModule,
            ext_state = ExtState
           }, ?HIBERNATE_TIMEOUT}.
 
@@ -65,18 +66,17 @@ get_partner(State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-handle_cast({setup_proxy, Partner, ProxyTo}, #state{sock = Socket} = State) ->
-    % setup socket to receive the first message
-    ok = inet:setopts(Socket, [{active, once}]),
-
+handle_cast({setup_proxy, Partner, ProxyTo}, State) ->
     {noreply, State#state{proxy_to = ProxyTo, partner = Partner}, ?HIBERNATE_TIMEOUT};
 handle_cast(Msg, State = #state{ext_module = ExtModule, ext_state = ExtState}) ->
     {noreply, NewExtState, NewState} = ExtModule:handle_cast(Msg, ExtState, State),
     {noreply, NewState#state{ext_state = NewExtState}, ?HIBERNATE_TIMEOUT}.
 
-terminate(_Reason, State) ->
-    ?log_debug("Terminating. Disconnecting from socket ~p", [State#state.sock]),
-    disconnect(State#state.sock).
+terminate(_Reason, #state{sock = undefined}) ->
+    ok;
+terminate(_Reason, #state{sock = Sock}) ->
+    ?log_debug("Terminating. Disconnecting from socket ~p", [Sock]),
+    disconnect(Sock).
 
 handle_info({tcp, Socket, Data}, #state{sock = Socket} = State) ->
     %% Set up the socket to receive another message
@@ -151,6 +151,17 @@ suppress_logging(<<?RES_MAGIC:8, ?UPR_SNAPSHOT_MARKER:8, _KeyLen:16, _ExtLen:8,
 suppress_logging(_) ->
     false.
 
+maybe_connect(#state{sock = undefined,
+                     connect_info = {Type, ConnName, Node, Bucket}} = State) ->
+    Sock = connect(Type, ConnName, Node, Bucket),
+
+    % setup socket to receive the first message
+    ok = inet:setopts(Sock, [{active, once}]),
+
+    State#state{sock = Sock};
+maybe_connect(State) ->
+    State.
+
 connect(Type, ConnName, Node, Bucket) ->
     {Username, Password} = ns_bucket:credentials(Bucket),
 
@@ -168,6 +179,3 @@ nuke_connection(Type, ConnName, Node, Bucket) ->
 connect_proxies(Pid1, Pid2) ->
     gen_server:cast(Pid1, {setup_proxy, Pid2, gen_server:call(Pid2, get_socket, infinity)}),
     gen_server:cast(Pid2, {setup_proxy, Pid1, gen_server:call(Pid1, get_socket, infinity)}).
-
-no_proxy_setup(Pid) ->
-    gen_server:cast(Pid, {setup_proxy, undefined, undefined}).

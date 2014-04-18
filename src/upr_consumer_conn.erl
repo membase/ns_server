@@ -52,7 +52,7 @@ init([], ParentState) ->
     {#state{
         partitions = [],
         state = idle
-       }, ParentState}.
+       }, upr_proxy:maybe_connect(ParentState)}.
 
 
 handle_packet(response, ?UPR_ADD_STREAM, Packet,
