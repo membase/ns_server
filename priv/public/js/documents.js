@@ -464,7 +464,7 @@ var DocumentsSection = {
       }
 
       enableSaveBtn(!isError);
-      enableDeleteBtn(!isError);
+      enableDeleteBtn(obj.message === documentErrors.documentIsBase64 || !isError);
       enableSaveAsBtn(!isError);
       showCodeEditor(!isError);
 
