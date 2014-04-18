@@ -261,9 +261,11 @@ synchronize_remote() ->
 
 synchronize_remote(Nodes) ->
     ok = synchronize_local(),
-    {Replies, BadNodes} =
+    {Replies, BadNodes0} =
         gen_server:multi_call(Nodes, ?MODULE,
                               synchronize_everything, ?SYNCHRONIZE_TIMEOUT),
+
+    BadNodes = [{N, down} || N <- BadNodes0],
 
     AllBadNodes =
         lists:foldl(
@@ -276,7 +278,7 @@ synchronize_remote(Nodes) ->
                           %% handle_call
                           Acc;
                       _Other ->
-                          [Node | Acc]
+                          [{Node, Reply} | Acc]
                   end
           end, BadNodes, Replies),
 
