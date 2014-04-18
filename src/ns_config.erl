@@ -967,9 +967,14 @@ merge_kv_pairs(RemoteKVList, LocalKVList, UUID) ->
     LocalKVList1 = lists:sort(LocalKVList),
     Merger = fun (_, {directory, _} = LP) ->
                      LP;
-                 ({_, RV}, {{node, Node, uuid}, LV}) when Node =:= node() ->
-                     {{node, node(), uuid},
-                      increment_vclock(LV, merge_vclocks(RV, LV), UUID)};
+                 ({_, RV}, {{node, Node, uuid}, LV} = LP) when Node =:= node() ->
+                     case RV =:= LV of
+                         true ->
+                             LP;
+                         false ->
+                             {{node, node(), uuid},
+                              increment_vclock(LV, merge_vclocks(RV, LV), UUID)}
+                     end;
                  (RP, LP) ->
                      merge_values(RP, LP, UUID)
              end,
