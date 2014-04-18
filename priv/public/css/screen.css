@@ -1248,7 +1248,7 @@ ul.tabs.dev-subset-switcher {padding-top:3px;padding-bottom:3px;padding-left:12p
 
 .docs_title {float:left;}
 .documents_details .docs_title {margin-right:10px;width: 650px;}
-.documents_details.dynamic_notice_on .docs_title {width: 200px;}
+.documents_details.dynamic_notice_on .docs_title {max-width: 200px; width: auto;}
 
 input[type=number].size {width:4em;}
 
