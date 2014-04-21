@@ -112,11 +112,11 @@ log_report(Type, Logger, {_Pid, ReportType, Report}) ->
     Fmt = FmtHeader ++ FmtReport,
     Args = ArgsHeader ++ ArgsReport,
 
-    ale:log(Logger, LogLevel, Fmt, Args).
+    do_log(Logger, LogLevel, Fmt, Args).
 
 log_msg(Type, Logger, {_Pid, Fmt, Args}) ->
     LogLevel = type_to_loglevel(Type),
-    ale:log(Logger, LogLevel, Fmt, Args).
+    do_log(Logger, LogLevel, Fmt, Args).
 
 type_to_loglevel(info_report) ->
     info;
@@ -184,3 +184,25 @@ header(error_report, _Other) ->
     "ERROR REPORT";
 header(warning_report, _Any) ->
     "WARNING REPORT".
+
+do_log(Logger, LogLevel, Fmt, Args) ->
+    Huge = [erts_debug:flat_size(A) > 1024 * 1024 || A <- Args],
+
+    case lists:member(true, Huge) of
+        true ->
+            StrippedArgs = [case H of
+                                true ->
+                                    <<"too huge">>;
+                                false ->
+                                    A
+                            end || {A, H} <- lists:zip(Args, Huge)],
+
+            ale:log(Logger, warn,
+                    "Preventing an attempt to log something quite huge~n"
+                    "  Format string: ~s~n"
+                    "  Log level: ~p~n"
+                    "  Arguments: ~p~n",
+                    [Fmt, LogLevel, StrippedArgs]);
+        false ->
+            ale:log(Logger, LogLevel, Fmt, Args)
+    end.
