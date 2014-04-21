@@ -159,10 +159,15 @@ maybe_refresh_token(Req) ->
 %% credentials works. Other credentials do not allow access. Empty
 %% credentials are not allowed too.
 apply_auth_any_bucket(Req, F, Args) ->
-    UserPassword = extract_auth(Req),
-    case check_auth_any_bucket(UserPassword) of
-        true -> apply(F, Args ++ [Req]);
-        _    -> apply_ro_auth(Req, F, Args)
+    case Req:get_header_value("ns_server-ui") of
+        "yes" ->
+            apply_ro_auth(Req, F, Args);
+        _ ->
+            UserPassword = extract_auth(Req),
+            case check_auth_any_bucket(UserPassword) of
+                true -> apply(F, Args ++ [Req]);
+                _    -> apply_ro_auth(Req, F, Args)
+            end
     end.
 
 %% Checks if given credentials allow access to any SASL-auth
