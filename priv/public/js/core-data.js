@@ -112,6 +112,7 @@ $.ajaxSetup({
     xhr.setRequestHeader('invalid-auth-response', 'on');
     xhr.setRequestHeader('Cache-Control', 'no-cache');
     xhr.setRequestHeader('Pragma', 'no-cache');
+    xhr.setRequestHeader('ns_server-ui', 'yes');
   },
   dataFilter: function (data, type) {
     if (type === "json" && data == "") {
