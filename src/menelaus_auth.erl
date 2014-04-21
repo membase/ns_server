@@ -215,13 +215,21 @@ extract_auth_user(Req) ->
 -spec extract_auth(any()) -> {User :: string(), Password :: string()}
                                  | {token, string()} | undefined.
 extract_auth(Req) ->
-    case Req:get_header_value("authorization") of
-        "Basic " ++ Value ->
-            parse_user_password(base64:decode_to_string(Value));
-        _ ->
+    case Req:get_header_value("ns_server-ui") of
+        "yes" ->
             case extract_ui_auth_token(Req) of
                 undefined -> undefined;
                 Token -> {token, Token}
+            end;
+        _ ->
+            case Req:get_header_value("authorization") of
+                "Basic " ++ Value ->
+                    parse_user_password(base64:decode_to_string(Value));
+                _ ->
+                    case extract_ui_auth_token(Req) of
+                        undefined -> undefined;
+                        Token -> {token, Token}
+                    end
             end
     end.
 
