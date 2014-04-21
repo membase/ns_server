@@ -297,13 +297,6 @@ var DAL = {
       }
 
       url = poolList[0].uri;
-      if (url.indexOf("?") < 0) {
-        url += '?';
-      } else {
-        url += '&';
-      }
-      url += "noBucketAuth=true";
-
       function poolDetailsValueTransformer(data) {
         // we clear pool's name to display empty name in analytics
         data.name = '';
