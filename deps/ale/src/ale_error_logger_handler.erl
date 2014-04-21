@@ -31,10 +31,10 @@
 init([Logger]) ->
     State = #state{logger=Logger,
                    logging_state=log},
-    {ok, State}.
+    {ok, State, hibernate}.
 
 handle_event({_Type, GLeader, _Msg}, State) when node(GLeader) =/= node() ->
-    {ok, State};
+    {ok, State, hibernate};
 
 handle_event({Type, _GLeader, Report},
              #state{logger=Logger} = State) when Type =:= info_report;
@@ -43,7 +43,7 @@ handle_event({Type, _GLeader, Report},
     case action(State) of
         {log, NewState} ->
             log_report(Type, Logger, Report),
-            {ok, NewState};
+            {ok, NewState, hibernate};
         {drop, NewState} ->
             {ok, NewState}
     end;
@@ -55,7 +55,7 @@ handle_event({Type, _GLeader, Msg},
     case action(State) of
         {log, NewState} ->
             log_msg(Type, Logger, Msg),
-            {ok, NewState};
+            {ok, NewState, hibernate};
         {drop, NewState} ->
             {ok, NewState}
     end;
