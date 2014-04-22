@@ -88,7 +88,10 @@ restart() ->
     ChildIds = [element(1, Spec) || Spec <- ChildSpecs] -- DontRestart,
     [supervisor:terminate_child(ns_server_cluster_sup, Id) || Id <- lists:reverse(ChildIds)],
     cb_couch_sup:restart_couch(),
-    [supervisor:restart_child(ns_server_cluster_sup, Id) || Id <- ChildIds].
+    [supervisor:restart_child(ns_server_cluster_sup, Id) || Id <- ChildIds],
+
+    %% wait till ns_server_sup starts
+    ns_server_cluster_sup:start_cluster().
 
 get_config_path() ->
     case application:get_env(ns_server, config_path) of
