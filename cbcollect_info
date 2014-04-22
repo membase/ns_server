@@ -266,6 +266,7 @@ def make_os_tasks():
         LinuxTask("All logs", "tar cz /var/log/syslog* /var/log/dmesg /var/log/messages* /var/log/daemon* /var/log/debug* /var/log/kern.log* 2>/dev/null",
                   log_file="syslog.tar.gz", no_header = True),
         LinuxTask("Relevant proc data", "(pgrep moxi; pgrep beam.smp; pgrep memcached; pgrep couch_compact; pgrep sigar_port ; pgrep godu) | xargs -n1 -- sh -c 'echo $1; cat /proc/$1/status; cat /proc/$1/limits; cat /proc/$1/smaps; cat /proc/$1/numa_maps; cat /proc/$1/sched; echo' --"),
+        LinuxTask("Processes' environment", r"(pgrep beam.smp; pgrep memcached) | xargs -n1 -- sh -c 'echo $1; ( cat /proc/$1/environ | tr \\0 \\n ); echo' --"),
         LinuxTask("NUMA data", "numactl --hardware"),
         LinuxTask("NUMA data", "numactl --show"),
         LinuxTask("NUMA data", "cat /sys/devices/system/node/node*/numastat"),
