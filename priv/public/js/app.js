@@ -860,8 +860,10 @@ var SetupWizard = {
               onLeave();
             }
           } else {
-            memoryErrorsContainer.text(errObject.errors.memoryQuota);
-            memoryErrorsContainer.show();
+            if (errObject != undefined) {
+              memoryErrorsContainer.text(errObject.errors.memoryQuota);
+              memoryErrorsContainer.show();
+            }
           }
         }
       }
