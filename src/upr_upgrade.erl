@@ -225,7 +225,7 @@ apply_bucket_config(Bucket, BucketConfig, Servers) ->
     end.
 
 upgrade_replication_type(Partition, Config) ->
-    ReplicationType = proplists:get_value(repl_type, Config),
+    ReplicationType = ns_bucket:replication_type(Config),
     TapPartitions =
         case ReplicationType of
             {upr, TapP} ->
