@@ -16,6 +16,9 @@ ELSEIF (WIN32)
   INSTALL (PROGRAMS "${PROJECT_SOURCE_DIR}/priv/i386-win32-vbmap.exe" DESTINATION "bin" RENAME "vbmap.exe")
   INSTALL (PROGRAMS "${PROJECT_SOURCE_DIR}/priv/i386-win32-generate_cert.exe" DESTINATION "bin"
     RENAME "generate_cert.exe")
+ELSEIF (CMAKE_SYSTEM_NAME MATCHES "SunOS")
+  ADD_SUBDIRECTORY (generate_cert)
+  ADD_SUBDIRECTORY (vbmap)
 ELSEIF (UNIX)
   INSTALL (PROGRAMS "${PROJECT_SOURCE_DIR}/priv/i386-linux-vbmap" DESTINATION "bin" RENAME "vbmap")
   INSTALL (PROGRAMS "${PROJECT_SOURCE_DIR}/priv/i386-linux-generate_cert" DESTINATION "bin"
