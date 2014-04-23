@@ -252,7 +252,7 @@ handle_cast(leave, State) ->
     timer:sleep(1000),
 
     ok = file:delete(leave_marker_path()),
-    {ok, _} = ns_server_cluster_sup:start_cluster(),
+    ok = ns_server_cluster_sup:start_cluster(),
     ns_ports_setup:restart_memcached(),
     {noreply, State}.
 
@@ -930,7 +930,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
             Stack = erlang:get_stacktrace(),
 
             ?cluster_error("Error during join: ~p", [{Type, Error, Stack}]),
-            {ok, _} = ns_server_cluster_sup:start_cluster(),
+            ok = ns_server_cluster_sup:start_cluster(),
 
             erlang:raise(Type, Error, Stack)
     end,

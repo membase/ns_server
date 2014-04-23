@@ -32,8 +32,17 @@
 
 %% @doc Start child after its been stopped
 start_cluster() ->
-    supervisor:restart_child(?MODULE, ns_server_sup),
-    ok = gen_server:call('ns_server_sup-wrapper', sync, infinity).
+    case supervisor:restart_child(?MODULE, ns_server_sup) of
+        {ok, _} ->
+            try
+                ok = gen_server:call('ns_server_sup-wrapper', sync, infinity)
+            catch
+                T:E ->
+                    {error, {sync_failed, T, E, erlang:get_stacktrace()}}
+            end;
+        Error ->
+            Error
+    end.
 
 
 %% @doc Start the supervisor
