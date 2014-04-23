@@ -62,7 +62,7 @@ couchbase              hard    nofile                  <value>
 
 Where <value> is greater than 10240. The procedure may be totally
 different if you're running so called "non-root/non-sudo install" or
-if you've built Couchbase Serve from source.
+if you've built Couchbase Server from source.
 
 EOF
     fi
