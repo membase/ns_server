@@ -156,7 +156,7 @@ wait_for_data_move([Node | Rest], Bucket, Partition) ->
     end.
 
 wait_for_data_move_on_one_node(Connection, Bucket, Partition) ->
-    case ns_memcached:get_upr_backfill_remaining_items(Bucket, Connection, Partition) of
+    case ns_memcached:get_upr_estimated_remaining_items(Bucket, Connection, Partition) of
         undefined ->
             undefined;
         N when N < 1000 ->
