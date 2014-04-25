@@ -55,9 +55,9 @@ verify_fun(Cert, Event, Etalon) ->
                {extension, _} ->
                    {unknown, Event};
                valid ->
-                   {fail, {bad_cert, unrecognized}};
+                   {valid, Etalon};
                valid_peer ->
-                   {fail, {bad_cert, unrecognized}}
+                   {valid, Etalon}
            end,
     case Resp of
         {valid, _} ->
