@@ -47,17 +47,15 @@ get_actual_replications(Bucket) ->
     end.
 
 set_desired_replications(Bucket, DesiredReps) ->
-    [setup_replication(Bucket, SrcNode, Partitions)
-     || {SrcNode, Partitions} <- DesiredReps].
+    ProducerNodes = get_producer_nodes(Bucket),
+    NeededNodes = [Node || {Node, [_|_]} <- DesiredReps],
 
-setup_replication(Bucket, ProducerNode, Partitions) ->
-    case Partitions of
-        [] ->
-            kill_replicator(Bucket, ProducerNode);
-        _ ->
-            maybe_start_replicator(Bucket, ProducerNode),
-            upr_replicator:setup_replication(ProducerNode, Bucket, Partitions)
-    end.
+    [kill_replicator(Bucket, Node) || Node <- ProducerNodes -- NeededNodes],
+
+    [start_replicator(Bucket, Node) || Node <- NeededNodes -- ProducerNodes],
+
+    [upr_replicator:setup_replication(Node, Bucket, Partitions)
+     || {Node, [_|_] = Partitions} <- DesiredReps].
 
 -spec get_producer_nodes(bucket_name()) -> list() | not_running.
 get_producer_nodes(Bucket) ->
@@ -74,18 +72,13 @@ build_child_spec(ProducerNode, Bucket) ->
      temporary, 60000, worker, [upr_replicator]}.
 
 
-maybe_start_replicator(Bucket, ProducerNode) ->
-    case lists:member(ProducerNode, get_producer_nodes(Bucket)) of
-        false ->
-            ?log_debug("Starting UPR replication from ~p for bucket ~p", [ProducerNode, Bucket]),
+start_replicator(Bucket, ProducerNode) ->
+    ?log_debug("Starting UPR replication from ~p for bucket ~p", [ProducerNode, Bucket]),
 
-            case supervisor:start_child(server_name(Bucket),
-                                        build_child_spec(ProducerNode, Bucket)) of
-                {ok, _} -> ok;
-                {ok, _, _} -> ok
-            end;
-        true ->
-            ok
+    case supervisor:start_child(server_name(Bucket),
+                                build_child_spec(ProducerNode, Bucket)) of
+        {ok, _} -> ok;
+        {ok, _, _} -> ok
     end.
 
 kill_replicator(Bucket, ProducerNode) ->
