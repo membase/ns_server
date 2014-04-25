@@ -486,6 +486,16 @@ def main():
     if len(args) != 1:
         parser.error("incorrect number of arguments")
 
+    zip_filename = args[0]
+    if zip_filename[-4:] != '.zip':
+        zip_filename = zip_filename + '.zip'
+
+    zip_dir = os.path.dirname(os.path.abspath(zip_filename))
+
+    if not os.access(zip_dir, os.W_OK | os.X_OK):
+        print("do not have write access to the directory %s" % (zip_dir))
+        sys.exit(1)
+
     erldir = os.path.join(mydir, 'erlang', 'bin')
     if os.name == 'posix':
         path = [mydir,
@@ -536,10 +546,6 @@ def main():
 
     if zip_node.split("@")[-1] == "127.0.0.1":
         zip_node = '@'.join(zip_node.split("@")[:-1] + [find_primary_addr("127.0.0.1")])
-
-    zip_filename = args[0]
-    if zip_filename[-4:] != '.zip':
-        zip_filename = zip_filename + '.zip'
 
     runner.zip(zip_filename, zip_node)
 
