@@ -42,8 +42,8 @@ start_link() ->
     case Result of
         {ok, _Pid} ->
             ?user_log(?START_OK,
-                      "Couchbase Server has started on web port ~p on node ~p.",
-                      [Port, node()]);
+                      "Couchbase Server has started on web port ~p on node ~p. Version: ~p.",
+                      [Port, node(), ns_info:version(ns_server)]);
         _Err ->
             %% The exact error message is not logged here since this
             %% is a supervisor start, but a more helpful message
