@@ -1634,7 +1634,7 @@ handle_settings_max_parallel_indexers(Req) ->
         end,
 
     reply_json(Req, {struct, [{globalValue, GlobalValue},
-                              {nodes, [{node(), ThisNodeValue}]}]}).
+                              {nodes, {struct, [{node(), ThisNodeValue}]}}]}).
 
 handle_settings_max_parallel_indexers_post(Req) ->
     Params = Req:parse_post(),
