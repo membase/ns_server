@@ -15,9 +15,7 @@
 
 %% couchdb headers
 -include("couch_db.hrl").
--include("couch_js_functions.hrl").
 -include("couch_api_wrap.hrl").
--include("../lhttpc/lhttpc.hrl").
 
 %% ns_server headers
 -include("ns_common.hrl").
