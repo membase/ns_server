@@ -240,7 +240,6 @@ mover_inner_upr(Parent, Bucket, VBucket,
     maybe_initiate_indexing(Bucket, Parent, JustBackfillNodes, ReplicaNodes, VBucket, IndexAware),
 
     %% wait for backfill on all the opened streams
-    ?rebalance_debug("Will wait for backfill on all opened streams"),
     AllBuiltNodes = JustBackfillNodes ++ ReplicaNodes,
     wait_upr_data_move(Bucket, Parent, OldMaster, AllBuiltNodes, VBucket),
     master_activity_events:note_backfill_phase_ended(Bucket, VBucket),
@@ -274,7 +273,8 @@ mover_inner_upr(Parent, Bucket, VBucket,
 
                     wait_index_updated(Bucket, Parent, NewMaster, ReplicaNodes, VBucket),
 
-                    ?rebalance_debug("Index is updated on new master.");
+                    ?rebalance_debug("Index is updated on new master. Bucket ~p, partition ~p",
+                                     [Bucket, VBucket]);
                 false ->
                     ok
             end,
@@ -305,6 +305,9 @@ upr_takeover(Bucket, Parent, OldMaster, NewMaster, VBucket) ->
 wait_upr_data_move(Bucket, Parent, SrcNode, DstNodes, VBucket) ->
     spawn_and_wait(
       fun () ->
+              ?rebalance_debug(
+                 "Will wait for backfill on all opened streams for bucket = ~p partition ~p src node = ~p dest nodes = ~p",
+                 [Bucket, VBucket, SrcNode, DstNodes]),
               case janitor_agent:wait_upr_data_move(Bucket, Parent, SrcNode, DstNodes, VBucket) of
                   ok ->
                       ?rebalance_debug(

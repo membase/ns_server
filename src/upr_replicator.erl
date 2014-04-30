@@ -146,7 +146,7 @@ wait_for_data_move([], _, _) ->
     ok;
 wait_for_data_move([Node | Rest], Bucket, Partition) ->
     Connection = get_connection_name(Node, node(), Bucket),
-    case wait_for_data_move_on_one_node(Connection, Bucket, Partition) of
+    case wait_for_data_move_on_one_node(0, Connection, Bucket, Partition) of
         undefined ->
             ?log_error("No upr backfill stats for bucket ~p, partition ~p, connection ~p",
                        [Bucket, Partition, Connection]),
@@ -155,15 +155,25 @@ wait_for_data_move([Node | Rest], Bucket, Partition) ->
             wait_for_data_move(Rest, Bucket, Partition)
     end.
 
-wait_for_data_move_on_one_node(Connection, Bucket, Partition) ->
+wait_for_data_move_on_one_node(Iterations, Connection, Bucket, Partition) ->
     case ns_memcached:get_upr_estimated_remaining_items(Bucket, Connection, Partition) of
         undefined ->
             undefined;
         N when N < 1000 ->
             ok;
-        _ ->
+        Items ->
+            NewIterations =
+                case Iterations of
+                    300 ->
+                        ?rebalance_debug(
+                           "Still waiting for backfill on connection ~p, bucket ~p, partition ~p, estimated items ~p",
+                           [Connection, Bucket, Partition, Items]),
+                        0;
+                    I ->
+                        I + 1
+                end,
             timer:sleep(?VBUCKET_POLL_INTERVAL),
-            wait_for_data_move_on_one_node(Connection, Bucket, Partition)
+            wait_for_data_move_on_one_node(NewIterations, Connection, Bucket, Partition)
     end.
 
 get_connection_name(ConsumerNode, ProducerNode, Bucket) ->
