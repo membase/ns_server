@@ -183,7 +183,9 @@ init_logging() ->
       fun (Logger) ->
               ok = ale:set_loglevel(Logger, debug)
       end,
-      StdLoggers),
+      StdLoggers -- [?XDCR_TRACE_LOGGER]),
+
+    ok = ale:set_loglevel(?XDCR_TRACE_LOGGER, error),
 
     OverrideLoglevels = [{?STATS_LOGGER, warn},
                          {?NS_DOCTOR_LOGGER, warn}],
