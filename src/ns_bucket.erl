@@ -516,16 +516,16 @@ json_map_with_full_config(LocalAddr, BucketConfig, Config) ->
                  true -> [node() | lists:delete(node(), ENodes0)];
                  false -> ENodes0
              end,
-    Servers =
-        [begin
-             Port = ns_config:search_node_prop(ENode, Config,
-                                               memcached, port),
-             Host = case misc:node_name_host(ENode) of
-                        {_Name, "127.0.0.1"} -> LocalAddr;
-                        {_Name, H} -> H
-                    end,
-             iolist_to_binary([Host | ":" ++ integer_to_list(Port)])
-         end || ENode <- ENodes],
+    Servers = lists:map(
+                fun (ENode) ->
+                        Port = ns_config:search_node_prop(ENode, Config,
+                                                          memcached, port),
+                        Host = case misc:node_name_host(ENode) of
+                                   {_Name, "127.0.0.1"} -> LocalAddr;
+                                   {_Name, H} -> H
+                               end,
+                        list_to_binary(Host ++ ":" ++ integer_to_list(Port))
+                end, ENodes),
     {_, NodesToPositions0}
         = lists:foldl(fun (N, {Pos,Dict}) ->
                               {Pos+1, dict:store(N, Pos, Dict)}
@@ -540,28 +540,11 @@ json_map_with_full_config(LocalAddr, BucketConfig, Config) ->
                   [[dict:fetch(N, NodesToPositions) || N <- Chain]
                    || Chain <- FFM]}]
         end,
-    ExtraList =
-        case cluster_compat_mode:is_enabled_with_config([3, 0], Config) of
-            true ->
-                SSLServers =
-                    [begin
-                         Port = ns_config:search_node_prop(ENode, Config,
-                                                           memcached, ssl_port),
-                         Host = case misc:node_name_host(ENode) of
-                                    {_Name, "127.0.0.1"} -> LocalAddr;
-                                    {_Name, H} -> H
-                                end,
-                         iolist_to_binary([Host | ":" ++ integer_to_list(Port)])
-                     end || ENode <- ENodes],
-                [{sslServerList, SSLServers} | FastForwardMapList];
-            _ ->
-                FastForwardMapList
-        end,
     {struct, [{hashAlgorithm, <<"CRC">>},
               {numReplicas, NumReplicas},
               {serverList, Servers},
               {vBucketMap, Map} |
-              ExtraList]}.
+              FastForwardMapList]}.
 
 set_bucket_config(Bucket, NewConfig) ->
     update_bucket_config(Bucket, fun (_) -> NewConfig end).
