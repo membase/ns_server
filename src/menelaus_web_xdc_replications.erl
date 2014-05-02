@@ -364,7 +364,7 @@ replication_id(ClusterUUID, FromBucket, ToBucket) ->
 with_replicator_doc(Req, XID, Body) ->
     case xdc_rdoc_replication_srv:get_full_replicator_doc(XID) of
         not_found ->
-            menelaus_util:reply_404(Req);
+            menelaus_util:reply_not_found(Req);
         {ok, Doc} ->
             Body(Doc)
     end.

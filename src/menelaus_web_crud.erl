@@ -165,7 +165,7 @@ do_get(BucketId, DocId) ->
 handle_get(BucketId, DocId, Req) ->
     case do_get(BucketId, DocId) of
         {not_found, missing} ->
-            Req:respond({404, menelaus_util:server_header(), ""});
+            menelaus_util:reply(Req, 404);
         {ok, EJSON} ->
             menelaus_util:reply_json(Req, capi_utils:couch_doc_to_mochi_json(EJSON))
     end.

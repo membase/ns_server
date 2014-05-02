@@ -66,12 +66,19 @@
 -export([reset_admin_password/1]).
 
 -import(menelaus_util,
-        [server_header/0,
-         redirect_permanently/2,
+        [redirect_permanently/2,
          bin_concat_path/1,
          bin_concat_path/2,
+         reply/2,
+         reply/3,
+         reply_text/3,
+         reply_text/4,
+         reply_ok/3,
+         reply_ok/4,
          reply_json/2,
          reply_json/3,
+         reply_json/4,
+         reply_not_found/1,
          get_option/2,
          parse_validate_number/3]).
 
@@ -146,7 +153,7 @@ loop(Req, AppRoot) ->
                   end,
                   fun (_Error, Reason) ->
                           Retry = integer_to_list(random:uniform(10)),
-                          Req:respond({503, [{"Retry-After", Retry}], Reason})
+                          reply_text(Req, Reason, 503, [{"Retry-After", Retry}])
                   end)
         end
     catch
@@ -154,7 +161,7 @@ loop(Req, AppRoot) ->
             %% this happens when the client closed the connection
             exit(normal);
         throw:{web_exception, StatusCode, Message, ExtraHeaders} ->
-            Req:respond({StatusCode, ExtraHeaders ++ server_header(), Message});
+            reply_text(Req, Message, StatusCode, ExtraHeaders);
         Type:What ->
             Report = ["web request failed",
                       {path, Req:get(path)},
@@ -300,10 +307,10 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["pools", "default", "tasks"] ->
                              {auth_ro, fun handle_tasks/2, ["default"]};
                          ["index.html"] ->
-                             {done, serve_static_file(Req, {AppRoot, Path},
-                                                      "text/html; charset=utf8",
-                                                      [{"Pragma", "no-cache"},
-                                                       {"Cache-Control", "must-revalidate"}])};
+                             {done, menelaus_util:serve_static_file(
+                                      Req, {AppRoot, Path},
+                                      "text/html; charset=utf8",
+                                      [{"Cache-Control", "must-revalidate"}])};
                          ["dot", Bucket] ->
                              {auth, fun handle_dot/2, [Bucket]};
                          ["dotsvg", Bucket] ->
@@ -315,13 +322,13 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["erlwsh" | _] ->
                              {auth, fun (R) -> erlwsh_web:loop(R, erlwsh_deps:local_path(["priv", "www"])) end, []};
                          ["images" | _] ->
-                             {done, Req:serve_file(Path, AppRoot,
-                                                   [{"Cache-Control", "max-age=30000000"}])};
+                             {done, menelaus_util:serve_file(Req, Path, AppRoot,
+                                                             [{"Cache-Control", "max-age=30000000"}])};
                          ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
                          ["sampleBuckets"] -> {auth_ro, fun handle_sample_buckets/1};
                          _ ->
-                             {done, Req:serve_file(Path, AppRoot,
-                                                   [{"Cache-Control", "max-age=10"}])}
+                             {done, menelaus_util:serve_file(Req, Path, AppRoot,
+                                                             [{"Cache-Control", "max-age=10"}])}
                      end;
                  'POST' ->
                      case PathTokens of
@@ -462,7 +469,7 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                                                                           "Client-side error-report for user ~p on node ~p:~nUser-Agent:~s~n~s~n",
                                                                           [User, node(),
                                                                            Req:get_header_value("user-agent"), binary_to_list(R:recv_body())]),
-                                                        R:ok({"text/plain", add_header(), <<"">>})
+                                                        reply_ok(R, "text/plain", [])
                                                 end};
                          ["diag", "eval"] -> {auth, fun handle_diag_eval/1};
                          ["erlwsh" | _] ->
@@ -470,7 +477,7 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
                          _ ->
                              ?MENELAUS_WEB_LOG(0001, "Invalid post received: ~p", [Req]),
-                             {done, Req:not_found()}
+                             {done, reply_not_found(Req)}
                      end;
                  'DELETE' ->
                      case PathTokens of
@@ -492,7 +499,7 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
                          _ ->
                              ?MENELAUS_WEB_LOG(0002, "Invalid delete received: ~p as ~p", [Req, PathTokens]),
-                             {done, Req:respond({405, add_header(), "Method Not Allowed"})}
+                             {done, reply_text(Req, "Method Not Allowed", 405)}
                      end;
                  'PUT' = Method ->
                      case PathTokens of
@@ -505,12 +512,12 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
                          _ ->
                              ?MENELAUS_WEB_LOG(0003, "Invalid ~p received: ~p", [Method, Req]),
-                             {done, Req:respond({405, add_header(), "Method Not Allowed"})}
+                             {done, reply_text(Req, "Method Not Allowed", 405)}
                      end;
 
                  _ ->
                      ?MENELAUS_WEB_LOG(0004, "Invalid request received: ~p", [Req]),
-                     {done, Req:respond({405, add_header(), "Method Not Allowed"})}
+                     {done, reply_text(Req, "Method Not Allowed", 405)}
              end,
     case Action of
         {done, RV} -> RV;
@@ -543,7 +550,7 @@ handle_uilogin(Req) ->
                 true ->
                     menelaus_auth:complete_uilogin(Req, ro_admin);
                 _ ->
-                    Req:respond({400, server_header(), ""})
+                    reply(Req, 400)
             end
     end.
 
@@ -572,7 +579,7 @@ auth_bucket(Req, F, [ArgPoolId, ArgBucketId | RestArgs], ReadOnlyOk) ->
                     menelaus_auth:require_auth(Req)
             end;
         not_present ->
-            menelaus_util:reply_404(Req)
+            reply_not_found(Req)
     end.
 
 auth(Req, F, Args) ->
@@ -598,8 +605,7 @@ check_uuid(F, Args, Req) ->
                 true ->
                     erlang:apply(F, Args ++ [Req]);
                 false ->
-                    Req:respond({404, server_header(),
-                                 "Cluster uuid does not match the requested.\r\n"})
+                    reply_text(Req, "Cluster uuid does not match the requested.\r\n", 404)
             end;
         false ->
             erlang:apply(F, Args ++ [Req])
@@ -611,7 +617,7 @@ auth_check_bucket_uuid(Req, F, Args) ->
 check_bucket_uuid(F, [_PoolId, Bucket | _] = Args, Req) ->
     case ns_bucket:get_bucket(Bucket) of
         not_present ->
-            menelaus_util:reply_404(Req);
+            reply_not_found(Req);
         {ok, BucketConfig} ->
             menelaus_web_buckets:checking_bucket_uuid(
               Req, BucketConfig,
@@ -1016,8 +1022,8 @@ handle_pool_info_wait_tail(Req, Id, LocalAddr, ETag) ->
     {struct, PList} = build_pool_info(Id, menelaus_auth:is_under_admin(Req),
                                       for_ui, LocalAddr),
     Info = {struct, [{etag, list_to_binary(ETag)} | PList]},
-    Headers = menelaus_auth:maybe_refresh_token(Req) ++ server_header(),
-    Req:ok({"application/json", Headers, menelaus_util:encode_json(Info)}),
+    reply_ok(Req, "application/json", menelaus_util:encode_json(Info),
+             menelaus_auth:maybe_refresh_token(Req)),
     %% this will cause some extra latency on ui perhaps,
     %% because browsers commonly assume we'll keepalive, but
     %% keeping memory usage low is imho more important
@@ -1390,9 +1396,7 @@ handle_pool_info_streaming(Id, Req) ->
     handle_streaming(F, Req, undefined).
 
 handle_streaming(F, Req, LastRes) ->
-    HTTPRes = Req:ok({"application/json; charset=utf-8",
-                      server_header(),
-                      chunked}),
+    HTTPRes = reply_ok(Req, "application/json; charset=utf-8", chunked),
     %% Register to get config state change messages.
     menelaus_event:register_watcher(self()),
     Sock = Req:get(socket),
@@ -1495,8 +1499,9 @@ handle_join_clean_node(Req) ->
     OtherPswd = proplists:get_value("password", Params),
     case lists:member(undefined,
                       [Hostname, OtherUser, OtherPswd]) of
-        true  -> ?MENELAUS_WEB_LOG(0013, "Received request to join cluster missing a parameter.", []),
-                 Req:respond({400, add_header(), "Attempt to join node to cluster received with missing parameters.\n"});
+        true  ->
+            ?MENELAUS_WEB_LOG(0013, "Received request to join cluster missing a parameter.", []),
+            reply_text(Req, "Attempt to join node to cluster received with missing parameters.\n", 400);
         false ->
             case (catch parse_hostname(Hostname)) of
                 {error, Msgs} ->
@@ -1524,7 +1529,8 @@ handle_join_tail(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
          end,
 
     case RV of
-        {ok, _} -> Req:respond({200, add_header(), []});
+        {ok, _} ->
+            reply(Req, 200);
         {client_error, JSON} ->
             reply_json(Req, JSON, 400);
         {error, _What, Message, _Nested} ->
@@ -1569,12 +1575,13 @@ handle_eject_post(Req) ->
                      X -> X
                  end,
     case OtpNodeStr of
-        undefined -> Req:respond({400, add_header(), "Bad Request\n"});
+        undefined ->
+            reply_text(Req, "Bad Request\n", 400);
         _ ->
             OtpNode = list_to_atom(OtpNodeStr),
             case ns_cluster_membership:get_cluster_membership(OtpNode) of
                 active ->
-                    Req:respond({400, add_header(), "Cannot remove active server.\n"});
+                    reply_text(Req, "Cannot remove active server.\n", 400);
                 _ ->
                     do_handle_eject_post(Req, OtpNode)
             end
@@ -1583,26 +1590,26 @@ handle_eject_post(Req) ->
 handle_force_self_eject(Req) ->
     erlang:process_flag(trap_exit, true),
     ns_cluster:force_eject_self(),
-    Req:respond({200, [], "done"}),
+    reply_text(Req, "done", 200),
     ok.
 
 do_handle_eject_post(Req, OtpNode) ->
     case OtpNode =:= node() of
         true ->
             do_eject_myself(),
-            Req:respond({200, [], []});
+            reply(Req, 200);
         false ->
             case lists:member(OtpNode, ns_node_disco:nodes_wanted()) of
                 true ->
                     ns_cluster:leave(OtpNode),
                     ?MENELAUS_WEB_LOG(?NODE_EJECTED, "Node ejected: ~p from node: ~p",
                                       [OtpNode, erlang:node()]),
-                    Req:respond({200, add_header(), []});
+                    reply(Req, 200);
                 false ->
                                                 % Node doesn't exist.
                     ?MENELAUS_WEB_LOG(0018, "Request to eject nonexistant server failed.  Requested node: ~p",
                                       [OtpNode]),
-                    Req:respond({400, add_header(), "Server does not exist.\n"})
+                    reply_text(Req, "Server does not exist.\n", 400)
             end
     end.
 
@@ -1693,7 +1700,7 @@ handle_settings_view_update_daemon_post(Req) ->
 handle_settings_read_only_admin_name(Req) ->
     case ns_config_auth:get_user(ro_admin) of
         undefined ->
-            menelaus_util:reply_404(Req);
+            reply_not_found(Req);
         Name ->
             reply_json(Req, list_to_binary(Name), 200)
     end.
@@ -1797,7 +1804,7 @@ handle_visual_internal_settings_post(Req) ->
             lists:foreach(fun ({ok, CommitF}) -> CommitF();
                               (_) -> ok
                           end, Results),
-            Req:respond({200, add_header(), []});
+            reply(Req, 200);
         {true, []} ->
             reply_json(Req, {struct, [{errors, null}]}, 200);
         {_, Errs} ->
@@ -1817,7 +1824,7 @@ handle_pool_settings(_PoolId, Req) ->
             lists:foreach(fun ({ok, CommitF}) -> CommitF();
                               (_) -> ok
                           end, Results),
-            Req:respond({200, add_header(), []});
+            reply(Req, 200);
         {true, []} ->
             reply_json(Req, {struct, [{errors, null}]}, 200);
         {_, Errs} ->
@@ -1856,11 +1863,10 @@ handle_settings_stats_post(Req) ->
     SendStats = proplists:get_value("sendStats", PostArgs),
     case validate_settings_stats(SendStats) of
         error ->
-            Req:respond({400, add_header(),
-                         "The value of \"sendStats\" must be true or false."});
+            reply_text(Req, "The value of \"sendStats\" must be true or false.", 400);
         SendStats2 ->
             ns_config:set(settings, [{stats, [{send_stats, SendStats2}]}]),
-            Req:respond({200, add_header(), []})
+            reply(Req, 200)
     end.
 
 validate_settings_stats(SendStats) ->
@@ -1895,13 +1901,13 @@ handle_settings_auto_failover_post(Req) ->
           validate_settings_auto_failover(Enabled, Timeout, MaxNodes)} of
         {false, [true, Timeout2, MaxNodes2]} ->
             auto_failover:enable(Timeout2, MaxNodes2),
-            Req:respond({200, add_header(), []});
+            reply(Req, 200);
         {false, false} ->
             auto_failover:disable(),
-            Req:respond({200, add_header(), []});
+            reply(Req, 200);
         {false, {error, Errors}} ->
             Errors2 = [<<Msg/binary, "\n">> || {_, Msg} <- Errors],
-            Req:respond({400, add_header(), Errors2});
+            reply_text(Req, Errors2, 400);
         {true, {error, Errors}} ->
             reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 200);
         % Validation only and no errors
@@ -1946,7 +1952,7 @@ is_valid_positive_integer_in_range(String, Min, Max) ->
 %% @doc Resets the number of nodes that were automatically failovered to zero
 handle_settings_auto_failover_reset_count(Req) ->
     auto_failover:reset_count(),
-    Req:respond({200, add_header(), []}).
+    reply(Req, 200).
 
 %% true if system is correctly provisioned
 is_system_provisioned() ->
@@ -2068,7 +2074,7 @@ handle_settings_alerts_post(Req) ->
     case {ValidateOnly, menelaus_alert:parse_settings_alerts_post(PostArgs)} of
         {false, {ok, Config}} ->
             ns_config:set(email_alerts, Config),
-            Req:respond({200, add_header(), []});
+            reply(Req, 200);
         {false, {error, Errors}} ->
             reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400);
         {true, {ok, _}} ->
@@ -2092,7 +2098,7 @@ handle_settings_alerts_send_test_email(Req) ->
         {error, Reason} ->
             reply_json(Req, {struct, [{error, Reason}]}, 400);
         _ ->
-            Req:respond({200, add_header(), []})
+            reply(Req, 200)
     end.
 
 gen_password(Length) ->
@@ -2149,40 +2155,6 @@ test() ->
 
 -endif.
 
--include_lib("kernel/include/file.hrl").
-
-%% Originally from mochiweb_request.erl maybe_serve_file/2
-%% and modified to handle user-defined content-type
-serve_static_file(Req, {DocRoot, Path}, ContentType, ExtraHeaders) ->
-    serve_static_file(Req, filename:join(DocRoot, Path), ContentType, ExtraHeaders);
-serve_static_file(Req, File, ContentType, ExtraHeaders) ->
-    case file:read_file_info(File) of
-        {ok, FileInfo} ->
-            LastModified = httpd_util:rfc1123_date(FileInfo#file_info.mtime),
-            case Req:get_header_value("if-modified-since") of
-                LastModified ->
-                    Req:respond({304, ExtraHeaders, ""});
-                _ ->
-                    case file:open(File, [raw, binary]) of
-                        {ok, IoDevice} ->
-                            Res = Req:ok({ContentType,
-                                          [{"last-modified", LastModified}
-                                           | ExtraHeaders],
-                                          {file, IoDevice}}),
-                            file:close(IoDevice),
-                            Res;
-                        _ ->
-                            Req:not_found(ExtraHeaders)
-                    end
-            end;
-        {error, _} ->
-            Req:not_found(ExtraHeaders)
-    end.
-
-% too much typing to add this, and I'd rather not hide the response too much
-add_header() ->
-    menelaus_util:server_header().
-
 %% log categorizing, every logging line should be unique, and most
 %% should be categorized
 
@@ -2213,10 +2185,7 @@ alert_key(?BUCKET_DELETED)  -> bucket_deleted;
 alert_key(_) -> all.
 
 handle_dot(Bucket, Req) ->
-    Dot = ns_janitor_vis:graphviz(Bucket),
-    Req:ok({"text/plain; charset=utf-8",
-            server_header(),
-            iolist_to_binary(Dot)}).
+    reply_ok(Req, "text/plain; charset=utf-8", ns_janitor_vis:graphviz(Bucket)).
 
 handle_dotsvg(Bucket, Req) ->
     Dot = ns_janitor_vis:graphviz(Bucket),
@@ -2230,8 +2199,9 @@ handle_dotsvg(Bucket, Req) ->
                            [{"refresh", 1}];
                       true -> []
                    end,
-    Req:ok({"image/svg+xml", MaybeRefresh ++ server_header(),
-           iolist_to_binary(menelaus_util:insecure_pipe_through_command("dot -Tsvg", Dot))}).
+    reply_ok(Req, "image/svg+xml",
+             menelaus_util:insecure_pipe_through_command("dot -Tsvg", Dot),
+             MaybeRefresh).
 
 handle_node("self", Req)            -> handle_node("default", node(), Req);
 handle_node(S, Req) when is_list(S) -> handle_node("default", list_to_atom(S), Req).
@@ -2301,7 +2271,7 @@ handle_node_self_xdcr_ssl_ports(Req) ->
 
 handle_cluster_certificate(Req) ->
     {Cert, _} = ns_server_cert:cluster_cert_and_pkey_pem(),
-    Req:ok({"text/plain", server_header(), Cert}).
+    reply_ok(Req, "text/plain", Cert).
 
 handle_regenerate_certificate(Req) ->
     ns_server_cert:generate_and_set_cert_and_pkey(),
@@ -2366,7 +2336,7 @@ handle_node_settings_post(Node, Req) ->
                         %% performing required restart from
                         %% successfull path change
                         ns_server:restart(),
-                        Req:respond({200, add_header(), []}),
+                        reply(Req, 200),
                         erlang:exit(normal);
                     {errors, Msgs} -> Msgs
                 end;
@@ -2466,10 +2436,10 @@ parse_failover_args(Req) ->
     Node = (catch list_to_existing_atom(NodeArg)),
     case Node of
         undefined ->
-            Req:respond({400, add_header(), "No server specified."}),
+            reply_text(Req, "No server specified.", 400),
             error;
         _ when not is_atom(Node) ->
-            Req:respond({400, add_header(), "Unknown server given."}),
+            reply_text(Req, "Unknown server given.", 400),
             error;
         _ ->
             {ok, Node}
@@ -2481,12 +2451,11 @@ handle_failover(Req) ->
         {ok, Node} ->
             case ns_cluster_membership:failover(Node) of
                 ok ->
-                    Req:respond({200, [], []});
+                    reply(Req, 200);
                 rebalance_running ->
-                    Req:respond({503, add_header(), "Rebalance running."});
+                    reply_text(Req, "Rebalance running.", 503);
                 in_recovery ->
-                    Req:respond({503, add_header(),
-                                 "Cluster is in recovery mode."})
+                    reply_text(Req, "Cluster is in recovery mode.", 503)
             end;
         error ->
             ok
@@ -2509,9 +2478,9 @@ handle_start_graceful_failover(Req) ->
                   end,
             case Msg of
                 [] ->
-                    Req:respond({200, add_header(), []});
+                    reply(Req, 200);
                 {Code, Text} ->
-                    Req:respond({Code, add_header(), Text})
+                    reply_text(Req, Text, Code)
             end
     end.
 
@@ -2546,19 +2515,19 @@ do_handle_rebalance(Req, KnownNodesS, EjectedNodesS, DeltaRecoveryBuckets) ->
     case ns_cluster_membership:start_rebalance(KnownNodes,
                                                EjectedNodes, DeltaRecoveryBuckets) of
         already_balanced ->
-            Req:respond({200, [], []});
+            reply(Req, 200);
         in_progress ->
-            Req:respond({200, [], []});
+            reply(Req, 200);
         nodes_mismatch ->
             reply_json(Req, {struct, [{mismatch, 1}]}, 400);
         delta_recovery_not_possible ->
             reply_json(Req, {struct, [{deltaRecoveryNotPossible, 1}]}, 400);
         no_active_nodes_left ->
-            Req:respond({400, [], "No active nodes left"});
+            reply_text(Req, "No active nodes left", 400);
         in_recovery ->
-            Req:respond({503, [], "Cluster is in recovery mode."});
+            reply_text(Req, "Cluster is in recovery mode.", 503);
         ok ->
-            Req:respond({200, [], []})
+            reply(Req, 200)
     end.
 
 handle_rebalance_progress(_PoolId, Req) ->
@@ -2583,20 +2552,20 @@ handle_stop_rebalance(Req) ->
         true ->
             case ns_cluster_membership:stop_rebalance_if_safe() of
                 unsafe ->
-                    Req:respond({400, [], []});
+                    reply(Req, 400);
                 _ -> %% ok | not_rebalancing
-                    Req:respond({200, [], []})
+                    reply(Req, 200)
             end;
         _ ->
             ns_cluster_membership:stop_rebalance(),
-            Req:respond({200, [], []})
+            reply(Req, 200)
     end.
 
 handle_re_add_node(Req) ->
     Params = Req:parse_post(),
     Node = list_to_atom(proplists:get_value("otpNode", Params, "undefined")),
     ok = ns_cluster_membership:re_add_node(Node),
-    Req:respond({200, [], []}).
+    reply(Req, 200).
 
 handle_tasks(PoolId, Req) ->
     NodesSet = sets:from_list(ns_node_disco:nodes_wanted()),
@@ -2655,7 +2624,7 @@ find_bucket_hostname(BucketName, Hostname, Req) ->
 handle_bucket_node_info(_PoolId, BucketName, Hostname, Req) ->
     case find_bucket_hostname(BucketName, Hostname, Req) of
         false ->
-            menelaus_util:reply_404(Req);
+            reply_not_found(Req);
         _ ->
             BucketURI = bin_concat_path(["pools", "default", "buckets", BucketName]),
             NodeStatsURI = bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", Hostname, "stats"]),
@@ -2709,9 +2678,12 @@ average_failover_safenesses_rec(Node, NodeInfos, [{BucketName, BucketConfig} | R
 handle_diag_eval(Req) ->
     {value, Value, _} = eshell:eval(binary_to_list(Req:recv_body()), erl_eval:add_binding('Req', Req, erl_eval:new_bindings())),
     case Value of
-        done -> ok;
-        {json, V} -> reply_json(Req, V, 200);
-        _ -> Req:respond({200, [], io_lib:format("~p", [Value])})
+        done ->
+            ok;
+        {json, V} ->
+            reply_json(Req, V, 200);
+        _ ->
+            reply_text(Req, io_lib:format("~p", [Value]), 200)
     end.
 
 handle_diag_master_events(Req) ->
@@ -2721,15 +2693,11 @@ handle_diag_master_events(Req) ->
             do_handle_diag_master_events(Req);
         _ ->
             Body = master_activity_events:format_some_history(master_activity_events_keeper:get_history()),
-            Req:ok({"text/kind-of-json; charset=utf-8",
-                    server_header(),
-                    Body})
+            reply_ok(Req, "text/kind-of-json; charset=utf-8", Body)
     end.
 
 do_handle_diag_master_events(Req) ->
-    Rep = Req:ok({"text/kind-of-json; charset=utf-8",
-                  server_header(),
-                  chunked}),
+    Rep = reply_ok(Req, "text/kind-of-json; charset=utf-8", chunked),
     Parent = self(),
     Sock = Req:get(socket),
     inet:setopts(Sock, [{active, true}]),
@@ -2797,15 +2765,12 @@ handle_diag_vbuckets(Req) ->
                      {perNodeStates, {struct, PerNodeStates}}]},
     Hash = integer_to_list(erlang:phash2(JSON)),
     ExtraHeaders = [{"Cache-Control", "must-revalidate"},
-                    {"ETag", Hash},
-                    {"Server", proplists:get_value("Server", menelaus_util:server_header(), "")}],
+                    {"ETag", Hash}],
     case Req:get_header_value("if-none-match") of
-        Hash -> Req:respond({304, ExtraHeaders, []});
+        Hash ->
+            reply(Req, 304, ExtraHeaders);
         _ ->
-            Req:respond({200,
-                         [{"Content-Type", "application/json"}
-                          | ExtraHeaders],
-                         mochijson2:encode(JSON)})
+            reply_json(Req, JSON, 200, ExtraHeaders)
     end.
 
 handle_set_autocompaction(Req) ->
@@ -2856,15 +2821,14 @@ handle_set_replication_topology(Req) ->
             RV = ns_orchestrator:set_replication_topology(Topology),
             case RV of
                 ok ->
-                    Req:respond({200, add_header(), []});
+                    reply(Req, 200);
                 rebalance_running ->
-                    Req:respond({503, add_header(), "Rebalance running."});
+                    reply_text(Req, "Rebalance running.", 503);
                 in_recovery ->
-                    Req:respond({503, add_header(), "Cluster is in recovery mode."})
+                    reply_text(Req, "Cluster is in recovery mode.", 503)
             end;
         false ->
-            Req:respond({400, add_header(),
-                         "topology must be either \"star\" or \"chain\""})
+            reply_text(Req, "topology must be either \"star\" or \"chain\"", 400)
     end.
 
 mk_number_field_validator_error_maker(JSONName, Msg, Args) ->
@@ -3245,7 +3209,7 @@ handle_node_rename(Req) ->
 
     case Reply of
         ok ->
-            Req:respond({200, add_header(), []});
+            reply(Req, 200);
         {error, Error, Status} ->
             reply_json(Req, [Error], Status)
     end.
@@ -3261,7 +3225,7 @@ build_terse_bucket_info(BucketName) ->
 
 serve_short_bucket_info(_PoolId, BucketName, Req) ->
     V = build_terse_bucket_info(BucketName),
-    Req:ok({"application/json", server_header(), V}).
+    reply_ok(Req, "application/json", V).
 
 serve_streaming_short_bucket_info(_PoolId, BucketName, Req) ->
     handle_streaming(
@@ -3275,7 +3239,7 @@ handle_set_recovery_type(Req) ->
         true ->
             do_handle_set_recovery_type(Req);
         false ->
-            menelaus_util:reply_404(Req)
+            reply_not_found(Req)
     end.
 
 decode_recovery_type("delta") ->

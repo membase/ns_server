@@ -50,12 +50,14 @@
          handle_local_random_key/3]).
 
 -import(menelaus_util,
-        [server_header/0,
+        [reply/2,
+         reply/3,
+         reply_text/3,
          reply_json/2,
+         reply_json/3,
          concat_url_path/1,
          bin_concat_path/1,
-         bin_concat_path/2,
-         reply_json/3]).
+         bin_concat_path/2]).
 
 -define(MAX_BUCKET_NAME_LEN, 100).
 
@@ -77,8 +79,7 @@ checking_bucket_uuid(Req, BucketConfig, Body) ->
                 true ->
                     Body();
                 false ->
-                    Req:respond({404, server_header(),
-                                 "Bucket uuid does not match the requested.\r\n"})
+                    reply_text(Req, "Bucket uuid does not match the requested.\r\n", 404)
             end;
         false ->
             Body()
@@ -368,7 +369,7 @@ handle_bucket_delete(_PoolId, BucketId, Req) ->
     case ns_orchestrator:delete_bucket(BucketId) of
         ok ->
             ?MENELAUS_WEB_LOG(?BUCKET_DELETED, "Deleted bucket \"~s\"~n", [BucketId]),
-            Req:respond({200, server_header(), []});
+            reply(Req, 200);
         rebalance_running ->
             reply_json(Req, {struct, [{'_', <<"Cannot delete buckets during rebalance.\r\n">>}]}, 503);
         in_recovery ->
@@ -376,13 +377,11 @@ handle_bucket_delete(_PoolId, BucketId, Req) ->
         {shutdown_failed, _} ->
             reply_json(Req, {struct, [{'_', <<"Bucket deletion not yet complete, but will continue.\r\n">>}]}, 500);
         {exit, {not_found, _}, _} ->
-            Req:respond({404, server_header(), "The bucket to be deleted was not found.\r\n"})
+            reply_text(Req, "The bucket to be deleted was not found.\r\n", 404)
     end.
 
 respond_bucket_created(Req, PoolId, BucketId) ->
-    Req:respond({202, [{"Location", concat_url_path(["pools", PoolId, "buckets", BucketId])}
-                       | server_header()],
-                 ""}).
+    reply(Req, 202, [{"Location", concat_url_path(["pools", PoolId, "buckets", BucketId])}]).
 
 %% returns pprop list with only props useful for ns_bucket
 extract_bucket_props(BucketId, Props) ->
@@ -465,9 +464,9 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
                 ok ->
                     ale:info(?USER_LOGGER, "Updated bucket ~s (of type ~s) properties:~n~p",
                              [BucketId, BucketType, lists:keydelete(sasl_password, 1, UpdatedProps)]),
-                    Req:respond({200, server_header(), []});
+                    reply(Req, 200);
                 rebalance_running ->
-                    Req:respond({503, server_header(), "\"cannot update bucket while rebalance is running\""});
+                    reply_text(Req, "\"cannot update bucket while rebalance is running\"", 503);
                 {exit, {not_found, _}, _} ->
                     %% if this happens then our validation raced, so repeat everything
                     handle_bucket_update_inner(BucketId, Req, Params, Limit-1)
@@ -613,18 +612,18 @@ handle_bucket_flush(_PoolId, Id, Req) ->
 do_handle_bucket_flush(Id, Req) ->
     case ns_orchestrator:flush_bucket(Id) of
         ok ->
-            Req:respond({200, server_header(), []});
+            reply(Req, 200);
         rebalance_running ->
             reply_json(Req, {struct, [{'_', <<"Cannot flush buckets during rebalance">>}]}, 503);
         in_recovery ->
             reply_json(Req, {struct, [{'_', <<"Cannot flush buckets when cluster is in recovery mode">>}]}, 503);
         bucket_not_found ->
-            Req:respond({404, server_header(), []});
+            reply(Req, 404);
         flush_disabled ->
             reply_json(Req, {struct, [{'_', <<"Flush is disabled for the bucket">>}]}, 400);
         OtherError ->
             Msg = io_lib:format("Got error: ~p", [OtherError]),
-            Req:respond({503, server_header(), Msg})
+            reply_text(Req, Msg, 503)
     end.
 
 
@@ -1071,31 +1070,31 @@ extended_cluster_storage_info() ->
 
 handle_compact_bucket(_PoolId, Bucket, Req) ->
     ok = compaction_daemon:force_compact_bucket(Bucket),
-    Req:respond({200, server_header(), []}).
+    reply(Req, 200).
 
 handle_purge_compact_bucket(_PoolId, Bucket, Req) ->
     ok = compaction_daemon:force_purge_compact_bucket(Bucket),
-    Req:respond({200, server_header(), []}).
+    reply(Req, 200).
 
 handle_cancel_bucket_compaction(_PoolId, Bucket, Req) ->
     ok = compaction_daemon:cancel_forced_bucket_compaction(Bucket),
-    Req:respond({200, server_header(), []}).
+    reply(Req, 200).
 
 handle_compact_databases(_PoolId, Bucket, Req) ->
     ok = compaction_daemon:force_compact_db_files(Bucket),
-    Req:respond({200, server_header(), []}).
+    reply(Req, 200).
 
 handle_cancel_databases_compaction(_PoolId, Bucket, Req) ->
     ok = compaction_daemon:cancel_forced_db_compaction(Bucket),
-    Req:respond({200, server_header(), []}).
+    reply(Req, 200).
 
 handle_compact_view(_PoolId, Bucket, DDocId, Req) ->
     ok = compaction_daemon:force_compact_view(Bucket, DDocId),
-    Req:respond({200, server_header(), []}).
+    reply(Req, 200).
 
 handle_cancel_view_compaction(_PoolId, Bucket, DDocId, Req) ->
     ok = compaction_daemon:cancel_forced_view_compaction(Bucket, DDocId),
-    Req:respond({200, server_header(), []}).
+    reply(Req, 200).
 
 % for test
 basic_bucket_params_screening(IsNew, Name, Params, AllBuckets) ->

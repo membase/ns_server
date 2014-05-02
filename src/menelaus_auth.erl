@@ -48,11 +48,10 @@ require_auth(Req) ->
             %% We need this for browsers that display auth
             %% dialog when faced with 401 with
             %% WWW-Authenticate header response, even via XHR
-            Req:respond({401, add_header(), []});
+            menelaus_util:reply(Req, 401);
         _ ->
-            Req:respond({401, [{"WWW-Authenticate",
-                                "Basic realm=\"Couchbase Server Admin / REST\""} | add_header()],
-                         []})
+            menelaus_util:reply(Req, 401, [{"WWW-Authenticate",
+                                            "Basic realm=\"Couchbase Server Admin / REST\""}])
     end.
 
 %% Returns list of accessible buckets for current credentials. Admin
@@ -134,11 +133,11 @@ kill_auth_cookie(Req) ->
 complete_uilogin(Req, Role) ->
     Token = menelaus_ui_auth:generate_token(Role),
     CookieHeader = generate_auth_cookie(Req, Token),
-    Req:respond({200, [CookieHeader | add_header()], ""}).
+    menelaus_util:reply(Req, 200, [CookieHeader]).
 
 complete_uilogout(Req) ->
     CookieHeader = kill_auth_cookie(Req),
-    Req:respond({200, [CookieHeader | add_header()], ""}).
+    menelaus_util:reply(Req, 200, [CookieHeader]).
 
 maybe_refresh_token(Req) ->
     case menelaus_auth:extract_auth(Req) of
@@ -295,10 +294,6 @@ bucket_auth_fun(UserPassword, ReadOnlyOk) ->
                     end
             end
     end.
-
-% too much typing to add this, and I'd rather not hide the response too much
-add_header() ->
-    menelaus_util:server_header().
 
 is_under_admin(Req) ->
     check_auth(extract_auth(Req)).
