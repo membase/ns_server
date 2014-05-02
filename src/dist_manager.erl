@@ -187,39 +187,34 @@ decode_status({ok, _Pid}) ->
 decode_status({error, {{already_started, _Pid}, _Stack}}) ->
     false.
 
+is_free_nodename(ShortName) ->
+    {ok, Names} = erl_epmd:names(),
+    not lists:keymember(ShortName, 1, Names).
+
+wait_for_nodename(ShortName) ->
+    wait_for_nodename(ShortName, 5).
+
+wait_for_nodename(ShortName, Attempts) ->
+    case is_free_nodename(ShortName) of
+        true ->
+            ok;
+        false ->
+            case Attempts of
+                0 ->
+                    {error, duplicate_name};
+                _ ->
+                    ?log_info("Short name ~s is still occupied. "
+                              "Will try again after a bit", [ShortName]),
+                    timer:sleep(500),
+                    wait_for_nodename(ShortName, Attempts - 1)
+            end
+    end.
+
 -spec adjust_my_address(string(), boolean()) ->
                                net_restarted | not_self_started | nothing |
                                {address_save_failed, term()}.
 adjust_my_address(MyIP, UserSupplied) ->
     gen_server:call(?MODULE, {adjust_my_address, MyIP, UserSupplied}).
-
-%% Call net_kernel:start(Opts) but ignore {error, duplicate_name} error for
-%% several times. Then give up if error is still returned. This weird logic is
-%% needed because epmd daemon unregisters old node name when socket (that was
-%% used to register this name) is closed. This is, of course, what happens
-%% when net_kernel:stop() is called. But it seems that there's no guarantee
-%% that subsequent register request will be handled after old node name has
-%% been unregistered. And because ns_1@127.0.0.1 and ns_1@10.1.3.75 are
-%% actually conflicting names we can hit this duplicate_name error.
-do_net_kernel_start(Opts) ->
-    do_net_kernel_start(Opts, 5).
-
-do_net_kernel_start(Opts, Tries) when is_integer(Tries) ->
-    case net_kernel:start(Opts) of
-        {error, duplicate_name} ->
-            case Tries of
-                0 ->
-                    {error, duplicate_name};
-                _ ->
-                    ?log_warning("Failed to bring up net_kernel because of "
-                                 "duplicate name. Will try ~b more times",
-                                 [Tries]),
-                    timer:sleep(500),
-                    do_net_kernel_start(Opts, Tries - 1)
-            end;
-        Other ->
-            Other
-    end.
 
 %% Bring up distributed erlang.
 bringup(MyIP, UserSupplied) ->
@@ -228,7 +223,8 @@ bringup(MyIP, UserSupplied) ->
     MyNodeName = list_to_atom(MyNodeNameStr),
 
     ?log_info("Attempting to bring up net_kernel with name ~p", [MyNodeName]),
-    Rv = decode_status(do_net_kernel_start([MyNodeName, longnames])),
+    ok = wait_for_nodename(ShortName),
+    Rv = decode_status(net_kernel:start([MyNodeName, longnames])),
     net_kernel:set_net_ticktime(misc:get_env_default(set_net_ticktime, 60)),
 
     %% Rv can be false in case -name has been passed to erl but we still need
