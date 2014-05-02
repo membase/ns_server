@@ -251,11 +251,7 @@ grab_per_node_diag(Nodes) ->
     {Results, OldNodes}.
 
 handle_just_diag(Req, Extra) ->
-    Resp = Req:ok({"text/plain; charset=utf-8",
-                   Extra ++
-                       [{"Content-Type", "text/plain"}
-                        | menelaus_util:server_header()],
-                   chunked}),
+    Resp = menelaus_util:reply_ok(Req, "text/plain; charset=utf-8", chunked, Extra),
 
     Nodes = ns_node_disco:nodes_actual(),
     {Results, OldNodes} = grab_per_node_diag(Nodes),
@@ -516,14 +512,11 @@ do_handle_memcached_log(Resp, File) ->
 handle_sasl_logs(LogName, Req) ->
     case ns_log_browser:log_exists(LogName) of
         true ->
-            Resp = Req:ok({"text/plain; charset=utf-8",
-                           menelaus_util:server_header(),
-                           chunked}),
+            Resp = menelaus_util:reply_ok(Req, "text/plain; charset=utf-8", chunked),
             handle_log(Resp, LogName),
             Resp:write_chunk(<<"">>);
         false ->
-            Req:respond({404, menelaus_util:server_header(),
-                         "Requested log file not found.\r\n"})
+            menelaus_util:reply_text(Req, "Requested log file not found.\r\n", 404)
     end.
 
 handle_sasl_logs(Req) ->

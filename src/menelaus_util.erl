@@ -21,18 +21,27 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -include("ns_common.hrl").
+-include("menelaus_web.hrl").
 
 -ifdef(EUNIT).
 -export([test_under_debugger/0, debugger_apply/2]).
 -endif.
 
--export([server_header/0,
-         redirect_permanently/2,
-         redirect_permanently/3,
+-export([redirect_permanently/2,
+         reply/2,
+         reply/3,
+         reply_ok/3,
+         reply_ok/4,
+         reply_text/3,
+         reply_text/4,
          reply_json/2,
          reply_json/3,
+         reply_json/4,
          parse_json/1,
-         reply_404/1,
+         reply_not_found/1,
+         serve_file/3,
+         serve_file/4,
+         serve_static_file/4,
          parse_boolean/1,
          expect_config/1,
          get_option/2,
@@ -62,15 +71,13 @@
 
 %% External API
 
-server_header() ->
-    [{<<"Pragma">>, <<"no-cache">>},
-     {<<"Cache-Control">>, <<"no-cache">>},
-     {<<"Server">>, <<"Couchbase Server">>}].
-
-redirect_permanently(Path, Req) -> redirect_permanently(Path, Req, []).
+server_headers() ->
+    [{"Cache-Control", "no-cache"},
+     {"Pragma", "no-cache"},
+     {"Server", "Couchbase Server"}].
 
 %% mostly extracted from mochiweb_request:maybe_redirect/3
-redirect_permanently(Path, Req, ExtraHeaders) ->
+redirect_permanently(Path, Req) ->
     Scheme = case Req:get(socket) of
                  {ssl, _} ->
                      "https://";
@@ -91,24 +98,101 @@ redirect_permanently(Path, Req, ExtraHeaders) ->
            "<p>The document has moved <a href=\"">>,
     Bottom = <<">here</a>.</p></body></html>\n">>,
     Body = <<Top/binary, LocationBin/binary, Bottom/binary>>,
-    Req:respond({301,
-                 [{"Location", Location},
-                  {"Content-Type", "text/html"} | ExtraHeaders],
-                 Body}).
+    reply_inner(Req, Body, 301, [{"Location", Location}, {"Content-Type", "text/html"}]).
 
-reply_404(Req) ->
-    Req:respond({404, server_header(), "Requested resource not found.\r\n"}).
+reply_not_found(Req) ->
+    reply_not_found(Req, []).
+
+reply_not_found(Req, ExtraHeaders) ->
+    reply_inner(Req, "Requested resource not found.\r\n", 404, [{"Content-Type", "text/plain"} | ExtraHeaders]).
+
+reply_text(Req, Message, Code) ->
+    reply_inner(Req, Message, Code, [{"Content-Type", "text/plain"}]).
+
+reply_text(Req, Message, Code, ExtraHeaders) ->
+    reply_inner(Req, Message, Code, [{"Content-Type", "text/plain"} | ExtraHeaders]).
 
 reply_json(Req, Body) ->
-    Req:ok({"application/json",
-            server_header(),
-            encode_json(Body)}).
+    reply_ok(Req, "application/json", encode_json(Body)).
 
-reply_json(Req, Body, Status) ->
-    Req:respond({Status,
-                 [{"Content-Type", "application/json"}
-                  | server_header()],
-                 encode_json(Body)}).
+reply_json(Req, Body, Code) ->
+    reply_inner(Req, encode_json(Body), Code, [{"Content-Type", "application/json"}]).
+
+reply_json(Req, Body, Code, ExtraHeaders) ->
+    reply_inner(Req, encode_json(Body), Code, [{"Content-Type", "application/json"} | ExtraHeaders]).
+
+reply_ok(Req, ContentType, Body) ->
+    Peer = Req:get(peer),
+    Resp = Req:ok({ContentType, server_headers(), Body}),
+    ?log_web_hit(Peer, Req, Resp),
+    Resp.
+
+reply_ok(Req, ContentType, Body, ExtraHeaders) ->
+    Peer = Req:get(peer),
+    Resp = Req:ok({ContentType, extend_server_headers(ExtraHeaders), Body}),
+    ?log_web_hit(Peer, Req, Resp),
+    Resp.
+
+reply(Req, Code, ExtraHeaders) ->
+    reply_inner(Req, [], Code, ExtraHeaders).
+
+reply(Req, Code) ->
+    reply_inner(Req, [], Code).
+
+reply_inner(Req, Body, Code, ExtraHeaders) ->
+    Peer = Req:get(peer),
+    Resp = Req:respond({Code, extend_server_headers(ExtraHeaders), Body}),
+    ?log_web_hit(Peer, Req, Resp),
+    Resp.
+
+reply_inner(Req, Body, Code) ->
+    Peer = Req:get(peer),
+    Resp = Req:respond({Code, server_headers(), Body}),
+    ?log_web_hit(Peer, Req, Resp),
+    Resp.
+
+extend_server_headers(ExtraHeaders) ->
+    misc:ukeymergewith(fun ({K, A}, {K, _}) -> {K, A} end, 1,
+                       lists:keysort(1, ExtraHeaders), server_headers()).
+
+-include_lib("kernel/include/file.hrl").
+
+%% Originally from mochiweb_request.erl maybe_serve_file/2
+%% and modified to handle user-defined content-type
+serve_static_file(Req, {DocRoot, Path}, ContentType, ExtraHeaders) ->
+    serve_static_file(Req, filename:join(DocRoot, Path), ContentType, ExtraHeaders);
+serve_static_file(Req, File, ContentType, ExtraHeaders) ->
+    case file:read_file_info(File) of
+        {ok, FileInfo} ->
+            LastModified = httpd_util:rfc1123_date(FileInfo#file_info.mtime),
+            case Req:get_header_value("if-modified-since") of
+                LastModified ->
+                    reply(Req, 304, ExtraHeaders);
+                _ ->
+                    case file:open(File, [raw, binary]) of
+                        {ok, IoDevice} ->
+                            Res = reply_ok(Req, ContentType,
+                                           {file, IoDevice},
+                                           [{"last-modified", LastModified}
+                                            | ExtraHeaders]),
+                            file:close(IoDevice),
+                            Res;
+                        _ ->
+                            reply_not_found(Req, ExtraHeaders)
+                    end
+            end;
+        {error, _} ->
+            reply_not_found(Req, ExtraHeaders)
+    end.
+
+serve_file(Req, File, Root) ->
+    serve_file(Req, File, Root, []).
+
+serve_file(Req, File, Root, ExtraHeaders) ->
+    Peer = Req:get(peer),
+    Resp = Req:serve_file(File, Root, ExtraHeaders),
+    ?log_web_hit(Peer, Req, Resp),
+    Resp.
 
 expect_config(Key) ->
     {value, RV} = ns_config:search_node(Key),

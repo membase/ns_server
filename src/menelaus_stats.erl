@@ -191,7 +191,7 @@ handle_bucket_stats(_PoolId, Id, Req) ->
 handle_bucket_node_stats(_PoolId, BucketName, HostName, Req) ->
     case menelaus_web:find_bucket_hostname(BucketName, HostName, Req) of
         false ->
-            menelaus_util:reply_404(Req);
+            menelaus_util:reply_not_found(Req);
         {ok, Node} ->
             Params = Req:parse_qs(),
             Ops = build_bucket_stats_ops_response([Node], BucketName, Params),
@@ -208,7 +208,7 @@ handle_specific_stat_for_buckets(PoolId, Id, StatName, Req) ->
     Params = Req:parse_qs(),
     case proplists:get_value("per_node", Params, "true") of
         undefined ->
-            Req:respond({501, [], []});
+            menelaus_util:reply(Req, 501);
         "true" ->
             handle_specific_stat_for_buckets_group_per_node(PoolId, Id, StatName, Req)
     end.
