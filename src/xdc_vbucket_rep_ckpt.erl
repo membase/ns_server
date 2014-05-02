@@ -21,7 +21,7 @@
 -export([do_checkpoint/1]).
 -export([read_validate_checkpoint/3]).
 -export([get_local_vbuuid/2]).
--export([get_failover_id/2]).
+-export([get_failover_uuid/2]).
 
 -include("xdc_replicator.hrl").
 
@@ -86,17 +86,21 @@ do_checkpoint_new(#rep_state{remote_vbopaque = {old_node_marker, RemoteStartTime
             ?xdcr_debug("Detected remote ep-engine instance restart: ~s vs ~s", [RemoteStartTime, NowStartTime]),
             {checkpoint_commit_failure, {start_time_mismatch, RemoteStartTime, NowStartTime}, State}
     end;
-do_checkpoint_new(State) ->
-    ?xdcr_info("checkpointing for vb: ~p at ~p", [State#rep_state.status#rep_vb_status.vb, State#rep_state.current_through_seq]),
+do_checkpoint_new(#rep_state{current_through_seq = Seq,
+                             current_through_snapshot_seq = SnapshotSeq,
+                             current_through_snapshot_end_seq = SnapshotEndSeq,
+                             status = OldStatus,
+                             upr_failover_uuid = FailoverUUID} = State) ->
     #rep_vb_status{vb = Vb,
                    docs_checked = Checked,
                    docs_written = Written,
                    data_replicated = DataRepd,
                    total_docs_checked = TotalChecked,
                    total_docs_written = TotalWritten,
-                   total_data_replicated = TotalDataRepd} = OldStatus = State#rep_state.status,
+                   total_data_replicated = TotalDataRepd} = OldStatus,
 
-    {FailoverUUID, FailoverSeq} = State#rep_state.upr_failover_id,
+    ?xdcr_info("checkpointing for vb: ~p at ~p",
+               [Vb, {Seq, SnapshotSeq, SnapshotEndSeq, FailoverUUID}]),
 
     SourceBucketName = (State#rep_state.rep_details)#rep.source,
 
@@ -113,14 +117,15 @@ do_checkpoint_new(State) ->
             CheckpointDocId = build_commit_doc_id(State#rep_state.rep_details, Vb),
             NewSeq = State#rep_state.current_through_seq,
             NewSnapshotSeq = State#rep_state.current_through_snapshot_seq,
+            NewSnapshotEndSeq = State#rep_state.current_through_snapshot_end_seq,
             {seq_vs_snapshot, true} = {seq_vs_snapshot, (NewSnapshotSeq =< NewSeq)},
             CheckpointDoc = {[{<<"commitopaque">>, RemoteCommitOpaque},
                               {<<"start_time">>, ?l2b(State#rep_state.rep_starttime)},
                               {<<"end_time">>, ?l2b(httpd_util:rfc1123_date())},
                               {<<"failover_uuid">>, FailoverUUID},
-                              {<<"failover_seq">>, FailoverSeq},
                               {<<"seqno">>, NewSeq},
                               {<<"upr_snapshot_seqno">>, NewSnapshotSeq},
+                              {<<"upr_snapshot_end_seqno">>, NewSnapshotEndSeq},
                               {<<"total_docs_checked">>, TotalChecked + Checked},
                               {<<"total_docs_written">>, TotalWritten + Written},
                               {<<"total_data_replicated">>, TotalDataRepd + DataRepd}]},
@@ -375,7 +380,7 @@ handle_no_checkpoint_with_opaque(RemoteVBOpaque) ->
     TotalDocsChecked = 0,
     TotalDocsWritten = 0,
     TotalDataReplicated = 0,
-    {StartSeq, 0, {0, 0},
+    {StartSeq, 0, 0, 0,
      TotalDocsChecked,
      TotalDocsWritten,
      TotalDataReplicated,
@@ -405,18 +410,18 @@ do_parse_validate_checkpoint_doc_new(Rep, Vb, Body0, TargetHttpDB) ->
            end,
     CommitOpaque = proplists:get_value(<<"commitopaque">>, Body),
     FailoverUUID = proplists:get_value(<<"failover_uuid">>, Body),
-    FailoverSeq = proplists:get_value(<<"failover_seq">>, Body),
     Seqno = proplists:get_value(<<"seqno">>, Body),
     SnapshotSeq = proplists:get_value(<<"upr_snapshot_seqno">>, Body),
+    SnapshotEndSeq = proplists:get_value(<<"upr_snapshot_end_seqno">>, Body),
     case (CommitOpaque =/= undefined andalso
           is_integer(FailoverUUID) andalso
-          is_integer(FailoverSeq) andalso
           is_integer(Seqno) andalso
-          is_integer(SnapshotSeq)) of
+          is_integer(SnapshotSeq) andalso
+          is_integer(SnapshotEndSeq)) of
         false ->
             handle_no_checkpoint(TargetHttpDB);
         true ->
-            case get_failover_id(Rep#rep.source, Vb) =/= {FailoverUUID, FailoverSeq} of
+            case get_failover_uuid(Rep#rep.source, Vb) =/= FailoverUUID of
                 true ->
                     ?xdcr_debug("local checkpoint for vb ~B does not match due to local side. Checkpoint seqno: ~B. But will still let upr producer decide on true start seqno", [Vb, Seqno]),
                     ok;
@@ -434,7 +439,8 @@ do_parse_validate_checkpoint_doc_new(Rep, Vb, Body0, TargetHttpDB) ->
                     TotalDocsWritten = proplists:get_value(<<"total_docs_written">>, Body, 0),
                     TotalDataReplicated = proplists:get_value(<<"total_data_replicated">>, Body, 0),
                     ?xdcr_debug("Checkpoint stats: ~p", [{TotalDocsChecked, TotalDocsWritten, TotalDataReplicated}]),
-                    {StartSeq, SnapshotSeq, {FailoverUUID, FailoverSeq},
+                    {StartSeq, SnapshotSeq, SnapshotEndSeq,
+                     FailoverUUID,
                      TotalDocsChecked,
                      TotalDocsWritten,
                      TotalDataReplicated,
@@ -472,7 +478,7 @@ do_parse_validate_checkpoint_doc_old(Rep, Vb, Body0, TargetHttpDB) ->
                             TotalDocsWritten = proplists:get_value(<<"total_docs_written">>, Body, 0),
                             TotalDataReplicated = proplists:get_value(<<"total_data_replicated">>, Body, 0),
                             ?xdcr_debug("Checkpoint stats: ~p", [{TotalDocsChecked, TotalDocsWritten, TotalDataReplicated}]),
-                            {StartSeq, 0, {0, 0},
+                            {StartSeq, 0, 0, 0,
                              TotalDocsChecked,
                              TotalDocsWritten,
                              TotalDataReplicated,
@@ -486,5 +492,6 @@ get_local_vbuuid(BucketName, Vb) ->
     Key = iolist_to_binary(io_lib:format("vb_~B:uuid", [Vb])),
     misc:expect_prop_value(Key, KV).
 
-get_failover_id(BucketName, Vb) ->
-    lists:last(xdcr_upr_streamer:get_failover_log(couch_util:to_list(BucketName), Vb)).
+get_failover_uuid(BucketName, Vb) ->
+    {U, _} = lists:last(xdcr_upr_streamer:get_failover_log(couch_util:to_list(BucketName), Vb)),
+    U.

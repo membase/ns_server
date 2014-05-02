@@ -81,20 +81,22 @@ init(#init_state{init_throttle = InitThrottle} = InitState) ->
 format_status(Opt, [PDict, State]) ->
     xdc_rep_utils:sanitize_status(Opt, PDict, State).
 
-handle_info({failover_id, {_, _} = FID, SnapshotSeq, StartSeq, HighVbucketSeqno},
+handle_info({failover_id, FailoverUUID,
+             StartSeqno, EndSeqno, StartSnapshot, EndSnapshot},
             #rep_state{status = VbStatus} = State) ->
 
-    VbStatus2 = VbStatus#rep_vb_status{num_changes_left = HighVbucketSeqno - StartSeq},
+    VbStatus2 = VbStatus#rep_vb_status{num_changes_left = EndSeqno - StartSeqno},
 
-    NewState = State#rep_state{upr_failover_id = FID,
+    NewState = State#rep_state{upr_failover_uuid = FailoverUUID,
                                status = VbStatus2,
                                last_stream_end_seq = 0,
-                               current_through_seq = StartSeq,
-                               current_through_snapshot_seq = SnapshotSeq},
+                               current_through_seq = StartSeqno,
+                               current_through_snapshot_seq = StartSnapshot,
+                               current_through_snapshot_end_seq = EndSnapshot},
 
     {noreply, update_status_to_parent(NewState)};
 
-handle_info({stream_end, _LastSnapshotSeqno, LastSeenSeqno}, State) ->
+handle_info({stream_end, _SnapshotStart, _SnapshotEnd, LastSeenSeqno}, State) ->
     {noreply, State#rep_state{last_stream_end_seq = LastSeenSeqno}};
 
 handle_info({'EXIT',_Pid, normal}, St) ->
@@ -215,17 +217,20 @@ handle_info(return_token_please, State) ->
 
 handle_call({report_seq_done,
              #worker_stat{
-               worker_id = WorkerID,
-               seq = Seq,
-               snapshot_seq = SnapshotSeq,
-               worker_item_opt_repd = NumDocsOptRepd,
-               worker_item_checked = NumChecked,
-               worker_item_replicated = NumWritten,
-               worker_data_replicated = WorkerDataReplicated} = WorkerStat}, From,
+                worker_id = WorkerID,
+                seq = Seq,
+                snapshot_start_seq = SnapshotStart,
+                snapshot_end_seq = SnapshotEnd,
+                worker_item_opt_repd = NumDocsOptRepd,
+                worker_item_checked = NumChecked,
+                worker_item_replicated = NumWritten,
+                worker_data_replicated = WorkerDataReplicated} = WorkerStat}, From,
             #rep_state{seqs_in_progress = SeqsInProgress,
                        highest_seq_done = HighestDone,
+                       highest_seq_done_snapshot = HighestDoneSnapshot,
                        current_through_seq = ThroughSeq,
                        current_through_snapshot_seq = CurrentSnapshotSeq,
+                       current_through_snapshot_end_seq = CurrentSnapshotEndSeq,
                        status = #rep_vb_status{num_changes_left = ChangesLeft,
                                                docs_opt_repd = TotalOptRepd,
                                                docs_checked = TotalChecked,
@@ -236,11 +241,11 @@ handle_call({report_seq_done,
     gen_server:reply(From, ok),
     case xdc_rep_utils:is_new_xdcr_path() of
         true ->
-            %% note: that both left-hand variables are bound
-            [{Seq, SnapshotSeq}] = ets:lookup(erlang:get(work_seq_to_snapshot_seq), Seq),
+            %% note: that left-hand variables are bound
+            [{Seq, SnapshotStart, SnapshotEnd}] = ets:lookup(erlang:get(work_seq_to_snapshot_seq), Seq),
             _ = ets:delete(erlang:get(work_seq_to_snapshot_seq), Seq),
 
-            true = (CurrentSnapshotSeq =< SnapshotSeq);
+            true = (CurrentSnapshotSeq =< SnapshotStart);
         _ -> ok
     end,
 
@@ -250,7 +255,15 @@ handle_call({report_seq_done,
                                               [_ | _] ->
                                                   {ThroughSeq, ordsets:del_element(Seq, SeqsInProgress)}
                                           end,
-    NewHighestDone = lists:max([HighestDone, Seq]),
+
+    {NewHighestDone, NewHighestDoneSnapshot} =
+        case Seq > HighestDone of
+            true ->
+                {Seq, {SnapshotStart, SnapshotEnd}};
+            false ->
+                {HighestDone, HighestDoneSnapshot}
+        end,
+
     NewThroughSeq = case NewSeqsInProgress of
                         [] ->
                             lists:max([NewThroughSeq0, NewHighestDone]);
@@ -258,12 +271,15 @@ handle_call({report_seq_done,
                             NewThroughSeq0
                     end,
 
-    NewSnapshotSeq = case NewThroughSeq0 =:= Seq of
-                        true ->
-                             SnapshotSeq;
-                         _ ->
-                             CurrentSnapshotSeq
-                     end,
+    {NewSnapshotSeq, NewSnapshotEndSeq} =
+        case NewThroughSeq of
+            NewHighestDone ->
+                NewHighestDoneSnapshot;
+            Seq ->
+                {SnapshotStart, SnapshotEnd};
+            _ ->
+                {CurrentSnapshotSeq, CurrentSnapshotEndSeq}
+        end,
 
     %% check possible inconsistency, and dump warning msgs if purger is ahead of replication
     %% SourceDB = State#rep_state.source,
@@ -320,8 +336,10 @@ handle_call({report_seq_done,
     NewState = State#rep_state{
                  current_through_seq = NewThroughSeq,
                  current_through_snapshot_seq = NewSnapshotSeq,
+                 current_through_snapshot_end_seq = NewSnapshotEndSeq,
                  seqs_in_progress = NewSeqsInProgress,
                  highest_seq_done = NewHighestDone,
+                 highest_seq_done_snapshot = NewHighestDoneSnapshot,
                  %% behind_purger = BehindPurger,
                  status = VbStatus#rep_vb_status{num_changes_left = ChangesLeft - NumChecked,
                                                  docs_changes_queue = ChangesQueueDocs,
@@ -392,6 +410,7 @@ handle_call({worker_done, Pid}, _From,
             Vb = VbStatus2#rep_vb_status.vb,
             Throttle = State2#rep_state.throttle,
             HighestDone = State2#rep_state.highest_seq_done,
+            HighestDoneSnapshot = State2#rep_state.highest_seq_done_snapshot,
             ChangesLeft = VbStatus2#rep_vb_status.num_changes_left,
             TotalChecked = VbStatus2#rep_vb_status.docs_checked,
             TotalWritten = VbStatus2#rep_vb_status.docs_written,
@@ -402,22 +421,33 @@ handle_call({worker_done, Pid}, _From,
             StartRepTime = State2#rep_state.rep_start_time,
 
             ?xdcr_trace("Replicator of vbucket ~p done, return token to throttle: ~p~n"
-                        "(highest seq done is ~p, number of changes left: ~p~n"
+                        "(highest seq done is ~p, highest seq snapshot ~p, "
+                        "number of changes left: ~p~n"
                         "total docs checked: ~p, total docs written: ~p (total data repd: ~p)~n"
                         "total number of succ ckpts: ~p (failed ckpts: ~p)~n"
                         "last succ ckpt time: ~p, replicator start time: ~p.",
-                        [Vb, Throttle, HighestDone, ChangesLeft, TotalChecked, TotalWritten, TotalDataRepd,
+                        [Vb, Throttle, HighestDone, HighestDoneSnapshot,
+                         ChangesLeft, TotalChecked, TotalWritten, TotalDataRepd,
                          NumCkpts, NumFailedCkpts,
                          calendar:now_to_local_time(LastCkptTime),
                          calendar:now_to_local_time(StartRepTime)
                         ]),
             VbStatus3 = VbStatus2#rep_vb_status{status = idle},
 
+            CurrentSnapshotSeq = State2#rep_state.current_through_snapshot_seq,
+            CurrentSnapshotEndSeq = State2#rep_state.current_through_snapshot_end_seq,
+            LastStreamEndSeq = State#rep_state.last_stream_end_seq,
+
             %% end of work is definitely at snapshot, so move last
             %% known snapshot to the end. But only if we actually
             %% reached end (xdcr pausing can prevent that)
-            NewSnapshotSeq = erlang:max(State2#rep_state.current_through_snapshot_seq,
-                                        State#rep_state.last_stream_end_seq),
+            {NewSnapshotSeq, NewSnapshotEndSeq} =
+                case CurrentSnapshotSeq < LastStreamEndSeq of
+                    true ->
+                        {LastStreamEndSeq, LastStreamEndSeq};
+                    false ->
+                        {CurrentSnapshotSeq, CurrentSnapshotEndSeq}
+                end,
 
             %% finally report stats to bucket replicator and tell it that I am idle
 
@@ -426,7 +456,8 @@ handle_call({worker_done, Pid}, _From,
                                                  status = VbStatus3,
                                                  src_master_db = undefined,
                                                  target = undefined,
-                                                 current_through_snapshot_seq = NewSnapshotSeq}),
+                                                 current_through_snapshot_seq = NewSnapshotSeq,
+                                                 current_through_snapshot_end_seq = NewSnapshotEndSeq}),
 
             %% cancel the timer since we will start it next time the vb rep waken up
             NewState2 = xdc_vbucket_rep_ckpt:cancel_timer(NewState),
@@ -487,11 +518,12 @@ handle_cast({report_error, Err},
     gen_server:cast(Parent, {report_error, Err}),
     {noreply, State};
 
-handle_cast({report_seq, Seq, SnapshotSeq},
+handle_cast({report_seq, Seq, SnapshotStart, SnapshotEnd},
             #rep_state{seqs_in_progress = SeqsInProgress} = State) ->
     case xdc_rep_utils:is_new_xdcr_path() of
         true ->
-            ets:insert(erlang:get(work_seq_to_snapshot_seq), {Seq, SnapshotSeq});
+            ets:insert(erlang:get(work_seq_to_snapshot_seq),
+                       {Seq, SnapshotStart, SnapshotEnd});
         _ ->
             ok
     end,
@@ -703,17 +735,16 @@ init_replication_state(#init_state{rep = Rep,
                  end,
 
 
-    {StartSeq, SnapshotSeq, FailoverId,
+    {StartSeq, SnapshotStart, SnapshotEnd, FailoverUUID,
      TotalDocsChecked,
      TotalDocsWritten,
      TotalDataReplicated,
      RemoteVBOpaque} = xdc_vbucket_rep_ckpt:read_validate_checkpoint(Rep, Vb, Target),
 
-    ?log_debug("Inited replication position: ~p", [{StartSeq, SnapshotSeq, FailoverId,
-                                                    TotalDocsChecked,
-                                                    TotalDocsWritten,
-                                                    TotalDataReplicated,
-                                                    RemoteVBOpaque}]),
+    ?log_debug("Inited replication position: ~p",
+               [{StartSeq, SnapshotStart, SnapshotEnd, FailoverUUID,
+                 TotalDocsChecked, TotalDocsWritten,
+                 TotalDataReplicated, RemoteVBOpaque}]),
 
     case xdc_rep_utils:is_new_xdcr_path() of
         true ->
@@ -758,8 +789,9 @@ init_replication_state(#init_state{rep = Rep,
       remote_vbopaque = RemoteVBOpaque,
       start_seq = StartSeq,
       current_through_seq = StartSeq,
-      current_through_snapshot_seq = SnapshotSeq,
-      upr_failover_id = FailoverId,
+      current_through_snapshot_seq = SnapshotStart,
+      current_through_snapshot_end_seq = SnapshotEnd,
+      upr_failover_uuid = FailoverUUID,
       source_cur_seq = StartSeq,
       rep_starttime = httpd_util:rfc1123_date(),
       last_checkpoint_time = now(),
@@ -820,9 +852,10 @@ update_rep_options(#rep_state{rep_details =
 start_replication(#rep_state{
                      source_name = SourceName,
                      target_name = OrigTgtURI,
-                     upr_failover_id = FailoverId,
+                     upr_failover_uuid = FailoverUUID,
                      current_through_seq = StartSeq,
-                     current_through_snapshot_seq = StartSnapshotSeq,
+                     current_through_snapshot_seq = SnapshotStart,
+                     current_through_snapshot_end_seq = SnapshotEnd,
                      last_checkpoint_time = LastCkptTime,
                      status = #rep_vb_status{vb = Vb},
                      rep_details = #rep{id = Id, options = Options, source = SourceBucket, target = TargetRef},
@@ -876,7 +909,8 @@ start_replication(#rep_state{
         false ->
             ChangesReader = spawn_changes_reader_old(StartSeq, Source, ChangesQueue);
         _ ->
-            ChangesReader = spawn_changes_reader(SourceBucket, Vb, ChangesQueue, StartSeq, StartSnapshotSeq, FailoverId)
+            ChangesReader = spawn_changes_reader(SourceBucket, Vb, ChangesQueue,
+                                                 StartSeq, SnapshotStart, SnapshotEnd, FailoverUUID)
     end,
     erlang:put(changes_reader, ChangesReader),
     %% Changes manager - responsible for dequeing batches from the changes queue
@@ -1046,28 +1080,32 @@ update_number_of_changes(#rep_state{source_name = Src,
     end.
 
 
-spawn_changes_reader(BucketName, Vb, ChangesQueue, StartSeq, SnapshotSeq, FailoverId) ->
+spawn_changes_reader(BucketName, Vb, ChangesQueue, StartSeq,
+                     SnapshotStart, SnapshotEnd, FailoverUUID) ->
     Parent = self(),
     spawn_link(fun() ->
-                       read_changes(BucketName, Vb, ChangesQueue, StartSeq, SnapshotSeq, FailoverId, Parent)
+                       read_changes(BucketName, Vb, ChangesQueue, StartSeq,
+                                    SnapshotStart, SnapshotEnd, FailoverUUID, Parent)
                end).
 
-read_changes(BucketName, Vb, ChangesQueue, StartSeq, SnapshotSeq, {FailoverUUID, FailoverSeq}, Parent) ->
+read_changes(BucketName, Vb, ChangesQueue, StartSeq,
+             SnapshotStart, SnapshotEnd, FailoverUUID, Parent) ->
     {start_seq, true} = {start_seq, is_integer(StartSeq)},
-    {snapshot_seq, true} = {snapshot_seq, is_integer(SnapshotSeq)},
+    {snapshot_start, true} = {snapshot_start, is_integer(SnapshotStart)},
+    {snapshot_end, true} = {snapshot_end, is_integer(SnapshotEnd)},
     {failover_uuid, true} = {failover_uuid, is_integer(FailoverUUID)},
-    {failover_seq, true} = {failover_seq, is_integer(FailoverSeq)},
     erlang:process_flag(trap_exit, true),
     xdcr_upr_streamer:stream_vbucket(
-      binary_to_list(BucketName), Vb, FailoverUUID, FailoverSeq, SnapshotSeq, StartSeq,
+      binary_to_list(BucketName), Vb, FailoverUUID,
+      StartSeq, SnapshotStart, SnapshotEnd,
       fun (Event, _) ->
               case Event of
                   please_stop ->
                       {stop, []};
-                  {failover_id, _FID, _, _, _} = FidMsg ->
+                  {failover_id, _FUUID, _, _, _, _} = FidMsg ->
                       Parent ! FidMsg,
                       {ok, []};
-                  {stream_end, _LastSnapshotSeqno, _LastSeenSeqno} = Msg->
+                  {stream_end, _, _, _} = Msg ->
                       Parent ! Msg,
                       {stop, []};
                   #upr_mutation{} = Mutation ->
@@ -1114,12 +1152,14 @@ changes_manager_loop_open(Parent, ChangesQueue, BatchSize) ->
                         false ->
                             #doc_info{local_seq = Seq} = lists:last(Changes),
                             ReportSeq = Seq,
-                            ok = gen_server:cast(Parent, {report_seq, ReportSeq, 0}),
+                            ok = gen_server:cast(Parent, {report_seq, ReportSeq, 0, 0}),
                             From ! {changes, self(), Changes, ReportSeq};
-                        _ ->
-                            #upr_mutation{local_seq = ReportSeq, last_snapshot_seq = SnapshotSeq} = lists:last(Changes),
-                            ok = gen_server:cast(Parent, {report_seq, ReportSeq, SnapshotSeq}),
-                            From ! {changes, self(), Changes, ReportSeq, SnapshotSeq}
+                        true ->
+                            #upr_mutation{local_seq = ReportSeq,
+                                          snapshot_start_seq = SnapshotStart,
+                                          snapshot_end_seq = SnapshotEnd} = lists:last(Changes),
+                            ok = gen_server:cast(Parent, {report_seq, ReportSeq, SnapshotStart, SnapshotEnd}),
+                            From ! {changes, self(), Changes, ReportSeq, SnapshotStart, SnapshotEnd}
                     end,
                     changes_manager_loop_open(Parent, ChangesQueue, BatchSize)
             end
@@ -1154,7 +1194,7 @@ check_src_db_updated(#rep_state{status = #rep_vb_status{status = idle,
                                 current_through_snapshot_seq = SnapshotSeq,
                                 rep_details = #rep{source = SourceBucket},
                                 current_through_seq = Seq,
-                                upr_failover_id = {U, S}}) ->
+                                upr_failover_uuid = U}) ->
     Self = self(),
     case SnapshotSeq =:= Seq of
         false ->
@@ -1162,14 +1202,10 @@ check_src_db_updated(#rep_state{status = #rep_vb_status{status = idle,
         _ ->
             proc_lib:spawn_link(
               fun () ->
-                      ?log_debug("Doing notifier call: ~p", [[couch_util:to_list(SourceBucket),
-                                                              Vb,
-                                                              Seq,
-                                                              U, S]]),
+                      ?log_debug("Doing notifier call: ~p",
+                                 [[couch_util:to_list(SourceBucket), Vb, Seq, U]]),
                       RV = (catch upr_notifier:subscribe(couch_util:to_list(SourceBucket),
-                                                         Vb,
-                                                         Seq,
-                                                         U, S)),
+                                                         Vb, Seq, U)),
                       ?log_debug("Got reply from upr_notifier: ~p", [RV]),
                       Self ! wake_me_up
               end)

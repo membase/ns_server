@@ -21,7 +21,7 @@
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
 
--export([open_connection/3, add_stream/4, close_stream/3, stream_request/7,
+-export([open_connection/3, add_stream/4, close_stream/3, stream_request/8,
          process_response/2, format_packet_nicely/1]).
 
 -spec process_response(#mc_header{}, #mc_entry{}) -> any().
@@ -79,10 +79,12 @@ close_stream(Sock, Partition, Opaque) ->
                                                          vbucket = Partition},
                                               #mc_entry{}}).
 
--spec stream_request(port(), vbucket_id(), integer(), seq_no(), seq_no(), integer(), seq_no()) ->
-                            {ok, quiet}.
-stream_request(Sock, Partition, Opaque, StartSeqNo, EndSeqNo, PartitionUUID, HighSeqNo) ->
-    Extra = <<0:64, StartSeqNo:64, EndSeqNo:64, PartitionUUID:64, HighSeqNo:64>>,
+-spec stream_request(port(), vbucket_id(), integer(), seq_no(),
+                     seq_no(), integer(), seq_no(), seq_no()) -> {ok, quiet}.
+stream_request(Sock, Partition, Opaque, StartSeqNo, EndSeqNo,
+               PartitionUUID, SnapshotStart, SnapshotEnd) ->
+    Extra = <<0:64, StartSeqNo:64, EndSeqNo:64, PartitionUUID:64,
+              SnapshotStart:64, SnapshotEnd:64>>,
     {ok, quiet} = mc_client_binary:cmd_quiet(?UPR_STREAM_REQ, Sock,
                                              {#mc_header{opaque = Opaque,
                                                          vbucket = Partition},

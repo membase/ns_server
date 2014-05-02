@@ -23,11 +23,11 @@
 -include("mc_entry.hrl").
 
 -record(partition, {partition :: vbucket_id(),
-                    last_known_pos = undefined :: {seq_no(), integer(), seq_no()} | undefined,
+                    last_known_pos = undefined :: {seq_no(), integer()} | undefined,
                     stream_state = closed :: pending | open | closed,
                     subscribers = []}).
 
--export([start_link/1, subscribe/5]).
+-export([start_link/1, subscribe/4]).
 
 -export([init/2, handle_packet/5, handle_call/4, handle_cast/3]).
 
@@ -40,8 +40,8 @@ start_link(Bucket) ->
                                    node(), Bucket, ?MODULE, [Bucket])
       end).
 
-subscribe(Bucket, Partition, StartSeqNo, UUID, HighSeqNo) ->
-    gen_server:call(server_name(Bucket), {subscribe, Partition, StartSeqNo, UUID, HighSeqNo}, infinity).
+subscribe(Bucket, Partition, StartSeqNo, UUID) ->
+    gen_server:call(server_name(Bucket), {subscribe, Partition, StartSeqNo, UUID}, infinity).
 
 init([Bucket], ParentState) ->
     erlang:register(server_name(Bucket), self()),
@@ -50,10 +50,10 @@ init([Bucket], ParentState) ->
 server_name(Bucket) ->
     list_to_atom(?MODULE_STRING "-" ++ Bucket).
 
-handle_call({subscribe, Partition, StartSeqNo, UUID, HighSeqNo}, From, State, ParentState) ->
+handle_call({subscribe, Partition, StartSeqNo, UUID}, From, State, ParentState) ->
     NewParentState = upr_proxy:maybe_connect(ParentState),
     PartitionState = get_partition(Partition, State),
-    do_subscribe(From, {StartSeqNo, UUID, HighSeqNo}, PartitionState, State, NewParentState).
+    do_subscribe(From, {StartSeqNo, UUID}, PartitionState, State, NewParentState).
 
 handle_cast(Msg, State, ParentState) ->
     ?log_warning("Unhandled cast: ~p", [Msg]),
@@ -82,14 +82,16 @@ handle_packet(response, Opcode, Packet, State, ParentState) ->
 handle_response(?UPR_STREAM_REQ, Header, Body,
                 #partition{stream_state = pending,
                            partition = Partition,
-                           last_known_pos = {_, UUID, HighSeqNo}} = PartitionState, ParentState) ->
+                           last_known_pos = {_, UUID}} = PartitionState, ParentState) ->
     case upr_commands:process_response(Header, Body) of
         ok ->
             PartitionState#partition{stream_state = open};
         {rollback, RollbackSeqNo} ->
             ?log_debug("Rollback stream for partition ~p to seqno ~p", [Partition, RollbackSeqNo]),
             upr_commands:stream_request(upr_proxy:get_socket(ParentState),
-                                        Partition, Partition, RollbackSeqNo, 0, UUID, HighSeqNo),
+                                        Partition, Partition,
+                                        RollbackSeqNo, 0, UUID,
+                                        RollbackSeqNo, RollbackSeqNo),
             PartitionState
     end.
 
@@ -124,14 +126,14 @@ add_subscriber(From, #partition{subscribers = Subscribers} = PartitionState) ->
 %%   1.1. requested pos is equal to the last known pos
 %%          return immediately because we know that there is data after this pos
 %%   1.2  requested pos is behind the last known pos
-%%          we should return immediately because we know that there is data after this pos
-%%          but we can detect this situation for sure only if UUID and HighSeqNo for
-%%          these two positions match. in a quite rare case if they don't match
-%%          we still going to open stream
+%%          we should return immediately because we know that there is data
+%%          after this pos but we can detect this situation for sure only if
+%%          UUID for these two positions match. in a quite rare case if they
+%%          don't match we still going to open stream
 %%   1.3  we cannot say that the requested pos is behind the last known pos
-%%          it can be ahead or the positions have different UUID and HighSeqNo
-%%          in this case we open a stream and change last known pos to the requested pos
-%%          we will notify the subscriber as soon as the stream closes
+%%          it can be ahead or the positions have different UUID in this case
+%%          we open a stream and change last known pos to the requested pos we
+%%          will notify the subscriber as soon as the stream closes
 %%
 %% 2. stream is open or pending (opening)
 %%   2.1. requested pos is equal to the last known pos
@@ -144,18 +146,19 @@ add_subscriber(From, #partition{subscribers = Subscribers} = PartitionState) ->
 %%          and we are ok with some false positives
 %%          so we can assume that the requested pos is behind the last known pos
 %%          and return immediately since the data is already available
-do_subscribe(_From, {StartSeqNo, UUID, HighSeqNo},
-             #partition{last_known_pos = {LNStartSeqNo, UUID, HighSeqNo},
+do_subscribe(_From, {StartSeqNo, UUID},
+             #partition{last_known_pos = {LNStartSeqNo, UUID},
                         stream_state = closed} = PartitionState, State, ParentState)
   when StartSeqNo =< LNStartSeqNo ->
     {reply, ok, set_partition(PartitionState, State), ParentState};
 
-do_subscribe(From, {StartSeqNo, UUID, HighSeqNo} = Pos,
+do_subscribe(From, {StartSeqNo, UUID} = Pos,
              #partition{partition = Partition,
                         stream_state = closed} = PartitionState,
              State, ParentState) ->
     upr_commands:stream_request(upr_proxy:get_socket(ParentState),
-                                Partition, Partition, StartSeqNo, 0, UUID, HighSeqNo),
+                                Partition, Partition,
+                                StartSeqNo, 0, UUID, StartSeqNo, StartSeqNo),
 
     PartitionState1 = PartitionState#partition{last_known_pos = Pos,
                                                stream_state = pending},

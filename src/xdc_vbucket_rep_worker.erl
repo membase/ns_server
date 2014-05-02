@@ -53,7 +53,7 @@ queue_fetch_loop(WorkerID, Target, Cp, ChangesManager,
     receive
         {'DOWN', _, _, _, _} ->
             ok = gen_server:call(Cp, {worker_done, self()}, infinity);
-        {changes, ChangesManager, Changes, ReportSeq, SnapshotSeq} ->
+        {changes, ChangesManager, Changes, ReportSeq, SnapshotStart, SnapshotEnd} ->
             %% get docinfo of missing ids
             {MissingDocInfoList, MetaLatency, NumDocsOptRepd} =
                 find_missing(Changes, Target, OptRepThreshold, XMemLoc),
@@ -72,15 +72,16 @@ queue_fetch_loop(WorkerID, Target, Cp, ChangesManager,
             %% report seq done and stats to vb replicator
             ok = gen_server:call(Cp, {report_seq_done,
                                       #worker_stat{
-                                        worker_id  = WorkerID,
-                                        seq = ReportSeq,
-                                        snapshot_seq = SnapshotSeq,
-                                        worker_meta_latency_aggr = MetaLatency*NumChecked,
-                                        worker_docs_latency_aggr = DocLatency*NumWritten,
-                                        worker_data_replicated = DataRepd,
-                                        worker_item_opt_repd = NumDocsOptRepd,
-                                        worker_item_checked = NumChecked,
-                                        worker_item_replicated = NumWritten}}, infinity),
+                                         worker_id = WorkerID,
+                                         seq = ReportSeq,
+                                         snapshot_start_seq = SnapshotStart,
+                                         snapshot_end_seq = SnapshotEnd,
+                                         worker_meta_latency_aggr = MetaLatency*NumChecked,
+                                         worker_docs_latency_aggr = DocLatency*NumWritten,
+                                         worker_data_replicated = DataRepd,
+                                         worker_item_opt_repd = NumDocsOptRepd,
+                                         worker_item_checked = NumChecked,
+                                         worker_item_replicated = NumWritten}}, infinity),
 
             ?xdcr_trace("Worker reported completion of seq ~p, num docs written: ~p "
                         "data replicated: ~p bytes, latency: ~p ms.",

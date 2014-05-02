@@ -97,8 +97,11 @@ build_decoded_packet(Magic, Opcode, KeyLen, ExtLen, DT, VB, Opaque, Cas, Body, R
              RestRest}
     end.
 
-build_stream_request_packet(Vb, Opaque, StartSeqno, EndSeqno, VBUUID, VBUUIDSeqno) ->
-    Extra = <<0:64, StartSeqno:64, EndSeqno:64, VBUUID:64, VBUUIDSeqno:64>>,
+build_stream_request_packet(Vb, Opaque,
+                            StartSeqno, EndSeqno, VBUUID,
+                            SnapshotStart, SnapshotEnd) ->
+    Extra = <<0:64, StartSeqno:64, EndSeqno:64, VBUUID:64,
+              SnapshotStart:64, SnapshotEnd:64>>,
     #upr_packet{opcode = ?UPR_STREAM_REQ,
                 vbucket = Vb,
                 opaque = Opaque,
@@ -125,48 +128,45 @@ read_message_loop(Socket, Data) ->
 find_high_seqno(Socket, Vb) ->
     StatsKey = iolist_to_binary(io_lib:format("vbucket-seqno ~B", [Vb])),
     SeqnoKey = iolist_to_binary(io_lib:format("vb_~B:high_seqno", [Vb])),
-    UUIDKey = iolist_to_binary(io_lib:format("vb_~B:uuid", [Vb])),
     ok = gen_tcp:send(Socket,
                       encode_req(#upr_packet{opcode = ?STAT,
                                              key = StatsKey})),
     stats_loop(Socket,
-               fun (K, V, {UAcc, SAcc}) ->
+               fun (K, V, Acc) ->
                        if
                            K =:= SeqnoKey ->
-                               {UAcc, list_to_integer(binary_to_list(V))};
-                           K =:= UUIDKey ->
-                               {list_to_integer(binary_to_list(V)), SAcc};
+                               list_to_integer(binary_to_list(V));
                            true ->
-                               {UAcc, SAcc}
+                               Acc
                        end
-               end, {[], []}, <<>>).
+               end, undefined, <<>>).
 
-start(Socket, Vb, FailoverId, FailoverSeqno, LastSnapshotSeqno, StartSeqno, Callback, Acc, Parent) ->
-    {VBUUID, HighSeqno} = find_high_seqno(Socket, Vb),
-    %% NOTE: this is workaround of lack of protocol support in
-    %% UPR. This check is in fact raceful (time of stats vs. time of stream_req) in StartSeqno path
-    RealStartSeqno = case LastSnapshotSeqno =/= StartSeqno andalso VBUUID =/= FailoverId of
-                         true ->
-                             ?log_debug("rolling back to last full snapshot: ~B", [LastSnapshotSeqno]),
-                             case HighSeqno < LastSnapshotSeqno of
-                                 true ->
-                                     %% Otherwise ep-engine refuses instead of doing rollback
-                                     ?log_debug("LastSnapshotSeqno is higher then high seqno. Lowering to ~B", [HighSeqno]),
-                                     HighSeqno;
-                                 _ ->
-                                     LastSnapshotSeqno
-                             end;
-                         _ ->
-                             StartSeqno
-                     end,
-    %% note: due to "lowering..." above we will otherwise get last
-    %% snapshot seqno > start seqno which is nonsense
-    UsedLastSnapshotSeqno = erlang:min(LastSnapshotSeqno, RealStartSeqno),
-    do_start(Socket, Vb, FailoverId, FailoverSeqno, RealStartSeqno, HighSeqno, Callback, Acc, Parent, false, UsedLastSnapshotSeqno).
+start(Socket, Vb, FailoverId, StartSeqno0, SnapshotStart0, SnapshotEnd0, Callback, Acc, Parent) ->
+    EndSeqno = find_high_seqno(Socket, Vb),
 
-do_start(Socket, Vb, FailoverId, FailoverSeqno, RealStartSeqno, HighSeqno, Callback, Acc, Parent, HadRollback, LastSnapshotSeqno) ->
+    {StartSeqno, SnapshotStart, SnapshotEnd} =
+        case EndSeqno < SnapshotStart0 of
+            true ->
+                %% we actually need to rollback, but if we just pass
+                %% EndSeqno that is lower than SnapshotStart, ep-engine
+                %% will return an ERANGE error
+                ?log_debug("high seqno ~B is lower than snapthot start seqno ~B",
+                           [EndSeqno, SnapshotStart0]),
+                {EndSeqno, EndSeqno, EndSeqno};
+            false ->
+                {StartSeqno0, SnapshotStart0, SnapshotEnd0}
+        end,
+
+    do_start(Socket, Vb, FailoverId,
+             StartSeqno, EndSeqno, SnapshotStart, SnapshotEnd,
+             Callback, Acc, Parent, false).
+
+do_start(Socket, Vb, FailoverId,
+         StartSeqno, EndSeqno, SnapshotStart, SnapshotEnd,
+         Callback, Acc, Parent, HadRollback) ->
     Opaque = 16#fafafafa,
-    SReq = build_stream_request_packet(Vb, Opaque, RealStartSeqno, HighSeqno, FailoverId, FailoverSeqno),
+    SReq = build_stream_request_packet(Vb, Opaque, StartSeqno, EndSeqno,
+                                       FailoverId, SnapshotStart, SnapshotEnd),
     ok = gen_tcp:send(Socket, encode_req(SReq)),
 
     %% NOTE: Opaque is already bound
@@ -176,34 +176,57 @@ do_start(Socket, Vb, FailoverId, FailoverSeqno, RealStartSeqno, HighSeqno, Callb
         #upr_packet{status = ?SUCCESS, body = FailoverLogBin} ->
             FailoverLog = unpack_failover_log(FailoverLogBin),
             ?log_debug("FailoverLog: ~p", [FailoverLog]),
-            ?log_debug("Request was: ~p", [{Vb, Opaque, RealStartSeqno, HighSeqno, FailoverId, FailoverSeqno}]),
+            ?log_debug("Request was: ~p", [{Vb, Opaque, StartSeqno, EndSeqno,
+                                            FailoverId, SnapshotStart, SnapshotEnd}]),
             ?log_debug("Sockname: ~p", [inet:sockname(Socket)]),
-            Parent ! {failover_id, lists:last(FailoverLog), LastSnapshotSeqno, RealStartSeqno, HighSeqno},
+
+            {_, #upr_packet{opcode = ?UPR_SNAPSHOT_MARKER, ext = Ext}, Data1} =
+                read_message_loop(Socket, Data0),
+
+            <<ActualSnapshotStart:64, ActualSnapshotEnd:64, Flags:32, _/binary>> = Ext,
+
+            ?log_debug("Received snapshot marker: ~p",
+                       [{ActualSnapshotStart, ActualSnapshotEnd, Flags}]),
+
+            SnapshotStart = ActualSnapshotStart,
+
+            {FailoverUUID, _} = lists:last(FailoverLog),
+            Parent ! {failover_id, FailoverUUID,
+                      StartSeqno, EndSeqno, SnapshotStart, ActualSnapshotEnd},
             proc_lib:init_ack({ok, self()}),
-            socket_loop_enter(Socket, Callback, Acc, Data0, Parent);
+            socket_loop_enter(Socket, Callback, Acc, Data1, Parent);
         #upr_packet{status = ?ROLLBACK, body = <<RollbackSeq:64>>} ->
             ?log_debug("handling rollback to ~B", [RollbackSeq]),
-            ?log_debug("Request was: ~p", [{Vb, Opaque, RealStartSeqno, HighSeqno, FailoverId, FailoverSeqno}]),
+            ?log_debug("Request was: ~p", [{Vb, Opaque, StartSeqno, EndSeqno,
+                                            FailoverId, SnapshotStart, SnapshotEnd}]),
             %% in case of xdcr we cannot rewind the destination. So we
             %% just "formally" rollback our start point to resume
             %% streaming at "better than nothing" position
             {had_rollback, false} = {had_rollback, HadRollback},
-            do_start(Socket, Vb, FailoverId, FailoverSeqno, RollbackSeq, HighSeqno, Callback, Acc, Parent, true, RollbackSeq)
+            do_start(Socket, Vb, FailoverId,
+                     RollbackSeq, EndSeqno, RollbackSeq, RollbackSeq,
+                     Callback, Acc, Parent, true)
     end.
 
-stream_vbucket(Bucket, Vb, FailoverId, FailoverSeqno, LastSnapshotSeqno, StartSeqno, Callback, Acc) ->
+stream_vbucket(Bucket, Vb, FailoverId,
+               StartSeqno, SnapshotStart, SnapshotEnd, Callback, Acc) ->
     true = is_list(Bucket),
     Parent = self(),
     {ok, Child} =
-        proc_lib:start_link(erlang, apply, [fun stream_vbucket_inner/9,
-                                            [Bucket, Vb, FailoverId, FailoverSeqno,
-                                             LastSnapshotSeqno, StartSeqno, Callback, Acc, Parent]]),
+        proc_lib:start_link(erlang, apply,
+                            [fun stream_vbucket_inner/9,
+                             [Bucket, Vb, FailoverId,
+                              StartSeqno, SnapshotStart, SnapshotEnd,
+                              Callback, Acc, Parent]]),
 
     enter_consumer_loop(Child, Callback, Acc).
 
-stream_vbucket_inner(Bucket, Vb, FailoverId, FailoverSeqno, LastSnapshotSeqno, StartSeqno, Callback, Acc, Parent) ->
+stream_vbucket_inner(Bucket, Vb, FailoverId,
+                     StartSeqno, SnapshotStart, SnapshotEnd,
+                     Callback, Acc, Parent) ->
     {ok, S} = xdcr_upr_sockets_pool:take_socket(Bucket),
-    case start(S, Vb, FailoverId, FailoverSeqno, LastSnapshotSeqno, StartSeqno, Callback, Acc, Parent) of
+    case start(S, Vb, FailoverId, StartSeqno,
+               SnapshotStart, SnapshotEnd, Callback, Acc, Parent) of
         ok ->
             ok = xdcr_upr_sockets_pool:put_socket(Bucket, S);
         stop ->
@@ -307,13 +330,14 @@ socket_loop(Socket, Callback, Acc, Data, ScannedPos, Consumer, SentToConsumer) -
 
 enter_consumer_loop(Child, Callback, Acc) ->
     receive
-        {failover_id, _FailoverId, LastSnapshotSeqno, _, _} = Evt ->
-            {number, true} = {number, is_integer(LastSnapshotSeqno)},
+        {failover_id, _FailoverUUID, _, _, SnapshotStart, SnapshotEnd} = Evt ->
             {ok, Acc2} = Callback(Evt, Acc),
-            consumer_loop(Child, Callback, Acc2, 0, LastSnapshotSeqno, undefined)
+            consumer_loop(Child, Callback, Acc2, 0,
+                          SnapshotStart, SnapshotEnd, undefined)
     end.
 
-consumer_loop(Child, Callback, Acc, ConsumedSoFar0, LastSnapshotSeqno, LastSeenSeqno) ->
+consumer_loop(Child, Callback, Acc, ConsumedSoFar0,
+              SnapshotStart, SnapshotEnd, LastSeenSeqno) ->
     %% ?log_debug("consumer: ~p", [{ConsumedSoFar0, LastSnapshotSeqno, LastSeenSeqno}]),
     ConsumedSoFar =
         case ConsumedSoFar0 >= ?BUFFER_SIZE div 3 of
@@ -325,14 +349,15 @@ consumer_loop(Child, Callback, Acc, ConsumedSoFar0, LastSnapshotSeqno, LastSeenS
         end,
     receive
         MoreData when is_binary(MoreData) ->
-            case consume_stuff(Callback, Acc, MoreData, LastSnapshotSeqno, LastSeenSeqno) of
+            case consume_stuff(Callback, Acc, MoreData,
+                               SnapshotStart, SnapshotEnd, LastSeenSeqno) of
                 {DoneOrStop, RV} when DoneOrStop =:= done orelse DoneOrStop =:= stop ->
                     consumer_loop_exit(Child, DoneOrStop),
                     RV;
-                {Acc2, NewLastSnaspshotSeqno, NewLastSeenSeqno} ->
+                {Acc2, NewSnapshotStart, NewSnapshotEnd, NewLastSeenSeqno} ->
                     ConsumedMore = ConsumedSoFar + erlang:size(MoreData),
                     consumer_loop(Child, Callback, Acc2, ConsumedMore,
-                                  NewLastSnaspshotSeqno, NewLastSeenSeqno)
+                                  NewSnapshotStart, NewSnapshotEnd, NewLastSeenSeqno)
             end;
         {'EXIT', _From, Reason} = ExitMsg ->
             ?log_debug("Got exit signal: ~p", [ExitMsg]),
@@ -343,7 +368,8 @@ consumer_loop(Child, Callback, Acc, ConsumedSoFar0, LastSnapshotSeqno, LastSeenS
         OtherMsg ->
             case Callback(OtherMsg, Acc) of
                 {ok, Acc2} ->
-                    consumer_loop(Child, Callback, Acc2, ConsumedSoFar, LastSnapshotSeqno, LastSeenSeqno);
+                    consumer_loop(Child, Callback, Acc2, ConsumedSoFar,
+                                  SnapshotStart, SnapshotEnd, LastSeenSeqno);
                 {stop, RV} ->
                     consumer_loop_exit(Child, stop),
                     RV
@@ -373,25 +399,26 @@ consume_aborted_stuff() ->
             ok
     end.
 
-consume_stuff(_Callback, Acc, <<>>, LastSnapshotSeqno, LastSeenSeqno) ->
-    {Acc, LastSnapshotSeqno, LastSeenSeqno};
-consume_stuff(Callback, Acc, MoreData, LastSnapshotSeqno, LastSeenSeqno) ->
+consume_stuff(_Callback, Acc, <<>>, SnapshotStart, SnapshotEnd, LastSeenSeqno) ->
+    {Acc, SnapshotStart, SnapshotEnd, LastSeenSeqno};
+consume_stuff(Callback, Acc, MoreData, SnapshotStart, SnapshotEnd, LastSeenSeqno) ->
     case decode_packet(MoreData) of
         {Type, Packet, RestData} ->
-            case do_callback(Type, Packet, Callback, Acc, LastSnapshotSeqno, LastSeenSeqno) of
+            case do_callback(Type, Packet, Callback, Acc,
+                             SnapshotStart, SnapshotEnd, LastSeenSeqno) of
                 {normal_stop, {MustBeStop, RV}} ->
                     stop = MustBeStop,
                     <<>> = RestData,
                     {done, RV};
                 {stop, RV} ->
                     {stop, RV};
-                {ok, Acc2, NewLastSnaspshotSeqno, NewLastSeenSeqno} ->
+                {ok, Acc2, NewSnapshotStart, NewSnapshotEnd, NewLastSeenSeqno} ->
                     consume_stuff(Callback, Acc2, RestData,
-                                  NewLastSnaspshotSeqno, NewLastSeenSeqno)
+                                  NewSnapshotStart, NewSnapshotEnd, NewLastSeenSeqno)
             end
     end.
 
-do_callback(Type, Packet, Callback, Acc, LastSnapshotSeqno, LastSeenSeqno) ->
+do_callback(Type, Packet, Callback, Acc, SnapshotStart, SnapshotEnd, LastSeenSeqno) ->
     %% ?log_debug("Got packet: ~p", [Packet]),
     case Packet of
         #upr_packet{opcode = ?UPR_MUTATION,
@@ -406,17 +433,12 @@ do_callback(Type, Packet, Callback, Acc, LastSnapshotSeqno, LastSeenSeqno) ->
                                 rev = Rev,
                                 body = Body,
                                 deleted = false,
-                                last_snapshot_seq = LastSnapshotSeqno},
+                                snapshot_start_seq = SnapshotStart,
+                                snapshot_end_seq = SnapshotEnd},
             call_callback(Callback, Acc, Doc);
-        #upr_packet{opcode = ?UPR_SNAPSHOT_MARKER} ->
-            case LastSeenSeqno of
-                undefined ->
-                    ?log_debug("madness. We're getting snapshot marker without seeing any data. LastSnapshotSeqno = ~B", [LastSnapshotSeqno]),
-                    {ok, Acc, LastSnapshotSeqno, LastSeenSeqno};
-                _ ->
-                    true = is_integer(LastSeenSeqno),
-                    {ok, Acc, LastSeenSeqno, LastSeenSeqno}
-            end;
+        #upr_packet{opcode = ?UPR_SNAPSHOT_MARKER, ext = Ext} ->
+            <<NewSnapshotStart:64, NewSnapshotEnd:64, _/binary>> = Ext,
+            {ok, Acc, NewSnapshotStart, NewSnapshotEnd, LastSeenSeqno};
         #upr_packet{opcode = ?UPR_DELETION,
                     cas = CAS,
                     ext = Ext,
@@ -430,10 +452,12 @@ do_callback(Type, Packet, Callback, Acc, LastSnapshotSeqno, LastSeenSeqno) ->
                                 rev = Rev,
                                 body = <<>>,
                                 deleted = true,
-                                last_snapshot_seq = LastSnapshotSeqno},
+                                snapshot_start_seq = SnapshotStart,
+                                snapshot_end_seq = SnapshotEnd},
             call_callback(Callback, Acc, Doc);
         #upr_packet{opcode = ?UPR_STREAM_END} ->
-            {normal_stop, Callback({stream_end, LastSnapshotSeqno, LastSeenSeqno}, Acc)};
+            {normal_stop, Callback({stream_end,
+                                    SnapshotStart, SnapshotEnd, LastSeenSeqno}, Acc)};
         #upr_packet{opcode = OtherCode} ->
             case OtherCode of
                 ?UPR_NOP ->
@@ -445,16 +469,19 @@ do_callback(Type, Packet, Callback, Acc, LastSnapshotSeqno, LastSeenSeqno) ->
                     {setup, res} = {setup, Type},
                     ok
             end,
-            {ok, Acc, LastSnapshotSeqno, LastSeenSeqno}
+            {ok, Acc, SnapshotStart, SnapshotEnd, LastSeenSeqno}
     end.
 
-call_callback(Callback, Acc, #upr_mutation{local_seq = Seq, last_snapshot_seq = LastSnapshotSeqno} = Doc) ->
+call_callback(Callback, Acc,
+              #upr_mutation{local_seq = Seq,
+                            snapshot_start_seq = SnapshotStart,
+                            snapshot_end_seq = SnapshotEnd} = Doc) ->
     %% that's for debugging
     erlang:put(last_doc, Doc),
     %% ?log_debug("mutation: ~p", [Doc]),
     case Callback(Doc, Acc) of
         {ok, Acc2} ->
-            {ok, Acc2, LastSnapshotSeqno, Seq};
+            {ok, Acc2, SnapshotStart, SnapshotEnd, Seq};
         {stop, Acc2} ->
             {stop, Acc2}
     end.
@@ -510,9 +537,9 @@ test() ->
     Cb = fun (Packet, Acc) ->
                  ?log_debug("packet: ~p", [Packet]),
                  case Packet of
-                     {failover_id, _FID, _, _, _} ->
+                     {failover_id, _FUUID, _, _, _, _} ->
                          {ok, Acc};
-                     {stream_end, _, _} = Msg ->
+                     {stream_end, _, _, _} = Msg ->
                          ?log_debug("StreamEnd: ~p", [Msg]),
                          {stop, lists:reverse(Acc)};
                      _ ->

@@ -15,7 +15,8 @@
                        rev,
                        body,
                        deleted,
-                       last_snapshot_seq
+                       snapshot_start_seq,
+                       snapshot_end_seq
 }).
 
 -type callback_arg() :: #upr_mutation{} | {failover_id, term()} | stream_end.

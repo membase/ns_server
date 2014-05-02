@@ -186,11 +186,13 @@
           committed_seq,
           current_through_seq,
           current_through_snapshot_seq,
+          current_through_snapshot_end_seq,
           last_stream_end_seq = 0,
           source_cur_seq,
-          upr_failover_id :: {non_neg_integer(), non_neg_integer()},
+          upr_failover_uuid :: non_neg_integer(),
           seqs_in_progress = [],
           highest_seq_done = ?LOWEST_SEQ,
+          highest_seq_done_snapshot = {?LOWEST_SEQ, ?LOWEST_SEQ},
           rep_starttime,
           timer = nil, %% checkpoint timer
 
@@ -265,7 +267,8 @@
 -record(worker_stat, {
           worker_id,
           seq = 0,
-          snapshot_seq = 0,
+          snapshot_start_seq = 0,
+          snapshot_end_seq = 0,
           worker_meta_latency_aggr = 0,
           worker_docs_latency_aggr = 0,
           worker_data_replicated = 0,
