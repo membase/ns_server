@@ -1562,7 +1562,7 @@ var MockedRequest = mkClass({
       [post("controller", "startGracefulFailover"), function () {
         ServerStateMock.runRebalance("gracefulFailOver");
       }],
-      [post("controller", "reAddNode"), expectParams(method("doNothingPOST"), "otpNode")],
+      [post("controller", "setRecoveryType"), expectParams(method("doNothingPOST"), "otpNode", "recoveryType")],
       [post("settings", "web"), expectParams(method("doNothingPOST"), "port", "username", "password")],
       [post("settings", "stats"), function () {}],
       [post("settings", "replications", x), function () {
@@ -1843,7 +1843,7 @@ var ServerStateMock = {
     "otpNode": "n_0@127.0.0.1",
     "thisNode": true,
     "hostname": "127.0.0.1:9000",
-    "recoveryType": "none",
+    "recoveryType": "full",
     "clusterCompatibility": 196608,
     "version": "only-web.rb",
     "os": "x86_64-pc-linux-gnu",
@@ -1921,7 +1921,8 @@ var ServerStateMock = {
     "mcdMemoryReserved": 4723,
     "mcdMemoryAllocated": 4723,
     "couchApiBase": "/couchBase/",
-    "clusterMembership": "active",
+    "clusterMembership": "inactiveFailed",
+    "isDeltaRecoveryPossible": true,
     "status": "healthy",
     "otpNode": "n_2@127.0.0.1",
     "thisNode": true,
@@ -2110,6 +2111,9 @@ var ServerStateMock = {
       },
       "ejectNode": {
         "uri": "/controller/ejectNode"
+      },
+      "setRecoveryType": {
+        "uri": "/controller/setRecoveryType"
       },
       "setAutoCompaction": {
         "uri": "/controller/setAutoCompaction",

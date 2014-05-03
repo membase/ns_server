@@ -716,8 +716,10 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 .servers_list .rebalance_empty {padding:0 15px; background:none; color:#656565;}
 
 .servers_list .actions {padding-left:0;}
-.pending_removal_message, .pending_add_message {float:right; margin:0 10px 0 0; color:#e54c2a;padding:1em 0;}
-.pending_add_message {margin:0}
+.pending_removal_message {float:right; margin:0 10px 0 0; padding:1em 0;}
+.pending_add_message {margin:0; color:#e54c2a; text-align: center; display: inline-block; width: 100px; vertical-align: middle;}
+.list td.dynamic_inactiveAdded .list_button {float: none; display: inline-block; vertical-align: middle; margin: 0;}
+.list td.dynamic_inactiveAdded {text-align: right;}
 .server_row.status_up {background-position:10px 20px !important;}
 .server_row.status_down {background-position:10px -157px !important; background-color:#61696c;}
 
@@ -785,9 +787,10 @@ ul.tabs .badge_display .badge {display:block;}
 .additional_server_info .add_btn {display:block; width:61px; height:21px; background:url(../images/add_btn.png) 0 0 no-repeat; float:right;}
 .additional_server_info .info_message {font-size:16px;}
 .list .add_back_row {background:url(../images/add_back_bg.png) 0 0 repeat-x;*margin:0 !important;}
-.list .add_back_row td{height:31px;background:none;padding:0 9px;border:none;text-align:left}
+.list .add_back_row td{height:31px;background:none;padding:0 0 0 9px;border:none;text-align:left;}
 .add_b_message {line-height:31px; color:#fff;}
-.add_back_btn {display:block; width:148px; height:31px; background:url(../images/add_back_btn.png) 0 0 no-repeat; float:right; margin-right:-10px;}
+.add_back_btn {display: block; width: 148px; margin-right: -1px; margin-top: 1px; height: 30px; background: url(../images/green_btn_bg.png) 0 0; float: right; cursor: pointer;}
+.add_back_btn span {display: block; padding-top: 2px; padding-left: 31px; font-size: 13px; font-weight: bold; color: #fff; line-height: 29px; background: url('../images/green_btn_plus_icon.png') no-repeat 11px 50%;}
 
 .list {border-right:1px solid #d9dce0;background:none #eee;}
 .list td {background:none #eee;border-bottom:1px solid #ced5d9; padding:10px;border-right:0px; text-align:center;vertical-align:middle;}

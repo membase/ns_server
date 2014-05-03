@@ -351,19 +351,14 @@ var ServersSection = {
     function mkServerAction(handler) {
       return ServersSection.accountForDisabled(mkServerRowHandler(function (e, serverRow) {
         e.preventDefault();
-        return handler(serverRow.hostname);
+        return handler(serverRow.hostname, $(this).data('recovery-type'));
       }));
     }
 
-    serversQ.find('.re_add_button').live('click', mkServerAction($m(self, 'reAddNode')));
+    serversQ.find('.add_back_btn').live('click', mkServerAction($m(self, 'reAddNode')));
     serversQ.find('.eject_server').live('click', mkServerAction($m(self, 'ejectNode')));
     serversQ.find('.failover_server').live('click', mkServerAction($m(self, 'failoverNode')));
     serversQ.find('.remove_from_list').live('click', mkServerAction($m(self, 'removeFromList')));
-    serversQ.find('.js_recovery_mode_btn').live('click', function (e) {
-      e.preventDefault();
-      var hostname = $(this).closest(".js_recovery_mode_btn").data()["hostname"];
-      self.changeRecoveryMode(hostname);
-    })
 
     self.rebalanceProgress = Cell.needing(DAL.cells.tasksProgressCell).computeEager(function (v, tasks) {
       for (var i = tasks.length; --i >= 0;) {
@@ -705,35 +700,16 @@ var ServersSection = {
       }
     });
   },
-  changeRecoveryMode: function (hostname) {
-    var self = this;
-    if (!self.poolDetails.value) {
-      return;
-    }
-
-    var node = self.mustFindNode(hostname);
-
-    setFormValues($("#failover_repair_dialog form"), {recoveryType: node.recoveryType});
-
-    showDialogHijackingSave("failover_repair_dialog", ".save_button", function () {
-      if (!self.poolDetails.value) {
-        return;
-      }
-
-      var node = self.mustFindNode(hostname);
-      var params = $.deparam(serializeForm($("#failover_repair_dialog form")));
-      params.otpNode = node.otpNode;
-      self.postAndReload("/controller/setRecoveryType", params);
-    });
-  },
-  reAddNode: function (hostname) {
+  reAddNode: function (hostname, recoveryType) {
     if (!this.poolDetails.value) {
       return;
     }
 
     var node = this.mustFindNode(hostname);
-    this.postAndReload(this.poolDetails.value.controllers.reAddNode.uri,
-                       {otpNode: node.otpNode});
+    this.postAndReload(this.poolDetails.value.controllers.setRecoveryType.uri, {
+      otpNode: node.otpNode,
+      recoveryType: recoveryType
+    });
   },
   removeFromList: function (hostname) {
     var node = this.mustFindNode(hostname);
