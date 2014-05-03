@@ -141,6 +141,7 @@ init_logging() ->
     XdcrLogPath = filename:join(Dir, ?XDCR_LOG_FILENAME),
     XdcrErrorsLogPath = filename:join(Dir, ?XDCR_ERRORS_LOG_FILENAME),
     StatsLogPath = filename:join(Dir, ?STATS_LOG_FILENAME),
+    AccessLogPath = filename:join(Dir, ?ACCESS_LOG_FILENAME),
 
     DiskSinkParams = [{size, {MaxB, MaxF}}],
 
@@ -178,6 +179,8 @@ init_logging() ->
                         ale_disk_sink, [XdcrErrorsLogPath, DiskSinkParams]),
     ok = ale:start_sink(disk_stats,
                         ale_disk_sink, [StatsLogPath, DiskSinkParams]),
+    ok = ale:start_sink(disk_access,
+                        ale_disk_sink, [AccessLogPath, DiskSinkParams]),
     ok = ale:start_sink(ns_log, raw, ns_log_sink, []),
 
     lists:foreach(
@@ -190,6 +193,8 @@ init_logging() ->
               ok = ale:set_loglevel(Logger, debug)
       end,
       StdLoggers),
+
+    ok = ale:start_logger(?ACCESS_LOGGER, info, menelaus_access_log_formatter),
 
     OverrideLoglevels = [{?STATS_LOGGER, warn},
                          {?NS_DOCTOR_LOGGER, warn}],
@@ -227,6 +232,8 @@ init_logging() ->
 
     ok = ale:add_sink(?STATS_LOGGER, disk_stats, get_loglevel(?STATS_LOGGER)),
     ok = ale:add_sink(?NS_DOCTOR_LOGGER, disk_stats, get_loglevel(?NS_DOCTOR_LOGGER)),
+
+    ok = ale:add_sink(?ACCESS_LOGGER, disk_access, get_loglevel(?ACCESS_LOGGER)),
 
     case misc:get_env_default(dont_suppress_stderr_logger, false) of
         true ->

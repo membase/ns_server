@@ -62,6 +62,7 @@
 -define(STATS_LOG_FILENAME, "stats").
 -define(BABYSITTER_LOG_FILENAME, "babysitter").
 -define(SSL_PROXY_LOG_FILENAME, "ssl_proxy").
+-define(ACCESS_LOG_FILENAME, "access").
 
 -define(NS_SERVER_LOGGER, ns_server).
 -define(COUCHDB_LOGGER, couchdb).
@@ -76,6 +77,7 @@
 %% if you can't find any calls to it in ns_server
 -define(MAPREDUCE_ERRORS_LOGGER, mapreduce_errors).
 -define(XDCR_LOGGER, xdcr).
+-define(ACCESS_LOGGER, access).
 
 -define(LOGGERS, [?COUCHDB_LOGGER, ?NS_SERVER_LOGGER,
                   ?USER_LOGGER, ?MENELAUS_LOGGER,
