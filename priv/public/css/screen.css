@@ -1129,6 +1129,7 @@ span.staleness-notice, .staleness-notice { font-size: 12px!important; display: n
 #failover_confirmation_dialog .warning label {margin-top: 15px;}
 #failover_confirmation_dialog label input {float: left; margin: 3px 5px 0 3px;}
 #failover_confirmation_dialog label span {overflow: hidden; display: block;}
+.servers > .failover_warning {color: red;}
 .failover_warning {font-size: 12px; color: #444;}
 .failover_warning > h2,
 .failover_warning > label {padding-left: 20px;}
