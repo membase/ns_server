@@ -70,6 +70,7 @@
 -define(SSL_PROXY_LOG_FILENAME, "ssl_proxy").
 -define(REPORTS_LOG_FILENAME, "reports").
 -define(XDCR_TRACE_LOG_FILENAME, "xdcr_trace").
+-define(ACCESS_LOG_FILENAME, "access").
 
 -define(NS_SERVER_LOGGER, ns_server).
 -define(COUCHDB_LOGGER, couchdb).
@@ -85,6 +86,7 @@
 -define(MAPREDUCE_ERRORS_LOGGER, mapreduce_errors).
 -define(XDCR_LOGGER, xdcr).
 -define(XDCR_TRACE_LOGGER, xdcr_trace).
+-define(ACCESS_LOGGER, access).
 
 -define(LOGGERS, [?COUCHDB_LOGGER, ?NS_SERVER_LOGGER,
                   ?USER_LOGGER, ?MENELAUS_LOGGER,
