@@ -19,7 +19,7 @@
 
 -export([start_link/0, start_link/1,
          start_sink/3, start_sink/4, stop_sink/1,
-         start_logger/1, start_logger/2,
+         start_logger/1, start_logger/2, start_logger/3,
          stop_logger/1,
          add_sink/2, add_sink/3,
          set_loglevel/2, get_loglevel/1,
