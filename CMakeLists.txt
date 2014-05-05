@@ -162,7 +162,13 @@ INSTALL (PROGRAMS "${_instdir}/couchbase-server" DESTINATION bin)
 
 SET (_etcdir "${_instdir}/etc")
 FILE (MAKE_DIRECTORY "${_etcdir}")
+
+# MacOS (at least) has a distinction between DATA_PREFIX and BIN_PREFIX, so we
+# need to replace both
+SET (DATA_PREFIX "${PREFIX}")
+SET (BIN_PREFIX "${PREFIX}")
 CONFIGURE_FILE (etc/static_config.in "${_etcdir}/couchbase/static_config" @ONLY)
+
 FILE (WRITE "${_etcdir}/couchbase/config" "")    # create empty file
 SET (_cdbetcdir "${_etcdir}/couchdb/default.d")
 FILE (MAKE_DIRECTORY "${_cdbetcdir}")
