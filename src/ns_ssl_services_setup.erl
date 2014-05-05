@@ -293,7 +293,9 @@ save_cert_pkey(CertPEM, PKeyPEM, Compat30, Node) ->
             ok = misc:atomic_write_file(Path, [CertPEM, PKeyPEM]),
             ok = misc:atomic_write_file(memcached_cert_path(), CertPEM),
             ok = misc:atomic_write_file(memcached_key_path(), PKeyPEM)
-    end.
+    end,
+
+    ok = ssl_manager:clear_pem_cache().
 
 restart_ssl_services() ->
     %% NOTE: We're going to talk to our supervisor so if we do it
@@ -301,11 +303,7 @@ restart_ssl_services() ->
     %% to shutdown us.
     %%
     %% We're not trapping exits and that makes this interaction safe.
-    ok = ns_ssl_services_sup:stop_ssl_services(),
-    ok = application:stop(ssl),
-    ok = application:start(ssl),
-    ok = ns_ssl_services_sup:start_ssl_services(),
-
+    ok = ns_ssl_services_sup:restart_ssl_services(),
     restart_xdcr_proxy(),
     ok = ns_memcached:connect_and_send_isasl_refresh().
 
