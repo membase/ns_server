@@ -36,7 +36,7 @@
 -export([start_link/0,
          start_link/1,
          stop/0,
-         loop/3,
+         loop/2,
          webconfig/0,
          webconfig/1,
          restart/0,
@@ -85,11 +85,10 @@ start_link() ->
 
 start_link(Options) ->
     {AppRoot, Options1} = get_option(approot, Options),
-    {DocRoot, Options2} = get_option(docroot, Options1),
     Loop = fun (Req) ->
-                   ?MODULE:loop(Req, AppRoot, DocRoot)
+                   ?MODULE:loop(Req, AppRoot)
            end,
-    case mochiweb_http:start([{loop, Loop} | Options2]) of
+    case mochiweb_http:start([{loop, Loop} | Options1]) of
         {ok, Pid} -> {ok, Pid};
         Other ->
             ?MENELAUS_WEB_LOG(?START_FAIL,
@@ -126,7 +125,7 @@ webconfig(Config) ->
 webconfig() ->
     webconfig(ns_config:get()).
 
-loop(Req, AppRoot, DocRoot) ->
+loop(Req, AppRoot) ->
     random:seed(os:timestamp()),
 
     try
@@ -138,12 +137,12 @@ loop(Req, AppRoot, DocRoot) ->
 
         case is_throttled_request(PathTokens) of
             false ->
-                loop_inner(Req, AppRoot, DocRoot, Path, PathTokens);
+                loop_inner(Req, AppRoot, Path, PathTokens);
             true ->
                 request_throttler:request(
                   rest,
                   fun () ->
-                          loop_inner(Req, AppRoot, DocRoot, Path, PathTokens)
+                          loop_inner(Req, AppRoot, Path, PathTokens)
                   end,
                   fun (_Error, Reason) ->
                           Retry = integer_to_list(random:uniform(10)),
@@ -174,7 +173,7 @@ is_throttled_request(["couchBase" | _]) ->      % this get's throttled as capi r
 is_throttled_request(_) ->
     true.
 
-loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
+loop_inner(Req, AppRoot, Path, PathTokens) ->
     Action = case Req:get(method) of
                  Method when Method =:= 'GET'; Method =:= 'HEAD' ->
                      case PathTokens of
@@ -289,9 +288,6 @@ loop_inner(Req, AppRoot, DocRoot, Path, PathTokens) ->
                                                       "text/html; charset=utf8",
                                                       [{"Pragma", "no-cache"},
                                                        {"Cache-Control", "must-revalidate"}])};
-                         ["docs" | _PRem ] ->
-                             DocFile = string:sub_string(Path, 6),
-                             {done, Req:serve_file(DocFile, DocRoot)};
                          ["dot", Bucket] ->
                              {auth, fun handle_dot/2, [Bucket]};
                          ["dotsvg", Bucket] ->
