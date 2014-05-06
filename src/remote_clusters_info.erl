@@ -241,10 +241,14 @@ get_remote_bucket(ClusterName, Bucket, Through) ->
        Msg :: binary(),
        Field :: binary().
 get_remote_bucket(ClusterName, Bucket, Through, Timeout) ->
-    Cluster = find_cluster_by_name(ClusterName),
-    gen_server:call(?MODULE,
-                    {get_remote_bucket, Cluster, Bucket, Through, Timeout}, infinity).
-
+    case find_cluster_by_name(ClusterName) of
+        {error, _, _} = Error ->
+            Error;
+        Cluster ->
+            gen_server:call(?MODULE,
+                            {get_remote_bucket, Cluster,
+                             Bucket, Through, Timeout}, infinity)
+    end.
 
 invalidate_remote_bucket(ClusterName, Bucket) ->
     Cluster = find_cluster_by_name(ClusterName),
