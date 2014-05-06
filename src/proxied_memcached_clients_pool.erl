@@ -16,11 +16,11 @@ start_link() ->
 
 take_socket({?MODULE, {Host, Port, Bucket, Auth, LP, RP, Cert}}) ->
     RV = case ns_connection_pool:maybe_take_socket(proxied_memcached_clients_pool, {Host, Port, Bucket}) of
-               {ok, _S} = Ok ->
-                   Ok;
-               no_socket ->
-                   establish_connection(Host, Port, Bucket, Auth, LP, RP, Cert)
-           end,
+             {ok, _S} = Ok ->
+                 Ok;
+             no_socket ->
+                 establish_connection(Host, Port, Bucket, Auth, LP, RP, Cert)
+         end,
     case RV of
         {ok, S} ->
             {ok, {batch_socket, S}};
@@ -39,7 +39,7 @@ establish_connection(Host, Port, Bucket, Password, LP, RP, Cert) ->
                 Err ->
                     {error, {proxy_error, Err}}
             end;
-        {error, _ } = Error ->
+        {error, _} = Error ->
             Error
     end.
 
