@@ -33,6 +33,7 @@ init() ->
 
     case ssl:listen(Port,
                     [{reuseaddr, true},
+                     {backlog, 100},
                      inet,
                      binary,
                      {packet, raw},

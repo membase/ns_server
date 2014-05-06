@@ -30,6 +30,7 @@ init() ->
 
     case gen_tcp:listen(Port,
                         [{reuseaddr, true},
+                         {backlog, 100},
                          inet,
                          binary,
                          {packet, raw},
