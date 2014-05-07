@@ -188,7 +188,7 @@ decode_status({error, {{already_started, _Pid}, _Stack}}) ->
     false.
 
 is_free_nodename(ShortName) ->
-    {ok, Names} = erl_epmd:names(),
+    {ok, Names} = erl_epmd:names({127,0,0,1}),
     not lists:keymember(ShortName, 1, Names).
 
 wait_for_nodename(ShortName) ->
