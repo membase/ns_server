@@ -52,11 +52,6 @@ walk_body(Acc, [H|T]) ->
 
 transform({call, Line, {remote, _Line1,
                         {atom, _Line2, ale},
-                        {atom, _Line3, delay}},
-           [Expr]} = _Stmt) ->
-    delay(Line, Expr);
-transform({call, Line, {remote, _Line1,
-                        {atom, _Line2, ale},
                         {atom, _Line3, sync}},
            [LoggerExpr]} = Stmt) ->
     R = case valid_logger_expr(LoggerExpr) of
@@ -129,8 +124,6 @@ transform(Stmt) ->
 
 do_emit_logger_call(LoggerName, LogLevelExpr, Args,
                     CallLine, RemoteLine, ModLine, ArgLine) ->
-    DelayedArgs = delay_calls(Args),
-
     {call, CallLine,
      {remote, RemoteLine,
       {atom, ModLine, ale_codegen:logger_impl(LoggerName)},
@@ -138,7 +131,7 @@ do_emit_logger_call(LoggerName, LogLevelExpr, Args,
      [{atom, ArgLine, get(module)},
       {atom, ArgLine, get(function)},
       {integer, ArgLine, CallLine} |
-      DelayedArgs]}.
+      Args]}.
 
 emit_logger_call(LoggerName, LogLevel, Args,
                  CallLine, RemoteLine, ModLine, FnLine, ArgLine) ->
@@ -147,8 +140,6 @@ emit_logger_call(LoggerName, LogLevel, Args,
 
 do_emit_dynamic_logger_call(LoggerModule, LogLevelExpr, Args,
                             CallLine, RemoteLine, ModLine, FnLine, ArgLine) ->
-    DelayedArgs = delay_calls(Args),
-
     {call, CallLine,
      {remote, RemoteLine,
       {atom, ModLine, erlang},
@@ -161,7 +152,7 @@ do_emit_dynamic_logger_call(LoggerModule, LogLevelExpr, Args,
         {atom, ArgLine, get(function)},
         {cons, ArgLine,
          {integer, ArgLine, CallLine},
-         list_to_ast_list(ArgLine, DelayedArgs)}}}]}.
+         list_to_ast_list(ArgLine, Args)}}}]}.
 
 emit_dynamic_logger_call(LoggerNameExpr, LogLevelExpr, Args,
                          CallLine, RemoteLine,
@@ -188,35 +179,6 @@ list_to_ast_list(Line, []) ->
     {nil, Line};
 list_to_ast_list(Line, [H | T]) ->
     {cons, Line, H, list_to_ast_list(Line, T)}.
-
-map_ast_list(_Fn, {nil, _Line} = List) ->
-    List;
-map_ast_list(Fn, {cons, Line, Head, Tail}) ->
-    {cons, Line, Fn(Head), map_ast_list(Fn, Tail)}.
-
-delay(Line, Expr) ->
-    SuspFn = {'fun', Line,
-              {clauses,
-               [{clause, Line, [], [],
-                 [Expr]}]}},
-    Ref = {call, Line, {remote, Line,
-                        {atom, Line, erlang},
-                        {atom, Line, make_ref}},
-           []},
-    Susp = {tuple, Line, [{atom, Line, '_susp'}, Ref, SuspFn]},
-    Susp.
-
-delay_call({call, Line, _, _} = Call) ->
-    delay(Line, Call);
-delay_call(Other) ->
-    Other.
-
-delay_calls([Fmt, {cons, _, _, _} = Args]) ->
-    [Fmt, map_ast_list(fun delay_call/1, Args)];
-delay_calls([UserData, Fmt, {cons, _, _, _} = Args]) ->
-    [UserData, Fmt, map_ast_list(fun delay_call/1, Args)];
-delay_calls(Args) ->
-    Args.
 
 extended_loglevel_expr_rt(Line, Expr) ->
     {call, Line,

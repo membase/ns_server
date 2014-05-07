@@ -244,7 +244,6 @@ init_logging() ->
         false ->
             ok
     end,
-    ale:sync_changes(infinity),
     ale:info(?NS_SERVER_LOGGER, "Started & configured logging").
 
 start_sink(Name, Module, Args) ->

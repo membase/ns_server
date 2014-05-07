@@ -1121,7 +1121,6 @@ run_rebalance_counts_experiment() ->
               ok = ale:add_sink(Logger, stderr)
       end,
       ?LOGGERS),
-    ale:sync_changes(infinity),
 
     %% begin
     %%     From = 73,

@@ -54,16 +54,6 @@ assemble_info(Logger, LogLevel, Module, Function, Line, UserData) ->
               node=Node,
               user_data=UserData}.
 
--spec force_args(list()) -> list().
-force_args(Exprs) when is_list(Exprs) ->
-    lists:map(fun force/1, Exprs).
-
--spec force(any()) -> any().
-force({'_susp', _Ref, Susp}) ->
-    Susp();
-force(Other) ->
-    Other.
-
 -spec proplists_merge([{any(), any()}], [{any(), any()}],
                       fun((any(), any(), any()) -> any())) -> [{any(), any()}].
 proplists_merge(Prop1, [], _Fn) ->

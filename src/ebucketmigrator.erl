@@ -93,8 +93,7 @@ setup_logging(Verbose) ->
               ok = ale:start_logger(Logger, LogLevel),
               ok = ale:add_sink(Logger, stderr)
       end,
-      ?LOGGERS),
-    ale:sync_changes(infinity).
+      ?LOGGERS).
 
 
 %% @doc

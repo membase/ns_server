@@ -80,5 +80,4 @@ init_logging() ->
         false ->
             ok
     end,
-    ale:sync_changes(infinity),
     ale:info(?NS_SERVER_LOGGER, "Brought up ns_ssl_proxy logging").

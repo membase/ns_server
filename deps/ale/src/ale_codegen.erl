@@ -29,7 +29,8 @@ extended_impl(LogLevel) ->
 
 load_logger(LoggerName, LogLevel, Formatter, Sinks) ->
     SourceCode = logger(LoggerName, LogLevel, Formatter, Sinks),
-    dynamic_compile:load_from_string(SourceCode).
+    {module, _} = dynamic_compile:load_from_string(SourceCode),
+    ok.
 
 logger(LoggerName, LogLevel, Formatter, Sinks) ->
     LoggerNameStr = atom_to_list(LoggerName),
@@ -110,9 +111,8 @@ generic_loglevel(LoggerName, LogLevel, Formatter, Preformatted, Raw) ->
      case Preformatted =/= [] orelse Raw =/= [] of
          true ->
              io_lib:format(
-               "ForcedArgs = ale_utils:force_args(Args),"
                "Info = ale_utils:assemble_info(~s, ~p, M, F, L, Data),"
-               "UserMsg = io_lib:format(Fmt, ForcedArgs),",
+               "UserMsg = io_lib:format(Fmt, Args),",
                [LoggerName, LogLevel])
              ;
          false ->
