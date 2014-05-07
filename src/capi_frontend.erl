@@ -49,9 +49,14 @@ continue_do_db_req(#httpd{user_ctx=UserCtx,
     BucketConfig = verify_bucket_auth(Req, BucketName),
     case AfterSlash of
         [] ->
-            %% undefined #db fields indicate bucket database
-            Db = #db{user_ctx = UserCtx, name = DbName},
-            Fun(Req, Db);
+            case lists:member(node(), couch_util:get_value(servers, BucketConfig)) of
+                true ->
+                    %% undefined #db fields indicate bucket database
+                    Db = #db{user_ctx = UserCtx, name = DbName},
+                    Fun(Req, Db);
+                _ ->
+                    send_no_active_vbuckets(Req, [BucketName])
+            end;
         [AfterSlash1] ->
             %% xdcr replicates here; to prevent a replication to
             %% recreated bucket (without refetching vbucket map) or
