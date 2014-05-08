@@ -230,9 +230,15 @@ extract_auth(Req) ->
                 "Basic " ++ Value ->
                     parse_user_password(base64:decode_to_string(Value));
                 _ ->
-                    case extract_ui_auth_token(Req) of
-                        undefined -> undefined;
-                        Token -> {token, Token}
+                    Method = Req:get(method),
+                    case Method =:= 'GET' orelse Method =:= 'HEAD' of
+                        true ->
+                            case extract_ui_auth_token(Req) of
+                                undefined -> undefined;
+                                Token -> {token, Token}
+                            end;
+                        _ ->
+                            undefined
                     end
             end
     end.
