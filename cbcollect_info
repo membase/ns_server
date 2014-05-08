@@ -371,7 +371,7 @@ def make_product_task(guts, initargs_path):
          for name in ["debug", "info", "error", "couchdb",
                       "xdcr", "xdcr_errors",
                       "views", "mapreduce_errors",
-                      "stats", "babysitter", "ssl_proxy", "reports", "xdcr_trace"]],
+                      "stats", "babysitter", "ssl_proxy", "reports", "xdcr_trace", "access"]],
 
         [AllOsTask("memcached stats %s" % kind,
                    flatten(["cbstats", "-a", "127.0.0.1:%s" % read_guts(guts, "memcached_port"), kind, "-b", read_guts(guts, "memcached_admin"), "-p", read_guts(guts, "memcached_pass")]),

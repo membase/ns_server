@@ -547,7 +547,7 @@ do_handle_diag(Req, Extra) ->
             ?VIEWS_LOG_FILENAME, ?MAPREDUCE_ERRORS_LOG_FILENAME,
             ?BABYSITTER_LOG_FILENAME,
             ?SSL_PROXY_LOG_FILENAME, ?REPORTS_LOG_FILENAME,
-            ?XDCR_TRACE_LOG_FILENAME],
+            ?XDCR_TRACE_LOG_FILENAME, ?ACCESS_LOG_FILENAME],
 
     lists:foreach(fun (Log) ->
                           handle_log(Resp, Log)
