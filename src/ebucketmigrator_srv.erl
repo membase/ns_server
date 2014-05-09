@@ -68,13 +68,12 @@
                }).
 
 %% external API
--export([start_link/3, start_link/4,
-         build_args/6, add_args_option/3, get_args_option/2,
+-export([start_link/1, start_link/2,
+         build_args/7, add_args_option/3, get_args_option/2,
          start_vbucket_filter_change/2,
          set_controlling_process/2,
          had_backfill/2,
-         wait_backfill_complete/1,
-         get_bucket_credentials/2]).
+         wait_backfill_complete/1]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -793,21 +792,24 @@ confirm_sent_messages(State) ->
 %% API
 %%
 
-start_link(Src, Dst, Opts) ->
-    start_link(node(), Src, Dst, Opts).
+start_link(Args) ->
+    start_link(node(), Args).
 
 %% Starts ebucketmigrator on the `Node'.
-start_link(Node, Src, Dst, Opts) ->
-    misc:start_link(Node, ?MODULE, init, [{Src, Dst, Opts}]).
+start_link(Node, Args) ->
+    misc:start_link(Node, ?MODULE, init, [Args]).
 
 -spec build_args(ForNode::node(),
                  Bucket::bucket_name(),
                  SrcNode::node(),
                  DstNode::node(),
                  VBuckets::[vbucket_id(),...],
-                 TakeOver::boolean()) ->
-                        [any(), ...].
-build_args(ForNode, Bucket, SrcNode, DstNode, VBuckets, TakeOver) ->
+                 TakeOver::boolean(),
+                 SetPendingState::boolean()) ->
+                        {{nonempty_string(), pos_integer() | undefined},
+                         {nonempty_string(), pos_integer() | undefined},
+                         [any(),...]}.
+build_args(ForNode, Bucket, SrcNode, DstNode, VBuckets, TakeOver, SetPendingState) ->
     {User, Pass} = get_bucket_credentials(ForNode, Bucket),
     Suffix = case TakeOver of
                  true ->
@@ -817,19 +819,19 @@ build_args(ForNode, Bucket, SrcNode, DstNode, VBuckets, TakeOver) ->
                      %% We want to reuse names for replication.
                      atom_to_list(DstNode)
              end,
-    [ns_memcached:host_port(SrcNode), ns_memcached:host_port(DstNode),
+    {ns_memcached:host_port(SrcNode), ns_memcached:host_port(DstNode),
      [{username, User},
       {password, Pass},
       {vbuckets, VBuckets},
-      {set_to_pending_state, TakeOver},
+      {set_to_pending_state, SetPendingState},
       {takeover, TakeOver},
-      {suffix, Suffix}]].
+      {suffix, Suffix}]}.
 
-add_args_option([Src, Dst, Options], OptionName, OptionValue) ->
+add_args_option({Src, Dst, Options}, OptionName, OptionValue) ->
     NewOptions = [{OptionName, OptionValue} | lists:keydelete(OptionName, 1, Options)],
-    [Src, Dst, NewOptions].
+    {Src, Dst, NewOptions}.
 
-get_args_option([_Src, _Dst, Options], OptionName) ->
+get_args_option({_Src, _Dst, Options}, OptionName) ->
     proplists:get_value(OptionName, Options).
 
 get_bucket_credentials(Node, Bucket) ->

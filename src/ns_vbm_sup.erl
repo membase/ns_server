@@ -185,7 +185,7 @@ perform_vbucket_filter_change_loop(ThePid, OldState, SentAlready) ->
 
 build_child_spec(ChildId, Args) ->
     {ChildId,
-     {ebucketmigrator_srv, start_link, Args},
+     {ebucketmigrator_srv, start_link, [Args]},
      temporary, 60000, worker, [ebucketmigrator_srv]}.
 
 -spec get_children(bucket_name()) -> list() | not_running.

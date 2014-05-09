@@ -72,18 +72,14 @@ kill_tap_names(Bucket, VBucket, SrcNode, DstNodes) ->
                               [iolist_to_binary([<<"replication_">>, tap_name(VBucket, SrcNode, DNode)]) || DNode <- DstNodes]).
 
 spawn_replica_builder(Bucket, VBucket, SrcNode, DstNode, SetPendingState) ->
-    {User, Pass} = ebucketmigrator_srv:get_bucket_credentials(DstNode, Bucket),
-    Opts = [{vbuckets, [VBucket]},
-            {takeover, false},
-            {suffix, tap_name(VBucket, SrcNode, DstNode)},
-            {note_tap_stats, {replica_building, Bucket, VBucket, SrcNode, DstNode}},
-            {username, User},
-            {password, Pass},
-            {set_to_pending_state, SetPendingState}],
-    case ebucketmigrator_srv:start_link(DstNode,
-                                        ns_memcached:host_port(SrcNode),
-                                        ns_memcached:host_port(DstNode),
-                                        Opts) of
+    Args = ebucketmigrator_srv:build_args(DstNode, Bucket, SrcNode, DstNode, [VBucket],
+                                          false, SetPendingState),
+
+    Args1 = ebucketmigrator_srv:add_args_option(Args, suffix, tap_name(VBucket, SrcNode, DstNode)),
+    Args2 = ebucketmigrator_srv:add_args_option(Args1, note_tap_stats,
+                                                {replica_building, Bucket, VBucket, SrcNode, DstNode}),
+
+    case ebucketmigrator_srv:start_link(DstNode, Args2) of
         {ok, Pid} ->
             ?log_debug("Replica building ebucketmigrator for vbucket ~p into ~p is ~p", [VBucket, DstNode, Pid]),
             Pid;

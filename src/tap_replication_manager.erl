@@ -204,7 +204,7 @@ child_to_supervisor_spec(Bucket, Child) ->
 build_replicator_args(Bucket, SrcNode, VBuckets) ->
     Args = ebucketmigrator_srv:build_args(node(), Bucket,
                                           SrcNode, node(),
-                                          VBuckets, false),
+                                          VBuckets, false, false),
     Self = self(),
     ebucketmigrator_srv:add_args_option(Args, on_not_ready_vbuckets,
                                         fun () -> handle_not_ready_vbuckets_from(Self, SrcNode) end).

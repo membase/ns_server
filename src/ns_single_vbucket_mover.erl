@@ -536,11 +536,9 @@ wait_for_mover(Bucket, V, N1, N2, Pid) ->
     end.
 
 spawn_ebucketmigrator_mover(Bucket, VBucket, SrcNode, DstNode) ->
-    Args0 = ebucketmigrator_srv:build_args(SrcNode, Bucket,
-                                           SrcNode, DstNode, [VBucket], true),
-    %% start ebucketmigrator on source node
-    Args = [SrcNode | Args0],
-    case apply(ebucketmigrator_srv, start_link, Args) of
+    Args = ebucketmigrator_srv:build_args(SrcNode, Bucket,
+                                          SrcNode, DstNode, [VBucket], true, true),
+    case ebucketmigrator_srv:start_link(SrcNode, Args) of
         {ok, Pid} = RV ->
             ?log_debug("Spawned mover ~p ~p ~p -> ~p: ~p",
                        [Bucket, VBucket, SrcNode, DstNode, Pid]),
