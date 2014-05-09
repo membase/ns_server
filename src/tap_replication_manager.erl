@@ -179,11 +179,11 @@ change_vbucket_filter(#state{bucket_name = Bucket,
 
     cancel_replicator_reset(T, SrcNode),
     try ns_vbm_sup:perform_vbucket_filter_change(Bucket,
-                                                     OldChildId,
-                                                     NewChildId,
-                                                     Args,
-                                                     MFA,
-                                                     ns_vbm_sup:server_name(Bucket)) of
+                                                 OldChildId,
+                                                 NewChildId,
+                                                 Args,
+                                                 MFA,
+                                                 ns_vbm_sup:server_name(Bucket)) of
         RV -> {ok, RV}
     catch error:upstream_conn_is_down ->
             ?log_debug("Detected upstream_conn_is_down and going to simply start fresh ebucketmigrator"),
