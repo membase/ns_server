@@ -19,11 +19,11 @@
 
 -include("mc_constants.hrl").
 
--export([connect/3, connect/4, process_data/4, process_data/3]).
+-export([connect/1, process_data/4, process_data/3]).
 
 -define(CONNECT_TIMEOUT, ns_config:get_timeout_fast(ebucketmigrator_connect, 180000)).
 
-connect({Host, Port}, Username, Password) ->
+connect({{Host, Port}, Username, Password, undefined}) ->
     {ok, Sock} = gen_tcp:connect(Host, Port,
                                  [binary, {packet, raw}, {active, false},
                                   {nodelay, true}, {delay_send, true},
@@ -41,12 +41,9 @@ connect({Host, Port}, Username, Password) ->
                                               {list_to_binary(Username),
                                                list_to_binary(Password)}})
     end,
-    Sock.
-
-connect(HostAndPort, Username, Password, undefined) ->
-    connect(HostAndPort, Username, Password);
-connect(HostAndPort, Username, Password, Bucket) ->
-    Sock = connect(HostAndPort, Username, Password),
+    Sock;
+connect({HostAndPort, Username, Password, Bucket}) ->
+    Sock = connect({HostAndPort, Username, Password, undefined}),
     ok = mc_client_binary:select_bucket(Sock, Bucket),
     Sock.
 

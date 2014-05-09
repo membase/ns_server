@@ -443,16 +443,25 @@ handle_info(Msg, State) ->
     ?rebalance_warning("Unexpected handle_info(~p, ~p)", [Msg, State]),
     {noreply, State, ?HIBERNATE_TIMEOUT}.
 
-
-init({Src, Dst, Opts}=InitArgs) ->
-    Bucketname = proplists:get_value(username, Opts),
+get_connect_info(undefined, HostPort, Bucket, Opts) ->
     {Username, Password} = case proplists:get_value(password, Opts, "") of
                                get_from_config ->
-                                   ns_bucket:credentials(Bucketname);
+                                   ns_bucket:credentials(Bucket);
                                P ->
-                                   {Bucketname, P}
+                                   {Bucket, P}
                            end,
-    Bucket = proplists:get_value(bucket, Opts),
+    {HostPort, Username, Password, undefined};
+get_connect_info(Node, HostPort, Bucket, _Opts) ->
+    {HostPort,
+     ns_config:search_node_prop(Node, 'latest-config-marker', memcached, admin_user),
+     ns_config:search_node_prop(Node, 'latest-config-marker', memcached, admin_pass),
+     Bucket}.
+
+init({Src, Dst, Opts}=InitArgs) ->
+    Bucket = proplists:get_value(username, Opts),
+    SrcConnectInfo = get_connect_info(proplists:get_value(src_node, Opts), Src, Bucket, Opts),
+    DstConnectInfo = get_connect_info(proplists:get_value(dst_node, Opts), Dst, Bucket, Opts),
+
     VBuckets = proplists:get_value(vbuckets, Opts, [0]),
     TakeOver = proplists:get_bool(takeover, Opts),
     TapSuffix = proplists:get_value(suffix, Opts),
@@ -490,8 +499,8 @@ init({Src, Dst, Opts}=InitArgs) ->
     {UpstreamAux, DownstreamAux} =
         case OldState of
             undefined ->
-                {mc_replication:connect(Src, Username, Password, Bucket),
-                 mc_replication:connect(Dst, Username, Password, Bucket)};
+                {mc_replication:connect(SrcConnectInfo),
+                 mc_replication:connect(DstConnectInfo)};
             _ ->
                 {OldState#state.upstream_aux,
                  OldState#state.downstream_aux}
@@ -555,7 +564,7 @@ init({Src, Dst, Opts}=InitArgs) ->
 
     case OldState =:= undefined orelse ReadyVBuckets =:= [] of
         true ->
-            ok = kill_tapname(UpstreamAux, TapName, Bucket, Src, Username);
+            ok = kill_tapname(UpstreamAux, TapName, Bucket, Src);
         _ ->
             ok
     end,
@@ -564,7 +573,7 @@ init({Src, Dst, Opts}=InitArgs) ->
         case OldState =:= undefined orelse
             OldState#state.upstream =:= undefined of
             true ->
-                Upstream0 = mc_replication:connect(Src, Username, Password, Bucket),
+                Upstream0 = mc_replication:connect(SrcConnectInfo),
                 %% TCP_NODELAY on upstream socket seems
                 %% beneficial. Only ack/nack is getting sent here.
                 ok = inet:setopts(Upstream0, [{nodelay, true}]),
@@ -608,7 +617,7 @@ init({Src, Dst, Opts}=InitArgs) ->
     Downstream =
         case OldState of
             undefined ->
-                mc_replication:connect(Dst, Username, Password, Bucket);
+                mc_replication:connect(DstConnectInfo);
             _ ->
                 OldState#state.downstream
         end,
@@ -658,8 +667,7 @@ init({Src, Dst, Opts}=InitArgs) ->
     State2 = process_data(<<>>, #state.upbuf, fun process_upstream/2, State1),
 
     erlang:process_flag(trap_exit, true),
-    (catch master_activity_events:note_ebucketmigrator_start(self(), Src, Dst, [{bucket, Bucket},
-                                                                                {username, Username}
+    (catch master_activity_events:note_ebucketmigrator_start(self(), Src, Dst, [{bucket, Bucket}
                                                                                 | Args])),
 
     case proplists:get_value(note_tap_stats, Opts) of
@@ -825,7 +833,9 @@ build_args(ForNode, Bucket, SrcNode, DstNode, VBuckets, TakeOver, SetPendingStat
       {vbuckets, VBuckets},
       {set_to_pending_state, SetPendingState},
       {takeover, TakeOver},
-      {suffix, Suffix}]}.
+      {suffix, Suffix},
+      {src_node, SrcNode},
+      {dst_node, DstNode}]}.
 
 add_args_option({Src, Dst, Options}, OptionName, OptionValue) ->
     NewOptions = [{OptionName, OptionValue} | lists:keydelete(OptionName, 1, Options)],
@@ -1015,16 +1025,10 @@ tap_name(TakeOver, Suffix) ->
             iolist_to_binary(["replication_", Suffix])
     end.
 
-kill_tapname(Sock, TapName, Bucket, Src, Username) ->
+kill_tapname(Sock, TapName, Bucket, Src) ->
     ?log_debug("killing tap named: ~s", [TapName]),
 
-    Bucket1 =
-        case Bucket of
-            undefined -> Username;
-            _ -> Bucket
-        end,
-
-    (catch master_activity_events:note_deregister_tap_name(Bucket1, Src, TapName)),
+    (catch master_activity_events:note_deregister_tap_name(Bucket, Src, TapName)),
     ok = mc_client_binary:deregister_tap_client(Sock, TapName),
 
     ok.
