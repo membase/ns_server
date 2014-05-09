@@ -125,8 +125,8 @@ command_2_atom(?UPR_FLUSH) ->
     upr_flush;
 command_2_atom(?UPR_SET_VBUCKET_STATE) ->
     upr_set_vbucket_state;
-command_2_atom(?UPR_FLOW_CONTROL_SETUP) ->
-    upr_flow_control_setup;
+command_2_atom(?UPR_CONTROL) ->
+    upr_control;
 command_2_atom(?UPR_WINDOW_UPDATE) ->
     upr_window_update;
 command_2_atom(_) ->

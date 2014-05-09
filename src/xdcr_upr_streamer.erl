@@ -19,7 +19,11 @@
 -include("mc_constants.hrl").
 -include("xdcr_upr_streamer.hrl").
 
--define(BUFFER_SIZE, 1048576).
+%% if we're waiting for data and have unacked stuff we'll ack all
+%% unacked stuff we have after this many milliseconds. This allows
+%% messages larger than buffer size to be handled where upr-server is
+%% only willing to send them when sent-but-unacked data size is 0.
+-define(FORCED_ACK_TIMEOUT, 200).
 
 -export([stream_vbucket/8, get_failover_log/2]).
 
@@ -59,43 +63,41 @@ decode_packet(<<Magic:8, Opcode:8, KeyLen:16,
                 Cas:64, Rest/binary>> = FullBinary) ->
     case Rest of
         <<Body:BodyLen/binary, RestRest/binary>> ->
-            build_decoded_packet(Magic, Opcode,
-                                 KeyLen, ExtLen,
-                                 DT, VB, Opaque,
-                                 Cas, Body, RestRest);
+            <<Ext:ExtLen/binary, KB/binary>> = Body,
+            <<Key0:KeyLen/binary, TrueBody0/binary>> = KB,
+            Key = binary:copy(Key0),
+            TrueBody = binary:copy(TrueBody0),
+            case Magic of
+                ?REQ_MAGIC ->
+                    {req,
+                     #upr_packet{opcode = Opcode,
+                                 datatype = DT,
+                                 vbucket = VB,
+                                 opaque = Opaque,
+                                 cas = Cas,
+                                 ext = Ext,
+                                 key = Key,
+                                 body = TrueBody},
+                     RestRest,
+                     ?HEADER_LEN + BodyLen};
+                ?RES_MAGIC ->
+                    {res,
+                     #upr_packet{opcode = Opcode,
+                                 datatype = DT,
+                                 status = VB,
+                                 opaque = Opaque,
+                                 cas = Cas,
+                                 ext = Ext,
+                                 key = Key,
+                                 body = TrueBody},
+                     RestRest,
+                     ?HEADER_LEN + BodyLen}
+            end;
         _ ->
             FullBinary
     end;
 decode_packet(FullBinary) ->
     FullBinary.
-
-build_decoded_packet(Magic, Opcode, KeyLen, ExtLen, DT, VB, Opaque, Cas, Body, RestRest) ->
-    <<Ext:ExtLen/binary, KB/binary>> = Body,
-    <<Key:KeyLen/binary, TrueBody/binary>> = KB,
-    case Magic of
-        ?REQ_MAGIC ->
-            {req,
-             #upr_packet{opcode = Opcode,
-                         datatype = DT,
-                         vbucket = VB,
-                         opaque = Opaque,
-                         cas = Cas,
-                         ext = Ext,
-                         key = Key,
-                         body = TrueBody},
-             RestRest};
-        ?RES_MAGIC ->
-            {res,
-             #upr_packet{opcode = Opcode,
-                         datatype = DT,
-                         status = VB,
-                         opaque = Opaque,
-                         cas = Cas,
-                         ext = Ext,
-                         key = Key,
-                         body = TrueBody},
-             RestRest}
-    end.
 
 build_stream_request_packet(Vb, Opaque,
                             StartSeqno, EndSeqno, VBUUID,
@@ -121,7 +123,7 @@ read_message_loop(Socket, Data) ->
         Data ->
             {ok, MoreData} = gen_tcp:recv(Socket, 0),
             read_message_loop(Socket, <<Data/binary, MoreData/binary>>);
-        {_Type, _Packet, _RestData} = Ok ->
+        {_Type, _Packet, _RestData, _} = Ok ->
             Ok
     end.
 
@@ -165,12 +167,13 @@ do_start(Socket, Vb, FailoverId,
          StartSeqno, EndSeqno, SnapshotStart, SnapshotEnd,
          Callback, Acc, Parent, HadRollback) ->
     Opaque = 16#fafafafa,
+
     SReq = build_stream_request_packet(Vb, Opaque, StartSeqno, EndSeqno,
                                        FailoverId, SnapshotStart, SnapshotEnd),
     ok = gen_tcp:send(Socket, encode_req(SReq)),
 
     %% NOTE: Opaque is already bound
-    {res, #upr_packet{opaque = Opaque} = Packet, Data0} = read_message_loop(Socket, <<>>),
+    {res, #upr_packet{opaque = Opaque} = Packet, Data0, _} = read_message_loop(Socket, <<>>),
 
     case Packet of
         #upr_packet{status = ?SUCCESS, body = FailoverLogBin} ->
@@ -180,7 +183,7 @@ do_start(Socket, Vb, FailoverId,
                                             FailoverId, SnapshotStart, SnapshotEnd}]),
             ?log_debug("Sockname: ~p", [inet:sockname(Socket)]),
 
-            {_, #upr_packet{opcode = ?UPR_SNAPSHOT_MARKER, ext = Ext}, Data1} =
+            {_, #upr_packet{opcode = ?UPR_SNAPSHOT_MARKER, ext = Ext}, Data1, _} =
                 read_message_loop(Socket, Data0),
 
             <<ActualSnapshotStart:64, ActualSnapshotEnd:64, Flags:32, _/binary>> = Ext,
@@ -274,36 +277,29 @@ respond_nop(Socket, Opaque) ->
     ok = gen_tcp:send(Socket, encode_res(Packet)).
 
 socket_loop_enter(Socket, Callback, Acc, Data, Consumer) ->
-    self() ! {tcp, Socket, Data},
-    socket_loop(Socket, Callback, Acc, <<>>, 0, Consumer, 0).
+    case Data of
+        <<>> ->
+            ok;
+        _ ->
+            self() ! {tcp, Socket, Data}
+    end,
+    inet:setopts(Socket, [{active, true}]),
+    socket_loop(Socket, Callback, Acc, <<>>, Consumer).
 
-socket_loop(Socket, Callback, Acc, Data, ScannedPos, Consumer, SentToConsumer) ->
-    %% ?log_debug("socket_loop: ~p", [{ScannedPos, SentToConsumer}]),
+socket_loop(Socket, Callback, Acc, Data, Consumer) ->
     Msg = receive
               XMsg ->
                   XMsg
           end,
-    %% ?log_debug("Data: ~p, ScannedPos: ~p, Msg: ~p", [Data, ScannedPos, Msg]),
     case Msg of
-        ConsumedBytes when is_integer(ConsumedBytes) ->
-            %% TODO: send window update msg when ep-engine side is ready
-            NewSentToConsumer = SentToConsumer - ConsumedBytes,
-            {true, NewSentToConsumer, ConsumedBytes} = {(NewSentToConsumer >= 0), NewSentToConsumer, ConsumedBytes},
-            if
-                NewSentToConsumer < (?BUFFER_SIZE div 3) andalso SentToConsumer >= (?BUFFER_SIZE div 3) ->
-                    %% ?log_debug("Enabled in-flow"),
-                    inet:setopts(Socket, [{active, once}]);
-                true ->
-                    ok
-            end,
-            socket_loop(Socket, Callback, Acc, Data, ScannedPos, Consumer, NewSentToConsumer);
-        {tcp_closed, MustSocket} ->
-            {tcp_closed_socket, Socket} = {tcp_closed_socket, MustSocket},
-            erlang:error(premature_socket_closure);
-        {tcp, MustSocket, NewData0} ->
-            {tcp_socket, Socket} = {tcp_socket, MustSocket},
-            NewData = <<Data/binary, NewData0/binary>>,
-            SplitPos = nops_loop(Socket, NewData, ScannedPos),
+        {tcp, _Socket, NewData0} ->
+            NewData = case Data of
+                          <<>> ->
+                              NewData0;
+                          _ ->
+                              <<Data/binary, NewData0/binary>>
+                      end,
+            SplitPos = nops_loop(Socket, NewData, 0),
             <<ScannedData:SplitPos/binary, UnscannedData/binary>> = NewData,
             case SplitPos =/= 0 of
                 true ->
@@ -311,84 +307,151 @@ socket_loop(Socket, Callback, Acc, Data, ScannedPos, Consumer, SentToConsumer) -
                 _ ->
                     ok
             end,
-            NewSentToConsumer = SentToConsumer + erlang:size(ScannedData),
-            if
-                NewSentToConsumer > (2 * ?BUFFER_SIZE div 3) andalso SentToConsumer =< (2 * ?BUFFER_SIZE div 3) ->
-                    ?log_debug("Disabled in-flow"),
-                    inet:setopts(Socket, [{active, false}]);
-                true ->
-                    %% timer:sleep(100),
-                    inet:setopts(Socket, [{active, once}])
-            end,
-            socket_loop(Socket, Callback, Acc, UnscannedData, 0, Consumer, NewSentToConsumer);
+            socket_loop(Socket, Callback, Acc, UnscannedData, Consumer);
+        {tcp_closed, MustSocket} ->
+            {tcp_closed_socket, Socket} = {tcp_closed_socket, MustSocket},
+            erlang:error(premature_socket_closure);
+        ConsumedBytes when is_integer(ConsumedBytes) ->
+            ok = gen_tcp:send(Socket, encode_req(#upr_packet{opcode = ?UPR_WINDOW_UPDATE,
+                                                             body = <<ConsumedBytes:32/big>>})),
+            socket_loop(Socket, Callback, Acc, Data, Consumer);
         done ->
-            {<<>>, 0} = {Data, ScannedPos},
-            ok;
+            ok = gen_tcp:send(Socket, encode_req(#upr_packet{opcode = ?UPR_WINDOW_UPDATE,
+                                                             body = <<(?XDCR_UPR_BUFFER_SIZE):32/big>>,
+                                                             opaque = 1})),
+            socket_exit_loop_recv(Socket, Data);
         stop ->
             stop
+    end.
+
+socket_exit_loop_recv(Socket, Data) ->
+    Msg = receive XMsg -> XMsg end,
+    case Msg of
+        {tcp, _, NewData} ->
+            NewData2 = iolist_to_binary([Data | NewData]),
+            socket_exit_loop(Socket, NewData2)
+    end.
+
+
+socket_exit_loop(Socket, NewData) ->
+    case decode_packet(NewData) of
+        {MustResp, #upr_packet{opcode = Opcode,
+                               status = Status,
+                               opaque = Opaque} = _Packet, Rest, _PacketLen} ->
+            {must_resp, res} = {must_resp, MustResp},
+            {must_window_update, ?UPR_WINDOW_UPDATE} = {must_window_update, Opcode},
+            {must_success, ?SUCCESS} = {must_success, Status},
+            %% opaque of 0 is used for our normal window updates and
+            %% replies on those may still arrive after stream_end. And
+            %% opaque of 1 is used for that final request that we send
+            %% when handling done message
+            case Opaque of
+                1 ->
+                    {done, <<>>} = {done, Rest},
+                    ok;
+                0 ->
+                    socket_exit_loop(Socket, Rest)
+            end;
+        NewData ->
+            socket_exit_loop_recv(Socket, NewData)
     end.
 
 enter_consumer_loop(Child, Callback, Acc) ->
     receive
         {failover_id, _FailoverUUID, _, _, SnapshotStart, SnapshotEnd} = Evt ->
             {ok, Acc2} = Callback(Evt, Acc),
-            consumer_loop(Child, Callback, Acc2, 0,
-                          SnapshotStart, SnapshotEnd, undefined)
+            consumer_loop_recv(Child, Callback, Acc2, 0,
+                               SnapshotStart, SnapshotEnd, undefined, <<>>)
     end.
 
-consumer_loop(Child, Callback, Acc, ConsumedSoFar0,
-              SnapshotStart, SnapshotEnd, LastSeenSeqno) ->
-    %% ?log_debug("consumer: ~p", [{ConsumedSoFar0, LastSnapshotSeqno, LastSeenSeqno}]),
+consumer_loop_recv(Child, Callback, Acc, ConsumedSoFar0,
+                   SnapshotStart, SnapshotEnd, LastSeenSeqno,
+                   PrevData) ->
     ConsumedSoFar =
-        case ConsumedSoFar0 >= ?BUFFER_SIZE div 3 of
+        case ConsumedSoFar0 >= ?XDCR_UPR_BUFFER_SIZE div 3 of
             true ->
                 Child ! ConsumedSoFar0,
                 0;
             _ ->
                 ConsumedSoFar0
         end,
-    receive
-        MoreData when is_binary(MoreData) ->
-            case consume_stuff(Callback, Acc, MoreData,
-                               SnapshotStart, SnapshotEnd, LastSeenSeqno) of
-                {DoneOrStop, RV} when DoneOrStop =:= done orelse DoneOrStop =:= stop ->
-                    consumer_loop_exit(Child, DoneOrStop),
-                    RV;
-                {Acc2, NewSnapshotStart, NewSnapshotEnd, NewLastSeenSeqno} ->
-                    ConsumedMore = ConsumedSoFar + erlang:size(MoreData),
-                    consumer_loop(Child, Callback, Acc2, ConsumedMore,
-                                  NewSnapshotStart, NewSnapshotEnd, NewLastSeenSeqno)
+    case ConsumedSoFar =/= 0 of
+        true ->
+            receive
+                Msg ->
+                    consumer_loop_have_msg(Child, Callback, Acc, ConsumedSoFar,
+                                           SnapshotStart, SnapshotEnd, LastSeenSeqno,
+                                           PrevData, Msg)
+            after ?FORCED_ACK_TIMEOUT ->
+                    Child ! ConsumedSoFar,
+                    consumer_loop_recv(Child, Callback, Acc, 0,
+                                       SnapshotStart, SnapshotEnd, LastSeenSeqno,
+                                       PrevData)
             end;
+        _ ->
+            receive
+                Msg ->
+                    consumer_loop_have_msg(Child, Callback, Acc, ConsumedSoFar,
+                                           SnapshotStart, SnapshotEnd, LastSeenSeqno,
+                                           PrevData, Msg)
+            end
+    end.
+
+consumer_loop_have_msg(Child, Callback, Acc, ConsumedSoFar,
+                       SnapshotStart, SnapshotEnd, LastSeenSeqno,
+                       PrevData, Msg) ->
+    case Msg of
+        MoreData when is_binary(MoreData) ->
+            NewData = case PrevData of
+                          <<>> -> MoreData;
+                          _ -> <<PrevData/binary, MoreData/binary>>
+                      end,
+            consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
+                               SnapshotStart, SnapshotEnd, LastSeenSeqno,
+                               NewData);
         {'EXIT', _From, Reason} = ExitMsg ->
             ?log_debug("Got exit signal: ~p", [ExitMsg]),
             exit(Reason);
         %% this is handling please_stop message for xdc_vbucket_rep
         %% changes reader loop efficiently, i.e. without selective
         %% receive
+        %%
+        %% TODO: there's great chance that having to process all
+        %% buffered upr mutations prior to handling this makes pausing
+        %% too slow in practice
         OtherMsg ->
             case Callback(OtherMsg, Acc) of
                 {ok, Acc2} ->
-                    consumer_loop(Child, Callback, Acc2, ConsumedSoFar,
-                                  SnapshotStart, SnapshotEnd, LastSeenSeqno);
+                    consumer_loop_recv(Child, Callback, Acc2, ConsumedSoFar,
+                                       SnapshotStart, SnapshotEnd, LastSeenSeqno, PrevData);
                 {stop, RV} ->
-                    consumer_loop_exit(Child, stop),
+                    consumer_loop_exit(Child, stop, []),
                     RV
             end
     end.
 
-consumer_loop_exit(Child, DoneOrStop) ->
+consumer_loop_exit(Child, DoneOrStop, Data) ->
     Child ! DoneOrStop,
     misc:wait_for_process(Child, infinity),
     case DoneOrStop of
         done ->
-            receive
-                EvenMoreData when is_binary(EvenMoreData) ->
-                    erlang:error({unexpected_stuff_after_stream_end, erlang:size(EvenMoreData)})
-            after 0 ->
-                    ok
-            end;
+            consume_stuff_after_done(Data);
         stop ->
             consume_aborted_stuff()
+    end.
+
+consume_stuff_after_done(Data) ->
+    receive
+        MoreData when is_binary(MoreData) ->
+            consume_stuff_after_done(<<Data/binary, MoreData/binary>>)
+    after 0 ->
+            case decode_packet(Data) of
+                {res, #upr_packet{opcode = ?UPR_WINDOW_UPDATE, opaque = 0}, RestData, _PacketLen} ->
+                    consume_stuff_after_done(RestData);
+                Data ->
+                    <<>> = Data,
+                    ok
+            end
     end.
 
 consume_aborted_stuff() ->
@@ -399,95 +462,96 @@ consume_aborted_stuff() ->
             ok
     end.
 
-consume_stuff(_Callback, Acc, <<>>, SnapshotStart, SnapshotEnd, LastSeenSeqno) ->
-    {Acc, SnapshotStart, SnapshotEnd, LastSeenSeqno};
-consume_stuff(Callback, Acc, MoreData, SnapshotStart, SnapshotEnd, LastSeenSeqno) ->
-    case decode_packet(MoreData) of
-        {Type, Packet, RestData} ->
-            case do_callback(Type, Packet, Callback, Acc,
-                             SnapshotStart, SnapshotEnd, LastSeenSeqno) of
-                {normal_stop, {MustBeStop, RV}} ->
-                    stop = MustBeStop,
-                    <<>> = RestData,
-                    {done, RV};
-                {stop, RV} ->
-                    {stop, RV};
-                {ok, Acc2, NewSnapshotStart, NewSnapshotEnd, NewLastSeenSeqno} ->
-                    consume_stuff(Callback, Acc2, RestData,
-                                  NewSnapshotStart, NewSnapshotEnd, NewLastSeenSeqno)
-            end
+consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
+                   SnapshotStart, SnapshotEnd, LastSeenSeqno,
+                   Data) ->
+    case decode_packet(Data) of
+        {Type, Packet, RestData, PacketSize} ->
+            case Packet of
+                #upr_packet{opcode = ?UPR_MUTATION,
+                            cas = CAS,
+                            ext = Ext,
+                            key = Key,
+                            body = Body} ->
+                    <<Seq:64, RevSeqno:64, Flags:32, Expiration:32, _/binary>> = Ext,
+                    Rev = {RevSeqno, <<CAS:64, Expiration:32, Flags:32>>},
+                    Doc = #upr_mutation{id = Key,
+                                        local_seq = Seq,
+                                        rev = Rev,
+                                        body = Body,
+                                        deleted = false,
+                                        snapshot_start_seq = SnapshotStart,
+                                        snapshot_end_seq = SnapshotEnd},
+                    consume_stuff_call_callback(Doc,
+                                                Child, Callback, Acc, ConsumedSoFar + PacketSize,
+                                                SnapshotStart, SnapshotEnd, Seq,
+                                                RestData);
+                #upr_packet{opcode = ?UPR_SNAPSHOT_MARKER, ext = Ext} ->
+                    <<NewSnapshotStart:64, NewSnapshotEnd:64, _/binary>> = Ext,
+                    consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
+                                       NewSnapshotStart, NewSnapshotEnd, LastSeenSeqno,
+                                       RestData);
+                #upr_packet{opcode = ?UPR_DELETION,
+                            cas = CAS,
+                            ext = Ext,
+                            key = Key} ->
+                    <<Seq:64, RevSeqno:64, _/binary>> = Ext,
+                    %% NOTE: as of now upr doesn't expose flags of deleted
+                    %% docs
+                    Rev = {RevSeqno, <<CAS:64, 0:32, 0:32>>},
+                    Doc = #upr_mutation{id = Key,
+                                        local_seq = Seq,
+                                        rev = Rev,
+                                        body = <<>>,
+                                        deleted = true,
+                                        snapshot_start_seq = SnapshotStart,
+                                        snapshot_end_seq = SnapshotEnd},
+                    consume_stuff_call_callback(Doc,
+                                                Child, Callback, Acc, ConsumedSoFar + PacketSize,
+                                                SnapshotStart, SnapshotEnd, Seq,
+                                                RestData);
+                #upr_packet{opcode = ?UPR_STREAM_END} ->
+                    {stop, Acc2} = Callback({stream_end,
+                                             SnapshotStart, SnapshotEnd, LastSeenSeqno}, Acc),
+                    consumer_loop_exit(Child, done, RestData),
+                    Acc2;
+                #upr_packet{opcode = OtherCode} ->
+                    case OtherCode of
+                        ?UPR_NOP ->
+                            ok;
+                        ?UPR_WINDOW_UPDATE ->
+                            {window, res} = {window, Type},
+                            {success, 0} = {success, Packet#upr_packet.status},
+                            ok
+                    end,
+                    consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
+                                       SnapshotStart, SnapshotEnd, LastSeenSeqno,
+                                       RestData)
+            end;
+        Data ->
+            consumer_loop_recv(Child, Callback, Acc, ConsumedSoFar,
+                               SnapshotStart, SnapshotEnd, LastSeenSeqno,
+                               Data)
     end.
 
-do_callback(Type, Packet, Callback, Acc, SnapshotStart, SnapshotEnd, LastSeenSeqno) ->
-    %% ?log_debug("Got packet: ~p", [Packet]),
-    case Packet of
-        #upr_packet{opcode = ?UPR_MUTATION,
-                    cas = CAS,
-                    ext = Ext,
-                    key = Key,
-                    body = Body} ->
-            <<Seq:64, RevSeqno:64, Flags:32, Expiration:32, _/binary>> = Ext,
-            Rev = {RevSeqno, <<CAS:64, Expiration:32, Flags:32>>},
-            Doc = #upr_mutation{id = Key,
-                                local_seq = Seq,
-                                rev = Rev,
-                                body = Body,
-                                deleted = false,
-                                snapshot_start_seq = SnapshotStart,
-                                snapshot_end_seq = SnapshotEnd},
-            call_callback(Callback, Acc, Doc);
-        #upr_packet{opcode = ?UPR_SNAPSHOT_MARKER, ext = Ext} ->
-            <<NewSnapshotStart:64, NewSnapshotEnd:64, _/binary>> = Ext,
-            {ok, Acc, NewSnapshotStart, NewSnapshotEnd, LastSeenSeqno};
-        #upr_packet{opcode = ?UPR_DELETION,
-                    cas = CAS,
-                    ext = Ext,
-                    key = Key} ->
-            <<Seq:64, RevSeqno:64, _/binary>> = Ext,
-            %% NOTE: as of now upr doesn't expose flags of deleted
-            %% docs
-            Rev = {RevSeqno, <<CAS:64, 0:32, 0:32>>},
-            Doc = #upr_mutation{id = Key,
-                                local_seq = Seq,
-                                rev = Rev,
-                                body = <<>>,
-                                deleted = true,
-                                snapshot_start_seq = SnapshotStart,
-                                snapshot_end_seq = SnapshotEnd},
-            call_callback(Callback, Acc, Doc);
-        #upr_packet{opcode = ?UPR_STREAM_END} ->
-            {normal_stop, Callback({stream_end,
-                                    SnapshotStart, SnapshotEnd, LastSeenSeqno}, Acc)};
-        #upr_packet{opcode = OtherCode} ->
-            case OtherCode of
-                ?UPR_NOP ->
-                    ok;
-                ?UPR_WINDOW_UPDATE ->
-                    {window, res} = {window, Type},
-                    ok;
-                ?UPR_FLOW_CONTROL_SETUP ->
-                    {setup, res} = {setup, Type},
-                    ok
-            end,
-            {ok, Acc, SnapshotStart, SnapshotEnd, LastSeenSeqno}
-    end.
+-compile({inline, [consume_stuff_call_callback/9]}).
 
-call_callback(Callback, Acc,
-              #upr_mutation{local_seq = Seq,
-                            snapshot_start_seq = SnapshotStart,
-                            snapshot_end_seq = SnapshotEnd} = Doc) ->
-    %% that's for debugging
+consume_stuff_call_callback(Doc, Child, Callback, Acc, ConsumedSoFar,
+                            SnapshotStart, SnapshotEnd, Seq,
+                            RestData) ->
     erlang:put(last_doc, Doc),
-    %% ?log_debug("mutation: ~p", [Doc]),
     case Callback(Doc, Acc) of
         {ok, Acc2} ->
-            {ok, Acc2, SnapshotStart, SnapshotEnd, Seq};
+            consume_stuff_loop(Child, Callback, Acc2, ConsumedSoFar,
+                               SnapshotStart, SnapshotEnd, Seq,
+                               RestData);
         {stop, Acc2} ->
-            {stop, Acc2}
+            consumer_loop_exit(Child, stop, []),
+            Acc2
     end.
 
 stream_loop(Socket, Callback, Acc, Data0) ->
-    {_, Packet, Data1} = read_message_loop(Socket, Data0),
+    {_, Packet, Data1, _} = read_message_loop(Socket, Data0),
     case Callback(Packet, Acc) of
         {ok, Acc2} ->
             stream_loop(Socket, Callback, Acc2, Data1);
@@ -514,7 +578,7 @@ do_get_failover_log(Socket, VB) ->
                       encode_req(#upr_packet{opcode = ?UPR_GET_FAILOVER_LOG,
                                              vbucket = VB})),
 
-    {res, Packet, <<>>} = read_message_loop(Socket, <<>>),
+    {res, Packet, <<>>, _} = read_message_loop(Socket, <<>>),
     case Packet#upr_packet.status of
         ?SUCCESS ->
             unpack_failover_log(Packet#upr_packet.body);

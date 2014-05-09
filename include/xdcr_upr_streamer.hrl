@@ -21,3 +21,5 @@
 
 -type callback_arg() :: #upr_mutation{} | {failover_id, term()} | stream_end.
 -type callback_fun() :: fun((callback_arg(), any()) -> {ok, any()} | {stop, any()}).
+
+-define(XDCR_UPR_BUFFER_SIZE, 1048576).

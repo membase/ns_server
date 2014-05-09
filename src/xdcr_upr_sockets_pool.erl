@@ -22,6 +22,8 @@
 -export([take_socket/1, put_socket/2]).
 
 -include("ns_common.hrl").
+%% for ?XDCR_UPR_BUFFER_SIZE
+-include("xdcr_upr_streamer.hrl").
 
 start_link() ->
     Options = [{name, ?MODULE},
@@ -48,7 +50,12 @@ do_connect(Bucket) ->
                     Name = <<"upr-", (list_to_binary(Bucket))/binary, "-", Random/binary>>,
                     case upr_commands:open_connection(Socket, binary_to_list(Name), producer) of
                         ok ->
-                            {ok, Socket};
+                            case upr_commands:setup_flow_control(Socket, ?XDCR_UPR_BUFFER_SIZE) of
+                                ok ->
+                                    {ok, Socket};
+                                Err ->
+                                    {error, {setup_flow_control_failed, Err}}
+                            end;
                         OCErr ->
                             {error, {open_connection_failed, OCErr}}
                     end;
