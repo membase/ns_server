@@ -100,7 +100,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--export([stop/0, resave/0, reannounce/0, replace/1]).
+-export([stop/0, resave/0, reannounce/0]).
 
 %% state sanitization
 -export([format_status/2]).
@@ -235,8 +235,6 @@ delete(Keys) when is_list(Keys) ->
     set([{K, ?DELETED_MARKER} || K <- Keys]);
 delete(Key) ->
     delete([Key]).
-
-replace(KVList) -> gen_server:call(?MODULE, {replace, KVList}).
 
 %% update config by applying Fun to it. Fun should return a pair
 %% {NewPairs, NewConfig} where NewConfig is new config and NewPairs is
@@ -751,9 +749,6 @@ handle_call(reannounce, _From, State) ->
 
 handle_call(get, _From, State) ->
     {reply, State, State};
-
-handle_call({replace, KVList}, _From, State) ->
-    {reply, ok, State#config{dynamic = [KVList]}};
 
 handle_call({update_with_changes, Fun}, From, #config{uuid = UUID} = State) ->
     OldList = config_dynamic(State),
