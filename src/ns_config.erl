@@ -930,10 +930,16 @@ announce_changes(KVList) ->
 update_ets_dup([]) ->
     ok;
 update_ets_dup(KVList) ->
-    lists:foreach(fun ({Key, Value}) ->
-                          ets:insert(ns_config_ets_dup, {Key, strip_metadata(Value)})
-                  end,
-                  KVList).
+    lists:foreach(
+      fun ({Key, Value}) ->
+              case strip_metadata(Value) of
+                  ?DELETED_MARKER ->
+                      ets:delete(ns_config_ets_dup, Key);
+                  X ->
+                      ets:insert(ns_config_ets_dup, {Key, X})
+              end
+      end,
+      KVList).
 
 read_key_fast(Key, Default) ->
     case ets:lookup(ns_config_ets_dup, Key) of
