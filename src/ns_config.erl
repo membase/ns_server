@@ -83,7 +83,8 @@
 
 % Exported for tests only
 -export([save_file/3, load_config/3,
-         load_file/2, save_config_sync/2, send_config/2]).
+         load_file/2, save_config_sync/2, send_config/2,
+         test_setup/1]).
 
 % A static config file is often hand edited.
 % potentially with in-line manual comments.
@@ -396,10 +397,12 @@ get_kv_list_with_config(Config) ->
 % ----------------------------------------
 
 search(Key) ->
-    eval(
-      fun (Config) ->
-              search(Config, Key)
-      end).
+    case ets:lookup(ns_config_ets_dup, Key) of
+        [{_, V}] ->
+            {value, V};
+        _ ->
+            false
+    end.
 
 search_node(Key) -> search_node(?MODULE:get(), Key).
 
@@ -676,6 +679,11 @@ init({full, ConfigPath, DirPath, PolicyMod} = Init) ->
 
 init([ConfigPath, PolicyMod]) ->
     init({full, ConfigPath, undefined, PolicyMod}).
+
+test_setup(KVPairs) ->
+    (catch ets:new(ns_config_ets_dup, [public, set, named_table])),
+    ets:delete_all_objects(ns_config_ets_dup),
+    update_ets_dup(KVPairs).
 
 -spec wait_saver(#config{}, infinity | non_neg_integer()) -> {ok, #config{}} | timeout.
 wait_saver(State, Timeout) ->
@@ -1204,7 +1212,7 @@ do_test_cas_config(Self) ->
     ets:new(ns_config_announces_counter, [set, named_table]),
     ets:insert_new(ns_config_announces_counter, {changes_counter, 0}),
 
-    ets:new(ns_config_ets_dup, [public, set, named_table]),
+    (catch ets:new(ns_config_ets_dup, [public, set, named_table])),
 
     ns_config:cas_remote_config(new, old),
     receive

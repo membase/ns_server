@@ -462,21 +462,13 @@ run_basic_test_do() ->
 basic_test() ->
     {ok, Pid} = ?MODULE:start_link(),
 
-    {ok, ConfigPid} = mock_gen_server:start_link({local, ns_config}),
     %% return empty alerts configuration so that no attempts to send anything
     %% are performed
-    mock_gen_server:stub_call(ns_config, eval,
-                              fun ({eval, Fn}) ->
-                                      Fn(#config{dynamic=[[{email_alerts, []}]]})
-                              end),
+    ns_config:test_setup([{email_alerts, []}]),
 
     try
         run_basic_test_do()
     after
-        erlang:unlink(ConfigPid),
-        exit(ConfigPid, shutdown),
-        misc:wait_for_process(ConfigPid, infinity),
-
         erlang:unlink(Pid),
         exit(Pid, shutdown),
         misc:wait_for_process(Pid, infinity)
