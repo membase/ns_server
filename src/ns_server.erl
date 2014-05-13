@@ -196,7 +196,8 @@ init_logging() ->
                          {?NS_DOCTOR_LOGGER, warn}],
 
     MainFilesLoggers = AllLoggers -- [?XDCR_LOGGER, ?COUCHDB_LOGGER,
-                                      ?ERROR_LOGGER, ?XDCR_TRACE_LOGGER],
+                                      ?ERROR_LOGGER, ?XDCR_TRACE_LOGGER,
+                                      ?MAPREDUCE_ERRORS_LOGGER],
 
     lists:foreach(
       fun (Logger) ->
