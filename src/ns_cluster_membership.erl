@@ -26,6 +26,7 @@
          deactivate/1,
          failover/1,
          re_add_node/1,
+         re_failover/1,
          system_joinable/0,
          start_rebalance/3,
          stop_rebalance/0,
@@ -126,6 +127,45 @@ re_add_node(Node) ->
              end,
 
     ns_config:set(KVList).
+
+re_failover_possible(NodeString) ->
+    case (catch list_to_existing_atom(NodeString)) of
+        Node when is_atom(Node) ->
+            RecoveryType = ns_config:search('latest-config-marker', {node, Node, recovery_type}, none),
+            Membership = ns_config:search('latest-config-marker', {node, Node, membership}),
+            Ok = (lists:member(Node, ns_node_disco:nodes_wanted())
+                  andalso RecoveryType =/= none
+                  andalso Membership =:= {value, inactiveAdded}),
+            case Ok of
+                true ->
+                    {ok, Node};
+                _ ->
+                    not_possible
+            end;
+        _ ->
+            not_possible
+    end.
+
+%% moves node from pending-recovery state to failed over state
+%% used when users hits Cancel for pending-recovery node on UI
+re_failover(NodeString) ->
+    true = is_list(NodeString),
+    case re_failover_possible(NodeString) of
+        {ok, Node} ->
+            KVList0 = [{{node, Node, membership}, inactiveFailed}],
+
+            KVList = case cluster_compat_mode:is_cluster_30() of
+                         true ->
+                             [{{node, Node, recovery_type}, none} | KVList0];
+                         false ->
+                             KVList0
+                     end,
+
+            ns_config:set(KVList),
+            ok;
+        not_possible ->
+            not_possible
+    end.
 
 get_recovery_type(Config, Node) ->
     ns_config:search(Config, {node, Node, recovery_type}, none).

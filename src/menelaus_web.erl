@@ -392,6 +392,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun handle_rebalance/1};
                          ["controller", "reAddNode"] ->
                              {auth, fun handle_re_add_node/1};
+                         ["controller", "reFailOver"] ->
+                             {auth, fun handle_re_failover/1};
                          ["controller", "stopRebalance"] ->
                              {auth, fun handle_stop_rebalance/1};
                          ["controller", "setRecoveryType"] ->
@@ -1076,6 +1078,7 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
       {failOver, {struct, [{uri, <<"/controller/failOver?uuid=", UUID/binary>>}]}},
       {startGracefulFailover, {struct, [{uri, <<"/controller/startGracefulFailover?uuid=", UUID/binary>>}]}},
       {reAddNode, {struct, [{uri, <<"/controller/reAddNode?uuid=", UUID/binary>>}]}},
+      {reFailOver, {struct, [{uri, <<"/controller/reFailOver?uuid=", UUID/binary>>}]}},
       {ejectNode, {struct, [{uri, <<"/controller/ejectNode?uuid=", UUID/binary>>}]}},
       {setRecoveryType, {struct, [{uri, <<"/controller/setRecoveryType?uuid=", UUID/binary>>}]}},
       {setAutoCompaction, {struct, [
@@ -2566,6 +2569,16 @@ handle_re_add_node(Req) ->
     Node = list_to_atom(proplists:get_value("otpNode", Params, "undefined")),
     ok = ns_cluster_membership:re_add_node(Node),
     reply(Req, 200).
+
+handle_re_failover(Req) ->
+    Params = Req:parse_post(),
+    NodeString = proplists:get_value("otpNode", Params, "undefined"),
+    case ns_cluster_membership:re_failover(NodeString) of
+        ok ->
+            reply(Req, 200);
+        not_possible ->
+            reply(Req, 400)
+    end.
 
 handle_tasks(PoolId, Req) ->
     NodesSet = sets:from_list(ns_node_disco:nodes_wanted()),
