@@ -76,14 +76,14 @@
          get_kv_list/0, get_kv_list/1, get_kv_list_with_config/1,
          upgrade_config_explicitly/1, config_version_token/0,
          fold/3, read_key_fast/2, get_timeout_fast/2,
-         delete/1]).
+         delete/1,
+         strip_metadata/1, extract_vclock/1]).
 
 -export([save_config_sync/1]).
 
 % Exported for tests only
 -export([save_file/3, load_config/3,
-         load_file/2, save_config_sync/2, send_config/2,
-         strip_metadata/1]).
+         load_file/2, save_config_sync/2, send_config/2]).
 
 % A static config file is often hand edited.
 % potentially with in-line manual comments.

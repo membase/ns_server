@@ -39,8 +39,8 @@ start_link() ->
 init([]) ->
     Self = self(),
     ns_pubsub:subscribe_link(ns_config_events,
-                             fun ({_K, _V} = Event) ->
-                                     Self ! Event;
+                             fun (KVList) when is_list(KVList) ->
+                                     Self ! {config_change, KVList};
                                  (_) ->
                                      ok
                              end),
@@ -59,16 +59,13 @@ handle_cast(Request, State) ->
     ?log_warning("Unexpected handle_cast(~p, ~p)", [Request, State]),
     {noreply, State, hibernate}.
 
-handle_info({buckets, RawBuckets}, #state{buckets=OldBuckets} =  State) ->
-    NewBuckets = sort_buckets(RawBuckets),
-    BucketsDiff = compute_buckets_diff(NewBuckets, OldBuckets),
-    NewState = State#state{buckets=NewBuckets},
-    log_common(buckets, BucketsDiff),
+handle_info({config_change, KVList}, State) ->
+    NewState =
+        lists:foldl(
+          fun (KV, Acc) ->
+                  log_kv(KV, Acc)
+          end, State, KVList),
     {noreply, NewState, hibernate};
-handle_info({K, V}, State) ->
-    log_common(K, V),
-    {noreply, State, hibernate};
-
 handle_info(Info, State) ->
     ?log_warning("Unexpected handle_info(~p, ~p)", [Info, State]),
     {noreply, State, hibernate}.
@@ -116,6 +113,19 @@ sanitize(Config) ->
                                         {continue, T}
                                 end
                         end, Config).
+
+log_kv({buckets, RawBuckets0}, #state{buckets=OldBuckets} = State) ->
+    VClock = ns_config:extract_vclock(RawBuckets0),
+    RawBuckets = ns_config:strip_metadata(RawBuckets0),
+
+    NewBuckets = sort_buckets(RawBuckets),
+    BucketsDiff = compute_buckets_diff(NewBuckets, OldBuckets),
+    NewState = State#state{buckets=NewBuckets},
+    log_common(buckets, [VClock | BucketsDiff]),
+    NewState;
+log_kv({K, V}, State) ->
+    log_common(K, V),
+    State.
 
 log_common(K, V) ->
     %% These can get pretty big, so pre-format them for the logger.
