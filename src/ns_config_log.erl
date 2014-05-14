@@ -59,20 +59,6 @@ handle_cast(Request, State) ->
     ?log_warning("Unexpected handle_cast(~p, ~p)", [Request, State]),
     {noreply, State, hibernate}.
 
-handle_info({rest_creds = K, _V}, State) ->
-    ?log_info("config change: ~p -> ********", [K]),
-    {noreply, State, hibernate};
-handle_info({alerts = K, V}, State) ->
-    V2 = lists:map(fun({email_server, ES}) ->
-                           lists:map(fun({pass, _}) -> {pass, "********"};
-                                        (ESKeyVal)  -> ESKeyVal
-                                     end,
-                                     ES);
-                      (V2KeyVal) -> V2KeyVal
-                   end,
-                   V),
-    ?log_info("config change:~n~p ->~n~p", [K, V2]),
-    {noreply, State, hibernate};
 handle_info({buckets, RawBuckets}, #state{buckets=OldBuckets} =  State) ->
     NewBuckets = sort_buckets(RawBuckets),
     BucketsDiff = compute_buckets_diff(NewBuckets, OldBuckets),
