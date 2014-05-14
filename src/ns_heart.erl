@@ -21,7 +21,7 @@
 -include("ns_common.hrl").
 -include("ns_heart.hrl").
 
--export([start_link/0, status_all/0,
+-export([start_link/0, start_link_slow_updater/0, status_all/0,
          force_beat/0, grab_fresh_failover_safeness_infos/1,
          effective_cluster_compat_version/0,
          effective_cluster_compat_version_for/1]).
@@ -29,14 +29,13 @@
          code_change/3]).
 
 %% for hibernate
--export([slow_updater_loop/1]).
+-export([slow_updater_loop/0]).
 
 -record(state, {
           forced_beat_timer :: reference() | undefined,
           event_handler :: pid(),
           slow_status = [] :: term(),
-          slow_status_ts = {0, 0, 0} :: erlang:timestamp(),
-          slow_status_updater :: pid()
+          slow_status_ts = {0, 0, 0} :: erlang:timestamp()
          }).
 
 
@@ -44,6 +43,15 @@
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+start_link_slow_updater() ->
+    proc_lib:start_link(
+      erlang, apply,
+      [fun () ->
+               erlang:register(ns_heart_slow_status_updater, self()),
+               proc_lib:init_ack({ok, self()}),
+               slow_updater_loop()
+       end, []]).
 
 is_interesting_buckets_event({started, _}) -> true;
 is_interesting_buckets_event({loaded, _}) -> true;
@@ -66,9 +74,8 @@ init([]) ->
                       _ -> ok
                   end
           end, []),
-    SlowUpdaterPid = proc_lib:spawn_link(erlang, apply, [fun slow_updater_start/1, [Self]]),
-    {ok, #state{event_handler=EventHandler,
-                slow_status_updater = SlowUpdaterPid}}.
+
+    {ok, #state{event_handler=EventHandler}}.
 
 force_beat() ->
     ?MODULE ! force_beat.
@@ -99,8 +106,6 @@ handle_info({'EXIT', EventHandler, _} = ExitMsg,
     ?log_debug("Dying because our event subscription was cancelled~n~p~n",
                [ExitMsg]),
     {stop, normal, State};
-handle_info({'EXIT', _, _} = ExitMsg, State) ->
-    {stop, {child_died, ExitMsg}, State};
 handle_info({slow_update, NewStatus, ReqTS}, State) ->
     {noreply, State#state{slow_status = NewStatus, slow_status_ts = ReqTS}};
 handle_info(beat, State) ->
@@ -121,10 +126,7 @@ handle_info(_, State) ->
     {noreply, State}.
 
 
-terminate(_Reason, #state{slow_status_updater = Pid}) ->
-    erlang:unlink(Pid),
-    erlang:exit(Pid, shutdown),
-    misc:wait_for_process(Pid, infinity),
+terminate(_Reason, _State) ->
     ok.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
@@ -179,7 +181,7 @@ eat_earlier_slow_updates(TS) ->
 
 update_current_status(State) ->
     TS = erlang:now(),
-    State#state.slow_status_updater ! {req, TS},
+    ns_heart_slow_status_updater ! {req, TS, self()},
     QuickStatus = current_status_quick(TS),
     receive
         %% NOTE: TS is bound already
@@ -212,10 +214,6 @@ current_status_quick(TS) ->
      {active_buckets, ns_memcached:active_buckets()},
      {ready_buckets, ns_memcached:warmed_buckets()}].
 
-slow_updater_start(Parent) ->
-    erlang:register(ns_heart_slow_status_updater, self()),
-    slow_updater_loop(Parent).
-
 eat_all_reqs(TS, Count) ->
     receive
         {req, AnotherTS} ->
@@ -225,9 +223,9 @@ eat_all_reqs(TS, Count) ->
             {TS, Count}
     end.
 
-slow_updater_loop(Parent) ->
+slow_updater_loop() ->
     receive
-        {req, TS0} ->
+        {req, TS0, From} ->
             {TS, Eaten} = eat_all_reqs(TS0, 0),
             case Eaten > 0 of
                 true -> ?log_warning("Dropped ~B heartbeat requests", [Eaten]);
@@ -237,8 +235,8 @@ slow_updater_loop(Parent) ->
             Diff = timer:now_diff(erlang:now(), TS),
             system_stats_collector:add_histo(status_latency, Diff),
             Status = [{status_latency, Diff} | Status0],
-            Parent ! {slow_update, Status, TS},
-            erlang:hibernate(?MODULE, slow_updater_loop, [Parent])
+            From ! {slow_update, Status, TS},
+            erlang:hibernate(?MODULE, slow_updater_loop, [])
     end.
 
 current_status_slow() ->
@@ -280,7 +278,7 @@ current_status_slow() ->
     Tasks = lists:filter(
         fun (Task) ->
                 is_view_task(Task) orelse is_bucket_compaction_task(Task)
-        end , couch_task_status:all())
+        end, couch_task_status:all())
         ++ grab_local_xdcr_replications()
         ++ grab_samples_loading_tasks()
         ++ grab_warmup_tasks(),

@@ -104,8 +104,8 @@ child_specs() ->
      {samples_loader_tasks, {samples_loader_tasks, start_link, []},
       permanent, 1000, worker, []},
 
-     {ns_heart, {ns_heart, start_link, []},
-      permanent, 1000, worker, [ns_heart]},
+     {ns_heart_sup, {ns_heart_sup, start_link, []},
+      permanent, infinity, supervisor, [ns_heart_sup]},
 
      {ns_doctor, {ns_doctor, start_link, []},
       permanent, 1000, worker, [ns_doctor]},
