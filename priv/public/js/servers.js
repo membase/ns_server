@@ -594,6 +594,17 @@ var ServersSection = {
     if (node.pendingEject)
       return;
 
+    // somebody hit cancel button for node that's pending recovery. We
+    // don't need to confirm placing node back into failed over state
+    if (node.clusterMembership == 'inactiveAdded' && node.recoveryType != 'none') {
+      if (!self.poolDetails.value) {
+          return;
+      }
+      self.postAndReload(self.poolDetails.value.controllers.reFailOver.uri,
+                         {otpNode: node.otpNode});
+      return;
+    }
+
     showDialogHijackingSave("eject_confirmation_dialog", ".save_button", function () {
       if (!self.poolDetails.value) {
           return;
