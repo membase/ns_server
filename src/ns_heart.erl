@@ -179,10 +179,19 @@ eat_earlier_slow_updates(TS) ->
             ok
     end.
 
+update_current_status(#state{slow_status = []} = State) ->
+    %% we don't have slow status at all; so compute it synchronously
+    TS = erlang:now(),
+    QuickStatus = current_status_quick(TS),
+    SlowStatus = current_status_slow(TS),
+    NewState = State#state{slow_status = SlowStatus,
+                           slow_status_ts = TS},
+    {QuickStatus ++ SlowStatus, NewState};
 update_current_status(State) ->
     TS = erlang:now(),
     ns_heart_slow_status_updater ! {req, TS, self()},
     QuickStatus = current_status_quick(TS),
+
     receive
         %% NOTE: TS is bound already
         {slow_update, _, TS} = Msg ->
@@ -231,15 +240,18 @@ slow_updater_loop() ->
                 true -> ?log_warning("Dropped ~B heartbeat requests", [Eaten]);
                 _ -> ok
             end,
-            Status0 = current_status_slow(),
-            Diff = timer:now_diff(erlang:now(), TS),
-            system_stats_collector:add_histo(status_latency, Diff),
-            Status = [{status_latency, Diff} | Status0],
+            Status = current_status_slow(TS),
             From ! {slow_update, Status, TS},
             erlang:hibernate(?MODULE, slow_updater_loop, [])
     end.
 
-current_status_slow() ->
+current_status_slow(TS) ->
+    Status0 = current_status_slow_inner(),
+    Diff = timer:now_diff(erlang:now(), TS),
+    system_stats_collector:add_histo(status_latency, Diff),
+    [{status_latency, Diff} | Status0].
+
+current_status_slow_inner() ->
     SystemStats =
         case catch stats_reader:latest("minute", node(), "@system") of
             {ok, StatsRec} -> StatsRec#stat_entry.values;
