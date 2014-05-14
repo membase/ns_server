@@ -61,7 +61,9 @@ mover(Parent, Bucket, VBucket, [undefined | _] = OldChain, [NewNode | _] = NewCh
     misc:try_with_maybe_ignorant_after(
       fun () ->
               process_flag(trap_exit, true),
-              set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined)
+              set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined),
+
+              on_move_done(Parent, Bucket, VBucket, OldChain, NewChain)
       end,
       fun () ->
               misc:sync_shutdown_many_i_am_trapping_exits(get_cleanup_list())
@@ -81,11 +83,14 @@ mover(Parent, Bucket, VBucket, OldChain, NewChain, ReplType) ->
                       mover_inner(Parent, Bucket, VBucket, OldChain, NewChain);
                   {false, tap} ->
                       mover_inner_old_style(Parent, Bucket, VBucket, OldChain, NewChain)
-              end
+              end,
+
+              on_move_done(Parent, Bucket, VBucket, OldChain, NewChain)
       end,
       fun () ->
               misc:sync_shutdown_many_i_am_trapping_exits(get_cleanup_list())
       end),
+
     case IndexAware of
         false ->
             Parent ! {move_done, {VBucket, OldChain, NewChain}};
@@ -544,4 +549,58 @@ spawn_ebucketmigrator_mover(Bucket, VBucket, SrcNode, DstNode) ->
                        [Bucket, VBucket, SrcNode, DstNode, Pid]),
             RV;
         X -> X
+    end.
+
+%% @private
+%% @doc {Src, Dst} pairs from a chain with unmapped nodes filtered out.
+pairs(Chain) ->
+    case cluster_compat_mode:get_replication_topology() of
+        star ->
+            pairs_star(Chain);
+        chain ->
+            pairs_chain(Chain)
+    end.
+
+pairs_chain(Chain) ->
+    [Pair || {Src, Dst} = Pair <- misc:pairs(Chain), Src /= undefined,
+             Dst /= undefined].
+
+pairs_star([undefined | _]) ->
+    [];
+pairs_star([Master | Replicas]) ->
+    [{Master, R} || R <- Replicas, R =/= undefined].
+
+%% @private
+%% @doc Perform post-move replication fixup.
+update_replication_post_move(RebalancerPid, BucketName, VBucket, OldChain, NewChain) ->
+    ChangeReplica = fun (Dst, Src) ->
+                            {Dst, replica, undefined, Src}
+                    end,
+    %% destroy remnants of old replication chain
+    DelChanges = [ChangeReplica(D, undefined) || {_, D} <- pairs(OldChain),
+                                                 not lists:member(D, NewChain)],
+    %% just start new chain of replications. Old chain is dead now
+    AddChanges = [ChangeReplica(D, S) || {S, D} <- pairs(NewChain)],
+    ok = janitor_agent:bulk_set_vbucket_state(BucketName, RebalancerPid,
+                                              VBucket, AddChanges ++ DelChanges).
+
+on_move_done(RebalancerPid, Bucket, VBucket, OldChain, NewChain) ->
+    spawn_and_wait(
+      fun () ->
+              on_move_done_body(RebalancerPid, Bucket,
+                                VBucket, OldChain, NewChain)
+      end).
+
+on_move_done_body(RebalancerPid, Bucket, VBucket, OldChain, NewChain) ->
+    update_replication_post_move(RebalancerPid, Bucket, VBucket, OldChain, NewChain),
+
+    OldCopies0 = OldChain -- NewChain,
+    OldCopies = [OldCopyNode || OldCopyNode <- OldCopies0,
+                                OldCopyNode =/= undefined],
+    ?rebalance_info("Moving vbucket ~p done. Will delete it on: ~p", [VBucket, OldCopies]),
+    case janitor_agent:delete_vbucket_copies(Bucket, RebalancerPid, OldCopies, VBucket) of
+        ok ->
+            ok;
+        {errors, BadDeletes} ->
+            ?log_error("Deleting some old copies of vbucket failed: ~p", [BadDeletes])
     end.

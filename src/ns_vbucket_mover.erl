@@ -241,8 +241,6 @@ on_backfill_done({VBucket, OldChain, NewChain}, #state{moves_scheduler_state = S
 on_move_done({VBucket, OldChain, NewChain}, #state{bucket = Bucket,
                                                    map = Map,
                                                    moves_scheduler_state = SubState} = State) ->
-    update_replication_post_move(VBucket, OldChain, NewChain),
-
     %% Pull the new chain from the target map
     %% Update the current map
     Map1 = array:set(VBucket, NewChain, Map),
@@ -255,16 +253,6 @@ on_move_done({VBucket, OldChain, NewChain}, #state{bucket = Bucket,
         ok -> ok;
         _ ->
             ?log_error("Config replication sync failed: ~p", [RepSyncRV])
-    end,
-    OldCopies0 = OldChain -- NewChain,
-    OldCopies = [OldCopyNode || OldCopyNode <- OldCopies0,
-                                OldCopyNode =/= undefined],
-    ?rebalance_info("Moving vbucket ~p done. Will delete it on: ~p", [VBucket, OldCopies]),
-    case janitor_agent:delete_vbucket_copies(Bucket, self(), OldCopies, VBucket) of
-        ok ->
-            ok;
-        {errors, BadDeletes} ->
-            ?log_error("Deleting some old copies of vbucket failed: ~p", [BadDeletes])
     end,
 
     Move = {move, {VBucket, OldChain, NewChain}},
@@ -345,45 +333,6 @@ spawn_workers(#state{bucket=Bucket,
         _ ->
             {noreply, NextState}
     end.
-
-%% @private
-%% @doc {Src, Dst} pairs from a chain with unmapped nodes filtered out.
-pairs(Chain) ->
-    case cluster_compat_mode:get_replication_topology() of
-        star ->
-            pairs_star(Chain);
-        chain ->
-            pairs_chain(Chain)
-    end.
-
-pairs_chain(Chain) ->
-    [Pair || {Src, Dst} = Pair <- misc:pairs(Chain), Src /= undefined,
-             Dst /= undefined].
-
-pairs_star([undefined | _]) ->
-    [];
-pairs_star([Master | Replicas]) ->
-    [{Master, R} || R <- Replicas, R =/= undefined].
-
-%% @private
-%% @doc Perform post-move replication fixup.
-update_replication_post_move(VBucket, OldChain, NewChain) ->
-    BucketName = assert_master_mover(),
-    ChangeReplica = fun (Dst, Src) ->
-                            {Dst, replica, undefined, Src}
-                    end,
-    %% destroy remnants of old replication chain
-    DelChanges = [ChangeReplica(D, undefined) || {_, D} <- pairs(OldChain),
-                                                 not lists:member(D, NewChain)],
-    %% just start new chain of replications. Old chain is dead now
-    AddChanges = [ChangeReplica(D, S) || {S, D} <- pairs(NewChain)],
-    ok = janitor_agent:bulk_set_vbucket_state(BucketName, self(), VBucket, AddChanges ++ DelChanges).
-
-assert_master_mover() ->
-    true = erlang:get('i_am_master_mover'),
-    BucketName = erlang:get('bucket_name'),
-    true = (BucketName =/= undefined),
-    BucketName.
 
 register_child_process(Pid) ->
     List = erlang:get(child_processes),
