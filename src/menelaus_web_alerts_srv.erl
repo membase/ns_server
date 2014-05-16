@@ -85,7 +85,7 @@ global_alert(Type, Msg) ->
 
 
 %% @doc Show to user on running node only
--spec local_alert(atom(), binary()) -> ok | ignored.
+-spec local_alert({any(), node()}, binary()) -> ok | ignored.
 local_alert(Key, Val) ->
     gen_server:call(?MODULE, {add_alert, Key, Val}).
 
@@ -413,7 +413,7 @@ to_str(Msg) when is_binary(Msg) ->
 to_str(Msg) ->
     Msg.
 
-maybe_send_out_email_alert({Key, Node}, Message) when is_atom(Node) ->
+maybe_send_out_email_alert({Key, Node}, Message) ->
     case Node =:= node() of
         true ->
             {value, Config} = ns_config:search(email_alerts),
@@ -426,9 +426,7 @@ maybe_send_out_email_alert({Key, Node}, Message) when is_atom(Node) ->
             end;
         false ->
             ok
-    end;
-maybe_send_out_email_alert(Key, Message) when is_atom(Key) ->
-    maybe_send_out_email_alert({Key, node()}, Message).
+    end.
 
 alert_keys() ->
     [ip, disk, overhead, ep_oom_errors, ep_item_commit_failed].
@@ -437,13 +435,13 @@ alert_keys() ->
 %% calls to the archiver
 
 run_basic_test_do() ->
-    ?assertEqual(ok, ?MODULE:local_alert(foo, <<"bar">>)),
+    ?assertEqual(ok, ?MODULE:local_alert({foo, node()}, <<"bar">>)),
     ?assertMatch({[<<"bar">>], _}, ?MODULE:fetch_alerts()),
     {[<<"bar">>], Opaque1} = ?MODULE:fetch_alerts(),
     ?assertMatch({true, {[], _}}, {?MODULE:consume_alerts(Opaque1), ?MODULE:fetch_alerts()}),
 
-    ?assertEqual(ok, ?MODULE:local_alert(bar, <<"bar">>)),
-    ?assertEqual(ignored, ?MODULE:local_alert(bar, <<"bar">>)),
+    ?assertEqual(ok, ?MODULE:local_alert({bar, node()}, <<"bar">>)),
+    ?assertEqual(ignored, ?MODULE:local_alert({bar, node()}, <<"bar">>)),
     {[<<"bar">>], Opaque2} = ?MODULE:fetch_alerts(),
     true = (Opaque1 =/= Opaque2),
     ?assertEqual(false, ?MODULE:consume_alerts(Opaque1)),
