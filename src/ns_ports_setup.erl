@@ -127,7 +127,7 @@ create_ssl_proxy_spec(Config) ->
     {xdcr_proxy,
      ErlPath,
      AllArgs,
-     [use_stdio, stderr_to_stdout,
+     [use_stdio, stderr_to_stdout, port_server_send_eol,
       {env, Env}]}.
 
 per_bucket_moxi_specs(Config) ->
