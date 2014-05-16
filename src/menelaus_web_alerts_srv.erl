@@ -413,9 +413,16 @@ to_str(Msg) when is_binary(Msg) ->
 to_str(Msg) ->
     Msg.
 
-maybe_send_out_email_alert({Key, Node}, Message) ->
+extract_alert_key({Key, _Bucket}) ->
+    Key;
+extract_alert_key(Key) ->
+    Key.
+
+maybe_send_out_email_alert({Key0, Node}, Message) ->
     case Node =:= node() of
         true ->
+            Key = extract_alert_key(Key0),
+
             {value, Config} = ns_config:search(email_alerts),
             case proplists:get_bool(enabled, Config) of
                 true ->
