@@ -47,11 +47,13 @@
       return "";
     }
 
+    var messagePrefix = (obj.subtype == 'gracefulFailover') ? "Failing over " : "Rebalancing ";
+
     var serversCount = _.keys((obj.perNode || {})).length;
 
     return '<li class="clearfix"><div class="usage_smallest">' +
       '<div class="used" style="width:' + (obj.progress >> 0) +
-      '%"></div></div><span class="message">Rebalancing ' + serversCount +
+      '%"></div></div><span class="message">' + messagePrefix + serversCount +
       ' nodes</span></li>';
   };
 

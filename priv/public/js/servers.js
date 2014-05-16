@@ -49,7 +49,6 @@ var ServersSection = {
     var active = this.active;
 
     this.serversQ.find('.add_button').toggle(!!(details && !rebalancing));
-    this.serversQ.find('.stop_rebalance_button').toggle(!!rebalancing);
     this.serversQ.find('.stop_recovery_button').toggle(!!inRecovery);
 
     var mayRebalance = !rebalancing && !inRecovery && !loadingSamples && pending.length !=0;
@@ -376,6 +375,18 @@ var ServersSection = {
     }).name("rebalanceProgress");
     self.rebalanceProgress.equality = _.isEqual;
     self.rebalanceProgress.subscribe($m(self, 'onRebalanceProgress'));
+
+    (function () {
+      Cell.computeEager(function (v) {
+        return v.need(DAL.cells.tasksRebalanceCell).subtype === "gracefulFailover";
+      }).subscribeValue(function (toggle) {
+        $("#js_rebalance_btn_text").text(toggle ? "Stop Fail Over": "Stop Rebalance");
+      });
+
+      DAL.cells.inRebalanceCell.subscribeValue(function (toggle) {
+        serversQ.find('.stop_rebalance_button').toggle(!!toggle);
+      });
+    })();
   },
   accountForDisabled: function (handler) {
     return function (e) {

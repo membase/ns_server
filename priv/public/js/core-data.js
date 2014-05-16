@@ -699,14 +699,19 @@ var DAL = {
           });
         }).name("tasksRecoveryCell");
 
-  var inRebalanceCell = DAL.cells.inRebalanceCell =
+  var tasksRebalanceCell = DAL.cells.tasksRebalanceCell =
         Cell.computeEager(function (v) {
           var tasks = v.need(tasksProgressCell);
-          return !!_.detect(tasks,
-                            function (taskInfo) {
-                              return taskInfo.type === "rebalance" &&
-                                taskInfo.status === "running";
-                            });
+          return _.detect(tasks,
+                          function (taskInfo) {
+                            return taskInfo.type === "rebalance" &&
+                              taskInfo.status === "running";
+                          });
+        }).name("tasksRebalanceCell");
+
+  var inRebalanceCell = DAL.cells.inRebalanceCell =
+        Cell.computeEager(function (v) {
+          return !!v.need(tasksRebalanceCell);
         }).name("inRebalanceCell");
 
   var inRecoveryModeCell = DAL.cells.inRecoveryModeCell =

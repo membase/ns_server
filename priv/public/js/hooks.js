@@ -1552,38 +1552,16 @@ var MockedRequest = mkClass({
 
       // params are otpNodes of nodes to be kept/ejected
       [post("controller", "rebalance"), expectParams(function () {
-        if (__hookParams['rebalanceMismatch']) {
-          return this.errorResponse({
-            mismatch: 1
-          });
-        }
-
-        var percent = 0.001;
-        var rebalanceRunning = ServerStateMock.tasks.getTask("rebalanceRunning");
-
-        var intervalID = setInterval(function () {
-          rebalanceRunning.progress += percent;
-          rebalanceRunning.perNode["n_1@127.0.0.1"].progress += percent;
-          rebalanceRunning.perNode["n_2@127.0.0.1"].progress += percent;
-        }, 50);
-
-        MockedRequest.globalData.setRebalanceStatus('running');
-        ServerStateMock.tasks.toggle(["rebalanceNotRunning", "rebalanceRunning"]);
-
-        _.delay(function () {
-          console.log("rebalance delay hit!");
-
-          clearInterval(intervalID);
-
-          MockedRequest.globalData.setRebalanceStatus('none');
-          ServerStateMock.tasks.toggle(["rebalanceNotRunning", "rebalanceRunning"]);
-        }, 80000);
+        ServerStateMock.runRebalance();
       }, "knownNodes", "ejectedNodes")],
       [post("controller", "stopRebalance"), method("doNothingPOST")],
 
       [post("controller", "addNode"), expectParams(method("doNothingPOST"), "hostname", "user", "password")],
       [post("poosl", "default", "serverGroups", x, "addNode"), expectParams(method("doNothingPOST"), "hostname", "user", "password")],
       [post("controller", "failOver"), expectParams(method("doNothingPOST"), "otpNode")],
+      [post("controller", "startGracefulFailover"), function () {
+        ServerStateMock.runRebalance("gracefulFailOver");
+      }],
       [post("controller", "reAddNode"), expectParams(method("doNothingPOST"), "otpNode")],
       [post("settings", "web"), expectParams(method("doNothingPOST"), "port", "username", "password")],
       [post("settings", "stats"), function () {}],
@@ -1639,6 +1617,36 @@ MockedRequest.prototype.globalData = MockedRequest.globalData = {
 })();
 
 var ServerStateMock = {
+  runRebalance: function (rebalanceType) {
+    if (__hookParams['rebalanceMismatch']) {
+      return this.errorResponse({
+        mismatch: 1
+      });
+    }
+
+    ServerStateMock.tasks.enableGracefulRebalance(rebalanceType === "gracefulFailOver");
+
+    var percent = 0.001;
+    var rebalanceRunning = ServerStateMock.tasks.getTask("rebalanceRunning");
+
+    var intervalID = setInterval(function () {
+      rebalanceRunning.progress += percent;
+      rebalanceRunning.perNode["n_1@127.0.0.1"].progress += percent;
+      rebalanceRunning.perNode["n_2@127.0.0.1"].progress += percent;
+    }, 50);
+
+    MockedRequest.globalData.setRebalanceStatus('running');
+    ServerStateMock.tasks.toggle(["rebalanceNotRunning", "rebalanceRunning"]);
+
+    _.delay(function () {
+      console.log("rebalance delay hit!");
+
+      clearInterval(intervalID);
+
+      MockedRequest.globalData.setRebalanceStatus('none');
+      ServerStateMock.tasks.toggle(["rebalanceNotRunning", "rebalanceRunning"]);
+    }, 80000);
+  },
   clusterVisualSettings: {
     tabName: "",
     windowOutlineHex: ""
@@ -1755,6 +1763,9 @@ var ServerStateMock = {
     };
 
     return {
+      enableGracefulRebalance: function (enableDisable) {
+        knownTasks.rebalanceRunning.subtype = enableDisable ? "gracefulFailover" : "rebalance";
+      },
       toggle: function (task) {
         if (_.isArray(task) && task.length) {
           _.each(task, setTask);
@@ -1988,7 +1999,7 @@ var ServerStateMock = {
       "direct": 12000
     }
   }],
-  "basePoolDetails": {
+  basePoolDetails: {
     "etag": "83993131",
     "storageTotals": {
       "ram": {
@@ -2069,6 +2080,9 @@ var ServerStateMock = {
       },
       "rebalance": {
         "uri": "/controller/rebalance"
+      },
+      "startGracefulFailover": {
+        "uri": "/controller/startGracefulFailover"
       },
       "failOver": {
         "uri": "/controller/failOver"
@@ -2415,6 +2429,7 @@ var ServerStateMock = {
 
     _.each(this.allNodes, function (nodes) {
       rv[nodes.hostname] = {
+        gracefulFailoverPossible: true,
         otpNode: nodes.otpNode,
         replication: 1,
         status: nodes.status
