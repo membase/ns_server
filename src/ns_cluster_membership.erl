@@ -175,19 +175,15 @@ update_recovery_type(Node, NewType) ->
     RV = ns_config:run_txn(
            fun (Config, Set) ->
                    Membership = ns_config:search(Config, {node, Node, membership}),
-                   CurrentType = get_recovery_type(Config, Node),
 
-                   case Membership =:= {value, inactiveAdded} andalso
-                       CurrentType =/= none of
+                   case ((Membership =:= {value, inactiveAdded}
+                          andalso get_recovery_type(Config, Node) =/= none)
+                         orelse Membership =:= {value, inactiveFailed}) of
 
                        true ->
-                           case CurrentType =:= NewType of
-                               true ->
-                                   {abort, not_needed};
-                               false ->
-                                   {commit,
-                                    Set({node, Node, recovery_type}, NewType, Config)}
-                           end;
+                           Config1 = Set({node, Node, membership}, inactiveAdded, Config),
+                           {commit,
+                            Set({node, Node, recovery_type}, NewType, Config1)};
                        false ->
                            {abort, {error, bad_node}}
                    end
