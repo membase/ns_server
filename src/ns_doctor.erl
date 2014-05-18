@@ -308,7 +308,8 @@ maybe_refresh_tasks_version(State) ->
           end, sets:new(), Nodes),
     TasksRebalanceAndRecoveryHash = erlang:phash2({erlang:phash2(TasksHashesSet),
                                                    ns_orchestrator:is_rebalance_running(),
-                                                   ns_orchestrator:is_recovery_running()}),
+                                                   ns_orchestrator:is_recovery_running(),
+                                                   ns_config:search(graceful_failover_pid)}),
     case TasksRebalanceAndRecoveryHash =:= State#state.tasks_hash of
         true ->
             %% hash did not change, only nodes. Cool
@@ -604,7 +605,15 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
             {running, PerNode} ->
                 DetailedProgress = get_detailed_progress(),
 
+                Subtype = case ns_config:search(rebalancer_pid) =:= ns_config:search(graceful_failover_pid) of
+                              true ->
+                                  gracefulFailover;
+                              _ ->
+                                  rebalance
+                          end,
+
                 [{type, rebalance},
+                 {subtype, Subtype},
                  {recommendedRefreshPeriod, 0.25},
                  {status, running},
                  {progress, case lists:foldl(fun ({_, Progress}, {Total, Count}) ->
