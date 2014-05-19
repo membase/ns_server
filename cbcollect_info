@@ -346,10 +346,15 @@ def correct_split(string, splitchar):
         rv = []
     return rv
 
-def make_product_task(guts, initargs_path):
+def make_product_task(guts, initargs_path, options):
     root = os.path.abspath(os.path.join(initargs_path, "..", "..", "..", ".."))
     dbdir = read_guts(guts, "db_dir")
     viewdir = read_guts(guts, "idx_dir")
+
+    diag_url = "http://127.0.0.1:%s/diag?noLogs=1" % read_guts(guts, "rest_port")
+    if options.single_node_diag:
+        diag_url += "&oneNode=1"
+
     _tasks = [
         UnixTask("Directory structure",
                  ["ls", "-lR", root]),
@@ -396,9 +401,9 @@ def make_product_task(guts, initargs_path):
         AllOsTask("couchbase diags",
                   ["curl", "-sS",
                    "-u", '%s:%s' % ("@", read_guts(guts, "memcached_pass")),
-                   "http://127.0.0.1:%s/diag?noLogs=1" % read_guts(guts, "rest_port")],
+                   diag_url],
                   log_file="diag.log",
-                  command_to_print="curl -sS -u %s:***** http://127.0.0.1:%s/diag?noLogs=1" % (read_guts(guts, "rest_user"), read_guts(guts, "rest_port"))),
+                  command_to_print="curl -sS -u %s:***** %s" % (read_guts(guts, "rest_user"), diag_url)),
 
         [AllOsTask("couchbase logs (%s)" % name, "cbbrowse_logs %s" % name,
                    addenv = [("REPORT_DIR", read_guts(guts, "log_path"))],
@@ -525,6 +530,9 @@ def main():
     parser.add_option("--watch-stdin", dest="watch_stdin",
                       action="store_true", default=False,
                       help=optparse.SUPPRESS_HELP)
+    parser.add_option("--single-node-diag", dest="single_node_diag",
+                      action="store_true", default=False,
+                      help="collect per-node diag on just this node (default is all reachable nodes)")
     options, args = parser.parse_args()
 
     if len(args) != 1:
@@ -588,7 +596,7 @@ def main():
                       "",
                       literal = "Found server initargs at %s (%d)" % (guts_initargs_path, len(guts))))
 
-        for task in make_product_task(guts, guts_initargs_path):
+        for task in make_product_task(guts, guts_initargs_path, options):
             runner.run(task)
 
     if zip_node.split("@")[-1] == "127.0.0.1":
