@@ -1346,7 +1346,7 @@ var ViewsSection = {
 
         sampleMeta.text(JSON.stringify(doc.meta, null, "\t"));
         renderTemplate('sample_documents', param);
-        editDocument.attr('href', '#sec=documents&bucketName=' + encodeURIComponent(selectedBucket) + '&docId=' + encodeURIComponent(doc.meta.id));
+        editDocument.attr('href', '#sec=documents&viewsBucket=' + encodeURIComponent(selectedBucket) + '&docId=' + encodeURIComponent(doc.meta.id));
       } else {
         editDocument.addClass('dynamic_disabled');
         if (doc === null) {
