@@ -341,7 +341,10 @@ handle_just_diag(Req, Extra) ->
                   end, lists:keysort(#log_entry.tstamp, ns_log:recent())),
     Resp:write_chunk(<<"-------------------------------\n\n\n">>),
 
-    Nodes = ns_node_disco:nodes_actual(),
+    Nodes = case proplists:get_value("oneNode", Req:parse_qs(), "0") of
+                "0" -> ns_node_disco:nodes_actual();
+                _ -> [node()]
+            end,
     {Results, OldNodes} = grab_per_node_diag(Nodes),
 
     handle_per_node_just_diag(Resp, Results),
