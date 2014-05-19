@@ -530,6 +530,7 @@ def main():
     parser.add_option("--watch-stdin", dest="watch_stdin",
                       action="store_true", default=False,
                       help=optparse.SUPPRESS_HELP)
+    parser.add_option("--initargs", dest="initargs", help="server 'initargs' path")
     parser.add_option("--single-node-diag", dest="single_node_diag",
                       action="store_true", default=False,
                       help="collect per-node diag on just this node (default is all reachable nodes)")
@@ -575,6 +576,9 @@ def main():
     initargs_variants = [os.path.abspath(os.path.join(options.root, "var", "lib", "couchbase", "initargs")),
                          "/opt/couchbase/var/lib/couchbase/initargs",
                          os.path.expanduser("~/Library/Application Support/Couchbase/var/lib/couchbase/initargs")]
+
+    if options.initargs != None:
+        initargs_variants = [options.initargs]
 
     guts = None
     guts_initargs_path = None
