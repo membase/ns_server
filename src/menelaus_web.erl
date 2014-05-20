@@ -676,7 +676,7 @@ start_loading_samples(Samples) ->
     end.
 
 start_loading_sample(Name) ->
-    Params = [{"threadsNumber", "8"},
+    Params = [{"threadsNumber", "3"},
               {"replicaIndex", "0"},
               {"replicaNumber", "1"},
               {"saslPassword", ""},
