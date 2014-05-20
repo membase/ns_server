@@ -22,6 +22,7 @@
 -include("mc_entry.hrl").
 
 -export([open_connection/3, add_stream/4, close_stream/3, stream_request/8,
+         setup_flow_control/2,
          process_response/2, format_packet_nicely/1]).
 
 -spec process_response(#mc_header{}, #mc_entry{}) -> any().
@@ -89,6 +90,15 @@ stream_request(Sock, Partition, Opaque, StartSeqNo, EndSeqNo,
                                              {#mc_header{opaque = Opaque,
                                                          vbucket = Partition},
                                               #mc_entry{ext = Extra}}).
+
+-spec setup_flow_control(port(), non_neg_integer()) -> ok | upr_error().
+setup_flow_control(Sock, ConnectionBufferSize) ->
+    Body = list_to_binary(integer_to_list(ConnectionBufferSize)),
+    Resp = mc_client_binary:cmd_vocal(?UPR_CONTROL, Sock,
+                                      {#mc_header{},
+                                       #mc_entry{key = <<"connection_buffer_size">>,
+                                                 data = Body}}),
+    process_response(Resp).
 
 -spec command_2_atom(integer()) -> atom().
 command_2_atom(?UPR_OPEN) ->
