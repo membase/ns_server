@@ -396,7 +396,7 @@ var BucketDetailsDialog = mkClass({
     var self = this;
 
     if (!self.isNew &&
-        ((self.dialog.find('[name=threadsNumber]').val() !=
+        ((self.dialog.find('[name=threadsNumber]:checked').val() !=
           self.initValues.threadsNumber) ||
          (self.dialog.find('[name=evictionPolicy]:checked').val() !=
           self.initValues.evictionPolicy))) {
