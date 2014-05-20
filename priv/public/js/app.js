@@ -406,7 +406,7 @@ var SetupWizard = {
           authType: 'sasl',
           replicaNumber: 1,
           replicaIndex: false,
-          threadsNumber: 8
+          threadsNumber: 3
         }, $.deparam(opt.defaultBucketData ? opt.defaultBucketData : ''));
 
         $.ajax({

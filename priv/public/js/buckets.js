@@ -1080,7 +1080,7 @@ var BucketsSection = {
           },
           replicaIndex: false,
           replicaNumber: 1,
-          threadsNumber: 8,
+          threadsNumber: 3,
           evictionPolicy: 'valueOnly'
         }, true)).startDialog();
 
