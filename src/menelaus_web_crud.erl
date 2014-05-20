@@ -98,11 +98,11 @@ do_handle_list(Req, Bucket, {Skip, Limit, Params}, N) ->
         throw:{error, {memcached_error, Type}} ->
             menelaus_util:reply_json(Req,
                                      {struct, [{error, memcached_error},
-                                               {reason, Type}]});
+                                               {reason, Type}]}, 500);
         throw:{error, Error} ->
             menelaus_util:reply_json(Req,
                                      {struct, [{error, couch_util:to_binary(Error)},
-                                               {reason, <<"unknown error">>}]})
+                                               {reason, <<"unknown error">>}]}, 500)
     end.
 
 heap_less([{A, _} | _], [{B, _} | _]) ->
