@@ -93,7 +93,7 @@ stream_request(Sock, Partition, Opaque, StartSeqNo, EndSeqNo,
 
 -spec setup_flow_control(port(), non_neg_integer()) -> ok | upr_error().
 setup_flow_control(Sock, ConnectionBufferSize) ->
-    Body = list_to_binary(integer_to_list(ConnectionBufferSize)),
+    Body = iolist_to_binary([integer_to_list(ConnectionBufferSize), 0]),
     Resp = mc_client_binary:cmd_vocal(?UPR_CONTROL, Sock,
                                       {#mc_header{},
                                        #mc_entry{key = <<"connection_buffer_size">>,
