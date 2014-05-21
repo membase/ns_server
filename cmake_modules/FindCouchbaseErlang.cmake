@@ -64,46 +64,65 @@ IF (NOT FindCouchbaseErlang_INCLUDED)
   IF (NOT ERLANG_FOUND)
     FIND_PROGRAM(ERLC_EXECUTABLE erlc)
     FIND_PROGRAM(ERL_EXECUTABLE erl)
-    IF (ERLC_EXECUTABLE-NOTFOUND OR ERL_EXECUTABLE-NOTFOUND)
-      SET(ERLANG_FOUND False)
-      IF (ERL_EXECUTABLE-NOTFOUND)
-        MESSAGE(STATUS "Erlang runtime (erl) not found")
-      ENDIF (ERL_EXECUTABLE-NOTFOUND)
-      IF (ERLC_EXECUTABLE-NOTFOUND)
-        MESSAGE(STATUS "Erlang compiler (erlc) not found")
-      ENDIF (ERLC_EXECUTABLE-NOTFOUND)
-    ELSE (ERLC_EXECUTABLE-NOTFOUND OR ERL_EXECUTABLE-NOTFOUND)
+    IF (ERLC_EXECUTABLE AND ERL_EXECUTABLE)
       SET(ERLANG_FOUND True CACHE BOOL "Whether Erlang has been found")
       GET_FILENAME_COMPONENT(ERL_REAL_EXE ${ERL_EXECUTABLE} REALPATH)
       GET_FILENAME_COMPONENT(ERL_LOCATION ${ERL_REAL_EXE} PATH)
-      FIND_PATH(ERLANG_INCLUDE_PATH erl_nif.h
-        PATHS
+
+      FIND_PATH(ERL_NATIVE_FEATURES_CONFIG_INCLUDE_PATH erl_native_features_config.h
+        HINTS
         ${ERL_LOCATION}/../usr/include
+        PATHS
         /usr/lib/erlang/usr/include
         /usr/local/lib/erlang/usr/include
         /opt/local/lib/erlang/usr/include
         /usr/lib64/erlang/usr/include)
 
+      IF (ERL_NATIVE_FEATURES_CONFIG_INCLUDE_PATH)
+         SET(ERLANG_INCLUDE_PATH "${ERL_NATIVE_FEATURES_CONFIG_INCLUDE_PATH}"
+             CACHE STRING "Path to Erlang include files")
+      ELSE (ERL_NATIVE_FEATURES_CONFIG_INCLUDE_PATH)
+         FIND_PATH(ERL_NIF_INCLUDE_PATH erl_nif.h
+                   HINTS
+                   ${ERL_LOCATION}/../usr/include
+                   PATHS
+                   /usr/lib/erlang/usr/include
+                   /usr/local/lib/erlang/usr/include
+                   /opt/local/lib/erlang/usr/include
+                   /usr/lib64/erlang/usr/include)
+         SET(ERLANG_INCLUDE_PATH "${ERL_NIF_INCLUDE_PATH}"
+             CACHE STRING "Path to Erlang include files")
+      ENDIF (ERL_NATIVE_FEATURES_CONFIG_INCLUDE_PATH)
+
       MESSAGE(STATUS "Erlang runtime and compiler found in ${ERL_EXECUTABLE} and ${ERLC_EXECUTABLE}")
 
       FIND_PROGRAM(PROVE_EXECUTABLE prove)
-      IF (PROVE_EXECUTABLE-NOTFOUND)
-        MESSAGE ("prove testdriver not found - "
+      IF (NOT PROVE_EXECUTABLE)
+        MESSAGE (STATUS "prove testdriver not found - "
           "erlang testing unavailable")
-      ENDIF (PROVE_EXECUTABLE-NOTFOUND)
+      ENDIF (NOT PROVE_EXECUTABLE)
 
       FIND_PROGRAM(ESCRIPT_EXECUTABLE escript)
-      IF (ESCRIPT_EXECUTABLE-NOTFOUND)
-        MESSAGE ("escript interpreter not found - "
+      IF (NOT ESCRIPT_EXECUTABLE)
+        MESSAGE (STATUS "escript interpreter not found - "
           "rebar support will be unavailable")
-      ELSE (ESCRIPT_EXECUTABLE-NOTFOUND)
+      ELSE (NOT ESCRIPT_EXECUTABLE)
         MESSAGE(STATUS "Escript interpreter found in ${ESCRIPT_EXECUTABLE}")
         SET (REBAR_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/rebar"
           CACHE STRING "Path to default rebar script")
-      ENDIF (ESCRIPT_EXECUTABLE-NOTFOUND)
+      ENDIF (NOT ESCRIPT_EXECUTABLE)
 
       MESSAGE(STATUS "Erlang nif header in ${ERLANG_INCLUDE_PATH}")
-    ENDIF(ERLC_EXECUTABLE-NOTFOUND OR ERL_EXECUTABLE-NOTFOUND)
+    ELSE(ERLC_EXECUTABLE AND ERL_EXECUTABLE)
+      SET(ERLANG_FOUND False)
+      IF (NOT ERL_EXECUTABLE)
+        MESSAGE(STATUS "Erlang runtime (erl) not found")
+      ENDIF (NOT ERL_EXECUTABLE)
+      IF (NOT ERLC_EXECUTABLE)
+        MESSAGE(STATUS "Erlang compiler (erlc) not found")
+      ENDIF (NOT ERLC_EXECUTABLE)
+      MESSAGE (FATAL_ERROR "Erlang not found - cannot continue building")
+    ENDIF(ERLC_EXECUTABLE AND ERL_EXECUTABLE)
 
     MARK_AS_ADVANCED(ERLANG_FOUND ERL_EXECUTABLE ERLC_EXECUTABLE ESCRIPT_EXECUTABLE ERLANG_INCLUDE_PATH)
   ENDIF (NOT ERLANG_FOUND)
@@ -119,10 +138,10 @@ IF (NOT FindCouchbaseErlang_INCLUDED)
   # "rebar clean". <target>-clean will be added as a dependency to
   # "realclean".
   MACRO (Rebar)
-    IF (ESCRIPT_EXECUTABLE-NOTFOUND)
+    IF (NOT ESCRIPT_EXECUTABLE)
       MESSAGE (FATAL_ERROR "escript not found, therefore Rebar() "
         "cannot function.")
-    ENDIF (ESCRIPT_EXECUTABLE-NOTFOUND)
+    ENDIF (NOT ESCRIPT_EXECUTABLE)
 
     PARSE_ARGUMENTS (Rebar "DEPENDS;REBAR_OPTS" "TARGET;REBAR_SCRIPT"
       "NOCLEAN;NOALL" ${ARGN})
@@ -211,6 +230,50 @@ IF (NOT FindCouchbaseErlang_INCLUDED)
     ENDFOREACH(it)
     ADD_CUSTOM_TARGET(${AppName} ALL DEPENDS ${outfiles})
   ENDMACRO (ERL_BUILD)
+
+  MACRO (ERL_BUILD_OTP AppName)
+    SET(outfiles)
+    GET_FILENAME_COMPONENT(EBIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ebin" ABSOLUTE)
+    IF (IS_DIRECTORY ${EBIN_DIR})
+      SET(${AppName}_ebin ${EBIN_DIR})
+    ELSE (IS_DIRECTORY ${EBIN_DIR})
+      SET(${AppName}_ebin ${CMAKE_CURRENT_BINARY_DIR}/ebin)
+      FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ebin)
+    ENDIF (IS_DIRECTORY ${EBIN_DIR})
+
+    IF (ERLANG_INCLUDE_DIR)
+      SET(ERLANG_INCLUDES ${ERLANG_INCLUDE_DIR})
+    ENDIF (ERLANG_INCLUDE_DIR)
+
+    SET(${AppName}_src ${CMAKE_CURRENT_SOURCE_DIR})
+
+    #Set application modules
+    SET(${AppName}_module_list)
+
+    FOREACH (it ${ARGN})
+      GET_FILENAME_COMPONENT(outfile ${it} NAME_WE)
+      GET_FILENAME_COMPONENT(outfile_ext ${it} EXT)
+      SET(${AppName}_module_list ${${AppName}_module_list} "'${outfile}'")
+      IF (${outfile_ext} STREQUAL ".asn" OR ${outfile_ext} STREQUAL ".ASN")
+        SET(outfile
+          ${${AppName}_ebin}/${outfile}.erl
+          ${${AppName}_ebin}/${outfile}.hrl
+          ${${AppName}_ebin}/${outfile}.asn1db
+          ${${AppName}_ebin}/${outfile}.beam)
+      ELSE(${outfile_ext} STREQUAL ".asn" OR ${outfile_ext} STREQUAL ".ASN")
+        SET(outfile
+          ${${AppName}_ebin}/${outfile}.beam)
+      ENDIF(${outfile_ext} STREQUAL ".asn" OR ${outfile_ext} STREQUAL ".ASN")
+      SET(outfiles ${outfiles} ${outfile})
+      GET_FILENAME_COMPONENT(it ${it} ABSOLUTE)
+      ADD_CUSTOM_COMMAND(
+        OUTPUT ${outfile}
+        COMMAND ${ERLC_EXECUTABLE} -o ${${AppName}_ebin} ${ERLANG_INCLUDES} ${ERLANG_COMPILE_FLAGS} ${it}
+        DEPENDS ${it}
+        VERBATIM)
+    ENDFOREACH(it)
+    ADD_CUSTOM_TARGET(${AppName} ALL DEPENDS ${outfiles})
+  ENDMACRO (ERL_BUILD_OTP)
 
   SET (FindCouchbaseErlang_INCLUDED 1)
 ENDIF (NOT FindCouchbaseErlang_INCLUDED)
