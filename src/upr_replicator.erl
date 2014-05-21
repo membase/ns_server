@@ -177,7 +177,7 @@ wait_for_data_move_on_one_node(Iterations, Connection, Bucket, Partition) ->
     end.
 
 get_connection_name(ConsumerNode, ProducerNode, Bucket) ->
-    "ns_server:" ++ atom_to_list(ProducerNode) ++ "->" ++ atom_to_list(ConsumerNode) ++ ":" ++ Bucket.
+    "replication:" ++ atom_to_list(ProducerNode) ++ "->" ++ atom_to_list(ConsumerNode) ++ ":" ++ Bucket.
 
 spawn_and_wait(Body) ->
     WorkerPid = spawn_link(
