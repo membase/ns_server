@@ -1354,14 +1354,7 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
     PortsKV0 = [{proxy, ProxyPort},
                 {direct, DirectPort}],
 
-    PortsKV1 =
-        case ns_config:search_node_prop(WantENode, Config, memcached, ssl_port) of
-            undefined ->
-                PortsKV0;
-            SslPort ->
-                [{sslDirect, SslPort} | PortsKV0]
-        end,
-
+    %% this is used by xdcr over ssl since 2.5.0
     PortKeys = [{ssl_capi_port, httpsCAPI},
                 {ssl_rest_port, httpsMgmt}]
         ++ case is_xdcr_over_ssl_allowed() of
@@ -1376,7 +1369,7 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
                             {value, Value} -> [{JKey, Value} | Acc];
                             false -> Acc
                         end
-                end, PortsKV1, PortKeys),
+                end, PortsKV0, PortKeys),
 
     RV = [{hostname, list_to_binary(HostName)},
           {clusterCompatibility, ns_heart:effective_cluster_compat_version()},

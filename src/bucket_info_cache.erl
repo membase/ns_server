@@ -78,29 +78,46 @@ submit_full_reset() ->
       end).
 
 build_ports(Node, Config) ->
+    [{proxy, ns_config:search_node_prop(Node, Config, moxi, port)},
+     {direct, ns_config:search_node_prop(Node, Config, memcached, port)}].
+
+build_services(Node, Config) ->
     CapiPorts = lists:append([case ns_config:search_node(Node, Config, ConfigKey) of
                                   {value, Value} -> [{JKey, Value}];
                                   false -> []
-                              end || {ConfigKey, JKey} <- [{ssl_capi_port, httpsCAPI},
-                                                           {ssl_rest_port, httpsMgmt}]]),
+                              end || {ConfigKey, JKey} <- [{ssl_capi_port, capiSSL},
+                                                           {ssl_rest_port, mgmtSSL}]]),
     PortsD = case ns_config:search_node_prop(Node, Config, memcached, ssl_port) of
                  undefined ->
                      CapiPorts;
                  SslPort ->
-                     [{sslDirect, SslPort} | CapiPorts]
+                     [{kvSSL, SslPort} | CapiPorts]
              end,
-    [{proxy, ns_config:search_node_prop(Node, Config, moxi, port)},
-     {direct, ns_config:search_node_prop(Node, Config, memcached, port)}
+    [{moxi, ns_config:search_node_prop(Node, Config, moxi, port)},
+     {kv, ns_config:search_node_prop(Node, Config, memcached, port)}
      | PortsD].
+
+maybe_build_ext_hostname(Node) ->
+    case misc:node_name_host(Node) of
+        {_, "127.0.0.1"} -> [];
+        {_, H} -> [{hostname, list_to_binary(H)}]
+    end.
 
 do_compute_bucket_info(Bucket, Config) ->
     {ok, BucketConfig, BucketVC} = ns_bucket:get_bucket_with_vclock(Bucket, Config),
-    {_, Servers} = lists:keyfind(servers, 1, BucketConfig),
+    {_, Servers0} = lists:keyfind(servers, 1, BucketConfig),
+
+    %% we do sorting to make nodes list match order of servers inside vBucketServerMap
+    Servers = lists:sort(Servers0),
 
     NIs = [{[{couchApiBase, capi_utils:capi_bucket_url_bin(Node, Bucket, ?LOCALHOST_MARKER_STRING)},
              {hostname, list_to_binary(menelaus_web:build_node_hostname(Config, Node, ?LOCALHOST_MARKER_STRING))},
              {ports, {build_ports(Node, Config)}}]}
            || Node <- Servers],
+
+    NEIs = [{[{services, {build_services(Node, Config)}}
+              | maybe_build_ext_hostname(Node)]}
+            || Node <- Servers],
 
     {_, UUID} = lists:keyfind(uuid, 1, BucketConfig),
 
@@ -121,6 +138,7 @@ do_compute_bucket_info(Bucket, Config) ->
           {uri, <<"/pools/default/buckets/", BucketBin/binary, "?bucket_uuid=", UUID/binary>>},
           {streamingUri, <<"/pools/default/bucketsStreaming/", BucketBin/binary, "?bucket_uuid=", UUID/binary>>},
           {nodes, NIs},
+          {nodesExt, NEIs},
           {nodeLocator, ns_bucket:node_locator(BucketConfig)},
           {uuid, UUID},
           {bucketCapabilitiesVer, ''} | MaybeVBMap]},
