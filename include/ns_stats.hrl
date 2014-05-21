@@ -249,6 +249,40 @@
         ep_tap_user_queue_fill, ep_tap_user_queue_drain, ep_tap_user_queue_backoff,
         ep_tap_total_queue_fill, ep_tap_total_queue_drain, ep_tap_total_queue_backoff).
 
+-define(UPR_STAT_GAUGES,
+        ep_upr_replica_count,
+        ep_upr_replica_items_remaining,
+        ep_upr_replica_producer_count,
+        ep_upr_replica_total_backlog_size,
+
+        ep_upr_xdcr_count,
+        ep_upr_xdcr_items_remaining,
+        ep_upr_xdcr_producer_count,
+        ep_upr_xdcr_total_backlog_size,
+
+        ep_upr_views_count,
+        ep_upr_views_items_remaining,
+        ep_upr_views_producer_count,
+        ep_upr_views_total_backlog_size,
+
+        ep_upr_total_count,
+        ep_upr_total_items_remaining,
+        ep_upr_total_producer_count,
+        ep_upr_total_total_backlog_size).
+
+-define(UPR_STAT_COUNTERS,
+        ep_upr_replica_items_sent,
+        ep_upr_replica_total_bytes,
+
+        ep_upr_xdcr_items_sent,
+        ep_upr_xdcr_total_bytes,
+
+        ep_upr_views_items_sent,
+        ep_upr_views_total_bytes,
+
+        ep_upr_total_items_sent,
+        ep_upr_total_total_bytes).
+
 -ifdef(NEED_TAP_STREAM_STATS_CODE).
 
 -define(DEFINE_EXTRACT(A, N), extract_agg_stat(<<??A>>, V, Acc) ->
@@ -299,5 +333,16 @@ sub_tap_stream_stats(A, B) ->
                       ?DEFINE_SUBTRACTOR(queue_itemondisk),
                       ?DEFINE_SUBTRACTOR(total_backlog_size)}.
 -undef(DEFINE_SUBTRACTOR).
+
+-define(DEFINE_EXTRACT(N), extract_agg_upr_stat(Prefix, <<??N>>, V, Acc) ->
+               lists:keystore(<<Prefix/binary, ??N>>, 1, Acc, {<<Prefix/binary, ??N>>, V})).
+?DEFINE_EXTRACT(count);
+?DEFINE_EXTRACT(items_remaining);
+?DEFINE_EXTRACT(items_sent);
+?DEFINE_EXTRACT(producer_count);
+?DEFINE_EXTRACT(total_backlog_size);
+?DEFINE_EXTRACT(total_bytes);
+extract_agg_upr_stat(_P, _K, _V, Acc) -> Acc.
+-undef(DEFINE_EXTRACT).
 
 -endif. % NEED_TAP_STREAM_STATS_CODE

@@ -32,6 +32,7 @@
 -record(state, {bucket,
                 last_plain_counters,
                 last_tap_counters,
+                last_upr_counters,
                 last_timings_counters,
                 count = ?LOG_FREQ,
                 last_ts,
@@ -91,6 +92,10 @@ grab_all_stats(Bucket) ->
                    {ok, Values} -> Values;
                    {memcached_error, key_enoent, _} -> []
                end,
+    UprStats = case ns_memcached:stats(Bucket, <<"upragg :">>) of
+                   {ok, ValuesUpr} -> ValuesUpr;
+                   {memcached_error, key_enoent, _} -> []
+               end,
     Timings = case ns_memcached:stats(Bucket, <<"timings">>) of
                   {ok, ValuesK} ->
                       prefilter_timings(ValuesK);
@@ -101,7 +106,7 @@ grab_all_stats(Bucket) ->
                   Err -> ?log_info("Failed fetching XDCR stats:~n~p", [Err]),
                          []
                  end,
-    {PlainStats, TapStats, Timings, CouchStats, XDCStats}.
+    {PlainStats, TapStats, UprStats, Timings, CouchStats, XDCStats}.
 
 handle_info({tick, TS}, #state{bucket=Bucket} = State) ->
     GrabFreq = misc:get_env_default(grab_stats_every_n_ticks, 1),
@@ -162,10 +167,11 @@ get_min_files_size(Bucket) ->
     MinFileSize * length(ns_bucket:all_node_vbuckets(BucketConfig)).
 
 process_grabbed_stats(TS,
-                      {PlainStats, TapStats, Timings, CouchStats, XDCStats},
+                      {PlainStats, TapStats, UprStats, Timings, CouchStats, XDCStats},
                       #state{bucket = Bucket,
                              last_plain_counters = LastPlainCounters,
                              last_tap_counters = LastTapCounters,
+                             last_upr_counters = LastUprCounters,
                              last_timings_counters = LastTimingsCounters,
                              last_ts = LastTS,
                              min_files_size = MinFilesSize0} = State) ->
@@ -179,11 +185,12 @@ process_grabbed_stats(TS,
     {PlainValues, PlainCounters} = parse_plain_stats(TS, PlainStats, LastTS,
                                                      LastPlainCounters, MinFilesSize),
     {TapValues, TapCounters} = parse_tapagg_stats(TS, TapStats, LastTS, LastTapCounters),
+    {UprValues, UprCounters} = parse_upragg_stats(TS, UprStats, LastTS, LastUprCounters),
     {TimingValues, TimingsCounters} = parse_timings(TS, Timings, LastTS, LastTimingsCounters),
     %% Don't send event with undefined values
-    case lists:member(undefined, [LastTapCounters, LastTapCounters, LastTimingsCounters]) of
+    case lists:member(undefined, [LastTapCounters, LastTapCounters, LastUprCounters, LastTimingsCounters]) of
         false ->
-            Values = lists:merge([PlainValues, TapValues, TimingValues, CouchStats, XDCValues]),
+            Values = lists:merge([PlainValues, TapValues, UprValues, TimingValues, CouchStats, XDCValues]),
             Entry = #stat_entry{timestamp = TS,
                                 values = Values},
             gen_event:notify(ns_stats_event, {stats, Bucket, Entry});
@@ -192,6 +199,7 @@ process_grabbed_stats(TS,
     end,
     State#state{last_plain_counters = PlainCounters,
                 last_tap_counters = TapCounters,
+                last_upr_counters = UprCounters,
                 last_timings_counters = TimingsCounters,
                 last_ts = TS,
                 min_files_size = MinFilesSize}.
@@ -299,6 +307,10 @@ extract_agg_tap_stats(KVs) ->
     lists:foldl(fun ({K, V}, Acc) -> extract_agg_stat(K, V, Acc) end,
                 #tap_stream_stats{}, KVs).
 
+extract_agg_upr_stats(Prefix, KVs) ->
+    lists:foldl(fun ({K, V}, Acc) -> extract_agg_upr_stat(Prefix, K, V, Acc) end,
+                [], KVs).
+
 stats_dict_get(Stat, Stats) ->
     case lists:keyfind(Stat, 1, Stats) of
         false ->
@@ -354,6 +366,17 @@ parse_aggregate_tap_stats(AggTap) ->
                   tap_stream_stats_to_kvlist(<<"ep_tap_replica_">>, ReplicaStats),
                   tap_stream_stats_to_kvlist(<<"ep_tap_user_">>, UserStats),
                   tap_stream_stats_to_kvlist(<<"ep_tap_total_">>, TotalStats)]).
+
+parse_aggregate_upr_stats(AggUpr) ->
+    lists:append([
+                  extract_agg_upr_stats(<<"ep_upr_replica_">>,
+                                        [{K, V} || {<<"replication:", K/binary>>, V} <- AggUpr]),
+                  extract_agg_upr_stats(<<"ep_upr_xdcr_">>,
+                                        [{K, V} || {<<"xdcr:", K/binary>>, V} <- AggUpr]),
+                  extract_agg_upr_stats(<<"ep_upr_views_">>,
+                                        [{K, V} || {<<"view-engine:", K/binary>>, V} <- AggUpr]),
+                  extract_agg_upr_stats(<<"ep_upr_total_">>,
+                                        [{K, V} || {<<":total:", K/binary>>, V} <- AggUpr])]).
 
 maybe_adjust_data_size(DataSize, DiskSize, MinFileSize) ->
     case DiskSize < MinFileSize of
@@ -413,6 +436,11 @@ parse_tapagg_stats(TS, TapStats, LastTS, LastTapCounters) ->
     parse_stats_raw(TS, parse_aggregate_tap_stats(TapStats),
                     LastTapCounters, LastTS,
                     [?TAP_STAT_GAUGES], [?TAP_STAT_COUNTERS]).
+
+parse_upragg_stats(TS, UprStats, LastTS, LastUprCounters) ->
+    parse_stats_raw(TS, parse_aggregate_upr_stats(UprStats),
+                    LastUprCounters, LastTS,
+                    [?UPR_STAT_GAUGES], [?UPR_STAT_COUNTERS]).
 
 parse_timing_range(Rest) ->
     {Begin, End} = misc:split_binary_at_char(Rest, $,),
