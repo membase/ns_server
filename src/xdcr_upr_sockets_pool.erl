@@ -47,7 +47,7 @@ do_connect(Bucket) ->
             case mc_client_binary:select_bucket(Socket, Bucket) of
                 ok ->
                     Random = couch_uuids:random(),
-                    Name = <<"upr-", (list_to_binary(Bucket))/binary, "-", Random/binary>>,
+                    Name = <<"xdcr:", (list_to_binary(Bucket))/binary, "-", Random/binary>>,
                     case upr_commands:open_connection(Socket, binary_to_list(Name), producer) of
                         ok ->
                             case upr_commands:setup_flow_control(Socket, ?XDCR_UPR_BUFFER_SIZE) of

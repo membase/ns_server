@@ -103,7 +103,7 @@ handle_request(?UPR_STREAM_END, _Header, _Body,
                              subscribers = []}.
 
 get_connection_name(Bucket, Node) ->
-    "ns_server:xdcr:" ++ atom_to_list(Node) ++ ":" ++ Bucket.
+    "xdcr:notifier:" ++ atom_to_list(Node) ++ ":" ++ Bucket.
 
 get_partition(Partition, Partitions) ->
     case lists:keyfind(Partition, #partition.partition, Partitions) of
