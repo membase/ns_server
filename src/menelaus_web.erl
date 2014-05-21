@@ -3240,14 +3240,6 @@ serve_streaming_short_bucket_info(_PoolId, BucketName, Req) ->
               {just_write, {write, V}}
       end, Req, undefined).
 
-handle_set_recovery_type(Req) ->
-    case cluster_compat_mode:is_cluster_30() of
-        true ->
-            do_handle_set_recovery_type(Req);
-        false ->
-            reply_not_found(Req)
-    end.
-
 decode_recovery_type("delta") ->
     delta;
 decode_recovery_type("full") ->
@@ -3255,7 +3247,7 @@ decode_recovery_type("full") ->
 decode_recovery_type(_) ->
     undefined.
 
-do_handle_set_recovery_type(Req) ->
+handle_set_recovery_type(Req) ->
     Params = Req:parse_post(),
     NodeStr = proplists:get_value("otpNode", Params),
 
@@ -3282,6 +3274,13 @@ do_handle_set_recovery_type(Req) ->
                         [{otpNode, OtpNodeErrorMsg}];
                     _ ->
                         []
+                end,
+
+                case cluster_compat_mode:is_cluster_30() orelse Type =/= delta of
+                    true ->
+                        [];
+                    false ->
+                        [{'_', <<"This mixed-versions cluster (pre-3.0) cannot support delta recovery">>}]
                 end]),
 
     case Errors of
