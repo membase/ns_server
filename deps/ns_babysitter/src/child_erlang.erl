@@ -45,6 +45,9 @@ open_port_args() ->
                                 MCS ->
                                     MCS
                             end,
+                  %% somehow r14b04 doesn't understand it if the value is
+                  %% passed as a separate argument
+                  "+e102400",
                   "-setcookie", "nocookie",
                   "-kernel", "inet_dist_listen_min", "21100", "inet_dist_listen_max", "21299",
                   "error_logger", "false",
