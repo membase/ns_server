@@ -1693,30 +1693,32 @@
           </div>
         </div>
 
-          <div id="js_documents" class="documents" style="display:none">
-            <div class="doc_header">
-              <div class="wrap">
-                <select id="docs_buckets_select"></select> &gt; <a id="bread_crump_doc">Documents</a>
-              </div>
-              <div class="items_per_list_wrap">
-                  <select>
-                    <option value="5">5</option>
-                    <option value="10">10</option>
-                    <option value="20">20</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                  </select>
-              </div>
-              <div class="ic_prev_next">
-                <a class="arr_prev dynamic_disabled"></a>
-                <a class="arr_next dynamic_disabled"></a>
-              </div>
-              <div class="docs_info">
-                Current page: <span class="docs_crnt_pg">1</span>
-              </div>
+        <div id="js_documents" class="documents" style="display:none">
+          <div class="doc_header">
+            <div class="wrap">
+              <select id="docs_buckets_select"></select> &gt; <a id="bread_crump_doc">Documents</a>
             </div>
+            <div class="items_per_list_wrap">
+                <select>
+                  <option value="5">5</option>
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
+            </div>
+            <div class="ic_prev_next">
+              <a class="arr_prev dynamic_disabled"></a>
+              <a class="arr_next dynamic_disabled"></a>
+            </div>
+            <div class="docs_info">
+              Current page: <span class="docs_crnt_pg">1</span>
+            </div>
+          </div>
 
-            <div id="documents_details" style="display:none;" class="shadow_box documents_details">
+          <div id="documents_details" style="display:none;" class="documents_details">
+            <div class="warning_message documents_notice"></div>
+            <div class="shadow_box">
               <div class="header_2 servers_header">
                 <div class="docs_title ellipsis"></div>
                 <div class="editing_ctrls when-roadmin-hide-me">
@@ -1725,12 +1727,14 @@
                   <a class="btn_1 btn_save dynamic_disabled" id="doc_save"><span>Save</span></a>
                   <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
                 </div>
-                <div class="ellipsis documents_notice"></div>
               </div>
               <textarea id="json_doc" spellcheck="false" cols="20" rows="11"></textarea>
             </div>
+          </div>
 
-            <div id="documents_list" class="shadow_box">
+          <div id="documents_list">
+            <div class="warning_message documents_notice"></div>
+            <div class="shadow_box">
               <div class="header_2 servers_header">
                 <div class="docs_title"></div>
                 <div class="editing_ctrls">
@@ -1744,7 +1748,6 @@
                   <a class="btn_1 btn_create dynamic_disabled when-roadmin-avoid-me"><span>Create Document</span></a>
                   <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
                 </div>
-                <div class="ellipsis documents_notice"></div>
               </div>
 
               <div id="documents_list_container">Documents</div>
@@ -1795,6 +1798,7 @@
               </script>
             </div>
           </div>
+        </div>
 
         <div id="js_coming" class="coming" style="display:none">
           <h1>UI error encountered. This content does not exist yet.</h1>

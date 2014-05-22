@@ -263,6 +263,9 @@ var DocumentsSection = {
     var itemsPerList = $('select', itemsPerListWrap);
     var filterBtn = $('.filters_container', documents);
 
+    allDocsEditingNotice.hide();
+    editingNotice.hide();
+
     itemsPerList.selectBox();
 
     function jsonCodeEditorOnChange(doc) {
@@ -340,8 +343,13 @@ var DocumentsSection = {
 
     function showDocumetsListErrorState(error) {
       var message = error ? buildErrorMessage(error) : '';
-      allDocsEditingNotice.text(message);
-      allDocsEditingNotice.attr('title', JSON.stringify(message));
+      if (message) {
+        allDocsEditingNotice.text(message);
+        allDocsEditingNotice.attr('title', JSON.stringify(message));
+        allDocsEditingNotice.show();
+      } else {
+        allDocsEditingNotice.hide();
+      }
       if (error) {
         self.documentsPageNumberCell.setValue(0);
       }
@@ -380,7 +388,6 @@ var DocumentsSection = {
       editingNotice.toggle(!!notice);
       editingNotice.text(text);
       editingNotice.attr('title', text);
-      currenDocCont.toggleClass('dynamic_notice_on', !!notice);
     }
 
     var documentSpinner;

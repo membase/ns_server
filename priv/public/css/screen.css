@@ -1250,8 +1250,7 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 ul.tabs.dev-subset-switcher {padding-top:3px;padding-bottom:3px;padding-left:12px;}
 
 .docs_title {float:left;}
-.documents_details .docs_title {margin-right:10px;width: 650px;}
-.documents_details.dynamic_notice_on .docs_title {max-width: 200px; width: auto;}
+.documents_details .docs_title {margin-right:10px; width: 650px;}
 
 input[type=number].size {width:4em;}
 
