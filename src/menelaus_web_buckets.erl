@@ -47,7 +47,8 @@
          handle_cancel_view_compaction/4,
          handle_ddocs_list/3,
          handle_set_ddoc_update_min_changes/4,
-         handle_local_random_key/3]).
+         handle_local_random_key/3,
+         build_bucket_capabilities/1]).
 
 -import(menelaus_util,
         [reply/2,
@@ -294,9 +295,19 @@ build_bucket_capabilities(BucketConfig) ->
     Caps =
         case ns_bucket:bucket_type(BucketConfig) of
             membase ->
-                [touch, couchapi];
+                case cluster_compat_mode:is_cluster_30() of
+                    true ->
+                        [cbhello, datatype, touch, couchapi, cccp];
+                    _ ->
+                        [touch, couchapi]
+                end;
             memcached ->
-                []
+                case cluster_compat_mode:is_cluster_30() of
+                    true ->
+                        [cbhello];
+                    _ ->
+                        []
+                end
         end,
 
     [{bucketCapabilitiesVer, ''},

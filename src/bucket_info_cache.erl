@@ -57,6 +57,9 @@ cleaner_loop({{node, _, memcached}, _Value}, State) ->
 cleaner_loop({{node, _, moxi}, _Value}, State) ->
     submit_full_reset(),
     State;
+cleaner_loop({cluster_compat_version, _Value}, State) ->
+    submit_full_reset(),
+    State;
 cleaner_loop(_, Cleaner) ->
     Cleaner.
 
@@ -126,14 +129,16 @@ do_compute_bucket_info(Bucket, Config) ->
 
     BucketBin = list_to_binary(Bucket),
 
+    Caps = menelaus_web_buckets:build_bucket_capabilities(BucketConfig),
+
     MaybeVBMap = case lists:keyfind(type, 1, BucketConfig) of
                      {_, memcached} ->
-                         [{bucketCapabilities, []}];
+                         Caps;
                      _ ->
                          {struct, VBMap} = ns_bucket:json_map_with_full_config(?LOCALHOST_MARKER_STRING, BucketConfig, Config),
-                         [{bucketCapabilities, [touch, couchapi]},
-                          {ddocs, {[{uri, <<"/pools/default/buckets/", BucketBin/binary, "/ddocs">>}]}},
-                          {vBucketServerMap, {VBMap}}]
+                         [{ddocs, {[{uri, <<"/pools/default/buckets/", BucketBin/binary, "/ddocs">>}]}},
+                          {vBucketServerMap, {VBMap}}
+                         | Caps]
                  end,
 
     J = {[{rev, vclock:count_changes(BucketVC)},
@@ -143,8 +148,8 @@ do_compute_bucket_info(Bucket, Config) ->
           {nodes, NIs},
           {nodesExt, NEIs},
           {nodeLocator, ns_bucket:node_locator(BucketConfig)},
-          {uuid, UUID},
-          {bucketCapabilitiesVer, ''} | MaybeVBMap]},
+          {uuid, UUID}
+          | MaybeVBMap]},
     ejson:encode(J).
 
 compute_bucket_info(Bucket) ->
