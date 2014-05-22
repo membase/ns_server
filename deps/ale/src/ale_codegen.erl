@@ -59,14 +59,12 @@ definitions(LoggerName, LoggerLogLevel, Formatter, Sinks) ->
 
 sync_definitions(Sinks) ->
     Syncs =
-        [io_lib:format("{~p, gen_server:call(~p, sync, infinity)}",
-                       [SinkName, SinkId])
-         || {SinkName, SinkId, _, _} <- Sinks],
+        [io_lib:format("ok = gen_server:call(~p, sync, infinity),\n", [SinkId])
+         || {_, SinkId, _, _} <- Sinks],
 
     ["sync() -> ",
-     "[",
-     ale_utils:intersperse(",", Syncs),
-     "].\n"].
+     Syncs,
+     "ok.\n"].
 
 loglevel_definitions(LoggerName, LoggerLogLevel, LogLevel, Formatter, Sinks) ->
     {Preformatted, Raw} =
