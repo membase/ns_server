@@ -258,13 +258,18 @@ function hideAuthForm() {
   $(document.body).removeClass('auth');
 }
 
+function showFailedMessage(text) {
+  $('#auth_failed_message .al_text').text(text);
+  $('#auth_failed_message').show();
+}
+
 function loginFormSubmit() {
   var login = $('#login_form [name=login]').val();
   var password = $('#login_form [name=password]').val();
   var spinner = overlayWithSpinner('#login_form', false);
   $('#auth_dialog .alert_red').hide();
   $('#login_form').addClass('noform');
-  DAL.performLogin(login, password, function (status) {
+  DAL.performLogin(login, password, function (status, xhr) {
     spinner.remove();
     $('#login_form').removeClass('noform');
 
@@ -275,7 +280,7 @@ function loginFormSubmit() {
       return;
     }
 
-    $('#auth_failed_message').show();
+    showFailedMessage(IOCenter.isNotFound(xhr) ? 'Login failed. Try again.' : 'Lost connection to the server.');
   });
   return false;
 }

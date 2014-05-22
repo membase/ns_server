@@ -247,7 +247,7 @@ var DAL = {
 
     function loginCB(data, status) {
       if (status != 'success') {
-        return callback(status);
+        return callback(status, data);
       }
       if (!DAL.tryNoAuthLogin()) {
         // this should be impossible
