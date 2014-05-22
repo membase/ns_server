@@ -320,14 +320,14 @@ var StatsModel = {};
   var specificStatsInfo = Cell.compute(function (v) {
     var statName = v(statsStatName);
     if (!statName) {
-      return {url: null, statName: null, desc: null};
+      return {url: null, statName: null, desc: null, isBytes: null};
     }
     var mapping = v.need(nameToStatInfoCell);
     if (!mapping[statName]) {
-      return {url: null, statName: null, desc: null};
+      return {url: null, statName: null, desc: null, isBytes: null};
     }
     return {url: mapping[statName].specificStatsURL,
-            statName: statName, desc: mapping[statName].desc};
+            statName: statName, desc: mapping[statName].desc, isBytes: mapping[statName].isBytes};
   }).name("specificStatsInfo");
 
   var effectiveSpecificStatName = self.effectiveSpecificStatName = Cell.compute(function (v) {
@@ -458,12 +458,12 @@ var StatsModel = {};
   var visibleStatsDescCell = self.visibleStatsDescCell = Cell.compute(function (v) {
     if (v.need(displayingSpecificStatsCell)) {
       var nodes = v.need(specificStatsNodesCell);
-      var statsDesc = v.need(specificStatDescriptionCell);
+      var specStatsInfo = v.need(specificStatsInfo);
       return {thisISSpecificStats: true,
               blocks: [{blockName: "Specific Stats", hideThis: true,
                         stats: _.map(nodes, function (hostname) {
                           return {title: ViewHelpers.maybeStripPort(hostname, nodes),
-                                  name: hostname, desc: statsDesc};
+                                  name: hostname, desc: specStatsInfo.desc, isBytes: specStatsInfo.isBytes};
                         })}]};
     } else {
       return v.need(rawStatsDescCell);
