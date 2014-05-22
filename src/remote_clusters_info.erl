@@ -1204,14 +1204,18 @@ remote_bucket_with_bucket(BucketObject, OrigRemoteCluster,
                         expect_nested_string(
                           <<"saslPassword">>, BucketObject, <<"bucket password">>,
                           fun (Password) ->
+                                  Caps = proplists:get_value(<<"bucketCapabilities">>, BucketObject),
+                                  true = is_list(Caps),
                                   remote_bucket_with_server_map(VBucketServerMap, BucketUUID,
                                                                 RemoteCluster, RemoteNodes, McdToCouchDict,
-                                                                Password, Version)
+                                                                Password, Version, Caps)
                           end)
                 end)
       end).
 
-remote_bucket_with_server_map(ServerMap, BucketUUID, RemoteCluster, RemoteNodes, McdToCouchDict, Password, Version) ->
+remote_bucket_with_server_map(ServerMap, BucketUUID,
+                              RemoteCluster, RemoteNodes, McdToCouchDict,
+                              Password, Version, Caps) ->
     with_remote_nodes_mapped_server_list(
       RemoteNodes, ServerMap,
       fun (ServerList, RemoteServers) ->
@@ -1232,6 +1236,7 @@ remote_bucket_with_server_map(ServerMap, BucketUUID, RemoteCluster, RemoteNodes,
                                            cluster_uuid=ClusterUUID,
                                            cluster_cert=ClusterCert,
                                            server_list_nodes=RemoteServers,
+                                           bucket_caps = Caps,
                                            raw_vbucket_map=dict:from_list(misc:enumerate(VBucketMap, 0)),
                                            capi_vbucket_map=CAPIVBucketMapDict,
                                            cluster_version=Version},
