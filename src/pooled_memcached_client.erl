@@ -4,6 +4,7 @@
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
 -include("couch_db.hrl").
+-include("xdcr_upr_streamer.hrl").
 
 -export([find_missing_revs/3, bulk_set_metas/3]).
 
@@ -77,14 +78,17 @@ fetch_missing_revs_loop(S, [{_Key, Rev} = Pair | Rest], Acc, AccErr) ->
     end.
 
 
-bulk_set_metas(_DestRef, _Vb, [] = _DocsList) ->
+bulk_set_metas(_DestRef, _Vb, [] = _MutationsList) ->
     {ok, []};
-bulk_set_metas(DestRef, Vb, DocsList) ->
-    execute(DestRef, fun bulk_set_metas_inner/3, [Vb, DocsList]).
+bulk_set_metas(DestRef, Vb, MutationsList) ->
+    execute(DestRef, fun bulk_set_metas_inner/3, [Vb, MutationsList]).
 
-bulk_set_metas_inner(S, Vb, DocsList) ->
-    RecverPid = erlang:spawn_link(erlang, apply, [fun bulk_set_metas_recv_replies/3, [S, self(), length(DocsList)]]),
-    Data = [encode_single_set_meta(Vb, Doc) || Doc <- DocsList],
+bulk_set_metas_inner(S, Vb, MutationsList) ->
+    RecverPid =
+        erlang:spawn_link(
+          erlang, apply,
+          [fun bulk_set_metas_recv_replies/3, [S, self(), length(MutationsList)]]),
+    Data = [encode_single_set_meta(Vb, M) || M <- MutationsList],
     send_batch(S, Data),
     receive
         {RecverPid, RV} ->
@@ -92,8 +96,8 @@ bulk_set_metas_inner(S, Vb, DocsList) ->
     end.
 
 encode_single_set_meta(Vb,
-                       #doc{id = Key, rev = Rev, deleted = Deleted,
-                            body = DocValue}) ->
+                       #upr_mutation{id = Key, rev = Rev, deleted = Deleted,
+                                     body = DocValue}) ->
     {OpCode, Data} = case Deleted of
                          true ->
                              {?CMD_DEL_WITH_META, <<>>};

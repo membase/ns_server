@@ -116,11 +116,7 @@ local_process_batch([Mutation | Rest], Cp,
                                deleted = Deleted},
                 maybe_flush_docs_capi(Target, Batch, Doc, BatchSize, BatchItems);
             _ ->
-                Doc = #doc{id = Key,
-                       rev = Rev,
-                       deleted = Deleted,
-                       body = Body},
-                maybe_flush_docs_xmem(XMemLoc, Batch, Doc, BatchSize, BatchItems)
+                maybe_flush_docs_xmem(XMemLoc, Batch, Mutation, BatchSize, BatchItems)
         end,
     local_process_batch(Rest, Cp, Target, Batch2, BatchSize, BatchItems, XMemLoc, Acc + DataFlushed).
 
@@ -287,25 +283,25 @@ flush_docs_capi(Target, DocsList) ->
 %% ================================================= %%
 %% ========= FLUSHING DOCS USING XMEM ============== %%
 %% ================================================= %%
--spec flush_docs_xmem(term(), list()) -> ok | {failed_write, term()}.
+-spec flush_docs_xmem(term(), [#upr_mutation{}]) -> ok | {failed_write, term()}.
 flush_docs_xmem(_XMemLoc, []) ->
     ok;
-flush_docs_xmem(XMemLoc, DocsList) ->
+flush_docs_xmem(XMemLoc, MutationsList) ->
     TimeStart = now(),
-    RV = xdc_vbucket_rep_xmem:flush_docs(XMemLoc, DocsList),
+    RV = xdc_vbucket_rep_xmem:flush_docs(XMemLoc, MutationsList),
     TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
-    AvgLatency = TimeSpent div length(DocsList),
+    AvgLatency = TimeSpent div length(MutationsList),
 
     case RV of
         {ok, NumDocRepd, NumDocRejected} ->
             ?xdcr_trace("xmem-flushed the following docs: ~s",
-                        [[<<"\"", I/binary, "\",">> || #doc{id = I} <- DocsList]]),
+                        [[<<"\"", I/binary, "\",">> || #upr_mutation{id = I} <- MutationsList]]),
 
             ?xdcr_trace("out of total ~p docs, "
                         "# of docs accepted by remote: ~p "
                         "# of docs rejected by remote: ~p"
                         "(time spent in ms: ~p, avg latency per doc in ms: ~p)",
-                        [length(DocsList),
+                        [length(MutationsList),
                          NumDocRepd, NumDocRejected,
                          TimeSpent, AvgLatency]),
             ok;
@@ -313,18 +309,16 @@ flush_docs_xmem(XMemLoc, DocsList) ->
             {failed_write, Msg}
     end.
 
--spec maybe_flush_docs_xmem(any(), #batch{}, #doc{},
+-spec maybe_flush_docs_xmem(any(), #batch{}, #upr_mutation{},
                             integer(), integer()) -> {#batch{}, integer()}.
-maybe_flush_docs_xmem(XMemLoc, Batch, Doc0, BatchSize, BatchItems) ->
+maybe_flush_docs_xmem(XMemLoc, Batch, Mutation, BatchSize, BatchItems) ->
     #batch{docs = DocAcc, size = SizeAcc, items = ItemsAcc} = Batch,
 
-    %% uncompress it if necessary
-    Doc =  couch_doc:with_uncompressed_body(Doc0),
-    DocSize = case Doc#doc.deleted of
+    DocSize = case Mutation#upr_mutation.deleted of
                   true ->
                       0;
                   _ ->
-                      iolist_size(Doc#doc.body)
+                      iolist_size(Mutation#upr_mutation.body)
               end,
 
     SizeAcc2 = SizeAcc + DocSize,
@@ -336,10 +330,10 @@ maybe_flush_docs_xmem(XMemLoc, Batch, Doc0, BatchSize, BatchItems) ->
             ?xdcr_trace("Worker flushing ~b docs, batch of ~p bytes "
                         "(batch size ~b, batch items ~b)",
                         [ItemsAcc2, SizeAcc2, BatchSize, BatchItems]),
-            DocsList = [Doc| DocAcc],
+            DocsList = [Mutation | DocAcc],
             ok = flush_docs_xmem(XMemLoc, DocsList),
             %% data flushed, return empty batch and size of # of docs flushed
             {#batch{}, SizeAcc2};
         _ ->            %% no data flushed in this turn, return the new batch
-            {#batch{docs = [Doc | DocAcc], size = SizeAcc2, items = ItemsAcc2}, 0}
+            {#batch{docs = [Mutation | DocAcc], size = SizeAcc2, items = ItemsAcc2}, 0}
     end.

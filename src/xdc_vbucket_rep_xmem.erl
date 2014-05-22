@@ -19,6 +19,7 @@
 -export([make_location/2, find_missing/2, flush_docs/2]).
 
 -include("xdc_replicator.hrl").
+-include("xdcr_upr_streamer.hrl").
 
 make_location(#xdc_rep_xmem_remote{ip = Host,
                                    port = Port,
@@ -57,12 +58,12 @@ find_missing(#xdc_xmem_location{vb = VBucket, mcd_loc = McdDst}, IdRevs) ->
 
 flush_docs(#xdc_xmem_location{vb = VBucket,
                               mcd_loc = McdDst,
-                              connection_timeout = ConnectionTimeout}, DocsList) ->
+                              connection_timeout = ConnectionTimeout}, MutationsList) ->
     TimeStart = now(),
 
-    {ok, Statuses} = pooled_memcached_client:bulk_set_metas(McdDst, VBucket, DocsList),
+    {ok, Statuses} = pooled_memcached_client:bulk_set_metas(McdDst, VBucket, MutationsList),
 
-    {ErrorDict, ErrorKeysDict} = categorise_statuses_to_dict(Statuses, DocsList),
+    {ErrorDict, ErrorKeysDict} = categorise_statuses_to_dict(Statuses, MutationsList),
     Flushed = lookup_error_dict(success, ErrorDict),
     Enoent = lookup_error_dict(key_enoent, ErrorDict),
     Eexist = lookup_error_dict(key_eexists, ErrorDict),
@@ -80,12 +81,12 @@ flush_docs(#xdc_xmem_location{vb = VBucket,
         true ->
             ?xdcr_error("[xmem_worker for vb ~p]: update ~p docs takes too long to finish!"
                         "(total time spent: ~p secs, default connection time out: ~p secs)",
-                        [VBucket, length(DocsList), TimeSpentSecs, ConnectionTimeout]);
+                        [VBucket, length(MutationsList), TimeSpentSecs, ConnectionTimeout]);
         _ ->
             ok
     end,
 
-    DocsListSize = length(DocsList),
+    DocsListSize = length(MutationsList),
     case (Flushed + Eexist) == DocsListSize of
         true ->
             {ok, Flushed, Eexist};
@@ -109,12 +110,12 @@ flush_docs(#xdc_xmem_location{vb = VBucket,
 
 %% internal
 -spec categorise_statuses_to_dict(list(), list()) -> {dict(), dict()}.
-categorise_statuses_to_dict(Statuses, DocsList) ->
+categorise_statuses_to_dict(Statuses, MutationsList) ->
     {ErrorDict, ErrorKeys, _}
         = lists:foldl(fun(Status, {DictAcc, ErrorKeyAcc, CountAcc}) ->
                               CountAcc2 = CountAcc + 1,
-                              Doc = lists:nth(CountAcc2, DocsList),
-                              Key = Doc#doc.id,
+                              M = lists:nth(CountAcc2, MutationsList),
+                              Key = M#upr_mutation.id,
                               {DictAcc2, ErrorKeyAcc2}  =
                                   case Status of
                                       success ->
