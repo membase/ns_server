@@ -56,6 +56,7 @@ transform({call, Line, {remote, _Line1,
            [LoggerExpr]})
   when Fn =:= sync;
        Fn =:= get_effective_loglevel ->
+
     {call, Line,
      {remote, Line,
       logger_impl_expr(LoggerExpr), {atom, Line, Fn}}, []};
@@ -91,7 +92,7 @@ transform({call, Line, {remote, Line1,
                         extended_loglevel_expr(LogLevelExpr)
                 end,
 
-            emit_dynamic_logger_call(LoggerExpr, LogLevelExpr1, Args,
+            emit_dynamic_logger_call(LoggerExpr, LogLevelExpr1, transform(Args),
                                      Line, Line1, Line2, Line3, Line4);
         false ->
             Stmt
@@ -105,7 +106,7 @@ transform({call, Line, {remote, Line1,
         true ->
             case Arg of
                 {atom, Line4, LoggerName} ->
-                    emit_logger_call(LoggerName, LogLevel, Args,
+                    emit_logger_call(LoggerName, LogLevel, transform(Args),
                                      Line, Line1, Line2, Line3, Line4);
                 _Other ->
                     Stmt
