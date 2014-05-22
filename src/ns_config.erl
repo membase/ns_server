@@ -996,6 +996,18 @@ merge_kv_pairs(RemoteKVList, LocalKVList, UUID) ->
                              {{node, node(), uuid},
                               increment_vclock(LV, merge_vclocks(RV, LV), UUID)}
                      end;
+                 ({_, [{'_vclock', _} | ?DELETED_MARKER]}, {{node, Node, _}, _LV} = LP) when Node =:= node() ->
+                     %% we don't allow incoming replications of
+                     %% deletions of our per-node keys. This is
+                     %% because they (deletions) are done as part of
+                     %% ejecting us from cluster in which case we'll
+                     %% detect that (via nodes_wanted) and leave
+                     %% (resetting config).
+                     %%
+                     %% Allowing deletions in this case might break
+                     %% things in this node preventing it from leaving
+                     %% cluster.
+                     LP;
                  (RP, LP) ->
                      merge_values(RP, LP, UUID)
              end,
