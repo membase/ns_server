@@ -26,7 +26,15 @@
          set_sink_loglevel/3, get_sink_loglevel/2,
          sync_sink/1,
          sync_all_sinks/0,
-         get_effective_loglevel/1, is_loglevel_enabled/2]).
+
+         %% counterparts of pseudo-functions handled by ale_transform
+         get_effective_loglevel/1, is_loglevel_enabled/2, sync/1,
+
+         debug/2, debug/3, xdebug/4, xdebug/5,
+         info/2, info/3, xinfo/4, xinfo/5,
+         warn/2, warn/3, xwarn/4, xwarn/5,
+         error/2, error/3, xerror/4, xerror/5,
+         critical/2, critical/3, xcritical/4, xcritical/5]).
 
 
 %% gen_server callbacks
@@ -111,6 +119,75 @@ get_effective_loglevel(LoggerName) ->
 
 is_loglevel_enabled(LoggerName, LogLevel) ->
     call_logger_impl(LoggerName, is_loglevel_enabled, [LogLevel]).
+
+
+debug(LoggerName, Msg) ->
+    xdebug(LoggerName, undefined, Msg, []).
+
+debug(LoggerName, Fmt, Args) ->
+    xdebug(LoggerName, undefined, Fmt, Args).
+
+xdebug(LoggerName, Data, Fmt, Args) ->
+    xdebug(LoggerName, {unknown, unknown, -1}, Data, Fmt, Args).
+
+xdebug(LoggerName, {M, F, L}, Data, Fmt, Args) ->
+    call_logger_impl(LoggerName, xdebug, [M, F, L, Data, Fmt, Args]).
+
+
+info(LoggerName, Msg) ->
+    xinfo(LoggerName, undefined, Msg, []).
+
+info(LoggerName, Fmt, Args) ->
+    xinfo(LoggerName, undefined, Fmt, Args).
+
+xinfo(LoggerName, Data, Fmt, Args) ->
+    xinfo(LoggerName, {unknown, unknown, -1}, Data, Fmt, Args).
+
+xinfo(LoggerName, {M, F, L}, Data, Fmt, Args) ->
+    call_logger_impl(LoggerName, xinfo, [M, F, L, Data, Fmt, Args]).
+
+
+warn(LoggerName, Msg) ->
+    xwarn(LoggerName, undefined, Msg, []).
+
+warn(LoggerName, Fmt, Args) ->
+    xwarn(LoggerName, undefined, Fmt, Args).
+
+xwarn(LoggerName, Data, Fmt, Args) ->
+    xwarn(LoggerName, {unknown, unknown, -1}, Data, Fmt, Args).
+
+xwarn(LoggerName, {M, F, L}, Data, Fmt, Args) ->
+    call_logger_impl(LoggerName, xwarn, [M, F, L, Data, Fmt, Args]).
+
+
+error(LoggerName, Msg) ->
+    xerror(LoggerName, undefined, Msg, []).
+
+error(LoggerName, Fmt, Args) ->
+    xerror(LoggerName, undefined, Fmt, Args).
+
+xerror(LoggerName, Data, Fmt, Args) ->
+    xerror(LoggerName, {unknown, unknown, -1}, Data, Fmt, Args).
+
+xerror(LoggerName, {M, F, L}, Data, Fmt, Args) ->
+    call_logger_impl(LoggerName, xerror, [M, F, L, Data, Fmt, Args]).
+
+
+critical(LoggerName, Msg) ->
+    xcritical(LoggerName, undefined, Msg, []).
+
+critical(LoggerName, Fmt, Args) ->
+    xcritical(LoggerName, undefined, Fmt, Args).
+
+xcritical(LoggerName, Data, Fmt, Args) ->
+    xcritical(LoggerName, {unknown, unknown, -1}, Data, Fmt, Args).
+
+xcritical(LoggerName, {M, F, L}, Data, Fmt, Args) ->
+    call_logger_impl(LoggerName, xcritical, [M, F, L, Data, Fmt, Args]).
+
+
+sync(LoggerName) ->
+    call_logger_impl(LoggerName, sync, []).
 
 %% Callbacks
 init([]) ->
