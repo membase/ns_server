@@ -62,7 +62,7 @@ queue_fetch_loop(WorkerID, Target, Cp, ChangesManager,
             Start = now(),
             {ok, DataRepd} = local_process_batch(
                                MissingDocInfoList, Cp, Target,
-                               #batch{}, BatchSize, BatchItems, XMemLoc),
+                               #batch{}, BatchSize, BatchItems, XMemLoc, 0),
 
             %% the latency returned should be coupled with batch size, for example,
             %% if we send N docs in a batch, the latency returned to stats should be the latency
@@ -91,18 +91,17 @@ queue_fetch_loop(WorkerID, Target, Cp, ChangesManager,
     end.
 
 
-local_process_batch([], _Cp, _Tgt, #batch{docs = []}, _BatchSize, _BatchItems, _XMemLoc) ->
-    {ok, 0};
+local_process_batch([], _Cp, _Tgt, #batch{docs = []}, _BatchSize, _BatchItems, _XMemLoc, Acc) ->
+    {ok, Acc};
 local_process_batch([], Cp, #httpdb{} = Target,
-                    #batch{docs = Docs, size = Size}, BatchSize, BatchItems, XMemLoc) ->
+                    #batch{docs = Docs, size = Size}, BatchSize, BatchItems, XMemLoc, Acc) ->
     ?xdcr_trace("worker process flushing a batch docs of total size ~p bytes",
                 [Size]),
     ok = flush_docs_helper(Target, Docs, XMemLoc),
-    {ok, DataRepd1} = local_process_batch([], Cp, Target, #batch{}, BatchSize, BatchItems, XMemLoc),
-    {ok, DataRepd1 + Size};
+    local_process_batch([], Cp, Target, #batch{}, BatchSize, BatchItems, XMemLoc, Acc + Size);
 
 local_process_batch([Mutation | Rest], Cp,
-                    #httpdb{} = Target, Batch, BatchSize, BatchItems, XMemLoc) ->
+                    #httpdb{} = Target, Batch, BatchSize, BatchItems, XMemLoc, Acc) ->
     #upr_mutation{id = Key,
                   local_seq = KeySeq,
                   rev = {RevA, _RevB} = Rev,
@@ -123,9 +122,7 @@ local_process_batch([Mutation | Rest], Cp,
                        body = Body},
                 maybe_flush_docs_xmem(XMemLoc, Batch, Doc, BatchSize, BatchItems)
         end,
-    {ok, DataFlushed2} = local_process_batch(Rest, Cp, Target, Batch2, BatchSize, BatchItems, XMemLoc),
-    %% return total data flushed
-    {ok, DataFlushed + DataFlushed2}.
+    local_process_batch(Rest, Cp, Target, Batch2, BatchSize, BatchItems, XMemLoc, Acc + DataFlushed).
 
 
 -spec flush_docs_helper(any(), list(), term()) -> ok.
