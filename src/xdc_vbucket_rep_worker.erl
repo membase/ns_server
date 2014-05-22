@@ -115,7 +115,7 @@ local_process_batch([Mutation | Rest], Cp,
                 Doc0 = couch_doc:from_binary(Key, Body, true),
                 Doc = Doc0#doc{rev = Rev,
                                deleted = Deleted},
-                maybe_flush_docs_capi(Target, Batch, Doc, 0, BatchSize, BatchItems);
+                maybe_flush_docs_capi(Target, Batch, Doc, BatchSize, BatchItems);
             _ ->
                 Doc = #doc{id = Key,
                        rev = Rev,
@@ -250,8 +250,8 @@ find_missing_helper(Target, BigDocIdRevs, XMemLoc) ->
 %% ========= FLUSHING DOCS USING CAPI ============== %%
 %% ================================================= %%
 -spec maybe_flush_docs_capi(#httpdb{}, #batch{}, #doc{},
-                            integer(), integer(), integer()) -> {#batch{}, integer()}.
-maybe_flush_docs_capi(#httpdb{} = Target, Batch, Doc, DataFlushed, BatchSize, BatchItems) ->
+                            integer(), integer()) -> {#batch{}, integer()}.
+maybe_flush_docs_capi(#httpdb{} = Target, Batch, Doc, BatchSize, BatchItems) ->
     #batch{docs = DocAcc, size = SizeAcc, items = ItemsAcc} = Batch,
     JsonDoc = couch_doc:to_json_base64(Doc),
 
@@ -264,9 +264,9 @@ maybe_flush_docs_capi(#httpdb{} = Target, Batch, Doc, DataFlushed, BatchSize, Ba
                         [ItemsAcc2, SizeAcc2, BatchSize, BatchItems]),
             flush_docs_capi(Target, [JsonDoc | DocAcc]),
             %% data flushed, return empty batch and size of data flushed
-            {#batch{}, SizeAcc2 + DataFlushed};
+            {#batch{}, SizeAcc2};
         false ->            %% no data flushed in this turn, return the new batch
-            {#batch{docs = [JsonDoc | DocAcc], size = SizeAcc2, items = ItemsAcc2}, DataFlushed}
+            {#batch{docs = [JsonDoc | DocAcc], size = SizeAcc2, items = ItemsAcc2}, 0}
     end.
 
 -spec flush_docs_capi(#httpdb{}, list()) -> ok | {failed_write, term()}.
