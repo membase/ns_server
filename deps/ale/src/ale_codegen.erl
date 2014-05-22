@@ -45,17 +45,20 @@ header(LoggerName) ->
 
 exports() ->
     ["-export([sync/0]).\n",
+     "-export([get_effective_loglevel/0]).\n",
+     "-export([is_loglevel_enabled/1]).\n",
      [io_lib:format("-export([~p/4, ~p/5, x~p/5, x~p/6]).~n",
                     [LogLevel, LogLevel, LogLevel, LogLevel]) ||
          LogLevel <- ?LOGLEVELS]].
 
 definitions(LoggerName, LoggerLogLevel, Formatter, Sinks) ->
-    sync_definitions(Sinks) ++
-        lists:map(
-          fun (LogLevel) ->
-                  loglevel_definitions(LoggerName, LoggerLogLevel,
-                                       LogLevel, Formatter, Sinks)
-          end, ?LOGLEVELS).
+    [sync_definitions(Sinks),
+     loglevel_related_definitions(LoggerLogLevel, Sinks),
+     lists:map(
+       fun (LogLevel) ->
+               loglevel_definitions(LoggerName, LoggerLogLevel,
+                                    LogLevel, Formatter, Sinks)
+       end, ?LOGLEVELS)].
 
 sync_definitions(Sinks) ->
     Syncs =
@@ -65,6 +68,18 @@ sync_definitions(Sinks) ->
     ["sync() -> ",
      Syncs,
      "ok.\n"].
+
+loglevel_related_definitions(LoggerLogLevel, Sinks) ->
+    SinkLogLevels = [L || {_, _, L, _} <- Sinks],
+    EffectiveLogLevel = ale_utils:effective_loglevel(LoggerLogLevel, SinkLogLevels),
+
+    [io_lib:format("get_effective_loglevel() -> ~p.\n\n", [EffectiveLogLevel]),
+     [ale_utils:intersperse(
+        ";\n",
+        [io_lib:format("is_loglevel_enabled(~p) -> ~p",
+                       [L, ale_utils:loglevel_enabled(L, EffectiveLogLevel)])
+         || L <- ?LOGLEVELS]),
+      ".\n\n"]].
 
 loglevel_definitions(LoggerName, LoggerLogLevel, LogLevel, Formatter, Sinks) ->
     {Preformatted, Raw} =

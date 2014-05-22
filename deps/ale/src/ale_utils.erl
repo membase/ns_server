@@ -30,6 +30,26 @@ loglevel_to_integer(debug)    -> 4.
 loglevel_enabled(LogLevel, ThresholdLogLevel) ->
     loglevel_to_integer(LogLevel) =< loglevel_to_integer(ThresholdLogLevel).
 
+-spec effective_loglevel(loglevel(), [loglevel()]) -> loglevel().
+effective_loglevel(LoggerLogLevel, SinkLogLevels) ->
+    lists:foldl(
+      fun (SinkLogLevel, Acc) ->
+              EffectiveLogLevel =
+                  case loglevel_enabled(SinkLogLevel, LoggerLogLevel) of
+                      true ->
+                          SinkLogLevel;
+                      false ->
+                          LoggerLogLevel
+                  end,
+
+              case loglevel_enabled(EffectiveLogLevel, Acc) of
+                  true ->
+                      Acc;
+                  false ->
+                      EffectiveLogLevel
+              end
+      end, critical, SinkLogLevels).
+
 -spec assemble_info(atom(), loglevel(), atom(), atom(), integer(), any()) ->
                            #log_info{}.
 assemble_info(Logger, LogLevel, Module, Function, Line, UserData) ->

@@ -25,7 +25,8 @@
          set_loglevel/2, get_loglevel/1,
          set_sink_loglevel/3, get_sink_loglevel/2,
          sync_sink/1,
-         sync_all_sinks/0]).
+         sync_all_sinks/0,
+         get_effective_loglevel/1, is_loglevel_enabled/2]).
 
 
 %% gen_server callbacks
@@ -104,6 +105,12 @@ sync_all_sinks() ->
     Sinks = gen_server:call(?MODULE, get_sink_names, infinity),
     [sync_sink(SinkName) || SinkName <- Sinks],
     ok.
+
+get_effective_loglevel(LoggerName) ->
+    call_logger_impl(LoggerName, get_effective_loglevel, []).
+
+is_loglevel_enabled(LoggerName, LogLevel) ->
+    call_logger_impl(LoggerName, is_loglevel_enabled, [LogLevel]).
 
 %% Callbacks
 init([]) ->
@@ -403,3 +410,13 @@ compile(#state{sinks=SinkTypes,
 
 is_valid_loglevel(LogLevel) ->
     lists:member(LogLevel, ?LOGLEVELS).
+
+-compile({inline, [call_logger_impl/3]}).
+call_logger_impl(LoggerName, F, Args) ->
+    Module = ale_codegen:logger_impl(LoggerName),
+    try
+        erlang:apply(Module, F, Args)
+    catch
+        error:undef ->
+            throw(unknown_logger)
+    end.

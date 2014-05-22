@@ -52,11 +52,26 @@ walk_body(Acc, [H|T]) ->
 
 transform({call, Line, {remote, _Line1,
                         {atom, _Line2, ale},
-                        {atom, _Line3, sync}},
-           [LoggerExpr]}) ->
+                        {atom, _Line3, Fn}},
+           [LoggerExpr]})
+  when Fn =:= sync;
+       Fn =:= get_effective_loglevel ->
     {call, Line,
      {remote, Line,
-      logger_impl_expr(LoggerExpr), {atom, Line, sync}}, []};
+      logger_impl_expr(LoggerExpr), {atom, Line, Fn}}, []};
+transform({call, Line, {remote, _Line1,
+                        {atom, _Line2, ale},
+                        {atom, _Line3, Fn}},
+           [LoggerExpr, LogLevelExpr]} = Stmt)
+  when Fn =:= is_loglevel_enabled ->
+    case valid_loglevel_expr(LogLevelExpr) of
+        true ->
+            {call, Line,
+             {remote, Line,
+              logger_impl_expr(LoggerExpr), {atom, Line, Fn}}, [LogLevelExpr]};
+        false ->
+            Stmt
+    end;
 transform({call, Line, {remote, Line1,
                         {atom, Line2, ale},
                         {atom, Line3, LogFn}},
