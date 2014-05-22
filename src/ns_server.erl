@@ -84,14 +84,11 @@ restart() ->
     {ok, {_, ChildSpecs}} = ns_server_cluster_sup:init([]),
     %% we don't restart dist manager in order to avoid shutting
     %% down/restarting net_kernel
-    DontRestart = [dist_manager, cb_couch_sup, ns_server_sup],
+    DontRestart = [dist_manager, cb_couch_sup],
     ChildIds = [element(1, Spec) || Spec <- ChildSpecs] -- DontRestart,
-    ns_server_cluster_sup:stop_cluster(),
     [supervisor:terminate_child(ns_server_cluster_sup, Id) || Id <- lists:reverse(ChildIds)],
     cb_couch_sup:restart_couch(),
-    [supervisor:restart_child(ns_server_cluster_sup, Id) || Id <- ChildIds],
-
-    ns_server_cluster_sup:start_cluster().
+    [supervisor:restart_child(ns_server_cluster_sup, Id) || Id <- ChildIds].
 
 get_config_path() ->
     case application:get_env(ns_server, config_path) of
