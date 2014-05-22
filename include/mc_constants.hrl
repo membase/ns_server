@@ -31,6 +31,8 @@
 -define(APPENDQ,     16#19).
 -define(PREPENDQ,    16#1a).
 
+-define(CMD_HELLO,   16#1f).
+
 -define(CMD_SASL_LIST_MECHS, 16#20).
 -define(CMD_SASL_AUTH,       16#21).
 -define(CMD_SASL_STEP,       16#22).
@@ -187,3 +189,12 @@
 %% window update is officially called "buffer acknowledgement"
 -define(UPR_WINDOW_UPDATE,         16#5d).
 -define(UPR_CONTROL,               16#5e).
+
+%% datatypes enum
+-define(MC_DATATYPE_RAW_BYTES,      16#00).
+-define(MC_DATATYPE_JSON,           16#01).
+-define(MC_DATATYPE_COMPRESSED,     16#02).
+-define(MC_DATATYPE_COMPRESSED_JSON,16#03).
+
+%% hello features
+-define(MC_FEATURE_DATATYPE, 16#01).
