@@ -121,7 +121,7 @@ local_process_batch([Mutation | Rest], Cp,
                        rev = Rev,
                        deleted = Deleted,
                        body = Body},
-                maybe_flush_docs_xmem(XMemLoc, Batch, Doc, 0, BatchSize, BatchItems)
+                maybe_flush_docs_xmem(XMemLoc, Batch, Doc, BatchSize, BatchItems)
         end,
     {ok, DataFlushed2} = local_process_batch(Rest, Cp, Target, Batch2, BatchSize, BatchItems, XMemLoc),
     %% return total data flushed
@@ -317,8 +317,8 @@ flush_docs_xmem(XMemLoc, DocsList) ->
     end.
 
 -spec maybe_flush_docs_xmem(any(), #batch{}, #doc{},
-                            integer(), integer(), integer()) -> {#batch{}, integer()}.
-maybe_flush_docs_xmem(XMemLoc, Batch, Doc0, DocsFlushed, BatchSize, BatchItems) ->
+                            integer(), integer()) -> {#batch{}, integer()}.
+maybe_flush_docs_xmem(XMemLoc, Batch, Doc0, BatchSize, BatchItems) ->
     #batch{docs = DocAcc, size = SizeAcc, items = ItemsAcc} = Batch,
 
     %% uncompress it if necessary
@@ -342,7 +342,7 @@ maybe_flush_docs_xmem(XMemLoc, Batch, Doc0, DocsFlushed, BatchSize, BatchItems) 
             DocsList = [Doc| DocAcc],
             ok = flush_docs_xmem(XMemLoc, DocsList),
             %% data flushed, return empty batch and size of # of docs flushed
-            {#batch{}, DocsFlushed + SizeAcc2};
+            {#batch{}, SizeAcc2};
         _ ->            %% no data flushed in this turn, return the new batch
-            {#batch{docs = [Doc | DocAcc], size = SizeAcc2, items = ItemsAcc2}, DocsFlushed}
+            {#batch{docs = [Doc | DocAcc], size = SizeAcc2, items = ItemsAcc2}, 0}
     end.
