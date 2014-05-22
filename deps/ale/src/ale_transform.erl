@@ -35,7 +35,7 @@ walk_ast(Acc, [{attribute, _, module, Module}=H|T]) ->
 walk_ast(Acc, [{function, Line, Name, Arity, Clauses}|T]) ->
     put(function, Name),
     walk_ast([{function, Line, Name, Arity,
-                walk_clauses([], Clauses)}|Acc], T);
+               walk_clauses([], Clauses)}|Acc], T);
 walk_ast(Acc, [H|T]) ->
     walk_ast([H|Acc], T).
 

@@ -111,8 +111,7 @@ generic_loglevel(LoggerName, LogLevel, Formatter, Preformatted, Raw) ->
              io_lib:format(
                "Info = ale_utils:assemble_info(~s, ~p, M, F, L, Data),"
                "UserMsg = io_lib:format(Fmt, Args),",
-               [LoggerName, LogLevel])
-             ;
+               [LoggerName, LogLevel]);
          false ->
              ""
      end,
