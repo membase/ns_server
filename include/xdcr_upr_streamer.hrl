@@ -14,6 +14,7 @@
                        local_seq,
                        rev,
                        body,
+                       datatype,
                        deleted,
                        snapshot_start_seq,
                        snapshot_end_seq
