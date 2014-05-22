@@ -109,30 +109,24 @@ local_process_batch([Mutation | Rest], Cp,
                   body = Body,
                   deleted = Deleted} = Mutation,
     ?xdcr_trace("added mutation ~s@~B (rev = ~B-..) to outgoing batch", [Key, KeySeq, RevA]),
-    Doc = case XMemLoc of
-              nil ->
-                  Doc0 = couch_doc:from_binary(Key, Body, true),
-                  Doc0#doc{rev = Rev,
-                           deleted = Deleted};
-              _ ->
-                  #doc{id = Key,
+    {Batch2, DataFlushed} =
+        case XMemLoc of
+            nil ->
+                Doc0 = couch_doc:from_binary(Key, Body, true),
+                Doc = Doc0#doc{rev = Rev,
+                               deleted = Deleted},
+                maybe_flush_docs_capi(Target, Batch, Doc, 0, BatchSize, BatchItems);
+            _ ->
+                Doc = #doc{id = Key,
                        rev = Rev,
                        deleted = Deleted,
-                       body = Body}
-          end,
-    {Batch2, DataFlushed} = maybe_flush_docs(Target, Batch, Doc, 0, BatchSize, BatchItems, XMemLoc),
+                       body = Body},
+                maybe_flush_docs_xmem(XMemLoc, Batch, Doc, 0, BatchSize, BatchItems)
+        end,
     {ok, DataFlushed2} = local_process_batch(Rest, Cp, Target, Batch2, BatchSize, BatchItems, XMemLoc),
     %% return total data flushed
     {ok, DataFlushed + DataFlushed2}.
 
-
--spec maybe_flush_docs(#httpdb{}, #batch{}, #doc{}, integer(), integer(), integer(), term()) ->
-                              {#batch{}, integer()}.
-maybe_flush_docs(#httpdb{} = Target, Batch, Doc, DataFlushed, BatchSize, BatchItems, nil) ->
-    maybe_flush_docs_capi(Target, Batch, Doc, DataFlushed, BatchSize, BatchItems);
-
-maybe_flush_docs(#httpdb{} = _Target, Batch, Doc, DataFlushed, BatchSize, BatchItems, XMemLoc) ->
-    maybe_flush_docs_xmem(XMemLoc, Batch, Doc, DataFlushed, BatchSize, BatchItems).
 
 -spec flush_docs_helper(any(), list(), term()) -> ok.
 flush_docs_helper(Target, DocsList, nil) ->
