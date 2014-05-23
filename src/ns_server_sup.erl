@@ -54,6 +54,9 @@ child_specs() ->
       {ns_server, setup_babysitter_node, []},
       transient, brutal_kill, worker, []},
 
+     {ns_disksup, {ns_disksup, start_link, []},
+      {permanent, 4}, 1000, worker, []},
+
      {diag_handler_worker, {work_queue, start_link, [diag_handler_worker]},
       permanent, 1000, worker, []},
 
@@ -202,4 +205,4 @@ child_specs() ->
 
      {set_view_update_daemon, {set_view_update_daemon, start_link, []},
       permanent, 1000, worker, [set_view_update_daemon]}
-].
+    ].

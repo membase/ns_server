@@ -15,7 +15,7 @@
 %%
 -module(ns_info).
 
--export([version/0, version/1, runtime/0, basic_info/0, get_disk_data/0]).
+-export([version/0, version/1, runtime/0, basic_info/0]).
 
 version() ->
     lists:map(fun({App, _, Version}) -> {App, Version} end,
@@ -54,7 +54,7 @@ basic_info() ->
       {system_arch, system_arch()},
       {wall_clock, trunc(WallClockMSecs / 1000)},
       {memory_data, memsup:get_memory_data()},
-      {disk_data, ns_info:get_disk_data()}]}.
+      {disk_data, ns_disksup:get_disk_data()}]}.
 
 system_arch() ->
     case erlang:system_info(system_architecture) of
@@ -64,36 +64,3 @@ system_arch() ->
             "windows";
         X -> X
     end.
-
-%% @doc recent versions of OS X include inode data that breaks
-%% erlang disksup:get_disk_data, so this wrapper function corrects
-%% it till it is fixed in erlang vm. We include -i as a precaution
-%% though it is now the default (and the cause of this issue).
-get_disk_data() ->
-    case os:type() of
-        {unix, darwin} ->
-            case os:version() of
-                {Major, _Minor, _Rel} when Major >= 12 ->
-                    Result = os:cmd("/bin/df -i -k -t ufs,hfs"),
-                    osx_get_disk_data(string:tokens(Result,"\n"));
-                _DefaultV ->
-                    application:start(os_mon),
-                    disksup:get_disk_data()
-            end;
-        _DefaultT ->
-            application:start(os_mon),
-            disksup:get_disk_data()
-    end.
-
-osx_get_disk_data([]) ->
-    [];
-
-osx_get_disk_data(Lines) ->
-    [Line | Rest] = Lines,
-    case io_lib:fread("~s~d~d~d~d%~d~d~d%~s", Line) of
-        {ok, [_FS, KB, _Used, _Avail, Cap, _IUsed, _IFree, _ICap, MntOn], _Others} ->
-            [{MntOn, KB, Cap} | osx_get_disk_data(Rest)];
-        _Default ->
-            osx_get_disk_data(Rest)
-    end.
-

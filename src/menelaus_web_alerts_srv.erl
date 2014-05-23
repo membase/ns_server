@@ -233,7 +233,7 @@ check(ip, Opaque, _History, _Stats) ->
 %% @doc check the capacity of the drives used for db and log files
 check(disk, Opaque, _History, _Stats) ->
 
-    Mounts = ns_info:get_disk_data(),
+    Mounts = ns_disksup:get_disk_data(),
 
     UsedPre = [ns_storage_conf:this_node_dbdir(),
                ns_storage_conf:this_node_ixdir(),
