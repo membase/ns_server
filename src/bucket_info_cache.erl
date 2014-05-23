@@ -93,7 +93,10 @@ build_services(Node, Config) ->
                  SslPort ->
                      [{kvSSL, SslPort} | CapiPorts]
              end,
-    [{moxi, ns_config:search_node_prop(Node, Config, moxi, port)},
+    {value, CapiPort} = ns_config:search_node(Node, Config, capi_port),
+    [{mgmt, misc:node_rest_port(Config, Node)},
+     {capi, CapiPort},
+     {moxi, ns_config:search_node_prop(Node, Config, moxi, port)},
      {kv, ns_config:search_node_prop(Node, Config, memcached, port)}
      | PortsD].
 
