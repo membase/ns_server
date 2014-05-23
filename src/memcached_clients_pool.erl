@@ -4,8 +4,7 @@
 -include("remote_clusters_info.hrl").
 
 -export([start_link/0,
-         make_loc_by_remote_cluster_info_ref/3,
-         make_loc/4]).
+         make_loc/5]).
 
 -export([take_socket/1, put_socket/2]).
 
@@ -15,22 +14,29 @@ start_link() ->
                {pool_size, 200}],
     ns_connection_pool:start_link(Options).
 
-take_socket({?MODULE, {Host, Port, Bucket, Auth}}) ->
-    case ns_connection_pool:maybe_take_socket(memcached_clients_pool, {Host, Port, Bucket}) of
+take_socket({?MODULE, {Host, Port, Bucket, Auth, Enchancer}}) ->
+    case ns_connection_pool:maybe_take_socket(memcached_clients_pool,
+                                              {Host, Port, Bucket, Enchancer}) of
         {ok, _S} = Ok ->
             Ok;
         no_socket ->
-            establish_connection(Host, Port, Bucket, Auth)
+            establish_connection(Host, Port, Bucket, Auth, Enchancer)
     end.
 
-establish_connection(Host, Port, Bucket, Password) ->
+establish_connection(Host, Port, Bucket, Password, Enchancer) ->
     case gen_tcp:connect(Host, Port, [binary, {packet, 0}, {nodelay, true}, {active, false}]) of
         {ok, S} ->
             case mc_client_binary:auth(S, {<<"PLAIN">>,
                                            {list_to_binary(Bucket),
                                             list_to_binary(Password)}}) of
                 ok ->
-                    {ok, S};
+                    case Enchancer of
+                        [] ->
+                            {ok, S};
+                        _ ->
+                            ok = Enchancer:enchance_socket(S),
+                            {ok, S}
+                    end;
                 {memcached_error, _, _} = McdError ->
                     {error, {auth_failed, McdError}}
             end;
@@ -38,18 +44,9 @@ establish_connection(Host, Port, Bucket, Password) ->
             Error
     end.
 
-put_socket(Socket, {?MODULE, {Host, Port, Bucket, _Auth}}) ->
-    ns_connection_pool:put_socket(memcached_clients_pool, {Host, Port, Bucket}, Socket).
+put_socket(Socket, {?MODULE, {Host, Port, Bucket, _Auth, Enchancer}}) ->
+    ns_connection_pool:put_socket(memcached_clients_pool,
+                                  {Host, Port, Bucket, Enchancer}, Socket).
 
-make_loc_by_remote_cluster_info_ref(TargetRef, Through, VBucket) ->
-    case remote_clusters_info:get_memcached_vbucket_info_by_ref(TargetRef, Through, VBucket) of
-        {ok, #remote_node{host = HostString, memcached_port = Port}, BucketInfo} ->
-            {ok, {_ClusterUUID, BucketName}} = remote_clusters_info:parse_remote_bucket_reference(TargetRef),
-            Password = binary_to_list(BucketInfo#remote_bucket.password),
-            {ok, {?MODULE, {list_to_binary(HostString), Port, BucketName, Password}}};
-        Error ->
-            Error
-    end.
-
-make_loc(Host, Port, Bucket, Password) ->
-    {?MODULE, {Host, Port, Bucket, Password}}.
+make_loc(Host, Port, Bucket, Password, Enchancer) ->
+    {?MODULE, {Host, Port, Bucket, Password, Enchancer}}.
