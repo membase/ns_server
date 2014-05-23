@@ -50,9 +50,9 @@ walk_body(Acc, []) ->
 walk_body(Acc, [H|T]) ->
     walk_body([transform(H) | Acc], T).
 
-transform({call, Line, {remote, _Line1,
-                        {atom, _Line2, ale},
-                        {atom, _Line3, Fn}},
+transform({call, Line, {remote, _,
+                        {atom, _, ale},
+                        {atom, _, Fn}},
            [LoggerExpr]})
   when Fn =:= sync;
        Fn =:= get_effective_loglevel ->
@@ -60,9 +60,9 @@ transform({call, Line, {remote, _Line1,
     {call, Line,
      {remote, Line,
       logger_impl_expr(LoggerExpr), {atom, Line, Fn}}, []};
-transform({call, Line, {remote, _Line1,
-                        {atom, _Line2, ale},
-                        {atom, _Line3, Fn}},
+transform({call, Line, {remote, _,
+                        {atom, _, ale},
+                        {atom, _, Fn}},
            [LoggerExpr, LogLevelExpr]} = Stmt)
   when Fn =:= is_loglevel_enabled ->
     case valid_loglevel_expr(LogLevelExpr) of
@@ -73,9 +73,9 @@ transform({call, Line, {remote, _Line1,
         false ->
             Stmt
     end;
-transform({call, Line, {remote, Line1,
-                        {atom, Line2, ale},
-                        {atom, Line3, LogFn}},
+transform({call, Line, {remote, _,
+                        {atom, _, ale},
+                        {atom, _, LogFn}},
            [LoggerExpr, LogLevelExpr | Args]} = Stmt)
   when LogFn =:= log; LogFn =:= xlog ->
     Extended = LogFn =:= xlog,
@@ -83,7 +83,6 @@ transform({call, Line, {remote, Line1,
     case valid_loglevel_expr(LogLevelExpr) andalso
         valid_args(Extended, Args) of
         true ->
-            Line4 = get_line(LoggerExpr),
             LogLevelExpr1 =
                 case Extended of
                     false ->
@@ -92,22 +91,22 @@ transform({call, Line, {remote, Line1,
                         extended_loglevel_expr(LogLevelExpr)
                 end,
 
-            emit_dynamic_logger_call(LoggerExpr, LogLevelExpr1, transform(Args),
-                                     Line, Line1, Line2, Line3, Line4);
+            emit_dynamic_logger_call(LoggerExpr, LogLevelExpr1,
+                                     transform(Args), Line);
         false ->
             Stmt
     end;
-transform({call, Line, {remote, Line1,
-                        {atom, Line2, ale},
-                        {atom, Line3, LogLevel}},
+transform({call, Line, {remote, _,
+                        {atom, _, ale},
+                        {atom, _, LogLevel}},
            [Arg | Args]} = Stmt) ->
     case valid_loglevel(LogLevel) andalso
         valid_args(extended_loglevel(LogLevel), Args) of
         true ->
             case Arg of
-                {atom, Line4, LoggerName} ->
-                    emit_logger_call(LoggerName, LogLevel, transform(Args),
-                                     Line, Line1, Line2, Line3, Line4);
+                {atom, _, LoggerName} ->
+                    emit_logger_call(LoggerName, LogLevel,
+                                     transform(Args), Line);
                 _Other ->
                     Stmt
             end;
@@ -121,37 +120,37 @@ transform(Stmt) when is_list(Stmt) ->
 transform(Stmt) ->
     Stmt.
 
-do_emit_logger_call(LoggerName, LogLevelExpr, Args,
-                    CallLine, RemoteLine, ModLine, ArgLine) ->
-    {call, CallLine,
-     {remote, RemoteLine,
-      {atom, ModLine, ale_codegen:logger_impl(LoggerName)},
+do_emit_logger_call(LoggerName, LogLevelExpr, Args, Line) ->
+    ArgsLine = get_line(LogLevelExpr),
+
+    {call, Line,
+     {remote, Line,
+      {atom, Line, ale_codegen:logger_impl(LoggerName)},
       LogLevelExpr},
-     [{atom, ArgLine, get(module)},
-      {atom, ArgLine, get(function)},
-      {integer, ArgLine, CallLine} |
+     [{atom, ArgsLine, get(module)},
+      {atom, ArgsLine, get(function)},
+      {integer, ArgsLine, Line} |
       Args]}.
 
-emit_logger_call(LoggerName, LogLevel, Args,
-                 CallLine, RemoteLine, ModLine, FnLine, ArgLine) ->
-    do_emit_logger_call(LoggerName, {atom, FnLine, LogLevel}, Args,
-                        CallLine, RemoteLine, ModLine, ArgLine).
+emit_logger_call(LoggerName, LogLevel, Args, Line) ->
+    do_emit_logger_call(LoggerName, {atom, Line, LogLevel}, Args, Line).
 
-emit_dynamic_logger_call(LoggerNameExpr, LogLevelExpr, Args,
-                         CallLine, RemoteLine, ModLine, FnLine, ArgLine) ->
-    {call, CallLine,
-     {remote, RemoteLine,
-      {atom, ModLine, erlang},
-      {atom, FnLine, apply}},
+emit_dynamic_logger_call(LoggerNameExpr, LogLevelExpr, Args, Line) ->
+    ArgsLine = get_line(LogLevelExpr),
+
+    {call, Line,
+     {remote, Line,
+      {atom, Line, erlang},
+      {atom, Line, apply}},
      [logger_impl_expr(LoggerNameExpr),
       LogLevelExpr,
-      {cons, ArgLine,
-       {atom, ArgLine, get(module)},
-       {cons, ArgLine,
-        {atom, ArgLine, get(function)},
-        {cons, ArgLine,
-         {integer, ArgLine, CallLine},
-         list_to_ast_list(ArgLine, Args)}}}]}.
+      {cons, ArgsLine,
+       {atom, ArgsLine, get(module)},
+       {cons, ArgsLine,
+        {atom, ArgsLine, get(function)},
+        {cons, ArgsLine,
+         {integer, ArgsLine, Line},
+         list_to_ast_list(ArgsLine, Args)}}}]}.
 
 list_to_ast_list(Line, []) ->
     {nil, Line};
