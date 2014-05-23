@@ -29,7 +29,7 @@
 
 -export([test/0]).
 
--export([encode_req/1, encode_res/1, decode_packet/1]).
+-export([encode_req/1, encode_res/1, decode_packet/1, read_message_loop/2]).
 
 encode_req(#upr_packet{opcode = Opcode,
                        datatype = DT,
