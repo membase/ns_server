@@ -54,7 +54,7 @@ transform({call, Line, {remote, _Line1,
                         {atom, _Line2, ale},
                         {atom, _Line3, sync}},
            [LoggerExpr]} = Stmt) ->
-    R = case valid_logger_expr(LoggerExpr) of
+    case valid_logger_expr(LoggerExpr) of
         true ->
             Module =
                 case LoggerExpr of
@@ -71,8 +71,7 @@ transform({call, Line, {remote, _Line1,
              {remote, Line, Module, {atom, Line, sync}}, []};
         false ->
             Stmt
-        end,
-    R;
+    end;
 transform({call, Line, {remote, Line1,
                         {atom, Line2, ale},
                         {atom, Line3, LogFn}},
