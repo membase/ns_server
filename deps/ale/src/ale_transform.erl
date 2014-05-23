@@ -56,19 +56,9 @@ transform({call, Line, {remote, _Line1,
            [LoggerExpr]} = Stmt) ->
     case valid_logger_expr(LoggerExpr) of
         true ->
-            Module =
-                case LoggerExpr of
-                    {atom, L, LoggerAtom} ->
-                        {atom, L, ale_codegen:logger_impl(LoggerAtom)};
-                    _ ->
-                        {call, Line,
-                         {remote, Line,
-                          {atom, Line, ale_codegen},
-                          {atom, Line, logger_impl}},
-                         [LoggerExpr]}
-                end,
             {call, Line,
-             {remote, Line, Module, {atom, Line, sync}}, []};
+             {remote, Line,
+              logger_impl_expr(LoggerExpr), {atom, Line, sync}}, []};
         false ->
             Stmt
     end;
@@ -137,13 +127,13 @@ emit_logger_call(LoggerName, LogLevel, Args,
     do_emit_logger_call(LoggerName, {atom, FnLine, LogLevel}, Args,
                         CallLine, RemoteLine, ModLine, ArgLine).
 
-do_emit_dynamic_logger_call(LoggerModule, LogLevelExpr, Args,
-                            CallLine, RemoteLine, ModLine, FnLine, ArgLine) ->
+emit_dynamic_logger_call(LoggerNameExpr, LogLevelExpr, Args,
+                         CallLine, RemoteLine, ModLine, FnLine, ArgLine) ->
     {call, CallLine,
      {remote, RemoteLine,
       {atom, ModLine, erlang},
       {atom, FnLine, apply}},
-     [LoggerModule,
+     [logger_impl_expr(LoggerNameExpr),
       LogLevelExpr,
       {cons, ArgLine,
        {atom, ArgLine, get(module)},
@@ -152,27 +142,6 @@ do_emit_dynamic_logger_call(LoggerModule, LogLevelExpr, Args,
         {cons, ArgLine,
          {integer, ArgLine, CallLine},
          list_to_ast_list(ArgLine, Args)}}}]}.
-
-emit_dynamic_logger_call(LoggerNameExpr, LogLevelExpr, Args,
-                         CallLine, RemoteLine,
-                         ModLine, FnLine, ArgLine) ->
-    case LoggerNameExpr of
-        {atom, _, LoggerNameAtom} ->
-            ModAtom = {atom, ModLine, ale_codegen:logger_impl(LoggerNameAtom)},
-            do_emit_dynamic_logger_call(ModAtom, LogLevelExpr, Args,
-                                        CallLine, RemoteLine,
-                                        ModLine, FnLine, ArgLine);
-        _Other ->
-            CallLoggerImpl =
-                {call, ArgLine,
-                 {remote, ArgLine,
-                  {atom, ArgLine, ale_codegen},
-                  {atom, ArgLine, logger_impl}},
-                 [LoggerNameExpr]},
-            do_emit_dynamic_logger_call(CallLoggerImpl, LogLevelExpr, Args,
-                                        CallLine, RemoteLine,
-                                        ModLine, FnLine, ArgLine)
-    end.
 
 list_to_ast_list(Line, []) ->
     {nil, Line};
@@ -230,12 +199,8 @@ valid_logger_expr({call, _, _, _}) ->
 valid_logger_expr(_Other) ->
     false.
 
-get_line({atom, Line, _}) ->
-    Line;
-get_line({var, Line, _}) ->
-    Line;
-get_line({call, Line, _, _}) ->
-    Line.
+get_line(Expr) ->
+    element(2, Expr).
 
 valid_args(ExtendedCall, Args) ->
     N = length(Args),
@@ -245,4 +210,18 @@ valid_args(ExtendedCall, Args) ->
             N =:= 1 orelse N =:= 2;
         true ->
             N =:= 2 orelse N =:= 3
+    end.
+
+logger_impl_expr(LoggerExpr) ->
+    Line = get_line(LoggerExpr),
+
+    case LoggerExpr of
+        {atom, _, LoggerAtom} ->
+            {atom, Line, ale_codegen:logger_impl(LoggerAtom)};
+        _ ->
+            {call, Line,
+             {remote, Line,
+              {atom, Line, ale_codegen},
+              {atom, Line, logger_impl}},
+             [LoggerExpr]}
     end.
