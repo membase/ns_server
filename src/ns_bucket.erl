@@ -704,7 +704,7 @@ get_default_repl_type() ->
                 "upr" ->
                     upr;
                 _ ->
-                    tap
+                    upr
             end
     end.
 
