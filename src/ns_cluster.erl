@@ -386,8 +386,6 @@ check_host_connectivity(OtherHost) ->
     end.
 
 do_change_address(NewAddr, UserSupplied) ->
-    MyNode = node(),
-
     NewAddr1 =
         case UserSupplied of
             false ->
@@ -395,22 +393,17 @@ do_change_address(NewAddr, UserSupplied) ->
             true ->
                 NewAddr
         end,
-    case misc:node_name_host(MyNode) of
-        {_, NewAddr1} ->
-            %% Don't do anything if we already have the right address.
+
+    ?cluster_info("Change of address to ~p is requested.~n", [NewAddr1]),
+    case maybe_rename(NewAddr1, UserSupplied) of
+        not_renamed ->
             ok;
-        {_, _} ->
-            ?cluster_info("Decided to change address to ~p~n", [NewAddr1]),
-            case maybe_rename(NewAddr1, UserSupplied) of
-                not_renamed ->
-                    ok;
-                renamed ->
-                    ns_server_sup:node_name_changed(),
-                    ?cluster_info("Renamed node. New name is ~p.~n", [node()]),
-                    ok;
-                Other ->
-                    Other
-            end
+        renamed ->
+            ns_server_sup:node_name_changed(),
+            ?cluster_info("Renamed node. New name is ~p.~n", [node()]),
+            ok;
+        Other ->
+            Other
     end.
 
 maybe_rename(NewAddr, UserSupplied) ->

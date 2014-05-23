@@ -239,22 +239,29 @@ bringup(MyIP, UserSupplied) ->
 teardown() ->
     ok = net_kernel:stop().
 
-do_adjust_address(MyIP, UserSupplied, State) ->
-    Cookie = erlang:get_cookie(),
-    teardown(),
-    ?log_info("Adjusted IP to ~p", [MyIP]),
-    NewState = bringup(MyIP, UserSupplied),
-    if
-        NewState#state.self_started ->
-            ?log_info("Re-setting cookie ~p", [{Cookie, node()}]),
-            erlang:set_cookie(node(), Cookie);
-        true -> ok
-    end,
+do_adjust_address(MyIP, UserSupplied, State = #state{my_ip = MyOldIP}) ->
+    {NewState, Status} =
+        case MyOldIP of
+            MyIP ->
+                {State#state{user_supplied = UserSupplied}, nothing};
+            _ ->
+                Cookie = erlang:get_cookie(),
+                teardown(),
+                ?log_info("Adjusted IP to ~p", [MyIP]),
+                NewState1 = bringup(MyIP, UserSupplied),
+                if
+                    NewState1#state.self_started ->
+                        ?log_info("Re-setting cookie ~p", [{Cookie, node()}]),
+                        erlang:set_cookie(node(), Cookie);
+                    true -> ok
+                end,
+                {NewState1, net_restarted}
+        end,
 
     case save_address_config(NewState, UserSupplied) of
         ok ->
             ?log_info("Persisted the address successfully"),
-            {reply, net_restarted, NewState};
+            {reply, Status, NewState};
         {error, Error} ->
             ?log_warning("Failed to persist the address: ~p", [Error]),
             {stop,
@@ -264,19 +271,19 @@ do_adjust_address(MyIP, UserSupplied, State) ->
     end.
 
 
-handle_call({adjust_my_address, _MyIP, false = _UserSupplied}, _From,
-            #state{self_started = true, my_ip = _MyOldIP, user_supplied = true} = State) ->
-    {reply, nothing, State};
-handle_call({adjust_my_address, MyIP, UserSupplied}, _From,
-            #state{self_started = true, my_ip = MyOldIP} = State) ->
-    case MyIP =:= MyOldIP of
-        true -> {reply, nothing, State};
-        false ->
-            do_adjust_address(MyIP, UserSupplied, State)
-    end;
 handle_call({adjust_my_address, _, _}, _From,
             #state{self_started = false} = State) ->
     {reply, not_self_started, State};
+handle_call({adjust_my_address, _MyIP, false = _UserSupplied}, _From,
+            #state{user_supplied = true} = State) ->
+    {reply, nothing, State};
+handle_call({adjust_my_address, MyOldIP, UserSupplied}, _From,
+            #state{my_ip = MyOldIP, user_supplied = UserSupplied} = State) ->
+    {reply, nothing, State};
+handle_call({adjust_my_address, MyIP, UserSupplied}, _From,
+            State) ->
+    do_adjust_address(MyIP, UserSupplied, State);
+
 handle_call(using_user_supplied_address, _From,
             #state{user_supplied = UserSupplied} = State) ->
     {reply, UserSupplied, State};
