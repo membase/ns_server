@@ -17,6 +17,7 @@
 /doc/API/_site
 /lib
 /logs
+/make.out
 /ns_server.plt
 /priv/public/js/all-images.js
 /priv/ui_tests/screenshots_output
