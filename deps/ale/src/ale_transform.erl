@@ -91,25 +91,18 @@ transform({call, Line, {remote, _,
                         extended_loglevel_expr(LogLevelExpr)
                 end,
 
-            emit_dynamic_logger_call(LoggerExpr, LogLevelExpr1,
-                                     transform(Args), Line);
+            emit_logger_call(LoggerExpr, LogLevelExpr1, transform(Args), Line);
         false ->
             Stmt
     end;
 transform({call, Line, {remote, _,
                         {atom, _, ale},
-                        {atom, _, LogLevel}},
-           [Arg | Args]} = Stmt) ->
+                        {atom, _, LogLevel} = LogLevelExpr},
+           [LoggerExpr | Args]} = Stmt) ->
     case valid_loglevel(LogLevel) andalso
         valid_args(extended_loglevel(LogLevel), Args) of
         true ->
-            case Arg of
-                {atom, _, LoggerName} ->
-                    emit_logger_call(LoggerName, LogLevel,
-                                     transform(Args), Line);
-                _Other ->
-                    Stmt
-            end;
+            emit_logger_call(LoggerExpr, LogLevelExpr, transform(Args), Line);
         false ->
             Stmt
     end;
@@ -120,42 +113,17 @@ transform(Stmt) when is_list(Stmt) ->
 transform(Stmt) ->
     Stmt.
 
-do_emit_logger_call(LoggerName, LogLevelExpr, Args, Line) ->
+emit_logger_call(LoggerNameExpr, LogLevelExpr, Args, Line) ->
     ArgsLine = get_line(LogLevelExpr),
 
     {call, Line,
      {remote, Line,
-      {atom, Line, ale_codegen:logger_impl(LoggerName)},
+      logger_impl_expr(LoggerNameExpr),
       LogLevelExpr},
      [{atom, ArgsLine, get(module)},
       {atom, ArgsLine, get(function)},
       {integer, ArgsLine, Line} |
       Args]}.
-
-emit_logger_call(LoggerName, LogLevel, Args, Line) ->
-    do_emit_logger_call(LoggerName, {atom, Line, LogLevel}, Args, Line).
-
-emit_dynamic_logger_call(LoggerNameExpr, LogLevelExpr, Args, Line) ->
-    ArgsLine = get_line(LogLevelExpr),
-
-    {call, Line,
-     {remote, Line,
-      {atom, Line, erlang},
-      {atom, Line, apply}},
-     [logger_impl_expr(LoggerNameExpr),
-      LogLevelExpr,
-      {cons, ArgsLine,
-       {atom, ArgsLine, get(module)},
-       {cons, ArgsLine,
-        {atom, ArgsLine, get(function)},
-        {cons, ArgsLine,
-         {integer, ArgsLine, Line},
-         list_to_ast_list(ArgsLine, Args)}}}]}.
-
-list_to_ast_list(Line, []) ->
-    {nil, Line};
-list_to_ast_list(Line, [H | T]) ->
-    {cons, Line, H, list_to_ast_list(Line, T)}.
 
 extended_loglevel_expr_rt(Line, Expr) ->
     {call, Line,
