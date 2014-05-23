@@ -177,12 +177,8 @@ valid_loglevel(LogLevel) ->
 
 valid_loglevel_expr({atom, _Line, LogLevel}) ->
     lists:member(LogLevel, ?LOGLEVELS);
-valid_loglevel_expr({var, _, _}) ->
-    true;
-valid_loglevel_expr({call, _, _, _}) ->
-    true;
 valid_loglevel_expr(_Other) ->
-    false.
+    true.
 
 get_line(Expr) ->
     element(2, Expr).
