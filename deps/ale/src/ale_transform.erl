@@ -53,15 +53,10 @@ walk_body(Acc, [H|T]) ->
 transform({call, Line, {remote, _Line1,
                         {atom, _Line2, ale},
                         {atom, _Line3, sync}},
-           [LoggerExpr]} = Stmt) ->
-    case valid_logger_expr(LoggerExpr) of
-        true ->
-            {call, Line,
-             {remote, Line,
-              logger_impl_expr(LoggerExpr), {atom, Line, sync}}, []};
-        false ->
-            Stmt
-    end;
+           [LoggerExpr]}) ->
+    {call, Line,
+     {remote, Line,
+      logger_impl_expr(LoggerExpr), {atom, Line, sync}}, []};
 transform({call, Line, {remote, Line1,
                         {atom, Line2, ale},
                         {atom, Line3, LogFn}},
@@ -69,8 +64,7 @@ transform({call, Line, {remote, Line1,
   when LogFn =:= log; LogFn =:= xlog ->
     Extended = LogFn =:= xlog,
 
-    case valid_logger_expr(LoggerExpr) andalso
-        valid_loglevel_expr(LogLevelExpr) andalso
+    case valid_loglevel_expr(LogLevelExpr) andalso
         valid_args(Extended, Args) of
         true ->
             Line4 = get_line(LoggerExpr),
@@ -188,15 +182,6 @@ valid_loglevel_expr({var, _, _}) ->
 valid_loglevel_expr({call, _, _, _}) ->
     true;
 valid_loglevel_expr(_Other) ->
-    false.
-
-valid_logger_expr({atom, _, _}) ->
-    true;
-valid_logger_expr({var, _, _}) ->
-    true;
-valid_logger_expr({call, _, _, _}) ->
-    true;
-valid_logger_expr(_Other) ->
     false.
 
 get_line(Expr) ->
