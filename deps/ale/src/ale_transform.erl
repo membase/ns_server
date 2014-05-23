@@ -15,6 +15,72 @@
 
 %% This module partially stolen from lager.
 
+
+%% This parse transform defines the following pseudo-functions.
+%%
+%% ale:sync(Logger)
+%%
+%% Ensures that all the log messages have reached all the sinks and
+%% have been processed.
+%%
+%%
+%% ale:get_effective_loglevel(Logger)
+%%
+%% Returns the least restricitve loglevel that would still result in
+%% something being logged to at least one of the logger's sinks.
+%%
+%%
+%% ale:is_loglevel_enabled(Logger, LogLevel)
+%%
+%% Returns true if logging a message with the `LogLevel` will be
+%% visible at least in one of the logger's sinks.
+%%
+%%
+%% ale:debug(Logger, Msg),
+%% ale:debug(Logger, Fmt, Args)
+%% ale:xdebug(Logger, UserData, Msg),
+%% ale:xdebug(Logger, UserData, Fmt, Args)
+%%
+%% ale:info(Logger, Msg),
+%% ale:info(Logger, Fmt, Args)
+%% ale:xinfo(Logger, UserData, Msg),
+%% ale:xinfo(Logger, UserData, Fmt, Args)
+%%
+%% ale:warn(Logger, Msg),
+%% ale:warn(Logger, Fmt, Args)
+%% ale:xwarn(Logger, UserData, Msg),
+%% ale:xwarn(Logger, UserData, Fmt, Args)
+%%
+%% ale:error(Logger, Msg),
+%% ale:error(Logger, Fmt, Args)
+%% ale:xerror(Logger, UserData, Msg),
+%% ale:xerror(Logger, UserData, Fmt, Args)
+%%
+%% ale:critical(Logger, Msg),
+%% ale:critical(Logger, Fmt, Args)
+%% ale:xcritical(Logger, UserData, Msg),
+%% ale:xcritical(Logger, UserData, Fmt, Args)
+%%
+%% Logs a message to a `Logger` with a specific log level. x* versions
+%% take an `UserData` argument that is passed as is to formatter and
+%% sinks.
+%%
+%%
+%% ale:log(Logger, LogLevel, Msg)
+%% ale:log(Logger, LogLevel, Fmt, Args)
+%% ale:xlog(Logger, LogLevel, UserData, Msg)
+%% ale:xlog(Logger, LogLevel, UserData, Fmt, Args)
+%%
+%% Generalized versions of logging pseudo-functions. The main
+%% difference is that `LogLevel` doesn't have to be known at compile
+%% time.
+%%
+%%
+%% In all the pseudo-functions above `Logger` argument can be an
+%% arbitrary expression. The case where actual expression is an atom
+%% known at compile-time optimized to call a module generated
+%% for the logger directly.
+
 -module(ale_transform).
 
 -include("ale.hrl").
