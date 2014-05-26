@@ -10,6 +10,40 @@ import re
 import platform
 import glob
 import socket
+import threading
+import optparse
+import atexit
+
+class AltExitC(object):
+    def __init__(self):
+        self.list = []
+        self.lock = threading.Lock()
+        atexit.register(self.at_exit_handler)
+
+    def register(self, f):
+        self.lock.acquire()
+        self.register_and_unlock(f)
+
+    def register_and_unlock(self, f):
+        try:
+            self.list.append(f)
+        finally:
+            self.lock.release()
+
+    def at_exit_handler(self):
+        self.lock.acquire()
+        self.list.reverse()
+        for f in self.list:
+            try:
+                f()
+            except:
+                pass
+
+    def exit(self, status):
+        self.at_exit_handler()
+        os._exit(status)
+
+AltExit = AltExitC()
 
 USAGE = """usage: %prog [options] output_file.zip
 
@@ -22,11 +56,12 @@ class TempFile(object):
     def __init__(self):
         fd, self.name = tempfile.mkstemp(text=True)
         self.fp = os.fdopen(fd, 'w+')
+        AltExit.register(self.finalize)
 
     def __getattr__(self, name):
         return getattr(self.__dict__['fp'], name)
 
-    def __del__(self):
+    def finalize(self):
         try:
             self.fp.close()
         except:
@@ -463,15 +498,21 @@ of utilites used by cbcollect_info'''
 
     sys.exit(0)
 
-def main():
-    from optparse import OptionParser
+def setup_stdin_watcher():
+    def _in_thread():
+        sys.stdin.readline()
+        AltExit.exit(2)
+    th = threading.Thread(target = _in_thread)
+    th.setDaemon(True)
+    th.start()
 
+def main():
     mydir = os.path.dirname(sys.argv[0])
     #(MB-8239)erl script fails in OSX as it is unable to find COUCHBASE_TOP -ravi
     if platform.system() == 'Darwin':
         os.environ["COUCHBASE_TOP"] = os.path.abspath(os.path.join(mydir, ".."))
 
-    parser = OptionParser(usage=USAGE)
+    parser = optparse.OptionParser(usage=USAGE)
     parser.add_option("-r", dest="root",
                       help="root directory - defaults to %s" % (mydir + "/.."),
                       default=os.path.abspath(os.path.join(mydir, "..")))
@@ -481,10 +522,16 @@ def main():
                       action="store_true", default=False)
     parser.add_option("-d", action="callback", callback=dump_utilities,
                       help="dump a list of commands that cbcollect_info needs")
+    parser.add_option("--watch-stdin", dest="watch_stdin",
+                      action="store_true", default=False,
+                      help=optparse.SUPPRESS_HELP)
     options, args = parser.parse_args()
 
     if len(args) != 1:
         parser.error("incorrect number of arguments")
+
+    if options.watch_stdin:
+        setup_stdin_watcher()
 
     zip_filename = args[0]
     if zip_filename[-4:] != '.zip':
