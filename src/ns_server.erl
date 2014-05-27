@@ -172,7 +172,7 @@ init_logging() ->
     ok = start_disk_sink(xdcr_trace, ?XDCR_TRACE_LOG_FILENAME),
     ok = start_disk_sink(disk_access, ?ACCESS_LOG_FILENAME),
 
-    ok = start_sink(ns_log, raw, ns_log_sink, []),
+    ok = start_sink(ns_log, ns_log_sink, []),
 
     lists:foreach(
       fun (Logger) ->
@@ -252,11 +252,8 @@ init_logging() ->
     ale:info(?NS_SERVER_LOGGER, "Started & configured logging").
 
 start_sink(Name, Module, Args) ->
-    start_sink(Name, preformatted, Module, Args).
-
-start_sink(Name, Type, Module, Args) ->
     ale:stop_sink(Name),
-    ale:start_sink(Name, Type, Module, Args).
+    ale:start_sink(Name, Module, Args).
 
 start_disk_sink(Name, FileName) ->
     {ok, Dir} = application:get_env(error_logger_mf_dir),
