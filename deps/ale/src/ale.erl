@@ -18,7 +18,7 @@
 -behaviour(gen_server).
 
 -export([start_link/0,
-         start_sink/3, start_sink/4, stop_sink/1,
+         start_sink/3, stop_sink/1,
          start_logger/1, start_logger/2, start_logger/3,
          stop_logger/1,
          add_sink/2, add_sink/3,
@@ -62,10 +62,7 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 start_sink(Name, Module, Args) ->
-    start_sink(Name, ?DEFAULT_SINK_TYPE, Module, Args).
-
-start_sink(Name, Type, Module, Args) ->
-    gen_server:call(?MODULE, {start_sink, Name, Type, Module, Args}).
+    gen_server:call(?MODULE, {start_sink, Name, Module:sink_type(), Module, Args}).
 
 stop_sink(Name) ->
     gen_server:call(?MODULE, {stop_sink, Name}).
