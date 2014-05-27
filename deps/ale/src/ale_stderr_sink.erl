@@ -41,21 +41,17 @@ handle_call({log, Msg}, _From, State) ->
     RV = do_log(Msg),
     {reply, RV, State};
 
-%% we don't handle raw messages
-handle_call({raw_log, _Info, _UserMsg}, _From, State) ->
-    {reply, ok, State};
-
 handle_call(sync, _From, State) ->
     {reply, ok, State};
 
-handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+handle_call(Request, _From, State) ->
+    {stop, {unexpected_call, Request}, State}.
 
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+handle_cast(Msg, State) ->
+    {stop, {unexpected_cast, Msg}, State}.
 
-handle_info(_Info, State) ->
-    {noreply, State}.
+handle_info(Info, State) ->
+    {stop, {unexpected_info, Info}, State}.
 
 terminate(_Reason, _State) ->
     ok.
