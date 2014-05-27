@@ -1,0 +1,68 @@
+<div id="container">
+  <div class="page-header">
+    <div class="cnt_holder main_holder">
+      <div class="topper_nav">
+        <span class="only-when-below-20" style="display:none;">
+          NOTE: need all 2.0 nodes to enable 2.0-only features<b>&bull;</b>
+        </span>
+        <span id="edit-internal-settings-link" class="when-roadmin-avoid-me" style="display:none;">
+          <a onclick="runInternalSettingsDialog();">Edit internal settings</a> <b>&bull;</b>
+        </span>
+        <a href="http://docs.couchbase.com/couchbase-manual-2.5/" target="cbdocs">
+          Documentation
+        </a>
+        <b>&bull;</b>
+        <a href="http://www.couchbase.com/communities/" target="cbforums">
+          Support Forums
+        </a>
+        <b>&bull;</b>
+        <a href="javascript:showAbout();">
+          About
+        </a>
+        <i class="sign-out-link"><b>&bull;</b> <a ng-click="logout()">Sign Out</a></i>
+      </div>
+      <div class="log_wrap">
+        <a href="/index.html"></a>
+      </div>
+      <div id="global_progress" class="closed disable_toggle">
+        <i class="toggle">i</i>
+        <ul id="global_progress_container"></ul>
+      </div>
+    </div>
+  </div>
+  <div id="headerNav">
+    <div class="contents">
+      <ul>
+        <li class="line" ui-sref-active="currentNav">
+          <a id="switch_overview" ui-sref="app.overview">Cluster Overview</a>
+        </li>
+        <li class="line" ui-sref-active="currentNav">
+          <a id="switch_servers" ui-sref="app.servers.list">Server Nodes</a>
+        </li>
+        <li class="line">
+          <a id="switch_buckets">Data Buckets</a>
+        </li>
+        <li class="line only-when-20">
+          <a id="switch_views">Views</a>
+        </li>
+        <li class="line only-when-20">
+          <a id="switch_replications">XDCR</a>
+        </li>
+        <li class="line" data-section="log">
+          <a id="switch_log">Log</a>
+        </li>
+        <li class="line" data-section="settings" id="nav_settings_container">
+          <a href="#?section=settings" id="switch_settings">Settings</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+  <div id="mainContainer" class="main_holder">
+    <div id="mainPanel" class="mainPanel" ui-view autoscroll="false"></div>
+  </div>
+  <div class="page-footer">
+    <div class="main_holder">
+      <h1>Copyright &copy; 2013 <a href="http://couchbase.com" target="_blank">Couchbase, Inc.</a> All rights reserved.</h1>
+    </div>
+  </div>
+</div>

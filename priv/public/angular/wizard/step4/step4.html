@@ -1,0 +1,69 @@
+<div class="pad" id="init_update_notifications_dialog">
+  <div spinner="spinner"></div>
+  <form name="form" novalidate ng-submit="onSubmit()">
+    <div class="config-top">
+      <h1>Notifications</h1>
+      <h2>Step <span class="current-step">4</span> of 5</h2>
+    </div>
+    <h2 class="question">Update Notifications</h2>
+    <p class="pad_10">
+      <label for="init-notifications-updates-enabled">
+        <input type="checkbox" id="init-notifications-updates-enabled" ng-model="modelStep4Service.sendStats" checked="checked">
+        <span>Enable software update notifications</span>
+      </label>
+      <a class="more_info" tabindex="-1" ng-click="showWhatThis = !showWhatThis">What's this?</a>
+    </p>
+    <p class="more_info pad_10" ng-show="showWhatThis">
+      Enabling software update notifications allows notification in the Couchbase web console when a new version of Couchbase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.
+    </p>
+    <div class="when-community">
+      <h2 class="question">Community Updates</h2>
+      <p class="pad_10">Please provide your email address to join the community and receive news on coming events.</p>
+    </div>
+    <div class="when-enterprise" ng-show="modelAuthService.isEnterprise">
+      <h2 class="question">Product Registration</h2>
+      <p class="pad_10 clearfix">Register your Enterprise Edition of Couchbase Server below.</p>
+    </div>
+    <div class="pad_10 warn" style="color:#EC5223;font-family:Verdana, Helvetica, Sans-Serif; font-size:10pt; font-weight:lighter; line-height:20px; margin-left:75px; width:500px;" id="update_notifications_errors_container" ng-show="form.$invalid">
+      <span ng-show="form.email.$error.email">Email appears to be invalid</span>
+      <span ng-show="form.agree.$error.required">Terms and conditions need to be accepted in order to continue</span>
+      <span ng-show="errors">{{errors}}</span>
+    </div>
+    <p class="pad_10">
+      <label for="init-join-community-email">
+        <span class="field-label">Email:</span>
+        <input id="init-join-community-email" type="email" name="email" ng-model="modelStep4Service.register.email">
+      </label>
+    </p>
+    <p class="pad_10">
+      <label for="init-join-community-firstname">
+        <span class="field-label">First name:</span>
+        <input id="init-join-community-firstname" ng-model="modelStep4Service.register.firstname">
+        <span class="error-container err-firstname"></span>
+      </label>
+    </p>
+    <p class="pad_10">
+      <label for="init-join-community-lastname">
+        <span class="field-label">Last name:</span>
+        <input id="init-join-community-lastname" ng-model="modelStep4Service.register.lastname">
+        <span class="error-container err-lastname"></span>
+      </label>
+    </p>
+    <p class="pad_10">
+      <label for="init-join-community-company">
+        <span class="field-label">Company:</span>
+        <input id="init-join-community-company" ng-model="modelStep4Service.register.company">
+        <span class="error-container err-company"></span>
+      </label>
+    </p>
+    <p class="when-enterprise pad_10" ng-if="isEnterprise">
+      <label for="init-join-terms"><input type="checkbox" id="init-join-terms" ng-model="$parent.modelStep4Service.register.agree" name="agree" required>
+        <span>I agree to the <a href="http://www.couchbase.com/agreement/free-license" target="_blank">terms and conditions</a> associated with this product. <span style="color:red">*</span></span>
+      </label>
+    </p>
+    <div class="config-bottom">
+      <button name="next" value="Next" class="submit next direction-button" id="step-3-next" type="submit" focus="focusMe">Next</button>
+      <button name="back" value="Back" class="submit back direction-button" id="step-3-back" type="button" ui-sref="wizard.step3">Back</button>
+    </div>
+  </form></div>
+  <!-- END init_update_notifications-->
