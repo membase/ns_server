@@ -149,7 +149,7 @@ adjust_loglevel(LogLevel, ThresholdLogLevel) ->
     end.
 
 init_logging() ->
-    StdLoggers = [?ERROR_LOGGER],
+    StdLoggers = [?ALE_LOGGER, ?ERROR_LOGGER],
     AllLoggers = StdLoggers ++ ?LOGGERS,
 
     lists:foreach(
