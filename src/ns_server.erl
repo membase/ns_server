@@ -183,7 +183,7 @@ init_logging() ->
       fun (Logger) ->
               ok = ale:set_loglevel(Logger, debug)
       end,
-      StdLoggers -- [?XDCR_TRACE_LOGGER]),
+      StdLoggers),
 
     ok = ale:set_loglevel(?XDCR_TRACE_LOGGER, get_loglevel(?XDCR_TRACE_LOGGER)),
 
