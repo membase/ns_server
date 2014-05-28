@@ -13,6 +13,7 @@ import socket
 import threading
 import optparse
 import atexit
+import signal
 
 class AltExitC(object):
     def __init__(self):
@@ -511,6 +512,42 @@ def setup_stdin_watcher():
     th.setDaemon(True)
     th.start()
 
+class CurlKiller:
+    def __init__(self, p):
+        self.p = p
+    def cleanup(self):
+        if self.p != None:
+            print("Killing curl...")
+            os.kill(self.p.pid, signal.SIGKILL)
+            print("done")
+    def disarm(self):
+        self.p = None
+
+def do_upload_and_exit(path, url):
+    args = ["curl", "-sS", "--upload-file", path, url]
+    AltExit.lock.acquire()
+    try:
+        p = subprocess.Popen(args, stdout=subprocess.PIPE)
+        k = CurlKiller(p)
+        AltExit.register_and_unlock(k.cleanup)
+    except Exception, e:
+        AltExit.lock.release()
+        raise e
+
+    while p.stdout.read(10) != "":
+        pass
+
+    k.disarm()
+
+    p.wait()
+
+    if p.returncode != 0:
+        sys.exit(1)
+    else:
+        print >> sys.stderr, 'Done uploading'
+        sys.exit(0)
+
+
 def main():
     mydir = os.path.dirname(sys.argv[0])
     #(MB-8239)erl script fails in OSX as it is unable to find COUCHBASE_TOP -ravi
@@ -534,6 +571,8 @@ def main():
     parser.add_option("--single-node-diag", dest="single_node_diag",
                       action="store_true", default=False,
                       help="collect per-node diag on just this node (default is all reachable nodes)")
+    parser.add_option("--just-upload-into", dest="just_upload_into",
+                      help=optparse.SUPPRESS_HELP)
     options, args = parser.parse_args()
 
     if len(args) != 1:
@@ -566,6 +605,10 @@ def main():
     elif os.name == 'nt':
       path = [mydir, erldir, os.environ['PATH']]
       os.environ['PATH'] = ';'.join(path)
+
+    if options.just_upload_into != None:
+        do_upload_and_exit(args[0], options.just_upload_into)
+        sys.exit(0)
 
     runner = TaskRunner(verbosity=options.verbosity)
 
