@@ -8,6 +8,8 @@
 
 -export([find_missing_revs/3, bulk_set_metas/3]).
 
+-export([send_batch/2, extract_recv_socket/1]).
+
 -spec find_missing_revs(any(), vbucket_id(), [{binary(), rev()}]) ->
                                {ok,
                                 [{binary(), rev()}],
@@ -15,15 +17,15 @@
 find_missing_revs(DestRef, Vb, IdRevs) ->
     execute(DestRef, fun find_missing_revs_inner/3, [Vb, IdRevs]).
 
-send_batch({batch_socket, Socket}, Data) ->
-    BatchBytes = iolist_size(Data),
-    BatchReqs = length(Data),
+send_batch({batch_socket, Socket}, Requests) ->
+    BatchBytes = iolist_size(Requests),
+    BatchReqs = length(Requests),
     system_stats_collector:add_histo(xdcr_batch_bytes, BatchBytes),
     system_stats_collector:add_histo(xdcr_batch_reqs, BatchReqs),
-    Data1 = [<<BatchBytes:32/big, BatchReqs:32/big>> | Data],
+    Data1 = [<<BatchBytes:32/big, BatchReqs:32/big>> | Requests],
     ok = prim_inet:send(Socket, Data1);
-send_batch(Socket, Data) ->
-    ok = prim_inet:send(Socket, Data).
+send_batch(Socket, Requests) ->
+    ok = prim_inet:send(Socket, Requests).
 
 extract_recv_socket({batch_socket, S}) ->
     S;
