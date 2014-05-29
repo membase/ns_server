@@ -144,27 +144,27 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 handle_call({add_node, RemoteAddr, RestPort, Auth}, _From, State) ->
-    ?cluster_debug("handling add_node(~p, ~p, ..)~n", [RemoteAddr, RestPort]),
+    ?cluster_debug("handling add_node(~p, ~p, ..)", [RemoteAddr, RestPort]),
     RV = do_add_node(RemoteAddr, RestPort, Auth, undefined),
-    ?cluster_debug("add_node(~p, ~p, ..) -> ~p~n", [RemoteAddr, RestPort, RV]),
+    ?cluster_debug("add_node(~p, ~p, ..) -> ~p", [RemoteAddr, RestPort, RV]),
     {reply, RV, State};
 
 handle_call({add_node_to_group, RemoteAddr, RestPort, Auth, GroupUUID}, _From, State) ->
-    ?cluster_debug("handling add_node(~p, ~p, ~p, ..)~n", [RemoteAddr, RestPort, GroupUUID]),
+    ?cluster_debug("handling add_node(~p, ~p, ~p, ..)", [RemoteAddr, RestPort, GroupUUID]),
     RV = do_add_node(RemoteAddr, RestPort, Auth, GroupUUID),
-    ?cluster_debug("add_node(~p, ~p, ~p, ..) -> ~p~n", [RemoteAddr, RestPort, GroupUUID, RV]),
+    ?cluster_debug("add_node(~p, ~p, ~p, ..) -> ~p", [RemoteAddr, RestPort, GroupUUID, RV]),
     {reply, RV, State};
 
 handle_call({engage_cluster, NodeKVList}, _From, State) ->
-    ?cluster_debug("handling engage_cluster(~p)~n", [NodeKVList]),
+    ?cluster_debug("handling engage_cluster(~p)", [NodeKVList]),
     RV = do_engage_cluster(NodeKVList),
-    ?cluster_debug("engage_cluster(..) -> ~p~n", [RV]),
+    ?cluster_debug("engage_cluster(..) -> ~p", [RV]),
     {reply, RV, State};
 
 handle_call({complete_join, NodeKVList}, _From, State) ->
-    ?cluster_debug("handling complete_join(~p)~n", [NodeKVList]),
+    ?cluster_debug("handling complete_join(~p)", [NodeKVList]),
     RV = do_complete_join(NodeKVList),
-    ?cluster_debug("complete_join(~p) -> ~p~n", [NodeKVList, RV]),
+    ?cluster_debug("complete_join(~p) -> ~p", [NodeKVList, RV]),
     {reply, RV, State};
 
 handle_call({change_address, Address}, _From, State) ->
@@ -394,13 +394,13 @@ do_change_address(NewAddr, UserSupplied) ->
                 NewAddr
         end,
 
-    ?cluster_info("Change of address to ~p is requested.~n", [NewAddr1]),
+    ?cluster_info("Change of address to ~p is requested.", [NewAddr1]),
     case maybe_rename(NewAddr1, UserSupplied) of
         not_renamed ->
             ok;
         renamed ->
             ns_server_sup:node_name_changed(),
-            ?cluster_info("Renamed node. New name is ~p.~n", [node()]),
+            ?cluster_info("Renamed node. New name is ~p.", [node()]),
             ok;
         Other ->
             Other
@@ -500,14 +500,14 @@ do_add_node_with_connectivity(RemoteAddr, RestPort, Auth, GroupUUID) ->
     Struct = {struct, [{<<"requestedTargetNodeHostname">>, list_to_binary(RemoteAddr)}
                        | NodeInfo]},
 
-    ?cluster_debug("Posting node info to engage_cluster on ~p:~n~p~n",
+    ?cluster_debug("Posting node info to engage_cluster on ~p:~n~p",
                    [{RemoteAddr, RestPort}, Struct]),
     RV = menelaus_rest:json_request_hilevel(post,
                                             {RemoteAddr, RestPort, "/engageCluster2",
                                              "application/json",
                                              mochijson2:encode(Struct)},
                                             Auth),
-    ?cluster_debug("Reply from engage_cluster on ~p:~n~p~n",
+    ?cluster_debug("Reply from engage_cluster on ~p:~n~p",
                    [{RemoteAddr, RestPort}, RV]),
 
     ExtendedRV = case RV of
@@ -573,7 +573,7 @@ call_port_please(Name, Host) ->
 verify_otp_connectivity(OtpNode) ->
     {Name, Host} = misc:node_name_host(OtpNode),
     Port = call_port_please(Name, Host),
-    ?cluster_debug("port_please(~p, ~p) = ~p~n", [Name, Host, Port]),
+    ?cluster_debug("port_please(~p, ~p) = ~p", [Name, Host, Port]),
     case is_integer(Port) of
         false ->
             {error, connect_node,
@@ -640,14 +640,14 @@ do_add_node_engaged_inner(NodeKVList, OtpNode, Auth) ->
     Struct = {struct, [{<<"targetNode">>, OtpNode}
                        | MyNodeKVList]},
 
-    ?cluster_debug("Posting the following to complete_join on ~p:~n~p~n",
+    ?cluster_debug("Posting the following to complete_join on ~p:~n~p",
                    [HostnameRaw, Struct]),
     RV = menelaus_rest:json_request_hilevel(post,
                                             {Hostname, Port, "/completeJoin",
                                              "application/json",
                                              mochijson2:encode(Struct)},
                                             Auth),
-    ?cluster_debug("Reply from complete_join on ~p:~n~p~n",
+    ?cluster_debug("Reply from complete_join on ~p:~n~p",
                    [HostnameRaw, RV]),
 
     ExtendedRV = case RV of
@@ -718,18 +718,18 @@ node_add_transaction(Node, GroupUUID, Body) ->
     end.
 
 node_add_transaction_finish(Node, GroupUUID, Body) ->
-    ?cluster_info("Started node add transaction by adding node ~p to nodes_wanted (group: ~s)~n",
+    ?cluster_info("Started node add transaction by adding node ~p to nodes_wanted (group: ~s)",
                   [Node, GroupUUID]),
     try Body() of
         {ok, _} = X -> X;
         Crap ->
-            ?cluster_error("Add transaction of ~p failed because of ~p~n",
+            ?cluster_error("Add transaction of ~p failed because of ~p",
                            [Node, Crap]),
             shun(Node),
             Crap
     catch
         Type:What ->
-            ?cluster_error("Add transaction of ~p failed because of exception ~p~n",
+            ?cluster_error("Add transaction of ~p failed because of exception ~p",
                            [Node, {Type, What, erlang:get_stacktrace()}]),
             shun(Node),
             erlang:Type(What),
@@ -927,7 +927,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
 
             erlang:raise(Type, Error, Stack)
     end,
-    ?cluster_debug("Join status: ~p, starting ns_server_cluster back~n",
+    ?cluster_debug("Join status: ~p, starting ns_server_cluster back",
                    [Status]),
     Status2 = case ns_server_cluster_sup:start_cluster() of
                   {error, _} = E ->
@@ -942,7 +942,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
                          [node()]),
             Status2;
         _ ->
-            ?cluster_error("Failed to join cluster because of: ~p~n",
+            ?cluster_error("Failed to join cluster because of: ~p",
                            [Status2]),
             Status2
     end.
