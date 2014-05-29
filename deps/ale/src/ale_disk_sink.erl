@@ -38,7 +38,8 @@
           batch_size :: pos_integer(),
           batch_timeout :: pos_integer(),
           rotation_size :: non_neg_integer(),
-          rotation_num_files :: pos_integer()
+          rotation_num_files :: pos_integer(),
+          rotation_compress :: boolean()
          }).
 
 start_link(Name, Path) ->
@@ -59,6 +60,7 @@ init([Path, Opts]) ->
     RotationConf = proplists:get_value(rotation, Opts, []),
     RotSize = proplists:get_value(size, RotationConf, 10485760),
     RotNumFiles = proplists:get_value(num_files, RotationConf, 20),
+    RotCompress = proplists:get_value(compress, RotationConf, true),
 
     State = #state{path = Path,
                    buffer = <<>>,
@@ -66,7 +68,8 @@ init([Path, Opts]) ->
                    batch_size = BatchSize,
                    batch_timeout = BatchTimeout,
                    rotation_size = RotSize,
-                   rotation_num_files = RotNumFiles},
+                   rotation_num_files = RotNumFiles,
+                   rotation_compress = RotCompress},
 
     {ok, open_log_file(State)}.
 
@@ -152,17 +155,25 @@ sync(State) ->
     NewState.
 
 rotate_files(#state{path = Path,
-                    rotation_num_files = NumFiles}) ->
-    rotate_files_loop(Path, NumFiles - 1).
+                    rotation_num_files = NumFiles,
+                    rotation_compress = Compress}) ->
+    Suffix = case Compress of
+                 true ->
+                     ".gz";
+                 false ->
+                     ""
+             end,
 
-rotate_files_loop(Path, 0) ->
+    rotate_files_loop(Path, Suffix, NumFiles - 1).
+
+rotate_files_loop(Path, _Suffix, 0) ->
     case file:delete(Path) of
         ok ->
             ok;
         Error ->
             Error
     end;
-rotate_files_loop(Path, 1) ->
+rotate_files_loop(Path, _Suffix, 1) ->
     To = Path ++ ".1",
     case do_rotate_file(Path, To) of
         ok ->
@@ -170,13 +181,13 @@ rotate_files_loop(Path, 1) ->
         Error ->
             Error
     end;
-rotate_files_loop(Path, N) ->
-    From = Path ++ "." ++ integer_to_list(N - 1),
-    To = Path ++ "." ++ integer_to_list(N),
+rotate_files_loop(Path, Suffix, N) ->
+    From = Path ++ "." ++ integer_to_list(N - 1) ++ Suffix,
+    To = Path ++ "." ++ integer_to_list(N) ++ Suffix,
 
     case do_rotate_file(From, To) of
         ok ->
-            rotate_files_loop(Path, N - 1);
+            rotate_files_loop(Path, Suffix, N - 1);
         Error ->
             Error
     end.
@@ -200,6 +211,7 @@ maybe_rotate_files(#state{file_size = FileSize,
                           rotation_size = RotSize} = State)
   when RotSize =/= 0, FileSize >= RotSize ->
     ok = rotate_files(State),
+    ok = maybe_compress_post_rotate(State),
     open_log_file(State);
 maybe_rotate_files(State) ->
     State.
@@ -248,4 +260,57 @@ do_open_file(Path, #file_info{inode = Inode}) ->
             end;
         Error ->
             Error
+    end.
+
+maybe_compress_post_rotate(#state{path = Path,
+                                  rotation_num_files = NumFiles,
+                                  rotation_compress = true})
+  when NumFiles > 1 ->
+    UncompressedPath = Path ++ ".1",
+    CompressedPath = Path ++ ".1.gz",
+    compress_file(UncompressedPath, CompressedPath);
+maybe_compress_post_rotate(_) ->
+    ok.
+
+compress_file(FromPath, ToPath) ->
+    {ok, From} = file:open(FromPath, [raw, binary, read]),
+
+    try
+        {ok, To} = file:open(ToPath, [raw, binary, write]),
+        Z = zlib:open(),
+
+        try
+            ok = zlib:deflateInit(Z, default, deflated, 15 + 16, 8, default),
+            compress_file_loop(From, To, Z),
+            ok = zlib:deflateEnd(Z),
+            ok = file:delete(FromPath)
+        after
+            file:close(To),
+            zlib:close(Z)
+        end
+    after
+        file:close(From)
+    end.
+
+compress_file_loop(From, To, Z) ->
+    {Compressed, Continue} =
+        case file:read(From, 1024 * 1024) of
+            eof ->
+                {zlib:deflate(Z, <<>>, finish), false};
+            {ok, Data} ->
+                {zlib:deflate(Z, Data), true}
+        end,
+
+    case iolist_to_binary(Compressed) of
+        <<>> ->
+            ok;
+        CompressedBinary ->
+            ok = file:write(To, CompressedBinary)
+    end,
+
+    case Continue of
+        true ->
+            compress_file_loop(From, To, Z);
+        false ->
+            ok
     end.
