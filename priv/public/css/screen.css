@@ -1110,7 +1110,8 @@ span.staleness-notice, .staleness-notice { font-size: 12px!important; display: n
 .failover_warning > h2,
 .failover_warning > label {padding-left: 20px;}
 
-.failover_warning > h2 {font-weight: normal; font-size: 18px; margin-bottom: 0; margin-top: 20px;}
+.failover_warning > h2 {font-weight: normal; font-size: 18px; margin-bottom: 0; margin-bottom: 20px;}
+.failover_warning label + .warning {margin-top: 20px;}
 
 .darker_block.dynamic_server_resources { display: none; }
 .dynamic_with_server_resources .darker_block.dynamic_server_resources { display: block; }

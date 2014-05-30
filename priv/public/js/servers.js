@@ -671,21 +671,37 @@ var ServersSection = {
       $("input[name=failOver][value=startGracefulFailover]", visibleWarning).parent()[node.gracefulFailoverPossible ? 'show' : 'hide']();
       $("input[name=failOver][value=" + (node.gracefulFailoverPossible ? "startGracefulFailover" : "failOver") + "]", visibleWarning).attr('checked', true);
 
-      if (confirmation.length) {
-        confirmation.boolAttr('checked', false);
-        function onChange() {
-          var checked = !!confirmation.attr('checked');
-          dialog.find('.save_button').boolAttr('disabled', !checked);
-        }
-        function onHide() {
-          confirmation.unbind('change', onChange);
-          dialog.unbind('dialog:hide', onHide);
-        }
-        confirmation.bind('change', onChange);
-        dialog.bind('dialog:hide', onHide);
-        onChange();
+      if (down) {
+        bindConfirmation();
       } else {
+        $("input[name=failOver]", visibleWarning).unbind('change').change(function () {
+          var isHardFailOver = $(this).val() === 'failOver';
+          $(".js_warning", visibleWarning).toggle(isHardFailOver);
+          isHardFailOver ? bindConfirmation() : unbindConfirmation();
+        });
+        $("input[name=failOver]:checked", visibleWarning).change();
+      }
+
+      function unbindConfirmation() {
+        confirmation.unbind('change');
         dialog.find(".save_button").removeAttr("disabled");
+      }
+
+      function onConfirmChange() {
+        var checked = !!confirmation.attr('checked');
+        dialog.find('.save_button').boolAttr('disabled', !checked);
+      }
+
+      function bindConfirmation() {
+        if (confirmation.length) {
+          confirmation
+            .boolAttr('checked', false)
+            .unbind('change')
+            .bind('change', onConfirmChange)
+            .change();
+        } else {
+          unbindConfirmation();
+        }
       }
     });
   },
