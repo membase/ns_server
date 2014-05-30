@@ -57,20 +57,20 @@
 -define(VBMAP_HISTORY_SIZE, 10).
 -define(NUM_NS_MEMCACHED_DATA_INSTANCES, 4).
 
--define(DEFAULT_LOG_FILENAME, "info").
--define(ERRORS_LOG_FILENAME, "error").
--define(VIEWS_LOG_FILENAME, "views").
--define(MAPREDUCE_ERRORS_LOG_FILENAME, "mapreduce_errors").
--define(COUCHDB_LOG_FILENAME, "couchdb").
--define(DEBUG_LOG_FILENAME, "debug").
--define(XDCR_LOG_FILENAME, "xdcr").
--define(XDCR_ERRORS_LOG_FILENAME, "xdcr_errors").
--define(STATS_LOG_FILENAME, "stats").
--define(BABYSITTER_LOG_FILENAME, "babysitter").
--define(SSL_PROXY_LOG_FILENAME, "ssl_proxy").
--define(REPORTS_LOG_FILENAME, "reports").
--define(XDCR_TRACE_LOG_FILENAME, "xdcr_trace").
--define(ACCESS_LOG_FILENAME, "access").
+-define(DEFAULT_LOG_FILENAME, "info.log").
+-define(ERRORS_LOG_FILENAME, "error.log").
+-define(VIEWS_LOG_FILENAME, "views.log").
+-define(MAPREDUCE_ERRORS_LOG_FILENAME, "mapreduce_errors.log").
+-define(COUCHDB_LOG_FILENAME, "couchdb.log").
+-define(DEBUG_LOG_FILENAME, "debug.log").
+-define(XDCR_LOG_FILENAME, "xdcr.log").
+-define(XDCR_ERRORS_LOG_FILENAME, "xdcr_errors.log").
+-define(STATS_LOG_FILENAME, "stats.log").
+-define(BABYSITTER_LOG_FILENAME, "babysitter.log").
+-define(SSL_PROXY_LOG_FILENAME, "ssl_proxy.log").
+-define(REPORTS_LOG_FILENAME, "reports.log").
+-define(XDCR_TRACE_LOG_FILENAME, "xdcr_trace.log").
+-define(ACCESS_LOG_FILENAME, "access.log").
 
 -define(NS_SERVER_LOGGER, ns_server).
 -define(COUCHDB_LOGGER, couchdb).
