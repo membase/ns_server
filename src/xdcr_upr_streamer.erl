@@ -377,10 +377,10 @@ socket_exit_loop(Socket, NewData) ->
 
 enter_consumer_loop(Child, Callback, Acc) ->
     receive
-        {failover_id, _FailoverUUID, _, _, SnapshotStart, SnapshotEnd} = Evt ->
+        {failover_id, _FailoverUUID, StartSeqno, _, SnapshotStart, SnapshotEnd} = Evt ->
             {ok, Acc2} = Callback(Evt, Acc),
             consumer_loop_recv(Child, Callback, Acc2, 0,
-                               SnapshotStart, SnapshotEnd, undefined, <<>>)
+                               SnapshotStart, SnapshotEnd, StartSeqno, <<>>)
     end.
 
 consumer_loop_recv(Child, Callback, Acc, ConsumedSoFar0,
