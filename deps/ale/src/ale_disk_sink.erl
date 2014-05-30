@@ -31,6 +31,7 @@
           path :: string(),
           file :: undefined | file:io_device(),
           file_size :: integer(),
+          file_inode :: integer(),
           buffer :: binary(),
           buffer_size :: integer(),
           flush_timer :: undefined | reference(),
@@ -39,7 +40,8 @@
           batch_timeout :: pos_integer(),
           rotation_size :: non_neg_integer(),
           rotation_num_files :: pos_integer(),
-          rotation_compress :: boolean()
+          rotation_compress :: boolean(),
+          rotation_check_interval :: non_neg_integer()
          }).
 
 start_link(Name, Path) ->
@@ -58,9 +60,11 @@ init([Path, Opts]) ->
     BatchTimeout = proplists:get_value(batch_timeout, Opts, 1000),
 
     RotationConf = proplists:get_value(rotation, Opts, []),
+
     RotSize = proplists:get_value(size, RotationConf, 10485760),
     RotNumFiles = proplists:get_value(num_files, RotationConf, 20),
     RotCompress = proplists:get_value(compress, RotationConf, true),
+    RotCheckInterval = proplists:get_value(check_interval, RotationConf, 10000),
 
     State = #state{path = Path,
                    buffer = <<>>,
@@ -69,7 +73,15 @@ init([Path, Opts]) ->
                    batch_timeout = BatchTimeout,
                    rotation_size = RotSize,
                    rotation_num_files = RotNumFiles,
-                   rotation_compress = RotCompress},
+                   rotation_compress = RotCompress,
+                   rotation_check_interval = RotCheckInterval},
+
+    case RotCheckInterval > 0 of
+        true ->
+            erlang:send_after(RotCheckInterval, self(), check_file);
+        false ->
+            ok
+    end,
 
     {ok, open_log_file(State)}.
 
@@ -85,6 +97,10 @@ handle_cast(Msg, State) ->
 
 handle_info(flush_buffer, State) ->
     {noreply, flush_buffer(State)};
+handle_info(check_file, #state{rotation_check_interval = RotCheckInterval} = State) ->
+    NewState = check_log_file(State),
+    erlang:send_after(RotCheckInterval, self(), check_file),
+    {noreply, NewState};
 handle_info(Info, State) ->
     {stop, {unexpected_info, Info}, State}.
 
@@ -225,9 +241,25 @@ open_log_file(#state{path = Path,
             file:close(OldFile)
     end,
 
-    {ok, File, #file_info{size = Size}} = open_file(Path),
+    {ok, File, #file_info{size = Size,
+                          inode = Inode}} = open_file(Path),
     State#state{file = File,
-                file_size = Size}.
+                file_size = Size,
+                file_inode = Inode}.
+
+check_log_file(#state{path = Path,
+                      file_inode = FileInode} = State) ->
+    case file:read_file_info(Path) of
+        {error, enoent} ->
+            open_log_file(State);
+        {ok, #file_info{inode = NewInode}} ->
+            case FileInode =:= NewInode of
+                true ->
+                    State;
+                false ->
+                    open_log_file(State)
+            end
+    end.
 
 open_file(Path) ->
     case file:read_file_info(Path) of
