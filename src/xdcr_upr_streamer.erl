@@ -183,21 +183,40 @@ do_start(Socket, Vb, FailoverId,
                                             FailoverId, SnapshotStart, SnapshotEnd}]),
             ?log_debug("Sockname: ~p", [inet:sockname(Socket)]),
 
-            {_, #upr_packet{opcode = ?UPR_SNAPSHOT_MARKER, ext = Ext}, Data1, _} =
-                read_message_loop(Socket, Data0),
+            {Data2, ActualSnapshotEnd} =
+            case read_message_loop(Socket, Data0) of
+                {_, #upr_packet{opcode = ?UPR_SNAPSHOT_MARKER, ext = Ext}, Data1, _} ->
+                    <<ActualSnapshotStart:64, ActualSnapshotEnd0:64, Flags:32, _/binary>> = Ext,
 
-            <<ActualSnapshotStart:64, ActualSnapshotEnd:64, Flags:32, _/binary>> = Ext,
+                    ?log_debug("Received snapshot marker: ~p",
+                               [{ActualSnapshotStart, ActualSnapshotEnd0, Flags}]),
 
-            ?log_debug("Received snapshot marker: ~p",
-                       [{ActualSnapshotStart, ActualSnapshotEnd, Flags}]),
+                    SnapshotStart = ActualSnapshotStart,
+                    {Data1, ActualSnapshotEnd0};
+                {_, EndPacket = #upr_packet{opcode = ?UPR_STREAM_END}, <<>>, _} ->
+                    ?log_debug("Got stream end without snapshot marker"),
+                    %% it's only possible if all those values are same
+                    %%
+                    %% * immediate end stream is only possible if
+                    %% StartSeqno = EndSeqno
+                    %%
+                    %% * if StartSeqno != SnapshotStart then
+                    %% StartSeqno != SnapshotEnd, then given that
+                    %% StartSeqno = EndSeqno and given that EndSeqno
+                    %% is latest seqno, then we'd have rollback and
+                    %% not success followed by end stream
+                    SnapshotEnd = SnapshotStart = StartSeqno = EndSeqno,
 
-            SnapshotStart = ActualSnapshotStart,
+                    %% we fake snapshot marker here, and we "unput"
+                    %% end stream packet to handle it normally
+                    {iolist_to_binary(encode_req(EndPacket)), SnapshotEnd}
+            end,
 
             {FailoverUUID, _} = lists:last(FailoverLog),
             Parent ! {failover_id, FailoverUUID,
                       StartSeqno, EndSeqno, SnapshotStart, ActualSnapshotEnd},
             proc_lib:init_ack({ok, self()}),
-            socket_loop_enter(Socket, Callback, Acc, Data1, Parent);
+            socket_loop_enter(Socket, Callback, Acc, Data2, Parent);
         #upr_packet{status = ?ROLLBACK, body = <<RollbackSeq:64>>} ->
             ?log_debug("handling rollback to ~B", [RollbackSeq]),
             ?log_debug("Request was: ~p", [{Vb, Opaque, StartSeqno, EndSeqno,
