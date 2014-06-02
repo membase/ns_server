@@ -92,13 +92,17 @@ handle_response(?UPR_STREAM_REQ, Header, Body,
                                         Partition, Partition,
                                         RollbackSeqNo, 0, UUID,
                                         RollbackSeqNo, RollbackSeqNo),
-            PartitionState
+            PartitionState;
+        Error ->
+            close_stream(Error, PartitionState)
     end.
 
 handle_request(?UPR_STREAM_END, _Header, _Body,
-               #partition{stream_state = open,
-                          subscribers = Subscribers} = PartitionState, _ParentState) ->
-    [gen_server:reply(From, ok) || From <- Subscribers],
+               #partition{stream_state = open} = PartitionState, _ParentState) ->
+    close_stream(ok, PartitionState).
+
+close_stream(Result, #partition{subscribers = Subscribers} = PartitionState) ->
+    [gen_server:reply(From, Result) || From <- Subscribers],
     PartitionState#partition{stream_state = closed,
                              subscribers = []}.
 
