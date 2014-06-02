@@ -257,13 +257,10 @@ start_sink(Name, Module, Args) ->
 
 start_disk_sink(Name, FileName) ->
     {ok, Dir} = application:get_env(error_logger_mf_dir),
-    {ok, MaxB} = application:get_env(error_logger_mf_maxbytes),
-    {ok, MaxF} = application:get_env(error_logger_mf_maxfiles),
+    DiskSinkOpts = misc:get_env_default(disk_sink_opts, []),
 
     Path = filename:join(Dir, FileName),
-    DiskSinkParams = [{size, {MaxB, MaxF}}],
-
-    start_sink(Name, ale_disk_sink, [Path, DiskSinkParams]).
+    start_sink(Name, ale_disk_sink, [Path, DiskSinkOpts]).
 
 stop(_State) ->
     ok.

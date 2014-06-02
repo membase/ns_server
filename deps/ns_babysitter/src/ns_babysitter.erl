@@ -97,14 +97,12 @@ setup_static_config() ->
 
 init_logging() ->
     {ok, Dir} = application:get_env(ns_server, error_logger_mf_dir),
-    {ok, MaxB} = application:get_env(ns_server, error_logger_mf_maxbytes),
-    {ok, MaxF} = application:get_env(ns_server, error_logger_mf_maxfiles),
+    DiskSinkOpts = misc:get_env_default(ns_server, disk_sink_opts, []),
 
-    DiskSinkParams = [{size, {MaxB, MaxF}}],
     LogPath = filename:join(Dir, ?BABYSITTER_LOG_FILENAME),
 
     ok = ale:start_sink(babysitter_sink,
-                        ale_disk_sink, [LogPath, DiskSinkParams]),
+                        ale_disk_sink, [LogPath, DiskSinkOpts]),
 
     ok = ale:start_logger(?NS_SERVER_LOGGER, debug),
     ok = ale:set_loglevel(?ERROR_LOGGER, debug),

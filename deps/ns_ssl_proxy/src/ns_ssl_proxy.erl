@@ -53,14 +53,12 @@ setup_env() ->
 
 init_logging() ->
     {ok, Dir} = application:get_env(ns_ssl_proxy, error_logger_mf_dir),
-    {ok, MaxB} = application:get_env(ns_ssl_proxy, error_logger_mf_maxbytes),
-    {ok, MaxF} = application:get_env(ns_ssl_proxy, error_logger_mf_maxfiles),
+    DiskSinkOpts = misc:get_env_default(ns_ssl_proxy, disk_sink_opts, []),
 
-    DiskSinkParams = [{size, {MaxB, MaxF}}],
     LogPath = filename:join(Dir, ?SSL_PROXY_LOG_FILENAME),
 
     ok = ale:start_sink(ssl_proxy_sink,
-                        ale_disk_sink, [LogPath, DiskSinkParams]),
+                        ale_disk_sink, [LogPath, DiskSinkOpts]),
 
     ok = ale:start_logger(?NS_SERVER_LOGGER, debug),
     ok = ale:set_loglevel(?ERROR_LOGGER, debug),

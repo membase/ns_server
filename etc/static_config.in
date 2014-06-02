@@ -1,6 +1,4 @@
 {error_logger_mf_dir, "@DATA_PREFIX@/var/lib/couchbase/logs"}.
-{error_logger_mf_maxbytes, 10485760}.
-{error_logger_mf_maxfiles, 20}.
 {path_config_bindir, "@BIN_PREFIX@/bin"}.
 {path_config_etcdir, "@BIN_PREFIX@/etc/couchbase"}.
 {path_config_libdir, "@BIN_PREFIX@/lib"}.
@@ -24,3 +22,8 @@
 {loglevel_xdcr, debug}.
 {loglevel_xdcr_trace, error}.
 {loglevel_access, info}.
+
+{disk_sink_opts,
+ [{rotation, [{compress, true},
+              {size, 10485760},
+              {num_files, 20}]}]}.
