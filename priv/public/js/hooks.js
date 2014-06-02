@@ -1521,8 +1521,8 @@ var MockedRequest = mkClass({
         "thisNode": true,
         "hostname": "127.0.0.1:9000",
         "recoveryType": "none",
-        "clusterCompatibility": 131072,
-        "version": "2.2.0r_182_gc641960",
+        "clusterCompatibility": 196608,
+        "version": "3.0.0r-460-g364b167",
         "os": "x86_64-pc-linux-gnu",
         "ports": {
           "proxy": 12001,
@@ -1654,6 +1654,7 @@ var ServerStateMock = {
   tasks: (function () {
     var currentTasks = {
       rebalanceNotRunning: true,
+      xdcrRunning: true,
       warmup1: true,
       warmup2: true,
       warmup3: true,
@@ -1737,6 +1738,23 @@ var ServerStateMock = {
             }
           }
         }
+      },
+      xdcrRunning: {
+        cancelURI: "/controller/cancelXDCR/0086ba3eea4e5412a7e5d4d8224157be%2Fdefault%2Fdefault",
+        changesLeft: 0,
+        continuous: true,
+        docsChecked: 0,
+        docsWritten: 0,
+        errors: [],
+        id: "0086ba3eea4e5412a7e5d4d8224157be/default/default",
+        maxVBReps: 16,
+        recommendedRefreshPeriod: 10,
+        replicationType: "xmem",
+        settingsURI: "/settings/replications/0086ba3eea4e5412a7e5d4d8224157be%2Fdefault%2Fdefault",
+        source: "default",
+        status: "running",
+        target: "/remoteClusters/0086ba3eea4e5412a7e5d4d8224157be/buckets/default",
+        type: "xdcr"
       },
       replicationRunning: {
         "cancelURI": "/controller/cancelXDCR/5a863c7488c147d2f08c1209b9f1650f%2Fdefault%2Fdefault",
@@ -1826,7 +1844,7 @@ var ServerStateMock = {
     "thisNode": true,
     "hostname": "127.0.0.1:9000",
     "recoveryType": "none",
-    "clusterCompatibility": 131072,
+    "clusterCompatibility": 196608,
     "version": "only-web.rb",
     "os": "x86_64-pc-linux-gnu",
     "ports": {
@@ -1868,7 +1886,7 @@ var ServerStateMock = {
     "thisNode": true,
     "hostname": "127.0.0.1:9001",
     "recoveryType": "none",
-    "clusterCompatibility": 131072,
+    "clusterCompatibility": 196608,
     "version": "only-web.rb",
     "os": "x86_64-pc-linux-gnu",
     "ports": {
@@ -1909,7 +1927,7 @@ var ServerStateMock = {
     "thisNode": true,
     "hostname": "127.0.0.1:9002",
     "recoveryType": "none",
-    "clusterCompatibility": 131072,
+    "clusterCompatibility": 196608,
     "version": "only-web.rb",
     "os": "x86_64-pc-linux-gnu",
     "ports": {
@@ -1950,7 +1968,7 @@ var ServerStateMock = {
     "thisNode": true,
     "hostname": "127.0.0.1:9003",
     "recoveryType": "none",
-    "clusterCompatibility": 131072,
+    "clusterCompatibility": 196608,
     "version": "only-web.rb",
     "os": "x86_64-pc-linux-gnu",
     "ports": {
@@ -1991,7 +2009,7 @@ var ServerStateMock = {
     "thisNode": true,
     "hostname": "127.0.0.1:9004",
     "recoveryType": "none",
-    "clusterCompatibility": 131072,
+    "clusterCompatibility": 196608,
     "version": "only-web.rb",
     "os": "x86_64-pc-linux-gnu",
     "ports": {
@@ -2059,7 +2077,7 @@ var ServerStateMock = {
       "thisNode": true,
       "hostname": "127.0.0.1:9000",
       "recoveryType": "none",
-      "clusterCompatibility": 131072,
+      "clusterCompatibility": 196608,
       "version": "2.2.0r_172_gbe4b1cd",
       "os": "x86_64-pc-linux-gnu",
       "ports": {
@@ -2185,7 +2203,7 @@ var ServerStateMock = {
       "thisNode": true,
       "hostname": "127.0.0.1:9000",
       "recoveryType": "none",
-      "clusterCompatibility": 131072,
+      "clusterCompatibility": 196608,
       "version": "2.2.0r_172_gbe4b1cd",
       "os": "x86_64-pc-linux-gnu",
       "ports": {
@@ -2319,7 +2337,7 @@ var ServerStateMock = {
       "thisNode": true,
       "hostname": "127.0.0.1:9000",
       "recoveryType": "none",
-      "clusterCompatibility": 131072,
+      "clusterCompatibility": 196608,
       "version": "2.2.0r_172_gbe4b1cd",
       "os": "x86_64-pc-linux-gnu",
       "ports": {
@@ -2387,7 +2405,7 @@ var ServerStateMock = {
         "viewUpdateDaemon": "/settings/viewUpdateDaemon?uuid=5b68b24087dce882bcff9013699a603e"
       },
       "uuid": "5b68b24087dce882bcff9013699a603e",
-      "implementationVersion": "2.2.0r_172_gbe4b1cd",
+      "implementationVersion": "3.0.0r-460-g364b167",
       "componentsVersion": {
         "public_key": "0.13",
         "asn1": "1.6.18",
