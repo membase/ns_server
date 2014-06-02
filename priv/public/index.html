@@ -1246,10 +1246,10 @@
                   <!-- {% } %} -->
                 </td>
                 <td colspan="3" class="when-roadmin-hide-me">
-                  <a class="list_button when-in-prod" href="#copyDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Copy to Dev</span></a>
+                  <a class="list_button when-in-prod casper_views_copy_to_dev" href="#copyDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Copy to Dev</span></a>
                   <a class="list_button when-in-dev {%= ddoc.isEmpty ? 'dynamic_disabled' : ''%}" href="#publishDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Publish</span></a>
-                  <a class="list_button when-in-dev" href="#addView={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add View</span></a>
-                  <a class="list_button when-in-dev" href="#addSpatial={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add Spatial View</span></a>
+                  <a class="list_button when-in-dev casper_views_add_view_popup" href="#addView={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add View</span></a>
+                  <a class="list_button when-in-dev casper_views_add_spatial_popup" href="#addSpatial={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add Spatial View</span></a>
                   <a class="list_button casper_views_delete_popup" href="#deleteDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Delete</span></a>
                   <button class="list_button {%= ViewsSection.maybeDisabledCompactButtonAttr(ddoc)%} {%= ddoc.isEmpty ? 'dynamic_disabled' : ''%}" onclick="ViewsSection.compactDDoc({%= h(JSON.stringify(ddoc.meta.id)) %}, this);"><span>Compact</span></button>
                 </td>
@@ -1323,7 +1323,7 @@
               <div class="darker_block js_darker_block">
                 <h3 class="js_block-expander block-expander"><ins></ins><span class="view_head">View Code</span>
                   <span class="buttons when-roadmin-hide-me">
-                    <a id="save_view_as" class="btn_1"><span>Save As...</span></a>
+                    <a id="save_view_as" class="btn_1 casper_views_save_view_as_popup"><span>Save As...</span></a>
                     <a id="just_save_view" class="btn_1"><span>Save</span></a>
                   </span>
                   <div id="view_code_errors" class="ellipsis"></div>
