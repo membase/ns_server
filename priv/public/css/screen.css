@@ -1022,6 +1022,22 @@ input.view_name{width:20em;padding:5px}
 .internal_settings_dialog input[type="checkbox"] {position: relative; top: 2px;}
 .internal_settings_dialog form {border-top: 1px solid #dfdfe0;}
 
+.bucket_details_info h2 {margin: 0 0 10px; padding: 5px 0 7px; color: #5391BA; font-size: 15px; font-weight: bold; border-bottom: 1px solid #bbbdbf; clear: both;}
+.bucket_details_info .size-gauge {float:right;width:600px;position:relative;top:-6px;line-height:24px;}
+.bucket_details_info .size-gauge .top-left {float:left;color:#C19710;font-size:12px;}
+.bucket_details_info .size-gauge .top-right {float:right;font-size:12px;}
+.bucket_details_info .size-gauge .usage {clear:both;position:relative;height:21px;background:url(../images/usages_third.png) 0 -46px no-repeat;}
+.bucket_details_info .size-gauge .usage div {width:600px;height:21px;position:absolute;left:0px;top:0px;background:url(../images/usages_third.png) 0 0 no-repeat;}
+.bucket_details_info .size-gauge table {width:100%;text-align:justify;line-height:1.3;}
+.bucket_details_info .size-gauge table td {padding:4px 0 0;text-align:right;font-size:10px;background:none;border:none;}
+.bucket_details_info .size-gauge .usage i {background:none;display:block;font-size:0;height:25px;line-height:0;position:absolute;;top:-5px;width:1px;}
+.bucket_details_info label.for-hdd-quota {padding-top: 14px;width: 275px;}
+.bucket_details_info label {display:block;margin:6px 0;line-height:24px;overflow:hidden;font-size:12px;}
+.bucket_details_info label span {display:block;float:left;margin: 0 6px 0 10px;color: #404042;text-align:left;}
+.bucket_details_info label span + span {width:60px !important;color:#7C7D7F;}
+.bucket_details_info label abbr {margin-left:6px;}
+.bucket_details_info h2 + label.for-hdd-quota  {width:auto;clear:both;}
+
 .init_block .bucket_details form > div {border-bottom:none;}
  .init_block .bucket_details .config-bottom {padding:18px 18px 17px;border:none;}
 .bucket_details form > fieldset{padding:0 56px;margin-top:15px}
