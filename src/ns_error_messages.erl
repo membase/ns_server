@@ -24,6 +24,8 @@
          verify_otp_connectivity_connection_error/4]).
 
 -spec connection_error_message(term(), string(), string() | integer()) -> binary() | undefined.
+connection_error_message({Error, _}, Host, Port) ->
+    connection_error_message(Error, Host, Port);
 connection_error_message(nxdomain, Host, _Port) ->
     list_to_binary(io_lib:format("Failed to resolve address for ~p.  "
                                  "The hostname may be incorrect or not resolvable.", [Host]));
@@ -35,7 +37,7 @@ connection_error_message(timeout, Host, Port) ->
     list_to_binary(io_lib:format("Timeout connecting to ~p on port ~p.  "
                                  "This could be due to an incorrect host/port combination or a "
                                  "firewall in place between the servers.", [Host, Port]));
-connection_error_message({"bad certificate", _}, Host, Port) ->
+connection_error_message("bad certificate", Host, Port) ->
     list_to_binary(io_lib:format("Got certificate mismatch while trying to send https request to ~s:~w",
                                  [Host, Port]));
 connection_error_message(_, _, _) -> undefined.
