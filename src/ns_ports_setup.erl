@@ -96,6 +96,9 @@ create_ssl_proxy_spec(Config) ->
                       case atom_to_list(K) of
                           "error_logger" ++ _ -> true;
                           "path_config" ++ _ -> true;
+                          "dont_suppress_stderr_logger" -> true;
+                          "loglevel_" ++ _ -> true;
+                          "disk_sink_opts" -> true;
                           _ -> false
                       end],
     EnvArgs = [{upstream_port, UpstreamPort},
