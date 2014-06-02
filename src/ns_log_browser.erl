@@ -103,9 +103,7 @@ log_exists(Log) ->
 
 log_exists(Dir, Log) ->
     Path = filename:join(Dir, Log),
-    IdxPath = lists:append(Path, ".idx"),
-
-    filelib:is_regular(IdxPath).
+    filelib:is_regular(Path).
 
 stream_logs(Log, Fn) ->
     {ok, Dir} = application:get_env(error_logger_mf_dir),
@@ -116,22 +114,26 @@ stream_logs(Dir, Log, Fn) ->
 
 stream_logs(Dir, Log, Fn, ChunkSz) ->
     Path = filename:join(Dir, Log),
-
-    {Ix, NFiles} = read_index_file(Path),
-    Ixs = lists:seq(Ix + 1, NFiles) ++ lists:seq(1, Ix),
+    RestPaths0 = filelib:wildcard(Path ++ ".[0-9]*{.gz,}"),
+    RestPaths =
+        lists:sort(
+          fun (A, B) ->
+                  extract_number(Path, A) > extract_number(Path, B)
+          end, RestPaths0),
 
     lists:foreach(
-      fun (LogIx) ->
-              File = lists:append([Path, ".", integer_to_list(LogIx)]),
-              case file:open(File, [raw, binary]) of
+      fun (P) ->
+              case file:open(P, [raw, binary, compressed]) of
                   {ok, IO} ->
-                      stream_logs_loop(IO, ChunkSz, Fn),
-                      ok = file:close(IO);
+                      try
+                          stream_logs_loop(IO, ChunkSz, Fn)
+                      after
+                          ok = file:close(IO)
+                      end;
                   _Other ->
                       ok
               end
-      end,
-      Ixs).
+      end, RestPaths ++ [Path]).
 
 stream_logs_loop(IO, ChunkSz, Fn) ->
     case file:read(IO, ChunkSz) of
@@ -142,18 +144,8 @@ stream_logs_loop(IO, ChunkSz, Fn) ->
             stream_logs_loop(IO, ChunkSz, Fn)
     end.
 
-read_index_file(Path) ->
-    {Ix, _, _, NFiles} = disk_log_1:read_index_file(Path),
-
-    %% Index can be one greater than number of files. This means that maximum
-    %% number of files is not yet reached.
-    %%
-    %% Pretty weird behavior: if we're writing to the first file out of 20
-    %% read_index_file returns {1, _, _, 1}. But as we move to the second file
-    %% the result becomes be {2, _, _, 1}.
-    case Ix =:= NFiles + 1 of
-        true ->
-            {Ix, Ix};
-        false ->
-            {Ix, NFiles}
-    end.
+extract_number(BasePath, Path) ->
+    true = lists:prefix(BasePath ++ ".", Path),
+    Rest = lists:nthtail(length(BasePath) + 1, Path),
+    {N, _} = lists:splitwith(fun (C) -> C =/= $. end, Rest),
+    list_to_integer(N).
