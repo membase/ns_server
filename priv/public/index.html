@@ -2003,33 +2003,33 @@
   <!-- #container -->
 
 <!-- dialogs -->
-<div class="dialog bucket_details really" id="internal_settings_dialog">
+<div class="dialog internal_settings_dialog really" id="internal_settings_dialog">
   <form>
-    <fieldset style="padding:0; padding-right: 10px;">
+    <fieldset>
       <input type="hidden" name="indexAwareRebalanceDisabled" value="false">
       <input type="hidden" name="rebalanceIndexWaitingDisabled" value="false">
       <input type="hidden" name="rebalanceIndexPausingDisabled" value="false">
       <input type="hidden" name="rebalanceIgnoreViewCompactions" value="false">
       <input type="hidden" name="dbCompactorEvictBodies" value="false">
-      <label><span style="min-width:370px;cursor:help;float:none;display:inline-block;" title="When not disabled makes sure indexes are always up-to-date during rebalance">Disable index aware rebalance</span><input type="checkbox" name="indexAwareRebalanceDisabled" value="true"></label>
-      <label><span style="min-width:370px;cursor:help;float:none;display:inline-block;" title="Whether index aware rebalance waiting for index up-to-dateness should be disabled. Makes rebalance faster">Disable index waiting during rebalance</span><input type="checkbox" name="rebalanceIndexWaitingDisabled" value="true"></label>
-      <label><span style="min-width:370px;cursor:help;float:none;display:inline-block;" title="That's too complex to explain">Disable index pausing during rebalance</span><input type="checkbox" name="rebalanceIndexPausingDisabled" value="true"></label>
-      <label><span style="min-width:370px;cursor:help;float:none;display:inline-block;">Don't compact views during rebalance</span><input type="checkbox" name="rebalanceIgnoreViewCompactions" value="true"></label>
-      <label><span style="min-width:370px;float:none;display:inline-block;">Max in-/out-going backfills per node<br> during rebalance</span><input maxlength="5" style="width:1.5em;" name="rebalanceMovesPerNode"></label>
-      <label><span style="min-width:370px;float:none;display:inline-block;">VBucket moves per node<br>before forced view compaction</span><input maxlength="5" style="width:1.5em;" name="rebalanceMovesBeforeCompaction"></label>
-      <label><span style="min-width:370px;float:none;display:inline-block;">Max parallel main index tasks per node</span><input maxlength="5" style="width:1.5em;" name="maxParallelIndexers"></label>
-      <label><span style="min-width:370px;float:none;display:inline-block;">Max parallel replica index tasks per node</span><input maxlength="5" style="width:1.5em;" name="maxParallelReplicaIndexers"></label>
-      <label><span style="min-width:370px;float:none;display:inline-block;">Maximum Bucket Count</span><input maxlength="3" style="width:1.5em;" name="maxBucketCount"></label>
-      <label><span style="min-width:370px;float:none;display:inline-block;">XDCR Max Replications per Bucket</span><input maxlength="3" style="width:1.5em;" name="xdcrMaxConcurrentReps"></label>
-      <label><span style="min-width:370px;float:none;display:inline-block;">XDCR Checkpoint Interval</span><input maxlength="5" style="width:2.5em;" name="xdcrCheckpointInterval"></label>
-      <label><span style="min-width:370px;float:none;display:inline-block;">XDCR Batch Count</span><input maxlength="5" style="width:2.5em;" name="xdcrWorkerBatchSize"></label>
-      <label><span style="min-width:370px;float:none;display:inline-block;">XDCR Batch Size (kB)</span><input maxlength="6" style="width:2.5em;" name="xdcrDocBatchSizeKb"></label>
-      <label><span style="min-width:370px;float:none;display:inline-block;">XDCR Failure Retry Interval</span><input maxlength="3" style="width:1.5em;" name="xdcrFailureRestartInterval"></label>
-      <label><span style="min-width:370px;float:none;display:inline-block;">XDCR Optimistic Replication Threshold</span><input maxlength="6" style="width:2.5em;" name="xdcrOptimisticReplicationThreshold"></label>
+      <label><span class="cursor_helper" title="When not disabled makes sure indexes are always up-to-date during rebalance">Disable index aware rebalance</span><input type="checkbox" name="indexAwareRebalanceDisabled" value="true"></label>
+      <label><span class="cursor_helper" title="Whether index aware rebalance waiting for index up-to-dateness should be disabled. Makes rebalance faster">Disable index waiting during rebalance</span><input type="checkbox" name="rebalanceIndexWaitingDisabled" value="true"></label>
+      <label><span class="cursor_helper" title="That's too complex to explain">Disable index pausing during rebalance</span><input type="checkbox" name="rebalanceIndexPausingDisabled" value="true"></label>
+      <label><span>Don't compact views during rebalance</span><input type="checkbox" name="rebalanceIgnoreViewCompactions" value="true"></label>
+      <label><span>Max in-/out-going backfills per node<br> during rebalance</span><input maxlength="5" style="width:1.5em;" name="rebalanceMovesPerNode"></label>
+      <label><span>VBucket moves per node<br>before forced view compaction</span><input maxlength="5" style="width:1.5em;" name="rebalanceMovesBeforeCompaction"></label>
+      <label><span>Max parallel main index tasks per node</span><input maxlength="5" style="width:1.5em;" name="maxParallelIndexers"></label>
+      <label><span>Max parallel replica index tasks per node</span><input maxlength="5" style="width:1.5em;" name="maxParallelReplicaIndexers"></label>
+      <label><span>Maximum Bucket Count</span><input maxlength="3" style="width:1.5em;" name="maxBucketCount"></label>
+      <label><span>XDCR Max Replications per Bucket</span><input maxlength="3" style="width:1.5em;" name="xdcrMaxConcurrentReps"></label>
+      <label><span>XDCR Checkpoint Interval</span><input maxlength="5" style="width:2.5em;" name="xdcrCheckpointInterval"></label>
+      <label><span>XDCR Batch Count</span><input maxlength="5" style="width:2.5em;" name="xdcrWorkerBatchSize"></label>
+      <label><span>XDCR Batch Size (kB)</span><input maxlength="6" style="width:2.5em;" name="xdcrDocBatchSizeKb"></label>
+      <label><span>XDCR Failure Retry Interval</span><input maxlength="3" style="width:1.5em;" name="xdcrFailureRestartInterval"></label>
+      <label><span>XDCR Optimistic Replication Threshold</span><input maxlength="6" style="width:2.5em;" name="xdcrOptimisticReplicationThreshold"></label>
 
-      <label><span style="min-width:370px;float:none;display:inline-block;">Simultaneous REST requests limit</span><input maxlength="6" style="width:2.5em;" name="restRequestLimit"></label>
-      <label><span style="min-width:370px;float:none;display:inline-block;">Simultaneous CAPI requests limit</span><input maxlength="6" style="width:2.5em;" name="capiRequestLimit"></label>
-      <label><span style="min-width:370px;float:none;display:inline-block;">Drop requests after this much memory is used (MiB)</span><input maxlength="6" style="width:2.5em;" name="dropRequestMemoryThresholdMiB"></label>
+      <label><span>Simultaneous REST requests limit</span><input maxlength="6" style="width:2.5em;" name="restRequestLimit"></label>
+      <label><span>Simultaneous CAPI requests limit</span><input maxlength="6" style="width:2.5em;" name="capiRequestLimit"></label>
+      <label><span>Drop requests after this much memory is used (MiB)</span><input maxlength="6" style="width:2.5em;" name="dropRequestMemoryThresholdMiB"></label>
     </fieldset>
     <div class="save_cancel">
       <button class="save_button float_right" type="submit">Save</button>

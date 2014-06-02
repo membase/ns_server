@@ -1014,6 +1014,14 @@ html>/**/body .servers .list_button span, x:-moz-any-link, x:default {float:none
 
 input.view_name{width:20em;padding:5px}
 
+.internal_settings_dialog {font-size: 13px;}
+.internal_settings_dialog fieldset {padding: 0 10px 0 0 ; margin-top: 15px;}
+.internal_settings_dialog label {display: block; margin: 6px 0; line-height: 24px; overflow: hidden;}
+.internal_settings_dialog label span {min-width: 370px; float: none; display: inline-block; margin: 0 6px 0 10px; color: #404042;}
+.internal_settings_dialog .cursor_helper {cursor: help;}
+.internal_settings_dialog input[type="checkbox"] {position: relative; top: 2px;}
+.internal_settings_dialog form {border-top: 1px solid #dfdfe0;}
+
 .init_block .bucket_details form > div {border-bottom:none;}
  .init_block .bucket_details .config-bottom {padding:18px 18px 17px;border:none;}
 .bucket_details form > fieldset{padding:0 56px;margin-top:15px}
