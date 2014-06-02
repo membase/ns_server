@@ -1038,6 +1038,12 @@ input.view_name{width:20em;padding:5px}
 .bucket_details_info label abbr {margin-left:6px;}
 .bucket_details_info h2 + label.for-hdd-quota  {width:auto;clear:both;}
 
+.view_document_dialog {font-size: 13px;}
+.view_document_dialog .clearfix {padding:0 56px 29px;border-top:1px solid #f8f8f8;}
+.view_document_dialog .bolder {font-weight:bold}
+.view_document_dialog label {display:block;margin:6px 0;line-height:24px;  overflow:hidden;}
+.view_document_dialog form {border-top: 1px solid #dfdfe0;}
+
 .init_block .bucket_details form > div {border-bottom:none;}
  .init_block .bucket_details .config-bottom {padding:18px 18px 17px;border:none;}
 .bucket_details form > fieldset{padding:0 56px;margin-top:15px}
