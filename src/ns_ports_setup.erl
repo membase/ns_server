@@ -127,11 +127,16 @@ create_ssl_proxy_spec(Config) ->
            end,
     Env = [{"NS_SSL_PROXY_ENV_ARGS", misc:inspect_term(EnvArgs)} | Env0],
 
-    {xdcr_proxy,
-     ErlPath,
-     AllArgs,
-     [use_stdio, stderr_to_stdout, port_server_send_eol,
-      {env, Env}]}.
+    Options0 = [use_stdio, port_server_send_eol, {env, Env}],
+    Options =
+        case misc:get_env_default(dont_suppress_stderr_logger, false) of
+            true ->
+                [ns_server_no_stderr_to_stdout | Options0];
+            false ->
+                Options0
+        end,
+
+    {xdcr_proxy, ErlPath, AllArgs, Options}.
 
 per_bucket_moxi_specs(Config) ->
     BucketConfigs = ns_bucket:get_buckets(Config),
