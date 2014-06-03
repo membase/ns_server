@@ -316,6 +316,8 @@ clean_concurr_throttle_state(Pid, Reason, #concurrency_throttle_state{
 
     NewState.
 
+update_status_to_parent(#concurrency_throttle_state{parent = undefined} = State) ->
+    State;
 update_status_to_parent(#concurrency_throttle_state{
                            parent = Parent,
                            waiting_pool = WaitingPool,
