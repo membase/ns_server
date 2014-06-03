@@ -30,11 +30,15 @@
 -record(state, {
           buffer :: binary(),
           buffer_size :: integer(),
+          outstanding_size :: integer(),
+          buffer_overflow :: boolean(),
+          dropped_messages :: non_neg_integer(),
           flush_timer :: undefined | reference(),
           worker :: pid(),
 
           batch_size :: pos_integer(),
-          batch_timeout :: pos_integer()
+          batch_timeout :: pos_integer(),
+          buffer_size_max :: pos_integer()
          }).
 
 -record(worker_state, {
@@ -42,6 +46,7 @@
           file :: file:io_device(),
           file_size :: integer(),
           file_inode :: integer(),
+          parent :: pid(),
 
           rotation_size :: non_neg_integer(),
           rotation_num_files :: pos_integer(),
@@ -63,6 +68,7 @@ init([Path, Opts]) ->
 
     BatchSize = proplists:get_value(batch_size, Opts, 524288),
     BatchTimeout = proplists:get_value(batch_timeout, Opts, 1000),
+    BufferSizeMax = proplists:get_value(buffer_size_max, Opts, BatchSize * 10),
 
     RotationConf = proplists:get_value(rotation, Opts, []),
 
@@ -73,6 +79,7 @@ init([Path, Opts]) ->
 
 
     WorkerState = #worker_state{path = Path,
+                                parent = self(),
                                 rotation_size = RotSize,
                                 rotation_num_files = RotNumFiles,
                                 rotation_compress = RotCompress,
@@ -81,8 +88,12 @@ init([Path, Opts]) ->
 
     State = #state{buffer = <<>>,
                    buffer_size = 0,
+                   outstanding_size = 0,
+                   buffer_overflow = false,
+                   dropped_messages = 0,
                    batch_size = BatchSize,
                    batch_timeout = BatchTimeout,
+                   buffer_size_max = BufferSizeMax,
                    worker = Worker},
 
     {ok, State}.
@@ -106,6 +117,29 @@ handle_cast(Msg, State) ->
 
 handle_info(flush_buffer, State) ->
     {noreply, flush_buffer(State)};
+handle_info({written, Written}, #state{buffer_size = BufferSize,
+                                       outstanding_size = OutstandingSize,
+                                       buffer_overflow = Overflow,
+                                       buffer_size_max = BufferSizeMax,
+                                       dropped_messages = Dropped} = State) ->
+    true = OutstandingSize >= Written,
+    NewOutstandingSize = OutstandingSize - Written,
+
+    NewTotalSize = BufferSize + NewOutstandingSize,
+    NewState =
+        case Overflow =:= true andalso 2 * NewTotalSize =< BufferSizeMax of
+            true ->
+                Msg = <<"Dropped ",
+                        (list_to_binary(integer_to_list(Dropped)))/binary,
+                        " messages\n">>,
+                State1 = do_log_msg(Msg, State),
+                State1#state{buffer_overflow = false,
+                             dropped_messages = 0,
+                             outstanding_size = NewOutstandingSize};
+            false ->
+                State#state{outstanding_size = NewOutstandingSize}
+        end,
+    {noreply, NewState};
 handle_info({'EXIT', Worker, Reason}, #state{worker = Worker} = State) ->
     {stop, {worker_died, Worker, Reason}, State#state{worker = undefined}};
 handle_info({'EXIT', Pid, Reason}, State) ->
@@ -125,8 +159,21 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 %% internal functions
-log_msg(Msg, #state{buffer = Buffer,
-                    buffer_size = BufferSize} = State) ->
+log_msg(_Msg, #state{buffer_overflow = true,
+                     dropped_messages = Dropped} = State)->
+    State#state{dropped_messages = Dropped + 1};
+log_msg(_Msg, #state{buffer_size = BufferSize,
+                     outstanding_size = OutstandingSize,
+                     buffer_size_max = BufferSizeMax} = State)
+  when BufferSize + OutstandingSize >= BufferSizeMax ->
+    Msg = <<"Dropping consequent messages on the floor because of buffer overflow\n">>,
+    do_log_msg(Msg, State#state{buffer_overflow = true,
+                                dropped_messages = 1});
+log_msg(Msg, State) ->
+    do_log_msg(Msg, State).
+
+do_log_msg(Msg, #state{buffer = Buffer,
+                       buffer_size = BufferSize} = State) ->
     NewBuffer = <<Buffer/binary, Msg/binary>>,
     NewBufferSize = BufferSize + byte_size(Msg),
 
@@ -146,10 +193,12 @@ maybe_flush_buffer(#state{buffer_size = BufferSize,
 
 flush_buffer(#state{worker = Worker,
                     buffer = Buffer,
-                    buffer_size = BufferSize} = State) ->
+                    buffer_size = BufferSize,
+                    outstanding_size = OutstandingSize} = State) ->
     Worker ! {write, Buffer, BufferSize},
     cancel_flush_timer(State#state{buffer = <<>>,
-                                   buffer_size = 0}).
+                                   buffer_size = 0,
+                                   outstanding_size = OutstandingSize + BufferSize}).
 
 maybe_arm_flush_timer(#state{flush_timer = undefined,
                              batch_timeout = Timeout} = State) ->
@@ -396,7 +445,9 @@ receive_more_writes(Data, DataSize) ->
 
 write_data(Data, DataSize,
            #worker_state{file = File,
-                         file_size = FileSize} = State) ->
+                         file_size = FileSize,
+                         parent = Parent} = State) ->
     ok = file:write(File, Data),
+    Parent ! {written, DataSize},
     NewState = State#worker_state{file_size = FileSize + DataSize},
     maybe_rotate_files(NewState).
