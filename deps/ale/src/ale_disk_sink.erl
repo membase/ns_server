@@ -28,16 +28,21 @@
 -include("ale.hrl").
 
 -record(state, {
-          path :: string(),
-          file :: undefined | file:io_device(),
-          file_size :: integer(),
-          file_inode :: integer(),
           buffer :: binary(),
           buffer_size :: integer(),
           flush_timer :: undefined | reference(),
+          worker :: pid(),
 
           batch_size :: pos_integer(),
-          batch_timeout :: pos_integer(),
+          batch_timeout :: pos_integer()
+         }).
+
+-record(worker_state, {
+          path :: string(),
+          file :: file:io_device(),
+          file_size :: integer(),
+          file_inode :: integer(),
+
           rotation_size :: non_neg_integer(),
           rotation_num_files :: pos_integer(),
           rotation_compress :: boolean(),
@@ -66,29 +71,33 @@ init([Path, Opts]) ->
     RotCompress = proplists:get_value(compress, RotationConf, true),
     RotCheckInterval = proplists:get_value(check_interval, RotationConf, 10000),
 
-    State = #state{path = Path,
-                   buffer = <<>>,
+
+    WorkerState = #worker_state{path = Path,
+                                rotation_size = RotSize,
+                                rotation_num_files = RotNumFiles,
+                                rotation_compress = RotCompress,
+                                rotation_check_interval = RotCheckInterval},
+    Worker = spawn_worker(WorkerState),
+
+    State = #state{buffer = <<>>,
                    buffer_size = 0,
                    batch_size = BatchSize,
                    batch_timeout = BatchTimeout,
-                   rotation_size = RotSize,
-                   rotation_num_files = RotNumFiles,
-                   rotation_compress = RotCompress,
-                   rotation_check_interval = RotCheckInterval},
+                   worker = Worker},
 
-    case RotCheckInterval > 0 of
-        true ->
-            erlang:send_after(RotCheckInterval, self(), check_file);
-        false ->
-            ok
-    end,
-
-    {ok, open_log_file(State)}.
+    {ok, State}.
 
 handle_call({log, Msg}, _From, State) ->
     {reply, ok, log_msg(Msg, State)};
-handle_call(sync, _From, State) ->
-    {reply, ok, sync(State)};
+handle_call(sync, From, #state{worker = Worker} = State) ->
+    Parent = self(),
+    proc_lib:spawn_link(
+      fun () ->
+              gen_server:reply(From, gen_server:call(Worker, sync, infinity)),
+              erlang:unlink(Parent)
+      end),
+
+    {noreply, State};
 handle_call(Request, _From, State) ->
     {stop, {unexpected_call, Request}, State}.
 
@@ -97,15 +106,19 @@ handle_cast(Msg, State) ->
 
 handle_info(flush_buffer, State) ->
     {noreply, flush_buffer(State)};
-handle_info(check_file, #state{rotation_check_interval = RotCheckInterval} = State) ->
-    NewState = check_log_file(State),
-    erlang:send_after(RotCheckInterval, self(), check_file),
-    {noreply, NewState};
+handle_info({'EXIT', Worker, Reason}, #state{worker = Worker} = State) ->
+    {stop, {worker_died, Worker, Reason}, State#state{worker = undefined}};
+handle_info({'EXIT', Pid, Reason}, State) ->
+    {stop, {child_died, Pid, Reason}, State};
 handle_info(Info, State) ->
     {stop, {unexpected_info, Info}, State}.
 
-terminate(_Reason, State) ->
+terminate(_Reason, #state{worker = Worker} = State) when Worker =/= undefined ->
     flush_buffer(State),
+    ok = gen_server:call(Worker, nop, infinity),
+    exit(Worker, kill),
+    ok;
+terminate(_Reason, _State) ->
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -113,39 +126,30 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% internal functions
 log_msg(Msg, #state{buffer = Buffer,
-                    buffer_size = BufferSize,
-                    batch_size = BatchSize} = State) ->
+                    buffer_size = BufferSize} = State) ->
     NewBuffer = <<Buffer/binary, Msg/binary>>,
     NewBufferSize = BufferSize + byte_size(Msg),
 
     NewState = State#state{buffer = NewBuffer,
                            buffer_size = NewBufferSize},
 
-    case NewBufferSize >= BatchSize of
+    maybe_flush_buffer(NewState).
+
+maybe_flush_buffer(#state{buffer_size = BufferSize,
+                          batch_size = BatchSize} = State) ->
+    case BufferSize >= BatchSize of
         true ->
-            flush_buffer(NewState);
+            flush_buffer(State);
         false ->
-            maybe_arm_flush_timer(NewState)
+            maybe_arm_flush_timer(State)
     end.
 
-flush_buffer(State) ->
-    NewState = do_flush_buffer(State),
-    maybe_rotate_files(NewState).
-
-do_flush_buffer(#state{file = File,
-                       file_size = FileSize,
-                       buffer = Buffer,
-                       buffer_size = BufferSize} = State) ->
-    case BufferSize =:= 0 of
-        true ->
-            State;
-        false ->
-            ok = file:write(File, Buffer),
-            NewState = State#state{file_size = FileSize + BufferSize,
-                                   buffer = <<>>,
-                                   buffer_size = 0},
-            cancel_flush_timer(NewState)
-    end.
+flush_buffer(#state{worker = Worker,
+                    buffer = Buffer,
+                    buffer_size = BufferSize} = State) ->
+    Worker ! {write, Buffer, BufferSize},
+    cancel_flush_timer(State#state{buffer = <<>>,
+                                   buffer_size = 0}).
 
 maybe_arm_flush_timer(#state{flush_timer = undefined,
                              batch_timeout = Timeout} = State) ->
@@ -165,14 +169,9 @@ cancel_flush_timer(#state{flush_timer = TRef} = State) when TRef =/= undefined -
 cancel_flush_timer(State) ->
     State.
 
-sync(State) ->
-    NewState = flush_buffer(State),
-    file:datasync(NewState#state.file),
-    NewState.
-
-rotate_files(#state{path = Path,
-                    rotation_num_files = NumFiles,
-                    rotation_compress = Compress}) ->
+rotate_files(#worker_state{path = Path,
+                           rotation_num_files = NumFiles,
+                           rotation_compress = Compress}) ->
     Suffix = case Compress of
                  true ->
                      ".gz";
@@ -223,8 +222,8 @@ do_rotate_file(From, To) ->
             end
     end.
 
-maybe_rotate_files(#state{file_size = FileSize,
-                          rotation_size = RotSize} = State)
+maybe_rotate_files(#worker_state{file_size = FileSize,
+                                 rotation_size = RotSize} = State)
   when RotSize =/= 0, FileSize >= RotSize ->
     ok = rotate_files(State),
     ok = maybe_compress_post_rotate(State),
@@ -232,8 +231,8 @@ maybe_rotate_files(#state{file_size = FileSize,
 maybe_rotate_files(State) ->
     State.
 
-open_log_file(#state{path = Path,
-                     file = OldFile} = State) ->
+open_log_file(#worker_state{path = Path,
+                            file = OldFile} = State) ->
     case OldFile of
         undefined ->
             ok;
@@ -243,12 +242,12 @@ open_log_file(#state{path = Path,
 
     {ok, File, #file_info{size = Size,
                           inode = Inode}} = open_file(Path),
-    State#state{file = File,
-                file_size = Size,
-                file_inode = Inode}.
+    State#worker_state{file = File,
+                       file_size = Size,
+                       file_inode = Inode}.
 
-check_log_file(#state{path = Path,
-                      file_inode = FileInode} = State) ->
+check_log_file(#worker_state{path = Path,
+                             file_inode = FileInode} = State) ->
     case file:read_file_info(Path) of
         {error, enoent} ->
             open_log_file(State);
@@ -294,9 +293,9 @@ do_open_file(Path, #file_info{inode = Inode}) ->
             Error
     end.
 
-maybe_compress_post_rotate(#state{path = Path,
-                                  rotation_num_files = NumFiles,
-                                  rotation_compress = true})
+maybe_compress_post_rotate(#worker_state{path = Path,
+                                         rotation_num_files = NumFiles,
+                                         rotation_compress = true})
   when NumFiles > 1 ->
     UncompressedPath = Path ++ ".1",
     CompressedPath = Path ++ ".1.gz",
@@ -346,3 +345,58 @@ compress_file_loop(From, To, Z) ->
         false ->
             ok
     end.
+
+spawn_worker(WorkerState) ->
+    proc_lib:spawn_link(
+      fun () ->
+              worker_init(WorkerState)
+      end).
+
+worker_init(#worker_state{rotation_check_interval = RotCheckInterval} = State0) ->
+    case RotCheckInterval > 0 of
+        true ->
+            erlang:send_after(RotCheckInterval, self(), check_file);
+        false ->
+            ok
+    end,
+    worker_loop(open_log_file(State0)).
+
+worker_loop(State) ->
+    NewState =
+        receive
+            {write, Data0, DataSize0} ->
+                {Data, DataSize} = receive_more_writes(Data0, DataSize0),
+                write_data(Data, DataSize, State);
+            check_file ->
+                erlang:send_after(State#worker_state.rotation_check_interval,
+                                  self(), check_file),
+                check_log_file(State);
+            {'$gen_call', From, nop} ->
+                gen_server:reply(From, ok),
+                State;
+            {'$gen_call', From, sync} ->
+                file:datasync(State#worker_state.file),
+                gen_server:reply(From, ok),
+                State;
+            Msg ->
+                exit({unexpected_msg, Msg})
+        end,
+
+    worker_loop(NewState).
+
+receive_more_writes(Data, DataSize) ->
+    receive
+        {write, MoreData, MoreDataSize} ->
+            receive_more_writes(<<Data/binary, MoreData/binary>>,
+                                DataSize + MoreDataSize)
+    after
+        0 ->
+            {Data, DataSize}
+    end.
+
+write_data(Data, DataSize,
+           #worker_state{file = File,
+                         file_size = FileSize} = State) ->
+    ok = file:write(File, Data),
+    NewState = State#worker_state{file_size = FileSize + DataSize},
+    maybe_rotate_files(NewState).
