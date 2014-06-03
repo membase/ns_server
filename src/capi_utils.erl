@@ -59,6 +59,35 @@ build_info([VBucketStr], R) ->
 build_info([H|T], R)->
     build_info(T, [H|R]).
 
+-spec split_dbname_with_uuid(DbName :: binary()) ->
+                                    {binary(), binary() | undefined, binary() | undefined}.
+split_dbname_with_uuid(DbName) ->
+    [BeforeSlash | AfterSlash] = binary:split(DbName, <<"/">>),
+    {BucketName, UUID} =
+        case binary:split(BeforeSlash, <<"+">>) of
+            [BN, U] ->
+                {BN, U};
+            [BN] ->
+                {BN, undefined}
+        end,
+
+    {VBucketId, UUID1} = split_vbucket(AfterSlash, UUID),
+    {BucketName, VBucketId, UUID1}.
+
+%% if xdcr connects to pre 3.0 clusters we will receive UUID as part of VBucketID
+%% use it if no UUID was found in BucketName
+split_vbucket([], UUID) ->
+    {undefined, UUID};
+split_vbucket([AfterSlash], UUID) ->
+    case {binary:split(AfterSlash, <<";">>), UUID} of
+        {[VB, U], undefined} ->
+            {VB, U};
+        {[VB, _], UUID} ->
+            {VB, UUID};
+        {[VB], UUID} ->
+            {VB, UUID}
+    end.
+
 
 -spec build_dbname(BucketName :: ext_bucket_name(), VBucket :: ext_vbucket_id()) -> binary().
 build_dbname(BucketName, VBucket) ->

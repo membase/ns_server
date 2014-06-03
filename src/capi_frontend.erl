@@ -42,44 +42,36 @@ do_db_req(Req, Fun) ->
                                       {<<"reason">>, couch_util:to_binary(Reason)}]})
       end).
 
+verify_bucket_uuid(_, undefined) ->
+    ok;
+verify_bucket_uuid(BucketConfig, MaybeUUID) ->
+    BucketUUID = proplists:get_value(uuid, BucketConfig),
+    true = (BucketUUID =/= undefined),
+    case BucketUUID =:= MaybeUUID of
+        true ->
+            ok;
+        false ->
+            erlang:throw({not_found, uuids_dont_match})
+    end.
+
 continue_do_db_req(#httpd{user_ctx=UserCtx,
                           path_parts=[DbName | RestPathParts]} = Req, Fun) ->
-    %% check auth here
-    [BucketName | AfterSlash] = binary:split(DbName, <<"/">>),
+    {BucketName, VBucket, UUID} = capi_utils:split_dbname_with_uuid(DbName),
+
     BucketConfig = verify_bucket_auth(Req, BucketName),
-    case AfterSlash of
-        [] ->
+    verify_bucket_uuid(BucketConfig, UUID),
+
+    case VBucket of
+        undefined ->
             case lists:member(node(), couch_util:get_value(servers, BucketConfig)) of
                 true ->
                     %% undefined #db fields indicate bucket database
-                    Db = #db{user_ctx = UserCtx, name = DbName},
-                    Fun(Req, Db);
+                    Db = #db{user_ctx = UserCtx, name = BucketName},
+                    Fun(Req#httpd{path_parts = [BucketName | RestPathParts]}, Db);
                 _ ->
                     send_no_active_vbuckets(Req, [BucketName])
             end;
-        [AfterSlash1] ->
-            %% xdcr replicates here; to prevent a replication to
-            %% recreated bucket (without refetching vbucket map) or
-            %% even to new cluster we encode a bucket uuid in the url
-            %% and check it here;
-            {VBucket, MaybeUUID} =
-                case binary:split(AfterSlash1, <<";">>) of
-                    [AfterSlash2, UUID] ->
-                        {AfterSlash2, UUID};
-                    _ ->
-                        {AfterSlash1, undefined}
-                end,
-
-            BucketUUID = proplists:get_value(uuid, BucketConfig),
-            true = (BucketUUID =/= undefined),
-            case MaybeUUID =:= undefined orelse
-                BucketUUID =:= MaybeUUID of
-                true ->
-                    ok;
-                false ->
-                    erlang:throw({not_found, uuids_dont_match})
-            end,
-
+        _ ->
             RealDbName = <<BucketName/binary, $/, VBucket/binary>>,
             PathParts = [RealDbName | RestPathParts],
 
