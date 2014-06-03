@@ -224,30 +224,6 @@
           batch = #batch{}
          }).
 
-%% concurrency throttle state used by module concurrency_throttle
--record(concurrency_throttle_state, {
-          %% parent process creating the throttle server
-          parent,
-          %% type of concurrency throttle
-          type,
-          %% total number of tokens
-          total_tokens,
-          %% number of available tokens
-          avail_tokens,
-          %% table of waiting requests to be scheduled
-          %% (key = Pid, value = {Signal, LoadKey})
-          waiting_pool,
-          %% table of active, scheduled requests
-          %% (key = Pid, value = LoadKey)
-          active_pool,
-          %% table of load at target node
-          %% (key = TargetNode, value = number of active requests on that node)
-          target_load,
-          %% table of monitoring refs
-          %% (key = Pid, value = monitoring reference)
-          monitor_dict
-         }).
-
 %% options to start xdc replication worker process
 -record(rep_worker_option, {
           worker_id,               %% unique id of worker process starting from 1

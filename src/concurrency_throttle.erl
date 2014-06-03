@@ -28,12 +28,36 @@
 -module(concurrency_throttle).
 -behaviour(gen_server).
 
+-include("ns_common.hrl").
+
 -export([send_back_when_can_go/2, send_back_when_can_go/3, is_done/1]).
 -export([change_tokens/2]).
 -export([start_link/2, init/1, handle_call/3, handle_info/2, handle_cast/2]).
 -export([code_change/3, terminate/2]).
 
--include("xdc_replicator.hrl").
+%% concurrency throttle state used by module concurrency_throttle
+-record(concurrency_throttle_state, {
+          %% parent process creating the throttle server
+          parent,
+          %% type of concurrency throttle
+          type,
+          %% total number of tokens
+          total_tokens,
+          %% number of available tokens
+          avail_tokens,
+          %% table of waiting requests to be scheduled
+          %% (key = Pid, value = {Signal, LoadKey})
+          waiting_pool,
+          %% table of active, scheduled requests
+          %% (key = Pid, value = LoadKey)
+          active_pool,
+          %% table of load at target node
+          %% (key = TargetNode, value = number of active requests on that node)
+          target_load,
+          %% table of monitoring refs
+          %% (key = Pid, value = monitoring reference)
+          monitor_dict
+         }).
 
 start_link({MaxConcurrency, Type}, Parent) ->
     {ok, Pid} = gen_server:start_link(?MODULE, {MaxConcurrency, Type, Parent}, []),
