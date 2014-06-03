@@ -61,7 +61,7 @@
 
 start_link({MaxConcurrency, Type}, Parent) ->
     {ok, Pid} = gen_server:start_link(?MODULE, {MaxConcurrency, Type, Parent}, []),
-    ?xdcr_debug("concurrency throttle started: ~p", [Pid]),
+    ?log_debug("concurrency throttle started: ~p", [Pid]),
     {ok, Pid}.
 
 send_back_when_can_go(Server, Signal) ->
@@ -77,8 +77,8 @@ change_tokens(Server, NewTokens) ->
     gen_server:call(Server, {change_tokens, NewTokens}, infinity).
 
 init({Count, Type, Parent}) ->
-    ?xdcr_debug("init concurrent throttle process, pid: ~p, type: ~p"
-                "# of available token: ~p", [self(), Type, Count]),
+    ?log_debug("init concurrent throttle process, pid: ~p, type: ~p"
+               "# of available token: ~p", [self(), Type, Count]),
     WaitingPool = dict:new(),
     ActivePool = dict:new(),
     TargetLoad = dict:new(),
@@ -109,9 +109,9 @@ handle_call({send_signal, {TargetNode, Signal}}, {Pid, _Tag},
                     end,
     NewState = State#concurrency_throttle_state{target_load = NewTargetLoad,
                                                 waiting_pool = NewWaitingPool},
-    ?xdcr_debug("no token available (total tokens:~p), put (pid:~p, signal: ~p, targetnode: ~p) "
-                "into waiting pool (active reps: ~p, waiting reps: ~p)",
-                [Pid, TotalTokens, Signal, TargetNode, dict:size(ActivePool), dict:size(NewWaitingPool)]),
+    ?log_debug("no token available (total tokens:~p), put (pid:~p, signal: ~p, targetnode: ~p) "
+               "into waiting pool (active reps: ~p, waiting reps: ~p)",
+               [Pid, TotalTokens, Signal, TargetNode, dict:size(ActivePool), dict:size(NewWaitingPool)]),
 
     {reply, ok, update_status_to_parent(NewState)};
 
@@ -134,8 +134,8 @@ handle_call({send_signal, {TargetNode, Signal}}, {Pid, _Tag}, State) ->
     %% signal vb replicator
     Pid ! Signal,
 
-    ?xdcr_debug("grant one token to rep (pid: ~p, targetnode: ~p), available tokens: ~p (total tokens: ~p)",
-                [Pid, TargetNode, NewCount, TotalTokens]),
+    ?log_debug("grant one token to rep (pid: ~p, targetnode: ~p), available tokens: ~p (total tokens: ~p)",
+               [Pid, TargetNode, NewCount, TotalTokens]),
 
     NewState = State#concurrency_throttle_state{
                  avail_tokens = NewCount,
@@ -164,17 +164,17 @@ handle_call({change_tokens, NewTokens}, {Pid, _Tag}, State) ->
             NewAvailTokens = NewTokens - dict:size(ActivePool),
             State1 =  State#concurrency_throttle_state{total_tokens = NewTokens,
                                                        avail_tokens = NewAvailTokens},
-            ?xdcr_debug("number of total tokens changes from ~p to ~p, "
-                        "number of available tokens changes from  ~p to ~p, reported by replicator: ~p",
-                        [TotalTokens, NewTokens, AvailTokens, NewAvailTokens,Pid]),
+            ?log_debug("number of total tokens changes from ~p to ~p, "
+                       "number of available tokens changes from  ~p to ~p, reported by replicator: ~p",
+                       [TotalTokens, NewTokens, AvailTokens, NewAvailTokens,Pid]),
 
             %% schedule more jobs if we have more available tokens
             NewState = if
                            NewAvailTokens > 0 ->
-                               ?xdcr_debug("Will signal ~p process to proceed", [NewAvailTokens]),
+                               ?log_debug("Will signal ~p process to proceed", [NewAvailTokens]),
                                signal_waiting(State1, NewAvailTokens);
                            NewAvailTokens < 0 ->
-                               ?xdcr_debug("Will ask ~p processes to return token back", [-NewAvailTokens]),
+                               ?log_debug("Will ask ~p processes to return token back", [-NewAvailTokens]),
                                ask_to_return_token(dict:to_list(ActivePool), -NewAvailTokens),
                                State1;
                            NewAvailTokens =:= 0 ->
@@ -212,8 +212,8 @@ signal_waiting(#concurrency_throttle_state{} = State, NumJobsToSchedule) ->
                                 monitor_dict = MonDict} = State,
     case dict:size(WaitingPool) of
         0 ->
-            ?xdcr_debug("nothing to schedule, # of active reps: ~p, # of acrtive target nodes: ~p",
-                        [dict:size(ActivePool), dict:size(TargetLoad)]),
+            ?log_debug("nothing to schedule, # of active reps: ~p, # of acrtive target nodes: ~p",
+                       [dict:size(ActivePool), dict:size(TargetLoad)]),
             State;
         _ ->
             {WaitingPid, Signal, TargetNode} = choose_pid_to_schedule(WaitingPool,
@@ -225,9 +225,9 @@ signal_waiting(#concurrency_throttle_state{} = State, NumJobsToSchedule) ->
             NewActivePool = dict:store(WaitingPid, TargetNode, ActivePool),
             NewTargetLoad = dict:update_counter(TargetNode, 1, TargetLoad),
 
-            ?xdcr_debug("schedule a waiting rep (pid: ~p, target node: ~p) to be active "
-                        "(active reps: ~p, waiting reps: ~p)",
-                        [WaitingPid, TargetNode, dict:size(NewActivePool), dict:size(NewWaitingPool)]),
+            ?log_debug("schedule a waiting rep (pid: ~p, target node: ~p) to be active "
+                       "(active reps: ~p, waiting reps: ~p)",
+                       [WaitingPid, TargetNode, dict:size(NewActivePool), dict:size(NewWaitingPool)]),
 
             WaitingPid ! Signal,
             NewState = State#concurrency_throttle_state{
@@ -301,17 +301,17 @@ clean_concurr_throttle_state(Pid, Reason, #concurrency_throttle_state{
 
     case Reason of
         normal  ->
-            ?xdcr_debug("rep ~p to node ~p is done normally, total tokens: ~p, available tokens: ~p,"
-                        "(active reps: ~p, waiting reps: ~p)",
-                        [Pid, TargetNode,
-                         TotalTokens, (AvailTokens + 1),
-                         dict:size(NewActivePool), dict:size(WaitingPool)]);
+            ?log_debug("rep ~p to node ~p is done normally, total tokens: ~p, available tokens: ~p,"
+                       "(active reps: ~p, waiting reps: ~p)",
+                       [Pid, TargetNode,
+                        TotalTokens, (AvailTokens + 1),
+                        dict:size(NewActivePool), dict:size(WaitingPool)]);
         {Type, _Info} ->
-            ?xdcr_debug("rep ~p to node ~p crashed (type: ~p), total tokens: ~p, available tokens: ~p, "
-                        "(active reps: ~p, waiting reps: ~p)",
-                        [Pid, TargetNode, Type,
-                         TotalTokens, (AvailTokens + 1),
-                         dict:size(NewActivePool), dict:size(WaitingPool)])
+            ?log_debug("rep ~p to node ~p crashed (type: ~p), total tokens: ~p, available tokens: ~p, "
+                       "(active reps: ~p, waiting reps: ~p)",
+                       [Pid, TargetNode, Type,
+                        TotalTokens, (AvailTokens + 1),
+                        dict:size(NewActivePool), dict:size(WaitingPool)])
     end,
 
     NewState.
@@ -331,8 +331,8 @@ schedule_waiting_jobs(#concurrency_throttle_state{avail_tokens = AvailTokens} = 
         true ->
             signal_waiting(State, AvailTokens);
         _ ->
-            ?xdcr_debug("no available tokens (wait abs(~p) active jobs done to free tokens) "
-                        "to schedule jobs", [AvailTokens]),
+            ?log_debug("no available tokens (wait abs(~p) active jobs done to free tokens) "
+                       "to schedule jobs", [AvailTokens]),
             State
     end.
 
