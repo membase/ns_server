@@ -3103,7 +3103,7 @@ handle_internal_settings_post(Req) ->
                case proplists:get_value("maxBucketCount", Params) of
                    undefined -> undefined;
                    SV ->
-                       {ok, V} = parse_validate_number(SV, 1, 128),
+                       {ok, V} = parse_validate_number(SV, 1, 8192),
                        MaybeSet(maxBucketCount, max_bucket_count, V)
                end,
                case proplists:get_value("xdcrMaxConcurrentReps", Params) of
