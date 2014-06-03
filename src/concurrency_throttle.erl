@@ -22,7 +22,7 @@
 %% if fails to call is_done/1 but dies, this module will notice and clean it up.
 %% If the process fails to call is_done/1 but runs forever, it's concurrency
 %% turn will last forever preventing other processes from their turns.
-%
+%%
 %% Each process is granted a turn in the order it calls send_back_when_can_go/2
 
 -module(concurrency_throttle).
@@ -138,10 +138,10 @@ handle_call({send_signal, {TargetNode, Signal}}, {Pid, _Tag}, State) ->
                 [Pid, TargetNode, NewCount, TotalTokens]),
 
     NewState = State#concurrency_throttle_state{
-                  avail_tokens = NewCount,
-                  monitor_dict = NewMonDict,
-                  target_load = NewTargetLoad,
-                  active_pool = NewActivePool},
+                 avail_tokens = NewCount,
+                 monitor_dict = NewMonDict,
+                 target_load = NewTargetLoad,
+                 active_pool = NewActivePool},
 
     {reply, ok, update_status_to_parent(NewState)};
 
@@ -166,7 +166,7 @@ handle_call({change_tokens, NewTokens}, {Pid, _Tag}, State) ->
                                                        avail_tokens = NewAvailTokens},
             ?xdcr_debug("number of total tokens changes from ~p to ~p, "
                         "number of available tokens changes from  ~p to ~p, reported by replicator: ~p",
-                       [TotalTokens, NewTokens, AvailTokens, NewAvailTokens,Pid]),
+                        [TotalTokens, NewTokens, AvailTokens, NewAvailTokens,Pid]),
 
             %% schedule more jobs if we have more available tokens
             NewState = if
@@ -253,23 +253,23 @@ code_change(_OldVsn, State, _Extra) ->
 %% minimum active replications
 choose_pid_to_schedule(WaitingPool, TargetLoad) ->
     {MinimumPid, _Load} = dict:fold(
-                           fun(Pid, {_, CurrNode}, {MinPid, MinLoad}) ->
-                                   case dict:is_key(CurrNode, TargetLoad) of
-                                       false ->
-                                           {Pid, 0};
-                                       _ ->
-                                           CurrLoad = dict:fetch(CurrNode, TargetLoad),
-                                           case CurrLoad < MinLoad of
-                                               true ->
-                                                   {Pid, CurrLoad};
-                                               _  ->
-                                                   {MinPid, MinLoad}
-                                           end
-                                   end
-                           end,
-                           %% the max # of active resp per node is the number of vbuckets
-                           {0, 9999},
-                           WaitingPool),
+                            fun(Pid, {_, CurrNode}, {MinPid, MinLoad}) ->
+                                    case dict:is_key(CurrNode, TargetLoad) of
+                                        false ->
+                                            {Pid, 0};
+                                        _ ->
+                                            CurrLoad = dict:fetch(CurrNode, TargetLoad),
+                                            case CurrLoad < MinLoad of
+                                                true ->
+                                                    {Pid, CurrLoad};
+                                                _  ->
+                                                    {MinPid, MinLoad}
+                                            end
+                                    end
+                            end,
+                            %% the max # of active resp per node is the number of vbuckets
+                            {0, 9999},
+                            WaitingPool),
 
     {Signal, TargetNode} = dict:fetch(MinimumPid, WaitingPool),
     {MinimumPid, Signal, TargetNode}.
@@ -317,9 +317,9 @@ clean_concurr_throttle_state(Pid, Reason, #concurrency_throttle_state{
     NewState.
 
 update_status_to_parent(#concurrency_throttle_state{
-                         parent = Parent,
-                         waiting_pool = WaitingPool,
-                         active_pool = ActivePool} = State) ->
+                           parent = Parent,
+                           waiting_pool = WaitingPool,
+                           active_pool = ActivePool} = State) ->
     NumActive = dict:size(ActivePool),
     NumWaiting = dict:size(WaitingPool),
     Parent ! {set_throttle_status, {NumActive, NumWaiting}},
