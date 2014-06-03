@@ -142,24 +142,28 @@ takeover(ProducerNode, Bucket, Partition) ->
                     {takeover, Partition},
                     infinity).
 
-wait_for_data_move([], _, _) ->
+wait_for_data_move(Nodes, Bucket, Partition) ->
+    DoneLimit = ns_config:read_key_fast(upr_move_done_limit, 1000),
+    wait_for_data_move_loop(Nodes, Bucket, Partition, DoneLimit).
+
+wait_for_data_move_loop([], _, _, _DoneLimit) ->
     ok;
-wait_for_data_move([Node | Rest], Bucket, Partition) ->
+wait_for_data_move_loop([Node | Rest], Bucket, Partition, DoneLimit) ->
     Connection = get_connection_name(Node, node(), Bucket),
-    case wait_for_data_move_on_one_node(0, Connection, Bucket, Partition) of
+    case wait_for_data_move_on_one_node(0, Connection, Bucket, Partition, DoneLimit) of
         undefined ->
             ?log_error("No upr backfill stats for bucket ~p, partition ~p, connection ~p",
                        [Bucket, Partition, Connection]),
             {error, no_stats_for_this_vbucket};
         _ ->
-            wait_for_data_move(Rest, Bucket, Partition)
+            wait_for_data_move_loop(Rest, Bucket, Partition, DoneLimit)
     end.
 
-wait_for_data_move_on_one_node(Iterations, Connection, Bucket, Partition) ->
+wait_for_data_move_on_one_node(Iterations, Connection, Bucket, Partition, DoneLimit) ->
     case ns_memcached:get_upr_estimated_remaining_items(Bucket, Connection, Partition) of
         undefined ->
             undefined;
-        N when N < 1000 ->
+        N when N < DoneLimit ->
             ok;
         Items ->
             NewIterations =
@@ -173,7 +177,7 @@ wait_for_data_move_on_one_node(Iterations, Connection, Bucket, Partition) ->
                         I + 1
                 end,
             timer:sleep(?VBUCKET_POLL_INTERVAL),
-            wait_for_data_move_on_one_node(NewIterations, Connection, Bucket, Partition)
+            wait_for_data_move_on_one_node(NewIterations, Connection, Bucket, Partition, DoneLimit)
     end.
 
 get_connection_name(ConsumerNode, ProducerNode, Bucket) ->
