@@ -308,9 +308,6 @@ div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph 
 .views .darker_block h3, .replications .views .darker_block h3 {position:relative;min-height:2.5em}
 .view_head {float:left;padding:12px 0 0 31px}
 .views .results_header { line-height: 31px; padding-left: 12px; }
-.bucket_details .create_dev {padding:0 0 0 4px;color:#bbb;background:#fff;border:1px solid #CCD3D7}
-.bucket_details .create_dev input[disabled] {color:#bbb;background:#fff}
-.bucket_details .bolder {font-weight:bold}
 .shadow_box .section {border:0px;}
 
 .block-expander{cursor:pointer;}
@@ -656,8 +653,7 @@ body.init_secure #init_secure_dialog form > div input {width:183px; padding:3px 
 body.init_secure #init_secure_dialog form > .config-bottom {overflow:hidden;width:682px;margin:25px auto 0 -8px;}
 
 .init_block #init_bucket_dialog {width:748px;padding-bottom:-50px;background:none #eee;-moz-box-shadow:0 0 10px #999;-webkit-box-shadow:0 0 10px #999;box-shadow:0 0 10px #999}
-.init_block #init_bucket_dialog form {border:none;font-family:Verdana,Helvetica,sans-serif;}
-.init_block #init_bucket_dialog form > .clearfix:first-child {padding:0 50px 20px;}
+
 .init_block #init_bucket_dialog .save_cancel button {margin:2px 0 0 20px;}
 
 body.init_bucket_dialog #init_bucket_dialog { display: block; }
@@ -1005,12 +1001,6 @@ html>/**/body .servers .list_button span, x:-moz-any-link, x:default {float:none
 #overview_servers_block .is-zero .when-non-zero {display:none;}
 
 /* from less */
-#bucket_details_dialog{width:755px !important}
-.bucket_details {font-size:13px;}
-.bucket_details h1 {background:#dfdfe0;padding-left:20px;padding-top:16px;padding-bottom:16px;border-bottom:1px solid #BDBEC2;}
- .init_block .bucket_details h1 {background:none;border:none;}
-.bucket_details form {border-top:1px solid #dfdfe0;}
-.bucket_details .clearfix {padding:0 56px 29px;border-top:1px solid #f8f8f8;}
 
 input.view_name{width:20em;padding:5px}
 
@@ -1044,96 +1034,51 @@ input.view_name{width:20em;padding:5px}
 .view_document_dialog label {display:block;margin:6px 0;line-height:24px;  overflow:hidden;}
 .view_document_dialog form {border-top: 1px solid #dfdfe0;}
 
-.init_block .bucket_details form > div {border-bottom:none;}
- .init_block .bucket_details .config-bottom {padding:18px 18px 17px;border:none;}
-.bucket_details form > fieldset{padding:0 56px;margin-top:15px}
-.bucket_details h2,
-.collect_information_dialog h2,
-.bucket_details fieldset legend {clear:both;font-size:20px;font-weight:normal;padding-bottom:6px;margin-bottom:10px;border-bottom:1px solid #d4d9dc;}
-.bucket_details h2{margin-top:18px;margin-bottom:15px}
-.bucket_details fieldset.radiogroup legend{font-size: 12px;text-align:right;border:none;margin:1.1em 10px 0 -10px;}
- .additional_server_info.bucket_details h2 {margin:0 0 10px;padding:5px 0 7px;color:#5391BA;font-size:15px;font-weight:bold;border-bottom:1px solid #bbbdbf;}
-.bucket_settings > ul{background:url("../images/icons.png") no-repeat scroll 0 -85px transparent;padding-left:60px}
+#bucket_details_dialog{width:748px !important}
 
-.bucket_details label {display:block;margin:6px 0;line-height:24px;  overflow:hidden;}
- .additional_server_info.bucket_details label {font-size:12px;}
- .additional_server_info.bucket_details h2 + label {width:auto;clear:both;}
- .additional_server_info.bucket_details .clear + .size-gauge + label {margin:0;}
-.bucket_details input[type="checkbox"], .bucket_details input[type="radio"] {width:auto;position:relative;top:2px;border:none;}
-.bucket_details label abbr {margin-left:6px;}
-.bucket_details label span {display:block;float:left;margin: 0 6px 0 10px;color: #404042;text-align:left;}
-.bucket_details .set label span {color:#222;margin:0 6px 0 0}
-.bucket_details .wrap_acc label span {color:#222;text-align:right;}
-.bucket_details label span + span {width:60px !important;color:#7C7D7F}
+.bucket_details {font-family: Verdana, Helvetica, sans-serif; font-size:13px; line-height: 24px;}
+.bucket_details .clearfix {padding: 0 50px 20px;}
+.bucket_details h2 {clear:both;padding-bottom:6px;margin-top:18px;margin-bottom:15px;border-bottom:1px solid #d4d9dc;font-size:20px;font-weight:normal;}
+.bucket_details label {display: inline-block; vertical-align: middle;}
+.bucket_details .with_radiogroup {display: inline-block; vertical-align: top;}
+.bucket_details .sub_section {padding-left: 19px;}
+.bucket_details input, .bucket_details select {vertical-align: middle;}
+.bucket_details input[type="radio"] {margin-top: 2px;}
+.bucket_details .tooltip .tooltip_msg{width: 300px; font-size: 11px; line-height: 15px;}
+.bucket_details .bucket-icon {background: url("../images/icons.png") no-repeat scroll 0 -85px transparent; padding-left: 90px;}
+.bucket_details .bucket-icon label {width: 100px;}
+.bucket_details .for-ram-quota input {width: 60px;}
+.bucket_details .for-ram-quota {margin-top: 13px; overflow: hidden;}
+.bucket_details .for-ram-quota .gauge-label {float: left; padding-top: 14px;}
+.bucket_details .for-replica-number {display: inline-block; margin-left: 100px;}
+.bucket_details .tooltip {margin-left: 10px;}
+.bucket_details .invalid {border-color: red;}
+.bucket_details .error-container {font-size: 10px;}
+.bucket_details .input_wrapper {display: inline-block;}
+.bucket_details .autocompaction_input_units {vertical-align: middle;}
 
-.bucket_details .for-sasl-password, .bucket_details .for-key-prefix, .bucket_details .for-ascii, .bucket_details .for-source-ip {padding-left:170px;}
-.bucket_details .for-sasl-password span, .bucket_details .for-key-prefix span,
-.bucket_details .for-ascii span, .bucket_details .for-source-ip span {float:none;display:inline;margin-left:6px;}
-.bucket_details .for-sasl-password, .bucket_details .for-ascii {padding-left:20px;}
-.bucket_details .for-name span, .bucket_details .for-bucket-type span {display:block;float:left;text-align:right;margin-right:6px;width:100px; line-height:24px;}
-.bucket_details .for-name input, .bucket_details .for-bucket-type input {width:166px;}
-.bucket_details .for-name input[type="radio"], .bucket_details .for-name input[type="checkbox"],
-.bucket_details .for-bucket-type input[type="radio"], .bucket_details .for-bucket-type input[type="checkbox"] {width:auto;position:relative;top:2px;border:none;}
-.bucket_details .for-bucket-type span {height:48px;}
-.bucket_details .for-bucket-type input {margin-right:3px;}
-.bucket_details label.for-sasl-password-input span {width:164px;}
-.bucket_details label.for-sasl-password-input input {width:166px;text-align:left;}
-.bucket_details label.for-proxy-port span {width:164px;}
-.bucket_details label.for-proxy-port input {width:58px;}
-
-.bucket_details.bucket-is-persistent .when-non-persistent,
-.bucket_details.bucket-is-non-persistent .when-persistent {display:none;}
-
-.bucket_details .for-ram-quota {margin-top: 0;}
-.bucket_details .for-ram-quota em,
-.bucket_details .for-sasl-password em {font-style:normal;}
-.bucket_details.bucket-is-default em.when-default {display:inline;}
-.bucket_details .when-default,
-.bucket_details.bucket-is-default .when-not-default,
-.bucket_details.bucket-is-default .for-sasl-password-input {display:none;}
-
-.bucket_details .memcached-summary {font-style:normal;line-height:24px;clear:both;}
-
-.bucket_details .size-gauge {float:right;width:600px;position:relative;top:-6px;line-height:24px;}
-.bucket_details.really .size-gauge,
-.pad.really .size-gauge {width:365px;}
+.bucket_details .size-gauge {float:right;width:364px;position:relative;top:-6px;line-height:24px;}
 .bucket_details .for-ram-quota span {color:#222}
-.bucket_details.really .size-gauge .usage,
-.pad.really .usage {clear:both;position:relative;height:15px;background:url(../images/usages.png) 0 -46px no-repeat;}
-.bucket_details.really .size-gauge .usage div,
-.pad.really .usage div {width:363px;height:15px;position:absolute;left:0px;top:0px;background:url(../images/usages.png) 0 -46px no-repeat;}
-.pad.really span {margin:0 6px 0 0;color:#616062}
 .bucket_details .size-gauge .top-left {float:left;color:#C19710;font-size:12px;}
 .bucket_details .size-gauge .top-right {float:right;font-size:12px;}
-.bucket_details .size-gauge .usage {clear:both;position:relative;height:21px;background:url(../images/usages_third.png) 0 -46px no-repeat;}
-.bucket_details .size-gauge .usage div {width:600px;height:21px;position:absolute;left:0px;top:0px;background:url(../images/usages_third.png) 0 0 no-repeat;}
+.bucket_details .size-gauge .usage {clear:both;position:relative;height:15px;background:url(../images/usages.png) 0 -46px no-repeat;}
+.bucket_details .size-gauge .usage div {width:363px;height:15px;position:absolute;left:0px;top:0px;background:url(../images/usages.png) 0 -46px no-repeat;}
 .bucket_details .size-gauge table {width:100%;text-align:justify;line-height:1.3;}
 .bucket_details .size-gauge table td {padding:4px 0 0;text-align:right;font-size:10px;background:none;border:none;}
 .bucket_details .size-gauge .usage i {background:none;display:block;font-size:0;height:25px;line-height:0;position:absolute;;top:-5px;width:1px;}
 
-.bucket_details label.for-enable-persistence {padding-left:20px;}
-.bucket_details label.for-enable-persistence span {float:none;display:inline;margin-left:6px;}
-.bucket_details label.for-ram-quota, .bucket_details label.for-hdd-quota {width:275px;padding-top:14px;}
-.bucket_details label.for-ram-quota input, .bucket_details label.for-hdd-quota input {width:58px;text-align:right}
-.bucket_details .error-container {float:left;font-size:66%;padding-left:170px;}
-.bucket_details .error-container.err-name, .bucket_details .error-container.err-proxyPort {display:inline;float:none;padding-left:6px;}
-.bucket_details .for-replica-number .error-container {float:none;padding-left:0;margin-left:0;text-align:left;display:block;width:auto !important;}
-.bucket_details .repli {overflow:hidden}
-.bucket_details .repli span {color:#222}
-.bucket_details label.for-enable-replicas {padding-left:20px;width:150px;float:left;}
-.bucket_details label.for-enable-replicas span {display:inline;float:none;margin-left:5px;}
-.bucket_details label.for-replica-number {display:block;float:left;}
-.bucket_details label.for-replica-number span {display:inline;float:none;margin-left:6px;}
-.bucket_details label.for-replica-number input {width:29px;}
-.bucket_details .save_cancel .flush_button {float:left;margin-right:16px;}
-.bucket_details .save_cancel .delete_button {float:left;margin-right:16px;}
-
-.bucket_details label.for-enable-flush {padding-left:20px;width:150px;float:left;}
-.bucket_details label.for-enable-flush span {display:inline;float:none;margin-left:5px;}
+.bucket_details_auto_compaction {line-height: 26px;}
+.bucket_details_auto_compaction h4 {margin-bottom: 10px; margin-top: 10px;}
 
 .bucket_details.creating .when-editing,
 .bucket_details.editing .when-creating,
 .bucket_details.cannot-delete .when-editing .delete_button {display:none;}
+.bucket_details .when-default,
+.bucket_details.bucket-is-default .when-not-default {display:none;}
+.bucket_details.bucket-is-default .when-default {display:inline;}
+
+.bucket_details .save_cancel .flush_button {float:left;margin-right:16px;}
+.bucket_details .save_cancel .delete_button {float:left;margin-right:16px;}
 
 .input_wrapper {color:#999}
 .auto_compaction ul {margin-left:20px}
@@ -1409,14 +1354,6 @@ input[type=number].size {width:4em;}
 
 .warmup_table td {text-align: left; padding: 0px 20px 0px 20px; line-height: 25px; font-size:12px;}
 
-.cache_metadata_block {overflow: hidden;}
-.cache_metadata_block > label {float: left; margin: 0 6px 0 0;}
-.cache_metadata_block > div {float: left; padding-bottom: 14px;}
-.cache_metadata_block > div label {display: inline;}
-.cache_metadata_block > a {float: right; line-height: 24px;}
-.cache_metadata_block > p {display: none; padding: 0 0 14px 134px; width: 410px; clear: both; font-size:10pt; font-weight:lighter; line-height:20px;}
-
-
 .replication_status_cell * {vertical-align: middle;}
 .replication_control {display: inline-block; text-align: center; vertical-align: middle; margin:0 4px; cursor: pointer; width: 18px; height: 18px; background-image: url('../images/pause_play.png'); background-repeat: no-repeat; }
 .replication_control.dynamic_paused {background-position: 0 0;}
@@ -1432,16 +1369,10 @@ input[type=number].size {width:4em;}
 .dynamic_roadmin-mode .when-roadmin-avoid-me {display: none!important;}
 .dynamic_roadmin-mode .when-roadmin-hide-me {visibility: hidden!important;}
 
-.bucket-io-priority label {margin: 0; white-space: nowrap;}
-.bucket-io-priority div {padding-left: 20px; line-height: 24px;}
-.bucket_details .bucket-io-priority div span {display: inline-block; vertical-align: top; float: none; width: auto!important;}
-.bucket-io-priority p {display: none; margin-top: 14px;}
-.bucket-io-priority a {margin-left: 60px;}
-
 .collect_information_dialog {font-size: 13px;}
 .collect_information_dialog .content {padding: 0 14px 20px;}
 .collect_information_dialog .content p {padding: 10px 0px;}
-.collect_information_dialog h2 {margin-top: 15px;}
+.collect_information_dialog h2 {margin-top: 15px;clear:both;font-size:20px;font-weight:normal;padding-bottom:6px;margin-bottom:10px;border-bottom:1px solid #d4d9dc;}
 .collect_information_dialog .collect_from {padding-left: 20px; padding-top: 5px; line-height: 30px;}
 .collect_information_dialog .collect_from input {vertical-align: middle; margin-right: 5px;}
 .collect_information_dialog .collect_from label {vertical-align: middle;}

@@ -2038,231 +2038,260 @@
   </form>
 </div>
 
-<div class="dialog bucket_details really" id="bucket_details_dialog">
-  <h1><span class="when-editing">Configure Bucket</span><span class="when-creating">Create Bucket</span></h1>
+<div class="dialog bucket_details" id="bucket_details_dialog">
+  <h1>
+    <span class="when-editing">Configure Bucket</span>
+    <span class="when-creating">Create Bucket</span>
+  </h1>
   <form>
-    <fieldset class="bucket_settings">
-      <legend>Bucket Settings</legend>
-      <ul>
-        <li>
-          <label class="for-name"><span>Bucket Name:</span><input disabled name="name" value="Bucket Name"><span class="error-container err-name"></span></label>
-        </li>
-        <li>
-          <fieldset class="radiogroup for-bucket-type">
-            <legend>Bucket Type:</legend>
-            <ul>
-              <li><label><input type="radio" name="bucketType" value="membase"> Couchbase</label></li>
-              <li><label><input type="radio" name="bucketType" value="memcached"> Memcached</label></li>
-            </ul>
-          </fieldset>
-        </li>
-      </ul>
-    </fieldset>
-
-    <fieldset style="margin-top:0">
-      <legend>Memory Size</legend>
-      <div class="cache_metadata_block persistent-only" id="js_cache_metadata_block">
-        <label>Cache Metadata:</label>
+    <div class="clearfix">
+      <h2>Bucket Settings</h2>
+      <div class="bucket-icon">
         <div>
-          <input type="radio" name="evictionPolicy" value="valueOnly" id="cache_metadata_retain_new" checked="checked">
-          <label for="cache_metadata_retain_new">Retain metadata in memory even for non-resident items</label>
-          <br>
-          <input type="radio" name="evictionPolicy" value="fullEviction" id="cache_metadata_non_retain_new">
-          <label for="cache_metadata_non_retain_new">Don’t retain metadata in memory for non-resident items</label>
+          <label for="bucket_details_bucket_name_input">Bucket Name:</label>
+          <input disabled name="name" value="Bucket Name" id="bucket_details_bucket_name_input">
+          <span class="error-container err-name"></span>
         </div>
-        <a href="#" class="more_info">What's this?</a>
-        <p class="more_info">
-          Retaining metadata needs more system memory, but can provide best performance. Not retaining metadata can reduce memory overhead requirement.
-        </p>
-      </div>
-      <div class="size-gauge for-ram">
-        <div class="t">Cluster quota (<span class="total">192 Gb</span>)</div>
-        <div class="gauge">
-          <div>
-            <div style="width: 68%;" class="green"></div>
-            <div style="width: 33%;" class="blue"></div>
+        <div>
+          <label>Bucket Type:</label>
+          <div class="with_radiogroup">
+            <div>
+              <input type="radio" name="bucketType" value="membase" id="bucket_type_membase">
+              <label for="bucket_type_membase">Couchbase</label>
+            </div>
+            <div>
+              <input type="radio" name="bucketType" value="memcached" id="bucket_type_memcached">
+              <label for="bucket_type_memcached">Memcached</label>
+            </div>
           </div>
         </div>
-        <table class="b"><tr>
-          <td class="blue">Other Buckets (<span class="other">15 Gb</span>)</td>
-          <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
-          <td>Free (<span class="free">12 Gb</span>)</td>
-        </tr></table>
       </div>
 
-      <input name="ramQuotaMB" type="hidden" />
-      <label class="for-ram-quota">
-        <span>Per Node RAM Quota:</span>
-        <input name="ramQuotaMB" type="text" value="30" />
-        <abbr>MB</abbr>
-      </label>
+      <h2>Memory Size</h2>
+      <div class="sub_section">
+        <div class="cache_metadata_block persistent-only">
+          <label>Cache Metadata:</label>
+          <div class="with_radiogroup">
+            <div>
+              <input type="radio" name="evictionPolicy" value="valueOnly" id="cache_metadata_retain_new" checked="checked">
+              <label for="cache_metadata_retain_new">Retain metadata in memory even for non-resident items</label>
+            </div>
+            <div>
+              <input type="radio" name="evictionPolicy" value="fullEviction" id="cache_metadata_non_retain_new">
+              <label for="cache_metadata_non_retain_new">Don't retain metadata in memory for non-resident items</label>
+            </div>
+          </div>
+          <a class="tooltip"><span>What's this?</span>
+            <span class="tooltip_msg"><span>
+                Retaining metadata needs more system memory, but can provide best performance. Not retaining metadata can reduce memory overhead requirement.
+            </span></span>
+          </a>
+        </div>
 
-      <div class="error-container err-ramQuotaMB"></div>
-      <em class="memcached-summary when-non-persistent"></em>
-    </fieldset>
-
-    <fieldset>
-      <legend>Access Control</legend>
-      <div class="wrap_acc">
-        <label class="for-sasl-password"><input id="bucket_details_sasl_selected" type="radio" name="authType" value="sasl" checked>
-          <span><em class="when-default">Standard port (TCP port 11211. ASCII protocol or Binary auth-less)</em><em class="when-not-default">Standard port (TCP port 11211. Needs SASL auth.)</em></span>
-        </label>
-        <label class="for-sasl-password-input"><span>Enter password: </span><input type="password" name="saslPassword" disabled value=""><div class="error-container err-saslPassword"></div></label>
-        <label class="for-ascii"><input type="radio" name="authType" value="none"><span>Dedicated port (supports ASCII protocol and is auth-less)</span></label>
-        <label class="for-proxy-port"><span>Protocol Port:</span><input name="proxyPort"><span class="error-container err-proxyPort"></span></label>
+        <div class="for-ram-quota">
+          <div class="size-gauge for-ram">
+            <div class="top-right">Cluster quota (0 MB)</div>
+            <div class="usage">
+              <div style="width:100%;background-color:#E1E2E3"></div>
+            </div>
+            <table style="width:100%;">
+              <tbody>
+                <tr><td style="text-align:left;color:#1878a2;">Other Buckets (0 B)</td><td style="text-align:center;color:#409f05;">This Bucket (0 MB)</td><td style="text-align:right;color:#444245;">Free (0 MB)</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="gauge-label">
+            <label for="ram_quota_mb">Per Node RAM Quota:</label>
+            <input name="ramQuotaMB" type="text" value="30" id="ram_quota_mb">
+            <abbr>MB</abbr>
+          </div>
+        </div>
+        <div class="error-container err-ramQuotaMB"></div>
+        <span class="memcached-summary when-non-persistent"></span>
       </div>
-    </fieldset>
 
-    <fieldset class="persistent-only">
-      <legend>Replicas</legend>
-      <div class="repli">
-      <label class="for-enable-replicas"><input type="checkbox" checked><span>Enable </span></label>
-      <input class="hidden-replica-number" type="hidden" name="replicaNumber" value="0" disabled>
-      <label class="for-replica-number">
-        <select name="replicaNumber"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
-        <span>Number of replica (backup) copies</span>
-      </label>
-      <span class="error-container err-replicaNumber"></span>
+      <h2>Access Control</h2>
+      <div class="sub_section">
+        <div>
+          <input id="js_bucket_details_sasl_selected" type="radio" name="authType" value="sasl" checked>
+          <div class="with_radiogroup">
+            <label for="js_bucket_details_sasl_selected">
+              <span class="when-default">Standard port (TCP port 11211. ASCII protocol or Binary auth-less)</span>
+              <span class="when-not-default">Standard port (TCP port 11211. Needs SASL auth.)</span>
+            </label>
+            <div class="when-not-default">
+              <label for="js_bucket_details_sasl_password">Enter password:</label>
+              <input type="password" name="saslPassword" id="js_bucket_details_sasl_password" disabled value="">
+              <div class="error-container err-saslPassword"></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <input type="radio" name="authType" value="none" id="js_bucket_details_auth_type">
+          <div class="with_radiogroup">
+            <label for="js_bucket_details_auth_type">Dedicated port (supports ASCII protocol and is auth-less)</label>
+            <div>
+              <label for="js_bucket_details_proxy_port">Protocol Port:</label>
+              <input id="js_bucket_details_proxy_port" name="proxyPort" style="width:50px">
+              <span class="error-container err-proxyPort"></span>
+            </div>
+          </div>
+        </div>
       </div>
-      <input type="hidden" name="replicaIndex" value="0"/>
-      <label style="padding-left: 20px;"><input type="checkbox" name="replicaIndex" value="1" style="margin-right:5px;"/>Index replicas</label>
-    </fieldset> <!-- .persistent-only -->
 
-    <fieldset class="persistent-only bucket-io-priority">
-      <legend>Disk I/O Optimization</legend>
+      <div class="persistent-only">
+        <h2>Replicas</h2>
+        <div class="sub_section">
+          <input type="checkbox" checked id="for-enable-replicas" class="js_for-enable-replicas">
+          <label for="for-enable-replicas">Enable</label>
+          <input class="hidden-replica-number" type="hidden" name="replicaNumber" value="0" disabled>
+          <div class="for-replica-number">
+            <select name="replicaNumber" id="label_for-replica-number">
+              <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            </select>
+            <label for="label_for-replica-number">Number of replica (backup) copies</label>
+          </div>
+          <div class="error-container err-replicaNumber"></div>
+          <input type="hidden" name="replicaIndex" value="0">
+          <input type="checkbox" name="replicaIndex" value="1" id="label_replica_index_flag">
+          <label for="label_replica_index_flag">Index replicas</label>
+        </div>
+      </div><!-- .persistent-only -->
 
-      <div>
-        <span>
-          Set the bucket disk I/O priority:
-        </span>
-        <span>
-          <label>
-            <input type="radio" name="threadsNumber" value="3" checked="true"> Low (default)
-          </label>
-          <label>
-            <input type="radio" name="threadsNumber" value="8"> High
-          </label>
-        </span>
-        <a href="#" class="more_info">
-          What's this?
-        </a>
-        <p class="more_info">
-          This is an advanced setting for Disk I/O optimization which allows tasks to be handled based on priority.
-        </p>
-      </div>
-    </fieldset> <!-- .persistent-only -->
+      <div class="persistent-only bucket-io-priority">
+        <h2>Disk I/O Optimization</h2>
+        <div class="sub_section">
+          <label>Set the bucket disk I/O priority:</label>
+          <div class="with_radiogroup">
+            <div>
+              <input type="radio" name="threadsNumber" value="3" checked="true" id="low_threads_number">
+              <label for="low_threads_number">Low (default)</label>
+            </div>
+            <div>
+              <input type="radio" name="threadsNumber" value="8" id="hight_threads_number">
+              <label for="hight_threads_number">High</label>
+            </div>
+          </div>
+          <a class="tooltip"><span>What's this?</span>
+            <span class="tooltip_msg"><span>
+                This is an advanced setting for Disk I/O optimization which allows tasks to be handled based on priority.
+            </span></span>
+          </a>
+        </div>
+      </div> <!-- .persistent-only -->
 
-    <fieldset class="auto_compaction persistent-only">
-      <legend>Auto-Compaction</legend>
-      <p>The Auto-Compaction daemon compacts databases and their respective
-      view indexes when all the condition parameters are satisfied.</p>
-      <ul>
-        <li><input type="hidden" name="autoCompactionDefined" value="false" />
-          <label><input type="checkbox" name="autoCompactionDefined" value="true" /> Override the default autocompaction settings?</label>
-        </li>
-      </ul><ul class="autocompaction-settings">
-        <li><h4>Database Fragmentation</h4></li>
-        <li class="database">
-          <span>
+    <div class="bucket_details_auto_compaction persistent-only" id="js_bucket_auto_compaction_settings">
+      <h2>Auto-Compaction</h2>
+      <div class="sub_section">
+        <p>The Auto-Compaction daemon compacts databases and their respective
+        view indexes when all the condition parameters are satisfied.</p>
+        <ul>
+          <li><input type="hidden" name="autoCompactionDefined" value="false" />
+            <label><input type="checkbox" name="autoCompactionDefined" value="true" /> Override the default autocompaction settings?</label>
+          </li>
+        </ul><ul class="autocompaction-settings sub_section">
+          <li><h4>Database Fragmentation</h4></li>
+          <li class="database">
+            <span>
+              <input type="checkbox"
+                     id="db_frag_check"
+                     class="check-for-databaseFragmentationThresholdPercentage" />
+            </span>
+            <span class="input_wrapper">
+              <input type="number"
+                     id="32cc3a81-c0e9-495a-836e-3fdeb1384110"
+                     name="databaseFragmentationThreshold[percentage]" /><span class="autocompaction_input_units">%</span>
+            </span>
+            <label for="32cc3a81-c0e9-495a-836e-3fdeb1384110">
+              <span>at which point compaction is triggered</span>
+            </label>
+            <div class="error-container err-databaseFragmentationThreshold-percentage-"></div>
+          </li>
+          <li class="database">
             <input type="checkbox"
-                   id="db_frag_check"
-                   class="check-for-databaseFragmentationThresholdPercentage" />
-          </span>
-          <span class="input_wrapper">
-            <input type="number"
-                   id="32cc3a81-c0e9-495a-836e-3fdeb1384110"
-                   name="databaseFragmentationThreshold[percentage]" />%
-          </span>
-          <label for="32cc3a81-c0e9-495a-836e-3fdeb1384110">
-            <span>at which point compaction is triggered</span>
-          </label>
-          <div class="error-container err-databaseFragmentationThreshold-percentage-"></div>
-        </li>
-        <li class="database">
-          <input type="checkbox"
-                 class="check-for-databaseFragmentationThresholdSize" />
-          <span class="input_wrapper">
-            <input type="number" id="dialog-db-compaction-size"
-                   name="databaseFragmentationThreshold[size]"
-                   class="size" />MB
-          </span>
-          <label for="dialog-db-compaction-size">
-            <span>at which point compaction is triggered</span>
-          </label>
-          <div class="error-container err-databaseFragmentationThreshold-size-"></div>
-        </li>
+                   class="check-for-databaseFragmentationThresholdSize" />
+            <span class="input_wrapper">
+              <input type="number" id="dialog-db-compaction-size"
+                     name="databaseFragmentationThreshold[size]"
+                     class="size" /><span class="autocompaction_input_units">MB</span>
+            </span>
+            <label for="dialog-db-compaction-size">
+              <span>at which point compaction is triggered</span>
+            </label>
+            <div class="error-container err-databaseFragmentationThreshold-size-"></div>
+          </li>
 
-        <li><h4>View Fragmentation</h4></li>
-        <li class="view">
+          <li><h4>View Fragmentation</h4></li>
+          <li class="view">
 
-          <input type="checkbox" id="view_frag_check" class="check-for-viewFragmentationThresholdPercentage" />
-          <span class="input_wrapper">
-            <input id="f9a08cc9-e572-4b6e-b4d2-1fe2b0b11852"
-                   name="viewFragmentationThreshold[percentage]" type="number" />%
-          </span>
-          <label for="f9a08cc9-e572-4b6e-b4d2-1fe2b0b11852">
-            <span>at which point compaction is triggered</span>
-          </label>
-          <div class="error-container err-viewFragmentationThreshold-percentage-"></div>
-        </li>
-        <li class="view">
-          <input type="checkbox" class="check-for-viewFragmentationThresholdSize" />
-          <span class="input_wrapper">
-            <input type="number" id="dialog-view-compaction-size"
-                   name="viewFragmentationThreshold[size]"
-                   class="size" />MB
-          </span>
-          <label for="dialog-view-compaction-size">
-            <span>at which point compaction is triggered</span>
-          </label>
-          <div class="error-container err-viewFragmentationThreshold-size-"></div>
-                      </li>
-        <li class="period">
-          <span class="toggle">
-            <input type="checkbox" id="period_check" class="check-for-allowedTimePeriod"/> <label for="period_check">Time Period</label>
-          </span>
-          <span class="input_wrapper">
-            <input id="2cbc1fe9-d580-4126-9c7e-777fe7adf233" name="allowedTimePeriod[fromHour]" type="number" min="0" max="23" placeholder="HH" />:<input name="allowedTimePeriod[fromMinute]" type="number" min="0" max="59" placeholder="MM" />
-            - <input name="allowedTimePeriod[toHour]" type="number" min="0" max="23" placeholder="HH" />:<input name="allowedTimePeriod[toMinute]" type="number" min="0" max="59" placeholder="MM" />
-          </span>
-          <label for="2cbc1fe9-d580-4126-9c7e-777fe7adf233">
-            <span>during which compaction is allowed</span>
-          </label>
-          <div class="error-container err-allowedTimePeriod"></div>
-          <div class="error-container err-allowedTimePeriod-fromHour-"></div>
-          <div class="error-container err-allowedTimePeriod-fromMinute-"></div>
-          <div class="error-container err-allowedTimePeriod-toHour-"></div>
-          <div class="error-container err-allowedTimePeriod-toMinute-"></div>
-          <ul>
-            <li>
-              <input type="hidden" name="allowedTimePeriod[abortOutside]" value="false" />
-              <input id="66fdfb02-6c6f-453e-9ae3-fa011ecd42c0" type="checkbox" name="allowedTimePeriod[abortOutside]" value="true" />
-              <label for="66fdfb02-6c6f-453e-9ae3-fa011ecd42c0">Abort compaction if run time exceeds the above period</label>
-              <div class="error-container err-allowedTimePeriod-abortOutside-"></div>
-            </li>
-          </ul>
-        </li>
-        <li>
-          <input type="hidden" name="parallelDBAndViewCompaction" value="false" />
-          <input id="089ccca1-8688-41f9-a126-71a871b2ecf6" type="checkbox" name="parallelDBAndViewCompaction" value="true" />
-          <label for="089ccca1-8688-41f9-a126-71a871b2ecf6">Process Database and View compaction in parallel</label>
-          <div class="error-container err-parallelDBAndViewCompaction"></div>
-        </li>
-        <li>
-          <label for="c80016fb-f7dc-4035-a45e-ac692ae2a790">Metadata Purge Interval (0.04 (1h) - 60days): </label>
-          <input id="c80016fb-f7dc-4035-a45e-ac692ae2a790" name="purgeInterval" style="width:2.5em;">
-          <div class="error-container err-purgeInterval" style="display: inline; padding-left: 0; float: none;"></div>
-        </li>
-      </ul>
-    </fieldset> <!-- .auto_compaction -->
+            <input type="checkbox" id="view_frag_check" class="check-for-viewFragmentationThresholdPercentage" />
+            <span class="input_wrapper">
+              <input id="f9a08cc9-e572-4b6e-b4d2-1fe2b0b11852"
+                     name="viewFragmentationThreshold[percentage]" type="number" /><span class="autocompaction_input_units">%</span>
+            </span>
+            <label for="f9a08cc9-e572-4b6e-b4d2-1fe2b0b11852">
+              <span>at which point compaction is triggered</span>
+            </label>
+            <div class="error-container err-viewFragmentationThreshold-percentage-"></div>
+          </li>
+          <li class="view">
+            <input type="checkbox" class="check-for-viewFragmentationThresholdSize" />
+            <span class="input_wrapper">
+              <input type="number" id="dialog-view-compaction-size"
+                     name="viewFragmentationThreshold[size]"
+                     class="size" /><span class="autocompaction_input_units">MB</span>
+            </span>
+            <label for="dialog-view-compaction-size">
+              <span>at which point compaction is triggered</span>
+            </label>
+            <div class="error-container err-viewFragmentationThreshold-size-"></div>
+                        </li>
+          <li class="period">
+            <span class="toggle">
+              <input type="checkbox" id="period_check" class="check-for-allowedTimePeriod"/> <label for="period_check">Time Period</label>
+            </span>
+            <span class="input_wrapper">
+              <input id="2cbc1fe9-d580-4126-9c7e-777fe7adf233" name="allowedTimePeriod[fromHour]" type="number" min="0" max="23" placeholder="HH" />:<input name="allowedTimePeriod[fromMinute]" type="number" min="0" max="59" placeholder="MM" />
+              - <input name="allowedTimePeriod[toHour]" type="number" min="0" max="23" placeholder="HH" />:<input name="allowedTimePeriod[toMinute]" type="number" min="0" max="59" placeholder="MM" />
+            </span>
+            <label for="2cbc1fe9-d580-4126-9c7e-777fe7adf233">
+              <span>during which compaction is allowed</span>
+            </label>
+            <div class="error-container err-allowedTimePeriod"></div>
+            <div class="error-container err-allowedTimePeriod-fromHour-"></div>
+            <div class="error-container err-allowedTimePeriod-fromMinute-"></div>
+            <div class="error-container err-allowedTimePeriod-toHour-"></div>
+            <div class="error-container err-allowedTimePeriod-toMinute-"></div>
+            <ul>
+              <li>
+                <input type="hidden" name="allowedTimePeriod[abortOutside]" value="false" />
+                <input id="66fdfb02-6c6f-453e-9ae3-fa011ecd42c0" type="checkbox" name="allowedTimePeriod[abortOutside]" value="true" />
+                <label for="66fdfb02-6c6f-453e-9ae3-fa011ecd42c0">Abort compaction if run time exceeds the above period</label>
+                <div class="error-container err-allowedTimePeriod-abortOutside-"></div>
+              </li>
+            </ul>
+          </li>
+          <li>
+            <input type="hidden" name="parallelDBAndViewCompaction" value="false" />
+            <input id="089ccca1-8688-41f9-a126-71a871b2ecf6" type="checkbox" name="parallelDBAndViewCompaction" value="true" />
+            <label for="089ccca1-8688-41f9-a126-71a871b2ecf6">Process Database and View compaction in parallel</label>
+            <div class="error-container err-parallelDBAndViewCompaction"></div>
+          </li>
+          <li>
+            <label for="c80016fb-f7dc-4035-a45e-ac692ae2a790">Metadata Purge Interval (0.04 (1h) - 60days): </label>
+            <input id="c80016fb-f7dc-4035-a45e-ac692ae2a790" name="purgeInterval" style="width:2.5em;">
+            <div class="error-container err-purgeInterval" style="display: inline; padding-left: 0; float: none;"></div>
+          </li>
+        </ul>
+      </div>
+    </div> <!-- .auto_compaction -->
 
-    <fieldset style="margin-top:0">
-      <legend>Flush</legend>
-      <label class="for-enable-flush">
-        <input type="checkbox" name="flushEnabled" value="1">
-        <span>Enable </span>
-      </label>
-    </fieldset>
+      <h2>Flush</h2>
+      <div class="sub_section">
+        <input type="checkbox" class="for-enable-flush" id="for-enable-flush-new" name="flushEnabled" value="1">
+        <label for="for-enable-flush-new">Enable</label>
+      </div>
+    </div>
 
     <div class="save_cancel">
       <button class="save_button float_right when-roadmin-hide-me" type="submit">
@@ -3102,102 +3131,125 @@
     </div>
   <!-- END init_cluster_block -->
 
-  <div class="pad bucket_details really" id="init_bucket_dialog">
+  <div class="pad bucket_details" id="init_bucket_dialog">
     <div class="config-top">
       <h1>Create Default Bucket</h1>
       <h2>Step <i class="current-step">3</i> of 5</h2>
     </div>
-    <form><div class="clearfix">
+    <form>
+    <div class="clearfix">
       <h2>Bucket Settings</h2>
-      <div class="bucket-icon"></div>
-      <label class="for-name"><span>Bucket Name:</span> <strong>default</strong></label>
-      <div class="for-bucket-type"><span>Bucket Type:</span>
-       <label><input type="radio" name="bucketType" value="membase"> Couchbase</label>
-       <label><input type="radio" name="bucketType" value="memcached"> Memcached</label>
-      </div>
-      <h2>Memory Size</h2>
-      <div class="cache_metadata_block persistent-only" id="js_cache_metadata_block">
-        <label>Cache Metadata:</label>
+      <div class="bucket-icon">
         <div>
-          <input type="radio" name="evictionPolicy" value="valueOnly" id="cache_metadata_retain" checked="checked">
-          <label for="cache_metadata_retain">Retain metadata in memory even for non-resident items</label>
-          <br>
-          <input type="radio" name="evictionPolicy" value="fullEviction" id="cache_metadata_non_retain">
-          <label for="cache_metadata_non_retain">Don’t retain metadata in memory for non-resident items</label>
+          <label>Bucket Name:</label>
+          <strong>default</strong>
         </div>
-        <a href="#" class="more_info">What's this?</a>
-        <p class="more_info">
-          Retaining metadata needs more system memory, but can provide best performance. Not retaining metadata can reduce memory overhead requirement.
-        </p>
-      </div>
-      <div class="size-gauge for-ram">
-        <div class="t">Cluster quota (<span class="total">192 Gb</span>)</div>
-        <div class="gauge">
-          <div>
-            <div style="width: 68%;" class="green"></div>
-            <div style="width: 33%;" class="blue"></div>
+        <div>
+          <label>Bucket Type:</label>
+          <div class="with_radiogroup">
+            <div>
+              <input type="radio" name="bucketType" value="membase" id="bucket_type_membase_init">
+              <label for="bucket_type_membase_init">Couchbase</label>
+            </div>
+            <div>
+              <input type="radio" name="bucketType" value="memcached" id="bucket_type_memcached_init">
+              <label for="bucket_type_memcached_init">Memcached</label>
+            </div>
           </div>
         </div>
-        <table class="b"><tr>
-          <!-- <td class="blue" style="display:none;">Other Buckets (<span class="other">15 Gb</span>)</td> -->
-          <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
-          <td>Free (<span class="free">12 Gb</span>)</td>
-        </tr></table>
       </div>
-      <label class="for-ram-quota">
-        <span>
-          <em class="when-non-persistent">Per Node RAM Quota:</em>
-          <em class="when-persistent">Per Node RAM Quota:</em>
-        </span>
-        <input name="ramQuotaMB" class="focusme" value="30" />
-        <abbr>MB</abbr>
-      </label>
-      <div class="error-container err-ramQuotaMB"></div>
-            <em class="memcached-summary when-non-persistent"></em>
+
+      <h2>Memory Size</h2>
+      <div class="sub_section">
+        <div class="cache_metadata_block persistent-only">
+          <label>Cache Metadata:</label>
+          <div class="with_radiogroup">
+            <div>
+              <input type="radio" name="evictionPolicy" value="valueOnly" id="cache_metadata_retain-init" checked="checked">
+              <label for="cache_metadata_retain-init">Retain metadata in memory even for non-resident items</label>
+            </div>
+            <div>
+              <input type="radio" name="evictionPolicy" value="fullEviction" id="cache_metadata_non_retain-init">
+              <label for="cache_metadata_non_retain-init">Don’t retain metadata in memory for non-resident items</label>
+            </div>
+          </div>
+          <a class="tooltip"><span>What's this?</span>
+            <span class="tooltip_msg"><span>
+                Retaining metadata needs more system memory, but can provide best performance. Not retaining metadata can reduce memory overhead requirement.
+            </span></span>
+          </a>
+        </div>
+        <div class="for-ram-quota">
+          <div class="size-gauge for-ram">
+            <div class="top-right">Cluster quota (0 MB)</div>
+            <div class="usage">
+              <div style="width:100%;background-color:#E1E2E3"></div>
+            </div>
+            <table style="width:100%;">
+              <tbody>
+                <tr><td style="text-align:left;color:#1878a2;">Other Buckets (0 B)</td><td style="text-align:center;color:#409f05;">This Bucket (0 MB)</td><td style="text-align:right;color:#444245;">Free (0 MB)</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="gauge-label">
+            <label for="ram_quota_mb_init">Per Node RAM Quota:</label>
+            <input name="ramQuotaMB" type="text" value="30" id="ram_quota_mb_init">
+            <abbr>MB</abbr>
+          </div>
+        </div>
+        <div class="error-container err-ramQuotaMB"></div>
+        <span class="memcached-summary when-non-persistent"></span>
+      </div>
+
       <div class="persistent-only">
         <h2>Replicas</h2>
-        <label class="for-enable-replicas"><input type="checkbox" checked><span>Enable </span></label>
-        <input class="hidden-replica-number" type="hidden" name="replicaNumber" value="0" disabled>
-        <label class="for-replica-number">
-          <select name="replicaNumber"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
-          <span>Number of replica (backup) copies</span>
-        </label>
-        <span class="error-container err-replicaNumber"></span>
-        <input type="hidden" name="replicaIndex" value="0"/>
-        <label style="padding-left: 20px; clear:both;"><input type="checkbox" name="replicaIndex" value="1" style="margin-right:5px;"/>Index replicas</label>
+        <div class="sub_section">
+          <input type="checkbox" checked id="for-enable-replicas-init" class="js_for-enable-replicas">
+          <label for="for-enable-replicas-init">Enable</label>
+          <input class="hidden-replica-number" type="hidden" name="replicaNumber" value="0" disabled>
+          <div class="for-replica-number">
+            <select name="replicaNumber">
+              <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            </select>
+            <label>Number of replica (backup) copies</label>
+          </div>
+          <div class="error-container err-replicaNumber"></div>
+          <input type="hidden" name="replicaIndex" value="0">
+          <input type="checkbox" name="replicaIndex" value="1" id="label_replica_index_flag-init">
+          <label for="label_replica_index_flag-init">Index replicas</label>
+        </div>
       </div><!-- .persistent-only -->
 
       <div class="persistent-only bucket-io-priority">
         <h2>Disk I/O Optimization</h2>
-
-        <div>
-          <span>
-            Set the bucket disk I/O priority:
-          </span>
-          <span>
-            <label>
-              <input type="radio" name="threadsNumber" value="3" checked="true"> Low (default)
-            </label>
-            <label>
-              <input type="radio" name="threadsNumber" value="8"> High
-            </label>
-          </span>
-          <a href="#" class="more_info">
-            What's this?
+        <div class="sub_section">
+          <label>Set the bucket disk I/O priority:</label>
+          <div class="with_radiogroup">
+            <div>
+              <input type="radio" name="threadsNumber" value="3" checked="true" id="low_threads_number_init">
+              <label for="low_threads_number_init">Low (default)</label>
+            </div>
+            <div>
+              <input type="radio" name="threadsNumber" value="8" id="hight_threads_number_init">
+              <label for="hight_threads_number_init">High</label>
+            </div>
+          </div>
+          <a class="tooltip"><span>What's this?</span>
+            <span class="tooltip_msg"><span>
+                This is an advanced setting for Disk I/O optimization which allows tasks to be handled based on priority.
+            </span></span>
           </a>
-          <p class="more_info">
-            This is an advanced setting for Disk I/O optimization which allows tasks to be handled based on priority.
-          </p>
         </div>
       </div> <!-- .persistent-only -->
 
       <h2>Flush</h2>
-      <label class="for-enable-flush">
-        <input type="checkbox" name="flushEnabled" value="1">
-        <span>Enable </span>
-      </label>
+      <div class="sub_section">
+        <input type="checkbox" class="for-enable-flush" id="for-enable-flush-init" name="flushEnabled" value="1">
+        <label for="for-enable-flush-init">Enable</label>
+      </div>
+    </div>
 
-    </div><div class="config-bottom clearfix">
+    <div class="config-bottom">
     <button name="finish" class="submit finish direction-button" type="submit">Next</button>
     <button name="back" class="submit back direction-button" id="step-init-bucket-back" type="button">Back</button>
     </div></form>

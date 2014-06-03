@@ -227,7 +227,7 @@ var BucketDetailsDialog = mkClass({
 
     var flushEnabled = initValues.controllers !== undefined &&
           initValues.controllers.flush !== undefined;
-    dialog.find('.for-enable-flush input').boolAttr('checked', flushEnabled);
+    dialog.find('.for-enable-flush').boolAttr('checked', flushEnabled);
     dialog.find('.flush_button')[flushEnabled && !isNew ? 'show' : 'hide']();
 
     this.cleanups = [];
@@ -255,7 +255,7 @@ var BucketDetailsDialog = mkClass({
     (function () {
       var oldReplicationEnabled;
       return this.observePotentialChangesWithCleanup(function () {
-        var replicationEnabled = !!(dialog.find('.for-enable-replicas input').attr('checked'));
+        var replicationEnabled = !!(dialog.find('.js_for-enable-replicas').attr('checked'));
         if (replicationEnabled === oldReplicationEnabled) {
           return;
         }
@@ -274,7 +274,7 @@ var BucketDetailsDialog = mkClass({
         return;
       }
       var oldDisabledness = {};
-      var autoCompactionSettingsBlock = checkbox.closest('fieldset.auto_compaction').find('.autocompaction-settings');
+      var autoCompactionSettingsBlock = checkbox.closest('#js_bucket_auto_compaction_settings').find('.autocompaction-settings');
       var affectedInputs = autoCompactionSettingsBlock.find('input[type=checkbox], input[type=number], input[type=text], input:not([type])');
       ensureElementId(affectedInputs);
 
@@ -312,7 +312,7 @@ var BucketDetailsDialog = mkClass({
     (function () {
       var oldFlushEnabled;
       return this.observePotentialChangesWithCleanup(function () {
-        var flushEnabled = !!(dialog.find('.for-enable-flush input').attr('checked'));
+        var flushEnabled = !!(dialog.find('.for-enable-flush').attr('checked'));
         if (flushEnabled === oldFlushEnabled) {
           return;
         }
@@ -358,8 +358,8 @@ var BucketDetailsDialog = mkClass({
     // this code disables/enables authType radio button if bucket name
     // is/(not) "default"
     function nameObserver(value) {
-      var forAsciiRadio = dialog.find('.for-ascii input');
-      var forSASLRadio = dialog.find('.for-sasl-password input');
+      var forAsciiRadio = dialog.find('#js_bucket_details_auth_type');
+      var forSASLRadio = dialog.find('#js_bucket_details_sasl_selected');
       var isDefault = (value == "default");
 
       dialog[isDefault ? 'addClass' : 'removeClass']('bucket-is-default');
@@ -506,7 +506,7 @@ var BucketDetailsDialog = mkClass({
     setFormValues(form, self.initValues);
 
     form.find('[name=bucketType]').boolAttr('disabled', !self.isNew);
-    form.find('.for-enable-replicas input').prop('checked', self.initValues.replicaNumber != 0);
+    form.find('.js_for-enable-replicas').prop('checked', self.initValues.replicaNumber != 0);
 
     var compactionCleanup = setAutoCompactionSettingsFields(form, self.initValues);
     self.cleanups.push(compactionCleanup);
@@ -1192,7 +1192,7 @@ $(function () {
       dialog = $('#bucket_details_dialog');
 
   dialog.observePotentialChanges(function () {
-    var saslSelected = $('#bucket_details_sasl_selected')[0];
+    var saslSelected = $('#js_bucket_details_sasl_selected')[0];
     if (!saslSelected) { // might happen just before page unload
       return;
     }
@@ -1202,7 +1202,7 @@ $(function () {
     }
     oldIsSasl = isSasl;
 
-    dialog.find('.for-sasl-password-input input').boolAttr('disabled', !isSasl);
-    dialog.find('.for-proxy-port input').boolAttr('disabled', isSasl);
+    dialog.find('#js_bucket_details_sasl_password').boolAttr('disabled', !isSasl);
+    dialog.find('#js_bucket_details_proxy_port').boolAttr('disabled', isSasl);
   });
 });
