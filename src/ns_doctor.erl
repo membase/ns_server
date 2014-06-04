@@ -269,7 +269,7 @@ maybe_refresh_tasks_version(State) ->
     Nodes = State#state.nodes,
     TasksHashesSet =
         dict:fold(
-          fun (_Node, NodeInfo, Set) ->
+          fun (TaskNode, NodeInfo, Set) ->
                   lists:foldl(
                     fun (Task, Set0) ->
                             case proplists:get_value(type, Task) of
@@ -300,6 +300,12 @@ maybe_refresh_tasks_version(State) ->
                                     sets:add_element(
                                       erlang:phash2({warming_up,
                                                      lists:keyfind(bucket, 1, Task)}),
+                                      Set0);
+                                cluster_logs_collect ->
+                                    sets:add_element(
+                                      erlang:phash2({cluster_logs_collect,
+                                                     TaskNode,
+                                                     lists:keydelete(perNode, 1, Task)}),
                                       Set0);
                                 _ ->
                                     Set0
@@ -491,20 +497,92 @@ task_maybe_add_cancel_uri({view_compaction, BucketName, _DDocId,
 task_maybe_add_cancel_uri(_, Value, _) ->
     Value.
 
+
+pick_latest_cluster_collect_task(AllNodeTasks) ->
+    AllCollectTasks = [{N,
+                        proplists:get_value(status, T),
+                        proplists:get_value(timestamp, T),
+                        T}
+                       || {N, Ts} <- AllNodeTasks,
+                          T <- Ts,
+                          lists:keyfind(type, 1, T) =:= {type, cluster_logs_collect}],
+
+    TaskGrEq =
+        fun ({_N1, S1, Ts1, _},
+             {_N2, S2, Ts2, _}) ->
+                R1 = (S1 =:= running),
+                R2 = (S2 =:= running),
+                case R1 =:= R2 of
+                    %% if they're both are running
+                    %% or not running then we
+                    %% compare timestamps
+                    true -> Ts1 >= Ts2;
+                    %% if they're different, then
+                    %% one of them is
+                    %% "running". And first task is
+                    %% "greater" if it's running
+                    false -> R1
+                end
+        end,
+
+    case AllCollectTasks of
+        [] -> [];
+        [Head | Tail] ->
+            {Node, _S, _Ts, Task} =
+                lists:foldl(
+                  fun (CandidateTask, AccTask) ->
+                          case TaskGrEq(AccTask, CandidateTask) of
+                              true -> AccTask;
+                              false -> CandidateTask
+                          end
+                  end, Head, Tail),
+            TSProp =
+                case proplists:get_value(timestamp, Task) of
+                    undefined -> [];
+                    TS ->
+                        [{ts, iolist_to_binary(misc:iso_8601_fmt(TS))}]
+                end,
+
+            StatusProp = case lists:keyfind(status, 1, Task) of
+                             SX when is_tuple(SX) -> [SX];
+                             false -> []
+                         end,
+
+            PerNode = [{N, {struct, [{couch_util:to_binary(K), couch_util:to_binary(V)} || {K, V} <- KV]}}
+                       || {N, KV} <- proplists:get_value(perNode, Task, [])],
+
+            RefreshProp = case StatusProp of
+                              [{status, running}] ->
+                                  [{recommendedRefreshPeriod, 2},
+                                   {cancelURI, <<"/controller/cancelLogsCollection">>}
+                                  ];
+                              _ ->
+                                  []
+                          end,
+
+            FinalTask = [{node, Node},
+                         {type, clusterLogsCollection},
+                         {perNode, {struct, PerNode}}]
+                ++ TSProp ++ StatusProp ++ RefreshProp,
+
+            [FinalTask]
+    end.
+
+
 do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
-    AllRawTasks0 =
+    AllNodeTasks =
         dict:fold(
           fun (Node, NodeInfo, Acc) ->
                   case NeedNodeP(Node) of
                       true ->
                           NodeTasks = proplists:get_value(local_tasks, NodeInfo, []),
-                          [NodeTasks | Acc];
+                          [{Node, NodeTasks} | Acc];
                       false ->
                           Acc
                   end
           end, [], NodesDict),
 
-    AllRawTasks = lists:append(AllRawTasks0),
+    AllRawTasks = lists:append([Ts || {_N, Ts} <- AllNodeTasks]),
 
     TasksDict =
         lists:foldl(
@@ -587,7 +665,9 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
     WarmupTasks = [[{status, running} | KV]
                    || KV <- WarmupTasks0],
 
-    PreRebalanceTasks1 = SampleBucketTasks ++ WarmupTasks ++ XDCRTasks ++ PreRebalanceTasks0,
+    MaybeCollectTask = pick_latest_cluster_collect_task(AllNodeTasks),
+
+    PreRebalanceTasks1 = SampleBucketTasks ++ WarmupTasks ++ XDCRTasks ++ PreRebalanceTasks0 ++ MaybeCollectTask,
 
     PreRebalanceTasks2 =
         lists:sort(
