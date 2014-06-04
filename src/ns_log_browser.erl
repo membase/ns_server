@@ -113,13 +113,8 @@ stream_logs(Dir, Log, Fn) ->
     stream_logs(Dir, Log, Fn, 65536).
 
 stream_logs(Dir, Log, Fn, ChunkSz) ->
-    Path = filename:join(Dir, Log),
-    RestPaths0 = filelib:wildcard(Path ++ ".[0-9]*{.gz,}"),
-    RestPaths =
-        lists:sort(
-          fun (A, B) ->
-                  extract_number(Path, A) > extract_number(Path, B)
-          end, RestPaths0),
+    CurrentLog = filename:join(Dir, Log),
+    PastLogs = find_past_logs(Dir, Log),
 
     lists:foreach(
       fun (P) ->
@@ -133,7 +128,7 @@ stream_logs(Dir, Log, Fn, ChunkSz) ->
                   _Other ->
                       ok
               end
-      end, RestPaths ++ [Path]).
+      end, PastLogs ++ [CurrentLog]).
 
 stream_logs_loop(IO, ChunkSz, Fn) ->
     case file:read(IO, ChunkSz) of
@@ -144,8 +139,31 @@ stream_logs_loop(IO, ChunkSz, Fn) ->
             stream_logs_loop(IO, ChunkSz, Fn)
     end.
 
-extract_number(BasePath, Path) ->
-    true = lists:prefix(BasePath ++ ".", Path),
-    Rest = lists:nthtail(length(BasePath) + 1, Path),
-    {N, _} = lists:splitwith(fun (C) -> C =/= $. end, Rest),
-    list_to_integer(N).
+find_past_logs(Dir, Log) ->
+    {ok, RegExp} = re:compile("^" ++ Log ++ "\.([1-9][0-9]*)(\.gz)?$"),
+    {ok, AllFiles} = file:list_dir(Dir),
+
+    PastLogs0 =
+        lists:foldl(
+          fun (FileName, Acc) ->
+                  FullPath = filename:join(Dir, FileName),
+                  case filelib:is_regular(FullPath) of
+                      true ->
+                          case re:run(FileName, RegExp,
+                                      [{capture, all_but_first, list}]) of
+                              {match, [I | _]} ->
+                                  [{FullPath, list_to_integer(I)} | Acc];
+                              nomatch ->
+                                  Acc
+                          end;
+                      false ->
+                          Acc
+                  end
+          end, [], AllFiles),
+
+    PastLogs1 = lists:sort(
+                  fun ({_, X}, {_, Y}) ->
+                          X > Y
+                  end, PastLogs0),
+
+    [P || {P, _} <- PastLogs1].
