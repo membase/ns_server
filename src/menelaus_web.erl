@@ -414,6 +414,10 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun handle_set_replication_topology/1};
                          ["controller", "regenerateCertificate"] ->
                              {auth, fun handle_regenerate_certificate/1};
+                         ["controller", "startLogsCollection"] ->
+                             {auth, fun menelaus_web_cluster_logs:handle_start_collect_logs/1};
+                         ["controller", "cancelLogsCollection"] ->
+                             {auth, fun menelaus_web_cluster_logs:handle_cancel_collect_logs/1};
                          ["pools", "default", "buckets", Id] ->
                              {auth_check_bucket_uuid, fun menelaus_web_buckets:handle_bucket_update/3,
                               ["default", Id]};
@@ -1085,6 +1089,9 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
         {uri, <<"/controller/setAutoCompaction?uuid=", UUID/binary>>},
         {validateURI, <<"/controller/setAutoCompaction?just_validate=1">>}
       ]}},
+      {clusterLogsCollection, {struct, [
+        {startURI, <<"/controller/startLogsCollection?uuid=", UUID/binary>>},
+        {cancelURI, <<"/controller/cancelLogsCollection?uuid=", UUID/binary>>}]}},
       {replication, {struct, [
         {createURI, <<"/controller/createReplication?uuid=", UUID/binary>>},
         {validateURI, <<"/controller/createReplication?just_validate=1">>}
