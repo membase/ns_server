@@ -24,9 +24,9 @@
 -define(NODE_EJECTED, 4).
 -define(NODE_JOIN_FAILED, 5).
 
--define(ADD_NODE_TIMEOUT, 65000).
+-define(ADD_NODE_TIMEOUT, 160000).
 -define(ENGAGE_TIMEOUT, 30000).
--define(COMPLETE_TIMEOUT, 60000).
+-define(COMPLETE_TIMEOUT, 120000).
 
 -define(cluster_log(Code, Fmt, Args),
         ale:xlog(?USER_LOGGER, ns_log_sink:get_loglevel(?MODULE, Code),
@@ -646,7 +646,9 @@ do_add_node_engaged_inner(NodeKVList, OtpNode, Auth) ->
                                             {Hostname, Port, "/completeJoin",
                                              "application/json",
                                              mochijson2:encode(Struct)},
-                                            Auth),
+                                            Auth,
+                                            [{timeout, ?COMPLETE_TIMEOUT},
+                                             {connect_timeout, ?COMPLETE_TIMEOUT}]),
     ?cluster_debug("Reply from complete_join on ~p:~n~p",
                    [HostnameRaw, RV]),
 
