@@ -204,5 +204,8 @@ child_specs() ->
       permanent, 1000, worker, [xdc_rdoc_replication_srv]},
 
      {set_view_update_daemon, {set_view_update_daemon, start_link, []},
-      permanent, 1000, worker, [set_view_update_daemon]}
+      permanent, 1000, worker, [set_view_update_daemon]},
+
+     {cluster_logs_sup, {cluster_logs_sup, start_link, []},
+      permanent, infinity, supervisor, []}
     ].

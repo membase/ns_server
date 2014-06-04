@@ -293,7 +293,8 @@ current_status_slow_inner() ->
         end, couch_task_status:all())
         ++ grab_local_xdcr_replications()
         ++ grab_samples_loading_tasks()
-        ++ grab_warmup_tasks(),
+        ++ grab_warmup_tasks()
+        ++ cluster_logs_collection_task:maybe_build_cluster_logs_task(),
 
     MaybeMeminfo =
         case misc:raw_read_file("/proc/meminfo") of
