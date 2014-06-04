@@ -292,6 +292,32 @@ GET /pools/default/tasks =>
         "docsChecked": 0,
         "docsWritten": 0
     } | {
+        "type": "clusterLogsCollection", // cluster-wide logs collection/upload task
+        "node": "n_0@127.0.0.1", // node running cluster-wide collection.
+        "perNode": { // status of every node in this collection, keyed by node's otpNode property
+            "n_0@127.0.0.1": {
+                "status": "uploaded",
+                "path": "/home/me/src/altoros/moxi/ns_server/tmp/collectinfo-2014-06-03T21:11:53-n_0@127.0.0.1.zip",
+                "url": "https://s3.amazonaws.com/customers.couchbase.com/alk/7/collectinfo-2014-06-03T21%3A11%3A53-n_0%40127.0.0.1.zip"
+            },
+            "n_1@127.0.0.1": {
+                // possible per-node statuses are:
+                //      starting, started, failed, collected,
+                //      startingUpload, startedUpload, failedUpload, uploaded
+                "status": "uploaded",
+                "path": "/home/me/src/altoros/moxi/ns_server/tmp/collectinfo-2014-06-03T21:11:53-n_1@127.0.0.1.zip",
+                "url": "https://s3.amazonaws.com/customers.couchbase.com/alk/7/collectinfo-2014-06-03T21%3A11%3A53-n_1%40127.0.0.1.zip"
+                // fields (depending on status):
+                //   path - string: node's local path were cbcollect_info is collected/being-collected
+                //   statusCode - integer: if collect phase failed will indicate process exit status from cbcollect_info that failed
+                //   url - string: url we're uploading/uploaded/tried-to-upload
+                //   uploadStatusCode - integer: process exit status from cbcollect_info for upload if it failed
+                //   uploadOutput - string: for failed output will contain output from curl about why it failed
+            }
+        },
+        "ts": "2014-06-03 21:11:53", // Time when collection started (utc and from clock of node given in "node" above)
+        "status": ("completed" | "running" | "cancelled")
+    } | {
         "type": "bucket_compaction",
         "bucket": "default",
         "status": "running",
@@ -460,6 +486,29 @@ otpNode=<node name>
 
 Initiates graceful failover. It's progress can be tracked just like
 any rebalance. At the end node is put into failed over state.
+
+POST /controller/startLogsCollection
+
+nodes=(*|<node list>)&uploadHost=s3.amazonaws.com/customers.couchbase.com&customer=alk&ticket=7
+
+pass '*' for "nodes" parameter if you want to collect all nodes. Pass
+comma-separated otpNodes of nodes
+(e.g. ns_1@beta.local,ns_1@chi.local) to collect logs otherwise.
+
+uploadHost, customer and ticket are optional. Will not upload if all
+are empty. Will upload logs when all are given. Will also upload logs
+if all but ticket are given. In all other cases will refuse and return
+error.
+
+   200 "" // request succeeded
+ | 400 { ("_": <non-field specific error (like unable to verify host reachability)>, )?
+         (("nodes" | "uploadHost" | "customer" | "ticket"): <error description>, )* }
+
+POST /controller/cancelLogsCollection
+
+cancels in-progress logs collection.
+
+   200 "" // request have probably succeeded (we're merely best effort on this)
 
 ====
 PUT
