@@ -352,6 +352,7 @@ maybe_compress_post_rotate(#worker_state{path = Path,
 maybe_compress_post_rotate(_) ->
     ok.
 
+-define(GZIP_FORMAT, 16#10).
 compress_file(FromPath, ToPath) ->
     {ok, From} = file:open(FromPath, [raw, binary, read]),
 
@@ -360,7 +361,8 @@ compress_file(FromPath, ToPath) ->
         Z = zlib:open(),
 
         try
-            ok = zlib:deflateInit(Z, default, deflated, 15 + 16, 8, default),
+            ok = zlib:deflateInit(Z, default, deflated,
+                                  15 bor ?GZIP_FORMAT, 8, default),
             compress_file_loop(From, To, Z),
             ok = zlib:deflateEnd(Z),
             ok = file:delete(FromPath)
