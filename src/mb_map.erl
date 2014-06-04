@@ -595,7 +595,9 @@ best_map(Options, Maps) ->
             chain ->
                 fun map_scores_less/2;
             star ->
-                fun (X, Y) -> X < Y end
+                fun ({_, X}, {_, Y}) ->
+                        X < Y
+                end
         end,
 
     Less = fun (X, Y) ->
