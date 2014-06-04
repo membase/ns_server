@@ -733,38 +733,225 @@
           </script>
         </div>
 
+        <script id="js_select_nodes_list_template" type="text/html">
+          {% _.each(nodes, function (node) { %}
+            <li class="dynamic_{%=node.nodeClass %}">
+              <input type="checkbox"
+                     name="js-selected-nodes"
+                     value="{%= h(node.value) %}"
+                     id="collected_node_list_{%= makeSafeForCSS(node.value) %}"
+                     {%= !node.isUnhealthy ? 'checked="checked"' : ''%}
+                     {%= node.isUnhealthy ? 'disabled="disabled"' : ''%}>
+              <label for="collected_node_list_{%= makeSafeForCSS(node.value) %}">{%= h(node.hostname) %}</label>
+            </li>
+          {% }); %}
+        </script>
+
+        <script id="logs_template" type="text/html">
+          <table class="lined_tab">
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Module Code</th>
+                <th>Server Node</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- {% _.each(rows, function (logRow) { %} -->
+              <tr>
+                <td>{%= h(logRow.text).replace(/\n/g, "<br />") %}</td>
+                <td>{%= h(logRow.module) + (new String(1000 + parseInt(logRow.code))).slice(-3)%}</td>
+                <td>{%= h(logRow.node) %}</td>
+                <td class="text_11 nobr">{%=V.formatLogTStamp(logRow.serverTime)%}
+              </tr>
+              <!-- {% }); %} -->
+            </tbody>
+          </table>
+        </script>
+
+        <script id="js_collect_progress_template" type="text/html">
+          <div id="js_collection_status" class="collection_status {%= isCompleted ? 'green' : 'spinner' %}" style="height:50px;line-height:50px;">
+            <span>{%= isCompleted ? 'Collection complete.' : 'Collection in progress...' %}</span>
+          </div>
+          {% if (nodesByStatus.started) { %}
+            <div>
+              <p>In progress:</p>
+              <div class="js_result result">
+                {% _.each(nodesByStatus.started, function (node) { %}
+                  <div>{%= h(node.nodeName) %}</div>
+                {% }); %}
+              </div>
+            </div>
+          {% } %}
+          {% if (nodesByStatus.starting) { %}
+            <div>
+              <p>Pending:</p>
+              <div class="js_result result">
+                {% _.each(nodesByStatus.starting, function (node) { %}
+                  <div>{%= h(node.nodeName) %}</div>
+                {% }); %}
+              </div>
+            </div>
+          {% } %}
+          {% if (nodesByStatus.collected) { %}
+            <div>
+              <p class="green">Logs were successfully collected to the following paths:</p>
+              <div class="js_result result">
+                {% _.each(nodesByStatus.collected, function (node) { %}
+                  <div><strong>{%= h(node.nodeName) %}:</strong>{%= h(node.path) %}</div>
+                {% }); %}
+              </div>
+            </div>
+          {% } %}
+          {% if (nodesByStatus.startedUpload) { %}
+            <div>
+              <p class="green">Logs are being uploaded from this paths:</p>
+              <div class="js_result result">
+                {% _.each(nodesByStatus.startedUpload, function (node) { %}
+                  <div><strong>{%= h(node.nodeName) %}:</strong>{%= h(node.path) %}</div>
+                {% }); %}
+              </div>
+            </div>
+          {% } %}
+          {% if (nodesByStatus.startingUpload) { %}
+            <div>
+              <p class="green">Logs are pending upload from this paths:</p>
+              <div class="js_result result">
+                {% _.each(nodesByStatus.startingUpload, function (node) { %}
+                  <div><strong>{%= h(node.nodeName) %}:</strong>{%= h(node.path) %}</div>
+                {% }); %}
+              </div>
+            </div>
+          {% } %}
+          {% if (nodesByStatus.uploaded) { %}
+            <div>
+              <p class="green">Logs were successfully uploaded to the following URLs:</p>
+              <div class="js_result result">
+                {% _.each(nodesByStatus.uploaded, function (node) { %}
+                  <div><a href="{%= h(node.url) %}">{%= h(node.url) %}</a></div>
+                {% }); %}
+              </div>
+            </div>
+          {% } %}
+          {% if (nodesByStatus.failedUpload) { %}
+            <div>
+              <p class="red">Warning: The following logs were successfully collected but failed to upload. Please manually upload from the following locations:</p>
+              <div class="js_result result">
+                {% _.each(nodesByStatus.failedUpload, function (node) { %}
+                  <div><strong>{%= h(node.nodeName) %}:</strong>{%= h(node.path) %}</div>
+                {% }); %}
+              </div>
+            </div>
+          {% } %}
+          {% if (nodesByStatus.failed) { %}
+            <div>
+              <p class="red">Error: Unable to collect logs from the following nodes:</p>
+              <div class="js_result result">
+                {% _.each(nodesByStatus.failed, function (node) { %}
+                  <div>{%= h(node.nodeName) %}</div>
+                {% }); %}
+              </div>
+            </div>
+          {% } %}
+          {% if (nodesByStatus.cancelled) { %}
+            <div>
+              <p class="red">Cancelled Nodes:</p>
+              <div class="js_result result">
+                {% _.each(nodesByStatus.cancelled, function (node) { %}
+                  <div>{%= h(node.nodeName) %}</div>
+                {% }); %}
+              </div>
+            </div>
+          {% } %}
+          {% if (nodeErrors.length) { %}
+            <div>
+              <p class="red">Node Errors:</p>
+              <div class="js_result result">
+                {% _.each(nodeErrors, function (node) { %}
+                  <div><strong>{%= h(node.nodeName) %}:</strong> {%= h(node.error) %}</div>
+                {% }); %}
+              </div>
+            </div>
+          {% } %}
+        </script>
+
         <div id="js_logs" class="logs" style="display:none">
           <!-- Shadow box -->
           <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
-          <span class="block nav float_right configure_view when-roadmin-hide-me">
-            <a href="diag" target="_blank">Generate Diagnostic Report</a>
-          </span>
           <h1>Log</h1>
+          <div class="clear"></div>
           <div class="shadow_box">
-            <div class="panes">
-              <div id="logs_container"></div>
-              <script id="logs_template" type="text/html">
-                <table class="lined_tab">
-                  <thead>
-                    <tr>
-                      <th>Event</th>
-                      <th>Module Code</th>
-                      <th>Server Node</th>
-                      <th>Time</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <!-- {% _.each(rows, function (logRow) { %} -->
-                    <tr>
-                      <td>{%= h(logRow.text).replace(/\n/g, "<br />") %}</td>
-                      <td>{%= h(logRow.module) + (new String(1000 + parseInt(logRow.code))).slice(-3)%}</td>
-                      <td>{%= h(logRow.node) %}</td>
-                      <td class="text_11 nobr">{%=V.formatLogTStamp(logRow.serverTime)%}
-                    </tr>
-                    <!-- {% }); %} -->
-                  </tbody>
-                </table>
-              </script>
+            <div class="section">
+              <div class="header_2">
+                <ul class="tabs when-roadmin-avoid-me only-when-30">
+                  <li class="tab_left"><a>Logs</a></li>
+                  <li class="tab_right"><a>Collect Information</a></li>
+                </ul>
+                <a href="diag" target="_blank" class="only-when-not-30 btn_1 when-roadmin-hide-me"><span>Generate Diagnostic Report</span></a>
+                <a id="js_start_new_info"  class="btn_1"><span>Start New Collection</span></a>
+                <a id="js_cancel_collect_info"  class="btn_1"><span>Stop Collection</span></a>
+                <a id="js_previous_result_btn" class="btn_1"><span>Previous Result</span></a>
+              </div>
+              <div class="panes clearfix">
+                <div id="logs_container"></div>
+                <div id="js_collect_information" class="when-roadmin-avoid-me only-when-30">
+                  <div class="collect_information_dialog" id="js_collect_info_start_new_view">
+                    <form id="js_collect_info_form">
+                      <div class="content">
+                        <h2>Select Nodes</h2>
+                        <p>Collect logs and diagnostic information from:</p>
+                        <ul class="collect_from">
+                          <li>
+                            <input type="radio" name="from" value="*" id="all_nodes_radio" checked="checked">
+                            <label for="all_nodes_radio">All accessible nodes</label>
+                          </li>
+                          <li>
+                            <input type="radio" name="from" value="" id="selected_nodes_radio">
+                            <label for="selected_nodes_radio">Selected nodes:</label>
+                          </li>
+                          <li>
+                            <ul id="js_select_nodes_list_container" class="selected_nodes"></ul>
+                            <div id="js_nodes_error" class="js_error_container" style="display:block"></div>
+                          </li>
+                        </ul>
+                        <h2>Upload Options</h2>
+                        <div class="for_upload" id="js_upload_conf">
+                          <div id="js_general_error" class="js_error_container" style="display:block"></div>
+                          <div>
+                            <label for="js_upload_to_cb">Upload to Couchbase:</label>
+                            <input id="js_upload_to_cb" name="upload" value="true" type="checkbox">
+                            <div id="js_upload_error" class="js_error_container"></div>
+                          </div>
+                          <div>
+                            <label for="js_uploadHost_input">Upload to host:</label>
+                            <input id="js_uploadHost_input" name="uploadHost" type="text">
+                            <div id="js_uploadHost_error" class="js_error_container"></div>
+                          </div>
+                          <div>
+                            <label for="js_customer_input">Customer name:</label>
+                            <input id="js_customer_input" name="customer" type="text">
+                            <div id="js_customer_error" class="js_error_container"></div>
+                          </div>
+                          <div>
+                            <label for="js_ticket_input">Ticket Number (optional):</label>
+                            <input id="js_ticket_input" name="ticket" type="text">
+                            <div id="js_ticket_error" class="js_error_container"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="save_cancel">
+                        <button class="save_button float_right" type="submit">Collect</button>
+                      </div>
+                    </form>
+                  </div>
+                  <div class="collect_result_dialog collect_information_dialog" id="js_collect_result_view">
+                    <div class="content" id="js_collect_progress_container">
+                    </div>
+                  </div>
+                  <div class="spinner" id="js_collect_info_spinner" style="height:350px;line-height:350px;width:100%"><span>Loading ...</span></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2333,6 +2520,23 @@
   </form>
   <!-- END join cluster -->
 </div>
+
+
+<div class="dialog" id="js_cancel_collection_confirmation_dialog" title="Confirm Log Connection Stop">
+  <div class="content">
+    <div class="pas_20">
+      <div class="warning pat_20">
+        <strong>Warning</strong> - Are you sure you want to stop log collection?
+      </div>
+    </div>
+    <div class="right save_cancel pas_20 footer_bg">
+      <button type="submit" class="save_button float_right">Stop</button>
+      <a class="close cancel_button float_right">Cancel</a>
+    </div>
+  </div>
+</div>
+
+
 <!--  eject confirmation dialog -->
 <div class="dialog" id="eject_confirmation_dialog" title="Confirm Server Removal">
   <div class="lbox">
@@ -3189,6 +3393,7 @@ $(window).bind('template:rendered', function () {
 <script src="js/app-misc.js"></script>
 <script src="js/core-data.js"></script>
 <script src="js/analytics.js"></script>
+<script src="js/logs.js"></script>
 <script src="js/groups.js"></script>
 <script src="js/servers.js"></script>
 <script src="js/settings.js"></script>

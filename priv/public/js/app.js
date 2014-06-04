@@ -103,58 +103,6 @@ function formatAlertType(type) {
   }
 }
 
-var LogsSection = {
-  init: function () {
-    var active = Cell.needing(DAL.cells.mode).compute(function (v, mode) {
-      return (mode === "log") || undefined;
-    });
-
-    var logs = Cell.needing(active).compute(function (v, active) {
-      return future.get({url: "/logs"});
-    });
-    logs.keepValueDuringAsync = true;
-    logs.subscribe(function (cell) {
-      cell.recalculateAfterDelay(30000);
-    });
-
-    this.logs = logs;
-
-    var massagedLogs = Cell.compute(function (v) {
-      var logsValue = v(logs);
-      var stale = v.need(IOCenter.staleness);
-      if (logsValue === undefined) {
-        if (!stale)
-          return;
-        logsValue = {list: []};
-      }
-      return _.extend({}, logsValue, {stale: stale});
-    });
-
-    renderCellTemplate(massagedLogs, 'logs', {
-      valueTransformer: function (value) {
-        var list = value.list || [];
-        return _.clone(list).reverse();
-      }
-    });
-
-    massagedLogs.subscribeValue(function (massagedLogs) {
-      if (massagedLogs === undefined)
-        return;
-      var stale = massagedLogs.stale;
-      $('#js_logs .staleness-notice')[stale ? 'show' : 'hide']();
-    });
-  },
-  onEnter: function () {
-  },
-  navClick: function () {
-    if (DAL.cells.mode.value == 'log')
-      this.logs.recalculate();
-  },
-  domId: function (sec) {
-    return 'logs';
-  }
-}
-
 var ThePage = {
   sections: {overview: OverviewSection,
              servers: ServersSection,
@@ -1554,6 +1502,7 @@ $(function () {
     var version30 = encodeCompatVersion(3, 0);
 
     $('body').toggleClass('dynamic_under-25', !(lastCompatVersion >= version25));
+    $('body').toggleClass('dynamic_version-30', lastCompatVersion === version30);
     $('body').toggleClass('dynamic_under-30', !(lastCompatVersion >= version30));
   }
 
