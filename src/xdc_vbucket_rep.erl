@@ -741,12 +741,16 @@ init_replication_state(#init_state{rep = Rep,
                          nil
                  end,
 
+    ApiRequestBase = xdc_vbucket_rep_ckpt:build_request_base(Target,
+                                                             CurrRemoteBucket#remote_bucket.name,
+                                                             CurrRemoteBucket#remote_bucket.uuid,
+                                                             Vb),
 
     {StartSeq, SnapshotStart, SnapshotEnd, FailoverUUID,
      TotalDocsChecked,
      TotalDocsWritten,
      TotalDataReplicated,
-     RemoteVBOpaque} = xdc_vbucket_rep_ckpt:read_validate_checkpoint(Rep, Vb, Target),
+     RemoteVBOpaque} = xdc_vbucket_rep_ckpt:read_validate_checkpoint(Rep, Vb, ApiRequestBase),
 
     ?log_debug("Inited replication position: ~p",
                [{StartSeq, SnapshotStart, SnapshotEnd, FailoverUUID,
@@ -810,6 +814,7 @@ init_replication_state(#init_state{rep = Rep,
       %% XMem not started
       xmem_location = nil,
       xmem_remote = XMemRemote,
+      ckpt_api_request_base = ApiRequestBase,
       status = #rep_vb_status{vb = Vb,
                               pid = self(),
                               %% init per vb replication stats from checkpoint doc

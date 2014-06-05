@@ -205,7 +205,9 @@
 
           %% a boolean variable indicating that the rep has already
           %% behind db purger, at least one deletion has been lost.
-          behind_purger
+          behind_purger,
+
+          ckpt_api_request_base
          }).
 
 %% vbucket replicator worker process state used by xdc_vbucket_rep_worker

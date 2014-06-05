@@ -22,6 +22,7 @@
 -export([read_validate_checkpoint/3]).
 -export([get_local_vbuuid/2]).
 -export([get_failover_uuid/2]).
+-export([build_request_base/4]).
 
 -include("xdc_replicator.hrl").
 
@@ -110,7 +111,7 @@ do_checkpoint_new(#rep_state{current_through_seq = Seq,
     %% rollback to a place that's safe to restart replication from.
 
     CommitResult = (catch perform_commit_for_checkpoint(State#rep_state.remote_vbopaque,
-                                                        State#rep_state.target)),
+                                                        State#rep_state.ckpt_api_request_base)),
 
     case CommitResult of
         {ok, RemoteCommitOpaque} ->
@@ -189,7 +190,7 @@ do_checkpoint_old(State) ->
     CommitResult = case LocalVBUUID =:= OldLocalVBUUID of
                        true ->
                            catch perform_commit_for_checkpoint(State#rep_state.remote_vbopaque,
-                                                               State#rep_state.target);
+                                                               State#rep_state.ckpt_api_request_base);
                        false ->
                            {local_vbuuid_mismatch, LocalVBUUID, OldLocalVBUUID}
                    end,
@@ -251,24 +252,19 @@ update_checkpoint_status_to_parent(#rep_state{
                                                             vb = VBucket,
                                                             succ = Succ}}.
 
-send_post(Method, RemoteVBOpaque, RemoteCommitOpaque, HttpDB) ->
-    {BaseURL, RemoteBucketName, BucketUUID, VBStr} = xdc_rep_utils:split_bucket_name_out_of_target_url(HttpDB#httpdb.url),
+build_request_base(HttpDB, Bucket, BucketUUID, VBucket) ->
+    [Scheme, Host, _DbName] = string:tokens(HttpDB#httpdb.url, "/"),
+    URL = Scheme ++ "//" ++ Host ++ "/",
+
+    BodyBase = [{<<"vb">>, VBucket},
+                {<<"bucket">>, Bucket},
+                {<<"bucketUUID">>, BucketUUID}],
+    {URL, BodyBase, HttpDB}.
+
+send_post(Method, ExtraBody, {BaseURL, BodyBase, HttpDB}) ->
     URL = BaseURL ++ Method,
     Headers = [{"Content-Type", "application/json"}],
-    BodyBase = [{<<"vb">>, list_to_integer(VBStr)},
-                {<<"bucket">>, list_to_binary(RemoteBucketName)},
-                {<<"bucketUUID">>, list_to_binary(BucketUUID)}],
-    BodyAdd1 = case RemoteVBOpaque of
-                   undefined -> [];
-                   _ ->
-                       [{<<"vbopaque">>, RemoteVBOpaque}]
-               end,
-    BodyAdd2 = case RemoteCommitOpaque of
-                   undefined -> [];
-                   _ ->
-                       [{<<"commitopaque">>, RemoteCommitOpaque}]
-               end,
-    BodyJSON = {BodyBase ++ BodyAdd1 ++ BodyAdd2},
+    BodyJSON = {BodyBase ++ ExtraBody},
 
     RV = send_retriable_http_request(URL, "POST", Headers, ejson:encode(BodyJSON),
                                      HttpDB#httpdb.timeout,
@@ -311,8 +307,14 @@ build_commit_doc_id(Rep, Vb) ->
     <<"_local/30-ck-", CheckpointDocId0/binary>>.
 
 
-perform_commit_for_checkpoint(RemoteVBOpaque, HttpDB) ->
-    case send_post("_commit_for_checkpoint", RemoteVBOpaque, undefined, HttpDB) of
+perform_commit_for_checkpoint(RemoteVBOpaque, ApiRequestBase) ->
+    ReqBody = case RemoteVBOpaque of
+                  undefined -> [];
+                  _ ->
+                      [{<<"vbopaque">>, RemoteVBOpaque}]
+              end,
+
+    case send_post("_commit_for_checkpoint", ReqBody, ApiRequestBase) of
         {ok, Props} ->
             case proplists:get_value(<<"commitopaque">>, Props) of
                 undefined ->
@@ -335,9 +337,14 @@ extract_vbopaque(Props) ->
     end,
     RemoteVBOpaque.
 
+perform_pre_replicate(RemoteCommitOpaque, {_, _, HttpDB} = ApiRequestBase) ->
+    ReqBody = case RemoteCommitOpaque of
+                  undefined -> [];
+                  _ ->
+                      [{<<"commitopaque">>, RemoteCommitOpaque}]
+              end,
 
-perform_pre_replicate(RemoteCommitOpaque, HttpDB) ->
-    case send_post("_pre_replicate", undefined, RemoteCommitOpaque, HttpDB) of
+    case send_post("_pre_replicate", ReqBody , ApiRequestBase) of
         {ok, Props} ->
             {ok, extract_vbopaque(Props)};
         {error, 400 = _StatusCode, {JSON}, _} when is_list(JSON) ->
@@ -360,19 +367,19 @@ perform_pre_replicate(RemoteCommitOpaque, HttpDB) ->
     end.
 
 
-read_validate_checkpoint(Rep, Vb, TargetHttpDB) ->
+read_validate_checkpoint(Rep, Vb, ApiRequestBase) ->
     DB = capi_utils:must_open_vbucket(Rep#rep.source, <<"master">>),
     DocId = build_commit_doc_id(Rep, Vb),
     case couch_db:open_doc_int(DB, DocId, [ejson_body]) of
         {ok, #doc{body = Body}} ->
-            parse_validate_checkpoint_doc(Rep, Vb, Body, TargetHttpDB);
+            parse_validate_checkpoint_doc(Rep, Vb, Body, ApiRequestBase);
         {not_found, _} ->
             ?xdcr_debug("Found no local checkpoint document for vb: ~B. Will start from scratch", [Vb]),
-            handle_no_checkpoint(TargetHttpDB)
+            handle_no_checkpoint(ApiRequestBase)
     end.
 
-handle_no_checkpoint(TargetHttpDB) ->
-    {_, RemoteVBOpaque} = perform_pre_replicate(undefined, TargetHttpDB),
+handle_no_checkpoint(ApiRequestBase) ->
+    {_, RemoteVBOpaque} = perform_pre_replicate(undefined, ApiRequestBase),
     handle_no_checkpoint_with_opaque(RemoteVBOpaque).
 
 handle_no_checkpoint_with_opaque(RemoteVBOpaque) ->
@@ -386,24 +393,24 @@ handle_no_checkpoint_with_opaque(RemoteVBOpaque) ->
      TotalDataReplicated,
      RemoteVBOpaque}.
 
-parse_validate_checkpoint_doc(Rep, Vb, Body, TargetHttpDB) ->
+parse_validate_checkpoint_doc(Rep, Vb, Body, ApiRequestBase) ->
     try
-        do_parse_validate_checkpoint_doc(Rep, Vb, Body, TargetHttpDB)
+        do_parse_validate_checkpoint_doc(Rep, Vb, Body, ApiRequestBase)
     catch T:E ->
             S = erlang:get_stacktrace(),
             ?xdcr_debug("Got parse_validate_checkpoint_doc exception: ~p:~p~n~p", [T, E, S]),
             erlang:raise(T, E, S)
     end.
 
-do_parse_validate_checkpoint_doc(Rep, Vb, Body0, TargetHttpDB) ->
+do_parse_validate_checkpoint_doc(Rep, Vb, Body0, ApiRequestBase) ->
     case xdc_rep_utils:is_new_xdcr_path() of
         false ->
-            do_parse_validate_checkpoint_doc_old(Rep, Vb, Body0, TargetHttpDB);
+            do_parse_validate_checkpoint_doc_old(Rep, Vb, Body0, ApiRequestBase);
         _ ->
-            do_parse_validate_checkpoint_doc_new(Rep, Vb, Body0, TargetHttpDB)
+            do_parse_validate_checkpoint_doc_new(Rep, Vb, Body0, ApiRequestBase)
     end.
 
-do_parse_validate_checkpoint_doc_new(Rep, Vb, Body0, TargetHttpDB) ->
+do_parse_validate_checkpoint_doc_new(Rep, Vb, Body0, ApiRequestBase) ->
     Body = case Body0 of
                {XB} -> XB;
                _ -> []
@@ -419,7 +426,7 @@ do_parse_validate_checkpoint_doc_new(Rep, Vb, Body0, TargetHttpDB) ->
           is_integer(SnapshotSeq) andalso
           is_integer(SnapshotEndSeq)) of
         false ->
-            handle_no_checkpoint(TargetHttpDB);
+            handle_no_checkpoint(ApiRequestBase);
         true ->
             case get_failover_uuid(Rep#rep.source, Vb) =/= FailoverUUID of
                 true ->
@@ -428,7 +435,7 @@ do_parse_validate_checkpoint_doc_new(Rep, Vb, Body0, TargetHttpDB) ->
                 false ->
                     ok
             end,
-            case perform_pre_replicate(CommitOpaque, TargetHttpDB) of
+            case perform_pre_replicate(CommitOpaque, ApiRequestBase) of
                 {mismatch, RemoteVBOpaque} ->
                     ?xdcr_debug("local checkpoint for vb ~B does not match due to remote side. Checkpoint seqno: ~B. xdcr will start from scratch", [Vb, Seqno]),
                     handle_no_checkpoint_with_opaque(RemoteVBOpaque);
@@ -448,7 +455,7 @@ do_parse_validate_checkpoint_doc_new(Rep, Vb, Body0, TargetHttpDB) ->
             end
     end.
 
-do_parse_validate_checkpoint_doc_old(Rep, Vb, Body0, TargetHttpDB) ->
+do_parse_validate_checkpoint_doc_old(Rep, Vb, Body0, ApiRequestBase) ->
     Body = case Body0 of
                {XB} -> XB;
                _ -> []
@@ -460,14 +467,14 @@ do_parse_validate_checkpoint_doc_old(Rep, Vb, Body0, TargetHttpDB) ->
           is_binary(LocalVBUUID) andalso
           is_integer(Seqno)) of
         false ->
-            handle_no_checkpoint(TargetHttpDB);
+            handle_no_checkpoint(ApiRequestBase);
         true ->
             case get_local_vbuuid(Rep#rep.source, Vb) =:= LocalVBUUID of
                 false ->
                     ?xdcr_debug("local checkpoint for vb ~B does not match due to local side. Checkpoint seqno: ~B. xdcr will start from scratch", [Vb, Seqno]),
-                    handle_no_checkpoint(TargetHttpDB);
+                    handle_no_checkpoint(ApiRequestBase);
                 true ->
-                    case perform_pre_replicate(CommitOpaque, TargetHttpDB) of
+                    case perform_pre_replicate(CommitOpaque, ApiRequestBase) of
                         {mismatch, RemoteVBOpaque} ->
                             ?xdcr_debug("local checkpoint for vb ~B does not match due to remote side. Checkpoint seqno: ~B. xdcr will start from scratch", [Vb, Seqno]),
                             handle_no_checkpoint_with_opaque(RemoteVBOpaque);

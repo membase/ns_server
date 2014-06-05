@@ -18,7 +18,6 @@
 -module(xdc_rep_utils).
 
 -export([parse_rep_doc/2]).
--export([split_bucket_name_out_of_target_url/1]).
 -export([local_couch_uri_for_vbucket/2]).
 -export([my_active_vbuckets/1]).
 -export([parse_rep_db/3]).
@@ -136,21 +135,6 @@ maybe_add_trailing_slash(Url) ->
             Url;
         _ ->
             Url ++ "/"
-    end.
-
-split_bucket_name_out_of_target_url(Url) ->
-    [Scheme, Host, DbName0] = string:tokens(couch_util:to_list(Url), "/"),
-    DbName = couch_httpd:unquote(DbName0),
-    {RawDbName, UUID} = split_uuid(DbName),
-    [BucketName, VBString] = string:tokens(RawDbName, "/"),
-    {Scheme ++ "//" ++ Host ++ "/", BucketName, UUID, VBString}.
-
-split_uuid(DbName) ->
-    case string:tokens(DbName, [$;]) of
-        [RealDbName, UUID] ->
-            {RealDbName, UUID};
-        _ ->
-            {DbName, undefined}
     end.
 
 sanitize_url(Url) when is_binary(Url) ->
