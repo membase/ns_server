@@ -20,10 +20,8 @@
 -export([parse_rep_doc/2]).
 -export([split_bucket_name_out_of_target_url/1]).
 -export([local_couch_uri_for_vbucket/2]).
--export([remote_couch_uri_for_vbucket/3, my_active_vbuckets/1]).
+-export([my_active_vbuckets/1]).
 -export([parse_rep_db/3]).
--export([split_dbname/1]).
--export([get_master_db/1, get_checkpoint_log_id/2]).
 -export([sanitize_status/3, get_rep_info/1]).
 -export([is_new_xdcr_path/0]).
 
@@ -37,16 +35,6 @@
 %% locally access it.
 local_couch_uri_for_vbucket(BucketName, VbucketId) ->
     iolist_to_binary([BucketName, $/, integer_to_list(VbucketId)]).
-
-
-%% Given the vbucket map and node list of a remote bucket and a vbucket id, this
-%% function computes the CAPI URI to access it.
-remote_couch_uri_for_vbucket(VbucketMap, NodeList, VbucketId) ->
-    [Owner | _ ] = lists:nth(VbucketId+1, VbucketMap),
-    {OwnerNodeProps} = lists:nth(Owner+1, NodeList),
-    CapiBase = couch_util:get_value(<<"couchApiBase">>, OwnerNodeProps),
-    iolist_to_binary([CapiBase, "%2F", integer_to_list(VbucketId)]).
-
 
 %% Given a bucket config, this function computes a list of active vbuckets
 %% currently owned by the executing node.
@@ -150,43 +138,12 @@ maybe_add_trailing_slash(Url) ->
             Url ++ "/"
     end.
 
-
-get_checkpoint_log_id(#db{name = DbName0}, LogId0) ->
-    get_checkpoint_log_id(?b2l(DbName0), LogId0);
-get_checkpoint_log_id(#httpdb{url = DbUrl0}, LogId0) ->
-    [_, _, DbName0] = string:tokens(DbUrl0, "/"),
-    get_checkpoint_log_id(couch_httpd:unquote(DbName0), LogId0);
-get_checkpoint_log_id(DbName0, LogId0) ->
-    {DbName, _UUID} = split_uuid(DbName0),
-    {_, VBucket} = split_dbname(DbName),
-    ?l2b([?LOCAL_DOC_PREFIX, integer_to_list(VBucket), "-", LogId0]).
-
-get_master_db(#db{name = DbName}) ->
-    ?l2b(get_master_db(?b2l(DbName)));
-get_master_db(#httpdb{url=DbUrl0}=Http) ->
-    [Scheme, Host, DbName0] = string:tokens(DbUrl0, "/"),
-    DbName = get_master_db(couch_httpd:unquote(DbName0)),
-
-    DbUrl = Scheme ++ "//" ++ Host ++ "/" ++ couch_httpd:quote(DbName) ++ "/",
-    Http#httpdb{url = DbUrl};
-get_master_db(DbName0) ->
-    {DbName, UUID} = split_uuid(DbName0),
-    {Bucket, _} = split_dbname(DbName),
-    MasterDbName = Bucket ++ "/master",
-    unsplit_uuid({MasterDbName, UUID}).
-
 split_bucket_name_out_of_target_url(Url) ->
     [Scheme, Host, DbName0] = string:tokens(couch_util:to_list(Url), "/"),
     DbName = couch_httpd:unquote(DbName0),
     {RawDbName, UUID} = split_uuid(DbName),
     [BucketName, VBString] = string:tokens(RawDbName, "/"),
     {Scheme ++ "//" ++ Host ++ "/", BucketName, UUID, VBString}.
-
-split_dbname(DbName) ->
-    %% couchbase does not support slashes in bucket names; thus we can have only
-    %% two items in this list
-    [BucketName, VBucketStr] = string:tokens(DbName, [$/]),
-    {BucketName, list_to_integer(VBucketStr)}.
 
 split_uuid(DbName) ->
     case string:tokens(DbName, [$;]) of
@@ -195,11 +152,6 @@ split_uuid(DbName) ->
         _ ->
             {DbName, undefined}
     end.
-
-unsplit_uuid({DbName, undefined}) ->
-    DbName;
-unsplit_uuid({DbName, UUID}) ->
-    DbName ++ ";" ++ UUID.
 
 sanitize_url(Url) when is_binary(Url) ->
     ?l2b(sanitize_url(?b2l(Url)));
