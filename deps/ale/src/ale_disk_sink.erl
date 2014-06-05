@@ -77,6 +77,7 @@ init([Path, Opts]) ->
     RotCompress = proplists:get_value(compress, RotationConf, true),
     RotCheckInterval = proplists:get_value(check_interval, RotationConf, 10000),
 
+    ok = remove_unnecessary_log_files(Path, RotNumFiles),
 
     WorkerState = #worker_state{path = Path,
                                 parent = self(),
@@ -469,3 +470,31 @@ write_data(Data, DataSize,
     Parent ! {written, DataSize},
     NewState = State#worker_state{file_size = FileSize + DataSize},
     maybe_rotate_files(NewState).
+
+remove_unnecessary_log_files(LogFilePath, NumFiles) ->
+    Dir = filename:dirname(LogFilePath),
+    Name = filename:basename(LogFilePath),
+    {ok, RegExp} = re:compile("^" ++ Name ++ "\.([1-9][0-9]*)(?:\.gz)?$"),
+
+    {ok, DirFiles} = file:list_dir(Dir),
+    lists:foreach(
+      fun (File) ->
+              FullPath = filename:join(Dir, File),
+              case filelib:is_regular(FullPath) of
+                  true ->
+                      case re:run(File, RegExp,
+                                  [{capture, all_but_first, list}]) of
+                          {match, [I]} ->
+                              case list_to_integer(I) >= NumFiles of
+                                  true ->
+                                      file:delete(FullPath);
+                                  false ->
+                                      ok
+                              end;
+                          _ ->
+                              ok
+                      end;
+                  false ->
+                      ok
+              end
+      end, DirFiles).
