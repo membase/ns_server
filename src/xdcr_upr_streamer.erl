@@ -509,7 +509,7 @@ consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
                                                 RestData);
                 #upr_packet{opcode = ?UPR_SNAPSHOT_MARKER, ext = Ext} ->
                     <<NewSnapshotStart:64, NewSnapshotEnd:64, _/binary>> = Ext,
-                    consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
+                    consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar + PacketSize,
                                        NewSnapshotStart, NewSnapshotEnd, LastSeenSeqno,
                                        RestData);
                 #upr_packet{opcode = ?UPR_DELETION,
