@@ -221,54 +221,70 @@ cancel_flush_timer(State) ->
 rotate_files(#worker_state{path = Path,
                            rotation_num_files = NumFiles,
                            rotation_compress = Compress}) ->
-    Suffix = case Compress of
-                 true ->
-                     ".gz";
-                 false ->
-                     ""
-             end,
+    rotate_files_loop(Path, Compress, NumFiles - 1).
 
-    rotate_files_loop(Path, Suffix, NumFiles - 1).
-
-rotate_files_loop(Path, _Suffix, 0) ->
+rotate_files_loop(Path, _Compress, 0) ->
     case file:delete(Path) of
         ok ->
             ok;
         Error ->
             Error
     end;
-rotate_files_loop(Path, _Suffix, 1) ->
+rotate_files_loop(Path, _Compress, 1) ->
     To = Path ++ ".1",
-    case do_rotate_file(Path, To) of
+    case do_rotate_file(Path, To, false) of
         ok ->
             ok;
         Error ->
             Error
     end;
-rotate_files_loop(Path, Suffix, N) ->
-    From = Path ++ "." ++ integer_to_list(N - 1) ++ Suffix,
-    To = Path ++ "." ++ integer_to_list(N) ++ Suffix,
+rotate_files_loop(Path, Compress, N) ->
+    From = Path ++ "." ++ integer_to_list(N - 1),
+    To = Path ++ "." ++ integer_to_list(N),
 
-    case do_rotate_file(From, To) of
+    R = case do_rotate_file(From, To, Compress) of
+            ok ->
+                ok;
+            {error, enoent} ->
+                %% also try with flipped Compress flag to rotate files from
+                %% invocations with different parameters
+                case do_rotate_file(From, To, not Compress) of
+                    ok ->
+                        ok;
+                    {error, enoent} ->
+                        ok;
+                    Error ->
+                        Error
+                end;
+            Error ->
+                Error
+        end,
+
+    case R of
         ok ->
-            rotate_files_loop(Path, Suffix, N - 1);
-        Error ->
-            Error
+            rotate_files_loop(Path, Compress, N - 1);
+        Error1 ->
+            Error1
     end.
 
-do_rotate_file(From, To) ->
-    case file:read_file_info(From) of
-        {error, enoent} ->
+do_rotate_file(From0, To0, Compress) ->
+    {From, To, Cleanup} =
+        case Compress of
+            true ->
+                {From0 ++ ".gz", To0 ++ ".gz", To0};
+            false ->
+                {From0, To0, To0 ++ ".gz"}
+        end,
+
+    case file:rename(From, To) of
+        ok ->
+            %% we successfully moved the file; let's ensure that there's no
+            %% leftover file with flipped Compress flag from some previous
+            %% invocation
+            file:delete(Cleanup),
             ok;
-        {error, _} = Error ->
-            Error;
-        {ok, _} ->
-            case file:rename(From, To) of
-                ok ->
-                    ok;
-                Error ->
-                    Error
-            end
+        Error ->
+            Error
     end.
 
 maybe_rotate_files(#worker_state{file_size = FileSize,
