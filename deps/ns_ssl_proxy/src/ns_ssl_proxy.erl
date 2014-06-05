@@ -18,7 +18,10 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/2, stop/1, start/0]).
+-export([start/2, stop/1]).
+
+%% child_erlang callbacks
+-export([start/0, stop/0]).
 
 -include("ns_common.hrl").
 -include_lib("ale/include/ale.hrl").
@@ -39,6 +42,11 @@ start(_StartType, _StartArgs) ->
     ns_ssl_proxy_sup:start_link().
 
 stop(_State) ->
+    ok.
+
+%% called by child_erlang when we're asked to exit. For ssl proxy we
+%% can just exit without stopping anything
+stop() ->
     ok.
 
 setup_env() ->
