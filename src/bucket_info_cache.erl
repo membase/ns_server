@@ -115,8 +115,9 @@ do_compute_bucket_info(Bucket, Config) ->
 
     %% we do sorting to make nodes list match order of servers inside vBucketServerMap
     Servers = lists:sort(Servers0),
+    BucketUUID = proplists:get_value(uuid, BucketConfig),
 
-    NIs = [{[{couchApiBase, capi_utils:capi_bucket_url_bin(Node, Bucket, ?LOCALHOST_MARKER_STRING)},
+    NIs = [{[{couchApiBase, capi_utils:capi_bucket_url_bin(Node, Bucket, BucketUUID, ?LOCALHOST_MARKER_STRING)},
              {hostname, list_to_binary(menelaus_web:build_node_hostname(Config, Node, ?LOCALHOST_MARKER_STRING))},
              {ports, {build_ports(Node, Config)}}]}
            || Node <- Servers],

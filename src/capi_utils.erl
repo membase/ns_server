@@ -46,8 +46,8 @@ capi_url_bin(Node, Path, LocalAddr) ->
             iolist_to_binary([X, Path])
     end.
 
-capi_bucket_url_bin(Node, BucketName, LocalAddr) ->
-    capi_url_bin(Node, menelaus_util:concat_url_path([BucketName]), LocalAddr).
+capi_bucket_url_bin(Node, BucketName, BucketUUID, LocalAddr) ->
+    capi_url_bin(Node, menelaus_util:concat_url_path([BucketName ++ "+" ++ ?b2l(BucketUUID)]), LocalAddr).
 
 split_dbname(DbName) ->
     DbNameStr = binary_to_list(DbName),

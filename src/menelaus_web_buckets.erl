@@ -120,30 +120,34 @@ build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr) ->
                no_map -> dict:new();
                DV -> DV
            end,
-    add_couch_api_base_loop(Nodes, BucketName, LocalAddr, F, Dict, [], []).
+    BucketUUID = proplists:get_value(uuid, BucketConfig),
+    add_couch_api_base_loop(Nodes, BucketName, BucketUUID, LocalAddr, F, Dict, [], []).
 
 
-add_couch_api_base_loop([], _BucketName, _LocalAddr, _F, _Dict, CAPINodes, NonCAPINodes) ->
+add_couch_api_base_loop([], _BucketName, _BucketUUID, _LocalAddr, _F, _Dict, CAPINodes, NonCAPINodes) ->
     CAPINodes ++ NonCAPINodes;
-add_couch_api_base_loop([Node | RestNodes], BucketName, LocalAddr, F, Dict, CAPINodes, NonCAPINodes) ->
+add_couch_api_base_loop([Node | RestNodes],
+                        BucketName, BucketUUID, LocalAddr, F, Dict, CAPINodes, NonCAPINodes) ->
     {struct, KV} = F(Node, BucketName),
     case dict:find(Node, Dict) of
         {ok, V} when V =/= [] ->
             %% note this is generally always expected, but let's play safe just in case
-            S = {struct, add_couch_api_base(BucketName, KV, Node, LocalAddr)},
-            add_couch_api_base_loop(RestNodes, BucketName, LocalAddr, F, Dict, [S | CAPINodes], NonCAPINodes);
+            S = {struct, add_couch_api_base(BucketName, BucketUUID, KV, Node, LocalAddr)},
+            add_couch_api_base_loop(RestNodes, BucketName, BucketUUID,
+                                    LocalAddr, F, Dict, [S | CAPINodes], NonCAPINodes);
         _ ->
             S = {struct, KV},
-            add_couch_api_base_loop(RestNodes, BucketName, LocalAddr, F, Dict, CAPINodes, [S | NonCAPINodes])
+            add_couch_api_base_loop(RestNodes, BucketName, BucketUUID,
+                                    LocalAddr, F, Dict, CAPINodes, [S | NonCAPINodes])
     end.
 
-add_couch_api_base(BucketName, KV, Node, LocalAddr) ->
-    KV1 = case capi_utils:capi_bucket_url_bin(Node, BucketName, LocalAddr) of
+add_couch_api_base(BucketName, BucketUUID, KV, Node, LocalAddr) ->
+    KV1 = case capi_utils:capi_bucket_url_bin(Node, BucketName, BucketUUID, LocalAddr) of
               undefined -> KV;
               CapiBucketUrl ->
                   [{couchApiBase, CapiBucketUrl} | KV]
           end,
-    case capi_utils:capi_bucket_url_bin({ssl, Node}, BucketName, LocalAddr) of
+    case capi_utils:capi_bucket_url_bin({ssl, Node}, BucketName, BucketUUID, LocalAddr) of
         undefined -> KV1;
         CapiSSLBucketUrl ->
             [{couchApiBaseHTTPS, CapiSSLBucketUrl} | KV1]
