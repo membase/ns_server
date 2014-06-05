@@ -91,6 +91,8 @@ get_auth_user(Req) ->
             "-";
         {token, _Token} ->
             "ui-token";
+        {"", _} ->
+            "-";
         {User, _} ->
             User
     end.
