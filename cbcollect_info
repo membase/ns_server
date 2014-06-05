@@ -408,11 +408,12 @@ def make_product_task(guts, initargs_path, options):
 
         [AllOsTask("couchbase logs (%s)" % name, "cbbrowse_logs %s" % name,
                    addenv = [("REPORT_DIR", read_guts(guts, "log_path"))],
-                   log_file="ns_server.%s.log" % name)
-         for name in ["debug", "info", "error", "couchdb",
-                      "xdcr", "xdcr_errors",
-                      "views", "mapreduce_errors",
-                      "stats", "babysitter", "ssl_proxy", "reports", "xdcr_trace", "access"]],
+                   log_file="ns_server.%s" % name)
+         for name in ["debug.log", "info.log", "error.log", "couchdb.log",
+                      "xdcr.log", "xdcr_errors.log",
+                      "views.log", "mapreduce_errors.log",
+                      "stats.log", "babysitter.log", "ssl_proxy.log",
+                      "reports.log", "xdcr_trace.log", "access.log"]],
 
         [AllOsTask("memcached stats %s" % kind,
                    flatten(["cbstats", "-a", "127.0.0.1:%s" % read_guts(guts, "memcached_port"), kind, "-b", read_guts(guts, "memcached_admin"), "-p", read_guts(guts, "memcached_pass")]),
