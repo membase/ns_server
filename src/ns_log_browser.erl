@@ -125,7 +125,8 @@ stream_logs(Dir, Log, Fn, ChunkSz) ->
                       after
                           ok = file:close(IO)
                       end;
-                  _Other ->
+                 Error ->
+                      (catch ?log_error("Failed to open file ~s: ~p", [P, Error])),
                       ok
               end
       end, PastLogs ++ [CurrentLog]).
