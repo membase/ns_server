@@ -828,10 +828,6 @@ var SetupWizard = {
 
       $('#update_notifications_errors_container').hide();
 
-      dialog.find('a.more_info').unbind('click').click(function(e) {
-        e.preventDefault();
-        dialog.find('p.more_info').slideToggle();
-      });
       dialog.find('button.back').unbind('click').click(function (e) {
         e.preventDefault();
         onLeave();

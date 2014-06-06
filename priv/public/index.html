@@ -1213,15 +1213,16 @@
               <input type="checkbox" id="notification-updates">
               {% } %}
               <span>Enable software update notifications.</span>
-              <a href="#" class="more_info casper_settings_software_update_tooltip">What's this?</a>
+              <a class="tooltip casper_settings_software_update_tooltip"><span>What's this?</span>
+                <span class="tooltip_msg text_11" style="width:310px;"><span>
+                  Enabling software update notifications allows notification in
+                  the Couchbase web console when a new version of Couchbase Server
+                  is available. Configuration information transferred in the
+                  update check is anonymous and does not include any stored
+                  key-value data.
+                </span></span>
+              </a>
             </label>
-            <p class="more_info">
-              Enabling software update notifications allows notification in
-              the Couchbase web console when a new version of Couchbase Server
-              is available. Configuration information transferred in the
-              update check is anonymous and does not include any stored
-              key-value data.
-            </p>
             <div class="save_cancel when-roadmin-hide-me">
               <button class="save_button float_right" type="button"
                       disabled="disabled">
@@ -2081,8 +2082,8 @@
               <label for="cache_metadata_non_retain_new">Don't retain metadata in memory for non-resident items</label>
             </div>
           </div>
-          <a class="tooltip"><span>What's this?</span>
-            <span class="tooltip_msg"><span>
+          <a class="tooltip text_11"><span>What's this?</span>
+            <span class="tooltip_msg" style="width:200px;"><span>
                 Retaining metadata needs more system memory, but can provide best performance. Not retaining metadata can reduce memory overhead requirement.
             </span></span>
           </a>
@@ -2172,8 +2173,8 @@
               <label for="hight_threads_number">High</label>
             </div>
           </div>
-          <a class="tooltip"><span>What's this?</span>
-            <span class="tooltip_msg"><span>
+          <a class="tooltip text_11"><span>What's this?</span>
+            <span class="tooltip_msg" style="width:200px;"><span>
                 This is an advanced setting for Disk I/O optimization which allows tasks to be handled based on priority.
             </span></span>
           </a>
@@ -3173,8 +3174,8 @@
               <label for="cache_metadata_non_retain-init">Don’t retain metadata in memory for non-resident items</label>
             </div>
           </div>
-          <a class="tooltip"><span>What's this?</span>
-            <span class="tooltip_msg"><span>
+          <a class="tooltip text_11"><span>What's this?</span>
+            <span class="tooltip_msg" style="width:200px;"><span>
                 Retaining metadata needs more system memory, but can provide best performance. Not retaining metadata can reduce memory overhead requirement.
             </span></span>
           </a>
@@ -3234,8 +3235,8 @@
               <label for="hight_threads_number_init">High</label>
             </div>
           </div>
-          <a class="tooltip"><span>What's this?</span>
-            <span class="tooltip_msg"><span>
+          <a class="tooltip text_11"><span>What's this?</span>
+            <span class="tooltip_msg" style="width:200px;"><span>
                 This is an advanced setting for Disk I/O optimization which allows tasks to be handled based on priority.
             </span></span>
           </a>
@@ -3267,10 +3268,11 @@
         <input type="checkbox" id="init-notifications-updates-enabled" checked="checked">
         <span>Enable software update notifications</span>
       </label>
-      <a href="#" class="more_info" tabindex="-1">What's this?</a>
-    </p>
-    <p class="more_info pad_10">
-      Enabling software update notifications allows notification in the Couchbase web console when a new version of Couchbase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.
+      <a class="tooltip text_11"><span>What's this?</span>
+        <span class="tooltip_msg" style="width:300px;"><span>
+            Enabling software update notifications allows notification in the Couchbase web console when a new version of Couchbase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.
+        </span></span>
+      </a>
     </p>
     <div class="when-community">
       <h2 class="question">Community Updates</h2>

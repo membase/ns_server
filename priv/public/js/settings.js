@@ -396,10 +396,7 @@ var UpdatesNotificationsSection = {
       self.renderTemplate(enabled.sendStats, phoneHomeResult);
     }, phEnabled, self.hasUpdatesCell);
 
-    $('#notifications_container').delegate('a.more_info', 'click', function(e) {
-      e.preventDefault();
-      $('#notifications_container p.more_info').slideToggle();
-    }).delegate('input[type=checkbox]', 'change', function() {
+    $('#notifications_container').delegate('input[type=checkbox]', 'change', function() {
       $('#notifications_container .save_button').removeAttr('disabled');
     }).delegate('.save_button', 'click', function() {
       var button = this;
