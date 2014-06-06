@@ -13,7 +13,8 @@
 
 -type remote_bucket_node() :: {Host :: binary(), MCDPort :: integer()}.
 
--record(remote_bucket, {uuid :: binary(),
+-record(remote_bucket, {name :: binary(),
+                        uuid :: binary(),
                         password :: binary(),
                         cluster_uuid :: binary(),
                         cluster_cert :: binary() | undefined,

@@ -1141,7 +1141,8 @@ remote_bucket_with_pool_details(PoolDetails, RemoteCluster, Bucket, Creds, JsonG
                                     BucketObject, <<"bucket details">>,
                                     fun maybe_extract_important_buckets_props/2,
                                     fun (BucketNodeProps) ->
-                                            remote_bucket_with_bucket(BucketObject,
+                                            remote_bucket_with_bucket(Bucket,
+                                                                      BucketObject,
                                                                       RemoteCluster,
                                                                       BucketUUID,
                                                                       PoolNodeProps,
@@ -1185,7 +1186,7 @@ maybe_extract_important_buckets_props(BadNodeStruct, Ctx) ->
     extract_node_props([], Ctx, BadNodeStruct).
 
 
-remote_bucket_with_bucket(BucketObject, OrigRemoteCluster,
+remote_bucket_with_bucket(BucketName, BucketObject, OrigRemoteCluster,
                           BucketUUID, PoolNodeProps, BucketNodeProps, Creds) ->
     PoolNodes = lists:map(fun props_to_remote_node/1, PoolNodeProps),
     BucketNodes = lists:map(fun props_to_remote_node/1, BucketNodeProps),
@@ -1206,14 +1207,14 @@ remote_bucket_with_bucket(BucketObject, OrigRemoteCluster,
                           fun (Password) ->
                                   Caps = proplists:get_value(<<"bucketCapabilities">>, BucketObject),
                                   true = is_list(Caps),
-                                  remote_bucket_with_server_map(VBucketServerMap, BucketUUID,
+                                  remote_bucket_with_server_map(BucketName, VBucketServerMap, BucketUUID,
                                                                 RemoteCluster, RemoteNodes, McdToCouchDict,
                                                                 Password, Version, Caps)
                           end)
                 end)
       end).
 
-remote_bucket_with_server_map(ServerMap, BucketUUID,
+remote_bucket_with_server_map(BucketName, ServerMap, BucketUUID,
                               RemoteCluster, RemoteNodes, McdToCouchDict,
                               Password, Version, Caps) ->
     with_remote_nodes_mapped_server_list(
@@ -1231,7 +1232,8 @@ remote_bucket_with_server_map(ServerMap, BucketUUID,
                         #remote_cluster{uuid=ClusterUUID,
                                         cert=ClusterCert} = RemoteCluster,
                         RemoteBucket =
-                            #remote_bucket{uuid=BucketUUID,
+                            #remote_bucket{name=BucketName,
+                                           uuid=BucketUUID,
                                            password=Password,
                                            cluster_uuid=ClusterUUID,
                                            cluster_cert=ClusterCert,
