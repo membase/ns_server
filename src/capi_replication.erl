@@ -224,7 +224,17 @@ generate_local_vbopaque(Bucket, VBucket) ->
 extract_ck_params(Req) ->
     couch_httpd:validate_ctype(Req, "application/json"),
     {Obj} = couch_httpd:json_body_obj(Req),
-    Bucket = proplists:get_value(<<"bucket">>, Obj),
+    Bucket =
+        case proplists:get_value(<<"bucket">>, Obj) of
+            undefined ->
+                undefined;
+            B ->
+                %% pre 3.0 clusters will send us "dbname+uuid" here
+                %% so parse uuid out
+                {B1, undefined, _} = capi_utils:split_dbname_with_uuid(B),
+                B1
+        end,
+
     VB = proplists:get_value(<<"vb">>, Obj),
     BucketUUID = proplists:get_value(<<"bucketUUID">>, Obj),
     case (Bucket =:= undefined
