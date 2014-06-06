@@ -99,6 +99,8 @@ init_logging() ->
     {ok, Dir} = application:get_env(ns_server, error_logger_mf_dir),
     DiskSinkOpts = misc:get_env_default(ns_server, disk_sink_opts, []),
 
+    ok = convert_disk_log_files(Dir),
+
     LogPath = filename:join(Dir, ?BABYSITTER_LOG_FILENAME),
 
     ok = ale:start_sink(babysitter_sink,
@@ -126,3 +128,77 @@ init_logging() ->
 
 stop(_) ->
     ok.
+
+convert_disk_log_files(Dir) ->
+    lists:foreach(
+      fun (Log) ->
+              ok = convert_disk_log_file(Dir, Log)
+      end,
+      [?DEFAULT_LOG_FILENAME,
+       ?ERRORS_LOG_FILENAME,
+       ?VIEWS_LOG_FILENAME,
+       ?MAPREDUCE_ERRORS_LOG_FILENAME,
+       ?COUCHDB_LOG_FILENAME,
+       ?DEBUG_LOG_FILENAME,
+       ?XDCR_LOG_FILENAME,
+       ?XDCR_ERRORS_LOG_FILENAME,
+       ?STATS_LOG_FILENAME,
+       ?BABYSITTER_LOG_FILENAME,
+       ?SSL_PROXY_LOG_FILENAME,
+       ?REPORTS_LOG_FILENAME,
+       ?XDCR_TRACE_LOG_FILENAME,
+       ?ACCESS_LOG_FILENAME]).
+
+convert_disk_log_file(Dir, Name) ->
+    [OldName, "log"] = string:tokens(Name, "."),
+
+    IdxFile = filename:join(Dir, OldName ++ ".idx"),
+    SizFile = filename:join(Dir, OldName ++ ".siz"),
+
+    case filelib:is_regular(IdxFile) of
+        true ->
+            {Ix, NFiles} = read_disk_log_index_file(filename:join(Dir, OldName)),
+            Ixs = lists:seq(Ix, 1, -1) ++ lists:seq(NFiles, Ix + 1, -1),
+
+            lists:foreach(
+              fun ({NewIx, OldIx}) ->
+                      OldPath = filename:join(Dir,
+                                              OldName ++
+                                                  "." ++ integer_to_list(OldIx)),
+                      NewSuffix = case NewIx of
+                                      0 ->
+                                          ".log";
+                                      _ ->
+                                          ".log." ++ integer_to_list(NewIx)
+                                  end,
+                      NewPath = filename:join(Dir, OldName ++ NewSuffix),
+
+                      case file:rename(OldPath, NewPath) of
+                          {error, enoent} ->
+                              ok;
+                          ok ->
+                              ok
+                      end,
+
+                      file:delete(SizFile),
+                      file:delete(IdxFile)
+              end, misc:enumerate(Ixs, 0));
+        false ->
+            ok
+    end.
+
+read_disk_log_index_file(Path) ->
+    {Ix, _, _, NFiles} = disk_log_1:read_index_file(Path),
+
+    %% Index can be one greater than number of files. This means that maximum
+    %% number of files is not yet reached.
+    %%
+    %% Pretty weird behavior: if we're writing to the first file out of 20
+    %% read_index_file returns {1, _, _, 1}. But as we move to the second file
+    %% the result becomes be {2, _, _, 1}.
+    case Ix =:= NFiles + 1 of
+        true ->
+            {Ix, Ix};
+        false ->
+            {Ix, NFiles}
+    end.
