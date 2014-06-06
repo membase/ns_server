@@ -1226,8 +1226,7 @@ remote_bucket_with_server_map(BucketName, ServerMap, BucketUUID,
                 <<"vBucketMap">>, ServerMap, <<"vbucket server map">>,
                 fun (VBucketMap) ->
                         CAPIVBucketMapDict =
-                            build_vbmap(VBucketMap,
-                                        BucketUUID, IxToCouchDict),
+                            build_vbmap(VBucketMap, IxToCouchDict),
 
                         #remote_cluster{uuid=ClusterUUID,
                                         cert=ClusterCert} = RemoteCluster,
@@ -1266,18 +1265,18 @@ with_remote_nodes_mapped_server_list(RemoteNodes, ServerMap, K) ->
               end
       end).
 
-build_vbmap(RawVBucketMap, BucketUUID, IxToCouchDict) ->
-    do_build_vbmap(RawVBucketMap, BucketUUID, IxToCouchDict, 0, dict:new()).
+build_vbmap(RawVBucketMap, IxToCouchDict) ->
+    do_build_vbmap(RawVBucketMap, IxToCouchDict, 0, dict:new()).
 
-do_build_vbmap([], _, _, _, D) ->
+do_build_vbmap([], _, _, D) ->
     D;
-do_build_vbmap([ChainRaw | Rest], BucketUUID, IxToCouchDict, VBucket, D) ->
+do_build_vbmap([ChainRaw | Rest], IxToCouchDict, VBucket, D) ->
     expect_array(
       ChainRaw, <<"vbucket map chain">>,
       fun (Chain) ->
-              case build_vbmap_chain(Chain, BucketUUID, IxToCouchDict, VBucket) of
+              case build_vbmap_chain(Chain, IxToCouchDict, VBucket) of
                   {ok, FinalChain} ->
-                      do_build_vbmap(Rest, BucketUUID, IxToCouchDict,
+                      do_build_vbmap(Rest, IxToCouchDict,
                                      VBucket + 1,
                                      dict:store(VBucket, FinalChain, D));
                   Error ->
@@ -1285,7 +1284,7 @@ do_build_vbmap([ChainRaw | Rest], BucketUUID, IxToCouchDict, VBucket, D) ->
               end
       end).
 
-build_vbmap_chain(Chain, BucketUUID, IxToCouchDict, VBucket) ->
+build_vbmap_chain(Chain, IxToCouchDict, VBucket) ->
     [NodeIxRaw | _Rest] = Chain,
     expect_number(
       NodeIxRaw, <<"Vbucket map chain">>,
@@ -1307,10 +1306,7 @@ build_vbmap_chain(Chain, BucketUUID, IxToCouchDict, VBucket) ->
                               ?log_error("~s", [Msg]),
                               {error, bad_value, iolist_to_binary(Msg)};
                           {ok, URL} ->
-                              VBucketURL0 = [URL, "%2f", integer_to_list(VBucket),
-                                             "%3b", BucketUUID],
-                              VBucketURL = iolist_to_binary(VBucketURL0),
-                              {ok, [VBucketURL]}
+                              {ok, [iolist_to_binary([URL, "%2f", integer_to_list(VBucket)])]}
                       end
               end
       end).
