@@ -57,7 +57,10 @@ get_path_info(Req) ->
 get_version(Req) ->
     case Req:get(version) of
         {1, 0} -> "1.0";
-        {1, 1} -> "1.1"
+        {1, 1} -> "1.1";
+        {0, 9} -> "0.9";
+        Other ->
+            string:join([integer_to_list(N) || N <- tuple_to_list(Other)], ".")
     end.
 
 get_request_header_value(Req, Header) ->
