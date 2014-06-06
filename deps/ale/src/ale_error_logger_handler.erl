@@ -150,21 +150,17 @@ format_report(supervisor_report, Report) ->
     {FormatString, [Name, Context, Reason, Offender]};
 format_report(crash_report, Report) ->
     {"~s", [proc_lib:format(Report)]};
-format_report(_Other, [{_, _} | _] = Report) ->
-    Fn = fun ({Key, Value}, {Fmt, Args}) ->
-                 Fmt1 = "    ~16w: ~p~n" ++ Fmt,
-                 Args1 = [Value, Key | Args],
-                 {Fmt1, Args1}
-         end,
-
-    {Fmt, RevArgs} = lists:foldl(Fn, {[], []}, Report),
-    {Fmt, lists:reverse(RevArgs)};
 format_report(_Other, Report) when is_list(Report) ->
     case io_lib:printable_list(Report) of
         true ->
-            {"~s", [Report]};
+            {"    ~s", [Report]};
         false ->
-            {"~p", [Report]}
+            lists:foldr(
+              fun ({Key, Value}, {AccFmt, AccArgs}) ->
+                      {"    ~16w: ~p~n" ++ AccFmt, [Key, Value | AccArgs]};
+                  (Other, {AccFmt, AccArgs}) ->
+                      {"                      ~p~n" ++ AccFmt, [Other | AccArgs]}
+              end, {[], []}, Report)
     end;
 format_report(_Other, Report) ->
     {"~p", [Report]}.
