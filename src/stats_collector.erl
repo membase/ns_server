@@ -307,9 +307,9 @@ extract_agg_tap_stats(KVs) ->
     lists:foldl(fun ({K, V}, Acc) -> extract_agg_stat(K, V, Acc) end,
                 #tap_stream_stats{}, KVs).
 
-extract_agg_upr_stats(Prefix, KVs) ->
-    lists:foldl(fun ({K, V}, Acc) -> extract_agg_upr_stat(Prefix, K, V, Acc) end,
-                [], KVs).
+extract_agg_upr_stats(KVs) ->
+    lists:foldl(fun ({K, V}, Acc) -> extract_agg_upr_stat(K, V, Acc) end,
+                #upr_stream_stats{}, KVs).
 
 stats_dict_get(Stat, Stats) ->
     case lists:keyfind(Stat, 1, Stats) of
@@ -368,15 +368,17 @@ parse_aggregate_tap_stats(AggTap) ->
                   tap_stream_stats_to_kvlist(<<"ep_tap_total_">>, TotalStats)]).
 
 parse_aggregate_upr_stats(AggUpr) ->
-    lists:append([
-                  extract_agg_upr_stats(<<"ep_upr_replica_">>,
-                                        [{K, V} || {<<"replication:", K/binary>>, V} <- AggUpr]),
-                  extract_agg_upr_stats(<<"ep_upr_xdcr_">>,
-                                        [{K, V} || {<<"xdcr:", K/binary>>, V} <- AggUpr]),
-                  extract_agg_upr_stats(<<"ep_upr_views_">>,
-                                        [{K, V} || {<<"view-engine:", K/binary>>, V} <- AggUpr]),
-                  extract_agg_upr_stats(<<"ep_upr_total_">>,
-                                        [{K, V} || {<<":total:", K/binary>>, V} <- AggUpr])]).
+    ReplicaStats = extract_agg_upr_stats([{K, V} || {<<"replication:", K/binary>>, V} <- AggUpr]),
+    XdcrStats = extract_agg_upr_stats([{K, V} || {<<"xdcr:", K/binary>>, V} <- AggUpr]),
+    ViewsStats = extract_agg_upr_stats([{K, V} || {<<"view-engine:", K/binary>>, V} <- AggUpr]),
+    TotalStats = extract_agg_upr_stats([{K, V} || {<<":total:", K/binary>>, V} <- AggUpr]),
+
+    OtherStats = calc_upr_other_stats(ReplicaStats, XdcrStats, ViewsStats, TotalStats),
+
+    lists:append([upr_stream_stats_to_kvlist(<<"ep_upr_replica_">>, ReplicaStats),
+                  upr_stream_stats_to_kvlist(<<"ep_upr_xdcr_">>, XdcrStats),
+                  upr_stream_stats_to_kvlist(<<"ep_upr_views_">>, ViewsStats),
+                  upr_stream_stats_to_kvlist(<<"ep_upr_other_">>, OtherStats)]).
 
 maybe_adjust_data_size(DataSize, DiskSize, MinFileSize) ->
     case DiskSize < MinFileSize of

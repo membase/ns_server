@@ -238,6 +238,13 @@
                            queue_itemondisk = 0,
                            total_backlog_size = 0}).
 
+-record(upr_stream_stats, {count = 0,
+                           items_remaining = 0,
+                           items_sent = 0,
+                           producer_count = 0,
+                           total_backlog_size = 0,
+                           total_bytes = 0}).
+
 -define(TAP_STAT_GAUGES,
         ep_tap_rebalance_count, ep_tap_rebalance_qlen, ep_tap_rebalance_queue_backfillremaining, ep_tap_rebalance_queue_itemondisk, ep_tap_rebalance_total_backlog_size,
         ep_tap_replica_count, ep_tap_replica_qlen, ep_tap_replica_queue_backfillremaining, ep_tap_replica_queue_itemondisk, ep_tap_replica_total_backlog_size,
@@ -265,10 +272,10 @@
         ep_upr_views_producer_count,
         ep_upr_views_total_backlog_size,
 
-        ep_upr_total_count,
-        ep_upr_total_items_remaining,
-        ep_upr_total_producer_count,
-        ep_upr_total_total_backlog_size).
+        ep_upr_other_count,
+        ep_upr_other_items_remaining,
+        ep_upr_other_producer_count,
+        ep_upr_other_total_backlog_size).
 
 -define(UPR_STAT_COUNTERS,
         ep_upr_replica_items_sent,
@@ -280,8 +287,8 @@
         ep_upr_views_items_sent,
         ep_upr_views_total_bytes,
 
-        ep_upr_total_items_sent,
-        ep_upr_total_total_bytes).
+        ep_upr_other_items_sent,
+        ep_upr_other_total_bytes).
 
 -ifdef(NEED_TAP_STREAM_STATS_CODE).
 
@@ -334,15 +341,35 @@ sub_tap_stream_stats(A, B) ->
                       ?DEFINE_SUBTRACTOR(total_backlog_size)}.
 -undef(DEFINE_SUBTRACTOR).
 
--define(DEFINE_EXTRACT(N), extract_agg_upr_stat(Prefix, <<??N>>, V, Acc) ->
-               lists:keystore(<<Prefix/binary, ??N>>, 1, Acc, {<<Prefix/binary, ??N>>, V})).
+-define(DEFINE_EXTRACT(N), extract_agg_upr_stat(<<??N>>, V, Acc) ->
+               Acc#upr_stream_stats{N = list_to_integer(binary_to_list(V))}).
 ?DEFINE_EXTRACT(count);
 ?DEFINE_EXTRACT(items_remaining);
 ?DEFINE_EXTRACT(items_sent);
 ?DEFINE_EXTRACT(producer_count);
 ?DEFINE_EXTRACT(total_backlog_size);
 ?DEFINE_EXTRACT(total_bytes);
-extract_agg_upr_stat(_P, _K, _V, Acc) -> Acc.
+extract_agg_upr_stat(_K, _V, Acc) -> Acc.
 -undef(DEFINE_EXTRACT).
+
+-define(DEFINE_TO_KVLIST(N), {<<Prefix/binary, ??N>>, list_to_binary(integer_to_list(Record#upr_stream_stats.N))}).
+upr_stream_stats_to_kvlist(Prefix, Record) ->
+    [?DEFINE_TO_KVLIST(count),
+     ?DEFINE_TO_KVLIST(items_remaining),
+     ?DEFINE_TO_KVLIST(items_sent),
+     ?DEFINE_TO_KVLIST(producer_count),
+     ?DEFINE_TO_KVLIST(total_backlog_size),
+     ?DEFINE_TO_KVLIST(total_bytes)].
+-undef(DEFINE_TO_KVLIST).
+
+-define(DEFINE_FORMULA(N), N = D#upr_stream_stats.N - A#upr_stream_stats.N + B#upr_stream_stats.N + C#upr_stream_stats.N).
+calc_upr_other_stats(A, B, C, D) ->
+    #upr_stream_stats{?DEFINE_FORMULA(count),
+                      ?DEFINE_FORMULA(items_remaining),
+                      ?DEFINE_FORMULA(items_sent),
+                      ?DEFINE_FORMULA(producer_count),
+                      ?DEFINE_FORMULA(total_backlog_size),
+                      ?DEFINE_FORMULA(total_bytes)}.
+-undef(DEFINE_FORMULA).
 
 -endif. % NEED_TAP_STREAM_STATS_CODE
