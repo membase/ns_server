@@ -55,8 +55,7 @@ do_send_command(PortName, Command) ->
 
 -spec set_dynamic_children([any()]) -> pid().
 set_dynamic_children(NCAOs) ->
-    PlainCurrPortParams = current_ports(),
-    CurrPortParams = PlainCurrPortParams,
+    CurrPortParams = [erlang:element(1, C) || C <- supervisor:which_children(?MODULE)],
     OldPortParams = CurrPortParams -- NCAOs,
     NewPortParams = NCAOs -- CurrPortParams,
 
