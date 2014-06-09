@@ -276,6 +276,7 @@ var LogsSection = {
       var isAllnodesChecked = $(this).val() == '*';
       allActiveNodeBoxes.attr('checked', isAllnodesChecked);
       allActiveNodeBoxes.attr('disabled', isAllnodesChecked);
+      maybeDisableSaveBtn();
     });
 
     function getCollectFormValues() {
@@ -348,12 +349,18 @@ var LogsSection = {
       renderTemplate('js_collect_progress', collectionInfo);
     }
 
+    function maybeDisableSaveBtn() {
+      saveButton.attr('disabled', !jQuery('input:checked', selectNodesListCont).length);
+    }
+
     function renderStartNewView() {
       self.prepareCollectionInfoNodesCell.getValue(function (selectNodesList) {
         renderTemplate('js_select_nodes_list', selectNodesList);
         allActiveNodeBoxes = $('input:not(:disabled)', selectNodesListCont);
+        allActiveNodeBoxes.change(maybeDisableSaveBtn);
         collectFromRadios.eq(0).attr('checked', true).trigger('change');
         uploadToCouchbase.attr('checked', false).trigger('change');
+        maybeDisableSaveBtn();
       });
     }
 
