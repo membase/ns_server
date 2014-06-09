@@ -1028,6 +1028,10 @@ var ViewsSection = {
       }
     });
 
+    function replaceCRLFonLF(string) {
+      return string && string.replace(/(\r\n)/gm, '\n');//MB-11275
+    }
+
     (function () {
       var originalMap, originalReduce, originalSpatial;
 
@@ -1035,6 +1039,9 @@ var ViewsSection = {
         whenInsideView[view || spatial ? 'show' : 'hide']();
 
         if (view !== undefined) {
+          view.map = replaceCRLFonLF(view.map);
+          view.reduce = replaceCRLFonLF(view.reduce);
+
           originalMap = view.map;
           originalReduce = view.reduce || "";
           viewCodeErrors.text('').attr('title','');
@@ -1042,6 +1049,8 @@ var ViewsSection = {
           self.mapEditor.setValue(view.map);
           self.reduceEditor.setValue(view.reduce || "");
         } else if (spatial !== undefined) {
+          spatial = replaceCRLFonLF(spatial);
+
           originalSpatial = spatial;
           spatialCodeErrors.text('').attr('title','');
 
