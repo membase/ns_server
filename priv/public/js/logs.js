@@ -137,6 +137,7 @@ var LogsSection = {
     var collectResultSectionSpinner = $("#js_collect_info_spinner");
     var showResultViewBtn = $("#js_previous_result_btn");
     var cancelConfiramationDialog = $("#js_cancel_collection_confirmation_dialog");
+    var saveButton = $(".js_save_button", collectInfoWrapper);
 
     var collectInfoViewNameCell = new StringHashFragmentCell("collectInfoViewName");
 
@@ -216,6 +217,8 @@ var LogsSection = {
         }
       }
 
+      saveButton.attr('disabled', true);
+
       delete formValues["upload"];
 
       $.ajax({
@@ -223,7 +226,10 @@ var LogsSection = {
         url: '/controller/startLogsCollection',
         data: formValues,
         success: onSuccess,
-        error: onError
+        error: onError,
+        complete: function () {
+          saveButton.attr('disabled', false);
+        }
       });
 
       function onSuccess() {
