@@ -1043,6 +1043,7 @@ input.view_name{width:20em;padding:5px}
 .bucket_details .sub_section {padding-left: 19px;}
 .bucket_details input, .bucket_details select {vertical-align: middle;}
 .bucket_details input[type="radio"] {margin-top: 2px;}
+.bucket_details input[type=number] {width: 3em;}
 .bucket_details .bucket-icon {background: url("../images/icons.png") no-repeat scroll 0 -85px transparent; padding-left: 90px;}
 .bucket_details .bucket-icon label {width: 100px;}
 .bucket_details .for-ram-quota input {width: 60px;}
@@ -1050,7 +1051,7 @@ input.view_name{width:20em;padding:5px}
 .bucket_details .for-ram-quota .gauge-label {float: left; padding-top: 14px;}
 .bucket_details .for-replica-number {display: inline-block; margin-left: 100px;}
 .bucket_details .tooltip {margin-left: 10px;}
-.bucket_details .invalid {border-color: red;}
+.bucket_details input.invalid {border-color: red;}
 .bucket_details .error-container {font-size: 10px;}
 .bucket_details .input_wrapper {display: inline-block;}
 .bucket_details .autocompaction_input_units {vertical-align: middle;}
