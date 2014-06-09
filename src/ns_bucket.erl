@@ -325,7 +325,7 @@ bucket_failover_safety(BucketConfig, LiveNodes, Topology) ->
                             [_,_|_] -> ?FS_OK;
                             _ -> ?FS_HARD_NODES_NEEDED
                         end;
-                    MinLiveCopies =:= undefined orelse MinLiveCopies =< 1 ->
+                    MinLiveCopies =< 1 ->
                         %% we cannot failover without losing data
                         %% is some of chain nodes are down ?
                         DownBucketNodes = lists:any(fun (N) -> not lists:member(N, LiveNodes) end,
