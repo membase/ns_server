@@ -14,6 +14,7 @@ import threading
 import optparse
 import atexit
 import signal
+import urllib
 
 class AltExitC(object):
     def __init__(self):
@@ -554,6 +555,21 @@ def do_upload_and_exit(path, url):
         print >> sys.stderr, 'Done uploading'
         sys.exit(0)
 
+def generate_upload_url(parser, options, zip_filename):
+    upload_url = None
+    if options.upload_host:
+        if not options.upload_customer:
+            parse.error("Need --upload when --upload-host is given")
+        upload_host = urllib.quote(options.upload_host)
+        customer = urllib.quote(options.upload_customer)
+        fname = urllib.quote(zip_filename)
+        if options.upload_ticket:
+            ticket = urllib.quote(options.upload_ticket)
+            upload_url = "https://%s/%s/%s/%s" % (upload_host, customer, ticket, fname)
+        else:
+            upload_url = "https://%s/%s/%s" % (upload_host, customer, fname)
+        print >>sys.stderr, "Will upload collected .zip file into %s" % upload_url
+    return upload_url
 
 def main():
     mydir = os.path.dirname(sys.argv[0])
@@ -580,10 +596,16 @@ def main():
                       help="collect per-node diag on just this node (default is all reachable nodes)")
     parser.add_option("--just-upload-into", dest="just_upload_into",
                       help=optparse.SUPPRESS_HELP)
+    parser.add_option("--upload-host", dest="upload_host",
+                      help="gather diagnotics and upload it for couchbase support. Gives upload host")
+    parser.add_option("--customer", dest="upload_customer",
+                      help="specifies customer name for upload")
+    parser.add_option("--ticket", dest="upload_ticket",
+                      help="specifies support ticket number for upload")
     options, args = parser.parse_args()
 
     if len(args) != 1:
-        parser.error("incorrect number of arguments")
+        parser.error("incorrect number of arguments. Expecting filename to collect diagnostics into")
 
     if options.watch_stdin:
         setup_stdin_watcher()
@@ -597,6 +619,8 @@ def main():
     if not os.access(zip_dir, os.W_OK | os.X_OK):
         print("do not have write access to the directory %s" % (zip_dir))
         sys.exit(1)
+
+    upload_url = generate_upload_url(parser, options, zip_filename)
 
     erldir = os.path.join(mydir, 'erlang', 'bin')
     if os.name == 'posix':
@@ -615,7 +639,6 @@ def main():
 
     if options.just_upload_into != None:
         do_upload_and_exit(args[0], options.just_upload_into)
-        sys.exit(0)
 
     runner = TaskRunner(verbosity=options.verbosity)
 
@@ -657,6 +680,9 @@ def main():
         zip_node = '@'.join(zip_node.split("@")[:-1] + [find_primary_addr("127.0.0.1")])
 
     runner.zip(zip_filename, zip_node)
+
+    if upload_url:
+        do_upload_and_exit(zip_filename, upload_url)
 
 def find_primary_addr(default = None):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
