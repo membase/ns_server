@@ -1498,7 +1498,6 @@ $(function () {
     var version30 = encodeCompatVersion(3, 0);
 
     $('body').toggleClass('dynamic_under-25', !(lastCompatVersion >= version25));
-    $('body').toggleClass('dynamic_version-30', lastCompatVersion === version30);
     $('body').toggleClass('dynamic_under-30', !(lastCompatVersion >= version30));
   }
 

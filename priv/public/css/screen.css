@@ -1358,7 +1358,6 @@ input[type=number].size {width:4em;}
 .dynamic_enterprise-mode .when-community {display: none!important;}
 .dynamic_community-mode .when-enterprise {display: none!important;}
 .dynamic_under-30 .only-when-30 {display: none!important;}
-.dynamic_version-30 .only-when-not-30 {display: none!important ;}
 .dynamic_under-25 .only-when-25 {display: none!important;}
 .dynamic_roadmin-mode .when-roadmin-avoid-me {display: none!important;}
 .dynamic_roadmin-mode .when-roadmin-hide-me {visibility: hidden!important;}
