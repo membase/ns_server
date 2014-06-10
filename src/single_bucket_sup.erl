@@ -43,12 +43,12 @@ child_specs(BucketName) ->
       %% sometimes bucket deletion is slow. NOTE: we're not deleting
       %% bucket on system shutdown anymore
       permanent, 86400000, worker, [ns_memcached]},
-     {{replication_manager, BucketName}, {replication_manager, start_link, [BucketName]},
-      permanent, 1000, worker, []},
      {{ns_vbm_sup, BucketName}, {ns_vbm_sup, start_link, [BucketName]},
       permanent, infinity, supervisor, [ns_vbm_sup]},
      {{upr_sup, BucketName}, {upr_sup, start_link, [BucketName]},
       permanent, infinity, supervisor, [upr_sup]},
+     {{replication_manager, BucketName}, {replication_manager, start_link, [BucketName]},
+      permanent, 1000, worker, []},
      {{upr_notifier, BucketName}, {upr_notifier, start_link, [BucketName]},
       permanent, 1000, worker, []},
      {{janitor_agent, BucketName}, {janitor_agent, start_link, [BucketName]},
