@@ -53,6 +53,10 @@ USAGE = """usage: %prog [options] output_file.zip
     %prog output_file.zip
     %prog -v output_file.zip"""
 
+def log(message, end = '\n'):
+    sys.stderr.write(message + end)
+    sys.stderr.flush()
+
 class TempFile(object):
     unlink = os.unlink
     def __init__(self):
@@ -142,9 +146,9 @@ class TaskRunner(object):
 
     def log_result(self, result):
         if result == 0:
-            print >> sys.stderr, "OK"
+            log("OK")
         else:
-            print >> sys.stderr, "Exit code %d" % result
+            log("Exit code %d" % result)
 
     def run(self, task):
         """Run a task with a file descriptor corresponding to its log file"""
@@ -154,9 +158,9 @@ class TaskRunner(object):
             else:
                 command_to_print = task.command
 
-            print >> sys.stderr, "%s (%s) - " % (task.description, command_to_print),
+            log("%s (%s) - " % (task.description, command_to_print), end='')
             if task.privileged and os.getuid() != 0:
-                print >> sys.stderr, "skipped (needs root privs)"
+                log("skipped (needs root privs)")
                 return
 
             if hasattr(task, 'log_file'):
@@ -171,14 +175,12 @@ class TaskRunner(object):
             fp.flush()
             self.log_result(result)
             for i in xrange(2, task.num_samples + 2):
-                print >> sys.stderr, "Taking sample %d after %f seconds - " % \
-                    (i, task.interval)
+                log("Taking sample %d after %f seconds - " % (i, task.interval))
                 time.sleep(task.interval)
                 result = task.execute(fp)
                 self.log_result(result)
         elif self.verbosity >= 2:
-            print >> sys.stderr, 'Skipping "%s" (%s): not for platform %s' \
-                % (task.description, command_to_print, sys.platform)
+            log('Skipping "%s" (%s): not for platform %s' % (task.description, command_to_print, sys.platform))
 
     def zip(self, filename, node):
         """Write all our logs to a zipfile"""
@@ -545,7 +547,7 @@ def do_upload_and_exit(path, url):
     if p.returncode != 0:
         sys.exit(1)
     else:
-        print >> sys.stderr, 'Done uploading'
+        log('Done uploading')
         sys.exit(0)
 
 def generate_upload_url(parser, options, zip_filename):
@@ -561,7 +563,7 @@ def generate_upload_url(parser, options, zip_filename):
             upload_url = "https://%s/%s/%s/%s" % (upload_host, customer, ticket, fname)
         else:
             upload_url = "https://%s/%s/%s" % (upload_host, customer, fname)
-        print >>sys.stderr, "Will upload collected .zip file into %s" % upload_url
+        log("Will upload collected .zip file into %s" % upload_url)
     return upload_url
 
 def main():
