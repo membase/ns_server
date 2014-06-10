@@ -104,10 +104,6 @@ def erlang_args_for_node(i):
         "-sasl", "sasl_error_logger", "false",
         "-couch_ini"] + couch_configs(i)
 
-    datadir = os.path.abspath('data/n_{0}'.format(i))
-    tempdir = os.path.abspath('tmp/')
-    nodefile = os.path.join(datadir, "nodefile")
-
     args += [
         "-name", "babysitter_of_n_{0}@127.0.0.1".format(i),
         "-hidden",
@@ -118,8 +114,8 @@ def erlang_args_for_node(i):
         "path_config_etcdir", '"priv"',
         "path_config_bindir", '"{0}"'.format(PREFIX+"/bin"),
         "path_config_libdir", '"{0}"'.format(PREFIX+"/lib"),
-        "path_config_datadir", '"{0}"'.format(datadir),
-        "path_config_tmpdir", '"{0}"'.format(tempdir),
+        "path_config_datadir", '"data/n_{0}"'.format(i),
+        "path_config_tmpdir", '"tmp/"',
         "rest_port", str(base_api_port + i),
         "mccouch_port", str(base_mccouch_port + i),
         "ssl_rest_port", str(10000 + base_api_port + i),
@@ -130,7 +126,7 @@ def erlang_args_for_node(i):
         "ssl_proxy_downstream_port", str(base_direct_port - 2 - i * 4),
         "ssl_proxy_upstream_port", str(base_direct_port - 3 - i * 4),
         "memcached_ssl_port", str(base_direct_port - 4 - i * 4),
-        "nodefile", '"{0}"'.format(nodefile),
+        "nodefile", "undefined",
         "short_name", '"n_{0}"'.format(i),
         ] + cluster_extra_args
 
