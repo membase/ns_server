@@ -679,6 +679,9 @@ def main():
     if zip_node.split("@")[-1] == "127.0.0.1":
         zip_node = '@'.join(zip_node.split("@")[:-1] + [find_primary_addr("127.0.0.1")])
 
+    if options.verbosity:
+        log("Python version: %s" % sys.version)
+
     runner.zip(zip_filename, zip_node)
 
     if upload_url:
