@@ -175,7 +175,7 @@ class TaskRunner(object):
             fp.flush()
             self.log_result(result)
             for i in xrange(2, task.num_samples + 2):
-                log("Taking sample %d after %f seconds - " % (i, task.interval))
+                log("Taking sample %d after %f seconds - " % (i, task.interval), end='')
                 time.sleep(task.interval)
                 result = task.execute(fp)
                 self.log_result(result)
