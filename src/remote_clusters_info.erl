@@ -99,7 +99,6 @@
         [get_remote_clusters/0, cas_remote_clusters/2]).
 
 -include("ns_common.hrl").
--include("couch_db.hrl").
 -include("remote_clusters_info.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
