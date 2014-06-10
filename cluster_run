@@ -90,6 +90,9 @@ def prepare_start_cluster(extra_args, args_prefix):
     cluster_extra_args = extra_args
     cluster_args_prefix = args_prefix
 
+def quote_string_for_erl(s):
+    return '"' + s.replace("\\", "\\\\").replace("\"", "\\\"") + '"'
+
 def erlang_args_for_node(i):
     logdir = "logs/n_{0}".format(i)
 
@@ -104,18 +107,22 @@ def erlang_args_for_node(i):
         "-sasl", "sasl_error_logger", "false",
         "-couch_ini"] + couch_configs(i)
 
+    datadir = os.path.abspath('data/n_{0}'.format(i))
+    tempdir = os.path.abspath('tmp/')
+    nodefile = os.path.join(datadir, "nodefile")
+
     args += [
         "-name", "babysitter_of_n_{0}@127.0.0.1".format(i),
         "-hidden",
         "-ns_server", "config_path", '"etc/static_config.in"',
         "-ns_server", "enable_mlockall", "false",
-        "error_logger_mf_dir", '"{0}"'.format(logdir),
+        "error_logger_mf_dir", quote_string_for_erl(logdir),
         "dont_suppress_stderr_logger", "true",
         "path_config_etcdir", '"priv"',
-        "path_config_bindir", '"{0}"'.format(PREFIX+"/bin"),
-        "path_config_libdir", '"{0}"'.format(PREFIX+"/lib"),
-        "path_config_datadir", '"data/n_{0}"'.format(i),
-        "path_config_tmpdir", '"tmp/"',
+        "path_config_bindir", quote_string_for_erl(PREFIX+"/bin"),
+        "path_config_libdir", quote_string_for_erl(PREFIX+"/lib"),
+        "path_config_datadir", quote_string_for_erl(datadir),
+        "path_config_tmpdir", quote_string_for_erl(tempdir),
         "rest_port", str(base_api_port + i),
         "mccouch_port", str(base_mccouch_port + i),
         "ssl_rest_port", str(10000 + base_api_port + i),
@@ -126,8 +133,8 @@ def erlang_args_for_node(i):
         "ssl_proxy_downstream_port", str(base_direct_port - 2 - i * 4),
         "ssl_proxy_upstream_port", str(base_direct_port - 3 - i * 4),
         "memcached_ssl_port", str(base_direct_port - 4 - i * 4),
-        "nodefile", "undefined",
-        "short_name", '"n_{0}"'.format(i),
+        "nodefile", quote_string_for_erl(nodefile),
+        "short_name", quote_string_for_erl('n_{0}'.format(i))
         ] + cluster_extra_args
 
     return args
