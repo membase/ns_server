@@ -295,9 +295,6 @@ call_replicators(TapFun, TapArgs, UprFun, UprArgs, MergeCB, #state{repl_type = R
               erlang:apply(upr_sup, UprFun, UprArgs), State)
     end.
 
-get_actual_replications(#state{repl_type = tap,
-                               tap_replication_manager = undefined}) ->
-    [];
 get_actual_replications(#state{bucket_name = Bucket} = State) ->
     call_replicators(get_actual_replications, [Bucket], get_actual_replications, [Bucket],
                      fun merge_replications/3, State).
