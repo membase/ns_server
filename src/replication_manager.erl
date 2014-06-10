@@ -22,8 +22,7 @@
 -include("ns_common.hrl").
 
 -record(state, {bucket_name :: bucket_name(),
-                repl_type :: tap | upr | both,
-                remaining_tap_partitions = undefined :: [vbucket_id()] | undefined,
+                repl_type :: bucket_replication_type(),
                 desired_replications :: [{node(), [vbucket_id()]}],
                 tap_replication_manager :: pid()
                }).
@@ -49,7 +48,6 @@ init(Bucket) ->
     {ok, #state{
             bucket_name = Bucket,
             repl_type = tap,
-            remaining_tap_partitions = undefined,
             desired_replications = [],
             tap_replication_manager = undefined
            }}.
@@ -106,8 +104,9 @@ handle_info({'EXIT', _Pid, Reason}, State) ->
 handle_info(_Msg, State) ->
     {noreply, State}.
 
-handle_call(get_incoming_replication_map, _From, State) ->
-    {reply, get_actual_replications(State), State};
+handle_call(get_incoming_replication_map, _From, #state{repl_type = ReplType,
+                                                        bucket_name = Bucket} = State) ->
+    {reply, get_actual_replications(Bucket, ReplType), State};
 handle_call({remove_undesired_replications, FutureReps}, From,
             #state{desired_replications = CurrentReps} = State) ->
     Diff = replications_difference(FutureReps, CurrentReps),
@@ -116,16 +115,16 @@ handle_call({remove_undesired_replications, FutureReps}, From,
     handle_call({set_desired_replications, CleanedReps}, From, State);
 handle_call({set_desired_replications, DesiredReps}, _From,
             #state{bucket_name = Bucket,
-                   repl_type = Type,
+                   repl_type = ReplType,
                    tap_replication_manager = TapReplManager} = State) ->
-    NewTapReplManager = manage_tap_replication_manager(Bucket, Type, TapReplManager),
+    NewTapReplManager = manage_tap_replication_manager(Bucket, ReplType, TapReplManager),
     State1 = State#state{tap_replication_manager = NewTapReplManager},
 
     {Tap, Upr} = split_replications(DesiredReps, State1),
     call_replicators(
       set_desired_replications, [Bucket, Tap],
       set_desired_replications, [Bucket, Upr],
-      State1),
+      ReplType),
 
     {reply, ok, State1#state{desired_replications = DesiredReps}};
 handle_call({change_vbucket_replication, VBucket, NewSrc}, _From, State) ->
@@ -143,18 +142,31 @@ handle_call({change_vbucket_replication, VBucket, NewSrc}, _From, State) ->
                                              CurrentReps0, [{NewSrc, [VBucket]}])
                   end,
     handle_call({set_desired_replications, DesiredReps}, [], State);
-handle_call({set_replication_type, ReplType}, _From, State) ->
-    {Type, TapPartitions} =
-        case ReplType of
-            tap ->
-                {tap, undefined};
-            upr ->
-                {upr, undefined};
-            {upr, P} ->
-                {both, P}
-        end,
+handle_call({set_replication_type, ReplType}, _From, #state{repl_type = ReplType} = State) ->
+    {reply, ok, State};
+handle_call({set_replication_type, ReplType}, _From,
+            #state{repl_type = OldReplType,
+                   desired_replications = DesiredReplications} = State) ->
 
-    do_set_replication_type(Type, TapPartitions, State);
+    ?log_debug("Change replication type from ~p to ~p", [OldReplType, ReplType]),
+
+    State1 =
+        case DesiredReplications of
+            [] ->
+                State;
+            _ ->
+                CleanedReplications =
+                    lists:keymap(fun (Partitions) ->
+                                         [P || P <- Partitions,
+                                               replication_type(P, ReplType) =:=
+                                                   replication_type(P, OldReplType)]
+                                 end, 2, DesiredReplications),
+
+                {reply, ok, S} =
+                    handle_call({set_desired_replications, CleanedReplications}, [], State),
+                S
+        end,
+    {reply, ok, State1#state{repl_type = ReplType}};
 handle_call({upr_takeover, OldMasterNode, VBucket}, _From,
             #state{bucket_name = Bucket,
                    desired_replications = CurrentReps} = State) ->
@@ -168,36 +180,6 @@ handle_call({upr_takeover, OldMasterNode, VBucket}, _From,
                             end, CurrentReps),
     {reply, upr_replicator:takeover(OldMasterNode, Bucket, VBucket),
      State#state{desired_replications = DesiredReps}}.
-
-do_set_replication_type(Type, TapPartitions,
-                        #state{repl_type = Type, remaining_tap_partitions = TapPartitions}
-                        = State) ->
-    {reply, ok, State};
-do_set_replication_type(Type, TapPartitions,
-                        #state{repl_type = OldType,
-                               remaining_tap_partitions = OldTapPartitions,
-                               desired_replications = DesiredReplications} = State) ->
-    ?log_debug("Change replication type from ~p to ~p", [{OldType, OldTapPartitions},
-                                                         {Type, TapPartitions}]),
-
-    State1 =
-        case DesiredReplications of
-            [] ->
-                State;
-            _ ->
-                CleanedReplications =
-                    lists:keymap(fun (Partitions) ->
-                                         [P || P <- Partitions,
-                                               replication_type(P, Type, TapPartitions) =:=
-                                                   replication_type(P, OldType, OldTapPartitions)]
-                                 end, 2, DesiredReplications),
-
-                {reply, ok, S} =
-                    handle_call({set_desired_replications, CleanedReplications}, [], State),
-                S
-        end,
-    {reply, ok, State1#state{repl_type = Type,
-                             remaining_tap_partitions = TapPartitions}}.
 
 manage_tap_replication_manager(Bucket, Type, TapReplManager) ->
     case {Type, TapReplManager} of
@@ -218,7 +200,7 @@ manage_tap_replication_manager(Bucket, Type, TapReplManager) ->
     end.
 
 split_partitions(Partitions,
-                 #state{repl_type = both, remaining_tap_partitions = TapPartitions}) ->
+                 #state{repl_type = {upr, TapPartitions}}) ->
     {ordsets:intersection(Partitions, TapPartitions),
      ordsets:subtract(Partitions, TapPartitions)}.
 
@@ -235,13 +217,13 @@ split_replications([{SrcNode, Partitions} | Rest], State, Tap, Upr) ->
     {TapP, UprP} = split_partitions(Partitions, State),
     split_replications(Rest, State, [{SrcNode, TapP} | Tap], [{SrcNode, UprP} | Upr]).
 
-replication_type(Partition, ReplType, TapPartitions) ->
-    case {ReplType, TapPartitions} of
-        {tap, undefined} ->
+replication_type(Partition, ReplType) ->
+    case ReplType of
+        tap ->
             tap;
-        {upr, undefined} ->
+        upr ->
             upr;
-        {both, _} ->
+        {upr, TapPartitions} ->
             case ordsets:is_element(Partition, TapPartitions) of
                 true ->
                     tap;
@@ -273,34 +255,35 @@ merge_replications(TapReps, UprReps, State) ->
             misc:ukeymergewith(MergeFn, 1, TapReps, UprReps)
     end.
 
-merge_partitions(TapP, UprP, #state{remaining_tap_partitions = TapPartitions}) ->
+merge_partitions(TapP, UprP, TapPartitions) ->
     [] = ordsets:intersection(UprP, TapPartitions) ++
         ordsets:subtract(TapP, TapPartitions),
     lists:sort(TapP ++ UprP).
 
-call_replicators(TapFun, TapArgs, UprFun, UprArgs, State) ->
+call_replicators(TapFun, TapArgs, UprFun, UprArgs, ReplType) ->
     call_replicators(TapFun, TapArgs, UprFun, UprArgs,
                      fun(_, _, _) -> ok end,
-                     State).
+                     ReplType).
 
-call_replicators(TapFun, TapArgs, UprFun, UprArgs, MergeCB, #state{repl_type = ReplType} = State) ->
+call_replicators(TapFun, TapArgs, UprFun, UprArgs, MergeCB, ReplType) ->
     case ReplType of
         tap ->
             erlang:apply(tap_replication_manager, TapFun, TapArgs);
         upr ->
             erlang:apply(upr_sup, UprFun, UprArgs);
-        both ->
+        {upr, TapPartitions} ->
             MergeCB(
               erlang:apply(tap_replication_manager, TapFun, TapArgs),
-              erlang:apply(upr_sup, UprFun, UprArgs), State)
+              erlang:apply(upr_sup, UprFun, UprArgs), TapPartitions)
     end.
 
-get_actual_replications(#state{bucket_name = Bucket} = State) ->
+get_actual_replications(Bucket, ReplTypeTuple) ->
     call_replicators(get_actual_replications, [Bucket], get_actual_replications, [Bucket],
-                     fun merge_replications/3, State).
+                     fun merge_replications/3, ReplTypeTuple).
 
-get_actual_replications_as_list(State) ->
-    case get_actual_replications(State) of
+get_actual_replications_as_list(#state{repl_type = ReplType,
+                                       bucket_name = Bucket}) ->
+    case get_actual_replications(Bucket, ReplType) of
         not_running ->
             [];
         Reps ->
