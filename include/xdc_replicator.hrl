@@ -177,10 +177,8 @@
           parent,
           source_name,
           target_name,
-          source,                               % note: only used by old path
           target,
           src_master_db,
-          local_vbuuid,                         % note: only used by old path
           remote_vbopaque :: term(),
           start_seq,
           committed_seq,
@@ -230,7 +228,6 @@
 -record(rep_worker_option, {
           worker_id,               %% unique id of worker process starting from 1
           cp,                      %% parent vb replicator process
-          source,                  %note: only used by old path
           source_bucket,
           target = #httpdb{},      %% target db
           changes_manager,         %% process to queue changes from storage

@@ -215,12 +215,6 @@ get_meta(Bucket, VBucket, DocId) ->
             Other
     end.
 
-%% NOTE: only used by old code path
-generate_local_vbopaque(Bucket, VBucket) ->
-    StartupTime = ns_memcached:get_ep_startup_time_for_xdcr(Bucket),
-    VBUUID = xdc_vbucket_rep_ckpt:get_local_vbuuid(Bucket, VBucket),
-    [VBUUID, StartupTime].
-
 extract_ck_params(Req) ->
     couch_httpd:validate_ctype(Req, "application/json"),
     {Obj} = couch_httpd:json_body_obj(Req),
@@ -260,32 +254,6 @@ extract_ck_params(Req) ->
     {Bucket, VB, VBOpaque, CommitOpaque}.
 
 handle_pre_replicate(Req) ->
-    case xdc_rep_utils:is_new_xdcr_path() of
-        true ->
-            handle_pre_replicate_new(Req);
-        _ ->
-            handle_pre_replicate_old(Req)
-    end.
-
-handle_pre_replicate_old(#httpd{method='POST'}=Req) ->
-    {Bucket, VB, VBOpaque, CommitOpaque} = extract_ck_params(Req),
-
-    [LocalCommitOpaque, _] = LocalVBOpaque = generate_local_vbopaque(Bucket, VB),
-
-    VBMatches = VBOpaque =:= undefined orelse VBOpaque =:= LocalVBOpaque,
-
-    CommitOk = CommitOpaque =:= undefined orelse CommitOpaque =:= LocalCommitOpaque,
-
-    ?log_debug("Old pre-replicate: ~p", [{VBOpaque, LocalVBOpaque, CommitOpaque, LocalCommitOpaque}]),
-
-    Code = case VBMatches andalso CommitOk of
-               true -> 200;
-               false -> 400
-           end,
-
-    couch_httpd:send_json(Req, Code, {[{<<"vbopaque">>, LocalVBOpaque}]}).
-
-handle_pre_replicate_new(#httpd{method='POST'}=Req) ->
     {Bucket, VB, VBOpaque, CommitOpaque} = extract_ck_params(Req),
 
     FailoverLog = case xdcr_upr_streamer:get_failover_log(binary_to_list(Bucket), VB) of
@@ -331,39 +299,6 @@ get_vbucket_seqno_stats(BucketName, Vb) ->
      list_to_integer(binary_to_list(S0))}.
 
 handle_commit_for_checkpoint(#httpd{method='POST'}=Req) ->
-    case xdc_rep_utils:is_new_xdcr_path() of
-        true ->
-            handle_commit_for_checkpoint_new(Req);
-        _ ->
-            handle_commit_for_checkpoint_old(Req)
-    end.
-
-handle_commit_for_checkpoint_old(#httpd{method='POST'}=Req) ->
-    {Bucket, VB, VBOpaque, _} = extract_ck_params(Req),
-
-    TimeBefore = erlang:now(),
-    system_stats_collector:increment_counter(xdcr_checkpoint_commits_enters, 1),
-    try
-        ok = ns_memcached:perform_checkpoint_commit_for_xdcr(Bucket, VB, ?XDCR_CHECKPOINT_TIMEOUT)
-    after
-        system_stats_collector:increment_counter(xdcr_checkpoint_commits_leaves, 1)
-    end,
-
-    TimeAfter = erlang:now(),
-    system_stats_collector:add_histo(xdcr_checkpoint_commit_time, timer:now_diff(TimeAfter, TimeBefore)),
-    [CommitOpaque, _] = LocalVBOpaque = generate_local_vbopaque(Bucket, VB),
-
-    CommitOpaque = hd(LocalVBOpaque),
-    case LocalVBOpaque =:= VBOpaque of
-        true ->
-            system_stats_collector:increment_counter(xdcr_checkpoint_commit_oks, 1),
-            couch_httpd:send_json(Req, 200, {[{<<"commitopaque">>, CommitOpaque}]});
-        _ ->
-            system_stats_collector:increment_counter(xdcr_checkpoint_commit_mismatches, 1),
-            couch_httpd:send_json(Req, 400, {[{<<"vbopaque">>, LocalVBOpaque}]})
-    end.
-
-handle_commit_for_checkpoint_new(#httpd{method='POST'}=Req) ->
     {Bucket, VB, VBOpaque, _} = extract_ck_params(Req),
 
     TimeBefore = erlang:now(),

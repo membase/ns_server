@@ -22,7 +22,6 @@
 -export([my_active_vbuckets/1]).
 -export([parse_rep_db/3]).
 -export([sanitize_status/3, get_rep_info/1]).
--export([is_new_xdcr_path/0]).
 
 -include("xdc_replicator.hrl").
 
@@ -174,7 +173,3 @@ sanitize_status(_Opt, _PDict, State) ->
 
 get_rep_info(#rep{source = Src, target = Tgt, replication_mode = Mode}) ->
     ?format_msg("from ~p to ~p in mode: ~p", [Src, Tgt, Mode]).
-
-
-is_new_xdcr_path() ->
-    ns_config:read_key_fast(xdcr_use_new_path, false).

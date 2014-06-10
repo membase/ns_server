@@ -59,18 +59,10 @@ bump_status_counter(OldStatus, State, Element) ->
 
 -spec do_checkpoint(#rep_state{}) -> {ok, binary(), #rep_state{}} |
                                      {checkpoint_commit_failure, binary(), #rep_state{}}.
-do_checkpoint(State) ->
-    case xdc_rep_utils:is_new_xdcr_path() of
-        false ->
-            do_checkpoint_old(State);
-        _ ->
-            do_checkpoint_new(State)
-    end.
-
-do_checkpoint_new(#rep_state{current_through_seq=Seq, committed_seq=Seq} = State) ->
+do_checkpoint(#rep_state{current_through_seq=Seq, committed_seq=Seq} = State) ->
     ?xdcr_debug("not checkpoint needed for vb: ~p", [State#rep_state.status#rep_vb_status.vb]),
     {ok, <<"no checkpoint">>, State};
-do_checkpoint_new(#rep_state{remote_vbopaque = {old_node_marker, RemoteStartTime},
+do_checkpoint(#rep_state{remote_vbopaque = {old_node_marker, RemoteStartTime},
                          target = TargetDB} = State) ->
     ?xdcr_debug("Faking checkpoint into old node"),
     %% note: we're not bumping any counters or reporting anything to
@@ -87,11 +79,11 @@ do_checkpoint_new(#rep_state{remote_vbopaque = {old_node_marker, RemoteStartTime
             ?xdcr_debug("Detected remote ep-engine instance restart: ~s vs ~s", [RemoteStartTime, NowStartTime]),
             {checkpoint_commit_failure, {start_time_mismatch, RemoteStartTime, NowStartTime}, State}
     end;
-do_checkpoint_new(#rep_state{current_through_seq = Seq,
-                             current_through_snapshot_seq = SnapshotSeq,
-                             current_through_snapshot_end_seq = SnapshotEndSeq,
-                             status = OldStatus,
-                             upr_failover_uuid = FailoverUUID} = State) ->
+do_checkpoint(#rep_state{current_through_seq = Seq,
+                         current_through_snapshot_seq = SnapshotSeq,
+                         current_through_snapshot_end_seq = SnapshotEndSeq,
+                         status = OldStatus,
+                         upr_failover_uuid = FailoverUUID} = State) ->
     #rep_vb_status{vb = Vb,
                    docs_checked = Checked,
                    docs_written = Written,
@@ -127,85 +119,6 @@ do_checkpoint_new(#rep_state{current_through_seq = Seq,
                               {<<"seqno">>, NewSeq},
                               {<<"upr_snapshot_seqno">>, NewSnapshotSeq},
                               {<<"upr_snapshot_end_seqno">>, NewSnapshotEndSeq},
-                              {<<"total_docs_checked">>, TotalChecked + Checked},
-                              {<<"total_docs_written">>, TotalWritten + Written},
-                              {<<"total_data_replicated">>, TotalDataRepd + DataRepd}]},
-            DB = capi_utils:must_open_vbucket(SourceBucketName, <<"master">>),
-            try
-                ok = couch_db:update_doc(DB, #doc{id = CheckpointDocId,
-                                                  body = CheckpointDoc})
-            after
-                couch_db:close(DB)
-            end,
-            NewState = State#rep_state{committed_seq = NewSeq,
-                                       last_checkpoint_time = erlang:now()},
-            update_checkpoint_status_to_parent(NewState, true),
-            {ok, [], bump_status_counter(OldStatus, NewState, #rep_vb_status.num_checkpoints)};
-        Other ->
-            case Other of
-                {mismatch, _} ->
-                    ?xdcr_error("Checkpointing failed due to remote vbopaque mismatch: ~p", [Other]);
-                _ ->
-                    ?xdcr_error("Checkpointing failed unexpectedly (or could be network problem): ~p", [Other])
-            end,
-            update_checkpoint_status_to_parent(State, false),
-            NewState = bump_status_counter(OldStatus, State, #rep_vb_status.num_failedckpts),
-            {checkpoint_commit_failure, Other, NewState}
-    end.
-
-do_checkpoint_old(#rep_state{current_through_seq=Seq, committed_seq=Seq} = State) ->
-    ?xdcr_debug("not checkpoint needed for vb: ~p", [State#rep_state.status#rep_vb_status.vb]),
-    {ok, <<"no checkpoint">>, State};
-do_checkpoint_old(#rep_state{remote_vbopaque = {old_node_marker, RemoteStartTime},
-                         target = TargetDB} = State) ->
-    ?xdcr_debug("Faking checkpoint into old node"),
-    %% note: we're not bumping any counters or reporting anything to
-    %% parent. I believe that's fine.
-    %%
-    %% We're faking actual checkpoint, but we must check remote
-    %% instance_start_time to detect possible remote crash
-    {ok, Props} = couch_api_wrap:get_db_info(TargetDB),
-    NowStartTime = proplists:get_value(<<"instance_start_time">>, Props),
-    case NowStartTime =/= undefined andalso NowStartTime =:= RemoteStartTime of
-        true ->
-            {ok, [], State};
-        _ ->
-            ?xdcr_debug("Detected remote ep-engine instance restart: ~s vs ~s", [RemoteStartTime, NowStartTime]),
-            {checkpoint_commit_failure, {start_time_mismatch, RemoteStartTime, NowStartTime}, State}
-    end;
-do_checkpoint_old(State) ->
-    ?xdcr_info("checkpointing for vb: ~p at ~p", [State#rep_state.status#rep_vb_status.vb, State#rep_state.current_through_seq]),
-    #rep_vb_status{vb = Vb,
-                   docs_checked = Checked,
-                   docs_written = Written,
-                   data_replicated = DataRepd,
-                   total_docs_checked = TotalChecked,
-                   total_docs_written = TotalWritten,
-                   total_data_replicated = TotalDataRepd} = OldStatus = State#rep_state.status,
-
-    SourceBucketName = (State#rep_state.rep_details)#rep.source,
-    OldLocalVBUUID = State#rep_state.local_vbuuid,
-    LocalVBUUID = get_local_vbuuid(SourceBucketName, Vb),
-
-    CommitResult = case LocalVBUUID =:= OldLocalVBUUID of
-                       true ->
-                           catch perform_commit_for_checkpoint(State#rep_state.remote_vbopaque,
-                                                               State#rep_state.ckpt_api_request_base);
-                       false ->
-                           {local_vbuuid_mismatch, LocalVBUUID, OldLocalVBUUID}
-                   end,
-
-    case CommitResult of
-        {ok, RemoteCommitOpaque} ->
-
-
-            CheckpointDocId = build_commit_doc_id(State#rep_state.rep_details, Vb),
-            NewSeq = State#rep_state.current_through_seq,
-            CheckpointDoc = {[{<<"commitopaque">>, RemoteCommitOpaque},
-                              {<<"start_time">>, ?l2b(State#rep_state.rep_starttime)},
-                              {<<"end_time">>, ?l2b(httpd_util:rfc1123_date())},
-                              {<<"local_vbuuid">>, LocalVBUUID},
-                              {<<"seqno">>, NewSeq},
                               {<<"total_docs_checked">>, TotalChecked + Checked},
                               {<<"total_docs_written">>, TotalWritten + Written},
                               {<<"total_data_replicated">>, TotalDataRepd + DataRepd}]},
@@ -403,14 +316,6 @@ parse_validate_checkpoint_doc(Rep, Vb, Body, ApiRequestBase) ->
     end.
 
 do_parse_validate_checkpoint_doc(Rep, Vb, Body0, ApiRequestBase) ->
-    case xdc_rep_utils:is_new_xdcr_path() of
-        false ->
-            do_parse_validate_checkpoint_doc_old(Rep, Vb, Body0, ApiRequestBase);
-        _ ->
-            do_parse_validate_checkpoint_doc_new(Rep, Vb, Body0, ApiRequestBase)
-    end.
-
-do_parse_validate_checkpoint_doc_new(Rep, Vb, Body0, ApiRequestBase) ->
     Body = case Body0 of
                {XB} -> XB;
                _ -> []
@@ -452,45 +357,6 @@ do_parse_validate_checkpoint_doc_new(Rep, Vb, Body0, ApiRequestBase) ->
                      TotalDocsWritten,
                      TotalDataReplicated,
                      RemoteVBOpaque}
-            end
-    end.
-
-do_parse_validate_checkpoint_doc_old(Rep, Vb, Body0, ApiRequestBase) ->
-    Body = case Body0 of
-               {XB} -> XB;
-               _ -> []
-           end,
-    CommitOpaque = proplists:get_value(<<"commitopaque">>, Body),
-    LocalVBUUID = proplists:get_value(<<"local_vbuuid">>, Body),
-    Seqno = proplists:get_value(<<"seqno">>, Body),
-    case (CommitOpaque =/= undefined andalso
-          is_binary(LocalVBUUID) andalso
-          is_integer(Seqno)) of
-        false ->
-            handle_no_checkpoint(ApiRequestBase);
-        true ->
-            case get_local_vbuuid(Rep#rep.source, Vb) =:= LocalVBUUID of
-                false ->
-                    ?xdcr_debug("local checkpoint for vb ~B does not match due to local side. Checkpoint seqno: ~B. xdcr will start from scratch", [Vb, Seqno]),
-                    handle_no_checkpoint(ApiRequestBase);
-                true ->
-                    case perform_pre_replicate(CommitOpaque, ApiRequestBase) of
-                        {mismatch, RemoteVBOpaque} ->
-                            ?xdcr_debug("local checkpoint for vb ~B does not match due to remote side. Checkpoint seqno: ~B. xdcr will start from scratch", [Vb, Seqno]),
-                            handle_no_checkpoint_with_opaque(RemoteVBOpaque);
-                        {ok, RemoteVBOpaque} ->
-                            ?xdcr_debug("local checkpoint for vb ~B matches. Seqno: ~B", [Vb, Seqno]),
-                            StartSeq = Seqno,
-                            TotalDocsChecked = proplists:get_value(<<"total_docs_checked">>, Body, 0),
-                            TotalDocsWritten = proplists:get_value(<<"total_docs_written">>, Body, 0),
-                            TotalDataReplicated = proplists:get_value(<<"total_data_replicated">>, Body, 0),
-                            ?xdcr_debug("Checkpoint stats: ~p", [{TotalDocsChecked, TotalDocsWritten, TotalDataReplicated}]),
-                            {StartSeq, 0, 0, 0,
-                             TotalDocsChecked,
-                             TotalDocsWritten,
-                             TotalDataReplicated,
-                             RemoteVBOpaque}
-                    end
             end
     end.
 
