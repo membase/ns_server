@@ -48,13 +48,7 @@ find_missing(#xdc_xmem_location{vb = VBucket, mcd_loc = McdDst}, IdRevs) ->
     {ok, MissingRevs, Errors} =
         pooled_memcached_client:find_missing_revs(McdDst, VBucket, IdRevs),
     ErrRevs =
-        [begin
-             ?xdcr_trace("Error! memcached error when fetching metadata from remote for key: ~p, "
-                         "just send the doc (msg: "
-                         "\"unexpected response from remote memcached (vb: ~p, error: ~p)\")",
-                         [Key, VBucket, Error]),
-             Pair
-         end || {Error, {Key, _} = Pair} <- Errors],
+        [Pair || {_Error, Pair} <- Errors],
     {ok, ErrRevs ++ MissingRevs}.
 
 flush_docs(#xdc_xmem_location{vb = VBucket,

@@ -161,8 +161,6 @@
 -define(xdcr_error(Format, Args), ale:error(?XDCR_LOGGER, Format, Args)).
 -define(xdcr_error(Msg), ale:error(?XDCR_LOGGER, Msg)).
 
--define(xdcr_trace(Format, Args), ale:debug(?XDCR_TRACE_LOGGER, Format, Args)).
-
 -define(i2l(V), integer_to_list(V)).
 
 -define(UI_AUTH_EXPIRATION_SECONDS, 600).

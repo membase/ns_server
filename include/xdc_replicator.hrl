@@ -41,6 +41,12 @@
 -define(XDCR_INIT_CONCUR_THROTTLE, "xdcr-init").
 -define(XDCR_REPL_CONCUR_THROTTLE, "xdcr-repl").
 
+-define(x_trace(Type, KV), case ale:is_loglevel_enabled(?XDCR_TRACE_LOGGER, info) of
+                               false -> ok;
+                               true -> ale:xlog(?XDCR_TRACE_LOGGER, info, {self(), Type, KV}, [])
+                           end).
+-define(x_trace_enabled(), ale:is_loglevel_enabled(?XDCR_TRACE_LOGGER, info)).
+
 %% -------------------------%%
 %%   XDCR data structures   %%
 %% -------------------------%%

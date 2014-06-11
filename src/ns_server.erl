@@ -155,9 +155,7 @@ init_logging() ->
     lists:foreach(
       fun (Logger) ->
               ale:stop_logger(Logger)
-      end, ?LOGGERS),
-
-    ale:stop_logger(?ACCESS_LOGGER),
+      end, ?LOGGERS ++ [?ACCESS_LOGGER]),
 
     ok = start_disk_sink(disk_default, ?DEFAULT_LOG_FILENAME),
     ok = start_disk_sink(disk_error, ?ERRORS_LOG_FILENAME),
@@ -177,7 +175,7 @@ init_logging() ->
     lists:foreach(
       fun (Logger) ->
               ok = ale:start_logger(Logger, debug)
-      end, ?LOGGERS),
+      end, ?LOGGERS -- [?XDCR_TRACE_LOGGER]),
 
     lists:foreach(
       fun (Logger) ->
@@ -185,7 +183,8 @@ init_logging() ->
       end,
       StdLoggers),
 
-    ok = ale:set_loglevel(?XDCR_TRACE_LOGGER, get_loglevel(?XDCR_TRACE_LOGGER)),
+    ok = ale:start_logger(?XDCR_TRACE_LOGGER, get_loglevel(?XDCR_TRACE_LOGGER),
+                          xdcr_trace_log_formatter),
 
     ok = ale:start_logger(?ACCESS_LOGGER, info, menelaus_access_log_formatter),
 

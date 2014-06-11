@@ -68,6 +68,10 @@ init([#rep{source = SrcBucketBinary, replication_mode = RepMode, options = Optio
     ?xdcr_debug("throttle process created (init throttle: ~p, work throttle: ~p)",
                 [InitThrottle, WorkThrottle]),
     Sup = start_vbucket_rep_sup(Rep),
+    ?x_trace(replicationInit,
+             [{repID, Rep#rep.id},
+              {source, SrcBucketBinary},
+              {target, Rep#rep.target}]),
     case ns_bucket:get_bucket(?b2l(SrcBucketBinary)) of
         {ok, SrcBucketConfig} ->
             Vbs = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
@@ -411,6 +415,9 @@ start_vb_replicators(#replication{rep = Rep,
     Dict2 = lists:foldl(
                 fun(RemoveVb, DictAcc) ->
                         ok = xdc_vbucket_rep_sup:stop_vbucket_rep(Sup, RemoveVb),
+                        ?x_trace(stoppedVbRep,
+                                 [{repID, Rep#rep.id},
+                                  {vb, RemoveVb}]),
                         dict:erase(RemoveVb, DictAcc)
                 end, Dict, RemovedVbs),
     % now start the new Vbs
@@ -425,6 +432,10 @@ start_vb_replicators(#replication{rep = Rep,
                                                                         self(),
                                                                         RepMode),
                       VbStatus = #rep_vb_status{pid = Pid},
+                      ?x_trace(startedVbRep,
+                               [{repID, Rep#rep.id},
+                                {vb, Vb},
+                                {childPID, Pid}]),
                       dict:store(Vb, VbStatus, DictAcc)
               end, Dict2, misc:shuffle(NewVbs)),
     ?xdcr_debug("total number of started vb replicator: ~p", [dict:size(Dict3)]),

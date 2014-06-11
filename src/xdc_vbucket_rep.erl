@@ -73,10 +73,17 @@ start_link(Rep, Vb, InitThrottle, WorkThrottle, Parent, RepMode) ->
 
 
 %% gen_server behavior callback functions
-init(#init_state{init_throttle = InitThrottle} = InitState) ->
+init(#init_state{init_throttle = InitThrottle,
+                 vb = Vb,
+                 rep = Rep,
+                 parent = Parent} = InitState) ->
     process_flag(trap_exit, true),
     %% signal to self to initialize
     ok = concurrency_throttle:send_back_when_can_go(InitThrottle, init),
+    ?x_trace(init,
+             [{repID, Rep#rep.id},
+              {vb, Vb},
+              {parent, Parent}]),
     {ok, InitState}.
 
 format_status(Opt, [PDict, State]) ->
@@ -85,6 +92,13 @@ format_status(Opt, [PDict, State]) ->
 handle_info({failover_id, FailoverUUID,
              StartSeqno, EndSeqno, StartSnapshot, EndSnapshot},
             #rep_state{status = VbStatus} = State) ->
+
+    ?x_trace(gotFailoverID,
+             [{failoverUUUID, FailoverUUID},
+              {startSeq, StartSeqno},
+              {endSeq, EndSeqno},
+              {startSnapshot, StartSnapshot},
+              {endSnapshot, EndSnapshot}]),
 
     VbStatus2 = VbStatus#rep_vb_status{num_changes_left = EndSeqno - StartSeqno},
 
@@ -97,7 +111,11 @@ handle_info({failover_id, FailoverUUID,
 
     {noreply, update_status_to_parent(NewState)};
 
-handle_info({stream_end, _SnapshotStart, _SnapshotEnd, LastSeenSeqno}, State) ->
+handle_info({stream_end, SnapshotStart, SnapshotEnd, LastSeenSeqno}, State) ->
+    ?x_trace(gotStreamEnd,
+             [{snapshotStart, SnapshotStart},
+              {snapshotEnd, SnapshotEnd},
+              {lastSeq, LastSeenSeqno}]),
     {noreply, State#rep_state{last_stream_end_seq = LastSeenSeqno}};
 
 handle_info({'EXIT',_Pid, normal}, St) ->
@@ -107,6 +125,7 @@ handle_info({'EXIT',_Pid, Reason}, St) ->
     {stop, Reason, St};
 
 handle_info(init, #init_state{init_throttle = InitThrottle} = InitState) ->
+    ?x_trace(gotInitToken, []),
     try
         State = init_replication_state(InitState),
         check_src_db_updated(State),
@@ -146,12 +165,17 @@ handle_info(wake_me_up,
 
     VbucketSeq = list_to_integer(binary_to_list(StatsValue)),
 
+    NewChangesLeft = erlang:max(VbucketSeq - ThroughSeq, 0),
+
     NewVbStatus = VbStatus#rep_vb_status{status = waiting_turn,
-                                         num_changes_left = erlang:max(VbucketSeq - ThroughSeq, 0)},
+                                         num_changes_left = NewChangesLeft},
+
+    ?x_trace(gotWakeup, [{newChangesLeft, NewChangesLeft}]),
 
     {noreply, update_status_to_parent(St#rep_state{status = NewVbStatus}), hibernate};
 
 handle_info(wake_me_up, OtherState) ->
+    ?x_trace(gotNOOPWakeup, []),
     {noreply, OtherState};
 
 handle_info(start_replication, #rep_state{throttle = Throttle,
@@ -164,6 +188,7 @@ handle_info(start_replication, #rep_state{throttle = Throttle,
     {noreply, start_replication(St2)};
 
 handle_info(return_token_please, State) ->
+    ?x_trace(gotReturnTokenPlease, []),
     case State of
         #rep_state{status = RepVBStatus,
                    changes_queue = ChangesQueue} when RepVBStatus#rep_vb_status.status =:= replicating ->
@@ -173,6 +198,7 @@ handle_info(return_token_please, State) ->
                          couch_work_queue:item_count(ChangesQueue)]),
             ChangesReader = erlang:get(changes_reader),
             {true, is_pid} = {is_pid(ChangesReader), is_pid},
+            ?x_trace(sendingPleaseStopToReader, []),
             ChangesReader ! please_stop;
         _ ->
             ok
@@ -201,8 +227,7 @@ handle_call({report_seq_done,
                                                docs_checked = TotalChecked,
                                                docs_written = TotalWritten,
                                                data_replicated = TotalDataReplicated,
-                                               workers_stat = AllWorkersStat,
-                                               vb = Vb} = VbStatus} = State) ->
+                                               workers_stat = AllWorkersStat} = VbStatus} = State) ->
     gen_server:reply(From, ok),
 
     true = (CurrentSnapshotSeq =< SnapshotStart),
@@ -258,15 +283,12 @@ handle_call({report_seq_done,
     %%             State#rep_state.behind_purger
     %%     end,
 
-    ?xdcr_trace("Replicator of vbucket ~p: worker reported seq ~p, through seq was ~p, "
-                "new through seq is ~p, highest seq done was ~p, new highest seq done is ~p "
-                "(db purger seq: ~p, repl outpaced by purger during this run? ~p)~n"
-                "Seqs in progress were: ~p~nSeqs in progress are now: ~p"
-                "(total docs checked: ~p, total docs written: ~p)",
-                [Vb, Seq, ThroughSeq, NewThroughSeq, HighestDone,
-                 NewHighestDone, unknown, false, % PurgeSeq, BehindPurger,
-                 SeqsInProgress, NewSeqsInProgress,
-                 TotalChecked, TotalWritten]),
+    ?x_trace(workerReported,
+             [{seq, Seq},
+              {oldThroughSeq, ThroughSeq},
+              {newThroughSeq, NewThroughSeq},
+              {oldTotalChecked, TotalChecked},
+              {oldTotalWritten, TotalWritten}]),
 
     %% get stats
     {ChangesQueueSize, ChangesQueueDocs} = get_changes_queue_stats(State),
@@ -317,6 +339,7 @@ handle_call({report_seq_done,
 
 handle_call({worker_done, Pid}, _From,
             #rep_state{workers = Workers, status = VbStatus} = State) ->
+    ?x_trace(workerDone, [{workerPid, Pid}]),
     case Workers -- [Pid] of
         Workers ->
             {stop, {unknown_worker_done, Pid}, ok, State};
@@ -333,32 +356,6 @@ handle_call({worker_done, Pid}, _From,
                                                docs_changes_queue = 0,
                                                num_changes_left = 0},
 
-            %% dump a bunch of stats
-            Vb = VbStatus2#rep_vb_status.vb,
-            Throttle = State2#rep_state.throttle,
-            HighestDone = State2#rep_state.highest_seq_done,
-            HighestDoneSnapshot = State2#rep_state.highest_seq_done_snapshot,
-            ChangesLeft = VbStatus2#rep_vb_status.num_changes_left,
-            TotalChecked = VbStatus2#rep_vb_status.docs_checked,
-            TotalWritten = VbStatus2#rep_vb_status.docs_written,
-            TotalDataRepd = VbStatus2#rep_vb_status.data_replicated,
-            NumCkpts = VbStatus2#rep_vb_status.num_checkpoints,
-            NumFailedCkpts = VbStatus2#rep_vb_status.num_failedckpts,
-            LastCkptTime = State2#rep_state.last_checkpoint_time,
-            StartRepTime = State2#rep_state.rep_start_time,
-
-            ?xdcr_trace("Replicator of vbucket ~p done, return token to throttle: ~p~n"
-                        "(highest seq done is ~p, highest seq snapshot ~p, "
-                        "number of changes left: ~p~n"
-                        "total docs checked: ~p, total docs written: ~p (total data repd: ~p)~n"
-                        "total number of succ ckpts: ~p (failed ckpts: ~p)~n"
-                        "last succ ckpt time: ~p, replicator start time: ~p.",
-                        [Vb, Throttle, HighestDone, HighestDoneSnapshot,
-                         ChangesLeft, TotalChecked, TotalWritten, TotalDataRepd,
-                         NumCkpts, NumFailedCkpts,
-                         calendar:now_to_local_time(LastCkptTime),
-                         calendar:now_to_local_time(StartRepTime)
-                        ]),
             VbStatus3 = VbStatus2#rep_vb_status{status = idle},
 
             CurrentSnapshotSeq = State2#rep_state.current_through_snapshot_seq,
@@ -375,6 +372,19 @@ handle_call({worker_done, Pid}, _From,
                     false ->
                         {CurrentSnapshotSeq, CurrentSnapshotEndSeq}
                 end,
+
+            %% dump a bunch of stats
+            ?x_trace(lastWorkerDone,
+                     [{numChangesLeft, VbStatus2#rep_vb_status.num_changes_left},
+                      {totalChecked, VbStatus2#rep_vb_status.docs_checked},
+                      {totalWritten, VbStatus2#rep_vb_status.docs_written},
+                      {totalDataRepd, VbStatus2#rep_vb_status.data_replicated},
+                      {numCheckpoints, VbStatus2#rep_vb_status.num_checkpoints},
+                      {lastCheckpointTime, xdcr_trace_log_formatter:format_ts(State2#rep_state.last_checkpoint_time)},
+                      {lastStartTime, xdcr_trace_log_formatter:format_ts(State2#rep_state.rep_start_time)},
+                      {throughSeq, State2#rep_state.current_through_seq},
+                      {throughSnapshotStart, NewSnapshotSeq},
+                      {throughSnapshotEnd, NewSnapshotEndSeq}]),
 
             %% finally report stats to bucket replicator and tell it that I am idle
 
@@ -409,9 +419,7 @@ handle_cast(checkpoint, #rep_state{status = VbStatus} = State) ->
                              VbStatus2 = NewState#rep_state.status#rep_vb_status{commit_time = TotalCommitTime},
                              NewState2 = NewState#rep_state{timer = xdc_vbucket_rep_ckpt:start_timer(State),
                                                             status = VbStatus2},
-                             Vb = (NewState2#rep_state.status)#rep_vb_status.vb,
-                             ?xdcr_trace("checkpoint issued during replication for vb ~p, "
-                                         "commit time: ~p", [Vb, CommitTime]),
+                             ?x_trace(checkpointedDuringReplication, [{duration, CommitTime}]),
                              {ok, NewState2};
                          {checkpoint_commit_failure, Reason, NewState} ->
                              %% update the failed ckpt stats to bucket replicator
@@ -440,9 +448,12 @@ handle_cast({report_error, Err},
     gen_server:cast(Parent, {report_error, Err}),
     {noreply, State};
 
-handle_cast({report_seq, Seq, _SnapshotStart, _SnapshotEnd},
+handle_cast({report_seq, Seq, SnapshotStart, SnapshotEnd},
             #rep_state{seqs_in_progress = SeqsInProgress} = State) ->
     NewSeqsInProgress = ordsets:add_element(Seq, SeqsInProgress),
+    ?x_trace(workStart, [{seq, Seq},
+                         {snapshotStart, SnapshotStart},
+                         {snapshotEnd, SnapshotEnd}]),
     {noreply, State#rep_state{seqs_in_progress = NewSeqsInProgress}}.
 
 
@@ -450,12 +461,14 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 terminate(Reason, #init_state{rep = #rep{target = TargetRef}, parent = P, vb = Vb} = InitState) ->
+    ?x_trace(terminateInInitState, [{reason, xdcr_trace_log_formatter:format_pp(Reason)}]),
     report_error(Reason, Vb, P),
     ?xdcr_error("Shutting xdcr vb replicator (~p) down without ever successfully initializing: ~p", [InitState, Reason]),
     remote_clusters_info:invalidate_remote_bucket_by_ref(TargetRef),
     ok;
 
 terminate(Reason, State) when Reason == normal orelse Reason == shutdown ->
+    ?x_trace(terminateNormal, []),
     terminate_cleanup(State);
 
 terminate(Reason, #rep_state{
@@ -465,6 +478,8 @@ terminate(Reason, #rep_state{
             status = #rep_vb_status{vb = Vb} = Status,
             parent = P
            } = State) ->
+
+    ?x_trace(terminate, [{reason, xdcr_trace_log_formatter:format_pp(Reason)}]),
 
     case RepMode of
         "capi" ->
@@ -517,6 +532,7 @@ report_error(_Err, Vb, Parent) ->
     gen_server:cast(Parent, {report_error, {RawTime, String}}).
 
 replication_turn_is_done(#rep_state{throttle = T} = State) ->
+    ?x_trace(turnIsDone, []),
     concurrency_throttle:is_done(T),
     State.
 
@@ -614,6 +630,16 @@ init_replication_state(#init_state{rep = Rep,
                          Password = binary_to_list(LatestRemoteBucket#remote_bucket.password),
                          RemoteBucketCaps = LatestRemoteBucket#remote_bucket.bucket_caps,
                          SupportsDatatype = lists:member(<<"datatype">>, RemoteBucketCaps),
+
+                         ?x_trace(gotRemoteVBucketDetails,
+                                  [{bucket, BucketName},
+                                   {bucketUUID, LatestRemoteBucket#remote_bucket.uuid},
+                                   {host, RemoteHostName},
+                                   {port, Port},
+                                   {supportsDatatype, SupportsDatatype},
+                                   {haveCert, CertPEM =/= undefined},
+                                   {sslProxyPort, remote_proxy_port}]),
+
                          #xdc_rep_xmem_remote{ip = RemoteHostName, port = Port,
                                               bucket = BucketName, vb = Vb,
                                               username = BucketName, password = Password,
@@ -622,6 +648,10 @@ init_replication_state(#init_state{rep = Rep,
                                                          {supports_datatype, SupportsDatatype},
                                                          {cert, LatestRemoteBucket#remote_bucket.cluster_cert}]};
                      _ ->
+                         ?x_trace(gotRemoteVBucketDetails,
+                                  [{capiURL, TgtURI},
+                                   {bucketUUID, CurrRemoteBucket#remote_bucket.uuid},
+                                   {haveCert, CertPEM =/= undefined}]),
                          nil
                  end,
 
@@ -640,6 +670,16 @@ init_replication_state(#init_state{rep = Rep,
                [{StartSeq, SnapshotStart, SnapshotEnd, FailoverUUID,
                  TotalDocsChecked, TotalDocsWritten,
                  TotalDataReplicated, RemoteVBOpaque}]),
+
+    ?x_trace(initedSeq,
+             [{seq, StartSeq},
+              {snapshotStart, SnapshotStart},
+              {snapshotEnd, SnapshotEnd},
+              {failoverUUUID, FailoverUUID},
+              {remoteVBOpaque, {json, RemoteVBOpaque}},
+              {totalDocsChecked, TotalDocsChecked},
+              {totalDocsWritten, TotalDocsWritten},
+              {totalDataReplicated, TotalDataReplicated}]),
 
     %% check if we are already behind purger
     %% PurgeSeq = couch_db:get_purge_seq(Source),
@@ -800,9 +840,6 @@ start_replication(#rep_state{
     MaxConns = get_value(http_connections, Options),
     OptRepThreshold = get_value(optimistic_replication_threshold, Options),
 
-    ?xdcr_trace("changes reader process (PID: ~p) and manager process (PID: ~p) "
-                "created, now starting worker processes...",
-                [ChangesReader, ChangesManager]),
     %% we'll soon update changes based on failover_id message from changes_reader
     Changes = 0,
 
@@ -836,6 +873,21 @@ start_replication(#rep_state{
                 end,
                 lists:seq(1, NumWorkers)),
 
+    ?x_trace(startReplication,
+             [{batchSizeItems, BatchSizeItems},
+              {numWorkers, NumWorkers},
+              {seq, StartSeq},
+              {snapshotStart, SnapshotStart},
+              {snapshotEnd, SnapshotEnd},
+              {failoverUUUID, FailoverUUID},
+              {supportsDatatype, SupportsDatatype},
+              {changesReader, ChangesReader},
+              {changesQueue, ChangesQueue},
+              {changesManager, ChangesManager},
+              {maxConns, MaxConns},
+              {optRepThreshold, OptRepThreshold},
+              {workers, {json, [xdcr_trace_log_formatter:format_pid(W) || W <- Workers]}}]),
+
     ?xdcr_info("Replication `~p` is using:~n"
                "~c~p worker processes~n"
                "~ca worker batch size of ~p~n"
@@ -858,11 +910,6 @@ start_replication(#rep_state{
     IntervalSecs = get_value(checkpoint_interval, Options),
     TimeSinceLastCkpt = timer:now_diff(now(), LastCkptTime) div 1000000,
 
-    ?xdcr_trace("Worker pids are: ~p, last checkpt time: ~p"
-                "secs since last ckpt: ~p, ckpt interval: ~p)",
-                [Workers, calendar:now_to_local_time(LastCkptTime),
-                 TimeSinceLastCkpt, IntervalSecs]),
-
     %% check if we need do checkpointing, replicator will crash if checkpoint failure
     State1 = State#rep_state{
                xmem_location = XMemLoc,
@@ -873,6 +920,9 @@ start_replication(#rep_state{
     {Succ, CkptErrReason, NewState} =
         case TimeSinceLastCkpt > IntervalSecs of
             true ->
+                ?x_trace(checkpointAtStart,
+                         [{intervalSecs, IntervalSecs},
+                          {timeSince, TimeSinceLastCkpt}]),
                 xdc_vbucket_rep_ckpt:do_checkpoint(State1);
             _ ->
                 {not_needed, [], State1}
@@ -899,8 +949,6 @@ start_replication(#rep_state{
         not_needed ->
             ok;
         ok ->
-            ?xdcr_trace("checkpoint at start of replication for vb ~p "
-                        "commit time: ~p ms", [Vb, CommitTime]),
             ok;
         checkpoint_commit_failure ->
             ?xdcr_error("checkpoint commit failure at start of replication for vb ~p", [Vb]),
@@ -1002,6 +1050,12 @@ changes_manager_loop_open(Parent, ChangesQueue, BatchSize) ->
                                   snapshot_start_seq = SnapshotStart,
                                   snapshot_end_seq = SnapshotEnd} = lists:last(Changes),
                     ok = gen_server:cast(Parent, {report_seq, ReportSeq, SnapshotStart, SnapshotEnd}),
+                    ?x_trace(sendingChanges,
+                             [{length, erlang:length(Changes)},
+                              {toWorker, From},
+                              {lastSeq, ReportSeq},
+                              {lastSnapshotStart, SnapshotStart},
+                              {lastSnapshotEnd, SnapshotEnd}]),
                     From ! {changes, self(), Changes, ReportSeq, SnapshotStart, SnapshotEnd},
                     changes_manager_loop_open(Parent, ChangesQueue, BatchSize)
             end
@@ -1042,13 +1096,12 @@ check_src_db_updated(#rep_state{status = #rep_vb_status{status = idle,
         false ->
             Self ! wake_me_up;
         _ ->
+            ?x_trace(waitingForNotification, []),
             proc_lib:spawn_link(
               fun () ->
-                      ?log_debug("Doing notifier call: ~p",
-                                 [[couch_util:to_list(SourceBucket), Vb, Seq, U]]),
                       RV = (catch upr_notifier:subscribe(couch_util:to_list(SourceBucket),
                                                          Vb, Seq, U)),
-                      ?log_debug("Got reply from upr_notifier: ~p", [RV]),
+                      ?x_trace(gotNotification, [{rv, xdcr_trace_log_formatter:format_pp(RV)}]),
                       Self ! wake_me_up
               end)
     end.

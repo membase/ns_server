@@ -37,7 +37,6 @@ start_timer(#rep_state{rep_details=#rep{options=Options}} = State) ->
     %% start a new timer
     case timer:apply_after(After, gen_server, cast, [self(), checkpoint]) of
         {ok, Ref} ->
-            ?xdcr_trace("schedule next checkpoint in ~p seconds (ref: ~p)", [AfterSecs, Ref]),
             Ref;
         Error ->
             ?xdcr_error("Replicator, error scheduling checkpoint:  ~p", [Error]),
@@ -48,7 +47,6 @@ cancel_timer(#rep_state{timer = nil} = State) ->
     State;
 cancel_timer(#rep_state{timer = Timer} = State) ->
     {ok, cancel} = timer:cancel(Timer),
-    ?xdcr_trace("checkpoint timer has been cancelled (ref: ~p)", [Timer]),
     State#rep_state{timer = nil}.
 
 bump_status_counter(OldStatus, State, Element) ->
@@ -61,6 +59,7 @@ bump_status_counter(OldStatus, State, Element) ->
                                      {checkpoint_commit_failure, binary(), #rep_state{}}.
 do_checkpoint(#rep_state{current_through_seq=Seq, committed_seq=Seq} = State) ->
     ?xdcr_debug("not checkpoint needed for vb: ~p", [State#rep_state.status#rep_vb_status.vb]),
+    ?x_trace(noCheckpointNeeded, [{committedSeq, Seq}]),
     {ok, <<"no checkpoint">>, State};
 do_checkpoint(#rep_state{remote_vbopaque = {old_node_marker, RemoteStartTime},
                          target = TargetDB} = State) ->
@@ -131,13 +130,18 @@ do_checkpoint(#rep_state{current_through_seq = Seq,
             end,
             NewState = State#rep_state{committed_seq = NewSeq,
                                        last_checkpoint_time = erlang:now()},
+            ?x_trace(savedCheckpoint,
+                     [{id, CheckpointDocId},
+                      {doc, {json, CheckpointDoc}}]),
             update_checkpoint_status_to_parent(NewState, true),
             {ok, [], bump_status_counter(OldStatus, NewState, #rep_vb_status.num_checkpoints)};
         Other ->
             case Other of
                 {mismatch, _} ->
+                    ?x_trace(checkpointFailed, [{vbOpaqueMismatch, true}]),
                     ?xdcr_error("Checkpointing failed due to remote vbopaque mismatch: ~p", [Other]);
                 _ ->
+                    ?x_trace(checkpointFailed, []),
                     ?xdcr_error("Checkpointing failed unexpectedly (or could be network problem): ~p", [Other])
             end,
             update_checkpoint_status_to_parent(State, false),
@@ -233,11 +237,15 @@ perform_commit_for_checkpoint(RemoteVBOpaque, ApiRequestBase) ->
                 undefined ->
                     erlang:error({missing_commitopaque_in_commit_for_checkpoint_response, Props});
                 CommitOpaque ->
+                    ?x_trace(commitForCheckpointOK, [{commitOpaque, {json, CommitOpaque}}]),
                     {ok, CommitOpaque}
             end;
         {error, 400 = _StatusCode, {JSON}, _} when is_list(JSON) ->
-            {mismatch, extract_vbopaque(JSON)};
+            VBOpaque = extract_vbopaque(JSON),
+            ?x_trace(gotVBOpaqueMismatch, [{vbopaque, {json, VBOpaque}}]),
+            {mismatch, VBOpaque};
         {error, StatusCode, _, Body} ->
+            ?x_trace(gotCommitError, [{statusCode, StatusCode}]),
             {error, StatusCode, Body}
     end.
 
@@ -259,11 +267,18 @@ perform_pre_replicate(RemoteCommitOpaque, {_, _, HttpDB} = ApiRequestBase) ->
 
     case send_post("_pre_replicate", ReqBody , ApiRequestBase) of
         {ok, Props} ->
-            {ok, extract_vbopaque(Props)};
+            VBOpaque = extract_vbopaque(Props),
+            ?x_trace(preReplicateOK, [{vbopaque, VBOpaque}]),
+            {ok, VBOpaque};
         {error, 400 = _StatusCode, {JSON}, _} when is_list(JSON) ->
             ?xdcr_debug("_pre_replicate returned mismatch status: ~p", [JSON]),
-            {mismatch, extract_vbopaque(JSON)};
+            VBOpaque = extract_vbopaque(JSON),
+            ?x_trace(preReplicateFailed,
+                     [{statusCode, 400},
+                      {vbopaque, VBOpaque}]),
+            {mismatch, VBOpaque};
         {error, 404, _, _} ->
+            ?x_trace(preReplicateFailed, [{statusCode, 404}]),
             ?xdcr_debug("_pre_replicate returned 404. Assuming older node"),
             case couch_api_wrap:get_db_info(HttpDB) of
                 {ok, Props} ->
@@ -275,6 +290,7 @@ perform_pre_replicate(RemoteCommitOpaque, {_, _, HttpDB} = ApiRequestBase) ->
                     erlang:error({pre_replicate_failed, {get_db_info_failed, Error}})
             end;
         {error, StatusCode, _, Body} ->
+            ?x_trace(preReplicateFailed, [{statusCode, StatusCode}]),
             ?xdcr_error("_pre_replicate failed with unexpected status: ~B: ~s", [StatusCode, Body]),
             erlang:error({pre_replicate_failed, StatusCode})
     end.
@@ -296,6 +312,7 @@ handle_no_checkpoint(ApiRequestBase) ->
     handle_no_checkpoint_with_opaque(RemoteVBOpaque).
 
 handle_no_checkpoint_with_opaque(RemoteVBOpaque) ->
+    ?x_trace(noCheckpoint, [{vbopaque, RemoteVBOpaque}]),
     StartSeq = 0,
     TotalDocsChecked = 0,
     TotalDocsWritten = 0,
@@ -325,6 +342,7 @@ do_parse_validate_checkpoint_doc(Rep, Vb, Body0, ApiRequestBase) ->
     Seqno = proplists:get_value(<<"seqno">>, Body),
     SnapshotSeq = proplists:get_value(<<"upr_snapshot_seqno">>, Body),
     SnapshotEndSeq = proplists:get_value(<<"upr_snapshot_end_seqno">>, Body),
+    ?x_trace(gotExistingCheckpoint, [{body, {json, {Body}}}]),
     case (CommitOpaque =/= undefined andalso
           is_integer(FailoverUUID) andalso
           is_integer(Seqno) andalso
