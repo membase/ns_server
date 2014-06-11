@@ -78,7 +78,8 @@
          past_vbucket_maps/0,
          past_vbucket_maps/1,
          config_to_map_options/1,
-         needs_upgrade_to_upr/1]).
+         needs_upgrade_to_upr/1,
+         needs_rebalance/3]).
 
 
 %%%===================================================================
@@ -940,6 +941,26 @@ past_vbucket_maps(Config) ->
                       end
               end, V);
         false -> []
+    end.
+
+needs_rebalance(BucketConfig, Nodes, Topology) ->
+    Servers = proplists:get_value(servers, BucketConfig, []),
+    case proplists:get_value(type, BucketConfig) of
+        membase ->
+            case Servers of
+                [] ->
+                    false;
+                _ ->
+                    Map = proplists:get_value(map, BucketConfig),
+                    Map =:= undefined orelse
+                        ns_bucket:needs_upgrade_to_upr(BucketConfig) orelse
+                        lists:sort(Nodes) =/= lists:sort(Servers) orelse
+                        ns_rebalancer:map_options_changed(Topology, BucketConfig) orelse
+                        (ns_rebalancer:unbalanced(Map, Topology, BucketConfig) andalso
+                         not lists:keymember(Map, 1, ns_bucket:past_vbucket_maps()))
+            end;
+        memcached ->
+            lists:sort(Nodes) =/= lists:sort(Servers)
     end.
 
 %%

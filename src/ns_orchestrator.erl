@@ -178,7 +178,7 @@ needs_rebalance() ->
 needs_rebalance(Nodes) ->
     Topology = cluster_compat_mode:get_replication_topology(),
     lists:any(fun ({_, BucketConfig}) ->
-                      bucket_needs_rebalance(Nodes, BucketConfig, Topology)
+                      ns_bucket:needs_rebalance(BucketConfig, Nodes, Topology)
               end,
               ns_bucket:get_buckets()).
 
@@ -1045,26 +1045,6 @@ do_request_janitor_run(BucketRequest, FsmState, State) ->
         janitor_running ->
             {next_state, FsmState, State#janitor_state{remaining_buckets = NewBucketRequests}}
     end.
-
-bucket_needs_rebalance(Nodes, BucketConfig, Topology) ->
-    Servers = proplists:get_value(servers, BucketConfig, []),
-    case proplists:get_value(type, BucketConfig) of
-        membase ->
-            case Servers of
-                [] -> false;
-                _ ->
-                    Map = proplists:get_value(map, BucketConfig),
-                    Map =:= undefined orelse
-                        ns_bucket:needs_upgrade_to_upr(BucketConfig) orelse
-                        lists:sort(Nodes) /= lists:sort(Servers) orelse
-                        ns_rebalancer:map_options_changed(Topology, BucketConfig) orelse
-                        (ns_rebalancer:unbalanced(Map, Topology, BucketConfig) andalso
-                         not lists:keymember(Map, 1, ns_bucket:past_vbucket_maps()))
-            end;
-        memcached ->
-            lists:sort(Nodes) /= lists:sort(Servers)
-    end.
-
 
 -spec update_progress(dict()) -> ok.
 update_progress(Progress) ->
