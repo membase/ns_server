@@ -557,9 +557,19 @@ unbalanced_star(Map, Servers) ->
     MastersCounts = misc:uniqc(Masters1),
     ReplicasCounts = misc:uniqc(Replicas1),
 
+    NumServers = length(Servers),
+
     lists:any(
       fun (Counts0) ->
-              Counts = [C || {_, C} <- Counts0],
+              Counts1 = [C || {_, C} <- Counts0],
+              Len = length(Counts1),
+              Counts = case Len < NumServers of
+                           true ->
+                               lists:duplicate(NumServers - Len, 0) ++ Counts1;
+                           false ->
+                               true = Len =:= NumServers,
+                               Counts1
+                       end,
               Counts =/= [] andalso lists:max(Counts) - lists:min(Counts) > 1
       end, [MastersCounts, ReplicasCounts]).
 
