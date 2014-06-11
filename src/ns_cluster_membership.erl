@@ -18,6 +18,7 @@
 -export([active_nodes/0,
          active_nodes/1,
          actual_active_nodes/0,
+         actual_active_nodes/1,
          get_nodes_cluster_membership/0,
          get_nodes_cluster_membership/1,
          get_cluster_membership/1,
@@ -46,7 +47,9 @@ active_nodes(Config) ->
              get_cluster_membership(Node, Config) == active].
 
 actual_active_nodes() ->
-    Config = ns_config:get(),
+    actual_active_nodes(ns_config:get()).
+
+actual_active_nodes(Config) ->
     [Node || Node <- ns_node_disco:nodes_actual(),
              get_cluster_membership(Node, Config) == active].
 

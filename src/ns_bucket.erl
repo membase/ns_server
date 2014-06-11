@@ -311,7 +311,7 @@ raw_ram_quota(Bucket) ->
 -define(FS_SOFT_REBALANCE_NEEDED, 1).
 -define(FS_OK, 0).
 
-bucket_failover_safety(BucketConfig, LiveNodes, Topology) ->
+bucket_failover_safety(BucketConfig, ActiveNodes, LiveNodes, Topology) ->
     ReplicaNum = ns_bucket:num_replicas(BucketConfig),
     case ReplicaNum of
         %% if replica count for bucket is 0 we cannot failover at all
@@ -344,13 +344,10 @@ bucket_failover_safety(BucketConfig, LiveNodes, Topology) ->
                                 ?FS_HARD_NODES_NEEDED
                         end;
                     true ->
-                        Map = proplists:get_value(map, BucketConfig),
-                        case ns_rebalancer:map_options_changed(Topology, BucketConfig)
-                            orelse (ns_rebalancer:unbalanced(Map, Topology, BucketConfig) andalso
-                                    not lists:keymember(Map, 1, past_vbucket_maps())) of
+                        case needs_rebalance(BucketConfig, ActiveNodes, Topology) of
                             true ->
                                 ?FS_SOFT_REBALANCE_NEEDED;
-                            _ ->
+                            false ->
                                 ?FS_OK
                         end
                 end,
@@ -365,10 +362,12 @@ bucket_failover_safety(BucketConfig, LiveNodes, Topology) ->
             {BaseSafety, ExtraSafety}
     end.
 
-failover_safety_rec(?FS_HARD_NODES_NEEDED, _ExtraSafety, _, _LiveNodes, _Topology) -> {?FS_HARD_NODES_NEEDED, ok};
-failover_safety_rec(BaseSafety, ExtraSafety, [], _LiveNodes, _Topology) -> {BaseSafety, ExtraSafety};
-failover_safety_rec(BaseSafety, ExtraSafety, [BucketConfig | RestConfigs], LiveNodes, Topology) ->
-    {ThisBaseSafety, ThisExtraSafety} = bucket_failover_safety(BucketConfig, LiveNodes, Topology),
+failover_safety_rec(?FS_HARD_NODES_NEEDED, _ExtraSafety, _, _ActiveNodes, _LiveNodes, _Topology) ->
+    {?FS_HARD_NODES_NEEDED, ok};
+failover_safety_rec(BaseSafety, ExtraSafety, [], _ActiveNodes, _LiveNodes, _Topology) ->
+    {BaseSafety, ExtraSafety};
+failover_safety_rec(BaseSafety, ExtraSafety, [BucketConfig | RestConfigs], ActiveNodes, LiveNodes, Topology) ->
+    {ThisBaseSafety, ThisExtraSafety} = bucket_failover_safety(BucketConfig, ActiveNodes, LiveNodes, Topology),
     NewBaseSafety = case BaseSafety < ThisBaseSafety of
                         true -> ThisBaseSafety;
                         _ -> BaseSafety
@@ -380,15 +379,19 @@ failover_safety_rec(BaseSafety, ExtraSafety, [BucketConfig | RestConfigs], LiveN
                              ok
                      end,
     failover_safety_rec(NewBaseSafety, NewExtraSafety,
-                        RestConfigs, LiveNodes, Topology).
+                        RestConfigs, ActiveNodes, LiveNodes, Topology).
 
 -spec failover_warnings() -> [failoverNeeded | rebalanceNeeded | hardNodesNeeded | softNodesNeeded].
 failover_warnings() ->
-    LiveNodes = ns_cluster_membership:actual_active_nodes(),
+    Config = ns_config:get(),
+
+    ActiveNodes = ns_cluster_membership:active_nodes(Config),
+    LiveNodes = ns_cluster_membership:actual_active_nodes(Config),
     {BaseSafety0, ExtraSafety}
         = failover_safety_rec(?FS_OK, ok,
-                              [C || {_, C} <- get_buckets(),
+                              [C || {_, C} <- get_buckets(Config),
                                     membase =:= bucket_type(C)],
+                              ActiveNodes,
                               LiveNodes,
                               cluster_compat_mode:get_replication_topology()),
     BaseSafety = case BaseSafety0 of
