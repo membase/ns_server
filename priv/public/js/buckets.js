@@ -251,7 +251,7 @@ var BucketDetailsDialog = mkClass({
         }
         oldReplicationEnabled = replicationEnabled;
         dialog.find('.for-replica-number')[replicationEnabled ? 'show' : 'hide']();
-        dialog.find('[name=replicaIndex]').boolAttr('disabled', !replicationEnabled);
+        dialog.find('[name=replicaIndex]').boolAttr('disabled', !(isNew && replicationEnabled));
         dialog.find('.hidden-replica-number').need(1).boolAttr('disabled', replicationEnabled);
         dialog.find('.for-replica-number select').need(1).boolAttr('disabled', !replicationEnabled);
       });
