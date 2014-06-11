@@ -45,6 +45,11 @@ start_link(Bucket) ->
 
 init(Bucket) ->
     process_flag(trap_exit, true),
+
+    TableName = server_name(Bucket),
+    ets:new(TableName, [protected, set, named_table]),
+    ets:insert(TableName, {repl_type, tap}),
+
     {ok, #state{
             bucket_name = Bucket,
             repl_type = tap,
@@ -53,11 +58,13 @@ init(Bucket) ->
            }}.
 
 get_incoming_replication_map(Bucket) ->
-    try gen_server:call(server_name(Bucket), get_incoming_replication_map, infinity) of
-        Result ->
-            Result
-    catch exit:{noproc, _} ->
+    try ets:lookup(server_name(Bucket), repl_type) of
+        [{repl_type, ReplType}] ->
+            get_actual_replications(Bucket, ReplType);
+        [] ->
             not_running
+    catch
+        error:badarg -> not_running
     end.
 
 -spec set_incoming_replication_map(bucket_name(),
@@ -104,9 +111,6 @@ handle_info({'EXIT', _Pid, Reason}, State) ->
 handle_info(_Msg, State) ->
     {noreply, State}.
 
-handle_call(get_incoming_replication_map, _From, #state{repl_type = ReplType,
-                                                        bucket_name = Bucket} = State) ->
-    {reply, get_actual_replications(Bucket, ReplType), State};
 handle_call({remove_undesired_replications, FutureReps}, From,
             #state{desired_replications = CurrentReps} = State) ->
     Diff = replications_difference(FutureReps, CurrentReps),
@@ -146,7 +150,8 @@ handle_call({set_replication_type, ReplType}, _From, #state{repl_type = ReplType
     {reply, ok, State};
 handle_call({set_replication_type, ReplType}, _From,
             #state{repl_type = OldReplType,
-                   desired_replications = DesiredReplications} = State) ->
+                   desired_replications = DesiredReplications,
+                   bucket_name = Bucket} = State) ->
 
     ?log_debug("Change replication type from ~p to ~p", [OldReplType, ReplType]),
 
@@ -166,6 +171,8 @@ handle_call({set_replication_type, ReplType}, _From,
                     handle_call({set_desired_replications, CleanedReplications}, [], State),
                 S
         end,
+
+    ets:insert(server_name(Bucket), {repl_type, ReplType}),
     {reply, ok, State1#state{repl_type = ReplType}};
 handle_call({upr_takeover, OldMasterNode, VBucket}, _From,
             #state{bucket_name = Bucket,
