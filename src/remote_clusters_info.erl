@@ -342,11 +342,13 @@ handle_call({get_remote_bucket, Cluster, Bucket, ForceMode, Timeout}, From, Stat
     Username = proplists:get_value(username, Cluster),
     Password = proplists:get_value(password, Cluster),
     UUID = proplists:get_value(uuid, Cluster),
+    Hostname = proplists:get_value(hostname, Cluster),
     Cert = proplists:get_value(cert, Cluster),
 
     true = (Username =/= undefined),
     true = (Password =/= undefined),
     true = (UUID =/= undefined),
+    true = (Hostname =/= undefined),
 
     RemoteCluster0 =
         case {ForceMode, ets:lookup(?CACHE, UUID)} of
@@ -354,20 +356,29 @@ handle_call({get_remote_bucket, Cluster, Bucket, ForceMode, Timeout}, From, Stat
                 undefined;
             {_, []} ->
                 undefined;
-            {_, [{UUID, FoundCluster}]} when FoundCluster#remote_cluster.cert =:= Cert ->
-                ?log_debug("FoundCluster: ~p", [FoundCluster]),
-                FoundCluster;
-            {_, [{UUID, _WrongCertCluster}]} ->
-                ?log_debug("Found cluster but cert did not match"),
-                undefined
+            {_, [{UUID, #remote_cluster{cert = CachedCert,
+                                        nodes = CachedNodes} = FoundCluster}]} ->
+                {Host, Port} = host_and_port(Hostname),
+                HaveNode = lists:any(
+                             fun (#remote_node{host = CachedHost,
+                                               port = CachedPort}) ->
+                                     CachedHost =:= Host andalso
+                                         CachedPort =:= Port
+                             end, CachedNodes),
+
+                case HaveNode andalso CachedCert =:= Cert of
+                    true ->
+                        ?log_debug("FoundCluster: ~p", [FoundCluster]),
+                        FoundCluster;
+                    false ->
+                        ?log_debug("Found cluster but cert or nodes did not match"),
+                        undefined
+                end
         end,
 
     RemoteCluster =
         case RemoteCluster0 of
             undefined ->
-                Hostname = proplists:get_value(hostname, Cluster),
-                true = (Hostname =/= undefined),
-
                 NodeRecord0 = hostname_to_remote_node(Hostname),
                 NodeRecord = case Cert of
                                  undefined ->
