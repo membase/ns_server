@@ -349,7 +349,9 @@ handle_sync_event({update_bucket, BucketType, BucketName, UpdatedProps}, _From, 
 %% this message is sent by pre-3.0 nodes
 handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes},
                   From, StateName, State) ->
-    handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes, false},
+    %% old nodes cannot handle error from inability to delta-recover
+    %% buckets
+    handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes, []},
                       From, StateName, State);
 %% this one is sent by post-3.0 nodes
 handle_sync_event({maybe_start_rebalance, KnownNodes, EjectedNodes, DeltaRecoveryBuckets},
