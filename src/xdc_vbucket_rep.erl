@@ -580,24 +580,10 @@ init_replication_state(#init_state{rep = Rep,
         case remote_clusters_info:get_remote_bucket_by_ref(Tgt, false) of
             {ok, RBucket} ->
                 {ok, RBucket};
-            {error, ErrorMsg} ->
+            Error when is_tuple(Error) andalso element(1, Error) =:= error ->
                 ?xdcr_error("Error in fetching remot bucket, error: ~p,"
                             "sleep for ~p secs before retry.",
-                            [ErrorMsg, (?XDCR_SLEEP_BEFORE_RETRY)]),
-                %% sleep and retry once
-                timer:sleep(1000*?XDCR_SLEEP_BEFORE_RETRY),
-                remote_clusters_info:get_remote_bucket_by_ref(Tgt, false);
-            {error, Error, Msg} ->
-                ?xdcr_error("Error in fetching remot bucket, error: ~p, msg: ~p"
-                            "sleep for ~p secs before retry",
-                            [Error, Msg, (?XDCR_SLEEP_BEFORE_RETRY)]),
-                %% sleep and retry once
-                timer:sleep(1000*?XDCR_SLEEP_BEFORE_RETRY),
-                remote_clusters_info:get_remote_bucket_by_ref(Tgt, false);
-            {error, Error, Msg, Details} ->
-                ?xdcr_error("Error in fetching remot bucket, error: ~p, msg: ~p, details: ~p"
-                            "sleep for ~p secs before retry",
-                            [Error, Msg, Details, (?XDCR_SLEEP_BEFORE_RETRY)]),
+                            [Error, (?XDCR_SLEEP_BEFORE_RETRY)]),
                 %% sleep and retry once
                 timer:sleep(1000*?XDCR_SLEEP_BEFORE_RETRY),
                 remote_clusters_info:get_remote_bucket_by_ref(Tgt, false)
