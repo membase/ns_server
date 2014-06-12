@@ -76,8 +76,6 @@ start_link(Rep, Vb, InitThrottle, WorkThrottle, Parent, RepMode) ->
 init(#init_state{init_throttle = InitThrottle} = InitState) ->
     process_flag(trap_exit, true),
     %% signal to self to initialize
-    Tid = ets:new(work_seq_to_snapshot_seq, [private, set]),
-    erlang:put(work_seq_to_snapshot_seq, Tid),
     ok = concurrency_throttle:send_back_when_can_go(InitThrottle, init),
     {ok, InitState}.
 
@@ -245,10 +243,6 @@ handle_call({report_seq_done,
     gen_server:reply(From, ok),
     case xdc_rep_utils:is_new_xdcr_path() of
         true ->
-            %% note: that left-hand variables are bound
-            [{Seq, SnapshotStart, SnapshotEnd}] = ets:lookup(erlang:get(work_seq_to_snapshot_seq), Seq),
-            _ = ets:delete(erlang:get(work_seq_to_snapshot_seq), Seq),
-
             true = (CurrentSnapshotSeq =< SnapshotStart);
         _ -> ok
     end,
@@ -522,15 +516,8 @@ handle_cast({report_error, Err},
     gen_server:cast(Parent, {report_error, Err}),
     {noreply, State};
 
-handle_cast({report_seq, Seq, SnapshotStart, SnapshotEnd},
+handle_cast({report_seq, Seq, _SnapshotStart, _SnapshotEnd},
             #rep_state{seqs_in_progress = SeqsInProgress} = State) ->
-    case xdc_rep_utils:is_new_xdcr_path() of
-        true ->
-            ets:insert(erlang:get(work_seq_to_snapshot_seq),
-                       {Seq, SnapshotStart, SnapshotEnd});
-        _ ->
-            ok
-    end,
     NewSeqsInProgress = ordsets:add_element(Seq, SeqsInProgress),
     {noreply, State#rep_state{seqs_in_progress = NewSeqsInProgress}}.
 
