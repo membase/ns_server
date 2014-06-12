@@ -62,7 +62,7 @@
 -define(STATS_LOG_FILENAME, "stats").
 -define(BABYSITTER_LOG_FILENAME, "babysitter").
 -define(SSL_PROXY_LOG_FILENAME, "ssl_proxy").
--define(ACCESS_LOG_FILENAME, "access").
+-define(ACCESS_LOG_FILENAME, "http_access").
 
 -define(NS_SERVER_LOGGER, ns_server).
 -define(COUCHDB_LOGGER, couchdb).
