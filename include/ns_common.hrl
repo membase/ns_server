@@ -70,7 +70,7 @@
 -define(SSL_PROXY_LOG_FILENAME, "ssl_proxy.log").
 -define(REPORTS_LOG_FILENAME, "reports.log").
 -define(XDCR_TRACE_LOG_FILENAME, "xdcr_trace.log").
--define(ACCESS_LOG_FILENAME, "access.log").
+-define(ACCESS_LOG_FILENAME, "http_access.log").
 
 -define(NS_SERVER_LOGGER, ns_server).
 -define(COUCHDB_LOGGER, couchdb).
