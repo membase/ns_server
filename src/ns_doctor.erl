@@ -58,21 +58,13 @@ init([]) ->
     erlang:process_flag(priority, high),
     self() ! acquire_initial_status,
     ns_pubsub:subscribe_link(ns_config_events,
-                             fun handle_config_event/2, undefined),
+                             fun handle_config_event/2, {undefined, undefined}),
     case misc:get_env_default(dont_log_stats, false) of
         false ->
             timer2:send_interval(?LOG_INTERVAL, log);
         _ -> ok
     end,
     {ok, #state{nodes=dict:new()}}.
-
--spec handle_rebalance_status_change(NewValue :: term(), State :: term()) -> {term(), boolean()}.
-handle_rebalance_status_change(running, _) ->
-    {running, true};
-handle_rebalance_status_change(_, running) ->
-    {not_running, true};
-handle_rebalance_status_change(_, State) ->
-    {State, false}.
 
 handle_recovery_status_change(not_running, {running, _Bucket, _UUID}) ->
     {not_running, true};
@@ -87,16 +79,18 @@ handle_recovery_status_change({running, _NewBucket, NewUUID} = New,
 handle_recovery_status_change({running, _NewBucket, _NewUUID} = New, not_running) ->
     {New, true};
 handle_recovery_status_change(not_running, not_running) ->
-    {not_running, false}.
+    {not_running, false};
+handle_recovery_status_change(New, undefined) ->
+    {New, true}.
 
 handle_config_event({rebalance_status, NewValue}, {RebalanceState, RecoveryState}) ->
-    {NewState, Changed} = handle_rebalance_status_change(NewValue, RebalanceState),
-    case Changed of
-        true ->
-            ns_doctor ! significant_change;
-        _ -> ok
+    case NewValue of
+        RebalanceState ->
+            ok;
+        _ ->
+            ns_doctor ! significant_change
     end,
-    {NewState, RecoveryState};
+    {NewValue, RecoveryState};
 handle_config_event({recovery_status, NewValue}, {RebalanceState, RecoveryState}) ->
     {NewState, Changed} = handle_recovery_status_change(NewValue, RecoveryState),
     case Changed of
