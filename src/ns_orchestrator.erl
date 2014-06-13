@@ -731,6 +731,7 @@ idle({move_vbuckets, Bucket, Moves}, _From, #idle_state{remaining_buckets = Rema
             end),
     ns_config:set([{rebalance_status, running},
                    {rebalance_status_uuid, couch_uuids:random()},
+                   {graceful_failover_pid, undefined},
                    {rebalancer_pid, Pid}]),
     {reply, ok, rebalancing,
      #rebalancing_state{rebalancer=Pid,
