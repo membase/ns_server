@@ -301,7 +301,7 @@ build_bucket_capabilities(BucketConfig) ->
             membase ->
                 case cluster_compat_mode:is_cluster_30() of
                     true ->
-                        [cbhello, datatype, touch, couchapi, cccp];
+                        [cbhello, touch, couchapi, cccp];
                     _ ->
                         [touch, couchapi]
                 end;
