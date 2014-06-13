@@ -31,7 +31,9 @@
          random_map/3,
          vbucket_movements/2,
          run_rebalance_counts_experiment/0,
-         find_matching_past_maps/4, score_maps/3, best_map/2]).
+         find_matching_past_maps/4,
+         find_matching_past_maps/5,
+         score_maps/3, best_map/2]).
 
 
 -export([counts/1]). % for testing
@@ -131,12 +133,13 @@ map_nodes_set(Map) ->
                 end, Acc, Chain)
       end, sets:new(), Map).
 
-matching_renamings(KeepNodesSet, CurrentMap, CandidateMap) ->
+matching_renamings(KeepNodesSet, CurrentMap, CandidateMap, Trivial) ->
     matching_renamings_with_tags(KeepNodesSet,
-                                 {CurrentMap, undefined}, {CandidateMap, undefined}).
+                                 {CurrentMap, undefined},
+                                 {CandidateMap, undefined}, Trivial).
 
-matching_renamings_with_tags(KeepNodesSet,
-                             {CurrentMap, CurrentTags0}, {CandidateMap, CandidateTags0}) ->
+matching_renamings_with_tags(KeepNodesSet, {CurrentMap, CurrentTags0},
+                             {CandidateMap, CandidateTags0}, Trivial) ->
     CurrentTags = case CurrentTags0 of
                       undefined ->
                           [];
@@ -157,7 +160,7 @@ matching_renamings_with_tags(KeepNodesSet,
             case length(hd(CandidateMap)) =:= length(hd(CurrentMap)) of
                 true ->
                     matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentTags,
-                                                           CandidateMap, CandidateTags);
+                                                           CandidateMap, CandidateTags, Trivial);
                 false ->
                     []
             end
@@ -182,10 +185,10 @@ rewrite_map(CandidateMap, CandidateTags, CurrentTags, Pairs) ->
         true ->
             [CandidateMap1];
         false ->
-            matching_tag_renaming(CandidateMap1, CandidateTags1, CurrentTags1)
+            matching_tag_renaming(CandidateMap1, CandidateTags1, CurrentTags1, false)
     end.
 
-matching_tag_renaming(CandidateMap, CandidateTags, CurrentTags) ->
+matching_tag_renaming(CandidateMap, CandidateTags, CurrentTags, Trivial) ->
     [CandidateHist, CurrentHist] =
         lists:map(
           fun (Tags) ->
@@ -206,12 +209,12 @@ matching_tag_renaming(CandidateMap, CandidateTags, CurrentTags) ->
 
     case [C || {_, {C, _}} <- CandidateHist] =:= [C || {_, {C, _}} <- CurrentHist] of
         true ->
-            matching_tag_renaming_with_hists(CandidateMap, CandidateHist, CurrentHist);
+            matching_tag_renaming_with_hists(CandidateMap, CandidateHist, CurrentHist, Trivial);
         false ->
             []
     end.
 
-matching_tag_renaming_with_hists(CandidateMap, CandidateHist, CurrentHist) ->
+matching_tag_renaming_with_hists(CandidateMap, CandidateHist, CurrentHist, Trivial) ->
     TagRenaming = build_tag_renaming(lists:zip(CandidateHist, CurrentHist)),
     MapRenaming =
         lists:foldl(
@@ -222,7 +225,12 @@ matching_tag_renaming_with_hists(CandidateMap, CandidateHist, CurrentHist) ->
                   lists:zip(OldNodes, NewNodes) ++ Acc
           end, [], TagRenaming),
 
-    [do_rewrite(CandidateMap, MapRenaming)].
+    case MapRenaming =/= [] andalso Trivial of
+        true ->
+            [];
+        false ->
+            [do_rewrite(CandidateMap, MapRenaming)]
+    end.
 
 build_tag_renaming([]) ->
     [];
@@ -261,29 +269,29 @@ build_tag_renaming([{{_, {Count, _}}, _} | _] = Hists) ->
     TagRenaming ++ build_tag_renaming(Rest).
 
 matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentTags,
-                                       CandidateMap, CandidateTags) ->
+                                       CandidateMap, CandidateTags, Trivial) ->
     CandidateNodesSet = map_nodes_set(CandidateMap),
     case sets:size(CandidateNodesSet) =:= sets:size(KeepNodesSet) of
         false ->
             [];
         true ->
             CurrentNotCommon = sets:subtract(KeepNodesSet, CandidateNodesSet),
-            case sets:size(CurrentNotCommon) of
-                0 ->
+            case {sets:size(CurrentNotCommon), Trivial} of
+                {0, _} ->
                     case lists:sort(CandidateTags) == lists:sort(CurrentTags) of
                         true ->
                             [CandidateMap];
                         false ->
-                            matching_tag_renaming(CandidateMap,
-                                                  CandidateTags, CurrentTags)
+                            matching_tag_renaming(CandidateMap, CandidateTags,
+                                                  CurrentTags, Trivial)
                     end;
-                1 ->
+                {1, false} ->
                     [NewNode] = sets:to_list(CurrentNotCommon),
                     [OldNode] = sets:to_list(sets:subtract(CandidateNodesSet, KeepNodesSet)),
 
                     rewrite_map(CandidateMap, CandidateTags, CurrentTags,
                                 [{OldNode, NewNode}]);
-                2 ->
+                {2, false} ->
                     [NewNodeA, NewNodeB] = sets:to_list(CurrentNotCommon),
                     [OldNodeA, OldNodeB] = sets:to_list(sets:subtract(CandidateNodesSet, KeepNodesSet)),
 
@@ -291,7 +299,7 @@ matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentTags,
                                 [{OldNodeA, NewNodeA}, {OldNodeB, NewNodeB}]) ++
                         rewrite_map(CandidateMap, CandidateTags, CurrentTags,
                                     [{OldNodeA, NewNodeB}, {OldNodeB, NewNodeA}]);
-                _ ->
+                {_, false} ->
                     %% just try some random mapping just in case. It
                     %% will work nicely if NewNode-s are all being
                     %% added to cluster (and CurrentNode-s thus
@@ -301,7 +309,9 @@ matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentTags,
                     CandidateNotCommon = sets:to_list(sets:subtract(CandidateNodesSet, KeepNodesSet)),
 
                     rewrite_map(CandidateMap, CandidateTags, CurrentTags,
-                                lists:zip(CandidateNotCommon, sets:to_list(CurrentNotCommon)))
+                                lists:zip(CandidateNotCommon, sets:to_list(CurrentNotCommon)));
+                {_, true} ->
+                    []
             end
     end.
 
@@ -542,23 +552,37 @@ random_map(NumVBuckets, NumCopies, Nodes) when is_list(Nodes) ->
     [random_chain(NumCopies, Nodes) | random_map(NumVBuckets-1, NumCopies,
                                                  Nodes)].
 
-find_matching_past_maps(Nodes, Map, Options, History) ->
-    Topology = proplists:get_value(replication_topology, Options, chain),
-    Options1 = lists:sort(lists:keydelete(maps_history, 1, Options)),
-    NodesSet = sets:from_list(Nodes),
-    find_matching_past_maps(Topology, NodesSet, Map, Options1, History).
+find_matching_past_maps(Nodes, Map, MapOptions, History) ->
+    find_matching_past_maps(Nodes, Map, MapOptions, History, []).
 
-find_matching_past_maps(chain, NodesSet, Map, Options, History) ->
+find_matching_past_maps(Nodes, Map, MapOptions, History, Options) ->
+    Topology = proplists:get_value(replication_topology, MapOptions, chain),
+    Options1 = lists:sort(lists:keydelete(maps_history, 1, MapOptions)),
+    NodesSet = sets:from_list(Nodes),
+    %% consider only trivial renamings for the following definition of
+    %% trivial:
+    %%
+    %%  - node sets of current and past maps must match exactly
+    %%
+    %%  - tag renamings are allowed as long as they are simple permutations.
+    %%  that is, for any pair of nodes that resided on the same tag, they
+    %%  still reside on the same (but possibly different) tag after tag
+    %%  renaming.
+    Trivial = proplists:get_value(trivial, Options, false),
+    do_find_matching_past_maps(Topology, NodesSet, Map,
+                               Options1, History, Trivial).
+
+do_find_matching_past_maps(chain, NodesSet, Map, Options, History, Trivial) ->
     lists:flatmap(fun ({PastMap, NonHistoryOptions0}) ->
                           NonHistoryOptions = lists:sort(NonHistoryOptions0),
                           case NonHistoryOptions =:= Options of
                               true ->
-                                  matching_renamings(NodesSet, Map, PastMap);
+                                  matching_renamings(NodesSet, Map, PastMap, Trivial);
                               false ->
                                   []
                           end
                   end, History);
-find_matching_past_maps(star, NodesSet, Map, Options, History) ->
+do_find_matching_past_maps(star, NodesSet, Map, Options, History, Trivial) ->
     NumReplicas = length(hd(Map)) - 1,
     Tags = proplists:get_value(tags, Options),
 
@@ -571,7 +595,7 @@ find_matching_past_maps(star, NodesSet, Map, Options, History) ->
                           case Compatible of
                               true ->
                                   matching_renamings_with_tags(NodesSet, {Map, Tags},
-                                                               {PastMap, PastTags});
+                                                               {PastMap, PastTags}, Trivial);
                               false ->
                                   []
                           end
@@ -1208,3 +1232,181 @@ promote_replicas_for_graceful_failover_test() ->
 
     ?assertEqual([[a]], promote_replicas_for_graceful_failover([[a]], a)),
     ?assertEqual([[a, undefined]], promote_replicas_for_graceful_failover([[a, undefined]], a)).
+
+find_matching_past_maps_test() ->
+    History1 = [{[[a,d,c],
+                  [b,c,d],
+                  [c,b,a],
+                  [d,a,b]],
+                 [{replication_topology, star},
+                  {max_slaves, 2},
+                  {tags, undefined}]}],
+
+    [_] = find_matching_past_maps([a,b,c,e],
+                                  [[a,e,c],
+                                   [b,c,e],
+                                   [c,b,a],
+                                   [e,a,b]],
+                                  [{replication_topology, star},
+                                   {max_slaves, 2},
+                                   {tags, undefined}],
+                                  History1, []),
+
+    [] = find_matching_past_maps([a,b,c,e],
+                                 [[a,e,c],
+                                  [b,c,e],
+                                  [c,b,a],
+                                  [e,a,b]],
+                                 [{replication_topology, star},
+                                  {max_slaves, 3},
+                                  {tags, undefined}],
+                                 History1, []),
+
+    [] = find_matching_past_maps([a,b,c,e],
+                                 [[a,e,c],
+                                  [b,c,e],
+                                  [c,b,a],
+                                  [e,a,b]],
+                                 [{replication_topology, star},
+                                  {max_slaves, 2},
+                                  {tags, [{a, tag1},
+                                          {b, tag1},
+                                          {c, tag2},
+                                          {e, tag2}]}],
+                                 History1, []),
+
+    [] = find_matching_past_maps([a,b,c,e],
+                                 [[a,e,c],
+                                  [b,c,e],
+                                  [c,b,a],
+                                  [e,a,b]],
+                                 [{replication_topology, star},
+                                  {max_slaves, 2},
+                                  {tags, undefined}],
+                                 History1, [trivial]),
+
+    [_] = find_matching_past_maps([a,b,c,d],
+                                  [[a,d,c],
+                                   [b,c,d],
+                                   [c,b,a],
+                                   [d,a,b]],
+                                  [{replication_topology, star},
+                                   {max_slaves, 2},
+                                   {tags, undefined}],
+                                  History1, [trivial]),
+
+    History2 = [{[[a,d,c],
+                  [b,c,d],
+                  [c,b,a],
+                  [d,a,b]],
+                 [{replication_topology, star},
+                  {max_slaves, 2},
+                  {tags, [{a, tag1},
+                          {b, tag1},
+                          {c, tag2},
+                          {d, tag2}]}]}],
+
+
+    [_] = find_matching_past_maps([a,b,c,e],
+                                  [[a,e,c],
+                                   [b,c,e],
+                                   [c,b,a],
+                                   [e,a,b]],
+                                  [{replication_topology, star},
+                                   {max_slaves, 2},
+                                   {tags, [{a, tag1},
+                                           {b, tag1},
+                                           {c, tag2},
+                                           {e, tag2}]}],
+                                  History2, []),
+
+    [_] = find_matching_past_maps([a,b,c,e],
+                                  [[a,e,c],
+                                   [b,c,e],
+                                   [c,b,a],
+                                   [e,a,b]],
+                                  [{replication_topology, star},
+                                   {max_slaves, 2},
+                                   {tags, [{a, tag1},
+                                           {b, tag2},
+                                           {c, tag2},
+                                           {e, tag1}]}],
+                                  History2, []),
+
+    [_] = find_matching_past_maps([a,b,c,e],
+                                  [[a,e,c],
+                                   [b,c,e],
+                                   [c,b,a],
+                                   [e,a,b]],
+                                  [{replication_topology, star},
+                                   {max_slaves, 2},
+                                   {tags, [{a, tag2},
+                                           {b, tag2},
+                                           {c, tag1},
+                                           {e, tag1}]}],
+                                  History2, []),
+
+    [] = find_matching_past_maps([a,b,c,e],
+                                 [[a,e,c],
+                                  [b,c,e],
+                                  [c,b,a],
+                                  [e,a,b]],
+                                 [{replication_topology, star},
+                                  {max_slaves, 2},
+                                  {tags, [{a, tag1},
+                                          {b, tag2},
+                                          {c, tag1},
+                                          {e, tag1}]}],
+                                 History2, []),
+
+    [_] = find_matching_past_maps([a,b,c,d],
+                                  [[a,d,c],
+                                   [b,c,d],
+                                   [c,b,a],
+                                   [d,a,b]],
+                                  [{replication_topology, star},
+                                   {max_slaves, 2},
+                                   {tags, [{a, tag1},
+                                           {b, tag1},
+                                           {c, tag2},
+                                           {d, tag2}]}],
+                                  History2, [trivial]),
+
+    [_] = find_matching_past_maps([a,b,c,d],
+                                  [[a,d,c],
+                                   [b,c,d],
+                                   [c,b,a],
+                                   [d,a,b]],
+                                  [{replication_topology, star},
+                                   {max_slaves, 2},
+                                   {tags, [{a, tag2},
+                                           {b, tag2},
+                                           {c, tag1},
+                                           {d, tag1}]}],
+                                  History2, [trivial]),
+
+    [] = find_matching_past_maps([a,b,c,d],
+                                 [[a,d,c],
+                                  [b,c,d],
+                                  [c,b,a],
+                                  [d,a,b]],
+                                 [{replication_topology, star},
+                                  {max_slaves, 2},
+                                  {tags, [{a, tag1},
+                                          {b, tag2},
+                                          {c, tag1},
+                                          {d, tag2}]}],
+                                 History2, [trivial]),
+
+    [] = find_matching_past_maps([a,b,c,d],
+                                 [[a,d,c],
+                                  [b,c,d],
+                                  [c,b,a],
+                                  [d,a,b]],
+                                 [{replication_topology, star},
+                                  {max_slaves, 2},
+                                  {tags, [{a, tag1},
+                                          {b, tag1},
+                                          {c, tag1},
+                                          {d, tag2}]}],
+                                 History2, [trivial]).
