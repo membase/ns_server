@@ -263,7 +263,8 @@ expand_memcached_config({M, F, A}, _Params) ->
 expand_memcached_config({Fmt, Args}, Params) ->
     Args1 = [expand_memcached_config(A, Params) || A <- Args],
     iolist_to_binary(io_lib:format(Fmt, Args1));
-expand_memcached_config(Param, Params) when is_atom(Param) ->
+expand_memcached_config(Param, Params)
+  when is_atom(Param), Param =/= true, Param =/= false ->
     {Param, Value} = lists:keyfind(Param, 1, Params),
     Value;
 expand_memcached_config(Verbatim, _Params) ->
