@@ -222,11 +222,10 @@ generate_vbucket_map(CurrentMap, KeepNodes, BucketConfig) ->
     Map0 =
         case lists:keyfind(deltaRecoveryMap, 1, BucketConfig) of
             {deltaRecoveryMap, DRMapAndOpts} when DRMapAndOpts =/= undefined ->
-                {DRMap, _} = DRMapAndOpts,
-                MatchingMaps =
-                    mb_map:find_matching_past_maps(KeepNodes, CurrentMap, Opts,
-                                                   [DRMapAndOpts]),
-                case lists:member(DRMap, MatchingMaps) of
+                {DRMap, DROpts} = DRMapAndOpts,
+
+                case mb_map:is_trivially_compatible_past_map(KeepNodes, CurrentMap,
+                                                             Opts, DRMap, DROpts) of
                     true ->
                         DRMap;
                     false ->

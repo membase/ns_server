@@ -33,6 +33,7 @@
          run_rebalance_counts_experiment/0,
          find_matching_past_maps/4,
          find_matching_past_maps/5,
+         is_trivially_compatible_past_map/5,
          score_maps/3, best_map/2]).
 
 
@@ -551,6 +552,11 @@ random_map(NumVBuckets, NumCopies, NumNodes) when is_integer(NumNodes) ->
 random_map(NumVBuckets, NumCopies, Nodes) when is_list(Nodes) ->
     [random_chain(NumCopies, Nodes) | random_map(NumVBuckets-1, NumCopies,
                                                  Nodes)].
+
+is_trivially_compatible_past_map(Nodes, Map, MapOpts, PastMap, PastMapOpts) ->
+    lists:member(PastMap,
+                 find_matching_past_maps(Nodes, Map, MapOpts,
+                                         [{PastMap, PastMapOpts}], [trivial])).
 
 find_matching_past_maps(Nodes, Map, MapOptions, History) ->
     find_matching_past_maps(Nodes, Map, MapOptions, History, []).
