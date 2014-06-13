@@ -83,7 +83,7 @@ handle_recovery_status_change(not_running, not_running) ->
 handle_recovery_status_change(New, undefined) ->
     {New, true}.
 
-handle_config_event({rebalance_status, NewValue}, {RebalanceState, RecoveryState}) ->
+handle_config_event({rebalance_status_uuid, NewValue}, {RebalanceState, RecoveryState}) ->
     case NewValue of
         RebalanceState ->
             ok;
@@ -307,9 +307,9 @@ maybe_refresh_tasks_version(State) ->
                     end, Set, proplists:get_value(local_tasks, NodeInfo, []))
           end, sets:new(), Nodes),
     TasksRebalanceAndRecoveryHash = erlang:phash2({erlang:phash2(TasksHashesSet),
-                                                   ns_orchestrator:is_rebalance_running(),
-                                                   ns_orchestrator:is_recovery_running(),
-                                                   ns_config:search(graceful_failover_pid)}),
+                                                   ns_config:read_key_fast(rebalance_status_uuid,
+                                                                           undefined),
+                                                   ns_orchestrator:is_recovery_running()}),
     case TasksRebalanceAndRecoveryHash =:= State#state.tasks_hash of
         true ->
             %% hash did not change, only nodes. Cool

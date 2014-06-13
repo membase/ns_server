@@ -487,6 +487,7 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
              end,
 
     ns_config:set([{rebalance_status, Status},
+                   {rebalance_status_uuid, couch_uuids:random()},
                    {rebalancer_pid, undefined}]),
     rpc:eval_everywhere(diag_handler, log_all_tap_and_checkpoint_stats, []),
     case (lists:member(node(), EjectNodes) andalso Reason =:= normal) orelse
@@ -529,6 +530,7 @@ handle_info({'EXIT', Pid, Reason}, upgrading_to_upr,
              end,
 
     ns_config:set([{rebalance_status, Status},
+                   {rebalance_status_uuid, couch_uuids:random()},
                    {rebalancer_pid, undefined}]),
 
     case Restart of
@@ -664,6 +666,7 @@ idle({start_graceful_failover, Node}, _From,
         {ok, Pid} ->
             notify_janitor_finished(RemainingBuckets, rebalance_running),
             ns_config:set([{rebalance_status, running},
+                           {rebalance_status_uuid, couch_uuids:random()},
                            {graceful_failover_pid, Pid},
                            {rebalancer_pid, Pid}]),
             {reply, ok, rebalancing,
@@ -700,6 +703,7 @@ idle({start_rebalance, KeepNodes, EjectNodes,
             notify_janitor_finished(RemainingBuckets, rebalance_running),
             ns_cluster:counter_inc(rebalance_start),
             ns_config:set([{rebalance_status, running},
+                           {rebalance_status_uuid, couch_uuids:random()},
                            {graceful_failover_pid, undefined},
                            {rebalancer_pid, Pid}]),
 
@@ -726,6 +730,7 @@ idle({move_vbuckets, Bucket, Moves}, _From, #idle_state{remaining_buckets = Rema
                                             0, 1, Map, NewMap)
             end),
     ns_config:set([{rebalance_status, running},
+                   {rebalance_status_uuid, couch_uuids:random()},
                    {rebalancer_pid, Pid}]),
     {reply, ok, rebalancing,
      #rebalancing_state{rebalancer=Pid,
@@ -1285,6 +1290,7 @@ maybe_start_upgrade_to_upr(Restart, Type) ->
             {ok, Pid} = upr_upgrade:start_link(Buckets),
 
             ns_config:set([{rebalance_status, running},
+                           {rebalance_status_uuid, couch_uuids:random()},
                            {rebalancer_pid, Pid}]),
 
             {next_state, upgrading_to_upr,
