@@ -960,11 +960,19 @@ needs_rebalance(BucketConfig, Nodes, Topology) ->
                         lists:sort(Nodes) =/= lists:sort(Servers) orelse
                         ns_rebalancer:map_options_changed(Topology, BucketConfig) orelse
                         (ns_rebalancer:unbalanced(Map, Topology, BucketConfig) andalso
-                         not lists:keymember(Map, 1, ns_bucket:past_vbucket_maps()))
+                         not is_compatible_past_map(Nodes, BucketConfig, Map))
             end;
         memcached ->
             lists:sort(Nodes) =/= lists:sort(Servers)
     end.
+
+is_compatible_past_map(Nodes, BucketConfig, Map) ->
+    History = ns_bucket:past_vbucket_maps(),
+    MapOpts = ns_rebalancer:generate_vbucket_map_options(Nodes, BucketConfig),
+    Matching = mb_map:find_matching_past_maps(Nodes, Map,
+                                              MapOpts, History, [trivial]),
+
+    lists:member(Map, Matching).
 
 %%
 %% Internal functions

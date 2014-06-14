@@ -39,7 +39,8 @@
          maybe_cleanup_old_buckets/1,
          get_delta_recovery_nodes/2,
          verify_replication/3,
-         start_link_graceful_failover/1]).
+         start_link_graceful_failover/1,
+         generate_vbucket_map_options/2]).
 
 -export([wait_local_buckets_shutdown_complete/0]). % used via rpc:multicall
 
