@@ -1154,10 +1154,10 @@ maybe_clear_datatype(false, #upr_mutation{datatype = DT,
                     ?xdcr_debug("Got invalid snappy data for compressed doc with id: `~s'."
                                 " Will assume it's uncompressed. Snappy error: ~p",
                                 [Mutation#upr_mutation.id, Err]),
-                    Mutation
+                    Mutation#upr_mutation{datatype = 0}
             end;
         _ ->
-            Mutation
+            Mutation#upr_mutation{datatype = 0}
     end.
 
 spawn_changes_reader_old(StartSeq, Db, ChangesQueue) ->
