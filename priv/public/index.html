@@ -772,8 +772,8 @@
         </script>
 
         <script id="js_collect_progress_template" type="text/html">
-          <div id="js_collection_status" class="collection_status {%= isCompleted ? 'green' : 'spinner' %}" style="height:50px;line-height:50px;">
-            <span>{%= isCompleted ? 'Collection complete.' : 'Collection in progress...' %}</span>
+          <div id="js_collection_status" class="collection_status dynamic_{%= status %}">
+            <span>{%= ('Collection ' + status) + (status === 'running' ? '...' : '.') %}</span>
           </div>
           {% if (nodesByStatus.started) { %}
             <div>

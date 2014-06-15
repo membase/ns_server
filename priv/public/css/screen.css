@@ -1388,8 +1388,7 @@ input[type=number].size {width:4em;}
 .collect_information_dialog .dynamic_input_error {border-color: red;}
 .collect_information_dialog input[type="text"] {width: 195px;}
 
-.collection_status {font-size: 14px;}
-.collection_status.spinner {padding-top: 35px;}
+.collection_status {font-size: 14px;height:50px;line-height:50px;}
 
 .collect_result_dialog table td {text-align: left;}
 .collect_result_dialog table {table-layout: fixed;}
@@ -1401,6 +1400,7 @@ input[type=number].size {width:4em;}
 .collect_result_dialog .red {color: red;}
 .collect_result_dialog .dynamic_collected,
 .collect_result_dialog .dynamic_uploaded,
+.collect_result_dialog .dynamic_completed,
 .collect_result_dialog .green  {color: green;}
 .collect_result_dialog .save_cancel {margin-top: 0;}
 .collect_result_dialog .result {background-color: #f6f6f7; padding: 5px; line-height: 13px;}

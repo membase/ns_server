@@ -55,7 +55,6 @@ function createLogsSectionCells (ns, modeCell, stalenessCell, tasksProgressCell,
     if (!task) {
       return {
         nodesByStatus: {},
-        isCompleted: true,
         nodeErrors: [],
         status: 'idle',
         perNode: {}
@@ -86,8 +85,6 @@ function createLogsSectionCells (ns, modeCell, stalenessCell, tasksProgressCell,
 
     var nodesByStatus = _.groupBy(perNode, 'status');
 
-    var isCompleted = (task.status !== 'running');
-
     var nodeErrors = _.compact(_.map(perNode, function (ni) {
       if (ni.uploadOutput) {
         return {nodeName: ni.nodeName,
@@ -96,7 +93,6 @@ function createLogsSectionCells (ns, modeCell, stalenessCell, tasksProgressCell,
     }));
 
     task.nodesByStatus = nodesByStatus;
-    task.isCompleted = isCompleted;
     task.nodeErrors = nodeErrors;
 
     return task;
