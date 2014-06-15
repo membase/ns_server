@@ -583,6 +583,10 @@ var DAL = {
   cells.bucketsListCell.equality = _.isEqual;
   cells.bucketsListCell.delegateInvalidationMethods(rawDetailedBuckets);
 
+  cells.isBucketsAvailableCell = Cell.compute(function (v) {
+    return !!v.need(DAL.cells.bucketsListCell).length;
+  }).name("isBucketsAvailableCell");
+
   cells.bucketsListCell.refresh = function (callback) {
     var cell = cells.bucketsListCell;
     if (callback) {

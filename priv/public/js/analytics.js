@@ -674,12 +674,11 @@ var StatsModel = {};
   }).name("graphsConfigurationCell");
 
   self.hotKeysCell = Cell.compute(function (v) {
-    if (v.need(displayingSpecificStatsCell)) {
-      return null;
+    if (!v.need(DAL.cells.isBucketsAvailableCell)) {
+      return [];
     }
     return v.need(statsCell).hot_keys;
   }).name("hotKeysCell");
-  self.hotKeysCell.equality = function (a,b) {return a===b;};
 
   self.setupDirectoryRefreshOnStatKeysChange = function () {
     var graphSetupCell = Cell.compute(function (v) {
@@ -789,15 +788,15 @@ var maybeReloadAppDueToLeak = (function () {
 })(this);
 
 var GraphsWidget = mkClass({
-  initialize: function (largeGraphJQ, smallGraphsContainerJQ, descCell, configurationCell) {
+  initialize: function (largeGraphJQ, smallGraphsContainerJQ, descCell, configurationCell, isBucketAvailableCell) {
     this.largeGraphJQ = largeGraphJQ;
     this.smallGraphsContainerJQ = smallGraphsContainerJQ;
 
     this.drawnDesc = this.drawnConfiguration = {};
-    Cell.subscribeMultipleValues($m(this, 'renderAll'), descCell, configurationCell);
+    Cell.subscribeMultipleValues($m(this, 'renderAll'), descCell, configurationCell, isBucketAvailableCell);
   },
   // renderAll (and subscribeMultipleValues) exist to strictly order renderStatsBlock w.r.t. updateGraphs
-  renderAll: function (desc, configuration) {
+  renderAll: function (desc, configuration, isBucketAvailable) {
     if (this.drawnDesc !== desc) {
       this.renderStatsBlock(desc);
       this.drawnDesc = desc;
@@ -805,6 +804,14 @@ var GraphsWidget = mkClass({
     if (this.drawnConfiguration !== configuration) {
       this.updateGraphs(configuration);
       this.drawnConfiguration = configuration;
+    }
+
+    if (!isBucketAvailable) {
+      this.unrenderNothing();
+      this.largeGraphJQ.html('');
+      this.smallGraphsContainerJQ.html('');
+      $('#js_analytics .js_current-graph-name').text('');
+      $('#js_analytics .js_current-graph-desc').text('');
     }
   },
   unrenderNothing: function () {
@@ -931,10 +938,6 @@ var GraphsWidget = mkClass({
 
 var AnalyticsSection = {
   onKeyStats: function (hotKeys) {
-    $('#js_top_keys_block').toggle(hotKeys !== null);
-    if (hotKeys == null) {
-      return;
-    }
     renderTemplate('js_top_keys', _.map(hotKeys, function (e) {
       return $.extend({}, e, {total: 0 + e.gets + e.misses});
     }));
@@ -944,6 +947,9 @@ var AnalyticsSection = {
 
     StatsModel.hotKeysCell.subscribeValue($m(self, 'onKeyStats'));
     prepareTemplateForCell('js_top_keys', StatsModel.hotKeysCell);
+    StatsModel.displayingSpecificStatsCell.subscribeValue(function (displayingSpecificStats) {
+      $('#js_top_keys_block').toggle(!displayingSpecificStats);
+    });
 
     StatsModel.setupDirectoryRefreshOnStatKeysChange();
 
@@ -966,9 +972,9 @@ var AnalyticsSection = {
         }
 
         var allBuckets = v.need(DAL.cells.bucketsListCell);
-        var selectedBucket = v.need(StatsModel.statsBucketDetails);
+        var selectedBucket = v(StatsModel.statsBucketDetails);
         return {list: _.map(allBuckets, function (info) {return [info.uri, info.name]}),
-                selected: selectedBucket.uri};
+                selected: selectedBucket && selectedBucket.uri};
       });
       $('#js_analytics_buckets_select').bindListCell(cell, {
         onChange: function (e, newValue) {
@@ -984,21 +990,24 @@ var AnalyticsSection = {
           return;
         }
 
-        var allNodes = v.need(StatsModel.statsNodesCell);
+        var allNodes = v(StatsModel.statsNodesCell);
         var selectedNode;
         var statsHostname = v(StatsModel.statsHostname);
 
         if (statsHostname) {
-          selectedNode = v.need(StatsModel.targetCell);
+          selectedNode = v(StatsModel.targetCell);
         }
 
-        var list = _.map(allNodes.servers, function (srv) {
-          var name = ViewHelpers.maybeStripPort(srv.hostname, allNodes.servers);
-          return [srv.hostname, name];
-        });
-        // natural sort by full hostname (which includes port number)
-        list.sort(mkComparatorByProp(0, naturalSort));
-        list.unshift(['', 'All Server Nodes (' + allNodes.servers.length + ')' ]);
+        var list;
+        if (allNodes) {
+          list = _.map(allNodes.servers, function (srv) {
+            var name = ViewHelpers.maybeStripPort(srv.hostname, allNodes.servers);
+            return [srv.hostname, name];
+          });
+          // natural sort by full hostname (which includes port number)
+          list.sort(mkComparatorByProp(0, naturalSort));
+          list.unshift(['', 'All Server Nodes (' + allNodes.servers.length + ')' ]);
+        }
 
         return {list: list,
                 selected: selectedNode && selectedNode.hostname};
@@ -1010,7 +1019,12 @@ var AnalyticsSection = {
       });
     })();
 
-    self.widget = new GraphsWidget($('#js_analytics_main_graph'), $('#js_stats_container'), StatsModel.statsDescInfoCell, StatsModel.graphsConfigurationCell);
+    self.widget = new GraphsWidget(
+      $('#js_analytics_main_graph'),
+      $('#js_stats_container'),
+      StatsModel.statsDescInfoCell,
+      StatsModel.graphsConfigurationCell,
+      DAL.cells.isBucketsAvailableCell);
 
     Cell.needing(StatsModel.graphsConfigurationCell).compute(function (v, configuration) {
       return configuration.timestamp.length == 0;
