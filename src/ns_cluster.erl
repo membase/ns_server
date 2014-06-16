@@ -478,7 +478,7 @@ do_add_node_allowed(RemoteAddr, RestPort, Auth, GroupUUID) ->
                         case do_change_address(MyIP, false) of
                             {address_save_failed, _} = E ->
                                 E;
-                            _ ->
+                            ok ->
                                 ok
                         end;
                     _ ->
