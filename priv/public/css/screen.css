@@ -719,7 +719,8 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 .pending_removal_message {float:right; margin:0 10px 0 0; padding:1em 0;}
 .pending_add_message {margin:0; color:#e54c2a; text-align: center; display: inline-block; width: 100px; vertical-align: middle;}
 .list td.dynamic_inactiveAdded .list_button {float: none; display: inline-block; vertical-align: middle; margin: 0;}
-.list td.dynamic_inactiveAdded {text-align: right;}
+.list td.dynamic_inactiveAdded {text-align: right; white-space: nowrap;}
+.list td.dynamic_inactiveAdded .pending_add_message {white-space: normal;}
 .server_row.status_up {background-position:10px 20px !important;}
 .server_row.status_down {background-position:10px -157px !important; background-color:#61696c;}
 
