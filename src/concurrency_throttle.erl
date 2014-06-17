@@ -100,7 +100,7 @@ handle_call({send_signal, {TargetNode, Signal}}, {Pid, _Tag},
                                 target_load = TargetLoad} = State,
 
     %% no available token, put job into waiting pool
-    NewWaitingPool = dict:store(Pid, {Signal, TargetNode}, WaitingPool),
+    NewWaitingPool = dict:store(Pid, {Signal, TargetNode, os:timestamp()}, WaitingPool),
     NewTargetLoad = case dict:is_key(TargetNode, TargetLoad) of
                         false ->
                             dict:store(TargetNode, 0, TargetLoad);
@@ -252,26 +252,28 @@ code_change(_OldVsn, State, _Extra) ->
 %% replication to schedule such that the target node has the
 %% minimum active replications
 choose_pid_to_schedule(WaitingPool, TargetLoad) ->
-    {MinimumPid, _Load} = dict:fold(
-                            fun(Pid, {_, CurrNode}, {MinPid, MinLoad}) ->
-                                    case dict:is_key(CurrNode, TargetLoad) of
-                                        false ->
-                                            {Pid, 0};
-                                        _ ->
-                                            CurrLoad = dict:fetch(CurrNode, TargetLoad),
-                                            case CurrLoad < MinLoad of
-                                                true ->
-                                                    {Pid, CurrLoad};
-                                                _  ->
-                                                    {MinPid, MinLoad}
-                                            end
+    {MinimumPid, _Load, _MinTS} = dict:fold(
+                            fun(Pid, {_, CurrNode, TS}, {MinPid, MinLoad, MinTS}) ->
+                                    CurrLoad = case dict:find(CurrNode, TargetLoad) of
+                                                   error ->
+                                                       0;
+                                                   {ok, XCurrLoad} ->
+                                                       XCurrLoad
+                                               end,
+                                    if
+                                        CurrLoad < MinLoad ->
+                                            {Pid, CurrLoad, TS};
+                                        CurrLoad =:= MinLoad andalso TS < MinTS ->
+                                            {Pid, CurrLoad, TS};
+                                        true ->
+                                            {MinPid, MinLoad, MinTS}
                                     end
                             end,
                             %% the max # of active resp per node is the number of vbuckets
-                            {0, 9999},
+                            {0, 9999, 0},
                             WaitingPool),
 
-    {Signal, TargetNode} = dict:fetch(MinimumPid, WaitingPool),
+    {Signal, TargetNode, _} = dict:fetch(MinimumPid, WaitingPool),
     {MinimumPid, Signal, TargetNode}.
 
 
