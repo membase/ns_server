@@ -566,47 +566,6 @@ function genericDialog(options) {
   return instance;
 }
 
-function postClientErrorReport(text) {
-  function ignore() {}
-  $.ajax({type: 'POST',
-          url: "/logClientError",
-          data: text,
-          success: ignore,
-          error: ignore});
-}
-
-var originalOnError;
-(function () {
-  var sentReports = 0;
-  var ErrorReportsLimit = 8;
-  originalOnError = window.onerror;
-
-  function appOnError(message, fileName, lineNo) {
-    var report = [];
-    if (++sentReports < ErrorReportsLimit) {
-      report.push("Got unhandled error: ", message, "\nAt: ", fileName, ":", lineNo, "\n");
-      var bt = collectBacktraceViaCaller();
-      if (bt) {
-        report.push("Backtrace:\n", bt);
-      }
-      if (sentReports == ErrorReportsLimit - 1) {
-        report.push("Further reports will be suppressed\n");
-      }
-    }
-
-    // mozilla can report errors in some cases when user leaves current page
-    // so delay report sending
-    _.delay(function () {
-      postClientErrorReport(report.join(''));
-    }, 500);
-
-    if (originalOnError) {
-      originalOnError.call(window, message, fileName, lineNo);
-    }
-  }
-  window.onerror = appOnError;
-})();
-
 // clicks to links with href of '#<param>=' will be
 // intercepted. Default action (navigating) will be prevented and body
 // will be executed.
