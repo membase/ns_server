@@ -21,7 +21,7 @@
 
 -export([start_link/0]).
 
--export([take_socket/1, put_socket/1]).
+-export([take_socket/0, take_socket/1, put_socket/1, executing_on_socket/1]).
 
 start_link() ->
     Options = [{name, ?MODULE},
@@ -29,17 +29,16 @@ start_link() ->
                {pool_size, 10000}],
     ns_connection_pool:start_link(Options).
 
+take_socket() ->
+    case ns_connection_pool:maybe_take_socket(?MODULE, ns_memcached) of
+        {ok, Sock} ->
+            {ok, Sock};
+        no_socket ->
+            ns_memcached:connect()
+    end.
 
 take_socket(Bucket) ->
-    Result =
-        case ns_connection_pool:maybe_take_socket(?MODULE, ns_memcached) of
-            {ok, Sock} ->
-                {ok, Sock};
-            no_socket ->
-                ns_memcached:connect()
-        end,
-
-    case Result of
+    case take_socket() of
         {ok, Socket} ->
             case mc_client_binary:select_bucket(Socket, Bucket) of
                 ok ->
@@ -53,3 +52,16 @@ take_socket(Bucket) ->
 
 put_socket(Socket) ->
     ns_connection_pool:put_socket(?MODULE, ns_memcached, Socket).
+
+executing_on_socket(Fun) ->
+    misc:executing_on_new_process(
+      fun () ->
+              case ns_memcached_sockets_pool:take_socket() of
+                  {ok, Sock} ->
+                      Result = Fun(Sock),
+                      ns_memcached_sockets_pool:put_socket(Sock),
+                      Result;
+                  Error ->
+                      Error
+              end
+      end).
