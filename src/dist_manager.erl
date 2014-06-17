@@ -274,6 +274,8 @@ do_adjust_address(MyIP, UserSupplied, State = #state{my_ip = MyOldIP}) ->
 handle_call({adjust_my_address, _, _}, _From,
             #state{self_started = false} = State) ->
     {reply, not_self_started, State};
+handle_call({adjust_my_address, "127.0.0.1", true = _UserSupplied}, From, State) ->
+    handle_call({adjust_my_address, "127.0.0.1", false}, From, State);
 handle_call({adjust_my_address, _MyIP, false = _UserSupplied}, _From,
             #state{user_supplied = true} = State) ->
     {reply, nothing, State};
