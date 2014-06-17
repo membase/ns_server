@@ -1,8 +1,15 @@
-angular.module('auth.service', ['ui.router']).config(function ($httpProvider) {
+angular.module('auth.service', ['ui.router']).config(function ($httpProvider, $stateProvider) {
   $httpProvider.defaults.headers.common['invalid-auth-response'] = 'on';
   $httpProvider.defaults.headers.common['Cache-Control'] = 'no-cache';
   $httpProvider.defaults.headers.common['Pragma'] = 'no-cache';
   $httpProvider.responseInterceptors.push(['$q', '$location', logsOutUserOn401]);
+
+  $stateProvider.state('auth', {
+    url: '/auth',
+    templateUrl: '/angular/auth/auth.html',
+    controller: 'auth.Controller',
+    authenticate: false
+  });
 
   function logsOutUserOn401($q, $location) {
     return function (promise) {

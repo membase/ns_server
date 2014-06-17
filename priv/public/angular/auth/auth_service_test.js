@@ -12,9 +12,6 @@ describe("auth.service", function () {
       .state('app.overview', {
         authenticate: true
       })
-      .state('auth', {
-        authenticate: false
-      })
       .state('wizard', {
         authenticate: false
       })
@@ -24,9 +21,12 @@ describe("auth.service", function () {
   }));
 
   beforeEach(inject(function ($injector) {
+
     $state = $injector.get('$state');
     $httpBackend = $injector.get('$httpBackend');
     authService = $injector.get('auth.service');
+
+    $httpBackend.whenGET('/angular/auth/auth.html').respond(200)
   }));
 
   function expectPoolsWith(data) {
