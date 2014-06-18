@@ -1,4 +1,4 @@
-Bugsnag.sendReport = (function () {
+Bugsnag.beforeNotify = (function () {
   var sentReports = 0;
   var ErrorReportsLimit = 8;
 
@@ -28,5 +28,7 @@ Bugsnag.sendReport = (function () {
     _.delay(function () {
       $.ajax({type: 'POST', url: "/logClientError", data: report.join('')});
     }, 500);
+
+    return false; //this is important for bugsnag.js
   }
 })();
