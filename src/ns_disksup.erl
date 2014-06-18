@@ -47,8 +47,6 @@ start_link() ->
 
 is_my_os() ->
     case os:type() of
-        {unix, darwin} ->
-            true;
         {unix, linux} ->
             true;
         _ ->
@@ -139,10 +137,7 @@ newline([], B) -> {more, B}.
 
 check_disk_space({unix, linux}, Port) ->
     Result = my_cmd("/bin/df -alk", Port),
-    check_disks_linux(skip_to_eol(Result));
-check_disk_space({unix, darwin}, Port) ->
-    Result = my_cmd("/bin/df -i -k -t ufs,hfs", Port),
-    check_disks_susv3(skip_to_eol(Result)).
+    check_disks_linux(skip_to_eol(Result)).
 
 check_disks_linux("") ->
     [];
@@ -155,20 +150,6 @@ check_disks_linux(Str) ->
              check_disks_linux(RestStr)];
         _Other ->
             check_disks_linux(skip_to_eol(Str))
-    end.
-
-% Parse per SUSv3 specification, notably recent OS X
-check_disks_susv3("") ->
-    [];
-check_disks_susv3("\n") ->
-    [];
-check_disks_susv3(Str) ->
-    case io_lib:fread("~s~d~d~d~d%~d~d~d%~s", Str) of
-    {ok, [_FS, KB, _Used, _Avail, Cap, _IUsed, _IFree, _ICap, MntOn], RestStr} ->
-            [{MntOn, KB, Cap} |
-             check_disks_susv3(RestStr)];
-        _Other ->
-            check_disks_susv3(skip_to_eol(Str))
     end.
 
 %%--Auxiliary-----------------------------------------------------------
