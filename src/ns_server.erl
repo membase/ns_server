@@ -257,7 +257,8 @@ start_sink(Name, Module, Args) ->
 
 start_disk_sink(Name, FileName) ->
     {ok, Dir} = application:get_env(error_logger_mf_dir),
-    DiskSinkOpts = misc:get_env_default(disk_sink_opts, []),
+    PerSinkOpts = misc:get_env_default(list_to_atom("disk_sink_opts_" ++ atom_to_list(Name)), []),
+    DiskSinkOpts = PerSinkOpts ++ misc:get_env_default(disk_sink_opts, []),
 
     Path = filename:join(Dir, FileName),
     start_sink(Name, ale_disk_sink, [Path, DiskSinkOpts]).
