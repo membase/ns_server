@@ -191,7 +191,6 @@ init([]) ->
     Compat30 = cluster_compat_mode:is_cluster_30(),
     Node = node(),
     save_cert_pkey(CertPEM, PKeyPEM, Compat30, Node),
-    restart_ssl_app(),
     proc_lib:init_ack({ok, Self}),
 
     %% it's possible that we crashed somehow and not passed updated
@@ -303,7 +302,8 @@ restart_ssl_services() ->
     %%
     %% We're not trapping exits and that makes this interaction safe.
     ok = ns_ssl_services_sup:stop_ssl_services(),
-    restart_ssl_app(),
+    ok = application:stop(ssl),
+    ok = application:start(ssl),
     ok = ns_ssl_services_sup:start_ssl_services(),
 
     restart_xdcr_proxy(),
@@ -315,7 +315,3 @@ restart_xdcr_proxy() ->
         Err ->
             ?log_debug("Xdcr proxy restart failed. But that's usually normal. ~p", [Err])
     end.
-
-restart_ssl_app() ->
-    ok = application:stop(ssl),
-    ok = application:start(ssl).
