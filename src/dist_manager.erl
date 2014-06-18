@@ -26,7 +26,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--export([adjust_my_address/2, read_address_config/0, save_address_config/2,
+-export([adjust_my_address/2, read_address_config/0, save_address_config/1,
          ip_config_path/0, using_user_supplied_address/0, reset_address/0]).
 
 -record(state, {self_started,
@@ -125,7 +125,8 @@ wait_for_address(Address, N) ->
             wait_for_address(Address, N - 1)
     end.
 
-save_address_config(State, UserSupplied) ->
+save_address_config(#state{my_ip = MyIP,
+                           user_supplied = UserSupplied}) ->
     PathPair = [ip_start_config_path(), ip_config_path()],
     [Path, ClearPath] =
         case UserSupplied of
@@ -137,7 +138,7 @@ save_address_config(State, UserSupplied) ->
     DeleteRV = file:delete(ClearPath),
     ?log_info("Deleting irrelevant ip file ~p: ~p", [ClearPath, DeleteRV]),
     ?log_info("saving ip config to ~p", [Path]),
-    misc:atomic_write_file(Path, State#state.my_ip).
+    misc:atomic_write_file(Path, MyIP).
 
 save_node(NodeName, Path) ->
     ?log_info("saving node to ~p", [Path]),
@@ -258,7 +259,7 @@ do_adjust_address(MyIP, UserSupplied, State = #state{my_ip = MyOldIP}) ->
                 {NewState1, net_restarted}
         end,
 
-    case save_address_config(NewState, UserSupplied) of
+    case save_address_config(NewState) of
         ok ->
             ?log_info("Persisted the address successfully"),
             {reply, Status, NewState};
@@ -294,7 +295,7 @@ handle_call(reset_address, _From,
                    user_supplied = true} = State) ->
     ?log_info("Going to mark current user-supplied address as non-user-supplied address"),
     NewState = State#state{user_supplied = false},
-    case save_address_config(NewState, false) of
+    case save_address_config(NewState) of
         ok ->
             ?log_info("Persisted the address successfully"),
             {reply, net_restarted, NewState};
