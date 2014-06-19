@@ -634,6 +634,17 @@ handle_call({apply_new_config, Caller, NewBucketConfig, IgnoredVBuckets}, _From,
                     end
             end, {0, [], [], []}, Map),
 
+    NewWanted = lists:reverse(NewWantedRev),
+    NewRebalance = [undefined || _ <- NewWantedRev],
+    State2 = State#state{last_applied_vbucket_states = NewWanted,
+                         rebalance_only_vbucket_states = NewRebalance},
+    State3 = case Caller of
+                 Rebalancer ->
+                     State2;
+                 undefined ->
+                     set_rebalance_mref(undefined, State2)
+             end,
+
     %% make the replicator aware of the latest bucket replication type
     %% this might shutdown some replications which will be restored later
     case cluster_compat_mode:is_cluster_30() of
@@ -659,16 +670,6 @@ handle_call({apply_new_config, Caller, NewBucketConfig, IgnoredVBuckets}, _From,
     %% and ok to delete vbuckets we want to delete
     [ns_memcached:delete_vbucket(BucketName, VBucket) || VBucket <- ToDelete],
 
-    NewWanted = lists:reverse(NewWantedRev),
-    NewRebalance = [undefined || _ <- NewWantedRev],
-    State2 = State#state{last_applied_vbucket_states = NewWanted,
-                         rebalance_only_vbucket_states = NewRebalance},
-    State3 = case Caller of
-                 Rebalancer ->
-                     State2;
-                 undefined ->
-                     set_rebalance_mref(undefined, State2)
-             end,
     {reply, ok, pass_vbucket_states_to_set_view_manager(State3)};
 handle_call({apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
             _From, #state{bucket_name = BucketName} = State) ->
