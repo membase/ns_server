@@ -597,7 +597,7 @@ init_replication_state(#init_state{rep = Rep,
             {ok, RBucket} ->
                 {ok, RBucket};
             Error when is_tuple(Error) andalso element(1, Error) =:= error ->
-                ?xdcr_error("Error in fetching remot bucket, error: ~p,"
+                ?xdcr_error("Error fetching remote bucket: ~p,"
                             "sleep for ~p secs before retry.",
                             [Error, (?XDCR_SLEEP_BEFORE_RETRY)]),
                 %% sleep and retry once
@@ -619,7 +619,7 @@ init_replication_state(#init_state{rep = Rep,
                                  {ok, RemoteNode, TgtBucket} ->
                                      {ok, RemoteNode, TgtBucket};
                                  Error2 ->
-                                     ?xdcr_error("Error in fetching remot memcached vbucket info, error: ~p"
+                                     ?xdcr_error("Error fetching remote memcached vbucket info: ~p"
                                                  "sleep for ~p secs before retry",
                                                  [Error2, (?XDCR_SLEEP_BEFORE_RETRY)]),
                                      timer:sleep(1000*?XDCR_SLEEP_BEFORE_RETRY),
