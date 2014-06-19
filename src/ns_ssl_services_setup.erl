@@ -295,7 +295,7 @@ save_cert_pkey(CertPEM, PKeyPEM, Compat30, Node) ->
             ok = misc:atomic_write_file(memcached_key_path(), PKeyPEM)
     end,
 
-    ok = ssl_manager:clear_pem_cache().
+    ok = clear_pem_cache().
 
 restart_ssl_services() ->
     %% NOTE: We're going to talk to our supervisor so if we do it
@@ -312,4 +312,17 @@ restart_xdcr_proxy() ->
         ok -> ok;
         Err ->
             ?log_debug("Xdcr proxy restart failed. But that's usually normal. ~p", [Err])
+    end.
+
+clear_pem_cache() ->
+    {module, ssl_manager} = code:ensure_loaded(ssl_manager),
+    case erlang:function_exported(ssl_manager, clear_pem_cache, 0) of
+        true ->
+            ssl_manager:clear_pem_cache();
+        false ->
+            %% TODO: this case is here just to avoid crashes on R14 which we
+            %% still want to support for some performance comparisons; not
+            %% clearing caches causes "regenerate certificate" to take effect
+            %% only after restart; we should remove it before the release
+            ok
     end.
