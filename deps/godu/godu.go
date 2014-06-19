@@ -24,6 +24,16 @@ func readdir(path string) (infos []os.FileInfo, err error) {
 var errorCount int = 0
 var lastError error
 
+func traverseTop(entry string) uint64 {
+	_, err := os.Stat(entry)
+	if os.IsNotExist(err) {
+		return 0
+	} else {
+		// let traverse handle both success and other errors
+		return traverse(entry)
+	}
+}
+
 func traverse(entry string) uint64 {
 	var infos []os.FileInfo
 	var rv uint64 = 0
@@ -66,7 +76,7 @@ exit:
 func doRun(path string) []byte {
 	before := time.Now()
 
-	size := traverse(path)
+	size := traverseTop(path)
 
 	outputMap := map[string]interface{}{
 		"size":       size,

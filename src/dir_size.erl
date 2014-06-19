@@ -55,11 +55,7 @@ get(Dir) ->
         undefined ->
             get_slow(Dir);
         _Pid ->
-            case gen_server:call(?MODULE, {dir_size, Dir}) of
-                undefined ->
-                    get_slow(Dir);
-                X -> X
-            end
+            gen_server:call(?MODULE, {dir_size, Dir})
     end.
 
 get_slow(Dir) ->
@@ -116,14 +112,7 @@ handle_dir_size(Dir, Port) ->
     end.
 
 handle_call({dir_size, Dir}, _From, Port) ->
-    %% dir_size on missing directory is a common thing. We don't want
-    %% to spam logs for this expected error
-    case file:read_file_info(Dir) of
-        {error, _} ->
-            {reply, undefined, Port};
-        _ ->
-            handle_dir_size(Dir, Port)
-    end.
+    handle_dir_size(Dir, Port).
 
 handle_cast(_, _State) ->
     erlang:error(unexpected).
