@@ -435,7 +435,7 @@ make_pidfile(PidFile) ->
     Pid = os:getpid(),
     %% Pid is a string representation of the process id, so we append
     %% a newline to the end.
-    ok = file:write_file(PidFile, list_to_binary(Pid ++ "\n")),
+    ok = misc:write_file(PidFile, list_to_binary(Pid ++ "\n")),
     ok.
 
 ping_jointo() ->
@@ -1235,7 +1235,7 @@ start_event_link(SubscriptionBody) ->
 %% Writes to file atomically using write_file + atomic_rename
 atomic_write_file(Path, Contents) ->
     TmpPath = Path ++ ".tmp",
-    case file:write_file(TmpPath, Contents) of
+    case misc:write_file(TmpPath, Contents) of
         ok ->
             atomic_rename(TmpPath, Path);
         X ->
@@ -1565,7 +1565,7 @@ ensure_writable_dir(Path) ->
     case filelib:is_dir(Path) of
         true ->
             TouchPath = filename:join(Path, ".touch"),
-            case file:write_file(TouchPath, <<"">>) of
+            case misc:write_file(TouchPath, <<"">>) of
                 ok ->
                     file:delete(TouchPath),
                     ok;
@@ -1639,3 +1639,6 @@ min_by(Less, Items) ->
 
 inspect_term(Value) ->
     binary_to_list(iolist_to_binary(io_lib:format("~p", [Value]))).
+
+write_file(Path, Bytes) ->
+    file:write_file(Path, Bytes, [raw]).

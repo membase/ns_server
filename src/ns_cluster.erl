@@ -181,7 +181,7 @@ handle_call({change_address, Address}, _From, State) ->
 handle_cast(leave, State) ->
     ?cluster_log(0001, "Node ~p is leaving cluster.", [node()]),
 
-    ok = file:write_file(leave_marker_path(), <<"">>),
+    ok = misc:write_file(leave_marker_path(), <<"">>),
 
     %% first thing we do is stopping nearly everything
     ok = ns_server_cluster_sup:stop_cluster(),

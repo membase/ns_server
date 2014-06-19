@@ -270,7 +270,7 @@ handle_info(save, StateBefore = #state{filename=Filename}) ->
     State = flush_pending(StateBefore),
     Recent = State#state.unique_recent,
     Compressed = zlib:compress(term_to_binary(Recent)),
-    case file:write_file(Filename, Compressed) of
+    case misc:write_file(Filename, Compressed) of
         ok -> ok;
         E ->
             ?log_error("unable to write log to ~p: ~p", [Filename, E])

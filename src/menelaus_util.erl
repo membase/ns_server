@@ -401,7 +401,7 @@ insecure_pipe_through_command(Command, IOList) ->
     TmpFile = filename:join(path_config:component_path(tmp),
                             "pipethrough." ++ integer_to_list(erlang:phash2([self(), os:getpid(), timestamp]))),
     filelib:ensure_dir(TmpFile),
-    file:write_file(TmpFile, IOList),
+    misc:write_file(TmpFile, IOList),
     Port = open_port({spawn, Command ++ " <" ++ mochiweb_util:shell_quote(TmpFile)}, [binary, in, exit_status]),
     RV = pipe_through_command_rec(Port, []),
     file:delete(TmpFile),

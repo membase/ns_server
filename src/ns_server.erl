@@ -53,7 +53,7 @@ start(_Type, _Args) ->
                                          {K, V} <- application:get_all_env(App)]),
                   dict:append_list(App, Env, Acc)
           end, dict:from_list(InitArgs2), application:loaded_applications()),
-    ok = file:write_file(filename:join(DataDir, "initargs"),
+    ok = misc:write_file(filename:join(DataDir, "initargs"),
                          term_to_binary(dict:to_list(InitArgs3))),
 
     %% To initialize logging static config must be setup thus this weird
