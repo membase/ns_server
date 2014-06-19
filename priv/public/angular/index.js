@@ -4,6 +4,7 @@ angular.module('index', [
   'app',
   'barGauge',
   'focus',
+  'dialog',
   'spinner',
   'filters'
 ]).controller('index.Controller', ['auth.service', function (authService) {

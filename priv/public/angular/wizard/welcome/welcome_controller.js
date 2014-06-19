@@ -3,4 +3,7 @@ angular.module('wizard')
     ['$scope',
       function ($scope) {
         $scope.focusMe = true;
+        $scope.showAboutDialog = function showAboutDialog() {
+          $scope.aboutDialog = true;
+        };
       }]);

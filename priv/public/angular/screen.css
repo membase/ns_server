@@ -611,8 +611,8 @@ span.tooltip {color:#0095D6;cursor:pointer;}
 /* config */
 .pad .config-top i {font-style: normal;}
 .config-top {background:url(../images/config-top.png) repeat-x; height:60px; line-height:60px; margin:0px 0px 0px -8px;}
-.config-top h1, div.config-top h2 {background:none;border:none;font-family:Verdana, Helvetica, Sans-Serif; text-shadow: 0px 1px 2px #fff;}
-div.config-top h1 {color:#444245; float:left; font-size:16pt; margin:-15px 0 0 20px; padding:0;}
+.pad .config-top h1, div.config-top h2 {background:none;border:none;font-family:Verdana, Helvetica, Sans-Serif; text-shadow: 0px 1px 2px #fff;}
+.pad div.config-top h1 {color:#444245; float:left; font-size:16pt; margin:-15px 0 0 20px; padding:0;}
 div.config-top h2 {color:#8b8b8e; float:right; font-size:10pt; margin:0 20px 0 0; padding:0;font-weight:bold;clear:none;border:none;}
 .config-bottom {background:url(../images/config-bottom.png) repeat-x; height:74px; line-height:84px; margin:0 0 0 -9px;  height:31px;padding:0.9em;}
 .config-bottom a.cancel {color:#8b8b8e; float:right; font-family:Arial, Helvetica, Sans-Serif; font-size:12pt; margin-right:25px; margin-top:-5px; text-decoration:none;}
@@ -653,8 +653,8 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 
 /* init_block */
 .init_block {min-height:700px; padding:55px 0 0; position:relative;}
-.init_block h1 {color:#2f3536; text-transform:uppercase; font-size:28px; padding:28px 0 30px 0; position:relative; top:13px;}
 .init_block .pad { width:703px; margin:0 auto;}
+.init_block .pad h1 {color:#2f3536; text-transform:uppercase; font-size:28px; padding:28px 0 30px 0; position:relative; top:13px;}
 .init_block .form {display:block; width:580px; 0 0 no-repeat;}
 .init_block .form table {margin:25px 0 0 25px;}
 .init_block .form table td {vertical-align:middle; padding:10px 0;}

@@ -1,13 +1,21 @@
+<div data-dialog data-dialog-title="About Couchbase Server" data-dialog-width="650px" data-dialog-show="aboutDialog">
+  <p>Version: {{modelAuthService.version | prettyVersion}}</p>
+  <div class="config-bottom">
+    <button class="direction-button" ng-click="$$prevSibling.hideDialog()">Close</button>
+  </div>
+</div>
+
 <div class="pad" id="init_welcome_dialog">
   <div class="pad-header">
     <img class="logo" src="../images/couchbase_2.0.2.png" alt="Couchbase logo">
   </div>
   <div id="init_welcome_form" class="clearfix">
     <div class="version">{{modelAuthService.version | prettyVersion}}</div>
-    <a tabindex="1" focus="focusMe" class="setup" ui-sref="wizard.step1.views" href=""></a>
+    <a tabindex="1" ng-focus="focusMe" class="setup" data-ui-sref="wizard.step1.views" href=""></a>
   </div>
   <div class="welcome-footer">
     Copyright &copy; 2014 Couchbase, Inc. All Rights Reserved
-    <a href="http://www.couchbase.com/contact" id="welcome-footer-contact" target="_blank" tabindex="2">Contact</a> <a href="javascript:showAbout();" tabindex="3">About</a>
+    <a href="http://www.couchbase.com/contact" id="welcome-footer-contact" target="_blank" tabindex="2">Contact</a>
+    <a ng-click="showAboutDialog()" tabindex="3">About</a>
   </div>
 </div>
