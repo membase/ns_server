@@ -97,6 +97,9 @@ func doRun(path string) []byte {
 		fmt.Fprintf(os.Stderr, "\n%f %f %v\n", (float64)(before.UnixNano())*1E-9, (float64)(after.UnixNano())*1E-9, duration)
 	}
 
+	lastError = nil
+	errorCount = 0
+
 	return output
 }
 
