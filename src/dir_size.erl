@@ -55,7 +55,7 @@ get(Dir) ->
         undefined ->
             get_slow(Dir);
         _Pid ->
-            gen_server:call(?MODULE, {dir_size, Dir})
+            gen_server:call(?MODULE, {dir_size, Dir}, infinity)
     end.
 
 get_slow(Dir) ->
