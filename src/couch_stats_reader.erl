@@ -58,8 +58,7 @@ init(Bucket) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
     case ns_bucket:bucket_type(BucketConfig) of
         membase ->
-            self() ! refresh_stats,
-            timer2:send_interval(?SAMPLE_INTERVAL, refresh_stats);
+            self() ! refresh_stats;
         memcached ->
             ok
     end,
@@ -76,7 +75,6 @@ handle_cast(_Msg, State) ->
 handle_info(refresh_stats, #state{bucket = Bucket,
                                   last_ts = LastTS,
                                   last_view_stats = LastViewStats} = State) ->
-    misc:flush(refresh_stats),
     TS = misc:time_to_epoch_ms_int(os:timestamp()),
 
     Config = ns_config:get(),
@@ -87,6 +85,11 @@ handle_info(refresh_stats, #state{bucket = Bucket,
     {ProcessedSamples, NewLastViewStats} = parse_couch_stats(TS, NewStats, LastTS,
                                                              LastViewStats, MinFileSize),
     ets:insert(server(Bucket), {stuff, ProcessedSamples}),
+
+    NowTS = misc:time_to_epoch_ms_int(os:timestamp()),
+    Delta = min(?SAMPLE_INTERVAL, max(0, NowTS - TS)),
+    timer2:send_after(?SAMPLE_INTERVAL - Delta, refresh_stats),
+
     {noreply, State#state{last_view_stats = NewLastViewStats,
                           last_ts = TS}};
 handle_info(_Msg, State) ->
