@@ -304,11 +304,7 @@ default() ->
      {{request_limit, rest}, undefined},
      {{request_limit, capi}, undefined},
      {drop_request_memory_threshold_mib, undefined},
-     {replication_topology, star},
-     {xdcr_use_new_path, case os:getenv("XDCR_USE_OLD_PATH") of
-                             false -> true;
-                             _ -> false
-                         end}].
+     {replication_topology, star}].
 
 %% Recursively replace all strings in a hierarchy that start
 %% with a given Prefix with a ReplacementPrefix.  For example,
