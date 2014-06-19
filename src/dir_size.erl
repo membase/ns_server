@@ -15,6 +15,8 @@
 %%
 -module(dir_size).
 
+-behaviour(gen_server).
+
 -include("ns_common.hrl").
 
 -export([get/1, get_slow/1, start_link/0]).
