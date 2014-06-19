@@ -385,6 +385,7 @@ check_host_connectivity(OtherHost) ->
             {error, host_connectivity, M, X}
     end.
 
+-spec do_change_address(string(), boolean()) -> ok | {address_save_failed, _} | not_self_started.
 do_change_address(NewAddr, UserSupplied) ->
     NewAddr1 =
         case UserSupplied of
@@ -478,6 +479,9 @@ do_add_node_allowed(RemoteAddr, RestPort, Auth, GroupUUID) ->
                         case do_change_address(MyIP, false) of
                             {address_save_failed, _} = E ->
                                 E;
+                            not_self_started ->
+                                ?cluster_debug("Haven't changed address because of not_self_started condition", []),
+                                ok;
                             ok ->
                                 ok
                         end;
