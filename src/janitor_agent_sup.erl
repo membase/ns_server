@@ -20,7 +20,7 @@
 
 -behaviour(supervisor).
 
--export([start_link/1, init/1]).
+-export([start_link/1, init/1, get_registry_pid/1]).
 
 start_link(BucketName) ->
     Name = list_to_atom(atom_to_list(?MODULE) ++ "-" ++ BucketName),
@@ -33,5 +33,16 @@ init([BucketName]) ->
           child_specs(BucketName)}}.
 
 child_specs(BucketName) ->
-    [{{janitor_agent, BucketName}, {janitor_agent, start_link, [BucketName]},
+    [{rebalance_subprocesses_registry,
+      {ns_process_registry, start_link,
+       [get_registry_name(BucketName), [{terminate_command, kill}]]},
+      permanent, infinity, worker, [ns_process_registry]},
+
+     {janitor_agent, {janitor_agent, start_link, [BucketName]},
       permanent, brutal_kill, worker, []}].
+
+get_registry_name(BucketName) ->
+    list_to_atom(atom_to_list(rebalance_subprocesses_registry) ++ "-" ++ BucketName).
+
+get_registry_pid(BucketName) ->
+    ns_process_registry:lookup_pid(get_registry_name(BucketName), ns_process_registry).

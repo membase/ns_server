@@ -44,7 +44,8 @@
                 replicators_primed :: boolean(),
 
                 apply_vbucket_states_queue :: queue(),
-                apply_vbucket_states_worker :: undefined | pid()}).
+                apply_vbucket_states_worker :: undefined | pid(),
+                rebalance_subprocesses_registry :: pid()}).
 
 -export([wait_for_bucket_creation/2, query_states/3,
          apply_new_bucket_config/5,
@@ -525,9 +526,12 @@ start_link(Bucket) ->
     gen_server:start_link({local, server_name(Bucket)}, ?MODULE, Bucket, []).
 
 init(BucketName) ->
+    RegistryPid = janitor_agent_sup:get_registry_pid(BucketName),
+    true = is_pid(RegistryPid),
     {ok, #state{bucket_name = BucketName,
                 flushseq = read_flush_counter(BucketName),
-                replicators_primed = false}}.
+                replicators_primed = false,
+                rebalance_subprocesses_registry = RegistryPid}}.
 
 handle_call(prepare_flush, _From, #state{bucket_name = BucketName} = State) ->
     ?log_info("Preparing flush by disabling bucket traffic"),
@@ -895,16 +899,25 @@ set_rebalance_mref(Pid, State0) ->
             State#state{rebalance_mref = undefined,
                         rebalance_status = finished};
         _ ->
-            WorkerPid = proc_lib:spawn_link(fun apply_vbucket_states_worker_loop/0),
+            WorkerPid = proc_lib:spawn_link(
+                          fun () ->
+                                  ns_process_registry:register_pid(
+                                    State#state.rebalance_subprocesses_registry,
+                                    erlang:make_ref(), self()),
+                                  apply_vbucket_states_worker_loop()
+                          end),
 
             State#state{rebalance_mref = erlang:monitor(process, Pid),
                         rebalance_status = in_process,
                         apply_vbucket_states_worker = WorkerPid}
     end.
 
-spawn_rebalance_subprocess(#state{rebalance_subprocesses = Subprocesses} = State, From, Fun) ->
+spawn_rebalance_subprocess(#state{rebalance_subprocesses = Subprocesses,
+                                  rebalance_subprocesses_registry = RegistryPid} = State, From, Fun) ->
     Parent = self(),
     Pid = proc_lib:spawn_link(fun () ->
+                                      ns_process_registry:register_pid(RegistryPid,
+                                                                       erlang:make_ref(), self()),
                                       RV = Fun(),
                                       Parent ! {subprocess_done, self(), RV}
                               end),
