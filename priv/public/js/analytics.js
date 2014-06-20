@@ -190,7 +190,7 @@ var StatsModel = {};
       }
 
       for (var keyName in samples) {
-        newSamples[keyName] = prevSamples[keyName].concat(samples[keyName].slice(1)).slice(-keepCount);
+        newSamples[keyName] = (prevSamples[keyName] || []).concat(samples[keyName].slice(1)).slice(-keepCount);
       }
 
       var restored = _.clone(rawStats);
