@@ -1,4 +1,4 @@
-angular.module('dialog', []).directive('dialog', function () {
+angular.module('dialog').directive('dialog', function ($compile) {
 
   return {
     restrict: 'A',
@@ -7,19 +7,19 @@ angular.module('dialog', []).directive('dialog', function () {
       dialogTitle: '@',
       dialogWidth: '@'
     },
-    isolate: false,
-    replace: true, // Replace with the template below
-    transclude: true, // we want to insert custom content inside the directive
-    link: function ($scope, $element, $attrs, $ctrl, $transclude) {
-      $scope.dialogShow = false;
+    replace: true,
+    transclude: true,
+    link: function ($scope, $element, $attrs) {
+
       $scope.dialogStyle = {
         width: $scope.dialogWidth
       };
 
       $scope.hideDialog = function() {
+        $element.remove();
         $scope.dialogShow = false;
       };
     },
-    templateUrl: 'components/dialog/dialog_directive.html'
+    templateUrl: '/angular/components/dialog/dialog_directive.html'
   };
 });

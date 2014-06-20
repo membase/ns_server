@@ -45,8 +45,8 @@ a:hover {text-decoration:underline;}
 .link:hover {text-decoration:underline;}
 .link:active {outline:1px dotted gray;}
 
-html {height:100%;overflow-y:scroll}
-body {height:100%;color:#616062;font-family:Helvetica, Verdana;line-height:1;background:url("../images/footer_bg.png") repeat #F0EEE7}
+html {min-height:100%;overflow-y:scroll}
+body {min-height:100%;position: relative;color:#616062;font-family:Helvetica, Verdana;line-height:1;background:url("../images/footer_bg.png") repeat #F0EEE7}
 
 /* form styles */
 fieldset{padding:0 20px}
