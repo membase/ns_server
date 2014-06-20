@@ -190,7 +190,12 @@ var StatsModel = {};
       }
 
       for (var keyName in samples) {
-        newSamples[keyName] = (prevSamples[keyName] || []).concat(samples[keyName].slice(1)).slice(-keepCount);
+        var ps = prevSamples[keyName];
+        if (!ps) {
+          ps = [];
+          ps.length = keepCount;
+        }
+        newSamples[keyName] = ps.concat(samples[keyName].slice(1)).slice(-keepCount);
       }
 
       var restored = _.clone(rawStats);
@@ -676,6 +681,33 @@ var StatsModel = {};
   }).name("hotKeysCell");
   self.hotKeysCell.equality = function (a,b) {return a===b;};
 
+  self.setupDirectoryRefreshOnStatKeysChange = function () {
+    var graphSetupCell = Cell.compute(function (v) {
+      return [v.need(statsOptionsCell),
+              v(statsURLCell),
+              v(specificStatsURLCell)];
+    });
+    var sampleKeysCell = Cell.compute(function (v) {
+      var cfg = v.need(self.graphsConfigurationCell);
+      return _.keys(cfg.samples);
+    });
+    graphSetupCell.equality = sampleKeysCell.equality = _.isEqual;
+    var seenSetup;
+    var seenSampleKeys;
+    Cell.subscribeMultipleValues(function (setup, keys, displayingSpecific) {
+      if (displayingSpecific !== false) {
+        return;
+      }
+      if (_.isEqual(setup, seenSetup)
+          && seenSampleKeys !== undefined
+          && !_.isEqual(seenSampleKeys, keys)) {
+        rawStatsDescCell.recalculate();
+      }
+      seenSetup = setup;
+      seenSampleKeys = keys;
+    }, graphSetupCell, sampleKeysCell, displayingSpecificStatsCell);
+  }
+
 })(StatsModel);
 
 var maybeReloadAppDueToLeak = (function () {
@@ -912,6 +944,8 @@ var AnalyticsSection = {
 
     StatsModel.hotKeysCell.subscribeValue($m(self, 'onKeyStats'));
     prepareTemplateForCell('js_top_keys', StatsModel.hotKeysCell);
+
+    StatsModel.setupDirectoryRefreshOnStatKeysChange();
 
     $('#js_analytics .js_block-expander').live('click', function () {
       // this forces configuration refresh and graphs redraw
