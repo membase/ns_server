@@ -833,11 +833,7 @@ handle_info(Info, State) ->
     ?log_debug("Ignoring unexpected message: ~p", [Info]),
     {noreply, State}.
 
-terminate(_Reason, #state{rebalance_mref = undefined}) ->
-    ok;
-terminate(_Reason, #state{bucket_name = Bucket}) ->
-    ?log_debug("Janitor agent crashed during rebalance. Nuke all UPR connections"),
-    upr_sup:nuke(Bucket),
+terminate(_Reason, _State) ->
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
