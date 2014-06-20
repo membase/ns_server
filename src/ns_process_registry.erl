@@ -20,7 +20,7 @@
 -include("ns_common.hrl").
 
 %% API
--export([start_link/1, lookup_pid/2, register_pid/3]).
+-export([start_link/2, lookup_pid/2, register_pid/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -28,7 +28,8 @@
 
 -record(state, {
           name :: atom(),
-          pids2ids
+          pids2ids,
+          options
          }).
 
 
@@ -48,16 +49,18 @@ register_pid(Name, Id, Pid) ->
             gen_server:call(Registry, {register, Id, Pid})
     end.
 
-start_link(Name) ->
-    gen_server:start_link(?MODULE, [Name], []).
+start_link(Name, Options) ->
+    gen_server:start_link(?MODULE, [Name, Options], []).
 
-init([Name]) ->
+init([Name, Options]) ->
     ets:new(Name, [public, named_table]),
     PidsToIds = ets:new(none, [private, set]),
     ets:insert(Name, {?MODULE, self()}),
     erlang:process_flag(trap_exit, true),
+
     {ok, #state{name = Name,
-                pids2ids = PidsToIds}}.
+                pids2ids = PidsToIds,
+                options = Options}}.
 
 
 consume_death_of(Pid, State) ->
@@ -107,9 +110,11 @@ handle_info({'EXIT', Pid, _Reason} = ExitMsg, #state{name = Name,
     end,
     {noreply, State}.
 
-terminate(_Reason, #state{name = Name}) ->
+terminate(_Reason, #state{name = Name,
+                          options = Options}) ->
+    TerminateCommand = proplists:get_value(terminate_command, Options, shutdown),
     [begin
-         erlang:exit(Pid, shutdown),
+         erlang:exit(Pid, TerminateCommand),
          misc:wait_for_process(Pid, infinity)
      end || {_, Pid} <- ets:tab2list(Name)],
     ok.
