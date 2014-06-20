@@ -554,10 +554,15 @@ pick_latest_cluster_collect_task(AllNodeTasks) ->
                                   []
                           end,
 
+            ProgressProp = case lists:keyfind(progress, 1, Task) of
+                               false -> [];
+                               PX -> [PX]
+                           end,
+
             FinalTask = [{node, Node},
                          {type, clusterLogsCollection},
                          {perNode, {struct, PerNode}}]
-                ++ TSProp ++ StatusProp ++ RefreshProp,
+                ++ ProgressProp ++ TSProp ++ StatusProp ++ RefreshProp,
 
             [FinalTask]
     end.

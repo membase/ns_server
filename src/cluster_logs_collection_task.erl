@@ -65,8 +65,18 @@ build_cluster_logs_task_tail(Tasks, Nodes, BaseURL, Timestamp, PidOrCompleted) -
              end,
 
     NodeStatuses = [{N, build_node_task_status(Tasks, BaseURL, N)} || N <- Nodes],
+    CompletedNodes = [ok || {_, NS} <- NodeStatuses,
+                            case proplists:get_value(status, NS) of
+                                failed -> true;
+                                collected -> true;
+                                uploaded -> true;
+                                failedUpload -> true;
+                                _ -> false
+                            end],
+
     [{type, cluster_logs_collect},
      {status, Status},
+     {progress, length(CompletedNodes) * 100 div length(NodeStatuses)},
      {timestamp, Timestamp},
      {perNode, NodeStatuses}].
 
