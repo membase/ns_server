@@ -3045,7 +3045,8 @@ build_internal_settings_kvs() ->
                {{xdcr, optimistic_replication_threshold}, xdcrOptimisticReplicationThreshold, 256},
                {{request_limit, rest}, restRequestLimit, <<>>},
                {{request_limit, capi}, capiRequestLimit, <<>>},
-               {drop_request_memory_threshold_mib, dropRequestMemoryThresholdMiB, <<>>}],
+               {drop_request_memory_threshold_mib, dropRequestMemoryThresholdMiB, <<>>},
+               {xdcr_anticipatory_delay, xdcrAnticipatoryDelay, 0}],
     [{JK, case ns_config:read_key_fast(CK, DV) of
               undefined ->
                   DV;
@@ -3182,7 +3183,13 @@ handle_internal_settings_post(Req) ->
                                         {ok, V0} = parse_validate_number(SV, 0, 99999),
                                         V0
                                 end)
-               end],
+               end,
+              case proplists:get_value("xdcrAnticipatoryDelay", Params) of
+                  undefined -> undefined;
+                  Other ->
+                      {ok, SV} = parse_validate_number(Other, 0, 99999),
+                      MaybeSet(xdcrAnticipatoryDelay, xdcr_anticipatory_delay, SV)
+              end],
     [Action()
      || Action <- Actions,
         Action =/= undefined],

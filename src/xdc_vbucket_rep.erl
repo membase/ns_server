@@ -1102,6 +1102,22 @@ check_src_db_updated(#rep_state{status = #rep_vb_status{status = idle,
                       RV = (catch upr_notifier:subscribe(couch_util:to_list(SourceBucket),
                                                          Vb, Seq, U)),
                       ?x_trace(gotNotification, [{rv, xdcr_trace_log_formatter:format_pp(RV)}]),
-                      Self ! wake_me_up
+                      case ns_config:read_key_fast(xdcr_anticipatory_delay, 0) of
+                          0 ->
+                              Self ! wake_me_up;
+                          Delay0 ->
+                              %% this randomizes delay by about
+                              %% 10%. It helps spread wakeup moments
+                              %% for vbuckets. It is implemented in
+                              %% order to avoid all vbuckets
+                              %% "clumping" into about same wakeup
+                              %% moments which was observed in
+                              %% practice before randomization was
+                              %% implemented.
+                              Rnd = erlang:phash2(self(), 16384),
+                              Noise = (Rnd * Delay0 + (163840 - 1)) div 163840,
+                              Delay = Delay0 + Noise,
+                              erlang:send_after(Delay, Self, wake_me_up)
+                      end
               end)
     end.
