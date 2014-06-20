@@ -68,8 +68,10 @@ def os_specific(args, params):
     """Add os-specific junk to the cluster startup."""
     if platform.system() == 'Darwin':
         import resource
-        ## OS X has a pretty tiny default fd limit.  Let's increase it
-        resource.setrlimit(resource.RLIMIT_NOFILE, (2048, 2048))
+        ## OS X has a pretty tiny default fd limit.  Let's increase it (if it hasn't already been).
+        (soft, hard) = resource.getrlimit(resource.RLIMIT_NOFILE)
+        if soft < 2048:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (2048, 2048))
         ## Also, we build stuff in kind of dumb ways, so fix the path.
         dypath = ("%(pwd)s/../install/lib/memcached:"
                   "%(pwd)s/../install/lib") % {'pwd': os.getcwd()}
