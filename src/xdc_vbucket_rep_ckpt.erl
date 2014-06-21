@@ -21,7 +21,6 @@
 -export([do_checkpoint/1]).
 -export([read_validate_checkpoint/3]).
 -export([get_local_vbuuid/2]).
--export([get_failover_uuid/2]).
 -export([build_request_base/4]).
 
 -include("xdc_replicator.hrl").
@@ -301,7 +300,7 @@ read_validate_checkpoint(Rep, Vb, ApiRequestBase) ->
     DocId = build_commit_doc_id(Rep, Vb),
     case couch_db:open_doc_int(DB, DocId, [ejson_body]) of
         {ok, #doc{body = Body}} ->
-            parse_validate_checkpoint_doc(Rep, Vb, Body, ApiRequestBase);
+            parse_validate_checkpoint_doc(Vb, Body, ApiRequestBase);
         {not_found, _} ->
             ?xdcr_debug("Found no local checkpoint document for vb: ~B. Will start from scratch", [Vb]),
             handle_no_checkpoint(ApiRequestBase)
@@ -323,16 +322,16 @@ handle_no_checkpoint_with_opaque(RemoteVBOpaque) ->
      TotalDataReplicated,
      RemoteVBOpaque}.
 
-parse_validate_checkpoint_doc(Rep, Vb, Body, ApiRequestBase) ->
+parse_validate_checkpoint_doc(Vb, Body, ApiRequestBase) ->
     try
-        do_parse_validate_checkpoint_doc(Rep, Vb, Body, ApiRequestBase)
+        do_parse_validate_checkpoint_doc(Vb, Body, ApiRequestBase)
     catch T:E ->
             S = erlang:get_stacktrace(),
             ?xdcr_debug("Got parse_validate_checkpoint_doc exception: ~p:~p~n~p", [T, E, S]),
             erlang:raise(T, E, S)
     end.
 
-do_parse_validate_checkpoint_doc(Rep, Vb, Body0, ApiRequestBase) ->
+do_parse_validate_checkpoint_doc(Vb, Body0, ApiRequestBase) ->
     Body = case Body0 of
                {XB} -> XB;
                _ -> []
@@ -351,13 +350,6 @@ do_parse_validate_checkpoint_doc(Rep, Vb, Body0, ApiRequestBase) ->
         false ->
             handle_no_checkpoint(ApiRequestBase);
         true ->
-            case get_failover_uuid(Rep#rep.source, Vb) =/= FailoverUUID of
-                true ->
-                    ?xdcr_debug("local checkpoint for vb ~B does not match due to local side. Checkpoint seqno: ~B. But will still let upr producer decide on true start seqno", [Vb, Seqno]),
-                    ok;
-                false ->
-                    ok
-            end,
             case perform_pre_replicate(CommitOpaque, ApiRequestBase) of
                 {mismatch, RemoteVBOpaque} ->
                     ?xdcr_debug("local checkpoint for vb ~B does not match due to remote side. Checkpoint seqno: ~B. xdcr will start from scratch", [Vb, Seqno]),
@@ -382,7 +374,3 @@ get_local_vbuuid(BucketName, Vb) ->
     {ok, KV} = ns_memcached:stats(couch_util:to_list(BucketName), io_lib:format("vbucket-seqno ~B", [Vb])),
     Key = iolist_to_binary(io_lib:format("vb_~B:uuid", [Vb])),
     misc:expect_prop_value(Key, KV).
-
-get_failover_uuid(BucketName, Vb) ->
-    {U, _} = lists:last(xdcr_upr_streamer:get_failover_log(couch_util:to_list(BucketName), Vb)),
-    U.
