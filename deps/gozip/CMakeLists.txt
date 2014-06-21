@@ -1,0 +1,3 @@
+SET (GOZIP_SRCS main.go)
+
+GoBuild (TARGET ns_gozip OUTPUT gozip SOURCES ${GOZIP_SRCS} INSTALL_PATH bin)

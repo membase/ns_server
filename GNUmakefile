@@ -57,3 +57,8 @@ prebuild_generate_cert:
 	cd deps/generate_cert && GOOS=linux GOARCH=386 go build -ldflags "-B 0x$$(sed -e 's/-//g' /proc/sys/kernel/random/uuid)" -o ../../priv/i386-linux-generate_cert
 	cd deps/generate_cert && GOOS=darwin GOARCH=386 go build -o ../../priv/i386-darwin-generate_cert
 	cd deps/generate_cert && GOOS=windows GOARCH=386 go build -o ../../priv/i386-win32-generate_cert.exe
+
+prebuild_gozip:
+	cd deps/gozip && GOOS=linux GOARCH=386 go build -ldflags "-B 0x$$(sed -e 's/-//g' /proc/sys/kernel/random/uuid)" -o ../../priv/i386-linux-gozip
+	cd deps/gozip && GOOS=darwin GOARCH=386 go build -o ../../priv/i386-darwin-gozip
+	cd deps/gozip && GOOS=windows GOARCH=386 go build -o ../../priv/i386-win32-gozip.exe
