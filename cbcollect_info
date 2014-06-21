@@ -77,10 +77,14 @@ class Task(object):
             return 0
 
         if hasattr(self, 'reformat') and self.reformat:
+            if not use_shell:
+                # we don't have code to handle errors due to
+                # missing executable in this branch of code
+                raise
             p = subprocess.Popen(self.command, stdout=subprocess.PIPE,
                                  stderr=subprocess.STDOUT,
                                  stdin=subprocess.PIPE,
-                                 shell=use_shell)
+                                 shell=True)
             p.stdin.close()
             print >> fp, p.stdout.read()
         else:
@@ -88,10 +92,20 @@ class Task(object):
             if "addenv" in self.__dict__:
                 env = os.environ.copy()
                 env.update(self.addenv)
-            p = subprocess.Popen(self.command, bufsize=-1,
-                                 stdin=subprocess.PIPE,
-                                 stdout=fp, stderr=fp,
-                                 shell=use_shell, env=env)
+            try:
+                p = subprocess.Popen(self.command, bufsize=-1,
+                                     stdin=subprocess.PIPE,
+                                     stdout=fp, stderr=fp,
+                                     shell=use_shell, env=env)
+            except OSError, e:
+                # if use_shell is False then Popen may raise exception
+                # if binary is missing. In this case we mimic what
+                # shell does. Namely, complaining to stderr and
+                # setting non-zero status code. It's might also
+                # automatically handle things like "failed to fork due
+                # to some system limit".
+                print >> fp, "Failed to execute %s: %s" % (self.command, e)
+                return 127
             p.stdin.close()
         return p.wait()
 
