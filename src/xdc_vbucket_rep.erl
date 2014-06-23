@@ -628,8 +628,14 @@ init_replication_state(#init_state{rep = Rep,
 
                          {ok, {_ClusterUUID, BucketName}} = remote_clusters_info:parse_remote_bucket_reference(Tgt),
                          Password = binary_to_list(LatestRemoteBucket#remote_bucket.password),
-                         RemoteBucketCaps = LatestRemoteBucket#remote_bucket.bucket_caps,
-                         SupportsDatatype = lists:member(<<"datatype">>, RemoteBucketCaps),
+
+                         %% NOTE: we're disabling datatype because as
+                         %% of this writing it's unclear if current
+                         %% set of datatypes is compatible with
+                         %% whatever we will officially support.
+
+                         %% RemoteBucketCaps = LatestRemoteBucket#remote_bucket.bucket_caps,
+                         SupportsDatatype = false, %% lists:member(<<"datatype">>, RemoteBucketCaps),
 
                          ?x_trace(gotRemoteVBucketDetails,
                                   [{bucket, BucketName},
