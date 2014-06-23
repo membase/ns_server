@@ -4,6 +4,7 @@ angular.module('wizard')
       function ($scope, $state, step3Service, step2Service, joinClusterService) {
         $scope.guageConfig = {};
         $scope.focusMe = true;
+        $scope.replicaNumberEnabled = true;
 
         step3Service.model.bucketConf.ramQuotaMB = joinClusterService.model.dynamicRamQuota - _.bytesToMB(step2Service.model.sampleBucketsRAMQuota);
         $scope.modelStep3Service = step3Service.model;
@@ -14,6 +15,10 @@ angular.module('wizard')
           }
           $state.transitionTo('wizard.step4');
         }
+
+        $scope.$watch('replicaNumberEnabled', function (isEnabled) {
+          $scope.modelStep3Service.bucketConf.replicaNumber = isEnabled | 0;
+        });
 
         $scope.$watch('modelStep3Service.bucketConf', function (bucketConf) {
           if (!bucketConf) {

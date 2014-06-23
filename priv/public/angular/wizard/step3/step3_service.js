@@ -25,6 +25,7 @@ angular.module('wizard.step3.service', [])
                 '&threadsNumber=' + scope.model.bucketConf.threadsNumber +
                 '&ramQuotaMB=' + scope.model.bucketConf.ramQuotaMB +
                 '&flushEnabled=' + scope.model.bucketConf.flushEnabled +
+                '&replicaIndex=' + scope.model.bucketConf.replicaIndex +
                 '&otherBucketsRamQuotaMB=' + _.bytesToMB(step2Service.model.sampleBucketsRAMQuota),
           headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
         };

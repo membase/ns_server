@@ -1,82 +1,115 @@
-  <div class="pad bucket_details really" id="init_bucket_dialog">
-    <div class="config-top">
-      <h1>Create Default Bucket</h1>
-      <h2>Step <i class="current-step">3</i> of 5</h2>
-    </div>
-    <form ng-submit="onSubmit()">
-      <div class="clearfix">
-        <h2>Bucket Settings</h2>
-        <div class="bucket-icon"></div>
-        <label class="for-name"><span>Bucket Name:</span> <strong>default</strong></label>
-        <div class="for-bucket-type"><span>Bucket Type:</span>
-         <label><input type="radio" name="bucketType" ng-model="modelStep3Service.bucketConf.bucketType" value="membase"> Couchbase</label>
-         <label><input type="radio" name="bucketType" ng-model="modelStep3Service.bucketConf.bucketType" value="memcached"> Memcached</label>
-        </div>
-        <h2>Memory Size</h2>
-        <div class="cache_metadata_block persistent-only" id="js_cache_metadata_block" ng-show="modelStep3Service.bucketConf.bucketType === 'membase'">
-          <label>Cache Metadata:</label>
-          <div>
-            <input type="radio" name="evictionPolicy" value="valueOnly" id="cache_metadata_retain" checked="checked" ng-model="modelStep3Service.bucketConf.evictionPolicy">
-            <label for="cache_metadata_retain">Retain metadata in memory even for non-resident items</label>
-            <br>
-            <input type="radio" name="evictionPolicy" value="fullEviction" id="cache_metadata_non_retain" ng-model="modelStep3Service.bucketConf.evictionPolicy">
-            <label for="cache_metadata_non_retain">Don’t retain metadata in memory for non-resident items</label>
-          </div>
-          <a class="more_info" ng-click="showWhatThis = !showWhatThis">What's this?</a>
-          <p class="more_info" ng-show="showWhatThis">
-            Retaining metadata needs more system memory, but can provide best performance. Not retaining metadata can reduce memory overhead requirement.
-          </p>
-        </div>
-        <div class="usage-block size-gauge for-ram" bar-gauge="" base-info="guageConfig" ></div>
-        <label class="for-ram-quota">
-          <span>
-            <em>Per Node RAM Quota:</em>
-          </span>
-          <input name="ramQuotaMB" class="focusme" focus="focusMe" ng-class="{invalid: errors.ramQuotaMB}" value="30" ng-model="modelStep3Service.bucketConf.ramQuotaMB" />
-          <abbr>MB</abbr>
-        </label>
-        <div class="error-container err-ramQuotaMB" ng-show="errors.ramQuotaMB">{{errors.ramQuotaMB}}</div>
-        <em class="memcached-summary" ng-show="!!perNodeMegs">
-          Total bucket size = {{totalBucketSize}} MB ({{perNodeMegs}} MB x {{nodeCount}})
-        </em>
-
-        <div class="persistent-only" ng-show="modelStep3Service.bucketConf.bucketType === 'membase'">
-          <h2>Replicas</h2>
-          <label class="for-enable-replicas">
-            <input type="checkbox" ng-model="modelStep3Service.bucketConf.replicaNumber" ng-false-value="0" ng-true-value="1">
-            <span>Enable </span>
-          </label>
-          <label class="for-replica-number" ng-show="modelStep3Service.bucketConf.replicaNumber !== '0'">
-            <select name="replicaNumber" ng-model="modelStep3Service.bucketConf.replicaNumber">
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-            </select>
-            <span>Number of replica (backup) copies</span>
-          </label>
-          <span class="error-container err-replicaNumber" ng-show="errors.replicaNumber">{{errors.replicaNumber}}</span>
-          <input type="hidden" name="replicaIndex" value="0"/>
-          <label style="padding-left: 20px; clear:both;">
-            <input type="checkbox" name="replicaIndex" ng-model="modelStep3Service.bucketConf.replicaIndex" ng-false-value="0" ng-true-value="1" style="margin-right:5px;"/>Index replicas</label>
-        </div><!-- .persistent-only -->
-
-        <div class="persistent-only disk_concurrency_settings" ng-show="modelStep3Service.bucketConf.bucketType === 'membase'">
-          <h2>Bucket Priority</h2>
-
-          <label class="for-threads-number">
-            <span>Priority of this bucket when compared to other buckets:</span><input name="threadsNumber" ng-class="{invalid: !!errors.threadsNumber}" ng-model="modelStep3Service.bucketConf.threadsNumber" class="focusme" size="1" maxlength="1"/><span style="margin-left: 0.5em;">(Min = 2, Max = 8)</span><br><i class="error-container err-threadsNumber" ng-show="errors.threadsNumber">{{errors.threadsNumber}}</i>
-          </label>
-        </div><!-- .persistent-only -->
-
-        <h2>Flush</h2>
-        <label class="for-enable-flush">
-          <input type="checkbox" name="flushEnabled" ng-model="modelStep3Service.bucketConf.flushEnabled" ng-false-value="0" ng-true-value="1" value="1">
-          <span>Enable </span>
-        </label>
-      </div>
-      <div class="config-bottom clearfix">
-        <button name="finish" class="submit finish direction-button" type="submit">Next</button>
-        <button name="back" class="submit back direction-button" id="step-init-bucket-back" type="button" ui-sref="wizard.step2">Back</button>
-      </div>
-    </form>
+<div class="pad bucket_details" id="init_bucket_dialog">
+  <div class="config-top">
+    <h1>Create Default Bucket</h1>
+    <h2>Step <i class="current-step">3</i> of 5</h2>
   </div>
+  <form ng-submit="onSubmit()">
+  <div class="clearfix">
+    <h2>Bucket Settings</h2>
+    <div class="bucket-icon">
+      <div>
+        <label>Bucket Name:</label>
+        <strong>default</strong>
+      </div>
+      <div>
+        <label>Bucket Type:</label>
+        <div class="with_radiogroup">
+          <div>
+            <input type="radio" name="bucketType" value="membase" id="bucket_type_membase_init" ng-model="modelStep3Service.bucketConf.bucketType">
+            <label for="bucket_type_membase_init">Couchbase</label>
+          </div>
+          <div>
+            <input type="radio" name="bucketType" value="memcached" id="bucket_type_memcached_init" ng-model="modelStep3Service.bucketConf.bucketType">
+            <label for="bucket_type_memcached_init" >Memcached</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h2>Memory Size</h2>
+    <div class="sub_section">
+      <div class="cache_metadata_block persistent-only" ng-show="modelStep3Service.bucketConf.bucketType === 'membase'">
+        <label>Cache Metadata:</label>
+        <div class="with_radiogroup">
+          <div>
+            <input type="radio" name="evictionPolicy" value="valueOnly" id="cache_metadata_retain-init" checked="checked" ng-model="modelStep3Service.bucketConf.evictionPolicy">
+            <label for="cache_metadata_retain-init">Retain metadata in memory even for non-resident items</label>
+          </div>
+          <div>
+            <input type="radio" name="evictionPolicy" value="fullEviction" id="cache_metadata_non_retain-init" ng-model="modelStep3Service.bucketConf.evictionPolicy">
+            <label for="cache_metadata_non_retain-init">Don’t retain metadata in memory for non-resident items</label>
+          </div>
+        </div>
+        <a class="tooltip text_11"><span>What's this?</span>
+          <span class="tooltip_msg" style="width:200px;"><span>
+              Retaining metadata needs more system memory, but can provide best performance. Not retaining metadata can reduce memory overhead requirement.
+          </span></span>
+        </a>
+      </div>
+      <div class="for-ram-quota">
+        <div class="usage-block size-gauge for-ram" bar-gauge="" base-info="guageConfig" ></div>
+        <div class="gauge-label">
+          <label for="ram_quota_mb_init">Per Node RAM Quota:</label>
+          <input name="ramQuotaMB" class="focusme" focus="focusMe" ng-class="{invalid: errors.ramQuotaMB}" value="30" ng-model="modelStep3Service.bucketConf.ramQuotaMB">
+          <abbr>MB</abbr>
+        </div>
+      </div>
+      <div class="error-container err-ramQuotaMB" ng-show="errors.ramQuotaMB">{{errors.ramQuotaMB}}</div>
+      <span class="memcached-summary when-non-persistent" ng-show="!!perNodeMegs">
+         Total bucket size = {{totalBucketSize}} MB ({{perNodeMegs}} MB x {{nodeCount}})
+      </span>
+    </div>
+
+    <div class="persistent-only" ng-show="modelStep3Service.bucketConf.bucketType === 'membase'">
+      <h2>Replicas</h2>
+      <div class="sub_section">
+        <input type="checkbox" checked id="for-enable-replicas-init" class="js_for-enable-replicas" ng-model="replicaNumberEnabled">
+        <label for="for-enable-replicas-init">Enable</label>
+        <div class="for-replica-number" ng-show="replicaNumberEnabled">
+          <select name="replicaNumber" ng-model="modelStep3Service.bucketConf.replicaNumber">
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+          </select>
+          <label>Number of replica (backup) copies</label>
+        </div>
+        <div class="error-container err-replicaNumber" ng-show="errors.replicaNumber">{{errors.replicaNumber}}</div>
+        <div>
+          <input type="checkbox" name="replicaIndex" value="1" id="label_replica_index_flag-init" ng-model="modelStep3Service.bucketConf.replicaIndex" ng-false-value="0" ng-true-value="1" ng-disabled="!replicaNumberEnabled">
+          <label for="label_replica_index_flag-init">Index replicas</label>
+        </div>
+      </div>
+    </div><!-- .persistent-only -->
+
+    <div class="persistent-only bucket-io-priority" ng-show="modelStep3Service.bucketConf.bucketType === 'membase'">
+      <h2>Disk I/O Optimization</h2>
+      <div class="sub_section">
+        <label>Set the bucket disk I/O priority:</label>
+        <div class="with_radiogroup">
+          <div>
+            <input type="radio" name="threadsNumber" value="3" checked="true" id="low_threads_number_init" ng-model="modelStep3Service.bucketConf.threadsNumber">
+            <label for="low_threads_number_init">Low (default)</label>
+          </div>
+          <div>
+            <input type="radio" name="threadsNumber" value="8" id="hight_threads_number_init" ng-model="modelStep3Service.bucketConf.threadsNumber">
+            <label for="hight_threads_number_init">High</label>
+          </div>
+        </div>
+        <a class="tooltip text_11"><span>What's this?</span>
+          <span class="tooltip_msg" style="width:200px;"><span>
+              This is an advanced setting for Disk I/O optimization which allows tasks to be handled based on priority.
+          </span></span>
+        </a>
+      </div>
+    </div> <!-- .persistent-only -->
+
+    <h2>Flush</h2>
+    <div class="sub_section">
+      <input type="checkbox" class="for-enable-flush" id="for-enable-flush-init" name="flushEnabled" value="1" ng-model="modelStep3Service.bucketConf.flushEnabled" ng-false-value="0" ng-true-value="1">
+      <label for="for-enable-flush-init">Enable</label>
+    </div>
+  </div>
+
+  <div class="config-bottom">
+  <button name="finish" class="submit finish direction-button" type="submit">Next</button>
+  <button name="back" class="submit back direction-button" id="step-init-bucket-back" type="button" ui-sref="wizard.step2">Back</button>
+  </div></form>
+</div>
