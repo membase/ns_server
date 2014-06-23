@@ -270,6 +270,9 @@ def basedir():
 def make_os_tasks():
     _tasks = [
         UnixTask("uname", "uname -a"),
+        UnixTask("time and TZ", "date; date -u"),
+        UnixTask("raw /etc/sysconfig/clock", "cat /etc/sysconfig/clock"),
+        UnixTask("raw /etc/timezone", "cat /etc/timezone"),
         WindowsTask("System information", "systeminfo"),
         WindowsTask("Computer system", "wmic computersystem", reformat=True),
         WindowsTask("Computer OS", "wmic os", reformat=True),
