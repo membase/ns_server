@@ -15,6 +15,7 @@ import optparse
 import atexit
 import signal
 import urllib
+import shutil
 
 class AltExitC(object):
     def __init__(self):
@@ -56,25 +57,6 @@ USAGE = """usage: %prog [options] output_file.zip
 def log(message, end = '\n'):
     sys.stderr.write(message + end)
     sys.stderr.flush()
-
-class TempFile(object):
-    unlink = os.unlink
-    def __init__(self):
-        fd, self.name = tempfile.mkstemp(text=True)
-        self.fp = os.fdopen(fd, 'w+')
-        AltExit.register(self.finalize)
-
-    def __getattr__(self, name):
-        return getattr(self.__dict__['fp'], name)
-
-    def finalize(self):
-        try:
-            self.fp.close()
-        except:
-            pass
-
-        self.unlink(self.name)
-
 
 class Task(object):
     privileged = False
@@ -126,12 +108,24 @@ class TaskRunner(object):
         self.tasks = {}
         self.verbosity = verbosity
         self.start_time = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
+        self.tmpdir = tempfile.mkdtemp(prefix='tmpcbcollect_')
+
+        AltExit.register(self.finalize)
+
+    def finalize(self):
+        try:
+            for fp in self.files.iteritems():
+                fp.close()
+        except:
+            pass
+
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def get_file(self, filename):
         if filename in self.files:
             fp = self.files[filename]
         else:
-            fp = TempFile()
+            fp = open(os.path.join(self.tmpdir, filename), 'w+')
             self.files[filename] = fp
 
         return fp
@@ -184,13 +178,49 @@ class TaskRunner(object):
 
     def zip(self, filename, node):
         """Write all our logs to a zipfile"""
+        exe = "gozip"
+        if sys.platform == 'win32':
+            exe += ".exe"
+
+        prefix = "cbcollect_info_%s_%s" % (node, self.start_time)
+
+        files = []
+        for name, fp in self.files.iteritems():
+            fp.close()
+            files.append(fp.name)
+
+        log(str([exe, "-prefix", prefix, filename] + files))
+
+        fallback = False
+
+        try:
+            p = subprocess.Popen([exe, "-strip-path", "-prefix", prefix, filename] + files,
+                                 stderr=subprocess.STDOUT,
+                                 stdin=subprocess.PIPE)
+            p.stdin.close()
+            status = p.wait()
+
+            if status != 0:
+                log("gozip terminated with non-zero exit code (%d)" % status)
+        except OSError, e:
+            log("Exception during compression: %s" % e)
+            fallback = True
+
+        if fallback:
+            log("IMPORTANT:")
+            log("  Compression using gozip failed.")
+            log("  Falling back to python implementation.")
+            log("  Please let us know about this and provide console output.")
+
+            self._zip_fallback(filename, prefix, files)
+
+    def _zip_fallback(self, filename, prefix, files):
         from zipfile import ZipFile, ZIP_DEFLATED
         zf = ZipFile(filename, mode='w', compression=ZIP_DEFLATED)
         try:
-            for name, fp in self.files.iteritems():
-                fp.close()
-                zf.write(fp.name,
-                         "cbcollect_info_%s_%s/%s" % (node, self.start_time, name))
+            for name in files:
+                zf.write(name,
+                         "%s/%s" % (prefix, os.path.basename(name)))
         finally:
             zf.close()
 
