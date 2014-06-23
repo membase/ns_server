@@ -1,7 +1,12 @@
-<div data-dialog data-dialog-title="About Couchbase Server" data-dialog-width="650px" data-dialog-show="aboutDialog">
-  <p>
-    Version: {{modelAuthService.version | prettyVersion}}
-  </p>
+<div class="dialog_about" data-dialog data-dialog-title="About Couchbase Server" data-dialog-width="650px" data-dialog-show="aboutDialog">
+  <div class="dialog_inner_content">
+    <p>
+      Version: {{modelAuthService.version | prettyVersion}}
+    </p>
+    <p>
+      Cluster State ID: <em>Please login to view your Cluster State ID.</em>
+    </p>
+  </div>
   <div class="config-bottom">
     <button class="direction-button" ng-click="$$prevSibling.hideDialog()">
       Close
