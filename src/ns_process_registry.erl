@@ -43,10 +43,12 @@ lookup_pid(Name, Id) ->
             missing
     end.
 
+register_pid(Registry, Id, Pid) when is_pid(Registry) ->
+    gen_server:call(Registry, {register, Id, Pid});
 register_pid(Name, Id, Pid) ->
     case lookup_pid(Name, ?MODULE) of
         Registry when is_pid(Registry) ->
-            gen_server:call(Registry, {register, Id, Pid})
+            register_pid(Registry, Id, Pid)
     end.
 
 start_link(Name, Options) ->
