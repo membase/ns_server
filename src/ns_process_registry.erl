@@ -116,7 +116,8 @@ terminate(_Reason, #state{name = Name,
     [begin
          erlang:exit(Pid, TerminateCommand),
          misc:wait_for_process(Pid, infinity)
-     end || {_, Pid} <- ets:tab2list(Name)],
+     end || {_, Pid} <- ets:tab2list(Name),
+            Pid =/= self()],
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
