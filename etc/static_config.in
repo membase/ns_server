@@ -25,10 +25,10 @@
 
 {disk_sink_opts,
  [{rotation, [{compress, true},
-              {size, 10485760},
-              {num_files, 20}]}]}.
+              {size, 41943040},
+              {num_files, 5}]}]}.
 
 {disk_sink_opts_xdcr_trace,
  [{rotation, [{compress, false},
-              {size, 10485760},
-              {num_files, 40}]}]}.
+              {size, 83886080},
+              {num_files, 5}]}]}.
