@@ -98,12 +98,19 @@ handle_call({register, Id, Pid} = Call, From, #state{name = Name,
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info({'EXIT', Pid, _Reason} = ExitMsg, #state{name = Name,
-                                                     pids2ids = PidsToIds} = State) ->
-    ?log_debug("Got exit msg: ~p", [ExitMsg]),
+handle_info({'EXIT', Pid, Reason} = ExitMsg, #state{name = Name,
+                                                    pids2ids = PidsToIds} = State) ->
+    case Reason of
+        normal ->
+            ok;
+        shutdown ->
+            ok;
+        _ ->
+            ?log_debug("~p detected abnormal exit: ~p", [Name, ExitMsg])
+    end,
     case ets:lookup(PidsToIds, Pid) of
         [] ->
-            ?log_error("That exit is from unknown process. Crashing...~n~p", [ExitMsg]),
+            ?log_error("~p detected exit from the unknown process. Crashing...~n~p", [Name, ExitMsg]),
             exit({bad_exit, ExitMsg});
         [{_, Id}] ->
             erlang:unlink(Pid),
