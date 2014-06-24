@@ -6,7 +6,7 @@ angular.module('barGauge', []).directive('barGauge', function () {
       baseInfo: '=',
     },
     isolate: false,
-    templateUrl: 'components/bar_gauge/bar_gauge.html',
+    templateUrl: '/angular/components/bar_gauge/bar_gauge.html',
     controller: function ($scope) {
       $scope.$watch('baseInfo', function (options) {
         if (!options) {

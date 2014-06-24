@@ -17,7 +17,12 @@ angular.module('wizard')
         }
 
         $scope.$watch('replicaNumberEnabled', function (isEnabled) {
-          $scope.modelStep3Service.bucketConf.replicaNumber = isEnabled | 0;
+          if (!isEnabled) {
+            $scope.modelStep3Service.bucketConf.replicaNumber = 0;
+            $scope.modelStep3Service.bucketConf.replicaIndex = 0;
+          } else {
+            $scope.modelStep3Service.bucketConf.replicaNumber = 1;
+          }
         });
 
         $scope.$watch('modelStep3Service.bucketConf', function (bucketConf) {

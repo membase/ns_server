@@ -9,7 +9,5 @@ angular.module('wizard')
             template: '/angular/dialogs/about/about.html',
             scope: $scope
           });
-
-          $scope.aboutDialog = true;
         };
       }]);

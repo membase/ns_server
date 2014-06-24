@@ -67,7 +67,7 @@
       <div class="sub_section replicas_settigns">
         <input type="checkbox" checked id="for-enable-replicas-init" class="js_for-enable-replicas" ng-model="replicaNumberEnabled">
         <label for="for-enable-replicas-init">Enable</label>
-        <div class="for-replica-number" ng-show="replicaNumberEnabled">
+        <div class="for-replica-number" ng-if="replicaNumberEnabled">
           <select name="replicaNumber" ng-model="modelStep3Service.bucketConf.replicaNumber">
             <option value="1">1</option><option value="2">2</option><option value="3">3</option>
           </select>

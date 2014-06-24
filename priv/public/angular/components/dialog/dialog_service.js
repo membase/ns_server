@@ -4,7 +4,7 @@ angular.module('dialog', [])
       function ($http, $templateCache, $compile, $rootScope, $document) {
         var scope = {};
 
-        scope.open = function open (options) {
+        scope.open = function open(options) {
 
           var $scope = options.scope && options.scope.$new() || $rootScope.$new();
           var bodyElement = angular.element($document[0].body);

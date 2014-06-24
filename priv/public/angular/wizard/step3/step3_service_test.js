@@ -16,10 +16,10 @@ describe("wizard.step3.service", function () {
   });
 
   it('should be able to send requests', function () {
-    $httpBackend.expectPOST('/pools/default/buckets','authType=sasl&name=default&saslPassword=&bucketType=membase&evictionPolicy=valueOnly&replicaNumber=1&threadsNumber=8&ramQuotaMB=0&flushEnabled=0&otherBucketsRamQuotaMB=0').respond(200);
+    $httpBackend.expectPOST('/pools/default/buckets','authType=sasl&name=default&saslPassword=&bucketType=membase&evictionPolicy=valueOnly&replicaNumber=1&threadsNumber=8&ramQuotaMB=0&flushEnabled=0&replicaIndex=0&otherBucketsRamQuotaMB=0').respond(200);
     service.postBuckets();
     $httpBackend.flush();
-    $httpBackend.expectPOST('/pools/default/buckets?ignore_warnings=1&just_validate=1','authType=sasl&name=default&saslPassword=&bucketType=membase&evictionPolicy=valueOnly&replicaNumber=1&threadsNumber=8&ramQuotaMB=0&flushEnabled=0&otherBucketsRamQuotaMB=0').respond(200);
+    $httpBackend.expectPOST('/pools/default/buckets?ignore_warnings=1&just_validate=1','authType=sasl&name=default&saslPassword=&bucketType=membase&evictionPolicy=valueOnly&replicaNumber=1&threadsNumber=8&ramQuotaMB=0&flushEnabled=0&replicaIndex=0&otherBucketsRamQuotaMB=0').respond(200);
     service.postBuckets(true);
     $httpBackend.flush();
   });

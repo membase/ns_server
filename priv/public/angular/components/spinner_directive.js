@@ -7,7 +7,7 @@ angular.module('spinner', []).directive('spinner', function () {
     },
     isolate: false,
     replace: true,
-    templateUrl: 'components/spinner_directive.html',
+    templateUrl: '/angular/components/spinner_directive.html',
     link: function ($scope, $element, $attrs) {
       var parent = $element.parent().addClass('spinner_wrap');
     }

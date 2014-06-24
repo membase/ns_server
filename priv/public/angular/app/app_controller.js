@@ -8,6 +8,9 @@ angular.module('app')
         $scope.Math = Math;
         $scope.logout = authService.manualLogout;
 
+        //app model sharing
+        $scope.appServiceModel = appService.model;
+
         $scope.$watch(function () {
           if (!(authService.model.defaultPoolUri && authService.model.isAuth)) {
             return;

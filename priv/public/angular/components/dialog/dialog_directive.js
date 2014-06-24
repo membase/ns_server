@@ -17,7 +17,6 @@ angular.module('dialog').directive('dialog', function ($compile) {
 
       $scope.hideDialog = function() {
         $element.remove();
-        $scope.dialogShow = false;
       };
     },
     templateUrl: '/angular/components/dialog/dialog_directive.html'

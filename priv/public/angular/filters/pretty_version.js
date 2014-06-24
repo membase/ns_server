@@ -9,6 +9,9 @@ angular.module('filters', []).filter('prettyVersion', function () {
   }
 
   return function (str, full) {
+    if (!str) {
+      return;
+    }
     var a = parseVersion(str);
     // Example default result: "1.8.0 Enterprise Edition (build-7)"
     // Example full result: "1.8.0 Enterprise Edition (build-7-g35c9cdd)"

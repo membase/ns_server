@@ -7,9 +7,10 @@ angular.module('overview', [])
         $scope.model.ramOverviewConfig = {};
         $scope.model.hddOverviewConfig = {};
 
-        appService.$watch('details', function (details) {
+
+        $scope.$watch('appServiceModel.details', function (details) {
           if (!details) {
-            return
+            return;
           }
 
           ;(function () {
@@ -116,5 +117,5 @@ angular.module('overview', [])
 
             $scope.model.hddOverviewConfig = hddOverviewConfig;
           })();
-        });
+        }, true);
       }]);

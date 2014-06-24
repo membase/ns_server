@@ -6,6 +6,7 @@ angular.module('wizard', [
   'wizard.step3.service',
   'wizard.step4.service',
   'wizard.step5.service',
+  'dialog',
   'ui.router'
 ]).config(['$stateProvider', '$urlRouterProvider',
     function ($stateProvider, $urlRouterProvider) {
