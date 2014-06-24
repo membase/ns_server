@@ -67,6 +67,7 @@ init([]) ->
                 ale:error(?USER_LOGGER, "~s is missing. Will not collect system-level stats", [Path]),
                 undefined
         end,
+    spawn_ale_stats_collector(),
     {ok, #state{port = Port}}.
 
 handle_call(_Request, _From, State) ->
@@ -604,3 +605,12 @@ stale_histo_epoch_cleaner_loop() ->
     cleanup_stale_epoch_histos(),
     timer:sleep(?EPOCH_DURATION * ?EPOCH_PRESERVE_COUNT * 1100),
     stale_histo_epoch_cleaner_loop().
+
+spawn_ale_stats_collector() ->
+    ns_pubsub:subscribe_link(
+      ale_stats_events,
+      fun ({{ale_disk_sink, Name}, StatName, Value}) ->
+              add_histo({Name, StatName}, Value);
+          (_) ->
+              ok
+      end).
