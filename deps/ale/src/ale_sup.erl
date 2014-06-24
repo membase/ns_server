@@ -23,11 +23,6 @@
 %% Supervisor callbacks
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(I, Type, Args),
-        {I, {I, start_link, Args}, permanent, 5000, Type, [I]}).
-
-
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -41,5 +36,7 @@ start_link() ->
 
 init([]) ->
     {ok, { {one_for_all, 5, 10},
-           [?CHILD(ale_dynamic_sup, supervisor, []),
-            ?CHILD(ale, worker, [])]} }.
+           [{ale_dymamic_sup,
+             {ale_dynamic_sup, start_link, []},
+             permanent, 5000, supervisor, [ale_dynamic_sup]},
+            {ale, {ale, start_link, []}, permanent, 5000, worker, [ale]}]}}.
