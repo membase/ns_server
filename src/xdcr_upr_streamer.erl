@@ -332,11 +332,11 @@ socket_loop(Socket, Callback, Acc, Data, Consumer) ->
             erlang:error(premature_socket_closure);
         ConsumedBytes when is_integer(ConsumedBytes) ->
             ok = gen_tcp:send(Socket, encode_req(#upr_packet{opcode = ?UPR_WINDOW_UPDATE,
-                                                             body = <<ConsumedBytes:32/big>>})),
+                                                             ext = <<ConsumedBytes:32/big>>})),
             socket_loop(Socket, Callback, Acc, Data, Consumer);
         done ->
             ok = gen_tcp:send(Socket, encode_req(#upr_packet{opcode = ?UPR_WINDOW_UPDATE,
-                                                             body = <<(?XDCR_UPR_BUFFER_SIZE):32/big>>,
+                                                             ext = <<(?XDCR_UPR_BUFFER_SIZE):32/big>>,
                                                              opaque = 1})),
             socket_exit_loop_recv(Socket, Data);
         stop ->
