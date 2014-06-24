@@ -57,6 +57,9 @@ flush_docs(#xdc_xmem_location{vb = VBucket,
     TimeStart = now(),
 
     {ok, Statuses} = pooled_memcached_client:bulk_set_metas(McdDst, VBucket, MutationsList),
+    ?x_trace(xmemSetMetas, [{ids, {json, [M#upr_mutation.id || M <- MutationsList]}},
+                            {statuses, {json, Statuses}},
+                            {startTS, xdcr_trace_log_formatter:format_ts(TimeStart)}]),
 
     {ErrorDict, ErrorKeysDict} = categorise_statuses_to_dict(Statuses, MutationsList),
     Flushed = lookup_error_dict(success, ErrorDict),
