@@ -42,6 +42,7 @@
          }).
 
 -record(worker_state, {
+          sink_name :: atom(),
           path :: string(),
           file :: file:io_device(),
           file_size :: integer(),
@@ -58,12 +59,12 @@ start_link(Name, Path) ->
     start_link(Name, Path, []).
 
 start_link(Name, Path, Opts) ->
-    gen_server:start_link({local, Name}, ?MODULE, [Path, Opts], []).
+    gen_server:start_link({local, Name}, ?MODULE, [Name, Path, Opts], []).
 
 sink_type() ->
     preformatted.
 
-init([Path, Opts]) ->
+init([Name, Path, Opts]) ->
     process_flag(trap_exit, true),
 
     BatchSize = proplists:get_value(batch_size, Opts, 524288),
@@ -79,7 +80,8 @@ init([Path, Opts]) ->
 
     ok = remove_unnecessary_log_files(Path, RotNumFiles),
 
-    WorkerState = #worker_state{path = Path,
+    WorkerState = #worker_state{sink_name = Name,
+                                path = Path,
                                 parent = self(),
                                 rotation_size = RotSize,
                                 rotation_num_files = RotNumFiles,
@@ -288,12 +290,16 @@ do_rotate_file(From0, To0, Compress) ->
             Error
     end.
 
-maybe_rotate_files(#worker_state{file_size = FileSize,
+maybe_rotate_files(#worker_state{sink_name = Name,
+                                 file_size = FileSize,
                                  rotation_size = RotSize} = State)
   when RotSize =/= 0, FileSize >= RotSize ->
-    ok = rotate_files(State),
-    ok = maybe_compress_post_rotate(State),
-    open_log_file(State);
+    time_stat(Name, rotation_time,
+              fun () ->
+                      ok = rotate_files(State),
+                      ok = maybe_compress_post_rotate(State),
+                      open_log_file(State)
+              end);
 maybe_rotate_files(State) ->
     State.
 
@@ -359,13 +365,18 @@ do_open_file(Path, #file_info{inode = Inode}) ->
             Error
     end.
 
-maybe_compress_post_rotate(#worker_state{path = Path,
+maybe_compress_post_rotate(#worker_state{sink_name = Name,
+                                         path = Path,
                                          rotation_num_files = NumFiles,
                                          rotation_compress = true})
   when NumFiles > 1 ->
     UncompressedPath = Path ++ ".1",
     CompressedPath = Path ++ ".1.gz",
-    compress_file(UncompressedPath, CompressedPath);
+
+    time_stat(Name, compression_time,
+              fun () ->
+                      compress_file(UncompressedPath, CompressedPath)
+              end);
 maybe_compress_post_rotate(_) ->
     ok.
 
@@ -463,10 +474,17 @@ receive_more_writes(Data, DataSize) ->
     end.
 
 write_data(Data, DataSize,
-           #worker_state{file = File,
+           #worker_state{sink_name = Name,
+                         file = File,
                          file_size = FileSize,
                          parent = Parent} = State) ->
-    ok = file:write(File, Data),
+    broadcast_stat(Name, write_size, DataSize),
+
+    time_stat(Name, write_time,
+              fun () ->
+                      ok = file:write(File, Data)
+              end),
+
     Parent ! {written, DataSize},
     NewState = State#worker_state{file_size = FileSize + DataSize},
     maybe_rotate_files(NewState).
@@ -498,3 +516,14 @@ remove_unnecessary_log_files(LogFilePath, NumFiles) ->
                       ok
               end
       end, DirFiles).
+
+broadcast_stat(Name, StatName, Value) ->
+    gen_event:notify(ale_stats_events, {{?MODULE, Name}, StatName, Value}).
+
+time_stat(Name, StatName, Body) ->
+    StartTS = os:timestamp(),
+    R = Body(),
+    EndTS = os:timestamp(),
+
+    broadcast_stat(Name, StatName, timer:now_diff(EndTS, StartTS)),
+    R.

@@ -39,4 +39,7 @@ init([]) ->
            [{ale_dymamic_sup,
              {ale_dynamic_sup, start_link, []},
              permanent, 5000, supervisor, [ale_dynamic_sup]},
+            {ale_stats_events,
+             {gen_event, start_link, [{local, ale_stats_events}]},
+             permanent, 1000, worker, []},
             {ale, {ale, start_link, []}, permanent, 5000, worker, [ale]}]}}.
