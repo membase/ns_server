@@ -26,7 +26,8 @@
 {disk_sink_opts,
  [{rotation, [{compress, true},
               {size, 41943040},
-              {num_files, 5}]}]}.
+              {num_files, 5},
+              {buffer_size_max, 52428800}]}]}.
 
 {disk_sink_opts_xdcr_trace,
  [{rotation, [{compress, false},
