@@ -122,7 +122,7 @@ class TaskRunner(object):
         self.tasks = {}
         self.verbosity = verbosity
         self.start_time = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
-        self.tmpdir = tempfile.mkdtemp(prefix='tmpcbcollect_')
+        self.tmpdir = tempfile.mkdtemp()
 
         AltExit.register(self.finalize)
 
@@ -202,8 +202,6 @@ class TaskRunner(object):
         for name, fp in self.files.iteritems():
             fp.close()
             files.append(fp.name)
-
-        log(str([exe, "-prefix", prefix, filename] + files))
 
         fallback = False
 
