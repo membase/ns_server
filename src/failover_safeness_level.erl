@@ -49,11 +49,16 @@
 -export([init/1, handle_event/2, handle_call/2,
          handle_info/2, terminate/2, code_change/3]).
 
+-record(safeness_info,
+        {backlog_size :: undefined | number(),
+         drain_rate :: undefined | number(),
+         safeness_level = unknown :: yellow | green | unknown
+        }).
+
 -record(state,
         {bucket_name :: bucket_name(),
-         backlog_size :: undefined | number(),
-         drain_rate :: undefined | number(),
-         safeness_level = unknown :: yellow | green | unknown,
+         tap_info :: #safeness_info{},
+         upr_info :: #safeness_info{},
          last_ts :: undefined | non_neg_integer(),
          last_update_local_clock :: non_neg_integer()
         }).
@@ -76,22 +81,36 @@ get_value(BucketName) ->
 
 init([BucketName]) ->
     {ok, #state{bucket_name = BucketName,
+                tap_info = #safeness_info{},
+                upr_info = #safeness_info{},
                 last_update_local_clock = misc:time_to_epoch_ms_int(now())}}.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
-handle_event({stats, StatsBucket, #stat_entry{timestamp = TS,
-                                              values = Values}},
-             #state{bucket_name = StatsBucket} = State) ->
-    case {orddict:find(ep_tap_replica_total_backlog_size, Values),
-          orddict:find(ep_tap_replica_queue_drain, Values)} of
-        {{ok, BacklogSize},
-         {ok, DrainRate}} ->
-            handle_stats_sample(BacklogSize, DrainRate, TS, State);
-        _ ->
-            {ok, mark_update(State#state{last_ts = TS})}
-    end;
+handle_event({stats, StatsBucket, #stat_entry{timestamp = TS} = Stats},
+             #state{bucket_name = StatsBucket,
+                    tap_info = TapInfo,
+                    upr_info = UprInfo,
+                    last_ts = LastTS} = State) ->
+    NewTapInfo =
+         new_safeness_info(ep_tap_replica_total_backlog_size,
+                           ep_tap_replica_queue_drain,
+                           Stats,
+                           LastTS,
+                           TapInfo),
+
+    NewUprInfo =
+         new_safeness_info(ep_upr_replica_items_remaining,
+                           ep_upr_replica_items_sent,
+                           Stats,
+                           LastTS,
+                           UprInfo),
+
+    {ok, State#state{last_ts = TS,
+                     tap_info = NewTapInfo,
+                     upr_info = NewUprInfo,
+                     last_update_local_clock = misc:time_to_epoch_ms_int(now())}};
 
 handle_event(_, State) ->
     {ok, State}.
@@ -144,34 +163,49 @@ new_safeness_level(green, BacklogSize, DrainRate) ->
             end
     end.
 
+new_safeness_info(BacklogSizeStat, DrainRateStat,
+                  #stat_entry{timestamp = TS,
+                              values = Values},
+                  LastTS,
+                  #safeness_info{backlog_size = OldBacklogSize,
+                                 drain_rate = OldDrainRate,
+                                 safeness_level = SafenessLevel} = Info) ->
+    case {orddict:find(BacklogSizeStat, Values),
+          orddict:find(DrainRateStat, Values)} of
+        {{ok, BacklogSize},
+         {ok, DrainRate}} ->
 
-mark_update(State) ->
-    State#state{last_update_local_clock = misc:time_to_epoch_ms_int(now())}.
+            NewBacklogSize = average_value(OldBacklogSize, BacklogSize,
+                                           LastTS, TS),
+            NewDrainRate = average_value(OldDrainRate, DrainRate,
+                                         LastTS, TS),
+            NewSafenessLevel = new_safeness_level(SafenessLevel, NewBacklogSize, NewDrainRate),
 
-handle_stats_sample(BacklogSize, DrainRate, TS,
-                    #state{backlog_size = OldBacklogSize,
-                           drain_rate = OldDrainRate,
-                           last_ts = LastTS,
-                           safeness_level = SafenessLevel} = State) ->
-    NewBacklogSize = average_value(OldBacklogSize, BacklogSize,
-                                   LastTS, TS),
-    NewDrainRate = average_value(OldDrainRate, DrainRate,
-                                 LastTS, TS),
-    NewSafenessLevel = new_safeness_level(SafenessLevel, NewBacklogSize, NewDrainRate),
-    {ok, mark_update(State#state{
-                       backlog_size = NewBacklogSize,
-                       drain_rate = NewDrainRate,
-                       last_ts = TS,
-                       safeness_level = NewSafenessLevel})}.
+            #safeness_info{backlog_size = NewBacklogSize,
+                           drain_rate = NewDrainRate,
+                           safeness_level = NewSafenessLevel};
+        _ ->
+            Info
+    end.
+
+pick_level(unknown, _) ->
+    unknown;
+pick_level(_, unknown) ->
+    unknown;
+pick_level(green, green) ->
+    green;
+pick_level(_, _) ->
+    yellow.
 
 handle_call(get_level, #state{last_update_local_clock = UpdateTS,
-                              safeness_level = Level} = State) ->
+                              tap_info = #safeness_info{safeness_level = TapLevel},
+                              upr_info = #safeness_info{safeness_level = UprLevel}} = State) ->
     Now = misc:time_to_epoch_ms_int(now()),
     RV = case Now - UpdateTS > ?STALENESS_THRESHOLD of
              true ->
                  stale;
              _ ->
-                 Level
+                 pick_level(TapLevel, UprLevel)
          end,
     {ok, {ok, RV}, State};
 handle_call(get_state, State) ->
