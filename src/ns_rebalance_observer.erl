@@ -177,8 +177,8 @@ initiate_bucket_rebalance(BucketName, OldState) ->
                MasterNode =/= undefined,
                ChainBefore =/= ChainAfter],
     BuildDestinations0 = [{MasterNode, VB} || {VB, [MasterNode|_], _ChainAfter} <- Diff],
-    BuildDestinations1 = [{N, VB} || {VB, _, ChainAfter} <- Diff,
-                                     N <- ChainAfter, N =/= undefined],
+    BuildDestinations1 = [{N, VB} || {VB, [MasterNode|_], ChainAfter} <- Diff,
+                                     N <- ChainAfter, N =/= undefined, N =/= MasterNode],
 
     BuildDestinations =
         %% the following groups vbuckets to per node. [{a, 1}, {a, 2}, {b, 3}] => [{a, [1,2]}, {b, [3]}]
