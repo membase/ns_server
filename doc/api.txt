@@ -453,7 +453,7 @@ POST /controller/regenerateCertificate
 // delta-recoverable)
 POST /controller/rebalance
 
-knownNodes=<comma separated list of nodes>&ejectedNodes=<comma separated list of nodes>&requireDeltaRecoveryBuckets=<comma separated list of bucket names> =>
+knownNodes=<comma separated list of nodes>&ejectedNodes=<comma separated list of nodes>&deltaRecoveryBuckets=<comma separated list of bucket names> =>
 
    200 "" // rebalance started successfully
  | 400 {"empty_known_nodes": 1} // knownNodes was either omitted or empty
@@ -465,6 +465,12 @@ knownNodes=<comma separated list of nodes>&ejectedNodes=<comma separated list of
  | 400 "No active nodes left" // all nodes were requested to be ejected
  | 503 "Cluster is in recovery mode" // cluster is in recovery mode and cannot be
                                      // rebalanced
+
+Not passing deltaRecoveryBuckets indicates that for nodes that are
+marked for delta recovery, all buckets need to be delta recovered. In
+case any of buckets specified for delta recovery is not delta
+recoverable, you'll get deltaRecoveryNotPossible error and none of
+buckets will be recovered.
 
 
 // Set the type of recovery that should be performed for a node.
