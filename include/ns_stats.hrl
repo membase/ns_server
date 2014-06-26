@@ -362,7 +362,7 @@ upr_stream_stats_to_kvlist(Prefix, Record) ->
      ?DEFINE_TO_KVLIST(total_bytes)].
 -undef(DEFINE_TO_KVLIST).
 
--define(DEFINE_FORMULA(N), N = D#upr_stream_stats.N - A#upr_stream_stats.N + B#upr_stream_stats.N + C#upr_stream_stats.N).
+-define(DEFINE_FORMULA(N), N = D#upr_stream_stats.N - (A#upr_stream_stats.N + B#upr_stream_stats.N + C#upr_stream_stats.N)).
 calc_upr_other_stats(A, B, C, D) ->
     #upr_stream_stats{?DEFINE_FORMULA(count),
                       ?DEFINE_FORMULA(items_remaining),
