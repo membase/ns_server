@@ -195,7 +195,12 @@ handle_bucket_node_stats(_PoolId, BucketName, HostName, Req) ->
         {ok, Node} ->
             Params = Req:parse_qs(),
             Ops = build_bucket_stats_ops_response([Node], BucketName, Params),
-            HKS = jsonify_hks(hot_keys_keeper:bucket_hot_keys(BucketName, Node)),
+            BucketsTopKeys = case hot_keys_keeper:bucket_hot_keys(BucketName, Node) of
+                                 undefined -> [];
+                                 X -> X
+                             end,
+
+            HKS = jsonify_hks(BucketsTopKeys),
             menelaus_util:reply_json(
               Req,
               {struct, [{hostname, list_to_binary(HostName)}
