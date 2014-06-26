@@ -1316,7 +1316,7 @@ membase_stats_description(BucketId) ->
                          {name,<<"ep_tap_total_queue_itemondisk">>},
                          {desc,<<"Total number of items still on disk to be loaded for TAP connections to this bucket (measured from ep_tap_total_queue_itemonsidk)">>}]}]}]},
      {struct,[{blockName,<<"Upr Queues">>},
-              {extraCSSClasses,<<"dynamic_withtotal dynamic_closed">>},
+              {extraCSSClasses,<<"dynamic_closed">>},
               {columns,
                [<<"Replication">>,<<"XDCR">>,<<"Views">>,<<"Other">>]},
               {stats,
