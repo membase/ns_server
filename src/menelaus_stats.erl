@@ -1087,7 +1087,10 @@ membase_stats_description(BucketId) ->
                 {struct,[{title,<<"outbound XDCR mutations">>},
                          {name,<<"replication_changes_left">>},
                          {desc,<<"Number of mutations to be replicated to other clusters"
-                                 "(measured from replication_changes_left).">>}]}
+                                 "(measured from replication_changes_left).">>}]},
+                {struct,[{title,<<"UPR replication backlog">>},
+                         {name,<<"ep_upr_replica_items_remaining">>},
+                         {desc,<<"Number of items remaining to be sent to producer in this bucket (measured from ep_upr_replica_items_remaining)">>}]}
              ]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"dynamic_withtotal dynamic_closed">>},
