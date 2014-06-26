@@ -370,7 +370,7 @@ parse_aggregate_tap_stats(AggTap) ->
 parse_aggregate_upr_stats(AggUpr) ->
     ReplicaStats = extract_agg_upr_stats([{K, V} || {<<"replication:", K/binary>>, V} <- AggUpr]),
     XdcrStats = extract_agg_upr_stats([{K, V} || {<<"xdcr:", K/binary>>, V} <- AggUpr]),
-    ViewsStats = extract_agg_upr_stats([{K, V} || {<<"view-engine:", K/binary>>, V} <- AggUpr]),
+    ViewsStats = extract_agg_upr_stats([{K, V} || {<<"mapreduce_view:", K/binary>>, V} <- AggUpr]),
     TotalStats = extract_agg_upr_stats([{K, V} || {<<":total:", K/binary>>, V} <- AggUpr]),
 
     OtherStats = calc_upr_other_stats(ReplicaStats, XdcrStats, ViewsStats, TotalStats),
