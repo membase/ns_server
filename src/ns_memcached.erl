@@ -583,15 +583,13 @@ do_handle_call(topkeys, _From, State) ->
     Reply = mc_binary:quick_stats(
               State#state.sock, <<"topkeys">>,
               fun (K, V, Acc) ->
-                      VString = binary_to_list(V),
-                      Tokens = string:tokens(VString, ","),
-                      [{binary_to_list(K),
-                        lists:map(fun (S) ->
-                                          [Key, Value] = string:tokens(S, "="),
-                                          {list_to_atom(Key),
-                                           list_to_integer(Value)}
-                                  end,
-                                  Tokens)} | Acc]
+                      Tokens = binary:split(V, <<",">>, [global]),
+                      PL = [case binary:split(S, <<"=">>) of
+                                [Key, Value] ->
+                                    {binary_to_atom(Key, latin1),
+                                     list_to_integer(binary_to_list(Value))}
+                            end || S <- Tokens],
+                      [{binary_to_list(K), PL} | Acc]
               end,
               []),
     {reply, Reply, State};
