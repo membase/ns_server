@@ -454,25 +454,25 @@ computed_stats_lazy_proplist(BucketName) ->
                                     catch error:badarith -> 100
                                     end
                             end),
-    AvgActiveQueueAge = Z2(vb_active_queue_age, curr_items,
+    AvgActiveQueueAge = Z2(vb_active_queue_age, vb_active_queue_size,
                            fun (ActiveAge, ActiveCount) ->
                                    try ActiveAge / ActiveCount / 1000
                                    catch error:badarith -> 0
                                    end
                            end),
-    AvgReplicaQueueAge = Z2(vb_replica_queue_age, vb_replica_curr_items,
+    AvgReplicaQueueAge = Z2(vb_replica_queue_age, vb_replica_queue_size,
                             fun (ReplicaAge, ReplicaCount) ->
                                     try ReplicaAge / ReplicaCount / 1000
                                     catch error:badarith -> 0
                                     end
                             end),
-    AvgPendingQueueAge = Z2(vb_pending_queue_age, vb_pending_curr_items,
+    AvgPendingQueueAge = Z2(vb_pending_queue_age, vb_pending_queue_size,
                             fun (PendingAge, PendingCount) ->
                                     try PendingAge / PendingCount / 1000
                                     catch error:badarith -> 0
                                     end
                             end),
-    AvgTotalQueueAge = Z2(vb_total_queue_age, curr_items_tot,
+    AvgTotalQueueAge = Z2(vb_total_queue_age, ep_diskqueue_items,
                           fun (TotalAge, TotalCount) ->
                                   try TotalAge / TotalCount / 1000
                                   catch error:badarith -> 0
