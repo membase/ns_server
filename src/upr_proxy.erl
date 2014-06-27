@@ -111,7 +111,8 @@ handle_call(Command, From, State = #state{ext_module = ExtModule, ext_state = Ex
 
 handle_packet(<<Magick:8, Opcode:8, _Rest/binary>> = Packet,
               State = #state{ext_module = ExtModule, ext_state = ExtState, proxy_to = ProxyTo}) ->
-    case suppress_logging(Packet) of
+    case (suppress_logging(Packet)
+          orelse not ale:is_loglevel_enabled(?NS_SERVER_LOGGER, debug)) of
         true ->
             ok;
         false ->
