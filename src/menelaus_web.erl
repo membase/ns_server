@@ -2484,7 +2484,9 @@ handle_start_graceful_failover(Req) ->
                     reply(Req, 200);
                 {Code, Text} ->
                     reply_text(Req, Text, Code)
-            end
+            end;
+        error ->
+            ok
     end.
 
 handle_rebalance(Req) ->
