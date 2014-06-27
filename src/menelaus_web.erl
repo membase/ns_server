@@ -2439,11 +2439,9 @@ parse_failover_args(Req) ->
     Node = (catch list_to_existing_atom(NodeArg)),
     case Node of
         undefined ->
-            reply_text(Req, "No server specified.", 400),
-            error;
+            {error, "No server specified."};
         _ when not is_atom(Node) ->
-            reply_text(Req, "Unknown server given.", 400),
-            error;
+            {error, "Unknown server given."};
         _ ->
             {ok, Node}
     end.
@@ -2460,8 +2458,8 @@ handle_failover(Req) ->
                 in_recovery ->
                     reply_text(Req, "Cluster is in recovery mode.", 503)
             end;
-        error ->
-            ok
+        {error, ErrorMsg} ->
+            reply_text(Req, ErrorMsg, 400)
     end.
 
 handle_start_graceful_failover(Req) ->
@@ -2485,8 +2483,8 @@ handle_start_graceful_failover(Req) ->
                 {Code, Text} ->
                     reply_text(Req, Text, Code)
             end;
-        error ->
-            ok
+        {error, ErrorMsg} ->
+            reply_text(Req, ErrorMsg, 400)
     end.
 
 handle_rebalance(Req) ->
