@@ -2456,7 +2456,11 @@ handle_failover(Req) ->
                 rebalance_running ->
                     reply_text(Req, "Rebalance running.", 503);
                 in_recovery ->
-                    reply_text(Req, "Cluster is in recovery mode.", 503)
+                    reply_text(Req, "Cluster is in recovery mode.", 503);
+                last_node ->
+                    reply_text(Req, "Last active node cannot be failed over.", 400);
+                unknown_node ->
+                    reply_text(Req, "Unknown server given.", 400)
             end;
         {error, ErrorMsg} ->
             reply_text(Req, ErrorMsg, 400)

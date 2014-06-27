@@ -156,7 +156,8 @@ flush_bucket(BucketName) ->
     gen_fsm:sync_send_event(?SERVER, {flush_bucket, BucketName}, infinity).
 
 
--spec failover(atom()) -> ok | rebalance_running | in_recovery.
+-spec failover(atom()) -> ok | rebalance_running |
+                          in_recovery | last_node | unknown_node.
 failover(Node) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {failover, Node}, infinity).
@@ -651,7 +652,18 @@ idle({delete_bucket, BucketName}, _From,
 
     {reply, Reply, idle, NewState};
 idle({failover, Node}, _From, State) ->
-    Result = ns_rebalancer:orchestrate_failover(Node),
+    Result =
+        case ns_cluster_membership:active_nodes() of
+            [Node] ->                           % Node is bound
+                last_node;
+            ActiveNodes ->
+                case lists:member(Node, ActiveNodes) of
+                    true ->
+                        ns_rebalancer:orchestrate_failover(Node);
+                    false ->
+                        unknown_node
+                end
+        end,
     {reply, Result, idle, State};
 idle({try_autofailover, Node}, From, State) ->
     case ns_rebalancer:validate_autofailover(Node) of
