@@ -122,12 +122,13 @@
          wait_for_checkpoint_persistence/3,
          get_tap_docs_estimate/3,
          get_mass_tap_docs_estimate/2,
+         get_mass_upr_docs_estimate/2,
+         get_upr_docs_estimate/3,
          set_cluster_config/2,
          get_ep_startup_time_for_xdcr/1,
          perform_checkpoint_commit_for_xdcr/3,
          get_random_key/1,
          compact_vbucket/3,
-         get_upr_estimated_remaining_items/3,
          get_vbucket_high_seqno/2,
          wait_for_seqno_persistence/3,
          get_keys/3
@@ -346,6 +347,7 @@ assign_queue({update_with_rev, _Key, _VBucket, _Value, _Meta, _Deleted, _LocalCA
 assign_queue({get_keys, _VBuckets, _Params}) -> #state.heavy_calls_queue;
 assign_queue({sync, _Key, _VBucket, _CAS}) -> #state.very_heavy_calls_queue;
 assign_queue({get_mass_tap_docs_estimate, _VBuckets}) -> #state.very_heavy_calls_queue;
+assign_queue({get_mass_upr_docs_estimate, _VBuckets}) -> #state.very_heavy_calls_queue;
 assign_queue(_) -> #state.fast_calls_queue.
 
 queue_to_counter_slot(#state.very_heavy_calls_queue) -> #state.running_very_heavy;
@@ -577,6 +579,10 @@ do_handle_call({get_tap_docs_estimate, VBucketId, TapName}, _From, State) ->
     {reply, mc_client_binary:get_tap_docs_estimate(State#state.sock, VBucketId, TapName), State};
 do_handle_call({get_mass_tap_docs_estimate, VBuckets}, _From, State) ->
     {reply, mc_client_binary:get_mass_tap_docs_estimate(State#state.sock, VBuckets), State};
+do_handle_call({get_upr_docs_estimate, VBucketId, ConnName}, _From, State) ->
+    {reply, mc_client_binary:get_upr_docs_estimate(State#state.sock, VBucketId, ConnName), State};
+do_handle_call({get_mass_upr_docs_estimate, VBuckets}, _From, State) ->
+    {reply, mc_client_binary:get_mass_upr_docs_estimate(State#state.sock, VBuckets), State};
 do_handle_call({set_cluster_config, Blob}, _From, State) ->
     {reply, mc_client_binary:set_cluster_config(State#state.sock, Blob), State};
 do_handle_call(topkeys, _From, State) ->
@@ -625,16 +631,6 @@ do_handle_call({get_vbucket_checkpoint_ids, VBucketId}, _From, State) ->
     {reply, Res, State};
 do_handle_call(get_random_key, _From, State) ->
     {reply, mc_client_binary:get_random_key(State#state.sock), State};
-do_handle_call({get_upr_estimated_remaining_items, ConnName, VBucket}, _From, State) ->
-    Key = list_to_binary("upr-vbtakeover " ++ integer_to_list(VBucket) ++ " " ++ ConnName),
-
-    {ok, Reply} = mc_binary:quick_stats(State#state.sock,
-                                        Key,
-                                        fun (<<"estimate">>, <<V/binary>>, _Acc) ->
-                                                list_to_integer(binary_to_list(V));
-                                            (_, _, Acc) -> Acc
-                                        end, undefined),
-    {reply, Reply, State};
 do_handle_call({get_vbucket_high_seqno, VBucketId}, _From, State) ->
     StatName = <<"vb_", (iolist_to_binary(integer_to_list(VBucketId)))/binary, ":high_seqno">>,
     Res = mc_binary:quick_stats(
@@ -1207,11 +1203,6 @@ get_vbucket_open_checkpoint(Nodes, Bucket, VBucketId) ->
 get_vbucket_checkpoint_ids(Bucket, VBucketId) ->
     do_call(server(Bucket), {get_vbucket_checkpoint_ids, VBucketId}, ?TIMEOUT).
 
--spec get_upr_estimated_remaining_items(bucket_name(), string(), vbucket_id()) ->
-                                               undefined | integer().
-get_upr_estimated_remaining_items(Bucket, ConnName, VBucket) ->
-    do_call(server(Bucket), {get_upr_estimated_remaining_items, ConnName, VBucket}, ?TIMEOUT).
-
 -spec get_vbucket_high_seqno(bucket_name(), vbucket_id()) ->
                                         {ok, {undefined | seq_no()}}.
 get_vbucket_high_seqno(Bucket, VBucketId) ->
@@ -1483,6 +1474,16 @@ get_tap_docs_estimate(Bucket, VBucketId, TapName) ->
 
 get_mass_tap_docs_estimate(Bucket, VBuckets) ->
     do_call(server(Bucket), {get_mass_tap_docs_estimate, VBuckets}, ?TIMEOUT_VERY_HEAVY).
+
+-spec get_upr_docs_estimate(bucket_name(), vbucket_id(), string()) ->
+                                   {ok, {non_neg_integer(), non_neg_integer(), binary()}}.
+get_upr_docs_estimate(Bucket, VBucketId, ConnName) ->
+    do_call(server(Bucket), {get_upr_docs_estimate, VBucketId, ConnName}, ?TIMEOUT).
+
+-spec get_mass_upr_docs_estimate(bucket_name(), [vbucket_id()]) ->
+                                        {ok, [{non_neg_integer(), non_neg_integer(), binary()}]}.
+get_mass_upr_docs_estimate(Bucket, VBuckets) ->
+    do_call(server(Bucket), {get_mass_upr_docs_estimate, VBuckets}, ?TIMEOUT_VERY_HEAVY).
 
 -spec set_cluster_config(bucket_name(), binary()) -> ok | mc_error().
 set_cluster_config(Bucket, Blob) ->

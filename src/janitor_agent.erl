@@ -70,6 +70,8 @@
          get_tap_docs_estimate/4,
          get_tap_docs_estimate_many_taps/4,
          get_mass_tap_docs_estimate/3,
+         get_upr_docs_estimate/4,
+         get_mass_upr_docs_estimate/3,
          wait_upr_data_move/5,
          wait_seqno_persisted/5,
          get_vbucket_high_seqno/4,
@@ -511,6 +513,20 @@ get_mass_tap_docs_estimate(Bucket, Node, VBuckets) ->
     {ok, _} = RV,
     RV.
 
+-spec get_upr_docs_estimate(bucket_name(), node(), vbucket_id(), [node()]) ->
+                                   [{ok, {non_neg_integer(), non_neg_integer(), binary()}}].
+get_upr_docs_estimate(Bucket, SrcNode, VBucket, ReplicaNodes) ->
+    do_servant_call({server_name(Bucket), SrcNode},
+                    {get_upr_docs_estimate, VBucket, ReplicaNodes}).
+
+-spec get_mass_upr_docs_estimate(bucket_name(), node(), [vbucket_id()]) ->
+                                        {ok, [{non_neg_integer(), non_neg_integer(), binary()}]}.
+get_mass_upr_docs_estimate(Bucket, Node, VBuckets) ->
+    RV = do_servant_call({server_name(Bucket), Node},
+                         {get_mass_upr_docs_estimate, VBuckets}),
+    {ok, _} = RV,
+    RV.
+
 mass_prepare_flush(Bucket, Nodes) ->
     {Replies, BadNodes} = gen_server:multi_call(Nodes, server_name(Bucket), prepare_flush, ?PREPARE_FLUSH_TIMEOUT),
     {GoodReplies, BadReplies} = lists:partition(fun ({_N, R}) -> R =:= ok end, Replies),
@@ -796,6 +812,19 @@ handle_call({get_mass_tap_docs_estimate, VBucketsR}, From, State) ->
       From, State, VBucketsR,
       fun (VBuckets, #state{bucket_name = Bucket}) ->
               ns_memcached:get_mass_tap_docs_estimate(Bucket, VBuckets)
+      end);
+handle_call({get_upr_docs_estimate, _VBucketId, _ReplicaNodes} = Req, From, State) ->
+    handle_call_via_servant(
+      From, State, Req,
+      fun ({_, VBucketId, ReplicaNodes}, #state{bucket_name = Bucket}) ->
+              [upr_replicator:get_docs_estimate(Bucket, VBucketId, Node)
+               || Node <- ReplicaNodes]
+      end);
+handle_call({get_mass_upr_docs_estimate, VBucketsR}, From, State) ->
+    handle_call_via_servant(
+      From, State, VBucketsR,
+      fun (VBuckets, #state{bucket_name = Bucket}) ->
+              ns_memcached:get_mass_upr_docs_estimate(Bucket, VBuckets)
       end).
 
 handle_call_via_servant({FromPid, _Tag}, State, Req, Body) ->

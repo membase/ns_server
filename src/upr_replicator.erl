@@ -29,7 +29,8 @@
          get_partitions/2,
          setup_replication/3,
          takeover/3,
-         wait_for_data_move/3]).
+         wait_for_data_move/3,
+         get_docs_estimate/3]).
 
 -record(state, {proxies,
                 consumer_conn :: pid(),
@@ -159,18 +160,18 @@ wait_for_data_move_loop([Node | Rest], Bucket, Partition, DoneLimit) ->
     end.
 
 wait_for_data_move_on_one_node(Iterations, Connection, Bucket, Partition, DoneLimit) ->
-    case ns_memcached:get_upr_estimated_remaining_items(Bucket, Connection, Partition) of
-        undefined ->
+    case ns_memcached:get_upr_docs_estimate(Bucket, Partition, Connection) of
+        {ok, {_, _, <<"unknown">>}} ->
             undefined;
-        N when N < DoneLimit ->
+        {ok, {N, _, _}} when N < DoneLimit ->
             ok;
-        Items ->
+        {ok, {N, _, _}} ->
             NewIterations =
                 case Iterations of
                     300 ->
                         ?rebalance_debug(
                            "Still waiting for backfill on connection ~p, bucket ~p, partition ~p, estimated items ~p",
-                           [Connection, Bucket, Partition, Items]),
+                           [Connection, Bucket, Partition, N]),
                         0;
                     I ->
                         I + 1
@@ -178,6 +179,12 @@ wait_for_data_move_on_one_node(Iterations, Connection, Bucket, Partition, DoneLi
             timer:sleep(?VBUCKET_POLL_INTERVAL),
             wait_for_data_move_on_one_node(NewIterations, Connection, Bucket, Partition, DoneLimit)
     end.
+
+-spec get_docs_estimate(bucket_name(), vbucket_id(), node()) ->
+                               {ok, {non_neg_integer(), non_neg_integer(), binary()}}.
+get_docs_estimate(Bucket, Partition, ConsumerNode) ->
+    Connection = get_connection_name(ConsumerNode, node(), Bucket),
+    ns_memcached:get_upr_docs_estimate(Bucket, Partition, Connection).
 
 get_connection_name(ConsumerNode, ProducerNode, Bucket) ->
     "replication:" ++ atom_to_list(ProducerNode) ++ "->" ++ atom_to_list(ConsumerNode) ++ ":" ++ Bucket.
