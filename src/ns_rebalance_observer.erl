@@ -36,6 +36,7 @@
 -record(move_state, {vbucket :: vbucket_id(),
                      before_chain :: [node()],
                      after_chain :: [node()],
+                     repl_type :: tap | upr,
                      stats :: [#replica_building_stats{}]}).
 
 -record(state, {bucket :: bucket_name() | undefined,
@@ -185,11 +186,23 @@ initiate_bucket_rebalance(BucketName, OldState) ->
         keygroup_sorted(lists:merge(lists:sort(BuildDestinations0),
                                     lists:sort(BuildDestinations1))),
 
+    ReplType = ns_bucket:replication_type(BucketConfig),
+
     SomeEstimates0 = misc:parallel_map(
                        fun ({Node, VBs}) ->
-                               {ok, Estimates} = janitor_agent:get_mass_tap_docs_estimate(BucketName, Node, VBs),
-                               [{{Node, VB}, {VBEstimate, VBChkItems}} ||
-                                   {VB, {VBEstimate, VBChkItems, _}} <- lists:zip(VBs, Estimates)]
+                               {TapVBs, UprVBs} = replication_manager:split_partitions(VBs, ReplType),
+                               {ok, TapEstimates} =
+                                   janitor_agent:get_mass_tap_docs_estimate(BucketName, Node, TapVBs),
+                               {ok, UprEstimates} =
+                                   janitor_agent:get_mass_upr_docs_estimate(BucketName, Node, UprVBs),
+
+                               [{{Node, VB}, {VBEstimate, VBChkItems, tap}} ||
+                                   {VB, {VBEstimate, VBChkItems, _}} <-
+                                       lists:zip(TapVBs, TapEstimates)] ++
+
+                                   [{{Node, VB}, {VBEstimate, VBChkItems, upr}} ||
+                                       {VB, {VBEstimate, VBChkItems, _}} <-
+                                           lists:zip(UprVBs, UprEstimates)]
                        end, BuildDestinations, infinity),
 
 
@@ -199,10 +212,10 @@ initiate_bucket_rebalance(BucketName, OldState) ->
 
     Moves =
         [begin
-             {_, {MasterEstimate, MasterChkItems}} = lists:keyfind({MasterNode, VB}, 1, SomeEstimates),
+             {_, {MasterEstimate, MasterChkItems, ReplType}} = lists:keyfind({MasterNode, VB}, 1, SomeEstimates),
              RBStats =
                  [begin
-                      {_, {ReplicaEstimate, _}} = lists:keyfind({Replica, VB}, 1, SomeEstimates),
+                      {_, {ReplicaEstimate, _, _}} = lists:keyfind({Replica, VB}, 1, SomeEstimates),
                       Estimate = case ReplicaEstimate =< MasterEstimate of
                                      true ->
                                          %% in this case we assume no backfill
@@ -224,6 +237,7 @@ initiate_bucket_rebalance(BucketName, OldState) ->
              #move_state{vbucket = VB,
                          before_chain = ChainBefore,
                          after_chain = ChainAfter,
+                         repl_type = ReplType,
                          stats = RBStats}
          end || {VB, [MasterNode|_] = ChainBefore, ChainAfter} <- Diff],
 
@@ -351,12 +365,23 @@ docs_left_updater_loop(Parent) ->
             docs_left_updater_loop(Parent)
     end.
 
+get_docs_estimate(BucketName, #move_state{vbucket = VBucket,
+                                          before_chain = [MasterNode|_],
+                                          repl_type = tap,
+                                          stats = RStats}) ->
+    TapNames = [S#replica_building_stats.tap_name || S <- RStats],
+    janitor_agent:get_tap_docs_estimate_many_taps(BucketName, MasterNode, VBucket, TapNames);
+get_docs_estimate(BucketName, #move_state{vbucket = VBucket,
+                                          before_chain = [MasterNode|_],
+                                          repl_type = upr,
+                                          stats = RStats}) ->
+    ReplicaNodes = [S#replica_building_stats.node || S <- RStats],
+    janitor_agent:get_upr_docs_estimate(BucketName, MasterNode, VBucket, ReplicaNodes).
+
 update_docs_left_for_move(Parent, BucketName,
                           #move_state{vbucket = VBucket,
-                                      before_chain = [MasterNode|_],
-                                      stats = RStats}) ->
-    TapNames = [S#replica_building_stats.tap_name || S <- RStats],
-    try janitor_agent:get_tap_docs_estimate_many_taps(BucketName, MasterNode, VBucket, TapNames) of
+                                      stats = RStats} = MoveState) ->
+    try get_docs_estimate(BucketName, MoveState) of
         NewLefts ->
             Stuff =
                 lists:flatmap(
