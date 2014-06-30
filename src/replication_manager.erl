@@ -35,6 +35,8 @@
          set_replication_type/2,
          upr_takeover/3]).
 
+-export([split_partitions/2]).
+
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 server_name(Bucket) ->
@@ -206,8 +208,13 @@ manage_tap_replication_manager(Bucket, Type, TapReplManager) ->
             Pid
     end.
 
-split_partitions(Partitions,
-                 #state{repl_type = {upr, TapPartitions}}) ->
+-spec split_partitions([vbucket_id()], bucket_replication_type()) ->
+                              {[vbucket_id()], [vbucket_id()]}.
+split_partitions(Partitions, tap) ->
+    {Partitions, []};
+split_partitions(Partitions, upr) ->
+    {[], Partitions};
+split_partitions(Partitions, {upr, TapPartitions}) ->
     {ordsets:intersection(Partitions, TapPartitions),
      ordsets:subtract(Partitions, TapPartitions)}.
 
@@ -221,7 +228,7 @@ split_replications(Replications, State) ->
 split_replications([], _, Tap, Upr) ->
     {lists:reverse(Tap), lists:reverse(Upr)};
 split_replications([{SrcNode, Partitions} | Rest], State, Tap, Upr) ->
-    {TapP, UprP} = split_partitions(Partitions, State),
+    {TapP, UprP} = split_partitions(Partitions, State#state.repl_type),
     split_replications(Rest, State, [{SrcNode, TapP} | Tap], [{SrcNode, UprP} | Upr]).
 
 replication_type(Partition, ReplType) ->
