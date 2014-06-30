@@ -381,9 +381,7 @@ def flatten(iterable):
     return [e for e in iter_flatten(iterable)]
 
 def read_guts(guts, key):
-    if not (key in guts):
-        return ""
-    return guts[key]
+    return guts.get(key, "")
 
 def winquote_path(s):
     return '"'+s.replace("\\\\", "\\").replace('/', "\\")+'"'
