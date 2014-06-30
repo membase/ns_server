@@ -1031,39 +1031,6 @@ is_absolute_path(Path) ->
     Normalized = filename:join([Path]),
     filename:absname(Normalized) =:= Normalized.
 
-%% Retry a function that returns either N times
-retry(F) -> retry(F, 3).
-retry(F, N) -> retry(F, N, initial_error).
-
-%% Implementation below.
-%% These wouldn't be exported if it werent for export_all
-retry(_F, 0, Error) -> exit(Error);
-retry(F, N, _Error) ->
-    case catch(F()) of
-        {'EXIT',X} -> retry(F, N - 1, X);
-        Success -> Success
-    end.
-
-retry_test() ->
-    %% Positive cases.
-    ok = retry(fun () -> ok end),
-    {ok, 1827841} = retry(fun() -> {ok, 1827841} end),
-
-    %% Error cases.
-    case (catch retry(fun () -> exit(foo) end)) of
-        {'EXIT', foo} ->
-            ok
-    end,
-
-    %% Verify a retry with a function that will succeed the second
-    %% time.
-    self() ! {testval, a},
-    self() ! {testval, b},
-    self() ! {testval, c},
-    self() ! {testval, d},
-    b = retry(fun () -> b = receive {testval, X} -> X end end).
-
-
 %% @doc Truncate a timestamp to the nearest multiple of N seconds.
 trunc_ts(TS, N) ->
     TS - (TS rem (N*1000)).
