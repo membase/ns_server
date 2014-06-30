@@ -516,17 +516,20 @@ wait_for_process(Pid, Timeout) ->
     after Timeout -> {error, timeout}
     end.
 
-wait_for_process_test() ->
-    %% Normal
-    ok = wait_for_process(spawn(fun() -> ok end), 100),
-    %% Timeout
-    {error, timeout} = wait_for_process(spawn(fun() ->
-                                                      timer:sleep(100), ok end),
-                                        1),
-    %% Process that exited before we went.
-    Pid = spawn(fun() -> ok end),
-    ok = wait_for_process(Pid, 100),
-    ok = wait_for_process(Pid, 100).
+wait_for_process_test_() ->
+    {spawn,
+     fun () ->
+             %% Normal
+             ok = wait_for_process(spawn(fun() -> ok end), 100),
+             %% Timeout
+             {error, timeout} = wait_for_process(spawn(fun() ->
+                                                               timer:sleep(100), ok end),
+                                                 1),
+             %% Process that exited before we went.
+             Pid = spawn(fun() -> ok end),
+             ok = wait_for_process(Pid, 100),
+             ok = wait_for_process(Pid, 100)
+     end}.
 
 -spec terminate_and_wait(Reason :: term(), Processes :: [pid()]) -> ok.
 terminate_and_wait(Reason, Processes) ->

@@ -158,10 +158,10 @@ realpath_test_() ->
                          "win32" -> [];
                          _ -> Tests
                      end,
-    {foreach,
-     fun () -> realpath_setup() end,
-     fun (V) -> realpath_teardown(V) end,
-     EffectiveTests}.
+    {spawn, {foreach,
+             fun () -> realpath_setup() end,
+             fun (V) -> realpath_teardown(V) end,
+             EffectiveTests}}.
 
 realpath_setup() ->
     process_flag(trap_exit, true),
