@@ -36,7 +36,7 @@ child_specs(BucketName) ->
     [{rebalance_subprocesses_registry,
       {ns_process_registry, start_link,
        [get_registry_name(BucketName), [{terminate_command, kill}]]},
-      permanent, infinity, worker, [ns_process_registry]},
+      permanent, 86400000, worker, [ns_process_registry]},
 
      {janitor_agent, {janitor_agent, start_link, [BucketName]},
       permanent, brutal_kill, worker, []}].
