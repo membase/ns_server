@@ -336,43 +336,9 @@ socket_loop(Socket, Callback, Acc, Data, Consumer) ->
             socket_loop(Socket, Callback, Acc, Data, Consumer);
         done ->
             ok = gen_tcp:send(Socket, encode_req(#upr_packet{opcode = ?UPR_WINDOW_UPDATE,
-                                                             ext = <<(?XDCR_UPR_BUFFER_SIZE):32/big>>,
-                                                             opaque = 1})),
-            socket_exit_loop_recv(Socket, Data);
+                                                             ext = <<(?XDCR_UPR_BUFFER_SIZE):32/big>>}));
         stop ->
             stop
-    end.
-
-socket_exit_loop_recv(Socket, Data) ->
-    Msg = receive XMsg -> XMsg end,
-    case Msg of
-        {tcp, _, NewData} ->
-            NewData2 = iolist_to_binary([Data | NewData]),
-            socket_exit_loop(Socket, NewData2)
-    end.
-
-
-socket_exit_loop(Socket, NewData) ->
-    case decode_packet(NewData) of
-        {MustResp, #upr_packet{opcode = Opcode,
-                               status = Status,
-                               opaque = Opaque} = _Packet, Rest, _PacketLen} ->
-            {must_resp, res} = {must_resp, MustResp},
-            {must_window_update, ?UPR_WINDOW_UPDATE} = {must_window_update, Opcode},
-            {must_success, ?SUCCESS} = {must_success, Status},
-            %% opaque of 0 is used for our normal window updates and
-            %% replies on those may still arrive after stream_end. And
-            %% opaque of 1 is used for that final request that we send
-            %% when handling done message
-            case Opaque of
-                1 ->
-                    {done, <<>>} = {done, Rest},
-                    ok;
-                0 ->
-                    socket_exit_loop(Socket, Rest)
-            end;
-        NewData ->
-            socket_exit_loop_recv(Socket, NewData)
     end.
 
 enter_consumer_loop(Child, Callback, Acc) ->
@@ -454,23 +420,15 @@ consumer_loop_exit(Child, DoneOrStop, Data) ->
     misc:wait_for_process(Child, infinity),
     case DoneOrStop of
         done ->
-            consume_stuff_after_done(Data);
+            <<>> = Data,
+            receive
+                MoreData when is_binary(MoreData) ->
+                    erlang:error({unexpected_data_after_done, MoreData})
+            after 0 ->
+                    ok
+            end;
         stop ->
             consume_aborted_stuff()
-    end.
-
-consume_stuff_after_done(Data) ->
-    receive
-        MoreData when is_binary(MoreData) ->
-            consume_stuff_after_done(<<Data/binary, MoreData/binary>>)
-    after 0 ->
-            case decode_packet(Data) of
-                {res, #upr_packet{opcode = ?UPR_WINDOW_UPDATE, opaque = 0}, RestData, _PacketLen} ->
-                    consume_stuff_after_done(RestData);
-                Data ->
-                    <<>> = Data,
-                    ok
-            end
     end.
 
 consume_aborted_stuff() ->
@@ -485,7 +443,7 @@ consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
                    SnapshotStart, SnapshotEnd, LastSeenSeqno,
                    Data) ->
     case decode_packet(Data) of
-        {Type, Packet, RestData, PacketSize} ->
+        {_Type, Packet, RestData, PacketSize} ->
             case Packet of
                 #upr_packet{opcode = ?UPR_MUTATION,
                             datatype = DT,
@@ -537,15 +495,7 @@ consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
                                              SnapshotStart, SnapshotEnd, LastSeenSeqno}, Acc),
                     consumer_loop_exit(Child, done, RestData),
                     Acc2;
-                #upr_packet{opcode = OtherCode} ->
-                    case OtherCode of
-                        ?UPR_NOP ->
-                            ok;
-                        ?UPR_WINDOW_UPDATE ->
-                            {window, res} = {window, Type},
-                            {success, 0} = {success, Packet#upr_packet.status},
-                            ok
-                    end,
+                #upr_packet{opcode = ?UPR_NOP} ->
                     consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
                                        SnapshotStart, SnapshotEnd, LastSeenSeqno,
                                        RestData)
