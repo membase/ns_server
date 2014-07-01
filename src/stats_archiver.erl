@@ -156,7 +156,7 @@ init(Bucket) ->
               self() ! Msg
       end, Archives),
     start_cascade_timers(Archives),
-    timer2:send_interval(?BACKUP_INTERVAL, backup),
+    timer2:send_after(random:uniform(?BACKUP_INTERVAL), backup),
 
     ns_pubsub:subscribe_link(ns_stats_event),
     process_flag(trap_exit, true),
@@ -194,6 +194,7 @@ handle_info(backup, #state{bucket=Bucket} = State) ->
       fun () ->
               backup_loggers(Bucket)
       end),
+    timer2:send_after(?BACKUP_INTERVAL, backup),
     {noreply, State};
 handle_info({'EXIT', _Pid, Reason} = Exit, State) ->
     case Reason of
