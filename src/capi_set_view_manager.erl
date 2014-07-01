@@ -33,14 +33,13 @@
 -include("ns_common.hrl").
 
 -record(state, {bucket :: bucket_name(),
-                proxy_server_name :: atom(),
-                remote_nodes = [],
                 local_docs = [] :: [#doc{}],
                 num_vbuckets :: non_neg_integer(),
                 use_replica_index :: boolean(),
                 master_db_watcher :: pid(),
                 wanted_states :: [missing | active | replica],
-                rebalance_states :: [rebalance_vbucket_state()]}).
+                rebalance_states :: [rebalance_vbucket_state()],
+                ddoc_replicator :: pid()}).
 
 set_vbucket_states(Bucket, WantedStates, RebalanceStates) ->
     gen_server:call(server(Bucket), {set_vbucket_states, WantedStates, RebalanceStates}, infinity).
@@ -195,13 +194,15 @@ init({Bucket, UseReplicaIndex, NumVBuckets}) ->
     [{ServerName, N} ! replicate_newnodes_docs ||
         N <- get_remote_nodes(Bucket)],
 
+    Replicator = spawn_ddoc_replicator(ServerName),
+
     State = #state{bucket=Bucket,
-                   proxy_server_name = ServerName,
                    local_docs = Docs,
                    num_vbuckets = NumVBuckets,
                    use_replica_index=UseReplicaIndex,
                    wanted_states = [],
-                   rebalance_states = []},
+                   rebalance_states = [],
+                   ddoc_replicator = Replicator},
 
     proc_lib:init_ack({ok, self()}),
 
@@ -225,7 +226,8 @@ handle_call(initiate_indexing, _From, State) ->
              couch_set_view:trigger_update(mapreduce_view, BinBucket, DDocId, 0)
      end || DDocId <- DDocIds],
     {reply, ok, State};
-handle_call({interactive_update, #doc{id=Id}=Doc}, _From, State) ->
+handle_call({interactive_update, #doc{id=Id}=Doc}, _From,
+            #state{ddoc_replicator = Replicator} = State) ->
     #state{local_docs=Docs}=State,
     Rand = crypto:rand_uniform(0, 16#100000000),
     RandBin = <<Rand:32/integer>>,
@@ -239,7 +241,7 @@ handle_call({interactive_update, #doc{id=Id}=Doc}, _From, State) ->
     try
         ?log_debug("Writing interactively saved ddoc ~p", [Doc]),
         SavedDocState = save_doc(NewDoc, State),
-        replicate_change(SavedDocState, NewDoc),
+        Replicator ! {replicate_change, NewDoc},
         {reply, ok, SavedDocState}
     catch throw:{invalid_design_doc, _} = Error ->
             ?log_debug("Document validation failed: ~p", [Error]),
@@ -297,14 +299,11 @@ aggregate_update_ddoc_messages(DDocId, Deleted) ->
             Deleted
     end.
 
-handle_info({'DOWN', _Ref, _Type, {Server, RemoteNode}, Error},
-            #state{remote_nodes = RemoteNodes} = State) ->
-    ?log_warning("Remote server node ~p process down: ~p",
-                 [{Server, RemoteNode}, Error]),
-    {noreply, State#state{remote_nodes=RemoteNodes -- [RemoteNode]}};
-handle_info(replicate_newnodes_docs, State) ->
-    ?log_debug("doing replicate_newnodes_docs"),
-    {noreply, replicate_newnodes_docs(State)};
+handle_info(replicate_newnodes_docs, #state{bucket = Bucket,
+                                            local_docs = Docs,
+                                            ddoc_replicator = Replicator} = State) ->
+    Replicator ! {replicate_newnodes_docs, get_remote_nodes(Bucket), Docs},
+    {noreply, State};
 handle_info({update_ddoc, DDocId, Deleted0}, State) ->
     Deleted = aggregate_update_ddoc_messages(DDocId, Deleted0),
     ?log_info("Processing update_ddoc ~s (~p)", [DDocId, Deleted]),
@@ -329,7 +328,7 @@ handle_info(Info, State) ->
     ?log_info("Ignoring unexpected message: ~p", [Info]),
     {noreply, State}.
 
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{ddoc_replicator = Replicator} = _State) ->
     case erlang:get('ddoc_replication_proxy') of
         Pid when is_pid(Pid) ->
             erlang:exit(Pid, kill),
@@ -337,6 +336,9 @@ terminate(_Reason, _State) ->
         _ ->
             ok
     end,
+
+    erlang:exit(Replicator, kill),
+    misc:wait_for_process(Replicator, infinity),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -464,37 +466,6 @@ apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
             end
     end.
 
-replicate_newnodes_docs(State) ->
-    #state{bucket=Bucket,
-           proxy_server_name = ServerName,
-           remote_nodes=OldNodes,
-           local_docs = Docs} = State,
-    AllNodes = get_remote_nodes(Bucket),
-    NewNodes = AllNodes -- OldNodes,
-    case NewNodes of
-        [] ->
-            ok;
-        _ ->
-            [monitor(process, {ServerName, Node}) || Node <- NewNodes],
-            [replicate_change_to_node(ServerName, S, D)
-             || S <- NewNodes,
-                D <- Docs]
-    end,
-    State#state{remote_nodes=AllNodes}.
-
-replicate_change_to_node(ServerName, Node, Doc) ->
-    ?log_debug("Sending ~s to ~s", [Doc#doc.id, Node]),
-    gen_server:cast({ServerName, Node}, {replicated_update, Doc}).
-
-
-get_remote_nodes(Bucket) ->
-    case ns_bucket:get_bucket(Bucket) of
-        {ok, Conf} ->
-            proplists:get_value(servers, Conf) -- [node()];
-        not_present ->
-            []
-    end.
-
 open_local_db(Bucket) ->
     MasterVBucket = iolist_to_binary([Bucket, <<"/master">>]),
     case couch_db:open(MasterVBucket, []) of
@@ -503,11 +474,6 @@ open_local_db(Bucket) ->
         {not_found, _} ->
             couch_db:create(MasterVBucket, [])
     end.
-
-replicate_change(#state{proxy_server_name = ServerName,
-                        remote_nodes=Nodes}, Doc) ->
-    [replicate_change_to_node(ServerName, Node, Doc) || Node <- Nodes],
-    ok.
 
 save_doc(#doc{id = Id} = Doc,
          #state{bucket=Bucket, local_docs=Docs}=State) ->
@@ -583,3 +549,53 @@ get_safe_purge_seqs(BucketName) ->
                       SafeSeqs
               end
       end, [], capi_ddoc_replication_srv:fetch_ddoc_ids(BucketName)).
+
+spawn_ddoc_replicator(ServerName) ->
+    proc_lib:spawn_link(
+      fun () ->
+              ddoc_replicator_loop(ServerName, [])
+      end).
+
+ddoc_replicator_loop(ServerName, RemoteNodes) ->
+    NewRemoteNodes =
+        receive
+            {replicate_change, Doc} ->
+                [replicate_change_to_node(ServerName, Node, Doc)
+                 || Node <- RemoteNodes],
+                RemoteNodes;
+            {replicate_newnodes_docs, AllNodes, Docs} ->
+                ?log_debug("doing replicate_newnodes_docs"),
+
+                NewNodes = AllNodes -- RemoteNodes,
+                case NewNodes of
+                    [] ->
+                        ok;
+                    _ ->
+                        [monitor(process, {ServerName, Node}) || Node <- NewNodes],
+                        [replicate_change_to_node(ServerName, S, D)
+                         || S <- NewNodes,
+                            D <- Docs]
+                end,
+                AllNodes;
+            {'DOWN', _Ref, _Type, {Server, RemoteNode}, Error} ->
+                ?log_warning("Remote server node ~p process down: ~p",
+                             [{Server, RemoteNode}, Error]),
+                RemoteNodes -- [RemoteNode];
+            Msg ->
+                ?log_error("Got unexpected message: ~p", [Msg]),
+                exit({unexpected_message, Msg})
+        end,
+
+    ddoc_replicator_loop(ServerName, NewRemoteNodes).
+
+replicate_change_to_node(ServerName, Node, Doc) ->
+    ?log_debug("Sending ~s to ~s", [Doc#doc.id, Node]),
+    gen_server:cast({ServerName, Node}, {replicated_update, Doc}).
+
+get_remote_nodes(Bucket) ->
+    case ns_bucket:get_bucket(Bucket) of
+        {ok, Conf} ->
+            proplists:get_value(servers, Conf) -- [node()];
+        not_present ->
+            []
+    end.
