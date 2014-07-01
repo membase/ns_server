@@ -830,7 +830,7 @@
               <p class="green">Logs were successfully uploaded to the following URLs:</p>
               <div class="js_result result">
                 {% _.each(nodesByStatus.uploaded, function (node) { %}
-                  <div><a href="{%= h(node.url) %}">{%= h(node.url) %}</a></div>
+                  <div><a href="{%= h(node.url) %}" target="_blank">{%= h(node.url) %}</a></div>
                 {% }); %}
               </div>
             </div>
