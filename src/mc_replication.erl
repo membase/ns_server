@@ -23,13 +23,16 @@
 
 -define(CONNECT_TIMEOUT, ns_config:get_timeout_fast(ebucketmigrator_connect, 180000)).
 
+-define(RECBUF, ns_config:read_key_fast({node, node(), mc_replication_recbuf}, 64 * 1024)).
+-define(SNDBUF, ns_config:read_key_fast({node, node(), mc_replication_sndbuf}, 64 * 1024)).
+
 connect({{Host, Port}, Username, Password, undefined}) ->
     {ok, Sock} = gen_tcp:connect(Host, Port,
                                  [binary, {packet, raw}, {active, false},
                                   {nodelay, true}, {delay_send, true},
                                   {keepalive, true},
-                                  {recbuf, 10*1024*1024},
-                                  {sndbuf, 10*1024*1024}],
+                                  {recbuf, ?RECBUF},
+                                  {sndbuf, ?SNDBUF}],
                                  ?CONNECT_TIMEOUT),
     case Username of
         undefined ->
