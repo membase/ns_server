@@ -140,6 +140,8 @@ suppress_logging(<<?REQ_MAGIC:8, ?UPR_DELETION:8, _Rest/binary>>) ->
     true;
 suppress_logging(<<?REQ_MAGIC:8, ?UPR_SNAPSHOT_MARKER, _Rest/binary>>) ->
     true;
+suppress_logging(<<?REQ_MAGIC:8, ?UPR_WINDOW_UPDATE, _Rest/binary>>) ->
+    true;
 suppress_logging(<<?RES_MAGIC:8, ?UPR_MUTATION:8, _KeyLen:16, _ExtLen:8,
                    _DataType:8, ?SUCCESS:16, _Rest/binary>>) ->
     true;
@@ -147,6 +149,10 @@ suppress_logging(<<?RES_MAGIC:8, ?UPR_DELETION:8, _KeyLen:16, _ExtLen:8,
                    _DataType:8, ?SUCCESS:16, _Rest/binary>>) ->
     true;
 suppress_logging(<<?RES_MAGIC:8, ?UPR_SNAPSHOT_MARKER:8, _KeyLen:16, _ExtLen:8,
+                   _DataType:8, ?SUCCESS:16, _Rest/binary>>) ->
+    true;
+%% TODO: remove this as soon as memcached stops sending these
+suppress_logging(<<?RES_MAGIC:8, ?UPR_WINDOW_UPDATE, _KeyLen:16, _ExtLen:8,
                    _DataType:8, ?SUCCESS:16, _Rest/binary>>) ->
     true;
 suppress_logging(_) ->
