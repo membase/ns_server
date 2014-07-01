@@ -71,8 +71,15 @@ function createLogsSectionCells (ns, modeCell, stalenessCell, tasksProgressCell,
 
     var cancallable = "starting started startingUpload startedUpload".split(" ");
 
+    var nodes = v.need(serversCell).allNodes;
+
     _.each(perNodeHash, function (ni, nodeName) {
-      ni.nodeName = nodeName.replace(/^.*?@/, '');
+      var node = _.detect(nodes, function (n) {
+        return n.otpNode === nodeName;
+      });
+
+      ni.nodeName = (node === undefined) ? nodeName.replace(/^.*?@/, '') :
+        ViewHelpers.stripPortHTML(node.hostname, nodes);
       perNode.push(ni);
       // possible per-node statuses are:
       //      starting, started, failed, collected,
