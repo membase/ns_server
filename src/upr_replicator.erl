@@ -31,7 +31,7 @@
          takeover/3,
          wait_for_data_move/3]).
 
--record(state, {producer_conn :: pid(),
+-record(state, {proxies,
                 consumer_conn :: pid(),
                 connection_name :: nonempty_string(),
                 producer_node :: node(),
@@ -48,11 +48,11 @@ init({ProducerNode, Bucket}) ->
 
     erlang:register(consumer_server_name(ProducerNode, Bucket), ConsumerConn),
 
-    upr_proxy:connect_proxies(ConsumerConn, ProducerConn),
+    Proxies = upr_proxy:connect_proxies(ConsumerConn, ProducerConn),
 
     ?log_debug("initiated new upr replication with consumer side: ~p and producer side: ~p", [ConsumerConn, ProducerConn]),
     {ok, #state{
-            producer_conn = ProducerConn,
+            proxies = Proxies,
             consumer_conn = ConsumerConn,
             connection_name = ConnName,
             producer_node = ProducerNode,
@@ -76,12 +76,11 @@ handle_cast(Msg, State) ->
     ?rebalance_warning("Unhandled cast: ~p" , [Msg]),
     {noreply, State}.
 
-terminate(Reason, #state{producer_conn = Producer,
-                         consumer_conn = Consumer,
+terminate(Reason, #state{proxies = Proxies,
                          connection_name = ConnName,
                          producer_node = ProdNode,
                          bucket = Bucket}) ->
-    misc:terminate_and_wait(Reason, [Producer, Consumer]),
+    upr_proxy:terminate_and_wait(Reason, Proxies),
     case Reason of
         normal ->
             ok;

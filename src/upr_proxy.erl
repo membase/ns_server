@@ -27,7 +27,7 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--export([start_link/6, maybe_connect/1, connect_proxies/2, nuke_connection/4]).
+-export([start_link/6, maybe_connect/1, connect_proxies/2, nuke_connection/4, terminate_and_wait/2]).
 
 -export([get_socket/1, get_partner/1]).
 
@@ -185,5 +185,17 @@ nuke_connection(Type, ConnName, Node, Bucket) ->
     disconnect(connect(Type, ConnName, Node, Bucket)).
 
 connect_proxies(Pid1, Pid2) ->
-    gen_server:cast(Pid1, {setup_proxy, Pid2, gen_server:call(Pid2, get_socket, infinity)}),
-    gen_server:cast(Pid2, {setup_proxy, Pid1, gen_server:call(Pid1, get_socket, infinity)}).
+    Sock1 = gen_server:call(Pid1, get_socket, infinity),
+    Sock2 = gen_server:call(Pid2, get_socket, infinity),
+
+    gen_server:cast(Pid1, {setup_proxy, Pid2, Sock2}),
+    gen_server:cast(Pid2, {setup_proxy, Pid1, Sock1}),
+    [{Pid1, Sock1}, {Pid2, Sock2}].
+
+terminate_and_wait(normal, Pairs) ->
+    misc:terminate_and_wait(normal, [Pid || {Pid, _} <- Pairs]);
+terminate_and_wait(shutdown, Pairs) ->
+    misc:terminate_and_wait(shutdown, [Pid || {Pid, _} <- Pairs]);
+terminate_and_wait(_Reason, Pairs) ->
+    [disconnect(Sock) || {_, Sock} <- Pairs],
+    misc:terminate_and_wait(kill, [Pid || {Pid, _} <- Pairs]).
