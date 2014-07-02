@@ -60,9 +60,7 @@
          }).
 
 start_link({MaxConcurrency, Type}, Parent) ->
-    {ok, Pid} = gen_server:start_link(?MODULE, {MaxConcurrency, Type, Parent}, []),
-    ?log_debug("concurrency throttle started: ~p", [Pid]),
-    {ok, Pid}.
+    gen_server:start_link(?MODULE, {MaxConcurrency, Type, Parent}, []).
 
 send_back_when_can_go(Server, Signal) ->
     send_back_when_can_go(Server, "NULL", Signal).
@@ -77,8 +75,6 @@ change_tokens(Server, NewTokens) ->
     gen_server:call(Server, {change_tokens, NewTokens}, infinity).
 
 init({Count, Type, Parent}) ->
-    ?log_debug("init concurrent throttle process, pid: ~p, type: ~p"
-               "# of available token: ~p", [self(), Type, Count]),
     WaitingPool = dict:new(),
     ActivePool = dict:new(),
     TargetLoad = dict:new(),
@@ -94,9 +90,7 @@ init({Count, Type, Parent}) ->
 
 handle_call({send_signal, {TargetNode, Signal}}, {Pid, _Tag},
             #concurrency_throttle_state{avail_tokens = AvailTokens} = State) when AvailTokens < 1 ->
-    #concurrency_throttle_state{total_tokens = TotalTokens,
-                                waiting_pool = WaitingPool,
-                                active_pool = ActivePool,
+    #concurrency_throttle_state{waiting_pool = WaitingPool,
                                 target_load = TargetLoad} = State,
 
     %% no available token, put job into waiting pool
@@ -109,18 +103,13 @@ handle_call({send_signal, {TargetNode, Signal}}, {Pid, _Tag},
                     end,
     NewState = State#concurrency_throttle_state{target_load = NewTargetLoad,
                                                 waiting_pool = NewWaitingPool},
-    ?log_debug("no token available (total tokens:~p), put (pid:~p, signal: ~p, targetnode: ~p) "
-               "into waiting pool (active reps: ~p, waiting reps: ~p)",
-               [Pid, TotalTokens, Signal, TargetNode, dict:size(ActivePool), dict:size(NewWaitingPool)]),
-
     {reply, ok, update_status_to_parent(NewState)};
 
 handle_call({send_signal, {TargetNode, Signal}}, {Pid, _Tag}, State) ->
 
     MonRef = erlang:monitor(process, Pid),
 
-    #concurrency_throttle_state{total_tokens = TotalTokens,
-                                avail_tokens = Count,
+    #concurrency_throttle_state{avail_tokens = Count,
                                 waiting_pool = _WaitingPool,
                                 active_pool = ActivePool,
                                 target_load = TargetLoad,
@@ -133,9 +122,6 @@ handle_call({send_signal, {TargetNode, Signal}}, {Pid, _Tag}, State) ->
     NewCount = Count - 1,
     %% signal vb replicator
     Pid ! Signal,
-
-    ?log_debug("grant one token to rep (pid: ~p, targetnode: ~p), available tokens: ~p (total tokens: ~p)",
-               [Pid, TargetNode, NewCount, TotalTokens]),
 
     NewState = State#concurrency_throttle_state{
                  avail_tokens = NewCount,
@@ -212,8 +198,6 @@ signal_waiting(#concurrency_throttle_state{} = State, NumJobsToSchedule) ->
                                 monitor_dict = MonDict} = State,
     case dict:size(WaitingPool) of
         0 ->
-            ?log_debug("nothing to schedule, # of active reps: ~p, # of acrtive target nodes: ~p",
-                       [dict:size(ActivePool), dict:size(TargetLoad)]),
             State;
         _ ->
             {WaitingPid, Signal, TargetNode} = choose_pid_to_schedule(WaitingPool,
@@ -224,10 +208,6 @@ signal_waiting(#concurrency_throttle_state{} = State, NumJobsToSchedule) ->
             NewWaitingPool = dict:erase(WaitingPid, WaitingPool),
             NewActivePool = dict:store(WaitingPid, TargetNode, ActivePool),
             NewTargetLoad = dict:update_counter(TargetNode, 1, TargetLoad),
-
-            ?log_debug("schedule a waiting rep (pid: ~p, target node: ~p) to be active "
-                       "(active reps: ~p, waiting reps: ~p)",
-                       [WaitingPid, TargetNode, dict:size(NewActivePool), dict:size(NewWaitingPool)]),
 
             WaitingPid ! Signal,
             NewState = State#concurrency_throttle_state{
@@ -277,10 +257,9 @@ choose_pid_to_schedule(WaitingPool, TargetLoad) ->
     {MinimumPid, Signal, TargetNode}.
 
 
-clean_concurr_throttle_state(Pid, Reason, #concurrency_throttle_state{
-                                    total_tokens = TotalTokens,
+clean_concurr_throttle_state(Pid, _Reason, #concurrency_throttle_state{
                                     avail_tokens = AvailTokens, monitor_dict = MonDict,
-                                    active_pool = ActivePool, waiting_pool = WaitingPool,
+                                    active_pool = ActivePool,
                                     target_load = TargetLoad } = State) ->
     %% update monitoring and active reps dictionaries
     NewMonDict = dict:erase(Pid, MonDict),
@@ -300,21 +279,6 @@ clean_concurr_throttle_state(Pid, Reason, #concurrency_throttle_state{
                   monitor_dict = NewMonDict,
                   active_pool = NewActivePool,
                   target_load = NewTargetLoad},
-
-    case Reason of
-        normal  ->
-            ?log_debug("rep ~p to node ~p is done normally, total tokens: ~p, available tokens: ~p,"
-                       "(active reps: ~p, waiting reps: ~p)",
-                       [Pid, TargetNode,
-                        TotalTokens, (AvailTokens + 1),
-                        dict:size(NewActivePool), dict:size(WaitingPool)]);
-        {Type, _Info} ->
-            ?log_debug("rep ~p to node ~p crashed (type: ~p), total tokens: ~p, available tokens: ~p, "
-                       "(active reps: ~p, waiting reps: ~p)",
-                       [Pid, TargetNode, Type,
-                        TotalTokens, (AvailTokens + 1),
-                        dict:size(NewActivePool), dict:size(WaitingPool)])
-    end,
 
     NewState.
 

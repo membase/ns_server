@@ -178,18 +178,10 @@ do_start(Socket, Vb, FailoverId,
     case Packet of
         #upr_packet{status = ?SUCCESS, body = FailoverLogBin} ->
             FailoverLog = unpack_failover_log(FailoverLogBin),
-            ?log_debug("FailoverLog: ~p", [FailoverLog]),
-            ?log_debug("Request was: ~p", [{Vb, Opaque, StartSeqno, EndSeqno,
-                                            FailoverId, SnapshotStart, SnapshotEnd}]),
-            ?log_debug("Sockname: ~p", [inet:sockname(Socket)]),
-
             {Data2, ActualSnapshotEnd} =
             case read_message_loop(Socket, Data0) of
                 {_, #upr_packet{opcode = ?UPR_SNAPSHOT_MARKER, ext = Ext}, Data1, _} ->
-                    <<ActualSnapshotStart:64, ActualSnapshotEnd0:64, Flags:32, _/binary>> = Ext,
-
-                    ?log_debug("Received snapshot marker: ~p",
-                               [{ActualSnapshotStart, ActualSnapshotEnd0, Flags}]),
+                    <<ActualSnapshotStart:64, ActualSnapshotEnd0:64, _Flags:32, _/binary>> = Ext,
 
                     SnapshotStart = ActualSnapshotStart,
                     {Data1, ActualSnapshotEnd0};

@@ -57,7 +57,6 @@ bump_status_counter(OldStatus, State, Element) ->
 -spec do_checkpoint(#rep_state{}) -> {ok, binary(), #rep_state{}} |
                                      {checkpoint_commit_failure, binary(), #rep_state{}}.
 do_checkpoint(#rep_state{current_through_seq=Seq, committed_seq=Seq} = State) ->
-    ?xdcr_debug("not checkpoint needed for vb: ~p", [State#rep_state.status#rep_vb_status.vb]),
     ?x_trace(noCheckpointNeeded, [{committedSeq, Seq}]),
     {ok, <<"no checkpoint">>, State};
 do_checkpoint(#rep_state{remote_vbopaque = {old_node_marker, RemoteStartTime},

@@ -147,7 +147,6 @@ handle_info(wake_me_up,
                        throttle = Throttle,
                        target_name = TgtURI} = St) ->
     TargetNode =  target_uri_to_node(TgtURI),
-    ?xdcr_debug("ask for token for rep of vb: ~p to target node: ~p", [Vb, TargetNode]),
     ok = concurrency_throttle:send_back_when_can_go(Throttle, TargetNode, start_replication),
 
     SeqnoKey = iolist_to_binary(io_lib:format("vb_~B:high_seqno", [Vb])),
@@ -178,10 +177,9 @@ handle_info(wake_me_up, OtherState) ->
     ?x_trace(gotNOOPWakeup, []),
     {noreply, OtherState};
 
-handle_info(start_replication, #rep_state{throttle = Throttle,
-                                          status = #rep_vb_status{vb = Vb, status = waiting_turn} = VbStatus} = St) ->
-
-    ?xdcr_debug("get start-replication token for vb ~p from throttle (pid: ~p)", [Vb, Throttle]),
+handle_info(start_replication,
+            #rep_state{
+               status = #rep_vb_status{status = waiting_turn} = VbStatus} = St) ->
 
     St1 = St#rep_state{status = VbStatus#rep_vb_status{status = replicating}},
     St2 = update_rep_options(St1),
@@ -894,25 +892,6 @@ start_replication(#rep_state{
               {optRepThreshold, OptRepThreshold},
               {workers, {json, [xdcr_trace_log_formatter:format_pid(W) || W <- Workers]}}]),
 
-    ?xdcr_info("Replication `~p` is using:~n"
-               "~c~p worker processes~n"
-               "~ca worker batch size of ~p~n"
-               "~ca worker batch size (KiB) ~p~n"
-               "~c~p HTTP connections~n"
-               "~ca connection timeout of ~p seconds~n"
-               "~c~p retries per request~n"
-               "~csocket options are: ~s~s",
-               [Id, $\t, NumWorkers, $\t, BatchSizeItems, $\t, BatchSizeKB, $\t,
-                MaxConns, $\t, get_value(connection_timeout, Options),
-                $\t, get_value(retries_per_request, Options),
-                $\t, io_lib:format("~p", [get_value(socket_options, Options)]),
-                case StartSeq of
-                    ?LOWEST_SEQ ->
-                        "";
-                    _ ->
-                        io_lib:format("~n~csource start sequence ~p", [$\t, StartSeq])
-                end]),
-
     IntervalSecs = get_value(checkpoint_interval, Options),
     TimeSinceLastCkpt = timer:now_diff(now(), LastCkptTime) div 1000000,
 
@@ -961,23 +940,6 @@ start_replication(#rep_state{
             exit({failed_to_commit_checkpoint, CkptErrReason})
     end,
 
-
-    %% finally the vb replicator has been started
-    Src = ResultState#rep_state.source_name,
-    Tgt = misc:sanitize_url(ResultState#rep_state.target_name),
-    case Remote of
-        nil ->
-            ?xdcr_info("replicator of vb ~p for replication from src ~p to target ~p has been "
-                       "started (capi mode).",
-                       [Vb, Src, Tgt]),
-            ok;
-        _ ->
-            ?xdcr_info("replicator of vb ~p for replication from src ~p to target ~p has been "
-                       "started (xmem remote (ip: ~p, port: ~p, bucket: ~p)).",
-                       [Vb, Src, Tgt, Remote#xdc_rep_xmem_remote.ip,
-                        Remote#xdc_rep_xmem_remote.port, Remote#xdc_rep_xmem_remote.bucket]),
-            ok
-    end,
     ResultState.
 
 spawn_changes_reader(BucketName, Vb, ChangesQueue, StartSeq,
