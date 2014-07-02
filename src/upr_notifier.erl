@@ -45,7 +45,7 @@ subscribe(Bucket, Partition, StartSeqNo, UUID) ->
 
 init([Bucket], ParentState) ->
     erlang:register(server_name(Bucket), self()),
-    {[], ParentState}.
+    {ets:new(ok, []), ParentState}.
 
 server_name(Bucket) ->
     list_to_atom(?MODULE_STRING "-" ++ Bucket).
@@ -109,17 +109,18 @@ close_stream(Result, #partition{subscribers = Subscribers} = PartitionState) ->
 get_connection_name(Bucket, Node) ->
     "xdcr:notifier:" ++ atom_to_list(Node) ++ ":" ++ Bucket.
 
-get_partition(Partition, Partitions) ->
-    case lists:keyfind(Partition, #partition.partition, Partitions) of
-        false ->
+get_partition(Partition, Ets) ->
+    case ets:lookup(Ets, Partition) of
+        [] ->
             #partition{partition = Partition};
-        P ->
-            P
+        [{Partition, PartitionState}] ->
+            PartitionState
     end.
 
 set_partition(#partition{partition = Partition} = PartitionState,
-              Partitions) ->
-    lists:keystore(Partition, #partition.partition, Partitions, PartitionState).
+              Ets) ->
+    ets:insert(Ets, {Partition, PartitionState}),
+    Ets.
 
 add_subscriber(From, #partition{subscribers = Subscribers} = PartitionState) ->
     PartitionState#partition{subscribers = [From | Subscribers]}.
