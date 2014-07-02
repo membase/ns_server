@@ -45,6 +45,7 @@ subscribe(Bucket, Partition, StartSeqNo, UUID) ->
 
 init([Bucket], ParentState) ->
     erlang:register(server_name(Bucket), self()),
+    erlang:put(suppress_logging_for_xdcr, true),
     {ets:new(ok, []), ParentState}.
 
 server_name(Bucket) ->

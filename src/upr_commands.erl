@@ -84,8 +84,6 @@ close_stream(Sock, Partition, Opaque) ->
                      seq_no(), integer(), seq_no(), seq_no()) -> {ok, quiet}.
 stream_request(Sock, Partition, Opaque, StartSeqNo, EndSeqNo,
                PartitionUUID, SnapshotStart, SnapshotEnd) ->
-    ?log_debug("Start stream for partition ~p, opaque = ~.16X, start seqno = ~p, end seqno = ~p, uuid = ~p, snapshot start = ~p, snapshot end = ~p",
-               [Partition, Opaque, "0x", StartSeqNo, EndSeqNo, PartitionUUID, SnapshotStart, SnapshotEnd]),
     Extra = <<0:64, StartSeqNo:64, EndSeqNo:64, PartitionUUID:64,
               SnapshotStart:64, SnapshotEnd:64>>,
     {ok, quiet} = mc_client_binary:cmd_quiet(?UPR_STREAM_REQ, Sock,
