@@ -160,8 +160,24 @@ child_specs() ->
      {proxied_memcached_clients_pool, {proxied_memcached_clients_pool, start_link, []},
       permanent, 1000, worker, []},
 
+     %% this may spuriously fails sometimes when our xdcr workers
+     %% crash and exit message is sent to this guy supposedly via
+     %% socket links (there's brief window of time when both
+     %% lhttpc_client process and this guy are linked to socket as
+     %% part of passing ownership to client).
+     %%
+     %% When this crash happens we usually end up crashing
+     %% continuously because all clients are sending done back to new
+     %% process and new process, unaware of old clients, crashes. And
+     %% it happens continuously and may cause
+     %% reached_max_restart_intensity.
+     %%
+     %% So in order to at least prevent max restart intensity
+     %% condition we just use supervisor2 feature to keep restarting
+     %% this sucker. Due to restart delay we should reach condition
+     %% when all clients have died and new guy won't receive done-s.
      {xdc_lhttpc_pool, {lhttpc_manager, start_link, [[{name, xdc_lhttpc_pool}, {connection_timeout, 120000}, {pool_size, 200}]]},
-      permanent, 10000, worker, [lhttpc_manager]},
+      {permanent, 1}, 10000, worker, [lhttpc_manager]},
 
      {ns_null_connection_pool, {ns_null_connection_pool, start_link, [ns_null_connection_pool]},
       permanent, 1000, worker, []},
