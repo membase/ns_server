@@ -63,13 +63,13 @@ start_link({MaxConcurrency, Type}, Parent) ->
     gen_server:start_link(?MODULE, {MaxConcurrency, Type, Parent}, []).
 
 send_back_when_can_go(Server, Signal) ->
-    send_back_when_can_go(Server, "NULL", Signal).
+    send_back_when_can_go(Server, [], Signal).
 
 send_back_when_can_go(Server, LoadKey, Signal) ->
-    gen_server:call(Server, {send_signal, {LoadKey, Signal}}, infinity).
+    gen_server:cast(Server, {send_signal, LoadKey, Signal, self()}).
 
 is_done(Server) ->
-    gen_server:call(Server, done, infinity).
+    gen_server:cast(Server, {done, self()}).
 
 change_tokens(Server, NewTokens) ->
     gen_server:call(Server, {change_tokens, NewTokens}, infinity).
@@ -87,50 +87,6 @@ init({Count, Type, Parent}) ->
                                      active_pool = ActivePool,
                                      target_load = TargetLoad,
                                      monitor_dict = MonitorDict}}.
-
-handle_call({send_signal, {TargetNode, Signal}}, {Pid, _Tag},
-            #concurrency_throttle_state{avail_tokens = AvailTokens} = State) when AvailTokens < 1 ->
-    #concurrency_throttle_state{waiting_pool = WaitingPool,
-                                target_load = TargetLoad} = State,
-
-    %% no available token, put job into waiting pool
-    NewWaitingPool = dict:store(Pid, {Signal, TargetNode, os:timestamp()}, WaitingPool),
-    NewTargetLoad = case dict:is_key(TargetNode, TargetLoad) of
-                        false ->
-                            dict:store(TargetNode, 0, TargetLoad);
-                        _ ->
-                            TargetLoad
-                    end,
-    NewState = State#concurrency_throttle_state{target_load = NewTargetLoad,
-                                                waiting_pool = NewWaitingPool},
-    {reply, ok, update_status_to_parent(NewState)};
-
-handle_call({send_signal, {TargetNode, Signal}}, {Pid, _Tag}, State) ->
-
-    MonRef = erlang:monitor(process, Pid),
-
-    #concurrency_throttle_state{avail_tokens = Count,
-                                waiting_pool = _WaitingPool,
-                                active_pool = ActivePool,
-                                target_load = TargetLoad,
-                                monitor_dict = MonDict} = State,
-
-    NewMonDict = dict:store(Pid, MonRef, MonDict),
-    NewActivePool = dict:store(Pid, TargetNode, ActivePool),
-    %% update target_load
-    NewTargetLoad = dict:update_counter(TargetNode, 1, TargetLoad),
-    NewCount = Count - 1,
-    %% signal vb replicator
-    Pid ! Signal,
-
-    NewState = State#concurrency_throttle_state{
-                 avail_tokens = NewCount,
-                 monitor_dict = NewMonDict,
-                 target_load = NewTargetLoad,
-                 active_pool = NewActivePool},
-
-    {reply, ok, update_status_to_parent(NewState)};
-
 
 handle_call({change_tokens, NewTokens}, {Pid, _Tag}, State) ->
 
@@ -167,15 +123,58 @@ handle_call({change_tokens, NewTokens}, {Pid, _Tag}, State) ->
                                State1
                        end,
             {reply, ok, update_status_to_parent(NewState)}
-    end;
+    end.
 
-handle_call(done, {Pid, _Tag},
+handle_cast({send_signal, TargetNode, Signal, Pid},
+            #concurrency_throttle_state{avail_tokens = AvailTokens} = State) when AvailTokens < 1 ->
+    #concurrency_throttle_state{waiting_pool = WaitingPool,
+                                target_load = TargetLoad} = State,
+
+    %% no available token, put job into waiting pool
+    NewWaitingPool = dict:store(Pid, {Signal, TargetNode, os:timestamp()}, WaitingPool),
+    NewTargetLoad = case dict:is_key(TargetNode, TargetLoad) of
+                        false ->
+                            dict:store(TargetNode, 0, TargetLoad);
+                        _ ->
+                            TargetLoad
+                    end,
+    NewState = State#concurrency_throttle_state{target_load = NewTargetLoad,
+                                                waiting_pool = NewWaitingPool},
+    {noreply, update_status_to_parent(NewState)};
+
+handle_cast({send_signal, TargetNode, Signal, Pid}, State) ->
+
+    MonRef = erlang:monitor(process, Pid),
+
+    #concurrency_throttle_state{avail_tokens = Count,
+                                waiting_pool = _WaitingPool,
+                                active_pool = ActivePool,
+                                target_load = TargetLoad,
+                                monitor_dict = MonDict} = State,
+
+    NewMonDict = dict:store(Pid, MonRef, MonDict),
+    NewActivePool = dict:store(Pid, TargetNode, ActivePool),
+    %% update target_load
+    NewTargetLoad = dict:update_counter(TargetNode, 1, TargetLoad),
+    NewCount = Count - 1,
+    %% signal vb replicator
+    Pid ! Signal,
+
+    NewState = State#concurrency_throttle_state{
+                 avail_tokens = NewCount,
+                 monitor_dict = NewMonDict,
+                 target_load = NewTargetLoad,
+                 active_pool = NewActivePool},
+
+    {noreply, update_status_to_parent(NewState)};
+
+handle_cast({done, Pid},
             #concurrency_throttle_state{monitor_dict = MonDict} = State) ->
 
     true = erlang:demonitor(dict:fetch(Pid, MonDict), [flush]),
     NewState = clean_concurr_throttle_state(Pid, normal, State),
     State2  = schedule_waiting_jobs(NewState),
-    {reply, ok, update_status_to_parent(State2)}.
+    {noreply, update_status_to_parent(State2)};
 
 handle_cast(Msg, State) ->
     {stop, {error, {unexpected_cast, Msg}}, State}.
