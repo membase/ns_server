@@ -40,7 +40,8 @@
          get_delta_recovery_nodes/2,
          verify_replication/3,
          start_link_graceful_failover/1,
-         generate_vbucket_map_options/2]).
+         generate_vbucket_map_options/2,
+         check_failover_possible/1]).
 
 -export([wait_local_buckets_shutdown_complete/0]). % used via rpc:multicall
 
@@ -935,12 +936,13 @@ start_link_graceful_failover(Node) ->
     proc_lib:start_link(erlang, apply, [fun run_graceful_failover/1, [Node]]).
 
 run_graceful_failover(Node) ->
-    Nodes = ns_node_disco:nodes_wanted(),
-    case (not lists:member(Node, Nodes)
-          orelse ns_cluster_membership:get_cluster_membership(Node) =:= inactiveAdded) of
-        true -> erlang:exit(unknown_node);
-        _ -> ok
+    case check_failover_possible(Node) of
+        ok ->
+            ok;
+        Error ->
+            erlang:exit(Error)
     end,
+
     case check_graceful_failover_possible(Node, ns_bucket:get_buckets()) of
         true -> ok;
         false ->
@@ -987,4 +989,17 @@ check_graceful_failover_possible(Node, [{_BucketName, BucketConfig} | RestBucket
             false;
         false ->
             check_graceful_failover_possible(Node, RestBucketConfigs)
+    end.
+
+check_failover_possible(Node) ->
+    case ns_cluster_membership:active_nodes() of
+        [Node] ->                           % Node is bound
+            last_node;
+        ActiveNodes ->
+            case lists:member(Node, ActiveNodes) of
+                true ->
+                    ok;
+                false ->
+                    unknown_node
+            end
     end.

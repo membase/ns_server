@@ -231,7 +231,7 @@ start_rebalance(KnownNodes, EjectNodes, DeltaRecoveryBuckets) ->
 
 -spec start_graceful_failover(node()) ->
                                      ok | in_progress | in_recovery |
-                                     not_graceful | unknown_node.
+                                     not_graceful | unknown_node | last_node.
 start_graceful_failover(Node) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {start_graceful_failover, Node}).
@@ -653,16 +653,11 @@ idle({delete_bucket, BucketName}, _From,
     {reply, Reply, idle, NewState};
 idle({failover, Node}, _From, State) ->
     Result =
-        case ns_cluster_membership:active_nodes() of
-            [Node] ->                           % Node is bound
-                last_node;
-            ActiveNodes ->
-                case lists:member(Node, ActiveNodes) of
-                    true ->
-                        ns_rebalancer:orchestrate_failover(Node);
-                    false ->
-                        unknown_node
-                end
+        case ns_rebalancer:check_failover_possible(Node) of
+            ok ->
+                ns_rebalancer:orchestrate_failover(Node);
+            Error ->
+                Error
         end,
     {reply, Result, idle, State};
 idle({try_autofailover, Node}, From, State) ->

@@ -2479,7 +2479,9 @@ handle_start_graceful_failover(Req) ->
                       not_graceful ->
                           {400, "Failover cannot be done gracefully (would lose vbuckets)."};
                       unknown_node ->
-                          {400, "Unknown server given."}
+                          {400, "Unknown server given."};
+                      last_node ->
+                          {400, "Last active node cannot be failed over."}
                   end,
             case Msg of
                 [] ->
