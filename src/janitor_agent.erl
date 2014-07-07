@@ -507,6 +507,8 @@ get_tap_docs_estimate_many_taps(Bucket, SrcNode, VBucket, TapNames) ->
     do_servant_call({server_name(Bucket), SrcNode},
                     {get_tap_docs_estimate_many_taps, VBucket, TapNames}).
 
+get_mass_tap_docs_estimate(_Bucket, _Node, []) ->
+    {ok, []};
 get_mass_tap_docs_estimate(Bucket, Node, VBuckets) ->
     RV = do_servant_call({server_name(Bucket), Node},
                          {get_mass_tap_docs_estimate, VBuckets}),
@@ -521,6 +523,8 @@ get_upr_docs_estimate(Bucket, SrcNode, VBucket, ReplicaNodes) ->
 
 -spec get_mass_upr_docs_estimate(bucket_name(), node(), [vbucket_id()]) ->
                                         {ok, [{non_neg_integer(), non_neg_integer(), binary()}]}.
+get_mass_upr_docs_estimate(_Bucket, _Node, []) ->
+    {ok, []};
 get_mass_upr_docs_estimate(Bucket, Node, VBuckets) ->
     RV = do_servant_call({server_name(Bucket), Node},
                          {get_mass_upr_docs_estimate, VBuckets}),
