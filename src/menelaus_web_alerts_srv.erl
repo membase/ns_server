@@ -345,7 +345,7 @@ can_listen(Host) ->
         {ok, IpAddr} ->
             case gen_udp:open(0, [inet, {ip, IpAddr}]) of
                 {error, ListErr} ->
-                    ?log_error("gen_udp:open failed due to ~p", [ListErr]),
+                    ?log_error("gen_udp:open(~p) failed due to ~p", [IpAddr, ListErr]),
                     false;
                 {ok, Socket} ->
                     gen_udp:close(Socket),
