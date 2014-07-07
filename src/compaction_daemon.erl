@@ -909,7 +909,7 @@ maybe_compact_vbucket(BucketName, {VBucket, DbName} = VBucketAndDb,
     %% effectful
     ensure_can_db_compact(DbName, SizeInfo),
 
-    ?log_info("Compacting ~p", [DbName]),
+    ?log_info("Compacting `~s' (~p)", [DbName, Options]),
     Ret = case VBucket of
               master ->
                   compact_master_vbucket(BucketName, DbName);
