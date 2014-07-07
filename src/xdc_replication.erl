@@ -63,8 +63,14 @@ init([#rep{source = SrcBucketBinary, replication_mode = RepMode, options = Optio
     ?xdcr_debug("ns config event handler subscribed", []),
 
     MaxConcurrentReps = options_to_num_tokens(Options),
-    {ok, InitThrottle} = concurrency_throttle:start_link({MaxConcurrentReps, ?XDCR_INIT_CONCUR_THROTTLE}, self()),
-    {ok, WorkThrottle} = concurrency_throttle:start_link({MaxConcurrentReps, ?XDCR_REPL_CONCUR_THROTTLE}, self()),
+    ThrottleMod = case ns_config:read_key_fast(xdcr_use_old_throttle, false) of
+                      true ->
+                          concurrency_throttle;
+                      _ ->
+                          new_concurrency_throttle
+                  end,
+    {ok, InitThrottle} = ThrottleMod:start_link({MaxConcurrentReps, ?XDCR_INIT_CONCUR_THROTTLE}, self()),
+    {ok, WorkThrottle} = ThrottleMod:start_link({MaxConcurrentReps, ?XDCR_REPL_CONCUR_THROTTLE}, self()),
     ?xdcr_debug("throttle process created (init throttle: ~p, work throttle: ~p). Tokens count is ~p",
                 [InitThrottle, WorkThrottle, MaxConcurrentReps]),
     Sup = start_vbucket_rep_sup(Rep),
