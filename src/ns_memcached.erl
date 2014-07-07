@@ -601,6 +601,7 @@ complete_connection_phase(Err, _Bucket) ->
 handle_cast({connect_done, WorkersCount, RV}, #state{bucket = Bucket,
                                                      status = OldStatus} = State) ->
     gen_event:notify(buckets_events, {started, Bucket}),
+    erlang:process_flag(trap_exit, true),
 
     case complete_connection_phase(RV, Bucket) of
         {ok, Sock} ->
@@ -611,7 +612,6 @@ handle_cast({connect_done, WorkersCount, RV}, #state{bucket = Bucket,
             {ok, Timer} = timer2:send_interval(?CHECK_WARMUP_INTERVAL, check_started),
             Self = self(),
             Self ! check_started,
-            erlang:process_flag(trap_exit, true),
 
             InitialState = State#state{
                              timer = Timer,
