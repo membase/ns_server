@@ -16,8 +16,7 @@
 -record(state, {buckets_to_compact :: [binary()],
                 compactor_pid,
                 compactor_config,
-                compaction_start_ts,
-                scheduled_compaction_tref,
+                scheduler,
 
                 %% bucket for which view compaction is inhibited (note
                 %% it's also set when we're running 'uninhibit' views
@@ -125,12 +124,13 @@ init([]) ->
               ok
       end),
 
+    CheckInterval = get_check_interval(ns_config:get()),
+
     Self ! compact,
     {ok, idle, #state{buckets_to_compact=[],
                       compactor_pid=undefined,
                       compactor_config=undefined,
-                      compaction_start_ts=undefined,
-                      scheduled_compaction_tref=undefined,
+                      scheduler = compaction_scheduler:init(CheckInterval, compact),
                       running_forced_compactions=dict:new(),
                       forced_compaction_pids=dict:new()}}.
 
@@ -264,8 +264,8 @@ handle_sync_event(Event, _From, StateName, State) ->
     {reply, ok, StateName, State}.
 
 handle_info(compact, idle,
-            #state{buckets_to_compact=Buckets0} = State) ->
-    undefined = State#state.compaction_start_ts,
+            #state{buckets_to_compact=Buckets0,
+                   scheduler = Scheduler} = State) ->
     undefined = State#state.compactor_pid,
 
     Buckets =
@@ -277,17 +277,17 @@ handle_info(compact, idle,
                 Buckets0
         end,
 
-    NewState0 = State#state{scheduled_compaction_tref=undefined},
-
     case Buckets of
         [] ->
             ?log_debug("No buckets to compact. Rescheduling compaction."),
-            {next_state, idle, schedule_next_compaction(NewState0)};
+            {next_state, idle, State#state{scheduler =
+                                               compaction_scheduler:schedule_next(Scheduler)}};
         _ ->
             ?log_debug("Starting compaction for the following buckets: ~n~p",
                        [Buckets]),
-            NewState1 = NewState0#state{buckets_to_compact=Buckets,
-                                        compaction_start_ts=now_utc_seconds()},
+            NewState1 = State#state{buckets_to_compact=Buckets,
+                                    scheduler=
+                                        compaction_scheduler:start_now(Scheduler)},
             NewState = compact_next_bucket(NewState1),
             {next_state, compacting, NewState}
     end;
@@ -299,7 +299,8 @@ handle_info({'DOWN', MRef, _, _, _}, StateName, #state{view_compaction_inhibited
                                         view_compaction_inhibited_bucket = undefined}};
 handle_info({'EXIT', Compactor, Reason}, compacting,
             #state{compactor_pid=Compactor,
-                   buckets_to_compact=Buckets} = State) ->
+                   buckets_to_compact=Buckets,
+                   scheduler=Scheduler} = State) ->
     true = Buckets =/= [],
 
     case Reason of
@@ -343,7 +344,8 @@ handle_info({'EXIT', Compactor, Reason}, compacting,
     case NewBuckets of
         [] ->
             ?log_debug("Finished compaction iteration."),
-            {next_state, idle, schedule_next_compaction(NewState1)};
+            {next_state, idle, NewState1#state{scheduler =
+                                                   compaction_scheduler:schedule_next(Scheduler)}};
         _ ->
             {next_state, compacting, compact_next_bucket(NewState1)}
     end;
@@ -384,25 +386,21 @@ handle_info({'EXIT', Pid, Reason}, StateName,
                        [Pid, Reason]),
             {stop, Reason, State}
     end;
-handle_info(config_changed, compacting,
-            #state{compactor_pid=Compactor,
-                   buckets_to_compact=[CompactedBucket|_],
-                   compactor_config=Config} = State) ->
+handle_info(config_changed, StateName,
+            #state{scheduler = Scheduler} = State) ->
     misc:flush(config_changed),
+    Config = ns_config:get(),
+    CheckInterval = get_check_interval(Config),
+    NewScheduler = compaction_scheduler:set_interval(CheckInterval, Scheduler),
 
-    {MaybeNewConfig, _} = compaction_config(CompactedBucket),
-    case MaybeNewConfig =:= Config of
-        true ->
-            ok;
-        false ->
-            ?log_info("Restarting compactor ~p since "
-                      "autocompaction config has changed", [Compactor]),
-            exit(Compactor, shutdown)
+    case StateName of
+        compacting ->
+            maybe_restart_compactor(Config, State);
+        idle ->
+            ok
     end,
-    {next_state, compacting, State};
-handle_info(config_changed, StateName, State) ->
-    misc:flush(config_changed),
-    {next_state, StateName, State};
+
+    {next_state, StateName, State#state{scheduler = NewScheduler}};
 handle_info(Info, StateName, State) ->
     ?log_warning("Got unexpected message ~p (when in ~p):~n~p",
                  [Info, StateName, State]),
@@ -413,6 +411,23 @@ terminate(_Reason, _StateName, _State) ->
 
 code_change(_OldVsn, StateName, State, _Extra) ->
     {ok, StateName, State}.
+
+maybe_restart_compactor(NewConfig, #state{compactor_pid=Compactor,
+                                          buckets_to_compact=[CompactedBucket|_],
+                                          compactor_config=Config}) ->
+    {MaybeNewConfig, _} = compaction_config(NewConfig, CompactedBucket),
+    case MaybeNewConfig =:= Config of
+        true ->
+            ok;
+        false ->
+            ?log_info("Restarting compactor ~p since "
+                      "autocompaction config has changed", [Compactor]),
+            exit(Compactor, shutdown)
+    end.
+
+get_check_interval(Config) ->
+    #daemon_config{check_interval=CheckInterval} = compaction_daemon_config(Config),
+    CheckInterval.
 
 %% Internal functions
 -spec spawn_bucket_compactor(binary(), {#config{}, list()}, boolean() | view_inhibited) -> pid().
@@ -1045,16 +1060,11 @@ search_node_default(Config, Key, Default) ->
             Value
     end.
 
-compaction_daemon_config() ->
-    Config = ns_config:get(),
-    compaction_daemon_config(Config).
-
 compaction_daemon_config(Config) ->
     Props = search_node_default(Config, compaction_daemon, []),
     daemon_config_to_record(Props).
 
-compaction_config_props(BucketName) ->
-    Config = ns_config:get(),
+compaction_config_props(Config, BucketName) ->
     Global = search_node_default(Config, autocompaction, []),
     BucketConfig = get_bucket(BucketName, Config),
     PerBucket = case proplists:get_value(autocompaction, BucketConfig, []) of
@@ -1068,11 +1078,14 @@ compaction_config_props(BucketName) ->
       end, Global, PerBucket).
 
 compaction_config(BucketName) ->
-    ConfigProps = compaction_config_props(BucketName),
-    DaemonConfig = compaction_daemon_config(),
-    Config = config_to_record(ConfigProps, DaemonConfig),
+    compaction_config(ns_config:get(), BucketName).
 
-    {Config, ConfigProps}.
+compaction_config(Config, BucketName) ->
+    ConfigProps = compaction_config_props(Config, BucketName),
+    DaemonConfig = compaction_daemon_config(Config),
+    ConfigRecord = config_to_record(ConfigProps, DaemonConfig),
+
+    {ConfigRecord, ConfigProps}.
 
 config_to_record(Config, DaemonConfig) ->
     do_config_to_record(Config, #config{daemon=DaemonConfig}).
@@ -1287,69 +1300,16 @@ compact_next_bucket(#state{buckets_to_compact=Buckets,
                         compactor_config = InitialConfig}
     end.
 
-
--spec schedule_next_compaction(#state{}) -> #state{}.
-schedule_next_compaction(#state{compaction_start_ts=StartTs0,
-                                buckets_to_compact=Buckets,
-                                scheduled_compaction_tref=TRef} = State) ->
-    [] = Buckets,
-    undefined = TRef,
-
-    Now = now_utc_seconds(),
-
-    StartTs = case StartTs0 of
-                  undefined ->
-                      Now;
-                  _ ->
-                      StartTs0
-              end,
-
-    #daemon_config{check_interval=CheckInterval} = compaction_daemon_config(),
-
-    Diff = Now - StartTs,
-
-    NewState0 =
-        case Diff < CheckInterval of
-            true ->
-                RepeatIn = (CheckInterval - Diff),
-                ?log_debug("Finished compaction too soon. Next run will be in ~ps",
-                           [RepeatIn]),
-                {ok, NewTRef} = timer2:send_after(RepeatIn * 1000, compact),
-                State#state{scheduled_compaction_tref=NewTRef};
-            false ->
-                self() ! compact,
-                State
-        end,
-
-    NewState0#state{compaction_start_ts=undefined}.
-
 -spec schedule_immediate_compaction(#state{}) -> #state{}.
 schedule_immediate_compaction(#state{buckets_to_compact=Buckets,
-                                     compactor_pid=Compactor} = State0) ->
+                                     compactor_pid=Compactor,
+                                     scheduler=Scheduler} = State0) ->
     [] = Buckets,
     undefined = Compactor,
 
-    State1 = cancel_scheduled_compaction(State0),
+    State1 = State0#state{scheduler=compaction_scheduler:cancel(Scheduler)},
     self() ! compact,
     State1.
-
--spec cancel_scheduled_compaction(#state{}) -> #state{}.
-cancel_scheduled_compaction(#state{scheduled_compaction_tref=undefined} = State) ->
-    State;
-cancel_scheduled_compaction(#state{scheduled_compaction_tref=TRef} = State) ->
-    {ok, cancel} = timer2:cancel(TRef),
-
-    receive
-        compact ->
-            ok
-    after 0 ->
-            ok
-    end,
-
-    State#state{scheduled_compaction_tref=undefined}.
-
-now_utc_seconds() ->
-    calendar:datetime_to_gregorian_seconds(erlang:universaltime()).
 
 db_name(BucketName, SubName) when is_list(SubName) ->
     db_name(BucketName, list_to_binary(SubName));
