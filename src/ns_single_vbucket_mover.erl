@@ -203,7 +203,7 @@ inhibit_view_compaction(Parent, Node, Bucket, NewNode) ->
                       InhibitedNodes = lists:usort([Node, NewNode]),
                       InhibitRVs = misc:parallel_map(
                                      fun (N) ->
-                                             {N, compaction_daemon:inhibit_view_compaction(Bucket, N, Parent)}
+                                             {N, ns_vbucket_mover:inhibit_view_compaction(Bucket, Parent, N)}
                                      end, InhibitedNodes, infinity),
 
                       [case IRV of

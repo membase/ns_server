@@ -34,6 +34,8 @@
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2]).
 
+-export([inhibit_view_compaction/3]).
+
 -type progress_callback() :: fun((dict()) -> any()).
 
 -record(state, {bucket::nonempty_string(),
@@ -274,7 +276,7 @@ spawn_compaction_uninhibitor(Bucket, Node, MRef) ->
       fun () ->
               case cluster_compat_mode:is_index_aware_rebalance_on() of
                   true ->
-                      case compaction_daemon:uninhibit_view_compaction(Bucket, Node, MRef) of
+                      case uninhibit_view_compaction(Bucket, Parent, Node, MRef) of
                           ok ->
                               master_activity_events:note_compaction_uninhibited(Bucket, Node),
                               ok;
@@ -286,6 +288,32 @@ spawn_compaction_uninhibitor(Bucket, Node, MRef) ->
               end,
               Parent ! {compaction_done, Node}
       end).
+
+get_node_version(Node) ->
+    case ets:lookup(node_versions_for_rebalance, Node) of
+        [] ->
+            [0, 0, 0];
+        [{Node, Version}] ->
+            Version
+    end.
+
+-spec uninhibit_view_compaction(bucket_name(), pid(), node(), reference()) -> ok | nack.
+uninhibit_view_compaction(Bucket, Rebalancer, Node, MRef) ->
+    case get_node_version(Node) >= [3, 0, 0] of
+        true ->
+            janitor_agent:uninhibit_view_compaction(Bucket, Rebalancer, Node, MRef);
+        false ->
+            compaction_daemon:uninhibit_view_compaction(Bucket, Node, MRef)
+    end.
+
+-spec inhibit_view_compaction(bucket_name(), pid(), node()) -> {ok, reference()} | nack.
+inhibit_view_compaction(Bucket, Rebalancer, Node) ->
+    case get_node_version(Node) >= [3, 0, 0] of
+        true ->
+            janitor_agent:inhibit_view_compaction(Bucket, Rebalancer, Node);
+        false ->
+            compaction_daemon:inhibit_view_compaction(Bucket, Node, Rebalancer)
+    end.
 
 %% @doc Spawn workers up to the per-node maximum.
 -spec spawn_workers(#state{}) -> {noreply, #state{}} | {stop, normal, #state{}}.

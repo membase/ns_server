@@ -75,7 +75,9 @@
          wait_upr_data_move/5,
          wait_seqno_persisted/5,
          get_vbucket_high_seqno/4,
-         upr_takeover/5]).
+         upr_takeover/5,
+         inhibit_view_compaction/3,
+         uninhibit_view_compaction/4]).
 
 -export([start_link/1]).
 
@@ -492,6 +494,18 @@ wait_seqno_persisted(Bucket, Rebalancer, Node, VBucket, SeqNo) ->
                          {if_rebalance, Rebalancer, {wait_seqno_persisted, VBucket, SeqNo}},
                          infinity).
 
+-spec inhibit_view_compaction(bucket_name(), pid(), node()) -> {ok, reference()} | nack.
+inhibit_view_compaction(Bucket, Rebalancer, Node) ->
+    gen_server:call({server_name(Bucket), Node},
+                    {if_rebalance, Rebalancer, {inhibit_view_compaction, Rebalancer}},
+                    infinity).
+
+-spec uninhibit_view_compaction(bucket_name(), pid(), node(), reference()) -> ok | nack.
+uninhibit_view_compaction(Bucket, Rebalancer, Node, Ref) ->
+    gen_server:call({server_name(Bucket), Node},
+                    {if_rebalance, Rebalancer, {uninhibit_view_compaction, Ref}},
+                    infinity).
+
 initiate_servant_call(Server, Request) ->
     {ServantPid, Tag} = gen_server:call(Server, Request, infinity),
     MRef = erlang:monitor(process, ServantPid),
@@ -792,6 +806,26 @@ handle_call({wait_seqno_persisted, VBucket, SeqNo},
                        ?rebalance_debug("Done waiting for persistence of seqno ~B in vbucket ~B",
                                         [SeqNo, VBucket]),
                        ok
+               end),
+    {noreply, State2};
+handle_call({inhibit_view_compaction, Pid},
+            From,
+            #state{bucket_name = Bucket} = State) ->
+    State2 = spawn_rebalance_subprocess(
+               State,
+               From,
+               fun () ->
+                       compaction_daemon:inhibit_view_compaction(Bucket, node(), Pid)
+               end),
+    {noreply, State2};
+handle_call({uninhibit_view_compaction, Ref},
+            From,
+            #state{bucket_name = Bucket} = State) ->
+    State2 = spawn_rebalance_subprocess(
+               State,
+               From,
+               fun () ->
+                       compaction_daemon:uninhibit_view_compaction(Bucket, node(), Ref)
                end),
     {noreply, State2};
 handle_call({get_replication_persistence_checkpoint_id, VBucket},
