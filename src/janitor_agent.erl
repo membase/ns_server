@@ -324,14 +324,13 @@ apply_new_bucket_config_star(Bucket, Rebalancer, Servers, Zombies, NewBucketConf
     end.
 
 process_multicall_rv({Replies, BadNodes}) ->
-    BadReplies = [R || {_, RV} = R <- Replies,
-                       RV =/= ok],
-    case BadReplies =/= [] orelse BadNodes =/= [] of
-        true ->
-            {errors, [{N, bad_node} || N <- BadNodes] ++ BadReplies};
-        false ->
-            ok
-    end.
+    BadReplies = [R || {_, RV} = R <- Replies, RV =/= ok],
+    process_multicall_rv(BadReplies, BadNodes).
+
+process_multicall_rv([], []) ->
+    ok;
+process_multicall_rv(BadReplies, BadNodes) ->
+    {errors, [{N, bad_node} || N <- BadNodes] ++ BadReplies}.
 
 -spec delete_vbucket_copies(bucket_name(), pid(), [node()], vbucket_id()) ->
                                    ok | {errors, [{node(), term()}]}.
@@ -341,10 +340,27 @@ delete_vbucket_copies(Bucket, RebalancerPid, Nodes, VBucket) ->
                                                 {delete_vbucket, VBucket}},
                                                ?DELETE_VBUCKET_TIMEOUT)).
 
+-spec prepare_nodes_for_rebalance(bucket_name(), [node()], pid()) ->
+                                         {ok, [{node(), [integer()]}]} |
+                                         {errors, [{node(), term()}]}.
 prepare_nodes_for_rebalance(Bucket, Nodes, RebalancerPid) ->
-    process_multicall_rv(gen_server:multi_call(Nodes, server_name(Bucket),
-                                               {prepare_rebalance, RebalancerPid},
-                                               ?PREPARE_REBALANCE_TIMEOUT)).
+    {Replies, BadNodes} = gen_server:multi_call(Nodes, server_name(Bucket),
+                                                {prepare_rebalance, RebalancerPid},
+                                                ?PREPARE_REBALANCE_TIMEOUT),
+    {BadReplies, Versions} =
+        lists:foldl(fun ({_, ok}, {BRAcc, VAcc}) ->
+                            {BRAcc, VAcc};
+                        ({Node, {ok, [{version, Version}]}}, {BRAcc, VAcc}) ->
+                            {BRAcc, [{Node, Version} | VAcc]};
+                        (R, {BRAcc, VAcc}) ->
+                            {[R | BRAcc], VAcc}
+                    end, {[], []}, Replies),
+    case process_multicall_rv(BadReplies, BadNodes) of
+        ok ->
+            {ok, Versions};
+        Errors ->
+            Errors
+    end.
 
 prepare_nodes_for_upr_upgrade(Bucket, Nodes, RebalancerPid) ->
     process_multicall_rv(gen_server:multi_call(Nodes, server_name(Bucket),
@@ -588,7 +604,8 @@ handle_call({prepare_rebalance, Pid}, _From,
     State1 = State#state{rebalance_only_vbucket_states =
                              [undefined || _ <- State#state.rebalance_only_vbucket_states],
                          rebalancer_type = rebalancer},
-    {reply, ok, set_rebalance_mref(Pid, State1)};
+    {reply, {ok, [{version, cluster_compat_mode:mb_master_advertised_version()}]},
+     set_rebalance_mref(Pid, State1)};
 
 handle_call({prepare_upr_upgrade, Pid}, _From, #state{rebalance_pid = undefined} = State) ->
     {reply, ok, set_rebalance_mref(Pid, State#state{rebalancer_type = upgrader})};
