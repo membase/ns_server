@@ -88,22 +88,31 @@ init([BucketName]) ->
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
-handle_event({stats, StatsBucket, #stat_entry{timestamp = TS} = Stats},
+handle_event({stats, StatsBucket, #stat_entry{timestamp = TS, values = Values}},
              #state{bucket_name = StatsBucket,
                     tap_info = TapInfo,
                     upr_info = UprInfo,
                     last_ts = LastTS} = State) ->
+    TapBacklogSize =
+        case {orddict:find(ep_tap_replica_queue_backfillremaining, Values),
+              orddict:find(ep_tap_replica_qlen, Values)} of
+            {{ok, BackfillRemaining}, {ok, Qlen}} ->
+                {ok, BackfillRemaining + Qlen};
+            _ ->
+                false
+        end,
+
     NewTapInfo =
-         new_safeness_info(ep_tap_replica_total_backlog_size,
-                           ep_tap_replica_queue_drain,
-                           Stats,
+         new_safeness_info(TapBacklogSize,
+                           orddict:find(ep_tap_replica_queue_drain, Values),
+                           TS,
                            LastTS,
                            TapInfo),
 
     NewUprInfo =
-         new_safeness_info(ep_upr_replica_items_remaining,
-                           ep_upr_replica_items_sent,
-                           Stats,
+         new_safeness_info(orddict:find(ep_upr_replica_items_remaining, Values),
+                           orddict:find(ep_upr_replica_items_sent, Values),
+                           TS,
                            LastTS,
                            UprInfo),
 
@@ -163,30 +172,21 @@ new_safeness_level(green, BacklogSize, DrainRate) ->
             end
     end.
 
-new_safeness_info(BacklogSizeStat, DrainRateStat,
-                  #stat_entry{timestamp = TS,
-                              values = Values},
-                  LastTS,
+new_safeness_info({ok, BacklogSize}, {ok, DrainRate}, TS, LastTS,
                   #safeness_info{backlog_size = OldBacklogSize,
                                  drain_rate = OldDrainRate,
-                                 safeness_level = SafenessLevel} = Info) ->
-    case {orddict:find(BacklogSizeStat, Values),
-          orddict:find(DrainRateStat, Values)} of
-        {{ok, BacklogSize},
-         {ok, DrainRate}} ->
+                                 safeness_level = SafenessLevel}) ->
+    NewBacklogSize = average_value(OldBacklogSize, BacklogSize,
+                                   LastTS, TS),
+    NewDrainRate = average_value(OldDrainRate, DrainRate,
+                                 LastTS, TS),
+    NewSafenessLevel = new_safeness_level(SafenessLevel, NewBacklogSize, NewDrainRate),
 
-            NewBacklogSize = average_value(OldBacklogSize, BacklogSize,
-                                           LastTS, TS),
-            NewDrainRate = average_value(OldDrainRate, DrainRate,
-                                         LastTS, TS),
-            NewSafenessLevel = new_safeness_level(SafenessLevel, NewBacklogSize, NewDrainRate),
-
-            #safeness_info{backlog_size = NewBacklogSize,
-                           drain_rate = NewDrainRate,
-                           safeness_level = NewSafenessLevel};
-        _ ->
-            Info
-    end.
+    #safeness_info{backlog_size = NewBacklogSize,
+                   drain_rate = NewDrainRate,
+                   safeness_level = NewSafenessLevel};
+new_safeness_info(_, _, _, _, Info) ->
+    Info.
 
 pick_level(unknown, _) ->
     unknown;
