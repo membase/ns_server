@@ -1598,4 +1598,9 @@ write_file(Path, Bytes) ->
     file:write_file(Path, Bytes, [raw]).
 
 halt(Status) ->
-    erlang:halt(Status, [{flush, false}]).
+    try
+        erlang:halt(Status, [{flush, false}])
+    catch
+        error:undef ->
+            erlang:halt(Status)
+    end.
