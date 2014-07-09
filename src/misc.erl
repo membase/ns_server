@@ -351,22 +351,6 @@ reverse_bits(V) when is_integer(V) ->
   % swap 2-byte long pairs
   ((V4 bsr 16) band 16#ffffffff) bor ((V4 bsl 16) band 16#ffffffff).
 
-load_start_apps([]) -> ok;
-
-load_start_apps([App | Apps]) ->
-  case application:load(App) of
-    ok -> case application:start(App) of
-              ok  -> load_start_apps(Apps);
-              Err -> io:format("error starting ~p: ~p~n", [App, Err]),
-                     timer:sleep(10),
-                     halt(1)
-          end;
-    Err -> io:format("error loading ~p: ~p~n", [App, Err]),
-           Err,
-           timer:sleep(10),
-           halt(1)
-  end.
-
 running(Node, Module) ->
   Ref = erlang:monitor(process, {Module, Node}),
   R = receive
