@@ -81,7 +81,7 @@ child_start(Arg) ->
             io:format("Crap ~p:~p~n~p~n", [T, E, erlang:get_stacktrace()]),
             (catch ?log_debug("Crap to start:  ~p:~p~n~p~n", [T, E, erlang:get_stacktrace()])),
             timer:sleep(1000),
-            erlang:halt(3)
+            misc:halt(3)
     end.
 
 do_child_start([ModuleToBootAsString]) ->
@@ -111,7 +111,7 @@ child_loop_quick_exit(BootModule) ->
             Fn()
     catch _T:_E -> ignore
     end,
-    erlang:halt(0).
+    misc:halt(0).
 
 child_loop(Port, BootModule) ->
     io:format("~p: Booted. Waiting for shutdown request\n", [os:getpid()]),
@@ -122,7 +122,7 @@ child_loop(Port, BootModule) ->
             ?log_debug("~p: Got EOL", [os:getpid()]),
             BootModule:stop(),
             ?log_debug("Got EOL: after ~s:stop()", [BootModule]),
-            erlang:halt(0);
+            misc:halt(0);
         {Port, eof} ->
             (catch ?log_debug("Got EOF")),
             child_loop_quick_exit(BootModule);
@@ -133,12 +133,12 @@ child_loop(Port, BootModule) ->
             io:format("--------------~n!!! Message from parent: ~s~n------------~n~n", [Msg]),
             (catch ?log_debug("--------------~n!!! Message from parent: ~s~n------------~n~n", [Msg])),
             BootModule:stop(),
-            erlang:halt(0);
+            misc:halt(0);
         Unexpected ->
             io:format("Got unexpected message: ~p~n", [Unexpected]),
             (catch ?log_debug("Got unexpected message: ~p~n", [Unexpected])),
             timer:sleep(3000),
-            erlang:halt(1)
+            misc:halt(1)
     end.
 
 handle_arguments(Arguments) ->

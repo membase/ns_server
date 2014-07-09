@@ -163,7 +163,7 @@ init([]) ->
                 ?log_error("Could not read ip config. "
                            "Will refuse to start for safety reasons."),
                 ale:sync(?NS_SERVER_LOGGER),
-                erlang:halt(1);
+                misc:halt(1);
             V ->
                 V
         end,
@@ -175,7 +175,7 @@ init([]) ->
             ?log_error("Configured address `~s` seems to be invalid. "
                        "Will refuse to start for safety reasons.", [Address]),
             ale:sync(?NS_SERVER_LOGGER),
-            erlang:halt(1)
+            misc:halt(1)
     end,
 
     {ok, bringup(Address, UserSupplied)}.

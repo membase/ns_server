@@ -1596,3 +1596,6 @@ inspect_term(Value) ->
 
 write_file(Path, Bytes) ->
     file:write_file(Path, Bytes, [raw]).
+
+halt(Status) ->
+    erlang:halt(Status, [{flush, false}]).
