@@ -238,7 +238,7 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth) ->
                   _ ->
                       [{autoCompactionSettings, menelaus_web:build_auto_compaction_settings(ACSettings)},
                        {purgeInterval, case proplists:get_value(purge_interval, BucketConfig) of
-                                           undefined -> compaction_daemon:get_purge_interval(global);
+                                           undefined -> compaction_api:get_purge_interval(global);
                                            PurgeInterval -> PurgeInterval
                                        end}
                        | Suffix2]
@@ -1084,31 +1084,31 @@ extended_cluster_storage_info() ->
 
 
 handle_compact_bucket(_PoolId, Bucket, Req) ->
-    ok = compaction_daemon:force_compact_bucket(Bucket),
+    ok = compaction_api:force_compact_bucket(Bucket),
     reply(Req, 200).
 
 handle_purge_compact_bucket(_PoolId, Bucket, Req) ->
-    ok = compaction_daemon:force_purge_compact_bucket(Bucket),
+    ok = compaction_api:force_purge_compact_bucket(Bucket),
     reply(Req, 200).
 
 handle_cancel_bucket_compaction(_PoolId, Bucket, Req) ->
-    ok = compaction_daemon:cancel_forced_bucket_compaction(Bucket),
+    ok = compaction_api:cancel_forced_bucket_compaction(Bucket),
     reply(Req, 200).
 
 handle_compact_databases(_PoolId, Bucket, Req) ->
-    ok = compaction_daemon:force_compact_db_files(Bucket),
+    ok = compaction_api:force_compact_db_files(Bucket),
     reply(Req, 200).
 
 handle_cancel_databases_compaction(_PoolId, Bucket, Req) ->
-    ok = compaction_daemon:cancel_forced_db_compaction(Bucket),
+    ok = compaction_api:cancel_forced_db_compaction(Bucket),
     reply(Req, 200).
 
 handle_compact_view(_PoolId, Bucket, DDocId, Req) ->
-    ok = compaction_daemon:force_compact_view(Bucket, DDocId),
+    ok = compaction_api:force_compact_view(Bucket, DDocId),
     reply(Req, 200).
 
 handle_cancel_view_compaction(_PoolId, Bucket, DDocId, Req) ->
-    ok = compaction_daemon:cancel_forced_view_compaction(Bucket, DDocId),
+    ok = compaction_api:cancel_forced_view_compaction(Bucket, DDocId),
     reply(Req, 200).
 
 % for test

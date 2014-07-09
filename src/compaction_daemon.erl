@@ -7,13 +7,7 @@
 
 %% API
 -export([start_link/0,
-         inhibit_view_compaction/3, uninhibit_view_compaction/3,
-         force_compact_bucket/1, force_compact_db_files/1, force_compact_view/2,
-         force_purge_compact_bucket/1,
-         cancel_forced_bucket_compaction/1, cancel_forced_db_compaction/1,
-         cancel_forced_view_compaction/2,
-         set_global_purge_interval/1,
-         get_purge_interval/1]).
+         inhibit_view_compaction/3, uninhibit_view_compaction/3]).
 
 %% gen_fsm callbacks
 -export([init/1, handle_event/3, handle_sync_event/4, handle_info/3,
@@ -73,50 +67,10 @@
 % for all the vbucket databases of that bucket.
 -define(NUM_SAMPLE_VBUCKETS, 16).
 
--define(RPC_TIMEOUT, 10000).
-
-
 %% API
 start_link() ->
     gen_fsm:start_link({local, ?MODULE}, ?MODULE, [], []).
 
--define(DEFAULT_DELETIONS_PURGE_INTERVAL, 3).
-
--spec get_purge_interval(global | binary()) -> integer().
-get_purge_interval(BucketName) ->
-    BucketConfig =
-        case BucketName of
-            global ->
-                [];
-            _ ->
-                case ns_bucket:get_bucket(binary_to_list(BucketName)) of
-                    not_present ->
-                        [];
-                    {ok, X} -> X
-                end
-        end,
-    RawPurgeInterval = proplists:get_value(purge_interval, BucketConfig),
-    UseGlobal = RawPurgeInterval =:= undefined
-        orelse case proplists:get_value(autocompaction, BucketConfig) of
-                   false -> true;
-                   undefined -> true;
-                   _ -> false
-               end,
-
-    %% in case bucket does have purge_interval and does not have own
-    %% autocompaction settings we should match UI and return global
-    %% settings
-    case UseGlobal of
-        true ->
-            ns_config:search('latest-config-marker', global_purge_interval,
-                             ?DEFAULT_DELETIONS_PURGE_INTERVAL);
-        false ->
-            RawPurgeInterval
-    end.
-
--spec set_global_purge_interval(integer()) -> ok.
-set_global_purge_interval(Value) ->
-    ns_config:set(global_purge_interval, Value).
 
 get_last_rebalance_or_failover_timestamp() ->
     case ns_config:search_raw(ns_config:get(), counters) of
@@ -156,116 +110,6 @@ uninhibit_view_compaction(Bucket, Node, Ref) ->
     gen_fsm:sync_send_all_state_event({?MODULE, Node},
                                       {uninhibit_view_compaction, list_to_binary(Bucket), Ref},
                                       infinity).
-
-force_compact_bucket(Bucket) ->
-    BucketBin = list_to_binary(Bucket),
-    R = multi_sync_send_all_state_event({force_compact_bucket, BucketBin}),
-
-    case R of
-        [] ->
-            ok;
-        Failed ->
-            ale:error(?USER_LOGGER,
-                      "Failed to start bucket compaction "
-                      "for `~s` on some nodes: ~n~p", [Bucket, Failed])
-    end,
-
-    ok.
-
-force_purge_compact_bucket(Bucket) ->
-    BucketBin = list_to_binary(Bucket),
-    R = multi_sync_send_all_state_event({force_purge_compact_bucket, BucketBin}),
-
-    case R of
-        [] ->
-            ok;
-        Failed ->
-            ale:error(?USER_LOGGER,
-                      "Failed to start deletion purge compaction "
-                      "for `~s` on some nodes: ~n~p", [Bucket, Failed])
-    end,
-
-    ok.
-
-force_compact_db_files(Bucket) ->
-    BucketBin = list_to_binary(Bucket),
-    R = multi_sync_send_all_state_event({force_compact_db_files, BucketBin}),
-
-    case R of
-        [] ->
-            ok;
-        Failed ->
-            ale:error(?USER_LOGGER,
-                      "Failed to start bucket databases compaction "
-                      "for `~s` on some nodes: ~n~p", [Bucket, Failed])
-    end,
-
-    ok.
-
-force_compact_view(Bucket, DDocId) ->
-    BucketBin = list_to_binary(Bucket),
-    DDocIdBin = list_to_binary(DDocId),
-    R = multi_sync_send_all_state_event({force_compact_view, BucketBin, DDocIdBin}),
-
-    case R of
-        [] ->
-            ok;
-        Failed ->
-            ale:error(?USER_LOGGER,
-                      "Failed to start index compaction "
-                      "for `~s/~s` on some nodes: ~n~p",
-                      [Bucket, DDocId, Failed])
-    end,
-
-    ok.
-
-cancel_forced_bucket_compaction(Bucket) ->
-    BucketBin = list_to_binary(Bucket),
-    R = multi_sync_send_all_state_event({cancel_forced_bucket_compaction, BucketBin}),
-
-    case R of
-        [] ->
-            ok;
-        Failed ->
-            ale:error(?USER_LOGGER,
-                      "Failed to cancel bucket compaction "
-                      "for `~s` on some nodes: ~n~p", [Bucket, Failed])
-    end,
-
-    ok.
-
-cancel_forced_db_compaction(Bucket) ->
-    BucketBin = list_to_binary(Bucket),
-    R = multi_sync_send_all_state_event({cancel_forced_db_compaction, BucketBin}),
-
-    case R of
-        [] ->
-            ok;
-        Failed ->
-            ale:error(?USER_LOGGER,
-                      "Failed to cancel bucket databases compaction "
-                      "for `~s` on some nodes: ~n~p", [Bucket, Failed])
-    end,
-
-    ok.
-
-cancel_forced_view_compaction(Bucket, DDocId) ->
-    BucketBin = list_to_binary(Bucket),
-    DDocIdBin = list_to_binary(DDocId),
-    R = multi_sync_send_all_state_event(
-          {cancel_forced_view_compaction, BucketBin, DDocIdBin}),
-
-    case R of
-        [] ->
-            ok;
-        Failed ->
-            ale:error(?USER_LOGGER,
-                      "Failed to cancel index compaction "
-                      "for `~s/~s` on some nodes: ~n~p",
-                      [Bucket, DDocId, Failed])
-    end,
-
-    ok.
 
 %% gen_fsm callbacks
 init([]) ->
@@ -770,7 +614,7 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
                           {NowMegaSec, NowSec, _} = os:timestamp(),
                           NowEpoch = NowMegaSec * 1000000 + NowSec,
 
-                          Interval0 = get_purge_interval(BucketName) * 3600 * 24,
+                          Interval0 = compaction_api:get_purge_interval(BucketName) * 3600 * 24,
                           Interval = erlang:round(Interval0),
 
                           PurgeTS0 = NowEpoch - Interval,
@@ -1539,21 +1383,6 @@ get_bucket(BucketName, Config) ->
         {ok, BucketConfig} ->
             BucketConfig
     end.
-
-multi_sync_send_all_state_event(Event) ->
-    Nodes = ns_node_disco:nodes_actual_proper(),
-
-    Results =
-        misc:parallel_map(
-          fun (Node) ->
-                  gen_fsm:sync_send_all_state_event({?MODULE, Node}, Event,
-                                                    ?RPC_TIMEOUT)
-          end, Nodes, infinity),
-
-    lists:filter(
-      fun ({_Node, Result}) ->
-              Result =/= ok
-      end, lists:zip(Nodes, Results)).
 
 bucket_exists(BucketName) ->
     case ns_bucket:get_bucket_light(binary_to_list(BucketName)) of

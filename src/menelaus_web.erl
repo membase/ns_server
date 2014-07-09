@@ -2805,11 +2805,11 @@ handle_set_autocompaction(Req) ->
             ns_config:set(autocompaction, ACSettings),
             case MaybePurgeInterval of
                 [{purge_interval, PurgeInterval}] ->
-                    case compaction_daemon:get_purge_interval(global) =:= PurgeInterval of
+                    case compaction_api:get_purge_interval(global) =:= PurgeInterval of
                         true ->
                             ok;
                         false ->
-                            compaction_daemon:set_global_purge_interval(PurgeInterval)
+                            compaction_api:set_global_purge_interval(PurgeInterval)
                     end;
                 [] ->
                     ok
@@ -3030,7 +3030,7 @@ handle_settings_auto_compaction(Req) ->
                                          {value, ACSettings} ->
                                              build_auto_compaction_settings(ACSettings)
                                      end},
-            {purgeInterval, compaction_daemon:get_purge_interval(global)}],
+            {purgeInterval, compaction_api:get_purge_interval(global)}],
     reply_json(Req, {struct, JSON}, 200).
 
 build_internal_settings_kvs() ->
