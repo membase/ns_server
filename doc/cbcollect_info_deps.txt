@@ -19,6 +19,7 @@ Linux:
         - ip
         - ls
         - lsb_release
+        - lshw
         - lsmod
         - lsof
         - lvdisplay
@@ -31,6 +32,7 @@ Linux:
         - rpm
         - sar
         - sh
+        - ss
         - su
         - swapon
         - sysctl
