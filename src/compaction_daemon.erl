@@ -63,10 +63,6 @@
 -record(forced_compaction, {type :: bucket | bucket_purge | db | view,
                             name :: binary()}).
 
-% If N vbucket databases of a bucket need to be compacted, we trigger compaction
-% for all the vbucket databases of that bucket.
--define(NUM_SAMPLE_VBUCKETS, 16).
-
 %% API
 start_link() ->
     gen_fsm:start_link({local, ?MODULE}, ?MODULE, [], []).
