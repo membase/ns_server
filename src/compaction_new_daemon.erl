@@ -1,43 +1,43 @@
+%% @author Couchbase <info@couchbase.com>
+%% @copyright 2014 Couchbase, Inc.
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%      http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+%%
+%% @doc compaction daemon for 3.0. should be renamed to compaction_daemon after
+%% compatibility with pre 3.0 nodes will be dropped
+%%
 -module(compaction_new_daemon).
 
--behaviour(gen_fsm).
+-behaviour(gen_server).
 
 -include("ns_common.hrl").
 -include("couch_db.hrl").
 
 %% API
--export([start_link/0,
-         inhibit_view_compaction/3, uninhibit_view_compaction/3]).
+-export([start_link/0]).
 
-%% gen_fsm callbacks
--export([init/1, handle_event/3, handle_sync_event/4, handle_info/3,
-         code_change/4, terminate/3]).
+%% gen_server callbacks
+-export([init/1, handle_call/3, handle_cast/2,
+         handle_info/2, terminate/2, code_change/3]).
 
--record(state, {buckets_to_compact :: [binary()],
-                compactor_pid,
-                compactor_config,
-                scheduler,
+-record(compaction_state, {buckets_to_compact :: [binary()],
+                           compactor_pid :: pid(),
+                           scheduler,
+                           compactor_fun :: fun(),
+                           compactor_config}).
 
-                %% bucket for which view compaction is inhibited (note
-                %% it's also set when we're running 'uninhibit' views
-                %% compaction as 'final stage')
-                view_compaction_inhibited_bucket :: undefined | binary(),
-                %% if view compaction is inhibited this field will
-                %% hold monitor ref of the guy who requested it. If
-                %% that guy dies, inhibition will be canceled
-                view_compaction_inhibited_ref :: (undefined | reference()),
-                %% when we have 'uninhibit' request, we're starting
-                %% our compaction with 'forced' view compaction asap
-                %%
-                %% requested indicates we have this request
-                view_compaction_uninhibit_requested = false :: boolean(),
-                %% started indicates we have started such compaction
-                %% and waiting for it to complete
-                view_compaction_uninhibit_started = false :: boolean(),
-                %% this is From to reply to when such compaction is
-                %% done
-                view_compaction_uninhibit_requested_waiter,
-
+-record(state, {kv_compaction :: #compaction_state{},
+                views_compaction :: #compaction_state{},
                 %% mapping from compactor pid to #forced_compaction{}
                 running_forced_compactions,
                 %% reverse mapping from #forced_compaction{} to compactor pid
@@ -64,7 +64,7 @@
 
 %% API
 start_link() ->
-    gen_fsm:start_link({local, ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 
 get_last_rebalance_or_failover_timestamp() ->
@@ -75,38 +75,7 @@ get_last_rebalance_or_failover_timestamp() ->
         _ -> 0
     end.
 
-
-%% While Pid is alive prevents autocompaction of views for given
-%% bucket and given node. Returned Ref can be used to uninhibit
-%% autocompaction.
-%%
-%% If views of given bucket are being compacted right now, it'll wait
-%% for end of compaction rather than aborting it.
-%%
-%% Attempt to inhibit already inhibited compaction will result in nack.
-%%
-%% Note: we assume that caller of both inhibit_view_compaction and
-%% uninhibit_view_compaction is somehow related to Pid and will die
-%% automagically if Pid dies, because autocompaction daemon may
-%% actually forget about this calls.
--spec inhibit_view_compaction(bucket_name(), node(), pid()) ->
-                                     {ok, reference()} | nack.
-inhibit_view_compaction(Bucket, Node, Pid) ->
-    gen_fsm:sync_send_all_state_event({?MODULE, Node},
-                                      {inhibit_view_compaction, list_to_binary(Bucket), Pid},
-                                      infinity).
-
-
-%% Using Ref returned from inhibit_view_compaction undoes it's
-%% effect. It'll also consider kicking views autocompaction for given
-%% bucket asap. And it's do it _before_ replying.
--spec uninhibit_view_compaction(bucket_name(), node(), reference()) -> ok | nack.
-uninhibit_view_compaction(Bucket, Node, Ref) ->
-    gen_fsm:sync_send_all_state_event({?MODULE, Node},
-                                      {uninhibit_view_compaction, list_to_binary(Bucket), Ref},
-                                      infinity).
-
-%% gen_fsm callbacks
+%% gen_server callbacks
 init([]) ->
     process_flag(trap_exit, true),
 
@@ -126,20 +95,20 @@ init([]) ->
 
     CheckInterval = get_check_interval(ns_config:get()),
 
-    Self ! compact,
-    {ok, idle, #state{buckets_to_compact=[],
-                      compactor_pid=undefined,
-                      compactor_config=undefined,
-                      scheduler = compaction_scheduler:init(CheckInterval, compact),
-                      running_forced_compactions=dict:new(),
-                      forced_compaction_pids=dict:new()}}.
+    {ok, #state{kv_compaction =
+                    init_scheduled_compaction(CheckInterval, compact_kv,
+                                              fun spawn_scheduled_kv_compactor/2),
+                views_compaction =
+                    init_scheduled_compaction(CheckInterval, compact_views,
+                                              fun spawn_scheduled_views_compactor/2),
+                running_forced_compactions=dict:new(),
+                forced_compaction_pids=dict:new()}}.
 
-handle_event(Event, StateName, State) ->
-    ?log_warning("Got unexpected event ~p (when in ~p):~n~p",
-                 [Event, StateName, State]),
-    {next_state, StateName, State}.
+handle_cast(Message, State) ->
+    ?log_warning("Got unexpected cast ~p:~n~p", [Message, State]),
+    {noreply, State}.
 
-handle_sync_event({force_compact_bucket, Bucket}, _From, StateName, State) ->
+handle_call({force_compact_bucket, Bucket}, _From, State) ->
     Compaction = #forced_compaction{type=bucket, name=Bucket},
 
     NewState =
@@ -148,11 +117,11 @@ handle_sync_event({force_compact_bucket, Bucket}, _From, StateName, State) ->
                 State;
             false ->
                 Configs = compaction_config(Bucket),
-                Pid = spawn_bucket_compactor(Bucket, Configs, true),
+                Pid = spawn_forced_bucket_compactor(Bucket, Configs),
                 register_forced_compaction(Pid, Compaction, State)
         end,
-    {reply, ok, StateName, NewState};
-handle_sync_event({force_purge_compact_bucket, Bucket}, _From, StateName, State) ->
+    {reply, ok, NewState};
+handle_call({force_purge_compact_bucket, Bucket}, _From, State) ->
     Compaction = #forced_compaction{type=bucket_purge, name=Bucket},
 
     NewState =
@@ -161,16 +130,16 @@ handle_sync_event({force_purge_compact_bucket, Bucket}, _From, StateName, State)
                 State;
             false ->
                 {Config, Props} = compaction_config(Bucket),
-                Pid = spawn_bucket_compactor(Bucket,
-                    {Config#config{do_purge = true}, Props}, true),
+                Pid = spawn_forced_bucket_compactor(Bucket,
+                                                    {Config#config{do_purge = true}, Props}),
                 State1 = register_forced_compaction(Pid, Compaction, State),
                 ale:info(?USER_LOGGER,
                          "Started deletion purge compaction for bucket `~s`",
                          [Bucket]),
                 State1
         end,
-    {reply, ok, StateName, NewState};
-handle_sync_event({force_compact_db_files, Bucket}, _From, StateName, State) ->
+    {reply, ok, NewState};
+handle_call({force_compact_db_files, Bucket}, _From, State) ->
     Compaction = #forced_compaction{type=db, name=Bucket},
 
     NewState =
@@ -183,8 +152,8 @@ handle_sync_event({force_compact_db_files, Bucket}, _From, StateName, State) ->
                 Pid = spawn_dbs_compactor(Bucket, Config, true, OriginalTarget),
                 register_forced_compaction(Pid, Compaction, State)
         end,
-    {reply, ok, StateName, NewState};
-handle_sync_event({force_compact_view, Bucket, DDocId}, _From, StateName, State) ->
+    {reply, ok, NewState};
+handle_call({force_compact_view, Bucket, DDocId}, _From, State) ->
     Name = <<Bucket/binary, $/, DDocId/binary>>,
     Compaction = #forced_compaction{type=view, name=Name},
 
@@ -200,156 +169,38 @@ handle_sync_event({force_compact_view, Bucket, DDocId}, _From, StateName, State)
                                            OriginalTarget),
                 register_forced_compaction(Pid, Compaction, State)
         end,
-    {reply, ok, StateName, NewState};
-handle_sync_event({cancel_forced_bucket_compaction, Bucket}, _From,
-                  StateName, State) ->
+    {reply, ok, NewState};
+handle_call({cancel_forced_bucket_compaction, Bucket}, _From, State) ->
     Compaction = #forced_compaction{type=bucket, name=Bucket},
-    {reply, ok, StateName, maybe_cancel_compaction(Compaction, State)};
-handle_sync_event({cancel_forced_db_compaction, Bucket}, _From,
-                  StateName, State) ->
+    {reply, ok, maybe_cancel_compaction(Compaction, State)};
+handle_call({cancel_forced_db_compaction, Bucket}, _From, State) ->
     Compaction = #forced_compaction{type=db, name=Bucket},
-    {reply, ok, StateName, maybe_cancel_compaction(Compaction, State)};
-handle_sync_event({cancel_forced_view_compaction, Bucket, DDocId},
-                  _From, StateName, State) ->
+    {reply, ok, maybe_cancel_compaction(Compaction, State)};
+handle_call({cancel_forced_view_compaction, Bucket, DDocId}, _From, State) ->
     Name = <<Bucket/binary, $/, DDocId/binary>>,
     Compaction = #forced_compaction{type=view, name=Name},
-    {reply, ok, StateName, maybe_cancel_compaction(Compaction, State)};
-handle_sync_event({inhibit_view_compaction, BinBucketName, Pid}, From, StateName,
-                  #state{view_compaction_inhibited_ref = OldRef,
-                         view_compaction_uninhibit_requested = UninhibitRequested,
-                         buckets_to_compact = BucketsToCompact} = State) ->
-    case OldRef =/= undefined orelse UninhibitRequested of
-        true ->
-            gen_server:reply(From, nack),
-            {next_state, StateName, State};
-        _ ->
-            MRef = erlang:monitor(process, Pid),
-            NewState = State#state{
-                         view_compaction_inhibited_bucket = BinBucketName,
-                         view_compaction_inhibited_ref = MRef,
-                         view_compaction_uninhibit_requested = false},
-            case StateName =:= compacting andalso hd(BucketsToCompact) =:= BinBucketName of
-                true ->
-                    ?log_info("Killing currently running compactor to handle inhibit_view_compaction request for ~s", [BinBucketName]),
-                    erlang:exit(NewState#state.compactor_pid, shutdown);
-                false ->
-                    ok
-            end,
-            {reply, {ok, MRef}, StateName, NewState}
-    end;
-handle_sync_event({uninhibit_view_compaction, BinBucketName, MRef}, From, StateName,
-                  #state{view_compaction_inhibited_bucket = ABinBucketName,
-                         view_compaction_inhibited_ref = AnMRef,
-                         view_compaction_uninhibit_requested = false} = State)
-  when AnMRef =:= MRef andalso ABinBucketName =:= BinBucketName ->
-    State1 = case StateName of
-                 compacting ->
-                     ?log_info("Killing current compactor to speed up uninhibit_view_compaction: ~p", [State]),
-                     erlang:exit(State#state.compactor_pid, shutdown),
-                     State;
-                 idle ->
-                     schedule_immediate_compaction(State)
-             end,
-    erlang:demonitor(State#state.view_compaction_inhibited_ref),
-    {next_state, StateName, State1#state{view_compaction_uninhibit_requested_waiter = From,
-                                         view_compaction_inhibited_ref = undefined,
-                                         view_compaction_uninhibit_started = false,
-                                         view_compaction_uninhibit_requested = true}};
-handle_sync_event({uninhibit_view_compaction, _BinBucketName, _MRef} = Msg, _From, StateName, State) ->
-    ?log_debug("Sending back nack on uninhibit_view_compaction: ~p, state: ~p", [Msg, State]),
-    {reply, nack, StateName, State};
-handle_sync_event(Event, _From, StateName, State) ->
-    ?log_warning("Got unexpected sync event ~p (when in ~p):~n~p",
-                 [Event, StateName, State]),
-    {reply, ok, StateName, State}.
+    {reply, ok, maybe_cancel_compaction(Compaction, State)};
+handle_call(Event, _From, State) ->
+    ?log_warning("Got unexpected call ~p:~n~p", [Event, State]),
+    {reply, ok, State}.
 
-handle_info(compact, idle,
-            #state{buckets_to_compact=Buckets0,
-                   scheduler = Scheduler} = State) ->
-    undefined = State#state.compactor_pid,
-
-    Buckets =
-        case Buckets0 of
-            [] ->
-                lists:map(fun list_to_binary/1,
-                          ns_bucket:node_bucket_names_of_type(node(), membase));
-            _ ->
-                Buckets0
-        end,
-
-    case Buckets of
-        [] ->
-            ?log_debug("No buckets to compact. Rescheduling compaction."),
-            {next_state, idle, State#state{scheduler =
-                                               compaction_scheduler:schedule_next(Scheduler)}};
-        _ ->
-            ?log_debug("Starting compaction for the following buckets: ~n~p",
-                       [Buckets]),
-            NewState1 = State#state{buckets_to_compact=Buckets,
-                                    scheduler=
-                                        compaction_scheduler:start_now(Scheduler)},
-            NewState = compact_next_bucket(NewState1),
-            {next_state, compacting, NewState}
-    end;
-handle_info({'DOWN', MRef, _, _, _}, StateName, #state{view_compaction_inhibited_ref=MRef,
-                                                       view_compaction_inhibited_bucket=BinBucket}=State) ->
-    ?log_debug("Looks like vbucket mover inhibiting view compaction for for bucket \"~s\" is dead."
-               " Canceling inhibition", [BinBucket]),
-    {next_state, StateName, State#state{view_compaction_inhibited_ref = undefined,
-                                        view_compaction_inhibited_bucket = undefined}};
-handle_info({'EXIT', Compactor, Reason}, compacting,
-            #state{compactor_pid=Compactor,
-                   buckets_to_compact=Buckets,
-                   scheduler=Scheduler} = State) ->
-    true = Buckets =/= [],
-
-    case Reason of
-        normal ->
-            ok;
-        shutdown ->
-            ?log_debug("Compactor ~p exited with reason ~p", [Compactor, Reason]);
-        _ ->
-            ?log_error("Compactor ~p exited unexpectedly: ~p. "
-                       "Moving to the next bucket.", [Compactor, Reason])
-    end,
-
-    {DoneBucket, NewBuckets} =
-        case Reason of
-            shutdown ->
-                %% this can happen either on config change or if compaction
-                %% has been stopped due to end of allowed time period; in the
-                %% latter case there's no need to compact bucket again; but it
-                %% won't hurt: compaction shall be terminated rightaway with
-                %% reason normal
-                {undefined, Buckets};
-            _ ->
-                {hd(Buckets), tl(Buckets)}
-        end,
-
-    NewState0 = case (DoneBucket =:= State#state.view_compaction_inhibited_bucket
-                      andalso State#state.view_compaction_uninhibit_started) of
-                    true ->
-                        gen_server:reply(State#state.view_compaction_uninhibit_requested_waiter, ok),
-                        State#state{view_compaction_inhibited_bucket = undefined,
-                                    view_compaction_uninhibit_requested_waiter = undefined,
-                                    view_compaction_uninhibit_requested = false,
-                                    view_compaction_uninhibit_started = false};
-                    _ ->
-                        State
-                end,
-
-    NewState1 = NewState0#state{compactor_pid=undefined,
-                                compactor_config=undefined,
-                                buckets_to_compact=NewBuckets},
-    case NewBuckets of
-        [] ->
-            ?log_debug("Finished compaction iteration."),
-            {next_state, idle, NewState1#state{scheduler =
-                                                   compaction_scheduler:schedule_next(Scheduler)}};
-        _ ->
-            {next_state, compacting, compact_next_bucket(NewState1)}
-    end;
-handle_info({'EXIT', Pid, Reason}, StateName,
+handle_info(compact_kv, #state{kv_compaction=CompactionState} = State) ->
+    {noreply, State#state{kv_compaction=
+                              process_scheduler_message(CompactionState)}};
+handle_info(compact_views, #state{views_compaction=CompactionState} = State) ->
+    {noreply, State#state{views_compaction=
+                              process_scheduler_message(CompactionState)}};
+handle_info({'EXIT', Compactor, Reason},
+            #state{kv_compaction=#compaction_state{compactor_pid=Compactor}=
+                       CompactorState} = State) ->
+    {noreply, State#state{kv_compaction=
+                              process_compactors_exit(Reason, CompactorState)}};
+handle_info({'EXIT', Compactor, Reason},
+            #state{views_compaction=#compaction_state{compactor_pid=Compactor}=
+                       CompactorState} = State) ->
+    {noreply, State#state{views_compaction=
+                              process_compactors_exit(Reason, CompactorState)}};
+handle_info({'EXIT', Pid, Reason},
             #state{running_forced_compactions=Compactions} = State) ->
     case dict:find(Pid, Compactions) of
         {ok, #forced_compaction{type=Type, name=Name}} ->
@@ -380,103 +231,100 @@ handle_info({'EXIT', Pid, Reason}, StateName,
                     end
             end,
 
-            {next_state, StateName, unregister_forced_compaction(Pid, State)};
+            {noreply, unregister_forced_compaction(Pid, State)};
         error ->
             ?log_error("Unexpected process termination ~p: ~p. Dying.",
                        [Pid, Reason]),
             {stop, Reason, State}
     end;
-handle_info(config_changed, StateName,
-            #state{scheduler = Scheduler} = State) ->
+handle_info(config_changed,
+            #state{kv_compaction = KVCompaction,
+                   views_compaction = ViewsCompaction} = State) ->
     misc:flush(config_changed),
     Config = ns_config:get(),
-    CheckInterval = get_check_interval(Config),
-    NewScheduler = compaction_scheduler:set_interval(CheckInterval, Scheduler),
 
-    case StateName of
-        compacting ->
-            maybe_restart_compactor(Config, State);
-        idle ->
-            ok
-    end,
+    {noreply, State#state{kv_compaction = process_config_change(Config, KVCompaction),
+                          views_compaction = process_config_change(Config, ViewsCompaction)}};
+handle_info(Info, State) ->
+    ?log_warning("Got unexpected message ~p:~n~p", [Info, State]),
+    {noreply, State}.
 
-    {next_state, StateName, State#state{scheduler = NewScheduler}};
-handle_info(Info, StateName, State) ->
-    ?log_warning("Got unexpected message ~p (when in ~p):~n~p",
-                 [Info, StateName, State]),
-    {next_state, StateName, State}.
-
-terminate(_Reason, _StateName, _State) ->
+terminate(_Reason, _State) ->
     ok.
 
-code_change(_OldVsn, StateName, State, _Extra) ->
-    {ok, StateName, State}.
-
-maybe_restart_compactor(NewConfig, #state{compactor_pid=Compactor,
-                                          buckets_to_compact=[CompactedBucket|_],
-                                          compactor_config=Config}) ->
-    {MaybeNewConfig, _} = compaction_config(NewConfig, CompactedBucket),
-    case MaybeNewConfig =:= Config of
-        true ->
-            ok;
-        false ->
-            ?log_info("Restarting compactor ~p since "
-                      "autocompaction config has changed", [Compactor]),
-            exit(Compactor, shutdown)
-    end.
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
 
 get_check_interval(Config) ->
     #daemon_config{check_interval=CheckInterval} = compaction_daemon_config(Config),
     CheckInterval.
 
 %% Internal functions
--spec spawn_bucket_compactor(binary(), {#config{}, list()}, boolean() | view_inhibited) -> pid().
-spawn_bucket_compactor(BucketName, {Config, ConfigProps}, Force) ->
+get_dbs_compactor(BucketName, Config, Force) ->
+    OriginalTarget = {[{type, bucket}]},
+    [{type, database},
+     {important, true},
+     {name, BucketName},
+     {fa, {fun spawn_dbs_compactor/4,
+           [BucketName, Config, Force, OriginalTarget]}}].
+
+-spec spawn_scheduled_kv_compactor(binary(), {#config{}, list()}) -> pid().
+spawn_scheduled_kv_compactor(BucketName, {Config, ConfigProps}) ->
     proc_lib:spawn_link(
       fun () ->
-              case Force of
-                  true ->
-                      ok;
-                  _ ->
-                      %% effectful
-                      check_period(Config)
-              end,
+              check_period_and_maybe_exit(Config),
+              exit_if_no_bucket(BucketName),
 
-              case bucket_exists(BucketName) of
-                  true ->
-                      ok;
-                  false ->
-                      %% bucket's gone; so just terminate normally
-                      exit(normal)
-              end,
+              ?log_info("Start compaction of vbuckets for bucket ~s with config: ~n~p",
+                        [BucketName, ConfigProps]),
+
+              Compactor = get_dbs_compactor(BucketName, Config, false),
+              misc:wait_for_process(chain_compactors([Compactor]), infinity)
+      end).
+
+get_view_compactors(BucketName, DDocNames, Config, Force) ->
+    OriginalTarget = {[{type, bucket}]},
+    [ [{type, view},
+       {name, <<BucketName/binary, $/, DDocId/binary>>},
+       {important, false},
+       {fa, {fun spawn_view_compactor/5,
+             [BucketName, DDocId, Config, Force =:= true, OriginalTarget]}}] ||
+        DDocId <- DDocNames ].
+
+-spec spawn_scheduled_views_compactor(binary(), {#config{}, list()}) -> pid().
+spawn_scheduled_views_compactor(BucketName, {Config, ConfigProps}) ->
+    proc_lib:spawn_link(
+      fun () ->
+              check_period_and_maybe_exit(Config),
+              exit_if_no_bucket(BucketName),
 
               try_to_cleanup_indexes(BucketName),
 
-              ?log_info("Compacting bucket ~s with config: ~n~p",
+              ?log_info("Start compaction of indexes for bucket ~s with config: ~n~p",
+                        [BucketName, ConfigProps]),
+
+              DDocNames = ddoc_names(BucketName),
+              DDocNames =/= [] orelse exit(normal),
+
+              Compactors = get_view_compactors(BucketName, DDocNames, Config, false),
+              misc:wait_for_process(chain_compactors(Compactors), infinity)
+      end).
+
+-spec spawn_forced_bucket_compactor(binary(), {#config{}, list()}) -> pid().
+spawn_forced_bucket_compactor(BucketName, {Config, ConfigProps}) ->
+    proc_lib:spawn_link(
+      fun () ->
+              exit_if_no_bucket(BucketName),
+
+              try_to_cleanup_indexes(BucketName),
+
+              ?log_info("Start forced compaction of bucket ~s with config: ~n~p",
                         [BucketName, ConfigProps]),
 
               DDocNames = ddoc_names(BucketName),
 
-              OriginalTarget = {[{type, bucket}]},
-              DbsCompactor =
-                  [{type, database},
-                   {important, true},
-                   {name, BucketName},
-                   {fa, {fun spawn_dbs_compactor/4,
-                         [BucketName, Config, Force =:= true, OriginalTarget]}}],
-
-              DDocCompactors =
-                  case Force =/= view_inhibited of
-                      true ->
-                          [ [{type, view},
-                             {name, <<BucketName/binary, $/, DDocId/binary>>},
-                             {important, false},
-                             {fa, {fun spawn_view_compactor/5,
-                                   [BucketName, DDocId, Config, Force =:= true, OriginalTarget]}}] ||
-                              DDocId <- DDocNames ];
-                      _ ->
-                          []
-                  end,
+              DbsCompactor = get_dbs_compactor(BucketName, Config, true),
+              DDocCompactors = get_view_compactors(BucketName, DDocNames, Config, true),
 
               case Config#config.parallel_view_compact of
                   true ->
@@ -1157,17 +1005,17 @@ do_allowed_period_record([{OtherKey, _V} | _], _Acc) ->
     %% should not happen
     exit({invalid_period_key_bug, OtherKey}).
 
--spec check_period(#config{}) -> ok.
-check_period(#config{allowed_period=undefined}) ->
+-spec check_period_and_maybe_exit(#config{}) -> ok.
+check_period_and_maybe_exit(#config{allowed_period=undefined}) ->
     ok;
-check_period(#config{allowed_period=Period}) ->
-    do_check_period(Period).
+check_period_and_maybe_exit(#config{allowed_period=Period}) ->
+    do_check_period_and_maybe_exit(Period).
 
-do_check_period(#period{from_hour=FromHour,
-                        from_minute=FromMinute,
-                        to_hour=ToHour,
-                        to_minute=ToMinute,
-                        abort_outside=AbortOutside}) ->
+do_check_period_and_maybe_exit(#period{from_hour=FromHour,
+                                       from_minute=FromMinute,
+                                       to_hour=ToHour,
+                                       to_minute=ToMinute,
+                                       abort_outside=AbortOutside}) ->
     {HH, MM, _} = erlang:time(),
 
     Now0 = time_to_minutes(HH, MM),
@@ -1231,85 +1079,115 @@ shutdown_compactor_after(MinutesLeft) ->
               end
       end).
 
+init_scheduled_compaction(CheckInterval, Message, Fun) ->
+    self() ! Message,
+    #compaction_state{buckets_to_compact=[],
+                      compactor_pid=undefined,
+                      scheduler=compaction_scheduler:init(CheckInterval, Message),
+                      compactor_fun = Fun}.
 
+process_scheduler_message(#compaction_state{buckets_to_compact=Buckets0,
+                                            scheduler=Scheduler,
+                                            compactor_pid=undefined} = State) ->
+    Buckets =
+        case Buckets0 of
+            [] ->
+                lists:map(fun list_to_binary/1,
+                          ns_bucket:node_bucket_names_of_type(node(), membase));
+            _ ->
+                Buckets0
+        end,
 
--spec compact_next_bucket(#state{}) -> #state{}.
-compact_next_bucket(#state{buckets_to_compact=Buckets,
-                           view_compaction_inhibited_bucket = InhibitedBucket} = State) ->
-    undefined = State#state.compactor_pid,
-    true = [] =/= Buckets,
-
-    PausedBucket = case State of
-                       #state{view_compaction_inhibited_bucket = CandidatePausedBucket,
-                              view_compaction_uninhibit_requested = true} ->
-                           CandidatePausedBucket;
-                       _ ->
-                           undefined
-                   end,
-
-    Buckets1 = case PausedBucket =/= undefined of
-                   true ->
-                       [PausedBucket | lists:delete(PausedBucket, Buckets)];
-                   _ ->
-                       Buckets
-               end,
-
-    NextBucket = hd(Buckets1),
-
-    {InitialConfig, _ConfigProps} = Configs0 = compaction_config(NextBucket),
-    Configs = case PausedBucket =/= undefined of
-                  true ->
-                      ?log_debug("Going to spawn bucket compaction with forced view compaction for bucket ~s", [NextBucket]),
-                      {OldConfig, OldConfigProps} = Configs0,
-                      %% for 'uninhibit' compaction we don't want to
-                      %% wait for db compaction because we assume DBs
-                      %% are going to be much bigger than views. Plus
-                      %% we _do_ need to wait for index compaction,
-                      %% but we don't need to wait for db compaction.
-                      {OldConfig#config{view_fragmentation = {0, 0},
-                                        db_fragmentation = {100, 1 bsl 64},
-                                        allowed_period = undefined},
-                       [forced_previously_inhibited_view_compaction | OldConfigProps]};
-                  _ ->
-                      Configs0
-              end,
-
-    MaybeViewInhibited = case State of
-                             #state{view_compaction_inhibited_bucket = InhibitedBucket,
-                                    view_compaction_uninhibit_requested = false}
-                               when InhibitedBucket =:= NextBucket ->
-                                 {paused, undefined} = {paused, PausedBucket},
-                                 view_inhibited;
-                             _ ->
-                                 false
-                         end,
-
-    Compactor = spawn_bucket_compactor(NextBucket, Configs, MaybeViewInhibited),
-
-    case PausedBucket =/= undefined of
-        true ->
-            ?log_debug("Spawned 'uninhibited' compaction for ~s", [PausedBucket]),
-            master_activity_events:note_forced_inhibited_view_compaction(PausedBucket),
-            {next_bucket, NextBucket} = {next_bucket, PausedBucket},
-            {next_bucket, InhibitedBucket} = {next_bucket, PausedBucket},
-            State#state{compactor_pid = Compactor,
-                        compactor_config = InitialConfig,
-                        view_compaction_uninhibit_started = true};
+    case Buckets of
+        [] ->
+            ?log_debug("No buckets to compact. Rescheduling compaction."),
+            State#compaction_state{scheduler=compaction_scheduler:schedule_next(Scheduler)};
         _ ->
-            State#state{compactor_pid = Compactor,
-                        compactor_config = InitialConfig}
+            ?log_debug("Starting compaction for the following buckets: ~n~p",
+                       [Buckets]),
+            NewState1 = State#compaction_state{buckets_to_compact=Buckets,
+                                               scheduler=
+                                                   compaction_scheduler:start_now(Scheduler)},
+            compact_next_bucket(NewState1)
     end.
 
--spec schedule_immediate_compaction(#state{}) -> #state{}.
-schedule_immediate_compaction(#state{buckets_to_compact=Buckets,
-                                     compactor_pid=Compactor,
-                                     scheduler=Scheduler} = State0) ->
-    [] = Buckets,
-    undefined = Compactor,
+process_compactors_exit(Reason, #compaction_state{compactor_pid=Compactor,
+                                                  buckets_to_compact=Buckets,
+                                                  scheduler=Scheduler} = State) ->
+    true = Buckets =/= [],
 
-    State1 = State0#state{scheduler=compaction_scheduler:cancel(Scheduler)},
-    self() ! compact,
-    State1.
+    case Reason of
+        normal ->
+            ok;
+        shutdown ->
+            ?log_debug("Compactor ~p exited with reason ~p", [Compactor, Reason]);
+        _ ->
+            ?log_error("Compactor ~p exited unexpectedly: ~p. "
+                       "Moving to the next bucket.", [Compactor, Reason])
+    end,
+
+    NewBuckets =
+        case Reason of
+            shutdown ->
+                %% this can happen either on config change or if compaction
+                %% has been stopped due to end of allowed time period; in the
+                %% latter case there's no need to compact bucket again; but it
+                %% won't hurt: compaction shall be terminated rightaway with
+                %% reason normal
+                Buckets;
+            _ ->
+                tl(Buckets)
+        end,
+
+    NewState = State#compaction_state{compactor_pid=undefined,
+                                      compactor_config=undefined,
+                                      buckets_to_compact=NewBuckets},
+    case NewBuckets of
+        [] ->
+            ?log_debug("Finished compaction iteration."),
+            NewState#compaction_state{scheduler =
+                                          compaction_scheduler:schedule_next(Scheduler)};
+        _ ->
+            compact_next_bucket(NewState)
+    end.
+
+process_config_change(Config, #compaction_state{scheduler = Scheduler} = State) ->
+    CheckInterval = get_check_interval(Config),
+    NewScheduler = compaction_scheduler:set_interval(CheckInterval, Scheduler),
+
+    maybe_restart_compactor(Config, State),
+    State#compaction_state{scheduler = NewScheduler}.
+
+maybe_restart_compactor(_NewConfig, #compaction_state{compactor_pid=undefined}) ->
+    ok;
+maybe_restart_compactor(_NewConfig, #compaction_state{buckets_to_compact=[]}) ->
+    ok;
+maybe_restart_compactor(NewConfig, #compaction_state{compactor_pid=Compactor,
+                                                     buckets_to_compact=[CompactedBucket|_],
+                                                     compactor_config=Config}) ->
+    {MaybeNewConfig, _} = compaction_config(NewConfig, CompactedBucket),
+    case MaybeNewConfig =:= Config of
+        true ->
+            ok;
+        false ->
+            ?log_info("Restarting compactor ~p since "
+                      "autocompaction config has changed", [Compactor]),
+            exit(Compactor, shutdown)
+    end.
+
+-spec compact_next_bucket(#compaction_state{}) -> #compaction_state{}.
+compact_next_bucket(#compaction_state{buckets_to_compact=Buckets,
+                                      compactor_pid=undefined,
+                                      compactor_fun=Fun} = State) ->
+    true = [] =/= Buckets,
+
+    NextBucket = hd(Buckets),
+
+    {InitialConfig, _ConfigProps} = Configs = compaction_config(NextBucket),
+
+    Compactor = Fun(NextBucket, Configs),
+    State#compaction_state{compactor_pid = Compactor,
+                           compactor_config = InitialConfig}.
 
 db_name(BucketName, SubName) when is_list(SubName) ->
     db_name(BucketName, list_to_binary(SubName));
@@ -1347,6 +1225,14 @@ bucket_exists(BucketName) ->
                 lists:member(node(), ns_bucket:bucket_nodes(Config));
         not_present ->
             false
+    end.
+
+exit_if_no_bucket(BucketName) ->
+    case bucket_exists(BucketName) of
+        true ->
+            ok;
+        false ->
+            exit(normal)
     end.
 
 -spec register_forced_compaction(pid(), #forced_compaction{},
@@ -1393,8 +1279,7 @@ maybe_cancel_compaction(Compaction,
                 {'EXIT', Pid, shutdown} ->
                     unregister_forced_compaction(Pid, State);
                 {'EXIT', Pid, _Reason} = Exit ->
-                    {next_state, ignored, NewState} = handle_info(Exit,
-                                                                  ignored, State),
+                    {noreply, NewState} = handle_info(Exit, State),
                     NewState
             end
     end.
