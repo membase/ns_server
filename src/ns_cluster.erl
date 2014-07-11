@@ -620,7 +620,8 @@ check_can_add_node(NodeKVList) ->
         true -> case expect_json_property_binary(<<"version">>, NodeKVList) of
                     <<"1.",_/binary>> = Version ->
                         {error, incompatible_cluster_version,
-                         iolist_to_binary(io_lib:format("Joining ~s node to this cluster is not supported", [Version])),
+                         iolist_to_binary(io_lib:format("Joining ~s node to this cluster is not supported. " ++
+                                                        "Upgrade node to Couchbase Server version 2 or greater and retry.", [Version])),
                          incompatible_cluster_version};
                     _ ->
                         ok
@@ -763,7 +764,8 @@ do_engage_cluster_check_compatibility(NodeKVList) ->
     MaybeError = case Version of
                      <<"1.",_/binary>> = Version ->
                          {error, incompatible_cluster_version,
-                          iolist_to_binary(io_lib:format("Joining ~s cluster is not supported", [Version])),
+                          iolist_to_binary(io_lib:format("Joining ~s cluster is not supported. " ++
+                                                         "Upgrade node to Couchbase Server version 2 or greater and retry.", [Version])),
                           incompatible_cluster_version};
                      _ ->
                          ok
