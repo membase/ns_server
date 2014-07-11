@@ -93,6 +93,11 @@ init([]) ->
               ok
       end),
 
+    ets:new(compaction_daemon, [protected, named_table, set]),
+
+    {ok, KVThrottle} = concurrency_throttle:start_link({1, kv_throttle}, undefined),
+    ets:insert(compaction_daemon, {kv_throttle, KVThrottle}),
+
     CheckInterval = get_check_interval(ns_config:get()),
 
     {ok, #state{kv_compaction =
@@ -612,6 +617,8 @@ maybe_compact_vbucket(BucketName, {VBucket, DbName} = VBucketAndDb,
     %% effectful
     ensure_can_db_compact(DbName, SizeInfo),
 
+    Force orelse get_kv_token(),
+
     ?log_info("Compacting `~s' (~p)", [DbName, Options]),
     Ret = case VBucket of
               master ->
@@ -703,6 +710,10 @@ spawn_view_index_compactor(BucketName, DDocId,
 
               %% effectful
               ensure_can_view_compact(BucketName, DDocId, Type),
+
+              %% make sure that scheduled non-parallel view compaction doesn't happen
+              %% during the kv compaction
+              Force orelse Config#config.parallel_view_compact orelse get_kv_token(),
 
               ?log_info("Compacting indexes for ~s", [ViewName]),
               process_flag(trap_exit, true),
@@ -1282,4 +1293,15 @@ maybe_cancel_compaction(Compaction,
                     {noreply, NewState} = handle_info(Exit, State),
                     NewState
             end
+    end.
+
+get_kv_token() ->
+    [{_, Pid}] = ets:lookup(compaction_daemon, kv_throttle),
+    concurrency_throttle:send_back_when_can_go(Pid, go),
+    receive
+        {'EXIT', _, Reason} = ExitMsg ->
+            ?log_debug("Got exit waiting for token: ~p", [ExitMsg]),
+            erlang:exit(Reason);
+        go ->
+            ok
     end.
