@@ -214,7 +214,10 @@ child_specs() ->
       permanent, 1000, worker, [start_reader]},
 
      {compaction_daemon, {compaction_daemon, start_link, []},
-      {permanent, 4}, 86400000, worker, [compaction_daemon]},
+      permanent, 1000, worker, [compaction_daemon]},
+
+     {compaction_new_daemon, {compaction_new_daemon, start_link, []},
+      {permanent, 4}, 86400000, worker, [compaction_new_daemon]},
 
      {xdc_rdoc_replication_srv, {xdc_rdoc_replication_srv, start_link, []},
       permanent, 1000, worker, [xdc_rdoc_replication_srv]},

@@ -815,7 +815,7 @@ handle_call({inhibit_view_compaction, Pid},
                State,
                From,
                fun () ->
-                       compaction_daemon:inhibit_view_compaction(Bucket, node(), Pid)
+                       compaction_new_daemon:inhibit_view_compaction(Bucket, Pid)
                end),
     {noreply, State2};
 handle_call({uninhibit_view_compaction, Ref},
@@ -825,7 +825,7 @@ handle_call({uninhibit_view_compaction, Ref},
                State,
                From,
                fun () ->
-                       compaction_daemon:uninhibit_view_compaction(Bucket, node(), Ref)
+                       compaction_new_daemon:uninhibit_view_compaction(Bucket, Ref)
                end),
     {noreply, State2};
 handle_call({get_replication_persistence_checkpoint_id, VBucket},
