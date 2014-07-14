@@ -104,6 +104,8 @@ init([Name, Path, Opts]) ->
 handle_call({log, Msg}, _From, State) ->
     {reply, ok, log_msg(Msg, State)};
 handle_call(sync, From, #state{worker = Worker} = State) ->
+    NewState = flush_buffer(State),
+
     Parent = self(),
     proc_lib:spawn_link(
       fun () ->
@@ -111,7 +113,7 @@ handle_call(sync, From, #state{worker = Worker} = State) ->
               erlang:unlink(Parent)
       end),
 
-    {noreply, State};
+    {noreply, NewState};
 handle_call(Request, _From, State) ->
     {stop, {unexpected_call, Request}, State}.
 
