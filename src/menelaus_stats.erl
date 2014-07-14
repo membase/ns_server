@@ -1409,6 +1409,7 @@ membase_stats_description(BucketId) ->
                                 {desc,<<"Number of delete operations per second for this bucket as the target for XDCR "
                                         "(measured from ep_num_ops_del_meta)">>}]},
                        {struct,[{title,<<"total ops per sec.">>},
+                                {bigTitle, <<"Incoming XDCR total ops/sec.">>},
                                 {name,<<"xdc_ops">>},
                                 {desc,<<"Total XDCR operations per second for this bucket "
                                         "(measured from xdc_ops).">>}]}]}]}].
