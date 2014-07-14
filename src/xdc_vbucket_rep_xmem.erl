@@ -51,9 +51,14 @@ find_missing(#xdc_xmem_location{vb = VBucket, mcd_loc = McdDst}, IdRevs) ->
         [Pair || {_Error, Pair} <- Errors],
     {ok, ErrRevs ++ MissingRevs}.
 
-flush_docs(#xdc_xmem_location{vb = VBucket,
-                              mcd_loc = McdDst,
-                              connection_timeout = ConnectionTimeout}, MutationsList) ->
+flush_docs(Loc, MutationsList) ->
+    do_flush_docs(Loc, MutationsList, 5).
+
+do_flush_docs(#xdc_xmem_location{vb = VBucket,
+                                 mcd_loc = McdDst,
+                                 connection_timeout = ConnectionTimeout} = Loc,
+              MutationsList, TriesLeft) ->
+    true = (TriesLeft > 0),
     TimeStart = now(),
 
     {ok, Statuses} = pooled_memcached_client:bulk_set_metas(McdDst, VBucket, MutationsList),
@@ -85,10 +90,27 @@ flush_docs(#xdc_xmem_location{vb = VBucket,
     end,
 
     DocsListSize = length(MutationsList),
-    case (Flushed + Eexist) == DocsListSize of
-        true ->
+    if
+        (Flushed + Eexist) == DocsListSize ->
             {ok, Flushed, Eexist};
-        _ ->
+        (Flushed + Eexist + TmpFail) == DocsListSize andalso TriesLeft > 1 ->
+            FailedMutations = [M || {M, etmpfail} <- lists:zip(MutationsList, Statuses)],
+            Delay = case TriesLeft of
+                        5 -> 1;
+                        4 -> 10;
+                        3 -> 100;
+                        2 -> 500
+                    end,
+            ?x_trace(xmemRetry, [{delay, Delay},
+                                 {attemptsLeft, TriesLeft - 1}]),
+            timer:sleep(Delay),
+            case do_flush_docs(Loc, FailedMutations, TriesLeft - 1) of
+                {error, _} = Err ->
+                    Err;
+                {ok, ChildFlushed, ChildExist} ->
+                    {ok, Flushed + ChildFlushed, Eexist + ChildExist}
+            end;
+        true ->
             %% for some reason we can only return one error. Thus
             %% we're logging everything else here
             ?xdcr_error("out of ~p docs, succ to send ~p docs, fail to send others "
