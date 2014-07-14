@@ -1080,7 +1080,7 @@ membase_stats_description(BucketId) ->
                           {name, <<"avg_bg_wait_time">>},
                           {desc, <<"Average background fetch time in microseconds"
                                    "(measured from avg_bg_wait_time).">>}]},
-                {struct,[{title,<<"incoming XDCR ops/sec.">>},
+                {struct,[{title,<<"Incoming XDCR ops/sec.">>},
                          {name,<<"xdc_ops">>},
                          {desc,<<"Incoming XDCR operations per second for this bucket "
                                  "(measured from xdc_ops).">>}]},
@@ -1392,9 +1392,11 @@ membase_stats_description(BucketId) ->
         ++ couchbase_view_stats_descriptions(BucketId)
         ++ couchbase_replication_stats_descriptions(BucketId)
         ++ [{struct,[{blockName,<<"Incoming XDCR Operations">>},
+                     {bigTitlePrefix, <<"Incoming XDCR">>},
                      {extraCSSClasses,<<"dynamic_closed">>},
                      {stats,
                       [{struct,[{title,<<"metadata reads per sec.">>},
+                                {bigTitle,<<"Incoming XDCR metadata reads per sec.">>},
                                 {name,<<"ep_num_ops_get_meta">>},
                                 {desc,<<"Number of metadata read operations per second for this bucket as the target for XDCR "
                                         "(measured from ep_num_ops_get_meta)">>}]},

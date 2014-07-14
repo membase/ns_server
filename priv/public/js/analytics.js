@@ -507,6 +507,37 @@ var StatsModel = {};
     });
     infos.blockIDs = blockIDs;
 
+    var infosByTitle = _.groupBy(infos, "title");
+
+    _.each(infos, function (statInfo) {
+      if (statInfo.missing || statInfo.bigTitle) {
+        return;
+      }
+      var title = statInfo.title;
+      var homonyms = infosByTitle[title];
+      if (homonyms.length == 1) {
+        return;
+      }
+      var sameBlock = _.any(homonyms, function (otherInfo) {
+        return otherInfo !== statInfo && otherInfo.blockId === statInfo.blockId;
+      });
+      var blockInfo = _.detect(statDesc.blocks, function (blockCand) {
+        return blockCand.id === statInfo.blockId;
+      });
+      if (!blockInfo) {
+        BUG();
+      }
+      if (sameBlock && blockInfo.columns) {
+        var idx = _.indexOf(blockInfo.stats, statInfo);
+        if (idx < 0) {
+          BUG();
+        }
+        statInfo.bigTitle = blockInfo.columns[idx % 4] + ' ' + statInfo.title;
+      } else {
+        statInfo.bigTitle = (blockInfo.bigTitlePrefix || blockInfo.blockName) + ' ' + statInfo.title;
+      }
+    });
+
     return {statDesc: statDesc, infos: infos};
   }).name("infosCell");
 
@@ -1003,7 +1034,7 @@ var AnalyticsSection = {
 
     $(self.widget).bind('menelaus.graphs-widget.rendered-graphs', function () {
       var graph = StatsModel.graphsConfigurationCell.value.selected;
-      $('#js_analytics .js_current-graph-name').text(graph.title);
+      $('#js_analytics .js_current-graph-name').text(graph.bigTitle || graph.title);
       $('#js_analytics .js_current-graph-desc').text(graph.desc);
     });
 
