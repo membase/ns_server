@@ -53,8 +53,10 @@ stringify_one_node_upload_error(missing_nodes) ->
     {nodes, <<"must be given">>};
 stringify_one_node_upload_error({empty, F}) ->
     {F, <<"cannot be empty">>};
-stringify_one_node_upload_error({malformed, F}) ->
-    {F, <<"must not contain /">>};
+stringify_one_node_upload_error({malformed, customer}) ->
+    {customer, <<"must contain only [A-Za-z0-9._ -] and be no longer than 50 characters">>};
+stringify_one_node_upload_error({malformed, ticket}) ->
+    {ticket, <<"must contain only [0-9] and be no longer than 7 characters">>};
 stringify_one_node_upload_error(missing_customer) ->
     [{customer, <<"customer must be given if upload host or ticket is given">>}];
 stringify_one_node_upload_error(missing_upload) ->
@@ -78,13 +80,18 @@ parse_nodes(NodesParam, Config) ->
             {error, {unknown_nodes, Bad}}
     end.
 
+is_field_valid(customer, Customer) ->
+    re:run(Customer, <<"^[A-Za-z0-9._ -]*$">>) =/= nomatch andalso length(Customer) =< 50;
+is_field_valid(ticket, Ticket) ->
+    re:run(Ticket, <<"^[0-9]*$">>) =/= nomatch andalso length(Ticket) =< 7.
+
 parse_validate_upload_url(UploadHost0, Customer0, Ticket0) ->
     UploadHost = misc:trim(UploadHost0),
     Customer = misc:trim(Customer0),
     Ticket = misc:trim(Ticket0),
     E0 = [{error, {malformed, K}} || {K, V} <- [{customer, Customer},
                                                 {ticket, Ticket}],
-                                     lists:member($/, V)],
+                                     not is_field_valid(K, V)],
     E1 = [{error, {empty, K}} || {K, V} <- [{customer, Customer},
                                             {uploadHost, UploadHost}],
                                  V =:= ""],
