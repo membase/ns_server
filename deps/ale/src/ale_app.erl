@@ -18,7 +18,7 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/2, stop/1]).
+-export([start/2, stop/1, prep_stop/1]).
 
 %% ===================================================================
 %% Application callbacks
@@ -26,6 +26,9 @@
 
 start(_StartType, _StartArgs) ->
     ale_sup:start_link().
+
+prep_stop(_State) ->
+    ale:sync_all_sinks().
 
 stop(_State) ->
     ok.
