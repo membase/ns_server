@@ -156,6 +156,8 @@ suppress_logging(<<?RES_MAGIC:8, ?UPR_SNAPSHOT_MARKER:8, _KeyLen:16, _ExtLen:8,
 suppress_logging(<<?RES_MAGIC:8, ?UPR_WINDOW_UPDATE, _KeyLen:16, _ExtLen:8,
                    _DataType:8, ?SUCCESS:16, _Rest/binary>>) ->
     true;
+suppress_logging(<<_:8, ?UPR_NOP:8, _Rest/binary>>) ->
+    true;
 suppress_logging(_) ->
     false.
 

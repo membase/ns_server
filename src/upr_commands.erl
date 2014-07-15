@@ -129,6 +129,8 @@ command_2_atom(?UPR_CONTROL) ->
     upr_control;
 command_2_atom(?UPR_WINDOW_UPDATE) ->
     upr_window_update;
+command_2_atom(?UPR_NOP) ->
+    upr_nop;
 command_2_atom(_) ->
     not_upr.
 
