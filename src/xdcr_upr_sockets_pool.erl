@@ -52,6 +52,7 @@ do_connect(Bucket) ->
                         ok ->
                             case upr_commands:setup_flow_control(Socket, ?XDCR_UPR_BUFFER_SIZE) of
                                 ok ->
+                                    ok = inet:setopts(Socket, [{nodelay, true}]),
                                     {ok, Socket};
                                 Err ->
                                     {error, {setup_flow_control_failed, Err}}
