@@ -458,6 +458,11 @@ spawn_scheduled_views_compactor(BucketName, {Config, ConfigProps}) ->
               DDocNames =/= [] orelse exit(normal),
 
               Compactors = get_view_compactors(BucketName, DDocNames, Config, false),
+
+              %% make sure that scheduled non-parallel view compaction doesn't happen
+              %% during the kv compaction
+              Config#config.parallel_view_compact orelse get_kv_token(),
+
               misc:wait_for_process(chain_compactors(Compactors), infinity)
       end).
 
@@ -475,12 +480,12 @@ spawn_views_compactor_for_paused_bucket(BucketName, {Config, ConfigProps}) ->
               DDocNames = ddoc_names(BucketName),
               DDocNames =/= [] orelse exit(normal),
 
-              %% for non-parallel view compaction grab token here and set Force=true
-              %% for docs compactors to prevent kv compaction from interrupting us
-              %% between docs
+              Compactors = get_view_compactors(BucketName, DDocNames, Config, true),
+
+              %% make sure that scheduled non-parallel view compaction doesn't happen
+              %% during the kv compaction
               Config#config.parallel_view_compact orelse get_kv_token(),
 
-              Compactors = get_view_compactors(BucketName, DDocNames, Config, true),
               misc:wait_for_process(chain_compactors(Compactors), infinity)
       end).
 
@@ -630,15 +635,6 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
                                     scheduled
                             end,
 
-              ok = couch_task_status:add_task(
-                     [{type, bucket_compaction},
-                      {original_target, OriginalTarget},
-                      {trigger_type, TriggerType},
-                      {bucket, BucketName},
-                      {vbuckets_done, 0},
-                      {total_vbuckets, Total},
-                      {progress, 0}]),
-
               {Options, SafeViewSeqs} =
                   case Config#config.do_purge of
                       true ->
@@ -678,6 +674,18 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
                       {Ix, VBucketAndDbName} <- misc:enumerate(VBucketDbs) ],
 
               process_flag(trap_exit, true),
+
+              Force orelse get_kv_token(),
+
+              ok = couch_task_status:add_task(
+                     [{type, bucket_compaction},
+                      {original_target, OriginalTarget},
+                      {trigger_type, TriggerType},
+                      {bucket, BucketName},
+                      {vbuckets_done, 0},
+                      {total_vbuckets, Total},
+                      {progress, 0}]),
+
               do_chain_compactors(Parent, Compactors),
 
               ?log_info("Finished compaction of databases for bucket ~s",
@@ -786,8 +794,6 @@ maybe_compact_vbucket(BucketName, {VBucket, DbName} = VBucketAndDb,
     %% effectful
     ensure_can_db_compact(DbName, SizeInfo),
 
-    Force orelse get_kv_token(),
-
     ?log_info("Compacting `~s' (~p)", [DbName, Options]),
     Ret = case VBucket of
               master ->
@@ -880,10 +886,6 @@ spawn_view_index_compactor(BucketName, DDocId,
 
               %% effectful
               ensure_can_view_compact(BucketName, DDocId, Type),
-
-              %% make sure that scheduled non-parallel view compaction doesn't happen
-              %% during the kv compaction
-              Force orelse Config#config.parallel_view_compact orelse get_kv_token(),
 
               ?log_info("Compacting indexes for ~s", [ViewName]),
               process_flag(trap_exit, true),
