@@ -1351,7 +1351,11 @@ input[type=number].size {width:4em;}
 .xdcr_advaced_settings.dialog {width: 400px;}
 .xdcr_advaced_settings legend {cursor: pointer; color: #2ea6db;}
 
-.warmup_table td {text-align: left; padding: 0px 20px 0px 20px; line-height: 25px; font-size:12px;}
+.warmup_icon {float: left; width: 66px; height: 63px; background: url("../images/icons.png") no-repeat scroll -6px -100px transparent;}
+.warmup_table .bucket_name {width: 173px;}
+.warmup_table {width: 100%;}
+.warmup_table td {text-align: left; font-size: 12px; padding-top: 0;}
+.warmup_table_wrapper {overflow: hidden;}
 
 .replication_status_cell * {vertical-align: middle;}
 .replication_control {display: inline-block; text-align: center; vertical-align: middle; margin:0 4px; cursor: pointer; width: 18px; height: 18px; background-image: url('../images/pause_play.png'); background-repeat: no-repeat; }

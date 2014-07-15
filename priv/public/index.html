@@ -658,13 +658,24 @@
           <script id="js_warm_up_tmpl" type="text/html">
             {% if (thisWarmupTasks) { %}
               <h3>Warmup Progress</h3>
-              <table class="warmup_table">
-                <tbody>
-                  {% _.each(thisWarmupTasks, function (task) { %}
-                    <tr><td>{%= h(task.key) %}</td><td>{%= h(task.status) %}</td></tr>
-                  {% }) %}
-                </tbody>
-              </table>
+              <div class="warmup_icon"></div>
+              <div class="warmup_table_wrapper">
+                <table class="warmup_table">
+                  <colgroup>
+                    <col class="bucket_name">
+                    <col>
+                  </colgroup>
+                  <tbody>
+                    {% _.each(thisWarmupTasks, function (task) { %}
+                      <tr>
+                        <td title="{%= h(task.key) %}" class="ellipsis">{%= h(task.key) %}</td>
+                        <td>{%= h(task.status) %}</td>
+                      </tr>
+                    {% }) %}
+                  </tbody>
+                </table>
+              </div>
+              <div class="clear"></div>
             {% } %}
           </script>
 
