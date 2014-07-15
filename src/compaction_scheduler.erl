@@ -40,7 +40,6 @@ set_interval(Interval, State) ->
 
 -spec schedule_next(#state{}) -> #state{}.
 schedule_next(#state{start_ts=StartTs0,
-                     timer_ref=undefined,
                      interval=CheckInterval,
                      message=Message} = State) ->
     Now = now_utc_seconds(),
