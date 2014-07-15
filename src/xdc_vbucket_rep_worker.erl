@@ -282,8 +282,14 @@ maybe_flush_docs_capi(#httpdb{} = Target, Batch, Doc, BatchSize, BatchItems) ->
 flush_docs_capi(_Target, []) ->
     ok;
 flush_docs_capi(Target, DocsList) ->
-    case couch_api_wrap:update_docs(Target, DocsList, [delay_commit],
-                                    replicated_changes) of
+    RV = couch_api_wrap:update_docs(Target, DocsList, [delay_commit],
+                                    replicated_changes),
+    ?x_trace(capiUpdateDocs, [{ids, {json, [(couch_doc:from_json_obj(ejson:decode(D)))#doc.id || D <- DocsList]}}
+                              | case RV of
+                                    ok -> [{success, true}];
+                                    _ -> [{success, false}]
+                                end]),
+    case RV of
         ok ->
             ok;
         {ok, {Props}} ->
