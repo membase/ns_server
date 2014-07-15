@@ -1024,10 +1024,10 @@ input.view_name{width:20em;padding:5px}
 .bucket_details_info .size-gauge table {width:100%;text-align:justify;line-height:1.3;}
 .bucket_details_info .size-gauge table td {padding:4px 0 0;text-align:right;font-size:10px;background:none;border:none;}
 .bucket_details_info .size-gauge .usage i {background:none;display:block;font-size:0;height:25px;line-height:0;position:absolute;;top:-5px;width:1px;}
-.bucket_details_info label.for-hdd-quota {padding-top: 14px;width: 275px;}
-.bucket_details_info label {display:block;margin:6px 0;line-height:24px;overflow:hidden;font-size:12px;}
-.bucket_details_info label span {display:block;float:left;margin: 0 6px 0 10px;color: #404042;text-align:left;}
-.bucket_details_info label span + span {width:60px !important;color:#7C7D7F;}
+.bucket_details_info .disk_storage {width: auto;}
+.bucket_details_info label {display:block;line-height:24px;overflow:hidden;font-size:12px;}
+.bucket_details_info label span {display:block;float:left;text-align:left;}
+.bucket_details_info label span + span {width:60px !important;margin-left: 5px;color:#7C7D7F;}
 .bucket_details_info label abbr {margin-left:6px;}
 .bucket_details_info h2 + label.for-hdd-quota  {width:auto;clear:both;}
 

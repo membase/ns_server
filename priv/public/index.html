@@ -715,7 +715,8 @@
 
               <h2>Cache Size</h2>
               <div class="size-gauge for-ram"></div>
-            {%= V.thisElement(function (e) {BucketsSection.renderRAMDetailsGauge(e, obj);}) %}
+              {%= V.thisElement(function (e) {BucketsSection.renderRAMDetailsGauge(e, obj);}) %}
+              <div class="dynamic_ram"></div>
               <label class="for-hdd-quota">
                 <span>Dynamic RAM Quota:</span>
                 <span>{%= h(V.formatQuantity(ramQuota)) %}</span>
@@ -724,16 +725,12 @@
 
             {% if (storageInfoRelevant) { %}
               <h2>Storage Size</h2>
-              <label class="for-hdd-quota">
-                <span>Persistence Enabled:</span>
-                <span>Yes</span>
-                <abbr></abbr>
-              </label>
-
               <div class="size-gauge for-hdd"></div>
-            {%= V.thisElement(function (e) {BucketsSection.renderHDDDetailsGauge(e, obj)}) %}
-
+              {%= V.thisElement(function (e) {BucketsSection.renderHDDDetailsGauge(e, obj)}) %}
+              <div class="disk_storage"></div>
               <label class="for-hdd-quota" style="padding:0;">
+                <span>Persistence Enabled:</span>
+                <span>Yes</span><br>
                 <span>Disk Usage:</span>
                 <span>{%= h(V.formatQuantity(basicStats.diskUsed)) %}</span><br>
                 <span>Data Usage:</span>
