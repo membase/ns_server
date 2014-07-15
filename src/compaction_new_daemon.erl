@@ -60,6 +60,9 @@
                 %% done
                 view_compaction_uninhibit_requested_waiter,
 
+                %% do we need to stop kv compaction during uninhibition
+                view_compaction_uninhibit_stop_kv = false :: boolean(),
+
                 %% mapping from compactor pid to #forced_compaction{}
                 running_forced_compactions,
                 %% reverse mapping from #forced_compaction{} to compactor pid
@@ -269,22 +272,34 @@ handle_call({uninhibit_view_compaction, BinBucketName, MRef}, From,
                              #compaction_state{compactor_pid = CompactorPid,
                                                scheduler = Scheduler} = CompactionState
                         } = State) ->
-    NewState = case CompactorPid of
-                   undefined ->
-                       NewCompactionState =
-                           CompactionState#compaction_state{
-                             scheduler = compaction_scheduler:cancel(Scheduler)},
-                       State#state{
-                         view_compaction_uninhibit_started = true,
-                         views_compaction =
-                             compact_views_for_paused_bucket(BinBucketName, NewCompactionState)};
-                   _ ->
-                       State#state{view_compaction_uninhibit_started = false}
-               end,
-    erlang:demonitor(State#state.view_compaction_inhibited_ref),
-    {noreply, NewState#state{view_compaction_uninhibit_requested_waiter = From,
-                             view_compaction_inhibited_ref = undefined,
-                             view_compaction_uninhibit_requested = true}};
+    case ddoc_names(BinBucketName) of
+        [] ->
+            {reply, ok, State#state{view_compaction_inhibited_bucket = undefined,
+                                    view_compaction_uninhibit_requested_waiter = undefined,
+                                    view_compaction_uninhibit_requested = false,
+                                    view_compaction_uninhibit_started = false}};
+        _ ->
+            {Config, _ConfigProps} = compaction_config(BinBucketName),
+            StopKV = not Config#config.parallel_view_compact,
+            NewState =
+                case CompactorPid of
+                    undefined ->
+                        NewCompactionState =
+                            CompactionState#compaction_state{
+                              scheduler = compaction_scheduler:cancel(Scheduler)},
+                        State#state{
+                          view_compaction_uninhibit_started = true,
+                          views_compaction =
+                              compact_views_for_paused_bucket(BinBucketName, NewCompactionState)};
+                    _ ->
+                        State#state{view_compaction_uninhibit_started = false}
+                end,
+            erlang:demonitor(State#state.view_compaction_inhibited_ref),
+            {noreply, NewState#state{view_compaction_uninhibit_requested_waiter = From,
+                                     view_compaction_inhibited_ref = undefined,
+                                     view_compaction_uninhibit_requested = true,
+                                     view_compaction_uninhibit_stop_kv = StopKV}}
+    end;
 handle_call({uninhibit_view_compaction, _BinBucketName, _MRef} = Msg, _From, State) ->
     ?log_debug("Sending back nack on uninhibit_view_compaction: ~p, state: ~p", [Msg, State]),
     {reply, nack, State};
@@ -295,8 +310,9 @@ handle_call({is_bucket_inhibited, BinBucketName}, _From,
 handle_call({is_bucket_inhibited, _BinBucketName}, _From, State) ->
     {reply, false, State};
 handle_call(is_uninhibited_requested, _From,
-            #state{view_compaction_uninhibit_requested = Requested} = State) ->
-    {reply, Requested, State};
+            #state{view_compaction_uninhibit_requested = Requested,
+                   view_compaction_uninhibit_stop_kv = StopKV} = State) ->
+    {reply, {Requested, StopKV}, State};
 handle_call(Event, _From, State) ->
     ?log_warning("Got unexpected call ~p:~n~p", [Event, State]),
     {reply, ok, State}.
@@ -805,6 +821,7 @@ maybe_compact_vbucket(BucketName, {VBucket, DbName} = VBucketAndDb,
     Ret.
 
 spawn_vbucket_compactor(BucketName, VBucketAndDb, Config, Force, Options) ->
+    exit_if_uninhibit_requsted_for_non_parallel_compaction(),
     proc_lib:spawn_link(
       fun () ->
               case maybe_compact_vbucket(BucketName, VBucketAndDb, Config, Force, Options) of
@@ -1435,9 +1452,18 @@ exit_if_bucket_is_paused(BucketName) ->
 
 exit_if_uninhibit_requsted() ->
     case gen_server:call(?MODULE, is_uninhibited_requested, infinity) of
-        true ->
+        {true, _} ->
             exit(normal);
-        false ->
+        {false, _} ->
+            ok
+    end.
+
+exit_if_uninhibit_requsted_for_non_parallel_compaction() ->
+    case gen_server:call(?MODULE, is_uninhibited_requested, infinity) of
+        {true, true} ->
+            ?log_info("Uninhibit is requested for non-parallel index compaction. Interrupt KV compaction to start index compaction sooner."),
+            exit(normal);
+        {_, _} ->
             ok
     end.
 
