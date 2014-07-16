@@ -37,6 +37,9 @@
 -export([start_link/2, init/1, handle_call/3, handle_info/2, handle_cast/2]).
 -export([code_change/3, terminate/2]).
 
+%% for debugging and diagnostics purposes
+-export([get_waiters_and_monitors/1]).
+
 -record(state, {update_status_tref :: reference() | undefined,
                 type :: term(),
                 parent :: pid() | undefined,
@@ -317,11 +320,6 @@ update_status_to_parent(State) ->
     State.
 
 
--ifdef(EUNIT).
-
-basic_test_() ->
-    {spawn, fun do_basic_test_run/0}.
-
 get_waiters_and_monitors(T) ->
     #state{waiters = WaitersTid,
            monitors = MonitorsTid} = gen_server:call(T, get_state, infinity),
@@ -333,6 +331,11 @@ get_waiters_and_monitors(T) ->
                   is_pid(erlang:element(1, Tuple))
           end, Monitors0),
     {Waiters, Monitors, SystemMonitorRecords}.
+
+-ifdef(EUNIT).
+
+basic_test_() ->
+    {spawn, fun do_basic_test_run/0}.
 
 do_basic_test_run() ->
     {ok, T} = ?MODULE:start_link({10, testing}, undefined),
