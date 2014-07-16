@@ -233,7 +233,8 @@ wakeup_one_waiter(WaitersTid, MonitorsTid) ->
     NewPid ! Signal,
     ets:delete(WaitersTid, Key),
     %% mark entry in monitors table as having token
-    ets:update_counter(MonitorsTid, NewPid, 1).
+    ets:update_counter(MonitorsTid, NewPid, 1),
+    NewPid.
 
 handle_call({change_tokens, NewTotalTokens}, _From,
             #state{waiters = WaitersTid,
@@ -243,21 +244,28 @@ handle_call({change_tokens, NewTotalTokens}, _From,
     case NewTotalTokens > OldTotalTokens of
         true ->
             ExtraTokens = NewTotalTokens - OldTotalTokens,
+            ?log_debug("Increased total count of tokens (~p -> ~p)", [OldTotalTokens, NewTotalTokens]),
             WaitersCount = ets:info(WaitersTid, size),
-            [wakeup_one_waiter(WaitersTid, MonitorsTid)
-             || _ <- lists:seq(1, erlang:min(ExtraTokens, WaitersCount))],
+            [begin
+                 P = wakeup_one_waiter(WaitersTid, MonitorsTid),
+                 ?log_debug("Woken up waiter: ~p", [P])
+             end || _ <- lists:seq(1, erlang:min(ExtraTokens, WaitersCount))],
             ets:update_counter(MonitorsTid, avail, ExtraTokens);
         _ ->
             TokensToRemove = OldTotalTokens - NewTotalTokens,
+            ?log_debug("Decreased total count of tokens (~p -> ~p)", [OldTotalTokens, NewTotalTokens]),
             [{_, NowAvail}] = ets:lookup(MonitorsTid, avail),
+            ?log_debug("Now avail: ~p", [NowAvail]),
             ToReturnTokens =
                 if
                     NowAvail >= TokensToRemove ->
+                        ?log_debug("NowAvail >= TokensToRemove"),
                         %% we have more tokens available than we need
                         %% to remove. So just decrease avail count
                         ets:update_counter(MonitorsTid, avail, -TokensToRemove),
                         0;
                     NowAvail > 0 ->
+                        ?log_debug("NowAvail > 0"),
                         %% we don't have enough tokens available to
                         %% cover jump down. But there are some tokens
                         %% available. So we decrease avail count to
@@ -267,6 +275,7 @@ handle_call({change_tokens, NewTotalTokens}, _From,
                         ets:update_counter(MonitorsTid, avail, -NowAvail),
                         TokensToRemove - NowAvail;
                     NowAvail =< 0 ->
+                        ?log_debug("NowAvail =< 0"),
                         %% we have no tokens available at all. So all
                         %% tokens that we need to remove must be
                         %% handled via asking existing workers to
@@ -278,6 +287,8 @@ handle_call({change_tokens, NewTotalTokens}, _From,
             true = (ToReturnTokens =< OldTotalTokens),
 
             RunningPids = [P || {P, 1, _, _} <- ets:tab2list(MonitorsTid)],
+            ?log_debug("Will kindly ask ~p processes to return token", [ToReturnTokens]),
+            ?log_debug("RunningPids: ~p", [RunningPids]),
             misc:letrec(
               [RunningPids, ToReturnTokens],
               fun (_Rec, [], TokensLeft) ->
@@ -291,6 +302,7 @@ handle_call({change_tokens, NewTotalTokens}, _From,
                       ok;
                   (Rec, [Pid | RestPids], TokensLeft) ->
                       Pid ! return_token_please,
+                      ?log_debug("Sent return_token_please to ~p", [Pid]),
                       %% for processes that we're asking to return
                       %% token back we want their token to be
                       %% "lost". So we mark them as if they're not
