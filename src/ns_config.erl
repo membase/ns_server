@@ -71,7 +71,7 @@
          run_txn/1,
          clear/0, clear/1,
          proplist_get_value/3,
-         merge_kv_pairs/3,
+         merge_kv_pairs/4,
          sync_announcements/0,
          get_kv_list/0, get_kv_list/1, get_kv_list_with_config/1,
          upgrade_config_explicitly/1, config_version_token/0,
@@ -981,21 +981,13 @@ save_file(bin, ConfigPath, X) ->
     ok = file:close(F),
     file:rename(TempFile, ConfigPath).
 
--spec merge_kv_pairs([{term(), term()}], [{term(), term()}], any()) -> [{term(), term()}].
-merge_kv_pairs(RemoteKVList, LocalKVList, _UUID) when RemoteKVList =:= LocalKVList -> LocalKVList;
-merge_kv_pairs(RemoteKVList, LocalKVList, UUID) ->
+-spec merge_kv_pairs([{term(), term()}], [{term(), term()}], any(), boolean()) -> [{term(), term()}].
+merge_kv_pairs(RemoteKVList, LocalKVList, _UUID, _Cluster30) when RemoteKVList =:= LocalKVList -> LocalKVList;
+merge_kv_pairs(RemoteKVList, LocalKVList, UUID, Cluster30) ->
     RemoteKVList1 = lists:sort(RemoteKVList),
     LocalKVList1 = lists:sort(LocalKVList),
     Merger = fun (_, {directory, _} = LP) ->
                      LP;
-                 ({_, RV}, {{node, Node, uuid}, LV} = LP) when Node =:= node() ->
-                     case RV =:= LV of
-                         true ->
-                             LP;
-                         false ->
-                             {{node, node(), uuid},
-                              increment_vclock(LV, merge_vclocks(RV, LV), UUID)}
-                     end;
                  ({_, [{'_vclock', _} | ?DELETED_MARKER]}, {{node, Node, _}, _LV} = LP) when Node =:= node() ->
                      %% we don't allow incoming replications of
                      %% deletions of our per-node keys. This is
@@ -1008,6 +1000,29 @@ merge_kv_pairs(RemoteKVList, LocalKVList, UUID) ->
                      %% things in this node preventing it from leaving
                      %% cluster.
                      LP;
+                 ({_, RV} = RP, {{node, Node, Key} = K, LV} = LP) when Node =:= node() ->
+                     %% we want to make sure that that no one is able to
+                     %% modify our own UUID and in addition to that while the
+                     %% cluster is not fully 3.0 we don't receive any updates
+                     %% for per node keys; the latter is needed because
+                     %% conflict resolution strategy was slightly changed in
+                     %% 3.0 and we don't want old nodes to resolve conflicts
+                     %% at all; so if we receive such a change, we always
+                     %% prefer our local version and adjust vector clock so
+                     %% that it overwrites the remote one
+                     Bounce = (Key =:= uuid) orelse (not Cluster30),
+
+                     case Bounce of
+                         true ->
+                             case RV =:= LV of
+                                 true ->
+                                     {K, merge_vclocks(LV, RV)};
+                                 false ->
+                                     {K, increment_vclock(LV, merge_vclocks(RV, LV), UUID)}
+                             end;
+                         false ->
+                             merge_values(RP, LP, UUID)
+                     end;
                  (RP, LP) ->
                      merge_values(RP, LP, UUID)
              end,
