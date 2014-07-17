@@ -261,11 +261,7 @@ var LogsSection = {
           if (key != '_') {
             showErrors(key, value);
           } else {
-            genericDialog({
-              buttons: {ok: true},
-              header: "Failed to start cluster logs collection",
-              text: value
-            });
+            showErrors('generalCollectInfo', value);
           }
         });
       }
