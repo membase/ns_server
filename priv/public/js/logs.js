@@ -130,6 +130,7 @@ var LogsSection = {
     var collectInfoStartNewView = $("#js_collect_info_start_new_view");
     var selectNodesListCont = $("#js_select_nodes_list_container");
     var uploadToCouchbase = $("#js_upload_to_cb");
+    var uploadToHost = $("#js_uploadHost_input");
     var uploadToForm = $("#js_upload_conf");
     var collectForm = $("#js_collect_info_form");
     var collectFromRadios = $("input[name='from']", collectInfoStartNewView);
@@ -377,6 +378,12 @@ var LogsSection = {
       if (!isCollectionInfoTab) {
         hideResultButtons();
         showResultViewBtn.hide();
+      }
+    });
+
+    DAL.cells.isEnterpriseCell.subscribeValue(function (isEnterprise) {
+      if (isEnterprise) {
+        uploadToHost.val('s3.amazonaws.com/cb-customers');
       }
     });
 
