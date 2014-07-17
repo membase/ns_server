@@ -246,7 +246,7 @@ handle_call({change_tokens, NewTotalTokens}, _From,
             WaitersCount = ets:info(WaitersTid, size),
             [wakeup_one_waiter(WaitersTid, MonitorsTid)
              || _ <- lists:seq(1, erlang:min(ExtraTokens, WaitersCount))],
-            ets:update_counter(MonitorsTid, avail, erlang:max(0, ExtraTokens - WaitersCount));
+            ets:update_counter(MonitorsTid, avail, ExtraTokens);
         _ ->
             TokensToRemove = OldTotalTokens - NewTotalTokens,
             [{_, NowAvail}] = ets:lookup(MonitorsTid, avail),
@@ -454,10 +454,44 @@ start_test_worker() ->
                     Parent ! {self(), got_token},
                     receive
                         put ->
-                            ?MODULE:is_done(T)
+                            ?MODULE:is_done(T);
+                        put_and_ack ->
+                            ?MODULE:is_done(T),
+                            Parent ! {self(), put_ack}
                     end
             end
     end,
     start_test_worker().
+
+change_tokens_by_a_bit_test_() ->
+    {spawn, fun do_change_tokens_by_a_bit_test_run/0}.
+
+do_change_tokens_by_a_bit_test_run() ->
+    {ok, T} = ?MODULE:start_link({0, testing}, undefined),
+    [A, B] = [proc_lib:spawn_link(fun start_test_worker/0) || _ <- [1, 2]],
+    [begin
+         P ! {ask, T, 1, self(), true},
+         receive
+             {P, requested_token} -> ok
+         end
+     end || P <- [A, B]],
+    %% we have both processes waiting due to total token count 0 we
+    %% then change tokens count to 1 causing first of them to be
+    %% awaken (A) and then we test that things work as normal after
+    %% that. There was bug in this code path in original implementation.
+    ok = change_tokens(T, 1),
+    receive
+        {A, got_token} -> ok
+    end,
+    A ! put,
+    receive
+        {B, got_token} -> ok
+    end,
+    B ! put_and_ack,
+    receive
+        {B, put_ack} -> ok
+    end,
+    {[],[],SystemMonitorRecords} = get_waiters_and_monitors(T),
+    ?assertEqual({avail, 1}, lists:keyfind(avail, 1, SystemMonitorRecords)).
 
 -endif.
