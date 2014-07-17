@@ -271,10 +271,24 @@ do_update_rec(Fun, SoftDelete, Erase, [Pair | Rest], UUID, NewConfig, NewPairs) 
             do_update_rec(Fun, SoftDelete, Erase, Rest, UUID,
                           NewConfig, NewPairs);
         {K, Data} ->
-            {_, OldValue} = Pair,
+            {OldK, OldValue} = Pair,
             NewPair = {K, increment_vclock(Data, OldValue, UUID)},
-            do_update_rec(Fun, SoftDelete, Erase, Rest, UUID,
-                          [NewPair | NewConfig], [NewPair | NewPairs])
+
+            {Rest1, NewConfig1, NewPairs1} =
+                case K =:= OldK of
+                    true ->
+                        {Rest, NewConfig, NewPairs};
+                    false ->
+                        %% key has changed; so we need to remove potential
+                        %% duplicates from rest of the config or from already
+                        %% processed part of it
+                        {lists:keydelete(K, 1, Rest),
+                         lists:keydelete(K, 1, NewConfig),
+                         lists:keydelete(K, 1, NewPairs)}
+                end,
+
+            do_update_rec(Fun, SoftDelete, Erase, Rest1, UUID,
+                          [NewPair | NewConfig1], [NewPair | NewPairs1])
     end.
 
 update(Fun) ->
