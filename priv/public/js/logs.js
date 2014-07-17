@@ -145,6 +145,7 @@ var LogsSection = {
     var collectInfoViewNameCell = new StringHashFragmentCell("collectInfoViewName");
 
     var allActiveNodeBoxes;
+    var allNodeBoxes;
     var overlay;
     var self = this;
 
@@ -277,8 +278,12 @@ var LogsSection = {
       }
 
       var isAllnodesChecked = $(this).val() == '*';
-      allActiveNodeBoxes.attr('checked', isAllnodesChecked);
-      allActiveNodeBoxes.attr('disabled', isAllnodesChecked);
+      if (isAllnodesChecked) {
+        allNodeBoxes.attr({checked: true, disabled: true});
+      } else {
+        allNodeBoxes.attr({checked: false});
+        allActiveNodeBoxes.attr({checked: true, disabled: false});
+      }
       maybeDisableSaveBtn();
     });
 
@@ -360,6 +365,7 @@ var LogsSection = {
       self.prepareCollectionInfoNodesCell.getValue(function (selectNodesList) {
         renderTemplate('js_select_nodes_list', selectNodesList);
         allActiveNodeBoxes = $('input:not(:disabled)', selectNodesListCont);
+        allNodeBoxes = $('input', selectNodesListCont);
         allActiveNodeBoxes.change(maybeDisableSaveBtn);
         collectFromRadios.eq(0).attr('checked', true).trigger('change');
         uploadToCouchbase.attr('checked', false).trigger('change');
