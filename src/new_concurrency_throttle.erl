@@ -66,14 +66,16 @@
                 %%
                 %% And tracks all waiters for token or holders of the
                 %% tokens. Second field is 1 if Pid holds token and 0
-                %% otherwise. Third field is monitor reference and
-                %% fourth field holds waiters table key for processes
-                %% waiting for token (i.e. so that if process waiting
-                %% for token dies we can completely forget it).
+                %% otherwise. Second field is 3 if Pid was asked to
+                %% return token after recent change_tokens. Third
+                %% field is monitor reference and fourth field holds
+                %% waiters table key for processes waiting for token
+                %% (i.e. so that if process waiting for token dies we
+                %% can completely forget it).
                 %%
                 %% Schema:
                 %% {avail|gc_counter, integer()}
-                %%   | {Pid, 0|1, MonRef::reference(), WaitersKey::term()}
+                %%   | {Pid, 0|1|3, MonRef::reference(), WaitersKey::term()}
                 monitors}).
 
 %% we'll bother parent with our stats 5 times per second max
@@ -179,6 +181,7 @@ handle_cast({done, Pid},
     [{_, TokenMarker, MonRef, WaitersKey}] = ets:lookup(MonitorsTid, Pid),
     ets:delete(MonitorsTid, Pid),
     erlang:demonitor(MonRef, [flush]),
+    NewAvail = ets:update_counter(MonitorsTid, avail, 1),
     case TokenMarker of
         0 ->
             %% it's DOWN from process that has no token. Or done from
@@ -186,14 +189,19 @@ handle_cast({done, Pid},
             ets:delete(WaitersTid, WaitersKey);
         1 ->
             %% it's done or DOWN from process that has token
-            NewAvail = ets:update_counter(MonitorsTid, avail, 1),
             if
                 NewAvail > 0 ->
                     ok;
                 true ->
                     %% we have a waiter to wake up
                     wakeup_one_waiter(WaitersTid, MonitorsTid)
-            end
+            end;
+        3 ->
+            %% This is 'extra' process that was asked to return token
+            %% on recent change_tokens. So we don't change avail count
+            %% for it. And therefore there cannot be corresponding
+            %% waiter to wakeup
+            ets:update_counter(MonitorsTid, avail, -1)
     end,
     {noreply, update_status_to_parent(State)};
 
@@ -305,14 +313,14 @@ handle_call({change_tokens, NewTotalTokens}, _From,
                       ?log_debug("Sent return_token_please to ~p", [Pid]),
                       %% for processes that we're asking to return
                       %% token back we want their token to be
-                      %% "lost". So we mark them as if they're not
-                      %% holding tokens. So that done or exit from
-                      %% them doesn't increase avail count
+                      %% "lost". So we mark them specially, so that
+                      %% 'done' or DOWN from them doesn't increase
+                      %% avail count
                       %%
                       %% Second field is our marker. And per filter of
                       %% RunningPids above is 1. We decrement down to
                       %% 0.
-                      ets:update_counter(MonitorsTid, Pid, -1),
+                      ets:update_counter(MonitorsTid, Pid, 2),
                       Rec(Rec, RestPids, TokensLeft-1)
               end)
     end,
@@ -469,6 +477,13 @@ start_test_worker() ->
                             ?MODULE:is_done(T);
                         put_and_ack ->
                             ?MODULE:is_done(T),
+                            Parent ! {self(), put_ack};
+                        return_token_please ->
+                            Parent ! {self(), got_return_token_please},
+                            receive
+                                do_return_token -> ok
+                            end,
+                            ?MODULE:is_done(T),
                             Parent ! {self(), put_ack}
                     end
             end
@@ -505,5 +520,86 @@ do_change_tokens_by_a_bit_test_run() ->
     end,
     {[],[],SystemMonitorRecords} = get_waiters_and_monitors(T),
     ?assertEqual({avail, 1}, lists:keyfind(avail, 1, SystemMonitorRecords)).
+
+decrease_tokens_when_no_tokens_left_test_() ->
+    {spawn, fun do_decrease_tokens_when_no_tokens_left_test_run/0}.
+
+do_decrease_tokens_when_no_tokens_left_test_run() ->
+    {ok, T} = ?MODULE:start_link({1, testing}, undefined),
+    [A, B] = [proc_lib:spawn_link(fun start_test_worker/0) || _ <- [1, 2]],
+    [begin
+         P ! {ask, T, 1, self(), true},
+         receive
+             {P, requested_token} -> ok
+         end
+     end || P <- [A, B]],
+    receive
+        {A, got_token} -> ok
+    end,
+    %% we have one process with token and other waiting.
+    %% We decrement tokens count to 0 and confirm that things are working fine
+    ok = change_tokens(T, 0),
+    receive
+        {A, got_return_token_please} -> ok
+    end,
+    A ! do_return_token,
+    receive
+        {A, put_ack} -> ok
+    end,
+    A ! {ask, T, 1, self(), true},
+    receive
+        {A, requested_token} -> ok
+    end,
+    receive
+        X ->
+            erlang:error({unexpected_message, X})
+    after 0 ->
+            ok
+    end,
+    {Waiters, Monitors, SystemMonitorRecords} = get_waiters_and_monitors(T),
+    ?assertEqual(2, length(Waiters)),
+    ?assertEqual(2, length(Monitors)),
+    %% now confirm that we have two waiters
+    ?assertEqual({avail, -2}, lists:keyfind(avail, 1, SystemMonitorRecords)),
+    %% and make sure that after waiters die we have avail that's same
+    %% as total tokens count
+    [begin
+         erlang:unlink(P),
+         erlang:exit(P, kill),
+         misc:wait_for_process(P, infinity)
+     end || P <- [A,B]],
+    {[], [], SystemMonitorRecords2} = get_waiters_and_monitors(T),
+    ?assertEqual({avail, 0}, lists:keyfind(avail, 1, SystemMonitorRecords2)).
+
+waiter_crash_test_() ->
+    {spawn, fun do_waiter_crash_test_run/0}.
+
+do_waiter_crash_test_run() ->
+    {ok, T} = ?MODULE:start_link({1, testing}, undefined),
+    [A, B] = [proc_lib:spawn_link(fun start_test_worker/0) || _ <- [1, 2]],
+    A ! {ask, T, 1, self(), false},
+    receive
+        {A, got_token} -> ok
+    end,
+    B ! {ask, T, 1, self(), true},
+    receive
+        {B, requested_token} -> ok
+    end,
+    {_, _, SystemMonitorRecords} = get_waiters_and_monitors(T),
+    ?assertEqual({avail, -1}, lists:keyfind(avail, 1, SystemMonitorRecords)),
+    %% so we have one holder of the token and one waiter.  We crash
+    %% waiter and we must see that nothing is broken
+    %% afterwards. Original implementation had bug in this code path.
+    erlang:unlink(B),
+    erlang:exit(B, kill),
+    misc:wait_for_process(B, infinity),
+
+    %% we release token on A and observe that things are back to norm
+    A ! put_and_ack,
+    receive
+        {A, put_ack} -> ok
+    end,
+    {_, _, SystemMonitorRecords2} = get_waiters_and_monitors(T),
+    ?assertEqual({avail, 1}, lists:keyfind(avail, 1, SystemMonitorRecords2)).
 
 -endif.
