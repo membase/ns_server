@@ -22,6 +22,8 @@
 -export([debug_on/0, info_on/0, get_level/0, get_level_integer/0, set_level/1]).
 -export([read/2]).
 
+-export([pre_db_open/1]).
+
 % gen_event callbacks
 -export([init/1, handle_event/2, terminate/2, code_change/3]).
 -export([handle_info/2, handle_call/2]).
@@ -87,3 +89,17 @@ terminate(_Arg, _State) ->
 
 read(_Bytes, _Offset) ->
     {ok, ""}.
+
+pre_db_open(DbName) ->
+    case re:run(DbName, "/[0-9]+$") of
+        nomatch -> ok;
+        _ ->
+            try
+                erlang:error({you_cannot_open_vbucket_dbs_anymore, DbName})
+            catch T:E ->
+                    Stack = erlang:get_stacktrace(),
+                    couch_log:error("Something attempted to open database vbucket: ~s~nAt:~p",
+                                    [DbName, Stack]),
+                    erlang:raise(T, E, Stack)
+            end
+    end.
