@@ -335,8 +335,10 @@ var DAL = {
   cells.isEnterpriseCell.subscribeValue(function (isEnterprise) {
     if (isEnterprise) {
       $("body").addClass('dynamic_enterprise-mode').removeClass('dynamic_community-mode');
+      $("#switch_support_forums").attr('href', 'http://support.couchbase.com');
     } else {
       $("body").addClass('dynamic_community-mode').removeClass('dynamic_enterprise-mode');
+      $("#switch_support_forums").attr('href', 'http://www.couchbase.com/communities/');
     }
   });
 
