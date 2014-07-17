@@ -901,10 +901,10 @@ span.drag_placeholder {height: 56px; display: block; border: 1px dashed #999; ba
 
 .list .highlight td {background-color:#eee !important;}
 .properties_table {width:758px;}
-.properties_table tr td {text-align:left !important; vertical-align:top !important; color:#444245;background:none !important; border:0px !important;height:auto;line-height:1em}
-.gong_rb .pad > div > span {color: #7C7D7F;}
-.gong_rb .pad > div {width:23%;padding:1%;float:left;}
-.gong_rb .pad .last {overflow:hidden;width:auto;float:none;}
+.properties_table tr td {text-align:left !important; vertical-align:top !important; background:none !important; border:0px !important;height:auto;line-height:1em}
+.gong_rb .pad > div > span, .properties_table tr td span {color: #7C7D7F;}
+.gong_rb .pad > div {width:230px;padding:10px;line-height:12px;height:12px;float:left;}
+.gong_rb .pad .last {overflow:hidden;width:auto;float:none;line-height:30px;height:30px;padding-top:15px;}
 .list table.label {float:left;margin:2px 0 0;}
 .list table.label td:first-child {width:175px;color:#444245; text-align:right;}
 
