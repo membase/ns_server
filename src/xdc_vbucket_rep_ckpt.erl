@@ -119,7 +119,7 @@ do_checkpoint(#rep_state{current_through_seq = Seq,
                               {<<"total_docs_checked">>, TotalChecked + Checked},
                               {<<"total_docs_written">>, TotalWritten + Written},
                               {<<"total_data_replicated">>, TotalDataRepd + DataRepd}]},
-            DB = capi_utils:must_open_vbucket(SourceBucketName, <<"master">>),
+            DB = capi_utils:must_open_master_vbucket(SourceBucketName),
             try
                 ok = couch_db:update_doc(DB, #doc{id = CheckpointDocId,
                                                   body = CheckpointDoc})
@@ -295,7 +295,7 @@ perform_pre_replicate(RemoteCommitOpaque, {_, _, HttpDB} = ApiRequestBase) ->
 
 
 read_validate_checkpoint(Rep, Vb, ApiRequestBase) ->
-    DB = capi_utils:must_open_vbucket(Rep#rep.source, <<"master">>),
+    DB = capi_utils:must_open_master_vbucket(Rep#rep.source),
     DocId = build_commit_doc_id(Rep, Vb),
     case couch_db:open_doc_int(DB, DocId, [ejson_body]) of
         {ok, #doc{body = Body}} ->

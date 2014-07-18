@@ -1256,8 +1256,8 @@ do_handle_ddocs_list(PoolId, Bucket, Req) ->
 handle_set_ddoc_update_min_changes(_PoolId, Bucket, DDocIdStr, Req) ->
     DDocId = list_to_binary(DDocIdStr),
 
-    capi_frontend:with_subdb(
-      Bucket, <<"master">>,
+    capi_frontend:with_master_vbucket(
+      Bucket,
       fun (MasterDb) ->
               case couch_db:open_doc(MasterDb, DDocId, [ejson_body]) of
                   {ok, #doc{body={Body}} = DDoc} ->

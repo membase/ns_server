@@ -163,10 +163,11 @@ build_remote_specs(Node, BucketName, FullViewName, VBuckets) ->
 -spec cleanup_spatial_index_files(BucketName::binary()) -> ok.
 cleanup_spatial_index_files(BucketName) ->
     FileList = list_index_files(BucketName),
-    Sigs = capi_frontend:with_subdb(BucketName, <<"master">>,
-                                    fun (RealDb) ->
-                                        get_signatures(RealDb)
-                                    end),
+    Sigs = capi_frontend:with_master_vbucket(
+             BucketName,
+             fun (RealDb) ->
+                     get_signatures(RealDb)
+             end),
     delete_unused_files(FileList, Sigs),
     ok.
 

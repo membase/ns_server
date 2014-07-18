@@ -608,7 +608,7 @@ init_replication_state(#init_state{rep = Rep,
     TgtDb = xdc_rep_utils:parse_rep_db(TgtURI, [], [{xdcr_cert, CertPEM} | Options]),
     {ok, Target} = couch_api_wrap:db_open(TgtDb, []),
 
-    SrcMasterDb = capi_utils:must_open_vbucket(Src, <<"master">>),
+    SrcMasterDb = capi_utils:must_open_master_vbucket(Src),
 
     XMemRemote = case RepMode of
                      "xmem" ->
@@ -816,7 +816,7 @@ start_replication(#rep_state{
         end,
     {ok, Target} = couch_api_wrap:db_open(TgtDB, []),
 
-    SrcMasterDb = capi_utils:must_open_vbucket(SourceBucket, <<"master">>),
+    SrcMasterDb = capi_utils:must_open_master_vbucket(SourceBucket),
 
     {ok, ChangesQueue} = couch_work_queue:new([
                                                {max_items, BatchSizeItems * NumWorkers * 2},

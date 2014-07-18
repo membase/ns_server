@@ -109,6 +109,15 @@ must_open_vbucket(BucketName, VBucket) ->
             exit({open_db_failed, Error})
     end.
 
+must_open_master_vbucket(BucketName) ->
+    DBName = build_dbname(BucketName, <<"master">>),
+    case couch_db:open_int(DBName, []) of
+        {ok, RealDb} ->
+            RealDb;
+        Error ->
+            exit({open_db_failed, Error})
+    end.
+
 couch_json_to_mochi_json({List}) ->
     {struct, couch_json_to_mochi_json(List)};
 couch_json_to_mochi_json({K, V}) ->
@@ -130,7 +139,7 @@ capture_local_master_docs(Bucket, Timeout) ->
                   infinity -> ok;
                   _ -> timer2:kill_after(Timeout)
               end,
-              DB = must_open_vbucket(Bucket, <<"master">>),
+              DB = must_open_master_vbucket(Bucket),
               {ok, _, LocalDocs} = couch_btree:fold(DB#db.local_docs_btree,
                                                     fun (Doc, _, Acc) ->
                                                             {ok, [Doc | Acc]}

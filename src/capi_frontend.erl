@@ -146,10 +146,10 @@ get_db_info(#db{name = DbName}) ->
             {instance_start_time, EpStartupTime}],
     {ok, Info}.
 
-with_subdb(#db{name = DbName}, VBucket, Fun) ->
-    with_subdb(DbName, VBucket, Fun);
-with_subdb(DbName, VBucket, Fun) ->
-    DB = capi_utils:must_open_vbucket(DbName, VBucket),
+with_master_vbucket(#db{name = DbName}, Fun) ->
+    with_master_vbucket(DbName, Fun);
+with_master_vbucket(DbName, Fun) ->
+    DB = capi_utils:must_open_master_vbucket(DbName),
     try
         Fun(DB)
     after
@@ -230,10 +230,10 @@ cleanup_view_index_files(Db) ->
 
 %% TODO: check if it's useful
 get_group_info(#db{filepath = undefined} = Db, DesignId) ->
-    with_subdb(Db, <<"master">>,
-               fun (RealDb) ->
-                       couch_view:get_group_info(RealDb, DesignId)
-               end);
+    with_master_vbucket(Db,
+                        fun (RealDb) ->
+                                couch_view:get_group_info(RealDb, DesignId)
+                        end);
 get_group_info(Db, DesignId) ->
     couch_view:get_group_info(Db, DesignId).
 
@@ -258,10 +258,10 @@ get_missing_revs(Db, JsonDocIdRevs) ->
     Result.
 
 open_doc(#db{filepath = undefined} = Db, <<"_design/",_/binary>> = DocId, Options) ->
-    with_subdb(Db, <<"master">>,
-               fun (RealDb) ->
-                       couch_db:open_doc(RealDb, DocId, Options)
-               end);
+    with_master_vbucket(Db,
+                        fun (RealDb) ->
+                                couch_db:open_doc(RealDb, DocId, Options)
+                        end);
 %% 2.x xdcr checkpointing seemingly uses for it's checkpoints in
 %% _local/ docs
 open_doc(Db, DocId, Options) ->
