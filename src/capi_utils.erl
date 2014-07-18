@@ -109,26 +109,6 @@ must_open_vbucket(BucketName, VBucket) ->
             exit({open_db_failed, Error})
     end.
 
-%% copied from mc_couch_vbucket
-
--spec get_vbucket_state_doc(ext_bucket_name(), vbucket_id()) -> binary() | not_found.
-get_vbucket_state_doc(BucketName, VBucket) when is_integer(VBucket) ->
-    try must_open_vbucket(BucketName, VBucket) of
-        DB ->
-            try
-                case couch_db:open_doc_int(DB, <<"_local/vbstate">>, [json_bin_body]) of
-                    {ok, Doc} ->
-                        Doc#doc.body;
-                    {not_found, missing} ->
-                        not_found
-                end
-            after
-                couch_db:close(DB)
-            end
-    catch exit:{open_db_failed, {not_found, no_db_file}} ->
-            not_found
-    end.
-
 couch_json_to_mochi_json({List}) ->
     {struct, couch_json_to_mochi_json(List)};
 couch_json_to_mochi_json({K, V}) ->
