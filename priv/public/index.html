@@ -622,7 +622,7 @@
                   {%= this.nodes.length %}
                 </td>
                 <td colspan="2">{%= h(this.basicStats.itemCount) %}</td>
-                <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
+                <td>{%= h(Math.round(this.basicStats.opsPerSec)) %}</td>
                 {% if (this.bucketType == 'membase') { %}
                   <td colspan="2">
                     {% if (this.basicStats.diskFetches !== undefined) { %}
