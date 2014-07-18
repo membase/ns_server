@@ -79,7 +79,22 @@ continue_do_db_req(#httpd{user_ctx=UserCtx,
             %% that couchdb doesn't use it in our code path
             Req1 = Req#httpd{path_parts=PathParts},
 
-            couch_db_frontend:do_db_req(Req1, Fun)
+            %% note: we used to call couch_db_frontend:do_db_req here
+            %% which opened vbucket even though none of our code is
+            %% actually using that couch db.
+            %%
+            %% What our code is actually using is RealDbName to figure
+            %% out which vbucket we're dealing with. So we just
+            %% initialize fake #db instance that only has name filled
+            %% in.
+            %%
+            %% We also set filepath to something distinct from
+            %% undefined because a bunch of capi frontend code is
+            %% using filepath = undefined as indication that we're
+            %% referring to bucket
+            Db = #db{name = RealDbName,
+                     filepath = this_is_vbucket_marker},
+            Fun(Req1, Db)
     end.
 
 find_node_with_vbuckets(BucketBin) ->
