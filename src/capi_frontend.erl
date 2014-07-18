@@ -212,18 +212,14 @@ ensure_full_commit(#db{name = DbName}, _RequiredSeq) ->
 check_is_admin(_Db) ->
     ok.
 
-handle_changes(ChangesArgs, Req, #db{filepath = undefined} = Db) ->
-    exit(not_implemented(handle_changes, [ChangesArgs, Req, Db]));
 handle_changes(ChangesArgs, Req, Db) ->
-    couch_changes:handle_changes(ChangesArgs, Req, Db).
+    exit(not_implemented(handle_changes, [ChangesArgs, Req, Db])).
 
 start_view_compact(DbName, GroupId) ->
     exit(not_implemented(start_view_compact, [DbName, GroupId])).
 
-start_db_compact(#db{filepath = undefined} = Db) ->
-    exit(not_implemented(start_db_compact, [Db]));
 start_db_compact(Db) ->
-    couch_db:start_compact(Db).
+    exit(not_implemented(start_db_compact, [Db])).
 
 cleanup_view_index_files(Db) ->
     exit(not_implemented(cleanup_view_index_files, [Db])).
@@ -263,9 +259,12 @@ open_doc(#db{filepath = undefined} = Db, <<"_design/",_/binary>> = DocId, Option
                                 couch_db:open_doc(RealDb, DocId, Options)
                         end);
 %% 2.x xdcr checkpointing seemingly uses for it's checkpoints in
-%% _local/ docs
-open_doc(Db, DocId, Options) ->
-    couch_db:open_doc(Db, DocId, Options).
+%% _local/ docs.
+%%
+%% Because we don't allow direct vbucket access we just drop this and
+%% pretend that doc doesn't exist
+open_doc(_Db, _DocId, _Options) ->
+    {not_found, missing}.
 
 
 task_status_all() ->
@@ -286,6 +285,9 @@ stats_aggregator_get_json(Key, Range) ->
 stats_aggregator_collect_sample() ->
     exit(not_implemented(stats_aggregator_collect_sample, [])).
 
+%% this is used by couch_httpd_db:db_doc_req. But open_doc actually
+%% only allows opening design docs and only for bucket and nothing
+%% else.
 couch_doc_open(Db, DocId, Options) ->
     case open_doc(Db, DocId, Options) of
         {ok, Doc} ->
