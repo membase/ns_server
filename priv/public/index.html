@@ -697,6 +697,9 @@
                   <div>
                     Metadata Ejection: <span>{%= evictionPolicy === "valueOnly" ? 'Disabled' : 'Enabled' %}</span>
                   </div>
+                  <div>
+                    Disk I/O priority: <span>{%= threadsNumber === 3 ? 'Low' : 'High' %}</span>
+                  </div>
                 {% } %}
                 <div class="last when-roadmin-hide-me">
                   <a class="inner_btn casper_buckets_edit_bucket_popup" href="#editBucket={%= h(encodeURIComponent(uri)) %}">Edit</a>
