@@ -1887,8 +1887,16 @@ var ViewsSection = {
     }
   },
   displayViewsLimitConfirmation: function (callback) {
-    genericDialog({text: "Creating more than 10 views per design document may decrease performance. Please, confirm.",
-                   callback: callback});
+    genericDialog({
+      text: "Creating more than 10 views per design document may decrease performance. Please, confirm.",
+      callback: callback,
+      beforeClose: function (event, instance) {
+        if (event.keyCode === $.ui.keyCode.ESCAPE) {
+          callback.call(this, event, "cancel", instance);
+          return false;
+        }
+      }
+    });
   },
   saveView: function () {
     var self = this;

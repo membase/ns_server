@@ -554,14 +554,20 @@ function genericDialog(options) {
     });
   };
 
-  showDialog(dialog, options);
-
   var instance = {
     dialog: dialog,
     close: function () {
       hideDialog(dialog);
     }
   };
+
+  options.beforeClose && (function (originBeforeClose) {
+    options.beforeClose = function (event) {
+      originBeforeClose.call(this, event, instance);
+    };
+  })(options.beforeClose);
+
+  showDialog(dialog, options);
 
   return instance;
 }
