@@ -722,44 +722,10 @@ update_bucket_compaction_progress(Ix, Total) ->
            [{vbuckets_done, Ix},
             {progress, Progress}]).
 
-open_db(BucketName, {VBucket, DbName}) ->
+open_db_or_fail(DbName) ->
     case couch_db:open_int(DbName, []) of
         {ok, Db} ->
-            {ok, Db};
-        {not_found, no_db_file} = NotFoundError ->
-            %% It can be a real error which we don't want to hide. But at the
-            %% same time it can be a result of, for instance, rebalance. In
-            %% the second case we can expect many databases to be missing. So
-            %% we don't want all the resulting harmless errors be spamming the
-            %% log. To handle this we will check if the vbucket corresponding
-            %% to the database still belongs to our node according to vbucket
-            %% map. And if it's not the case we'll indicate that the error can
-            %% be ignored.
-            case is_integer(VBucket) of
-                true ->
-                    BucketConfig = get_bucket(BucketName),
-                    NodeVBuckets = ns_bucket:all_node_vbuckets(BucketConfig),
-
-                    case ordsets:is_element(VBucket, NodeVBuckets) of
-                        true ->
-                            %% this is a real error we want to report
-                            NotFoundError;
-                        false ->
-                            vbucket_moved
-                    end;
-                false ->
-                    NotFoundError
-            end;
-         Error ->
-            Error
-    end.
-
-open_db_or_fail(BucketName, {_, DbName} = VBucketAndDbName) ->
-    case open_db(BucketName, VBucketAndDbName) of
-        {ok, Db} ->
             Db;
-        vbucket_moved ->
-            exit(normal);
         Error ->
             ?log_error("Failed to open database `~s`: ~p", [DbName, Error]),
             exit({open_db_failed, Error})
@@ -771,8 +737,8 @@ vbucket_needs_compaction({DataSize, FileSize}, Config) ->
 
     file_needs_compaction(DataSize, FileSize, FragThreshold, MinFileSize).
 
-get_master_db_size_info(BucketName, VBucketAndDb) ->
-    Db = open_db_or_fail(BucketName, VBucketAndDb),
+get_master_db_size_info(DbName) ->
+    Db = open_db_or_fail(DbName),
 
     try
         {ok, DbInfo} = couch_db:get_db_info(Db),
@@ -789,13 +755,13 @@ get_db_size_info(Bucket, VBucket) ->
     {list_to_integer(proplists:get_value("db_data_size", Props)),
      list_to_integer(proplists:get_value("db_file_size", Props))}.
 
-maybe_compact_vbucket(BucketName, {VBucket, DbName} = VBucketAndDb,
+maybe_compact_vbucket(BucketName, {VBucket, DbName},
                       Config, Force, Options) ->
     Bucket = binary_to_list(BucketName),
 
     SizeInfo = case VBucket of
                    master ->
-                       get_master_db_size_info(BucketName, VBucketAndDb);
+                       get_master_db_size_info(DbName);
                    _ ->
                        get_db_size_info(Bucket, VBucket)
                end,
@@ -813,7 +779,7 @@ maybe_compact_vbucket(BucketName, {VBucket, DbName} = VBucketAndDb,
     ?log_info("Compacting `~s' (~p)", [DbName, Options]),
     Ret = case VBucket of
               master ->
-                  compact_master_vbucket(BucketName, DbName);
+                  compact_master_vbucket(DbName);
               _ ->
                   ns_memcached:compact_vbucket(Bucket, VBucket, Options)
           end,
@@ -832,8 +798,8 @@ spawn_vbucket_compactor(BucketName, VBucketAndDb, Config, Force, Options) ->
               end
       end).
 
-compact_master_vbucket(BucketName, DbName) ->
-    Db = open_db_or_fail(BucketName, {master, DbName}),
+compact_master_vbucket(DbName) ->
+    Db = open_db_or_fail(DbName),
     process_flag(trap_exit, true),
 
     {ok, Compactor} = couch_db:start_compact(Db, [dropdeletes]),
