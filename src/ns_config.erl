@@ -249,8 +249,14 @@ update_with_changes(Fun) ->
 %% pair is replaced with it's new value. In the latter case depending on the
 %% marker the pair is either completely or softly removed from config.
 %%
+%% The order in which function is called on the kv pairs is undefined. If the
+%% function renames certain key to the one that is already present in the
+%% config, then the it will be overwritten and the function won't be called on
+%% the overwritten key/value pair. This means that caller is not able to do
+%% things like swapping two values using this primitive.
+%%
 %% Function returns a pair {NewPairs, NewConfig} where NewConfig is
-%% new config and NewPairs is list of changed pairs
+%% new config and NewPairs is list of changed pairs.
 do_update_rec(_Fun, _SoftDelete, _Erase, [], _UUID, NewConfig, NewPairs) ->
     {NewPairs, lists:reverse(NewConfig)};
 do_update_rec(Fun, SoftDelete, Erase, [Pair | Rest], UUID, NewConfig, NewPairs) ->
