@@ -914,11 +914,19 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
                          [{ok, bucketType, memcached}
                           | Candidates1];
                      membase ->
+                         ReplicasNumResult = parse_validate_replicas_number(proplists:get_value("replicaNumber", Params), IsNew),
                          [{ok, bucketType, membase},
-                          parse_validate_replicas_number(proplists:get_value("replicaNumber", Params), IsNew),
+                          ReplicasNumResult,
                           case IsNew of
                               true ->
-                                  parse_validate_replica_index(proplists:get_value("replicaIndex", Params, "1"));
+                                  ReplicaIndexDefault =
+                                      case ReplicasNumResult of
+                                          {ok, num_replicas, 0} ->
+                                              "0";
+                                          _ ->
+                                              "1"
+                                      end,
+                                  parse_validate_replica_index(proplists:get_value("replicaIndex", Params, ReplicaIndexDefault));
                               false ->
                                   undefined
                           end,
