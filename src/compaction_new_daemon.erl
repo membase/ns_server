@@ -39,6 +39,7 @@
 
 -record(state, {kv_compaction :: #compaction_state{},
                 views_compaction :: #compaction_state{},
+                master_compaction :: #compaction_state{},
 
                 %% bucket for which view compaction is inhibited (note
                 %% it's also set when we're running 'uninhibit' views
@@ -86,6 +87,8 @@
 
 -record(forced_compaction, {type :: bucket | bucket_purge | db | view,
                             name :: binary()}).
+
+-define(MASTER_COMPACTION_INTERVAL, 3600).
 
 %% API
 start_link() ->
@@ -161,6 +164,9 @@ init([]) ->
                 views_compaction =
                     init_scheduled_compaction(CheckInterval, compact_views,
                                               fun spawn_scheduled_views_compactor/2),
+                master_compaction =
+                    init_scheduled_compaction(?MASTER_COMPACTION_INTERVAL, compact_master,
+                                              fun spawn_scheduled_master_db_compactor/2),
                 running_forced_compactions=dict:new(),
                 forced_compaction_pids=dict:new()}}.
 
@@ -320,6 +326,9 @@ handle_call(Event, _From, State) ->
 handle_info(compact_kv, #state{kv_compaction=CompactionState} = State) ->
     {noreply, State#state{kv_compaction=
                               process_scheduler_message(CompactionState)}};
+handle_info(compact_master, #state{master_compaction=CompactionState} = State) ->
+    {noreply, State#state{master_compaction=
+                              process_scheduler_message(CompactionState)}};
 handle_info(compact_views, #state{views_compaction=CompactionState} = State) ->
     {noreply, State#state{views_compaction=
                               process_scheduler_message(CompactionState)}};
@@ -334,6 +343,12 @@ handle_info({'EXIT', Compactor, Reason},
                        CompactorState} = State) ->
     log_compactors_exit(Reason, CompactorState),
     {noreply, State#state{kv_compaction=
+                              process_compactors_exit(Reason, CompactorState)}};
+handle_info({'EXIT', Compactor, Reason},
+            #state{master_compaction=#compaction_state{compactor_pid=Compactor}=
+                       CompactorState} = State) ->
+    log_compactors_exit(Reason, CompactorState),
+    {noreply, State#state{master_compaction=
                               process_compactors_exit(Reason, CompactorState)}};
 handle_info({'EXIT', Compactor, Reason},
             #state{views_compaction=#compaction_state{compactor_pid = Compactor,
@@ -405,12 +420,14 @@ handle_info({'EXIT', Pid, Reason},
     end;
 handle_info(config_changed,
             #state{kv_compaction = KVCompaction,
-                   views_compaction = ViewsCompaction} = State) ->
+                   views_compaction = ViewsCompaction,
+                   master_compaction = MasterCompaction} = State) ->
     misc:flush(config_changed),
     Config = ns_config:get(),
 
     {noreply, State#state{kv_compaction = process_config_change(Config, KVCompaction),
-                          views_compaction = process_config_change(Config, ViewsCompaction)}};
+                          views_compaction = process_config_change(Config, ViewsCompaction),
+                          master_compaction = process_config_change(Config, MasterCompaction)}};
 handle_info(Info, State) ->
     ?log_warning("Got unexpected message ~p:~n~p", [Info, State]),
     {noreply, State}.
@@ -433,6 +450,13 @@ get_dbs_compactor(BucketName, Config, Force) ->
      {name, BucketName},
      {fa, {fun spawn_dbs_compactor/4,
            [BucketName, Config, Force, OriginalTarget]}}].
+
+get_forced_master_db_compactor(BucketName, Config) ->
+    [{type, database},
+     {important, true},
+     {name, BucketName},
+     {fa, {fun spawn_master_db_compactor/3,
+           [BucketName, {Config, []}, true]}}].
 
 -spec spawn_scheduled_kv_compactor(binary(), {#config{}, list()}) -> pid().
 spawn_scheduled_kv_compactor(BucketName, {Config, ConfigProps}) ->
@@ -518,18 +542,19 @@ spawn_forced_bucket_compactor(BucketName, {Config, ConfigProps}) ->
 
               DDocNames = ddoc_names(BucketName),
 
+              MasterDbCompactor = get_forced_master_db_compactor(BucketName, Config),
               DbsCompactor = get_dbs_compactor(BucketName, Config, true),
               DDocCompactors = get_view_compactors(BucketName, DDocNames, Config, true),
 
               case Config#config.parallel_view_compact of
                   true ->
-                      DbsPid = chain_compactors([DbsCompactor]),
+                      DbsPid = chain_compactors([MasterDbCompactor, DbsCompactor]),
                       ViewsPid = chain_compactors(DDocCompactors),
 
                       misc:wait_for_process(DbsPid, infinity),
                       misc:wait_for_process(ViewsPid, infinity);
                   false ->
-                      AllCompactors = [DbsCompactor | DDocCompactors],
+                      AllCompactors = [MasterDbCompactor | [DbsCompactor | DDocCompactors]],
                       Pid = chain_compactors(AllCompactors),
                       misc:wait_for_process(Pid, infinity)
               end
@@ -637,7 +662,7 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
                                     [BucketName]),
                           true;
                       false ->
-                          bucket_needs_compaction(BucketName, Total - 1, Config)
+                          bucket_needs_compaction(BucketName, Total, Config)
                   end,
 
               DoCompact orelse exit(normal),
@@ -758,31 +783,15 @@ get_db_size_info(Bucket, VBucket) ->
 maybe_compact_vbucket(BucketName, {VBucket, DbName},
                       Config, Force, Options) ->
     Bucket = binary_to_list(BucketName),
+    SizeInfo = get_db_size_info(Bucket, VBucket),
 
-    SizeInfo = case VBucket of
-                   master ->
-                       get_master_db_size_info(DbName);
-                   _ ->
-                       get_db_size_info(Bucket, VBucket)
-               end,
-
-    case Force orelse vbucket_needs_compaction(SizeInfo, Config) of
-        true ->
-            ok;
-        false ->
-            exit(normal)
-    end,
+    Force orelse vbucket_needs_compaction(SizeInfo, Config) orelse exit(normal),
 
     %% effectful
     ensure_can_db_compact(DbName, SizeInfo),
 
     ?log_info("Compacting `~s' (~p)", [DbName, Options]),
-    Ret = case VBucket of
-              master ->
-                  compact_master_vbucket(DbName);
-              _ ->
-                  ns_memcached:compact_vbucket(Bucket, VBucket, Options)
-          end,
+    Ret = ns_memcached:compact_vbucket(Bucket, VBucket, Options),
     ?log_info("Compaction of ~p has finished with ~p", [DbName, Ret]),
     Ret.
 
@@ -797,6 +806,20 @@ spawn_vbucket_compactor(BucketName, VBucketAndDb, Config, Force, Options) ->
                       exit(Result)
               end
       end).
+
+maybe_compact_master_db(BucketName, Config, Force) ->
+    DbName = db_name(BucketName, "master"),
+    SizeInfo = get_master_db_size_info(DbName),
+
+    Force orelse vbucket_needs_compaction(SizeInfo, Config) orelse exit(normal),
+
+    %% effectful
+    ensure_can_db_compact(DbName, SizeInfo),
+
+    ?log_info("Compacting `~s'", [DbName]),
+    Ret = compact_master_vbucket(DbName),
+    ?log_info("Compaction of ~p has finished with ~p", [DbName, Ret]),
+    Ret.
 
 compact_master_vbucket(DbName) ->
     Db = open_db_or_fail(DbName),
@@ -822,6 +845,25 @@ compact_master_vbucket(DbName) ->
         {'DOWN', CompactorRef, process, Compactor, Reason} ->
             Reason
     end.
+
+spawn_scheduled_master_db_compactor(BucketName, Config) ->
+    spawn_master_db_compactor(BucketName, Config, false).
+
+spawn_master_db_compactor(BucketName, {Config, ConfigProps}, Force) ->
+    proc_lib:spawn_link(
+      fun () ->
+              check_period_and_maybe_exit(Config),
+              exit_if_no_bucket(BucketName),
+
+              Force orelse ?log_info("Start compaction of master db for bucket ~s with config: ~n~p",
+                                     [BucketName, ConfigProps]),
+              case maybe_compact_master_db(BucketName, Config, Force) of
+                  ok ->
+                      ok;
+                  Result ->
+                      exit(Result)
+              end
+      end).
 
 spawn_view_compactor(BucketName, DDocId, Config, Force, OriginalTarget) ->
     Parent = self(),
@@ -1374,9 +1416,7 @@ db_name(BucketName, SubName) when is_binary(SubName) ->
 all_bucket_dbs(BucketName) ->
     BucketConfig = get_bucket(BucketName),
     NodeVBuckets = ns_bucket:all_node_vbuckets(BucketConfig),
-    VBucketDbs = [{V, db_name(BucketName, V)} || V <- NodeVBuckets],
-
-    [{master, db_name(BucketName, "master")} | VBucketDbs].
+    [{V, db_name(BucketName, V)} || V <- NodeVBuckets].
 
 get_bucket(BucketName) ->
     get_bucket(BucketName, ns_config:get()).
