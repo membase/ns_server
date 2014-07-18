@@ -226,6 +226,8 @@ var LogsSection = {
 
       delete formValues["upload"];
 
+      var overlayCollectForm = overlayWithSpinner(collectForm);
+
       $.ajax({
         type: 'POST',
         url: '/controller/startLogsCollection',
@@ -233,6 +235,7 @@ var LogsSection = {
         success: onSuccess,
         error: onError,
         complete: function () {
+          overlayCollectForm.remove();
           saveButton.attr('disabled', false);
         }
       });
