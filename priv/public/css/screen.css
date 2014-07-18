@@ -875,7 +875,7 @@ span.drag_placeholder {height: 56px; display: block; border: 1px dashed #999; ba
 #auto_failover_container .count_reset {margin: 15px 0 15px 20px}
 
 .buckets .list {table-layout:fixed;}
-.buckets .list tr:first-child th {padding-left:3px;}
+.buckets .list tr:first-child th {padding-left: 0px; padding-right: 0px;}
 .buckets .settings-placeholder {display:none; padding:9px 12px 8px 14px;border-top:2px solid #ced5d9;background:#e6e7e8;}
 .buckets_tab {border-right:1px solid #d9dce0;}
 .buckets_tab td {background:none #eee;border-bottom:1px solid #ced5d9; padding:0 10px;border-right:0px; text-align:center;}
