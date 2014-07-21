@@ -28,6 +28,36 @@
 -include("xdc_replicator.hrl").
 -include("remote_clusters_info.hrl").
 
+%% rate of replicaiton stat maintained in bucket replicator
+-record(ratestat, {
+          timestamp = now(),
+          item_replicated = 0,
+          data_replicated = 0,
+          curr_rate_item = 0,
+          curr_rate_data = 0
+}).
+
+%% bucket level replication state used by module xdc_replication
+-record(replication, {
+          rep = #rep{},                    % the basic replication settings
+          mode,                            % replication mode
+          vbucket_sup,                     % the supervisor for vb replicators
+          vbs = [],                        % list of vb we should be replicating
+          num_tokens = 0,                  % number of available tokens used by throttles
+          init_throttle,                   % limits # of concurrent vb replicators initializing
+          work_throttle,                   % limits # of concurrent vb replicators working
+          num_active = 0,                  % number of active replicators
+          num_waiting = 0,                 % number of waiting replicators
+          vb_rep_dict = dict:new(),        % contains state and stats for each replicator
+
+          %% rate of replication
+          ratestat = #ratestat{},
+          %% history of last N errors
+          error_reports = ringbuffer:new(?XDCR_ERROR_HISTORY),
+          %% history of last N checkpoints
+          checkpoint_history = ringbuffer:new(?XDCR_CHECKPOINT_HISTORY)
+         }).
+
 start_link(Rep) ->
     ?xdcr_info("start XDCR bucket replicator for rep: ~p.", [Rep]),
     gen_server:start_link(?MODULE, [Rep], []).
