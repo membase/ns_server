@@ -360,15 +360,14 @@
           <script id="server_details_template" type="text/html">
           <div class="first gong_rb">
             <div class="pad">
-              <a class="edit_btn float_right dynamic_disabled when-roadmin-hide-me">Edit</a>
               <table class="properties_table">
                 <tr>
                     <td>Server Name: <span>{%= h(hostname) %}</span></td>
                     <td>Uptime: <span>{%= h(formatUptime(uptime)) %}</span></td>
+                    <td>OS: <span>{%= h(os) %}</span></td>
                 </tr>
                 <tr>
-                    <td>OS: <span>{%= h(os) %}</span></td>
-                    <td>Version: <span>{%= h(DAL.prettyVersion(version, true)) %}</span></td>
+                  <td colspan="3">Version: <span>{%= h(DAL.prettyVersion(version, true)) %}</span></td>
                 </tr>
               </table>
             </div>
