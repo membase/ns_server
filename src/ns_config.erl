@@ -1040,14 +1040,10 @@ merge_kv_pairs(RemoteKVList, LocalKVList, UUID, Cluster30) ->
                          true ->
                              case RV =:= LV of
                                  true ->
-                                     NewV = merge_vclocks(LV, RV),
-                                     case NewV =/= LV of
-                                         true ->
-                                             ?log_debug("Special-casing incoming replication of my node key ~p and same value", [K]);
-                                         _ ->
-                                             ok
-                                     end,
-                                     {K, NewV};
+                                     %% same values imply same vclocks
+                                     %% so no real merge is needed
+                                     LV = merge_vclocks(LV, RV),
+                                     {K, LV};
                                  false ->
                                      ?log_debug("Special-casing incoming replication of my node key ~p and different value. Overriding remote with local (local: ~p, remote: ~p)", [K, LV, RV]),
                                      {K, increment_vclock(LV, merge_vclocks(RV, LV), UUID)}
