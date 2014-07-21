@@ -661,8 +661,18 @@ wait_for_mover_tail(Pid, Ref) ->
     receive
         stop ->
             erlang:unlink(Pid),
-            (catch Pid ! {'EXIT', self(), shutdown}),
-            wait_for_mover_tail(Pid, Ref);
+            TimeoutPid = diag_handler:arm_timeout(
+                           5000,
+                           fun (_) ->
+                                   ?log_debug("Observing slow rebalance stop (mover pid: ~p", [Pid]),
+                                   timeout_diag_logger:log_diagnostics(slow_rebalance_stop)
+                           end),
+            try
+                (catch Pid ! {'EXIT', self(), shutdown}),
+                wait_for_mover_tail(Pid, Ref)
+            after
+                diag_handler:disarm_timeout(TimeoutPid)
+            end;
         {'DOWN', Ref, _, _, Reason} ->
             case Reason of
                 %% monitoring was too late, but because we're linked
