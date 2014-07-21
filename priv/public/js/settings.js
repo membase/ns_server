@@ -128,8 +128,15 @@ var ClusterSection = {
     var maxRamCont = $("#js_ram-max-size");
     var outlineTag = $("#js_outline_tag");
     var certArea = $("#js-about-cert-area");
+    var hideShowCertAreaButton = $("#js_show_hide_cert_area");
+    var certAreaWrapperArea = $("#js_about-cert-area_wrapper")
     var clusterNameContainer = $("#js_tab_name");
     var originalTitle = document.title;
+
+    hideShowCertAreaButton.click(function () {
+      $("#js_about-cert-area_wrapper").toggle();
+      $(this).text($(this).text() === "Show" ? "Hide" : "Show");
+    });
 
     var clusterSettingsFormValidator = setupFormValidation(clusterSettingsForm, "/internalSettings/visual?just_validate=1",
       function (_status, errors) {
@@ -167,6 +174,8 @@ var ClusterSection = {
     self.isClusterTabCell.subscribeValue(function (isClusterTab) {
       if (isClusterTab) {
         getCertificate();
+        certAreaWrapperArea.hide();
+        hideShowCertAreaButton.text("Show");
       }
     });
 

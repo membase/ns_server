@@ -989,15 +989,25 @@
                 <div id="js_cluster_settings_container" class="cluster_settings_container">
                   <form id="js_cluster_public_settings_form" class="cluster_settings_form">
                     <h3>
-                      <label>Name:</label>
+                      <label>Cluster Name:</label>
                       <input type="text" name="tabName">
                     </h3>
                     <div class="certificate_section">
-                      <h3>SSL Certificate</h3>
-                      <textarea id="js-about-cert-area" readonly="readonly"></textarea>
-                      <div onclick="regenerateCertificate();" class="edit_btn when-roadmin-avoid-me" style="border:none;float:none;margin:3px 0pt 3px 65px;font-size:0.85em;line-height:21px;">Regenerate</div>
+                      <h3>Certificate:</h3>
+                      <p>
+                        Self-signed SSL certificate is deployed across the cluster on each nodes.
+                      </p>
+                      <p>
+                        <a id="js_show_hide_cert_area">Show</a> certificate.
+                      </p>
+                      <div class="about-cert-area_wrapper" id="js_about-cert-area_wrapper">
+                        <textarea id="js-about-cert-area" readonly="readonly"></textarea>
+                        <div></div>
+                        <div onclick="regenerateCertificate();" class="edit_btn when-roadmin-avoid-me">Regenerate</div>
+                        <span style="color:red;display:inline;margin-left:5px;">* Clicking 'Regenerate' will immediately generate new certificate for the cluster</span>
+                      </div>
                     </div>
-                    <h3>RAM Quota</h3>
+                    <h3>Cluster RAM Quota:</h3>
                     <div class="row">
                       <label>RAM Available:</label><span style="vertical-align:middle;"><span id="js_cluster_settings_total_ram"></span> MB</span>
                     </div>

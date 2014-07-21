@@ -404,6 +404,9 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .cluster_settings_container .row {margin: 5px 60px; line-height: 24px;}
 
 .certificate_section textarea {height: 187px; margin-left: 60px; width: 400px; font-size: 10px;}
+.certificate_section p {margin: 5px 0 5px 65px; line-height: 24px;}
+.certificate_section .edit_btn {border:none;float:none;margin:3px 0pt 3px 65px;font-size:0.85em;line-height:21px;display:inline-block;}
+.certificate_section .about-cert-area_wrapper {overflow: hidden; z-index: 1;position: relative; display: none;}
 
 /* update notification styles */
 #notifications_container .item {padding:13px;}
