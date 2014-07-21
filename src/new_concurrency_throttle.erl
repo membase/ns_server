@@ -447,6 +447,13 @@ do_basic_test_run() ->
     erlang:unlink(ThirdToKill),
     erlang:exit(ThirdToKill, exit),
 
+    misc:wait_for_process(SecondToKill, infinity),
+    misc:wait_for_process(ThirdToKill, infinity),
+
+    %% here we assume that our request for monitors cannot overtake
+    %% DOWN messages from monitors. This assumption looks a bit too
+    %% brave (or maybe not). But at least it is arguably very
+    %% improbable for this assumption to be violated in practice.
     {_, _, SystemMonitorRecords4} = get_waiters_and_monitors(T),
     {avail, 2} = lists:keyfind(avail, 1, SystemMonitorRecords4),
 
