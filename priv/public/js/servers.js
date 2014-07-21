@@ -663,7 +663,8 @@ var ServersSection = {
       dialog.find('.backfill_percent').text(truncateTo3Digits(node.replication * 100));
       var confirmation = visibleWarning.find('[name=confirmation]');
 
-      $("input[name=failOver][value=startGracefulFailover]", visibleWarning).parent()[node.gracefulFailoverPossible ? 'show' : 'hide']();
+      $(".js_gracefull_failover_message", visibleWarning).toggle(!node.gracefulFailoverPossible);
+      $("input[name=failOver][value=startGracefulFailover]", visibleWarning).attr('disabled', !node.gracefulFailoverPossible);
       $("input[name=failOver][value=" + (node.gracefulFailoverPossible ? "startGracefulFailover" : "failOver") + "]", visibleWarning).attr('checked', true);
 
       if (down) {
