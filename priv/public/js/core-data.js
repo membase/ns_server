@@ -136,21 +136,21 @@ var DAL = {
   appendedVersion: false,
   parseVersion: function (str) { // Example: "1.8.0r-9-ga083a1e-enterprise"
     var a = str.split(/[-_]/);
-    a[0] = (a[0].match(/[0-9]+\.[0-9]+\.[0-9]+/) || ["0.0.0"])[0]
-    a[1] = a[1] || "0"
-    a[2] = a[2] || "unknown"
-    a[3] = a[3] || "DEV"
-    return a; // Example result: ["1.8.0", "9", "ga083a1e", "enterprise"]
+    a[0] = (a[0].match(/[0-9]+\.[0-9]+\.[0-9]+/) || ["0.0.0"])[0];
+    a[1] = a[1] || "0";
+    a[2] = a[2] || "unknown";
+    a[3] = (a[3] && (a[3].substr(0, 1).toUpperCase() + a[3].substr(1))) || "DEV";
+    return a; // Example result: ["1.8.0", "9", "ga083a1e", "Enterprise"]
   },
   prettyVersion: function(str, full) {
     var a = DAL.parseVersion(str);
-    // Example default result: "1.8.0 enterprise edition (build-7)"
-    // Example full result: "1.8.0 enterprise edition (build-7-g35c9cdd)"
+    // Example default result: "1.8.0 Enterprise Enterprise (build-7)"
+    // Example full result: "1.8.0 Enterprise Enterprise (build-7-g35c9cdd)"
     var suffix = "";
     if (full) {
       suffix = '-' + a[2];
     }
-    return [a[0], a[3], "edition", "(build-" + a[1] + suffix + ")"].join(' ');
+    return [a[0], a[3], "Edition", "(build-" + a[1] + suffix + ")"].join(' ');
   },
   loginSuccess: function (data) {
     var rows = data.pools;
