@@ -1030,7 +1030,11 @@ merge_kv_pairs(RemoteKVList, LocalKVList, UUID, Cluster30) ->
                      %% at all; so if we receive such a change, we always
                      %% prefer our local version and adjust vector clock so
                      %% that it overwrites the remote one
-                     Bounce = (Key =:= uuid) orelse (not Cluster30),
+                     Bounce0 = (Key =:= uuid) orelse (not Cluster30),
+                     IsSafeKey = (Key =:= membership) orelse (Key =:= rest)
+                         orelse (Key =:= capi_port),
+
+                     Bounce = Bounce0 andalso not IsSafeKey,
 
                      case Bounce of
                          true ->
