@@ -514,6 +514,23 @@ var DAL = {
     pendingEject = _.without(pendingEject, node);
     cell.invalidate();
   };
+  DAL.cells.mayRebalanceWithoutSampleLoadingCell = Cell.computeEager(function (v) {
+    var details = v.need(DAL.cells.currentPoolDetailsCell);
+    var isRebalancing = details && details.rebalanceStatus !== 'none';
+    var isBalanced = details && details.balanced;
+
+    var isInRecoveryMode = v.need(DAL.cells.inRecoveryModeCell);
+
+    var servers = v.need(DAL.cells.serversCell);
+    var isPedingServersAvailable = !!servers.pending.length;
+    var unhealthyActive = _.detect(servers.active, function (n) {
+      return n.clusterMembership == 'active'
+      && !n.pendingEject
+      && n.status === 'unhealthy'
+    })
+
+    return details && !isRebalancing && !isInRecoveryMode && !isBalanced && isPedingServersAvailable && !unhealthyActive;
+  }).name('mayRebalanceWithoutSampleLoadingCell');
 }());
 
 // detailedBuckets
