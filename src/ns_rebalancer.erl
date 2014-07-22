@@ -420,7 +420,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
                                   MRef = erlang:monitor(process, Pid),
                                   receive
                                       stop ->
-                                          exit(stop);
+                                          exit(stopped);
                                       {'DOWN', MRef, _, _, _} ->
                                           ok
                                   end,
