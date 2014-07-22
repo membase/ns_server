@@ -622,13 +622,6 @@ do_chain_compactors(Parent, [Compactor | Compactors]) ->
             misc:wait_for_process(Pid, infinity),
             exit(Reason);
         {'EXIT', Pid, normal} ->
-            case proplists:get_value(on_success, Compactor) of
-                undefined ->
-                    ok;
-                {SuccessFun, SuccessArgs} ->
-                    erlang:apply(SuccessFun, SuccessArgs)
-            end,
-
             do_chain_compactors(Parent, Compactors);
         {'EXIT', Pid, Reason} ->
             Type = proplists:get_value(type, Compactor),
@@ -648,8 +641,6 @@ do_chain_compactors(Parent, [Compactor | Compactors]) ->
     end.
 
 spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
-    Parent = self(),
-
     proc_lib:spawn_link(
       fun () ->
               VBucketDbs = all_bucket_dbs(BucketName),
@@ -668,13 +659,6 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
               DoCompact orelse exit(normal),
 
               ?log_info("Compacting databases for bucket ~s", [BucketName]),
-
-              TriggerType = case Force of
-                                true ->
-                                    manual;
-                                false ->
-                                    scheduled
-                            end,
 
               {Options, SafeViewSeqs} =
                   case Config#config.do_purge of
@@ -701,33 +685,25 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
                           {{PurgeTS, 0, false}, capi_set_view_manager:get_safe_purge_seqs(BucketName)}
                   end,
 
-
-
-              Compactors =
-                  [ [{type, vbucket},
-                     {name, element(2, VBucketAndDbName)},
-                     {important, false},
-                     {fa, {fun spawn_vbucket_compactor/5,
-                           [BucketName, VBucketAndDbName, Config, Force,
-                            make_per_vbucket_compaction_options(Options, VBucketAndDbName, SafeViewSeqs)]}},
-                     {on_success,
-                      {fun update_bucket_compaction_progress/2, [Ix, Total]}}] ||
-                      {Ix, VBucketAndDbName} <- misc:enumerate(VBucketDbs) ],
-
-              process_flag(trap_exit, true),
-
               Force orelse get_kv_token(),
 
-              ok = couch_task_status:add_task(
-                     [{type, bucket_compaction},
-                      {original_target, OriginalTarget},
-                      {trigger_type, TriggerType},
-                      {bucket, BucketName},
-                      {vbuckets_done, 0},
-                      {total_vbuckets, Total},
-                      {progress, 0}]),
+              {ok, Manager} = compaction_dbs:start_link(BucketName, VBucketDbs, Force, OriginalTarget),
+              ?log_debug("Started KV compaction manager ~p", [Manager]),
 
-              do_chain_compactors(Parent, Compactors),
+              NWorkers = ns_config:read_key_fast(compaction_number_of_kv_workers, 4),
+              Compactors =
+                  [ [{type, vbucket_worker},
+                     {name, integer_to_list(I)},
+                     {important, true},
+                     {fa, {fun spawn_vbuckets_compactor/6,
+                           [BucketName, Manager, Config, Force, Options, SafeViewSeqs]}}] ||
+                      I <- lists:seq(1, NWorkers) ],
+
+              Pids = [chain_compactors([Compactor]) || Compactor <- Compactors],
+              ?log_debug("Started KV compaction workers ~p", [Pids]),
+              [misc:wait_for_process(Pid, infinity) || Pid <- Pids],
+              unlink(Manager),
+              exit(Manager, shutdown),
 
               ?log_info("Finished compaction of databases for bucket ~s",
                         [BucketName])
@@ -740,12 +716,6 @@ make_per_vbucket_compaction_options({TS, 0, DD} = GeneralOption, {Vb, _}, SafeVi
         {_, Seq} ->
             {TS, Seq, DD}
     end.
-
-update_bucket_compaction_progress(Ix, Total) ->
-    Progress = (Ix * 100) div Total,
-    ok = couch_task_status:update(
-           [{vbuckets_done, Ix},
-            {progress, Progress}]).
 
 open_db_or_fail(DbName) ->
     case couch_db:open_int(DbName, []) of
@@ -796,7 +766,6 @@ maybe_compact_vbucket(BucketName, {VBucket, DbName},
     Ret.
 
 spawn_vbucket_compactor(BucketName, VBucketAndDb, Config, Force, Options) ->
-    exit_if_uninhibit_requsted_for_non_parallel_compaction(),
     proc_lib:spawn_link(
       fun () ->
               case maybe_compact_vbucket(BucketName, VBucketAndDb, Config, Force, Options) of
@@ -805,6 +774,31 @@ spawn_vbucket_compactor(BucketName, VBucketAndDb, Config, Force, Options) ->
                   Result ->
                       exit(Result)
               end
+      end).
+
+compact_vbuckets_loop(BucketName, Manager, Config, Force, Options, SafeViewSeqs, Parent) ->
+    exit_if_uninhibit_requsted_for_non_parallel_compaction(),
+    VBucketAndDb = compaction_dbs:pick_db_to_compact(Manager),
+    VBucketAndDb =/= undefined orelse exit(normal),
+
+    Compactor =
+        [{type, vbucket},
+         {name, element(2, VBucketAndDb)},
+         {important, false},
+         {fa, {fun spawn_vbucket_compactor/5,
+               [BucketName, VBucketAndDb, Config, Force,
+                make_per_vbucket_compaction_options(Options, VBucketAndDb, SafeViewSeqs)]}}],
+
+    do_chain_compactors(Parent, [Compactor]),
+    compaction_dbs:update_progress(Manager),
+    compact_vbuckets_loop(BucketName, Manager, Config, Force, Options, SafeViewSeqs, Parent).
+
+spawn_vbuckets_compactor(BucketName, Manager, Config, Force, Options, SafeViewSeqs) ->
+    Parent = self(),
+    proc_lib:spawn_link(
+      fun () ->
+              process_flag(trap_exit, true),
+              compact_vbuckets_loop(BucketName, Manager, Config, Force, Options, SafeViewSeqs, Parent)
       end).
 
 maybe_compact_master_db(BucketName, Config, Force) ->
