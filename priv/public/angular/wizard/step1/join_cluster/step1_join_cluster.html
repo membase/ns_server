@@ -7,24 +7,25 @@
   Alternatively, you may create a new Couchbase Cluster by selecting "Start a new
   cluster".
 </p>
-<p class="pad_10" style="padding-top: 5px;">
+<p class="pad_10">
   If you start a new cluster the "Per Server RAM Quota" you set below will define
   the amount of RAM each server provides to the Couchbase Cluster. This value will
   be inherited by all servers subsequently joining the cluster, so please set
   appropriately.
 </p>
 <div id="init_cluster_form" class="form block">
-  <div class="pat_10">
-    <label>
+  <div>
+    <h3><label>
       <input type="radio" ng-model="modelJoinClusterService.joinCluster" value="no" name="joinCluster" id="no-join-cluster">
        Start a new cluster.
-    </label>
+    </label></h3>
     <div class="memory-quota" ng-show="modelJoinClusterService.joinCluster === 'no'">
       <div>
-        <label>RAM Available: {{modelJoinClusterService.ramTotalSize}} MB</label>
+        <label>RAM Available: </label>
+        <span>{{modelJoinClusterService.ramTotalSize}} MB</span>
       </div>
       <div>
-        <label style="width:auto;" for="init_dynamic_ram_quota">Per Server RAM Quota:</label>
+        <label for="init_dynamic_ram_quota">Per Server RAM Quota:</label>
         <input type="text" ng-model="modelJoinClusterService.dynamicRamQuota" focus="focusMe"  id="init_dynamic_ram_quota">
         <span>MB (256 MB &mdash; {{modelJoinClusterService.ramMaxMegs}} MB)</span>
       </div>
@@ -33,11 +34,11 @@
       </div>
     </div>
   </div>
-  <div class="pat_10">
-    <label>
+  <div>
+    <h3><label>
       <input type="radio" ng-model="modelJoinClusterService.joinCluster" value="ok" name="joinCluster" id="join-cluster"  >
       Join a cluster now.
-    </label>
+    </label></h3>
     <div class="login-credentials" ng-show="modelJoinClusterService.joinCluster === 'ok'">
       <div>
         <label for="clusterMemberHostIp">IP Address:</label>

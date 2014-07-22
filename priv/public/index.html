@@ -2072,7 +2072,7 @@
   <form>
     <div class="clearfix">
       <h2>Bucket Settings</h2>
-      <div class="bucket-icon">
+      <div class="bucket-icon sub_section">
         <div>
           <label for="bucket_details_bucket_name_input">Bucket Name:</label>
           <input disabled name="name" value="Bucket Name" id="bucket_details_bucket_name_input">
@@ -2158,7 +2158,7 @@
 
       <div class="persistent-only">
         <h2>Replicas</h2>
-        <div class="sub_section">
+        <div class="sub_section replicas_settigns">
           <input type="checkbox" checked id="for-enable-replicas" class="js_for-enable-replicas">
           <label for="for-enable-replicas">Enable</label>
           <input class="hidden-replica-number" type="hidden" name="replicaNumber" value="0" disabled>
@@ -2169,6 +2169,7 @@
             <label for="label_for-replica-number">Number of replica (backup) copies</label>
           </div>
           <div class="error-container err-replicaNumber"></div>
+          <div></div>
           <input type="hidden" name="replicaIndex" value="0">
           <input type="checkbox" name="replicaIndex" value="1" id="label_replica_index_flag">
           <label for="label_replica_index_flag">Index replicas</label>
@@ -3022,49 +3023,46 @@
     </div>
     <h2 class="question">Configure Disk Storage</h2>
     <div class="disk_setup_block">
-      <div>
-        <form>
-          <input type="submit" style="width:0px; height: 0px; visibility: hidden;">
+      <form>
+        <input type="submit" style="width:0px; height: 0px; display: none;">
 
-          <div>
-            <label for="setup_db_path_input">Databases Path:</label>
-            <input type="text" name="db_path"
-                   id="setup_db_path_input" />
-            <br class="clear" />
-          </div>
-
-          <div>
-            <label>Free:</label>
-            <span style="font-size:10pt; margin-left:5px; line-height: 25px;"
-                  class="total-db-size">---</span>
-          </div>
-
-          <div>
-            <label for="setup_index_path_input">Indices Path:</label>
-            <input type="text" name="index_path"
-                   id="setup_index_path_input" />
-            <br class="clear" />
-          </div>
+        <div>
+          <label for="setup_db_path_input">Databases Path:</label>
+          <input type="text" name="db_path"
+                 id="setup_db_path_input" />
+          <br class="clear" />
+        </div>
 
         <div>
           <label>Free:</label>
-          <span style="font-size:10pt; margin-left:5px; line-height: 25px;"
-                class="total-index-size">---</span>
+          <span style="margin-left:5px; line-height: 25px;"
+                class="total-db-size">---</span>
         </div>
 
-        </form>
-        <p class="when-enterprise">
-          Hint: if you use this server in a production, use different file systems for databases and indices.
-        </p>
+        <div>
+          <label for="setup_index_path_input">Indices Path:</label>
+          <input type="text" name="index_path"
+                 id="setup_index_path_input" />
+          <br class="clear" />
+        </div>
+
+      <div>
+        <label>Free:</label>
+        <span style="margin-left:5px; line-height: 25px;"
+              class="total-index-size">---</span>
       </div>
-      <div class="warning pat_10 init_cluster_dialog_errors_container" style="display:none;"></div>
+      </form>
+      <div class="warning init_cluster_dialog_errors_container" style="display:none;"></div>
+      <p class="when-enterprise">
+        Hint: if you use this server in a production, use different file systems for databases and indices.
+      </p>
     </div>
 
     <h2 class="question">Configure Server Hostname</h2>
     <div class="hostname_setup_block">
       <div>
         <form>
-          <input type="submit" style="width:0px; height: 0px; visibility: hidden;">
+          <input type="submit" style="width:0px; height: 0px; display: none;">
 
           <div>
             <label for="setup_hostname">Hostname:</label>
@@ -3085,35 +3083,36 @@
     cluster now".
     Alternatively, you may create a new Couchbase Cluster by selecting "Start a new
     cluster".
-    </p><p class="pad_10" style="padding-top: 5px;">
+    </p><p class="pad_10">
     If you start a new cluster the "Per Server RAM Quota" you set below will define
     the amount of RAM each server provides to the Couchbase Cluster. This value will
     be inherited by all servers subsequently joining the cluster, so please set
     appropriately.
     </p>
-    <form id="init_cluster_form" class="form block"><input type="submit" style="width:0px; height: 0px; border: 0; padding: 0 0; margin: 0 0;">
-      <div class="pat_10">
-         <label>
+    <form id="init_cluster_form" class="form block"><input type="submit" style="width:0px; height: 0px; border: 0; padding: 0 0; margin: 0 0;display:none;">
+      <div>
+         <h3><label>
            <input type="radio" name="join_cluster" id="no-join-cluster" checked />
            Start a new cluster.
-         </label>
+         </label></h3>
          <div class="memory-quota">
            <div>
-             <label>RAM Available: <span class="ram-total-size"></span></label>
+             <label>RAM Available: </label>
+             <span class="ram-total-size"></span>
            </div>
            <div>
-             <label style="width:auto;" for="init_dynamic_ram_quota">Per Server RAM Quota:</label>
+             <label for="init_dynamic_ram_quota">Per Server RAM Quota:</label>
              <input type="text" class="focusme" id="init_dynamic_ram_quota" name="dynamic-ram-quota" value="" />
              <span>MB (256 MB &mdash; <span class="ram-max-size"></span> MB)</span>
            </div>
          </div>
          <div class="warning pat_10" id="init_cluster_dialog_memory_errors_container" style="display:none;"></div>
       </div>
-      <div class="pat_10">
-        <label>
+      <div>
+        <h3><label>
           <input type="radio" name="join_cluster" id="join-cluster" />
           Join a cluster now.
-        </label>
+        </label></h3>
         <div class="login-credentials">
           <div>
             <label for="clusterMemberHostIp">IP Address:</label>
@@ -3148,7 +3147,7 @@
     <form>
     <div class="clearfix">
       <h2>Bucket Settings</h2>
-      <div class="bucket-icon">
+      <div class="bucket-icon sub_section">
         <div>
           <label>Bucket Name:</label>
           <strong>default</strong>
@@ -3203,7 +3202,7 @@
 
       <div class="persistent-only">
         <h2>Replicas</h2>
-        <div class="sub_section">
+        <div class="sub_section replicas_settigns">
           <input type="checkbox" checked id="for-enable-replicas-init" class="js_for-enable-replicas">
           <label for="for-enable-replicas-init">Enable</label>
           <input class="hidden-replica-number" type="hidden" name="replicaNumber" value="0" disabled>
@@ -3214,6 +3213,7 @@
             <label>Number of replica (backup) copies</label>
           </div>
           <div class="error-container err-replicaNumber"></div>
+          <div></div>
           <input type="hidden" name="replicaIndex" value="0">
           <input type="checkbox" name="replicaIndex" value="1" id="label_replica_index_flag-init">
           <label for="label_replica_index_flag-init">Index replicas</label>
@@ -3246,7 +3246,7 @@
       <div class="sub_section">
         <input type="checkbox" class="for-enable-flush" id="for-enable-flush-init" name="flushEnabled" value="1">
         <label for="for-enable-flush-init">Enable</label>
-        <a class="tooltip text_11" style="margin-left:30px;"><span>What's this?</span>
+        <a class="tooltip text_11"><span>What's this?</span>
           <span class="tooltip_msg" style="width:218px;"><span>
             Enable flush allows you to flush data from a bucket. When flushed, items in memcached buckets are flagged for removal and subsequently removed; items in couchbase buckets are immediately removed.
           </span></span>
@@ -3286,7 +3286,7 @@
       <h2 class="question">Product Registration</h2>
       <p class="pad_10 clearfix">Register your Enterprise Edition of Couchbase Server below.</p>
     </div>
-    <div class="pad_10 warn" style="color:#EC5223;font-family:Verdana, Helvetica, Sans-Serif; font-size:10pt; font-weight:lighter; line-height:20px; margin-left:75px; width:500px;" id="update_notifications_errors_container"></div>
+    <div class="pad_10 warn" id="update_notifications_errors_container"></div>
     <script type="text/html" id="update_notifications_errors_template">
       <ul>
       <!-- {% _.each(rows, function (errorMsg) { %} -->
@@ -3294,40 +3294,42 @@
       <!-- {% }); %} -->
       </ul>
     </script>
-    <p class="pad_10">
-      <label for="init-join-community-email">
-        <span class="field-label">Email:</span>
-        <input id="init-join-community-email">
-        <span class="error-container err-name"></span>
-      </label>
-    </p>
-    <p class="pad_10">
-      <label for="init-join-community-firstname">
-        <span class="field-label">First name:</span>
-        <input id="init-join-community-firstname">
-        <span class="error-container err-firstname"></span>
-      </label>
-    </p>
-    <p class="pad_10">
-      <label for="init-join-community-lastname">
-        <span class="field-label">Last name:</span>
-        <input id="init-join-community-lastname">
-        <span class="when-required" style="color:red;">*</span>
-        <span class="error-container err-lastname"></span>
-      </label>
-    </p>
-    <p class="pad_10">
-      <label for="init-join-community-company">
-        <span class="field-label">Company:</span>
-        <input id="init-join-community-company">
-        <span class="error-container err-company"></span>
-      </label>
-    </p>
-    <p class="when-enterprise pad_10">
-      <label for="init-join-terms"><input type="checkbox" id="init-join-terms">
-        <span>I agree to the <a href="http://www.couchbase.com/agreement/free-license" target="_blank">terms and conditions</a> associated with this product. <span style="color:red">*</span></span>
-      </label>
-    </p>
+    <div class="subscribe_fields">
+      <p class="pad_10">
+        <label for="init-join-community-email">
+          <span class="field-label">Email:</span>
+          <input id="init-join-community-email">
+          <span class="error-container err-name"></span>
+        </label>
+      </p>
+      <p class="pad_10">
+        <label for="init-join-community-firstname">
+          <span class="field-label">First name:</span>
+          <input id="init-join-community-firstname">
+          <span class="error-container err-firstname"></span>
+        </label>
+      </p>
+      <p class="pad_10">
+        <label for="init-join-community-lastname">
+          <span class="field-label">Last name:</span>
+          <input id="init-join-community-lastname">
+          <span class="when-required" style="color:red;">*</span>
+          <span class="error-container err-lastname"></span>
+        </label>
+      </p>
+      <p class="pad_10">
+        <label for="init-join-community-company">
+          <span class="field-label">Company:</span>
+          <input id="init-join-community-company">
+          <span class="error-container err-company"></span>
+        </label>
+      </p>
+      <p class="when-enterprise pad_10">
+        <label for="init-join-terms"><input type="checkbox" id="init-join-terms">
+          <span>I agree to the <a href="http://www.couchbase.com/agreement/free-license" target="_blank">terms and conditions</a> associated with this product. <span style="color:red">*</span></span>
+        </label>
+      </p>
+    </div>
     <div class="config-bottom">
       <button name="next" value="Next" class="submit next direction-button" id="step-3-next" type="submit">Next</button>
       <button name="back" value="Back" class="submit back direction-button" id="step-3-back" type="button">Back</button>
@@ -3362,7 +3364,7 @@
         Could not secure the server because of bad input.
       </div>
     </div>
-    <h2 class="title">Secure this Server</h2>
+    <h2 class="question">Secure this Server</h2>
     <p class="pad_10">
       Please create an administrator account for this Server. If you want to join other
       servers to this one to form a cluster, you will need to use these administrator

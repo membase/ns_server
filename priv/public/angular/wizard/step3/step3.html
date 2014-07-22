@@ -6,7 +6,7 @@
   <form ng-submit="onSubmit()">
   <div class="clearfix">
     <h2>Bucket Settings</h2>
-    <div class="bucket-icon">
+    <div class="bucket-icon sub_section">
       <div>
         <label>Bucket Name:</label>
         <strong>default</strong>
@@ -53,7 +53,7 @@
 
     <div class="persistent-only" ng-show="modelStep3Service.bucketConf.bucketType === 'membase'">
       <h2>Replicas</h2>
-      <div class="sub_section">
+      <div class="sub_section replicas_settigns">
         <input type="checkbox" checked id="for-enable-replicas-init" class="js_for-enable-replicas" ng-model="replicaNumberEnabled">
         <label for="for-enable-replicas-init">Enable</label>
         <div class="for-replica-number" ng-show="replicaNumberEnabled">
@@ -96,7 +96,7 @@
     <div class="sub_section">
       <input type="checkbox" class="for-enable-flush" id="for-enable-flush-init" name="flushEnabled" value="1" ng-model="modelStep3Service.bucketConf.flushEnabled" ng-false-value="0" ng-true-value="1">
       <label for="for-enable-flush-init">Enable</label>
-      <a class="tooltip text_11" style="margin-left:30px;"><span>What's this?</span>
+      <a class="tooltip text_11"><span>What's this?</span>
         <span class="tooltip_msg" style="width:218px;"><span>
           Enable flush allows you to flush data from a bucket. When flushed, items in memcached buckets are flagged for removal and subsequently removed; items in couchbase buckets are immediately removed.
         </span></span>

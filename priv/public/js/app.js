@@ -1020,7 +1020,7 @@ var SetupWizard = {
                checkedAttr = " checked='checked'";
             }
             tmp = '<li><input type="checkbox" value="' + htmlName +
-              '" id="setup-sample-' + htmlName + '"' + checkedAttr + ' />&nbsp; ' +
+              '" id="setup-sample-' + htmlName + '"' + checkedAttr + ' /> ' +
               '<label for="setup-sample-' + htmlName + '">' +
               htmlName + '</label></li>';
             available.push(tmp);
