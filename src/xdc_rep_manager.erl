@@ -63,12 +63,43 @@ start_link() ->
 %     {vbs_replicating,[Integer, ...]} % list of vbuckets actively replicating
 %    ]
 % }
-stats(Bucket) ->
-    gen_server:call(?MODULE, {stats, Bucket}).
+stats(Bucket0) ->
+    Bucket = list_to_binary(Bucket0),
+    Reps = try xdc_replication_sup:get_replications(Bucket)
+           catch T:E ->
+                   ?xdcr_error("xdcr stats Error:~p", [{T,E,erlang:get_stacktrace()}]),
+                   []
+           end,
+    lists:foldl(
+      fun({Id, Pid}, Acc) ->
+              case catch xdc_replication:stats(Pid) of
+                  {ok, Stats} ->
+                      [{Id, Stats} | Acc];
+                  Error ->
+                      ?xdcr_error("Error getting stats for bucket ~s with"
+                                  " id ~s :~p", [Bucket, Id, Error]),
+                      Acc
+              end
+      end, [], Reps).
 
 
 latest_errors() ->
-    gen_server:call(?MODULE, get_errors).
+    Reps = try xdc_replication_sup:get_replications()
+           catch T:E ->
+                   ?xdcr_error("xdcr stats Error:~p", [{T,E,erlang:get_stacktrace()}]),
+                   []
+           end,
+    lists:foldl(
+        fun({Bucket, Id, Pid}, Acc) ->
+                case catch xdc_replication:latest_errors(Pid) of
+                    {ok, Errors} ->
+                        [{Bucket, Id, Errors} | Acc];
+                    Error ->
+                        ?xdcr_error("Error getting errors for bucket ~s with"
+                                   " id ~s :~p", [Bucket, Id, Error]),
+                        Acc
+                end
+        end, [], Reps).
 
 
 init(_) ->
@@ -79,45 +110,6 @@ init(_) ->
        changes_feed_loop = Loop,
        rep_db_name = RepDbName
       }}.
-
-handle_call(get_errors, _, State) ->
-    Reps = try xdc_replication_sup:get_replications()
-           catch T:E ->
-                   ?xdcr_error("xdcr stats Error:~p", [{T,E,erlang:get_stacktrace()}]),
-                   []
-           end,
-    Errors = lists:foldl(
-        fun({Bucket, Id, Pid}, Acc) ->
-                case catch xdc_replication:latest_errors(Pid) of
-                    {ok, Errors} ->
-                        [{Bucket, Id, Errors} | Acc];
-                    Error ->
-                        ?xdcr_error("Error getting errors for bucket ~s with"
-                                   " id ~s :~p", [Bucket, Id, Error]),
-                        Acc
-                end
-        end, [], Reps),
-    {reply, Errors, State};
-
-handle_call({stats, Bucket0}, _, State) ->
-    Bucket = list_to_binary(Bucket0),
-    Reps = try xdc_replication_sup:get_replications(Bucket)
-           catch T:E ->
-                   ?xdcr_error("xdcr stats Error:~p", [{T,E,erlang:get_stacktrace()}]),
-                   []
-           end,
-    Stats = lists:foldl(
-        fun({Id, Pid}, Acc) ->
-                case catch xdc_replication:stats(Pid) of
-                    {ok, Stats} ->
-                        [{Id, Stats} | Acc];
-                    Error ->
-                        ?xdcr_error("Error getting stats for bucket ~s with"
-                                   " id ~s :~p", [Bucket, Id, Error]),
-                        Acc
-                end
-        end, [], Reps),
-    {reply, Stats, State};
 
 handle_call(Msg, From, State) ->
     ?xdcr_error("replication manager received unexpected call ~p from ~p",
