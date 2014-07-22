@@ -884,6 +884,7 @@ rebalancing({start_graceful_failover, _}, _From, State) ->
     {reply, in_progress, rebalancing, State};
 rebalancing(stop_rebalance, _From,
             #rebalancing_state{rebalancer=Pid} = State) ->
+    ?log_debug("Sending stop to rebalancer: ~p", [Pid]),
     Pid ! stop,
     {reply, ok, rebalancing, State};
 rebalancing(rebalance_progress, _From,

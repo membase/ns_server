@@ -660,6 +660,7 @@ wait_for_mover(Pid) ->
 wait_for_mover_tail(Pid, Ref) ->
     receive
         stop ->
+            ?log_debug("Got rebalance stop request"),
             erlang:unlink(Pid),
             TimeoutPid = diag_handler:arm_timeout(
                            5000,
