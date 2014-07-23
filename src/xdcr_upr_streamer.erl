@@ -21,7 +21,7 @@
 
 %% if we're waiting for data and have unacked stuff we'll ack all
 %% unacked stuff we have after this many milliseconds. This allows
-%% messages larger than buffer size to be handled where upr-server is
+%% messages larger than buffer size to be handled where dcp-server is
 %% only willing to send them when sent-but-unacked data size is 0.
 -define(FORCED_ACK_TIMEOUT, 200).
 
@@ -31,7 +31,7 @@
 
 -export([encode_req/1, encode_res/1, decode_packet/1, read_message_loop/2]).
 
-encode_req(#upr_packet{opcode = Opcode,
+encode_req(#dcp_packet{opcode = Opcode,
                        datatype = DT,
                        vbucket = VB,
                        opaque = Opaque,
@@ -54,7 +54,7 @@ encode_req(#upr_packet{opcode = Opcode,
      Body].
 
 encode_res(Packet) ->
-    encode_req(Packet#upr_packet{vbucket = Packet#upr_packet.status}).
+    encode_req(Packet#dcp_packet{vbucket = Packet#dcp_packet.status}).
 
 decode_packet(<<Magic:8, Opcode:8, KeyLen:16,
                 ExtLen:8, DT:8, VB:16,
@@ -70,7 +70,7 @@ decode_packet(<<Magic:8, Opcode:8, KeyLen:16,
             case Magic of
                 ?REQ_MAGIC ->
                     {req,
-                     #upr_packet{opcode = Opcode,
+                     #dcp_packet{opcode = Opcode,
                                  datatype = DT,
                                  vbucket = VB,
                                  opaque = Opaque,
@@ -82,7 +82,7 @@ decode_packet(<<Magic:8, Opcode:8, KeyLen:16,
                      ?HEADER_LEN + BodyLen};
                 ?RES_MAGIC ->
                     {res,
-                     #upr_packet{opcode = Opcode,
+                     #dcp_packet{opcode = Opcode,
                                  datatype = DT,
                                  status = VB,
                                  opaque = Opaque,
@@ -104,7 +104,7 @@ build_stream_request_packet(Vb, Opaque,
                             SnapshotStart, SnapshotEnd) ->
     Extra = <<0:64, StartSeqno:64, EndSeqno:64, VBUUID:64,
               SnapshotStart:64, SnapshotEnd:64>>,
-    #upr_packet{opcode = ?UPR_STREAM_REQ,
+    #dcp_packet{opcode = ?DCP_STREAM_REQ,
                 vbucket = Vb,
                 opaque = Opaque,
                 ext = Extra}.
@@ -131,7 +131,7 @@ find_high_seqno(Socket, Vb) ->
     StatsKey = iolist_to_binary(io_lib:format("vbucket-seqno ~B", [Vb])),
     SeqnoKey = iolist_to_binary(io_lib:format("vb_~B:high_seqno", [Vb])),
     ok = gen_tcp:send(Socket,
-                      encode_req(#upr_packet{opcode = ?STAT,
+                      encode_req(#dcp_packet{opcode = ?STAT,
                                              key = StatsKey})),
     stats_loop(Socket,
                fun (K, V, Acc) ->
@@ -173,19 +173,19 @@ do_start(Socket, Vb, FailoverId,
     ok = gen_tcp:send(Socket, encode_req(SReq)),
 
     %% NOTE: Opaque is already bound
-    {res, #upr_packet{opaque = Opaque} = Packet, Data0, _} = read_message_loop(Socket, <<>>),
+    {res, #dcp_packet{opaque = Opaque} = Packet, Data0, _} = read_message_loop(Socket, <<>>),
 
     case Packet of
-        #upr_packet{status = ?SUCCESS, body = FailoverLogBin} ->
+        #dcp_packet{status = ?SUCCESS, body = FailoverLogBin} ->
             FailoverLog = unpack_failover_log(FailoverLogBin),
             {Data2, ActualSnapshotEnd} =
             case read_message_loop(Socket, Data0) of
-                {_, #upr_packet{opcode = ?UPR_SNAPSHOT_MARKER, ext = Ext}, Data1, _} ->
+                {_, #dcp_packet{opcode = ?DCP_SNAPSHOT_MARKER, ext = Ext}, Data1, _} ->
                     <<ActualSnapshotStart:64, ActualSnapshotEnd0:64, _Flags:32, _/binary>> = Ext,
 
                     SnapshotStart = ActualSnapshotStart,
                     {Data1, ActualSnapshotEnd0};
-                {_, EndPacket = #upr_packet{opcode = ?UPR_STREAM_END}, <<>>, _} ->
+                {_, EndPacket = #dcp_packet{opcode = ?DCP_STREAM_END}, <<>>, _} ->
                     ?log_debug("Got stream end without snapshot marker"),
                     %% it's only possible if all those values are same
                     %%
@@ -209,7 +209,7 @@ do_start(Socket, Vb, FailoverId,
                       StartSeqno, EndSeqno, SnapshotStart, ActualSnapshotEnd},
             proc_lib:init_ack({ok, self()}),
             socket_loop_enter(Socket, Callback, Acc, Data2, Parent);
-        #upr_packet{status = ?ROLLBACK, body = <<RollbackSeq:64>>} ->
+        #dcp_packet{status = ?ROLLBACK, body = <<RollbackSeq:64>>} ->
             ?log_debug("handling rollback to ~B", [RollbackSeq]),
             ?log_debug("Request was: ~p", [{Vb, Opaque, StartSeqno, EndSeqno,
                                             FailoverId, SnapshotStart, SnapshotEnd}]),
@@ -256,7 +256,7 @@ scan_for_nops(Data, Pos) ->
               BodySize:32,
               Opaque:32,
               _:64>> = Hdr,
-            case Magic =:= ?REQ_MAGIC andalso Opcode =:= ?UPR_NOP of
+            case Magic =:= ?REQ_MAGIC andalso Opcode =:= ?DCP_NOP of
                 true ->
                     {body_size, 0} = {body_size, BodySize},
                     {Opaque, Pos + ?HEADER_LEN};
@@ -283,7 +283,7 @@ nops_loop(Socket, Data, Pos) ->
     end.
 
 respond_nop(Socket, Opaque) ->
-    Packet = #upr_packet{opcode = ?UPR_NOP,
+    Packet = #dcp_packet{opcode = ?DCP_NOP,
                          opaque = Opaque},
     ok = gen_tcp:send(Socket, encode_res(Packet)).
 
@@ -323,12 +323,12 @@ socket_loop(Socket, Callback, Acc, Data, Consumer) ->
             {tcp_closed_socket, Socket} = {tcp_closed_socket, MustSocket},
             erlang:error(premature_socket_closure);
         ConsumedBytes when is_integer(ConsumedBytes) ->
-            ok = gen_tcp:send(Socket, encode_req(#upr_packet{opcode = ?UPR_WINDOW_UPDATE,
+            ok = gen_tcp:send(Socket, encode_req(#dcp_packet{opcode = ?DCP_WINDOW_UPDATE,
                                                              ext = <<ConsumedBytes:32/big>>})),
             socket_loop(Socket, Callback, Acc, Data, Consumer);
         done ->
-            ok = gen_tcp:send(Socket, encode_req(#upr_packet{opcode = ?UPR_WINDOW_UPDATE,
-                                                             ext = <<(?XDCR_UPR_BUFFER_SIZE):32/big>>}));
+            ok = gen_tcp:send(Socket, encode_req(#dcp_packet{opcode = ?DCP_WINDOW_UPDATE,
+                                                             ext = <<(?XDCR_DCP_BUFFER_SIZE):32/big>>}));
         stop ->
             stop
     end.
@@ -345,7 +345,7 @@ consumer_loop_recv(Child, Callback, Acc, ConsumedSoFar0,
                    SnapshotStart, SnapshotEnd, LastSeenSeqno,
                    PrevData) ->
     ConsumedSoFar =
-        case ConsumedSoFar0 >= ?XDCR_UPR_BUFFER_SIZE div 3 of
+        case ConsumedSoFar0 >= ?XDCR_DCP_BUFFER_SIZE div 3 of
             true ->
                 Child ! ConsumedSoFar0,
                 0;
@@ -394,7 +394,7 @@ consumer_loop_have_msg(Child, Callback, Acc, ConsumedSoFar,
         %% receive
         %%
         %% TODO: there's great chance that having to process all
-        %% buffered upr mutations prior to handling this makes pausing
+        %% buffered dcp mutations prior to handling this makes pausing
         %% too slow in practice
         OtherMsg ->
             case Callback(OtherMsg, Acc) of
@@ -437,7 +437,7 @@ consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
     case decode_packet(Data) of
         {_Type, Packet, RestData, PacketSize} ->
             case Packet of
-                #upr_packet{opcode = ?UPR_MUTATION,
+                #dcp_packet{opcode = ?DCP_MUTATION,
                             datatype = DT,
                             cas = CAS,
                             ext = Ext,
@@ -445,7 +445,7 @@ consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
                             body = Body} ->
                     <<Seq:64, RevSeqno:64, Flags:32, Expiration:32, _/binary>> = Ext,
                     Rev = {RevSeqno, <<CAS:64, Expiration:32, Flags:32>>},
-                    Doc = #upr_mutation{id = Key,
+                    Doc = #dcp_mutation{id = Key,
                                         local_seq = Seq,
                                         rev = Rev,
                                         body = Body,
@@ -457,20 +457,20 @@ consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
                                                 Child, Callback, Acc, ConsumedSoFar + PacketSize,
                                                 SnapshotStart, SnapshotEnd, Seq,
                                                 RestData);
-                #upr_packet{opcode = ?UPR_SNAPSHOT_MARKER, ext = Ext} ->
+                #dcp_packet{opcode = ?DCP_SNAPSHOT_MARKER, ext = Ext} ->
                     <<NewSnapshotStart:64, NewSnapshotEnd:64, _/binary>> = Ext,
                     consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar + PacketSize,
                                        NewSnapshotStart, NewSnapshotEnd, LastSeenSeqno,
                                        RestData);
-                #upr_packet{opcode = ?UPR_DELETION,
+                #dcp_packet{opcode = ?DCP_DELETION,
                             cas = CAS,
                             ext = Ext,
                             key = Key} ->
                     <<Seq:64, RevSeqno:64, _/binary>> = Ext,
-                    %% NOTE: as of now upr doesn't expose flags of deleted
+                    %% NOTE: as of now dcp doesn't expose flags of deleted
                     %% docs
                     Rev = {RevSeqno, <<CAS:64, 0:32, 0:32>>},
-                    Doc = #upr_mutation{id = Key,
+                    Doc = #dcp_mutation{id = Key,
                                         local_seq = Seq,
                                         rev = Rev,
                                         body = <<>>,
@@ -482,12 +482,12 @@ consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
                                                 Child, Callback, Acc, ConsumedSoFar + PacketSize,
                                                 SnapshotStart, SnapshotEnd, Seq,
                                                 RestData);
-                #upr_packet{opcode = ?UPR_STREAM_END} ->
+                #dcp_packet{opcode = ?DCP_STREAM_END} ->
                     {stop, Acc2} = Callback({stream_end,
                                              SnapshotStart, SnapshotEnd, LastSeenSeqno}, Acc),
                     consumer_loop_exit(Child, done, RestData),
                     Acc2;
-                #upr_packet{opcode = ?UPR_NOP} ->
+                #dcp_packet{opcode = ?DCP_NOP} ->
                     consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
                                        SnapshotStart, SnapshotEnd, LastSeenSeqno,
                                        RestData)
@@ -525,7 +525,7 @@ stream_loop(Socket, Callback, Acc, Data0) ->
 
 stats_loop(S, Cb, InitAcc, Data) ->
     Cb2 = fun (Packet, Acc) ->
-                  #upr_packet{status = ?SUCCESS,
+                  #dcp_packet{status = ?SUCCESS,
                               key = Key,
                               body = Value} = Packet,
                   case Key of
@@ -539,13 +539,13 @@ stats_loop(S, Cb, InitAcc, Data) ->
 
 do_get_failover_log(Socket, VB) ->
     ok = gen_tcp:send(Socket,
-                      encode_req(#upr_packet{opcode = ?UPR_GET_FAILOVER_LOG,
+                      encode_req(#dcp_packet{opcode = ?DCP_GET_FAILOVER_LOG,
                                              vbucket = VB})),
 
     {res, Packet, <<>>, _} = read_message_loop(Socket, <<>>),
-    case Packet#upr_packet.status of
+    case Packet#dcp_packet.status of
         ?SUCCESS ->
-            unpack_failover_log(Packet#upr_packet.body);
+            unpack_failover_log(Packet#dcp_packet.body);
         OtherError ->
             {memcached_error, mc_client_binary:map_status(OtherError)}
     end.

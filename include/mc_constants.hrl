@@ -172,23 +172,23 @@
 %% Flags passed back in get_meta call
 -define(GET_META_ITEM_DELETED_FLAG, 16#01).
 
-%% UPR commands
--define(UPR_OPEN,                  16#50).
--define(UPR_ADD_STREAM,            16#51).
--define(UPR_CLOSE_STREAM,          16#52).
--define(UPR_STREAM_REQ,            16#53).
--define(UPR_GET_FAILOVER_LOG,      16#54).
--define(UPR_STREAM_END,            16#55).
--define(UPR_SNAPSHOT_MARKER,       16#56).
--define(UPR_MUTATION,              16#57).
--define(UPR_DELETION,              16#58).
--define(UPR_EXPIRATION,            16#59).
--define(UPR_FLUSH,                 16#5a).
--define(UPR_SET_VBUCKET_STATE,     16#5b).
--define(UPR_NOP,                   16#5c).
+%% DCP commands
+-define(DCP_OPEN,                  16#50).
+-define(DCP_ADD_STREAM,            16#51).
+-define(DCP_CLOSE_STREAM,          16#52).
+-define(DCP_STREAM_REQ,            16#53).
+-define(DCP_GET_FAILOVER_LOG,      16#54).
+-define(DCP_STREAM_END,            16#55).
+-define(DCP_SNAPSHOT_MARKER,       16#56).
+-define(DCP_MUTATION,              16#57).
+-define(DCP_DELETION,              16#58).
+-define(DCP_EXPIRATION,            16#59).
+-define(DCP_FLUSH,                 16#5a).
+-define(DCP_SET_VBUCKET_STATE,     16#5b).
+-define(DCP_NOP,                   16#5c).
 %% window update is officially called "buffer acknowledgement"
--define(UPR_WINDOW_UPDATE,         16#5d).
--define(UPR_CONTROL,               16#5e).
+-define(DCP_WINDOW_UPDATE,         16#5d).
+-define(DCP_CONTROL,               16#5e).
 
 %% datatypes enum
 -define(MC_DATATYPE_RAW_BYTES,      16#00).

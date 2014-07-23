@@ -238,7 +238,7 @@
                            queue_itemondisk = 0,
                            total_backlog_size = 0}).
 
--record(upr_stream_stats, {count = 0,
+-record(dcp_stream_stats, {count = 0,
                            items_remaining = 0,
                            items_sent = 0,
                            producer_count = 0,
@@ -256,7 +256,7 @@
         ep_tap_user_queue_fill, ep_tap_user_queue_drain, ep_tap_user_queue_backoff,
         ep_tap_total_queue_fill, ep_tap_total_queue_drain, ep_tap_total_queue_backoff).
 
--define(UPR_STAT_GAUGES,
+-define(DCP_STAT_GAUGES,
         ep_upr_replica_count,
         ep_upr_replica_items_remaining,
         ep_upr_replica_producer_count,
@@ -277,7 +277,7 @@
         ep_upr_other_producer_count,
         ep_upr_other_total_backlog_size).
 
--define(UPR_STAT_COUNTERS,
+-define(DCP_STAT_COUNTERS,
         ep_upr_replica_items_sent,
         ep_upr_replica_total_bytes,
 
@@ -341,19 +341,19 @@ sub_tap_stream_stats(A, B) ->
                       ?DEFINE_SUBTRACTOR(total_backlog_size)}.
 -undef(DEFINE_SUBTRACTOR).
 
--define(DEFINE_EXTRACT(N), extract_agg_upr_stat(<<??N>>, V, Acc) ->
-               Acc#upr_stream_stats{N = list_to_integer(binary_to_list(V))}).
+-define(DEFINE_EXTRACT(N), extract_agg_dcp_stat(<<??N>>, V, Acc) ->
+               Acc#dcp_stream_stats{N = list_to_integer(binary_to_list(V))}).
 ?DEFINE_EXTRACT(count);
 ?DEFINE_EXTRACT(items_remaining);
 ?DEFINE_EXTRACT(items_sent);
 ?DEFINE_EXTRACT(producer_count);
 ?DEFINE_EXTRACT(total_backlog_size);
 ?DEFINE_EXTRACT(total_bytes);
-extract_agg_upr_stat(_K, _V, Acc) -> Acc.
+extract_agg_dcp_stat(_K, _V, Acc) -> Acc.
 -undef(DEFINE_EXTRACT).
 
--define(DEFINE_TO_KVLIST(N), {<<Prefix/binary, ??N>>, list_to_binary(integer_to_list(Record#upr_stream_stats.N))}).
-upr_stream_stats_to_kvlist(Prefix, Record) ->
+-define(DEFINE_TO_KVLIST(N), {<<Prefix/binary, ??N>>, list_to_binary(integer_to_list(Record#dcp_stream_stats.N))}).
+dcp_stream_stats_to_kvlist(Prefix, Record) ->
     [?DEFINE_TO_KVLIST(count),
      ?DEFINE_TO_KVLIST(items_remaining),
      ?DEFINE_TO_KVLIST(items_sent),
@@ -362,9 +362,9 @@ upr_stream_stats_to_kvlist(Prefix, Record) ->
      ?DEFINE_TO_KVLIST(total_bytes)].
 -undef(DEFINE_TO_KVLIST).
 
--define(DEFINE_FORMULA(N), N = D#upr_stream_stats.N - (A#upr_stream_stats.N + B#upr_stream_stats.N + C#upr_stream_stats.N)).
-calc_upr_other_stats(A, B, C, D) ->
-    #upr_stream_stats{?DEFINE_FORMULA(count),
+-define(DEFINE_FORMULA(N), N = D#dcp_stream_stats.N - (A#dcp_stream_stats.N + B#dcp_stream_stats.N + C#dcp_stream_stats.N)).
+calc_dcp_other_stats(A, B, C, D) ->
+    #dcp_stream_stats{?DEFINE_FORMULA(count),
                       ?DEFINE_FORMULA(items_remaining),
                       ?DEFINE_FORMULA(items_sent),
                       ?DEFINE_FORMULA(producer_count),

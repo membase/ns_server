@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc partitions replicator that uses UPR protocol
+%% @doc partitions replicator that uses DCP protocol
 %%
 -module(upr_replicator).
 
@@ -51,7 +51,7 @@ init({ProducerNode, Bucket}) ->
 
     Proxies = upr_proxy:connect_proxies(ConsumerConn, ProducerConn),
 
-    ?log_debug("initiated new upr replication with consumer side: ~p and producer side: ~p", [ConsumerConn, ProducerConn]),
+    ?log_debug("initiated new dcp replication with consumer side: ~p and producer side: ~p", [ConsumerConn, ProducerConn]),
     {ok, #state{
             proxies = Proxies,
             consumer_conn = ConsumerConn,
@@ -143,7 +143,7 @@ takeover(ProducerNode, Bucket, Partition) ->
                     infinity).
 
 wait_for_data_move(Nodes, Bucket, Partition) ->
-    DoneLimit = ns_config:read_key_fast(upr_move_done_limit, 1000),
+    DoneLimit = ns_config:read_key_fast(dcp_move_done_limit, 1000),
     wait_for_data_move_loop(Nodes, Bucket, Partition, DoneLimit).
 
 wait_for_data_move_loop([], _, _, _DoneLimit) ->
@@ -152,7 +152,7 @@ wait_for_data_move_loop([Node | Rest], Bucket, Partition, DoneLimit) ->
     Connection = get_connection_name(Node, node(), Bucket),
     case wait_for_data_move_on_one_node(0, Connection, Bucket, Partition, DoneLimit) of
         undefined ->
-            ?log_error("No upr backfill stats for bucket ~p, partition ~p, connection ~p",
+            ?log_error("No dcp backfill stats for bucket ~p, partition ~p, connection ~p",
                        [Bucket, Partition, Connection]),
             {error, no_stats_for_this_vbucket};
         _ ->
@@ -160,7 +160,7 @@ wait_for_data_move_loop([Node | Rest], Bucket, Partition, DoneLimit) ->
     end.
 
 wait_for_data_move_on_one_node(Iterations, Connection, Bucket, Partition, DoneLimit) ->
-    case ns_memcached:get_upr_docs_estimate(Bucket, Partition, Connection) of
+    case ns_memcached:get_dcp_docs_estimate(Bucket, Partition, Connection) of
         {ok, {_, _, <<"unknown">>}} ->
             undefined;
         {ok, {N, _, _}} when N < DoneLimit ->
@@ -184,7 +184,7 @@ wait_for_data_move_on_one_node(Iterations, Connection, Bucket, Partition, DoneLi
                                {ok, {non_neg_integer(), non_neg_integer(), binary()}}.
 get_docs_estimate(Bucket, Partition, ConsumerNode) ->
     Connection = get_connection_name(ConsumerNode, node(), Bucket),
-    ns_memcached:get_upr_docs_estimate(Bucket, Partition, Connection).
+    ns_memcached:get_dcp_docs_estimate(Bucket, Partition, Connection).
 
 get_connection_name(ConsumerNode, ProducerNode, Bucket) ->
     "replication:" ++ atom_to_list(ProducerNode) ++ "->" ++ atom_to_list(ConsumerNode) ++ ":" ++ Bucket.

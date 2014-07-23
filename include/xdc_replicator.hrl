@@ -193,7 +193,7 @@
           current_through_snapshot_end_seq,
           last_stream_end_seq = 0,
           source_cur_seq,
-          upr_failover_uuid :: non_neg_integer(),
+          dcp_failover_uuid :: non_neg_integer(),
           seqs_in_progress = [],
           highest_seq_done = ?LOWEST_SEQ,
           highest_seq_done_snapshot = {?LOWEST_SEQ, ?LOWEST_SEQ},

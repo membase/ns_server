@@ -21,10 +21,10 @@
 -export([enchance_socket/1,
          from_xmem_options/1]).
 
-%% note: we're using #upr_packet{} to talk plain memcached. Some time
+%% note: we're using #dcp_packet{} to talk plain memcached. Some time
 %% later we'll unify them (dropping mc_client_binary and friends)
 enchance_socket(Sock) ->
-    Req = #upr_packet{opcode = ?CMD_HELLO,
+    Req = #dcp_packet{opcode = ?CMD_HELLO,
                       key = <<"xmem">>,
                       body = <<?MC_FEATURE_DATATYPE:16>>},
     EncReq = xdcr_upr_streamer:encode_req(Req),
@@ -34,7 +34,7 @@ enchance_socket(Sock) ->
 
     RecvSock = pooled_memcached_client:extract_recv_socket(Sock),
     {res, Resp, <<>>, _Size} = xdcr_upr_streamer:read_message_loop(RecvSock, <<>>),
-    #upr_packet{opcode = ?CMD_HELLO,
+    #dcp_packet{opcode = ?CMD_HELLO,
                 status = ?SUCCESS,
                 body = <<?MC_FEATURE_DATATYPE:16>>} = Resp,
     ok.

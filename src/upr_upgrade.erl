@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc code that implements upgrade of the bucket to UPR protocol
+%% @doc code that implements upgrade of the bucket to DCP protocol
 %%      the main purpose of such upgrade is to make sure that
 %%      the vbuckets are upgraded sequentially not causing simultaneous
 %%      backfill of all vbuckets
@@ -74,10 +74,10 @@ handle_call({update_replication_status, Partition, Master, NumPartitions}, _From
     NewConfig = lists:keystore(repl_type, 1, Config,
                                {repl_type, NewReplicationType}),
     ok = ns_bucket:set_bucket_config(Bucket, NewConfig),
-    master_activity_events:note_vbucket_upgraded_to_upr(Bucket, Partition),
+    master_activity_events:note_vbucket_upgraded_to_dcp(Bucket, Partition),
     case NewReplicationType of
-        upr ->
-            master_activity_events:note_bucket_upgraded_to_upr(Bucket);
+        dcp ->
+            master_activity_events:note_bucket_upgraded_to_dcp(Bucket);
         _ ->
             ok
     end,
@@ -100,7 +100,7 @@ handle_info(upgrade_next_bucket, #state{buckets = []} = State) ->
 handle_info(upgrade_next_bucket, #state{buckets = [{BucketName, BucketConfig} | Rest],
                                         num_buckets = NumBuckets} = State) ->
     BucketNodes = ns_bucket:bucket_nodes(BucketConfig),
-    ok = janitor_agent:prepare_nodes_for_upr_upgrade(BucketName, BucketNodes, self()),
+    ok = janitor_agent:prepare_nodes_for_dcp_upgrade(BucketName, BucketNodes, self()),
 
     IBucket = NumBuckets - (length(Rest) + 1),
 
@@ -117,7 +117,7 @@ handle_info(upgrade_next_bucket, #state{buckets = [{BucketName, BucketConfig} | 
         case ReplType of
             tap ->
                 misc:enumerate(Map, 0);
-            {upr, TapPartitions} ->
+            {dcp, TapPartitions} ->
                 [{Partition, Nodes} || {Partition, Nodes} <- misc:enumerate(Map, 0),
                                        ordsets:is_element(Partition, TapPartitions)]
         end,
@@ -195,7 +195,7 @@ upgrade_partitions_for_one_node(Parent, Bucket, PartitionsToUpgrade) ->
                   end, PartitionsToUpgrade).
 
 upgrade_partition(Parent, Bucket, Partition, Master, Replicas, NumPartitions) ->
-    ?rebalance_debug("Upgrade partition ~p of bucket ~p to UPR", [Partition, Bucket]),
+    ?rebalance_debug("Upgrade partition ~p of bucket ~p to DCP", [Partition, Bucket]),
 
     case {Master, Replicas} of
         {_, []} ->
@@ -204,7 +204,7 @@ upgrade_partition(Parent, Bucket, Partition, Master, Replicas, NumPartitions) ->
             ok;
         _ ->
             ok = apply_replication_status(Parent, Partition, Replicas),
-            ok = janitor_agent:wait_upr_data_move(Bucket, Parent, Master, Replicas, Partition)
+            ok = janitor_agent:wait_dcp_data_move(Bucket, Parent, Master, Replicas, Partition)
     end,
     ok = update_replication_status(Parent, Partition, Master, NumPartitions).
 
@@ -228,7 +228,7 @@ upgrade_replication_type(Partition, Config) ->
     ReplicationType = ns_bucket:replication_type(Config),
     TapPartitions =
         case ReplicationType of
-            {upr, TapP} ->
+            {dcp, TapP} ->
                 TapP;
             tap ->
                 NumPartitions = proplists:get_value(num_vbuckets, Config),
@@ -236,14 +236,14 @@ upgrade_replication_type(Partition, Config) ->
         end,
     case ordsets:del_element(Partition, TapPartitions) of
         [] ->
-            upr;
+            dcp;
         NewTapPartitions ->
-            {upr, NewTapPartitions}
+            {dcp, NewTapPartitions}
     end.
 
 get_buckets_to_upgrade() ->
     BucketConfigs = ns_bucket:get_buckets(),
-    [{Name, BC} || {Name, BC} <- BucketConfigs, ns_bucket:needs_upgrade_to_upr(BC)].
+    [{Name, BC} || {Name, BC} <- BucketConfigs, ns_bucket:needs_upgrade_to_dcp(BC)].
 
 consider_trivial_upgrade(Buckets) ->
     lists:foreach(fun ({BucketName, BucketConfig}) ->
@@ -251,7 +251,7 @@ consider_trivial_upgrade(Buckets) ->
                   end, Buckets).
 
 consider_trivial_upgrade(BucketName, BucketConfig) ->
-    case ns_bucket:needs_upgrade_to_upr(BucketConfig) of
+    case ns_bucket:needs_upgrade_to_dcp(BucketConfig) of
         false ->
             false;
         true ->
@@ -274,8 +274,8 @@ consider_trivial_upgrade(BucketName, BucketConfig) ->
     end.
 
 upgrade_bucket_trivial(Bucket, BucketConfig) ->
-    ?log_debug("Performing trivial UPR upgrade for bucket ~p", [{Bucket, BucketConfig}]),
+    ?log_debug("Performing trivial DCP upgrade for bucket ~p", [{Bucket, BucketConfig}]),
     NewConfig = lists:keystore(repl_type, 1, BucketConfig,
-                               {repl_type, upr}),
+                               {repl_type, dcp}),
     ok = ns_bucket:set_bucket_config(Bucket, NewConfig),
-    master_activity_events:note_bucket_upgraded_to_upr(Bucket).
+    master_activity_events:note_bucket_upgraded_to_dcp(Bucket).

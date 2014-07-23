@@ -45,12 +45,12 @@ cleanup_list_del(Pid) ->
     List2 = ordsets:del_element(Pid, List),
     erlang:put(cleanup_list, List2).
 
-get_vbucket_repl_type(VBucket, {upr, [Partitions]}) ->
+get_vbucket_repl_type(VBucket, {dcp, [Partitions]}) ->
     case lists:member(VBucket, Partitions) of
         true ->
             tap;
         false ->
-            upr
+            dcp
     end;
 get_vbucket_repl_type(_, ReplType) ->
     ReplType.
@@ -77,8 +77,8 @@ mover(Parent, Bucket, VBucket, OldChain, NewChain, ReplType) ->
     misc:try_with_maybe_ignorant_after(
       fun () ->
               case {IndexAware, VBucketReplType} of
-                  {_, upr} ->
-                      mover_inner_upr(Parent, Bucket, VBucket, OldChain, NewChain, IndexAware);
+                  {_, dcp} ->
+                      mover_inner_dcp(Parent, Bucket, VBucket, OldChain, NewChain, IndexAware);
                   {true, tap} ->
                       mover_inner(Parent, Bucket, VBucket, OldChain, NewChain);
                   {false, tap} ->
@@ -226,7 +226,7 @@ maybe_initiate_indexing(Bucket, Parent, JustBackfillNodes, ReplicaNodes, VBucket
     ok = janitor_agent:initiate_indexing(Bucket, Parent, JustBackfillNodes, ReplicaNodes, VBucket),
     master_activity_events:note_indexing_initiated(Bucket, JustBackfillNodes, VBucket).
 
-mover_inner_upr(Parent, Bucket, VBucket,
+mover_inner_dcp(Parent, Bucket, VBucket,
                 [OldMaster|_] = OldChain, [NewMaster|_] = NewChain, IndexAware) ->
     process_flag(trap_exit, true),
 
@@ -246,7 +246,7 @@ mover_inner_upr(Parent, Bucket, VBucket,
 
     %% wait for backfill on all the opened streams
     AllBuiltNodes = JustBackfillNodes ++ ReplicaNodes,
-    wait_upr_data_move(Bucket, Parent, OldMaster, AllBuiltNodes, VBucket),
+    wait_dcp_data_move(Bucket, Parent, OldMaster, AllBuiltNodes, VBucket),
     master_activity_events:note_backfill_phase_ended(Bucket, VBucket),
 
     %% notify parent that the backfill is done, so it can start rebalancing
@@ -285,7 +285,7 @@ mover_inner_upr(Parent, Bucket, VBucket,
             end,
 
             master_activity_events:note_takeover_started(Bucket, VBucket, OldMaster, NewMaster),
-            upr_takeover(Bucket, Parent, OldMaster, NewMaster, VBucket),
+            dcp_takeover(Bucket, Parent, OldMaster, NewMaster, VBucket),
             master_activity_events:note_takeover_ended(Bucket, VBucket, OldMaster, NewMaster)
     end,
 
@@ -301,26 +301,26 @@ set_vbucket_state(Bucket, Node, RebalancerPid, VBucket,
                                                    VBucketState, VBucketRebalanceState, ReplicateFrom)
       end).
 
-upr_takeover(Bucket, Parent, OldMaster, NewMaster, VBucket) ->
+dcp_takeover(Bucket, Parent, OldMaster, NewMaster, VBucket) ->
     spawn_and_wait(
       fun () ->
-              ok = janitor_agent:upr_takeover(Bucket, Parent, OldMaster, NewMaster, VBucket)
+              ok = janitor_agent:dcp_takeover(Bucket, Parent, OldMaster, NewMaster, VBucket)
       end).
 
-wait_upr_data_move(Bucket, Parent, SrcNode, DstNodes, VBucket) ->
+wait_dcp_data_move(Bucket, Parent, SrcNode, DstNodes, VBucket) ->
     spawn_and_wait(
       fun () ->
               ?rebalance_debug(
                  "Will wait for backfill on all opened streams for bucket = ~p partition ~p src node = ~p dest nodes = ~p",
                  [Bucket, VBucket, SrcNode, DstNodes]),
-              case janitor_agent:wait_upr_data_move(Bucket, Parent, SrcNode, DstNodes, VBucket) of
+              case janitor_agent:wait_dcp_data_move(Bucket, Parent, SrcNode, DstNodes, VBucket) of
                   ok ->
                       ?rebalance_debug(
-                         "Upr data is up to date for bucket = ~p partition ~p src node = ~p dest nodes = ~p",
+                         "DCP data is up to date for bucket = ~p partition ~p src node = ~p dest nodes = ~p",
                          [Bucket, VBucket, SrcNode, DstNodes]),
                       ok;
                   Error ->
-                      erlang:error({upr_wait_for_data_move_failed,
+                      erlang:error({dcp_wait_for_data_move_failed,
                                     Bucket, VBucket, SrcNode, DstNodes, Error})
               end
       end).

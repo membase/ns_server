@@ -60,10 +60,10 @@
          disable_traffic/1,
          wait_for_checkpoint_persistence/3,
          get_tap_docs_estimate/3,
-         get_upr_docs_estimate/3,
+         get_dcp_docs_estimate/3,
          map_status/1,
          get_mass_tap_docs_estimate/2,
-         get_mass_upr_docs_estimate/2,
+         get_mass_dcp_docs_estimate/2,
          ext/2,
          rev_to_mcd_ext/1,
          set_cluster_config/2,
@@ -956,9 +956,9 @@ get_mass_tap_docs_estimate(Sock, VBuckets) ->
               {ok, V} -> V
           end || VB <- VBuckets]}.
 
--spec get_upr_docs_estimate(port(), vbucket_id(), binary() | string()) ->
+-spec get_dcp_docs_estimate(port(), vbucket_id(), binary() | string()) ->
                                    {ok, {non_neg_integer(), non_neg_integer(), binary()}}.
-get_upr_docs_estimate(Sock, VBucket, ConnName) ->
+get_dcp_docs_estimate(Sock, VBucket, ConnName) ->
     Key = iolist_to_binary([<<"upr-vbtakeover ">>, integer_to_list(VBucket), $\s, ConnName]),
 
     mc_binary:quick_stats(Sock, Key,
@@ -972,12 +972,12 @@ get_upr_docs_estimate(Sock, VBucket, ConnName) ->
                                   Acc
                           end, {0, 0, <<"unknown">>}).
 
--spec get_mass_upr_docs_estimate(port(), [vbucket_id()]) ->
+-spec get_mass_dcp_docs_estimate(port(), [vbucket_id()]) ->
                                         {ok, [{non_neg_integer(), non_neg_integer(), binary()}]}.
-get_mass_upr_docs_estimate(Sock, VBuckets) ->
+get_mass_dcp_docs_estimate(Sock, VBuckets) ->
     %% TODO: consider pipelining that stuff. For now it just does
     %% vbucket after vbucket sequentially
-    {ok, [case get_upr_docs_estimate(Sock, VB, <<>>) of
+    {ok, [case get_dcp_docs_estimate(Sock, VB, <<>>) of
               {ok, V} -> V
           end || VB <- VBuckets]}.
 

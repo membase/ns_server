@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc consumer side of the UPR proxy
+%% @doc consumer side of the DCP proxy
 %%
 -module(upr_consumer_conn).
 
@@ -55,7 +55,7 @@ init([], ParentState) ->
        }, upr_proxy:maybe_connect(ParentState)}.
 
 
-handle_packet(response, ?UPR_ADD_STREAM, Packet,
+handle_packet(response, ?DCP_ADD_STREAM, Packet,
               #state{state = #stream_state{to_add = ToAdd, errors = Errors} = StreamState}
               = State, ParentState) ->
     {Header, Body} = mc_binary:decode_packet(Packet),
@@ -75,7 +75,7 @@ handle_packet(response, ?UPR_ADD_STREAM, Packet,
         end,
     {block, maybe_reply_setup_streams(NewState#state{state = NewStreamState}), ParentState};
 
-handle_packet(response, ?UPR_ADD_STREAM, Packet,
+handle_packet(response, ?DCP_ADD_STREAM, Packet,
               #state{state = #takeover_state{owner = From, partition = Partition, open_ack = false}
                      = TakeoverState} = State, ParentState) ->
 
@@ -93,7 +93,7 @@ handle_packet(response, ?UPR_ADD_STREAM, Packet,
             erlang:error({unrecognized_opaque, WrongOpaque, Partition})
     end;
 
-handle_packet(request, ?UPR_STREAM_REQ, Packet,
+handle_packet(request, ?DCP_STREAM_REQ, Packet,
               #state{state = #takeover_state{state = requested, partition = Partition}
                      = TakeoverState} = State, ParentState) ->
     {Header, _Body} = mc_binary:decode_packet(Packet),
@@ -102,7 +102,7 @@ handle_packet(request, ?UPR_STREAM_REQ, Packet,
                                                     opaque = Header#mc_header.opaque},
     {proxy, State#state{state = NewTakeoverState}, ParentState};
 
-handle_packet(response, ?UPR_CLOSE_STREAM, Packet,
+handle_packet(response, ?DCP_CLOSE_STREAM, Packet,
               #state{state = #stream_state{to_close = ToClose, errors = Errors} = StreamState}
               = State, ParentState) ->
     {Header, _Body} = mc_binary:decode_packet(Packet),
@@ -119,7 +119,7 @@ handle_packet(response, ?UPR_CLOSE_STREAM, Packet,
         end,
     {block, maybe_reply_setup_streams(NewState#state{state = NewStreamState}), ParentState};
 
-handle_packet(response, ?UPR_SET_VBUCKET_STATE, Packet,
+handle_packet(response, ?DCP_SET_VBUCKET_STATE, Packet,
               #state{state = #takeover_state{opaque = Opaque, state = opaque_known,
                                              partition = Partition,
                                              owner = From,
@@ -185,7 +185,7 @@ handle_call({setup_streams, Partitions}, From,
                                                    {Partition}
                                            end, StreamsToStop),
 
-            ?log_debug("Setup UPR streams:~nCurrent ~w~nStreams to open ~w~nStreams to close ~w~n",
+            ?log_debug("Setup DCP streams:~nCurrent ~w~nStreams to open ~w~nStreams to close ~w~n",
                        [CurrentPartitions, StreamsToStart, StreamsToStop]),
 
             {noreply, State#state{state = #stream_state{

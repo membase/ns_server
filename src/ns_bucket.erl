@@ -78,7 +78,7 @@
          past_vbucket_maps/0,
          past_vbucket_maps/1,
          config_to_map_options/1,
-         needs_upgrade_to_upr/1,
+         needs_upgrade_to_dcp/1,
          needs_rebalance/3]).
 
 
@@ -494,11 +494,11 @@ bucket_nodes(Bucket) ->
 replication_type(Bucket) ->
     proplists:get_value(repl_type, Bucket, tap).
 
--spec needs_upgrade_to_upr([{_,_}]) -> boolean().
-needs_upgrade_to_upr(Bucket) ->
+-spec needs_upgrade_to_dcp([{_,_}]) -> boolean().
+needs_upgrade_to_dcp(Bucket) ->
     DefaultReplType = get_default_repl_type(),
     case replication_type(Bucket) of
-        upr ->
+        dcp ->
             false;
         DefaultReplType ->
             false;
@@ -706,9 +706,11 @@ get_default_repl_type() ->
                 "tap" ->
                     tap;
                 "upr" ->
-                    upr;
+                    dcp;
+                "dcp" ->
+                    dcp;
                 _ ->
-                    upr
+                    dcp
             end
     end.
 
@@ -956,7 +958,7 @@ needs_rebalance(BucketConfig, Nodes, Topology) ->
                 _ ->
                     Map = proplists:get_value(map, BucketConfig),
                     Map =:= undefined orelse
-                        ns_bucket:needs_upgrade_to_upr(BucketConfig) orelse
+                        ns_bucket:needs_upgrade_to_dcp(BucketConfig) orelse
                         lists:sort(Nodes) =/= lists:sort(Servers) orelse
                         ns_rebalancer:map_options_changed(Topology, BucketConfig) orelse
                         (ns_rebalancer:unbalanced(Map, Topology, BucketConfig) andalso

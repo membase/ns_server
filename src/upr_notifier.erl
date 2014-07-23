@@ -80,7 +80,7 @@ handle_packet(response, Opcode, Packet, State, ParentState) ->
      set_partition(handle_response(Opcode, Header, Body, PartitionState, ParentState), State),
      ParentState}.
 
-handle_response(?UPR_STREAM_REQ, Header, Body,
+handle_response(?DCP_STREAM_REQ, Header, Body,
                 #partition{stream_state = pending,
                            partition = Partition,
                            last_known_pos = {_, UUID}} = PartitionState, ParentState) ->
@@ -98,7 +98,7 @@ handle_response(?UPR_STREAM_REQ, Header, Body,
             close_stream(Error, PartitionState)
     end.
 
-handle_request(?UPR_STREAM_END, _Header, _Body,
+handle_request(?DCP_STREAM_END, _Header, _Body,
                #partition{stream_state = open} = PartitionState, _ParentState) ->
     close_stream(ok, PartitionState).
 

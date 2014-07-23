@@ -102,7 +102,7 @@ handle_info({failover_id, FailoverUUID,
 
     VbStatus2 = VbStatus#rep_vb_status{num_changes_left = EndSeqno - StartSeqno},
 
-    NewState = State#rep_state{upr_failover_uuid = FailoverUUID,
+    NewState = State#rep_state{dcp_failover_uuid = FailoverUUID,
                                status = VbStatus2,
                                last_stream_end_seq = 0,
                                current_through_seq = StartSeqno,
@@ -716,7 +716,7 @@ init_replication_state(#init_state{rep = Rep,
       current_through_seq = StartSeq,
       current_through_snapshot_seq = SnapshotStart,
       current_through_snapshot_end_seq = SnapshotEnd,
-      upr_failover_uuid = FailoverUUID,
+      dcp_failover_uuid = FailoverUUID,
       source_cur_seq = StartSeq,
       rep_starttime = httpd_util:rfc1123_date(),
       last_checkpoint_time = now(),
@@ -777,7 +777,7 @@ update_rep_options(#rep_state{rep_details =
 
 start_replication(#rep_state{
                      target_name = OrigTgtURI,
-                     upr_failover_uuid = FailoverUUID,
+                     dcp_failover_uuid = FailoverUUID,
                      current_through_seq = StartSeq,
                      current_through_snapshot_seq = SnapshotStart,
                      current_through_snapshot_end_seq = SnapshotEnd,
@@ -973,7 +973,7 @@ read_changes(BucketName, Vb, ChangesQueue, StartSeq,
                   {stream_end, _, _, _} = Msg ->
                       Parent ! Msg,
                       {stop, []};
-                  #upr_mutation{} = Mutation0 ->
+                  #dcp_mutation{} = Mutation0 ->
                       Mutation = maybe_clear_datatype(HonorDatatype, Mutation0),
                       couch_work_queue:queue(ChangesQueue, Mutation),
                       {ok, []}
@@ -984,22 +984,22 @@ read_changes(BucketName, Vb, ChangesQueue, StartSeq,
 
 maybe_clear_datatype(true, Mutation) ->
     Mutation;
-maybe_clear_datatype(false, #upr_mutation{datatype = DT,
+maybe_clear_datatype(false, #dcp_mutation{datatype = DT,
                                           body = Body0} = Mutation) ->
     case (DT band ?MC_DATATYPE_COMPRESSED) =/= 0 of
         true ->
             case snappy:decompress(Body0) of
                 {ok, Body} ->
-                    Mutation#upr_mutation{body = Body,
+                    Mutation#dcp_mutation{body = Body,
                                           datatype = 0};
                 {error, Err} ->
                     ?xdcr_debug("Got invalid snappy data for compressed doc with id: `~s'."
                                 " Will assume it's uncompressed. Snappy error: ~p",
-                                [Mutation#upr_mutation.id, Err]),
-                    Mutation#upr_mutation{datatype = 0}
+                                [Mutation#dcp_mutation.id, Err]),
+                    Mutation#dcp_mutation{datatype = 0}
             end;
         _ ->
-            Mutation#upr_mutation{datatype = 0}
+            Mutation#dcp_mutation{datatype = 0}
     end.
 
 spawn_changes_manager(Parent, ChangesQueue, BatchSize) ->
@@ -1014,7 +1014,7 @@ changes_manager_loop_open(Parent, ChangesQueue, BatchSize) ->
                 closed ->
                     ok; % now done!
                 {ok, Changes, _Size} ->
-                    #upr_mutation{local_seq = ReportSeq,
+                    #dcp_mutation{local_seq = ReportSeq,
                                   snapshot_start_seq = SnapshotStart,
                                   snapshot_end_seq = SnapshotEnd} = lists:last(Changes),
                     ok = gen_server:cast(Parent, {report_seq, ReportSeq, SnapshotStart, SnapshotEnd}),
@@ -1058,7 +1058,7 @@ check_src_db_updated(#rep_state{status = #rep_vb_status{status = idle,
                                 current_through_snapshot_seq = SnapshotSeq,
                                 rep_details = #rep{source = SourceBucket},
                                 current_through_seq = Seq,
-                                upr_failover_uuid = U}) ->
+                                dcp_failover_uuid = U}) ->
     Self = self(),
     case SnapshotSeq =:= Seq of
         false ->

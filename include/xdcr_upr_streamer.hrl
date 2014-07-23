@@ -1,4 +1,4 @@
--record(upr_packet, {
+-record(dcp_packet, {
           opcode :: non_neg_integer(),
           datatype = 0 :: non_neg_integer(),
           vbucket = 0 :: non_neg_integer(),
@@ -10,7 +10,7 @@
           body = <<>> :: binary()
 }).
 
--record(upr_mutation, {id,
+-record(dcp_mutation, {id,
                        local_seq,
                        rev,
                        body,
@@ -20,7 +20,7 @@
                        snapshot_end_seq
 }).
 
--type callback_arg() :: #upr_mutation{} | {failover_id, term()} | stream_end.
+-type callback_arg() :: #dcp_mutation{} | {failover_id, term()} | stream_end.
 -type callback_fun() :: fun((callback_arg(), any()) -> {ok, any()} | {stop, any()}).
 
--define(XDCR_UPR_BUFFER_SIZE, 1048576).
+-define(XDCR_DCP_BUFFER_SIZE, 1048576).

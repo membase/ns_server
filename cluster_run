@@ -55,6 +55,8 @@ def mk_node_couch_config(i):
         f.write("max_dbs_open=10000\n")
         f.write("[upr]\n")
         f.write("port={0}\n".format(base_direct_port + i * 2))
+        f.write("[dcp]\n")
+        f.write("port={0}\n".format(base_direct_port + i * 2))
 
 
 def couch_configs(i):

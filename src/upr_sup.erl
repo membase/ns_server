@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc suprevisor for upr_replicator's
+%% @doc suprevisor for dcp_replicator's
 %%
 -module(upr_sup).
 
@@ -73,7 +73,7 @@ build_child_spec(ProducerNode, Bucket) ->
 
 
 start_replicator(Bucket, ProducerNode) ->
-    ?log_debug("Starting UPR replication from ~p for bucket ~p", [ProducerNode, Bucket]),
+    ?log_debug("Starting DCP replication from ~p for bucket ~p", [ProducerNode, Bucket]),
 
     case supervisor:start_child(server_name(Bucket),
                                 build_child_spec(ProducerNode, Bucket)) of
@@ -82,7 +82,7 @@ start_replicator(Bucket, ProducerNode) ->
     end.
 
 kill_replicator(Bucket, ProducerNode) ->
-    ?log_debug("Going to stop UPR replication from ~p for bucket ~p", [ProducerNode, Bucket]),
+    ?log_debug("Going to stop DCP replication from ~p for bucket ~p", [ProducerNode, Bucket]),
     _ = supervisor:terminate_child(server_name(Bucket), ProducerNode),
     ok.
 

@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc pool of sockets that are used by xdcr upr streaming
+%% @doc pool of sockets that are used by xdcr dcp streaming
 %%
 -module(xdcr_upr_sockets_pool).
 
@@ -22,7 +22,7 @@
 -export([take_socket/1, put_socket/2]).
 
 -include("ns_common.hrl").
-%% for ?XDCR_UPR_BUFFER_SIZE
+%% for ?XDCR_DCP_BUFFER_SIZE
 -include("xdcr_upr_streamer.hrl").
 
 start_link() ->
@@ -50,7 +50,7 @@ do_connect(Bucket) ->
                     Name = <<"xdcr:", (list_to_binary(Bucket))/binary, "-", Random/binary>>,
                     case upr_commands:open_connection(Socket, binary_to_list(Name), producer) of
                         ok ->
-                            case upr_commands:setup_flow_control(Socket, ?XDCR_UPR_BUFFER_SIZE) of
+                            case upr_commands:setup_flow_control(Socket, ?XDCR_DCP_BUFFER_SIZE) of
                                 ok ->
                                     ok = inet:setopts(Socket, [{nodelay, true}]),
                                     {ok, Socket};

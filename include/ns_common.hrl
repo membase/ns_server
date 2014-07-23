@@ -44,11 +44,11 @@
 
 -type checkpoint_id() :: non_neg_integer().
 
--type bucket_replication_type() :: tap | upr | {upr, [vbucket_id()]}.
+-type bucket_replication_type() :: tap | dcp | {dcp, [vbucket_id()]}.
 
--type upr_error() :: {upr_error, mc_error_atom(), binary()}.
--type upr_conn_name() :: nonempty_string().
--type upr_conn_type() :: consumer | producer | notifier.
+-type dcp_error() :: {dcp_error, mc_error_atom(), binary()}.
+-type dcp_conn_name() :: nonempty_string().
+-type dcp_conn_type() :: consumer | producer | notifier.
 
 -define(MULTICALL_DEFAULT_TIMEOUT, 30000).
 

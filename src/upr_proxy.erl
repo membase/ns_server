@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc UPR proxy code that is common for consumer and producer sides
+%% @doc DCP proxy code that is common for consumer and producer sides
 %%
 -module(upr_proxy).
 
@@ -135,28 +135,28 @@ handle_packet(<<Magick:8, Opcode:8, _Rest/binary>> = Packet,
     end,
     {ok, NewState#state{ext_state = NewExtState}}.
 
-suppress_logging(<<?REQ_MAGIC:8, ?UPR_MUTATION:8, _Rest/binary>>) ->
+suppress_logging(<<?REQ_MAGIC:8, ?DCP_MUTATION:8, _Rest/binary>>) ->
     true;
-suppress_logging(<<?REQ_MAGIC:8, ?UPR_DELETION:8, _Rest/binary>>) ->
+suppress_logging(<<?REQ_MAGIC:8, ?DCP_DELETION:8, _Rest/binary>>) ->
     true;
-suppress_logging(<<?REQ_MAGIC:8, ?UPR_SNAPSHOT_MARKER, _Rest/binary>>) ->
+suppress_logging(<<?REQ_MAGIC:8, ?DCP_SNAPSHOT_MARKER, _Rest/binary>>) ->
     true;
-suppress_logging(<<?REQ_MAGIC:8, ?UPR_WINDOW_UPDATE, _Rest/binary>>) ->
+suppress_logging(<<?REQ_MAGIC:8, ?DCP_WINDOW_UPDATE, _Rest/binary>>) ->
     true;
-suppress_logging(<<?RES_MAGIC:8, ?UPR_MUTATION:8, _KeyLen:16, _ExtLen:8,
+suppress_logging(<<?RES_MAGIC:8, ?DCP_MUTATION:8, _KeyLen:16, _ExtLen:8,
                    _DataType:8, ?SUCCESS:16, _Rest/binary>>) ->
     true;
-suppress_logging(<<?RES_MAGIC:8, ?UPR_DELETION:8, _KeyLen:16, _ExtLen:8,
+suppress_logging(<<?RES_MAGIC:8, ?DCP_DELETION:8, _KeyLen:16, _ExtLen:8,
                    _DataType:8, ?SUCCESS:16, _Rest/binary>>) ->
     true;
-suppress_logging(<<?RES_MAGIC:8, ?UPR_SNAPSHOT_MARKER:8, _KeyLen:16, _ExtLen:8,
+suppress_logging(<<?RES_MAGIC:8, ?DCP_SNAPSHOT_MARKER:8, _KeyLen:16, _ExtLen:8,
                    _DataType:8, ?SUCCESS:16, _Rest/binary>>) ->
     true;
 %% TODO: remove this as soon as memcached stops sending these
-suppress_logging(<<?RES_MAGIC:8, ?UPR_WINDOW_UPDATE, _KeyLen:16, _ExtLen:8,
+suppress_logging(<<?RES_MAGIC:8, ?DCP_WINDOW_UPDATE, _KeyLen:16, _ExtLen:8,
                    _DataType:8, ?SUCCESS:16, _Rest/binary>>) ->
     true;
-suppress_logging(<<_:8, ?UPR_NOP:8, _Rest/binary>>) ->
+suppress_logging(<<_:8, ?DCP_NOP:8, _Rest/binary>>) ->
     true;
 suppress_logging(_) ->
     false.
@@ -184,7 +184,7 @@ disconnect(Sock) ->
     gen_tcp:close(Sock).
 
 nuke_connection(Type, ConnName, Node, Bucket) ->
-    ?log_debug("Nuke UPR connection ~p type ~p on node ~p", [ConnName, Type, Node]),
+    ?log_debug("Nuke DCP connection ~p type ~p on node ~p", [ConnName, Type, Node]),
     disconnect(connect(Type, ConnName, Node, Bucket)).
 
 connect_proxies(Pid1, Pid2) ->

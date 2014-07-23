@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc commands of the UPR protocol
+%% @doc commands of the DCP protocol
 %%
 -module(upr_commands).
 
@@ -26,19 +26,19 @@
          process_response/2, format_packet_nicely/1]).
 
 -spec process_response(#mc_header{}, #mc_entry{}) -> any().
-process_response(#mc_header{opcode = ?UPR_ADD_STREAM, status = ?SUCCESS} = Header, Body) ->
+process_response(#mc_header{opcode = ?DCP_ADD_STREAM, status = ?SUCCESS} = Header, Body) ->
     {ok, get_opaque(Header, Body)};
-process_response(#mc_header{opcode = ?UPR_STREAM_REQ, status = ?ROLLBACK} = Header, Body) ->
+process_response(#mc_header{opcode = ?DCP_STREAM_REQ, status = ?ROLLBACK} = Header, Body) ->
     {rollback, get_body_as_int(Header, Body)};
 process_response(#mc_header{status=?SUCCESS}, #mc_entry{}) ->
     ok;
 process_response(#mc_header{status=Status}, #mc_entry{data=Msg}) ->
-    {upr_error, mc_client_binary:map_status(Status), Msg}.
+    {dcp_error, mc_client_binary:map_status(Status), Msg}.
 
 process_response({ok, Header, Body}) ->
     process_response(Header, Body).
 
--spec open_connection(port(), upr_conn_name(), upr_conn_type()) -> ok | upr_error().
+-spec open_connection(port(), dcp_conn_name(), dcp_conn_type()) -> ok | dcp_error().
 open_connection(Sock, ConnName, Type) ->
     Flags = case Type of
                 consumer ->
@@ -52,7 +52,7 @@ open_connection(Sock, ConnName, Type) ->
 
     ?log_debug("Open ~p connection ~p on socket ~p", [Type, ConnName, Sock]),
     process_response(
-      mc_client_binary:cmd_vocal(?UPR_OPEN, Sock,
+      mc_client_binary:cmd_vocal(?DCP_OPEN, Sock,
                                  {#mc_header{},
                                   #mc_entry{key = ConnName,ext = Extra}})).
 
@@ -67,7 +67,7 @@ add_stream(Sock, Partition, Opaque, Type) ->
                   1
           end,
 
-    {ok, quiet} = mc_client_binary:cmd_quiet(?UPR_ADD_STREAM, Sock,
+    {ok, quiet} = mc_client_binary:cmd_quiet(?DCP_ADD_STREAM, Sock,
                                              {#mc_header{opaque = Opaque,
                                                          vbucket = Partition},
                                               #mc_entry{ext = <<Ext:32>>}}).
@@ -75,7 +75,7 @@ add_stream(Sock, Partition, Opaque, Type) ->
 -spec close_stream(port(), vbucket_id(), integer()) -> {ok, quiet}.
 close_stream(Sock, Partition, Opaque) ->
     ?log_debug("Close stream for partition ~p, opaque = ~.16X", [Partition, Opaque, "0x"]),
-    {ok, quiet} = mc_client_binary:cmd_quiet(?UPR_CLOSE_STREAM, Sock,
+    {ok, quiet} = mc_client_binary:cmd_quiet(?DCP_CLOSE_STREAM, Sock,
                                              {#mc_header{opaque = Opaque,
                                                          vbucket = Partition},
                                               #mc_entry{}}).
@@ -86,53 +86,53 @@ stream_request(Sock, Partition, Opaque, StartSeqNo, EndSeqNo,
                PartitionUUID, SnapshotStart, SnapshotEnd) ->
     Extra = <<0:64, StartSeqNo:64, EndSeqNo:64, PartitionUUID:64,
               SnapshotStart:64, SnapshotEnd:64>>,
-    {ok, quiet} = mc_client_binary:cmd_quiet(?UPR_STREAM_REQ, Sock,
+    {ok, quiet} = mc_client_binary:cmd_quiet(?DCP_STREAM_REQ, Sock,
                                              {#mc_header{opaque = Opaque,
                                                          vbucket = Partition},
                                               #mc_entry{ext = Extra}}).
 
--spec setup_flow_control(port(), non_neg_integer()) -> ok | upr_error().
+-spec setup_flow_control(port(), non_neg_integer()) -> ok | dcp_error().
 setup_flow_control(Sock, ConnectionBufferSize) ->
     Body = iolist_to_binary([integer_to_list(ConnectionBufferSize), 0]),
-    Resp = mc_client_binary:cmd_vocal(?UPR_CONTROL, Sock,
+    Resp = mc_client_binary:cmd_vocal(?DCP_CONTROL, Sock,
                                       {#mc_header{},
                                        #mc_entry{key = <<"connection_buffer_size">>,
                                                  data = Body}}),
     process_response(Resp).
 
 -spec command_2_atom(integer()) -> atom().
-command_2_atom(?UPR_OPEN) ->
-    upr_open;
-command_2_atom(?UPR_ADD_STREAM) ->
-    upr_add_stream;
-command_2_atom(?UPR_CLOSE_STREAM) ->
-    upr_close_stream;
-command_2_atom(?UPR_STREAM_REQ) ->
-    upr_stream_req;
-command_2_atom(?UPR_GET_FAILOVER_LOG) ->
-    upr_get_failover_log;
-command_2_atom(?UPR_STREAM_END) ->
-    upr_stream_end;
-command_2_atom(?UPR_SNAPSHOT_MARKER) ->
-    upr_snapshot_marker;
-command_2_atom(?UPR_MUTATION) ->
-    upr_mutation;
-command_2_atom(?UPR_DELETION) ->
-    upr_deletion;
-command_2_atom(?UPR_EXPIRATION) ->
-    upr_expiration;
-command_2_atom(?UPR_FLUSH) ->
-    upr_flush;
-command_2_atom(?UPR_SET_VBUCKET_STATE) ->
-    upr_set_vbucket_state;
-command_2_atom(?UPR_CONTROL) ->
-    upr_control;
-command_2_atom(?UPR_WINDOW_UPDATE) ->
-    upr_window_update;
-command_2_atom(?UPR_NOP) ->
-    upr_nop;
+command_2_atom(?DCP_OPEN) ->
+    dcp_open;
+command_2_atom(?DCP_ADD_STREAM) ->
+    dcp_add_stream;
+command_2_atom(?DCP_CLOSE_STREAM) ->
+    dcp_close_stream;
+command_2_atom(?DCP_STREAM_REQ) ->
+    dcp_stream_req;
+command_2_atom(?DCP_GET_FAILOVER_LOG) ->
+    dcp_get_failover_log;
+command_2_atom(?DCP_STREAM_END) ->
+    dcp_stream_end;
+command_2_atom(?DCP_SNAPSHOT_MARKER) ->
+    dcp_snapshot_marker;
+command_2_atom(?DCP_MUTATION) ->
+    dcp_mutation;
+command_2_atom(?DCP_DELETION) ->
+    dcp_deletion;
+command_2_atom(?DCP_EXPIRATION) ->
+    dcp_expiration;
+command_2_atom(?DCP_FLUSH) ->
+    dcp_flush;
+command_2_atom(?DCP_SET_VBUCKET_STATE) ->
+    dcp_set_vbucket_state;
+command_2_atom(?DCP_CONTROL) ->
+    dcp_control;
+command_2_atom(?DCP_WINDOW_UPDATE) ->
+    dcp_window_update;
+command_2_atom(?DCP_NOP) ->
+    dcp_nop;
 command_2_atom(_) ->
-    not_upr.
+    not_dcp.
 
 -spec format_packet_nicely(binary()) -> nonempty_string().
 format_packet_nicely(<<?REQ_MAGIC:8, _Rest/binary>> = Packet) ->

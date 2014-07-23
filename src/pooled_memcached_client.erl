@@ -98,7 +98,7 @@ bulk_set_metas_inner(S, Vb, MutationsList) ->
     end.
 
 encode_single_set_meta(Vb,
-                       #upr_mutation{id = Key, rev = Rev, deleted = Deleted,
+                       #dcp_mutation{id = Key, rev = Rev, deleted = Deleted,
                                      body = DocValue, datatype = DT}) ->
     {OpCode, Data} = case Deleted of
                          true ->

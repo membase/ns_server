@@ -101,7 +101,7 @@ local_process_batch([], Cp, #httpdb{} = Target,
 
 local_process_batch([Mutation | Rest], Cp,
                     #httpdb{} = Target, Batch, BatchSize, BatchItems, XMemLoc, Acc) ->
-    #upr_mutation{id = Key,
+    #dcp_mutation{id = Key,
                   rev = Rev,
                   body = Body,
                   deleted = Deleted} = Mutation,
@@ -177,7 +177,7 @@ find_missing(DocInfos, Target, OptRepThreshold, XMemLoc) ->
     %% smaller than or equal to threshold.
     {BigDocIdRevs, SmallDocIdRevs, _DelCount, _BigDocCount,
      _SmallDocCount, _AllRevsCount} = lists:foldr(
-                                      fun(#upr_mutation{id = Id, rev = Rev, deleted = Deleted, body = Body},
+                                      fun(#dcp_mutation{id = Id, rev = Rev, deleted = Deleted, body = Body},
                                           {BigIdRevAcc, SmallIdRevAcc, DelAcc, BigAcc, SmallAcc, CountAcc}) ->
                                               DocSize = erlang:size(Body),
                                               %% deleted doc is always treated as small doc, regardless of doc size
@@ -218,7 +218,7 @@ find_missing(DocInfos, Target, OptRepThreshold, XMemLoc) ->
 
     %% build list of docinfo for all missing keys
     MissingDocInfoList = lists:filter(
-                           fun(#upr_mutation{id = Id,
+                           fun(#dcp_mutation{id = Id,
                                              local_seq = KeySeq,
                                              rev = {RevA, _}}) ->
                                    case lists:keyfind(Id, 1, Missing) of
@@ -239,7 +239,7 @@ find_missing(DocInfos, Target, OptRepThreshold, XMemLoc) ->
              [{startTS, xdcr_trace_log_formatter:format_ts(Start)},
               {k, {json,
                    [[Id, KeySeq, RevA]
-                    || #upr_mutation{id = Id,
+                    || #dcp_mutation{id = Id,
                                      local_seq = KeySeq,
                                      rev = {RevA, _}} <- MissingDocInfoList]}}]),
 
@@ -305,7 +305,7 @@ flush_docs_capi(Target, DocsList) ->
 %% ================================================= %%
 %% ========= FLUSHING DOCS USING XMEM ============== %%
 %% ================================================= %%
--spec flush_docs_xmem(term(), [#upr_mutation{}]) -> ok | {failed_write, term()}.
+-spec flush_docs_xmem(term(), [#dcp_mutation{}]) -> ok | {failed_write, term()}.
 flush_docs_xmem(_XMemLoc, []) ->
     ok;
 flush_docs_xmem(XMemLoc, MutationsList) ->
@@ -320,16 +320,16 @@ flush_docs_xmem(XMemLoc, MutationsList) ->
             {failed_write, Msg}
     end.
 
--spec maybe_flush_docs_xmem(any(), #batch{}, #upr_mutation{},
+-spec maybe_flush_docs_xmem(any(), #batch{}, #dcp_mutation{},
                             integer(), integer()) -> {#batch{}, integer()}.
 maybe_flush_docs_xmem(XMemLoc, Batch, Mutation, BatchSize, BatchItems) ->
     #batch{docs = DocAcc, size = SizeAcc, items = ItemsAcc} = Batch,
 
-    DocSize = case Mutation#upr_mutation.deleted of
+    DocSize = case Mutation#dcp_mutation.deleted of
                   true ->
                       0;
                   _ ->
-                      iolist_size(Mutation#upr_mutation.body)
+                      iolist_size(Mutation#dcp_mutation.body)
               end,
 
     SizeAcc2 = SizeAcc + DocSize,

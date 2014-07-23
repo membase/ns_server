@@ -29,12 +29,12 @@ start_link(ConnName, ProducerNode, Bucket) ->
 init([], ParentState) ->
     {[], upr_proxy:maybe_connect(ParentState)}.
 
-handle_packet(request, ?UPR_SET_VBUCKET_STATE, Packet, State, ParentState) ->
+handle_packet(request, ?DCP_SET_VBUCKET_STATE, Packet, State, ParentState) ->
     Consumer = upr_proxy:get_partner(ParentState),
     gen_server:cast(Consumer, {set_vbucket_state, Packet}),
     {proxy, State, ParentState};
 
-handle_packet(response, ?UPR_CLOSE_STREAM, Packet, State, ParentState) ->
+handle_packet(response, ?DCP_CLOSE_STREAM, Packet, State, ParentState) ->
     Consumer = upr_proxy:get_partner(ParentState),
     gen_server:cast(Consumer, {producer_stream_closed, Packet}),
     {block, State, ParentState};

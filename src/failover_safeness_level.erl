@@ -58,7 +58,7 @@
 -record(state,
         {bucket_name :: bucket_name(),
          tap_info :: #safeness_info{},
-         upr_info :: #safeness_info{},
+         dcp_info :: #safeness_info{},
          last_ts :: undefined | non_neg_integer(),
          last_update_local_clock :: non_neg_integer()
         }).
@@ -82,7 +82,7 @@ get_value(BucketName) ->
 init([BucketName]) ->
     {ok, #state{bucket_name = BucketName,
                 tap_info = #safeness_info{},
-                upr_info = #safeness_info{},
+                dcp_info = #safeness_info{},
                 last_update_local_clock = misc:time_to_epoch_ms_int(now())}}.
 
 terminate(_Reason, _State)     -> ok.
@@ -91,7 +91,7 @@ code_change(_OldVsn, State, _) -> {ok, State}.
 handle_event({stats, StatsBucket, #stat_entry{timestamp = TS, values = Values}},
              #state{bucket_name = StatsBucket,
                     tap_info = TapInfo,
-                    upr_info = UprInfo,
+                    dcp_info = DcpInfo,
                     last_ts = LastTS} = State) ->
     TapBacklogSize =
         case {orddict:find(ep_tap_replica_queue_backfillremaining, Values),
@@ -109,16 +109,16 @@ handle_event({stats, StatsBucket, #stat_entry{timestamp = TS, values = Values}},
                            LastTS,
                            TapInfo),
 
-    NewUprInfo =
+    NewDcpInfo =
          new_safeness_info(orddict:find(ep_upr_replica_items_remaining, Values),
                            orddict:find(ep_upr_replica_items_sent, Values),
                            TS,
                            LastTS,
-                           UprInfo),
+                           DcpInfo),
 
     {ok, State#state{last_ts = TS,
                      tap_info = NewTapInfo,
-                     upr_info = NewUprInfo,
+                     dcp_info = NewDcpInfo,
                      last_update_local_clock = misc:time_to_epoch_ms_int(now())}};
 
 handle_event(_, State) ->
@@ -199,13 +199,13 @@ pick_level(_, _) ->
 
 handle_call(get_level, #state{last_update_local_clock = UpdateTS,
                               tap_info = #safeness_info{safeness_level = TapLevel},
-                              upr_info = #safeness_info{safeness_level = UprLevel}} = State) ->
+                              dcp_info = #safeness_info{safeness_level = DcpLevel}} = State) ->
     Now = misc:time_to_epoch_ms_int(now()),
     RV = case Now - UpdateTS > ?STALENESS_THRESHOLD of
              true ->
                  stale;
              _ ->
-                 pick_level(TapLevel, UprLevel)
+                 pick_level(TapLevel, DcpLevel)
          end,
     {ok, {ok, RV}, State};
 handle_call(get_state, State) ->

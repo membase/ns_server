@@ -53,7 +53,7 @@
          mark_bucket_warmed/2,
          delete_vbucket_copies/4,
          prepare_nodes_for_rebalance/3,
-         prepare_nodes_for_upr_upgrade/3,
+         prepare_nodes_for_dcp_upgrade/3,
          finish_rebalance/3,
          this_node_replicator_triples/1,
          bulk_set_vbucket_state/4,
@@ -70,12 +70,12 @@
          get_tap_docs_estimate/4,
          get_tap_docs_estimate_many_taps/4,
          get_mass_tap_docs_estimate/3,
-         get_upr_docs_estimate/4,
-         get_mass_upr_docs_estimate/3,
-         wait_upr_data_move/5,
+         get_dcp_docs_estimate/4,
+         get_mass_dcp_docs_estimate/3,
+         wait_dcp_data_move/5,
          wait_seqno_persisted/5,
          get_vbucket_high_seqno/4,
-         upr_takeover/5,
+         dcp_takeover/5,
          inhibit_view_compaction/3,
          uninhibit_view_compaction/4]).
 
@@ -364,9 +364,9 @@ prepare_nodes_for_rebalance(Bucket, Nodes, RebalancerPid) ->
             Errors
     end.
 
-prepare_nodes_for_upr_upgrade(Bucket, Nodes, RebalancerPid) ->
+prepare_nodes_for_dcp_upgrade(Bucket, Nodes, RebalancerPid) ->
     process_multicall_rv(gen_server:multi_call(Nodes, server_name(Bucket),
-                                               {prepare_upr_upgrade, RebalancerPid},
+                                               {prepare_dcp_upgrade, RebalancerPid},
                                                ?PREPARE_REBALANCE_TIMEOUT)).
 
 finish_rebalance(Bucket, Nodes, RebalancerPid) ->
@@ -444,15 +444,15 @@ wait_index_updated(Bucket, Rebalancer, NewMasterNode, _ReplicaNodes, VBucket) ->
                           {wait_index_updated, VBucket}},
                          infinity).
 
-wait_upr_data_move(Bucket, Rebalancer, MasterNode, ReplicaNodes, VBucket) ->
+wait_dcp_data_move(Bucket, Rebalancer, MasterNode, ReplicaNodes, VBucket) ->
     gen_server:call(server_name(Bucket, MasterNode),
                     {if_rebalance, Rebalancer,
-                     {wait_upr_data_move, ReplicaNodes, VBucket}}, infinity).
+                     {wait_dcp_data_move, ReplicaNodes, VBucket}}, infinity).
 
-upr_takeover(Bucket, Rebalancer, OldMasterNode, NewMasterNode, VBucket) ->
+dcp_takeover(Bucket, Rebalancer, OldMasterNode, NewMasterNode, VBucket) ->
     gen_server:call(server_name(Bucket, NewMasterNode),
                     {if_rebalance, Rebalancer,
-                     {upr_takeover, OldMasterNode, VBucket}}, infinity).
+                     {dcp_takeover, OldMasterNode, VBucket}}, infinity).
 
 %% returns checkpoint id which 100% contains all currently persisted
 %% docs. Normally it's persisted_checkpoint_id + 1 (assuming
@@ -545,19 +545,19 @@ get_mass_tap_docs_estimate(Bucket, Node, VBuckets) ->
     {ok, _} = RV,
     RV.
 
--spec get_upr_docs_estimate(bucket_name(), node(), vbucket_id(), [node()]) ->
+-spec get_dcp_docs_estimate(bucket_name(), node(), vbucket_id(), [node()]) ->
                                    [{ok, {non_neg_integer(), non_neg_integer(), binary()}}].
-get_upr_docs_estimate(Bucket, SrcNode, VBucket, ReplicaNodes) ->
+get_dcp_docs_estimate(Bucket, SrcNode, VBucket, ReplicaNodes) ->
     do_servant_call({server_name(Bucket), SrcNode},
-                    {get_upr_docs_estimate, VBucket, ReplicaNodes}).
+                    {get_dcp_docs_estimate, VBucket, ReplicaNodes}).
 
--spec get_mass_upr_docs_estimate(bucket_name(), node(), [vbucket_id()]) ->
+-spec get_mass_dcp_docs_estimate(bucket_name(), node(), [vbucket_id()]) ->
                                         {ok, [{non_neg_integer(), non_neg_integer(), binary()}]}.
-get_mass_upr_docs_estimate(_Bucket, _Node, []) ->
+get_mass_dcp_docs_estimate(_Bucket, _Node, []) ->
     {ok, []};
-get_mass_upr_docs_estimate(Bucket, Node, VBuckets) ->
+get_mass_dcp_docs_estimate(Bucket, Node, VBuckets) ->
     RV = do_servant_call({server_name(Bucket), Node},
-                         {get_mass_upr_docs_estimate, VBuckets}),
+                         {get_mass_dcp_docs_estimate, VBuckets}),
     {ok, _} = RV,
     RV.
 
@@ -621,9 +621,9 @@ handle_call({prepare_rebalance, Pid}, _From,
     {reply, {ok, [{version, cluster_compat_mode:mb_master_advertised_version()}]},
      set_rebalance_mref(Pid, State1)};
 
-handle_call({prepare_upr_upgrade, Pid}, _From, #state{rebalance_pid = undefined} = State) ->
+handle_call({prepare_dcp_upgrade, Pid}, _From, #state{rebalance_pid = undefined} = State) ->
     {reply, ok, set_rebalance_mref(Pid, State#state{rebalancer_type = upgrader})};
-handle_call({prepare_upr_upgrade, _Pid}, _From, State) ->
+handle_call({prepare_dcp_upgrade, _Pid}, _From, State) ->
     {reply, unable_to_start_upgrade, State};
 
 handle_call(finish_rebalance, _From, State) ->
@@ -746,7 +746,7 @@ handle_call({wait_index_updated, VBucket}, From, #state{bucket_name = Bucket} = 
                        capi_set_view_manager:wait_index_updated(Bucket, VBucket)
                end),
     {noreply, State2};
-handle_call({wait_upr_data_move, ReplicaNodes, VBucket}, From, #state{bucket_name = Bucket} = State) ->
+handle_call({wait_dcp_data_move, ReplicaNodes, VBucket}, From, #state{bucket_name = Bucket} = State) ->
     State2 = spawn_rebalance_subprocess(
                State,
                From,
@@ -754,12 +754,12 @@ handle_call({wait_upr_data_move, ReplicaNodes, VBucket}, From, #state{bucket_nam
                        upr_replicator:wait_for_data_move(ReplicaNodes, Bucket, VBucket)
                end),
     {noreply, State2};
-handle_call({upr_takeover, OldMasterNode, VBucket}, From, #state{bucket_name = Bucket} = State) ->
+handle_call({dcp_takeover, OldMasterNode, VBucket}, From, #state{bucket_name = Bucket} = State) ->
     State2 = spawn_rebalance_subprocess(
                State,
                From,
                fun () ->
-                       replication_manager:upr_takeover(Bucket, OldMasterNode, VBucket)
+                       replication_manager:dcp_takeover(Bucket, OldMasterNode, VBucket)
                end),
     {noreply, State2};
 handle_call(initiate_indexing, From, #state{bucket_name = Bucket} = State) ->
@@ -868,18 +868,18 @@ handle_call({get_mass_tap_docs_estimate, VBucketsR}, From, State) ->
       fun (VBuckets, #state{bucket_name = Bucket}) ->
               ns_memcached:get_mass_tap_docs_estimate(Bucket, VBuckets)
       end);
-handle_call({get_upr_docs_estimate, _VBucketId, _ReplicaNodes} = Req, From, State) ->
+handle_call({get_dcp_docs_estimate, _VBucketId, _ReplicaNodes} = Req, From, State) ->
     handle_call_via_servant(
       From, State, Req,
       fun ({_, VBucketId, ReplicaNodes}, #state{bucket_name = Bucket}) ->
               [upr_replicator:get_docs_estimate(Bucket, VBucketId, Node)
                || Node <- ReplicaNodes]
       end);
-handle_call({get_mass_upr_docs_estimate, VBucketsR}, From, State) ->
+handle_call({get_mass_dcp_docs_estimate, VBucketsR}, From, State) ->
     handle_call_via_servant(
       From, State, VBucketsR,
       fun (VBuckets, #state{bucket_name = Bucket}) ->
-              ns_memcached:get_mass_upr_docs_estimate(Bucket, VBuckets)
+              ns_memcached:get_mass_dcp_docs_estimate(Bucket, VBuckets)
       end).
 
 handle_call_via_servant({FromPid, _Tag}, State, Req, Body) ->

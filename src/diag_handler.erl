@@ -109,7 +109,7 @@ grab_all_tap_and_checkpoint_stats(Timeout) ->
     InterestingBuckets = ordsets:intersection(lists:sort(ActiveBuckets),
                                               lists:sort(ThisNodeBuckets)),
     WorkItems = [{Bucket, Type} || Bucket <- InterestingBuckets,
-                                   Type <- [<<"tap">>, <<"checkpoint">>, <<"upr">>]],
+                                   Type <- [<<"tap">>, <<"checkpoint">>, <<"dcp">>]],
     Results = misc:parallel_map(
                 fun ({Bucket, Type}) ->
                         {ok, _} = timer2:kill_after(Timeout),

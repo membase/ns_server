@@ -36,7 +36,7 @@ cleanup(Bucket, Options) ->
         {ok, BucketConfig} ->
             case ns_bucket:bucket_type(BucketConfig) of
                 membase ->
-                    cleanup_with_possible_upr_upgrade(Bucket, Options, BucketConfig, FullConfig);
+                    cleanup_with_possible_dcp_upgrade(Bucket, Options, BucketConfig, FullConfig);
                 _ -> ok
             end
     end.
@@ -51,7 +51,7 @@ cleanup_with_membase_bucket_check_servers(Bucket, Options, BucketConfig, FullCon
             cleanup(Bucket, Options)
     end.
 
-cleanup_with_possible_upr_upgrade(Bucket, Options, BucketConfig, FullConfig) ->
+cleanup_with_possible_dcp_upgrade(Bucket, Options, BucketConfig, FullConfig) ->
     case upr_upgrade:consider_trivial_upgrade(Bucket, BucketConfig) of
         true ->
             cleanup(Bucket, Options);

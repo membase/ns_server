@@ -80,7 +80,7 @@ do_checkpoint(#rep_state{current_through_seq = Seq,
                          current_through_snapshot_seq = SnapshotSeq,
                          current_through_snapshot_end_seq = SnapshotEndSeq,
                          status = OldStatus,
-                         upr_failover_uuid = FailoverUUID} = State) ->
+                         dcp_failover_uuid = FailoverUUID} = State) ->
     #rep_vb_status{vb = Vb,
                    docs_checked = Checked,
                    docs_written = Written,
@@ -95,8 +95,8 @@ do_checkpoint(#rep_state{current_through_seq = Seq,
     SourceBucketName = (State#rep_state.rep_details)#rep.source,
 
     %% NOTE: we don't need to check if source still has all the
-    %% replicated stuff. upr failover id + seqnos already represent it
-    %% well enough. And if any of that is lost, upr will automatically
+    %% replicated stuff. dcp failover id + seqnos already represent it
+    %% well enough. And if any of that is lost, dcp will automatically
     %% rollback to a place that's safe to restart replication from.
 
     CommitResult = (catch perform_commit_for_checkpoint(State#rep_state.remote_vbopaque,
@@ -114,8 +114,8 @@ do_checkpoint(#rep_state{current_through_seq = Seq,
                               {<<"end_time">>, ?l2b(httpd_util:rfc1123_date())},
                               {<<"failover_uuid">>, FailoverUUID},
                               {<<"seqno">>, NewSeq},
-                              {<<"upr_snapshot_seqno">>, NewSnapshotSeq},
-                              {<<"upr_snapshot_end_seqno">>, NewSnapshotEndSeq},
+                              {<<"dcp_snapshot_seqno">>, NewSnapshotSeq},
+                              {<<"dcp_snapshot_end_seqno">>, NewSnapshotEndSeq},
                               {<<"total_docs_checked">>, TotalChecked + Checked},
                               {<<"total_docs_written">>, TotalWritten + Written},
                               {<<"total_data_replicated">>, TotalDataRepd + DataRepd}]},
@@ -338,8 +338,8 @@ do_parse_validate_checkpoint_doc(Vb, Body0, ApiRequestBase) ->
     CommitOpaque = proplists:get_value(<<"commitopaque">>, Body),
     FailoverUUID = proplists:get_value(<<"failover_uuid">>, Body),
     Seqno = proplists:get_value(<<"seqno">>, Body),
-    SnapshotSeq = proplists:get_value(<<"upr_snapshot_seqno">>, Body),
-    SnapshotEndSeq = proplists:get_value(<<"upr_snapshot_end_seqno">>, Body),
+    SnapshotSeq = proplists:get_value(<<"dcp_snapshot_seqno">>, Body),
+    SnapshotEndSeq = proplists:get_value(<<"dcp_snapshot_end_seqno">>, Body),
     ?x_trace(gotExistingCheckpoint, [{body, {json, {Body}}}]),
     case (CommitOpaque =/= undefined andalso
           is_integer(FailoverUUID) andalso
