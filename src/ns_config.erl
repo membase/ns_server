@@ -829,9 +829,14 @@ handle_call({cas_config, NewKVList, OldKVList, RemoteOrLocal}, _From, State) ->
     end;
 
 handle_call({upgrade_config_explicitly, Upgrader}, _From, State) ->
+    OldKVList = config_dynamic(State),
     NewConfig = upgrade_config(State, Upgrader),
-    ets:delete_all_objects(ns_config_ets_dup),
-    update_ets_dup(config_dynamic(NewConfig)),
+
+    NewKVList = config_dynamic(NewConfig),
+    Diff = NewKVList -- OldKVList,
+
+    update_ets_dup(Diff),
+    announce_locally_made_changes(Diff),
     {reply, ok, NewConfig}.
 
 
