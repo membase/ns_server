@@ -440,7 +440,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
                                   ns_bucket:update_bucket_props(BucketName,
                                                                 [{deltaRecoveryMap, undefined}]),
                                   master_activity_events:note_bucket_rebalance_ended(BucketName),
-                                  verify_replication(BucketName, KeepNodes, NewMap)
+                                  run_verify_replication(BucketName, KeepNodes, NewMap)
                           end
                   end, misc:enumerate(BucketConfigs, 0)),
 
@@ -629,6 +629,19 @@ histograms(Map, Servers) ->
               end, Histograms).
 
 
+run_verify_replication(Bucket, Nodes, Map) ->
+    Pid = proc_lib:spawn_link(?MODULE, verify_replication, [Bucket, Nodes, Map]),
+    ?log_debug("Spawned verify_replication worker: ~p", [Pid]),
+    {trap_exit, false} = erlang:process_info(self(), trap_exit),
+    MRef = erlang:monitor(process, Pid),
+    receive
+        stop ->
+            exit(stopped);
+        {'DOWN', MRef, _, _, _} ->
+            %% we're not trapping exits so if we're alive then child's
+            %% exit is normal
+            ok
+    end.
 
 verify_replication(Bucket, Nodes, Map) ->
     ExpectedReplicators0 = ns_bucket:map_to_replicas(Map, cluster_compat_mode:get_replication_topology()),
