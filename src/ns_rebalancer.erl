@@ -629,21 +629,8 @@ histograms(Map, Servers) ->
               end, Histograms).
 
 
-verify_replication(Bucket, Nodes, Map) ->
-    Pid = proc_lib:spawn_link(erlang, apply, [fun do_verify_replication/3, [Bucket, Nodes, Map]]),
-    ?log_debug("Spawned verify_replication worker: ~p", [Pid]),
-    {trap_exit, false} = erlang:process_info(self(), trap_exit),
-    MRef = erlang:monitor(process, Pid),
-    receive
-        stop ->
-            exit(stopped);
-        {'DOWN', MRef, _, _, _} ->
-            %% we're not trapping exits so if we're alive then child's
-            %% exit is normal
-            ok
-    end.
 
-do_verify_replication(Bucket, Nodes, Map) ->
+verify_replication(Bucket, Nodes, Map) ->
     ExpectedReplicators0 = ns_bucket:map_to_replicas(Map, cluster_compat_mode:get_replication_topology()),
     ExpectedReplicators = lists:sort(ExpectedReplicators0),
 
