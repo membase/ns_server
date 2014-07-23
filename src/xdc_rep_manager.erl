@@ -60,7 +60,7 @@ start_link() ->
 %    [{changes_left, Integer}, % amount of work remaining
 %     {docs_checked, Integer}, % total number of docs checked on target, survives restarts
 %     {docs_written, Integer}, % total number of docs written to target, survives restarts
-%     {vbs_replicating,[Integer, ...]} % list of vbuckets actively replicating
+%     ...
 %    ]
 % }
 stats(Bucket0) ->

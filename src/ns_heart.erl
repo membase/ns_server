@@ -409,7 +409,6 @@ grab_local_xdcr_replications() ->
     try xdc_replication_sup:all_local_replication_infos() of
         Infos ->
             [begin
-                 Props = lists:keydelete(vbs_replicating, 1, Props0),
                  RecentErrors = filter_out_stale_xdcr_errors(LastErrors, NowGregorian),
 
                  %% When mochijson encodes strings, it expects them to be already utf8-encoded.
@@ -426,7 +425,7 @@ grab_local_xdcr_replications() ->
                   {id, Id},
                   {errors, AsciiErrors}
                   | Props]
-             end || {Id, Props0, LastErrors} <- Infos]
+             end || {Id, Props, LastErrors} <- Infos]
     catch T:E ->
             ?log_debug("Ignoring exception getting xdcr replication infos~n~p", [{T,E,erlang:get_stacktrace()}]),
             []

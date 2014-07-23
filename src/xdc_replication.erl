@@ -140,8 +140,7 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
     % sum all the vb stats and collect list of vb replicating
     Stats = dict:fold(
                     fun(_,
-                        #rep_vb_status{vb = Vb,
-                                       status = Status,
+                        #rep_vb_status{status = Status,
                                        num_changes_left = Left,
                                        docs_changes_queue = DocsQueue,
                                        size_changes_queue = SizeQueue,
@@ -170,8 +169,7 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                          DocsLatencyAcc,
                          DocsLatencyWtAcc,
 
-                         DocsOptRepdAcc,
-                         VbReplicatingAcc}) ->
+                         DocsOptRepdAcc}) ->
 
                             %% only count replicating vb reps when computing latency stats and replication rates
                             {MetaL, MetaLWt} = case Status of
@@ -200,20 +198,15 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                              DocsLatencyAcc + DocsL,
                              DocsLatencyWtAcc + DocsLWt,
 
-                             DocsOptRepdAcc + DocsOptRepd,
-                             if Status == replicating ->
-                                     [Vb | VbReplicatingAcc];
-                                true ->
-                                     VbReplicatingAcc
-                             end}
+                             DocsOptRepdAcc + DocsOptRepd}
                     end, {0, 0, 0, 0,
                           0, 0, 0, 0,
                           0, 0, 0, 0,
-                          0, []}, Dict),
+                          0}, Dict),
     {Left1, Checked1, Written1, DataRepd1,
      WorkTime1, CommitTime1, DocsChangesQueue1, SizeChangesQueue1,
      MetaLatency1, MetaLatencyWt1, DocsLatency1, DocsLatencyWt1,
-     DocsOptRepd1, VbsReplicating1} = Stats,
+     DocsOptRepd1} = Stats,
     %% get checkpoint stats
     {NumCheckpoints1, NumFailedCkpts1} = checkpoint_status(CkptHistory),
 
@@ -235,7 +228,6 @@ handle_call(stats, _From, #replication{vb_rep_dict = Dict,
              {num_failedckpts, NumFailedCkpts1},
              {docs_rep_queue, DocsChangesQueue1},
              {size_rep_queue, SizeChangesQueue1},
-             {vbs_replicating, VbsReplicating1},
              {rate_replication, round(NewRateStat#ratestat.curr_rate_item)},
              {bandwidth_usage, round(NewRateStat#ratestat.curr_rate_data)},
              {meta_latency_aggr, round(MetaLatency1)},
