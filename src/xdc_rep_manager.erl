@@ -75,12 +75,6 @@ init(_) ->
     %% monitor replication doc change
     {Loop, <<"_replicator">> = RepDbName} = changes_feed_loop(),
 
-    %% we make sure that we cannot survive death of
-    %% xdc_replication_sup. Otherwise, death of xdc_replication_sup
-    %% might cause us to loose track of what is actually running
-    %% versus what needs to be running.
-    erlang:link(whereis(xdc_replication_sup)),
-
     {ok, #rep_db_state{
        changes_feed_loop = Loop,
        rep_db_name = RepDbName

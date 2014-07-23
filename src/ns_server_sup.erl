@@ -182,18 +182,10 @@ child_specs() ->
      {ns_null_connection_pool, {ns_null_connection_pool, start_link, [ns_null_connection_pool]},
       permanent, 1000, worker, []},
 
-     %% per-vbucket replication supervisor, required by XDC manager
-     {xdc_replication_sup,
-      {xdc_replication_sup, start_link, []},
-      permanent, infinity, supervisor, [xdc_replication_sup]},
-
-     %% XDC replication manager
-     %% per-bucket supervisor needs xdc_rep_manager. In fact any couch
-     %% replication requires xdc_rep_manager to be started, because it
-     %% relies on some public ETS tables.
-     {xdc_rep_manager,
-      {xdc_rep_manager, start_link, []},
-      permanent, 30000, worker, []},
+     %% xdcr subsystem supervisor
+     {xdcr_sup,
+      {xdcr_sup, start_link, []},
+      permanent, infinity, supervisor, []},
 
      {ns_memcached_sockets_pool, {ns_memcached_sockets_pool, start_link, []},
       permanent, 1000, worker, []},
