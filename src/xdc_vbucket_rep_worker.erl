@@ -71,17 +71,24 @@ queue_fetch_loop(WorkerID, Target, Cp, ChangesManager,
             %% the latency returned should be coupled with batch size, for example,
             %% if we send N docs in a batch, the latency returned to stats should be the latency
             %% for all N docs.
-            DocLatency = timer:now_diff(now(), Start) div 1000,
+            %% NOTE: we need to keep it int for ets:update_counter to work
+            DocLatency =
+                if
+                    MissingDocInfoList =/= [] ->
+                        timer:now_diff(os:timestamp(), Start);
+                    true ->
+                        undefined
+                end,
 
             %% report seq done and stats to vb replicator
             ok = gen_server:call(Cp, {report_seq_done,
+                                      MetaLatency,
+                                      DocLatency,
                                       #worker_stat{
                                          worker_id = WorkerID,
                                          seq = ReportSeq,
                                          snapshot_start_seq = SnapshotStart,
                                          snapshot_end_seq = SnapshotEnd,
-                                         worker_meta_latency_aggr = MetaLatency*NumChecked,
-                                         worker_docs_latency_aggr = DocLatency*NumWritten,
                                          worker_data_replicated = DataRepd,
                                          worker_item_opt_repd = NumDocsOptRepd,
                                          worker_item_checked = NumChecked,
@@ -217,18 +224,24 @@ find_missing(DocInfos, Target, OptRepThreshold, XMemLoc) ->
 
     %% metadata operation for big docs only
     Missing =
-        case length(BigDocIdRevs) of
-            V when V > 0 ->
+        if
+            BigDocIdRevs =/= [] ->
                 MissingBigIdRevs = find_missing_helper(Target, BigDocIdRevs, XMemLoc),
                 LenMissing = length(MissingBigIdRevs),
-                ?x_trace(didFindMissing, [{count, V}, {missingCount, LenMissing}]),
+                ?x_trace(didFindMissing, [{count, length(BigDocIdRevs)}, {missingCount, LenMissing}]),
                 lists:flatten([SmallDocIdRevs | MissingBigIdRevs]);
-            _ ->
+            true ->
                 SmallDocIdRevs
         end,
 
-    %% latency in millisecond
-    Latency = round(timer:now_diff(os:timestamp(), Start) div 1000),
+    %% latency in µseconds
+    Latency =
+        if
+            BigDocIdRevs =/= [] ->
+                timer:now_diff(os:timestamp(), Start);
+            true ->
+                undefined
+        end,
 
     %% build list of docinfo for all missing keys
     MissingDocInfoList = lists:filter(

@@ -560,9 +560,18 @@ computed_stats_lazy_proplist(BucketName) ->
                                                                end
                                                        end),
 
+                              Utilization = Z2(<<Prefix/binary, "time_working_rate">>,
+                                               <<Prefix/binary, "max_vbreps">>,
+                                               fun (Rate, Max) ->
+                                                       try 100 * Rate / Max
+                                                       catch error:badarith -> 0
+                                                       end
+                                               end),
+
                               [{<<Prefix/binary, "wtavg_meta_latency">>, WtAvgMetaLatency},
                                {<<Prefix/binary, "wtavg_docs_latency">>, WtAvgDocsLatency},
-                               {<<Prefix/binary, "percent_completeness">>, PercentCompleteness}]
+                               {<<Prefix/binary, "percent_completeness">>, PercentCompleteness},
+                               {<<Prefix/binary, "utilization">>, Utilization}]
                       end,
                       Reps),
 
@@ -849,20 +858,11 @@ couchbase_replication_stats_descriptions(BucketId) ->
                                           {name,<<Prefix/binary,"changes_left">>},
                                           {desc,<<"Number of mutations to be replicated to other clusters "
                                                   "(measured from per-replication stat changes_left)">>}]},
-                                 {struct,[{title,<<"mutations checked">>},
-                                          {name,<<Prefix/binary,"docs_checked">>},
-                                          {desc,<<"Document mutations checked for XDC replication "
-                                                  "(measured from per-replication stat docs_checked)">>}]},
-                                 {struct,[{title,<<"mutations replicated">>},
-                                          {name,<<Prefix/binary,"docs_written">>},
-                                          {desc,<<"Document mutations replicated to remote cluster "
-                                                  "(measured from per-replication stat docs_written)">>}]},
-                                 {struct,[{isBytes,true},
-                                          {title,<<"data replicated">>},
-                                          {name,<<Prefix/binary,"data_replicated">>},
-                                          {desc,<<"Data in bytes replicated to remote cluster "
-                                                  "(measured from per-replication stat data_replicated)">>}]},
-                                 %% second row
+                                 {struct,[{title,<<"percent completed">>},
+                                          {maxY, 100},
+                                          {name,<<Prefix/binary, "percent_completeness">>},
+                                          {desc,<<"Percentage of checked items out of all checked and to-be-replicated items "
+                                                  "(measured from per-replication stat percent_completeness)">>}]},
                                  {struct,[{title,<<"active vb reps">>},
                                           {name,<<Prefix/binary,"active_vbreps">>},
                                           {desc,<<"Number of active vbucket replications "
@@ -871,33 +871,7 @@ couchbase_replication_stats_descriptions(BucketId) ->
                                           {name,<<Prefix/binary,"waiting_vbreps">>},
                                           {desc,<<"Number of waiting vbucket replications "
                                                   "(measured from per-replication stat waiting_vbreps)">>}]},
-                                 {struct,[{title,<<"secs in replicating">>},
-                                          {name,<<Prefix/binary,"time_working">>},
-                                          {desc,<<"Total time in secs all vb replicators spent checking and writing "
-                                                  "(measured from per-replication stat time_working)">>}]},
-                                 {struct,[{title,<<"secs in checkpointing">>},
-                                          {name,<<Prefix/binary,"time_committing">>},
-                                          {desc,<<"Total time all vb replicators spent waiting for commit and checkpoint "
-                                                  "(measured from per-replication stat time_committing)">>}]},
-                                 %% third row
-                                 {struct,[{title,<<"checkpoints issued">>},
-                                          {name,<<Prefix/binary,"num_checkpoints">>},
-                                          {desc,<<"Number of successful checkpoints out of the last 10 issued on each node in current replication"
-                                                  "(measured from per-replication stat num_checkpoints)">>}]},
-                                 {struct,[{title,<<"checkpoints failed">>},
-                                          {name,<<Prefix/binary,"num_failedckpts">>},
-                                          {desc,<<"Number of failed checkpoints out of the last 10 issued on each node in current replication"
-                                                  "(measured from per-replication stat num_failedckpts)">>}]},
-                                 {struct,[{title,<<"mutations in queue">>},
-                                          {name,<<Prefix/binary,"docs_rep_queue">>},
-                                          {desc,<<"Number of document mutations in XDC replication queue "
-                                                  "(measured from per-replication stat docs_rep_queue)">>}]},
-                                 {struct,[{isBytes,true},
-                                          {title,<<"XDCR queue size">>},
-                                          {name,<<Prefix/binary,"size_rep_queue">>},
-                                          {desc,<<"Size in bytes of XDC replication queue "
-                                                  "(measured from per-replication stat size_rep_queue)">>}]},
-                                 %% fourth row
+                                 %% second row
                                  {struct,[{title,<<"mutation replication rate">>},
                                           {name,<<Prefix/binary,"rate_replication">>},
                                           {desc,<<"Rate of replication in terms of number of replicated mutations per second "
@@ -907,23 +881,41 @@ couchbase_replication_stats_descriptions(BucketId) ->
                                           {name,<<Prefix/binary,"bandwidth_usage">>},
                                           {desc,<<"Rate of replication in terms of bytes replicated per second "
                                                   "(measured from per-replication stat bandwidth_usage)">>}]},
-                                 {struct,[{title,<<"ms meta ops latency">>},
+                                 {struct,[{title,<<"opt. replication rate">>},
+                                          {name,<<Prefix/binary,"rate_doc_opt_repd">>},
+                                          {desc,<<"Rate of optimistic replications in terms of number of replicated mutations per second ">>}]},
+                                 {struct,[{title,<<"doc checks rate">>},
+                                          {name,<<Prefix/binary,"rate_doc_checks">>},
+                                          {desc,<<"Rate of doc checks per second ">>}]},
+
+                                 %% third row
+                                 {struct,[{title,<<"meta batches/sec">>},
+                                          {name,<<Prefix/binary, "meta_latency_wt">>},
+                                          {desc,<<"Weighted average latency in ms of sending getMeta and waiting for conflict solution result from remote cluster "
+                                                  "(measured from per-replication stat wtavg_meta_latency)">>}]},
+                                 {struct,[{title,<<"ms meta batch latency">>},
                                           {name,<<Prefix/binary, "wtavg_meta_latency">>},
                                           {desc,<<"Weighted average latency in ms of sending getMeta and waiting for conflict solution result from remote cluster "
                                                   "(measured from per-replication stat wtavg_meta_latency)">>}]},
-                                 {struct,[{title,<<"ms doc ops latency">>},
+                                 {struct,[{title,<<"docs batches/sec">>},
+                                          {name,<<Prefix/binary, "docs_latency_wt">>},
+                                          {desc,<<"Weighted average latency in ms of sending replicated mutations to remote cluster "
+                                                  "(measured from per-replication stat wtavg_docs_latency)">>}]},
+                                 {struct,[{title,<<"ms doc batch latency">>},
                                           {name,<<Prefix/binary, "wtavg_docs_latency">>},
                                           {desc,<<"Weighted average latency in ms of sending replicated mutations to remote cluster "
                                                   "(measured from per-replication stat wtavg_docs_latency)">>}]},
-                                 %% fifth row
-                                 {struct,[{title,<<"mutations replicated optimistically">>},
-                                          {name,<<Prefix/binary,"docs_opt_repd">>},
-                                          {desc,<<"Number of mutations optimistically replicated to remote cluster "
-                                                  "(measured from per-replication stat docs_opt_repd)">>}]},
-                                 {struct,[{title,<<"percent completed">>},
-                                          {name,<<Prefix/binary, "percent_completeness">>},
-                                          {desc,<<"Percentage of checked items out of all checked and to-be-replicated items "
-                                                  "(measured from per-replication stat percent_completeness)">>}]}]}]}
+                                 %% fourth row
+                                 {struct, [{title, <<"wakeups/sec">>},
+                                           {name, <<Prefix/binary, "wakeups_rate">>},
+                                           {desc, <<"Rate of XDCR vbucket replicator wakeups">>}]},
+                                 {struct, [{title, <<"batches/sec">>},
+                                           {name, <<Prefix/binary, "worker_batches_rate">>},
+                                           {desc, <<"Rate of XDCR vbucket replicator worker batches">>}]},
+                                 {struct, [{title, <<"% utilization">>},
+                                           {maxY, 100},
+                                           {name, <<Prefix/binary, "utilization">>},
+                                           {desc, <<"utilization">>}]}]}]}
 
               end, Reps).
 

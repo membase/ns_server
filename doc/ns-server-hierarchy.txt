@@ -155,6 +155,8 @@
                                     "'work' of starting and shutting down ns_bucket_sup childs is done by this
                                     guy. I.e. because supervisor:xxx API is synchronous")
                         (supervisor 'xdcr_sup :mode :rest_for_one
+                                    (worker 'xdc_stats_holder
+                                            "owns xdcr stats ets table")
                                     (supervisor 'xdc_replication_sup :mode :one_for_one
                                                 "owns individual XDCR replications")
                                     (gen-server 'xdc_rep_manager

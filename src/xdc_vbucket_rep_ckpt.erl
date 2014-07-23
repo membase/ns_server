@@ -48,12 +48,6 @@ cancel_timer(#rep_state{timer = Timer} = State) ->
     {ok, cancel} = timer:cancel(Timer),
     State#rep_state{timer = nil}.
 
-bump_status_counter(OldStatus, State, Element) ->
-    OldValue = element(Element, OldStatus),
-    NewValue = OldValue + 1,
-    NewStatus = setelement(Element, OldStatus, NewValue),
-    State#rep_state{status = NewStatus}.
-
 -spec do_checkpoint(#rep_state{}) -> {ok, binary(), #rep_state{}} |
                                      {checkpoint_commit_failure, binary(), #rep_state{}}.
 do_checkpoint(#rep_state{current_through_seq=Seq, committed_seq=Seq} = State) ->
@@ -76,18 +70,13 @@ do_checkpoint(#rep_state{remote_vbopaque = {old_node_marker, RemoteStartTime},
             ?xdcr_debug("Detected remote ep-engine instance restart: ~s vs ~s", [RemoteStartTime, NowStartTime]),
             {checkpoint_commit_failure, {start_time_mismatch, RemoteStartTime, NowStartTime}, State}
     end;
-do_checkpoint(#rep_state{current_through_seq = Seq,
+do_checkpoint(#rep_state{rep_details = #rep{id = RepId},
+                         current_through_seq = Seq,
                          current_through_snapshot_seq = SnapshotSeq,
                          current_through_snapshot_end_seq = SnapshotEndSeq,
                          status = OldStatus,
                          dcp_failover_uuid = FailoverUUID} = State) ->
-    #rep_vb_status{vb = Vb,
-                   docs_checked = Checked,
-                   docs_written = Written,
-                   data_replicated = DataRepd,
-                   total_docs_checked = TotalChecked,
-                   total_docs_written = TotalWritten,
-                   total_data_replicated = TotalDataRepd} = OldStatus,
+    #rep_vb_status{vb = Vb} = OldStatus,
 
     ?xdcr_info("checkpointing for vb: ~p at ~p",
                [Vb, {Seq, SnapshotSeq, SnapshotEndSeq, FailoverUUID}]),
@@ -115,10 +104,7 @@ do_checkpoint(#rep_state{current_through_seq = Seq,
                               {<<"failover_uuid">>, FailoverUUID},
                               {<<"seqno">>, NewSeq},
                               {<<"dcp_snapshot_seqno">>, NewSnapshotSeq},
-                              {<<"dcp_snapshot_end_seqno">>, NewSnapshotEndSeq},
-                              {<<"total_docs_checked">>, TotalChecked + Checked},
-                              {<<"total_docs_written">>, TotalWritten + Written},
-                              {<<"total_data_replicated">>, TotalDataRepd + DataRepd}]},
+                              {<<"dcp_snapshot_end_seqno">>, NewSnapshotEndSeq}]},
             DB = capi_utils:must_open_master_vbucket(SourceBucketName),
             try
                 ok = couch_db:update_doc(DB, #doc{id = CheckpointDocId,
@@ -131,8 +117,8 @@ do_checkpoint(#rep_state{current_through_seq = Seq,
             ?x_trace(savedCheckpoint,
                      [{id, CheckpointDocId},
                       {doc, {json, CheckpointDoc}}]),
-            update_checkpoint_status_to_parent(NewState, true),
-            {ok, [], bump_status_counter(OldStatus, NewState, #rep_vb_status.num_checkpoints)};
+            ets:update_counter(xdcr_stats, RepId, {#xdcr_stats_sample.succeeded_checkpoints, 1}),
+            {ok, [], NewState};
         Other ->
             case Other of
                 {mismatch, _} ->
@@ -142,30 +128,9 @@ do_checkpoint(#rep_state{current_through_seq = Seq,
                     ?x_trace(checkpointFailed, []),
                     ?xdcr_error("Checkpointing failed unexpectedly (or could be network problem): ~p", [Other])
             end,
-            update_checkpoint_status_to_parent(State, false),
-            NewState = bump_status_counter(OldStatus, State, #rep_vb_status.num_failedckpts),
-            {checkpoint_commit_failure, Other, NewState}
+            ets:update_counter(xdcr_stats, RepId, {#xdcr_stats_sample.failed_checkpoints, 1}),
+            {checkpoint_commit_failure, Other, State}
     end.
-
-%% update the checkpoint status to parent bucket replicator
-update_checkpoint_status_to_parent(#rep_state{
-                                      rep_details = RepDetails,
-                                      parent = Parent,
-                                      status = RepStatus}, Succ) ->
-
-    VBucket = RepStatus#rep_vb_status.vb,
-    RawTime = os:timestamp(),
-    LocalTime = calendar:now_to_local_time(RawTime),
-
-    ?xdcr_debug("replicator (vb: ~p, source: ~p, dest: ~p) reports checkpoint "
-                "status: {succ: ~p} to parent: ~p",
-                [VBucket, RepDetails#rep.source, RepDetails#rep.target, Succ, Parent]),
-
-    %% post to parent bucket replicator
-    Parent ! {set_checkpoint_status, #rep_checkpoint_status{ts = RawTime,
-                                                            time = LocalTime,
-                                                            vb = VBucket,
-                                                            succ = Succ}}.
 
 build_request_base(HttpDB, Bucket, BucketUUID, VBucket) ->
     [Scheme, Host, _DbName] = string:tokens(HttpDB#httpdb.url, "/"),
@@ -315,13 +280,7 @@ handle_no_checkpoint(ApiRequestBase) ->
 handle_no_checkpoint_with_opaque(RemoteVBOpaque) ->
     ?x_trace(noCheckpoint, [{vbopaque, RemoteVBOpaque}]),
     StartSeq = 0,
-    TotalDocsChecked = 0,
-    TotalDocsWritten = 0,
-    TotalDataReplicated = 0,
     {StartSeq, 0, 0, 0,
-     TotalDocsChecked,
-     TotalDocsWritten,
-     TotalDataReplicated,
      RemoteVBOpaque}.
 
 parse_validate_checkpoint_doc(Vb, Body, ApiRequestBase) ->
@@ -359,15 +318,8 @@ do_parse_validate_checkpoint_doc(Vb, Body0, ApiRequestBase) ->
                 {ok, RemoteVBOpaque} ->
                     ?xdcr_debug("local checkpoint for vb ~B matches. Seqno: ~B", [Vb, Seqno]),
                     StartSeq = Seqno,
-                    TotalDocsChecked = proplists:get_value(<<"total_docs_checked">>, Body, 0),
-                    TotalDocsWritten = proplists:get_value(<<"total_docs_written">>, Body, 0),
-                    TotalDataReplicated = proplists:get_value(<<"total_data_replicated">>, Body, 0),
-                    ?xdcr_debug("Checkpoint stats: ~p", [{TotalDocsChecked, TotalDocsWritten, TotalDataReplicated}]),
                     {StartSeq, SnapshotSeq, SnapshotEndSeq,
                      FailoverUUID,
-                     TotalDocsChecked,
-                     TotalDocsWritten,
-                     TotalDataReplicated,
                      RemoteVBOpaque}
             end
     end.

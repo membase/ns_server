@@ -22,8 +22,12 @@
 -export([my_active_vbuckets/1]).
 -export([parse_rep_db/3]).
 -export([sanitize_status/3, get_rep_info/1]).
+-export([create_stats_table/0,
+         init_replication_stats/1,
+         cleanup_replication_stats/1]).
 
 -include("xdc_replicator.hrl").
+-include_lib("stdlib/include/ms_transform.hrl").
 
 %% imported functions
 -import(couch_util, [get_value/2,
@@ -173,3 +177,18 @@ sanitize_status(_Opt, _PDict, State) ->
 
 get_rep_info(#rep{source = Src, target = Tgt, replication_mode = Mode}) ->
     ?format_msg("from ~p to ~p in mode: ~p", [Src, Tgt, Mode]).
+
+create_stats_table() ->
+    ets:new(xdcr_stats, [named_table, public, set, {keypos, #xdcr_stats_sample.id}]).
+
+init_replication_stats(Id) ->
+    ets:delete(xdcr_stats, Id),
+    ets:insert(xdcr_stats, #xdcr_stats_sample{id = Id}).
+
+cleanup_replication_stats(Id) ->
+    ets:delete(xdcr_stats, Id),
+    %% removes tuples of the form {xdcr_vb_stats_sample, {Id, _}, ...}
+    %% we use such composite keys to store per-vbucket and
+    %% per-replication stats (like through seqno)
+    MS = ets:fun2ms(fun (#xdcr_vb_stats_sample{id_and_vb = {I, _}}) when I =:= Id -> true end),
+    ets:select_delete(xdcr_stats, MS).

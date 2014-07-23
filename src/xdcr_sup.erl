@@ -18,6 +18,7 @@
 
 -export([start_link/0]).
 -export([init/1]).
+-export([link_stats_holder_body/0]).
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
@@ -25,8 +26,19 @@ start_link() ->
 init([]) ->
     {ok, {{rest_for_one, 3, 10}, child_specs()}}.
 
+link_stats_holder_body() ->
+    xdc_rep_utils:create_stats_table(),
+    proc_lib:init_ack({ok, self()}),
+    receive
+        _ -> ok
+    end.
+
 child_specs() ->
-    [{xdc_replication_sup,
+    [{xdc_stats_holder,
+      {proc_lib, start_link, [?MODULE, link_stats_holder_body, []]},
+      permanent, 1000, worker, []},
+
+     {xdc_replication_sup,
       {xdc_replication_sup, start_link, []},
       permanent, infinity, supervisor, [xdc_replication_sup]},
 

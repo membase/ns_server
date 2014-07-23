@@ -212,59 +212,21 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 %% Internal functions
-transform_xdc_stats_loop([], Out) -> Out;
-transform_xdc_stats_loop([In | T], {Totals, Reps}) ->
+transform_xdc_stats_loop([], Acc, TotalChangesLeft) -> {Acc, TotalChangesLeft};
+transform_xdc_stats_loop([In | T], Reps, TotalChangesLeft) ->
     {RepID, RepStats} = In,
     PerRepStats = [{iolist_to_binary([<<"replications/">>, RepID, <<"/">>, atom_to_binary(StatK, latin1)]),
-                    StatV} || {StatK, StatV} <- RepStats, is_integer(StatV)],
-   Totals2 = {element(1, Totals) + proplists:get_value(changes_left, RepStats),
-              element(2, Totals) + proplists:get_value(docs_checked, RepStats),
-              element(3, Totals) + proplists:get_value(docs_written, RepStats),
-              element(4, Totals) + proplists:get_value(data_replicated, RepStats),
-              element(5, Totals) + proplists:get_value(active_vbreps, RepStats),
-              element(6, Totals) + proplists:get_value(waiting_vbreps, RepStats),
-              element(7, Totals) + proplists:get_value(time_working, RepStats),
-              element(8, Totals) + proplists:get_value(time_committing, RepStats),
-              element(9, Totals) + proplists:get_value(num_checkpoints, RepStats),
-              element(10, Totals) + proplists:get_value(num_failedckpts, RepStats),
-              element(11, Totals) + proplists:get_value(docs_rep_queue, RepStats),
-              element(12, Totals) + proplists:get_value(size_rep_queue, RepStats),
-              element(13, Totals) + proplists:get_value(rate_replication, RepStats),
-              element(14, Totals) + proplists:get_value(bandwidth_usage, RepStats),
-              element(15, Totals) + proplists:get_value(meta_latency_aggr, RepStats),
-              element(16, Totals) + proplists:get_value(meta_latency_wt, RepStats),
-              element(17, Totals) + proplists:get_value(docs_latency_aggr, RepStats),
-              element(18, Totals) + proplists:get_value(docs_latency_wt, RepStats)},
-    transform_xdc_stats_loop(T, {Totals2,
-                                 lists:append(PerRepStats, Reps)}).
+                    StatV} || {StatK, StatV} <- RepStats, is_number(StatV)],
+    NewTotalChangesLeft = TotalChangesLeft + proplists:get_value(changes_left, RepStats, 0),
+    transform_xdc_stats_loop(T, [PerRepStats | Reps], NewTotalChangesLeft).
 
 transform_xdc_stats(XDCStats) ->
-    {Totals, RepStats} = transform_xdc_stats_loop(XDCStats,
-                                                  {{0,0,0,0,
-                                                    0,0,0,0,
-                                                    0,0,0,0,
-                                                    0,0,0,0,0,0},[]}),
+    {RepStats, TotalChangesLeft} = transform_xdc_stats_loop(XDCStats, [], 0),
 
-    TotalStats = [{replication_changes_left, element(1, Totals)},
-                  {replication_docs_checked, element(2, Totals)},
-                  {replication_docs_written, element(3, Totals)},
-                  {replication_data_replicated, element(4, Totals)},
-                  {replication_active_vbreps, element(5, Totals)},
-                  {replication_waiting_vbreps, element(6, Totals)},
-                  {replication_work_time, element(7, Totals)},
-                  {replication_commit_time, element(8, Totals)},
-                  {replication_num_checkpoints, element(9, Totals)},
-                  {replication_num_failedckpts, element(10, Totals)},
-                  {replication_docs_rep_queue, element(11, Totals)},
-                  {replication_size_rep_queue, element(12, Totals)},
-                  {replication_rate_replication, element(13, Totals)},
-                  {replication_bandwidth_usage, element(14, Totals)},
-                  {replication_meta_latency_aggr, element(15, Totals)},
-                  {replication_meta_latency_wt, element(16, Totals)},
-                  {replication_docs_latency_aggr, element(17, Totals)},
-                  {replication_docs_latency_wt, element(18, Totals)}],
+    GlobalList = [{<<"replication_changes_left">>, TotalChangesLeft},
+                  {<<"replication_docs_rep_queue">>, 0}],
 
-    lists:sort(lists:append(TotalStats, RepStats)).
+    lists:sort(lists:append([GlobalList | RepStats])).
 
 format_stats(Stats) ->
     erlang:list_to_binary(

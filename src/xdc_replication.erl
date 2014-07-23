@@ -27,14 +27,33 @@
 
 -include("xdc_replicator.hrl").
 -include("remote_clusters_info.hrl").
+-include_lib("stdlib/include/ms_transform.hrl").
 
 %% rate of replicaiton stat maintained in bucket replicator
 -record(ratestat, {
           timestamp = now(),
           item_replicated = 0,
           data_replicated = 0,
+          get_meta_batches = 0,
+          get_meta_latency = 0,
+          set_meta_batches = 0,
+          set_meta_latency = 0,
+          activations = 0,
+          worker_batches = 0,
+          docs_checked = 0,
+          docs_opt_repd = 0,
+          work_time = 0,
+          curr_set_meta_latency_agg = 0,
+          curr_get_meta_latency_agg = 0,
+          curr_set_meta_batches_rate = 0,
+          curr_get_meta_batches_rate = 0,
           curr_rate_item = 0,
-          curr_rate_data = 0
+          curr_rate_data = 0,
+          curr_check_rate_item = 0,
+          curr_opt_rate_item = 0,
+          curr_activations_rate = 0,
+          curr_worker_batches_rate = 0,
+          curr_work_time_rate = 0
 }).
 
 %% bucket level replication state used by module xdc_replication
@@ -48,14 +67,11 @@
           work_throttle,                   % limits # of concurrent vb replicators working
           num_active = 0,                  % number of active replicators
           num_waiting = 0,                 % number of waiting replicators
-          vb_rep_dict = dict:new(),        % contains state and stats for each replicator
 
           %% rate of replication
           ratestat = #ratestat{},
           %% history of last N errors
-          error_reports = ringbuffer:new(?XDCR_ERROR_HISTORY),
-          %% history of last N checkpoints
-          checkpoint_history = ringbuffer:new(?XDCR_CHECKPOINT_HISTORY)
+          error_reports = ringbuffer:new(?XDCR_ERROR_HISTORY)
          }).
 
 start_link(Rep) ->
@@ -131,109 +147,69 @@ init([#rep{source = SrcBucketBinary, replication_mode = RepMode, options = Optio
             {ok, RepState}
     end.
 
-handle_call(stats, _From, #replication{vb_rep_dict = Dict,
-                                       rep = Rep,
+handle_call(stats, _From, #replication{rep = #rep{id = RepId} = Rep,
                                        num_active  = ActiveVbReps,
-                                       num_waiting = WaitingVbReps,
-                                       checkpoint_history = CkptHistory} = State) ->
+                                       ratestat = OldRateStat,
+                                       num_waiting = WaitingVbReps} = State) ->
 
-    % sum all the vb stats and collect list of vb replicating
-    Stats = dict:fold(
-                    fun(_,
-                        #rep_vb_status{status = Status,
-                                       num_changes_left = Left,
-                                       docs_changes_queue = DocsQueue,
-                                       size_changes_queue = SizeQueue,
-                                       docs_checked = Checked,
-                                       docs_written = Written,
-                                       docs_opt_repd = DocsOptRepd,
-                                       data_replicated = DataRepd,
-                                       work_time = WorkTime,
-                                       commit_time = CommitTime,
-                                       meta_latency_aggr = MetaLatency,
-                                       meta_latency_wt = MetaLatencyWt,
-                                       docs_latency_aggr = DocsLatency,
-                                       docs_latency_wt = DocsLatencyWt},
-                        {WorkLeftAcc,
-                         CheckedAcc,
-                         WrittenAcc,
-                         DataRepdAcc,
-
-                         WorkTimeAcc,
-                         CommitTimeAcc,
-                         DocsQueueAcc,
-                         SizeQueueAcc,
-
-                         MetaLatencyAcc,
-                         MetaLatencyWtAcc,
-                         DocsLatencyAcc,
-                         DocsLatencyWtAcc,
-
-                         DocsOptRepdAcc}) ->
-
-                            %% only count replicating vb reps when computing latency stats and replication rates
-                            {MetaL, MetaLWt} = case Status of
-                                                   replicating ->
-                                                       {MetaLatency, MetaLatencyWt};
-                                                   _ -> {0, 0}
-                                               end,
-                            {DocsL, DocsLWt} = case Status of
-                                                 replicating ->
-                                                     {DocsLatency, DocsLatencyWt};
-                                                 _ -> {0, 0}
-                                             end,
-
-                            {WorkLeftAcc + Left,
-                             CheckedAcc + Checked,
-                             WrittenAcc + Written,
-                             DataRepdAcc + DataRepd,
-
-                             WorkTimeAcc + WorkTime,
-                             CommitTimeAcc + CommitTime,
-                             DocsQueueAcc + DocsQueue,
-                             SizeQueueAcc + SizeQueue,
-
-                             MetaLatencyAcc + MetaL,
-                             MetaLatencyWtAcc + MetaLWt,
-                             DocsLatencyAcc + DocsL,
-                             DocsLatencyWtAcc + DocsLWt,
-
-                             DocsOptRepdAcc + DocsOptRepd}
-                    end, {0, 0, 0, 0,
-                          0, 0, 0, 0,
-                          0, 0, 0, 0,
-                          0}, Dict),
-    {Left1, Checked1, Written1, DataRepd1,
-     WorkTime1, CommitTime1, DocsChangesQueue1, SizeChangesQueue1,
-     MetaLatency1, MetaLatencyWt1, DocsLatency1, DocsLatencyWt1,
-     DocsOptRepd1} = Stats,
-    %% get checkpoint stats
-    {NumCheckpoints1, NumFailedCkpts1} = checkpoint_status(CkptHistory),
-
-    NewRateStat = compute_rate_stat(Written1, DataRepd1, State#replication.ratestat),
+    [Sample] = ets:lookup(xdcr_stats, RepId),
+    #xdcr_stats_sample{
+       %% data_replicated = DataReplicated,
+       docs_checked = DocsChecked,
+       docs_written = DocsWritten,
+       %% docs_opt_repd = DocsOptRepd,
+       succeeded_checkpoints = OkCheckpoints,
+       failed_checkpoints = FailedCheckpoints,
+       work_time = WorkTime,
+       commit_time = CommitTime
+      } = Sample,
+    VbSamplesMS = ets:fun2ms(
+                    fun (#xdcr_vb_stats_sample{id_and_vb = {I, _},
+                                               vbucket_seqno = VS,
+                                               through_seqno = TS
+                                              })
+                          when I =:= RepId, VS >= TS ->
+                            VS - TS
+                    end),
+    ChangesLeft = lists:sum(ets:select(xdcr_stats, VbSamplesMS)),
 
     RequestedReps = options_to_num_tokens(Rep#rep.options),
 
-    Props = [{changes_left, Left1},
-             {docs_checked, Checked1},
-             {docs_written, Written1},
-             {docs_opt_repd, DocsOptRepd1},
-             {data_replicated, DataRepd1},
+    NewRateStat = compute_rate_stat(Sample, OldRateStat),
+
+    WorkTimeRate0 = NewRateStat#ratestat.curr_work_time_rate * 1.0E-6,
+
+    WorkTimeRate = case WorkTimeRate0 > RequestedReps of
+                       true ->
+                           %% clamp to tokens count to deal with token
+                           %% count changes
+                           RequestedReps;
+                       _ ->
+                           WorkTimeRate0
+                   end,
+
+    Props = [{changes_left, ChangesLeft},
+             {docs_checked, DocsChecked},
+             {docs_written, DocsWritten},
              {active_vbreps, ActiveVbReps},
              {max_vbreps, RequestedReps},
              {waiting_vbreps, WaitingVbReps},
-             {time_working, WorkTime1 div 1000},
-             {time_committing, CommitTime1 div 1000},
-             {num_checkpoints, NumCheckpoints1},
-             {num_failedckpts, NumFailedCkpts1},
-             {docs_rep_queue, DocsChangesQueue1},
-             {size_rep_queue, SizeChangesQueue1},
-             {rate_replication, round(NewRateStat#ratestat.curr_rate_item)},
-             {bandwidth_usage, round(NewRateStat#ratestat.curr_rate_data)},
-             {meta_latency_aggr, round(MetaLatency1)},
-             {meta_latency_wt, MetaLatencyWt1},
-             {docs_latency_aggr, round(DocsLatency1)},
-             {docs_latency_wt, DocsLatencyWt1}],
+             {time_working, WorkTime * 1.0E-6},
+             {time_committing, CommitTime * 1.0E-6},
+             {time_working_rate, WorkTimeRate},
+             {num_checkpoints, OkCheckpoints + FailedCheckpoints},
+             {num_failedckpts, FailedCheckpoints},
+             {wakeups_rate, NewRateStat#ratestat.curr_activations_rate},
+             {worker_batches_rate, NewRateStat#ratestat.curr_worker_batches_rate},
+             {rate_replication, NewRateStat#ratestat.curr_rate_item},
+             {bandwidth_usage, NewRateStat#ratestat.curr_rate_data},
+             {rate_doc_checks, NewRateStat#ratestat.curr_check_rate_item},
+             {rate_doc_opt_repd, NewRateStat#ratestat.curr_opt_rate_item},
+             {meta_latency_aggr, NewRateStat#ratestat.curr_get_meta_latency_agg},
+             {meta_latency_wt, NewRateStat#ratestat.curr_get_meta_batches_rate},
+             {docs_latency_aggr, NewRateStat#ratestat.curr_set_meta_latency_agg},
+             {docs_latency_wt, NewRateStat#ratestat.curr_set_meta_batches_rate}],
+
     {reply, {ok, Props}, State#replication{ratestat = NewRateStat}};
 
 handle_call(target, _From, State) ->
@@ -307,64 +283,6 @@ consume_all_buckets_changes(Buckets) ->
             Buckets
     end.
 
-handle_info({set_vb_rep_status, #rep_vb_status{vb = Vb} = NewStat},
-            #replication{vb_rep_dict = Dict} = State) ->
-    Stat = case dict:is_key(Vb, Dict) of
-               false ->
-                   %% first time the vb rep post the stats
-                   NewStat;
-                _ ->
-                   %% already exists an entry in stat table
-                   %% compute accumulated stats
-                   OldStat = dict:fetch(Vb, Dict),
-                   OldDocsChecked = OldStat#rep_vb_status.docs_checked,
-                   OldDocsWritten = OldStat#rep_vb_status.docs_written,
-                   OldDocsOptRepd = OldStat#rep_vb_status.docs_opt_repd,
-                   OldDataRepd = OldStat#rep_vb_status.data_replicated,
-                   OldWorkTime = OldStat#rep_vb_status.work_time,
-                   OldCkptTime = OldStat#rep_vb_status.commit_time,
-                   OldNumCkpts = OldStat#rep_vb_status.num_checkpoints,
-                   OldNumFailedCkpts = OldStat#rep_vb_status.num_failedckpts,
-
-                   %% compute accumulated stats
-                   AccuDocsChecked = OldDocsChecked + NewStat#rep_vb_status.docs_checked,
-                   AccuDocsWritten = OldDocsWritten + NewStat#rep_vb_status.docs_written,
-                   AccuDocsOptRepd = OldDocsOptRepd + NewStat#rep_vb_status.docs_opt_repd,
-                   AccuDataRepd = OldDataRepd + NewStat#rep_vb_status.data_replicated,
-                   AccuWorkTime = OldWorkTime + NewStat#rep_vb_status.work_time,
-                   AccuCkptTime = OldCkptTime + NewStat#rep_vb_status.commit_time,
-                   AccuNumCkpts = OldNumCkpts + NewStat#rep_vb_status.num_checkpoints,
-                   AccuNumFailedCkpts = OldNumFailedCkpts + NewStat#rep_vb_status.num_failedckpts,
-
-                   %% update with the accumulated stats
-                   NewStat#rep_vb_status{
-                     docs_checked = AccuDocsChecked,
-                     docs_written = AccuDocsWritten,
-                     docs_opt_repd = AccuDocsOptRepd,
-                     data_replicated = AccuDataRepd,
-                     work_time = AccuWorkTime,
-                     commit_time = AccuCkptTime,
-                     num_checkpoints = AccuNumCkpts,
-                     num_failedckpts = AccuNumFailedCkpts}
-           end,
-
-    Dict2 = dict:store(Vb, Stat, Dict),
-    {noreply, State#replication{vb_rep_dict = Dict2}};
-
-handle_info({set_checkpoint_status, #rep_checkpoint_status{vb = VBucket,
-                                                           ts = TimeStamp,
-                                                           time = TimeString,
-                                                           succ = Succ}},
-            #replication{checkpoint_history = CkptHistory, rep = Rep} = State) ->
-
-    Entry = {TimeStamp, TimeString, VBucket, Succ},
-    NewCkptHistory = ringbuffer:add(Entry, CkptHistory),
-
-    ?xdcr_debug("add a ckpt entry (~p) to ckpt history of replication (src: ~p, target: ~p)",
-                [Entry, Rep#rep.source, Rep#rep.target]),
-
-    {noreply, State#replication{checkpoint_history = NewCkptHistory}};
-
 handle_info({set_throttle_status, {NumActiveReps, NumWaitingReps}},
             State) ->
     {noreply, State#replication{num_active = NumActiveReps,
@@ -413,91 +331,137 @@ start_vb_replicators(#replication{rep = Rep,
                                   vbucket_sup = Sup,
                                   init_throttle = InitThrottle,
                                   work_throttle = WorkThrottle,
-                                  vbs = Vbs,
-                                  vb_rep_dict = Dict} = Replication) ->
+                                  vbs = Vbs} = Replication) ->
     CurrentVbs = xdc_vbucket_rep_sup:vbucket_reps(Sup),
     NewVbs = Vbs -- CurrentVbs,
     RemovedVbs = CurrentVbs -- Vbs,
     % now delete the removed Vbs
     ?xdcr_debug("deleting replicator for expired vbs :~p", [RemovedVbs]),
-    Dict2 = lists:foldl(
-                fun(RemoveVb, DictAcc) ->
-                        ok = xdc_vbucket_rep_sup:stop_vbucket_rep(Sup, RemoveVb),
-                        ?x_trace(stoppedVbRep,
-                                 [{repID, Rep#rep.id},
-                                  {vb, RemoveVb}]),
-                        dict:erase(RemoveVb, DictAcc)
-                end, Dict, RemovedVbs),
+    lists:foreach(
+      fun(RemoveVb) ->
+              ok = xdc_vbucket_rep_sup:stop_vbucket_rep(Sup, RemoveVb),
+              ets:delete(xdcr_stats, {Rep#rep.id, RemoveVb}),
+              ?x_trace(stoppedVbRep,
+                       [{repID, Rep#rep.id},
+                        {vb, RemoveVb}])
+      end, RemovedVbs),
     % now start the new Vbs
     ?xdcr_debug("starting replicators for new vbs :~p", [NewVbs]),
-    Dict3 = lists:foldl(
-              fun(Vb, DictAcc) ->
-                      {ok, Pid} = xdc_vbucket_rep_sup:start_vbucket_rep(Sup,
-                                                                        Rep,
-                                                                        Vb,
-                                                                        InitThrottle,
-                                                                        WorkThrottle,
-                                                                        self(),
-                                                                        RepMode),
-                      VbStatus = #rep_vb_status{pid = Pid},
-                      ?x_trace(startedVbRep,
-                               [{repID, Rep#rep.id},
-                                {vb, Vb},
-                                {childPID, Pid}]),
-                      dict:store(Vb, VbStatus, DictAcc)
-              end, Dict2, misc:shuffle(NewVbs)),
-    ?xdcr_debug("total number of started vb replicator: ~p", [dict:size(Dict3)]),
-    Replication#replication{vb_rep_dict = Dict3}.
+    lists:foreach(
+      fun(Vb) ->
+              ets:insert(xdcr_stats, #xdcr_vb_stats_sample{id_and_vb = {Rep#rep.id, Vb}}),
 
-%% get the number of succ and failed checkpoints from checkpoint history
-checkpoint_status(CheckpointHistory) ->
-    %% get most recent N entry in history
-    HistoryList = ringbuffer:to_list(?XDCR_CHECKPOINT_HISTORY, CheckpointHistory),
-
-    %% count # of successful ckpts and failed ckpts
-    {NumSuccCkpts, NumFailedCkpts} = lists:foldl(
-                                       fun ({_TimeStamp, _TimeString, _Vb, Succ}, {SuccAcc, FailedAcc}) ->
-                                               case Succ of
-                                                   true ->
-                                                       {SuccAcc + 1, FailedAcc};
-                                                   false ->
-                                                       {SuccAcc, FailedAcc + 1}
-                                               end
-                                       end,
-                                       {0, 0},
-                                       HistoryList),
-    {NumSuccCkpts, NumFailedCkpts}.
-
+              {ok, Pid} = xdc_vbucket_rep_sup:start_vbucket_rep(Sup,
+                                                                Rep,
+                                                                Vb,
+                                                                InitThrottle,
+                                                                WorkThrottle,
+                                                                self(),
+                                                                RepMode),
+              ?x_trace(startedVbRep,
+                       [{repID, Rep#rep.id},
+                        {vb, Vb},
+                        {childPID, Pid}])
+      end, misc:shuffle(NewVbs)),
+    Replication.
 
 
 %% compute the replicaiton rate, and return the new rate stat
--spec compute_rate_stat(integer(), integer(), #ratestat{}) -> #ratestat{}.
-compute_rate_stat(Written1, DataRepd1, RateStat) ->
+-spec compute_rate_stat(#xdcr_stats_sample{}, #ratestat{}) -> #ratestat{}.
+compute_rate_stat(#xdcr_stats_sample{docs_written = Written1,
+                                     data_replicated = DataRepd1,
+                                     docs_checked = NewChecked,
+                                     docs_opt_repd = NewOptRepd,
+                                     get_meta_batches = NewGetMetaBatches,
+                                     get_meta_latency = NewGetMetaLatency,
+                                     set_meta_batches = NewSetMetaBatches,
+                                     set_meta_latency = NewSetMetaLatency,
+                                     activations = NewActivations,
+                                     worker_batches = NewWorkerBatches,
+                                     work_time = NewWorkTime},
+                  #ratestat{
+                     timestamp = T1,
+                     item_replicated = OldWritten,
+                     data_replicated = OldRepd,
+                     get_meta_batches = OldGetMetaBatches,
+                     get_meta_latency = OldGetMetaLatency,
+                     set_meta_batches = OldSetMetaBatches,
+                     set_meta_latency = OldSetMetaLatency,
+                     activations = OldActivations,
+                     worker_batches = OldWorkerBatches,
+                     docs_checked = OldChecked,
+                     docs_opt_repd = OldOptRepd,
+                     work_time = OldWorkTime
+                    } = RateStat) ->
     T2 = os:timestamp(),
-    T1 = RateStat#ratestat.timestamp,
     %% compute elapsed time in microsecond
     Delta = timer:now_diff(T2, T1),
     %% convert from us to secs
     DeltaMilliSecs = Delta / 1000,
     %% to smooth the stats, only compute rate when interval is big enough
-    Interval = misc:getenv_int("XDCR_RATE_STAT_INTERVAL_MS", ?XDCR_RATE_STAT_INTERVAL_MS),
+    Interval = ns_config:read_key_fast(xdcr_rate_stat_interval_ms, ?XDCR_RATE_STAT_INTERVAL_MS),
     NewRateStat = case DeltaMilliSecs < Interval of
                       true ->
                           %% sampling interval is too small,
                           %% just return the last results
                           RateStat;
                       _ ->
+                          InvDeltaSec = 1.0E3 / DeltaMilliSecs,
+                          GetMetaLatencyDiff = NewGetMetaLatency - OldGetMetaLatency,
+                          SetMetaLatencyDiff = NewSetMetaLatency - OldSetMetaLatency,
+                          GetMetaBatchesDiff = NewGetMetaBatches - OldGetMetaBatches,
+                          SetMetaBatchesDiff = NewSetMetaBatches - OldSetMetaBatches,
+                          GetMetaBatchesRate = GetMetaBatchesDiff * InvDeltaSec,
+                          SetMetaBatchesRate = SetMetaBatchesDiff * InvDeltaSec,
+                          ActivationsDiff = NewActivations - OldActivations,
+                          WorkerBatchesDiff = NewWorkerBatches - OldWorkerBatches,
+                          CheckedDiff = NewChecked - OldChecked,
+                          OptRepdDiff = NewOptRepd - OldOptRepd,
+                          WorkTimeDiff = NewWorkTime - OldWorkTime,
                           %% compute vb replicator rate stat
                           %% replication rate in terms of # items per second
-                          RateItem1 = (1000*(Written1 - RateStat#ratestat.item_replicated)) / DeltaMilliSecs,
+                          RateItem1 = (Written1 - OldWritten) * InvDeltaSec,
                           %% replicaiton rate in terms of bytes per second
-                          RateData1 = (1000*(DataRepd1 - RateStat#ratestat.data_replicated)) / DeltaMilliSecs,
+                          RateData1 = (DataRepd1 - OldRepd) * InvDeltaSec,
+                          %% NOTE:
+                          %% average latency is latency_diff / batches_diff
+                          %%
+                          %% Because final computation is done in
+                          %% menelaus_stats (after aggregating
+                          %% latencies and batches from all node) and
+                          %% because we don't maintain batches_diff,
+                          %% but rather batches_rate (batches_diff /
+                          %% delta), we also divide latency diff by
+                          %% delta so that deltas cancel when
+                          %% latency_agg is divided by batches rate.
+                          %%
+                          %% 1E-3 factor is due to conversion from
+                          %% microseconds to milliseconds
+                          LatencyCoeff = InvDeltaSec * 1.0E-3,
                           %% update rate stat
                           RateStat#ratestat{timestamp = T2,
                                             item_replicated = Written1,
                                             data_replicated = DataRepd1,
                                             curr_rate_item = RateItem1,
-                                            curr_rate_data = RateData1
+                                            curr_rate_data = RateData1,
+                                            get_meta_batches = NewGetMetaBatches,
+                                            set_meta_batches = NewSetMetaBatches,
+                                            get_meta_latency = NewGetMetaLatency,
+                                            set_meta_latency = NewSetMetaLatency,
+                                            activations = NewActivations,
+                                            worker_batches = NewWorkerBatches,
+                                            docs_checked = NewChecked,
+                                            docs_opt_repd = NewOptRepd,
+                                            work_time = NewWorkTime,
+                                            curr_get_meta_latency_agg = GetMetaLatencyDiff * LatencyCoeff,
+                                            curr_set_meta_latency_agg = SetMetaLatencyDiff * LatencyCoeff,
+                                            curr_get_meta_batches_rate = GetMetaBatchesRate,
+                                            curr_set_meta_batches_rate = SetMetaBatchesRate,
+                                            curr_activations_rate = ActivationsDiff * InvDeltaSec,
+                                            curr_worker_batches_rate = WorkerBatchesDiff * InvDeltaSec,
+                                            curr_check_rate_item = CheckedDiff * InvDeltaSec,
+                                            curr_opt_rate_item = OptRepdDiff * InvDeltaSec,
+                                            curr_work_time_rate = WorkTimeDiff * InvDeltaSec
                                            }
                   end,
 

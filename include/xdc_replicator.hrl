@@ -60,63 +60,33 @@
           options
          }).
 
+-record(xdcr_stats_sample, {id,
+                            data_replicated = 0,
+                            docs_checked = 0,
+                            docs_written = 0,
+                            docs_opt_repd = 0,
+                            activations = 0,
+                            worker_batches = 0,
+                            worker_batch_latency = 0,
+                            succeeded_checkpoints = 0,
+                            failed_checkpoints = 0,
+                            work_time = 0,
+                            commit_time = 0,
+                            get_meta_batches = 0,
+                            get_meta_latency = 0,
+                            set_meta_batches = 0,
+                            set_meta_latency = 0
+                           }).
+
+-record(xdcr_vb_stats_sample, {id_and_vb,
+                               vbucket_seqno = 0,
+                               through_seqno = 0}).
+
 %% vbucket replication status and statistics, used by xdc_vbucket_rep
 -record(rep_vb_status, {
           vb,
           pid,
-          status = idle,
-
-          %% following stats initialized to 0 when vb replicator starts, and refreshed
-          %% when update stat to bucket replicator. The bucket replicator is responsible
-          %% for aggretating the statistics for each vb. These stats may be from different
-          %% vb replicator processes. We do not need to persist these stats in checkpoint
-          %% doc. Consequently the lifetime of these stats at vb replicator level is the
-          %% same as that of its parent vb replicator process.
-
-          %% # of docs have been checked for eligibility of replication
-          docs_checked = 0,
-          %% of docs have been replicated
-          docs_written = 0,
-          %% of docs have been replicated optimistically
-          docs_opt_repd = 0,
-          %% bytes of data replicated
-          data_replicated = 0,
-          %% num of checkpoints issued successfully
-          num_checkpoints = 0,
-          %% total num of failed checkpoints
-          num_failedckpts = 0,
-          work_time = 0, % in MS
-          commit_time = 0,  % in MS
-
-          %% following stats are handled differently from above. They will not be
-          %% aggregated at bucket replicator, instead, each vb replicator will
-          %% fetch these stats from couchdb and worker_queue, and publish them
-          %% directly to bucket replicator
-
-          %% # of docs to replicate
-          num_changes_left = 0,
-          %% num of docs in changes queue
-          docs_changes_queue = 0,
-          %% size of changes queues
-          size_changes_queue = 0,
-
-          %% following are per vb stats since the replication starts
-          %% from the very beginning. They are persisted in the checkpoint
-          %% documents and may span the lifetime of multiple vb replicators
-          %% for the same vbucket
-          total_docs_checked = 0,
-          total_docs_written = 0,
-          total_docs_opt_repd = 0,
-          total_data_replicated = 0,
-
-          %% latency stats
-          meta_latency_aggr = 0,
-          meta_latency_wt = 0,
-          docs_latency_aggr = 0,
-          docs_latency_wt = 0,
-
-          %% worker stats
-          workers_stat = dict:new() %% dict of each worker's latency stats (key = pid, value = #worker_stat{})
+          status = idle
  }).
 
 %% vbucket checkpoint status used by each vbucket replicator and status reporting

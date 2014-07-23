@@ -24,6 +24,7 @@
 
 start_link() ->
     ?xdcr_info("start XDCR bucket replicator supervisor..."),
+    ets:delete_all_objects(xdcr_stats),
     supervisor:start_link({local,?MODULE}, ?MODULE, []).
 
 start_replication(#rep{id = Id, source = SourceBucket} = Rep) ->
@@ -35,6 +36,7 @@ start_replication(#rep{id = Id, source = SourceBucket} = Rep) ->
              [xdc_replication]
             },
     ?xdcr_info("start bucket replicator using spec: ~p.", [Spec]),
+    xdc_rep_utils:init_replication_stats(Id),
     supervisor:start_child(?MODULE, Spec).
 
 -spec get_replications() -> [{Bucket :: binary(), Id :: binary(), pid()}].
@@ -68,7 +70,9 @@ all_local_replication_infos() ->
 stop_replication(Id) ->
     lists:foreach(
         fun(Child) when element(2, element(1, Child)) == Id ->
+                ?xdcr_debug("Found matching child to stop: ~p", [Child]),
                 supervisor:terminate_child(?MODULE, element(1, Child)),
+                xdc_rep_utils:cleanup_replication_stats(Id),
                 ok = supervisor:delete_child(?MODULE, element(1, Child));
            (_) ->
                 ok
