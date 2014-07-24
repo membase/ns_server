@@ -173,7 +173,9 @@ var ServersSection = {
     self.poolDetails = DAL.cells.currentPoolDetailsCell;
     self.inRecoveryModeCell = DAL.cells.inRecoveryModeCell;
     self.stopRecoveryURI = Cell.computeEager(function (v) {
-      return v.need(DAL.cells.tasksRecoveryCell).stopURI;
+      // tasksRecoveryCell may be null to indicate that we know that
+      // there's no recovery versus not having value yet
+      return (v.need(DAL.cells.tasksRecoveryCell) || {}).stopURI;
     });
 
     self.isLoadingSamplesCell = DAL.cells.isLoadingSamplesCell;

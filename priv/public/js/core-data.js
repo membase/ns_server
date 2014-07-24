@@ -698,7 +698,7 @@ var DAL = {
           var tasks = v.need(tasksProgressCell);
           return _.detect(tasks, function (taskInfo) {
             return taskInfo.type === "recovery";
-          });
+          }) || null;
         }).name("tasksRecoveryCell");
 
   var tasksRebalanceCell = DAL.cells.tasksRebalanceCell =
