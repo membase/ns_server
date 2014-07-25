@@ -177,15 +177,15 @@ default() ->
          [
           {[{host, <<"*">>},
             {port, port},
-            {maxconn, 10000}]},
+            {maxconn, 30000}]},
 
           {[{host, <<"*">>},
             {port, dedicated_port},
-            {maxconn, 1000}]},
+            {maxconn, 5000}]},
 
           {[{host, <<"*">>},
             {port, ssl_port},
-            {maxconn, 10000},
+            {maxconn, 30000},
             {ssl, {[{key, list_to_binary(ns_ssl_services_setup:memcached_key_path())},
                     {cert, list_to_binary(ns_ssl_services_setup:memcached_cert_path())}]}}]}
          ]},
