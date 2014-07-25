@@ -109,6 +109,9 @@
     if (spacing == null) {
       spacing = '';
     }
+    if (numberSystem === 1000 && value <= 9999 && value % 1 === 0) { // MB-11784
+      return value;
+    }
 
     var t = prepareQuantity(value, numberSystem);
     return [truncateTo3Digits(value/t[0], undefined, "floor"), spacing, t[1]].join('');
