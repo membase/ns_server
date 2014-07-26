@@ -104,7 +104,10 @@ handle_info({'EXIT', From, Reason} = ExitMsg, #state{replicators = Replicators} 
         false ->
             ?log_info("Got exit from some stranger: ~p", [ExitMsg]),
             {stop, Reason, State}
-    end.
+    end;
+handle_info(Other, State) ->
+    ?rebalance_debug("Ignoring unexpected message: ~p", [Other]),
+    {noreply, State}.
 
 terminate(Reason, #state{replicators = Replicators} = State) ->
     ?rebalance_debug("Dying with reason: ~p", [Reason]),
