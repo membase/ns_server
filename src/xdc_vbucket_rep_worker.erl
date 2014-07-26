@@ -58,9 +58,15 @@ queue_fetch_loop(WorkerID, Target, Cp, ChangesManager,
             NumWritten = length(MissingDocInfoList),
             ?x_trace(foundMissing, [{count, NumWritten}]),
             Start = os:timestamp(),
-            {ok, DataRepd} = local_process_batch(
-                               MissingDocInfoList, Cp, Target,
-                               #batch{}, BatchSize, BatchItems, XMemLoc, 0),
+            {ok, DataRepd} =
+                case XMemLoc of
+                    nil ->
+                        local_process_batch(
+                          MissingDocInfoList, Target,
+                          #batch{}, BatchSize, BatchItems, 0);
+                    _ ->
+                        send_xmem_batch(MissingDocInfoList, Target, XMemLoc)
+                end,
 
             %% the latency returned should be coupled with batch size, for example,
             %% if we send N docs in a batch, the latency returned to stats should be the latency
@@ -91,35 +97,43 @@ queue_fetch_loop(WorkerID, Target, Cp, ChangesManager,
                              OptRepThreshold, BatchSize, BatchItems, XMemLoc)
     end.
 
+send_xmem_batch(Docs, Target, XMemLoc) ->
+    ok = do_flush_docs_xmem(Target, Docs, XMemLoc),
+    {ok, compute_body_sizes_loop(Docs, 0)}.
 
-local_process_batch([], _Cp, _Tgt, #batch{docs = []}, _BatchSize, _BatchItems, _XMemLoc, Acc) ->
+compute_body_sizes_loop([], Acc) ->
+    Acc;
+compute_body_sizes_loop([Doc | Rest], Acc) ->
+    case Doc#dcp_mutation.deleted of
+        true ->
+            compute_body_sizes_loop(Rest, Acc);
+        _ ->
+            NewAcc = iolist_size(Doc#dcp_mutation.body) + Acc,
+            compute_body_sizes_loop(Rest, NewAcc)
+    end.
+
+local_process_batch([], _Tgt, #batch{docs = []}, _BatchSize, _BatchItems, Acc) ->
     {ok, Acc};
-local_process_batch([], Cp, #httpdb{} = Target,
-                    #batch{docs = Docs, size = Size}, BatchSize, BatchItems, XMemLoc, Acc) ->
-    ok = flush_docs_helper(Target, Docs, XMemLoc),
-    local_process_batch([], Cp, Target, #batch{}, BatchSize, BatchItems, XMemLoc, Acc + Size);
+local_process_batch([], #httpdb{} = Target,
+                    #batch{docs = Docs, size = Size}, BatchSize, BatchItems, Acc) ->
+    ok = flush_docs_helper(Target, Docs),
+    local_process_batch([], Target, #batch{}, BatchSize, BatchItems, Acc + Size);
 
-local_process_batch([Mutation | Rest], Cp,
-                    #httpdb{} = Target, Batch, BatchSize, BatchItems, XMemLoc, Acc) ->
+local_process_batch([Mutation | Rest],
+                    #httpdb{} = Target, Batch, BatchSize, BatchItems, Acc) ->
     #dcp_mutation{id = Key,
                   rev = Rev,
                   body = Body,
                   deleted = Deleted} = Mutation,
-    {Batch2, DataFlushed} =
-        case XMemLoc of
-            nil ->
-                Doc0 = couch_doc:from_binary(Key, Body, true),
-                Doc = Doc0#doc{rev = Rev,
-                               deleted = Deleted},
-                maybe_flush_docs_capi(Target, Batch, Doc, BatchSize, BatchItems);
-            _ ->
-                maybe_flush_docs_xmem(XMemLoc, Batch, Mutation, BatchSize, BatchItems)
-        end,
-    local_process_batch(Rest, Cp, Target, Batch2, BatchSize, BatchItems, XMemLoc, Acc + DataFlushed).
+    Doc0 = couch_doc:from_binary(Key, Body, true),
+    Doc = Doc0#doc{rev = Rev,
+                   deleted = Deleted},
+    {Batch2, DataFlushed} = maybe_flush_docs_capi(Target, Batch, Doc, BatchSize, BatchItems),
+    local_process_batch(Rest, Target, Batch2, BatchSize, BatchItems, Acc + DataFlushed).
 
 
--spec flush_docs_helper(any(), list(), term()) -> ok.
-flush_docs_helper(Target, DocsList, nil) ->
+-spec flush_docs_helper(any(), list()) -> ok.
+flush_docs_helper(Target, DocsList) ->
     BeforeTS = case ?x_trace_enabled() of
                    true ->
                        os:timestamp();
@@ -141,9 +155,9 @@ flush_docs_helper(Target, DocsList, nil) ->
             ?xdcr_error("replication mode: ~p, unable to replicate ~p docs to target ~p",
                         [RepMode, length(DocsList), misc:sanitize_url(Target#httpdb.url)]),
             exit({failed_write, Error})
-    end;
+    end.
 
-flush_docs_helper(Target, DocsList, XMemLoc) ->
+do_flush_docs_xmem(Target, DocsList, XMemLoc) ->
     BeforeTS = case ?x_trace_enabled() of
                    true ->
                        os:timestamp();
@@ -318,31 +332,4 @@ flush_docs_xmem(XMemLoc, MutationsList) ->
             ok;
         {error, Msg} ->
             {failed_write, Msg}
-    end.
-
--spec maybe_flush_docs_xmem(any(), #batch{}, #dcp_mutation{},
-                            integer(), integer()) -> {#batch{}, integer()}.
-maybe_flush_docs_xmem(XMemLoc, Batch, Mutation, BatchSize, BatchItems) ->
-    #batch{docs = DocAcc, size = SizeAcc, items = ItemsAcc} = Batch,
-
-    DocSize = case Mutation#dcp_mutation.deleted of
-                  true ->
-                      0;
-                  _ ->
-                      iolist_size(Mutation#dcp_mutation.body)
-              end,
-
-    SizeAcc2 = SizeAcc + DocSize,
-    ItemsAcc2 = ItemsAcc + 1,
-
-    %% if reach the limit in terms of docs, flush them
-    case ItemsAcc2 >= BatchItems orelse SizeAcc2 >= BatchSize of
-        true ->
-            DocsList = [Mutation | DocAcc],
-            ok = flush_docs_xmem(XMemLoc, DocsList),
-            ?x_trace(flushed, []),
-            %% data flushed, return empty batch and size of # of docs flushed
-            {#batch{}, SizeAcc2};
-        _ ->            %% no data flushed in this turn, return the new batch
-            {#batch{docs = [Mutation | DocAcc], size = SizeAcc2, items = ItemsAcc2}, 0}
     end.
