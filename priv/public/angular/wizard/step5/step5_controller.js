@@ -5,6 +5,13 @@ angular.module('wizard')
       $scope.focusMe = true;
       $scope.modelStep5Service = step5Service.model;
 
+      function reset() {
+        $scope.spinner = false;
+        $scope.focusMe = true;
+        $scope.modelStep5Service.user.password = null;
+        $scope.modelStep5Service.user.verifyPassword = null;
+      }
+
       $scope.onSubmit = function onSubmit() {
         if ($scope.spinner) {
           return;
@@ -12,11 +19,10 @@ angular.module('wizard')
         $scope.spinner = true;
         $scope.form.$setValidity('userReq', !!$scope.modelStep5Service.user.name)
         $scope.form.$setValidity('equals', $scope.modelStep5Service.user.password === $scope.modelStep5Service.user.verifyPassword);
-        $scope.form.$setValidity('passLength', $scope.modelStep5Service.user.password.length >= 6);
+        $scope.form.$setValidity('passLength', $scope.modelStep5Service.user.password && $scope.modelStep5Service.user.password.length >= 6);
 
         if ($scope.form.$invalid) {
-          $scope.spinner = false;
-          return;
+          return reset();
         }
         step5Service.postAuth().success(function () {
           authService.manualLogin($scope.modelStep5Service.user).success(function () {
@@ -33,7 +39,7 @@ angular.module('wizard')
             });
           });
         }).error(function (errors) {
-          $scope.spinner = false;
+          reset();
           $scope.errors = errors;
         });
         return;

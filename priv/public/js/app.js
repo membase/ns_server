@@ -425,57 +425,46 @@ var SetupWizard = {
     },
     secure: function(node, pagePrefix, opt) {
       var parentName = '#' + pagePrefix + '_dialog';
+      var parent = $(parentName);
+      var warnUl = parent.find('.warn ul');
+      var form = $(parentName + ' form').unbind('submit');
 
       $(parentName + ' div.config-bottom button#step-5-finish').unbind('click').click(function (e) {
         e.preventDefault();
         $('#init_secure_form').submit();
         $('#init_secure_form')[0].reset();
+        $('#secure-password').focus();
       });
       $(parentName + ' div.config-bottom button#step-5-back').unbind('click').click(function (e) {
         e.preventDefault();
         SetupWizard.show("update_notifications", opt);
       });
-
-      var form = $(parentName + ' form').unbind('submit');
       _.defer(function () {
         $(parentName).find('[name=password]')[0].focus();
       });
+
+      function showSecureFormErrors(data) {
+        parent.find('.warn li').remove();
+        _.each(data, function (error) {
+          var li = $('<li></li>');
+          li.text(error);
+          warnUl.prepend(li);
+        });
+      }
+
       form.submit(function (e) {
-        function displayTryAgainDialog(options) {
-          if (options.callback || options.buttons) {
-            BUG();
-          }
-          options.buttons = {cancel: false, ok: true};
-          options.callback = function (e, name, instance) {
-            instance.close();
-            try {
-              var element = parent.find('[name=password]').get(0);
-              element.focus();
-              element.setSelectionRange(0, String(element.value).length);
-            } catch (ignored) {}
-          }
-          return genericDialog(options);
-        }
 
         e.preventDefault();
-
-        var parent = $(parentName)
 
         var user = parent.find('[name=username]').val();
         var pw = parent.find('[name=password]').val();
         var vpw = $($i('secure-password-verify')).val();
         if (pw == null || pw == "") {
-          displayTryAgainDialog({
-            header: 'Please try again',
-            text: 'A password of at least six characters is required.'
-          });
+          showSecureFormErrors(['A password of at least six characters is required.']);
           return;
         }
         if (pw !== vpw) {
-          displayTryAgainDialog({
-            header: 'Please try again',
-            text: '\'Password\' and \'Verify Password\' do not match'
-          });
+          showSecureFormErrors(['\'Password\' and \'Verify Password\' do not match.']);
           return;
         }
 
@@ -514,24 +503,17 @@ var SetupWizard = {
           createDefaultBucket(defaultBucket, function () {
             createSampleBuckets(sampleBuckets, onSuccess, onError);
           }, onError);
-        }
+        };
 
         var saveAuthData = function (onSuccess, onError) {
           var form = $(self);
 
           var postData = serializeForm(form);
 
-          form.find('.warn li').remove();
-
           jsonPostWithErrors(form.attr('action'), postData, function (data, status) {
             if (status != 'success') {
-              var ul = form.find('.warn ul');
-              _.each(data, function (error) {
-                var li = $('<li></li>');
-                li.text(error);
-                ul.prepend(li);
-              });
-              $('html, body').animate({scrollTop: ul.offset().top-100}, 250);
+              showSecureFormErrors(data);
+              $('html, body').scrollTop(0);
               onError();
             } else {
               onSuccess();
