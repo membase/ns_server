@@ -1002,7 +1002,7 @@ html>/**/body .servers .list_button span, x:-moz-any-link, x:default {float:none
 .hostname_setup_block label {
     margin-right: 6px;
     float: left;
-    width: 115px;
+    width: 120px;
 }
 .hostname_setup_block input { border: 1px solid #ccd3d7;width: 415px;  padding: 3px;}
 
