@@ -15,7 +15,7 @@
 %%
 %% @doc suprevisor for dcp_replicator's
 %%
--module(upr_sup).
+-module(dcp_sup).
 
 -behavior(supervisor).
 
@@ -43,7 +43,7 @@ get_actual_replications(Bucket) ->
         not_running ->
             not_running;
         Nodes ->
-            lists:sort([{Node, upr_replicator:get_partitions(Node, Bucket)} || Node <- Nodes])
+            lists:sort([{Node, dcp_replicator:get_partitions(Node, Bucket)} || Node <- Nodes])
     end.
 
 set_desired_replications(Bucket, DesiredReps) ->
@@ -54,7 +54,7 @@ set_desired_replications(Bucket, DesiredReps) ->
 
     [start_replicator(Bucket, Node) || Node <- NeededNodes -- ProducerNodes],
 
-    [upr_replicator:setup_replication(Node, Bucket, Partitions)
+    [dcp_replicator:setup_replication(Node, Bucket, Partitions)
      || {Node, [_|_] = Partitions} <- DesiredReps].
 
 -spec get_producer_nodes(bucket_name()) -> list() | not_running.
@@ -68,8 +68,8 @@ get_producer_nodes(Bucket) ->
 
 build_child_spec(ProducerNode, Bucket) ->
     {ProducerNode,
-     {upr_replicator, start_link, [ProducerNode, Bucket]},
-     temporary, 60000, worker, [upr_replicator]}.
+     {dcp_replicator, start_link, [ProducerNode, Bucket]},
+     temporary, 60000, worker, [dcp_replicator]}.
 
 
 start_replicator(Bucket, ProducerNode) ->
@@ -101,7 +101,7 @@ nuke(Bucket) ->
     Connections = get_remaining_connections(Bucket),
     misc:parallel_map(
       fun (ConnName) ->
-              upr_proxy:nuke_connection(consumer, ConnName, node(), Bucket)
+              dcp_proxy:nuke_connection(consumer, ConnName, node(), Bucket)
       end,
       Connections,
       infinity),

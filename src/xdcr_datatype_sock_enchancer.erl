@@ -16,7 +16,7 @@
 -module(xdcr_datatype_sock_enchancer).
 
 -include("mc_constants.hrl").
--include("xdcr_upr_streamer.hrl").
+-include("xdcr_dcp_streamer.hrl").
 
 -export([enchance_socket/1,
          from_xmem_options/1]).
@@ -27,13 +27,13 @@ enchance_socket(Sock) ->
     Req = #dcp_packet{opcode = ?CMD_HELLO,
                       key = <<"xmem">>,
                       body = <<?MC_FEATURE_DATATYPE:16>>},
-    EncReq = xdcr_upr_streamer:encode_req(Req),
+    EncReq = xdcr_dcp_streamer:encode_req(Req),
     %% we need this extra layer of abstraction in order to correctly
     %% support ssl proxy connections that require extra framing
     pooled_memcached_client:send_batch(Sock, [EncReq]),
 
     RecvSock = pooled_memcached_client:extract_recv_socket(Sock),
-    {res, Resp, <<>>, _Size} = xdcr_upr_streamer:read_message_loop(RecvSock, <<>>),
+    {res, Resp, <<>>, _Size} = xdcr_dcp_streamer:read_message_loop(RecvSock, <<>>),
     #dcp_packet{opcode = ?CMD_HELLO,
                 status = ?SUCCESS,
                 body = <<?MC_FEATURE_DATATYPE:16>>} = Resp,

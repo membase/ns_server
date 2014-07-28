@@ -15,7 +15,7 @@
 %%
 %% @doc commands of the DCP protocol
 %%
--module(upr_commands).
+-module(dcp_commands).
 
 -include("ns_common.hrl").
 -include("mc_constants.hrl").

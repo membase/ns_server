@@ -15,7 +15,7 @@
 %%
 %% @doc DCP proxy code that is common for consumer and producer sides
 %%
--module(upr_proxy).
+-module(dcp_proxy).
 
 -behaviour(gen_server).
 
@@ -117,7 +117,7 @@ handle_packet(<<Magick:8, Opcode:8, _Rest/binary>> = Packet,
         true ->
             ok;
         false ->
-            ?log_debug("Proxy packet: ~s", [upr_commands:format_packet_nicely(Packet)])
+            ?log_debug("Proxy packet: ~s", [dcp_commands:format_packet_nicely(Packet)])
     end,
 
     Type = case Magick of
@@ -177,7 +177,7 @@ connect(Type, ConnName, Node, Bucket) ->
     Password = ns_config:search_node_prop(Node, 'latest-config-marker', memcached, admin_pass),
 
     Sock = mc_replication:connect({ns_memcached:host_port(Node), Username, Password, Bucket}),
-    ok = upr_commands:open_connection(Sock, ConnName, Type),
+    ok = dcp_commands:open_connection(Sock, ConnName, Type),
     Sock.
 
 disconnect(Sock) ->

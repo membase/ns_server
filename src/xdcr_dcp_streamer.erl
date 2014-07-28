@@ -13,11 +13,11 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
--module(xdcr_upr_streamer).
+-module(xdcr_dcp_streamer).
 
 -include("ns_common.hrl").
 -include("mc_constants.hrl").
--include("xdcr_upr_streamer.hrl").
+-include("xdcr_dcp_streamer.hrl").
 
 %% if we're waiting for data and have unacked stuff we'll ack all
 %% unacked stuff we have after this many milliseconds. This allows
@@ -238,11 +238,11 @@ stream_vbucket(Bucket, Vb, FailoverId,
 stream_vbucket_inner(Bucket, Vb, FailoverId,
                      StartSeqno, SnapshotStart, SnapshotEnd,
                      Callback, Acc, Parent) ->
-    {ok, S} = xdcr_upr_sockets_pool:take_socket(Bucket),
+    {ok, S} = xdcr_dcp_sockets_pool:take_socket(Bucket),
     case start(S, Vb, FailoverId, StartSeqno,
                SnapshotStart, SnapshotEnd, Callback, Acc, Parent) of
         ok ->
-            ok = xdcr_upr_sockets_pool:put_socket(Bucket, S);
+            ok = xdcr_dcp_sockets_pool:put_socket(Bucket, S);
         stop ->
             ?log_debug("Got stop. Dropping socket on the floor")
     end.
@@ -554,9 +554,9 @@ do_get_failover_log(Socket, VB) ->
 get_failover_log(Bucket, VB) ->
     misc:executing_on_new_process(
       fun () ->
-              {ok, S} = xdcr_upr_sockets_pool:take_socket(Bucket),
+              {ok, S} = xdcr_dcp_sockets_pool:take_socket(Bucket),
               RV = do_get_failover_log(S, VB),
-              ok = xdcr_upr_sockets_pool:put_socket(Bucket, S),
+              ok = xdcr_dcp_sockets_pool:put_socket(Bucket, S),
               RV
       end).
 

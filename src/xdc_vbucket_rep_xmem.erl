@@ -19,7 +19,7 @@
 -export([make_location/2, find_missing/2, flush_docs/2]).
 
 -include("xdc_replicator.hrl").
--include("xdcr_upr_streamer.hrl").
+-include("xdcr_dcp_streamer.hrl").
 
 make_location(#xdc_rep_xmem_remote{ip = Host,
                                    port = Port,

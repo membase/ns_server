@@ -16,7 +16,7 @@
 %% @doc the service that provides notification to subscribers every time
 %%      when new mutations appear on certain partition after certain seqno
 %%
--module(upr_notifier).
+-module(dcp_notifier).
 
 -include("ns_common.hrl").
 -include("mc_constants.hrl").
@@ -35,7 +35,7 @@ start_link(Bucket) ->
     single_bucket_sup:ignore_if_not_couchbase_bucket(
       Bucket,
       fun (_) ->
-              upr_proxy:start_link(notifier,
+              dcp_proxy:start_link(notifier,
                                    get_connection_name(Bucket, node()),
                                    node(), Bucket, ?MODULE, [Bucket])
       end).
@@ -52,7 +52,7 @@ server_name(Bucket) ->
     list_to_atom(?MODULE_STRING "-" ++ Bucket).
 
 handle_call({subscribe, Partition, StartSeqNo, UUID}, From, State, ParentState) ->
-    NewParentState = upr_proxy:maybe_connect(ParentState),
+    NewParentState = dcp_proxy:maybe_connect(ParentState),
     PartitionState = get_partition(Partition, State),
     do_subscribe(From, {StartSeqNo, UUID}, PartitionState, State, NewParentState).
 
@@ -61,7 +61,7 @@ handle_cast(Msg, State, ParentState) ->
     {noreply, State, ParentState}.
 
 handle_packet(request, ?NOOP, _Packet, State, ParentState) ->
-    {ok, quiet} = mc_client_binary:respond(?NOOP, upr_proxy:get_socket(ParentState),
+    {ok, quiet} = mc_client_binary:respond(?NOOP, dcp_proxy:get_socket(ParentState),
                                            {#mc_header{status = ?SUCCESS},
                                             #mc_entry{}}),
     {block, State, ParentState};
@@ -84,12 +84,12 @@ handle_response(?DCP_STREAM_REQ, Header, Body,
                 #partition{stream_state = pending,
                            partition = Partition,
                            last_known_pos = {_, UUID}} = PartitionState, ParentState) ->
-    case upr_commands:process_response(Header, Body) of
+    case dcp_commands:process_response(Header, Body) of
         ok ->
             PartitionState#partition{stream_state = open};
         {rollback, RollbackSeqNo} ->
             ?log_debug("Rollback stream for partition ~p to seqno ~p", [Partition, RollbackSeqNo]),
-            upr_commands:stream_request(upr_proxy:get_socket(ParentState),
+            dcp_commands:stream_request(dcp_proxy:get_socket(ParentState),
                                         Partition, Partition,
                                         RollbackSeqNo, 0, UUID,
                                         RollbackSeqNo, RollbackSeqNo),
@@ -162,7 +162,7 @@ do_subscribe(From, {StartSeqNo, UUID} = Pos,
              #partition{partition = Partition,
                         stream_state = closed} = PartitionState,
              State, ParentState) ->
-    upr_commands:stream_request(upr_proxy:get_socket(ParentState),
+    dcp_commands:stream_request(dcp_proxy:get_socket(ParentState),
                                 Partition, Partition,
                                 StartSeqNo, 0, UUID, StartSeqNo, StartSeqNo),
 

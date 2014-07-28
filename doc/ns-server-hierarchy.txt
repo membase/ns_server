@@ -190,7 +190,7 @@
                                                                      about queuing.")
                                                         (gen_server '(replication_manager "default") :name 'replication_manager-default :since "3.0"
                                                                     "keeps track of desired replications. Routes
-                                                                    replication work between tap and upr depending
+                                                                    replication work between tap and dcp depending
                                                                     on bucket replication type.")
                                                                     (gen_server '(tap_replication_manager "default") :name 'tap_replication_manager-default
                                                                                 "implements tap portion of replication manager.
@@ -199,15 +199,15 @@
                                                         (supervisor '(ns_vbm_sup "default") :name 'ns_vbm_sup-default :since "2.0"
                                                                     "hosts replication ebucketmigrators for 2.0
                                                                      \"replicators on destination\"")
-                                                        (supervisor '(upr_sup "default") :name 'upr_sup-default :since "3.0"
+                                                        (supervisor '(dcp_sup "default") :name 'dcp_sup-default :since "3.0"
                                                                     "hosts and manages upr replicators"
-                                                                    (gen-server '(upr_replicator "default" "node") :name 'upr_replicator-default-node :since "3.0"
-                                                                                "implements frontend for upr replication proxy"
-                                                                                (gen-server '(upr_consumer_conn "default" "node") :name 'upr_consumer_conn-default-node :since "3.0"
-                                                                                            "implements consumer side of upr replication proxy")
-                                                                                (gen-server '(upr_producer_conn) :since "3.0"
-                                                                                            "implements producer side of upr replication proxy")))
-                                                        (gen-server '(upr_notifier "default") :name 'upr_notifier-default :since "3.0"
+                                                                    (gen-server '(dcp_replicator "default" "node") :name 'dcp_replicator-default-node :since "3.0"
+                                                                                "implements frontend for dcp replication proxy"
+                                                                                (gen-server '(dcp_consumer_conn "default" "node") :name 'dcp_consumer_conn-default-node :since "3.0"
+                                                                                            "implements consumer side of dcp replication proxy")
+                                                                                (gen-server '(dcp_producer_conn) :since "3.0"
+                                                                                            "implements producer side of dcp replication proxy")))
+                                                        (gen-server '(dcp_notifier "default") :name 'dcp_notifier-default :since "3.0"
                                                                     "note: it's part of data path. Allows xdcr-over-xmem"
                                                                     " to check/wait until vbucket has greater seqno then xdcr consumed"
                                                                     " Only applies to couchbase buckets")

@@ -198,7 +198,7 @@ child_specs() ->
      {ns_memcached_sockets_pool, {ns_memcached_sockets_pool, start_link, []},
       permanent, 1000, worker, []},
 
-     {xdcr_upr_sockets_pool, {xdcr_upr_sockets_pool, start_link, []},
+     {xdcr_dcp_sockets_pool, {xdcr_dcp_sockets_pool, start_link, []},
       permanent, 1000, worker, []},
 
      {ns_bucket_worker_sup, {ns_bucket_worker_sup, start_link, []},

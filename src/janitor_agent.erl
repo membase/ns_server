@@ -751,7 +751,7 @@ handle_call({wait_dcp_data_move, ReplicaNodes, VBucket}, From, #state{bucket_nam
                State,
                From,
                fun () ->
-                       upr_replicator:wait_for_data_move(ReplicaNodes, Bucket, VBucket)
+                       dcp_replicator:wait_for_data_move(ReplicaNodes, Bucket, VBucket)
                end),
     {noreply, State2};
 handle_call({dcp_takeover, OldMasterNode, VBucket}, From, #state{bucket_name = Bucket} = State) ->
@@ -872,7 +872,7 @@ handle_call({get_dcp_docs_estimate, _VBucketId, _ReplicaNodes} = Req, From, Stat
     handle_call_via_servant(
       From, State, Req,
       fun ({_, VBucketId, ReplicaNodes}, #state{bucket_name = Bucket}) ->
-              [upr_replicator:get_docs_estimate(Bucket, VBucketId, Node)
+              [dcp_replicator:get_docs_estimate(Bucket, VBucketId, Node)
                || Node <- ReplicaNodes]
       end);
 handle_call({get_mass_dcp_docs_estimate, VBucketsR}, From, State) ->
@@ -948,7 +948,7 @@ set_rebalance_mref(Pid, State0) ->
                 State0#state.rebalancer_type =:= rebalancer of
                 true ->
                     %% something went wrong. nuke replicator just in case
-                    (catch upr_sup:nuke(State0#state.bucket_name));
+                    (catch dcp_sup:nuke(State0#state.bucket_name));
                 false ->
                     ok
             end,
@@ -1102,7 +1102,7 @@ do_wait_seqno_persisted(Bucket, VBucket, SeqNo) ->
 maybe_prime_replicators(#state{replicators_primed = true}) ->
     false;
 maybe_prime_replicators(#state{bucket_name = BucketName}) ->
-    upr_sup:nuke(BucketName).
+    dcp_sup:nuke(BucketName).
 
 apply_new_vbucket_state(VBucket, NormalState, RebalanceState, State) ->
     #state{last_applied_vbucket_states = WantedVBuckets,

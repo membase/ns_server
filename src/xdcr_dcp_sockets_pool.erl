@@ -15,7 +15,7 @@
 %%
 %% @doc pool of sockets that are used by xdcr dcp streaming
 %%
--module(xdcr_upr_sockets_pool).
+-module(xdcr_dcp_sockets_pool).
 
 -export([start_link/0]).
 
@@ -23,7 +23,7 @@
 
 -include("ns_common.hrl").
 %% for ?XDCR_DCP_BUFFER_SIZE
--include("xdcr_upr_streamer.hrl").
+-include("xdcr_dcp_streamer.hrl").
 
 start_link() ->
     Options = [{name, ?MODULE},
@@ -48,9 +48,9 @@ do_connect(Bucket) ->
                 ok ->
                     Random = couch_uuids:random(),
                     Name = <<"xdcr:", (list_to_binary(Bucket))/binary, "-", Random/binary>>,
-                    case upr_commands:open_connection(Socket, binary_to_list(Name), producer) of
+                    case dcp_commands:open_connection(Socket, binary_to_list(Name), producer) of
                         ok ->
-                            case upr_commands:setup_flow_control(Socket, ?XDCR_DCP_BUFFER_SIZE) of
+                            case dcp_commands:setup_flow_control(Socket, ?XDCR_DCP_BUFFER_SIZE) of
                                 ok ->
                                     ok = inet:setopts(Socket, [{nodelay, true}]),
                                     {ok, Socket};

@@ -15,7 +15,7 @@
 %%
 %% @doc producer side of the UPR proxy
 %%
--module(upr_producer_conn).
+-module(dcp_producer_conn).
 
 -include("ns_common.hrl").
 -include("mc_constants.hrl").
@@ -24,18 +24,18 @@
 -export([start_link/3, init/2, handle_packet/5, handle_call/4, handle_cast/3]).
 
 start_link(ConnName, ProducerNode, Bucket) ->
-    upr_proxy:start_link(producer, ConnName, ProducerNode, Bucket, ?MODULE, []).
+    dcp_proxy:start_link(producer, ConnName, ProducerNode, Bucket, ?MODULE, []).
 
 init([], ParentState) ->
-    {[], upr_proxy:maybe_connect(ParentState)}.
+    {[], dcp_proxy:maybe_connect(ParentState)}.
 
 handle_packet(request, ?DCP_SET_VBUCKET_STATE, Packet, State, ParentState) ->
-    Consumer = upr_proxy:get_partner(ParentState),
+    Consumer = dcp_proxy:get_partner(ParentState),
     gen_server:cast(Consumer, {set_vbucket_state, Packet}),
     {proxy, State, ParentState};
 
 handle_packet(response, ?DCP_CLOSE_STREAM, Packet, State, ParentState) ->
-    Consumer = upr_proxy:get_partner(ParentState),
+    Consumer = dcp_proxy:get_partner(ParentState),
     gen_server:cast(Consumer, {producer_stream_closed, Packet}),
     {block, State, ParentState};
 
@@ -47,7 +47,7 @@ handle_call(Msg, _From, State, ParentState) ->
     {reply, refused, State, ParentState}.
 
 handle_cast({close_stream, Partition}, State, ParentState) ->
-    upr_commands:close_stream(upr_proxy:get_socket(ParentState), Partition, Partition),
+    dcp_commands:close_stream(dcp_proxy:get_socket(ParentState), Partition, Partition),
     {noreply, State, ParentState};
 
 handle_cast(Msg, State, ParentState) ->

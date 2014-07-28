@@ -18,7 +18,7 @@
 %%      the vbuckets are upgraded sequentially not causing simultaneous
 %%      backfill of all vbuckets
 %%
--module(upr_upgrade).
+-module(dcp_upgrade).
 
 -behavior(gen_server).
 

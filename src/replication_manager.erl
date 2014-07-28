@@ -187,7 +187,7 @@ handle_call({dcp_takeover, OldMasterNode, VBucket}, _From,
                                             {Node, VBuckets}
                                     end
                             end, CurrentReps),
-    {reply, upr_replicator:takeover(OldMasterNode, Bucket, VBucket),
+    {reply, dcp_replicator:takeover(OldMasterNode, Bucket, VBucket),
      State#state{desired_replications = DesiredReps}}.
 
 manage_tap_replication_manager(Bucket, Type, TapReplManager) ->
@@ -284,11 +284,11 @@ call_replicators(TapFun, TapArgs, DcpFun, DcpArgs, MergeCB, ReplType) ->
         tap ->
             erlang:apply(tap_replication_manager, TapFun, TapArgs);
         dcp ->
-            erlang:apply(upr_sup, DcpFun, DcpArgs);
+            erlang:apply(dcp_sup, DcpFun, DcpArgs);
         {dcp, TapPartitions} ->
             MergeCB(
               erlang:apply(tap_replication_manager, TapFun, TapArgs),
-              erlang:apply(upr_sup, DcpFun, DcpArgs), TapPartitions)
+              erlang:apply(dcp_sup, DcpFun, DcpArgs), TapPartitions)
     end.
 
 get_actual_replications(Bucket, ReplTypeTuple) ->

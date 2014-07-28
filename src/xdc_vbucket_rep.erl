@@ -45,7 +45,7 @@
 
 -include("xdc_replicator.hrl").
 -include("remote_clusters_info.hrl").
--include("xdcr_upr_streamer.hrl").
+-include("xdcr_dcp_streamer.hrl").
 
 %% for ?MC_DATATYPE_COMPRESSED
 -include("mc_constants.hrl").
@@ -960,7 +960,7 @@ read_changes(BucketName, Vb, ChangesQueue, StartSeq,
     {snapshot_end, true} = {snapshot_end, is_integer(SnapshotEnd)},
     {failover_uuid, true} = {failover_uuid, is_integer(FailoverUUID)},
     erlang:process_flag(trap_exit, true),
-    xdcr_upr_streamer:stream_vbucket(
+    xdcr_dcp_streamer:stream_vbucket(
       binary_to_list(BucketName), Vb, FailoverUUID,
       StartSeq, SnapshotStart, SnapshotEnd,
       fun (Event, _) ->
@@ -1067,7 +1067,7 @@ check_src_db_updated(#rep_state{status = #rep_vb_status{status = idle,
             ?x_trace(waitingForNotification, []),
             proc_lib:spawn_link(
               fun () ->
-                      RV = (catch upr_notifier:subscribe(couch_util:to_list(SourceBucket),
+                      RV = (catch dcp_notifier:subscribe(couch_util:to_list(SourceBucket),
                                                          Vb, Seq, U)),
                       ?x_trace(gotNotification, [{rv, xdcr_trace_log_formatter:format_pp(RV)}]),
                       case ns_config:read_key_fast(xdcr_anticipatory_delay, 0) of

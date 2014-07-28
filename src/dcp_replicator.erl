@@ -15,7 +15,7 @@
 %%
 %% @doc partitions replicator that uses DCP protocol
 %%
--module(upr_replicator).
+-module(dcp_replicator).
 
 -behaviour(gen_server).
 
@@ -44,12 +44,12 @@ init({ProducerNode, Bucket}) ->
     process_flag(trap_exit, true),
 
     ConnName = get_connection_name(node(), ProducerNode, Bucket),
-    {ok, ConsumerConn} = upr_consumer_conn:start_link(ConnName, Bucket),
-    {ok, ProducerConn} = upr_producer_conn:start_link(ConnName, ProducerNode, Bucket),
+    {ok, ConsumerConn} = dcp_consumer_conn:start_link(ConnName, Bucket),
+    {ok, ProducerConn} = dcp_producer_conn:start_link(ConnName, ProducerNode, Bucket),
 
     erlang:register(consumer_server_name(ProducerNode, Bucket), ConsumerConn),
 
-    Proxies = upr_proxy:connect_proxies(ConsumerConn, ProducerConn),
+    Proxies = dcp_proxy:connect_proxies(ConsumerConn, ProducerConn),
 
     ?log_debug("initiated new dcp replication with consumer side: ~p and producer side: ~p", [ConsumerConn, ProducerConn]),
     {ok, #state{
@@ -68,7 +68,7 @@ server_name(ProducerNode, Bucket) ->
     list_to_atom(?MODULE_STRING "-" ++ Bucket ++ "-" ++ atom_to_list(ProducerNode)).
 
 consumer_server_name(ProducerNode, Bucket) ->
-    list_to_atom("upr_consumer_conn-" ++ Bucket ++ "-" ++ atom_to_list(ProducerNode)).
+    list_to_atom("dcp_consumer_conn-" ++ Bucket ++ "-" ++ atom_to_list(ProducerNode)).
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
@@ -81,7 +81,7 @@ terminate(Reason, #state{proxies = Proxies,
                          connection_name = ConnName,
                          producer_node = ProdNode,
                          bucket = Bucket}) ->
-    upr_proxy:terminate_and_wait(Reason, Proxies),
+    dcp_proxy:terminate_and_wait(Reason, Proxies),
     case Reason of
         normal ->
             ok;
@@ -92,7 +92,7 @@ terminate(Reason, #state{proxies = Proxies,
                 (catch
                      misc:parallel_map(
                        fun ({Type, Node}) ->
-                               upr_proxy:nuke_connection(Type, ConnName, Node, Bucket)
+                               dcp_proxy:nuke_connection(Type, ConnName, Node, Bucket)
                        end,
                        [{consumer, node()}, {producer, ProdNode}],
                        5000)),
@@ -110,14 +110,14 @@ handle_info(Msg, State) ->
 
 handle_call({setup_replication, Partitions}, _From, #state{consumer_conn = Pid} = State) ->
     RV = spawn_and_wait(fun () ->
-                                upr_consumer_conn:setup_streams(Pid, Partitions)
+                                dcp_consumer_conn:setup_streams(Pid, Partitions)
                         end),
     {reply, RV, State};
 
 handle_call({takeover, Partition}, _From, #state{consumer_conn = Pid} = State) ->
     RV = spawn_and_wait(fun () ->
-                                upr_consumer_conn:maybe_close_stream(Pid, Partition),
-                                upr_consumer_conn:takeover(Pid, Partition)
+                                dcp_consumer_conn:maybe_close_stream(Pid, Partition),
+                                dcp_consumer_conn:takeover(Pid, Partition)
                         end),
     {reply, RV, State};
 

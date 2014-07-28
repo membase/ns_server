@@ -256,7 +256,7 @@ extract_ck_params(Req) ->
 handle_pre_replicate(Req) ->
     {Bucket, VB, VBOpaque, CommitOpaque} = extract_ck_params(Req),
 
-    FailoverLog = case xdcr_upr_streamer:get_failover_log(binary_to_list(Bucket), VB) of
+    FailoverLog = case xdcr_dcp_streamer:get_failover_log(binary_to_list(Bucket), VB) of
                       {memcached_error, not_my_vbucket} ->
                           erlang:throw({not_found, not_my_vbucket});
                       XFailoverLog when is_list(XFailoverLog) ->

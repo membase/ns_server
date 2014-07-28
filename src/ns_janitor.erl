@@ -52,7 +52,7 @@ cleanup_with_membase_bucket_check_servers(Bucket, Options, BucketConfig, FullCon
     end.
 
 cleanup_with_possible_dcp_upgrade(Bucket, Options, BucketConfig, FullConfig) ->
-    case upr_upgrade:consider_trivial_upgrade(Bucket, BucketConfig) of
+    case dcp_upgrade:consider_trivial_upgrade(Bucket, BucketConfig) of
         true ->
             cleanup(Bucket, Options);
         false ->

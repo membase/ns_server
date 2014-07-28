@@ -1284,7 +1284,7 @@ maybe_start_upgrade_to_dcp(Restart) ->
     maybe_start_upgrade_to_dcp(Restart, trivial).
 
 maybe_start_upgrade_to_dcp(Restart, Type) ->
-    case {upr_upgrade:get_buckets_to_upgrade(), Type} of
+    case {dcp_upgrade:get_buckets_to_upgrade(), Type} of
         {[], _} ->
             case Restart of
                 true ->
@@ -1293,10 +1293,10 @@ maybe_start_upgrade_to_dcp(Restart, Type) ->
                     {next_state, idle, #idle_state{}}
             end;
         {Buckets, trivial} ->
-            upr_upgrade:consider_trivial_upgrade(Buckets),
+            dcp_upgrade:consider_trivial_upgrade(Buckets),
             maybe_start_upgrade_to_dcp(Restart, nontrivial);
         {Buckets, nontrivial} ->
-            {ok, Pid} = upr_upgrade:start_link(Buckets),
+            {ok, Pid} = dcp_upgrade:start_link(Buckets),
 
             ns_config:set([{rebalance_status, running},
                            {rebalance_status_uuid, couch_uuids:random()},

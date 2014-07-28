@@ -16,7 +16,7 @@
 -export([start_link/1]).
 
 -include("xdc_replicator.hrl").
--include("xdcr_upr_streamer.hrl").
+-include("xdcr_dcp_streamer.hrl").
 
 %% imported functions
 -import(couch_util, [get_value/3]).

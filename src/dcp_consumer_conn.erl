@@ -15,7 +15,7 @@
 %%
 %% @doc consumer side of the DCP proxy
 %%
--module(upr_consumer_conn).
+-module(dcp_consumer_conn).
 
 -include("ns_common.hrl").
 -include("mc_constants.hrl").
@@ -46,13 +46,13 @@
                }).
 
 start_link(ConnName, Bucket) ->
-    upr_proxy:start_link(consumer, ConnName, node(), Bucket, ?MODULE, []).
+    dcp_proxy:start_link(consumer, ConnName, node(), Bucket, ?MODULE, []).
 
 init([], ParentState) ->
     {#state{
         partitions = [],
         state = idle
-       }, upr_proxy:maybe_connect(ParentState)}.
+       }, dcp_proxy:maybe_connect(ParentState)}.
 
 
 handle_packet(response, ?DCP_ADD_STREAM, Packet,
@@ -68,7 +68,7 @@ handle_packet(response, ?DCP_ADD_STREAM, Packet,
             error ->
                 State;
             _ ->
-                {ok, Opaque} = upr_commands:process_response(Header, Body),
+                {ok, Opaque} = dcp_commands:process_response(Header, Body),
                 ?rebalance_debug("Stream has been added for partition ~p, stream opaque = ~.16X",
                                  [Partition, Opaque, "0x"]),
                 add_partition(Partition, State)
@@ -80,7 +80,7 @@ handle_packet(response, ?DCP_ADD_STREAM, Packet,
                      = TakeoverState} = State, ParentState) ->
 
     {Header, Body} = mc_binary:decode_packet(Packet),
-    case {upr_commands:process_response(Header, Body), Header#mc_header.opaque} of
+    case {dcp_commands:process_response(Header, Body), Header#mc_header.opaque} of
         {{ok, _}, Partition} ->
             NewTakeoverState = TakeoverState#takeover_state{open_ack = true},
             {block, maybe_reply_takeover(From, NewTakeoverState, State), ParentState};
@@ -162,7 +162,7 @@ handle_call({maybe_close_stream, Partition}, From,
 
 handle_call({setup_streams, Partitions}, From,
             #state{state=idle} = State, ParentState) ->
-    Sock = upr_proxy:get_socket(ParentState),
+    Sock = dcp_proxy:get_socket(ParentState),
     CurrentPartitions = get_partitions(State),
 
     StreamsToStart = Partitions -- CurrentPartitions,
@@ -173,14 +173,14 @@ handle_call({setup_streams, Partitions}, From,
             {reply, ok, State, ParentState};
         _ ->
             StartStreamRequests = lists:map(fun (Partition) ->
-                                                    upr_commands:add_stream(Sock, Partition,
+                                                    dcp_commands:add_stream(Sock, Partition,
                                                                             Partition, add),
                                                     {Partition}
                                             end, StreamsToStart),
 
             StopStreamRequests = lists:map(fun (Partition) ->
-                                                   Producer = upr_proxy:get_partner(ParentState),
-                                                   upr_commands:close_stream(Sock, Partition, Partition),
+                                                   Producer = dcp_proxy:get_partner(ParentState),
+                                                   dcp_commands:close_stream(Sock, Partition, Partition),
                                                    gen_server:cast(Producer, {close_stream, Partition}),
                                                    {Partition}
                                            end, StreamsToStop),
@@ -199,12 +199,12 @@ handle_call({setup_streams, Partitions}, From,
     end;
 
 handle_call({takeover, Partition}, From, #state{state=idle} = State, ParentState) ->
-    Sock = upr_proxy:get_socket(ParentState),
+    Sock = dcp_proxy:get_socket(ParentState),
     case has_partition(Partition, State) of
         true ->
             {reply, {error, takeover_on_open_stream_is_not_allowed}, State, ParentState};
         false ->
-            upr_commands:add_stream(Sock, Partition, Partition, takeover),
+            dcp_commands:add_stream(Sock, Partition, Partition, takeover),
             {noreply, State#state{state = #takeover_state{
                                              owner = From,
                                              state = requested,

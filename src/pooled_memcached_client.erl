@@ -4,7 +4,7 @@
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
 -include("couch_db.hrl").
--include("xdcr_upr_streamer.hrl").
+-include("xdcr_dcp_streamer.hrl").
 
 -export([find_missing_revs/3, bulk_set_metas/3]).
 
