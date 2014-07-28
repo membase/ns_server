@@ -204,6 +204,9 @@ var Cell = mkClass({
     // })();
   },
   equality: function (a, b) {
+    if (a == null) {
+      return a === b;
+    }
     return a == b;
   },
   subscribe: function (cb, options) {
