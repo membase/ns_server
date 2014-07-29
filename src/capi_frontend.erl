@@ -176,6 +176,8 @@ update_doc(#db{filepath = undefined, name=Name},
     case capi_ddoc_replication_srv:update_doc(Name, Doc) of
         ok ->
             ok;
+        {not_found, _} = Error ->
+            throw(Error);
         {invalid_design_doc, _Reason} = Error ->
             throw(Error)
     end;

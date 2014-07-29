@@ -231,21 +231,34 @@ handle_call({interactive_update, #doc{id=Id}=Doc}, _From,
     #state{local_docs=Docs}=State,
     Rand = crypto:rand_uniform(0, 16#100000000),
     RandBin = <<Rand:32/integer>>,
-    NewRev = case lists:keyfind(Id, #doc.id, Docs) of
-                 false ->
-                     {1, RandBin};
-                 #doc{rev = {Pos, _DiskRev}} ->
-                     {Pos + 1, RandBin}
-             end,
-    NewDoc = Doc#doc{rev=NewRev},
-    try
-        ?log_debug("Writing interactively saved ddoc ~p", [Doc]),
-        SavedDocState = save_doc(NewDoc, State),
-        Replicator ! {replicate_change, NewDoc},
-        {reply, ok, SavedDocState}
-    catch throw:{invalid_design_doc, _} = Error ->
-            ?log_debug("Document validation failed: ~p", [Error]),
-            {reply, Error, State}
+    {NewRev, FoundType} =
+        case lists:keyfind(Id, #doc.id, Docs) of
+            false ->
+                {{1, RandBin}, missing};
+            #doc{rev = {Pos, _DiskRev}, deleted=Deleted} ->
+                FoundType0 = case Deleted of
+                                 true ->
+                                     deleted;
+                                 false ->
+                                     existent
+                             end,
+                {{Pos + 1, RandBin}, FoundType0}
+        end,
+
+    case Doc#doc.deleted andalso FoundType =/= existent of
+        true ->
+            {reply, {not_found, FoundType}, State};
+        false ->
+            NewDoc = Doc#doc{rev=NewRev},
+            try
+                ?log_debug("Writing interactively saved ddoc ~p", [Doc]),
+                SavedDocState = save_doc(NewDoc, State),
+                Replicator ! {replicate_change, NewDoc},
+                {reply, ok, SavedDocState}
+            catch throw:{invalid_design_doc, _} = Error ->
+                    ?log_debug("Document validation failed: ~p", [Error]),
+                    {reply, Error, State}
+            end
     end;
 handle_call({foreach_doc, Fun}, _From, #state{local_docs = Docs} = State) ->
     Res = [{Id, (catch Fun(Doc))} || #doc{id = Id} = Doc <- Docs],
