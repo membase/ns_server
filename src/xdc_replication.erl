@@ -88,7 +88,7 @@ init([#rep{source = SrcBucketBinary, replication_mode = RepMode, options = Optio
                                      init_throttle = InitThrottle,
                                      work_throttle = WorkThrottle,
                                      vbucket_sup = Sup},
-            RepState = start_vb_replicators(RepState0);
+            {ok, start_vb_replicators(RepState0)};
         Error ->
             ?xdcr_error("fail to fetch a valid bucket config and no vb replicator "
                         "would be created (error: ~p)", [Error]),
@@ -97,9 +97,9 @@ init([#rep{source = SrcBucketBinary, replication_mode = RepMode, options = Optio
                                     num_tokens = MaxConcurrentReps,
                                     init_throttle = InitThrottle,
                                     work_throttle = WorkThrottle,
-                                    vbucket_sup = Sup}
-    end,
-    {ok, RepState}.
+                                    vbucket_sup = Sup},
+            {ok, RepState}
+    end.
 
 handle_call(stats, _From, #replication{vb_rep_dict = Dict,
                                        rep = Rep,
@@ -381,7 +381,7 @@ handle_info({buckets, Buckets0},
             Sup2 = start_vbucket_rep_sup(Rep),
             ?xdcr_debug("bucket gone or never existed, shut down current vb rep "
                         "supervisor: ~p and create a new one :~p", [Sup, Sup2]),
-            NewState = State#replication{vbucket_sup = Sup2};
+            {noreply, State#replication{vbucket_sup = Sup2}};
         SrcConfig ->
             NewVbs = xdc_rep_utils:my_active_vbuckets(SrcConfig),
             NewState =
@@ -394,9 +394,9 @@ handle_info({buckets, Buckets0},
                                 "adjust replicators for new vbs :~p",
                                 [?b2l(SrcBucket), NewVbs]),
                     start_vb_replicators(State#replication{vbs = NewVbs})
-            end
-    end,
-    {noreply, NewState}.
+                end,
+            {noreply, NewState}
+    end.
 
 
 terminate(_Reason, #replication{vbucket_sup = Sup}) ->
