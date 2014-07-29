@@ -191,15 +191,8 @@ update_docs(_Db,
     %% before ensure_full_commit below.
     ok;
 
-update_docs(#db{filepath = undefined, name = Name}, Docs, _Options) ->
-    lists:foreach(fun(#doc{id = <<"_design/",_/binary>>} = Doc) ->
-                          case capi_ddoc_replication_srv:update_doc(Name, Doc) of
-                              ok ->
-                                  ok;
-                              {invalid_design_doc, _Reason} = Error ->
-                                  throw(Error)
-                          end
-                  end, Docs).
+update_docs(Db, Docs, Options) ->
+    exit(not_implemented(update_docs, [Db, Docs, Options])).
 
 update_docs(Db, Docs, Options, replicated_changes) ->
     Result =
