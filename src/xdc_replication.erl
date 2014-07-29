@@ -285,26 +285,6 @@ consume_all_buckets_changes(Buckets) ->
             Buckets
     end.
 
-handle_info({src_db_updated, Vb}, #replication{vb_rep_dict = Dict} = State) ->
-    case dict:find(Vb, Dict) of
-        {ok, #rep_vb_status{pid = Pid}} ->
-            Pid ! src_db_updated;
-        error ->
-            MyVbs = State#replication.vbs,
-            case lists:member(Vb, MyVbs) of
-                true ->
-                    %% no state yet, or already erased
-                    RepInfo = xdc_rep_utils:get_rep_info(State#replication.rep),
-                    ?xdcr_debug("get src_db_udpated from vb ~p (rep ~s), but the vb replicator has not "
-                                "been initialized yet or has been deleted.", [Vb, RepInfo]);
-                _ ->
-                    %% skip update notifications for replicas
-                    ok
-            end,
-            ok
-    end,
-    {noreply, State};
-
 handle_info({set_vb_rep_status, #rep_vb_status{vb = Vb} = NewStat},
             #replication{vb_rep_dict = Dict} = State) ->
     Stat = case dict:is_key(Vb, Dict) of
