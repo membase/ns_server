@@ -35,7 +35,6 @@ var ServersSection = {
     _.each("pendingEject pending active allNodes".split(' '), function (attr) {
       self[attr] = serversValue[attr] || [];
     });
-
   },
   renderEverything: function () {
     this.detailsWidget.prepareDrawing();
@@ -52,7 +51,19 @@ var ServersSection = {
     this.serversQ.find('.add_button').toggle(!!(details && !rebalancing));
     this.serversQ.find('.stop_recovery_button').toggle(!!inRecovery);
 
-    var mayRebalance = DAL.cells.mayRebalanceWithoutSampleLoadingCell.value && !loadingSamples;
+    var mayRebalance = !rebalancing && !inRecovery && !loadingSamples && pending.length !=0;
+
+    if (details && !rebalancing && !inRecovery && !loadingSamples && !details.balanced)
+      mayRebalance = true;
+
+    var unhealthyActive = _.detect(active, function (n) {
+      return n.clusterMembership == 'active'
+        && !n.pendingEject
+        && n.status === 'unhealthy'
+    })
+
+    if (unhealthyActive)
+      mayRebalance = false;
 
     var rebalanceButton = this.serversQ.find('.rebalance_button').toggle(!!details);
     rebalanceButton.toggleClass('dynamic_disabled', !mayRebalance);
@@ -317,18 +328,10 @@ var ServersSection = {
       });
     });
 
-    Cell.subscribeMultipleValues(function () {
-      self.refreshEverything();
-    }, self.serversCell, self.inRecoveryModeCell, self.isLoadingSamplesCell, DAL.cells.mayRebalanceWithoutSampleLoadingCell);
+    self.serversCell.subscribeAny($m(self, "refreshEverything"));
+    self.inRecoveryModeCell.subscribeAny($m(self, "refreshEverything"));
 
-    Cell.subscribeMultipleValues(function (currentSection, isSampleLoading, mayRebalanceWithoutSampleLoading) {
-      if (currentSection !== "servers") {
-        return;
-      }
-
-      $("#js_rebalance_during_sample_load").toggle(!!mayRebalanceWithoutSampleLoading && !!isSampleLoading);
-
-    }, DAL.cells.mode, self.isLoadingSamplesCell, DAL.cells.mayRebalanceWithoutSampleLoadingCell);
+    self.isLoadingSamplesCell.subscribeAny($m(self, "refreshEverything"));
 
     prepareTemplateForCell('active_server_list', self.serversCell);
     prepareTemplateForCell('pending_server_list', self.serversCell);
