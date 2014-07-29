@@ -57,7 +57,7 @@ queue_fetch_loop(WorkerID, Target, Cp, ChangesManager,
                 find_missing(Changes, Target, OptRepThreshold, XMemLoc),
             NumWritten = length(MissingDocInfoList),
             ?x_trace(foundMissing, [{count, NumWritten}]),
-            Start = now(),
+            Start = os:timestamp(),
             {ok, DataRepd} = local_process_batch(
                                MissingDocInfoList, Cp, Target,
                                #batch{}, BatchSize, BatchItems, XMemLoc, 0),
@@ -170,7 +170,7 @@ flush_docs_helper(Target, DocsList, XMemLoc) ->
 %% return list of Docsinfos of missing keys
 -spec find_missing(list(), #httpdb{}, integer(), term()) -> {list(), integer(), integer()}.
 find_missing(DocInfos, Target, OptRepThreshold, XMemLoc) ->
-    Start = now(),
+    Start = os:timestamp(),
 
     %% depending on doc body size, we separate all keys into two groups:
     %% keys with doc body size greater than the threshold, and keys with doc body
@@ -214,7 +214,7 @@ find_missing(DocInfos, Target, OptRepThreshold, XMemLoc) ->
         end,
 
     %% latency in millisecond
-    Latency = round(timer:now_diff(now(), Start) div 1000),
+    Latency = round(timer:now_diff(os:timestamp(), Start) div 1000),
 
     %% build list of docinfo for all missing keys
     MissingDocInfoList = lists:filter(

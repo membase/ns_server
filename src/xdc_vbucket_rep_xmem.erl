@@ -59,7 +59,7 @@ do_flush_docs(#xdc_xmem_location{vb = VBucket,
                                  connection_timeout = ConnectionTimeout} = Loc,
               MutationsList, TriesLeft) ->
     true = (TriesLeft > 0),
-    TimeStart = now(),
+    TimeStart = os:timestamp(),
 
     {ok, Statuses} = pooled_memcached_client:bulk_set_metas(McdDst, VBucket, MutationsList),
     ?x_trace(xmemSetMetas, [{ids, {json, [M#dcp_mutation.id || M <- MutationsList]}},
@@ -76,7 +76,7 @@ do_flush_docs(#xdc_xmem_location{vb = VBucket,
     Enomem = lookup_error_dict(enomem, ErrorDict),
     OtherErr = (length(Statuses) - Flushed - Eexist - Enoent - NotMyVb - Einval - TmpFail - Enomem),
 
-    TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
+    TimeSpent = timer:now_diff(os:timestamp(), TimeStart) div 1000,
 
     %% dump error msg if timeout
     TimeSpentSecs = TimeSpent div 1000,

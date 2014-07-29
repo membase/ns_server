@@ -473,7 +473,7 @@ checkpoint_status(CheckpointHistory) ->
 %% compute the replicaiton rate, and return the new rate stat
 -spec compute_rate_stat(integer(), integer(), #ratestat{}) -> #ratestat{}.
 compute_rate_stat(Written1, DataRepd1, RateStat) ->
-    T2 = now(),
+    T2 = os:timestamp(),
     T1 = RateStat#ratestat.timestamp,
     %% compute elapsed time in microsecond
     Delta = timer:now_diff(T2, T1),

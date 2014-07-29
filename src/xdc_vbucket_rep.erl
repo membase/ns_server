@@ -409,10 +409,10 @@ handle_call({worker_done, Pid}, _From,
 handle_cast(checkpoint, #rep_state{status = VbStatus} = State) ->
     Result = case VbStatus#rep_vb_status.status of
                  replicating ->
-                     Start = now(),
+                     Start = os:timestamp(),
                      case xdc_vbucket_rep_ckpt:do_checkpoint(State) of
                          {ok, _, NewState} ->
-                             CommitTime = timer:now_diff(now(), Start) div 1000,
+                             CommitTime = timer:now_diff(os:timestamp(), Start) div 1000,
                              TotalCommitTime = CommitTime + NewState#rep_state.status#rep_vb_status.commit_time,
                              VbStatus2 = NewState#rep_state.status#rep_vb_status{commit_time = TotalCommitTime},
                              NewState2 = NewState#rep_state{timer = xdc_vbucket_rep_ckpt:start_timer(State),
@@ -719,8 +719,8 @@ init_replication_state(#init_state{rep = Rep,
       dcp_failover_uuid = FailoverUUID,
       source_cur_seq = StartSeq,
       rep_starttime = httpd_util:rfc1123_date(),
-      last_checkpoint_time = now(),
-      rep_start_time = now(),
+      last_checkpoint_time = os:timestamp(),
+      rep_start_time = os:timestamp(),
       %% temporarily initialized to 0, when vb rep gets the token it will
       %% initialize the work start time in start_replication()
       work_start_time = 0,
@@ -893,7 +893,7 @@ start_replication(#rep_state{
               {workers, {json, [xdcr_trace_log_formatter:format_pid(W) || W <- Workers]}}]),
 
     IntervalSecs = get_value(checkpoint_interval, Options),
-    TimeSinceLastCkpt = timer:now_diff(now(), LastCkptTime) div 1000000,
+    TimeSinceLastCkpt = timer:now_diff(os:timestamp(), LastCkptTime) div 1000000,
 
     %% check if we need do checkpointing, replicator will crash if checkpoint failure
     State1 = State#rep_state{
@@ -901,7 +901,7 @@ start_replication(#rep_state{
                target = Target,
                src_master_db = SrcMasterDb},
 
-    Start = now(),
+    Start = os:timestamp(),
     {Succ, CkptErrReason, NewState} =
         case TimeSinceLastCkpt > IntervalSecs of
             true ->
@@ -913,7 +913,7 @@ start_replication(#rep_state{
                 {not_needed, [], State1}
         end,
 
-    CommitTime = timer:now_diff(now(), Start) div 1000,
+    CommitTime = timer:now_diff(os:timestamp(), Start) div 1000,
     TotalCommitTime = CommitTime + NewState#rep_state.status#rep_vb_status.commit_time,
 
     NewVbStatus = NewState#rep_state.status,

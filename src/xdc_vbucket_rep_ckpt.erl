@@ -127,7 +127,7 @@ do_checkpoint(#rep_state{current_through_seq = Seq,
                 couch_db:close(DB)
             end,
             NewState = State#rep_state{committed_seq = NewSeq,
-                                       last_checkpoint_time = erlang:now()},
+                                       last_checkpoint_time = os:timestamp()},
             ?x_trace(savedCheckpoint,
                      [{id, CheckpointDocId},
                       {doc, {json, CheckpointDoc}}]),
@@ -154,7 +154,7 @@ update_checkpoint_status_to_parent(#rep_state{
                                       status = RepStatus}, Succ) ->
 
     VBucket = RepStatus#rep_vb_status.vb,
-    RawTime = now(),
+    RawTime = os:timestamp(),
     LocalTime = calendar:now_to_local_time(RawTime),
 
     ?xdcr_debug("replicator (vb: ~p, source: ~p, dest: ~p) reports checkpoint "
