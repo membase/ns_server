@@ -257,38 +257,38 @@
         ep_tap_total_queue_fill, ep_tap_total_queue_drain, ep_tap_total_queue_backoff).
 
 -define(DCP_STAT_GAUGES,
-        ep_upr_replica_count,
-        ep_upr_replica_items_remaining,
-        ep_upr_replica_producer_count,
-        ep_upr_replica_total_backlog_size,
+        ep_dcp_replica_count,
+        ep_dcp_replica_items_remaining,
+        ep_dcp_replica_producer_count,
+        ep_dcp_replica_total_backlog_size,
 
-        ep_upr_xdcr_count,
-        ep_upr_xdcr_items_remaining,
-        ep_upr_xdcr_producer_count,
-        ep_upr_xdcr_total_backlog_size,
+        ep_dcp_xdcr_count,
+        ep_dcp_xdcr_items_remaining,
+        ep_dcp_xdcr_producer_count,
+        ep_dcp_xdcr_total_backlog_size,
 
-        ep_upr_views_count,
-        ep_upr_views_items_remaining,
-        ep_upr_views_producer_count,
-        ep_upr_views_total_backlog_size,
+        ep_dcp_views_count,
+        ep_dcp_views_items_remaining,
+        ep_dcp_views_producer_count,
+        ep_dcp_views_total_backlog_size,
 
-        ep_upr_other_count,
-        ep_upr_other_items_remaining,
-        ep_upr_other_producer_count,
-        ep_upr_other_total_backlog_size).
+        ep_dcp_other_count,
+        ep_dcp_other_items_remaining,
+        ep_dcp_other_producer_count,
+        ep_dcp_other_total_backlog_size).
 
 -define(DCP_STAT_COUNTERS,
-        ep_upr_replica_items_sent,
-        ep_upr_replica_total_bytes,
+        ep_dcp_replica_items_sent,
+        ep_dcp_replica_total_bytes,
 
-        ep_upr_xdcr_items_sent,
-        ep_upr_xdcr_total_bytes,
+        ep_dcp_xdcr_items_sent,
+        ep_dcp_xdcr_total_bytes,
 
-        ep_upr_views_items_sent,
-        ep_upr_views_total_bytes,
+        ep_dcp_views_items_sent,
+        ep_dcp_views_total_bytes,
 
-        ep_upr_other_items_sent,
-        ep_upr_other_total_bytes).
+        ep_dcp_other_items_sent,
+        ep_dcp_other_total_bytes).
 
 -ifdef(NEED_TAP_STREAM_STATS_CODE).
 

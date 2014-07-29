@@ -959,7 +959,7 @@ get_mass_tap_docs_estimate(Sock, VBuckets) ->
 -spec get_dcp_docs_estimate(port(), vbucket_id(), binary() | string()) ->
                                    {ok, {non_neg_integer(), non_neg_integer(), binary()}}.
 get_dcp_docs_estimate(Sock, VBucket, ConnName) ->
-    Key = iolist_to_binary([<<"upr-vbtakeover ">>, integer_to_list(VBucket), $\s, ConnName]),
+    Key = iolist_to_binary([<<"dcp-vbtakeover ">>, integer_to_list(VBucket), $\s, ConnName]),
 
     mc_binary:quick_stats(Sock, Key,
                           fun (<<"estimate">>, V, {_, AccChkItems, AccStatus}) ->

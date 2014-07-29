@@ -110,8 +110,8 @@ handle_event({stats, StatsBucket, #stat_entry{timestamp = TS, values = Values}},
                            TapInfo),
 
     NewDcpInfo =
-         new_safeness_info(orddict:find(ep_upr_replica_items_remaining, Values),
-                           orddict:find(ep_upr_replica_items_sent, Values),
+         new_safeness_info(orddict:find(ep_dcp_replica_items_remaining, Values),
+                           orddict:find(ep_dcp_replica_items_sent, Values),
                            TS,
                            LastTS,
                            DcpInfo),

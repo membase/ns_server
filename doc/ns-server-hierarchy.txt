@@ -200,7 +200,7 @@
                                                                     "hosts replication ebucketmigrators for 2.0
                                                                      \"replicators on destination\"")
                                                         (supervisor '(dcp_sup "default") :name 'dcp_sup-default :since "3.0"
-                                                                    "hosts and manages upr replicators"
+                                                                    "hosts and manages dcp replicators"
                                                                     (gen-server '(dcp_replicator "default" "node") :name 'dcp_replicator-default-node :since "3.0"
                                                                                 "implements frontend for dcp replication proxy"
                                                                                 (gen-server '(dcp_consumer_conn "default" "node") :name 'dcp_consumer_conn-default-node :since "3.0"

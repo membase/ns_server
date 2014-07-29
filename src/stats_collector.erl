@@ -92,7 +92,7 @@ grab_all_stats(Bucket) ->
                    {ok, Values} -> Values;
                    {memcached_error, key_enoent, _} -> []
                end,
-    DcpStats = case ns_memcached:stats(Bucket, <<"upragg :">>) of
+    DcpStats = case ns_memcached:stats(Bucket, <<"dcpagg :">>) of
                    {ok, ValuesDcp} -> ValuesDcp;
                    {memcached_error, key_enoent, _} -> []
                end,
@@ -375,10 +375,10 @@ parse_aggregate_dcp_stats(AggDcp) ->
 
     OtherStats = calc_dcp_other_stats(ReplicaStats, XdcrStats, ViewsStats, TotalStats),
 
-    lists:append([dcp_stream_stats_to_kvlist(<<"ep_upr_replica_">>, ReplicaStats),
-                  dcp_stream_stats_to_kvlist(<<"ep_upr_xdcr_">>, XdcrStats),
-                  dcp_stream_stats_to_kvlist(<<"ep_upr_views_">>, ViewsStats),
-                  dcp_stream_stats_to_kvlist(<<"ep_upr_other_">>, OtherStats)]).
+    lists:append([dcp_stream_stats_to_kvlist(<<"ep_dcp_replica_">>, ReplicaStats),
+                  dcp_stream_stats_to_kvlist(<<"ep_dcp_xdcr_">>, XdcrStats),
+                  dcp_stream_stats_to_kvlist(<<"ep_dcp_views_">>, ViewsStats),
+                  dcp_stream_stats_to_kvlist(<<"ep_dcp_other_">>, OtherStats)]).
 
 maybe_adjust_data_size(DataSize, DiskSize, MinFileSize) ->
     case DiskSize < MinFileSize of

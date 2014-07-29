@@ -110,8 +110,8 @@ nuke(Bucket) ->
 get_remaining_connections(Bucket) ->
     {ok, Connections} =
         ns_memcached:raw_stats(
-          node(), Bucket, <<"upr">>,
-          fun(<<"eq_uprq:ns_server:", K/binary>>, <<"consumer">>, Acc) ->
+          node(), Bucket, <<"dcp">>,
+          fun(<<"eq_dcpq:ns_server:", K/binary>>, <<"consumer">>, Acc) ->
                   case binary:longest_common_suffix([K, <<":type">>]) of
                       5 ->
                           ["ns_server:" ++ binary_to_list(binary:part(K, {0, byte_size(K) - 5})) | Acc];
