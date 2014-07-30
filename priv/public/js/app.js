@@ -157,7 +157,7 @@ var ThePage = {
 
     DAL.cells.mode.subscribeValue(function (sec) {
       $('.currentNav').removeClass('currentNav');
-      $('#switch_' + sec).parent('li').addClass('currentNav');
+      $('.switch_' + sec).parent('li').addClass('currentNav');
 
       var oldSection = self.currentSection;
       var currentSection = self.sections[sec];

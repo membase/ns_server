@@ -42,16 +42,16 @@
       <div class="contents">
         <ul>
           <!--<li class="line"></li>-->
-          <li class="line"><a id="switch_overview" href="#visitSec=overview">Cluster Overview</a></li>
-          <li class="line"><a id="switch_servers" href="#visitSec=servers">Server Nodes</a></li>
-          <li class="line"><a id="switch_buckets" href="#visitSec=buckets">Data Buckets</a></li>
-          <li class="line"><a id="switch_views" href="#visitSec=views">Views</a></li>
-          <li class="line"><a id="switch_replications" href="#visitSec=replications">XDCR</a></li>
-          <li class="line"><a id="switch_log" href="#visitSec=log">Log</a></li>
-          <li class="line" id="nav_settings_container"><a href="#visitSec=settings" id="switch_settings">Settings</a></li>
+          <li class="line"><a class="switch_overview" href="#visitSec=overview">Cluster Overview</a></li>
+          <li class="line"><a class="switch_servers switch_groups" href="#visitSec=servers">Server Nodes</a></li>
+          <li class="line"><a class="switch_buckets" href="#visitSec=buckets">Data Buckets</a></li>
+          <li class="line"><a class="switch_views" href="#visitSec=views">Views</a></li>
+          <li class="line"><a class="switch_replications" href="#visitSec=replications">XDCR</a></li>
+          <li class="line"><a class="switch_log" href="#visitSec=log">Log</a></li>
+          <li class="line" id="nav_settings_container"><a href="#visitSec=settings" class="switch_settings">Settings</a></li>
         </ul>
         <script id="nav_settings_template" type="text/html">
-        <a href="#visitSec=settings" id="switch_settings">Settings
+        <a href="#visitSec=settings" class="switch_settings">Settings
         {% if (enabled && newVersion!==false && newVersion!==undefined) { %}
         <span class="badge notify"><span>!</span></span>
         {% } %}</a>

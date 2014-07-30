@@ -99,7 +99,7 @@ a.dynamic_disabled{text-decoration:none;cursor:default;}
 #headerNav li a {display:block;text-decoration:none;padding:13px 23px 7px;line-height:27px}
 #headerNav li:hover {background:url('../images/active_hover_bg.png') repeat-x;}
 #headerNav li.currentNav {background:url('../images/active_bg.png') no-repeat center;}
-#switch_overview {background:url('../images/home_icon.png') no-repeat 0.75em 50%;padding-left:2.5em !important;padding-right:1em !important}
+.switch_overview {background:url('../images/home_icon.png') no-repeat 0.75em 50%;padding-left:2.5em !important;padding-right:1em !important}
 
 /* to position the badges in the navigation correctly */
 #headerNav a {position:relative;}
