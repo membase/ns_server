@@ -29,8 +29,17 @@
     <h2>Memory Size</h2>
     <div class="sub_section">
       <div class="cache_metadata_block persistent-only" ng-show="modelStep3Service.bucketConf.bucketType === 'membase'">
-        <input type="checkbox" name="evictionPolicy" ng-model="modelStep3Service.bucketConf.evictionPolicy" ng-false-value="valueOnly" ng-false-value="fullEviction" id="enable_metadata_ejection">
-        <label for="enable_metadata_ejection">Enable Metadata Ejection</label>
+        <label>Cache Metadata:</label>
+        <div class="with_radiogroup">
+          <div>
+            <input type="radio" name="evictionPolicy" value="valueOnly" id="cache_metadata_retain-init" checked="checked" ng-model="modelStep3Service.bucketConf.evictionPolicy">
+            <label for="cache_metadata_retain-init">Retain metadata in memory even for non-resident items</label>
+          </div>
+          <div>
+            <input type="radio" name="evictionPolicy" value="fullEviction" id="cache_metadata_non_retain-init" ng-model="modelStep3Service.bucketConf.evictionPolicy">
+            <label for="cache_metadata_non_retain-init">Don’t retain metadata in memory for non-resident items</label>
+          </div>
+        </div>
         <a class="tooltip text_11"><span>What's this?</span>
           <span class="tooltip_msg" style="width:200px;"><span>
               Retaining metadata needs more system memory, but can provide best performance. Not retaining metadata can reduce memory overhead requirement.

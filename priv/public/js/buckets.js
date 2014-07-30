@@ -1004,8 +1004,6 @@ var BucketsSection = {
 
           modalSpinner.close();
 
-          initValues.evictionPolicy = initValues.evictionPolicy === "fullEviction";
-
           var dialog = new BucketDetailsDialog(initValues, false);
 
           BucketsSection.currentlyShownBucket = bucketDetails;
@@ -1072,7 +1070,8 @@ var BucketsSection = {
           },
           replicaIndex: false,
           replicaNumber: 1,
-          threadsNumber: 3
+          threadsNumber: 3,
+          evictionPolicy: 'valueOnly'
         }, true)).startDialog();
 
       });
