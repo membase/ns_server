@@ -1366,6 +1366,9 @@ function initAlertsSubscriber() {
     if (!alertsAndSilenceURL) {
       return;
     }
+    if (alertsAreDisabled) {
+      return;
+    }
     var alerts = alertsAndSilenceURL.stampedAlerts;
     var alertsSilenceURL = alertsAndSilenceURL.alertsSilenceURL;
     if (!alerts.length) {
@@ -1444,6 +1447,8 @@ function initAlertsSubscriber() {
   $(window).bind('template:rendered', processLinks);
 })();
 
+var alertsAreDisabled = false;
+
 $(function () {
   var href = window.location.href;
   var match = /\?(.*?)(?:$|#)/.exec(href);
@@ -1452,6 +1457,9 @@ $(function () {
   var params = deserializeQueryString(match[1]);
   if (params['enableInternalSettings']) {
     $('#edit-internal-settings-link').show();
+  }
+  if (params['disablePoorMansAlerts']) {
+    alertsAreDisabled = true;
   }
 });
 
