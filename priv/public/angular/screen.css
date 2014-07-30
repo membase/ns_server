@@ -1063,6 +1063,7 @@ input.view_name{width:20em;padding:5px}
 .bucket_details label {display: inline-block; vertical-align: middle;}
 .bucket_details .with_radiogroup {display: inline-block; vertical-align: top;}
 .bucket_details .sub_section {margin: 0 35px;}
+.bucket_details .cache_metadata_block {margin-top: 10px;}
 .bucket_details input, .bucket_details select {vertical-align: middle;}
 .bucket_details input[type="radio"] {margin-top: 2px;}
 .bucket_details input[type=number] {width: 3em;}
@@ -1079,7 +1080,7 @@ input.view_name{width:20em;padding:5px}
 .bucket_details .input_wrapper {display: inline-block;}
 .bucket_details .autocompaction_input_units {vertical-align: middle;}
 
-.bucket_details .size-gauge {float:right;width:364px;position:relative;top:-6px;line-height:24px;margin-right:-33px;}
+.bucket_details .size-gauge {float:right;width:364px;position:relative;top:-6px;line-height:24px;}
 .init_block p {line-height: 20px;}
 .bucket_details .for-ram-quota span {color:#222}
 .bucket_details .size-gauge .top-left {float:left;color:#C19710;font-size:12px;}

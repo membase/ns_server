@@ -27,7 +27,19 @@
     </div>
 
     <h2>Memory Size</h2>
-    <div class="sub_section">
+    <div class="sub_section" style="margin-right: 0;">
+      <div class="for-ram-quota">
+        <div class="usage-block size-gauge for-ram" bar-gauge="" base-info="guageConfig" ></div>
+        <div class="gauge-label">
+          <label for="ram_quota_mb_init">Per Node RAM Quota:</label>
+          <input name="ramQuotaMB" class="focusme" focus="focusMe" ng-class="{invalid: errors.ramQuotaMB}" value="30" ng-model="modelStep3Service.bucketConf.ramQuotaMB">
+          <abbr>MB</abbr>
+        </div>
+      </div>
+      <div class="error-container err-ramQuotaMB" ng-show="errors.ramQuotaMB">{{errors.ramQuotaMB}}</div>
+      <p class="memcached-summary when-non-persistent" ng-show="!!perNodeMegs">
+         Total bucket size = {{totalBucketSize}} MB ({{perNodeMegs}} MB x {{nodeCount}})
+      </p>
       <div class="cache_metadata_block persistent-only" ng-show="modelStep3Service.bucketConf.bucketType === 'membase'">
         <label>Cache Metadata:</label>
         <div class="with_radiogroup">
@@ -46,18 +58,6 @@
           </span></span>
         </a>
       </div>
-      <div class="for-ram-quota">
-        <div class="usage-block size-gauge for-ram" bar-gauge="" base-info="guageConfig" ></div>
-        <div class="gauge-label">
-          <label for="ram_quota_mb_init">Per Node RAM Quota:</label>
-          <input name="ramQuotaMB" class="focusme" focus="focusMe" ng-class="{invalid: errors.ramQuotaMB}" value="30" ng-model="modelStep3Service.bucketConf.ramQuotaMB">
-          <abbr>MB</abbr>
-        </div>
-      </div>
-      <div class="error-container err-ramQuotaMB" ng-show="errors.ramQuotaMB">{{errors.ramQuotaMB}}</div>
-      <span class="memcached-summary when-non-persistent" ng-show="!!perNodeMegs">
-         Total bucket size = {{totalBucketSize}} MB ({{perNodeMegs}} MB x {{nodeCount}})
-      </span>
     </div>
 
     <div class="persistent-only" ng-show="modelStep3Service.bucketConf.bucketType === 'membase'">
