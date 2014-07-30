@@ -2641,10 +2641,10 @@
           <h2>Fail Over Options</h2>
           <label><input type="radio" name="failOver" value="startGracefulFailover"> <span>Graceful Fail Over (default).</span></label>
           <label><input type="radio" name="failOver" value="failOver"> <span>Hard Fail Over - If you use hard failover option on a functioning node it may result in data loss. This is because failover will immediately remove the node from the cluster and any data that has not yet been replicated to other nodes may be permanently lost if it had not been persisted to disk.</span></label>
-          <div class="warning js_warning js_gracefull_failover_message" style="margin-bottom: 15px;">
+          <div class="warning js_gracefull_failover_message" style="margin-bottom: 15px;">
             <strong>Attention</strong> – Graceful fail over option is not available either because node is unreachable or replica vbucket cannot be activated gracefully.
           </div>
-          <div class="warning js_warning">
+          <div class="warning js_warning" style="margin-top: 15px;">
             <strong>Attention</strong> – A significant amount of data stored on this node
               does not yet have replica (backup) copies! Failing over the node now will
               irrecoverably lose that data when the incomplete replica is
@@ -2658,10 +2658,10 @@
           <h2>Fail Over Options</h2>
           <label><input type="radio" name="failOver" value="startGracefulFailover"> <span>Graceful Fail Over (default).</span></label>
           <label><input type="radio" name="failOver" value="failOver"> <span>Hard Fail Over - If you use hard failover option on a functioning node it may result in data loss. This is because failover will immediately remove the node from the cluster and any data that has not yet been replicated to other nodes may be permanently lost if it had not been persisted to disk.</span></label>
-          <div class="warning js_warning js_gracefull_failover_message" style="margin-bottom: 15px;">
+          <div class="warning js_gracefull_failover_message" style="margin-bottom: 15px;">
             Attention – Graceful fail over option is not available either because node is unreachable or replica vbucket cannot be activated gracefully.
           </div>
-          <div class="warning js_warning">
+          <div class="warning js_warning" style="margin-top: 15px;">
             <strong>Warning</strong> – Failing over the node will remove it from the cluster and activate a replica.
             Operations currently in flight and not yet replicated, will be lost. Rebalancing will be required
             to add the node back into the cluster. Consider using "Remove from Cluster" and rebalancing instead of Failover,
