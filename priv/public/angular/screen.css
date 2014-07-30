@@ -1069,6 +1069,7 @@ input.view_name{width:20em;padding:5px}
 .bucket_details input[type=number] {width: 3em;}
 
 .bucket_details .bucket-icon label {width: 100px;}
+.bucket_details .bucket-icon .error-container.active {display: inline-block;}
 .bucket_details .for-ram-quota input {width: 50px;}
 .bucket_details .replicas_settigns {line-height: 24px;}
 .bucket_details .err-replicaNumber {position: absolute; margin: 7px 85px 0  150px;}
