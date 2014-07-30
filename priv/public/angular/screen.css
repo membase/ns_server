@@ -125,12 +125,24 @@ a.dynamic_disabled{text-decoration:none;cursor:default;}
 
 /* buttons */
 .save_cancel {height:31px;border-top:1px solid #CCCFD2;border-bottom:none;padding:10px;clear:both;background:url("../images/devider_line_1.gif") repeat-x scroll 0 -1px #DFE0E0;margin-top:20px}
-.save_cancel button, .config-bottom button {position:relative;top:-1px;display:block;width:121px;height:31px;color:#fff;font-size:14px;font-weight:bolder;line-height:31px;text-align:center;text-decoration:none;border:0px;cursor:pointer;white-space:nowrap}
-.save_cancel button:hover, .save_cancel button:focus,
-.config-bottom button:hover, .config-bottom button:focus {background-position:0 -31px;}
-.save_cancel button:active, .config-bottom button:active {background-position:0 -62px;}
-.save_cancel .save_button, .config-bottom .direction-button {background:url(../images/button_blue.gif) 0 0 no-repeat;}
-.save_cancel .flush_button, .save_cancel .delete_button {background:url(../images/button_red.gif) 0 0 no-repeat;margin-right:10px;}
+.save_cancel button,
+.config-bottom button,
+#init_welcome_form .setup {position:relative;top:-1px;display:block;width:121px;height:31px;color:#fff;font-size:14px;font-weight:bolder;line-height:31px;text-align:center;text-decoration:none;border:0px;cursor:pointer;white-space:nowrap}
+.save_cancel button:hover,
+.save_cancel button:focus,
+.config-bottom button:hover,
+.config-bottom button:focus,
+#init_welcome_form .setup:focus,
+#init_welcome_form .setup:hover {background-position:0 -31px;}
+.save_cancel button:active,
+.config-bottom button:active,
+#init_welcome_form .setup:active {background-position:0 -62px;}
+.save_cancel .save_button,
+.config-bottom .direction-button,
+#init_welcome_form .setup {background:url(../images/button_blue.gif) 0 0 no-repeat;}
+.save_cancel .flush_button,
+.save_cancel .delete_button {background:url(../images/button_red.gif) 0 0 no-repeat;margin-right:10px;}
+#init_welcome_form .setup {display:inline-block;}
 
 /*.save_cancel .button_3 {width:146px;background:url(../images/button_blue_3.gif) 0 0 no-repeat;}*/
 .save_cancel .cancel_button {display:block;width:80px;height:31px;line-height:31px;color:#8b8b8e;text-align:center;font-weight:bolder;text-decoration:none; margin-right:30px;}
@@ -606,11 +618,10 @@ span.tooltip {color:#0095D6;cursor:pointer;}
 
 #init_welcome_dialog {width: 703px; display: block;-moz-box-shadow:0 0 10px #999;-webkit-box-shadow:0 0 10px #999;box-shadow:0 0 10px #999;background-color: white;height: 470px;position:relative}
 #init_welcome_dialog .pad-header {margin:0 auto;width: 266px; margin: 0 auto; padding-top: 75px;}
-#init_welcome_dialog .version {color: #837c7b;display: inline-block;padding-top: 1em;vertical-align: top}
+#init_welcome_dialog .version {color: #837c7b;display: inline-block;vertical-align: middle;margin-right: 10px;}
 
-#init_welcome_form {position:absolute;right:15px;bottom:15px;text-align:right}
+#init_welcome_form {position:absolute;right:35px;bottom:35px;text-align:right;}
 #init_welcome_form p {color:#bdccd4; font-family:Verdana,Helvetica,sans-serif; font-size:12pt; line-height:20px; margin-bottom:20px;}
-#init_welcome_form .setup {display:inline-block;background: url('../images/welcome-setup-button.png') no-repeat 50%; width: 145px; height: 55px;margin-left: -7px;color: #fff;padding: 3px; font-size: 13px;}
 
 #init_welcome_dialog .welcome-footer {color:#9aa3a8; font:11px/15px Verdana, Helvetica, sans-serif;position:absolute;bottom:-25px;text-align:center; width:703px;}
 #init_welcome_dialog .welcome-footer a {margin-left:15px;}

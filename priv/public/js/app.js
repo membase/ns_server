@@ -556,7 +556,7 @@ var SetupWizard = {
       });
     },
     welcome: function (node, pagePrefix, opt) {
-      $('#init_welcome_dialog input.next').click(function (e) {
+      $('#init_welcome_dialog button.next').click(function (e) {
         e.preventDefault();
         SetupWizard.show("cluster");
       });
@@ -821,15 +821,6 @@ var SetupWizard = {
         e.preventDefault();
         dialog.find('button.next').trigger('click');
       });
-
-
-      setTimeout(function () {
-        try {
-          emailField[0].focus();
-        } catch (e) {
-          //ignore
-        }
-      }, 10);
 
       formObserver = dialog.observePotentialChanges(emailFieldValidator);
 

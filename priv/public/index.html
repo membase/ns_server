@@ -3017,7 +3017,7 @@
     </div>
     <form id="init_welcome_form" class="clearfix">
       <div class="version" style="display:none;"><span class="couchbase-version"></span></div>
-      <input type="image" name="setup" alt="Setup" class="submit next focusme" src="images/welcome-setup-button.png" />
+      <button tabindex="1" class="setup focusme next">Setup</button>
     </form>
     <div class="welcome-footer">
       Copyright &copy; 2014 Couchbase, Inc. All Rights Reserved
@@ -3316,7 +3316,7 @@
       <p class="pad_10">
         <label for="init-join-community-email">
           <span class="field-label">Email:</span>
-          <input id="init-join-community-email">
+          <input id="init-join-community-email" class="focusme">
           <span class="error-container err-name"></span>
         </label>
       </p>
