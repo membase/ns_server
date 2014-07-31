@@ -206,6 +206,9 @@ do_send_retriable_http_request(URL, Method, Headers, Body, Timeout, HTTPOptions,
     case RV of
         {ok, _} ->
             RV;
+        {error, {{tls_alert, _}, _} = Reason} ->
+            ?xdcr_debug("Got https error doing ~s to ~s. Will NOT retry. Error: ~p", [Method, URL, Reason]),
+            RV;
         {error, Reason} ->
             NewRetries = Retries - 1,
             case NewRetries < 0 of
